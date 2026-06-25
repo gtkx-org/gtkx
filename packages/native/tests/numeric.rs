@@ -4,7 +4,7 @@ use std::ffi::c_void;
 
 use libffi::middle;
 use native::types::{
-    FfiDecoder, FfiEncoder, FloatKind, IntegerKind, RawPtrCodec, ReadSource, Type,
+    FfiDecoder, FfiEncoder, FloatKind, IntegerKind, RawPtrWriter, ReadSource, Type,
 };
 use native::value::Value;
 use native::{ffi, value};
@@ -197,7 +197,7 @@ fn integer_raw_ptr_codec_round_trips() {
         let ret = &mut slot as *mut i64 as *mut c_void;
         // SAFETY: `ret` is a live, pointer-sized stack slot; the call writes exactly one pointer
         // (or null) into it, read back after the call.
-        unsafe { RawPtrCodec::write_return_to_raw_ptr(&kind, ret, &Ok(Value::Number(5.0))) };
+        unsafe { RawPtrWriter::write_return_to_raw_ptr(&kind, ret, &Ok(Value::Number(5.0))) };
         let read =
             // SAFETY: `ret` is a live, pointer-sized stack slot; the call writes exactly one pointer
             // (or null) into it, read back after the call.
@@ -207,7 +207,7 @@ fn integer_raw_ptr_codec_round_trips() {
 
         // SAFETY: `ret` is a live, pointer-sized stack slot; the call writes exactly one pointer
         // (or null) into it, read back after the call.
-        unsafe { RawPtrCodec::write_return_to_raw_ptr(&kind, ret, &Err(())) };
+        unsafe { RawPtrWriter::write_return_to_raw_ptr(&kind, ret, &Err(())) };
         let zero =
             // SAFETY: the field slot is a live, pointer-sized stack slot pre-seeded with the prior
             // (null/owned) value; the call swaps in the new value, balancing ownership.
@@ -219,7 +219,7 @@ fn integer_raw_ptr_codec_round_trips() {
         let field_ptr = &mut field as *mut i64 as *mut c_void;
         // SAFETY: the field slot is a live, pointer-sized stack slot pre-seeded with the prior
         // (null/owned) value; the call swaps in the new value, balancing ownership.
-        unsafe { RawPtrCodec::write_value_to_raw_ptr(&kind, field_ptr, &Value::Number(9.0)) }
+        unsafe { RawPtrWriter::write_value_to_raw_ptr(&kind, field_ptr, &Value::Number(9.0)) }
             .unwrap();
         let from_field =
             // SAFETY: the field slot is a live, pointer-sized stack slot pre-seeded with the prior
@@ -230,8 +230,10 @@ fn integer_raw_ptr_codec_round_trips() {
         assert!(
             // SAFETY: the field slot is a live, pointer-sized stack slot pre-seeded with the prior
             // (null/owned) value; the call swaps in the new value, balancing ownership.
-            unsafe { RawPtrCodec::write_value_to_raw_ptr(&kind, field_ptr, &Value::Boolean(true)) }
-                .is_err()
+            unsafe {
+                RawPtrWriter::write_value_to_raw_ptr(&kind, field_ptr, &Value::Boolean(true))
+            }
+            .is_err()
         );
     }
 }
@@ -304,18 +306,18 @@ where
 
 unsafe fn assert_raw_ptr_codec_round_trip<K>(kind: &K, slot: &mut [u8; 8], value_ptr: *mut c_void)
 where
-    K: RawPtrCodec + FfiDecoder,
+    K: RawPtrWriter + FfiDecoder,
 {
     let ptr = slot.as_mut_ptr().cast::<c_void>();
     // SAFETY: `ret` is a live, pointer-sized stack slot; the call writes exactly one pointer
     // (or null) into it, read back after the call.
-    unsafe { RawPtrCodec::write_value_to_raw_ptr(kind, ptr, &Value::Number(2.0)) }.unwrap();
+    unsafe { RawPtrWriter::write_value_to_raw_ptr(kind, ptr, &Value::Number(2.0)) }.unwrap();
     // SAFETY: `ret` is a live, pointer-sized stack slot; the call writes exactly one pointer
     // (or null) into it, read back after the call.
     unsafe { FfiDecoder::read(kind, ReadSource::Slot(ptr.cast_const(), "c")) }.unwrap();
     // SAFETY: `ret` is a live, pointer-sized stack slot; the call writes exactly one pointer
     // (or null) into it, read back after the call.
-    unsafe { RawPtrCodec::write_return_to_raw_ptr(kind, ptr, &Ok(Value::Number(1.0))) };
+    unsafe { RawPtrWriter::write_return_to_raw_ptr(kind, ptr, &Ok(Value::Number(1.0))) };
     // SAFETY: the pointer addresses a live value/container of the codec's type, valid for
     // this read.
     unsafe { FfiDecoder::read(kind, ReadSource::Value(value_ptr, "c")) }.unwrap();
@@ -429,16 +431,16 @@ fn float_codec_encode_decode_and_raw_ptr() {
         let ret = &mut slot as *mut f64 as *mut c_void;
         // SAFETY: `ret` is the live, pointer-sized `slot` stack variable; the call writes one
         // value of `kind` into it.
-        unsafe { RawPtrCodec::write_return_to_raw_ptr(&kind, ret, &Ok(Value::Number(1.0))) };
+        unsafe { RawPtrWriter::write_return_to_raw_ptr(&kind, ret, &Ok(Value::Number(1.0))) };
         assert!(
             // SAFETY: `ret` still addresses the live `slot` holding the value just written for
             // this `kind`, so reading it back through the slot source is valid.
             unsafe { FfiDecoder::read(&kind, ReadSource::Slot(ret as *const c_void, "c")) }.is_ok()
         );
         // SAFETY: `ret` is the live, pointer-sized `slot`; on the error case the call clears it.
-        unsafe { RawPtrCodec::write_return_to_raw_ptr(&kind, ret, &Err(())) };
+        unsafe { RawPtrWriter::write_return_to_raw_ptr(&kind, ret, &Err(())) };
         // SAFETY: `ret` is the live, pointer-sized `slot`; the call writes one value of `kind`.
-        unsafe { RawPtrCodec::write_value_to_raw_ptr(&kind, ret, &Value::Number(3.0)) }.unwrap();
+        unsafe { RawPtrWriter::write_value_to_raw_ptr(&kind, ret, &Value::Number(3.0)) }.unwrap();
         assert!(
             // SAFETY: a float decode treats a null value pointer as the zero value, so passing
             // null is a defined input rather than a dereference.
@@ -447,7 +449,7 @@ fn float_codec_encode_decode_and_raw_ptr() {
         );
         // SAFETY: `ret` is the live, pointer-sized `slot`; writing a null `Value` is rejected
         // without dereferencing the slot.
-        assert!(unsafe { RawPtrCodec::write_value_to_raw_ptr(&kind, ret, &Value::Null) }.is_err());
+        assert!(unsafe { RawPtrWriter::write_value_to_raw_ptr(&kind, ret, &Value::Null) }.is_err());
     }
 }
 
@@ -511,7 +513,7 @@ fn enum_flags_raw_ptr_codec() {
         let ptr = &mut slot as *mut i64 as *mut c_void;
         // SAFETY: `ptr` is the live, pointer-sized `slot` stack variable; the enum/flags codec
         // writes one i32 enum value into it.
-        unsafe { RawPtrCodec::write_value_to_raw_ptr(&enum_flags, ptr, &Value::Number(2.0)) }
+        unsafe { RawPtrWriter::write_value_to_raw_ptr(&enum_flags, ptr, &Value::Number(2.0)) }
             .unwrap();
         let read =
             // SAFETY: `ptr` still addresses the live `slot` holding the value just written, so
@@ -520,7 +522,7 @@ fn enum_flags_raw_ptr_codec() {
                 .unwrap();
         assert!(matches!(read, Value::Number(n) if n == 2.0));
         // SAFETY: `ptr` is the live, pointer-sized `slot`; the call writes one enum return value.
-        unsafe { RawPtrCodec::write_return_to_raw_ptr(&enum_flags, ptr, &Ok(Value::Number(4.0))) };
+        unsafe { RawPtrWriter::write_return_to_raw_ptr(&enum_flags, ptr, &Ok(Value::Number(4.0))) };
         let from_ptr =
             // SAFETY: an enum/flags value decode reads the integer payload directly from the
             // pointer bits (here the small constant 3) rather than dereferencing it.

@@ -34,7 +34,7 @@ impl FfiDecoder for VoidType {
     }
 }
 
-impl RawPtrCodec for VoidType {
+impl RawPtrWriter for VoidType {
     unsafe fn write_return_to_raw_ptr(&self, _ret: *mut c_void, _value: &Result<value::Value, ()>) {
     }
 }

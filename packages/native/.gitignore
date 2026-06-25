@@ -1,4 +1,7 @@
 target
+dist-binding
 *.node
 native-binding.cjs
 native-binding.d.cts
+native-binding-test.cjs
+native-binding-test.d.cts

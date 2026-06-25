@@ -4,9 +4,9 @@ use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use super::handler::NativeRequest;
+use super::request::NativeRequest;
 use crate::managed::NativeHandle;
-use crate::types::{FfiDecoder as _, RawPtrCodec as _, ReadSource, Type};
+use crate::types::{FfiDecoder as _, RawPtrWriter as _, ReadSource, Type};
 use crate::value::Value;
 
 #[cfg_attr(test, allow(dead_code))]

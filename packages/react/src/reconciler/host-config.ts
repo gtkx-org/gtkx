@@ -1,4 +1,4 @@
-import { BUFFER_TEXT_KIND, LABEL_TEXT_KIND, WRAPPER_NODE_ELEMENT } from "@gtkx/config";
+import { BUFFER_TEXT_KIND, LABEL_TEXT_KIND, RELATIONSHIP_NODE_ELEMENT } from "@gtkx/config";
 import { getWrapperClassByName } from "@gtkx/ffi";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -11,16 +11,16 @@ import { classHasType } from "../utils/gtype-predicates.js";
 import { applyAccessibleProps, isAccessibleProp } from "./accessible.js";
 import { applyProps } from "./apply-props.js";
 import { beginCommit, endCommit, runCommitFlush } from "./commit-flush.js";
-import { attachNode, detachFromParent, detachNode, resyncWrapper } from "./element-map.js";
-import { createElementInstance, createWrapperInstance } from "./instance.js";
+import { attachNode, detachFromParent, detachNode, resyncRelationshipNode } from "./element-map.js";
+import { createElementInstance, createRelationshipInstance } from "./instance.js";
 import { scheduleLabelTextRebuild } from "./label-text-rebuild.js";
 import { reportReconcilerError } from "./reconciler-error-handler.js";
+import { isRelationshipNode } from "./relationship-node.js";
 import { isRuleManagedProp, resolveSetPropsRuleSet, ruleNodeOf } from "./rule-registry.js";
 import { ensureState, type Node, stateOf } from "./state.js";
 import { scheduleBufferRebuild } from "./text-buffer-rebuild.js";
-import { isBufferContentWrapper, isLabelTextWrapper } from "./text-wrapper.js";
+import { isBufferContentNode, isLabelTextNode } from "./text-node.js";
 import type { Container, Props } from "./types.js";
-import { isWrapperElement } from "./wrapper-element.js";
 
 const FIXED_UPDATE_PRIORITY = DiscreteEventPriority;
 
@@ -85,14 +85,14 @@ const unlink = (parent: Node, child: Node): void => {
 };
 
 const isBufferRelated = (instance: Node): boolean =>
-    isBufferContentWrapper(instance) || instance instanceof Gtk.TextTag || instance instanceof Gtk.TextBuffer;
+    isBufferContentNode(instance) || instance instanceof Gtk.TextTag || instance instanceof Gtk.TextBuffer;
 
 const maybeScheduleBufferRebuild = (parent: Node, child: Node): void => {
     if (isBufferRelated(parent) || isBufferRelated(child)) scheduleBufferRebuild(parent);
 };
 
 const maybeScheduleLabelTextRebuild = (parent: Node, child: Node): void => {
-    if (isLabelTextWrapper(child)) scheduleLabelTextRebuild(parent);
+    if (isLabelTextNode(child)) scheduleLabelTextRebuild(parent);
 };
 
 const scheduleTextRebuilds = (parent: Node, child: Node): void => {
@@ -122,9 +122,9 @@ const removeChild = (parent: Node, child: Node): void => {
 const commitInstanceProps = (instance: Node, oldProps: Props | null, newProps: Props): void => {
     const state = stateOf(instance);
     state.props = newProps;
-    if (isWrapperElement(instance)) {
-        if (isBufferContentWrapper(instance)) scheduleBufferRebuild(instance);
-        else resyncWrapper(instance);
+    if (isRelationshipNode(instance)) {
+        if (isBufferContentNode(instance)) scheduleBufferRebuild(instance);
+        else resyncRelationshipNode(instance);
         return;
     }
     if (!(instance instanceof GObject.Object)) return;
@@ -156,7 +156,7 @@ const detachInstance = (instance: Node): void => {
     if (instance instanceof GObject.Object && needsDetachOnDelete(instance) && state.parent) {
         detachFromParent(instance, state.parent);
     }
-    state.signalStore.clear(instance);
+    if (instance instanceof GObject.Object) state.signalStore.clear(instance);
 };
 
 const createDetachGuard = (): ((instance: Node) => void) => {
@@ -245,15 +245,15 @@ type InstanceConfig = Pick<
 
 const createInstanceConfig = (): InstanceConfig => ({
     createInstance: (type, props, rootContainer) =>
-        type === WRAPPER_NODE_ELEMENT
-            ? createWrapperInstance(typeof props["kind"] === "string" ? props["kind"] : "", props, rootContainer)
+        type === RELATIONSHIP_NODE_ELEMENT
+            ? createRelationshipInstance(typeof props["kind"] === "string" ? props["kind"] : "", props, rootContainer)
             : createElementInstance(type, props, rootContainer),
     createTextInstance: (text, rootContainer, hostContext) => {
         if (hostContext.textHost === "buffer") {
-            return createWrapperInstance(BUFFER_TEXT_KIND, { text }, rootContainer);
+            return createRelationshipInstance(BUFFER_TEXT_KIND, { text }, rootContainer);
         }
         if (hostContext.textHost === "label") {
-            return createWrapperInstance(LABEL_TEXT_KIND, { text }, rootContainer);
+            return createRelationshipInstance(LABEL_TEXT_KIND, { text }, rootContainer);
         }
         throw new Error(
             `Text strings must be rendered within a <GtkLabel> or <GtkTextBuffer> element; received ${JSON.stringify(text)}`,
@@ -328,7 +328,7 @@ const createCommitConfig = (): CommitConfig => ({
         withSignalsBlocked(instance, () => commitInstanceProps(instance, oldProps, newProps)),
     commitTextUpdate: (textInstance, _oldText, newText) => {
         stateOf(textInstance).props = { text: newText };
-        if (isBufferContentWrapper(textInstance)) scheduleBufferRebuild(textInstance);
+        if (isBufferContentNode(textInstance)) scheduleBufferRebuild(textInstance);
         else scheduleLabelTextRebuild(textInstance);
     },
     prepareForCommit: () => {

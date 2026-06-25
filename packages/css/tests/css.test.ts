@@ -1,13 +1,13 @@
 import type { MockInstance } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { type Css, createInstance } from "../src/create-instance.js";
+import { createInstance, type Instance } from "../src/create-instance.js";
 import { StyleSheet } from "../src/stylesheet.js";
 
 describe("css", () => {
-    let instance: Css;
+    let instance: Instance;
 
     beforeEach(() => {
-        instance = createInstance({ key: "gtkx" });
+        instance = createInstance();
     });
 
     it("creates a class name from template literal styles", () => {
@@ -92,10 +92,10 @@ describe("css", () => {
 });
 
 describe("cx", () => {
-    let instance: Css;
+    let instance: Instance;
 
     beforeEach(() => {
-        instance = createInstance({ key: "gtkx" });
+        instance = createInstance();
     });
 
     it("combines multiple class names into an array", () => {
@@ -146,10 +146,10 @@ describe("cx", () => {
 });
 
 describe("cx falsy filtering", () => {
-    let instance: Css;
+    let instance: Instance;
 
     beforeEach(() => {
-        instance = createInstance({ key: "gtkx" });
+        instance = createInstance();
     });
 
     it("filters out false values", () => {
@@ -181,10 +181,10 @@ describe("cx falsy filtering", () => {
 });
 
 describe("cx edge cases", () => {
-    let instance: Css;
+    let instance: Instance;
 
     beforeEach(() => {
-        instance = createInstance({ key: "gtkx" });
+        instance = createInstance();
     });
 
     it("returns empty array when given no arguments", () => {
@@ -213,10 +213,10 @@ describe("cx edge cases", () => {
 });
 
 describe("injectGlobal", () => {
-    let instance: Css;
+    let instance: Instance;
 
     beforeEach(() => {
-        instance = createInstance({ key: "gtkx" });
+        instance = createInstance();
     });
 
     it("accepts template literal styles", () => {
@@ -269,12 +269,12 @@ describe("injectGlobal", () => {
 });
 
 describe("stylis pipeline correctness", () => {
-    let instance: Css;
+    let instance: Instance;
     let insertSpy: MockInstance<StyleSheet["insert"]>;
 
     beforeEach(() => {
         insertSpy = vi.spyOn(StyleSheet.prototype, "insert");
-        instance = createInstance({ key: "gtkx" });
+        instance = createInstance();
     });
 
     afterEach(() => {

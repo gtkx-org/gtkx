@@ -4,7 +4,7 @@ use std::ffi::c_void;
 
 use libffi::middle;
 use native::ffi;
-use native::types::{FfiDecoder, FfiEncoder, RawPtrCodec, ReadSource, UnicharType};
+use native::types::{FfiDecoder, FfiEncoder, RawPtrWriter, ReadSource, UnicharType};
 use native::value::Value;
 
 extern "C" fn ret_codepoint() -> u32 {
@@ -123,7 +123,7 @@ fn write_return_to_raw_ptr_writes_string_number_and_default() {
     // SAFETY: `ret` points to the live, writable `u64` stack local `slot`, at least as wide as
     // the codepoint word `write_return_to_raw_ptr` stores, so each write below is in bounds.
     unsafe {
-        RawPtrCodec::write_return_to_raw_ptr(
+        RawPtrWriter::write_return_to_raw_ptr(
             &UnicharType,
             ret,
             &Ok(Value::String("Kkk".to_owned())),
@@ -133,21 +133,21 @@ fn write_return_to_raw_ptr_writes_string_number_and_default() {
 
     // SAFETY: same writable `u64` slot `ret`; the empty string writes the zero codepoint in bounds.
     unsafe {
-        RawPtrCodec::write_return_to_raw_ptr(&UnicharType, ret, &Ok(Value::String(String::new())));
+        RawPtrWriter::write_return_to_raw_ptr(&UnicharType, ret, &Ok(Value::String(String::new())));
     }
     assert_eq!(slot, 0);
 
     // SAFETY: same writable `u64` slot `ret`; the numeric codepoint is written in bounds.
-    unsafe { RawPtrCodec::write_return_to_raw_ptr(&UnicharType, ret, &Ok(Value::Number(70.0))) };
+    unsafe { RawPtrWriter::write_return_to_raw_ptr(&UnicharType, ret, &Ok(Value::Number(70.0))) };
     assert_eq!(slot, 70);
 
     // SAFETY: same writable `u64` slot `ret`; the error case writes the zero default in bounds.
-    unsafe { RawPtrCodec::write_return_to_raw_ptr(&UnicharType, ret, &Err(())) };
+    unsafe { RawPtrWriter::write_return_to_raw_ptr(&UnicharType, ret, &Err(())) };
     assert_eq!(slot, 0);
 
     slot = u64::MAX;
     // SAFETY: same writable `u64` slot `ret`; the rejected boolean falls back to the zero default,
     // written in bounds.
-    unsafe { RawPtrCodec::write_return_to_raw_ptr(&UnicharType, ret, &Ok(Value::Boolean(true))) };
+    unsafe { RawPtrWriter::write_return_to_raw_ptr(&UnicharType, ret, &Ok(Value::Boolean(true))) };
     assert_eq!(slot, 0);
 }

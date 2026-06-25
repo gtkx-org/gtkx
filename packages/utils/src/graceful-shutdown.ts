@@ -13,11 +13,7 @@ export type GracefulShutdownOptions = {
     exitCode?: (signal: NodeJS.Signals) => number;
 };
 
-export type GracefulShutdownHandle = {
-    uninstall: () => void;
-};
-
-export const installGracefulShutdown = (options: GracefulShutdownOptions): GracefulShutdownHandle => {
+export const installGracefulShutdown = (options: GracefulShutdownOptions): void => {
     const forceKillMs = options.forceKillAfterMs ?? DEFAULT_FORCE_KILL_TIMEOUT_MS;
 
     let firstSignal: NodeJS.Signals | null = null;
@@ -61,20 +57,7 @@ export const installGracefulShutdown = (options: GracefulShutdownOptions): Grace
         finish(signal);
     };
 
-    const handlers = new Map<NodeJS.Signals, () => void>();
     for (const sig of HANDLED_SIGNALS) {
-        const listener = (): void => handle(sig);
-        handlers.set(sig, listener);
-        process.on(sig, listener);
+        process.on(sig, () => handle(sig));
     }
-
-    return {
-        uninstall: () => {
-            for (const [sig, listener] of handlers) {
-                process.removeListener(sig, listener);
-            }
-            handlers.clear();
-            clearTimer();
-        },
-    };
 };

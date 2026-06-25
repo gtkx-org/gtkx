@@ -40,7 +40,7 @@ describe("ArrayBufferView array arguments", () => {
     });
 });
 
-describe("blob arguments", () => {
+describe("buffer arguments", () => {
     it("lets the callee write into a typed array", () => {
         const out = new Uint8Array(6);
         expect(unicharToUtf8(E_ACUTE, out)).toBe(2);

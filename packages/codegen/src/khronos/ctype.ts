@@ -62,7 +62,7 @@ export type ParamPlan =
     | { kind: "ref-array-out"; scalar: GlScalar; lenParamName: string }
     | { kind: "ref-fixed-out"; scalar: GlScalar; length: number }
     | { kind: "string-out"; lenParamName: string }
-    | { kind: "blob" }
+    | { kind: "buffer" }
     | { kind: "byte-offset" }
     | { kind: "byte-offset-array" };
 
@@ -164,7 +164,7 @@ const planParam = (command: GlCommand, param: GlParam, policy: GlPlanPolicy): Pa
     }
     if (base === GL_SYNC && pointers === 0) return { plan: { kind: "sync" } };
     if (base === "void") {
-        if (pointers === 1) return { plan: { kind: "blob" } };
+        if (pointers === 1) return { plan: { kind: "buffer" } };
         return paramExclusion(param, "unsupported-shape", "multi-level void pointer");
     }
     if (base === GL_CHAR || base === "GLcharARB") return planCharParam(command, param, parsed);

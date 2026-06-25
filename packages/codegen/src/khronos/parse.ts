@@ -45,7 +45,7 @@ export const nodeAttr = (node: OrderedNode, name: string): string | undefined =>
     return typeof value === "string" ? value : undefined;
 };
 
-export const nodeText = (node: OrderedNode): string | undefined => {
+const nodeText = (node: OrderedNode): string | undefined => {
     const value = node[TEXT_KEY];
     return typeof value === "string" ? value : undefined;
 };

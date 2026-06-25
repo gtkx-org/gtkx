@@ -53,7 +53,7 @@ impl FfiDecoder for BooleanType {
     }
 }
 
-impl RawPtrCodec for BooleanType {
+impl RawPtrWriter for BooleanType {
     unsafe fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         let val = f64::from(u8::from(matches!(value, Ok(value::Value::Boolean(true)))));
         // SAFETY: `ret` is a marshalling-provided return slot sized for this boolean's wire kind

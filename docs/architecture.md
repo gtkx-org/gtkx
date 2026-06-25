@@ -57,7 +57,7 @@ The repository is a pnpm workspace of TypeScript packages plus one Rust addon:
 | `@gtkx/gi` | Generated low-level FFI bindings (one module per namespace) plus overrides. |
 | `@gtkx/jsx` | Generated React/JSX bindings and the reconciler metadata module. |
 | `@gtkx/css` | Emotion-based CSS-in-JS compiling tagged-template styles into GTK CSS classes via a process-wide CSS provider. |
-| `@gtkx/animate` | React animation components (`TimedAnimation`, `SpringAnimation`, `AnimatePresence`) driven by libadwaita animations. |
+| `@gtkx/animate` | React animation components (tween/spring transitions and presence-aware enter/exit) driven by libadwaita animations. |
 | `@gtkx/gl` | Hand-curated OpenGL core bindings generated from the Khronos registry, for use in GL-area render callbacks. |
 | `@gtkx/mcp` | Model Context Protocol server exposing widget-inspection/interaction tools, bridged to live apps over a Unix socket. |
 | `@gtkx/testing` | Testing Library-style harness operating on real GObject widgets: render/cleanup, accessibility-first queries, `userEvent`/`fireEvent`, screenshots. |

@@ -187,7 +187,7 @@ impl FfiDecoder for BoxedType {
     }
 }
 
-impl RawPtrCodec for BoxedType {
+impl RawPtrWriter for BoxedType {
     unsafe fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         self.write_return_with_ownership(ret, value, self.ownership, |ptr| {
             self.gtype().map_or(ptr, |gtype| {
@@ -288,7 +288,7 @@ impl FfiDecoder for StructType {
     }
 }
 
-impl RawPtrCodec for StructType {
+impl RawPtrWriter for StructType {
     unsafe fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         write_return_object_ptr(ret, value, std::convert::identity);
     }

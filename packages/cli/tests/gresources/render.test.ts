@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderInitModule } from "../../src/gresources/render.js";
+import { renderInitModule } from "../../src/vite-plugins/gresource-init-module.js";
 
 describe("renderInitModule", () => {
     it("renders the build-mode registrar that loads the bundle next to itself", () => {

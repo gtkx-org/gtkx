@@ -1,8 +1,8 @@
 import type { RefType, Type, Value } from "@gtkx/native";
 import { type ArgCategory, type ArgDirectionMeta, classifyArgCategory } from "./arg-category.js";
 import { valueCopyInto } from "./gvalue.js";
+import { fromNativeValue, toNativeValue } from "./native-value.js";
 import { getHandle } from "./registry.js";
-import { unwrapValue, wrapValue } from "./wrap-value.js";
 
 const isOutCell = (descriptor: Type): descriptor is RefType => descriptor.type === "ref";
 
@@ -53,13 +53,13 @@ const splitCallbackResult = (
     return { primary: undefined, outValues: result as unknown[] };
 };
 
-export type CallbackReceiver = "this" | "skip" | "none";
+type CallbackReceiver = "this" | "skip" | "none";
 
 export type Callback = (...args: Value[]) => Value;
 
 export type UserCallback = (...args: never[]) => unknown;
 
-export type CallbackSpec = {
+type CallbackSpec = {
     argTypes: Type[];
     returnType: Type;
     userDataIndex?: number;
@@ -107,15 +107,15 @@ export function wrapCallback(fn: UserCallback, spec: CallbackSpec, receiver: Cal
         userDataIndex === undefined ? spec.argTypes : spec.argTypes.filter((_, i) => i !== userDataIndex);
     const start = receiver === "none" ? 0 : 1;
     return (...rawArgs: Value[]): Value => {
-        const wrapped = effectiveTypes.map((descriptor, i) => wrapValue(descriptor, rawArgs[i]));
+        const wrapped = effectiveTypes.map((descriptor, i) => fromNativeValue(descriptor, rawArgs[i]));
         const thisArg = receiver === "this" ? (wrapped[0] ?? null) : null;
         const { inputs, outParams } = partitionCallbackArgs(effectiveTypes, wrapped, start, receiver);
         const result = (fn as (this: unknown, ...args: unknown[]) => unknown).apply(thisArg, inputs);
         if (outParams.length === 0) {
-            return unwrapValue(returnType, result);
+            return toNativeValue(returnType, result);
         }
         const { primary, outValues } = splitCallbackResult(result, returnType.type !== "void", outParams.length);
         writeOutParams(outParams, outValues);
-        return unwrapValue(returnType, primary);
+        return toNativeValue(returnType, primary);
     };
 }

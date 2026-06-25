@@ -27,4 +27,4 @@ test_visible_modules! {
     value,
 }
 
-pub use managed::{Boxed, Fundamental, NativeHandle, NativeValue};
+pub use managed::{Boxed, NativeHandle};

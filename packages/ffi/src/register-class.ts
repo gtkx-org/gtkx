@@ -16,7 +16,7 @@ import {
     walkClassChain,
 } from "./registry.js";
 
-export type RegisterClassOptions = {
+type RegisterClassOptions = {
     gtypeName?: string;
 };
 

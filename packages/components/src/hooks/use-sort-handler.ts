@@ -1,9 +1,9 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { type GObjectTarget, resolveGobjectTarget } from "@gtkx/react/internal";
+import { type GObjectTarget, resolveGObjectTarget } from "@gtkx/react/internal";
 import { useLayoutEffect, useRef } from "react";
-import type { ColumnRegistration } from "../contexts/column-view-context.js";
+import type { ColumnRegistration } from "../column-view-context.js";
 
-export interface SortHandlerOptions {
+interface SortHandlerOptions {
     columnView: GObjectTarget<Gtk.ColumnView>;
     sortColumn: string | null | undefined;
     sortOrder: Gtk.SortType | null | undefined;
@@ -89,7 +89,7 @@ export const useSortHandler = (options: SortHandlerOptions): void => {
     };
 
     useLayoutEffect(() => {
-        const view = resolveGobjectTarget(columnView);
+        const view = resolveGObjectTarget(columnView);
         if (view === null) return;
         ensureColumnSorters(columns, activeId);
         suppressRef.current = true;

@@ -9,7 +9,7 @@ import {
     tSizedArray,
     tString,
     tUint64,
-} from "../codegen/descriptor.js";
+} from "../analysis/descriptor.js";
 import type { CommandPlan, GlScalar, ParamPlan } from "./ctype.js";
 import type { GlCommand } from "./model.js";
 
@@ -80,7 +80,7 @@ const buildInArg = (options: BuildArgOptions, name: string, track: (alias: strin
             track(scalarAliasOrGroup(plan.scalar, param.group));
             return inArg(name, arrayInTsType(plan.scalar, param.group), tArray(plan.scalar.tExpr));
         }
-        case "blob":
+        case "buffer":
             return inArg(name, `ArrayBufferView | ${track("GLintptr")} | null`, tBuffer);
         case "byte-offset":
             return inArg(name, track("GLintptr"), tUint64);

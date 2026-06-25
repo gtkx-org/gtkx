@@ -2,11 +2,11 @@ import { sortedStringsBy } from "@gtkx/utils";
 import type { Library } from "../gir/library.js";
 import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import { collectAttachShapes } from "./attach-shapes.js";
-import { generateElementComponentsSection } from "./compounds.js";
+import { generateElementComponentsSection } from "./element-components.js";
 import { emptyJsxImports, renderJsxImports } from "./imports.js";
+import { collectIntrinsicElementClasses } from "./intrinsic-elements.js";
 import { generateJsxSection } from "./jsx.js";
 import { generateMetadata } from "./metadata.js";
-import { collectReactNodeClasses } from "./react-nodes.js";
 import {
     DEFAULT_BLOCKABLE_TYPES,
     META_OBJECT_ADD_METHODS,
@@ -24,21 +24,21 @@ export type JsxNamespaceFile = {
 export type JsxFiles = {
     namespaces: JsxNamespaceFile[];
     metadata: string;
-    reactNodeCount: number;
+    intrinsicElementCount: number;
 };
 
 export const generateJsxFiles = (library: Library): JsxFiles => {
-    const namespacesWithReactNodes = new Map<string, GirNamespace>();
-    for (const entry of collectReactNodeClasses(library)) {
-        namespacesWithReactNodes.set(entry.namespace.name, entry.namespace);
+    const namespacesWithIntrinsicElements = new Map<string, GirNamespace>();
+    for (const entry of collectIntrinsicElementClasses(library)) {
+        namespacesWithIntrinsicElements.set(entry.namespace.name, entry.namespace);
     }
 
     const namespaces: JsxNamespaceFile[] = [];
-    let reactNodeCount = 0;
-    for (const namespace of sortedStringsBy(namespacesWithReactNodes.values(), (entry) => entry.name)) {
+    let intrinsicElementCount = 0;
+    for (const namespace of sortedStringsBy(namespacesWithIntrinsicElements.values(), (entry) => entry.name)) {
         const { source, count } = generateJsxNamespace(namespace, library);
         namespaces.push({ directory: namespaceDirectory(namespace), source });
-        reactNodeCount += count;
+        intrinsicElementCount += count;
     }
 
     const metadata = generateMetadata(library, {
@@ -51,7 +51,7 @@ export const generateJsxFiles = (library: Library): JsxFiles => {
         slotProps: SLOT_PROPS_BY_TYPE,
     });
 
-    return { namespaces, metadata, reactNodeCount };
+    return { namespaces, metadata, intrinsicElementCount };
 };
 
 const generateJsxNamespace = (targetNamespace: GirNamespace, library: Library): { source: string; count: number } => {

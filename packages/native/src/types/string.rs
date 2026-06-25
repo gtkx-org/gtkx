@@ -87,7 +87,7 @@ impl FfiDecoder for StringType {
     }
 }
 
-impl RawPtrCodec for StringType {
+impl RawPtrWriter for StringType {
     unsafe fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         let ptr = match value {
             Ok(value::Value::String(s)) => {

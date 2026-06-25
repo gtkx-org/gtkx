@@ -14,10 +14,8 @@ const propertySerializers: PropertySerializer[] = [
     },
     {
         target: "transform",
-        serialize: ({ translateX, translateY }) =>
-            translateX !== undefined || translateY !== undefined
-                ? `translate(${translateX ?? 0}px, ${translateY ?? 0}px)`
-                : undefined,
+        serialize: ({ x, y }) =>
+            x !== undefined || y !== undefined ? `translate(${x ?? 0}px, ${y ?? 0}px)` : undefined,
     },
     {
         target: "transform",

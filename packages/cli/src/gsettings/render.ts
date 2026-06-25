@@ -1,4 +1,4 @@
-import { GtkxEnvModuleHeader, toUpperFirst } from "@gtkx/utils";
+import { GTKX_ENV_MODULE_HEADER, toUpperFirst } from "@gtkx/utils";
 import type { ParsedKey, ParsedSchema, ParsedSchemaFile } from "./parser.js";
 
 const VARIANT_TS_TYPES: Record<string, string> = {
@@ -157,5 +157,5 @@ export const renderEnvModule = (files: ParsedSchemaFile[]): string => {
     const blocks = files
         .filter((file) => file.schemas.length > 0)
         .map((file) => renderFileModule(file, usedNames).join("\n"));
-    return `${[GtkxEnvModuleHeader, ...blocks].join("\n\n")}\n`;
+    return `${[GTKX_ENV_MODULE_HEADER, ...blocks].join("\n\n")}\n`;
 };

@@ -1,9 +1,9 @@
 import { toCamelIdentifier, toUpperFirst } from "@gtkx/utils";
-import { forEachAncestor, type ResolvedInterface, resolveDirectInterfaces } from "../codegen/inheritance.js";
-import { renderHandlerParameters } from "../codegen/param-structure.js";
-import { foldOutParamShape } from "../codegen/return-shape.js";
-import { renderBaseTypeFor, type TsTypeTarget } from "../codegen/ts-type.js";
-import { isScalarRef } from "../codegen/value.js";
+import { forEachAncestor, type ResolvedInterface, resolveDirectInterfaces } from "../analysis/inheritance.js";
+import { renderHandlerParameters } from "../analysis/param-structure.js";
+import { foldOutParamShape } from "../analysis/return-shape.js";
+import { renderBaseTypeFor, type TsTypeTarget } from "../analysis/ts-type.js";
+import { isScalarRef } from "../analysis/value.js";
 import type { GirClass } from "../gir/class.js";
 import type { Library } from "../gir/library.js";
 import type { GirNamespace } from "../gir/namespace.js";
@@ -11,19 +11,19 @@ import { type GirParameter, isInoutParameter, isOutParameter } from "../gir/para
 import { type GirProperty, isConstructableProperty } from "../gir/property.js";
 import type { GirSignal } from "../gir/signal.js";
 import type { TypeId } from "../gir/type-id.js";
-import { classExposesMethod, isReactNodeClass, signalHandlerName } from "./react-nodes.js";
+import { classExposesMethod, isIntrinsicElementClass, signalHandlerName } from "./intrinsic-elements.js";
 
-export type ReactNodePropsEntries = {
+export type IntrinsicElementPropsEntries = {
     propLines: string[];
     imports: Map<string, string>;
     slotPropNames: string[];
 };
 
-export type ReactNodePropsOptions = {
+export type IntrinsicElementPropsOptions = {
     library: Library;
     klass: GirClass;
     namespace: GirNamespace;
-    isReactNodeAncestor?: (candidate: GirClass) => boolean;
+    isIntrinsicElementAncestor?: (candidate: GirClass) => boolean;
 };
 
 type PropTypeRenderContext = {
@@ -37,8 +37,8 @@ type SignalRenderOptions = {
     selfType: string;
 };
 
-export const buildElementPropsEntries = (options: ReactNodePropsOptions): ReactNodePropsEntries => {
-    const { library, klass, namespace, isReactNodeAncestor = () => false } = options;
+export const buildElementPropsEntries = (options: IntrinsicElementPropsOptions): IntrinsicElementPropsEntries => {
+    const { library, klass, namespace, isIntrinsicElementAncestor = () => false } = options;
     const imports = new Map<string, string>();
     const types: PropTypeRenderContext = { library, imports };
     const propEntries: string[] = [];
@@ -70,22 +70,29 @@ export const buildElementPropsEntries = (options: ReactNodePropsOptions): ReactN
         propEntries.push(`${handlerName}?: (${signature}) | undefined;`);
     };
 
-    walkReactNodeMembers({ library, klass, namespace, isReactNodeAncestor, acceptProperty, acceptSignal });
+    walkIntrinsicElementMembers({
+        library,
+        klass,
+        namespace,
+        isIntrinsicElementAncestor,
+        acceptProperty,
+        acceptSignal,
+    });
 
     return { propLines: propEntries, imports, slotPropNames };
 };
 
-type ReactNodeMemberWalk = {
+type IntrinsicElementMemberWalk = {
     library: Library;
     klass: GirClass;
     namespace: GirNamespace;
-    isReactNodeAncestor: (candidate: GirClass) => boolean;
+    isIntrinsicElementAncestor: (candidate: GirClass) => boolean;
     acceptProperty: (property: GirProperty) => void;
     acceptSignal: (signal: GirSignal) => void;
 };
 
-const walkReactNodeMembers = (walk: ReactNodeMemberWalk): void => {
-    const { library, klass, namespace, isReactNodeAncestor, acceptProperty, acceptSignal } = walk;
+const walkIntrinsicElementMembers = (walk: IntrinsicElementMemberWalk): void => {
+    const { library, klass, namespace, isIntrinsicElementAncestor, acceptProperty, acceptSignal } = walk;
     const visitMembers = (memberClass: GirClass, interfaces: ResolvedInterface[]): void => {
         for (const property of memberClass.properties) acceptProperty(property);
         for (const signal of memberClass.signals) acceptSignal(signal);
@@ -100,15 +107,15 @@ const walkReactNodeMembers = (walk: ReactNodeMemberWalk): void => {
         ancestry,
         klass,
         (ancestor, interfaces) => visitMembers(ancestor.klass, interfaces),
-        isReactNodeAncestor,
+        isIntrinsicElementAncestor,
     );
 };
 
-const resolvesToGobjectClass = (library: Library, ref: TypeId | undefined): boolean => {
+const resolvesToGObjectClass = (library: Library, ref: TypeId | undefined): boolean => {
     if (ref === undefined) return false;
     const resolved = library.typeOf(ref);
     if (resolved?.kind !== "class") return false;
-    return isReactNodeClass(resolved.value, resolved.namespace, library);
+    return isIntrinsicElementClass(resolved.value, resolved.namespace, library);
 };
 
 type SlotOwner = {
@@ -119,7 +126,7 @@ type SlotOwner = {
 
 const isSlotProperty = (owner: SlotOwner, property: GirProperty, jsName: string): boolean => {
     if (!property.writable || property.constructOnly) return false;
-    if (!resolvesToGobjectClass(owner.library, property.type)) return false;
+    if (!resolvesToGObjectClass(owner.library, property.type)) return false;
     if (jsName === "child" && classExposesMethod(owner.klass, owner.namespace, owner.library, "set_child")) {
         return false;
     }

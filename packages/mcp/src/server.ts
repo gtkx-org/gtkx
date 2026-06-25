@@ -4,7 +4,7 @@ import { McpServer, type ToolCallback } from "@modelcontextprotocol/sdk/server/m
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import { ConnectionManager } from "./connection-manager.js";
+import { AppRouter } from "./app-router.js";
 import { ConnectionRegistry } from "./connection-registry.js";
 import { IpcError } from "./protocol/errors.js";
 import { DEFAULT_SOCKET_PATH, queryOptionsSchema, type ServerInitiatedMethod } from "./protocol/types.js";
@@ -14,7 +14,8 @@ const require = createRequire(import.meta.url);
 const { version } = require("../package.json") as { version: string };
 
 const APPLICATION_ID_DESCRIPTION = "Application ID to query. If not specified, uses the first connected app.";
-const WIDGET_ID_DESCRIPTION = "Widget ID";
+const WIDGET_ID_DESCRIPTION =
+    "Widget ID obtained from `gtkx_get_widget_tree` or `gtkx_query_widgets`. IDs are only valid against a recent tree/query for the same app.";
 
 const applicationIdField = z.string().optional().describe(APPLICATION_ID_DESCRIPTION);
 const widgetIdField = z.string().describe(WIDGET_ID_DESCRIPTION);
@@ -67,8 +68,6 @@ const imageContent = (data: string, mimeType: string): CallToolResult => ({
     content: [{ type: "image", data, mimeType }],
 });
 
-type AppRouter = Pick<ConnectionManager, "getApps" | "hasConnectedApps" | "waitForApp" | "sendToApp">;
-
 type ToolHandlerResult = CallToolResult;
 
 type ToolArgs<Shape extends Record<string, z.ZodType>> = { [K in keyof Shape]: z.output<Shape[K]> };
@@ -77,6 +76,7 @@ type ToolKind = "readOnly" | "action";
 
 type TypedTool<Shape extends Record<string, z.ZodType>> = {
     name: string;
+    title: string;
     kind: ToolKind;
     config: { description: string; inputSchema: Shape };
     handler: (args: ToolArgs<Shape>) => Promise<ToolHandlerResult>;
@@ -112,6 +112,7 @@ const defineTool = <Shape extends Record<string, z.ZodType>>(tool: TypedTool<Sha
             {
                 ...tool.config,
                 annotations: {
+                    title: tool.title,
                     readOnlyHint: tool.kind === "readOnly",
                     destructiveHint: tool.kind === "action",
                     openWorldHint: true,
@@ -124,10 +125,11 @@ const defineTool = <Shape extends Record<string, z.ZodType>>(tool: TypedTool<Sha
 
 type ForwardOptions<Shape extends Record<string, z.ZodType>> = {
     name: string;
+    title: string;
     kind: ToolKind;
     description: string;
     inputSchema: Shape;
-    connectionManager: AppRouter;
+    appRouter: AppRouter;
     method: ServerInitiatedMethod;
     params?: (args: ToolArgs<Shape>) => unknown;
 };
@@ -143,7 +145,7 @@ const buildForwardParams = <Shape extends Record<string, z.ZodType>>(
 const forwardTool = <Shape extends Record<string, z.ZodType>>(
     options: ForwardOptions<Shape>,
     perform: (
-        connectionManager: AppRouter,
+        appRouter: AppRouter,
         applicationId: string | undefined,
         method: ServerInitiatedMethod,
         params: unknown,
@@ -151,56 +153,54 @@ const forwardTool = <Shape extends Record<string, z.ZodType>>(
 ): ToolDefinition =>
     defineTool<Shape>({
         name: options.name,
+        title: options.title,
         kind: options.kind,
         config: { description: options.description, inputSchema: options.inputSchema },
         handler: async (args) => {
             const { applicationId, params } = buildForwardParams(args, options.params);
-            return perform(options.connectionManager, applicationId, options.method, params);
+            return perform(options.appRouter, applicationId, options.method, params);
         },
     });
 
 const forwardJson = <Shape extends Record<string, z.ZodType>>(options: ForwardOptions<Shape>): ToolDefinition =>
-    forwardTool(options, async (connectionManager, applicationId, method, params) => {
-        const result = await connectionManager.sendToApp(applicationId, method, params);
+    forwardTool(options, async (appRouter, applicationId, method, params) => {
+        const result = await appRouter.sendToApp(applicationId, method, params);
         return textContent(JSON.stringify(result, null, 2));
     });
 
 const forwardAck = <Shape extends Record<string, z.ZodType>>(
     options: ForwardOptions<Shape> & { ack: string },
 ): ToolDefinition =>
-    forwardTool(options, async (connectionManager, applicationId, method, params) => {
-        await connectionManager.sendToApp(applicationId, method, params);
+    forwardTool(options, async (appRouter, applicationId, method, params) => {
+        await appRouter.sendToApp(applicationId, method, params);
         return textContent(options.ack);
     });
 
 const forwardImage = <Shape extends Record<string, z.ZodType>>(options: ForwardOptions<Shape>): ToolDefinition =>
-    forwardTool(options, async (connectionManager, applicationId, method, params) => {
-        const result = await connectionManager.sendToApp<{ data: string; mimeType: string }>(
-            applicationId,
-            method,
-            params,
-        );
+    forwardTool(options, async (appRouter, applicationId, method, params) => {
+        const result = await appRouter.sendToApp<{ data: string; mimeType: string }>(applicationId, method, params);
         return imageContent(result.data, result.mimeType);
     });
 
-const listAppsTool = (connectionManager: AppRouter) =>
+const listAppsTool = (appRouter: AppRouter) =>
     defineTool({
         name: "gtkx_list_apps",
+        title: "List apps",
         kind: "readOnly",
         config: {
-            description: "List all connected GTKX applications",
+            description: "List all connected GTKX applications and their open windows.",
             inputSchema: listAppsShape,
         },
         handler: async ({ waitForApps, timeout }) => {
-            if (waitForApps && !connectionManager.hasConnectedApps()) {
-                await connectionManager.waitForApp(timeout);
+            if (waitForApps && !appRouter.hasConnectedApps()) {
+                await appRouter.waitForApp(timeout);
             }
 
-            const apps = connectionManager.getApps();
+            const apps = appRouter.getApps();
             const appsWithWindows = await Promise.all(
                 apps.map(async (app) => {
                     try {
-                        const result = await connectionManager.sendToApp<{
+                        const result = await appRouter.sendToApp<{
                             windows: Array<{ id: string; title: string | null }>;
                         }>(app.applicationId, "app.getWindows", {});
                         return { ...app, windows: result.windows };
@@ -213,9 +213,10 @@ const listAppsTool = (connectionManager: AppRouter) =>
         },
     });
 
-const getWidgetTreeTool = (connectionManager: AppRouter) =>
+const getWidgetTreeTool = (appRouter: AppRouter) =>
     defineTool({
         name: "gtkx_get_widget_tree",
+        title: "Widget tree",
         kind: "readOnly",
         config: {
             description:
@@ -223,77 +224,84 @@ const getWidgetTreeTool = (connectionManager: AppRouter) =>
             inputSchema: applicationIdShape,
         },
         handler: async ({ applicationId }) => {
-            const result = await connectionManager.sendToApp<{ tree: string }>(applicationId, "widget.getTree", {});
+            const result = await appRouter.sendToApp<{ tree: string }>(applicationId, "widget.getTree", {});
             return textContent(result.tree);
         },
     });
 
-function buildInspectionTools(connectionManager: AppRouter): ToolDefinition[] {
+function buildInspectionTools(appRouter: AppRouter): ToolDefinition[] {
     return [
-        listAppsTool(connectionManager),
-        getWidgetTreeTool(connectionManager),
+        listAppsTool(appRouter),
+        getWidgetTreeTool(appRouter),
         forwardJson({
             name: "gtkx_query_widgets",
+            title: "Query widgets",
             kind: "readOnly",
             description:
                 "Find widgets by role, text, name, or label. Returns matching widgets with their IDs and properties.",
             inputSchema: queryWidgetsShape,
-            connectionManager,
+            appRouter,
             method: "widget.query",
         }),
         forwardJson({
             name: "gtkx_get_widget_props",
+            title: "Get widget properties",
             kind: "readOnly",
             description: "Get all properties of a specific widget by its ID",
             inputSchema: widgetIdShape,
-            connectionManager,
+            appRouter,
             method: "widget.getProps",
         }),
         forwardImage({
             name: "gtkx_take_screenshot",
+            title: "Take screenshot",
             kind: "readOnly",
-            description: "Capture a screenshot of a window. Returns base64-encoded PNG image data.",
+            description:
+                "Capture a screenshot of a window. Returns base64-encoded PNG image data. You can't target widgets from a screenshot; use `gtkx_get_widget_tree` to find widget IDs for interaction.",
             inputSchema: screenshotShape,
-            connectionManager,
+            appRouter,
             method: "widget.screenshot",
         }),
     ];
 }
 
-function buildInteractionTools(connectionManager: AppRouter): ToolDefinition[] {
+function buildInteractionTools(appRouter: AppRouter): ToolDefinition[] {
     return [
         forwardAck({
             name: "gtkx_click",
+            title: "Click widget",
             kind: "action",
             description: "Click a widget. Works with buttons, checkboxes, and other interactive widgets.",
             inputSchema: widgetIdShape,
-            connectionManager,
+            appRouter,
             method: "widget.click",
-            ack: "Click successful",
+            ack: "Clicked",
         }),
         forwardAck({
             name: "gtkx_type",
+            title: "Type text",
             kind: "action",
             description: "Type text into an editable widget like Entry or TextView",
             inputSchema: typeShape,
-            connectionManager,
+            appRouter,
             method: "widget.type",
-            ack: "Type successful",
+            ack: "Typed text",
         }),
         forwardAck({
             name: "gtkx_fire_event",
+            title: "Fire event",
             kind: "action",
             description: "Emit a GTK signal on a widget. Use this for custom interactions.",
             inputSchema: fireEventShape,
-            connectionManager,
+            appRouter,
             method: "widget.fireEvent",
-            ack: "Event fired successfully",
+            ack: "Fired event",
         }),
     ];
 }
 
-function buildTools(connectionManager: AppRouter): ToolDefinition[] {
-    return [...buildInspectionTools(connectionManager), ...buildInteractionTools(connectionManager)];
+function buildTools(appRouter: AppRouter): ToolDefinition[] {
+    return [...buildInspectionTools(appRouter), ...buildInteractionTools(appRouter)];
 }
 
 type CreateMcpServerOptions = {
@@ -311,7 +319,7 @@ export const createMcpServer = (options: CreateMcpServerOptions): McpServerHandl
 
     const registry = new ConnectionRegistry();
     const socketServer = new SocketServer(registry, socketPath);
-    const connectionManager = new ConnectionManager(registry);
+    const appRouter = new AppRouter(registry);
 
     registry.on("error", (error) => {
         const code = (error as NodeJS.ErrnoException).code;
@@ -320,17 +328,17 @@ export const createMcpServer = (options: CreateMcpServerOptions): McpServerHandl
         }
     });
 
-    connectionManager.on("appRegistered", (appInfo) => {
+    appRouter.on("appRegistered", (appInfo) => {
         console.error(`[gtkx] App registered: ${appInfo.applicationId} (PID: ${appInfo.pid})`);
     });
 
-    connectionManager.on("appUnregistered", (applicationId) => {
+    appRouter.on("appUnregistered", (applicationId) => {
         console.error(`[gtkx] App unregistered: ${applicationId}`);
     });
 
     const mcpServer = new McpServer({ name: "gtkx-mcp", version: options.version });
 
-    for (const tool of buildTools(connectionManager)) {
+    for (const tool of buildTools(appRouter)) {
         tool.register(mcpServer);
     }
 

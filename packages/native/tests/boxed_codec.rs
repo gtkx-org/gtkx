@@ -10,7 +10,7 @@ use gtk4::prelude::StaticType as _;
 use native::ffi;
 use native::managed::NativeHandle;
 use native::types::{
-    BoxedType, FfiDecoder, FfiEncoder, Ownership, RawPtrCodec, ReadSource, StructType,
+    BoxedType, FfiDecoder, FfiEncoder, Ownership, RawPtrWriter, ReadSource, StructType,
 };
 use native::value::Value;
 

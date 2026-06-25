@@ -66,7 +66,7 @@ export const renderListView = async <T = NamedValue>(
                     items={toListItems(data)}
                     renderItem={renderItem}
                     autoexpand={opts.autoexpand}
-                    selected={opts.selected}
+                    selectedIds={opts.selected}
                     selectionMode={opts.selectionMode}
                     onSelectionChanged={opts.onSelectionChanged}
                     estimatedItemHeight={opts.estimatedItemHeight}
@@ -100,7 +100,7 @@ export const renderGridView = async <T = NamedValue>(
                     ref={ref}
                     items={toListItems(data)}
                     renderItem={renderItem}
-                    selected={opts.selected}
+                    selectedIds={opts.selected}
                     selectionMode={opts.selectionMode}
                     onSelectionChanged={opts.onSelectionChanged}
                     estimatedItemHeight={opts.estimatedItemHeight}
@@ -157,7 +157,7 @@ export const renderColumnView = async <T = NamedValue>(
                 <ColumnView
                     ref={ref}
                     items={toListItems(data)}
-                    selected={opts.selected}
+                    selectedIds={opts.selected}
                     selectionMode={opts.selectionMode}
                     onSelectionChanged={opts.onSelectionChanged}
                     sortColumn={opts.sortColumn}

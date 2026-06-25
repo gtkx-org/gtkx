@@ -2,10 +2,10 @@ import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkGridView, type GtkGridViewProps } from "@gtkx/jsx/gtk";
 import type { ReactNode, Ref } from "react";
+import type { CellRenderer } from "./cell.js";
 import { CollectionView, type ModelInstaller } from "./collection-view.js";
 import type { FactoryInstaller } from "./hooks/use-cell-containers.js";
-import type { CellRenderer } from "./list-cell.js";
-import type { GridViewProps } from "./types.js";
+import type { ItemNode, ListViewControlledSelectionProps, ListViewSharedProps, UncontrolledItemType } from "./types.js";
 
 const factoryInstaller: FactoryInstaller<Gtk.GridView> = {
     install: (widget: Gtk.GridView, factory: Gtk.SignalListItemFactory) => widget.setFactory(factory),
@@ -17,30 +17,54 @@ const modelInstaller: ModelInstaller<Gtk.GridView> = {
 };
 
 /**
+ * Props for the {@link GridView} component, replacing the raw `GtkGridView`
+ * factory/model surface with a declarative `items`/`renderItem` API and
+ * optional controlled selection. Supplying an external `model` switches to the
+ * uncontrolled form.
+ */
+export type GridViewDeclarativeProps<T = unknown> = ListViewSharedProps &
+    (
+        | (ListViewControlledSelectionProps & {
+              items?: ItemNode<T>[] | undefined;
+              renderItem: (item: T) => ReactNode;
+              model?: never;
+          })
+        | {
+              model: Gio.ListModel;
+              renderItem: (item: UncontrolledItemType<T>) => ReactNode;
+              items?: never;
+              selectedIds?: never;
+              onSelectionChanged?: never;
+              selectionMode?: never;
+          }
+    );
+
+/**
  * Props for the {@link GridView} component: the raw `GtkGridView` element
  * surface with its factory/model wiring replaced by the declarative
- * {@link GridViewProps} API.
+ * {@link GridViewDeclarativeProps} API.
  */
-export type GridViewComponentProps<T = unknown> = Omit<GtkGridViewProps, keyof GridViewProps<T>> & GridViewProps<T>;
+export type GridViewProps<T = unknown> = Omit<GtkGridViewProps, keyof GridViewDeclarativeProps<T>> &
+    GridViewDeclarativeProps<T>;
 
 /**
  * A `GtkGridView` driven by a declarative `items`/`renderItem` API with
  * optional controlled selection. Supplying an external `model` switches to the
  * uncontrolled form.
  */
-export const GridView = <T = unknown>(props: GridViewComponentProps<T>): ReactNode => {
+export const GridView = <T = unknown>(props: GridViewProps<T>): ReactNode => {
     const {
         ref,
         items,
         model,
         renderItem,
-        selected,
+        selectedIds,
         selectionMode,
         onSelectionChanged,
         estimatedItemHeight,
         estimatedItemWidth,
         ...intrinsicProps
-    } = props as GridViewProps<T> & {
+    } = props as GridViewDeclarativeProps<T> & {
         ref?: Ref<Gtk.GridView | null>;
         estimatedItemHeight?: number;
         estimatedItemWidth?: number;
@@ -63,7 +87,7 @@ export const GridView = <T = unknown>(props: GridViewComponentProps<T>): ReactNo
             renderHeader={undefined}
             estimatedHeight={estimatedItemHeight}
             estimatedWidth={estimatedItemWidth}
-            selected={selected}
+            selectedIds={selectedIds}
             selectionMode={selectionMode}
             onSelectionChanged={onSelectionChanged}
             factoryInstaller={factoryInstaller}

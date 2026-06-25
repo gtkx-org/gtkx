@@ -111,7 +111,7 @@
             }
         },
         {
-            "includes": ["packages/codegen/src/templates/**"],
+            "includes": ["packages/codegen/src/overrides/**"],
             "linter": {
                 "rules": {
                     "complexity": {

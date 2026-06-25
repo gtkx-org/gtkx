@@ -5,7 +5,7 @@ use std::ffi::{CStr, CString, c_char, c_void};
 use gtk4::glib;
 
 use native::ffi;
-use native::types::{FfiDecoder, FfiEncoder, Ownership, RawPtrCodec, ReadSource, StringType};
+use native::types::{FfiDecoder, FfiEncoder, Ownership, RawPtrWriter, ReadSource, StringType};
 use native::value::Value;
 
 use common::{

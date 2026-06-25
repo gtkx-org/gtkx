@@ -114,7 +114,7 @@ impl FfiDecoder for FundamentalType {
     }
 }
 
-impl RawPtrCodec for FundamentalType {
+impl RawPtrWriter for FundamentalType {
     unsafe fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         self.write_return_with_ownership(ret, value, self.ownership, |ptr| {
             match self.lookup_fns() {

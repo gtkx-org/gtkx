@@ -147,7 +147,7 @@ impl FfiEncoder for CallbackType {
 
 impl FfiDecoder for CallbackType {}
 
-impl RawPtrCodec for CallbackType {}
+impl RawPtrWriter for CallbackType {}
 
 impl CallbackType {
     fn build_null_ffi_value(&self) -> ffi::FfiValue {

@@ -1,8 +1,8 @@
-import type { GirRecord } from "./boxed.js";
 import type { GirCallback } from "./callback.js";
 import type { GirClass } from "./class.js";
 import type { GirEnum } from "./enum.js";
 import type { GirNamespace } from "./namespace.js";
+import type { GirRecord } from "./record.js";
 import type { StructuralType, TypeId } from "./type-id.js";
 
 export type EntityType =

@@ -1,4 +1,4 @@
-import type { RenderResult } from "./types.js";
+import type { RenderResult, Screen } from "./types.js";
 
 const NO_RENDER_MESSAGE = "No render has been performed: call render() before using screen queries";
 
@@ -15,7 +15,7 @@ const defaultScreen: RenderResult = new Proxy({} as RenderResult, {
 
 let activeScreen: RenderResult = defaultScreen;
 
-export const screen: RenderResult = new Proxy({} as RenderResult, {
+export const screen: Screen = new Proxy({} as Screen, {
     get: (_target, property) => Reflect.get(activeScreen, property),
 });
 

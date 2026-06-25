@@ -3,18 +3,18 @@ import { interpolate } from "../src/interpolation.js";
 
 describe("interpolate", () => {
     it("returns the from values at progress 0", () => {
-        const result = interpolate({ opacity: 0, translateX: 10 }, { opacity: 1, translateX: 20 }, 0);
-        expect(result).toEqual({ opacity: 0, translateX: 10 });
+        const result = interpolate({ opacity: 0, x: 10 }, { opacity: 1, x: 20 }, 0);
+        expect(result).toEqual({ opacity: 0, x: 10 });
     });
 
     it("returns the to values at progress 1", () => {
-        const result = interpolate({ opacity: 0, translateX: 10 }, { opacity: 1, translateX: 20 }, 1);
-        expect(result).toEqual({ opacity: 1, translateX: 20 });
+        const result = interpolate({ opacity: 0, x: 10 }, { opacity: 1, x: 20 }, 1);
+        expect(result).toEqual({ opacity: 1, x: 20 });
     });
 
     it("returns the midpoint at progress 0.5", () => {
-        const result = interpolate({ opacity: 0, translateX: 10 }, { opacity: 1, translateX: 20 }, 0.5);
-        expect(result).toEqual({ opacity: 0.5, translateX: 15 });
+        const result = interpolate({ opacity: 0, x: 10 }, { opacity: 1, x: 20 }, 0.5);
+        expect(result).toEqual({ opacity: 0.5, x: 15 });
     });
 
     it("falls back to the neutral default when a key is only present on the to side", () => {
@@ -28,8 +28,8 @@ describe("interpolate", () => {
     });
 
     it("uses zero as the neutral default for translation when one side is missing", () => {
-        const result = interpolate({ translateX: 100 }, {}, 1);
-        expect(result).toEqual({ translateX: 0 });
+        const result = interpolate({ x: 100 }, {}, 1);
+        expect(result).toEqual({ x: 0 });
     });
 
     it("returns an empty keyframe when both keyframes are empty", () => {

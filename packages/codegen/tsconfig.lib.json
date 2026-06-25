@@ -1,6 +1,6 @@
 {
     "extends": "../../tsconfig.lib.json",
-    "exclude": ["src/templates"],
+    "exclude": ["src/overrides"],
     "references": [
         {
             "path": "../config/tsconfig.lib.json"

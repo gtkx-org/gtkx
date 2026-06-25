@@ -16,7 +16,7 @@ const treeRowItem = (treeRow: Gtk.TreeListRow): GObject.Object | null => {
     return item;
 };
 
-export interface Resolved<T = unknown, S = unknown> {
+interface Resolved<T = unknown, S = unknown> {
     value: T | S | undefined;
     present: boolean;
     isHeader: boolean;

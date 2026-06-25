@@ -2,7 +2,7 @@ import type * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { type Node, stateOf } from "./state.js";
-import { isAnchorWrapper, isBufferContentWrapper, isBufferTextWrapper, isPaintableWrapper } from "./text-wrapper.js";
+import { isAnchorNode, isBufferContentNode, isBufferTextNode, isPaintableNode } from "./text-node.js";
 import { unparentWidget } from "./widget.js";
 
 export class TextBufferController {
@@ -27,9 +27,7 @@ export class TextBufferController {
     }
 
     private hasManagedChildren(): boolean {
-        return stateOf(this.owner).children.some(
-            (child) => isBufferContentWrapper(child) || child instanceof Gtk.TextTag,
-        );
+        return stateOf(this.owner).children.some((child) => isBufferContentNode(child) || child instanceof Gtk.TextTag);
     }
 
     private rebuild(): void {
@@ -75,11 +73,11 @@ export class TextBufferController {
     }
 
     private insertChild(buffer: Gtk.TextBuffer, child: Node): void {
-        if (isBufferTextWrapper(child)) {
+        if (isBufferTextNode(child)) {
             this.insertText(buffer, stateOf(child).props["text"] as string);
-        } else if (isPaintableWrapper(child)) {
+        } else if (isPaintableNode(child)) {
             this.insertPaintable(buffer, stateOf(child).props["paintable"] as Gdk.Paintable);
-        } else if (isAnchorWrapper(child)) {
+        } else if (isAnchorNode(child)) {
             this.insertAnchor(buffer, child);
         } else if (child instanceof Gtk.TextTag) {
             this.insertTag(buffer, child, child);

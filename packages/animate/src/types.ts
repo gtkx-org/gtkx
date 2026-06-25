@@ -1,10 +1,9 @@
-import type * as Adw from "@gtkx/gi/adw";
 import type { ReactNode } from "react";
 
 export type AnimatableProperties = {
     opacity?: number;
-    translateX?: number;
-    translateY?: number;
+    x?: number;
+    y?: number;
     scale?: number;
     scaleX?: number;
     scaleY?: number;
@@ -13,29 +12,29 @@ export type AnimatableProperties = {
     skewY?: number;
 };
 
-type AnimationBaseProps = {
+export type NamedEasing = "linear" | "easeIn" | "easeOut" | "easeInOut";
+
+export type RepeatType = "loop" | "reverse" | "mirror";
+
+export type Transition = {
+    type?: "tween" | "spring";
+    duration?: number;
+    ease?: NamedEasing;
+    delay?: number;
+    stiffness?: number;
+    damping?: number;
+    mass?: number;
+    velocity?: number;
+    repeat?: number;
+    repeatType?: RepeatType;
+};
+
+export type WidgetAnimationProps = {
     initial?: AnimatableProperties | false;
     animate?: AnimatableProperties;
     exit?: AnimatableProperties;
-    animateOnMount?: boolean;
-    delay?: number;
+    transition?: Transition;
     onAnimationStart?: () => void;
     onAnimationComplete?: () => void;
     children?: ReactNode;
-};
-
-export type TimedAnimationProps = AnimationBaseProps & {
-    duration?: number;
-    easing?: Adw.Easing;
-    repeat?: number;
-    reverse?: boolean;
-    alternate?: boolean;
-};
-
-export type SpringAnimationProps = AnimationBaseProps & {
-    damping?: number;
-    stiffness?: number;
-    mass?: number;
-    initialVelocity?: number;
-    clamp?: boolean;
 };

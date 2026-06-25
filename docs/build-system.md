@@ -8,7 +8,7 @@ The repo is a pnpm workspace of TypeScript packages plus one Rust native addon. 
 
 The task runner owns a single pipeline that orders work across packages by dependency. It distinguishes three kinds of task:
 
-- **Generic per-package tasks** (build, typecheck, test, dev, start, bench, and the native build/coverage tasks) that each carry default inputs, outputs, and ordering so a task runs only after the same task has run in upstream workspace packages.
+- **Generic per-package tasks** (build, typecheck, test, the dev/start runners, and the native build and coverage tasks) that each carry default inputs, outputs, and ordering so a task runs only after the same task has run in upstream workspace packages.
 - **Package-scoped edges** that add specific cross-package ordering beyond the generic rules.
 - **Root aggregates** that run repo-wide gates (lint, the test/coverage aggregates) once for the whole workspace rather than per package.
 
@@ -36,7 +36,7 @@ A clean checkout therefore cannot type-check or build any TypeScript package unt
 
 A shared base config holds the strict compiler options every package inherits. Role-specific bases extend it for libraries (which emit declarations), example apps, and test code. Each package's own config is a thin solution file that references its role-specific configs, and each library config references the library configs of its upstream workspace dependencies. The project-reference graph thus mirrors the workspace dependency graph, and a reference-aware `tsc` build walks it in dependency order.
 
-The per-package script contract the task runner invokes is uniform: a build that emits and a typecheck that only checks. Example apps build through the CLI instead, and the native and CLI packages add their native-build and codegen tasks.
+Libraries type-check through their emitting build plus the repo-wide source-condition check; the example apps build through the CLI and carry the only per-package typecheck task, and the native and CLI packages add their native-build and codegen tasks.
 
 References are derived, not hand-written: a sync script computes the correct references for each package from its declared dependencies. In check mode it fails on any drift (the lint gate uses this); otherwise it rewrites the drifting configs. Hand-editing references is reported as drift — change the dependency and re-run sync.
 
@@ -47,15 +47,15 @@ Publishable packages also declare a source export condition pointing at their Ty
 The lint aggregate chains several independent checkers, all of which must pass. It first ensures the generated binding output is present on disk, because the dead-code and architecture checkers treat that generated output as in-scope source. The checkers cover, in sequence:
 
 - **Project-reference drift** — the sync script in check mode.
-- **Lint and format** — a single tool (Biome) for both, enforcing the repo's naming, import, and complexity conventions with 4-space, 120-column formatting. Overrides relax the rules for generated and template code and for tests.
-- **Unused code and dependencies** — a dead-code checker (knip) run twice, once for dev-only and once for production-reachable dead code. The generated bindings are registered so every emitted module counts as used; the per-arch native packages and the external system binaries the build invokes are excluded.
+- **Lint and format** — a single tool (Biome) for both, enforcing the repo's naming, import, and complexity conventions. Overrides relax the rules for generated and template code and for tests.
+- **Unused code and dependencies** — a dead-code checker (knip) covering both dev-only and production-reachable dead code, with the generated bindings registered so every emitted module counts as used.
 - **Architecture boundaries** — a dependency checker (dependency-cruiser) that enforces a no-cycles rule, resolving through workspace TypeScript source.
 
 ## Test workspace and coverage
 
-The test runner (Vitest) is configured as a workspace whose projects are the per-package test configs. Each package applies the gtkx Vitest plugin to provision per-worker headless display isolation, so GTK tests get an independent display per worker, and the run bails on the first failure.
+The test runner (Vitest) is configured as a workspace whose projects are the per-package test configs. Each package applies the gtkx Vitest plugin to provision per-worker headless display isolation, so GTK tests get an independent display per worker.
 
-Coverage is centralized at the root with an explicit per-package source include list and exclusions for built output, test files, and templates. Native Rust coverage runs through its own separate task.
+Coverage is centralized at the root over the workspace's package sources, excluding built output, test files, and templates. Native Rust coverage runs through its own separate task.
 
 ## Repo scripts
 
@@ -67,4 +67,4 @@ CI builds a content-addressed Docker image carrying the full toolchain (the GTK/
 
 ## The utilities leaf
 
-A dependency-free utilities package sits at the bottom of the dependency graph; every runtime package builds on it, and it declares no gtkx dependencies. Every export is a stateless, pure helper or a type alias, surfaced through a single barrel. It groups: string casing that translates introspection and native naming into JS/TS conventions; safe source-text and identifier generation for the codegen writers (escaping emitted literals so they cannot break out of their enclosing context); collection helpers; error normalization for thrown values and child-process failures; a graceful-shutdown installer for process entry points; and the structural any-constructor type the FFI registry uses as its wrapper-class bound.
+A dependency-free utilities package sits at the bottom of the dependency graph; every runtime package builds on it, and it declares no gtkx dependencies. Every export is a stateless, pure helper or a type alias surfaced through a single barrel — string casing, safe source-text and identifier generation, collection helpers, error normalization, a graceful-shutdown installer, and a structural constructor type.

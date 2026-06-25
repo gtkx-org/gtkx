@@ -1,10 +1,10 @@
 import * as GObject from "@gtkx/gi/gobject";
+import { isRelationshipNode, type RelationshipNode } from "./relationship-node.js";
 import { isRootElement, type RootElement } from "./root-element.js";
 import { getSignalStore, type SignalStore } from "./signal-store.js";
 import type { Container, Props } from "./types.js";
-import { isWrapperElement, type WrapperElement } from "./wrapper-element.js";
 
-export type Node = GObject.Object | WrapperElement | RootElement;
+export type Node = GObject.Object | RelationshipNode | RootElement;
 
 export interface State {
     name?: string | undefined;
@@ -49,8 +49,8 @@ export const stateOf = (node: Node): State => {
     throw new Error("reconciler node has no registered state");
 };
 
-export const isWrapperKind = (node: Node, kind: string): boolean =>
-    isWrapperElement(node) && stateOf(node).kind === kind;
+export const isRelationshipKind = (node: Node, kind: string): boolean =>
+    isRelationshipNode(node) && stateOf(node).kind === kind;
 
 export const closestInstance = (node: Node, matches: (node: Node) => boolean): Node | null => {
     let current: Node | null = node;

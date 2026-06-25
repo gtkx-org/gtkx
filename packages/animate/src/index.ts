@@ -1,3 +1,9 @@
 export { AnimatePresence } from "./animate-presence.js";
-export { SpringAnimation, TimedAnimation } from "./animation.js";
-export type { AnimatableProperties, SpringAnimationProps, TimedAnimationProps } from "./types.js";
+export type {
+    AnimatableProperties,
+    NamedEasing,
+    RepeatType,
+    Transition,
+    WidgetAnimationProps,
+} from "./types.js";
+export { WidgetAnimation } from "./widget-animation.js";

@@ -2,7 +2,7 @@ mod common;
 
 use std::ffi::c_void;
 
-use native::types::{FfiDecoder, Ownership, RawPtrCodec, ReadSource, StructType};
+use native::types::{FfiDecoder, Ownership, RawPtrWriter, ReadSource, StructType};
 use native::value::Value;
 use native::{NativeHandle, value};
 
@@ -50,7 +50,7 @@ fn write_object_ptr_writes_object_pointer() {
     // SAFETY: `slot_ptr` points to the live, writable pointer-sized stack local `slot`, exactly
     // the pointer slot `write_value_to_raw_ptr` stores the handle's object pointer into.
     unsafe {
-        RawPtrCodec::write_value_to_raw_ptr(&struct_type(), slot_ptr, &Value::Object(handle))
+        RawPtrWriter::write_value_to_raw_ptr(&struct_type(), slot_ptr, &Value::Object(handle))
     }
     .unwrap();
     assert_eq!(slot, &target as *const u64 as *mut c_void);
@@ -63,7 +63,8 @@ fn write_object_ptr_writes_null_for_null_value() {
 
     // SAFETY: `slot_ptr` points to the live, writable pointer-sized stack local `slot`; writing a
     // null object pointer into that slot is in bounds.
-    unsafe { RawPtrCodec::write_value_to_raw_ptr(&struct_type(), slot_ptr, &Value::Null) }.unwrap();
+    unsafe { RawPtrWriter::write_value_to_raw_ptr(&struct_type(), slot_ptr, &Value::Null) }
+        .unwrap();
     assert!(slot.is_null());
 }
 
@@ -74,7 +75,7 @@ fn write_return_object_ptr_writes_null_for_error() {
 
     // SAFETY: `ret` points to the live, writable pointer-sized stack local `slot`; the error case
     // writes a null pointer into that in-bounds slot.
-    unsafe { RawPtrCodec::write_return_to_raw_ptr(&struct_type(), ret, &Err(())) };
+    unsafe { RawPtrWriter::write_return_to_raw_ptr(&struct_type(), ret, &Err(())) };
     assert!(slot.is_null());
 }
 
@@ -89,7 +90,7 @@ fn write_return_object_ptr_transfers_non_null_pointer() {
     // SAFETY: `ret` points to the live, writable pointer-sized stack local `slot`; the borrowed
     // handle's object pointer is written into that in-bounds slot.
     unsafe {
-        RawPtrCodec::write_return_to_raw_ptr(
+        RawPtrWriter::write_return_to_raw_ptr(
             &struct_type(),
             ret,
             &Ok(value::Value::Object(handle)),
@@ -105,6 +106,6 @@ fn write_return_object_ptr_writes_null_for_non_object_ok() {
 
     // SAFETY: `ret` points to the live, writable pointer-sized stack local `slot`; a non-object
     // `Ok` value writes null into that in-bounds slot.
-    unsafe { RawPtrCodec::write_return_to_raw_ptr(&struct_type(), ret, &Ok(Value::Number(3.0))) };
+    unsafe { RawPtrWriter::write_return_to_raw_ptr(&struct_type(), ret, &Ok(Value::Number(3.0))) };
     assert!(slot.is_null());
 }

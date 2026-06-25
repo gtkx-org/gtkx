@@ -2,7 +2,7 @@ use std::ffi::c_void;
 
 use libffi::middle;
 use native::ffi;
-use native::types::{BooleanType, FfiDecoder, FfiEncoder, RawPtrCodec, ReadSource};
+use native::types::{BooleanType, FfiDecoder, FfiEncoder, RawPtrWriter, ReadSource};
 use native::value::Value;
 
 extern "C" fn ret_true() -> i32 {
@@ -116,15 +116,15 @@ fn write_return_to_raw_ptr_writes_truthiness() {
 
     // SAFETY: `ret` points to the live, writable `i64` stack local `slot`, which is at least as
     // wide as the boolean return word `write_return_to_raw_ptr` stores, so the write is in bounds.
-    unsafe { RawPtrCodec::write_return_to_raw_ptr(&BooleanType, ret, &Ok(Value::Boolean(true))) };
+    unsafe { RawPtrWriter::write_return_to_raw_ptr(&BooleanType, ret, &Ok(Value::Boolean(true))) };
     assert_eq!(slot, 1);
 
     // SAFETY: same writable `i64` slot `ret`; the boolean return word is written in bounds.
-    unsafe { RawPtrCodec::write_return_to_raw_ptr(&BooleanType, ret, &Ok(Value::Boolean(false))) };
+    unsafe { RawPtrWriter::write_return_to_raw_ptr(&BooleanType, ret, &Ok(Value::Boolean(false))) };
     assert_eq!(slot, 0);
 
     // SAFETY: same writable `i64` slot `ret`; the error case writes the zero return word in bounds.
-    unsafe { RawPtrCodec::write_return_to_raw_ptr(&BooleanType, ret, &Err(())) };
+    unsafe { RawPtrWriter::write_return_to_raw_ptr(&BooleanType, ret, &Err(())) };
     assert_eq!(slot, 0);
 }
 
@@ -135,19 +135,19 @@ fn write_value_to_raw_ptr_writes_boolean_and_rejects_other() {
 
     // SAFETY: `ptr` points to the live, writable `i32` stack local `slot`, the exact width
     // `write_value_to_raw_ptr` stores a boolean field into, so the write is in bounds.
-    unsafe { RawPtrCodec::write_value_to_raw_ptr(&BooleanType, ptr, &Value::Boolean(true)) }
+    unsafe { RawPtrWriter::write_value_to_raw_ptr(&BooleanType, ptr, &Value::Boolean(true)) }
         .unwrap();
     assert_eq!(slot, 1);
 
     // SAFETY: same writable `i32` slot `ptr`; the boolean field is written in bounds.
-    unsafe { RawPtrCodec::write_value_to_raw_ptr(&BooleanType, ptr, &Value::Boolean(false)) }
+    unsafe { RawPtrWriter::write_value_to_raw_ptr(&BooleanType, ptr, &Value::Boolean(false)) }
         .unwrap();
     assert_eq!(slot, 0);
 
     assert!(
         // SAFETY: same writable `i32` slot `ptr`; the call rejects the non-boolean value before
         // any write, so the slot is untouched.
-        unsafe { RawPtrCodec::write_value_to_raw_ptr(&BooleanType, ptr, &Value::Number(1.0)) }
+        unsafe { RawPtrWriter::write_value_to_raw_ptr(&BooleanType, ptr, &Value::Number(1.0)) }
             .is_err()
     );
 }

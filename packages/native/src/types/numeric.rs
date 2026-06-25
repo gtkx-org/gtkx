@@ -158,7 +158,7 @@ macro_rules! impl_numeric_codecs {
             }
         }
 
-        impl RawPtrCodec for $kind {
+        impl RawPtrWriter for $kind {
             /// # Safety
             ///
             /// `ret` must point to a writable return slot wide enough for this kind's wire type
@@ -617,7 +617,7 @@ impl FfiDecoder for EnumFlagsType {
     }
 }
 
-impl RawPtrCodec for EnumFlagsType {
+impl RawPtrWriter for EnumFlagsType {
     /// # Safety
     ///
     /// `ret` must point to a writable return slot wide enough for the backing integer storage
@@ -625,7 +625,7 @@ impl RawPtrCodec for EnumFlagsType {
     unsafe fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         // SAFETY: `ret` satisfies the backing integer codec's return-slot precondition per this
         // method's contract; the delegate writes the tag value there.
-        unsafe { RawPtrCodec::write_return_to_raw_ptr(&self.storage, ret, value) };
+        unsafe { RawPtrWriter::write_return_to_raw_ptr(&self.storage, ret, value) };
     }
 
     /// # Safety
@@ -639,6 +639,6 @@ impl RawPtrCodec for EnumFlagsType {
     ) -> anyhow::Result<()> {
         // SAFETY: `ptr` satisfies the backing integer codec's field-slot precondition per this
         // method's contract; the delegate writes the tag value there.
-        unsafe { RawPtrCodec::write_value_to_raw_ptr(&self.storage, ptr, value) }
+        unsafe { RawPtrWriter::write_value_to_raw_ptr(&self.storage, ptr, value) }
     }
 }

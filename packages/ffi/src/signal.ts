@@ -31,13 +31,13 @@ export function signalDetailQuark(signal: string): number {
     return gQuarkFromString(signal.slice(detailIndex + 2)) as number;
 }
 
-export type SignalConnectSpec = {
+type SignalConnectSpec = {
     callback: CallbackType;
     handler: SignalHandler;
     after: boolean;
 };
 
-export function connectGobjectSignal(instance: object, signal: string, spec: SignalConnectSpec): number {
+export function connectGObjectSignal(instance: object, signal: string, spec: SignalConnectSpec): number {
     const { callback, handler, after } = spec;
     const wrapped = wrapCallback(handler, callback, "skip");
     return call(
@@ -62,7 +62,7 @@ const gSignalEmitv = bind(
 
 const gSignalLookup = bind(LIB, "g_signal_lookup", [stringT("borrowed"), biguint64T], uint32T);
 
-export type EmitArg = {
+type EmitArg = {
     type: Type;
     direction?: "out" | "inout";
     callerAllocates?: boolean;
@@ -81,7 +81,7 @@ const emitCell = (arg: EmitArg): { value: Handle; read?: () => unknown } => {
     return { value: cell.value, read: cell.read };
 };
 
-export function emitGobjectSignal(instance: object, signal: string, args: EmitArg[], returnFfi?: Type): unknown {
+export function emitGObjectSignal(instance: object, signal: string, args: EmitArg[], returnFfi?: Type): unknown {
     const gtype: GType = (instance as GTyped).__gtype__;
     const signalId = gSignalLookup(signalBaseName(signal), gtype) as number;
     const detail = signalDetailQuark(signal);

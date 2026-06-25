@@ -13,7 +13,7 @@ use native::managed::Boxed;
 use native::state::GlibThreadState;
 use native::types::{
     ArrayKind, ArrayType, EnumFlagsKind, EnumFlagsType, FfiDecoder, FfiEncoder, FloatKind,
-    IntegerKind, Ownership, RawPtrCodec, ReadSource, Type,
+    IntegerKind, Ownership, RawPtrWriter, ReadSource, Type,
 };
 use native::value::Value;
 
@@ -303,7 +303,10 @@ pub unsafe fn read_slot<C: FfiDecoder>(codec: &C, ptr: *mut c_void) -> anyhow::R
     }
 }
 
-pub fn write_return_into_slot<C: RawPtrCodec>(codec: &C, value: &Result<Value, ()>) -> *mut c_void {
+pub fn write_return_into_slot<C: RawPtrWriter>(
+    codec: &C,
+    value: &Result<Value, ()>,
+) -> *mut c_void {
     let mut slot: *mut c_void = std::ptr::null_mut();
     // SAFETY: `&mut slot` is a live, pointer-sized stack slot; `write_return_to_raw_ptr` writes
     // exactly one pointer (or null) into it, which is read back after the call.
@@ -311,7 +314,7 @@ pub fn write_return_into_slot<C: RawPtrCodec>(codec: &C, value: &Result<Value, (
     slot
 }
 
-pub fn write_value_into_slot<C: RawPtrCodec>(
+pub fn write_value_into_slot<C: RawPtrWriter>(
     codec: &C,
     initial: *mut c_void,
     value: &Value,
@@ -324,7 +327,7 @@ pub fn write_value_into_slot<C: RawPtrCodec>(
     slot
 }
 
-pub fn assert_write_return_err_writes_null<C: RawPtrCodec>(codec: &C) {
+pub fn assert_write_return_err_writes_null<C: RawPtrWriter>(codec: &C) {
     let mut slot: *mut c_void = std::ptr::dangling_mut::<c_void>();
     let value: Result<Value, ()> = Err(());
     // SAFETY: `&mut slot` is a live, pointer-sized stack slot; on an `Err` value

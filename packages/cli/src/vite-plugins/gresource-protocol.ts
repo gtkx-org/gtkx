@@ -1,6 +1,6 @@
 import { createVirtualNamespace } from "./virtual-module.js";
 
-export const VIRTUAL_PREFIX = "\0gtkx-gresources:";
+const VIRTUAL_PREFIX = "\0gtkx-gresources:";
 
 export const VIRTUAL_INIT = "\0gtkx-gresources-init";
 

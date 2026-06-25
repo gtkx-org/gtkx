@@ -1,11 +1,43 @@
 export { promisify } from "./async.js";
 export { createErrorDomain, type ErrorDomain } from "./gerror.js";
-export { getGobjectProperty, newGobjectWithProperties, setGobjectProperty } from "./gobject.js";
-export * from "./gtype.js";
+export { getGObjectProperty, newGObjectWithProperties, setGObjectProperty } from "./gobject.js";
+export {
+    type GType,
+    type GTyped,
+    TYPE_BOOLEAN,
+    TYPE_BOXED,
+    TYPE_CHAR,
+    TYPE_DOUBLE,
+    TYPE_ENUM,
+    TYPE_FLAGS,
+    TYPE_FLOAT,
+    TYPE_GTYPE,
+    TYPE_INT,
+    TYPE_INT64,
+    TYPE_INTERFACE,
+    TYPE_INVALID,
+    TYPE_LONG,
+    TYPE_NONE,
+    TYPE_OBJECT,
+    TYPE_PARAM,
+    TYPE_POINTER,
+    TYPE_STRING,
+    TYPE_UCHAR,
+    TYPE_UINT,
+    TYPE_UINT64,
+    TYPE_ULONG,
+    TYPE_UNICHAR,
+    TYPE_VARIANT,
+    typeInterfaces,
+    typeName,
+    typeParent,
+    valueIsA,
+} from "./gtype.js";
 export { getGValueBoxed, setGValueBoxed } from "./gvalue.js";
-export * from "./lifecycle.js";
+export { type ApplicationRunner, onExit, quitApplication, runApplication } from "./lifecycle.js";
 export { offSignal, onceSignal, onSignal } from "./listeners.js";
 export { installMixins, type Mixin } from "./mixin.js";
+export { fromNativeValue } from "./native-value.js";
 export { registerClass } from "./register-class.js";
 export {
     constructWrapper,
@@ -19,6 +51,5 @@ export {
     tryGetHandle,
     wrapHandle,
 } from "./registry.js";
-export { connectGobjectSignal, emitGobjectSignal, type SignalHandler, signalBaseName } from "./signal.js";
+export { connectGObjectSignal, emitGObjectSignal, type SignalHandler, signalBaseName } from "./signal.js";
 export { t } from "./t.js";
-export { wrapValue } from "./wrap-value.js";

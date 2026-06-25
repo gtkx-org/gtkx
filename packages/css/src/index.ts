@@ -1,15 +1,9 @@
-import type { CSSInterpolation } from "@emotion/serialize";
-import { createInstance } from "./create-instance.js";
+import { createInstance, type Instance } from "./create-instance.js";
 
-export { type Css, type CssOptions, createInstance } from "./create-instance.js";
 export { registerProviderForDefaultDisplay } from "./provider.js";
 
-type CxToken = string | boolean | undefined | null;
+const instance = createInstance();
 
-const instance = createInstance({ key: "gtkx" });
-
-export const css: (...args: CSSInterpolation[]) => string = instance.css;
-
-export const cx: (...classNames: CxToken[]) => string[] = instance.cx;
-
-export const injectGlobal: (...args: CSSInterpolation[]) => void = instance.injectGlobal;
+export const css: Instance["css"] = instance.css;
+export const cx: Instance["cx"] = instance.cx;
+export const injectGlobal: Instance["injectGlobal"] = instance.injectGlobal;

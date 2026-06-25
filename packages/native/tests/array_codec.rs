@@ -10,7 +10,7 @@ use native::arg::Arg;
 use native::ffi::{FfiStorageKind, FfiValue, GArrayData};
 use native::types::{
     ArrayKind, ArrayType, BigIntKind, BooleanType, EnumFlagsKind, EnumFlagsType, FfiDecoder,
-    FfiEncoder, FloatKind, FundamentalType, GObjectType, IntegerKind, Ownership, RawPtrCodec,
+    FfiEncoder, FloatKind, FundamentalType, GObjectType, IntegerKind, Ownership, RawPtrWriter,
     ReadSource, RefType, StringType, StructType, Type,
 };
 use native::value::Value;
@@ -2019,7 +2019,7 @@ fn write_return_to_raw_ptr_full_string_array_hands_caller_owned_container() {
         let ret = &mut slot as *mut *mut c_void as *mut c_void;
         // SAFETY: `ret` is a live, pointer-sized stack slot; `write_return_to_raw_ptr` writes
         // exactly one pointer (or null) into it, read back after the call.
-        unsafe { RawPtrCodec::write_return_to_raw_ptr(&ty, ret, &Ok(val)) };
+        unsafe { RawPtrWriter::write_return_to_raw_ptr(&ty, ret, &Ok(val)) };
         assert!(!slot.is_null());
         // SAFETY: the full-ownership write placed a caller-owned, NULL-terminated `char*` array
         // into `slot`; `StrV::from_glib_full` takes ownership of that array and frees it on drop.
@@ -2045,19 +2045,19 @@ fn write_return_to_raw_ptr_null_err_and_non_array_write_null() {
     let ret = &mut slot as *mut *mut c_void as *mut c_void;
     // SAFETY: `ret` is a live, pointer-sized stack slot; `write_return_to_raw_ptr` writes
     // exactly one pointer (or null) into it, read back after the call.
-    unsafe { RawPtrCodec::write_return_to_raw_ptr(&ty, ret, &Ok(Value::Null)) };
+    unsafe { RawPtrWriter::write_return_to_raw_ptr(&ty, ret, &Ok(Value::Null)) };
     assert!(slot.is_null());
 
     slot = 7 as *mut c_void;
     // SAFETY: `ret` is a live, pointer-sized stack slot; `write_return_to_raw_ptr` writes
     // exactly one pointer (or null) into it, read back after the call.
-    unsafe { RawPtrCodec::write_return_to_raw_ptr(&ty, ret, &Err(())) };
+    unsafe { RawPtrWriter::write_return_to_raw_ptr(&ty, ret, &Err(())) };
     assert!(slot.is_null());
 
     slot = 7 as *mut c_void;
     // SAFETY: `ret` is a live, pointer-sized stack slot; `write_return_to_raw_ptr` writes
     // exactly one pointer (or null) into it, read back after the call.
-    unsafe { RawPtrCodec::write_return_to_raw_ptr(&ty, ret, &Ok(Value::Number(1.0))) };
+    unsafe { RawPtrWriter::write_return_to_raw_ptr(&ty, ret, &Ok(Value::Number(1.0))) };
     assert!(slot.is_null());
 }
 
@@ -2074,7 +2074,7 @@ fn write_return_to_raw_ptr_encode_error_writes_null() {
         let ret = &mut slot as *mut *mut c_void as *mut c_void;
         // SAFETY: `ret` is a live, pointer-sized stack slot; `write_return_to_raw_ptr` writes
         // exactly one pointer (or null) into it, read back after the call.
-        unsafe { RawPtrCodec::write_return_to_raw_ptr(&ty, ret, &Ok(val)) };
+        unsafe { RawPtrWriter::write_return_to_raw_ptr(&ty, ret, &Ok(val)) };
         assert!(slot.is_null());
     });
 }

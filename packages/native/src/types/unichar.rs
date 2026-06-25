@@ -59,7 +59,7 @@ impl FfiDecoder for UnicharType {
     }
 }
 
-impl RawPtrCodec for UnicharType {
+impl RawPtrWriter for UnicharType {
     unsafe fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         let val = match value {
             Ok(value::Value::String(s)) => s.chars().next().map_or(0, |c| c as u32),

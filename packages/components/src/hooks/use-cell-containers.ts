@@ -21,18 +21,14 @@ const positionOf = (container: GObject.Object & ChildContainer): number => {
 
 export interface FactoryInstaller<W extends GObject.Object> {
     install(widget: W, factory: Gtk.SignalListItemFactory): void;
-    uninstall(widget: W, factory: Gtk.SignalListItemFactory): void;
+    uninstall(widget: W): void;
 }
 
-export interface CellContainersOptions<W extends GObject.Object> {
+interface CellContainersOptions<W extends GObject.Object> {
     target: GObjectTarget<W>;
     installer: FactoryInstaller<W>;
     estimatedHeight?: number | undefined;
     estimatedWidth?: number | undefined;
-}
-
-export interface CellContainers {
-    store: CellContainerStore;
 }
 
 const applyEstimatedSize = (child: Gtk.Widget, height: number | undefined, width: number | undefined): void => {
@@ -40,7 +36,7 @@ const applyEstimatedSize = (child: Gtk.Widget, height: number | undefined, width
     child.setSizeRequest(width ?? -1, height ?? -1);
 };
 
-export const useCellContainers = <W extends GObject.Object>(options: CellContainersOptions<W>): CellContainers => {
+export const useCellContainers = <W extends GObject.Object>(options: CellContainersOptions<W>): CellContainerStore => {
     const { target, installer, estimatedHeight, estimatedWidth } = options;
     const storeRef = useRef<CellContainerStore | null>(null);
     if (storeRef.current === null) storeRef.current = new CellContainerStore();
@@ -84,9 +80,9 @@ export const useCellContainers = <W extends GObject.Object>(options: CellContain
             installerRef.current.install(widget, factory);
             return { widget };
         },
-        detach: (registration) => installerRef.current.uninstall(registration.widget, factory),
+        detach: (registration) => installerRef.current.uninstall(registration.widget),
         isSame: (registration, widget) => registration.widget === widget,
     });
 
-    return { store };
+    return store;
 };

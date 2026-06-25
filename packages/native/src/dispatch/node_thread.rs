@@ -92,7 +92,7 @@ impl Mailbox {
     }
 
     #[cfg_attr(coverage_nightly, coverage(off))]
-    pub fn dispatch_to_glib_and_wait<R, F>(&self, env: Env, task: F) -> Result<R, GlibDispatchError>
+    fn dispatch_to_glib_and_wait<R, F>(&self, env: Env, task: F) -> Result<R, GlibDispatchError>
     where
         F: FnOnce() -> R + Send + 'static,
         R: Send + 'static,

@@ -1,6 +1,6 @@
 import { defineCommand } from "citty";
-import { createApp } from "./create.js";
 import { isKnownPackageManager, PACKAGE_MANAGER_FLAG_DESCRIPTION, type PackageManager } from "./options.js";
+import { scaffold } from "./scaffolder.js";
 
 /** Raw, unparsed command-line arguments accepted by the create command. */
 export type CreateCommandArgs = {
@@ -23,7 +23,7 @@ const parsePackageManager = (value: string | undefined): PackageManager | undefi
  * unknown package manager before any files are written.
  */
 export const runCreate = async (args: CreateCommandArgs): Promise<void> => {
-    await createApp({
+    await scaffold({
         name: args.name,
         applicationId: args["application-id"],
         packageManager: parsePackageManager(args["package-manager"]),

@@ -9,9 +9,4 @@ describe("gtkxFastRefresh", () => {
         expect(plugins.map((plugin) => plugin.name)).toEqual(["gtkx:swc-ssr-refresh", "gtkx:refresh"]);
         expect(plugins.map((plugin) => plugin.enforce)).toEqual(["pre", "post"]);
     });
-
-    it("forwards filter options to both plugins", () => {
-        const pair = gtkxFastRefresh({ include: /\.custom$/ });
-        expect(pair).toHaveLength(2);
-    });
 });

@@ -1,15 +1,15 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import { useSignal } from "@gtkx/react";
-import { type GObjectTarget, resolveGobjectTarget, useGObjectSnapshot } from "@gtkx/react/internal";
+import { type GObjectTarget, resolveGObjectTarget, useGObjectSnapshot } from "@gtkx/react/internal";
 import { useLayoutEffect, useRef } from "react";
 import type { ItemResolver } from "../utils/item-resolver.js";
 
-export interface DropDownSelectionTarget extends GObject.Object {
+interface DropDownSelectionTarget extends GObject.Object {
     getSelected(): number;
     setSelected(position: number): void;
 }
 
-export interface DropDownSelectionOptions<T, S> {
+interface DropDownSelectionOptions<T, S> {
     widget: GObjectTarget<DropDownSelectionTarget>;
     resolver: ItemResolver<T, S>;
     selectedId: string | null | undefined;
@@ -23,7 +23,7 @@ const normalizeSelected = (position: number): number =>
 
 export const useDropDownSelection = <T, S>(options: DropDownSelectionOptions<T, S>): number => {
     const { widget, resolver, selectedId, onSelectionChanged } = options;
-    const resolved = resolveGobjectTarget(widget);
+    const resolved = resolveGObjectTarget(widget);
 
     const selectedPosition = useGObjectSnapshot(widget, "notify::selected", (target) =>
         target === null ? -1 : normalizeSelected(target.getSelected()),

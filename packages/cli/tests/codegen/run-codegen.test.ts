@@ -5,11 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ensureGenerated, preflightCodegen, runCodegen } from "../../src/codegen/run-codegen.js";
 
 vi.mock("@gtkx/codegen", () => ({
-    CodegenRunner: class {
-        run() {
-            return Promise.resolve({ namespaces: 1, widgets: 0, duration: 1 });
-        }
-    },
+    runCodegen: () => Promise.resolve({ namespaces: 1, intrinsicElements: 0, duration: 1 }),
     computeFingerprint: () => "test-fingerprint",
     FINGERPRINT_FILENAME: ".codegen-fingerprint.json",
 }));

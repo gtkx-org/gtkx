@@ -10,14 +10,12 @@ describe("buildCss", () => {
         expect(buildCss("anim", { opacity: 0.5 })).toBe(".anim { opacity: 0.5; }");
     });
 
-    it("coalesces translateX and translateY into a single translate fragment", () => {
-        expect(buildCss("anim", { translateX: 10, translateY: 20 })).toBe(
-            ".anim { transform: translate(10px, 20px); }",
-        );
+    it("coalesces x and y into a single translate fragment", () => {
+        expect(buildCss("anim", { x: 10, y: 20 })).toBe(".anim { transform: translate(10px, 20px); }");
     });
 
     it("defaults a missing translate axis to zero", () => {
-        expect(buildCss("anim", { translateX: 10 })).toBe(".anim { transform: translate(10px, 0px); }");
+        expect(buildCss("anim", { x: 10 })).toBe(".anim { transform: translate(10px, 0px); }");
     });
 
     it("lets scale shadow scaleX and scaleY", () => {
@@ -35,7 +33,7 @@ describe("buildCss", () => {
     it("orders style declarations before transform fragments in the declared order", () => {
         const css = buildCss("anim", {
             opacity: 0.5,
-            translateX: 10,
+            x: 10,
             scale: 2,
             rotate: 45,
             skewX: 5,

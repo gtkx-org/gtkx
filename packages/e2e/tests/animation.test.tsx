@@ -1,5 +1,4 @@
-import { AnimatePresence, SpringAnimation, TimedAnimation } from "@gtkx/animate";
-import * as Adw from "@gtkx/gi/adw";
+import { AnimatePresence, WidgetAnimation } from "@gtkx/animate";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { render, screen, userEvent, waitFor } from "@gtkx/testing";
@@ -12,7 +11,7 @@ const expectCompletes = async (animation: ReactElement, label: string, onComplet
     await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout });
 };
 
-interface SpringTranslateXCase {
+interface SpringXCase {
     from: number;
     to: number;
     damping: number;
@@ -20,36 +19,33 @@ interface SpringTranslateXCase {
     timeout: number;
 }
 
-const expectSpringTranslateXCompletes = async ({ from, to, damping, stiffness, timeout }: SpringTranslateXCase) => {
+const expectSpringXCompletes = async ({ from, to, damping, stiffness, timeout }: SpringXCase) => {
     const onComplete = vi.fn();
 
     await expectCompletes(
-        <SpringAnimation
-            initial={{ translateX: from }}
-            animate={{ translateX: to }}
-            damping={damping}
-            stiffness={stiffness}
-            mass={1}
-            animateOnMount
+        <WidgetAnimation
+            initial={{ x: from }}
+            animate={{ x: to }}
+            transition={{ type: "spring", damping, stiffness, mass: 1 }}
             onAnimationComplete={onComplete}
         >
             <GtkLabel label="Bouncy" />
-        </SpringAnimation>,
+        </WidgetAnimation>,
         "Bouncy",
         onComplete,
         timeout,
     );
 };
 
-describe("TimedAnimation / SpringAnimation (1)", () => {
+describe("WidgetAnimation (1)", () => {
     describe("mount animation (1)", () => {
-        it("applies initial values when animateOnMount is false", async () => {
+        it("applies initial values when no animate target is set", async () => {
             const buttonRef = createRef<Gtk.Button>();
 
             await render(
-                <TimedAnimation initial={{ opacity: 0.5 }} animate={{ opacity: 1 }} animateOnMount={false}>
+                <WidgetAnimation initial={{ opacity: 0.5 }}>
                     <GtkButton ref={buttonRef} label="Test" />
-                </TimedAnimation>,
+                </WidgetAnimation>,
             );
 
             await screen.findByText("Test");
@@ -60,9 +56,9 @@ describe("TimedAnimation / SpringAnimation (1)", () => {
             const buttonRef = createRef<Gtk.Button>();
 
             await render(
-                <TimedAnimation initial={false} animate={{ opacity: 1, scale: 1 }}>
+                <WidgetAnimation initial={false} animate={{ opacity: 1, scale: 1 }}>
                     <GtkButton ref={buttonRef} label="Test" />
-                </TimedAnimation>,
+                </WidgetAnimation>,
             );
 
             await screen.findByText("Test");
@@ -71,24 +67,23 @@ describe("TimedAnimation / SpringAnimation (1)", () => {
     });
 });
 
-describe("TimedAnimation / SpringAnimation (2)", () => {
+describe("WidgetAnimation (2)", () => {
     describe("mount animation (2)", () => {
-        it("animates from initial to animate when animateOnMount is true", async () => {
+        it("animates from initial to animate on mount", async () => {
             const onStart = vi.fn();
             const onComplete = vi.fn();
             const buttonRef = createRef<Gtk.Button>();
 
             await render(
-                <TimedAnimation
+                <WidgetAnimation
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    duration={100}
-                    animateOnMount
+                    transition={{ duration: 0.1 }}
                     onAnimationStart={onStart}
                     onAnimationComplete={onComplete}
                 >
                     <GtkButton ref={buttonRef} label="Test" />
-                </TimedAnimation>,
+                </WidgetAnimation>,
             );
 
             await screen.findByText("Test");
@@ -100,20 +95,20 @@ describe("TimedAnimation / SpringAnimation (2)", () => {
     });
 });
 
-describe("TimedAnimation / SpringAnimation (3)", () => {
+describe("WidgetAnimation (3)", () => {
     describe("animate prop changes", () => {
         it("animates when animate prop changes", async () => {
             const onComplete = vi.fn();
 
             function TestComponent({ targetOpacity }: { targetOpacity: number }) {
                 return (
-                    <TimedAnimation
+                    <WidgetAnimation
                         animate={{ opacity: targetOpacity }}
-                        duration={100}
+                        transition={{ duration: 0.1 }}
                         onAnimationComplete={onComplete}
                     >
                         <GtkLabel label="Test" />
-                    </TimedAnimation>
+                    </WidgetAnimation>
                 );
             }
 
@@ -128,7 +123,7 @@ describe("TimedAnimation / SpringAnimation (3)", () => {
     });
 });
 
-describe("TimedAnimation / SpringAnimation (4)", () => {
+describe("WidgetAnimation (4)", () => {
     describe("exit animation", () => {
         it("plays exit animation before unmount", async () => {
             const onComplete = vi.fn();
@@ -138,15 +133,15 @@ describe("TimedAnimation / SpringAnimation (4)", () => {
                     <GtkBox>
                         <AnimatePresence>
                             {show && (
-                                <TimedAnimation
+                                <WidgetAnimation
                                     key="fading"
                                     animate={{ opacity: 1 }}
                                     exit={{ opacity: 0 }}
-                                    duration={100}
+                                    transition={{ duration: 0.1 }}
                                     onAnimationComplete={onComplete}
                                 >
                                     <GtkLabel label="Fading" />
-                                </TimedAnimation>
+                                </WidgetAnimation>
                             )}
                         </AnimatePresence>
                     </GtkBox>
@@ -166,21 +161,21 @@ describe("TimedAnimation / SpringAnimation (4)", () => {
     });
 });
 
-describe("TimedAnimation / SpringAnimation (5)", () => {
+describe("WidgetAnimation (5)", () => {
     describe("spring animation", () => {
         it("creates spring animation with default parameters", async () => {
             const onComplete = vi.fn();
             const buttonRef = createRef<Gtk.Button>();
 
             await expectCompletes(
-                <SpringAnimation
+                <WidgetAnimation
                     initial={{ scale: 0.5 }}
                     animate={{ scale: 1 }}
-                    animateOnMount
+                    transition={{ type: "spring" }}
                     onAnimationComplete={onComplete}
                 >
                     <GtkButton ref={buttonRef} label="Spring" />
-                </SpringAnimation>,
+                </WidgetAnimation>,
                 "Spring",
                 onComplete,
                 2000,
@@ -188,27 +183,25 @@ describe("TimedAnimation / SpringAnimation (5)", () => {
         });
 
         it("respects spring transition parameters", async () => {
-            await expectSpringTranslateXCompletes({ from: -100, to: 0, damping: 1, stiffness: 200, timeout: 2000 });
+            await expectSpringXCompletes({ from: -100, to: 0, damping: 1, stiffness: 200, timeout: 2000 });
         });
     });
 });
 
-describe("TimedAnimation / SpringAnimation (6)", () => {
+describe("WidgetAnimation (6)", () => {
     describe("timed animation", () => {
         it("respects easing function", async () => {
             const onComplete = vi.fn();
 
             await expectCompletes(
-                <TimedAnimation
+                <WidgetAnimation
                     initial={{ rotate: 0 }}
                     animate={{ rotate: 360 }}
-                    duration={100}
-                    easing={Adw.Easing.EASE_IN_OUT_CUBIC}
-                    animateOnMount
+                    transition={{ duration: 0.1, ease: "easeInOut" }}
                     onAnimationComplete={onComplete}
                 >
                     <GtkLabel label="Rotating" />
-                </TimedAnimation>,
+                </WidgetAnimation>,
                 "Rotating",
                 onComplete,
             );
@@ -220,15 +213,14 @@ describe("TimedAnimation / SpringAnimation (6)", () => {
             const onComplete = vi.fn();
 
             await expectCompletes(
-                <TimedAnimation
-                    initial={{ opacity: 0, scale: 0.5, translateY: 50 }}
-                    animate={{ opacity: 1, scale: 1, translateY: 0 }}
-                    duration={100}
-                    animateOnMount
+                <WidgetAnimation
+                    initial={{ opacity: 0, scale: 0.5, y: 50 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ duration: 0.1 }}
                     onAnimationComplete={onComplete}
                 >
                     <GtkLabel label="Multi" />
-                </TimedAnimation>,
+                </WidgetAnimation>,
                 "Multi",
                 onComplete,
             );
@@ -236,21 +228,20 @@ describe("TimedAnimation / SpringAnimation (6)", () => {
     });
 });
 
-describe("TimedAnimation / SpringAnimation (7)", () => {
+describe("WidgetAnimation (7)", () => {
     describe("skew transforms", () => {
         it("animates skewX and skewY properties", async () => {
             const onComplete = vi.fn();
 
             await expectCompletes(
-                <TimedAnimation
+                <WidgetAnimation
                     initial={{ skewX: 0, skewY: 0 }}
                     animate={{ skewX: 10, skewY: 5 }}
-                    duration={100}
-                    animateOnMount
+                    transition={{ duration: 0.1 }}
                     onAnimationComplete={onComplete}
                 >
                     <GtkLabel label="Skewed" />
-                </TimedAnimation>,
+                </WidgetAnimation>,
                 "Skewed",
                 onComplete,
             );
@@ -258,42 +249,37 @@ describe("TimedAnimation / SpringAnimation (7)", () => {
     });
 });
 
-describe("TimedAnimation / SpringAnimation (8)", () => {
+describe("WidgetAnimation (8)", () => {
     describe("repeating animation", () => {
         it("runs animation with repeat count", async () => {
             const onComplete = vi.fn();
 
             await expectCompletes(
-                <TimedAnimation
+                <WidgetAnimation
                     initial={{ scale: 0.8 }}
                     animate={{ scale: 1.2 }}
-                    duration={50}
-                    repeat={2}
-                    animateOnMount
+                    transition={{ duration: 0.05, repeat: 2 }}
                     onAnimationComplete={onComplete}
                 >
                     <GtkLabel label="Repeating" />
-                </TimedAnimation>,
+                </WidgetAnimation>,
                 "Repeating",
                 onComplete,
             );
         });
 
-        it("runs animation with alternate", async () => {
+        it("runs animation with reverse repeat type", async () => {
             const onComplete = vi.fn();
 
             await expectCompletes(
-                <TimedAnimation
-                    initial={{ translateY: 0 }}
-                    animate={{ translateY: -20 }}
-                    duration={50}
-                    repeat={2}
-                    alternate
-                    animateOnMount
+                <WidgetAnimation
+                    initial={{ y: 0 }}
+                    animate={{ y: -20 }}
+                    transition={{ duration: 0.05, repeat: 2, repeatType: "reverse" }}
                     onAnimationComplete={onComplete}
                 >
                     <GtkLabel label="Alternating" />
-                </TimedAnimation>,
+                </WidgetAnimation>,
                 "Alternating",
                 onComplete,
             );
@@ -301,39 +287,37 @@ describe("TimedAnimation / SpringAnimation (8)", () => {
     });
 });
 
-describe("TimedAnimation / SpringAnimation (9)", () => {
+describe("WidgetAnimation (9)", () => {
     describe("transform animations (1)", () => {
-        it("animates translateX property", async () => {
+        it("animates x property", async () => {
             const onComplete = vi.fn();
 
             await expectCompletes(
-                <TimedAnimation
-                    initial={{ translateX: 0 }}
-                    animate={{ translateX: 100 }}
-                    duration={100}
-                    animateOnMount
+                <WidgetAnimation
+                    initial={{ x: 0 }}
+                    animate={{ x: 100 }}
+                    transition={{ duration: 0.1 }}
                     onAnimationComplete={onComplete}
                 >
                     <GtkLabel label="TranslateX" />
-                </TimedAnimation>,
+                </WidgetAnimation>,
                 "TranslateX",
                 onComplete,
             );
         });
 
-        it("animates translateY property", async () => {
+        it("animates y property", async () => {
             const onComplete = vi.fn();
 
             await expectCompletes(
-                <TimedAnimation
-                    initial={{ translateY: 0 }}
-                    animate={{ translateY: 50 }}
-                    duration={100}
-                    animateOnMount
+                <WidgetAnimation
+                    initial={{ y: 0 }}
+                    animate={{ y: 50 }}
+                    transition={{ duration: 0.1 }}
                     onAnimationComplete={onComplete}
                 >
                     <GtkLabel label="TranslateY" />
-                </TimedAnimation>,
+                </WidgetAnimation>,
                 "TranslateY",
                 onComplete,
             );
@@ -341,21 +325,20 @@ describe("TimedAnimation / SpringAnimation (9)", () => {
     });
 });
 
-describe("TimedAnimation / SpringAnimation (10)", () => {
+describe("WidgetAnimation (10)", () => {
     describe("transform animations (2)", () => {
         it("animates scale property", async () => {
             const onComplete = vi.fn();
 
             await expectCompletes(
-                <TimedAnimation
+                <WidgetAnimation
                     initial={{ scale: 1 }}
                     animate={{ scale: 1.5 }}
-                    duration={100}
-                    animateOnMount
+                    transition={{ duration: 0.1 }}
                     onAnimationComplete={onComplete}
                 >
                     <GtkLabel label="Scale" />
-                </TimedAnimation>,
+                </WidgetAnimation>,
                 "Scale",
                 onComplete,
             );
@@ -365,15 +348,14 @@ describe("TimedAnimation / SpringAnimation (10)", () => {
             const onComplete = vi.fn();
 
             await expectCompletes(
-                <TimedAnimation
+                <WidgetAnimation
                     initial={{ rotate: 0 }}
                     animate={{ rotate: 180 }}
-                    duration={100}
-                    animateOnMount
+                    transition={{ duration: 0.1 }}
                     onAnimationComplete={onComplete}
                 >
                     <GtkLabel label="Rotate" />
-                </TimedAnimation>,
+                </WidgetAnimation>,
                 "Rotate",
                 onComplete,
             );
@@ -381,7 +363,7 @@ describe("TimedAnimation / SpringAnimation (10)", () => {
     });
 });
 
-describe("TimedAnimation / SpringAnimation (11)", () => {
+describe("WidgetAnimation (11)", () => {
     describe("state-driven spring animation (1)", () => {
         it("animates when state triggers animate prop change", async () => {
             const onComplete = vi.fn();
@@ -392,16 +374,14 @@ describe("TimedAnimation / SpringAnimation (11)", () => {
                 return (
                     <GtkBox>
                         <GtkButton label="Bounce" onClicked={() => setTrigger((t) => t + 1)} />
-                        <SpringAnimation
+                        <WidgetAnimation
                             initial={false}
-                            animate={{ translateX: trigger % 2 === 0 ? 0 : 150 }}
-                            damping={1}
-                            stiffness={200}
-                            mass={1}
+                            animate={{ x: trigger % 2 === 0 ? 0 : 150 }}
+                            transition={{ type: "spring", damping: 1, stiffness: 200, mass: 1 }}
                             onAnimationComplete={onComplete}
                         >
                             <GtkLabel label="Target" />
-                        </SpringAnimation>
+                        </WidgetAnimation>
                     </GtkBox>
                 );
             }
@@ -417,10 +397,10 @@ describe("TimedAnimation / SpringAnimation (11)", () => {
     });
 });
 
-describe("TimedAnimation / SpringAnimation (12)", () => {
+describe("WidgetAnimation (12)", () => {
     describe("state-driven spring animation (2)", () => {
         it("animates spring with low damping for bouncy effect", async () => {
-            await expectSpringTranslateXCompletes({ from: 0, to: 100, damping: 0.5, stiffness: 100, timeout: 3000 });
+            await expectSpringXCompletes({ from: 0, to: 100, damping: 0.5, stiffness: 100, timeout: 3000 });
         });
     });
 
@@ -429,16 +409,14 @@ describe("TimedAnimation / SpringAnimation (12)", () => {
             const onComplete = vi.fn();
 
             await expectCompletes(
-                <TimedAnimation
+                <WidgetAnimation
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    duration={50}
-                    delay={50}
-                    animateOnMount
+                    transition={{ duration: 0.05, delay: 0.05 }}
                     onAnimationComplete={onComplete}
                 >
                     <GtkLabel label="Delayed" />
-                </TimedAnimation>,
+                </WidgetAnimation>,
                 "Delayed",
                 onComplete,
             );
@@ -446,64 +424,58 @@ describe("TimedAnimation / SpringAnimation (12)", () => {
     });
 });
 
-describe("TimedAnimation / SpringAnimation (13)", () => {
+describe("WidgetAnimation (13)", () => {
     describe("easing functions (1)", () => {
-        it("animates with EASE_OUT_BOUNCE easing", async () => {
+        it("animates with easeOut easing", async () => {
             const onComplete = vi.fn();
 
             await expectCompletes(
-                <TimedAnimation
-                    initial={{ translateX: 0 }}
-                    animate={{ translateX: 60 }}
-                    duration={100}
-                    easing={Adw.Easing.EASE_OUT_BOUNCE}
-                    animateOnMount
+                <WidgetAnimation
+                    initial={{ x: 0 }}
+                    animate={{ x: 60 }}
+                    transition={{ duration: 0.1, ease: "easeOut" }}
                     onAnimationComplete={onComplete}
                 >
-                    <GtkLabel label="Bounce Easing" />
-                </TimedAnimation>,
-                "Bounce Easing",
+                    <GtkLabel label="Ease Out" />
+                </WidgetAnimation>,
+                "Ease Out",
                 onComplete,
             );
         });
 
-        it("animates with EASE_OUT_ELASTIC easing", async () => {
+        it("animates with easeIn easing", async () => {
             const onComplete = vi.fn();
 
             await expectCompletes(
-                <TimedAnimation
-                    initial={{ translateX: 0 }}
-                    animate={{ translateX: 60 }}
-                    duration={100}
-                    easing={Adw.Easing.EASE_OUT_ELASTIC}
-                    animateOnMount
+                <WidgetAnimation
+                    initial={{ x: 0 }}
+                    animate={{ x: 60 }}
+                    transition={{ duration: 0.1, ease: "easeIn" }}
                     onAnimationComplete={onComplete}
                 >
-                    <GtkLabel label="Elastic Easing" />
-                </TimedAnimation>,
-                "Elastic Easing",
+                    <GtkLabel label="Ease In" />
+                </WidgetAnimation>,
+                "Ease In",
                 onComplete,
             );
         });
     });
 });
 
-describe("TimedAnimation / SpringAnimation (14)", () => {
+describe("WidgetAnimation (14)", () => {
     describe("easing functions (2)", () => {
-        it("animates with LINEAR easing", async () => {
+        it("animates with linear easing", async () => {
             const onComplete = vi.fn();
 
             await expectCompletes(
-                <TimedAnimation
-                    initial={{ translateX: 0 }}
-                    animate={{ translateX: 60 }}
-                    duration={100}
-                    easing={Adw.Easing.LINEAR}
-                    animateOnMount
+                <WidgetAnimation
+                    initial={{ x: 0 }}
+                    animate={{ x: 60 }}
+                    transition={{ duration: 0.1, ease: "linear" }}
                     onAnimationComplete={onComplete}
                 >
                     <GtkLabel label="Linear Easing" />
-                </TimedAnimation>,
+                </WidgetAnimation>,
                 "Linear Easing",
                 onComplete,
             );

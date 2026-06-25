@@ -139,7 +139,7 @@ impl FfiDecoder for GObjectType {
     }
 }
 
-impl RawPtrCodec for GObjectType {
+impl RawPtrWriter for GObjectType {
     unsafe fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         self.write_return_with_ownership(ret, value, self.ownership, |ptr| {
             // SAFETY: `ptr` is a non-null live GObject (the helper skips null); `from_glib_none`

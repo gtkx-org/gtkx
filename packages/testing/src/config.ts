@@ -19,7 +19,9 @@ export type Config = {
 export type ConfigFn = (existingConfig: Config) => Partial<Config>;
 
 const defaultGetElementError = (message: string, _container?: Container): Error => {
-    return new Error(message);
+    const error = new Error(message);
+    error.name = "GtkxElementError";
+    return error;
 };
 
 const defaultConfig: Config = {

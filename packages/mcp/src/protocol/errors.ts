@@ -4,9 +4,9 @@ export const IpcErrorCode = {
     APP_NOT_FOUND: 1002,
     WIDGET_NOT_FOUND: 1003,
     CONNECTION_WRITE_FAILED: 1004,
-    IPC_TIMEOUT: 1008,
-    INVALID_REQUEST: 1010,
-    METHOD_NOT_FOUND: 1011,
+    IPC_TIMEOUT: 1005,
+    INVALID_REQUEST: 1006,
+    METHOD_NOT_FOUND: 1007,
 } as const;
 
 export type IpcErrorCode = (typeof IpcErrorCode)[keyof typeof IpcErrorCode];

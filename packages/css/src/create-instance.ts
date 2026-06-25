@@ -4,27 +4,23 @@ import { compile, middleware, rulesheet, stringify, serialize as stylisSerialize
 import { StyleSheet } from "./stylesheet.js";
 import { escapeNamedColors, removeLabel, restoreNamedColors } from "./stylis-plugins.js";
 
-export type CssOptions = {
-    key: string;
-};
+const KEY = "gtkx";
 
 type CxToken = string | boolean | undefined | null;
 
 type Cache = {
-    key: string;
     sheet: StyleSheet;
     inserted: Set<string>;
     registered: RegisteredCache;
 };
 
-export type Css = {
+export type Instance = {
     css: (...args: CSSInterpolation[]) => string;
     cx: (...classNames: CxToken[]) => string[];
     injectGlobal: (...args: CSSInterpolation[]) => void;
 };
 
-const createCache = ({ key }: CssOptions): Cache => ({
-    key,
+const createCache = (): Cache => ({
     sheet: new StyleSheet(),
     inserted: new Set<string>(),
     registered: {},
@@ -43,11 +39,11 @@ const runStylis = (cache: Cache, input: string): void => {
     );
 };
 
-export const createInstance = (options: CssOptions): Css => {
-    const cache = createCache(options);
+export const createInstance = (): Instance => {
+    const cache = createCache();
 
     const serialize = (args: CSSInterpolation[]): SerializedStyles => serializeStyles(args, cache.registered);
-    const classNameFor = (serialized: SerializedStyles): string => `${cache.key}-${serialized.name}`;
+    const classNameFor = (serialized: SerializedStyles): string => `${KEY}-${serialized.name}`;
 
     const insertStyles = (serialized: SerializedStyles): void => {
         if (cache.inserted.has(serialized.name)) return;

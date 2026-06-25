@@ -1,12 +1,12 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { scheduleHostRebuild } from "./host-rebuild.js";
 import { type Node, stateOf } from "./state.js";
-import { isLabelTextWrapper } from "./text-wrapper.js";
+import { isLabelTextNode } from "./text-node.js";
 
 const rebuildLabelText = (host: Node): void => {
     if (!(host instanceof Gtk.Label)) return;
     const state = stateOf(host);
-    const runs = state.children.filter(isLabelTextWrapper);
+    const runs = state.children.filter(isLabelTextNode);
     if (state.props["label"] !== undefined) {
         if (runs.length === 0) return;
         throw new Error("<GtkLabel> cannot mix a `label` prop with text children; use one or the other");

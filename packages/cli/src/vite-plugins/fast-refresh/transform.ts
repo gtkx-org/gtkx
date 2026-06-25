@@ -1,9 +1,9 @@
 import { type Options as SwcOptions, transform } from "@swc/core";
 import type { Plugin } from "vite";
-import { createRefreshGate, type RefreshFilterOptions } from "../../internal/vite-refresh-shared.js";
+import { createRefreshGate } from "./refresh-filter.js";
 
-export function swcSsrRefresh(options: RefreshFilterOptions = {}): Plugin {
-    const gate = createRefreshGate(options);
+export function gtkxSwcSsrRefresh(): Plugin {
+    const gate = createRefreshGate();
 
     return {
         name: "gtkx:swc-ssr-refresh",

@@ -10,7 +10,7 @@ export type GTyped = {
 export const isGtyped = (value: unknown): value is GTyped =>
     typeof value === "object" && value !== null && "__gtype__" in value && typeof value.__gtype__ === "bigint";
 
-export const lazyGtype = (name: string): (() => GType) => {
+const lazyGtype = (name: string): (() => GType) => {
     let cached: GType | undefined;
     return () => {
         cached ??= typeFromName(name);

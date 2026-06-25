@@ -1,7 +1,7 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { useRef } from "react";
 import type { GObjectTarget } from "../utils/gobject-target.js";
-import { useTargetRegistration } from "../utils/use-target-registration.js";
+import { useTargetRegistration } from "./use-target-registration.js";
 
 interface TickRegistration {
     widget: Gtk.Widget;

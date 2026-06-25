@@ -1,10 +1,10 @@
+import { inject } from "vitest";
 import {
-    type CompositorId,
     DEFAULT_HEADLESS_SIZE,
-    type HeadlessEnvironmentTeardown,
+    type HeadlessDisplayTeardown,
     type HeadlessOptions,
-    startHeadlessEnvironment,
-} from "./headless-environment.js";
+    startHeadlessDisplay,
+} from "./headless-display.js";
 
 declare global {
     var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
@@ -12,14 +12,14 @@ declare global {
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
-const resolveCompositor = (value: string | undefined): CompositorId => (value === "sway" ? "sway" : "weston");
+const provided = inject("gtkxHeadless");
 
 const options: HeadlessOptions = {
-    size: process.env["GTKX_HEADLESS_SIZE"] ?? DEFAULT_HEADLESS_SIZE,
-    compositor: resolveCompositor(process.env["GTKX_COMPOSITOR"]),
+    size: provided.size ?? DEFAULT_HEADLESS_SIZE,
+    compositor: provided.compositor ?? "weston",
 };
 
-const teardown: HeadlessEnvironmentTeardown = await startHeadlessEnvironment(options);
+const teardown: HeadlessDisplayTeardown = await startHeadlessDisplay(options);
 
 let torndown = false;
 const runTeardown = (): void => {

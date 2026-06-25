@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/gl",
     "version": "0.21.0",
-    "description": "Hand-written OpenGL bindings for GTKX GLArea rendering",
+    "description": "Generated OpenGL 4.6 core bindings plus companion helpers for GTKX GLArea rendering",
     "keywords": [
         "gtkx",
         "gtk",

@@ -4,7 +4,7 @@ type AsyncStartFn = (...args: unknown[]) => void;
 
 type AsyncFinishFn = (result: object) => unknown;
 
-export type PromisifyArgs = {
+type PromisifyArgs = {
     leading: unknown[];
     trailing?: unknown[];
 };

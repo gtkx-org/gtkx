@@ -59,7 +59,7 @@ module.exports = {
                 "packages/[^/]+/out-tsc/",
                 "packages/[^/]+/coverage/",
                 "packages/native/(target|npm)/",
-                "packages/codegen/src/templates/",
+                "packages/codegen/src/overrides/",
             ],
         },
         tsConfig: { fileName: "tsconfig.base.json" },

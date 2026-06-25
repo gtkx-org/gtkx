@@ -2,9 +2,9 @@ import {
     type ArrayType,
     type BigInt64Type,
     type BigUint64Type,
-    type BlobType,
     type BooleanType,
     type BoxedType,
+    type BufferType,
     type CallbackType,
     callCompiled,
     compileSignature,
@@ -37,7 +37,7 @@ import type { AnyClass } from "@gtkx/utils";
 
 const wrapperClassByDescriptor = new WeakMap<Type, AnyClass>();
 
-export const setDescriptorWrapperClass = (descriptor: Type, wrapperClass: AnyClass): void => {
+const setDescriptorWrapperClass = (descriptor: Type, wrapperClass: AnyClass): void => {
     wrapperClassByDescriptor.set(descriptor, wrapperClass);
 };
 
@@ -69,7 +69,7 @@ export const float64T: Float64Type = Object.freeze({ type: "float64" });
 export const booleanT: BooleanType = Object.freeze({ type: "boolean" });
 export const voidT: VoidType = Object.freeze({ type: "void" });
 export const unicharT: UnicharType = Object.freeze({ type: "unichar" });
-export const bufferT: BlobType = Object.freeze({ type: "blob" });
+export const bufferT: BufferType = Object.freeze({ type: "buffer" });
 
 export const stringT = (ownership: Ownership = "borrowed", length?: number): StringType =>
     length === undefined ? { type: "string", ownership } : { type: "string", ownership, length };

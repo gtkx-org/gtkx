@@ -13,7 +13,7 @@ use crate::dispatch::Mailbox;
 use crate::error_reporter::NativeErrorReporter;
 use crate::ffi::FfiValue;
 use crate::types::{
-    FfiDecoder as _, FfiEncoder as _, RawPtrCodec as _, ReadSource, Type, str_to_glib_full,
+    FfiDecoder as _, FfiEncoder as _, RawPtrWriter as _, ReadSource, Type, str_to_glib_full,
 };
 use crate::value::{JsRef, Value};
 

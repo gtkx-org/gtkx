@@ -1,10 +1,15 @@
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import type { ElementMapping } from "../element-mapping.js";
 import { attachOrderedInsert, detachOrderedInsert, resolveOrderedInsert } from "../ordered-insert.js";
+import { isRelationshipNode } from "../relationship-node.js";
 import { resolveAppendRuleSet, ruleNodeOf } from "../rule-registry.js";
 import { type Node, stateOf } from "../state.js";
-import { isWrapperElement } from "../wrapper-element.js";
+
+export interface ElementMapping {
+    matches(child: Node, parent: Node): boolean;
+    attach(child: Node, parent: Node, anchor?: GObject.Object | null, fresh?: boolean): void;
+    detach(child: Node, parent: Node): void;
+}
 
 let elementMap: ElementMapping[] = [];
 
@@ -58,9 +63,9 @@ export const detachFromParent = (child: Node, parent: Node): void => {
     resolveMapping(child, parent)?.detach(child, parent);
 };
 
-export const resyncWrapper = (wrapper: Node): void => {
+export const resyncRelationshipNode = (wrapper: Node): void => {
     const parent = stateOf(wrapper).parent;
-    if (isWrapperElement(wrapper) && parent) attachToParent(wrapper, parent);
+    if (isRelationshipNode(wrapper) && parent) attachToParent(wrapper, parent);
 };
 
 const anchorWrapper = (before: Node): GObject.Object | null => {
@@ -73,16 +78,16 @@ const anchorWrapper = (before: Node): GObject.Object | null => {
 
 export const attachNode = (parent: Node, child: Node, before: Node | null, fresh: boolean): void => {
     if (before === null) {
-        if (isWrapperElement(child) || !isWrapperElement(parent)) attachToParent(child, parent, null, fresh);
-    } else if (isWrapperElement(child)) {
+        if (isRelationshipNode(child) || !isRelationshipNode(parent)) attachToParent(child, parent, null, fresh);
+    } else if (isRelationshipNode(child)) {
         attachToParent(child, parent);
-    } else if (!isWrapperElement(parent)) {
+    } else if (!isRelationshipNode(parent)) {
         attachToParent(child, parent, anchorWrapper(before));
     }
-    if (isWrapperElement(parent)) resyncWrapper(parent);
+    if (isRelationshipNode(parent)) resyncRelationshipNode(parent);
 };
 
 export const detachNode = (parent: Node, child: Node): void => {
-    if (isWrapperElement(child) || !isWrapperElement(parent)) detachFromParent(child, parent);
-    if (isWrapperElement(parent)) resyncWrapper(parent);
+    if (isRelationshipNode(child) || !isRelationshipNode(parent)) detachFromParent(child, parent);
+    if (isRelationshipNode(parent)) resyncRelationshipNode(parent);
 };

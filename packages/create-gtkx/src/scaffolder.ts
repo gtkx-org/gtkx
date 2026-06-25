@@ -1,7 +1,12 @@
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import * as p from "@clack/prompts";
 import { errorMessage, isValidApplicationId, renderEmptyGtkxEnvModule, toUpperFirst } from "@gtkx/utils";
-import { isValidProjectName, PACKAGE_MANAGERS, type PackageManager } from "./options.js";
-import { TEMPLATE_SUFFIX, type TemplateContext } from "./templates.js";
+import { addDependency, detectPackageManager as nypmDetectPackageManager } from "nypm";
+import { x } from "tinyexec";
+import { isKnownPackageManager, isValidProjectName, PACKAGE_MANAGERS, type PackageManager } from "./options.js";
+import { listTemplates, renderFile, TEMPLATE_SUFFIX, type TemplateContext } from "./templates.js";
+import { version as selfVersion } from "./version.js";
 
 export type CreateOptions = {
     name?: string | undefined;
@@ -15,42 +20,6 @@ type ResolvedOptions = {
     applicationId: string;
     packageManager: PackageManager;
     includeTesting: boolean;
-};
-
-type ScaffolderPrompts = Pick<
-    typeof import("@clack/prompts"),
-    "intro" | "note" | "cancel" | "text" | "select" | "confirm" | "isCancel"
-> & {
-    spinner(): { start(message: string): void; stop(message: string): void };
-    log: { info(message: string): void; error(message: string): void };
-};
-
-type ScaffolderFs = {
-    existsSync(path: string): boolean;
-    mkdirSync(path: string, opts: { recursive: boolean }): void;
-    writeFileSync(path: string, content: string): void;
-};
-
-type InstallDependenciesFn = (opts: {
-    cwd: string;
-    packageManager: PackageManager;
-    dependencies: string[];
-    dev: boolean;
-}) => Promise<void>;
-
-type GitInitFn = (cwd: string) => Promise<void>;
-
-export type ScaffolderDeps = {
-    cwd(): string;
-    selfVersion: string;
-    fs: ScaffolderFs;
-    prompts: ScaffolderPrompts;
-    listTemplates(): string[];
-    render(template: string, context: TemplateContext): string;
-    install: InstallDependenciesFn;
-    gitInit: GitInitFn;
-    detectPackageManager(cwd: string): Promise<PackageManager | undefined>;
-    exit(code: number): never;
 };
 
 const DEPENDENCIES = ["@gtkx/css", "@gtkx/ffi", "@gtkx/react", "react"];
@@ -80,20 +49,20 @@ const getDevDependencies = (includeTesting: boolean): string[] => {
     return devDeps;
 };
 
-const guardCancellation = <T>(deps: ScaffolderDeps, value: T | symbol): T => {
-    if (deps.prompts.isCancel(value)) {
-        deps.prompts.cancel("Operation canceled");
-        deps.exit(0);
+const guardCancellation = <T>(value: T | symbol): T => {
+    if (p.isCancel(value)) {
+        p.cancel("Operation canceled");
+        process.exit(0);
     }
     return value as T;
 };
 
-const validateProjectName = (deps: ScaffolderDeps, value: string | undefined): string | undefined => {
+const validateProjectName = (value: string | undefined): string | undefined => {
     if (!value) return "Project name is required";
     if (!isValidProjectName(value)) {
         return "Project name must be lowercase letters, numbers, and hyphens only";
     }
-    if (deps.fs.existsSync(resolve(deps.cwd(), value))) {
+    if (existsSync(resolve(process.cwd(), value))) {
         return `Directory "${value}" already exists`;
     }
     return undefined;
@@ -107,21 +76,19 @@ const validateApplicationIdInput = (value: string | undefined): string | undefin
     return undefined;
 };
 
-const promptName = async (deps: ScaffolderDeps): Promise<string> =>
+const promptName = async (): Promise<string> =>
     guardCancellation(
-        deps,
-        await deps.prompts.text({
+        await p.text({
             message: "Project name",
             placeholder: "my-app",
-            validate: (value) => validateProjectName(deps, value),
+            validate: (value) => validateProjectName(value),
         }),
     );
 
-const promptApplicationId = async (deps: ScaffolderDeps, name: string): Promise<string> => {
+const promptApplicationId = async (name: string): Promise<string> => {
     const defaultApplicationId = suggestApplicationId(name);
     return guardCancellation(
-        deps,
-        await deps.prompts.text({
+        await p.text({
             message: "Application ID",
             placeholder: defaultApplicationId,
             initialValue: defaultApplicationId,
@@ -130,12 +97,17 @@ const promptApplicationId = async (deps: ScaffolderDeps, name: string): Promise<
     );
 };
 
-const promptPackageManager = async (deps: ScaffolderDeps): Promise<PackageManager> => {
-    const detected = await deps.detectPackageManager(deps.cwd()).catch(() => undefined);
+const detectPackageManager = async (cwd: string): Promise<PackageManager | undefined> => {
+    const detected = await nypmDetectPackageManager(cwd, { includeParentDirs: true });
+    if (!detected) return undefined;
+    return isKnownPackageManager(detected.name) ? detected.name : undefined;
+};
+
+const promptPackageManager = async (): Promise<PackageManager> => {
+    const detected = await detectPackageManager(process.cwd()).catch(() => undefined);
     const initial: PackageManager = detected ?? "pnpm";
     return guardCancellation(
-        deps,
-        await deps.prompts.select<PackageManager>({
+        await p.select<PackageManager>({
             message: "Package manager",
             options: PACKAGE_MANAGERS.map((manager) => {
                 const hint = detected === manager.value ? "detected" : manager.recommended ? "recommended" : undefined;
@@ -146,54 +118,60 @@ const promptPackageManager = async (deps: ScaffolderDeps): Promise<PackageManage
     );
 };
 
-const promptTesting = async (deps: ScaffolderDeps): Promise<boolean> =>
+const promptTesting = async (): Promise<boolean> =>
     guardCancellation(
-        deps,
-        await deps.prompts.confirm({
+        await p.confirm({
             message: "Include testing setup (Vitest)?",
             initialValue: true,
         }),
     );
 
-const promptForOptions = async (deps: ScaffolderDeps, options: CreateOptions): Promise<ResolvedOptions> => {
-    const name = options.name ?? (await promptName(deps));
-    const applicationId = options.applicationId ?? (await promptApplicationId(deps, name));
-    const packageManager = options.packageManager ?? (await promptPackageManager(deps));
-    const includeTesting = options.includeTesting ?? (await promptTesting(deps));
+const promptForOptions = async (options: CreateOptions): Promise<ResolvedOptions> => {
+    const name = options.name ?? (await promptName());
+    const applicationId = options.applicationId ?? (await promptApplicationId(name));
+    const packageManager = options.packageManager ?? (await promptPackageManager());
+    const includeTesting = options.includeTesting ?? (await promptTesting());
     return { name, applicationId, packageManager, includeTesting };
 };
 
-const TESTING_TEMPLATE_PREFIXES = ["config/", "tests/"] as const;
+const TESTING_TEMPLATES = new Set(["vitest.config.ts", "tests/app.test.tsx"]);
 
 const TEMPLATE_DESTINATIONS: Record<string, string> = {
     gitignore: ".gitignore",
-    "config/vitest.config.ts": "vitest.config.ts",
 };
 
 const destinationFor = (templateRelativePath: string): string =>
     TEMPLATE_DESTINATIONS[templateRelativePath] ?? templateRelativePath;
 
-const isTemplateIncluded = (templateRelativePath: string, resolved: ResolvedOptions): boolean => {
-    if (TESTING_TEMPLATE_PREFIXES.some((prefix) => templateRelativePath.startsWith(prefix))) {
-        return resolved.includeTesting;
-    }
-    return true;
-};
+const isTemplateIncluded = (templateRelativePath: string, resolved: ResolvedOptions): boolean =>
+    TESTING_TEMPLATES.has(templateRelativePath) ? resolved.includeTesting : true;
 
-const scaffoldProject = (deps: ScaffolderDeps, targetDir: string, resolved: ResolvedOptions): void => {
+const scaffoldProject = (targetDir: string, resolved: ResolvedOptions): void => {
     const { name, applicationId, includeTesting } = resolved;
     const context: TemplateContext = { name, applicationId, title: titleFromName(name), includeTesting };
 
-    deps.fs.mkdirSync(targetDir, { recursive: true });
+    mkdirSync(targetDir, { recursive: true });
 
-    for (const template of deps.listTemplates()) {
+    for (const template of listTemplates()) {
         const relativeTemplate = template.slice(0, -TEMPLATE_SUFFIX.length);
         if (!isTemplateIncluded(relativeTemplate, resolved)) continue;
 
         const destination = join(targetDir, destinationFor(relativeTemplate));
-        deps.fs.mkdirSync(dirname(destination), { recursive: true });
-        deps.fs.writeFileSync(destination, deps.render(template, context));
+        mkdirSync(dirname(destination), { recursive: true });
+        writeFileSync(destination, renderFile(template, context));
     }
+};
+
+type InstallDependenciesOptions = {
+    cwd: string;
+    packageManager: PackageManager;
+    dependencies: string[];
+    dev: boolean;
+};
+
+const installDependencies = async (options: InstallDependenciesOptions): Promise<void> => {
+    const { cwd, packageManager, dependencies, dev } = options;
+    await addDependency(dependencies, { cwd, packageManager, dev, silent: true });
 };
 
 type InstallAllOptions = {
@@ -203,36 +181,39 @@ type InstallAllOptions = {
     devDependencies: string[];
 };
 
-const installAllDependencies = async (deps: ScaffolderDeps, options: InstallAllOptions): Promise<void> => {
+const installAllDependencies = async (options: InstallAllOptions): Promise<void> => {
     const { targetDir, name, packageManager, devDependencies } = options;
-    const spinner = deps.prompts.spinner();
+    const spinner = p.spinner();
     spinner.start("Installing dependencies...");
 
-    const pin = (names: string[]): string[] => names.map((name) => pinGtkxDependency(name, deps.selfVersion));
+    const pin = (names: string[]): string[] => names.map((dependency) => pinGtkxDependency(dependency, selfVersion));
 
     try {
-        await deps.install({ cwd: targetDir, packageManager, dependencies: pin(DEPENDENCIES), dev: false });
-        await deps.install({ cwd: targetDir, packageManager, dependencies: pin(devDependencies), dev: true });
+        await installDependencies({ cwd: targetDir, packageManager, dependencies: pin(DEPENDENCIES), dev: false });
+        await installDependencies({ cwd: targetDir, packageManager, dependencies: pin(devDependencies), dev: true });
         spinner.stop("Dependencies installed!");
     } catch (error) {
         spinner.stop("Failed to install dependencies");
-        deps.prompts.log.error(`Error: ${errorMessage(error)}`);
-        deps.prompts.log.info("You can install dependencies manually by running:");
-        deps.prompts.log.info(`  cd ${name}`);
+        p.log.error(`Error: ${errorMessage(error)}`);
+        p.log.info("You can install dependencies manually by running:");
+        p.log.info(`  cd ${name}`);
     }
 };
 
-const writeInitialEnvModule = (deps: ScaffolderDeps, targetDir: string): void => {
+const writeInitialEnvModule = (targetDir: string): void => {
     const storeDir = join(targetDir, "node_modules", ".gtkx");
-    deps.fs.mkdirSync(storeDir, { recursive: true });
-    deps.fs.writeFileSync(join(storeDir, "env.d.ts"), renderEmptyGtkxEnvModule());
+    mkdirSync(storeDir, { recursive: true });
+    writeFileSync(join(storeDir, "env.d.ts"), renderEmptyGtkxEnvModule());
 };
 
-const initializeGitRepo = async (deps: ScaffolderDeps, targetDir: string): Promise<void> => {
-    const spinner = deps.prompts.spinner();
+const initializeGitRepo = async (targetDir: string): Promise<void> => {
+    const spinner = p.spinner();
     spinner.start("Initializing git repository...");
     try {
-        await deps.gitInit(targetDir);
+        const opts = { nodeOptions: { cwd: targetDir }, throwOnError: true } as const;
+        await x("git", ["init"], opts);
+        await x("git", ["add", "-A"], opts);
+        await x("git", ["commit", "-m", "Initial commit"], opts);
         spinner.stop("Git repository initialized!");
     } catch {
         spinner.stop("Failed to initialize git repository");
@@ -245,33 +226,33 @@ To run tests, you need a headless Wayland compositor installed:
   Fedora: sudo dnf install weston
   Ubuntu: sudo apt install weston`;
 
-const printNextSteps = (deps: ScaffolderDeps, resolved: ResolvedOptions): void => {
+const printNextSteps = (resolved: ResolvedOptions): void => {
     const devCmd = getDevCommand(resolved.packageManager);
     const nextSteps = `cd ${resolved.name}\n${devCmd}`;
     const testingNote = resolved.includeTesting ? HEADLESS_COMPOSITOR_NOTE : "";
-    deps.prompts.note(`${nextSteps}${testingNote}`, "Next steps");
+    p.note(`${nextSteps}${testingNote}`, "Next steps");
 };
 
-export const scaffold = async (deps: ScaffolderDeps, options: CreateOptions = {}): Promise<void> => {
-    deps.prompts.intro("Create GTKX App");
+export const scaffold = async (options: CreateOptions = {}): Promise<void> => {
+    p.intro("Create GTKX App");
 
-    const resolved = await promptForOptions(deps, options);
-    const targetDir = resolve(deps.cwd(), resolved.name);
+    const resolved = await promptForOptions(options);
+    const targetDir = resolve(process.cwd(), resolved.name);
     const devDeps = getDevDependencies(resolved.includeTesting);
 
-    const projectSpinner = deps.prompts.spinner();
+    const projectSpinner = p.spinner();
     projectSpinner.start("Creating project structure...");
-    scaffoldProject(deps, targetDir, resolved);
+    scaffoldProject(targetDir, resolved);
     projectSpinner.stop("Project structure created!");
 
-    await installAllDependencies(deps, {
+    await installAllDependencies({
         targetDir,
         name: resolved.name,
         packageManager: resolved.packageManager,
         devDependencies: devDeps,
     });
-    writeInitialEnvModule(deps, targetDir);
-    await initializeGitRepo(deps, targetDir);
+    writeInitialEnvModule(targetDir);
+    await initializeGitRepo(targetDir);
 
-    printNextSteps(deps, resolved);
+    printNextSteps(resolved);
 };

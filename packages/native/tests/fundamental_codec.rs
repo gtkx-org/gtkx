@@ -6,7 +6,7 @@ use gtk4::glib;
 
 use native::ffi;
 use native::managed::NativeHandle;
-use native::types::{FfiDecoder, FfiEncoder, FundamentalType, Ownership, RawPtrCodec, ReadSource};
+use native::types::{FfiDecoder, FfiEncoder, FundamentalType, Ownership, RawPtrWriter, ReadSource};
 use native::value::Value;
 
 use common::{

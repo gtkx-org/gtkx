@@ -1,7 +1,6 @@
 import "./setup-runtime.js";
 
 export { act } from "./act.js";
-export { addToCleanupQueue, type CleanupFunction, runCleanup } from "./cleanup-registry.js";
 export type { AsyncWrapper, Config, ConfigFn, EventWrapper } from "./config.js";
 export { configure, getConfig } from "./config.js";
 export { fireEvent } from "./fire-event.js";
@@ -48,7 +47,6 @@ export {
 } from "./queries.js";
 export { cleanup, render } from "./render.js";
 export { renderHook } from "./render-hook.js";
-export type { RoleInfo } from "./role-helpers.js";
 export { formatRole, getRoles, logRoles, prettyRoles } from "./role-helpers.js";
 export { screen } from "./screen.js";
 export { captureAndSaveScreenshot, logScreenshotPath, screenshot } from "./screenshot.js";
@@ -68,6 +66,7 @@ export type {
     RenderHookResult,
     RenderOptions,
     RenderResult,
+    Screen,
     ScreenshotOptions,
     ScreenshotResult,
     WaitForOptions,
@@ -82,10 +81,9 @@ export type {
     TabOptions,
     TypeOptions,
     UserEvent,
-    UserEventInstance,
     UserEventOptions,
-} from "./user-event.js";
-export { userEvent } from "./user-event.js";
+} from "./user-event/index.js";
+export { userEvent } from "./user-event/index.js";
 export { waitFor, waitForElementToBeRemoved } from "./wait-for.js";
 export { getWidgetNodeText } from "./widget-text.js";
 export { within } from "./within.js";

@@ -56,9 +56,9 @@ pub(crate) fn parse_callback_arg_and_return_types(
 
 mod array;
 mod bigint;
-mod blob;
 mod boolean;
 mod boxed;
+mod buffer;
 mod callback;
 mod fundamental;
 mod gobject;
@@ -74,9 +74,9 @@ mod void;
 pub use array::ArrayKind;
 pub use array::ArrayType;
 pub use bigint::BigIntKind;
-pub use blob::BlobType;
 pub use boolean::BooleanType;
 pub use boxed::{BoxedFreeFn, BoxedType, StructType};
+pub use buffer::BufferType;
 pub use callback::CallbackType;
 #[cfg(feature = "test-support")]
 pub use callback::CallbackScope;
@@ -319,7 +319,7 @@ pub trait FfiDecoder {
 }
 
 #[enum_dispatch]
-pub trait RawPtrCodec {
+pub trait RawPtrWriter {
     /// Writes a vfunc/callback return value into the C return slot `ret`. The default writes a
     /// null pointer.
     ///
@@ -374,17 +374,12 @@ pub trait RawPtrCodec {
     }
 }
 
-#[cfg(feature = "test-support")]
-pub trait FfiCodec: FfiEncoder + FfiDecoder + RawPtrCodec {}
-#[cfg(feature = "test-support")]
-impl<T: FfiEncoder + FfiDecoder + RawPtrCodec> FfiCodec for T {}
-
 pub(crate) trait FromDescriptor: Sized {
     #[allow(clippy::trivially_copy_pass_by_ref)]
     fn from_descriptor(env: &Env, obj: &JsObject) -> napi::Result<Self>;
 }
 
-#[enum_dispatch(FfiEncoder, FfiDecoder, RawPtrCodec)]
+#[enum_dispatch(FfiEncoder, FfiDecoder, RawPtrWriter)]
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub enum Type {
@@ -400,7 +395,7 @@ pub enum Type {
     Struct(StructType),
     Fundamental(FundamentalType),
     Array(ArrayType),
-    Blob(BlobType),
+    Buffer(BufferType),
     HashTable(HashTableType),
     Callback(CallbackType),
     Ref(RefType),
@@ -425,7 +420,7 @@ impl std::fmt::Display for Type {
             Self::Struct(t) => write!(f, "Struct({})", t.ownership),
             Self::Fundamental(t) => write!(f, "Fundamental({})", t.unref_func),
             Self::Array(_) => write!(f, "Array"),
-            Self::Blob(_) => write!(f, "Blob"),
+            Self::Buffer(_) => write!(f, "Buffer"),
             Self::HashTable(_) => write!(f, "HashTable"),
             Self::Callback(_) => write!(f, "Callback"),
             Self::Ref(t) => write!(f, "Ref({})", t.inner_type),
@@ -470,7 +465,7 @@ impl Type {
             "boxed" => Ok(Self::Boxed(BoxedType::from_descriptor(env, &obj)?)),
             "struct" => Ok(Self::Struct(StructType::from_descriptor(env, &obj)?)),
             "array" => Ok(Self::Array(ArrayType::from_descriptor(env, &obj)?)),
-            "blob" => Ok(Self::Blob(BlobType)),
+            "buffer" => Ok(Self::Buffer(BufferType)),
             "hashtable" => Ok(Self::HashTable(HashTableType::from_descriptor(env, &obj)?)),
             "callback" => Ok(Self::Callback(CallbackType::from_descriptor(env, &obj)?)),
             "ref" => Ok(Self::Ref(RefType::from_descriptor(env, &obj)?)),
@@ -487,7 +482,7 @@ impl Type {
 
     #[must_use]
     pub fn can_be_return_type(&self) -> bool {
-        !matches!(self, Self::Callback(_) | Self::Ref(_) | Self::Blob(_))
+        !matches!(self, Self::Callback(_) | Self::Ref(_) | Self::Buffer(_))
     }
 
     #[must_use]

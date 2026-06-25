@@ -196,7 +196,7 @@ const ListViewFilebrowserTitlebar = () => {
                         "viewswitcher",
                     ]}
                     valign={Gtk.Align.CENTER}
-                    selected={[viewMode]}
+                    selectedIds={[viewMode]}
                     onSelectionChanged={(ids) => {
                         const id = ids[0] as ViewMode | undefined;
                         if (id) setViewMode(id);

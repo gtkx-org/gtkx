@@ -15,7 +15,7 @@ const SCOPES: Set<CallbackScope> = new Set(["call", "notified", "async", "foreve
 export const transferOwnership = (node: RawNode): ParameterTransfer =>
     parseEnumAttr(attr(node, "transfer-ownership"), TRANSFERS, "none", "transfer-ownership");
 
-export const nullableAttr = (node: RawNode): boolean => attrBool(node, "nullable") || attrBool(node, "allow-none");
+const nullableAttr = (node: RawNode): boolean => attrBool(node, "nullable") || attrBool(node, "allow-none");
 
 export type GirParameter = {
     name: string;
@@ -60,7 +60,7 @@ export type GirReturnValue = {
     skip: boolean;
 };
 
-export const returnValueFromNode = (node: RawNode | undefined, context: ParseContext): GirReturnValue => {
+const returnValueFromNode = (node: RawNode | undefined, context: ParseContext): GirReturnValue => {
     if (node === undefined) {
         return { type: undefined, transferOwnership: "none", nullable: false, skip: false };
     }

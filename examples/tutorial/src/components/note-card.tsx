@@ -1,6 +1,5 @@
-import { AnimatePresence, TimedAnimation } from "@gtkx/animate";
+import { AnimatePresence, WidgetAnimation } from "@gtkx/animate";
 import { css } from "@gtkx/css";
-import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
 import type { Note } from "../types.js";
@@ -47,14 +46,12 @@ export const NoteCard = ({ note, compact = false, fontSize = 14 }: NoteCardProps
 
     return (
         <AnimatePresence>
-            <TimedAnimation
+            <WidgetAnimation
                 key={note.id}
-                initial={{ opacity: 0, translateY: -10 }}
-                animate={{ opacity: 1, translateY: 0 }}
-                exit={{ opacity: 0, translateX: -50 }}
-                duration={200}
-                easing={Adw.Easing.EASE_OUT_CUBIC}
-                animateOnMount
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, x: -50 }}
+                transition={{ type: "tween", duration: 0.2, ease: "easeOut" }}
             >
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -77,7 +74,7 @@ export const NoteCard = ({ note, compact = false, fontSize = 14 }: NoteCardProps
                         />
                     )}
                 </GtkBox>
-            </TimedAnimation>
+            </WidgetAnimation>
         </AnimatePresence>
     );
 };

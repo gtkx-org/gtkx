@@ -1,6 +1,7 @@
 import * as Gio from "@gtkx/gi/gio";
 import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
-import { ApplicationContext, createRootElement, useApplication } from "@gtkx/react";
+import { createRootElement, useApplication } from "@gtkx/react";
+import { ApplicationContext } from "@gtkx/react/internal";
 import { render } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 

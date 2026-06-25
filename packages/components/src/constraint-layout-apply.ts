@@ -1,6 +1,46 @@
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import type { ConstraintGuideProps, ConstraintProps, ConstraintVflProps } from "./types.js";
+
+/**
+ * Props for a `<ConstraintLayout.Constraint>` declaring a single relation
+ * between a target attribute and a source attribute within a
+ * `<ConstraintLayout>`.
+ */
+export type ConstraintProps = {
+    target?: string;
+    targetAttribute: Gtk.ConstraintAttribute;
+    relation?: Gtk.ConstraintRelation;
+    source?: string;
+    sourceAttribute?: Gtk.ConstraintAttribute;
+    multiplier?: number;
+    constant?: number;
+    strength?: number;
+};
+
+/**
+ * Props for a `<ConstraintLayout.Guide>` declaring an invisible layout guide
+ * that other constraints can reference by `id` within a `<ConstraintLayout>`.
+ */
+export type ConstraintGuideProps = {
+    id: string;
+    minWidth?: number;
+    minHeight?: number;
+    natWidth?: number;
+    natHeight?: number;
+    maxWidth?: number;
+    maxHeight?: number;
+    strength?: Gtk.ConstraintStrength;
+};
+
+/**
+ * Props for a `<ConstraintLayout.Vfl>` declaring constraints through the GTK
+ * Visual Format Language within a `<ConstraintLayout>`.
+ */
+export type ConstraintVflProps = {
+    lines: string[];
+    hspacing?: number;
+    vspacing?: number;
+};
 
 const SUPER_ID = "super";
 

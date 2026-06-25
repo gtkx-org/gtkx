@@ -1,9 +1,9 @@
-import { type GirRecord, isVtableRecord, recordFromNode } from "./boxed.js";
 import { callbackFromNode, type GirCallback } from "./callback.js";
 import { classFromNode, type GirClass } from "./class.js";
 import { enumFromNode, type GirEnum } from "./enum.js";
 import { functionFromNode, type GirFunction } from "./function.js";
 import { attr, childOf, childrenOf, nameAttr, type RawNode } from "./parse.js";
+import { type GirRecord, isVtableRecord, recordFromNode } from "./record.js";
 import type { ParseContext, TypeId } from "./type-id.js";
 import { typeRefFromSlot } from "./type-ref.js";
 

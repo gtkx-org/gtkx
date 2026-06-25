@@ -18,7 +18,7 @@ export class StyleSheet {
     }
 
     private updateProvider(): void {
-        if (this.provider && this.css.length > 0) {
+        if (this.provider) {
             this.provider.loadFromString(this.css);
         }
     }

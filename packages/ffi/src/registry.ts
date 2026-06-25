@@ -20,7 +20,7 @@ import type { Mixin } from "./mixin.js";
 
 let gobjectGtype: GType = TYPE_INVALID;
 
-function isGobjectType(gtype: GType): boolean {
+function isGObjectType(gtype: GType): boolean {
     if (gobjectGtype === TYPE_INVALID) {
         gobjectGtype = typeFromName("GObject");
     }
@@ -176,8 +176,8 @@ function resolveWrapper(
     const cls = resolveClass(runtimeGtype);
     if (!cls) throw new Error(describe(runtimeGtype));
     const instance = Object.create(cls.prototype) as GTyped;
-    if (isGobjectType(runtimeGtype)) {
-        linkGobjectWrapper(handle, instance);
+    if (isGObjectType(runtimeGtype)) {
+        linkGObjectWrapper(handle, instance);
     } else {
         setHandle(instance, handle);
     }
@@ -218,7 +218,7 @@ export function setHandle(instance: object, handle: Handle): void {
     handleMap.set(instance, handle);
 }
 
-function linkGobjectWrapper(handle: Handle, instance: object): void {
+function linkGObjectWrapper(handle: Handle, instance: object): void {
     setHandle(instance, handle);
     setWrapper(handle, instance);
 }
@@ -232,11 +232,11 @@ export type VfuncDescriptor<K extends "class" | "interface"> = {
     returnType: NativeRegisterClassVfunc["returnType"];
 };
 
-export type VfuncRegistry = Record<string, VfuncDescriptor<"class"> | VfuncDescriptor<"interface">>;
+type VfuncRegistry = Record<string, VfuncDescriptor<"class"> | VfuncDescriptor<"interface">>;
 
 const vfuncRegistryByClass = new WeakMap<object, VfuncRegistry>();
 
-export function registerVfuncRegistry(cls: object, registry: VfuncRegistry): void {
+function registerVfuncRegistry(cls: object, registry: VfuncRegistry): void {
     vfuncRegistryByClass.set(cls, registry);
 }
 
@@ -246,7 +246,7 @@ export function getVfuncRegistry(cls: object): VfuncRegistry | undefined {
 
 const interfaceVfuncRegistryByGtype = new Map<GType, VfuncRegistry>();
 
-export function registerInterfaceVfuncRegistry(gtype: GType, vfuncRegistry: VfuncRegistry): void {
+function registerInterfaceVfuncRegistry(gtype: GType, vfuncRegistry: VfuncRegistry): void {
     if (gtype === TYPE_INVALID) return;
     interfaceVfuncRegistryByGtype.set(gtype, vfuncRegistry);
 }

@@ -3,7 +3,7 @@ mod common;
 use std::ffi::c_void;
 
 use native::ffi::FfiValue;
-use native::types::{ArrayType, BlobType, FfiDecoder as _, FfiEncoder as _};
+use native::types::{ArrayType, BufferType, FfiDecoder as _, FfiEncoder as _};
 use native::value::{BufferView, BufferViewKind, Value};
 
 use common::{f32_array_type, i32_array_type};
@@ -70,7 +70,7 @@ fn buffer_view_array_passthrough_shares_the_backing_store() {
 }
 
 #[test]
-fn blob_view_passthrough_reads_and_writes_the_backing_store() {
+fn buffer_view_passthrough_reads_and_writes_the_backing_store() {
     let mut buffer: Vec<u8> = vec![10, 20, 30];
     let view = BufferView::new(
         buffer.as_mut_ptr() as *mut c_void,
@@ -80,13 +80,13 @@ fn blob_view_passthrough_reads_and_writes_the_backing_store() {
         false,
     );
 
-    let encoded = BlobType
+    let encoded = BufferType
         .encode(&Value::BufferView(view))
-        .expect("blob encode");
+        .expect("buffer encode");
     let ptr = encoded_ptr(&encoded);
     assert_eq!(ptr, buffer.as_mut_ptr() as *mut c_void);
 
-    // SAFETY: the blob encode passed the buffer through unchanged, so `ptr` aliases the live
+    // SAFETY: the buffer encode passed the buffer through unchanged, so `ptr` aliases the live
     // `buffer` of three `u8`s; indices 0 and 2 are in bounds, so the read and write are sound.
     unsafe {
         assert_eq!(*ptr.cast::<u8>(), 10);

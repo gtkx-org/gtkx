@@ -42,7 +42,6 @@ describe("listTemplates", () => {
         const templates = listTemplates();
 
         expect(templates).toEqual([
-            "config/vitest.config.ts.ejs",
             "gitignore.ejs",
             "gtkx.config.ts.ejs",
             "package.json.ejs",
@@ -51,6 +50,7 @@ describe("listTemplates", () => {
             "src/index.tsx.ejs",
             "tests/app.test.tsx.ejs",
             "tsconfig.json.ejs",
+            "vitest.config.ts.ejs",
         ]);
     });
 

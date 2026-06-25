@@ -2,7 +2,7 @@ import type * as Adw from "@gtkx/gi/adw";
 import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import type { RuleRegistry, RuleSet } from "./reconciler-metadata.js";
+import type { RuleRegistry, RuleSet } from "./reconciler.js";
 
 const POSITION_TYPE_BOTTOM = 3;
 

@@ -10,12 +10,11 @@ import {
     useCallback,
     useRef,
 } from "react";
-import { CellRenderHost } from "./cell-render-host.js";
+import { type CellRenderer, CellRenderHost, headerRenderer } from "./cell.js";
 import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
 import { useInstalledModel } from "./hooks/use-installed-model.js";
 import { useListModel } from "./hooks/use-list-model.js";
 import { useSelectionModel } from "./hooks/use-selection-model.js";
-import type { CellRenderer } from "./list-cell.js";
 import type { ItemNode } from "./types.js";
 import type { CellContainerStore } from "./utils/cell-container-store.js";
 import type { ItemResolver } from "./utils/item-resolver.js";
@@ -24,7 +23,7 @@ export interface ModelInstaller<W extends Gtk.Widget> {
     install(widget: W, model: Gio.ListModel): void;
 }
 
-export interface CollectionViewProps<T, S, W extends Gtk.Widget> {
+interface CollectionViewProps<T, S, W extends Gtk.Widget> {
     element: ElementType;
     intrinsicProps: Record<string, unknown>;
     ref: Ref<W | null> | undefined;
@@ -35,7 +34,7 @@ export interface CollectionViewProps<T, S, W extends Gtk.Widget> {
     renderHeader: ((value: S | undefined) => ReactNode) | undefined;
     estimatedHeight: number | undefined;
     estimatedWidth: number | undefined;
-    selected: string[] | null | undefined;
+    selectedIds: string[] | null | undefined;
     selectionMode: Gtk.SelectionMode | null | undefined;
     onSelectionChanged: ((ids: string[]) => void) | null | undefined;
     factoryInstaller: FactoryInstaller<W>;
@@ -43,11 +42,6 @@ export interface CollectionViewProps<T, S, W extends Gtk.Widget> {
     modelInstaller: ModelInstaller<W>;
     children?: ReactNode;
 }
-
-const headerRenderer =
-    <T, S>(renderHeader: ((value: S | undefined) => ReactNode) | undefined): CellRenderer<T, S> =>
-    (value) =>
-        renderHeader ? renderHeader(value as S | undefined) : null;
 
 interface CollectionWiring<T, S, W extends Gtk.Widget> {
     setRef: (value: W | null) => void;
@@ -74,19 +68,19 @@ const useCollectionWiring = <T, S, W extends Gtk.Widget>(
     const controlledSelection = useSelectionModel<T, S>({
         base: listModel.model,
         selectionMode: props.selectionMode,
-        selected: props.selected,
+        selectedIds: props.selectedIds,
         onSelectionChanged: props.onSelectionChanged,
         resolver: listModel.resolver,
     });
     const installedModel: Gio.ListModel = externalModel === undefined ? controlledSelection : externalModel;
 
-    const items = useCellContainers<W>({
+    const itemStore = useCellContainers<W>({
         target: widgetRef,
         installer: props.factoryInstaller,
         estimatedHeight: props.estimatedHeight,
         estimatedWidth: props.estimatedWidth,
     });
-    const headers = useCellContainers<W>({
+    const headerStore = useCellContainers<W>({
         target: props.headerFactoryInstaller ? widgetRef : null,
         installer: props.headerFactoryInstaller ?? props.factoryInstaller,
         estimatedHeight: props.estimatedHeight,
@@ -99,8 +93,8 @@ const useCollectionWiring = <T, S, W extends Gtk.Widget>(
         setRef,
         resolver: listModel.resolver,
         headerResolver: listModel.headerResolver,
-        itemStore: items.store,
-        headerStore: headers.store,
+        itemStore,
+        headerStore,
     };
 };
 

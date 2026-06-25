@@ -15,15 +15,20 @@ import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { collectTypeNameChain, findInheritedRow } from "../utils/gtype.js";
-import type { ElementMapping } from "./element-mapping.js";
-import { attachToParent, childRuleSetMapping, orderedInsertMapping, setElementMap } from "./mappings/dispatch.js";
+import {
+    attachToParent,
+    childRuleSetMapping,
+    type ElementMapping,
+    orderedInsertMapping,
+    setElementMap,
+} from "./mappings/dispatch.js";
 import {
     childWidget,
     isTopLevel,
+    relationshipChildWidgets,
     trackedInstance,
     trackedWidget,
-    wrapperChildWidgets,
-} from "./mappings/wrapper-content.js";
+} from "./mappings/relationship-content.js";
 import { callMethod, callRequiredMethod } from "./method-call.js";
 import {
     type InsertableWidget,
@@ -38,7 +43,7 @@ import {
 } from "./predicates.js";
 import { namedRuleSet, resolveAppendRuleSet, ruleNodeOf } from "./rule-registry.js";
 import { SLOT_HOST_BASE_TYPE } from "./slot-props.js";
-import { isWrapperKind, type Node, stateOf } from "./state.js";
+import { isRelationshipKind, type Node, stateOf } from "./state.js";
 import type { Props } from "./types.js";
 import { attachChild, detachChild, getFocusWidget, isAttachedTo, isDescendantOf, unparentWidget } from "./widget.js";
 
@@ -51,42 +56,42 @@ const rescueFocus = (parent: GObject.Object, child: GObject.Object | undefined):
     if (focus && isDescendantOf(focus, child)) parent.grabFocus();
 };
 
-type SlotState = { prop: string; value: GObject.Object };
+type WidgetPropState = { prop: string; value: GObject.Object };
 
-const slotState = new WeakMap<Node, SlotState>();
+const widgetPropState = new WeakMap<Node, WidgetPropState>();
 
 const LAYOUT_MANAGER_PROP = "layoutManager";
 
 const resyncLayoutChildWrappers = (parent: Node): void => {
     for (const sibling of stateOf(parent).children) {
-        if (isWrapperKind(sibling, LAYOUT_CHILD_KIND)) attachToParent(sibling, parent);
+        if (isRelationshipKind(sibling, LAYOUT_CHILD_KIND)) attachToParent(sibling, parent);
     }
 };
 
-const slotMapping: ElementMapping = {
-    matches: (child, parent) => isWrapperKind(child, WIDGET_PROP_KIND) && parent instanceof GObject.Object,
+const widgetPropMapping: ElementMapping = {
+    matches: (child, parent) => isRelationshipKind(child, WIDGET_PROP_KIND) && parent instanceof GObject.Object,
     attach: (child, parent) => {
         const childState = stateOf(child);
         const prop = childState.props["propName"];
         if (typeof prop !== "string" || !(parent instanceof GObject.Object)) return;
         const value = trackedInstance(child);
-        const state = slotState.get(child);
+        const state = widgetPropState.get(child);
         if (state && state.value === value) return;
         Reflect.set(parent, prop, value ?? null);
-        if (value) slotState.set(child, { prop, value });
-        else slotState.delete(child);
+        if (value) widgetPropState.set(child, { prop, value });
+        else widgetPropState.delete(child);
         if (prop === LAYOUT_MANAGER_PROP) resyncLayoutChildWrappers(parent);
     },
     detach: (child, parent) => {
-        const state = slotState.get(child);
-        slotState.delete(child);
+        const state = widgetPropState.get(child);
+        widgetPropState.delete(child);
         if (!state || !(parent instanceof GObject.Object) || !isRooted(parent)) return;
         rescueFocus(parent, state.value);
         Reflect.set(parent, state.prop, null);
     },
 };
 
-const wrapperChildInstances = (wrapper: Node): Node[] =>
+const relationshipChildInstances = (wrapper: Node): Node[] =>
     stateOf(wrapper).children.filter((child) => child instanceof GObject.Object);
 
 const sameInstances = (a: Node[], b: Node[]): boolean =>
@@ -102,39 +107,39 @@ const slotHostRuleSet = (host: GObject.Object, slotTag: string) => {
     return baseType ? namedRuleSet(baseType) : resolveAppendRuleSet(host.__gtype__);
 };
 
-const attachContainerPropChild = (instance: Node, parent: GObject.Object, slotTag: string): void => {
+const attachContainerSlotChild = (instance: Node, parent: GObject.Object, slotTag: string): void => {
     const parentNode = ruleNodeOf(parent);
     const childNode = ruleNodeOf(instance, slotTag);
     if (parentNode && childNode) slotHostRuleSet(parent, slotTag)?.appendChild?.(parentNode, childNode);
 };
 
-const detachContainerPropChild = (instance: Node, parent: GObject.Object, slotTag: string): void => {
+const detachContainerSlotChild = (instance: Node, parent: GObject.Object, slotTag: string): void => {
     const parentNode = ruleNodeOf(parent);
     const childNode = ruleNodeOf(instance, slotTag);
     if (parentNode && childNode) slotHostRuleSet(parent, slotTag)?.removeChild?.(parentNode, childNode);
     if (instance instanceof Gtk.Widget && instance.getParent() !== null) unparentWidget(instance);
 };
 
-const containerPropState = new WeakMap<Node, Node[]>();
+const containerSlotState = new WeakMap<Node, Node[]>();
 
-const containerPropMapping: ElementMapping = {
-    matches: (child, parent) => isWrapperKind(child, CONTAINER_SLOT_KIND) && parent instanceof GObject.Object,
+const containerSlotMapping: ElementMapping = {
+    matches: (child, parent) => isRelationshipKind(child, CONTAINER_SLOT_KIND) && parent instanceof GObject.Object,
     attach: (child, parent) => {
         const slotTag = slotTagOf(child);
         if (slotTag === undefined || !(parent instanceof GObject.Object)) return;
-        const desired = wrapperChildInstances(child);
-        const prev = containerPropState.get(child) ?? [];
+        const desired = relationshipChildInstances(child);
+        const prev = containerSlotState.get(child) ?? [];
         if (sameInstances(prev, desired)) return;
-        for (const instance of prev) detachContainerPropChild(instance, parent, slotTag);
-        for (const instance of desired) attachContainerPropChild(instance, parent, slotTag);
-        containerPropState.set(child, desired);
+        for (const instance of prev) detachContainerSlotChild(instance, parent, slotTag);
+        for (const instance of desired) attachContainerSlotChild(instance, parent, slotTag);
+        containerSlotState.set(child, desired);
     },
     detach: (child, parent) => {
         const slotTag = slotTagOf(child);
-        const instances = containerPropState.get(child) ?? [];
-        containerPropState.delete(child);
+        const instances = containerSlotState.get(child) ?? [];
+        containerSlotState.delete(child);
         if (slotTag === undefined || !(parent instanceof GObject.Object)) return;
-        for (const instance of instances) detachContainerPropChild(instance, parent, slotTag);
+        for (const instance of instances) detachContainerSlotChild(instance, parent, slotTag);
     },
 };
 
@@ -173,14 +178,16 @@ const addStackPage = (
 
 const notebookPosition = (wrapper: Node): number | null => {
     const parent = stateOf(wrapper).parent;
-    const siblings = parent ? stateOf(parent).children.filter((child) => isWrapperKind(child, META_OBJECT_KIND)) : [];
+    const siblings = parent
+        ? stateOf(parent).children.filter((child) => isRelationshipKind(child, META_OBJECT_KIND))
+        : [];
     const index = siblings.indexOf(wrapper);
     return index >= 0 ? index : null;
 };
 
 const notebookTabLabel = (wrapper: Node): Gtk.Widget => {
     const wrapperState = stateOf(wrapper);
-    const tab = wrapperState.children.find((child) => isWrapperKind(child, TAB_LABEL_KIND));
+    const tab = wrapperState.children.find((child) => isRelationshipKind(child, TAB_LABEL_KIND));
     const label = tab ? stateOf(tab).children[0] : undefined;
     if (label instanceof Gtk.Widget) return label;
     const synthesized = new Gtk.Label();
@@ -197,7 +204,7 @@ const applyNotebookMeta = (notebook: Gtk.Notebook, widget: Gtk.Widget, props: Pr
 
 const updateNotebookTabLabel = (notebook: Gtk.Notebook, widget: Gtk.Widget, wrapper: Node): void => {
     const wrapperState = stateOf(wrapper);
-    if (wrapperState.children.some((child) => isWrapperKind(child, TAB_LABEL_KIND))) return;
+    if (wrapperState.children.some((child) => isRelationshipKind(child, TAB_LABEL_KIND))) return;
     const current = notebook.getTabLabel(widget);
     if (current instanceof Gtk.Label)
         current.setLabel(typeof wrapperState.props["label"] === "string" ? wrapperState.props["label"] : "");
@@ -216,7 +223,7 @@ type NotebookPageState = { widget: Gtk.Widget };
 const notebookPageState = new WeakMap<Node, NotebookPageState>();
 
 const notebookPageMapping: ElementMapping = {
-    matches: (child, parent) => isWrapperKind(child, META_OBJECT_KIND) && parent instanceof Gtk.Notebook,
+    matches: (child, parent) => isRelationshipKind(child, META_OBJECT_KIND) && parent instanceof Gtk.Notebook,
     attach: (child, parent) => {
         if (!(parent instanceof Gtk.Notebook)) return;
         const widget = trackedWidget(child);
@@ -245,7 +252,7 @@ const metaState = new WeakMap<Node, MetaState>();
 
 const metaObjectMapping: ElementMapping = {
     matches: (child, parent) =>
-        isWrapperKind(child, META_OBJECT_KIND) &&
+        isRelationshipKind(child, META_OBJECT_KIND) &&
         metaAddRules(parent instanceof GObject.Object ? parent : undefined) !== null,
     attach: (child, parent) => {
         const childState = stateOf(child);
@@ -326,7 +333,7 @@ type MultiChildHandlers = {
 const reconcileMultiChildAttach = (child: Node, parent: Gtk.Widget, handlers: MultiChildHandlers): void => {
     const { remove, add, applyChild } = handlers;
     const childState = stateOf(child);
-    const desired = wrapperChildWidgets(child);
+    const desired = relationshipChildWidgets(child);
     const prev = multiChildState.get(child) ?? [];
     for (const widget of prev) {
         if (!desired.includes(widget)) remove(widget);
@@ -347,7 +354,9 @@ const reconcileMultiChildDetach = (child: Node, remove: (widget: Gtk.Widget) => 
 
 const layoutChildMapping: ElementMapping = {
     matches: (child, parent) =>
-        isWrapperKind(child, LAYOUT_CHILD_KIND) && parent instanceof Gtk.Widget && resolveLayoutKind(parent) !== null,
+        isRelationshipKind(child, LAYOUT_CHILD_KIND) &&
+        parent instanceof Gtk.Widget &&
+        resolveLayoutKind(parent) !== null,
     attach: (child, parent) => {
         if (!(parent instanceof Gtk.Widget)) return;
         const kind = resolveLayoutKind(parent);
@@ -371,7 +380,7 @@ const applyOverlayFlags = (overlay: Gtk.Overlay, widget: Gtk.Widget, props: Prop
 };
 
 const overlayMapping: ElementMapping = {
-    matches: (child, parent) => isWrapperKind(child, OVERLAY_KIND) && parent instanceof Gtk.Overlay,
+    matches: (child, parent) => isRelationshipKind(child, OVERLAY_KIND) && parent instanceof Gtk.Overlay,
     attach: (child, parent) => {
         if (!(parent instanceof Gtk.Overlay)) return;
         reconcileMultiChildAttach(child, parent, {
@@ -607,8 +616,8 @@ const promotedNestingGuardMapping: ElementMapping = {
 };
 
 export const ELEMENT_MAP: ElementMapping[] = [
-    slotMapping,
-    containerPropMapping,
+    widgetPropMapping,
+    containerSlotMapping,
     notebookPageMapping,
     metaObjectMapping,
     layoutChildMapping,
@@ -623,4 +632,4 @@ export const ELEMENT_MAP: ElementMapping[] = [
 
 setElementMap(ELEMENT_MAP);
 
-export { attachNode, detachFromParent, detachNode, resyncWrapper } from "./mappings/dispatch.js";
+export { attachNode, detachFromParent, detachNode, resyncRelationshipNode } from "./mappings/dispatch.js";

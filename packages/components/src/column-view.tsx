@@ -3,19 +3,16 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkColumnView, type GtkColumnViewProps } from "@gtkx/jsx/gtk";
 import { useForwardedRef } from "@gtkx/react";
 import { createElement, type ReactNode, type Ref, useCallback, useMemo, useRef, useState } from "react";
-import { CellRenderHost } from "./cell-render-host.js";
-import {
-    type ColumnRegistration,
-    ColumnViewContext,
-    type ColumnViewContextValue,
-} from "./contexts/column-view-context.js";
+import { CellRenderHost, headerRenderer } from "./cell.js";
+import { ColumnViewColumn } from "./column-view-column.js";
+import { type ColumnRegistration, ColumnViewContext, type ColumnViewContextValue } from "./column-view-context.js";
 import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
 import { useInstalledModel } from "./hooks/use-installed-model.js";
 import { useListModel } from "./hooks/use-list-model.js";
 import { useSelectionModel } from "./hooks/use-selection-model.js";
 import { useSortHandler } from "./hooks/use-sort-handler.js";
-import type { CellRenderer } from "./list-cell.js";
-import type { ColumnViewProps } from "./types.js";
+import type { ItemNode, ListViewControlledSelectionProps } from "./types.js";
+import type { CellContainerStore } from "./utils/cell-container-store.js";
 import type { ItemResolver } from "./utils/item-resolver.js";
 
 const headerFactoryInstaller: FactoryInstaller<Gtk.ColumnView> = {
@@ -50,35 +47,61 @@ const useColumnRegistry = (): ColumnRegistry => {
     return { columns, register, unregister };
 };
 
+type ColumnViewSortProps = {
+    sortColumn?: string | null | undefined;
+    sortOrder?: Gtk.SortType | null | undefined;
+    onSortChanged?: ((column: string | null, order: Gtk.SortType) => void) | null | undefined;
+    estimatedItemHeight?: number | null | undefined;
+};
+
+/**
+ * Props for the {@link ColumnView} component, replacing the raw `GtkColumnView`
+ * surface with a declarative `items` model, optional controlled selection,
+ * controlled sorting, and section headers. Columns are declared as
+ * {@link ColumnViewColumn} children. Supplying an external `model` switches to
+ * the uncontrolled form.
+ */
+export type ColumnViewDeclarativeProps<T = unknown, S = unknown> = ColumnViewSortProps &
+    (
+        | (ListViewControlledSelectionProps & {
+              items?: ItemNode<T, S>[] | undefined;
+              renderHeader?: ((item: S) => ReactNode) | null | undefined;
+              model?: never;
+          })
+        | {
+              model: Gio.ListModel;
+              items?: never;
+              renderHeader?: never;
+              selectedIds?: never;
+              onSelectionChanged?: never;
+              selectionMode?: never;
+          }
+    );
+
 /**
  * Props for the {@link ColumnView} component: the raw `GtkColumnView` element
  * surface (minus its imperative `columns` property) with its model/sort wiring
- * replaced by the declarative {@link ColumnViewProps} API. Columns are declared
- * as {@link ColumnViewColumn} children.
+ * replaced by the declarative {@link ColumnViewDeclarativeProps} API. Columns
+ * are declared as {@link ColumnViewColumn} children.
  */
-export type ColumnViewComponentProps<T = unknown, S = unknown> = Omit<
+export type ColumnViewProps<T = unknown, S = unknown> = Omit<
     GtkColumnViewProps,
-    "columns" | keyof ColumnViewProps<T, S>
+    "columns" | keyof ColumnViewDeclarativeProps<T, S>
 > &
-    ColumnViewProps<T, S>;
+    ColumnViewDeclarativeProps<T, S>;
 
-type NormalizedColumnViewProps<T, S> = ColumnViewProps<T, S> & {
+type NormalizedColumnViewProps<T, S> = ColumnViewDeclarativeProps<T, S> & {
     ref?: Ref<Gtk.ColumnView | null>;
     renderHeader?: ((value: S) => ReactNode) | null;
     children?: ReactNode;
     [key: string]: unknown;
 };
 
-const headerRenderer =
-    <T, S>(renderHeader: ((value: S) => ReactNode) | null | undefined): CellRenderer<T, S> =>
-    (value) =>
-        renderHeader ? renderHeader(value as S) : null;
-
 interface ColumnViewWiring<T, S> {
     setRef: (value: Gtk.ColumnView | null) => void;
     resolver: ItemResolver<T, S>;
     headerResolver: ItemResolver<T, S>;
-    headerStore: ReturnType<typeof useCellContainers>["store"];
+    headerStore: CellContainerStore;
     useHeader: boolean;
     contextValue: ColumnViewContextValue;
 }
@@ -101,7 +124,7 @@ const useColumnViewWiring = <T, S>(
     const controlledSelection = useSelectionModel<T, S>({
         base: listModel.model,
         selectionMode: props.selectionMode,
-        selected: props.selected,
+        selectedIds: props.selectedIds,
         onSelectionChanged: props.onSelectionChanged,
         resolver: listModel.resolver,
     });
@@ -110,7 +133,7 @@ const useColumnViewWiring = <T, S>(
     useInstalledModel(widgetRef, installedModel, (widget, model) => widget.setModel(model));
 
     const useHeader = externalModel === undefined && typeof props.renderHeader === "function";
-    const headers = useCellContainers<Gtk.ColumnView>({
+    const headerStore = useCellContainers<Gtk.ColumnView>({
         target: useHeader ? widgetRef : null,
         installer: headerFactoryInstaller,
         estimatedHeight: props.estimatedItemHeight ?? undefined,
@@ -138,7 +161,7 @@ const useColumnViewWiring = <T, S>(
         setRef,
         resolver: listModel.resolver,
         headerResolver: listModel.headerResolver,
-        headerStore: headers.store,
+        headerStore,
         useHeader,
         contextValue,
     };
@@ -150,30 +173,15 @@ const useColumnViewWiring = <T, S>(
  * declared as {@link ColumnViewColumn} children. Supplying an external `model`
  * switches to the uncontrolled form.
  */
-export const ColumnView = <T = unknown, S = unknown>(props: ColumnViewComponentProps<T, S>): ReactNode => {
-    const {
-        ref,
-        items,
-        model,
-        selected,
-        selectionMode,
-        onSelectionChanged,
-        sortColumn,
-        sortOrder,
-        onSortChanged,
-        renderHeader,
-        estimatedItemHeight,
-        children,
-        ...intrinsicProps
-    } = props as NormalizedColumnViewProps<T, S>;
-
-    const registry = useColumnRegistry();
-    const wiring = useColumnViewWiring<T, S>(
-        {
+export const ColumnView: (<T = unknown, S = unknown>(props: ColumnViewProps<T, S>) => ReactNode) & {
+    Column: typeof ColumnViewColumn;
+} = Object.assign(
+    <T = unknown, S = unknown>(props: ColumnViewProps<T, S>): ReactNode => {
+        const {
             ref,
             items,
             model,
-            selected,
+            selectedIds,
             selectionMode,
             onSelectionChanged,
             sortColumn,
@@ -181,26 +189,46 @@ export const ColumnView = <T = unknown, S = unknown>(props: ColumnViewComponentP
             onSortChanged,
             renderHeader,
             estimatedItemHeight,
-        } as NormalizedColumnViewProps<T, S>,
-        registry,
-    );
+            children,
+            ...intrinsicProps
+        } = props as NormalizedColumnViewProps<T, S>;
 
-    const intrinsic = createElement(
-        GtkColumnView,
-        { ...intrinsicProps, ref: wiring.setRef },
-        <ColumnViewContext.Provider value={wiring.contextValue}>{children}</ColumnViewContext.Provider>,
-    );
+        const registry = useColumnRegistry();
+        const wiring = useColumnViewWiring<T, S>(
+            {
+                ref,
+                items,
+                model,
+                selectedIds,
+                selectionMode,
+                onSelectionChanged,
+                sortColumn,
+                sortOrder,
+                onSortChanged,
+                renderHeader,
+                estimatedItemHeight,
+            } as NormalizedColumnViewProps<T, S>,
+            registry,
+        );
 
-    return (
-        <>
-            {intrinsic}
-            {wiring.useHeader ? (
-                <CellRenderHost
-                    store={wiring.headerStore}
-                    resolver={wiring.headerResolver}
-                    render={headerRenderer<T, S>(renderHeader)}
-                />
-            ) : null}
-        </>
-    );
-};
+        const intrinsic = createElement(
+            GtkColumnView,
+            { ...intrinsicProps, ref: wiring.setRef },
+            <ColumnViewContext.Provider value={wiring.contextValue}>{children}</ColumnViewContext.Provider>,
+        );
+
+        return (
+            <>
+                {intrinsic}
+                {wiring.useHeader ? (
+                    <CellRenderHost
+                        store={wiring.headerStore}
+                        resolver={wiring.headerResolver}
+                        render={headerRenderer<T, S>(renderHeader)}
+                    />
+                ) : null}
+            </>
+        );
+    },
+    { Column: ColumnViewColumn },
+);

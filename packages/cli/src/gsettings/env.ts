@@ -31,7 +31,6 @@ const moduleSpecifierFor = (dataDirAbs: string, filePath: string): string =>
 
 type SchemaEnvResult = {
     path: string;
-    schemaFiles: string[];
     written: boolean;
 };
 
@@ -97,5 +96,5 @@ export const emitSchemaEnv = (rootDir: string, dataDir: string | null): SchemaEn
     const content = renderEnvModule(parsed);
     const path = schemaEnvPath(rootDir);
     const written = writeIfChanged(path, content);
-    return { path, schemaFiles, written };
+    return { path, written };
 };

@@ -4,7 +4,7 @@ pub(super) use super::raw_ptr::{
     encode_and_leak_container, swap_owned_slot, write_object_ptr, write_return_object_ptr,
 };
 pub(super) use super::{
-    FfiDecoder, FfiEncoder, FromDescriptor, Ownership, RawPtrCodec, ReadSource,
+    FfiDecoder, FfiEncoder, FromDescriptor, Ownership, RawPtrWriter, ReadSource,
 };
 pub(super) use crate::{ffi, value};
 

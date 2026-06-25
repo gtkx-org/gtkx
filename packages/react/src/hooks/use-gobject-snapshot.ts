@@ -1,7 +1,7 @@
 import type { SignalHandler } from "@gtkx/ffi";
 import type * as GObject from "@gtkx/gi/gobject";
 import { useCallback, useRef, useSyncExternalStore } from "react";
-import { type GObjectTarget, resolveGobjectTarget } from "../utils/gobject-target.js";
+import { type GObjectTarget, resolveGObjectTarget } from "../utils/gobject-target.js";
 
 interface SnapshotCache<T extends GObject.Object, V> {
     target: T | null;
@@ -15,7 +15,7 @@ export function useGObjectSnapshot<T extends GObject.Object, V>(
     read: (target: T | null) => V,
     after = false,
 ): V {
-    const resolved = resolveGobjectTarget(target);
+    const resolved = resolveGObjectTarget(target);
     const readRef = useRef(read);
     readRef.current = read;
     const cacheRef = useRef<SnapshotCache<T, V> | null>(null);

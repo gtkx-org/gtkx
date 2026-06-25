@@ -2,20 +2,10 @@ import { output } from "./log.js";
 
 const ERROR_EXIT_CODE = 1;
 
-type GtkxErrorOptions = ErrorOptions & {
-    link?: string;
-    action?: string;
-};
-
 export class GtkxError extends Error {
-    link?: string;
-    action?: string;
-
-    constructor(message: string, options?: GtkxErrorOptions) {
+    constructor(message: string, options?: ErrorOptions) {
         super(message, options);
         this.name = "GtkxError";
-        if (options?.link !== undefined) this.link = options.link;
-        if (options?.action !== undefined) this.action = options.action;
     }
 }
 
@@ -25,9 +15,6 @@ export const runCommand = async (fn: () => Promise<void>): Promise<void> => {
     } catch (cause) {
         if (cause instanceof GtkxError) {
             output.error(cause.message);
-            if (cause.link !== undefined) {
-                output.error(`${cause.action ?? "See"}: ${cause.link}`);
-            }
             process.exit(ERROR_EXIT_CODE);
         }
         const message = cause instanceof Error ? cause.message : String(cause);

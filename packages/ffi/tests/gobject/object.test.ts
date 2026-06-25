@@ -1,45 +1,45 @@
-import { getGobjectProperty, setGobjectProperty, t } from "@gtkx/ffi";
+import { getGObjectProperty, setGObjectProperty, t } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it, vi } from "vitest";
 import "@gtkx/gi/gobject";
 
-describe("getGobjectProperty / setGobjectProperty auto-marshalling", () => {
+describe("getGObjectProperty / setGObjectProperty auto-marshalling", () => {
     it("round-trips a string property", () => {
         const label = new Gtk.Label({ label: "" });
-        setGobjectProperty(label, "label", t.string("borrowed"), "hello");
-        expect(getGobjectProperty(label, "label", t.string("borrowed"))).toBe("hello");
+        setGObjectProperty(label, "label", t.string("borrowed"), "hello");
+        expect(getGObjectProperty(label, "label", t.string("borrowed"))).toBe("hello");
     });
 
     it("round-trips a boolean property", () => {
         const button = new Gtk.Button();
-        setGobjectProperty(button, "sensitive", t.boolean, false);
-        expect(getGobjectProperty(button, "sensitive", t.boolean)).toBe(false);
-        setGobjectProperty(button, "sensitive", t.boolean, true);
-        expect(getGobjectProperty(button, "sensitive", t.boolean)).toBe(true);
+        setGObjectProperty(button, "sensitive", t.boolean, false);
+        expect(getGObjectProperty(button, "sensitive", t.boolean)).toBe(false);
+        setGObjectProperty(button, "sensitive", t.boolean, true);
+        expect(getGObjectProperty(button, "sensitive", t.boolean)).toBe(true);
     });
 
     it("round-trips an integer property", () => {
         const scale = new Gtk.Scale();
-        setGobjectProperty(scale, "width-request", t.int32, 240);
-        expect(getGobjectProperty(scale, "width-request", t.int32)).toBe(240);
+        setGObjectProperty(scale, "width-request", t.int32, 240);
+        expect(getGObjectProperty(scale, "width-request", t.int32)).toBe(240);
     });
 
     it("round-trips a double property", () => {
         const adjustment = Gtk.Adjustment.new(0, 0, 1, 0.1, 0.1, 0);
-        setGobjectProperty(adjustment, "value", t.float64, 0.75);
-        expect(getGobjectProperty(adjustment, "value", t.float64) as number).toBeCloseTo(0.75);
+        setGObjectProperty(adjustment, "value", t.float64, 0.75);
+        expect(getGObjectProperty(adjustment, "value", t.float64) as number).toBeCloseTo(0.75);
     });
 
     it("preserves null when reading a string property that is unset", () => {
         const button = new Gtk.Button();
-        const result = getGobjectProperty(button, "label", t.string("borrowed"));
+        const result = getGObjectProperty(button, "label", t.string("borrowed"));
         expect(result === null || result === "").toBe(true);
     });
 
     it("returns a wrapper instance for object properties via the class registry", () => {
         const window = new Gtk.Window();
-        expect(getGobjectProperty(window, "display", t.object("borrowed"))).toBeInstanceOf(Gdk.Display);
+        expect(getGObjectProperty(window, "display", t.object("borrowed"))).toBeInstanceOf(Gdk.Display);
     });
 });
 

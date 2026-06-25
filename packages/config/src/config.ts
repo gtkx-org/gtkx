@@ -122,16 +122,24 @@ export type GtkxConfigEnv = {
     mode?: string;
 };
 
-export type GtkxConfigFn = (env: GtkxConfigEnv) => GtkxConfig;
+export type GtkxConfigFnObject = (env: GtkxConfigEnv) => GtkxConfig;
 
 export type GtkxConfigFnPromise = (env: GtkxConfigEnv) => Promise<GtkxConfig>;
 
-export type GtkxConfigExport = GtkxConfig | Promise<GtkxConfig> | GtkxConfigFn | GtkxConfigFnPromise;
+export type GtkxConfigFn = (env: GtkxConfigEnv) => GtkxConfig | Promise<GtkxConfig>;
+
+export type GtkxConfigExport =
+    | GtkxConfig
+    | Promise<GtkxConfig>
+    | GtkxConfigFnObject
+    | GtkxConfigFnPromise
+    | GtkxConfigFn;
 
 export function defineConfig(config: GtkxConfig): GtkxConfig;
 export function defineConfig(config: Promise<GtkxConfig>): Promise<GtkxConfig>;
-export function defineConfig(config: GtkxConfigFn): GtkxConfigFn;
+export function defineConfig(config: GtkxConfigFnObject): GtkxConfigFnObject;
 export function defineConfig(config: GtkxConfigFnPromise): GtkxConfigFnPromise;
+export function defineConfig(config: GtkxConfigFn): GtkxConfigFn;
 export function defineConfig(config: GtkxConfigExport): GtkxConfigExport {
     return config;
 }

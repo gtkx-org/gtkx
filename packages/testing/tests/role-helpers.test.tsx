@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkCheckButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getRoles, prettyRoles, render, screen } from "../src/index.js";
+import { getRoles, getWidgetNodeText, prettyRoles, render, screen } from "../src/index.js";
 
 describe("getRoles", () => {
     it("returns map of roles to widgets", async () => {
@@ -20,13 +20,14 @@ describe("getRoles", () => {
         expect(roles.get("button")?.length).toBe(2);
     });
 
-    it("includes accessible names", async () => {
+    it("maps each role to its widgets", async () => {
         const { container } = await render(<GtkButton label="My Button" />);
 
         const roles = getRoles(container);
-        const buttons = roles.get("button");
+        const button = roles.get("button")?.[0];
 
-        expect(buttons?.[0]?.name).toBe("My Button");
+        expect(button).toBeInstanceOf(Gtk.Button);
+        expect(button && getWidgetNodeText(button)).toBe("My Button");
     });
 
     it("returns empty map for empty container", async () => {

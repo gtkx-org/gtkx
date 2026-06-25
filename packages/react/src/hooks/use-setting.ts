@@ -10,13 +10,6 @@ export interface SchemaRef<K extends object = Record<string, unknown>> {
     __keys__?: K;
 }
 
-export interface RelocatableSchemaRef<K extends object = Record<string, unknown>> {
-    id: string;
-    keys: { [P in keyof K]: string };
-    __keys__?: K;
-    at(path: string): SchemaRef<K>;
-}
-
 export function useSetting<K extends object, P extends keyof K & string>(
     schema: SchemaRef<K>,
     key: P,

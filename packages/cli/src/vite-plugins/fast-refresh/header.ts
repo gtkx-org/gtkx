@@ -1,15 +1,9 @@
 import { fileURLToPath } from "node:url";
 import type { Plugin } from "vite";
-import {
-    createRefreshGate,
-    REFRESH_REG,
-    REFRESH_RUNTIME_SPECIFIER,
-    REFRESH_SIG,
-    type RefreshFilterOptions,
-} from "../../internal/vite-refresh-shared.js";
+import { createRefreshGate, REFRESH_REG, REFRESH_RUNTIME_SPECIFIER, REFRESH_SIG } from "./refresh-filter.js";
 
-export function gtkxRefresh(options: RefreshFilterOptions = {}): Plugin {
-    const gate = createRefreshGate(options);
+export function gtkxRefresh(): Plugin {
+    const gate = createRefreshGate();
 
     return {
         name: "gtkx:refresh",

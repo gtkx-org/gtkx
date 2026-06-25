@@ -1,7 +1,2 @@
-export {
-    CODEGEN_VERSION,
-    type CodegenFingerprint,
-    computeFingerprint,
-    FINGERPRINT_FILENAME,
-} from "./fingerprint.js";
-export { CodegenRunner, type CodegenRunnerOptions } from "./runner.js";
+export { type CodegenFingerprint, computeFingerprint, FINGERPRINT_FILENAME } from "./fingerprint.js";
+export { type CodegenRunnerResult, runCodegen } from "./runner.js";

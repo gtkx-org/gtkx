@@ -1,10 +1,5 @@
-import { createRequire } from "node:module";
-import { resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { defineCommand, runMain } from "citty";
-
-const require = createRequire(import.meta.url);
-const { version } = require("../package.json") as { version: string };
+import { version } from "./version.js";
 
 export const main = defineCommand({
     meta: {
@@ -20,6 +15,4 @@ export const main = defineCommand({
     },
 });
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
-    void runMain(main);
-}
+runMain(main);

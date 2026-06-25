@@ -1,20 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../src/create.js", () => ({
-    createApp: vi.fn(async () => undefined),
+vi.mock("../src/scaffolder.js", () => ({
+    scaffold: vi.fn(async () => undefined),
 }));
 
 import { type CreateCommandArgs, createCommand, runCreate } from "../src/command.js";
-import { createApp } from "../src/create.js";
+import { scaffold } from "../src/scaffolder.js";
 
-const createAppMock = vi.mocked(createApp);
+const scaffoldMock = vi.mocked(scaffold);
 
 describe("runCreate", () => {
     beforeEach(() => {
         vi.clearAllMocks();
     });
 
-    it("normalizes the raw arguments and delegates to createApp", async () => {
+    it("normalizes the raw arguments and delegates to scaffold", async () => {
         await runCreate({
             name: "my-app",
             "application-id": "com.example.myapp",
@@ -22,7 +22,7 @@ describe("runCreate", () => {
             vitest: true,
         });
 
-        expect(createAppMock).toHaveBeenCalledWith({
+        expect(scaffoldMock).toHaveBeenCalledWith({
             name: "my-app",
             applicationId: "com.example.myapp",
             packageManager: "pnpm",
@@ -33,7 +33,7 @@ describe("runCreate", () => {
     it("passes undefined for unspecified flags", async () => {
         await runCreate({});
 
-        expect(createAppMock).toHaveBeenCalledWith({
+        expect(scaffoldMock).toHaveBeenCalledWith({
             name: undefined,
             applicationId: undefined,
             packageManager: undefined,
@@ -43,7 +43,7 @@ describe("runCreate", () => {
 
     const expectRejection = async (overrides: CreateCommandArgs, message: RegExp): Promise<void> => {
         await expect(runCreate(overrides)).rejects.toThrow(message);
-        expect(createAppMock).not.toHaveBeenCalled();
+        expect(scaffoldMock).not.toHaveBeenCalled();
     };
 
     it("rejects an unknown package manager before scaffolding", async () => {

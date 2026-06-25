@@ -121,7 +121,6 @@ const applyGenericProps = (
                 ? notifyValueHandler(container, signalName, nextHandler)
                 : nextHandler;
         signalStore.set({
-            owner: container,
             instance: container,
             signal: signalName,
             handler,

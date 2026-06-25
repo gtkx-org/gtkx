@@ -68,7 +68,7 @@ export const Sidebar = ({ searchMode, onSearchChanged }: SidebarProps) => {
                     cssClasses={["navigation-sidebar"]}
                     autoexpand
                     selectionMode={Gtk.SelectionMode.SINGLE}
-                    selected={selected}
+                    selectedIds={selected}
                     onSelectionChanged={handleSelectionChanged}
                     renderItem={renderItem}
                     items={items}

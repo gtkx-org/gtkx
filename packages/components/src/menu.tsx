@@ -3,7 +3,15 @@ import { GMenu, type GMenuProps } from "@gtkx/jsx/gio";
 import { useForwardedRef } from "@gtkx/react";
 import { createElement, type ReactNode, type Ref, useLayoutEffect, useRef } from "react";
 import { applyMenuItems, menuItemsEqual } from "./menu-items.js";
-import type { MenuEntry, MenuItemsProps } from "./types.js";
+import type { MenuEntry } from "./types.js";
+
+/**
+ * The declarative menu-model surface added by the {@link Menu} component on top
+ * of the raw `GMenu` element.
+ */
+export type MenuItemsProps = {
+    items?: MenuEntry[] | null | undefined;
+};
 
 /**
  * Props for the {@link Menu} component: the raw `GMenu` element surface with a

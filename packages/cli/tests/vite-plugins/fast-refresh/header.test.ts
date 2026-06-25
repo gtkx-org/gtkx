@@ -102,28 +102,9 @@ describe("gtkxRefresh transform (file extensions)", () => {
         const result = defaultTransform("$RefreshReg$();", "/src/index.js", { ssr: true });
         expect(result).toBeDefined();
     });
-});
 
-describe("gtkxRefresh custom options", () => {
-    it("respects custom include pattern", () => {
-        const plugin = gtkxRefresh({ include: /\.custom$/ });
-        const transform = plugin.transform as TransformFn;
-
-        const result1 = transform("$RefreshReg$()", "test.custom", { ssr: true });
-        expect(result1).toBeDefined();
-
-        const result2 = transform("$RefreshReg$()", "test.tsx", { ssr: true });
-        expect(result2).toBeUndefined();
-    });
-
-    it("respects custom exclude pattern", () => {
-        const plugin = gtkxRefresh({ exclude: /vendor/ });
-        const transform = plugin.transform as TransformFn;
-
-        const result1 = transform("$RefreshReg$()", "vendor/lib.tsx", { ssr: true });
-        expect(result1).toBeUndefined();
-
-        const result2 = transform("$RefreshReg$()", "node_modules/lib.tsx", { ssr: true });
-        expect(result2).toBeDefined();
+    it("skips files outside the default include pattern", () => {
+        const result = defaultTransform("$RefreshReg$();", "/src/styles.custom", { ssr: true });
+        expect(result).toBeUndefined();
     });
 });

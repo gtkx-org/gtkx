@@ -1,7 +1,7 @@
 {
     "$schema": "https://unpkg.com/knip@6/schema.json",
     "ignoreExportsUsedInFile": true,
-    "ignore": ["**/out-tsc/**"],
+    "ignore": ["**/out-tsc/**", "**/native-binding*.cjs"],
     "ignoreBinaries": [
         "espeak-ng",
         "glib-compile-resources",
@@ -26,7 +26,7 @@
         },
         "packages/codegen": {
             "includeEntryExports": true,
-            "project": ["src/**/*.ts!", "scripts/**/*.ts!", "!src/templates/**"]
+            "project": ["src/**/*.ts!", "scripts/**/*.ts!", "!src/overrides/**"]
         },
         "packages/components": {
             "project": ["src/**/*.{ts,tsx}!"]

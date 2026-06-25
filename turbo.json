@@ -54,7 +54,7 @@
             "passThroughEnv": ["RUSTUP_TOOLCHAIN"]
         },
         "build": {
-            "dependsOn": ["^build", "native-build", "@gtkx/cli#codegen"],
+            "dependsOn": ["^build", "@gtkx/cli#codegen"],
             "inputs": [
                 "package.json",
                 "*.ts",
@@ -73,14 +73,34 @@
             "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo"],
             "outputLogs": "new-only"
         },
+        "@gtkx/native#build": {
+            "dependsOn": ["^build", "native-build:dist", "native-build", "@gtkx/cli#codegen"],
+            "inputs": [
+                "package.json",
+                "*.ts",
+                "tests/**/*.ts",
+                "tests/**/*.tsx",
+                "tsconfig.json",
+                "tsconfig.lib.json",
+                "tsconfig.test.json"
+            ],
+            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo"],
+            "outputLogs": "new-only"
+        },
         "@gtkx/cli#codegen": {
             "dependsOn": ["@gtkx/native#native-build"],
             "cache": false
         },
         "native-build": {
             "inputs": ["Cargo.toml", "Cargo.lock", "build.rs", "src/**/*.rs"],
+            "outputs": ["*.node", "native-binding-test.cjs", "native-binding-test.d.cts"],
+            "outputLogs": "new-only",
+            "passThroughEnv": ["RUSTUP_TOOLCHAIN", "CARGO_INCREMENTAL", "CARGO_NET_RETRY"]
+        },
+        "native-build:dist": {
+            "inputs": ["Cargo.toml", "Cargo.lock", "build.rs", "src/**/*.rs"],
             "outputs": [
-                "*.node",
+                "dist-binding/**",
                 "native-binding.cjs",
                 "native-binding.d.cts",
                 "npm/linux-arm64-gnu/*.node",
@@ -113,8 +133,8 @@
             "persistent": true,
             "cache": false
         },
-        "//#typecheck:packages": {
-            "dependsOn": ["//#setup:store-link", "@gtkx/cli#codegen"],
+        "//#typecheck:all": {
+            "dependsOn": ["//#setup:store-link", "@gtkx/cli#codegen", "@gtkx/native#native-build:dist"],
             "inputs": [
                 "packages/*/src/**/*.ts",
                 "packages/*/src/**/*.tsx",
@@ -141,17 +161,8 @@
                 "tsconfig.lib.json",
                 "tsconfig.test.json"
             ],
-            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo"],
+            "outputs": ["out-tsc/**", "*.tsbuildinfo"],
             "outputLogs": "new-only"
-        },
-        "bench": {
-            "dependsOn": ["^build", "native-build", "@gtkx/cli#codegen"],
-            "cache": false
-        },
-        "native-bench": {
-            "dependsOn": ["native-build"],
-            "cache": false,
-            "passThroughEnv": ["RUSTUP_TOOLCHAIN", "CODSPEED_RUNNER_MODE"]
         }
     }
 }

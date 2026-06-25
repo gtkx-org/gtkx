@@ -2,11 +2,11 @@ import * as runtime from "@gtkx/ffi";
 import { describe, expect, it } from "vitest";
 
 const EXPECTED_RUNTIME_EXPORTS = [
-    "emitGobjectSignal",
-    "connectGobjectSignal",
-    "newGobjectWithProperties",
-    "getGobjectProperty",
-    "setGobjectProperty",
+    "emitGObjectSignal",
+    "connectGObjectSignal",
+    "newGObjectWithProperties",
+    "getGObjectProperty",
+    "setGObjectProperty",
     "getGValueBoxed",
     "setGValueBoxed",
     "promisify",
@@ -18,7 +18,7 @@ const EXPECTED_RUNTIME_EXPORTS = [
     "createErrorDomain",
     "registerWrapperClass",
     "signalBaseName",
-    "wrapValue",
+    "fromNativeValue",
 ] as const;
 
 const NATIVE_TRANSPORT_PRIMITIVES = ["alloc", "call", "read", "write", "freeze", "unfreeze"] as const;

@@ -13,6 +13,7 @@ import {
 
 interface PresenceContextProps {
     isPresent: boolean;
+    initial: boolean;
     onExitComplete: (id: string) => void;
     register: (id: string) => () => void;
 }
@@ -35,6 +36,11 @@ export const usePresence = (): UsePresenceResult => {
     if (context === null) return alwaysPresent;
     if (context.isPresent) return [true];
     return [false, () => context.onExitComplete(presenceId)];
+};
+
+export const usePresenceInitial = (): boolean => {
+    const context = useContext(PresenceContext);
+    return context === null ? true : context.initial;
 };
 
 interface KeyedChild {
@@ -72,17 +78,19 @@ export const onlyKeyedElements = (children: ReactNode): KeyedChild[] => {
 
 type PresenceChildProps = {
     isPresent: boolean;
+    initial: boolean;
     onExitComplete?: (() => void) | undefined;
     children: ReactNode;
 };
 
-const PresenceChild = ({ isPresent, onExitComplete, children }: PresenceChildProps): ReactNode => {
+const PresenceChild = ({ isPresent, initial, onExitComplete, children }: PresenceChildProps): ReactNode => {
     const registrationsRef = useRef<Map<string, boolean>>(new Map());
 
     const context = useMemo<PresenceContextProps>(() => {
         const registrations = registrationsRef.current;
         return {
             isPresent,
+            initial,
             onExitComplete: (id: string) => {
                 if (!registrations.has(id)) return;
                 registrations.set(id, true);
@@ -99,7 +107,7 @@ const PresenceChild = ({ isPresent, onExitComplete, children }: PresenceChildPro
                 };
             },
         };
-    }, [isPresent, onExitComplete]);
+    }, [isPresent, initial, onExitComplete]);
 
     useLayoutEffect(() => {
         if (!isPresent && registrationsRef.current.size === 0) onExitComplete?.();
@@ -108,15 +116,60 @@ const PresenceChild = ({ isPresent, onExitComplete, children }: PresenceChildPro
     return <PresenceContext.Provider value={context}>{children}</PresenceContext.Provider>;
 };
 
-export const AnimatePresence = ({ children }: { children: ReactNode }): ReactNode => {
+const mergeExitingChildren = (
+    presentChildren: KeyedChild[],
+    renderedChildren: KeyedChild[],
+    presentKeys: Key[],
+): KeyedChild[] => {
+    const nextChildren = [...presentChildren];
+    for (let index = 0; index < renderedChildren.length; index += 1) {
+        const child = renderedChildren[index];
+        if (child && !presentKeys.includes(child.key)) {
+            nextChildren.splice(index, 0, child);
+        }
+    }
+    return nextChildren;
+};
+
+type ExitContext = {
+    key: Key;
+    exitComplete: Map<Key, boolean>;
+    pending: KeyedChild[];
+    commit: (children: KeyedChild[]) => void;
+};
+
+const completeExit = (context: ExitContext): void => {
+    if (context.exitComplete.get(context.key) === true) return;
+    context.exitComplete.set(context.key, true);
+    for (const isExitComplete of context.exitComplete.values()) {
+        if (!isExitComplete) return;
+    }
+    context.exitComplete.clear();
+    context.commit(context.pending);
+};
+
+export const AnimatePresence = ({
+    children,
+    initial = true,
+}: {
+    children: ReactNode;
+    initial?: boolean;
+}): ReactNode => {
     const presentChildren = useMemo(() => onlyKeyedElements(children), [children]);
     const presentKeys = presentChildren.map((child) => child.key);
 
+    const isInitialRender = useRef(true);
     const pendingPresentChildren = useRef(presentChildren);
     const exitComplete = useRef<Map<Key, boolean>>(new Map());
 
     const [diffedChildren, setDiffedChildren] = useState(presentChildren);
     const [renderedChildren, setRenderedChildren] = useState(presentChildren);
+
+    const presenceInitial = isInitialRender.current ? initial : true;
+
+    useLayoutEffect(() => {
+        isInitialRender.current = false;
+    }, []);
 
     useLayoutEffect(() => {
         pendingPresentChildren.current = presentChildren;
@@ -130,15 +183,7 @@ export const AnimatePresence = ({ children }: { children: ReactNode }): ReactNod
     }, [renderedChildren, presentKeys.join("-"), presentChildren]);
 
     if (presentChildren !== diffedChildren) {
-        const nextChildren = [...presentChildren];
-        for (let index = 0; index < renderedChildren.length; index += 1) {
-            const child = renderedChildren[index];
-            if (child && !presentKeys.includes(child.key)) {
-                nextChildren.splice(index, 0, child);
-            }
-        }
-
-        setRenderedChildren(nextChildren);
+        setRenderedChildren(mergeExitingChildren(presentChildren, renderedChildren, presentKeys));
         setDiffedChildren(presentChildren);
         return null;
     }
@@ -147,24 +192,21 @@ export const AnimatePresence = ({ children }: { children: ReactNode }): ReactNod
         <>
             {renderedChildren.map((child) => {
                 const isPresent = presentKeys.includes(child.key);
-
-                const completeChild = (): void => {
-                    if (exitComplete.current.get(child.key) === true) return;
-                    exitComplete.current.set(child.key, true);
-
-                    for (const isExitComplete of exitComplete.current.values()) {
-                        if (!isExitComplete) return;
-                    }
-
-                    exitComplete.current.clear();
-                    setRenderedChildren(pendingPresentChildren.current);
-                };
-
+                const onExitComplete = isPresent
+                    ? undefined
+                    : () =>
+                          completeExit({
+                              key: child.key,
+                              exitComplete: exitComplete.current,
+                              pending: pendingPresentChildren.current,
+                              commit: setRenderedChildren,
+                          });
                 return (
                     <PresenceChild
                         key={child.key}
                         isPresent={isPresent}
-                        onExitComplete={isPresent ? undefined : completeChild}
+                        initial={presenceInitial}
+                        onExitComplete={onExitComplete}
                     >
                         {child.element}
                     </PresenceChild>

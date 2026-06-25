@@ -17,7 +17,7 @@ import { captureAndSaveScreenshot } from "./screenshot.js";
 import "./setup-runtime.js";
 import { type Container, TOPLEVELS, traverse } from "./traversal.js";
 import type { QueryMap, RenderOptions, RenderResult, ScreenshotOptions, WindowSelector } from "./types.js";
-import { resetClipboard } from "./user-event.js";
+import { resetClipboard } from "./user-event/index.js";
 
 let lastRenderError: Error | null = null;
 let errorHandlerInstalled = false;

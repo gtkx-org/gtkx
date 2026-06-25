@@ -197,7 +197,7 @@ const setBoxedPayload = (
     );
 };
 
-export function valueSetBoxed(value: Handle, boxed: object | null): void {
+function valueSetBoxed(value: Handle, boxed: object | null): void {
     setBoxedPayload(value, "g_value_set_boxed", boxed === null ? null : getHandle(boxed));
 }
 

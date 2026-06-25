@@ -46,7 +46,7 @@ describe("parseCType", () => {
 });
 
 describe("planCommand", () => {
-    it("plans scalars, input arrays, and blobs", () => {
+    it("plans scalars, input arrays, and buffers", () => {
         const plan = okPlan(
             command("glBufferData", "void", [
                 param("target", "GLenum", { group: "BufferTargetARB" }),
@@ -55,7 +55,7 @@ describe("planCommand", () => {
                 param("usage", "GLenum", { group: "BufferUsageARB" }),
             ]),
         );
-        expect(plan.params.map((p) => p.kind)).toEqual(["scalar", "scalar", "blob", "scalar"]);
+        expect(plan.params.map((p) => p.kind)).toEqual(["scalar", "scalar", "buffer", "scalar"]);
         expect(plan.returnPlan).toEqual({ kind: "void" });
     });
 
@@ -71,7 +71,7 @@ describe("planCommand", () => {
         expect(plan.params.map((p) => p.kind)).toEqual(["scalar", "scalar", "string-array-in", "array-in"]);
     });
 
-    it("routes curated byte-offset parameters away from blob typing", () => {
+    it("routes curated byte-offset parameters away from buffer typing", () => {
         const policy: GlPlanPolicy = {
             byteOffsetParams: new Set(["glDrawElements:indices"]),
             singleValuedQueries: new Set(),

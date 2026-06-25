@@ -102,7 +102,7 @@ function NoteListContent({
                 <ListView
                     estimatedItemHeight={compactMode ? 50 : 80}
                     selectionMode={Gtk.SelectionMode.SINGLE}
-                    selected={selected}
+                    selectedIds={selected}
                     onSelectionChanged={onSelectionChanged}
                     items={items}
                     renderItem={renderItem}
@@ -117,7 +117,7 @@ function NoteListContent({
                 minColumns={2}
                 maxColumns={4}
                 selectionMode={Gtk.SelectionMode.SINGLE}
-                selected={selected}
+                selectedIds={selected}
                 onSelectionChanged={onSelectionChanged}
                 items={items}
                 renderItem={renderItem}

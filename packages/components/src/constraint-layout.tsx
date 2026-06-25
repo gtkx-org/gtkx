@@ -14,8 +14,14 @@ import {
     useLayoutEffect,
     useRef,
 } from "react";
-import { applyConstraint, applyGuide, applyVfl } from "./constraint-layout-apply.js";
-import type { ConstraintGuideProps, ConstraintProps, ConstraintVflProps } from "./types.js";
+import {
+    applyConstraint,
+    applyGuide,
+    applyVfl,
+    type ConstraintGuideProps,
+    type ConstraintProps,
+    type ConstraintVflProps,
+} from "./constraint-layout-apply.js";
 
 const ORPHAN_MESSAGE = "<ConstraintLayout.Constraint> / <Guide> / <Vfl> must be a child of <ConstraintLayout>";
 

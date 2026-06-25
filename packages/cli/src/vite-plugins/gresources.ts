@@ -5,11 +5,11 @@ import { dirname, join } from "node:path";
 import { createGtkxConfigLoader, DATA_IMPORT_PREFIX, type GtkxConfigLoader } from "@gtkx/config";
 import { formatChildProcessError } from "@gtkx/utils";
 import type { Plugin, ResolvedConfig, UserConfig, ViteDevServer } from "vite";
-import { renderInitModule } from "../gresources/render.js";
 import { error, info } from "../internal/log.js";
 import { resolveCliTool } from "../internal/resolve-cli-tool.js";
 import { withStagingDir } from "../internal/staging-dir.js";
 import { ASSET_PATH_RE, ASSET_RE } from "./asset-extensions.js";
+import { renderInitModule } from "./gresource-init-module.js";
 import {
     BUNDLE_FILENAME,
     escapeXml,

@@ -6,14 +6,14 @@ export interface TreeItemMetadata {
     indentForIcon: boolean;
 }
 
-export interface FlattenedRecord<T = unknown, S = unknown> {
+interface FlattenedRecord<T = unknown, S = unknown> {
     id: string;
     value: T | S;
     isHeader: boolean;
     metadata: TreeItemMetadata;
 }
 
-export interface FlattenResult<T = unknown, S = unknown> {
+interface FlattenResult<T = unknown, S = unknown> {
     records: FlattenedRecord<T, S>[];
     idToPosition: Map<string, number>;
     positionToId: Map<number, string>;

@@ -9,7 +9,7 @@ use napi::bindgen_prelude::*;
 use napi::{Env, JsFunction, JsObject, NapiValue as _};
 use napi_derive::napi;
 
-use super::handler::NativeRequest;
+use super::request::NativeRequest;
 use crate::error_reporter::NativeErrorReporter;
 use crate::trampoline::{TrampolineState, build_trampoline};
 use crate::types::Type;

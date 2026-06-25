@@ -1,7 +1,7 @@
 import { EventEmitter } from "node:events";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ConnectionManager } from "../src/connection-manager.js";
+import type { AppRouter } from "../src/app-router.js";
 import type { AppInfo } from "../src/protocol/types.js";
 
 const { mcpServerInstances, registerToolMock, mcpConnectMock, mcpCloseMock } = vi.hoisted(() => {
@@ -66,22 +66,22 @@ vi.mock("../src/connection-registry.js", () => ({
     },
 }));
 
-const { connectionManagerInstances } = vi.hoisted(() => ({
-    connectionManagerInstances: [] as EventEmitter[],
+const { appRouterInstances } = vi.hoisted(() => ({
+    appRouterInstances: [] as EventEmitter[],
 }));
 
-vi.mock("../src/connection-manager.js", () => ({
-    ConnectionManager: class extends EventEmitter {
+vi.mock("../src/app-router.js", () => ({
+    AppRouter: class extends EventEmitter {
         constructor(_socketServer: unknown) {
             super();
-            connectionManagerInstances.push(this);
+            appRouterInstances.push(this);
         }
     },
 }));
 
 import { createMcpServer, main } from "../src/server.js";
 
-type AppRouter = Pick<ConnectionManager, "getApps" | "hasConnectedApps" | "waitForApp" | "sendToApp">;
+type AppRouterStub = Pick<AppRouter, "getApps" | "hasConnectedApps" | "waitForApp" | "sendToApp">;
 
 type RegisteredTool = {
     name: string;
@@ -89,7 +89,7 @@ type RegisteredTool = {
     handler: (args: never) => Promise<CallToolResult>;
 };
 
-function makeConnectionManager(overrides: Partial<AppRouter> = {}): AppRouter {
+function makeAppRouter(overrides: Partial<AppRouterStub> = {}): AppRouterStub {
     return {
         getApps: vi.fn(() => []),
         hasConnectedApps: vi.fn(() => false),
@@ -99,12 +99,12 @@ function makeConnectionManager(overrides: Partial<AppRouter> = {}): AppRouter {
     };
 }
 
-function registerTools(connectionManager: AppRouter): RegisteredTool[] {
+function registerTools(appRouter: AppRouterStub): RegisteredTool[] {
     resetMainMocks();
     createMcpServer({ version: "test" });
-    const instance = connectionManagerInstances.at(-1);
-    if (!instance) throw new Error("ConnectionManager was not created");
-    Object.assign(instance, connectionManager);
+    const instance = appRouterInstances.at(-1);
+    if (!instance) throw new Error("AppRouter was not created");
+    Object.assign(instance, appRouter);
     return registerToolMock.mock.calls.map(([name, config, handler]) => ({
         name: name as string,
         config: config as RegisteredTool["config"],
@@ -112,21 +112,21 @@ function registerTools(connectionManager: AppRouter): RegisteredTool[] {
     }));
 }
 
-function getTool(connectionManager: AppRouter, name: string): RegisteredTool {
-    const tool = registerTools(connectionManager).find((t) => t.name === name);
+function getTool(appRouter: AppRouterStub, name: string): RegisteredTool {
+    const tool = registerTools(appRouter).find((t) => t.name === name);
     if (!tool) throw new Error(`Tool not found: ${name}`);
     return tool;
 }
 
 async function runListAppsWithFailingWait(thrown: unknown): Promise<{ type: "text"; text: string }> {
-    const cm = makeConnectionManager({
+    const appRouter = makeAppRouter({
         hasConnectedApps: vi.fn(() => false),
         waitForApp: vi.fn(async () => {
             throw thrown;
         }) as never,
     });
 
-    const result = await getTool(cm, "gtkx_list_apps").handler({ waitForApps: true } as never);
+    const result = await getTool(appRouter, "gtkx_list_apps").handler({ waitForApps: true } as never);
 
     expect(result.isError).toBe(true);
     return result.content[0] as { type: "text"; text: string };
@@ -145,12 +145,12 @@ const allToolNames = [
 
 describe("buildTools — registration", () => {
     it("registers all expected tools in order", () => {
-        const tools = registerTools(makeConnectionManager());
+        const tools = registerTools(makeAppRouter());
         expect(tools.map((t) => t.name)).toEqual(allToolNames);
     });
 
     it("attaches a description and inputSchema to every tool", () => {
-        const tools = registerTools(makeConnectionManager());
+        const tools = registerTools(makeAppRouter());
         for (const tool of tools) {
             expect(tool.config.description.length).toBeGreaterThan(0);
             expect(tool.config.inputSchema).toBeDefined();
@@ -164,13 +164,13 @@ describe("buildTools — gtkx_list_apps success", () => {
         const sendToApp = vi.fn(async () => ({
             windows: [{ id: "w1", title: "Main" }],
         }));
-        const cm = makeConnectionManager({
+        const appRouter = makeAppRouter({
             getApps: vi.fn(() => apps),
             hasConnectedApps: vi.fn(() => true),
             sendToApp: sendToApp as never,
         });
 
-        const result = await getTool(cm, "gtkx_list_apps").handler({} as never);
+        const result = await getTool(appRouter, "gtkx_list_apps").handler({} as never);
 
         expect(sendToApp).toHaveBeenCalledWith("app-a", "app.getWindows", {});
         expect(result.content[0]).toMatchObject({ type: "text" });
@@ -182,7 +182,7 @@ describe("buildTools — gtkx_list_apps success", () => {
 
     it("falls back to the original app info when getWindows fails", async () => {
         const apps: AppInfo[] = [{ applicationId: "app-a", pid: 1 }];
-        const cm = makeConnectionManager({
+        const appRouter = makeAppRouter({
             getApps: vi.fn(() => apps),
             hasConnectedApps: vi.fn(() => true),
             sendToApp: vi.fn(async () => {
@@ -190,7 +190,7 @@ describe("buildTools — gtkx_list_apps success", () => {
             }) as never,
         });
 
-        const result = await getTool(cm, "gtkx_list_apps").handler({} as never);
+        const result = await getTool(appRouter, "gtkx_list_apps").handler({} as never);
         const text = result.content[0] as { type: "text"; text: string };
         expect(JSON.parse(text.text)).toEqual(apps);
     });
@@ -199,12 +199,12 @@ describe("buildTools — gtkx_list_apps success", () => {
 describe("buildTools — gtkx_list_apps waiting", () => {
     it("waits for an app when waitForApps is true and none are connected", async () => {
         const waitForApp = vi.fn(async () => ({ applicationId: "app-a", pid: 1 }) as AppInfo);
-        const cm = makeConnectionManager({
+        const appRouter = makeAppRouter({
             hasConnectedApps: vi.fn(() => false),
             waitForApp: waitForApp as never,
         });
 
-        await getTool(cm, "gtkx_list_apps").handler({ waitForApps: true, timeout: 5000 } as never);
+        await getTool(appRouter, "gtkx_list_apps").handler({ waitForApps: true, timeout: 5000 } as never);
 
         expect(waitForApp).toHaveBeenCalledWith(5000);
     });
@@ -221,12 +221,12 @@ describe("buildTools — gtkx_list_apps waiting", () => {
 
     it("does not call waitForApp when apps are already connected", async () => {
         const waitForApp = vi.fn();
-        const cm = makeConnectionManager({
+        const appRouter = makeAppRouter({
             hasConnectedApps: vi.fn(() => true),
             waitForApp: waitForApp as never,
         });
 
-        await getTool(cm, "gtkx_list_apps").handler({ waitForApps: true } as never);
+        await getTool(appRouter, "gtkx_list_apps").handler({ waitForApps: true } as never);
 
         expect(waitForApp).not.toHaveBeenCalled();
     });
@@ -235,9 +235,9 @@ describe("buildTools — gtkx_list_apps waiting", () => {
 describe("buildTools — gtkx_get_widget_tree", () => {
     it("forwards applicationId and returns the tree string", async () => {
         const sendToApp = vi.fn(async () => ({ tree: "TREE" }));
-        const cm = makeConnectionManager({ sendToApp: sendToApp as never });
+        const appRouter = makeAppRouter({ sendToApp: sendToApp as never });
 
-        const result = await getTool(cm, "gtkx_get_widget_tree").handler({ applicationId: "app-a" } as never);
+        const result = await getTool(appRouter, "gtkx_get_widget_tree").handler({ applicationId: "app-a" } as never);
 
         expect(sendToApp).toHaveBeenCalledWith("app-a", "widget.getTree", {});
         expect(result.content[0]).toEqual({ type: "text", text: "TREE" });
@@ -247,9 +247,9 @@ describe("buildTools — gtkx_get_widget_tree", () => {
 describe("buildTools — gtkx_query_widgets", () => {
     it("forwards query parameters and returns serialized result", async () => {
         const sendToApp = vi.fn(async () => ({ widgets: [{ id: "w1" }] }));
-        const cm = makeConnectionManager({ sendToApp: sendToApp as never });
+        const appRouter = makeAppRouter({ sendToApp: sendToApp as never });
 
-        const result = await getTool(cm, "gtkx_query_widgets").handler({
+        const result = await getTool(appRouter, "gtkx_query_widgets").handler({
             applicationId: "app-a",
             by: "role",
             value: "button",
@@ -269,9 +269,9 @@ describe("buildTools — gtkx_query_widgets", () => {
 describe("buildTools — gtkx_get_widget_props", () => {
     it("returns props serialized as JSON", async () => {
         const sendToApp = vi.fn(async () => ({ label: "Click me" }));
-        const cm = makeConnectionManager({ sendToApp: sendToApp as never });
+        const appRouter = makeAppRouter({ sendToApp: sendToApp as never });
 
-        const result = await getTool(cm, "gtkx_get_widget_props").handler({
+        const result = await getTool(appRouter, "gtkx_get_widget_props").handler({
             applicationId: "app-a",
             widgetId: "w1",
         } as never);
@@ -285,21 +285,21 @@ describe("buildTools — gtkx_get_widget_props", () => {
 describe("buildTools — gtkx_click", () => {
     it("sends a widget.click and returns a confirmation message", async () => {
         const sendToApp = vi.fn(async () => undefined);
-        const cm = makeConnectionManager({ sendToApp: sendToApp as never });
+        const appRouter = makeAppRouter({ sendToApp: sendToApp as never });
 
-        const result = await getTool(cm, "gtkx_click").handler({ widgetId: "w1" } as never);
+        const result = await getTool(appRouter, "gtkx_click").handler({ widgetId: "w1" } as never);
 
         expect(sendToApp).toHaveBeenCalledWith(undefined, "widget.click", { widgetId: "w1" });
-        expect(result.content[0]).toEqual({ type: "text", text: "Click successful" });
+        expect(result.content[0]).toEqual({ type: "text", text: "Clicked" });
     });
 });
 
 describe("buildTools — gtkx_type", () => {
     it("forwards text and clear flag", async () => {
         const sendToApp = vi.fn(async () => undefined);
-        const cm = makeConnectionManager({ sendToApp: sendToApp as never });
+        const appRouter = makeAppRouter({ sendToApp: sendToApp as never });
 
-        const result = await getTool(cm, "gtkx_type").handler({
+        const result = await getTool(appRouter, "gtkx_type").handler({
             widgetId: "w1",
             text: "hello",
             clear: true,
@@ -310,16 +310,16 @@ describe("buildTools — gtkx_type", () => {
             text: "hello",
             clear: true,
         });
-        expect(result.content[0]).toEqual({ type: "text", text: "Type successful" });
+        expect(result.content[0]).toEqual({ type: "text", text: "Typed text" });
     });
 });
 
 describe("buildTools — gtkx_fire_event", () => {
     it("forwards signal name and args", async () => {
         const sendToApp = vi.fn(async () => undefined);
-        const cm = makeConnectionManager({ sendToApp: sendToApp as never });
+        const appRouter = makeAppRouter({ sendToApp: sendToApp as never });
 
-        const result = await getTool(cm, "gtkx_fire_event").handler({
+        const result = await getTool(appRouter, "gtkx_fire_event").handler({
             widgetId: "w1",
             signal: "clicked",
             args: ["arg1"],
@@ -330,16 +330,16 @@ describe("buildTools — gtkx_fire_event", () => {
             signal: "clicked",
             args: ["arg1"],
         });
-        expect(result.content[0]).toEqual({ type: "text", text: "Event fired successfully" });
+        expect(result.content[0]).toEqual({ type: "text", text: "Fired event" });
     });
 });
 
 describe("buildTools — gtkx_take_screenshot", () => {
     it("returns image content from the response", async () => {
         const sendToApp = vi.fn(async () => ({ data: "BASE64", mimeType: "image/png" }));
-        const cm = makeConnectionManager({ sendToApp: sendToApp as never });
+        const appRouter = makeAppRouter({ sendToApp: sendToApp as never });
 
-        const result = await getTool(cm, "gtkx_take_screenshot").handler({
+        const result = await getTool(appRouter, "gtkx_take_screenshot").handler({
             applicationId: "app-a",
             windowId: "w-main",
         } as never);
@@ -364,7 +364,7 @@ function resetMainMocks(): void {
     socketStartMock.mockClear();
     socketStopMock.mockClear();
     socketServerInstances.length = 0;
-    connectionManagerInstances.length = 0;
+    appRouterInstances.length = 0;
     stdioInstances.length = 0;
 }
 
@@ -432,11 +432,11 @@ describe("main — error logging", () => {
 
     it("logs an entry when an app registers and unregisters", async () => {
         await main();
-        const cm = connectionManagerInstances[0];
-        if (!cm) throw new Error("ConnectionManager not registered");
+        const appRouter = appRouterInstances[0];
+        if (!appRouter) throw new Error("AppRouter not registered");
 
-        cm.emit("appRegistered", { applicationId: "app-a", pid: 42 });
-        cm.emit("appUnregistered", "app-a");
+        appRouter.emit("appRegistered", { applicationId: "app-a", pid: 42 });
+        appRouter.emit("appUnregistered", "app-a");
 
         const messages = setup.errorSpy.mock.calls.map((c: unknown[]) => String(c[0]));
         expect(messages.some((m: string) => m.includes("App registered: app-a (PID: 42)"))).toBe(true);

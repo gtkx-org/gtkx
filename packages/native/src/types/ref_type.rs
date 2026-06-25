@@ -26,7 +26,7 @@ impl RefType {
     pub fn supports_inner(inner: &Type) -> bool {
         !matches!(
             inner,
-            Type::HashTable(_) | Type::Callback(_) | Type::Void(_) | Type::Blob(_) | Type::Ref(_)
+            Type::HashTable(_) | Type::Callback(_) | Type::Void(_) | Type::Buffer(_) | Type::Ref(_)
         )
     }
 }
@@ -260,7 +260,7 @@ impl FfiDecoder for RefType {
     }
 }
 
-impl RawPtrCodec for RefType {}
+impl RawPtrWriter for RefType {}
 
 impl RefType {
     #[cfg_attr(coverage_nightly, coverage(off))]

@@ -8,10 +8,10 @@ import { type GirProperty, isConstructableProperty } from "../gir/property.js";
 import type { TypeId } from "../gir/type-id.js";
 import {
     implementedInterfaces,
-    isReactNodeClass,
+    isIntrinsicElementClass,
     iterateClassesWithGlibName,
     signalHandlerName,
-} from "./react-nodes.js";
+} from "./intrinsic-elements.js";
 
 export type RuntimeTables = {
     topLevelTypes: string[];
@@ -55,17 +55,17 @@ const renderRuntimeTables = (tables: RuntimeTables): string[] =>
     });
 
 export const generateMetadata = (library: Library, tables: RuntimeTables): string => {
-    const reactNodes = collectReactNodes(library);
-    const signalsEntries = reactNodes.map(
+    const intrinsicElements = collectIntrinsicElements(library);
+    const signalsEntries = intrinsicElements.map(
         ({ glibName, signals }) => `    "${glibName}": ${renderSignalsObject(signals)},`,
     );
-    const constructOnlyEntries = reactNodes
+    const constructOnlyEntries = intrinsicElements
         .filter(({ constructOnly }) => constructOnly.length > 0)
         .map(({ glibName, constructOnly }) => `    "${glibName}": ${renderStringSet(constructOnly)},`);
-    const constructableEntries = reactNodes
+    const constructableEntries = intrinsicElements
         .filter(({ constructable }) => constructable.length > 0)
         .map(({ glibName, constructable }) => `    "${glibName}": ${renderStringSet(constructable)},`);
-    const defaultsEntries = reactNodes
+    const defaultsEntries = intrinsicElements
         .filter(({ defaults }) => defaults.length > 0)
         .map(({ glibName, defaults }) => `    "${glibName}": ${renderDefaultsObject(defaults)},`);
 
@@ -78,7 +78,7 @@ export const generateMetadata = (library: Library, tables: RuntimeTables): strin
     ].join("\n\n")}\n`;
 };
 
-type ReactNodeEntry = {
+type IntrinsicElementEntry = {
     glibName: string;
     namespace: string;
     signals: [string, string][];
@@ -87,10 +87,10 @@ type ReactNodeEntry = {
     defaults: [string, string][];
 };
 
-const collectReactNodes = (library: Library): ReactNodeEntry[] => {
-    const entries: ReactNodeEntry[] = [];
+const collectIntrinsicElements = (library: Library): IntrinsicElementEntry[] => {
+    const entries: IntrinsicElementEntry[] = [];
     for (const { glibName, klass, namespace } of iterateClassesWithGlibName(library)) {
-        if (!isReactNodeClass(klass, namespace, library)) continue;
+        if (!isIntrinsicElementClass(klass, namespace, library)) continue;
         const sources: GirClass[] = [
             klass,
             ...implementedInterfaces(klass, namespace, library).map((entry) => entry.klass),

@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
-import { isInCommit, scheduleCommitWork } from "@gtkx/react";
+import { isInCommit, scheduleCommitWork } from "@gtkx/react/internal";
 import { render, screen, userEvent } from "@gtkx/testing";
 import { createRef, useLayoutEffect, useState } from "react";
 import { describe, expect, it, vi } from "vitest";

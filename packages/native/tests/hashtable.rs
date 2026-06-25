@@ -12,7 +12,7 @@ use native::types::{
     ArrayKind, ArrayType, BooleanType, BoxedType, FloatKind, FundamentalType, GObjectType,
     HashTableEntryEncoder, HashTableType, IntegerKind, Ownership, StringType, StructType, Type,
 };
-use native::types::{FfiDecoder, FfiEncoder, RawPtrCodec, ReadSource};
+use native::types::{FfiDecoder, FfiEncoder, RawPtrWriter, ReadSource};
 use native::value::Value;
 
 fn struct_type() -> Type {
@@ -954,7 +954,7 @@ fn write_return_to_raw_ptr_full_table_hands_caller_owned_table() {
         let ret = &mut slot as *mut *mut c_void as *mut c_void;
         // SAFETY: `ret` is a live, pointer-sized stack slot; the call writes exactly one pointer
         // (or null) into it, read back after the call.
-        unsafe { RawPtrCodec::write_return_to_raw_ptr(&ty, ret, &Ok(val)) };
+        unsafe { RawPtrWriter::write_return_to_raw_ptr(&ty, ret, &Ok(val)) };
         assert!(!slot.is_null());
         let table = slot as *mut glib::ffi::GHashTable;
         // SAFETY: `hash_table`/`table` is a valid GHashTable and the test holds the reference released here.
@@ -973,19 +973,19 @@ fn write_return_to_raw_ptr_null_err_and_non_array_write_null() {
     let ret = &mut slot as *mut *mut c_void as *mut c_void;
     // SAFETY: `ret` is a live, pointer-sized stack slot; the call writes exactly one pointer
     // (or null) into it, read back after the call.
-    unsafe { RawPtrCodec::write_return_to_raw_ptr(&ty, ret, &Ok(Value::Null)) };
+    unsafe { RawPtrWriter::write_return_to_raw_ptr(&ty, ret, &Ok(Value::Null)) };
     assert!(slot.is_null());
 
     slot = 7 as *mut c_void;
     // SAFETY: `ret` is a live, pointer-sized stack slot; the call writes exactly one pointer
     // (or null) into it, read back after the call.
-    unsafe { RawPtrCodec::write_return_to_raw_ptr(&ty, ret, &Err(())) };
+    unsafe { RawPtrWriter::write_return_to_raw_ptr(&ty, ret, &Err(())) };
     assert!(slot.is_null());
 
     slot = 7 as *mut c_void;
     // SAFETY: `ret` is a live, pointer-sized stack slot; the call writes exactly one pointer
     // (or null) into it, read back after the call.
-    unsafe { RawPtrCodec::write_return_to_raw_ptr(&ty, ret, &Ok(Value::Number(1.0))) };
+    unsafe { RawPtrWriter::write_return_to_raw_ptr(&ty, ret, &Ok(Value::Number(1.0))) };
     assert!(slot.is_null());
 }
 
@@ -998,7 +998,7 @@ fn write_return_to_raw_ptr_encode_error_writes_null() {
         let ret = &mut slot as *mut *mut c_void as *mut c_void;
         // SAFETY: `ret` is a live, pointer-sized stack slot; the call writes exactly one pointer
         // (or null) into it, read back after the call.
-        unsafe { RawPtrCodec::write_return_to_raw_ptr(&ty, ret, &Ok(val)) };
+        unsafe { RawPtrWriter::write_return_to_raw_ptr(&ty, ret, &Ok(val)) };
         assert!(slot.is_null());
     });
 }

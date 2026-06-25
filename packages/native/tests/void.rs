@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use libffi::middle;
 use native::ffi;
-use native::types::{FfiDecoder, FfiEncoder, RawPtrCodec, ReadSource, VoidType};
+use native::types::{FfiDecoder, FfiEncoder, RawPtrWriter, ReadSource, VoidType};
 use native::value::Value;
 
 static CALLED: AtomicBool = AtomicBool::new(false);
@@ -85,8 +85,8 @@ fn write_return_to_raw_ptr_is_a_no_op() {
     let ret = &mut slot as *mut usize as *mut c_void;
     // SAFETY: `VoidType::write_return_to_raw_ptr` is a no-op that never touches `ret`; the live
     // `slot` pointer is passed only to satisfy the signature.
-    unsafe { RawPtrCodec::write_return_to_raw_ptr(&VoidType, ret, &Ok(Value::Undefined)) };
+    unsafe { RawPtrWriter::write_return_to_raw_ptr(&VoidType, ret, &Ok(Value::Undefined)) };
     // SAFETY: same no-op write for the error case; `ret` is never dereferenced.
-    unsafe { RawPtrCodec::write_return_to_raw_ptr(&VoidType, ret, &Err(())) };
+    unsafe { RawPtrWriter::write_return_to_raw_ptr(&VoidType, ret, &Err(())) };
     assert_eq!(slot, 99);
 }

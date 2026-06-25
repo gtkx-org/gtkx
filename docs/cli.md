@@ -6,7 +6,7 @@ For the package map and how the CLI relates to the rest of the stack, see [./arc
 
 ## Commands
 
-The CLI exposes four subcommands, and a small library API (`defineConfig`, `build`, `createApp`) for embedding the same behavior programmatically.
+The CLI exposes four subcommands, plus `build` as a small library API for producing a bundle programmatically.
 
 | Subcommand | Responsibility |
 | --- | --- |
@@ -33,7 +33,7 @@ codegen preflight  →  resolve codegen root + config, sync schema types,
 
 `create` renders a set of project templates, fills in interactive answers (any value not supplied as a flag is prompted for, and each answer is validated — project name, application id, package manager, testing choice), then writes the project, installs runtime and dev dependencies through the chosen package manager, seeds an initial empty GSettings type-environment so the project type-checks before its first codegen run, and initializes a git repository with a first commit.
 
-Test-only templates are emitted only when the testing option selects a framework. The scaffolding logic is written against an injected IO interface (filesystem, prompts, installer, process runner) so the prompt/IO surface is swappable in tests.
+Test-only templates are emitted only when the testing option selects a framework.
 
 ## Codegen orchestration and freshness
 

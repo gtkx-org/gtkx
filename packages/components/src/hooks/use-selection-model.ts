@@ -4,10 +4,10 @@ import { useSignal } from "@gtkx/react";
 import { useLayoutEffect, useRef } from "react";
 import type { ItemResolver } from "../utils/item-resolver.js";
 
-export interface SelectionModelOptions<T, S> {
+interface SelectionModelOptions<T, S> {
     base: Gio.ListModel;
     selectionMode: Gtk.SelectionMode | null | undefined;
-    selected: string[] | null | undefined;
+    selectedIds: string[] | null | undefined;
     onSelectionChanged: ((ids: string[]) => void) | null | undefined;
     resolver: ItemResolver<T, S>;
 }
@@ -81,7 +81,7 @@ const sameIds = (a: string[], b: string[]): boolean => {
 };
 
 export const useSelectionModel = <T, S>(options: SelectionModelOptions<T, S>): Gtk.SelectionModel => {
-    const { base, selectionMode, selected, onSelectionChanged, resolver } = options;
+    const { base, selectionMode, selectedIds, onSelectionChanged, resolver } = options;
     const mode = selectionMode ?? Gtk.SelectionMode.SINGLE;
 
     const modelRef = useRef<WrappingSelectionModel | null>(null);
@@ -111,11 +111,11 @@ export const useSelectionModel = <T, S>(options: SelectionModelOptions<T, S>): G
 
     useLayoutEffect(() => {
         if (model.getModel() !== base) model.setModel(base);
-        if (selected !== undefined && selected !== null) {
-            applySelectedPositions(model, idsToPositions(selected, resolver));
+        if (selectedIds !== undefined && selectedIds !== null) {
+            applySelectedPositions(model, idsToPositions(selectedIds, resolver));
         }
         report();
-    }, [model, base, selected, resolver]);
+    }, [model, base, selectedIds, resolver]);
 
     return model;
 };

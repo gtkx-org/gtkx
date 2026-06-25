@@ -24,7 +24,7 @@
     "exclude": [
         "**/dist/**",
         "**/out-tsc/**",
-        "packages/codegen/src/templates/**",
+        "packages/codegen/src/overrides/**",
         "packages/native/target/**",
         "packages/native/npm/**"
     ]

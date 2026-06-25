@@ -14,17 +14,16 @@ import {
     useRef,
     useState,
 } from "react";
-import { CellRenderHost } from "./cell-render-host.js";
+import { type CellRenderer, CellRenderHost } from "./cell.js";
 import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
 import { useDropDownSelection } from "./hooks/use-drop-down-selection.js";
 import { useInstalledModel } from "./hooks/use-installed-model.js";
 import { useListModel } from "./hooks/use-list-model.js";
-import type { CellRenderer } from "./list-cell.js";
-import type { DropDownProps, ItemNode } from "./types.js";
+import type { ItemNode, UncontrolledItemType } from "./types.js";
 import type { CellContainerStore } from "./utils/cell-container-store.js";
 import type { ItemResolver } from "./utils/item-resolver.js";
 
-export interface DropDownWidget extends Gtk.Widget {
+interface DropDownWidget extends Gtk.Widget {
     getSelected(): number;
     setSelected(position: number): void;
     setModel(model: Gio.ListModel | null): void;
@@ -53,7 +52,7 @@ const defaultRenderer: CellRenderer<unknown, unknown> = (value, _treeRow, isHead
     return createElement(GtkLabel, { label: String(value) });
 };
 
-interface DropDownImplProps<T, S, W extends DropDownWidget> {
+interface DropDownViewProps<T, S, W extends DropDownWidget> {
     element: ElementType;
     intrinsicProps: Record<string, unknown>;
     ref: Ref<W | null> | undefined;
@@ -103,7 +102,7 @@ const createSelectionResolver = <T, S>(resolver: ItemResolver<T, S>, selectedPos
 });
 
 const useDropDownWiring = <T, S, W extends DropDownWidget>(
-    props: DropDownImplProps<T, S, W>,
+    props: DropDownViewProps<T, S, W>,
 ): DropDownWiring<T, S, W> => {
     const widgetRef = useRef<DropDownWidget | null>(null);
     const [widget, setWidget] = useState<DropDownWidget | null>(null);
@@ -120,9 +119,9 @@ const useDropDownWiring = <T, S, W extends DropDownWidget>(
 
     const useHeader = externalModel === undefined && typeof props.renderHeader === "function";
 
-    const selection = useCellContainers<DropDownWidget>({ target: widgetRef, installer: itemFactoryInstaller });
-    const list = useCellContainers<DropDownWidget>({ target: widgetRef, installer: listFactoryInstaller });
-    const header = useCellContainers<DropDownWidget>({
+    const selectionStore = useCellContainers<DropDownWidget>({ target: widgetRef, installer: itemFactoryInstaller });
+    const listStore = useCellContainers<DropDownWidget>({ target: widgetRef, installer: listFactoryInstaller });
+    const headerStore = useCellContainers<DropDownWidget>({
         target: useHeader ? widgetRef : null,
         installer: headerFactoryInstaller,
     });
@@ -148,14 +147,14 @@ const useDropDownWiring = <T, S, W extends DropDownWidget>(
         resolver: listModel.resolver,
         selectionResolver: createSelectionResolver(listModel.resolver, selectionPosition),
         headerResolver: listModel.headerResolver,
-        selectionStore: selection.store,
-        listStore: list.store,
-        headerStore: header.store,
+        selectionStore,
+        listStore,
+        headerStore,
         useHeader,
     };
 };
 
-const DropDownImpl = <T, S, W extends DropDownWidget>(props: DropDownImplProps<T, S, W>): ReactNode => {
+const DropDownView = <T, S, W extends DropDownWidget>(props: DropDownViewProps<T, S, W>): ReactNode => {
     const { setRef, resolver, selectionResolver, headerResolver, selectionStore, listStore, headerStore, useHeader } =
         useDropDownWiring(props);
     const intrinsic: ReactElement = createElement(props.element, { ...props.intrinsicProps, ref: setRef });
@@ -184,14 +183,10 @@ const DropDownImpl = <T, S, W extends DropDownWidget>(props: DropDownImplProps<T
     );
 };
 
-type DropDownImplComponentProps<T, S, W extends DropDownWidget> = DropDownProps<T, S> & {
-    ref?: Ref<W | null> | undefined;
-};
-
 const extractDropDownProps = <T, S, W extends DropDownWidget>(
-    props: DropDownImplComponentProps<T, S, W>,
+    props: DropDownDeclarativeProps<T, S> & { ref?: Ref<W | null> | undefined },
 ): {
-    impl: Omit<DropDownImplProps<T, S, W>, "element" | "intrinsicProps">;
+    impl: Omit<DropDownViewProps<T, S, W>, "element" | "intrinsicProps">;
     intrinsicProps: Record<string, unknown>;
 } => {
     const {
@@ -204,7 +199,7 @@ const extractDropDownProps = <T, S, W extends DropDownWidget>(
         selectedId,
         onSelectionChanged,
         ...intrinsicProps
-    } = props as DropDownProps<T, S> & {
+    } = props as DropDownDeclarativeProps<T, S> & {
         ref?: Ref<W | null>;
         [key: string]: unknown;
     };
@@ -225,20 +220,47 @@ const extractDropDownProps = <T, S, W extends DropDownWidget>(
 };
 
 /**
+ * Props shared by the {@link DropDown} and {@link ComboRow} components,
+ * replacing the raw factory/model surface with declarative `items`, controlled
+ * `selectedId`, and per-cell renderers for the current selection, the list
+ * popup, and section headers. Supplying an external `model` switches to the
+ * uncontrolled form.
+ */
+export type DropDownDeclarativeProps<T = unknown, S = unknown> =
+    | {
+          items?: ItemNode<T, S>[] | undefined;
+          selectedId?: string | null | undefined;
+          onSelectionChanged?: ((id: string) => void) | null | undefined;
+          renderItem?: ((item: T) => ReactNode) | null | undefined;
+          renderListItem?: ((item: T) => ReactNode) | null | undefined;
+          renderHeader?: ((item: S) => ReactNode) | null | undefined;
+          model?: never;
+      }
+    | {
+          model: Gio.ListModel;
+          renderItem?: ((item: UncontrolledItemType<T>) => ReactNode) | null | undefined;
+          renderListItem?: ((item: UncontrolledItemType<T>) => ReactNode) | null | undefined;
+          items?: never;
+          selectedId?: never;
+          onSelectionChanged?: never;
+          renderHeader?: never;
+      };
+
+/**
  * Props for the {@link DropDown} component: the raw `GtkDropDown` element
  * surface with its factory/model wiring replaced by the declarative
- * {@link DropDownProps} API.
+ * {@link DropDownDeclarativeProps} API.
  */
-export type DropDownComponentProps<T = unknown, S = unknown> = Omit<GtkDropDownProps, keyof DropDownProps<T, S>> &
-    DropDownProps<T, S>;
+export type DropDownProps<T = unknown, S = unknown> = Omit<GtkDropDownProps, keyof DropDownDeclarativeProps<T, S>> &
+    DropDownDeclarativeProps<T, S>;
 
 /**
  * Props for the {@link ComboRow} component: the raw `AdwComboRow` element
  * surface with its factory/model wiring replaced by the declarative
- * {@link DropDownProps} API.
+ * {@link DropDownDeclarativeProps} API.
  */
-export type ComboRowComponentProps<T = unknown, S = unknown> = Omit<AdwComboRowProps, keyof DropDownProps<T, S>> &
-    DropDownProps<T, S>;
+export type ComboRowProps<T = unknown, S = unknown> = Omit<AdwComboRowProps, keyof DropDownDeclarativeProps<T, S>> &
+    DropDownDeclarativeProps<T, S>;
 
 /**
  * A `GtkDropDown` driven by a declarative `items` model with a controlled
@@ -246,9 +268,9 @@ export type ComboRowComponentProps<T = unknown, S = unknown> = Omit<AdwComboRowP
  * popup, and section headers. Supplying an external `model` switches to the
  * uncontrolled form.
  */
-export const DropDown = <T = unknown, S = unknown>(props: DropDownComponentProps<T, S>): ReactNode => {
+export const DropDown = <T = unknown, S = unknown>(props: DropDownProps<T, S>): ReactNode => {
     const { impl, intrinsicProps } = extractDropDownProps<T, S, Gtk.DropDown>(props);
-    return <DropDownImpl<T, S, Gtk.DropDown> element={GtkDropDown} intrinsicProps={intrinsicProps} {...impl} />;
+    return <DropDownView<T, S, Gtk.DropDown> element={GtkDropDown} intrinsicProps={intrinsicProps} {...impl} />;
 };
 
 /**
@@ -257,7 +279,7 @@ export const DropDown = <T = unknown, S = unknown>(props: DropDownComponentProps
  * popup, and section headers. Supplying an external `model` switches to the
  * uncontrolled form.
  */
-export const ComboRow = <T = unknown, S = unknown>(props: ComboRowComponentProps<T, S>): ReactNode => {
+export const ComboRow = <T = unknown, S = unknown>(props: ComboRowProps<T, S>): ReactNode => {
     const { impl, intrinsicProps } = extractDropDownProps<T, S, Adw.ComboRow>(props);
-    return <DropDownImpl<T, S, Adw.ComboRow> element={AdwComboRow} intrinsicProps={intrinsicProps} {...impl} />;
+    return <DropDownView<T, S, Adw.ComboRow> element={AdwComboRow} intrinsicProps={intrinsicProps} {...impl} />;
 };

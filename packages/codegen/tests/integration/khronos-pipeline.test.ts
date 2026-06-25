@@ -87,7 +87,7 @@ describe("khronos generation surface", () => {
         );
     });
 
-    it("passes data parameters as blobs accepting views, offsets, and null", () => {
+    it("passes data parameters as buffers accepting views, offsets, and null", () => {
         const commands = result.files.get("commands.ts") ?? "";
         expect(commands).toContain("data: ArrayBufferView | GLintptr | null");
     });

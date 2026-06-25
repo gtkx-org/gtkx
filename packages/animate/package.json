@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/animate",
     "version": "0.21.0",
-    "description": "Adwaita-powered animation components for GTKX: AnimatePresence, timed and spring animations",
+    "description": "Adwaita-powered animation for GTKX: the WidgetAnimation and AnimatePresence components with tween and spring transitions",
     "keywords": [
         "gtkx",
         "gtk",

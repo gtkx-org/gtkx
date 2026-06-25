@@ -4,8 +4,8 @@ use std::ffi::c_void;
 
 use libffi::middle;
 use native::types::{
-    BlobType, BooleanType, CallbackType, FfiDecoder, FfiEncoder, GObjectType, IntegerKind,
-    Ownership, RawPtrCodec, ReadSource, RefType, StructType, Type, VoidType,
+    BooleanType, BufferType, CallbackType, FfiDecoder, FfiEncoder, GObjectType, IntegerKind,
+    Ownership, RawPtrWriter, ReadSource, RefType, StructType, Type, VoidType,
 };
 use native::value::Value;
 use native::{ffi, value};
@@ -110,7 +110,7 @@ fn can_be_return_type_accepts_value_shapes_and_rejects_argument_shapes() {
     assert!(Type::EnumFlags(common::enum_type()).can_be_return_type());
 
     assert!(!Type::Callback(callback_type()).can_be_return_type());
-    assert!(!Type::Blob(BlobType).can_be_return_type());
+    assert!(!Type::Buffer(BufferType).can_be_return_type());
     let ref_type = RefType::new(Type::Integer(IntegerKind::I32));
     assert!(!Type::Ref(ref_type).can_be_return_type());
 }
@@ -153,13 +153,13 @@ fn raw_ptr_codec_write_return_to_raw_ptr_default_writes_null() {
     // SAFETY: `ret` points to the live, writable pointer-sized stack local `slot`; the default
     // `write_return_to_raw_ptr` writes null into that in-bounds slot.
     unsafe {
-        RawPtrCodec::write_return_to_raw_ptr(&callback_type(), ret, &Ok(Value::Number(1.0)));
+        RawPtrWriter::write_return_to_raw_ptr(&callback_type(), ret, &Ok(Value::Number(1.0)));
     }
     assert!(slot.is_null());
 
     slot = 9 as *mut c_void;
     // SAFETY: same writable pointer-sized slot `ret`; the error case also writes null in bounds.
-    unsafe { RawPtrCodec::write_return_to_raw_ptr(&callback_type(), ret, &Err(())) };
+    unsafe { RawPtrWriter::write_return_to_raw_ptr(&callback_type(), ret, &Err(())) };
     assert!(slot.is_null());
 }
 
@@ -170,7 +170,7 @@ fn raw_ptr_codec_write_value_to_raw_ptr_default_bails() {
     assert!(
         // SAFETY: the default `write_value_to_raw_ptr` for a callback type bails before touching
         // `ptr`, which nonetheless points to the live pointer-sized stack local `slot`.
-        unsafe { RawPtrCodec::write_value_to_raw_ptr(&callback_type(), ptr, &Value::Number(1.0)) }
+        unsafe { RawPtrWriter::write_value_to_raw_ptr(&callback_type(), ptr, &Value::Number(1.0)) }
             .is_err()
     );
 }

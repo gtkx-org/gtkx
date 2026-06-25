@@ -7,7 +7,7 @@ use gtk4::prelude::ObjectType as _;
 
 use native::ffi;
 use native::managed::NativeHandle;
-use native::types::{FfiDecoder, FfiEncoder, GObjectType, Ownership, RawPtrCodec, ReadSource};
+use native::types::{FfiDecoder, FfiEncoder, GObjectType, Ownership, RawPtrWriter, ReadSource};
 use native::value::Value;
 
 use common::{

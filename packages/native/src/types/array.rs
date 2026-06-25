@@ -304,7 +304,7 @@ impl FfiDecoder for ArrayType {
     }
 }
 
-impl RawPtrCodec for ArrayType {
+impl RawPtrWriter for ArrayType {
     /// # Safety
     ///
     /// `ret` must point to a writable, pointer-sized return slot, as provided by the trampoline
@@ -346,7 +346,7 @@ impl ItemCodec {
             Type::String(_) => Self::String,
             Type::Void(_)
             | Type::Array(_)
-            | Type::Blob(_)
+            | Type::Buffer(_)
             | Type::HashTable(_)
             | Type::Callback(_)
             | Type::Ref(_)

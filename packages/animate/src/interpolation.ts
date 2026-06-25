@@ -1,5 +1,16 @@
-import { propertyDefaults } from "./property-defaults.js";
 import type { AnimatableProperties } from "./types.js";
+
+const propertyDefaults: { [K in keyof Required<AnimatableProperties>]: number } = {
+    opacity: 1,
+    x: 0,
+    y: 0,
+    scale: 1,
+    scaleX: 1,
+    scaleY: 1,
+    rotate: 0,
+    skewX: 0,
+    skewY: 0,
+};
 
 export const interpolate = (
     from: AnimatableProperties,

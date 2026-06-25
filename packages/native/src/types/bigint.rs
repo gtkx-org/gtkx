@@ -186,7 +186,7 @@ impl FfiDecoder for BigIntKind {
     }
 }
 
-impl RawPtrCodec for BigIntKind {
+impl RawPtrWriter for BigIntKind {
     /// # Safety
     ///
     /// `ret` must point to a writable return slot of at least 8 bytes, as provided by the

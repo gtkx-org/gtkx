@@ -1,6 +1,6 @@
 import { rmSync } from "node:fs";
 import { resolve } from "node:path";
-import { CodegenRunner } from "@gtkx/codegen";
+import { runCodegen as runCodegenCore } from "@gtkx/codegen";
 import { type GtkxConfig, GtkxConfigNotFoundError, loadGtkxConfig, resolveDataDir } from "@gtkx/config";
 import { emitSchemaEnv } from "../gsettings/env.js";
 import { GtkxError } from "../internal/errors.js";
@@ -23,29 +23,28 @@ export type RunCodegenResult = {
     libraries?: string[] | undefined;
 };
 
-const buildRunner = (store: CodegenStore, libraries: string[], girPath: string[]): CodegenRunner =>
-    new CodegenRunner({
-        libraries,
-        girPath,
-        gi: {
-            storeDir: store.giStoreDir,
-            linkDir: store.giLinkDir,
-            realFfiDir: store.realFfiDir,
-            realNativeDir: store.realNativeDir,
-            version: store.ffiVersion,
-        },
-        jsx:
-            store.react !== null && store.realReactRuntimeDir !== null
-                ? {
-                      storeDir: store.jsxStoreDir,
-                      linkDir: store.jsxLinkDir,
-                      giStoreDir: store.giStoreDir,
-                      realReactRuntimeDir: store.realReactRuntimeDir,
-                      realReactPackageDir: store.react.realDir,
-                      version: store.react.version,
-                  }
-                : undefined,
-    });
+const codegenOptions = (store: CodegenStore, libraries: string[], girPath: string[]) => ({
+    libraries,
+    girPath,
+    gi: {
+        storeDir: store.giStoreDir,
+        linkDir: store.giLinkDir,
+        realFfiDir: store.realFfiDir,
+        realNativeDir: store.realNativeDir,
+        version: store.ffiVersion,
+    },
+    jsx:
+        store.react !== null && store.realReactRuntimeDir !== null
+            ? {
+                  storeDir: store.jsxStoreDir,
+                  linkDir: store.jsxLinkDir,
+                  giStoreDir: store.giStoreDir,
+                  realReactRuntimeDir: store.realReactRuntimeDir,
+                  realReactPackageDir: store.react.realDir,
+                  version: store.react.version,
+              }
+            : undefined,
+});
 
 export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenResult> => {
     const cwd = findCodegenRoot(options.cwd ?? process.cwd());
@@ -66,11 +65,11 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
         }
     }
 
-    const result = await buildRunner(store, libraries, girPath).run();
+    const result = await runCodegenCore(codegenOptions(store, libraries, girPath));
 
     return {
         namespaces: result.namespaces,
-        reactNodes: result.reactNodes,
+        reactNodes: result.intrinsicElements,
         duration: result.duration,
         girPath,
         configFile,

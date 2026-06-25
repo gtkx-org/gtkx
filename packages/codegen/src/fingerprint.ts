@@ -7,7 +7,7 @@ const require = createRequire(import.meta.url);
 
 export const FINGERPRINT_FILENAME = ".codegen-fingerprint.json";
 
-export const CODEGEN_VERSION: string = (require("../package.json") as { version: string }).version;
+const CODEGEN_VERSION: string = (require("../package.json") as { version: string }).version;
 
 export type CodegenFingerprint = {
     value: string;

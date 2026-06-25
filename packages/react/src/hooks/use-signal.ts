@@ -2,7 +2,7 @@ import type { SignalHandler } from "@gtkx/ffi";
 import type * as GObject from "@gtkx/gi/gobject";
 import { useRef } from "react";
 import type { GObjectTarget } from "../utils/gobject-target.js";
-import { useTargetRegistration } from "../utils/use-target-registration.js";
+import { useTargetRegistration } from "./use-target-registration.js";
 
 type AnySignalHandler = { handler(...args: unknown[]): unknown }["handler"];
 

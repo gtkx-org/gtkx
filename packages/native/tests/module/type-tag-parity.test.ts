@@ -31,7 +31,7 @@ const REPRESENTATIVES: DescriptorByTag = {
         unrefFn: "unref",
     },
     array: { type: "array", itemType: { type: "int8" }, kind: "array", ownership: "borrowed" },
-    blob: { type: "blob" },
+    buffer: { type: "buffer" },
     hashtable: {
         type: "hashtable",
         keyType: { type: "string", ownership: "borrowed" },

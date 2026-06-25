@@ -3,7 +3,8 @@ import * as Gtk from "@gtkx/gi/gtk";
 import type { RefObject } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AnimationCssProvider } from "../src/animation-css-provider.js";
-import { type WidgetAnimationProps, WidgetAnimator } from "../src/use-widget-animation.js";
+import type { WidgetAnimationProps } from "../src/types.js";
+import { WidgetAnimator } from "../src/widget-animator.js";
 
 const widgetRef = (widget: Gtk.Widget): RefObject<Gtk.Widget | null> => ({ current: widget });
 const propsRef = (props: WidgetAnimationProps): RefObject<WidgetAnimationProps> => ({ current: props });
@@ -25,18 +26,18 @@ describe("WidgetAnimator", () => {
 
     it("writes the resolved initial values on applyMount", () => {
         const widget = new Gtk.Box();
-        const animator = makeAnimator(widget, { type: "timed", animate: { opacity: 0.3 }, animateOnMount: false });
+        const animator = makeAnimator(widget, { animate: { opacity: 0.3 } });
 
-        animator.applyMount();
+        animator.applyMount(true);
 
         expect(writeSpy).toHaveBeenCalledWith({ opacity: 0.3 });
         animator.dispose();
     });
 
     it("ignores applyMount when no widget is attached", () => {
-        const animator = new WidgetAnimator("gtkx-anim-test", { current: null }, propsRef({ type: "timed" }));
+        const animator = new WidgetAnimator("gtkx-anim-test", { current: null }, propsRef({}));
 
-        expect(() => animator.applyMount()).not.toThrow();
+        expect(() => animator.applyMount(true)).not.toThrow();
         expect(writeSpy).not.toHaveBeenCalled();
         animator.dispose();
     });
@@ -44,7 +45,10 @@ describe("WidgetAnimator", () => {
     const startDelayedAnimator = (): { animator: WidgetAnimator; playSpy: ReturnType<typeof vi.spyOn> } => {
         vi.useFakeTimers();
         const widget = new Gtk.Box();
-        const animator = makeAnimator(widget, { type: "timed", animate: { opacity: 1 }, duration: 100, delay: 200 });
+        const animator = makeAnimator(widget, {
+            animate: { opacity: 1 },
+            transition: { duration: 0.1, delay: 0.2 },
+        });
         const playSpy = vi.spyOn(Adw.Animation.prototype, "play");
         animator.startAnimation({ opacity: 1 });
         return { animator, playSpy };

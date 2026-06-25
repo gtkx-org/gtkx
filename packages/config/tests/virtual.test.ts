@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { resolveGtkxConfig } from "../src/config.js";
 import {
     GTKX_CONFIG_VIRTUAL_ID,
     RESOLVED_GTKX_CONFIG_VIRTUAL_ID,
     renderGtkxConfigModule,
-    resolveGtkxConfig,
     serializeGtkxConfig,
-} from "../src/index.js";
+} from "../src/virtual.js";
 
 describe("virtual module ids", () => {
     it("marks the resolved id with the rollup virtual prefix", () => {

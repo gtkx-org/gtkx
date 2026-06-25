@@ -1,0 +1,22 @@
+export const REFRESH_REG = "$RefreshReg$";
+
+export const REFRESH_SIG = "$RefreshSig$";
+
+export const REFRESH_RUNTIME_SPECIFIER = "@gtkx/cli/refresh-runtime";
+
+const REFRESH_INCLUDE = /\.[tj]sx?$/;
+const REFRESH_EXCLUDE = /node_modules|[/\\]dist[/\\]|[/\\]\.gtkx[/\\]/;
+
+const shouldTransformForRefresh = (
+    id: string,
+    transformOptions: { ssr?: boolean | undefined } | undefined,
+): boolean => {
+    if (!transformOptions?.ssr) return false;
+    if (!REFRESH_INCLUDE.test(id)) return false;
+    if (REFRESH_EXCLUDE.test(id)) return false;
+    return true;
+};
+
+type RefreshGate = (id: string, transformOptions: { ssr?: boolean | undefined } | undefined) => boolean;
+
+export const createRefreshGate = (): RefreshGate => shouldTransformForRefresh;

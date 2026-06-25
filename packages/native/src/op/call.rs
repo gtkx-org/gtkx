@@ -6,7 +6,7 @@ use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use super::handler::{NativeRequest, RefUpdate};
+use super::request::{NativeRequest, RefUpdate};
 use crate::{
     arg::Arg,
     ffi,
@@ -25,8 +25,9 @@ struct CallRequest {
 
 /// A function signature whose argument and return type descriptors are parsed once.
 ///
-/// `bind` compiles a signature a single time and reuses the resulting handle for every call, so
-/// the per-call path marshals only argument values and never re-walks the type descriptor objects.
+/// `compile_signature` parses the descriptors a single time and returns this handle; `call_compiled`
+/// reuses it for every call, so the per-call path marshals only argument values and never re-walks
+/// the type descriptor objects.
 pub struct CompiledSignature {
     arg_types: Vec<Type>,
     result_type: Type,
@@ -251,7 +252,7 @@ mod napi_export {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{ArrayType, BlobType, IntegerKind, Ownership, StringType};
+    use crate::types::{ArrayType, BufferType, IntegerKind, Ownership, StringType};
     use crate::value::{BufferView, BufferViewKind};
 
     use super::*;
@@ -353,7 +354,7 @@ mod tests {
     }
 
     #[test]
-    fn execute_writes_callee_output_into_a_blob_view() {
+    fn execute_writes_callee_output_into_a_buffer_view() {
         let mut out = vec![0u8; 6];
         let view = BufferView::new(
             out.as_mut_ptr().cast(),
@@ -370,7 +371,7 @@ mod tests {
                     Type::Integer(IntegerKind::U32),
                     Value::Number(0x00E9 as f64),
                 ),
-                Arg::new(Type::Blob(BlobType), Value::BufferView(view)),
+                Arg::new(Type::Buffer(BufferType), Value::BufferView(view)),
             ],
             result_type: Type::Integer(IntegerKind::I32),
         };

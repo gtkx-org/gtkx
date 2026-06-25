@@ -401,7 +401,7 @@ impl FfiDecoder for HashTableType {
     }
 }
 
-impl RawPtrCodec for HashTableType {
+impl RawPtrWriter for HashTableType {
     unsafe fn write_return_to_raw_ptr(
         &self,
         ret: *mut c_void,

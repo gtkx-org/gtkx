@@ -3,9 +3,9 @@ import type * as GObject from "@gtkx/gi/gobject";
 import { omit } from "@gtkx/utils";
 import { collectConstructableProps } from "../utils/gtype.js";
 import { requireClassByName } from "../utils/gtype-predicates.js";
+import { createRelationshipNode } from "./relationship-node.js";
 import { type Node, registerState } from "./state.js";
 import type { Container, Props } from "./types.js";
-import { createWrapperElement } from "./wrapper-element.js";
 
 const CONSTRUCTION_SKIP_PROPS: Record<string, string[]> = {
     GtkStack: ["visibleChildName"],
@@ -35,8 +35,8 @@ export const createElementInstance = (type: string, props: Props, rootContainer:
     return node;
 };
 
-export const createWrapperInstance = (kind: string, props: Props, rootContainer: Container): Node => {
-    const node = createWrapperElement();
+export const createRelationshipInstance = (kind: string, props: Props, rootContainer: Container): Node => {
+    const node = createRelationshipNode();
     registerState(node, { kind, props, rootContainer });
     return node;
 };

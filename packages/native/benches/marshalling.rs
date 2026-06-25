@@ -11,7 +11,7 @@ use codspeed_criterion_compat::{
 };
 use native::ffi::FfiValue;
 use native::types::{
-    ArrayKind, ArrayType, BlobType, FfiDecoder as _, FfiEncoder as _, IntegerKind, Ownership,
+    ArrayKind, ArrayType, BufferType, FfiDecoder as _, FfiEncoder as _, IntegerKind, Ownership,
     StringType, Type,
 };
 use native::value::{BufferView, BufferViewKind, Value};
@@ -104,8 +104,8 @@ fn bench_encode_view_passthrough(c: &mut Criterion) {
     group.finish();
 }
 
-fn bench_blob_encode_passthrough(c: &mut Criterion) {
-    let mut group = c.benchmark_group("blob_encode_passthrough");
+fn bench_buffer_encode_passthrough(c: &mut Criterion) {
+    let mut group = c.benchmark_group("buffer_encode_passthrough");
     for &n in &SIZES {
         let mut buffer: Vec<u8> = vec![0; n];
         let view = BufferView::new(
@@ -118,7 +118,7 @@ fn bench_blob_encode_passthrough(c: &mut Criterion) {
         let value = Value::BufferView(view);
         group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, _| {
             b.iter(|| {
-                let encoded = BlobType.encode(black_box(&value)).expect("blob encode");
+                let encoded = BufferType.encode(black_box(&value)).expect("buffer encode");
                 black_box(encoded);
             });
         });
@@ -232,7 +232,7 @@ criterion_group!(
     bench_decode_contiguous,
     bench_encode_contiguous,
     bench_encode_view_passthrough,
-    bench_blob_encode_passthrough,
+    bench_buffer_encode_passthrough,
     bench_decode_string,
     bench_encode_string,
     bench_decode_glist,

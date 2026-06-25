@@ -1,12 +1,10 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkColumnViewColumn, type GtkColumnViewColumnProps } from "@gtkx/jsx/gtk";
 import { createElement, type ReactNode, useLayoutEffect, useRef, useState } from "react";
-import { CellRenderHost } from "./cell-render-host.js";
-import { useColumnViewContext } from "./contexts/column-view-context.js";
+import { type CellRenderer, CellRenderHost } from "./cell.js";
+import { useColumnViewContext } from "./column-view-context.js";
 import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
 import { useHeaderMenu } from "./hooks/use-header-menu.js";
-import type { CellRenderer } from "./list-cell.js";
-import type { ColumnViewColumnProps } from "./types.js";
 
 const factoryInstaller: FactoryInstaller<Gtk.ColumnViewColumn> = {
     install: (column, factory) => column.setFactory(factory),
@@ -14,20 +12,37 @@ const factoryInstaller: FactoryInstaller<Gtk.ColumnViewColumn> = {
 };
 
 /**
+ * Props for a single {@link ColumnViewColumn} of a {@link ColumnView},
+ * replacing the raw `GtkColumnViewColumn` factory/sorter surface with a
+ * declarative `renderCell` callback and an optional header context menu.
+ */
+export type ColumnViewColumnDeclarativeProps<T = unknown> = {
+    title: string;
+    expand?: boolean | undefined;
+    resizable?: boolean | undefined;
+    fixedWidth?: number | undefined;
+    id: string;
+    sortable?: boolean | undefined;
+    visible?: boolean | undefined;
+    renderCell: (item: T) => ReactNode;
+    headerMenu?: ReactNode;
+};
+
+/**
  * Props for the {@link ColumnViewColumn} component: the raw
  * `GtkColumnViewColumn` element surface (minus its imperative `factory` and
  * `sorter` properties) with its cell wiring replaced by the declarative
- * {@link ColumnViewColumnProps} API.
+ * {@link ColumnViewColumnDeclarativeProps} API.
  */
-export type ColumnViewColumnComponentProps<T = unknown> = Omit<GtkColumnViewColumnProps, "factory" | "sorter"> &
-    ColumnViewColumnProps<T>;
+export type ColumnViewColumnProps<T = unknown> = Omit<GtkColumnViewColumnProps, "factory" | "sorter"> &
+    ColumnViewColumnDeclarativeProps<T>;
 
 /**
  * A single column of a {@link ColumnView}, rendering each row's cell through
  * the declarative `renderCell` callback and optionally attaching a header
  * context menu.
  */
-export const ColumnViewColumn = <T = unknown>(props: ColumnViewColumnComponentProps<T>): ReactNode => {
+export const ColumnViewColumn = <T = unknown>(props: ColumnViewColumnProps<T>): ReactNode => {
     const { id, title, expand, resizable, fixedWidth, visible, sortable, renderCell, headerMenu } = props;
     const context = useColumnViewContext();
     const [column, setColumn] = useState<Gtk.ColumnViewColumn | null>(null);
@@ -36,7 +51,7 @@ export const ColumnViewColumn = <T = unknown>(props: ColumnViewColumnComponentPr
         setColumn(value);
     }).current;
 
-    const { store } = useCellContainers<Gtk.ColumnViewColumn>({
+    const store = useCellContainers<Gtk.ColumnViewColumn>({
         target: column,
         installer: factoryInstaller,
     });

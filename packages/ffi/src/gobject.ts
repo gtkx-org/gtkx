@@ -7,7 +7,7 @@ import { getHandle } from "./registry.js";
 
 type Property = [Type, Value];
 
-export function newGobjectWithProperties(gtype: GType, props: Record<string, Property>): Handle {
+export function newGObjectWithProperties(gtype: GType, props: Record<string, Property>): Handle {
     const names: string[] = [];
     const values: Handle[] = [];
 
@@ -38,12 +38,12 @@ const PROPERTY_CALL_ARGS = [objectT("borrowed"), stringT("borrowed"), GVALUE_T] 
 const gObjectGetProperty = bind(LIB, "g_object_get_property", [...PROPERTY_CALL_ARGS], voidT);
 const gObjectSetProperty = bind(LIB, "g_object_set_property", [...PROPERTY_CALL_ARGS], voidT);
 
-export function getGobjectProperty(obj: object, propertyName: string, descriptor: Type): unknown {
+export function getGObjectProperty(obj: object, propertyName: string, descriptor: Type): unknown {
     const value = newValueFromFfi(descriptor);
     gObjectGetProperty(getHandle(obj), propertyName, value);
     return fromGValue(value);
 }
 
-export function setGobjectProperty(obj: object, propertyName: string, descriptor: Type, jsValue: unknown): void {
+export function setGObjectProperty(obj: object, propertyName: string, descriptor: Type, jsValue: unknown): void {
     gObjectSetProperty(getHandle(obj), propertyName, toGValue(descriptor, jsValue));
 }

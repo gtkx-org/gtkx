@@ -3,8 +3,8 @@ import type { GirClass } from "../gir/class.js";
 import type { Library } from "../gir/library.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import type { JsxImports } from "./imports.js";
+import { collectIntrinsicElementClasses, type IntrinsicElementClass } from "./intrinsic-elements.js";
 import { buildElementPropsEntries } from "./props.js";
-import { collectReactNodeClasses, type ReactNodeClass } from "./react-nodes.js";
 import { ACCESSIBLE_PROP_TYPES, SLOT_PROPS_BY_TYPE } from "./tables.js";
 
 export type GenerateJsxOptions = {
@@ -20,37 +20,37 @@ export const generateJsxSection = (
     options: GenerateJsxOptions,
 ): { source: string; intrinsicCount: number } => {
     const { excludeNames, imports } = options;
-    const allWidgets = collectReactNodeClasses(library);
+    const allWidgets = collectIntrinsicElementClasses(library);
     const widgets = allWidgets.filter((entry) => entry.namespace.name === targetNamespace.name);
     const intrinsicWidgets = widgets.filter((entry) => !excludeNames.has(entry.glibName));
     const constLines = intrinsicWidgets.map(
         (entry) => `export const ${entry.glibName} = ${sourceStringLiteral(entry.glibName)} as const;`,
     );
 
-    const reactNodeByGlibName = new Map(allWidgets.map((entry) => [entry.glibName, entry]));
-    const isReactNodeAncestor = (candidate: GirClass): boolean => {
+    const intrinsicElementByGlibName = new Map(allWidgets.map((entry) => [entry.glibName, entry]));
+    const isIntrinsicElementAncestor = (candidate: GirClass): boolean => {
         const candidateGlib = candidate.glibTypeName ?? candidate.cType;
-        return candidateGlib !== undefined && reactNodeByGlibName.has(candidateGlib);
+        return candidateGlib !== undefined && intrinsicElementByGlibName.has(candidateGlib);
     };
     imports.reactBuiltins.add("ReactNode");
     imports.reactBuiltins.add("Ref");
 
-    let needsReactNodePropsBase = false;
+    let needsIntrinsicElementPropsBase = false;
     let needsReactElement = false;
     const propBlocks: string[] = [];
     for (const entry of widgets) {
         const { block, extendsBase, slotPropNames } = renderPropBlock(library, entry, {
-            isReactNodeAncestor,
-            reactNodeByGlibName,
+            isIntrinsicElementAncestor,
+            intrinsicElementByGlibName,
             targetNamespaceName: targetNamespace.name,
             imports,
         });
-        if (extendsBase) needsReactNodePropsBase = true;
+        if (extendsBase) needsIntrinsicElementPropsBase = true;
         if (slotPropNames.length > 0) needsReactElement = true;
         propBlocks.push(block);
     }
     if (needsReactElement) imports.reactBuiltins.add("ReactElement");
-    if (needsReactNodePropsBase) propBlocks.unshift(renderWidgetPropsBase(imports));
+    if (needsIntrinsicElementPropsBase) propBlocks.unshift(renderWidgetPropsBase(imports));
 
     const source = [constLines.join("\n"), "", propBlocks.join("\n\n"), "", renderJsxAugmentation(widgets)].join("\n");
     return { source, intrinsicCount: intrinsicWidgets.length };
@@ -67,7 +67,7 @@ const renderWidgetPropsBase = (imports: JsxImports): string => {
     return ["export interface WidgetProps {", "    name?: string;", ...accessibleLines, "}"].join("\n");
 };
 
-const renderJsxAugmentation = (widgets: ReactNodeClass[]): string =>
+const renderJsxAugmentation = (widgets: IntrinsicElementClass[]): string =>
     [
         "declare global {",
         "    namespace React.JSX {",
@@ -79,15 +79,15 @@ const renderJsxAugmentation = (widgets: ReactNodeClass[]): string =>
     ].join("\n");
 
 type RenderPropBlockContext = {
-    isReactNodeAncestor: (candidate: GirClass) => boolean;
-    reactNodeByGlibName: Map<string, ReactNodeClass>;
+    isIntrinsicElementAncestor: (candidate: GirClass) => boolean;
+    intrinsicElementByGlibName: Map<string, IntrinsicElementClass>;
     targetNamespaceName: string;
     imports: JsxImports;
 };
 
 const renderPropBlock = (
     library: Library,
-    entry: ReactNodeClass,
+    entry: IntrinsicElementClass,
     context: RenderPropBlockContext,
 ): { block: string; extendsBase: boolean; slotPropNames: string[] } => {
     const slotProps = SLOT_PROPS_BY_TYPE[entry.glibName] ?? [];
@@ -95,7 +95,7 @@ const renderPropBlock = (
         library,
         klass: entry.klass,
         namespace: entry.namespace,
-        isReactNodeAncestor: context.isReactNodeAncestor,
+        isIntrinsicElementAncestor: context.isIntrinsicElementAncestor,
     });
     for (const [namespace, alias] of imports) context.imports.giNamespaces.set(namespace, alias);
     context.imports.giNamespaces.set(entry.namespace.name, entry.namespace.name);
@@ -118,7 +118,7 @@ const renderPropBlock = (
 
 const resolveParentPropsExtension = (
     library: Library,
-    entry: ReactNodeClass,
+    entry: IntrinsicElementClass,
     context: RenderPropBlockContext,
 ): string => {
     const parent = entry.klass.parent;
@@ -128,7 +128,7 @@ const resolveParentPropsExtension = (
     if (resolved.kind !== "class" && resolved.kind !== "interface") return "WidgetProps";
     const parentGlib = resolved.value.glibTypeName ?? resolved.value.cType;
     if (parentGlib === undefined) return "WidgetProps";
-    if (!context.reactNodeByGlibName.has(parentGlib)) return "WidgetProps";
+    if (!context.intrinsicElementByGlibName.has(parentGlib)) return "WidgetProps";
     const parentNamespaceName = resolved.namespace.name;
     if (parentNamespaceName !== context.targetNamespaceName) {
         const directory = parentNamespaceName.toLowerCase();

@@ -30,7 +30,7 @@ export type StringType = { type: "string"; ownership: Ownership; length?: number
 export type GObjectType = { type: "gobject"; ownership: Ownership; typeName?: string };
 export type UnicharType = { type: "unichar" };
 export type VoidType = { type: "void" };
-export type BlobType = { type: "blob" };
+export type BufferType = { type: "buffer" };
 export type StructType = { type: "struct"; ownership: Ownership; size?: number; callerAllocated?: boolean };
 export type RefType = { type: "ref"; innerType: Type; inout?: boolean };
 
@@ -101,7 +101,7 @@ export type Type =
     | StructType
     | FundamentalType
     | ArrayType
-    | BlobType
+    | BufferType
     | HashTableType
     | RefType
     | CallbackType

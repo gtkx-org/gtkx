@@ -36,7 +36,7 @@ Each element drives its own animation lifecycle. On mount it derives a baseline 
 
 `@gtkx/gl` is a generated set of camelCase wrappers over the OpenGL 4.6 core profile, plus a small hand-written companion module. Wrappers operate on the currently-current GL context and are meant to be called inside `GtkGLArea` realize/render/resize/unrealize handlers after `makeCurrent()`. The generated bindings come from the codegen Khronos path over the vendored GL registry and must not be hand-edited; changes go through regeneration (see [./codegen.md](./codegen.md)).
 
-Each wrapper binds a GL command through the FFI type-descriptor helper, keeping every non-output parameter in the signature and returning out-parameters as values or tuples. Generated enum and scalar/handle type modules accompany the commands. The companion module supplements these with calls awkward to auto-generate — info-log queries, debug-message-callback installation via an FFI callback, a chunked sync-wait loop — and with singular convenience helpers derived over the plural commands.
+Each wrapper binds a GL command through the FFI type-descriptor helper, keeping every non-output parameter in the signature and returning out-parameters as values or tuples; the generator also derives singular convenience helpers over the plural commands. Generated enum and scalar/handle type modules accompany the commands. The companion module supplements these with calls awkward to auto-generate — info-log queries, debug-message-callback installation via an FFI callback, and a chunked sync-wait loop.
 
 ```tsx
 import * as gl from "@gtkx/gl";

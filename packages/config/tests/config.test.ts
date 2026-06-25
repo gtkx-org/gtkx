@@ -5,7 +5,7 @@ import {
     resolveGtkxConfig,
     resolveReactCompilerOptions,
     validateGtkxConfig,
-} from "../src/index.js";
+} from "../src/config.js";
 
 const validateUnknown = (config: unknown): void => validateGtkxConfig(config as GtkxConfig);
 

@@ -34,7 +34,7 @@ export class ModuleContext {
         this.used.recordNamed("@gtkx/native", name, true);
     }
 
-    addGobjectBootstrapImports(): void {
+    addGObjectBootstrapImports(): void {
         if (this.namespace.name === "GObject") return;
         if (this.namespace.name === "GLib") return;
         this.used.recordSideEffect("../gobject/overrides/object.js");

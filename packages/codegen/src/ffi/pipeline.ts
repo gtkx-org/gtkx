@@ -1,26 +1,26 @@
-import { generateAlias } from "../codegen/alias.js";
-import { generateBoxed } from "../codegen/boxed.js";
-import { generateCallback } from "../codegen/callback.js";
-import { generateClass } from "../codegen/class.js";
-import { generateConstant } from "../codegen/constant.js";
-import { generateEnum } from "../codegen/enum.js";
-import { generateNamespaceBootstrap, generateNamespaceFunction } from "../codegen/function.js";
-import { generateInterface } from "../codegen/interface.js";
 import type { GirClass } from "../gir/class.js";
 import type { Library } from "../gir/library.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import { splitOptionalNamespace } from "../gir/type-ref.js";
 import { ModuleContext } from "../writer/context.js";
+import { generateAlias } from "./alias.js";
+import { generateCallback } from "./callback.js";
+import { generateClass } from "./class.js";
+import { generateConstant } from "./constant.js";
+import { generateEnum } from "./enum.js";
+import { generateNamespaceBootstrap, generateNamespaceFunction } from "./function.js";
+import { generateInterface } from "./interface.js";
+import { generateRecord } from "./record.js";
 
 export const generateNamespaceModule = (namespace: GirNamespace, library: Library): { source: string } => {
     const context = new ModuleContext(namespace, library);
-    context.addGobjectBootstrapImports();
+    context.addGObjectBootstrapImports();
 
     for (const enumeration of namespace.enums) {
         generateEnum(context, enumeration);
     }
-    for (const boxed of namespace.records) {
-        generateBoxed(context, boxed);
+    for (const record of namespace.records) {
+        generateRecord(context, record);
     }
     for (const klass of topologicalClassOrder(namespace.classes, namespace.name)) {
         generateClass(context, klass);

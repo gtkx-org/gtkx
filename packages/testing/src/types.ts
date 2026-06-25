@@ -113,15 +113,21 @@ export type BoundQueries = {
     findAllByDisplayValue: (value: Matcher, options?: MatcherOptions) => Promise<Gtk.Widget[]>;
 };
 
+export type DebugUtilities = {
+    debug: (element?: Container | Container[], options?: PrettyWidgetOptions) => void;
+    logRoles: () => void;
+    screenshot: (selector?: WindowSelector, options?: ScreenshotOptions) => Promise<ScreenshotResult>;
+};
+
+export type Screen = BoundQueries & DebugUtilities;
+
 export type RenderResult<Q extends QueryMap = Record<never, never>> = BoundQueries &
-    BoundCustomQueries<Q> & {
+    BoundCustomQueries<Q> &
+    DebugUtilities & {
         container: Gtk.Widget;
         baseElement: Container;
         unmount: () => Promise<void>;
         rerender: (element: ReactNode) => Promise<void>;
-        debug: (element?: Container | Container[], options?: PrettyWidgetOptions) => void;
-        logRoles: () => void;
-        screenshot: (selector?: WindowSelector, options?: ScreenshotOptions) => Promise<ScreenshotResult>;
     };
 
 export type ScreenshotResult = {

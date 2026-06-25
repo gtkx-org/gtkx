@@ -30,16 +30,6 @@
     "type": "module",
     "exports": {
         "./package.json": "./package.json",
-        ".": {
-            "source": "./src/index.ts",
-            "types": "./dist/index.d.ts",
-            "default": "./dist/index.js"
-        },
-        "./builder": {
-            "source": "./src/builder.ts",
-            "types": "./dist/builder.d.ts",
-            "default": "./dist/builder.js"
-        },
         "./refresh-runtime": {
             "source": "./src/refresh-runtime.ts",
             "types": "./dist/refresh-runtime.d.ts",

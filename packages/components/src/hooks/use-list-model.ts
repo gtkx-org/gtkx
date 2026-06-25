@@ -19,19 +19,19 @@ import {
 } from "../utils/item-resolver.js";
 import { detectStructure, type ListStructure, structuralSignature } from "../utils/list-item-flatten.js";
 
-export interface ControlledListMode<T, S> {
+interface ControlledListMode<T, S> {
     items: ItemNode<T, S>[] | undefined;
     autoexpand?: boolean | undefined;
     model?: never;
 }
 
-export interface UncontrolledListMode {
+interface UncontrolledListMode {
     model: Gio.ListModel;
     items?: never;
     autoexpand?: never;
 }
 
-export interface ListModelResult<T, S> {
+interface ListModelResult<T, S> {
     model: Gio.ListModel;
     resolver: ItemResolver<T, S>;
     headerResolver: ItemResolver<T, S>;

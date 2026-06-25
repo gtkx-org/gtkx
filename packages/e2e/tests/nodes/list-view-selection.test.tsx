@@ -219,7 +219,7 @@ function SidebarTree({
                 autoexpand
                 selectionMode={Gtk.SelectionMode.SINGLE}
                 items={toSidebarListItems(sidebarData)}
-                selected={selectedId ? [selectedId] : []}
+                selectedIds={selectedId ? [selectedId] : []}
                 onSelectionChanged={(ids: string[]) => {
                     const id = ids[0];
                     if (id) onSelect(id);

@@ -8,8 +8,8 @@ import {
     BUNDLE_FILENAME,
     escapeXml,
     REL_SEPARATOR,
+    toVirtualId,
     VIRTUAL_INIT,
-    VIRTUAL_PREFIX,
 } from "../../src/vite-plugins/gresource-protocol.js";
 import { gtkxGResources } from "../../src/vite-plugins/gresources.js";
 import { expectBuildEndEmitsAsset, expectBuildEndIsNoop } from "./_vite-plugin-fixture.js";
@@ -43,7 +43,7 @@ const writeDataAsset = (relPath: string, bytes: Buffer): string => {
     return full;
 };
 
-const virtualAssetId = (absPath: string, rel: string): string => `${VIRTUAL_PREFIX}${absPath}${REL_SEPARATOR}${rel}`;
+const virtualAssetId = (absPath: string, rel: string): string => toVirtualId(absPath) + REL_SEPARATOR + rel;
 
 const initPlugin = async (
     plugin: GresourcesPlugin,
@@ -124,7 +124,7 @@ describe("gtkxGResources (resolveId)", () => {
             { resolve: () => Promise.resolve({ id: "/abs/data/icons/logo.png" }) },
             "#data/icons/logo.png",
         );
-        expect(result).toBe(`${VIRTUAL_PREFIX}/abs/data/icons/logo.png${REL_SEPARATOR}icons/logo.png`);
+        expect(result).toBe(`${toVirtualId("/abs/data/icons/logo.png") + REL_SEPARATOR}icons/logo.png`);
     });
 
     it("returns undefined when resolve marks the asset external", async () => {
@@ -141,7 +141,7 @@ describe("gtkxGResources (resolveId)", () => {
         const resolve = vi.fn(() => Promise.resolve({ id: "/abs/data/logo.png" }));
         const result = await (plugin.resolveId as ResolveIdHook).call({ resolve }, "#data/logo.png?inline");
         expect(resolve).toHaveBeenCalledWith("#data/logo.png", undefined, expect.objectContaining({ skipSelf: true }));
-        expect(result).toBe(`${VIRTUAL_PREFIX}/abs/data/logo.png${REL_SEPARATOR}logo.png`);
+        expect(result).toBe(`${toVirtualId("/abs/data/logo.png") + REL_SEPARATOR}logo.png`);
     });
 });
 
