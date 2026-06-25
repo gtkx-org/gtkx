@@ -1,11 +1,11 @@
 import { WRAPPER_NODE_ELEMENT } from "@gtkx/config";
 import { sortedStringsBy, sourceStringLiteral, toCamelCase } from "@gtkx/utils";
-import type { GirNamespace } from "../gir/namespace.js";
 import type { Library } from "../gir/library.js";
+import type { GirNamespace } from "../gir/namespace.js";
 import { type WrapperNodeElement, wrapperNodeElementEntries } from "./compounds-meta.js";
 import type { JsxImports } from "./imports.js";
-import { type AncestryWrapperName, BUILT_IN_ANCESTRY_WRAPPERS } from "./tables.js";
 import { ancestorGlibNames, collectReactNodeClasses, type ReactNodeClass } from "./react-nodes.js";
+import { type AncestryWrapperName, BUILT_IN_ANCESTRY_WRAPPERS } from "./tables.js";
 
 const WRAPPER_ELEMENT_CONST = "WrapperNodeElement";
 

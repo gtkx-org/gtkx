@@ -1,8 +1,8 @@
 import { generateNamespaceModule } from "./ffi/pipeline.js";
 import { computeFingerprint } from "./fingerprint.js";
 import { type GiNamespaceInput, type GiStoreOptions, writeGiStore } from "./gi-store.js";
-import { namespaceDirectory } from "./gir/namespace.js";
 import { Library } from "./gir/library.js";
+import { namespaceDirectory } from "./gir/namespace.js";
 import { type JsxStoreOptions, writeJsxStore } from "./jsx-store.js";
 import { generateJsxFiles } from "./react/pipeline.js";
 

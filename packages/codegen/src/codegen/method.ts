@@ -227,7 +227,9 @@ const planOutParam = (
     instanceOffset: number,
     consumed: boolean,
 ): CallArgPlan => {
-    const ffi = renderDescriptor(context, parameter.type, parameter.transferOwnership, { argIndexOffset: instanceOffset });
+    const ffi = renderDescriptor(context, parameter.type, parameter.transferOwnership, {
+        argIndexOffset: instanceOffset,
+    });
     return { paramLiteral: ffiParamLiteral(ffi, { direction: "out", consumed }), inputExpr: undefined };
 };
 
@@ -258,7 +260,9 @@ const planInoutParam = (
             inputExpr: parameterIdentifier(parameter, index),
         };
     }
-    const ffi = renderDescriptor(context, parameter.type, parameter.transferOwnership, { argIndexOffset: instanceOffset });
+    const ffi = renderDescriptor(context, parameter.type, parameter.transferOwnership, {
+        argIndexOffset: instanceOffset,
+    });
     return {
         paramLiteral: ffiParamLiteral(ffi, { direction: "inout", consumed }),
         inputExpr: parameterCallExpression(context, parameter, index),

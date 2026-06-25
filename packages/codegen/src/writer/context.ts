@@ -1,5 +1,5 @@
-import type { GirNamespace } from "../gir/namespace.js";
 import type { Library } from "../gir/library.js";
+import type { GirNamespace } from "../gir/namespace.js";
 import { ModuleBuilder } from "./module.js";
 import { UsedSymbols } from "./used-symbols.js";
 

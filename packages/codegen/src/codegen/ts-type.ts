@@ -1,5 +1,5 @@
-import { PRIMITIVE_TS_TYPE } from "../gir/primitives.js";
 import type { Library } from "../gir/library.js";
+import { PRIMITIVE_TS_TYPE } from "../gir/primitives.js";
 import type { GirType } from "../gir/type.js";
 import type { TypeId } from "../gir/type-id.js";
 import type { ModuleContext } from "../writer/context.js";

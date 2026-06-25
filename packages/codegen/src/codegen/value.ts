@@ -1,5 +1,6 @@
 import { sourceStringLiteral } from "@gtkx/utils";
 import type { GirCallback } from "../gir/callback.js";
+import type { Library } from "../gir/library.js";
 import {
     type GirParameter,
     type GirReturnValue,
@@ -9,7 +10,6 @@ import {
     type ParameterTransfer,
 } from "../gir/parameter.js";
 import type { PrimitiveCategory } from "../gir/primitives.js";
-import type { Library } from "../gir/library.js";
 import type { EntityType, GirType } from "../gir/type.js";
 import type { CArrayType, ListFlavor, TypeId } from "../gir/type-id.js";
 import type { ModuleContext } from "../writer/context.js";
@@ -94,7 +94,9 @@ export const renderDescriptor = (
             return arrayExpression(context, type, transfer, argIndexOffset);
         case "list": {
             if (type.flavor === "gbytearray") return tByteArray(ownership);
-            const element = renderDescriptor(context, type.element, deriveElementTransfer(transfer), { argIndexOffset });
+            const element = renderDescriptor(context, type.element, deriveElementTransfer(transfer), {
+                argIndexOffset,
+            });
             return tList(LIST_HELPERS[type.flavor], element, ownership);
         }
         case "hashtable": {

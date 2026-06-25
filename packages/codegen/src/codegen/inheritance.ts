@@ -2,8 +2,8 @@ import { toCamelCase, toCamelIdentifier, toLowerFirst, toPascalCase } from "@gtk
 import { ancestorChain, type ResolvedAncestor } from "../gir/ancestry.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
-import type { GirProperty } from "../gir/property.js";
 import type { Library } from "../gir/library.js";
+import type { GirProperty } from "../gir/property.js";
 import type { TypeId } from "../gir/type-id.js";
 import type { ModuleContext } from "../writer/context.js";
 import { methodExportName } from "./method.js";

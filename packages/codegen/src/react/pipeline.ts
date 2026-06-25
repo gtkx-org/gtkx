@@ -1,11 +1,12 @@
 import { sortedStringsBy } from "@gtkx/utils";
-import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import type { Library } from "../gir/library.js";
+import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import { collectAttachShapes } from "./attach-shapes.js";
 import { generateElementComponentsSection } from "./compounds.js";
 import { emptyJsxImports, renderJsxImports } from "./imports.js";
 import { generateJsxSection } from "./jsx.js";
 import { generateMetadata } from "./metadata.js";
+import { collectReactNodeClasses } from "./react-nodes.js";
 import {
     DEFAULT_BLOCKABLE_TYPES,
     META_OBJECT_ADD_METHODS,
@@ -14,7 +15,6 @@ import {
     SLOT_PROPS_BY_TYPE,
     TOP_LEVEL_TYPES,
 } from "./tables.js";
-import { collectReactNodeClasses } from "./react-nodes.js";
 
 export type JsxNamespaceFile = {
     directory: string;

@@ -2,11 +2,16 @@ import type { AddMethodRule, AttachShapeTable, OrderedInsertSpec, PageMetaSetter
 import { sortedStringsBy, sourceStringLiteral, toCamelIdentifier } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirEnum } from "../gir/enum.js";
+import type { Library } from "../gir/library.js";
 import type { PrimitiveCategory } from "../gir/primitives.js";
 import { type GirProperty, isConstructableProperty } from "../gir/property.js";
-import type { Library } from "../gir/library.js";
 import type { TypeId } from "../gir/type-id.js";
-import { implementedInterfaces, isReactNodeClass, iterateClassesWithGlibName, signalHandlerName } from "./react-nodes.js";
+import {
+    implementedInterfaces,
+    isReactNodeClass,
+    iterateClassesWithGlibName,
+    signalHandlerName,
+} from "./react-nodes.js";
 
 export type RuntimeTables = {
     topLevelTypes: string[];

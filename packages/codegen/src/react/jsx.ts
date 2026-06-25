@@ -1,11 +1,11 @@
 import { sourceStringLiteral } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
-import type { GirNamespace } from "../gir/namespace.js";
 import type { Library } from "../gir/library.js";
+import type { GirNamespace } from "../gir/namespace.js";
 import type { JsxImports } from "./imports.js";
 import { buildElementPropsEntries } from "./props.js";
-import { ACCESSIBLE_PROP_TYPES, SLOT_PROPS_BY_TYPE } from "./tables.js";
 import { collectReactNodeClasses, type ReactNodeClass } from "./react-nodes.js";
+import { ACCESSIBLE_PROP_TYPES, SLOT_PROPS_BY_TYPE } from "./tables.js";
 
 export type GenerateJsxOptions = {
     excludeNames: Set<string>;

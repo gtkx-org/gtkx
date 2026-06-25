@@ -1,7 +1,7 @@
 import { toCamelIdentifier } from "@gtkx/utils";
 import type { GirFunction } from "../gir/function.js";
-import { type GirParameter, isCallerAllocatedOut, isOutParameter } from "../gir/parameter.js";
 import type { Library } from "../gir/library.js";
+import { type GirParameter, isCallerAllocatedOut, isOutParameter } from "../gir/parameter.js";
 import type { TypeId } from "../gir/type-id.js";
 
 export type InputParameter = {

@@ -7,8 +7,8 @@ import { generateEnum } from "../codegen/enum.js";
 import { generateNamespaceBootstrap, generateNamespaceFunction } from "../codegen/function.js";
 import { generateInterface } from "../codegen/interface.js";
 import type { GirClass } from "../gir/class.js";
-import type { GirNamespace } from "../gir/namespace.js";
 import type { Library } from "../gir/library.js";
+import type { GirNamespace } from "../gir/namespace.js";
 import { splitOptionalNamespace } from "../gir/type-ref.js";
 import { ModuleContext } from "../writer/context.js";
 

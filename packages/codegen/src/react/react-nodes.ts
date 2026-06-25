@@ -1,8 +1,8 @@
 import { sortedStringsBy, toCamelIdentifier, toUpperFirst } from "@gtkx/utils";
 import { ancestorChain } from "../gir/ancestry.js";
 import type { GirClass } from "../gir/class.js";
-import type { GirNamespace } from "../gir/namespace.js";
 import type { Library } from "../gir/library.js";
+import type { GirNamespace } from "../gir/namespace.js";
 
 export const signalHandlerName = (signalName: string): string => `on${toUpperFirst(toCamelIdentifier(signalName))}`;
 

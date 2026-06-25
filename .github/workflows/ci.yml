@@ -346,11 +346,12 @@ jobs:
 
       - name: Install the CodSpeed runner
         shell: bash
-        # The installer drops the codspeed binary in ~/.cargo/bin (already on
-        # PATH); mirror it into /usr/local/bin so it is also reachable under sudo.
+        # The installer drops the codspeed binary under ~/.cargo/bin or ~/.local
+        # (already on PATH); locate it and mirror it into /usr/local/bin so it is
+        # also reachable under sudo.
         run: |
           curl -fsSL https://github.com/CodSpeedHQ/codspeed/releases/download/v4.18.1/codspeed-runner-installer.sh | bash
-          sudo install -m 0755 "$(find "$HOME/.local" /usr -name codspeed -type f -path '*bin*' 2>/dev/null | head -1)" /usr/local/bin/codspeed
+          sudo install -m 0755 "$(find "$HOME/.cargo" "$HOME/.local" /usr -name codspeed -type f -path '*bin*' 2>/dev/null | head -1)" /usr/local/bin/codspeed
           codspeed --version
 
       - name: Restrict codegen to the bench library set

@@ -34,7 +34,14 @@ const vtableEntries = (context: ModuleContext, structName: string, kind: VtableK
         if (!isVtableSlotEligible(context, callback)) continue;
         claimedNames.add(key);
         entries.push(
-            renderVtableSlotDescriptor(context, { key, structName, kind, field, callback, byteOffset: slot.byteOffset }),
+            renderVtableSlotDescriptor(context, {
+                key,
+                structName,
+                kind,
+                field,
+                callback,
+                byteOffset: slot.byteOffset,
+            }),
         );
     }
     return entries;
