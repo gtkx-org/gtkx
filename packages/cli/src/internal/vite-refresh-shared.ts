@@ -33,7 +33,7 @@ const shouldTransformForRefresh = (
     return true;
 };
 
-export type RefreshGate = (id: string, transformOptions: { ssr?: boolean | undefined } | undefined) => boolean;
+type RefreshGate = (id: string, transformOptions: { ssr?: boolean | undefined } | undefined) => boolean;
 
 export const createRefreshGate = (options: RefreshFilterOptions): RefreshGate => {
     const filter = resolveRefreshFilter(options);

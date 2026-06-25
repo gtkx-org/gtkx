@@ -1,6 +1,6 @@
 import { sortedStringsBy } from "@gtkx/utils";
 import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
-import type { Library } from "../gir/repository.js";
+import type { Library } from "../gir/library.js";
 import { collectAttachShapes } from "./attach-shapes.js";
 import { generateElementComponentsSection } from "./compounds.js";
 import { emptyJsxImports, renderJsxImports } from "./imports.js";
@@ -14,7 +14,7 @@ import {
     SLOT_PROPS_BY_TYPE,
     TOP_LEVEL_TYPES,
 } from "./tables.js";
-import { collectReactNodeClasses } from "./widgets.js";
+import { collectReactNodeClasses } from "./react-nodes.js";
 
 export type JsxNamespaceFile = {
     directory: string;
@@ -28,14 +28,14 @@ export type JsxFiles = {
 };
 
 export const generateJsxFiles = (library: Library): JsxFiles => {
-    const namespacesWithWidgets = new Map<string, GirNamespace>();
+    const namespacesWithReactNodes = new Map<string, GirNamespace>();
     for (const entry of collectReactNodeClasses(library)) {
-        namespacesWithWidgets.set(entry.namespace.name, entry.namespace);
+        namespacesWithReactNodes.set(entry.namespace.name, entry.namespace);
     }
 
     const namespaces: JsxNamespaceFile[] = [];
     let reactNodeCount = 0;
-    for (const namespace of sortedStringsBy(namespacesWithWidgets.values(), (entry) => entry.name)) {
+    for (const namespace of sortedStringsBy(namespacesWithReactNodes.values(), (entry) => entry.name)) {
         const { source, count } = generateJsxNamespace(namespace, library);
         namespaces.push({ directory: namespaceDirectory(namespace), source });
         reactNodeCount += count;
@@ -54,10 +54,7 @@ export const generateJsxFiles = (library: Library): JsxFiles => {
     return { namespaces, metadata, reactNodeCount };
 };
 
-const generateJsxNamespace = (
-    targetNamespace: GirNamespace,
-    library: Library,
-): { source: string; count: number } => {
+const generateJsxNamespace = (targetNamespace: GirNamespace, library: Library): { source: string; count: number } => {
     const imports = emptyJsxImports();
 
     const elementComponents = generateElementComponentsSection(targetNamespace, library, { imports });

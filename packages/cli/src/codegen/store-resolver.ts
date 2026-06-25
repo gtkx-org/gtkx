@@ -42,7 +42,7 @@ export type CodegenStore = {
     realReactRuntimeDir: string | null;
 };
 
-export type CodegenReactPackage = {
+type CodegenReactPackage = {
     realDir: string;
     version: string;
 };

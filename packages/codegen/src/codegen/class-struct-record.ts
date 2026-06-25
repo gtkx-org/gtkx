@@ -1,8 +1,8 @@
-import type { ModuleContext } from "../writer/context.js";
 import type { GirRecord } from "../gir/boxed.js";
 import type { GirFunction } from "../gir/function.js";
-import type { Library } from "../gir/repository.js";
+import type { Library } from "../gir/library.js";
 import type { TypeId } from "../gir/type-id.js";
+import type { ModuleContext } from "../writer/context.js";
 
 const GTYPE_STRUCT_ROOTS = new Set(["GObject.TypeClass", "GObject.TypeInterface"]);
 

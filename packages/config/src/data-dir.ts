@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 export const DATA_IMPORT_PREFIX = "#data";
 
-export const DATA_IMPORT_KEY: string = `${DATA_IMPORT_PREFIX}/*`;
+const DATA_IMPORT_KEY: string = `${DATA_IMPORT_PREFIX}/*`;
 
 const CONDITION_PRIORITY = ["default", "import", "node"] as const;
 

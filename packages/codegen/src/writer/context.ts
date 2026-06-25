@@ -1,5 +1,5 @@
 import type { GirNamespace } from "../gir/namespace.js";
-import type { Library } from "../gir/repository.js";
+import type { Library } from "../gir/library.js";
 import { ModuleBuilder } from "./module.js";
 import { UsedSymbols } from "./used-symbols.js";
 
@@ -22,8 +22,8 @@ export class ModuleContext {
         this.used.recordNamed("@gtkx/ffi", name, true);
     }
 
-    hoistFfiType(expression: string): string {
-        return this.module.hoistFfiType(expression);
+    hoistDescriptor(expression: string): string {
+        return this.module.hoistDescriptor(expression);
     }
 
     addNativeImport(name: string): void {

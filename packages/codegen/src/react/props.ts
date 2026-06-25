@@ -1,25 +1,25 @@
 import { toCamelIdentifier, toUpperFirst } from "@gtkx/utils";
-import type { GirClass } from "../gir/class.js";
-import type { GirNamespace } from "../gir/namespace.js";
-import { type GirParameter, isInoutParameter, isOutParameter } from "../gir/parameter.js";
-import { type GirProperty, isConstructableProperty } from "../gir/property.js";
-import type { Library } from "../gir/repository.js";
-import type { GirSignal } from "../gir/signal.js";
-import type { TypeId } from "../gir/type-id.js";
 import { forEachAncestor, type ResolvedInterface, resolveDirectInterfaces } from "../codegen/inheritance.js";
 import { renderHandlerParameters } from "../codegen/param-structure.js";
 import { foldOutParamShape } from "../codegen/return-shape.js";
 import { renderBaseTypeFor, type TsTypeTarget } from "../codegen/ts-type.js";
 import { isScalarRef } from "../codegen/value.js";
-import { classExposesMethod, isReactNodeClass, signalHandlerName } from "./widgets.js";
+import type { GirClass } from "../gir/class.js";
+import type { GirNamespace } from "../gir/namespace.js";
+import { type GirParameter, isInoutParameter, isOutParameter } from "../gir/parameter.js";
+import { type GirProperty, isConstructableProperty } from "../gir/property.js";
+import type { Library } from "../gir/library.js";
+import type { GirSignal } from "../gir/signal.js";
+import type { TypeId } from "../gir/type-id.js";
+import { classExposesMethod, isReactNodeClass, signalHandlerName } from "./react-nodes.js";
 
-export type WidgetPropsEntries = {
+export type ReactNodePropsEntries = {
     propLines: string[];
     imports: Map<string, string>;
     slotPropNames: string[];
 };
 
-export type WidgetPropsOptions = {
+export type ReactNodePropsOptions = {
     library: Library;
     klass: GirClass;
     namespace: GirNamespace;
@@ -37,7 +37,7 @@ type SignalRenderOptions = {
     selfType: string;
 };
 
-export const buildElementPropsEntries = (options: WidgetPropsOptions): WidgetPropsEntries => {
+export const buildElementPropsEntries = (options: ReactNodePropsOptions): ReactNodePropsEntries => {
     const { library, klass, namespace, isReactNodeAncestor = () => false } = options;
     const imports = new Map<string, string>();
     const types: PropTypeRenderContext = { library, imports };
@@ -70,12 +70,12 @@ export const buildElementPropsEntries = (options: WidgetPropsOptions): WidgetPro
         propEntries.push(`${handlerName}?: (${signature}) | undefined;`);
     };
 
-    walkWidgetMembers({ library, klass, namespace, isReactNodeAncestor, acceptProperty, acceptSignal });
+    walkReactNodeMembers({ library, klass, namespace, isReactNodeAncestor, acceptProperty, acceptSignal });
 
     return { propLines: propEntries, imports, slotPropNames };
 };
 
-type WidgetMemberWalk = {
+type ReactNodeMemberWalk = {
     library: Library;
     klass: GirClass;
     namespace: GirNamespace;
@@ -84,7 +84,7 @@ type WidgetMemberWalk = {
     acceptSignal: (signal: GirSignal) => void;
 };
 
-const walkWidgetMembers = (walk: WidgetMemberWalk): void => {
+const walkReactNodeMembers = (walk: ReactNodeMemberWalk): void => {
     const { library, klass, namespace, isReactNodeAncestor, acceptProperty, acceptSignal } = walk;
     const visitMembers = (memberClass: GirClass, interfaces: ResolvedInterface[]): void => {
         for (const property of memberClass.properties) acceptProperty(property);

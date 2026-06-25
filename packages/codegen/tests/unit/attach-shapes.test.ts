@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { collectAttachShapes } from "../../src/react/attach-shapes.js";
-import { repository } from "../helpers/repository.js";
+import { library } from "../helpers/library.js";
 
-const shapes = collectAttachShapes(repository);
+const shapes = collectAttachShapes(library);
 
 describe("attach-shape verification over Gtk and Adw", () => {
     it("records multi-child boxes with the verified container methods", () => {

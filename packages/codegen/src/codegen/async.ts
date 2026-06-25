@@ -1,5 +1,5 @@
 import type { GirFunction } from "../gir/function.js";
-import type { Library } from "../gir/repository.js";
+import type { Library } from "../gir/library.js";
 
 export const matchAsyncFinishName = (
     library: Library,

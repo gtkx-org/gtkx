@@ -1,13 +1,13 @@
 import { dedupeBy, sourceStringLiteral, toCamelIdentifier, toPascalCase } from "@gtkx/utils";
-import type { ModuleContext } from "../writer/context.js";
-import { indent, renderBlock, renderBraced } from "../writer/emit.js";
 import { ancestorChain } from "../gir/ancestry.js";
 import type { GirClass } from "../gir/class.js";
 import { type GirProperty, isConstructableProperty } from "../gir/property.js";
 import { splitOptionalNamespace } from "../gir/type-ref.js";
+import type { ModuleContext } from "../writer/context.js";
+import { indent, renderBlock, renderBraced } from "../writer/emit.js";
 import { collectInterfaceProperties } from "./inheritance.js";
 import { renderTsType } from "./ts-type.js";
-import { renderFfiType } from "./value.js";
+import { renderDescriptor } from "./value.js";
 
 const ancestorConstructablePropNames = (context: ModuleContext, klass: GirClass): Set<string> => {
     const names = new Set<string>();
@@ -74,7 +74,7 @@ const renderTranslatingConstructor = (context: ModuleContext, props: GirProperty
     const pattern = `{ ${[...destructured, "...rest"].join(", ")} }`;
     const entries = props.map(
         (property) =>
-            `${sourceStringLiteral(property.name)}: [${renderFfiType(context, property.type, property.transferOwnership)}, ${toCamelIdentifier(property.name)}],`,
+            `${sourceStringLiteral(property.name)}: [${renderDescriptor(context, property.type, property.transferOwnership)}, ${toCamelIdentifier(property.name)}],`,
     );
     const recordLiteral = renderBraced(entries.join("\n"));
     const lines = [`const props: ${PROPS_RECORD} = ${recordLiteral};`, "super({ ...props, ...rest });"];

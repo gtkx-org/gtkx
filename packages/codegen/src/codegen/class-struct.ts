@@ -1,11 +1,11 @@
 import { sourceStringLiteral, toCamelIdentifier, toPascalCase } from "@gtkx/utils";
-import type { ModuleContext } from "../writer/context.js";
-import { renderBraced } from "../writer/emit.js";
 import type { GirCallback } from "../gir/callback.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirField } from "../gir/field.js";
+import type { ModuleContext } from "../writer/context.js";
+import { renderBraced } from "../writer/emit.js";
 import { computeBoxedFieldSlots } from "./boxed-layout.js";
-import { isInlineCallbackRef, isScalarRef, renderFfiType, renderHandlerArgType } from "./value.js";
+import { isInlineCallbackRef, isScalarRef, renderDescriptor, renderHandlerArgType } from "./value.js";
 
 type VtableKind = "class" | "interface";
 
@@ -34,7 +34,7 @@ const vtableEntries = (context: ModuleContext, structName: string, kind: VtableK
         if (!isVtableSlotEligible(context, callback)) continue;
         claimedNames.add(key);
         entries.push(
-            renderDescriptor(context, { key, structName, kind, field, callback, byteOffset: slot.byteOffset }),
+            renderVtableSlotDescriptor(context, { key, structName, kind, field, callback, byteOffset: slot.byteOffset }),
         );
     }
     return entries;
@@ -56,7 +56,7 @@ const isVtableSlotEligible = (context: ModuleContext, callback: GirCallback): bo
     return !isInlineCallbackRef(context.library, callback.returnValue.type);
 };
 
-type RenderDescriptorOptions = {
+type RenderVtableSlotDescriptorOptions = {
     key: string;
     structName: string;
     kind: VtableKind;
@@ -65,10 +65,10 @@ type RenderDescriptorOptions = {
     byteOffset: number;
 };
 
-const renderDescriptor = (context: ModuleContext, options: RenderDescriptorOptions): string => {
+const renderVtableSlotDescriptor = (context: ModuleContext, options: RenderVtableSlotDescriptorOptions): string => {
     const { key, structName, kind, field, callback, byteOffset } = options;
     const argTypes = callback.parameters.map((param) => renderHandlerArgType(context, param, param.type)).join(", ");
-    const returnType = renderFfiType(context, callback.returnValue.type, callback.returnValue.transferOwnership);
+    const returnType = renderDescriptor(context, callback.returnValue.type, callback.returnValue.transferOwnership);
     const lines = [
         `kind: ${sourceStringLiteral(kind)},`,
         `className: ${sourceStringLiteral(structName)},`,

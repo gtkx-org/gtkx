@@ -2,7 +2,7 @@ import { output } from "./log.js";
 
 const ERROR_EXIT_CODE = 1;
 
-export type GtkxErrorOptions = ErrorOptions & {
+type GtkxErrorOptions = ErrorOptions & {
     link?: string;
     action?: string;
 };

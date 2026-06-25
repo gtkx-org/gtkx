@@ -2,11 +2,11 @@ import {
     alloc,
     type BoxedType,
     call,
-    type Type,
     type FundamentalType,
     getType,
     type Handle,
     read,
+    type Type,
     write,
 } from "@gtkx/native";
 import { GVALUE_LAYOUT, GVALUE_SIZE, GVALUE_T, LIB } from "./constants.js";
@@ -64,7 +64,7 @@ export const valueInit = (value: Handle, gtype: GType): void => {
     gValueInit(value, gtype);
 };
 
-export const newTypedGValue = (gtype: GType): Handle => {
+const newTypedGValue = (gtype: GType): Handle => {
     const value = newGValue();
     valueInit(value, gtype);
     return value;
@@ -81,7 +81,7 @@ export const valueCopyInto = (dest: Handle, src: Handle): void => {
 
 const gValueSetPointer = bind(LIB, "g_value_set_pointer", [GVALUE_T, uint64T], voidT);
 
-export const setGValuePointer = (value: Handle, pointer: Handle): void => {
+const setGValuePointer = (value: Handle, pointer: Handle): void => {
     gValueSetPointer(value, pointer);
 };
 
@@ -201,7 +201,7 @@ export function valueSetBoxed(value: Handle, boxed: object | null): void {
     setBoxedPayload(value, "g_value_set_boxed", boxed === null ? null : getHandle(boxed));
 }
 
-export function valueSetStaticBoxed(value: Handle, boxed: object): void {
+function valueSetStaticBoxed(value: Handle, boxed: object): void {
     setBoxedPayload(value, "g_value_set_static_boxed", getHandle(boxed));
 }
 
@@ -273,10 +273,10 @@ const resolveFundamentalGtype = (descriptor: FundamentalType): GType => {
 export function resolveBoxedGtype(descriptor: Type): GType {
     if (descriptor.type === "boxed") return resolveBoxedInnerGtype(descriptor);
     if (descriptor.type === "fundamental") return resolveFundamentalGtype(descriptor);
-    throw new Error(`resolveBoxedGtype: unsupported FFI type '${descriptor.type}'`);
+    throw new Error(`resolveBoxedGtype: unsupported type descriptor '${descriptor.type}'`);
 }
 
-function gtypeFromFfiType(descriptor: Type): GType {
+function gtypeFromDescriptor(descriptor: Type): GType {
     switch (descriptor.type) {
         case "boolean":
             return TYPE_BOOLEAN;
@@ -313,12 +313,12 @@ function gtypeFromFfiType(descriptor: Type): GType {
             if (descriptor.itemType.type === "string" && descriptor.kind === "array") return getStrvGtype();
             throw new Error(`Unsupported array type ${descriptor.kind} of ${descriptor.itemType.type}`);
         default:
-            throw new Error(`Unsupported FFI type '${descriptor.type}'`);
+            throw new Error(`Unsupported type descriptor '${descriptor.type}'`);
     }
 }
 
 export function newValueFromFfi(descriptor: Type): Handle {
-    return newTypedGValue(gtypeFromFfiType(descriptor));
+    return newTypedGValue(gtypeFromDescriptor(descriptor));
 }
 
 function objectToGValue(value: object | null): Handle {
@@ -390,7 +390,7 @@ function setGValuePayload(value: Handle, gtype: GType, descriptor: Type, jsValue
 
 export function toGValue(descriptor: Type, jsValue: unknown): Handle {
     if (descriptor.type === "gobject") return objectToGValue(jsValue as object | null);
-    const gtype = gtypeFromFfiType(descriptor);
+    const gtype = gtypeFromDescriptor(descriptor);
     const value = newTypedGValue(gtype);
     setGValuePayload(value, gtype, descriptor, jsValue);
     return value;

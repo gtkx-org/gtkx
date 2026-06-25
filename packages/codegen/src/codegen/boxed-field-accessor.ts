@@ -1,17 +1,17 @@
 import { toCamelIdentifier } from "@gtkx/utils";
-import type { ModuleContext } from "../writer/context.js";
-import { indent, renderBlock } from "../writer/emit.js";
 import type { GirField } from "../gir/field.js";
 import type { FieldSlot } from "../gir/size.js";
 import type { GirType } from "../gir/type.js";
 import type { TypeId } from "../gir/type-id.js";
+import type { ModuleContext } from "../writer/context.js";
+import { indent, renderBlock } from "../writer/emit.js";
 import { bitMask, mergeBitfield } from "./bitfield.js";
 import { type BoxedFieldSlot, computeBoxedFieldSlots } from "./boxed-layout.js";
 import { typeRefIsClassStruct } from "./class-struct-record.js";
 import { tStruct } from "./descriptor.js";
 import { wrapReturnValue } from "./return-wrap.js";
 import { renderTsType } from "./ts-type.js";
-import { isInlineCallbackRef, renderFfiType } from "./value.js";
+import { isInlineCallbackRef, renderDescriptor } from "./value.js";
 
 export const renderBoxedFieldAccessor = (
     context: ModuleContext,
@@ -37,7 +37,7 @@ export const renderBoxedFieldAccessor = (
         return `declare ${jsName}: ${tsType};`;
     }
 
-    const ffiType = renderFfiType(context, field.type, "none");
+    const ffiType = renderDescriptor(context, field.type, "none");
     const tsType = renderTsType(context, field.type, false);
     const accessorOptions: AccessorOptions = {
         context,
@@ -117,7 +117,7 @@ const renderElementReadObject = (context: ModuleContext, fields: GirField[], bas
             continue;
         }
         if (!isAccessorEligibleType(context, field.type)) continue;
-        const ffi = renderFfiType(context, field.type, "none");
+        const ffi = renderDescriptor(context, field.type, "none");
         if (slot.bitWidth === undefined) {
             entries.push(
                 `${jsName}: read(__array, ${ffi}, __base + ${offset}) as ${renderTsType(context, field.type, false)}`,
@@ -154,7 +154,7 @@ const appendElementWriteStatements = (context: ModuleContext, options: ElementWr
             continue;
         }
         if (!isAccessorEligibleType(context, field.type)) continue;
-        const ffi = renderFfiType(context, field.type, "none");
+        const ffi = renderDescriptor(context, field.type, "none");
         if (slot.bitWidth === undefined) {
             out.push(`write(__array, ${ffi}, __base + ${offset}, ${valueExpr});`);
             continue;

@@ -126,10 +126,14 @@ export type ScalarDescriptorName =
 
 export const tScalar = (name: ScalarDescriptorName): string => T[name];
 
-export const tString = (ownership: Ownership, length?: string): string => call("string", [sourceStringLiteral(ownership), length]);
+export const tString = (ownership: Ownership, length?: string): string =>
+    call("string", [sourceStringLiteral(ownership), length]);
 
 export const tObject = (ownership: Ownership, typeName?: string): string =>
-    call("object", [sourceStringLiteral(ownership), typeName === undefined ? undefined : sourceStringLiteral(typeName)]);
+    call("object", [
+        sourceStringLiteral(ownership),
+        typeName === undefined ? undefined : sourceStringLiteral(typeName),
+    ]);
 
 export type BoxedOptions = {
     ownership: Ownership;

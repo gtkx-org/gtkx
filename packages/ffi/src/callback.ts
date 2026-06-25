@@ -1,4 +1,4 @@
-import type { Type, RefType, Value } from "@gtkx/native";
+import type { RefType, Type, Value } from "@gtkx/native";
 import { type ArgCategory, type ArgDirectionMeta, classifyArgCategory } from "./arg-category.js";
 import { valueCopyInto } from "./gvalue.js";
 import { getHandle } from "./registry.js";
@@ -10,7 +10,8 @@ const isCallerAllocatedBuffer = (descriptor: Type): boolean =>
     (descriptor.type === "boxed" || descriptor.type === "struct") && descriptor.callerAllocated === true;
 
 const argDirectionMetaOf = (descriptor: Type): ArgDirectionMeta => {
-    if (isOutCell(descriptor)) return { direction: descriptor.inout === true ? "inout" : "out", callerAllocated: false };
+    if (isOutCell(descriptor))
+        return { direction: descriptor.inout === true ? "inout" : "out", callerAllocated: false };
     if (isCallerAllocatedBuffer(descriptor)) return { direction: "out", callerAllocated: true };
     return { callerAllocated: false };
 };

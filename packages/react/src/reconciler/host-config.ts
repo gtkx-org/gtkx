@@ -1,4 +1,4 @@
-import { BUFFER_TEXT_KIND, LABEL_TEXT_KIND } from "@gtkx/config";
+import { BUFFER_TEXT_KIND, LABEL_TEXT_KIND, WRAPPER_NODE_ELEMENT } from "@gtkx/config";
 import { getWrapperClassByName } from "@gtkx/ffi";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -12,7 +12,7 @@ import { applyAccessibleProps, isAccessibleProp } from "./accessible.js";
 import { applyProps } from "./apply-props.js";
 import { beginCommit, endCommit, runCommitFlush } from "./commit-flush.js";
 import { attachNode, detachFromParent, detachNode, resyncWrapper } from "./element-map.js";
-import { createElementInstance, createWrapperInstance, WRAPPER_NODE_ELEMENT } from "./instance.js";
+import { createElementInstance, createWrapperInstance } from "./instance.js";
 import { scheduleLabelTextRebuild } from "./label-text-rebuild.js";
 import { reportReconcilerError } from "./reconciler-error-handler.js";
 import { isRuleManagedProp, resolveSetPropsRuleSet, ruleNodeOf } from "./rule-registry.js";

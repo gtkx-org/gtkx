@@ -4,6 +4,13 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import { useLayoutEffect, useMemo, useRef } from "react";
 import type { ItemNode } from "../types.js";
 import {
+    createFlatModel,
+    createSectionModel,
+    createTreeModel,
+    resizeFlatModel,
+    retagRows,
+} from "../utils/item-models.js";
+import {
     createControlledResolver,
     createModelResolver,
     createSectionHeaderResolver,
@@ -11,13 +18,6 @@ import {
     type RowValue,
 } from "../utils/item-resolver.js";
 import { detectStructure, type ListStructure, structuralSignature } from "../utils/list-item-flatten.js";
-import {
-    createFlatModel,
-    createSectionModel,
-    createTreeModel,
-    resizeFlatModel,
-    retagRows,
-} from "../utils/item-models.js";
 
 export interface ControlledListMode<T, S> {
     items: ItemNode<T, S>[] | undefined;

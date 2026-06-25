@@ -10,15 +10,15 @@ import {
     useCallback,
     useRef,
 } from "react";
-import { useListModel } from "./hooks/use-list-model.js";
-import { useInstalledModel } from "./hooks/use-installed-model.js";
-import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
-import { useSelectionModel } from "./hooks/use-selection-model.js";
 import { CellRenderHost } from "./cell-render-host.js";
+import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
+import { useInstalledModel } from "./hooks/use-installed-model.js";
+import { useListModel } from "./hooks/use-list-model.js";
+import { useSelectionModel } from "./hooks/use-selection-model.js";
 import type { CellRenderer } from "./list-cell.js";
 import type { ItemNode } from "./types.js";
-import type { ItemResolver } from "./utils/item-resolver.js";
 import type { CellContainerStore } from "./utils/cell-container-store.js";
+import type { ItemResolver } from "./utils/item-resolver.js";
 
 export interface ModelInstaller<W extends Gtk.Widget> {
     install(widget: W, model: Gio.ListModel): void;

@@ -1,4 +1,4 @@
-import { call, type Type, type Handle, type Value } from "@gtkx/native";
+import { call, type Handle, type Type, type Value } from "@gtkx/native";
 import { GVALUE_SIZE, GVALUE_T, LIB } from "./constants.js";
 import { biguint64T, bind, objectT, sizedArrayT, stringT, uint32T, voidT } from "./descriptors.js";
 import type { GType } from "./gtype.js";

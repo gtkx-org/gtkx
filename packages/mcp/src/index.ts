@@ -1,13 +1,12 @@
 export {
-    invalidRequestError,
     IpcError,
     IpcErrorCode,
+    invalidRequestError,
     methodNotFoundError,
     widgetNotFoundError,
 } from "./protocol/errors.js";
 export {
     DEFAULT_SOCKET_PATH,
-    type IpcMethod,
     type IpcRequest,
     type SerializedWidget,
     type ServerInitiatedMethod,
@@ -15,4 +14,4 @@ export {
     ServerRequestParamsSchemas,
     type WireParamsSchema,
 } from "./protocol/types.js";
-export { ConnectionClosedError, JsonStreamConnection } from "./transport.js";
+export { JsonStreamConnection } from "./transport.js";

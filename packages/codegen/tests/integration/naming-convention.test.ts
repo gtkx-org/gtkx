@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ffiModules } from "../helpers/repository.js";
+import { ffiModules } from "../helpers/library.js";
 
 const moduleSource = (directory: string): string => {
     const found = ffiModules.find((entry) => entry.directory === directory);

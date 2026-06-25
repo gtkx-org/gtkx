@@ -6,7 +6,7 @@ export const PACKAGE_MANAGERS = [
 
 export type PackageManager = (typeof PACKAGE_MANAGERS)[number]["value"];
 
-export const PACKAGE_MANAGER_VALUES: PackageManager[] = PACKAGE_MANAGERS.map((manager) => manager.value);
+const PACKAGE_MANAGER_VALUES: PackageManager[] = PACKAGE_MANAGERS.map((manager) => manager.value);
 
 export const isKnownPackageManager = (name: string): name is PackageManager =>
     (PACKAGE_MANAGER_VALUES as string[]).includes(name);

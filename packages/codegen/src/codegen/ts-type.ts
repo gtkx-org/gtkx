@@ -1,9 +1,9 @@
-import type { ModuleContext } from "../writer/context.js";
-import { aliasExportName } from "../writer/identifier.js";
 import { PRIMITIVE_TS_TYPE } from "../gir/primitives.js";
-import type { Library } from "../gir/repository.js";
+import type { Library } from "../gir/library.js";
 import type { GirType } from "../gir/type.js";
 import type { TypeId } from "../gir/type-id.js";
+import type { ModuleContext } from "../writer/context.js";
+import { aliasExportName } from "../writer/identifier.js";
 import { gtypeTsType } from "./gtype-binding.js";
 
 export type ReferenceName = {

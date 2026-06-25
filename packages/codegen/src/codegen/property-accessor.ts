@@ -1,12 +1,12 @@
 import { sourceStringLiteral, toCamelCase, toCamelIdentifier } from "@gtkx/utils";
-import type { ModuleContext } from "../writer/context.js";
-import { renderBlock } from "../writer/emit.js";
 import type { GirFunction } from "../gir/function.js";
 import { type GirProperty, isConstructableProperty } from "../gir/property.js";
 import type { TypeId } from "../gir/type-id.js";
+import type { ModuleContext } from "../writer/context.js";
+import { renderBlock } from "../writer/emit.js";
 import { renderMethodReturnType } from "./method.js";
 import { renderTsType } from "./ts-type.js";
-import { renderFfiType } from "./value.js";
+import { renderDescriptor } from "./value.js";
 
 const isNullablePropertyType = (context: ModuleContext, type: TypeId | undefined): boolean => {
     if (type === undefined) return false;
@@ -91,7 +91,7 @@ export const renderPropertyAccessorSignature = (args: PropertyAccessorArgs): str
     );
 
 const renderPropertyFfiType = (context: ModuleContext, property: GirProperty): string =>
-    renderFfiType(context, property.type, property.transferOwnership);
+    renderDescriptor(context, property.type, property.transferOwnership);
 
 const renderGenericGetBody = (context: ModuleContext, property: GirProperty, tsType: string): string => {
     context.addRuntimeImport("getGobjectProperty");

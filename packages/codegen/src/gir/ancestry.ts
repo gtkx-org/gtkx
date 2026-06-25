@@ -1,5 +1,5 @@
 import type { GirClass } from "./class.js";
-import type { Library } from "./repository.js";
+import type { Library } from "./library.js";
 
 export type ResolvedAncestor = {
     klass: GirClass;
@@ -16,11 +16,7 @@ export const resolveClassOrInterface = (
     return { klass: resolved.value, namespaceName: resolved.namespace.name };
 };
 
-export function* ancestorChain(
-    library: Library,
-    klass: GirClass,
-    namespaceName: string,
-): Generator<ResolvedAncestor> {
+export function* ancestorChain(library: Library, klass: GirClass, namespaceName: string): Generator<ResolvedAncestor> {
     const visited = new Set<string>();
     let current: ResolvedAncestor | undefined = { klass, namespaceName };
     while (current !== undefined) {

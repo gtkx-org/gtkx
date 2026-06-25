@@ -5,9 +5,9 @@ import type { SignalHandler } from "./signal-store.js";
 import { stateOf } from "./state.js";
 import type { Props } from "./types.js";
 
-const notifyValueHandler = (container: GObject.Object, signalName: string, callback: SignalHandler): SignalHandler => {
+const notifyValueHandler = (container: GObject.Object, signalName: string, handler: SignalHandler): SignalHandler => {
     const prop = notifyDetailToProp(signalName);
-    return () => callback(Reflect.get(container, prop), container);
+    return () => handler(Reflect.get(container, prop), container);
 };
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> => {
@@ -115,11 +115,11 @@ const applyGenericProps = (
     const { pendingSignals, pendingProperties } = collectGenericChanges(context, exclude);
 
     for (const { signalName, newValue } of pendingSignals) {
-        const callback = typeof newValue === "function" ? (newValue as SignalHandler) : undefined;
+        const nextHandler = typeof newValue === "function" ? (newValue as SignalHandler) : undefined;
         const handler =
-            callback && signalName.startsWith(NOTIFY_DETAIL_PREFIX)
-                ? notifyValueHandler(container, signalName, callback)
-                : callback;
+            nextHandler && signalName.startsWith(NOTIFY_DETAIL_PREFIX)
+                ? notifyValueHandler(container, signalName, nextHandler)
+                : nextHandler;
         signalStore.set({
             owner: container,
             instance: container,

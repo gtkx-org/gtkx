@@ -74,7 +74,7 @@
         },
         "packages/vitest": {
             "includeEntryExports": true,
-            "entry": ["src/setup.ts!"],
+            "entry": ["src/worker-setup.ts!"],
             "project": ["src/**/*.ts!"]
         },
         "examples/browser": {

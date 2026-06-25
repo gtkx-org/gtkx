@@ -24,6 +24,7 @@ import {
     trackedWidget,
     wrapperChildWidgets,
 } from "./mappings/wrapper-content.js";
+import { callMethod, callRequiredMethod } from "./method-call.js";
 import {
     type InsertableWidget,
     isAddable,
@@ -35,7 +36,6 @@ import {
     isSingleChildContainer,
     type ReorderableWidget,
 } from "./predicates.js";
-import { callMethod, callRequiredMethod } from "./method-call.js";
 import { namedRuleSet, resolveAppendRuleSet, ruleNodeOf } from "./rule-registry.js";
 import { SLOT_HOST_BASE_TYPE } from "./slot-props.js";
 import { isWrapperKind, type Node, stateOf } from "./state.js";
@@ -150,7 +150,7 @@ type MetaState = { widget: Gtk.Widget; page: object };
 
 const metaAddRules = (target: GObject.Object | undefined): AddMethodRule[] | null => {
     if (!target) return null;
-    return findInheritedRow(target.__gtype__, META_OBJECT_ADD_METHODS, () => true) ?? null;
+    return findInheritedRow(target.__gtype__, META_OBJECT_ADD_METHODS) ?? null;
 };
 
 const pagePropValue = (props: Props, key: string): string | null =>

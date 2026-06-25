@@ -272,8 +272,8 @@ jobs:
       packages: read
       id-token: write # public repo: authenticate to CodSpeed over OIDC, no token
     env:
-      NODE24_VERSION: "24.17.0"
-      NODE22_VERSION: "22.23.0"
+      NODE24_VERSION: "24.18.0"
+      NODE22_VERSION: "22.23.1"
       PREFIX: /opt/gtkx
     steps:
       - name: Checkout
@@ -349,8 +349,8 @@ jobs:
         # The installer drops the codspeed binary in ~/.cargo/bin (already on
         # PATH); mirror it into /usr/local/bin so it is also reachable under sudo.
         run: |
-          curl -fsSL https://github.com/CodSpeedHQ/codspeed/releases/download/v4.17.6/codspeed-runner-installer.sh | bash
-          sudo install -m 0755 "$HOME/.cargo/bin/codspeed" /usr/local/bin/codspeed
+          curl -fsSL https://github.com/CodSpeedHQ/codspeed/releases/download/v4.18.1/codspeed-runner-installer.sh | bash
+          sudo install -m 0755 "$(find "$HOME/.local" /usr -name codspeed -type f -path '*bin*' 2>/dev/null | head -1)" /usr/local/bin/codspeed
           codspeed --version
 
       - name: Restrict codegen to the bench library set

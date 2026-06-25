@@ -111,8 +111,8 @@ RUN sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.s
 # the CodSpeed reconciler benches, whose @codspeed/core native addon uses a V8
 # symbol newer Node releases have dropped. Both come from nodejs.org at exact patch
 # versions so the image stays reproducible under its content hash; bump these deliberately.
-ARG NODE24_VERSION=24.17.0
-ARG NODE22_VERSION=22.23.0
+ARG NODE24_VERSION=24.18.0
+ARG NODE22_VERSION=22.23.1
 RUN set -eux \
     && curl -fsSL "https://nodejs.org/dist/v${NODE24_VERSION}/node-v${NODE24_VERSION}-linux-x64.tar.xz" \
         | tar -xJ --strip-components=1 -C /usr/local \
@@ -154,7 +154,7 @@ RUN cargo install cargo-codspeed --locked \
 # docker-run. Pin the runner version: the unversioned install.sh tracks latest,
 # and each runner hard-codes the exact valgrind-codspeed iteration it expects
 # (see below), so the two must be bumped together.
-RUN curl -fsSL https://github.com/CodSpeedHQ/codspeed/releases/download/v4.17.6/codspeed-runner-installer.sh | bash \
+RUN curl -fsSL https://github.com/CodSpeedHQ/codspeed/releases/download/v4.18.1/codspeed-runner-installer.sh | bash \
     && install -m 0755 "$(find / -name codspeed -type f -path '*bin*' 2>/dev/null | head -1)" /usr/local/bin/codspeed \
     && codspeed --version \
     && chmod -R a+rwX "$CARGO_HOME"
@@ -164,12 +164,12 @@ RUN curl -fsSL https://github.com/CodSpeedHQ/codspeed/releases/download/v4.17.6/
 # its own download only when a `.codspeed` valgrind matching the iteration it
 # pins is already present; otherwise it tries to fetch one and bails with
 # "Unsupported system". Install the 24.04 build of that exact iteration —
-# 3.26.0-0codspeed3 for runner v4.17.6 above — so `codspeed run` instruments
+# 3.26.0-0codspeed4 for runner v4.18.1 above — so `codspeed run` instruments
 # here. Bump this in lockstep with the pinned runner. The SHA-256 matches the
 # runner's own pinned artifact.
-RUN url="https://github.com/CodSpeedHQ/valgrind-codspeed/releases/download/3.26.0-0codspeed3/valgrind_3.26.0-0codspeed3_ubuntu-24.04_amd64.deb" \
+RUN url="https://github.com/CodSpeedHQ/valgrind-codspeed/releases/download/3.26.0-0codspeed4/valgrind_3.26.0-0codspeed4_ubuntu-24.04_amd64.deb" \
     && curl -fsSL -o /tmp/valgrind-codspeed.deb "$url" \
-    && echo "e6da56bd90d7a22ed451c2108002a3f172914c77c705d0c8c4fedf6196830dee  /tmp/valgrind-codspeed.deb" | sha256sum -c - \
+    && echo "c32a574f2cd4acd754371e55979bd7f5e6cd0ce203ca095985e64b8ed090cee1  /tmp/valgrind-codspeed.deb" | sha256sum -c - \
     && apt-get update \
     && apt-get install -y --no-install-recommends --allow-downgrades /tmp/valgrind-codspeed.deb \
     && rm -f /tmp/valgrind-codspeed.deb \

@@ -1,6 +1,6 @@
+import type { GirRecord } from "../gir/boxed.js";
 import type { ModuleContext } from "../writer/context.js";
 import { indentMembers } from "../writer/emit.js";
-import type { GirRecord } from "../gir/boxed.js";
 import { renderBoxedConstructor, renderBoxedConstructorPropsInterface } from "./boxed-constructor.js";
 import { renderBoxedFieldAccessor } from "./boxed-field-accessor.js";
 import { computeBoxedFieldSlots } from "./boxed-layout.js";

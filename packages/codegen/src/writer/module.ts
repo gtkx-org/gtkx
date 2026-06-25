@@ -4,7 +4,7 @@ export class ModuleBuilder {
     public imports: ImportsBuilder = new ImportsBuilder();
     private bindings: string[] = [];
     private bindingNames = new Set<string>();
-    private hoistedFfiTypes = new Map<string, string>();
+    private hoistedDescriptors = new Map<string, string>();
     private declarations: string[] = [];
     private registrations: string[] = [];
 
@@ -16,11 +16,11 @@ export class ModuleBuilder {
         this.bindings.push(code);
     }
 
-    hoistFfiType(expression: string): string {
-        const existing = this.hoistedFfiTypes.get(expression);
+    hoistDescriptor(expression: string): string {
+        const existing = this.hoistedDescriptors.get(expression);
         if (existing !== undefined) return existing;
-        const name = `_ffi${this.hoistedFfiTypes.size}`;
-        this.hoistedFfiTypes.set(expression, name);
+        const name = `_desc${this.hoistedDescriptors.size}`;
+        this.hoistedDescriptors.set(expression, name);
         this.appendBinding(`const ${name} = ${expression};`, name);
         return name;
     }

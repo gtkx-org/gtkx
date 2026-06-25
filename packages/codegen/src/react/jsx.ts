@@ -1,11 +1,11 @@
 import { sourceStringLiteral } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirNamespace } from "../gir/namespace.js";
-import type { Library } from "../gir/repository.js";
+import type { Library } from "../gir/library.js";
 import type { JsxImports } from "./imports.js";
 import { buildElementPropsEntries } from "./props.js";
 import { ACCESSIBLE_PROP_TYPES, SLOT_PROPS_BY_TYPE } from "./tables.js";
-import { collectReactNodeClasses, type ReactNodeClass } from "./widgets.js";
+import { collectReactNodeClasses, type ReactNodeClass } from "./react-nodes.js";
 
 export type GenerateJsxOptions = {
     excludeNames: Set<string>;
@@ -35,7 +35,7 @@ export const generateJsxSection = (
     imports.reactBuiltins.add("ReactNode");
     imports.reactBuiltins.add("Ref");
 
-    let needsWidgetPropsBase = false;
+    let needsReactNodePropsBase = false;
     let needsReactElement = false;
     const propBlocks: string[] = [];
     for (const entry of widgets) {
@@ -45,12 +45,12 @@ export const generateJsxSection = (
             targetNamespaceName: targetNamespace.name,
             imports,
         });
-        if (extendsBase) needsWidgetPropsBase = true;
+        if (extendsBase) needsReactNodePropsBase = true;
         if (slotPropNames.length > 0) needsReactElement = true;
         propBlocks.push(block);
     }
     if (needsReactElement) imports.reactBuiltins.add("ReactElement");
-    if (needsWidgetPropsBase) propBlocks.unshift(renderWidgetPropsBase(imports));
+    if (needsReactNodePropsBase) propBlocks.unshift(renderWidgetPropsBase(imports));
 
     const source = [constLines.join("\n"), "", propBlocks.join("\n\n"), "", renderJsxAugmentation(widgets)].join("\n");
     return { source, intrinsicCount: intrinsicWidgets.length };

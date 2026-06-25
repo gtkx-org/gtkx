@@ -1,4 +1,3 @@
-import type { ModuleContext } from "../writer/context.js";
 import type { GirField } from "../gir/field.js";
 import {
     computeFieldSlots,
@@ -9,6 +8,7 @@ import {
 } from "../gir/size.js";
 import type { EntityType, GirType } from "../gir/type.js";
 import type { TypeId } from "../gir/type-id.js";
+import type { ModuleContext } from "../writer/context.js";
 
 const POINTER_LAYOUT: FieldLayout = { size: 8, align: 8 };
 

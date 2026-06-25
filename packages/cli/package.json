@@ -80,7 +80,7 @@
         "@gtkx/mcp": "workspace:*",
         "@gtkx/utils": "workspace:*",
         "@gtkx/vitest": "workspace:*",
-        "@swc/core": "^1.15.41",
+        "@swc/core": "^1.15.43",
         "babel-plugin-react-compiler": "^1.0.0",
         "citty": "^0.2.2",
         "create-gtkx": "workspace:*",

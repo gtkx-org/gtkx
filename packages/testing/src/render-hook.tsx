@@ -1,5 +1,4 @@
 import { createRootElement } from "@gtkx/react";
-import { useRef } from "react";
 import { render } from "./render.js";
 import type { RenderHookOptions, RenderHookResult } from "./types.js";
 
@@ -21,8 +20,7 @@ export async function renderHook<Result, Props>(
 
     const TestComponent = ({ props }: { props: Props }): null => {
         const result = callback(props);
-        const ref = useRef(resultRef);
-        ref.current.current = result;
+        resultRef.current = result;
         return null;
     };
 

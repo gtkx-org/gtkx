@@ -3,15 +3,16 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkListView, type GtkListViewProps } from "@gtkx/jsx/gtk";
 import type { ReactNode, Ref } from "react";
 import { CollectionView, type ModelInstaller } from "./collection-view.js";
+import type { FactoryInstaller } from "./hooks/use-cell-containers.js";
 import type { CellRenderer } from "./list-cell.js";
 import type { ListViewProps } from "./types.js";
 
-const factoryInstaller = {
+const factoryInstaller: FactoryInstaller<Gtk.ListView> = {
     install: (widget: Gtk.ListView, factory: Gtk.SignalListItemFactory) => widget.setFactory(factory),
     uninstall: (widget: Gtk.ListView) => widget.setFactory(null),
 };
 
-const headerFactoryInstaller = {
+const headerFactoryInstaller: FactoryInstaller<Gtk.ListView> = {
     install: (widget: Gtk.ListView, factory: Gtk.SignalListItemFactory) => widget.setHeaderFactory(factory),
     uninstall: (widget: Gtk.ListView) => widget.setHeaderFactory(null),
 };

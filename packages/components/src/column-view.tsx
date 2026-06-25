@@ -3,17 +3,17 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkColumnView, type GtkColumnViewProps } from "@gtkx/jsx/gtk";
 import { useForwardedRef } from "@gtkx/react";
 import { createElement, type ReactNode, type Ref, useCallback, useMemo, useRef, useState } from "react";
+import { CellRenderHost } from "./cell-render-host.js";
 import {
     type ColumnRegistration,
     ColumnViewContext,
     type ColumnViewContextValue,
 } from "./contexts/column-view-context.js";
-import { useListModel } from "./hooks/use-list-model.js";
-import { useInstalledModel } from "./hooks/use-installed-model.js";
 import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
+import { useInstalledModel } from "./hooks/use-installed-model.js";
+import { useListModel } from "./hooks/use-list-model.js";
 import { useSelectionModel } from "./hooks/use-selection-model.js";
 import { useSortHandler } from "./hooks/use-sort-handler.js";
-import { CellRenderHost } from "./cell-render-host.js";
 import type { CellRenderer } from "./list-cell.js";
 import type { ColumnViewProps } from "./types.js";
 import type { ItemResolver } from "./utils/item-resolver.js";

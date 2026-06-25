@@ -1,4 +1,4 @@
-import { sortedStrings, sortedStringsBy, mangleReserved } from "@gtkx/utils";
+import { mangleReserved, sortedStrings, sortedStringsBy } from "@gtkx/utils";
 import { transpileSource } from "../transpile.js";
 import { type CommandPlan, type GlExclusionReason, type GlPlanPolicy, type GlScalar, planCommand } from "./ctype.js";
 import { type GlEnum, loadGlRegistry } from "./model.js";

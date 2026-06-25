@@ -21,7 +21,6 @@ export type Css = {
     css: (...args: CSSInterpolation[]) => string;
     cx: (...classNames: CxToken[]) => string[];
     injectGlobal: (...args: CSSInterpolation[]) => void;
-    getRegisteredStyles: (className: string) => string | undefined;
 };
 
 const createCache = ({ key }: CssOptions): Cache => ({
@@ -31,21 +30,21 @@ const createCache = ({ key }: CssOptions): Cache => ({
     registered: {},
 });
 
+const runStylis = (cache: Cache, input: string): void => {
+    stylisSerialize(
+        compile(escapeNamedColors(input)),
+        middleware([
+            removeLabel,
+            stringify,
+            rulesheet((rule) => {
+                cache.sheet.insert(restoreNamedColors(rule));
+            }),
+        ]),
+    );
+};
+
 export const createInstance = (options: CssOptions): Css => {
     const cache = createCache(options);
-
-    const runStylis = (input: string): void => {
-        stylisSerialize(
-            compile(escapeNamedColors(input)),
-            middleware([
-                removeLabel,
-                stringify,
-                rulesheet((rule) => {
-                    cache.sheet.insert(restoreNamedColors(rule));
-                }),
-            ]),
-        );
-    };
 
     const serialize = (args: CSSInterpolation[]): SerializedStyles => serializeStyles(args, cache.registered);
     const classNameFor = (serialized: SerializedStyles): string => `${cache.key}-${serialized.name}`;
@@ -55,7 +54,7 @@ export const createInstance = (options: CssOptions): Css => {
         cache.inserted.add(serialized.name);
 
         const className = classNameFor(serialized);
-        runStylis(`.${className}{${serialized.styles}}`);
+        runStylis(cache, `.${className}{${serialized.styles}}`);
         cache.registered[className] = serialized.styles;
     };
 
@@ -63,7 +62,7 @@ export const createInstance = (options: CssOptions): Css => {
         if (cache.inserted.has(serialized.name)) return;
         cache.inserted.add(serialized.name);
 
-        runStylis(serialized.styles);
+        runStylis(cache, serialized.styles);
     };
 
     const getRegisteredStyles = (className: string): string | undefined => cache.registered[className];
@@ -97,5 +96,5 @@ export const createInstance = (options: CssOptions): Css => {
         insertWithoutScoping(serialize(args));
     };
 
-    return { css, cx, injectGlobal, getRegisteredStyles };
+    return { css, cx, injectGlobal };
 };

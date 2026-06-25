@@ -12,8 +12,8 @@ use gtk4::prelude::StaticType as _;
 use native::managed::Boxed;
 use native::state::GlibThreadState;
 use native::types::{
-    ArrayKind, ArrayType, FfiDecoder, FfiEncoder, FloatKind, IntegerKind, Ownership, RawPtrCodec,
-    ReadSource, EnumFlagsKind, EnumFlagsType, Type,
+    ArrayKind, ArrayType, EnumFlagsKind, EnumFlagsType, FfiDecoder, FfiEncoder, FloatKind,
+    IntegerKind, Ownership, RawPtrCodec, ReadSource, Type,
 };
 use native::value::Value;
 

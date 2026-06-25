@@ -32,7 +32,6 @@ export interface CellContainersOptions<W extends GObject.Object> {
 }
 
 export interface CellContainers {
-    factory: Gtk.SignalListItemFactory;
     store: CellContainerStore;
 }
 
@@ -89,5 +88,5 @@ export const useCellContainers = <W extends GObject.Object>(options: CellContain
         isSame: (registration, widget) => registration.widget === widget,
     });
 
-    return { factory, store };
+    return { store };
 };

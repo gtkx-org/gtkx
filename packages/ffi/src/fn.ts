@@ -1,9 +1,9 @@
 import type { CallbackType, Ref, Type, Value } from "@gtkx/native";
 import { type ArgCategory, classifyArgCategory } from "./arg-category.js";
+import { type UserCallback, wrapCallback } from "./callback.js";
 import { LIB } from "./constants.js";
 import { bind, boxedT, refT } from "./descriptors.js";
 import { checkError } from "./gerror.js";
-import { type UserCallback, wrapCallback } from "./callback.js";
 import { getHandle } from "./registry.js";
 import { wrapValue } from "./wrap-value.js";
 

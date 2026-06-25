@@ -29,7 +29,7 @@ const toForwardSlashes = (value: string): string => value.replaceAll(/[/\\]/g, "
 const moduleSpecifierFor = (dataDirAbs: string, filePath: string): string =>
     `${DATA_IMPORT_PREFIX}/${toForwardSlashes(relative(dataDirAbs, filePath))}`;
 
-export type SchemaEnvResult = {
+type SchemaEnvResult = {
     path: string;
     schemaFiles: string[];
     written: boolean;

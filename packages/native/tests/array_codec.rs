@@ -9,9 +9,9 @@ use native::NativeHandle;
 use native::arg::Arg;
 use native::ffi::{FfiStorageKind, FfiValue, GArrayData};
 use native::types::{
-    ArrayKind, ArrayType, BigIntKind, BooleanType, FfiDecoder, FfiEncoder, FloatKind,
-    FundamentalType, GObjectType, IntegerKind, Ownership, RawPtrCodec, ReadSource, RefType,
-    StringType, StructType, EnumFlagsKind, EnumFlagsType, Type,
+    ArrayKind, ArrayType, BigIntKind, BooleanType, EnumFlagsKind, EnumFlagsType, FfiDecoder,
+    FfiEncoder, FloatKind, FundamentalType, GObjectType, IntegerKind, Ownership, RawPtrCodec,
+    ReadSource, RefType, StringType, StructType, Type,
 };
 use native::value::Value;
 
@@ -789,7 +789,11 @@ fn encode_garray_boolean_roundtrips() {
 #[test]
 fn encode_garray_enum_flags_roundtrips() {
     common::run(|| {
-        let ty = array_type(enum_flags_item_type(), ArrayKind::GArray, Ownership::Borrowed);
+        let ty = array_type(
+            enum_flags_item_type(),
+            ArrayKind::GArray,
+            Ownership::Borrowed,
+        );
         let val = Value::Array(vec![Value::Number(1.0)]);
         let encoded = ty.encode(&val).unwrap();
         assert!(matches!(encoded, FfiValue::Storage(_)));

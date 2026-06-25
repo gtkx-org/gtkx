@@ -1,8 +1,8 @@
+import type { GirFunction } from "../gir/function.js";
+import type { GirNamespace } from "../gir/namespace.js";
 import type { ModuleContext } from "../writer/context.js";
 import { arrayLiteral, renderBlock } from "../writer/emit.js";
 import { bindingIdentifier, namespaceFunctionExportName } from "../writer/identifier.js";
-import type { GirFunction } from "../gir/function.js";
-import type { GirNamespace } from "../gir/namespace.js";
 import { callableReferencesClassStruct } from "./class-struct-record.js";
 import { tFn } from "./descriptor.js";
 import {

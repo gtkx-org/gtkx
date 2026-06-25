@@ -49,9 +49,7 @@ export const zoom = (widget: Gtk.Widget, scale: number): Promise<void> =>
     dispatchOnController(widget, Gtk.GestureZoom, (controller) => controller.emit("scale-changed", scale));
 
 export const swipe = (widget: Gtk.Widget, velocityX: number, velocityY: number): Promise<void> =>
-    dispatchOnController(widget, Gtk.GestureSwipe, (controller) =>
-        controller.emit("swipe", velocityX, velocityY),
-    );
+    dispatchOnController(widget, Gtk.GestureSwipe, (controller) => controller.emit("swipe", velocityX, velocityY));
 
 export const longPress = (widget: Gtk.Widget, x: number = 0, y: number = 0): Promise<void> =>
     dispatchOnController(widget, Gtk.GestureLongPress, (controller) => controller.emit("pressed", x, y));

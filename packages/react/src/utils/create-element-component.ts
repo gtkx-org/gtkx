@@ -1,6 +1,5 @@
-import { CONTAINER_SLOT_KIND, WIDGET_PROP_KIND } from "@gtkx/config";
+import { CONTAINER_SLOT_KIND, WIDGET_PROP_KIND, WRAPPER_NODE_ELEMENT } from "@gtkx/config";
 import { createElement, isValidElement, type ReactNode } from "react";
-import { WRAPPER_NODE_ELEMENT } from "../reconciler/instance.js";
 import { slotPropsFor } from "../reconciler/slot-props.js";
 
 const needsSplit = (props: object, slotProps: Set<string>): boolean => {

@@ -90,14 +90,10 @@ export const foldInheritedTableWithInterfaces = <R, T>(
     return accumulator;
 };
 
-export const findInheritedRow = <R>(
-    gtype: GType,
-    table: Record<string, R>,
-    accept: (row: R) => boolean,
-): R | undefined => {
+export const findInheritedRow = <R>(gtype: GType, table: Record<string, R>): R | undefined => {
     for (const name of collectTypeNameChain(gtype)) {
         const row = table[name];
-        if (row !== undefined && accept(row)) return row;
+        if (row !== undefined) return row;
     }
     return undefined;
 };

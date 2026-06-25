@@ -1,10 +1,10 @@
 import { toPascalCase } from "@gtkx/utils";
-import type { ModuleContext } from "../writer/context.js";
-import { indentMembers, renderBlock } from "../writer/emit.js";
-import { bindingIdentifier } from "../writer/identifier.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
 import { splitOptionalNamespace } from "../gir/type-ref.js";
+import type { ModuleContext } from "../writer/context.js";
+import { indentMembers, renderBlock } from "../writer/emit.js";
+import { bindingIdentifier } from "../writer/identifier.js";
 import { matchAsyncFinishName } from "./async.js";
 import {
     type Callables,

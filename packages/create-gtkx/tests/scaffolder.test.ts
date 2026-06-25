@@ -4,7 +4,7 @@ import ejs from "ejs";
 import { vol } from "memfs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PackageManager } from "../src/options.js";
-import { type CreateOptions, scaffold, type ScaffolderDeps } from "../src/scaffolder.js";
+import { type CreateOptions, type ScaffolderDeps, scaffold } from "../src/scaffolder.js";
 import { listTemplates, type TemplateContext } from "../src/templates.js";
 
 const TEST_DIR = "/test-workspace";

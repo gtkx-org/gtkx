@@ -132,7 +132,6 @@ export function defineConfig(config: GtkxConfig): GtkxConfig;
 export function defineConfig(config: Promise<GtkxConfig>): Promise<GtkxConfig>;
 export function defineConfig(config: GtkxConfigFn): GtkxConfigFn;
 export function defineConfig(config: GtkxConfigFnPromise): GtkxConfigFnPromise;
-export function defineConfig(config: GtkxConfigExport): GtkxConfigExport;
 export function defineConfig(config: GtkxConfigExport): GtkxConfigExport {
     return config;
 }

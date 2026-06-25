@@ -16,7 +16,7 @@ export const resolveOrderedInsert = (parent: Node): OrderedInsertSpec | null => 
     const gtype = parent.__gtype__;
     const cached = orderedInsertCache.get(gtype);
     if (cached !== undefined) return cached;
-    const resolved = findInheritedRow(gtype, ORDERED_INSERT, () => true) ?? null;
+    const resolved = findInheritedRow(gtype, ORDERED_INSERT) ?? null;
     orderedInsertCache.set(gtype, resolved);
     return resolved;
 };

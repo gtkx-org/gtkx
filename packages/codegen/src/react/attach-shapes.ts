@@ -5,7 +5,7 @@ import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
 import type { GirParameter } from "../gir/parameter.js";
 import type { PrimitiveCategory } from "../gir/primitives.js";
-import type { Library } from "../gir/repository.js";
+import type { Library } from "../gir/library.js";
 import type { GirType } from "../gir/type.js";
 import type { TypeId } from "../gir/type-id.js";
 

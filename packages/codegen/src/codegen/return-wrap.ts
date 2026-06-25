@@ -1,7 +1,7 @@
-import type { ModuleContext } from "../writer/context.js";
 import type { PrimitiveCategory } from "../gir/primitives.js";
 import type { TypeId } from "../gir/type-id.js";
-import { renderFfiType } from "./value.js";
+import type { ModuleContext } from "../writer/context.js";
+import { renderDescriptor } from "./value.js";
 
 export type WrapReturnOptions = {
     ref: TypeId | undefined;
@@ -34,7 +34,7 @@ export const wrapReturnValue = (context: ModuleContext, options: WrapReturnOptio
 
 const wrapViaFfiValue = (context: ModuleContext, ref: TypeId, valueExpression: string): string => {
     context.addRuntimeImport("wrapValue");
-    const descriptor = context.hoistFfiType(renderFfiType(context, ref, "none"));
+    const descriptor = context.hoistDescriptor(renderDescriptor(context, ref, "none"));
     return `wrapValue(${descriptor}, ${valueExpression})`;
 };
 

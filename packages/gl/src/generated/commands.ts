@@ -11863,9 +11863,19 @@ const glGetNamedRenderbufferParameteriv = t.bind(
     t.void,
 );
 
-const glGetnCompressedTexImage = t.bind(LIB, "glGetnCompressedTexImage", [t.uint32, t.int32, t.int32, t.buffer], t.void);
+const glGetnCompressedTexImage = t.bind(
+    LIB,
+    "glGetnCompressedTexImage",
+    [t.uint32, t.int32, t.int32, t.buffer],
+    t.void,
+);
 
-const glGetnTexImage = t.bind(LIB, "glGetnTexImage", [t.uint32, t.int32, t.uint32, t.uint32, t.int32, t.buffer], t.void);
+const glGetnTexImage = t.bind(
+    LIB,
+    "glGetnTexImage",
+    [t.uint32, t.int32, t.uint32, t.uint32, t.int32, t.buffer],
+    t.void,
+);
 
 const glGetProgramBinary = t.bind(
     LIB,

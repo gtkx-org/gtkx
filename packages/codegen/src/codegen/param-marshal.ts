@@ -1,7 +1,7 @@
-import type { ModuleContext } from "../writer/context.js";
 import { type GirParameter, isInoutParameter } from "../gir/parameter.js";
 import type { GirType } from "../gir/type.js";
 import type { TypeId } from "../gir/type-id.js";
+import type { ModuleContext } from "../writer/context.js";
 
 export const passesHandleInPlace = (context: ModuleContext, parameter: GirParameter): boolean => {
     if (parameter.direction !== "out" && parameter.direction !== "inout") return false;

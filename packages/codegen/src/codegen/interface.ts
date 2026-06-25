@@ -1,7 +1,7 @@
 import { toPascalCase } from "@gtkx/utils";
+import type { GirClass } from "../gir/class.js";
 import type { ModuleContext } from "../writer/context.js";
 import { indentMembers, renderBlock, renderBracedOrEmpty } from "../writer/emit.js";
-import type { GirClass } from "../gir/class.js";
 import {
     type Callables,
     dedupeCallables,

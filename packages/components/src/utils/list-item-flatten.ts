@@ -10,8 +10,6 @@ export interface FlattenedRecord<T = unknown, S = unknown> {
     id: string;
     value: T | S;
     isHeader: boolean;
-    hasChildren: boolean;
-    children: ItemNode<T, S>[];
     metadata: TreeItemMetadata;
 }
 
@@ -19,8 +17,6 @@ export interface FlattenResult<T = unknown, S = unknown> {
     records: FlattenedRecord<T, S>[];
     idToPosition: Map<string, number>;
     positionToId: Map<number, string>;
-    isTree: boolean;
-    isSectioned: boolean;
 }
 
 export type ListStructure = "flat" | "tree" | "sections";
@@ -67,8 +63,6 @@ export const treeItemMetadata = <T, S>(item: ItemNode<T, S>): TreeItemMetadata =
     };
 };
 
-const hasChildren = <T, S>(item: ItemNode<T, S>): boolean => item.children !== undefined && item.children.length > 0;
-
 const appendRecord = <T, S>(item: ItemNode<T, S>, result: FlattenResult<T, S>, includeChildren: boolean): void => {
     const position = result.records.length;
     result.idToPosition.set(item.id, position);
@@ -77,8 +71,6 @@ const appendRecord = <T, S>(item: ItemNode<T, S>, result: FlattenResult<T, S>, i
         id: item.id,
         value: item.value,
         isHeader: item.section === true,
-        hasChildren: hasChildren(item),
-        children: item.children ?? [],
         metadata: treeItemMetadata(item),
     });
     if (includeChildren && item.children !== undefined) {
@@ -94,19 +86,15 @@ export const flattenListItems = <T, S>(
         records: [],
         idToPosition: new Map(),
         positionToId: new Map(),
-        isTree: false,
-        isSectioned: false,
     };
     if (items === undefined) return result;
     for (const item of items) {
         if (item.section === true) {
-            result.isSectioned = true;
             if (item.children !== undefined) {
                 for (const child of item.children) appendRecord(child, result, true);
             }
             continue;
         }
-        if (hasChildren(item)) result.isTree = true;
         appendRecord(item, result, flattenTreeChildren);
     }
     return result;

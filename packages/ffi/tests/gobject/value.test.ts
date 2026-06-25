@@ -292,8 +292,8 @@ describe("toGValue — arrays and errors", () => {
         ).toThrow(/Cannot resolve gtype for fundamental/);
     });
 
-    it("throws for unsupported FFI types", () => {
-        expect(() => toGValue({ type: "unichar" }, 0)).toThrow(/unsupported FFI type/i);
+    it("throws for unsupported type descriptors", () => {
+        expect(() => toGValue({ type: "unichar" }, 0)).toThrow(/unsupported type descriptor/i);
     });
 });
 
@@ -361,6 +361,6 @@ describe("newValueFromFfi — GType resolution from an FFI descriptor", () => {
 
     it("throws for unsupported descriptors", () => {
         expect(() => newValueFromFfi({ ...strvFfi, kind: "glist" })).toThrow(/unsupported array type/i);
-        expect(() => newValueFromFfi({ type: "unichar" })).toThrow(/unsupported FFI type/i);
+        expect(() => newValueFromFfi({ type: "unichar" })).toThrow(/unsupported type descriptor/i);
     });
 });

@@ -2,7 +2,7 @@ import { sortedStringsBy, toCamelIdentifier, toUpperFirst } from "@gtkx/utils";
 import { ancestorChain } from "../gir/ancestry.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirNamespace } from "../gir/namespace.js";
-import type { Library } from "../gir/repository.js";
+import type { Library } from "../gir/library.js";
 
 export const signalHandlerName = (signalName: string): string => `on${toUpperFirst(toCamelIdentifier(signalName))}`;
 
@@ -80,8 +80,7 @@ export const classExposesMethod = (
     namespace: GirNamespace,
     library: Library,
     methodName: string,
-): boolean =>
-    someAncestor(klass, namespace, library, (current) => current.methods.some((m) => m.name === methodName));
+): boolean => someAncestor(klass, namespace, library, (current) => current.methods.some((m) => m.name === methodName));
 
 export const isReactNodeClass = (klass: GirClass, namespace: GirNamespace, library: Library): boolean =>
     descendsFrom(klass, namespace, library, (glibName) => glibName === "GObject");

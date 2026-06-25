@@ -1,4 +1,4 @@
-export type VirtualResolveContext = {
+type VirtualResolveContext = {
     resolve: (
         source: string,
         importer?: string,
@@ -6,7 +6,7 @@ export type VirtualResolveContext = {
     ) => Promise<{ id: string; external?: boolean | "absolute" | "relative" } | null>;
 };
 
-export type VirtualNamespace = {
+type VirtualNamespace = {
     isVirtual: (id: string) => boolean;
     toVirtualId: (realId: string) => string;
     fromVirtualId: (id: string) => string;

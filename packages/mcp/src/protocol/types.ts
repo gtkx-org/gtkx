@@ -134,8 +134,6 @@ export type WireParamsSchema<Output> = {
 
 export type ServerInitiatedMethod = keyof typeof ServerRequestParamsSchemas;
 
-export type IpcMethod = ServerInitiatedMethod | "app.register" | "app.unregister";
-
 export type IpcMessage = IpcRequest | IpcResponse;
 
 const getRuntimeDir = (): string => process.env["XDG_RUNTIME_DIR"] ?? tmpdir();

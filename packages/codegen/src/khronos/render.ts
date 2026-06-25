@@ -1,8 +1,8 @@
 import { sourceStringLiteral, toCamelIdentifier, toLowerFirst } from "@gtkx/utils";
 import { tBind, tInlineStruct, tRef, tString, tUint8, tVoid } from "../codegen/descriptor.js";
+import { type OutArg, planArgs, scalarAliasOrGroup, scalarPrefixArgs, trackInto } from "./args.js";
 import type { CommandPlan, ReturnPlan } from "./ctype.js";
 import { commandJsDoc, inParamDocLine, REFPAGES_BASE } from "./jsdoc.js";
-import { planArgs, type OutArg, scalarAliasOrGroup, scalarPrefixArgs, trackInto } from "./args.js";
 
 const GL_LIB_EXPRESSION = "LIB";
 

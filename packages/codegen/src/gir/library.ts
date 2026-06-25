@@ -261,8 +261,6 @@ const readRepositoryNode = (path: string): RawNode => {
     return repository as RawNode;
 };
 
-export const loadLibrary = (libraries: string[], girPath: string[]): Library => Library.load(libraries, girPath);
-
 const locateGirFile = (identifier: string, girPath: string[]): string => {
     const filename = `${identifier}.gir`;
     for (const directory of girPath) {

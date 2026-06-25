@@ -7,7 +7,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { hasType } from "../../utils/gtype-predicates.js";
 import { isWrapperKind, type Node, stateOf } from "../state.js";
 
-export const isTopLevelSurface = (widget: GObject.Object): boolean =>
+const isTopLevelSurface = (widget: GObject.Object): boolean =>
     TOP_LEVEL_TYPES.some((typeName) => hasType(widget, typeName));
 
 export const childWidget = (instance: Node): Gtk.Widget | null => {

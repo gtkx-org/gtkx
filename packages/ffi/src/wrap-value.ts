@@ -1,4 +1,4 @@
-import type { ArrayType, Type, Handle, Value } from "@gtkx/native";
+import type { ArrayType, Handle, Type, Value } from "@gtkx/native";
 import { getDescriptorWrapperClass } from "./descriptors.js";
 import { resolveBoxedGtype } from "./gvalue.js";
 import { requireWrapperClass, tryGetHandle, wrapHandle } from "./registry.js";

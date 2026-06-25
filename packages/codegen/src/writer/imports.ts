@@ -1,4 +1,4 @@
-import { sourceStringLiteral, sortedStrings, sortedStringsBy } from "@gtkx/utils";
+import { sortedStrings, sortedStringsBy, sourceStringLiteral } from "@gtkx/utils";
 
 export class ImportsBuilder {
     private named = new Map<string, Map<string, boolean>>();

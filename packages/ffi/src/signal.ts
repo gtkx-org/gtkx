@@ -1,5 +1,6 @@
-import { type CallbackType, call, type Type, type Handle } from "@gtkx/native";
+import { type CallbackType, call, type Handle, type Type } from "@gtkx/native";
 import { classifyArgCategory } from "./arg-category.js";
+import { wrapCallback } from "./callback.js";
 import { GVALUE_SIZE, GVALUE_T, LIB } from "./constants.js";
 import { arrayT, biguint64T, bind, objectT, stringT, uint32T, uint64T, voidT } from "./descriptors.js";
 import { tupleResult } from "./fn.js";
@@ -13,7 +14,6 @@ import {
     toGValue,
     valueGetBoxed,
 } from "./gvalue.js";
-import { wrapCallback } from "./callback.js";
 import { getHandle } from "./registry.js";
 
 export type SignalHandler = (...args: unknown[]) => unknown;
@@ -63,7 +63,7 @@ const gSignalEmitv = bind(
 const gSignalLookup = bind(LIB, "g_signal_lookup", [stringT("borrowed"), biguint64T], uint32T);
 
 export type EmitArg = {
-    ffi: Type;
+    type: Type;
     direction?: "out" | "inout";
     callerAllocates?: boolean;
     value?: unknown;
@@ -71,13 +71,13 @@ export type EmitArg = {
 
 const emitCell = (arg: EmitArg): { value: Handle; read?: () => unknown } => {
     const category = classifyArgCategory({ direction: arg.direction, callerAllocated: Boolean(arg.callerAllocates) });
-    if (category.kind === "plainInput") return { value: toGValue(arg.ffi, arg.value) };
+    if (category.kind === "plainInput") return { value: toGValue(arg.type, arg.value) };
     if (category.kind === "callerAllocated") {
-        if (category.inout) return { value: inoutBoxedFromFfi(arg.ffi, arg.value as object) };
-        const value = outBoxedFromFfi(arg.ffi, arg.value as object);
+        if (category.inout) return { value: inoutBoxedFromFfi(arg.type, arg.value as object) };
+        const value = outBoxedFromFfi(arg.type, arg.value as object);
         return { value, read: () => valueGetBoxed(value) };
     }
-    const cell = category.inout ? outValueFromFfi(arg.ffi, arg.value) : outValueFromFfi(arg.ffi);
+    const cell = category.inout ? outValueFromFfi(arg.type, arg.value) : outValueFromFfi(arg.type);
     return { value: cell.value, read: cell.read };
 };
 

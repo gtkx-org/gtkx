@@ -1,6 +1,5 @@
 export type { AnyClass } from "./class.js";
 export {
-    compareStrings,
     dedupeBy,
     enumNamesByValue,
     omit,

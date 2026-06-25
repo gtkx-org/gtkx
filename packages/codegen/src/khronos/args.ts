@@ -1,8 +1,8 @@
 import { toCamelIdentifier } from "@gtkx/utils";
 import {
     tArray,
-    tBuffer,
     tBoolean,
+    tBuffer,
     tFixedArray,
     tInlineStruct,
     tRef,
@@ -189,10 +189,7 @@ export const planArgs = (
     return { args, ins, outs };
 };
 
-export const scalarPrefixArgs = (
-    plan: CommandPlan & { ok: true },
-    usedTypes: Set<string>,
-): InArg[] | undefined => {
+export const scalarPrefixArgs = (plan: CommandPlan & { ok: true }, usedTypes: Set<string>): InArg[] | undefined => {
     const track = trackInto(usedTypes);
     const prefix: InArg[] = [];
     for (let index = 0; index < plan.params.length - 2; index++) {

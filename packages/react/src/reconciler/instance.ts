@@ -1,4 +1,3 @@
-import { WRAPPER_NODE_ELEMENT } from "@gtkx/config";
 import { constructWrapper, type GType } from "@gtkx/ffi";
 import type * as GObject from "@gtkx/gi/gobject";
 import { omit } from "@gtkx/utils";
@@ -8,9 +7,7 @@ import { type Node, registerState } from "./state.js";
 import type { Container, Props } from "./types.js";
 import { createWrapperElement } from "./wrapper-element.js";
 
-export { WRAPPER_NODE_ELEMENT };
-
-export const CONSTRUCTION_SKIP_PROPS: Record<string, string[]> = {
+const CONSTRUCTION_SKIP_PROPS: Record<string, string[]> = {
     GtkStack: ["visibleChildName"],
     AdwViewStack: ["visibleChildName"],
     AdwToggleGroup: ["activeName", "active"],
@@ -32,13 +29,8 @@ const constructWrapperInstance = (type: string, props: Props): GObject.Object =>
     return constructWrapper(cls, picked) as GObject.Object;
 };
 
-export const createElementInstance = (
-    type: string,
-    props: Props,
-    rootContainer: Container,
-    existing?: GObject.Object,
-): Node => {
-    const node = existing ?? constructWrapperInstance(type, props);
+export const createElementInstance = (type: string, props: Props, rootContainer: Container): Node => {
+    const node = constructWrapperInstance(type, props);
     registerState(node, { name: type, props, rootContainer });
     return node;
 };

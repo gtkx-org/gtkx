@@ -1,6 +1,6 @@
 import { sourceStringLiteral } from "@gtkx/utils";
-import type { ModuleContext } from "../writer/context.js";
 import type { GirEnum } from "../gir/enum.js";
+import type { ModuleContext } from "../writer/context.js";
 
 export const generateEnum = (context: ModuleContext, enumeration: GirEnum): void => {
     if (!enumeration.introspectable) return;

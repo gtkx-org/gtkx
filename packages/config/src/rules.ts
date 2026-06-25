@@ -153,7 +153,6 @@ const Toggle: RuleSet = {
 
 type Slot = {
     add: (parent: GObject.Object, child: GObject.Object) => void;
-    remove?: (parent: GObject.Object, child: GObject.Object) => void;
 };
 
 const reflectAdd =
@@ -166,10 +165,6 @@ const slots = (table: Record<string, Slot>): RuleSet => ({
     appendChild: (parent, child) => {
         const slot = child.slotTag ? table[child.slotTag] : undefined;
         if (slot) slot.add(parent.instance, child.instance);
-    },
-    removeChild: (parent, child) => {
-        const slot = child.slotTag ? table[child.slotTag] : undefined;
-        slot?.remove?.(parent.instance, child.instance);
     },
 });
 

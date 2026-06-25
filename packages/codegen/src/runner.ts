@@ -2,7 +2,7 @@ import { generateNamespaceModule } from "./ffi/pipeline.js";
 import { computeFingerprint } from "./fingerprint.js";
 import { type GiNamespaceInput, type GiStoreOptions, writeGiStore } from "./gi-store.js";
 import { namespaceDirectory } from "./gir/namespace.js";
-import { type Library, loadLibrary } from "./gir/repository.js";
+import { Library } from "./gir/library.js";
 import { type JsxStoreOptions, writeJsxStore } from "./jsx-store.js";
 import { generateJsxFiles } from "./react/pipeline.js";
 
@@ -13,23 +13,10 @@ export type CodegenRunnerOptions = {
     jsx?: JsxStoreOptions | undefined;
 };
 
-export type CodegenPhaseTimings = {
-    loadRepository: number;
-    emitFfiStore: number;
-    emitJsxStore: number;
-};
-
 export type CodegenRunnerResult = {
     namespaces: number;
     reactNodes: number;
     duration: number;
-    phases: CodegenPhaseTimings;
-};
-
-const timed = <T>(work: () => T): { value: T; duration: number } => {
-    const start = Date.now();
-    const value = work();
-    return { value, duration: Date.now() - start };
 };
 
 export class CodegenRunner {
@@ -41,25 +28,19 @@ export class CodegenRunner {
 
     async run(): Promise<CodegenRunnerResult> {
         const start = Date.now();
-        const load = timed(() => this.loadRepository());
-        const library = load.value;
-        const ffi = timed(() => this.emitFfiStore(library));
-        const jsx = timed(() => this.emitJsxStore(library));
+        const library = this.loadRepository();
+        this.emitFfiStore(library);
+        const reactNodes = this.emitJsxStore(library);
 
         return {
             namespaces: library.namespaces.size,
-            reactNodes: jsx.value,
+            reactNodes,
             duration: Date.now() - start,
-            phases: {
-                loadRepository: load.duration,
-                emitFfiStore: ffi.duration,
-                emitJsxStore: jsx.duration,
-            },
         };
     }
 
     private loadRepository(): Library {
-        return loadLibrary(this.options.libraries, this.options.girPath);
+        return Library.load(this.options.libraries, this.options.girPath);
     }
 
     private emitFfiStore(library: Library): void {

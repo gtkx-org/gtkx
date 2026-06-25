@@ -1,11 +1,11 @@
 import { WRAPPER_NODE_ELEMENT } from "@gtkx/config";
-import { sourceStringLiteral, sortedStringsBy, toCamelCase } from "@gtkx/utils";
+import { sortedStringsBy, sourceStringLiteral, toCamelCase } from "@gtkx/utils";
 import type { GirNamespace } from "../gir/namespace.js";
-import type { Library } from "../gir/repository.js";
+import type { Library } from "../gir/library.js";
 import { type WrapperNodeElement, wrapperNodeElementEntries } from "./compounds-meta.js";
 import type { JsxImports } from "./imports.js";
 import { type AncestryWrapperName, BUILT_IN_ANCESTRY_WRAPPERS } from "./tables.js";
-import { ancestorGlibNames, collectReactNodeClasses, type ReactNodeClass } from "./widgets.js";
+import { ancestorGlibNames, collectReactNodeClasses, type ReactNodeClass } from "./react-nodes.js";
 
 const WRAPPER_ELEMENT_CONST = "WrapperNodeElement";
 
@@ -42,17 +42,16 @@ export const generateElementComponentsSection = (
     }
 
     const sections = [
-        needsWrapperConst ? `const ${WRAPPER_ELEMENT_CONST} = ${sourceStringLiteral(WRAPPER_NODE_ELEMENT)} as const;` : "",
+        needsWrapperConst
+            ? `const ${WRAPPER_ELEMENT_CONST} = ${sourceStringLiteral(WRAPPER_NODE_ELEMENT)} as const;`
+            : "",
         exportLines.join("\n\n"),
     ];
     const source = sections.filter((section) => section.length > 0).join("\n\n");
     return { source, exportedNames };
 };
 
-const wrapperNodeElementsForNamespace = (
-    targetNamespace: GirNamespace,
-    library: Library,
-): WrapperNodeElement[] => {
+const wrapperNodeElementsForNamespace = (targetNamespace: GirNamespace, library: Library): WrapperNodeElement[] => {
     const namespaceByGlib = new Map(
         collectReactNodeClasses(library).map((entry) => [entry.glibName, entry.namespace.name]),
     );
@@ -66,11 +65,7 @@ const wrapperNodeElementsForNamespace = (
     return sortedStringsBy(result, (entry) => entry.flatName);
 };
 
-const renderCandidateExport = (
-    candidate: ReactNodeClass,
-    library: Library,
-    imports: JsxImports,
-): string | null => {
+const renderCandidateExport = (candidate: ReactNodeClass, library: Library, imports: JsxImports): string | null => {
     const { glibName, klass, namespace } = candidate;
     const ancestry = new Set(ancestorGlibNames(klass, namespace, library));
     const hoc = resolveAncestryWrapper(ancestry);

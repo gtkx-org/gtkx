@@ -1,8 +1,3 @@
-import { ModuleContext } from "../writer/context.js";
-import type { GirClass } from "../gir/class.js";
-import type { GirNamespace } from "../gir/namespace.js";
-import type { Library } from "../gir/repository.js";
-import { splitOptionalNamespace } from "../gir/type-ref.js";
 import { generateAlias } from "../codegen/alias.js";
 import { generateBoxed } from "../codegen/boxed.js";
 import { generateCallback } from "../codegen/callback.js";
@@ -11,6 +6,11 @@ import { generateConstant } from "../codegen/constant.js";
 import { generateEnum } from "../codegen/enum.js";
 import { generateNamespaceBootstrap, generateNamespaceFunction } from "../codegen/function.js";
 import { generateInterface } from "../codegen/interface.js";
+import type { GirClass } from "../gir/class.js";
+import type { GirNamespace } from "../gir/namespace.js";
+import type { Library } from "../gir/library.js";
+import { splitOptionalNamespace } from "../gir/type-ref.js";
+import { ModuleContext } from "../writer/context.js";
 
 export const generateNamespaceModule = (namespace: GirNamespace, library: Library): { source: string } => {
     const context = new ModuleContext(namespace, library);

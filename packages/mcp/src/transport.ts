@@ -1,7 +1,7 @@
 import EventEmitter from "node:events";
 import type { Socket } from "node:net";
 import type { Duplex } from "node:stream";
-import { invalidRequestError, IpcError, IpcErrorCode, ipcTimeoutError, isIpcErrorCode } from "./protocol/errors.js";
+import { IpcError, IpcErrorCode, invalidRequestError, ipcTimeoutError, isIpcErrorCode } from "./protocol/errors.js";
 import {
     type IpcMessage,
     type IpcRequest,

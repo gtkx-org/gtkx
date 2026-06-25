@@ -1,12 +1,12 @@
 import { sourceStringLiteral, toCamelCase, toPascalCase } from "@gtkx/utils";
-import type { ModuleContext } from "../writer/context.js";
-import { indent, renderBlock, renderBracedOrEmpty } from "../writer/emit.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirParameter } from "../gir/parameter.js";
 import { isCallerAllocatedOut, isOutParameter } from "../gir/parameter.js";
 import type { GirProperty } from "../gir/property.js";
 import type { GirSignal } from "../gir/signal.js";
 import { splitOptionalNamespace } from "../gir/type-ref.js";
+import type { ModuleContext } from "../writer/context.js";
+import { indent, renderBlock, renderBracedOrEmpty } from "../writer/emit.js";
 import { tCallback, tObject, tVoid } from "./descriptor.js";
 import {
     collectInterfaceProperties,
@@ -18,7 +18,7 @@ import { isBoxedCallerOut, isBoxedInout } from "./param-marshal.js";
 import { renderHandlerParameters } from "./param-structure.js";
 import { foldOutParamShape } from "./return-shape.js";
 import { renderTsType } from "./ts-type.js";
-import { isCellInout, omitsPrimaryReturn, renderFfiType, renderHandlerArgType } from "./value.js";
+import { isCellInout, omitsPrimaryReturn, renderDescriptor, renderHandlerArgType } from "./value.js";
 
 const SIGNAL_HANDLER_TYPE = "(...args: any[]) => any";
 
@@ -101,7 +101,9 @@ const renderSignalMap = (spec: SignalMapSpec): string => {
 
 const renderNotifyDetailEntries = (context: ModuleContext, klass: GirClass, suffix: string): string[] => {
     const notifyValue = `${gobjectObjectMapRef(context, suffix)}["notify"]`;
-    return collectNotifyDetails(context, klass).map((name) => `${sourceStringLiteral(`notify::${name}`)}: ${notifyValue};`);
+    return collectNotifyDetails(context, klass).map(
+        (name) => `${sourceStringLiteral(`notify::${name}`)}: ${notifyValue};`,
+    );
 };
 
 const signalMapParentRefs = (
@@ -222,26 +224,26 @@ const renderEmitCase = (context: ModuleContext, collected: CollectedSignal): str
 
     let argIndex = 0;
     const argLiterals = params.map((parameter) => {
-        const ffi = renderFfiType(context, parameter.type, parameter.transferOwnership);
+        const ffi = renderDescriptor(context, parameter.type, parameter.transferOwnership);
         if (isOutParameter(parameter)) {
-            return `{ ffi: ${ffi}, direction: "out" }`;
+            return `{ type: ${ffi}, direction: "out" }`;
         }
         if (isCellInout(context, parameter)) {
-            return `{ ffi: ${ffi}, direction: "inout", value: args[${argIndex++}] }`;
+            return `{ type: ${ffi}, direction: "inout", value: args[${argIndex++}] }`;
         }
         if (isCallerAllocatedOut(parameter)) {
-            return `{ ffi: ${ffi}, direction: "out", callerAllocates: true, value: ${renderCallerOutAllocation(context, parameter)} }`;
+            return `{ type: ${ffi}, direction: "out", callerAllocates: true, value: ${renderCallerOutAllocation(context, parameter)} }`;
         }
         if (isBoxedInout(context, parameter)) {
-            return `{ ffi: ${ffi}, direction: "inout", callerAllocates: true, value: args[${argIndex++}] }`;
+            return `{ type: ${ffi}, direction: "inout", callerAllocates: true, value: args[${argIndex++}] }`;
         }
-        return `{ ffi: ${ffi}, value: args[${argIndex++}] }`;
+        return `{ type: ${ffi}, value: args[${argIndex++}] }`;
     });
 
     const isVoid = omitsPrimaryReturn(context.library, signal.returnValue);
     const returnArg = isVoid
         ? ""
-        : `, ${renderFfiType(context, signal.returnValue.type, signal.returnValue.transferOwnership)}`;
+        : `, ${renderDescriptor(context, signal.returnValue.type, signal.returnValue.transferOwnership)}`;
     const body = `return emitGobjectSignal(this, sigName, [${argLiterals.join(", ")}]${returnArg});`;
 
     return renderBlock(`case ${sourceStringLiteral(signal.name)}:`, body);
@@ -249,7 +251,10 @@ const renderEmitCase = (context: ModuleContext, collected: CollectedSignal): str
 
 const renderUnsupportedEmitCase = (signal: GirSignal): string => {
     const message = `emit() cannot allocate the caller-allocated out-parameter of '${signal.name}'`;
-    return renderBlock(`case ${sourceStringLiteral(signal.name)}:`, `throw new globalThis.Error(${sourceStringLiteral(message)});`);
+    return renderBlock(
+        `case ${sourceStringLiteral(signal.name)}:`,
+        `throw new globalThis.Error(${sourceStringLiteral(message)});`,
+    );
 };
 
 const renderCallerOutAllocation = (context: ModuleContext, parameter: GirParameter): string => {
@@ -267,7 +272,7 @@ const renderCallback = (context: ModuleContext, collected: CollectedSignal): str
     const isVoid = omitsPrimaryReturn(context.library, signal.returnValue);
     const returnFfi = isVoid
         ? tVoid
-        : renderFfiType(context, signal.returnValue.type, signal.returnValue.transferOwnership);
+        : renderDescriptor(context, signal.returnValue.type, signal.returnValue.transferOwnership);
     const callbackArgs = [tObject("borrowed"), ...callbackParamFfi, tVoid];
     return tCallback(callbackArgs, returnFfi, `{ hasDestroy: true, userDataIndex: ${params.length + 1} }`);
 };

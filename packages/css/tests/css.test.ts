@@ -1,6 +1,6 @@
 import type { MockInstance } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createInstance, type Css } from "../src/create-instance.js";
+import { type Css, createInstance } from "../src/create-instance.js";
 import { StyleSheet } from "../src/stylesheet.js";
 
 describe("css", () => {
@@ -105,26 +105,32 @@ describe("cx", () => {
     });
 
     it("merges multiple css outputs into a single last-wins override class", () => {
-        const style1 = instance.css`
-            color: red;
-        `;
-        const style2 = instance.css`
-            color: blue;
-        `;
-        const result = instance.cx(style1, style2);
+        const insertSpy = vi.spyOn(StyleSheet.prototype, "insert");
+        try {
+            const style1 = instance.css`
+                color: red;
+            `;
+            const style2 = instance.css`
+                color: blue;
+            `;
+            const result = instance.cx(style1, style2);
 
-        expect(result).toHaveLength(1);
-        const mergedClass = result[0];
-        if (typeof mergedClass !== "string") throw new Error("cx should merge into one class");
-        expect(mergedClass).toMatch(/^gtkx-/);
-        expect(mergedClass).not.toBe(style1);
-        expect(mergedClass).not.toBe(style2);
+            expect(result).toHaveLength(1);
+            const mergedClass = result[0];
+            if (typeof mergedClass !== "string") throw new Error("cx should merge into one class");
+            expect(mergedClass).toMatch(/^gtkx-/);
+            expect(mergedClass).not.toBe(style1);
+            expect(mergedClass).not.toBe(style2);
 
-        const mergedStyles = instance.getRegisteredStyles(mergedClass);
-        const style1Styles = instance.getRegisteredStyles(style1);
-        const style2Styles = instance.getRegisteredStyles(style2);
-        expect(mergedStyles).toBe(`${style1Styles}${style2Styles}`);
-        expect(mergedStyles?.lastIndexOf("color: blue")).toBeGreaterThan(mergedStyles?.lastIndexOf("color: red") ?? -1);
+            const rules = insertSpy.mock.calls.map((call) => call[0] as string);
+            const mergedRule = rules.find((rule) => rule.startsWith(`.${mergedClass}`));
+            expect(mergedRule).toBeDefined();
+            expect(mergedRule).toContain("color:red;");
+            expect(mergedRule).toContain("color:blue;");
+            expect(mergedRule?.lastIndexOf("color:blue")).toBeGreaterThan(mergedRule?.lastIndexOf("color:red") ?? -1);
+        } finally {
+            insertSpy.mockRestore();
+        }
     });
 
     it("handles conditional composition", () => {

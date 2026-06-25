@@ -93,12 +93,12 @@ export const startCompositor = (runtimeDir: string, options: HeadlessOptions): S
         throw new TypeError(`Unknown compositor "${options.compositor}"; expected one of: sway, weston`);
     }
 
-    const [width, height] = (options.size || DEFAULT_HEADLESS_SIZE).split("x");
+    const [width = "", height = ""] = (options.size || DEFAULT_HEADLESS_SIZE).split("x");
     for (const [name, value] of Object.entries(descriptor.env)) {
         process.env[name] = value;
     }
 
-    return { child: descriptor.start(runtimeDir, width ?? "", height ?? ""), socket: descriptor.socket };
+    return { child: descriptor.start(runtimeDir, width, height), socket: descriptor.socket };
 };
 
 export const writeBusConfig = (busConfigPath: string, busSocketPath: string): void => {

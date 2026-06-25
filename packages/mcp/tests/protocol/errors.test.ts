@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
     appNotFoundError,
-    invalidRequestError,
-    ipcTimeoutError,
     IpcError,
     IpcErrorCode,
+    invalidRequestError,
+    ipcTimeoutError,
     methodNotFoundError,
     noAppConnectedError,
     widgetNotFoundError,

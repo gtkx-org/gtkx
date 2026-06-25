@@ -1,7 +1,7 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { SerializedWidget } from "@gtkx/mcp";
 
-export type WidgetIdResolver = (widget: Gtk.Widget) => string;
+type WidgetIdResolver = (widget: Gtk.Widget) => string;
 
 export type WidgetFormatting = {
     formatRole(role: Gtk.AccessibleRole): string;

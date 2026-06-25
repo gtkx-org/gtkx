@@ -23,7 +23,12 @@ export type GirRecord = {
     isUnion: boolean;
 };
 
-export const recordFromNode = (node: RawNode, isVtable: boolean, isUnion: boolean, context: ParseContext): GirRecord => ({
+export const recordFromNode = (
+    node: RawNode,
+    isVtable: boolean,
+    isUnion: boolean,
+    context: ParseContext,
+): GirRecord => ({
     isVtable,
     name: attr(node, "name") ?? attr(node, "glib:name") ?? "",
     cType: attr(node, "c:type"),

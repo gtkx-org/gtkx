@@ -1,7 +1,7 @@
 import { toCamelIdentifier } from "@gtkx/utils";
+import type { InArg, OutArg } from "./args.js";
 import type { ReturnPlan } from "./ctype.js";
 import type { GlCommand } from "./model.js";
-import type { InArg, OutArg } from "./args.js";
 
 export const REFPAGES_BASE = "https://registry.khronos.org/OpenGL-Refpages/gl4/html";
 

@@ -1,5 +1,4 @@
 import { sourceStringLiteral } from "@gtkx/utils";
-import type { ModuleContext } from "../writer/context.js";
 import type { GirCallback } from "../gir/callback.js";
 import {
     type GirParameter,
@@ -10,9 +9,10 @@ import {
     type ParameterTransfer,
 } from "../gir/parameter.js";
 import type { PrimitiveCategory } from "../gir/primitives.js";
-import type { Library } from "../gir/repository.js";
+import type { Library } from "../gir/library.js";
 import type { EntityType, GirType } from "../gir/type.js";
 import type { CArrayType, ListFlavor, TypeId } from "../gir/type-id.js";
+import type { ModuleContext } from "../writer/context.js";
 import { computeBoxedFieldSlots } from "./boxed-layout.js";
 import {
     type ListDescriptorName,
@@ -50,7 +50,7 @@ const ffiOwnership = (transfer: ParameterTransfer): Ownership => {
 const deriveElementTransfer = (transfer: ParameterTransfer): ParameterTransfer =>
     transfer === "container" ? "none" : transfer;
 
-type RenderFfiTypeOptions = {
+type RenderDescriptorOptions = {
     argIndexOffset?: number;
     callerAllocated?: boolean;
 };
@@ -67,11 +67,11 @@ export const isInlineCallbackRef = (library: Library, ref: TypeId | undefined): 
 export const omitsPrimaryReturn = (library: Library, returnValue: GirReturnValue): boolean =>
     isVoidRef(library, returnValue.type) || returnValue.skip;
 
-export const renderFfiType = (
+export const renderDescriptor = (
     context: ModuleContext,
     ref: TypeId | undefined,
     transfer: ParameterTransfer = "none",
-    options: RenderFfiTypeOptions = {},
+    options: RenderDescriptorOptions = {},
 ): string => {
     if (ref === undefined) return tVoid;
     const { argIndexOffset = 0, callerAllocated = false } = options;
@@ -94,13 +94,13 @@ export const renderFfiType = (
             return arrayExpression(context, type, transfer, argIndexOffset);
         case "list": {
             if (type.flavor === "gbytearray") return tByteArray(ownership);
-            const element = renderFfiType(context, type.element, deriveElementTransfer(transfer), { argIndexOffset });
+            const element = renderDescriptor(context, type.element, deriveElementTransfer(transfer), { argIndexOffset });
             return tList(LIST_HELPERS[type.flavor], element, ownership);
         }
         case "hashtable": {
             const elementTransfer = deriveElementTransfer(transfer);
-            const key = renderFfiType(context, type.key, elementTransfer, { argIndexOffset });
-            const value = renderFfiType(context, type.value, elementTransfer, { argIndexOffset });
+            const key = renderDescriptor(context, type.key, elementTransfer, { argIndexOffset });
+            const value = renderDescriptor(context, type.value, elementTransfer, { argIndexOffset });
             return tHashTable(key, value, ownership);
         }
     }
@@ -136,12 +136,12 @@ export const renderHandlerArgType = (
     ref: TypeId | undefined,
 ): string => {
     if (isCellInout(context, parameter)) {
-        return tRef(renderFfiType(context, ref, parameter.transferOwnership), true);
+        return tRef(renderDescriptor(context, ref, parameter.transferOwnership), true);
     }
     if (isOutParameter(parameter)) {
-        return tRef(renderFfiType(context, ref, parameter.transferOwnership));
+        return tRef(renderDescriptor(context, ref, parameter.transferOwnership));
     }
-    return renderFfiType(context, ref, parameter.transferOwnership, {
+    return renderDescriptor(context, ref, parameter.transferOwnership, {
         callerAllocated: isCallerAllocatedOut(parameter),
     });
 };
@@ -162,7 +162,7 @@ export const renderCallbackType = (
     const returnRef = callback.returnValue.type;
     const returnType = isVoidRef(context.library, returnRef)
         ? tVoid
-        : renderFfiType(context, returnRef, callback.returnValue.transferOwnership);
+        : renderDescriptor(context, returnRef, callback.returnValue.transferOwnership);
     const options: string[] = [];
     if (owningParameter.destroyIndex !== undefined) options.push("hasDestroy: true");
     if (userDataIndex !== undefined) options.push(`userDataIndex: ${userDataIndex}`);
@@ -259,7 +259,7 @@ const fundamentalAncestor = (
     return undefined;
 };
 
-export const renderSelfFfiType = (context: ModuleContext, instance: GirParameter): string => {
+export const renderSelfDescriptor = (context: ModuleContext, instance: GirParameter): string => {
     const ref = instance.type;
     if (ref === undefined) return tObject("borrowed");
     const type = context.library.typeOf(ref);
@@ -373,7 +373,7 @@ const arrayExpression = (
     argIndexOffset: number,
 ): string => {
     const ownership = ffiOwnership(transfer);
-    const element = renderFfiType(context, ref.element, deriveElementTransfer(transfer), { argIndexOffset });
+    const element = renderDescriptor(context, ref.element, deriveElementTransfer(transfer), { argIndexOffset });
     const size = inlineElementSize(context, ref.element, ref.elementCType);
     if (ref.lengthParameterIndex !== undefined) {
         return tSizedArray(element, ref.lengthParameterIndex + argIndexOffset, ownership, size);
@@ -403,5 +403,5 @@ const aliasExpression = (context: ModuleContext, target: TypeId | undefined, own
     if (target === undefined) {
         return tObject(ownership);
     }
-    return renderFfiType(context, target, ownership === "full" ? "full" : "none");
+    return renderDescriptor(context, target, ownership === "full" ? "full" : "none");
 };

@@ -4,8 +4,8 @@ import {
     registerClass as nativeRegisterClass,
 } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
-import { type GType, TYPE_INVALID, typeInterfaces } from "./gtype.js";
 import { wrapCallback } from "./callback.js";
+import { type GType, TYPE_INVALID, typeInterfaces } from "./gtype.js";
 import {
     getClassGtype,
     getInterfaceVfuncRegistry,

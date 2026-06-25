@@ -492,9 +492,13 @@ fn enum_flags_call_cif_invokes_native_function() {
     common::run(|| {
         let enum_flags = common::enum_type();
         let cif = middle::Cif::new(Vec::new(), IntegerKind::I32.ffi_type());
-        let result =
-            FfiEncoder::call_cif(&enum_flags, &cif, middle::CodePtr(ret_i32 as *mut c_void), &[])
-                .unwrap();
+        let result = FfiEncoder::call_cif(
+            &enum_flags,
+            &cif,
+            middle::CodePtr(ret_i32 as *mut c_void),
+            &[],
+        )
+        .unwrap();
         assert!(matches!(result, ffi::FfiValue::I32(-32)));
     });
 }

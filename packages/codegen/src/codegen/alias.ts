@@ -1,6 +1,6 @@
+import type { GirAlias } from "../gir/namespace.js";
 import type { ModuleContext } from "../writer/context.js";
 import { aliasExportName } from "../writer/identifier.js";
-import type { GirAlias } from "../gir/namespace.js";
 import { renderTsType } from "./ts-type.js";
 
 export const generateAlias = (context: ModuleContext, alias: GirAlias): void => {

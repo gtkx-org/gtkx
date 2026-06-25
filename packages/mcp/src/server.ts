@@ -67,7 +67,7 @@ const imageContent = (data: string, mimeType: string): CallToolResult => ({
     content: [{ type: "image", data, mimeType }],
 });
 
-export type AppRouter = Pick<ConnectionManager, "getApps" | "hasConnectedApps" | "waitForApp" | "sendToApp">;
+type AppRouter = Pick<ConnectionManager, "getApps" | "hasConnectedApps" | "waitForApp" | "sendToApp">;
 
 type ToolHandlerResult = CallToolResult;
 
@@ -82,11 +82,7 @@ type TypedTool<Shape extends Record<string, z.ZodType>> = {
     handler: (args: ToolArgs<Shape>) => Promise<ToolHandlerResult>;
 };
 
-export type ToolDefinition = {
-    name: string;
-    kind: ToolKind;
-    config: { description: string; inputSchema: z.ZodRawShape };
-    handler: (args: never) => Promise<ToolHandlerResult>;
+type ToolDefinition = {
     register: (server: McpServer) => void;
 };
 
@@ -108,10 +104,6 @@ const runTool = async <Shape extends Record<string, z.ZodType>>(
 };
 
 const defineTool = <Shape extends Record<string, z.ZodType>>(tool: TypedTool<Shape>): ToolDefinition => ({
-    name: tool.name,
-    kind: tool.kind,
-    config: tool.config,
-    handler: tool.handler,
     register: (server) => {
         const callback = ((args: ToolArgs<Shape>, _extra: unknown) =>
             runTool(tool.handler, args)) as ToolCallback<Shape>;
@@ -304,12 +296,12 @@ function buildTools(connectionManager: AppRouter): ToolDefinition[] {
     return [...buildInspectionTools(connectionManager), ...buildInteractionTools(connectionManager)];
 }
 
-export type CreateMcpServerOptions = {
+type CreateMcpServerOptions = {
     socketPath?: string;
     version: string;
 };
 
-export type McpServerHandle = {
+type McpServerHandle = {
     start(): Promise<void>;
     stop(): Promise<void>;
 };

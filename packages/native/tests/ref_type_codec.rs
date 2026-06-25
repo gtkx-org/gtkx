@@ -7,8 +7,8 @@ use gtk4::prelude::ObjectType as _;
 
 use native::ffi::{self, FfiStorage, FfiStorageKind};
 use native::types::{
-    ArrayKind, ArrayType, BooleanType, FfiDecoder, FloatKind, GObjectType, IntegerKind, Ownership,
-    ReadSource, RefType, StringType, EnumFlagsKind, EnumFlagsType, Type, UnicharType,
+    ArrayKind, ArrayType, BooleanType, EnumFlagsKind, EnumFlagsType, FfiDecoder, FloatKind,
+    GObjectType, IntegerKind, Ownership, ReadSource, RefType, StringType, Type, UnicharType,
 };
 use native::value::Value;
 

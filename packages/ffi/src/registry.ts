@@ -117,21 +117,19 @@ export function constructWrapper(cls: AnyClass<GTyped>, props: Record<string, un
     return new (cls as new (props: Record<string, unknown>) => GTyped)(props);
 }
 
-function walkParentChain(gtype: GType, accept: (parentGtype: GType, parentCls: AnyClass) => boolean): AnyClass | null {
+export function findWrapperClassInChain(gtype: GType): AnyClass | null {
+    const direct = getWrapperClass(gtype);
+    if (direct) return direct;
     let currentGtype = gtype;
     while (currentGtype !== TYPE_INVALID) {
         const parentGtype = typeParent(currentGtype);
         if (parentGtype === TYPE_INVALID) break;
         const parentCls = getWrapperClass(parentGtype);
-        if (parentCls && accept(parentGtype, parentCls)) return parentCls;
+        if (parentCls) return parentCls;
         currentGtype = parentGtype;
     }
 
     return null;
-}
-
-export function findWrapperClassInChain(gtype: GType): AnyClass | null {
-    return getWrapperClass(gtype) ?? walkParentChain(gtype, () => true);
 }
 
 function composeInterfaces(base: AnyClass, runtimeGtype: GType): AnyClass {

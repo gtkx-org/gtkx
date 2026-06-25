@@ -1,14 +1,14 @@
 import { sourceStringLiteral, toCamelIdentifier } from "@gtkx/utils";
-import type { ModuleContext } from "../writer/context.js";
-import { indent, renderBlock } from "../writer/emit.js";
 import type { GirRecord } from "../gir/boxed.js";
 import type { GirField } from "../gir/field.js";
 import type { TypeId } from "../gir/type-id.js";
+import type { ModuleContext } from "../writer/context.js";
+import { indent, renderBlock } from "../writer/emit.js";
 import { bitMask, mergeBitfield } from "./bitfield.js";
 import { type BoxedFieldSlot, computeBoxedFieldSlots } from "./boxed-layout.js";
 import { typeRefIsClassStruct } from "./class-struct-record.js";
 import { renderTsType } from "./ts-type.js";
-import { isInlineCallbackRef, renderFfiType } from "./value.js";
+import { isInlineCallbackRef, renderDescriptor } from "./value.js";
 
 type WritableFieldSlot = BoxedFieldSlot & { field: GirField & { type: TypeId } };
 
@@ -70,7 +70,7 @@ const allocArgs = (boxed: GirRecord, size: number): string[] => {
 const renderFieldWrite = (context: ModuleContext, entry: WritableFieldSlot): string => {
     context.addRuntimeImport("t");
     context.addNativeImport("write");
-    const ffiType = renderFfiType(context, entry.field.type, "none");
+    const ffiType = renderDescriptor(context, entry.field.type, "none");
     const name = toCamelIdentifier(entry.field.name);
     const offset = entry.slot.byteOffset;
     if (entry.slot.bitWidth === undefined) {

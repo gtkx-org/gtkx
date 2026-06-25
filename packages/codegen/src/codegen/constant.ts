@@ -1,7 +1,7 @@
 import { sourceStringLiteral } from "@gtkx/utils";
-import type { ModuleContext } from "../writer/context.js";
 import type { GirConstant } from "../gir/namespace.js";
 import type { TypeId } from "../gir/type-id.js";
+import type { ModuleContext } from "../writer/context.js";
 
 export const generateConstant = (context: ModuleContext, constant: GirConstant): void => {
     context.module.appendDeclaration(`export const ${constant.name} = ${constantLiteral(context, constant)};`);

@@ -28,7 +28,6 @@ export interface ItemResolver<T = unknown, S = unknown> {
     resolve(position: number, treeRow: Gtk.TreeListRow | null, boundItem: GObject.Object | null): Resolved<T, S>;
     positionOfKey(key: string): number;
     keyOf(position: number): string | undefined;
-    count: number;
 }
 
 export interface RowValue<T = unknown, S = unknown> {
@@ -45,7 +44,6 @@ export const createControlledResolver = <T, S>(
 ): ItemResolver<T, S> => {
     const flattened = flattenListItems(items, flattenTreeChildren);
     return {
-        count: flattened.records.length,
         positionOfKey(key: string): number {
             const position = flattened.idToPosition.get(key);
             return position === undefined ? -1 : position;
@@ -92,9 +90,6 @@ export const createControlledResolver = <T, S>(
 
 export const createModelResolver = <T, S>(model: Gio.ListModel): ItemResolver<T, S> => {
     return {
-        get count(): number {
-            return model.getNItems();
-        },
         positionOfKey(key: string): number {
             const numeric = Number(key);
             return Number.isInteger(numeric) ? numeric : -1;
@@ -124,7 +119,6 @@ export const createSectionHeaderResolver = <T, S>(items: ItemNode<T, S>[] | unde
         start += section.children?.length ?? 0;
     }
     return {
-        count: valueByStart.size,
         positionOfKey: () => -1,
         keyOf: () => undefined,
         resolve(position: number): Resolved<T, S> {

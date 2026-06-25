@@ -1,6 +1,6 @@
-import type { ModuleContext } from "../writer/context.js";
 import type { GirCallback } from "../gir/callback.js";
 import type { GirFunction } from "../gir/function.js";
+import type { ModuleContext } from "../writer/context.js";
 import { renderMethodReturnType, renderMethodSignature } from "./method.js";
 
 const callbackAsFunction = (callback: GirCallback): GirFunction => ({

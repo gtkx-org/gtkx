@@ -15,8 +15,8 @@ import {
     useState,
 } from "react";
 import { CellRenderHost } from "./cell-render-host.js";
-import { useDropDownSelection } from "./hooks/use-drop-down-selection.js";
 import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
+import { useDropDownSelection } from "./hooks/use-drop-down-selection.js";
 import { useInstalledModel } from "./hooks/use-installed-model.js";
 import { useListModel } from "./hooks/use-list-model.js";
 import type { CellRenderer } from "./list-cell.js";
@@ -97,7 +97,6 @@ interface DropDownWiring<T, S, W extends DropDownWidget> {
 }
 
 const createSelectionResolver = <T, S>(resolver: ItemResolver<T, S>, selectedPosition: number): ItemResolver<T, S> => ({
-    count: resolver.count,
     positionOfKey: (key) => resolver.positionOfKey(key),
     keyOf: (position) => resolver.keyOf(position),
     resolve: (_position, treeRow) => resolver.resolve(selectedPosition, treeRow, null),
@@ -141,7 +140,8 @@ const useDropDownWiring = <T, S, W extends DropDownWidget>(
         props.selectedId === undefined || props.selectedId === null
             ? -1
             : listModel.resolver.positionOfKey(props.selectedId);
-    const selectionPosition = controlledPosition >= 0 ? controlledPosition : selectedPosition < 0 ? 0 : selectedPosition;
+    const selectionPosition =
+        controlledPosition >= 0 ? controlledPosition : selectedPosition < 0 ? 0 : selectedPosition;
 
     return {
         setRef,

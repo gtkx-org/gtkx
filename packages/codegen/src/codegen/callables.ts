@@ -1,8 +1,8 @@
 import { dedupeBy, toCamelCase } from "@gtkx/utils";
+import type { GirFunction } from "../gir/function.js";
 import type { ModuleContext } from "../writer/context.js";
 import { renderBlock } from "../writer/emit.js";
 import { bindingIdentifier } from "../writer/identifier.js";
-import type { GirFunction } from "../gir/function.js";
 import { callableReferencesClassStruct } from "./class-struct-record.js";
 import { renderFnExpression } from "./function.js";
 import { gtypeMemberDeclaration } from "./gtype-binding.js";

@@ -120,13 +120,6 @@ impl Callback {
         let func_ref = JsRef::from_js_value(env, &func)?;
         Ok(Self::new(Arc::new(func_ref)))
     }
-
-    pub fn to_js_value<'env>(&self, env: &'env Env) -> napi::Result<Unknown<'env>> {
-        let func = self.js_func.get_value(env)?;
-        // SAFETY: `func` is a live `JsFunction` resolved from this `env`; `Unknown::from_raw_unchecked`
-        // re-types its valid `napi_value` as an `Unknown` borrowing the same `env`.
-        Ok(unsafe { Unknown::from_raw_unchecked(env.raw(), func.raw()) })
-    }
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]

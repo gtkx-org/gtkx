@@ -20,5 +20,3 @@ export const stopMcpClient = (): void => {
         globalClient = null;
     }
 };
-
-export { McpClient } from "./client.js";

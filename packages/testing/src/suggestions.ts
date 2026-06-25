@@ -3,8 +3,8 @@ import { formatRole } from "./role-helpers.js";
 import {
     getWidgetAccessibleName,
     getWidgetDisplayValue,
-    getWidgetLabelText,
     getWidgetLabelledByText,
+    getWidgetLabelText,
     getWidgetName,
     getWidgetOwnLabel,
     getWidgetPlaceholderText,
@@ -17,17 +17,15 @@ export type Method = "Role" | "LabelText" | "PlaceholderText" | "Text" | "Displa
 export type Suggestion = {
     queryName: Method;
     queryMethod: string;
-    queryArgs: unknown[];
     variant: Variant;
     toString: () => string;
 };
 
-const makeSuggestion = (queryName: Method, variant: Variant, queryArgs: unknown[], argsText: string): Suggestion => {
+const makeSuggestion = (queryName: Method, variant: Variant, argsText: string): Suggestion => {
     const queryMethod = `${variant}By${queryName}`;
     return {
         queryName,
         queryMethod,
-        queryArgs,
         variant,
         toString: () => `${queryMethod}(${argsText})`,
     };
@@ -40,14 +38,14 @@ const roleSuggestion = (widget: Gtk.Widget, variant: Variant): Suggestion | unde
     const roleText = `Gtk.AccessibleRole.${formatRole(role).toUpperCase()}`;
     const name = getWidgetAccessibleName(widget);
     if (name === null) {
-        return makeSuggestion("Role", variant, [role], roleText);
+        return makeSuggestion("Role", variant, roleText);
     }
-    return makeSuggestion("Role", variant, [role, { name }], `${roleText}, { name: '${name}' }`);
+    return makeSuggestion("Role", variant, `${roleText}, { name: '${name}' }`);
 };
 
 const textSuggestion = (queryName: Method, variant: Variant, value: string | null): Suggestion | undefined => {
     if (value === null) return undefined;
-    return makeSuggestion(queryName, variant, [value], `'${value}'`);
+    return makeSuggestion(queryName, variant, `'${value}'`);
 };
 
 export const getSuggestedQuery = (

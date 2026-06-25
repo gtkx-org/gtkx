@@ -11,7 +11,7 @@ import {
     useState,
 } from "react";
 
-export interface PresenceContextProps {
+interface PresenceContextProps {
     isPresent: boolean;
     onExitComplete: (id: string) => void;
     register: (id: string) => () => void;

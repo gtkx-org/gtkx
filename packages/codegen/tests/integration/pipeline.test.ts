@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { generateJsxFiles } from "../../src/react/pipeline.js";
 import { transpileSource } from "../../src/transpile.js";
-import { ffiModules, repository } from "../helpers/repository.js";
+import { ffiModules, library } from "../helpers/library.js";
 
-const reactPipeline = generateJsxFiles(repository);
+const reactPipeline = generateJsxFiles(library);
 const sourceFor = (files: typeof reactPipeline, directory: string): string =>
     files.namespaces.find((entry) => entry.directory === directory)?.source ?? "";
 
 describe("codegen FFI pipeline", () => {
     it("resolves the transitive dependency closure of Gtk and Adw", () => {
-        const names = [...repository.namespaces.keys()];
+        const names = [...library.namespaces.keys()];
         expect(names).toEqual(expect.arrayContaining(["GLib", "GObject", "Gio", "Gdk", "Gsk", "Gtk", "Adw"]));
     });
 
@@ -17,7 +17,7 @@ describe("codegen FFI pipeline", () => {
         for (const { directory } of ffiModules) {
             expect(directory).toMatch(/^[a-z0-9]+$/);
         }
-        expect(ffiModules.length).toBe(repository.namespaces.size);
+        expect(ffiModules.length).toBe(library.namespaces.size);
     });
 
     it("produces non-empty source with imports and exports for every namespace", () => {
@@ -262,16 +262,16 @@ describe("codegen runtime tables", () => {
 
 describe("repository lookups", () => {
     it("resolves a known cross-namespace type", () => {
-        expect(repository.resolveNamed("GLib", "Variant")).toBeDefined();
+        expect(library.resolveNamed("GLib", "Variant")).toBeDefined();
     });
 
     it("returns undefined for an unknown type", () => {
-        expect(repository.resolveNamed("GLib", "NoSuchType")).toBeUndefined();
-        expect(repository.resolveNamed("NoSuchNamespace", "Thing")).toBeUndefined();
+        expect(library.resolveNamed("GLib", "NoSuchType")).toBeUndefined();
+        expect(library.resolveNamed("NoSuchNamespace", "Thing")).toBeUndefined();
     });
 
     it("leaves only non-introspectable C types unresolved across the closure", () => {
-        const unresolved = repository.collectUnresolved();
+        const unresolved = library.collectUnresolved();
         const unexpected = unresolved.filter((name) => {
             const local = name.slice(name.indexOf(".") + 1);
             return local !== "va_list" && local !== "";

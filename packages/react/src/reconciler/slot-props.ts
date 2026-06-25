@@ -1,7 +1,7 @@
 /// <reference types="@gtkx/config/env" />
 
-import { getWrapperClassByName } from "@gtkx/ffi";
 import { SLOT_PROPS } from "virtual:gtkx-config";
+import { getWrapperClassByName } from "@gtkx/ffi";
 import { foldInheritedTable } from "../utils/gtype.js";
 
 export const SLOT_HOST_BASE_TYPE: Record<string, string> = {
