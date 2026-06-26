@@ -18,41 +18,48 @@ export const setIsReactActEnvironment = (value: boolean | undefined): void => {
 type ActCallback<T> = () => T | PromiseLike<T>;
 type ActImplementation = <T>(callback: ActCallback<T>) => PromiseLike<T>;
 
-const isThenable = <T>(value: unknown): value is PromiseLike<T> =>
+const isThenable = <T>(value: T | PromiseLike<T>): value is PromiseLike<T> =>
     value !== null && typeof value === "object" && typeof (value as PromiseLike<T>).then === "function";
 
-export const runWithActEnvironment = <T>(forced: boolean, fn: () => T | PromiseLike<T>): T | PromiseLike<T> => {
-    const previousActEnvironment = getIsReactActEnvironment();
-    setIsReactActEnvironment(forced);
-    try {
-        const result = fn();
-        if (isThenable<T>(result)) {
-            return Promise.resolve(result).then(
-                (value) => {
-                    setIsReactActEnvironment(previousActEnvironment);
-                    return value;
-                },
-                (error) => {
-                    setIsReactActEnvironment(previousActEnvironment);
-                    throw error;
-                },
-            );
-        }
-        setIsReactActEnvironment(previousActEnvironment);
-        return result;
-    } catch (error) {
-        setIsReactActEnvironment(previousActEnvironment);
-        throw error;
-    }
-};
-
 const withGlobalActEnvironment =
-    (actImplementation: ActImplementation) =>
+    (actImplementation: ActImplementation): ActImplementation =>
     <T>(callback: ActCallback<T>): PromiseLike<T> => {
-        const settled = runWithActEnvironment(true, () => actImplementation(() => callback()));
-        return Promise.resolve(settled);
+        const previousActEnvironment = getIsReactActEnvironment();
+        setIsReactActEnvironment(true);
+
+        const restore = (): void => {
+            setIsReactActEnvironment(previousActEnvironment);
+        };
+
+        try {
+            let callbackNeedsToBeAwaited = false;
+            const actResult = actImplementation(() => {
+                const result = callback();
+                if (isThenable(result)) {
+                    callbackNeedsToBeAwaited = true;
+                }
+                return result;
+            });
+
+            if (callbackNeedsToBeAwaited) {
+                return actResult.then(
+                    (value) => {
+                        restore();
+                        return value;
+                    },
+                    (error) => {
+                        restore();
+                        throw error;
+                    },
+                );
+            }
+
+            restore();
+            return actResult;
+        } catch (error) {
+            restore();
+            throw error;
+        }
     };
 
-const actImplementation: ActImplementation = reactAct as ActImplementation;
-
-export const act: ActImplementation = withGlobalActEnvironment(actImplementation);
+export const act: ActImplementation = withGlobalActEnvironment(reactAct as ActImplementation);

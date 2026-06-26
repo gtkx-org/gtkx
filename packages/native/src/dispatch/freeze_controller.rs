@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::dispatch::Mailbox;
 use crate::dispatch::wait_signal::WaitSignal;
@@ -7,7 +7,7 @@ use crate::error_reporter::NativeErrorReporter;
 #[derive(Debug)]
 pub(super) struct FreezeController {
     depth: AtomicUsize,
-    loop_active: AtomicBool,
+    live_loops: AtomicUsize,
     wake: WaitSignal,
 }
 
@@ -15,7 +15,7 @@ impl FreezeController {
     pub(super) fn new() -> Self {
         Self {
             depth: AtomicUsize::new(0),
-            loop_active: AtomicBool::new(false),
+            live_loops: AtomicUsize::new(0),
             wake: WaitSignal::new(),
         }
     }
@@ -39,7 +39,7 @@ impl FreezeController {
     }
 
     pub(super) fn loop_active(&self) -> bool {
-        self.loop_active.load(Ordering::Acquire)
+        self.live_loops.load(Ordering::Acquire) > 0
     }
 
     pub(super) fn notify_if_active(&self) {
@@ -53,7 +53,7 @@ impl FreezeController {
     }
 
     pub(super) fn run_loop(&self, mailbox: &Mailbox) {
-        self.loop_active.store(true, Ordering::Release);
+        self.live_loops.fetch_add(1, Ordering::AcqRel);
         loop {
             mailbox.dispatch_pending();
             if self.depth.load(Ordering::Acquire) == 0 || mailbox.is_not_running() {
@@ -61,7 +61,7 @@ impl FreezeController {
             }
             self.wake.wait();
         }
-        self.loop_active.store(false, Ordering::Release);
+        self.live_loops.fetch_sub(1, Ordering::AcqRel);
         mailbox.dispatch_pending();
     }
 }

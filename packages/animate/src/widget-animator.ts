@@ -4,60 +4,8 @@ import { shallowEqual } from "@gtkx/utils";
 import type { RefObject } from "react";
 import { AnimationCssProvider } from "./animation-css-provider.js";
 import { interpolate } from "./interpolation.js";
-import type { AnimationTarget, Easing, Transition, WidgetAnimationProps } from "./types.js";
-
-const tweenDefaults = { duration: 0.3 };
-const springDefaults = { damping: 10, mass: 1, stiffness: 100 };
-
-const easings: { [K in Easing]: Adw.Easing } = {
-    linear: Adw.Easing.LINEAR,
-    easeIn: Adw.Easing.EASE_IN,
-    easeOut: Adw.Easing.EASE_OUT,
-    easeInOut: Adw.Easing.EASE_IN_OUT,
-};
-
-const secondsToMilliseconds = (seconds: number): number => seconds * 1000;
-
-const buildTweenAnimation = (
-    widget: Gtk.Widget,
-    target: Adw.CallbackAnimationTarget,
-    transition: Transition,
-): Adw.TimedAnimation => {
-    const duration = secondsToMilliseconds(transition.duration ?? tweenDefaults.duration);
-    const animation = Adw.TimedAnimation.new(widget, 0, 1, duration, target);
-
-    if (transition.ease !== undefined) animation.setEasing(easings[transition.ease]);
-    if (transition.repeat !== undefined) animation.setRepeatCount(transition.repeat);
-    if (transition.repeatType !== undefined) animation.setAlternate(transition.repeatType !== "loop");
-
-    return animation;
-};
-
-const buildSpringAnimation = (
-    widget: Gtk.Widget,
-    target: Adw.CallbackAnimationTarget,
-    transition: Transition,
-): Adw.SpringAnimation => {
-    const damping = transition.damping ?? springDefaults.damping;
-    const mass = transition.mass ?? springDefaults.mass;
-    const stiffness = transition.stiffness ?? springDefaults.stiffness;
-
-    const springParams = Adw.SpringParams.newFull(damping, mass, stiffness);
-    const animation = Adw.SpringAnimation.new(widget, 0, 1, springParams, target);
-
-    if (transition.velocity !== undefined) animation.setInitialVelocity(transition.velocity);
-
-    return animation;
-};
-
-const buildAnimation = (
-    widget: Gtk.Widget,
-    target: Adw.CallbackAnimationTarget,
-    transition: Transition,
-): Adw.Animation =>
-    transition.type === "spring"
-        ? buildSpringAnimation(widget, target, transition)
-        : buildTweenAnimation(widget, target, transition);
+import { buildAnimation, secondsToMilliseconds } from "./transition.js";
+import type { AnimationTarget, WidgetAnimationProps } from "./types.js";
 
 const restValuesOf = (props: WidgetAnimationProps): AnimationTarget => {
     if (props.animate) return { ...props.animate };

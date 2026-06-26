@@ -4,7 +4,9 @@ import { DEFAULT_HEADLESS_SIZE, type HeadlessOptions, startHeadlessDisplay } fro
 /**
  * Vitest environment that provisions an isolated headless Wayland display for
  * each test worker. The display is started during {@link Environment.setup} and
- * torn down through the returned handle when the worker finishes.
+ * torn down on process exit — after the worker has already stopped — so GTK
+ * never observes its compositor disappearing while the native main loop is still
+ * running.
  */
 const gtkxEnvironment: Environment = {
     name: "gtkx",
@@ -15,7 +17,16 @@ const gtkxEnvironment: Environment = {
             compositor: options.compositor ?? "weston",
         });
 
-        return { teardown };
+        let torndown = false;
+        process.on("exit", () => {
+            if (torndown) return;
+            torndown = true;
+            teardown();
+        });
+
+        return {
+            teardown() {},
+        };
     },
 };
 

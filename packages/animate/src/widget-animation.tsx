@@ -1,28 +1,12 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { useMergeRefs } from "@gtkx/react";
-import { Children, cloneElement, type ReactElement, type ReactNode, type Ref, useLayoutEffect, useRef } from "react";
-import { useIsInitialPresence, usePresence } from "./animate-presence.js";
+import { Children, cloneElement, type ReactElement, type ReactNode, type Ref } from "react";
 import type { WidgetAnimationProps } from "./types.js";
-import { useWidgetAnimation } from "./use-widget-animation.js";
+import { useAnimatedWidget } from "./use-animated-widget.js";
 
 type WidgetChild = ReactElement<{ ref?: Ref<Gtk.Widget | null> }>;
 
 export const WidgetAnimation = (props: WidgetAnimationProps): ReactNode => {
-    const { children, exit } = props;
-    const child = Children.only(children) as WidgetChild;
-    const widgetRef = useRef<Gtk.Widget | null>(null);
-    const mergedRef = useMergeRefs(child.props.ref, widgetRef);
-
-    const isInitialPresence = useIsInitialPresence();
-    const animator = useWidgetAnimation(widgetRef, props, isInitialPresence);
-    const [isPresent, safeToRemove] = usePresence();
-
-    const exitStartedRef = useRef(false);
-    useLayoutEffect(() => {
-        if (isPresent || exitStartedRef.current) return;
-        exitStartedRef.current = true;
-        animator.startAnimation(exit ?? {}, () => safeToRemove?.());
-    }, [isPresent, exit, animator, safeToRemove]);
-
+    const child = Children.only(props.children) as WidgetChild;
+    const mergedRef = useAnimatedWidget(child.props.ref, props);
     return cloneElement(child, { ref: mergedRef });
 };

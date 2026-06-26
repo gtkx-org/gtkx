@@ -1,0 +1,54 @@
+import * as Adw from "@gtkx/gi/adw";
+import type { Easing } from "./types.js";
+
+const easingByName: { [K in Easing]: Adw.Easing } = {
+    linear: Adw.Easing.LINEAR,
+    easeInQuad: Adw.Easing.EASE_IN_QUAD,
+    easeOutQuad: Adw.Easing.EASE_OUT_QUAD,
+    easeInOutQuad: Adw.Easing.EASE_IN_OUT_QUAD,
+    easeInCubic: Adw.Easing.EASE_IN_CUBIC,
+    easeOutCubic: Adw.Easing.EASE_OUT_CUBIC,
+    easeInOutCubic: Adw.Easing.EASE_IN_OUT_CUBIC,
+    easeInQuart: Adw.Easing.EASE_IN_QUART,
+    easeOutQuart: Adw.Easing.EASE_OUT_QUART,
+    easeInOutQuart: Adw.Easing.EASE_IN_OUT_QUART,
+    easeInQuint: Adw.Easing.EASE_IN_QUINT,
+    easeOutQuint: Adw.Easing.EASE_OUT_QUINT,
+    easeInOutQuint: Adw.Easing.EASE_IN_OUT_QUINT,
+    easeInSine: Adw.Easing.EASE_IN_SINE,
+    easeOutSine: Adw.Easing.EASE_OUT_SINE,
+    easeInOutSine: Adw.Easing.EASE_IN_OUT_SINE,
+    easeInExpo: Adw.Easing.EASE_IN_EXPO,
+    easeOutExpo: Adw.Easing.EASE_OUT_EXPO,
+    easeInOutExpo: Adw.Easing.EASE_IN_OUT_EXPO,
+    easeInCirc: Adw.Easing.EASE_IN_CIRC,
+    easeOutCirc: Adw.Easing.EASE_OUT_CIRC,
+    easeInOutCirc: Adw.Easing.EASE_IN_OUT_CIRC,
+    easeInElastic: Adw.Easing.EASE_IN_ELASTIC,
+    easeOutElastic: Adw.Easing.EASE_OUT_ELASTIC,
+    easeInOutElastic: Adw.Easing.EASE_IN_OUT_ELASTIC,
+    easeInBack: Adw.Easing.EASE_IN_BACK,
+    easeOutBack: Adw.Easing.EASE_OUT_BACK,
+    easeInOutBack: Adw.Easing.EASE_IN_OUT_BACK,
+    easeInBounce: Adw.Easing.EASE_IN_BOUNCE,
+    easeOutBounce: Adw.Easing.EASE_OUT_BOUNCE,
+    easeInOutBounce: Adw.Easing.EASE_IN_OUT_BOUNCE,
+    ease: Adw.Easing.EASE,
+    easeIn: Adw.Easing.EASE_IN,
+    easeOut: Adw.Easing.EASE_OUT,
+    easeInOut: Adw.Easing.EASE_IN_OUT,
+    circIn: Adw.Easing.EASE_IN_CIRC,
+    circOut: Adw.Easing.EASE_OUT_CIRC,
+    circInOut: Adw.Easing.EASE_IN_OUT_CIRC,
+    backIn: Adw.Easing.EASE_IN_BACK,
+    backOut: Adw.Easing.EASE_OUT_BACK,
+    backInOut: Adw.Easing.EASE_IN_OUT_BACK,
+};
+
+const isAdwEasing = (ease: Easing | Adw.Easing): ease is Adw.Easing => typeof ease === "number";
+
+/**
+ * Resolves a named {@link Easing} (or a raw {@link Adw.Easing} value passed
+ * through unchanged) to the underlying libadwaita easing enum.
+ */
+export const resolveEasing = (ease: Easing | Adw.Easing): Adw.Easing => (isAdwEasing(ease) ? ease : easingByName[ease]);

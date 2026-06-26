@@ -4,6 +4,7 @@ use std::sync::{
     Arc,
     atomic::{AtomicUsize, Ordering},
 };
+use std::time::Duration;
 
 use native::dispatch::Mailbox;
 
@@ -268,6 +269,69 @@ fn dispatch_pending_from_depth_runs_nested_tasks() {
 
         assert!(mailbox.dispatch_pending_from_depth(1));
         assert_eq!(counter.load(Ordering::SeqCst), 1);
+    });
+}
+
+#[test]
+fn reentrant_freeze_loop_does_not_strand_outer_loop() {
+    common::run(|| {
+        let mailbox = Mailbox::global();
+        mailbox.reset_for_test();
+        drain_pending();
+
+        // Commit A: outermost freeze.
+        assert!(mailbox.freeze());
+
+        // Inner task, run (and nested) by the outer freeze loop: unfreeze Commit A, run a nested
+        // freeze loop, then re-freeze (Commit C) so the outer loop keeps running. A single-bool
+        // liveness flag is wrongly cleared to false by the nested loop's exit while the outer loop
+        // is still alive; a counter stays positive.
+        let done = Arc::new(AtomicUsize::new(0));
+        let done_inner = done.clone();
+        mailbox.schedule_glib(Box::new(move || {
+            let mailbox = Mailbox::global();
+            mailbox.unfreeze();
+            mailbox.run_freeze_loop();
+            mailbox.freeze();
+            done_inner.fetch_add(1, Ordering::SeqCst);
+        }));
+
+        // Outer loop on a helper thread: its first dispatch_pending runs and nests the inner task,
+        // then it re-parks waiting for more work.
+        let outer = std::thread::spawn(|| Mailbox::global().run_freeze_loop());
+
+        while done.load(Ordering::SeqCst) == 0 {
+            std::thread::yield_now();
+        }
+        // Let the outer loop re-park so the probe must wake it through notify_if_active.
+        std::thread::sleep(Duration::from_millis(50));
+
+        // Probe scheduled without unfreezing: it reaches the parked outer loop only while liveness
+        // is still reported correctly. With the clobbered flag, notify_if_active is skipped and the
+        // task is stranded forever.
+        let probe = schedule_increment(mailbox);
+        let mut woke = false;
+        for _ in 0..1000 {
+            if probe.load(Ordering::SeqCst) == 1 {
+                woke = true;
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(1));
+        }
+
+        // Self-heal global state regardless of the outcome so sibling tests are unaffected.
+        mailbox.mark_not_running();
+        outer
+            .join()
+            .expect("outer freeze loop thread should finish");
+        mailbox.unfreeze();
+        mailbox.reset_for_test();
+        drain_pending();
+
+        assert!(
+            woke,
+            "re-entrant run_freeze_loop clobbered freeze-loop liveness; probe task was stranded"
+        );
     });
 }
 
