@@ -1,3 +1,4 @@
+import type * as Adw from "@gtkx/gi/adw";
 import type { ReactNode } from "react";
 
 export type AnimationTarget = {
@@ -12,21 +13,69 @@ export type AnimationTarget = {
     skewY?: number;
 };
 
-export type Easing = "linear" | "easeIn" | "easeOut" | "easeInOut";
+export type Easing =
+    | "linear"
+    | "easeInQuad"
+    | "easeOutQuad"
+    | "easeInOutQuad"
+    | "easeInCubic"
+    | "easeOutCubic"
+    | "easeInOutCubic"
+    | "easeInQuart"
+    | "easeOutQuart"
+    | "easeInOutQuart"
+    | "easeInQuint"
+    | "easeOutQuint"
+    | "easeInOutQuint"
+    | "easeInSine"
+    | "easeOutSine"
+    | "easeInOutSine"
+    | "easeInExpo"
+    | "easeOutExpo"
+    | "easeInOutExpo"
+    | "easeInCirc"
+    | "easeOutCirc"
+    | "easeInOutCirc"
+    | "easeInElastic"
+    | "easeOutElastic"
+    | "easeInOutElastic"
+    | "easeInBack"
+    | "easeOutBack"
+    | "easeInOutBack"
+    | "easeInBounce"
+    | "easeOutBounce"
+    | "easeInOutBounce"
+    | "ease"
+    | "easeIn"
+    | "easeOut"
+    | "easeInOut"
+    | "circIn"
+    | "circOut"
+    | "circInOut"
+    | "backIn"
+    | "backOut"
+    | "backInOut";
 
 export type RepeatType = "loop" | "reverse";
 
 export type Transition = {
     type?: "tween" | "spring";
     duration?: number;
-    ease?: Easing;
+    ease?: Easing | Adw.Easing;
     delay?: number;
-    stiffness?: number;
-    damping?: number;
-    mass?: number;
-    velocity?: number;
+    reverse?: boolean;
     repeat?: number;
     repeatType?: RepeatType;
+    followEnableAnimations?: boolean;
+    stiffness?: number;
+    damping?: number;
+    dampingRatio?: number;
+    bounce?: number;
+    mass?: number;
+    velocity?: number;
+    epsilon?: number;
+    restDelta?: number;
+    clamp?: boolean;
 };
 
 export type WidgetAnimationProps = {
