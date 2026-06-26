@@ -7,10 +7,10 @@ import { tupleResult } from "./fn.js";
 import type { GType, GTyped } from "./gtype.js";
 import {
     fromGValue,
-    inoutBoxedFromFfi,
-    newValueFromFfi,
-    outBoxedFromFfi,
-    outValueFromFfi,
+    inoutBoxedForDescriptor,
+    newGValueForDescriptor,
+    outBoxedForDescriptor,
+    outValueForDescriptor,
     toGValue,
     valueGetBoxed,
 } from "./gvalue.js";
@@ -39,7 +39,7 @@ type SignalConnectSpec = {
 
 export function connectGObjectSignal(instance: object, signal: string, spec: SignalConnectSpec): number {
     const { callback, handler, after } = spec;
-    const wrapped = wrapCallback(handler, callback, "skip");
+    const wrapped = wrapCallback(handler, callback, "emitter");
     return call(
         LIB,
         "g_signal_connect_data",
@@ -65,23 +65,23 @@ const gSignalLookup = bind(LIB, "g_signal_lookup", [stringT("borrowed"), biguint
 type EmitArg = {
     type: Type;
     direction?: "out" | "inout";
-    callerAllocates?: boolean;
+    callerAllocated?: boolean;
     value?: unknown;
 };
 
 const emitCell = (arg: EmitArg): { value: Handle; read?: () => unknown } => {
-    const category = classifyArgCategory({ direction: arg.direction, callerAllocated: Boolean(arg.callerAllocates) });
+    const category = classifyArgCategory({ direction: arg.direction, callerAllocated: Boolean(arg.callerAllocated) });
     if (category.kind === "plainInput") return { value: toGValue(arg.type, arg.value) };
     if (category.kind === "callerAllocated") {
-        if (category.inout) return { value: inoutBoxedFromFfi(arg.type, arg.value as object) };
-        const value = outBoxedFromFfi(arg.type, arg.value as object);
+        if (category.inout) return { value: inoutBoxedForDescriptor(arg.type, arg.value as object) };
+        const value = outBoxedForDescriptor(arg.type, arg.value as object);
         return { value, read: () => valueGetBoxed(value) };
     }
-    const cell = category.inout ? outValueFromFfi(arg.type, arg.value) : outValueFromFfi(arg.type);
+    const cell = category.inout ? outValueForDescriptor(arg.type, arg.value) : outValueForDescriptor(arg.type);
     return { value: cell.value, read: cell.read };
 };
 
-export function emitGObjectSignal(instance: object, signal: string, args: EmitArg[], returnFfi?: Type): unknown {
+export function emitGObjectSignal(instance: object, signal: string, args: EmitArg[], returnType?: Type): unknown {
     const gtype: GType = (instance as GTyped).__gtype__;
     const signalId = gSignalLookup(signalBaseName(signal), gtype) as number;
     const detail = signalDetailQuark(signal);
@@ -94,8 +94,8 @@ export function emitGObjectSignal(instance: object, signal: string, args: EmitAr
         if (cell.read) reads.push(cell.read);
     }
 
-    if (returnFfi !== undefined) {
-        const returnValue = newValueFromFfi(returnFfi);
+    if (returnType !== undefined) {
+        const returnValue = newGValueForDescriptor(returnType);
         gSignalEmitv(values, signalId, detail, returnValue);
         return tupleResult(
             reads.map((emit) => emit()),

@@ -33,7 +33,7 @@ const getLabelText = (widget: Gtk.Widget): string | null => {
 
 const DEFAULT_TEXT_GETTERS = ["getLabel", "getText", "getTitle"] as const;
 
-const getDefaultText = (widget: Gtk.Widget): string | null => {
+export const getWidgetNodeText = (widget: Gtk.Widget): string | null => {
     for (const getter of DEFAULT_TEXT_GETTERS) {
         const value = callStringGetter(widget, getter);
         if (value) return value;
@@ -56,10 +56,6 @@ export const getWidgetLabelText = (widget: Gtk.Widget): string | null => {
     return getLabelText(widget);
 };
 
-export const getWidgetNodeText = (widget: Gtk.Widget): string | null => {
-    return getDefaultText(widget);
-};
-
 export const getWidgetAccessibleName = (widget: Gtk.Widget): string | null => {
     const role = widget.getAccessibleRole();
 
@@ -77,7 +73,7 @@ export const getWidgetAccessibleName = (widget: Gtk.Widget): string | null => {
     const accessibleLabel = getAccessibleMetadata<string>(widget, "accessibleLabel");
     if (accessibleLabel) return accessibleLabel;
 
-    const ownText = getDefaultText(widget);
+    const ownText = getWidgetNodeText(widget);
     if (ownText) return ownText;
 
     const childLabels = collectLabels(widget);

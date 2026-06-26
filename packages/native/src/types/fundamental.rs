@@ -16,7 +16,7 @@ pub struct FundamentalType {
 impl FromDescriptor for FundamentalType {
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn from_descriptor(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
-        let ownership = Ownership::from_js_value(obj, "fundamental")?;
+        let ownership = Ownership::from_descriptor(obj, "fundamental")?;
 
         let library: String = obj.get_named_property("library")?;
         let ref_func: String = obj.get_named_property("refFn")?;

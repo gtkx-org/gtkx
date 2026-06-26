@@ -5,7 +5,7 @@ export type GlParam = {
     cType: string;
     group?: string;
     len?: string;
-    kind?: string;
+    objectClass?: string;
 };
 
 export type GlCommand = {
@@ -69,12 +69,12 @@ const parseParam = (node: OrderedNode): GlParam => {
     };
     const group = nodeAttr(node, "group");
     const len = nodeAttr(node, "len");
-    const kind = nodeAttr(node, "class");
+    const objectClass = nodeAttr(node, "class");
     return {
         ...param,
         ...(group !== undefined ? { group } : {}),
         ...(len !== undefined ? { len } : {}),
-        ...(kind !== undefined ? { kind } : {}),
+        ...(objectClass !== undefined ? { objectClass } : {}),
     };
 };
 

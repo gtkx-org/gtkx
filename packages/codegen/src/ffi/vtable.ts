@@ -1,5 +1,10 @@
 import { sourceStringLiteral, toCamelIdentifier, toPascalCase } from "@gtkx/utils";
-import { isInlineCallbackRef, isScalarRef, renderDescriptor, renderParamDescriptor } from "../analysis/value.js";
+import {
+    isInlineCallbackRef,
+    isScalarRef,
+    renderDescriptor,
+    renderParamDescriptor,
+} from "../analysis/descriptor-render.js";
 import type { GirCallback } from "../gir/callback.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirField } from "../gir/field.js";

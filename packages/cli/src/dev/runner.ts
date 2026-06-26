@@ -1,6 +1,6 @@
 import type { InlineConfig, Plugin } from "vite";
 import { error } from "../internal/log.js";
-import { RESTART_EXIT_CODE } from "./protocol.js";
+import { RESTART_EXIT_CODE } from "./exit-code.js";
 import { createRefreshTracker } from "./refresh-tracker.js";
 import { createDevServerConfig, type DevServer } from "./vite-dev-server.js";
 

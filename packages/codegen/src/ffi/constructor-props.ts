@@ -1,7 +1,7 @@
-import { dedupeBy, sourceStringLiteral, toCamelIdentifier, toPascalCase } from "@gtkx/utils";
+import { sourceStringLiteral, toCamelIdentifier, toPascalCase, uniqBy } from "@gtkx/utils";
+import { renderDescriptor } from "../analysis/descriptor-render.js";
 import { collectInterfaceProperties } from "../analysis/inheritance.js";
 import { renderTsType } from "../analysis/ts-type.js";
-import { renderDescriptor } from "../analysis/value.js";
 import { ancestorChain } from "../gir/ancestry.js";
 import type { GirClass } from "../gir/class.js";
 import { type GirProperty, isConstructableProperty } from "../gir/property.js";
@@ -22,7 +22,7 @@ const ancestorConstructablePropNames = (context: ModuleContext, klass: GirClass)
 
 const collectConstructableProps = (context: ModuleContext, klass: GirClass): GirProperty[] => {
     const inherited = ancestorConstructablePropNames(context, klass);
-    return dedupeBy(
+    return uniqBy(
         [...klass.properties, ...collectInterfaceProperties(context, klass)]
             .filter(isConstructableProperty)
             .filter((property) => !inherited.has(toCamelIdentifier(property.name))),

@@ -2,14 +2,9 @@ import EventEmitter from "node:events";
 import { Duplex } from "node:stream";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppRouter } from "../src/app-router.js";
-import { IpcError, IpcErrorCode } from "../src/protocol/errors.js";
-import type { IpcMessage, IpcRequest, IpcResponse } from "../src/protocol/types.js";
-import {
-    type AppConnection,
-    type AppConnectionEvents,
-    type AppConnections,
-    JsonStreamConnection,
-} from "../src/transport.js";
+import { ErrorCode, ProtocolError } from "../src/protocol/errors.js";
+import type { Message, Request, Response } from "../src/protocol/types.js";
+import { type AppConnectionEvents, type AppConnections, ProtocolConnection } from "../src/transport.js";
 
 class FakeSocket extends Duplex {
     lines: string[] = [];
@@ -20,7 +15,7 @@ class FakeSocket extends Duplex {
     }
 }
 
-type TestConnection = AppConnection & {
+type TestConnection = ProtocolConnection & {
     socket: FakeSocket;
 };
 
@@ -28,29 +23,30 @@ const createdConnections: TestConnection[] = [];
 
 function makeConnection(id: string): TestConnection {
     const socket = new FakeSocket();
-    const connection = new JsonStreamConnection(socket);
-    const appConnection: TestConnection = { id, connection, socket };
-    createdConnections.push(appConnection);
-    return appConnection;
+    const connection = new ProtocolConnection(socket) as TestConnection;
+    connection.id = id;
+    connection.socket = socket;
+    createdConnections.push(connection);
+    return connection;
 }
 
 class FakeAppConnections extends EventEmitter<AppConnectionEvents> implements AppConnections {
-    sent: Array<{ connectionId: string; message: IpcMessage }> = [];
+    sent: Array<{ connectionId: string; message: Message }> = [];
 
-    send(connectionId: string, message: IpcMessage): void {
+    send(connectionId: string, message: Message): void {
         this.sent.push({ connectionId, message });
     }
 }
 
-function lastResponse(connections: FakeAppConnections): IpcResponse | undefined {
+function lastResponse(connections: FakeAppConnections): Response | undefined {
     const entry = connections.sent[connections.sent.length - 1];
-    return entry?.message as IpcResponse | undefined;
+    return entry?.message as Response | undefined;
 }
 
-function lastOutgoingRequest(conn: TestConnection): IpcRequest {
+function lastOutgoingRequest(conn: TestConnection): Request {
     const line = conn.socket.lines[conn.socket.lines.length - 1];
     if (!line) throw new Error("No outgoing request captured");
-    return JSON.parse(line) as IpcRequest;
+    return JSON.parse(line) as Request;
 }
 
 interface ManagerContext {
@@ -81,7 +77,7 @@ function setupManagerContext(): void {
     });
     afterEach(() => {
         for (const connection of createdConnections) {
-            connection.connection.rejectPending(new Error("test teardown"));
+            connection.rejectPending(new Error("test teardown"));
         }
         vi.useRealTimers();
     });
@@ -114,7 +110,7 @@ describe("AppRouter registration — basics", () => {
         expect(onRegister).not.toHaveBeenCalled();
         expect(manager.hasConnectedApps()).toBe(false);
         const response = lastResponse(connections);
-        expect(response?.error?.code).toBe(IpcErrorCode.INVALID_REQUEST);
+        expect(response?.error?.code).toBe(ErrorCode.INVALID_REQUEST);
     });
 
     it("replies with methodNotFound for unknown request methods", () => {
@@ -123,7 +119,7 @@ describe("AppRouter registration — basics", () => {
         connections.emit("request", conn, { id: "req-1", method: "something.else" });
         const response = lastResponse(connections);
         expect(response?.id).toBe("req-1");
-        expect(response?.error?.code).toBe(IpcErrorCode.METHOD_NOT_FOUND);
+        expect(response?.error?.code).toBe(ErrorCode.METHOD_NOT_FOUND);
     });
 });
 
@@ -234,7 +230,7 @@ describe("AppRouter sendToApp — happy paths", () => {
         const promise = ctx.manager.sendToApp("app-a", "ping", { hello: "world" });
         const sent = lastOutgoingRequest(conn);
 
-        conn.connection.feed(`${JSON.stringify({ id: sent.id, result: { ok: true } })}\n`);
+        conn.feed(`${JSON.stringify({ id: sent.id, result: { ok: true } })}\n`);
 
         await expect(promise).resolves.toEqual({ ok: true });
     });
@@ -244,7 +240,7 @@ describe("AppRouter sendToApp — happy paths", () => {
         const promise = ctx.manager.sendToApp(undefined, "ping");
         const sent = lastOutgoingRequest(conn);
 
-        conn.connection.feed(`${JSON.stringify({ id: sent.id, result: 42 })}\n`);
+        conn.feed(`${JSON.stringify({ id: sent.id, result: 42 })}\n`);
 
         await expect(promise).resolves.toBe(42);
     });
@@ -254,8 +250,8 @@ describe("AppRouter sendToApp — happy paths", () => {
         const promise = ctx.manager.sendToApp("app-a", "ping");
         const sent = lastOutgoingRequest(conn);
 
-        conn.connection.feed(`${JSON.stringify({ id: "unknown", result: 1 })}\n`);
-        conn.connection.feed(`${JSON.stringify({ id: sent.id, result: 2 })}\n`);
+        conn.feed(`${JSON.stringify({ id: "unknown", result: 1 })}\n`);
+        conn.feed(`${JSON.stringify({ id: sent.id, result: 2 })}\n`);
 
         await expect(promise).resolves.toBe(2);
     });
@@ -265,13 +261,13 @@ describe("AppRouter sendToApp — lookup errors", () => {
     setupManagerContext();
     it("rejects with appNotFound when the named app is unknown", async () => {
         await expect(ctx.manager.sendToApp("missing", "ping")).rejects.toMatchObject({
-            code: IpcErrorCode.APP_NOT_FOUND,
+            code: ErrorCode.APP_NOT_FOUND,
         });
     });
 
     it("rejects with noAppConnected when no apps are registered and no applicationId given", async () => {
         await expect(ctx.manager.sendToApp(undefined, "ping")).rejects.toMatchObject({
-            code: IpcErrorCode.NO_APP_CONNECTED,
+            code: ErrorCode.NO_APP_CONNECTED,
         });
     });
 });
@@ -285,7 +281,7 @@ describe("AppRouter sendToApp — transport errors", () => {
         conn.socket.destroy();
 
         await expect(ctx.manager.sendToApp("app-a", "ping")).rejects.toMatchObject({
-            code: IpcErrorCode.CONNECTION_WRITE_FAILED,
+            code: ErrorCode.CONNECTION_WRITE_FAILED,
         });
 
         expect(onUnregister).toHaveBeenCalledWith("app-a");
@@ -300,24 +296,24 @@ describe("AppRouter sendToApp — transport errors", () => {
         const promise = customManager.sendToApp("app-x", "slow");
         vi.advanceTimersByTime(5000);
 
-        await expect(promise).rejects.toMatchObject({ code: IpcErrorCode.IPC_TIMEOUT });
+        await expect(promise).rejects.toMatchObject({ code: ErrorCode.REQUEST_TIMEOUT });
     });
 
-    it("rejects with the IpcError described by an error response", async () => {
+    it("rejects with the ProtocolError described by an error response", async () => {
         const conn = registerAppForContext("app-a");
         const promise = ctx.manager.sendToApp("app-a", "ping");
         const sent = lastOutgoingRequest(conn);
 
-        conn.connection.feed(
+        conn.feed(
             `${JSON.stringify({
                 id: sent.id,
-                error: { code: IpcErrorCode.INTERNAL_ERROR, message: "boom", data: { reason: "x" } },
+                error: { code: ErrorCode.INTERNAL_ERROR, message: "boom", data: { reason: "x" } },
             })}\n`,
         );
 
-        await expect(promise).rejects.toBeInstanceOf(IpcError);
+        await expect(promise).rejects.toBeInstanceOf(ProtocolError);
         await expect(promise).rejects.toMatchObject({
-            code: IpcErrorCode.INTERNAL_ERROR,
+            code: ErrorCode.INTERNAL_ERROR,
             message: "boom",
             data: { reason: "x" },
         });

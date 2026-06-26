@@ -1,4 +1,4 @@
-import type { RenderResult, Screen } from "./types.js";
+import type { RenderResult, Screen } from "./bound-queries.js";
 
 const NO_RENDER_MESSAGE = "No render has been performed: call render() before using screen queries";
 

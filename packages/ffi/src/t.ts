@@ -32,7 +32,7 @@ type T = {
     list: typeof helpers.listT;
     slist: typeof helpers.slistT;
     ptrArray: typeof helpers.ptrArrayT;
-    garray: typeof helpers.garrayT;
+    gArray: typeof helpers.gArrayT;
     byteArray: typeof helpers.byteArrayT;
     sizedArray: typeof helpers.sizedArrayT;
     fixedArray: typeof helpers.fixedArrayT;
@@ -71,7 +71,7 @@ export const t: T = {
     list: helpers.listT,
     slist: helpers.slistT,
     ptrArray: helpers.ptrArrayT,
-    garray: helpers.garrayT,
+    gArray: helpers.gArrayT,
     byteArray: helpers.byteArrayT,
     sizedArray: helpers.sizedArrayT,
     fixedArray: helpers.fixedArrayT,

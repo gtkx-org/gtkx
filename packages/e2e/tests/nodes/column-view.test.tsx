@@ -1,4 +1,4 @@
-import { ColumnView, ColumnViewColumn } from "@gtkx/components";
+import { type ColumnRenderItemInfo, ColumnView, ColumnViewColumn } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { act, render } from "@gtkx/testing";
@@ -41,16 +41,16 @@ const columnViewView = async (items: Parameters<typeof renderColumnView>[0]): Pr
     return { texts: () => getColumnViewItemTexts(ref.current), rerender };
 };
 
-const labelCell = (item: { name: string }) => <GtkLabel label={item.name} />;
+const labelCell = ({ item }: ColumnRenderItemInfo<{ name: string }>) => <GtkLabel label={item.name} />;
 
 const titleColumns = (titles: string[]): ColumnDef<{ name: string }>[] =>
-    titles.map((title) => ({ id: title, title, renderCell: labelCell }));
+    titles.map((title) => ({ id: title, title, renderItem: labelCell }));
 
 const orderedColumns = (ids: string[]): ColumnDef<{ name: string }>[] =>
     ids.map((id) => ({
         id,
         title: id,
-        renderCell: (item: { name: string }) => <GtkLabel label={`${id}:${item.name}`} />,
+        renderItem: ({ item }: ColumnRenderItemInfo<{ name: string }>) => <GtkLabel label={`${id}:${item.name}`} />,
     }));
 
 interface Employee {
@@ -145,14 +145,14 @@ function SortableColumnView({
                     title="Name"
                     expand
                     sortable
-                    renderCell={(emp: Employee) => <GtkLabel label={emp.name} />}
+                    renderItem={({ item }: ColumnRenderItemInfo<Employee>) => <GtkLabel label={item.name} />}
                 />
                 <ColumnViewColumn
                     id="salary"
                     title="Salary"
                     expand
                     sortable
-                    renderCell={(emp: Employee) => <GtkLabel label={`$${emp.salary}`} />}
+                    renderItem={({ item }: ColumnRenderItemInfo<Employee>) => <GtkLabel label={`$${item.salary}`} />}
                 />
             </ColumnView>
         </ScrollWrapper>
@@ -250,7 +250,7 @@ describe("render - ColumnView (2)", () => {
 
         it("sets column properties (expand, fixedWidth)", async () => {
             const { ref } = await renderColumnView([{ id: "1", value: { name: "First" } }], {
-                columns: [{ id: "props", title: "Props", expand: true, fixedWidth: 100, renderCell: labelCell }],
+                columns: [{ id: "props", title: "Props", expand: true, fixedWidth: 100, renderItem: labelCell }],
             });
 
             expect(ref.current?.getColumns()).not.toBeNull();
@@ -322,15 +322,17 @@ describe("render - ColumnView (3)", () => {
 });
 
 describe("render - ColumnView (4)", () => {
-    describe("renderCell", () => {
-        it("receives item data in renderCell", async () => {
-            const renderCell = vi.fn((item: { name: string }) => <GtkLabel label={item.name} />);
+    describe("renderItem", () => {
+        it("receives item data in renderItem", async () => {
+            const renderItem = vi.fn(({ item }: ColumnRenderItemInfo<{ name: string }>) => (
+                <GtkLabel label={item.name} />
+            ));
 
             await renderColumnView([{ id: "1", value: { name: "Test" } }], {
-                columns: [{ id: "name", title: "Name", renderCell }],
+                columns: [{ id: "name", title: "Name", renderItem }],
             });
 
-            expect(renderCell).toHaveBeenCalledWith({ name: "Test" });
+            expect(renderItem).toHaveBeenCalledWith({ item: { name: "Test" }, index: 0 });
         });
     });
 });
@@ -362,8 +364,8 @@ describe("render - ColumnView (5)", () => {
 
         it("updates sort indicator when props change", async () => {
             const columns: ColumnDef<{ name: string }>[] = [
-                { id: "name", title: "Name", renderCell: labelCell },
-                { id: "age", title: "Age", renderCell: labelCell },
+                { id: "name", title: "Name", renderItem: labelCell },
+                { id: "age", title: "Age", renderItem: labelCell },
             ];
 
             const { ref, rerender } = await renderColumnView([{ id: "1", value: { name: "First" } }], {
@@ -579,12 +581,12 @@ describe("render - ColumnView (13)", () => {
                 { id: "2", name: "Bob", salary: 55000 },
             ];
             const columns: ColumnDef<Item>[] = [
-                { id: "name", title: "Name", sortable: true, renderCell: (item) => <GtkLabel label={item.name} /> },
+                { id: "name", title: "Name", sortable: true, renderItem: ({ item }) => <GtkLabel label={item.name} /> },
                 {
                     id: "salary",
                     title: "Salary",
                     sortable: true,
-                    renderCell: (item) => <GtkLabel label={String(item.salary)} />,
+                    renderItem: ({ item }) => <GtkLabel label={String(item.salary)} />,
                 },
             ];
             const sortBy = (sortColumn: SortColumn, sortOrder: Gtk.SortType): Item[] => {
@@ -639,7 +641,11 @@ describe("render - ColumnView (14)", () => {
         it("preserves order when updating a single item value", async () => {
             type Item = { name: string; count: number };
             const columns: ColumnDef<Item>[] = [
-                { id: "name", title: "Name", renderCell: (item) => <GtkLabel label={`${item.name}: ${item.count}`} /> },
+                {
+                    id: "name",
+                    title: "Name",
+                    renderItem: ({ item }) => <GtkLabel label={`${item.name}: ${item.count}`} />,
+                },
             ];
 
             const { ref, rerender } = await renderColumnView(counterBaselineRows(), { columns });

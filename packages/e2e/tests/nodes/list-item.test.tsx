@@ -1,4 +1,4 @@
-import { DropDown, ListView } from "@gtkx/components";
+import { DropDown, type ListRenderItemInfo, ListView } from "@gtkx/components";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { render, screen } from "@gtkx/testing";
@@ -17,7 +17,7 @@ const buildTextListView = (items: TextItem[]) => (
     <ScrollWrapper>
         <ListView
             items={items.map((item) => ({ id: item.id, value: item }))}
-            renderItem={(item: { text: string }) => <GtkLabel label={item.text} />}
+            renderItem={({ item }: ListRenderItemInfo<{ text: string }>) => <GtkLabel label={item.text} />}
         />
     </ScrollWrapper>
 );
@@ -56,7 +56,7 @@ describe("render - ListItem (2)", () => {
                     <ScrollWrapper>
                         <ListView
                             items={[{ id: "dynamic", value }]}
-                            renderItem={(item) => <GtkLabel label={item.text} />}
+                            renderItem={({ item }) => <GtkLabel label={item.text} />}
                         />
                     </ScrollWrapper>
                 );

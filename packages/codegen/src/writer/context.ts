@@ -1,13 +1,11 @@
 import type { Library } from "../gir/library.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import { ModuleBuilder } from "./module.js";
-import { UsedSymbols } from "./used-symbols.js";
 
 export class ModuleContext {
     public module: ModuleBuilder = new ModuleBuilder();
     public namespace: GirNamespace;
     public library: Library;
-    private used: UsedSymbols = new UsedSymbols();
 
     constructor(namespace: GirNamespace, library: Library) {
         this.namespace = namespace;
@@ -15,11 +13,11 @@ export class ModuleContext {
     }
 
     addRuntimeImport(name: string): void {
-        this.used.recordNamed("@gtkx/ffi", name);
+        this.module.imports.addNamed("@gtkx/ffi", name);
     }
 
     addRuntimeTypeImport(name: string): void {
-        this.used.recordNamed("@gtkx/ffi", name, true);
+        this.module.imports.addNamed("@gtkx/ffi", name, true);
     }
 
     hoistDescriptor(expression: string): string {
@@ -27,18 +25,18 @@ export class ModuleContext {
     }
 
     addNativeImport(name: string): void {
-        this.used.recordNamed("@gtkx/native", name);
+        this.module.imports.addNamed("@gtkx/native", name);
     }
 
     addNativeTypeImport(name: string): void {
-        this.used.recordNamed("@gtkx/native", name, true);
+        this.module.imports.addNamed("@gtkx/native", name, true);
     }
 
     addGObjectBootstrapImports(): void {
         if (this.namespace.name === "GObject") return;
         if (this.namespace.name === "GLib") return;
-        this.used.recordSideEffect("../gobject/overrides/object.js");
-        this.used.recordSideEffect("../gobject/overrides/value.js");
+        this.module.imports.addSideEffect("../gobject/overrides/object.js");
+        this.module.imports.addSideEffect("../gobject/overrides/value.js");
     }
 
     addCrossNamespaceImport(namespaceName: string): string {
@@ -46,17 +44,13 @@ export class ModuleContext {
         const directory = namespaceName.toLowerCase();
         const isFoundational = directory === "gobject" || directory === "glib";
         const path = isFoundational ? `../${directory}/${directory}.js` : `../${directory}/index.js`;
-        if (!isFoundational) this.used.recordSideEffect(path);
-        this.used.recordNamespace(path, namespaceName);
+        if (!isFoundational) this.module.imports.addSideEffect(path);
+        this.module.imports.addNamespace(path, namespaceName);
         return namespaceName;
     }
 
     qualify(namespaceName: string, typeName: string): string {
         if (namespaceName === this.namespace.name) return typeName;
         return `${this.addCrossNamespaceImport(namespaceName)}.${typeName}`;
-    }
-
-    flushImports(): void {
-        this.used.flushInto(this.module.imports);
     }
 }

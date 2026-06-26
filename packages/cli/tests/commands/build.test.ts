@@ -5,17 +5,17 @@ vi.mock("../../src/builder.js", () => ({
 }));
 
 vi.mock("../../src/codegen/run-codegen.js", () => ({
-    preflightCodegen: vi.fn(async () => undefined),
+    ensureGenerated: vi.fn(async () => false),
     runCodegen: vi.fn(),
 }));
 
 import { runCommand } from "citty";
 import { build as buildApp } from "../../src/builder.js";
-import { preflightCodegen } from "../../src/codegen/run-codegen.js";
+import { ensureGenerated } from "../../src/codegen/run-codegen.js";
 import { build } from "../../src/commands/build.js";
 
 const buildMock = vi.mocked(buildApp);
-const preflightMock = vi.mocked(preflightCodegen);
+const ensureGeneratedMock = vi.mocked(ensureGenerated);
 
 describe("build", () => {
     let stderrSpy: ReturnType<typeof vi.spyOn>;
@@ -32,7 +32,7 @@ describe("build", () => {
     it("runs codegen preflight and builds with the default entry", async () => {
         await runCommand(build, { rawArgs: [] });
 
-        expect(preflightMock).toHaveBeenCalledOnce();
+        expect(ensureGeneratedMock).toHaveBeenCalledWith(expect.any(String), { announce: true });
         expect(buildMock).toHaveBeenCalledOnce();
         const buildCall = buildMock.mock.calls[0];
         if (!buildCall) throw new Error("build was not invoked");

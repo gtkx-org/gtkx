@@ -1,5 +1,11 @@
 import { sourceStringLiteral, toCamelCase } from "@gtkx/utils";
 import {
+    omitsPrimaryReturn,
+    renderCallbackType,
+    renderDescriptor,
+    renderSelfDescriptor,
+} from "../analysis/descriptor-render.js";
+import {
     arrayLengthSources,
     closureAndDestroyIndices,
     foldedLengthIndices,
@@ -8,7 +14,6 @@ import {
 } from "../analysis/param-structure.js";
 import { foldOutParamShape } from "../analysis/return-shape.js";
 import { renderTsType } from "../analysis/ts-type.js";
-import { omitsPrimaryReturn, renderCallbackType, renderDescriptor, renderSelfDescriptor } from "../analysis/value.js";
 import type { GirFunction } from "../gir/function.js";
 import { type GirParameter, isCallerAllocatedOut, isInoutParameter, isOutParameter } from "../gir/parameter.js";
 import type { ModuleContext } from "../writer/context.js";
@@ -155,16 +160,16 @@ type CallArgPlan = {
     inputExpr: string | undefined;
 };
 
-type FfiParamOptions = {
+type ParamDescriptorOptions = {
     direction?: "out" | "inout";
-    callerAllocates?: boolean;
+    callerAllocated?: boolean;
     consumed?: boolean;
 };
 
-const ffiParamLiteral = (ffiExpr: string, options: FfiParamOptions): string => {
-    const parts = [`type: ${ffiExpr}`];
+const paramDescriptorLiteral = (descriptor: string, options: ParamDescriptorOptions): string => {
+    const parts = [`type: ${descriptor}`];
     if (options.direction !== undefined) parts.push(`direction: ${sourceStringLiteral(options.direction)}`);
-    if (options.callerAllocates === true) parts.push("callerAllocates: true");
+    if (options.callerAllocated === true) parts.push("callerAllocated: true");
     if (options.consumed === true) parts.push("consumed: true");
     return `{ ${parts.join(", ")} }`;
 };
@@ -207,11 +212,11 @@ export const planCallArgs = (context: ModuleContext, fn: GirFunction): CallArgPl
         const sourceIndex = lengthFor.get(index);
         if (sourceIndex !== undefined) {
             const source = fn.parameters[sourceIndex];
-            const ffi = renderDescriptor(context, parameter.type, parameter.transferOwnership, {
+            const descriptor = renderDescriptor(context, parameter.type, parameter.transferOwnership, {
                 argIndexOffset: instanceOffset,
             });
             plan.push({
-                paramLiteral: ffiParamLiteral(ffi, {}),
+                paramLiteral: paramDescriptorLiteral(descriptor, {}),
                 inputExpr: source === undefined ? "0" : `${parameterIdentifier(source, sourceIndex)}.length`,
             });
             return;
@@ -227,24 +232,24 @@ const planOutParam = (
     instanceOffset: number,
     consumed: boolean,
 ): CallArgPlan => {
-    const ffi = renderDescriptor(context, parameter.type, parameter.transferOwnership, {
+    const descriptor = renderDescriptor(context, parameter.type, parameter.transferOwnership, {
         argIndexOffset: instanceOffset,
     });
-    return { paramLiteral: ffiParamLiteral(ffi, { direction: "out", consumed }), inputExpr: undefined };
+    return { paramLiteral: paramDescriptorLiteral(descriptor, { direction: "out", consumed }), inputExpr: undefined };
 };
 
 const planCallerOut = (context: ModuleContext, parameter: GirParameter, instanceOffset: number): CallArgPlan => {
-    const ffi = renderDescriptor(context, parameter.type, "none", { argIndexOffset: instanceOffset });
+    const descriptor = renderDescriptor(context, parameter.type, "none", { argIndexOffset: instanceOffset });
     const name = parameter.type === undefined ? undefined : context.library.nameOf(parameter.type);
     if (name !== undefined && isCollectibleCallerOut(context, parameter)) {
         context.addRuntimeImport("getHandle");
         const classExpression = context.qualify(name.namespaceName, name.typeName);
         return {
-            paramLiteral: ffiParamLiteral(ffi, { direction: "out", callerAllocates: true }),
+            paramLiteral: paramDescriptorLiteral(descriptor, { direction: "out", callerAllocated: true }),
             inputExpr: `new ${classExpression}()`,
         };
     }
-    return { paramLiteral: ffiParamLiteral(ffi, {}), inputExpr: "undefined" };
+    return { paramLiteral: paramDescriptorLiteral(descriptor, {}), inputExpr: "undefined" };
 };
 
 const planInoutParam = (
@@ -254,17 +259,17 @@ const planInoutParam = (
 ): CallArgPlan => {
     const { index, instanceOffset, consumed } = options;
     if (passesHandleInPlace(context, parameter)) {
-        const ffi = renderDescriptor(context, parameter.type, "none", { argIndexOffset: instanceOffset });
+        const descriptor = renderDescriptor(context, parameter.type, "none", { argIndexOffset: instanceOffset });
         return {
-            paramLiteral: ffiParamLiteral(ffi, { direction: "inout", callerAllocates: true, consumed }),
+            paramLiteral: paramDescriptorLiteral(descriptor, { direction: "inout", callerAllocated: true, consumed }),
             inputExpr: parameterIdentifier(parameter, index),
         };
     }
-    const ffi = renderDescriptor(context, parameter.type, parameter.transferOwnership, {
+    const descriptor = renderDescriptor(context, parameter.type, parameter.transferOwnership, {
         argIndexOffset: instanceOffset,
     });
     return {
-        paramLiteral: ffiParamLiteral(ffi, { direction: "inout", consumed }),
+        paramLiteral: paramDescriptorLiteral(descriptor, { direction: "inout", consumed }),
         inputExpr: parameterCallExpression(context, parameter, index),
     };
 };
@@ -276,11 +281,11 @@ const planInParam = (
     instanceOffset: number,
 ): CallArgPlan => {
     const callback = renderCallbackType(context, parameter.type, parameter);
-    const ffi =
+    const descriptor =
         callback ??
         renderDescriptor(context, parameter.type, parameter.transferOwnership, { argIndexOffset: instanceOffset });
     return {
-        paramLiteral: ffiParamLiteral(ffi, {}),
+        paramLiteral: paramDescriptorLiteral(descriptor, {}),
         inputExpr: parameterCallExpression(context, parameter, index),
     };
 };

@@ -92,7 +92,7 @@ pub fn set_wrapper(
     unsafe { (*data).ref_addr = raw_ref as usize };
 
     let ref_addr = raw_ref as usize;
-    toggle_ref::RefOp::Strengthen.apply(&env, ref_addr);
+    toggle_ref::RefOp::Ref.apply(&env, ref_addr);
     let consume_pending = handle.take_pending_gobject_ref();
     // SAFETY: the closure runs on the gtkx-glib thread (dispatched via the mailbox); `gobject_addr`
     // is the non-null GObject pointer validated above and `ref_addr` is the live napi reference, so

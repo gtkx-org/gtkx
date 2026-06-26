@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ensureGenerated, preflightCodegen, runCodegen } from "../../src/codegen/run-codegen.js";
+import { ensureGenerated, runCodegen } from "../../src/codegen/run-codegen.js";
 
 vi.mock("@gtkx/codegen", () => ({
     runCodegen: () => Promise.resolve({ namespaces: 1, intrinsicElements: 0, duration: 1 }),
@@ -66,10 +66,10 @@ const writeJsxStore = (cwd: string) => {
     mkdirSync(join(cwd, "node_modules", "@gtkx", "jsx"), { recursive: true });
 };
 
-const preflightLogs = async (cwd: string): Promise<string> => {
+const announceLogs = async (cwd: string): Promise<string> => {
     const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
     try {
-        await preflightCodegen(cwd);
+        await ensureGenerated(cwd, { announce: true });
         return stderrSpy.mock.calls.map((call) => String(call[0])).join("");
     } finally {
         stderrSpy.mockRestore();
@@ -116,12 +116,12 @@ describe("runCodegen", () => {
     });
 });
 
-describe("preflightCodegen", () => {
+describe("ensureGenerated — announce path", () => {
     let cwd: string;
     const originalEnv = process.env["GTKX_DISABLE_PREFLIGHT"];
 
     beforeEach(() => {
-        cwd = mkdtempSync(join(tmpdir(), "gtkx-preflight-"));
+        cwd = mkdtempSync(join(tmpdir(), "gtkx-announce-"));
     });
 
     afterEach(() => {
@@ -135,13 +135,13 @@ describe("preflightCodegen", () => {
 
     it("returns silently when GTKX_DISABLE_PREFLIGHT=1", async () => {
         process.env["GTKX_DISABLE_PREFLIGHT"] = "1";
-        await expect(preflightCodegen(cwd)).resolves.toBeUndefined();
+        expect(await ensureGenerated(cwd, { announce: true })).toBe(false);
     });
 
     it("returns silently when there is no gtkx.config.ts", async () => {
         delete process.env["GTKX_DISABLE_PREFLIGHT"];
         installFfiPackage(cwd);
-        await expect(preflightCodegen(cwd)).resolves.toBeUndefined();
+        expect(await ensureGenerated(cwd, { announce: true })).toBe(false);
     });
 
     it("propagates non-NotFound config errors", async () => {
@@ -149,7 +149,7 @@ describe("preflightCodegen", () => {
         installFfiPackage(cwd);
         writeConfig(cwd, `export default { libraries: [] };`);
 
-        await expect(preflightCodegen(cwd)).rejects.toThrow();
+        await expect(ensureGenerated(cwd, { announce: true })).rejects.toThrow();
     });
 
     it("runs codegen when the gi store is missing", async () => {
@@ -157,7 +157,7 @@ describe("preflightCodegen", () => {
         installFfiPackage(cwd);
         writeConfig(cwd);
 
-        expect(await preflightLogs(cwd)).toContain("running codegen");
+        expect(await announceLogs(cwd)).toContain("running codegen");
     });
 
     it("skips codegen when the gi and jsx stores are present", async () => {
@@ -169,7 +169,7 @@ describe("preflightCodegen", () => {
         writeJsxStore(cwd);
         writeFingerprint(cwd);
 
-        expect(await preflightLogs(cwd)).toBe("");
+        expect(await announceLogs(cwd)).toBe("");
     });
 });
 

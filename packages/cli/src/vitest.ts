@@ -1,7 +1,7 @@
-import gtkxWorker from "@gtkx/vitest";
+import gtkxVitest from "@gtkx/vitest";
 import type { Plugin } from "vite";
 import { gtkxVitePlugins } from "./vite-plugins/index.js";
 
-const gtkx = (): Plugin[] => [...gtkxVitePlugins(), gtkxWorker()];
+const gtkx = (): Plugin[] => [...gtkxVitePlugins(), gtkxVitest()];
 
 export default gtkx;

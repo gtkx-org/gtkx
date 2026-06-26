@@ -224,7 +224,7 @@ function SidebarTree({
                     const id = ids[0];
                     if (id) onSelect(id);
                 }}
-                renderItem={(item: SidebarItem) => <GtkLabel label={item.name} />}
+                renderItem={({ item }) => <GtkLabel label={item.name} />}
             />
         </GtkScrolledWindow>
     );

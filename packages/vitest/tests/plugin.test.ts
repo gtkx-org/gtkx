@@ -1,18 +1,17 @@
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { Plugin } from "vitest/config";
-import { gtkxBundledModulePatterns } from "../src/bundled-modules.js";
 import gtkx from "../src/index.js";
 
 type InputConfig = { root?: string; test?: { setupFiles?: string | string[] } };
 
 type WorkerConfig = {
     test?: {
-        setupFiles?: string[];
+        environment?: string;
+        environmentOptions?: { size?: string; compositor?: string };
         pool?: string;
         testTimeout?: number;
         hookTimeout?: number;
-        provide?: { gtkxHeadless?: { size?: string; compositor?: string } };
         server?: { deps?: { inline?: RegExp[] } };
     };
     ssr?: { resolve?: { conditions?: string[] } };
@@ -25,7 +24,7 @@ const unwrap = <Fn extends (...args: never[]) => unknown>(hook: Fn | { handler: 
     return typeof hook === "function" ? hook : hook.handler;
 };
 
-const setupPath = join(import.meta.dirname, "..", "src", "worker-setup.js");
+const environmentPath = join(import.meta.dirname, "..", "src", "environment.js");
 
 const callConfig = (plugin: Plugin, config: InputConfig): WorkerConfig =>
     unwrap(plugin.config as ConfigHook | { handler: ConfigHook } | undefined)(config);
@@ -46,44 +45,33 @@ describe("gtkx vitest plugin", () => {
         expect(result.test?.hookTimeout).toBe(20000);
     });
 
-    it("inlines the shared gtkx bundled-module patterns", () => {
+    it("inlines the shared bundled-module patterns", () => {
         const result = callConfig(gtkx(), {});
         const inline = result.test?.server?.deps?.inline ?? [];
-        expect(inline.map((pattern) => pattern.source)).toEqual(
-            gtkxBundledModulePatterns.map((pattern) => pattern.source),
-        );
-        expect(inline.map((pattern) => pattern.flags)).toEqual(
-            gtkxBundledModulePatterns.map((pattern) => pattern.flags),
-        );
+        expect(inline.map((pattern) => pattern.source)).toEqual([
+            "@gtkx\\/(config|ffi|gi|react|jsx|testing|css)",
+            "[/\\\\]\\.gtkx[/\\\\]",
+        ]);
+        expect(inline.map((pattern) => pattern.flags)).toEqual(["", ""]);
     });
 
-    it("provides the headless options to the worker setup over the injected channel", () => {
-        const result = callConfig(gtkx({ size: "640x480", compositor: "sway" }), {});
-        expect(result.test?.provide?.gtkxHeadless).toEqual({ size: "640x480", compositor: "sway" });
-    });
-
-    it("leaves the injected headless options unset when none are configured", () => {
+    it("points the test environment at the built display-isolation module", () => {
         const result = callConfig(gtkx(), {});
-        expect(result.test?.provide?.gtkxHeadless).toEqual({ size: undefined, compositor: undefined });
+        expect(result.test?.environment).toBe(environmentPath);
+    });
+
+    it("passes the headless options through environmentOptions", () => {
+        const result = callConfig(gtkx({ size: "640x480", compositor: "sway" }), {});
+        expect(result.test?.environmentOptions).toEqual({ size: "640x480", compositor: "sway" });
+    });
+
+    it("leaves the environment options empty when none are configured", () => {
+        const result = callConfig(gtkx(), {});
+        expect(result.test?.environmentOptions).toEqual({});
     });
 
     it("orders the ssr resolve conditions source-first", () => {
         const result = callConfig(gtkx(), {});
         expect(result.ssr?.resolve?.conditions).toEqual(["source", "module", "node", "development|production"]);
-    });
-
-    it("prepends the worker setup file before an existing array of setup files", () => {
-        const result = callConfig(gtkx(), { test: { setupFiles: ["existing-a.ts", "existing-b.ts"] } });
-        expect(result.test?.setupFiles).toEqual([setupPath, "existing-a.ts", "existing-b.ts"]);
-    });
-
-    it("wraps a single string setup file before prepending the worker setup", () => {
-        const result = callConfig(gtkx(), { test: { setupFiles: "single-setup.ts" } });
-        expect(result.test?.setupFiles).toEqual([setupPath, "single-setup.ts"]);
-    });
-
-    it("prepends only the worker setup when no setup files are configured", () => {
-        const result = callConfig(gtkx(), {});
-        expect(result.test?.setupFiles).toEqual([setupPath]);
     });
 });

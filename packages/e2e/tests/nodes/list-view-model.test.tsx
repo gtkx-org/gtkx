@@ -34,7 +34,11 @@ const renderListWithModel = async (
     const selection = noSelection(store);
     const draw = (model: Gtk.SelectionModel) => (
         <ScrollWrapper>
-            <ListView<NameObject> ref={refSlot} model={model} renderItem={(item) => <GtkLabel label={item.name} />} />
+            <ListView<NameObject>
+                ref={refSlot}
+                model={model}
+                renderItem={({ item }) => <GtkLabel label={item.name} />}
+            />
         </ScrollWrapper>
     );
     const { rerender } = await render(draw(selection));
@@ -109,7 +113,7 @@ describe("GridView model prop", () => {
                 <GridView<NameObject>
                     ref={ref}
                     model={noSelection(store)}
-                    renderItem={(item) => <GtkLabel label={item.name} />}
+                    renderItem={({ item }) => <GtkLabel label={item.name} />}
                 />
             </ScrollWrapper>,
         );
@@ -129,7 +133,7 @@ describe("model resolver", () => {
             <ScrollWrapper minContentHeight={300} minContentWidth={300}>
                 <GridView<NameObject>
                     model={selection}
-                    renderItem={(item) => <GtkLabel label={`${item.name}${suffix}`} />}
+                    renderItem={({ item }) => <GtkLabel label={`${item.name}${suffix}`} />}
                 />
             </ScrollWrapper>
         );
@@ -150,7 +154,7 @@ describe("DropDown model prop", () => {
         const store = namedStore(["Choice A", "Choice B"]);
         const ref = createRef<Gtk.DropDown>();
         await render(
-            <DropDown<NameObject> ref={ref} model={store} renderItem={(item) => <GtkLabel label={item.name} />} />,
+            <DropDown<NameObject> ref={ref} model={store} renderItem={({ item }) => <GtkLabel label={item.name} />} />,
         );
 
         expect(ref.current).not.toBeNull();
@@ -168,7 +172,7 @@ describe("ColumnView model prop", () => {
                     <ColumnViewColumn<NameObject>
                         id="name"
                         title="Name"
-                        renderCell={(item) => <GtkLabel label={item.name} />}
+                        renderItem={({ item }) => <GtkLabel label={item.name} />}
                     />
                 </ColumnView>
             </ScrollWrapper>,

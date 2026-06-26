@@ -8,6 +8,9 @@ export type CreateCommandArgs = {
     "application-id"?: string | undefined;
     "package-manager"?: string | undefined;
     vitest?: boolean | undefined;
+    yes?: boolean | undefined;
+    "no-interactive"?: boolean | undefined;
+    overwrite?: boolean | undefined;
 };
 
 const parsePackageManager = (value: string | undefined): PackageManager | undefined => {
@@ -23,11 +26,14 @@ const parsePackageManager = (value: string | undefined): PackageManager | undefi
  * unknown package manager before any files are written.
  */
 export const runCreate = async (args: CreateCommandArgs): Promise<void> => {
+    const interactive = args["no-interactive"] ? false : args.yes ? false : process.stdin.isTTY === true;
     await scaffold({
         name: args.name,
         applicationId: args["application-id"],
         packageManager: parsePackageManager(args["package-manager"]),
         includeTesting: args.vitest,
+        interactive,
+        overwrite: args.overwrite,
     });
 };
 
@@ -39,7 +45,7 @@ export const runCreate = async (args: CreateCommandArgs): Promise<void> => {
 export const createCommand = defineCommand({
     meta: {
         name: "create",
-        description: "Create a new GTKX application",
+        description: "Create a new gtkx application",
     },
     args: {
         name: {
@@ -59,6 +65,20 @@ export const createCommand = defineCommand({
         vitest: {
             type: "boolean",
             description: "Include a Vitest testing setup",
+        },
+        yes: {
+            type: "boolean",
+            alias: "y",
+            description: "Skip prompts and accept defaults for unspecified options",
+        },
+        "no-interactive": {
+            type: "boolean",
+            description: "Run without prompts, failing instead of asking",
+        },
+        overwrite: {
+            type: "boolean",
+            alias: "force",
+            description: "Overwrite the target directory if it already exists",
         },
     },
     run: ({ args }) => runCreate(args),

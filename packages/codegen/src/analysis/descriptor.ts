@@ -34,7 +34,7 @@ type DescriptorName =
     | "list"
     | "slist"
     | "ptrArray"
-    | "garray"
+    | "gArray"
     | "byteArray"
     | "sizedArray"
     | "fixedArray"
@@ -74,7 +74,7 @@ const T: DescriptorNames = {
     list: "t.list",
     slist: "t.slist",
     ptrArray: "t.ptrArray",
-    garray: "t.garray",
+    gArray: "t.gArray",
     byteArray: "t.byteArray",
     sizedArray: "t.sizedArray",
     fixedArray: "t.fixedArray",
@@ -204,7 +204,7 @@ export const tFlags = (lib: string, getType: string, signed: boolean): string =>
 
 export const tByteArray = (ownership: Ownership): string => call("byteArray", [sourceStringLiteral(ownership)]);
 
-export type ListDescriptorName = "list" | "slist" | "ptrArray" | "garray";
+export type ListDescriptorName = "list" | "slist" | "ptrArray" | "gArray";
 
 export const tList = (name: ListDescriptorName, element: string, ownership: Ownership): string =>
     call(name, [element, sourceStringLiteral(ownership)]);

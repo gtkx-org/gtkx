@@ -151,12 +151,14 @@ describe("userEvent.type", () => {
         expectEditableText(entry, "Goodbye World");
     });
 
-    it("still types when click is skipped", async () => {
+    it("skips grabFocus when skipClick is set", async () => {
         await render(<GtkEntry />);
 
         const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+        const grabFocus = vi.spyOn(entry, "grabFocus");
         await userEvent.type(entry, "typed", { skipClick: true });
 
+        expect(grabFocus).not.toHaveBeenCalled();
         expectEditableText(entry, "typed");
     });
 
@@ -170,15 +172,20 @@ describe("userEvent.type", () => {
     });
 });
 
-describe("userEvent.setup options", () => {
-    it("applies skipClick as a default for the instance's type", async () => {
-        await render(<GtkEntry />);
+describe("userEvent.setup", () => {
+    it("returns sessions with isolated modifier state", async () => {
+        const onActivate = vi.fn(() => true);
+        const host = await renderShortcutHost(Gtk.ShortcutTrigger.parseString("<Shift>F5"), onActivate);
 
-        const user = userEvent.setup({ skipClick: true });
-        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
-        await user.type(entry, "session");
+        const held = userEvent.setup();
+        const fresh = userEvent.setup();
 
-        expectEditableText(entry, "session");
+        await held.keyboard(host, "{Shift>}");
+        await held.keyboard(host, "{F5}");
+        expect(onActivate).toHaveBeenCalledTimes(1);
+
+        await fresh.keyboard(host, "{F5}");
+        expect(onActivate).toHaveBeenCalledTimes(1);
     });
 });
 

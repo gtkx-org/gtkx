@@ -33,7 +33,7 @@ describe("loadGtkxConfig", () => {
         const result = await loadGtkxConfig(cwd);
         expect(result.config.libraries).toEqual(["Gtk-4.0"]);
         expect(result.configFile?.endsWith("gtkx.config.ts")).toBe(true);
-        expect(result.rootDir).toBe(cwd);
+        expect(result.root).toBe(cwd);
     });
 
     it("loads a config exported as a plain object and validates it", async () => {

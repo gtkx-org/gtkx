@@ -1,4 +1,4 @@
-import { type ItemNode, ListView } from "@gtkx/components";
+import { ListView, type SectionNode } from "@gtkx/components";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 
@@ -11,12 +11,11 @@ interface Row {
     name: string;
 }
 
-const sectioned: ItemNode<Row, string>[] = [
+const sectioned: SectionNode<string, Row>[] = [
     {
         id: "s1",
         value: "Section One",
-        section: true,
-        children: [
+        data: [
             { id: "a", value: { name: "Alpha" } },
             { id: "b", value: { name: "Beta" } },
         ],
@@ -24,8 +23,7 @@ const sectioned: ItemNode<Row, string>[] = [
     {
         id: "s2",
         value: "Section Two",
-        section: true,
-        children: [{ id: "c", value: { name: "Gamma" } }],
+        data: [{ id: "c", value: { name: "Gamma" } }],
     },
 ];
 
@@ -34,8 +32,8 @@ const renderSectioned = async (ref: ReturnType<typeof createRef<Gtk.ListView>>) 
         <ScrollWrapper minContentHeight={400}>
             <ListView<Row, string>
                 ref={ref}
-                items={sectioned}
-                renderItem={(item) => <GtkLabel label={item.name} />}
+                sections={sectioned}
+                renderItem={({ item }) => <GtkLabel label={item.name} />}
                 renderHeader={(label) => <GtkLabel label={label} />}
             />
         </ScrollWrapper>,

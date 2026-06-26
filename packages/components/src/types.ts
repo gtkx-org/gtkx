@@ -5,26 +5,29 @@ import type * as Gtk from "@gtkx/gi/gtk";
  * A declarative item rendered by the {@link ListView}, {@link GridView},
  * {@link ColumnView}, and {@link DropDown} components.
  *
- * A non-section item carries an arbitrary value of type `T` and may declare
- * tree `children`. A section item carries a value of type `S` and groups a list
- * of child items underneath a header.
+ * An item carries an arbitrary value of type `T` and may declare tree
+ * `children`. The expander indentation flags tune how a tree row is laid out.
  */
-export type ItemNode<T = unknown, S = unknown> =
-    | {
-          id: string;
-          value: T;
-          section?: false | undefined;
-          children?: ItemNode<T, S>[] | undefined;
-          hideExpander?: boolean | undefined;
-          indentForDepth?: boolean | undefined;
-          indentForIcon?: boolean | undefined;
-      }
-    | {
-          id: string;
-          value: S;
-          section: true;
-          children: ItemNode<T, S>[];
-      };
+export type ItemNode<T = unknown> = {
+    id: string;
+    value: T;
+    children?: ItemNode<T>[] | undefined;
+    hideExpander?: boolean | undefined;
+    indentForDepth?: boolean | undefined;
+    indentForIcon?: boolean | undefined;
+};
+
+/**
+ * A declarative section grouping a list of {@link ItemNode} rows under a header.
+ *
+ * The header carries a value of type `S` and `data` names the rows that appear
+ * underneath it, mirroring React Native's `SectionList` section shape.
+ */
+export type SectionNode<S = unknown, T = unknown> = {
+    id: string;
+    value: S;
+    data: ItemNode<T>[];
+};
 
 export type ListViewSharedProps = {
     estimatedItemHeight?: number | undefined;

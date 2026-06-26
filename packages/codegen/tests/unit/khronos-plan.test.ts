@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { type CommandPlan, type GlPlanPolicy, parseCType, planCommand } from "../../src/khronos/ctype.js";
 import type { GlCommand, GlParam } from "../../src/khronos/model.js";
+import { type CommandPlan, type GlPlanPolicy, parseCType, planCommand } from "../../src/khronos/plan.js";
 
 const NO_POLICY: GlPlanPolicy = { byteOffsetParams: new Set(), singleValuedQueries: new Set() };
 
@@ -62,7 +62,7 @@ describe("planCommand", () => {
     it("plans string arrays and input length arrays", () => {
         const plan = okPlan(
             command("glShaderSource", "void", [
-                param("shader", "GLuint", { kind: "shader" }),
+                param("shader", "GLuint", { objectClass: "shader" }),
                 param("count", "GLsizei"),
                 param("string", "const GLchar *const*", { len: "count" }),
                 param("length", "const GLint *", { len: "count" }),
@@ -92,7 +92,7 @@ describe("planCommand", () => {
 describe("planCommand outputs", () => {
     it("excludes COMPSIZE outputs unless the command is a single-valued query", () => {
         const query = command("glGetShaderiv", "void", [
-            param("shader", "GLuint", { kind: "shader" }),
+            param("shader", "GLuint", { objectClass: "shader" }),
             param("pname", "GLenum", { group: "ShaderParameterName" }),
             param("params", "GLint *", { len: "COMPSIZE(pname)" }),
         ]);
@@ -112,7 +112,7 @@ describe("planCommand outputs", () => {
         const plan = okPlan(
             command("glGenBuffers", "void", [
                 param("n", "GLsizei"),
-                param("buffers", "GLuint *", { len: "n", kind: "buffer" }),
+                param("buffers", "GLuint *", { len: "n", objectClass: "buffer" }),
             ]),
         );
         expect(plan.params[1]).toMatchObject({ kind: "ref-array-out", lenParamName: "n" });
@@ -158,7 +158,7 @@ describe("planCommand exclusions", () => {
     it("plans character outputs sized by a sibling parameter", () => {
         const plan = okPlan(
             command("glGetShaderSource", "void", [
-                param("shader", "GLuint", { kind: "shader" }),
+                param("shader", "GLuint", { objectClass: "shader" }),
                 param("bufSize", "GLsizei"),
                 param("length", "GLsizei *", { len: "1" }),
                 param("source", "GLchar *", { len: "bufSize" }),

@@ -12,8 +12,8 @@ use crate::error_reporter::NativeErrorReporter;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RefOp {
-    Weaken,
-    Strengthen,
+    Unref,
+    Ref,
     Delete,
 }
 
@@ -28,10 +28,10 @@ impl RefOp {
         // wrapper binding; each call adjusts or deletes exactly that reference.
         unsafe {
             match self {
-                Self::Strengthen => {
+                Self::Ref => {
                     sys::napi_reference_ref(env.raw(), raw_ref, &mut count);
                 }
-                Self::Weaken => {
+                Self::Unref => {
                     sys::napi_reference_unref(env.raw(), raw_ref, &mut count);
                 }
                 Self::Delete => {
@@ -74,11 +74,7 @@ impl WrapperRegistry {
         if binding.wrapper_strong.swap(strong, Ordering::AcqRel) == strong {
             return;
         }
-        let op = if strong {
-            RefOp::Strengthen
-        } else {
-            RefOp::Weaken
-        };
+        let op = if strong { RefOp::Ref } else { RefOp::Unref };
         Self::invoke_ref_op(ref_ptr, op);
     }
 

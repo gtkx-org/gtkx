@@ -14,6 +14,7 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
+import { callMethod, callRequiredMethod } from "@gtkx/utils";
 import { collectTypeNameChain, findInheritedRow } from "../utils/gtype.js";
 import {
     attachToParent,
@@ -21,15 +22,7 @@ import {
     type ElementMapping,
     orderedInsertMapping,
     setElementMap,
-} from "./mappings/dispatch.js";
-import {
-    childWidget,
-    isTopLevel,
-    relationshipChildWidgets,
-    trackedInstance,
-    trackedWidget,
-} from "./mappings/relationship-content.js";
-import { callMethod, callRequiredMethod } from "./method-call.js";
+} from "./dispatch.js";
 import {
     type InsertableWidget,
     isAddable,
@@ -41,6 +34,14 @@ import {
     isSingleChildContainer,
     type ReorderableWidget,
 } from "./predicates.js";
+import {
+    childWidget,
+    isTopLevel,
+    relationshipChildInstances,
+    relationshipChildWidgets,
+    trackedInstance,
+    trackedWidget,
+} from "./relationship-content.js";
 import { namedRuleSet, resolveAppendRuleSet, ruleNodeOf } from "./rule-registry.js";
 import { SLOT_HOST_BASE_TYPE } from "./slot-props.js";
 import { isRelationshipKind, type Node, stateOf } from "./state.js";
@@ -90,9 +91,6 @@ const widgetPropMapping: ElementMapping = {
         Reflect.set(parent, state.prop, null);
     },
 };
-
-const relationshipChildInstances = (wrapper: Node): Node[] =>
-    stateOf(wrapper).children.filter((child) => child instanceof GObject.Object);
 
 const sameInstances = (a: Node[], b: Node[]): boolean =>
     a.length === b.length && a.every((instance, index) => instance === b[index]);
@@ -632,4 +630,4 @@ export const ELEMENT_MAP: ElementMapping[] = [
 
 setElementMap(ELEMENT_MAP);
 
-export { attachNode, detachFromParent, detachNode, resyncRelationshipNode } from "./mappings/dispatch.js";
+export { attachNode, detachFromParent, detachNode, resyncRelationshipNode } from "./dispatch.js";

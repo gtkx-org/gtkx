@@ -7,7 +7,6 @@ import {
     setReconcilerErrorHandler,
 } from "@gtkx/react/internal";
 import { type ErrorInfo, type ReactNode, StrictMode } from "react";
-import { bindQueries } from "./bind-queries.js";
 import { addToCleanupQueue, runCleanup } from "./cleanup-registry.js";
 import { getConfig } from "./config.js";
 import { logWidget, type PrettyWidgetOptions } from "./pretty-widget.js";
@@ -15,9 +14,11 @@ import { logRoles } from "./role-helpers.js";
 import { clearScreen, setScreen } from "./screen.js";
 import { captureAndSaveScreenshot } from "./screenshot.js";
 import "./setup-runtime.js";
+import type { RenderResult } from "./bound-queries.js";
 import { type Container, TOPLEVELS, traverse } from "./traversal.js";
-import type { QueryMap, RenderOptions, RenderResult, ScreenshotOptions, WindowSelector } from "./types.js";
+import type { QueryMap, RenderOptions, ScreenshotOptions, WindowMatcher } from "./types.js";
 import { resetClipboard } from "./user-event/index.js";
+import { within } from "./within.js";
 
 let lastRenderError: Error | null = null;
 let errorHandlerInstalled = false;
@@ -142,7 +143,7 @@ export const render = async <Q extends QueryMap = Record<never, never>>(
     resolved.window?.present();
 
     const result: RenderResult<Q> = {
-        ...bindQueries(baseElement, options?.queries),
+        ...within(baseElement, options?.queries),
         get container(): Gtk.Widget {
             return resultContainer(resolved, options?.container, baseElement);
         },
@@ -159,8 +160,8 @@ export const render = async <Q extends QueryMap = Record<never, never>>(
         logRoles: () => {
             logRoles(baseElement);
         },
-        screenshot: (selector?: WindowSelector, screenshotOptions?: ScreenshotOptions) =>
-            captureAndSaveScreenshot(selector, screenshotOptions),
+        screenshot: (matcher?: WindowMatcher, screenshotOptions?: ScreenshotOptions) =>
+            captureAndSaveScreenshot(matcher, screenshotOptions),
     };
 
     setScreen(result);

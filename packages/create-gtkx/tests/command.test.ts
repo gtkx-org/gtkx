@@ -22,23 +22,43 @@ describe("runCreate", () => {
             vitest: true,
         });
 
-        expect(scaffoldMock).toHaveBeenCalledWith({
-            name: "my-app",
-            applicationId: "com.example.myapp",
-            packageManager: "pnpm",
-            includeTesting: true,
-        });
+        expect(scaffoldMock).toHaveBeenCalledWith(
+            expect.objectContaining({
+                name: "my-app",
+                applicationId: "com.example.myapp",
+                packageManager: "pnpm",
+                includeTesting: true,
+            }),
+        );
     });
 
     it("passes undefined for unspecified flags", async () => {
         await runCreate({});
 
-        expect(scaffoldMock).toHaveBeenCalledWith({
-            name: undefined,
-            applicationId: undefined,
-            packageManager: undefined,
-            includeTesting: undefined,
-        });
+        expect(scaffoldMock).toHaveBeenCalledWith(
+            expect.objectContaining({
+                name: undefined,
+                applicationId: undefined,
+                packageManager: undefined,
+                includeTesting: undefined,
+                overwrite: undefined,
+            }),
+        );
+    });
+
+    it("disables interactive mode when --no-interactive is set", async () => {
+        await runCreate({ name: "my-app", "no-interactive": true });
+        expect(scaffoldMock).toHaveBeenCalledWith(expect.objectContaining({ interactive: false }));
+    });
+
+    it("disables interactive mode when --yes is set", async () => {
+        await runCreate({ name: "my-app", yes: true });
+        expect(scaffoldMock).toHaveBeenCalledWith(expect.objectContaining({ interactive: false }));
+    });
+
+    it("forwards the overwrite flag", async () => {
+        await runCreate({ name: "my-app", "no-interactive": true, overwrite: true });
+        expect(scaffoldMock).toHaveBeenCalledWith(expect.objectContaining({ overwrite: true }));
     });
 
     const expectRejection = async (overrides: CreateCommandArgs, message: RegExp): Promise<void> => {

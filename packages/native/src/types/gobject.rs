@@ -77,7 +77,7 @@ pub struct GObjectType {
 impl FromDescriptor for GObjectType {
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn from_descriptor(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
-        let ownership = Ownership::from_js_value(obj, "gobject")?;
+        let ownership = Ownership::from_descriptor(obj, "gobject")?;
         Ok(Self { ownership })
     }
 }

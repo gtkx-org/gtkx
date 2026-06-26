@@ -1,13 +1,13 @@
 import { sourceStringLiteral, toCamelIdentifier } from "@gtkx/utils";
+import { isInlineCallbackRef, renderDescriptor } from "../analysis/descriptor-render.js";
 import { renderTsType } from "../analysis/ts-type.js";
-import { isInlineCallbackRef, renderDescriptor } from "../analysis/value.js";
 import type { GirField } from "../gir/field.js";
 import type { GirRecord } from "../gir/record.js";
 import type { TypeId } from "../gir/type-id.js";
 import type { ModuleContext } from "../writer/context.js";
 import { indent, renderBlock } from "../writer/emit.js";
 import { bitMask, mergeBitfield } from "./bitfield.js";
-import { typeRefIsClassStruct } from "./class-struct-record.js";
+import { refIsClassStruct } from "./class-struct-record.js";
 import { computeRecordFieldSlots, type RecordFieldSlot } from "./record-layout.js";
 
 type WritableFieldSlot = RecordFieldSlot & { field: GirField & { type: TypeId } };
@@ -17,7 +17,7 @@ const isWritableFieldSlot = (context: ModuleContext, entry: RecordFieldSlot): en
     entry.field.writable &&
     entry.field.type !== undefined &&
     !isInlineCallbackRef(context.library, entry.field.type) &&
-    !typeRefIsClassStruct(context, entry.field.type);
+    !refIsClassStruct(context, entry.field.type);
 
 const isOpaque = (record: GirRecord): boolean => record.glibGetType === undefined && record.disguised;
 

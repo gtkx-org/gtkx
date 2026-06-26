@@ -1,4 +1,4 @@
-import { IpcError, IpcErrorCode } from "@gtkx/mcp";
+import { ErrorCode, ProtocolError } from "@gtkx/mcp";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const hoisted = vi.hoisted(() => ({
@@ -80,7 +80,7 @@ describe("dispatch (method routing)", () => {
         const app = makeApp();
 
         await expect(dispatch("widget.unknown", {}, { app: app as never, registry })).rejects.toMatchObject({
-            code: IpcErrorCode.METHOD_NOT_FOUND,
+            code: ErrorCode.METHOD_NOT_FOUND,
         });
     });
 });
@@ -168,7 +168,7 @@ describe("widget.query", () => {
         const registry = new WidgetRegistry();
         await expect(
             dispatch("widget.query", { by: "id", value: "x" }, { app: makeApp() as never, registry }),
-        ).rejects.toMatchObject({ code: IpcErrorCode.INVALID_REQUEST });
+        ).rejects.toMatchObject({ code: ErrorCode.INVALID_REQUEST });
     });
 });
 
@@ -190,14 +190,14 @@ describe("widget.getProps", () => {
 
         await expect(
             dispatch("widget.getProps", { widgetId: "missing" }, { app: makeApp() as never, registry }),
-        ).rejects.toMatchObject({ code: IpcErrorCode.WIDGET_NOT_FOUND });
+        ).rejects.toMatchObject({ code: ErrorCode.WIDGET_NOT_FOUND });
     });
 
     it("throws widgetNotFoundError when no widgetId is supplied", async () => {
         const registry = new WidgetRegistry();
 
         await expect(dispatch("widget.getProps", {}, { app: makeApp() as never, registry })).rejects.toBeInstanceOf(
-            IpcError,
+            ProtocolError,
         );
     });
 });

@@ -2,7 +2,7 @@ import { call, type Handle, type Type, type Value } from "@gtkx/native";
 import { GVALUE_SIZE, GVALUE_T, LIB } from "./constants.js";
 import { biguint64T, bind, objectT, sizedArrayT, stringT, uint32T, voidT } from "./descriptors.js";
 import type { GType } from "./gtype.js";
-import { fromGValue, newValueFromFfi, toGValue } from "./gvalue.js";
+import { fromGValue, newGValueForDescriptor, toGValue } from "./gvalue.js";
 import { getHandle } from "./registry.js";
 
 type Property = [Type, Value];
@@ -39,7 +39,7 @@ const gObjectGetProperty = bind(LIB, "g_object_get_property", [...PROPERTY_CALL_
 const gObjectSetProperty = bind(LIB, "g_object_set_property", [...PROPERTY_CALL_ARGS], voidT);
 
 export function getGObjectProperty(obj: object, propertyName: string, descriptor: Type): unknown {
-    const value = newValueFromFfi(descriptor);
+    const value = newGValueForDescriptor(descriptor);
     gObjectGetProperty(getHandle(obj), propertyName, value);
     return fromGValue(value);
 }

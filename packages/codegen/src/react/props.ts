@@ -1,9 +1,9 @@
-import { toCamelIdentifier, toUpperFirst } from "@gtkx/utils";
+import { toCamelIdentifier, upperFirst } from "@gtkx/utils";
+import { isScalarRef } from "../analysis/descriptor-render.js";
 import { forEachAncestor } from "../analysis/inheritance.js";
 import { renderHandlerParameters } from "../analysis/param-structure.js";
 import { foldOutParamShape } from "../analysis/return-shape.js";
 import { renderBaseTypeFor, type TsTypeTarget } from "../analysis/ts-type.js";
-import { isScalarRef } from "../analysis/value.js";
 import type { GirClass } from "../gir/class.js";
 import type { Library } from "../gir/library.js";
 import type { GirNamespace } from "../gir/namespace.js";
@@ -66,7 +66,7 @@ const createPropEntryCollector = (owner: SlotOwner): PropEntryCollector => {
         }
         if (isConstructableProperty(property)) propLines.push(`${jsName}?: ${tsType} | null | undefined;`);
         propLines.push(
-            `onNotify${toUpperFirst(jsName)}?: ((value: ${tsType} | null, self: Self) => void) | null | undefined;`,
+            `onNotify${upperFirst(jsName)}?: ((value: ${tsType} | null, self: Self) => void) | null | undefined;`,
         );
     };
 

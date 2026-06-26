@@ -74,61 +74,11 @@ export type RenderOptions<Q extends QueryMap = Record<never, never>> = {
     queries?: Q | undefined;
 };
 
-export type BoundQueries = {
-    queryByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) => Gtk.Widget | null;
-    queryByLabelText: (text: Matcher, options?: MatcherOptions) => Gtk.Widget | null;
-    queryByText: (text: Matcher, options?: MatcherOptions) => Gtk.Widget | null;
-    queryByName: (name: Matcher, options?: MatcherOptions) => Gtk.Widget | null;
-    queryByPlaceholderText: (text: Matcher, options?: MatcherOptions) => Gtk.Widget | null;
-    queryByDisplayValue: (value: Matcher, options?: MatcherOptions) => Gtk.Widget | null;
-    queryAllByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) => Gtk.Widget[];
-    queryAllByLabelText: (text: Matcher, options?: MatcherOptions) => Gtk.Widget[];
-    queryAllByText: (text: Matcher, options?: MatcherOptions) => Gtk.Widget[];
-    queryAllByName: (name: Matcher, options?: MatcherOptions) => Gtk.Widget[];
-    queryAllByPlaceholderText: (text: Matcher, options?: MatcherOptions) => Gtk.Widget[];
-    queryAllByDisplayValue: (value: Matcher, options?: MatcherOptions) => Gtk.Widget[];
-    getByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) => Gtk.Widget;
-    getByLabelText: (text: Matcher, options?: MatcherOptions) => Gtk.Widget;
-    getByText: (text: Matcher, options?: MatcherOptions) => Gtk.Widget;
-    getByName: (name: Matcher, options?: MatcherOptions) => Gtk.Widget;
-    getByPlaceholderText: (text: Matcher, options?: MatcherOptions) => Gtk.Widget;
-    getByDisplayValue: (value: Matcher, options?: MatcherOptions) => Gtk.Widget;
-    getAllByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) => Gtk.Widget[];
-    getAllByLabelText: (text: Matcher, options?: MatcherOptions) => Gtk.Widget[];
-    getAllByText: (text: Matcher, options?: MatcherOptions) => Gtk.Widget[];
-    getAllByName: (name: Matcher, options?: MatcherOptions) => Gtk.Widget[];
-    getAllByPlaceholderText: (text: Matcher, options?: MatcherOptions) => Gtk.Widget[];
-    getAllByDisplayValue: (value: Matcher, options?: MatcherOptions) => Gtk.Widget[];
-    findByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) => Promise<Gtk.Widget>;
-    findByLabelText: (text: Matcher, options?: MatcherOptions) => Promise<Gtk.Widget>;
-    findByText: (text: Matcher, options?: MatcherOptions) => Promise<Gtk.Widget>;
-    findByName: (name: Matcher, options?: MatcherOptions) => Promise<Gtk.Widget>;
-    findByPlaceholderText: (text: Matcher, options?: MatcherOptions) => Promise<Gtk.Widget>;
-    findByDisplayValue: (value: Matcher, options?: MatcherOptions) => Promise<Gtk.Widget>;
-    findAllByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) => Promise<Gtk.Widget[]>;
-    findAllByLabelText: (text: Matcher, options?: MatcherOptions) => Promise<Gtk.Widget[]>;
-    findAllByText: (text: Matcher, options?: MatcherOptions) => Promise<Gtk.Widget[]>;
-    findAllByName: (name: Matcher, options?: MatcherOptions) => Promise<Gtk.Widget[]>;
-    findAllByPlaceholderText: (text: Matcher, options?: MatcherOptions) => Promise<Gtk.Widget[]>;
-    findAllByDisplayValue: (value: Matcher, options?: MatcherOptions) => Promise<Gtk.Widget[]>;
-};
-
 export type DebugUtilities = {
     debug: (element?: Container | Container[], options?: PrettyWidgetOptions) => void;
     logRoles: () => void;
-    screenshot: (selector?: WindowSelector, options?: ScreenshotOptions) => Promise<ScreenshotResult>;
+    screenshot: (matcher?: WindowMatcher, options?: ScreenshotOptions) => Promise<ScreenshotResult>;
 };
-
-export type Screen = BoundQueries & DebugUtilities;
-
-export type RenderResult<Q extends QueryMap = Record<never, never>> = BoundQueries &
-    BoundCustomQueries<Q> &
-    DebugUtilities & {
-        container: Gtk.Widget;
-        baseElement: Container;
-        unmount: () => Promise<void>;
-        rerender: (element: ReactNode) => Promise<void>;
-    };
 
 export type ScreenshotResult = {
     data: string;
@@ -141,7 +91,7 @@ export type ScreenshotOptions = Pick<WaitForOptions, "timeout" | "interval"> & {
     scale?: number;
 };
 
-export type WindowSelector = number | string | RegExp | undefined;
+export type WindowMatcher = number | string | RegExp | undefined;
 
 export type RenderHookOptions<Props> = {
     wrapper?: WrapperComponent;

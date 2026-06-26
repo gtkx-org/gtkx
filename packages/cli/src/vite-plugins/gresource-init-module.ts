@@ -1,4 +1,4 @@
-import { BUNDLE_FILENAME } from "./gresource-protocol.js";
+import { BUNDLE_FILENAME } from "./gresource-shared.js";
 
 const buildInitModuleSource = (): string =>
     [

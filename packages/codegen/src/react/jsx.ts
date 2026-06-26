@@ -6,7 +6,7 @@ import type { JsxImports } from "./imports.js";
 import {
     collectInterfacePropsClasses,
     collectIntrinsicElementClasses,
-    type IntrinsicElementClass,
+    type GlibNamedClass,
     interfaceGlibName,
     interfaceHasPropsBody,
     newlyImplementedInterfaces,
@@ -152,7 +152,7 @@ const renderInterfacePropsBlock = (
     return { block, slotPropNames };
 };
 
-const renderJsxAugmentation = (widgets: IntrinsicElementClass[]): string =>
+const renderJsxAugmentation = (widgets: GlibNamedClass[]): string =>
     [
         "declare global {",
         "    namespace React.JSX {",
@@ -165,14 +165,14 @@ const renderJsxAugmentation = (widgets: IntrinsicElementClass[]): string =>
 
 type RenderPropBlockContext = {
     isIntrinsicElementAncestor: (candidate: GirClass) => boolean;
-    intrinsicElementByGlibName: Map<string, IntrinsicElementClass>;
+    intrinsicElementByGlibName: Map<string, GlibNamedClass>;
     targetNamespaceName: string;
     imports: JsxImports;
 };
 
 const renderPropBlock = (
     library: Library,
-    entry: IntrinsicElementClass,
+    entry: GlibNamedClass,
     context: RenderPropBlockContext,
 ): { block: string; slotPropNames: string[] } => {
     const slotProps = SLOT_PROPS_BY_TYPE[entry.glibName] ?? [];
@@ -199,11 +199,7 @@ const renderPropBlock = (
     return { block, slotPropNames };
 };
 
-const resolveWidgetExtends = (
-    library: Library,
-    entry: IntrinsicElementClass,
-    context: RenderPropBlockContext,
-): string[] => {
+const resolveWidgetExtends = (library: Library, entry: GlibNamedClass, context: RenderPropBlockContext): string[] => {
     const extendsList: string[] = [];
     const parentRef = resolveParentPropsRef(library, entry, context);
     if (parentRef !== undefined) extendsList.push(parentRef);
@@ -216,7 +212,7 @@ const resolveWidgetExtends = (
 
 const resolveParentPropsRef = (
     library: Library,
-    entry: IntrinsicElementClass,
+    entry: GlibNamedClass,
     context: RenderPropBlockContext,
 ): string | undefined => {
     const parent = entry.klass.parent;

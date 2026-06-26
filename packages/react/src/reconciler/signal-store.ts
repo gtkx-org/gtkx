@@ -35,7 +35,7 @@ export class SignalStore {
         return instanceMap;
     }
 
-    private wrapCallback(
+    private gateHandler(
         handler: SignalHandler,
         signal: string,
         instance: GObject.Object,
@@ -69,8 +69,8 @@ export class SignalStore {
 
     private connect(binding: SignalBinding & { handler: SignalHandler; blockable: boolean }): void {
         const { instance, signal, handler, blockable } = binding;
-        const wrappedHandler = this.wrapCallback(handler, signal, instance, blockable);
-        const handlerId = instance.connect(signal, wrappedHandler);
+        const gatedHandler = this.gateHandler(handler, signal, instance, blockable);
+        const handlerId = instance.connect(signal, gatedHandler);
         this.getInstanceMap(instance).set(signal, handlerId);
     }
 

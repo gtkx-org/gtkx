@@ -436,7 +436,7 @@ const UcdCodepointColumn = () => (
         id="codepoint"
         title="Codepoint"
         sortable
-        renderCell={(item: UcdEntry) => (
+        renderItem={({ item }: { item: UcdEntry }) => (
             <GtkInscription text={item.codepointStr} cssClasses={["monospace"]} marginTop={4} marginBottom={4} />
         )}
     />
@@ -446,7 +446,7 @@ const UcdCharColumn = () => (
     <ColumnViewColumn
         id="char"
         title="Char"
-        renderCell={(item: UcdEntry) => (
+        renderItem={({ item }: { item: UcdEntry }) => (
             <GtkInscription text={GLib.unicharIsprint(item.char) ? item.char : ""} marginTop={4} marginBottom={4} />
         )}
     />
@@ -457,7 +457,7 @@ const UcdNameColumn = () => (
         id="name"
         title="Name"
         resizable
-        renderCell={(item: UcdEntry) => (
+        renderItem={({ item }: { item: UcdEntry }) => (
             <GtkInscription
                 text={item.name}
                 xalign={0}
@@ -481,7 +481,7 @@ const UcdInscriptionColumn = ({ id, title, label }: UcdInscriptionColumnProps) =
         id={id}
         title={title}
         resizable
-        renderCell={(item: UcdEntry) => (
+        renderItem={({ item }: { item: UcdEntry }) => (
             <GtkInscription
                 text={label(item)}
                 cssClasses={["dim-label"]}
@@ -536,11 +536,10 @@ const ListViewUcdDemo = () => {
                     estimatedItemHeight={32}
                     onActivate={handleActivate}
                     renderHeader={renderUcdHeader}
-                    items={characterSections.map((section) => ({
+                    sections={characterSections.map((section) => ({
                         id: section.script,
                         value: section.script,
-                        section: true,
-                        children: section.entries.map((entry) => ({ id: entry.codepointStr, value: entry })),
+                        data: section.entries.map((entry) => ({ id: entry.codepointStr, value: entry })),
                     }))}
                 >
                     <UcdCodepointColumn />

@@ -9,22 +9,17 @@ import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
 
 const SIZES = [100, 200, 400];
 
-function makeSectionItems(n: number): ItemNode<{ name: string }>[] {
-    const perSection = 100;
-    const sections: ItemNode<{ name: string }>[] = [];
-    for (let start = 0; start < n; start += perSection) {
-        const children: ItemNode<{ name: string }>[] = [];
-        for (let i = start; i < Math.min(start + perSection, n); i++) {
-            children.push({ id: `row-${i}`, value: { name: `row-${i}` } });
-        }
-        sections.push({ id: `sec-${start}`, section: true, value: { name: `Section ${start}` }, children });
+function makeItems(n: number): ItemNode<{ name: string }>[] {
+    const items: ItemNode<{ name: string }>[] = [];
+    for (let i = 0; i < n; i++) {
+        items.push({ id: `row-${i}`, value: { name: `row-${i}` } });
     }
-    return sections;
+    return items;
 }
 
 describe("selection apply", () => {
     for (const n of SIZES) {
-        const items = makeSectionItems(n);
+        const items = makeItems(n);
         const targetId = `row-${n - 1}`;
 
         bench(`multi-selection across ${n} items`, async () => {

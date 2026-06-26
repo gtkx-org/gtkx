@@ -201,7 +201,9 @@ const ListViewFilebrowserTitlebar = () => {
                         const id = ids[0] as ViewMode | undefined;
                         if (id) setViewMode(id);
                     }}
-                    renderItem={(item: ViewModeItem) => <GtkImage iconName={item.icon} tooltipText={item.label} />}
+                    renderItem={({ item }: { item: ViewModeItem }) => (
+                        <GtkImage iconName={item.icon} tooltipText={item.label} />
+                    )}
                     items={VIEW_MODES.map((mode) => ({ id: mode.id, value: mode }))}
                 />
             }
@@ -219,7 +221,7 @@ const ListViewFilebrowserDemo = () => {
                 maxColumns={15}
                 orientation={viewMode === "grid" ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL}
                 onActivate={handleActivate}
-                renderItem={(item: FileItem) => <ListItem item={item} mode={viewMode} />}
+                renderItem={({ item }: { item: FileItem }) => <ListItem item={item} mode={viewMode} />}
                 items={files.map((file) => ({ id: file.name, value: file }))}
             />
         </GtkScrolledWindow>

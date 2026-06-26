@@ -1,8 +1,8 @@
-import { mangleReserved, sortedStrings, sortedStringsBy } from "@gtkx/utils";
+import { sanitizeIdentifier, sortedStrings, sortedStringsBy } from "@gtkx/utils";
 import { transpileSource } from "../transpile.js";
-import { type CommandPlan, type GlExclusionReason, type GlPlanPolicy, type GlScalar, planCommand } from "./ctype.js";
 import { type GlEnum, loadGlRegistry } from "./model.js";
 import { renderCommandsModule, renderEnumsModule, renderTypesModule } from "./modules.js";
+import { type CommandPlan, type GlExclusionReason, type GlPlanPolicy, type GlScalar, planCommand } from "./plan.js";
 import { deriveDeleteSingular, deriveGenSingular, type RenderedCommand, renderCommand } from "./render.js";
 import { type GlSelection, resolveEnum, selectSubset } from "./select.js";
 
@@ -79,7 +79,7 @@ export type GlGenerationResult = {
 
 const enumExportName = (name: string): string => {
     const stripped = name.startsWith("GL_") ? name.slice(3) : name;
-    return /^[0-9]/.test(stripped) ? name : mangleReserved(stripped.toUpperCase());
+    return /^[0-9]/.test(stripped) ? name : sanitizeIdentifier(stripped.toUpperCase());
 };
 
 const MAX_SAFE = BigInt(Number.MAX_SAFE_INTEGER);

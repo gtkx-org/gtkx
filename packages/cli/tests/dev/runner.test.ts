@@ -1,7 +1,7 @@
 import { EventEmitter } from "node:events";
 import type { Plugin } from "vite";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { RESTART_EXIT_CODE } from "../../src/dev/protocol.js";
+import { RESTART_EXIT_CODE } from "../../src/dev/exit-code.js";
 import { createDevRunner, type DevRunnerDeps, type DevServer } from "../../src/dev/runner.js";
 import { main } from "../../src/dev/runner-main.js";
 
@@ -58,7 +58,7 @@ const buildHarness = (
         { name: "gtkx:gsettings" },
         { name: "gtkx:assets" },
         { name: "gtkx:swc-refresh" },
-        { name: "gtkx:refresh" },
+        { name: "gtkx:refresh-runtime" },
         { name: "gtkx:skip-react-dom-optimize" },
     ] as Plugin[];
     const applicationId = overrides.applicationId ?? null;
@@ -153,7 +153,7 @@ describe("createDevRunner (vite config)", () => {
             "gtkx:gsettings",
             "gtkx:assets",
             "gtkx:swc-refresh",
-            "gtkx:refresh",
+            "gtkx:refresh-runtime",
             "gtkx:skip-react-dom-optimize",
         ]);
     });

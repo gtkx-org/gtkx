@@ -99,7 +99,7 @@ mod napi_export {
         js_type: Unknown<'_>,
         offset: f64,
     ) -> napi::Result<Unknown<'env>> {
-        let field_type = Type::from_js_value(env, js_type)?;
+        let field_type = Type::from_descriptor(env, js_type)?;
         let request = ReadRequest {
             location: FieldLocation {
                 base_addr: handle.ptr_as_usize(),
@@ -119,7 +119,7 @@ mod napi_export {
         offset: f64,
         value: Unknown<'_>,
     ) -> napi::Result<Unknown<'env>> {
-        let field_type = Type::from_js_value(env, js_type)?;
+        let field_type = Type::from_descriptor(env, js_type)?;
         let parsed_value = Value::from_js_value(env, value)?;
         let request = WriteRequest {
             location: FieldLocation {

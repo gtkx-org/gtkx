@@ -73,8 +73,6 @@
             "project": ["src/**/*.{ts,tsx}!", "tests/**/*.{ts,tsx}"]
         },
         "packages/vitest": {
-            "includeEntryExports": true,
-            "entry": ["src/worker-setup.ts!"],
             "project": ["src/**/*.ts!"]
         },
         "examples/browser": {

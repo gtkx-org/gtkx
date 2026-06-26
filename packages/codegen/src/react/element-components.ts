@@ -3,7 +3,7 @@ import { sortedStringsBy, sourceStringLiteral, toCamelCase } from "@gtkx/utils";
 import type { Library } from "../gir/library.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import type { JsxImports } from "./imports.js";
-import { ancestorGlibNames, collectIntrinsicElementClasses, type IntrinsicElementClass } from "./intrinsic-elements.js";
+import { ancestorGlibNames, collectIntrinsicElementClasses, type GlibNamedClass } from "./intrinsic-elements.js";
 import { type RelationshipNodeElement, relationshipNodeElementEntries } from "./relationship-node-elements.js";
 import { type AncestryWrapperName, BUILT_IN_ANCESTRY_WRAPPERS } from "./tables.js";
 
@@ -68,11 +68,7 @@ const relationshipNodeElementsForNamespace = (
     return sortedStringsBy(result, (entry) => entry.flatName);
 };
 
-const renderCandidateExport = (
-    candidate: IntrinsicElementClass,
-    library: Library,
-    imports: JsxImports,
-): string | null => {
+const renderCandidateExport = (candidate: GlibNamedClass, library: Library, imports: JsxImports): string | null => {
     const { glibName, klass, namespace } = candidate;
     const ancestry = new Set(ancestorGlibNames(klass, namespace, library));
     const hoc = resolveAncestryWrapper(ancestry);
@@ -80,10 +76,10 @@ const renderCandidateExport = (
     imports.sharedTypes.add("SyntheticPropsFor");
     imports.reactBuiltins.add("ReactNode");
     if (hoc !== undefined) imports.hocs.add(hoc);
-    const isDialogSurface = hoc === "withWindowPresentation" && ancestry.has("AdwDialog");
-    if (isDialogSurface) imports.sharedTypes.add("TopLevelParentProps");
+    const isDialog = hoc === "withWindowPresentation" && ancestry.has("AdwDialog");
+    if (isDialog) imports.sharedTypes.add("TopLevelParentProps");
     const syntheticUnion = [...ancestry].map((name) => sourceStringLiteral(name)).join(" | ");
-    return renderElementComponentExport(glibName, hoc, isDialogSurface, syntheticUnion);
+    return renderElementComponentExport(glibName, hoc, isDialog, syntheticUnion);
 };
 
 const resolveAncestryWrapper = (ancestry: Set<string>): AncestryWrapperName | undefined => {
@@ -96,14 +92,14 @@ const resolveAncestryWrapper = (ancestry: Set<string>): AncestryWrapperName | un
 const renderElementComponentExport = (
     glibName: string,
     hoc: AncestryWrapperName | undefined,
-    isDialogSurface: boolean,
+    isDialog: boolean,
     syntheticUnion: string,
 ): string => {
     const propsType = `${glibName}Props & SyntheticPropsFor<${syntheticUnion}>`;
     if (hoc === undefined) {
         return `export const ${glibName}: (props: ${propsType}) => ReactNode = createElementComponent<${propsType}>(${sourceStringLiteral(glibName)});`;
     }
-    const componentPropsType = isDialogSurface ? `${propsType} & TopLevelParentProps` : propsType;
+    const componentPropsType = isDialog ? `${propsType} & TopLevelParentProps` : propsType;
     const annotation = `(props: ${componentPropsType}) => ReactNode`;
     const memo = `${toCamelCase(glibName)}Instance`;
     return [

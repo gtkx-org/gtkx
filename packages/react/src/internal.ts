@@ -1,5 +1,5 @@
 export { ApplicationContext } from "./hooks/use-application.js";
-export { useGObjectSnapshot } from "./hooks/use-gobject-snapshot.js";
+export { useGObjectValue } from "./hooks/use-gobject-value.js";
 export { useTargetRegistration } from "./hooks/use-target-registration.js";
 export { isInCommit, scheduleCommitWork } from "./reconciler/commit-flush.js";
 export { setReconcilerErrorHandler } from "./reconciler/reconciler-error-handler.js";

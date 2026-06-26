@@ -130,8 +130,8 @@ import type {
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param pipeline - `GLuint`, object kind `program pipeline`
- * @param program - `GLuint`, object kind `program`
+ * @param pipeline - `GLuint`, object class `program pipeline`
+ * @param program - `GLuint`, object class `program`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glActiveShaderProgram.xhtml
  */
 export function activeShaderProgram(pipeline: GLuint, program: GLuint): void {
@@ -155,8 +155,8 @@ export function activeTexture(texture: TextureUnit): void {
  *
  * Provided by `GL_VERSION_2_0`.
  *
- * @param program - `GLuint`, object kind `program`
- * @param shader - `GLuint`, object kind `shader`
+ * @param program - `GLuint`, object class `program`
+ * @param shader - `GLuint`, object class `shader`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glAttachShader.xhtml
  */
 export function attachShader(program: GLuint, shader: GLuint): void {
@@ -182,7 +182,7 @@ export function beginConditionalRender(id: GLuint, mode: ConditionalRenderMode):
  * Provided by `GL_VERSION_1_5`.
  *
  * @param target - `GLenum`, group `QueryTarget`
- * @param id - `GLuint`, object kind `query`
+ * @param id - `GLuint`, object class `query`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBeginQuery.xhtml
  */
 export function beginQuery(target: QueryTarget, id: GLuint): void {
@@ -196,7 +196,7 @@ export function beginQuery(target: QueryTarget, id: GLuint): void {
  *
  * @param target - `GLenum`, group `QueryTarget`
  * @param index - `GLuint`
- * @param id - `GLuint`, object kind `query`
+ * @param id - `GLuint`, object class `query`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBeginQueryIndexed.xhtml
  */
 export function beginQueryIndexed(target: QueryTarget, index: GLuint, id: GLuint): void {
@@ -220,7 +220,7 @@ export function beginTransformFeedback(primitiveMode: PrimitiveType): void {
  *
  * Provided by `GL_VERSION_2_0`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param index - `GLuint`
  * @param name - `const GLchar *`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBindAttribLocation.xhtml
@@ -235,7 +235,7 @@ export function bindAttribLocation(program: GLuint, index: GLuint, name: string)
  * Provided by `GL_VERSION_1_5`.
  *
  * @param target - `GLenum`, group `BufferTargetARB`
- * @param buffer - `GLuint`, object kind `buffer`
+ * @param buffer - `GLuint`, object class `buffer`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBindBuffer.xhtml
  */
 export function bindBuffer(target: BufferTargetARB, buffer: GLuint): void {
@@ -249,7 +249,7 @@ export function bindBuffer(target: BufferTargetARB, buffer: GLuint): void {
  *
  * @param target - `GLenum`, group `BufferTargetARB`
  * @param index - `GLuint`
- * @param buffer - `GLuint`, object kind `buffer`
+ * @param buffer - `GLuint`, object class `buffer`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBindBufferBase.xhtml
  */
 export function bindBufferBase(target: BufferTargetARB, index: GLuint, buffer: GLuint): void {
@@ -263,7 +263,7 @@ export function bindBufferBase(target: BufferTargetARB, index: GLuint, buffer: G
  *
  * @param target - `GLenum`, group `BufferTargetARB`
  * @param index - `GLuint`
- * @param buffer - `GLuint`, object kind `buffer`
+ * @param buffer - `GLuint`, object class `buffer`
  * @param offset - `GLintptr`
  * @param size - `GLsizeiptr`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBindBufferRange.xhtml
@@ -286,7 +286,7 @@ export function bindBufferRange(
  * @param target - `GLenum`, group `BufferTargetARB`
  * @param first - `GLuint`
  * @param count - `GLsizei`
- * @param buffers - `const GLuint *`, length `count`, object kind `buffer`
+ * @param buffers - `const GLuint *`, length `count`, object class `buffer`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBindBuffersBase.xhtml
  */
 export function bindBuffersBase(
@@ -306,7 +306,7 @@ export function bindBuffersBase(
  * @param target - `GLenum`, group `BufferTargetARB`
  * @param first - `GLuint`
  * @param count - `GLsizei`
- * @param buffers - `const GLuint *`, length `count`, object kind `buffer`
+ * @param buffers - `const GLuint *`, length `count`, object class `buffer`
  * @param offsets - `const GLintptr *`, length `count`
  * @param sizes - `const GLsizeiptr *`, length `count`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBindBuffersRange.xhtml
@@ -327,7 +327,7 @@ export function bindBuffersRange(
  *
  * Provided by `GL_VERSION_3_0`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param color - `GLuint`
  * @param name - `const GLchar *`, length `COMPSIZE(name)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBindFragDataLocation.xhtml
@@ -341,7 +341,7 @@ export function bindFragDataLocation(program: GLuint, color: GLuint, name: strin
  *
  * Provided by `GL_VERSION_3_3`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param colorNumber - `GLuint`
  * @param index - `GLuint`
  * @param name - `const GLchar *`
@@ -357,7 +357,7 @@ export function bindFragDataLocationIndexed(program: GLuint, colorNumber: GLuint
  * Provided by `GL_VERSION_3_0`.
  *
  * @param target - `GLenum`, group `FramebufferTarget`
- * @param framebuffer - `GLuint`, object kind `framebuffer`
+ * @param framebuffer - `GLuint`, object class `framebuffer`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBindFramebuffer.xhtml
  */
 export function bindFramebuffer(target: FramebufferTarget, framebuffer: GLuint): void {
@@ -370,7 +370,7 @@ export function bindFramebuffer(target: FramebufferTarget, framebuffer: GLuint):
  * Provided by `GL_VERSION_4_2`.
  *
  * @param unit - `GLuint`
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param level - `GLint`
  * @param layered - `GLboolean`
  * @param layer - `GLint`
@@ -397,7 +397,7 @@ export function bindImageTexture(
  *
  * @param first - `GLuint`
  * @param count - `GLsizei`
- * @param textures - `const GLuint *`, length `count`, object kind `texture`
+ * @param textures - `const GLuint *`, length `count`, object class `texture`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBindImageTextures.xhtml
  */
 export function bindImageTextures(first: GLuint, count: GLsizei, textures: GLuint[] | Uint32Array): void {
@@ -409,7 +409,7 @@ export function bindImageTextures(first: GLuint, count: GLsizei, textures: GLuin
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param pipeline - `GLuint`, object kind `program pipeline`
+ * @param pipeline - `GLuint`, object class `program pipeline`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBindProgramPipeline.xhtml
  */
 export function bindProgramPipeline(pipeline: GLuint): void {
@@ -422,7 +422,7 @@ export function bindProgramPipeline(pipeline: GLuint): void {
  * Provided by `GL_VERSION_3_0`.
  *
  * @param target - `GLenum`, group `RenderbufferTarget`
- * @param renderbuffer - `GLuint`, object kind `renderbuffer`
+ * @param renderbuffer - `GLuint`, object class `renderbuffer`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBindRenderbuffer.xhtml
  */
 export function bindRenderbuffer(target: RenderbufferTarget, renderbuffer: GLuint): void {
@@ -435,7 +435,7 @@ export function bindRenderbuffer(target: RenderbufferTarget, renderbuffer: GLuin
  * Provided by `GL_VERSION_3_3`.
  *
  * @param unit - `GLuint`
- * @param sampler - `GLuint`, object kind `sampler`
+ * @param sampler - `GLuint`, object class `sampler`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBindSampler.xhtml
  */
 export function bindSampler(unit: GLuint, sampler: GLuint): void {
@@ -449,7 +449,7 @@ export function bindSampler(unit: GLuint, sampler: GLuint): void {
  *
  * @param first - `GLuint`
  * @param count - `GLsizei`
- * @param samplers - `const GLuint *`, length `count`, object kind `sampler`
+ * @param samplers - `const GLuint *`, length `count`, object class `sampler`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBindSamplers.xhtml
  */
 export function bindSamplers(first: GLuint, count: GLsizei, samplers: GLuint[] | Uint32Array): void {
@@ -462,7 +462,7 @@ export function bindSamplers(first: GLuint, count: GLsizei, samplers: GLuint[] |
  * Provided by `GL_VERSION_1_1`.
  *
  * @param target - `GLenum`, group `TextureTarget`
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBindTexture.xhtml
  */
 export function bindTexture(target: TextureTarget, texture: GLuint): void {
@@ -476,7 +476,7 @@ export function bindTexture(target: TextureTarget, texture: GLuint): void {
  *
  * @param first - `GLuint`
  * @param count - `GLsizei`
- * @param textures - `const GLuint *`, length `count`, object kind `texture`
+ * @param textures - `const GLuint *`, length `count`, object class `texture`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBindTextures.xhtml
  */
 export function bindTextures(first: GLuint, count: GLsizei, textures: GLuint[] | Uint32Array): void {
@@ -489,7 +489,7 @@ export function bindTextures(first: GLuint, count: GLsizei, textures: GLuint[] |
  * Provided by `GL_VERSION_4_5`.
  *
  * @param unit - `GLuint`
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBindTextureUnit.xhtml
  */
 export function bindTextureUnit(unit: GLuint, texture: GLuint): void {
@@ -502,7 +502,7 @@ export function bindTextureUnit(unit: GLuint, texture: GLuint): void {
  * Provided by `GL_VERSION_4_0`.
  *
  * @param target - `GLenum`, group `BindTransformFeedbackTarget`
- * @param id - `GLuint`, object kind `transform feedback`
+ * @param id - `GLuint`, object class `transform feedback`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBindTransformFeedback.xhtml
  */
 export function bindTransformFeedback(target: BindTransformFeedbackTarget, id: GLuint): void {
@@ -514,7 +514,7 @@ export function bindTransformFeedback(target: BindTransformFeedbackTarget, id: G
  *
  * Provided by `GL_VERSION_3_0`.
  *
- * @param array - `GLuint`, object kind `vertex array`
+ * @param array - `GLuint`, object class `vertex array`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBindVertexArray.xhtml
  */
 export function bindVertexArray(array: GLuint): void {
@@ -527,7 +527,7 @@ export function bindVertexArray(array: GLuint): void {
  * Provided by `GL_VERSION_4_3`.
  *
  * @param bindingindex - `GLuint`
- * @param buffer - `GLuint`, object kind `buffer`
+ * @param buffer - `GLuint`, object class `buffer`
  * @param offset - `GLintptr`
  * @param stride - `GLsizei`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBindVertexBuffer.xhtml
@@ -543,7 +543,7 @@ export function bindVertexBuffer(bindingindex: GLuint, buffer: GLuint, offset: G
  *
  * @param first - `GLuint`
  * @param count - `GLsizei`
- * @param buffers - `const GLuint *`, length `count`, object kind `buffer`
+ * @param buffers - `const GLuint *`, length `count`, object class `buffer`
  * @param offsets - `const GLintptr *`, length `count`
  * @param strides - `const GLsizei *`, length `count`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBindVertexBuffers.xhtml
@@ -735,8 +735,8 @@ export function blitFramebuffer(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param readFramebuffer - `GLuint`, object kind `framebuffer`
- * @param drawFramebuffer - `GLuint`, object kind `framebuffer`
+ * @param readFramebuffer - `GLuint`, object class `framebuffer`
+ * @param drawFramebuffer - `GLuint`, object class `framebuffer`
  * @param srcX0 - `GLint`
  * @param srcY0 - `GLint`
  * @param srcX1 - `GLint`
@@ -857,7 +857,7 @@ export function checkFramebufferStatus(target: FramebufferTarget): FramebufferSt
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param framebuffer - `GLuint`, object kind `framebuffer`
+ * @param framebuffer - `GLuint`, object class `framebuffer`
  * @param target - `GLenum`, group `FramebufferTarget`
  * @returns `GLenum`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glCheckNamedFramebufferStatus.xhtml
@@ -1040,7 +1040,7 @@ export function clearDepthf(d: GLfloat): void {
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param buffer - `GLuint`, object kind `buffer`
+ * @param buffer - `GLuint`, object class `buffer`
  * @param internalformat - `GLenum`, group `SizedInternalFormat`
  * @param format - `GLenum`, group `PixelFormat`
  * @param type - `GLenum`, group `PixelType`
@@ -1062,7 +1062,7 @@ export function clearNamedBufferData(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param buffer - `GLuint`, object kind `buffer`
+ * @param buffer - `GLuint`, object class `buffer`
  * @param internalformat - `GLenum`, group `SizedInternalFormat`
  * @param offset - `GLintptr`
  * @param size - `GLsizeiptr`
@@ -1088,7 +1088,7 @@ export function clearNamedBufferSubData(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param framebuffer - `GLuint`, object kind `framebuffer`
+ * @param framebuffer - `GLuint`, object class `framebuffer`
  * @param buffer - `GLenum`, group `Buffer`
  * @param drawbuffer - `GLint`
  * @param depth - `GLfloat`
@@ -1110,7 +1110,7 @@ export function clearNamedFramebufferfi(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param framebuffer - `GLuint`, object kind `framebuffer`
+ * @param framebuffer - `GLuint`, object class `framebuffer`
  * @param buffer - `GLenum`, group `Buffer`
  * @param drawbuffer - `GLint`
  * @param value - `const GLfloat *`, length `COMPSIZE(buffer)`
@@ -1130,7 +1130,7 @@ export function clearNamedFramebufferfv(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param framebuffer - `GLuint`, object kind `framebuffer`
+ * @param framebuffer - `GLuint`, object class `framebuffer`
  * @param buffer - `GLenum`, group `Buffer`
  * @param drawbuffer - `GLint`
  * @param value - `const GLint *`, length `COMPSIZE(buffer)`
@@ -1150,7 +1150,7 @@ export function clearNamedFramebufferiv(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param framebuffer - `GLuint`, object kind `framebuffer`
+ * @param framebuffer - `GLuint`, object class `framebuffer`
  * @param buffer - `GLenum`, group `Buffer`
  * @param drawbuffer - `GLint`
  * @param value - `const GLuint *`, length `COMPSIZE(buffer)`
@@ -1182,7 +1182,7 @@ export function clearStencil(s: GLint): void {
  *
  * Provided by `GL_VERSION_4_4`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param level - `GLint`
  * @param format - `GLenum`, group `PixelFormat`
  * @param type - `GLenum`, group `PixelType`
@@ -1204,7 +1204,7 @@ export function clearTexImage(
  *
  * Provided by `GL_VERSION_4_4`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param level - `GLint`
  * @param xoffset - `GLint`
  * @param yoffset - `GLint`
@@ -1238,7 +1238,7 @@ export function clearTexSubImage(
  *
  * Provided by `GL_VERSION_3_2`.
  *
- * @param sync - `GLsync`, object kind `sync`
+ * @param sync - `GLsync`, object class `sync`
  * @param flags - `GLbitfield`, group `SyncObjectMask`
  * @param timeout - `GLuint64`
  * @returns `GLenum`
@@ -1297,7 +1297,7 @@ export function colorMaski(index: GLuint, r: boolean, g: boolean, b: boolean, a:
  *
  * Provided by `GL_VERSION_2_0`.
  *
- * @param shader - `GLuint`, object kind `shader`
+ * @param shader - `GLuint`, object class `shader`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glCompileShader.xhtml
  */
 export function compileShader(shader: GLuint): void {
@@ -1483,7 +1483,7 @@ export function compressedTexSubImage3D(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param level - `GLint`
  * @param xoffset - `GLint`
  * @param width - `GLsizei`
@@ -1509,7 +1509,7 @@ export function compressedTextureSubImage1D(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param level - `GLint`
  * @param xoffset - `GLint`
  * @param yoffset - `GLint`
@@ -1539,7 +1539,7 @@ export function compressedTextureSubImage2D(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param level - `GLint`
  * @param xoffset - `GLint`
  * @param yoffset - `GLint`
@@ -1665,8 +1665,8 @@ export function copyImageSubData(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param readBuffer - `GLuint`, object kind `buffer`
- * @param writeBuffer - `GLuint`, object kind `buffer`
+ * @param readBuffer - `GLuint`, object class `buffer`
+ * @param writeBuffer - `GLuint`, object class `buffer`
  * @param readOffset - `GLintptr`
  * @param writeOffset - `GLintptr`
  * @param size - `GLsizeiptr`
@@ -1823,7 +1823,7 @@ export function copyTexSubImage3D(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param level - `GLint`
  * @param xoffset - `GLint`
  * @param x - `GLint`
@@ -1847,7 +1847,7 @@ export function copyTextureSubImage1D(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param level - `GLint`
  * @param xoffset - `GLint`
  * @param yoffset - `GLint`
@@ -1875,7 +1875,7 @@ export function copyTextureSubImage2D(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param level - `GLint`
  * @param xoffset - `GLint`
  * @param yoffset - `GLint`
@@ -2142,7 +2142,7 @@ export function debugMessageInsert(
  * Provided by `GL_VERSION_1_5`.
  *
  * @param n - `GLsizei`
- * @param buffers - `const GLuint *`, length `n`, object kind `buffer`
+ * @param buffers - `const GLuint *`, length `n`, object class `buffer`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDeleteBuffers.xhtml
  */
 export function deleteBuffers(n: GLsizei, buffers: GLuint[] | Uint32Array): void {
@@ -2155,7 +2155,7 @@ export function deleteBuffers(n: GLsizei, buffers: GLuint[] | Uint32Array): void
  * Provided by `GL_VERSION_3_0`.
  *
  * @param n - `GLsizei`
- * @param framebuffers - `const GLuint *`, length `n`, object kind `framebuffer`
+ * @param framebuffers - `const GLuint *`, length `n`, object class `framebuffer`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDeleteFramebuffers.xhtml
  */
 export function deleteFramebuffers(n: GLsizei, framebuffers: GLuint[] | Uint32Array): void {
@@ -2167,7 +2167,7 @@ export function deleteFramebuffers(n: GLsizei, framebuffers: GLuint[] | Uint32Ar
  *
  * Provided by `GL_VERSION_2_0`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDeleteProgram.xhtml
  */
 export function deleteProgram(program: GLuint): void {
@@ -2180,7 +2180,7 @@ export function deleteProgram(program: GLuint): void {
  * Provided by `GL_VERSION_4_1`.
  *
  * @param n - `GLsizei`
- * @param pipelines - `const GLuint *`, length `n`, object kind `program pipeline`
+ * @param pipelines - `const GLuint *`, length `n`, object class `program pipeline`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDeleteProgramPipelines.xhtml
  */
 export function deleteProgramPipelines(n: GLsizei, pipelines: GLuint[] | Uint32Array): void {
@@ -2193,7 +2193,7 @@ export function deleteProgramPipelines(n: GLsizei, pipelines: GLuint[] | Uint32A
  * Provided by `GL_VERSION_1_5`.
  *
  * @param n - `GLsizei`
- * @param ids - `const GLuint *`, length `n`, object kind `query`
+ * @param ids - `const GLuint *`, length `n`, object class `query`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDeleteQueries.xhtml
  */
 export function deleteQueries(n: GLsizei, ids: GLuint[] | Uint32Array): void {
@@ -2206,7 +2206,7 @@ export function deleteQueries(n: GLsizei, ids: GLuint[] | Uint32Array): void {
  * Provided by `GL_VERSION_3_0`.
  *
  * @param n - `GLsizei`
- * @param renderbuffers - `const GLuint *`, length `n`, object kind `renderbuffer`
+ * @param renderbuffers - `const GLuint *`, length `n`, object class `renderbuffer`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDeleteRenderbuffers.xhtml
  */
 export function deleteRenderbuffers(n: GLsizei, renderbuffers: GLuint[] | Uint32Array): void {
@@ -2219,7 +2219,7 @@ export function deleteRenderbuffers(n: GLsizei, renderbuffers: GLuint[] | Uint32
  * Provided by `GL_VERSION_3_3`.
  *
  * @param count - `GLsizei`
- * @param samplers - `const GLuint *`, length `count`, object kind `sampler`
+ * @param samplers - `const GLuint *`, length `count`, object class `sampler`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDeleteSamplers.xhtml
  */
 export function deleteSamplers(count: GLsizei, samplers: GLuint[] | Uint32Array): void {
@@ -2231,7 +2231,7 @@ export function deleteSamplers(count: GLsizei, samplers: GLuint[] | Uint32Array)
  *
  * Provided by `GL_VERSION_2_0`.
  *
- * @param shader - `GLuint`, object kind `shader`
+ * @param shader - `GLuint`, object class `shader`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDeleteShader.xhtml
  */
 export function deleteShader(shader: GLuint): void {
@@ -2243,7 +2243,7 @@ export function deleteShader(shader: GLuint): void {
  *
  * Provided by `GL_VERSION_3_2`.
  *
- * @param sync - `GLsync`, object kind `sync`
+ * @param sync - `GLsync`, object class `sync`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDeleteSync.xhtml
  */
 export function deleteSync(sync: GLsync): void {
@@ -2256,7 +2256,7 @@ export function deleteSync(sync: GLsync): void {
  * Provided by `GL_VERSION_1_1`.
  *
  * @param n - `GLsizei`
- * @param textures - `const GLuint *`, length `n`, object kind `texture`
+ * @param textures - `const GLuint *`, length `n`, object class `texture`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDeleteTextures.xhtml
  */
 export function deleteTextures(n: GLsizei, textures: GLuint[] | Uint32Array): void {
@@ -2269,7 +2269,7 @@ export function deleteTextures(n: GLsizei, textures: GLuint[] | Uint32Array): vo
  * Provided by `GL_VERSION_4_0`.
  *
  * @param n - `GLsizei`
- * @param ids - `const GLuint *`, length `n`, object kind `transform feedback`
+ * @param ids - `const GLuint *`, length `n`, object class `transform feedback`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDeleteTransformFeedbacks.xhtml
  */
 export function deleteTransformFeedbacks(n: GLsizei, ids: GLuint[] | Uint32Array): void {
@@ -2282,7 +2282,7 @@ export function deleteTransformFeedbacks(n: GLsizei, ids: GLuint[] | Uint32Array
  * Provided by `GL_VERSION_3_0`.
  *
  * @param n - `GLsizei`
- * @param arrays - `const GLuint *`, length `n`, object kind `vertex array`
+ * @param arrays - `const GLuint *`, length `n`, object class `vertex array`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDeleteVertexArrays.xhtml
  */
 export function deleteVertexArrays(n: GLsizei, arrays: GLuint[] | Uint32Array): void {
@@ -2372,8 +2372,8 @@ export function depthRangeIndexed(index: GLuint, n: GLdouble, f: GLdouble): void
  *
  * Provided by `GL_VERSION_2_0`.
  *
- * @param program - `GLuint`, object kind `program`
- * @param shader - `GLuint`, object kind `shader`
+ * @param program - `GLuint`, object class `program`
+ * @param shader - `GLuint`, object class `shader`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDetachShader.xhtml
  */
 export function detachShader(program: GLuint, shader: GLuint): void {
@@ -2410,7 +2410,7 @@ export function disablei(target: EnableCap, index: GLuint): void {
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param vaobj - `GLuint`, object kind `vertex array`
+ * @param vaobj - `GLuint`, object class `vertex array`
  * @param index - `GLuint`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDisableVertexArrayAttrib.xhtml
  */
@@ -2748,7 +2748,7 @@ export function drawRangeElementsBaseVertex(
  * Provided by `GL_VERSION_4_0`.
  *
  * @param mode - `GLenum`, group `PrimitiveType`
- * @param id - `GLuint`, object kind `transform feedback`
+ * @param id - `GLuint`, object class `transform feedback`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDrawTransformFeedback.xhtml
  */
 export function drawTransformFeedback(mode: PrimitiveType, id: GLuint): void {
@@ -2761,7 +2761,7 @@ export function drawTransformFeedback(mode: PrimitiveType, id: GLuint): void {
  * Provided by `GL_VERSION_4_2`.
  *
  * @param mode - `GLenum`, group `PrimitiveType`
- * @param id - `GLuint`, object kind `transform feedback`
+ * @param id - `GLuint`, object class `transform feedback`
  * @param instancecount - `GLsizei`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDrawTransformFeedbackInstanced.xhtml
  */
@@ -2775,7 +2775,7 @@ export function drawTransformFeedbackInstanced(mode: PrimitiveType, id: GLuint, 
  * Provided by `GL_VERSION_4_0`.
  *
  * @param mode - `GLenum`, group `PrimitiveType`
- * @param id - `GLuint`, object kind `transform feedback`
+ * @param id - `GLuint`, object class `transform feedback`
  * @param stream - `GLuint`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDrawTransformFeedbackStream.xhtml
  */
@@ -2789,7 +2789,7 @@ export function drawTransformFeedbackStream(mode: PrimitiveType, id: GLuint, str
  * Provided by `GL_VERSION_4_2`.
  *
  * @param mode - `GLenum`, group `PrimitiveType`
- * @param id - `GLuint`, object kind `transform feedback`
+ * @param id - `GLuint`, object class `transform feedback`
  * @param stream - `GLuint`
  * @param instancecount - `GLsizei`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDrawTransformFeedbackStreamInstanced.xhtml
@@ -2833,7 +2833,7 @@ export function enablei(target: EnableCap, index: GLuint): void {
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param vaobj - `GLuint`, object kind `vertex array`
+ * @param vaobj - `GLuint`, object class `vertex array`
  * @param index - `GLuint`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glEnableVertexArrayAttrib.xhtml
  */
@@ -2951,7 +2951,7 @@ export function flushMappedBufferRange(target: BufferTargetARB, offset: GLintptr
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param buffer - `GLuint`, object kind `buffer`
+ * @param buffer - `GLuint`, object class `buffer`
  * @param offset - `GLintptr`
  * @param length - `GLsizeiptr`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glFlushMappedNamedBufferRange.xhtml
@@ -2982,7 +2982,7 @@ export function framebufferParameteri(target: FramebufferTarget, pname: Framebuf
  * @param target - `GLenum`, group `FramebufferTarget`
  * @param attachment - `GLenum`, group `FramebufferAttachment`
  * @param renderbuffertarget - `GLenum`, group `RenderbufferTarget`
- * @param renderbuffer - `GLuint`, object kind `renderbuffer`
+ * @param renderbuffer - `GLuint`, object class `renderbuffer`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glFramebufferRenderbuffer.xhtml
  */
 export function framebufferRenderbuffer(
@@ -3001,7 +3001,7 @@ export function framebufferRenderbuffer(
  *
  * @param target - `GLenum`, group `FramebufferTarget`
  * @param attachment - `GLenum`, group `FramebufferAttachment`
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param level - `GLint`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glFramebufferTexture.xhtml
  */
@@ -3022,7 +3022,7 @@ export function framebufferTexture(
  * @param target - `GLenum`, group `FramebufferTarget`
  * @param attachment - `GLenum`, group `FramebufferAttachment`
  * @param textarget - `GLenum`, group `TextureTarget`
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param level - `GLint`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glFramebufferTexture1D.xhtml
  */
@@ -3044,7 +3044,7 @@ export function framebufferTexture1D(
  * @param target - `GLenum`, group `FramebufferTarget`
  * @param attachment - `GLenum`, group `FramebufferAttachment`
  * @param textarget - `GLenum`, group `TextureTarget`
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param level - `GLint`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glFramebufferTexture2D.xhtml
  */
@@ -3066,7 +3066,7 @@ export function framebufferTexture2D(
  * @param target - `GLenum`, group `FramebufferTarget`
  * @param attachment - `GLenum`, group `FramebufferAttachment`
  * @param textarget - `GLenum`, group `TextureTarget`
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param level - `GLint`
  * @param zoffset - `GLint`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glFramebufferTexture3D.xhtml
@@ -3089,7 +3089,7 @@ export function framebufferTexture3D(
  *
  * @param target - `GLenum`, group `FramebufferTarget`
  * @param attachment - `GLenum`, group `FramebufferAttachment`
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param level - `GLint`
  * @param layer - `GLint`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glFramebufferTextureLayer.xhtml
@@ -3148,7 +3148,7 @@ export function generateMipmap(target: TextureTarget): void {
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGenerateTextureMipmap.xhtml
  */
 export function generateTextureMipmap(texture: GLuint): void {
@@ -3280,7 +3280,7 @@ export function genVertexArrays(n: GLsizei): GLuint[] {
  *
  * Provided by `GL_VERSION_2_0`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param index - `GLuint`
  * @param bufSize - `GLsizei`
  * @returns Tuple of `length` (`GLsizei *`), `size` (`GLint *`), `type` (`GLenum *`), `name` (`GLchar *`)
@@ -3318,7 +3318,7 @@ export function getActiveAttrib(
  *
  * Provided by `GL_VERSION_4_0`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param shadertype - `GLenum`, group `ShaderType`
  * @param index - `GLuint`
  * @param bufSize - `GLsizei`
@@ -3348,7 +3348,7 @@ export function getActiveSubroutineName(
  *
  * Provided by `GL_VERSION_4_0`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param shadertype - `GLenum`, group `ShaderType`
  * @param index - `GLuint`
  * @param bufSize - `GLsizei`
@@ -3378,7 +3378,7 @@ export function getActiveSubroutineUniformName(
  *
  * Provided by `GL_VERSION_2_0`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param index - `GLuint`
  * @param bufSize - `GLsizei`
  * @returns Tuple of `length` (`GLsizei *`), `size` (`GLint *`), `type` (`GLenum *`), `name` (`GLchar *`)
@@ -3416,7 +3416,7 @@ export function getActiveUniform(
  *
  * Provided by `GL_VERSION_3_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param uniformBlockIndex - `GLuint`
  * @param bufSize - `GLsizei`
  * @returns Tuple of `length` (`GLsizei *`), `uniformBlockName` (`GLchar *`)
@@ -3444,7 +3444,7 @@ export function getActiveUniformBlockName(
  *
  * Provided by `GL_VERSION_3_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param uniformIndex - `GLuint`
  * @param bufSize - `GLsizei`
  * @returns Tuple of `length` (`GLsizei *`), `uniformName` (`GLchar *`)
@@ -3468,7 +3468,7 @@ export function getActiveUniformName(program: GLuint, uniformIndex: GLuint, bufS
  *
  * Provided by `GL_VERSION_2_0`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param maxCount - `GLsizei`
  * @returns Tuple of `count` (`GLsizei *`), `shaders` (`GLuint *`)
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetAttachedShaders.xhtml
@@ -3485,7 +3485,7 @@ export function getAttachedShaders(program: GLuint, maxCount: GLsizei): [GLsizei
  *
  * Provided by `GL_VERSION_2_0`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param name - `const GLchar *`
  * @returns `GLint`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetAttribLocation.xhtml
@@ -3569,7 +3569,7 @@ export function getCompressedTexImage(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param level - `GLint`
  * @param bufSize - `GLsizei`
  * @param pixels - `void *`, length `bufSize`
@@ -3589,7 +3589,7 @@ export function getCompressedTextureImage(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param level - `GLint`
  * @param xoffset - `GLint`
  * @param yoffset - `GLint`
@@ -3671,7 +3671,7 @@ export function getError(): ErrorCode {
  *
  * Provided by `GL_VERSION_3_3`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param name - `const GLchar *`
  * @returns `GLint`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetFragDataIndex.xhtml
@@ -3685,7 +3685,7 @@ export function getFragDataIndex(program: GLuint, name: string): GLint {
  *
  * Provided by `GL_VERSION_3_0`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param name - `const GLchar *`, length `COMPSIZE(name)`
  * @returns `GLint`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetFragDataLocation.xhtml
@@ -3793,7 +3793,7 @@ export function getInternalformativ(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param buffer - `GLuint`, object kind `buffer`
+ * @param buffer - `GLuint`, object class `buffer`
  * @param pname - `GLenum`, group `BufferPNameARB`
  * @returns `params` (`GLint64 *`)
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetNamedBufferParameteri64v.xhtml
@@ -3809,7 +3809,7 @@ export function getNamedBufferParameteri64v(buffer: GLuint, pname: BufferPNameAR
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param buffer - `GLuint`, object kind `buffer`
+ * @param buffer - `GLuint`, object class `buffer`
  * @param pname - `GLenum`, group `BufferPNameARB`
  * @returns `params` (`GLint *`)
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetNamedBufferParameteriv.xhtml
@@ -3825,7 +3825,7 @@ export function getNamedBufferParameteriv(buffer: GLuint, pname: BufferPNameARB)
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param buffer - `GLuint`, object kind `buffer`
+ * @param buffer - `GLuint`, object class `buffer`
  * @param offset - `GLintptr`
  * @param size - `GLsizeiptr`
  * @param data - `void *`, length `size`
@@ -3845,7 +3845,7 @@ export function getNamedBufferSubData(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param framebuffer - `GLuint`, object kind `framebuffer`
+ * @param framebuffer - `GLuint`, object class `framebuffer`
  * @param attachment - `GLenum`, group `FramebufferAttachment`
  * @param pname - `GLenum`, group `FramebufferAttachmentParameterName`
  * @returns `params` (`GLint *`)
@@ -3866,7 +3866,7 @@ export function getNamedFramebufferAttachmentParameteriv(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param framebuffer - `GLuint`, object kind `framebuffer`
+ * @param framebuffer - `GLuint`, object class `framebuffer`
  * @param pname - `GLenum`, group `GetFramebufferParameter`
  * @returns `param` (`GLint *`)
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetNamedFramebufferParameteriv.xhtml
@@ -3882,7 +3882,7 @@ export function getNamedFramebufferParameteriv(framebuffer: GLuint, pname: GetFr
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param renderbuffer - `GLuint`, object kind `renderbuffer`
+ * @param renderbuffer - `GLuint`, object class `renderbuffer`
  * @param pname - `GLenum`, group `RenderbufferParameterName`
  * @returns `params` (`GLint *`)
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetNamedRenderbufferParameteriv.xhtml
@@ -3989,7 +3989,7 @@ export function getObjectPtrLabel(ptr: ArrayBufferView | GLintptr | null, bufSiz
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param bufSize - `GLsizei`
  * @param binary - `void *`, length `bufSize`
  * @returns Tuple of `length` (`GLsizei *`), `binaryFormat` (`GLenum *`)
@@ -4011,7 +4011,7 @@ export function getProgramBinary(
  *
  * Provided by `GL_VERSION_2_0`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param pname - `GLenum`, group `ProgramPropertyARB`
  * @returns `params` (`GLint *`)
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetProgramiv.xhtml
@@ -4027,7 +4027,7 @@ export function getProgramiv(program: GLuint, pname: ProgramPropertyARB): GLint 
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param pipeline - `GLuint`, object kind `program pipeline`
+ * @param pipeline - `GLuint`, object class `program pipeline`
  * @param pname - `GLenum`, group `PipelineParameterName`
  * @returns `params` (`GLint *`)
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetProgramPipelineiv.xhtml
@@ -4043,7 +4043,7 @@ export function getProgramPipelineiv(pipeline: GLuint, pname: PipelineParameterN
  *
  * Provided by `GL_VERSION_4_3`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param programInterface - `GLenum`, group `ProgramInterface`
  * @param name - `const GLchar *`, length `COMPSIZE(name)`
  * @returns `GLuint`
@@ -4058,7 +4058,7 @@ export function getProgramResourceIndex(program: GLuint, programInterface: Progr
  *
  * Provided by `GL_VERSION_4_3`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param programInterface - `GLenum`, group `ProgramInterface`
  * @param index - `GLuint`
  * @param propCount - `GLsizei`
@@ -4086,7 +4086,7 @@ export function getProgramResourceiv(
  *
  * Provided by `GL_VERSION_4_3`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param programInterface - `GLenum`, group `ProgramInterface`
  * @param name - `const GLchar *`, length `COMPSIZE(name)`
  * @returns `GLint`
@@ -4101,7 +4101,7 @@ export function getProgramResourceLocation(program: GLuint, programInterface: Pr
  *
  * Provided by `GL_VERSION_4_3`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param programInterface - `GLenum`, group `ProgramInterface`
  * @param name - `const GLchar *`, length `COMPSIZE(name)`
  * @returns `GLint`
@@ -4120,7 +4120,7 @@ export function getProgramResourceLocationIndex(
  *
  * Provided by `GL_VERSION_4_3`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param programInterface - `GLenum`, group `ProgramInterface`
  * @param index - `GLuint`
  * @param bufSize - `GLsizei`
@@ -4150,7 +4150,7 @@ export function getProgramResourceName(
  *
  * Provided by `GL_VERSION_4_0`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param shadertype - `GLenum`, group `ShaderType`
  * @param pname - `GLenum`, group `ProgramStagePName`
  * @returns `values` (`GLint *`)
@@ -4167,8 +4167,8 @@ export function getProgramStageiv(program: GLuint, shadertype: ShaderType, pname
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param id - `GLuint`, object kind `query`
- * @param buffer - `GLuint`, object kind `buffer`
+ * @param id - `GLuint`, object class `query`
+ * @param buffer - `GLuint`, object class `buffer`
  * @param pname - `GLenum`, group `QueryObjectParameterName`
  * @param offset - `GLintptr`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetQueryBufferObjecti64v.xhtml
@@ -4187,8 +4187,8 @@ export function getQueryBufferObjecti64v(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param id - `GLuint`, object kind `query`
- * @param buffer - `GLuint`, object kind `buffer`
+ * @param id - `GLuint`, object class `query`
+ * @param buffer - `GLuint`, object class `buffer`
  * @param pname - `GLenum`, group `QueryObjectParameterName`
  * @param offset - `GLintptr`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetQueryBufferObjectiv.xhtml
@@ -4207,8 +4207,8 @@ export function getQueryBufferObjectiv(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param id - `GLuint`, object kind `query`
- * @param buffer - `GLuint`, object kind `buffer`
+ * @param id - `GLuint`, object class `query`
+ * @param buffer - `GLuint`, object class `buffer`
  * @param pname - `GLenum`, group `QueryObjectParameterName`
  * @param offset - `GLintptr`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetQueryBufferObjectui64v.xhtml
@@ -4227,8 +4227,8 @@ export function getQueryBufferObjectui64v(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param id - `GLuint`, object kind `query`
- * @param buffer - `GLuint`, object kind `buffer`
+ * @param id - `GLuint`, object class `query`
+ * @param buffer - `GLuint`, object class `buffer`
  * @param pname - `GLenum`, group `QueryObjectParameterName`
  * @param offset - `GLintptr`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetQueryBufferObjectuiv.xhtml
@@ -4263,7 +4263,7 @@ export function getQueryiv(target: QueryTarget, pname: QueryParameterName): GLin
  *
  * Provided by `GL_VERSION_3_3`.
  *
- * @param id - `GLuint`, object kind `query`
+ * @param id - `GLuint`, object class `query`
  * @param pname - `GLenum`, group `QueryObjectParameterName`
  * @returns `params` (`GLint64 *`)
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetQueryObjecti64v.xhtml
@@ -4279,7 +4279,7 @@ export function getQueryObjecti64v(id: GLuint, pname: QueryObjectParameterName):
  *
  * Provided by `GL_VERSION_1_5`.
  *
- * @param id - `GLuint`, object kind `query`
+ * @param id - `GLuint`, object class `query`
  * @param pname - `GLenum`, group `QueryObjectParameterName`
  * @returns `params` (`GLint *`)
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetQueryObjectiv.xhtml
@@ -4295,7 +4295,7 @@ export function getQueryObjectiv(id: GLuint, pname: QueryObjectParameterName): G
  *
  * Provided by `GL_VERSION_3_3`.
  *
- * @param id - `GLuint`, object kind `query`
+ * @param id - `GLuint`, object class `query`
  * @param pname - `GLenum`, group `QueryObjectParameterName`
  * @returns `params` (`GLuint64 *`)
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetQueryObjectui64v.xhtml
@@ -4311,7 +4311,7 @@ export function getQueryObjectui64v(id: GLuint, pname: QueryObjectParameterName)
  *
  * Provided by `GL_VERSION_1_5`.
  *
- * @param id - `GLuint`, object kind `query`
+ * @param id - `GLuint`, object class `query`
  * @param pname - `GLenum`, group `QueryObjectParameterName`
  * @returns `params` (`GLuint *`)
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetQueryObjectuiv.xhtml
@@ -4343,7 +4343,7 @@ export function getRenderbufferParameteriv(target: RenderbufferTarget, pname: Re
  *
  * Provided by `GL_VERSION_2_0`.
  *
- * @param shader - `GLuint`, object kind `shader`
+ * @param shader - `GLuint`, object class `shader`
  * @param pname - `GLenum`, group `ShaderParameterName`
  * @returns `params` (`GLint *`)
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetShaderiv.xhtml
@@ -4376,7 +4376,7 @@ export function getShaderPrecisionFormat(shadertype: ShaderType, precisiontype: 
  *
  * Provided by `GL_VERSION_2_0`.
  *
- * @param shader - `GLuint`, object kind `shader`
+ * @param shader - `GLuint`, object class `shader`
  * @param bufSize - `GLsizei`
  * @returns Tuple of `length` (`GLsizei *`), `source` (`GLchar *`)
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetShaderSource.xhtml
@@ -4426,7 +4426,7 @@ export function getStringi(name: StringName, index: GLuint): string {
  *
  * Provided by `GL_VERSION_4_0`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param shadertype - `GLenum`, group `ShaderType`
  * @param name - `const GLchar *`
  * @returns `GLuint`
@@ -4441,7 +4441,7 @@ export function getSubroutineIndex(program: GLuint, shadertype: ShaderType, name
  *
  * Provided by `GL_VERSION_4_0`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param shadertype - `GLenum`, group `ShaderType`
  * @param name - `const GLchar *`
  * @returns `GLint`
@@ -4456,7 +4456,7 @@ export function getSubroutineUniformLocation(program: GLuint, shadertype: Shader
  *
  * Provided by `GL_VERSION_3_2`.
  *
- * @param sync - `GLsync`, object kind `sync`
+ * @param sync - `GLsync`, object class `sync`
  * @param pname - `GLenum`, group `SyncParameterName`
  * @param count - `GLsizei`
  * @returns Tuple of `length` (`GLsizei *`), `values` (`GLint *`)
@@ -4496,7 +4496,7 @@ export function getTexImage(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param level - `GLint`
  * @param format - `GLenum`, group `PixelFormat`
  * @param type - `GLenum`, group `PixelType`
@@ -4520,7 +4520,7 @@ export function getTextureImage(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param level - `GLint`
  * @param pname - `GLenum`, group `GetTextureParameter`
  * @returns `params` (`GLfloat *`)
@@ -4537,7 +4537,7 @@ export function getTextureLevelParameterfv(texture: GLuint, level: GLint, pname:
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param level - `GLint`
  * @param pname - `GLenum`, group `GetTextureParameter`
  * @returns `params` (`GLint *`)
@@ -4554,7 +4554,7 @@ export function getTextureLevelParameteriv(texture: GLuint, level: GLint, pname:
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param pname - `GLenum`, group `GetTextureParameter`
  * @returns `params` (`GLfloat *`)
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetTextureParameterfv.xhtml
@@ -4570,7 +4570,7 @@ export function getTextureParameterfv(texture: GLuint, pname: GetTextureParamete
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param pname - `GLenum`, group `GetTextureParameter`
  * @returns `params` (`GLint *`)
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetTextureParameterIiv.xhtml
@@ -4586,7 +4586,7 @@ export function getTextureParameterIiv(texture: GLuint, pname: GetTextureParamet
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param pname - `GLenum`, group `GetTextureParameter`
  * @returns `params` (`GLuint *`)
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetTextureParameterIuiv.xhtml
@@ -4602,7 +4602,7 @@ export function getTextureParameterIuiv(texture: GLuint, pname: GetTextureParame
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param pname - `GLenum`, group `GetTextureParameter`
  * @returns `params` (`GLint *`)
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetTextureParameteriv.xhtml
@@ -4618,7 +4618,7 @@ export function getTextureParameteriv(texture: GLuint, pname: GetTextureParamete
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param level - `GLint`
  * @param xoffset - `GLint`
  * @param yoffset - `GLint`
@@ -4667,7 +4667,7 @@ export function getTextureSubImage(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param xfb - `GLuint`, object kind `transform feedback`
+ * @param xfb - `GLuint`, object class `transform feedback`
  * @param pname - `GLenum`, group `TransformFeedbackPName`
  * @param index - `GLuint`
  * @returns `param` (`GLint *`)
@@ -4684,7 +4684,7 @@ export function getTransformFeedbackiV(xfb: GLuint, pname: TransformFeedbackPNam
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param xfb - `GLuint`, object kind `transform feedback`
+ * @param xfb - `GLuint`, object class `transform feedback`
  * @param pname - `GLenum`, group `TransformFeedbackPName`
  * @param index - `GLuint`
  * @returns `param` (`GLint64 *`)
@@ -4701,7 +4701,7 @@ export function getTransformFeedbacki64V(xfb: GLuint, pname: TransformFeedbackPN
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param xfb - `GLuint`, object kind `transform feedback`
+ * @param xfb - `GLuint`, object class `transform feedback`
  * @param pname - `GLenum`, group `TransformFeedbackPName`
  * @returns `param` (`GLint *`)
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetTransformFeedbackiv.xhtml
@@ -4717,7 +4717,7 @@ export function getTransformFeedbackiv(xfb: GLuint, pname: TransformFeedbackPNam
  *
  * Provided by `GL_VERSION_3_0`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param index - `GLuint`
  * @param bufSize - `GLsizei`
  * @returns Tuple of `length` (`GLsizei *`), `size` (`GLsizei *`), `type` (`GLenum *`), `name` (`GLchar *`)
@@ -4755,7 +4755,7 @@ export function getTransformFeedbackVarying(
  *
  * Provided by `GL_VERSION_3_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param uniformBlockName - `const GLchar *`, length `COMPSIZE()`
  * @returns `GLuint`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetUniformBlockIndex.xhtml
@@ -4769,7 +4769,7 @@ export function getUniformBlockIndex(program: GLuint, uniformBlockName: string):
  *
  * Provided by `GL_VERSION_2_0`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param name - `const GLchar *`
  * @returns `GLint`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetUniformLocation.xhtml
@@ -4799,7 +4799,7 @@ export function getUniformSubroutineuiv(shadertype: ShaderType, location: GLint)
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param vaobj - `GLuint`, object kind `vertex array`
+ * @param vaobj - `GLuint`, object class `vertex array`
  * @param index - `GLuint`
  * @param pname - `GLenum`, group `VertexArrayPName`
  * @returns `param` (`GLint64 *`)
@@ -4816,7 +4816,7 @@ export function getVertexArrayIndexed64iv(vaobj: GLuint, index: GLuint, pname: V
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param vaobj - `GLuint`, object kind `vertex array`
+ * @param vaobj - `GLuint`, object class `vertex array`
  * @param index - `GLuint`
  * @param pname - `GLenum`, group `VertexArrayPName`
  * @returns `param` (`GLint *`)
@@ -4833,7 +4833,7 @@ export function getVertexArrayIndexediv(vaobj: GLuint, index: GLuint, pname: Ver
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param vaobj - `GLuint`, object kind `vertex array`
+ * @param vaobj - `GLuint`, object class `vertex array`
  * @param pname - `GLenum`, group `VertexArrayPName`
  * @returns `param` (`GLint *`)
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetVertexArrayiv.xhtml
@@ -4942,7 +4942,7 @@ export function hint(target: HintTarget, mode: HintMode): void {
  *
  * Provided by `GL_VERSION_4_3`.
  *
- * @param buffer - `GLuint`, object kind `buffer`
+ * @param buffer - `GLuint`, object class `buffer`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glInvalidateBufferData.xhtml
  */
 export function invalidateBufferData(buffer: GLuint): void {
@@ -4954,7 +4954,7 @@ export function invalidateBufferData(buffer: GLuint): void {
  *
  * Provided by `GL_VERSION_4_3`.
  *
- * @param buffer - `GLuint`, object kind `buffer`
+ * @param buffer - `GLuint`, object class `buffer`
  * @param offset - `GLintptr`
  * @param length - `GLsizeiptr`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glInvalidateBufferSubData.xhtml
@@ -4986,7 +4986,7 @@ export function invalidateFramebuffer(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param framebuffer - `GLuint`, object kind `framebuffer`
+ * @param framebuffer - `GLuint`, object class `framebuffer`
  * @param numAttachments - `GLsizei`
  * @param attachments - `const GLenum *`, group `FramebufferAttachment`, length `numAttachments`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glInvalidateNamedFramebufferData.xhtml
@@ -5004,7 +5004,7 @@ export function invalidateNamedFramebufferData(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param framebuffer - `GLuint`, object kind `framebuffer`
+ * @param framebuffer - `GLuint`, object class `framebuffer`
  * @param numAttachments - `GLsizei`
  * @param attachments - `const GLenum *`, group `FramebufferAttachment`, length `numAttachments`
  * @param x - `GLint`
@@ -5056,7 +5056,7 @@ export function invalidateSubFramebuffer(
  *
  * Provided by `GL_VERSION_4_3`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param level - `GLint`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glInvalidateTexImage.xhtml
  */
@@ -5069,7 +5069,7 @@ export function invalidateTexImage(texture: GLuint, level: GLint): void {
  *
  * Provided by `GL_VERSION_4_3`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param level - `GLint`
  * @param xoffset - `GLint`
  * @param yoffset - `GLint`
@@ -5097,7 +5097,7 @@ export function invalidateTexSubImage(
  *
  * Provided by `GL_VERSION_1_5`.
  *
- * @param buffer - `GLuint`, object kind `buffer`
+ * @param buffer - `GLuint`, object class `buffer`
  * @returns `GLboolean`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glIsBuffer.xhtml
  */
@@ -5137,7 +5137,7 @@ export function isEnabledi(target: EnableCap, index: GLuint): boolean {
  *
  * Provided by `GL_VERSION_3_0`.
  *
- * @param framebuffer - `GLuint`, object kind `framebuffer`
+ * @param framebuffer - `GLuint`, object class `framebuffer`
  * @returns `GLboolean`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glIsFramebuffer.xhtml
  */
@@ -5150,7 +5150,7 @@ export function isFramebuffer(framebuffer: GLuint): boolean {
  *
  * Provided by `GL_VERSION_2_0`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @returns `GLboolean`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glIsProgram.xhtml
  */
@@ -5163,7 +5163,7 @@ export function isProgram(program: GLuint): boolean {
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param pipeline - `GLuint`, object kind `program pipeline`
+ * @param pipeline - `GLuint`, object class `program pipeline`
  * @returns `GLboolean`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glIsProgramPipeline.xhtml
  */
@@ -5176,7 +5176,7 @@ export function isProgramPipeline(pipeline: GLuint): boolean {
  *
  * Provided by `GL_VERSION_1_5`.
  *
- * @param id - `GLuint`, object kind `query`
+ * @param id - `GLuint`, object class `query`
  * @returns `GLboolean`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glIsQuery.xhtml
  */
@@ -5189,7 +5189,7 @@ export function isQuery(id: GLuint): boolean {
  *
  * Provided by `GL_VERSION_3_0`.
  *
- * @param renderbuffer - `GLuint`, object kind `renderbuffer`
+ * @param renderbuffer - `GLuint`, object class `renderbuffer`
  * @returns `GLboolean`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glIsRenderbuffer.xhtml
  */
@@ -5202,7 +5202,7 @@ export function isRenderbuffer(renderbuffer: GLuint): boolean {
  *
  * Provided by `GL_VERSION_3_3`.
  *
- * @param sampler - `GLuint`, object kind `sampler`
+ * @param sampler - `GLuint`, object class `sampler`
  * @returns `GLboolean`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glIsSampler.xhtml
  */
@@ -5215,7 +5215,7 @@ export function isSampler(sampler: GLuint): boolean {
  *
  * Provided by `GL_VERSION_2_0`.
  *
- * @param shader - `GLuint`, object kind `shader`
+ * @param shader - `GLuint`, object class `shader`
  * @returns `GLboolean`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glIsShader.xhtml
  */
@@ -5228,7 +5228,7 @@ export function isShader(shader: GLuint): boolean {
  *
  * Provided by `GL_VERSION_3_2`.
  *
- * @param sync - `GLsync`, object kind `sync`
+ * @param sync - `GLsync`, object class `sync`
  * @returns `GLboolean`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glIsSync.xhtml
  */
@@ -5241,7 +5241,7 @@ export function isSync(sync: GLsync): boolean {
  *
  * Provided by `GL_VERSION_1_1`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @returns `GLboolean`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glIsTexture.xhtml
  */
@@ -5254,7 +5254,7 @@ export function isTexture(texture: GLuint): boolean {
  *
  * Provided by `GL_VERSION_4_0`.
  *
- * @param id - `GLuint`, object kind `transform feedback`
+ * @param id - `GLuint`, object class `transform feedback`
  * @returns `GLboolean`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glIsTransformFeedback.xhtml
  */
@@ -5267,7 +5267,7 @@ export function isTransformFeedback(id: GLuint): boolean {
  *
  * Provided by `GL_VERSION_3_0`.
  *
- * @param array - `GLuint`, object kind `vertex array`
+ * @param array - `GLuint`, object class `vertex array`
  * @returns `GLboolean`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glIsVertexArray.xhtml
  */
@@ -5292,7 +5292,7 @@ export function lineWidth(width: GLfloat): void {
  *
  * Provided by `GL_VERSION_2_0`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glLinkProgram.xhtml
  */
 export function linkProgram(program: GLuint): void {
@@ -5351,7 +5351,7 @@ export function mapBufferRange(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param buffer - `GLuint`, object kind `buffer`
+ * @param buffer - `GLuint`, object class `buffer`
  * @param access - `GLenum`, group `BufferAccessARB`
  * @returns `void *`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glMapNamedBuffer.xhtml
@@ -5365,7 +5365,7 @@ export function mapNamedBuffer(buffer: GLuint, access: BufferAccessARB): GLpoint
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param buffer - `GLuint`, object kind `buffer`
+ * @param buffer - `GLuint`, object class `buffer`
  * @param offset - `GLintptr`
  * @param length - `GLsizeiptr`
  * @param access - `GLbitfield`, group `MapBufferAccessMask`
@@ -5576,7 +5576,7 @@ export function multiDrawElementsIndirectCount(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param buffer - `GLuint`, object kind `buffer`
+ * @param buffer - `GLuint`, object class `buffer`
  * @param size - `GLsizeiptr`
  * @param data - `const void *`, length `size`
  * @param usage - `GLenum`, group `BufferUsageARB`
@@ -5596,7 +5596,7 @@ export function namedBufferData(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param buffer - `GLuint`, object kind `buffer`
+ * @param buffer - `GLuint`, object class `buffer`
  * @param size - `GLsizeiptr`
  * @param data - `const void *`, length `size`
  * @param flags - `GLbitfield`, group `BufferStorageMask`
@@ -5616,7 +5616,7 @@ export function namedBufferStorage(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param buffer - `GLuint`, object kind `buffer`
+ * @param buffer - `GLuint`, object class `buffer`
  * @param offset - `GLintptr`
  * @param size - `GLsizeiptr`
  * @param data - `const void *`, length `size`
@@ -5636,7 +5636,7 @@ export function namedBufferSubData(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param framebuffer - `GLuint`, object kind `framebuffer`
+ * @param framebuffer - `GLuint`, object class `framebuffer`
  * @param buf - `GLenum`, group `ColorBuffer`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glNamedFramebufferDrawBuffer.xhtml
  */
@@ -5649,7 +5649,7 @@ export function namedFramebufferDrawBuffer(framebuffer: GLuint, buf: ColorBuffer
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param framebuffer - `GLuint`, object kind `framebuffer`
+ * @param framebuffer - `GLuint`, object class `framebuffer`
  * @param n - `GLsizei`
  * @param bufs - `const GLenum *`, group `ColorBuffer`, length `n`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glNamedFramebufferDrawBuffers.xhtml
@@ -5663,7 +5663,7 @@ export function namedFramebufferDrawBuffers(framebuffer: GLuint, n: GLsizei, buf
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param framebuffer - `GLuint`, object kind `framebuffer`
+ * @param framebuffer - `GLuint`, object class `framebuffer`
  * @param pname - `GLenum`, group `FramebufferParameterName`
  * @param param - `GLint`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glNamedFramebufferParameteri.xhtml
@@ -5677,7 +5677,7 @@ export function namedFramebufferParameteri(framebuffer: GLuint, pname: Framebuff
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param framebuffer - `GLuint`, object kind `framebuffer`
+ * @param framebuffer - `GLuint`, object class `framebuffer`
  * @param src - `GLenum`, group `ColorBuffer`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glNamedFramebufferReadBuffer.xhtml
  */
@@ -5690,10 +5690,10 @@ export function namedFramebufferReadBuffer(framebuffer: GLuint, src: ColorBuffer
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param framebuffer - `GLuint`, object kind `framebuffer`
+ * @param framebuffer - `GLuint`, object class `framebuffer`
  * @param attachment - `GLenum`, group `FramebufferAttachment`
  * @param renderbuffertarget - `GLenum`, group `RenderbufferTarget`
- * @param renderbuffer - `GLuint`, object kind `renderbuffer`
+ * @param renderbuffer - `GLuint`, object class `renderbuffer`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glNamedFramebufferRenderbuffer.xhtml
  */
 export function namedFramebufferRenderbuffer(
@@ -5710,9 +5710,9 @@ export function namedFramebufferRenderbuffer(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param framebuffer - `GLuint`, object kind `framebuffer`
+ * @param framebuffer - `GLuint`, object class `framebuffer`
  * @param attachment - `GLenum`, group `FramebufferAttachment`
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param level - `GLint`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glNamedFramebufferTexture.xhtml
  */
@@ -5730,9 +5730,9 @@ export function namedFramebufferTexture(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param framebuffer - `GLuint`, object kind `framebuffer`
+ * @param framebuffer - `GLuint`, object class `framebuffer`
  * @param attachment - `GLenum`, group `FramebufferAttachment`
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param level - `GLint`
  * @param layer - `GLint`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glNamedFramebufferTextureLayer.xhtml
@@ -5752,7 +5752,7 @@ export function namedFramebufferTextureLayer(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param renderbuffer - `GLuint`, object kind `renderbuffer`
+ * @param renderbuffer - `GLuint`, object class `renderbuffer`
  * @param internalformat - `GLenum`, group `InternalFormat`
  * @param width - `GLsizei`
  * @param height - `GLsizei`
@@ -5772,7 +5772,7 @@ export function namedRenderbufferStorage(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param renderbuffer - `GLuint`, object kind `renderbuffer`
+ * @param renderbuffer - `GLuint`, object class `renderbuffer`
  * @param samples - `GLsizei`
  * @param internalformat - `GLenum`, group `InternalFormat`
  * @param width - `GLsizei`
@@ -6011,7 +6011,7 @@ export function primitiveRestartIndex(index: GLuint): void {
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param binaryFormat - `GLenum`
  * @param binary - `const void *`, length `length`
  * @param length - `GLsizei`
@@ -6031,7 +6031,7 @@ export function programBinary(
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param pname - `GLenum`, group `ProgramParameterPName`
  * @param value - `GLint`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glProgramParameteri.xhtml
@@ -6045,7 +6045,7 @@ export function programParameteri(program: GLuint, pname: ProgramParameterPName,
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param v0 - `GLdouble`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glProgramUniform1d.xhtml
@@ -6059,7 +6059,7 @@ export function programUniform1d(program: GLuint, location: GLint, v0: GLdouble)
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param value - `const GLdouble *`, length `count`
@@ -6079,7 +6079,7 @@ export function programUniform1dv(
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param v0 - `GLfloat`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glProgramUniform1f.xhtml
@@ -6093,7 +6093,7 @@ export function programUniform1f(program: GLuint, location: GLint, v0: GLfloat):
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param value - `const GLfloat *`, length `count`
@@ -6113,7 +6113,7 @@ export function programUniform1fv(
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param v0 - `GLint`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glProgramUniform1i.xhtml
@@ -6127,7 +6127,7 @@ export function programUniform1i(program: GLuint, location: GLint, v0: GLint): v
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param value - `const GLint *`, length `count`
@@ -6142,7 +6142,7 @@ export function programUniform1iv(program: GLuint, location: GLint, count: GLsiz
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param v0 - `GLuint`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glProgramUniform1ui.xhtml
@@ -6156,7 +6156,7 @@ export function programUniform1ui(program: GLuint, location: GLint, v0: GLuint):
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param value - `const GLuint *`, length `count`
@@ -6176,7 +6176,7 @@ export function programUniform1uiv(
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param v0 - `GLdouble`
  * @param v1 - `GLdouble`
@@ -6191,7 +6191,7 @@ export function programUniform2d(program: GLuint, location: GLint, v0: GLdouble,
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param value - `const GLdouble *`, length `count*2`
@@ -6211,7 +6211,7 @@ export function programUniform2dv(
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param v0 - `GLfloat`
  * @param v1 - `GLfloat`
@@ -6226,7 +6226,7 @@ export function programUniform2f(program: GLuint, location: GLint, v0: GLfloat, 
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param value - `const GLfloat *`, length `count*2`
@@ -6246,7 +6246,7 @@ export function programUniform2fv(
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param v0 - `GLint`
  * @param v1 - `GLint`
@@ -6261,7 +6261,7 @@ export function programUniform2i(program: GLuint, location: GLint, v0: GLint, v1
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param value - `const GLint *`, length `count*2`
@@ -6276,7 +6276,7 @@ export function programUniform2iv(program: GLuint, location: GLint, count: GLsiz
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param v0 - `GLuint`
  * @param v1 - `GLuint`
@@ -6291,7 +6291,7 @@ export function programUniform2ui(program: GLuint, location: GLint, v0: GLuint, 
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param value - `const GLuint *`, length `count*2`
@@ -6311,7 +6311,7 @@ export function programUniform2uiv(
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param v0 - `GLdouble`
  * @param v1 - `GLdouble`
@@ -6327,7 +6327,7 @@ export function programUniform3d(program: GLuint, location: GLint, v0: GLdouble,
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param value - `const GLdouble *`, length `count*3`
@@ -6347,7 +6347,7 @@ export function programUniform3dv(
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param v0 - `GLfloat`
  * @param v1 - `GLfloat`
@@ -6363,7 +6363,7 @@ export function programUniform3f(program: GLuint, location: GLint, v0: GLfloat, 
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param value - `const GLfloat *`, length `count*3`
@@ -6383,7 +6383,7 @@ export function programUniform3fv(
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param v0 - `GLint`
  * @param v1 - `GLint`
@@ -6399,7 +6399,7 @@ export function programUniform3i(program: GLuint, location: GLint, v0: GLint, v1
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param value - `const GLint *`, length `count*3`
@@ -6414,7 +6414,7 @@ export function programUniform3iv(program: GLuint, location: GLint, count: GLsiz
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param v0 - `GLuint`
  * @param v1 - `GLuint`
@@ -6430,7 +6430,7 @@ export function programUniform3ui(program: GLuint, location: GLint, v0: GLuint, 
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param value - `const GLuint *`, length `count*3`
@@ -6450,7 +6450,7 @@ export function programUniform3uiv(
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param v0 - `GLdouble`
  * @param v1 - `GLdouble`
@@ -6474,7 +6474,7 @@ export function programUniform4d(
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param value - `const GLdouble *`, length `count*4`
@@ -6494,7 +6494,7 @@ export function programUniform4dv(
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param v0 - `GLfloat`
  * @param v1 - `GLfloat`
@@ -6518,7 +6518,7 @@ export function programUniform4f(
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param value - `const GLfloat *`, length `count*4`
@@ -6538,7 +6538,7 @@ export function programUniform4fv(
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param v0 - `GLint`
  * @param v1 - `GLint`
@@ -6555,7 +6555,7 @@ export function programUniform4i(program: GLuint, location: GLint, v0: GLint, v1
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param value - `const GLint *`, length `count*4`
@@ -6570,7 +6570,7 @@ export function programUniform4iv(program: GLuint, location: GLint, count: GLsiz
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param v0 - `GLuint`
  * @param v1 - `GLuint`
@@ -6594,7 +6594,7 @@ export function programUniform4ui(
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param value - `const GLuint *`, length `count*4`
@@ -6614,7 +6614,7 @@ export function programUniform4uiv(
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param transpose - `GLboolean`
@@ -6636,7 +6636,7 @@ export function programUniformMatrix2dv(
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param transpose - `GLboolean`
@@ -6658,7 +6658,7 @@ export function programUniformMatrix2fv(
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param transpose - `GLboolean`
@@ -6680,7 +6680,7 @@ export function programUniformMatrix2x3dv(
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param transpose - `GLboolean`
@@ -6702,7 +6702,7 @@ export function programUniformMatrix2x3fv(
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param transpose - `GLboolean`
@@ -6724,7 +6724,7 @@ export function programUniformMatrix2x4dv(
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param transpose - `GLboolean`
@@ -6746,7 +6746,7 @@ export function programUniformMatrix2x4fv(
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param transpose - `GLboolean`
@@ -6768,7 +6768,7 @@ export function programUniformMatrix3dv(
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param transpose - `GLboolean`
@@ -6790,7 +6790,7 @@ export function programUniformMatrix3fv(
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param transpose - `GLboolean`
@@ -6812,7 +6812,7 @@ export function programUniformMatrix3x2dv(
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param transpose - `GLboolean`
@@ -6834,7 +6834,7 @@ export function programUniformMatrix3x2fv(
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param transpose - `GLboolean`
@@ -6856,7 +6856,7 @@ export function programUniformMatrix3x4dv(
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param transpose - `GLboolean`
@@ -6878,7 +6878,7 @@ export function programUniformMatrix3x4fv(
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param transpose - `GLboolean`
@@ -6900,7 +6900,7 @@ export function programUniformMatrix4dv(
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param transpose - `GLboolean`
@@ -6922,7 +6922,7 @@ export function programUniformMatrix4fv(
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param transpose - `GLboolean`
@@ -6944,7 +6944,7 @@ export function programUniformMatrix4x2dv(
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param transpose - `GLboolean`
@@ -6966,7 +6966,7 @@ export function programUniformMatrix4x2fv(
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param transpose - `GLboolean`
@@ -6988,7 +6988,7 @@ export function programUniformMatrix4x3dv(
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param location - `GLint`
  * @param count - `GLsizei`
  * @param transpose - `GLboolean`
@@ -7037,7 +7037,7 @@ export function pushDebugGroup(source: DebugSource, id: GLuint, length: GLsizei,
  *
  * Provided by `GL_VERSION_3_3`.
  *
- * @param id - `GLuint`, object kind `query`
+ * @param id - `GLuint`, object class `query`
  * @param target - `GLenum`, group `QueryCounterTarget`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glQueryCounter.xhtml
  */
@@ -7204,7 +7204,7 @@ export function sampleMaski(maskNumber: GLuint, mask: GLbitfield): void {
  *
  * Provided by `GL_VERSION_3_3`.
  *
- * @param sampler - `GLuint`, object kind `sampler`
+ * @param sampler - `GLuint`, object class `sampler`
  * @param pname - `GLenum`, group `SamplerParameterF`
  * @param param - `GLfloat`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glSamplerParameterf.xhtml
@@ -7218,7 +7218,7 @@ export function samplerParameterf(sampler: GLuint, pname: SamplerParameterF, par
  *
  * Provided by `GL_VERSION_3_3`.
  *
- * @param sampler - `GLuint`, object kind `sampler`
+ * @param sampler - `GLuint`, object class `sampler`
  * @param pname - `GLenum`, group `SamplerParameterF`
  * @param param - `const GLfloat *`, length `COMPSIZE(pname)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glSamplerParameterfv.xhtml
@@ -7232,7 +7232,7 @@ export function samplerParameterfv(sampler: GLuint, pname: SamplerParameterF, pa
  *
  * Provided by `GL_VERSION_3_3`.
  *
- * @param sampler - `GLuint`, object kind `sampler`
+ * @param sampler - `GLuint`, object class `sampler`
  * @param pname - `GLenum`, group `SamplerParameterI`
  * @param param - `GLint`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glSamplerParameteri.xhtml
@@ -7246,7 +7246,7 @@ export function samplerParameteri(sampler: GLuint, pname: SamplerParameterI, par
  *
  * Provided by `GL_VERSION_3_3`.
  *
- * @param sampler - `GLuint`, object kind `sampler`
+ * @param sampler - `GLuint`, object class `sampler`
  * @param pname - `GLenum`, group `SamplerParameterI`
  * @param param - `const GLint *`, length `COMPSIZE(pname)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glSamplerParameterIiv.xhtml
@@ -7260,7 +7260,7 @@ export function samplerParameterIiv(sampler: GLuint, pname: SamplerParameterI, p
  *
  * Provided by `GL_VERSION_3_3`.
  *
- * @param sampler - `GLuint`, object kind `sampler`
+ * @param sampler - `GLuint`, object class `sampler`
  * @param pname - `GLenum`, group `SamplerParameterI`
  * @param param - `const GLuint *`, length `COMPSIZE(pname)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glSamplerParameterIuiv.xhtml
@@ -7274,7 +7274,7 @@ export function samplerParameterIuiv(sampler: GLuint, pname: SamplerParameterI, 
  *
  * Provided by `GL_VERSION_3_3`.
  *
- * @param sampler - `GLuint`, object kind `sampler`
+ * @param sampler - `GLuint`, object class `sampler`
  * @param pname - `GLenum`, group `SamplerParameterI`
  * @param param - `const GLint *`, length `COMPSIZE(pname)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glSamplerParameteriv.xhtml
@@ -7347,7 +7347,7 @@ export function scissorIndexedv(index: GLuint, v: GLint[] | Int32Array): void {
  * Provided by `GL_VERSION_4_1`.
  *
  * @param count - `GLsizei`
- * @param shaders - `const GLuint *`, length `count`, object kind `shader`
+ * @param shaders - `const GLuint *`, length `count`, object class `shader`
  * @param binaryFormat - `GLenum`, group `ShaderBinaryFormat`
  * @param binary - `const void *`, length `length`
  * @param length - `GLsizei`
@@ -7368,7 +7368,7 @@ export function shaderBinary(
  *
  * Provided by `GL_VERSION_2_0`.
  *
- * @param shader - `GLuint`, object kind `shader`
+ * @param shader - `GLuint`, object class `shader`
  * @param count - `GLsizei`
  * @param string - `const GLchar *const*`, length `count`
  * @param length - `const GLint *`, length `count`
@@ -7383,7 +7383,7 @@ export function shaderSource(shader: GLuint, count: GLsizei, string: string[], l
  *
  * Provided by `GL_VERSION_4_3`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param storageBlockIndex - `GLuint`
  * @param storageBlockBinding - `GLuint`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glShaderStorageBlockBinding.xhtml
@@ -7401,7 +7401,7 @@ export function shaderStorageBlockBinding(
  *
  * Provided by `GL_VERSION_4_6`.
  *
- * @param shader - `GLuint`, object kind `shader`
+ * @param shader - `GLuint`, object class `shader`
  * @param pEntryPoint - `const GLchar *`
  * @param numSpecializationConstants - `GLuint`
  * @param pConstantIndex - `const GLuint *`, length `numSpecializationConstants`
@@ -7508,7 +7508,7 @@ export function stencilOpSeparate(face: TriangleFace, sfail: StencilOp, dpfail: 
  *
  * @param target - `GLenum`, group `TextureTarget`
  * @param internalformat - `GLenum`, group `SizedInternalFormat`
- * @param buffer - `GLuint`, object kind `buffer`
+ * @param buffer - `GLuint`, object class `buffer`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glTexBuffer.xhtml
  */
 export function texBuffer(target: TextureTarget, internalformat: SizedInternalFormat, buffer: GLuint): void {
@@ -7522,7 +7522,7 @@ export function texBuffer(target: TextureTarget, internalformat: SizedInternalFo
  *
  * @param target - `GLenum`, group `TextureTarget`
  * @param internalformat - `GLenum`, group `SizedInternalFormat`
- * @param buffer - `GLuint`, object kind `buffer`
+ * @param buffer - `GLuint`, object class `buffer`
  * @param offset - `GLintptr`
  * @param size - `GLsizeiptr`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glTexBufferRange.xhtml
@@ -7994,9 +7994,9 @@ export function textureBarrier(): void {
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param internalformat - `GLenum`, group `SizedInternalFormat`
- * @param buffer - `GLuint`, object kind `buffer`
+ * @param buffer - `GLuint`, object class `buffer`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glTextureBuffer.xhtml
  */
 export function textureBuffer(texture: GLuint, internalformat: SizedInternalFormat, buffer: GLuint): void {
@@ -8008,9 +8008,9 @@ export function textureBuffer(texture: GLuint, internalformat: SizedInternalForm
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param internalformat - `GLenum`, group `SizedInternalFormat`
- * @param buffer - `GLuint`, object kind `buffer`
+ * @param buffer - `GLuint`, object class `buffer`
  * @param offset - `GLintptr`
  * @param size - `GLsizeiptr`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glTextureBufferRange.xhtml
@@ -8030,7 +8030,7 @@ export function textureBufferRange(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param pname - `GLenum`, group `TextureParameterName`
  * @param param - `GLfloat`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glTextureParameterf.xhtml
@@ -8044,7 +8044,7 @@ export function textureParameterf(texture: GLuint, pname: TextureParameterName, 
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param pname - `GLenum`, group `TextureParameterName`
  * @param param - `const GLfloat *`, length `COMPSIZE(pname)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glTextureParameterfv.xhtml
@@ -8062,7 +8062,7 @@ export function textureParameterfv(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param pname - `GLenum`, group `TextureParameterName`
  * @param param - `GLint`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glTextureParameteri.xhtml
@@ -8076,7 +8076,7 @@ export function textureParameteri(texture: GLuint, pname: TextureParameterName, 
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param pname - `GLenum`, group `TextureParameterName`
  * @param params - `const GLint *`, length `COMPSIZE(pname)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glTextureParameterIiv.xhtml
@@ -8090,7 +8090,7 @@ export function textureParameterIiv(texture: GLuint, pname: TextureParameterName
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param pname - `GLenum`, group `TextureParameterName`
  * @param params - `const GLuint *`, length `COMPSIZE(pname)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glTextureParameterIuiv.xhtml
@@ -8108,7 +8108,7 @@ export function textureParameterIuiv(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param pname - `GLenum`, group `TextureParameterName`
  * @param param - `const GLint *`, length `COMPSIZE(pname)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glTextureParameteriv.xhtml
@@ -8122,7 +8122,7 @@ export function textureParameteriv(texture: GLuint, pname: TextureParameterName,
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param levels - `GLsizei`
  * @param internalformat - `GLenum`, group `SizedInternalFormat`
  * @param width - `GLsizei`
@@ -8142,7 +8142,7 @@ export function textureStorage1D(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param levels - `GLsizei`
  * @param internalformat - `GLenum`, group `SizedInternalFormat`
  * @param width - `GLsizei`
@@ -8164,7 +8164,7 @@ export function textureStorage2D(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param samples - `GLsizei`
  * @param internalformat - `GLenum`, group `SizedInternalFormat`
  * @param width - `GLsizei`
@@ -8188,7 +8188,7 @@ export function textureStorage2DMultisample(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param levels - `GLsizei`
  * @param internalformat - `GLenum`, group `SizedInternalFormat`
  * @param width - `GLsizei`
@@ -8212,7 +8212,7 @@ export function textureStorage3D(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param samples - `GLsizei`
  * @param internalformat - `GLenum`, group `SizedInternalFormat`
  * @param width - `GLsizei`
@@ -8238,7 +8238,7 @@ export function textureStorage3DMultisample(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param level - `GLint`
  * @param xoffset - `GLint`
  * @param width - `GLsizei`
@@ -8264,7 +8264,7 @@ export function textureSubImage1D(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param level - `GLint`
  * @param xoffset - `GLint`
  * @param yoffset - `GLint`
@@ -8294,7 +8294,7 @@ export function textureSubImage2D(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param level - `GLint`
  * @param xoffset - `GLint`
  * @param yoffset - `GLint`
@@ -8328,9 +8328,9 @@ export function textureSubImage3D(
  *
  * Provided by `GL_VERSION_4_3`.
  *
- * @param texture - `GLuint`, object kind `texture`
+ * @param texture - `GLuint`, object class `texture`
  * @param target - `GLenum`, group `TextureTarget`
- * @param origtexture - `GLuint`, object kind `texture`
+ * @param origtexture - `GLuint`, object class `texture`
  * @param internalformat - `GLenum`, group `SizedInternalFormat`
  * @param minlevel - `GLuint`
  * @param numlevels - `GLuint`
@@ -8356,9 +8356,9 @@ export function textureView(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param xfb - `GLuint`, object kind `transform feedback`
+ * @param xfb - `GLuint`, object class `transform feedback`
  * @param index - `GLuint`
- * @param buffer - `GLuint`, object kind `buffer`
+ * @param buffer - `GLuint`, object class `buffer`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glTransformFeedbackBufferBase.xhtml
  */
 export function transformFeedbackBufferBase(xfb: GLuint, index: GLuint, buffer: GLuint): void {
@@ -8370,9 +8370,9 @@ export function transformFeedbackBufferBase(xfb: GLuint, index: GLuint, buffer: 
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param xfb - `GLuint`, object kind `transform feedback`
+ * @param xfb - `GLuint`, object class `transform feedback`
  * @param index - `GLuint`
- * @param buffer - `GLuint`, object kind `buffer`
+ * @param buffer - `GLuint`, object class `buffer`
  * @param offset - `GLintptr`
  * @param size - `GLsizeiptr`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glTransformFeedbackBufferRange.xhtml
@@ -8392,7 +8392,7 @@ export function transformFeedbackBufferRange(
  *
  * Provided by `GL_VERSION_3_0`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param count - `GLsizei`
  * @param varyings - `const GLchar *const*`, length `count`
  * @param bufferMode - `GLenum`, group `TransformFeedbackBufferMode`
@@ -8868,7 +8868,7 @@ export function uniform4uiv(location: GLint, count: GLsizei, value: GLuint[] | U
  *
  * Provided by `GL_VERSION_3_1`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @param uniformBlockIndex - `GLuint`
  * @param uniformBlockBinding - `GLuint`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniformBlockBinding.xhtml
@@ -9269,7 +9269,7 @@ export function unmapBuffer(target: BufferTargetARB): boolean {
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param buffer - `GLuint`, object kind `buffer`
+ * @param buffer - `GLuint`, object class `buffer`
  * @returns `GLboolean`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUnmapNamedBuffer.xhtml
  */
@@ -9282,7 +9282,7 @@ export function unmapNamedBuffer(buffer: GLuint): boolean {
  *
  * Provided by `GL_VERSION_2_0`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUseProgram.xhtml
  */
 export function useProgram(program: GLuint): void {
@@ -9294,9 +9294,9 @@ export function useProgram(program: GLuint): void {
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param pipeline - `GLuint`, object kind `program pipeline`
+ * @param pipeline - `GLuint`, object class `program pipeline`
  * @param stages - `GLbitfield`, group `UseProgramStageMask`
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUseProgramStages.xhtml
  */
 export function useProgramStages(pipeline: GLuint, stages: UseProgramStageMask, program: GLuint): void {
@@ -9308,7 +9308,7 @@ export function useProgramStages(pipeline: GLuint, stages: UseProgramStageMask, 
  *
  * Provided by `GL_VERSION_2_0`.
  *
- * @param program - `GLuint`, object kind `program`
+ * @param program - `GLuint`, object class `program`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glValidateProgram.xhtml
  */
 export function validateProgram(program: GLuint): void {
@@ -9320,7 +9320,7 @@ export function validateProgram(program: GLuint): void {
  *
  * Provided by `GL_VERSION_4_1`.
  *
- * @param pipeline - `GLuint`, object kind `program pipeline`
+ * @param pipeline - `GLuint`, object class `program pipeline`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glValidateProgramPipeline.xhtml
  */
 export function validateProgramPipeline(pipeline: GLuint): void {
@@ -9332,7 +9332,7 @@ export function validateProgramPipeline(pipeline: GLuint): void {
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param vaobj - `GLuint`, object kind `vertex array`
+ * @param vaobj - `GLuint`, object class `vertex array`
  * @param attribindex - `GLuint`
  * @param bindingindex - `GLuint`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexArrayAttribBinding.xhtml
@@ -9346,7 +9346,7 @@ export function vertexArrayAttribBinding(vaobj: GLuint, attribindex: GLuint, bin
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param vaobj - `GLuint`, object kind `vertex array`
+ * @param vaobj - `GLuint`, object class `vertex array`
  * @param attribindex - `GLuint`
  * @param size - `GLint`
  * @param type - `GLenum`, group `VertexAttribType`
@@ -9370,7 +9370,7 @@ export function vertexArrayAttribFormat(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param vaobj - `GLuint`, object kind `vertex array`
+ * @param vaobj - `GLuint`, object class `vertex array`
  * @param attribindex - `GLuint`
  * @param size - `GLint`
  * @param type - `GLenum`, group `VertexAttribIType`
@@ -9392,7 +9392,7 @@ export function vertexArrayAttribIFormat(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param vaobj - `GLuint`, object kind `vertex array`
+ * @param vaobj - `GLuint`, object class `vertex array`
  * @param attribindex - `GLuint`
  * @param size - `GLint`
  * @param type - `GLenum`, group `VertexAttribLType`
@@ -9414,7 +9414,7 @@ export function vertexArrayAttribLFormat(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param vaobj - `GLuint`, object kind `vertex array`
+ * @param vaobj - `GLuint`, object class `vertex array`
  * @param bindingindex - `GLuint`
  * @param divisor - `GLuint`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexArrayBindingDivisor.xhtml
@@ -9428,8 +9428,8 @@ export function vertexArrayBindingDivisor(vaobj: GLuint, bindingindex: GLuint, d
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param vaobj - `GLuint`, object kind `vertex array`
- * @param buffer - `GLuint`, object kind `buffer`
+ * @param vaobj - `GLuint`, object class `vertex array`
+ * @param buffer - `GLuint`, object class `buffer`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexArrayElementBuffer.xhtml
  */
 export function vertexArrayElementBuffer(vaobj: GLuint, buffer: GLuint): void {
@@ -9441,9 +9441,9 @@ export function vertexArrayElementBuffer(vaobj: GLuint, buffer: GLuint): void {
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param vaobj - `GLuint`, object kind `vertex array`
+ * @param vaobj - `GLuint`, object class `vertex array`
  * @param bindingindex - `GLuint`
- * @param buffer - `GLuint`, object kind `buffer`
+ * @param buffer - `GLuint`, object class `buffer`
  * @param offset - `GLintptr`
  * @param stride - `GLsizei`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexArrayVertexBuffer.xhtml
@@ -9463,10 +9463,10 @@ export function vertexArrayVertexBuffer(
  *
  * Provided by `GL_VERSION_4_5`.
  *
- * @param vaobj - `GLuint`, object kind `vertex array`
+ * @param vaobj - `GLuint`, object class `vertex array`
  * @param first - `GLuint`
  * @param count - `GLsizei`
- * @param buffers - `const GLuint *`, length `count`, object kind `buffer`
+ * @param buffers - `const GLuint *`, length `count`, object class `buffer`
  * @param offsets - `const GLintptr *`, length `count`
  * @param strides - `const GLsizei *`, length `count`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexArrayVertexBuffers.xhtml
@@ -10745,7 +10745,7 @@ export function viewportIndexedfv(index: GLuint, v: GLfloat[] | Float32Array): v
  *
  * Provided by `GL_VERSION_3_2`.
  *
- * @param sync - `GLsync`, object kind `sync`
+ * @param sync - `GLsync`, object class `sync`
  * @param flags - `GLbitfield`, group `SyncBehaviorFlags`
  * @param timeout - `GLuint64`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glWaitSync.xhtml
@@ -11089,7 +11089,7 @@ export function genVertexArray(): GLuint {
     return out.value;
 }
 
-const LIB = "libGL.so.1";
+export const LIB = "libGL.so.1";
 
 const glActiveShaderProgram = t.bind(LIB, "glActiveShaderProgram", [t.uint32, t.uint32], t.void);
 

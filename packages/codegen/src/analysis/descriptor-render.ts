@@ -177,7 +177,7 @@ const LIST_HELPERS: Record<Exclude<ListFlavor, "gbytearray">, ListDescriptorName
     glist: "list",
     gslist: "slist",
     gptrarray: "ptrArray",
-    garray: "garray",
+    garray: "gArray",
 };
 
 const primitiveExpression = (category: PrimitiveCategory, ownership: Ownership): string => {
@@ -270,29 +270,30 @@ export const renderSelfDescriptor = (context: ModuleContext, instance: GirParame
         const ancestor = fundamentalAncestor(context, type);
         return ancestor === undefined ? tObject("borrowed") : renderFundamental({ ...ancestor, ownership: "borrowed" });
     }
-    if (type.kind === "record" && isReferenceableBoxed(type.value)) {
-        return boxedExpression(context, type, ffiOwnership(instance.transferOwnership));
+    if (type.kind === "record" && isReferenceableRecord(type.value)) {
+        return recordExpression(context, type, ffiOwnership(instance.transferOwnership));
     }
     return tObject("borrowed");
 };
 
-type ResolvedBoxed = Extract<EntityType, { kind: "record" }>["value"];
+type ResolvedRecord = Extract<EntityType, { kind: "record" }>["value"];
 
-const boxedRefPair = (boxed: ResolvedBoxed): { refFunc: string | undefined; unrefFunc: string | undefined } => ({
-    refFunc: boxed.glibRefFunc ?? boxed.copyFunc,
-    unrefFunc: boxed.glibUnrefFunc ?? boxed.freeFunc,
+const recordRefPair = (record: ResolvedRecord): { refFunc: string | undefined; unrefFunc: string | undefined } => ({
+    refFunc: record.glibRefFunc ?? record.copyFunc,
+    unrefFunc: record.glibUnrefFunc ?? record.freeFunc,
 });
 
-const isReferenceableBoxed = (boxed: ResolvedBoxed): boolean => {
+const isReferenceableRecord = (record: ResolvedRecord): boolean => {
     const hasRefPair =
-        (boxed.glibRefFunc ?? boxed.copyFunc) !== undefined && (boxed.glibUnrefFunc ?? boxed.freeFunc) !== undefined;
-    return hasRefPair || boxed.glibGetType !== undefined;
+        (record.glibRefFunc ?? record.copyFunc) !== undefined &&
+        (record.glibUnrefFunc ?? record.freeFunc) !== undefined;
+    return hasRefPair || record.glibGetType !== undefined;
 };
 
-const boxedNeedsFallbackClass = (boxed: ResolvedBoxed): boolean => {
-    const { refFunc, unrefFunc } = boxedRefPair(boxed);
-    if (refFunc !== undefined && unrefFunc !== undefined) return boxed.glibTypeName === undefined;
-    return boxed.glibGetType === undefined;
+const recordNeedsFallbackClass = (record: ResolvedRecord): boolean => {
+    const { refFunc, unrefFunc } = recordRefPair(record);
+    if (refFunc !== undefined && unrefFunc !== undefined) return record.glibTypeName === undefined;
+    return record.glibGetType === undefined;
 };
 
 const structExpression = (
@@ -310,16 +311,16 @@ const structExpression = (
     });
 };
 
-const boxedExpression = (
+const recordExpression = (
     context: ModuleContext,
     resolved: Extract<EntityType, { kind: "record" }>,
     ownership: Ownership,
     callerAllocated = false,
 ): string => {
-    const boxed = resolved.value;
-    const { refFunc, unrefFunc } = boxedRefPair(boxed);
-    const wrapperClass = boxedNeedsFallbackClass(boxed)
-        ? context.qualify(resolved.namespace.name, boxed.name)
+    const record = resolved.value;
+    const { refFunc, unrefFunc } = recordRefPair(record);
+    const wrapperClass = recordNeedsFallbackClass(record)
+        ? context.qualify(resolved.namespace.name, record.name)
         : undefined;
     if (refFunc !== undefined && unrefFunc !== undefined) {
         const lib = resolved.namespace.sharedLibrary ?? "";
@@ -327,19 +328,19 @@ const boxedExpression = (
             lib,
             refFunc,
             unrefFunc,
-            glibTypeName: boxed.glibTypeName,
+            glibTypeName: record.glibTypeName,
             ownership,
             wrapperClass,
         });
     }
-    if (boxed.glibGetType === undefined) {
+    if (record.glibGetType === undefined) {
         return structExpression(context, resolved, ownership, callerAllocated);
     }
-    const glibName = boxed.glibTypeName ?? boxed.cType ?? boxed.name;
+    const glibName = record.glibTypeName ?? record.cType ?? record.name;
     return tBoxed(glibName, {
         ownership,
         library: resolved.namespace.sharedLibrary,
-        getTypeFn: boxed.glibGetType,
+        getTypeFn: record.glibGetType,
         callerAllocated,
     });
 };
@@ -355,7 +356,7 @@ const expressionForResolved = (
         case "interface":
             return classOrInterfaceExpression(resolved, ownership);
         case "record":
-            return boxedExpression(context, resolved, ownership, callerAllocated);
+            return recordExpression(context, resolved, ownership, callerAllocated);
         case "enum": {
             const getter = resolved.value.glibGetType;
             const signed = resolved.value.members.some((member) => member.value.startsWith("-"));
@@ -395,9 +396,9 @@ const inlineElementSize = (
     if (elementCType?.includes("*")) return undefined;
     const type = context.library.typeOf(element);
     if (type?.kind !== "record") return undefined;
-    const boxed = type.value;
-    if (boxed.opaque || boxed.disguised || boxed.fields.length === 0) return undefined;
-    const { size } = computeRecordFieldSlots(context, boxed.fields, boxed.isUnion);
+    const record = type.value;
+    if (record.opaque || record.disguised || record.fields.length === 0) return undefined;
+    const { size } = computeRecordFieldSlots(context, record.fields, record.isUnion);
     return size > 0 ? size : undefined;
 };
 

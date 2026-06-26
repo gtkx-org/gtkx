@@ -1,4 +1,4 @@
-import { DropDown, GridView } from "@gtkx/components";
+import { DropDown, type GridRenderItemInfo, GridView } from "@gtkx/components";
 import { css } from "@gtkx/css";
 import { registerClass } from "@gtkx/ffi";
 import type { Context } from "@gtkx/gi/cairo";
@@ -263,7 +263,7 @@ const ColorGridItem = memo(({ item, showDetails }: { item: ColorItem; showDetail
     );
 });
 
-const renderSelectionItem = (item: ColorItem) => (
+const renderSelectionItem = ({ item }: GridRenderItemInfo<ColorItem>) => (
     <GtkDrawingArea
         contentWidth={8}
         contentHeight={8}
@@ -558,7 +558,7 @@ function useColorsComputed(state: ColorsState, models: ColorsModels) {
         }
     };
 
-    const renderGridItem = (obj: GObject.Object) => (
+    const renderGridItem = ({ item: obj }: GridRenderItemInfo<GObject.Object>) => (
         <ColorGridItem item={(obj as ColorObject).colorItem} showDetails={showDetails} />
     );
 

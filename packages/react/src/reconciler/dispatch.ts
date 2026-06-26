@@ -1,9 +1,9 @@
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { attachOrderedInsert, detachOrderedInsert, resolveOrderedInsert } from "../ordered-insert.js";
-import { isRelationshipNode } from "../relationship-node.js";
-import { resolveAppendRuleSet, ruleNodeOf } from "../rule-registry.js";
-import { type Node, stateOf } from "../state.js";
+import { attachOrderedInsert, detachOrderedInsert, resolveOrderedInsert } from "./ordered-insert.js";
+import { isRelationshipNode } from "./relationship-node.js";
+import { resolveAppendRuleSet, ruleNodeOf } from "./rule-registry.js";
+import { type Node, stateOf } from "./state.js";
 
 export interface ElementMapping {
     matches(child: Node, parent: Node): boolean;

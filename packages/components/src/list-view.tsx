@@ -1,11 +1,22 @@
 import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkListView, type GtkListViewProps } from "@gtkx/jsx/gtk";
-import type { ReactNode, Ref } from "react";
-import type { CellRenderer } from "./cell.js";
-import { CollectionView, type ModelInstaller } from "./collection-view.js";
-import type { FactoryInstaller } from "./hooks/use-cell-containers.js";
-import type { ItemNode, ListViewControlledSelectionProps, ListViewSharedProps, UncontrolledItemType } from "./types.js";
+import { useMergeRefs } from "@gtkx/react";
+import { createElement, type ReactElement, type ReactNode, type Ref, useRef } from "react";
+import { type CellRenderer, CellRenderHost, headerRenderer } from "./cell.js";
+import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
+import { useControlledSelectionModel } from "./hooks/use-controlled-selection-model.js";
+import { useInstalledModel } from "./hooks/use-installed-model.js";
+import { useListModel } from "./hooks/use-list-model.js";
+import type {
+    ItemNode,
+    ListViewControlledSelectionProps,
+    ListViewSharedProps,
+    SectionNode,
+    UncontrolledItemType,
+} from "./types.js";
+import type { CellContainerStore } from "./utils/cell-container-store.js";
+import type { ItemResolver } from "./utils/item-resolver.js";
 
 const factoryInstaller: FactoryInstaller<Gtk.ListView> = {
     install: (widget: Gtk.ListView, factory: Gtk.SignalListItemFactory) => widget.setFactory(factory),
@@ -17,29 +28,39 @@ const headerFactoryInstaller: FactoryInstaller<Gtk.ListView> = {
     uninstall: (widget: Gtk.ListView) => widget.setHeaderFactory(null),
 };
 
-const modelInstaller: ModelInstaller<Gtk.ListView> = {
-    install: (widget, model) => widget.setModel(model as Gtk.SelectionModel),
-};
+/**
+ * Information passed to a {@link ListView} `renderItem` callback for a single
+ * row: its resolved value, bound list `index`, tree `depth`, and whether the
+ * row is currently expanded.
+ */
+export interface ListRenderItemInfo<T> {
+    item: T;
+    index: number;
+    depth: number;
+    isExpanded: boolean;
+}
 
 /**
  * Props for the {@link ListView} component, replacing the raw `GtkListView`
- * factory/model surface with a declarative `items`/`renderItem` API, optional
- * controlled selection, section headers, and tree autoexpansion. Supplying an
- * external `model` switches to the uncontrolled form.
+ * factory/model surface with a declarative `items`/`sections` plus `renderItem`
+ * API, optional controlled selection, section headers, and tree autoexpansion.
+ * Supplying an external `model` switches to the uncontrolled form.
  */
-export type ListViewDeclarativeProps<T = unknown, S = unknown> = ListViewSharedProps &
+type ListViewDeclarativeProps<T = unknown, S = unknown> = ListViewSharedProps &
     (
         | (ListViewControlledSelectionProps & {
-              items?: ItemNode<T, S>[] | undefined;
-              renderItem: (item: T, row?: Gtk.TreeListRow | null) => ReactNode;
+              items?: ItemNode<T>[] | undefined;
+              sections?: SectionNode<S, T>[] | undefined;
+              renderItem: (info: ListRenderItemInfo<T>) => ReactNode;
               autoexpand?: boolean | undefined;
               renderHeader?: ((item: S) => ReactNode) | null | undefined;
               model?: never;
           })
         | {
               model: Gio.ListModel;
-              renderItem: (item: UncontrolledItemType<T>) => ReactNode;
+              renderItem: (info: ListRenderItemInfo<UncontrolledItemType<T>>) => ReactNode;
               items?: never;
+              sections?: never;
               autoexpand?: never;
               renderHeader?: never;
               selectedIds?: never;
@@ -57,14 +78,78 @@ export type ListViewProps<T = unknown, S = unknown> = Omit<GtkListViewProps, key
     ListViewDeclarativeProps<T, S>;
 
 /**
- * A `GtkListView` driven by a declarative `items`/`renderItem` API with
- * optional controlled selection, section headers, and tree autoexpansion.
- * Supplying an external `model` switches to the uncontrolled form.
+ * A `GtkListView` driven by a declarative `items`/`sections` plus `renderItem`
+ * API with optional controlled selection, section headers, and tree
+ * autoexpansion. Supplying an external `model` switches to the uncontrolled
+ * form.
  */
+interface ListViewWiring<T, S> {
+    setRef: (value: Gtk.ListView | null) => void;
+    resolver: ItemResolver<T, S>;
+    headerResolver: ItemResolver<T, S>;
+    itemStore: CellContainerStore;
+    headerStore: CellContainerStore;
+    useHeader: boolean;
+}
+
+const useListViewWiring = <T, S>(props: NormalizedListViewProps<T, S>): ListViewWiring<T, S> => {
+    const widgetRef = useRef<Gtk.ListView | null>(null);
+    const setRef = useMergeRefs<Gtk.ListView>(props.ref, widgetRef);
+
+    const externalModel = props.model as Gio.ListModel | undefined;
+    const listModel = useListModel<T, S>(
+        externalModel === undefined
+            ? { items: props.items, sections: props.sections, autoexpand: props.autoexpand }
+            : { model: externalModel },
+    );
+
+    const installedModel = useControlledSelectionModel<T, S>(externalModel, {
+        base: listModel.model,
+        resolver: listModel.resolver,
+        selectionMode: props.selectionMode,
+        selectedIds: props.selectedIds,
+        onSelectionChanged: props.onSelectionChanged,
+    });
+
+    const useHeader = externalModel === undefined && typeof props.renderHeader === "function";
+
+    const itemStore = useCellContainers<Gtk.ListView>({
+        target: widgetRef,
+        installer: factoryInstaller,
+        estimatedHeight: props.estimatedItemHeight,
+        estimatedWidth: props.estimatedItemWidth,
+    });
+    const headerStore = useCellContainers<Gtk.ListView>({
+        target: useHeader ? widgetRef : null,
+        installer: headerFactoryInstaller,
+        estimatedHeight: props.estimatedItemHeight,
+        estimatedWidth: props.estimatedItemWidth,
+    });
+
+    useInstalledModel(widgetRef, installedModel, (widget, value) => widget.setModel(value));
+
+    return {
+        setRef,
+        resolver: listModel.resolver,
+        headerResolver: listModel.headerResolver,
+        itemStore,
+        headerStore,
+        useHeader,
+    };
+};
+
+type NormalizedListViewProps<T, S> = ListViewDeclarativeProps<T, S> & {
+    ref?: Ref<Gtk.ListView | null>;
+    estimatedItemHeight?: number;
+    estimatedItemWidth?: number;
+    [key: string]: unknown;
+};
+
 export const ListView = <T = unknown, S = unknown>(props: ListViewProps<T, S>): ReactNode => {
     const {
         ref,
         items,
+        sections,
         model,
         renderItem,
         autoexpand,
@@ -75,39 +160,46 @@ export const ListView = <T = unknown, S = unknown>(props: ListViewProps<T, S>): 
         estimatedItemHeight,
         estimatedItemWidth,
         ...intrinsicProps
-    } = props as ListViewDeclarativeProps<T, S> & {
-        ref?: Ref<Gtk.ListView | null>;
-        estimatedItemHeight?: number;
-        estimatedItemWidth?: number;
-        [key: string]: unknown;
-    };
+    } = props as NormalizedListViewProps<T, S>;
 
-    const renderItemFn = renderItem as (item: T, row?: Gtk.TreeListRow | null) => ReactNode;
-    const cellRenderer: CellRenderer<T, S> = (value, treeRow, isHeader) => {
+    const renderItemFn = renderItem as (info: ListRenderItemInfo<T>) => ReactNode;
+    const cellRenderer: CellRenderer<T, S> = (value, treeRow, isHeader, position) => {
         if (isHeader) return null;
-        return treeRow === null ? renderItemFn(value as T) : renderItemFn(value as T, treeRow);
+        return renderItemFn({
+            item: value as T,
+            index: position,
+            depth: treeRow === null ? 0 : treeRow.getDepth(),
+            isExpanded: treeRow === null ? false : treeRow.getExpanded(),
+        });
     };
 
-    const useHeader = model === undefined && typeof renderHeader === "function";
+    const wiring = useListViewWiring<T, S>({
+        ref,
+        items,
+        sections,
+        model,
+        autoexpand,
+        renderHeader,
+        selectedIds,
+        selectionMode,
+        onSelectionChanged,
+        estimatedItemHeight,
+        estimatedItemWidth,
+    } as NormalizedListViewProps<T, S>);
+
+    const intrinsic: ReactElement = createElement(GtkListView, { ...intrinsicProps, ref: wiring.setRef });
 
     return (
-        <CollectionView<T, S, Gtk.ListView>
-            element={GtkListView}
-            intrinsicProps={intrinsicProps}
-            ref={ref}
-            items={model === undefined ? items : undefined}
-            model={model as Gio.ListModel | undefined}
-            renderItem={cellRenderer}
-            autoexpand={autoexpand}
-            renderHeader={useHeader ? (value) => renderHeader?.(value as S) ?? null : undefined}
-            estimatedHeight={estimatedItemHeight}
-            estimatedWidth={estimatedItemWidth}
-            selectedIds={selectedIds}
-            selectionMode={selectionMode}
-            onSelectionChanged={onSelectionChanged}
-            factoryInstaller={factoryInstaller}
-            headerFactoryInstaller={useHeader ? headerFactoryInstaller : undefined}
-            modelInstaller={modelInstaller}
-        />
+        <>
+            {intrinsic}
+            <CellRenderHost store={wiring.itemStore} resolver={wiring.resolver} render={cellRenderer} />
+            {wiring.useHeader ? (
+                <CellRenderHost
+                    store={wiring.headerStore}
+                    resolver={wiring.headerResolver}
+                    render={headerRenderer<T, S>(renderHeader)}
+                />
+            ) : null}
+        </>
     );
 };

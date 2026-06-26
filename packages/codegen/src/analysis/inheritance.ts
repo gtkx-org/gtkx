@@ -1,6 +1,6 @@
-import { toCamelCase, toCamelIdentifier, toLowerFirst, toPascalCase } from "@gtkx/utils";
+import { lowerFirst, toCamelCase, toCamelIdentifier, toPascalCase } from "@gtkx/utils";
 import { methodExportName } from "../ffi/method.js";
-import { ancestorChain, type ResolvedAncestor } from "../gir/ancestry.js";
+import { ancestorChain, type ResolvedAncestor, resolveNamedType } from "../gir/ancestry.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
 import type { Library } from "../gir/library.js";
@@ -15,27 +15,18 @@ type AncestryContext = {
     namespace: { name: string };
 };
 
-export type ResolvedInterface = {
-    klass: GirClass;
-    namespaceName: string;
-};
-
 export const resolveImplementedInterface = (
     context: AncestryContext,
     name: string,
     defaultNamespace: string = context.namespace.name,
-): ResolvedInterface | undefined => {
-    const resolved = context.library.resolveType(defaultNamespace, name);
-    if (resolved === undefined || resolved.kind !== "interface") return undefined;
-    return { klass: resolved.value, namespaceName: resolved.namespace.name };
-};
+): ResolvedAncestor | undefined => resolveNamedType(context.library, defaultNamespace, name, ["interface"]);
 
 export const resolveDirectInterfaces = (
     context: AncestryContext,
     klass: GirClass,
     defaultNamespace: string,
-): ResolvedInterface[] => {
-    const interfaces: ResolvedInterface[] = [];
+): ResolvedAncestor[] => {
+    const interfaces: ResolvedAncestor[] = [];
     for (const implementName of klass.implements) {
         const iface = resolveImplementedInterface(context, implementName, defaultNamespace);
         if (iface !== undefined) interfaces.push(iface);
@@ -53,7 +44,7 @@ export const resolvePrerequisiteReference = (context: ModuleContext, name: strin
 export const forEachAncestor = (
     context: AncestryContext,
     klass: GirClass,
-    visit: (ancestor: ResolvedAncestor, interfaces: ResolvedInterface[]) => void,
+    visit: (ancestor: ResolvedAncestor, interfaces: ResolvedAncestor[]) => void,
     stop: (ancestor: GirClass) => boolean = () => false,
 ): void => {
     let first = true;
@@ -150,7 +141,7 @@ export const conflictRename = (
 };
 
 const conflictingMethodName = (className: string, methodName: string): string =>
-    `${toLowerFirst(className)}${toPascalCase(methodName)}`;
+    `${lowerFirst(className)}${toPascalCase(methodName)}`;
 
 const hasParameterEnumConflict = (context: ModuleContext, own: GirFunction, inherited: InheritedMethod): boolean => {
     const ownParams = inputParameters(context.library, own);

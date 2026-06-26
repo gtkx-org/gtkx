@@ -9,8 +9,6 @@ use napi::{Env, JsFunction, JsObject, NapiRaw, NapiValue, ValueType};
 
 use crate::dispatch::{JsRefDeletion, Mailbox};
 use crate::managed::NativeHandle;
-use crate::types::{FfiDecoder, Type};
-use crate::{arg::Arg, ffi};
 
 pub struct JsRef<T> {
     raw: sys::napi_ref,
@@ -464,15 +462,6 @@ impl Value {
                 anyhow::bail!("Expected an Object for {type_name} type, got {self:?}")
             }
         }
-    }
-
-    pub fn from_ffi_value_with_args(
-        ffi_value: &ffi::FfiValue,
-        ty: &Type,
-        ffi_args: &[ffi::FfiValue],
-        args: &[Arg],
-    ) -> anyhow::Result<Self> {
-        ty.decode_with_context(ffi_value, ffi_args, args)
     }
 
     #[cfg_attr(coverage_nightly, coverage(off))]

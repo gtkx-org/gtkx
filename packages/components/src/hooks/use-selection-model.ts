@@ -56,7 +56,7 @@ const readSelectedIds = <T, S>(model: Gtk.SelectionModel, resolver: ItemResolver
     const count = Number(selection.getSize());
     for (let index = 0; index < count; index++) {
         const position = selection.getNth(index);
-        const id = resolver.keyOf(position);
+        const id = resolver.idOf(position);
         if (id !== undefined) ids.push(id);
     }
     return ids;
@@ -66,7 +66,7 @@ const idsToPositions = <T, S>(ids: string[] | null | undefined, resolver: ItemRe
     if (ids === undefined || ids === null) return [];
     const positions: number[] = [];
     for (const id of ids) {
-        const position = resolver.positionOfKey(id);
+        const position = resolver.positionOfId(id);
         if (position >= 0) positions.push(position);
     }
     return positions;

@@ -1,4 +1,13 @@
-import { ColumnView, ColumnViewColumn, GridView, type ItemNode, ListView } from "@gtkx/components";
+import {
+    type ColumnRenderItemInfo,
+    ColumnView,
+    ColumnViewColumn,
+    type GridRenderItemInfo,
+    GridView,
+    type ItemNode,
+    type ListRenderItemInfo,
+    ListView,
+} from "@gtkx/components";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 
@@ -17,10 +26,9 @@ const toListItems = <T,>(items: FixtureInput<T>): ItemNode<T>[] =>
         ? (items as string[]).map((id) => ({ id, value: { name: id } as T }))
         : (items as ItemNode<T>[]);
 
-const renderNamed = (item: unknown): ReactNode => <GtkLabel label={(item as NamedValue).name} />;
+const renderNamed = ({ item }: { item: unknown }): ReactNode => <GtkLabel label={(item as NamedValue).name} />;
 
-type ListViewFixtureOptions<T> = {
-    renderItem?: (item: T, row?: Gtk.TreeListRow | null) => ReactNode;
+type ListViewFixtureOptions = {
     selected?: string[];
     selectionMode?: Gtk.SelectionMode;
     onSelectionChanged?: (ids: string[]) => void;
@@ -30,11 +38,13 @@ type ListViewFixtureOptions<T> = {
     minContentWidth?: number;
 };
 
-export type RenderListViewOptions<T> = ListViewFixtureOptions<T> & {
+export type RenderListViewOptions<T> = ListViewFixtureOptions & {
+    renderItem?: (info: ListRenderItemInfo<T>) => ReactNode;
     autoexpand?: boolean;
 };
 
-export type RenderGridViewOptions<T> = ListViewFixtureOptions<T> & {
+export type RenderGridViewOptions<T> = ListViewFixtureOptions & {
+    renderItem?: (info: GridRenderItemInfo<T>) => ReactNode;
     singleClickActivate?: boolean;
 };
 
@@ -121,7 +131,7 @@ export const renderGridView = async <T = NamedValue>(
 export interface ColumnDef<T> {
     id: string;
     title: string;
-    renderCell: (item: T) => ReactNode;
+    renderItem: (info: ColumnRenderItemInfo<T>) => ReactNode;
     expand?: boolean;
     sortable?: boolean;
     fixedWidth?: number;
@@ -149,7 +159,7 @@ export const renderColumnView = async <T = NamedValue>(
     options: RenderColumnViewOptions<T> = {},
 ): Promise<ColumnViewFixture<T>> => {
     const ref = createRef<Gtk.ColumnView>();
-    const defaultColumns: ColumnDef<T>[] = [{ id: "name", title: "Name", renderCell: renderNamed }];
+    const defaultColumns: ColumnDef<T>[] = [{ id: "name", title: "Name", renderItem: renderNamed }];
     const draw = (data: FixtureInput<T>, opts: RenderColumnViewOptions<T>): ReactNode => {
         const { columns = defaultColumns, minContentHeight = 500, minContentWidth } = opts;
         return (
@@ -172,7 +182,7 @@ export const renderColumnView = async <T = NamedValue>(
                             expand={column.expand ?? true}
                             sortable={column.sortable}
                             fixedWidth={column.fixedWidth}
-                            renderCell={column.renderCell}
+                            renderItem={column.renderItem}
                         />
                     ))}
                 </ColumnView>

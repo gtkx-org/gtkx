@@ -1,4 +1,5 @@
 import { defineCommand, runMain } from "citty";
+import { printError } from "./internal/errors.js";
 import { version } from "./version.js";
 
 export const main = defineCommand({
@@ -15,4 +16,8 @@ export const main = defineCommand({
     },
 });
 
-runMain(main);
+try {
+    await runMain(main);
+} catch (cause) {
+    printError(cause);
+}

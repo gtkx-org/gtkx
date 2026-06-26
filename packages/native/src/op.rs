@@ -9,4 +9,4 @@ mod register_class;
 mod request;
 #[cfg(feature = "test-support")]
 mod test_support;
-mod toggle_ref;
+mod wrapper;

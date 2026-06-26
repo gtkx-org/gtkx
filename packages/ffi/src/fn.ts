@@ -13,7 +13,7 @@ const wrapCallbackValue = (spec: CallbackType, callback: unknown): Value =>
 type ArgSpec = {
     type: Type;
     direction?: "out" | "inout";
-    callerAllocates?: boolean;
+    callerAllocated?: boolean;
     consumed?: boolean;
 };
 
@@ -34,7 +34,7 @@ export const tupleResult = (outs: unknown[], primary: unknown, hasPrimary: boole
 
 const toNativeArgTypes = (argSpecs: ArgSpec[], throws: boolean): Type[] => {
     const nativeArgTypes = argSpecs.map((argSpec) =>
-        argSpec.direction !== undefined && argSpec.callerAllocates !== true ? refT(argSpec.type) : argSpec.type,
+        argSpec.direction !== undefined && argSpec.callerAllocated !== true ? refT(argSpec.type) : argSpec.type,
     );
     if (throws)
         nativeArgTypes.push(refT(boxedT("GError", { ownership: "full", library: LIB, getTypeFn: "g_error_get_type" })));
@@ -50,7 +50,7 @@ type ArgPlan = {
 };
 
 const categoryOfArgSpec = (argSpec: ArgSpec): ArgCategory =>
-    classifyArgCategory({ direction: argSpec.direction, callerAllocated: argSpec.callerAllocates === true });
+    classifyArgCategory({ direction: argSpec.direction, callerAllocated: argSpec.callerAllocated === true });
 
 const planArgs = (argSpecs: ArgSpec[]): ArgPlan[] => {
     let inputCursor = 0;

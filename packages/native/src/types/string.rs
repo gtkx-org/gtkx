@@ -22,7 +22,7 @@ pub struct StringType {
 impl FromDescriptor for StringType {
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn from_descriptor(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
-        let ownership = Ownership::from_js_value(obj, "string")?;
+        let ownership = Ownership::from_descriptor(obj, "string")?;
 
         let length: Option<usize> =
             super::optional_descriptor_property::<f64>(obj, "length")?.map(|n| n as usize);

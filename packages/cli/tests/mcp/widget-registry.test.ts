@@ -58,8 +58,8 @@ describe("WidgetRegistry.register / get", () => {
     });
 });
 
-describe("WidgetRegistry.refresh / toplevels", () => {
-    it("clears the reverse lookup and re-registers from the live toplevels", () => {
+describe("WidgetRegistry.refresh / windows", () => {
+    it("clears the reverse lookup and re-registers from the live windows", () => {
         const stale = makeWidget();
         const fresh = makeWidget();
         const registry = new WidgetRegistry();
@@ -78,11 +78,11 @@ describe("WidgetRegistry.refresh / toplevels", () => {
         const second = makeWidget();
         const registry = new WidgetRegistry();
 
-        expect(registry.toplevels()).toEqual([]);
+        expect(registry.windows()).toEqual([]);
 
         listToplevels.mockReturnValueOnce([first as unknown, second as unknown]);
         registry.refresh();
 
-        expect(registry.toplevels()).toEqual([first, second]);
+        expect(registry.windows()).toEqual([first, second]);
     });
 });

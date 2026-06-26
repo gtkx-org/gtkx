@@ -6,44 +6,41 @@ export interface TreeItemMetadata {
     indentForIcon: boolean;
 }
 
-interface FlattenedRecord<T = unknown, S = unknown> {
+interface FlattenedRecord<T = unknown> {
     id: string;
-    value: T | S;
-    isHeader: boolean;
+    value: T;
     metadata: TreeItemMetadata;
 }
 
-interface FlattenResult<T = unknown, S = unknown> {
-    records: FlattenedRecord<T, S>[];
+interface FlattenResult<T = unknown> {
+    records: FlattenedRecord<T>[];
     idToPosition: Map<string, number>;
     positionToId: Map<number, string>;
 }
 
-export type ListStructure = "flat" | "tree" | "sections";
+export type ListStructure = "flat" | "tree";
 
 /**
- * Classify a controlled item list as flat, tree, or sectioned without building a
- * {@link FlattenResult}. A list is sectioned if any top-level item is a section, a
- * tree if any top-level item carries children, and flat otherwise.
+ * Classify a controlled item list as flat or tree without building a
+ * {@link FlattenResult}. A list is a tree if any top-level item carries
+ * children, and flat otherwise.
  */
-export const detectStructure = <T, S>(items: ItemNode<T, S>[] | undefined): ListStructure => {
+export const detectStructure = <T>(items: ItemNode<T>[] | undefined): ListStructure => {
     if (items === undefined) return "flat";
-    let sawTree = false;
     for (const item of items) {
-        if (item.section === true) return "sections";
-        if (item.children !== undefined && item.children.length > 0) sawTree = true;
+        if (item.children !== undefined && item.children.length > 0) return "tree";
     }
-    return sawTree ? "tree" : "flat";
+    return "flat";
 };
 
-export const structuralSignature = <T, S>(items: ItemNode<T, S>[] | undefined): string => {
+export const structuralSignature = <T>(items: ItemNode<T>[] | undefined): string => {
     if (items === undefined) return "";
     const parts: string[] = [];
-    const walk = (list: ItemNode<T, S>[]): void => {
+    const walk = (list: ItemNode<T>[]): void => {
         parts.push("[");
         for (const item of list) {
-            const hidden = item.section === true ? false : item.hideExpander === true;
-            parts.push(`${item.id}|${item.section === true ? 1 : 0}|${hidden ? 1 : 0}`);
+            const hidden = item.hideExpander === true;
+            parts.push(`${item.id}|${hidden ? 1 : 0}`);
             if (item.children !== undefined && item.children.length > 0) walk(item.children);
         }
         parts.push("]");
@@ -52,25 +49,32 @@ export const structuralSignature = <T, S>(items: ItemNode<T, S>[] | undefined): 
     return parts.join(",");
 };
 
-export const treeItemMetadata = <T, S>(item: ItemNode<T, S>): TreeItemMetadata => {
-    if (item.section === true) {
-        return { hideExpander: false, indentForDepth: false, indentForIcon: false };
+/**
+ * Count an item list and all of its nested tree descendants, so a sectioned
+ * model can size each section to the number of rows it flattens into.
+ */
+export const countDescendants = <T>(items: ItemNode<T>[]): number => {
+    let total = 0;
+    for (const item of items) {
+        total += 1;
+        if (item.children !== undefined && item.children.length > 0) total += countDescendants(item.children);
     }
-    return {
-        hideExpander: item.hideExpander ?? false,
-        indentForDepth: item.indentForDepth ?? true,
-        indentForIcon: item.indentForIcon ?? true,
-    };
+    return total;
 };
 
-const appendRecord = <T, S>(item: ItemNode<T, S>, result: FlattenResult<T, S>, includeChildren: boolean): void => {
+export const treeItemMetadata = <T>(item: ItemNode<T>): TreeItemMetadata => ({
+    hideExpander: item.hideExpander ?? false,
+    indentForDepth: item.indentForDepth ?? true,
+    indentForIcon: item.indentForIcon ?? true,
+});
+
+const appendRecord = <T>(item: ItemNode<T>, result: FlattenResult<T>, includeChildren: boolean): void => {
     const position = result.records.length;
     result.idToPosition.set(item.id, position);
     result.positionToId.set(position, item.id);
     result.records.push({
         id: item.id,
         value: item.value,
-        isHeader: item.section === true,
         metadata: treeItemMetadata(item),
     });
     if (includeChildren && item.children !== undefined) {
@@ -78,23 +82,17 @@ const appendRecord = <T, S>(item: ItemNode<T, S>, result: FlattenResult<T, S>, i
     }
 };
 
-export const flattenListItems = <T, S>(
-    items: ItemNode<T, S>[] | undefined,
+export const flattenListItems = <T>(
+    items: ItemNode<T>[] | undefined,
     flattenTreeChildren: boolean,
-): FlattenResult<T, S> => {
-    const result: FlattenResult<T, S> = {
+): FlattenResult<T> => {
+    const result: FlattenResult<T> = {
         records: [],
         idToPosition: new Map(),
         positionToId: new Map(),
     };
     if (items === undefined) return result;
     for (const item of items) {
-        if (item.section === true) {
-            if (item.children !== undefined) {
-                for (const child of item.children) appendRecord(child, result, true);
-            }
-            continue;
-        }
         appendRecord(item, result, flattenTreeChildren);
     }
     return result;

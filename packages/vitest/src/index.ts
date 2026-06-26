@@ -2,35 +2,28 @@ import { join } from "node:path";
 
 import { createGtkxConfigPlugin } from "@gtkx/config";
 import type { Plugin } from "vitest/config";
-import { gtkxBundledModulePatterns } from "./bundled-modules.js";
 import type { HeadlessOptions } from "./headless-display.js";
 
 export type GtkxPluginOptions = Partial<HeadlessOptions>;
 
-declare module "vitest" {
-    interface ProvidedContext {
-        gtkxHeadless: GtkxPluginOptions;
-    }
-}
+const inlineDepsPatterns: RegExp[] = [/@gtkx\/(config|ffi|gi|react|jsx|testing|css)/, /[/\\]\.gtkx[/\\]/];
 
 const gtkx = (options: GtkxPluginOptions = {}): Plugin => {
-    const workerSetupPath = join(import.meta.dirname, "worker-setup.js");
+    const environmentPath = join(import.meta.dirname, "environment.js");
 
     return createGtkxConfigPlugin({
         name: "gtkx:vitest",
-        config(config) {
-            const setupFiles = config.test?.setupFiles ?? [];
-
+        config() {
             return {
                 test: {
-                    setupFiles: [workerSetupPath, ...(Array.isArray(setupFiles) ? setupFiles : [setupFiles])],
-                    provide: { gtkxHeadless: options },
+                    environment: environmentPath,
+                    environmentOptions: options,
                     testTimeout: 20000,
                     hookTimeout: 20000,
                     pool: "forks",
                     server: {
                         deps: {
-                            inline: [...gtkxBundledModulePatterns],
+                            inline: [...inlineDepsPatterns],
                         },
                     },
                 },

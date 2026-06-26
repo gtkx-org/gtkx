@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/codegen/run-codegen.js", () => ({
-    preflightCodegen: vi.fn(async () => undefined),
     ensureGenerated: vi.fn(async () => true),
     syncSchemaEnv: vi.fn(),
     runCodegen: vi.fn(async () => ({
@@ -9,7 +8,7 @@ vi.mock("../../src/codegen/run-codegen.js", () => ({
         girPath: ["/usr/share/gir-1.0"],
         libraries: ["Gtk-4.0", "Adw-1"],
         namespaces: 2,
-        reactNodes: 142,
+        intrinsicElements: 142,
         duration: 250,
     })),
 }));
@@ -86,13 +85,13 @@ describe("codegen command (--force)", () => {
         expect(logged).toContain("config=/project/gtkx.config.ts");
         expect(logged).toContain("libraries=Gtk-4.0, Adw-1");
         expect(logged).toContain("girPath=/usr/share/gir-1.0");
-        expect(logged).toContain("2 namespaces, 142 react nodes in 250ms");
+        expect(logged).toContain("2 namespaces, 142 intrinsic elements in 250ms");
     });
 
     it("skips optional log lines when fields are missing from the result", async () => {
         runCodegenMock.mockResolvedValueOnce({
             namespaces: 0,
-            reactNodes: 0,
+            intrinsicElements: 0,
             duration: 5,
         } as never);
 
@@ -102,6 +101,6 @@ describe("codegen command (--force)", () => {
         expect(logged).not.toContain("config=");
         expect(logged).not.toContain("libraries=");
         expect(logged).not.toContain("girPath=");
-        expect(logged).toContain("0 namespaces, 0 react nodes in 5ms");
+        expect(logged).toContain("0 namespaces, 0 intrinsic elements in 5ms");
     });
 });

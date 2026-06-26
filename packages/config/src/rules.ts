@@ -2,14 +2,10 @@ import type * as Adw from "@gtkx/gi/adw";
 import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import type { RuleRegistry, RuleSet } from "./reconciler.js";
+import { callMethod } from "@gtkx/utils";
+import type { RuleRegistry, RuleSet } from "./rule-schema.js";
 
 const POSITION_TYPE_BOTTOM = 3;
-
-const callMethod = (target: object, method: string, args: unknown[]): unknown => {
-    const fn = Reflect.get(target, method);
-    return typeof fn === "function" ? Reflect.apply(fn, target, args) : undefined;
-};
 
 const isType = <T extends GObject.Object>(instance: GObject.Object, typeName: string): instance is T => {
     let current = instance.__gtype__;
@@ -151,44 +147,42 @@ const Toggle: RuleSet = {
     },
 };
 
-type Slot = {
-    add: (parent: GObject.Object, child: GObject.Object) => void;
-};
+type SlotAttach = (parent: GObject.Object, child: GObject.Object) => void;
 
 const reflectAdd =
-    (method: string): Slot["add"] =>
+    (method: string): SlotAttach =>
     (parent, child) => {
         callMethod(parent, method, [child]);
     };
 
-const slots = (table: Record<string, Slot>): RuleSet => ({
+const slots = (table: Record<string, SlotAttach>): RuleSet => ({
     appendChild: (parent, child) => {
-        const slot = child.slotTag ? table[child.slotTag] : undefined;
-        if (slot) slot.add(parent.instance, child.instance);
+        const attach = child.slotTag ? table[child.slotTag] : undefined;
+        if (attach) attach(parent.instance, child.instance);
     },
 });
 
-const PREFIX_SUFFIX: Record<string, Slot> = {
-    prefix: { add: reflectAdd("addPrefix") },
-    suffix: { add: reflectAdd("addSuffix") },
+const PREFIX_SUFFIX: Record<string, SlotAttach> = {
+    prefix: reflectAdd("addPrefix"),
+    suffix: reflectAdd("addSuffix"),
 };
 
-const PACK: Record<string, Slot> = {
-    start: { add: reflectAdd("packStart") },
-    end: { add: reflectAdd("packEnd") },
+const PACK: Record<string, SlotAttach> = {
+    start: reflectAdd("packStart"),
+    end: reflectAdd("packEnd"),
 };
 
 const ActionRow = slots(PREFIX_SUFFIX);
 const EntryRow = slots(PREFIX_SUFFIX);
 const ExpanderRow = slots({
     ...PREFIX_SUFFIX,
-    rows: { add: reflectAdd("addRow") },
-    actions: { add: reflectAdd("addAction") },
+    rows: reflectAdd("addRow"),
+    actions: reflectAdd("addAction"),
 });
 const HeaderBar = slots(PACK);
 const ToolbarView = slots({
-    topBar: { add: reflectAdd("addTopBar") },
-    bottomBar: { add: reflectAdd("addBottomBar") },
+    topBar: reflectAdd("addTopBar"),
+    bottomBar: reflectAdd("addBottomBar"),
 });
 const ActionBar = slots(PACK);
 

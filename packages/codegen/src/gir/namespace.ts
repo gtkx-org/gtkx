@@ -42,10 +42,6 @@ type NamespaceInclude = {
     version: string;
 };
 
-type MutableNamespace = {
-    [Key in keyof GirNamespace]: GirNamespace[Key];
-};
-
 export type NamespaceHeader = {
     name: string;
     sharedLibrary: string | undefined;
@@ -89,19 +85,18 @@ export const createNamespaceShell = (header: NamespaceHeader, id: number): GirNa
 });
 
 export const populateNamespaceBody = (shell: GirNamespace, namespaceNode: RawNode, context: ParseContext): void => {
-    const mutable: MutableNamespace = shell;
-    mutable.classes = childrenOf(namespaceNode, "class").map((klass) => classFromNode(klass, false, context));
-    mutable.interfaces = childrenOf(namespaceNode, "interface").map((iface) => classFromNode(iface, true, context));
-    mutable.records = collectRecords(namespaceNode, context);
-    mutable.enums = collectEnums(namespaceNode, context);
-    mutable.callbacks = childrenOf(namespaceNode, "callback").map((callback) => callbackFromNode(callback, context));
-    mutable.functions = childrenOf(namespaceNode, "function").map((fn) => functionFromNode(fn, "function", context));
-    mutable.constants = childrenOf(namespaceNode, "constant").map((constant) => ({
+    shell.classes = childrenOf(namespaceNode, "class").map((klass) => classFromNode(klass, false, context));
+    shell.interfaces = childrenOf(namespaceNode, "interface").map((iface) => classFromNode(iface, true, context));
+    shell.records = collectRecords(namespaceNode, context);
+    shell.enums = collectEnums(namespaceNode, context);
+    shell.callbacks = childrenOf(namespaceNode, "callback").map((callback) => callbackFromNode(callback, context));
+    shell.functions = childrenOf(namespaceNode, "function").map((fn) => functionFromNode(fn, "function", context));
+    shell.constants = childrenOf(namespaceNode, "constant").map((constant) => ({
         name: nameAttr(constant),
         value: attr(constant, "value") ?? "",
         type: typeRefFromSlot(constant, context),
     }));
-    mutable.aliases = childrenOf(namespaceNode, "alias").map((alias) => ({
+    shell.aliases = childrenOf(namespaceNode, "alias").map((alias) => ({
         name: nameAttr(alias),
         target: typeRefFromSlot(alias, context),
         targetCType: attr(childOf(alias, "type"), "c:type"),

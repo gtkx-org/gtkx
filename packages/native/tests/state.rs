@@ -1,6 +1,7 @@
 mod common;
 
-use native::state::{GlibThread, GlibThreadState};
+use native::glib_thread::GlibThread;
+use native::state::GlibThreadState;
 
 fn join_panicking_handle<F>(panicking_body: F) -> Option<String>
 where

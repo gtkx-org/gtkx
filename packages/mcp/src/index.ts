@@ -1,17 +1,17 @@
 export {
-    IpcError,
-    IpcErrorCode,
+    ErrorCode,
     invalidRequestError,
     methodNotFoundError,
+    ProtocolError,
     widgetNotFoundError,
 } from "./protocol/errors.js";
 export {
     DEFAULT_SOCKET_PATH,
-    type IpcRequest,
+    type ParamsSchema,
+    type Request,
     type SerializedWidget,
     type ServerInitiatedMethod,
     type ServerRequestParams,
     ServerRequestParamsSchemas,
-    type WireParamsSchema,
 } from "./protocol/types.js";
-export { JsonStreamConnection } from "./transport.js";
+export { ProtocolConnection } from "./transport.js";

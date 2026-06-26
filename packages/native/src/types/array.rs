@@ -57,7 +57,7 @@ impl FromDescriptor for ArrayType {
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn from_descriptor(env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let item_type_value: Unknown<'_> = obj.get_named_property("itemType")?;
-        let item_type = Type::from_js_value(env, item_type_value)?;
+        let item_type = Type::from_descriptor(env, item_type_value)?;
 
         let kind_str: String = obj.get_named_property("kind").map_err(|_| {
             napi::Error::new(
@@ -101,7 +101,7 @@ impl FromDescriptor for ArrayType {
         let element_size: Option<usize> =
             super::optional_descriptor_property::<f64>(obj, "elementSize")?.map(|n| n as usize);
 
-        let ownership = Ownership::from_js_value(obj, "array")?;
+        let ownership = Ownership::from_descriptor(obj, "array")?;
 
         Ok(Self {
             item_type: Box::new(item_type),

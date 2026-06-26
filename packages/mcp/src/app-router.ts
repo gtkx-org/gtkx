@@ -6,8 +6,8 @@ import {
     methodNotFoundError,
     noAppConnectedError,
 } from "./protocol/errors.js";
-import { type AppInfo, type IpcRequest, type IpcResponse, RegisterParamsSchema } from "./protocol/types.js";
-import { type AppConnection, type AppConnections, ConnectionClosedError } from "./transport.js";
+import { type AppInfo, RegisterParamsSchema, type Request, type Response } from "./protocol/types.js";
+import { type AppConnections, ConnectionClosedError, type ProtocolConnection } from "./transport.js";
 
 type AppRouterEventMap = {
     appRegistered: [AppInfo];
@@ -16,7 +16,7 @@ type AppRouterEventMap = {
 
 type RegisteredApp = {
     info: AppInfo;
-    connection: AppConnection;
+    connection: ProtocolConnection;
 };
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 30000;
@@ -94,7 +94,7 @@ export class AppRouter extends EventEmitter<AppRouterEventMap> {
         }
 
         try {
-            return await app.connection.connection.send<T>(method, params, this.requestTimeout);
+            return await app.connection.send<T>(method, params, this.requestTimeout);
         } catch (error) {
             if (error instanceof ConnectionClosedError) {
                 this.removeApp(app.connection);
@@ -104,7 +104,7 @@ export class AppRouter extends EventEmitter<AppRouterEventMap> {
         }
     }
 
-    private handleRequest(connection: AppConnection, request: IpcRequest): void {
+    private handleRequest(connection: ProtocolConnection, request: Request): void {
         if (request.method === "app.register") {
             this.handleRegister(connection, request);
         } else if (request.method === "app.unregister") {
@@ -112,17 +112,17 @@ export class AppRouter extends EventEmitter<AppRouterEventMap> {
         } else {
             this.connections.send(connection.id, {
                 id: request.id,
-                error: methodNotFoundError(request.method).toIpcError(),
+                error: methodNotFoundError(request.method).toErrorObject(),
             });
         }
     }
 
-    private handleRegister(connection: AppConnection, request: IpcRequest): void {
+    private handleRegister(connection: ProtocolConnection, request: Request): void {
         const parseResult = RegisterParamsSchema.safeParse(request.params);
         if (!parseResult.success) {
             this.connections.send(connection.id, {
                 id: request.id,
-                error: invalidRequestError(parseResult.error.message).toIpcError(),
+                error: invalidRequestError(parseResult.error.message).toErrorObject(),
             });
             return;
         }
@@ -141,20 +141,20 @@ export class AppRouter extends EventEmitter<AppRouterEventMap> {
         this.emit("appRegistered", appInfo);
     }
 
-    private handleUnregister(connection: AppConnection, request: IpcRequest): void {
+    private handleUnregister(connection: ProtocolConnection, request: Request): void {
         this.removeApp(connection);
         this.acknowledge(connection, request);
     }
 
-    private acknowledge(connection: AppConnection, request: IpcRequest): void {
-        const response: IpcResponse = {
+    private acknowledge(connection: ProtocolConnection, request: Request): void {
+        const response: Response = {
             id: request.id,
             result: { success: true },
         };
         this.connections.send(connection.id, response);
     }
 
-    private removeApp(connection: AppConnection): void {
+    private removeApp(connection: ProtocolConnection): void {
         const applicationId = this.connectionToApp.get(connection.id);
         if (!applicationId) return;
         this.apps.delete(applicationId);

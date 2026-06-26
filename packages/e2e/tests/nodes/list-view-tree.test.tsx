@@ -1,4 +1,4 @@
-import type { ItemNode } from "@gtkx/components";
+import type { ItemNode, ListRenderItemInfo } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 
@@ -328,16 +328,18 @@ describe("render - ListView (tree) (3)", () => {
 describe("render - ListView (tree) (4)", () => {
     describe("renderItem (tree)", () => {
         it("receives item data in renderItem", async () => {
-            const renderItem = vi.fn((item: { name: string }) => <GtkLabel label={item.name} />);
+            const renderItem = vi.fn(({ item }: ListRenderItemInfo<{ name: string }>) => (
+                <GtkLabel label={item.name} />
+            ));
 
             await renderListView([{ id: "1", value: { name: "Test Item" } }], { renderItem });
 
             expect(renderItem).toHaveBeenCalled();
         });
 
-        it("receives TreeListRow in renderItem", async () => {
-            const renderItem = vi.fn((item: { name: string }, row?: Gtk.TreeListRow | null) => (
-                <GtkLabel label={`${item.name} - depth: ${row?.getDepth() ?? 0}`} />
+        it("receives depth in renderItem", async () => {
+            const renderItem = vi.fn(({ item, depth }: ListRenderItemInfo<{ name: string }>) => (
+                <GtkLabel label={`${item.name} - depth: ${depth}`} />
             ));
 
             await renderListView(
@@ -356,11 +358,11 @@ describe("render - ListView (tree) (4)", () => {
 
         it("updates when renderItem function changes", async () => {
             const { rerender } = await renderListView([{ id: "1", value: { name: "Test" } }], {
-                renderItem: (item) => <GtkLabel label={`First: ${item.name}`} />,
+                renderItem: ({ item }) => <GtkLabel label={`First: ${item.name}`} />,
             });
 
             await rerender([{ id: "1", value: { name: "Test" } }], {
-                renderItem: (item) => <GtkLabel label={`Second: ${item.name}`} />,
+                renderItem: ({ item }) => <GtkLabel label={`Second: ${item.name}`} />,
             });
 
             expect(screen.queryAllByText("Second: Test")).toHaveLength(1);

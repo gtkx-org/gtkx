@@ -1,25 +1,24 @@
 import * as Gio from "@gtkx/gi/gio";
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import type { ItemNode } from "../types.js";
+import type { ItemNode, SectionNode } from "../types.js";
 import type { RowValue } from "./item-resolver.js";
-import { treeItemMetadata } from "./list-item-flatten.js";
+import { countDescendants, treeItemMetadata } from "./list-item-flatten.js";
 
 const emptyStrings = (count: number): string[] => new Array<string>(Math.max(0, count)).fill("");
 
-export const retagRows = <T, S>(
-    items: ItemNode<T, S>[],
-    rowValues: WeakMap<GObject.Object, RowValue<T, S>>,
+export const retagRows = <T>(
+    items: ItemNode<T>[],
+    rowValues: WeakMap<GObject.Object, RowValue<T>>,
     placeholdersById: Map<string, GObject.Object>,
 ): void => {
-    const walk = (list: ItemNode<T, S>[]): void => {
+    const walk = (list: ItemNode<T>[]): void => {
         for (const item of list) {
             const placeholder = placeholdersById.get(item.id);
             if (placeholder !== undefined) {
                 rowValues.set(placeholder, {
                     id: item.id,
                     value: item.value,
-                    isHeader: item.section === true,
                     metadata: treeItemMetadata(item),
                 });
             }
@@ -42,9 +41,9 @@ export const resizeFlatModel = (model: Gtk.StringList, count: number): void => {
     model.splice(target, current - target, null);
 };
 
-const createTaggedRow = <T, S>(
-    row: RowValue<T, S>,
-    rowValues: WeakMap<GObject.Object, RowValue<T, S>>,
+const createTaggedRow = <T>(
+    row: RowValue<T>,
+    rowValues: WeakMap<GObject.Object, RowValue<T>>,
     placeholdersById?: Map<string, GObject.Object>,
 ): GObject.Object => {
     const placeholder = Gtk.StringObject.new("");
@@ -53,16 +52,16 @@ const createTaggedRow = <T, S>(
     return placeholder;
 };
 
-const childModelOf = <T, S>(
-    children: ItemNode<T, S>[],
-    rowValues: WeakMap<GObject.Object, RowValue<T, S>>,
+const childModelOf = <T>(
+    children: ItemNode<T>[],
+    rowValues: WeakMap<GObject.Object, RowValue<T>>,
     placeholdersById: Map<string, GObject.Object>,
 ): Gio.ListStore => {
     const store = Gio.ListStore.new(Gtk.StringObject.prototype.__gtype__);
     for (const child of children) {
         store.append(
             createTaggedRow(
-                { id: child.id, value: child.value, isHeader: false, metadata: treeItemMetadata(child) },
+                { id: child.id, value: child.value, metadata: treeItemMetadata(child) },
                 rowValues,
                 placeholdersById,
             ),
@@ -71,17 +70,17 @@ const childModelOf = <T, S>(
     return store;
 };
 
-export const createTreeModel = <T, S>(
-    items: ItemNode<T, S>[],
+export const createTreeModel = <T>(
+    items: ItemNode<T>[],
     autoexpand: boolean,
-    rowValues: WeakMap<GObject.Object, RowValue<T, S>>,
+    rowValues: WeakMap<GObject.Object, RowValue<T>>,
     placeholdersById: Map<string, GObject.Object>,
 ): Gtk.TreeListModel => {
-    const childrenByRow = new WeakMap<GObject.Object, ItemNode<T, S>[]>();
+    const childrenByRow = new WeakMap<GObject.Object, ItemNode<T>[]>();
     const root = Gio.ListStore.new(Gtk.StringObject.prototype.__gtype__);
     for (const item of items) {
         const placeholder = createTaggedRow(
-            { id: item.id, value: item.value, isHeader: item.section === true, metadata: treeItemMetadata(item) },
+            { id: item.id, value: item.value, metadata: treeItemMetadata(item) },
             rowValues,
             placeholdersById,
         );
@@ -106,10 +105,10 @@ export const createTreeModel = <T, S>(
     return Gtk.TreeListModel.new(root, false, autoexpand, createFunc);
 };
 
-export const createSectionModel = <T, S>(items: ItemNode<T, S>[]): Gtk.FlattenListModel => {
-    const sections = Gio.ListStore.new(Gtk.StringList.prototype.__gtype__);
-    for (const section of items) {
-        sections.append(Gtk.StringList.new(emptyStrings(section.children?.length ?? 0)));
+export const createSectionModel = <S, T>(sections: SectionNode<S, T>[]): Gtk.FlattenListModel => {
+    const store = Gio.ListStore.new(Gtk.StringList.prototype.__gtype__);
+    for (const section of sections) {
+        store.append(Gtk.StringList.new(emptyStrings(countDescendants(section.data))));
     }
-    return Gtk.FlattenListModel.new(sections);
+    return Gtk.FlattenListModel.new(store);
 };

@@ -1,18 +1,18 @@
-import { sortedStringsBy, toCamelIdentifier, toUpperFirst } from "@gtkx/utils";
+import { sortedStringsBy, toCamelIdentifier, upperFirst } from "@gtkx/utils";
 import { ancestorChain } from "../gir/ancestry.js";
 import type { GirClass } from "../gir/class.js";
 import type { Library } from "../gir/library.js";
 import type { GirNamespace } from "../gir/namespace.js";
 
-export const signalHandlerName = (signalName: string): string => `on${toUpperFirst(toCamelIdentifier(signalName))}`;
+export const signalHandlerName = (signalName: string): string => `on${upperFirst(toCamelIdentifier(signalName))}`;
 
-export type IntrinsicElementClass = {
+export type GlibNamedClass = {
     glibName: string;
     klass: GirClass;
     namespace: GirNamespace;
 };
 
-export function* iterateClassesWithGlibName(library: Library): IterableIterator<IntrinsicElementClass> {
+export function* iterateClassesWithGlibName(library: Library): IterableIterator<GlibNamedClass> {
     for (const namespace of library.namespaces.values()) {
         for (const klass of namespace.classes) {
             const glibName = klass.glibTypeName ?? klass.cType;
@@ -147,9 +147,9 @@ export const classExposesMethod = (
 export const isIntrinsicElementClass = (klass: GirClass, namespace: GirNamespace, library: Library): boolean =>
     descendsFrom(klass, namespace, library, (glibName) => glibName === "GObject");
 
-export const collectIntrinsicElementClasses = (library: Library): IntrinsicElementClass[] => {
+export const collectIntrinsicElementClasses = (library: Library): GlibNamedClass[] => {
     const seen = new Set<string>();
-    const entries: IntrinsicElementClass[] = [];
+    const entries: GlibNamedClass[] = [];
     for (const candidate of iterateClassesWithGlibName(library)) {
         const { glibName, klass, namespace } = candidate;
         if (!isIntrinsicElementClass(klass, namespace, library)) continue;

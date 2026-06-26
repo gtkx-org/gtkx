@@ -2,29 +2,29 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import { useLayoutEffect, useRef, useState } from "react";
 import { type AdwDialogLike, isAdwDialog } from "../utils/gtype-predicates.js";
 
-export type TopLevelSurface = Gtk.Window | AdwDialogLike;
+export type Toplevel = Gtk.Window | AdwDialogLike;
 
-const presentSurface = (surface: TopLevelSurface, parent: Gtk.Window | null): (() => void) => {
-    if (isAdwDialog(surface)) {
-        surface.present(parent);
-        return () => surface.forceClose();
+const presentToplevel = (toplevel: Toplevel, parent: Gtk.Window | null): (() => void) => {
+    if (isAdwDialog(toplevel)) {
+        toplevel.present(parent);
+        return () => toplevel.forceClose();
     }
-    surface.present();
+    toplevel.present();
     return () => {
-        surface.setDefaultWidget(null);
-        surface.destroy();
+        toplevel.setDefaultWidget(null);
+        toplevel.destroy();
     };
 };
 
-export function useWindowPresentation(parent: Gtk.Window | null = null): (surface: TopLevelSurface | null) => void {
-    const [surface, setSurface] = useState<TopLevelSurface | null>(null);
+export function useWindowPresentation(parent: Gtk.Window | null = null): (toplevel: Toplevel | null) => void {
+    const [toplevel, setToplevel] = useState<Toplevel | null>(null);
     const parentRef = useRef(parent);
     parentRef.current = parent;
 
     useLayoutEffect(() => {
-        if (!surface) return;
-        return presentSurface(surface, parentRef.current);
-    }, [surface]);
+        if (!toplevel) return;
+        return presentToplevel(toplevel, parentRef.current);
+    }, [toplevel]);
 
-    return setSurface;
+    return setToplevel;
 }

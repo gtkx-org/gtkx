@@ -6,7 +6,7 @@ use napi_derive::napi;
 
 use crate::dispatch::Mailbox;
 use crate::error_reporter::NativeErrorReporter;
-use crate::state::GlibThread;
+use crate::glib_thread::GlibThread;
 
 #[napi(catch_unwind)]
 #[cfg_attr(test, allow(dead_code))]

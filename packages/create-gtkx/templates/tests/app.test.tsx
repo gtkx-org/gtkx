@@ -1,6 +1,6 @@
-import { describe, it, expect, afterEach } from "vitest";
 import * as Gtk from "@gtkx/gi/gtk";
 import { cleanup, render, screen } from "@gtkx/testing";
+import { afterEach, describe, expect, it } from "vitest";
 import App from "../src/app.js";
 
 afterEach(async () => {

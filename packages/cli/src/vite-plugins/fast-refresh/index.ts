@@ -1,5 +1,4 @@
 import type { Plugin } from "vite";
-import { gtkxRefresh } from "./header.js";
-import { gtkxSwcSsrRefresh } from "./transform.js";
+import { gtkxRefreshRuntime, gtkxSwcRefresh } from "./swc-refresh.js";
 
-export const gtkxFastRefresh = (): Plugin[] => [gtkxSwcSsrRefresh(), gtkxRefresh()];
+export const gtkxFastRefresh = (): Plugin[] => [gtkxSwcRefresh(), gtkxRefreshRuntime()];

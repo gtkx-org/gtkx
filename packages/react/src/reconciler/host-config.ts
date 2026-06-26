@@ -1,4 +1,4 @@
-import { BUFFER_TEXT_KIND, LABEL_TEXT_KIND, RELATIONSHIP_NODE_ELEMENT } from "@gtkx/config";
+import { BUFFER_TEXT_KIND, isRelationshipKind, LABEL_TEXT_KIND, RELATIONSHIP_NODE_ELEMENT } from "@gtkx/config";
 import { getWrapperClassByName } from "@gtkx/ffi";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -244,10 +244,16 @@ type InstanceConfig = Pick<
 >;
 
 const createInstanceConfig = (): InstanceConfig => ({
-    createInstance: (type, props, rootContainer) =>
-        type === RELATIONSHIP_NODE_ELEMENT
-            ? createRelationshipInstance(typeof props["kind"] === "string" ? props["kind"] : "", props, rootContainer)
-            : createElementInstance(type, props, rootContainer),
+    createInstance: (type, props, rootContainer) => {
+        if (type !== RELATIONSHIP_NODE_ELEMENT) {
+            return createElementInstance(type, props, rootContainer);
+        }
+        const kind = props["kind"];
+        if (!isRelationshipKind(kind)) {
+            throw new Error(`Relationship node element has an invalid kind: ${JSON.stringify(kind)}`);
+        }
+        return createRelationshipInstance(kind, props, rootContainer);
+    },
     createTextInstance: (text, rootContainer, hostContext) => {
         if (hostContext.textHost === "buffer") {
             return createRelationshipInstance(BUFFER_TEXT_KIND, { text }, rootContainer);

@@ -1,13 +1,13 @@
-import { sourceStringLiteral, toCamelIdentifier, toLowerFirst } from "@gtkx/utils";
+import { lowerFirst, sourceStringLiteral, toCamelIdentifier } from "@gtkx/utils";
 import { tBind, tInlineStruct, tRef, tString, tUint8, tVoid } from "../analysis/descriptor.js";
 import { type OutArg, planArgs, scalarAliasOrGroup, scalarPrefixArgs, trackInto } from "./args.js";
-import type { CommandPlan, ReturnPlan } from "./ctype.js";
 import { commandJsDoc, inParamDocLine, REFPAGES_BASE } from "./jsdoc.js";
+import type { CommandPlan, ReturnPlan } from "./plan.js";
 
 const GL_LIB_EXPRESSION = "LIB";
 
 const commandExportName = (name: string): string => {
-    const stripped = name.startsWith("gl") ? toLowerFirst(name.slice(2)) : name;
+    const stripped = name.startsWith("gl") ? lowerFirst(name.slice(2)) : name;
     return /^[0-9]/.test(stripped) ? name : toCamelIdentifier(stripped);
 };
 
@@ -148,7 +148,7 @@ export const deriveGenSingular = (
     const outParam = plan.command.params[outIndex];
     if (countPlan?.kind !== "scalar" || outPlan?.kind !== "ref-array-out") return undefined;
     if (countParam === undefined || outParam === undefined) return undefined;
-    if (outPlan.lenParamName !== countParam.name || outParam.kind === undefined) return undefined;
+    if (outPlan.lenParamName !== countParam.name || outParam.objectClass === undefined) return undefined;
     const prefix = scalarPrefixArgs(plan, usedTypes);
     if (prefix === undefined) return undefined;
     const exportName = singularize(commandExportName(plan.command.name));
@@ -163,11 +163,11 @@ export const deriveGenSingular = (
     const callArgs = [...prefix.map((arg) => arg.name), "1", "out"].join(", ");
     const jsDoc = [
         "/**",
-        ` * Returns one ${outParam.kind} object name via \`${plan.command.name}(${prefix.length > 0 ? "..., " : ""}1, ...)\`.`,
+        ` * Returns one ${outParam.objectClass} object name via \`${plan.command.name}(${prefix.length > 0 ? "..., " : ""}1, ...)\`.`,
         " *",
         ` * Provided by \`${feature}\`.`,
         ...prefix.map((arg) => inParamDocLine(plan.command, arg)),
-        ` * @returns The new ${outParam.kind} object name`,
+        ` * @returns The new ${outParam.objectClass} object name`,
         ` * @see ${REFPAGES_BASE}/${plan.command.name}.xhtml`,
         " */",
     ].join("\n");
@@ -198,15 +198,15 @@ export const deriveDeleteSingular = (
     const [countParam, arrayParam] = plan.command.params;
     if (countPlan?.kind !== "scalar" || arrayPlan?.kind !== "array-in") return undefined;
     if (countParam === undefined || arrayParam === undefined) return undefined;
-    if (arrayParam.len !== countParam.name || arrayParam.kind === undefined) return undefined;
+    if (arrayParam.len !== countParam.name || arrayParam.objectClass === undefined) return undefined;
     const exportName = singularize(commandExportName(plan.command.name));
     usedTypes.add(arrayPlan.scalar.tsAlias);
     const jsDoc = [
         "/**",
-        ` * Deletes one ${arrayParam.kind} object name via \`${plan.command.name}(1, ...)\`.`,
+        ` * Deletes one ${arrayParam.objectClass} object name via \`${plan.command.name}(1, ...)\`.`,
         " *",
         ` * Provided by \`${feature}\`.`,
-        ` * @param name - The ${arrayParam.kind} object name to delete`,
+        ` * @param name - The ${arrayParam.objectClass} object name to delete`,
         ` * @see ${REFPAGES_BASE}/${plan.command.name}.xhtml`,
         " */",
     ].join("\n");

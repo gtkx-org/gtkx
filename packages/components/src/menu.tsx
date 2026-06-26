@@ -1,6 +1,6 @@
 import type * as Gio from "@gtkx/gi/gio";
 import { GMenu, type GMenuProps } from "@gtkx/jsx/gio";
-import { useForwardedRef } from "@gtkx/react";
+import { useMergeRefs } from "@gtkx/react";
 import { createElement, type ReactNode, type Ref, useLayoutEffect, useRef } from "react";
 import { applyMenuItems, menuItemsEqual } from "./menu-items.js";
 import type { MenuEntry } from "./types.js";
@@ -9,7 +9,7 @@ import type { MenuEntry } from "./types.js";
  * The declarative menu-model surface added by the {@link Menu} component on top
  * of the raw `GMenu` element.
  */
-export type MenuItemsProps = {
+type MenuItemsProps = {
     items?: MenuEntry[] | null | undefined;
 };
 
@@ -26,7 +26,8 @@ export type MenuProps = Omit<GMenuProps, keyof MenuItemsProps> & MenuItemsProps 
  */
 export const Menu = (props: MenuProps): ReactNode => {
     const { items, ref, ...rest } = props;
-    const [menuRef, mergedRef] = useForwardedRef(ref);
+    const menuRef = useRef<Gio.Menu | null>(null);
+    const mergedRef = useMergeRefs(ref, menuRef);
     const appliedRef = useRef<MenuEntry[] | null>(null);
 
     useLayoutEffect(() => {

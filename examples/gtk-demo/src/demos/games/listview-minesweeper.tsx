@@ -185,7 +185,7 @@ const ListViewMinesweeperDemo = () => {
                 maxColumns={GRID_SIZE}
                 singleClickActivate
                 onActivate={(position) => handleCellClick(position)}
-                renderItem={(item: Cell) => (
+                renderItem={({ item }: { item: Cell }) => (
                     <GtkLabel
                         label={getCellDisplay(item)}
                         halign={Gtk.Align.CENTER}

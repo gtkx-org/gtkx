@@ -23,7 +23,7 @@
 //! frame, which is what keeps the nested cross-thread dispatch deadlock-free.
 
 mod freeze_controller;
-mod node_thread;
+mod node_dispatch;
 pub mod wait_signal;
 
 use std::collections::VecDeque;

@@ -20,10 +20,10 @@ export const isCollectibleCallerOut = (context: ModuleContext, parameter: GirPar
     return kind === "record" || kind === "class";
 };
 
-export const isBoxedCallerOut = (context: ModuleContext, parameter: GirParameter): boolean =>
+export const isRecordCallerOut = (context: ModuleContext, parameter: GirParameter): boolean =>
     resolveNamedParam(context, parameter)?.kind === "record";
 
-export const isBoxedInout = (context: ModuleContext, parameter: GirParameter): boolean =>
+export const isRecordInout = (context: ModuleContext, parameter: GirParameter): boolean =>
     isInoutParameter(parameter) && resolveNamedParam(context, parameter)?.kind === "record";
 
 export const isHandlePassing = (context: ModuleContext, ref: TypeId): boolean => {

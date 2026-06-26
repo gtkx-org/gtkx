@@ -328,7 +328,7 @@ const TimesDropDown = () => {
         <DropDown
             selectedId={selectedId}
             onSelectionChanged={setSelectedId}
-            renderListItem={(label: string) => renderSelectableTimeItem(label, selectedId)}
+            renderListItem={({ item: label }: { item: string }) => renderSelectableTimeItem(label, selectedId)}
             items={times.map((t) => ({ id: t, value: t }))}
         />
     );
@@ -342,7 +342,7 @@ const TimesSectionedDropDown = () => {
             selectedId={selectedId}
             onSelectionChanged={setSelectedId}
             enableSearch
-            renderListItem={(label: string) => renderSelectableTimeItem(label, selectedId)}
+            renderListItem={({ item: label }: { item: string }) => renderSelectableTimeItem(label, selectedId)}
             renderHeader={(value: string) => (
                 <GtkLabel
                     label={`<big><b>${escapeMarkup(value)}</b></big>`}
@@ -352,18 +352,16 @@ const TimesSectionedDropDown = () => {
                     marginBottom={10}
                 />
             )}
-            items={[
+            sections={[
                 {
                     id: "minutes",
                     value: "Minutes",
-                    section: true,
-                    children: minutes.map((m) => ({ id: m, value: m })),
+                    data: minutes.map((m) => ({ id: m, value: m })),
                 },
                 {
                     id: "hours",
                     value: "Hours",
-                    section: true,
-                    children: hours.map((h) => ({ id: h, value: h })),
+                    data: hours.map((h) => ({ id: h, value: h })),
                 },
             ]}
         />
@@ -392,10 +390,10 @@ const DevicesDropDown = () => {
         <DropDown
             selectedId={selectedId}
             onSelectionChanged={setSelectedId}
-            renderItem={(label: string) =>
+            renderItem={({ item: label }: { item: string }) =>
                 renderDeviceRow(label, (device) => <GtkLabel label={device.title} xalign={0} hexpand />)
             }
-            renderListItem={(label: string) =>
+            renderListItem={({ item: label }: { item: string }) =>
                 renderDeviceRow(label, (device) => (
                     <>
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={2}>

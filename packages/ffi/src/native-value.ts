@@ -1,18 +1,18 @@
 import type { ArrayType, Handle, Type, Value } from "@gtkx/native";
 import { getDescriptorWrapperClass } from "./descriptors.js";
-import { resolveBoxedGtype } from "./gvalue.js";
+import { gtypeFromDescriptor } from "./gvalue.js";
 import { requireWrapperClass, tryGetHandle, wrapHandle } from "./registry.js";
 
-const wrapCollection = (descriptor: ArrayType, value: unknown): unknown => {
+const collectionFromNativeValue = (descriptor: ArrayType, value: unknown): unknown => {
     if (value === null) return null;
     return (value as Value[]).map((item) => fromNativeValue(descriptor.itemType, item));
 };
 
-const wrapBoxedValue = (descriptor: Type, value: Handle | null): object | null => {
+const boxedFromNativeValue = (descriptor: Type, value: Handle | null): object | null => {
     if (value === null) return null;
     const paired = getDescriptorWrapperClass(descriptor);
     if (paired !== undefined) return wrapHandle(value, paired);
-    return wrapHandle(value, requireWrapperClass(resolveBoxedGtype(descriptor)));
+    return wrapHandle(value, requireWrapperClass(gtypeFromDescriptor(descriptor)));
 };
 
 export function fromNativeValue(descriptor: Type, value: Value): unknown {
@@ -23,9 +23,9 @@ export function fromNativeValue(descriptor: Type, value: Value): unknown {
             return wrapHandle(value as Handle | null, getDescriptorWrapperClass(descriptor));
         case "boxed":
         case "fundamental":
-            return wrapBoxedValue(descriptor, value as Handle | null);
+            return boxedFromNativeValue(descriptor, value as Handle | null);
         case "array":
-            return wrapCollection(descriptor, value);
+            return collectionFromNativeValue(descriptor, value);
         case "hashtable": {
             if (value === null) return null;
             const entries = value as [Value, Value][];
@@ -41,7 +41,7 @@ export function fromNativeValue(descriptor: Type, value: Value): unknown {
     }
 }
 
-const unwrapCollection = (descriptor: ArrayType, value: unknown): Value => {
+const collectionToNativeValue = (descriptor: ArrayType, value: unknown): Value => {
     if (value == null) return null;
     return (value as unknown[]).map((item) => toNativeValue(descriptor.itemType, item));
 };
@@ -54,7 +54,7 @@ export function toNativeValue(descriptor: Type, value: unknown): Value {
         case "fundamental":
             return tryGetHandle(value as object | null | undefined) ?? null;
         case "array":
-            return unwrapCollection(descriptor, value);
+            return collectionToNativeValue(descriptor, value);
         case "hashtable": {
             if (value == null) return null;
             return [...(value as Map<unknown, unknown>)].map(([key, val]): [Value, Value] => [

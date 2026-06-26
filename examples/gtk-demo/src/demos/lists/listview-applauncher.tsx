@@ -50,7 +50,7 @@ const ListViewApplauncherDemo = ({ window }: DemoProps) => {
                 estimatedItemHeight={48}
                 selectionMode={Gtk.SelectionMode.SINGLE}
                 onActivate={handleActivate}
-                renderItem={(item: AppItem) => (
+                renderItem={({ item }: { item: AppItem }) => (
                     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
                         <GtkImage
                             {...(item.icon ? { gicon: item.icon } : { iconName: "application-x-executable" })}

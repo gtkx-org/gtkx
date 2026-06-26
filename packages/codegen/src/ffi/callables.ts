@@ -1,4 +1,4 @@
-import { dedupeBy, toCamelCase } from "@gtkx/utils";
+import { toCamelCase, uniqBy } from "@gtkx/utils";
 import type { GirFunction } from "../gir/function.js";
 import type { ModuleContext } from "../writer/context.js";
 import { renderBlock } from "../writer/emit.js";
@@ -16,7 +16,7 @@ export type Callables = {
 };
 
 export const dedupeCallables = (callables: GirFunction[]): GirFunction[] =>
-    dedupeBy(
+    uniqBy(
         callables.filter(
             (callable): callable is GirFunction & { cIdentifier: string } => callable.cIdentifier !== undefined,
         ),

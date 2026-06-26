@@ -1,5 +1,5 @@
 import { t } from "@gtkx/ffi";
-import { clientWaitSync, enable, getProgramiv, getProgramPipelineiv, getShaderiv } from "./generated/commands.js";
+import { clientWaitSync, enable, getProgramiv, getProgramPipelineiv, getShaderiv, LIB } from "./generated/commands.js";
 import {
     ALREADY_SIGNALED,
     CONDITION_SATISFIED,
@@ -19,8 +19,6 @@ import type {
     SyncObjectMask,
     SyncStatus,
 } from "./generated/types.js";
-
-const LIB = "libGL.so.1";
 
 type LengthQuery = (id: GLuint, pname: GLenum) => GLint;
 

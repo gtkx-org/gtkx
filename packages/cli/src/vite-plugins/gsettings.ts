@@ -1,13 +1,13 @@
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
-import { resolveDataDir } from "@gtkx/config";
 import { errorMessage } from "@gtkx/utils";
 import type { ModuleNode, Plugin, UserConfig, ViteDevServer } from "vite";
 import { compileSchemas } from "../gsettings/compile.js";
 import { emitSchemaEnv, prependSchemaDir, SCHEMA_SUFFIX, stageSchema } from "../gsettings/env.js";
 import { parseSchemaXml, SchemaParseError } from "../gsettings/parser.js";
 import { renderRuntimeModule } from "../gsettings/render.js";
+import { resolveDataDir } from "../internal/data-dir.js";
 import { error, info } from "../internal/log.js";
 import { removeTempDir } from "../internal/remove-temp-dir.js";
 import { withStagingDir } from "../internal/staging-dir.js";

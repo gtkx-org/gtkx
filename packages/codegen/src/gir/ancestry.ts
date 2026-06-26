@@ -6,15 +6,24 @@ export type ResolvedAncestor = {
     namespaceName: string;
 };
 
+export const resolveNamedType = (
+    library: Library,
+    defaultNamespace: string,
+    name: string,
+    acceptedKinds: Array<"class" | "interface">,
+): ResolvedAncestor | undefined => {
+    const resolved = library.resolveType(defaultNamespace, name);
+    if (resolved === undefined) return undefined;
+    if (resolved.kind !== "class" && resolved.kind !== "interface") return undefined;
+    if (!acceptedKinds.includes(resolved.kind)) return undefined;
+    return { klass: resolved.value, namespaceName: resolved.namespace.name };
+};
+
 const resolveClassOrInterface = (
     library: Library,
     defaultNamespace: string,
     name: string,
-): ResolvedAncestor | undefined => {
-    const resolved = library.resolveType(defaultNamespace, name);
-    if (resolved === undefined || (resolved.kind !== "class" && resolved.kind !== "interface")) return undefined;
-    return { klass: resolved.value, namespaceName: resolved.namespace.name };
-};
+): ResolvedAncestor | undefined => resolveNamedType(library, defaultNamespace, name, ["class", "interface"]);
 
 export function* ancestorChain(library: Library, klass: GirClass, namespaceName: string): Generator<ResolvedAncestor> {
     const visited = new Set<string>();

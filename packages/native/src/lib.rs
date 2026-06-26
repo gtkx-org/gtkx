@@ -19,6 +19,7 @@ test_visible_modules! {
     arg,
     dispatch,
     ffi,
+    glib_thread,
     managed,
     panic_handler,
     state,

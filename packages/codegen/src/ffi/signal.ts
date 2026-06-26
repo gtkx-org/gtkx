@@ -1,6 +1,12 @@
 import { sourceStringLiteral, toCamelCase, toPascalCase } from "@gtkx/utils";
 import { tCallback, tObject, tVoid } from "../analysis/descriptor.js";
 import {
+    isCellInout,
+    omitsPrimaryReturn,
+    renderDescriptor,
+    renderParamDescriptor,
+} from "../analysis/descriptor-render.js";
+import {
     collectInterfaceProperties,
     forEachAncestor,
     resolveImplementedInterface,
@@ -9,7 +15,6 @@ import {
 import { renderHandlerParameters } from "../analysis/param-structure.js";
 import { foldOutParamShape } from "../analysis/return-shape.js";
 import { renderTsType } from "../analysis/ts-type.js";
-import { isCellInout, omitsPrimaryReturn, renderDescriptor, renderParamDescriptor } from "../analysis/value.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirParameter } from "../gir/parameter.js";
 import { isCallerAllocatedOut, isOutParameter } from "../gir/parameter.js";
@@ -18,7 +23,7 @@ import type { GirSignal } from "../gir/signal.js";
 import { splitOptionalNamespace } from "../gir/type-ref.js";
 import type { ModuleContext } from "../writer/context.js";
 import { indent, renderBlock, renderBracedOrEmpty } from "../writer/emit.js";
-import { isBoxedCallerOut, isBoxedInout } from "./param-marshal.js";
+import { isRecordCallerOut, isRecordInout } from "./param-marshal.js";
 
 const SIGNAL_HANDLER_TYPE = "(...args: any[]) => any";
 
@@ -217,27 +222,27 @@ const renderConnectCase = (context: ModuleContext, collected: CollectedSignal): 
 const renderEmitCase = (context: ModuleContext, collected: CollectedSignal): string => {
     const { signal } = collected;
     const params = signal.parameters.filter((parameter) => !parameter.isVarargs);
-    if (params.some((parameter) => isCallerAllocatedOut(parameter) && !isBoxedCallerOut(context, parameter))) {
+    if (params.some((parameter) => isCallerAllocatedOut(parameter) && !isRecordCallerOut(context, parameter))) {
         return renderUnsupportedEmitCase(signal);
     }
     context.addRuntimeImport("emitGObjectSignal");
 
     let argIndex = 0;
     const argLiterals = params.map((parameter) => {
-        const ffi = renderDescriptor(context, parameter.type, parameter.transferOwnership);
+        const descriptor = renderDescriptor(context, parameter.type, parameter.transferOwnership);
         if (isOutParameter(parameter)) {
-            return `{ type: ${ffi}, direction: "out" }`;
+            return `{ type: ${descriptor}, direction: "out" }`;
         }
         if (isCellInout(context, parameter)) {
-            return `{ type: ${ffi}, direction: "inout", value: args[${argIndex++}] }`;
+            return `{ type: ${descriptor}, direction: "inout", value: args[${argIndex++}] }`;
         }
         if (isCallerAllocatedOut(parameter)) {
-            return `{ type: ${ffi}, direction: "out", callerAllocates: true, value: ${renderCallerOutAllocation(context, parameter)} }`;
+            return `{ type: ${descriptor}, direction: "out", callerAllocated: true, value: ${renderCallerOutAllocation(context, parameter)} }`;
         }
-        if (isBoxedInout(context, parameter)) {
-            return `{ type: ${ffi}, direction: "inout", callerAllocates: true, value: args[${argIndex++}] }`;
+        if (isRecordInout(context, parameter)) {
+            return `{ type: ${descriptor}, direction: "inout", callerAllocated: true, value: args[${argIndex++}] }`;
         }
-        return `{ type: ${ffi}, value: args[${argIndex++}] }`;
+        return `{ type: ${descriptor}, value: args[${argIndex++}] }`;
     });
 
     const isVoid = omitsPrimaryReturn(context.library, signal.returnValue);
@@ -268,13 +273,15 @@ const renderCallerOutAllocation = (context: ModuleContext, parameter: GirParamet
 const renderCallback = (context: ModuleContext, collected: CollectedSignal): string => {
     const { signal } = collected;
     const params = signal.parameters.filter((parameter) => !parameter.isVarargs);
-    const callbackParamFfi = params.map((parameter) => renderParamDescriptor(context, parameter, parameter.type));
+    const callbackParamDescriptors = params.map((parameter) =>
+        renderParamDescriptor(context, parameter, parameter.type),
+    );
     const isVoid = omitsPrimaryReturn(context.library, signal.returnValue);
-    const returnFfi = isVoid
+    const returnDescriptor = isVoid
         ? tVoid
         : renderDescriptor(context, signal.returnValue.type, signal.returnValue.transferOwnership);
-    const callbackArgs = [tObject("borrowed"), ...callbackParamFfi, tVoid];
-    return tCallback(callbackArgs, returnFfi, `{ hasDestroy: true, userDataIndex: ${params.length + 1} }`);
+    const callbackArgs = [tObject("borrowed"), ...callbackParamDescriptors, tVoid];
+    return tCallback(callbackArgs, returnDescriptor, `{ hasDestroy: true, userDataIndex: ${params.length + 1} }`);
 };
 
 const collectClassSignals = (context: ModuleContext, klass: GirClass): CollectedSignal[] => {

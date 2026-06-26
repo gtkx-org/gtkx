@@ -109,8 +109,8 @@ describe("defaultDevRunnerDeps (plugins)", () => {
             "gtkx:gresources",
             "gtkx:assets",
             "gtkx:react-compiler",
-            "gtkx:swc-ssr-refresh",
-            "gtkx:refresh",
+            "gtkx:swc-refresh",
+            "gtkx:refresh-runtime",
             "gtkx:skip-react-dom-optimize",
         ]);
     });

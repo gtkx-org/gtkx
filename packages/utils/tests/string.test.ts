@@ -1,33 +1,33 @@
 import { describe, expect, it } from "vitest";
-import { toCamelCase, toKebabCase, toLowerFirst, toPascalCase, toUpperFirst } from "../src/string.js";
+import { lowerFirst, toCamelCase, toKebabCase, toPascalCase, upperFirst } from "../src/string.js";
 
-describe("toUpperFirst", () => {
+describe("upperFirst", () => {
     it("uppercases the first character", () => {
-        expect(toUpperFirst("fred")).toBe("Fred");
+        expect(upperFirst("fred")).toBe("Fred");
     });
 
     it("preserves the casing of the tail", () => {
-        expect(toUpperFirst("fooBar")).toBe("FooBar");
-        expect(toUpperFirst("URL")).toBe("URL");
+        expect(upperFirst("fooBar")).toBe("FooBar");
+        expect(upperFirst("URL")).toBe("URL");
     });
 
     it("returns the empty string unchanged", () => {
-        expect(toUpperFirst("")).toBe("");
+        expect(upperFirst("")).toBe("");
     });
 });
 
-describe("toLowerFirst", () => {
+describe("lowerFirst", () => {
     it("lowercases the first character", () => {
-        expect(toLowerFirst("Fred")).toBe("fred");
+        expect(lowerFirst("Fred")).toBe("fred");
     });
 
     it("preserves the casing of the tail", () => {
-        expect(toLowerFirst("FooBar")).toBe("fooBar");
-        expect(toLowerFirst("URL")).toBe("uRL");
+        expect(lowerFirst("FooBar")).toBe("fooBar");
+        expect(lowerFirst("URL")).toBe("uRL");
     });
 
     it("returns the empty string unchanged", () => {
-        expect(toLowerFirst("")).toBe("");
+        expect(lowerFirst("")).toBe("");
     });
 });
 

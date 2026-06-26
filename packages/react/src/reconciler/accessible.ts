@@ -3,7 +3,7 @@
 import { ACCESSIBLE_ATTRIBUTES } from "virtual:gtkx-config";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { deleteAccessibleMetadata, setAccessibleMetadata } from "../utils/widget-metadata.js";
+import { deleteAccessibleMetadata, setAccessibleMetadata } from "../utils/accessible-metadata.js";
 import type { Props } from "./types.js";
 
 type AccessibleAttributeValue = "string" | "boolean" | "int" | "double" | "object" | "ref-list";

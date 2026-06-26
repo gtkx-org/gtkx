@@ -1,5 +1,5 @@
 {
-    "name": "<%= name %>",
+    "name": "{{name}}",
     "version": "0.0.1",
     "private": true,
     "type": "module",
@@ -10,7 +10,6 @@
         "dev": "gtkx dev",
         "build": "gtkx build",
         "typecheck": "gtkx codegen && tsc --noEmit",
-        "start": "node dist/bundle.js"<% if (includeTesting) { %>,
-        "test": "vitest"<% } %>
+        "start": "node dist/bundle.js"
     }
 }

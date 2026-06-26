@@ -93,7 +93,9 @@ function NoteListContent({
 }: NoteListContentProps) {
     const items = filteredNotes.map((note) => ({ id: note.id, value: note }));
     const selected = selectedId ? [selectedId] : [];
-    const renderItem = (note: Note) => <NoteCard note={note} compact={compactMode} fontSize={fontSize} />;
+    const renderItem = ({ item: note }: { item: Note }) => (
+        <NoteCard note={note} compact={compactMode} fontSize={fontSize} />
+    );
     const onSelectionChanged = (ids: string[]) => setSelectedId(ids[0] ?? null);
 
     if (viewMode === "list") {

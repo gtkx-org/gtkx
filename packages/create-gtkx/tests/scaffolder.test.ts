@@ -114,6 +114,13 @@ describe("scaffold (top-level generated files)", () => {
         expect(content.scripts.test).toContain("vitest");
     });
 
+    it("omits the test script from package.json when includeTesting=false", async () => {
+        await run({ includeTesting: false });
+
+        const content = JSON.parse(read(`${TEST_DIR}/test-app/package.json`));
+        expect(content.scripts.test).toBeUndefined();
+    });
+
     it("writes gtkx.config.ts with the default libraries", async () => {
         await run();
 
@@ -269,6 +276,7 @@ describe("scaffold (prompting)", () => {
     const partialOptions = (overrides: Partial<CreateOptions> = {}): CreateOptions => ({
         applicationId: "org.test.app",
         includeTesting: false,
+        interactive: true,
         ...overrides,
     });
 
@@ -306,5 +314,71 @@ describe("scaffold (prompting)", () => {
 
     it("falls back to pnpm when no package manager is detected", async () => {
         expect(await captureInitialValue(undefined)).toBe("pnpm");
+    });
+});
+
+describe("scaffold (non-interactive and overwrite)", () => {
+    const lastError = (): string => String(clack.log.error.mock.calls.at(-1)?.[0] ?? "");
+
+    it("rejects a flag-supplied name with an invalid format", async () => {
+        await scaffold({
+            name: "Invalid_Name",
+            applicationId: "org.test.app",
+            packageManager: "pnpm",
+            includeTesting: false,
+            interactive: false,
+        });
+
+        expect(exitSpy).toHaveBeenCalledWith(1);
+        expect(lastError()).toContain("lowercase letters");
+    });
+
+    it("rejects a flag-supplied name whose directory already exists without overwrite", async () => {
+        vol.mkdirSync(`${TEST_DIR}/test-app`, { recursive: true });
+        vol.writeFileSync(`${TEST_DIR}/test-app/keep.txt`, "keep");
+
+        await scaffold({
+            name: "test-app",
+            applicationId: "org.test.app",
+            packageManager: "pnpm",
+            includeTesting: false,
+            interactive: false,
+        });
+
+        expect(exitSpy).toHaveBeenCalledWith(1);
+        expect(lastError()).toContain("already exists");
+    });
+
+    it("resolves defaults from a partial non-TTY invocation without prompting", async () => {
+        await scaffold({ name: "test-app", interactive: false });
+
+        expect(clack.text).not.toHaveBeenCalled();
+        expect(clack.select).not.toHaveBeenCalled();
+        expect(clack.confirm).not.toHaveBeenCalled();
+
+        const config = read(`${TEST_DIR}/test-app/gtkx.config.ts`);
+        expect(config).toContain('applicationId: "com.testapp.app"');
+
+        const pkg = JSON.parse(read(`${TEST_DIR}/test-app/package.json`));
+        expect(pkg.scripts.test).toContain("vitest");
+        expect(vol.existsSync(`${TEST_DIR}/test-app/vitest.config.ts`)).toBe(true);
+        expect(addDependencyMock.mock.calls[0]?.[1]).toMatchObject({ packageManager: "pnpm" });
+    });
+
+    it("empties an existing directory when --overwrite is set", async () => {
+        vol.mkdirSync(`${TEST_DIR}/test-app`, { recursive: true });
+        vol.writeFileSync(`${TEST_DIR}/test-app/stale.txt`, "stale");
+
+        await scaffold({
+            name: "test-app",
+            applicationId: "org.test.app",
+            packageManager: "pnpm",
+            includeTesting: false,
+            interactive: false,
+            overwrite: true,
+        });
+
+        expect(vol.existsSync(`${TEST_DIR}/test-app/stale.txt`)).toBe(false);
+        expect(vol.existsSync(`${TEST_DIR}/test-app/package.json`)).toBe(true);
     });
 });

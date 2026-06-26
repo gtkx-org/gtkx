@@ -37,7 +37,7 @@ pub(crate) fn parse_callback_arg_and_return_types(
     // SAFETY: `arg_types_prop` was verified to be an array above, and its raw napi value is valid
     // for the current `env`, so reconstructing an `Array` from the pair is sound.
     let arg_types_arr: Array = unsafe { Array::from_napi_value(env.raw(), arg_types_prop.raw())? };
-    let arg_types = crate::value::map_js_array(env, &arg_types_arr, Type::from_js_value)?;
+    let arg_types = crate::value::map_js_array(env, &arg_types_arr, Type::from_descriptor)?;
 
     let return_type_prop: Unknown<'_> = obj.get_named_property("returnType")?;
     if matches!(
@@ -49,7 +49,7 @@ pub(crate) fn parse_callback_arg_and_return_types(
             format!("'returnType' property is required for {kind} types"),
         ));
     }
-    let return_type = Box::new(Type::from_js_value(env, return_type_prop)?);
+    let return_type = Box::new(Type::from_descriptor(env, return_type_prop)?);
 
     Ok((arg_types, return_type))
 }
@@ -68,6 +68,7 @@ mod prelude;
 mod raw_ptr;
 mod ref_type;
 mod string;
+mod struct_type;
 mod unichar;
 mod void;
 
@@ -75,7 +76,7 @@ pub use array::ArrayKind;
 pub use array::ArrayType;
 pub use bigint::BigIntKind;
 pub use boolean::BooleanType;
-pub use boxed::{BoxedFreeFn, BoxedType, StructType};
+pub use boxed::{BoxedFreeFn, BoxedType};
 pub use buffer::BufferType;
 pub use callback::CallbackType;
 #[cfg(feature = "test-support")]
@@ -88,6 +89,7 @@ pub use hashtable::HashTableEntryEncoder;
 pub use numeric::{FloatKind, IntegerKind, EnumFlagsKind, EnumFlagsType};
 pub use ref_type::RefType;
 pub use string::{StringType, str_to_glib_full};
+pub use struct_type::StructType;
 pub use unichar::UnicharType;
 pub use void::VoidType;
 
@@ -119,7 +121,7 @@ impl Ownership {
 
 impl Ownership {
     #[cfg_attr(coverage_nightly, coverage(off))]
-    pub fn from_js_value(obj: &JsObject, type_name: &str) -> napi::Result<Self> {
+    pub fn from_descriptor(obj: &JsObject, type_name: &str) -> napi::Result<Self> {
         let missing = || {
             napi::Error::new(
                 napi::Status::InvalidArg,
@@ -431,7 +433,7 @@ impl std::fmt::Display for Type {
 
 impl Type {
     #[cfg_attr(coverage_nightly, coverage(off))]
-    pub fn from_js_value(env: &Env, value: Unknown<'_>) -> napi::Result<Self> {
+    pub fn from_descriptor(env: &Env, value: Unknown<'_>) -> napi::Result<Self> {
         let obj: JsObject = crate::value::unknown_as_object(env, &value)?;
         let ty: String = obj.get_named_property("type")?;
 
@@ -448,12 +450,12 @@ impl Type {
             "biguint64" => Ok(Self::BigInt(BigIntKind::U64)),
             "float32" => Ok(Self::Float(FloatKind::F32)),
             "float64" => Ok(Self::Float(FloatKind::F64)),
-            "enum" => Ok(Self::EnumFlags(EnumFlagsType::from_js_value(
+            "enum" => Ok(Self::EnumFlags(EnumFlagsType::from_descriptor(
                 env,
                 &obj,
                 EnumFlagsKind::Enum,
             )?)),
-            "flags" => Ok(Self::EnumFlags(EnumFlagsType::from_js_value(
+            "flags" => Ok(Self::EnumFlags(EnumFlagsType::from_descriptor(
                 env,
                 &obj,
                 EnumFlagsKind::Flags,

@@ -6,7 +6,7 @@ import { type GtkxConfig, type ResolvedGtkxConfig, resolveGtkxConfig, validateGt
 export type LoadedConfig = {
     config: GtkxConfig;
     configFile: string | undefined;
-    rootDir: string;
+    root: string;
 };
 
 export class GtkxConfigNotFoundError extends Error {
@@ -49,7 +49,7 @@ export const loadGtkxConfig = async (cwd: string, options: LoadGtkxConfigOptions
     return {
         config: result.config,
         configFile: result.configFile,
-        rootDir: result.cwd ?? cwd,
+        root: result.cwd ?? cwd,
     };
 };
 

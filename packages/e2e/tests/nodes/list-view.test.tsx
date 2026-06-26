@@ -1,3 +1,4 @@
+import type { ListRenderItemInfo } from "@gtkx/components";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { screen } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
@@ -123,20 +124,22 @@ describe("render - ListView (2)", () => {
 describe("render - ListView (3)", () => {
     describe("renderItem", () => {
         it("receives item data in renderItem", async () => {
-            const renderItem = vi.fn((item: { name: string }) => <GtkLabel label={item.name} />);
+            const renderItem = vi.fn(({ item }: ListRenderItemInfo<{ name: string }>) => (
+                <GtkLabel label={item.name} />
+            ));
 
             await renderListView([{ id: "1", value: { name: "Test Item" } }], { renderItem });
 
-            expect(renderItem).toHaveBeenCalledWith({ name: "Test Item" });
+            expect(renderItem).toHaveBeenCalledWith(expect.objectContaining({ item: { name: "Test Item" } }));
         });
 
         it("updates when renderItem function changes", async () => {
             const { rerender } = await renderListView([{ id: "1", value: { name: "Test" } }], {
-                renderItem: (item) => <GtkLabel label={`First: ${item.name}`} />,
+                renderItem: ({ item }) => <GtkLabel label={`First: ${item.name}`} />,
             });
 
             await rerender([{ id: "1", value: { name: "Test" } }], {
-                renderItem: (item) => <GtkLabel label={`Second: ${item.name}`} />,
+                renderItem: ({ item }) => <GtkLabel label={`Second: ${item.name}`} />,
             });
 
             expect(screen.queryAllByText("Second: Test")).toHaveLength(1);
@@ -252,7 +255,7 @@ describe("render - ListView (7)", () => {
 
         it("preserves order with frequent value updates", async () => {
             type Item = { count: number };
-            const renderItem = (item: Item) => <GtkLabel label={String(item.count)} />;
+            const renderItem = ({ item }: ListRenderItemInfo<Item>) => <GtkLabel label={String(item.count)} />;
             const itemsFor = (a: number, b: number, c: number) => [
                 { id: "1", value: { count: a } },
                 { id: "2", value: { count: b } },

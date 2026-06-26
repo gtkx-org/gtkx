@@ -1,13 +1,13 @@
 import type { MockInstance } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createInstance, type Instance } from "../src/create-instance.js";
+import { type Css, createCss } from "../src/create-css.js";
 import { StyleSheet } from "../src/stylesheet.js";
 
 describe("css", () => {
-    let instance: Instance;
+    let instance: Css;
 
     beforeEach(() => {
-        instance = createInstance();
+        instance = createCss();
     });
 
     it("creates a class name from template literal styles", () => {
@@ -92,10 +92,10 @@ describe("css", () => {
 });
 
 describe("cx", () => {
-    let instance: Instance;
+    let instance: Css;
 
     beforeEach(() => {
-        instance = createInstance();
+        instance = createCss();
     });
 
     it("combines multiple class names into an array", () => {
@@ -146,10 +146,10 @@ describe("cx", () => {
 });
 
 describe("cx falsy filtering", () => {
-    let instance: Instance;
+    let instance: Css;
 
     beforeEach(() => {
-        instance = createInstance();
+        instance = createCss();
     });
 
     it("filters out false values", () => {
@@ -181,10 +181,10 @@ describe("cx falsy filtering", () => {
 });
 
 describe("cx edge cases", () => {
-    let instance: Instance;
+    let instance: Css;
 
     beforeEach(() => {
-        instance = createInstance();
+        instance = createCss();
     });
 
     it("returns empty array when given no arguments", () => {
@@ -213,10 +213,10 @@ describe("cx edge cases", () => {
 });
 
 describe("injectGlobal", () => {
-    let instance: Instance;
+    let instance: Css;
 
     beforeEach(() => {
-        instance = createInstance();
+        instance = createCss();
     });
 
     it("accepts template literal styles", () => {
@@ -269,12 +269,12 @@ describe("injectGlobal", () => {
 });
 
 describe("stylis pipeline correctness", () => {
-    let instance: Instance;
+    let instance: Css;
     let insertSpy: MockInstance<StyleSheet["insert"]>;
 
     beforeEach(() => {
         insertSpy = vi.spyOn(StyleSheet.prototype, "insert");
-        instance = createInstance();
+        instance = createCss();
     });
 
     afterEach(() => {

@@ -1,21 +1,19 @@
-export const toUpperFirst = (value: string): string => value.charAt(0).toUpperCase() + value.slice(1);
+export const upperFirst = (value: string): string => value.charAt(0).toUpperCase() + value.slice(1);
 
-export const toLowerFirst = (value: string): string => value.charAt(0).toLowerCase() + value.slice(1);
+export const lowerFirst = (value: string): string => value.charAt(0).toLowerCase() + value.slice(1);
 
 const splitWords = (input: string): string[] => input.split(/[_-]/g).filter((part) => part.length > 0);
 
 export const toCamelCase = (input: string): string => {
     const parts = splitWords(input);
     if (parts.length === 0) return input;
-    const [first, ...rest] = parts;
-    const head = first ?? "";
-    return head + rest.map(toUpperFirst).join("");
+    return parts.map((part, index) => (index === 0 ? part : upperFirst(part))).join("");
 };
 
 export const toPascalCase = (input: string): string => {
     const parts = splitWords(input);
     if (parts.length === 0) return input;
-    return parts.map(toUpperFirst).join("");
+    return parts.map(upperFirst).join("");
 };
 
 export const toKebabCase = (input: string): string =>

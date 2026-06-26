@@ -1,6 +1,7 @@
 import "./setup-runtime.js";
 
 export { act } from "./act.js";
+export type { BoundQueries, RenderResult, Screen } from "./bound-queries.js";
 export type { AsyncWrapper, Config, ConfigFn, EventWrapper } from "./config.js";
 export { configure, getConfig } from "./config.js";
 export { fireEvent } from "./fire-event.js";
@@ -54,7 +55,6 @@ export type { Method, Suggestion, Variant } from "./suggestions.js";
 export { getSuggestedQuery } from "./suggestions.js";
 export type { Container } from "./traversal.js";
 export type {
-    BoundQueries,
     ByRoleOptions,
     ByRoleValue,
     Matcher,
@@ -65,12 +65,10 @@ export type {
     RenderHookOptions,
     RenderHookResult,
     RenderOptions,
-    RenderResult,
-    Screen,
     ScreenshotOptions,
     ScreenshotResult,
     WaitForOptions,
-    WindowSelector,
+    WindowMatcher,
     WrapperComponent,
 } from "./types.js";
 export type {
@@ -81,7 +79,6 @@ export type {
     TabOptions,
     TypeOptions,
     UserEvent,
-    UserEventOptions,
 } from "./user-event/index.js";
 export { userEvent } from "./user-event/index.js";
 export { waitFor, waitForElementToBeRemoved } from "./wait-for.js";

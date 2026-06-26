@@ -203,7 +203,7 @@ macro_rules! impl_numeric_codecs {
 
 pub const MAX_SAFE_INTEGER_I128: i128 = 9_007_199_254_740_992;
 
-const MAX_SAFE_INTEGER: f64 = MAX_SAFE_INTEGER_I128 as f64;
+pub(super) const MAX_SAFE_INTEGER: f64 = MAX_SAFE_INTEGER_I128 as f64;
 
 pub fn lossless_f64(value: i128, context: &str) -> anyhow::Result<f64> {
     if !(-MAX_SAFE_INTEGER_I128..=MAX_SAFE_INTEGER_I128).contains(&value) {
@@ -541,7 +541,7 @@ pub struct EnumFlagsType {
 
 impl EnumFlagsType {
     #[cfg_attr(coverage_nightly, coverage(off))]
-    pub fn from_js_value(_env: &Env, obj: &JsObject, kind: EnumFlagsKind) -> napi::Result<Self> {
+    pub fn from_descriptor(_env: &Env, obj: &JsObject, kind: EnumFlagsKind) -> napi::Result<Self> {
         let library: String = obj.get_named_property("library")?;
         let get_type_fn: String = obj.get_named_property("getTypeFn")?;
         let signed: bool = obj.get_named_property("signed")?;

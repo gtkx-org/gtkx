@@ -12,11 +12,7 @@ const propertyDefaults: { [K in keyof Required<AnimationTarget>]: number } = {
     skewY: 0,
 };
 
-export const interpolate = (
-    from: AnimationTarget,
-    to: AnimationTarget,
-    progress: number,
-): AnimationTarget => {
+export const interpolate = (from: AnimationTarget, to: AnimationTarget, progress: number): AnimationTarget => {
     const result: AnimationTarget = {};
     const allKeys = new Set([...Object.keys(from), ...Object.keys(to)]) as Set<keyof AnimationTarget>;
 

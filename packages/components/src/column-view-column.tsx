@@ -12,11 +12,20 @@ const factoryInstaller: FactoryInstaller<Gtk.ColumnViewColumn> = {
 };
 
 /**
+ * Information passed to a {@link ColumnViewColumn} `renderItem` callback for a
+ * single cell: its resolved value and bound list `index`.
+ */
+export interface ColumnRenderItemInfo<T> {
+    item: T;
+    index: number;
+}
+
+/**
  * Props for a single {@link ColumnViewColumn} of a {@link ColumnView},
  * replacing the raw `GtkColumnViewColumn` factory/sorter surface with a
- * declarative `renderCell` callback and an optional header context menu.
+ * declarative `renderItem` callback and an optional header context menu.
  */
-export type ColumnViewColumnDeclarativeProps<T = unknown> = {
+type ColumnViewColumnDeclarativeProps<T = unknown> = {
     title: string;
     expand?: boolean | undefined;
     resizable?: boolean | undefined;
@@ -24,7 +33,7 @@ export type ColumnViewColumnDeclarativeProps<T = unknown> = {
     id: string;
     sortable?: boolean | undefined;
     visible?: boolean | undefined;
-    renderCell: (item: T) => ReactNode;
+    renderItem: (info: ColumnRenderItemInfo<T>) => ReactNode;
     headerMenu?: ReactNode;
 };
 
@@ -39,11 +48,11 @@ export type ColumnViewColumnProps<T = unknown> = Omit<GtkColumnViewColumnProps, 
 
 /**
  * A single column of a {@link ColumnView}, rendering each row's cell through
- * the declarative `renderCell` callback and optionally attaching a header
+ * the declarative `renderItem` callback and optionally attaching a header
  * context menu.
  */
 export const ColumnViewColumn = <T = unknown>(props: ColumnViewColumnProps<T>): ReactNode => {
-    const { id, title, expand, resizable, fixedWidth, visible, sortable, renderCell, headerMenu } = props;
+    const { id, title, expand, resizable, fixedWidth, visible, sortable, renderItem, headerMenu } = props;
     const context = useColumnViewContext();
     const [column, setColumn] = useState<Gtk.ColumnViewColumn | null>(null);
 
@@ -69,8 +78,8 @@ export const ColumnViewColumn = <T = unknown>(props: ColumnViewColumnProps<T>): 
 
     const headerMenuPortal = useHeaderMenu(column, headerMenu);
 
-    const cellRenderer: CellRenderer<unknown, unknown> = (value, _treeRow, isHeader) =>
-        isHeader ? null : renderCell(value as T);
+    const cellRenderer: CellRenderer<unknown, unknown> = (value, _treeRow, isHeader, position) =>
+        isHeader ? null : renderItem({ item: value as T, index: position });
 
     const intrinsicProps: Record<string, unknown> = { id, title, ref: captureColumn };
     if (expand !== undefined) intrinsicProps["expand"] = expand;

@@ -1,10 +1,10 @@
 import { sortedStrings, sortedStringsBy } from "@gtkx/utils";
 import { ModuleBuilder } from "../writer/module.js";
-import { GL_SCALARS } from "./ctype.js";
 import type { GlEnum } from "./model.js";
+import { GL_SCALARS } from "./plan.js";
 import type { RenderedCommand } from "./render.js";
 
-const LIB_CONSTANT = `const LIB = "libGL.so.1";`;
+const LIB_CONSTANT = `export const LIB = "libGL.so.1";`;
 
 const GENERATED_HEADER = `/**
  * GENERATED FILE — do not edit.

@@ -743,12 +743,12 @@ fn object_ptr_errors_for_non_object_variants() {
 }
 
 #[test]
-fn from_ffi_value_with_args_decodes_integer() {
+fn decode_with_context_decodes_integer() {
     common::run(|| {
         let ffi_value = ffi::FfiValue::I32(99);
         let type_ = Type::Integer(native::types::IntegerKind::I32);
 
-        let result = Value::from_ffi_value_with_args(&ffi_value, &type_, &[], &[]);
+        let result = type_.decode_with_context(&ffi_value, &[], &[]);
 
         assert!(result.is_ok());
         if let Value::Number(n) = result.unwrap() {

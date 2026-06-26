@@ -1,21 +1,18 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { click, dblClick, tripleClick } from "./click.js";
 import { drag, dragAndDrop, drop, hover, longPress, rotate, swipe, unhover, zoom } from "./gesture.js";
-import { keyboardWith, tab } from "./keyboard.js";
-import { pointerWith } from "./pointer.js";
+import { createInstance, type UserEventInstance } from "./instance.js";
+import { keyboard, tab } from "./keyboard.js";
+import { type PointerInput, pointer } from "./pointer.js";
 import { deselectOptions, selectOptions } from "./selection.js";
-import { createInitialState, type UserEventState } from "./state.js";
-import { clear, copy, cut, paste, type TypeOptions, type } from "./text.js";
+import { clear, copy, cut, paste, type } from "./text.js";
 
 export type { DragOptions, DropContent, DropOptions } from "./gesture.js";
+export type { UserEventInstance } from "./instance.js";
 export type { TabOptions } from "./keyboard.js";
 export type { PointerInput } from "./pointer.js";
 export type { TypeOptions } from "./text.js";
 export { resetClipboard } from "./text.js";
-
-export type UserEventOptions = {
-    skipClick?: boolean;
-};
 
 export type UserEvent = {
     click: typeof click;
@@ -38,17 +35,16 @@ export type UserEvent = {
     drag: typeof drag;
     drop: typeof drop;
     dragAndDrop: typeof dragAndDrop;
-    keyboard: ReturnType<typeof keyboardWith>;
-    pointer: ReturnType<typeof pointerWith>;
+    keyboard: (widget: Gtk.Widget, input: string) => Promise<void>;
+    pointer: (widget: Gtk.Widget, input: PointerInput) => Promise<void>;
 };
 
-type StatelessHelpers = Omit<UserEvent, "type" | "keyboard" | "pointer">;
-
-const statelessHelpers: StatelessHelpers = {
+const buildUserEvent = (instance: UserEventInstance): UserEvent => ({
     click,
     dblClick,
     tripleClick,
     tab,
+    type,
     clear,
     copy,
     cut,
@@ -64,19 +60,13 @@ const statelessHelpers: StatelessHelpers = {
     drag,
     drop,
     dragAndDrop,
-};
-
-const buildUserEvent = (state: UserEventState, options?: UserEventOptions): UserEvent => ({
-    ...statelessHelpers,
-    type: (widget: Gtk.Widget, text: string, typeOptions?: TypeOptions): Promise<void> =>
-        type(widget, text, { skipClick: options?.skipClick, ...typeOptions }),
-    keyboard: keyboardWith(state),
-    pointer: pointerWith(state),
+    keyboard: (widget: Gtk.Widget, input: string): Promise<void> => keyboard(instance, widget, input),
+    pointer: (widget: Gtk.Widget, input: PointerInput): Promise<void> => pointer(instance, widget, input),
 });
 
 export const userEvent: UserEvent & {
-    setup: (options?: UserEventOptions) => UserEvent;
+    setup: () => UserEvent;
 } = {
-    ...buildUserEvent(createInitialState()),
-    setup: (options?: UserEventOptions): UserEvent => buildUserEvent(createInitialState(), options),
+    ...buildUserEvent(createInstance()),
+    setup: (): UserEvent => buildUserEvent(createInstance()),
 };

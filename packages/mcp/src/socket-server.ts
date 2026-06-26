@@ -55,7 +55,7 @@ export class SocketServer {
     async stop(): Promise<void> {
         if (!this.server) return;
 
-        this.registry.closeAll("Server stopping");
+        this.registry.dispose("Server stopping");
 
         return new Promise((resolve) => {
             this.server?.close(() => {
@@ -63,7 +63,6 @@ export class SocketServer {
                 if (fs.existsSync(this.socketPath)) {
                     fs.unlinkSync(this.socketPath);
                 }
-                this.registry.clear();
                 resolve();
             });
         });

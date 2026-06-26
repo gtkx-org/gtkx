@@ -2,7 +2,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
 
-export const IpcRequestSchema: z.ZodObject<
+export const RequestSchema: z.ZodObject<
     {
         id: z.ZodString;
         method: z.ZodString;
@@ -15,9 +15,9 @@ export const IpcRequestSchema: z.ZodObject<
     params: z.unknown().optional(),
 });
 
-export type IpcRequest = z.infer<typeof IpcRequestSchema>;
+export type Request = z.infer<typeof RequestSchema>;
 
-const IpcErrorSchema: z.ZodObject<
+const ErrorSchema: z.ZodObject<
     { code: z.ZodNumber; message: z.ZodString; data: z.ZodOptional<z.ZodUnknown> },
     z.core.$strip
 > = z.object({
@@ -26,20 +26,20 @@ const IpcErrorSchema: z.ZodObject<
     data: z.unknown().optional(),
 });
 
-export const IpcResponseSchema: z.ZodObject<
+export const ResponseSchema: z.ZodObject<
     {
         id: z.ZodString;
         result: z.ZodOptional<z.ZodUnknown>;
-        error: z.ZodOptional<typeof IpcErrorSchema>;
+        error: z.ZodOptional<typeof ErrorSchema>;
     },
     z.core.$strip
 > = z.object({
     id: z.string(),
     result: z.unknown().optional(),
-    error: IpcErrorSchema.optional(),
+    error: ErrorSchema.optional(),
 });
 
-export type IpcResponse = z.infer<typeof IpcResponseSchema>;
+export type Response = z.infer<typeof ResponseSchema>;
 
 export type SerializedWidget = {
     id: string;
@@ -128,13 +128,11 @@ export type ServerRequestParams<Method extends keyof typeof ServerRequestParamsS
     (typeof ServerRequestParamsSchemas)[Method]
 >;
 
-export type WireParamsSchema<Output> = {
-    safeParse(value: unknown): { success: true; data: Output } | { success: false; error: { message: string } };
-};
+export type ParamsSchema<Output> = z.ZodType<Output>;
 
 export type ServerInitiatedMethod = keyof typeof ServerRequestParamsSchemas;
 
-export type IpcMessage = IpcRequest | IpcResponse;
+export type Message = Request | Response;
 
 const getRuntimeDir = (): string => process.env["XDG_RUNTIME_DIR"] ?? tmpdir();
 

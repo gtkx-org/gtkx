@@ -15,13 +15,13 @@ type MultipleErrorBuilder<Args extends unknown[]> = (
 ) => Error;
 type MissingErrorBuilder<Args extends unknown[]> = (container: Container, ...args: Args) => Error;
 
-export type BuiltQueries<Args extends unknown[]> = {
-    queryBy: (container: Container, ...args: Args) => Gtk.Widget | null;
-    getAllBy: QueryAllBy<Args>;
-    getBy: (container: Container, ...args: Args) => Gtk.Widget;
-    findAllBy: (container: Container, ...args: Args) => Promise<Gtk.Widget[]>;
-    findBy: (container: Container, ...args: Args) => Promise<Gtk.Widget>;
-};
+export type BuiltQueries<Args extends unknown[]> = [
+    queryBy: (container: Container, ...args: Args) => Gtk.Widget | null,
+    getAllBy: QueryAllBy<Args>,
+    getBy: (container: Container, ...args: Args) => Gtk.Widget,
+    findAllBy: (container: Container, ...args: Args) => Promise<Gtk.Widget[]>,
+    findBy: (container: Container, ...args: Args) => Promise<Gtk.Widget>,
+];
 
 const extractWaitForOptions = (args: unknown[]): WaitForOptions => {
     const last = args[args.length - 1];
@@ -147,5 +147,5 @@ export const buildQueries = <Args extends unknown[]>(
             findOptions(getBy, container, args),
         );
 
-    return { queryBy, getAllBy, getBy, findAllBy, findBy };
+    return [queryBy, getAllBy, getBy, findAllBy, findBy];
 };

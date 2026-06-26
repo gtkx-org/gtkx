@@ -10,7 +10,7 @@ import {
     REL_SEPARATOR,
     toVirtualId,
     VIRTUAL_INIT,
-} from "../../src/vite-plugins/gresource-protocol.js";
+} from "../../src/vite-plugins/gresource-shared.js";
 import { gtkxGResources } from "../../src/vite-plugins/gresources.js";
 import { expectBuildEndEmitsAsset, expectBuildEndIsNoop } from "./_vite-plugin-fixture.js";
 

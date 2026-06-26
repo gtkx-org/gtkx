@@ -1,11 +1,10 @@
 use anyhow::bail;
 
+use super::numeric::MAX_SAFE_INTEGER;
 use super::prelude::*;
 
 #[derive(Debug, Clone, Copy)]
 pub struct BufferType;
-
-const MAX_SAFE_INTEGER: f64 = 9_007_199_254_740_992.0;
 
 impl BufferType {
     fn address_from_number(value: f64) -> anyhow::Result<*mut c_void> {

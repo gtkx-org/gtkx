@@ -1,18 +1,12 @@
 import EventEmitter from "node:events";
 import type { Socket } from "node:net";
 import type { Duplex } from "node:stream";
-import { IpcError, IpcErrorCode, invalidRequestError, ipcTimeoutError, isIpcErrorCode } from "./protocol/errors.js";
-import {
-    type IpcMessage,
-    type IpcRequest,
-    IpcRequestSchema,
-    type IpcResponse,
-    IpcResponseSchema,
-} from "./protocol/types.js";
+import { ErrorCode, invalidRequestError, isErrorCode, ProtocolError, requestTimeoutError } from "./protocol/errors.js";
+import { type Message, type Request, RequestSchema, type Response, ResponseSchema } from "./protocol/types.js";
 
-export type JsonStreamConnectionEvents = {
-    request: [IpcRequest];
-    invalid: [{ id: string; error: IpcError }];
+export type ProtocolConnectionEvents = {
+    request: [Request];
+    invalid: [{ id: string; error: ProtocolError }];
 };
 
 type PendingRequest = {
@@ -28,7 +22,8 @@ export class ConnectionClosedError extends Error {
     }
 }
 
-export class JsonStreamConnection extends EventEmitter<JsonStreamConnectionEvents> {
+export class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
+    id: string = crypto.randomUUID();
     private buffer = "";
     private pending: Map<string, PendingRequest> = new Map();
     private writer: Duplex;
@@ -53,7 +48,7 @@ export class JsonStreamConnection extends EventEmitter<JsonStreamConnectionEvent
         }
     }
 
-    write(message: IpcMessage): void {
+    write(message: Message): void {
         if (!this.writer.writable) return;
         this.writer.write(`${JSON.stringify(message)}\n`);
     }
@@ -64,8 +59,8 @@ export class JsonStreamConnection extends EventEmitter<JsonStreamConnectionEvent
             onClose?: () => void;
             onError?: (error: Error) => void;
         } = {},
-    ): JsonStreamConnection {
-        const connection = new JsonStreamConnection(socket);
+    ): ProtocolConnection {
+        const connection = new ProtocolConnection(socket);
         socket.on("data", (data: Buffer) => connection.feed(data));
         socket.on("close", () => {
             connection.rejectPending(new Error("Connection closed"));
@@ -87,7 +82,7 @@ export class JsonStreamConnection extends EventEmitter<JsonStreamConnectionEvent
             const id = crypto.randomUUID();
             const timeoutHandle = setTimeout(() => {
                 this.pending.delete(id);
-                reject(ipcTimeoutError(timeout));
+                reject(requestTimeoutError(timeout));
             }, timeout);
 
             this.pending.set(id, {
@@ -124,13 +119,13 @@ export class JsonStreamConnection extends EventEmitter<JsonStreamConnectionEvent
 
         const message = parsed as Record<string, unknown>;
         if (typeof message["method"] === "string") {
-            const requestResult = IpcRequestSchema.safeParse(parsed);
+            const requestResult = RequestSchema.safeParse(parsed);
             if (requestResult.success) {
                 this.emit("request", requestResult.data);
                 return;
             }
         } else {
-            const responseResult = IpcResponseSchema.safeParse(parsed);
+            const responseResult = ResponseSchema.safeParse(parsed);
             if (responseResult.success) {
                 this.handleResponse(responseResult.data);
                 return;
@@ -141,7 +136,7 @@ export class JsonStreamConnection extends EventEmitter<JsonStreamConnectionEvent
         this.emit("invalid", { id, error: invalidRequestError("Invalid message format") });
     }
 
-    private handleResponse(response: IpcResponse): void {
+    private handleResponse(response: Response): void {
         const entry = this.pending.get(response.id);
         if (!entry) return;
 
@@ -151,7 +146,7 @@ export class JsonStreamConnection extends EventEmitter<JsonStreamConnectionEvent
         if (response.error) {
             const err = response.error;
             entry.reject(
-                new IpcError(isIpcErrorCode(err.code) ? err.code : IpcErrorCode.INTERNAL_ERROR, err.message, err.data),
+                new ProtocolError(isErrorCode(err.code) ? err.code : ErrorCode.INTERNAL_ERROR, err.message, err.data),
             );
         } else {
             entry.resolve(response.result);
@@ -159,17 +154,12 @@ export class JsonStreamConnection extends EventEmitter<JsonStreamConnectionEvent
     }
 }
 
-export type AppConnection = {
-    id: string;
-    connection: JsonStreamConnection;
-};
-
 export type AppConnectionEvents = {
-    disconnection: [AppConnection];
-    request: [AppConnection, IpcRequest];
+    disconnection: [ProtocolConnection];
+    request: [ProtocolConnection, Request];
     error: [Error];
 };
 
 export interface AppConnections extends EventEmitter<AppConnectionEvents> {
-    send(connectionId: string, message: IpcMessage): void;
+    send(connectionId: string, message: Message): void;
 }

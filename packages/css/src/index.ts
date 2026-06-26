@@ -1,9 +1,9 @@
-import { createInstance, type Instance } from "./create-instance.js";
+import { type Css, createCss } from "./create-css.js";
 
 export { registerProviderForDefaultDisplay } from "./provider.js";
 
-const instance = createInstance();
+const instance = createCss();
 
-export const css: Instance["css"] = instance.css;
-export const cx: Instance["cx"] = instance.cx;
-export const injectGlobal: Instance["injectGlobal"] = instance.injectGlobal;
+export const css: Css["css"] = instance.css;
+export const cx: Css["cx"] = instance.cx;
+export const injectGlobal: Css["injectGlobal"] = instance.injectGlobal;

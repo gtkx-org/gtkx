@@ -154,7 +154,7 @@ const WordsList = ({ filteredWords, filterProgress }: { filteredWords: string[];
                 estimatedItemHeight={32}
                 selectionMode={Gtk.SelectionMode.NONE}
                 items={filteredWords.map((word) => ({ id: word, value: word }))}
-                renderItem={(word: string) => (
+                renderItem={({ item: word }: { item: string }) => (
                     <GtkInscription
                         text={word}
                         xalign={0}

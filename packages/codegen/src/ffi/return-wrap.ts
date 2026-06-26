@@ -1,4 +1,4 @@
-import { renderDescriptor } from "../analysis/value.js";
+import { renderDescriptor } from "../analysis/descriptor-render.js";
 import type { PrimitiveCategory } from "../gir/primitives.js";
 import type { TypeId } from "../gir/type-id.js";
 import type { ModuleContext } from "../writer/context.js";

@@ -11,7 +11,7 @@ use crate::{
     arg::Arg,
     ffi,
     state::GlibThreadState,
-    types::{ArrayKind, FfiEncoder as _, Type},
+    types::{ArrayKind, FfiDecoder as _, FfiEncoder as _, Type},
     value::Value,
 };
 
@@ -94,9 +94,10 @@ impl NativeRequest for CallRequest {
 
         let ref_updates = self.collect_ref_updates(&ffi_values);
 
-        let return_value =
-            Value::from_ffi_value_with_args(&result, &self.result_type, &ffi_values, &self.args)
-                .with_context(|| format!("decoding return value of {}", self.symbol_name));
+        let return_value = self
+            .result_type
+            .decode_with_context(&result, &ffi_values, &self.args)
+            .with_context(|| format!("decoding return value of {}", self.symbol_name));
 
         self.release_sized_array_return(&result);
 
@@ -138,12 +139,9 @@ impl CallRequest {
         let mut ref_updates = Vec::new();
         for (i, arg) in self.args.iter().enumerate() {
             if let Value::Ref(ref_val) = &arg.value {
-                let new_value = Value::from_ffi_value_with_args(
-                    &ffi_values[i],
-                    &arg.ty,
-                    ffi_values,
-                    &self.args,
-                )?;
+                let new_value =
+                    arg.ty
+                        .decode_with_context(&ffi_values[i], ffi_values, &self.args)?;
                 ref_updates.push((Arc::clone(&ref_val.js_obj), new_value));
             }
         }
@@ -166,7 +164,7 @@ mod napi_export {
         return_type: Unknown<'_>,
     ) -> napi::Result<Unknown<'env>> {
         let parsed_args = Arg::from_js_array(env, &args)?;
-        let result_type = Type::from_js_value(env, return_type)?;
+        let result_type = Type::from_descriptor(env, return_type)?;
         if !result_type.can_be_return_type() {
             return Err(napi::Error::new(
                 napi::Status::InvalidArg,
@@ -190,7 +188,7 @@ mod napi_export {
         return_type: Unknown<'_>,
     ) -> napi::Result<External<CompiledSignature>> {
         let parsed_arg_types = crate::value::map_js_array(&env, &arg_types, |env, value| {
-            let ty = Type::from_js_value(env, value)?;
+            let ty = Type::from_descriptor(env, value)?;
             if !ty.can_be_argument_type() {
                 return Err(napi::Error::new(
                     napi::Status::InvalidArg,
@@ -199,7 +197,7 @@ mod napi_export {
             }
             Ok(ty)
         })?;
-        let result_type = Type::from_js_value(&env, return_type)?;
+        let result_type = Type::from_descriptor(&env, return_type)?;
         if !result_type.can_be_return_type() {
             return Err(napi::Error::new(
                 napi::Status::InvalidArg,

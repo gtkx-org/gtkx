@@ -1,7 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { sortedStrings } from "@gtkx/utils";
-import ejs from "ejs";
 
 export type TemplateContext = {
     name: string;
@@ -10,7 +9,11 @@ export type TemplateContext = {
     includeTesting: boolean;
 };
 
-export const TEMPLATE_SUFFIX = ".ejs";
+const SUBSTITUTIONS: Record<string, (context: TemplateContext) => string> = {
+    name: (context) => context.name,
+    applicationId: (context) => context.applicationId,
+    title: (context) => context.title,
+};
 
 const getTemplatesDir = (): string => {
     return join(import.meta.dirname, "..", "templates");
@@ -18,13 +21,16 @@ const getTemplatesDir = (): string => {
 
 const renderTemplate = (templatePath: string, context: TemplateContext): string => {
     const templateContent = readFileSync(templatePath, "utf-8");
-    return ejs.render(templateContent, context);
+    return templateContent.replace(/\{\{(\w+)\}\}/g, (match, key: string) => {
+        const substitution = SUBSTITUTIONS[key];
+        return substitution ? substitution(context) : match;
+    });
 };
 
 export const listTemplates = (): string[] =>
     sortedStrings(
         readdirSync(getTemplatesDir(), { recursive: true, withFileTypes: true })
-            .filter((entry) => entry.isFile() && entry.name.endsWith(TEMPLATE_SUFFIX))
+            .filter((entry) => entry.isFile())
             .map((entry) => join(entry.parentPath, entry.name))
             .map((absolute) => absolute.slice(getTemplatesDir().length + 1).replaceAll(/[/\\]/g, "/")),
     );

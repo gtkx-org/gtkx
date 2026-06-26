@@ -1,8 +1,8 @@
 import type * as Gio from "@gtkx/gi/gio";
 import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
-import type { ItemNode } from "../types.js";
-import { flattenListItems, type TreeItemMetadata } from "./list-item-flatten.js";
+import type { ItemNode, SectionNode } from "../types.js";
+import { countDescendants, flattenListItems, type TreeItemMetadata } from "./list-item-flatten.js";
 
 const NO_TREE_METADATA: TreeItemMetadata = { hideExpander: false, indentForDepth: true, indentForIcon: true };
 
@@ -26,29 +26,28 @@ interface Resolved<T = unknown, S = unknown> {
 
 export interface ItemResolver<T = unknown, S = unknown> {
     resolve(position: number, treeRow: Gtk.TreeListRow | null, boundItem: GObject.Object | null): Resolved<T, S>;
-    positionOfKey(key: string): number;
-    keyOf(position: number): string | undefined;
+    positionOfId(id: string): number;
+    idOf(position: number): string | undefined;
 }
 
-export interface RowValue<T = unknown, S = unknown> {
+export interface RowValue<T = unknown> {
     id: string;
-    value: T | S;
-    isHeader: boolean;
+    value: T;
     metadata: TreeItemMetadata;
 }
 
 export const createControlledResolver = <T, S>(
-    items: ItemNode<T, S>[] | undefined,
+    items: ItemNode<T>[] | undefined,
     flattenTreeChildren: boolean,
-    rowValues: WeakMap<GObject.Object, RowValue<T, S>>,
+    rowValues: WeakMap<GObject.Object, RowValue<T>>,
 ): ItemResolver<T, S> => {
     const flattened = flattenListItems(items, flattenTreeChildren);
     return {
-        positionOfKey(key: string): number {
-            const position = flattened.idToPosition.get(key);
+        positionOfId(id: string): number {
+            const position = flattened.idToPosition.get(id);
             return position === undefined ? -1 : position;
         },
-        keyOf(position: number): string | undefined {
+        idOf(position: number): string | undefined {
             return flattened.positionToId.get(position);
         },
         resolve(position: number, treeRow: Gtk.TreeListRow | null, _boundItem: GObject.Object | null): Resolved<T, S> {
@@ -60,7 +59,7 @@ export const createControlledResolver = <T, S>(
                         return {
                             value: tagged.value,
                             present: true,
-                            isHeader: tagged.isHeader,
+                            isHeader: false,
                             treeRow,
                             metadata: tagged.metadata,
                         };
@@ -80,7 +79,7 @@ export const createControlledResolver = <T, S>(
             return {
                 value: record.value,
                 present: true,
-                isHeader: record.isHeader,
+                isHeader: false,
                 treeRow,
                 metadata: record.metadata,
             };
@@ -90,11 +89,11 @@ export const createControlledResolver = <T, S>(
 
 export const createModelResolver = <T, S>(model: Gio.ListModel): ItemResolver<T, S> => {
     return {
-        positionOfKey(key: string): number {
-            const numeric = Number(key);
+        positionOfId(id: string): number {
+            const numeric = Number(id);
             return Number.isInteger(numeric) ? numeric : -1;
         },
-        keyOf(position: number): string {
+        idOf(position: number): string {
             return String(position);
         },
         resolve(position: number, treeRow: Gtk.TreeListRow | null, boundItem: GObject.Object | null): Resolved<T, S> {
@@ -110,17 +109,16 @@ export const createModelResolver = <T, S>(model: Gio.ListModel): ItemResolver<T,
     };
 };
 
-export const createSectionHeaderResolver = <T, S>(items: ItemNode<T, S>[] | undefined): ItemResolver<T, S> => {
+export const createSectionHeaderResolver = <T, S>(sections: SectionNode<S, T>[] | undefined): ItemResolver<T, S> => {
     const valueByStart = new Map<number, S>();
     let start = 0;
-    for (const section of items ?? []) {
-        if (section.section !== true) continue;
+    for (const section of sections ?? []) {
         valueByStart.set(start, section.value);
-        start += section.children?.length ?? 0;
+        start += countDescendants(section.data);
     }
     return {
-        positionOfKey: () => -1,
-        keyOf: () => undefined,
+        positionOfId: () => -1,
+        idOf: () => undefined,
         resolve(position: number): Resolved<T, S> {
             if (!valueByStart.has(position)) {
                 return { value: undefined, present: false, isHeader: true, treeRow: null, metadata: NO_TREE_METADATA };

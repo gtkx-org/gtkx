@@ -8,7 +8,7 @@ export const omit = <T extends Record<string, unknown>, K extends keyof T>(recor
     return result as Omit<T, K>;
 };
 
-export const dedupeBy = <T>(items: T[], key: (item: T) => string): T[] => {
+export const uniqBy = <T>(items: T[], key: (item: T) => string): T[] => {
     const seen = new Set<string>();
     const result: T[] = [];
     for (const item of items) {
@@ -41,10 +41,3 @@ export const shallowEqual = <T extends Record<string, unknown>>(a?: T, b?: T): b
 
     return true;
 };
-
-export const enumNamesByValue = (enumObject: Record<string, string | number>): Map<number, string> =>
-    new Map<number, string>(
-        Object.entries(enumObject)
-            .filter((entry): entry is [string, number] => typeof entry[1] === "number")
-            .map(([name, value]) => [value, name]),
-    );

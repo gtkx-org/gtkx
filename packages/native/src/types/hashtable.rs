@@ -216,12 +216,12 @@ impl FromDescriptor for HashTableType {
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn from_descriptor(env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let key_type_value: Unknown<'_> = obj.get_named_property("keyType")?;
-        let key_type = Type::from_js_value(env, key_type_value)?;
+        let key_type = Type::from_descriptor(env, key_type_value)?;
 
         let value_type_value: Unknown<'_> = obj.get_named_property("valueType")?;
-        let value_type = Type::from_js_value(env, value_type_value)?;
+        let value_type = Type::from_descriptor(env, value_type_value)?;
 
-        let ownership = Ownership::from_js_value(obj, "hashtable")?;
+        let ownership = Ownership::from_descriptor(obj, "hashtable")?;
 
         Ok(Self {
             key_type: Box::new(key_type),

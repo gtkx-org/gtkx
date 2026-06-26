@@ -1,3 +1,4 @@
+import type { RelationshipKind } from "@gtkx/config";
 import * as GObject from "@gtkx/gi/gobject";
 import { isRelationshipNode, type RelationshipNode } from "./relationship-node.js";
 import { isRootElement, type RootElement } from "./root-element.js";
@@ -8,7 +9,7 @@ export type Node = GObject.Object | RelationshipNode | RootElement;
 
 export interface State {
     name?: string | undefined;
-    kind?: string | undefined;
+    kind?: RelationshipKind | undefined;
     props: Props;
     parent: Node | null;
     children: Node[];
@@ -20,7 +21,7 @@ const stateMap = new WeakMap<Node, State>();
 
 export type StateSeed = {
     name?: string;
-    kind?: string;
+    kind?: RelationshipKind;
     props: Props;
     rootContainer: Container;
 };
@@ -49,7 +50,7 @@ export const stateOf = (node: Node): State => {
     throw new Error("reconciler node has no registered state");
 };
 
-export const isRelationshipKind = (node: Node, kind: string): boolean =>
+export const isRelationshipKind = (node: Node, kind: RelationshipKind): boolean =>
     isRelationshipNode(node) && stateOf(node).kind === kind;
 
 export const closestInstance = (node: Node, matches: (node: Node) => boolean): Node | null => {

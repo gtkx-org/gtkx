@@ -1,22 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { mangleReserved, sourceStringLiteral, toCamelIdentifier } from "../src/source.js";
+import { sanitizeIdentifier, sourceStringLiteral, toCamelIdentifier } from "../src/source.js";
 
 const LINE_SEPARATOR = String.fromCharCode(0x2028);
 const PARAGRAPH_SEPARATOR = String.fromCharCode(0x2029);
 
-describe("mangleReserved", () => {
+describe("sanitizeIdentifier", () => {
     it("leaves a non-reserved identifier unchanged", () => {
-        expect(mangleReserved("iconName")).toBe("iconName");
+        expect(sanitizeIdentifier("iconName")).toBe("iconName");
     });
 
     it("appends an underscore to a reserved word", () => {
-        expect(mangleReserved("class")).toBe("class_");
-        expect(mangleReserved("new")).toBe("new_");
-        expect(mangleReserved("default")).toBe("default_");
+        expect(sanitizeIdentifier("class")).toBe("class_");
+        expect(sanitizeIdentifier("new")).toBe("new_");
+        expect(sanitizeIdentifier("default")).toBe("default_");
     });
 
     it("leaves the empty string unchanged", () => {
-        expect(mangleReserved("")).toBe("");
+        expect(sanitizeIdentifier("")).toBe("");
     });
 });
 

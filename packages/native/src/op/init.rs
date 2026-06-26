@@ -10,8 +10,8 @@ use napi_derive::napi;
 use crate::dispatch::Mailbox;
 use crate::error_reporter::NativeErrorReporter;
 use crate::glib_log_handler::GlibLogHandler;
+use crate::glib_thread::GlibThread;
 use crate::panic_handler::{format_panic_payload, install_panic_hook};
-use crate::state::GlibThread;
 
 #[napi(catch_unwind)]
 #[cfg_attr(test, allow(dead_code))]

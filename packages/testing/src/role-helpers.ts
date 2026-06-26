@@ -1,7 +1,14 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { enumNamesByValue, sortedStringsBy } from "@gtkx/utils";
+import { sortedStringsBy } from "@gtkx/utils";
 import { type Container, traverse } from "./traversal.js";
 import { getWidgetAccessibleName } from "./widget-text.js";
+
+const enumNamesByValue = (enumObject: Record<string, string | number>): Map<number, string> =>
+    new Map<number, string>(
+        Object.entries(enumObject)
+            .filter((entry): entry is [string, number] => typeof entry[1] === "number")
+            .map(([name, value]) => [value, name]),
+    );
 
 const ROLE_NAMES_BY_VALUE = enumNamesByValue(Gtk.AccessibleRole);
 

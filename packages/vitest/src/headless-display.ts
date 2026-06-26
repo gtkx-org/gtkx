@@ -13,7 +13,7 @@ export type HeadlessOptions = {
     compositor: CompositorId;
 };
 
-const spawnTiedChild = (command: string, args: string[], stdio: StdioOptions): ChildProcess => {
+const spawnWithParentDeathSignal = (command: string, args: string[], stdio: StdioOptions): ChildProcess => {
     const child = spawn("setpriv", ["--pdeathsig", "SIGKILL", command, ...args], { stdio });
     child.unref();
     return child;
@@ -60,14 +60,14 @@ const compositorRegistry: { [K in CompositorId]: CompositorDescriptor } = {
                     "",
                 ].join("\n"),
             );
-            return spawnTiedChild("sway", ["-c", configPath], ["ignore", "ignore", "pipe"]);
+            return spawnWithParentDeathSignal("sway", ["-c", configPath], ["ignore", "ignore", "pipe"]);
         },
     },
     weston: {
         socket: "wayland-0",
         env: {},
         start: (_runtimeDir, width, height) =>
-            spawnTiedChild(
+            spawnWithParentDeathSignal(
                 "weston",
                 [
                     "--backend=headless",
@@ -87,7 +87,7 @@ type SpawnedCompositor = {
     socket: string;
 };
 
-export const startCompositor = (runtimeDir: string, options: HeadlessOptions): SpawnedCompositor => {
+const startCompositor = (runtimeDir: string, options: HeadlessOptions): SpawnedCompositor => {
     const descriptor = compositorRegistry[options.compositor];
 
     const [width = "", height = ""] = (options.size || DEFAULT_HEADLESS_SIZE).split("x");
@@ -98,7 +98,7 @@ export const startCompositor = (runtimeDir: string, options: HeadlessOptions): S
     return { child: descriptor.start(runtimeDir, width, height), socket: descriptor.socket };
 };
 
-export const writeBusConfig = (busConfigPath: string, busSocketPath: string): void => {
+const writeBusConfig = (busConfigPath: string, busSocketPath: string): void => {
     writeFileSync(
         busConfigPath,
         `<!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-BUS Bus Configuration 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
@@ -121,7 +121,7 @@ type WaitForSocketOptions = {
     child?: ChildProcess;
 };
 
-export const waitForSocket = (path: string, { label, timeout = 15000, child }: WaitForSocketOptions): Promise<void> =>
+const waitForSocket = (path: string, { label, timeout = 15000, child }: WaitForSocketOptions): Promise<void> =>
     new Promise((resolve, reject) => {
         let log = "";
         const stderr = child?.stderr ?? null;
@@ -161,9 +161,7 @@ export const waitForSocket = (path: string, { label, timeout = 15000, child }: W
         child?.on("exit", onExit);
     });
 
-export type HeadlessDisplayTeardown = () => void;
-
-export const startHeadlessDisplay = async (options: HeadlessOptions): Promise<HeadlessDisplayTeardown> => {
+export const startHeadlessDisplay = async (options: HeadlessOptions): Promise<() => void> => {
     const runtimeDir = mkdtempSync(join(tmpdir(), "gtkx-xdg-"));
     chmodSync(runtimeDir, 0o700);
     process.env["XDG_RUNTIME_DIR"] = runtimeDir;
@@ -172,7 +170,11 @@ export const startHeadlessDisplay = async (options: HeadlessOptions): Promise<He
     const busSocketPath = join(runtimeDir, "bus");
     writeBusConfig(busConfigPath, busSocketPath);
 
-    const busChild = spawnTiedChild("dbus-daemon", [`--config-file=${busConfigPath}`], ["ignore", "ignore", "pipe"]);
+    const busChild = spawnWithParentDeathSignal(
+        "dbus-daemon",
+        [`--config-file=${busConfigPath}`],
+        ["ignore", "ignore", "pipe"],
+    );
     process.env["DBUS_SESSION_BUS_ADDRESS"] = `unix:path=${busSocketPath}`;
 
     const compositor = startCompositor(runtimeDir, options);

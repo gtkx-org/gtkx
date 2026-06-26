@@ -3,13 +3,13 @@ import type * as GObject from "@gtkx/gi/gobject";
 import { useCallback, useRef, useSyncExternalStore } from "react";
 import { type GObjectTarget, resolveGObjectTarget } from "../utils/gobject-target.js";
 
-interface SnapshotCache<T extends GObject.Object, V> {
+interface GObjectValueCache<T extends GObject.Object, V> {
     target: T | null;
     signal: string;
     value: V;
 }
 
-export function useGObjectSnapshot<T extends GObject.Object, V>(
+export function useGObjectValue<T extends GObject.Object, V>(
     target: GObjectTarget<T>,
     signal: string,
     read: (target: T | null) => V,
@@ -18,7 +18,7 @@ export function useGObjectSnapshot<T extends GObject.Object, V>(
     const resolved = resolveGObjectTarget(target);
     const readRef = useRef(read);
     readRef.current = read;
-    const cacheRef = useRef<SnapshotCache<T, V> | null>(null);
+    const cacheRef = useRef<GObjectValueCache<T, V> | null>(null);
     const readingRef = useRef(false);
     const onChangeRef = useRef<() => void>(() => {});
 

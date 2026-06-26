@@ -122,7 +122,7 @@ const ListViewWeatherDemo = () => {
                 orientation={Gtk.Orientation.HORIZONTAL}
                 showSeparators
                 selectionMode={Gtk.SelectionMode.NONE}
-                renderItem={(item: WeatherInfo) => (
+                renderItem={({ item }: { item: WeatherInfo }) => (
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand>
                         <GtkLabel label={item.hour} widthChars={5} valign={Gtk.Align.START} />
                         <GtkImage

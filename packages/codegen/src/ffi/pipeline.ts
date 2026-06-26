@@ -42,7 +42,6 @@ export const generateNamespaceModule = (namespace: GirNamespace, library: Librar
         generateAlias(context, alias);
     }
 
-    context.flushImports();
     return { source: context.module.toSource() };
 };
 

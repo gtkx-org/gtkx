@@ -1,7 +1,7 @@
 import * as net from "node:net";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { DEFAULT_SOCKET_PATH, IpcError, IpcErrorCode, type IpcRequest, JsonStreamConnection } from "@gtkx/mcp";
+import { DEFAULT_SOCKET_PATH, ErrorCode, ProtocolConnection, ProtocolError, type Request } from "@gtkx/mcp";
 import { errorMessage, normalizeError } from "@gtkx/utils";
 import { error, info, warn } from "../internal/log.js";
 import { dispatch } from "./handlers.js";
@@ -17,7 +17,7 @@ const REGISTER_TIMEOUT_MS = 30000;
 
 export class McpClient {
     private socket: net.Socket | null = null;
-    private connection: JsonStreamConnection | null = null;
+    private connection: ProtocolConnection | null = null;
     private socketPath: string;
     private applicationId: string;
     private reconnectTimer: NodeJS.Timeout | null = null;
@@ -90,7 +90,7 @@ export class McpClient {
                 });
         });
 
-        const connection = JsonStreamConnection.fromSocket(socket, {
+        const connection = ProtocolConnection.fromSocket(socket, {
             onClose: () => {
                 if (this.hasConnected) {
                     info("Disconnected from MCP server");
@@ -147,7 +147,7 @@ export class McpClient {
         );
     }
 
-    private async handleRequest(request: IpcRequest): Promise<void> {
+    private async handleRequest(request: Request): Promise<void> {
         const { id, method, params } = request;
         const connection = this.connection;
         if (!connection) return;
@@ -161,13 +161,13 @@ export class McpClient {
             const result = await dispatch(method, params, { app: defaultApp, registry: this.registry });
             connection.write({ id, result });
         } catch (error) {
-            if (error instanceof IpcError) {
-                connection.write({ id, error: error.toIpcError() });
+            if (error instanceof ProtocolError) {
+                connection.write({ id, error: error.toErrorObject() });
             } else {
                 connection.write({
                     id,
                     error: {
-                        code: IpcErrorCode.INTERNAL_ERROR,
+                        code: ErrorCode.INTERNAL_ERROR,
                         message: errorMessage(error),
                     },
                 });

@@ -185,7 +185,7 @@ describe("McpClient incoming requests", () => {
         client.disconnect();
     });
 
-    it("returns a structured error code when dispatch throws an IpcError", async () => {
+    it("returns a structured error code when dispatch throws a ProtocolError", async () => {
         hoisted.getDefault.mockReturnValue(new hoisted.FakeApplication());
         const client = await connectAndRegister(ctx);
 

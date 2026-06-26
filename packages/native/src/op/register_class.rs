@@ -56,7 +56,7 @@ impl RawVfunc {
             unsafe { JsFunction::from_raw_unchecked(env.raw(), callback_prop.raw()) };
 
         let arg_types = parse_type_array(env, arg_types_prop)?;
-        let return_type = Type::from_js_value(env, return_type_prop)?;
+        let return_type = Type::from_descriptor(env, return_type_prop)?;
         let js_func = Arc::new(JsRef::from_js_value(env, &callback)?);
 
         Ok(Self {
@@ -401,7 +401,7 @@ fn parse_js_array<T>(
 #[cfg_attr(test, allow(dead_code))]
 #[cfg_attr(coverage_nightly, coverage(off))]
 fn parse_type_array(env: &Env, prop: Unknown<'_>) -> napi::Result<Vec<Type>> {
-    parse_js_array(env, prop, "types", Type::from_js_value)
+    parse_js_array(env, prop, "types", Type::from_descriptor)
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref)]

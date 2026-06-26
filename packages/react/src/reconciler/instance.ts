@@ -1,3 +1,4 @@
+import type { RelationshipKind } from "@gtkx/config";
 import { constructWrapper, type GType } from "@gtkx/ffi";
 import type * as GObject from "@gtkx/gi/gobject";
 import { omit } from "@gtkx/utils";
@@ -35,7 +36,7 @@ export const createElementInstance = (type: string, props: Props, rootContainer:
     return node;
 };
 
-export const createRelationshipInstance = (kind: string, props: Props, rootContainer: Container): Node => {
+export const createRelationshipInstance = (kind: RelationshipKind, props: Props, rootContainer: Container): Node => {
     const node = createRelationshipNode();
     registerState(node, { kind, props, rootContainer });
     return node;

@@ -1,3 +1,4 @@
+import type { ListRenderItemInfo } from "@gtkx/components";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { screen } from "@gtkx/testing";
 import type { ReactNode } from "react";
@@ -28,7 +29,7 @@ export type CounterRow = { id: string; value: { name: string; count: number } };
 const counterRows = (entries: [string, string, number][]): CounterRow[] =>
     entries.map(([id, name, count]) => ({ id, value: { name, count } }));
 
-export const renderCounterCell = (item: { name: string; count: number }): ReactNode => (
+export const renderCounterCell = ({ item }: ListRenderItemInfo<{ name: string; count: number }>): ReactNode => (
     <GtkLabel label={`${item.name}: ${item.count}`} />
 );
 

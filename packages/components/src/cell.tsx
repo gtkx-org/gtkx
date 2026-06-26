@@ -9,12 +9,13 @@ import type { TreeItemMetadata } from "./utils/list-item-flatten.js";
 
 /**
  * Renders the content for a single cell given its resolved value, owning tree
- * row, and whether the cell is a section header.
+ * row, whether the cell is a section header, and its bound list position.
  */
 export type CellRenderer<T, S> = (
     value: T | S | undefined,
     treeRow: Gtk.TreeListRow | null,
     isHeader: boolean,
+    position: number,
 ) => ReactNode;
 
 interface CellProps<T, S> {
@@ -55,7 +56,7 @@ const Cell = memo(<T, S>({ container, store, resolver, render }: CellProps<T, S>
     if (entry.position < 0) return null;
     const resolved = resolver.resolve(entry.position, entry.treeRow, entry.item);
     if (!resolved.present) return null;
-    const content = render(resolved.value, resolved.treeRow, resolved.isHeader);
+    const content = render(resolved.value, resolved.treeRow, resolved.isHeader, entry.position);
     const portalled =
         resolved.treeRow !== null && !resolved.isHeader
             ? wrapInTreeExpander(content, resolved.treeRow, resolved.metadata)

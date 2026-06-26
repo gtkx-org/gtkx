@@ -25,7 +25,7 @@ impl Arg {
         let obj: JsObject = crate::value::unknown_as_object(env, &value)?;
         let type_prop: Unknown<'_> = obj.get_named_property("type")?;
         let value_prop: Unknown<'_> = obj.get_named_property("value")?;
-        let ty = Type::from_js_value(env, type_prop)?;
+        let ty = Type::from_descriptor(env, type_prop)?;
         if !ty.can_be_argument_type() {
             return Err(napi::Error::new(
                 napi::Status::InvalidArg,

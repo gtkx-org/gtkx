@@ -2,25 +2,59 @@ import type * as GObject from "@gtkx/gi/gobject";
 
 export const RELATIONSHIP_NODE_ELEMENT = "__GTKX_RELATIONSHIP_NODE__";
 
-export const META_OBJECT_KIND = "meta-object";
+/**
+ * The closed set of relationship-node kinds the reconciler discriminates on, in
+ * declaration order. Each value names one synthetic child role (a meta-object
+ * page, a layout child, an overlay, a container slot, an inline text node, and so
+ * on) that maps a JSX subcomponent onto a specific attachment behavior.
+ */
+export const RELATIONSHIP_KINDS = [
+    "meta-object",
+    "layout-child",
+    "overlay",
+    "tab-label",
+    "widget-prop",
+    "container-slot",
+    "text-anchor",
+    "text-paintable",
+    "buffer-text",
+    "label-text",
+] as const;
 
-export const LAYOUT_CHILD_KIND = "layout-child";
+/**
+ * One relationship-node kind drawn from {@link RELATIONSHIP_KINDS}; the
+ * discriminant the reconciler routes synthetic children on.
+ */
+export type RelationshipKind = (typeof RELATIONSHIP_KINDS)[number];
 
-export const OVERLAY_KIND = "overlay";
+const RELATIONSHIP_KIND_SET: ReadonlySet<string> = new Set(RELATIONSHIP_KINDS);
 
-export const TAB_LABEL_KIND = "tab-label";
+/**
+ * Narrow an arbitrary value to a {@link RelationshipKind}. Used at the reconciler
+ * boundary where a relationship element's `kind` prop arrives untyped.
+ */
+export const isRelationshipKind = (value: unknown): value is RelationshipKind =>
+    typeof value === "string" && RELATIONSHIP_KIND_SET.has(value);
 
-export const WIDGET_PROP_KIND = "widget-prop";
+export const META_OBJECT_KIND: RelationshipKind = "meta-object";
 
-export const CONTAINER_SLOT_KIND = "container-slot";
+export const LAYOUT_CHILD_KIND: RelationshipKind = "layout-child";
 
-export const TEXT_ANCHOR_KIND = "text-anchor";
+export const OVERLAY_KIND: RelationshipKind = "overlay";
 
-export const TEXT_PAINTABLE_KIND = "text-paintable";
+export const TAB_LABEL_KIND: RelationshipKind = "tab-label";
 
-export const BUFFER_TEXT_KIND = "buffer-text";
+export const WIDGET_PROP_KIND: RelationshipKind = "widget-prop";
 
-export const LABEL_TEXT_KIND = "label-text";
+export const CONTAINER_SLOT_KIND: RelationshipKind = "container-slot";
+
+export const TEXT_ANCHOR_KIND: RelationshipKind = "text-anchor";
+
+export const TEXT_PAINTABLE_KIND: RelationshipKind = "text-paintable";
+
+export const BUFFER_TEXT_KIND: RelationshipKind = "buffer-text";
+
+export const LABEL_TEXT_KIND: RelationshipKind = "label-text";
 
 /**
  * Names of the child-attachment method shapes a GObject type can satisfy. Each

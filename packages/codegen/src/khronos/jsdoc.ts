@@ -1,7 +1,7 @@
 import { toCamelIdentifier } from "@gtkx/utils";
 import type { InArg, OutArg } from "./args.js";
-import type { ReturnPlan } from "./ctype.js";
 import type { GlCommand } from "./model.js";
+import type { ReturnPlan } from "./plan.js";
 
 export const REFPAGES_BASE = "https://registry.khronos.org/OpenGL-Refpages/gl4/html";
 
@@ -18,7 +18,7 @@ export const inParamDocLine = (command: GlCommand, arg: InArg): string => {
     const notes: string[] = [`\`${param.cType}\``];
     if (param.group !== undefined) notes.push(`group \`${param.group}\``);
     if (param.len !== undefined) notes.push(`length \`${param.len}\``);
-    if (param.kind !== undefined) notes.push(`object kind \`${param.kind}\``);
+    if (param.objectClass !== undefined) notes.push(`object class \`${param.objectClass}\``);
     return ` * @param ${arg.name} - ${notes.join(", ")}`;
 };
 

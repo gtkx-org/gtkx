@@ -26,24 +26,13 @@ export const getController = <T extends Gtk.EventController>(
     return controller;
 };
 
-const controllerCache = new WeakMap<Gtk.Widget, Map<ControllerConstructor<Gtk.EventController>, Gtk.EventController>>();
-
 export const getOrCreateController = <T extends Gtk.EventController>(
     widget: Gtk.Widget,
     controllerType: ControllerConstructor<T>,
 ): T => {
-    let perWidget = controllerCache.get(widget);
-    const cached = perWidget?.get(controllerType);
-    if (cached instanceof controllerType) return cached;
-
     const existing = queryController(widget, controllerType);
-    const controller = existing ?? new controllerType();
-    if (!existing) widget.addController(controller);
-
-    if (!perWidget) {
-        perWidget = new Map();
-        controllerCache.set(widget, perWidget);
-    }
-    perWidget.set(controllerType, controller);
+    if (existing) return existing;
+    const controller = new controllerType();
+    widget.addController(controller);
     return controller;
 };

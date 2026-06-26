@@ -10,8 +10,8 @@ import {
     tString,
     tUint64,
 } from "../analysis/descriptor.js";
-import type { CommandPlan, GlScalar, ParamPlan } from "./ctype.js";
 import type { GlCommand } from "./model.js";
+import type { CommandPlan, GlScalar, ParamPlan } from "./plan.js";
 
 export const scalarAliasOrGroup = (scalar: GlScalar, group: string | undefined): string =>
     group !== undefined && scalar.groupBearing === true ? group : scalar.tsAlias;
@@ -44,14 +44,13 @@ export type OutArg = {
     docCType: string;
 };
 
-export type PlannedArg = InArg | OutArg;
+type PlannedArg = InArg | OutArg;
 
 type BuildArgOptions = {
     command: GlCommand;
     index: number;
     plan: ParamPlan;
     outIndex: number;
-    usedTypes: Set<string>;
 };
 
 const inArg = (name: string, tsType: string, descriptor: string): InArg => ({
@@ -174,7 +173,6 @@ export const planArgs = (
             index,
             plan: paramPlan,
             outIndex: outs.length,
-            usedTypes,
         };
         if (isOutPlan(paramPlan)) {
             const arg = buildOutArg(options, track);
@@ -199,7 +197,7 @@ export const scalarPrefixArgs = (plan: CommandPlan & { ok: true }, usedTypes: Se
         if (paramPlan === undefined || (paramPlan.kind !== "scalar" && paramPlan.kind !== "boolean")) return undefined;
         prefix.push(
             buildInArg(
-                { command: plan.command, index, plan: paramPlan, outIndex: 0, usedTypes },
+                { command: plan.command, index, plan: paramPlan, outIndex: 0 },
                 toCamelIdentifier(param.name),
                 track,
             ),

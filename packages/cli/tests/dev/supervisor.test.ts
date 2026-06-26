@@ -8,7 +8,7 @@ vi.mock("node:fs", async (importActual) => {
     return { ...actual, watch: vi.fn() };
 });
 
-import { RESTART_EXIT_CODE } from "../../src/dev/protocol.js";
+import { RESTART_EXIT_CODE } from "../../src/dev/exit-code.js";
 import { type ForkRunner, runDevSupervisor, type SupervisedChild } from "../../src/dev/supervisor.js";
 
 const flushMicrotasks = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));

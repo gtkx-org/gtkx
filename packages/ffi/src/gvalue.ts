@@ -207,23 +207,23 @@ function valueSetStaticBoxed(value: Handle, boxed: object): void {
 
 const OUT_PARAM_STORAGE_SIZE = 8;
 
-export function outValueFromFfi(innerFfi: Type, initial?: unknown): { value: Handle; read: () => unknown } {
+export function outValueForDescriptor(innerType: Type, initial?: unknown): { value: Handle; read: () => unknown } {
     const storage = alloc(OUT_PARAM_STORAGE_SIZE);
     write(storage, uint64T, 0, 0);
-    if (initial !== undefined) write(storage, innerFfi, 0, initial);
+    if (initial !== undefined) write(storage, innerType, 0, initial);
     const value = newTypedGValue(TYPE_POINTER);
     setGValuePointer(value, storage);
-    return { value, read: () => read(storage, innerFfi, 0) };
+    return { value, read: () => read(storage, innerType, 0) };
 }
 
-export function outBoxedFromFfi(descriptor: Type, boxed: object): Handle {
-    const value = newTypedGValue(resolveBoxedGtype(descriptor));
+export function outBoxedForDescriptor(descriptor: Type, boxed: object): Handle {
+    const value = newTypedGValue(gtypeFromDescriptor(descriptor));
     valueSetBoxed(value, boxed);
     return value;
 }
 
-export function inoutBoxedFromFfi(descriptor: Type, boxed: object): Handle {
-    const value = newTypedGValue(resolveBoxedGtype(descriptor));
+export function inoutBoxedForDescriptor(descriptor: Type, boxed: object): Handle {
+    const value = newTypedGValue(gtypeFromDescriptor(descriptor));
     valueSetStaticBoxed(value, boxed);
     return value;
 }
@@ -270,13 +270,7 @@ const resolveFundamentalGtype = (descriptor: FundamentalType): GType => {
     throw new Error(`Cannot resolve gtype for fundamental type without a typeName`);
 };
 
-export function resolveBoxedGtype(descriptor: Type): GType {
-    if (descriptor.type === "boxed") return resolveBoxedInnerGtype(descriptor);
-    if (descriptor.type === "fundamental") return resolveFundamentalGtype(descriptor);
-    throw new Error(`resolveBoxedGtype: unsupported type descriptor '${descriptor.type}'`);
-}
-
-function gtypeFromDescriptor(descriptor: Type): GType {
+export function gtypeFromDescriptor(descriptor: Type): GType {
     switch (descriptor.type) {
         case "boolean":
             return TYPE_BOOLEAN;
@@ -317,7 +311,7 @@ function gtypeFromDescriptor(descriptor: Type): GType {
     }
 }
 
-export function newValueFromFfi(descriptor: Type): Handle {
+export function newGValueForDescriptor(descriptor: Type): Handle {
     return newTypedGValue(gtypeFromDescriptor(descriptor));
 }
 

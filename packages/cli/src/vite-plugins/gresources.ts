@@ -2,9 +2,10 @@ import { execFileSync } from "node:child_process";
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { createGtkxConfigLoader, DATA_IMPORT_PREFIX, type GtkxConfigLoader } from "@gtkx/config";
+import { createGtkxConfigLoader, type GtkxConfigLoader } from "@gtkx/config";
 import { formatChildProcessError } from "@gtkx/utils";
 import type { Plugin, ResolvedConfig, UserConfig, ViteDevServer } from "vite";
+import { DATA_IMPORT_PREFIX } from "../internal/data-dir.js";
 import { error, info } from "../internal/log.js";
 import { resolveCliTool } from "../internal/resolve-cli-tool.js";
 import { withStagingDir } from "../internal/staging-dir.js";
@@ -18,7 +19,7 @@ import {
     REL_SEPARATOR,
     toVirtualId,
     VIRTUAL_INIT,
-} from "./gresource-protocol.js";
+} from "./gresource-shared.js";
 
 const DATA_PREFIX = `${DATA_IMPORT_PREFIX}/`;
 

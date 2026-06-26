@@ -53,7 +53,7 @@ const splitCallbackResult = (
     return { primary: undefined, outValues: result as unknown[] };
 };
 
-type CallbackReceiver = "this" | "skip" | "none";
+type CallbackReceiver = "this" | "emitter" | "none";
 
 export type Callback = (...args: Value[]) => Value;
 

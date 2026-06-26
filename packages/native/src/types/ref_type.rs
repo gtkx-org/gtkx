@@ -35,7 +35,7 @@ impl FromDescriptor for RefType {
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn from_descriptor(env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let inner_type_value: Unknown<'_> = obj.get_named_property("innerType")?;
-        let inner_type = Type::from_js_value(env, inner_type_value)?;
+        let inner_type = Type::from_descriptor(env, inner_type_value)?;
 
         if !Self::supports_inner(&inner_type) {
             return Err(napi::Error::new(
@@ -176,24 +176,24 @@ impl FfiDecoder for RefType {
                 let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
                 self.inner_type.decode(&ffi::FfiValue::Ptr(actual_ptr))
             }
-            Type::Integer(int_type) => {
-                // SAFETY: `storage.ptr()` is the scalar out-slot sized for this integer kind;
-                // `read_ptr` reads the integer that was written into it by the callee.
-                let number = unsafe { int_type.read_ptr(storage.ptr() as *const u8) };
-                Ok(value::Value::Number(number))
-            }
-            Type::EnumFlags(enum_flags) => {
-                // SAFETY: `storage.ptr()` is the scalar out-slot sized for the enum/flags backing
-                // integer; `read_ptr` reads that integer.
-                let number = unsafe { enum_flags.storage.read_ptr(storage.ptr() as *const u8) };
-                Ok(value::Value::Number(number))
-            }
-            Type::Float(float_kind) => {
-                // SAFETY: `storage.ptr()` is the scalar out-slot sized for this float kind;
-                // `read_ptr` reads the float that was written into it.
-                let number = unsafe { float_kind.read_ptr(storage.ptr() as *const u8) };
-                Ok(value::Value::Number(number))
-            }
+            // SAFETY: `storage.ptr()` is the scalar out-slot the callee wrote; the inner integer
+            // codec reads it as a pointer slot, range-checking for lossless f64 conversion.
+            Type::Integer(_) => unsafe {
+                self.inner_type
+                    .read(ReadSource::Slot(storage.ptr(), "Ref<Integer>"))
+            },
+            // SAFETY: `storage.ptr()` is the scalar out-slot the callee wrote; the inner enum/flags
+            // codec reads it as a pointer slot.
+            Type::EnumFlags(_) => unsafe {
+                self.inner_type
+                    .read(ReadSource::Slot(storage.ptr(), "Ref<EnumFlags>"))
+            },
+            // SAFETY: `storage.ptr()` is the scalar out-slot the callee wrote; the inner float codec
+            // reads it as a pointer slot.
+            Type::Float(_) => unsafe {
+                self.inner_type
+                    .read(ReadSource::Slot(storage.ptr(), "Ref<Float>"))
+            },
             // SAFETY: `storage.ptr()` is the boolean out-slot the callee wrote; the inner boolean
             // codec reads it as a pointer slot.
             Type::Boolean(boolean) => unsafe {

@@ -20,7 +20,7 @@ export const isClassStructRecord = (library: Library, namespaceName: string, rec
     return GTYPE_STRUCT_ROOTS.has(qualify(name.namespaceName, name.typeName));
 };
 
-const refIsClassStruct = (context: ModuleContext, ref: TypeId | undefined): boolean => {
+export const refIsClassStruct = (context: ModuleContext, ref: TypeId | undefined): boolean => {
     if (ref === undefined) return false;
     const type = context.library.typeOf(ref);
     if (type === undefined) return false;
@@ -34,9 +34,6 @@ const refIsClassStruct = (context: ModuleContext, ref: TypeId | undefined): bool
             return false;
     }
 };
-
-export const typeRefIsClassStruct = (context: ModuleContext, ref: TypeId | undefined): boolean =>
-    refIsClassStruct(context, ref);
 
 export const callableReferencesClassStruct = (context: ModuleContext, fn: GirFunction): boolean =>
     refIsClassStruct(context, fn.returnValue.type) ||

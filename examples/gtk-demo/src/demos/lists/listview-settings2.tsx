@@ -164,7 +164,7 @@ const SchemaKeysListView = ({ filteredSchemaKeys, keysState, onValueEdit }: Sche
             name="list-view"
             vexpand
             cssClasses={["rich-list"]}
-            renderItem={(key: KeyItem) => (
+            renderItem={({ item: key }: { item: KeyItem }) => (
                 <GtkBox>
                     <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                         <GtkLabel label={key.name} xalign={0} />
@@ -179,11 +179,10 @@ const SchemaKeysListView = ({ filteredSchemaKeys, keysState, onValueEdit }: Sche
                 </GtkBox>
             )}
             renderHeader={(schemaId: string) => <GtkLabel label={schemaId} xalign={0} />}
-            items={filteredSchemaKeys.map((schema) => ({
+            sections={filteredSchemaKeys.map((schema) => ({
                 id: schema.schemaId,
                 value: schema.schemaId,
-                section: true,
-                children: schema.keys.map((key) => ({ id: key.id, value: key })),
+                data: schema.keys.map((key) => ({ id: key.id, value: key })),
             }))}
         />
     </GtkScrolledWindow>

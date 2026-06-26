@@ -1,7 +1,7 @@
 import { toCamelIdentifier } from "@gtkx/utils";
 import { tStruct } from "../analysis/descriptor.js";
+import { isInlineCallbackRef, renderDescriptor } from "../analysis/descriptor-render.js";
 import { renderTsType } from "../analysis/ts-type.js";
-import { isInlineCallbackRef, renderDescriptor } from "../analysis/value.js";
 import type { GirField } from "../gir/field.js";
 import type { FieldSlot } from "../gir/size.js";
 import type { GirType } from "../gir/type.js";
@@ -9,7 +9,7 @@ import type { TypeId } from "../gir/type-id.js";
 import type { ModuleContext } from "../writer/context.js";
 import { indent, renderBlock } from "../writer/emit.js";
 import { bitMask, mergeBitfield } from "./bitfield.js";
-import { typeRefIsClassStruct } from "./class-struct-record.js";
+import { refIsClassStruct } from "./class-struct-record.js";
 import { computeRecordFieldSlots, type RecordFieldSlot } from "./record-layout.js";
 import { wrapReturnValue } from "./return-wrap.js";
 
@@ -24,7 +24,7 @@ export const renderRecordFieldAccessor = (
     if (!field.readable && !field.writable) return undefined;
     if (field.type === undefined) return undefined;
     if (isInlineCallbackRef(context.library, field.type)) return undefined;
-    if (typeRefIsClassStruct(context, field.type)) return undefined;
+    if (refIsClassStruct(context, field.type)) return undefined;
     const jsName = toCamelIdentifier(field.name);
     if (claimedNames.has(jsName)) return undefined;
     if (jsName === "constructor") return undefined;
@@ -117,16 +117,16 @@ const renderElementReadObject = (context: ModuleContext, fields: GirField[], bas
             continue;
         }
         if (!isAccessorEligibleType(context, field.type)) continue;
-        const ffi = renderDescriptor(context, field.type, "none");
+        const descriptor = renderDescriptor(context, field.type, "none");
         if (slot.bitWidth === undefined) {
             entries.push(
-                `${jsName}: read(__array, ${ffi}, __base + ${offset}) as ${renderTsType(context, field.type, false)}`,
+                `${jsName}: read(__array, ${descriptor}, __base + ${offset}) as ${renderTsType(context, field.type, false)}`,
             );
             continue;
         }
         const shift = slot.bitOffset ?? 0;
         entries.push(
-            `${jsName}: (((read(__array, ${ffi}, __base + ${offset}) as number) >>> ${shift}) & ${bitMask(slot.bitWidth)})`,
+            `${jsName}: (((read(__array, ${descriptor}, __base + ${offset}) as number) >>> ${shift}) & ${bitMask(slot.bitWidth)})`,
         );
     }
     return `{ ${entries.join(", ")} }`;
@@ -154,15 +154,15 @@ const appendElementWriteStatements = (context: ModuleContext, options: ElementWr
             continue;
         }
         if (!isAccessorEligibleType(context, field.type)) continue;
-        const ffi = renderDescriptor(context, field.type, "none");
+        const descriptor = renderDescriptor(context, field.type, "none");
         if (slot.bitWidth === undefined) {
-            out.push(`write(__array, ${ffi}, __base + ${offset}, ${valueExpr});`);
+            out.push(`write(__array, ${descriptor}, __base + ${offset}, ${valueExpr});`);
             continue;
         }
         const mask = bitMask(slot.bitWidth);
         const shift = slot.bitOffset ?? 0;
-        const merged = mergeBitfield(`read(__array, ${ffi}, __base + ${offset})`, valueExpr, mask, shift);
-        out.push(`write(__array, ${ffi}, __base + ${offset}, ${merged});`);
+        const merged = mergeBitfield(`read(__array, ${descriptor}, __base + ${offset})`, valueExpr, mask, shift);
+        out.push(`write(__array, ${descriptor}, __base + ${offset}, ${merged});`);
     }
 };
 
@@ -177,7 +177,7 @@ type StructArrayAccessorOptions = {
     context: ModuleContext;
     jsName: string;
     tsType: string;
-    bufferType: string;
+    elementDescriptor: string;
     offset: number;
     lengthExpr: string;
     elementSize: number;
@@ -185,11 +185,11 @@ type StructArrayAccessorOptions = {
 };
 
 const structArrayGetterBlock = (options: StructArrayAccessorOptions): string => {
-    const { context, jsName, tsType, bufferType, offset, lengthExpr, elementSize, elementFields } = options;
+    const { context, jsName, tsType, elementDescriptor, offset, lengthExpr, elementSize, elementFields } = options;
     const element = renderElementReadObject(context, elementFields, 0);
     const loop = [`const __base = __index * ${elementSize};`, `__result.push(${element});`].join("\n");
     const body = [
-        `const __array = read(getHandle(this), ${bufferType}, ${offset});`,
+        `const __array = read(getHandle(this), ${elementDescriptor}, ${offset});`,
         `const __result: ${tsType} = [];`,
         `for (let __index = 0; __index < ${lengthExpr}; __index++) {`,
         indent(loop, 1),
@@ -200,7 +200,7 @@ const structArrayGetterBlock = (options: StructArrayAccessorOptions): string => 
 };
 
 const structArraySetterBlock = (options: StructArrayAccessorOptions): string => {
-    const { context, jsName, tsType, bufferType, offset, elementSize, elementFields } = options;
+    const { context, jsName, tsType, elementDescriptor, offset, elementSize, elementFields } = options;
     const writes: string[] = [];
     appendElementWriteStatements(context, {
         fields: elementFields,
@@ -212,11 +212,11 @@ const structArraySetterBlock = (options: StructArrayAccessorOptions): string => 
         "\n",
     );
     const body = [
-        `const __array = read(getHandle(this), ${bufferType}, ${offset});`,
+        `const __array = read(getHandle(this), ${elementDescriptor}, ${offset});`,
         `for (let __index = 0; __index < __value.length; __index++) {`,
         indent(loop, 1),
         "}",
-        `write(getHandle(this), ${bufferType}, ${offset}, __array);`,
+        `write(getHandle(this), ${elementDescriptor}, ${offset}, __array);`,
     ].join("\n");
     return renderBlock(`set ${jsName}(__value: ${tsType})`, body);
 };
@@ -240,7 +240,7 @@ const renderStructArrayAccessor = (context: ModuleContext, target: StructArrayTa
         context,
         jsName,
         tsType: renderTsType(context, field.type, false),
-        bufferType: tStruct("borrowed", {
+        elementDescriptor: tStruct("borrowed", {
             size: `${lengthExpr} * ${elementSize}`,
             wrapperClass: undefined,
             callerAllocated: false,

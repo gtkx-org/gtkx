@@ -1,6 +1,6 @@
 import { sourceStringLiteral, toCamelCase, toCamelIdentifier } from "@gtkx/utils";
+import { renderDescriptor } from "../analysis/descriptor-render.js";
 import { renderTsType } from "../analysis/ts-type.js";
-import { renderDescriptor } from "../analysis/value.js";
 import type { GirFunction } from "../gir/function.js";
 import { type GirProperty, isConstructableProperty } from "../gir/property.js";
 import type { TypeId } from "../gir/type-id.js";

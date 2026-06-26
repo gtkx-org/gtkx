@@ -1,8 +1,9 @@
 import { rmSync } from "node:fs";
 import { resolve } from "node:path";
 import { runCodegen as runCodegenCore } from "@gtkx/codegen";
-import { type GtkxConfig, GtkxConfigNotFoundError, loadGtkxConfig, resolveDataDir } from "@gtkx/config";
+import { type GtkxConfig, GtkxConfigNotFoundError, loadGtkxConfig } from "@gtkx/config";
 import { emitSchemaEnv } from "../gsettings/env.js";
+import { resolveDataDir } from "../internal/data-dir.js";
 import { GtkxError } from "../internal/errors.js";
 import { info } from "../internal/log.js";
 import { type CodegenInputs, isCodegenStale, resolveCodegenInputs } from "./freshness.js";
@@ -16,7 +17,7 @@ export type RunCodegenOptions = {
 
 export type RunCodegenResult = {
     namespaces: number;
-    reactNodes: number;
+    intrinsicElements: number;
     duration: number;
     girPath?: string[] | undefined;
     configFile?: string | undefined;
@@ -69,7 +70,7 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
 
     return {
         namespaces: result.namespaces,
-        reactNodes: result.intrinsicElements,
+        intrinsicElements: result.intrinsicElements,
         duration: result.duration,
         girPath,
         configFile,
@@ -90,7 +91,11 @@ const resolveInputsOrNull = (cwd: string, config: GtkxConfig): CodegenInputs | n
     }
 };
 
-export const ensureGenerated = async (cwd: string): Promise<boolean> => {
+export const ensureGenerated = async (cwd: string, options: { announce?: boolean } = {}): Promise<boolean> => {
+    if (options.announce && process.env["GTKX_DISABLE_PREFLIGHT"] === "1") {
+        return false;
+    }
+
     const context = await resolveCodegenContext(cwd);
     if (!context) {
         return false;
@@ -100,25 +105,11 @@ export const ensureGenerated = async (cwd: string): Promise<boolean> => {
     if (inputs !== null && !isCodegenStale(inputs)) {
         return false;
     }
+    if (options.announce) {
+        info("generated bindings missing; running codegen...");
+    }
     await runCodegen(inputs === null ? { cwd: context.root } : { cwd: context.root, inputs });
     return true;
-};
-
-export const preflightCodegen = async (cwd: string): Promise<void> => {
-    if (process.env["GTKX_DISABLE_PREFLIGHT"] === "1") {
-        return;
-    }
-
-    const context = await resolveCodegenContext(cwd);
-    if (!context) {
-        return;
-    }
-    syncSchemaEnv(cwd);
-    const inputs = resolveInputsOrNull(context.root, context.config);
-    if (inputs === null || isCodegenStale(inputs)) {
-        info("generated bindings missing; running codegen...");
-        await runCodegen(inputs === null ? { cwd: context.root } : { cwd: context.root, inputs });
-    }
 };
 
 export const resolveConfigWatch = async (
@@ -126,12 +117,12 @@ export const resolveConfigWatch = async (
 ): Promise<{ paths: string[]; regenerate: () => Promise<void> } | undefined> => {
     const codegenRoot = findCodegenRoot(cwd);
     try {
-        const { configFile, rootDir } = await loadGtkxConfig(codegenRoot);
+        const { configFile, root } = await loadGtkxConfig(codegenRoot);
         if (configFile === undefined) return undefined;
         return {
-            paths: [resolve(rootDir, configFile)],
+            paths: [resolve(root, configFile)],
             regenerate: async () => {
-                await runCodegen({ cwd: rootDir });
+                await runCodegen({ cwd: root });
             },
         };
     } catch (error) {

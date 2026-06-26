@@ -16,22 +16,15 @@ export type DragOptions = {
     startY?: number;
 };
 
-const wrapValue = (content: DropContent): GObject.Value => {
+const buildDropValue = (content: DropContent): GObject.Value => {
     if (content instanceof GObject.Value) return content;
-    const value = new GObject.Value();
     if (typeof content === "string") {
-        value.init(GObject.TYPE_STRING);
-        value.setString(content);
-        return value;
+        return GObject.buildValue(GObject.TYPE_STRING, (v) => v.setString(content));
     }
     if (typeof content === "boolean") {
-        value.init(GObject.TYPE_BOOLEAN);
-        value.setBoolean(content);
-        return value;
+        return GObject.buildValue(GObject.TYPE_BOOLEAN, (v) => v.setBoolean(content));
     }
-    value.init(GObject.TYPE_DOUBLE);
-    value.setDouble(content);
-    return value;
+    return GObject.buildValue(GObject.TYPE_DOUBLE, (v) => v.setDouble(content));
 };
 
 export const hover = (widget: Gtk.Widget): Promise<void> =>
@@ -104,7 +97,7 @@ export const drag = async (widget: Gtk.Widget, dx: number, dy: number, options: 
 
 const emitDrop = (target: Gtk.Widget, content: DropContent, options: DropOptions): void => {
     const dropTarget = getController(target, Gtk.DropTarget);
-    dropTarget.emit("drop", wrapValue(content), options.x ?? 0, options.y ?? 0);
+    dropTarget.emit("drop", buildDropValue(content), options.x ?? 0, options.y ?? 0);
 };
 
 export const drop = (widget: Gtk.Widget, content: DropContent, options: DropOptions = {}): Promise<void> =>

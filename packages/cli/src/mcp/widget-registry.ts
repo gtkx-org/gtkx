@@ -14,7 +14,7 @@ export class WidgetRegistry {
         }
     }
 
-    toplevels(): Gtk.Window[] {
+    windows(): Gtk.Window[] {
         return this.topLevelWindows;
     }
 

@@ -57,12 +57,11 @@ describe("render - AdwComboRow", () => {
                 <ComboRow
                     ref={ref}
                     title="Sort Order"
-                    items={[
+                    sections={[
                         {
                             id: "ascending",
                             value: "Ascending",
-                            section: true,
-                            children: [
+                            data: [
                                 { id: "title", value: "By title" },
                                 { id: "date", value: "By date" },
                             ],
@@ -88,7 +87,7 @@ describe("render - AdwComboRow", () => {
                     title="Sort Order"
                     items={items}
                     selectedId="date"
-                    renderItem={(value: string) => <GtkLabel label={`Sorted ${value.toLowerCase()}`} />}
+                    renderItem={({ item: value }) => <GtkLabel label={`Sorted ${value.toLowerCase()}`} />}
                 />
             </GtkListBox>,
         );

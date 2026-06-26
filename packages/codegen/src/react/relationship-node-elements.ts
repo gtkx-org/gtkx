@@ -2,6 +2,7 @@ import {
     LAYOUT_CHILD_KIND,
     META_OBJECT_KIND,
     OVERLAY_KIND,
+    type RelationshipKind,
     TAB_LABEL_KIND,
     TEXT_ANCHOR_KIND,
     TEXT_PAINTABLE_KIND,
@@ -9,12 +10,12 @@ import {
 
 export type RelationshipNodeElementSlot = {
     prop: string;
-    kind: string;
+    kind: RelationshipKind;
 };
 
 export type RelationshipNodeElement = {
     flatName: string;
-    kind: string;
+    kind: RelationshipKind;
     propsType: string;
     slot?: RelationshipNodeElementSlot;
 };

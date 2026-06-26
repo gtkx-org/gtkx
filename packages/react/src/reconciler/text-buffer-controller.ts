@@ -10,8 +10,6 @@ export class TextBufferController {
     private anchoredWidgets = new Set<Gtk.Widget>();
     private owner: Node;
 
-    public boundRebuild = (): void => this.rebuild();
-
     constructor(owner: Node) {
         this.owner = owner;
     }
@@ -30,7 +28,7 @@ export class TextBufferController {
         return stateOf(this.owner).children.some((child) => isBufferContentNode(child) || child instanceof Gtk.TextTag);
     }
 
-    private rebuild(): void {
+    public rebuild = (): void => {
         const buffer = this.resolveBuffer();
         if (!buffer) return;
 
@@ -48,7 +46,7 @@ export class TextBufferController {
             buffer.endIrreversibleAction();
             state.signalStore.unblockAll();
         }
-    }
+    };
 
     private detachAnchoredWidgets(): void {
         for (const widget of this.anchoredWidgets) unparentWidget(widget);
