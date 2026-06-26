@@ -2,20 +2,20 @@ mod common;
 
 use std::ffi::{CString, c_void};
 
-use native::arg::Arg;
-use native::ffi::{FfiStorage, FfiStorageKind, FfiValue};
-use native::types::{
-    ArrayKind, ArrayType, BooleanType, FloatKind, IntegerKind, Ownership, StringType, Type,
-    VoidType,
+use native::ffi::arg::Arg;
+use native::ffi::descriptors::{
+    ArrayDescriptor, ArrayKind, BooleanDescriptor, Descriptor, FloatKind, IntegerKind, Ownership,
+    StringDescriptor, VoidDescriptor,
 };
-use native::value;
+use native::ffi::value;
+use native::ffi::{Stash, StashKind, StashedValue};
 
 macro_rules! expect_variant {
     ($arg:expr, $variant:ident) => {{
-        match FfiValue::try_from($arg).expect("conversion should succeed") {
-            FfiValue::$variant(v) => v,
+        match StashedValue::try_from($arg).expect("conversion should succeed") {
+            StashedValue::$variant(v) => v,
             other => panic!(
-                "Expected FfiValue::{}, got {:?}",
+                "Expected StashedValue::{}, got {:?}",
                 stringify!($variant),
                 other
             ),
@@ -25,8 +25,8 @@ macro_rules! expect_variant {
 
 fn u8_array_arg(value: value::Value) -> Arg {
     Arg::new(
-        Type::Array(ArrayType {
-            item_type: Box::new(Type::Integer(IntegerKind::U8)),
+        Descriptor::Array(ArrayDescriptor {
+            item_type: Box::new(Descriptor::Integer(IntegerKind::U8)),
             kind: ArrayKind::Array,
             ownership: Ownership::Full,
             element_size: None,
@@ -39,7 +39,7 @@ fn u8_array_arg(value: value::Value) -> Arg {
 fn owned_ptr_new_stores_value_and_ptr() {
     let data = vec![1u32, 2, 3, 4, 5];
     let ptr = data.as_ptr() as *mut c_void;
-    let owned = FfiStorage::new(ptr, FfiStorageKind::U32Vec(data));
+    let owned = Stash::new(ptr, StashKind::U32Vec(data));
 
     assert_eq!(owned.ptr(), ptr);
 }
@@ -47,7 +47,7 @@ fn owned_ptr_new_stores_value_and_ptr() {
 #[test]
 fn owned_ptr_from_vec_captures_correct_pointer() {
     let data = vec![10u64, 20, 30];
-    let owned: FfiStorage = data.into();
+    let owned: Stash = data.into();
 
     // SAFETY: `owned` was built from the three-element `u64` vec and keeps it alive, so its pointer
     // addresses exactly three contiguous, correctly-typed `u64`s spanned by this slice.
@@ -61,7 +61,7 @@ fn owned_ptr_from_vec_captures_correct_pointer() {
 fn owned_ptr_keeps_cstring_alive() {
     let cstring = CString::new("test string").unwrap();
     let ptr = cstring.as_ptr() as *mut c_void;
-    let owned = FfiStorage::new(ptr, FfiStorageKind::CString(cstring));
+    let owned = Stash::new(ptr, StashKind::CString(cstring));
 
     // SAFETY: `owned` keeps the source `CString` alive, so its pointer addresses a valid
     // NUL-terminated C string that `CStr::from_ptr` can read.
@@ -80,7 +80,7 @@ fn owned_ptr_tuple_keeps_both_alive() {
     let ptrs: Vec<*mut c_void> = strings.iter().map(|s| s.as_ptr() as *mut c_void).collect();
     let tuple_ptr = ptrs.as_ptr() as *mut c_void;
 
-    let owned = FfiStorage::new(tuple_ptr, FfiStorageKind::StringArray(strings, ptrs));
+    let owned = Stash::new(tuple_ptr, StashKind::StringArray(strings, ptrs));
 
     // SAFETY: `owned` keeps both the `ptrs` vec and the backing `CString`s alive, so its pointer
     // addresses two contiguous `*const i8` entries, each a valid NUL-terminated C string.
@@ -97,14 +97,17 @@ fn owned_ptr_tuple_keeps_both_alive() {
 fn owned_ptr_drops_value_when_dropped() {
     let data = vec![1u8, 2, 3, 4, 5];
     let ptr = data.as_ptr() as *mut c_void;
-    let owned = FfiStorage::new(ptr, FfiStorageKind::U8Vec(data));
+    let owned = Stash::new(ptr, StashKind::U8Vec(data));
 
     drop(owned);
 }
 
 #[test]
 fn try_from_integer_i8() {
-    let arg = Arg::new(Type::Integer(IntegerKind::I8), value::Value::Number(-42.0));
+    let arg = Arg::new(
+        Descriptor::Integer(IntegerKind::I8),
+        value::Value::Number(-42.0),
+    );
 
     let v = expect_variant!(arg, I8);
     assert_eq!(v, -42);
@@ -112,7 +115,10 @@ fn try_from_integer_i8() {
 
 #[test]
 fn try_from_integer_u8() {
-    let arg = Arg::new(Type::Integer(IntegerKind::U8), value::Value::Number(200.0));
+    let arg = Arg::new(
+        Descriptor::Integer(IntegerKind::U8),
+        value::Value::Number(200.0),
+    );
 
     let v = expect_variant!(arg, U8);
     assert_eq!(v, 200);
@@ -121,7 +127,7 @@ fn try_from_integer_u8() {
 #[test]
 fn try_from_integer_i32() {
     let arg = Arg::new(
-        Type::Integer(IntegerKind::I32),
+        Descriptor::Integer(IntegerKind::I32),
         value::Value::Number(-123_456.0),
     );
 
@@ -132,7 +138,7 @@ fn try_from_integer_i32() {
 #[test]
 fn try_from_integer_u64() {
     let arg = Arg::new(
-        Type::Integer(IntegerKind::U64),
+        Descriptor::Integer(IntegerKind::U64),
         value::Value::Number(9_999_999_999.0),
     );
 
@@ -143,7 +149,7 @@ fn try_from_integer_u64() {
 #[test]
 fn try_from_integer_optional_null() {
     let arg = Arg {
-        ty: Type::Integer(IntegerKind::I32),
+        ty: Descriptor::Integer(IntegerKind::I32),
         value: value::Value::Null,
     };
 
@@ -153,7 +159,10 @@ fn try_from_integer_optional_null() {
 
 #[test]
 fn try_from_float_f32() {
-    let arg = Arg::new(Type::Float(FloatKind::F32), value::Value::Number(3.125));
+    let arg = Arg::new(
+        Descriptor::Float(FloatKind::F32),
+        value::Value::Number(3.125),
+    );
 
     let v = expect_variant!(arg, F32);
     assert!((v - 3.125).abs() < 0.001);
@@ -161,7 +170,10 @@ fn try_from_float_f32() {
 
 #[test]
 fn try_from_float_f64() {
-    let arg = Arg::new(Type::Float(FloatKind::F64), value::Value::Number(2.625));
+    let arg = Arg::new(
+        Descriptor::Float(FloatKind::F64),
+        value::Value::Number(2.625),
+    );
 
     let v = expect_variant!(arg, F64);
     assert!((v - 2.625).abs() < 0.000_000_1);
@@ -170,17 +182,17 @@ fn try_from_float_f64() {
 #[test]
 fn try_from_string_full() {
     let arg = Arg::new(
-        Type::String(StringType {
+        Descriptor::String(StringDescriptor {
             ownership: Ownership::Full,
             length: None,
         }),
         value::Value::String("hello world".to_string()),
     );
 
-    let encoded = FfiValue::try_from(arg).expect("full string should encode");
+    let encoded = StashedValue::try_from(arg).expect("full string should encode");
     encoded.disarm_pending_transfer();
-    let FfiValue::Storage(storage) = &encoded else {
-        panic!("Expected FfiValue::Storage, got {encoded:?}");
+    let StashedValue::Storage(storage) = &encoded else {
+        panic!("Expected StashedValue::Storage, got {encoded:?}");
     };
     let ptr = storage.ptr();
     // SAFETY: the full-ownership string encode produced a freshly `g_malloc`-ed NUL-terminated
@@ -196,7 +208,7 @@ fn try_from_string_full() {
 #[test]
 fn try_from_string_borrowed() {
     let arg = Arg::new(
-        Type::String(StringType {
+        Descriptor::String(StringDescriptor {
             ownership: Ownership::Borrowed,
             length: None,
         }),
@@ -215,7 +227,7 @@ fn try_from_string_borrowed() {
 #[test]
 fn try_from_string_null() {
     let arg = Arg::new(
-        Type::String(StringType {
+        Descriptor::String(StringDescriptor {
             ownership: Ownership::Full,
             length: None,
         }),
@@ -228,7 +240,10 @@ fn try_from_string_null() {
 
 #[test]
 fn try_from_boolean_true() {
-    let arg = Arg::new(Type::Boolean(BooleanType), value::Value::Boolean(true));
+    let arg = Arg::new(
+        Descriptor::Boolean(BooleanDescriptor),
+        value::Value::Boolean(true),
+    );
 
     let v = expect_variant!(arg, I32);
     assert_eq!(v, 1);
@@ -236,7 +251,10 @@ fn try_from_boolean_true() {
 
 #[test]
 fn try_from_boolean_false() {
-    let arg = Arg::new(Type::Boolean(BooleanType), value::Value::Boolean(false));
+    let arg = Arg::new(
+        Descriptor::Boolean(BooleanDescriptor),
+        value::Value::Boolean(false),
+    );
 
     let v = expect_variant!(arg, I32);
     assert_eq!(v, 0);
@@ -244,7 +262,7 @@ fn try_from_boolean_false() {
 
 #[test]
 fn try_from_null() {
-    let arg = Arg::new(Type::Void(VoidType), value::Value::Null);
+    let arg = Arg::new(Descriptor::Void(VoidDescriptor), value::Value::Null);
 
     let ptr = expect_variant!(arg, Ptr);
     assert!(ptr.is_null());
@@ -252,7 +270,7 @@ fn try_from_null() {
 
 #[test]
 fn try_from_undefined() {
-    let arg = Arg::new(Type::Void(VoidType), value::Value::Undefined);
+    let arg = Arg::new(Descriptor::Void(VoidDescriptor), value::Value::Undefined);
 
     let ptr = expect_variant!(arg, Ptr);
     assert!(ptr.is_null());
@@ -278,8 +296,8 @@ fn try_from_array_u8() {
 #[test]
 fn try_from_array_i32() {
     let arg = Arg::new(
-        Type::Array(ArrayType {
-            item_type: Box::new(Type::Integer(IntegerKind::I32)),
+        Descriptor::Array(ArrayDescriptor {
+            item_type: Box::new(Descriptor::Integer(IntegerKind::I32)),
             kind: ArrayKind::Array,
             ownership: Ownership::Full,
             element_size: None,
@@ -303,8 +321,8 @@ fn try_from_array_i32() {
 #[test]
 fn try_from_array_f64() {
     let arg = Arg::new(
-        Type::Array(ArrayType {
-            item_type: Box::new(Type::Float(FloatKind::F64)),
+        Descriptor::Array(ArrayDescriptor {
+            item_type: Box::new(Descriptor::Float(FloatKind::F64)),
             kind: ArrayKind::Array,
             ownership: Ownership::Full,
             element_size: None,
@@ -325,8 +343,8 @@ fn try_from_array_f64() {
 #[test]
 fn try_from_array_string() {
     let arg = Arg::new(
-        Type::Array(ArrayType {
-            item_type: Box::new(Type::String(StringType {
+        Descriptor::Array(ArrayDescriptor {
+            item_type: Box::new(Descriptor::String(StringDescriptor {
                 ownership: Ownership::Full,
                 length: None,
             })),
@@ -357,8 +375,8 @@ fn try_from_array_string() {
 #[test]
 fn try_from_array_boolean() {
     let arg = Arg::new(
-        Type::Array(ArrayType {
-            item_type: Box::new(Type::Boolean(BooleanType)),
+        Descriptor::Array(ArrayDescriptor {
+            item_type: Box::new(Descriptor::Boolean(BooleanDescriptor)),
             kind: ArrayKind::Array,
             ownership: Ownership::Full,
             element_size: None,
@@ -381,15 +399,15 @@ fn try_from_array_boolean() {
 
 #[test]
 fn value_as_ptr_integer_types_fail() {
-    assert!(FfiValue::U8(42).as_ptr("test").is_err());
-    assert!(FfiValue::I32(-100).as_ptr("test").is_err());
-    assert!(FfiValue::U64(999).as_ptr("test").is_err());
+    assert!(StashedValue::U8(42).as_ptr("test").is_err());
+    assert!(StashedValue::I32(-100).as_ptr("test").is_err());
+    assert!(StashedValue::U64(999).as_ptr("test").is_err());
 }
 
 #[test]
 fn value_as_ptr_float_types_fail() {
-    let v_f32 = FfiValue::F32(3.125);
-    let v_f64 = FfiValue::F64(2.625);
+    let v_f32 = StashedValue::F32(3.125);
+    let v_f64 = StashedValue::F64(2.625);
 
     assert!(v_f32.as_ptr("test").is_err());
     assert!(v_f64.as_ptr("test").is_err());
@@ -397,49 +415,49 @@ fn value_as_ptr_float_types_fail() {
 
 #[test]
 fn value_as_ptr_void() {
-    let v = FfiValue::Void;
+    let v = StashedValue::Void;
     assert!(v.as_ptr("test").is_err());
 }
 
 #[test]
 fn value_as_ptr_null_ptr() {
-    let v = FfiValue::Ptr(std::ptr::null_mut());
+    let v = StashedValue::Ptr(std::ptr::null_mut());
     assert!(v.as_ptr("test").unwrap().is_null());
 }
 
 #[test]
 fn value_to_libffi_arg_integers() {
-    let v = FfiValue::I32(42);
+    let v = StashedValue::I32(42);
     let _arg: libffi::middle::Arg = (&v).into();
 }
 
 #[test]
 fn value_to_libffi_arg_floats() {
-    let v = FfiValue::F64(3.125);
+    let v = StashedValue::F64(3.125);
     let _arg: libffi::middle::Arg = (&v).into();
 }
 
 #[test]
 fn value_to_libffi_arg_ptr() {
-    let v = FfiValue::Ptr(std::ptr::null_mut());
+    let v = StashedValue::Ptr(std::ptr::null_mut());
     let _arg: libffi::middle::Arg = (&v).into();
 }
 
 #[test]
 fn value_to_libffi_arg_owned_ptr() {
-    let storage: FfiStorage = vec![1u8, 2, 3].into();
-    let v = FfiValue::Storage(storage);
+    let storage: Stash = vec![1u8, 2, 3].into();
+    let v = StashedValue::Storage(storage);
     let _arg: libffi::middle::Arg = (&v).into();
 }
 
 #[test]
 fn try_from_struct_null() {
-    let struct_type = native::types::StructType {
+    let struct_type = native::ffi::descriptors::StructDescriptor {
         ownership: Ownership::Borrowed,
         size: Some(16),
         caller_allocated: false,
     };
-    let arg = Arg::new(Type::Struct(struct_type), value::Value::Null);
+    let arg = Arg::new(Descriptor::Struct(struct_type), value::Value::Null);
 
     let ptr = expect_variant!(arg, Ptr);
     assert!(ptr.is_null());
@@ -447,12 +465,12 @@ fn try_from_struct_null() {
 
 #[test]
 fn try_from_struct_undefined() {
-    let struct_type = native::types::StructType {
+    let struct_type = native::ffi::descriptors::StructDescriptor {
         ownership: Ownership::Full,
         size: None,
         caller_allocated: false,
     };
-    let arg = Arg::new(Type::Struct(struct_type), value::Value::Undefined);
+    let arg = Arg::new(Descriptor::Struct(struct_type), value::Value::Undefined);
 
     let ptr = expect_variant!(arg, Ptr);
     assert!(ptr.is_null());
@@ -461,8 +479,8 @@ fn try_from_struct_undefined() {
 #[test]
 fn try_from_array_optional_null_yields_null_ptr() {
     let arg = Arg {
-        ty: Type::Array(ArrayType {
-            item_type: Box::new(Type::Integer(IntegerKind::U8)),
+        ty: Descriptor::Array(ArrayDescriptor {
+            item_type: Box::new(Descriptor::Integer(IntegerKind::U8)),
             kind: ArrayKind::Array,
             ownership: Ownership::Full,
             element_size: None,
@@ -470,9 +488,9 @@ fn try_from_array_optional_null_yields_null_ptr() {
         value: value::Value::Null,
     };
 
-    match FfiValue::try_from(arg).unwrap() {
-        FfiValue::Ptr(ptr) => assert!(ptr.is_null()),
-        other => panic!("Expected null FfiValue::Ptr, got {other:?}"),
+    match StashedValue::try_from(arg).unwrap() {
+        StashedValue::Ptr(ptr) => assert!(ptr.is_null()),
+        other => panic!("Expected null StashedValue::Ptr, got {other:?}"),
     }
 }
 
@@ -480,14 +498,14 @@ fn try_from_array_optional_null_yields_null_ptr() {
 fn try_from_array_propagates_encode_error() {
     let arg = u8_array_arg(value::Value::Number(1.0));
 
-    assert!(FfiValue::try_from(arg).is_err());
+    assert!(StashedValue::try_from(arg).is_err());
 }
 
 #[test]
 fn try_from_array_f32_storage_converts_to_libffi_arg() {
     let arg = Arg::new(
-        Type::Array(ArrayType {
-            item_type: Box::new(Type::Float(FloatKind::F32)),
+        Descriptor::Array(ArrayDescriptor {
+            item_type: Box::new(Descriptor::Float(FloatKind::F32)),
             kind: ArrayKind::Array,
             ownership: Ownership::Full,
             element_size: None,
@@ -495,39 +513,39 @@ fn try_from_array_f32_storage_converts_to_libffi_arg() {
         value::Value::Array(vec![value::Value::Number(0.5)]),
     );
 
-    let ffi_value = FfiValue::try_from(arg).unwrap();
-    let _arg: libffi::middle::Arg = (&ffi_value).into();
+    let stashed_value = StashedValue::try_from(arg).unwrap();
+    let _arg: libffi::middle::Arg = (&stashed_value).into();
 }
 
 #[test]
 fn try_from_struct_transfer_none_vs_full() {
-    let transfer_none_type = native::types::StructType {
+    let transfer_none_type = native::ffi::descriptors::StructDescriptor {
         ownership: Ownership::Full,
         size: Some(16),
         caller_allocated: false,
     };
-    let transfer_full_type = native::types::StructType {
+    let transfer_full_type = native::ffi::descriptors::StructDescriptor {
         ownership: Ownership::Borrowed,
         size: Some(16),
         caller_allocated: false,
     };
 
-    let transfer_none_arg = Arg::new(Type::Struct(transfer_none_type), value::Value::Null);
+    let transfer_none_arg = Arg::new(Descriptor::Struct(transfer_none_type), value::Value::Null);
 
-    let transfer_full_arg = Arg::new(Type::Struct(transfer_full_type), value::Value::Null);
+    let transfer_full_arg = Arg::new(Descriptor::Struct(transfer_full_type), value::Value::Null);
 
-    let transfer_none_result = FfiValue::try_from(transfer_none_arg);
-    let transfer_full_result = FfiValue::try_from(transfer_full_arg);
+    let transfer_none_result = StashedValue::try_from(transfer_none_arg);
+    let transfer_full_result = StashedValue::try_from(transfer_full_arg);
 
     assert!(transfer_none_result.is_ok());
     assert!(transfer_full_result.is_ok());
 
-    if let (FfiValue::Ptr(ptr1), FfiValue::Ptr(ptr2)) =
+    if let (StashedValue::Ptr(ptr1), StashedValue::Ptr(ptr2)) =
         (transfer_none_result.unwrap(), transfer_full_result.unwrap())
     {
         assert!(ptr1.is_null());
         assert!(ptr2.is_null());
     } else {
-        panic!("Expected FfiValue::Ptr for both");
+        panic!("Expected StashedValue::Ptr for both");
     }
 }

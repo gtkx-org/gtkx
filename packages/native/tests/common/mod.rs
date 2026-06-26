@@ -9,13 +9,13 @@ use gtk4::gdk;
 use gtk4::glib::{self, translate::IntoGlib as _};
 use gtk4::prelude::StaticType as _;
 
-use native::glib_thread_state::GlibThreadState;
-use native::managed::Boxed;
-use native::types::{
-    ArrayKind, ArrayType, EnumFlagsKind, EnumFlagsType, FfiDecoder, FfiEncoder, FloatKind,
-    IntegerKind, Ownership, RawPtrWriter, ReadSource, Type,
+use native::ffi::descriptors::{
+    ArrayDescriptor, ArrayKind, Descriptor, EnumFlagsDescriptor, EnumFlagsKind, FfiDecoder,
+    FfiEncoder, FloatKind, IntegerKind, Ownership, PointerWriter, ReadSource,
 };
-use native::value::Value;
+use native::ffi::library_cache::GlibThreadState;
+use native::ffi::value::Value;
+use native::handle::Boxed;
 
 static SERIAL: Mutex<()> = Mutex::new(());
 
@@ -244,8 +244,8 @@ impl Drop for TestBoxed {
     }
 }
 
-pub fn enum_type() -> EnumFlagsType {
-    EnumFlagsType {
+pub fn enum_type() -> EnumFlagsDescriptor {
+    EnumFlagsDescriptor {
         kind: EnumFlagsKind::Enum,
         library: "libgtk-4.so.1".to_owned(),
         get_type_fn: "gtk_orientation_get_type".to_owned(),
@@ -253,8 +253,8 @@ pub fn enum_type() -> EnumFlagsType {
     }
 }
 
-pub fn flags_type() -> EnumFlagsType {
-    EnumFlagsType {
+pub fn flags_type() -> EnumFlagsDescriptor {
+    EnumFlagsDescriptor {
         kind: EnumFlagsKind::Flags,
         library: "libgtk-4.so.1".to_owned(),
         get_type_fn: "gtk_state_flags_get_type".to_owned(),
@@ -266,12 +266,12 @@ pub fn assert_encode_null_yields_null_ptr<C: FfiEncoder>(codec: &C) {
     let encoded = codec
         .encode(&Value::Null)
         .expect("null encode should succeed");
-    assert!(matches!(encoded, native::ffi::FfiValue::Ptr(p) if p.is_null()));
+    assert!(matches!(encoded, native::ffi::StashedValue::Ptr(p) if p.is_null()));
 }
 
 pub fn assert_decode_null_yields_null<C: FfiDecoder>(codec: &C) {
     let decoded = codec
-        .decode(&native::ffi::FfiValue::Ptr(std::ptr::null_mut()))
+        .decode(&native::ffi::StashedValue::Ptr(std::ptr::null_mut()))
         .expect("null decode should succeed");
     assert!(matches!(decoded, Value::Null));
 }
@@ -303,45 +303,45 @@ pub unsafe fn read_slot<C: FfiDecoder>(codec: &C, ptr: *mut c_void) -> anyhow::R
     }
 }
 
-pub fn write_return_into_slot<C: RawPtrWriter>(
+pub fn write_return_into_slot<C: PointerWriter>(
     codec: &C,
     value: &Result<Value, ()>,
 ) -> *mut c_void {
     let mut slot: *mut c_void = std::ptr::null_mut();
-    // SAFETY: `&mut slot` is a live, pointer-sized stack slot; `write_return_to_raw_ptr` writes
+    // SAFETY: `&mut slot` is a live, pointer-sized stack slot; `write_return_to_pointer` writes
     // exactly one pointer (or null) into it, which is read back after the call.
-    unsafe { codec.write_return_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, value) };
+    unsafe { codec.write_return_to_pointer(&mut slot as *mut *mut c_void as *mut c_void, value) };
     slot
 }
 
-pub fn write_value_into_slot<C: RawPtrWriter>(
+pub fn write_value_into_slot<C: PointerWriter>(
     codec: &C,
     initial: *mut c_void,
     value: &Value,
 ) -> *mut c_void {
     let mut slot: *mut c_void = initial;
     // SAFETY: `&mut slot` is a live, pointer-sized stack slot pre-seeded with `initial` (the prior
-    // owned pointer or null); `write_value_to_raw_ptr` swaps in the new value, balancing ownership.
-    unsafe { codec.write_value_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, value) }
-        .expect("write_value_to_raw_ptr should succeed");
+    // owned pointer or null); `write_value_to_pointer` swaps in the new value, balancing ownership.
+    unsafe { codec.write_value_to_pointer(&mut slot as *mut *mut c_void as *mut c_void, value) }
+        .expect("write_value_to_pointer should succeed");
     slot
 }
 
-pub fn assert_write_return_err_writes_null<C: RawPtrWriter>(codec: &C) {
+pub fn assert_write_return_err_writes_null<C: PointerWriter>(codec: &C) {
     let mut slot: *mut c_void = std::ptr::dangling_mut::<c_void>();
     let value: Result<Value, ()> = Err(());
     // SAFETY: `&mut slot` is a live, pointer-sized stack slot; on an `Err` value
-    // `write_return_to_raw_ptr` writes null into it without reading the dangling initial value.
+    // `write_return_to_pointer` writes null into it without reading the dangling initial value.
     unsafe {
-        codec.write_return_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, &value);
+        codec.write_return_to_pointer(&mut slot as *mut *mut c_void as *mut c_void, &value);
     }
     assert!(slot.is_null());
 }
 
 #[must_use]
-pub fn i32_array_type(size: usize) -> ArrayType {
-    ArrayType {
-        item_type: Box::new(Type::Integer(IntegerKind::I32)),
+pub fn i32_array_type(size: usize) -> ArrayDescriptor {
+    ArrayDescriptor {
+        item_type: Box::new(Descriptor::Integer(IntegerKind::I32)),
         kind: ArrayKind::Fixed { size },
         ownership: Ownership::Borrowed,
         element_size: None,
@@ -349,9 +349,9 @@ pub fn i32_array_type(size: usize) -> ArrayType {
 }
 
 #[must_use]
-pub fn f32_array_type() -> ArrayType {
-    ArrayType {
-        item_type: Box::new(Type::Float(FloatKind::F32)),
+pub fn f32_array_type() -> ArrayDescriptor {
+    ArrayDescriptor {
+        item_type: Box::new(Descriptor::Float(FloatKind::F32)),
         kind: ArrayKind::Sized { size_index: 1 },
         ownership: Ownership::Borrowed,
         element_size: None,

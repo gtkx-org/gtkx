@@ -6,32 +6,33 @@ use gtk4::glib;
 use gtk4::prelude::StaticType as _;
 
 use native::NativeHandle;
-use native::arg::Arg;
-use native::ffi::{FfiStorageKind, FfiValue, GArrayData};
-use native::types::{
-    ArrayKind, ArrayType, BigIntKind, BooleanType, EnumFlagsKind, EnumFlagsType, FfiDecoder,
-    FfiEncoder, FloatKind, FundamentalType, GObjectType, IntegerKind, Ownership, RawPtrWriter,
-    ReadSource, RefType, StringType, StructType, Type,
+use native::ffi::arg::Arg;
+use native::ffi::descriptors::{
+    ArrayDescriptor, ArrayKind, BigIntKind, BooleanDescriptor, Descriptor, EnumFlagsDescriptor,
+    EnumFlagsKind, FfiDecoder, FfiEncoder, FloatKind, FundamentalDescriptor, GObjectDescriptor,
+    IntegerKind, Ownership, PointerWriter, ReadSource, RefDescriptor, StringDescriptor,
+    StructDescriptor,
 };
-use native::value::Value;
+use native::ffi::value::Value;
+use native::ffi::{GArrayData, StashKind, StashedValue};
 
-fn struct_item_type() -> Type {
-    Type::Struct(StructType {
+fn struct_item_type() -> Descriptor {
+    Descriptor::Struct(StructDescriptor {
         ownership: Ownership::Borrowed,
         size: Some(size_of::<gtk4::gdk::ffi::GdkRGBA>()),
         caller_allocated: false,
     })
 }
 
-fn string_item_type(ownership: Ownership) -> Type {
-    Type::String(StringType {
+fn string_item_type(ownership: Ownership) -> Descriptor {
+    Descriptor::String(StringDescriptor {
         ownership,
         length: None,
     })
 }
 
-fn enum_flags_item_type() -> Type {
-    Type::EnumFlags(EnumFlagsType {
+fn enum_flags_item_type() -> Descriptor {
+    Descriptor::EnumFlags(EnumFlagsDescriptor {
         kind: EnumFlagsKind::Enum,
         library: "Gtk".to_string(),
         get_type_fn: "gtk_orientation_get_type".to_string(),
@@ -39,8 +40,8 @@ fn enum_flags_item_type() -> Type {
     })
 }
 
-fn array_type(item: Type, kind: ArrayKind, ownership: Ownership) -> ArrayType {
-    ArrayType {
+fn array_type(item: Descriptor, kind: ArrayKind, ownership: Ownership) -> ArrayDescriptor {
+    ArrayDescriptor {
         item_type: Box::new(item),
         kind,
         ownership,
@@ -53,12 +54,12 @@ fn boxed_handle() -> NativeHandle {
     NativeHandle::borrowed(ptr)
 }
 
-fn gobject_item_type(ownership: Ownership) -> Type {
-    Type::GObject(GObjectType { ownership })
+fn gobject_item_type(ownership: Ownership) -> Descriptor {
+    Descriptor::GObject(GObjectDescriptor { ownership })
 }
 
-fn unresolvable_fundamental_item_type() -> Type {
-    Type::Fundamental(FundamentalType {
+fn unresolvable_fundamental_item_type() -> Descriptor {
+    Descriptor::Fundamental(FundamentalDescriptor {
         ownership: Ownership::Full,
         library: "libgobject-2.0.so.0".to_owned(),
         ref_func: "no_such_array_ref_symbol_12345".to_owned(),
@@ -100,12 +101,12 @@ fn assert_string_list_full_container_borrowed_elements_releases_spine(kind: Arra
         let ty = array_type(string_item_type(Ownership::Borrowed), kind, Ownership::Full);
         let val = Value::Array(vec![Value::String("kept".to_string())]);
         let encoded = ty.encode(&val).unwrap();
-        let FfiValue::Storage(storage) = &encoded else {
+        let StashedValue::Storage(storage) = &encoded else {
             panic!("expected storage")
         };
         let (elements_duped, retained) = match storage.kind() {
-            FfiStorageKind::StringGList(data) => (data.elements_duped, data.strings.len()),
-            FfiStorageKind::StringGSList(data) => (data.elements_duped, data.strings.len()),
+            StashKind::StringGList(data) => (data.elements_duped, data.strings.len()),
+            StashKind::StringGSList(data) => (data.elements_duped, data.strings.len()),
             other => panic!("expected string list storage, got {other:?}"),
         };
         assert!(!elements_duped);
@@ -134,7 +135,7 @@ fn encode_glist_handles_full_ownership_transfers_to_callee_when_disarmed() {
         let encoded = ty.encode(&val).unwrap();
         encoded.disarm_pending_transfer();
 
-        let FfiValue::Storage(storage) = &encoded else {
+        let StashedValue::Storage(storage) = &encoded else {
             panic!("expected storage")
         };
         let list = storage.ptr() as *mut gtk4::glib::ffi::GList;
@@ -202,7 +203,7 @@ fn encode_garray_full_ownership_adopted_strings_release_when_call_never_happens(
 #[test]
 fn ptr_to_value_sized_reads_explicit_length() {
     let ty = array_type(
-        Type::Integer(IntegerKind::I32),
+        Descriptor::Integer(IntegerKind::I32),
         ArrayKind::Sized { size_index: 1 },
         Ownership::Borrowed,
     );
@@ -270,16 +271,16 @@ fn array_kind_from_str_parses_every_variant() {
 #[test]
 fn encode_optional_null_yields_null_ptr() {
     let ty = array_type(
-        Type::Integer(IntegerKind::U8),
+        Descriptor::Integer(IntegerKind::U8),
         ArrayKind::Array,
         Ownership::Full,
     );
     match ty.encode(&Value::Null).unwrap() {
-        FfiValue::Ptr(ptr) => assert!(ptr.is_null()),
+        StashedValue::Ptr(ptr) => assert!(ptr.is_null()),
         other => panic!("expected null ptr, got {other:?}"),
     }
     match ty.encode(&Value::Undefined).unwrap() {
-        FfiValue::Ptr(ptr) => assert!(ptr.is_null()),
+        StashedValue::Ptr(ptr) => assert!(ptr.is_null()),
         other => panic!("expected null ptr, got {other:?}"),
     }
 }
@@ -287,7 +288,7 @@ fn encode_optional_null_yields_null_ptr() {
 #[test]
 fn encode_integer_array_extract_error() {
     let ty = array_type(
-        Type::Integer(IntegerKind::I32),
+        Descriptor::Integer(IntegerKind::I32),
         ArrayKind::Array,
         Ownership::Full,
     );
@@ -310,7 +311,7 @@ fn encode_enum_flags_array_roundtrips_through_storage() {
 #[test]
 fn encode_float_f32_array_roundtrips() {
     let ty = array_type(
-        Type::Float(FloatKind::F32),
+        Descriptor::Float(FloatKind::F32),
         ArrayKind::Array,
         Ownership::Full,
     );
@@ -325,7 +326,7 @@ fn encode_float_f32_array_roundtrips() {
 #[test]
 fn encode_float_f64_array_roundtrips() {
     let ty = array_type(
-        Type::Float(FloatKind::F64),
+        Descriptor::Float(FloatKind::F64),
         ArrayKind::Array,
         Ownership::Full,
     );
@@ -340,7 +341,7 @@ fn encode_float_f64_array_roundtrips() {
 #[test]
 fn encode_boolean_array_roundtrips() {
     let ty = array_type(
-        Type::Boolean(BooleanType),
+        Descriptor::Boolean(BooleanDescriptor),
         ArrayKind::Array,
         Ownership::Full,
     );
@@ -355,7 +356,7 @@ fn encode_boolean_array_roundtrips() {
 #[test]
 fn encode_boolean_array_extract_error() {
     let ty = array_type(
-        Type::Boolean(BooleanType),
+        Descriptor::Boolean(BooleanDescriptor),
         ArrayKind::Array,
         Ownership::Full,
     );
@@ -387,7 +388,7 @@ fn encode_string_array_full_ownership_transfers_glib_container() {
     ]);
     let encoded = ty.encode(&val).unwrap();
     encoded.disarm_pending_transfer();
-    let FfiValue::Storage(storage) = &encoded else {
+    let StashedValue::Storage(storage) = &encoded else {
         panic!("expected storage")
     };
 
@@ -429,10 +430,10 @@ fn encode_string_array_borrowed_container_and_elements_roundtrips() {
     );
     let val = Value::Array(vec![Value::String("foo".to_string())]);
     let encoded = ty.encode(&val).unwrap();
-    let FfiValue::Storage(storage) = &encoded else {
+    let StashedValue::Storage(storage) = &encoded else {
         panic!("expected storage")
     };
-    assert!(matches!(storage.kind(), FfiStorageKind::StrV(_)));
+    assert!(matches!(storage.kind(), StashKind::StrV(_)));
 
     let Value::Array(items) = ty.decode(&encoded).unwrap() else {
         panic!("expected array")
@@ -450,10 +451,10 @@ fn encode_string_array_element_transfer_hands_over_duplicates() {
     let val = Value::Array(vec![Value::String("foo".to_string())]);
     let encoded = ty.encode(&val).unwrap();
     encoded.disarm_pending_transfer();
-    let FfiValue::Storage(storage) = &encoded else {
+    let StashedValue::Storage(storage) = &encoded else {
         panic!("expected storage")
     };
-    let FfiStorageKind::StringArray(retained, ptrs) = storage.kind() else {
+    let StashKind::StringArray(retained, ptrs) = storage.kind() else {
         panic!("expected string array storage")
     };
     assert!(retained.is_empty());
@@ -490,7 +491,7 @@ fn encode_pointer_array_with_element_size_copies_into_buffer() {
     let handle = boxed_handle();
     let val = Value::Array(vec![Value::Object(handle)]);
     let encoded = ty.encode(&val).unwrap();
-    assert!(matches!(encoded, FfiValue::Storage(_)));
+    assert!(matches!(encoded, StashedValue::Storage(_)));
 }
 
 #[test]
@@ -516,10 +517,10 @@ fn encode_pointer_array_full_ownership_transfers_glib_container() {
     let val = Value::Array(vec![Value::Object(boxed_handle())]);
     let encoded = ty.encode(&val).unwrap();
     encoded.disarm_pending_transfer();
-    let FfiValue::Storage(storage) = &encoded else {
+    let StashedValue::Storage(storage) = &encoded else {
         panic!("expected storage")
     };
-    let FfiStorageKind::ObjectArray(handles, ptrs) = storage.kind() else {
+    let StashKind::ObjectArray(handles, ptrs) = storage.kind() else {
         panic!("expected object array storage")
     };
     assert_eq!(handles.len(), 1);
@@ -542,10 +543,10 @@ fn encode_pointer_array_null_terminated_with_handles() {
     let ty = array_type(struct_item_type(), ArrayKind::Array, Ownership::Borrowed);
     let val = Value::Array(vec![Value::Object(boxed_handle())]);
     let encoded = ty.encode(&val).unwrap();
-    let FfiValue::Storage(storage) = encoded else {
+    let StashedValue::Storage(storage) = encoded else {
         panic!("expected storage")
     };
-    let FfiStorageKind::ObjectArray(_, ptrs) = storage.kind() else {
+    let StashKind::ObjectArray(_, ptrs) = storage.kind() else {
         panic!("expected object array storage")
     };
     assert_eq!(ptrs.len(), 2);
@@ -556,10 +557,10 @@ fn encode_pointer_array_null_terminated_with_handles() {
 fn encode_pointer_array_null_terminated_empty_has_sentinel() {
     let ty = array_type(struct_item_type(), ArrayKind::Array, Ownership::Borrowed);
     let encoded = ty.encode(&Value::Array(vec![])).unwrap();
-    let FfiValue::Storage(storage) = encoded else {
+    let StashedValue::Storage(storage) = encoded else {
         panic!("expected storage")
     };
-    let FfiStorageKind::ObjectArray(_, ptrs) = storage.kind() else {
+    let StashKind::ObjectArray(_, ptrs) = storage.kind() else {
         panic!("expected object array storage")
     };
     assert_eq!(ptrs.len(), 1);
@@ -588,7 +589,7 @@ fn encode_glist_strings_full_ownership_dups_elements() {
             Value::String("b".to_string()),
         ]);
         let encoded = ty.encode(&val).unwrap();
-        assert!(matches!(encoded, FfiValue::Storage(_)));
+        assert!(matches!(encoded, StashedValue::Storage(_)));
     });
 }
 
@@ -649,7 +650,7 @@ fn encode_gslist_strings_full_ownership_dups_elements() {
             Value::String("y".to_string()),
         ]);
         let encoded = ty.encode(&val).unwrap();
-        assert!(matches!(encoded, FfiValue::Storage(_)));
+        assert!(matches!(encoded, StashedValue::Storage(_)));
     });
 }
 
@@ -701,7 +702,7 @@ fn encode_gslist_handles_rejects_null() {
 fn encode_gbytearray_roundtrips() {
     common::run(|| {
         let ty = array_type(
-            Type::Integer(IntegerKind::U8),
+            Descriptor::Integer(IntegerKind::U8),
             ArrayKind::GByteArray,
             Ownership::Borrowed,
         );
@@ -722,7 +723,7 @@ fn encode_gbytearray_roundtrips() {
 fn encode_garray_integer_roundtrips() {
     common::run(|| {
         let ty = array_type(
-            Type::Integer(IntegerKind::I32),
+            Descriptor::Integer(IntegerKind::I32),
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
@@ -739,7 +740,7 @@ fn encode_garray_integer_roundtrips() {
 fn encode_garray_float_f32_roundtrips() {
     common::run(|| {
         let ty = array_type(
-            Type::Float(FloatKind::F32),
+            Descriptor::Float(FloatKind::F32),
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
@@ -756,7 +757,7 @@ fn encode_garray_float_f32_roundtrips() {
 fn encode_garray_float_f64_roundtrips() {
     common::run(|| {
         let ty = array_type(
-            Type::Float(FloatKind::F64),
+            Descriptor::Float(FloatKind::F64),
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
@@ -773,7 +774,7 @@ fn encode_garray_float_f64_roundtrips() {
 fn encode_garray_boolean_roundtrips() {
     common::run(|| {
         let ty = array_type(
-            Type::Boolean(BooleanType),
+            Descriptor::Boolean(BooleanDescriptor),
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
@@ -796,7 +797,7 @@ fn encode_garray_enum_flags_roundtrips() {
         );
         let val = Value::Array(vec![Value::Number(1.0)]);
         let encoded = ty.encode(&val).unwrap();
-        assert!(matches!(encoded, FfiValue::Storage(_)));
+        assert!(matches!(encoded, StashedValue::Storage(_)));
     });
 }
 
@@ -834,7 +835,7 @@ fn encode_garray_strings_roundtrips() {
         );
         let val = Value::Array(vec![Value::String("hello".to_string())]);
         let encoded = ty.encode(&val).unwrap();
-        assert!(matches!(encoded, FfiValue::Storage(_)));
+        assert!(matches!(encoded, StashedValue::Storage(_)));
     });
 }
 
@@ -842,14 +843,14 @@ fn encode_garray_strings_roundtrips() {
 fn encode_garray_explicit_element_size_used() {
     common::run(|| {
         let mut ty = array_type(
-            Type::Integer(IntegerKind::I32),
+            Descriptor::Integer(IntegerKind::I32),
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
         ty.element_size = Some(size_of::<i32>());
         let val = Value::Array(vec![Value::Number(7.0)]);
         let encoded = ty.encode(&val).unwrap();
-        assert!(matches!(encoded, FfiValue::Storage(_)));
+        assert!(matches!(encoded, StashedValue::Storage(_)));
     });
 }
 
@@ -857,13 +858,13 @@ fn encode_garray_explicit_element_size_used() {
 fn decode_zero_terminated_scalar_array_reads_with_scalar_stride() {
     common::run(|| {
         let ty = array_type(
-            Type::Integer(IntegerKind::I32),
+            Descriptor::Integer(IntegerKind::I32),
             ArrayKind::Array,
             Ownership::Borrowed,
         );
         let buffer: [i32; 4] = [7, 8, 9, 0];
         let decoded = ty
-            .decode(&FfiValue::Ptr(buffer.as_ptr() as *mut std::ffi::c_void))
+            .decode(&StashedValue::Ptr(buffer.as_ptr() as *mut std::ffi::c_void))
             .expect("zero-terminated scalar decode should succeed");
         let Value::Array(items) = decoded else {
             panic!("expected array")
@@ -877,7 +878,7 @@ fn decode_zero_terminated_scalar_array_reads_with_scalar_stride() {
 #[test]
 fn encode_bigint_array_roundtrips_through_storage() {
     for kind in [BigIntKind::I64, BigIntKind::U64] {
-        let ty = array_type(Type::BigInt(kind), ArrayKind::Array, Ownership::Full);
+        let ty = array_type(Descriptor::BigInt(kind), ArrayKind::Array, Ownership::Full);
         let big = i128::from(u32::MAX) + 1;
         let val = Value::Array(vec![Value::BigInt(big), Value::BigInt(7)]);
         let encoded = ty.encode(&val).unwrap();
@@ -893,7 +894,11 @@ fn encode_bigint_array_roundtrips_through_storage() {
 fn encode_garray_bigint_roundtrips() {
     common::run(|| {
         for kind in [BigIntKind::I64, BigIntKind::U64] {
-            let ty = array_type(Type::BigInt(kind), ArrayKind::GArray, Ownership::Borrowed);
+            let ty = array_type(
+                Descriptor::BigInt(kind),
+                ArrayKind::GArray,
+                Ownership::Borrowed,
+            );
             let big = i128::from(u32::MAX) + 5;
             let val = Value::Array(vec![Value::BigInt(10), Value::BigInt(big)]);
             let encoded = ty.encode(&val).unwrap();
@@ -910,13 +915,13 @@ fn encode_garray_bigint_roundtrips() {
 fn decode_contiguous_bigint_elements() {
     for kind in [BigIntKind::I64, BigIntKind::U64] {
         let ty = array_type(
-            Type::BigInt(kind),
+            Descriptor::BigInt(kind),
             ArrayKind::Fixed { size: 2 },
             Ownership::Borrowed,
         );
         let data: Vec<i64> = vec![100, 42];
         let Value::Array(items) = ty
-            .decode_with_context(&FfiValue::Ptr(data.as_ptr() as *mut c_void), &[], &[])
+            .decode_with_context(&StashedValue::Ptr(data.as_ptr() as *mut c_void), &[], &[])
             .unwrap()
         else {
             panic!("expected array")
@@ -929,13 +934,13 @@ fn decode_contiguous_bigint_elements() {
 #[test]
 fn decode_zero_terminated_bigint_array() {
     let ty = array_type(
-        Type::BigInt(BigIntKind::U64),
+        Descriptor::BigInt(BigIntKind::U64),
         ArrayKind::Array,
         Ownership::Borrowed,
     );
     let buffer: [u64; 3] = [5, 9, 0];
     let decoded = ty
-        .decode(&FfiValue::Ptr(buffer.as_ptr() as *mut c_void))
+        .decode(&StashedValue::Ptr(buffer.as_ptr() as *mut c_void))
         .expect("zero-terminated bigint decode should succeed");
     let Value::Array(items) = decoded else {
         panic!("expected array")
@@ -947,14 +952,14 @@ fn decode_zero_terminated_bigint_array() {
 #[test]
 fn encode_bigint_array_rejects_out_of_range() {
     let neg = array_type(
-        Type::BigInt(BigIntKind::U64),
+        Descriptor::BigInt(BigIntKind::U64),
         ArrayKind::Array,
         Ownership::Full,
     );
     assert!(neg.encode(&Value::Array(vec![Value::BigInt(-1)])).is_err());
 
     let over = array_type(
-        Type::BigInt(BigIntKind::I64),
+        Descriptor::BigInt(BigIntKind::I64),
         ArrayKind::Array,
         Ownership::Full,
     );
@@ -975,12 +980,12 @@ fn decode_gptrarray_frees_container_when_element_decode_fails() {
         unsafe { glib::ffi::g_ptr_array_ref(ptr_array) };
 
         let ty = array_type(
-            Type::Integer(IntegerKind::I32),
+            Descriptor::Integer(IntegerKind::I32),
             ArrayKind::GPtrArray,
             Ownership::Full,
         );
         assert!(
-            ty.decode(&FfiValue::Ptr(ptr_array as *mut std::ffi::c_void))
+            ty.decode(&StashedValue::Ptr(ptr_array as *mut std::ffi::c_void))
                 .is_err()
         );
 
@@ -999,12 +1004,12 @@ fn decode_glist_frees_spine_when_element_decode_fails() {
         };
 
         let ty = array_type(
-            Type::Integer(IntegerKind::I32),
+            Descriptor::Integer(IntegerKind::I32),
             ArrayKind::GList,
             Ownership::Full,
         );
         assert!(
-            ty.decode(&FfiValue::Ptr(list as *mut std::ffi::c_void))
+            ty.decode(&StashedValue::Ptr(list as *mut std::ffi::c_void))
                 .is_err()
         );
     });
@@ -1014,7 +1019,7 @@ fn decode_glist_frees_spine_when_element_decode_fails() {
 fn encode_garray_append_error_unrefs_and_propagates() {
     common::run(|| {
         let ty = array_type(
-            Type::Integer(IntegerKind::I32),
+            Descriptor::Integer(IntegerKind::I32),
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
@@ -1028,13 +1033,13 @@ fn encode_gptrarray_uses_null_terminated_layout() {
     let ty = array_type(struct_item_type(), ArrayKind::GPtrArray, Ownership::Full);
     let val = Value::Array(vec![Value::Object(boxed_handle())]);
     let encoded = ty.encode(&val).unwrap();
-    assert!(matches!(encoded, FfiValue::Storage(_)));
+    assert!(matches!(encoded, StashedValue::Storage(_)));
 }
 
 #[test]
 fn decode_integer_array_from_storage() {
     let ty = array_type(
-        Type::Integer(IntegerKind::U16),
+        Descriptor::Integer(IntegerKind::U16),
         ArrayKind::Array,
         Ownership::Full,
     );
@@ -1050,11 +1055,11 @@ fn decode_integer_array_from_storage() {
 #[test]
 fn decode_null_ptr_yields_empty_array() {
     let ty = array_type(
-        Type::Integer(IntegerKind::U8),
+        Descriptor::Integer(IntegerKind::U8),
         ArrayKind::Array,
         Ownership::Full,
     );
-    let Value::Array(items) = ty.decode(&FfiValue::Ptr(std::ptr::null_mut())).unwrap() else {
+    let Value::Array(items) = ty.decode(&StashedValue::Ptr(std::ptr::null_mut())).unwrap() else {
         panic!("expected array")
     };
     assert!(items.is_empty());
@@ -1071,7 +1076,7 @@ fn decode_null_terminated_string_array_from_ptr() {
     let s1 = CString::new("second").unwrap();
     let mut ptrs: Vec<*const c_char> = vec![s0.as_ptr(), s1.as_ptr(), std::ptr::null()];
     let Value::Array(items) = ty
-        .decode(&FfiValue::Ptr(ptrs.as_mut_ptr() as *mut c_void))
+        .decode(&StashedValue::Ptr(ptrs.as_mut_ptr() as *mut c_void))
         .unwrap()
     else {
         panic!("expected array")
@@ -1096,7 +1101,8 @@ fn decode_null_terminated_string_array_full_ownership_frees() {
             *arr.add(1) = glib::ffi::g_strdup(c"b".as_ptr());
             arr
         };
-        let Value::Array(items) = ty.decode(&FfiValue::Ptr(strv as *mut c_void)).unwrap() else {
+        let Value::Array(items) = ty.decode(&StashedValue::Ptr(strv as *mut c_void)).unwrap()
+        else {
             panic!("expected array")
         };
         assert_eq!(items.len(), 2);
@@ -1119,7 +1125,8 @@ fn decode_null_terminated_borrowed_string_array_full_ownership_frees_vector_only
             *arr = c"borrowed".as_ptr().cast_mut();
             arr
         };
-        let Value::Array(items) = ty.decode(&FfiValue::Ptr(strv as *mut c_void)).unwrap() else {
+        let Value::Array(items) = ty.decode(&StashedValue::Ptr(strv as *mut c_void)).unwrap()
+        else {
             panic!("expected array")
         };
         assert!(matches!(items.first(), Some(Value::String(s)) if s == "borrowed"));
@@ -1133,7 +1140,7 @@ fn decode_null_terminated_ptr_array_from_ptr() {
     let h1 = boxed_handle();
     let mut ptrs: Vec<*mut c_void> = vec![h0.ptr(), h1.ptr(), std::ptr::null_mut()];
     let Value::Array(items) = ty
-        .decode(&FfiValue::Ptr(ptrs.as_mut_ptr() as *mut c_void))
+        .decode(&StashedValue::Ptr(ptrs.as_mut_ptr() as *mut c_void))
         .unwrap()
     else {
         panic!("expected array")
@@ -1153,7 +1160,7 @@ fn decode_null_terminated_ptr_array_full_ownership_frees() {
             *mem = boxed_handle().ptr();
             mem
         };
-        let Value::Array(items) = ty.decode(&FfiValue::Ptr(arr as *mut c_void)).unwrap() else {
+        let Value::Array(items) = ty.decode(&StashedValue::Ptr(arr as *mut c_void)).unwrap() else {
             panic!("expected array")
         };
         assert_eq!(items.len(), 1);
@@ -1164,7 +1171,8 @@ fn decode_null_terminated_ptr_array_full_ownership_frees() {
 fn decode_glist_empty_and_populated() {
     common::run(|| {
         let ty = array_type(struct_item_type(), ArrayKind::GList, Ownership::Full);
-        let Value::Array(empty) = ty.decode(&FfiValue::Ptr(std::ptr::null_mut())).unwrap() else {
+        let Value::Array(empty) = ty.decode(&StashedValue::Ptr(std::ptr::null_mut())).unwrap()
+        else {
             panic!("expected array")
         };
         assert!(empty.is_empty());
@@ -1172,7 +1180,8 @@ fn decode_glist_empty_and_populated() {
         // SAFETY: runs on the GTK-initialized test thread; appends one borrowed pointer to a
         // valid (possibly null) GList, returning the new head.
         let list = unsafe { glib::ffi::g_list_append(std::ptr::null_mut(), boxed_handle().ptr()) };
-        let Value::Array(items) = ty.decode(&FfiValue::Ptr(list as *mut c_void)).unwrap() else {
+        let Value::Array(items) = ty.decode(&StashedValue::Ptr(list as *mut c_void)).unwrap()
+        else {
             panic!("expected array")
         };
         assert_eq!(items.len(), 1);
@@ -1186,7 +1195,8 @@ fn decode_gslist_full_ownership_frees_list() {
         // SAFETY: runs on the GTK-initialized test thread; appends one borrowed pointer to a
         // valid (possibly null) GSList, returning the new head.
         let list = unsafe { glib::ffi::g_slist_append(std::ptr::null_mut(), boxed_handle().ptr()) };
-        let Value::Array(items) = ty.decode(&FfiValue::Ptr(list as *mut c_void)).unwrap() else {
+        let Value::Array(items) = ty.decode(&StashedValue::Ptr(list as *mut c_void)).unwrap()
+        else {
             panic!("expected array")
         };
         assert_eq!(items.len(), 1);
@@ -1197,7 +1207,7 @@ fn decode_gslist_full_ownership_frees_list() {
 fn decode_garray_from_borrowed_ptr() {
     common::run(|| {
         let ty = array_type(
-            Type::Integer(IntegerKind::I32),
+            Descriptor::Integer(IntegerKind::I32),
             ArrayKind::GArray,
             Ownership::Full,
         );
@@ -1210,7 +1220,10 @@ fn decode_garray_from_borrowed_ptr() {
         unsafe {
             glib::ffi::g_array_append_vals(g_array, &value as *const i32 as *const c_void, 1);
         }
-        let Value::Array(items) = ty.decode(&FfiValue::Ptr(g_array as *mut c_void)).unwrap() else {
+        let Value::Array(items) = ty
+            .decode(&StashedValue::Ptr(g_array as *mut c_void))
+            .unwrap()
+        else {
             panic!("expected array")
         };
         assert_eq!(items.len(), 1);
@@ -1221,11 +1234,12 @@ fn decode_garray_from_borrowed_ptr() {
 fn decode_garray_null_yields_empty() {
     common::run(|| {
         let ty = array_type(
-            Type::Integer(IntegerKind::I32),
+            Descriptor::Integer(IntegerKind::I32),
             ArrayKind::GArray,
             Ownership::Full,
         );
-        let Value::Array(items) = ty.decode(&FfiValue::Ptr(std::ptr::null_mut())).unwrap() else {
+        let Value::Array(items) = ty.decode(&StashedValue::Ptr(std::ptr::null_mut())).unwrap()
+        else {
             panic!("expected array")
         };
         assert!(items.is_empty());
@@ -1236,21 +1250,21 @@ fn decode_garray_null_yields_empty() {
 fn decode_garray_storage_owned_does_not_double_free() {
     common::run(|| {
         let ty = array_type(
-            Type::Integer(IntegerKind::I32),
+            Descriptor::Integer(IntegerKind::I32),
             ArrayKind::GArray,
             Ownership::Full,
         );
         // SAFETY: runs on the GTK-initialized test thread; constructs a valid empty GArray of
-        // i32-sized elements, ownership of which is handed to the `FfiStorage` below.
+        // i32-sized elements, ownership of which is handed to the `Stash` below.
         let g_array = unsafe { glib::ffi::g_array_sized_new(0, 0, size_of::<i32>() as u32, 0) };
-        let storage = native::ffi::FfiStorage::new(
+        let storage = native::ffi::Stash::new(
             g_array as *mut c_void,
-            native::ffi::FfiStorageKind::GArray(GArrayData {
+            native::ffi::StashKind::GArray(GArrayData {
                 array_ptr: g_array,
                 should_free: true,
             }),
         );
-        let Value::Array(items) = ty.decode(&FfiValue::Storage(storage)).unwrap() else {
+        let Value::Array(items) = ty.decode(&StashedValue::Storage(storage)).unwrap() else {
             panic!("expected array")
         };
         assert!(items.is_empty());
@@ -1265,7 +1279,9 @@ fn decode_gptrarray_from_ptr() {
         let ptr_array = unsafe { glib::ffi::g_ptr_array_new() };
         // SAFETY: the GPtrArray is valid; the added pointer is stored by value, never dereferenced here.
         unsafe { glib::ffi::g_ptr_array_add(ptr_array, boxed_handle().ptr()) };
-        let Value::Array(items) = ty.decode(&FfiValue::Ptr(ptr_array as *mut c_void)).unwrap()
+        let Value::Array(items) = ty
+            .decode(&StashedValue::Ptr(ptr_array as *mut c_void))
+            .unwrap()
         else {
             panic!("expected array")
         };
@@ -1276,7 +1292,7 @@ fn decode_gptrarray_from_ptr() {
 #[test]
 fn decode_gptrarray_null_yields_empty() {
     let ty = array_type(struct_item_type(), ArrayKind::GPtrArray, Ownership::Full);
-    let Value::Array(items) = ty.decode(&FfiValue::Ptr(std::ptr::null_mut())).unwrap() else {
+    let Value::Array(items) = ty.decode(&StashedValue::Ptr(std::ptr::null_mut())).unwrap() else {
         panic!("expected array")
     };
     assert!(items.is_empty());
@@ -1286,7 +1302,7 @@ fn decode_gptrarray_null_yields_empty() {
 fn decode_gbytearray_from_ptr_and_empty() {
     common::run(|| {
         let ty = array_type(
-            Type::Integer(IntegerKind::U8),
+            Descriptor::Integer(IntegerKind::U8),
             ArrayKind::GByteArray,
             Ownership::Borrowed,
         );
@@ -1298,7 +1314,7 @@ fn decode_gbytearray_from_ptr_and_empty() {
             glib::ffi::g_byte_array_append(ba, bytes.as_ptr(), 3);
             ba
         };
-        let Value::Array(items) = ty.decode(&FfiValue::Ptr(ba as *mut c_void)).unwrap() else {
+        let Value::Array(items) = ty.decode(&StashedValue::Ptr(ba as *mut c_void)).unwrap() else {
             panic!("expected array")
         };
         assert_eq!(items.len(), 3);
@@ -1307,7 +1323,8 @@ fn decode_gbytearray_from_ptr_and_empty() {
 
         // SAFETY: the GByteArray is valid and the test holds the reference released here.
         let empty = unsafe { glib::ffi::g_byte_array_new() };
-        let Value::Array(items) = ty.decode(&FfiValue::Ptr(empty as *mut c_void)).unwrap() else {
+        let Value::Array(items) = ty.decode(&StashedValue::Ptr(empty as *mut c_void)).unwrap()
+        else {
             panic!("expected array")
         };
         assert!(items.is_empty());
@@ -1320,7 +1337,7 @@ fn decode_gbytearray_from_ptr_and_empty() {
 fn decode_gbytearray_full_ownership_unrefs_raw_ptr() {
     common::run(|| {
         let ty = array_type(
-            Type::Integer(IntegerKind::U8),
+            Descriptor::Integer(IntegerKind::U8),
             ArrayKind::GByteArray,
             Ownership::Full,
         );
@@ -1333,7 +1350,7 @@ fn decode_gbytearray_full_ownership_unrefs_raw_ptr() {
             glib::ffi::g_byte_array_append(ba, bytes.as_ptr(), 2);
             glib::ffi::g_byte_array_ref(ba)
         };
-        let Value::Array(items) = ty.decode(&FfiValue::Ptr(ba as *mut c_void)).unwrap() else {
+        let Value::Array(items) = ty.decode(&StashedValue::Ptr(ba as *mut c_void)).unwrap() else {
             panic!("expected array")
         };
         assert_eq!(items.len(), 2);
@@ -1345,11 +1362,11 @@ fn decode_gbytearray_full_ownership_unrefs_raw_ptr() {
 #[test]
 fn decode_gbytearray_null_yields_empty() {
     let ty = array_type(
-        Type::Integer(IntegerKind::U8),
+        Descriptor::Integer(IntegerKind::U8),
         ArrayKind::GByteArray,
         Ownership::Full,
     );
-    let Value::Array(items) = ty.decode(&FfiValue::Ptr(std::ptr::null_mut())).unwrap() else {
+    let Value::Array(items) = ty.decode(&StashedValue::Ptr(std::ptr::null_mut())).unwrap() else {
         panic!("expected array")
     };
     assert!(items.is_empty());
@@ -1358,19 +1375,19 @@ fn decode_gbytearray_null_yields_empty() {
 #[test]
 fn decode_with_context_sized_array() {
     let ty = array_type(
-        Type::Integer(IntegerKind::I32),
+        Descriptor::Integer(IntegerKind::I32),
         ArrayKind::Sized { size_index: 0 },
         Ownership::Borrowed,
     );
     let data: Vec<i32> = vec![5, 6, 7];
-    let ffi_value = FfiValue::Ptr(data.as_ptr() as *mut c_void);
-    let ffi_args = [FfiValue::U32(3)];
+    let stashed_value = StashedValue::Ptr(data.as_ptr() as *mut c_void);
+    let ffi_args = [StashedValue::U32(3)];
     let args = [Arg::new(
-        Type::Integer(IntegerKind::U32),
+        Descriptor::Integer(IntegerKind::U32),
         Value::Number(3.0),
     )];
     let Value::Array(items) = ty
-        .decode_with_context(&ffi_value, &ffi_args, &args)
+        .decode_with_context(&stashed_value, &ffi_args, &args)
         .unwrap()
     else {
         panic!("expected array")
@@ -1381,18 +1398,18 @@ fn decode_with_context_sized_array() {
 #[test]
 fn decode_with_context_sized_array_null_ptr() {
     let ty = array_type(
-        Type::Integer(IntegerKind::I32),
+        Descriptor::Integer(IntegerKind::I32),
         ArrayKind::Sized { size_index: 0 },
         Ownership::Borrowed,
     );
-    let ffi_value = FfiValue::Ptr(std::ptr::null_mut());
-    let ffi_args = [FfiValue::U32(3)];
+    let stashed_value = StashedValue::Ptr(std::ptr::null_mut());
+    let ffi_args = [StashedValue::U32(3)];
     let args = [Arg::new(
-        Type::Integer(IntegerKind::U32),
+        Descriptor::Integer(IntegerKind::U32),
         Value::Number(3.0),
     )];
     let Value::Array(items) = ty
-        .decode_with_context(&ffi_value, &ffi_args, &args)
+        .decode_with_context(&stashed_value, &ffi_args, &args)
         .unwrap()
     else {
         panic!("expected array")
@@ -1403,19 +1420,19 @@ fn decode_with_context_sized_array_null_ptr() {
 #[test]
 fn decode_with_context_sized_non_ptr_falls_through_to_decode() {
     let ty = array_type(
-        Type::Integer(IntegerKind::I32),
+        Descriptor::Integer(IntegerKind::I32),
         ArrayKind::Sized { size_index: 0 },
         Ownership::Borrowed,
     );
-    let storage = native::ffi::FfiStorage::from(vec![1i32, 2]);
-    let ffi_value = FfiValue::Storage(storage);
-    let ffi_args = [FfiValue::U32(2)];
+    let storage = native::ffi::Stash::from(vec![1i32, 2]);
+    let stashed_value = StashedValue::Storage(storage);
+    let ffi_args = [StashedValue::U32(2)];
     let args = [Arg::new(
-        Type::Integer(IntegerKind::U32),
+        Descriptor::Integer(IntegerKind::U32),
         Value::Number(2.0),
     )];
     let Value::Array(items) = ty
-        .decode_with_context(&ffi_value, &ffi_args, &args)
+        .decode_with_context(&stashed_value, &ffi_args, &args)
         .unwrap()
     else {
         panic!("expected array")
@@ -1426,13 +1443,13 @@ fn decode_with_context_sized_non_ptr_falls_through_to_decode() {
 #[test]
 fn decode_with_context_fixed_array() {
     let ty = array_type(
-        Type::Float(FloatKind::F64),
+        Descriptor::Float(FloatKind::F64),
         ArrayKind::Fixed { size: 2 },
         Ownership::Borrowed,
     );
     let data: Vec<f64> = vec![1.0, 2.0];
-    let ffi_value = FfiValue::Ptr(data.as_ptr() as *mut c_void);
-    let Value::Array(items) = ty.decode_with_context(&ffi_value, &[], &[]).unwrap() else {
+    let stashed_value = StashedValue::Ptr(data.as_ptr() as *mut c_void);
+    let Value::Array(items) = ty.decode_with_context(&stashed_value, &[], &[]).unwrap() else {
         panic!("expected array")
     };
     assert_eq!(items.len(), 2);
@@ -1441,12 +1458,12 @@ fn decode_with_context_fixed_array() {
 #[test]
 fn decode_with_context_fixed_array_null_ptr() {
     let ty = array_type(
-        Type::Float(FloatKind::F64),
+        Descriptor::Float(FloatKind::F64),
         ArrayKind::Fixed { size: 2 },
         Ownership::Borrowed,
     );
-    let ffi_value = FfiValue::Ptr(std::ptr::null_mut());
-    let Value::Array(items) = ty.decode_with_context(&ffi_value, &[], &[]).unwrap() else {
+    let stashed_value = StashedValue::Ptr(std::ptr::null_mut());
+    let Value::Array(items) = ty.decode_with_context(&stashed_value, &[], &[]).unwrap() else {
         panic!("expected array")
     };
     assert!(items.is_empty());
@@ -1455,13 +1472,13 @@ fn decode_with_context_fixed_array_null_ptr() {
 #[test]
 fn decode_with_context_fixed_non_ptr_falls_through() {
     let ty = array_type(
-        Type::Integer(IntegerKind::I32),
+        Descriptor::Integer(IntegerKind::I32),
         ArrayKind::Fixed { size: 1 },
         Ownership::Borrowed,
     );
-    let storage = native::ffi::FfiStorage::from(vec![9i32]);
+    let storage = native::ffi::Stash::from(vec![9i32]);
     let Value::Array(items) = ty
-        .decode_with_context(&FfiValue::Storage(storage), &[], &[])
+        .decode_with_context(&StashedValue::Storage(storage), &[], &[])
         .unwrap()
     else {
         panic!("expected array")
@@ -1472,13 +1489,13 @@ fn decode_with_context_fixed_non_ptr_falls_through() {
 #[test]
 fn decode_with_context_array_kind_delegates_to_decode() {
     let ty = array_type(
-        Type::Integer(IntegerKind::I32),
+        Descriptor::Integer(IntegerKind::I32),
         ArrayKind::Array,
         Ownership::Borrowed,
     );
-    let storage = native::ffi::FfiStorage::from(vec![1i32]);
+    let storage = native::ffi::Stash::from(vec![1i32]);
     let Value::Array(items) = ty
-        .decode_with_context(&FfiValue::Storage(storage), &[], &[])
+        .decode_with_context(&StashedValue::Storage(storage), &[], &[])
         .unwrap()
     else {
         panic!("expected array")
@@ -1489,13 +1506,13 @@ fn decode_with_context_array_kind_delegates_to_decode() {
 #[test]
 fn decode_contiguous_empty_and_null() {
     let ty = array_type(
-        Type::Integer(IntegerKind::I32),
+        Descriptor::Integer(IntegerKind::I32),
         ArrayKind::Fixed { size: 0 },
         Ownership::Borrowed,
     );
     let data: Vec<i32> = vec![1];
     let Value::Array(items) = ty
-        .decode_with_context(&FfiValue::Ptr(data.as_ptr() as *mut c_void), &[], &[])
+        .decode_with_context(&StashedValue::Ptr(data.as_ptr() as *mut c_void), &[], &[])
         .unwrap()
     else {
         panic!("expected array")
@@ -1513,7 +1530,7 @@ fn decode_contiguous_pointer_elements() {
     let handle = boxed_handle();
     let data: Vec<*mut c_void> = vec![handle.ptr()];
     let Value::Array(items) = ty
-        .decode_with_context(&FfiValue::Ptr(data.as_ptr() as *mut c_void), &[], &[])
+        .decode_with_context(&StashedValue::Ptr(data.as_ptr() as *mut c_void), &[], &[])
         .unwrap()
     else {
         panic!("expected array")
@@ -1524,27 +1541,35 @@ fn decode_contiguous_pointer_elements() {
 #[test]
 fn decode_contiguous_float_and_boolean() {
     let f32_ty = array_type(
-        Type::Float(FloatKind::F32),
+        Descriptor::Float(FloatKind::F32),
         ArrayKind::Fixed { size: 1 },
         Ownership::Borrowed,
     );
     let f32_data: Vec<f32> = vec![1.5];
     assert!(matches!(
         f32_ty
-            .decode_with_context(&FfiValue::Ptr(f32_data.as_ptr() as *mut c_void), &[], &[])
+            .decode_with_context(
+                &StashedValue::Ptr(f32_data.as_ptr() as *mut c_void),
+                &[],
+                &[]
+            )
             .unwrap(),
         Value::Array(_)
     ));
 
     let bool_ty = array_type(
-        Type::Boolean(BooleanType),
+        Descriptor::Boolean(BooleanDescriptor),
         ArrayKind::Fixed { size: 1 },
         Ownership::Borrowed,
     );
     let bool_data: Vec<i32> = vec![1];
     assert!(matches!(
         bool_ty
-            .decode_with_context(&FfiValue::Ptr(bool_data.as_ptr() as *mut c_void), &[], &[])
+            .decode_with_context(
+                &StashedValue::Ptr(bool_data.as_ptr() as *mut c_void),
+                &[],
+                &[]
+            )
             .unwrap(),
         Value::Array(_)
     ));
@@ -1581,7 +1606,7 @@ fn decode_storage_pointer_elements() {
 #[test]
 fn ptr_to_value_null_yields_empty() {
     let ty = array_type(
-        Type::Integer(IntegerKind::I32),
+        Descriptor::Integer(IntegerKind::I32),
         ArrayKind::Array,
         Ownership::Borrowed,
     );
@@ -1618,7 +1643,7 @@ fn ptr_to_value_gptrarray() {
 fn ptr_to_value_gbytearray() {
     common::run(|| {
         let ty = array_type(
-            Type::Integer(IntegerKind::U8),
+            Descriptor::Integer(IntegerKind::U8),
             ArrayKind::GByteArray,
             Ownership::Borrowed,
         );
@@ -1643,7 +1668,7 @@ fn ptr_to_value_gbytearray() {
 fn ptr_to_value_garray() {
     common::run(|| {
         let ty = array_type(
-            Type::Integer(IntegerKind::I32),
+            Descriptor::Integer(IntegerKind::I32),
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
@@ -1699,19 +1724,19 @@ fn ptr_to_value_plain_array() {
 #[test]
 fn size_from_args_reads_integer_argument() {
     let ty = array_type(
-        Type::Integer(IntegerKind::I32),
+        Descriptor::Integer(IntegerKind::I32),
         ArrayKind::Sized { size_index: 0 },
         Ownership::Borrowed,
     );
     let data: Vec<i32> = vec![10, 20];
-    let ffi_value = FfiValue::Ptr(data.as_ptr() as *mut c_void);
-    let ffi_args = [FfiValue::I32(2)];
+    let stashed_value = StashedValue::Ptr(data.as_ptr() as *mut c_void);
+    let ffi_args = [StashedValue::I32(2)];
     let args = [Arg::new(
-        Type::Integer(IntegerKind::I32),
+        Descriptor::Integer(IntegerKind::I32),
         Value::Number(2.0),
     )];
     let Value::Array(items) = ty
-        .decode_with_context(&ffi_value, &ffi_args, &args)
+        .decode_with_context(&stashed_value, &ffi_args, &args)
         .unwrap()
     else {
         panic!("expected array")
@@ -1722,20 +1747,22 @@ fn size_from_args_reads_integer_argument() {
 #[test]
 fn size_from_args_reads_ref_integer_storage() {
     let ty = array_type(
-        Type::Integer(IntegerKind::I32),
+        Descriptor::Integer(IntegerKind::I32),
         ArrayKind::Sized { size_index: 0 },
         Ownership::Borrowed,
     );
     let data: Vec<i32> = vec![10, 20];
-    let ffi_value = FfiValue::Ptr(data.as_ptr() as *mut c_void);
-    let size_storage = native::ffi::FfiStorage::from(vec![2i32]);
-    let ffi_args = [FfiValue::Storage(size_storage)];
+    let stashed_value = StashedValue::Ptr(data.as_ptr() as *mut c_void);
+    let size_storage = native::ffi::Stash::from(vec![2i32]);
+    let ffi_args = [StashedValue::Storage(size_storage)];
     let args = [Arg::new(
-        Type::Ref(RefType::new(Type::Integer(IntegerKind::I32)).expect("valid Ref inner")),
+        Descriptor::Ref(
+            RefDescriptor::new(Descriptor::Integer(IntegerKind::I32)).expect("valid Ref inner"),
+        ),
         Value::Number(2.0),
     )];
     let Value::Array(items) = ty
-        .decode_with_context(&ffi_value, &ffi_args, &args)
+        .decode_with_context(&stashed_value, &ffi_args, &args)
         .unwrap()
     else {
         panic!("expected array")
@@ -1746,20 +1773,22 @@ fn size_from_args_reads_ref_integer_storage() {
 #[test]
 fn size_from_args_reads_ref_integer_ptr() {
     let ty = array_type(
-        Type::Integer(IntegerKind::I32),
+        Descriptor::Integer(IntegerKind::I32),
         ArrayKind::Sized { size_index: 0 },
         Ownership::Borrowed,
     );
     let data: Vec<i32> = vec![10, 20];
-    let ffi_value = FfiValue::Ptr(data.as_ptr() as *mut c_void);
+    let stashed_value = StashedValue::Ptr(data.as_ptr() as *mut c_void);
     let size: i32 = 2;
-    let ffi_args = [FfiValue::Ptr(&size as *const i32 as *mut c_void)];
+    let ffi_args = [StashedValue::Ptr(&size as *const i32 as *mut c_void)];
     let args = [Arg::new(
-        Type::Ref(RefType::new(Type::Integer(IntegerKind::I32)).expect("valid Ref inner")),
+        Descriptor::Ref(
+            RefDescriptor::new(Descriptor::Integer(IntegerKind::I32)).expect("valid Ref inner"),
+        ),
         Value::Number(2.0),
     )];
     let Value::Array(items) = ty
-        .decode_with_context(&ffi_value, &ffi_args, &args)
+        .decode_with_context(&stashed_value, &ffi_args, &args)
         .unwrap()
     else {
         panic!("expected array")
@@ -1770,19 +1799,21 @@ fn size_from_args_reads_ref_integer_ptr() {
 #[test]
 fn size_from_args_ref_null_ptr_falls_through_to_error() {
     let ty = array_type(
-        Type::Integer(IntegerKind::I32),
+        Descriptor::Integer(IntegerKind::I32),
         ArrayKind::Sized { size_index: 0 },
         Ownership::Borrowed,
     );
     let data: Vec<i32> = vec![1];
-    let ffi_value = FfiValue::Ptr(data.as_ptr() as *mut c_void);
-    let ffi_args = [FfiValue::Ptr(std::ptr::null_mut())];
+    let stashed_value = StashedValue::Ptr(data.as_ptr() as *mut c_void);
+    let ffi_args = [StashedValue::Ptr(std::ptr::null_mut())];
     let args = [Arg::new(
-        Type::Ref(RefType::new(Type::Integer(IntegerKind::I32)).expect("valid Ref inner")),
+        Descriptor::Ref(
+            RefDescriptor::new(Descriptor::Integer(IntegerKind::I32)).expect("valid Ref inner"),
+        ),
         Value::Number(0.0),
     )];
     assert!(
-        ty.decode_with_context(&ffi_value, &ffi_args, &args)
+        ty.decode_with_context(&stashed_value, &ffi_args, &args)
             .is_err()
     );
 }
@@ -1791,14 +1822,14 @@ fn size_from_args_ref_null_ptr_falls_through_to_error() {
 fn item_codec_resolves_pointer_kinds() {
     let ty = array_type(struct_item_type(), ArrayKind::Array, Ownership::Full);
     let encoded = ty.encode(&Value::Array(vec![])).unwrap();
-    assert!(matches!(encoded, FfiValue::Storage(_)));
+    assert!(matches!(encoded, StashedValue::Storage(_)));
 }
 
 #[test]
 fn trait_methods_delegate_to_inherent_implementations() {
     common::run(|| {
         let ty = array_type(
-            Type::Integer(IntegerKind::I32),
+            Descriptor::Integer(IntegerKind::I32),
             ArrayKind::Array,
             Ownership::Borrowed,
         );
@@ -1807,9 +1838,10 @@ fn trait_methods_delegate_to_inherent_implementations() {
         let decoded = FfiDecoder::decode(&ty, &encoded).unwrap();
         assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
 
-        let storage = native::ffi::FfiStorage::from(vec![7i32]);
+        let storage = native::ffi::Stash::from(vec![7i32]);
         let with_context =
-            FfiDecoder::decode_with_context(&ty, &FfiValue::Storage(storage), &[], &[]).unwrap();
+            FfiDecoder::decode_with_context(&ty, &StashedValue::Storage(storage), &[], &[])
+                .unwrap();
         assert!(matches!(with_context, Value::Array(items) if items.len() == 1));
 
         let ptr_ty = array_type(struct_item_type(), ArrayKind::Array, Ownership::Borrowed);
@@ -1909,10 +1941,10 @@ fn encode_glist_strings_full_container_full_elements_releases_when_call_never_ha
             Value::String("b".to_string()),
         ]);
         let encoded = ty.encode(&val).unwrap();
-        let FfiValue::Storage(storage) = &encoded else {
+        let StashedValue::Storage(storage) = &encoded else {
             panic!("expected storage")
         };
-        let FfiStorageKind::StringGList(data) = storage.kind() else {
+        let StashKind::StringGList(data) = storage.kind() else {
             panic!("expected string glist storage")
         };
         assert!(data.elements_duped);
@@ -1939,17 +1971,17 @@ fn encode_gslist_strings_full_container_borrowed_elements_releases_spine_when_ca
 fn encode_gbytearray_full_ownership_releases_when_call_never_happens() {
     common::run(|| {
         let ty = array_type(
-            Type::Integer(IntegerKind::U8),
+            Descriptor::Integer(IntegerKind::U8),
             ArrayKind::GByteArray,
             Ownership::Full,
         );
         let val = Value::Array(vec![Value::Number(1.0), Value::Number(2.0)]);
         let encoded = ty.encode(&val).unwrap();
-        let FfiValue::Storage(storage) = &encoded else {
+        let StashedValue::Storage(storage) = &encoded else {
             panic!("expected storage")
         };
         assert!(!storage.ptr().is_null());
-        assert!(matches!(storage.kind(), FfiStorageKind::GByteArray(None)));
+        assert!(matches!(storage.kind(), StashKind::GByteArray(None)));
         drop(encoded);
     });
 }
@@ -1980,7 +2012,7 @@ fn encode_garray_borrowed_strings_installs_clear_func_and_roundtrips() {
 fn decode_zero_terminated_scalar_array_full_ownership_frees_buffer() {
     common::run(|| {
         let ty = array_type(
-            Type::Integer(IntegerKind::I32),
+            Descriptor::Integer(IntegerKind::I32),
             ArrayKind::Array,
             Ownership::Full,
         );
@@ -1994,7 +2026,10 @@ fn decode_zero_terminated_scalar_array_full_ownership_frees_buffer() {
             *mem.add(2) = 9;
             mem
         };
-        let Value::Array(items) = ty.decode(&FfiValue::Ptr(buffer as *mut c_void)).unwrap() else {
+        let Value::Array(items) = ty
+            .decode(&StashedValue::Ptr(buffer as *mut c_void))
+            .unwrap()
+        else {
             panic!("expected array")
         };
         assert_eq!(items.len(), 3);
@@ -2004,7 +2039,7 @@ fn decode_zero_terminated_scalar_array_full_ownership_frees_buffer() {
 }
 
 #[test]
-fn write_return_to_raw_ptr_full_string_array_hands_caller_owned_container() {
+fn write_return_to_pointer_full_string_array_hands_caller_owned_container() {
     common::run(|| {
         let ty = array_type(
             string_item_type(Ownership::Full),
@@ -2017,9 +2052,9 @@ fn write_return_to_raw_ptr_full_string_array_hands_caller_owned_container() {
         ]);
         let mut slot: *mut c_void = std::ptr::null_mut();
         let ret = &mut slot as *mut *mut c_void as *mut c_void;
-        // SAFETY: `ret` is a live, pointer-sized stack slot; `write_return_to_raw_ptr` writes
+        // SAFETY: `ret` is a live, pointer-sized stack slot; `write_return_to_pointer` writes
         // exactly one pointer (or null) into it, read back after the call.
-        unsafe { RawPtrWriter::write_return_to_raw_ptr(&ty, ret, &Ok(val)) };
+        unsafe { PointerWriter::write_return_to_pointer(&ty, ret, &Ok(val)) };
         assert!(!slot.is_null());
         // SAFETY: the full-ownership write placed a caller-owned, NULL-terminated `char*` array
         // into `slot`; `StrV::from_glib_full` takes ownership of that array and frees it on drop.
@@ -2035,7 +2070,7 @@ fn write_return_to_raw_ptr_full_string_array_hands_caller_owned_container() {
 }
 
 #[test]
-fn write_return_to_raw_ptr_null_err_and_non_array_write_null() {
+fn write_return_to_pointer_null_err_and_non_array_write_null() {
     let ty = array_type(
         string_item_type(Ownership::Full),
         ArrayKind::Array,
@@ -2043,38 +2078,38 @@ fn write_return_to_raw_ptr_null_err_and_non_array_write_null() {
     );
     let mut slot: *mut c_void = 7 as *mut c_void;
     let ret = &mut slot as *mut *mut c_void as *mut c_void;
-    // SAFETY: `ret` is a live, pointer-sized stack slot; `write_return_to_raw_ptr` writes
+    // SAFETY: `ret` is a live, pointer-sized stack slot; `write_return_to_pointer` writes
     // exactly one pointer (or null) into it, read back after the call.
-    unsafe { RawPtrWriter::write_return_to_raw_ptr(&ty, ret, &Ok(Value::Null)) };
+    unsafe { PointerWriter::write_return_to_pointer(&ty, ret, &Ok(Value::Null)) };
     assert!(slot.is_null());
 
     slot = 7 as *mut c_void;
-    // SAFETY: `ret` is a live, pointer-sized stack slot; `write_return_to_raw_ptr` writes
+    // SAFETY: `ret` is a live, pointer-sized stack slot; `write_return_to_pointer` writes
     // exactly one pointer (or null) into it, read back after the call.
-    unsafe { RawPtrWriter::write_return_to_raw_ptr(&ty, ret, &Err(())) };
+    unsafe { PointerWriter::write_return_to_pointer(&ty, ret, &Err(())) };
     assert!(slot.is_null());
 
     slot = 7 as *mut c_void;
-    // SAFETY: `ret` is a live, pointer-sized stack slot; `write_return_to_raw_ptr` writes
+    // SAFETY: `ret` is a live, pointer-sized stack slot; `write_return_to_pointer` writes
     // exactly one pointer (or null) into it, read back after the call.
-    unsafe { RawPtrWriter::write_return_to_raw_ptr(&ty, ret, &Ok(Value::Number(1.0))) };
+    unsafe { PointerWriter::write_return_to_pointer(&ty, ret, &Ok(Value::Number(1.0))) };
     assert!(slot.is_null());
 }
 
 #[test]
-fn write_return_to_raw_ptr_encode_error_writes_null() {
+fn write_return_to_pointer_encode_error_writes_null() {
     common::run(|| {
         let ty = array_type(
-            Type::Integer(IntegerKind::I32),
+            Descriptor::Integer(IntegerKind::I32),
             ArrayKind::Array,
             Ownership::Full,
         );
         let val = Value::Array(vec![Value::String("not a number".to_string())]);
         let mut slot: *mut c_void = 7 as *mut c_void;
         let ret = &mut slot as *mut *mut c_void as *mut c_void;
-        // SAFETY: `ret` is a live, pointer-sized stack slot; `write_return_to_raw_ptr` writes
+        // SAFETY: `ret` is a live, pointer-sized stack slot; `write_return_to_pointer` writes
         // exactly one pointer (or null) into it, read back after the call.
-        unsafe { RawPtrWriter::write_return_to_raw_ptr(&ty, ret, &Ok(val)) };
+        unsafe { PointerWriter::write_return_to_pointer(&ty, ret, &Ok(val)) };
         assert!(slot.is_null());
     });
 }

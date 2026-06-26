@@ -5,10 +5,7 @@
 #[macro_use]
 mod macros;
 
-pub(crate) mod error_reporter;
-pub(crate) mod glib_log_handler;
-pub(crate) mod op;
-pub(crate) mod wrapper_registry;
+pub(crate) mod request;
 
 // These modules form no part of the napi-only public contract. They are reachable as a real
 // public Rust surface only when the `test-support` feature is enabled — which the `test` and
@@ -16,16 +13,9 @@ pub(crate) mod wrapper_registry;
 // through full module paths — and are `pub(crate)` otherwise. The `#[napi]` exports are
 // registered through napi's ctor-based registration and do not depend on this visibility.
 test_visible_modules! {
-    arg,
-    dispatch,
     ffi,
-    glib_thread,
-    glib_thread_state,
-    managed,
-    panic_handler,
-    trampoline,
-    types,
-    value,
+    handle,
+    messaging,
 }
 
-pub use managed::{Boxed, NativeHandle};
+pub use handle::{Boxed, NativeHandle};

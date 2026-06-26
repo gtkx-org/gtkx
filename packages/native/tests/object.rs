@@ -5,7 +5,7 @@ use std::ffi::c_void;
 use gtk4::glib;
 use gtk4::prelude::ObjectType as _;
 
-use native::managed::{NativeHandle, NativeValue};
+use native::handle::{NativeHandle, NativeValue};
 
 fn create_test_gobject() -> glib::Object {
     common::ensure_gtk_init();

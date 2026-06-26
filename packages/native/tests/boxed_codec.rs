@@ -8,11 +8,11 @@ use gtk4::glib::translate::IntoGlib as _;
 use gtk4::prelude::StaticType as _;
 
 use native::ffi;
-use native::managed::NativeHandle;
-use native::types::{
-    BoxedType, FfiDecoder, FfiEncoder, Ownership, RawPtrWriter, ReadSource, StructType,
+use native::ffi::descriptors::{
+    BoxedDescriptor, FfiDecoder, FfiEncoder, Ownership, PointerWriter, ReadSource, StructDescriptor,
 };
-use native::value::Value;
+use native::ffi::value::Value;
+use native::handle::NativeHandle;
 
 use common::{
     assert_decode_null_yields_null, assert_read_null_yields_null,
@@ -23,8 +23,8 @@ fn rgba_type_name() -> String {
     gdk::RGBA::static_type().name().to_string()
 }
 
-fn boxed(ownership: Ownership) -> BoxedType {
-    BoxedType {
+fn boxed(ownership: Ownership) -> BoxedDescriptor {
+    BoxedDescriptor {
         ownership,
         type_name: rgba_type_name(),
         library: None,
@@ -34,8 +34,8 @@ fn boxed(ownership: Ownership) -> BoxedType {
     }
 }
 
-fn struct_type(ownership: Ownership, size: Option<usize>) -> StructType {
-    StructType {
+fn struct_type(ownership: Ownership, size: Option<usize>) -> StructDescriptor {
+    StructDescriptor {
         ownership,
         size,
         caller_allocated: false,
@@ -80,7 +80,7 @@ fn assert_read_aliases_source<C: FfiDecoder>(codec: &C, original: *mut c_void, m
     drop(value);
 }
 
-fn encode_rgba(ownership: Ownership, ptr: *mut c_void) -> ffi::FfiValue {
+fn encode_rgba(ownership: Ownership, ptr: *mut c_void) -> ffi::StashedValue {
     boxed(ownership)
         .encode(&object_value_of(ptr))
         .expect("encode should succeed")
@@ -97,7 +97,7 @@ fn gtype_resolves_from_registered_name() {
 #[test]
 fn gtype_resolves_via_library_lookup() {
     common::run(|| {
-        let bytes_type = BoxedType {
+        let bytes_type = BoxedDescriptor {
             ownership: Ownership::Borrowed,
             type_name: "GBytes".to_owned(),
             library: Some("libgobject-2.0.so.0".to_owned()),
@@ -117,7 +117,7 @@ fn encode_full_copies_to_distinct_pointer() {
 
         let encoded = encode_rgba(Ownership::Full, original);
         encoded.disarm_pending_transfer();
-        let ffi::FfiValue::Storage(storage) = &encoded else {
+        let ffi::StashedValue::Storage(storage) = &encoded else {
             panic!("expected Storage ffi value");
         };
         let copied = storage.ptr();
@@ -148,7 +148,7 @@ fn encode_borrowed_keeps_same_pointer() {
         let (gtype, original) = rgba_boxed_alloc();
 
         let encoded = encode_rgba(Ownership::Borrowed, original);
-        let ffi::FfiValue::Ptr(ptr) = encoded else {
+        let ffi::StashedValue::Ptr(ptr) = encoded else {
             panic!("expected Ptr ffi value");
         };
         assert_eq!(ptr, original);
@@ -212,7 +212,7 @@ fn decode_full_dups_owned_boxed() {
         let (_gtype, original) = rgba_boxed_alloc();
 
         let decoded = boxed(Ownership::Full)
-            .decode(&ffi::FfiValue::Ptr(original))
+            .decode(&ffi::StashedValue::Ptr(original))
             .expect("full decode should succeed");
         assert!(matches!(decoded, Value::Object(_)));
         drop(decoded);
@@ -225,7 +225,7 @@ fn decode_borrowed_copies_boxed() {
         let (gtype, original) = rgba_boxed_alloc();
 
         let decoded = boxed(Ownership::Borrowed)
-            .decode(&ffi::FfiValue::Ptr(original))
+            .decode(&ffi::StashedValue::Ptr(original))
             .expect("borrowed decode should succeed");
         assert!(matches!(decoded, Value::Object(_)));
         drop(decoded);
@@ -295,7 +295,7 @@ fn caller_allocated_boxed_aliases_source_without_copying() {
     common::run(|| {
         let (gtype, original) = rgba_boxed_alloc();
 
-        let ty = BoxedType {
+        let ty = BoxedDescriptor {
             caller_allocated: true,
             ..boxed(Ownership::Borrowed)
         };
@@ -315,7 +315,7 @@ fn caller_allocated_struct_aliases_source_without_copying() {
     common::run(|| {
         let (gtype, original) = rgba_boxed_alloc();
 
-        let ty = StructType {
+        let ty = StructDescriptor {
             caller_allocated: true,
             ..struct_type(Ownership::Borrowed, Some(size_of::<gdk::ffi::GdkRGBA>()))
         };
@@ -330,13 +330,13 @@ fn caller_allocated_struct_aliases_source_without_copying() {
 }
 
 #[test]
-fn read_from_raw_ptr_dereferences_slot() {
+fn read_from_pointer_dereferences_slot() {
     common::run(|| {
         let (gtype, original) = rgba_boxed_alloc();
 
         // SAFETY: `original` is a live boxed value the codec can read from a pointer-sized slot.
         let value = unsafe { read_slot(&boxed(Ownership::Borrowed), original) }
-            .expect("read_from_raw_ptr should succeed");
+            .expect("read_from_pointer should succeed");
         assert!(matches!(value, Value::Object(_)));
         drop(value);
 
@@ -345,7 +345,7 @@ fn read_from_raw_ptr_dereferences_slot() {
 }
 
 #[test]
-fn write_return_to_raw_ptr_full_transfer_copies_boxed() {
+fn write_return_to_pointer_full_transfer_copies_boxed() {
     common::run(|| {
         let (gtype, original) = rgba_boxed_alloc();
 
@@ -356,7 +356,7 @@ fn write_return_to_raw_ptr_full_transfer_copies_boxed() {
 }
 
 #[test]
-fn write_return_to_raw_ptr_borrowed_writes_same_pointer() {
+fn write_return_to_pointer_borrowed_writes_same_pointer() {
     common::run(|| {
         let (gtype, original) = rgba_boxed_alloc();
 
@@ -369,14 +369,14 @@ fn write_return_to_raw_ptr_borrowed_writes_same_pointer() {
 }
 
 #[test]
-fn write_return_to_raw_ptr_err_writes_null() {
+fn write_return_to_pointer_err_writes_null() {
     common::run(|| {
         assert_write_return_err_writes_null(&boxed(Ownership::Borrowed));
     });
 }
 
 #[test]
-fn write_value_to_raw_ptr_writes_boxed() {
+fn write_value_to_pointer_writes_boxed() {
     common::run(|| {
         let (gtype, original) = rgba_boxed_alloc();
 
@@ -390,10 +390,10 @@ fn write_value_to_raw_ptr_writes_boxed() {
 }
 
 #[test]
-fn write_value_to_raw_ptr_falls_back_when_gtype_unresolvable() {
+fn write_value_to_pointer_falls_back_when_gtype_unresolvable() {
     common::run(|| {
         let target: u64 = 0xAA55;
-        let unknown = BoxedType {
+        let unknown = BoxedDescriptor {
             ownership: Ownership::Borrowed,
             type_name: "GTypeUnknownBoxed".to_owned(),
             library: None,
@@ -412,7 +412,7 @@ fn write_value_to_raw_ptr_falls_back_when_gtype_unresolvable() {
 }
 
 #[test]
-fn write_value_to_raw_ptr_writes_null_when_src_is_null() {
+fn write_value_to_pointer_writes_null_when_src_is_null() {
     common::run(|| {
         let slot = write_value_into_slot(
             &boxed(Ownership::Borrowed),
@@ -424,7 +424,7 @@ fn write_value_to_raw_ptr_writes_null_when_src_is_null() {
 }
 
 #[test]
-fn write_value_to_raw_ptr_frees_previous_pointer_in_slot() {
+fn write_value_to_pointer_frees_previous_pointer_in_slot() {
     common::run(|| {
         let (gtype, original) = rgba_boxed_alloc();
         let previous = common::allocate_test_boxed(gtype);
@@ -452,7 +452,7 @@ fn struct_encode_keeps_pointer() {
         let encoded = struct_type(Ownership::Borrowed, None)
             .encode(&Value::Object(NativeHandle::borrowed(original)))
             .expect("struct encode should succeed");
-        assert!(matches!(encoded, ffi::FfiValue::Ptr(p) if p == original));
+        assert!(matches!(encoded, ffi::StashedValue::Ptr(p) if p == original));
 
         // SAFETY: the pointer(s) are owned boxed value(s) of `gtype`; `g_boxed_free` releases each
         // exactly once on the GTK-initialized test thread.
@@ -467,7 +467,7 @@ fn struct_decode_full_takes_ownership() {
         // the requested size that the test owns and later frees.
         let raw = unsafe { glib::ffi::g_malloc0(64) };
         let decoded = struct_type(Ownership::Full, None)
-            .decode(&ffi::FfiValue::Ptr(raw))
+            .decode(&ffi::StashedValue::Ptr(raw))
             .expect("struct full decode should succeed");
         assert!(matches!(decoded, Value::Object(_)));
         drop(decoded);
@@ -481,7 +481,7 @@ fn struct_decode_borrowed_with_size_copies() {
         // the requested size that the test owns and later frees.
         let raw = unsafe { glib::ffi::g_malloc0(64) };
         let decoded = struct_type(Ownership::Borrowed, Some(64))
-            .decode(&ffi::FfiValue::Ptr(raw))
+            .decode(&ffi::StashedValue::Ptr(raw))
             .expect("struct sized decode should succeed");
         assert!(matches!(decoded, Value::Object(_)));
         drop(decoded);
@@ -498,7 +498,7 @@ fn struct_decode_borrowed_without_size_is_unowned() {
         // the requested size that the test owns and later frees.
         let raw = unsafe { glib::ffi::g_malloc0(64) };
         let decoded = struct_type(Ownership::Borrowed, None)
-            .decode(&ffi::FfiValue::Ptr(raw))
+            .decode(&ffi::StashedValue::Ptr(raw))
             .expect("struct unowned decode should succeed");
         assert!(matches!(decoded, Value::Object(_)));
         drop(decoded);
@@ -600,7 +600,7 @@ fn struct_ptr_to_value_without_size_wraps_unowned() {
 }
 
 #[test]
-fn struct_write_return_to_raw_ptr_writes_pointer() {
+fn struct_write_return_to_pointer_writes_pointer() {
     common::run(|| {
         let (gtype, original) = rgba_boxed_alloc();
 
@@ -615,7 +615,7 @@ fn struct_write_return_to_raw_ptr_writes_pointer() {
 }
 
 #[test]
-fn struct_write_value_to_raw_ptr_writes_pointer() {
+fn struct_write_value_to_pointer_writes_pointer() {
     common::run(|| {
         let (gtype, original) = rgba_boxed_alloc();
 
@@ -631,7 +631,7 @@ fn struct_write_value_to_raw_ptr_writes_pointer() {
 }
 
 #[test]
-fn struct_write_value_to_raw_ptr_with_size_copies_into_dst() {
+fn struct_write_value_to_pointer_with_size_copies_into_dst() {
     common::run(|| {
         let src: u64 = 0xDEAD_BEEF_DEAD_BEEF;
         let mut dst: u64 = 0;
@@ -648,7 +648,7 @@ fn struct_write_value_to_raw_ptr_with_size_copies_into_dst() {
 }
 
 #[test]
-fn struct_write_value_to_raw_ptr_with_size_writes_null_for_null_src() {
+fn struct_write_value_to_pointer_with_size_writes_null_for_null_src() {
     common::run(|| {
         let slot = write_value_into_slot(
             &struct_type(Ownership::Borrowed, Some(std::mem::size_of::<u64>())),
@@ -661,7 +661,7 @@ fn struct_write_value_to_raw_ptr_with_size_writes_null_for_null_src() {
 }
 
 #[test]
-fn struct_write_value_to_raw_ptr_with_size_bails_for_null_dst() {
+fn struct_write_value_to_pointer_with_size_bails_for_null_dst() {
     common::run(|| {
         let src: u64 = 1;
         let mut slot: *mut c_void = std::ptr::null_mut();
@@ -670,7 +670,7 @@ fn struct_write_value_to_raw_ptr_with_size_bails_for_null_dst() {
         // (null/owned) value; the call swaps in the new value, balancing ownership.
         let err = unsafe {
             struct_type(Ownership::Borrowed, Some(std::mem::size_of::<u64>()))
-                .write_value_to_raw_ptr(
+                .write_value_to_pointer(
                     &mut slot as *mut *mut c_void as *mut c_void,
                     &Value::Object(NativeHandle::borrowed(&src as *const u64 as *mut c_void)),
                 )
@@ -686,16 +686,16 @@ mod free_fn {
     use gtk4::glib;
 
     use native::ffi;
-    use native::types::{BoxedType, FfiDecoder, Ownership, ReadSource};
-    use native::value::Value;
+    use native::ffi::descriptors::{BoxedDescriptor, FfiDecoder, Ownership, ReadSource};
+    use native::ffi::value::Value;
 
     use super::common;
 
     const LIBGLIB: &str = "libglib-2.0.so.0";
     const G_FREE: &str = "g_free";
 
-    fn boxed_with_free_fn(ownership: Ownership) -> BoxedType {
-        BoxedType {
+    fn boxed_with_free_fn(ownership: Ownership) -> BoxedDescriptor {
+        BoxedDescriptor {
             ownership,
             type_name: "FreeFnBoxed".to_owned(),
             library: Some(LIBGLIB.to_owned()),
@@ -707,7 +707,7 @@ mod free_fn {
 
     fn assert_free_fn_wrapper_aliases(
         ownership: Ownership,
-        wrap: impl FnOnce(&BoxedType, *mut c_void) -> Value,
+        wrap: impl FnOnce(&BoxedDescriptor, *mut c_void) -> Value,
     ) {
         // SAFETY: runs on the GTK-initialized test thread; `g_malloc0` returns a zeroed block of
         // the requested size that the test owns and later frees.
@@ -726,13 +726,13 @@ mod free_fn {
         }
     }
 
-    fn decode_wrapper(descriptor: &BoxedType, ptr: *mut c_void) -> Value {
+    fn decode_wrapper(descriptor: &BoxedDescriptor, ptr: *mut c_void) -> Value {
         descriptor
-            .decode(&ffi::FfiValue::Ptr(ptr))
+            .decode(&ffi::StashedValue::Ptr(ptr))
             .expect("decode with freeFn should succeed")
     }
 
-    fn ptr_to_value_wrapper(descriptor: &BoxedType, ptr: *mut c_void) -> Value {
+    fn ptr_to_value_wrapper(descriptor: &BoxedDescriptor, ptr: *mut c_void) -> Value {
         // SAFETY: the pointer addresses a live value/container of the codec's type, valid for
         // this read.
         unsafe { descriptor.read(ReadSource::Value(ptr, "ctx")) }
@@ -773,7 +773,7 @@ mod free_fn {
             // SAFETY: runs on the GTK-initialized test thread; `g_malloc0` returns a zeroed block of
             // the requested size that the test owns and later frees.
             let raw = unsafe { glib::ffi::g_malloc0(8) };
-            let descriptor = BoxedType {
+            let descriptor = BoxedDescriptor {
                 ownership: Ownership::Full,
                 type_name: "BadFreeFnBoxed".to_owned(),
                 library: Some(LIBGLIB.to_owned()),
@@ -783,7 +783,7 @@ mod free_fn {
             };
 
             let err = descriptor
-                .decode(&ffi::FfiValue::Ptr(raw))
+                .decode(&ffi::StashedValue::Ptr(raw))
                 .expect_err("decode with missing free symbol should fail");
             let msg = format!("{err}");
             assert!(msg.contains("BadFreeFnBoxed"));
@@ -800,7 +800,7 @@ mod free_fn {
             // SAFETY: runs on the GTK-initialized test thread; `g_malloc0` returns a zeroed block of
             // the requested size that the test owns and later frees.
             let raw = unsafe { glib::ffi::g_malloc0(8) };
-            let descriptor = BoxedType {
+            let descriptor = BoxedDescriptor {
                 ownership: Ownership::Full,
                 type_name: "BadLibBoxed".to_owned(),
                 library: Some("libdoes-not-exist-xyz-12345.so.0".to_owned()),
@@ -810,7 +810,7 @@ mod free_fn {
             };
 
             let err = descriptor
-                .decode(&ffi::FfiValue::Ptr(raw))
+                .decode(&ffi::StashedValue::Ptr(raw))
                 .expect_err("decode with missing library should fail");
             assert!(format!("{err}").contains("BadLibBoxed"));
 
@@ -832,7 +832,7 @@ mod free_fn {
             // SAFETY: runs on the GTK-initialized test thread; `g_malloc0` returns a zeroed block of
             // the requested size that the test owns and later frees.
             let raw = unsafe { glib::ffi::g_malloc0(8) };
-            let descriptor = BoxedType {
+            let descriptor = BoxedDescriptor {
                 ownership: Ownership::Full,
                 type_name: "LibrarylessFreeFn".to_owned(),
                 library: None,
@@ -842,7 +842,7 @@ mod free_fn {
             };
 
             let err = descriptor
-                .decode(&ffi::FfiValue::Ptr(raw))
+                .decode(&ffi::StashedValue::Ptr(raw))
                 .expect_err("decode without library should fail");
             assert!(format!("{err}").contains("LibrarylessFreeFn"));
 

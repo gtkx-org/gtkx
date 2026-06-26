@@ -3,7 +3,9 @@ mod common;
 use std::panic::PanicHookInfo;
 use std::sync::{Arc, Mutex};
 
-use native::panic_handler::{format_panic_payload, format_panic_report, install_panic_hook};
+use native::messaging::panic_handler::{
+    format_panic_payload, format_panic_report, install_panic_hook,
+};
 
 type PreviousHook = Box<dyn Fn(&PanicHookInfo<'_>) + Sync + Send>;
 

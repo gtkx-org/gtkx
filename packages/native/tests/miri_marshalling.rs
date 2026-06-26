@@ -2,15 +2,17 @@ mod common;
 
 use std::ffi::c_void;
 
-use native::ffi::FfiValue;
-use native::types::{ArrayType, BufferType, FfiDecoder as _, FfiEncoder as _};
-use native::value::{BufferView, BufferViewKind, Value};
+use native::ffi::StashedValue;
+use native::ffi::descriptors::{
+    ArrayDescriptor, BufferDescriptor, FfiDecoder as _, FfiEncoder as _,
+};
+use native::ffi::value::{BufferView, BufferViewKind, Value};
 
 use common::{f32_array_type, i32_array_type};
 
-fn decode_array_items(array_type: &ArrayType, buffer_ptr: *const i32) -> Vec<Value> {
+fn decode_array_items(array_type: &ArrayDescriptor, buffer_ptr: *const i32) -> Vec<Value> {
     let decoded = array_type
-        .decode_with_context(&FfiValue::Ptr(buffer_ptr as *mut c_void), &[], &[])
+        .decode_with_context(&StashedValue::Ptr(buffer_ptr as *mut c_void), &[], &[])
         .expect("contiguous decode");
     let Value::Array(items) = decoded else {
         panic!("expected an array value");
@@ -38,8 +40,8 @@ fn decodes_empty_contiguous_array() {
     assert!(items.is_empty());
 }
 
-fn encoded_ptr(encoded: &FfiValue) -> *mut c_void {
-    let FfiValue::Ptr(ptr) = encoded else {
+fn encoded_ptr(encoded: &StashedValue) -> *mut c_void {
+    let StashedValue::Ptr(ptr) = encoded else {
         panic!("expected a pointer passthrough, got {encoded:?}");
     };
     *ptr
@@ -80,7 +82,7 @@ fn buffer_view_passthrough_reads_and_writes_the_backing_store() {
         false,
     );
 
-    let encoded = BufferType
+    let encoded = BufferDescriptor
         .encode(&Value::BufferView(view))
         .expect("buffer encode");
     let ptr = encoded_ptr(&encoded);

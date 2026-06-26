@@ -6,23 +6,25 @@ use gtk4::glib;
 use gtk4::prelude::ObjectType as _;
 
 use native::ffi;
-use native::managed::NativeHandle;
-use native::types::{FfiDecoder, FfiEncoder, GObjectType, Ownership, RawPtrWriter, ReadSource};
-use native::value::Value;
+use native::ffi::descriptors::{
+    FfiDecoder, FfiEncoder, GObjectDescriptor, Ownership, PointerWriter, ReadSource,
+};
+use native::ffi::value::Value;
+use native::handle::NativeHandle;
 
 use common::{
     assert_decode_null_yields_null, assert_read_null_yields_null,
     assert_write_return_err_writes_null, get_gobject_refcount, read_slot, write_return_into_slot,
 };
 
-fn borrowed() -> GObjectType {
-    GObjectType {
+fn borrowed() -> GObjectDescriptor {
+    GObjectDescriptor {
         ownership: Ownership::Borrowed,
     }
 }
 
-fn full() -> GObjectType {
-    GObjectType {
+fn full() -> GObjectDescriptor {
+    GObjectDescriptor {
         ownership: Ownership::Full,
     }
 }
@@ -38,7 +40,10 @@ fn object_value_of(ptr: *mut glib::gobject_ffi::GObject) -> Value {
     Value::Object(NativeHandle::borrowed(ptr as *mut c_void))
 }
 
-fn encode_object(ty: &GObjectType, ptr: *mut glib::gobject_ffi::GObject) -> ffi::FfiValue {
+fn encode_object(
+    ty: &GObjectDescriptor,
+    ptr: *mut glib::gobject_ffi::GObject,
+) -> ffi::StashedValue {
     ty.encode(&object_value_of(ptr))
         .expect("encode should succeed")
 }
@@ -53,7 +58,7 @@ fn encode_full_transfer_adds_exactly_one_ref() {
 
         assert_eq!(get_gobject_refcount(obj_ptr), before + 1);
 
-        let ffi::FfiValue::Storage(storage) = &encoded else {
+        let ffi::StashedValue::Storage(storage) = &encoded else {
             panic!("expected Storage ffi value");
         };
         assert_eq!(storage.ptr(), obj_ptr as *mut c_void);
@@ -85,7 +90,7 @@ fn encode_borrowed_does_not_change_refcount() {
         let encoded = encode_object(&borrowed(), obj_ptr);
 
         assert_eq!(get_gobject_refcount(obj_ptr), before);
-        assert!(matches!(encoded, ffi::FfiValue::Ptr(_)));
+        assert!(matches!(encoded, ffi::StashedValue::Ptr(_)));
     });
 }
 
@@ -147,7 +152,7 @@ fn decode_borrowed_adds_exactly_one_ref() {
         let (_obj, obj_ptr, before) = fresh_gobject();
 
         let decoded = borrowed()
-            .decode(&ffi::FfiValue::Ptr(obj_ptr as *mut c_void))
+            .decode(&ffi::StashedValue::Ptr(obj_ptr as *mut c_void))
             .expect("borrowed decode should succeed");
 
         assert_eq!(get_gobject_refcount(obj_ptr), before + 1);
@@ -168,7 +173,7 @@ fn decode_full_transfer_keeps_refcount_net_of_wrapper() {
         let before = get_gobject_refcount(obj_ptr);
 
         let decoded = full()
-            .decode(&ffi::FfiValue::Ptr(obj_ptr as *mut c_void))
+            .decode(&ffi::StashedValue::Ptr(obj_ptr as *mut c_void))
             .expect("full decode should succeed");
 
         assert_eq!(get_gobject_refcount(obj_ptr), before);
@@ -194,7 +199,7 @@ fn decode_floating_object_is_sunk() {
         let before = get_gobject_refcount(obj_ptr);
 
         let decoded = full()
-            .decode(&ffi::FfiValue::Ptr(obj_ptr as *mut c_void))
+            .decode(&ffi::StashedValue::Ptr(obj_ptr as *mut c_void))
             .expect("floating decode should succeed");
 
         // SAFETY: `obj_ptr` is still live (the decode ref-sank rather than freed it); this queries
@@ -236,21 +241,21 @@ fn ptr_to_value_null_yields_null() {
 }
 
 #[test]
-fn read_from_raw_ptr_dereferences_and_wraps() {
+fn read_from_pointer_dereferences_and_wraps() {
     common::run(|| {
         let (_obj, obj_ptr, _) = fresh_gobject();
 
         // SAFETY: `read_slot` places `obj_ptr` into a pointer slot and reads through it; `obj_ptr`
         // is the live GObject of the `_obj` binding, so the slot points to a valid object.
         let value = unsafe { read_slot(&borrowed(), obj_ptr as *mut c_void) }
-            .expect("read_from_raw_ptr should succeed");
+            .expect("read_from_pointer should succeed");
         assert!(matches!(value, Value::Object(_)));
         drop(value);
     });
 }
 
 #[test]
-fn write_return_to_raw_ptr_full_transfer_writes_referenced_pointer() {
+fn write_return_to_pointer_full_transfer_writes_referenced_pointer() {
     common::run(|| {
         let (_obj, obj_ptr, before) = fresh_gobject();
 
@@ -265,7 +270,7 @@ fn write_return_to_raw_ptr_full_transfer_writes_referenced_pointer() {
 }
 
 #[test]
-fn write_return_to_raw_ptr_borrowed_keeps_refcount() {
+fn write_return_to_pointer_borrowed_keeps_refcount() {
     common::run(|| {
         let (_obj, obj_ptr, before) = fresh_gobject();
 
@@ -277,14 +282,14 @@ fn write_return_to_raw_ptr_borrowed_keeps_refcount() {
 }
 
 #[test]
-fn write_return_to_raw_ptr_err_writes_null() {
+fn write_return_to_pointer_err_writes_null() {
     common::run(|| {
         assert_write_return_err_writes_null(&borrowed());
     });
 }
 
 #[test]
-fn write_value_to_raw_ptr_writes_object() {
+fn write_value_to_pointer_writes_object() {
     common::run(|| {
         let (_obj, obj_ptr, before) = fresh_gobject();
 
@@ -293,12 +298,12 @@ fn write_value_to_raw_ptr_writes_object() {
         // the codec writes into; it was null, so no previous object is released, and the write
         // stores a newly referenced pointer to the live `obj_ptr`.
         unsafe {
-            borrowed().write_value_to_raw_ptr(
+            borrowed().write_value_to_pointer(
                 &mut slot as *mut *mut c_void as *mut c_void,
                 &object_value_of(obj_ptr),
             )
         }
-        .expect("write_value_to_raw_ptr should succeed");
+        .expect("write_value_to_pointer should succeed");
 
         assert_eq!(slot, obj_ptr as *mut c_void);
         assert_eq!(get_gobject_refcount(obj_ptr), before + 1);
@@ -310,7 +315,7 @@ fn write_value_to_raw_ptr_writes_object() {
 }
 
 #[test]
-fn write_value_to_raw_ptr_unrefs_previous_object() {
+fn write_value_to_pointer_unrefs_previous_object() {
     common::run(|| {
         let (_old, old_ptr, _) = fresh_gobject();
         let (_new, new_ptr, _) = fresh_gobject();
@@ -326,12 +331,12 @@ fn write_value_to_raw_ptr_unrefs_previous_object() {
         // the owned `old_ptr`) is the slot the codec swaps: it references the live `new_ptr` and
         // releases the previously owned `old_ptr`, keeping the count balanced.
         unsafe {
-            borrowed().write_value_to_raw_ptr(
+            borrowed().write_value_to_pointer(
                 &mut slot as *mut *mut c_void as *mut c_void,
                 &object_value_of(new_ptr),
             )
         }
-        .expect("write_value_to_raw_ptr should succeed");
+        .expect("write_value_to_pointer should succeed");
 
         assert_eq!(slot, new_ptr as *mut c_void);
         assert_eq!(get_gobject_refcount(new_ptr), new_before + 1);
@@ -344,7 +349,7 @@ fn write_value_to_raw_ptr_unrefs_previous_object() {
 }
 
 #[test]
-fn write_value_to_raw_ptr_null_releases_previous_object() {
+fn write_value_to_pointer_null_releases_previous_object() {
     common::run(|| {
         let (_obj, obj_ptr, _) = fresh_gobject();
 
@@ -359,9 +364,9 @@ fn write_value_to_raw_ptr_null_releases_previous_object() {
         // the previously owned `obj_ptr`.
         unsafe {
             borrowed()
-                .write_value_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, &Value::Null)
+                .write_value_to_pointer(&mut slot as *mut *mut c_void as *mut c_void, &Value::Null)
         }
-        .expect("write_value_to_raw_ptr should succeed");
+        .expect("write_value_to_pointer should succeed");
 
         assert!(slot.is_null());
         assert_eq!(get_gobject_refcount(obj_ptr), before - 1);

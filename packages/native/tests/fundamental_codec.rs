@@ -5,9 +5,11 @@ use std::ffi::c_void;
 use gtk4::glib;
 
 use native::ffi;
-use native::managed::NativeHandle;
-use native::types::{FfiDecoder, FfiEncoder, FundamentalType, Ownership, RawPtrWriter, ReadSource};
-use native::value::Value;
+use native::ffi::descriptors::{
+    FfiDecoder, FfiEncoder, FundamentalDescriptor, Ownership, PointerWriter, ReadSource,
+};
+use native::ffi::value::Value;
+use native::handle::NativeHandle;
 
 use common::{
     assert_decode_null_yields_null, assert_read_null_yields_null,
@@ -47,8 +49,12 @@ fn release_param_spec_refs(ptr: *mut c_void, count: u32) {
     }
 }
 
-fn fundamental_with_fns(ownership: Ownership, ref_func: &str, unref_func: &str) -> FundamentalType {
-    FundamentalType {
+fn fundamental_with_fns(
+    ownership: Ownership,
+    ref_func: &str,
+    unref_func: &str,
+) -> FundamentalDescriptor {
+    FundamentalDescriptor {
         ownership,
         library: "libgobject-2.0.so.0".to_owned(),
         ref_func: ref_func.to_owned(),
@@ -57,40 +63,40 @@ fn fundamental_with_fns(ownership: Ownership, ref_func: &str, unref_func: &str) 
     }
 }
 
-fn fundamental(ownership: Ownership) -> FundamentalType {
+fn fundamental(ownership: Ownership) -> FundamentalDescriptor {
     fundamental_with_fns(ownership, "g_param_spec_ref", "g_param_spec_unref")
 }
 
-fn fundamental_without_ref_fn(ownership: Ownership) -> FundamentalType {
+fn fundamental_without_ref_fn(ownership: Ownership) -> FundamentalDescriptor {
     fundamental_with_fns(ownership, "", "")
 }
 
-fn fundamental_without_unref_fn(ownership: Ownership) -> FundamentalType {
+fn fundamental_without_unref_fn(ownership: Ownership) -> FundamentalDescriptor {
     fundamental_with_fns(ownership, "g_param_spec_ref", "")
 }
 
-fn fundamental_with_unresolvable_symbols(ownership: Ownership) -> FundamentalType {
+fn fundamental_with_unresolvable_symbols(ownership: Ownership) -> FundamentalDescriptor {
     fundamental_with_fns(ownership, "gtkx_cov_missing_ref", "gtkx_cov_missing_unref")
 }
 
-fn encode_param_spec(codec: &FundamentalType, pspec: *mut c_void) -> ffi::FfiValue {
+fn encode_param_spec(codec: &FundamentalDescriptor, pspec: *mut c_void) -> ffi::StashedValue {
     codec
         .encode(&Value::Object(NativeHandle::borrowed(pspec)))
         .expect("encode should succeed")
 }
 
-fn assert_encode_returns_plain_pointer(codec: &FundamentalType, expected_extra_refs: u32) {
+fn assert_encode_returns_plain_pointer(codec: &FundamentalDescriptor, expected_extra_refs: u32) {
     let pspec = create_param_spec();
     let before = param_spec_refcount(pspec);
 
     let encoded = encode_param_spec(codec, pspec);
-    assert!(matches!(encoded, ffi::FfiValue::Ptr(p) if p == pspec));
+    assert!(matches!(encoded, ffi::StashedValue::Ptr(p) if p == pspec));
     assert_eq!(param_spec_refcount(pspec), before + expected_extra_refs);
 
     release_param_spec_refs(pspec, expected_extra_refs + 1);
 }
 
-fn assert_ref_for_transfer(codec: &FundamentalType, expected_extra_refs: u32) {
+fn assert_ref_for_transfer(codec: &FundamentalDescriptor, expected_extra_refs: u32) {
     let pspec = create_param_spec();
     let before = param_spec_refcount(pspec);
 
@@ -104,7 +110,7 @@ fn assert_ref_for_transfer(codec: &FundamentalType, expected_extra_refs: u32) {
     release_param_spec_refs(pspec, expected_extra_refs + 1);
 }
 
-fn assert_write_return_writes_pointer(codec: &FundamentalType, expected_extra_refs: u32) {
+fn assert_write_return_writes_pointer(codec: &FundamentalDescriptor, expected_extra_refs: u32) {
     let pspec = create_param_spec();
     let before = param_spec_refcount(pspec);
 
@@ -135,7 +141,7 @@ fn encode_full_adds_exactly_one_ref() {
 
         let encoded = encode_param_spec(&fundamental(Ownership::Full), pspec);
         encoded.disarm_pending_transfer();
-        assert!(matches!(&encoded, ffi::FfiValue::Storage(s) if s.ptr() == pspec));
+        assert!(matches!(&encoded, ffi::StashedValue::Storage(s) if s.ptr() == pspec));
         assert_eq!(param_spec_refcount(pspec), before + 1);
 
         release_param_spec_refs(pspec, 2);
@@ -260,14 +266,14 @@ fn encode_full_without_ref_fn_keeps_pointer() {
 }
 
 #[test]
-fn write_return_to_raw_ptr_without_ref_fn_writes_plain_pointer() {
+fn write_return_to_pointer_without_ref_fn_writes_plain_pointer() {
     common::run(|| {
         assert_write_return_writes_pointer(&fundamental_without_ref_fn(Ownership::Borrowed), 0);
     });
 }
 
 #[test]
-fn write_return_to_raw_ptr_full_without_ref_fn_writes_plain_pointer() {
+fn write_return_to_pointer_full_without_ref_fn_writes_plain_pointer() {
     common::run(|| {
         assert_write_return_writes_pointer(&fundamental_without_ref_fn(Ownership::Full), 0);
     });
@@ -292,7 +298,7 @@ fn decode_borrowed_adds_exactly_one_ref() {
         let before = param_spec_refcount(pspec);
 
         let decoded = fundamental(Ownership::Borrowed)
-            .decode(&ffi::FfiValue::Ptr(pspec))
+            .decode(&ffi::StashedValue::Ptr(pspec))
             .expect("borrowed decode should succeed");
         assert!(matches!(decoded, Value::Object(_)));
         assert_eq!(param_spec_refcount(pspec), before + 1);
@@ -310,7 +316,7 @@ fn decode_full_takes_ownership() {
         let before = param_spec_refcount(pspec);
 
         let decoded = fundamental(Ownership::Full)
-            .decode(&ffi::FfiValue::Ptr(pspec))
+            .decode(&ffi::StashedValue::Ptr(pspec))
             .expect("full decode should succeed");
         assert!(matches!(decoded, Value::Object(_)));
         assert_eq!(param_spec_refcount(pspec), before);
@@ -353,14 +359,14 @@ fn ptr_to_value_null_yields_null() {
 }
 
 #[test]
-fn read_from_raw_ptr_dereferences_slot() {
+fn read_from_pointer_dereferences_slot() {
     common::run(|| {
         let pspec = create_param_spec();
 
         // SAFETY: `read_slot` places `pspec` into a pointer slot and reads through it; `pspec` is
         // the live GParamSpec just created, so the slot points to a valid fundamental value.
         let value = unsafe { read_slot(&fundamental(Ownership::Borrowed), pspec) }
-            .expect("read_from_raw_ptr should succeed");
+            .expect("read_from_pointer should succeed");
         assert!(matches!(value, Value::Object(_)));
         drop(value);
         release_param_spec_refs(pspec, 1);
@@ -368,28 +374,28 @@ fn read_from_raw_ptr_dereferences_slot() {
 }
 
 #[test]
-fn write_return_to_raw_ptr_full_transfer_writes_referenced_pointer() {
+fn write_return_to_pointer_full_transfer_writes_referenced_pointer() {
     common::run(|| {
         assert_write_return_writes_pointer(&fundamental(Ownership::Full), 1);
     });
 }
 
 #[test]
-fn write_return_to_raw_ptr_borrowed_keeps_refcount() {
+fn write_return_to_pointer_borrowed_keeps_refcount() {
     common::run(|| {
         assert_write_return_writes_pointer(&fundamental(Ownership::Borrowed), 0);
     });
 }
 
 #[test]
-fn write_return_to_raw_ptr_err_writes_null() {
+fn write_return_to_pointer_err_writes_null() {
     common::run(|| {
         assert_write_return_err_writes_null(&fundamental(Ownership::Borrowed));
     });
 }
 
 #[test]
-fn write_value_to_raw_ptr_writes_fundamental() {
+fn write_value_to_pointer_writes_fundamental() {
     common::run(|| {
         let pspec = create_param_spec();
         let before = param_spec_refcount(pspec);
@@ -399,12 +405,12 @@ fn write_value_to_raw_ptr_writes_fundamental() {
         // the codec writes into; it was null, so no previous value is released, and the write
         // references the live `pspec`.
         unsafe {
-            fundamental(Ownership::Borrowed).write_value_to_raw_ptr(
+            fundamental(Ownership::Borrowed).write_value_to_pointer(
                 &mut slot as *mut *mut c_void as *mut c_void,
                 &Value::Object(NativeHandle::borrowed(pspec)),
             )
         }
-        .expect("write_value_to_raw_ptr should succeed");
+        .expect("write_value_to_pointer should succeed");
 
         assert_eq!(slot, pspec);
         assert_eq!(param_spec_refcount(pspec), before + 1);
@@ -414,7 +420,7 @@ fn write_value_to_raw_ptr_writes_fundamental() {
 }
 
 #[test]
-fn write_value_to_raw_ptr_unrefs_previous_fundamental() {
+fn write_value_to_pointer_unrefs_previous_fundamental() {
     common::run(|| {
         let old = create_param_spec();
         let new = create_param_spec();
@@ -430,12 +436,12 @@ fn write_value_to_raw_ptr_unrefs_previous_fundamental() {
         // the owned `old`) is the slot the codec swaps: it references the live `new` and releases
         // the previously owned `old`.
         unsafe {
-            fundamental(Ownership::Borrowed).write_value_to_raw_ptr(
+            fundamental(Ownership::Borrowed).write_value_to_pointer(
                 &mut slot as *mut *mut c_void as *mut c_void,
                 &Value::Object(NativeHandle::borrowed(new)),
             )
         }
-        .expect("write_value_to_raw_ptr should succeed");
+        .expect("write_value_to_pointer should succeed");
 
         assert_eq!(slot, new);
         assert_eq!(param_spec_refcount(new), new_before + 1);
@@ -447,7 +453,7 @@ fn write_value_to_raw_ptr_unrefs_previous_fundamental() {
 }
 
 #[test]
-fn write_value_to_raw_ptr_null_releases_previous_fundamental() {
+fn write_value_to_pointer_null_releases_previous_fundamental() {
     common::run(|| {
         let pspec = create_param_spec();
 
@@ -462,9 +468,9 @@ fn write_value_to_raw_ptr_null_releases_previous_fundamental() {
         // the previously owned `pspec`.
         unsafe {
             fundamental(Ownership::Borrowed)
-                .write_value_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, &Value::Null)
+                .write_value_to_pointer(&mut slot as *mut *mut c_void as *mut c_void, &Value::Null)
         }
-        .expect("write_value_to_raw_ptr should succeed");
+        .expect("write_value_to_pointer should succeed");
 
         assert!(slot.is_null());
         assert_eq!(param_spec_refcount(pspec), before - 1);

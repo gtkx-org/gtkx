@@ -5,13 +5,15 @@ use std::ffi::c_void;
 use libffi::middle as libffi;
 
 use native::ffi;
-use native::types::{CallbackScope, CallbackType, FfiEncoder, Type, VoidType};
-use native::value::Value;
+use native::ffi::descriptors::{
+    CallbackDescriptor, CallbackScope, Descriptor, FfiEncoder, VoidDescriptor,
+};
+use native::ffi::value::Value;
 
-fn callback_type(has_destroy: bool) -> CallbackType {
-    CallbackType {
+fn callback_type(has_destroy: bool) -> CallbackDescriptor {
+    CallbackDescriptor {
         arg_types: Vec::new(),
-        return_type: Box::new(Type::Void(VoidType)),
+        return_type: Box::new(Descriptor::Void(VoidDescriptor)),
         has_destroy,
         user_data_index: None,
         scope: CallbackScope::Call,
@@ -19,14 +21,14 @@ fn callback_type(has_destroy: bool) -> CallbackType {
 }
 
 fn assert_null_callback(
-    codec: &CallbackType,
+    codec: &CallbackDescriptor,
     value: &Value,
     expected_destroy: Option<*mut c_void>,
 ) {
     let encoded = codec
         .encode(value)
         .expect("encode should build the null callback");
-    let ffi::FfiValue::Callback(tv) = encoded else {
+    let ffi::StashedValue::Callback(tv) = encoded else {
         panic!("expected Callback ffi value");
     };
     assert!(tv.fn_ptr().is_null());

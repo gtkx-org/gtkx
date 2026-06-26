@@ -1,18 +1,26 @@
-mod storage;
-mod value;
+test_visible_modules! {
+    arg,
+    callback,
+    descriptors,
+    library_cache,
+    value,
+}
 
-pub use storage::{
-    FfiStorage, FfiStorageKind, GArrayData, GListFlavor, GSListFlavor, HashTableData, ListFlavor,
+mod stash;
+mod stashed_value;
+
+pub use stash::{
+    Stash, StashKind, GArrayData, GListFlavor, GSListFlavor, HashTableData, ListFlavor,
     PendingRelease, PendingTransfer,
 };
 #[cfg(feature = "test-support")]
-pub use storage::{GListData, GSListData, StringGListData, StringGSListData};
-pub use value::{CallbackValue, FfiValue};
+pub use stash::{GListData, GSListData, StringGListData, StringGSListData};
+pub use stashed_value::{CallbackValue, StashedValue};
 
-use crate::arg::Arg;
-use crate::types::FfiEncoder as _;
+use crate::ffi::arg::Arg;
+use crate::ffi::descriptors::FfiEncoder as _;
 
-impl TryFrom<Arg> for FfiValue {
+impl TryFrom<Arg> for StashedValue {
     type Error = anyhow::Error;
 
     fn try_from(arg: Arg) -> anyhow::Result<Self> {

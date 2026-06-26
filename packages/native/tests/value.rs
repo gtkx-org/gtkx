@@ -9,26 +9,27 @@ use gtk4::prelude::ObjectType as _;
 use gtk4::prelude::StaticType as _;
 
 use native::ffi;
-use native::types::{
-    ArrayKind, ArrayType, BoxedType, FfiDecoder, GObjectType, Ownership, StringType, Type,
+use native::ffi::descriptors::{
+    ArrayDescriptor, ArrayKind, BoxedDescriptor, Descriptor, FfiDecoder, GObjectDescriptor,
+    Ownership, StringDescriptor,
 };
-use native::value::Value;
+use native::ffi::value::Value;
 
 use common::get_gobject_refcount;
 
-fn gobject_type_of(ownership: Ownership) -> Type {
-    Type::GObject(GObjectType { ownership })
+fn gobject_type_of(ownership: Ownership) -> Descriptor {
+    Descriptor::GObject(GObjectDescriptor { ownership })
 }
 
-fn string_type_of(ownership: Ownership) -> Type {
-    Type::String(StringType {
+fn string_type_of(ownership: Ownership) -> Descriptor {
+    Descriptor::String(StringDescriptor {
         ownership,
         length: None,
     })
 }
 
-fn rgba_boxed_type_of(ownership: Ownership) -> Type {
-    Type::Boxed(BoxedType {
+fn rgba_boxed_type_of(ownership: Ownership) -> Descriptor {
+    Descriptor::Boxed(BoxedDescriptor {
         ownership,
         type_name: "GdkRGBA".to_string(),
         library: None,
@@ -38,8 +39,8 @@ fn rgba_boxed_type_of(ownership: Ownership) -> Type {
     })
 }
 
-fn gvariant_fundamental_type_of(ownership: Ownership) -> Type {
-    Type::Fundamental(native::types::FundamentalType {
+fn gvariant_fundamental_type_of(ownership: Ownership) -> Descriptor {
+    Descriptor::Fundamental(native::ffi::descriptors::FundamentalDescriptor {
         ownership,
         library: "libglib-2.0.so.0".to_string(),
         ref_func: "g_variant_ref_sink".to_string(),
@@ -48,16 +49,16 @@ fn gvariant_fundamental_type_of(ownership: Ownership) -> Type {
     })
 }
 
-fn struct_type_of(ownership: Ownership, size: Option<usize>) -> Type {
-    Type::Struct(native::types::StructType {
+fn struct_type_of(ownership: Ownership, size: Option<usize>) -> Descriptor {
+    Descriptor::Struct(native::ffi::descriptors::StructDescriptor {
         ownership,
         size,
         caller_allocated: false,
     })
 }
 
-fn gobject_glist_type_of(container: Ownership) -> Type {
-    Type::Array(ArrayType {
+fn gobject_glist_type_of(container: Ownership) -> Descriptor {
+    Descriptor::Array(ArrayDescriptor {
         item_type: Box::new(gobject_type_of(Ownership::Borrowed)),
         kind: ArrayKind::GList,
         ownership: container,
@@ -65,8 +66,8 @@ fn gobject_glist_type_of(container: Ownership) -> Type {
     })
 }
 
-fn string_array_type_of(item: Ownership, container: Ownership, kind: ArrayKind) -> Type {
-    Type::Array(ArrayType {
+fn string_array_type_of(item: Ownership, container: Ownership, kind: ArrayKind) -> Descriptor {
+    Descriptor::Array(ArrayDescriptor {
         item_type: Box::new(string_type_of(item)),
         kind,
         ownership: container,
@@ -74,23 +75,23 @@ fn string_array_type_of(item: Ownership, container: Ownership, kind: ArrayKind) 
     })
 }
 
-fn decode_ptr(ty: &Type, ptr: *mut c_void) -> Value {
-    ty.decode(&ffi::FfiValue::Ptr(ptr))
+fn decode_ptr(ty: &Descriptor, ptr: *mut c_void) -> Value {
+    ty.decode(&ffi::StashedValue::Ptr(ptr))
         .expect("decode should succeed")
 }
 
-fn assert_null_ptr_decodes_to_null(ty: &Type) {
+fn assert_null_ptr_decodes_to_null(ty: &Descriptor) {
     assert!(matches!(decode_ptr(ty, std::ptr::null_mut()), Value::Null));
 }
 
-fn assert_ptr_decodes_to_string(ty: &Type, ptr: *mut c_void, expected: &str) {
+fn assert_ptr_decodes_to_string(ty: &Descriptor, ptr: *mut c_void, expected: &str) {
     let Value::String(s) = decode_ptr(ty, ptr) else {
         panic!("Expected Value::String");
     };
     assert_eq!(s, expected);
 }
 
-fn decode_array(ty: &Type, ptr: *mut c_void) -> Vec<Value> {
+fn decode_array(ty: &Descriptor, ptr: *mut c_void) -> Vec<Value> {
     let Value::Array(items) = decode_ptr(ty, ptr) else {
         panic!("Expected Value::Array");
     };
@@ -137,29 +138,35 @@ fn build_gobject_glist(count: usize) -> *mut glib::ffi::GList {
     list
 }
 
-fn scalar_slot_storage(value: &ffi::FfiValue) -> ffi::FfiValue {
-    let storage = ffi::FfiStorage::from(vec![0u64]);
+fn scalar_slot_storage(value: &ffi::StashedValue) -> ffi::StashedValue {
+    let storage = ffi::Stash::from(vec![0u64]);
     // SAFETY: `storage.ptr()` addresses the live `u64` backing vec, at least as wide as any scalar
     // `write_scalar_to` writes, so the write is in bounds.
     unsafe { value.write_scalar_to(storage.ptr()) }.expect("scalar payload should write");
-    ffi::FfiValue::Storage(storage)
+    ffi::StashedValue::Storage(storage)
 }
 
-fn assert_scalar_ref_decodes_to_number(inner: Type, seeded: &ffi::FfiValue, expected: f64) {
+fn assert_scalar_ref_decodes_to_number(
+    inner: Descriptor,
+    seeded: &ffi::StashedValue,
+    expected: f64,
+) {
     let cif_value = scalar_slot_storage(seeded);
-    let type_ = Type::Ref(native::types::RefType::new(inner).expect("valid Ref inner"));
+    let type_ = Descriptor::Ref(
+        native::ffi::descriptors::RefDescriptor::new(inner).expect("valid Ref inner"),
+    );
     let Value::Number(n) = type_.decode(&cif_value).expect("Ref decode failed") else {
         panic!("Expected Value::Number");
     };
     assert_eq!(n, expected);
 }
 
-fn ptr_slot_storage(ptr: *mut c_void) -> ffi::FfiValue {
+fn ptr_slot_storage(ptr: *mut c_void) -> ffi::StashedValue {
     let mut slot: Vec<*mut c_void> = vec![ptr];
     let storage_ptr = slot.as_mut_ptr() as *mut c_void;
-    ffi::FfiValue::Storage(ffi::FfiStorage::new(
+    ffi::StashedValue::Storage(ffi::Stash::new(
         storage_ptr,
-        ffi::FfiStorageKind::PtrStorage(slot),
+        ffi::StashKind::PtrStorage(slot),
     ))
 }
 
@@ -488,8 +495,8 @@ fn from_cif_value_fundamental_null() {
 fn from_cif_value_ref_integer() {
     common::run(|| {
         assert_scalar_ref_decodes_to_number(
-            Type::Integer(native::types::IntegerKind::I32),
-            &ffi::FfiValue::I32(12345),
+            Descriptor::Integer(native::ffi::descriptors::IntegerKind::I32),
+            &ffi::StashedValue::I32(12345),
             12345.0,
         );
     });
@@ -499,8 +506,8 @@ fn from_cif_value_ref_integer() {
 fn from_cif_value_ref_float() {
     common::run(|| {
         assert_scalar_ref_decodes_to_number(
-            Type::Float(native::types::FloatKind::F64),
-            &ffi::FfiValue::F64(3.15625),
+            Descriptor::Float(native::ffi::descriptors::FloatKind::F64),
+            &ffi::StashedValue::F64(3.15625),
             3.15625,
         );
     });
@@ -513,8 +520,8 @@ fn from_cif_value_ref_gobject() {
         let obj_ptr = obj.as_ptr() as *mut c_void;
 
         let cif_value = ptr_slot_storage(obj_ptr);
-        let type_ = Type::Ref(
-            native::types::RefType::new(gobject_type_of(Ownership::Borrowed))
+        let type_ = Descriptor::Ref(
+            native::ffi::descriptors::RefDescriptor::new(gobject_type_of(Ownership::Borrowed))
                 .expect("GObject is a valid Ref inner"),
         );
 
@@ -533,8 +540,8 @@ fn from_cif_value_ref_gobject() {
 fn from_cif_value_ref_gobject_null_inner() {
     common::run(|| {
         let cif_value = ptr_slot_storage(std::ptr::null_mut());
-        let type_ = Type::Ref(
-            native::types::RefType::new(gobject_type_of(Ownership::Borrowed))
+        let type_ = Descriptor::Ref(
+            native::ffi::descriptors::RefDescriptor::new(gobject_type_of(Ownership::Borrowed))
                 .expect("GObject is a valid Ref inner"),
         );
 
@@ -552,8 +559,8 @@ fn from_cif_value_ref_boxed() {
         let boxed_ptr = common::allocate_test_boxed(gtype);
 
         let cif_value = ptr_slot_storage(boxed_ptr);
-        let type_ = Type::Ref(
-            native::types::RefType::new(rgba_boxed_type_of(Ownership::Borrowed))
+        let type_ = Descriptor::Ref(
+            native::ffi::descriptors::RefDescriptor::new(rgba_boxed_type_of(Ownership::Borrowed))
                 .expect("Boxed is a valid Ref inner"),
         );
 
@@ -748,10 +755,10 @@ fn object_ptr_errors_for_non_object_variants() {
 #[test]
 fn decode_with_context_decodes_integer() {
     common::run(|| {
-        let ffi_value = ffi::FfiValue::I32(99);
-        let type_ = Type::Integer(native::types::IntegerKind::I32);
+        let stashed_value = ffi::StashedValue::I32(99);
+        let type_ = Descriptor::Integer(native::ffi::descriptors::IntegerKind::I32);
 
-        let result = type_.decode_with_context(&ffi_value, &[], &[]);
+        let result = type_.decode_with_context(&stashed_value, &[], &[]);
 
         assert!(result.is_ok());
         if let Value::Number(n) = result.unwrap() {

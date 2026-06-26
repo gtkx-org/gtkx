@@ -4,7 +4,7 @@ use std::ffi::c_void;
 
 use gtk4::glib;
 
-use native::managed::Fundamental;
+use native::handle::Fundamental;
 
 use common::{param_spec_ref, param_spec_refcount, param_spec_unref};
 

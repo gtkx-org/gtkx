@@ -1,17 +1,17 @@
 use std::ffi::c_void;
 
 use libffi::middle;
-use native::ffi::FfiValue;
-use native::types::{BufferType, FfiDecoder, FfiEncoder as _, Type};
-use native::value::{BufferView, BufferViewKind, Value};
+use native::ffi::StashedValue;
+use native::ffi::descriptors::{BufferDescriptor, Descriptor, FfiDecoder, FfiEncoder as _};
+use native::ffi::value::{BufferView, BufferViewKind, Value};
 
-fn encode(value: &Value) -> anyhow::Result<FfiValue> {
-    BufferType.encode(value)
+fn encode(value: &Value) -> anyhow::Result<StashedValue> {
+    BufferDescriptor.encode(value)
 }
 
 fn encoded_address(value: &Value) -> usize {
     let encoded = encode(value).expect("buffer value should encode");
-    let FfiValue::Ptr(ptr) = encoded else {
+    let StashedValue::Ptr(ptr) = encoded else {
         panic!("expected a pointer, got {encoded:?}");
     };
     ptr as usize
@@ -51,17 +51,17 @@ fn buffer_encodes_null_and_undefined_as_null() {
 
 #[test]
 fn buffer_cannot_be_decoded() {
-    assert!(FfiDecoder::decode(&BufferType, &FfiValue::Void).is_err());
+    assert!(FfiDecoder::decode(&BufferDescriptor, &StashedValue::Void).is_err());
 }
 
 extern "C" fn ret_unit() {}
 
 #[test]
 fn buffer_cannot_be_a_return_type() {
-    assert!(!Type::Buffer(BufferType).can_be_return_type());
+    assert!(!Descriptor::Buffer(BufferDescriptor).can_be_return_type());
 
     let cif = middle::Cif::new(Vec::new(), middle::Type::void());
-    let err = BufferType
+    let err = BufferDescriptor
         .call_cif(&cif, middle::CodePtr(ret_unit as *mut c_void), &[])
         .expect_err("a buffer return slot must fail");
     assert!(

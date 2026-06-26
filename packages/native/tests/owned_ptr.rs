@@ -4,7 +4,7 @@ use std::ffi::c_void;
 
 use gtk4::glib::{self, translate::IntoGlib as _};
 use gtk4::prelude::StaticType as _;
-use native::managed::Boxed;
+use native::handle::Boxed;
 
 fn owned_rgba_boxed() -> (glib::Type, *mut c_void, Boxed) {
     let gtype = gtk4::gdk::RGBA::static_type();

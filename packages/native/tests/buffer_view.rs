@@ -1,15 +1,15 @@
 use std::ffi::c_void;
 
 use napi::sys::TypedarrayType;
-use native::ffi::FfiValue;
-use native::types::{
-    ArrayKind, ArrayType, BigIntKind, BooleanType, EnumFlagsKind, EnumFlagsType, FfiEncoder as _,
-    FloatKind, IntegerKind, Ownership, Type,
+use native::ffi::StashedValue;
+use native::ffi::descriptors::{
+    ArrayDescriptor, ArrayKind, BigIntKind, BooleanDescriptor, Descriptor, EnumFlagsDescriptor,
+    EnumFlagsKind, FfiEncoder as _, FloatKind, IntegerKind, Ownership,
 };
-use native::value::{BufferView, BufferViewKind, Value};
+use native::ffi::value::{BufferView, BufferViewKind, Value};
 
-fn array_of(item: Type, kind: ArrayKind, ownership: Ownership) -> ArrayType {
-    ArrayType {
+fn array_of(item: Descriptor, kind: ArrayKind, ownership: Ownership) -> ArrayDescriptor {
+    ArrayDescriptor {
         item_type: Box::new(item),
         kind,
         ownership,
@@ -28,21 +28,21 @@ fn view_over(data: &mut [u8], length: usize, kind: BufferViewKind) -> BufferView
 }
 
 fn encode_view(
-    item: Type,
+    item: Descriptor,
     kind: ArrayKind,
     ownership: Ownership,
     view: BufferView,
-) -> anyhow::Result<FfiValue> {
+) -> anyhow::Result<StashedValue> {
     array_of(item, kind, ownership).encode(&Value::BufferView(view))
 }
 
-fn assert_passthrough(item: Type, view_kind: BufferViewKind) {
+fn assert_passthrough(item: Descriptor, view_kind: BufferViewKind) {
     let mut data = vec![0u8; 4 * view_kind.element_size()];
     let expected_ptr = data.as_mut_ptr() as *mut c_void;
     let view = view_over(&mut data, 4, view_kind);
     let encoded = encode_view(item, ArrayKind::Array, Ownership::Borrowed, view)
         .expect("matching view should encode");
-    let FfiValue::Ptr(ptr) = encoded else {
+    let StashedValue::Ptr(ptr) = encoded else {
         panic!("expected a pointer passthrough, got {encoded:?}");
     };
     assert_eq!(ptr, expected_ptr);
@@ -114,22 +114,43 @@ fn value_buffer_view_is_not_an_object_or_number() {
 
 #[test]
 fn array_encode_accepts_every_matching_view_kind() {
-    assert_passthrough(Type::Integer(IntegerKind::I8), BufferViewKind::Int8);
-    assert_passthrough(Type::Integer(IntegerKind::U8), BufferViewKind::Uint8);
-    assert_passthrough(Type::Integer(IntegerKind::U8), BufferViewKind::Uint8Clamped);
-    assert_passthrough(Type::Integer(IntegerKind::I16), BufferViewKind::Int16);
-    assert_passthrough(Type::Integer(IntegerKind::U16), BufferViewKind::Uint16);
-    assert_passthrough(Type::Integer(IntegerKind::I32), BufferViewKind::Int32);
-    assert_passthrough(Type::Integer(IntegerKind::U32), BufferViewKind::Uint32);
-    assert_passthrough(Type::Integer(IntegerKind::I64), BufferViewKind::BigInt64);
-    assert_passthrough(Type::Integer(IntegerKind::U64), BufferViewKind::BigUint64);
-    assert_passthrough(Type::BigInt(BigIntKind::I64), BufferViewKind::BigInt64);
-    assert_passthrough(Type::BigInt(BigIntKind::U64), BufferViewKind::BigUint64);
-    assert_passthrough(Type::Float(FloatKind::F32), BufferViewKind::Float32);
-    assert_passthrough(Type::Float(FloatKind::F64), BufferViewKind::Float64);
+    assert_passthrough(Descriptor::Integer(IntegerKind::I8), BufferViewKind::Int8);
+    assert_passthrough(Descriptor::Integer(IntegerKind::U8), BufferViewKind::Uint8);
+    assert_passthrough(
+        Descriptor::Integer(IntegerKind::U8),
+        BufferViewKind::Uint8Clamped,
+    );
+    assert_passthrough(Descriptor::Integer(IntegerKind::I16), BufferViewKind::Int16);
+    assert_passthrough(
+        Descriptor::Integer(IntegerKind::U16),
+        BufferViewKind::Uint16,
+    );
+    assert_passthrough(Descriptor::Integer(IntegerKind::I32), BufferViewKind::Int32);
+    assert_passthrough(
+        Descriptor::Integer(IntegerKind::U32),
+        BufferViewKind::Uint32,
+    );
+    assert_passthrough(
+        Descriptor::Integer(IntegerKind::I64),
+        BufferViewKind::BigInt64,
+    );
+    assert_passthrough(
+        Descriptor::Integer(IntegerKind::U64),
+        BufferViewKind::BigUint64,
+    );
+    assert_passthrough(
+        Descriptor::BigInt(BigIntKind::I64),
+        BufferViewKind::BigInt64,
+    );
+    assert_passthrough(
+        Descriptor::BigInt(BigIntKind::U64),
+        BufferViewKind::BigUint64,
+    );
+    assert_passthrough(Descriptor::Float(FloatKind::F32), BufferViewKind::Float32);
+    assert_passthrough(Descriptor::Float(FloatKind::F64), BufferViewKind::Float64);
 }
 
-fn assert_view_rejected(item: Type, view_kind: BufferViewKind) {
+fn assert_view_rejected(item: Descriptor, view_kind: BufferViewKind) {
     let mut data = vec![0u8; 4 * view_kind.element_size()];
     let view = view_over(&mut data, 4, view_kind);
     let err = encode_view(item, ArrayKind::Array, Ownership::Borrowed, view)
@@ -139,23 +160,29 @@ fn assert_view_rejected(item: Type, view_kind: BufferViewKind) {
 
 #[test]
 fn array_encode_rejects_mismatched_bigint_view() {
-    assert_view_rejected(Type::BigInt(BigIntKind::U64), BufferViewKind::BigInt64);
+    assert_view_rejected(
+        Descriptor::BigInt(BigIntKind::U64),
+        BufferViewKind::BigInt64,
+    );
 }
 
 #[test]
 fn array_encode_rejects_views_for_non_buffer_element_kinds() {
-    assert_view_rejected(Type::Boolean(BooleanType), BufferViewKind::Uint8);
+    assert_view_rejected(
+        Descriptor::Boolean(BooleanDescriptor),
+        BufferViewKind::Uint8,
+    );
 }
 
 #[test]
 fn array_encode_accepts_views_for_enum_flags_storage() {
-    let enum_flags = EnumFlagsType {
+    let enum_flags = EnumFlagsDescriptor {
         kind: EnumFlagsKind::Enum,
         library: "libgtk-4.so.1".to_owned(),
         get_type_fn: "gtk_orientation_get_type".to_owned(),
         storage: IntegerKind::I32,
     };
-    assert_passthrough(Type::EnumFlags(enum_flags), BufferViewKind::Int32);
+    assert_passthrough(Descriptor::EnumFlags(enum_flags), BufferViewKind::Int32);
 }
 
 #[test]
@@ -163,7 +190,7 @@ fn array_encode_rejects_views_for_transfer_full_arrays() {
     let mut data = vec![0u8; 4];
     let view = view_over(&mut data, 4, BufferViewKind::Uint8);
     let err = encode_view(
-        Type::Integer(IntegerKind::U8),
+        Descriptor::Integer(IntegerKind::U8),
         ArrayKind::Array,
         Ownership::Full,
         view,
@@ -177,13 +204,13 @@ fn assert_int32_view_passes_through(kind: ArrayKind, context: &str) {
     let expected_ptr = data.as_mut_ptr() as *mut c_void;
     let view = view_over(&mut data, 4, BufferViewKind::Int32);
     let encoded = encode_view(
-        Type::Integer(IntegerKind::I32),
+        Descriptor::Integer(IntegerKind::I32),
         kind,
         Ownership::Borrowed,
         view,
     )
     .expect(context);
-    assert!(matches!(encoded, FfiValue::Ptr(ptr) if ptr == expected_ptr));
+    assert!(matches!(encoded, StashedValue::Ptr(ptr) if ptr == expected_ptr));
 }
 
 #[test]
@@ -204,7 +231,7 @@ fn array_encode_checks_fixed_size_views_exactly() {
     let mut short = vec![0u8; 8];
     let short_view = view_over(&mut short, 2, BufferViewKind::Int32);
     let err = encode_view(
-        Type::Integer(IntegerKind::I32),
+        Descriptor::Integer(IntegerKind::I32),
         ArrayKind::Fixed { size: 4 },
         Ownership::Borrowed,
         short_view,
