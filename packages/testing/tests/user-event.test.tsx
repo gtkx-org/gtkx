@@ -172,19 +172,17 @@ describe("userEvent.type", () => {
     });
 });
 
-describe("userEvent.setup", () => {
-    it("returns sessions with isolated modifier state", async () => {
+describe("userEvent.keyboard — held modifier state", () => {
+    it("retains a held modifier across calls until it is released", async () => {
         const onActivate = vi.fn(() => true);
         const host = await renderShortcutHost(Gtk.ShortcutTrigger.parseString("<Shift>F5"), onActivate);
 
-        const held = userEvent.setup();
-        const fresh = userEvent.setup();
-
-        await held.keyboard(host, "{Shift>}");
-        await held.keyboard(host, "{F5}");
+        await userEvent.keyboard(host, "{Shift>}");
+        await userEvent.keyboard(host, "{F5}");
         expect(onActivate).toHaveBeenCalledTimes(1);
 
-        await fresh.keyboard(host, "{F5}");
+        await userEvent.keyboard(host, "{/Shift}");
+        await userEvent.keyboard(host, "{F5}");
         expect(onActivate).toHaveBeenCalledTimes(1);
     });
 });

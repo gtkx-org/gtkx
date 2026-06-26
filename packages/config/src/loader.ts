@@ -62,7 +62,7 @@ export const loadResolvedGtkxConfig = async (
     options: LoadResolvedGtkxConfigOptions = {},
 ): Promise<ResolvedGtkxConfig> => {
     try {
-        const { config } = await loadGtkxConfig(cwd, options.mode === undefined ? {} : { mode: options.mode });
+        const { config } = await loadGtkxConfig(cwd, options);
         return resolveGtkxConfig(config);
     } catch (error) {
         if (options.allowMissing && error instanceof GtkxConfigNotFoundError) {

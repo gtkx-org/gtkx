@@ -376,11 +376,6 @@ pub trait RawPtrWriter {
     }
 }
 
-pub(crate) trait FromDescriptor: Sized {
-    #[allow(clippy::trivially_copy_pass_by_ref)]
-    fn from_descriptor(env: &Env, obj: &JsObject) -> napi::Result<Self>;
-}
-
 #[enum_dispatch(FfiEncoder, FfiDecoder, RawPtrWriter)]
 #[derive(Debug, Clone)]
 #[non_exhaustive]
@@ -520,7 +515,8 @@ mod tests {
 
     #[test]
     fn ref_cannot_be_return_type() {
-        let ref_type = RefType::new(Type::Integer(IntegerKind::I32));
+        let ref_type =
+            RefType::new(Type::Integer(IntegerKind::I32)).expect("Integer is a valid Ref inner");
         assert!(!Type::Ref(ref_type).can_be_return_type());
     }
 

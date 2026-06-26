@@ -74,7 +74,7 @@ export const renderDescriptor = (
     options: RenderDescriptorOptions = {},
 ): string => {
     if (ref === undefined) return tVoid;
-    const { argIndexOffset = 0, callerAllocated = false } = options;
+    const { argIndexOffset = 0 } = options;
     const ownership = ffiOwnership(transfer);
     const type = context.library.typeOf(ref);
     if (type === undefined) return tObject(ownership);
@@ -89,7 +89,7 @@ export const renderDescriptor = (
         case "record":
         case "enum":
         case "alias":
-            return expressionForResolved(context, type, ownership, callerAllocated);
+            return expressionForResolved(context, type, transfer, options);
         case "carray":
             return arrayExpression(context, type, transfer, argIndexOffset);
         case "list": {
@@ -108,15 +108,11 @@ export const renderDescriptor = (
     }
 };
 
-export type ResolvedCallback = {
-    callback: GirCallback;
-};
-
-const resolveCallbackType = (context: ModuleContext, ref: TypeId | undefined): ResolvedCallback | undefined => {
+const resolveCallbackType = (context: ModuleContext, ref: TypeId | undefined): GirCallback | undefined => {
     if (ref === undefined) return undefined;
     const type = context.library.typeOf(ref);
     if (type?.kind !== "callback") return undefined;
-    return { callback: type.value };
+    return type.value;
 };
 
 export const isScalarRef = (library: Library, ref: TypeId | undefined): boolean => {
@@ -125,7 +121,7 @@ export const isScalarRef = (library: Library, ref: TypeId | undefined): boolean 
     if (type === undefined) return false;
     if (type.kind === "primitive") return type.category !== "string" && type.category !== "void";
     if (type.kind === "enum") return true;
-    if (type.kind === "alias") return type.target !== undefined && isScalarRef(library, type.target);
+    if (type.kind === "alias") return type.value.target !== undefined && isScalarRef(library, type.value.target);
     return false;
 };
 
@@ -153,9 +149,8 @@ export const renderCallbackType = (
     ref: TypeId | undefined,
     owningParameter: GirParameter,
 ): string | undefined => {
-    const resolved = resolveCallbackType(context, ref);
-    if (resolved === undefined) return undefined;
-    const { callback } = resolved;
+    const callback = resolveCallbackType(context, ref);
+    if (callback === undefined) return undefined;
     const argTypes = callback.parameters.map((parameter) => renderParamDescriptor(context, parameter, parameter.type));
     let userDataIndex: number | undefined;
     callback.parameters.forEach((parameter, index) => {
@@ -270,7 +265,7 @@ export const renderSelfDescriptor = (context: ModuleContext, instance: GirParame
         const ancestor = fundamentalAncestor(context, type);
         return ancestor === undefined ? tObject("borrowed") : renderFundamental({ ...ancestor, ownership: "borrowed" });
     }
-    if (type.kind === "record" && isReferenceableRecord(type.value)) {
+    if (type.kind === "record") {
         return recordExpression(context, type, ffiOwnership(instance.transferOwnership));
     }
     return tObject("borrowed");
@@ -282,13 +277,6 @@ const recordRefPair = (record: ResolvedRecord): { refFunc: string | undefined; u
     refFunc: record.glibRefFunc ?? record.copyFunc,
     unrefFunc: record.glibUnrefFunc ?? record.freeFunc,
 });
-
-const isReferenceableRecord = (record: ResolvedRecord): boolean => {
-    const hasRefPair =
-        (record.glibRefFunc ?? record.copyFunc) !== undefined &&
-        (record.glibUnrefFunc ?? record.freeFunc) !== undefined;
-    return hasRefPair || record.glibGetType !== undefined;
-};
 
 const recordNeedsFallbackClass = (record: ResolvedRecord): boolean => {
     const { refFunc, unrefFunc } = recordRefPair(record);
@@ -348,15 +336,16 @@ const recordExpression = (
 const expressionForResolved = (
     context: ModuleContext,
     resolved: Extract<EntityType, { kind: "class" | "interface" | "record" | "enum" | "alias" }>,
-    ownership: Ownership,
-    callerAllocated = false,
+    transfer: ParameterTransfer,
+    options: RenderDescriptorOptions,
 ): string => {
+    const ownership = ffiOwnership(transfer);
     switch (resolved.kind) {
         case "class":
         case "interface":
             return classOrInterfaceExpression(resolved, ownership);
         case "record":
-            return recordExpression(context, resolved, ownership, callerAllocated);
+            return recordExpression(context, resolved, ownership, options.callerAllocated ?? false);
         case "enum": {
             const getter = resolved.value.glibGetType;
             const signed = resolved.value.members.some((member) => member.value.startsWith("-"));
@@ -365,7 +354,7 @@ const expressionForResolved = (
             return resolved.value.kind === "bitfield" ? tFlags(lib, getter, signed) : tEnum(lib, getter, signed);
         }
         case "alias":
-            return aliasExpression(context, resolved.target, ownership);
+            return aliasExpression(context, resolved.value.target, transfer, options);
     }
 };
 
@@ -402,9 +391,14 @@ const inlineElementSize = (
     return size > 0 ? size : undefined;
 };
 
-const aliasExpression = (context: ModuleContext, target: TypeId | undefined, ownership: Ownership): string => {
+const aliasExpression = (
+    context: ModuleContext,
+    target: TypeId | undefined,
+    transfer: ParameterTransfer,
+    options: RenderDescriptorOptions,
+): string => {
     if (target === undefined) {
-        return tObject(ownership);
+        return tObject(ffiOwnership(transfer));
     }
-    return renderDescriptor(context, target, ownership === "full" ? "full" : "none");
+    return renderDescriptor(context, target, transfer, options);
 };

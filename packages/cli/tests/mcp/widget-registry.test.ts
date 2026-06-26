@@ -78,11 +78,11 @@ describe("WidgetRegistry.refresh / windows", () => {
         const second = makeWidget();
         const registry = new WidgetRegistry();
 
-        expect(registry.windows()).toEqual([]);
+        expect(registry.toplevels()).toEqual([]);
 
         listToplevels.mockReturnValueOnce([first as unknown, second as unknown]);
         registry.refresh();
 
-        expect(registry.windows()).toEqual([first, second]);
+        expect(registry.toplevels()).toEqual([first, second]);
     });
 });

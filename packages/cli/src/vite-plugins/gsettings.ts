@@ -11,10 +11,10 @@ import { resolveDataDir } from "../internal/data-dir.js";
 import { error, info } from "../internal/log.js";
 import { removeTempDir } from "../internal/remove-temp-dir.js";
 import { withStagingDir } from "../internal/staging-dir.js";
-import { createVirtualNamespace, resolveToVirtual } from "./virtual-module.js";
+import { createVirtualNamespace } from "./virtual-module.js";
 
 const VIRTUAL_PREFIX = "\0gtkx-gsettings:";
-const { isVirtual, fromVirtualId } = createVirtualNamespace(VIRTUAL_PREFIX);
+const { isVirtual, fromVirtualId, resolveToVirtual } = createVirtualNamespace(VIRTUAL_PREFIX);
 
 const SCHEMA_ENV_BANNER = [
     `process.env.GSETTINGS_SCHEMA_DIR = [`,
@@ -199,7 +199,7 @@ export function gtkxGSettings(): Plugin {
 
         async resolveId(source, importer, options) {
             if (!source.endsWith(SCHEMA_SUFFIX)) return;
-            return resolveToVirtual(this, { source, importer, options }, VIRTUAL_PREFIX);
+            return resolveToVirtual(this, { source, importer, options });
         },
 
         load(id) {

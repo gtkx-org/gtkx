@@ -1,9 +1,9 @@
 import { sortedStringsBy } from "@gtkx/utils";
 import type { Library } from "../gir/library.js";
 import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
+import { ImportsBuilder } from "../writer/imports.js";
 import { collectAttachShapes } from "./attach-shapes.js";
 import { generateElementComponentsSection } from "./element-components.js";
-import { emptyJsxImports, renderJsxImports } from "./imports.js";
 import { collectIntrinsicElementClasses } from "./intrinsic-elements.js";
 import { generateJsxSection } from "./jsx.js";
 import { generateMetadata } from "./metadata.js";
@@ -13,7 +13,7 @@ import {
     ORDERED_INSERT,
     PAGE_META_SETTERS,
     SLOT_PROPS_BY_TYPE,
-    TOP_LEVEL_TYPES,
+    TOPLEVEL_TYPES,
 } from "./tables.js";
 
 export type JsxNamespaceFile = {
@@ -42,7 +42,7 @@ export const generateJsxFiles = (library: Library): JsxFiles => {
     }
 
     const metadata = generateMetadata(library, {
-        topLevelTypes: TOP_LEVEL_TYPES,
+        toplevelTypes: TOPLEVEL_TYPES,
         defaultBlockableTypes: DEFAULT_BLOCKABLE_TYPES,
         metaObjectAddMethods: META_OBJECT_ADD_METHODS,
         pageMetaSetters: PAGE_META_SETTERS,
@@ -55,7 +55,9 @@ export const generateJsxFiles = (library: Library): JsxFiles => {
 };
 
 const generateJsxNamespace = (targetNamespace: GirNamespace, library: Library): { source: string; count: number } => {
-    const imports = emptyJsxImports();
+    const targetDirectory = namespaceDirectory(targetNamespace);
+    const imports = new ImportsBuilder();
+    imports.addSideEffect(`@gtkx/gi/${targetDirectory}`);
 
     const elementComponents = generateElementComponentsSection(targetNamespace, library, { imports });
     const excludeNames = new Set<string>(elementComponents.exportedNames);
@@ -64,7 +66,7 @@ const generateJsxNamespace = (targetNamespace: GirNamespace, library: Library): 
         imports,
     });
 
-    const body = [renderJsxImports(namespaceDirectory(targetNamespace), imports), "", jsxSection];
+    const body = [imports.toSource().trimEnd(), "", jsxSection];
     if (elementComponents.source.length > 0) body.push("", elementComponents.source);
 
     const count = elementComponents.exportedNames.size + intrinsicCount;

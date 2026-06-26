@@ -1,9 +1,10 @@
-import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 
 export const TOPLEVELS: unique symbol = Symbol("gtkx.toplevels");
 
-export type Container = GObject.Object | typeof TOPLEVELS;
+export type QueryContainer = Gtk.Widget | Gtk.EventController | Gtk.LayoutManager | Gtk.ListItem | Gtk.ListHeader;
+
+export type Container = QueryContainer | Gtk.Application | typeof TOPLEVELS;
 
 const isApplication = (container: Container): container is Gtk.Application => container instanceof Gtk.Application;
 
@@ -18,14 +19,12 @@ const traverseWidgetTree = function* (root: Gtk.Widget): Generator<Gtk.Widget> {
 };
 
 export const descendants = function* (widget: Gtk.Widget): Generator<Gtk.Widget> {
-    let child = widget.getFirstChild();
-    while (child) {
-        yield* traverseWidgetTree(child);
-        child = child.getNextSibling();
-    }
+    const tree = traverseWidgetTree(widget);
+    tree.next();
+    yield* tree;
 };
 
-const resolveRoot = (container: GObject.Object): Gtk.Widget | null => {
+const resolveRoot = (container: QueryContainer): Gtk.Widget | null => {
     if (container instanceof Gtk.Widget) return container;
     if (container instanceof Gtk.EventController) return container.getWidget();
     if (container instanceof Gtk.LayoutManager) return container.getWidget();

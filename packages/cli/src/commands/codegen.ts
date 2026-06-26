@@ -1,7 +1,7 @@
-import { resolve } from "node:path";
 import { defineCommand } from "citty";
 import { formatCodegenResult } from "../codegen/report.js";
 import { ensureGenerated, runCodegen, syncSchemaEnv } from "../codegen/run-codegen.js";
+import { cwdArg, resolveCwd } from "../internal/entry-arg.js";
 import { info } from "../internal/log.js";
 
 export const codegen = defineCommand({
@@ -15,13 +15,10 @@ export const codegen = defineCommand({
             description: "Wipe the generated store and regenerate unconditionally (recover a corrupted store)",
             default: false,
         },
-        cwd: {
-            type: "string",
-            description: "Project root (default: current working directory)",
-        },
+        ...cwdArg,
     },
     async run({ args }) {
-        const cwd = args.cwd ? resolve(args.cwd) : process.cwd();
+        const cwd = resolveCwd(args);
 
         if (!args.force) {
             const ran = await ensureGenerated(cwd);

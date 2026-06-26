@@ -63,9 +63,9 @@ export const detachFromParent = (child: Node, parent: Node): void => {
     resolveMapping(child, parent)?.detach(child, parent);
 };
 
-export const resyncRelationshipNode = (wrapper: Node): void => {
-    const parent = stateOf(wrapper).parent;
-    if (isRelationshipNode(wrapper) && parent) attachToParent(wrapper, parent);
+export const resyncRelationshipNode = (node: Node): void => {
+    const parent = stateOf(node).parent;
+    if (isRelationshipNode(node) && parent) attachToParent(node, parent);
 };
 
 const anchorWrapper = (before: Node): GObject.Object | null => {

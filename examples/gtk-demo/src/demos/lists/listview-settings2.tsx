@@ -178,7 +178,7 @@ const SchemaKeysListView = ({ filteredSchemaKeys, keysState, onValueEdit }: Sche
                     />
                 </GtkBox>
             )}
-            renderHeader={(schemaId: string) => <GtkLabel label={schemaId} xalign={0} />}
+            renderHeader={({ section: schemaId }: { section: string }) => <GtkLabel label={schemaId} xalign={0} />}
             sections={filteredSchemaKeys.map((schema) => ({
                 id: schema.schemaId,
                 value: schema.schemaId,

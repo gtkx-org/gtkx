@@ -1,4 +1,4 @@
-import { createRootElement } from "@gtkx/react";
+import * as Gtk from "@gtkx/gi/gtk";
 import { render } from "./render.js";
 import type { RenderHookOptions, RenderHookResult } from "./types.js";
 
@@ -25,7 +25,7 @@ export async function renderHook<Result, Props>(
     };
 
     const renderResult = await render(<TestComponent props={currentProps} />, {
-        container: createRootElement(),
+        container: new Gtk.Box(),
         wrapper: options?.wrapper,
     });
 

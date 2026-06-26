@@ -1,7 +1,7 @@
 {
     "$schema": "https://unpkg.com/knip@6/schema.json",
     "ignoreExportsUsedInFile": true,
-    "ignore": ["**/out-tsc/**", "**/native-binding*.cjs"],
+    "ignore": ["**/out-tsc/**", "**/native-binding*.cjs", ".claude/**"],
     "ignoreBinaries": [
         "espeak-ng",
         "glib-compile-resources",

@@ -69,7 +69,7 @@ impl RawVfunc {
 
     #[cfg_attr(test, allow(dead_code))]
     #[cfg_attr(coverage_nightly, coverage(off))]
-    fn into_built(self) -> PreparedVfunc {
+    fn into_prepared(self) -> PreparedVfunc {
         let Self {
             byte_offset,
             js_func,
@@ -119,10 +119,14 @@ impl RawInterface {
 
     #[cfg_attr(test, allow(dead_code))]
     #[cfg_attr(coverage_nightly, coverage(off))]
-    fn into_built(self) -> PreparedInterface {
+    fn into_prepared(self) -> PreparedInterface {
         PreparedInterface {
             gtype: self.gtype,
-            vfuncs: self.vfuncs.into_iter().map(RawVfunc::into_built).collect(),
+            vfuncs: self
+                .vfuncs
+                .into_iter()
+                .map(RawVfunc::into_prepared)
+                .collect(),
         }
     }
 }
@@ -192,7 +196,7 @@ impl PreparedInterface {
 /// `GTypeInfo::class_data` by `register_type` — either null or a `Box<Vec<PreparedVfunc>>` leaked
 /// via `Box::into_raw` — and `g_class` is the class struct being initialized. This must be called
 /// at most once per registered type so the boxed vfuncs are reclaimed exactly once.
-unsafe extern "C" fn class_init_trampoline(g_class: *mut c_void, class_data: *mut c_void) {
+unsafe extern "C" fn class_init(g_class: *mut c_void, class_data: *mut c_void) {
     if class_data.is_null() {
         return;
     }
@@ -304,7 +308,7 @@ impl RegisterClassRequest {
             class_size,
             base_init: None,
             base_finalize: None,
-            class_init: Some(class_init_trampoline),
+            class_init: Some(class_init),
             class_finalize: None,
             class_data: class_vfuncs_ptr,
             instance_size,
@@ -315,13 +319,13 @@ impl RegisterClassRequest {
 
         // SAFETY: `parent_gtype` is valid, `name_ptr` points to the request's live NUL-terminated
         // `GString`, and `info` is a fully initialized `GTypeInfo` whose `class_data` owns the
-        // boxed vfuncs that `class_init_trampoline` reclaims; the call runs on the gtkx-glib thread.
+        // boxed vfuncs that `class_init` reclaims; the call runs on the gtkx-glib thread.
         let new_gtype = unsafe {
             gobject_ffi::g_type_register_static(parent_gtype.into_glib(), name_ptr, &info, 0)
         };
 
         if new_gtype == 0 {
-            // SAFETY: registration failed before `class_init_trampoline` could run, so the boxed
+            // SAFETY: registration failed before `class_init` could run, so the boxed
             // vfuncs at `class_vfuncs_ptr` are still owned here; reclaiming and dropping them frees
             // them exactly once.
             drop(unsafe { Box::from_raw(class_vfuncs_ptr.cast::<Vec<PreparedVfunc>>()) });
@@ -350,12 +354,15 @@ impl NativeRequest for RegisterClassRequest {
 
         let class_size = query.class_size as u16;
         let instance_size = query.instance_size as u16;
-        let class_vfuncs: Vec<PreparedVfunc> =
-            self.vfuncs.into_iter().map(RawVfunc::into_built).collect();
+        let class_vfuncs: Vec<PreparedVfunc> = self
+            .vfuncs
+            .into_iter()
+            .map(RawVfunc::into_prepared)
+            .collect();
         let interfaces: Vec<PreparedInterface> = self
             .interfaces
             .into_iter()
-            .map(RawInterface::into_built)
+            .map(RawInterface::into_prepared)
             .collect();
         let class_vfuncs_ptr = Box::into_raw(Box::new(class_vfuncs)).cast::<c_void>();
 

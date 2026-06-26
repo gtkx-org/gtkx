@@ -1,7 +1,7 @@
 import "./utils/element-props.js";
 
 export { withApplicationLifecycle, withApplicationWindowPresentation } from "./components/application.js";
-export { type TopLevelParentProps, withWindowPresentation } from "./components/top-level.js";
+export { type ToplevelParentProps, withWindowPresentation } from "./components/top-level.js";
 export { useApplication } from "./hooks/use-application.js";
 export { useMergeRefs } from "./hooks/use-merge-refs.js";
 export { useProperty } from "./hooks/use-property.js";

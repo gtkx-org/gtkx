@@ -343,7 +343,7 @@ const TimesSectionedDropDown = () => {
             onSelectionChanged={setSelectedId}
             enableSearch
             renderListItem={({ item: label }: { item: string }) => renderSelectableTimeItem(label, selectedId)}
-            renderHeader={(value: string) => (
+            renderHeader={({ section: value }: { section: string }) => (
                 <GtkLabel
                     label={`<big><b>${escapeMarkup(value)}</b></big>`}
                     useMarkup

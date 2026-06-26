@@ -78,12 +78,12 @@ const handleQuery = async (
     return { widgets: widgets.map((w) => serializeWidget(w, (widget) => registry.idFor(widget), testing)) };
 };
 
-const defaultScreenshotTarget = (registry: WidgetRegistry): Gtk.Window => {
-    const [window] = registry.windows();
-    if (!window) {
+const defaultScreenshotTarget = (registry: WidgetRegistry): Gtk.Widget => {
+    const [toplevel] = registry.toplevels();
+    if (!toplevel) {
         throw new Error("No windows available for screenshot");
     }
-    return window;
+    return toplevel;
 };
 
 const handleScreenshot = async (
@@ -91,18 +91,16 @@ const handleScreenshot = async (
     params: ServerRequestParams<"widget.screenshot">,
 ): Promise<unknown> => {
     const testing = await loadTestingModule();
-    const targetWindow = params.windowId
-        ? (requireWidget(registry, params.windowId) as Gtk.Window)
-        : defaultScreenshotTarget(registry);
-    const result = await testing.screenshot(targetWindow);
+    const target = params.windowId ? requireWidget(registry, params.windowId) : defaultScreenshotTarget(registry);
+    const result = await testing.screenshot(target);
     return { data: result.data, mimeType: result.mimeType };
 };
 
 const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
     "app.getWindows": validated(ServerRequestParamsSchemas["app.getWindows"], async ({ registry }) => ({
-        windows: registry.windows().map((window) => ({
+        windows: registry.toplevels().map((window) => ({
             id: registry.idFor(window),
-            title: window.getTitle?.() ?? null,
+            title: window.getTitle(),
         })),
     })),
     "widget.getTree": validated(ServerRequestParamsSchemas["widget.getTree"], async ({ app, registry }) => {

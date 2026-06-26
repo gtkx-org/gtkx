@@ -40,8 +40,7 @@ export type OutArg = {
     seed: string;
     tsType: string;
     descriptor: string;
-    docName: string;
-    docCType: string;
+    paramIndex: number;
 };
 
 type PlannedArg = InArg | OutArg;
@@ -66,7 +65,7 @@ const buildInArg = (options: BuildArgOptions, name: string, track: (alias: strin
     if (param === undefined) throw new Error(`Parameter index ${index} out of range on ${command.name}`);
     switch (plan.kind) {
         case "scalar":
-            return inArg(name, track(scalarAliasOrGroup(plan.scalar, param.group)), `${plan.scalar.tExpr}`);
+            return inArg(name, track(scalarAliasOrGroup(plan.scalar, param.group)), plan.scalar.descriptor);
         case "boolean":
             return inArg(name, "boolean", tBoolean);
         case "sync":
@@ -77,7 +76,7 @@ const buildInArg = (options: BuildArgOptions, name: string, track: (alias: strin
             return inArg(name, "string[]", tArray(tString("borrowed")));
         case "array-in": {
             track(scalarAliasOrGroup(plan.scalar, param.group));
-            return inArg(name, arrayInTsType(plan.scalar, param.group), tArray(plan.scalar.tExpr));
+            return inArg(name, arrayInTsType(plan.scalar, param.group), tArray(plan.scalar.descriptor));
         }
         case "buffer":
             return inArg(name, `ArrayBufferView | ${track("GLintptr")} | null`, tBuffer);
@@ -102,9 +101,8 @@ const buildOutArg = (options: BuildArgOptions, track: (alias: string) => string)
                 cellName,
                 seed: `const ${cellName} = { value: 0 };`,
                 tsType: track(scalarAliasOrGroup(plan.scalar, param.group)),
-                descriptor: tRef(plan.scalar.tExpr),
-                docName: param.name,
-                docCType: param.cType,
+                descriptor: tRef(plan.scalar.descriptor),
+                paramIndex: index,
             };
         case "ref-array-out": {
             const sizeIndex = paramIndexByName(command, plan.lenParamName);
@@ -114,9 +112,8 @@ const buildOutArg = (options: BuildArgOptions, track: (alias: string) => string)
                 cellName,
                 seed: `const ${cellName} = { value: new Array<number>(${lenIdentifier}).fill(0) };`,
                 tsType: `${track(plan.scalar.tsAlias)}[]`,
-                descriptor: tRef(tSizedArray(plan.scalar.tExpr, sizeIndex)),
-                docName: param.name,
-                docCType: param.cType,
+                descriptor: tRef(tSizedArray(plan.scalar.descriptor, sizeIndex)),
+                paramIndex: index,
             };
         }
         case "ref-fixed-out":
@@ -125,9 +122,8 @@ const buildOutArg = (options: BuildArgOptions, track: (alias: string) => string)
                 cellName,
                 seed: `const ${cellName} = { value: new Array<number>(${plan.length}).fill(0) };`,
                 tsType: `${track(plan.scalar.tsAlias)}[]`,
-                descriptor: tRef(tFixedArray(plan.scalar.tExpr, plan.length)),
-                docName: param.name,
-                docCType: param.cType,
+                descriptor: tRef(tFixedArray(plan.scalar.descriptor, plan.length)),
+                paramIndex: index,
             };
         case "string-out":
             return {
@@ -136,8 +132,7 @@ const buildOutArg = (options: BuildArgOptions, track: (alias: string) => string)
                 seed: `const ${cellName} = { value: "" };`,
                 tsType: "string",
                 descriptor: tRef(tString("borrowed", toCamelIdentifier(plan.lenParamName))),
-                docName: param.name,
-                docCType: param.cType,
+                paramIndex: index,
             };
         default:
             throw new Error(`Plan kind ${plan.kind} is not an output parameter`);

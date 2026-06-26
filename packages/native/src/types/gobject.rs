@@ -11,7 +11,7 @@ use napi::{Env, JsObject};
 
 use super::prelude::*;
 use crate::managed::NativeHandle;
-use crate::toggle_ref;
+use crate::wrapper_registry;
 
 /// Reads the `GTypeClass` pointer out of a live `GObject` instance.
 ///
@@ -51,7 +51,8 @@ unsafe fn tracked_gobject_value(
     let is_floating = unsafe { glib::gobject_ffi::g_object_is_floating(gobject_ptr) != 0 };
     // SAFETY: `gobject_ptr` is a live GObject; `has_wrapper` only reads its qdata under the
     // registry lock.
-    let has_wrapper = unsafe { toggle_ref::WrapperRegistry::global().has_wrapper(gobject_ptr) };
+    let has_wrapper =
+        unsafe { wrapper_registry::WrapperRegistry::global().has_wrapper(gobject_ptr) };
 
     if ownership.is_full() {
         if is_floating || (!has_wrapper && is_initially_unowned) {
@@ -74,9 +75,10 @@ pub struct GObjectType {
     pub ownership: Ownership,
 }
 
-impl FromDescriptor for GObjectType {
+impl GObjectType {
+    #[allow(clippy::trivially_copy_pass_by_ref)]
     #[cfg_attr(coverage_nightly, coverage(off))]
-    fn from_descriptor(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
+    pub(crate) fn from_descriptor(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let ownership = Ownership::from_descriptor(obj, "gobject")?;
         Ok(Self { ownership })
     }

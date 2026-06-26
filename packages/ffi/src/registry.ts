@@ -18,15 +18,6 @@ import {
 } from "./gtype.js";
 import type { Mixin } from "./mixin.js";
 
-let gobjectGtype: GType = TYPE_INVALID;
-
-function isGObjectType(gtype: GType): boolean {
-    if (gobjectGtype === TYPE_INVALID) {
-        gobjectGtype = typeFromName("GObject");
-    }
-    return gobjectGtype !== TYPE_INVALID && typeIsA(gtype, gobjectGtype);
-}
-
 const classRegistry = new Map<GType, AnyClass>();
 
 function stampGtype(cls: AnyClass, gtype: GType): void {
@@ -82,11 +73,7 @@ export function wrapHandle<T extends object = GTyped>(handle: Handle | null | un
 export function wrapHandle(handle: Handle | null | undefined, cls?: AnyClass): object | null {
     if (handle === null || handle === undefined) return null;
     if (cls === undefined) {
-        return resolveWrapper(
-            handle,
-            (runtimeGtype) => resolveComposedClass(runtimeGtype),
-            (runtimeGtype) => `Expected registered GLib type, got gtype ${String(runtimeGtype)}`,
-        );
+        return resolveWrapper(handle);
     }
     return instantiate(cls, handle);
 }
@@ -160,11 +147,7 @@ function resolveComposedClass(runtimeGtype: GType): AnyClass | null {
     return composed;
 }
 
-function resolveWrapper(
-    handle: Handle,
-    resolveClass: (runtimeGtype: GType) => AnyClass | null,
-    describe: (runtimeGtype: GType) => string,
-): object {
+function resolveWrapper(handle: Handle): object {
     const existing = getWrapper(handle);
     if (existing) return existing;
 
@@ -173,14 +156,10 @@ function resolveWrapper(
         throw new Error("Cannot resolve runtime GLib type from handle");
     }
 
-    const cls = resolveClass(runtimeGtype);
-    if (!cls) throw new Error(describe(runtimeGtype));
+    const cls = resolveComposedClass(runtimeGtype);
+    if (!cls) throw new Error(`Expected registered GLib type, got gtype ${String(runtimeGtype)}`);
     const instance = Object.create(cls.prototype) as GTyped;
-    if (isGObjectType(runtimeGtype)) {
-        linkGObjectWrapper(handle, instance);
-    } else {
-        setHandle(instance, handle);
-    }
+    linkGObjectWrapper(handle, instance);
     return instance;
 }
 

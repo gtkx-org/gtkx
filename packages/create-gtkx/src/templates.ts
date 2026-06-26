@@ -19,14 +19,6 @@ const getTemplatesDir = (): string => {
     return join(import.meta.dirname, "..", "templates");
 };
 
-const renderTemplate = (templatePath: string, context: TemplateContext): string => {
-    const templateContent = readFileSync(templatePath, "utf-8");
-    return templateContent.replace(/\{\{(\w+)\}\}/g, (match, key: string) => {
-        const substitution = SUBSTITUTIONS[key];
-        return substitution ? substitution(context) : match;
-    });
-};
-
 export const listTemplates = (): string[] =>
     sortedStrings(
         readdirSync(getTemplatesDir(), { recursive: true, withFileTypes: true })
@@ -36,7 +28,9 @@ export const listTemplates = (): string[] =>
     );
 
 export const renderFile = (templateName: string, context: TemplateContext): string => {
-    const templatesDir = getTemplatesDir();
-    const templatePath = join(templatesDir, templateName);
-    return renderTemplate(templatePath, context);
+    const templateContent = readFileSync(join(getTemplatesDir(), templateName), "utf-8");
+    return templateContent.replace(/\{\{(\w+)\}\}/g, (match, key: string) => {
+        const substitution = SUBSTITUTIONS[key];
+        return substitution ? substitution(context) : match;
+    });
 };

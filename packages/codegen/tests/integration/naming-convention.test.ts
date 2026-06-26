@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
     collectIntrinsicElementClasses,
+    glibNameOf,
     implementedInterfaces,
-    interfaceGlibName,
     interfaceHasPropsBody,
 } from "../../src/react/intrinsic-elements.js";
 import { generateJsxFiles } from "../../src/react/pipeline.js";
@@ -16,7 +16,7 @@ const interfacePropsNames = (): Set<string> => {
     for (const widget of collectIntrinsicElementClasses(library)) {
         for (const iface of implementedInterfaces(widget.klass, widget.namespace, library)) {
             if (!interfaceHasPropsBody(iface.klass)) continue;
-            const glib = interfaceGlibName(iface.klass);
+            const glib = glibNameOf(iface.klass);
             if (glib !== undefined) names.add(`${glib}Props`);
         }
     }
@@ -30,7 +30,7 @@ const ENUM_NAME_BY_KIND: Record<"property" | "state" | "relation", string> = {
 };
 
 const screamingEnumMembers = (enumName: string): Set<string> => {
-    const resolved = library.resolveNamed("Gtk", enumName);
+    const resolved = library.resolveType("Gtk", enumName);
     expect(resolved?.kind, `expected Gtk.${enumName} enum`).toBe("enum");
     const names = new Set<string>();
     if (resolved?.kind !== "enum") return names;

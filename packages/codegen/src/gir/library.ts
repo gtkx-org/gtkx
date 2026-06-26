@@ -165,12 +165,7 @@ export class Library {
             this.addType(nsId, value.name, { kind: "callback", namespace: shell, value });
         }
         for (const alias of shell.aliases) {
-            this.addType(nsId, alias.name, {
-                kind: "alias",
-                namespace: shell,
-                target: alias.target,
-                targetCType: alias.targetCType,
-            });
+            this.addType(nsId, alias.name, { kind: "alias", namespace: shell, value: alias });
         }
     }
 
@@ -194,14 +189,6 @@ export class Library {
         const id = this.typeTableOf(targetNsId).index.get(localName);
         if (id === undefined) return undefined;
         return this.typeTableOf(targetNsId).types[id];
-    }
-
-    resolveNamed(namespaceName: string, typeName: string): GirType | undefined {
-        const nsId = this.nsIdByName.get(namespaceName);
-        if (nsId === undefined) return undefined;
-        const id = this.typeTableOf(nsId).index.get(typeName);
-        if (id === undefined) return undefined;
-        return this.typeTableOf(nsId).types[id];
     }
 
     collectUnresolved(): string[] {

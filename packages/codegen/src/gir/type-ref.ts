@@ -9,7 +9,7 @@ const elementRefOf = (node: RawNode, context: ParseContext): TypeId => {
     return elementNode === undefined ? pointerFallback(context) : typeRefFromTypeNode(elementNode, context);
 };
 
-export const typeRefFromSlot = (parent: RawNode | undefined, context: ParseContext): TypeId | undefined => {
+export const typeRefFromNode = (parent: RawNode | undefined, context: ParseContext): TypeId | undefined => {
     if (parent === undefined) return undefined;
     if (childOf(parent, "varargs") !== undefined) return context.addVarargs();
     const arrayNode = childOf(parent, "array");

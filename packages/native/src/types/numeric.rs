@@ -565,7 +565,7 @@ impl EnumFlagsType {
 
     #[cfg(debug_assertions)]
     fn resolve_gtype(&self) -> anyhow::Result<glib::Type> {
-        crate::state::GlibThreadState::with(|state| {
+        crate::glib_thread_state::GlibThreadState::with(|state| {
             state.resolve_gtype(&self.library, &self.get_type_fn)
         })
     }

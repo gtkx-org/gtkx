@@ -4,13 +4,14 @@ import { GtkColumnView, type GtkColumnViewProps } from "@gtkx/jsx/gtk";
 import { useMergeRefs } from "@gtkx/react";
 import { createElement, type ReactNode, type Ref, useCallback, useMemo, useRef, useState } from "react";
 import { CellRenderHost, headerRenderer } from "./cell.js";
+import { ColumnViewColumn } from "./column-view-column.js";
 import { type ColumnRegistration, ColumnViewContext, type ColumnViewContextValue } from "./column-view-context.js";
 import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
 import { useControlledSelectionModel } from "./hooks/use-controlled-selection-model.js";
 import { useInstalledModel } from "./hooks/use-installed-model.js";
 import { useListModel } from "./hooks/use-list-model.js";
 import { useSortHandler } from "./hooks/use-sort-handler.js";
-import type { ItemNode, ListViewControlledSelectionProps, SectionNode } from "./types.js";
+import type { CollectionItemSizeProps, ControlledSelectionProps, ItemNode, SectionNode } from "./types.js";
 import type { CellContainerStore } from "./utils/cell-container-store.js";
 import type { ItemResolver } from "./utils/item-resolver.js";
 
@@ -50,7 +51,6 @@ type ColumnViewSortProps = {
     sortColumn?: string | null | undefined;
     sortOrder?: Gtk.SortType | null | undefined;
     onSortChanged?: ((column: string | null, order: Gtk.SortType) => void) | null | undefined;
-    estimatedItemHeight?: number | null | undefined;
 };
 
 /**
@@ -61,11 +61,12 @@ type ColumnViewSortProps = {
  * the uncontrolled form.
  */
 type ColumnViewDeclarativeProps<T = unknown, S = unknown> = ColumnViewSortProps &
+    CollectionItemSizeProps &
     (
-        | (ListViewControlledSelectionProps & {
+        | (ControlledSelectionProps & {
               items?: ItemNode<T>[] | undefined;
               sections?: SectionNode<S, T>[] | undefined;
-              renderHeader?: ((item: S) => ReactNode) | null | undefined;
+              renderHeader?: ((info: { section: S }) => ReactNode) | null | undefined;
               model?: never;
           })
         | {
@@ -93,7 +94,7 @@ export type ColumnViewProps<T = unknown, S = unknown> = Omit<
 
 type NormalizedColumnViewProps<T, S> = ColumnViewDeclarativeProps<T, S> & {
     ref?: Ref<Gtk.ColumnView | null>;
-    renderHeader?: ((value: S) => ReactNode) | null;
+    renderHeader?: ((info: { section: S }) => ReactNode) | null;
     children?: ReactNode;
     [key: string]: unknown;
 };
@@ -132,7 +133,7 @@ const useColumnViewWiring = <T, S>(
     const headerStore = useCellContainers<Gtk.ColumnView>({
         target: useHeader ? widgetRef : null,
         installer: headerFactoryInstaller,
-        estimatedHeight: props.estimatedItemHeight ?? undefined,
+        estimatedHeight: props.estimatedItemHeight,
     });
 
     useSortHandler({
@@ -163,13 +164,7 @@ const useColumnViewWiring = <T, S>(
     };
 };
 
-/**
- * A `GtkColumnView` driven by a declarative `items`/`sections` model with
- * optional controlled selection, controlled sorting, and section headers.
- * Columns are declared as {@link ColumnViewColumn} children. Supplying an
- * external `model` switches to the uncontrolled form.
- */
-export const ColumnView = <T = unknown, S = unknown>(props: ColumnViewProps<T, S>): ReactNode => {
+const ColumnViewComponent = <T = unknown, S = unknown>(props: ColumnViewProps<T, S>): ReactNode => {
     const {
         ref,
         items,
@@ -183,6 +178,7 @@ export const ColumnView = <T = unknown, S = unknown>(props: ColumnViewProps<T, S
         onSortChanged,
         renderHeader,
         estimatedItemHeight,
+        estimatedItemWidth,
         children,
         ...intrinsicProps
     } = props as NormalizedColumnViewProps<T, S>;
@@ -202,6 +198,7 @@ export const ColumnView = <T = unknown, S = unknown>(props: ColumnViewProps<T, S
             onSortChanged,
             renderHeader,
             estimatedItemHeight,
+            estimatedItemWidth,
         } as NormalizedColumnViewProps<T, S>,
         registry,
     );
@@ -225,3 +222,13 @@ export const ColumnView = <T = unknown, S = unknown>(props: ColumnViewProps<T, S
         </>
     );
 };
+
+/**
+ * A `GtkColumnView` driven by a declarative `items`/`sections` model with
+ * optional controlled selection, controlled sorting, and section headers.
+ * Columns are declared as {@link ColumnView.Column} children. Supplying an
+ * external `model` switches to the uncontrolled form.
+ */
+export const ColumnView: typeof ColumnViewComponent & {
+    Column: typeof ColumnViewColumn;
+} = Object.assign(ColumnViewComponent, { Column: ColumnViewColumn });

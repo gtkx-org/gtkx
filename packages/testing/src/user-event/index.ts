@@ -1,14 +1,13 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { click, dblClick, tripleClick } from "./click.js";
 import { drag, dragAndDrop, drop, hover, longPress, rotate, swipe, unhover, zoom } from "./gesture.js";
-import { createInstance, type UserEventInstance } from "./instance.js";
+import { createInstance } from "./instance.js";
 import { keyboard, tab } from "./keyboard.js";
 import { type PointerInput, pointer } from "./pointer.js";
 import { deselectOptions, selectOptions } from "./selection.js";
 import { clear, copy, cut, paste, type } from "./text.js";
 
 export type { DragOptions, DropContent, DropOptions } from "./gesture.js";
-export type { UserEventInstance } from "./instance.js";
 export type { TabOptions } from "./keyboard.js";
 export type { PointerInput } from "./pointer.js";
 export type { TypeOptions } from "./text.js";
@@ -39,7 +38,16 @@ export type UserEvent = {
     pointer: (widget: Gtk.Widget, input: PointerInput) => Promise<void>;
 };
 
-const buildUserEvent = (instance: UserEventInstance): UserEvent => ({
+const instance = createInstance();
+
+/**
+ * The simulated-input API over real GTK controllers and signals.
+ *
+ * `keyboard` and `pointer` thread a single shared input-device state so that
+ * held modifiers and mouse buttons are observed across calls; every other
+ * helper is stateless.
+ */
+export const userEvent: UserEvent = {
     click,
     dblClick,
     tripleClick,
@@ -62,11 +70,4 @@ const buildUserEvent = (instance: UserEventInstance): UserEvent => ({
     dragAndDrop,
     keyboard: (widget: Gtk.Widget, input: string): Promise<void> => keyboard(instance, widget, input),
     pointer: (widget: Gtk.Widget, input: PointerInput): Promise<void> => pointer(instance, widget, input),
-});
-
-export const userEvent: UserEvent & {
-    setup: () => UserEvent;
-} = {
-    ...buildUserEvent(createInstance()),
-    setup: (): UserEvent => buildUserEvent(createInstance()),
 };

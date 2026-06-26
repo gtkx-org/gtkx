@@ -36,7 +36,7 @@ import {
 } from "./predicates.js";
 import {
     childWidget,
-    isTopLevel,
+    isToplevel,
     relationshipChildInstances,
     relationshipChildWidgets,
     trackedInstance,
@@ -95,8 +95,8 @@ const widgetPropMapping: ElementMapping = {
 const sameInstances = (a: Node[], b: Node[]): boolean =>
     a.length === b.length && a.every((instance, index) => instance === b[index]);
 
-const slotTagOf = (wrapper: Node): string | undefined => {
-    const slotTag = stateOf(wrapper).props["slotTag"];
+const slotTagOf = (node: Node): string | undefined => {
+    const slotTag = stateOf(node).props["slotTag"];
     return typeof slotTag === "string" ? slotTag : undefined;
 };
 
@@ -174,22 +174,22 @@ const addStackPage = (
     return undefined;
 };
 
-const notebookPosition = (wrapper: Node): number | null => {
-    const parent = stateOf(wrapper).parent;
+const notebookPosition = (node: Node): number | null => {
+    const parent = stateOf(node).parent;
     const siblings = parent
         ? stateOf(parent).children.filter((child) => isRelationshipKind(child, META_OBJECT_KIND))
         : [];
-    const index = siblings.indexOf(wrapper);
+    const index = siblings.indexOf(node);
     return index >= 0 ? index : null;
 };
 
-const notebookTabLabel = (wrapper: Node): Gtk.Widget => {
-    const wrapperState = stateOf(wrapper);
-    const tab = wrapperState.children.find((child) => isRelationshipKind(child, TAB_LABEL_KIND));
+const notebookTabLabel = (node: Node): Gtk.Widget => {
+    const nodeState = stateOf(node);
+    const tab = nodeState.children.find((child) => isRelationshipKind(child, TAB_LABEL_KIND));
     const label = tab ? stateOf(tab).children[0] : undefined;
     if (label instanceof Gtk.Widget) return label;
     const synthesized = new Gtk.Label();
-    synthesized.setLabel(typeof wrapperState.props["label"] === "string" ? wrapperState.props["label"] : "");
+    synthesized.setLabel(typeof nodeState.props["label"] === "string" ? nodeState.props["label"] : "");
     return synthesized;
 };
 
@@ -200,20 +200,20 @@ const applyNotebookMeta = (notebook: Gtk.Notebook, widget: Gtk.Widget, props: Pr
     if (props["tabFill"] !== undefined) Reflect.set(page, "tabFill", props["tabFill"]);
 };
 
-const updateNotebookTabLabel = (notebook: Gtk.Notebook, widget: Gtk.Widget, wrapper: Node): void => {
-    const wrapperState = stateOf(wrapper);
-    if (wrapperState.children.some((child) => isRelationshipKind(child, TAB_LABEL_KIND))) return;
+const updateNotebookTabLabel = (notebook: Gtk.Notebook, widget: Gtk.Widget, node: Node): void => {
+    const nodeState = stateOf(node);
+    if (nodeState.children.some((child) => isRelationshipKind(child, TAB_LABEL_KIND))) return;
     const current = notebook.getTabLabel(widget);
     if (current instanceof Gtk.Label)
-        current.setLabel(typeof wrapperState.props["label"] === "string" ? wrapperState.props["label"] : "");
+        current.setLabel(typeof nodeState.props["label"] === "string" ? nodeState.props["label"] : "");
 };
 
-const attachNotebookPage = (notebook: Gtk.Notebook, widget: Gtk.Widget, wrapper: Node): void => {
-    const label = notebookTabLabel(wrapper);
-    const position = notebookPosition(wrapper);
+const attachNotebookPage = (notebook: Gtk.Notebook, widget: Gtk.Widget, node: Node): void => {
+    const label = notebookTabLabel(node);
+    const position = notebookPosition(node);
     if (position == null) notebook.appendPage(widget, label);
     else notebook.insertPage(widget, label, position);
-    applyNotebookMeta(notebook, widget, stateOf(wrapper).props);
+    applyNotebookMeta(notebook, widget, stateOf(node).props);
 };
 
 type NotebookPageState = { widget: Gtk.Widget };
@@ -397,8 +397,8 @@ const overlayMapping: ElementMapping = {
     },
 };
 
-const topLevelSkipMapping: ElementMapping = {
-    matches: (child) => isTopLevel(child),
+const toplevelSkipMapping: ElementMapping = {
+    matches: (child) => isToplevel(child),
     attach: () => {},
     detach: () => {},
 };
@@ -623,7 +623,7 @@ export const ELEMENT_MAP: ElementMapping[] = [
     promotedNestingGuardMapping,
     orderedInsertMapping,
     childRuleSetMapping,
-    topLevelSkipMapping,
+    toplevelSkipMapping,
     listItemChildMapping,
     widgetContainerMapping,
 ];

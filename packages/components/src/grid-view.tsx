@@ -3,12 +3,18 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkGridView, type GtkGridViewProps } from "@gtkx/jsx/gtk";
 import { useMergeRefs } from "@gtkx/react";
 import { createElement, type ReactElement, type ReactNode, type Ref, useRef } from "react";
-import { type CellRenderer, CellRenderHost } from "./cell.js";
+import { type CellRenderer, CellRenderHost, itemRenderer } from "./cell.js";
 import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
 import { useControlledSelectionModel } from "./hooks/use-controlled-selection-model.js";
 import { useInstalledModel } from "./hooks/use-installed-model.js";
 import { useListModel } from "./hooks/use-list-model.js";
-import type { ItemNode, ListViewControlledSelectionProps, ListViewSharedProps, UncontrolledItemType } from "./types.js";
+import type {
+    CollectionItemSizeProps,
+    ControlledSelectionProps,
+    ItemNode,
+    RenderItemInfo,
+    UncontrolledItemType,
+} from "./types.js";
 
 const factoryInstaller: FactoryInstaller<Gtk.GridView> = {
     install: (widget: Gtk.GridView, factory: Gtk.SignalListItemFactory) => widget.setFactory(factory),
@@ -19,10 +25,7 @@ const factoryInstaller: FactoryInstaller<Gtk.GridView> = {
  * Information passed to a {@link GridView} `renderItem` callback for a single
  * cell: its resolved value and bound list `index`.
  */
-export interface GridRenderItemInfo<T> {
-    item: T;
-    index: number;
-}
+export type GridRenderItemInfo<T> = RenderItemInfo<T>;
 
 /**
  * Props for the {@link GridView} component, replacing the raw `GtkGridView`
@@ -30,16 +33,16 @@ export interface GridRenderItemInfo<T> {
  * optional controlled selection. Supplying an external `model` switches to the
  * uncontrolled form.
  */
-type GridViewDeclarativeProps<T = unknown> = ListViewSharedProps &
+type GridViewDeclarativeProps<T = unknown> = CollectionItemSizeProps &
     (
-        | (ListViewControlledSelectionProps & {
+        | (ControlledSelectionProps & {
               items?: ItemNode<T>[] | undefined;
-              renderItem: (info: GridRenderItemInfo<T>) => ReactNode;
+              renderItem: (info: RenderItemInfo<T>) => ReactNode;
               model?: never;
           })
         | {
               model: Gio.ListModel;
-              renderItem: (info: GridRenderItemInfo<UncontrolledItemType<T>>) => ReactNode;
+              renderItem: (info: RenderItemInfo<UncontrolledItemType<T>>) => ReactNode;
               items?: never;
               selectedIds?: never;
               onSelectionChanged?: never;
@@ -79,9 +82,8 @@ export const GridView = <T = unknown>(props: GridViewProps<T>): ReactNode => {
         [key: string]: unknown;
     };
 
-    const renderItemFn = renderItem as (info: GridRenderItemInfo<T>) => ReactNode;
-    const cellRenderer: CellRenderer<T, unknown> = (value, _treeRow, isHeader, position) =>
-        isHeader ? null : renderItemFn({ item: value as T, index: position });
+    const renderItemFn = renderItem as (info: RenderItemInfo<T>) => ReactNode;
+    const cellRenderer: CellRenderer<T, unknown> = itemRenderer<T, unknown>(renderItemFn);
 
     const widgetRef = useRef<Gtk.GridView | null>(null);
     const setRef = useMergeRefs<Gtk.GridView>(ref, widgetRef);

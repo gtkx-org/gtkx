@@ -14,7 +14,7 @@ const isNullablePropertyType = (context: ModuleContext, type: TypeId | undefined
     if (resolved === undefined) return true;
     if (resolved.kind === "primitive") return false;
     if (resolved.kind === "enum") return false;
-    if (resolved.kind === "alias") return isNullablePropertyType(context, resolved.target);
+    if (resolved.kind === "alias") return isNullablePropertyType(context, resolved.value.target);
     return true;
 };
 

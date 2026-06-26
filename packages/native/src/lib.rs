@@ -8,7 +8,7 @@ mod macros;
 pub(crate) mod error_reporter;
 pub(crate) mod glib_log_handler;
 pub(crate) mod op;
-pub(crate) mod toggle_ref;
+pub(crate) mod wrapper_registry;
 
 // These modules form no part of the napi-only public contract. They are reachable as a real
 // public Rust surface only when the `test-support` feature is enabled — which the `test` and
@@ -20,9 +20,9 @@ test_visible_modules! {
     dispatch,
     ffi,
     glib_thread,
+    glib_thread_state,
     managed,
     panic_handler,
-    state,
     trampoline,
     types,
     value,

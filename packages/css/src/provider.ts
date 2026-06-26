@@ -1,26 +1,31 @@
-import { DisplayManager } from "@gtkx/gi/gdk";
+import { type Display, DisplayManager } from "@gtkx/gi/gdk";
 import { CssProvider, STYLE_PROVIDER_PRIORITY_APPLICATION, StyleContext } from "@gtkx/gi/gtk";
 
 export const registerProviderForDefaultDisplay = (
     priority: number = STYLE_PROVIDER_PRIORITY_APPLICATION,
 ): { provider: CssProvider; dispose: () => void } => {
     const provider = new CssProvider();
-    const initialDisplay = DisplayManager.get().getDefaultDisplay();
-    let display = initialDisplay;
+    const manager = DisplayManager.get();
 
+    let attachedDisplay: Display | undefined;
+    const attach = (display: Display): void => {
+        attachedDisplay = display;
+        StyleContext.addProviderForDisplay(display, provider, priority);
+    };
+
+    const onDisplayOpened = (openedDisplay: Display): void => attach(openedDisplay);
+    const initialDisplay = manager.getDefaultDisplay();
     if (initialDisplay) {
-        StyleContext.addProviderForDisplay(initialDisplay, provider, priority);
+        attach(initialDisplay);
     } else {
-        DisplayManager.get().once("display-opened", (openedDisplay) => {
-            display = openedDisplay;
-            StyleContext.addProviderForDisplay(openedDisplay, provider, priority);
-        });
+        manager.once("display-opened", onDisplayOpened);
     }
 
     return {
         provider,
         dispose: () => {
-            if (display) StyleContext.removeProviderForDisplay(display, provider);
+            manager.off("display-opened", onDisplayOpened);
+            if (attachedDisplay) StyleContext.removeProviderForDisplay(attachedDisplay, provider);
         },
     };
 };

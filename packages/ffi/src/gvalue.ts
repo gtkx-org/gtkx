@@ -52,7 +52,7 @@ import {
 } from "./gtype.js";
 import { getHandle, requireWrapperClass, tryGetHandle, wrapHandle } from "./registry.js";
 
-export const newGValue = (): Handle => alloc(GVALUE_SIZE, "GValue");
+const newGValue = (): Handle => alloc(GVALUE_SIZE, "GValue");
 
 export function valueGetType(value: Handle): GType {
     return read(value, biguint64T, GVALUE_LAYOUT.gTypeOffset) as GType;
@@ -60,7 +60,7 @@ export function valueGetType(value: Handle): GType {
 
 const gValueInit = bind(LIB, "g_value_init", [GVALUE_T, biguint64T], voidT);
 
-export const valueInit = (value: Handle, gtype: GType): void => {
+const valueInit = (value: Handle, gtype: GType): void => {
     gValueInit(value, gtype);
 };
 
@@ -114,58 +114,61 @@ const VARIANT_FUNDAMENTAL = fundamentalT(LIB, "g_variant_ref", "g_variant_unref"
 });
 const variantBind = scalarBind("variant", VARIANT_FUNDAMENTAL);
 
-export const valueSetBoolean = (value: Handle, v: boolean): void => {
+const valueSetBoolean = (value: Handle, v: boolean): void => {
     booleanBind.set(value, v);
 };
-export const valueGetBoolean = (value: Handle): boolean => Boolean(booleanBind.get(value));
-export const valueSetInt = (value: Handle, v: number): void => {
+const valueGetBoolean = (value: Handle): boolean => Boolean(booleanBind.get(value));
+const valueSetInt = (value: Handle, v: number): void => {
     intBind.set(value, v);
 };
-export const valueGetInt = (value: Handle): number => intBind.get(value);
-export const valueSetUint = (value: Handle, v: number): void => {
+const valueGetInt = (value: Handle): number => intBind.get(value);
+const valueSetUint = (value: Handle, v: number): void => {
     uintBind.set(value, v);
 };
-export const valueGetUint = (value: Handle): number => uintBind.get(value);
-export const valueSetInt64 = (value: Handle, v: bigint | number): void => {
+const valueGetUint = (value: Handle): number => uintBind.get(value);
+const valueSetInt64 = (value: Handle, v: bigint | number): void => {
     int64Bind.set(value, v);
 };
-export const valueGetInt64 = (value: Handle): bigint => int64Bind.get(value);
-export const valueSetUint64 = (value: Handle, v: bigint | number): void => {
+const valueGetInt64 = (value: Handle): bigint => int64Bind.get(value);
+const valueSetUint64 = (value: Handle, v: bigint | number): void => {
     uint64Bind.set(value, v);
 };
-export const valueGetUint64 = (value: Handle): bigint => uint64Bind.get(value);
-export const valueSetFloat = (value: Handle, v: number): void => {
+const valueGetUint64 = (value: Handle): bigint => uint64Bind.get(value);
+const valueSetFloat = (value: Handle, v: number): void => {
     floatBind.set(value, v);
 };
-export const valueGetFloat = (value: Handle): number => floatBind.get(value);
-export const valueSetDouble = (value: Handle, v: number): void => {
+const valueGetFloat = (value: Handle): number => floatBind.get(value);
+const valueSetDouble = (value: Handle, v: number): void => {
     doubleBind.set(value, v);
 };
-export const valueGetDouble = (value: Handle): number => doubleBind.get(value);
-export const valueSetString = (value: Handle, v: string | null): void => {
+const valueGetDouble = (value: Handle): number => doubleBind.get(value);
+const valueSetString = (value: Handle, v: string | null): void => {
     stringBind.set(value, v);
 };
-export const valueGetString = (value: Handle): string | null => stringBind.get(value) ?? null;
-export const valueSetEnum = (value: Handle, v: number): void => {
+const valueGetString = (value: Handle): string | null => stringBind.get(value) ?? null;
+const valueSetEnum = (value: Handle, v: number): void => {
     enumBind.set(value, v);
 };
-export const valueGetEnum = (value: Handle): number => enumBind.get(value);
-export const valueSetFlags = (value: Handle, v: number): void => {
+const valueGetEnum = (value: Handle): number => enumBind.get(value);
+const valueSetFlags = (value: Handle, v: number): void => {
     flagsBind.set(value, v);
 };
-export const valueGetFlags = (value: Handle): number => flagsBind.get(value);
-export const valueSetObject = (value: Handle, v: object | null): void => {
+const valueGetFlags = (value: Handle): number => flagsBind.get(value);
+const valueSetObject = (value: Handle, v: object | null): void => {
     objectBind.set(value, tryGetHandle(v));
 };
-export const valueGetObject = (value: Handle): object | null => wrapHandle(objectBind.get(value));
-export const valueSetParam = (value: Handle, v: object | null): void => {
+const valueGetObject = (value: Handle): object | null => wrapHandle(objectBind.get(value));
+const valueSetParam = (value: Handle, v: object | null): void => {
     paramBind.set(value, tryGetHandle(v));
 };
-export const valueGetParam = (value: Handle): object | null => wrapHandle(paramBind.get(value));
-export const valueSetVariant = (value: Handle, v: object | null): void => {
+const valueGetParam = (value: Handle): object | null => {
+    const result = paramBind.get(value);
+    return result === null ? null : wrapHandle(result, requireWrapperClass(TYPE_PARAM));
+};
+const valueSetVariant = (value: Handle, v: object | null): void => {
     variantBind.set(value, tryGetHandle(v));
 };
-export const valueGetVariant = (value: Handle): object | null => {
+const valueGetVariant = (value: Handle): object | null => {
     const result = variantBind.get(value);
     return result === null ? null : wrapHandle(result, requireWrapperClass(TYPE_VARIANT));
 };
@@ -207,13 +210,13 @@ function valueSetStaticBoxed(value: Handle, boxed: object): void {
 
 const OUT_PARAM_STORAGE_SIZE = 8;
 
-export function outValueForDescriptor(innerType: Type, initial?: unknown): { value: Handle; read: () => unknown } {
+export function outValueForDescriptor(descriptor: Type, initial?: unknown): { value: Handle; read: () => unknown } {
     const storage = alloc(OUT_PARAM_STORAGE_SIZE);
     write(storage, uint64T, 0, 0);
-    if (initial !== undefined) write(storage, innerType, 0, initial);
+    if (initial !== undefined) write(storage, descriptor, 0, initial);
     const value = newTypedGValue(TYPE_POINTER);
     setGValuePointer(value, storage);
-    return { value, read: () => read(storage, innerType, 0) };
+    return { value, read: () => read(storage, descriptor, 0) };
 }
 
 export function outBoxedForDescriptor(descriptor: Type, boxed: object): Handle {
@@ -344,34 +347,49 @@ const unsupportedSet = (gtype: GType): never => {
 };
 
 const payloadHandlers = new Map<GType, PayloadHandler>([
-    [TYPE_BOOLEAN, { set: (value, _ffi, jsValue) => valueSetBoolean(value, jsValue as boolean), get: valueGetBoolean }],
-    [TYPE_INT, { set: (value, _ffi, jsValue) => valueSetInt(value, jsValue as number), get: valueGetInt }],
-    [TYPE_UINT, { set: (value, _ffi, jsValue) => valueSetUint(value, jsValue as number), get: valueGetUint }],
+    [
+        TYPE_BOOLEAN,
+        { set: (value, _descriptor, jsValue) => valueSetBoolean(value, jsValue as boolean), get: valueGetBoolean },
+    ],
+    [TYPE_INT, { set: (value, _descriptor, jsValue) => valueSetInt(value, jsValue as number), get: valueGetInt }],
+    [TYPE_UINT, { set: (value, _descriptor, jsValue) => valueSetUint(value, jsValue as number), get: valueGetUint }],
     [
         TYPE_INT64,
-        { set: (value, _ffi, jsValue) => valueSetInt64(value, jsValue as bigint | number), get: valueGetInt64 },
+        { set: (value, _descriptor, jsValue) => valueSetInt64(value, jsValue as bigint | number), get: valueGetInt64 },
     ],
     [
         TYPE_UINT64,
-        { set: (value, _ffi, jsValue) => valueSetUint64(value, jsValue as bigint | number), get: valueGetUint64 },
+        {
+            set: (value, _descriptor, jsValue) => valueSetUint64(value, jsValue as bigint | number),
+            get: valueGetUint64,
+        },
     ],
-    [TYPE_FLOAT, { set: (value, _ffi, jsValue) => valueSetFloat(value, jsValue as number), get: valueGetFloat }],
-    [TYPE_DOUBLE, { set: (value, _ffi, jsValue) => valueSetDouble(value, jsValue as number), get: valueGetDouble }],
+    [TYPE_FLOAT, { set: (value, _descriptor, jsValue) => valueSetFloat(value, jsValue as number), get: valueGetFloat }],
+    [
+        TYPE_DOUBLE,
+        { set: (value, _descriptor, jsValue) => valueSetDouble(value, jsValue as number), get: valueGetDouble },
+    ],
     [
         TYPE_STRING,
-        { set: (value, _ffi, jsValue) => valueSetString(value, jsValue as string | null), get: valueGetString },
+        { set: (value, _descriptor, jsValue) => valueSetString(value, jsValue as string | null), get: valueGetString },
     ],
-    [TYPE_ENUM, { set: (value, _ffi, jsValue) => valueSetEnum(value, jsValue as number), get: valueGetEnum }],
-    [TYPE_FLAGS, { set: (value, _ffi, jsValue) => valueSetFlags(value, jsValue as number), get: valueGetFlags }],
+    [TYPE_ENUM, { set: (value, _descriptor, jsValue) => valueSetEnum(value, jsValue as number), get: valueGetEnum }],
+    [TYPE_FLAGS, { set: (value, _descriptor, jsValue) => valueSetFlags(value, jsValue as number), get: valueGetFlags }],
     [
         TYPE_VARIANT,
-        { set: (value, _ffi, jsValue) => valueSetVariant(value, jsValue as object | null), get: valueGetVariant },
+        {
+            set: (value, _descriptor, jsValue) => valueSetVariant(value, jsValue as object | null),
+            get: valueGetVariant,
+        },
     ],
-    [TYPE_PARAM, { set: (value, _ffi, jsValue) => valueSetParam(value, jsValue as object | null), get: valueGetParam }],
+    [
+        TYPE_PARAM,
+        { set: (value, _descriptor, jsValue) => valueSetParam(value, jsValue as object | null), get: valueGetParam },
+    ],
     [TYPE_BOXED, { set: setBoxedOrStrv, get: valueGetBoxed }],
     [
         TYPE_OBJECT,
-        { set: (value, _ffi, jsValue) => valueSetObject(value, jsValue as object | null), get: valueGetObject },
+        { set: (value, _descriptor, jsValue) => valueSetObject(value, jsValue as object | null), get: valueGetObject },
     ],
     [TYPE_POINTER, { set: (value) => unsupportedSet(valueGetType(value)), get: getPointerValue }],
 ]);

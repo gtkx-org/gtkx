@@ -24,9 +24,9 @@ export const wrapReturnValue = (context: ModuleContext, options: WrapReturnOptio
         case "enum":
             return `(${valueExpression} as number)`;
         case "alias":
-            return type.target === undefined
+            return type.value.target === undefined
                 ? valueExpression
-                : wrapReturnValue(context, { ref: type.target, nullable, valueExpression });
+                : wrapReturnValue(context, { ref: type.value.target, nullable, valueExpression });
         default:
             return wrapViaFfiValue(context, ref, valueExpression);
     }

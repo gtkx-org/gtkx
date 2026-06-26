@@ -39,8 +39,8 @@ use crate::dispatch::freeze_controller::FreezeController;
 use crate::dispatch::wait_signal::WaitSignal;
 use crate::error_reporter::NativeErrorReporter;
 use crate::panic_handler::format_panic_payload;
-use crate::toggle_ref::RefOp;
 use crate::value::{JsRef, Value};
+use crate::wrapper_registry::WrapperRefOp;
 
 type GlibTask = Box<dyn FnOnce() + Send + 'static>;
 
@@ -64,7 +64,7 @@ enum NodeTask {
     DeleteReference(JsRefDeletion),
     WrapperRefOp {
         ref_ptr: usize,
-        op: RefOp,
+        op: WrapperRefOp,
         result_tx: mpsc::Sender<anyhow::Result<()>>,
         glib_initiated: bool,
     },

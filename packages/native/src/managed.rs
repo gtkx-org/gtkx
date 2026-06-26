@@ -187,15 +187,15 @@ impl Drop for NativeHandle {
             });
         }
 
-        let Some(wrapper) = self.owned_value.take() else {
+        let Some(anchored) = self.owned_value.take() else {
             return;
         };
-        if wrapper.droppable_here() {
-            drop(wrapper);
+        if anchored.droppable_here() {
+            drop(anchored);
         } else if Mailbox::global().is_not_running() {
-            std::mem::forget(wrapper);
+            std::mem::forget(anchored);
         } else {
-            glib::idle_add_once(move || drop(wrapper));
+            glib::idle_add_once(move || drop(anchored));
         }
     }
 }
@@ -204,6 +204,24 @@ impl Drop for NativeHandle {
 pub enum NativeValue {
     Boxed(Boxed),
     Fundamental(Fundamental),
+}
+
+impl From<NativeValue> for crate::value::Value {
+    fn from(value: NativeValue) -> Self {
+        Self::Object(value.into())
+    }
+}
+
+impl From<Boxed> for crate::value::Value {
+    fn from(boxed: Boxed) -> Self {
+        NativeValue::Boxed(boxed).into()
+    }
+}
+
+impl From<Fundamental> for crate::value::Value {
+    fn from(fundamental: Fundamental) -> Self {
+        NativeValue::Fundamental(fundamental).into()
+    }
 }
 
 const GOBJECT_SIZE_HINT: usize = 512;

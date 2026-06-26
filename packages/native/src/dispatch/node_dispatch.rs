@@ -10,8 +10,8 @@ use super::{
     WakeJsTsfn, send_or_report,
 };
 use crate::panic_handler::format_panic_payload;
-use crate::toggle_ref::RefOp;
 use crate::value::{JsRef, Value};
+use crate::wrapper_registry::WrapperRefOp;
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 fn node_channel_disconnected<R>() -> anyhow::Result<R> {
@@ -174,7 +174,11 @@ impl Mailbox {
     }
 
     #[cfg_attr(coverage_nightly, coverage(off))]
-    pub fn apply_wrapper_ref_op_and_wait(&self, ref_ptr: usize, op: RefOp) -> anyhow::Result<()> {
+    pub fn apply_wrapper_ref_op_and_wait(
+        &self,
+        ref_ptr: usize,
+        op: WrapperRefOp,
+    ) -> anyhow::Result<()> {
         self.submit_blocking_node_task(|result_tx, glib_initiated| NodeTask::WrapperRefOp {
             ref_ptr,
             op,

@@ -1,9 +1,9 @@
 import type { GirCallback } from "./callback.js";
 import type { GirClass } from "./class.js";
 import type { GirEnum } from "./enum.js";
-import type { GirNamespace } from "./namespace.js";
+import type { GirAlias, GirNamespace } from "./namespace.js";
 import type { GirRecord } from "./record.js";
-import type { StructuralType, TypeId } from "./type-id.js";
+import type { StructuralType } from "./type-id.js";
 
 export type EntityType =
     | { kind: "class"; namespace: GirNamespace; value: GirClass }
@@ -11,11 +11,6 @@ export type EntityType =
     | { kind: "record"; namespace: GirNamespace; value: GirRecord }
     | { kind: "enum"; namespace: GirNamespace; value: GirEnum }
     | { kind: "callback"; namespace: GirNamespace; value: GirCallback }
-    | {
-          kind: "alias";
-          namespace: GirNamespace;
-          target: TypeId | undefined;
-          targetCType: string | undefined;
-      };
+    | { kind: "alias"; namespace: GirNamespace; value: GirAlias };
 
 export type GirType = StructuralType | EntityType;

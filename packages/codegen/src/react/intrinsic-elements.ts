@@ -15,7 +15,7 @@ export type GlibNamedClass = {
 export function* iterateClassesWithGlibName(library: Library): IterableIterator<GlibNamedClass> {
     for (const namespace of library.namespaces.values()) {
         for (const klass of namespace.classes) {
-            const glibName = klass.glibTypeName ?? klass.cType;
+            const glibName = glibNameOf(klass);
             if (glibName === undefined) continue;
             yield { glibName, klass, namespace };
         }
@@ -46,7 +46,7 @@ export const implementedInterfaces = (
     return result;
 };
 
-export const interfaceGlibName = (klass: GirClass): string | undefined => klass.glibTypeName ?? klass.cType;
+export const glibNameOf = (klass: GirClass): string | undefined => klass.glibTypeName ?? klass.cType;
 
 export const interfaceHasPropsBody = (klass: GirClass): boolean =>
     klass.properties.length > 0 || klass.signals.length > 0;
@@ -111,7 +111,7 @@ export const collectInterfacePropsClasses = (
 export const ancestorGlibNames = (klass: GirClass, namespace: GirNamespace, library: Library): string[] => {
     const names: string[] = [];
     for (const { klass: ancestor } of ancestorChain(library, klass, namespace.name)) {
-        const glibName = ancestor.glibTypeName ?? ancestor.cType;
+        const glibName = glibNameOf(ancestor);
         if (glibName !== undefined) names.push(glibName);
     }
     return names;
@@ -124,7 +124,7 @@ const someAncestor = (
     predicate: (klass: GirClass, glibName: string) => boolean,
 ): boolean => {
     for (const { klass: ancestor } of ancestorChain(library, klass, namespace.name)) {
-        const glibName = ancestor.glibTypeName ?? ancestor.cType ?? "";
+        const glibName = glibNameOf(ancestor) ?? "";
         if (predicate(ancestor, glibName)) return true;
     }
     return false;

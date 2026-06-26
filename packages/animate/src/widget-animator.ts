@@ -7,7 +7,7 @@ import { interpolate } from "./interpolation.js";
 import type { AnimationTarget, Easing, Transition, WidgetAnimationProps } from "./types.js";
 
 const tweenDefaults = { duration: 0.3 };
-const springDefaults = { damping: 1, mass: 1, stiffness: 100 };
+const springDefaults = { damping: 10, mass: 1, stiffness: 100 };
 
 const easings: { [K in Easing]: Adw.Easing } = {
     linear: Adw.Easing.LINEAR,
@@ -42,7 +42,7 @@ const buildSpringAnimation = (
     const mass = transition.mass ?? springDefaults.mass;
     const stiffness = transition.stiffness ?? springDefaults.stiffness;
 
-    const springParams = Adw.SpringParams.new(damping, mass, stiffness);
+    const springParams = Adw.SpringParams.newFull(damping, mass, stiffness);
     const animation = Adw.SpringAnimation.new(widget, 0, 1, springParams, target);
 
     if (transition.velocity !== undefined) animation.setInitialVelocity(transition.velocity);

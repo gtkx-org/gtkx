@@ -2,11 +2,7 @@ use anyhow::bail;
 use napi::{Env, JsObject};
 
 use super::prelude::*;
-use crate::managed::{Boxed, NativeValue};
-
-fn boxed_value(boxed: Boxed) -> value::Value {
-    value::Value::Object(NativeValue::Boxed(boxed).into())
-}
+use crate::managed::Boxed;
 
 #[derive(Debug, Clone)]
 pub struct StructType {
@@ -15,9 +11,10 @@ pub struct StructType {
     pub caller_allocated: bool,
 }
 
-impl FromDescriptor for StructType {
+impl StructType {
+    #[allow(clippy::trivially_copy_pass_by_ref)]
     #[cfg_attr(coverage_nightly, coverage(off))]
-    fn from_descriptor(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
+    pub(crate) fn from_descriptor(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let ownership = Ownership::from_descriptor(obj, "struct")?;
 
         let size: Option<usize> =
@@ -55,19 +52,19 @@ impl FfiDecoder for StructType {
             ),
         };
 
-        Ok(boxed_value(boxed))
+        Ok(boxed.into())
     }
 
     unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         self.null_guarded(ptr, |ptr| {
             if self.caller_allocated {
-                return Ok(boxed_value(Boxed::from_glib_borrow(ptr)));
+                return Ok(Boxed::from_glib_borrow(ptr).into());
             }
             let boxed = self.size.map_or_else(
                 || Boxed::from_glib_borrow(ptr),
                 |size| Boxed::copy_with_size(ptr, size),
             );
-            Ok(boxed_value(boxed))
+            Ok(boxed.into())
         })
     }
 }

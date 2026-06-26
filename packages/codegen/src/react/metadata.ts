@@ -15,7 +15,7 @@ import {
 import { ACCESSIBLE_ATTRIBUTES } from "./tables.js";
 
 export type RuntimeTables = {
-    topLevelTypes: string[];
+    toplevelTypes: string[];
     defaultBlockableTypes: string[];
     metaObjectAddMethods: Record<string, AddMethodRule[]>;
     pageMetaSetters: PageMetaSetter[];
@@ -38,7 +38,7 @@ type RuntimeTableSpec = {
 };
 
 const RUNTIME_TABLE_SPECS: Record<keyof RuntimeTables, RuntimeTableSpec> = {
-    topLevelTypes: { name: "TOP_LEVEL_TYPES", annotation: "string[]" },
+    toplevelTypes: { name: "TOPLEVEL_TYPES", annotation: "string[]" },
     defaultBlockableTypes: { name: "DEFAULT_BLOCKABLE_TYPES", annotation: "string[]" },
     metaObjectAddMethods: { name: "META_OBJECT_ADD_METHODS", annotation: recordOfArray("AddMethodRule") },
     pageMetaSetters: { name: "PAGE_META_SETTERS", annotation: arrayOf("PageMetaSetter") },
@@ -198,7 +198,7 @@ const resolveDefaultLiteral = (
     if (resolved === undefined) return undefined;
     if (resolved.kind === "primitive") return primitiveDefaultLiteral(resolved.category, raw);
     if (resolved.kind === "enum") return enumDefaultLiteral(resolved.value, raw);
-    if (resolved.kind === "alias") return resolveDefaultLiteral(library, resolved.target, raw);
+    if (resolved.kind === "alias") return resolveDefaultLiteral(library, resolved.value.target, raw);
     return undefined;
 };
 

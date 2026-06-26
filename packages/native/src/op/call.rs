@@ -10,7 +10,7 @@ use super::request::{NativeRequest, RefUpdate};
 use crate::{
     arg::Arg,
     ffi,
-    state::GlibThreadState,
+    glib_thread_state::GlibThreadState,
     types::{ArrayKind, FfiDecoder as _, FfiEncoder as _, Type},
     value::Value,
 };

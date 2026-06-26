@@ -2,12 +2,13 @@ import { sourceStringLiteral } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { Library } from "../gir/library.js";
 import type { GirNamespace } from "../gir/namespace.js";
-import type { JsxImports } from "./imports.js";
+import { renderBlock } from "../writer/emit.js";
+import type { ImportsBuilder } from "../writer/imports.js";
 import {
     collectInterfacePropsClasses,
     collectIntrinsicElementClasses,
     type GlibNamedClass,
-    interfaceGlibName,
+    glibNameOf,
     interfaceHasPropsBody,
     newlyImplementedInterfaces,
     type ResolvedQualifiedInterface,
@@ -17,12 +18,21 @@ import { ACCESSIBLE_ATTRIBUTES, SLOT_PROPS_BY_TYPE } from "./tables.js";
 
 export type GenerateJsxOptions = {
     excludeNames: Set<string>;
-    imports: JsxImports;
+    imports: ImportsBuilder;
 };
 
 const QUALIFIED_TYPE_PATTERN = /^[A-Z][A-Za-z0-9]*\.[A-Z]/;
 
 const ACCESSIBLE_INTERFACE_GLIB_NAME = "GtkAccessible";
+
+const addGiNamespace = (imports: ImportsBuilder, namespaceName: string, alias: string): void => {
+    if (namespaceName === "") return;
+    imports.addNamespace(`@gtkx/gi/${namespaceName.toLowerCase()}`, alias, true);
+};
+
+const addReactBuiltin = (imports: ImportsBuilder, name: string): void => {
+    imports.addNamed("react", name, true);
+};
 
 export const generateJsxSection = (
     targetNamespace: GirNamespace,
@@ -39,17 +49,17 @@ export const generateJsxSection = (
 
     const intrinsicElementByGlibName = new Map(allWidgets.map((entry) => [entry.glibName, entry]));
     const isIntrinsicElementAncestor = (candidate: GirClass): boolean => {
-        const candidateGlib = candidate.glibTypeName ?? candidate.cType;
+        const candidateGlib = glibNameOf(candidate);
         return candidateGlib !== undefined && intrinsicElementByGlibName.has(candidateGlib);
     };
-    imports.reactBuiltins.add("ReactNode");
-    imports.reactBuiltins.add("Ref");
+    addReactBuiltin(imports, "ReactNode");
+    addReactBuiltin(imports, "Ref");
 
     let needsReactElement = false;
     const propBlocks: string[] = [];
 
     for (const iface of collectInterfacePropsClasses(library, targetNamespace.name)) {
-        if (interfaceGlibName(iface.klass) === undefined) continue;
+        if (glibNameOf(iface.klass) === undefined) continue;
         const { block, slotPropNames } = renderInterfacePropsBlock(library, iface, targetNamespace.name, imports);
         if (slotPropNames.length > 0) needsReactElement = true;
         propBlocks.push(block);
@@ -66,40 +76,37 @@ export const generateJsxSection = (
         if (slotPropNames.length > 0) needsReactElement = true;
         propBlocks.push(block);
     }
-    if (needsReactElement) imports.reactBuiltins.add("ReactElement");
+    if (needsReactElement) addReactBuiltin(imports, "ReactElement");
 
     const source = [constLines.join("\n"), "", propBlocks.join("\n\n"), "", renderJsxAugmentation(widgets)].join("\n");
     return { source, intrinsicCount: intrinsicWidgets.length };
 };
 
-const accessiblePropLines = (imports: JsxImports): string[] =>
+const accessiblePropLines = (imports: ImportsBuilder): string[] =>
     Object.entries(ACCESSIBLE_ATTRIBUTES).map(([name, { type }]) => {
         const namespace = type.split(".")[0];
         if (QUALIFIED_TYPE_PATTERN.test(type) && namespace !== undefined) {
-            imports.giNamespaces.set(namespace, namespace);
+            addGiNamespace(imports, namespace, namespace);
         }
-        return `    ${name}?: ${type} | null | undefined;`;
+        return `${name}?: ${type} | null | undefined;`;
     });
 
 const registerCrossNsProps = (
-    imports: JsxImports,
+    imports: ImportsBuilder,
     targetNamespaceName: string,
     namespaceName: string,
     propsName: string,
 ): void => {
     if (namespaceName === targetNamespaceName) return;
-    const directory = namespaceName.toLowerCase();
-    const names = imports.crossNsProps.get(directory) ?? new Set<string>();
-    names.add(propsName);
-    imports.crossNsProps.set(directory, names);
+    imports.addNamed(`@gtkx/jsx/${namespaceName.toLowerCase()}`, propsName, true);
 };
 
 const interfacePropsRef = (
     iface: ResolvedQualifiedInterface,
     targetNamespaceName: string,
-    imports: JsxImports,
+    imports: ImportsBuilder,
 ): string | undefined => {
-    const glib = interfaceGlibName(iface.klass);
+    const glib = glibNameOf(iface.klass);
     if (glib === undefined) return undefined;
     registerCrossNsProps(imports, targetNamespaceName, iface.namespace.name, `${glib}Props`);
     return `${glib}Props<Self>`;
@@ -109,7 +116,7 @@ const interfacePrerequisiteExtends = (
     library: Library,
     iface: ResolvedQualifiedInterface,
     targetNamespaceName: string,
-    imports: JsxImports,
+    imports: ImportsBuilder,
 ): string[] => {
     const refs: string[] = [];
     for (const prerequisiteName of iface.klass.prerequisites) {
@@ -130,9 +137,9 @@ const renderInterfacePropsBlock = (
     library: Library,
     iface: ResolvedQualifiedInterface,
     targetNamespaceName: string,
-    imports: JsxImports,
+    imports: ImportsBuilder,
 ): { block: string; slotPropNames: string[] } => {
-    const glib = interfaceGlibName(iface.klass);
+    const glib = glibNameOf(iface.klass);
     const {
         propLines,
         imports: propImports,
@@ -142,32 +149,31 @@ const renderInterfacePropsBlock = (
         iface: iface.klass,
         namespace: iface.namespace,
     });
-    for (const [namespace, alias] of propImports) imports.giNamespaces.set(namespace, alias);
-    const ownerLines = propLines.map((line) => `    ${line}`);
+    for (const [namespace, alias] of propImports) addGiNamespace(imports, namespace, alias);
+    const ownerLines = [...propLines];
     if (glib === ACCESSIBLE_INTERFACE_GLIB_NAME) ownerLines.push(...accessiblePropLines(imports));
     const prerequisiteExtends = interfacePrerequisiteExtends(library, iface, targetNamespaceName, imports);
     const extendsClause = prerequisiteExtends.length === 0 ? "" : ` extends ${prerequisiteExtends.join(", ")}`;
     const selfDefault = `${iface.namespace.name}.${iface.klass.name}`;
-    const block = `export interface ${glib}Props<Self = ${selfDefault}>${extendsClause} {\n${ownerLines.join("\n")}\n}`;
+    const block = renderBlock(
+        `export interface ${glib}Props<Self = ${selfDefault}>${extendsClause}`,
+        ownerLines.join("\n"),
+    );
     return { block, slotPropNames };
 };
 
-const renderJsxAugmentation = (widgets: GlibNamedClass[]): string =>
-    [
-        "declare global {",
-        "    namespace React.JSX {",
-        "        interface IntrinsicElements {",
-        ...widgets.map((entry) => `        ${entry.glibName}: ${entry.glibName}Props;`),
-        "        }",
-        "    }",
-        "}",
-    ].join("\n");
+const renderJsxAugmentation = (widgets: GlibNamedClass[]): string => {
+    const elementLines = widgets.map((entry) => `${entry.glibName}: ${entry.glibName}Props;`).join("\n");
+    const intrinsicInterface = renderBlock("interface IntrinsicElements", elementLines);
+    const reactJsxNamespace = renderBlock("namespace React.JSX", intrinsicInterface);
+    return renderBlock("declare global", reactJsxNamespace);
+};
 
 type RenderPropBlockContext = {
     isIntrinsicElementAncestor: (candidate: GirClass) => boolean;
     intrinsicElementByGlibName: Map<string, GlibNamedClass>;
     targetNamespaceName: string;
-    imports: JsxImports;
+    imports: ImportsBuilder;
 };
 
 const renderPropBlock = (
@@ -182,20 +188,23 @@ const renderPropBlock = (
         namespace: entry.namespace,
         isIntrinsicElementAncestor: context.isIntrinsicElementAncestor,
     });
-    for (const [namespace, alias] of imports) context.imports.giNamespaces.set(namespace, alias);
-    context.imports.giNamespaces.set(entry.namespace.name, entry.namespace.name);
+    for (const [namespace, alias] of imports) addGiNamespace(context.imports, namespace, alias);
+    addGiNamespace(context.imports, entry.namespace.name, entry.namespace.name);
     const widgetTypeRef = `${entry.namespace.name}.${entry.klass.name} | null`;
-    const slotPropLines = slotProps.map((propName) => `    ${propName}?: ReactNode | null | undefined;`);
+    const slotPropLines = slotProps.map((propName) => `${propName}?: ReactNode | null | undefined;`);
     const ownerLines = [
-        "    children?: ReactNode;",
-        `    ref?: Ref<${widgetTypeRef}> | undefined;`,
-        ...propLines.map((line) => `    ${line}`),
+        "children?: ReactNode;",
+        `ref?: Ref<${widgetTypeRef}> | undefined;`,
+        ...propLines,
         ...slotPropLines,
     ];
     const extendsList = resolveWidgetExtends(library, entry, context);
     const extendsClause = extendsList.length === 0 ? "" : ` extends ${extendsList.join(", ")}`;
     const selfDefault = `${entry.namespace.name}.${entry.klass.name}`;
-    const block = `export interface ${entry.glibName}Props<Self = ${selfDefault}>${extendsClause} {\n${ownerLines.join("\n")}\n}`;
+    const block = renderBlock(
+        `export interface ${entry.glibName}Props<Self = ${selfDefault}>${extendsClause}`,
+        ownerLines.join("\n"),
+    );
     return { block, slotPropNames };
 };
 
@@ -220,7 +229,7 @@ const resolveParentPropsRef = (
     const resolved = library.resolveType(entry.namespace.name, parent);
     if (resolved === undefined) return undefined;
     if (resolved.kind !== "class" && resolved.kind !== "interface") return undefined;
-    const parentGlib = resolved.value.glibTypeName ?? resolved.value.cType;
+    const parentGlib = glibNameOf(resolved.value);
     if (parentGlib === undefined) return undefined;
     if (!context.intrinsicElementByGlibName.has(parentGlib)) return undefined;
     registerCrossNsProps(context.imports, context.targetNamespaceName, resolved.namespace.name, `${parentGlib}Props`);

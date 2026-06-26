@@ -27,10 +27,6 @@ import { isRecordCallerOut, isRecordInout } from "./param-marshal.js";
 
 const SIGNAL_HANDLER_TYPE = "(...args: any[]) => any";
 
-type CollectedSignal = {
-    signal: GirSignal;
-};
-
 export const renderSignalMembers = (context: ModuleContext, klass: GirClass): string[] => {
     if (klass.glibGetType === undefined) return [];
     const signals = collectClassSignals(context, klass);
@@ -41,8 +37,8 @@ export const renderSignalMembers = (context: ModuleContext, klass: GirClass): st
     context.addRuntimeImport("signalBaseName");
     context.addRuntimeImport("t");
 
-    const connectCases = signals.map((collected) => renderConnectCase(context, collected));
-    const emitCases = signals.map((collected) => renderEmitCase(context, collected));
+    const connectCases = signals.map((signal) => renderConnectCase(context, signal));
+    const emitCases = signals.map((signal) => renderEmitCase(context, signal));
     const connectDefault = isRootObject
         ? `default:\n    throw new globalThis.Error("Unknown signal '" + signal + "'");`
         : "default:\n    return super.connect(signal, handler, after);";
@@ -89,7 +85,7 @@ type SignalMapSpec = {
     className: string;
     parentlessExtendsObject: boolean;
     suffix: string;
-    renderEntry: (context: ModuleContext, collected: CollectedSignal) => string;
+    renderEntry: (context: ModuleContext, signal: GirSignal) => string;
 };
 
 const renderSignalMap = (spec: SignalMapSpec): string => {
@@ -97,7 +93,7 @@ const renderSignalMap = (spec: SignalMapSpec): string => {
     const extendsRefs = signalMapParentRefs(context, klass, parentlessExtendsObject, suffix);
     const extendsClause = extendsRefs.length === 0 ? "" : ` extends ${extendsRefs.join(", ")}`;
     const signalEntries = collectClassSignals(context, klass).map(
-        (collected) => `${sourceStringLiteral(collected.signal.name)}: ${renderEntry(context, collected)};`,
+        (signal) => `${sourceStringLiteral(signal.name)}: ${renderEntry(context, signal)};`,
     );
     const entries = [...signalEntries, ...renderNotifyDetailEntries(context, klass, suffix)];
     const body = entries.length === 0 ? "" : `\n${indent(entries.join("\n"), 1)}\n`;
@@ -165,10 +161,9 @@ const renderSignalConnectInterface = (className: string, isRootObject: boolean):
     return renderBracedOrEmpty(`export interface ${className}`, lines.join("\n"));
 };
 
-const renderSignalHandlerType = (context: ModuleContext, collected: CollectedSignal): string => {
-    const { signal } = collected;
+const renderSignalHandlerType = (context: ModuleContext, signal: GirSignal): string => {
     const params = renderHandlerParameters(signal.parameters, (ref, nullable) => renderTsType(context, ref, nullable));
-    return `(${params.join(", ")}) => ${renderResultType(context, collected, false, true)}`;
+    return `(${params.join(", ")}) => ${renderResultType(context, signal, false, true)}`;
 };
 
 const assembleSignalResult = (primary: string | undefined, outTypes: string[], optOut: boolean): string => {
@@ -181,11 +176,10 @@ const assembleSignalResult = (primary: string | undefined, outTypes: string[], o
 
 const renderResultType = (
     context: ModuleContext,
-    collected: CollectedSignal,
+    signal: GirSignal,
     includeCallerAllocated: boolean,
     optOut: boolean,
 ): string => {
-    const { signal } = collected;
     const primary = omitsPrimaryReturn(context.library, signal.returnValue)
         ? undefined
         : renderTsType(context, signal.returnValue.type, signal.returnValue.nullable);
@@ -201,26 +195,23 @@ const renderResultType = (
     return assembleSignalResult(primary, outTypes, optOut);
 };
 
-const renderSignalEmitEntry = (context: ModuleContext, collected: CollectedSignal): string => {
-    const { signal } = collected;
+const renderSignalEmitEntry = (context: ModuleContext, signal: GirSignal): string => {
     const args = renderHandlerParameters(
         signal.parameters,
         (ref, nullable) => renderTsType(context, ref, nullable),
         isCallerAllocatedOut,
     );
-    const result = renderResultType(context, collected, true, false);
+    const result = renderResultType(context, signal, true, false);
     return `{ args: [${args.join(", ")}]; result: ${result} }`;
 };
 
-const renderConnectCase = (context: ModuleContext, collected: CollectedSignal): string => {
-    const { signal } = collected;
-    const callback = renderCallback(context, collected);
+const renderConnectCase = (context: ModuleContext, signal: GirSignal): string => {
+    const callback = renderCallback(context, signal);
     const body = `return connectGObjectSignal(this, signal, { callback: ${callback}, handler, after: after ?? false });`;
     return renderBlock(`case ${sourceStringLiteral(signal.name)}:`, body);
 };
 
-const renderEmitCase = (context: ModuleContext, collected: CollectedSignal): string => {
-    const { signal } = collected;
+const renderEmitCase = (context: ModuleContext, signal: GirSignal): string => {
     const params = signal.parameters.filter((parameter) => !parameter.isVarargs);
     if (params.some((parameter) => isCallerAllocatedOut(parameter) && !isRecordCallerOut(context, parameter))) {
         return renderUnsupportedEmitCase(signal);
@@ -270,8 +261,7 @@ const renderCallerOutAllocation = (context: ModuleContext, parameter: GirParamet
     return `new ${context.qualify(name.namespaceName, name.typeName)}()`;
 };
 
-const renderCallback = (context: ModuleContext, collected: CollectedSignal): string => {
-    const { signal } = collected;
+const renderCallback = (context: ModuleContext, signal: GirSignal): string => {
     const params = signal.parameters.filter((parameter) => !parameter.isVarargs);
     const callbackParamDescriptors = params.map((parameter) =>
         renderParamDescriptor(context, parameter, parameter.type),
@@ -284,15 +274,15 @@ const renderCallback = (context: ModuleContext, collected: CollectedSignal): str
     return tCallback(callbackArgs, returnDescriptor, `{ hasDestroy: true, userDataIndex: ${params.length + 1} }`);
 };
 
-const collectClassSignals = (context: ModuleContext, klass: GirClass): CollectedSignal[] => {
+const collectClassSignals = (context: ModuleContext, klass: GirClass): GirSignal[] => {
     const inheritedNames = collectInheritedSignalNames(context, klass);
     const seen = new Set<string>();
-    const result: CollectedSignal[] = [];
+    const result: GirSignal[] = [];
     const consider = (signal: GirSignal): void => {
         const name = toCamelCase(signal.name);
         if (inheritedNames.has(name) || seen.has(name)) return;
         seen.add(name);
-        result.push({ signal });
+        result.push(signal);
     };
     for (const signal of klass.signals) consider(signal);
     for (const implementName of klass.implements) {

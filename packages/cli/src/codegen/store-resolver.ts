@@ -108,12 +108,18 @@ const pruneShadowingStore = (memberDir: string): void => {
     }
 };
 
-export const resolveCodegenContext = async (cwd: string): Promise<{ root: string; config: GtkxConfig } | null> => {
+export type CodegenContext = {
+    root: string;
+    config: GtkxConfig;
+    configFile: string | undefined;
+};
+
+export const resolveCodegenContext = async (cwd: string): Promise<CodegenContext | null> => {
     const root = findCodegenRoot(cwd);
     if (root !== cwd) pruneShadowingStore(cwd);
     try {
-        const { config } = await loadGtkxConfig(root);
-        return { root, config };
+        const { config, configFile } = await loadGtkxConfig(root);
+        return { root, config, configFile };
     } catch (error) {
         if (error instanceof GtkxConfigNotFoundError) return null;
         throw error;

@@ -1,4 +1,5 @@
 import type * as GObject from "@gtkx/gi/gobject";
+import * as Gtk from "@gtkx/gi/gtk";
 import { useSignal } from "@gtkx/react";
 import { type GObjectTarget, resolveGObjectTarget, useGObjectValue } from "@gtkx/react/internal";
 import { useLayoutEffect, useRef } from "react";
@@ -16,10 +17,8 @@ interface DropDownSelectionOptions<T, S> {
     onSelectionChanged: ((id: string) => void) | null | undefined;
 }
 
-const GTK_INVALID_LIST_POSITION = 4294967295;
-
 const normalizeSelected = (position: number): number =>
-    position === GTK_INVALID_LIST_POSITION || position < 0 ? -1 : position;
+    position === Gtk.INVALID_LIST_POSITION || position < 0 ? -1 : position;
 
 export const useDropDownSelection = <T, S>(options: DropDownSelectionOptions<T, S>): number => {
     const { widget, resolver, selectedId, onSelectionChanged } = options;

@@ -14,12 +14,12 @@ import {
     useRef,
     useState,
 } from "react";
-import { type CellRenderer, CellRenderHost } from "./cell.js";
+import { type CellRenderer, CellRenderHost, headerRenderer, itemRenderer } from "./cell.js";
 import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
 import { useDropDownSelection } from "./hooks/use-drop-down-selection.js";
 import { useInstalledModel } from "./hooks/use-installed-model.js";
 import { useListModel } from "./hooks/use-list-model.js";
-import type { ItemNode, SectionNode, UncontrolledItemType } from "./types.js";
+import type { ItemNode, RenderItemInfo, SectionNode, UncontrolledItemType } from "./types.js";
 import type { CellContainerStore } from "./utils/cell-container-store.js";
 import type { ItemResolver } from "./utils/item-resolver.js";
 
@@ -36,10 +36,7 @@ interface DropDownWidget extends Gtk.Widget {
  * Information passed to a {@link DropDown} or {@link ComboRow} cell renderer for
  * a single item: its resolved value and bound list `index`.
  */
-export interface DropDownRenderItemInfo<T> {
-    item: T;
-    index: number;
-}
+export type DropDownRenderItemInfo<T> = RenderItemInfo<T>;
 
 type DropDownItemRenderer<T> = (info: DropDownRenderItemInfo<T>) => ReactNode;
 
@@ -58,31 +55,22 @@ const headerFactoryInstaller: FactoryInstaller<DropDownWidget> = {
     uninstall: (widget) => widget.setHeaderFactory(null),
 };
 
-const defaultRenderer: CellRenderer<unknown, unknown> = (value, _treeRow, isHeader) => {
-    if (isHeader || value === undefined || value === null) return null;
+const defaultRenderer: CellRenderer<unknown, unknown> = (value) => {
+    if (value === undefined || value === null) return null;
     return createElement(GtkLabel, { label: String(value) });
 };
 
 const toItemRenderer = <T, S>(renderItem: DropDownItemRenderer<T> | null | undefined): CellRenderer<T, S> => {
     if (typeof renderItem !== "function") return defaultRenderer as CellRenderer<T, S>;
-    return (value, _treeRow, isHeader, position) =>
-        isHeader ? null : renderItem({ item: value as T, index: position });
+    return itemRenderer<T, S>(renderItem);
 };
 
 const toListRenderer = <T, S>(
     renderListItem: DropDownItemRenderer<T> | null | undefined,
     renderItem: DropDownItemRenderer<T> | null | undefined,
 ): CellRenderer<T, S> => {
-    if (typeof renderListItem === "function") {
-        return (value, _treeRow, isHeader, position) =>
-            isHeader ? null : renderListItem({ item: value as T, index: position });
-    }
+    if (typeof renderListItem === "function") return itemRenderer<T, S>(renderListItem);
     return toItemRenderer<T, S>(renderItem);
-};
-
-const toHeaderRenderer = <T, S>(renderHeader: ((value: S) => ReactNode) | null | undefined): CellRenderer<T, S> => {
-    if (typeof renderHeader !== "function") return () => null;
-    return (value) => renderHeader(value as S);
 };
 
 const createSelectionResolver = <T, S>(resolver: ItemResolver<T, S>, selectedPosition: number): ItemResolver<T, S> => ({
@@ -106,7 +94,7 @@ type DropDownDeclarativeProps<T = unknown, S = unknown> =
           onSelectionChanged?: ((id: string) => void) | null | undefined;
           renderItem?: DropDownItemRenderer<T> | null | undefined;
           renderListItem?: DropDownItemRenderer<T> | null | undefined;
-          renderHeader?: ((item: S) => ReactNode) | null | undefined;
+          renderHeader?: ((info: { section: S }) => ReactNode) | null | undefined;
           model?: never;
       }
     | {
@@ -148,7 +136,7 @@ interface NormalizedDropDownProps<T, S, W extends DropDownWidget> {
     model: Gio.ListModel | undefined;
     selectedId: string | null | undefined;
     onSelectionChanged: ((id: string) => void) | null | undefined;
-    renderHeader: ((value: S) => ReactNode) | null | undefined;
+    renderHeader: ((info: { section: S }) => ReactNode) | null | undefined;
 }
 
 interface DropDownWiring<T, S, W extends DropDownWidget> {
@@ -234,7 +222,7 @@ const DropDownBody = <T, S, W extends DropDownWidget>({ element, props }: DropDo
 
     const renderItemFn = renderItem as DropDownItemRenderer<T> | null | undefined;
     const renderListItemFn = renderListItem as DropDownItemRenderer<T> | null | undefined;
-    const renderHeaderFn = renderHeader as ((value: S) => ReactNode) | null | undefined;
+    const renderHeaderFn = renderHeader as ((info: { section: S }) => ReactNode) | null | undefined;
 
     const wiring = useDropDownWiring<T, S, W>({
         ref,
@@ -265,7 +253,7 @@ const DropDownBody = <T, S, W extends DropDownWidget>({ element, props }: DropDo
                 <CellRenderHost
                     store={wiring.headerStore}
                     resolver={wiring.headerResolver}
-                    render={toHeaderRenderer<T, S>(renderHeaderFn)}
+                    render={headerRenderer<T, S>(renderHeaderFn)}
                 />
             ) : null}
         </>

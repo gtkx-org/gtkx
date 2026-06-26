@@ -147,7 +147,7 @@ fn scalar_slot_storage(value: &ffi::FfiValue) -> ffi::FfiValue {
 
 fn assert_scalar_ref_decodes_to_number(inner: Type, seeded: &ffi::FfiValue, expected: f64) {
     let cif_value = scalar_slot_storage(seeded);
-    let type_ = Type::Ref(native::types::RefType::new(inner));
+    let type_ = Type::Ref(native::types::RefType::new(inner).expect("valid Ref inner"));
     let Value::Number(n) = type_.decode(&cif_value).expect("Ref decode failed") else {
         panic!("Expected Value::Number");
     };
@@ -513,9 +513,10 @@ fn from_cif_value_ref_gobject() {
         let obj_ptr = obj.as_ptr() as *mut c_void;
 
         let cif_value = ptr_slot_storage(obj_ptr);
-        let type_ = Type::Ref(native::types::RefType::new(gobject_type_of(
-            Ownership::Borrowed,
-        )));
+        let type_ = Type::Ref(
+            native::types::RefType::new(gobject_type_of(Ownership::Borrowed))
+                .expect("GObject is a valid Ref inner"),
+        );
 
         let result = type_
             .decode(&cif_value)
@@ -532,9 +533,10 @@ fn from_cif_value_ref_gobject() {
 fn from_cif_value_ref_gobject_null_inner() {
     common::run(|| {
         let cif_value = ptr_slot_storage(std::ptr::null_mut());
-        let type_ = Type::Ref(native::types::RefType::new(gobject_type_of(
-            Ownership::Borrowed,
-        )));
+        let type_ = Type::Ref(
+            native::types::RefType::new(gobject_type_of(Ownership::Borrowed))
+                .expect("GObject is a valid Ref inner"),
+        );
 
         let result = type_
             .decode(&cif_value)
@@ -550,9 +552,10 @@ fn from_cif_value_ref_boxed() {
         let boxed_ptr = common::allocate_test_boxed(gtype);
 
         let cif_value = ptr_slot_storage(boxed_ptr);
-        let type_ = Type::Ref(native::types::RefType::new(rgba_boxed_type_of(
-            Ownership::Borrowed,
-        )));
+        let type_ = Type::Ref(
+            native::types::RefType::new(rgba_boxed_type_of(Ownership::Borrowed))
+                .expect("Boxed is a valid Ref inner"),
+        );
 
         let result = type_.decode(&cif_value).expect("Ref<Boxed> decode failed");
         assert!(matches!(result, Value::Object(_)));

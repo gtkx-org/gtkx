@@ -126,10 +126,9 @@ const collectGroupAliases = (plans: (CommandPlan & { ok: true })[]): Map<string,
 export type GlGenerationOptions = {
     registryPath: string;
     companionExports: Set<string>;
-    selection?: GlSelection;
 };
 
-const DEFAULT_SELECTION: GlSelection = { api: "gl", version: 4.6, profile: "core" };
+const GL_SELECTION: GlSelection = { api: "gl", version: 4.6, profile: "core" };
 
 type OkPlan = CommandPlan & { ok: true };
 
@@ -222,7 +221,7 @@ const assertExportNamesDisjoint = (
 };
 
 export const generateGlModules = (options: GlGenerationOptions): GlGenerationResult => {
-    const selection = options.selection ?? DEFAULT_SELECTION;
+    const selection = GL_SELECTION;
     const registry = loadGlRegistry(options.registryPath);
     const subset = selectSubset(registry, selection);
     const { okPlans, planFeatures, exclusions } = planSelectedCommands(registry, subset.commands);

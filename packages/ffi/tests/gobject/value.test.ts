@@ -21,23 +21,7 @@ import { describe, expect, it } from "vitest";
 import "@gtkx/gi/gobject";
 import { getHandle, t } from "@gtkx/ffi";
 import { call } from "@gtkx/native";
-import {
-    fromGValue,
-    newGValueForDescriptor,
-    toGValue,
-    valueGetBoolean,
-    valueGetDouble,
-    valueGetEnum,
-    valueGetFlags,
-    valueGetFloat,
-    valueGetInt,
-    valueGetInt64,
-    valueGetObject,
-    valueGetString,
-    valueGetType,
-    valueGetUint,
-    valueGetUint64,
-} from "../../src/gvalue.js";
+import { fromGValue, newGValueForDescriptor, toGValue, valueGetType } from "../../src/gvalue.js";
 
 const callGetType = (lib: string, fn: string): GType => {
     const result = call(lib, fn, [], { type: "biguint64" });
@@ -84,12 +68,12 @@ describe("toGValue — gobject", () => {
     it("creates a GValue holding a GObject", () => {
         const label = new Gtk.Label({ label: "test" });
         const v = toGValue({ type: "gobject", ownership: "borrowed" }, label);
-        expect(valueGetObject(v)).not.toBeNull();
+        expect(fromGValue(v)).not.toBeNull();
     });
 
     it("creates a GValue holding null", () => {
         const v = toGValue({ type: "gobject", ownership: "borrowed" }, null);
-        expect(valueGetObject(v)).toBeNull();
+        expect(fromGValue(v)).toBeNull();
     });
 });
 
@@ -130,33 +114,33 @@ describe("fromGValue extra coverage", () => {
 
 describe("toGValue — primitives", () => {
     it("builds a boolean value", () => {
-        expect(valueGetBoolean(toGValue({ type: "boolean" }, true))).toBe(true);
+        expect(fromGValue(toGValue({ type: "boolean" }, true))).toBe(true);
     });
 
     it("builds a string value", () => {
-        expect(valueGetString(toGValue({ type: "string", ownership: "borrowed" }, "hi"))).toBe("hi");
+        expect(fromGValue(toGValue({ type: "string", ownership: "borrowed" }, "hi"))).toBe("hi");
     });
 
     it("builds an int value for int8/int16/int32 descriptors", () => {
-        expect(valueGetInt(toGValue({ type: "int8" }, -1))).toBe(-1);
-        expect(valueGetInt(toGValue({ type: "int16" }, 100))).toBe(100);
-        expect(valueGetInt(toGValue({ type: "int32" }, 2000))).toBe(2000);
+        expect(fromGValue(toGValue({ type: "int8" }, -1))).toBe(-1);
+        expect(fromGValue(toGValue({ type: "int16" }, 100))).toBe(100);
+        expect(fromGValue(toGValue({ type: "int32" }, 2000))).toBe(2000);
     });
 
     it("builds a uint value for uint8/uint16/uint32 descriptors", () => {
-        expect(valueGetUint(toGValue({ type: "uint8" }, 1))).toBe(1);
-        expect(valueGetUint(toGValue({ type: "uint16" }, 200))).toBe(200);
-        expect(valueGetUint(toGValue({ type: "uint32" }, 4000))).toBe(4000);
+        expect(fromGValue(toGValue({ type: "uint8" }, 1))).toBe(1);
+        expect(fromGValue(toGValue({ type: "uint16" }, 200))).toBe(200);
+        expect(fromGValue(toGValue({ type: "uint32" }, 4000))).toBe(4000);
     });
 
     it("builds int64 and uint64 values as bigint", () => {
-        expect(valueGetInt64(toGValue({ type: "bigint64" }, 42n))).toBe(42n);
-        expect(valueGetUint64(toGValue({ type: "biguint64" }, 84n))).toBe(84n);
+        expect(fromGValue(toGValue({ type: "bigint64" }, 42n))).toBe(42n);
+        expect(fromGValue(toGValue({ type: "biguint64" }, 84n))).toBe(84n);
     });
 
     it("builds float and double values", () => {
-        expect(valueGetFloat(toGValue({ type: "float32" }, 1.5))).toBeCloseTo(1.5, 3);
-        expect(valueGetDouble(toGValue({ type: "float64" }, Math.PI))).toBeCloseTo(Math.PI);
+        expect(fromGValue(toGValue({ type: "float32" }, 1.5))).toBeCloseTo(1.5, 3);
+        expect(fromGValue(toGValue({ type: "float64" }, Math.PI))).toBeCloseTo(Math.PI);
     });
 });
 
@@ -166,7 +150,7 @@ describe("toGValue — enums and flags", () => {
             { type: "enum", library: "libgtk-4.so.1", getTypeFn: "gtk_align_get_type", signed: false },
             Gtk.Align.CENTER,
         );
-        expect(valueGetEnum(v)).toBe(Gtk.Align.CENTER);
+        expect(fromGValue(v)).toBe(Gtk.Align.CENTER);
     });
 
     it("builds a flags value from a flags-fundamental enum descriptor", () => {
@@ -174,7 +158,7 @@ describe("toGValue — enums and flags", () => {
             { type: "enum", library: "libgobject-2.0.so.0", getTypeFn: "g_binding_flags_get_type", signed: false },
             3,
         );
-        expect(valueGetFlags(v)).toBe(3);
+        expect(fromGValue(v)).toBe(3);
     });
 
     it("builds a flags value from a flags descriptor", () => {
@@ -182,14 +166,14 @@ describe("toGValue — enums and flags", () => {
             { type: "flags", library: "libgobject-2.0.so.0", getTypeFn: "g_binding_flags_get_type", signed: false },
             5,
         );
-        expect(valueGetFlags(v)).toBe(5);
+        expect(fromGValue(v)).toBe(5);
     });
 });
 
 describe("toGValue — objects and boxed", () => {
     it("builds a gobject value", () => {
         const label = new Gtk.Label({ label: "x" });
-        expect(valueGetObject(toGValue({ type: "gobject", ownership: "borrowed" }, label))).not.toBeNull();
+        expect(fromGValue(toGValue({ type: "gobject", ownership: "borrowed" }, label))).not.toBeNull();
     });
 
     it("builds a boxed value via getTypeFn resolution", () => {

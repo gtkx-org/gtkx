@@ -13,6 +13,12 @@ export type RunCodegenOptions = {
     cwd?: string;
     force?: boolean;
     inputs?: CodegenInputs;
+    resolved?: ResolvedGtkxConfig;
+};
+
+type ResolvedGtkxConfig = {
+    config: GtkxConfig;
+    configFile: string | undefined;
 };
 
 export type RunCodegenResult = {
@@ -50,7 +56,7 @@ const codegenOptions = (store: CodegenStore, libraries: string[], girPath: strin
 export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenResult> => {
     const cwd = findCodegenRoot(options.cwd ?? process.cwd());
 
-    const { config, configFile } = await loadGtkxConfig(cwd);
+    const { config, configFile } = options.resolved ?? (await loadGtkxConfig(cwd));
 
     const { girPath, libraries, store } = options.inputs ?? resolveCodegenInputs(cwd, config);
 
@@ -108,7 +114,8 @@ export const ensureGenerated = async (cwd: string, options: { announce?: boolean
     if (options.announce) {
         info("generated bindings missing; running codegen...");
     }
-    await runCodegen(inputs === null ? { cwd: context.root } : { cwd: context.root, inputs });
+    const resolved = { config: context.config, configFile: context.configFile };
+    await runCodegen(inputs === null ? { cwd: context.root, resolved } : { cwd: context.root, inputs, resolved });
     return true;
 };
 

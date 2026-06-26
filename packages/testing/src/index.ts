@@ -68,7 +68,7 @@ export type {
     ScreenshotOptions,
     ScreenshotResult,
     WaitForOptions,
-    WindowMatcher,
+    WindowSelector,
     WrapperComponent,
 } from "./types.js";
 export type {

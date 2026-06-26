@@ -9,12 +9,12 @@ import type { TreeItemMetadata } from "./utils/list-item-flatten.js";
 
 /**
  * Renders the content for a single cell given its resolved value, owning tree
- * row, whether the cell is a section header, and its bound list position.
+ * row, and its bound list position. Section-header cells reuse this shape but
+ * receive only their value; the tree row and position are ignored.
  */
 export type CellRenderer<T, S> = (
     value: T | S | undefined,
     treeRow: Gtk.TreeListRow | null,
-    isHeader: boolean,
     position: number,
 ) => ReactNode;
 
@@ -56,7 +56,7 @@ const Cell = memo(<T, S>({ container, store, resolver, render }: CellProps<T, S>
     if (entry.position < 0) return null;
     const resolved = resolver.resolve(entry.position, entry.treeRow, entry.item);
     if (!resolved.present) return null;
-    const content = render(resolved.value, resolved.treeRow, resolved.isHeader, entry.position);
+    const content = render(resolved.value, resolved.treeRow, entry.position);
     const portalled =
         resolved.treeRow !== null && !resolved.isHeader
             ? wrapInTreeExpander(content, resolved.treeRow, resolved.metadata)
@@ -91,10 +91,21 @@ export const CellRenderHost = <T, S>({ store, resolver, render }: CellRenderHost
 };
 
 /**
+ * Builds a {@link CellRenderer} that renders item cells through `render`,
+ * passing the resolved value and bound list position as a `{ item, index }`
+ * info object.
+ */
+export const itemRenderer =
+    <T, S>(render: (info: { item: T; index: number }) => ReactNode): CellRenderer<T, S> =>
+    (value, _treeRow, position) =>
+        render({ item: value as T, index: position });
+
+/**
  * Builds a {@link CellRenderer} that renders section headers through
- * `renderHeader`, returning nothing when no header renderer is supplied.
+ * `renderHeader`, passing the resolved section value as a `{ section }` info
+ * object, and returning nothing when no header renderer is supplied.
  */
 export const headerRenderer =
-    <T, S>(renderHeader: ((value: S) => ReactNode) | null | undefined): CellRenderer<T, S> =>
+    <T, S>(renderHeader: ((info: { section: S }) => ReactNode) | null | undefined): CellRenderer<T, S> =>
     (value) =>
-        renderHeader ? renderHeader(value as S) : null;
+        renderHeader ? renderHeader({ section: value as S }) : null;

@@ -47,7 +47,7 @@ Publishable packages also declare a source export condition pointing at their Ty
 The lint aggregate chains several independent checkers, all of which must pass. It first ensures the generated binding output is present on disk, because the dead-code and architecture checkers treat that generated output as in-scope source. The checkers cover, in sequence:
 
 - **Project-reference drift** — the sync script in check mode.
-- **Lint and format** — a single tool (Biome) for both, enforcing the repo's naming, import, and complexity conventions. Overrides relax the rules for generated and template code and for tests.
+- **Lint and format** — a single tool (Biome) for both, enforcing the repo's naming, import, and complexity conventions. Overrides relax the rules for generated and override code and for tests.
 - **Unused code and dependencies** — a dead-code checker (knip) covering both dev-only and production-reachable dead code, with the generated bindings registered so every emitted module counts as used.
 - **Architecture boundaries** — a dependency checker (dependency-cruiser) that enforces a no-cycles rule, resolving through workspace TypeScript source.
 
@@ -55,7 +55,7 @@ The lint aggregate chains several independent checkers, all of which must pass. 
 
 The test runner (Vitest) is configured as a workspace whose projects are the per-package test configs. Each package applies the gtkx Vitest plugin to provision per-worker headless display isolation, so GTK tests get an independent display per worker.
 
-Coverage is centralized at the root over the workspace's package sources, excluding built output, test files, and templates. Native Rust coverage runs through its own separate task.
+Coverage is centralized at the root over the workspace's package sources, excluding built output, test files, and overrides. Native Rust coverage runs through its own separate task.
 
 ## Repo scripts
 

@@ -15,13 +15,13 @@ type MultipleErrorBuilder<Args extends unknown[]> = (
 ) => Error;
 type MissingErrorBuilder<Args extends unknown[]> = (container: Container, ...args: Args) => Error;
 
-export type BuiltQueries<Args extends unknown[]> = [
-    queryBy: (container: Container, ...args: Args) => Gtk.Widget | null,
-    getAllBy: QueryAllBy<Args>,
-    getBy: (container: Container, ...args: Args) => Gtk.Widget,
-    findAllBy: (container: Container, ...args: Args) => Promise<Gtk.Widget[]>,
-    findBy: (container: Container, ...args: Args) => Promise<Gtk.Widget>,
-];
+export type BuiltQueries<Args extends unknown[]> = {
+    queryBy: (container: Container, ...args: Args) => Gtk.Widget | null;
+    getAllBy: QueryAllBy<Args>;
+    getBy: (container: Container, ...args: Args) => Gtk.Widget;
+    findAllBy: (container: Container, ...args: Args) => Promise<Gtk.Widget[]>;
+    findBy: (container: Container, ...args: Args) => Promise<Gtk.Widget>;
+};
 
 const extractWaitForOptions = (args: unknown[]): WaitForOptions => {
     const last = args[args.length - 1];
@@ -89,43 +89,58 @@ const findOptions = <Args extends unknown[]>(
     };
 };
 
-const buildSyncQueries = <Args extends unknown[]>(deps: {
-    queryName: Method;
-    queryAllBy: QueryAllBy<Args>;
-    getMultipleError: MultipleErrorBuilder<Args>;
-    getMissingError: MissingErrorBuilder<Args>;
-}) => {
-    const { queryName, queryAllBy, getMultipleError, getMissingError } = deps;
-    const suggest = (match: Gtk.Widget, variant: Variant, container: Container, args: Args): void =>
-        maybeThrowSuggestion({ container, match, queryName, variant, suggest: extractSuggestOption(args) });
+type SingleQuery<Args extends unknown[]> = (container: Container, ...args: Args) => Gtk.Widget | null;
 
-    const queryBy = (container: Container, ...args: Args): Gtk.Widget | null => {
-        const matches = queryAllBy(container, ...args);
+const singleFrom =
+    <Args extends unknown[]>(
+        allQuery: QueryAllBy<Args>,
+        getMultipleError: MultipleErrorBuilder<Args>,
+    ): SingleQuery<Args> =>
+    (container, ...args) => {
+        const matches = allQuery(container, ...args);
         if (matches.length > 1) throw getMultipleError(container, matches, ...args);
-        const match = matches[0] ?? null;
-        if (match) suggest(match, "query", container, args);
-        return match;
+        return matches[0] ?? null;
     };
 
-    const getAllBy = (container: Container, ...args: Args): Gtk.Widget[] => {
-        const matches = queryAllBy(container, ...args);
+const allOrThrow =
+    <Args extends unknown[]>(
+        allQuery: QueryAllBy<Args>,
+        getMissingError: MissingErrorBuilder<Args>,
+    ): QueryAllBy<Args> =>
+    (container, ...args) => {
+        const matches = allQuery(container, ...args);
         if (matches.length === 0) throw getMissingError(container, ...args);
-        const [first] = matches;
-        if (first !== undefined) suggest(first, "getAll", container, args);
         return matches;
     };
 
-    const getBy = (container: Container, ...args: Args): Gtk.Widget => {
-        const matches = queryAllBy(container, ...args);
-        if (matches.length > 1) throw getMultipleError(container, matches, ...args);
-        const [first] = matches;
-        if (first === undefined) throw getMissingError(container, ...args);
-        suggest(first, "get", container, args);
-        return first;
+const wrapSingleWithSuggestion =
+    <Args extends unknown[]>(query: SingleQuery<Args>, queryName: Method, variant: Variant): SingleQuery<Args> =>
+    (container, ...args) => {
+        const match = query(container, ...args);
+        if (match) {
+            maybeThrowSuggestion({ container, match, queryName, variant, suggest: extractSuggestOption(args) });
+        }
+        return match;
     };
 
-    return { queryBy, getAllBy, getBy };
-};
+const wrapAllWithSuggestion =
+    <Args extends unknown[]>(query: QueryAllBy<Args>, queryName: Method, variant: Variant): QueryAllBy<Args> =>
+    (container, ...args) => {
+        const matches = query(container, ...args);
+        const [first] = matches;
+        if (first !== undefined) {
+            maybeThrowSuggestion({ container, match: first, queryName, variant, suggest: extractSuggestOption(args) });
+        }
+        return matches;
+    };
+
+const requireSingle =
+    <Args extends unknown[]>(query: SingleQuery<Args>, getMissingError: MissingErrorBuilder<Args>) =>
+    (container: Container, ...args: Args): Gtk.Widget => {
+        const match = query(container, ...args);
+        if (match === null) throw getMissingError(container, ...args);
+        return match;
+    };
 
 export const buildQueries = <Args extends unknown[]>(
     queryName: Method,
@@ -133,19 +148,38 @@ export const buildQueries = <Args extends unknown[]>(
     getMultipleError: MultipleErrorBuilder<Args>,
     getMissingError: MissingErrorBuilder<Args>,
 ): BuiltQueries<Args> => {
-    const { queryBy, getAllBy, getBy } = buildSyncQueries({ queryName, queryAllBy, getMultipleError, getMissingError });
+    const getAllBy = allOrThrow(queryAllBy, getMissingError);
+    const getBy = requireSingle(singleFrom(getAllBy, getMultipleError), getMissingError);
+
+    const queryByWithSuggestion = wrapSingleWithSuggestion(
+        singleFrom(queryAllBy, getMultipleError),
+        queryName,
+        "query",
+    );
+    const getAllByWithSuggestion = wrapAllWithSuggestion(getAllBy, queryName, "getAll");
+    const getByWithSuggestion: (container: Container, ...args: Args) => Gtk.Widget = (container, ...args) => {
+        const match = getBy(container, ...args);
+        maybeThrowSuggestion({ container, match, queryName, variant: "get", suggest: extractSuggestOption(args) });
+        return match;
+    };
 
     const findAllBy = (container: Container, ...args: Args): Promise<Gtk.Widget[]> =>
         waitFor(
-            () => runWithExpensiveErrorDiagnosticsDisabled(() => getAllBy(container, ...args)),
-            findOptions(getAllBy, container, args),
+            () => runWithExpensiveErrorDiagnosticsDisabled(() => getAllByWithSuggestion(container, ...args)),
+            findOptions(getAllByWithSuggestion, container, args),
         );
 
     const findBy = (container: Container, ...args: Args): Promise<Gtk.Widget> =>
         waitFor(
-            () => runWithExpensiveErrorDiagnosticsDisabled(() => getBy(container, ...args)),
-            findOptions(getBy, container, args),
+            () => runWithExpensiveErrorDiagnosticsDisabled(() => getByWithSuggestion(container, ...args)),
+            findOptions(getByWithSuggestion, container, args),
         );
 
-    return [queryBy, getAllBy, getBy, findAllBy, findBy];
+    return {
+        queryBy: queryByWithSuggestion,
+        getAllBy: getAllByWithSuggestion,
+        getBy: getByWithSuggestion,
+        findAllBy,
+        findBy,
+    };
 };

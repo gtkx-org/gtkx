@@ -1,6 +1,6 @@
 import { attr, attrBool, childOf, intAttr, nameAttr, type RawNode } from "./parse.js";
 import type { ParseContext, TypeId } from "./type-id.js";
-import { typeRefFromSlot } from "./type-ref.js";
+import { typeRefFromNode } from "./type-ref.js";
 
 export type GirField = {
     name: string;
@@ -14,7 +14,7 @@ export type GirField = {
 
 export const fieldFromNode = (node: RawNode, context: ParseContext): GirField => ({
     name: nameAttr(node),
-    type: typeRefFromSlot(node, context),
+    type: typeRefFromNode(node, context),
     cType: attr(childOf(node, "type"), "c:type"),
     readable: attrBool(node, "readable", true),
     writable: attrBool(node, "writable", false),

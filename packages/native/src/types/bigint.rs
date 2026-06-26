@@ -2,7 +2,7 @@ use anyhow::bail;
 use libffi::middle as libffi;
 
 use super::IntegerKind;
-use super::numeric::MAX_SAFE_INTEGER_I128;
+use super::numeric::MAX_SAFE_INTEGER;
 use super::prelude::*;
 
 #[derive(Debug, Clone, Copy)]
@@ -45,8 +45,8 @@ impl BigIntKind {
             value::Value::Number(n) => {
                 if !n.is_finite()
                     || n.fract() != 0.0
-                    || *n > MAX_SAFE_INTEGER_I128 as f64
-                    || *n < -(MAX_SAFE_INTEGER_I128 as f64)
+                    || *n > MAX_SAFE_INTEGER
+                    || *n < -MAX_SAFE_INTEGER
                 {
                     bail!(
                         "Value {n} is not an integer Number exactly representable as {}; pass a bigint",

@@ -3,7 +3,6 @@ import { classifyArgCategory } from "./arg-category.js";
 import { wrapCallback } from "./callback.js";
 import { GVALUE_SIZE, GVALUE_T, LIB } from "./constants.js";
 import { arrayT, biguint64T, bind, objectT, stringT, uint32T, uint64T, voidT } from "./descriptors.js";
-import { tupleResult } from "./fn.js";
 import type { GType, GTyped } from "./gtype.js";
 import {
     fromGValue,
@@ -15,6 +14,7 @@ import {
     valueGetBoxed,
 } from "./gvalue.js";
 import { getHandle } from "./registry.js";
+import { packTupleResult } from "./tuple.js";
 
 export type SignalHandler = (...args: unknown[]) => unknown;
 
@@ -25,7 +25,7 @@ export const signalBaseName = (signal: string): string => {
 
 const gQuarkFromString = bind(LIB, "g_quark_from_string", [stringT("borrowed")], uint32T);
 
-export function signalDetailQuark(signal: string): number {
+function signalDetailQuark(signal: string): number {
     const detailIndex = signal.indexOf("::");
     if (detailIndex === -1) return 0;
     return gQuarkFromString(signal.slice(detailIndex + 2)) as number;
@@ -97,14 +97,14 @@ export function emitGObjectSignal(instance: object, signal: string, args: EmitAr
     if (returnType !== undefined) {
         const returnValue = newGValueForDescriptor(returnType);
         gSignalEmitv(values, signalId, detail, returnValue);
-        return tupleResult(
+        return packTupleResult(
             reads.map((emit) => emit()),
             fromGValue(returnValue),
             true,
         );
     }
     gSignalEmitv(values, signalId, detail, undefined);
-    return tupleResult(
+    return packTupleResult(
         reads.map((emit) => emit()),
         undefined,
         false,

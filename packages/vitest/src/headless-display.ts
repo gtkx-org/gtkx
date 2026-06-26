@@ -90,7 +90,7 @@ type SpawnedCompositor = {
 const startCompositor = (runtimeDir: string, options: HeadlessOptions): SpawnedCompositor => {
     const descriptor = compositorRegistry[options.compositor];
 
-    const [width = "", height = ""] = (options.size || DEFAULT_HEADLESS_SIZE).split("x");
+    const [width = "", height = ""] = options.size.split("x");
     for (const [name, value] of Object.entries(descriptor.env)) {
         process.env[name] = value;
     }

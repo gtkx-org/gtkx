@@ -120,7 +120,7 @@ const resolveAliasLayout = (
     resolved: Extract<EntityType, { kind: "alias" }>,
     visited: Set<string>,
 ): FieldLayout => {
-    const ref = resolved.target;
+    const ref = resolved.value.target;
     if (ref === undefined) return POINTER_LAYOUT;
-    return layoutOfType(context, ref, resolved.targetCType, visited);
+    return layoutOfType(context, ref, resolved.value.targetCType, visited);
 };

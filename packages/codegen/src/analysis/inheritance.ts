@@ -89,13 +89,8 @@ export type InheritedMethods = {
     definitions: Map<string, InheritedMethod>;
 };
 
-type InheritedMethodsAccumulator = {
-    returnTypes: Map<string, string>;
-    definitions: Map<string, InheritedMethod>;
-};
-
 export const collectInheritedMethods = (context: ModuleContext, klass: GirClass): InheritedMethods => {
-    const accumulator: InheritedMethodsAccumulator = {
+    const accumulator: InheritedMethods = {
         returnTypes: new Map<string, string>(),
         definitions: new Map<string, InheritedMethod>(),
     };
@@ -108,7 +103,7 @@ export const collectInheritedMethods = (context: ModuleContext, klass: GirClass)
 const absorbInheritedMethods = (
     context: ModuleContext,
     resolved: { klass: GirClass; namespaceName: string },
-    accumulator: InheritedMethodsAccumulator,
+    accumulator: InheritedMethods,
 ): void => {
     const { returnTypes, definitions } = accumulator;
     for (const method of resolved.klass.methods) {

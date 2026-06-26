@@ -77,7 +77,7 @@ export type RenderOptions<Q extends QueryMap = Record<never, never>> = {
 export type DebugUtilities = {
     debug: (element?: Container | Container[], options?: PrettyWidgetOptions) => void;
     logRoles: () => void;
-    screenshot: (matcher?: WindowMatcher, options?: ScreenshotOptions) => Promise<ScreenshotResult>;
+    screenshot: (selector?: WindowSelector, options?: ScreenshotOptions) => Promise<ScreenshotResult>;
 };
 
 export type ScreenshotResult = {
@@ -91,7 +91,7 @@ export type ScreenshotOptions = Pick<WaitForOptions, "timeout" | "interval"> & {
     scale?: number;
 };
 
-export type WindowMatcher = number | string | RegExp | undefined;
+export type WindowSelector = number | string | RegExp | undefined;
 
 export type RenderHookOptions<Props> = {
     wrapper?: WrapperComponent;

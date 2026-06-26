@@ -15,11 +15,16 @@ pub struct RefType {
 }
 
 impl RefType {
-    #[must_use]
-    pub fn new(inner_type: Type) -> Self {
-        Self {
-            inner_type: Box::new(inner_type),
+    pub fn new(inner_type: Type) -> napi::Result<Self> {
+        if !Self::supports_inner(&inner_type) {
+            return Err(napi::Error::new(
+                napi::Status::InvalidArg,
+                format!("'{inner_type}' cannot be used as a Ref inner type"),
+            ));
         }
+        Ok(Self {
+            inner_type: Box::new(inner_type),
+        })
     }
 
     #[must_use]
@@ -29,34 +34,19 @@ impl RefType {
             Type::HashTable(_) | Type::Callback(_) | Type::Void(_) | Type::Buffer(_) | Type::Ref(_)
         )
     }
-}
 
-impl FromDescriptor for RefType {
+    #[allow(clippy::trivially_copy_pass_by_ref)]
     #[cfg_attr(coverage_nightly, coverage(off))]
-    fn from_descriptor(env: &Env, obj: &JsObject) -> napi::Result<Self> {
+    pub(crate) fn from_descriptor(env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let inner_type_value: Unknown<'_> = obj.get_named_property("innerType")?;
         let inner_type = Type::from_descriptor(env, inner_type_value)?;
-
-        if !Self::supports_inner(&inner_type) {
-            return Err(napi::Error::new(
-                napi::Status::InvalidArg,
-                format!("'{inner_type}' cannot be used as a Ref inner type"),
-            ));
-        }
-
-        Ok(Self::new(inner_type))
+        Self::new(inner_type)
     }
 }
 
 impl FfiEncoder for RefType {
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn encode(&self, val: &value::Value) -> anyhow::Result<ffi::FfiValue> {
-        anyhow::ensure!(
-            Self::supports_inner(&self.inner_type),
-            "'{}' cannot be used as a Ref inner type",
-            self.inner_type
-        );
-
         let ref_val = match val {
             value::Value::Ref(r) => r,
             value::Value::Null | value::Value::Undefined => {

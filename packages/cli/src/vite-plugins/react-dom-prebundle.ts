@@ -1,7 +1,7 @@
 import type { Plugin } from "vite";
 
-export const gtkxSkipReactDomOptimize = (): Plugin => ({
-    name: "gtkx:skip-react-dom-optimize",
+export const gtkxReactDomPrebundle = (): Plugin => ({
+    name: "gtkx:react-dom-prebundle",
     enforce: "post",
     config(config) {
         config.optimizeDeps ??= {};

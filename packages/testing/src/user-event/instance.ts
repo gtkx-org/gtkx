@@ -1,10 +1,11 @@
 import { createInitialState, type UserEventState } from "./state.js";
 
 /**
- * Per-session state shared by every helper bound through {@link userEvent.setup}.
+ * The input-device state threaded through the `keyboard` and `pointer` helpers.
  *
- * Each session owns an isolated {@link UserEventState} so concurrent sessions do
- * not leak modifier or pointer state into one another.
+ * It owns a single {@link UserEventState} holding the active keyboard modifier
+ * mask and mouse-button state so that key and pointer sequences observe each
+ * other's held buttons and modifiers.
  */
 export type UserEventInstance = {
     state: UserEventState;

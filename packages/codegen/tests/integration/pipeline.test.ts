@@ -125,7 +125,7 @@ describe("codegen React pipeline", () => {
 
     it("imports a cross-namespace parent Props type from its jsx module", () => {
         const adw = sourceFor(reactPipeline, "adw");
-        expect(adw).toMatch(/import type \{[^}]*\} from "@gtkx\/jsx\/gtk";/);
+        expect(adw).toMatch(/import \{[^}]*type GtkWidgetProps[^}]*\} from "@gtkx\/jsx\/gtk";/);
     });
 
     it("counts the widget intrinsics it emitted", () => {
@@ -200,7 +200,7 @@ describe("codegen synthetic props", () => {
         expect(gtk).toMatch(
             /createElementComponent<GtkButtonProps & SyntheticPropsFor<"GtkButton"[^>]*>>\("GtkButton"\)/,
         );
-        expect(gtk).toMatch(/import type \{[^}]*SyntheticPropsFor[^}]*\} from "@gtkx\/react";/);
+        expect(gtk).toMatch(/import \{[^}]*type SyntheticPropsFor[^}]*\} from "@gtkx\/react";/);
     });
 
     it("unions a subclass with its ancestors so inherited synthetic props resolve", () => {
@@ -235,7 +235,7 @@ describe("codegen read-only props", () => {
 
 describe("codegen runtime tables", () => {
     it("bakes the genuine GIR capability tables into the metadata module", () => {
-        expect(reactPipeline.metadata).toContain("export const TOP_LEVEL_TYPES");
+        expect(reactPipeline.metadata).toContain("export const TOPLEVEL_TYPES");
         expect(reactPipeline.metadata).toContain("export const DEFAULT_BLOCKABLE_TYPES");
         expect(reactPipeline.metadata).toContain("export const META_OBJECT_ADD_METHODS");
         expect(reactPipeline.metadata).toContain("export const PAGE_META_SETTERS");
@@ -262,12 +262,12 @@ describe("codegen runtime tables", () => {
 
 describe("repository lookups", () => {
     it("resolves a known cross-namespace type", () => {
-        expect(library.resolveNamed("GLib", "Variant")).toBeDefined();
+        expect(library.resolveType("GLib", "Variant")).toBeDefined();
     });
 
     it("returns undefined for an unknown type", () => {
-        expect(library.resolveNamed("GLib", "NoSuchType")).toBeUndefined();
-        expect(library.resolveNamed("NoSuchNamespace", "Thing")).toBeUndefined();
+        expect(library.resolveType("GLib", "NoSuchType")).toBeUndefined();
+        expect(library.resolveType("NoSuchNamespace", "Thing")).toBeUndefined();
     });
 
     it("leaves only non-introspectable C types unresolved across the closure", () => {

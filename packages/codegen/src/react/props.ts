@@ -185,9 +185,9 @@ const reactTarget = (context: PropTypeRenderContext): TsTypeTarget => ({
     renderNamed: (resolved, name) => {
         if (resolved?.kind === "callback") return "(...args: unknown[]) => unknown";
         if (resolved?.kind === "alias") {
-            return resolved.target === undefined
+            return resolved.value.target === undefined
                 ? "number"
-                : renderBaseTypeFor(context.library, reactTarget(context), resolved.target);
+                : renderBaseTypeFor(context.library, reactTarget(context), resolved.value.target);
         }
         context.imports.set(name.namespaceName, name.namespaceName);
         return `${name.namespaceName}.${name.typeName}`;

@@ -1,11 +1,11 @@
 import { readFileSync } from "node:fs";
 import type { Plugin } from "vite";
-import { createVirtualNamespace, resolveToVirtual } from "./virtual-module.js";
+import { createVirtualNamespace } from "./virtual-module.js";
 
 const CSS_RE = /\.css$/i;
 const INJECT_SUFFIX = "?inject";
 const VIRTUAL_PREFIX = "\0gtkx:";
-const { isVirtual, fromVirtualId } = createVirtualNamespace(VIRTUAL_PREFIX);
+const { isVirtual, fromVirtualId, resolveToVirtual } = createVirtualNamespace(VIRTUAL_PREFIX);
 
 export function gtkxAssets(): Plugin {
     return {
@@ -17,7 +17,7 @@ export function gtkxAssets(): Plugin {
                 return;
             }
 
-            const virtualId = await resolveToVirtual(this, { source, importer, options }, VIRTUAL_PREFIX);
+            const virtualId = await resolveToVirtual(this, { source, importer, options });
             if (virtualId === undefined) return;
 
             return virtualId + INJECT_SUFFIX;

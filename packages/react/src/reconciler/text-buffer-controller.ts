@@ -94,9 +94,9 @@ export class TextBufferController {
         }
     }
 
-    private insertAnchor(buffer: Gtk.TextBuffer, wrapper: Node): void {
-        const child = stateOf(wrapper).children[0];
-        const replacement = stateOf(wrapper).props["replacementChar"];
+    private insertAnchor(buffer: Gtk.TextBuffer, node: Node): void {
+        const child = stateOf(node).children[0];
+        const replacement = stateOf(node).props["replacementChar"];
         const anchor =
             typeof replacement === "string"
                 ? Gtk.TextChildAnchor.newWithReplacement(replacement)

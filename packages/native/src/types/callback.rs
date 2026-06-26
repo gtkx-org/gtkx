@@ -42,9 +42,10 @@ pub struct CallbackType {
     pub scope: CallbackScope,
 }
 
-impl FromDescriptor for CallbackType {
+impl CallbackType {
+    #[allow(clippy::trivially_copy_pass_by_ref)]
     #[cfg_attr(coverage_nightly, coverage(off))]
-    fn from_descriptor(env: &Env, obj: &JsObject) -> napi::Result<Self> {
+    pub(crate) fn from_descriptor(env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let (arg_types, return_type) =
             super::parse_callback_arg_and_return_types(env, obj, "callback")?;
 

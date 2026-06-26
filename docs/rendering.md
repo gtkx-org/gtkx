@@ -77,7 +77,7 @@ Every native operation is parameterized by a plain-object **Type descriptor**, b
 The pieces `@gtkx/ffi` layers on top of the native primitives:
 
 - **Handle map** — associates each wrapper with the opaque native handle for its live object; marshalling unwraps JS objects back to pointers through it.
-- **Class registry** — maps a runtime GType to the most-derived registered wrapper class, walking the GObject parent chain when there is no exact match, and resolving interface handles to their implementing class.
+- **Class registry** — maps a runtime GType to the most-derived registered wrapper class, walking the GObject parent chain when there is no exact match, and resolving interface handles to their implementing class. The generated wrapper classes mirror the GObject type hierarchy as real subclasses (`Window extends Widget`), so a wrapper's JS prototype chain reflects the live object's GType and `instanceof` against any wrapper class is a sound narrowing.
 - **Wrapper identity** — enforces one JS wrapper per live GObject: native is asked for an existing wrapper first, and only when none exists is a new one created and, for true GObject-derived types, registered with a toggle reference. Boxed, struct, and fundamental wrappers only get a handle-map entry.
 - **Value marshalling** — bridges JS values and GLib values in both directions, dispatching on the GType derived from the descriptor, and wraps GObject construction and property get/set.
 - **Signals** — connecting a signal wraps the user handler in a trampoline; emitting a signal builds the argument vector, invokes the GLib emission, and reassembles out-params and the return into a tuple.

@@ -13,8 +13,7 @@ export const isEditable = (widget: unknown): widget is EditableTarget =>
 
 export const getEditableDelegate = (widget: Gtk.Widget): Gtk.Widget | null => {
     if (!(widget instanceof Gtk.Editable)) return null;
-    const delegate = widget.getDelegate();
-    return delegate instanceof Gtk.Widget ? delegate : null;
+    return widget.getDelegate();
 };
 
 const readTextViewBufferText = (widget: Gtk.TextView): string => {

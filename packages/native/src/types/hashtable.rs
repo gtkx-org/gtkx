@@ -212,9 +212,10 @@ pub struct HashTableType {
     pub ownership: Ownership,
 }
 
-impl FromDescriptor for HashTableType {
+impl HashTableType {
+    #[allow(clippy::trivially_copy_pass_by_ref)]
     #[cfg_attr(coverage_nightly, coverage(off))]
-    fn from_descriptor(env: &Env, obj: &JsObject) -> napi::Result<Self> {
+    pub(crate) fn from_descriptor(env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let key_type_value: Unknown<'_> = obj.get_named_property("keyType")?;
         let key_type = Type::from_descriptor(env, key_type_value)?;
 
@@ -390,10 +391,9 @@ impl FfiDecoder for HashTableType {
             Ok(pairs)
         })();
 
-        let storage_owns_table = matches!(ffi_value, ffi::FfiValue::Storage(_));
-        if self.ownership.is_full() && !storage_owns_table {
-            // SAFETY: full ownership was transferred to us and no `FfiStorage` will free the table,
-            // so `hash_ptr` is the owned GHashTable; releasing its one reference here frees it once.
+        if self.ownership.is_full() {
+            // SAFETY: full ownership was transferred to us, so `hash_ptr` is the owned GHashTable;
+            // releasing its one reference here frees it once.
             unsafe { glib::ffi::g_hash_table_unref(hash_ptr as *mut glib::ffi::GHashTable) };
         }
 

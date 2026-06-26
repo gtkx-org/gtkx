@@ -1,8 +1,7 @@
 /**
  * Invoke `method` on `target` with `args` when it resolves to a function,
  * returning the call result; returns `undefined` when no such method exists.
- * Used to drive GObject-shaped imperative attach/detach operations whose method
- * names are only known at runtime.
+ * For dynamic dispatch where the method name is known only at runtime.
  */
 export const callMethod = (target: object, method: string, args: unknown[]): unknown => {
     const fn = Reflect.get(target, method);

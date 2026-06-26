@@ -31,6 +31,7 @@ describe("getSuggestedQuery", () => {
 
         const suggestion = getSuggestedQuery(label, "query", "Text");
 
+        expect(suggestion?.queryName).toBe("Text");
         expect(suggestion?.queryMethod).toBe("queryByText");
         expect(suggestion?.toString()).toBe("queryByText('Just text')");
     });
@@ -45,13 +46,13 @@ describe("getSuggestedQuery", () => {
         expect(suggestion?.toString()).toBe("getByName('my-box')");
     });
 
-    it("restricts the suggestion to the requested method", async () => {
+    it("prefers a role suggestion over a name for a widget that has both", async () => {
         const { container } = await render(<GtkButton label="Named" name="cta" />);
         const button = getByRole(container, Gtk.AccessibleRole.BUTTON);
 
-        const suggestion = getSuggestedQuery(button, "get", "Name");
+        const suggestion = getSuggestedQuery(button, "get");
 
-        expect(suggestion?.queryName).toBe("Name");
-        expect(suggestion?.toString()).toBe("getByName('cta')");
+        expect(suggestion?.queryName).toBe("Role");
+        expect(suggestion?.toString()).toBe("getByRole(Gtk.AccessibleRole.BUTTON, { name: 'Named' })");
     });
 });

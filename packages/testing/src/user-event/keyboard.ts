@@ -16,7 +16,7 @@ export const tab = (widget: Gtk.Widget, options?: TabOptions): Promise<void> =>
         const direction = options?.shift ? Gtk.DirectionType.TAB_BACKWARD : Gtk.DirectionType.TAB_FORWARD;
         const root = widget.getRoot();
 
-        if (root && root instanceof Gtk.Widget) {
+        if (root) {
             root.childFocus(direction);
         }
     });

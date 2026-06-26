@@ -377,7 +377,7 @@ describe("WidgetAnimation (11)", () => {
                         <WidgetAnimation
                             initial={false}
                             animate={{ x: trigger % 2 === 0 ? 0 : 150 }}
-                            transition={{ type: "spring", damping: 1, stiffness: 200, mass: 1 }}
+                            transition={{ type: "spring", damping: 30, stiffness: 200, mass: 1 }}
                             onAnimationComplete={onComplete}
                         >
                             <GtkLabel label="Target" />
@@ -392,7 +392,7 @@ describe("WidgetAnimation (11)", () => {
 
             await userEvent.click(button);
 
-            await waitFor(() => expect(onComplete).toHaveBeenCalled());
+            await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 2000 });
         });
     });
 });

@@ -1731,7 +1731,7 @@ fn size_from_args_reads_ref_integer_storage() {
     let size_storage = native::ffi::FfiStorage::from(vec![2i32]);
     let ffi_args = [FfiValue::Storage(size_storage)];
     let args = [Arg::new(
-        Type::Ref(RefType::new(Type::Integer(IntegerKind::I32))),
+        Type::Ref(RefType::new(Type::Integer(IntegerKind::I32)).expect("valid Ref inner")),
         Value::Number(2.0),
     )];
     let Value::Array(items) = ty
@@ -1755,7 +1755,7 @@ fn size_from_args_reads_ref_integer_ptr() {
     let size: i32 = 2;
     let ffi_args = [FfiValue::Ptr(&size as *const i32 as *mut c_void)];
     let args = [Arg::new(
-        Type::Ref(RefType::new(Type::Integer(IntegerKind::I32))),
+        Type::Ref(RefType::new(Type::Integer(IntegerKind::I32)).expect("valid Ref inner")),
         Value::Number(2.0),
     )];
     let Value::Array(items) = ty
@@ -1778,7 +1778,7 @@ fn size_from_args_ref_null_ptr_falls_through_to_error() {
     let ffi_value = FfiValue::Ptr(data.as_ptr() as *mut c_void);
     let ffi_args = [FfiValue::Ptr(std::ptr::null_mut())];
     let args = [Arg::new(
-        Type::Ref(RefType::new(Type::Integer(IntegerKind::I32))),
+        Type::Ref(RefType::new(Type::Integer(IntegerKind::I32)).expect("valid Ref inner")),
         Value::Number(0.0),
     )];
     assert!(

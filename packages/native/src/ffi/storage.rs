@@ -38,8 +38,8 @@ pub enum PendingRelease {
     HashTableUnref,
     GArrayUnref,
     GByteArrayUnref,
-    ListSpineFree,
-    SListSpineFree,
+    GListSpineFree,
+    GSListSpineFree,
     Group(Vec<PendingTransfer>),
 }
 
@@ -94,10 +94,10 @@ impl PendingTransfer {
                 PendingRelease::GByteArrayUnref => {
                     glib::ffi::g_byte_array_unref(self.ptr as *mut glib::ffi::GByteArray);
                 }
-                PendingRelease::ListSpineFree => {
+                PendingRelease::GListSpineFree => {
                     glib::ffi::g_list_free(self.ptr as *mut glib::ffi::GList);
                 }
-                PendingRelease::SListSpineFree => {
+                PendingRelease::GSListSpineFree => {
                     glib::ffi::g_slist_free(self.ptr as *mut glib::ffi::GSList);
                 }
                 PendingRelease::Group(entries) => {
@@ -212,7 +212,7 @@ impl ListFlavor for GListFlavor {
     }
 
     fn spine_release() -> PendingRelease {
-        PendingRelease::ListSpineFree
+        PendingRelease::GListSpineFree
     }
 
     fn handle_storage(
@@ -265,7 +265,7 @@ impl ListFlavor for GSListFlavor {
     }
 
     fn spine_release() -> PendingRelease {
-        PendingRelease::SListSpineFree
+        PendingRelease::GSListSpineFree
     }
 
     fn handle_storage(

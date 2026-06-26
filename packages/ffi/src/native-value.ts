@@ -8,7 +8,7 @@ const collectionFromNativeValue = (descriptor: ArrayType, value: unknown): unkno
     return (value as Value[]).map((item) => fromNativeValue(descriptor.itemType, item));
 };
 
-const boxedFromNativeValue = (descriptor: Type, value: Handle | null): object | null => {
+const wrapByDescriptorClass = (descriptor: Type, value: Handle | null): object | null => {
     if (value === null) return null;
     const paired = getDescriptorWrapperClass(descriptor);
     if (paired !== undefined) return wrapHandle(value, paired);
@@ -23,7 +23,7 @@ export function fromNativeValue(descriptor: Type, value: Value): unknown {
             return wrapHandle(value as Handle | null, getDescriptorWrapperClass(descriptor));
         case "boxed":
         case "fundamental":
-            return boxedFromNativeValue(descriptor, value as Handle | null);
+            return wrapByDescriptorClass(descriptor, value as Handle | null);
         case "array":
             return collectionFromNativeValue(descriptor, value);
         case "hashtable": {

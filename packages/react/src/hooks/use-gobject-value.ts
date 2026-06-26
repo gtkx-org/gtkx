@@ -13,7 +13,6 @@ export function useGObjectValue<T extends GObject.Object, V>(
     target: GObjectTarget<T>,
     signal: string,
     read: (target: T | null) => V,
-    after = false,
 ): V {
     const resolved = resolveGObjectTarget(target);
     const readRef = useRef(read);
@@ -51,10 +50,10 @@ export function useGObjectValue<T extends GObject.Object, V>(
             if (resolved === null) return () => {};
             onChangeRef.current = onStoreChange;
             const handler: SignalHandler = () => refresh();
-            resolved.on(signal, handler, after);
+            resolved.on(signal, handler);
             return () => resolved.off(signal, handler);
         },
-        [resolved, signal, after, refresh],
+        [resolved, signal, refresh],
     );
 
     return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);

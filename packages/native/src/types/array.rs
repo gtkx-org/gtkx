@@ -53,9 +53,10 @@ pub struct ArrayType {
     pub element_size: Option<usize>,
 }
 
-impl FromDescriptor for ArrayType {
+impl ArrayType {
+    #[allow(clippy::trivially_copy_pass_by_ref)]
     #[cfg_attr(coverage_nightly, coverage(off))]
-    fn from_descriptor(env: &Env, obj: &JsObject) -> napi::Result<Self> {
+    pub(crate) fn from_descriptor(env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let item_type_value: Unknown<'_> = obj.get_named_property("itemType")?;
         let item_type = Type::from_descriptor(env, item_type_value)?;
 
@@ -1179,12 +1180,9 @@ impl ArrayType {
         let values = self.decode_contiguous(codec, data, len);
 
         if self.ownership.is_full() {
-            let storage_owns = matches!(ffi_value, ffi::FfiValue::Storage(_));
-            if !storage_owns {
-                // SAFETY: full ownership with no owning storage means we hold the array's single
-                // reference; `g_array_unref` releases it exactly once.
-                unsafe { glib::ffi::g_array_unref(array_ptr as *mut glib::ffi::GArray) };
-            }
+            // SAFETY: full ownership means we hold the array's single reference; `g_array_unref`
+            // releases it exactly once.
+            unsafe { glib::ffi::g_array_unref(array_ptr as *mut glib::ffi::GArray) };
         }
 
         Ok(value::Value::Array(values?))
@@ -1225,10 +1223,11 @@ impl ArrayType {
         };
 
         let byte_array = ptr as *mut glib::ffi::GByteArray;
-        let storage_owns = matches!(ffi_value, ffi::FfiValue::Storage(_));
-        let adopted: Option<glib::ByteArray> = (self.ownership.is_full() && !storage_owns)
-            // SAFETY: full ownership with no owning storage means `byte_array` is the single owning
-            // reference; `from_glib_full` adopts it so it is freed when `adopted` is dropped.
+        let adopted: Option<glib::ByteArray> = self
+            .ownership
+            .is_full()
+            // SAFETY: full ownership means `byte_array` is the single owning reference;
+            // `from_glib_full` adopts it so it is freed when `adopted` is dropped.
             .then(|| unsafe { glib::translate::from_glib_full(byte_array) });
 
         // SAFETY: `ptr` is non-null (checked above) and points to a live GByteArray (still alive

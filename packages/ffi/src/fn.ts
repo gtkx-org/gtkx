@@ -6,6 +6,7 @@ import { bind, boxedT, refT } from "./descriptors.js";
 import { checkError } from "./gerror.js";
 import { fromNativeValue } from "./native-value.js";
 import { getHandle } from "./registry.js";
+import { packTupleResult } from "./tuple.js";
 
 const wrapCallbackValue = (spec: CallbackType, callback: unknown): Value =>
     callback == null ? (callback as Value) : wrapCallback(callback as UserCallback, spec, "none");
@@ -21,15 +22,6 @@ type FnSignature = {
     args: ArgSpec[];
     returns: Type;
     throws?: boolean;
-};
-
-export const tupleResult = (outs: unknown[], primary: unknown, hasPrimary: boolean): unknown => {
-    if (hasPrimary) {
-        return outs.length === 0 ? primary : [primary, ...outs];
-    }
-    if (outs.length === 0) return undefined;
-    if (outs.length === 1) return outs[0];
-    return outs;
 };
 
 const toNativeArgTypes = (argSpecs: ArgSpec[], throws: boolean): Type[] => {
@@ -99,7 +91,7 @@ export function fn(library: string, symbol: string, signature: FnSignature): (..
 
     const shape = (inputs: unknown[], nativeValues: Value[], nativeResult: Value): unknown => {
         const primary = hasPrimary ? fromNativeValue(returnType, nativeResult) : undefined;
-        return tupleResult(toOutParams(plans, inputs, nativeValues), primary, hasPrimary);
+        return packTupleResult(toOutParams(plans, inputs, nativeValues), primary, hasPrimary);
     };
 
     if (throws) {

@@ -1,8 +1,9 @@
 import type { CSSInterpolation, RegisteredCache, SerializedStyles } from "@emotion/serialize";
 import { serializeStyles } from "@emotion/serialize";
 import { compile, middleware, rulesheet, stringify, serialize as stylisSerialize } from "stylis";
+import { escapeNamedColors, restoreNamedColors } from "./named-colors.js";
 import { StyleSheet } from "./stylesheet.js";
-import { escapeNamedColors, removeLabel, restoreNamedColors } from "./stylis-plugins.js";
+import { removeLabel } from "./stylis-plugins.js";
 
 const KEY = "gtkx";
 
@@ -50,8 +51,6 @@ export const createCss = (): Css => {
         runStylis(sheet, serialized.styles);
     };
 
-    const getRegisteredStyles = (className: string): string | undefined => registered[className];
-
     const css = (...args: CSSInterpolation[]): string => {
         const serialized = serialize(args);
         insertStyles(serialized);
@@ -64,7 +63,7 @@ export const createCss = (): Css => {
         const rawClasses: string[] = [];
         const registeredStyles: string[] = [];
         for (const token of tokens) {
-            const styles = getRegisteredStyles(token);
+            const styles = registered[token];
             if (styles === undefined) {
                 rawClasses.push(token);
             } else {

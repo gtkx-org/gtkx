@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { gtkxSkipReactDomOptimize } from "../../src/vite-plugins/skip-react-dom-optimize.js";
+import { gtkxReactDomPrebundle } from "../../src/vite-plugins/react-dom-prebundle.js";
 
 type ConfigHook = (config: { optimizeDeps?: { include?: string[] } }) => void;
 
 const getConfigHook = (): ConfigHook => {
-    const plugin = gtkxSkipReactDomOptimize();
+    const plugin = gtkxReactDomPrebundle();
     const hook = plugin.config;
     if (typeof hook !== "function") {
         throw new TypeError("expected plugin.config to be a function");
@@ -12,10 +12,10 @@ const getConfigHook = (): ConfigHook => {
     return hook as ConfigHook;
 };
 
-describe("gtkxSkipReactDomOptimize", () => {
+describe("gtkxReactDomPrebundle", () => {
     it("has the canonical plugin name and post enforcement", () => {
-        const plugin = gtkxSkipReactDomOptimize();
-        expect(plugin.name).toBe("gtkx:skip-react-dom-optimize");
+        const plugin = gtkxReactDomPrebundle();
+        expect(plugin.name).toBe("gtkx:react-dom-prebundle");
         expect(plugin.enforce).toBe("post");
     });
 

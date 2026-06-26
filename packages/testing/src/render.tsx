@@ -16,7 +16,7 @@ import { captureAndSaveScreenshot } from "./screenshot.js";
 import "./setup-runtime.js";
 import type { RenderResult } from "./bound-queries.js";
 import { type Container, TOPLEVELS, traverse } from "./traversal.js";
-import type { QueryMap, RenderOptions, ScreenshotOptions, WindowMatcher } from "./types.js";
+import type { QueryMap, RenderOptions, ScreenshotOptions, WindowSelector } from "./types.js";
 import { resetClipboard } from "./user-event/index.js";
 import { within } from "./within.js";
 
@@ -86,22 +86,33 @@ const resolveContainer = (container: RenderOptions["container"]): ResolvedContai
     return { containerInfo: window, window };
 };
 
-const firstWidget = (baseElement: Container): Gtk.Widget => {
+const firstToplevelWidget = (baseElement: Container): Gtk.Widget => {
     if (baseElement instanceof Gtk.Widget) return baseElement;
     const [first] = traverse(baseElement);
     if (first) return first;
     throw new Error("render() produced no widgets: ensure the element renders visible content");
 };
 
-const resultContainer = (
+const resolveResultContainer = (
     resolved: ResolvedContainer,
     container: RenderOptions["container"],
     baseElement: Container,
 ): Gtk.Widget => {
     if (resolved.window) return resolved.window;
     if (container instanceof Gtk.Widget) return container;
-    return firstWidget(baseElement);
+    return firstToplevelWidget(baseElement);
 };
+
+const renderErrorHandlers = <Q extends QueryMap>(options: RenderOptions<Q> | undefined) => ({
+    onUncaughtError: handleError,
+    onCaughtError: (error: unknown, errorInfo: ErrorInfo): void => {
+        handleError(error);
+        options?.onCaughtError?.(error, errorInfo);
+    },
+    onRecoverableError: (error: unknown, errorInfo: ErrorInfo): void => {
+        options?.onRecoverableError?.(error, errorInfo);
+    },
+});
 
 export const render = async <Q extends QueryMap = Record<never, never>>(
     element: ReactNode,
@@ -112,20 +123,10 @@ export const render = async <Q extends QueryMap = Record<never, never>>(
     const baseElement: Container = options?.baseElement ?? TOPLEVELS;
     const Wrapper = options?.wrapper;
 
-    const onCaughtError = (error: unknown, errorInfo: ErrorInfo): void => {
-        handleError(error);
-        options?.onCaughtError?.(error, errorInfo);
-    };
-    const onRecoverableError = (error: unknown, errorInfo: ErrorInfo): void => {
-        options?.onRecoverableError?.(error, errorInfo);
-    };
-
     const resolved = resolveContainer(options?.container);
     const root = createReconcilerRoot({
         containerInfo: resolved.containerInfo,
-        onUncaughtError: handleError,
-        onCaughtError,
-        onRecoverableError,
+        ...renderErrorHandlers(options),
     });
     const active: ActiveRender = { root, window: resolved.window };
     activeRenders.add(active);
@@ -142,11 +143,11 @@ export const render = async <Q extends QueryMap = Record<never, never>>(
     await update(wrap(element), root);
     resolved.window?.present();
 
+    const container = resolveResultContainer(resolved, options?.container, baseElement);
+
     const result: RenderResult<Q> = {
         ...within(baseElement, options?.queries),
-        get container(): Gtk.Widget {
-            return resultContainer(resolved, options?.container, baseElement);
-        },
+        container,
         baseElement,
         unmount: async () => {
             await disposeActiveRender(active);
@@ -160,8 +161,8 @@ export const render = async <Q extends QueryMap = Record<never, never>>(
         logRoles: () => {
             logRoles(baseElement);
         },
-        screenshot: (matcher?: WindowMatcher, screenshotOptions?: ScreenshotOptions) =>
-            captureAndSaveScreenshot(matcher, screenshotOptions),
+        screenshot: (selector?: WindowSelector, screenshotOptions?: ScreenshotOptions) =>
+            captureAndSaveScreenshot(selector, screenshotOptions),
     };
 
     setScreen(result);

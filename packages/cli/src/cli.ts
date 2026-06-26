@@ -1,4 +1,4 @@
-import { defineCommand, runMain } from "citty";
+import { defineCommand, runCommand } from "citty";
 import { printError } from "./internal/errors.js";
 import { version } from "./version.js";
 
@@ -17,7 +17,7 @@ export const main = defineCommand({
 });
 
 try {
-    await runMain(main);
+    await runCommand(main, { rawArgs: process.argv.slice(2) });
 } catch (cause) {
     printError(cause);
 }

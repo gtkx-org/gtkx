@@ -156,9 +156,10 @@ export class AppRouter extends EventEmitter<AppRouterEventMap> {
 
     private removeApp(connection: ProtocolConnection): void {
         const applicationId = this.connectionToApp.get(connection.id);
-        if (!applicationId) return;
-        this.apps.delete(applicationId);
         this.connectionToApp.delete(connection.id);
+        if (applicationId === undefined) return;
+        if (this.apps.get(applicationId)?.connection !== connection) return;
+        this.apps.delete(applicationId);
         this.emit("appUnregistered", applicationId);
     }
 }

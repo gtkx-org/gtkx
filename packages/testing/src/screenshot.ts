@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
-import type { ScreenshotOptions, ScreenshotResult, WindowMatcher } from "./types.js";
+import type { ScreenshotOptions, ScreenshotResult, WindowSelector } from "./types.js";
 import { waitFor } from "./wait-for.js";
 
 const bytesToBase64 = (bytes: number[]): string => {
@@ -74,14 +74,14 @@ export const screenshot = async (widget: Gtk.Widget, options?: ScreenshotOptions
     });
 };
 
-const resolveWindow = (matcher?: WindowMatcher): Gtk.Window => {
+const resolveWindow = (selector?: WindowSelector): Gtk.Window => {
     const windows = Gtk.Window.listToplevels();
 
     if (windows.length === 0) {
         throw new Error("No windows available for screenshot");
     }
 
-    if (matcher === undefined) {
+    if (selector === undefined) {
         const [first] = windows;
         if (!(first instanceof Gtk.Window)) {
             throw new TypeError("First toplevel is not a Window");
@@ -89,23 +89,23 @@ const resolveWindow = (matcher?: WindowMatcher): Gtk.Window => {
         return first;
     }
 
-    if (typeof matcher === "number") {
-        const indexed = windows[matcher];
+    if (typeof selector === "number") {
+        const indexed = windows[selector];
         if (!(indexed instanceof Gtk.Window)) {
-            throw new TypeError(`Window at index ${matcher} not found`);
+            throw new TypeError(`Window at index ${selector} not found`);
         }
         return indexed;
     }
 
-    const isRegex = matcher instanceof RegExp;
+    const isRegex = selector instanceof RegExp;
     const found = windows.find((w): w is Gtk.Window => {
         if (!(w instanceof Gtk.Window)) return false;
         const title = w.getTitle() ?? "";
-        return isRegex ? matcher.test(title) : title.includes(matcher);
+        return isRegex ? selector.test(title) : title.includes(selector);
     });
 
     if (!found) {
-        const pattern = isRegex ? matcher.toString() : `"${matcher}"`;
+        const pattern = isRegex ? selector.toString() : `"${selector}"`;
         throw new Error(`No window found with title matching ${pattern}`);
     }
     return found;
@@ -126,10 +126,10 @@ export const logScreenshotPath = (filepath: string): void => {
 };
 
 export const captureAndSaveScreenshot = async (
-    matcher?: WindowMatcher,
+    selector?: WindowSelector,
     options?: ScreenshotOptions,
 ): Promise<ScreenshotResult> => {
-    const target = resolveWindow(matcher);
+    const target = resolveWindow(selector);
     const result = await screenshot(target, options);
     logScreenshotPath(saveScreenshotToTempFile(result));
     return result;

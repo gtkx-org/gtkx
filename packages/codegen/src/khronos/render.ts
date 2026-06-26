@@ -1,10 +1,18 @@
 import { lowerFirst, sourceStringLiteral, toCamelIdentifier } from "@gtkx/utils";
 import { tBind, tInlineStruct, tRef, tString, tUint8, tVoid } from "../analysis/descriptor.js";
 import { type OutArg, planArgs, scalarAliasOrGroup, scalarPrefixArgs, trackInto } from "./args.js";
-import { commandJsDoc, inParamDocLine, REFPAGES_BASE } from "./jsdoc.js";
+import { commandJsDoc, inParamDocLine, singularJsDoc } from "./jsdoc.js";
 import type { CommandPlan, ReturnPlan } from "./plan.js";
 
 const GL_LIB_EXPRESSION = "LIB";
+
+const glBind = (name: string, argList: string, returnType: string): string =>
+    tBind({
+        libExpr: GL_LIB_EXPRESSION,
+        symbolExpr: sourceStringLiteral(name),
+        argList,
+        returnType,
+    });
 
 const commandExportName = (name: string): string => {
     const stripped = name.startsWith("gl") ? lowerFirst(name.slice(2)) : name;
@@ -40,7 +48,7 @@ const buildEmittedReturn = (
             return { tsType: "void", descriptor: tVoid };
         case "scalar": {
             const alias = track(scalarAliasOrGroup(plan.scalar, returnGroup));
-            return { tsType: alias, descriptor: plan.scalar.tExpr, expr: (call) => `${call} as ${alias}` };
+            return { tsType: alias, descriptor: plan.scalar.descriptor, expr: (call) => `${call} as ${alias}` };
         }
         case "boolean":
             return { tsType: "boolean", descriptor: tUint8, expr: (call) => `(${call} as number) !== 0` };
@@ -93,14 +101,9 @@ export const renderCommand = (
     const tsReturn = returnTsType(returned, outs);
     const jsDoc = commandJsDoc({ command, feature, ins, outs, returnPlan: plan.returnPlan });
     const seeds = outs.map((out) => out.seed);
+    const bindExpression = glBind(command.name, descriptors, returned.descriptor);
     const hasStringOut = plan.params.some((paramPlan) => paramPlan.kind === "string-out");
     if (hasStringOut) {
-        const bindExpression = tBind({
-            libExpr: GL_LIB_EXPRESSION,
-            symbolExpr: sourceStringLiteral(command.name),
-            argList: descriptors,
-            returnType: returned.descriptor,
-        });
         const body = [
             ...seeds,
             `const binding = ${bindExpression};`,
@@ -114,12 +117,6 @@ export const renderCommand = (
         };
     }
     const bindingName = toCamelIdentifier(command.name);
-    const bindExpression = tBind({
-        libExpr: GL_LIB_EXPRESSION,
-        symbolExpr: sourceStringLiteral(command.name),
-        argList: descriptors,
-        returnType: returned.descriptor,
-    });
     const binding = `const ${bindingName} = ${bindExpression};`;
     const body = [...seeds, ...returnStatements(`${bindingName}(${argNames})`, returned, outs)]
         .map((line) => `    ${line}`)
@@ -155,31 +152,25 @@ export const deriveGenSingular = (
     const bindingName = `${plan.command.name}Single`;
     const descriptors = [
         ...prefix.map((arg) => arg.descriptor),
-        `${countPlan.scalar.tExpr}`,
-        tRef(outPlan.scalar.tExpr),
+        countPlan.scalar.descriptor,
+        tRef(outPlan.scalar.descriptor),
     ];
     usedTypes.add(outPlan.scalar.tsAlias);
     const signature = prefix.map((arg) => `${arg.name}: ${arg.tsType}`).join(", ");
     const callArgs = [...prefix.map((arg) => arg.name), "1", "out"].join(", ");
-    const jsDoc = [
-        "/**",
-        ` * Returns one ${outParam.objectClass} object name via \`${plan.command.name}(${prefix.length > 0 ? "..., " : ""}1, ...)\`.`,
-        " *",
-        ` * Provided by \`${feature}\`.`,
-        ...prefix.map((arg) => inParamDocLine(plan.command, arg)),
-        ` * @returns The new ${outParam.objectClass} object name`,
-        ` * @see ${REFPAGES_BASE}/${plan.command.name}.xhtml`,
-        " */",
-    ].join("\n");
+    const jsDoc = singularJsDoc({
+        commandName: plan.command.name,
+        feature,
+        summary: `Returns one ${outParam.objectClass} object name via \`${plan.command.name}(${prefix.length > 0 ? "..., " : ""}1, ...)\`.`,
+        body: [
+            ...prefix.map((arg) => inParamDocLine(plan.command, arg)),
+            ` * @returns The new ${outParam.objectClass} object name`,
+        ],
+    });
     const body = [`    const out = { value: 0 };`, `    ${bindingName}(${callArgs});`, "    return out.value;"].join(
         "\n",
     );
-    const binding = tBind({
-        libExpr: GL_LIB_EXPRESSION,
-        symbolExpr: sourceStringLiteral(plan.command.name),
-        argList: renderDescriptorList(descriptors),
-        returnType: tVoid,
-    });
+    const binding = glBind(plan.command.name, renderDescriptorList(descriptors), tVoid);
     return {
         exportName,
         binding: `const ${bindingName} = ${binding};`,
@@ -201,15 +192,12 @@ export const deriveDeleteSingular = (
     if (arrayParam.len !== countParam.name || arrayParam.objectClass === undefined) return undefined;
     const exportName = singularize(commandExportName(plan.command.name));
     usedTypes.add(arrayPlan.scalar.tsAlias);
-    const jsDoc = [
-        "/**",
-        ` * Deletes one ${arrayParam.objectClass} object name via \`${plan.command.name}(1, ...)\`.`,
-        " *",
-        ` * Provided by \`${feature}\`.`,
-        ` * @param name - The ${arrayParam.objectClass} object name to delete`,
-        ` * @see ${REFPAGES_BASE}/${plan.command.name}.xhtml`,
-        " */",
-    ].join("\n");
+    const jsDoc = singularJsDoc({
+        commandName: plan.command.name,
+        feature,
+        summary: `Deletes one ${arrayParam.objectClass} object name via \`${plan.command.name}(1, ...)\`.`,
+        body: [` * @param name - The ${arrayParam.objectClass} object name to delete`],
+    });
     return {
         exportName,
         declaration: `${jsDoc}\nexport function ${exportName}(name: ${arrayPlan.scalar.tsAlias}): void {\n    ${plan.command.name}(1, [name]);\n}`,

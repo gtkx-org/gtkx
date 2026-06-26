@@ -6,12 +6,8 @@ use napi::{Env, JsObject};
 
 use super::prelude::*;
 use crate::error_reporter::NativeErrorReporter;
-use crate::managed::{Boxed, NativeValue};
-use crate::state::GlibThreadState;
-
-fn boxed_value(boxed: Boxed) -> value::Value {
-    value::Value::Object(NativeValue::Boxed(boxed).into())
-}
+use crate::managed::Boxed;
+use crate::glib_thread_state::GlibThreadState;
 
 #[derive(Debug, Clone)]
 pub struct BoxedType {
@@ -23,9 +19,10 @@ pub struct BoxedType {
     pub caller_allocated: bool,
 }
 
-impl FromDescriptor for BoxedType {
+impl BoxedType {
+    #[allow(clippy::trivially_copy_pass_by_ref)]
     #[cfg_attr(coverage_nightly, coverage(off))]
-    fn from_descriptor(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
+    pub(crate) fn from_descriptor(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let ownership = Ownership::from_descriptor(obj, "boxed")?;
 
         let type_name: String = obj.get_named_property("innerType")?;
@@ -160,9 +157,7 @@ impl FfiDecoder for BoxedType {
         };
 
         if let Some(free_fn_name) = self.free_fn.as_deref() {
-            return Ok(boxed_value(
-                self.boxed_with_free_fn(boxed_ptr, free_fn_name)?,
-            ));
+            return Ok(self.boxed_with_free_fn(boxed_ptr, free_fn_name)?.into());
         }
 
         let gtype = self.gtype();
@@ -173,15 +168,15 @@ impl FfiDecoder for BoxedType {
             }
         };
 
-        Ok(boxed_value(boxed))
+        Ok(boxed.into())
     }
 
     unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         self.null_guarded(ptr, |ptr| {
             if self.free_fn.is_some() || self.caller_allocated {
-                return Ok(boxed_value(Boxed::from_glib_borrow(ptr)));
+                return Ok(Boxed::from_glib_borrow(ptr).into());
             }
-            Ok(boxed_value(Boxed::from_glib_none(self.gtype(), ptr)?))
+            Ok(Boxed::from_glib_none(self.gtype(), ptr)?.into())
         })
     }
 }

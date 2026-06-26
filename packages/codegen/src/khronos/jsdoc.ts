@@ -25,7 +25,12 @@ export const inParamDocLine = (command: GlCommand, arg: InArg): string => {
 const returnsDocLine = (command: GlCommand, returnPlan: ReturnPlan, outs: OutArg[]): string | undefined => {
     const members: string[] = [];
     if (returnPlan.kind !== "void") members.push(`\`${command.returnCType}\``);
-    for (const out of outs) members.push(`\`${out.docName}\` (\`${out.docCType}\`)`);
+    for (const out of outs) {
+        const param = command.params[out.paramIndex];
+        if (param === undefined)
+            throw new Error(`Output parameter index ${out.paramIndex} out of range on ${command.name}`);
+        members.push(`\`${param.name}\` (\`${param.cType}\`)`);
+    }
     if (members.length === 0) return undefined;
     if (members.length === 1) return ` * @returns ${members[0]}`;
     return ` * @returns Tuple of ${members.join(", ")}`;
@@ -38,6 +43,24 @@ type CommandJsDocOptions = {
     outs: OutArg[];
     returnPlan: ReturnPlan;
 };
+
+type SingularJsDocOptions = {
+    commandName: string;
+    feature: string;
+    summary: string;
+    body: string[];
+};
+
+export const singularJsDoc = ({ commandName, feature, summary, body }: SingularJsDocOptions): string =>
+    [
+        "/**",
+        ` * ${summary}`,
+        " *",
+        ` * Provided by \`${feature}\`.`,
+        ...body,
+        ` * @see ${REFPAGES_BASE}/${commandName}.xhtml`,
+        " */",
+    ].join("\n");
 
 export const commandJsDoc = ({ command, feature, ins, outs, returnPlan }: CommandJsDocOptions): string => {
     const lines = ["/**", ` * \`${formatPrototype(command)}\``, " *", ` * Provided by \`${feature}\`.`];

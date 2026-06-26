@@ -1,32 +1,36 @@
+import { tScalar } from "../analysis/descriptor.js";
 import type { GlCommand, GlParam } from "./model.js";
 
 export type GlScalar = {
-    tExpr: string;
+    descriptor: string;
     tsAlias: string;
     viewType?: string;
     groupBearing?: boolean;
 };
 
 export const GL_SCALARS: Map<string, GlScalar> = new Map([
-    ["GLenum", { tExpr: "t.uint32", tsAlias: "GLenum", viewType: "Uint32Array", groupBearing: true }],
-    ["GLbitfield", { tExpr: "t.uint32", tsAlias: "GLbitfield", viewType: "Uint32Array", groupBearing: true }],
-    ["GLuint", { tExpr: "t.uint32", tsAlias: "GLuint", viewType: "Uint32Array" }],
-    ["GLint", { tExpr: "t.int32", tsAlias: "GLint", viewType: "Int32Array" }],
-    ["GLsizei", { tExpr: "t.int32", tsAlias: "GLsizei", viewType: "Int32Array" }],
-    ["GLbyte", { tExpr: "t.int8", tsAlias: "GLbyte", viewType: "Int8Array" }],
-    ["GLubyte", { tExpr: "t.uint8", tsAlias: "GLubyte", viewType: "Uint8Array" }],
-    ["GLshort", { tExpr: "t.int16", tsAlias: "GLshort", viewType: "Int16Array" }],
-    ["GLushort", { tExpr: "t.uint16", tsAlias: "GLushort", viewType: "Uint16Array" }],
-    ["GLfixed", { tExpr: "t.int32", tsAlias: "GLfixed", viewType: "Int32Array" }],
-    ["GLclampx", { tExpr: "t.int32", tsAlias: "GLclampx", viewType: "Int32Array" }],
-    ["GLfloat", { tExpr: "t.float32", tsAlias: "GLfloat", viewType: "Float32Array" }],
-    ["GLclampf", { tExpr: "t.float32", tsAlias: "GLclampf", viewType: "Float32Array" }],
-    ["GLdouble", { tExpr: "t.float64", tsAlias: "GLdouble", viewType: "Float64Array" }],
-    ["GLclampd", { tExpr: "t.float64", tsAlias: "GLclampd", viewType: "Float64Array" }],
-    ["GLint64", { tExpr: "t.int64", tsAlias: "GLint64" }],
-    ["GLuint64", { tExpr: "t.uint64", tsAlias: "GLuint64" }],
-    ["GLintptr", { tExpr: "t.int64", tsAlias: "GLintptr" }],
-    ["GLsizeiptr", { tExpr: "t.int64", tsAlias: "GLsizeiptr" }],
+    ["GLenum", { descriptor: tScalar("uint32"), tsAlias: "GLenum", viewType: "Uint32Array", groupBearing: true }],
+    [
+        "GLbitfield",
+        { descriptor: tScalar("uint32"), tsAlias: "GLbitfield", viewType: "Uint32Array", groupBearing: true },
+    ],
+    ["GLuint", { descriptor: tScalar("uint32"), tsAlias: "GLuint", viewType: "Uint32Array" }],
+    ["GLint", { descriptor: tScalar("int32"), tsAlias: "GLint", viewType: "Int32Array" }],
+    ["GLsizei", { descriptor: tScalar("int32"), tsAlias: "GLsizei", viewType: "Int32Array" }],
+    ["GLbyte", { descriptor: tScalar("int8"), tsAlias: "GLbyte", viewType: "Int8Array" }],
+    ["GLubyte", { descriptor: tScalar("uint8"), tsAlias: "GLubyte", viewType: "Uint8Array" }],
+    ["GLshort", { descriptor: tScalar("int16"), tsAlias: "GLshort", viewType: "Int16Array" }],
+    ["GLushort", { descriptor: tScalar("uint16"), tsAlias: "GLushort", viewType: "Uint16Array" }],
+    ["GLfixed", { descriptor: tScalar("int32"), tsAlias: "GLfixed", viewType: "Int32Array" }],
+    ["GLclampx", { descriptor: tScalar("int32"), tsAlias: "GLclampx", viewType: "Int32Array" }],
+    ["GLfloat", { descriptor: tScalar("float32"), tsAlias: "GLfloat", viewType: "Float32Array" }],
+    ["GLclampf", { descriptor: tScalar("float32"), tsAlias: "GLclampf", viewType: "Float32Array" }],
+    ["GLdouble", { descriptor: tScalar("float64"), tsAlias: "GLdouble", viewType: "Float64Array" }],
+    ["GLclampd", { descriptor: tScalar("float64"), tsAlias: "GLclampd", viewType: "Float64Array" }],
+    ["GLint64", { descriptor: tScalar("int64"), tsAlias: "GLint64" }],
+    ["GLuint64", { descriptor: tScalar("uint64"), tsAlias: "GLuint64" }],
+    ["GLintptr", { descriptor: tScalar("int64"), tsAlias: "GLintptr" }],
+    ["GLsizeiptr", { descriptor: tScalar("int64"), tsAlias: "GLsizeiptr" }],
 ]);
 
 const GL_BOOLEAN = "GLboolean";

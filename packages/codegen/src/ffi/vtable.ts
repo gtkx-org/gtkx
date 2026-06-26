@@ -24,7 +24,7 @@ export const renderVfuncMetadata = (context: ModuleContext, klass: GirClass): st
 };
 
 const vtableEntries = (context: ModuleContext, structName: string, kind: VtableKind, typeStruct: string): string[] => {
-    const resolved = context.library.resolveNamed(context.namespace.name, typeStruct);
+    const resolved = context.library.resolveType(context.namespace.name, typeStruct);
     if (resolved === undefined || resolved.kind !== "record") return [];
     const { slots } = computeRecordFieldSlots(context, resolved.value.fields, resolved.value.isUnion);
     const entries: string[] = [];

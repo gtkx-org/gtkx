@@ -7,17 +7,16 @@ use std::sync::{Arc, OnceLock};
 use glib::translate::IntoGlib as _;
 use parking_lot::Mutex;
 
-use crate::dispatch::Mailbox;
+use crate::dispatch::{JsRefDeletion, Mailbox};
 use crate::error_reporter::NativeErrorReporter;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RefOp {
+pub enum WrapperRefOp {
     Unref,
     Ref,
-    Delete,
 }
 
-impl RefOp {
+impl WrapperRefOp {
     pub(crate) fn apply(self, env: &napi::Env, ref_ptr: usize) {
         use napi::sys;
 
@@ -25,7 +24,7 @@ impl RefOp {
         let mut count: u32 = 0;
         // SAFETY: this runs on the Node (JS) thread (it is dispatched as a node task), `env` is
         // the live napi env for that thread, and `raw_ref` is the napi reference recorded in the
-        // wrapper binding; each call adjusts or deletes exactly that reference.
+        // wrapper binding; each call adjusts exactly that reference.
         unsafe {
             match self {
                 Self::Ref => {
@@ -33,9 +32,6 @@ impl RefOp {
                 }
                 Self::Unref => {
                     sys::napi_reference_unref(env.raw(), raw_ref, &mut count);
-                }
-                Self::Delete => {
-                    sys::napi_delete_reference(env.raw(), raw_ref);
                 }
             }
         }
@@ -74,7 +70,11 @@ impl WrapperRegistry {
         if binding.wrapper_strong.swap(strong, Ordering::AcqRel) == strong {
             return;
         }
-        let op = if strong { RefOp::Ref } else { RefOp::Unref };
+        let op = if strong {
+            WrapperRefOp::Ref
+        } else {
+            WrapperRefOp::Unref
+        };
         Self::invoke_ref_op(ref_ptr, op);
     }
 
@@ -146,7 +146,7 @@ impl WrapperRegistry {
         !unsafe { self.binding_ptr(gobject) }.is_null()
     }
 
-    fn invoke_ref_op(ref_ptr: *mut c_void, op: RefOp) {
+    fn invoke_ref_op(ref_ptr: *mut c_void, op: WrapperRefOp) {
         let mailbox = Mailbox::global();
         if mailbox.is_not_running() || !mailbox.is_initialized() {
             return;
@@ -156,6 +156,17 @@ impl WrapperRegistry {
                 "toggle-reference operation failed; wrapper lifetime state may be inconsistent",
             ));
         }
+    }
+
+    fn schedule_reference_delete(env_addr: usize, ref_addr: usize) {
+        let mailbox = Mailbox::global();
+        if mailbox.is_not_running() {
+            return;
+        }
+        mailbox.schedule_js_reference_delete(JsRefDeletion::new(
+            env_addr as napi::sys::napi_env,
+            ref_addr as napi::sys::napi_ref,
+        ));
     }
 
     /// # Safety
@@ -219,6 +230,7 @@ impl WrapperRegistry {
 
     pub(crate) fn schedule_cleanup(
         &'static self,
+        env_addr: usize,
         binding: Option<Arc<WrapperBinding>>,
         generation: u64,
         gobject_addr: usize,
@@ -228,15 +240,13 @@ impl WrapperRegistry {
             return;
         }
         glib::idle_add_once(move || {
-            let ref_ptr = ref_addr as *mut c_void;
-
             let Some(binding) = binding else {
-                Self::invoke_ref_op(ref_ptr, RefOp::Delete);
+                Self::schedule_reference_delete(env_addr, ref_addr);
                 return;
             };
 
             if binding.generation.load(Ordering::Relaxed) != generation {
-                Self::invoke_ref_op(ref_ptr, RefOp::Delete);
+                Self::schedule_reference_delete(env_addr, ref_addr);
                 return;
             }
 
@@ -258,7 +268,7 @@ impl WrapperRegistry {
                     drop(Arc::from_raw(Arc::as_ptr(&binding)));
                 }
             }
-            Self::invoke_ref_op(ref_ptr, RefOp::Delete);
+            Self::schedule_reference_delete(env_addr, ref_addr);
             // SAFETY: removes the exact `on_toggle_notify` toggle reference registered by
             // `install` on the still-live `gobject`, balancing the earlier add.
             unsafe {

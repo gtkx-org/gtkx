@@ -10,7 +10,7 @@ import { setTestingModuleLoader } from "../mcp/testing-loader.js";
 import { isRefreshBoundary, performRefresh } from "../refresh-runtime.js";
 import { gtkxFastRefresh } from "../vite-plugins/fast-refresh/index.js";
 import { gtkxVitePlugins } from "../vite-plugins/index.js";
-import { gtkxSkipReactDomOptimize } from "../vite-plugins/skip-react-dom-optimize.js";
+import { gtkxReactDomPrebundle } from "../vite-plugins/react-dom-prebundle.js";
 import type { DevRunnerDeps } from "./runner.js";
 
 export const defaultDevRunnerDeps = (): DevRunnerDeps => ({
@@ -38,7 +38,7 @@ export const defaultDevRunnerDeps = (): DevRunnerDeps => ({
     },
     performRefresh,
     isRefreshBoundary,
-    plugins: () => [...gtkxVitePlugins(), ...gtkxFastRefresh(), gtkxSkipReactDomOptimize()],
+    plugins: () => [...gtkxVitePlugins(), ...gtkxFastRefresh(), gtkxReactDomPrebundle()],
     log: info,
     exit: (code: number): never => process.exit(code),
 });

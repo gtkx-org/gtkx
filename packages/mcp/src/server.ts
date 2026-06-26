@@ -7,7 +7,14 @@ import { z } from "zod";
 import { AppRouter } from "./app-router.js";
 import { ConnectionRegistry } from "./connection-registry.js";
 import { ProtocolError } from "./protocol/errors.js";
-import { DEFAULT_SOCKET_PATH, queryOptionsSchema } from "./protocol/types.js";
+import {
+    DEFAULT_SOCKET_PATH,
+    fireEventParams,
+    queryParams,
+    screenshotParams,
+    typeParams,
+    widgetIdParams,
+} from "./protocol/types.js";
 import { SocketServer } from "./socket-server.js";
 
 const require = createRequire(import.meta.url);
@@ -17,11 +24,11 @@ const APPLICATION_ID_DESCRIPTION = "Application ID to query. If not specified, u
 const WIDGET_ID_DESCRIPTION =
     "Widget ID obtained from `gtkx_get_widget_tree` or `gtkx_query_widgets`. IDs are only valid against a recent tree/query for the same app.";
 
-const applicationIdField = z.string().optional().describe(APPLICATION_ID_DESCRIPTION);
-const widgetIdField = z.string().describe(WIDGET_ID_DESCRIPTION);
-
-const applicationIdShape = { applicationId: applicationIdField };
-const widgetIdShape = { ...applicationIdShape, widgetId: widgetIdField };
+const applicationIdShape = { applicationId: z.string().optional().describe(APPLICATION_ID_DESCRIPTION) };
+const widgetIdShape = {
+    ...applicationIdShape,
+    widgetId: widgetIdParams.shape.widgetId.describe(WIDGET_ID_DESCRIPTION),
+};
 
 const listAppsShape = {
     waitForApps: z
@@ -35,26 +42,28 @@ const listAppsShape = {
 
 const queryWidgetsShape = {
     ...applicationIdShape,
-    by: z.enum(["role", "text", "name", "labelText"]).describe("Query type"),
-    value: z.union([z.string(), z.number()]).describe("Value to search for"),
-    options: queryOptionsSchema.optional().describe("Additional query options"),
+    by: queryParams.shape.by.describe("Query type"),
+    value: queryParams.shape.value.describe("Value to search for"),
+    options: queryParams.shape.options.describe("Additional query options"),
 };
 
 const typeShape = {
     ...widgetIdShape,
-    text: z.string().describe("Text to type"),
-    clear: z.boolean().optional().describe("Clear existing text before typing"),
+    text: typeParams.shape.text.describe("Text to type"),
+    clear: typeParams.shape.clear.describe("Clear existing text before typing"),
 };
 
 const fireEventShape = {
     ...widgetIdShape,
-    signal: z.string().describe("GTK signal name to emit"),
-    args: z.array(z.unknown()).optional().describe("Arguments to pass to the signal"),
+    signal: fireEventParams.shape.signal.describe("GTK signal name to emit"),
+    args: fireEventParams.shape.args.describe("Arguments to pass to the signal"),
 };
 
 const screenshotShape = {
     ...applicationIdShape,
-    windowId: z.string().optional().describe("Window ID to capture. If not specified, captures the first window."),
+    windowId: screenshotParams.shape.windowId.describe(
+        "Window ID to capture. If not specified, captures the first window.",
+    ),
 };
 
 const textContent = (text: string): CallToolResult => ({ content: [{ type: "text", text }] });

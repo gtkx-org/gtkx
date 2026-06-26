@@ -1,8 +1,8 @@
 import { RELATIONSHIP_NODE_ELEMENT } from "@gtkx/config";
-import { sortedStringsBy, sourceStringLiteral, toCamelCase } from "@gtkx/utils";
+import { sortedStringsBy, sourceStringLiteral } from "@gtkx/utils";
 import type { Library } from "../gir/library.js";
 import type { GirNamespace } from "../gir/namespace.js";
-import type { JsxImports } from "./imports.js";
+import type { ImportsBuilder } from "../writer/imports.js";
 import { ancestorGlibNames, collectIntrinsicElementClasses, type GlibNamedClass } from "./intrinsic-elements.js";
 import { type RelationshipNodeElement, relationshipNodeElementEntries } from "./relationship-node-elements.js";
 import { type AncestryWrapperName, BUILT_IN_ANCESTRY_WRAPPERS } from "./tables.js";
@@ -13,7 +13,7 @@ export const generateElementComponentsSection = (
     targetNamespace: GirNamespace,
     library: Library,
     options: {
-        imports: JsxImports;
+        imports: ImportsBuilder;
     },
 ): { source: string; exportedNames: Set<string> } => {
     const { imports } = options;
@@ -35,8 +35,8 @@ export const generateElementComponentsSection = (
 
     for (const relationshipNode of relationshipNodes) {
         needsWrapperConst = true;
-        imports.sharedTypes.add(relationshipNode.propsType);
-        imports.reactBuiltins.add("ReactNode");
+        imports.addNamed("@gtkx/react", relationshipNode.propsType, true);
+        imports.addNamed("react", "ReactNode", true);
         exportLines.push(renderRelationshipNodeElementExport(relationshipNode));
         exportedNames.add(relationshipNode.flatName);
     }
@@ -68,44 +68,40 @@ const relationshipNodeElementsForNamespace = (
     return sortedStringsBy(result, (entry) => entry.flatName);
 };
 
-const renderCandidateExport = (candidate: GlibNamedClass, library: Library, imports: JsxImports): string | null => {
+const renderCandidateExport = (candidate: GlibNamedClass, library: Library, imports: ImportsBuilder): string | null => {
     const { glibName, klass, namespace } = candidate;
     const ancestry = new Set(ancestorGlibNames(klass, namespace, library));
-    const hoc = resolveAncestryWrapper(ancestry);
-    imports.hocs.add("createElementComponent");
-    imports.sharedTypes.add("SyntheticPropsFor");
-    imports.reactBuiltins.add("ReactNode");
-    if (hoc !== undefined) imports.hocs.add(hoc);
-    const isDialog = hoc === "withWindowPresentation" && ancestry.has("AdwDialog");
-    if (isDialog) imports.sharedTypes.add("TopLevelParentProps");
+    const wrapper = resolveAncestryWrapper(ancestry);
+    imports.addNamed("@gtkx/react", "createElementComponent", false);
+    imports.addNamed("@gtkx/react", "SyntheticPropsFor", true);
+    imports.addNamed("react", "ReactNode", true);
+    if (wrapper !== undefined) imports.addNamed("@gtkx/react", wrapper, false);
+    const isDialog = wrapper === "withWindowPresentation" && ancestry.has("AdwDialog");
+    if (isDialog) imports.addNamed("@gtkx/react", "ToplevelParentProps", true);
     const syntheticUnion = [...ancestry].map((name) => sourceStringLiteral(name)).join(" | ");
-    return renderElementComponentExport(glibName, hoc, isDialog, syntheticUnion);
+    return renderElementComponentExport(glibName, wrapper, isDialog, syntheticUnion);
 };
 
 const resolveAncestryWrapper = (ancestry: Set<string>): AncestryWrapperName | undefined => {
     for (const rule of BUILT_IN_ANCESTRY_WRAPPERS) {
-        if (rule.ancestors.some((ancestor) => ancestry.has(ancestor))) return rule.hoc;
+        if (rule.ancestors.some((ancestor) => ancestry.has(ancestor))) return rule.wrapper;
     }
     return undefined;
 };
 
 const renderElementComponentExport = (
     glibName: string,
-    hoc: AncestryWrapperName | undefined,
+    wrapper: AncestryWrapperName | undefined,
     isDialog: boolean,
     syntheticUnion: string,
 ): string => {
     const propsType = `${glibName}Props & SyntheticPropsFor<${syntheticUnion}>`;
-    if (hoc === undefined) {
+    if (wrapper === undefined) {
         return `export const ${glibName}: (props: ${propsType}) => ReactNode = createElementComponent<${propsType}>(${sourceStringLiteral(glibName)});`;
     }
-    const componentPropsType = isDialog ? `${propsType} & TopLevelParentProps` : propsType;
+    const componentPropsType = isDialog ? `${propsType} & ToplevelParentProps` : propsType;
     const annotation = `(props: ${componentPropsType}) => ReactNode`;
-    const memo = `${toCamelCase(glibName)}Instance`;
-    return [
-        `let ${memo}: (${annotation}) | undefined;`,
-        `export const ${glibName}: ${annotation} = (props) => (${memo} ??= ${hoc}<${componentPropsType}>(createElementComponent<${componentPropsType}>(${sourceStringLiteral(glibName)})))(props);`,
-    ].join("\n");
+    return `export const ${glibName}: ${annotation} = ${wrapper}<${componentPropsType}>(createElementComponent<${componentPropsType}>(${sourceStringLiteral(glibName)}));`;
 };
 
 const renderPositionalSlotChild = (kind: string, prop: string): string =>

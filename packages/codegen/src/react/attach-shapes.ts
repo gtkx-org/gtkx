@@ -62,7 +62,7 @@ const resolveEntity = (library: Library, typeId: TypeId | undefined): GirType | 
     if (typeId === undefined) return undefined;
     let resolved = library.typeOf(typeId);
     while (resolved !== undefined && resolved.kind === "alias") {
-        resolved = resolveEntity(library, resolved.target);
+        resolved = resolveEntity(library, resolved.value.target);
     }
     return resolved;
 };

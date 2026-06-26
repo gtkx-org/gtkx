@@ -102,9 +102,26 @@ const arrayLengthExpression = (
     return `this.${toCamelIdentifier(lengthField.name)}`;
 };
 
-const renderElementReadObject = (context: ModuleContext, fields: GirField[], baseOffset: number): string => {
+type InlineFieldVisit = {
+    jsName: string;
+    descriptor: string;
+    offset: number;
+    slot: FieldSlot;
+    type: TypeId;
+};
+
+type InlineFieldVisitors = {
+    leaf: (visit: InlineFieldVisit) => void;
+    nested: (jsName: string, nested: GirField[], offset: number) => void;
+};
+
+const visitInlineStructFields = (
+    context: ModuleContext,
+    fields: GirField[],
+    baseOffset: number,
+    visitors: InlineFieldVisitors,
+): void => {
     const { slots } = computeRecordFieldSlots(context, fields);
-    const entries: string[] = [];
     for (const { field, slot } of slots) {
         if (field.private || field.type === undefined || isInlineCallbackRef(context.library, field.type)) {
             continue;
@@ -113,22 +130,34 @@ const renderElementReadObject = (context: ModuleContext, fields: GirField[], bas
         const offset = baseOffset + slot.byteOffset;
         const nested = resolveInlineStructFields(context, field.type, field.cType);
         if (nested !== undefined) {
-            entries.push(`${jsName}: ${renderElementReadObject(context, nested, offset)}`);
+            visitors.nested(jsName, nested, offset);
             continue;
         }
         if (!isAccessorEligibleType(context, field.type)) continue;
         const descriptor = renderDescriptor(context, field.type, "none");
-        if (slot.bitWidth === undefined) {
-            entries.push(
-                `${jsName}: read(__array, ${descriptor}, __base + ${offset}) as ${renderTsType(context, field.type, false)}`,
-            );
-            continue;
-        }
-        const shift = slot.bitOffset ?? 0;
-        entries.push(
-            `${jsName}: (((read(__array, ${descriptor}, __base + ${offset}) as number) >>> ${shift}) & ${bitMask(slot.bitWidth)})`,
-        );
+        visitors.leaf({ jsName, descriptor, offset, slot, type: field.type });
     }
+};
+
+const renderElementReadObject = (context: ModuleContext, fields: GirField[], baseOffset: number): string => {
+    const entries: string[] = [];
+    visitInlineStructFields(context, fields, baseOffset, {
+        leaf: ({ jsName, descriptor, offset, slot, type }) => {
+            if (slot.bitWidth === undefined) {
+                entries.push(
+                    `${jsName}: read(__array, ${descriptor}, __base + ${offset}) as ${renderTsType(context, type, false)}`,
+                );
+                return;
+            }
+            const shift = slot.bitOffset ?? 0;
+            entries.push(
+                `${jsName}: (((read(__array, ${descriptor}, __base + ${offset}) as number) >>> ${shift}) & ${bitMask(slot.bitWidth)})`,
+            );
+        },
+        nested: (jsName, nested, offset) => {
+            entries.push(`${jsName}: ${renderElementReadObject(context, nested, offset)}`);
+        },
+    });
     return `{ ${entries.join(", ")} }`;
 };
 
@@ -141,29 +170,27 @@ type ElementWriteOptions = {
 
 const appendElementWriteStatements = (context: ModuleContext, options: ElementWriteOptions): void => {
     const { fields, baseOffset, valuePath, out } = options;
-    const { slots } = computeRecordFieldSlots(context, fields);
-    for (const { field, slot } of slots) {
-        if (field.private || field.type === undefined || isInlineCallbackRef(context.library, field.type)) {
-            continue;
-        }
-        const valueExpr = `${valuePath}.${toCamelIdentifier(field.name)}`;
-        const offset = baseOffset + slot.byteOffset;
-        const nested = resolveInlineStructFields(context, field.type, field.cType);
-        if (nested !== undefined) {
-            appendElementWriteStatements(context, { fields: nested, baseOffset: offset, valuePath: valueExpr, out });
-            continue;
-        }
-        if (!isAccessorEligibleType(context, field.type)) continue;
-        const descriptor = renderDescriptor(context, field.type, "none");
-        if (slot.bitWidth === undefined) {
-            out.push(`write(__array, ${descriptor}, __base + ${offset}, ${valueExpr});`);
-            continue;
-        }
-        const mask = bitMask(slot.bitWidth);
-        const shift = slot.bitOffset ?? 0;
-        const merged = mergeBitfield(`read(__array, ${descriptor}, __base + ${offset})`, valueExpr, mask, shift);
-        out.push(`write(__array, ${descriptor}, __base + ${offset}, ${merged});`);
-    }
+    visitInlineStructFields(context, fields, baseOffset, {
+        leaf: ({ jsName, descriptor, offset, slot }) => {
+            const valueExpr = `${valuePath}.${jsName}`;
+            if (slot.bitWidth === undefined) {
+                out.push(`write(__array, ${descriptor}, __base + ${offset}, ${valueExpr});`);
+                return;
+            }
+            const mask = bitMask(slot.bitWidth);
+            const shift = slot.bitOffset ?? 0;
+            const merged = mergeBitfield(`read(__array, ${descriptor}, __base + ${offset})`, valueExpr, mask, shift);
+            out.push(`write(__array, ${descriptor}, __base + ${offset}, ${merged});`);
+        },
+        nested: (jsName, nested, offset) => {
+            appendElementWriteStatements(context, {
+                fields: nested,
+                baseOffset: offset,
+                valuePath: `${valuePath}.${jsName}`,
+                out,
+            });
+        },
+    });
 };
 
 type StructArrayTarget = {

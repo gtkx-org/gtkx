@@ -419,7 +419,7 @@ function getCharacterData() {
     return cachedData;
 }
 
-const renderUcdHeader = (script: string) => (
+const renderUcdHeader = ({ section: script }: { section: string }) => (
     <GtkLabel
         label={script}
         halign={Gtk.Align.START}

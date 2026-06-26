@@ -3,7 +3,7 @@ import type { ElementType, ReactNode, Ref } from "react";
 import { useMergeRefs } from "../hooks/use-merge-refs.js";
 import { type Toplevel, useWindowPresentation } from "../hooks/use-window-presentation.js";
 
-export interface TopLevelParentProps {
+export interface ToplevelParentProps {
     parent?: Gtk.Window | null;
 }
 
@@ -13,7 +13,7 @@ export const withWindowPresentation = <P extends { children?: ReactNode }>(
     const Element = Underlying;
     return (props: P): ReactNode => {
         const externalRef = (props as { ref?: Ref<Toplevel | null> }).ref;
-        const { children, parent, ...rest } = props as P & TopLevelParentProps;
+        const { children, parent, ...rest } = props as P & ToplevelParentProps;
         const capture = useWindowPresentation(parent ?? null);
         const ref = useMergeRefs(externalRef, capture);
         return (

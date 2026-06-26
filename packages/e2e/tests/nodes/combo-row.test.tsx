@@ -68,7 +68,7 @@ describe("render - AdwComboRow", () => {
                         },
                     ]}
                     selectedId="title"
-                    renderHeader={(value: string) => <GtkLabel label={value} />}
+                    renderHeader={({ section: value }: { section: string }) => <GtkLabel label={value} />}
                 />
             </GtkListBox>,
         );

@@ -5,15 +5,15 @@ export type AncestryWrapperName =
     | "withApplicationLifecycle"
     | "withApplicationWindowPresentation";
 
-export type AncestryWrapperRule = { ancestors: string[]; hoc: AncestryWrapperName };
+export type AncestryWrapperRule = { ancestors: string[]; wrapper: AncestryWrapperName };
 
 export const BUILT_IN_ANCESTRY_WRAPPERS: AncestryWrapperRule[] = [
-    { ancestors: ["GtkApplication"], hoc: "withApplicationLifecycle" },
-    { ancestors: ["GtkApplicationWindow"], hoc: "withApplicationWindowPresentation" },
-    { ancestors: ["GtkWindow", "AdwDialog"], hoc: "withWindowPresentation" },
+    { ancestors: ["GtkApplication"], wrapper: "withApplicationLifecycle" },
+    { ancestors: ["GtkApplicationWindow"], wrapper: "withApplicationWindowPresentation" },
+    { ancestors: ["GtkWindow", "AdwDialog"], wrapper: "withWindowPresentation" },
 ];
 
-export const TOP_LEVEL_TYPES: string[] = ["GtkWindow", "AdwDialog"];
+export const TOPLEVEL_TYPES: string[] = ["GtkWindow", "AdwDialog"];
 
 export const DEFAULT_BLOCKABLE_TYPES: string[] = ["GtkTextBuffer"];
 

@@ -70,7 +70,9 @@ export const RegisterParamsSchema: z.ZodObject<
 });
 
 const emptyParams: z.ZodObject<Record<string, never>, z.core.$strip> = z.object({});
-const widgetIdParams: z.ZodObject<{ widgetId: z.ZodString }, z.core.$strip> = z.object({ widgetId: z.string() });
+export const widgetIdParams: z.ZodObject<{ widgetId: z.ZodString }, z.core.$strip> = z.object({
+    widgetId: z.string(),
+});
 export const queryOptionsSchema: z.ZodObject<
     { name: z.ZodOptional<z.ZodString>; exact: z.ZodOptional<z.ZodBoolean>; timeout: z.ZodOptional<z.ZodNumber> },
     z.core.$strip
@@ -80,7 +82,7 @@ export const queryOptionsSchema: z.ZodObject<
     timeout: z.number().optional(),
 });
 
-const queryParams: z.ZodObject<
+export const queryParams: z.ZodObject<
     {
         by: z.ZodEnum<{ role: "role"; text: "text"; name: "name"; labelText: "labelText" }>;
         value: z.ZodUnion<[z.ZodString, z.ZodNumber]>;
@@ -92,15 +94,15 @@ const queryParams: z.ZodObject<
     value: z.union([z.string(), z.number()]),
     options: queryOptionsSchema.optional(),
 });
-const typeParams: z.ZodObject<
+export const typeParams: z.ZodObject<
     { widgetId: z.ZodString; text: z.ZodString; clear: z.ZodOptional<z.ZodBoolean> },
     z.core.$strip
 > = z.object({ widgetId: z.string(), text: z.string(), clear: z.boolean().optional() });
-const fireEventParams: z.ZodObject<
+export const fireEventParams: z.ZodObject<
     { widgetId: z.ZodString; signal: z.ZodString; args: z.ZodOptional<z.ZodArray<z.ZodUnknown>> },
     z.core.$strip
 > = z.object({ widgetId: z.string(), signal: z.string(), args: z.array(z.unknown()).optional() });
-const screenshotParams: z.ZodObject<{ windowId: z.ZodOptional<z.ZodString> }, z.core.$strip> = z.object({
+export const screenshotParams: z.ZodObject<{ windowId: z.ZodOptional<z.ZodString> }, z.core.$strip> = z.object({
     windowId: z.string().optional(),
 });
 

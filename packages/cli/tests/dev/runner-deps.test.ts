@@ -111,7 +111,7 @@ describe("defaultDevRunnerDeps (plugins)", () => {
             "gtkx:react-compiler",
             "gtkx:swc-refresh",
             "gtkx:refresh-runtime",
-            "gtkx:skip-react-dom-optimize",
+            "gtkx:react-dom-prebundle",
         ]);
     });
 });

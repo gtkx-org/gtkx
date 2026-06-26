@@ -1,6 +1,6 @@
 import { attr, attrBool, childOf, childrenOf, intAttr, nameAttr, parseEnumAttr, type RawNode } from "./parse.js";
 import type { ParseContext, TypeId } from "./type-id.js";
-import { typeRefFromSlot } from "./type-ref.js";
+import { typeRefFromNode } from "./type-ref.js";
 
 type ParameterDirection = "in" | "out" | "inout";
 
@@ -33,7 +33,7 @@ export type GirParameter = {
 
 export const parameterFromNode = (node: RawNode, context: ParseContext): GirParameter => ({
     name: nameAttr(node),
-    type: typeRefFromSlot(node, context),
+    type: typeRefFromNode(node, context),
     direction: parseEnumAttr(attr(node, "direction"), DIRECTIONS, "in", "direction"),
     transferOwnership: transferOwnership(node),
     nullable: nullableAttr(node),
@@ -65,7 +65,7 @@ const returnValueFromNode = (node: RawNode | undefined, context: ParseContext): 
         return { type: undefined, transferOwnership: "none", nullable: false, skip: false };
     }
     return {
-        type: typeRefFromSlot(node, context),
+        type: typeRefFromNode(node, context),
         transferOwnership: transferOwnership(node),
         nullable: nullableAttr(node),
         skip: attrBool(node, "skip"),

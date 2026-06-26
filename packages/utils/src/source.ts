@@ -54,22 +54,14 @@ export const sanitizeIdentifier = (name: string): string => (RESERVED.has(name) 
 
 export const toCamelIdentifier = (name: string): string => sanitizeIdentifier(toCamelCase(name));
 
-const UNSAFE_SOURCE_CHARS = /[<>\u2028\u2029]/g;
-
-const escapeSourceChar = (char: string): string => {
-    switch (char) {
-        case "<":
-            return "\\u003C";
-        case ">":
-            return "\\u003E";
-        case "\u2028":
-            return "\\u2028";
-        case "\u2029":
-            return "\\u2029";
-        default:
-            return char;
-    }
+const SOURCE_ESCAPES: Record<string, string> = {
+    "<": "\\u003C",
+    ">": "\\u003E",
+    "\u2028": "\\u2028",
+    "\u2029": "\\u2029",
 };
 
+const UNSAFE_SOURCE_CHARS = new RegExp(`[${Object.keys(SOURCE_ESCAPES).join("")}]`, "g");
+
 export const sourceStringLiteral = (value: string): string =>
-    JSON.stringify(value).replace(UNSAFE_SOURCE_CHARS, escapeSourceChar);
+    JSON.stringify(value).replace(UNSAFE_SOURCE_CHARS, (char) => SOURCE_ESCAPES[char] ?? char);

@@ -4,18 +4,20 @@ export class WidgetRegistry {
     private idByWidget = new WeakMap<Gtk.Widget, string>();
     private nextId = 0;
     private widgetById = new Map<string, Gtk.Widget>();
-    private topLevelWindows: Gtk.Window[] = [];
+    private toplevelWindows: Gtk.Window[] = [];
 
     refresh(): void {
         this.widgetById.clear();
-        this.topLevelWindows = Gtk.Window.listToplevels() as Gtk.Window[];
-        for (const window of this.topLevelWindows) {
+        this.toplevelWindows = Gtk.Window.listToplevels().filter(
+            (widget): widget is Gtk.Window => widget instanceof Gtk.Window,
+        );
+        for (const window of this.toplevelWindows) {
             this.register(window);
         }
     }
 
-    windows(): Gtk.Window[] {
-        return this.topLevelWindows;
+    toplevels(): Gtk.Window[] {
+        return this.toplevelWindows;
     }
 
     register(widget: Gtk.Widget): void {

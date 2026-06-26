@@ -1,18 +1,20 @@
 import type { RunCodegenResult } from "./run-codegen.js";
 
+const PREFIX = "codegen: ";
+
 export const formatCodegenResult = (result: RunCodegenResult, totalMs: number): string[] => {
-    const lines: string[] = [];
+    const details: string[] = [];
     if (result.configFile) {
-        lines.push(`codegen: config=${result.configFile}`);
+        details.push(`config=${result.configFile}`);
     }
     if (result.libraries) {
-        lines.push(`codegen: libraries=${result.libraries.join(", ")}`);
+        details.push(`libraries=${result.libraries.join(", ")}`);
     }
     if (result.girPath) {
-        lines.push(`codegen: girPath=${result.girPath.join(":")}`);
+        details.push(`girPath=${result.girPath.join(":")}`);
     }
-    lines.push(
-        `codegen: ${result.namespaces} namespaces, ${result.intrinsicElements} intrinsic elements in ${result.duration}ms (total ${totalMs}ms)`,
+    details.push(
+        `${result.namespaces} namespaces, ${result.intrinsicElements} intrinsic elements in ${result.duration}ms (total ${totalMs}ms)`,
     );
-    return lines;
+    return details.map((detail) => PREFIX + detail);
 };

@@ -5,7 +5,7 @@ import { functionFromNode, type GirFunction } from "./function.js";
 import { attr, childOf, childrenOf, nameAttr, type RawNode } from "./parse.js";
 import { type GirRecord, isVtableRecord, recordFromNode } from "./record.js";
 import type { ParseContext, TypeId } from "./type-id.js";
-import { typeRefFromSlot } from "./type-ref.js";
+import { typeRefFromNode } from "./type-ref.js";
 
 export type GirConstant = {
     name: string;
@@ -94,11 +94,11 @@ export const populateNamespaceBody = (shell: GirNamespace, namespaceNode: RawNod
     shell.constants = childrenOf(namespaceNode, "constant").map((constant) => ({
         name: nameAttr(constant),
         value: attr(constant, "value") ?? "",
-        type: typeRefFromSlot(constant, context),
+        type: typeRefFromNode(constant, context),
     }));
     shell.aliases = childrenOf(namespaceNode, "alias").map((alias) => ({
         name: nameAttr(alias),
-        target: typeRefFromSlot(alias, context),
+        target: typeRefFromNode(alias, context),
         targetCType: attr(childOf(alias, "type"), "c:type"),
     }));
 };

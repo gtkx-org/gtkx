@@ -9,12 +9,12 @@ use napi_derive::napi;
 
 use crate::dispatch::Mailbox;
 use crate::managed::NativeHandle;
-use crate::toggle_ref;
+use crate::wrapper_registry;
 
 struct FinalizeData {
     gobject_addr: usize,
     ref_addr: usize,
-    binding: Option<Arc<toggle_ref::WrapperBinding>>,
+    binding: Option<Arc<wrapper_registry::WrapperBinding>>,
     generation: u64,
 }
 
@@ -26,7 +26,7 @@ struct FinalizeData {
 /// installed by `set_wrapper` via `napi_add_finalizer`; node-api invokes this finalizer at most
 /// once, so reclaiming the box here frees it exactly once.
 unsafe extern "C" fn on_wrapper_finalize(
-    _env: sys::napi_env,
+    env: sys::napi_env,
     finalize_data: *mut c_void,
     _finalize_hint: *mut c_void,
 ) {
@@ -34,7 +34,8 @@ unsafe extern "C" fn on_wrapper_finalize(
     // passed to `napi_add_finalizer`; this finalizer fires once, so reclaiming ownership of the
     // box and dropping it after scheduling cleanup is sound.
     let mut data = unsafe { Box::from_raw(finalize_data.cast::<FinalizeData>()) };
-    toggle_ref::WrapperRegistry::global().schedule_cleanup(
+    wrapper_registry::WrapperRegistry::global().schedule_cleanup(
+        env as usize,
         data.binding.take(),
         data.generation,
         data.gobject_addr,
@@ -92,13 +93,13 @@ pub fn set_wrapper(
     unsafe { (*data).ref_addr = raw_ref as usize };
 
     let ref_addr = raw_ref as usize;
-    toggle_ref::RefOp::Ref.apply(&env, ref_addr);
+    wrapper_registry::WrapperRefOp::Ref.apply(&env, ref_addr);
     let consume_pending = handle.take_pending_gobject_ref();
     // SAFETY: the closure runs on the gtkx-glib thread (dispatched via the mailbox); `gobject_addr`
     // is the non-null GObject pointer validated above and `ref_addr` is the live napi reference, so
     // `WrapperRegistry::install`'s contract is met.
     let (binding, generation) = Mailbox::global().dispatch_and_wait_napi(env, move || unsafe {
-        toggle_ref::WrapperRegistry::global().install(
+        wrapper_registry::WrapperRegistry::global().install(
             gobject_addr as *mut _,
             ref_addr as *mut c_void,
             consume_pending,
@@ -125,7 +126,7 @@ pub fn get_wrapper<'env>(
     // SAFETY: the closure runs on the gtkx-glib thread; `gobject_addr` is the handle's GObject
     // pointer (or 0), which `wrapper_ref` accepts as null or a live GObject.
     let ref_addr: usize = Mailbox::global().dispatch_and_wait_napi(*env, move || unsafe {
-        toggle_ref::WrapperRegistry::global().wrapper_ref(gobject_addr as *mut _) as usize
+        wrapper_registry::WrapperRegistry::global().wrapper_ref(gobject_addr as *mut _) as usize
     })?;
 
     if ref_addr != 0 {

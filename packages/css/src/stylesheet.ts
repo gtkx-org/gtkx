@@ -6,8 +6,8 @@ export class StyleSheet {
     private provider: Gtk.CssProvider | null = null;
     private updateScheduled = false;
 
-    private ensureProvider(): void {
-        if (this.provider) return;
+    private ensureProvider(): Gtk.CssProvider {
+        if (this.provider) return this.provider;
         const { provider } = registerProviderForDefaultDisplay();
         this.provider = provider;
         if (process.env["NODE_ENV"] !== "production") {
@@ -15,12 +15,7 @@ export class StyleSheet {
                 console.warn(`[gtkx/css] GTK rejected CSS at ${section.toString()}: ${error.message}`);
             });
         }
-    }
-
-    private updateProvider(): void {
-        if (this.provider) {
-            this.provider.loadFromString(this.css);
-        }
+        return provider;
     }
 
     private scheduleUpdate(): void {
@@ -28,8 +23,7 @@ export class StyleSheet {
         this.updateScheduled = true;
         queueMicrotask(() => {
             this.updateScheduled = false;
-            this.ensureProvider();
-            this.updateProvider();
+            this.ensureProvider().loadFromString(this.css);
         });
     }
 

@@ -19,9 +19,10 @@ pub struct StringType {
     pub length: Option<usize>,
 }
 
-impl FromDescriptor for StringType {
+impl StringType {
+    #[allow(clippy::trivially_copy_pass_by_ref)]
     #[cfg_attr(coverage_nightly, coverage(off))]
-    fn from_descriptor(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
+    pub(crate) fn from_descriptor(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let ownership = Ownership::from_descriptor(obj, "string")?;
 
         let length: Option<usize> =

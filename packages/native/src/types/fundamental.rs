@@ -1,8 +1,8 @@
 use napi::{Env, JsObject};
 
 use super::prelude::*;
-use crate::managed::{Fundamental, NativeValue, RefFn, UnrefFn};
-use crate::state::GlibThreadState;
+use crate::managed::{Fundamental, RefFn, UnrefFn};
+use crate::glib_thread_state::GlibThreadState;
 
 #[derive(Debug, Clone)]
 pub struct FundamentalType {
@@ -13,9 +13,10 @@ pub struct FundamentalType {
     pub type_name: Option<String>,
 }
 
-impl FromDescriptor for FundamentalType {
+impl FundamentalType {
+    #[allow(clippy::trivially_copy_pass_by_ref)]
     #[cfg_attr(coverage_nightly, coverage(off))]
-    fn from_descriptor(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
+    pub(crate) fn from_descriptor(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let ownership = Ownership::from_descriptor(obj, "fundamental")?;
 
         let library: String = obj.get_named_property("library")?;
@@ -53,9 +54,7 @@ impl FundamentalType {
             // borrowed reference balanced by the wrapper's drop.
             unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) }
         };
-        Ok(value::Value::Object(
-            NativeValue::Fundamental(fundamental).into(),
-        ))
+        Ok(fundamental.into())
     }
 }
 
@@ -107,9 +106,7 @@ impl FfiDecoder for FundamentalType {
             // guarantees is a live fundamental value; `ref_fn`/`unref_fn` are its resolved pair, so
             // `from_glib_none` takes one borrowed reference balanced by the wrapper's drop.
             let fundamental = unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) };
-            Ok(value::Value::Object(
-                NativeValue::Fundamental(fundamental).into(),
-            ))
+            Ok(fundamental.into())
         })
     }
 }

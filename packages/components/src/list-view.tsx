@@ -9,9 +9,10 @@ import { useControlledSelectionModel } from "./hooks/use-controlled-selection-mo
 import { useInstalledModel } from "./hooks/use-installed-model.js";
 import { useListModel } from "./hooks/use-list-model.js";
 import type {
+    CollectionItemSizeProps,
+    ControlledSelectionProps,
     ItemNode,
-    ListViewControlledSelectionProps,
-    ListViewSharedProps,
+    RenderItemInfo,
     SectionNode,
     UncontrolledItemType,
 } from "./types.js";
@@ -30,12 +31,10 @@ const headerFactoryInstaller: FactoryInstaller<Gtk.ListView> = {
 
 /**
  * Information passed to a {@link ListView} `renderItem` callback for a single
- * row: its resolved value, bound list `index`, tree `depth`, and whether the
- * row is currently expanded.
+ * row: the shared `item`/`index` info plus the tree `depth` and whether the row
+ * is currently expanded.
  */
-export interface ListRenderItemInfo<T> {
-    item: T;
-    index: number;
+export interface ListRenderItemInfo<T> extends RenderItemInfo<T> {
     depth: number;
     isExpanded: boolean;
 }
@@ -46,14 +45,14 @@ export interface ListRenderItemInfo<T> {
  * API, optional controlled selection, section headers, and tree autoexpansion.
  * Supplying an external `model` switches to the uncontrolled form.
  */
-type ListViewDeclarativeProps<T = unknown, S = unknown> = ListViewSharedProps &
+type ListViewDeclarativeProps<T = unknown, S = unknown> = CollectionItemSizeProps &
     (
-        | (ListViewControlledSelectionProps & {
+        | (ControlledSelectionProps & {
               items?: ItemNode<T>[] | undefined;
               sections?: SectionNode<S, T>[] | undefined;
               renderItem: (info: ListRenderItemInfo<T>) => ReactNode;
               autoexpand?: boolean | undefined;
-              renderHeader?: ((item: S) => ReactNode) | null | undefined;
+              renderHeader?: ((info: { section: S }) => ReactNode) | null | undefined;
               model?: never;
           })
         | {
@@ -163,15 +162,13 @@ export const ListView = <T = unknown, S = unknown>(props: ListViewProps<T, S>): 
     } = props as NormalizedListViewProps<T, S>;
 
     const renderItemFn = renderItem as (info: ListRenderItemInfo<T>) => ReactNode;
-    const cellRenderer: CellRenderer<T, S> = (value, treeRow, isHeader, position) => {
-        if (isHeader) return null;
-        return renderItemFn({
+    const cellRenderer: CellRenderer<T, S> = (value, treeRow, position) =>
+        renderItemFn({
             item: value as T,
             index: position,
             depth: treeRow === null ? 0 : treeRow.getDepth(),
             isExpanded: treeRow === null ? false : treeRow.getExpanded(),
         });
-    };
 
     const wiring = useListViewWiring<T, S>({
         ref,

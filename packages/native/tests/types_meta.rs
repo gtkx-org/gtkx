@@ -111,7 +111,7 @@ fn can_be_return_type_accepts_value_shapes_and_rejects_argument_shapes() {
 
     assert!(!Type::Callback(callback_type()).can_be_return_type());
     assert!(!Type::Buffer(BufferType).can_be_return_type());
-    let ref_type = RefType::new(Type::Integer(IntegerKind::I32));
+    let ref_type = RefType::new(Type::Integer(IntegerKind::I32)).expect("valid Ref inner");
     assert!(!Type::Ref(ref_type).can_be_return_type());
 }
 

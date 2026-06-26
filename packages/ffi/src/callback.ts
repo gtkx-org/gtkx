@@ -1,22 +1,9 @@
-import type { RefType, Type, Value } from "@gtkx/native";
-import { type ArgCategory, type ArgDirectionMeta, classifyArgCategory } from "./arg-category.js";
+import type { Type, Value } from "@gtkx/native";
+import { type ArgCategory, categoryOfType, isOutCellType } from "./arg-category.js";
 import { valueCopyInto } from "./gvalue.js";
 import { fromNativeValue, toNativeValue } from "./native-value.js";
 import { getHandle } from "./registry.js";
-
-const isOutCell = (descriptor: Type): descriptor is RefType => descriptor.type === "ref";
-
-const isCallerAllocatedBuffer = (descriptor: Type): boolean =>
-    (descriptor.type === "boxed" || descriptor.type === "struct") && descriptor.callerAllocated === true;
-
-const argDirectionMetaOf = (descriptor: Type): ArgDirectionMeta => {
-    if (isOutCell(descriptor))
-        return { direction: descriptor.inout === true ? "inout" : "out", callerAllocated: false };
-    if (isCallerAllocatedBuffer(descriptor)) return { direction: "out", callerAllocated: true };
-    return { callerAllocated: false };
-};
-
-const categoryOf = (descriptor: Type): ArgCategory => classifyArgCategory(argDirectionMetaOf(descriptor));
+import { splitTupleResult } from "./tuple.js";
 
 const copyBoxedFields = (target: object, source: object): void => {
     let proto: object | null = Object.getPrototypeOf(target);
@@ -38,24 +25,9 @@ const fillCallerAllocatedBuffer = (descriptor: Type, target: object, source: obj
     copyBoxedFields(target, source);
 };
 
-const splitCallbackResult = (
-    result: unknown,
-    hasPrimary: boolean,
-    outCount: number,
-): { primary: unknown; outValues: unknown[] } => {
-    if (hasPrimary) {
-        const tuple = result as unknown[];
-        return { primary: tuple[0], outValues: tuple.slice(1) };
-    }
-    if (outCount === 1) {
-        return { primary: undefined, outValues: [result] };
-    }
-    return { primary: undefined, outValues: result as unknown[] };
-};
-
 type CallbackReceiver = "this" | "emitter" | "none";
 
-export type Callback = (...args: Value[]) => Value;
+type Callback = (...args: Value[]) => Value;
 
 export type UserCallback = (...args: never[]) => unknown;
 
@@ -77,7 +49,7 @@ const partitionCallbackArgs = (
     const outParams: OutParam[] = [];
     for (let i = start; i < effectiveTypes.length; i++) {
         const descriptor = effectiveTypes[i];
-        const category: ArgCategory = descriptor === undefined ? { kind: "plainInput" } : categoryOf(descriptor);
+        const category: ArgCategory = descriptor === undefined ? { kind: "plainInput" } : categoryOfType(descriptor);
         if (descriptor !== undefined && category.kind === "outCell") {
             if (category.inout) inputs.push((wrapped[i] as { value: unknown }).value);
             outParams.push({ value: wrapped[i], descriptor });
@@ -93,7 +65,7 @@ const partitionCallbackArgs = (
 const writeOutParams = (outParams: OutParam[], outValues: unknown[]): void => {
     outParams.forEach((outParam, position) => {
         const outValue = outValues[position];
-        if (isOutCell(outParam.descriptor)) {
+        if (isOutCellType(outParam.descriptor)) {
             (outParam.value as { value: unknown }).value = outValue;
         } else if (outValue != null && outParam.value != null) {
             fillCallerAllocatedBuffer(outParam.descriptor, outParam.value as object, outValue as object);
@@ -114,7 +86,7 @@ export function wrapCallback(fn: UserCallback, spec: CallbackSpec, receiver: Cal
         if (outParams.length === 0) {
             return toNativeValue(returnType, result);
         }
-        const { primary, outValues } = splitCallbackResult(result, returnType.type !== "void", outParams.length);
+        const { primary, outValues } = splitTupleResult(result, returnType.type !== "void", outParams.length);
         writeOutParams(outParams, outValues);
         return toNativeValue(returnType, primary);
     };

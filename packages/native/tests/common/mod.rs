@@ -9,8 +9,8 @@ use gtk4::gdk;
 use gtk4::glib::{self, translate::IntoGlib as _};
 use gtk4::prelude::StaticType as _;
 
+use native::glib_thread_state::GlibThreadState;
 use native::managed::Boxed;
-use native::state::GlibThreadState;
 use native::types::{
     ArrayKind, ArrayType, EnumFlagsKind, EnumFlagsType, FfiDecoder, FfiEncoder, FloatKind,
     IntegerKind, Ownership, RawPtrWriter, ReadSource, Type,

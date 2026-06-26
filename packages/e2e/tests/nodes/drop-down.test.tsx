@@ -103,7 +103,7 @@ describe("render - DropDown > DropDownNode (3)", () => {
         await render(
             <DropDown
                 ref={dropDownRef}
-                renderHeader={(value: string) => <GtkLabel label={value} />}
+                renderHeader={({ section: value }: { section: string }) => <GtkLabel label={value} />}
                 sections={[
                     { id: "letters", value: "Letters", data: [{ id: "a", value: "Alpha" }] },
                     { id: "numbers", value: "Numbers", data: [{ id: "1", value: "One" }] },

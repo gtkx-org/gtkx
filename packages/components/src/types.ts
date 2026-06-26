@@ -29,12 +29,21 @@ export type SectionNode<S = unknown, T = unknown> = {
     data: ItemNode<T>[];
 };
 
-export type ListViewSharedProps = {
+/**
+ * Information passed to a collection's `renderItem` callback for a single cell:
+ * its resolved `item` value and bound list `index`.
+ */
+export type RenderItemInfo<T> = {
+    item: T;
+    index: number;
+};
+
+export type CollectionItemSizeProps = {
     estimatedItemHeight?: number | undefined;
     estimatedItemWidth?: number | undefined;
 };
 
-export type ListViewControlledSelectionProps = {
+export type ControlledSelectionProps = {
     selectedIds?: string[] | null | undefined;
     onSelectionChanged?: ((ids: string[]) => void) | null | undefined;
     selectionMode?: Gtk.SelectionMode | null | undefined;

@@ -3,9 +3,7 @@ pub(super) use std::ffi::c_void;
 pub(super) use super::raw_ptr::{
     encode_and_leak_container, swap_owned_slot, write_object_ptr, write_return_object_ptr,
 };
-pub(super) use super::{
-    FfiDecoder, FfiEncoder, FromDescriptor, Ownership, RawPtrWriter, ReadSource,
-};
+pub(super) use super::{FfiDecoder, FfiEncoder, Ownership, RawPtrWriter, ReadSource};
 pub(super) use crate::{ffi, value};
 
 macro_rules! arg_only_call_cif {

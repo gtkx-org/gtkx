@@ -32,10 +32,11 @@ fn u8_array_ref_type() -> RefType {
         ownership: Ownership::Borrowed,
         element_size: None,
     }))
+    .expect("Array is a valid Ref inner")
 }
 
 fn assert_array_decodes_empty(array_type: ArrayType, storage: &ffi::FfiValue) {
-    let ref_type = RefType::new(Type::Array(array_type));
+    let ref_type = RefType::new(Type::Array(array_type)).expect("Array is a valid Ref inner");
     let decoded = ref_type
         .decode_with_context(storage, &[], &[])
         .expect("array decode should succeed");
@@ -46,7 +47,7 @@ fn with_i32_storage_ref(value: i32, f: impl FnOnce(&ffi::FfiValue, &RefType)) {
     let mut value = value;
     let slot = &mut value as *mut i32 as *mut c_void;
     let ffi_value = ffi::FfiValue::Storage(FfiStorage::new(slot, FfiStorageKind::Unit));
-    let ref_type = RefType::new(Type::Integer(IntegerKind::I32));
+    let ref_type = RefType::new(Type::Integer(IntegerKind::I32)).expect("valid Ref inner");
     f(&ffi_value, &ref_type);
 }
 
@@ -60,7 +61,7 @@ fn ptr_sized_malloc_storage() -> ffi::FfiValue {
 #[test]
 fn decode_rejects_non_storage_non_null_ptr() {
     common::run(|| {
-        let ref_type = RefType::new(Type::Integer(IntegerKind::I32));
+        let ref_type = RefType::new(Type::Integer(IntegerKind::I32)).expect("valid Ref inner");
         let result = ref_type.decode(&ffi::FfiValue::I32(7));
         assert!(result.is_err());
     });
@@ -69,7 +70,7 @@ fn decode_rejects_non_storage_non_null_ptr() {
 #[test]
 fn decode_null_ptr_yields_null() {
     common::run(|| {
-        let ref_type = RefType::new(Type::Integer(IntegerKind::I32));
+        let ref_type = RefType::new(Type::Integer(IntegerKind::I32)).expect("valid Ref inner");
         let decoded = ref_type
             .decode(&ffi::FfiValue::Ptr(std::ptr::null_mut()))
             .expect("null ptr decode should succeed");
@@ -102,7 +103,7 @@ fn decode_enum_flags_reads_number() {
             get_type_fn: "g_unused_get_type".to_owned(),
             storage: IntegerKind::I32,
         };
-        let ref_type = RefType::new(Type::EnumFlags(enum_flags));
+        let ref_type = RefType::new(Type::EnumFlags(enum_flags)).expect("valid Ref inner");
         let decoded = ref_type
             .decode(&ffi_value)
             .expect("enum/flags ref decode should succeed");
@@ -117,7 +118,7 @@ fn decode_float_reads_number() {
         let slot = &mut value as *mut f64 as *mut c_void;
         let ffi_value = ffi::FfiValue::Storage(FfiStorage::new(slot, FfiStorageKind::Unit));
 
-        let ref_type = RefType::new(Type::Float(FloatKind::F64));
+        let ref_type = RefType::new(Type::Float(FloatKind::F64)).expect("valid Ref inner");
         let decoded = ref_type
             .decode(&ffi_value)
             .expect("float ref decode should succeed");
@@ -134,7 +135,8 @@ fn decode_gobject_delegates_to_inner_decoder() {
 
         let ref_type = RefType::new(Type::GObject(GObjectType {
             ownership: Ownership::Borrowed,
-        }));
+        }))
+        .expect("GObject is a valid Ref inner");
         let decoded = ref_type
             .decode(&storage)
             .expect("gobject ref decode should succeed");
@@ -149,7 +151,7 @@ fn decode_string_reads_via_decode_ref_string() {
         let cstring = CString::new("ref-string").unwrap();
         let storage = ptr_storage(cstring.as_ptr() as *mut c_void);
 
-        let ref_type = RefType::new(Type::String(string_type()));
+        let ref_type = RefType::new(Type::String(string_type())).expect("valid Ref inner");
         let decoded = ref_type
             .decode(&storage)
             .expect("string ref decode should succeed");
@@ -174,7 +176,7 @@ fn decode_boolean_reads_bool() {
         let slot = &mut value as *mut i32 as *mut c_void;
         let ffi_value = ffi::FfiValue::Storage(FfiStorage::new(slot, FfiStorageKind::Unit));
 
-        let ref_type = RefType::new(Type::Boolean(BooleanType));
+        let ref_type = RefType::new(Type::Boolean(BooleanType)).expect("valid Ref inner");
         let decoded = ref_type
             .decode(&ffi_value)
             .expect("boolean ref decode should succeed");
@@ -189,7 +191,7 @@ fn decode_unichar_reads_string() {
         let slot = &mut value as *mut u32 as *mut c_void;
         let ffi_value = ffi::FfiValue::Storage(FfiStorage::new(slot, FfiStorageKind::Unit));
 
-        let ref_type = RefType::new(Type::Unichar(UnicharType));
+        let ref_type = RefType::new(Type::Unichar(UnicharType)).expect("valid Ref inner");
         let decoded = ref_type
             .decode(&ffi_value)
             .expect("unichar ref decode should succeed");
@@ -204,7 +206,7 @@ fn decode_ref_string_buffer_kind_reads_directly() {
         let ptr = buffer.as_mut_ptr() as *mut c_void;
         let storage = ffi::FfiValue::Storage(FfiStorage::new(ptr, FfiStorageKind::Buffer(buffer)));
 
-        let ref_type = RefType::new(Type::String(string_type()));
+        let ref_type = RefType::new(Type::String(string_type())).expect("valid Ref inner");
         let decoded = ref_type
             .decode(&storage)
             .expect("buffer string ref decode should succeed");
@@ -217,7 +219,7 @@ fn decode_ref_string_null_storage_pointer_yields_null() {
     common::run(|| {
         let storage =
             ffi::FfiValue::Storage(FfiStorage::new(std::ptr::null_mut(), FfiStorageKind::Unit));
-        let ref_type = RefType::new(Type::String(string_type()));
+        let ref_type = RefType::new(Type::String(string_type())).expect("valid Ref inner");
         let decoded = ref_type
             .decode(&storage)
             .expect("null storage string ref decode should succeed");
@@ -230,7 +232,7 @@ fn decode_ref_string_null_inner_pointer_yields_null() {
     common::run(|| {
         let storage = ptr_storage(std::ptr::null_mut());
 
-        let ref_type = RefType::new(Type::String(string_type()));
+        let ref_type = RefType::new(Type::String(string_type())).expect("valid Ref inner");
         let decoded = ref_type
             .decode(&storage)
             .expect("null inner string ref decode should succeed");
@@ -250,7 +252,7 @@ fn decode_ref_string_full_ownership_frees_pointer() {
             ownership: Ownership::Full,
             length: None,
         };
-        let ref_type = RefType::new(Type::String(full_string));
+        let ref_type = RefType::new(Type::String(full_string)).expect("valid Ref inner");
         let decoded = ref_type
             .decode(&storage)
             .expect("full string ref decode should succeed");
@@ -397,7 +399,7 @@ fn decode_with_context_array_non_ptr_storage_uses_storage_pointer() {
 fn read_from_raw_ptr_null_inner_yields_null() {
     common::run(|| {
         let inner: *mut c_void = std::ptr::null_mut();
-        let ref_type = RefType::new(Type::Integer(IntegerKind::I32));
+        let ref_type = RefType::new(Type::Integer(IntegerKind::I32)).expect("valid Ref inner");
         // SAFETY: the `ReadSource::Slot` pointer is the address of the live `inner` pointer stack
         // local; the ref codec reads that one in-bounds pointer, finds it null, and yields `Null`.
         let value = unsafe {
@@ -418,7 +420,7 @@ fn read_from_raw_ptr_string_inner_reads_value() {
         let char_ptr = cstring.as_ptr() as *mut c_void;
         let inner_slot: *mut c_void = &char_ptr as *const *mut c_void as *mut c_void;
 
-        let ref_type = RefType::new(Type::String(string_type()));
+        let ref_type = RefType::new(Type::String(string_type())).expect("valid Ref inner");
         // SAFETY: the outer slot points to `inner_slot`, which holds `char_ptr` into the live
         // `cstring`; the ref codec reads the inner pointer, then the borrowed string it addresses,
         // both of which stay alive for the call.

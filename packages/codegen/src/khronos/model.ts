@@ -20,7 +20,6 @@ export type GlEnum = {
     value: string;
     api?: string;
     groups: string[];
-    bitmask: boolean;
 };
 
 export type GlInterfaceBlock = {
@@ -95,7 +94,6 @@ const parseCommand = (node: OrderedNode): GlCommand | undefined => {
 };
 
 const parseEnums = (node: OrderedNode, into: GlEnum[]): void => {
-    const bitmask = nodeAttr(node, "type") === "bitmask";
     for (const child of nodeChildren(node)) {
         if (nodeTag(child) !== "enum") continue;
         const name = nodeAttr(child, "name");
@@ -108,7 +106,6 @@ const parseEnums = (node: OrderedNode, into: GlEnum[]): void => {
             value,
             ...(api !== undefined ? { api } : {}),
             groups: group === undefined ? [] : group.split(",").map((part) => part.trim()),
-            bitmask,
         });
     }
 };

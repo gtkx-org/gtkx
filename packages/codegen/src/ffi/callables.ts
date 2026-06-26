@@ -39,57 +39,64 @@ export const generateBindings = (context: ModuleContext, callables: Callables): 
     }
 };
 
+type CallableMemberOptions = {
+    resolveName: (callable: GirFunction) => string | undefined;
+    isStatic: boolean;
+    returnTypeOverride?: string;
+    allowRuntimeOverride?: boolean;
+};
+
+const renderCallableMember = (
+    context: ModuleContext,
+    callable: GirFunction,
+    options: CallableMemberOptions,
+): string | undefined => {
+    if (!isEmittableCallable(context, callable)) return undefined;
+    const cIdentifier = callable.cIdentifier;
+    if (cIdentifier === undefined) return undefined;
+    const name = options.resolveName(callable);
+    if (name === undefined || name === "constructor") return undefined;
+    if (options.allowRuntimeOverride === true) {
+        const override = renderRuntimeOverride(callable, name);
+        if (override !== undefined) return override;
+    }
+    const signature = renderMethodSignature(context, callable);
+    const returnType = options.returnTypeOverride ?? renderMethodReturnType(context, callable);
+    const bindingExpression = bindingIdentifier(cIdentifier);
+    const body =
+        options.returnTypeOverride === undefined
+            ? renderMethodBody(context, callable, { bindingExpression })
+            : renderMethodBody(context, callable, {
+                  bindingExpression,
+                  returnTypeOverride: options.returnTypeOverride,
+              });
+    return renderBlock(`${options.isStatic ? "static " : ""}${name}(${signature}): ${returnType}`, body);
+};
+
 const renderConstructorStatic = (
     context: ModuleContext,
     callable: GirFunction,
     ownerClassName: string,
-): string | undefined => {
-    if (!isEmittableCallable(context, callable)) return undefined;
-    const name = constructorMemberName(callable.name);
-    if (name === undefined) return undefined;
-    const cIdentifier = callable.cIdentifier;
-    if (cIdentifier === undefined) return undefined;
-    const signature = renderMethodSignature(context, callable);
-    const body = renderMethodBody(context, callable, {
-        bindingExpression: bindingIdentifier(cIdentifier),
+): string | undefined =>
+    renderCallableMember(context, callable, {
+        resolveName: (member) => constructorMemberName(member.name),
+        isStatic: true,
         returnTypeOverride: ownerClassName,
     });
-    return renderBlock(`static ${name}(${signature}): ${ownerClassName}`, body);
-};
 
-const renderStaticMember = (context: ModuleContext, callable: GirFunction): string | undefined => {
-    if (!isEmittableCallable(context, callable)) return undefined;
-    const cIdentifier = callable.cIdentifier;
-    if (cIdentifier === undefined) return undefined;
-    const name = toCamelCase(callable.name);
-    if (name === "constructor") return undefined;
-    const signature = renderMethodSignature(context, callable);
-    const returnType = renderMethodReturnType(context, callable);
-    const body = renderMethodBody(context, callable, {
-        bindingExpression: bindingIdentifier(cIdentifier),
-    });
-    return renderBlock(`static ${name}(${signature}): ${returnType}`, body);
-};
+const renderStaticMember = (context: ModuleContext, callable: GirFunction): string | undefined =>
+    renderCallableMember(context, callable, { resolveName: (member) => toCamelCase(member.name), isStatic: true });
 
 export const renderInstanceMethod = (
     context: ModuleContext,
     callable: GirFunction,
     nameOverride?: string,
-): string | undefined => {
-    if (!isEmittableCallable(context, callable)) return undefined;
-    const cIdentifier = callable.cIdentifier;
-    if (cIdentifier === undefined) return undefined;
-    const name = nameOverride ?? methodExportName(callable);
-    if (name === "constructor") return undefined;
-    const override = renderRuntimeOverride(callable, name);
-    if (override !== undefined) return override;
-    const signature = renderMethodSignature(context, callable);
-    const returnType = renderMethodReturnType(context, callable);
-    const body = renderMethodBody(context, callable, {
-        bindingExpression: bindingIdentifier(cIdentifier),
+): string | undefined =>
+    renderCallableMember(context, callable, {
+        resolveName: (member) => nameOverride ?? methodExportName(member),
+        isStatic: false,
+        allowRuntimeOverride: true,
     });
-    return renderBlock(`${name}(${signature}): ${returnType}`, body);
-};
 
 export const renderInstanceMethodSignature = (
     context: ModuleContext,

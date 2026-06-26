@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createVirtualNamespace, resolveToVirtual } from "../../src/vite-plugins/virtual-module.js";
+import { createVirtualNamespace } from "../../src/vite-plugins/virtual-module.js";
 
 const PREFIX = "\0gtkx-test:";
 
@@ -25,13 +25,14 @@ describe("createVirtualNamespace", () => {
     });
 });
 
-describe("resolveToVirtual", () => {
+describe("createVirtualNamespace().resolveToVirtual", () => {
+    const ns = createVirtualNamespace(PREFIX);
+
     it("resolves with skipSelf and wraps the resolved id", async () => {
         const resolve = vi.fn(() => Promise.resolve({ id: "/abs/style.css" }));
-        const result = await resolveToVirtual(
+        const result = await ns.resolveToVirtual(
             { resolve },
             { source: "./style.css", importer: "/importer.ts", options: { custom: 1 } },
-            PREFIX,
         );
         expect(resolve).toHaveBeenCalledWith(
             "./style.css",
@@ -42,19 +43,17 @@ describe("resolveToVirtual", () => {
     });
 
     it("returns undefined when resolution yields null", async () => {
-        const result = await resolveToVirtual(
+        const result = await ns.resolveToVirtual(
             { resolve: () => Promise.resolve(null) },
             { source: "./x", importer: undefined, options: {} },
-            PREFIX,
         );
         expect(result).toBeUndefined();
     });
 
     it("returns undefined when the resolved id is external", async () => {
-        const result = await resolveToVirtual(
+        const result = await ns.resolveToVirtual(
             { resolve: () => Promise.resolve({ id: "/abs/x.css", external: true }) },
             { source: "./x.css", importer: undefined, options: undefined },
-            PREFIX,
         );
         expect(result).toBeUndefined();
     });

@@ -1,10 +1,11 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkColumnViewColumn, type GtkColumnViewColumnProps } from "@gtkx/jsx/gtk";
 import { createElement, type ReactNode, useLayoutEffect, useRef, useState } from "react";
-import { type CellRenderer, CellRenderHost } from "./cell.js";
+import { type CellRenderer, CellRenderHost, itemRenderer } from "./cell.js";
 import { useColumnViewContext } from "./column-view-context.js";
 import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
 import { useHeaderMenu } from "./hooks/use-header-menu.js";
+import type { RenderItemInfo } from "./types.js";
 
 const factoryInstaller: FactoryInstaller<Gtk.ColumnViewColumn> = {
     install: (column, factory) => column.setFactory(factory),
@@ -15,10 +16,7 @@ const factoryInstaller: FactoryInstaller<Gtk.ColumnViewColumn> = {
  * Information passed to a {@link ColumnViewColumn} `renderItem` callback for a
  * single cell: its resolved value and bound list `index`.
  */
-export interface ColumnRenderItemInfo<T> {
-    item: T;
-    index: number;
-}
+export type ColumnRenderItemInfo<T> = RenderItemInfo<T>;
 
 /**
  * Props for a single {@link ColumnViewColumn} of a {@link ColumnView},
@@ -52,7 +50,9 @@ export type ColumnViewColumnProps<T = unknown> = Omit<GtkColumnViewColumnProps, 
  * context menu.
  */
 export const ColumnViewColumn = <T = unknown>(props: ColumnViewColumnProps<T>): ReactNode => {
-    const { id, title, expand, resizable, fixedWidth, visible, sortable, renderItem, headerMenu } = props;
+    const { id, title, sortable, renderItem, headerMenu, ...intrinsicProps } = props as ColumnViewColumnProps<T> & {
+        [key: string]: unknown;
+    };
     const context = useColumnViewContext();
     const [column, setColumn] = useState<Gtk.ColumnViewColumn | null>(null);
 
@@ -78,18 +78,13 @@ export const ColumnViewColumn = <T = unknown>(props: ColumnViewColumnProps<T>): 
 
     const headerMenuPortal = useHeaderMenu(column, headerMenu);
 
-    const cellRenderer: CellRenderer<unknown, unknown> = (value, _treeRow, isHeader, position) =>
-        isHeader ? null : renderItem({ item: value as T, index: position });
-
-    const intrinsicProps: Record<string, unknown> = { id, title, ref: captureColumn };
-    if (expand !== undefined) intrinsicProps["expand"] = expand;
-    if (resizable !== undefined) intrinsicProps["resizable"] = resizable;
-    if (fixedWidth !== undefined) intrinsicProps["fixedWidth"] = fixedWidth;
-    if (visible !== undefined) intrinsicProps["visible"] = visible;
+    const cellRenderer: CellRenderer<unknown, unknown> = itemRenderer<unknown, unknown>(({ item, index }) =>
+        renderItem({ item: item as T, index }),
+    );
 
     return (
         <>
-            {createElement(GtkColumnViewColumn, intrinsicProps)}
+            {createElement(GtkColumnViewColumn, { ...intrinsicProps, id, title, ref: captureColumn })}
             <CellRenderHost store={store} resolver={context.resolver} render={cellRenderer} />
             {headerMenuPortal}
         </>
