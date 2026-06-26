@@ -1,5 +1,5 @@
 import { toCamelIdentifier, toUpperFirst } from "@gtkx/utils";
-import { forEachAncestor, type ResolvedInterface, resolveDirectInterfaces } from "../analysis/inheritance.js";
+import { forEachAncestor } from "../analysis/inheritance.js";
 import { renderHandlerParameters } from "../analysis/param-structure.js";
 import { foldOutParamShape } from "../analysis/return-shape.js";
 import { renderBaseTypeFor, type TsTypeTarget } from "../analysis/ts-type.js";
@@ -37,11 +37,19 @@ type SignalRenderOptions = {
     selfType: string;
 };
 
-export const buildElementPropsEntries = (options: IntrinsicElementPropsOptions): IntrinsicElementPropsEntries => {
-    const { library, klass, namespace, isIntrinsicElementAncestor = () => false } = options;
+type PropEntryCollector = {
+    propLines: string[];
+    imports: Map<string, string>;
+    slotPropNames: string[];
+    acceptProperty: (property: GirProperty) => void;
+    acceptSignal: (signal: GirSignal) => void;
+};
+
+const createPropEntryCollector = (owner: SlotOwner): PropEntryCollector => {
+    const { library } = owner;
     const imports = new Map<string, string>();
     const types: PropTypeRenderContext = { library, imports };
-    const propEntries: string[] = [];
+    const propLines: string[] = [];
     const slotPropNames: string[] = [];
     const seen = new Set<string>();
 
@@ -51,13 +59,13 @@ export const buildElementPropsEntries = (options: IntrinsicElementPropsOptions):
         if (seen.has(jsName)) return;
         seen.add(jsName);
         const tsType = renderReactPropType(types, property.type, false);
-        if (isSlotProperty({ library, klass, namespace }, property, jsName)) {
-            propEntries.push(`${jsName}?: ${tsType} | ReactElement | null | undefined;`);
+        if (isSlotProperty(owner, property, jsName)) {
+            propLines.push(`${jsName}?: ${tsType} | ReactElement | null | undefined;`);
             slotPropNames.push(jsName);
             return;
         }
-        if (isConstructableProperty(property)) propEntries.push(`${jsName}?: ${tsType} | null | undefined;`);
-        propEntries.push(
+        if (isConstructableProperty(property)) propLines.push(`${jsName}?: ${tsType} | null | undefined;`);
+        propLines.push(
             `onNotify${toUpperFirst(jsName)}?: ((value: ${tsType} | null, self: Self) => void) | null | undefined;`,
         );
     };
@@ -67,19 +75,38 @@ export const buildElementPropsEntries = (options: IntrinsicElementPropsOptions):
         if (seen.has(handlerName)) return;
         seen.add(handlerName);
         const signature = renderSignalHandler({ types, signal, selfType: "Self" });
-        propEntries.push(`${handlerName}?: (${signature}) | undefined;`);
+        propLines.push(`${handlerName}?: (${signature}) | undefined;`);
     };
 
+    return { propLines, imports, slotPropNames, acceptProperty, acceptSignal };
+};
+
+export const buildElementPropsEntries = (options: IntrinsicElementPropsOptions): IntrinsicElementPropsEntries => {
+    const { library, klass, namespace, isIntrinsicElementAncestor = () => false } = options;
+    const collector = createPropEntryCollector({ library, klass, namespace });
     walkIntrinsicElementMembers({
         library,
         klass,
         namespace,
         isIntrinsicElementAncestor,
-        acceptProperty,
-        acceptSignal,
+        acceptProperty: collector.acceptProperty,
+        acceptSignal: collector.acceptSignal,
     });
+    return { propLines: collector.propLines, imports: collector.imports, slotPropNames: collector.slotPropNames };
+};
 
-    return { propLines: propEntries, imports, slotPropNames };
+export type InterfacePropsOptions = {
+    library: Library;
+    iface: GirClass;
+    namespace: GirNamespace;
+};
+
+export const buildInterfacePropsEntries = (options: InterfacePropsOptions): IntrinsicElementPropsEntries => {
+    const { library, iface, namespace } = options;
+    const collector = createPropEntryCollector({ library, klass: iface, namespace });
+    for (const property of iface.properties) collector.acceptProperty(property);
+    for (const signal of iface.signals) collector.acceptSignal(signal);
+    return { propLines: collector.propLines, imports: collector.imports, slotPropNames: collector.slotPropNames };
 };
 
 type IntrinsicElementMemberWalk = {
@@ -93,22 +120,13 @@ type IntrinsicElementMemberWalk = {
 
 const walkIntrinsicElementMembers = (walk: IntrinsicElementMemberWalk): void => {
     const { library, klass, namespace, isIntrinsicElementAncestor, acceptProperty, acceptSignal } = walk;
-    const visitMembers = (memberClass: GirClass, interfaces: ResolvedInterface[]): void => {
+    const visitMembers = (memberClass: GirClass): void => {
         for (const property of memberClass.properties) acceptProperty(property);
         for (const signal of memberClass.signals) acceptSignal(signal);
-        for (const iface of interfaces) {
-            for (const property of iface.klass.properties) acceptProperty(property);
-            for (const signal of iface.klass.signals) acceptSignal(signal);
-        }
     };
     const ancestry = { library, namespace };
-    visitMembers(klass, resolveDirectInterfaces(ancestry, klass, namespace.name));
-    forEachAncestor(
-        ancestry,
-        klass,
-        (ancestor, interfaces) => visitMembers(ancestor.klass, interfaces),
-        isIntrinsicElementAncestor,
-    );
+    visitMembers(klass);
+    forEachAncestor(ancestry, klass, (ancestor) => visitMembers(ancestor.klass), isIntrinsicElementAncestor);
 };
 
 const resolvesToGObjectClass = (library: Library, ref: TypeId | undefined): boolean => {

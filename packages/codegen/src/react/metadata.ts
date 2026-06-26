@@ -12,6 +12,7 @@ import {
     iterateClassesWithGlibName,
     signalHandlerName,
 } from "./intrinsic-elements.js";
+import { ACCESSIBLE_ATTRIBUTES } from "./tables.js";
 
 export type RuntimeTables = {
     topLevelTypes: string[];
@@ -54,6 +55,18 @@ const renderRuntimeTables = (tables: RuntimeTables): string[] =>
         return `export const ${name}: ${annotation} = ${JSON.stringify(tables[key], null, 4)};`;
     });
 
+const ACCESSIBLE_ATTRIBUTES_ANNOTATION =
+    'Record<string, { kind: "property" | "state" | "relation"; member: string; value: "string" | "boolean" | "int" | "double" | "object" | "ref-list" }>';
+
+const renderAccessibleAttributes = (): string => {
+    const entries = sortedStringsBy(Object.entries(ACCESSIBLE_ATTRIBUTES), ([name]) => name);
+    const lines = entries.map(([name, { kind, member, value }]) => {
+        const fields = `kind: ${sourceStringLiteral(kind)}, member: ${sourceStringLiteral(member)}, value: ${sourceStringLiteral(value)}`;
+        return `    ${sourceStringLiteral(name)}: { ${fields} },`;
+    });
+    return `export const ACCESSIBLE_ATTRIBUTES: ${ACCESSIBLE_ATTRIBUTES_ANNOTATION} = {\n${lines.join("\n")}\n};`;
+};
+
 export const generateMetadata = (library: Library, tables: RuntimeTables): string => {
     const intrinsicElements = collectIntrinsicElements(library);
     const signalsEntries = intrinsicElements.map(
@@ -75,6 +88,7 @@ export const generateMetadata = (library: Library, tables: RuntimeTables): strin
         `export const CONSTRUCT_PROPS: Record<string, Set<string>> = {\n${constructableEntries.join("\n")}\n};`,
         `export const DEFAULT_PROPS: Record<string, Record<string, unknown>> = {\n${defaultsEntries.join("\n")}\n};`,
         ...renderRuntimeTables(tables),
+        renderAccessibleAttributes(),
     ].join("\n\n")}\n`;
 };
 

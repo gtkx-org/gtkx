@@ -1,5 +1,6 @@
 import { toPascalCase } from "@gtkx/utils";
 import { collectInheritedMethods, conflictRename, type InheritedMethods } from "../analysis/inheritance.js";
+import { ancestorChain } from "../gir/ancestry.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
 import { splitOptionalNamespace } from "../gir/type-ref.js";
@@ -164,11 +165,27 @@ const renderPromisifiedMember = (
     return renderBlock(`${name}(${signature}): ${returnType}`, body);
 };
 
+const inheritedInterfaceKeys = (context: ModuleContext, klass: GirClass): Set<string> => {
+    const keys = new Set<string>();
+    if (klass.parent === undefined) return keys;
+    const parent = context.library.resolveType(context.namespace.name, klass.parent);
+    if (parent === undefined || parent.kind !== "class") return keys;
+    for (const ancestor of ancestorChain(context.library, parent.value, parent.namespace.name)) {
+        for (const name of ancestor.klass.implements) {
+            const resolved = context.library.resolveType(ancestor.namespaceName, name);
+            if (resolved?.kind === "interface") keys.add(`${resolved.namespace.name}.${resolved.value.name}`);
+        }
+    }
+    return keys;
+};
+
 const resolveImplementedRefs = (context: ModuleContext, klass: GirClass): ImplementedRef[] => {
+    const inherited = inheritedInterfaceKeys(context, klass);
     const refs: ImplementedRef[] = [];
     for (const name of klass.implements) {
         const resolved = context.library.resolveType(context.namespace.name, name);
         if (resolved === undefined || resolved.kind !== "interface") continue;
+        if (inherited.has(`${resolved.namespace.name}.${resolved.value.name}`)) continue;
         const pascal = toPascalCase(resolved.value.name);
         refs.push({
             typeRef: context.qualify(resolved.namespace.name, pascal),

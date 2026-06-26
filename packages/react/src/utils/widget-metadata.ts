@@ -2,9 +2,9 @@ import type * as Gtk from "@gtkx/gi/gtk";
 
 type AccessibleMetadata = Map<string, unknown>;
 
-const widgetMetadata = new WeakMap<Gtk.Widget, AccessibleMetadata>();
+const widgetMetadata = new WeakMap<Gtk.Accessible, AccessibleMetadata>();
 
-const getOrCreateMetadata = (widget: Gtk.Widget): AccessibleMetadata => {
+const getOrCreateMetadata = (widget: Gtk.Accessible): AccessibleMetadata => {
     let entry = widgetMetadata.get(widget);
     if (!entry) {
         entry = new Map();
@@ -13,16 +13,16 @@ const getOrCreateMetadata = (widget: Gtk.Widget): AccessibleMetadata => {
     return entry;
 };
 
-export const setAccessibleMetadata = (widget: Gtk.Widget, propName: string, value: unknown): void => {
+export const setAccessibleMetadata = (widget: Gtk.Accessible, propName: string, value: unknown): void => {
     getOrCreateMetadata(widget).set(propName, value);
 };
 
-export const deleteAccessibleMetadata = (widget: Gtk.Widget, propName: string): void => {
+export const deleteAccessibleMetadata = (widget: Gtk.Accessible, propName: string): void => {
     const entry = widgetMetadata.get(widget);
     if (entry) entry.delete(propName);
 };
 
-export const getAccessibleMetadata = <T = unknown>(widget: Gtk.Widget, propName: string): T | null => {
+export const getAccessibleMetadata = <T = unknown>(widget: Gtk.Accessible, propName: string): T | null => {
     const entry = widgetMetadata.get(widget);
     if (!entry) return null;
     const value = entry.get(propName);

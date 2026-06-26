@@ -46,6 +46,68 @@ export const implementedInterfaces = (
     return result;
 };
 
+export const interfaceGlibName = (klass: GirClass): string | undefined => klass.glibTypeName ?? klass.cType;
+
+export const interfaceHasPropsBody = (klass: GirClass): boolean =>
+    klass.properties.length > 0 || klass.signals.length > 0;
+
+const qualifiedInterfaceKey = (iface: ResolvedQualifiedInterface): string =>
+    `${iface.namespace.name}.${iface.klass.name}`;
+
+const parentImplementedInterfaceKeys = (klass: GirClass, namespace: GirNamespace, library: Library): Set<string> => {
+    const keys = new Set<string>();
+    if (klass.parent === undefined) return keys;
+    const resolvedParent = library.resolveType(namespace.name, klass.parent);
+    if (resolvedParent === undefined || resolvedParent.kind !== "class") return keys;
+    for (const iface of implementedInterfaces(resolvedParent.value, resolvedParent.namespace, library)) {
+        keys.add(qualifiedInterfaceKey(iface));
+    }
+    return keys;
+};
+
+/**
+ * Resolves the prop-bearing interfaces a class introduces beyond those its parent
+ * chain already implements, sorted deterministically. Used to compose each widget's
+ * JSX prop interface from the prop interfaces of its newly implemented GObject
+ * interfaces, mirroring the `implements` delta the FFI bindings emit.
+ */
+export const newlyImplementedInterfaces = (
+    klass: GirClass,
+    namespace: GirNamespace,
+    library: Library,
+): ResolvedQualifiedInterface[] => {
+    const inherited = parentImplementedInterfaceKeys(klass, namespace, library);
+    const own = implementedInterfaces(klass, namespace, library).filter(
+        (iface) => interfaceHasPropsBody(iface.klass) && !inherited.has(qualifiedInterfaceKey(iface)),
+    );
+    return sortedStringsBy(own, qualifiedInterfaceKey);
+};
+
+/**
+ * Collects the prop-bearing GObject interfaces implemented by any intrinsic element,
+ * restricted to a target namespace and deduplicated, sorted deterministically. Drives
+ * the emission of one `<GlibName>Props` interface per interface that contributes at
+ * least one property or signal.
+ */
+export const collectInterfacePropsClasses = (
+    library: Library,
+    targetNamespaceName: string,
+): ResolvedQualifiedInterface[] => {
+    const seen = new Set<string>();
+    const result: ResolvedQualifiedInterface[] = [];
+    for (const widget of collectIntrinsicElementClasses(library)) {
+        for (const iface of implementedInterfaces(widget.klass, widget.namespace, library)) {
+            const key = qualifiedInterfaceKey(iface);
+            if (seen.has(key)) continue;
+            seen.add(key);
+            if (!interfaceHasPropsBody(iface.klass)) continue;
+            if (iface.namespace.name !== targetNamespaceName) continue;
+            result.push(iface);
+        }
+    }
+    return sortedStringsBy(result, qualifiedInterfaceKey);
+};
+
 export const ancestorGlibNames = (klass: GirClass, namespace: GirNamespace, library: Library): string[] => {
     const names: string[] = [];
     for (const { klass: ancestor } of ancestorChain(library, klass, namespace.name)) {

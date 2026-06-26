@@ -1,5 +1,45 @@
 import { describe, expect, it } from "vitest";
-import { ffiModules } from "../helpers/library.js";
+import {
+    collectIntrinsicElementClasses,
+    implementedInterfaces,
+    interfaceGlibName,
+    interfaceHasPropsBody,
+} from "../../src/react/intrinsic-elements.js";
+import { generateJsxFiles } from "../../src/react/pipeline.js";
+import { ACCESSIBLE_ATTRIBUTES } from "../../src/react/tables.js";
+import { ffiModules, library } from "../helpers/library.js";
+
+const jsxSources = (): string[] => generateJsxFiles(library).namespaces.map((entry) => entry.source);
+
+const interfacePropsNames = (): Set<string> => {
+    const names = new Set<string>();
+    for (const widget of collectIntrinsicElementClasses(library)) {
+        for (const iface of implementedInterfaces(widget.klass, widget.namespace, library)) {
+            if (!interfaceHasPropsBody(iface.klass)) continue;
+            const glib = interfaceGlibName(iface.klass);
+            if (glib !== undefined) names.add(`${glib}Props`);
+        }
+    }
+    return names;
+};
+
+const ENUM_NAME_BY_KIND: Record<"property" | "state" | "relation", string> = {
+    property: "AccessibleProperty",
+    state: "AccessibleState",
+    relation: "AccessibleRelation",
+};
+
+const screamingEnumMembers = (enumName: string): Set<string> => {
+    const resolved = library.resolveNamed("Gtk", enumName);
+    expect(resolved?.kind, `expected Gtk.${enumName} enum`).toBe("enum");
+    const names = new Set<string>();
+    if (resolved?.kind !== "enum") return names;
+    for (const member of resolved.value.members) names.add(member.name.toUpperCase().replaceAll("-", "_"));
+    return names;
+};
+
+const matchAll = (sources: string[], pattern: RegExp): string[] =>
+    sources.flatMap((source) => [...source.matchAll(pattern)].map((match) => match[1] ?? ""));
 
 const moduleSource = (directory: string): string => {
     const found = ffiModules.find((entry) => entry.directory === directory);
@@ -40,5 +80,31 @@ describe("identifier naming convention", () => {
         expect(harfbuzz).toMatch(/export enum memory_mode_t\b/);
         expect(harfbuzz).not.toMatch(/export class FontT\b/);
         expect(harfbuzz).not.toMatch(/export enum MemoryModeT\b/);
+    });
+});
+
+describe("jsx prop-interface naming convention", () => {
+    it("names every exported props interface after an element or implemented interface glib name", () => {
+        const sources = jsxSources();
+        const declaredProps = matchAll(sources, /export interface (\w+Props)\b/g);
+        const elementGlibNames = matchAll(sources, /^\s*(\w+): \w+Props;$/gm);
+        const allowed = new Set([...elementGlibNames.map((name) => `${name}Props`), ...interfacePropsNames()]);
+
+        const offenders = declaredProps.filter((name) => !allowed.has(name));
+        expect(offenders, `unexpected props interface names: ${offenders.join(", ")}`).toEqual([]);
+    });
+});
+
+describe("accessible attribute table", () => {
+    it("maps every accessible attribute to a GTK accessible enum member matching its kind", () => {
+        const membersByEnum = new Map<string, Set<string>>();
+        const offenders: string[] = [];
+        for (const [name, attribute] of Object.entries(ACCESSIBLE_ATTRIBUTES)) {
+            const enumName = ENUM_NAME_BY_KIND[attribute.kind];
+            const members = membersByEnum.get(enumName) ?? screamingEnumMembers(enumName);
+            membersByEnum.set(enumName, members);
+            if (!members.has(attribute.member)) offenders.push(`${name} (${attribute.kind}.${attribute.member})`);
+        }
+        expect(offenders, `accessible attributes without a matching enum member: ${offenders.join(", ")}`).toEqual([]);
     });
 });

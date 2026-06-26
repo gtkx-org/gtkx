@@ -129,7 +129,7 @@ const commitInstanceProps = (instance: Node, oldProps: Props | null, newProps: P
     }
     if (!(instance instanceof GObject.Object)) return;
     const excludeRuleManaged = (name: string): boolean => isRuleManagedProp(instance, name);
-    if (instance instanceof Gtk.Widget) {
+    if (instance instanceof Gtk.Accessible) {
         applyAccessibleProps(instance, oldProps, newProps);
         applyProps(instance, oldProps, newProps, {
             exclude: (name) => isAccessibleProp(name) || excludeRuleManaged(name),

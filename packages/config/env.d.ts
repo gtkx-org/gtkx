@@ -10,6 +10,14 @@ declare module "virtual:gtkx-config" {
     export const ATTACH_SHAPES: import("@gtkx/config").AttachShapeTable;
     export const ORDERED_INSERT: Record<string, import("@gtkx/config").OrderedInsertSpec>;
     export const SLOT_PROPS: Record<string, string[]>;
+    export const ACCESSIBLE_ATTRIBUTES: Record<
+        string,
+        {
+            kind: "property" | "state" | "relation";
+            member: string;
+            value: "string" | "boolean" | "int" | "double" | "object" | "ref-list";
+        }
+    >;
     export const RULE_REGISTRY: import("@gtkx/config").RuleRegistry;
     export const libraries: import("@gtkx/config").ResolvedGtkxConfig["libraries"];
     export const girPath: import("@gtkx/config").ResolvedGtkxConfig["girPath"];
