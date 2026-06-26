@@ -8,9 +8,7 @@ export class WidgetRegistry {
 
     refresh(): void {
         this.widgetById.clear();
-        this.toplevelWindows = Gtk.Window.listToplevels().filter(
-            (widget): widget is Gtk.Window => widget instanceof Gtk.Window,
-        );
+        this.toplevelWindows = Gtk.Window.listToplevels() as Gtk.Window[];
         for (const window of this.toplevelWindows) {
             this.register(window);
         }
