@@ -21,6 +21,17 @@ type ActImplementation = <T>(callback: ActCallback<T>) => PromiseLike<T>;
 const isThenable = <T>(value: unknown): value is PromiseLike<T> =>
     value !== null && typeof value === "object" && typeof (value as PromiseLike<T>).then === "function";
 
+/**
+ * Runs `fn` with the React act-environment flag forced to `forced`, restoring the
+ * previous flag once `fn` settles.
+ *
+ * When `fn` returns a thenable it is adopted through `Promise.resolve` before any
+ * `.then` is chained: React's `act()` hands back a thenable whose `then` itself
+ * performs the work — flushing the act queue and draining a macrotask — and only
+ * resolves afterward. Adopting it keeps the returned promise pending until that
+ * resolution; chaining a bare `.then` directly onto it instead would settle on the
+ * next microtask, before React's flush completes.
+ */
 export const runWithActEnvironment = <T>(forced: boolean, fn: () => T | PromiseLike<T>): T | PromiseLike<T> => {
     const previousActEnvironment = getIsReactActEnvironment();
     setIsReactActEnvironment(forced);
