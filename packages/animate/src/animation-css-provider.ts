@@ -2,7 +2,7 @@ import { registerProviderForDefaultDisplay } from "@gtkx/css";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { STYLE_PROVIDER_PRIORITY_APPLICATION } from "@gtkx/gi/gtk";
 import { buildCss } from "./build-css.js";
-import type { AnimatableProperties } from "./types.js";
+import type { AnimationTarget } from "./types.js";
 
 const ANIMATION_PROVIDER_PRIORITY = STYLE_PROVIDER_PRIORITY_APPLICATION + 1;
 
@@ -34,7 +34,7 @@ export class AnimationCssProvider {
         };
     }
 
-    public write(values: AnimatableProperties): void {
+    public write(values: AnimationTarget): void {
         if (!this.attachment) return;
 
         const css = buildCss(this.className, values);

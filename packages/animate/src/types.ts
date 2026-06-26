@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-export type AnimatableProperties = {
+export type AnimationTarget = {
     opacity?: number;
     x?: number;
     y?: number;
@@ -12,14 +12,14 @@ export type AnimatableProperties = {
     skewY?: number;
 };
 
-export type NamedEasing = "linear" | "easeIn" | "easeOut" | "easeInOut";
+export type Easing = "linear" | "easeIn" | "easeOut" | "easeInOut";
 
-export type RepeatType = "loop" | "reverse" | "mirror";
+export type RepeatType = "loop" | "reverse";
 
 export type Transition = {
     type?: "tween" | "spring";
     duration?: number;
-    ease?: NamedEasing;
+    ease?: Easing;
     delay?: number;
     stiffness?: number;
     damping?: number;
@@ -30,9 +30,9 @@ export type Transition = {
 };
 
 export type WidgetAnimationProps = {
-    initial?: AnimatableProperties | false;
-    animate?: AnimatableProperties;
-    exit?: AnimatableProperties;
+    initial?: AnimationTarget | false;
+    animate?: AnimationTarget;
+    exit?: AnimationTarget;
     transition?: Transition;
     onAnimationStart?: () => void;
     onAnimationComplete?: () => void;

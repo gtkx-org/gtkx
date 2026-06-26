@@ -1,5 +1,7 @@
 import {
+    Children,
     createContext,
+    isValidElement,
     type Key,
     type ReactElement,
     type ReactNode,
@@ -38,15 +40,10 @@ export const usePresence = (): UsePresenceResult => {
     return [false, () => context.onExitComplete(presenceId)];
 };
 
-export const usePresenceInitial = (): boolean => {
+export const useIsInitialPresence = (): boolean => {
     const context = useContext(PresenceContext);
     return context === null ? true : context.initial;
 };
-
-interface KeyedChild {
-    key: Key;
-    element: ReactElement;
-}
 
 const warned = new Set<string>();
 
@@ -59,21 +56,26 @@ const warnOnceUnkeyedChild = (): void => {
     console.warn(message);
 };
 
-export const onlyKeyedElements = (children: ReactNode): KeyedChild[] => {
-    const result: KeyedChild[] = [];
-    const childArray = Array.isArray(children) ? children : [children];
+export const onlyElements = (children: ReactNode): ReactElement[] => {
+    const result: ReactElement[] = [];
 
-    for (const child of childArray) {
-        if (child === null || child === undefined || typeof child !== "object") continue;
-        const element = child as ReactElement;
-        if (element.key === null || element.key === undefined) {
+    Children.forEach(children, (child) => {
+        if (!isValidElement(child)) return;
+        if (child.key === null || child.key === undefined) {
             warnOnceUnkeyedChild();
-            continue;
+            return;
         }
-        result.push({ key: element.key, element });
-    }
+        result.push(child);
+    });
 
     return result;
+};
+
+export const getChildKey = (child: ReactElement): Key => {
+    if (child.key === null) {
+        throw new Error("[gtkx/animate] AnimatePresence child is missing a key; onlyElements should have filtered it.");
+    }
+    return child.key;
 };
 
 type PresenceChildProps = {
@@ -117,14 +119,14 @@ const PresenceChild = ({ isPresent, initial, onExitComplete, children }: Presenc
 };
 
 const mergeExitingChildren = (
-    presentChildren: KeyedChild[],
-    renderedChildren: KeyedChild[],
+    presentChildren: ReactElement[],
+    renderedChildren: ReactElement[],
     presentKeys: Key[],
-): KeyedChild[] => {
+): ReactElement[] => {
     const nextChildren = [...presentChildren];
     for (let index = 0; index < renderedChildren.length; index += 1) {
         const child = renderedChildren[index];
-        if (child && !presentKeys.includes(child.key)) {
+        if (child && !presentKeys.includes(getChildKey(child))) {
             nextChildren.splice(index, 0, child);
         }
     }
@@ -134,8 +136,8 @@ const mergeExitingChildren = (
 type ExitContext = {
     key: Key;
     exitComplete: Map<Key, boolean>;
-    pending: KeyedChild[];
-    commit: (children: KeyedChild[]) => void;
+    pending: ReactElement[];
+    commit: (children: ReactElement[]) => void;
 };
 
 const completeExit = (context: ExitContext): void => {
@@ -155,8 +157,8 @@ export const AnimatePresence = ({
     children: ReactNode;
     initial?: boolean;
 }): ReactNode => {
-    const presentChildren = useMemo(() => onlyKeyedElements(children), [children]);
-    const presentKeys = presentChildren.map((child) => child.key);
+    const presentChildren = useMemo(() => onlyElements(children), [children]);
+    const presentKeys = presentChildren.map(getChildKey);
 
     const isInitialRender = useRef(true);
     const pendingPresentChildren = useRef(presentChildren);
@@ -174,10 +176,11 @@ export const AnimatePresence = ({
     useLayoutEffect(() => {
         pendingPresentChildren.current = presentChildren;
         for (const child of renderedChildren) {
-            if (presentKeys.includes(child.key)) {
-                exitComplete.current.delete(child.key);
-            } else if (exitComplete.current.get(child.key) !== true) {
-                exitComplete.current.set(child.key, false);
+            const childKey = getChildKey(child);
+            if (presentKeys.includes(childKey)) {
+                exitComplete.current.delete(childKey);
+            } else if (exitComplete.current.get(childKey) !== true) {
+                exitComplete.current.set(childKey, false);
             }
         }
     }, [renderedChildren, presentKeys.join("-"), presentChildren]);
@@ -191,24 +194,25 @@ export const AnimatePresence = ({
     return (
         <>
             {renderedChildren.map((child) => {
-                const isPresent = presentKeys.includes(child.key);
+                const childKey = getChildKey(child);
+                const isPresent = presentKeys.includes(childKey);
                 const onExitComplete = isPresent
                     ? undefined
                     : () =>
                           completeExit({
-                              key: child.key,
+                              key: childKey,
                               exitComplete: exitComplete.current,
                               pending: pendingPresentChildren.current,
                               commit: setRenderedChildren,
                           });
                 return (
                     <PresenceChild
-                        key={child.key}
+                        key={childKey}
                         isPresent={isPresent}
                         initial={presenceInitial}
                         onExitComplete={onExitComplete}
                     >
-                        {child.element}
+                        {child}
                     </PresenceChild>
                 );
             })}

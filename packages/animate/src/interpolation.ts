@@ -1,6 +1,6 @@
-import type { AnimatableProperties } from "./types.js";
+import type { AnimationTarget } from "./types.js";
 
-const propertyDefaults: { [K in keyof Required<AnimatableProperties>]: number } = {
+const propertyDefaults: { [K in keyof Required<AnimationTarget>]: number } = {
     opacity: 1,
     x: 0,
     y: 0,
@@ -13,12 +13,12 @@ const propertyDefaults: { [K in keyof Required<AnimatableProperties>]: number } 
 };
 
 export const interpolate = (
-    from: AnimatableProperties,
-    to: AnimatableProperties,
+    from: AnimationTarget,
+    to: AnimationTarget,
     progress: number,
-): AnimatableProperties => {
-    const result: AnimatableProperties = {};
-    const allKeys = new Set([...Object.keys(from), ...Object.keys(to)]) as Set<keyof AnimatableProperties>;
+): AnimationTarget => {
+    const result: AnimationTarget = {};
+    const allKeys = new Set([...Object.keys(from), ...Object.keys(to)]) as Set<keyof AnimationTarget>;
 
     for (const key of allKeys) {
         const fromVal = from[key] ?? propertyDefaults[key];

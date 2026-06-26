@@ -4,12 +4,12 @@ import { shallowEqual } from "@gtkx/utils";
 import type { RefObject } from "react";
 import { AnimationCssProvider } from "./animation-css-provider.js";
 import { interpolate } from "./interpolation.js";
-import type { AnimatableProperties, NamedEasing, Transition, WidgetAnimationProps } from "./types.js";
+import type { AnimationTarget, Easing, Transition, WidgetAnimationProps } from "./types.js";
 
 const tweenDefaults = { duration: 0.3 };
 const springDefaults = { damping: 1, mass: 1, stiffness: 100 };
 
-const namedEasings: { [K in NamedEasing]: Adw.Easing } = {
+const easings: { [K in Easing]: Adw.Easing } = {
     linear: Adw.Easing.LINEAR,
     easeIn: Adw.Easing.EASE_IN,
     easeOut: Adw.Easing.EASE_OUT,
@@ -26,7 +26,7 @@ const buildTweenAnimation = (
     const duration = secondsToMilliseconds(transition.duration ?? tweenDefaults.duration);
     const animation = Adw.TimedAnimation.new(widget, 0, 1, duration, target);
 
-    if (transition.ease !== undefined) animation.setEasing(namedEasings[transition.ease]);
+    if (transition.ease !== undefined) animation.setEasing(easings[transition.ease]);
     if (transition.repeat !== undefined) animation.setRepeatCount(transition.repeat);
     if (transition.repeatType !== undefined) animation.setAlternate(transition.repeatType !== "loop");
 
@@ -59,7 +59,7 @@ const buildAnimation = (
         ? buildSpringAnimation(widget, target, transition)
         : buildTweenAnimation(widget, target, transition);
 
-const restValuesOf = (props: WidgetAnimationProps): AnimatableProperties => {
+const restValuesOf = (props: WidgetAnimationProps): AnimationTarget => {
     if (props.animate) return { ...props.animate };
     if (props.initial) return { ...props.initial };
     return {};
@@ -71,20 +71,42 @@ const shouldAnimateOnMount = (props: WidgetAnimationProps): boolean => {
     return !shallowEqual(initial, animate);
 };
 
+/**
+ * Imperative driver that animates a single GTK widget by writing interpolated
+ * opacity and transform values to a per-widget GTK CSS provider.
+ *
+ * Obtain an instance from {@link useWidgetAnimation}, then call
+ * {@link WidgetAnimator.startAnimation} to transition the widget toward a new
+ * {@link AnimationTarget}.
+ */
 export class WidgetAnimator {
     private cssProvider: AnimationCssProvider;
     private propsRef: RefObject<WidgetAnimationProps>;
     private ref: RefObject<Gtk.Widget | null>;
-    private currentValues: AnimatableProperties = {};
+    private currentValues: AnimationTarget = {};
     private currentAnimation: Adw.Animation | null = null;
     private delayTimer: ReturnType<typeof setTimeout> | null = null;
 
+    /**
+     * @param className - Unique GTK CSS class scoping this animator's styles.
+     * @param ref - Ref to the widget being animated.
+     * @param propsRef - Ref to the latest {@link WidgetAnimationProps}.
+     */
     constructor(className: string, ref: RefObject<Gtk.Widget | null>, propsRef: RefObject<WidgetAnimationProps>) {
         this.cssProvider = new AnimationCssProvider(className);
         this.ref = ref;
         this.propsRef = propsRef;
     }
 
+    /**
+     * Attaches the CSS provider to the widget and applies its mount state.
+     *
+     * When `animateOnMount` is `true` and the props request an enter transition,
+     * the widget starts from its `initial` values and animates to `animate`;
+     * otherwise it is written directly to its resting values.
+     *
+     * @param animateOnMount - Whether to play the enter animation on mount.
+     */
     public applyMount(animateOnMount: boolean): void {
         const widget = this.ref.current;
         if (!widget) return;
@@ -102,7 +124,16 @@ export class WidgetAnimator {
         }
     }
 
-    public startAnimation(target: AnimatableProperties, onComplete?: () => void): void {
+    /**
+     * Animates the widget from its current values to the supplied target,
+     * honoring the transition configured on the current props.
+     *
+     * Any in-flight animation is cancelled before the new one begins.
+     *
+     * @param target - The {@link AnimationTarget} to animate toward.
+     * @param onComplete - Optional callback invoked once the animation settles.
+     */
+    public startAnimation(target: AnimationTarget, onComplete?: () => void): void {
         const widget = this.ref.current;
         if (!widget) return;
 
@@ -132,6 +163,10 @@ export class WidgetAnimator {
         this.play(animation, secondsToMilliseconds(transition.delay ?? 0));
     }
 
+    /**
+     * Cancels any in-flight animation and detaches the CSS provider from the
+     * widget, releasing all resources held by this animator.
+     */
     public dispose(): void {
         this.cancelAnimation();
         this.cssProvider.dispose();

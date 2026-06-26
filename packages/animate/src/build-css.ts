@@ -1,10 +1,10 @@
-import type { AnimatableProperties } from "./types.js";
+import type { AnimationTarget } from "./types.js";
 
 type CssTarget = "style" | "transform";
 
 type PropertySerializer = {
     target: CssTarget;
-    serialize: (props: AnimatableProperties) => string | undefined;
+    serialize: (props: AnimationTarget) => string | undefined;
 };
 
 const propertySerializers: PropertySerializer[] = [
@@ -43,7 +43,7 @@ const propertySerializers: PropertySerializer[] = [
     },
 ];
 
-export const buildCss = (className: string, props: AnimatableProperties): string => {
+export const buildCss = (className: string, props: AnimationTarget): string => {
     const parts: string[] = [];
     const transforms: string[] = [];
 

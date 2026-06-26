@@ -6,7 +6,7 @@ const loadModule = async () => {
     return import("../src/animate-presence.js");
 };
 
-describe("onlyKeyedElements", () => {
+describe("onlyElements", () => {
     let warnSpy: ReturnType<typeof vi.spyOn>;
 
     beforeEach(() => {
@@ -19,41 +19,43 @@ describe("onlyKeyedElements", () => {
     });
 
     it("extracts keyed element children in order", async () => {
-        const { onlyKeyedElements } = await loadModule();
+        const { onlyElements, getChildKey } = await loadModule();
         const a = createElement("box", { key: "a" });
         const b = createElement("box", { key: "b" });
 
-        const result = onlyKeyedElements([a, b]);
+        const result = onlyElements([a, b]);
 
-        expect(result).toEqual([
-            { key: "a", element: a },
-            { key: "b", element: b },
-        ]);
+        expect(result).toEqual([a, b]);
+        expect(result.map(getChildKey)).toEqual(["a", "b"]);
     });
 
     it("accepts a single (non-array) child", async () => {
-        const { onlyKeyedElements } = await loadModule();
+        const { onlyElements, getChildKey } = await loadModule();
         const only = createElement("box", { key: "only" });
 
-        expect(onlyKeyedElements(only)).toEqual([{ key: "only", element: only }]);
+        const result = onlyElements(only);
+
+        expect(result).toEqual([only]);
+        expect(result.map(getChildKey)).toEqual(["only"]);
     });
 
     it("skips null, undefined, and primitive children", async () => {
-        const { onlyKeyedElements } = await loadModule();
+        const { onlyElements, getChildKey } = await loadModule();
         const keyed = createElement("box", { key: "keep" });
 
-        const result = onlyKeyedElements([null, undefined, "text", 42, false, keyed]);
+        const result = onlyElements([null, undefined, "text", 42, false, keyed]);
 
-        expect(result).toEqual([{ key: "keep", element: keyed }]);
+        expect(result).toEqual([keyed]);
+        expect(result.map(getChildKey)).toEqual(["keep"]);
     });
 
     it("warns once in development for an element child without a key", async () => {
         vi.stubEnv("NODE_ENV", "development");
-        const { onlyKeyedElements } = await loadModule();
+        const { onlyElements } = await loadModule();
         const unkeyed = createElement("box", {});
 
-        onlyKeyedElements([unkeyed]);
-        onlyKeyedElements([unkeyed]);
+        onlyElements([unkeyed]);
+        onlyElements([unkeyed]);
 
         expect(warnSpy).toHaveBeenCalledTimes(1);
         expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("without a key"));
@@ -61,10 +63,10 @@ describe("onlyKeyedElements", () => {
 
     it("does not warn in production for an element child without a key", async () => {
         vi.stubEnv("NODE_ENV", "production");
-        const { onlyKeyedElements } = await loadModule();
+        const { onlyElements } = await loadModule();
         const unkeyed = createElement("box", {});
 
-        onlyKeyedElements([unkeyed]);
+        onlyElements([unkeyed]);
 
         expect(warnSpy).not.toHaveBeenCalled();
     });
