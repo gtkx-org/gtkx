@@ -4,7 +4,7 @@ type AnyValue = Handle | number | bigint | string | boolean | ArrayBufferView | 
 
 export type Handle = ExternalObject<unknown>;
 
-export type CompiledSignature = ExternalObject<unknown>;
+export type CallDescriptor = ExternalObject<unknown>;
 
 export type Value = Ref | AnyValue | Value[] | ((...args: never[]) => unknown);
 
@@ -134,11 +134,6 @@ export type ValueOf<D extends Type> = D extends { type: infer Tag }
                   ? undefined
                   : Value
     : Value;
-
-export type Arg = {
-    type: Type;
-    value: Value;
-};
 
 export type RegisterClassVfunc = {
     byteOffset: number;

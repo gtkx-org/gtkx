@@ -20,11 +20,11 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
 import "@gtkx/gi/gobject";
 import { getHandle, t } from "@gtkx/ffi";
-import { call } from "@gtkx/native";
+import { callTypeFunction } from "../../src/descriptors.js";
 import { fromGValue, newGValueForDescriptor, toGValue, valueGetType } from "../../src/gvalue.js";
 
 const callGetType = (lib: string, fn: string): GType => {
-    const result = call(lib, fn, [], { type: "biguint64" });
+    const result = callTypeFunction(lib, fn);
     if (typeof result !== "bigint") {
         throw new TypeError(`${fn} did not return a GType`);
     }

@@ -89,20 +89,11 @@ describe("signal inout-parameters - GtkEditable::insert-text", () => {
 });
 
 describe("signal out-parameters - GtkOverlay::get-child-position (caller-allocated out)", () => {
-    it("passes the caller-allocated GdkRectangle to the handler as a mutable object", async () => {
+    it("propagates a connected handler's GdkRectangle writes back through the caller-allocated boxed", async () => {
         const overlayRef = createRef<Gtk.Overlay>();
-        const handleGetChildPosition = vi.fn((_widget: Gtk.Widget, allocation: Gdk.Rectangle) => {
-            expect(allocation).toBeInstanceOf(Gdk.Rectangle);
-            return false;
-        });
 
         await render(
-            <GtkOverlay
-                ref={overlayRef}
-                widthRequest={200}
-                heightRequest={200}
-                onGetChildPosition={handleGetChildPosition}
-            >
+            <GtkOverlay ref={overlayRef} widthRequest={200} heightRequest={200}>
                 <GtkLabel label="Main Content" />
                 <GtkOverlayChild>
                     <GtkBox widthRequest={40} heightRequest={20} />
@@ -110,9 +101,24 @@ describe("signal out-parameters - GtkOverlay::get-child-position (caller-allocat
             </GtkOverlay>,
         );
 
-        await waitFor(() => {
-            expect(handleGetChildPosition).toHaveBeenCalled();
+        const overlay = overlayRef.current as Gtk.Overlay;
+        const child = overlay.getLastChild() as Gtk.Widget;
+
+        const handleGetChildPosition = vi.fn((_widget: Gtk.Widget, allocation: Gdk.Rectangle) => {
+            expect(allocation).toBeInstanceOf(Gdk.Rectangle);
+            allocation.x = 11;
+            allocation.y = 22;
+            allocation.width = 33;
+            allocation.height = 44;
+            return true;
         });
+        overlay.connect("get-child-position", handleGetChildPosition);
+
+        const [handled, allocation] = overlay.emit("get-child-position", child);
+
+        expect(handleGetChildPosition).toHaveBeenCalled();
+        expect(handled).toBe(true);
+        expect([allocation.x, allocation.y, allocation.width, allocation.height]).toEqual([11, 22, 33, 44]);
     });
 });
 
@@ -180,6 +186,32 @@ describe("signal emit() - boxed inout-parameter (GtkSource.View::push-snippet)",
 
         expect(buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false)).toBe("abc");
         expect(location.getOffset()).toBe(3);
+    });
+
+    it("honors a connected handler's in-place advance of the inout TextIter", async () => {
+        const viewRef = createRef<GtkSource.View>();
+
+        await render(<GtkSourceView ref={viewRef} />);
+
+        const view = viewRef.current as GtkSource.View;
+        const buffer = view.getBuffer() as GtkSource.Buffer;
+        buffer.setText("hello", -1);
+
+        const snippet = GtkSource.Snippet.new(null, null);
+        const chunk = GtkSource.SnippetChunk.new();
+        chunk.setSpec("X");
+        snippet.addChunk(chunk);
+
+        const location = buffer.getStartIter();
+        expect(location.getOffset()).toBe(0);
+
+        view.connect("push-snippet", (_snippet: GtkSource.Snippet, iter: Gtk.TextIter) => {
+            iter.forwardChars(5);
+        });
+
+        view.emit("push-snippet", snippet, location);
+
+        expect(buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false)).toBe("helloX");
     });
 });
 

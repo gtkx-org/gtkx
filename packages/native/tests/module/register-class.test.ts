@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { call, registerClass } from "../../index.js";
-import { BIGUINT64, createLabel, GOBJECT_LIB, typeFromName } from "./utils.js";
+import { registerClass } from "../../index.js";
+import { BIGUINT64, callArgs, createLabel, GOBJECT_LIB, typeFromName } from "./utils.js";
 
 const G_TYPE_INVALID_NAME = "ThisGTypeDefinitelyDoesNotExist";
 
@@ -44,7 +44,7 @@ describe("registerClass", () => {
 
         expect(newGtype).toBeGreaterThan(0);
 
-        const stillImplementsBuildable = call(
+        const stillImplementsBuildable = callArgs(
             GOBJECT_LIB,
             "g_type_is_a",
             [

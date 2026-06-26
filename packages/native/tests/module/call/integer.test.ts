@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { call } from "../../../index.js";
 import { expectClickedSignalHandlerId } from "../call-callback-integer-helpers.js";
 import {
+    callArgs,
     connectSignal,
     connectSignalReturning,
     createBox,
@@ -29,7 +29,7 @@ describe("call - integer types - 8-bit signed", () => {
     it("handles signed 8-bit as part of boolean-like values", () => {
         const label = createLabel("Test");
 
-        call(
+        callArgs(
             GTK_LIB,
             "gtk_label_set_selectable",
             [
@@ -39,7 +39,7 @@ describe("call - integer types - 8-bit signed", () => {
             VOID,
         );
 
-        const result = call(GTK_LIB, "gtk_label_get_selectable", [{ type: GOBJECT_BORROWED, value: label }], INT8);
+        const result = callArgs(GTK_LIB, "gtk_label_get_selectable", [{ type: GOBJECT_BORROWED, value: label }], INT8);
 
         expect(result).toBe(1);
     });
@@ -47,7 +47,7 @@ describe("call - integer types - 8-bit signed", () => {
     it("handles zero value", () => {
         const label = createLabel("Test");
 
-        call(
+        callArgs(
             GTK_LIB,
             "gtk_label_set_selectable",
             [
@@ -57,7 +57,7 @@ describe("call - integer types - 8-bit signed", () => {
             VOID,
         );
 
-        const result = call(GTK_LIB, "gtk_label_get_selectable", [{ type: GOBJECT_BORROWED, value: label }], INT8);
+        const result = callArgs(GTK_LIB, "gtk_label_get_selectable", [{ type: GOBJECT_BORROWED, value: label }], INT8);
 
         expect(result).toBe(0);
     });
@@ -67,7 +67,7 @@ describe("call - integer types - 8-bit unsigned", () => {
     it("handles unsigned 8-bit values", () => {
         const label = createLabel("Test");
 
-        call(
+        callArgs(
             GTK_LIB,
             "gtk_label_set_selectable",
             [
@@ -77,7 +77,7 @@ describe("call - integer types - 8-bit unsigned", () => {
             VOID,
         );
 
-        const result = call(GTK_LIB, "gtk_label_get_selectable", [{ type: GOBJECT_BORROWED, value: label }], UINT8);
+        const result = callArgs(GTK_LIB, "gtk_label_get_selectable", [{ type: GOBJECT_BORROWED, value: label }], UINT8);
 
         expect(result).toBe(1);
     });
@@ -151,7 +151,7 @@ describe("call - integer types - 32-bit signed large", () => {
 
 describe("call - integer types - 32-bit signed enums", () => {
     it("handles enum values (GtkOrientation)", () => {
-        const boxHorizontal = call(
+        const boxHorizontal = callArgs(
             GTK_LIB,
             "gtk_box_new",
             [
@@ -161,7 +161,7 @@ describe("call - integer types - 32-bit signed enums", () => {
             GOBJECT,
         );
 
-        const boxVertical = call(
+        const boxVertical = callArgs(
             GTK_LIB,
             "gtk_box_new",
             [
@@ -171,14 +171,14 @@ describe("call - integer types - 32-bit signed enums", () => {
             GOBJECT,
         );
 
-        const orientationH = call(
+        const orientationH = callArgs(
             GTK_LIB,
             "gtk_orientable_get_orientation",
             [{ type: GOBJECT_BORROWED, value: boxHorizontal }],
             INT32,
         );
 
-        const orientationV = call(
+        const orientationV = callArgs(
             GTK_LIB,
             "gtk_orientable_get_orientation",
             [{ type: GOBJECT_BORROWED, value: boxVertical }],
@@ -202,7 +202,7 @@ describe("call - integer types - 32-bit unsigned", () => {
     it("handles flags values (GApplicationFlags)", () => {
         const box = createBox(0, 5);
 
-        call(
+        callArgs(
             GTK_LIB,
             "gtk_box_set_spacing",
             [
@@ -212,7 +212,7 @@ describe("call - integer types - 32-bit unsigned", () => {
             VOID,
         );
 
-        const spacing = call(GTK_LIB, "gtk_box_get_spacing", [{ type: GOBJECT_BORROWED, value: box }], UINT32);
+        const spacing = callArgs(GTK_LIB, "gtk_box_get_spacing", [{ type: GOBJECT_BORROWED, value: box }], UINT32);
 
         expect(spacing).toBe(10);
     });
@@ -243,7 +243,7 @@ describe("call - integer types - 64-bit unsigned disconnect", () => {
 
         disconnectSignal(button, handlerId);
 
-        const isConnected = call(
+        const isConnected = callArgs(
             GOBJECT_LIB,
             "g_signal_handler_is_connected",
             [
@@ -272,7 +272,7 @@ describe("call - integer types - edge cases multi-arg", () => {
         const grid = createGrid();
         const label = createLabel("Test");
 
-        call(
+        callArgs(
             GTK_LIB,
             "gtk_grid_attach",
             [
@@ -286,7 +286,7 @@ describe("call - integer types - edge cases multi-arg", () => {
             VOID,
         );
 
-        const firstChild = call(
+        const firstChild = callArgs(
             GTK_LIB,
             "gtk_widget_get_first_child",
             [{ type: GOBJECT_BORROWED, value: grid }],
@@ -301,7 +301,7 @@ describe("call - integer types - edge cases spacing", () => {
     it("handles spacing values in containers", () => {
         const box = createBox(0, 0);
 
-        call(
+        callArgs(
             GTK_LIB,
             "gtk_box_set_spacing",
             [
@@ -311,7 +311,7 @@ describe("call - integer types - edge cases spacing", () => {
             VOID,
         );
 
-        const spacing = call(GTK_LIB, "gtk_box_get_spacing", [{ type: GOBJECT_BORROWED, value: box }], INT32);
+        const spacing = callArgs(GTK_LIB, "gtk_box_get_spacing", [{ type: GOBJECT_BORROWED, value: box }], INT32);
 
         expect(spacing).toBe(15);
     });

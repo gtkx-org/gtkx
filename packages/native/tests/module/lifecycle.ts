@@ -1,4 +1,5 @@
-import { call, quit as nativeStop } from "../../index.js";
+import { quit as nativeStop } from "../../index.js";
+import { callArgs } from "./utils.js";
 
 const KEEP_ALIVE_INTERVAL = 2147483647;
 
@@ -72,7 +73,7 @@ export const start = (): void => {
     started = true;
 
     keepAlive();
-    call("libgtk-4.so.1", "gtk_init", [], { type: "void" });
+    callArgs("libgtk-4.so.1", "gtk_init", [], { type: "void" });
     registerExitHandlers();
 };
 

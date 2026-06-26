@@ -1,9 +1,8 @@
-import { call } from "../../../index.js";
 import type { Type, Value } from "../../../types.js";
-import { BOOLEAN, GOBJECT_BORROWED, GTK_LIB, VOID } from "../utils.js";
+import { BOOLEAN, callArgs, GOBJECT_BORROWED, GTK_LIB, VOID } from "../utils.js";
 
 export function setLabelSelectable(label: Value, value: boolean): void {
-    call(
+    callArgs(
         GTK_LIB,
         "gtk_label_set_selectable",
         [
@@ -15,11 +14,16 @@ export function setLabelSelectable(label: Value, value: boolean): void {
 }
 
 export function getLabelSelectable(label: Value): boolean {
-    return call(GTK_LIB, "gtk_label_get_selectable", [{ type: GOBJECT_BORROWED, value: label }], BOOLEAN) as boolean;
+    return callArgs(
+        GTK_LIB,
+        "gtk_label_get_selectable",
+        [{ type: GOBJECT_BORROWED, value: label }],
+        BOOLEAN,
+    ) as boolean;
 }
 
 export function setAndGetLabelMaxWidthChars(label: Value, type: Type, value: number): number {
-    call(
+    callArgs(
         GTK_LIB,
         "gtk_label_set_max_width_chars",
         [
@@ -28,5 +32,10 @@ export function setAndGetLabelMaxWidthChars(label: Value, type: Type, value: num
         ],
         VOID,
     );
-    return call(GTK_LIB, "gtk_label_get_max_width_chars", [{ type: GOBJECT_BORROWED, value: label }], type) as number;
+    return callArgs(
+        GTK_LIB,
+        "gtk_label_get_max_width_chars",
+        [{ type: GOBJECT_BORROWED, value: label }],
+        type,
+    ) as number;
 }

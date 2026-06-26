@@ -1,4 +1,5 @@
 import { sourceStringLiteral } from "@gtkx/utils";
+import { isRecordInout } from "../ffi/param-marshal.js";
 import { computeRecordFieldSlots } from "../ffi/record-layout.js";
 import type { GirCallback } from "../gir/callback.js";
 import type { Library } from "../gir/library.js";
@@ -140,7 +141,7 @@ export const renderParamDescriptor = (
         return tRef(renderDescriptor(context, ref, parameter.transferOwnership));
     }
     return renderDescriptor(context, ref, parameter.transferOwnership, {
-        callerAllocated: isCallerAllocatedOut(parameter),
+        callerAllocated: isCallerAllocatedOut(parameter) || isRecordInout(context, parameter),
     });
 };
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { call } from "../../../index.js";
 import {
+    callArgs,
     createLabel,
     createProgressBar,
     createScale,
@@ -15,7 +15,7 @@ describe("call - float types - 32-bit float", () => {
     it("passes 32-bit float values (promoted to 64-bit for GTK)", () => {
         const label = createLabel("Test");
 
-        call(
+        callArgs(
             GTK_LIB,
             "gtk_widget_set_opacity",
             [
@@ -25,7 +25,7 @@ describe("call - float types - 32-bit float", () => {
             VOID,
         );
 
-        const result = call(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64);
+        const result = callArgs(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64);
 
         expect(result).toBeCloseTo(0.5, 2);
     });
@@ -33,7 +33,7 @@ describe("call - float types - 32-bit float", () => {
     it("handles small fractional values", () => {
         const label = createLabel("Test");
 
-        call(
+        callArgs(
             GTK_LIB,
             "gtk_widget_set_opacity",
             [
@@ -43,7 +43,7 @@ describe("call - float types - 32-bit float", () => {
             VOID,
         );
 
-        const result = call(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64);
+        const result = callArgs(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64);
 
         expect(result).toBeCloseTo(0.1, 1);
     });
@@ -51,7 +51,7 @@ describe("call - float types - 32-bit float", () => {
     it("handles value of 1.0", () => {
         const label = createLabel("Test");
 
-        call(
+        callArgs(
             GTK_LIB,
             "gtk_widget_set_opacity",
             [
@@ -61,7 +61,7 @@ describe("call - float types - 32-bit float", () => {
             VOID,
         );
 
-        const result = call(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64);
+        const result = callArgs(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64);
 
         expect(result).toBeCloseTo(1.0, 2);
     });
@@ -71,7 +71,7 @@ describe("call - float types - 64-bit float basic", () => {
     it("passes and returns 64-bit float values", () => {
         const label = createLabel("Test");
 
-        call(
+        callArgs(
             GTK_LIB,
             "gtk_widget_set_opacity",
             [
@@ -81,7 +81,7 @@ describe("call - float types - 64-bit float basic", () => {
             VOID,
         );
 
-        const result = call(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64);
+        const result = callArgs(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64);
 
         expect(result).toBeCloseTo(0.75);
     });
@@ -90,7 +90,7 @@ describe("call - float types - 64-bit float basic", () => {
         const label = createLabel("Test");
         const preciseValue = 0.12;
 
-        call(
+        callArgs(
             GTK_LIB,
             "gtk_widget_set_opacity",
             [
@@ -100,7 +100,7 @@ describe("call - float types - 64-bit float basic", () => {
             VOID,
         );
 
-        const result = call(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64);
+        const result = callArgs(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64);
 
         expect(result).toBeCloseTo(preciseValue, 1);
     });
@@ -108,7 +108,7 @@ describe("call - float types - 64-bit float basic", () => {
     it("handles very small values (near zero)", () => {
         const label = createLabel("Test");
 
-        call(
+        callArgs(
             GTK_LIB,
             "gtk_widget_set_opacity",
             [
@@ -118,7 +118,7 @@ describe("call - float types - 64-bit float basic", () => {
             VOID,
         );
 
-        const result = call(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64);
+        const result = callArgs(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64);
 
         expect(result).toBeCloseTo(0.05, 1);
     });
@@ -128,7 +128,7 @@ describe("call - float types - 64-bit float range", () => {
     it("handles range widget values", () => {
         const scale = createScale(0, 0, 100, 1);
 
-        call(
+        callArgs(
             GTK_LIB,
             "gtk_range_set_value",
             [
@@ -138,7 +138,7 @@ describe("call - float types - 64-bit float range", () => {
             VOID,
         );
 
-        const result = call(GTK_LIB, "gtk_range_get_value", [{ type: GOBJECT_BORROWED, value: scale }], FLOAT64);
+        const result = callArgs(GTK_LIB, "gtk_range_get_value", [{ type: GOBJECT_BORROWED, value: scale }], FLOAT64);
 
         expect(result).toBeCloseTo(42.5);
     });
@@ -146,7 +146,7 @@ describe("call - float types - 64-bit float range", () => {
     it("handles progress bar fraction", () => {
         const progressBar = createProgressBar();
 
-        call(
+        callArgs(
             GTK_LIB,
             "gtk_progress_bar_set_fraction",
             [
@@ -156,7 +156,7 @@ describe("call - float types - 64-bit float range", () => {
             VOID,
         );
 
-        const result = call(
+        const result = callArgs(
             GTK_LIB,
             "gtk_progress_bar_get_fraction",
             [{ type: GOBJECT_BORROWED, value: progressBar }],
@@ -169,7 +169,7 @@ describe("call - float types - 64-bit float range", () => {
 
 describe("call - float types - 64-bit float adjustment", () => {
     it("handles adjustment values", () => {
-        const adjustment = call(
+        const adjustment = callArgs(
             GTK_LIB,
             "gtk_adjustment_new",
             [
@@ -183,7 +183,7 @@ describe("call - float types - 64-bit float adjustment", () => {
             GOBJECT,
         );
 
-        const value = call(
+        const value = callArgs(
             GTK_LIB,
             "gtk_adjustment_get_value",
             [{ type: GOBJECT_BORROWED, value: adjustment }],
@@ -192,7 +192,7 @@ describe("call - float types - 64-bit float adjustment", () => {
 
         expect(value).toBeCloseTo(50.0);
 
-        call(
+        callArgs(
             GTK_LIB,
             "gtk_adjustment_set_value",
             [
@@ -202,7 +202,7 @@ describe("call - float types - 64-bit float adjustment", () => {
             VOID,
         );
 
-        const newValue = call(
+        const newValue = callArgs(
             GTK_LIB,
             "gtk_adjustment_get_value",
             [{ type: GOBJECT_BORROWED, value: adjustment }],
@@ -217,7 +217,7 @@ describe("call - float types - edge cases zero", () => {
     it("handles zero", () => {
         const label = createLabel("Test");
 
-        call(
+        callArgs(
             GTK_LIB,
             "gtk_widget_set_opacity",
             [
@@ -227,7 +227,7 @@ describe("call - float types - edge cases zero", () => {
             VOID,
         );
 
-        const result = call(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64);
+        const result = callArgs(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64);
 
         expect(result).toBe(0.0);
     });
@@ -239,7 +239,7 @@ describe("call - float types - edge cases precision", () => {
 
         const preciseValue = 123456.789012;
 
-        call(
+        callArgs(
             GTK_LIB,
             "gtk_range_set_value",
             [
@@ -249,7 +249,7 @@ describe("call - float types - edge cases precision", () => {
             VOID,
         );
 
-        const result = call(GTK_LIB, "gtk_range_get_value", [{ type: GOBJECT_BORROWED, value: scale }], FLOAT64);
+        const result = callArgs(GTK_LIB, "gtk_range_get_value", [{ type: GOBJECT_BORROWED, value: scale }], FLOAT64);
 
         expect(result).toBeCloseTo(preciseValue, 6);
     });
@@ -259,7 +259,7 @@ describe("call - float types - edge cases boundary", () => {
     it("handles boundary values for opacity (0 to 1)", () => {
         const label = createLabel("Test");
 
-        call(
+        callArgs(
             GTK_LIB,
             "gtk_widget_set_opacity",
             [
@@ -270,10 +270,10 @@ describe("call - float types - edge cases boundary", () => {
         );
 
         expect(
-            call(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64),
+            callArgs(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64),
         ).toBeCloseTo(0.0);
 
-        call(
+        callArgs(
             GTK_LIB,
             "gtk_widget_set_opacity",
             [
@@ -284,14 +284,14 @@ describe("call - float types - edge cases boundary", () => {
         );
 
         expect(
-            call(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64),
+            callArgs(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64),
         ).toBeCloseTo(1.0);
     });
 });
 
 describe("call - float types - edge cases multi-param", () => {
     it("handles multiple float parameters in one call", () => {
-        const adjustment = call(
+        const adjustment = callArgs(
             GTK_LIB,
             "gtk_adjustment_new",
             [
@@ -305,28 +305,28 @@ describe("call - float types - edge cases multi-param", () => {
             GOBJECT,
         );
 
-        const value = call(
+        const value = callArgs(
             GTK_LIB,
             "gtk_adjustment_get_value",
             [{ type: GOBJECT_BORROWED, value: adjustment }],
             FLOAT64,
         );
 
-        const lower = call(
+        const lower = callArgs(
             GTK_LIB,
             "gtk_adjustment_get_lower",
             [{ type: GOBJECT_BORROWED, value: adjustment }],
             FLOAT64,
         );
 
-        const upper = call(
+        const upper = callArgs(
             GTK_LIB,
             "gtk_adjustment_get_upper",
             [{ type: GOBJECT_BORROWED, value: adjustment }],
             FLOAT64,
         );
 
-        const stepIncrement = call(
+        const stepIncrement = callArgs(
             GTK_LIB,
             "gtk_adjustment_get_step_increment",
             [{ type: GOBJECT_BORROWED, value: adjustment }],

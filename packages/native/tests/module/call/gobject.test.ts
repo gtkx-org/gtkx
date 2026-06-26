@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { call, type Value } from "../../../index.js";
+import type { Value } from "../../../index.js";
 import { appendLabelAndExpectRefIncrement, expectNoLeakCreatingLabels } from "../call-gobject-string-helpers.js";
 import {
     boxAppend,
     boxRemove,
+    callArgs,
     createBox,
     createButton,
     createLabel,
@@ -23,7 +24,7 @@ import {
 
 describe("call - gobject types - owned", () => {
     it("creates and returns owned GObject", () => {
-        const label = call(GTK_LIB, "gtk_label_new", [{ type: STRING, value: "Test" }], GOBJECT);
+        const label = callArgs(GTK_LIB, "gtk_label_new", [{ type: STRING, value: "Test" }], GOBJECT);
 
         expect(label).toBeDefined();
         expect(typeof label).toBe("object");
@@ -75,7 +76,12 @@ describe("call - gobject types - transfer none", () => {
     it("passes GObject as transfer none argument", () => {
         const label = createLabel("Test");
 
-        const text = call(GTK_LIB, "gtk_label_get_text", [{ type: GOBJECT_BORROWED, value: label }], STRING_BORROWED);
+        const text = callArgs(
+            GTK_LIB,
+            "gtk_label_get_text",
+            [{ type: GOBJECT_BORROWED, value: label }],
+            STRING_BORROWED,
+        );
 
         expect(text).toBe("Test");
     });
@@ -92,7 +98,7 @@ describe("call - gobject types - widget hierarchy parent-child", () => {
         boxAppend(box, label2);
 
         const firstChild = getFirstChild(box);
-        const lastChild = call(
+        const lastChild = callArgs(
             GTK_LIB,
             "gtk_widget_get_last_child",
             [{ type: GOBJECT_BORROWED, value: box }],
@@ -175,7 +181,7 @@ describe("call - gobject types - refcount transfer none", () => {
         const initialRefCount = getRefCount(label);
 
         for (let i = 0; i < 100; i++) {
-            call(GTK_LIB, "gtk_label_get_text", [{ type: GOBJECT_BORROWED, value: label }], STRING_BORROWED);
+            callArgs(GTK_LIB, "gtk_label_get_text", [{ type: GOBJECT_BORROWED, value: label }], STRING_BORROWED);
         }
 
         expect(getRefCount(label)).toBe(initialRefCount);
@@ -255,7 +261,7 @@ describe("call - gobject types - edge cases multiple pass", () => {
 
         boxAppend(box, label);
 
-        call(
+        callArgs(
             GTK_LIB,
             "gtk_label_set_text",
             [
@@ -265,7 +271,12 @@ describe("call - gobject types - edge cases multiple pass", () => {
             VOID,
         );
 
-        const text = call(GTK_LIB, "gtk_label_get_text", [{ type: GOBJECT_BORROWED, value: label }], STRING_BORROWED);
+        const text = callArgs(
+            GTK_LIB,
+            "gtk_label_get_text",
+            [{ type: GOBJECT_BORROWED, value: label }],
+            STRING_BORROWED,
+        );
 
         expect(text).toBe("Updated");
     });

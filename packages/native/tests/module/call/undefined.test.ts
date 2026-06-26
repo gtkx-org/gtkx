@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { call } from "../../../index.js";
 import {
     BOOLEAN,
+    callArgs,
     createBox,
     createButton,
     createLabel,
@@ -17,7 +17,7 @@ describe("call - undefined type - basic void", () => {
     it("returns undefined for void functions", () => {
         const label = createLabel("Test");
 
-        const result = call(
+        const result = callArgs(
             GTK_LIB,
             "gtk_label_set_text",
             [
@@ -33,7 +33,7 @@ describe("call - undefined type - basic void", () => {
     it("handles void function with no args", () => {
         const button = createButton("Test");
 
-        const result = call(GTK_LIB, "gtk_widget_show", [{ type: GOBJECT_BORROWED, value: button }], VOID);
+        const result = callArgs(GTK_LIB, "gtk_widget_show", [{ type: GOBJECT_BORROWED, value: button }], VOID);
 
         expect(result).toBeUndefined();
     });
@@ -42,7 +42,7 @@ describe("call - undefined type - basic void", () => {
         const box = createBox();
         const label = createLabel("Test");
 
-        const result = call(
+        const result = callArgs(
             GTK_LIB,
             "gtk_box_append",
             [
@@ -60,7 +60,7 @@ describe("call - undefined type - widget operations", () => {
     it("handles gtk_widget_hide", () => {
         const button = createButton("Test");
 
-        const result = call(GTK_LIB, "gtk_widget_hide", [{ type: GOBJECT_BORROWED, value: button }], VOID);
+        const result = callArgs(GTK_LIB, "gtk_widget_hide", [{ type: GOBJECT_BORROWED, value: button }], VOID);
 
         expect(result).toBeUndefined();
     });
@@ -68,7 +68,7 @@ describe("call - undefined type - widget operations", () => {
     it("handles gtk_widget_set_sensitive", () => {
         const button = createButton("Test");
 
-        const result = call(
+        const result = callArgs(
             GTK_LIB,
             "gtk_widget_set_sensitive",
             [
@@ -87,7 +87,7 @@ describe("call - undefined type - box operations", () => {
         const box = createBox();
         const label = createLabel("Test");
 
-        call(
+        callArgs(
             GTK_LIB,
             "gtk_box_append",
             [
@@ -97,7 +97,7 @@ describe("call - undefined type - box operations", () => {
             VOID,
         );
 
-        const result = call(
+        const result = callArgs(
             GTK_LIB,
             "gtk_box_remove",
             [
@@ -113,7 +113,7 @@ describe("call - undefined type - box operations", () => {
     it("handles gtk_box_set_spacing", () => {
         const box = createBox();
 
-        const result = call(
+        const result = callArgs(
             GTK_LIB,
             "gtk_box_set_spacing",
             [
@@ -131,7 +131,7 @@ describe("call - undefined type - edge cases identity", () => {
     it("return value is exactly undefined, not null", () => {
         const label = createLabel("Test");
 
-        const result = call(
+        const result = callArgs(
             GTK_LIB,
             "gtk_label_set_text",
             [
@@ -152,7 +152,7 @@ describe("call - undefined type - edge cases consecutive", () => {
     it("consecutive void calls return undefined", () => {
         const label = createLabel("Test");
 
-        const result1 = call(
+        const result1 = callArgs(
             GTK_LIB,
             "gtk_label_set_text",
             [
@@ -162,7 +162,7 @@ describe("call - undefined type - edge cases consecutive", () => {
             VOID,
         );
 
-        const result2 = call(
+        const result2 = callArgs(
             GTK_LIB,
             "gtk_label_set_text",
             [
@@ -181,7 +181,7 @@ describe("call - undefined type - edge cases state change", () => {
     it("void return with state change still modifies state", () => {
         const label = createLabel("Initial");
 
-        const result = call(
+        const result = callArgs(
             GTK_LIB,
             "gtk_label_set_text",
             [
@@ -193,7 +193,12 @@ describe("call - undefined type - edge cases state change", () => {
 
         expect(result).toBeUndefined();
 
-        const text = call(GTK_LIB, "gtk_label_get_text", [{ type: GOBJECT_BORROWED, value: label }], STRING_BORROWED);
+        const text = callArgs(
+            GTK_LIB,
+            "gtk_label_get_text",
+            [{ type: GOBJECT_BORROWED, value: label }],
+            STRING_BORROWED,
+        );
 
         expect(text).toBe("Modified");
     });

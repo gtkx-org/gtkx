@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { call } from "../../../index.js";
 import { expectSingleMinRefMeasurementPopulatesNumber } from "../call-null-ref-helpers.js";
 import {
     boxAppend,
+    callArgs,
     createBox,
     createLabel,
     GOBJECT,
@@ -18,9 +18,14 @@ import {
 
 describe("call - null pointer arguments - basic", () => {
     it("passes null pointer as optional argument", () => {
-        const label = call(GTK_LIB, "gtk_label_new", [{ type: POINTER, value: 0 }], GOBJECT);
+        const label = callArgs(GTK_LIB, "gtk_label_new", [{ type: POINTER, value: 0 }], GOBJECT);
 
-        const text = call(GTK_LIB, "gtk_label_get_text", [{ type: GOBJECT_BORROWED, value: label }], STRING_BORROWED);
+        const text = callArgs(
+            GTK_LIB,
+            "gtk_label_get_text",
+            [{ type: GOBJECT_BORROWED, value: label }],
+            STRING_BORROWED,
+        );
 
         expect(text).toBe("");
     });

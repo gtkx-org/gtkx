@@ -6,6 +6,7 @@ use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
+use super::bind::CallDescriptor;
 use super::{NativeRequest, RefUpdate};
 use crate::ffi::{
     self,
@@ -17,40 +18,47 @@ use crate::ffi::{
 
 #[cfg_attr(test, allow(dead_code))]
 pub struct CallRequest {
-    pub library_name: String,
-    pub symbol_name: String,
-    pub args: Vec<Arg>,
-    pub result_type: Descriptor,
+    pub descriptor: Arc<CallDescriptor>,
+    pub values: Vec<Value>,
 }
 
 impl NativeRequest for CallRequest {
     type Output = (Value, Vec<RefUpdate>);
 
     fn execute(self) -> anyhow::Result<(Value, Vec<RefUpdate>)> {
-        let mut arg_types: Vec<libffi::Type> = Vec::with_capacity(self.args.len() + 1);
-        for (i, arg) in self.args.iter().enumerate() {
+        let args: Vec<Arg> = self
+            .descriptor
+            .arg_types
+            .iter()
+            .cloned()
+            .zip(self.values)
+            .map(|(ty, value)| Arg::new(ty, value))
+            .collect();
+        let symbol_name = &self.descriptor.symbol_name;
+        let result_type = &self.descriptor.result_type;
+
+        let mut arg_types: Vec<libffi::Type> = Vec::with_capacity(args.len() + 1);
+        for (i, arg) in args.iter().enumerate() {
             anyhow::ensure!(
                 arg.ty.can_be_argument_type(),
-                "arg {i} of {}: '{}' cannot be used as a function argument type",
-                self.symbol_name,
+                "arg {i} of {symbol_name}: '{}' cannot be used as a function argument type",
                 arg.ty
             );
             arg.ty.append_ffi_arg_types(&mut arg_types);
         }
 
         let cif = libffi::Builder::new()
-            .res(self.result_type.libffi_type())
+            .res(result_type.libffi_type())
             .args(arg_types)
             .into_cif();
 
-        let stashed_values = self
-            .args
+        let stashed_values = args
             .iter()
             .enumerate()
             .map(|(i, arg)| {
                 arg.ty
                     .encode(&arg.value)
-                    .with_context(|| format!("encoding arg {} of {}", i, self.symbol_name))
+                    .with_context(|| format!("encoding arg {i} of {symbol_name}"))
             })
             .collect::<anyhow::Result<Vec<ffi::StashedValue>>>()?;
 
@@ -64,32 +72,29 @@ impl NativeRequest for CallRequest {
         // `cif` built from `result_type`/`arg_types` below, which describes the symbol's real ABI.
         let symbol_ptr = unsafe {
             GlibThreadState::with::<_, anyhow::Result<libffi::CodePtr>>(|state| {
-                let library = state.library(&self.library_name)?;
-                let symbol =
-                    library.get::<unsafe extern "C" fn() -> ()>(self.symbol_name.as_bytes())?;
+                let library = state.library(&self.descriptor.library_name)?;
+                let symbol = library.get::<unsafe extern "C" fn() -> ()>(symbol_name.as_bytes())?;
 
                 let ptr = *symbol as *mut c_void;
                 Ok(libffi::CodePtr(ptr))
             })?
         };
 
-        let result = self
-            .result_type
+        let result = result_type
             .call_cif(&cif, symbol_ptr, &ffi_args)
-            .with_context(|| format!("calling {}", self.symbol_name))?;
+            .with_context(|| format!("calling {symbol_name}"))?;
 
         for stashed_value in &stashed_values {
             stashed_value.disarm_pending_transfer();
         }
 
-        let ref_updates = self.collect_ref_updates(&stashed_values);
+        let ref_updates = Self::collect_ref_updates(&args, &stashed_values);
 
-        let return_value = self
-            .result_type
-            .decode_with_context(&result, &stashed_values, &self.args)
-            .with_context(|| format!("decoding return value of {}", self.symbol_name));
+        let return_value = result_type
+            .decode_with_context(&result, &stashed_values, &args)
+            .with_context(|| format!("decoding return value of {symbol_name}"));
 
-        self.release_sized_array_return(&result);
+        Self::release_sized_array_return(result_type, &result);
 
         let ref_updates = ref_updates?;
         let return_value = return_value?;
@@ -102,8 +107,8 @@ impl NativeRequest for CallRequest {
 }
 
 impl CallRequest {
-    fn release_sized_array_return(&self, result: &ffi::StashedValue) {
-        let Descriptor::Array(array_type) = &self.result_type else {
+    fn release_sized_array_return(result_type: &Descriptor, result: &ffi::StashedValue) {
+        let Descriptor::Array(array_type) = result_type else {
             return;
         };
         if !array_type.ownership.is_full()
@@ -126,15 +131,15 @@ impl CallRequest {
 
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn collect_ref_updates(
-        &self,
+        args: &[Arg],
         stashed_values: &[ffi::StashedValue],
     ) -> anyhow::Result<Vec<RefUpdate>> {
         let mut ref_updates = Vec::new();
-        for (i, arg) in self.args.iter().enumerate() {
+        for (i, arg) in args.iter().enumerate() {
             if let Value::Ref(ref_val) = &arg.value {
                 let new_value =
                     arg.ty
-                        .decode_with_context(&stashed_values[i], stashed_values, &self.args)?;
+                        .decode_with_context(&stashed_values[i], stashed_values, args)?;
                 ref_updates.push((Arc::clone(&ref_val.js_obj), new_value));
             }
         }
@@ -151,24 +156,25 @@ mod napi_export {
     #[cfg_attr(test, allow(dead_code))]
     pub fn call<'env>(
         env: &'env Env,
-        library: String,
-        symbol: String,
-        args: Array,
-        return_type: Unknown<'_>,
+        descriptor: &External<Arc<CallDescriptor>>,
+        values: Array,
     ) -> napi::Result<Unknown<'env>> {
-        let parsed_args = Arg::from_js_array(env, &args)?;
-        let result_type = Descriptor::from_descriptor(env, return_type)?;
-        if !result_type.can_be_return_type() {
+        let descriptor: Arc<CallDescriptor> = Arc::clone(descriptor);
+        let parsed_values = crate::ffi::value::map_js_array(env, &values, Value::from_js_value)?;
+        if parsed_values.len() != descriptor.arg_types.len() {
             return Err(napi::Error::new(
                 napi::Status::InvalidArg,
-                format!("'{result_type}' cannot be used as a function return type"),
+                format!(
+                    "{}: expected {} arguments, received {}",
+                    descriptor.symbol_name,
+                    descriptor.arg_types.len(),
+                    parsed_values.len()
+                ),
             ));
         }
         let request = CallRequest {
-            library_name: library,
-            symbol_name: symbol,
-            args: parsed_args,
-            result_type,
+            descriptor,
+            values: parsed_values,
         };
         request.dispatch(env)
     }
@@ -210,35 +216,54 @@ mod tests {
         )
     }
 
-    fn g_memdup2_request(data: Value) -> CallRequest {
+    fn build_request(
+        library_name: &str,
+        symbol_name: &str,
+        args: Vec<Arg>,
+        result_type: Descriptor,
+    ) -> CallRequest {
+        let arg_types = args.iter().map(|arg| arg.ty.clone()).collect();
+        let values = args.into_iter().map(|arg| arg.value).collect();
         CallRequest {
-            library_name: "libglib-2.0.so.0".into(),
-            symbol_name: "g_memdup2".into(),
-            args: vec![
+            descriptor: Arc::new(CallDescriptor {
+                library_name: library_name.into(),
+                symbol_name: symbol_name.into(),
+                arg_types,
+                result_type,
+            }),
+            values,
+        }
+    }
+
+    fn g_memdup2_request(data: Value) -> CallRequest {
+        build_request(
+            "libglib-2.0.so.0",
+            "g_memdup2",
+            vec![
                 Arg::new(u8_array(ArrayKind::Array, Ownership::Borrowed), data),
                 Arg::new(Descriptor::Integer(IntegerKind::U64), Value::Number(3.0)),
             ],
-            result_type: u8_array(ArrayKind::Sized { size_index: 1 }, Ownership::Full),
-        }
+            u8_array(ArrayKind::Sized { size_index: 1 }, Ownership::Full),
+        )
     }
 
     #[test]
     fn execute_decodes_transfer_full_null_terminated_array_return() {
-        let request = CallRequest {
-            library_name: "libglib-2.0.so.0".into(),
-            symbol_name: "g_strsplit".into(),
-            args: vec![
+        let request = build_request(
+            "libglib-2.0.so.0",
+            "g_strsplit",
+            vec![
                 borrowed_string_arg("a,b"),
                 borrowed_string_arg(","),
                 Arg::new(Descriptor::Integer(IntegerKind::I32), Value::Number(-1.0)),
             ],
-            result_type: Descriptor::Array(ArrayDescriptor {
+            Descriptor::Array(ArrayDescriptor {
                 item_type: Box::new(Descriptor::String(string_type(Ownership::Full))),
                 kind: ArrayKind::Array,
                 ownership: Ownership::Full,
                 element_size: None,
             }),
-        };
+        );
         let (value, ref_updates) = request.execute().expect("g_strsplit call should succeed");
         assert!(ref_updates.is_empty());
         let items = value.as_array().expect("expected array result");
@@ -289,10 +314,10 @@ mod tests {
             BufferViewKind::Uint8,
             false,
         );
-        let request = CallRequest {
-            library_name: "libglib-2.0.so.0".into(),
-            symbol_name: "g_unichar_to_utf8".into(),
-            args: vec![
+        let request = build_request(
+            "libglib-2.0.so.0",
+            "g_unichar_to_utf8",
+            vec![
                 Arg::new(
                     Descriptor::Integer(IntegerKind::U32),
                     Value::Number(0x00E9 as f64),
@@ -302,8 +327,8 @@ mod tests {
                     Value::BufferView(view),
                 ),
             ],
-            result_type: Descriptor::Integer(IntegerKind::I32),
-        };
+            Descriptor::Integer(IntegerKind::I32),
+        );
         let (value, ref_updates) = request
             .execute()
             .expect("g_unichar_to_utf8 call should succeed");
@@ -314,12 +339,12 @@ mod tests {
 
     #[test]
     fn execute_runs_a_real_ffi_call() {
-        let request = CallRequest {
-            library_name: "libglib-2.0.so.0".into(),
-            symbol_name: "g_random_int_range".into(),
-            args: vec![int_arg(10.0), int_arg(20.0)],
-            result_type: Descriptor::Integer(IntegerKind::I32),
-        };
+        let request = build_request(
+            "libglib-2.0.so.0",
+            "g_random_int_range",
+            vec![int_arg(10.0), int_arg(20.0)],
+            Descriptor::Integer(IntegerKind::I32),
+        );
         let (value, ref_updates) = request.execute().expect("FFI call should succeed");
         assert!(ref_updates.is_empty());
         let n = value.as_number().expect("result should be a number");

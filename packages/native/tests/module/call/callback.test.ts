@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { call } from "../../../index.js";
 import { expectClickedSignalHandlerId } from "../call-callback-integer-helpers.js";
 import { suppressUnhandledRejections } from "../lifecycle.js";
 import {
+    callArgs,
     connectSignal,
     connectSignalCallback,
     createButton,
@@ -32,7 +32,7 @@ describe("call - callback - invoke", () => {
             callbackInvoked = true;
         });
 
-        call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], VOID);
+        callArgs(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], VOID);
 
         expect(callbackInvoked).toBe(true);
     });
@@ -47,7 +47,7 @@ describe("call - callback - args", () => {
             receivedArg = arg;
         });
 
-        call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], VOID);
+        callArgs(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], VOID);
 
         expect(receivedArg).toBeDefined();
     });
@@ -78,7 +78,7 @@ describe("call - callback - multiple", () => {
             count2++;
         });
 
-        call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], VOID);
+        callArgs(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], VOID);
 
         expect(count1).toBe(1);
         expect(count2).toBe(1);
@@ -97,7 +97,7 @@ describe("call - callback - destroy notify", () => {
         expect(typeof handlerId).toBe("number");
         expect(handlerId).toBeGreaterThan(0);
 
-        call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], VOID);
+        callArgs(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], VOID);
 
         expect(callbackInvoked).toBe(true);
     });
@@ -112,7 +112,7 @@ describe("call - callback - argument types", () => {
             receivedObject = obj;
         });
 
-        call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], VOID);
+        callArgs(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], VOID);
 
         expect(receivedObject).not.toBeNull();
     });
@@ -172,7 +172,7 @@ describe("call - callback - edge cases throw", () => {
 
         await suppressUnhandledRejections(() => {
             expect(() => {
-                call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], VOID);
+                callArgs(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], VOID);
             }).not.toThrow();
         });
     });

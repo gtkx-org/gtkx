@@ -1,7 +1,6 @@
 import {
     alloc,
     type BoxedType,
-    call,
     type FundamentalType,
     getType,
     type Handle,
@@ -17,6 +16,8 @@ import {
     bind,
     booleanT,
     boxedT,
+    callTypeFunction,
+    createBindCache,
     float32T,
     float64T,
     fundamentalT,
@@ -181,23 +182,18 @@ const valueSetStrv = (value: Handle, v: string[]): void => {
 };
 const valueGetStrv = (value: Handle): string[] => (gValueGetBoxedStrv(value) as string[] | null) ?? [];
 
+const setBoxedCache = createBindCache();
+
 const setBoxedPayload = (
     value: Handle,
     symbol: "g_value_set_boxed" | "g_value_set_static_boxed",
     boxedHandle: Handle | null,
 ): void => {
-    call(
-        LIB,
-        symbol,
-        [
-            { type: GVALUE_T, value },
-            {
-                type: boxedT(typeName(valueGetType(value)) ?? "GBoxed", { library: LIB }),
-                value: boxedHandle,
-            },
-        ],
-        voidT,
+    const name = typeName(valueGetType(value)) ?? "GBoxed";
+    const setBoxed = setBoxedCache(`${symbol} ${name}`, () =>
+        bind(LIB, symbol, [GVALUE_T, boxedT(name, { library: LIB })], voidT),
     );
+    setBoxed(value, boxedHandle);
 };
 
 function valueSetBoxed(value: Handle, boxed: object | null): void {
@@ -231,18 +227,19 @@ export function inoutBoxedForDescriptor(descriptor: Type, boxed: object): Handle
     return value;
 }
 
+const dupBoxedCache = createBindCache();
+
 export function valueGetBoxed(value: Handle): object | null {
     const gtype = valueGetType(value);
     if (typeFundamental(gtype) !== TYPE_BOXED) {
         return null;
     }
     const cls = requireWrapperClass(gtype);
-    const ptr = call(
-        LIB,
-        "g_value_dup_boxed",
-        [{ type: GVALUE_T, value }],
-        boxedT(typeName(gtype) ?? "GBoxed", { ownership: "full", library: LIB }),
+    const name = typeName(gtype) ?? "GBoxed";
+    const dupBoxed = dupBoxedCache(name, () =>
+        bind(LIB, "g_value_dup_boxed", [GVALUE_T], boxedT(name, { ownership: "full", library: LIB })),
     );
+    const ptr = dupBoxed(value);
     return ptr === null ? null : wrapHandle(ptr as Handle, cls);
 }
 
@@ -256,7 +253,7 @@ export function getGValueBoxed(value: object): object | null {
 
 const resolveBoxedInnerGtype = (descriptor: BoxedType): GType => {
     if (descriptor.getTypeFn && descriptor.library) {
-        return call(descriptor.library, descriptor.getTypeFn, [], biguint64T) as GType;
+        return callTypeFunction(descriptor.library, descriptor.getTypeFn) as GType;
     }
     const gtype = typeFromName(descriptor.innerType);
     if (gtype === TYPE_INVALID) {
@@ -301,7 +298,7 @@ export function gtypeFromDescriptor(descriptor: Type): GType {
             return TYPE_OBJECT;
         case "enum":
         case "flags":
-            return call(descriptor.library, descriptor.getTypeFn, [], biguint64T) as GType;
+            return callTypeFunction(descriptor.library, descriptor.getTypeFn) as GType;
         case "boxed":
             return resolveBoxedInnerGtype(descriptor);
         case "fundamental":

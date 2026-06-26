@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { call } from "../../../index.js";
 import {
     allocRectangle,
     allocRgba,
@@ -9,7 +8,17 @@ import {
     writeRectangleFields,
     writeRgbaChannels,
 } from "../call-boxed-alloc-helpers.js";
-import { BOOLEAN, GDK_LIB, INT32, PANGO_LIB, STRING, STRING_BORROWED, startMemoryMeasurement, VOID } from "../utils.js";
+import {
+    BOOLEAN,
+    callArgs,
+    GDK_LIB,
+    INT32,
+    PANGO_LIB,
+    STRING,
+    STRING_BORROWED,
+    startMemoryMeasurement,
+    VOID,
+} from "../utils.js";
 
 const RGBA_BOXED_NONE = { type: "boxed" as const, innerType: "GdkRGBA", lib: GDK_LIB, ownership: "borrowed" as const };
 const RECTANGLE_BOXED_NONE = {
@@ -50,7 +59,7 @@ describe("call - boxed types - GdkRGBA basic", () => {
     it("parses RGBA from string", () => {
         const rgba = allocRgba();
 
-        const success = call(
+        const success = callArgs(
             GDK_LIB,
             "gdk_rgba_parse",
             [
@@ -76,7 +85,7 @@ describe("call - boxed types - GdkRGBA conversion", () => {
 
         writeRgbaChannels(rgba, { red: 1.0, green: 0.5, blue: 0.0, alpha: 1.0 });
 
-        const result = call(GDK_LIB, "gdk_rgba_to_string", [{ type: RGBA_BOXED_NONE, value: rgba }], STRING);
+        const result = callArgs(GDK_LIB, "gdk_rgba_to_string", [{ type: RGBA_BOXED_NONE, value: rgba }], STRING);
 
         expect(typeof result).toBe("string");
         expect(result).toContain("rgb");
@@ -90,7 +99,7 @@ describe("call - boxed types - GdkRGBA conversion", () => {
 
         writeRgbaChannels(rgba2, { red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0 });
 
-        const equal = call(
+        const equal = callArgs(
             GDK_LIB,
             "gdk_rgba_equal",
             [
@@ -124,7 +133,7 @@ describe("call - boxed types - GdkRectangle intersection", () => {
 
         writeRectangleFields(rect2, { x: 50, y: 50, width: 100, height: 100 });
 
-        const intersects = call(
+        const intersects = callArgs(
             GDK_LIB,
             "gdk_rectangle_intersect",
             [
@@ -156,7 +165,7 @@ describe("call - boxed types - GdkRectangle union", () => {
 
         writeRectangleFields(rect2, { x: 50, y: 50, width: 50, height: 50 });
 
-        call(
+        callArgs(
             GDK_LIB,
             "gdk_rectangle_union",
             [
@@ -180,7 +189,7 @@ describe("call - boxed types - GdkRectangle contains", () => {
 
         writeRectangleFields(rect, { x: 0, y: 0, width: 100, height: 100 });
 
-        const containsInside = call(
+        const containsInside = callArgs(
             GDK_LIB,
             "gdk_rectangle_contains_point",
             [
@@ -191,7 +200,7 @@ describe("call - boxed types - GdkRectangle contains", () => {
             BOOLEAN,
         );
 
-        const containsOutside = call(
+        const containsOutside = callArgs(
             GDK_LIB,
             "gdk_rectangle_contains_point",
             [
@@ -209,7 +218,7 @@ describe("call - boxed types - GdkRectangle contains", () => {
 
 describe("call - boxed types - PangoFontDescription basic", () => {
     it("creates font description from string", () => {
-        const fontDesc = call(
+        const fontDesc = callArgs(
             PANGO_LIB,
             "pango_font_description_from_string",
             [{ type: STRING, value: "Sans 12" }],
@@ -218,7 +227,7 @@ describe("call - boxed types - PangoFontDescription basic", () => {
 
         expect(fontDesc).toBeDefined();
 
-        const family = call(
+        const family = callArgs(
             PANGO_LIB,
             "pango_font_description_get_family",
             [{ type: PANGO_FONT_DESC_NONE, value: fontDesc }],
@@ -231,14 +240,14 @@ describe("call - boxed types - PangoFontDescription basic", () => {
 
 describe("call - boxed types - PangoFontDescription size", () => {
     it("modifies font description size", () => {
-        const fontDesc = call(
+        const fontDesc = callArgs(
             PANGO_LIB,
             "pango_font_description_from_string",
             [{ type: STRING, value: "Sans 12" }],
             PANGO_FONT_DESC,
         );
 
-        call(
+        callArgs(
             PANGO_LIB,
             "pango_font_description_set_size",
             [
@@ -248,7 +257,7 @@ describe("call - boxed types - PangoFontDescription size", () => {
             VOID,
         );
 
-        const size = call(
+        const size = callArgs(
             PANGO_LIB,
             "pango_font_description_get_size",
             [{ type: PANGO_FONT_DESC_NONE, value: fontDesc }],
@@ -261,14 +270,14 @@ describe("call - boxed types - PangoFontDescription size", () => {
 
 describe("call - boxed types - PangoFontDescription conversion", () => {
     it("converts font description to string", () => {
-        const fontDesc = call(
+        const fontDesc = callArgs(
             PANGO_LIB,
             "pango_font_description_from_string",
             [{ type: STRING, value: "Serif Bold 16" }],
             PANGO_FONT_DESC,
         );
 
-        const str = call(
+        const str = callArgs(
             PANGO_LIB,
             "pango_font_description_to_string",
             [{ type: PANGO_FONT_DESC_NONE, value: fontDesc }],
@@ -283,7 +292,7 @@ describe("call - boxed types - PangoFontDescription conversion", () => {
 
 describe("call - boxed types - ownership", () => {
     it("handles owned boxed (caller manages)", () => {
-        const fontDesc = call(
+        const fontDesc = callArgs(
             PANGO_LIB,
             "pango_font_description_from_string",
             [{ type: STRING, value: "Monospace 10" }],
@@ -292,7 +301,7 @@ describe("call - boxed types - ownership", () => {
 
         expect(fontDesc).toBeDefined();
 
-        const family = call(
+        const family = callArgs(
             PANGO_LIB,
             "pango_font_description_get_family",
             [{ type: PANGO_FONT_DESC_NONE, value: fontDesc }],
@@ -305,7 +314,7 @@ describe("call - boxed types - ownership", () => {
     it("handles transfer none boxed correctly", () => {
         const rgba = allocRgba();
 
-        call(
+        callArgs(
             GDK_LIB,
             "gdk_rgba_parse",
             [
@@ -315,9 +324,9 @@ describe("call - boxed types - ownership", () => {
             BOOLEAN,
         );
 
-        const str1 = call(GDK_LIB, "gdk_rgba_to_string", [{ type: RGBA_BOXED_NONE, value: rgba }], STRING);
+        const str1 = callArgs(GDK_LIB, "gdk_rgba_to_string", [{ type: RGBA_BOXED_NONE, value: rgba }], STRING);
 
-        const str2 = call(GDK_LIB, "gdk_rgba_to_string", [{ type: RGBA_BOXED_NONE, value: rgba }], STRING);
+        const str2 = callArgs(GDK_LIB, "gdk_rgba_to_string", [{ type: RGBA_BOXED_NONE, value: rgba }], STRING);
 
         expect(str1).toBe(str2);
     });
@@ -341,14 +350,14 @@ describe("call - boxed types - memory leaks fonts", () => {
         const mem = startMemoryMeasurement();
 
         for (let i = 0; i < 200; i++) {
-            const fontDesc = call(
+            const fontDesc = callArgs(
                 PANGO_LIB,
                 "pango_font_description_from_string",
                 [{ type: STRING, value: `Sans ${10 + (i % 20)}` }],
                 PANGO_FONT_DESC,
             );
 
-            call(
+            callArgs(
                 PANGO_LIB,
                 "pango_font_description_to_string",
                 [{ type: PANGO_FONT_DESC_NONE, value: fontDesc }],
@@ -376,7 +385,7 @@ describe("call - boxed types - memory leaks rectangles", () => {
 describe("call - boxed types - edge cases multi-lib", () => {
     it("handles boxed types from different libraries", () => {
         const rgba = allocRgba();
-        const fontDesc = call(
+        const fontDesc = callArgs(
             PANGO_LIB,
             "pango_font_description_from_string",
             [{ type: STRING, value: "Sans 12" }],
@@ -386,7 +395,7 @@ describe("call - boxed types - edge cases multi-lib", () => {
         expect(rgba).toBeDefined();
         expect(fontDesc).toBeDefined();
 
-        call(
+        callArgs(
             GDK_LIB,
             "gdk_rgba_parse",
             [
@@ -396,7 +405,7 @@ describe("call - boxed types - edge cases multi-lib", () => {
             BOOLEAN,
         );
 
-        const family = call(
+        const family = callArgs(
             PANGO_LIB,
             "pango_font_description_get_family",
             [{ type: PANGO_FONT_DESC_NONE, value: fontDesc }],

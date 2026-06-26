@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { call } from "../../index.js";
-import { GTK_LIB } from "./utils.js";
+import { callArgs, GTK_LIB } from "./utils.js";
 
 describe("init", () => {
     it("initializes GTK and allows FFI calls", () => {
-        const label = call(
+        const label = callArgs(
             GTK_LIB,
             "gtk_label_new",
             [{ type: { type: "string", ownership: "borrowed" }, value: "Test" }],

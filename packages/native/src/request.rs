@@ -1,9 +1,8 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 
 mod alloc;
+mod bind;
 mod call;
-mod call_compiled;
-mod compile_signature;
 mod freeze;
 mod get_type;
 mod get_wrapper;
@@ -14,13 +13,6 @@ mod register_class;
 mod set_wrapper;
 mod unfreeze;
 mod write;
-
-#[cfg(feature = "test-support")]
-mod drive_toggle_from_thread;
-#[cfg(feature = "test-support")]
-mod finalize_count;
-#[cfg(feature = "test-support")]
-mod watch_object_finalize;
 
 use std::sync::Arc;
 

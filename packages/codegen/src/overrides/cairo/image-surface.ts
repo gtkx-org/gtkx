@@ -1,5 +1,5 @@
 import { getHandle, setHandle, t, wrapHandle } from "@gtkx/ffi";
-import { call, type Handle, read } from "@gtkx/native";
+import { type Handle, read } from "@gtkx/native";
 import type { Format } from "../cairo.js";
 import { Surface } from "../cairo.js";
 
@@ -110,21 +110,19 @@ export class ImageSurface extends Surface {
         const height = this.getHeight();
         const totalBytes = stride * height;
         if (totalBytes === 0) return new Uint8Array(0);
-        const ptr = call(
+        const getImageData = bind(
             "libcairo.so.2",
             "cairo_image_surface_get_data",
             [
-                {
-                    type: t.boxed("CairoSurface", {
-                        ownership: "borrowed",
-                        library: "libcairo-gobject.so.2",
-                        getTypeFn: "cairo_gobject_surface_get_type",
-                    }),
-                    value: getHandle(this),
-                },
+                t.boxed("CairoSurface", {
+                    ownership: "borrowed",
+                    library: "libcairo-gobject.so.2",
+                    getTypeFn: "cairo_gobject_surface_get_type",
+                }),
             ],
             t.struct("borrowed", { size: totalBytes }),
-        ) as Handle | null;
+        );
+        const ptr = getImageData(getHandle(this)) as Handle | null;
         if (ptr === null) return new Uint8Array(0);
         const result = new Uint8Array(totalBytes);
         for (let i = 0; i < totalBytes; i++) {

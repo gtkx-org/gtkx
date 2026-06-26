@@ -6,8 +6,7 @@ import {
     type BoxedType,
     type BufferType,
     type CallbackType,
-    callCompiled,
-    compileSignature,
+    call,
     type EnumType,
     type FlagsType,
     type Float32Type,
@@ -19,6 +18,7 @@ import {
     type Int16Type,
     type Int32Type,
     type Int64Type,
+    bind as nativeBind,
     type Ownership,
     type RefType,
     type StringType,
@@ -50,8 +50,27 @@ export const bind = <R extends Type>(
     argTypes: Type[],
     returnType: R,
 ): ((...values: Value[]) => ValueOf<R>) => {
-    const compiled = compileSignature(argTypes, returnType);
-    return (...values) => callCompiled(library, symbol, compiled, values) as ValueOf<R>;
+    const descriptor = nativeBind(library, symbol, argTypes, returnType);
+    return (...values) => call(descriptor, values) as ValueOf<R>;
+};
+
+type BoundCall = (...values: Value[]) => Value;
+
+/**
+ * Creates a cache of compiled bindings keyed by string. The first call for a key builds the binding
+ * (compiling its signature once); later calls reuse it. Use when a call site's signature varies
+ * along a small, stable axis — e.g. a boxed type name, or a `(class, signal)` pair — so each
+ * distinct signature is compiled exactly once instead of on every call.
+ */
+export const createBindCache = (): ((key: string, make: () => BoundCall) => BoundCall) => {
+    const cache = new Map<string, BoundCall>();
+    return (key, make) => {
+        const existing = cache.get(key);
+        if (existing !== undefined) return existing;
+        const bound = make();
+        cache.set(key, bound);
+        return bound;
+    };
 };
 
 export const int8T: Int8Type = Object.freeze({ type: "int8" });
@@ -64,6 +83,16 @@ export const int64T: Int64Type = Object.freeze({ type: "int64" });
 export const uint64T: Uint64Type = Object.freeze({ type: "uint64" });
 export const bigint64T: BigInt64Type = Object.freeze({ type: "bigint64" });
 export const biguint64T: BigUint64Type = Object.freeze({ type: "biguint64" });
+
+const typeFunctionCache = createBindCache();
+
+/**
+ * Invokes a GObject `*_get_type()` function — no arguments, returning the `GType` as a `bigint` —
+ * memoizing one `([], biguint64)` binding per `(library, symbol)` so each type function is bound
+ * exactly once.
+ */
+export const callTypeFunction = (library: string, symbol: string): bigint =>
+    typeFunctionCache(`${library} ${symbol}`, () => bind(library, symbol, [], biguint64T))() as bigint;
 export const float32T: Float32Type = Object.freeze({ type: "float32" });
 export const float64T: Float64Type = Object.freeze({ type: "float64" });
 export const booleanT: BooleanType = Object.freeze({ type: "boolean" });

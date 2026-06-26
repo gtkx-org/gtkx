@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { call, type Type } from "../../index.js";
+import type { Type } from "../../index.js";
+import { callArgs } from "./utils.js";
 
 type DescriptorByTag = { [K in Type["type"]]: Extract<Type, { type: K }> };
 
@@ -49,7 +50,7 @@ const MISSING_SYMBOL = "gtkx_type_tag_parity_missing_symbol";
 const UNKNOWN_TAG_ERROR = /unknown type/i;
 
 const parseReturnType = (returnType: Type): void => {
-    call(MISSING_LIBRARY, MISSING_SYMBOL, [], returnType);
+    callArgs(MISSING_LIBRARY, MISSING_SYMBOL, [], returnType);
 };
 
 describe("Type tag parity between the TS Type union and Rust from_js_value", () => {
