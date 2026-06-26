@@ -52,11 +52,3 @@ const isAdwEasing = (ease: Easing | Adw.Easing): ease is Adw.Easing => typeof ea
  * through unchanged) to the underlying libadwaita easing enum.
  */
 export const resolveEasing = (ease: Easing | Adw.Easing): Adw.Easing => (isAdwEasing(ease) ? ease : easingByName[ease]);
-
-/**
- * Samples an easing curve at a progress value in `[0, 1]`, returning the eased
- * progress. Wraps {@link Adw.easingEase} so any of the supported curves can be
- * evaluated directly.
- */
-export const sampleEasing = (ease: Easing | Adw.Easing, progress: number): number =>
-    Adw.easingEase(resolveEasing(ease), progress);

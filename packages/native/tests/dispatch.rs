@@ -321,7 +321,9 @@ fn reentrant_freeze_loop_does_not_strand_outer_loop() {
 
         // Self-heal global state regardless of the outcome so sibling tests are unaffected.
         mailbox.mark_not_running();
-        outer.join().expect("outer freeze loop thread should finish");
+        outer
+            .join()
+            .expect("outer freeze loop thread should finish");
         mailbox.unfreeze();
         mailbox.reset_for_test();
         drain_pending();
