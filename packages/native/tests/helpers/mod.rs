@@ -219,7 +219,7 @@ pub fn is_valid_boxed_ptr(ptr: *mut std::ffi::c_void, gtype: glib::Type) -> bool
 
 pub struct TestBoxed {
     pub ptr: *mut c_void,
-    pub ty: Option<glib::Type>,
+    pub descriptor: Option<glib::Type>,
     pub is_owned: bool,
 }
 
@@ -231,7 +231,7 @@ impl Drop for TestBoxed {
             // `g_boxed_free`; a `None` plain allocation with `g_free`. Either frees the owned
             // value exactly once as the wrapper is dropped.
             unsafe {
-                match self.ty {
+                match self.descriptor {
                     Some(gtype) => {
                         glib::gobject_ffi::g_boxed_free(gtype.into_glib(), self.ptr);
                     }

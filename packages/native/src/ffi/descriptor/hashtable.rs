@@ -20,8 +20,8 @@ pub enum HashTableEntryEncoder {
 
 impl HashTableEntryEncoder {
     #[must_use]
-    pub fn from_type(ty: &Descriptor) -> Option<Self> {
-        match ty {
+    pub fn from_descriptor(descriptor: &Descriptor) -> Option<Self> {
+        match descriptor {
             Descriptor::String(_) => Some(Self::String),
             Descriptor::Integer(_) => Some(Self::Integer),
             Descriptor::Boolean(_) => Some(Self::Boolean),
@@ -29,9 +29,9 @@ impl HashTableEntryEncoder {
             Descriptor::Object(_)
             | Descriptor::Boxed(_)
             | Descriptor::Struct(_)
-            | Descriptor::Fundamental(_) => Some(Self::Handle(Box::new(ty.clone()))),
-            Descriptor::Array(array_type) if array_type.kind == ArrayKind::GPtrArray => {
-                Some(Self::PtrArray(array_type.item_descriptor.clone()))
+            | Descriptor::Fundamental(_) => Some(Self::Handle(Box::new(descriptor.clone()))),
+            Descriptor::Array(array_descriptor) if array_descriptor.kind == ArrayKind::GPtrArray => {
+                Some(Self::PtrArray(array_descriptor.item_descriptor.clone()))
             }
             _ => None,
         }
@@ -61,13 +61,13 @@ impl HashTableEntryEncoder {
         match self {
             Self::String | Self::Float => Ok(Some(glib::ffi::g_free)),
             Self::Integer | Self::Boolean => Ok(None),
-            Self::Handle(ty) => Self::transferred_entry_destroy(ty),
+            Self::Handle(descriptor) => Self::transferred_entry_destroy(descriptor),
             Self::PtrArray(_) => Ok(Some(g_ptr_array_unref_wrapper)),
         }
     }
 
-    fn transferred_entry_destroy(ty: &Descriptor) -> anyhow::Result<glib::ffi::GDestroyNotify> {
-        match ty {
+    fn transferred_entry_destroy(descriptor: &Descriptor) -> anyhow::Result<glib::ffi::GDestroyNotify> {
+        match descriptor {
             Descriptor::Object(object) if object.ownership.is_full() => {
                 Ok(Some(g_object_unref_wrapper))
             }
@@ -323,17 +323,17 @@ impl FfiEncoder for HashTableDescriptor {
             value::Value::Null | value::Value::Undefined => {
                 return Ok(ffi::StashedValue::Ptr(std::ptr::null_mut()));
             }
-            _ => bail!("Expected an Array of tuples for GHashTable type, got {val:?}"),
+            _ => bail!("Expected an Array of tuples for GHashTable descriptor, got {val:?}"),
         };
 
         let key_encoder =
-            HashTableEntryEncoder::from_type(&self.key_descriptor).ok_or_else(|| {
-                anyhow::anyhow!("Unsupported GHashTable key type: {:?}", self.key_descriptor)
+            HashTableEntryEncoder::from_descriptor(&self.key_descriptor).ok_or_else(|| {
+                anyhow::anyhow!("Unsupported GHashTable key descriptor: {:?}", self.key_descriptor)
             })?;
         let value_encoder =
-            HashTableEntryEncoder::from_type(&self.value_descriptor).ok_or_else(|| {
+            HashTableEntryEncoder::from_descriptor(&self.value_descriptor).ok_or_else(|| {
                 anyhow::anyhow!(
-                    "Unsupported GHashTable value type: {:?}",
+                    "Unsupported GHashTable value descriptor: {:?}",
                     self.value_descriptor
                 )
             })?;

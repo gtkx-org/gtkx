@@ -86,9 +86,9 @@ fn assert_full_element_container_releases_on_drop(kind: ArrayKind, container: Ow
         let (_obj, obj_ptr) = new_gobject();
         let before = gobject_refcount(obj_ptr);
 
-        let ty = array_type(gobject_item_descriptor(Ownership::Full), kind, container);
+        let descriptor = array_type(gobject_item_descriptor(Ownership::Full), kind, container);
         let val = Value::Array(vec![Value::Object(Handle::borrowed(obj_ptr))]);
-        let encoded = ty.encode(&val).unwrap();
+        let encoded = descriptor.encode(&val).unwrap();
         assert_eq!(gobject_refcount(obj_ptr), before + 1);
 
         drop(encoded);
@@ -98,13 +98,13 @@ fn assert_full_element_container_releases_on_drop(kind: ArrayKind, container: Ow
 
 fn assert_string_list_full_container_borrowed_elements_releases_spine(kind: ArrayKind) {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             string_item_descriptor(Ownership::Borrowed),
             kind,
             Ownership::Full,
         );
         let val = Value::Array(vec![Value::String("kept".to_string())]);
-        let encoded = ty.encode(&val).unwrap();
+        let encoded = descriptor.encode(&val).unwrap();
         let StashedValue::Storage(storage) = &encoded else {
             panic!("expected storage")
         };
@@ -130,13 +130,13 @@ fn encode_glist_handles_full_ownership_transfers_to_callee_when_disarmed() {
         let (_obj, obj_ptr) = new_gobject();
         let before = gobject_refcount(obj_ptr);
 
-        let ty = array_type(
+        let descriptor = array_type(
             gobject_item_descriptor(Ownership::Full),
             ArrayKind::GList,
             Ownership::Full,
         );
         let val = Value::Array(vec![Value::Object(Handle::borrowed(obj_ptr))]);
-        let encoded = ty.encode(&val).unwrap();
+        let encoded = descriptor.encode(&val).unwrap();
         encoded.disarm_pending_transfer();
 
         let StashedValue::Storage(storage) = &encoded else {
@@ -162,7 +162,7 @@ fn encode_glist_handles_releases_acquired_elements_when_later_element_is_null() 
         let (_obj, obj_ptr) = new_gobject();
         let before = gobject_refcount(obj_ptr);
 
-        let ty = array_type(
+        let descriptor = array_type(
             gobject_item_descriptor(Ownership::Full),
             ArrayKind::GList,
             Ownership::Full,
@@ -171,7 +171,7 @@ fn encode_glist_handles_releases_acquired_elements_when_later_element_is_null() 
             Value::Object(Handle::borrowed(obj_ptr)),
             Value::Object(Handle::borrowed(std::ptr::null_mut())),
         ]);
-        assert!(ty.encode(&val).is_err());
+        assert!(descriptor.encode(&val).is_err());
         assert_eq!(gobject_refcount(obj_ptr), before);
     });
 }
@@ -179,13 +179,13 @@ fn encode_glist_handles_releases_acquired_elements_when_later_element_is_null() 
 #[test]
 fn encode_gslist_strings_full_container_releases_when_call_never_happens() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             string_item_descriptor(Ownership::Full),
             ArrayKind::GSList,
             Ownership::Full,
         );
         let val = Value::Array(vec![Value::String("foo".to_string())]);
-        let encoded = ty.encode(&val).unwrap();
+        let encoded = descriptor.encode(&val).unwrap();
         drop(encoded);
     });
 }
@@ -193,20 +193,20 @@ fn encode_gslist_strings_full_container_releases_when_call_never_happens() {
 #[test]
 fn encode_garray_full_ownership_adopted_strings_release_when_call_never_happens() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             string_item_descriptor(Ownership::Full),
             ArrayKind::GArray,
             Ownership::Full,
         );
         let val = Value::Array(vec![Value::String("foo".to_string())]);
-        let encoded = ty.encode(&val).unwrap();
+        let encoded = descriptor.encode(&val).unwrap();
         drop(encoded);
     });
 }
 
 #[test]
 fn ptr_to_value_sized_reads_explicit_length() {
-    let ty = array_type(
+    let descriptor = array_type(
         Descriptor::Integer(IntegerKind::I32),
         ArrayKind::Sized { size_index: 1 },
         Ownership::Borrowed,
@@ -215,7 +215,7 @@ fn ptr_to_value_sized_reads_explicit_length() {
     let value =
         // SAFETY: the data pointer is either null or a live buffer of at least the given
         // length of the codec's element type, valid for this read.
-        unsafe { ty.ptr_to_value_sized(data.as_ptr() as *mut std::ffi::c_void, 3) }.unwrap();
+        unsafe { descriptor.ptr_to_value_sized(data.as_ptr() as *mut std::ffi::c_void, 3) }.unwrap();
     let Value::Array(items) = value else {
         panic!("expected array")
     };
@@ -224,13 +224,13 @@ fn ptr_to_value_sized_reads_explicit_length() {
 
     // SAFETY: the data pointer is either null or a live buffer of at least the given
     // length of the codec's element type, valid for this read.
-    let empty = unsafe { ty.ptr_to_value_sized(std::ptr::null_mut(), 5) }.unwrap();
+    let empty = unsafe { descriptor.ptr_to_value_sized(std::ptr::null_mut(), 5) }.unwrap();
     assert!(matches!(empty, Value::Array(items) if items.is_empty()));
 }
 
 #[test]
 fn ptr_to_value_sized_reads_enum_flags_elements_without_range_guard() {
-    let ty = array_type(
+    let descriptor = array_type(
         enum_flags_item_descriptor(),
         ArrayKind::Sized { size_index: 1 },
         Ownership::Borrowed,
@@ -239,7 +239,7 @@ fn ptr_to_value_sized_reads_enum_flags_elements_without_range_guard() {
     let value =
         // SAFETY: the data pointer is either null or a live buffer of at least the given
         // length of the codec's element type, valid for this read.
-        unsafe { ty.ptr_to_value_sized(data.as_ptr() as *mut std::ffi::c_void, 3) }.unwrap();
+        unsafe { descriptor.ptr_to_value_sized(data.as_ptr() as *mut std::ffi::c_void, 3) }.unwrap();
     let Value::Array(items) = value else {
         panic!("expected array")
     };
@@ -274,16 +274,16 @@ fn array_kind_from_str_parses_every_variant() {
 
 #[test]
 fn encode_optional_null_yields_null_ptr() {
-    let ty = array_type(
+    let descriptor = array_type(
         Descriptor::Integer(IntegerKind::U8),
         ArrayKind::Array,
         Ownership::Full,
     );
-    match ty.encode(&Value::Null).unwrap() {
+    match descriptor.encode(&Value::Null).unwrap() {
         StashedValue::Ptr(ptr) => assert!(ptr.is_null()),
         other => panic!("expected null ptr, got {other:?}"),
     }
-    match ty.encode(&Value::Undefined).unwrap() {
+    match descriptor.encode(&Value::Undefined).unwrap() {
         StashedValue::Ptr(ptr) => assert!(ptr.is_null()),
         other => panic!("expected null ptr, got {other:?}"),
     }
@@ -291,25 +291,25 @@ fn encode_optional_null_yields_null_ptr() {
 
 #[test]
 fn encode_integer_array_extract_error() {
-    let ty = array_type(
+    let descriptor = array_type(
         Descriptor::Integer(IntegerKind::I32),
         ArrayKind::Array,
         Ownership::Full,
     );
     let val = Value::Array(vec![Value::Boolean(true)]);
-    assert!(ty.encode(&val).is_err());
+    assert!(descriptor.encode(&val).is_err());
 }
 
 #[test]
 fn encode_enum_flags_array_roundtrips_through_storage() {
-    let ty = array_type(
+    let descriptor = array_type(
         enum_flags_item_descriptor(),
         ArrayKind::Array,
         Ownership::Full,
     );
     let val = Value::Array(vec![Value::Number(0.0), Value::Number(1.0)]);
-    let encoded = ty.encode(&val).unwrap();
-    let decoded = ty.decode(&encoded).unwrap();
+    let encoded = descriptor.encode(&val).unwrap();
+    let decoded = descriptor.decode(&encoded).unwrap();
     let Value::Array(items) = decoded else {
         panic!("expected array")
     };
@@ -318,14 +318,14 @@ fn encode_enum_flags_array_roundtrips_through_storage() {
 
 #[test]
 fn encode_float_f32_array_roundtrips() {
-    let ty = array_type(
+    let descriptor = array_type(
         Descriptor::Float(FloatKind::F32),
         ArrayKind::Array,
         Ownership::Full,
     );
     let val = Value::Array(vec![Value::Number(1.5), Value::Number(2.5)]);
-    let encoded = ty.encode(&val).unwrap();
-    let Value::Array(items) = ty.decode(&encoded).unwrap() else {
+    let encoded = descriptor.encode(&val).unwrap();
+    let Value::Array(items) = descriptor.decode(&encoded).unwrap() else {
         panic!("expected array")
     };
     assert_eq!(items.len(), 2);
@@ -333,14 +333,14 @@ fn encode_float_f32_array_roundtrips() {
 
 #[test]
 fn encode_float_f64_array_roundtrips() {
-    let ty = array_type(
+    let descriptor = array_type(
         Descriptor::Float(FloatKind::F64),
         ArrayKind::Array,
         Ownership::Full,
     );
     let val = Value::Array(vec![Value::Number(1.25)]);
-    let encoded = ty.encode(&val).unwrap();
-    let Value::Array(items) = ty.decode(&encoded).unwrap() else {
+    let encoded = descriptor.encode(&val).unwrap();
+    let Value::Array(items) = descriptor.decode(&encoded).unwrap() else {
         panic!("expected array")
     };
     assert_eq!(items.len(), 1);
@@ -348,14 +348,14 @@ fn encode_float_f64_array_roundtrips() {
 
 #[test]
 fn encode_boolean_array_roundtrips() {
-    let ty = array_type(
+    let descriptor = array_type(
         Descriptor::Boolean(BooleanDescriptor),
         ArrayKind::Array,
         Ownership::Full,
     );
     let val = Value::Array(vec![Value::Boolean(true), Value::Boolean(false)]);
-    let encoded = ty.encode(&val).unwrap();
-    let Value::Array(items) = ty.decode(&encoded).unwrap() else {
+    let encoded = descriptor.encode(&val).unwrap();
+    let Value::Array(items) = descriptor.decode(&encoded).unwrap() else {
         panic!("expected array")
     };
     assert_eq!(items.len(), 2);
@@ -363,29 +363,29 @@ fn encode_boolean_array_roundtrips() {
 
 #[test]
 fn encode_boolean_array_extract_error() {
-    let ty = array_type(
+    let descriptor = array_type(
         Descriptor::Boolean(BooleanDescriptor),
         ArrayKind::Array,
         Ownership::Full,
     );
     let val = Value::Array(vec![Value::Number(1.0)]);
-    assert!(ty.encode(&val).is_err());
+    assert!(descriptor.encode(&val).is_err());
 }
 
 #[test]
 fn encode_string_array_extract_error() {
-    let ty = array_type(
+    let descriptor = array_type(
         string_item_descriptor(Ownership::Full),
         ArrayKind::Array,
         Ownership::Full,
     );
     let val = Value::Array(vec![Value::Number(1.0)]);
-    assert!(ty.encode(&val).is_err());
+    assert!(descriptor.encode(&val).is_err());
 }
 
 #[test]
 fn encode_string_array_full_ownership_transfers_glib_container() {
-    let ty = array_type(
+    let descriptor = array_type(
         string_item_descriptor(Ownership::Full),
         ArrayKind::Array,
         Ownership::Full,
@@ -394,7 +394,7 @@ fn encode_string_array_full_ownership_transfers_glib_container() {
         Value::String("foo".to_string()),
         Value::String("bar".to_string()),
     ]);
-    let encoded = ty.encode(&val).unwrap();
+    let encoded = descriptor.encode(&val).unwrap();
     encoded.disarm_pending_transfer();
     let StashedValue::Storage(storage) = &encoded else {
         panic!("expected storage")
@@ -419,31 +419,31 @@ fn encode_string_array_full_ownership_transfers_glib_container() {
 
 #[test]
 fn encode_string_array_full_ownership_releases_when_call_never_happens() {
-    let ty = array_type(
+    let descriptor = array_type(
         string_item_descriptor(Ownership::Full),
         ArrayKind::Array,
         Ownership::Full,
     );
     let val = Value::Array(vec![Value::String("foo".to_string())]);
-    let encoded = ty.encode(&val).unwrap();
+    let encoded = descriptor.encode(&val).unwrap();
     drop(encoded);
 }
 
 #[test]
 fn encode_string_array_borrowed_container_and_elements_roundtrips() {
-    let ty = array_type(
+    let descriptor = array_type(
         string_item_descriptor(Ownership::Borrowed),
         ArrayKind::Array,
         Ownership::Borrowed,
     );
     let val = Value::Array(vec![Value::String("foo".to_string())]);
-    let encoded = ty.encode(&val).unwrap();
+    let encoded = descriptor.encode(&val).unwrap();
     let StashedValue::Storage(storage) = &encoded else {
         panic!("expected storage")
     };
     assert!(matches!(storage.kind(), StashKind::StrV(_)));
 
-    let Value::Array(items) = ty.decode(&encoded).unwrap() else {
+    let Value::Array(items) = descriptor.decode(&encoded).unwrap() else {
         panic!("expected array")
     };
     assert!(matches!(&items[0], Value::String(s) if s == "foo"));
@@ -451,13 +451,13 @@ fn encode_string_array_borrowed_container_and_elements_roundtrips() {
 
 #[test]
 fn encode_string_array_element_transfer_hands_over_duplicates() {
-    let ty = array_type(
+    let descriptor = array_type(
         string_item_descriptor(Ownership::Full),
         ArrayKind::Array,
         Ownership::Borrowed,
     );
     let val = Value::Array(vec![Value::String("foo".to_string())]);
-    let encoded = ty.encode(&val).unwrap();
+    let encoded = descriptor.encode(&val).unwrap();
     encoded.disarm_pending_transfer();
     let StashedValue::Storage(storage) = &encoded else {
         panic!("expected storage")
@@ -479,14 +479,14 @@ fn encode_string_array_element_transfer_hands_over_duplicates() {
 
 #[test]
 fn encode_string_array_borrowed_keeps_elements() {
-    let ty = array_type(
+    let descriptor = array_type(
         string_item_descriptor(Ownership::Borrowed),
         ArrayKind::Array,
         Ownership::Full,
     );
     let val = Value::Array(vec![Value::String("foo".to_string())]);
-    let encoded = ty.encode(&val).unwrap();
-    let Value::Array(items) = ty.decode(&encoded).unwrap() else {
+    let encoded = descriptor.encode(&val).unwrap();
+    let Value::Array(items) = descriptor.decode(&encoded).unwrap() else {
         panic!("expected array")
     };
     assert_eq!(items.len(), 1);
@@ -494,34 +494,34 @@ fn encode_string_array_borrowed_keeps_elements() {
 
 #[test]
 fn encode_pointer_array_with_element_size_copies_into_buffer() {
-    let mut ty = array_type(struct_item_descriptor(), ArrayKind::Array, Ownership::Full);
-    ty.element_size = Some(size_of::<gtk4::gdk::ffi::GdkRGBA>());
+    let mut descriptor = array_type(struct_item_descriptor(), ArrayKind::Array, Ownership::Full);
+    descriptor.element_size = Some(size_of::<gtk4::gdk::ffi::GdkRGBA>());
     let handle = boxed_handle();
     let val = Value::Array(vec![Value::Object(handle)]);
-    let encoded = ty.encode(&val).unwrap();
+    let encoded = descriptor.encode(&val).unwrap();
     assert!(matches!(encoded, StashedValue::Storage(_)));
 }
 
 #[test]
 fn encode_pointer_array_with_element_size_rejects_null_handle() {
-    let mut ty = array_type(struct_item_descriptor(), ArrayKind::Array, Ownership::Full);
-    ty.element_size = Some(8);
+    let mut descriptor = array_type(struct_item_descriptor(), ArrayKind::Array, Ownership::Full);
+    descriptor.element_size = Some(8);
     let val = Value::Array(vec![Value::Object(Handle::borrowed(std::ptr::null_mut()))]);
-    assert!(ty.encode(&val).is_err());
+    assert!(descriptor.encode(&val).is_err());
 }
 
 #[test]
 fn encode_pointer_array_extract_error() {
-    let ty = array_type(struct_item_descriptor(), ArrayKind::Array, Ownership::Full);
+    let descriptor = array_type(struct_item_descriptor(), ArrayKind::Array, Ownership::Full);
     let val = Value::Array(vec![Value::Number(1.0)]);
-    assert!(ty.encode(&val).is_err());
+    assert!(descriptor.encode(&val).is_err());
 }
 
 #[test]
 fn encode_pointer_array_full_ownership_transfers_glib_container() {
-    let ty = array_type(struct_item_descriptor(), ArrayKind::Array, Ownership::Full);
+    let descriptor = array_type(struct_item_descriptor(), ArrayKind::Array, Ownership::Full);
     let val = Value::Array(vec![Value::Object(boxed_handle())]);
-    let encoded = ty.encode(&val).unwrap();
+    let encoded = descriptor.encode(&val).unwrap();
     encoded.disarm_pending_transfer();
     let StashedValue::Storage(storage) = &encoded else {
         panic!("expected storage")
@@ -546,13 +546,13 @@ fn encode_pointer_array_full_ownership_transfers_glib_container() {
 
 #[test]
 fn encode_pointer_array_null_terminated_with_handles() {
-    let ty = array_type(
+    let descriptor = array_type(
         struct_item_descriptor(),
         ArrayKind::Array,
         Ownership::Borrowed,
     );
     let val = Value::Array(vec![Value::Object(boxed_handle())]);
-    let encoded = ty.encode(&val).unwrap();
+    let encoded = descriptor.encode(&val).unwrap();
     let StashedValue::Storage(storage) = encoded else {
         panic!("expected storage")
     };
@@ -565,12 +565,12 @@ fn encode_pointer_array_null_terminated_with_handles() {
 
 #[test]
 fn encode_pointer_array_null_terminated_empty_has_sentinel() {
-    let ty = array_type(
+    let descriptor = array_type(
         struct_item_descriptor(),
         ArrayKind::Array,
         Ownership::Borrowed,
     );
-    let encoded = ty.encode(&Value::Array(vec![])).unwrap();
+    let encoded = descriptor.encode(&Value::Array(vec![])).unwrap();
     let StashedValue::Storage(storage) = encoded else {
         panic!("expected storage")
     };
@@ -583,15 +583,15 @@ fn encode_pointer_array_null_terminated_empty_has_sentinel() {
 
 #[test]
 fn encode_pointer_array_null_terminated_rejects_null_handle() {
-    let ty = array_type(struct_item_descriptor(), ArrayKind::Array, Ownership::Full);
+    let descriptor = array_type(struct_item_descriptor(), ArrayKind::Array, Ownership::Full);
     let val = Value::Array(vec![Value::Object(Handle::borrowed(std::ptr::null_mut()))]);
-    assert!(ty.encode(&val).is_err());
+    assert!(descriptor.encode(&val).is_err());
 }
 
 #[test]
 fn encode_glist_strings_full_ownership_dups_elements() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             string_item_descriptor(Ownership::Full),
             ArrayKind::GList,
             Ownership::Borrowed,
@@ -600,7 +600,7 @@ fn encode_glist_strings_full_ownership_dups_elements() {
             Value::String("a".to_string()),
             Value::String("b".to_string()),
         ]);
-        let encoded = ty.encode(&val).unwrap();
+        let encoded = descriptor.encode(&val).unwrap();
         assert!(matches!(encoded, StashedValue::Storage(_)));
     });
 }
@@ -608,7 +608,7 @@ fn encode_glist_strings_full_ownership_dups_elements() {
 #[test]
 fn encode_glist_strings_borrowed_roundtrips() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             string_item_descriptor(Ownership::Borrowed),
             ArrayKind::GList,
             Ownership::Borrowed,
@@ -617,8 +617,8 @@ fn encode_glist_strings_borrowed_roundtrips() {
             Value::String("a".to_string()),
             Value::String("b".to_string()),
         ]);
-        let encoded = ty.encode(&val).unwrap();
-        let Value::Array(items) = ty.decode(&encoded).unwrap() else {
+        let encoded = descriptor.encode(&val).unwrap();
+        let Value::Array(items) = descriptor.decode(&encoded).unwrap() else {
             panic!("expected array")
         };
         assert_eq!(items.len(), 2);
@@ -628,14 +628,14 @@ fn encode_glist_strings_borrowed_roundtrips() {
 #[test]
 fn encode_glist_handles_roundtrips() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             struct_item_descriptor(),
             ArrayKind::GList,
             Ownership::Borrowed,
         );
         let val = Value::Array(vec![Value::Object(boxed_handle())]);
-        let encoded = ty.encode(&val).unwrap();
-        let Value::Array(items) = ty.decode(&encoded).unwrap() else {
+        let encoded = descriptor.encode(&val).unwrap();
+        let Value::Array(items) = descriptor.decode(&encoded).unwrap() else {
             panic!("expected array")
         };
         assert_eq!(items.len(), 1);
@@ -645,20 +645,20 @@ fn encode_glist_handles_roundtrips() {
 #[test]
 fn encode_glist_handles_rejects_null() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             struct_item_descriptor(),
             ArrayKind::GList,
             Ownership::Borrowed,
         );
         let val = Value::Array(vec![Value::Object(Handle::borrowed(std::ptr::null_mut()))]);
-        assert!(ty.encode(&val).is_err());
+        assert!(descriptor.encode(&val).is_err());
     });
 }
 
 #[test]
 fn encode_gslist_strings_full_ownership_dups_elements() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             string_item_descriptor(Ownership::Full),
             ArrayKind::GSList,
             Ownership::Borrowed,
@@ -667,7 +667,7 @@ fn encode_gslist_strings_full_ownership_dups_elements() {
             Value::String("x".to_string()),
             Value::String("y".to_string()),
         ]);
-        let encoded = ty.encode(&val).unwrap();
+        let encoded = descriptor.encode(&val).unwrap();
         assert!(matches!(encoded, StashedValue::Storage(_)));
     });
 }
@@ -675,7 +675,7 @@ fn encode_gslist_strings_full_ownership_dups_elements() {
 #[test]
 fn encode_gslist_strings_borrowed_roundtrips() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             string_item_descriptor(Ownership::Borrowed),
             ArrayKind::GSList,
             Ownership::Borrowed,
@@ -684,8 +684,8 @@ fn encode_gslist_strings_borrowed_roundtrips() {
             Value::String("x".to_string()),
             Value::String("y".to_string()),
         ]);
-        let encoded = ty.encode(&val).unwrap();
-        let Value::Array(items) = ty.decode(&encoded).unwrap() else {
+        let encoded = descriptor.encode(&val).unwrap();
+        let Value::Array(items) = descriptor.decode(&encoded).unwrap() else {
             panic!("expected array")
         };
         assert_eq!(items.len(), 2);
@@ -695,14 +695,14 @@ fn encode_gslist_strings_borrowed_roundtrips() {
 #[test]
 fn encode_gslist_handles_roundtrips() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             struct_item_descriptor(),
             ArrayKind::GSList,
             Ownership::Borrowed,
         );
         let val = Value::Array(vec![Value::Object(boxed_handle())]);
-        let encoded = ty.encode(&val).unwrap();
-        let Value::Array(items) = ty.decode(&encoded).unwrap() else {
+        let encoded = descriptor.encode(&val).unwrap();
+        let Value::Array(items) = descriptor.decode(&encoded).unwrap() else {
             panic!("expected array")
         };
         assert_eq!(items.len(), 1);
@@ -712,20 +712,20 @@ fn encode_gslist_handles_roundtrips() {
 #[test]
 fn encode_gslist_handles_rejects_null() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             struct_item_descriptor(),
             ArrayKind::GSList,
             Ownership::Borrowed,
         );
         let val = Value::Array(vec![Value::Object(Handle::borrowed(std::ptr::null_mut()))]);
-        assert!(ty.encode(&val).is_err());
+        assert!(descriptor.encode(&val).is_err());
     });
 }
 
 #[test]
 fn encode_gbytearray_roundtrips() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             Descriptor::Integer(IntegerKind::U8),
             ArrayKind::GByteArray,
             Ownership::Borrowed,
@@ -735,8 +735,8 @@ fn encode_gbytearray_roundtrips() {
             Value::Number(2.0),
             Value::Number(255.0),
         ]);
-        let encoded = ty.encode(&val).unwrap();
-        let Value::Array(items) = ty.decode(&encoded).unwrap() else {
+        let encoded = descriptor.encode(&val).unwrap();
+        let Value::Array(items) = descriptor.decode(&encoded).unwrap() else {
             panic!("expected array")
         };
         assert_eq!(items.len(), 3);
@@ -746,14 +746,14 @@ fn encode_gbytearray_roundtrips() {
 #[test]
 fn encode_garray_integer_roundtrips() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             Descriptor::Integer(IntegerKind::I32),
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
         let val = Value::Array(vec![Value::Number(10.0), Value::Number(-20.0)]);
-        let encoded = ty.encode(&val).unwrap();
-        let Value::Array(items) = ty.decode(&encoded).unwrap() else {
+        let encoded = descriptor.encode(&val).unwrap();
+        let Value::Array(items) = descriptor.decode(&encoded).unwrap() else {
             panic!("expected array")
         };
         assert_eq!(items.len(), 2);
@@ -763,14 +763,14 @@ fn encode_garray_integer_roundtrips() {
 #[test]
 fn encode_garray_float_f32_roundtrips() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             Descriptor::Float(FloatKind::F32),
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
         let val = Value::Array(vec![Value::Number(1.5)]);
-        let encoded = ty.encode(&val).unwrap();
-        let Value::Array(items) = ty.decode(&encoded).unwrap() else {
+        let encoded = descriptor.encode(&val).unwrap();
+        let Value::Array(items) = descriptor.decode(&encoded).unwrap() else {
             panic!("expected array")
         };
         assert_eq!(items.len(), 1);
@@ -780,14 +780,14 @@ fn encode_garray_float_f32_roundtrips() {
 #[test]
 fn encode_garray_float_f64_roundtrips() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             Descriptor::Float(FloatKind::F64),
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
         let val = Value::Array(vec![Value::Number(2.75)]);
-        let encoded = ty.encode(&val).unwrap();
-        let Value::Array(items) = ty.decode(&encoded).unwrap() else {
+        let encoded = descriptor.encode(&val).unwrap();
+        let Value::Array(items) = descriptor.decode(&encoded).unwrap() else {
             panic!("expected array")
         };
         assert_eq!(items.len(), 1);
@@ -797,14 +797,14 @@ fn encode_garray_float_f64_roundtrips() {
 #[test]
 fn encode_garray_boolean_roundtrips() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             Descriptor::Boolean(BooleanDescriptor),
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
         let val = Value::Array(vec![Value::Boolean(true), Value::Boolean(false)]);
-        let encoded = ty.encode(&val).unwrap();
-        let Value::Array(items) = ty.decode(&encoded).unwrap() else {
+        let encoded = descriptor.encode(&val).unwrap();
+        let Value::Array(items) = descriptor.decode(&encoded).unwrap() else {
             panic!("expected array")
         };
         assert_eq!(items.len(), 2);
@@ -814,13 +814,13 @@ fn encode_garray_boolean_roundtrips() {
 #[test]
 fn encode_garray_enum_flags_roundtrips() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             enum_flags_item_descriptor(),
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
         let val = Value::Array(vec![Value::Number(1.0)]);
-        let encoded = ty.encode(&val).unwrap();
+        let encoded = descriptor.encode(&val).unwrap();
         assert!(matches!(encoded, StashedValue::Storage(_)));
     });
 }
@@ -828,14 +828,14 @@ fn encode_garray_enum_flags_roundtrips() {
 #[test]
 fn encode_garray_handles_roundtrips() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             struct_item_descriptor(),
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
         let val = Value::Array(vec![Value::Object(boxed_handle())]);
-        let encoded = ty.encode(&val).unwrap();
-        let Value::Array(items) = ty.decode(&encoded).unwrap() else {
+        let encoded = descriptor.encode(&val).unwrap();
+        let Value::Array(items) = descriptor.decode(&encoded).unwrap() else {
             panic!("expected array")
         };
         assert_eq!(items.len(), 1);
@@ -845,26 +845,26 @@ fn encode_garray_handles_roundtrips() {
 #[test]
 fn encode_garray_handles_rejects_null() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             struct_item_descriptor(),
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
         let val = Value::Array(vec![Value::Object(Handle::borrowed(std::ptr::null_mut()))]);
-        assert!(ty.encode(&val).is_err());
+        assert!(descriptor.encode(&val).is_err());
     });
 }
 
 #[test]
 fn encode_garray_strings_roundtrips() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             string_item_descriptor(Ownership::Full),
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
         let val = Value::Array(vec![Value::String("hello".to_string())]);
-        let encoded = ty.encode(&val).unwrap();
+        let encoded = descriptor.encode(&val).unwrap();
         assert!(matches!(encoded, StashedValue::Storage(_)));
     });
 }
@@ -872,14 +872,14 @@ fn encode_garray_strings_roundtrips() {
 #[test]
 fn encode_garray_explicit_element_size_used() {
     helpers::run(|| {
-        let mut ty = array_type(
+        let mut descriptor = array_type(
             Descriptor::Integer(IntegerKind::I32),
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
-        ty.element_size = Some(size_of::<i32>());
+        descriptor.element_size = Some(size_of::<i32>());
         let val = Value::Array(vec![Value::Number(7.0)]);
-        let encoded = ty.encode(&val).unwrap();
+        let encoded = descriptor.encode(&val).unwrap();
         assert!(matches!(encoded, StashedValue::Storage(_)));
     });
 }
@@ -887,13 +887,13 @@ fn encode_garray_explicit_element_size_used() {
 #[test]
 fn decode_zero_terminated_scalar_array_reads_with_scalar_stride() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             Descriptor::Integer(IntegerKind::I32),
             ArrayKind::Array,
             Ownership::Borrowed,
         );
         let buffer: [i32; 4] = [7, 8, 9, 0];
-        let decoded = ty
+        let decoded = descriptor
             .decode(&StashedValue::Ptr(buffer.as_ptr() as *mut std::ffi::c_void))
             .expect("zero-terminated scalar decode should succeed");
         let Value::Array(items) = decoded else {
@@ -908,11 +908,11 @@ fn decode_zero_terminated_scalar_array_reads_with_scalar_stride() {
 #[test]
 fn encode_bigint_array_roundtrips_through_storage() {
     for kind in [BigIntKind::I64, BigIntKind::U64] {
-        let ty = array_type(Descriptor::BigInt(kind), ArrayKind::Array, Ownership::Full);
+        let descriptor = array_type(Descriptor::BigInt(kind), ArrayKind::Array, Ownership::Full);
         let big = i128::from(u32::MAX) + 1;
         let val = Value::Array(vec![Value::BigInt(big), Value::BigInt(7)]);
-        let encoded = ty.encode(&val).unwrap();
-        let Value::Array(items) = ty.decode(&encoded).unwrap() else {
+        let encoded = descriptor.encode(&val).unwrap();
+        let Value::Array(items) = descriptor.decode(&encoded).unwrap() else {
             panic!("expected array")
         };
         assert_eq!(items.len(), 2);
@@ -924,15 +924,15 @@ fn encode_bigint_array_roundtrips_through_storage() {
 fn encode_garray_bigint_roundtrips() {
     helpers::run(|| {
         for kind in [BigIntKind::I64, BigIntKind::U64] {
-            let ty = array_type(
+            let descriptor = array_type(
                 Descriptor::BigInt(kind),
                 ArrayKind::GArray,
                 Ownership::Borrowed,
             );
             let big = i128::from(u32::MAX) + 5;
             let val = Value::Array(vec![Value::BigInt(10), Value::BigInt(big)]);
-            let encoded = ty.encode(&val).unwrap();
-            let Value::Array(items) = ty.decode(&encoded).unwrap() else {
+            let encoded = descriptor.encode(&val).unwrap();
+            let Value::Array(items) = descriptor.decode(&encoded).unwrap() else {
                 panic!("expected array")
             };
             assert_eq!(items.len(), 2);
@@ -944,13 +944,13 @@ fn encode_garray_bigint_roundtrips() {
 #[test]
 fn decode_contiguous_bigint_elements() {
     for kind in [BigIntKind::I64, BigIntKind::U64] {
-        let ty = array_type(
+        let descriptor = array_type(
             Descriptor::BigInt(kind),
             ArrayKind::Fixed { size: 2 },
             Ownership::Borrowed,
         );
         let data: Vec<i64> = vec![100, 42];
-        let Value::Array(items) = ty
+        let Value::Array(items) = descriptor
             .decode_with_context(&StashedValue::Ptr(data.as_ptr() as *mut c_void), &[], &[])
             .unwrap()
         else {
@@ -963,13 +963,13 @@ fn decode_contiguous_bigint_elements() {
 
 #[test]
 fn decode_zero_terminated_bigint_array() {
-    let ty = array_type(
+    let descriptor = array_type(
         Descriptor::BigInt(BigIntKind::U64),
         ArrayKind::Array,
         Ownership::Borrowed,
     );
     let buffer: [u64; 3] = [5, 9, 0];
-    let decoded = ty
+    let decoded = descriptor
         .decode(&StashedValue::Ptr(buffer.as_ptr() as *mut c_void))
         .expect("zero-terminated bigint decode should succeed");
     let Value::Array(items) = decoded else {
@@ -1009,13 +1009,13 @@ fn decode_gptrarray_frees_container_when_element_decode_fails() {
         // SAFETY: the GPtrArray is valid; this takes one extra owning reference matched by an unref.
         unsafe { glib::ffi::g_ptr_array_ref(ptr_array) };
 
-        let ty = array_type(
+        let descriptor = array_type(
             Descriptor::Integer(IntegerKind::I32),
             ArrayKind::GPtrArray,
             Ownership::Full,
         );
         assert!(
-            ty.decode(&StashedValue::Ptr(ptr_array as *mut std::ffi::c_void))
+            descriptor.decode(&StashedValue::Ptr(ptr_array as *mut std::ffi::c_void))
                 .is_err()
         );
 
@@ -1033,13 +1033,13 @@ fn decode_glist_frees_spine_when_element_decode_fails() {
             glib::ffi::g_list_append(std::ptr::null_mut(), std::ptr::without_provenance_mut(0x4))
         };
 
-        let ty = array_type(
+        let descriptor = array_type(
             Descriptor::Integer(IntegerKind::I32),
             ArrayKind::GList,
             Ownership::Full,
         );
         assert!(
-            ty.decode(&StashedValue::Ptr(list as *mut std::ffi::c_void))
+            descriptor.decode(&StashedValue::Ptr(list as *mut std::ffi::c_void))
                 .is_err()
         );
     });
@@ -1048,39 +1048,39 @@ fn decode_glist_frees_spine_when_element_decode_fails() {
 #[test]
 fn encode_garray_append_error_unrefs_and_propagates() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             Descriptor::Integer(IntegerKind::I32),
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
         let val = Value::Array(vec![Value::Boolean(true)]);
-        assert!(ty.encode(&val).is_err());
+        assert!(descriptor.encode(&val).is_err());
     });
 }
 
 #[test]
 fn encode_gptrarray_uses_null_terminated_layout() {
-    let ty = array_type(
+    let descriptor = array_type(
         struct_item_descriptor(),
         ArrayKind::GPtrArray,
         Ownership::Full,
     );
     let val = Value::Array(vec![Value::Object(boxed_handle())]);
-    let encoded = ty.encode(&val).unwrap();
+    let encoded = descriptor.encode(&val).unwrap();
     assert!(matches!(encoded, StashedValue::Storage(_)));
 }
 
 #[test]
 fn decode_integer_array_from_storage() {
-    let ty = array_type(
+    let descriptor = array_type(
         Descriptor::Integer(IntegerKind::U16),
         ArrayKind::Array,
         Ownership::Full,
     );
-    let encoded = ty
+    let encoded = descriptor
         .encode(&Value::Array(vec![Value::Number(1.0), Value::Number(2.0)]))
         .unwrap();
-    let Value::Array(items) = ty.decode(&encoded).unwrap() else {
+    let Value::Array(items) = descriptor.decode(&encoded).unwrap() else {
         panic!("expected array")
     };
     assert_eq!(items.len(), 2);
@@ -1088,12 +1088,12 @@ fn decode_integer_array_from_storage() {
 
 #[test]
 fn decode_null_ptr_yields_empty_array() {
-    let ty = array_type(
+    let descriptor = array_type(
         Descriptor::Integer(IntegerKind::U8),
         ArrayKind::Array,
         Ownership::Full,
     );
-    let Value::Array(items) = ty.decode(&StashedValue::Ptr(std::ptr::null_mut())).unwrap() else {
+    let Value::Array(items) = descriptor.decode(&StashedValue::Ptr(std::ptr::null_mut())).unwrap() else {
         panic!("expected array")
     };
     assert!(items.is_empty());
@@ -1101,7 +1101,7 @@ fn decode_null_ptr_yields_empty_array() {
 
 #[test]
 fn decode_null_terminated_string_array_from_ptr() {
-    let ty = array_type(
+    let descriptor = array_type(
         string_item_descriptor(Ownership::Borrowed),
         ArrayKind::Array,
         Ownership::Borrowed,
@@ -1109,7 +1109,7 @@ fn decode_null_terminated_string_array_from_ptr() {
     let s0 = CString::new("first").unwrap();
     let s1 = CString::new("second").unwrap();
     let mut ptrs: Vec<*const c_char> = vec![s0.as_ptr(), s1.as_ptr(), std::ptr::null()];
-    let Value::Array(items) = ty
+    let Value::Array(items) = descriptor
         .decode(&StashedValue::Ptr(ptrs.as_mut_ptr() as *mut c_void))
         .unwrap()
     else {
@@ -1121,7 +1121,7 @@ fn decode_null_terminated_string_array_from_ptr() {
 #[test]
 fn decode_null_terminated_string_array_full_ownership_frees() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             string_item_descriptor(Ownership::Full),
             ArrayKind::Array,
             Ownership::Full,
@@ -1135,7 +1135,7 @@ fn decode_null_terminated_string_array_full_ownership_frees() {
             *arr.add(1) = glib::ffi::g_strdup(c"b".as_ptr());
             arr
         };
-        let Value::Array(items) = ty.decode(&StashedValue::Ptr(strv as *mut c_void)).unwrap()
+        let Value::Array(items) = descriptor.decode(&StashedValue::Ptr(strv as *mut c_void)).unwrap()
         else {
             panic!("expected array")
         };
@@ -1146,7 +1146,7 @@ fn decode_null_terminated_string_array_full_ownership_frees() {
 #[test]
 fn decode_null_terminated_borrowed_string_array_full_ownership_frees_vector_only() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             string_item_descriptor(Ownership::Borrowed),
             ArrayKind::Array,
             Ownership::Full,
@@ -1159,7 +1159,7 @@ fn decode_null_terminated_borrowed_string_array_full_ownership_frees_vector_only
             *arr = c"borrowed".as_ptr().cast_mut();
             arr
         };
-        let Value::Array(items) = ty.decode(&StashedValue::Ptr(strv as *mut c_void)).unwrap()
+        let Value::Array(items) = descriptor.decode(&StashedValue::Ptr(strv as *mut c_void)).unwrap()
         else {
             panic!("expected array")
         };
@@ -1169,7 +1169,7 @@ fn decode_null_terminated_borrowed_string_array_full_ownership_frees_vector_only
 
 #[test]
 fn decode_null_terminated_ptr_array_from_ptr() {
-    let ty = array_type(
+    let descriptor = array_type(
         struct_item_descriptor(),
         ArrayKind::Array,
         Ownership::Borrowed,
@@ -1177,7 +1177,7 @@ fn decode_null_terminated_ptr_array_from_ptr() {
     let h0 = boxed_handle();
     let h1 = boxed_handle();
     let mut ptrs: Vec<*mut c_void> = vec![h0.ptr(), h1.ptr(), std::ptr::null_mut()];
-    let Value::Array(items) = ty
+    let Value::Array(items) = descriptor
         .decode(&StashedValue::Ptr(ptrs.as_mut_ptr() as *mut c_void))
         .unwrap()
     else {
@@ -1189,7 +1189,7 @@ fn decode_null_terminated_ptr_array_from_ptr() {
 #[test]
 fn decode_null_terminated_ptr_array_full_ownership_frees() {
     helpers::run(|| {
-        let ty = array_type(struct_item_descriptor(), ArrayKind::Array, Ownership::Full);
+        let descriptor = array_type(struct_item_descriptor(), ArrayKind::Array, Ownership::Full);
         // SAFETY: allocates a zeroed 2-slot pointer array (slot 1 is the NULL terminator) and
         // stores one boxed pointer in slot 0, producing a valid NULL-terminated owned pointer
         // array that the full-ownership decode below takes and frees.
@@ -1198,7 +1198,7 @@ fn decode_null_terminated_ptr_array_full_ownership_frees() {
             *mem = boxed_handle().ptr();
             mem
         };
-        let Value::Array(items) = ty.decode(&StashedValue::Ptr(arr as *mut c_void)).unwrap() else {
+        let Value::Array(items) = descriptor.decode(&StashedValue::Ptr(arr as *mut c_void)).unwrap() else {
             panic!("expected array")
         };
         assert_eq!(items.len(), 1);
@@ -1208,8 +1208,8 @@ fn decode_null_terminated_ptr_array_full_ownership_frees() {
 #[test]
 fn decode_glist_empty_and_populated() {
     helpers::run(|| {
-        let ty = array_type(struct_item_descriptor(), ArrayKind::GList, Ownership::Full);
-        let Value::Array(empty) = ty.decode(&StashedValue::Ptr(std::ptr::null_mut())).unwrap()
+        let descriptor = array_type(struct_item_descriptor(), ArrayKind::GList, Ownership::Full);
+        let Value::Array(empty) = descriptor.decode(&StashedValue::Ptr(std::ptr::null_mut())).unwrap()
         else {
             panic!("expected array")
         };
@@ -1218,7 +1218,7 @@ fn decode_glist_empty_and_populated() {
         // SAFETY: runs on the GTK-initialized test thread; appends one borrowed pointer to a
         // valid (possibly null) GList, returning the new head.
         let list = unsafe { glib::ffi::g_list_append(std::ptr::null_mut(), boxed_handle().ptr()) };
-        let Value::Array(items) = ty.decode(&StashedValue::Ptr(list as *mut c_void)).unwrap()
+        let Value::Array(items) = descriptor.decode(&StashedValue::Ptr(list as *mut c_void)).unwrap()
         else {
             panic!("expected array")
         };
@@ -1229,11 +1229,11 @@ fn decode_glist_empty_and_populated() {
 #[test]
 fn decode_gslist_full_ownership_frees_list() {
     helpers::run(|| {
-        let ty = array_type(struct_item_descriptor(), ArrayKind::GSList, Ownership::Full);
+        let descriptor = array_type(struct_item_descriptor(), ArrayKind::GSList, Ownership::Full);
         // SAFETY: runs on the GTK-initialized test thread; appends one borrowed pointer to a
         // valid (possibly null) GSList, returning the new head.
         let list = unsafe { glib::ffi::g_slist_append(std::ptr::null_mut(), boxed_handle().ptr()) };
-        let Value::Array(items) = ty.decode(&StashedValue::Ptr(list as *mut c_void)).unwrap()
+        let Value::Array(items) = descriptor.decode(&StashedValue::Ptr(list as *mut c_void)).unwrap()
         else {
             panic!("expected array")
         };
@@ -1244,7 +1244,7 @@ fn decode_gslist_full_ownership_frees_list() {
 #[test]
 fn decode_garray_from_borrowed_ptr() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             Descriptor::Integer(IntegerKind::I32),
             ArrayKind::GArray,
             Ownership::Full,
@@ -1258,7 +1258,7 @@ fn decode_garray_from_borrowed_ptr() {
         unsafe {
             glib::ffi::g_array_append_vals(g_array, &value as *const i32 as *const c_void, 1);
         }
-        let Value::Array(items) = ty
+        let Value::Array(items) = descriptor
             .decode(&StashedValue::Ptr(g_array as *mut c_void))
             .unwrap()
         else {
@@ -1271,12 +1271,12 @@ fn decode_garray_from_borrowed_ptr() {
 #[test]
 fn decode_garray_null_yields_empty() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             Descriptor::Integer(IntegerKind::I32),
             ArrayKind::GArray,
             Ownership::Full,
         );
-        let Value::Array(items) = ty.decode(&StashedValue::Ptr(std::ptr::null_mut())).unwrap()
+        let Value::Array(items) = descriptor.decode(&StashedValue::Ptr(std::ptr::null_mut())).unwrap()
         else {
             panic!("expected array")
         };
@@ -1287,7 +1287,7 @@ fn decode_garray_null_yields_empty() {
 #[test]
 fn decode_garray_storage_owned_does_not_double_free() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             Descriptor::Integer(IntegerKind::I32),
             ArrayKind::GArray,
             Ownership::Full,
@@ -1302,7 +1302,7 @@ fn decode_garray_storage_owned_does_not_double_free() {
                 should_free: true,
             }),
         );
-        let Value::Array(items) = ty.decode(&StashedValue::Storage(storage)).unwrap() else {
+        let Value::Array(items) = descriptor.decode(&StashedValue::Storage(storage)).unwrap() else {
             panic!("expected array")
         };
         assert!(items.is_empty());
@@ -1312,7 +1312,7 @@ fn decode_garray_storage_owned_does_not_double_free() {
 #[test]
 fn decode_gptrarray_from_ptr() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             struct_item_descriptor(),
             ArrayKind::GPtrArray,
             Ownership::Full,
@@ -1321,7 +1321,7 @@ fn decode_gptrarray_from_ptr() {
         let ptr_array = unsafe { glib::ffi::g_ptr_array_new() };
         // SAFETY: the GPtrArray is valid; the added pointer is stored by value, never dereferenced here.
         unsafe { glib::ffi::g_ptr_array_add(ptr_array, boxed_handle().ptr()) };
-        let Value::Array(items) = ty
+        let Value::Array(items) = descriptor
             .decode(&StashedValue::Ptr(ptr_array as *mut c_void))
             .unwrap()
         else {
@@ -1333,12 +1333,12 @@ fn decode_gptrarray_from_ptr() {
 
 #[test]
 fn decode_gptrarray_null_yields_empty() {
-    let ty = array_type(
+    let descriptor = array_type(
         struct_item_descriptor(),
         ArrayKind::GPtrArray,
         Ownership::Full,
     );
-    let Value::Array(items) = ty.decode(&StashedValue::Ptr(std::ptr::null_mut())).unwrap() else {
+    let Value::Array(items) = descriptor.decode(&StashedValue::Ptr(std::ptr::null_mut())).unwrap() else {
         panic!("expected array")
     };
     assert!(items.is_empty());
@@ -1347,7 +1347,7 @@ fn decode_gptrarray_null_yields_empty() {
 #[test]
 fn decode_gbytearray_from_ptr_and_empty() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             Descriptor::Integer(IntegerKind::U8),
             ArrayKind::GByteArray,
             Ownership::Borrowed,
@@ -1360,7 +1360,7 @@ fn decode_gbytearray_from_ptr_and_empty() {
             glib::ffi::g_byte_array_append(ba, bytes.as_ptr(), 3);
             ba
         };
-        let Value::Array(items) = ty.decode(&StashedValue::Ptr(ba as *mut c_void)).unwrap() else {
+        let Value::Array(items) = descriptor.decode(&StashedValue::Ptr(ba as *mut c_void)).unwrap() else {
             panic!("expected array")
         };
         assert_eq!(items.len(), 3);
@@ -1369,7 +1369,7 @@ fn decode_gbytearray_from_ptr_and_empty() {
 
         // SAFETY: the GByteArray is valid and the test holds the reference released here.
         let empty = unsafe { glib::ffi::g_byte_array_new() };
-        let Value::Array(items) = ty.decode(&StashedValue::Ptr(empty as *mut c_void)).unwrap()
+        let Value::Array(items) = descriptor.decode(&StashedValue::Ptr(empty as *mut c_void)).unwrap()
         else {
             panic!("expected array")
         };
@@ -1382,7 +1382,7 @@ fn decode_gbytearray_from_ptr_and_empty() {
 #[test]
 fn decode_gbytearray_full_ownership_unrefs_raw_ptr() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             Descriptor::Integer(IntegerKind::U8),
             ArrayKind::GByteArray,
             Ownership::Full,
@@ -1396,7 +1396,7 @@ fn decode_gbytearray_full_ownership_unrefs_raw_ptr() {
             glib::ffi::g_byte_array_append(ba, bytes.as_ptr(), 2);
             glib::ffi::g_byte_array_ref(ba)
         };
-        let Value::Array(items) = ty.decode(&StashedValue::Ptr(ba as *mut c_void)).unwrap() else {
+        let Value::Array(items) = descriptor.decode(&StashedValue::Ptr(ba as *mut c_void)).unwrap() else {
             panic!("expected array")
         };
         assert_eq!(items.len(), 2);
@@ -1407,12 +1407,12 @@ fn decode_gbytearray_full_ownership_unrefs_raw_ptr() {
 
 #[test]
 fn decode_gbytearray_null_yields_empty() {
-    let ty = array_type(
+    let descriptor = array_type(
         Descriptor::Integer(IntegerKind::U8),
         ArrayKind::GByteArray,
         Ownership::Full,
     );
-    let Value::Array(items) = ty.decode(&StashedValue::Ptr(std::ptr::null_mut())).unwrap() else {
+    let Value::Array(items) = descriptor.decode(&StashedValue::Ptr(std::ptr::null_mut())).unwrap() else {
         panic!("expected array")
     };
     assert!(items.is_empty());
@@ -1420,7 +1420,7 @@ fn decode_gbytearray_null_yields_empty() {
 
 #[test]
 fn decode_with_context_sized_array() {
-    let ty = array_type(
+    let descriptor = array_type(
         Descriptor::Integer(IntegerKind::I32),
         ArrayKind::Sized { size_index: 0 },
         Ownership::Borrowed,
@@ -1432,7 +1432,7 @@ fn decode_with_context_sized_array() {
         Descriptor::Integer(IntegerKind::U32),
         Value::Number(3.0),
     )];
-    let Value::Array(items) = ty
+    let Value::Array(items) = descriptor
         .decode_with_context(&stashed_value, &ffi_args, &args)
         .unwrap()
     else {
@@ -1443,7 +1443,7 @@ fn decode_with_context_sized_array() {
 
 #[test]
 fn decode_with_context_sized_array_null_ptr() {
-    let ty = array_type(
+    let descriptor = array_type(
         Descriptor::Integer(IntegerKind::I32),
         ArrayKind::Sized { size_index: 0 },
         Ownership::Borrowed,
@@ -1454,7 +1454,7 @@ fn decode_with_context_sized_array_null_ptr() {
         Descriptor::Integer(IntegerKind::U32),
         Value::Number(3.0),
     )];
-    let Value::Array(items) = ty
+    let Value::Array(items) = descriptor
         .decode_with_context(&stashed_value, &ffi_args, &args)
         .unwrap()
     else {
@@ -1465,7 +1465,7 @@ fn decode_with_context_sized_array_null_ptr() {
 
 #[test]
 fn decode_with_context_sized_non_ptr_falls_through_to_decode() {
-    let ty = array_type(
+    let descriptor = array_type(
         Descriptor::Integer(IntegerKind::I32),
         ArrayKind::Sized { size_index: 0 },
         Ownership::Borrowed,
@@ -1477,7 +1477,7 @@ fn decode_with_context_sized_non_ptr_falls_through_to_decode() {
         Descriptor::Integer(IntegerKind::U32),
         Value::Number(2.0),
     )];
-    let Value::Array(items) = ty
+    let Value::Array(items) = descriptor
         .decode_with_context(&stashed_value, &ffi_args, &args)
         .unwrap()
     else {
@@ -1488,14 +1488,14 @@ fn decode_with_context_sized_non_ptr_falls_through_to_decode() {
 
 #[test]
 fn decode_with_context_fixed_array() {
-    let ty = array_type(
+    let descriptor = array_type(
         Descriptor::Float(FloatKind::F64),
         ArrayKind::Fixed { size: 2 },
         Ownership::Borrowed,
     );
     let data: Vec<f64> = vec![1.0, 2.0];
     let stashed_value = StashedValue::Ptr(data.as_ptr() as *mut c_void);
-    let Value::Array(items) = ty.decode_with_context(&stashed_value, &[], &[]).unwrap() else {
+    let Value::Array(items) = descriptor.decode_with_context(&stashed_value, &[], &[]).unwrap() else {
         panic!("expected array")
     };
     assert_eq!(items.len(), 2);
@@ -1503,13 +1503,13 @@ fn decode_with_context_fixed_array() {
 
 #[test]
 fn decode_with_context_fixed_array_null_ptr() {
-    let ty = array_type(
+    let descriptor = array_type(
         Descriptor::Float(FloatKind::F64),
         ArrayKind::Fixed { size: 2 },
         Ownership::Borrowed,
     );
     let stashed_value = StashedValue::Ptr(std::ptr::null_mut());
-    let Value::Array(items) = ty.decode_with_context(&stashed_value, &[], &[]).unwrap() else {
+    let Value::Array(items) = descriptor.decode_with_context(&stashed_value, &[], &[]).unwrap() else {
         panic!("expected array")
     };
     assert!(items.is_empty());
@@ -1517,13 +1517,13 @@ fn decode_with_context_fixed_array_null_ptr() {
 
 #[test]
 fn decode_with_context_fixed_non_ptr_falls_through() {
-    let ty = array_type(
+    let descriptor = array_type(
         Descriptor::Integer(IntegerKind::I32),
         ArrayKind::Fixed { size: 1 },
         Ownership::Borrowed,
     );
     let storage = native::ffi::Stash::from(vec![9i32]);
-    let Value::Array(items) = ty
+    let Value::Array(items) = descriptor
         .decode_with_context(&StashedValue::Storage(storage), &[], &[])
         .unwrap()
     else {
@@ -1534,13 +1534,13 @@ fn decode_with_context_fixed_non_ptr_falls_through() {
 
 #[test]
 fn decode_with_context_array_kind_delegates_to_decode() {
-    let ty = array_type(
+    let descriptor = array_type(
         Descriptor::Integer(IntegerKind::I32),
         ArrayKind::Array,
         Ownership::Borrowed,
     );
     let storage = native::ffi::Stash::from(vec![1i32]);
-    let Value::Array(items) = ty
+    let Value::Array(items) = descriptor
         .decode_with_context(&StashedValue::Storage(storage), &[], &[])
         .unwrap()
     else {
@@ -1551,13 +1551,13 @@ fn decode_with_context_array_kind_delegates_to_decode() {
 
 #[test]
 fn decode_contiguous_empty_and_null() {
-    let ty = array_type(
+    let descriptor = array_type(
         Descriptor::Integer(IntegerKind::I32),
         ArrayKind::Fixed { size: 0 },
         Ownership::Borrowed,
     );
     let data: Vec<i32> = vec![1];
-    let Value::Array(items) = ty
+    let Value::Array(items) = descriptor
         .decode_with_context(&StashedValue::Ptr(data.as_ptr() as *mut c_void), &[], &[])
         .unwrap()
     else {
@@ -1568,14 +1568,14 @@ fn decode_contiguous_empty_and_null() {
 
 #[test]
 fn decode_contiguous_pointer_elements() {
-    let ty = array_type(
+    let descriptor = array_type(
         struct_item_descriptor(),
         ArrayKind::Fixed { size: 1 },
         Ownership::Borrowed,
     );
     let handle = boxed_handle();
     let data: Vec<*mut c_void> = vec![handle.ptr()];
-    let Value::Array(items) = ty
+    let Value::Array(items) = descriptor
         .decode_with_context(&StashedValue::Ptr(data.as_ptr() as *mut c_void), &[], &[])
         .unwrap()
     else {
@@ -1623,15 +1623,15 @@ fn decode_contiguous_float_and_boolean() {
 
 #[test]
 fn decode_storage_string_elements() {
-    let ty = array_type(
+    let descriptor = array_type(
         string_item_descriptor(Ownership::Borrowed),
         ArrayKind::Array,
         Ownership::Full,
     );
-    let encoded = ty
+    let encoded = descriptor
         .encode(&Value::Array(vec![Value::String("z".to_string())]))
         .unwrap();
-    let Value::Array(items) = ty.decode(&encoded).unwrap() else {
+    let Value::Array(items) = descriptor.decode(&encoded).unwrap() else {
         panic!("expected array")
     };
     assert_eq!(items.len(), 1);
@@ -1639,11 +1639,11 @@ fn decode_storage_string_elements() {
 
 #[test]
 fn decode_storage_pointer_elements() {
-    let ty = array_type(struct_item_descriptor(), ArrayKind::Array, Ownership::Full);
-    let encoded = ty
+    let descriptor = array_type(struct_item_descriptor(), ArrayKind::Array, Ownership::Full);
+    let encoded = descriptor
         .encode(&Value::Array(vec![Value::Object(boxed_handle())]))
         .unwrap();
-    let Value::Array(items) = ty.decode(&encoded).unwrap() else {
+    let Value::Array(items) = descriptor.decode(&encoded).unwrap() else {
         panic!("expected array")
     };
     assert_eq!(items.len(), 1);
@@ -1651,20 +1651,20 @@ fn decode_storage_pointer_elements() {
 
 #[test]
 fn ptr_to_value_null_yields_empty() {
-    let ty = array_type(
+    let descriptor = array_type(
         Descriptor::Integer(IntegerKind::I32),
         ArrayKind::Array,
         Ownership::Borrowed,
     );
     // SAFETY: a null pointer is the documented null case; the array codec yields an empty array.
-    let value = unsafe { ty.read(ReadSource::Value(std::ptr::null_mut(), "array")) }.unwrap();
+    let value = unsafe { descriptor.read(ReadSource::Value(std::ptr::null_mut(), "array")) }.unwrap();
     assert!(matches!(value, Value::Array(items) if items.is_empty()));
 }
 
 #[test]
 fn ptr_to_value_gptrarray() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             struct_item_descriptor(),
             ArrayKind::GPtrArray,
             Ownership::Borrowed,
@@ -1678,7 +1678,7 @@ fn ptr_to_value_gptrarray() {
         let value =
             // SAFETY: the pointer is a live container/buffer of the codec's element type, valid
             // for the duration of this read.
-            unsafe { ty.read(ReadSource::Value(ptr_array as *mut c_void, "array")) }.unwrap();
+            unsafe { descriptor.read(ReadSource::Value(ptr_array as *mut c_void, "array")) }.unwrap();
         assert!(matches!(value, Value::Array(items) if items.len() == 1));
         // SAFETY: the GPtrArray is valid and the test holds the reference released here.
         unsafe { glib::ffi::g_ptr_array_unref(ptr_array) };
@@ -1688,7 +1688,7 @@ fn ptr_to_value_gptrarray() {
 #[test]
 fn ptr_to_value_gbytearray() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             Descriptor::Integer(IntegerKind::U8),
             ArrayKind::GByteArray,
             Ownership::Borrowed,
@@ -1703,7 +1703,7 @@ fn ptr_to_value_gbytearray() {
         };
         // SAFETY: the pointer is a live container/buffer of the codec's element type, valid
         // for the duration of this read.
-        let value = unsafe { ty.read(ReadSource::Value(ba as *mut c_void, "array")) }.unwrap();
+        let value = unsafe { descriptor.read(ReadSource::Value(ba as *mut c_void, "array")) }.unwrap();
         assert!(matches!(value, Value::Array(items) if items.len() == 1));
         // SAFETY: the GByteArray is valid and the test holds the reference released here.
         unsafe { glib::ffi::g_byte_array_unref(ba) };
@@ -1713,7 +1713,7 @@ fn ptr_to_value_gbytearray() {
 #[test]
 fn ptr_to_value_garray() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             Descriptor::Integer(IntegerKind::I32),
             ArrayKind::GArray,
             Ownership::Borrowed,
@@ -1730,7 +1730,7 @@ fn ptr_to_value_garray() {
         let decoded =
             // SAFETY: the pointer is a live container/buffer of the codec's element type, valid
             // for the duration of this read.
-            unsafe { ty.read(ReadSource::Value(g_array as *mut c_void, "array")) }.unwrap();
+            unsafe { descriptor.read(ReadSource::Value(g_array as *mut c_void, "array")) }.unwrap();
         assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
         // SAFETY: the GArray is valid and the test holds the reference released here.
         unsafe { glib::ffi::g_array_unref(g_array) };
@@ -1740,7 +1740,7 @@ fn ptr_to_value_garray() {
 #[test]
 fn ptr_to_value_glist() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             struct_item_descriptor(),
             ArrayKind::GList,
             Ownership::Borrowed,
@@ -1749,7 +1749,7 @@ fn ptr_to_value_glist() {
         let list = unsafe { glib::ffi::g_list_append(std::ptr::null_mut(), boxed_handle().ptr()) };
         // SAFETY: the pointer is a live container/buffer of the codec's element type, valid
         // for the duration of this read.
-        let decoded = unsafe { ty.read(ReadSource::Value(list as *mut c_void, "array")) }.unwrap();
+        let decoded = unsafe { descriptor.read(ReadSource::Value(list as *mut c_void, "array")) }.unwrap();
         assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
         // SAFETY: `list` is the valid GList spine built above; freeing it releases the spine once.
         unsafe { glib::ffi::g_list_free(list) };
@@ -1759,7 +1759,7 @@ fn ptr_to_value_glist() {
 #[test]
 fn ptr_to_value_plain_array() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             struct_item_descriptor(),
             ArrayKind::Array,
             Ownership::Borrowed,
@@ -1769,7 +1769,7 @@ fn ptr_to_value_plain_array() {
         let decoded =
             // SAFETY: the pointer is a live container/buffer of the codec's element type, valid
             // for the duration of this read.
-            unsafe { ty.read(ReadSource::Value(data.as_mut_ptr() as *mut c_void, "array")) }
+            unsafe { descriptor.read(ReadSource::Value(data.as_mut_ptr() as *mut c_void, "array")) }
                 .unwrap();
         assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
     });
@@ -1777,7 +1777,7 @@ fn ptr_to_value_plain_array() {
 
 #[test]
 fn size_from_args_reads_integer_argument() {
-    let ty = array_type(
+    let descriptor = array_type(
         Descriptor::Integer(IntegerKind::I32),
         ArrayKind::Sized { size_index: 0 },
         Ownership::Borrowed,
@@ -1789,7 +1789,7 @@ fn size_from_args_reads_integer_argument() {
         Descriptor::Integer(IntegerKind::I32),
         Value::Number(2.0),
     )];
-    let Value::Array(items) = ty
+    let Value::Array(items) = descriptor
         .decode_with_context(&stashed_value, &ffi_args, &args)
         .unwrap()
     else {
@@ -1800,7 +1800,7 @@ fn size_from_args_reads_integer_argument() {
 
 #[test]
 fn size_from_args_reads_ref_integer_storage() {
-    let ty = array_type(
+    let descriptor = array_type(
         Descriptor::Integer(IntegerKind::I32),
         ArrayKind::Sized { size_index: 0 },
         Ownership::Borrowed,
@@ -1815,7 +1815,7 @@ fn size_from_args_reads_ref_integer_storage() {
         ),
         Value::Number(2.0),
     )];
-    let Value::Array(items) = ty
+    let Value::Array(items) = descriptor
         .decode_with_context(&stashed_value, &ffi_args, &args)
         .unwrap()
     else {
@@ -1826,7 +1826,7 @@ fn size_from_args_reads_ref_integer_storage() {
 
 #[test]
 fn size_from_args_reads_ref_integer_ptr() {
-    let ty = array_type(
+    let descriptor = array_type(
         Descriptor::Integer(IntegerKind::I32),
         ArrayKind::Sized { size_index: 0 },
         Ownership::Borrowed,
@@ -1841,7 +1841,7 @@ fn size_from_args_reads_ref_integer_ptr() {
         ),
         Value::Number(2.0),
     )];
-    let Value::Array(items) = ty
+    let Value::Array(items) = descriptor
         .decode_with_context(&stashed_value, &ffi_args, &args)
         .unwrap()
     else {
@@ -1852,7 +1852,7 @@ fn size_from_args_reads_ref_integer_ptr() {
 
 #[test]
 fn size_from_args_ref_null_ptr_falls_through_to_error() {
-    let ty = array_type(
+    let descriptor = array_type(
         Descriptor::Integer(IntegerKind::I32),
         ArrayKind::Sized { size_index: 0 },
         Ownership::Borrowed,
@@ -1867,34 +1867,34 @@ fn size_from_args_ref_null_ptr_falls_through_to_error() {
         Value::Number(0.0),
     )];
     assert!(
-        ty.decode_with_context(&stashed_value, &ffi_args, &args)
+        descriptor.decode_with_context(&stashed_value, &ffi_args, &args)
             .is_err()
     );
 }
 
 #[test]
 fn item_codec_resolves_pointer_kinds() {
-    let ty = array_type(struct_item_descriptor(), ArrayKind::Array, Ownership::Full);
-    let encoded = ty.encode(&Value::Array(vec![])).unwrap();
+    let descriptor = array_type(struct_item_descriptor(), ArrayKind::Array, Ownership::Full);
+    let encoded = descriptor.encode(&Value::Array(vec![])).unwrap();
     assert!(matches!(encoded, StashedValue::Storage(_)));
 }
 
 #[test]
 fn trait_methods_delegate_to_inherent_implementations() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             Descriptor::Integer(IntegerKind::I32),
             ArrayKind::Array,
             Ownership::Borrowed,
         );
 
-        let encoded = FfiEncoder::encode(&ty, &Value::Array(vec![Value::Number(1.0)])).unwrap();
-        let decoded = FfiDecoder::decode(&ty, &encoded).unwrap();
+        let encoded = FfiEncoder::encode(&descriptor, &Value::Array(vec![Value::Number(1.0)])).unwrap();
+        let decoded = FfiDecoder::decode(&descriptor, &encoded).unwrap();
         assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
 
         let storage = native::ffi::Stash::from(vec![7i32]);
         let with_context =
-            FfiDecoder::decode_with_context(&ty, &StashedValue::Storage(storage), &[], &[])
+            FfiDecoder::decode_with_context(&descriptor, &StashedValue::Storage(storage), &[], &[])
                 .unwrap();
         assert!(matches!(with_context, Value::Array(items) if items.len() == 1));
 
@@ -1920,13 +1920,13 @@ fn trait_methods_delegate_to_inherent_implementations() {
 
 #[test]
 fn encode_string_array_dup_elements_failure_frees_earlier_duplicates() {
-    let ty = array_type(
+    let descriptor = array_type(
         string_item_descriptor(Ownership::Full),
         ArrayKind::Array,
         Ownership::Borrowed,
     );
     let val = Value::Array(vec![Value::String("first".to_string()), Value::Number(2.0)]);
-    let err = ty
+    let err = descriptor
         .encode(&val)
         .expect_err("a non-string element after a duplicated one must fail");
     assert!(err.to_string().contains("Expected a String"));
@@ -1969,13 +1969,13 @@ fn encode_glist_handles_fails_and_unwinds_when_element_transfer_fails() {
         };
         let before = helpers::param_spec_refcount(pspec);
 
-        let ty = array_type(
+        let descriptor = array_type(
             unresolvable_fundamental_item_descriptor(),
             ArrayKind::GList,
             Ownership::Full,
         );
         let val = Value::Array(vec![Value::Object(Handle::borrowed(pspec))]);
-        let err = ty
+        let err = descriptor
             .encode(&val)
             .expect_err("an unresolvable element ref function must fail the transfer");
         assert!(err.to_string().contains("Failed to find ref symbol"));
@@ -1989,7 +1989,7 @@ fn encode_glist_handles_fails_and_unwinds_when_element_transfer_fails() {
 #[test]
 fn encode_glist_strings_full_container_full_elements_releases_when_call_never_happens() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             string_item_descriptor(Ownership::Full),
             ArrayKind::GList,
             Ownership::Full,
@@ -1998,7 +1998,7 @@ fn encode_glist_strings_full_container_full_elements_releases_when_call_never_ha
             Value::String("a".to_string()),
             Value::String("b".to_string()),
         ]);
-        let encoded = ty.encode(&val).unwrap();
+        let encoded = descriptor.encode(&val).unwrap();
         let StashedValue::Storage(storage) = &encoded else {
             panic!("expected storage")
         };
@@ -2028,13 +2028,13 @@ fn encode_gslist_strings_full_container_borrowed_elements_releases_spine_when_ca
 #[test]
 fn encode_gbytearray_full_ownership_releases_when_call_never_happens() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             Descriptor::Integer(IntegerKind::U8),
             ArrayKind::GByteArray,
             Ownership::Full,
         );
         let val = Value::Array(vec![Value::Number(1.0), Value::Number(2.0)]);
-        let encoded = ty.encode(&val).unwrap();
+        let encoded = descriptor.encode(&val).unwrap();
         let StashedValue::Storage(storage) = &encoded else {
             panic!("expected storage")
         };
@@ -2047,7 +2047,7 @@ fn encode_gbytearray_full_ownership_releases_when_call_never_happens() {
 #[test]
 fn encode_garray_borrowed_strings_installs_clear_func_and_roundtrips() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             string_item_descriptor(Ownership::Borrowed),
             ArrayKind::GArray,
             Ownership::Borrowed,
@@ -2056,8 +2056,8 @@ fn encode_garray_borrowed_strings_installs_clear_func_and_roundtrips() {
             Value::String("hello".to_string()),
             Value::String("world".to_string()),
         ]);
-        let encoded = ty.encode(&val).unwrap();
-        let Value::Array(items) = ty.decode(&encoded).unwrap() else {
+        let encoded = descriptor.encode(&val).unwrap();
+        let Value::Array(items) = descriptor.decode(&encoded).unwrap() else {
             panic!("expected array")
         };
         assert!(matches!(items.first(), Some(Value::String(s)) if s == "hello"));
@@ -2069,7 +2069,7 @@ fn encode_garray_borrowed_strings_installs_clear_func_and_roundtrips() {
 #[test]
 fn decode_zero_terminated_scalar_array_full_ownership_frees_buffer() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             Descriptor::Integer(IntegerKind::I32),
             ArrayKind::Array,
             Ownership::Full,
@@ -2084,7 +2084,7 @@ fn decode_zero_terminated_scalar_array_full_ownership_frees_buffer() {
             *mem.add(2) = 9;
             mem
         };
-        let Value::Array(items) = ty
+        let Value::Array(items) = descriptor
             .decode(&StashedValue::Ptr(buffer as *mut c_void))
             .unwrap()
         else {
@@ -2099,7 +2099,7 @@ fn decode_zero_terminated_scalar_array_full_ownership_frees_buffer() {
 #[test]
 fn write_return_to_pointer_full_string_array_hands_caller_owned_container() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             string_item_descriptor(Ownership::Full),
             ArrayKind::Array,
             Ownership::Full,
@@ -2112,7 +2112,7 @@ fn write_return_to_pointer_full_string_array_hands_caller_owned_container() {
         let ret = &mut slot as *mut *mut c_void as *mut c_void;
         // SAFETY: `ret` is a live, pointer-sized stack slot; `write_return_to_pointer` writes
         // exactly one pointer (or null) into it, read back after the call.
-        unsafe { PointerWriter::write_return_to_pointer(&ty, ret, &Ok(val)) };
+        unsafe { PointerWriter::write_return_to_pointer(&descriptor, ret, &Ok(val)) };
         assert!(!slot.is_null());
         // SAFETY: the full-ownership write placed a caller-owned, NULL-terminated `char*` array
         // into `slot`; `StrV::from_glib_full` takes ownership of that array and frees it on drop.
@@ -2129,7 +2129,7 @@ fn write_return_to_pointer_full_string_array_hands_caller_owned_container() {
 
 #[test]
 fn write_return_to_pointer_null_err_and_non_array_write_null() {
-    let ty = array_type(
+    let descriptor = array_type(
         string_item_descriptor(Ownership::Full),
         ArrayKind::Array,
         Ownership::Full,
@@ -2138,26 +2138,26 @@ fn write_return_to_pointer_null_err_and_non_array_write_null() {
     let ret = &mut slot as *mut *mut c_void as *mut c_void;
     // SAFETY: `ret` is a live, pointer-sized stack slot; `write_return_to_pointer` writes
     // exactly one pointer (or null) into it, read back after the call.
-    unsafe { PointerWriter::write_return_to_pointer(&ty, ret, &Ok(Value::Null)) };
+    unsafe { PointerWriter::write_return_to_pointer(&descriptor, ret, &Ok(Value::Null)) };
     assert!(slot.is_null());
 
     slot = 7 as *mut c_void;
     // SAFETY: `ret` is a live, pointer-sized stack slot; `write_return_to_pointer` writes
     // exactly one pointer (or null) into it, read back after the call.
-    unsafe { PointerWriter::write_return_to_pointer(&ty, ret, &Err(())) };
+    unsafe { PointerWriter::write_return_to_pointer(&descriptor, ret, &Err(())) };
     assert!(slot.is_null());
 
     slot = 7 as *mut c_void;
     // SAFETY: `ret` is a live, pointer-sized stack slot; `write_return_to_pointer` writes
     // exactly one pointer (or null) into it, read back after the call.
-    unsafe { PointerWriter::write_return_to_pointer(&ty, ret, &Ok(Value::Number(1.0))) };
+    unsafe { PointerWriter::write_return_to_pointer(&descriptor, ret, &Ok(Value::Number(1.0))) };
     assert!(slot.is_null());
 }
 
 #[test]
 fn write_return_to_pointer_encode_error_writes_null() {
     helpers::run(|| {
-        let ty = array_type(
+        let descriptor = array_type(
             Descriptor::Integer(IntegerKind::I32),
             ArrayKind::Array,
             Ownership::Full,
@@ -2167,7 +2167,7 @@ fn write_return_to_pointer_encode_error_writes_null() {
         let ret = &mut slot as *mut *mut c_void as *mut c_void;
         // SAFETY: `ret` is a live, pointer-sized stack slot; `write_return_to_pointer` writes
         // exactly one pointer (or null) into it, read back after the call.
-        unsafe { PointerWriter::write_return_to_pointer(&ty, ret, &Ok(val)) };
+        unsafe { PointerWriter::write_return_to_pointer(&descriptor, ret, &Ok(val)) };
         assert!(slot.is_null());
     });
 }

@@ -127,8 +127,8 @@ impl CallbackState {
 
         let mut cif_arg_types: Vec<libffi::Type> =
             Vec::with_capacity(data_ref.arg_descriptors.len());
-        for ty in &data_ref.arg_descriptors {
-            cif_arg_types.push(ty.libffi_type());
+        for descriptor in &data_ref.arg_descriptors {
+            cif_arg_types.push(descriptor.libffi_type());
         }
 
         let cif_return_type: libffi::Type = data_ref.return_descriptor.libffi_type();
@@ -200,7 +200,7 @@ impl CallbackData {
         let mut out_cell_indices: Vec<usize> = Vec::new();
         let mut out_targets: Vec<(*mut c_void, &Descriptor)> = Vec::new();
 
-        for (i, ty) in self.arg_descriptors.iter().enumerate() {
+        for (i, descriptor) in self.arg_descriptors.iter().enumerate() {
             if self.user_data_index == Some(i) {
                 continue;
             }
@@ -209,19 +209,19 @@ impl CallbackData {
             // least that many argument slots, so `args.add(i)` is in bounds and points to the i-th
             // argument pointer.
             let arg_ptr = unsafe { *args.add(i) };
-            if let Descriptor::Ref(ref_type) = ty {
+            if let Descriptor::Ref(ref_type) = descriptor {
                 // SAFETY: a `Ref` argument is passed as a pointer-to-pointer; `arg_ptr` is the
                 // i-th slot which holds that outer pointer, so reading it as `*mut *mut c_void`
                 // yields the inner cell pointer the callee can write through.
                 let inner_ptr = unsafe { *(arg_ptr as *const *mut c_void) };
                 out_cell_indices.push(values.len());
-                out_targets.push((inner_ptr, &ref_type.inner_type));
-                values.push(seed_ref_cell(inner_ptr, &ref_type.inner_type));
+                out_targets.push((inner_ptr, &ref_type.inner_descriptor));
+                values.push(seed_ref_cell(inner_ptr, &ref_type.inner_descriptor));
                 continue;
             }
-            // SAFETY: `arg_ptr` is the i-th argument slot and `ty` is the matching descriptor for
-            // it (per the CIF/ABI contract), so reading that slot as `ty` is well typed.
-            match unsafe { ty.read(ReadSource::Slot(arg_ptr, "callback arg")) } {
+            // SAFETY: `arg_ptr` is the i-th argument slot and `descriptor` is the matching descriptor for
+            // it (per the CIF/ABI contract), so reading that slot as `descriptor` is well typed.
+            match unsafe { descriptor.read(ReadSource::Slot(arg_ptr, "callback arg")) } {
                 Ok(val) => values.push(val),
                 Err(e) => {
                     ErrorReporter::global()
@@ -338,11 +338,11 @@ impl CallbackData {
     }
 }
 
-pub(crate) fn seed_ref_cell(inner_ptr: *mut c_void, inner_type: &Descriptor) -> Value {
+pub(crate) fn seed_ref_cell(inner_ptr: *mut c_void, inner_descriptor: &Descriptor) -> Value {
     if inner_ptr.is_null() {
         return Value::Null;
     }
-    match inner_type {
+    match inner_descriptor {
         Descriptor::Integer(_)
         | Descriptor::BigInt(_)
         | Descriptor::Float(_)
@@ -350,9 +350,9 @@ pub(crate) fn seed_ref_cell(inner_ptr: *mut c_void, inner_type: &Descriptor) -> 
         | Descriptor::Boolean(_)
         | Descriptor::Unichar(_) => {
             // SAFETY: `inner_ptr` is non-null (checked above) and points to the inout cell for a
-            // scalar `inner_type` (the match restricts this branch to fixed-size scalar kinds), so
-            // reading that slot as `inner_type` reads a correctly typed, in-bounds location.
-            unsafe { inner_type.read(ReadSource::Slot(inner_ptr.cast_const(), "inout cell seed")) }
+            // scalar `inner_descriptor` (the match restricts this branch to fixed-size scalar kinds), so
+            // reading that slot as `inner_descriptor` reads a correctly typed, in-bounds location.
+            unsafe { inner_descriptor.read(ReadSource::Slot(inner_ptr.cast_const(), "inout cell seed")) }
                 .unwrap_or(Value::Null)
         }
         _ => Value::Null,
@@ -363,15 +363,15 @@ pub(crate) fn flush_out_cells(
     cells: &[(usize, Value)],
     out_targets: &[(*mut c_void, &Descriptor)],
 ) {
-    for ((_, new_value), (ptr, inner_type)) in cells.iter().zip(out_targets.iter()) {
+    for ((_, new_value), (ptr, inner_descriptor)) in cells.iter().zip(out_targets.iter()) {
         if ptr.is_null() {
             continue;
         }
         // SAFETY: `ptr` is non-null (checked) and is the inout cell pointer captured in
-        // `handle_call` for this `inner_type`; the cell was supplied by the C caller for the
-        // matching `Ref` argument, so writing `new_value` back through `inner_type` targets a
+        // `handle_call` for this `inner_descriptor`; the cell was supplied by the C caller for the
+        // matching `Ref` argument, so writing `new_value` back through `inner_descriptor` targets a
         // correctly typed, writable location.
-        if let Err(e) = unsafe { inner_type.write_value_to_pointer(*ptr, new_value) } {
+        if let Err(e) = unsafe { inner_descriptor.write_value_to_pointer(*ptr, new_value) } {
             ErrorReporter::global().report(&e.context("callback: failed to write out-parameter"));
         }
     }

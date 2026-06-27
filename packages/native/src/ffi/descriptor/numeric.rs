@@ -18,11 +18,11 @@ pub enum IntegerKind {
 }
 
 macro_rules! impl_integer_kind_dispatch {
-    ($($variant:ident : $ty:ident : $vec_variant:ident),+ $(,)?) => {
+    ($($variant:ident : $descriptor:ident : $vec_variant:ident),+ $(,)?) => {
         impl IntegerKind {
             pub fn ffi_type(self) -> libffi::Type {
                 match self {
-                    $(Self::$variant => libffi::Type::$ty()),+
+                    $(Self::$variant => libffi::Type::$descriptor()),+
                 }
             }
 
@@ -35,7 +35,7 @@ macro_rules! impl_integer_kind_dispatch {
                 // type; `read_unaligned` loads it without an alignment requirement, then widens to f64.
                 unsafe {
                     match self {
-                        $(Self::$variant => ptr.cast::<$ty>().read_unaligned() as f64),+
+                        $(Self::$variant => ptr.cast::<$descriptor>().read_unaligned() as f64),+
                     }
                 }
             }
@@ -49,14 +49,14 @@ macro_rules! impl_integer_kind_dispatch {
                 // `write_unaligned` stores the narrowed value there without an alignment requirement.
                 unsafe {
                     match self {
-                        $(Self::$variant => ptr.cast::<$ty>().write_unaligned(value as $ty)),+
+                        $(Self::$variant => ptr.cast::<$descriptor>().write_unaligned(value as $descriptor)),+
                     }
                 }
             }
 
             pub fn to_stashed_value(self, value: f64) -> ffi::StashedValue {
                 match self {
-                    $(Self::$variant => ffi::StashedValue::$variant(value as $ty)),+
+                    $(Self::$variant => ffi::StashedValue::$variant(value as $descriptor)),+
                 }
             }
 
@@ -70,7 +70,7 @@ macro_rules! impl_integer_kind_dispatch {
                 unsafe {
                     match self {
                         $(Self::$variant => {
-                            std::slice::from_raw_parts(ptr.cast::<$ty>(), length)
+                            std::slice::from_raw_parts(ptr.cast::<$descriptor>(), length)
                                 .iter()
                                 .map(|&v| v as f64)
                                 .collect()
@@ -82,7 +82,7 @@ macro_rules! impl_integer_kind_dispatch {
             pub fn to_stash(self, values: &[f64]) -> ffi::Stash {
                 match self {
                     $(Self::$variant => {
-                        values.iter().map(|&v| v as $ty).collect::<Vec<_>>().into()
+                        values.iter().map(|&v| v as $descriptor).collect::<Vec<_>>().into()
                     }),+
                 }
             }
@@ -98,11 +98,11 @@ macro_rules! impl_integer_kind_dispatch {
                 args: &[libffi::Arg],
             ) -> ffi::StashedValue {
                 // SAFETY: the codec guarantees `cif`/`args` agree with the C signature and the
-                // requested `$ty` matches the function's return type, so `cif.call` reads back the
+                // requested `$descriptor` matches the function's return type, so `cif.call` reads back the
                 // correct scalar from the invoked function.
                 unsafe {
                     match self {
-                        $(Self::$variant => ffi::StashedValue::$variant(cif.call::<$ty>(ptr, args))),+
+                        $(Self::$variant => ffi::StashedValue::$variant(cif.call::<$descriptor>(ptr, args))),+
                     }
                 }
             }
@@ -112,7 +112,7 @@ macro_rules! impl_integer_kind_dispatch {
 with_integer_kinds!(impl_integer_kind_dispatch);
 
 macro_rules! impl_numeric_codecs {
-    ($kind:ty, $label:literal, $ptr_to_value:item) => {
+    ($kind:descriptor, $label:literal, $ptr_to_value:item) => {
         impl FfiEncoder for $kind {
             fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
                 let number = Self::number_from_value(value)?;
@@ -326,7 +326,7 @@ impl IntegerKind {
             value::Value::Number(n) => Ok(*n),
             value::Value::Object(handle) => Ok(handle.ptr_as_usize() as f64),
             value::Value::Null | value::Value::Undefined => Ok(0.0),
-            _ => bail!("Expected a Number for integer type, got {value:?}"),
+            _ => bail!("Expected a Number for integer descriptor, got {value:?}"),
         }
     }
 

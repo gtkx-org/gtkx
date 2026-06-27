@@ -63,7 +63,7 @@ impl ArrayDescriptor {
         let kind_str: String = obj.get_named_property("arrayKind").map_err(|_| {
             napi::Error::new(
                 napi::Status::InvalidArg,
-                "'arrayKind' property is required for array types",
+                "'arrayKind' property is required for array descriptors",
             )
         })?;
 
@@ -121,7 +121,7 @@ impl FfiEncoder for ArrayDescriptor {
             value::Value::Null | value::Value::Undefined => {
                 return Ok(ffi::StashedValue::Ptr(std::ptr::null_mut()));
             }
-            _ => bail!("Expected an Array for array type, got {val:?}"),
+            _ => bail!("Expected an Array for array descriptor, got {val:?}"),
         };
 
         if self.kind == ArrayKind::GByteArray {
@@ -237,7 +237,7 @@ impl FfiDecoder for ArrayDescriptor {
                     // for every `i < len` and dereferences to the i-th element pointer.
                     let item_ptr = unsafe { *pdata.add(i) };
                     // SAFETY: `item_ptr` is an element of this GPtrArray; `read` interprets it per
-                    // the array's item type, as the marshalling layer guarantees.
+                    // the array's item descriptor, as the marshalling layer guarantees.
                     let item_value = unsafe {
                         self.item_descriptor
                             .read(ReadSource::Value(item_ptr, "GPtrArray item"))?
@@ -700,10 +700,10 @@ impl ArrayDescriptor {
 
     fn encode_integer_array(
         values: &[f64],
-        int_type: IntegerKind,
+        integer_kind: IntegerKind,
     ) -> anyhow::Result<ffi::StashedValue> {
         Ok(ffi::StashedValue::Storage(
-            int_type.checked_to_stash(values)?,
+            integer_kind.checked_to_stash(values)?,
         ))
     }
 
@@ -770,7 +770,7 @@ impl ArrayDescriptor {
     fn item_codec(&self, context: &str) -> anyhow::Result<ItemCodec> {
         ItemCodec::resolve(&self.item_descriptor).ok_or_else(|| {
             anyhow::anyhow!(
-                "Unsupported {context} item type: {:?}",
+                "Unsupported {context} item descriptor: {:?}",
                 self.item_descriptor
             )
         })
@@ -829,7 +829,7 @@ impl ArrayDescriptor {
             ItemCodec::Pointer | ItemCodec::String => {
                 // SAFETY: `data`/`len` describe a contiguous array of `len` element pointers;
                 // `from_raw_parts` reads exactly that region, and each pointer is decoded per the
-                // item type.
+                // item descriptor.
                 let ptrs = unsafe { std::slice::from_raw_parts(data.cast::<*mut c_void>(), len) };
                 return ptrs
                     .iter()
@@ -927,14 +927,14 @@ impl ArrayDescriptor {
 
     fn append_integer_values_to_garray(
         g_array: *mut glib::ffi::GArray,
-        int_type: super::IntegerKind,
+        integer_kind: super::IntegerKind,
         array: &[value::Value],
     ) -> anyhow::Result<()> {
         let mut buf = [0u8; size_of::<i64>()];
         for n in Self::extract_numbers(array)? {
             // SAFETY: `buf` is 8 bytes, enough for any integer wire type, so `write_ptr` stores the
             // narrowed value within it.
-            unsafe { int_type.write_ptr(buf.as_mut_ptr(), n) };
+            unsafe { integer_kind.write_ptr(buf.as_mut_ptr(), n) };
             // SAFETY: `g_array` is a live GArray sized for this element type; `buf` holds one valid
             // element, so appending 1 value from it is sound.
             unsafe {
@@ -1079,7 +1079,7 @@ impl ArrayDescriptor {
         let item_size = self.item_element_size();
         let element_size = self.element_size.or(item_size).ok_or_else(|| {
             anyhow::anyhow!(
-                "Cannot determine element size for GArray with item type {:?}",
+                "Cannot determine element size for GArray with item descriptor {:?}",
                 self.item_descriptor
             )
         })?;
@@ -1088,7 +1088,7 @@ impl ArrayDescriptor {
             && element_size != item_size
         {
             bail!(
-                "GArray element size override {element_size} does not match the {item_size}-byte layout of item type {:?}",
+                "GArray element size override {element_size} does not match the {item_size}-byte layout of item descriptor {:?}",
                 self.item_descriptor
             );
         }
@@ -1331,7 +1331,7 @@ impl ArrayDescriptor {
     }
 
     fn decode_null_terminated_string_array(&self, ptr: *mut c_void) -> value::Value {
-        let items_full = matches!(&*self.item_descriptor, Descriptor::String(string_type) if string_type.ownership.is_full());
+        let items_full = matches!(&*self.item_descriptor, Descriptor::String(string_descriptor) if string_descriptor.ownership.is_full());
 
         let read_strv = |items: &[glib::GStringPtr]| {
             items
@@ -1470,27 +1470,27 @@ impl ArrayDescriptor {
         let ffi_arg = &ffi_args[size_index];
         let arg = &args[size_index];
 
-        if let Descriptor::Ref(ref_type) = &arg.ty
-            && let Descriptor::Integer(int_type) = &*ref_type.inner_type
+        if let Descriptor::Ref(ref_descriptor) = &arg.descriptor
+            && let Descriptor::Integer(integer_kind) = &*ref_descriptor.inner_descriptor
         {
             match ffi_arg {
                 ffi::StashedValue::Storage(storage) => {
                     // SAFETY: this arg is a `Ref<Integer>` out-parameter, so its storage pointer
-                    // addresses an `int_type`-sized slot holding the written-back length.
-                    let size = unsafe { int_type.read_ptr(storage.ptr() as *const u8) };
+                    // addresses an `integer_kind`-sized slot holding the written-back length.
+                    let size = unsafe { integer_kind.read_ptr(storage.ptr() as *const u8) };
                     return Self::validated_size(size, size_index);
                 }
                 ffi::StashedValue::Ptr(ptr) if !ptr.is_null() => {
                     // SAFETY: this arg is a non-null `Ref<Integer>` out-parameter pointer, so it
-                    // addresses an `int_type`-sized slot holding the written-back length.
-                    let size = unsafe { int_type.read_ptr(*ptr as *const u8) };
+                    // addresses an `integer_kind`-sized slot holding the written-back length.
+                    let size = unsafe { integer_kind.read_ptr(*ptr as *const u8) };
                     return Self::validated_size(size, size_index);
                 }
                 _ => {}
             }
         }
 
-        if let Descriptor::Integer(_) = &arg.ty
+        if let Descriptor::Integer(_) = &arg.descriptor
             && let Ok(num) = ffi_arg.to_number()
         {
             return Self::validated_size(num, size_index);
@@ -1499,7 +1499,7 @@ impl ArrayDescriptor {
         bail!(
             "Could not extract size from parameter at index {}: expected Ref<Integer> or Integer, got type {:?} with ffi value {:?}",
             size_index,
-            arg.ty,
+            arg.descriptor,
             ffi_arg
         );
     }

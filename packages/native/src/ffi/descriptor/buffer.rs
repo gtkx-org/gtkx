@@ -33,12 +33,12 @@ impl FfiEncoder for BufferDescriptor {
                 Ok(ffi::StashedValue::Ptr(std::ptr::null_mut()))
             }
             _ => {
-                bail!("Expected an ArrayBufferView, number, or null for buffer type, got {value:?}")
+                bail!("Expected an ArrayBufferView, number, or null for buffer descriptor, got {value:?}")
             }
         }
     }
 
-    arg_only_call_cif!("Buffer types");
+    arg_only_call_cif!("Buffer descriptors");
 }
 
 impl FfiDecoder for BufferDescriptor {}

@@ -571,8 +571,8 @@ fn string_full_item_array_type(kind: ArrayKind, container_ownership: Ownership) 
 
 #[test]
 fn encode_empty_string_glist_full_container_arms_null_transfer_safe_on_drop() {
-    let ty = string_full_item_array_type(ArrayKind::GList, Ownership::Full);
-    let encoded = ty.encode(&Value::Array(Vec::new())).unwrap();
+    let descriptor = string_full_item_array_type(ArrayKind::GList, Ownership::Full);
+    let encoded = descriptor.encode(&Value::Array(Vec::new())).unwrap();
     let StashedValue::Storage(storage) = &encoded else {
         panic!("expected storage")
     };
@@ -588,12 +588,12 @@ fn encode_empty_string_glist_full_container_arms_null_transfer_safe_on_drop() {
 
 #[test]
 fn encode_string_array_element_transfer_frees_duplicates_when_call_never_happens() {
-    let ty = string_full_item_array_type(ArrayKind::Array, Ownership::Borrowed);
+    let descriptor = string_full_item_array_type(ArrayKind::Array, Ownership::Borrowed);
     let val = Value::Array(vec![
         Value::String("foo".to_string()),
         Value::String("bar".to_string()),
     ]);
-    let encoded = ty.encode(&val).unwrap();
+    let encoded = descriptor.encode(&val).unwrap();
     let StashedValue::Storage(storage) = &encoded else {
         panic!("expected storage")
     };
@@ -614,14 +614,14 @@ fn encode_string_array_element_transfer_frees_duplicates_when_call_never_happens
 #[test]
 fn encode_gbytearray_full_ownership_unrefs_when_call_never_happens() {
     helpers::run(|| {
-        let ty = ArrayDescriptor {
+        let descriptor = ArrayDescriptor {
             item_descriptor: Box::new(Descriptor::Integer(IntegerKind::U8)),
             kind: ArrayKind::GByteArray,
             ownership: Ownership::Full,
             element_size: None,
         };
         let val = Value::Array(vec![Value::Number(7.0), Value::Number(8.0)]);
-        let encoded = ty.encode(&val).unwrap();
+        let encoded = descriptor.encode(&val).unwrap();
         let StashedValue::Storage(storage) = &encoded else {
             panic!("expected storage")
         };

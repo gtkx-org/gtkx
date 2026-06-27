@@ -126,12 +126,12 @@ fn assert_encoded_float(encoder: &HashTableEntryEncoder, value: &Value, expected
 }
 
 fn assert_boolean_ptr_reads_true(ptr: *mut c_void) {
-    let ty = Descriptor::Boolean(BooleanDescriptor);
+    let descriptor = Descriptor::Boolean(BooleanDescriptor);
 
     let value =
         // SAFETY: the pointer addresses a live value/container of the codec's type, valid for
         // this read.
-        unsafe { ty.read(ReadSource::Value(ptr, "test")) }.expect("decoding should succeed");
+        unsafe { descriptor.read(ReadSource::Value(ptr, "test")) }.expect("decoding should succeed");
 
     match value {
         Value::Boolean(true) => (),
@@ -181,32 +181,32 @@ where
 
 #[test]
 fn encoder_from_type_boolean() {
-    let ty = Descriptor::Boolean(BooleanDescriptor);
-    let encoder = HashTableEntryEncoder::from_type(&ty);
+    let descriptor = Descriptor::Boolean(BooleanDescriptor);
+    let encoder = HashTableEntryEncoder::from_descriptor(&descriptor);
     assert!(matches!(encoder, Some(HashTableEntryEncoder::Boolean)));
 }
 
 #[test]
 fn encoder_from_type_float() {
-    let ty = Descriptor::Float(FloatKind::F64);
-    let encoder = HashTableEntryEncoder::from_type(&ty);
+    let descriptor = Descriptor::Float(FloatKind::F64);
+    let encoder = HashTableEntryEncoder::from_descriptor(&descriptor);
     assert!(matches!(encoder, Some(HashTableEntryEncoder::Float)));
 }
 
 #[test]
 fn encoder_from_type_integer() {
-    let ty = Descriptor::Integer(IntegerKind::I32);
-    let encoder = HashTableEntryEncoder::from_type(&ty);
+    let descriptor = Descriptor::Integer(IntegerKind::I32);
+    let encoder = HashTableEntryEncoder::from_descriptor(&descriptor);
     assert!(matches!(encoder, Some(HashTableEntryEncoder::Integer)));
 }
 
 #[test]
 fn encoder_from_type_string() {
-    let ty = Descriptor::String(StringDescriptor {
+    let descriptor = Descriptor::String(StringDescriptor {
         ownership: Ownership::Borrowed,
         length: None,
     });
-    let encoder = HashTableEntryEncoder::from_type(&ty);
+    let encoder = HashTableEntryEncoder::from_descriptor(&descriptor);
     assert!(matches!(encoder, Some(HashTableEntryEncoder::String)));
 }
 
@@ -271,13 +271,13 @@ fn ptr_to_value_boolean_true() {
 
 #[test]
 fn ptr_to_value_boolean_false() {
-    let ty = Descriptor::Boolean(BooleanDescriptor);
+    let descriptor = Descriptor::Boolean(BooleanDescriptor);
     let ptr = std::ptr::null_mut::<c_void>();
 
     let value =
         // SAFETY: the pointer addresses a live value/container of the codec's type, valid for
         // this read.
-        unsafe { ty.read(ReadSource::Value(ptr, "test")) }.expect("decoding should succeed");
+        unsafe { descriptor.read(ReadSource::Value(ptr, "test")) }.expect("decoding should succeed");
 
     match value {
         Value::Boolean(false) => (),
@@ -292,7 +292,7 @@ fn ptr_to_value_boolean_nonzero_is_true() {
 
 #[test]
 fn ptr_to_value_float() {
-    let ty = Descriptor::Float(FloatKind::F64);
+    let descriptor = Descriptor::Float(FloatKind::F64);
     let float_val: f64 = std::f64::consts::E;
     // SAFETY: `g_malloc` returns a block large enough for one `f64`, written through the
     // suitably aligned pointer; the test owns and later frees it.
@@ -305,7 +305,7 @@ fn ptr_to_value_float() {
     let value =
         // SAFETY: the pointer addresses a live value/container of the codec's type, valid for
         // this read.
-        unsafe { ty.read(ReadSource::Value(ptr, "test")) }.expect("decoding should succeed");
+        unsafe { descriptor.read(ReadSource::Value(ptr, "test")) }.expect("decoding should succeed");
 
     match value {
         Value::Number(n) => assert!((n - std::f64::consts::E).abs() < f64::EPSILON),
@@ -318,14 +318,14 @@ fn ptr_to_value_float() {
 
 #[test]
 fn ptr_to_value_struct_null() {
-    let ty = Descriptor::Struct(StructDescriptor {
+    let descriptor = Descriptor::Struct(StructDescriptor {
         ownership: Ownership::Borrowed,
         size: Some(16),
         caller_allocated: false,
     });
 
     // SAFETY: a null pointer is the documented null case, decoded without dereferencing.
-    let value = unsafe { ty.read(ReadSource::Value(std::ptr::null_mut(), "test")) }
+    let value = unsafe { descriptor.read(ReadSource::Value(std::ptr::null_mut(), "test")) }
         .expect("decoding should succeed");
 
     match value {
@@ -337,7 +337,7 @@ fn ptr_to_value_struct_null() {
 #[test]
 fn ptr_to_value_struct_non_null() {
     helpers::run(|| {
-        let ty = Descriptor::Struct(StructDescriptor {
+        let descriptor = Descriptor::Struct(StructDescriptor {
             ownership: Ownership::Borrowed,
             size: Some(16),
             caller_allocated: false,
@@ -350,7 +350,7 @@ fn ptr_to_value_struct_non_null() {
         let value =
             // SAFETY: the pointer addresses a live value/container of the codec's type, valid for
             // this read.
-            unsafe { ty.read(ReadSource::Value(ptr, "test")) }.expect("decoding should succeed");
+            unsafe { descriptor.read(ReadSource::Value(ptr, "test")) }.expect("decoding should succeed");
 
         match value {
             Value::Object(_) => (),
@@ -548,14 +548,14 @@ fn float_memory_properly_freed_on_drop() {
 #[test]
 fn encoder_from_type_native_handle() {
     assert!(matches!(
-        HashTableEntryEncoder::from_type(&struct_type()),
+        HashTableEntryEncoder::from_descriptor(&struct_type()),
         Some(HashTableEntryEncoder::Handle(_))
     ));
 }
 
 #[test]
 fn encoder_from_type_ptr_array() {
-    let encoder = HashTableEntryEncoder::from_type(&gptrarray_type());
+    let encoder = HashTableEntryEncoder::from_descriptor(&gptrarray_type());
     assert!(matches!(encoder, Some(HashTableEntryEncoder::PtrArray(_))));
 }
 
@@ -948,7 +948,7 @@ fn string_hashtable_type(ownership: Ownership) -> HashTableDescriptor {
 #[test]
 fn write_return_to_pointer_full_table_hands_caller_owned_table() {
     helpers::run(|| {
-        let ty = string_hashtable_type(Ownership::Full);
+        let descriptor = string_hashtable_type(Ownership::Full);
         let val = Value::Array(vec![Value::Array(vec![
             Value::String("key".to_string()),
             Value::String("value".to_string()),
@@ -957,7 +957,7 @@ fn write_return_to_pointer_full_table_hands_caller_owned_table() {
         let ret = &mut slot as *mut *mut c_void as *mut c_void;
         // SAFETY: `ret` is a live, pointer-sized stack slot; the call writes exactly one pointer
         // (or null) into it, read back after the call.
-        unsafe { PointerWriter::write_return_to_pointer(&ty, ret, &Ok(val)) };
+        unsafe { PointerWriter::write_return_to_pointer(&descriptor, ret, &Ok(val)) };
         assert!(!slot.is_null());
         let table = slot as *mut glib::ffi::GHashTable;
         // SAFETY: `hash_table`/`table` is a valid GHashTable and the test holds the reference released here.
@@ -971,37 +971,37 @@ fn write_return_to_pointer_full_table_hands_caller_owned_table() {
 
 #[test]
 fn write_return_to_pointer_null_err_and_non_array_write_null() {
-    let ty = string_hashtable_type(Ownership::Full);
+    let descriptor = string_hashtable_type(Ownership::Full);
     let mut slot: *mut c_void = 7 as *mut c_void;
     let ret = &mut slot as *mut *mut c_void as *mut c_void;
     // SAFETY: `ret` is a live, pointer-sized stack slot; the call writes exactly one pointer
     // (or null) into it, read back after the call.
-    unsafe { PointerWriter::write_return_to_pointer(&ty, ret, &Ok(Value::Null)) };
+    unsafe { PointerWriter::write_return_to_pointer(&descriptor, ret, &Ok(Value::Null)) };
     assert!(slot.is_null());
 
     slot = 7 as *mut c_void;
     // SAFETY: `ret` is a live, pointer-sized stack slot; the call writes exactly one pointer
     // (or null) into it, read back after the call.
-    unsafe { PointerWriter::write_return_to_pointer(&ty, ret, &Err(())) };
+    unsafe { PointerWriter::write_return_to_pointer(&descriptor, ret, &Err(())) };
     assert!(slot.is_null());
 
     slot = 7 as *mut c_void;
     // SAFETY: `ret` is a live, pointer-sized stack slot; the call writes exactly one pointer
     // (or null) into it, read back after the call.
-    unsafe { PointerWriter::write_return_to_pointer(&ty, ret, &Ok(Value::Number(1.0))) };
+    unsafe { PointerWriter::write_return_to_pointer(&descriptor, ret, &Ok(Value::Number(1.0))) };
     assert!(slot.is_null());
 }
 
 #[test]
 fn write_return_to_pointer_encode_error_writes_null() {
     helpers::run(|| {
-        let ty = string_hashtable_type(Ownership::Full);
+        let descriptor = string_hashtable_type(Ownership::Full);
         let val = Value::Array(vec![Value::String("not a tuple".to_string())]);
         let mut slot: *mut c_void = 7 as *mut c_void;
         let ret = &mut slot as *mut *mut c_void as *mut c_void;
         // SAFETY: `ret` is a live, pointer-sized stack slot; the call writes exactly one pointer
         // (or null) into it, read back after the call.
-        unsafe { PointerWriter::write_return_to_pointer(&ty, ret, &Ok(val)) };
+        unsafe { PointerWriter::write_return_to_pointer(&descriptor, ret, &Ok(val)) };
         assert!(slot.is_null());
     });
 }

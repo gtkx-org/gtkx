@@ -295,12 +295,12 @@ fn caller_allocated_boxed_aliases_source_without_copying() {
     helpers::run(|| {
         let (gtype, original) = rgba_boxed_alloc();
 
-        let ty = BoxedDescriptor {
+        let descriptor = BoxedDescriptor {
             caller_allocated: true,
             ..boxed(Ownership::Borrowed)
         };
         assert_read_aliases_source(
-            &ty,
+            &descriptor,
             original,
             "a caller-allocated out boxed must alias the caller's buffer, not copy it",
         );
@@ -315,12 +315,12 @@ fn caller_allocated_struct_aliases_source_without_copying() {
     helpers::run(|| {
         let (gtype, original) = rgba_boxed_alloc();
 
-        let ty = StructDescriptor {
+        let descriptor = StructDescriptor {
             caller_allocated: true,
             ..struct_type(Ownership::Borrowed, Some(size_of::<gdk::ffi::GdkRGBA>()))
         };
         assert_read_aliases_source(
-            &ty,
+            &descriptor,
             original,
             "a caller-allocated out struct must alias the caller's buffer, not copy it",
         );

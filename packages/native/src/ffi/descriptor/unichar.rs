@@ -12,7 +12,7 @@ impl FfiEncoder for UnicharDescriptor {
             value::Value::String(s) => s.chars().next().map_or(0, |c| c as u32),
             value::Value::Number(n) => *n as u32,
             value::Value::Null | value::Value::Undefined => 0,
-            _ => anyhow::bail!("Expected a string for unichar type, got {value:?}"),
+            _ => anyhow::bail!("Expected a string for unichar descriptor, got {value:?}"),
         };
         Ok(ffi::StashedValue::U32(cp))
     }

@@ -21,6 +21,6 @@ impl TryFrom<Arg> for StashedValue {
     type Error = anyhow::Error;
 
     fn try_from(arg: Arg) -> anyhow::Result<Self> {
-        arg.ty.encode(&arg.value)
+        arg.descriptor.encode(&arg.value)
     }
 }

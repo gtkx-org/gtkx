@@ -54,7 +54,7 @@ impl FfiEncoder for StringDescriptor {
             value::Value::Null | value::Value::Undefined => {
                 Ok(ffi::StashedValue::Ptr(std::ptr::null_mut()))
             }
-            _ => bail!("Expected a String for string type, got {value:?}"),
+            _ => bail!("Expected a String for string descriptor, got {value:?}"),
         }
     }
 }

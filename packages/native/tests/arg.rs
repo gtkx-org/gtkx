@@ -147,7 +147,7 @@ fn try_from_integer_u64() {
 #[test]
 fn try_from_integer_optional_null() {
     let arg = Arg {
-        ty: Descriptor::Integer(IntegerKind::I32),
+        descriptor: Descriptor::Integer(IntegerKind::I32),
         value: value::Value::Null,
     };
 
@@ -477,7 +477,7 @@ fn try_from_struct_undefined() {
 #[test]
 fn try_from_array_optional_null_yields_null_ptr() {
     let arg = Arg {
-        ty: Descriptor::Array(ArrayDescriptor {
+        descriptor: Descriptor::Array(ArrayDescriptor {
             item_descriptor: Box::new(Descriptor::Integer(IntegerKind::U8)),
             kind: ArrayKind::Array,
             ownership: Ownership::Full,

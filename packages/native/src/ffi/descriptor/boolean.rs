@@ -13,7 +13,7 @@ impl FfiEncoder for BooleanDescriptor {
     fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
         let boolean = match value {
             value::Value::Boolean(b) => *b,
-            _ => anyhow::bail!("Expected a Boolean for boolean type, got {value:?}"),
+            _ => anyhow::bail!("Expected a Boolean for boolean descriptor, got {value:?}"),
         };
         Ok(ffi::StashedValue::I32(boolean.into_glib()))
     }

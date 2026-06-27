@@ -422,7 +422,7 @@ impl std::fmt::Display for Descriptor {
             Self::Buffer(_) => write!(f, "Buffer"),
             Self::HashTable(_) => write!(f, "HashTable"),
             Self::Callback(_) => write!(f, "Callback"),
-            Self::Ref(t) => write!(f, "Ref({})", t.inner_type),
+            Self::Ref(t) => write!(f, "Ref({})", t.inner_descriptor),
             Self::Unichar(_) => write!(f, "Unichar"),
         }
     }
@@ -432,9 +432,9 @@ impl Descriptor {
     #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn from_descriptor(env: &Env, value: Unknown<'_>) -> napi::Result<Self> {
         let obj: JsObject = crate::ffi::value::unknown_as_object(env, &value)?;
-        let ty: String = obj.get_named_property("kind")?;
+        let descriptor: String = obj.get_named_property("kind")?;
 
-        match ty.as_str() {
+        match descriptor.as_str() {
             "int8" => Ok(Self::Integer(IntegerKind::I8)),
             "uint8" => Ok(Self::Integer(IntegerKind::U8)),
             "int16" => Ok(Self::Integer(IntegerKind::I16)),

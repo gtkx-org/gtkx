@@ -540,8 +540,8 @@ fn enum_flags_pointer_codec() {
 
 #[test]
 fn enum_flags_type_appears_in_descriptor_enum() {
-    let ty = Descriptor::EnumFlags(helpers::enum_descriptor());
-    assert!(ty.can_be_return());
+    let descriptor = Descriptor::EnumFlags(helpers::enum_descriptor());
+    assert!(descriptor.can_be_return());
 }
 
 #[test]

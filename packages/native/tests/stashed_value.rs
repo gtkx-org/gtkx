@@ -135,16 +135,16 @@ fn callback_value_without_destroy_has_none() {
 #[test]
 fn write_scalar_to_writes_every_numeric_variant() {
     macro_rules! check {
-        ($variant:ident, $value:expr, $ty:ty) => {{
+        ($variant:ident, $value:expr, $descriptor:descriptor) => {{
             let mut slot: u64 = 0;
             let slot_ptr = &mut slot as *mut u64 as *mut c_void;
             let v = StashedValue::$variant($value);
             // SAFETY: `slot_ptr` points to the live, writable `u64` stack local `slot`, at least
             // as wide as any scalar variant `write_scalar_to` stores, so the write is in bounds.
             unsafe { v.write_scalar_to(slot_ptr) }.expect("scalar write should succeed");
-            // SAFETY: the matching `$ty` was just written into `slot`, so reading it back through a
+            // SAFETY: the matching `$descriptor` was just written into `slot`, so reading it back through a
             // correctly-typed pointer is an in-bounds, well-typed read.
-            let read = unsafe { *(slot_ptr as *const $ty) };
+            let read = unsafe { *(slot_ptr as *const $descriptor) };
             assert_eq!(read, $value);
         }};
     }

@@ -56,7 +56,7 @@ impl BigIntKind {
                 Ok(*n as i128)
             }
             value::Value::Null | value::Value::Undefined => Ok(0),
-            _ => bail!("Expected a BigInt for {} type, got {value:?}", self.label()),
+            _ => bail!("Expected a BigInt for {} descriptor, got {value:?}", self.label()),
         }
     }
 

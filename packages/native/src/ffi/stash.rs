@@ -388,7 +388,7 @@ impl Stash {
                 .collect(),
             _ => {
                 macro_rules! dispatch {
-                    ($($variant:ident : $ty:ident : $vec_variant:ident),+ $(,)?) => {
+                    ($($variant:ident : $descriptor:ident : $vec_variant:ident),+ $(,)?) => {
                         match (&self.kind, int_kind) {
                             $((StashKind::$vec_variant(v), IntegerKind::$variant) => {
                                 Ok(v.iter().map(|&x| x as f64).collect())
@@ -571,10 +571,10 @@ impl Drop for Stash {
 }
 
 macro_rules! impl_stash_from_integer_vecs {
-    ($($variant:ident : $ty:ident : $vec_variant:ident),+ $(,)?) => {
+    ($($variant:ident : $descriptor:ident : $vec_variant:ident),+ $(,)?) => {
         $(
-            impl From<Vec<$ty>> for Stash {
-                fn from(mut vec: Vec<$ty>) -> Self {
+            impl From<Vec<$descriptor>> for Stash {
+                fn from(mut vec: Vec<$descriptor>) -> Self {
                     let ptr = vec.as_mut_ptr() as *mut c_void;
                     Self::new(ptr, StashKind::$vec_variant(vec))
                 }

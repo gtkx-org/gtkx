@@ -222,9 +222,9 @@ fn ffi_encoder_defaults_cover_pointer_typed_codec() {
 
 #[test]
 fn descriptor_enum_dispatch_routes_codec_traits() {
-    let ty = Descriptor::Boolean(BooleanDescriptor);
-    let encoded = FfiEncoder::encode(&ty, &value::Value::Boolean(true)).unwrap();
+    let descriptor = Descriptor::Boolean(BooleanDescriptor);
+    let encoded = FfiEncoder::encode(&descriptor, &value::Value::Boolean(true)).unwrap();
     assert!(matches!(encoded, ffi::StashedValue::I32(1)));
-    let decoded = FfiDecoder::decode(&ty, &ffi::StashedValue::I32(0)).unwrap();
+    let decoded = FfiDecoder::decode(&descriptor, &ffi::StashedValue::I32(0)).unwrap();
     assert!(matches!(decoded, value::Value::Boolean(false)));
 }

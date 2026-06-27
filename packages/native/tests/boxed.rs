@@ -104,7 +104,7 @@ fn drop_does_not_free_transfer_none_memory() {
 
         let boxed = helpers::TestBoxed {
             ptr,
-            ty: Some(gtype),
+            descriptor: Some(gtype),
             is_owned: false,
         };
         drop(boxed);
@@ -172,7 +172,7 @@ fn plain_struct_not_owned_does_not_free() {
 
         let boxed = helpers::TestBoxed {
             ptr,
-            ty: None,
+            descriptor: None,
             is_owned: false,
         };
         drop(boxed);

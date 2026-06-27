@@ -11,19 +11,19 @@ use crate::ffi::{Stash, StashKind};
 
 #[derive(Debug, Clone)]
 pub struct RefDescriptor {
-    pub inner_type: Box<Descriptor>,
+    pub inner_descriptor: Box<Descriptor>,
 }
 
 impl RefDescriptor {
-    pub fn new(inner_type: Descriptor) -> napi::Result<Self> {
-        if !Self::supports_inner(&inner_type) {
+    pub fn new(inner_descriptor: Descriptor) -> napi::Result<Self> {
+        if !Self::supports_inner(&inner_descriptor) {
             return Err(napi::Error::new(
                 napi::Status::InvalidArg,
-                format!("'{inner_type}' cannot be used as a Ref inner type"),
+                format!("'{inner_descriptor}' cannot be used as a Ref inner descriptor"),
             ));
         }
         Ok(Self {
-            inner_type: Box::new(inner_type),
+            inner_descriptor: Box::new(inner_descriptor),
         })
     }
 
@@ -42,9 +42,9 @@ impl RefDescriptor {
     #[allow(clippy::trivially_copy_pass_by_ref)]
     #[cfg_attr(coverage_nightly, coverage(off))]
     pub(crate) fn from_descriptor(env: &Env, obj: &JsObject) -> napi::Result<Self> {
-        let inner_type_value: Unknown<'_> = obj.get_named_property("innerDescriptor")?;
-        let inner_type = Descriptor::from_descriptor(env, inner_type_value)?;
-        Self::new(inner_type)
+        let inner_descriptor_value: Unknown<'_> = obj.get_named_property("innerDescriptor")?;
+        let inner_descriptor = Descriptor::from_descriptor(env, inner_descriptor_value)?;
+        Self::new(inner_descriptor)
     }
 }
 
@@ -56,10 +56,10 @@ impl FfiEncoder for RefDescriptor {
             value::Value::Null | value::Value::Undefined => {
                 return Ok(ffi::StashedValue::Ptr(std::ptr::null_mut()));
             }
-            _ => bail!("Expected a Ref for ref type, got {val:?}"),
+            _ => bail!("Expected a Ref for ref descriptor, got {val:?}"),
         };
 
-        match &*self.inner_type {
+        match &*self.inner_descriptor {
             Descriptor::Boxed(_)
             | Descriptor::Struct(_)
             | Descriptor::Object(_)
@@ -70,9 +70,9 @@ impl FfiEncoder for RefDescriptor {
                     ref_val.value
                 ),
             },
-            Descriptor::Array(array_type) => match &*ref_val.value {
+            Descriptor::Array(array_descriptor) => match &*ref_val.value {
                 value::Value::Array(arr) if !arr.is_empty() => {
-                    let encoded = array_type.encode(&ref_val.value)?;
+                    let encoded = array_descriptor.encode(&ref_val.value)?;
                     match encoded {
                         ffi::StashedValue::Storage(storage) => {
                             Ok(ffi::StashedValue::Storage(storage))
@@ -88,8 +88,8 @@ impl FfiEncoder for RefDescriptor {
                     ref_val.value
                 ),
             },
-            Descriptor::String(string_type) => {
-                let (buffer_size, initial_content) = match (&string_type.length, &*ref_val.value) {
+            Descriptor::String(string_descriptor) => {
+                let (buffer_size, initial_content) = match (&string_descriptor.length, &*ref_val.value) {
                     (Some(len), value::Value::String(s)) => (*len, Some(s.as_bytes())),
                     (Some(len), value::Value::Null | value::Value::Undefined) => (*len, None),
                     (None, value::Value::String(s)) => (s.len() + 1, Some(s.as_bytes())),
@@ -118,7 +118,7 @@ impl FfiEncoder for RefDescriptor {
             _ => match &*ref_val.value {
                 value::Value::Null | value::Value::Undefined => Ok(Self::zeroed_scalar_slot()),
                 _ => {
-                    let ref_arg = Arg::new(*self.inner_type.clone(), *ref_val.value.clone());
+                    let ref_arg = Arg::new(*self.inner_descriptor.clone(), *ref_val.value.clone());
                     let encoded = ffi::StashedValue::try_from(ref_arg)?;
                     Self::scalar_out_slot(&encoded)
                 }
@@ -126,7 +126,7 @@ impl FfiEncoder for RefDescriptor {
         }
     }
 
-    arg_only_call_cif!("Ref types");
+    arg_only_call_cif!("Ref descriptors");
 }
 
 fn ref_storage_or_null<'a>(
@@ -157,41 +157,41 @@ impl FfiDecoder for RefDescriptor {
                     return Ok(value::Value::Null);
                 }
                 // SAFETY: `inner_ptr` is the non-null pointee read above, a valid slot for the
-                // inner type to read from.
+                // inner descriptor to read from.
                 return unsafe {
-                    self.inner_type
+                    self.inner_descriptor
                         .read(ReadSource::Slot(inner_ptr, "ref inner"))
                 };
             }
-            ReadSource::Value(..) => bail!("This type cannot be read from pointer"),
+            ReadSource::Value(..) => bail!("This descriptor cannot be read from pointer"),
         };
 
-        match &*self.inner_type {
+        match &*self.inner_descriptor {
             Descriptor::Object(_)
             | Descriptor::Boxed(_)
             | Descriptor::Fundamental(_)
             | Descriptor::Struct(_) => {
-                // SAFETY: for pointer inner types the out-slot `storage.ptr()` holds a pointer to
+                // SAFETY: for pointer inner descriptors the out-slot `storage.ptr()` holds a pointer to
                 // the produced value; dereferencing it loads that pointer for the inner decoder.
                 let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
-                self.inner_type.decode(&ffi::StashedValue::Ptr(actual_ptr))
+                self.inner_descriptor.decode(&ffi::StashedValue::Ptr(actual_ptr))
             }
             // SAFETY: `storage.ptr()` is the scalar out-slot the callee wrote; the inner integer
             // codec reads it as a pointer slot, range-checking for lossless f64 conversion.
             Descriptor::Integer(_) => unsafe {
-                self.inner_type
+                self.inner_descriptor
                     .read(ReadSource::Slot(storage.ptr(), "Ref<Integer>"))
             },
             // SAFETY: `storage.ptr()` is the scalar out-slot the callee wrote; the inner enum/flags
             // codec reads it as a pointer slot.
             Descriptor::EnumFlags(_) => unsafe {
-                self.inner_type
+                self.inner_descriptor
                     .read(ReadSource::Slot(storage.ptr(), "Ref<EnumFlags>"))
             },
             // SAFETY: `storage.ptr()` is the scalar out-slot the callee wrote; the inner float codec
             // reads it as a pointer slot.
             Descriptor::Float(_) => unsafe {
-                self.inner_type
+                self.inner_descriptor
                     .read(ReadSource::Slot(storage.ptr(), "Ref<Float>"))
             },
             // SAFETY: `storage.ptr()` is the boolean out-slot the callee wrote; the inner boolean
@@ -204,13 +204,13 @@ impl FfiDecoder for RefDescriptor {
             Descriptor::Unichar(unichar) => unsafe {
                 unichar.read(ReadSource::Slot(storage.ptr(), "Ref<Unichar>"))
             },
-            Descriptor::String(string_type) => Ok(Self::decode_ref_string(storage, string_type)),
+            Descriptor::String(string_descriptor) => Ok(Self::decode_ref_string(storage, string_descriptor)),
             Descriptor::Array(_) => {
                 bail!("Ref<Array> requires decode_with_context to get size from another parameter")
             }
             _ => bail!(
-                "Unsupported ref inner type for reading: {:?}",
-                self.inner_type
+                "Unsupported ref inner descriptor for reading: {:?}",
+                self.inner_descriptor
             ),
         }
     }
@@ -221,7 +221,7 @@ impl FfiDecoder for RefDescriptor {
         ffi_args: &[ffi::StashedValue],
         args: &[Arg],
     ) -> anyhow::Result<value::Value> {
-        if let Descriptor::Array(array_type) = &*self.inner_type {
+        if let Descriptor::Array(array_descriptor) = &*self.inner_descriptor {
             let Some(storage) = ref_storage_or_null(stashed_value, "Ref<Array>")? else {
                 return Ok(value::Value::Null);
             };
@@ -238,12 +238,12 @@ impl FfiDecoder for RefDescriptor {
             }
 
             let ptr_stashed_value = ffi::StashedValue::Ptr(actual_ptr);
-            let result = array_type.decode_with_context(&ptr_stashed_value, ffi_args, args);
+            let result = array_descriptor.decode_with_context(&ptr_stashed_value, ffi_args, args);
 
             if matches!(storage.kind(), StashKind::PtrStorage(_))
-                && array_type.ownership.is_full()
+                && array_descriptor.ownership.is_full()
                 && matches!(
-                    &array_type.kind,
+                    &array_descriptor.kind,
                     ArrayKind::Sized { .. } | ArrayKind::Fixed { .. }
                 )
             {
@@ -282,7 +282,7 @@ impl RefDescriptor {
         ffi::StashedValue::Storage(Stash::from(vec![0u64]))
     }
 
-    fn decode_ref_string(storage: &Stash, string_type: &super::StringDescriptor) -> value::Value {
+    fn decode_ref_string(storage: &Stash, string_descriptor: &super::StringDescriptor) -> value::Value {
         if storage.ptr().is_null() {
             return value::Value::Null;
         }
@@ -304,7 +304,7 @@ impl RefDescriptor {
             // `from_ptr_lossy` reads it up to the terminator.
             let string = unsafe { glib::GStr::from_ptr_lossy(str_ptr) }.to_string();
 
-            if string_type.ownership.is_full() {
+            if string_descriptor.ownership.is_full() {
                 // SAFETY: full ownership means the callee transferred the `g_malloc`-allocated
                 // string to us; after copying it out, freeing `str_ptr` once releases it.
                 unsafe { glib::ffi::g_free(str_ptr as *mut c_void) };

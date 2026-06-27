@@ -35,14 +35,14 @@ mod napi_export {
     ) -> napi::Result<External<Arc<CallDescriptor>>> {
         let parsed_arg_descriptors =
             crate::ffi::value::map_js_array(&env, &arg_descriptors, |env, value| {
-                let ty = Descriptor::from_descriptor(env, value)?;
-                if !ty.can_be_argument() {
+                let descriptor = Descriptor::from_descriptor(env, value)?;
+                if !descriptor.can_be_argument() {
                     return Err(napi::Error::new(
                         napi::Status::InvalidArg,
-                        format!("'{ty}' cannot be used as a function argument type"),
+                        format!("'{descriptor}' cannot be used as a function argument type"),
                     ));
                 }
-                Ok(ty)
+                Ok(descriptor)
             })?;
         let return_descriptor = Descriptor::from_descriptor(&env, return_descriptor)?;
         if !return_descriptor.can_be_return() {

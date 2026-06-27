@@ -32,7 +32,7 @@ impl Request for CallRequest {
             .iter()
             .cloned()
             .zip(self.values)
-            .map(|(ty, value)| Arg::new(ty, value))
+            .map(|(descriptor, value)| Arg::new(descriptor, value))
             .collect();
         let symbol_name = &self.descriptor.symbol_name;
         let return_descriptor = &self.descriptor.return_descriptor;
@@ -40,11 +40,11 @@ impl Request for CallRequest {
         let mut arg_types: Vec<libffi::Type> = Vec::with_capacity(args.len() + 1);
         for (i, arg) in args.iter().enumerate() {
             anyhow::ensure!(
-                arg.ty.can_be_argument(),
+                arg.descriptor.can_be_argument(),
                 "arg {i} of {symbol_name}: '{}' cannot be used as a function argument type",
-                arg.ty
+                arg.descriptor
             );
-            arg.ty.append_ffi_arg_types(&mut arg_types);
+            arg.descriptor.append_ffi_arg_types(&mut arg_types);
         }
 
         let cif = libffi::Builder::new()
@@ -56,7 +56,7 @@ impl Request for CallRequest {
             .iter()
             .enumerate()
             .map(|(i, arg)| {
-                arg.ty
+                arg.descriptor
                     .encode(&arg.value)
                     .with_context(|| format!("encoding arg {i} of {symbol_name}"))
             })
@@ -138,7 +138,7 @@ impl CallRequest {
         for (i, arg) in args.iter().enumerate() {
             if let Value::Ref(ref_val) = &arg.value {
                 let new_value =
-                    arg.ty
+                    arg.descriptor
                         .decode_with_context(&stashed_values[i], stashed_values, args)?;
                 ref_updates.push((Arc::clone(&ref_val.js_obj), new_value));
             }
@@ -222,7 +222,7 @@ mod tests {
         args: Vec<Arg>,
         return_descriptor: Descriptor,
     ) -> CallRequest {
-        let arg_descriptors = args.iter().map(|arg| arg.ty.clone()).collect();
+        let arg_descriptors = args.iter().map(|arg| arg.descriptor.clone()).collect();
         let values = args.into_iter().map(|arg| arg.value).collect();
         CallRequest {
             descriptor: Arc::new(CallDescriptor {
