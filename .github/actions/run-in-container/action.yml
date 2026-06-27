@@ -97,11 +97,13 @@ runs:
         # user, so git refuses to operate on it until it is marked safe.
         TRUST_WORKSPACE="git config --global --add safe.directory /workspace"
 
-        # Resolve the toolchain once, single-threaded, before any command that fans
-        # out into parallel cargo builds (turbo's native-build + native-build:dist).
-        # If a component download is unavoidable it happens here exactly once, so the
-        # parallel tasks never race on the shared rustup download directory.
-        WARM_TOOLCHAIN="cargo --version >/dev/null 2>&1 || true"
+        # Materialize the full stable toolchain (rustc, cargo, rust-std, clippy)
+        # once, single-threaded, before any command that fans out into parallel
+        # cargo builds (turbo's native-build + native-build:dist). Whatever rustup
+        # would otherwise fetch lazily — a channel update or a missing component —
+        # is fetched here exactly once, so the parallel tasks never race on the
+        # shared rustup download directory (the "could not rename …partial" error).
+        WARM_TOOLCHAIN="rustup toolchain install stable --profile minimal --component clippy --component llvm-tools-preview >/dev/null 2>&1 || true"
 
         if [ "$INPUT_INSTALL" = "true" ]; then
           FULL_COMMAND="$TRUST_WORKSPACE && $WARM_TOOLCHAIN && pnpm install --frozen-lockfile && $INPUT_COMMAND"
