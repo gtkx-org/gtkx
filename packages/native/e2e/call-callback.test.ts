@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { expectClickedSignalHandlerId } from "./helpers/call-callback-integer-helpers.js";
 import { suppressUnhandledRejections } from "./helpers/lifecycle.js";
 import {
     callArgs,
@@ -19,7 +18,12 @@ import {
 
 describe("call - callback - connect", () => {
     it("connects callback to signal", () => {
-        expectClickedSignalHandlerId();
+        const button = createButton("Test");
+
+        const handlerId = connectSignal(button, "clicked", () => {});
+
+        expect(typeof handlerId).toBe("number");
+        expect(handlerId).toBeGreaterThan(0);
     });
 });
 
@@ -35,21 +39,6 @@ describe("call - callback - invoke", () => {
         callArgs(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], VOID);
 
         expect(callbackInvoked).toBe(true);
-    });
-});
-
-describe("call - callback - args", () => {
-    it("receives signal arguments in callback", () => {
-        const cancellable = createCancellable();
-        let receivedArg: unknown = null;
-
-        connectSignalCallback(cancellable, "cancelled", (arg) => {
-            receivedArg = arg;
-        });
-
-        callArgs(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], VOID);
-
-        expect(receivedArg).toBeDefined();
     });
 });
 

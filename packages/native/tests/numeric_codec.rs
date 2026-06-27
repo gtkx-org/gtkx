@@ -481,7 +481,7 @@ fn float_call_cif_invokes_native_functions() {
 #[test]
 fn enum_flags_encode_decode_and_libffi_type() {
     helpers::run(|| {
-        let enum_flags = helpers::enum_type();
+        let enum_flags = helpers::enum_descriptor();
         let encoded = FfiEncoder::encode(&enum_flags, &Value::Number(1.0)).unwrap();
         assert!(matches!(encoded, ffi::StashedValue::I32(1)));
         let decoded = FfiDecoder::decode(&enum_flags, &ffi::StashedValue::I32(1)).unwrap();
@@ -496,7 +496,7 @@ fn enum_flags_encode_decode_and_libffi_type() {
 #[test]
 fn enum_flags_call_cif_invokes_native_function() {
     helpers::run(|| {
-        let enum_flags = helpers::enum_type();
+        let enum_flags = helpers::enum_descriptor();
         let cif = middle::Cif::new(Vec::new(), IntegerKind::I32.ffi_type());
         let result = FfiEncoder::call_cif(
             &enum_flags,
@@ -512,7 +512,7 @@ fn enum_flags_call_cif_invokes_native_function() {
 #[test]
 fn enum_flags_pointer_codec() {
     helpers::run(|| {
-        let enum_flags = helpers::enum_type();
+        let enum_flags = helpers::enum_descriptor();
         let mut slot: i64 = 0;
         let ptr = &mut slot as *mut i64 as *mut c_void;
         // SAFETY: `ptr` is the live, pointer-sized `slot` stack variable; the enum/flags codec
@@ -540,8 +540,8 @@ fn enum_flags_pointer_codec() {
 
 #[test]
 fn enum_flags_type_appears_in_descriptor_enum() {
-    let ty = Descriptor::EnumFlags(helpers::enum_type());
-    assert!(ty.can_be_return_type());
+    let ty = Descriptor::EnumFlags(helpers::enum_descriptor());
+    assert!(ty.can_be_return());
 }
 
 #[test]

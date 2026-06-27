@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getType, type Handle } from "../index.js";
+import { getType, type Handle } from "../binding.js";
 import { createLabel, typeFromName } from "./helpers/utils.js";
 
 describe("getType", () => {

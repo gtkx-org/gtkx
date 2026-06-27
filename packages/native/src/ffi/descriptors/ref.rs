@@ -6,8 +6,8 @@ use napi::{Env, JsObject};
 
 use super::prelude::*;
 use crate::ffi::arg::Arg;
-use crate::ffi::{Stash, StashKind};
 use crate::ffi::descriptors::{ArrayKind, Descriptor};
+use crate::ffi::{Stash, StashKind};
 
 #[derive(Debug, Clone)]
 pub struct RefDescriptor {
@@ -31,7 +31,11 @@ impl RefDescriptor {
     pub fn supports_inner(inner: &Descriptor) -> bool {
         !matches!(
             inner,
-            Descriptor::HashTable(_) | Descriptor::Callback(_) | Descriptor::Void(_) | Descriptor::Buffer(_) | Descriptor::Ref(_)
+            Descriptor::HashTable(_)
+                | Descriptor::Callback(_)
+                | Descriptor::Void(_)
+                | Descriptor::Buffer(_)
+                | Descriptor::Ref(_)
         )
     }
 
@@ -56,20 +60,23 @@ impl FfiEncoder for RefDescriptor {
         };
 
         match &*self.inner_type {
-            Descriptor::Boxed(_) | Descriptor::Struct(_) | Descriptor::GObject(_) | Descriptor::Fundamental(_) => {
-                match &*ref_val.value {
-                    value::Value::Null | value::Value::Undefined => Ok(Self::null_ptr_storage()),
-                    _ => bail!(
-                        "Expected Null for Ref<Boxed/Struct/GObject/Fundamental>, got {:?}",
-                        ref_val.value
-                    ),
-                }
-            }
+            Descriptor::Boxed(_)
+            | Descriptor::Struct(_)
+            | Descriptor::GObject(_)
+            | Descriptor::Fundamental(_) => match &*ref_val.value {
+                value::Value::Null | value::Value::Undefined => Ok(Self::null_ptr_storage()),
+                _ => bail!(
+                    "Expected Null for Ref<Boxed/Struct/GObject/Fundamental>, got {:?}",
+                    ref_val.value
+                ),
+            },
             Descriptor::Array(array_type) => match &*ref_val.value {
                 value::Value::Array(arr) if !arr.is_empty() => {
                     let encoded = array_type.encode(&ref_val.value)?;
                     match encoded {
-                        ffi::StashedValue::Storage(storage) => Ok(ffi::StashedValue::Storage(storage)),
+                        ffi::StashedValue::Storage(storage) => {
+                            Ok(ffi::StashedValue::Storage(storage))
+                        }
                         _ => bail!("Expected Storage from array encode for Ref<Array>"),
                     }
                 }
@@ -160,7 +167,10 @@ impl FfiDecoder for RefDescriptor {
         };
 
         match &*self.inner_type {
-            Descriptor::GObject(_) | Descriptor::Boxed(_) | Descriptor::Fundamental(_) | Descriptor::Struct(_) => {
+            Descriptor::GObject(_)
+            | Descriptor::Boxed(_)
+            | Descriptor::Fundamental(_)
+            | Descriptor::Struct(_) => {
                 // SAFETY: for pointer inner types the out-slot `storage.ptr()` holds a pointer to
                 // the produced value; dereferencing it loads that pointer for the inner decoder.
                 let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };

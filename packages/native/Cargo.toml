@@ -9,9 +9,6 @@ exclude = ["index.node"]
 [lib]
 crate-type = ["cdylib", "rlib"]
 
-[features]
-test-support = []
-
 [[bench]]
 name = "marshalling"
 harness = false

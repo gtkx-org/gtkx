@@ -8,7 +8,7 @@ use native::ffi::descriptors::{
 };
 use native::ffi::value::{BufferView, BufferViewKind, Value};
 
-use helpers::{f32_array_type, i32_array_type};
+use helpers::{f32_array_descriptor, i32_array_descriptor};
 
 fn decode_array_items(array_type: &ArrayDescriptor, buffer_ptr: *const i32) -> Vec<Value> {
     let decoded = array_type
@@ -23,7 +23,7 @@ fn decode_array_items(array_type: &ArrayDescriptor, buffer_ptr: *const i32) -> V
 #[test]
 fn decodes_contiguous_i32_array_from_buffer() {
     let buffer: Vec<i32> = vec![10, 20, 30, 40];
-    let array_type = i32_array_type(buffer.len());
+    let array_type = i32_array_descriptor(buffer.len());
 
     let items = decode_array_items(&array_type, buffer.as_ptr());
 
@@ -32,7 +32,7 @@ fn decodes_contiguous_i32_array_from_buffer() {
 
 #[test]
 fn decodes_empty_contiguous_array() {
-    let array_type = i32_array_type(0);
+    let array_type = i32_array_descriptor(0);
     let buffer: Vec<i32> = vec![1];
 
     let items = decode_array_items(&array_type, buffer.as_ptr());
@@ -57,7 +57,7 @@ fn buffer_view_array_passthrough_shares_the_backing_store() {
         BufferViewKind::Float32,
         false,
     );
-    let array_type = f32_array_type();
+    let array_type = f32_array_descriptor();
 
     let encoded = array_type
         .encode(&Value::BufferView(view))

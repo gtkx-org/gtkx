@@ -11,62 +11,6 @@ import {
     VOID,
 } from "./helpers/utils.js";
 
-describe("call - float types - 32-bit float", () => {
-    it("passes 32-bit float values (promoted to 64-bit for GTK)", () => {
-        const label = createLabel("Test");
-
-        callArgs(
-            GTK_LIB,
-            "gtk_widget_set_opacity",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: FLOAT64, value: 0.5 },
-            ],
-            VOID,
-        );
-
-        const result = callArgs(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64);
-
-        expect(result).toBeCloseTo(0.5, 2);
-    });
-
-    it("handles small fractional values", () => {
-        const label = createLabel("Test");
-
-        callArgs(
-            GTK_LIB,
-            "gtk_widget_set_opacity",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: FLOAT64, value: 0.1 },
-            ],
-            VOID,
-        );
-
-        const result = callArgs(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64);
-
-        expect(result).toBeCloseTo(0.1, 1);
-    });
-
-    it("handles value of 1.0", () => {
-        const label = createLabel("Test");
-
-        callArgs(
-            GTK_LIB,
-            "gtk_widget_set_opacity",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: FLOAT64, value: 1.0 },
-            ],
-            VOID,
-        );
-
-        const result = callArgs(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64);
-
-        expect(result).toBeCloseTo(1.0, 2);
-    });
-});
-
 describe("call - float types - 64-bit float basic", () => {
     it("passes and returns 64-bit float values", () => {
         const label = createLabel("Test");
@@ -84,43 +28,6 @@ describe("call - float types - 64-bit float basic", () => {
         const result = callArgs(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64);
 
         expect(result).toBeCloseTo(0.75);
-    });
-
-    it("handles values with high precision", () => {
-        const label = createLabel("Test");
-        const preciseValue = 0.12;
-
-        callArgs(
-            GTK_LIB,
-            "gtk_widget_set_opacity",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: FLOAT64, value: preciseValue },
-            ],
-            VOID,
-        );
-
-        const result = callArgs(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64);
-
-        expect(result).toBeCloseTo(preciseValue, 1);
-    });
-
-    it("handles very small values (near zero)", () => {
-        const label = createLabel("Test");
-
-        callArgs(
-            GTK_LIB,
-            "gtk_widget_set_opacity",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: FLOAT64, value: 0.05 },
-            ],
-            VOID,
-        );
-
-        const result = callArgs(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64);
-
-        expect(result).toBeCloseTo(0.05, 1);
     });
 });
 

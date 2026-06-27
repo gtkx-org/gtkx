@@ -1,15 +1,14 @@
-import * as native from "./native-binding-test.cjs";
+import type { Handle } from "./binding.js";
+import * as native from "./index.js";
 
-type RawHandle = Parameters<typeof native.watchObjectFinalize>[0];
-
-export function watchObjectFinalize(handle: unknown): void {
-    native.watchObjectFinalize(handle as RawHandle);
+export function watchObjectFinalize(handle: Handle): void {
+    native.watchObjectFinalize(handle);
 }
 
 export function finalizeCount(): number {
     return native.finalizeCount();
 }
 
-export function driveToggleFromThread(handle: unknown, iterations: number): void {
-    native.driveToggleFromThread(handle as RawHandle, iterations);
+export function driveToggleFromThread(handle: Handle, iterations: number): void {
+    native.driveToggleFromThread(handle, iterations);
 }

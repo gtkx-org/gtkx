@@ -6,11 +6,24 @@ type BuildStartHook = (this: {
 type TransformHook = (code: string, id: string) => string | null | undefined;
 type ResolveIdHook = (id: string) => { id: string; external: boolean } | null;
 
+const LOADER_PATH = "/fake/path/@gtkx/native/index.js";
+
 const mockOs = (platform: string, arch: string): void => {
     vi.resetModules();
     vi.doMock("node:os", () => ({
         platform: () => platform,
         arch: () => arch,
+    }));
+};
+
+const mockModuleResolution = (): void => {
+    vi.doMock("node:module", () => ({
+        createRequire: () => {
+            const fn = (id: string) => id;
+            fn.resolve = (id: string) =>
+                id === "@gtkx/native/package.json" ? "/fake/path/@gtkx/native/package.json" : `/fake/path/${id}.node`;
+            return fn;
+        },
     }));
 };
 
@@ -27,13 +40,6 @@ describe("gtkxNative (plugin shape)", () => {
         expect(plugin.enforce).toBe("pre");
     });
 
-    it("transform returns null for ids other than the native binding", async () => {
-        const { gtkxNative } = await import("../../src/vite-plugins/native.js");
-        const plugin = gtkxNative("/tmp");
-        const result = (plugin.transform as TransformHook)("export const x = 1;", "/some/other/file.js");
-        expect(result).toBeNull();
-    });
-
     it("resolveId marks the emitted binary as external", async () => {
         const { gtkxNative } = await import("../../src/vite-plugins/native.js");
         const plugin = gtkxNative("/tmp");
@@ -42,6 +48,37 @@ describe("gtkxNative (plugin shape)", () => {
             external: true,
         });
         expect((plugin.resolveId as ResolveIdHook)("./other.js")).toBeNull();
+    });
+});
+
+describe("gtkxNative (transform)", () => {
+    it("transform returns null for ids other than the native loader", async () => {
+        vi.resetModules();
+        mockModuleResolution();
+        const { gtkxNative } = await import("../../src/vite-plugins/native.js");
+        const plugin = gtkxNative("/tmp");
+        const result = (plugin.transform as TransformHook)("export const x = 1;", "/some/other/file.js");
+        expect(result).toBeNull();
+        vi.doUnmock("node:module");
+        vi.resetModules();
+    });
+
+    it("transform rewrites the native loader to load the emitted binary", async () => {
+        vi.resetModules();
+        mockModuleResolution();
+        const { gtkxNative } = await import("../../src/vite-plugins/native.js");
+        const plugin = gtkxNative("/tmp");
+        const loaderSource = ["export { init }", "export { bind }", "export { call }"].join("\n");
+        const result = (plugin.transform as TransformHook)(loaderSource, LOADER_PATH);
+        expect(result).toBe(
+            [
+                'import __gtkxNative from "./gtkx.node";',
+                "const { init, bind, call } = __gtkxNative;",
+                "export { init, bind, call };",
+            ].join("\n"),
+        );
+        vi.doUnmock("node:module");
+        vi.resetModules();
     });
 });
 
@@ -70,15 +107,9 @@ describe("gtkxNative (buildStart platform guards)", () => {
 });
 
 describe("gtkxNative (buildStart success)", () => {
-    it("buildStart emits the platform binary and transform rewrites the binding", async () => {
+    it("buildStart emits the platform binary", async () => {
         mockOs("linux", "x64");
-        vi.doMock("node:module", () => ({
-            createRequire: () => {
-                const fn = (id: string) => id;
-                fn.resolve = (id: string) => `/fake/path/${id}.node`;
-                return fn;
-            },
-        }));
+        mockModuleResolution();
         vi.doMock("node:fs", async () => {
             const real = await vi.importActual<typeof import("node:fs")>("node:fs");
             return { ...real, readFileSync: () => Buffer.from("native-bytes") };
@@ -94,12 +125,6 @@ describe("gtkxNative (buildStart success)", () => {
             fileName: "gtkx.node",
             source: Buffer.from("native-bytes"),
         });
-
-        const transformed = (plugin.transform as TransformHook)(
-            "function requireNative() {}",
-            "/fake/native-binding.cjs",
-        );
-        expect(transformed).toBe('module.exports = require("./gtkx.node");');
 
         vi.doUnmock("node:module");
         vi.doUnmock("node:fs");

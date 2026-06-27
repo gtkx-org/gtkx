@@ -1,8 +1,8 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::messaging::Mailbox;
-use crate::messaging::wait_signal::WaitSignal;
 use crate::messaging::error_reporter::ErrorReporter;
+use crate::messaging::wait_signal::WaitSignal;
 
 #[derive(Debug)]
 pub(super) struct FreezeController {

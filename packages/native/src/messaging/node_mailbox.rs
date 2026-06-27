@@ -9,9 +9,9 @@ use super::{
     GlibDispatchError, JsRefDeletion, Mailbox, NodeCallback, NodeCallbackResult, NodeTask,
     WakeJsTsfn, send_or_report,
 };
-use crate::messaging::panic_handler::format_panic_payload;
 use crate::ffi::value::{JsRef, Value};
 use crate::handle::wrapper_registry::WrapperRefOp;
+use crate::messaging::panic_handler::format_panic_payload;
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 fn node_channel_disconnected<R>() -> anyhow::Result<R> {

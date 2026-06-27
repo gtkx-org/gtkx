@@ -80,13 +80,13 @@ fn ownership_predicates_are_mutually_exclusive() {
     assert_ownership_predicates_mutually_exclusive();
 }
 
-fn gobject_type() -> GObjectDescriptor {
+fn gobject_descriptor() -> GObjectDescriptor {
     GObjectDescriptor {
         ownership: Ownership::Borrowed,
     }
 }
 
-fn struct_type() -> StructDescriptor {
+fn struct_descriptor() -> StructDescriptor {
     StructDescriptor {
         ownership: Ownership::Borrowed,
         size: Some(8),
@@ -95,7 +95,7 @@ fn struct_type() -> StructDescriptor {
 }
 
 #[allow(clippy::default_trait_access)]
-fn callback_type() -> CallbackDescriptor {
+fn callback_descriptor() -> CallbackDescriptor {
     CallbackDescriptor {
         arg_descriptors: vec![Descriptor::Integer(IntegerKind::I32)],
         return_descriptor: Box::new(Descriptor::Void(VoidDescriptor)),
@@ -106,28 +106,28 @@ fn callback_type() -> CallbackDescriptor {
 }
 
 #[test]
-fn can_be_return_type_accepts_value_shapes_and_rejects_argument_shapes() {
-    assert!(Descriptor::Integer(IntegerKind::I32).can_be_return_type());
-    assert!(Descriptor::Void(VoidDescriptor).can_be_return_type());
-    assert!(Descriptor::GObject(gobject_type()).can_be_return_type());
-    assert!(Descriptor::EnumFlags(helpers::enum_type()).can_be_return_type());
+fn can_be_return_accepts_value_shapes_and_rejects_argument_shapes() {
+    assert!(Descriptor::Integer(IntegerKind::I32).can_be_return());
+    assert!(Descriptor::Void(VoidDescriptor).can_be_return());
+    assert!(Descriptor::GObject(gobject_descriptor()).can_be_return());
+    assert!(Descriptor::EnumFlags(helpers::enum_descriptor()).can_be_return());
 
-    assert!(!Descriptor::Callback(callback_type()).can_be_return_type());
-    assert!(!Descriptor::Buffer(BufferDescriptor).can_be_return_type());
-    let ref_type =
+    assert!(!Descriptor::Callback(callback_descriptor()).can_be_return());
+    assert!(!Descriptor::Buffer(BufferDescriptor).can_be_return());
+    let ref_descriptor =
         RefDescriptor::new(Descriptor::Integer(IntegerKind::I32)).expect("valid Ref inner");
-    assert!(!Descriptor::Ref(ref_type).can_be_return_type());
+    assert!(!Descriptor::Ref(ref_descriptor).can_be_return());
 }
 
 #[test]
 fn ffi_decoder_decode_default_bails() {
-    assert!(FfiDecoder::decode(&callback_type(), &ffi::StashedValue::Void).is_err());
+    assert!(FfiDecoder::decode(&callback_descriptor(), &ffi::StashedValue::Void).is_err());
 }
 
 #[test]
 fn ffi_decoder_decode_with_context_default_delegates_to_decode() {
     let result =
-        FfiDecoder::decode_with_context(&callback_type(), &ffi::StashedValue::Void, &[], &[]);
+        FfiDecoder::decode_with_context(&callback_descriptor(), &ffi::StashedValue::Void, &[], &[]);
     assert!(result.is_err());
 }
 
@@ -136,8 +136,13 @@ fn pointer_codec_ptr_to_value_default_bails() {
     assert!(
         // SAFETY: the default `read_value` for a callback type bails without dereferencing, so the
         // dangling sentinel `8` is never read; the call is sound and returns an error.
-        unsafe { FfiDecoder::read(&callback_type(), ReadSource::Value(8 as *mut c_void, "ctx"),) }
-            .is_err()
+        unsafe {
+            FfiDecoder::read(
+                &callback_descriptor(),
+                ReadSource::Value(8 as *mut c_void, "ctx"),
+            )
+        }
+        .is_err()
     );
 }
 
@@ -148,7 +153,8 @@ fn pointer_codec_read_from_pointer_default_dereferences_then_bails() {
     // SAFETY: `ptr` points to the live pointer-sized stack local `inner`; the default
     // `read_pointer_slot` reads that one in-bounds pointer, then bails on the inner sentinel
     // without dereferencing it.
-    assert!(unsafe { FfiDecoder::read(&callback_type(), ReadSource::Slot(ptr, "ctx")) }.is_err());
+    let result = unsafe { FfiDecoder::read(&callback_descriptor(), ReadSource::Slot(ptr, "ctx")) };
+    assert!(result.is_err());
 }
 
 #[test]
@@ -158,13 +164,17 @@ fn pointer_codec_write_return_to_pointer_default_writes_null() {
     // SAFETY: `ret` points to the live, writable pointer-sized stack local `slot`; the default
     // `write_return_to_pointer` writes null into that in-bounds slot.
     unsafe {
-        PointerWriter::write_return_to_pointer(&callback_type(), ret, &Ok(Value::Number(1.0)));
+        PointerWriter::write_return_to_pointer(
+            &callback_descriptor(),
+            ret,
+            &Ok(Value::Number(1.0)),
+        );
     }
     assert!(slot.is_null());
 
     slot = 9 as *mut c_void;
     // SAFETY: same writable pointer-sized slot `ret`; the error case also writes null in bounds.
-    unsafe { PointerWriter::write_return_to_pointer(&callback_type(), ret, &Err(())) };
+    unsafe { PointerWriter::write_return_to_pointer(&callback_descriptor(), ret, &Err(())) };
     assert!(slot.is_null());
 }
 
@@ -176,7 +186,7 @@ fn pointer_codec_write_value_to_pointer_default_bails() {
         // SAFETY: the default `write_value_to_pointer` for a callback type bails before touching
         // `ptr`, which nonetheless points to the live pointer-sized stack local `slot`.
         unsafe {
-            PointerWriter::write_value_to_pointer(&callback_type(), ptr, &Value::Number(1.0))
+            PointerWriter::write_value_to_pointer(&callback_descriptor(), ptr, &Value::Number(1.0))
         }
         .is_err()
     );
@@ -188,16 +198,16 @@ extern "C" fn ret_ptr() -> *mut c_void {
 
 #[test]
 fn ffi_encoder_defaults_cover_pointer_typed_codec() {
-    let st = struct_type();
+    let st = struct_descriptor();
 
     assert_eq!(
         FfiEncoder::libffi_type(&st).as_raw_ptr(),
         middle::Type::pointer().as_raw_ptr()
     );
 
-    let mut arg_types: Vec<middle::Type> = Vec::new();
-    FfiEncoder::append_ffi_arg_types(&st, &mut arg_types);
-    assert_eq!(arg_types.len(), 1);
+    let mut arg_descriptors: Vec<middle::Type> = Vec::new();
+    FfiEncoder::append_ffi_arg_types(&st, &mut arg_descriptors);
+    assert_eq!(arg_descriptors.len(), 1);
 
     // SAFETY: the default `ref_for_transfer` returns its pointer argument unchanged without
     // dereferencing it, so the sentinel `16` is never read; the call is sound.

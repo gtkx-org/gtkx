@@ -7,18 +7,13 @@ mod macros;
 
 pub(crate) mod request;
 
-#[cfg(feature = "test-support")]
+// The test-support napi functions exist only in debug builds; release builds (the published
+// artifact) omit them entirely. Debug builds cover every dev, test, coverage, asan, and miri run.
+#[cfg(debug_assertions)]
 mod test_support;
 
-// These modules form no part of the napi-only public contract. They are reachable as a real
-// public Rust surface only when the `test-support` feature is enabled — which the `test` and
-// `native-bench` scripts pass so the in-crate integration tests and benches can reach internals
-// through full module paths — and are `pub(crate)` otherwise. The `#[napi]` exports are
-// registered through napi's ctor-based registration and do not depend on this visibility.
-test_visible_modules! {
-    ffi,
-    handle,
-    messaging,
-}
+pub mod ffi;
+pub mod handle;
+pub mod messaging;
 
 pub use handle::{Boxed, Handle};

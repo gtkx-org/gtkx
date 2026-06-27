@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getWrapper, type Handle, setWrapper } from "../index.js";
+import { getWrapper, type Handle, setWrapper } from "../binding.js";
 import { finalizeCount, watchObjectFinalize } from "../test-support.js";
 import { boxAppend, boxRemove, createBox, createLabel, forceGC, getRefCount } from "./helpers/utils.js";
 

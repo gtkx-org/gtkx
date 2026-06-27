@@ -16,26 +16,26 @@ export const gtypeMemberDeclaration = (context: ModuleContext): string => `decla
 const renderGtypeExpression = (
     context: ModuleContext,
     getType: string,
-    glibTypeName: string | undefined,
+    typeName: string | undefined,
 ): string | undefined => {
     if (getType === "intern") {
-        if (glibTypeName === undefined) return undefined;
+        if (typeName === undefined) return undefined;
         appendGtypeFromNameBinding(context);
-        return `${bindingIdentifier(TYPE_FROM_NAME_SYMBOL)}(${sourceStringLiteral(glibTypeName)}) as bigint`;
+        return `${bindingIdentifier(TYPE_FROM_NAME_SYMBOL)}(${sourceStringLiteral(typeName)}) as bigint`;
     }
     appendGetTypeBinding(context, getType);
     return `${bindingIdentifier(getType)}() as bigint`;
 };
 
 type GtypeSource = {
-    glibGetType: string | undefined;
-    glibTypeName: string | undefined;
+    getType: string | undefined;
+    typeName: string | undefined;
 };
 
 export const gtypeExprFor = (context: ModuleContext, source: GtypeSource): string | undefined =>
-    source.glibGetType === undefined
+    source.getType === undefined
         ? undefined
-        : renderGtypeExpression(context, source.glibGetType, source.glibTypeName);
+        : renderGtypeExpression(context, source.getType, source.typeName);
 
 const appendGetTypeBinding = (context: ModuleContext, getType: string): void => {
     const lib = context.namespace.sharedLibrary ?? "";

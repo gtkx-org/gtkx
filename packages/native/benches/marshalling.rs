@@ -16,20 +16,20 @@ use native::ffi::descriptors::{
 };
 use native::ffi::value::{BufferView, BufferViewKind, Value};
 
-use helpers::{f32_array_type, i32_array_type};
+use helpers::{f32_array_descriptor, i32_array_descriptor};
 
 const SIZES: [usize; 3] = [256, 1024, 4096];
 
-fn borrowed_string_type() -> StringDescriptor {
+fn borrowed_string_descriptor() -> StringDescriptor {
     StringDescriptor {
         ownership: Ownership::Borrowed,
         length: None,
     }
 }
 
-fn borrowed_string_array_type(kind: ArrayKind) -> ArrayDescriptor {
+fn borrowed_string_array_descriptor(kind: ArrayKind) -> ArrayDescriptor {
     ArrayDescriptor {
-        item_descriptor: Box::new(Descriptor::String(borrowed_string_type())),
+        item_descriptor: Box::new(Descriptor::String(borrowed_string_descriptor())),
         kind,
         ownership: Ownership::Borrowed,
         element_size: None,
@@ -39,13 +39,13 @@ fn borrowed_string_array_type(kind: ArrayKind) -> ArrayDescriptor {
 fn register_decode_case(
     group: &mut BenchmarkGroup<'_, WallTime>,
     n: usize,
-    array_type: &ArrayDescriptor,
+    array_descriptor: &ArrayDescriptor,
     stashed_value: &StashedValue,
     expectation: &str,
 ) {
     group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, _| {
         b.iter(|| {
-            let decoded = array_type
+            let decoded = array_descriptor
                 .decode_with_context(stashed_value, &[], &[])
                 .expect(expectation);
             black_box(decoded);
@@ -57,12 +57,12 @@ fn bench_decode_contiguous(c: &mut Criterion) {
     let mut group = c.benchmark_group("array_decode_i32_fixed");
     for &n in &SIZES {
         let buffer: Vec<i32> = (0..n as i32).collect();
-        let array_type = i32_array_type(n);
+        let array_descriptor = i32_array_descriptor(n);
         let stashed_value = StashedValue::Ptr(buffer.as_ptr() as *mut c_void);
         register_decode_case(
             &mut group,
             n,
-            &array_type,
+            &array_descriptor,
             &stashed_value,
             "contiguous decode",
         );
@@ -74,10 +74,10 @@ fn bench_encode_contiguous(c: &mut Criterion) {
     let mut group = c.benchmark_group("array_encode_i32_fixed");
     for &n in &SIZES {
         let values = Value::Array((0..n as i32).map(|i| Value::Number(f64::from(i))).collect());
-        let array_type = i32_array_type(n);
+        let array_descriptor = i32_array_descriptor(n);
         group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, _| {
             b.iter(|| {
-                let encoded = array_type
+                let encoded = array_descriptor
                     .encode(black_box(&values))
                     .expect("contiguous encode");
                 black_box(encoded);
@@ -99,10 +99,12 @@ fn bench_encode_view_passthrough(c: &mut Criterion) {
             false,
         );
         let value = Value::BufferView(view);
-        let array_type = f32_array_type();
+        let array_descriptor = f32_array_descriptor();
         group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, _| {
             b.iter(|| {
-                let encoded = array_type.encode(black_box(&value)).expect("view encode");
+                let encoded = array_descriptor
+                    .encode(black_box(&value))
+                    .expect("view encode");
                 black_box(encoded);
             });
         });
@@ -138,11 +140,13 @@ fn bench_decode_string(c: &mut Criterion) {
     let mut group = c.benchmark_group("string_decode_borrowed");
     for &n in &SIZES {
         let payload = CString::new("a".repeat(n)).expect("payload");
-        let string_type = borrowed_string_type();
+        let string_descriptor = borrowed_string_descriptor();
         let stashed_value = StashedValue::Ptr(payload.as_ptr() as *mut c_void);
         group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, _| {
             b.iter(|| {
-                let decoded = string_type.decode(&stashed_value).expect("string decode");
+                let decoded = string_descriptor
+                    .decode(&stashed_value)
+                    .expect("string decode");
                 black_box(decoded);
             });
         });
@@ -154,10 +158,10 @@ fn bench_encode_string(c: &mut Criterion) {
     let mut group = c.benchmark_group("string_encode_borrowed");
     for &n in &SIZES {
         let value = Value::String("a".repeat(n));
-        let string_type = borrowed_string_type();
+        let string_descriptor = borrowed_string_descriptor();
         group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, _| {
             b.iter(|| {
-                let encoded = string_type
+                let encoded = string_descriptor
                     .encode(black_box(&value))
                     .expect("string encode");
                 black_box(encoded);
@@ -183,9 +187,15 @@ fn bench_decode_glist(c: &mut Criterion) {
             node.next = next;
             next = std::ptr::from_mut(node);
         }
-        let list_type = borrowed_string_array_type(ArrayKind::GList);
+        let list_descriptor = borrowed_string_array_descriptor(ArrayKind::GList);
         let stashed_value = StashedValue::Ptr(nodes.as_mut_ptr() as *mut c_void);
-        register_decode_case(&mut group, n, &list_type, &stashed_value, "glist decode");
+        register_decode_case(
+            &mut group,
+            n,
+            &list_descriptor,
+            &stashed_value,
+            "glist decode",
+        );
     }
     group.finish();
 }
@@ -195,7 +205,7 @@ fn bench_decode_zero_terminated(c: &mut Criterion) {
     for &n in &SIZES {
         let mut buffer: Vec<i32> = (1..=n as i32).collect();
         buffer.push(0);
-        let array_type = ArrayDescriptor {
+        let array_descriptor = ArrayDescriptor {
             item_descriptor: Box::new(Descriptor::Integer(IntegerKind::I32)),
             kind: ArrayKind::Array,
             ownership: Ownership::Borrowed,
@@ -205,7 +215,7 @@ fn bench_decode_zero_terminated(c: &mut Criterion) {
         register_decode_case(
             &mut group,
             n,
-            &array_type,
+            &array_descriptor,
             &stashed_value,
             "zero-terminated decode",
         );
@@ -222,12 +232,12 @@ fn bench_decode_string_array(c: &mut Criterion) {
         let mut ptrs: Vec<*mut c_void> =
             payloads.iter().map(|s| s.as_ptr() as *mut c_void).collect();
         ptrs.push(std::ptr::null_mut());
-        let array_type = borrowed_string_array_type(ArrayKind::Array);
+        let array_descriptor = borrowed_string_array_descriptor(ArrayKind::Array);
         let stashed_value = StashedValue::Ptr(ptrs.as_ptr() as *mut c_void);
         register_decode_case(
             &mut group,
             n,
-            &array_type,
+            &array_descriptor,
             &stashed_value,
             "string array decode",
         );

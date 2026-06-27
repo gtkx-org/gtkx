@@ -9,7 +9,7 @@ use native::handle::Fundamental;
 use helpers::{param_spec_ref, param_spec_refcount, param_spec_unref};
 
 fn create_param_spec() -> *mut c_void {
-    helpers::ensure_gtk_init();
+    helpers::ensure_glib_init();
 
     // SAFETY: GTK is initialized above; the four `c"..."` literals are valid NUL-terminated C
     // strings and the flags are valid `GParamFlags`, so `g_param_spec_boolean` returns a freshly

@@ -1,7 +1,14 @@
 {
     "$schema": "https://unpkg.com/knip@6/schema.json",
     "ignoreExportsUsedInFile": true,
-    "ignore": ["**/out-tsc/**", "**/native-binding*.cjs", ".claude/**"],
+    "ignore": [
+        "**/out-tsc/**",
+        "packages/native/index.js",
+        "packages/native/index.d.ts",
+        "packages/native/binding.js",
+        "packages/native/binding.d.ts",
+        ".claude/**"
+    ],
     "ignoreBinaries": [
         "espeak-ng",
         "glib-compile-resources",
@@ -61,8 +68,6 @@
             "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
         },
         "packages/native": {
-            "includeEntryExports": true,
-            "entry": ["types.ts!"],
             "project": ["*.ts!", "e2e/**/*.{ts,tsx}"]
         },
         "packages/react": {

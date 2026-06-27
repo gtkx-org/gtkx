@@ -8,9 +8,9 @@ use napi::{Env, JsObject};
 use super::prelude::*;
 use super::string::str_to_glib_full;
 use crate::ffi::arg::Arg;
-use crate::ffi::{Stash, StashKind};
-use crate::ffi::descriptors::{BigIntKind, FloatKind, IntegerKind, Descriptor};
+use crate::ffi::descriptors::{BigIntKind, Descriptor, FloatKind, IntegerKind};
 use crate::ffi::value::BufferViewKind;
+use crate::ffi::{Stash, StashKind};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
@@ -151,8 +151,7 @@ impl FfiEncoder for ArrayDescriptor {
             }
             ItemCodec::Boolean => Ok(Self::encode_boolean_array(&Self::extract_booleans(array)?)),
             ItemCodec::String => {
-                let dup_elements =
-                    matches!(&*self.item_descriptor, Descriptor::String(s) if s.ownership.is_full());
+                let dup_elements = matches!(&*self.item_descriptor, Descriptor::String(s) if s.ownership.is_full());
                 encoder.encode_strings(array, dup_elements, self.ownership)
             }
             ItemCodec::Pointer => {
@@ -341,9 +340,10 @@ impl ItemCodec {
             Descriptor::BigInt(kind) => Self::BigInt(*kind),
             Descriptor::Float(kind) => Self::Float(*kind),
             Descriptor::Boolean(_) => Self::Boolean,
-            Descriptor::GObject(_) | Descriptor::Boxed(_) | Descriptor::Struct(_) | Descriptor::Fundamental(_) => {
-                Self::Pointer
-            }
+            Descriptor::GObject(_)
+            | Descriptor::Boxed(_)
+            | Descriptor::Struct(_)
+            | Descriptor::Fundamental(_) => Self::Pointer,
             Descriptor::String(_) => Self::String,
             Descriptor::Void(_)
             | Descriptor::Array(_)
@@ -707,7 +707,10 @@ impl ArrayDescriptor {
         ))
     }
 
-    fn encode_float_array(values: &[f64], float_kind: FloatKind) -> anyhow::Result<ffi::StashedValue> {
+    fn encode_float_array(
+        values: &[f64],
+        float_kind: FloatKind,
+    ) -> anyhow::Result<ffi::StashedValue> {
         match float_kind {
             FloatKind::F32 => Ok(ffi::StashedValue::Storage(
                 Self::checked_f32_vec(values)?.into(),
@@ -750,9 +753,7 @@ impl ArrayDescriptor {
             .collect()
     }
 
-    fn extract_handles(
-        array: &[value::Value],
-    ) -> anyhow::Result<Vec<crate::handle::Handle>> {
+    fn extract_handles(array: &[value::Value]) -> anyhow::Result<Vec<crate::handle::Handle>> {
         array
             .iter()
             .map(|v| match v {
@@ -767,8 +768,12 @@ impl ArrayDescriptor {
     }
 
     fn item_codec(&self, context: &str) -> anyhow::Result<ItemCodec> {
-        ItemCodec::resolve(&self.item_descriptor)
-            .ok_or_else(|| anyhow::anyhow!("Unsupported {context} item type: {:?}", self.item_descriptor))
+        ItemCodec::resolve(&self.item_descriptor).ok_or_else(|| {
+            anyhow::anyhow!(
+                "Unsupported {context} item type: {:?}",
+                self.item_descriptor
+            )
+        })
     }
 
     fn decode_contiguous(
@@ -828,7 +833,10 @@ impl ArrayDescriptor {
                 let ptrs = unsafe { std::slice::from_raw_parts(data.cast::<*mut c_void>(), len) };
                 return ptrs
                     .iter()
-                    .map(|&item_ptr| self.item_descriptor.decode(&ffi::StashedValue::Ptr(item_ptr)))
+                    .map(|&item_ptr| {
+                        self.item_descriptor
+                            .decode(&ffi::StashedValue::Ptr(item_ptr))
+                    })
                     .collect();
             }
         };
@@ -1036,8 +1044,7 @@ impl ArrayDescriptor {
             }
             ItemCodec::Pointer => self.append_handle_values_to_garray(g_array, array),
             ItemCodec::String => {
-                let callee_adopts_strings =
-                    matches!(&*self.item_descriptor, Descriptor::String(s) if s.ownership.is_full());
+                let callee_adopts_strings = matches!(&*self.item_descriptor, Descriptor::String(s) if s.ownership.is_full());
                 if !callee_adopts_strings {
                     // SAFETY: `g_array` is a live GArray of `char*` elements; installing the clear
                     // func makes GLib free each owned string element when the array is cleared.
@@ -1128,7 +1135,10 @@ impl ArrayDescriptor {
 }
 
 impl ArrayDescriptor {
-    pub(crate) fn decode_glist(&self, stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
+    pub(crate) fn decode_glist(
+        &self,
+        stashed_value: &ffi::StashedValue,
+    ) -> anyhow::Result<value::Value> {
         let Some(list_ptr) = stashed_value.as_non_null_ptr("GList/GSList")? else {
             return Ok(value::Value::Array(vec![]));
         };
@@ -1165,7 +1175,10 @@ impl ArrayDescriptor {
         Ok(value::Value::Array(values?))
     }
 
-    pub(crate) fn decode_garray(&self, stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
+    pub(crate) fn decode_garray(
+        &self,
+        stashed_value: &ffi::StashedValue,
+    ) -> anyhow::Result<value::Value> {
         let Some(array_ptr) = stashed_value.as_non_null_ptr("GArray")? else {
             return Ok(value::Value::Array(vec![]));
         };
@@ -1207,7 +1220,8 @@ impl ArrayDescriptor {
                 // SAFETY: `pdata` holds `len` element pointers, so `pdata.add(i)` is in bounds for
                 // every `i < len` and dereferences to the i-th element pointer.
                 let item_ptr = unsafe { *pdata.add(i) };
-                self.item_descriptor.decode(&ffi::StashedValue::Ptr(item_ptr))
+                self.item_descriptor
+                    .decode(&ffi::StashedValue::Ptr(item_ptr))
             })
             .collect();
 

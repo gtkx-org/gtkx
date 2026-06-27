@@ -9,13 +9,13 @@ use ::libffi::low as libffi_low;
 use ::libffi::middle as libffi;
 use napi::JsFunction;
 
-use crate::messaging::Mailbox;
-use crate::messaging::error_reporter::ErrorReporter;
 use crate::ffi::StashedValue;
 use crate::ffi::descriptors::{
-    FfiDecoder as _, FfiEncoder as _, PointerWriter as _, ReadSource, Descriptor, str_to_glib_full,
+    Descriptor, FfiDecoder as _, FfiEncoder as _, PointerWriter as _, ReadSource, str_to_glib_full,
 };
 use crate::ffi::value::{JsRef, Value};
+use crate::messaging::Mailbox;
+use crate::messaging::error_reporter::ErrorReporter;
 
 pub struct CallbackData {
     pub js_func: Arc<JsRef<JsFunction>>,
@@ -125,7 +125,8 @@ impl CallbackState {
         // the data are dropped together in `CallbackState::drop`, the closure first.
         let data_ref: &'static CallbackData = unsafe { &*data_ptr };
 
-        let mut cif_arg_types: Vec<libffi::Type> = Vec::with_capacity(data_ref.arg_descriptors.len());
+        let mut cif_arg_types: Vec<libffi::Type> =
+            Vec::with_capacity(data_ref.arg_descriptors.len());
         for ty in &data_ref.arg_descriptors {
             cif_arg_types.push(ty.libffi_type());
         }
@@ -152,7 +153,13 @@ pub fn build_trampoline(
     user_data_index: Option<usize>,
     is_oneshot: bool,
 ) -> (*mut c_void, Box<CallbackState>) {
-    let data = CallbackData::new(js_func, arg_descriptors, return_descriptor, user_data_index, is_oneshot);
+    let data = CallbackData::new(
+        js_func,
+        arg_descriptors,
+        return_descriptor,
+        user_data_index,
+        is_oneshot,
+    );
     let state = Box::new(CallbackState::create(data));
     let code_ptr = state.code_ptr;
     (code_ptr, state)
@@ -273,7 +280,10 @@ impl CallbackData {
         // SAFETY: `result` is the CIF return slot supplied by libffi for this callback, and
         // `self.return_descriptor` is the descriptor that matches that slot's ABI, so writing the encoded
         // return value through it targets a correctly typed, writable location.
-        unsafe { self.return_descriptor.write_return_to_pointer(result, value) };
+        unsafe {
+            self.return_descriptor
+                .write_return_to_pointer(result, value);
+        };
     }
 
     fn return_type_is_borrowed_container(&self) -> bool {
@@ -349,7 +359,10 @@ pub(crate) fn seed_ref_cell(inner_ptr: *mut c_void, inner_type: &Descriptor) -> 
     }
 }
 
-pub(crate) fn flush_out_cells(cells: &[(usize, Value)], out_targets: &[(*mut c_void, &Descriptor)]) {
+pub(crate) fn flush_out_cells(
+    cells: &[(usize, Value)],
+    out_targets: &[(*mut c_void, &Descriptor)],
+) {
     for ((_, new_value), (ptr, inner_type)) in cells.iter().zip(out_targets.iter()) {
         if ptr.is_null() {
             continue;
@@ -359,8 +372,7 @@ pub(crate) fn flush_out_cells(cells: &[(usize, Value)], out_targets: &[(*mut c_v
         // matching `Ref` argument, so writing `new_value` back through `inner_type` targets a
         // correctly typed, writable location.
         if let Err(e) = unsafe { inner_type.write_value_to_pointer(*ptr, new_value) } {
-            ErrorReporter::global()
-                .report(&e.context("callback: failed to write out-parameter"));
+            ErrorReporter::global().report(&e.context("callback: failed to write out-parameter"));
         }
     }
 }

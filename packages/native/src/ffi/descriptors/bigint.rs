@@ -62,19 +62,23 @@ impl BigIntKind {
 
     fn checked_to_stashed_value(self, value: i128) -> anyhow::Result<ffi::StashedValue> {
         match self {
-            Self::I64 => i64::try_from(value).map(ffi::StashedValue::I64).map_err(|_| {
-                anyhow::anyhow!(
-                    "Value {value} is out of range for bigint64 [{}, {}]",
-                    i64::MIN,
-                    i64::MAX
-                )
-            }),
-            Self::U64 => u64::try_from(value).map(ffi::StashedValue::U64).map_err(|_| {
-                anyhow::anyhow!(
-                    "Value {value} is out of range for biguint64 [0, {}]",
-                    u64::MAX
-                )
-            }),
+            Self::I64 => i64::try_from(value)
+                .map(ffi::StashedValue::I64)
+                .map_err(|_| {
+                    anyhow::anyhow!(
+                        "Value {value} is out of range for bigint64 [{}, {}]",
+                        i64::MIN,
+                        i64::MAX
+                    )
+                }),
+            Self::U64 => u64::try_from(value)
+                .map(ffi::StashedValue::U64)
+                .map_err(|_| {
+                    anyhow::anyhow!(
+                        "Value {value} is out of range for biguint64 [0, {}]",
+                        u64::MAX
+                    )
+                }),
         }
     }
 

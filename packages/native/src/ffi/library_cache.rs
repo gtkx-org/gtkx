@@ -96,7 +96,7 @@ impl LibraryCache {
         self.libraries.len()
     }
 
-    #[cfg(feature = "test-support")]
+    #[cfg(debug_assertions)]
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.libraries.is_empty()

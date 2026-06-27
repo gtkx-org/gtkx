@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Handle } from "../index.js";
+import type { Handle } from "../binding.js";
 import { callArgs, createLabel, GOBJECT_BORROWED, STRING, VOID } from "./helpers/utils.js";
 
 describe("call argument unwrapping", () => {

@@ -5,9 +5,9 @@ use glib::{
 use napi::{Env, JsObject};
 
 use super::prelude::*;
-use crate::messaging::error_reporter::ErrorReporter;
-use crate::handle::Boxed;
 use crate::ffi::library_cache::GlibThreadState;
+use crate::handle::Boxed;
+use crate::messaging::error_reporter::ErrorReporter;
 
 #[derive(Debug, Clone)]
 pub struct BoxedDescriptor {
@@ -27,7 +27,8 @@ impl BoxedDescriptor {
 
         let type_name: String = obj.get_named_property("typeName")?;
 
-        let shared_library: Option<String> = super::optional_descriptor_property(obj, "sharedLibrary")?;
+        let shared_library: Option<String> =
+            super::optional_descriptor_property(obj, "sharedLibrary")?;
 
         let get_type_fn: Option<String> = super::optional_descriptor_property(obj, "getTypeFn")?;
 

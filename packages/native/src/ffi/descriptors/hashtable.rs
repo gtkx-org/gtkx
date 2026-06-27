@@ -4,9 +4,9 @@ use napi::{Env, JsObject};
 
 use super::prelude::*;
 use super::string::str_to_glib_full;
-use crate::ffi::{Stash, StashKind, HashTableData};
 use crate::ffi::descriptors::Descriptor;
 use crate::ffi::descriptors::array::ArrayKind;
+use crate::ffi::{HashTableData, Stash, StashKind};
 
 #[derive(Clone, Debug)]
 pub enum HashTableEntryEncoder {
@@ -26,9 +26,10 @@ impl HashTableEntryEncoder {
             Descriptor::Integer(_) => Some(Self::Integer),
             Descriptor::Boolean(_) => Some(Self::Boolean),
             Descriptor::Float(_) => Some(Self::Float),
-            Descriptor::GObject(_) | Descriptor::Boxed(_) | Descriptor::Struct(_) | Descriptor::Fundamental(_) => {
-                Some(Self::Handle(Box::new(ty.clone())))
-            }
+            Descriptor::GObject(_)
+            | Descriptor::Boxed(_)
+            | Descriptor::Struct(_)
+            | Descriptor::Fundamental(_) => Some(Self::Handle(Box::new(ty.clone()))),
             Descriptor::Array(array_type) if array_type.kind == ArrayKind::GPtrArray => {
                 Some(Self::PtrArray(array_type.item_descriptor.clone()))
             }
@@ -325,12 +326,16 @@ impl FfiEncoder for HashTableDescriptor {
             _ => bail!("Expected an Array of tuples for GHashTable type, got {val:?}"),
         };
 
-        let key_encoder = HashTableEntryEncoder::from_type(&self.key_descriptor).ok_or_else(|| {
-            anyhow::anyhow!("Unsupported GHashTable key type: {:?}", self.key_descriptor)
-        })?;
+        let key_encoder =
+            HashTableEntryEncoder::from_type(&self.key_descriptor).ok_or_else(|| {
+                anyhow::anyhow!("Unsupported GHashTable key type: {:?}", self.key_descriptor)
+            })?;
         let value_encoder =
             HashTableEntryEncoder::from_type(&self.value_descriptor).ok_or_else(|| {
-                anyhow::anyhow!("Unsupported GHashTable value type: {:?}", self.value_descriptor)
+                anyhow::anyhow!(
+                    "Unsupported GHashTable value type: {:?}",
+                    self.value_descriptor
+                )
             })?;
 
         self.encode_hashtable(tuples, &key_encoder, &value_encoder)

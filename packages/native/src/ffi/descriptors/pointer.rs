@@ -89,7 +89,9 @@ where
             return std::ptr::null_mut();
         }
     };
-    let container = stashed_value.as_ptr(context).unwrap_or(std::ptr::null_mut());
+    let container = stashed_value
+        .as_ptr(context)
+        .unwrap_or(std::ptr::null_mut());
     std::mem::forget(stashed_value);
     container
 }

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { expectClickedSignalHandlerId } from "./helpers/call-callback-integer-helpers.js";
-import { setAndGetLabelMaxWidthChars } from "./helpers/label-helpers.js";
+import type { Descriptor, Value } from "../binding.js";
 import {
     callArgs,
     connectSignal,
@@ -25,6 +24,24 @@ import {
     VOID,
 } from "./helpers/utils.js";
 
+function setAndGetLabelMaxWidthChars(label: Value, type: Descriptor, value: number): number {
+    callArgs(
+        GTK_LIB,
+        "gtk_label_set_max_width_chars",
+        [
+            { type: GOBJECT_BORROWED, value: label },
+            { type, value },
+        ],
+        VOID,
+    );
+    return callArgs(
+        GTK_LIB,
+        "gtk_label_get_max_width_chars",
+        [{ type: GOBJECT_BORROWED, value: label }],
+        type,
+    ) as number;
+}
+
 describe("call - integer types - 8-bit signed", () => {
     it("handles signed 8-bit as part of boolean-like values", () => {
         const label = createLabel("Test");
@@ -42,24 +59,6 @@ describe("call - integer types - 8-bit signed", () => {
         const result = callArgs(GTK_LIB, "gtk_label_get_selectable", [{ type: GOBJECT_BORROWED, value: label }], INT8);
 
         expect(result).toBe(1);
-    });
-
-    it("handles zero value", () => {
-        const label = createLabel("Test");
-
-        callArgs(
-            GTK_LIB,
-            "gtk_label_set_selectable",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: INT8, value: 0 },
-            ],
-            VOID,
-        );
-
-        const result = callArgs(GTK_LIB, "gtk_label_get_selectable", [{ type: GOBJECT_BORROWED, value: label }], INT8);
-
-        expect(result).toBe(0);
     });
 });
 
@@ -126,16 +125,6 @@ describe("call - integer types - 32-bit signed basic", () => {
         const result = setAndGetLabelMaxWidthChars(label, INT32, -1);
 
         expect(result).toBe(-1);
-    });
-});
-
-describe("call - integer types - 32-bit signed zero", () => {
-    it("handles zero", () => {
-        const label = createLabel("Test");
-
-        const result = setAndGetLabelMaxWidthChars(label, INT32, 0);
-
-        expect(result).toBe(0);
     });
 });
 
@@ -231,7 +220,12 @@ describe("call - integer types - 64-bit signed", () => {
 
 describe("call - integer types - 64-bit unsigned basic", () => {
     it("passes and returns 64-bit unsigned integers", () => {
-        expectClickedSignalHandlerId();
+        const button = createButton("Test");
+
+        const handlerId = connectSignalReturning(button, "clicked", () => {}, UINT64);
+
+        expect(typeof handlerId).toBe("number");
+        expect(handlerId as number).toBeGreaterThan(0);
     });
 });
 
@@ -254,16 +248,6 @@ describe("call - integer types - 64-bit unsigned disconnect", () => {
         );
 
         expect(isConnected).toBe(0);
-    });
-});
-
-describe("call - integer types - edge cases simultaneous", () => {
-    it("handles integer as argument and return type simultaneously", () => {
-        const label = createLabel("Test");
-
-        const result = setAndGetLabelMaxWidthChars(label, INT32, 50);
-
-        expect(result).toBe(50);
     });
 });
 

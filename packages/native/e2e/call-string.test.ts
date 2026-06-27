@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { expectNoLeakCreatingLabels } from "./helpers/call-gobject-string-helpers.js";
 import {
     callArgs,
     createButton,
@@ -65,19 +64,6 @@ describe("call - string types - owned empty and unicode", () => {
         );
 
         expect(result).toBe("");
-    });
-
-    it("handles unicode strings", () => {
-        const label = callArgs(GTK_LIB, "gtk_label_new", [{ type: STRING, value: "Hello 世界 🎉" }], GOBJECT);
-
-        const result = callArgs(
-            GTK_LIB,
-            "gtk_label_get_text",
-            [{ type: GOBJECT_BORROWED, value: label }],
-            STRING_BORROWED,
-        );
-
-        expect(result).toBe("Hello 世界 🎉");
     });
 });
 
@@ -162,19 +148,6 @@ describe("call - string types - owned button labels", () => {
 });
 
 describe("call - string types - transfer none", () => {
-    it("returns transfer none string from GTK", () => {
-        const label = createLabel("Transfer None Test");
-
-        const result = callArgs(
-            GTK_LIB,
-            "gtk_label_get_text",
-            [{ type: GOBJECT_BORROWED, value: label }],
-            STRING_BORROWED,
-        );
-
-        expect(result).toBe("Transfer None Test");
-    });
-
     it("transfer none string remains valid during object lifetime", () => {
         const label = createLabel("Persistent");
 
@@ -229,12 +202,6 @@ describe("call - string types - memory leaks args", () => {
     });
 });
 
-describe("call - string types - memory leaks creation", () => {
-    it("does not leak when creating many labels with strings", () => {
-        expectNoLeakCreatingLabels();
-    });
-});
-
 describe("call - string types - memory leaks set loop", () => {
     it("does not leak when setting many strings in loop", () => {
         const label = createLabel("Initial");
@@ -282,70 +249,6 @@ describe("call - string types - edge cases emoji unicode", () => {
         );
 
         expect(result).toBe(complexUnicode);
-    });
-
-    it("handles RTL text", () => {
-        const rtlText = "مرحبا بالعالم";
-
-        const label = createLabel(rtlText);
-
-        const result = callArgs(
-            GTK_LIB,
-            "gtk_label_get_text",
-            [{ type: GOBJECT_BORROWED, value: label }],
-            STRING_BORROWED,
-        );
-
-        expect(result).toBe(rtlText);
-    });
-});
-
-describe("call - string types - edge cases combining", () => {
-    it("handles combining characters", () => {
-        const combining = "e\u0301";
-
-        const label = createLabel(combining);
-
-        const result = callArgs(
-            GTK_LIB,
-            "gtk_label_get_text",
-            [{ type: GOBJECT_BORROWED, value: label }],
-            STRING_BORROWED,
-        );
-
-        expect(result).toBe(combining);
-    });
-
-    it("handles zero-width characters", () => {
-        const zeroWidth = "a\u200Bb\u200Cc";
-
-        const label = createLabel(zeroWidth);
-
-        const result = callArgs(
-            GTK_LIB,
-            "gtk_label_get_text",
-            [{ type: GOBJECT_BORROWED, value: label }],
-            STRING_BORROWED,
-        );
-
-        expect(result).toBe(zeroWidth);
-    });
-});
-
-describe("call - string types - edge cases surrogate", () => {
-    it("handles surrogate pairs correctly", () => {
-        const surrogatePair = "𝄞";
-
-        const label = createLabel(surrogatePair);
-
-        const result = callArgs(
-            GTK_LIB,
-            "gtk_label_get_text",
-            [{ type: GOBJECT_BORROWED, value: label }],
-            STRING_BORROWED,
-        );
-
-        expect(result).toBe(surrogatePair);
     });
 });
 

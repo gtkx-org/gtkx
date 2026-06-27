@@ -188,7 +188,7 @@ type FundamentalDescriptor = {
     lib: string;
     refFunc: string;
     unrefFunc: string;
-    glibTypeName: string | undefined;
+    typeName: string | undefined;
     ownership: Ownership;
     wrapperClass?: string | undefined;
 };
@@ -197,10 +197,10 @@ const referenceAddingFunc = (refFunc: string): string =>
     refFunc.endsWith("_ref_sink") ? refFunc.slice(0, -"_sink".length) : refFunc;
 
 const renderFundamental = (descriptor: FundamentalDescriptor): string => {
-    const { lib, refFunc, unrefFunc, glibTypeName, ownership, wrapperClass } = descriptor;
+    const { lib, refFunc, unrefFunc, typeName, ownership, wrapperClass } = descriptor;
     return tFundamental(lib, referenceAddingFunc(refFunc), unrefFunc, {
         ownership,
-        typeName: glibTypeName,
+        typeName,
         wrapperClass,
     });
 };
@@ -217,7 +217,7 @@ const classOrInterfaceExpression = (
         lib: resolved.namespace.sharedLibrary ?? "",
         refFunc: cls.glibRefFunc,
         unrefFunc: cls.glibUnrefFunc,
-        glibTypeName: cls.glibTypeName,
+        typeName: cls.glibTypeName,
         ownership,
     });
 };
@@ -226,7 +226,7 @@ type AncestorFundamental = {
     lib: string;
     refFunc: string;
     unrefFunc: string;
-    glibTypeName: string | undefined;
+    typeName: string | undefined;
 };
 
 const fundamentalAncestor = (
@@ -245,7 +245,7 @@ const fundamentalAncestor = (
                 lib: current.namespace.sharedLibrary ?? "",
                 refFunc: cls.glibRefFunc,
                 unrefFunc: cls.glibUnrefFunc,
-                glibTypeName: cls.glibTypeName,
+                typeName: cls.glibTypeName,
             };
         }
         if (cls.parent === undefined) return undefined;
@@ -314,7 +314,7 @@ const recordExpression = (
             lib,
             refFunc,
             unrefFunc,
-            glibTypeName: record.glibTypeName,
+            typeName: record.glibTypeName,
             ownership,
             wrapperClass,
         });

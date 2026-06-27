@@ -26,7 +26,7 @@ fn pump_default_context_until(done: impl Fn() -> bool) {
 }
 
 fn param_spec_ptr() -> *mut c_void {
-    helpers::ensure_gtk_init();
+    helpers::ensure_glib_init();
     // SAFETY: GTK is initialized above and the call runs on the test's GLib thread; the four
     // `c"..."` literals are valid NUL-terminated C strings and the flags are valid `GParamFlags`,
     // so `g_param_spec_boolean` returns a freshly owned (floating) GParamSpec.

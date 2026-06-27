@@ -59,6 +59,7 @@ module.exports = {
                 "packages/[^/]+/out-tsc/",
                 "packages/[^/]+/coverage/",
                 "packages/native/(target|npm)/",
+                "packages/native/(binding\\.d\\.ts|index\\.(js|d\\.ts))$",
                 "packages/codegen/src/overrides/",
             ],
         },

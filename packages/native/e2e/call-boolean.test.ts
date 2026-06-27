@@ -1,6 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { getLabelSelectable, setLabelSelectable } from "./helpers/label-helpers.js";
+import type { Value } from "../binding.js";
 import { BOOLEAN, callArgs, createButton, createLabel, GOBJECT_BORROWED, GTK_LIB, VOID } from "./helpers/utils.js";
+
+function setLabelSelectable(label: Value, value: boolean): void {
+    callArgs(
+        GTK_LIB,
+        "gtk_label_set_selectable",
+        [
+            { type: GOBJECT_BORROWED, value: label },
+            { type: BOOLEAN, value },
+        ],
+        VOID,
+    );
+}
+
+function getLabelSelectable(label: Value): boolean {
+    return callArgs(
+        GTK_LIB,
+        "gtk_label_get_selectable",
+        [{ type: GOBJECT_BORROWED, value: label }],
+        BOOLEAN,
+    ) as boolean;
+}
 
 describe("call - boolean type - label selectable", () => {
     it("passes true and returns true", () => {
@@ -33,16 +54,6 @@ describe("call - boolean type - label selectable toggling", () => {
 
         setLabelSelectable(label, false);
         expect(getLabelSelectable(label)).toBe(false);
-    });
-});
-
-describe("call - boolean type - label selectable combined", () => {
-    it("handles boolean as argument and return simultaneously", () => {
-        const label = createLabel("Test");
-
-        setLabelSelectable(label, true);
-
-        expect(getLabelSelectable(label)).toBe(true);
     });
 });
 

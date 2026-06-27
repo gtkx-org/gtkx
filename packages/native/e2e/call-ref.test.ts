@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { expectSingleMinRefMeasurementPopulatesNumber } from "./helpers/call-null-ref-helpers.js";
 import {
     createLabel,
     getRefCount,
@@ -46,58 +45,14 @@ describe("call - ref types - integer refs basic", () => {
     });
 });
 
-describe("call - ref types - integer refs orientations", () => {
-    it("measures widget in different orientations", () => {
-        const label = createLabel("Test");
-
-        const horizontalMinRef = { value: 0 };
-        const horizontalNaturalRef = { value: 0 };
-        measureWidget({
-            widget: label,
-            orientation: 0,
-            forSize: -1,
-            minRef: horizontalMinRef,
-            naturalRef: horizontalNaturalRef,
-        });
-
-        const verticalMinRef = { value: 0 };
-        const verticalNaturalRef = { value: 0 };
-        measureWidget({
-            widget: label,
-            orientation: 1,
-            forSize: -1,
-            minRef: verticalMinRef,
-            naturalRef: verticalNaturalRef,
-        });
-
-        expect(horizontalMinRef.value).toBeGreaterThanOrEqual(0);
-        expect(verticalMinRef.value).toBeGreaterThanOrEqual(0);
-    });
-
-    it("measures with for_size constraint", () => {
-        const label = createLabel("Size test");
-        const minRef = { value: 0 };
-        const naturalRef = { value: 0 };
-
-        measureWidget({ widget: label, orientation: 1, forSize: 100, minRef, naturalRef });
-
-        expect(typeof minRef.value).toBe("number");
-        expect(typeof naturalRef.value).toBe("number");
-    });
-});
-
 describe("call - ref types - null refs", () => {
     it("ignores null refs (optional out params)", () => {
-        expectSingleMinRefMeasurementPopulatesNumber();
-    });
-
-    it("uses null to indicate unneeded output", () => {
         const label = createLabel("Test");
-        const naturalRef = { value: 0 };
+        const minRef = { value: 0 };
 
-        measureWidget({ widget: label, orientation: 0, forSize: -1, naturalRef });
+        measureWidget({ widget: label, orientation: 0, forSize: -1, minRef });
 
-        expect(typeof naturalRef.value).toBe("number");
+        expect(typeof minRef.value).toBe("number");
     });
 
     it("handles all null refs", () => {

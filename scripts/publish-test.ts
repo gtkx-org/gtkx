@@ -149,26 +149,19 @@ function registryEnv(userConfig: string): NodeJS.ProcessEnv {
 }
 
 async function stageNativeArtifacts(): Promise<void> {
-    await run("pnpm", ["--filter", "@gtkx/native", "native-build:dist"], { cwd: repoRoot });
+    await run("pnpm", ["--filter", "@gtkx/native", "build:release"], { cwd: repoRoot });
     const artifactsDir = join(nativeDir, "artifacts");
     mkdirSync(artifactsDir, { recursive: true });
-    const npmDir = join(nativeDir, "npm");
     let staged = 0;
-    for (const platformDir of readdirSync(npmDir)) {
-        const absolutePlatformDir = join(npmDir, platformDir);
-        if (!statSync(absolutePlatformDir).isDirectory()) {
+    for (const entry of readdirSync(nativeDir)) {
+        if (!entry.startsWith("native.") || !entry.endsWith(".node")) {
             continue;
         }
-        for (const binary of readdirSync(absolutePlatformDir)) {
-            if (!binary.startsWith("native.") || !binary.endsWith(".node")) {
-                continue;
-            }
-            copyFileSync(join(absolutePlatformDir, binary), join(artifactsDir, binary));
-            staged += 1;
-        }
+        copyFileSync(join(nativeDir, entry), join(artifactsDir, entry));
+        staged += 1;
     }
     if (staged === 0) {
-        throw new Error("native-build:dist produced no .node binary to stage");
+        throw new Error("build:release produced no .node binary to stage");
     }
 }
 

@@ -37,7 +37,9 @@ impl FfiDecoder for UnicharDescriptor {
             ReadSource::Call(stashed_value) => {
                 let cp = match stashed_value {
                     ffi::StashedValue::U32(v) => *v,
-                    _ => anyhow::bail!("Expected StashedValue::U32 for unichar, got {stashed_value:?}"),
+                    _ => anyhow::bail!(
+                        "Expected StashedValue::U32 for unichar, got {stashed_value:?}"
+                    ),
                 };
                 let ch = char::from_u32(cp)
                     .ok_or_else(|| anyhow::anyhow!("Invalid Unicode codepoint: 0x{cp:X}"))?;

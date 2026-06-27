@@ -54,8 +54,6 @@ const tasks: Record<string, () => void> = {
         const [command, args] = wlheadless("cargo", [
             "+nightly",
             "test",
-            "--features",
-            "test-support",
             "--target",
             "x86_64-unknown-linux-gnu",
             "--",
@@ -73,7 +71,7 @@ const tasks: Record<string, () => void> = {
         });
     },
     miri() {
-        run("cargo", ["+nightly", "miri", "test", "--features", "test-support", "--test", "miri_marshalling"], {
+        run("cargo", ["+nightly", "miri", "test", "--test", "miri_marshalling"], {
             cwd: nativeDir,
             env: { ...process.env, RUSTUP_TOOLCHAIN: "nightly" },
         });

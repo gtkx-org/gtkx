@@ -2,22 +2,19 @@ import { describe, expect, it } from "vitest";
 import {
     allocRectangle,
     allocRgba,
-    expectRectangleFields,
-    readRectangleFields,
-    readRgbaChannels,
-    writeRectangleFields,
-    writeRgbaChannels,
-} from "./helpers/call-boxed-alloc-helpers.js";
-import {
     BOOLEAN,
     callArgs,
     GDK_LIB,
     INT32,
     PANGO_LIB,
+    readRectangleFields,
+    readRgbaChannels,
     STRING,
     STRING_BORROWED,
     startMemoryMeasurement,
     VOID,
+    writeRectangleFields,
+    writeRgbaChannels,
 } from "./helpers/utils.js";
 
 const RGBA_BOXED_NONE = { kind: "boxed" as const, typeName: "GdkRGBA", lib: GDK_LIB, ownership: "borrowed" as const };
@@ -119,7 +116,7 @@ describe("call - boxed types - GdkRectangle basic", () => {
 
         writeRectangleFields(rect, { x: 10, y: 20, width: 100, height: 50 });
 
-        expectRectangleFields(rect, { x: 10, y: 20, width: 100, height: 50 });
+        expect(readRectangleFields(rect)).toEqual({ x: 10, y: 20, width: 100, height: 50 });
     });
 });
 
@@ -291,26 +288,6 @@ describe("call - boxed types - PangoFontDescription conversion", () => {
 });
 
 describe("call - boxed types - ownership", () => {
-    it("handles owned boxed (caller manages)", () => {
-        const fontDesc = callArgs(
-            PANGO_LIB,
-            "pango_font_description_from_string",
-            [{ type: STRING, value: "Monospace 10" }],
-            PANGO_FONT_DESC,
-        );
-
-        expect(fontDesc).toBeDefined();
-
-        const family = callArgs(
-            PANGO_LIB,
-            "pango_font_description_get_family",
-            [{ type: PANGO_FONT_DESC_NONE, value: fontDesc }],
-            STRING_BORROWED,
-        );
-
-        expect(family).toBe("Monospace");
-    });
-
     it("handles transfer none boxed correctly", () => {
         const rgba = allocRgba();
 

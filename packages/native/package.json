@@ -28,18 +28,18 @@
     "exports": {
         "./package.json": "./package.json",
         ".": {
-            "source": "./index.ts",
-            "types": "./dist/index.d.ts",
-            "default": "./dist/index.js"
+            "source": "./binding.ts",
+            "types": "./binding.d.ts",
+            "default": "./binding.js"
         }
     },
     "sideEffects": false,
     "files": [
-        "dist",
-        "index.ts",
-        "types.ts",
-        "native-binding.cjs",
-        "native-binding.d.cts"
+        "binding.ts",
+        "binding.js",
+        "binding.d.ts",
+        "index.js",
+        "index.d.ts"
     ],
     "napi": {
         "binaryName": "native",
@@ -50,14 +50,14 @@
     },
     "scripts": {
         "artifacts": "napi artifacts",
-        "build": "tsc -b && cp native-binding.cjs native-binding.d.cts dist/",
+        "build": "tsc -b",
+        "build:debug": "napi build --platform --esm --no-dts-cache",
+        "build:release": "napi build --platform --release --esm --no-dts-cache",
+        "coverage": "mkdir -p coverage && node ../../scripts/ci.ts headless cargo +nightly llvm-cov --lcov --output-path coverage/native.lcov.info --fail-under-lines 80 -- --test-threads=1",
         "create-npm-dirs": "napi create-npm-dirs",
-        "lint": "cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings",
-        "native-build": "napi build --platform --release --features test-support --js native-binding-test.cjs --dts native-binding-test.d.cts",
-        "native-build:dist": "mkdir -p dist-binding && napi build --platform --release --output-dir dist-binding --js native-binding.cjs --dts native-binding.d.cts && cp dist-binding/native-binding.cjs dist-binding/native-binding.d.cts . && cp dist-binding/native.linux-$(node -p \"process.arch\")-gnu.node npm/linux-$(node -p \"process.arch\")-gnu/",
-        "native-coverage": "mkdir -p coverage && node ../../scripts/ci.ts headless cargo +nightly llvm-cov --features test-support --lcov --output-path coverage/native.lcov.info --fail-under-lines 80 -- --test-threads=1",
+        "lint": "cargo fmt --check && cargo clippy --all-targets -- -D warnings",
         "prepublishOnly": "napi prepublish -t npm",
-        "test": "node ../../scripts/ci.ts headless cargo test --features test-support -- --test-threads=1"
+        "test": "node ../../scripts/ci.ts headless cargo test -- --test-threads=1"
     },
     "engines": {
         "node": ">=24"

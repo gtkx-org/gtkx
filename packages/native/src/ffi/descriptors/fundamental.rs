@@ -1,8 +1,8 @@
 use napi::{Env, JsObject};
 
 use super::prelude::*;
-use crate::handle::{Fundamental, RefFn, UnrefFn};
 use crate::ffi::library_cache::GlibThreadState;
+use crate::handle::{Fundamental, RefFn, UnrefFn};
 
 #[derive(Debug, Clone)]
 pub struct FundamentalDescriptor {

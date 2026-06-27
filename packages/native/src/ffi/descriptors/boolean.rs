@@ -38,7 +38,9 @@ impl FfiDecoder for BooleanDescriptor {
             ReadSource::Call(stashed_value) => {
                 let b = match stashed_value {
                     ffi::StashedValue::I32(v) => *v != 0,
-                    _ => anyhow::bail!("Expected a boolean ffi::StashedValue, got {stashed_value:?}"),
+                    _ => {
+                        anyhow::bail!("Expected a boolean ffi::StashedValue, got {stashed_value:?}")
+                    }
                 };
                 Ok(value::Value::Boolean(b))
             }

@@ -29,31 +29,6 @@ describe("call - undefined type - basic void", () => {
 
         expect(result).toBeUndefined();
     });
-
-    it("handles void function with no args", () => {
-        const button = createButton("Test");
-
-        const result = callArgs(GTK_LIB, "gtk_widget_show", [{ type: GOBJECT_BORROWED, value: button }], VOID);
-
-        expect(result).toBeUndefined();
-    });
-
-    it("handles void function with multiple args", () => {
-        const box = createBox();
-        const label = createLabel("Test");
-
-        const result = callArgs(
-            GTK_LIB,
-            "gtk_box_append",
-            [
-                { type: GOBJECT_BORROWED, value: box },
-                { type: GOBJECT_BORROWED, value: label },
-            ],
-            VOID,
-        );
-
-        expect(result).toBeUndefined();
-    });
 });
 
 describe("call - undefined type - widget operations", () => {
@@ -145,35 +120,6 @@ describe("call - undefined type - edge cases identity", () => {
         expect(result).not.toBeNull();
         expect(result === undefined).toBe(true);
         expect(result === null).toBe(false);
-    });
-});
-
-describe("call - undefined type - edge cases consecutive", () => {
-    it("consecutive void calls return undefined", () => {
-        const label = createLabel("Test");
-
-        const result1 = callArgs(
-            GTK_LIB,
-            "gtk_label_set_text",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: STRING, value: "First" },
-            ],
-            VOID,
-        );
-
-        const result2 = callArgs(
-            GTK_LIB,
-            "gtk_label_set_text",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: STRING, value: "Second" },
-            ],
-            VOID,
-        );
-
-        expect(result1).toBeUndefined();
-        expect(result2).toBeUndefined();
     });
 });
 

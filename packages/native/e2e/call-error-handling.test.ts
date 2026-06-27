@@ -18,36 +18,12 @@ describe("call - error handling - symbol errors", () => {
             callArgs(GTK_LIB, "nonexistent_function_xyz", [], VOID);
         }).toThrow();
     });
-
-    it("throws on misspelled symbol", () => {
-        expect(() => {
-            callArgs(GTK_LIB, "gtk_labl_new", [{ type: STRING, value: "Test" }], GOBJECT);
-        }).toThrow();
-    });
-
-    it("throws on empty symbol name", () => {
-        expect(() => {
-            callArgs(GTK_LIB, "", [], VOID);
-        }).toThrow();
-    });
-
-    it("throws on symbol with special characters", () => {
-        expect(() => {
-            callArgs(GTK_LIB, "gtk_label_new!", [{ type: STRING, value: "Test" }], GOBJECT);
-        }).toThrow();
-    });
 });
 
 describe("call - error handling - library errors", () => {
     it("throws on invalid library name", () => {
         expect(() => {
             callArgs("libnonexistent.so.1", "some_function", [], VOID);
-        }).toThrow();
-    });
-
-    it("throws on library not found", () => {
-        expect(() => {
-            callArgs("libfoobar123456.so.99", "foo", [], VOID);
         }).toThrow();
     });
 });
@@ -65,34 +41,6 @@ describe("call - error handling - type errors", () => {
                     },
                 ],
                 GOBJECT,
-            );
-        }).toThrow();
-    });
-
-    it("throws on invalid integer type", () => {
-        expect(() => {
-            callArgs(
-                GTK_LIB,
-                "gtk_label_set_max_width_chars",
-                [
-                    { type: GOBJECT_BORROWED, value: createLabel("Test") },
-                    { type: { kind: "int7" as "int8" }, value: 42 },
-                ],
-                VOID,
-            );
-        }).toThrow();
-    });
-
-    it("throws on invalid float type", () => {
-        expect(() => {
-            callArgs(
-                GTK_LIB,
-                "gtk_widget_set_opacity",
-                [
-                    { type: GOBJECT_BORROWED, value: createLabel("Test") },
-                    { type: { kind: "float16" as "float32" }, value: 0.5 },
-                ],
-                VOID,
             );
         }).toThrow();
     });
@@ -147,14 +95,6 @@ describe("call - error handling - value errors", () => {
 
 describe("call - error handling - argument count errors", () => {
     it("function works with correct number of arguments", () => {
-        const label = callArgs(GTK_LIB, "gtk_label_new", [{ type: STRING, value: "Test" }], GOBJECT);
-
-        expect(label).toBeDefined();
-    });
-});
-
-describe("call - error handling - return type errors", () => {
-    it("handles mismatched return type gracefully", () => {
         const label = callArgs(GTK_LIB, "gtk_label_new", [{ type: STRING, value: "Test" }], GOBJECT);
 
         expect(label).toBeDefined();

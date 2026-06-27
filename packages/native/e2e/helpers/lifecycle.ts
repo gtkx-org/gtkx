@@ -1,4 +1,4 @@
-import { quit as nativeStop } from "../../index.js";
+import { quit as nativeStop } from "../../binding.js";
 import { callArgs } from "./utils.js";
 
 const KEEP_ALIVE_INTERVAL = 2147483647;

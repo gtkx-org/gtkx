@@ -48,6 +48,7 @@ function run(command: string, args: string[]): void {
 }
 
 run("pnpm", ["build"]);
+run("pnpm", ["--filter", "@gtkx/native", "build:release"]);
 await copyReadme();
 run("pnpm", ["--filter", "@gtkx/native", "create-npm-dirs"]);
 run("pnpm", ["--filter", "@gtkx/native", "artifacts"]);

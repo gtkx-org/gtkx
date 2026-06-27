@@ -114,17 +114,18 @@ impl FfiEncoder for CallbackDescriptor {
         );
 
         match self.scope {
-            CallbackScope::Forever => Ok(ffi::StashedValue::Callback(ffi::CallbackValue::new_armed(
-                fn_ptr, None, state,
-            ))),
-            CallbackScope::Notified => Ok(ffi::StashedValue::Callback(ffi::CallbackValue::new_armed(
-                fn_ptr,
-                Some(CallbackState::destroy as *mut c_void),
-                state,
-            ))),
+            CallbackScope::Forever => Ok(ffi::StashedValue::Callback(
+                ffi::CallbackValue::new_armed(fn_ptr, None, state),
+            )),
+            CallbackScope::Notified => {
+                Ok(ffi::StashedValue::Callback(ffi::CallbackValue::new_armed(
+                    fn_ptr,
+                    Some(CallbackState::destroy as *mut c_void),
+                    state,
+                )))
+            }
             CallbackScope::Async => {
-                let state_ptr =
-                    std::ptr::from_ref::<CallbackState>(&state) as *mut CallbackState;
+                let state_ptr = std::ptr::from_ref::<CallbackState>(&state) as *mut CallbackState;
                 state
                     .data_ref()
                     .oneshot_state_ptr

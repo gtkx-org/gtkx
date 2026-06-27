@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Value } from "../index.js";
-import { appendLabelAndExpectRefIncrement, expectNoLeakCreatingLabels } from "./helpers/call-gobject-string-helpers.js";
+import type { Value } from "../binding.js";
 import {
     boxAppend,
     boxRemove,
@@ -22,21 +21,24 @@ import {
     VOID,
 } from "./helpers/utils.js";
 
+function appendLabelAndExpectRefIncrement(): { box: Value; label: Value; initialRefCount: number } {
+    const box = createBox();
+    const label = createLabel("Test");
+    const initialRefCount = getRefCount(label);
+
+    boxAppend(box, label);
+
+    expect(getRefCount(label)).toBe(initialRefCount + 1);
+
+    return { box, label, initialRefCount };
+}
+
 describe("call - gobject types - owned", () => {
     it("creates and returns owned GObject", () => {
         const label = callArgs(GTK_LIB, "gtk_label_new", [{ type: STRING, value: "Test" }], GOBJECT);
 
         expect(label).toBeDefined();
         expect(typeof label).toBe("object");
-    });
-
-    it("passes owned GObject as argument", () => {
-        const box = createBox();
-        const label = createLabel("Test");
-
-        boxAppend(box, label);
-
-        expect(getFirstChild(box)).toBeDefined();
     });
 
     it("creates different widget types", () => {
@@ -61,16 +63,6 @@ describe("call - gobject types - transfer none", () => {
         boxAppend(box, label);
 
         expect(getParent(label)).toBeDefined();
-    });
-
-    it("transfer none GObject remains valid with parent", () => {
-        const box = createBox();
-        const label = createLabel("Test");
-
-        boxAppend(box, label);
-
-        expect(getFirstChild(box)).toBeDefined();
-        expect(getFirstChild(box)).toBeDefined();
     });
 
     it("passes GObject as transfer none argument", () => {
@@ -119,15 +111,6 @@ describe("call - gobject types - widget hierarchy children", () => {
         boxAppend(box, label);
 
         expect(getFirstChild(box)).toBeDefined();
-    });
-
-    it("retrieves parent from child", () => {
-        const box = createBox();
-        const label = createLabel("Child");
-
-        boxAppend(box, label);
-
-        expect(getParent(label)).toBeDefined();
     });
 });
 
@@ -200,7 +183,13 @@ describe("call - gobject types - refcount release", () => {
 
 describe("call - gobject types - memory leaks creation", () => {
     it("does not leak when creating many GObjects in loop", () => {
-        expectNoLeakCreatingLabels();
+        const mem = startMemoryMeasurement();
+
+        for (let i = 0; i < 1000; i++) {
+            createLabel(`Label ${i}`);
+        }
+
+        expect(mem.measure()).toBeLessThan(5 * 1024 * 1024);
     });
 });
 

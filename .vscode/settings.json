@@ -1,4 +1,3 @@
 {
-    "rust-analyzer.linkedProjects": ["${workspaceFolder}/packages/native/Cargo.toml"],
-    "rust-analyzer.cargo.features": ["test-support"]
+    "rust-analyzer.linkedProjects": ["${workspaceFolder}/packages/native/Cargo.toml"]
 }

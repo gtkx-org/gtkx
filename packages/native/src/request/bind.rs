@@ -16,7 +16,7 @@ pub struct CallDescriptor {
     pub(crate) library_name: String,
     pub(crate) symbol_name: String,
     pub(crate) arg_descriptors: Vec<Descriptor>,
-    pub(crate) result_type: Descriptor,
+    pub(crate) return_descriptor: Descriptor,
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
@@ -36,7 +36,7 @@ mod napi_export {
         let parsed_arg_descriptors =
             crate::ffi::value::map_js_array(&env, &arg_descriptors, |env, value| {
                 let ty = Descriptor::from_descriptor(env, value)?;
-                if !ty.can_be_argument_type() {
+                if !ty.can_be_argument() {
                     return Err(napi::Error::new(
                         napi::Status::InvalidArg,
                         format!("'{ty}' cannot be used as a function argument type"),
@@ -44,18 +44,18 @@ mod napi_export {
                 }
                 Ok(ty)
             })?;
-        let result_type = Descriptor::from_descriptor(&env, return_descriptor)?;
-        if !result_type.can_be_return_type() {
+        let return_descriptor = Descriptor::from_descriptor(&env, return_descriptor)?;
+        if !return_descriptor.can_be_return() {
             return Err(napi::Error::new(
                 napi::Status::InvalidArg,
-                format!("'{result_type}' cannot be used as a function return type"),
+                format!("'{return_descriptor}' cannot be used as a function return type"),
             ));
         }
         Ok(External::new(Arc::new(CallDescriptor {
             library_name: shared_library,
             symbol_name: symbol,
             arg_descriptors: parsed_arg_descriptors,
-            result_type,
+            return_descriptor,
         })))
     }
 }

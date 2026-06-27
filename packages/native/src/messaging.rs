@@ -24,14 +24,12 @@
 
 pub(crate) mod error_reporter;
 mod freeze;
-mod node_mailbox;
 pub(crate) mod log_handler;
+mod node_mailbox;
 pub mod wait_signal;
 
-test_visible_modules! {
-    glib_mailbox,
-    panic_handler,
-}
+pub mod glib_mailbox;
+pub mod panic_handler;
 
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -146,7 +144,7 @@ impl Mailbox {
         }
     }
 
-    #[cfg(feature = "test-support")]
+    #[cfg(debug_assertions)]
     #[must_use]
     pub fn new_for_test() -> Self {
         Self::new()
@@ -159,7 +157,7 @@ impl Mailbox {
         self.freeze.wake_for_shutdown();
     }
 
-    #[cfg(feature = "test-support")]
+    #[cfg(debug_assertions)]
     pub fn reset_for_test(&self) {
         self.running.store(true, Ordering::Release);
     }

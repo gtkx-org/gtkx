@@ -1,19 +1,16 @@
-test_visible_modules! {
-    arg,
-    callback,
-    descriptors,
-    library_cache,
-    value,
-}
+pub mod arg;
+pub mod callback;
+pub mod descriptors;
+pub mod library_cache;
+pub mod value;
 
 mod stash;
 mod stashed_value;
 
 pub use stash::{
-    Stash, StashKind, GArrayData, GListFlavor, GSListFlavor, HashTableData, ListFlavor,
-    PendingRelease, PendingTransfer,
+    GArrayData, GListFlavor, GSListFlavor, HashTableData, ListFlavor, PendingRelease,
+    PendingTransfer, Stash, StashKind,
 };
-#[cfg(feature = "test-support")]
 pub use stash::{GListData, GSListData, StringGListData, StringGSListData};
 pub use stashed_value::{CallbackValue, StashedValue};
 

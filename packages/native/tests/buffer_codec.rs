@@ -58,7 +58,7 @@ extern "C" fn ret_unit() {}
 
 #[test]
 fn buffer_cannot_be_a_return_type() {
-    assert!(!Descriptor::Buffer(BufferDescriptor).can_be_return_type());
+    assert!(!Descriptor::Buffer(BufferDescriptor).can_be_return());
 
     let cif = middle::Cif::new(Vec::new(), middle::Type::void());
     let err = BufferDescriptor

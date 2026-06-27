@@ -1,7 +1,10 @@
 target
-dist-binding
+artifacts
+coverage
 *.node
-native-binding.cjs
-native-binding.d.cts
-native-binding-test.cjs
-native-binding-test.d.cts
+index.js
+index.d.ts
+binding.js
+binding.d.ts
+*.map
+*.tsbuildinfo

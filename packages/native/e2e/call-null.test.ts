@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { expectSingleMinRefMeasurementPopulatesNumber } from "./helpers/call-null-ref-helpers.js";
 import {
     boxAppend,
     callArgs,
@@ -35,12 +34,6 @@ describe("call - null pointer arguments - basic", () => {
 
         expect(measureWidgetAllNull(label)).toBeUndefined();
     });
-
-    it("returns null for absent optional return", () => {
-        const label = createLabel("Orphan");
-
-        expect(getParent(label)).toBeNull();
-    });
 });
 
 describe("call - null pointer arguments - return values", () => {
@@ -57,14 +50,6 @@ describe("call - null pointer arguments - return values", () => {
         const box = createBox();
 
         expect(getFirstChild(box)).toBeNull();
-    });
-});
-
-describe("call - null pointer arguments - callback positions", () => {
-    it("handles null pointers in callback user_data position", () => {
-        const label = createLabel("Test");
-
-        expect(measureWidgetAllNull(label)).toBeUndefined();
     });
 });
 
@@ -87,17 +72,5 @@ describe("call - null pointer arguments - edge cases", () => {
         boxAppend(box, label);
 
         expect(getFirstChild(box)).not.toBeNull();
-    });
-});
-
-describe("call - null pointer arguments - edge cases mixed", () => {
-    it("handles null in mixed position arguments", () => {
-        expectSingleMinRefMeasurementPopulatesNumber();
-    });
-
-    it("handles consecutive null pointer arguments", () => {
-        const label = createLabel("Test");
-
-        expect(measureWidgetAllNull(label)).toBeUndefined();
     });
 });

@@ -3,8 +3,8 @@ use std::ffi::c_void;
 
 use glib::translate::IntoGlib as _;
 
-use crate::handle::UnrefFn;
 use crate::ffi::descriptors::{BigIntKind, IntegerKind};
+use crate::handle::UnrefFn;
 
 pub struct Stash {
     ptr: *mut c_void,
@@ -376,8 +376,7 @@ impl Stash {
         &self.kind
     }
 
-    test_visible! {
-    fn as_numeric_slice(&self, int_kind: IntegerKind) -> anyhow::Result<Vec<f64>> {
+    pub fn as_numeric_slice(&self, int_kind: IntegerKind) -> anyhow::Result<Vec<f64>> {
         match (&self.kind, int_kind) {
             (StashKind::I64Vec(v), IntegerKind::I64) => v
                 .iter()
@@ -405,10 +404,8 @@ impl Stash {
             }
         }
     }
-    }
 
-    test_visible! {
-    fn as_bigint_vec(&self, kind: BigIntKind) -> anyhow::Result<Vec<i128>> {
+    pub fn as_bigint_vec(&self, kind: BigIntKind) -> anyhow::Result<Vec<i128>> {
         match (&self.kind, kind) {
             (StashKind::I64Vec(v), BigIntKind::I64) => {
                 Ok(v.iter().map(|&x| i128::from(x)).collect())
@@ -419,15 +416,12 @@ impl Stash {
             _ => anyhow::bail!("Stash does not match bigint kind {kind:?}"),
         }
     }
-    }
 
-    test_visible! {
-    fn as_f32_slice(&self) -> anyhow::Result<&[f32]> {
+    pub fn as_f32_slice(&self) -> anyhow::Result<&[f32]> {
         match &self.kind {
             StashKind::F32Vec(v) => Ok(v),
             _ => anyhow::bail!("Stash does not contain f32 data"),
         }
-    }
     }
 
     pub fn as_f64_slice(&self) -> anyhow::Result<&[f64]> {
@@ -451,13 +445,11 @@ impl Stash {
         }
     }
 
-    test_visible! {
-    fn as_object_array(&self) -> anyhow::Result<&Vec<crate::handle::Handle>> {
+    pub fn as_object_array(&self) -> anyhow::Result<&Vec<crate::handle::Handle>> {
         match &self.kind {
             StashKind::ObjectArray(ids, _) => Ok(ids),
             _ => anyhow::bail!("Stash does not contain object array data"),
         }
-    }
     }
 }
 

@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { alloc, read, write } from "../index.js";
+import { alloc, read, write } from "../binding.js";
 import {
     allocRectangle,
     allocRgba,
-    expectRectangleFields,
+    FLOAT32,
+    readRectangleFields,
     readRgbaChannels,
     writeRectangleFields,
-} from "./helpers/call-boxed-alloc-helpers.js";
-import { FLOAT32 } from "./helpers/utils.js";
+} from "./helpers/utils.js";
 
 describe("alloc", () => {
     it("allocates a zeroed struct for GdkRGBA", () => {
@@ -46,7 +46,7 @@ describe("alloc", () => {
 
         writeRectangleFields(rect, { x: 10, y: 20, width: 100, height: 200 });
 
-        expectRectangleFields(rect, { x: 10, y: 20, width: 100, height: 200 });
+        expect(readRectangleFields(rect)).toEqual({ x: 10, y: 20, width: 100, height: 200 });
     });
 
     it("allocates separate memory for each call", () => {

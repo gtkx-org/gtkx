@@ -7,8 +7,8 @@ use std::sync::{Arc, OnceLock};
 use glib::translate::IntoGlib as _;
 use parking_lot::Mutex;
 
-use crate::messaging::{JsRefDeletion, Mailbox};
 use crate::messaging::error_reporter::ErrorReporter;
+use crate::messaging::{JsRefDeletion, Mailbox};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WrapperRefOp {

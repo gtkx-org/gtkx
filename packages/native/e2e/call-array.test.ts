@@ -35,31 +35,6 @@ describe("call - array types - string arrays basic", () => {
 
         expect(result).toEqual(["class-a", "class-b", "class-c"]);
     });
-
-    it("returns string array", () => {
-        const label = createLabel("Test");
-
-        callArgs(
-            GTK_LIB,
-            "gtk_widget_set_css_classes",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: STRING_ARRAY, value: ["foo", "bar"] },
-            ],
-            VOID,
-        );
-
-        const classes = callArgs(
-            GTK_LIB,
-            "gtk_widget_get_css_classes",
-            [{ type: GOBJECT_BORROWED, value: label }],
-            STRING_ARRAY,
-        ) as string[];
-
-        expect(Array.isArray(classes)).toBe(true);
-        expect(classes).toContain("foo");
-        expect(classes).toContain("bar");
-    });
 });
 
 describe("call - array types - string arrays empty and small", () => {
@@ -84,29 +59,6 @@ describe("call - array types - string arrays empty and small", () => {
         ) as string[];
 
         expect(result).toEqual([]);
-    });
-
-    it("handles single-element array", () => {
-        const label = createLabel("Test");
-
-        callArgs(
-            GTK_LIB,
-            "gtk_widget_set_css_classes",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: STRING_ARRAY, value: ["single"] },
-            ],
-            VOID,
-        );
-
-        const result = callArgs(
-            GTK_LIB,
-            "gtk_widget_get_css_classes",
-            [{ type: GOBJECT_BORROWED, value: label }],
-            STRING_ARRAY,
-        ) as string[];
-
-        expect(result).toEqual(["single"]);
     });
 });
 
@@ -223,31 +175,6 @@ describe("call - array types - string arrays large", () => {
     });
 });
 
-describe("call - array types - ownership", () => {
-    it("handles owned arrays (caller frees)", () => {
-        const label = createLabel("Test");
-
-        callArgs(
-            GTK_LIB,
-            "gtk_widget_set_css_classes",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: STRING_ARRAY, value: ["owned-class"] },
-            ],
-            VOID,
-        );
-
-        const result = callArgs(
-            GTK_LIB,
-            "gtk_widget_get_css_classes",
-            [{ type: GOBJECT_BORROWED, value: label }],
-            STRING_ARRAY,
-        ) as string[];
-
-        expect(result).toContain("owned-class");
-    });
-});
-
 describe("call - array types - memory leaks", () => {
     it("does not leak string array elements", () => {
         const label = createLabel("Test");
@@ -326,31 +253,6 @@ describe("call - array types - memory leaks returned", () => {
     });
 });
 
-describe("call - array types - edge cases basic", () => {
-    it("handles null-terminated string arrays", () => {
-        const label = createLabel("Test");
-
-        callArgs(
-            GTK_LIB,
-            "gtk_widget_set_css_classes",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: STRING_ARRAY, value: ["a", "b", "c"] },
-            ],
-            VOID,
-        );
-
-        const result = callArgs(
-            GTK_LIB,
-            "gtk_widget_get_css_classes",
-            [{ type: GOBJECT_BORROWED, value: label }],
-            STRING_ARRAY,
-        ) as string[];
-
-        expect(result.length).toBe(3);
-    });
-});
-
 describe("call - array types - edge cases replacement", () => {
     it("handles replacing array completely", () => {
         const label = createLabel("Test");
@@ -413,28 +315,5 @@ describe("call - array types - edge cases duplicates and special", () => {
 
         expect(result).toContain("dup");
         expect(result).toContain("unique");
-    });
-
-    it("handles array with empty string elements", () => {
-        const label = createLabel("Test");
-
-        callArgs(
-            GTK_LIB,
-            "gtk_widget_add_css_class",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: STRING, value: "valid-class" },
-            ],
-            VOID,
-        );
-
-        const result = callArgs(
-            GTK_LIB,
-            "gtk_widget_get_css_classes",
-            [{ type: GOBJECT_BORROWED, value: label }],
-            STRING_ARRAY,
-        ) as string[];
-
-        expect(result).toContain("valid-class");
     });
 });

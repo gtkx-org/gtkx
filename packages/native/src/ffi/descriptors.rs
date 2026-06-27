@@ -36,8 +36,10 @@ pub(crate) fn parse_callback_arg_and_return_types(
     }
     // SAFETY: `arg_descriptors_prop` was verified to be an array above, and its raw napi value is valid
     // for the current `env`, so reconstructing an `Array` from the pair is sound.
-    let arg_descriptors_arr: Array = unsafe { Array::from_napi_value(env.raw(), arg_descriptors_prop.raw())? };
-    let arg_descriptors = crate::ffi::value::map_js_array(env, &arg_descriptors_arr, Descriptor::from_descriptor)?;
+    let arg_descriptors_arr: Array =
+        unsafe { Array::from_napi_value(env.raw(), arg_descriptors_prop.raw())? };
+    let arg_descriptors =
+        crate::ffi::value::map_js_array(env, &arg_descriptors_arr, Descriptor::from_descriptor)?;
 
     let return_descriptor_prop: Unknown<'_> = obj.get_named_property("returnDescriptor")?;
     if matches!(
@@ -72,21 +74,21 @@ mod r#struct;
 mod unichar;
 mod void;
 
-pub use array::ArrayKind;
 pub use array::ArrayDescriptor;
+pub use array::ArrayKind;
 pub use bigint::BigIntKind;
 pub use boolean::BooleanDescriptor;
-pub use boxed::{BoxedFreeFn, BoxedDescriptor};
+pub use boxed::{BoxedDescriptor, BoxedFreeFn};
 pub use buffer::BufferDescriptor;
 pub use callback::CallbackDescriptor;
-#[cfg(feature = "test-support")]
+#[cfg(debug_assertions)]
 pub use callback::CallbackScope;
 pub use fundamental::FundamentalDescriptor;
 pub use gobject::GObjectDescriptor;
 pub use hashtable::HashTableDescriptor;
-#[cfg(feature = "test-support")]
+#[cfg(debug_assertions)]
 pub use hashtable::HashTableEntryEncoder;
-pub use numeric::{FloatKind, IntegerKind, EnumFlagsKind, EnumFlagsDescriptor};
+pub use numeric::{EnumFlagsDescriptor, EnumFlagsKind, FloatKind, IntegerKind};
 pub use r#ref::RefDescriptor;
 pub use string::{StringDescriptor, str_to_glib_full};
 pub use r#struct::StructDescriptor;
@@ -458,13 +460,19 @@ impl Descriptor {
             "string" => Ok(Self::String(StringDescriptor::from_descriptor(env, &obj)?)),
             "boolean" => Ok(Self::Boolean(BooleanDescriptor)),
             "void" => Ok(Self::Void(VoidDescriptor)),
-            "gobject" => Ok(Self::GObject(GObjectDescriptor::from_descriptor(env, &obj)?)),
+            "gobject" => Ok(Self::GObject(GObjectDescriptor::from_descriptor(
+                env, &obj,
+            )?)),
             "boxed" => Ok(Self::Boxed(BoxedDescriptor::from_descriptor(env, &obj)?)),
             "struct" => Ok(Self::Struct(StructDescriptor::from_descriptor(env, &obj)?)),
             "array" => Ok(Self::Array(ArrayDescriptor::from_descriptor(env, &obj)?)),
             "buffer" => Ok(Self::Buffer(BufferDescriptor)),
-            "hashtable" => Ok(Self::HashTable(HashTableDescriptor::from_descriptor(env, &obj)?)),
-            "callback" => Ok(Self::Callback(CallbackDescriptor::from_descriptor(env, &obj)?)),
+            "hashtable" => Ok(Self::HashTable(HashTableDescriptor::from_descriptor(
+                env, &obj,
+            )?)),
+            "callback" => Ok(Self::Callback(CallbackDescriptor::from_descriptor(
+                env, &obj,
+            )?)),
             "ref" => Ok(Self::Ref(RefDescriptor::from_descriptor(env, &obj)?)),
             "unichar" => Ok(Self::Unichar(UnicharDescriptor)),
             "fundamental" => Ok(Self::Fundamental(FundamentalDescriptor::from_descriptor(
@@ -478,12 +486,12 @@ impl Descriptor {
     }
 
     #[must_use]
-    pub fn can_be_return_type(&self) -> bool {
+    pub fn can_be_return(&self) -> bool {
         !matches!(self, Self::Callback(_) | Self::Ref(_) | Self::Buffer(_))
     }
 
     #[must_use]
-    pub fn can_be_argument_type(&self) -> bool {
+    pub fn can_be_argument(&self) -> bool {
         !matches!(self, Self::Void(_))
     }
 }
@@ -495,14 +503,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn scalar_and_pointer_types_can_be_return_types() {
-        assert!(Descriptor::Void(VoidDescriptor).can_be_return_type());
-        assert!(Descriptor::Integer(IntegerKind::I32).can_be_return_type());
-        assert!(Descriptor::Boolean(BooleanDescriptor).can_be_return_type());
+    fn scalar_and_pointer_types_can_be_return() {
+        assert!(Descriptor::Void(VoidDescriptor).can_be_return());
+        assert!(Descriptor::Integer(IntegerKind::I32).can_be_return());
+        assert!(Descriptor::Boolean(BooleanDescriptor).can_be_return());
     }
 
     #[test]
-    fn callback_cannot_be_return_type() {
+    fn callback_cannot_be_return() {
         let callback = CallbackDescriptor {
             arg_descriptors: Vec::new(),
             return_descriptor: Box::new(Descriptor::Void(VoidDescriptor)),
@@ -510,14 +518,14 @@ mod tests {
             user_data_index: None,
             scope: CallbackScope::Call,
         };
-        assert!(!Descriptor::Callback(callback).can_be_return_type());
+        assert!(!Descriptor::Callback(callback).can_be_return());
     }
 
     #[test]
-    fn ref_cannot_be_return_type() {
-        let ref_type =
-            RefDescriptor::new(Descriptor::Integer(IntegerKind::I32)).expect("Integer is a valid Ref inner");
-        assert!(!Descriptor::Ref(ref_type).can_be_return_type());
+    fn ref_cannot_be_return() {
+        let ref_type = RefDescriptor::new(Descriptor::Integer(IntegerKind::I32))
+            .expect("Integer is a valid Ref inner");
+        assert!(!Descriptor::Ref(ref_type).can_be_return());
     }
 
     #[test]

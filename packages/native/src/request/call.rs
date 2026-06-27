@@ -35,12 +35,12 @@ impl Request for CallRequest {
             .map(|(ty, value)| Arg::new(ty, value))
             .collect();
         let symbol_name = &self.descriptor.symbol_name;
-        let result_type = &self.descriptor.result_type;
+        let return_descriptor = &self.descriptor.return_descriptor;
 
         let mut arg_types: Vec<libffi::Type> = Vec::with_capacity(args.len() + 1);
         for (i, arg) in args.iter().enumerate() {
             anyhow::ensure!(
-                arg.ty.can_be_argument_type(),
+                arg.ty.can_be_argument(),
                 "arg {i} of {symbol_name}: '{}' cannot be used as a function argument type",
                 arg.ty
             );
@@ -48,7 +48,7 @@ impl Request for CallRequest {
         }
 
         let cif = libffi::Builder::new()
-            .res(result_type.libffi_type())
+            .res(return_descriptor.libffi_type())
             .args(arg_types)
             .into_cif();
 
@@ -80,7 +80,7 @@ impl Request for CallRequest {
             })?
         };
 
-        let result = result_type
+        let result = return_descriptor
             .call_cif(&cif, symbol_ptr, &ffi_args)
             .with_context(|| format!("calling {symbol_name}"))?;
 
@@ -90,11 +90,11 @@ impl Request for CallRequest {
 
         let ref_updates = Self::collect_ref_updates(&args, &stashed_values);
 
-        let return_value = result_type
+        let return_value = return_descriptor
             .decode_with_context(&result, &stashed_values, &args)
             .with_context(|| format!("decoding return value of {symbol_name}"));
 
-        Self::release_sized_array_return(result_type, &result);
+        Self::release_sized_array_return(return_descriptor, &result);
 
         let ref_updates = ref_updates?;
         let return_value = return_value?;
@@ -220,7 +220,7 @@ mod tests {
         library_name: &str,
         symbol_name: &str,
         args: Vec<Arg>,
-        result_type: Descriptor,
+        return_descriptor: Descriptor,
     ) -> CallRequest {
         let arg_descriptors = args.iter().map(|arg| arg.ty.clone()).collect();
         let values = args.into_iter().map(|arg| arg.value).collect();
@@ -229,7 +229,7 @@ mod tests {
                 library_name: library_name.into(),
                 symbol_name: symbol_name.into(),
                 arg_descriptors,
-                result_type,
+                return_descriptor,
             }),
             values,
         }

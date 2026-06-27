@@ -7,8 +7,8 @@ use napi::bindgen_prelude::*;
 use napi::sys;
 use napi::{Env, JsFunction, JsObject, NapiRaw, NapiValue, ValueType};
 
-use crate::messaging::{JsRefDeletion, Mailbox};
 use crate::handle::Handle;
+use crate::messaging::{JsRefDeletion, Mailbox};
 
 pub struct JsRef<T> {
     raw: sys::napi_ref,

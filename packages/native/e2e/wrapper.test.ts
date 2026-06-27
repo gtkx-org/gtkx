@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getWrapper, type Handle, setWrapper } from "../index.js";
+import { getWrapper, type Handle, setWrapper } from "../binding.js";
 import { createLabel } from "./helpers/utils.js";
 
 describe("wrapper toggle references", () => {
