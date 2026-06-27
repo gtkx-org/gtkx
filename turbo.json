@@ -28,8 +28,7 @@
                 "vitest.config.ts",
                 "packages/*/vitest.config.ts",
                 "packages/*/src/**/*.{ts,tsx}",
-                "packages/*/tests/**/*.{ts,tsx}",
-                "packages/native/e2e/**/*.{ts,tsx}"
+                "packages/*/tests/**/*.{ts,tsx}"
             ],
             "outputs": ["coverage/**"],
             "outputLogs": "new-only"
@@ -41,7 +40,6 @@
                 "packages/*/vitest.config.ts",
                 "packages/*/src/**/*.{ts,tsx}",
                 "packages/*/tests/**/*.{ts,tsx}",
-                "packages/native/e2e/**/*.{ts,tsx}",
                 "examples/gtk-demo/vitest.config.ts",
                 "examples/gtk-demo/src/**/*.{ts,tsx}",
                 "examples/gtk-demo/tests/**/*.{ts,tsx}"
@@ -77,15 +75,7 @@
         },
         "@gtkx/native#build": {
             "dependsOn": ["^build", "build:debug", "@gtkx/cli#codegen"],
-            "inputs": [
-                "package.json",
-                "*.ts",
-                "e2e/**/*.ts",
-                "e2e/**/*.tsx",
-                "tsconfig.json",
-                "tsconfig.lib.json",
-                "tsconfig.test.json"
-            ],
+            "inputs": ["package.json", "*.ts", "tsconfig.json", "tsconfig.lib.json"],
             "outputs": ["binding.js", "binding.d.ts", "binding.js.map", "binding.d.ts.map", "*.tsbuildinfo"],
             "outputLogs": "new-only"
         },
@@ -136,8 +126,6 @@
                 "packages/*/src/**/*.tsx",
                 "packages/*/tests/**/*.ts",
                 "packages/*/tests/**/*.tsx",
-                "packages/native/e2e/**/*.ts",
-                "packages/native/e2e/**/*.tsx",
                 "packages/*/vitest.config.ts",
                 "packages/native/*.ts",
                 "scripts/**/*.ts",

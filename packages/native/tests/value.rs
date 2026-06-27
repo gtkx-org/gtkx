@@ -76,12 +76,16 @@ fn string_array_type_of(item: Ownership, container: Ownership, kind: ArrayKind) 
 }
 
 fn decode_ptr(descriptor: &Descriptor, ptr: *mut c_void) -> Value {
-    descriptor.decode(&ffi::StashedValue::Ptr(ptr))
+    descriptor
+        .decode(&ffi::StashedValue::Ptr(ptr))
         .expect("decode should succeed")
 }
 
 fn assert_null_ptr_decodes_to_null(descriptor: &Descriptor) {
-    assert!(matches!(decode_ptr(descriptor, std::ptr::null_mut()), Value::Null));
+    assert!(matches!(
+        decode_ptr(descriptor, std::ptr::null_mut()),
+        Value::Null
+    ));
 }
 
 fn assert_ptr_decodes_to_string(descriptor: &Descriptor, ptr: *mut c_void, expected: &str) {

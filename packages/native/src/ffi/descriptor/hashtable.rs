@@ -30,7 +30,9 @@ impl HashTableEntryEncoder {
             | Descriptor::Boxed(_)
             | Descriptor::Struct(_)
             | Descriptor::Fundamental(_) => Some(Self::Handle(Box::new(descriptor.clone()))),
-            Descriptor::Array(array_descriptor) if array_descriptor.kind == ArrayKind::GPtrArray => {
+            Descriptor::Array(array_descriptor)
+                if array_descriptor.kind == ArrayKind::GPtrArray =>
+            {
                 Some(Self::PtrArray(array_descriptor.item_descriptor.clone()))
             }
             _ => None,
@@ -66,7 +68,9 @@ impl HashTableEntryEncoder {
         }
     }
 
-    fn transferred_entry_destroy(descriptor: &Descriptor) -> anyhow::Result<glib::ffi::GDestroyNotify> {
+    fn transferred_entry_destroy(
+        descriptor: &Descriptor,
+    ) -> anyhow::Result<glib::ffi::GDestroyNotify> {
         match descriptor {
             Descriptor::Object(object) if object.ownership.is_full() => {
                 Ok(Some(g_object_unref_wrapper))
@@ -328,10 +332,13 @@ impl FfiEncoder for HashTableDescriptor {
 
         let key_encoder =
             HashTableEntryEncoder::from_descriptor(&self.key_descriptor).ok_or_else(|| {
-                anyhow::anyhow!("Unsupported GHashTable key descriptor: {:?}", self.key_descriptor)
+                anyhow::anyhow!(
+                    "Unsupported GHashTable key descriptor: {:?}",
+                    self.key_descriptor
+                )
             })?;
-        let value_encoder =
-            HashTableEntryEncoder::from_descriptor(&self.value_descriptor).ok_or_else(|| {
+        let value_encoder = HashTableEntryEncoder::from_descriptor(&self.value_descriptor)
+            .ok_or_else(|| {
                 anyhow::anyhow!(
                     "Unsupported GHashTable value descriptor: {:?}",
                     self.value_descriptor

@@ -1,6 +1,7 @@
+import * as Gtk from "@gtkx/gi/gtk";
+import { registerClass } from "@gtkx/native";
 import { describe, expect, it } from "vitest";
-import { registerClass } from "../binding.js";
-import { BIGUINT64, callArgs, createLabel, GOBJECT_LIB, typeFromName } from "./helpers/utils.js";
+import { BIGUINT64, callArgs, GOBJECT_LIB, typeFromName } from "../helpers/native-utils.js";
 
 const G_TYPE_INVALID_NAME = "ThisGTypeDefinitelyDoesNotExist";
 
@@ -31,7 +32,8 @@ describe("registerClass", () => {
     });
 
     it("accepts inherited-interface entries through the options builder", () => {
-        createLabel("Init");
+        const label = new Gtk.Label();
+        expect(label).toBeInstanceOf(Gtk.Label);
         const name = uniqueName("GtkxNativeInterfaceVfuncs");
         const widgetGtype = typeFromName("GtkWidget");
         const buildableGtype = typeFromName("GtkBuildable");

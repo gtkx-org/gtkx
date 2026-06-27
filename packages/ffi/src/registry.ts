@@ -6,15 +6,7 @@ import {
     setWrapper,
 } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
-import {
-    type GTyped,
-    TYPE_INVALID,
-    typeFromName,
-    typeInterfaces,
-    typeIsA,
-    typeName,
-    typeParent,
-} from "./gtype.js";
+import { type GTyped, TYPE_INVALID, typeFromName, typeInterfaces, typeIsA, typeName, typeParent } from "./gtype.js";
 import type { Mixin } from "./mixin.js";
 
 const classRegistry = new Map<bigint, AnyClass>();

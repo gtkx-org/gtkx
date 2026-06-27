@@ -5,7 +5,7 @@ use std::ffi::c_void;
 use libffi::middle;
 use native::ffi::descriptor::{
     BooleanDescriptor, BufferDescriptor, CallbackDescriptor, Descriptor, FfiDecoder, FfiEncoder,
-    ObjectDescriptor, IntegerKind, Ownership, PointerWriter, ReadSource, RefDescriptor,
+    IntegerKind, ObjectDescriptor, Ownership, PointerWriter, ReadSource, RefDescriptor,
     StructDescriptor, VoidDescriptor,
 };
 use native::ffi::value::Value;

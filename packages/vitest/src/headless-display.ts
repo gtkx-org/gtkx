@@ -185,6 +185,7 @@ export const startHeadlessDisplay = async (options: HeadlessOptions): Promise<()
     process.env["GSK_RENDERER"] = "cairo";
     process.env["GTK_A11Y"] = "test";
     process.env["LIBGL_ALWAYS_SOFTWARE"] = "1";
+    process.env["GST_GL_WINDOW"] = "none";
     process.env["GSETTINGS_BACKEND"] = "memory";
     process.env["ALSOFT_DRIVERS"] = "null";
     process.env["ALSOFT_LOGLEVEL"] = "0";

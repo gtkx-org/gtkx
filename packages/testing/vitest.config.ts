@@ -5,6 +5,5 @@ export default defineConfig({
     plugins: [gtkx()],
     test: {
         name: "testing",
-        setupFiles: ["./tests/setup.ts"],
     },
 });

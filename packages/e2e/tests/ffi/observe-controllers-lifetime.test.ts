@@ -1,14 +1,8 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
+import { forceGC } from "../helpers/native-utils.js";
 
 const drain = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
-
-function gc(): void {
-    if (!global.gc) {
-        throw new Error("global.gc is not available. Run tests with --expose-gc flag.");
-    }
-    global.gc();
-}
 
 function touchControllers(button: Gtk.Button): void {
     button.observeControllers().getNItems();
@@ -30,7 +24,7 @@ describe("observeControllers wrapper lifetime", () => {
         for (let i = 0; i < 150; i++) {
             touchControllers(button);
             await drain();
-            gc();
+            forceGC();
             const controllers = button.observeControllers();
             expect(controllers.getNItems()).toBeGreaterThanOrEqual(0);
         }
@@ -44,7 +38,7 @@ describe("observeControllers wrapper lifetime", () => {
             for (let k = 0; k < 5; k++) {
                 touchControllers(button);
                 await drain();
-                gc();
+                forceGC();
                 button.observeControllers().getNItems();
             }
             await drain();

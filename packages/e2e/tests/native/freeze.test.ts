@@ -1,5 +1,5 @@
+import { freeze, unfreeze } from "@gtkx/native";
 import { describe, expect, it } from "vitest";
-import { freeze, unfreeze } from "../binding.js";
 
 describe("freeze and unfreeze", () => {
     it("can be called without arguments", () => {

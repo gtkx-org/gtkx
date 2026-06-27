@@ -81,9 +81,7 @@ const toOutParams = (plans: ArgPlan[], inputs: unknown[], nativeValues: Value[])
     plans.forEach(({ argSpec, isCallerAllocated, inputIndex, isOutParam }, index) => {
         if (!isOutParam) return;
         outParams.push(
-            isCallerAllocated
-                ? inputs[inputIndex]
-                : fromNativeValue(argSpec.type, (nativeValues[index] as Ref).value),
+            isCallerAllocated ? inputs[inputIndex] : fromNativeValue(argSpec.type, (nativeValues[index] as Ref).value),
         );
     });
     return outParams;

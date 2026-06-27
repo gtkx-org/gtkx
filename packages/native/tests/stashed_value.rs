@@ -135,7 +135,7 @@ fn callback_value_without_destroy_has_none() {
 #[test]
 fn write_scalar_to_writes_every_numeric_variant() {
     macro_rules! check {
-        ($variant:ident, $value:expr, $descriptor:descriptor) => {{
+        ($variant:ident, $value:expr, $descriptor:ty) => {{
             let mut slot: u64 = 0;
             let slot_ptr = &mut slot as *mut u64 as *mut c_void;
             let v = StashedValue::$variant($value);

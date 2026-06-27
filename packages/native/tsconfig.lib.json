@@ -4,6 +4,6 @@
         "rootDir": "${configDir}",
         "outDir": "${configDir}"
     },
-    "include": ["${configDir}/binding.ts"],
+    "include": ["${configDir}/binding.ts", "${configDir}/test-support.ts"],
     "exclude": []
 }

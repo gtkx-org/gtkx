@@ -7,8 +7,9 @@ type InputConfig = { root?: string; test?: { setupFiles?: string | string[] } };
 
 type WorkerConfig = {
     test?: {
-        environment?: string;
-        environmentOptions?: { size?: string; compositor?: string };
+        globals?: boolean;
+        setupFiles?: string[];
+        provide?: { gtkxHeadless?: { size?: string; compositor?: string } };
         pool?: string;
         testTimeout?: number;
         hookTimeout?: number;
@@ -24,7 +25,7 @@ const unwrap = <Fn extends (...args: never[]) => unknown>(hook: Fn | { handler: 
     return typeof hook === "function" ? hook : hook.handler;
 };
 
-const environmentPath = join(import.meta.dirname, "..", "src", "environment.js");
+const workerSetupPath = join(import.meta.dirname, "..", "src", "worker-setup.js");
 
 const callConfig = (plugin: Plugin, config: InputConfig): WorkerConfig =>
     unwrap(plugin.config as ConfigHook | { handler: ConfigHook } | undefined)(config);
@@ -38,36 +39,34 @@ describe("gtkx vitest plugin", () => {
         expect(plugin.load).toBeDefined();
     });
 
-    it("forces the forks pool and 20s timeouts", () => {
+    it("forces the forks pool, enables globals, and sets 20s timeouts", () => {
         const result = callConfig(gtkx(), {});
         expect(result.test?.pool).toBe("forks");
+        expect(result.test?.globals).toBe(true);
         expect(result.test?.testTimeout).toBe(20000);
         expect(result.test?.hookTimeout).toBe(20000);
     });
 
-    it("inlines the shared bundled-module patterns", () => {
+    it("inlines the gtkx source packages except the native addon", () => {
         const result = callConfig(gtkx(), {});
         const inline = result.test?.server?.deps?.inline ?? [];
-        expect(inline.map((pattern) => pattern.source)).toEqual([
-            "@gtkx\\/(config|ffi|gi|react|jsx|testing|css)",
-            "[/\\\\]\\.gtkx[/\\\\]",
-        ]);
+        expect(inline.map((pattern) => pattern.source)).toEqual(["@gtkx\\/(?!native)", "[/\\\\]\\.gtkx[/\\\\]"]);
         expect(inline.map((pattern) => pattern.flags)).toEqual(["", ""]);
     });
 
-    it("points the test environment at the built display-isolation module", () => {
+    it("registers the headless display setup file", () => {
         const result = callConfig(gtkx(), {});
-        expect(result.test?.environment).toBe(environmentPath);
+        expect(result.test?.setupFiles).toEqual([workerSetupPath]);
     });
 
-    it("passes the headless options through environmentOptions", () => {
+    it("provides the headless options to the worker", () => {
         const result = callConfig(gtkx({ size: "640x480", compositor: "sway" }), {});
-        expect(result.test?.environmentOptions).toEqual({ size: "640x480", compositor: "sway" });
+        expect(result.test?.provide?.gtkxHeadless).toEqual({ size: "640x480", compositor: "sway" });
     });
 
-    it("leaves the environment options empty when none are configured", () => {
+    it("provides empty headless options when none are configured", () => {
         const result = callConfig(gtkx(), {});
-        expect(result.test?.environmentOptions).toEqual({});
+        expect(result.test?.provide?.gtkxHeadless).toEqual({});
     });
 
     it("orders the ssr resolve conditions source-first", () => {

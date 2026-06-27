@@ -352,8 +352,10 @@ pub(crate) fn seed_ref_cell(inner_ptr: *mut c_void, inner_descriptor: &Descripto
             // SAFETY: `inner_ptr` is non-null (checked above) and points to the inout cell for a
             // scalar `inner_descriptor` (the match restricts this branch to fixed-size scalar kinds), so
             // reading that slot as `inner_descriptor` reads a correctly typed, in-bounds location.
-            unsafe { inner_descriptor.read(ReadSource::Slot(inner_ptr.cast_const(), "inout cell seed")) }
-                .unwrap_or(Value::Null)
+            unsafe {
+                inner_descriptor.read(ReadSource::Slot(inner_ptr.cast_const(), "inout cell seed"))
+            }
+            .unwrap_or(Value::Null)
         }
         _ => Value::Null,
     }

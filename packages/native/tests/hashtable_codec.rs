@@ -10,8 +10,8 @@ use native::Handle;
 use native::ffi::StashedValue;
 use native::ffi::descriptor::{
     ArrayDescriptor, ArrayKind, BooleanDescriptor, BoxedDescriptor, Descriptor, FloatKind,
-    FundamentalDescriptor, ObjectDescriptor, HashTableDescriptor, HashTableEntryEncoder,
-    IntegerKind, Ownership, StringDescriptor, StructDescriptor,
+    FundamentalDescriptor, HashTableDescriptor, HashTableEntryEncoder, IntegerKind,
+    ObjectDescriptor, Ownership, StringDescriptor, StructDescriptor,
 };
 use native::ffi::descriptor::{FfiDecoder, FfiEncoder, PointerWriter, ReadSource};
 use native::ffi::value::Value;

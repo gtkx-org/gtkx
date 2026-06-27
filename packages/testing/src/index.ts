@@ -1,4 +1,5 @@
 import "./setup-runtime.js";
+import "./register-test-hooks.js";
 
 export { act } from "./act.js";
 export type { BoundQueries, RenderResult, Screen } from "./bound-queries.js";

@@ -6,5 +6,6 @@ export default defineConfig({
     test: {
         name: "e2e",
         setupFiles: ["./tests/setup.ts"],
+        execArgv: ["--expose-gc"],
     },
 });

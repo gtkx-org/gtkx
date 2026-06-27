@@ -460,9 +460,7 @@ impl Descriptor {
             "string" => Ok(Self::String(StringDescriptor::from_descriptor(env, &obj)?)),
             "boolean" => Ok(Self::Boolean(BooleanDescriptor)),
             "void" => Ok(Self::Void(VoidDescriptor)),
-            "object" => Ok(Self::Object(ObjectDescriptor::from_descriptor(
-                env, &obj,
-            )?)),
+            "object" => Ok(Self::Object(ObjectDescriptor::from_descriptor(env, &obj)?)),
             "boxed" => Ok(Self::Boxed(BoxedDescriptor::from_descriptor(env, &obj)?)),
             "struct" => Ok(Self::Struct(StructDescriptor::from_descriptor(env, &obj)?)),
             "array" => Ok(Self::Array(ArrayDescriptor::from_descriptor(env, &obj)?)),

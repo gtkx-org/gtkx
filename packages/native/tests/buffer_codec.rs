@@ -66,6 +66,6 @@ fn buffer_cannot_be_a_return_type() {
         .expect_err("a buffer return slot must fail");
     assert!(
         err.to_string()
-            .contains("Buffer types cannot be return types")
+            .contains("Buffer descriptors cannot be return descriptors")
     );
 }

@@ -31,11 +31,6 @@
             "source": "./src/index.ts",
             "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
-        },
-        "./environment": {
-            "source": "./src/environment.ts",
-            "types": "./dist/environment.d.ts",
-            "default": "./dist/environment.js"
         }
     },
     "sideEffects": false,

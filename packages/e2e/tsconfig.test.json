@@ -14,6 +14,12 @@
             "path": "../ffi/tsconfig.lib.json"
         },
         {
+            "path": "../gl/tsconfig.lib.json"
+        },
+        {
+            "path": "../native/tsconfig.lib.json"
+        },
+        {
             "path": "../react/tsconfig.lib.json"
         },
         {

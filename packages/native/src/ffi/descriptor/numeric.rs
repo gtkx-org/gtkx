@@ -112,7 +112,7 @@ macro_rules! impl_integer_kind_dispatch {
 with_integer_kinds!(impl_integer_kind_dispatch);
 
 macro_rules! impl_numeric_codecs {
-    ($kind:descriptor, $label:literal, $ptr_to_value:item) => {
+    ($kind:ty, $label:literal, $ptr_to_value:item) => {
         impl FfiEncoder for $kind {
             fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
                 let number = Self::number_from_value(value)?;

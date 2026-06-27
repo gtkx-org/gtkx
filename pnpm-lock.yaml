@@ -377,6 +377,12 @@ importers:
       '@gtkx/ffi':
         specifier: workspace:*
         version: link:../ffi
+      '@gtkx/gl':
+        specifier: workspace:*
+        version: link:../gl
+      '@gtkx/native':
+        specifier: workspace:*
+        version: link:../native
       '@gtkx/react':
         specifier: workspace:*
         version: link:../react
@@ -411,10 +417,6 @@ importers:
       '@gtkx/native':
         specifier: workspace:*
         version: link:../native
-    devDependencies:
-      '@gtkx/vitest':
-        specifier: workspace:*
-        version: link:../vitest
 
   packages/mcp:
     dependencies:
@@ -430,9 +432,6 @@ importers:
 
   packages/native:
     devDependencies:
-      '@gtkx/vitest':
-        specifier: workspace:*
-        version: link:../vitest
       '@napi-rs/cli':
         specifier: ^3.7.2
         version: 3.7.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@24.13.2)

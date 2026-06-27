@@ -7,7 +7,7 @@ use gtk4::prelude::ObjectType as _;
 
 use native::ffi::descriptor::{
     ArrayDescriptor, ArrayKind, BooleanDescriptor, Descriptor, EnumFlagsDescriptor, EnumFlagsKind,
-    FfiDecoder, FloatKind, ObjectDescriptor, IntegerKind, Ownership, ReadSource, RefDescriptor,
+    FfiDecoder, FloatKind, IntegerKind, ObjectDescriptor, Ownership, ReadSource, RefDescriptor,
     StringDescriptor, UnicharDescriptor,
 };
 use native::ffi::value::Value;

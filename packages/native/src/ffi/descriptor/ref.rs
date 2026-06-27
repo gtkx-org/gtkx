@@ -89,18 +89,19 @@ impl FfiEncoder for RefDescriptor {
                 ),
             },
             Descriptor::String(string_descriptor) => {
-                let (buffer_size, initial_content) = match (&string_descriptor.length, &*ref_val.value) {
-                    (Some(len), value::Value::String(s)) => (*len, Some(s.as_bytes())),
-                    (Some(len), value::Value::Null | value::Value::Undefined) => (*len, None),
-                    (None, value::Value::String(s)) => (s.len() + 1, Some(s.as_bytes())),
-                    (None, value::Value::Null | value::Value::Undefined) => {
-                        return Ok(Self::null_ptr_storage());
-                    }
-                    _ => bail!(
-                        "Expected a String, Null, or length for Ref<String>, got {:?}",
-                        ref_val.value
-                    ),
-                };
+                let (buffer_size, initial_content) =
+                    match (&string_descriptor.length, &*ref_val.value) {
+                        (Some(len), value::Value::String(s)) => (*len, Some(s.as_bytes())),
+                        (Some(len), value::Value::Null | value::Value::Undefined) => (*len, None),
+                        (None, value::Value::String(s)) => (s.len() + 1, Some(s.as_bytes())),
+                        (None, value::Value::Null | value::Value::Undefined) => {
+                            return Ok(Self::null_ptr_storage());
+                        }
+                        _ => bail!(
+                            "Expected a String, Null, or length for Ref<String>, got {:?}",
+                            ref_val.value
+                        ),
+                    };
 
                 let mut buffer: Vec<u8> = vec![0u8; buffer_size];
 
@@ -174,7 +175,8 @@ impl FfiDecoder for RefDescriptor {
                 // SAFETY: for pointer inner descriptors the out-slot `storage.ptr()` holds a pointer to
                 // the produced value; dereferencing it loads that pointer for the inner decoder.
                 let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
-                self.inner_descriptor.decode(&ffi::StashedValue::Ptr(actual_ptr))
+                self.inner_descriptor
+                    .decode(&ffi::StashedValue::Ptr(actual_ptr))
             }
             // SAFETY: `storage.ptr()` is the scalar out-slot the callee wrote; the inner integer
             // codec reads it as a pointer slot, range-checking for lossless f64 conversion.
@@ -204,7 +206,9 @@ impl FfiDecoder for RefDescriptor {
             Descriptor::Unichar(unichar) => unsafe {
                 unichar.read(ReadSource::Slot(storage.ptr(), "Ref<Unichar>"))
             },
-            Descriptor::String(string_descriptor) => Ok(Self::decode_ref_string(storage, string_descriptor)),
+            Descriptor::String(string_descriptor) => {
+                Ok(Self::decode_ref_string(storage, string_descriptor))
+            }
             Descriptor::Array(_) => {
                 bail!("Ref<Array> requires decode_with_context to get size from another parameter")
             }
@@ -282,7 +286,10 @@ impl RefDescriptor {
         ffi::StashedValue::Storage(Stash::from(vec![0u64]))
     }
 
-    fn decode_ref_string(storage: &Stash, string_descriptor: &super::StringDescriptor) -> value::Value {
+    fn decode_ref_string(
+        storage: &Stash,
+        string_descriptor: &super::StringDescriptor,
+    ) -> value::Value {
         if storage.ptr().is_null() {
             return value::Value::Null;
         }

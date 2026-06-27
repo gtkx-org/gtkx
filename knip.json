@@ -57,7 +57,7 @@
             "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
         },
         "packages/gl": {
-            "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
+            "project": ["src/**/*.ts!"]
         },
         "packages/mcp": {
             "entry": ["src/server.ts!"],
@@ -68,7 +68,7 @@
             "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
         },
         "packages/native": {
-            "project": ["*.ts!", "e2e/**/*.{ts,tsx}"]
+            "project": ["*.ts!"]
         },
         "packages/react": {
             "project": ["src/**/*.{ts,tsx}!"]
@@ -78,6 +78,7 @@
             "project": ["src/**/*.{ts,tsx}!", "tests/**/*.{ts,tsx}"]
         },
         "packages/vitest": {
+            "entry": ["src/worker-setup.ts!"],
             "project": ["src/**/*.ts!"]
         },
         "examples/browser": {

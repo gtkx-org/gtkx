@@ -31,6 +31,11 @@
             "source": "./binding.ts",
             "types": "./binding.d.ts",
             "default": "./binding.js"
+        },
+        "./test-support": {
+            "source": "./test-support.ts",
+            "types": "./test-support.d.ts",
+            "default": "./test-support.js"
         }
     },
     "sideEffects": false,
@@ -38,6 +43,9 @@
         "binding.ts",
         "binding.js",
         "binding.d.ts",
+        "test-support.ts",
+        "test-support.js",
+        "test-support.d.ts",
         "index.js",
         "index.d.ts"
     ],
@@ -67,7 +75,6 @@
         "@gtkx/native-linux-x64-gnu": "workspace:*"
     },
     "devDependencies": {
-        "@gtkx/vitest": "workspace:*",
         "@napi-rs/cli": "^3.7.2"
     }
 }

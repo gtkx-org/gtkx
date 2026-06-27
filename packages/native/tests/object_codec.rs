@@ -44,7 +44,8 @@ fn encode_object(
     descriptor: &ObjectDescriptor,
     ptr: *mut glib::gobject_ffi::GObject,
 ) -> ffi::StashedValue {
-    descriptor.encode(&object_value_of(ptr))
+    descriptor
+        .encode(&object_value_of(ptr))
         .expect("encode should succeed")
 }
 

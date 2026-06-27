@@ -101,7 +101,7 @@
             }
         },
         {
-            "includes": ["packages/gl/**"],
+            "includes": ["packages/gl/**", "packages/e2e/tests/gl/**"],
             "linter": {
                 "rules": {
                     "complexity": {
@@ -121,7 +121,7 @@
             }
         },
         {
-            "includes": ["**/tests/**", "packages/native/e2e/**"],
+            "includes": ["**/tests/**"],
             "linter": {
                 "rules": {
                     "complexity": {

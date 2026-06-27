@@ -13,6 +13,8 @@
         "@gtkx/components": "workspace:*",
         "@gtkx/config": "workspace:*",
         "@gtkx/ffi": "workspace:*",
+        "@gtkx/gl": "workspace:*",
+        "@gtkx/native": "workspace:*",
         "@gtkx/react": "workspace:*",
         "@gtkx/testing": "workspace:*",
         "@gtkx/vitest": "workspace:*",

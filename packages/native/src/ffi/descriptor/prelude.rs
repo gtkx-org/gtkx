@@ -14,7 +14,7 @@ macro_rules! arg_only_call_cif {
             _ptr: ::libffi::middle::CodePtr,
             _args: &[::libffi::middle::Arg],
         ) -> ::anyhow::Result<crate::ffi::StashedValue> {
-            ::anyhow::bail!(concat!($kind, " cannot be return types"))
+            ::anyhow::bail!(concat!($kind, " cannot be return descriptors"))
         }
     };
 }
