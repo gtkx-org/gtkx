@@ -186,6 +186,8 @@ export const startHeadlessDisplay = async (options: HeadlessOptions): Promise<()
     process.env["GTK_A11Y"] = "test";
     process.env["LIBGL_ALWAYS_SOFTWARE"] = "1";
     process.env["GSETTINGS_BACKEND"] = "memory";
+    process.env["ALSOFT_DRIVERS"] = "null";
+    process.env["ALSOFT_LOGLEVEL"] = "0";
 
     await Promise.all([
         waitForSocket(join(runtimeDir, compositor.socket), { label: "Compositor", child: compositor.child }),
@@ -193,7 +195,6 @@ export const startHeadlessDisplay = async (options: HeadlessOptions): Promise<()
     ]);
 
     return () => {
-        compositor.child.kill("SIGKILL");
         busChild.kill("SIGKILL");
         rmSync(runtimeDir, { recursive: true, force: true });
     };

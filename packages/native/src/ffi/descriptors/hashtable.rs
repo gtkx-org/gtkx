@@ -391,9 +391,10 @@ impl FfiDecoder for HashTableDescriptor {
             Ok(pairs)
         })();
 
-        if self.ownership.is_full() {
-            // SAFETY: full ownership was transferred to us, so `hash_ptr` is the owned GHashTable;
-            // releasing its one reference here frees it once.
+        let storage_owns_table = matches!(stashed_value, ffi::StashedValue::Storage(_));
+        if self.ownership.is_full() && !storage_owns_table {
+            // SAFETY: full ownership with no owning storage means `hash_ptr` is the owned
+            // GHashTable; releasing its one reference here frees it exactly once.
             unsafe { glib::ffi::g_hash_table_unref(hash_ptr as *mut glib::ffi::GHashTable) };
         }
 

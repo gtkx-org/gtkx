@@ -235,6 +235,7 @@ describe("McpClient connection failures", () => {
     });
 
     it("rejects connect() when the server refuses registration", async () => {
+        const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
         const { client, connectPromise, registerLine } = await beginRegistration(ctx);
 
         ctx.sockets[0]?.write(
@@ -243,6 +244,7 @@ describe("McpClient connection failures", () => {
 
         await expect(connectPromise).rejects.toThrow();
 
+        stderrSpy.mockRestore();
         client.disconnect();
     });
 

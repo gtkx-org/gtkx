@@ -1180,9 +1180,12 @@ impl ArrayDescriptor {
         let values = self.decode_contiguous(codec, data, len);
 
         if self.ownership.is_full() {
-            // SAFETY: full ownership means we hold the array's single reference; `g_array_unref`
-            // releases it exactly once.
-            unsafe { glib::ffi::g_array_unref(array_ptr as *mut glib::ffi::GArray) };
+            let storage_owns = matches!(stashed_value, ffi::StashedValue::Storage(_));
+            if !storage_owns {
+                // SAFETY: full ownership with no owning storage means we hold the array's single
+                // reference; `g_array_unref` releases it exactly once.
+                unsafe { glib::ffi::g_array_unref(array_ptr as *mut glib::ffi::GArray) };
+            }
         }
 
         Ok(value::Value::Array(values?))
@@ -1223,11 +1226,10 @@ impl ArrayDescriptor {
         };
 
         let byte_array = ptr as *mut glib::ffi::GByteArray;
-        let adopted: Option<glib::ByteArray> = self
-            .ownership
-            .is_full()
-            // SAFETY: full ownership means `byte_array` is the single owning reference;
-            // `from_glib_full` adopts it so it is freed when `adopted` is dropped.
+        let storage_owns = matches!(stashed_value, ffi::StashedValue::Storage(_));
+        let adopted: Option<glib::ByteArray> = (self.ownership.is_full() && !storage_owns)
+            // SAFETY: full ownership with no owning storage means `byte_array` is the single owning
+            // reference; `from_glib_full` adopts it so it is freed when `adopted` is dropped.
             .then(|| unsafe { glib::translate::from_glib_full(byte_array) });
 
         // SAFETY: `ptr` is non-null (checked above) and points to a live GByteArray (still alive
