@@ -56,9 +56,8 @@ describe("listviewFilebrowserDemo", () => {
     it("populates the file grid with at least one entry from the working directory", async () => {
         await renderDemo(listviewFilebrowserDemo);
         const grid = (await screen.findByName("files-grid")) as Gtk.GridView;
-        const model = grid.getModel();
-        expect(model).not.toBeNull();
-        expect((model as Gtk.SelectionModel).getNItems()).toBeGreaterThan(0);
+        expect(grid.getModel()).not.toBeNull();
+        await waitForPopulatedModel(grid);
     });
 
     it("starts in list view orientation (horizontal)", async () => {
