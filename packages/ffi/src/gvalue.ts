@@ -30,7 +30,6 @@ import {
     voidT,
 } from "./descriptors.js";
 import {
-    type GType,
     getStrvGtype,
     TYPE_BOOLEAN,
     TYPE_BOXED,
@@ -56,17 +55,17 @@ import { getHandle, requireWrapperClass, tryGetHandle, wrapHandle } from "./regi
 
 const newGValue = (): Handle => alloc(GVALUE_SIZE, "GValue");
 
-export function valueGetType(value: Handle): GType {
-    return read(value, biguint64T, GVALUE_LAYOUT.gTypeOffset) as GType;
+export function valueGetType(value: Handle): bigint {
+    return read(value, biguint64T, GVALUE_LAYOUT.gTypeOffset) as bigint;
 }
 
 const gValueInit = bind(LIB, "g_value_init", [GVALUE_T, biguint64T], voidT);
 
-const valueInit = (value: Handle, gtype: GType): void => {
+const valueInit = (value: Handle, gtype: bigint): void => {
     gValueInit(value, gtype);
 };
 
-const newTypedGValue = (gtype: GType): Handle => {
+const newTypedGValue = (gtype: bigint): Handle => {
     const value = newGValue();
     valueInit(value, gtype);
     return value;
@@ -255,9 +254,9 @@ export function getGValueBoxed(value: object): object | null {
     return valueGetBoxed(getHandle(value));
 }
 
-const resolveBoxedInnerGtype = (descriptor: BoxedDescriptor): GType => {
+const resolveBoxedInnerGtype = (descriptor: BoxedDescriptor): bigint => {
     if (descriptor.getTypeFn && descriptor.sharedLibrary) {
-        return callTypeFunction(descriptor.sharedLibrary, descriptor.getTypeFn) as GType;
+        return callTypeFunction(descriptor.sharedLibrary, descriptor.getTypeFn) as bigint;
     }
     const gtype = typeFromName(descriptor.typeName);
     if (gtype === TYPE_INVALID) {
@@ -266,7 +265,7 @@ const resolveBoxedInnerGtype = (descriptor: BoxedDescriptor): GType => {
     return gtype;
 };
 
-const resolveFundamentalGtype = (descriptor: FundamentalDescriptor): GType => {
+const resolveFundamentalGtype = (descriptor: FundamentalDescriptor): bigint => {
     if (descriptor.typeName) {
         const gtype = typeFromName(descriptor.typeName);
         if (gtype !== TYPE_INVALID) return gtype;
@@ -274,7 +273,7 @@ const resolveFundamentalGtype = (descriptor: FundamentalDescriptor): GType => {
     throw new Error(`Cannot resolve gtype for fundamental type without a typeName`);
 };
 
-export function gtypeFromDescriptor(descriptor: Descriptor): GType {
+export function gtypeFromDescriptor(descriptor: Descriptor): bigint {
     switch (descriptor.kind) {
         case "boolean":
             return TYPE_BOOLEAN;
@@ -302,7 +301,7 @@ export function gtypeFromDescriptor(descriptor: Descriptor): GType {
             return TYPE_OBJECT;
         case "enum":
         case "flags":
-            return callTypeFunction(descriptor.sharedLibrary, descriptor.getTypeFn) as GType;
+            return callTypeFunction(descriptor.sharedLibrary, descriptor.getTypeFn) as bigint;
         case "boxed":
             return resolveBoxedInnerGtype(descriptor);
         case "fundamental":
@@ -343,11 +342,11 @@ const setBoxedOrStrv = (value: Handle, descriptor: Descriptor, jsValue: unknown)
     else valueSetBoxed(value, jsValue as object | null);
 };
 
-const unsupportedSet = (gtype: GType): never => {
+const unsupportedSet = (gtype: bigint): never => {
     throw new Error(`Unsupported GType for toGValue: ${typeName(gtype) ?? String(gtype)}`);
 };
 
-const payloadHandlers = new Map<GType, PayloadHandler>([
+const payloadHandlers = new Map<bigint, PayloadHandler>([
     [
         TYPE_BOOLEAN,
         { set: (value, _descriptor, jsValue) => valueSetBoolean(value, jsValue as boolean), get: valueGetBoolean },
@@ -395,7 +394,7 @@ const payloadHandlers = new Map<GType, PayloadHandler>([
     [TYPE_POINTER, { set: (value) => unsupportedSet(valueGetType(value)), get: getPointerValue }],
 ]);
 
-function setGValuePayload(value: Handle, gtype: GType, descriptor: Descriptor, jsValue: unknown): void {
+function setGValuePayload(value: Handle, gtype: bigint, descriptor: Descriptor, jsValue: unknown): void {
     const handler = payloadHandlers.get(typeFundamental(gtype));
     if (handler === undefined) unsupportedSet(gtype);
     else handler.set(value, descriptor, jsValue);

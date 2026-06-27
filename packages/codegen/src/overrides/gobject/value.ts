@@ -1,7 +1,7 @@
 import { getGValueBoxed, setGValueBoxed } from "@gtkx/ffi";
-import { type GType, Value } from "../gobject.js";
+import { type Type, Value } from "../gobject.js";
 
-export const buildValue = (gtype: GType, populate: (value: Value) => void): Value => {
+export const buildValue = (gtype: Type, populate: (value: Value) => void): Value => {
     const value = new Value();
     value.init(gtype);
     populate(value);

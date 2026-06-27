@@ -5,7 +5,7 @@ import {
 } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
 import { wrapCallback } from "./callback.js";
-import { type GType, TYPE_INVALID, typeInterfaces } from "./gtype.js";
+import { TYPE_INVALID, typeInterfaces } from "./gtype.js";
 import {
     getClassGtype,
     getInterfaceVfuncRegistry,
@@ -32,7 +32,7 @@ type DiscoveredClassVfunc = DiscoveredVfunc<"class">;
 type DiscoveredInterfaceVfunc = DiscoveredVfunc<"interface">;
 
 type InterfaceVfuncBinding = {
-    gtype: GType;
+    gtype: bigint;
     vfuncs: DiscoveredInterfaceVfunc[];
 };
 
@@ -52,13 +52,13 @@ export function registerClass<T extends AnyClass>(klass: T, options: RegisterCla
     const interfaceBindings = discoverInheritedInterfaceVfuncs(klass, parentGtype, claimedMethodNames);
 
     const nativeOptions = toNativeOptions(classVfuncs, interfaceBindings);
-    const newGtype: GType = nativeRegisterClass(name, parentGtype, nativeOptions);
+    const newGtype: bigint = nativeRegisterClass(name, parentGtype, nativeOptions);
     setClassGtype(klass, newGtype);
 
     return klass;
 }
 
-function resolveParentGtype(klass: AnyClass): GType {
+function resolveParentGtype(klass: AnyClass): bigint {
     return (
         walkClassChain(getParentClass(klass), (cls) => {
             const gtype = getClassGtype(cls);
@@ -122,7 +122,7 @@ function wrapVfunc(
 
 function discoverInheritedInterfaceVfuncs(
     klass: AnyClass,
-    parentGtype: GType,
+    parentGtype: bigint,
     claimedMethodNames: Set<string>,
 ): InterfaceVfuncBinding[] {
     const bindings: InterfaceVfuncBinding[] = [];
@@ -137,7 +137,7 @@ function discoverInheritedInterfaceVfuncs(
 
 function discoverInterfaceVfuncs(
     klass: AnyClass,
-    interfaceGtype: GType,
+    interfaceGtype: bigint,
     claimedMethodNames: Set<string>,
 ): DiscoveredInterfaceVfunc[] {
     const vfuncRegistry = getInterfaceVfuncRegistry(interfaceGtype);

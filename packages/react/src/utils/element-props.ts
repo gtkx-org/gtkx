@@ -1,5 +1,5 @@
 import type * as Gdk from "@gtkx/gi/gdk";
-import type { GType } from "@gtkx/gi/gobject";
+import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gsk from "@gtkx/gi/gsk";
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { ReactNode } from "react";
@@ -31,7 +31,7 @@ export type ActionAccel = {
     accels: string[];
 };
 
-export type DropTargetType = GType;
+export type DropTargetType = GObject.Type;
 
 export type CreditSection = {
     name: string;

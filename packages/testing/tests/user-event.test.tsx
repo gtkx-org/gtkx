@@ -541,7 +541,7 @@ describe("userEvent.drag", () => {
 const renderDropZone = async (
     name: string,
     label: string,
-    gtype: GObject.GType,
+    gtype: GObject.Type,
     onDrop: ComponentProps<typeof GtkDropTarget>["onDrop"],
 ): Promise<Gtk.Widget> => {
     await render(

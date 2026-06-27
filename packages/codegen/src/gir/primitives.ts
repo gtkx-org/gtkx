@@ -106,7 +106,7 @@ export const PRIMITIVE_TS_TYPE: Record<PrimitiveCategory, string> = Object.freez
     uint64: "number",
     bigint64: "bigint",
     biguint64: "bigint",
-    gtype: "GType",
+    gtype: "bigint",
     float32: "number",
     float64: "number",
     string: "string",

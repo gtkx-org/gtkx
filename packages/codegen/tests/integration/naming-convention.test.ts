@@ -56,10 +56,10 @@ describe("identifier naming convention", () => {
         expect(glib).not.toMatch(/\bGPid\b/);
     });
 
-    it("publishes the GObject Type alias as GType", () => {
+    it("publishes the GObject Type alias under its GIR name", () => {
         const gobject = moduleSource("gobject");
-        expect(gobject).toMatch(/export type GType\b/);
-        expect(gobject).not.toMatch(/export type Type\b/);
+        expect(gobject).toMatch(/export type Type\b/);
+        expect(gobject).not.toMatch(/export type GType\b/);
     });
 
     it("emits a named type for every top-level callback, under its GIR name", () => {

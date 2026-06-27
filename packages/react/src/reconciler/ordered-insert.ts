@@ -9,7 +9,7 @@ import type { Node } from "./state.js";
 
 type ItemCollection = { getNItems(): number; getItem(position: number): unknown };
 
-const orderedInsertCache = new Map<GObject.GType, OrderedInsertSpec | null>();
+const orderedInsertCache = new Map<GObject.Type, OrderedInsertSpec | null>();
 
 export const resolveOrderedInsert = (parent: Node): OrderedInsertSpec | null => {
     if (!(parent instanceof GObject.Object)) return null;

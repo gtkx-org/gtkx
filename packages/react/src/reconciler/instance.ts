@@ -1,5 +1,5 @@
 import type { RelationshipKind } from "@gtkx/config";
-import { constructWrapper, type GType } from "@gtkx/ffi";
+import { constructWrapper } from "@gtkx/ffi";
 import type * as GObject from "@gtkx/gi/gobject";
 import { omit } from "@gtkx/utils";
 import { collectConstructableProps } from "../utils/gtype.js";
@@ -14,7 +14,7 @@ const CONSTRUCTION_SKIP_PROPS: Record<string, string[]> = {
     AdwToggleGroup: ["activeName", "active"],
 };
 
-const pickConstructProps = (gtype: GType, props: Props): Props => {
+const pickConstructProps = (gtype: bigint, props: Props): Props => {
     const constructable = collectConstructableProps(gtype);
     const result: Props = {};
     for (const name in props) {

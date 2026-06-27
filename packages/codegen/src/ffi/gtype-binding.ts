@@ -6,10 +6,8 @@ import { bindingIdentifier } from "../writer/identifier.js";
 const TYPE_FROM_NAME_SYMBOL = "g_type_from_name";
 const TYPE_FROM_NAME_LIB = "libgobject-2.0.so.0";
 
-export const gtypeTsType = (context: ModuleContext): string => {
-    if (context.namespace.name !== "GObject") context.addRuntimeTypeImport("GType");
-    return "GType";
-};
+export const gtypeTsType = (context: ModuleContext): string =>
+    context.namespace.name === "GObject" ? "Type" : "bigint";
 
 export const gtypeMemberDeclaration = (context: ModuleContext): string => `declare __gtype__: ${gtypeTsType(context)};`;
 
@@ -27,15 +25,15 @@ const renderGtypeExpression = (
     return `${bindingIdentifier(getType)}() as bigint`;
 };
 
-type GtypeSource = {
-    getType: string | undefined;
-    typeName: string | undefined;
+type GTypeSource = {
+    glibGetType: string | undefined;
+    glibTypeName: string | undefined;
 };
 
-export const gtypeExprFor = (context: ModuleContext, source: GtypeSource): string | undefined =>
-    source.getType === undefined
+export const gtypeExprFor = (context: ModuleContext, source: GTypeSource): string | undefined =>
+    source.glibGetType === undefined
         ? undefined
-        : renderGtypeExpression(context, source.getType, source.typeName);
+        : renderGtypeExpression(context, source.glibGetType, source.glibTypeName);
 
 const appendGetTypeBinding = (context: ModuleContext, getType: string): void => {
     const lib = context.namespace.sharedLibrary ?? "";

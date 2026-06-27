@@ -1,7 +1,6 @@
 import type { Descriptor, Handle, Value } from "@gtkx/native";
 import { GVALUE_SIZE, GVALUE_T, LIB } from "./constants.js";
 import { biguint64T, bind, objectT, sizedArrayT, stringT, uint32T, voidT } from "./descriptors.js";
-import type { GType } from "./gtype.js";
 import { fromGValue, newGValueForDescriptor, toGValue } from "./gvalue.js";
 import { getHandle } from "./registry.js";
 
@@ -19,7 +18,7 @@ const gObjectNewWithProperties = bind(
     objectT("full"),
 );
 
-export function newGObjectWithProperties(gtype: GType, props: Record<string, Property>): Handle {
+export function newGObjectWithProperties(gtype: bigint, props: Record<string, Property>): Handle {
     const names: string[] = [];
     const values: Handle[] = [];
 

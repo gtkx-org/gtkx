@@ -14,7 +14,7 @@ import {
 } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GLib from "@gtkx/gi/glib";
-import type { GType } from "@gtkx/gi/gobject";
+import type { Type } from "@gtkx/gi/gobject";
 import { ParamFlags, paramSpecBoolean, typeFromName, Value } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
@@ -23,14 +23,14 @@ import { getHandle, t } from "@gtkx/ffi";
 import { callTypeFunction } from "../../src/descriptors.js";
 import { fromGValue, newGValueForDescriptor, toGValue, valueGetType } from "../../src/gvalue.js";
 
-const callGetType = (lib: string, fn: string): GType => {
+const callGetType = (lib: string, fn: string): Type => {
     const result = callTypeFunction(lib, fn);
     if (typeof result !== "bigint") {
         throw new TypeError(`${fn} did not return a GType`);
     }
     return result;
 };
-const gdkRgbaGtype = (): GType => callGetType("libgtk-4.so.1", "gdk_rgba_get_type");
+const gdkRgbaGtype = (): Type => callGetType("libgtk-4.so.1", "gdk_rgba_get_type");
 
 const makeRgba = (red: number, green: number, blue: number, alpha: number): Gdk.RGBA =>
     new (Gdk.RGBA as new (props: object) => Gdk.RGBA)({ red, green, blue, alpha });
@@ -291,7 +291,7 @@ describe("toGValue — arrays and errors", () => {
     });
 });
 
-const gtypeOfEmpty = (ffi: Parameters<typeof newGValueForDescriptor>[0]): GType =>
+const gtypeOfEmpty = (ffi: Parameters<typeof newGValueForDescriptor>[0]): Type =>
     valueGetType(newGValueForDescriptor(ffi));
 const gdkRgbaFfi = {
     kind: "boxed",

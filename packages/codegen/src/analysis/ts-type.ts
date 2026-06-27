@@ -4,7 +4,6 @@ import { PRIMITIVE_TS_TYPE } from "../gir/primitives.js";
 import type { GirType } from "../gir/type.js";
 import type { TypeId } from "../gir/type-id.js";
 import type { ModuleContext } from "../writer/context.js";
-import { aliasExportName } from "../writer/identifier.js";
 
 export type ReferenceName = {
     namespaceName: string;
@@ -62,10 +61,7 @@ const moduleTarget = (context: ModuleContext): TsTypeTarget => ({
     containerStyle: "map",
     callbackType: "((...args: any[]) => any)",
     byteArrayAsNumber: true,
-    renderNamed: (resolved, name) =>
-        resolved?.kind === "alias"
-            ? context.qualify(name.namespaceName, aliasExportName(name.namespaceName, name.typeName))
-            : context.qualify(name.namespaceName, name.typeName),
+    renderNamed: (_resolved, name) => context.qualify(name.namespaceName, name.typeName),
     renderGtype: () => gtypeTsType(context),
 });
 

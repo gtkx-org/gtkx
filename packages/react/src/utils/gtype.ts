@@ -9,7 +9,7 @@ import {
     SIGNALS,
 } from "virtual:gtkx-config";
 import type { AttachShape } from "@gtkx/config";
-import { type GType, type GTyped, typeInterfaces, typeName, typeParent } from "@gtkx/ffi";
+import { type GTyped, typeInterfaces, typeName, typeParent } from "@gtkx/ffi";
 import { NOTIFY_SIGNAL, propToNotifySignal } from "./notify-name.js";
 
 const NOTIFY_PREFIX = "onNotify";
@@ -22,16 +22,16 @@ export const resolveNotifySignal = (propName: string): string | null => {
     return propToNotifySignal(tail);
 };
 
-const typeNameChainCache = new Map<GType, string[]>();
-const interfaceNamesCache = new Map<GType, string[]>();
-const typeNameSetCache = new Map<GType, Set<string>>();
-const signalCache = new Map<GType, Map<string, string | null>>();
-const constructOnlyCache = new Map<GType, Map<string, boolean>>();
-const defaultPropCache = new Map<GType, Map<string, DefaultPropLookup>>();
-const constructablePropsCache = new Map<GType, Set<string>>();
-const attachShapesCache = new Map<GType, Set<AttachShape>>();
+const typeNameChainCache = new Map<bigint, string[]>();
+const interfaceNamesCache = new Map<bigint, string[]>();
+const typeNameSetCache = new Map<bigint, Set<string>>();
+const signalCache = new Map<bigint, Map<string, string | null>>();
+const constructOnlyCache = new Map<bigint, Map<string, boolean>>();
+const defaultPropCache = new Map<bigint, Map<string, DefaultPropLookup>>();
+const constructablePropsCache = new Map<bigint, Set<string>>();
+const attachShapesCache = new Map<bigint, Set<AttachShape>>();
 
-export const collectTypeNameChain = (gtype: GType): string[] => {
+export const collectTypeNameChain = (gtype: bigint): string[] => {
     const cached = typeNameChainCache.get(gtype);
     if (cached) return cached;
 
@@ -48,7 +48,7 @@ export const collectTypeNameChain = (gtype: GType): string[] => {
     return chain;
 };
 
-export const collectInterfaceNames = (gtype: GType): string[] => {
+export const collectInterfaceNames = (gtype: bigint): string[] => {
     const cached = interfaceNamesCache.get(gtype);
     if (cached) return cached;
 
@@ -63,7 +63,7 @@ export const collectInterfaceNames = (gtype: GType): string[] => {
 };
 
 export const foldInheritedTable = <R, T>(
-    gtype: GType,
+    gtype: bigint,
     table: Record<string, R>,
     fold: (accumulator: T, row: R) => T,
     seed: T,
@@ -77,7 +77,7 @@ export const foldInheritedTable = <R, T>(
 };
 
 export const foldInheritedTableWithInterfaces = <R, T>(
-    gtype: GType,
+    gtype: bigint,
     table: Record<string, R>,
     fold: (accumulator: T, row: R) => T,
     seed: T,
@@ -90,7 +90,7 @@ export const foldInheritedTableWithInterfaces = <R, T>(
     return accumulator;
 };
 
-export const findInheritedRow = <R>(gtype: GType, table: Record<string, R>): R | undefined => {
+export const findInheritedRow = <R>(gtype: bigint, table: Record<string, R>): R | undefined => {
     for (const name of collectTypeNameChain(gtype)) {
         const row = table[name];
         if (row !== undefined) return row;
@@ -98,7 +98,7 @@ export const findInheritedRow = <R>(gtype: GType, table: Record<string, R>): R |
     return undefined;
 };
 
-export const typeChainIncludes = (gtype: GType, name: string): boolean => {
+export const typeChainIncludes = (gtype: bigint, name: string): boolean => {
     let names = typeNameSetCache.get(gtype);
     if (!names) {
         names = new Set(collectTypeNameChain(gtype));
@@ -107,7 +107,7 @@ export const typeChainIncludes = (gtype: GType, name: string): boolean => {
     return names.has(name);
 };
 
-export const isDefaultBlockableType = (gtype: GType): boolean =>
+export const isDefaultBlockableType = (gtype: bigint): boolean =>
     DEFAULT_BLOCKABLE_TYPES.some((name) => typeChainIncludes(gtype, name));
 
 /**
@@ -116,7 +116,7 @@ export const isDefaultBlockableType = (gtype: GType): boolean =>
  * implemented interfaces. Each shape is present only when codegen confirmed the
  * underlying method exists with the expected signature.
  */
-export const collectAttachShapes = (gtype: GType): Set<AttachShape> => {
+export const collectAttachShapes = (gtype: bigint): Set<AttachShape> => {
     const cached = attachShapesCache.get(gtype);
     if (cached) return cached;
     const shapes = foldInheritedTableWithInterfaces<AttachShape[], Set<AttachShape>>(
@@ -133,7 +133,7 @@ export const collectAttachShapes = (gtype: GType): Set<AttachShape> => {
 };
 
 const memoize = <T>(
-    cache: Map<GType, Map<string, T>>,
+    cache: Map<bigint, Map<string, T>>,
     instance: GTyped,
     key: string,
     compute: (typeNames: string[]) => T,
@@ -151,7 +151,7 @@ const memoize = <T>(
     return result;
 };
 
-export const collectConstructableProps = (gtype: GType): Set<string> => {
+export const collectConstructableProps = (gtype: bigint): Set<string> => {
     const cached = constructablePropsCache.get(gtype);
     if (cached) return cached;
     const names = foldInheritedTable(

@@ -1,5 +1,5 @@
 import type { CallbackDescriptor, Descriptor, Ref, Value } from "@gtkx/native";
-import { type ArgCategory, classifyArgCategory } from "./arg-category.js";
+import { isCallerAllocatedArg, isInoutArg, isOutputArg, isRefArg } from "./arg.js";
 import { type UserCallback, wrapCallback } from "./callback.js";
 import { LIB } from "./constants.js";
 import { bind, boxedT, refT } from "./descriptors.js";
@@ -37,32 +37,37 @@ const toNativeArgTypes = (argSpecs: ArgSpec[], throws: boolean): Descriptor[] =>
 
 type ArgPlan = {
     argSpec: ArgSpec;
-    category: ArgCategory;
+    isRef: boolean;
+    isCallerAllocated: boolean;
     consumesInput: boolean;
     inputIndex: number;
     isOutParam: boolean;
 };
 
-const categoryOfArgSpec = (argSpec: ArgSpec): ArgCategory =>
-    classifyArgCategory({ direction: argSpec.direction, callerAllocated: argSpec.callerAllocated === true });
-
 const planArgs = (argSpecs: ArgSpec[]): ArgPlan[] => {
     let inputCursor = 0;
     return argSpecs.map((argSpec) => {
-        const category = categoryOfArgSpec(argSpec);
-        const consumesInput = category.kind !== "outCell" || category.inout;
-        const isOutParam = category.kind !== "plainInput" && argSpec.consumed !== true;
-        return { argSpec, category, consumesInput, inputIndex: consumesInput ? inputCursor++ : -1, isOutParam };
+        const isRef = isRefArg(argSpec);
+        const consumesInput = !isRef || isInoutArg(argSpec);
+        const isOutParam = isOutputArg(argSpec) && argSpec.consumed !== true;
+        return {
+            argSpec,
+            isRef,
+            isCallerAllocated: isCallerAllocatedArg(argSpec),
+            consumesInput,
+            inputIndex: consumesInput ? inputCursor++ : -1,
+            isOutParam,
+        };
     });
 };
 
 const toNativeValues = (plans: ArgPlan[], inputs: unknown[]): Value[] =>
-    plans.map(({ argSpec, category, consumesInput, inputIndex }) => {
-        if (category.kind === "callerAllocated") {
+    plans.map(({ argSpec, isRef, isCallerAllocated, consumesInput, inputIndex }) => {
+        if (isCallerAllocated) {
             const wrapper = inputs[inputIndex];
             return wrapper == null ? wrapper : getHandle(wrapper as object);
         }
-        if (category.kind === "outCell") {
+        if (isRef) {
             return { value: consumesInput ? (inputs[inputIndex] as Value) : null };
         }
         if (argSpec.type.kind === "callback") {
@@ -73,10 +78,10 @@ const toNativeValues = (plans: ArgPlan[], inputs: unknown[]): Value[] =>
 
 const toOutParams = (plans: ArgPlan[], inputs: unknown[], nativeValues: Value[]): unknown[] => {
     const outParams: unknown[] = [];
-    plans.forEach(({ argSpec, category, inputIndex, isOutParam }, index) => {
+    plans.forEach(({ argSpec, isCallerAllocated, inputIndex, isOutParam }, index) => {
         if (!isOutParam) return;
         outParams.push(
-            category.kind === "callerAllocated"
+            isCallerAllocated
                 ? inputs[inputIndex]
                 : fromNativeValue(argSpec.type, (nativeValues[index] as Ref).value),
         );
@@ -99,10 +104,10 @@ export function fn(sharedLibrary: string, symbol: string, signature: FnSignature
     if (throws) {
         return (...inputs) => {
             const nativeValues = toNativeValues(plans, inputs);
-            const errorCell: Ref = { value: null };
-            nativeValues.push(errorCell);
+            const errorRef: Ref = { value: null };
+            nativeValues.push(errorRef);
             const nativeResult = nativeFn(...nativeValues);
-            checkError(errorCell);
+            checkError(errorRef);
             return shape(inputs, nativeValues, nativeResult);
         };
     }

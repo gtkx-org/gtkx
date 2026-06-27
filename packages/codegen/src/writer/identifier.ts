@@ -8,9 +8,6 @@ export const namespaceFunctionExportName = (cIdentifier: string, girName: string
     return toCamelIdentifier(stripped);
 };
 
-export const aliasExportName = (namespaceName: string, aliasName: string): string =>
-    namespaceName === "GObject" && aliasName === "Type" ? "GType" : aliasName;
-
 export const bindingIdentifier = (cIdentifier: string): string => toCamelIdentifier(cIdentifier);
 
 const stripLongestPrefix = (input: string, prefixes: string[]): string => {

@@ -1,11 +1,11 @@
 import { offSignal, onceSignal, onSignal } from "@gtkx/ffi";
-import { Object as GObject, type GType, signalHandlerDisconnect } from "../gobject.js";
+import { Object as GObject, type Type, signalHandlerDisconnect } from "../gobject.js";
 
 type Listener = (...args: unknown[]) => unknown;
 
 declare module "../gobject.js" {
     interface Object {
-        __gtype__: GType;
+        __gtype__: Type;
 
         disconnect(handlerId: number): void;
 

@@ -2,7 +2,6 @@ export { promisify } from "./async.js";
 export { createErrorDomain, type ErrorDomain } from "./gerror.js";
 export { getGObjectProperty, newGObjectWithProperties, setGObjectProperty } from "./gobject.js";
 export {
-    type GType,
     type GTyped,
     TYPE_BOOLEAN,
     TYPE_BOXED,

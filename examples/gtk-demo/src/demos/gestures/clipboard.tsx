@@ -2,7 +2,6 @@ import { DropDown } from "@gtkx/components";
 import type { Context } from "@gtkx/gi/cairo";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
-import type { GType } from "@gtkx/gi/gobject";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
@@ -31,7 +30,7 @@ import sourceCode from "./clipboard.tsx?raw";
 
 const setClipboardValue = (clipboard: Gdk.Clipboard, value: GObject.Value): void => clipboard.set(value);
 const readTextureAsync = (clipboard: Gdk.Clipboard): Promise<Gdk.Texture | null> => clipboard.readTextureAsync(null);
-const readValueAsync = (clipboard: Gdk.Clipboard, type: GType): Promise<GObject.Value> =>
+const readValueAsync = (clipboard: Gdk.Clipboard, type: GObject.Type): Promise<GObject.Value> =>
     clipboard.readValueAsync(type, 0, null);
 
 type SourceType = "Text" | "Color" | "Image" | "File" | "Folder";

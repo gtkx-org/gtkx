@@ -1,18 +1,18 @@
 import { getHandle } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/gi/gdk";
-import type { GType } from "@gtkx/gi/gobject";
+import type { Type } from "@gtkx/gi/gobject";
 import { typeFromName } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import type { AnyClass } from "@gtkx/utils";
 import { describe, expect, it } from "vitest";
 import { findWrapperClassInChain, getWrapperClass, setClassGtype, wrapHandle } from "../src/registry.js";
 
-const INVALID_GTYPE: GType = 0n;
+const INVALID_GTYPE: Type = 0n;
 
 describe("setClassGtype", () => {
     it("registers a class by GType", () => {
         class TestClass {}
-        const fakeGtype: GType = 123456789n;
+        const fakeGtype: Type = 123456789n;
         setClassGtype(TestClass as AnyClass, fakeGtype);
         expect(findWrapperClassInChain(fakeGtype)).toBe(TestClass);
     });

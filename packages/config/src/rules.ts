@@ -348,7 +348,7 @@ const AlertDialog: RuleSet = {
 const DropTarget: RuleSet = {
     setProps: (node, newProps, oldProps) => {
         if (!(node.instance instanceof Gtk.DropTarget) || !changed(oldProps?.["types"], newProps["types"])) return;
-        node.instance.setGtypes(asArray<GObject.GType>(newProps["types"]));
+        node.instance.setGtypes(asArray<GObject.Type>(newProps["types"]));
     },
 };
 

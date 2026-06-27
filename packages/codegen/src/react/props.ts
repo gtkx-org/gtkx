@@ -194,7 +194,7 @@ const reactTarget = (context: PropTypeRenderContext): TsTypeTarget => ({
     },
     renderGtype: () => {
         context.imports.set("GObject", "GObject");
-        return "GObject.GType";
+        return "GObject.Type";
     },
 });
 

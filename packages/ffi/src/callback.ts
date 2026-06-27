@@ -1,5 +1,5 @@
 import type { Descriptor, Value } from "@gtkx/native";
-import { type ArgCategory, categoryOfType, isOutCellType } from "./arg-category.js";
+import { isCallerAllocatedType, isRefDescriptor } from "./arg.js";
 import { valueCopyInto } from "./gvalue.js";
 import { fromNativeValue, toNativeValue } from "./native-value.js";
 import { getHandle } from "./registry.js";
@@ -49,11 +49,10 @@ const partitionCallbackArgs = (
     const outParams: OutParam[] = [];
     for (let i = start; i < effectiveTypes.length; i++) {
         const descriptor = effectiveTypes[i];
-        const category: ArgCategory = descriptor === undefined ? { kind: "plainInput" } : categoryOfType(descriptor);
-        if (descriptor !== undefined && category.kind === "outCell") {
-            if (category.inout) inputs.push((wrapped[i] as { value: unknown }).value);
+        if (descriptor !== undefined && isRefDescriptor(descriptor)) {
+            if (descriptor.inout === true) inputs.push((wrapped[i] as { value: unknown }).value);
             outParams.push({ value: wrapped[i], descriptor });
-        } else if (descriptor !== undefined && category.kind === "callerAllocated" && receiver === "this") {
+        } else if (descriptor !== undefined && isCallerAllocatedType(descriptor) && receiver === "this") {
             outParams.push({ value: wrapped[i], descriptor });
         } else {
             inputs.push(wrapped[i]);
@@ -65,7 +64,7 @@ const partitionCallbackArgs = (
 const writeOutParams = (outParams: OutParam[], outValues: unknown[]): void => {
     outParams.forEach((outParam, position) => {
         const outValue = outValues[position];
-        if (isOutCellType(outParam.descriptor)) {
+        if (isRefDescriptor(outParam.descriptor)) {
             (outParam.value as { value: unknown }).value = outValue;
         } else if (outValue != null && outParam.value != null) {
             fillCallerAllocatedBuffer(outParam.descriptor, outParam.value as object, outValue as object);
