@@ -1,6 +1,6 @@
-import { cleanup } from "@gtkx/testing";
 import { bench, describe } from "vitest";
 import { renderListView } from "../helpers/list-fixtures.js";
+import { cleanup, render } from "../helpers/production-render.js";
 
 const SIZES = [100, 400];
 
@@ -15,7 +15,7 @@ describe("list splices", () => {
         const reversed = [...ids].reverse();
 
         bench(`append one item to ${n} rows`, async () => {
-            const { rerender } = await renderListView(ids);
+            const { rerender } = await renderListView(ids, {}, render);
             for (let k = 0; k < 3; k++) {
                 await rerender(appended);
                 await rerender(ids);
@@ -24,7 +24,7 @@ describe("list splices", () => {
         });
 
         bench(`prepend one item to ${n} rows`, async () => {
-            const { rerender } = await renderListView(ids);
+            const { rerender } = await renderListView(ids, {}, render);
             for (let k = 0; k < 3; k++) {
                 await rerender(prepended);
                 await rerender(ids);
@@ -33,7 +33,7 @@ describe("list splices", () => {
         });
 
         bench(`remove the middle item of ${n} rows`, async () => {
-            const { rerender } = await renderListView(ids);
+            const { rerender } = await renderListView(ids, {}, render);
             for (let k = 0; k < 3; k++) {
                 await rerender(removedMiddle);
                 await rerender(ids);
@@ -42,7 +42,7 @@ describe("list splices", () => {
         });
 
         bench(`reverse ${n} rows`, async () => {
-            const { rerender } = await renderListView(ids);
+            const { rerender } = await renderListView(ids, {}, render);
             for (let k = 0; k < 3; k++) {
                 await rerender(reversed);
                 await rerender(ids);

@@ -14,9 +14,9 @@ import {
     GtkSwitch,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
-import { cleanup, render } from "@gtkx/testing";
 import type { ReactNode } from "react";
 import { bench, describe } from "vitest";
+import { cleanup, render } from "../helpers/production-render.js";
 import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
 
 const SIZES = [98, 392];

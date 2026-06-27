@@ -1,6 +1,6 @@
-import { cleanup, render } from "@gtkx/testing";
 import { bench, describe } from "vitest";
 import { drawButtonBox } from "../helpers/button-box.js";
+import { cleanup, render } from "../helpers/production-render.js";
 
 const SIZES = [100, 400];
 

@@ -11,9 +11,16 @@ import {
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 
-import { render } from "@gtkx/testing";
+import { render as testingRender } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject } from "react";
 import { ScrollWrapper } from "./scroll-wrapper.js";
+
+/**
+ * Mounts an element and yields a `rerender`. Defaults to the `@gtkx/testing`
+ * (act-wrapped, dev) render; benchmarks inject `@gtkx/react`'s production render
+ * so they exercise the real render path under `NODE_ENV=production`.
+ */
+export type FixtureRender = (element: ReactNode) => Promise<{ rerender: (element: ReactNode) => Promise<void> }>;
 
 export interface NamedValue {
     name: string;
@@ -61,6 +68,7 @@ export interface GridViewFixture<T> {
 export const renderListView = async <T = NamedValue>(
     items: FixtureInput<T>,
     options: RenderListViewOptions<T> = {},
+    render: FixtureRender = testingRender,
 ): Promise<ListViewFixture<T>> => {
     const ref = createRef<Gtk.ListView>();
     const draw = (data: FixtureInput<T>, opts: RenderListViewOptions<T>): ReactNode => {
@@ -96,6 +104,7 @@ export const renderListView = async <T = NamedValue>(
 export const renderGridView = async <T = NamedValue>(
     items: FixtureInput<T>,
     options: RenderGridViewOptions<T> = {},
+    render: FixtureRender = testingRender,
 ): Promise<GridViewFixture<T>> => {
     const ref = createRef<Gtk.GridView>();
     const draw = (data: FixtureInput<T>, opts: RenderGridViewOptions<T>): ReactNode => {
@@ -157,6 +166,7 @@ export interface ColumnViewFixture<T> {
 export const renderColumnView = async <T = NamedValue>(
     items: FixtureInput<T>,
     options: RenderColumnViewOptions<T> = {},
+    render: FixtureRender = testingRender,
 ): Promise<ColumnViewFixture<T>> => {
     const ref = createRef<Gtk.ColumnView>();
     const defaultColumns: ColumnDef<T>[] = [{ id: "name", title: "Name", renderItem: renderNamed }];
