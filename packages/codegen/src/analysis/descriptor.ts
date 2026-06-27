@@ -137,7 +137,7 @@ export const tObject = (ownership: Ownership, typeName?: string): string =>
 
 export type BoxedOptions = {
     ownership: Ownership;
-    library: string | undefined;
+    sharedLibrary: string | undefined;
     getTypeFn: string;
     callerAllocated: boolean;
 };
@@ -147,7 +147,9 @@ export const tBoxed = (glibName: string, options: BoxedOptions): string =>
         sourceStringLiteral(glibName),
         optionsObject([
             `ownership: ${sourceStringLiteral(options.ownership)}`,
-            options.library === undefined ? undefined : `library: ${sourceStringLiteral(options.library)}`,
+            options.sharedLibrary === undefined
+                ? undefined
+                : `sharedLibrary: ${sourceStringLiteral(options.sharedLibrary)}`,
             `getTypeFn: ${sourceStringLiteral(options.getTypeFn)}`,
             options.callerAllocated ? "callerAllocated: true" : undefined,
         ]),

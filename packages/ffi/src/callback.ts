@@ -18,7 +18,7 @@ const copyBoxedFields = (target: object, source: object): void => {
 };
 
 const fillCallerAllocatedBuffer = (descriptor: Descriptor, target: object, source: object): void => {
-    if (descriptor.kind === "boxed" && descriptor.innerType === "GValue") {
+    if (descriptor.kind === "boxed" && descriptor.typeName === "GValue") {
         valueCopyInto(getHandle(target), getHandle(source));
         return;
     }
@@ -32,8 +32,8 @@ type Callback = (...args: Value[]) => Value;
 export type UserCallback = (...args: never[]) => unknown;
 
 type CallbackSpec = {
-    argTypes: Descriptor[];
-    returnType: Descriptor;
+    argDescriptors: Descriptor[];
+    returnDescriptor: Descriptor;
     userDataIndex?: number;
 };
 
@@ -74,9 +74,9 @@ const writeOutParams = (outParams: OutParam[], outValues: unknown[]): void => {
 };
 
 export function wrapCallback(fn: UserCallback, spec: CallbackSpec, receiver: CallbackReceiver): Callback {
-    const { returnType, userDataIndex } = spec;
+    const { returnDescriptor, userDataIndex } = spec;
     const effectiveTypes =
-        userDataIndex === undefined ? spec.argTypes : spec.argTypes.filter((_, i) => i !== userDataIndex);
+        userDataIndex === undefined ? spec.argDescriptors : spec.argDescriptors.filter((_, i) => i !== userDataIndex);
     const start = receiver === "none" ? 0 : 1;
     return (...rawArgs: Value[]): Value => {
         const wrapped = effectiveTypes.map((descriptor, i) => fromNativeValue(descriptor, rawArgs[i]));
@@ -84,10 +84,10 @@ export function wrapCallback(fn: UserCallback, spec: CallbackSpec, receiver: Cal
         const { inputs, outParams } = partitionCallbackArgs(effectiveTypes, wrapped, start, receiver);
         const result = (fn as (this: unknown, ...args: unknown[]) => unknown).apply(thisArg, inputs);
         if (outParams.length === 0) {
-            return toNativeValue(returnType, result);
+            return toNativeValue(returnDescriptor, result);
         }
-        const { primary, outValues } = splitTupleResult(result, returnType.kind !== "void", outParams.length);
+        const { primary, outValues } = splitTupleResult(result, returnDescriptor.kind !== "void", outParams.length);
         writeOutParams(outParams, outValues);
-        return toNativeValue(returnType, primary);
+        return toNativeValue(returnDescriptor, primary);
     };
 }

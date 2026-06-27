@@ -130,8 +130,8 @@ describe("call - error handling - value errors", () => {
                     {
                         type: {
                             kind: "callback",
-                            argTypes: [GOBJECT_BORROWED, UINT64],
-                            returnType: { kind: "void" },
+                            argDescriptors: [GOBJECT_BORROWED, UINT64],
+                            returnDescriptor: { kind: "void" },
                             hasDestroy: true,
                             userDataIndex: 1,
                         },

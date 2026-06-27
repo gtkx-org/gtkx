@@ -18,8 +18,8 @@ export type BigInt64Descriptor = { kind: "bigint64" };
 export type BigUint64Descriptor = { kind: "biguint64" };
 export type Float32Descriptor = { kind: "float32" };
 export type Float64Descriptor = { kind: "float64" };
-export type EnumDescriptor = { kind: "enum"; library: string; getTypeFn: string; signed: boolean };
-export type FlagsDescriptor = { kind: "flags"; library: string; getTypeFn: string; signed: boolean };
+export type EnumDescriptor = { kind: "enum"; sharedLibrary: string; getTypeFn: string; signed: boolean };
+export type FlagsDescriptor = { kind: "flags"; sharedLibrary: string; getTypeFn: string; signed: boolean };
 export type BooleanDescriptor = { kind: "boolean" };
 export type Ownership = "full" | "borrowed";
 export type StringDescriptor = { kind: "string"; ownership: Ownership; length?: number };
@@ -33,8 +33,8 @@ export type RefDescriptor = { kind: "ref"; innerType: Descriptor; inout?: boolea
 export type BoxedDescriptor = {
     kind: "boxed";
     ownership: Ownership;
-    innerType: string;
-    library?: string;
+    typeName: string;
+    sharedLibrary?: string;
     getTypeFn?: string;
     freeFn?: string;
     callerAllocated?: boolean;
@@ -43,7 +43,7 @@ export type BoxedDescriptor = {
 export type FundamentalDescriptor = {
     kind: "fundamental";
     ownership: Ownership;
-    library: string;
+    sharedLibrary: string;
     refFn: string;
     unrefFn: string;
     typeName?: string;
@@ -51,7 +51,7 @@ export type FundamentalDescriptor = {
 
 export type ArrayDescriptor = {
     kind: "array";
-    itemType: Descriptor;
+    itemDescriptor: Descriptor;
     arrayKind: "array" | "glist" | "gslist" | "gptrarray" | "garray" | "gbytearray" | "sized" | "fixed";
     ownership: Ownership;
     elementSize?: number;
@@ -61,15 +61,15 @@ export type ArrayDescriptor = {
 
 export type HashTableDescriptor = {
     kind: "hashtable";
-    keyType: Descriptor;
-    valueType: Descriptor;
+    keyDescriptor: Descriptor;
+    valueDescriptor: Descriptor;
     ownership: Ownership;
 };
 
 export type CallbackDescriptor = {
     kind: "callback";
-    argTypes: Descriptor[];
-    returnType: Descriptor;
+    argDescriptors: Descriptor[];
+    returnDescriptor: Descriptor;
     hasDestroy?: boolean;
     userDataIndex?: number;
     scope?: "call" | "notified" | "async" | "forever";
@@ -106,8 +106,8 @@ export type Descriptor =
 
 export type RegisterClassVfunc = {
     byteOffset: number;
-    argTypes: Descriptor[];
-    returnType: Descriptor;
+    argDescriptors: Descriptor[];
+    returnDescriptor: Descriptor;
     fn: (...args: Value[]) => Value;
 };
 

@@ -27,7 +27,7 @@ fn boxed(ownership: Ownership) -> BoxedDescriptor {
     BoxedDescriptor {
         ownership,
         type_name: rgba_type_name(),
-        library: None,
+        shared_library: None,
         get_type_fn: None,
         free_fn: None,
         caller_allocated: false,
@@ -100,7 +100,7 @@ fn gtype_resolves_via_library_lookup() {
         let bytes_type = BoxedDescriptor {
             ownership: Ownership::Borrowed,
             type_name: "GBytes".to_owned(),
-            library: Some("libgobject-2.0.so.0".to_owned()),
+            shared_library: Some("libgobject-2.0.so.0".to_owned()),
             get_type_fn: Some("g_bytes_get_type".to_owned()),
             free_fn: None,
             caller_allocated: false,
@@ -396,7 +396,7 @@ fn write_value_to_pointer_falls_back_when_gtype_unresolvable() {
         let unknown = BoxedDescriptor {
             ownership: Ownership::Borrowed,
             type_name: "GTypeUnknownBoxed".to_owned(),
-            library: None,
+            shared_library: None,
             get_type_fn: None,
             free_fn: None,
             caller_allocated: false,
@@ -698,7 +698,7 @@ mod free_fn {
         BoxedDescriptor {
             ownership,
             type_name: "FreeFnBoxed".to_owned(),
-            library: Some(LIBGLIB.to_owned()),
+            shared_library: Some(LIBGLIB.to_owned()),
             get_type_fn: None,
             free_fn: Some(G_FREE.to_owned()),
             caller_allocated: false,
@@ -776,7 +776,7 @@ mod free_fn {
             let descriptor = BoxedDescriptor {
                 ownership: Ownership::Full,
                 type_name: "BadFreeFnBoxed".to_owned(),
-                library: Some(LIBGLIB.to_owned()),
+                shared_library: Some(LIBGLIB.to_owned()),
                 get_type_fn: None,
                 free_fn: Some("definitely_not_a_real_symbol_xyz".to_owned()),
                 caller_allocated: false,
@@ -803,7 +803,7 @@ mod free_fn {
             let descriptor = BoxedDescriptor {
                 ownership: Ownership::Full,
                 type_name: "BadLibBoxed".to_owned(),
-                library: Some("libdoes-not-exist-xyz-12345.so.0".to_owned()),
+                shared_library: Some("libdoes-not-exist-xyz-12345.so.0".to_owned()),
                 get_type_fn: None,
                 free_fn: Some(G_FREE.to_owned()),
                 caller_allocated: false,
@@ -835,7 +835,7 @@ mod free_fn {
             let descriptor = BoxedDescriptor {
                 ownership: Ownership::Full,
                 type_name: "LibrarylessFreeFn".to_owned(),
-                library: None,
+                shared_library: None,
                 get_type_fn: None,
                 free_fn: Some(G_FREE.to_owned()),
                 caller_allocated: false,

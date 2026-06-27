@@ -328,7 +328,7 @@ const recordExpression = (
     const glibName = record.glibTypeName ?? record.cType ?? record.name;
     return tBoxed(glibName, {
         ownership,
-        library: resolved.namespace.sharedLibrary,
+        sharedLibrary: resolved.namespace.sharedLibrary,
         getTypeFn: record.glibGetType,
         callerAllocated,
     });

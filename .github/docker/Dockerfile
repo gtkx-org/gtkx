@@ -137,7 +137,7 @@ ENV CARGO_NET_RETRY=10
 ENV RUSTUP_MAX_RETRIES=10
 ENV CARGO_HTTP_MULTIPLEXING=false
 
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy --component llvm-tools-preview --default-toolchain stable \
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy --component rustfmt --component llvm-tools-preview --default-toolchain stable \
     && chmod -R a+rwX "$RUSTUP_HOME" "$CARGO_HOME"
 
 RUN rustup toolchain install nightly --profile minimal --component llvm-tools-preview --component rust-src --component miri \

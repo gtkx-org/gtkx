@@ -6,7 +6,7 @@ import { FontOptions } from "../cairo.js";
 const { bind } = t;
 const FONT_OPTIONS_T = t.boxed("CairoFontOptions", {
     ownership: "borrowed",
-    library: "libcairo-gobject.so.2",
+    sharedLibrary: "libcairo-gobject.so.2",
     getTypeFn: "cairo_gobject_font_options_get_type",
 });
 
@@ -31,7 +31,7 @@ const cairoFontOptionsCreate = bind(
     [],
     t.boxed("CairoFontOptions", {
         ownership: "full",
-        library: "libcairo-gobject.so.2",
+        sharedLibrary: "libcairo-gobject.so.2",
         getTypeFn: "cairo_gobject_font_options_get_type",
     }),
 );
@@ -41,7 +41,7 @@ const cairoFontOptionsCopy = bind(
     [FONT_OPTIONS_T],
     t.boxed("CairoFontOptions", {
         ownership: "full",
-        library: "libcairo-gobject.so.2",
+        sharedLibrary: "libcairo-gobject.so.2",
         getTypeFn: "cairo_gobject_font_options_get_type",
     }),
 );

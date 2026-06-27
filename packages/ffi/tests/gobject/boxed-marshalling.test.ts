@@ -6,7 +6,7 @@ import { inoutBoxedForDescriptor, outBoxedForDescriptor, valueGetBoxed } from ".
 describe("boxed GValue marshalling — caller-allocated out copies, inout shares", () => {
     const rectangleFfi = t.boxed("GdkRectangle", {
         ownership: "borrowed",
-        library: "libgtk-4.so.1",
+        sharedLibrary: "libgtk-4.so.1",
         getTypeFn: "gdk_rectangle_get_type",
     });
 

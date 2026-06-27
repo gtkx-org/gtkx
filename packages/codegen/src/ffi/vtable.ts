@@ -79,15 +79,21 @@ type RenderVtableSlotDescriptorOptions = {
 
 const renderVtableSlotDescriptor = (context: ModuleContext, options: RenderVtableSlotDescriptorOptions): string => {
     const { key, structName, kind, field, callback, byteOffset } = options;
-    const argTypes = callback.parameters.map((param) => renderParamDescriptor(context, param, param.type)).join(", ");
-    const returnType = renderDescriptor(context, callback.returnValue.type, callback.returnValue.transferOwnership);
+    const argDescriptors = callback.parameters
+        .map((param) => renderParamDescriptor(context, param, param.type))
+        .join(", ");
+    const returnDescriptor = renderDescriptor(
+        context,
+        callback.returnValue.type,
+        callback.returnValue.transferOwnership,
+    );
     const lines = [
         `kind: ${sourceStringLiteral(kind)},`,
         `className: ${sourceStringLiteral(structName)},`,
         `vfuncName: ${sourceStringLiteral(field.name)},`,
         `byteOffset: ${byteOffset},`,
-        `argTypes: [${argTypes}],`,
-        `returnType: ${returnType},`,
+        `argDescriptors: [${argDescriptors}],`,
+        `returnDescriptor: ${returnDescriptor},`,
     ];
     return `${key}: ${renderBraced(lines.join("\n"))},`;
 };

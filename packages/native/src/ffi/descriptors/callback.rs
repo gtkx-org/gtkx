@@ -35,8 +35,8 @@ impl std::str::FromStr for CallbackScope {
 
 #[derive(Debug, Clone)]
 pub struct CallbackDescriptor {
-    pub arg_types: Vec<Descriptor>,
-    pub return_type: Box<Descriptor>,
+    pub arg_descriptors: Vec<Descriptor>,
+    pub return_descriptor: Box<Descriptor>,
     pub has_destroy: bool,
     pub user_data_index: Option<usize>,
     pub scope: CallbackScope,
@@ -46,7 +46,7 @@ impl CallbackDescriptor {
     #[allow(clippy::trivially_copy_pass_by_ref)]
     #[cfg_attr(coverage_nightly, coverage(off))]
     pub(crate) fn from_descriptor(env: &Env, obj: &JsObject) -> napi::Result<Self> {
-        let (arg_types, return_type) =
+        let (arg_descriptors, return_descriptor) =
             super::parse_callback_arg_and_return_types(env, obj, "callback")?;
 
         let has_destroy =
@@ -71,8 +71,8 @@ impl CallbackDescriptor {
         };
 
         Ok(Self {
-            arg_types,
-            return_type,
+            arg_descriptors,
+            return_descriptor,
             has_destroy,
             user_data_index,
             scope,
@@ -107,8 +107,8 @@ impl FfiEncoder for CallbackDescriptor {
 
         let (fn_ptr, state) = build_trampoline(
             callback.js_func.clone(),
-            self.arg_types.clone(),
-            (*self.return_type).clone(),
+            self.arg_descriptors.clone(),
+            (*self.return_descriptor).clone(),
             self.user_data_index,
             is_oneshot,
         );

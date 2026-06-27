@@ -10,4 +10,4 @@ export const GVALUE_LAYOUT: { gTypeOffset: number; dataOffset: number } = {
     dataOffset: 8,
 };
 
-export const GVALUE_T: BoxedDescriptor = boxedT("GValue", { library: LIB, getTypeFn: "g_value_get_type" });
+export const GVALUE_T: BoxedDescriptor = boxedT("GValue", { sharedLibrary: LIB, getTypeFn: "g_value_get_type" });

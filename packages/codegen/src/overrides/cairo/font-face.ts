@@ -6,11 +6,11 @@ import { FontFace } from "../cairo.js";
 const { bind } = t;
 const FONT_FACE_T = t.boxed("CairoFontFace", {
     ownership: "borrowed",
-    library: "libcairo-gobject.so.2",
+    sharedLibrary: "libcairo-gobject.so.2",
     getTypeFn: "cairo_gobject_font_face_get_type",
 });
-const FC_PATTERN_T = t.boxed("FcPattern", { ownership: "borrowed", library: "libcairo.so.2" });
-const FT_FACE_T = t.boxed("FT_Face", { ownership: "borrowed", library: "libcairo.so.2" });
+const FC_PATTERN_T = t.boxed("FcPattern", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" });
+const FT_FACE_T = t.boxed("FT_Face", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" });
 
 declare module "../cairo.js" {
     interface FontFace {
@@ -115,7 +115,7 @@ const cairoToyFontFaceCreate = bind(
     [t.string("full"), t.int32, t.int32],
     t.boxed("CairoFontFace", {
         ownership: "full",
-        library: "libcairo-gobject.so.2",
+        sharedLibrary: "libcairo-gobject.so.2",
         getTypeFn: "cairo_gobject_font_face_get_type",
     }),
 );
@@ -129,7 +129,7 @@ const cairoFtFontFaceCreateForFtFace = bind(
     [FT_FACE_T, t.int32],
     t.boxed("CairoFontFace", {
         ownership: "full",
-        library: "libcairo-gobject.so.2",
+        sharedLibrary: "libcairo-gobject.so.2",
         getTypeFn: "cairo_gobject_font_face_get_type",
     }),
 );
@@ -143,7 +143,7 @@ const cairoFtFontFaceCreateForPattern = bind(
     [FC_PATTERN_T],
     t.boxed("CairoFontFace", {
         ownership: "full",
-        library: "libcairo-gobject.so.2",
+        sharedLibrary: "libcairo-gobject.so.2",
         getTypeFn: "cairo_gobject_font_face_get_type",
     }),
 );

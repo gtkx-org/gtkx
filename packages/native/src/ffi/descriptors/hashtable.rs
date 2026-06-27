@@ -30,7 +30,7 @@ impl HashTableEntryEncoder {
                 Some(Self::NativeHandle(Box::new(ty.clone())))
             }
             Descriptor::Array(array_type) if array_type.kind == ArrayKind::GPtrArray => {
-                Some(Self::PtrArray(array_type.item_type.clone()))
+                Some(Self::PtrArray(array_type.item_descriptor.clone()))
             }
             _ => None,
         }
@@ -123,12 +123,12 @@ impl HashTableEntryEncoder {
                 value::Value::Null | value::Value::Undefined => Ok(std::ptr::null_mut()),
                 _ => bail!("Expected native object in GHashTable, got {val:?}"),
             },
-            Self::PtrArray(item_type) => {
+            Self::PtrArray(item_descriptor) => {
                 let value::Value::Array(items) = val else {
                     bail!("Expected Array for GPtrArray in GHashTable, got {val:?}")
                 };
-                let elem_destroy = Self::transferred_entry_destroy(item_type)?;
-                // SAFETY: `elem_destroy` is the destroy notify matching `item_type`'s ownership;
+                let elem_destroy = Self::transferred_entry_destroy(item_descriptor)?;
+                // SAFETY: `elem_destroy` is the destroy notify matching `item_descriptor`'s ownership;
                 // `g_ptr_array_new_with_free_func` returns a fresh, owned GPtrArray.
                 let ptr_array = unsafe { glib::ffi::g_ptr_array_new_with_free_func(elem_destroy) };
                 let build: anyhow::Result<()> = (|| {
@@ -144,7 +144,7 @@ impl HashTableEntryEncoder {
                             // SAFETY: `item_ptr` is the non-null live object pointer of a wrapper;
                             // `ref_for_transfer` acquires the transfer reference matching the array's
                             // `elem_destroy` so each stored element is freed exactly once.
-                            unsafe { item_type.ref_for_transfer(item_ptr)? }
+                            unsafe { item_descriptor.ref_for_transfer(item_ptr)? }
                         };
                         // SAFETY: `ptr_array` is the owned GPtrArray created above; `g_ptr_array_add`
                         // appends `item_ptr`, transferring its reference into the array.
@@ -207,8 +207,8 @@ fn release_transferred(destroy: glib::ffi::GDestroyNotify, ptr: *mut c_void) {
 
 #[derive(Debug, Clone)]
 pub struct HashTableDescriptor {
-    pub key_type: Box<Descriptor>,
-    pub value_type: Box<Descriptor>,
+    pub key_descriptor: Box<Descriptor>,
+    pub value_descriptor: Box<Descriptor>,
     pub ownership: Ownership,
 }
 
@@ -216,17 +216,17 @@ impl HashTableDescriptor {
     #[allow(clippy::trivially_copy_pass_by_ref)]
     #[cfg_attr(coverage_nightly, coverage(off))]
     pub(crate) fn from_descriptor(env: &Env, obj: &JsObject) -> napi::Result<Self> {
-        let key_type_value: Unknown<'_> = obj.get_named_property("keyType")?;
-        let key_type = Descriptor::from_descriptor(env, key_type_value)?;
+        let key_descriptor_value: Unknown<'_> = obj.get_named_property("keyDescriptor")?;
+        let key_descriptor = Descriptor::from_descriptor(env, key_descriptor_value)?;
 
-        let value_type_value: Unknown<'_> = obj.get_named_property("valueType")?;
-        let value_type = Descriptor::from_descriptor(env, value_type_value)?;
+        let value_descriptor_value: Unknown<'_> = obj.get_named_property("valueDescriptor")?;
+        let value_descriptor = Descriptor::from_descriptor(env, value_descriptor_value)?;
 
         let ownership = Ownership::from_descriptor(obj, "hashtable")?;
 
         Ok(Self {
-            key_type: Box::new(key_type),
-            value_type: Box::new(value_type),
+            key_descriptor: Box::new(key_descriptor),
+            value_descriptor: Box::new(value_descriptor),
             ownership,
         })
     }
@@ -266,7 +266,7 @@ impl HashTableDescriptor {
                 let key_ptr = key_encoder.encode(key)?;
                 // SAFETY: `key_ptr` is the encoded key pointer; `ref_for_transfer` acquires the
                 // transfer reference matching `key_free` so the inserted key is freed exactly once.
-                let key_ptr = unsafe { self.key_type.ref_for_transfer(key_ptr)? };
+                let key_ptr = unsafe { self.key_descriptor.ref_for_transfer(key_ptr)? };
 
                 let val_ptr = match value_encoder.encode(val) {
                     Ok(encoded) => encoded,
@@ -277,7 +277,7 @@ impl HashTableDescriptor {
                 };
                 // SAFETY: `val_ptr` is the encoded value pointer; `ref_for_transfer` acquires the
                 // transfer reference matching `value_free` so the inserted value is freed once.
-                let val_ptr = unsafe { self.value_type.ref_for_transfer(val_ptr)? };
+                let val_ptr = unsafe { self.value_descriptor.ref_for_transfer(val_ptr)? };
 
                 // SAFETY: `hash_table` is the owned table created above; `g_hash_table_insert`
                 // moves ownership of `key_ptr`/`val_ptr` into it under its key/value free funcs.
@@ -325,12 +325,12 @@ impl FfiEncoder for HashTableDescriptor {
             _ => bail!("Expected an Array of tuples for GHashTable type, got {val:?}"),
         };
 
-        let key_encoder = HashTableEntryEncoder::from_type(&self.key_type).ok_or_else(|| {
-            anyhow::anyhow!("Unsupported GHashTable key type: {:?}", self.key_type)
+        let key_encoder = HashTableEntryEncoder::from_type(&self.key_descriptor).ok_or_else(|| {
+            anyhow::anyhow!("Unsupported GHashTable key type: {:?}", self.key_descriptor)
         })?;
         let value_encoder =
-            HashTableEntryEncoder::from_type(&self.value_type).ok_or_else(|| {
-                anyhow::anyhow!("Unsupported GHashTable value type: {:?}", self.value_type)
+            HashTableEntryEncoder::from_type(&self.value_descriptor).ok_or_else(|| {
+                anyhow::anyhow!("Unsupported GHashTable value type: {:?}", self.value_descriptor)
             })?;
 
         self.encode_hashtable(tuples, &key_encoder, &value_encoder)
@@ -380,10 +380,10 @@ impl FfiDecoder for HashTableDescriptor {
                 ) != 0
                 {
                     let key_value = self
-                        .key_type
+                        .key_descriptor
                         .read(ReadSource::Value(key_ptr, "hash table key"))?;
                     let val_value = self
-                        .value_type
+                        .value_descriptor
                         .read(ReadSource::Value(value_ptr, "hash table value"))?;
                     pairs.push(value::Value::Array(vec![key_value, val_value]));
                 }

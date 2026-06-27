@@ -147,7 +147,7 @@ describe("toGValue — primitives", () => {
 describe("toGValue — enums and flags", () => {
     it("builds an enum value from library/getTypeFn descriptor", () => {
         const v = toGValue(
-            { kind: "enum", library: "libgtk-4.so.1", getTypeFn: "gtk_align_get_type", signed: false },
+            { kind: "enum", sharedLibrary: "libgtk-4.so.1", getTypeFn: "gtk_align_get_type", signed: false },
             Gtk.Align.CENTER,
         );
         expect(fromGValue(v)).toBe(Gtk.Align.CENTER);
@@ -155,7 +155,12 @@ describe("toGValue — enums and flags", () => {
 
     it("builds a flags value from a flags-fundamental enum descriptor", () => {
         const v = toGValue(
-            { kind: "enum", library: "libgobject-2.0.so.0", getTypeFn: "g_binding_flags_get_type", signed: false },
+            {
+                kind: "enum",
+                sharedLibrary: "libgobject-2.0.so.0",
+                getTypeFn: "g_binding_flags_get_type",
+                signed: false,
+            },
             3,
         );
         expect(fromGValue(v)).toBe(3);
@@ -163,7 +168,12 @@ describe("toGValue — enums and flags", () => {
 
     it("builds a flags value from a flags descriptor", () => {
         const v = toGValue(
-            { kind: "flags", library: "libgobject-2.0.so.0", getTypeFn: "g_binding_flags_get_type", signed: false },
+            {
+                kind: "flags",
+                sharedLibrary: "libgobject-2.0.so.0",
+                getTypeFn: "g_binding_flags_get_type",
+                signed: false,
+            },
             5,
         );
         expect(fromGValue(v)).toBe(5);
@@ -181,8 +191,8 @@ describe("toGValue — objects and boxed", () => {
             {
                 kind: "boxed",
                 ownership: "borrowed",
-                innerType: "GdkRGBA",
-                library: "libgtk-4.so.1",
+                typeName: "GdkRGBA",
+                sharedLibrary: "libgtk-4.so.1",
                 getTypeFn: "gdk_rgba_get_type",
             },
             makeRgba(0, 0, 0, 1),
@@ -190,14 +200,14 @@ describe("toGValue — objects and boxed", () => {
         expect(valueGetType(v)).toBe(gdkRgbaGtype());
     });
 
-    it("builds a boxed value when only innerType is provided", () => {
-        const v = toGValue({ kind: "boxed", ownership: "borrowed", innerType: "GdkRGBA" }, makeRgba(0, 0, 0, 1));
+    it("builds a boxed value when only typeName is provided", () => {
+        const v = toGValue({ kind: "boxed", ownership: "borrowed", typeName: "GdkRGBA" }, makeRgba(0, 0, 0, 1));
         expect(valueGetType(v)).toBe(gdkRgbaGtype());
     });
 
-    it("throws for boxed types with an unresolvable innerType", () => {
+    it("throws for boxed types with an unresolvable typeName", () => {
         expect(() =>
-            toGValue({ kind: "boxed", ownership: "borrowed", innerType: "NotARealGType" }, makeRgba(0, 0, 0, 1)),
+            toGValue({ kind: "boxed", ownership: "borrowed", typeName: "NotARealGType" }, makeRgba(0, 0, 0, 1)),
         ).toThrow(/Cannot resolve gtype/);
     });
 });
@@ -240,7 +250,7 @@ describe("toGValue — arrays and errors", () => {
                 kind: "array",
                 arrayKind: "array",
                 ownership: "borrowed",
-                itemType: { kind: "string", ownership: "borrowed" },
+                itemDescriptor: { kind: "string", ownership: "borrowed" },
             },
             ["one", "two"],
         );
@@ -254,7 +264,7 @@ describe("toGValue — arrays and errors", () => {
                     kind: "array",
                     arrayKind: "glist",
                     ownership: "borrowed",
-                    itemType: { kind: "string", ownership: "borrowed" },
+                    itemDescriptor: { kind: "string", ownership: "borrowed" },
                 },
                 ["x"],
             ),
@@ -267,7 +277,7 @@ describe("toGValue — arrays and errors", () => {
                 {
                     kind: "fundamental",
                     ownership: "borrowed",
-                    library: "libgobject-2.0.so.0",
+                    sharedLibrary: "libgobject-2.0.so.0",
                     refFn: "g_object_ref",
                     unrefFn: "g_object_unref",
                 },
@@ -286,8 +296,8 @@ const gtypeOfEmpty = (ffi: Parameters<typeof newGValueForDescriptor>[0]): GType 
 const gdkRgbaFfi = {
     kind: "boxed",
     ownership: "borrowed",
-    innerType: "GdkRGBA",
-    library: "libgtk-4.so.1",
+    typeName: "GdkRGBA",
+    sharedLibrary: "libgtk-4.so.1",
     getTypeFn: "gdk_rgba_get_type",
 } as const;
 const variantFfi = t.fundamental("libgobject-2.0.so.0,libglib-2.0.so.0", "g_variant_ref", "g_variant_unref", {
@@ -298,7 +308,7 @@ const strvFfi = {
     kind: "array",
     arrayKind: "array",
     ownership: "borrowed",
-    itemType: { kind: "string", ownership: "borrowed" },
+    itemDescriptor: { kind: "string", ownership: "borrowed" },
 } as const;
 
 describe("newGValueForDescriptor — GType resolution from an FFI descriptor", () => {
@@ -321,13 +331,13 @@ describe("newGValueForDescriptor — GType resolution from an FFI descriptor", (
     it("resolves enum and flags descriptors through their get-type", () => {
         const align = {
             kind: "enum",
-            library: "libgtk-4.so.1",
+            sharedLibrary: "libgtk-4.so.1",
             getTypeFn: "gtk_align_get_type",
             signed: false,
         } as const;
         const flags = {
             kind: "flags",
-            library: "libgobject-2.0.so.0",
+            sharedLibrary: "libgobject-2.0.so.0",
             getTypeFn: "g_binding_flags_get_type",
             signed: false,
         } as const;

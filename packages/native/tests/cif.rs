@@ -26,7 +26,7 @@ macro_rules! expect_variant {
 fn u8_array_arg(value: value::Value) -> Arg {
     Arg::new(
         Descriptor::Array(ArrayDescriptor {
-            item_type: Box::new(Descriptor::Integer(IntegerKind::U8)),
+            item_descriptor: Box::new(Descriptor::Integer(IntegerKind::U8)),
             kind: ArrayKind::Array,
             ownership: Ownership::Full,
             element_size: None,
@@ -297,7 +297,7 @@ fn try_from_array_u8() {
 fn try_from_array_i32() {
     let arg = Arg::new(
         Descriptor::Array(ArrayDescriptor {
-            item_type: Box::new(Descriptor::Integer(IntegerKind::I32)),
+            item_descriptor: Box::new(Descriptor::Integer(IntegerKind::I32)),
             kind: ArrayKind::Array,
             ownership: Ownership::Full,
             element_size: None,
@@ -322,7 +322,7 @@ fn try_from_array_i32() {
 fn try_from_array_f64() {
     let arg = Arg::new(
         Descriptor::Array(ArrayDescriptor {
-            item_type: Box::new(Descriptor::Float(FloatKind::F64)),
+            item_descriptor: Box::new(Descriptor::Float(FloatKind::F64)),
             kind: ArrayKind::Array,
             ownership: Ownership::Full,
             element_size: None,
@@ -344,7 +344,7 @@ fn try_from_array_f64() {
 fn try_from_array_string() {
     let arg = Arg::new(
         Descriptor::Array(ArrayDescriptor {
-            item_type: Box::new(Descriptor::String(StringDescriptor {
+            item_descriptor: Box::new(Descriptor::String(StringDescriptor {
                 ownership: Ownership::Full,
                 length: None,
             })),
@@ -376,7 +376,7 @@ fn try_from_array_string() {
 fn try_from_array_boolean() {
     let arg = Arg::new(
         Descriptor::Array(ArrayDescriptor {
-            item_type: Box::new(Descriptor::Boolean(BooleanDescriptor)),
+            item_descriptor: Box::new(Descriptor::Boolean(BooleanDescriptor)),
             kind: ArrayKind::Array,
             ownership: Ownership::Full,
             element_size: None,
@@ -480,7 +480,7 @@ fn try_from_struct_undefined() {
 fn try_from_array_optional_null_yields_null_ptr() {
     let arg = Arg {
         ty: Descriptor::Array(ArrayDescriptor {
-            item_type: Box::new(Descriptor::Integer(IntegerKind::U8)),
+            item_descriptor: Box::new(Descriptor::Integer(IntegerKind::U8)),
             kind: ArrayKind::Array,
             ownership: Ownership::Full,
             element_size: None,
@@ -505,7 +505,7 @@ fn try_from_array_propagates_encode_error() {
 fn try_from_array_f32_storage_converts_to_libffi_arg() {
     let arg = Arg::new(
         Descriptor::Array(ArrayDescriptor {
-            item_type: Box::new(Descriptor::Float(FloatKind::F32)),
+            item_descriptor: Box::new(Descriptor::Float(FloatKind::F32)),
             kind: ArrayKind::Array,
             ownership: Ownership::Full,
             element_size: None,

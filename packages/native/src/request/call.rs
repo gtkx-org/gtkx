@@ -28,7 +28,7 @@ impl NativeRequest for CallRequest {
     fn execute(self) -> anyhow::Result<(Value, Vec<RefUpdate>)> {
         let args: Vec<Arg> = self
             .descriptor
-            .arg_types
+            .arg_descriptors
             .iter()
             .cloned()
             .zip(self.values)
@@ -161,13 +161,13 @@ mod napi_export {
     ) -> napi::Result<Unknown<'env>> {
         let descriptor: Arc<CallDescriptor> = Arc::clone(descriptor);
         let parsed_values = crate::ffi::value::map_js_array(env, &values, Value::from_js_value)?;
-        if parsed_values.len() != descriptor.arg_types.len() {
+        if parsed_values.len() != descriptor.arg_descriptors.len() {
             return Err(napi::Error::new(
                 napi::Status::InvalidArg,
                 format!(
                     "{}: expected {} arguments, received {}",
                     descriptor.symbol_name,
-                    descriptor.arg_types.len(),
+                    descriptor.arg_descriptors.len(),
                     parsed_values.len()
                 ),
             ));
@@ -195,7 +195,7 @@ mod tests {
 
     fn u8_array(kind: ArrayKind, ownership: Ownership) -> Descriptor {
         Descriptor::Array(ArrayDescriptor {
-            item_type: Box::new(Descriptor::Integer(IntegerKind::U8)),
+            item_descriptor: Box::new(Descriptor::Integer(IntegerKind::U8)),
             kind,
             ownership,
             element_size: None,
@@ -222,13 +222,13 @@ mod tests {
         args: Vec<Arg>,
         result_type: Descriptor,
     ) -> CallRequest {
-        let arg_types = args.iter().map(|arg| arg.ty.clone()).collect();
+        let arg_descriptors = args.iter().map(|arg| arg.ty.clone()).collect();
         let values = args.into_iter().map(|arg| arg.value).collect();
         CallRequest {
             descriptor: Arc::new(CallDescriptor {
                 library_name: library_name.into(),
                 symbol_name: symbol_name.into(),
-                arg_types,
+                arg_descriptors,
                 result_type,
             }),
             values,
@@ -258,7 +258,7 @@ mod tests {
                 Arg::new(Descriptor::Integer(IntegerKind::I32), Value::Number(-1.0)),
             ],
             Descriptor::Array(ArrayDescriptor {
-                item_type: Box::new(Descriptor::String(string_type(Ownership::Full))),
+                item_descriptor: Box::new(Descriptor::String(string_type(Ownership::Full))),
                 kind: ArrayKind::Array,
                 ownership: Ownership::Full,
                 element_size: None,

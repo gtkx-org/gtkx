@@ -88,7 +88,12 @@ const emitCell = (arg: EmitArg): { value: Handle; read?: () => unknown } => {
     return { value: cell.value, read: cell.read };
 };
 
-export function emitGObjectSignal(instance: object, signal: string, args: EmitArg[], returnType?: Descriptor): unknown {
+export function emitGObjectSignal(
+    instance: object,
+    signal: string,
+    args: EmitArg[],
+    returnDescriptor?: Descriptor,
+): unknown {
     const gtype: GType = (instance as GTyped).__gtype__;
     const signalId = gSignalLookup(signalBaseName(signal), gtype) as number;
     const detail = signalDetailQuark(signal);
@@ -101,8 +106,8 @@ export function emitGObjectSignal(instance: object, signal: string, args: EmitAr
         if (cell.read) reads.push(cell.read);
     }
 
-    if (returnType !== undefined) {
-        const returnValue = newGValueForDescriptor(returnType);
+    if (returnDescriptor !== undefined) {
+        const returnValue = newGValueForDescriptor(returnDescriptor);
         gSignalEmitv(values, signalId, detail, returnValue);
         return packTupleResult(
             reads.map((emit) => emit()),

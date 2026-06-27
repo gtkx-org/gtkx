@@ -19,8 +19,8 @@ use crate::ffi::value::{JsRef, Value};
 
 pub struct TrampolineData {
     pub js_func: Arc<JsRef<JsFunction>>,
-    pub arg_types: Vec<Descriptor>,
-    pub return_type: Descriptor,
+    pub arg_descriptors: Vec<Descriptor>,
+    pub return_descriptor: Descriptor,
     pub user_data_index: Option<usize>,
     pub is_oneshot: bool,
     pub oneshot_state_ptr: AtomicPtr<TrampolineState>,
@@ -32,15 +32,15 @@ impl TrampolineData {
     #[must_use]
     pub fn new(
         js_func: Arc<JsRef<JsFunction>>,
-        arg_types: Vec<Descriptor>,
-        return_type: Descriptor,
+        arg_descriptors: Vec<Descriptor>,
+        return_descriptor: Descriptor,
         user_data_index: Option<usize>,
         is_oneshot: bool,
     ) -> Self {
         Self {
             js_func,
-            arg_types,
-            return_type,
+            arg_descriptors,
+            return_descriptor,
             user_data_index,
             is_oneshot,
             oneshot_state_ptr: AtomicPtr::new(std::ptr::null_mut()),
@@ -76,8 +76,8 @@ impl Drop for TrampolineData {
 impl std::fmt::Debug for TrampolineData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("TrampolineData")
-            .field("arg_types", &self.arg_types)
-            .field("return_type", &self.return_type)
+            .field("arg_descriptors", &self.arg_descriptors)
+            .field("return_descriptor", &self.return_descriptor)
             .field("user_data_index", &self.user_data_index)
             .field("is_oneshot", &self.is_oneshot)
             .finish_non_exhaustive()
@@ -125,12 +125,12 @@ impl TrampolineState {
         // the data are dropped together in `TrampolineState::drop`, the closure first.
         let data_ref: &'static TrampolineData = unsafe { &*data_ptr };
 
-        let mut cif_arg_types: Vec<libffi::Type> = Vec::with_capacity(data_ref.arg_types.len());
-        for ty in &data_ref.arg_types {
+        let mut cif_arg_types: Vec<libffi::Type> = Vec::with_capacity(data_ref.arg_descriptors.len());
+        for ty in &data_ref.arg_descriptors {
             cif_arg_types.push(ty.libffi_type());
         }
 
-        let cif_return_type: libffi::Type = data_ref.return_type.libffi_type();
+        let cif_return_type: libffi::Type = data_ref.return_descriptor.libffi_type();
         let cif = libffi::Cif::new(cif_arg_types, cif_return_type);
 
         let closure = libffi::Closure::new(cif, trampoline_callback, data_ref);
@@ -147,12 +147,12 @@ impl TrampolineState {
 #[must_use]
 pub fn build_trampoline(
     js_func: Arc<JsRef<JsFunction>>,
-    arg_types: Vec<Descriptor>,
-    return_type: Descriptor,
+    arg_descriptors: Vec<Descriptor>,
+    return_descriptor: Descriptor,
     user_data_index: Option<usize>,
     is_oneshot: bool,
 ) -> (*mut c_void, Box<TrampolineState>) {
-    let data = TrampolineData::new(js_func, arg_types, return_type, user_data_index, is_oneshot);
+    let data = TrampolineData::new(js_func, arg_descriptors, return_descriptor, user_data_index, is_oneshot);
     let state = Box::new(TrampolineState::create(data));
     let code_ptr = state.code_ptr;
     (code_ptr, state)
@@ -180,25 +180,25 @@ impl TrampolineData {
     /// # Safety
     ///
     /// Invoked from `trampoline_callback`, which libffi calls with the C ABI for the CIF built in
-    /// `TrampolineState::create`. `args` must point to an array of at least `self.arg_types.len()`
+    /// `TrampolineState::create`. `args` must point to an array of at least `self.arg_descriptors.len()`
     /// argument slots laid out per that CIF, and `result` must point to the CIF's return slot. The
-    /// `Descriptor` descriptors in `self.arg_types`/`self.return_type` must match that ABI so each slot
+    /// `Descriptor` descriptors in `self.arg_descriptors`/`self.return_descriptor` must match that ABI so each slot
     /// read/write touches a correctly typed location.
     unsafe fn handle_call(
         &self,
         args: *const *const c_void,
         result: *mut c_void,
     ) -> Option<*mut TrampolineState> {
-        let mut values = Vec::with_capacity(self.arg_types.len());
+        let mut values = Vec::with_capacity(self.arg_descriptors.len());
         let mut out_cell_indices: Vec<usize> = Vec::new();
         let mut out_targets: Vec<(*mut c_void, &Descriptor)> = Vec::new();
 
-        for (i, ty) in self.arg_types.iter().enumerate() {
+        for (i, ty) in self.arg_descriptors.iter().enumerate() {
             if self.user_data_index == Some(i) {
                 continue;
             }
 
-            // SAFETY: `i` is in `0..self.arg_types.len()`, and per the contract `args` addresses at
+            // SAFETY: `i` is in `0..self.arg_descriptors.len()`, and per the contract `args` addresses at
             // least that many argument slots, so `args.add(i)` is in bounds and points to the i-th
             // argument pointer.
             let arg_ptr = unsafe { *args.add(i) };
@@ -224,7 +224,7 @@ impl TrampolineData {
             }
         }
 
-        let capture_result = !matches!(self.return_type, Descriptor::Void(_));
+        let capture_result = !matches!(self.return_descriptor, Descriptor::Void(_));
 
         let state_ptr = if self.is_oneshot {
             let ptr = self
@@ -250,7 +250,7 @@ impl TrampolineData {
             Err(ref e) => {
                 NativeErrorReporter::global().report(&anyhow::anyhow!(
                     "trampoline: JS callback error (return type: {}): {e:#}",
-                    self.return_type
+                    self.return_descriptor
                 ));
                 self.write_return(result, &Err(()));
             }
@@ -260,7 +260,7 @@ impl TrampolineData {
     }
 
     fn write_return(&self, result: *mut c_void, value: &Result<Value, ()>) {
-        if let Descriptor::String(string_type) = &self.return_type
+        if let Descriptor::String(string_type) = &self.return_descriptor
             && string_type.ownership.is_borrowed()
         {
             self.write_retained_string_return(result, value);
@@ -271,13 +271,13 @@ impl TrampolineData {
             return;
         }
         // SAFETY: `result` is the CIF return slot supplied by libffi for this trampoline, and
-        // `self.return_type` is the descriptor that matches that slot's ABI, so writing the encoded
+        // `self.return_descriptor` is the descriptor that matches that slot's ABI, so writing the encoded
         // return value through it targets a correctly typed, writable location.
-        unsafe { self.return_type.write_return_to_pointer(result, value) };
+        unsafe { self.return_descriptor.write_return_to_pointer(result, value) };
     }
 
     fn return_type_is_borrowed_container(&self) -> bool {
-        match &self.return_type {
+        match &self.return_descriptor {
             Descriptor::Array(array_type) => array_type.ownership.is_borrowed(),
             Descriptor::HashTable(hash_type) => hash_type.ownership.is_borrowed(),
             _ => false,
@@ -286,7 +286,7 @@ impl TrampolineData {
 
     fn write_retained_container_return(&self, result: *mut c_void, value: &Result<Value, ()>) {
         let built = match value {
-            Ok(value) => self.return_type.encode(value).ok(),
+            Ok(value) => self.return_descriptor.encode(value).ok(),
             Err(()) => None,
         };
         let ptr = built

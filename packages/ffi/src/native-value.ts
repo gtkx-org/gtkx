@@ -5,7 +5,7 @@ import { requireWrapperClass, tryGetHandle, wrapHandle } from "./registry.js";
 
 const collectionFromNativeValue = (descriptor: ArrayDescriptor, value: unknown): unknown => {
     if (value === null) return null;
-    return (value as Value[]).map((item) => fromNativeValue(descriptor.itemType, item));
+    return (value as Value[]).map((item) => fromNativeValue(descriptor.itemDescriptor, item));
 };
 
 const wrapByDescriptorClass = (descriptor: Descriptor, value: Handle | null): object | null => {
@@ -31,8 +31,8 @@ export function fromNativeValue(descriptor: Descriptor, value: Value): unknown {
             const entries = value as [Value, Value][];
             return new Map(
                 entries.map(([key, val]): [unknown, unknown] => [
-                    fromNativeValue(descriptor.keyType, key),
-                    fromNativeValue(descriptor.valueType, val),
+                    fromNativeValue(descriptor.keyDescriptor, key),
+                    fromNativeValue(descriptor.valueDescriptor, val),
                 ]),
             );
         }
@@ -43,7 +43,7 @@ export function fromNativeValue(descriptor: Descriptor, value: Value): unknown {
 
 const collectionToNativeValue = (descriptor: ArrayDescriptor, value: unknown): Value => {
     if (value == null) return null;
-    return (value as unknown[]).map((item) => toNativeValue(descriptor.itemType, item));
+    return (value as unknown[]).map((item) => toNativeValue(descriptor.itemDescriptor, item));
 };
 
 export function toNativeValue(descriptor: Descriptor, value: unknown): Value {
@@ -58,8 +58,8 @@ export function toNativeValue(descriptor: Descriptor, value: unknown): Value {
         case "hashtable": {
             if (value == null) return null;
             return [...(value as Map<unknown, unknown>)].map(([key, val]): [Value, Value] => [
-                toNativeValue(descriptor.keyType, key),
-                toNativeValue(descriptor.valueType, val),
+                toNativeValue(descriptor.keyDescriptor, key),
+                toNativeValue(descriptor.valueDescriptor, val),
             ]);
         }
         default:

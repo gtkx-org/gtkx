@@ -7,7 +7,7 @@ use crate::ffi::library_cache::GlibThreadState;
 #[derive(Debug, Clone)]
 pub struct FundamentalDescriptor {
     pub ownership: Ownership,
-    pub library: String,
+    pub shared_library: String,
     pub ref_func: String,
     pub unref_func: String,
     pub type_name: Option<String>,
@@ -19,7 +19,7 @@ impl FundamentalDescriptor {
     pub(crate) fn from_descriptor(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let ownership = Ownership::from_descriptor(obj, "fundamental")?;
 
-        let library: String = obj.get_named_property("library")?;
+        let shared_library: String = obj.get_named_property("sharedLibrary")?;
         let ref_func: String = obj.get_named_property("refFn")?;
         let unref_func: String = obj.get_named_property("unrefFn")?;
         let type_name: Option<String> = obj
@@ -29,7 +29,7 @@ impl FundamentalDescriptor {
 
         Ok(Self {
             ownership,
-            library,
+            shared_library,
             ref_func,
             unref_func,
             type_name,
@@ -40,7 +40,7 @@ impl FundamentalDescriptor {
 impl FundamentalDescriptor {
     pub fn lookup_fns(&self) -> anyhow::Result<(Option<RefFn>, Option<UnrefFn>)> {
         GlibThreadState::with(|state| {
-            state.lookup_fundamental_fns(&self.library, &self.ref_func, &self.unref_func)
+            state.lookup_fundamental_fns(&self.shared_library, &self.ref_func, &self.unref_func)
         })
     }
 

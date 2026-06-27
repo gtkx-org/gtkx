@@ -8,10 +8,10 @@ import { ImageSurface } from "./image-surface.js";
 const { bind } = t;
 const SURFACE_T = t.boxed("CairoSurface", {
     ownership: "borrowed",
-    library: "libcairo-gobject.so.2",
+    sharedLibrary: "libcairo-gobject.so.2",
     getTypeFn: "cairo_gobject_surface_get_type",
 });
-const DEVICE_T_NONE = t.boxed("CairoDevice", { ownership: "borrowed", library: "libcairo.so.2" });
+const DEVICE_T_NONE = t.boxed("CairoDevice", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" });
 
 declare module "../cairo.js" {
     interface Surface {
@@ -61,7 +61,7 @@ const cairoSurfaceCreateSimilar = bind(
     [SURFACE_T, t.int32, t.int32, t.int32],
     t.boxed("CairoSurface", {
         ownership: "full",
-        library: "libcairo-gobject.so.2",
+        sharedLibrary: "libcairo-gobject.so.2",
         getTypeFn: "cairo_gobject_surface_get_type",
     }),
 );
@@ -75,7 +75,7 @@ const cairoSurfaceCreateSimilarImage = bind(
     [SURFACE_T, t.int32, t.int32, t.int32],
     t.boxed("CairoSurface", {
         ownership: "full",
-        library: "libcairo-gobject.so.2",
+        sharedLibrary: "libcairo-gobject.so.2",
         getTypeFn: "cairo_gobject_surface_get_type",
     }),
 );
@@ -89,7 +89,7 @@ const cairoSurfaceCreateForRectangle = bind(
     [SURFACE_T, t.float64, t.float64, t.float64, t.float64],
     t.boxed("CairoSurface", {
         ownership: "full",
-        library: "libcairo-gobject.so.2",
+        sharedLibrary: "libcairo-gobject.so.2",
         getTypeFn: "cairo_gobject_surface_get_type",
     }),
 );
@@ -140,7 +140,7 @@ const cairoSurfaceGetFontOptions = bind(
         SURFACE_T,
         t.boxed("CairoFontOptions", {
             ownership: "borrowed",
-            library: "libcairo-gobject.so.2",
+            sharedLibrary: "libcairo-gobject.so.2",
             getTypeFn: "cairo_gobject_font_options_get_type",
         }),
     ],
@@ -284,7 +284,7 @@ Surface.prototype.supportsMimeType = function (mimeType: string): boolean {
 const cairoSurfaceMapToImage = bind(
     "libcairo.so.2",
     "cairo_surface_map_to_image",
-    [SURFACE_T, t.boxed("cairo_rectangle_int_t", { ownership: "borrowed", library: "libcairo.so.2" })],
+    [SURFACE_T, t.boxed("cairo_rectangle_int_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" })],
     SURFACE_T,
 );
 Surface.prototype.mapToImage = function (extents: RectangleInt): Surface {

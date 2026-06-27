@@ -4,7 +4,7 @@ import type { Content } from "../cairo.js";
 import { Surface } from "../cairo.js";
 
 const { bind } = t;
-const RECT_T = t.boxed("cairo_rectangle_t", { ownership: "borrowed", library: "libcairo.so.2" });
+const RECT_T = t.boxed("cairo_rectangle_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" });
 
 const cairoRecordingSurfaceCreateExtents = bind(
     "libcairo.so.2",
@@ -12,7 +12,7 @@ const cairoRecordingSurfaceCreateExtents = bind(
     [t.int32, RECT_T],
     t.boxed("CairoSurface", {
         ownership: "full",
-        library: "libcairo-gobject.so.2",
+        sharedLibrary: "libcairo-gobject.so.2",
         getTypeFn: "cairo_gobject_surface_get_type",
     }),
 );
@@ -22,7 +22,7 @@ const cairoRecordingSurfaceCreateUnbounded = bind(
     [t.int32, t.uint64],
     t.boxed("CairoSurface", {
         ownership: "full",
-        library: "libcairo-gobject.so.2",
+        sharedLibrary: "libcairo-gobject.so.2",
         getTypeFn: "cairo_gobject_surface_get_type",
     }),
 );
@@ -32,7 +32,7 @@ const cairoRecordingSurfaceInkExtents = bind(
     [
         t.boxed("CairoSurface", {
             ownership: "borrowed",
-            library: "libcairo-gobject.so.2",
+            sharedLibrary: "libcairo-gobject.so.2",
             getTypeFn: "cairo_gobject_surface_get_type",
         }),
         t.ref(t.float64),
@@ -48,7 +48,7 @@ const cairoRecordingSurfaceGetExtents = bind(
     [
         t.boxed("CairoSurface", {
             ownership: "borrowed",
-            library: "libcairo-gobject.so.2",
+            sharedLibrary: "libcairo-gobject.so.2",
             getTypeFn: "cairo_gobject_surface_get_type",
         }),
         RECT_T,

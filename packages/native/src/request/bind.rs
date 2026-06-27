@@ -15,7 +15,7 @@ use crate::ffi::descriptors::Descriptor;
 pub struct CallDescriptor {
     pub(crate) library_name: String,
     pub(crate) symbol_name: String,
-    pub(crate) arg_types: Vec<Descriptor>,
+    pub(crate) arg_descriptors: Vec<Descriptor>,
     pub(crate) result_type: Descriptor,
 }
 
@@ -28,22 +28,23 @@ mod napi_export {
     #[cfg_attr(test, allow(dead_code))]
     pub fn bind(
         env: Env,
-        library: String,
+        shared_library: String,
         symbol: String,
-        arg_types: Array,
-        return_type: Unknown<'_>,
+        arg_descriptors: Array,
+        return_descriptor: Unknown<'_>,
     ) -> napi::Result<External<Arc<CallDescriptor>>> {
-        let parsed_arg_types = crate::ffi::value::map_js_array(&env, &arg_types, |env, value| {
-            let ty = Descriptor::from_descriptor(env, value)?;
-            if !ty.can_be_argument_type() {
-                return Err(napi::Error::new(
-                    napi::Status::InvalidArg,
-                    format!("'{ty}' cannot be used as a function argument type"),
-                ));
-            }
-            Ok(ty)
-        })?;
-        let result_type = Descriptor::from_descriptor(&env, return_type)?;
+        let parsed_arg_descriptors =
+            crate::ffi::value::map_js_array(&env, &arg_descriptors, |env, value| {
+                let ty = Descriptor::from_descriptor(env, value)?;
+                if !ty.can_be_argument_type() {
+                    return Err(napi::Error::new(
+                        napi::Status::InvalidArg,
+                        format!("'{ty}' cannot be used as a function argument type"),
+                    ));
+                }
+                Ok(ty)
+            })?;
+        let result_type = Descriptor::from_descriptor(&env, return_descriptor)?;
         if !result_type.can_be_return_type() {
             return Err(napi::Error::new(
                 napi::Status::InvalidArg,
@@ -51,9 +52,9 @@ mod napi_export {
             ));
         }
         Ok(External::new(Arc::new(CallDescriptor {
-            library_name: library,
+            library_name: shared_library,
             symbol_name: symbol,
-            arg_types: parsed_arg_types,
+            arg_descriptors: parsed_arg_descriptors,
             result_type,
         })))
     }

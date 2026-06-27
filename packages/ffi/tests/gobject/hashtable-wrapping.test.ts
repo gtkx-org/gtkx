@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 const rectangleFfi = t.boxed("GdkRectangle", {
     ownership: "borrowed",
-    library: "libgtk-4.so.1",
+    sharedLibrary: "libgtk-4.so.1",
     getTypeFn: "gdk_rectangle_get_type",
 });
 

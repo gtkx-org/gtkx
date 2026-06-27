@@ -3,8 +3,13 @@ import type { CallDescriptor, Descriptor, Handle, RegisterClassOptions, Value } 
 
 export * from "./types.js";
 
-export function bind(library: string, symbol: string, argTypes: Descriptor[], returnType: Descriptor): CallDescriptor {
-    return native.bind(library, symbol, argTypes, returnType) as CallDescriptor;
+export function bind(
+    sharedLibrary: string,
+    symbol: string,
+    argDescriptors: Descriptor[],
+    returnDescriptor: Descriptor,
+): CallDescriptor {
+    return native.bind(sharedLibrary, symbol, argDescriptors, returnDescriptor) as CallDescriptor;
 }
 
 export function call(descriptor: CallDescriptor, values: Value[]): Value {

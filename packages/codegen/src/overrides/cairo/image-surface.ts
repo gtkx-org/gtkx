@@ -11,7 +11,7 @@ const cairoImageSurfaceCreate = bind(
     [t.int32, t.int32, t.int32],
     t.boxed("CairoSurface", {
         ownership: "full",
-        library: "libcairo-gobject.so.2",
+        sharedLibrary: "libcairo-gobject.so.2",
         getTypeFn: "cairo_gobject_surface_get_type",
     }),
 );
@@ -21,7 +21,7 @@ const cairoImageSurfaceCreateFromPng = bind(
     [t.string("full")],
     t.boxed("CairoSurface", {
         ownership: "full",
-        library: "libcairo-gobject.so.2",
+        sharedLibrary: "libcairo-gobject.so.2",
         getTypeFn: "cairo_gobject_surface_get_type",
     }),
 );
@@ -31,7 +31,7 @@ const cairoImageSurfaceGetWidth = bind(
     [
         t.boxed("CairoSurface", {
             ownership: "borrowed",
-            library: "libcairo-gobject.so.2",
+            sharedLibrary: "libcairo-gobject.so.2",
             getTypeFn: "cairo_gobject_surface_get_type",
         }),
     ],
@@ -43,7 +43,7 @@ const cairoImageSurfaceGetHeight = bind(
     [
         t.boxed("CairoSurface", {
             ownership: "borrowed",
-            library: "libcairo-gobject.so.2",
+            sharedLibrary: "libcairo-gobject.so.2",
             getTypeFn: "cairo_gobject_surface_get_type",
         }),
     ],
@@ -55,7 +55,7 @@ const cairoImageSurfaceGetFormat = bind(
     [
         t.boxed("CairoSurface", {
             ownership: "borrowed",
-            library: "libcairo-gobject.so.2",
+            sharedLibrary: "libcairo-gobject.so.2",
             getTypeFn: "cairo_gobject_surface_get_type",
         }),
     ],
@@ -67,7 +67,7 @@ const cairoImageSurfaceGetStride = bind(
     [
         t.boxed("CairoSurface", {
             ownership: "borrowed",
-            library: "libcairo-gobject.so.2",
+            sharedLibrary: "libcairo-gobject.so.2",
             getTypeFn: "cairo_gobject_surface_get_type",
         }),
     ],
@@ -116,7 +116,7 @@ export class ImageSurface extends Surface {
             [
                 t.boxed("CairoSurface", {
                     ownership: "borrowed",
-                    library: "libcairo-gobject.so.2",
+                    sharedLibrary: "libcairo-gobject.so.2",
                     getTypeFn: "cairo_gobject_surface_get_type",
                 }),
             ],

@@ -32,7 +32,7 @@ fn rgba_boxed_type_of(ownership: Ownership) -> Descriptor {
     Descriptor::Boxed(BoxedDescriptor {
         ownership,
         type_name: "GdkRGBA".to_string(),
-        library: None,
+        shared_library: None,
         get_type_fn: None,
         free_fn: None,
         caller_allocated: false,
@@ -42,7 +42,7 @@ fn rgba_boxed_type_of(ownership: Ownership) -> Descriptor {
 fn gvariant_fundamental_type_of(ownership: Ownership) -> Descriptor {
     Descriptor::Fundamental(native::ffi::descriptors::FundamentalDescriptor {
         ownership,
-        library: "libglib-2.0.so.0".to_string(),
+        shared_library: "libglib-2.0.so.0".to_string(),
         ref_func: "g_variant_ref_sink".to_string(),
         unref_func: "g_variant_unref".to_string(),
         type_name: Some("GVariant".to_string()),
@@ -59,7 +59,7 @@ fn struct_type_of(ownership: Ownership, size: Option<usize>) -> Descriptor {
 
 fn gobject_glist_type_of(container: Ownership) -> Descriptor {
     Descriptor::Array(ArrayDescriptor {
-        item_type: Box::new(gobject_type_of(Ownership::Borrowed)),
+        item_descriptor: Box::new(gobject_type_of(Ownership::Borrowed)),
         kind: ArrayKind::GList,
         ownership: container,
         element_size: None,
@@ -68,7 +68,7 @@ fn gobject_glist_type_of(container: Ownership) -> Descriptor {
 
 fn string_array_type_of(item: Ownership, container: Ownership, kind: ArrayKind) -> Descriptor {
     Descriptor::Array(ArrayDescriptor {
-        item_type: Box::new(string_type_of(item)),
+        item_descriptor: Box::new(string_type_of(item)),
         kind,
         ownership: container,
         element_size: None,

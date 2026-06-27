@@ -12,8 +12,8 @@ use native::ffi::value::Value;
 
 fn callback_type(has_destroy: bool) -> CallbackDescriptor {
     CallbackDescriptor {
-        arg_types: Vec::new(),
-        return_type: Box::new(Descriptor::Void(VoidDescriptor)),
+        arg_descriptors: Vec::new(),
+        return_descriptor: Box::new(Descriptor::Void(VoidDescriptor)),
         has_destroy,
         user_data_index: None,
         scope: CallbackScope::Call,

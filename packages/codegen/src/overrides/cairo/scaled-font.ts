@@ -17,11 +17,13 @@ import { allocMatrix, type Matrix as CairoMatrix } from "./matrix.js";
 const { bind } = t;
 const SCALED_FONT_T = t.boxed("CairoScaledFont", {
     ownership: "borrowed",
-    library: "libcairo-gobject.so.2",
+    sharedLibrary: "libcairo-gobject.so.2",
     getTypeFn: "cairo_gobject_scaled_font_get_type",
 });
-const GLYPH_BUF_REF = t.ref(t.boxed("cairo_glyph_t", { ownership: "borrowed", library: "libcairo.so.2" }));
-const CLUSTER_BUF_REF = t.ref(t.boxed("cairo_text_cluster_t", { ownership: "borrowed", library: "libcairo.so.2" }));
+const GLYPH_BUF_REF = t.ref(t.boxed("cairo_glyph_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" }));
+const CLUSTER_BUF_REF = t.ref(
+    t.boxed("cairo_text_cluster_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" }),
+);
 
 declare module "../cairo.js" {
     interface ScaledFont {
@@ -60,20 +62,20 @@ const cairoScaledFontCreate = bind(
     [
         t.boxed("CairoFontFace", {
             ownership: "borrowed",
-            library: "libcairo-gobject.so.2",
+            sharedLibrary: "libcairo-gobject.so.2",
             getTypeFn: "cairo_gobject_font_face_get_type",
         }),
-        t.boxed("cairo_matrix_t", { ownership: "borrowed", library: "libcairo.so.2" }),
-        t.boxed("cairo_matrix_t", { ownership: "borrowed", library: "libcairo.so.2" }),
+        t.boxed("cairo_matrix_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" }),
+        t.boxed("cairo_matrix_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" }),
         t.boxed("CairoFontOptions", {
             ownership: "borrowed",
-            library: "libcairo-gobject.so.2",
+            sharedLibrary: "libcairo-gobject.so.2",
             getTypeFn: "cairo_gobject_font_options_get_type",
         }),
     ],
     t.boxed("CairoScaledFont", {
         ownership: "full",
-        library: "libcairo-gobject.so.2",
+        sharedLibrary: "libcairo-gobject.so.2",
         getTypeFn: "cairo_gobject_scaled_font_get_type",
     }),
 );
@@ -101,7 +103,7 @@ ScaledFont.prototype.status = function (): Status {
 const cairoScaledFontExtents = bind(
     "libcairo.so.2",
     "cairo_scaled_font_extents",
-    [SCALED_FONT_T, t.boxed("cairo_font_extents_t", { ownership: "borrowed", library: "libcairo.so.2" })],
+    [SCALED_FONT_T, t.boxed("cairo_font_extents_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" })],
     t.void,
 );
 ScaledFont.prototype.extents = function (): FontExtents {
@@ -116,7 +118,7 @@ const cairoScaledFontTextExtents = bind(
     [
         SCALED_FONT_T,
         t.string("full"),
-        t.boxed("cairo_text_extents_t", { ownership: "borrowed", library: "libcairo.so.2" }),
+        t.boxed("cairo_text_extents_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" }),
     ],
     t.void,
 );
@@ -131,9 +133,9 @@ const cairoScaledFontGlyphExtents = bind(
     "cairo_scaled_font_glyph_extents",
     [
         SCALED_FONT_T,
-        t.boxed("cairo_glyph_t", { ownership: "borrowed", library: "libcairo.so.2" }),
+        t.boxed("cairo_glyph_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" }),
         t.int32,
-        t.boxed("cairo_text_extents_t", { ownership: "borrowed", library: "libcairo.so.2" }),
+        t.boxed("cairo_text_extents_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" }),
     ],
     t.void,
 );
@@ -150,7 +152,7 @@ const cairoScaledFontGetFontFace = bind(
     [SCALED_FONT_T],
     t.boxed("CairoFontFace", {
         ownership: "borrowed",
-        library: "libcairo-gobject.so.2",
+        sharedLibrary: "libcairo-gobject.so.2",
         getTypeFn: "cairo_gobject_font_face_get_type",
     }),
 );
@@ -165,7 +167,7 @@ const cairoScaledFontGetFontOptions = bind(
         SCALED_FONT_T,
         t.boxed("CairoFontOptions", {
             ownership: "borrowed",
-            library: "libcairo-gobject.so.2",
+            sharedLibrary: "libcairo-gobject.so.2",
             getTypeFn: "cairo_gobject_font_options_get_type",
         }),
     ],
@@ -180,19 +182,19 @@ ScaledFont.prototype.getFontOptions = function (): FontOptions {
 const cairoScaledFontGetFontMatrix = bind(
     "libcairo.so.2",
     "cairo_scaled_font_get_font_matrix",
-    [SCALED_FONT_T, t.boxed("cairo_matrix_t", { ownership: "borrowed", library: "libcairo.so.2" })],
+    [SCALED_FONT_T, t.boxed("cairo_matrix_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" })],
     t.void,
 );
 const cairoScaledFontGetCtm = bind(
     "libcairo.so.2",
     "cairo_scaled_font_get_ctm",
-    [SCALED_FONT_T, t.boxed("cairo_matrix_t", { ownership: "borrowed", library: "libcairo.so.2" })],
+    [SCALED_FONT_T, t.boxed("cairo_matrix_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" })],
     t.void,
 );
 const cairoScaledFontGetScaleMatrix = bind(
     "libcairo.so.2",
     "cairo_scaled_font_get_scale_matrix",
-    [SCALED_FONT_T, t.boxed("cairo_matrix_t", { ownership: "borrowed", library: "libcairo.so.2" })],
+    [SCALED_FONT_T, t.boxed("cairo_matrix_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" })],
     t.void,
 );
 
@@ -255,13 +257,13 @@ const cairoScaledFontTextToGlyphs = bind(
 const cairoGlyphFree = bind(
     "libcairo.so.2",
     "cairo_glyph_free",
-    [t.boxed("cairo_glyph_t", { ownership: "borrowed", library: "libcairo.so.2" })],
+    [t.boxed("cairo_glyph_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" })],
     t.void,
 );
 const cairoTextClusterFree = bind(
     "libcairo.so.2",
     "cairo_text_cluster_free",
-    [t.boxed("cairo_text_cluster_t", { ownership: "borrowed", library: "libcairo.so.2" })],
+    [t.boxed("cairo_text_cluster_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" })],
     t.void,
 );
 

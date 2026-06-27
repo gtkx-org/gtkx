@@ -17,30 +17,30 @@ const REPRESENTATIVES: DescriptorByTag = {
     biguint64: { kind: "biguint64" },
     float32: { kind: "float32" },
     float64: { kind: "float64" },
-    enum: { kind: "enum", library: "libexample.so", getTypeFn: "example_get_type", signed: false },
-    flags: { kind: "flags", library: "libexample.so", getTypeFn: "example_get_type", signed: false },
+    enum: { kind: "enum", sharedLibrary: "libexample.so", getTypeFn: "example_get_type", signed: false },
+    flags: { kind: "flags", sharedLibrary: "libexample.so", getTypeFn: "example_get_type", signed: false },
     boolean: { kind: "boolean" },
     string: { kind: "string", ownership: "borrowed" },
     gobject: { kind: "gobject", ownership: "borrowed" },
-    boxed: { kind: "boxed", ownership: "borrowed", innerType: "GdkRGBA" },
+    boxed: { kind: "boxed", ownership: "borrowed", typeName: "GdkRGBA" },
     struct: { kind: "struct", ownership: "borrowed" },
     fundamental: {
         kind: "fundamental",
         ownership: "borrowed",
-        library: "libexample.so",
+        sharedLibrary: "libexample.so",
         refFn: "ref",
         unrefFn: "unref",
     },
-    array: { kind: "array", itemType: { kind: "int8" }, arrayKind: "array", ownership: "borrowed" },
+    array: { kind: "array", itemDescriptor: { kind: "int8" }, arrayKind: "array", ownership: "borrowed" },
     buffer: { kind: "buffer" },
     hashtable: {
         kind: "hashtable",
-        keyType: { kind: "string", ownership: "borrowed" },
-        valueType: { kind: "string", ownership: "borrowed" },
+        keyDescriptor: { kind: "string", ownership: "borrowed" },
+        valueDescriptor: { kind: "string", ownership: "borrowed" },
         ownership: "borrowed",
     },
     ref: { kind: "ref", innerType: { kind: "int32" } },
-    callback: { kind: "callback", argTypes: [], returnType: { kind: "void" } },
+    callback: { kind: "callback", argDescriptors: [], returnDescriptor: { kind: "void" } },
     unichar: { kind: "unichar" },
     void: { kind: "void" },
 };
@@ -49,8 +49,8 @@ const MISSING_LIBRARY = "libgtkx-type-tag-parity-nonexistent.so";
 const MISSING_SYMBOL = "gtkx_type_tag_parity_missing_symbol";
 const UNKNOWN_TAG_ERROR = /unknown type/i;
 
-const parseReturnType = (returnType: Descriptor): void => {
-    callArgs(MISSING_LIBRARY, MISSING_SYMBOL, [], returnType);
+const parseReturnType = (returnDescriptor: Descriptor): void => {
+    callArgs(MISSING_LIBRARY, MISSING_SYMBOL, [], returnDescriptor);
 };
 
 describe("Descriptor tag parity between the TS Descriptor union and Rust from_js_value", () => {

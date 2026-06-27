@@ -10,7 +10,7 @@ use native::ffi::value::{BufferView, BufferViewKind, Value};
 
 fn array_of(item: Descriptor, kind: ArrayKind, ownership: Ownership) -> ArrayDescriptor {
     ArrayDescriptor {
-        item_type: Box::new(item),
+        item_descriptor: Box::new(item),
         kind,
         ownership,
         element_size: None,
@@ -178,7 +178,7 @@ fn array_encode_rejects_views_for_non_buffer_element_kinds() {
 fn array_encode_accepts_views_for_enum_flags_storage() {
     let enum_flags = EnumFlagsDescriptor {
         kind: EnumFlagsKind::Enum,
-        library: "libgtk-4.so.1".to_owned(),
+        shared_library: "libgtk-4.so.1".to_owned(),
         get_type_fn: "gtk_orientation_get_type".to_owned(),
         storage: IntegerKind::I32,
     };

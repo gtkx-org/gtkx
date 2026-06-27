@@ -89,7 +89,11 @@ function collectDiscoveredVfuncs<K extends "class" | "interface">(
         if (!descriptor) continue;
         const fn = proto[methodName];
         if (!fn) continue;
-        result.push({ ...descriptor, methodName, fn: wrapVfunc(fn, descriptor.argTypes, descriptor.returnType) });
+        result.push({
+            ...descriptor,
+            methodName,
+            fn: wrapVfunc(fn, descriptor.argDescriptors, descriptor.returnDescriptor),
+        });
     }
     return result;
 }
@@ -110,10 +114,10 @@ function discoverClassVfuncs(klass: AnyClass): DiscoveredClassVfunc[] {
 
 function wrapVfunc(
     fn: VfuncFn,
-    argTypes: NativeRegisterClassVfunc["argTypes"],
-    returnType: NativeRegisterClassVfunc["returnType"],
+    argDescriptors: NativeRegisterClassVfunc["argDescriptors"],
+    returnDescriptor: NativeRegisterClassVfunc["returnDescriptor"],
 ): VfuncFn {
-    return wrapCallback(fn, { argTypes, returnType }, "this");
+    return wrapCallback(fn, { argDescriptors, returnDescriptor }, "this");
 }
 
 function discoverInheritedInterfaceVfuncs(

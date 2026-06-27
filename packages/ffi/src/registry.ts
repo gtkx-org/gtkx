@@ -207,8 +207,8 @@ export type VfuncDescriptor<K extends "class" | "interface"> = {
     className: string;
     vfuncName: string;
     byteOffset: number;
-    argTypes: NativeRegisterClassVfunc["argTypes"];
-    returnType: NativeRegisterClassVfunc["returnType"];
+    argDescriptors: NativeRegisterClassVfunc["argDescriptors"];
+    returnDescriptor: NativeRegisterClassVfunc["returnDescriptor"];
 };
 
 type VfuncRegistry = Record<string, VfuncDescriptor<"class"> | VfuncDescriptor<"interface">>;

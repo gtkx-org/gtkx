@@ -56,7 +56,7 @@ fn fundamental_with_fns(
 ) -> FundamentalDescriptor {
     FundamentalDescriptor {
         ownership,
-        library: "libgobject-2.0.so.0".to_owned(),
+        shared_library: "libgobject-2.0.so.0".to_owned(),
         ref_func: ref_func.to_owned(),
         unref_func: unref_func.to_owned(),
         type_name: Some("GParam".to_owned()),

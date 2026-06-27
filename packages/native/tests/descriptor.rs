@@ -51,7 +51,7 @@ fn transfer_release_matches_codec_ownership() {
         let full_boxed = BoxedDescriptor {
             ownership: Ownership::Full,
             type_name: "GdkRGBA".to_string(),
-            library: None,
+            shared_library: None,
             get_type_fn: None,
             free_fn: None,
             caller_allocated: false,
@@ -97,8 +97,8 @@ fn struct_type() -> StructDescriptor {
 #[allow(clippy::default_trait_access)]
 fn callback_type() -> CallbackDescriptor {
     CallbackDescriptor {
-        arg_types: vec![Descriptor::Integer(IntegerKind::I32)],
-        return_type: Box::new(Descriptor::Void(VoidDescriptor)),
+        arg_descriptors: vec![Descriptor::Integer(IntegerKind::I32)],
+        return_descriptor: Box::new(Descriptor::Void(VoidDescriptor)),
         has_destroy: false,
         user_data_index: None,
         scope: Default::default(),

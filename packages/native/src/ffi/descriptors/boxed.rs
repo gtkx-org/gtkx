@@ -13,7 +13,7 @@ use crate::ffi::library_cache::GlibThreadState;
 pub struct BoxedDescriptor {
     pub ownership: Ownership,
     pub type_name: String,
-    pub library: Option<String>,
+    pub shared_library: Option<String>,
     pub get_type_fn: Option<String>,
     pub free_fn: Option<String>,
     pub caller_allocated: bool,
@@ -25,9 +25,9 @@ impl BoxedDescriptor {
     pub(crate) fn from_descriptor(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let ownership = Ownership::from_descriptor(obj, "boxed")?;
 
-        let type_name: String = obj.get_named_property("innerType")?;
+        let type_name: String = obj.get_named_property("typeName")?;
 
-        let library: Option<String> = super::optional_descriptor_property(obj, "library")?;
+        let shared_library: Option<String> = super::optional_descriptor_property(obj, "sharedLibrary")?;
 
         let get_type_fn: Option<String> = super::optional_descriptor_property(obj, "getTypeFn")?;
 
@@ -39,7 +39,7 @@ impl BoxedDescriptor {
         Ok(Self {
             ownership,
             type_name,
-            library,
+            shared_library,
             get_type_fn,
             free_fn,
             caller_allocated,
@@ -76,7 +76,7 @@ impl BoxedDescriptor {
     }
 
     fn boxed_with_free_fn(&self, ptr: *mut c_void, free_fn_name: &str) -> anyhow::Result<Boxed> {
-        let lib_name = self.library.as_deref().unwrap_or("(no library)");
+        let lib_name = self.shared_library.as_deref().unwrap_or("(no library)");
 
         let free_fn = Self::lookup_free_fn(lib_name, free_fn_name)
             .map_err(|e| anyhow::anyhow!("Cannot decode boxed '{}': {e}", self.type_name))?;
@@ -89,7 +89,7 @@ impl BoxedDescriptor {
     }
 
     fn try_resolve_gtype_from_library(&self) -> anyhow::Result<Option<glib::Type>> {
-        let Some(lib_name) = self.library.as_ref() else {
+        let Some(lib_name) = self.shared_library.as_ref() else {
             return Ok(None);
         };
         let Some(get_type_fn) = self.get_type_fn.as_ref() else {

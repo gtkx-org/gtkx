@@ -29,7 +29,9 @@ const toNativeArgTypes = (argSpecs: ArgSpec[], throws: boolean): Descriptor[] =>
         argSpec.direction !== undefined && argSpec.callerAllocated !== true ? refT(argSpec.type) : argSpec.type,
     );
     if (throws)
-        nativeArgTypes.push(refT(boxedT("GError", { ownership: "full", library: LIB, getTypeFn: "g_error_get_type" })));
+        nativeArgTypes.push(
+            refT(boxedT("GError", { ownership: "full", sharedLibrary: LIB, getTypeFn: "g_error_get_type" })),
+        );
     return nativeArgTypes;
 };
 
@@ -82,15 +84,15 @@ const toOutParams = (plans: ArgPlan[], inputs: unknown[], nativeValues: Value[])
     return outParams;
 };
 
-export function fn(library: string, symbol: string, signature: FnSignature): (...inputs: unknown[]) => unknown {
-    const { args: argSpecs, returns: returnType, throws = false } = signature;
+export function fn(sharedLibrary: string, symbol: string, signature: FnSignature): (...inputs: unknown[]) => unknown {
+    const { args: argSpecs, returns: returnDescriptor, throws = false } = signature;
     const nativeArgTypes = toNativeArgTypes(argSpecs, throws);
-    const nativeFn = bind(library, symbol, nativeArgTypes, returnType);
-    const hasPrimary = returnType.kind !== "void";
+    const nativeFn = bind(sharedLibrary, symbol, nativeArgTypes, returnDescriptor);
+    const hasPrimary = returnDescriptor.kind !== "void";
     const plans = planArgs(argSpecs);
 
     const shape = (inputs: unknown[], nativeValues: Value[], nativeResult: Value): unknown => {
-        const primary = hasPrimary ? fromNativeValue(returnType, nativeResult) : undefined;
+        const primary = hasPrimary ? fromNativeValue(returnDescriptor, nativeResult) : undefined;
         return packTupleResult(toOutParams(plans, inputs, nativeValues), primary, hasPrimary);
     };
 

@@ -247,7 +247,7 @@ impl Drop for TestBoxed {
 pub fn enum_type() -> EnumFlagsDescriptor {
     EnumFlagsDescriptor {
         kind: EnumFlagsKind::Enum,
-        library: "libgtk-4.so.1".to_owned(),
+        shared_library: "libgtk-4.so.1".to_owned(),
         get_type_fn: "gtk_orientation_get_type".to_owned(),
         storage: IntegerKind::I32,
     }
@@ -256,7 +256,7 @@ pub fn enum_type() -> EnumFlagsDescriptor {
 pub fn flags_type() -> EnumFlagsDescriptor {
     EnumFlagsDescriptor {
         kind: EnumFlagsKind::Flags,
-        library: "libgtk-4.so.1".to_owned(),
+        shared_library: "libgtk-4.so.1".to_owned(),
         get_type_fn: "gtk_state_flags_get_type".to_owned(),
         storage: IntegerKind::U32,
     }
@@ -341,7 +341,7 @@ pub fn assert_write_return_err_writes_null<C: PointerWriter>(codec: &C) {
 #[must_use]
 pub fn i32_array_type(size: usize) -> ArrayDescriptor {
     ArrayDescriptor {
-        item_type: Box::new(Descriptor::Integer(IntegerKind::I32)),
+        item_descriptor: Box::new(Descriptor::Integer(IntegerKind::I32)),
         kind: ArrayKind::Fixed { size },
         ownership: Ownership::Borrowed,
         element_size: None,
@@ -351,7 +351,7 @@ pub fn i32_array_type(size: usize) -> ArrayDescriptor {
 #[must_use]
 pub fn f32_array_type() -> ArrayDescriptor {
     ArrayDescriptor {
-        item_type: Box::new(Descriptor::Float(FloatKind::F32)),
+        item_descriptor: Box::new(Descriptor::Float(FloatKind::F32)),
         kind: ArrayKind::Sized { size_index: 1 },
         ownership: Ownership::Borrowed,
         element_size: None,

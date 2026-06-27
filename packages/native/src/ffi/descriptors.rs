@@ -27,31 +27,31 @@ pub(crate) fn parse_callback_arg_and_return_types(
     obj: &JsObject,
     kind: &str,
 ) -> napi::Result<(Vec<Descriptor>, Box<Descriptor>)> {
-    let arg_types_prop: Unknown<'_> = obj.get_named_property("argTypes")?;
-    if !arg_types_prop.is_array()? {
+    let arg_descriptors_prop: Unknown<'_> = obj.get_named_property("argDescriptors")?;
+    if !arg_descriptors_prop.is_array()? {
         return Err(napi::Error::new(
             napi::Status::InvalidArg,
-            format!("'argTypes' property is required for {kind} types"),
+            format!("'argDescriptors' property is required for {kind} types"),
         ));
     }
-    // SAFETY: `arg_types_prop` was verified to be an array above, and its raw napi value is valid
+    // SAFETY: `arg_descriptors_prop` was verified to be an array above, and its raw napi value is valid
     // for the current `env`, so reconstructing an `Array` from the pair is sound.
-    let arg_types_arr: Array = unsafe { Array::from_napi_value(env.raw(), arg_types_prop.raw())? };
-    let arg_types = crate::ffi::value::map_js_array(env, &arg_types_arr, Descriptor::from_descriptor)?;
+    let arg_descriptors_arr: Array = unsafe { Array::from_napi_value(env.raw(), arg_descriptors_prop.raw())? };
+    let arg_descriptors = crate::ffi::value::map_js_array(env, &arg_descriptors_arr, Descriptor::from_descriptor)?;
 
-    let return_type_prop: Unknown<'_> = obj.get_named_property("returnType")?;
+    let return_descriptor_prop: Unknown<'_> = obj.get_named_property("returnDescriptor")?;
     if matches!(
-        return_type_prop.get_type()?,
+        return_descriptor_prop.get_type()?,
         napi::ValueType::Undefined | napi::ValueType::Null
     ) {
         return Err(napi::Error::new(
             napi::Status::InvalidArg,
-            format!("'returnType' property is required for {kind} types"),
+            format!("'returnDescriptor' property is required for {kind} types"),
         ));
     }
-    let return_type = Box::new(Descriptor::from_descriptor(env, return_type_prop)?);
+    let return_descriptor = Box::new(Descriptor::from_descriptor(env, return_descriptor_prop)?);
 
-    Ok((arg_types, return_type))
+    Ok((arg_descriptors, return_descriptor))
 }
 
 mod array;
@@ -504,8 +504,8 @@ mod tests {
     #[test]
     fn callback_cannot_be_return_type() {
         let callback = CallbackDescriptor {
-            arg_types: Vec::new(),
-            return_type: Box::new(Descriptor::Void(VoidDescriptor)),
+            arg_descriptors: Vec::new(),
+            return_descriptor: Box::new(Descriptor::Void(VoidDescriptor)),
             has_destroy: false,
             user_data_index: None,
             scope: CallbackScope::Call,

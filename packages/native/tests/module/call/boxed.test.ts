@@ -20,22 +20,22 @@ import {
     VOID,
 } from "../utils.js";
 
-const RGBA_BOXED_NONE = { kind: "boxed" as const, innerType: "GdkRGBA", lib: GDK_LIB, ownership: "borrowed" as const };
+const RGBA_BOXED_NONE = { kind: "boxed" as const, typeName: "GdkRGBA", lib: GDK_LIB, ownership: "borrowed" as const };
 const RECTANGLE_BOXED_NONE = {
     kind: "boxed" as const,
-    innerType: "GdkRectangle",
+    typeName: "GdkRectangle",
     lib: GDK_LIB,
     ownership: "borrowed" as const,
 };
 const PANGO_FONT_DESC = {
     kind: "boxed" as const,
-    innerType: "PangoFontDescription",
+    typeName: "PangoFontDescription",
     lib: PANGO_LIB,
     ownership: "full" as const,
 };
 const PANGO_FONT_DESC_NONE = {
     kind: "boxed" as const,
-    innerType: "PangoFontDescription",
+    typeName: "PangoFontDescription",
     lib: PANGO_LIB,
     ownership: "borrowed" as const,
 };

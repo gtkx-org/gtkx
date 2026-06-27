@@ -192,7 +192,7 @@ const setBoxedPayload = (
 ): void => {
     const name = typeName(valueGetType(value)) ?? "GBoxed";
     const setBoxed = setBoxedCache(`${symbol} ${name}`, () =>
-        bind(LIB, symbol, [GVALUE_T, boxedT(name, { library: LIB })], voidT),
+        bind(LIB, symbol, [GVALUE_T, boxedT(name, { sharedLibrary: LIB })], voidT),
     );
     setBoxed(value, boxedHandle);
 };
@@ -241,7 +241,7 @@ export function valueGetBoxed(value: Handle): object | null {
     const cls = requireWrapperClass(gtype);
     const name = typeName(gtype) ?? "GBoxed";
     const dupBoxed = dupBoxedCache(name, () =>
-        bind(LIB, "g_value_dup_boxed", [GVALUE_T], boxedT(name, { ownership: "full", library: LIB })),
+        bind(LIB, "g_value_dup_boxed", [GVALUE_T], boxedT(name, { ownership: "full", sharedLibrary: LIB })),
     );
     const ptr = dupBoxed(value);
     return ptr === null ? null : wrapHandle(ptr as Handle, cls);
@@ -256,12 +256,12 @@ export function getGValueBoxed(value: object): object | null {
 }
 
 const resolveBoxedInnerGtype = (descriptor: BoxedDescriptor): GType => {
-    if (descriptor.getTypeFn && descriptor.library) {
-        return callTypeFunction(descriptor.library, descriptor.getTypeFn) as GType;
+    if (descriptor.getTypeFn && descriptor.sharedLibrary) {
+        return callTypeFunction(descriptor.sharedLibrary, descriptor.getTypeFn) as GType;
     }
-    const gtype = typeFromName(descriptor.innerType);
+    const gtype = typeFromName(descriptor.typeName);
     if (gtype === TYPE_INVALID) {
-        throw new Error(`Cannot resolve gtype for boxed type '${descriptor.innerType}'`);
+        throw new Error(`Cannot resolve gtype for boxed type '${descriptor.typeName}'`);
     }
     return gtype;
 };
@@ -302,14 +302,14 @@ export function gtypeFromDescriptor(descriptor: Descriptor): GType {
             return TYPE_OBJECT;
         case "enum":
         case "flags":
-            return callTypeFunction(descriptor.library, descriptor.getTypeFn) as GType;
+            return callTypeFunction(descriptor.sharedLibrary, descriptor.getTypeFn) as GType;
         case "boxed":
             return resolveBoxedInnerGtype(descriptor);
         case "fundamental":
             return resolveFundamentalGtype(descriptor);
         case "array":
-            if (descriptor.itemType.kind === "string" && descriptor.arrayKind === "array") return getStrvGtype();
-            throw new Error(`Unsupported array type ${descriptor.arrayKind} of ${descriptor.itemType.kind}`);
+            if (descriptor.itemDescriptor.kind === "string" && descriptor.arrayKind === "array") return getStrvGtype();
+            throw new Error(`Unsupported array type ${descriptor.arrayKind} of ${descriptor.itemDescriptor.kind}`);
         default:
             throw new Error(`Unsupported type descriptor '${descriptor.kind}'`);
     }

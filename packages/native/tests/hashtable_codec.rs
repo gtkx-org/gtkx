@@ -26,7 +26,7 @@ fn struct_type() -> Descriptor {
 
 fn gptrarray_type() -> Descriptor {
     Descriptor::Array(ArrayDescriptor {
-        item_type: Box::new(struct_type()),
+        item_descriptor: Box::new(struct_type()),
         kind: ArrayKind::GPtrArray,
         ownership: Ownership::Borrowed,
         element_size: None,
@@ -42,7 +42,7 @@ fn full_boxed_type() -> Descriptor {
     Descriptor::Boxed(BoxedDescriptor {
         ownership: Ownership::Full,
         type_name: "GdkRGBA".to_string(),
-        library: None,
+        shared_library: None,
         get_type_fn: None,
         free_fn: None,
         caller_allocated: false,
@@ -65,7 +65,7 @@ fn full_gobject_type() -> Descriptor {
 fn full_variant_fundamental_encoder(ref_func: &str, unref_func: &str) -> HashTableEntryEncoder {
     HashTableEntryEncoder::NativeHandle(Box::new(Descriptor::Fundamental(FundamentalDescriptor {
         ownership: Ownership::Full,
-        library: "libglib-2.0.so.0".to_owned(),
+        shared_library: "libglib-2.0.so.0".to_owned(),
         ref_func: ref_func.to_owned(),
         unref_func: unref_func.to_owned(),
         type_name: Some("GVariant".to_owned()),
@@ -75,7 +75,7 @@ fn full_variant_fundamental_encoder(ref_func: &str, unref_func: &str) -> HashTab
 fn param_spec_fundamental_type() -> Descriptor {
     Descriptor::Fundamental(FundamentalDescriptor {
         ownership: Ownership::Full,
-        library: "libgobject-2.0.so.0".to_owned(),
+        shared_library: "libgobject-2.0.so.0".to_owned(),
         ref_func: "g_param_spec_ref".to_owned(),
         unref_func: "g_param_spec_unref".to_owned(),
         type_name: Some("GParam".to_owned()),
@@ -98,8 +98,8 @@ fn create_param_spec() -> *mut c_void {
 
 fn ht_type(key: Descriptor, value: Descriptor, ownership: Ownership) -> HashTableDescriptor {
     HashTableDescriptor {
-        key_type: Box::new(key),
-        value_type: Box::new(value),
+        key_descriptor: Box::new(key),
+        value_descriptor: Box::new(value),
         ownership,
     }
 }
@@ -894,13 +894,13 @@ fn hashtable_encode_value_error_frees_duplicated_string_key() {
 #[test]
 fn hashtable_encode_value_destroy_error_releases_string_key() {
     common::run(|| {
-        let value_type = Descriptor::Array(ArrayDescriptor {
-            item_type: Box::new(full_boxed_type()),
+        let value_descriptor = Descriptor::Array(ArrayDescriptor {
+            item_descriptor: Box::new(full_boxed_type()),
             kind: ArrayKind::GPtrArray,
             ownership: Ownership::Borrowed,
             element_size: None,
         });
-        let ht_type = ht_type(borrowed_string_type(), value_type, Ownership::Full);
+        let ht_type = ht_type(borrowed_string_type(), value_descriptor, Ownership::Full);
         let input = Value::Array(vec![Value::Array(vec![
             Value::String("orphaned-key".to_string()),
             Value::Array(vec![]),
@@ -940,8 +940,8 @@ fn hashtable_encode_second_tuple_error_unwinds_inserted_entries() {
 
 fn string_hashtable_type(ownership: Ownership) -> HashTableDescriptor {
     HashTableDescriptor {
-        key_type: Box::new(borrowed_string_type()),
-        value_type: Box::new(borrowed_string_type()),
+        key_descriptor: Box::new(borrowed_string_type()),
+        value_descriptor: Box::new(borrowed_string_type()),
         ownership,
     }
 }

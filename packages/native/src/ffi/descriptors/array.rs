@@ -47,7 +47,7 @@ impl std::str::FromStr for ArrayKind {
 
 #[derive(Debug, Clone)]
 pub struct ArrayDescriptor {
-    pub item_type: Box<Descriptor>,
+    pub item_descriptor: Box<Descriptor>,
     pub kind: ArrayKind,
     pub ownership: Ownership,
     pub element_size: Option<usize>,
@@ -57,8 +57,8 @@ impl ArrayDescriptor {
     #[allow(clippy::trivially_copy_pass_by_ref)]
     #[cfg_attr(coverage_nightly, coverage(off))]
     pub(crate) fn from_descriptor(env: &Env, obj: &JsObject) -> napi::Result<Self> {
-        let item_type_value: Unknown<'_> = obj.get_named_property("itemType")?;
-        let item_type = Descriptor::from_descriptor(env, item_type_value)?;
+        let item_descriptor_value: Unknown<'_> = obj.get_named_property("itemDescriptor")?;
+        let item_descriptor = Descriptor::from_descriptor(env, item_descriptor_value)?;
 
         let kind_str: String = obj.get_named_property("arrayKind").map_err(|_| {
             napi::Error::new(
@@ -105,7 +105,7 @@ impl ArrayDescriptor {
         let ownership = Ownership::from_descriptor(obj, "array")?;
 
         Ok(Self {
-            item_type: Box::new(item_type),
+            item_descriptor: Box::new(item_descriptor),
             kind,
             ownership,
             element_size,
@@ -152,7 +152,7 @@ impl FfiEncoder for ArrayDescriptor {
             ItemCodec::Boolean => Ok(Self::encode_boolean_array(&Self::extract_booleans(array)?)),
             ItemCodec::String => {
                 let dup_elements =
-                    matches!(&*self.item_type, Descriptor::String(s) if s.ownership.is_full());
+                    matches!(&*self.item_descriptor, Descriptor::String(s) if s.ownership.is_full());
                 encoder.encode_strings(array, dup_elements, self.ownership)
             }
             ItemCodec::Pointer => {
@@ -181,7 +181,7 @@ impl FfiEncoder for ArrayDescriptor {
                     return Ok(ffi::StashedValue::Storage(buffer.into()));
                 }
 
-                encoder.encode_handles(&handles, &self.item_type, self.ownership)
+                encoder.encode_handles(&handles, &self.item_descriptor, self.ownership)
             }
         }
     }
@@ -240,7 +240,7 @@ impl FfiDecoder for ArrayDescriptor {
                     // SAFETY: `item_ptr` is an element of this GPtrArray; `read` interprets it per
                     // the array's item type, as the marshalling layer guarantees.
                     let item_value = unsafe {
-                        self.item_type
+                        self.item_descriptor
                             .read(ReadSource::Value(item_ptr, "GPtrArray item"))?
                     };
                     values.push(item_value);
@@ -334,8 +334,8 @@ enum ItemCodec {
 }
 
 impl ItemCodec {
-    fn resolve(item_type: &Descriptor) -> Option<Self> {
-        Some(match item_type {
+    fn resolve(item_descriptor: &Descriptor) -> Option<Self> {
+        Some(match item_descriptor {
             Descriptor::Integer(kind) => Self::Integer(*kind),
             Descriptor::EnumFlags(enum_flags) => Self::EnumFlags(enum_flags.storage),
             Descriptor::BigInt(kind) => Self::BigInt(*kind),
@@ -453,7 +453,7 @@ trait ArrayKindEncoder {
     fn encode_handles(
         &self,
         handles: &[crate::handle::NativeHandle],
-        item_type: &Descriptor,
+        item_descriptor: &Descriptor,
         ownership: Ownership,
     ) -> anyhow::Result<ffi::StashedValue>;
 }
@@ -510,10 +510,10 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
     fn encode_handles(
         &self,
         handles: &[crate::handle::NativeHandle],
-        item_type: &Descriptor,
+        item_descriptor: &Descriptor,
         ownership: Ownership,
     ) -> anyhow::Result<ffi::StashedValue> {
-        let (mut ptrs, acquired) = transfer_elements(handles, item_type, "array")?;
+        let (mut ptrs, acquired) = transfer_elements(handles, item_descriptor, "array")?;
         ptrs.push(std::ptr::null_mut());
 
         if ownership.is_full() {
@@ -584,7 +584,7 @@ fn group_with_container(
 
 fn transfer_elements(
     handles: &[crate::handle::NativeHandle],
-    item_type: &Descriptor,
+    item_descriptor: &Descriptor,
     container_label: &str,
 ) -> anyhow::Result<(Vec<*mut c_void>, Vec<ffi::PendingTransfer>)> {
     let mut ptrs = Vec::with_capacity(handles.len() + 1);
@@ -596,15 +596,15 @@ fn transfer_elements(
             bail!("GObject in {container_label} has a null pointer");
         }
         // SAFETY: `ptr` is the non-null source object (checked above) and is a live value of
-        // `item_type`; `ref_for_transfer` acquires the transfer reference/copy the callee will own.
-        let element = match unsafe { item_type.ref_for_transfer(ptr) } {
+        // `item_descriptor`; `ref_for_transfer` acquires the transfer reference/copy the callee will own.
+        let element = match unsafe { item_descriptor.ref_for_transfer(ptr) } {
             Ok(element) => element,
             Err(e) => {
                 release_acquired(acquired);
                 return Err(e);
             }
         };
-        if let Some(release) = item_type.transfer_release() {
+        if let Some(release) = item_descriptor.transfer_release() {
             acquired.push(ffi::PendingTransfer::new(element, release));
         }
         ptrs.push(element);
@@ -657,11 +657,11 @@ impl<F: ffi::ListFlavor> ArrayKindEncoder for ListEncoder<F> {
     fn encode_handles(
         &self,
         handles: &[crate::handle::NativeHandle],
-        item_type: &Descriptor,
+        item_descriptor: &Descriptor,
         ownership: Ownership,
     ) -> anyhow::Result<ffi::StashedValue> {
         let should_free = ownership.is_borrowed();
-        let (ptrs, acquired) = transfer_elements(handles, item_type, F::LABEL)?;
+        let (ptrs, acquired) = transfer_elements(handles, item_descriptor, F::LABEL)?;
         let list = build_spine::<F>(&ptrs);
         let storage = Stash::new(
             list as *mut c_void,
@@ -763,12 +763,12 @@ impl ArrayDescriptor {
     }
 
     fn item_element_size(&self) -> Option<usize> {
-        ItemCodec::resolve(&self.item_type).map(ItemCodec::element_size)
+        ItemCodec::resolve(&self.item_descriptor).map(ItemCodec::element_size)
     }
 
     fn item_codec(&self, context: &str) -> anyhow::Result<ItemCodec> {
-        ItemCodec::resolve(&self.item_type)
-            .ok_or_else(|| anyhow::anyhow!("Unsupported {context} item type: {:?}", self.item_type))
+        ItemCodec::resolve(&self.item_descriptor)
+            .ok_or_else(|| anyhow::anyhow!("Unsupported {context} item type: {:?}", self.item_descriptor))
     }
 
     fn decode_contiguous(
@@ -828,7 +828,7 @@ impl ArrayDescriptor {
                 let ptrs = unsafe { std::slice::from_raw_parts(data.cast::<*mut c_void>(), len) };
                 return ptrs
                     .iter()
-                    .map(|&item_ptr| self.item_type.decode(&ffi::StashedValue::Ptr(item_ptr)))
+                    .map(|&item_ptr| self.item_descriptor.decode(&ffi::StashedValue::Ptr(item_ptr)))
                     .collect();
             }
         };
@@ -869,7 +869,7 @@ impl ArrayDescriptor {
             codec.accepts_buffer_view(view.kind()),
             "A {} cannot supply {} array elements",
             view.kind(),
-            self.item_type
+            self.item_descriptor
         );
         Ok(ffi::StashedValue::Ptr(view.ptr()))
     }
@@ -990,7 +990,7 @@ impl ArrayDescriptor {
         array: &[value::Value],
     ) -> anyhow::Result<Vec<ffi::PendingTransfer>> {
         let handles = Self::extract_handles(array)?;
-        let (ptrs, acquired) = transfer_elements(&handles, &self.item_type, "GArray")?;
+        let (ptrs, acquired) = transfer_elements(&handles, &self.item_descriptor, "GArray")?;
         for ptr in ptrs {
             // SAFETY: `g_array` is a live GArray sized for one pointer per element; `&ptr` is a
             // valid pointer-sized element, so appending 1 value from it is sound.
@@ -1037,7 +1037,7 @@ impl ArrayDescriptor {
             ItemCodec::Pointer => self.append_handle_values_to_garray(g_array, array),
             ItemCodec::String => {
                 let callee_adopts_strings =
-                    matches!(&*self.item_type, Descriptor::String(s) if s.ownership.is_full());
+                    matches!(&*self.item_descriptor, Descriptor::String(s) if s.ownership.is_full());
                 if !callee_adopts_strings {
                     // SAFETY: `g_array` is a live GArray of `char*` elements; installing the clear
                     // func makes GLib free each owned string element when the array is cleared.
@@ -1073,7 +1073,7 @@ impl ArrayDescriptor {
         let element_size = self.element_size.or(item_size).ok_or_else(|| {
             anyhow::anyhow!(
                 "Cannot determine element size for GArray with item type {:?}",
-                self.item_type
+                self.item_descriptor
             )
         })?;
 
@@ -1082,7 +1082,7 @@ impl ArrayDescriptor {
         {
             bail!(
                 "GArray element size override {element_size} does not match the {item_size}-byte layout of item type {:?}",
-                self.item_type
+                self.item_descriptor
             );
         }
 
@@ -1142,7 +1142,7 @@ impl ArrayDescriptor {
                 // is valid for either flavor.
                 let data = unsafe { (*current).data };
                 let item_ffi = ffi::StashedValue::Ptr(data);
-                values.push(self.item_type.decode(&item_ffi)?);
+                values.push(self.item_descriptor.decode(&item_ffi)?);
                 // SAFETY: `current` is non-null; reading `next` advances to the following node (or
                 // null at the end), terminating the loop.
                 current = unsafe { (*current).next };
@@ -1207,7 +1207,7 @@ impl ArrayDescriptor {
                 // SAFETY: `pdata` holds `len` element pointers, so `pdata.add(i)` is in bounds for
                 // every `i < len` and dereferences to the i-th element pointer.
                 let item_ptr = unsafe { *pdata.add(i) };
-                self.item_type.decode(&ffi::StashedValue::Ptr(item_ptr))
+                self.item_descriptor.decode(&ffi::StashedValue::Ptr(item_ptr))
             })
             .collect();
 
@@ -1271,7 +1271,7 @@ impl ArrayDescriptor {
                     break;
                 }
                 let item_ffi = ffi::StashedValue::Ptr(item_ptr);
-                values.push(self.item_type.decode(&item_ffi)?);
+                values.push(self.item_descriptor.decode(&item_ffi)?);
                 i += 1;
             }
             Ok(values)
@@ -1317,7 +1317,7 @@ impl ArrayDescriptor {
     }
 
     fn decode_null_terminated_string_array(&self, ptr: *mut c_void) -> value::Value {
-        let items_full = matches!(&*self.item_type, Descriptor::String(string_type) if string_type.ownership.is_full());
+        let items_full = matches!(&*self.item_descriptor, Descriptor::String(string_type) if string_type.ownership.is_full());
 
         let read_strv = |items: &[glib::GStringPtr]| {
             items

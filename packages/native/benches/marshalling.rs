@@ -29,7 +29,7 @@ fn borrowed_string_type() -> StringDescriptor {
 
 fn borrowed_string_array_type(kind: ArrayKind) -> ArrayDescriptor {
     ArrayDescriptor {
-        item_type: Box::new(Descriptor::String(borrowed_string_type())),
+        item_descriptor: Box::new(Descriptor::String(borrowed_string_type())),
         kind,
         ownership: Ownership::Borrowed,
         element_size: None,
@@ -196,7 +196,7 @@ fn bench_decode_zero_terminated(c: &mut Criterion) {
         let mut buffer: Vec<i32> = (1..=n as i32).collect();
         buffer.push(0);
         let array_type = ArrayDescriptor {
-            item_type: Box::new(Descriptor::Integer(IntegerKind::I32)),
+            item_descriptor: Box::new(Descriptor::Integer(IntegerKind::I32)),
             kind: ArrayKind::Array,
             ownership: Ownership::Borrowed,
             element_size: None,

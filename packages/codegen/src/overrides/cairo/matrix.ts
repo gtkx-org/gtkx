@@ -13,34 +13,34 @@ export const allocMatrix = (): { handle: Handle; obj: Matrix } => {
 const cairoMatrixTranslate = bind(
     "libcairo.so.2",
     "cairo_matrix_translate",
-    [t.boxed("cairo_matrix_t", { ownership: "borrowed", library: "libcairo.so.2" }), t.float64, t.float64],
+    [t.boxed("cairo_matrix_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" }), t.float64, t.float64],
     t.void,
 );
 const cairoMatrixScale = bind(
     "libcairo.so.2",
     "cairo_matrix_scale",
-    [t.boxed("cairo_matrix_t", { ownership: "borrowed", library: "libcairo.so.2" }), t.float64, t.float64],
+    [t.boxed("cairo_matrix_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" }), t.float64, t.float64],
     t.void,
 );
 const cairoMatrixRotate = bind(
     "libcairo.so.2",
     "cairo_matrix_rotate",
-    [t.boxed("cairo_matrix_t", { ownership: "borrowed", library: "libcairo.so.2" }), t.float64],
+    [t.boxed("cairo_matrix_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" }), t.float64],
     t.void,
 );
 const cairoMatrixInvert = bind(
     "libcairo.so.2",
     "cairo_matrix_invert",
-    [t.boxed("cairo_matrix_t", { ownership: "borrowed", library: "libcairo.so.2" })],
+    [t.boxed("cairo_matrix_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" })],
     t.int32,
 );
 const cairoMatrixMultiply = bind(
     "libcairo.so.2",
     "cairo_matrix_multiply",
     [
-        t.boxed("cairo_matrix_t", { ownership: "borrowed", library: "libcairo.so.2" }),
-        t.boxed("cairo_matrix_t", { ownership: "borrowed", library: "libcairo.so.2" }),
-        t.boxed("cairo_matrix_t", { ownership: "borrowed", library: "libcairo.so.2" }),
+        t.boxed("cairo_matrix_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" }),
+        t.boxed("cairo_matrix_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" }),
+        t.boxed("cairo_matrix_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" }),
     ],
     t.void,
 );
@@ -48,7 +48,7 @@ const cairoMatrixTransformPoint = bind(
     "libcairo.so.2",
     "cairo_matrix_transform_point",
     [
-        t.boxed("cairo_matrix_t", { ownership: "borrowed", library: "libcairo.so.2" }),
+        t.boxed("cairo_matrix_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" }),
         t.ref(t.float64),
         t.ref(t.float64),
     ],
@@ -58,7 +58,7 @@ const cairoMatrixTransformDistance = bind(
     "libcairo.so.2",
     "cairo_matrix_transform_distance",
     [
-        t.boxed("cairo_matrix_t", { ownership: "borrowed", library: "libcairo.so.2" }),
+        t.boxed("cairo_matrix_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" }),
         t.ref(t.float64),
         t.ref(t.float64),
     ],
@@ -67,32 +67,32 @@ const cairoMatrixTransformDistance = bind(
 const cairoMatrixInitIdentity = bind(
     "libcairo.so.2",
     "cairo_matrix_init_identity",
-    [t.boxed("cairo_matrix_t", { ownership: "borrowed", library: "libcairo.so.2" })],
+    [t.boxed("cairo_matrix_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" })],
     t.void,
 );
 const cairoMatrixInitTranslate = bind(
     "libcairo.so.2",
     "cairo_matrix_init_translate",
-    [t.boxed("cairo_matrix_t", { ownership: "borrowed", library: "libcairo.so.2" }), t.float64, t.float64],
+    [t.boxed("cairo_matrix_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" }), t.float64, t.float64],
     t.void,
 );
 const cairoMatrixInitScale = bind(
     "libcairo.so.2",
     "cairo_matrix_init_scale",
-    [t.boxed("cairo_matrix_t", { ownership: "borrowed", library: "libcairo.so.2" }), t.float64, t.float64],
+    [t.boxed("cairo_matrix_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" }), t.float64, t.float64],
     t.void,
 );
 const cairoMatrixInitRotate = bind(
     "libcairo.so.2",
     "cairo_matrix_init_rotate",
-    [t.boxed("cairo_matrix_t", { ownership: "borrowed", library: "libcairo.so.2" }), t.float64],
+    [t.boxed("cairo_matrix_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" }), t.float64],
     t.void,
 );
 const cairoMatrixInit = bind(
     "libcairo.so.2",
     "cairo_matrix_init",
     [
-        t.boxed("cairo_matrix_t", { ownership: "borrowed", library: "libcairo.so.2" }),
+        t.boxed("cairo_matrix_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" }),
         t.float64,
         t.float64,
         t.float64,

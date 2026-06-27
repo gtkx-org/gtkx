@@ -559,7 +559,7 @@ fn string_gslist_storage_null_ptr_safe_on_drop() {
 
 fn string_full_item_array_type(kind: ArrayKind, container_ownership: Ownership) -> ArrayDescriptor {
     ArrayDescriptor {
-        item_type: Box::new(Descriptor::String(StringDescriptor {
+        item_descriptor: Box::new(Descriptor::String(StringDescriptor {
             ownership: Ownership::Full,
             length: None,
         })),
@@ -615,7 +615,7 @@ fn encode_string_array_element_transfer_frees_duplicates_when_call_never_happens
 fn encode_gbytearray_full_ownership_unrefs_when_call_never_happens() {
     common::run(|| {
         let ty = ArrayDescriptor {
-            item_type: Box::new(Descriptor::Integer(IntegerKind::U8)),
+            item_descriptor: Box::new(Descriptor::Integer(IntegerKind::U8)),
             kind: ArrayKind::GByteArray,
             ownership: Ownership::Full,
             element_size: None,

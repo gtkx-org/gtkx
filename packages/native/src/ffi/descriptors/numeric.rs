@@ -534,7 +534,7 @@ pub enum EnumFlagsKind {
 #[derive(Debug, Clone)]
 pub struct EnumFlagsDescriptor {
     pub kind: EnumFlagsKind,
-    pub library: String,
+    pub shared_library: String,
     pub get_type_fn: String,
     pub storage: IntegerKind,
 }
@@ -542,7 +542,7 @@ pub struct EnumFlagsDescriptor {
 impl EnumFlagsDescriptor {
     #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn from_descriptor(_env: &Env, obj: &JsObject, kind: EnumFlagsKind) -> napi::Result<Self> {
-        let library: String = obj.get_named_property("library")?;
+        let shared_library: String = obj.get_named_property("sharedLibrary")?;
         let get_type_fn: String = obj.get_named_property("getTypeFn")?;
         let signed: bool = obj.get_named_property("signed")?;
         let storage = if signed {
@@ -553,7 +553,7 @@ impl EnumFlagsDescriptor {
 
         Ok(Self {
             kind,
-            library,
+            shared_library,
             get_type_fn,
             storage,
         })
@@ -566,7 +566,7 @@ impl EnumFlagsDescriptor {
     #[cfg(debug_assertions)]
     fn resolve_gtype(&self) -> anyhow::Result<glib::Type> {
         crate::ffi::library_cache::GlibThreadState::with(|state| {
-            state.resolve_gtype(&self.library, &self.get_type_fn)
+            state.resolve_gtype(&self.shared_library, &self.get_type_fn)
         })
     }
 

@@ -19,8 +19,8 @@ use crate::messaging::error_reporter::NativeErrorReporter;
 struct RawVfunc {
     byte_offset: usize,
     js_func: Arc<JsRef<JsFunction>>,
-    arg_types: Vec<Descriptor>,
-    return_type: Descriptor,
+    arg_descriptors: Vec<Descriptor>,
+    return_descriptor: Descriptor,
 }
 
 #[cfg_attr(test, allow(dead_code))]
@@ -41,8 +41,8 @@ impl RawVfunc {
                 "register_class: vfunc byteOffset must be non-negative",
             ));
         }
-        let arg_types_prop: Unknown<'_> = obj.get_named_property("argTypes")?;
-        let return_type_prop: Unknown<'_> = obj.get_named_property("returnType")?;
+        let arg_descriptors_prop: Unknown<'_> = obj.get_named_property("argDescriptors")?;
+        let return_descriptor_prop: Unknown<'_> = obj.get_named_property("returnDescriptor")?;
         let callback_prop: Unknown<'_> = obj.get_named_property("fn")?;
         if !matches!(callback_prop.get_type()?, napi::ValueType::Function) {
             return Err(napi::Error::new(
@@ -55,15 +55,15 @@ impl RawVfunc {
         let callback: JsFunction =
             unsafe { JsFunction::from_raw_unchecked(env.raw(), callback_prop.raw()) };
 
-        let arg_types = parse_type_array(env, arg_types_prop)?;
-        let return_type = Descriptor::from_descriptor(env, return_type_prop)?;
+        let arg_descriptors = parse_type_array(env, arg_descriptors_prop)?;
+        let return_descriptor = Descriptor::from_descriptor(env, return_descriptor_prop)?;
         let js_func = Arc::new(JsRef::from_js_value(env, &callback)?);
 
         Ok(Self {
             byte_offset: byte_offset as usize,
             js_func,
-            arg_types,
-            return_type,
+            arg_descriptors,
+            return_descriptor,
         })
     }
 
@@ -73,10 +73,11 @@ impl RawVfunc {
         let Self {
             byte_offset,
             js_func,
-            arg_types,
-            return_type,
+            arg_descriptors,
+            return_descriptor,
         } = self;
-        let (code_ptr, state) = build_trampoline(js_func, arg_types, return_type, None, false);
+        let (code_ptr, state) =
+            build_trampoline(js_func, arg_descriptors, return_descriptor, None, false);
         PreparedVfunc {
             byte_offset,
             code_ptr,

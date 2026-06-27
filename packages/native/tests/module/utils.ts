@@ -7,16 +7,16 @@ import type { Descriptor, Value } from "../../types.js";
  * directly.
  */
 export function callArgs(
-    library: string,
+    sharedLibrary: string,
     symbol: string,
     args: { type: Descriptor; value: Value }[],
-    returnType: Descriptor,
+    returnDescriptor: Descriptor,
 ): Value {
     const descriptor = bind(
-        library,
+        sharedLibrary,
         symbol,
         args.map((arg) => arg.type),
-        returnType,
+        returnDescriptor,
     );
     return nativeCall(
         descriptor,
@@ -51,7 +51,7 @@ export const POINTER = { kind: "uint64" as const };
 export const VOID = { kind: "void" as const };
 export const STRING_ARRAY = {
     kind: "array" as const,
-    itemType: STRING,
+    itemDescriptor: STRING,
     arrayKind: "array" as const,
     ownership: "full" as const,
 };
@@ -144,7 +144,7 @@ export function connectSignalReturning(
     obj: unknown,
     signalName: string,
     callback: (...args: unknown[]) => void,
-    returnType: Descriptor,
+    returnDescriptor: Descriptor,
 ): unknown {
     return callArgs(
         GOBJECT_LIB,
@@ -155,8 +155,8 @@ export function connectSignalReturning(
             {
                 type: {
                     kind: "callback",
-                    argTypes: [GOBJECT_BORROWED, UINT64],
-                    returnType: { kind: "void" },
+                    argDescriptors: [GOBJECT_BORROWED, UINT64],
+                    returnDescriptor: { kind: "void" },
                     hasDestroy: true,
                     userDataIndex: 1,
                 },
@@ -164,7 +164,7 @@ export function connectSignalReturning(
             },
             { type: INT32, value: 0 },
         ],
-        returnType,
+        returnDescriptor,
     );
 }
 
@@ -172,8 +172,8 @@ export function connectSignalCallback(
     obj: unknown,
     signalName: string,
     callback: (...args: unknown[]) => void,
-    options: { argTypes: Descriptor[]; userDataIndex: number; hasDestroy?: boolean } = {
-        argTypes: [{ kind: "gobject", ownership: "borrowed" }, { kind: "uint64" }],
+    options: { argDescriptors: Descriptor[]; userDataIndex: number; hasDestroy?: boolean } = {
+        argDescriptors: [{ kind: "gobject", ownership: "borrowed" }, { kind: "uint64" }],
         userDataIndex: 1,
         hasDestroy: true,
     },
@@ -187,8 +187,8 @@ export function connectSignalCallback(
             {
                 type: {
                     kind: "callback",
-                    argTypes: options.argTypes,
-                    returnType: { kind: "void" },
+                    argDescriptors: options.argDescriptors,
+                    returnDescriptor: { kind: "void" },
                     hasDestroy: options.hasDestroy ?? true,
                     userDataIndex: options.userDataIndex,
                 },

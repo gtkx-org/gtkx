@@ -28,7 +28,7 @@ fn ptr_storage(inner: *mut c_void) -> ffi::StashedValue {
 
 fn u8_array_ref_type() -> RefDescriptor {
     RefDescriptor::new(Descriptor::Array(ArrayDescriptor {
-        item_type: Box::new(Descriptor::Integer(IntegerKind::U8)),
+        item_descriptor: Box::new(Descriptor::Integer(IntegerKind::U8)),
         kind: ArrayKind::Array,
         ownership: Ownership::Borrowed,
         element_size: None,
@@ -104,7 +104,7 @@ fn decode_enum_flags_reads_number() {
 
         let enum_flags = EnumFlagsDescriptor {
             kind: EnumFlagsKind::Enum,
-            library: "libgobject-2.0.so.0".to_owned(),
+            shared_library: "libgobject-2.0.so.0".to_owned(),
             get_type_fn: "g_unused_get_type".to_owned(),
             storage: IntegerKind::I32,
         };
@@ -329,7 +329,7 @@ fn decode_with_context_array_string_items_not_freed_by_ref() {
         let storage = ptr_storage(inner);
 
         let array_type = ArrayDescriptor {
-            item_type: Box::new(Descriptor::String(string_type())),
+            item_descriptor: Box::new(Descriptor::String(string_type())),
             kind: ArrayKind::Array,
             ownership: Ownership::Full,
             element_size: None,
@@ -344,7 +344,7 @@ fn decode_with_context_array_container_released_by_array_decoder() {
         let storage = ptr_sized_malloc_storage();
 
         let array_type = ArrayDescriptor {
-            item_type: Box::new(Descriptor::GObject(GObjectDescriptor {
+            item_descriptor: Box::new(Descriptor::GObject(GObjectDescriptor {
                 ownership: Ownership::Borrowed,
             })),
             kind: ArrayKind::Array,
@@ -365,7 +365,7 @@ fn decode_with_context_garray_container_released_by_array_decoder() {
         let storage = ptr_storage(g_array as *mut c_void);
 
         let array_type = ArrayDescriptor {
-            item_type: Box::new(Descriptor::Integer(IntegerKind::U8)),
+            item_descriptor: Box::new(Descriptor::Integer(IntegerKind::U8)),
             kind: ArrayKind::GArray,
             ownership: Ownership::Full,
             element_size: None,
@@ -380,7 +380,7 @@ fn decode_with_context_array_non_string_items_freed_by_ref() {
         let storage = ptr_sized_malloc_storage();
 
         let array_type = ArrayDescriptor {
-            item_type: Box::new(Descriptor::Integer(IntegerKind::U8)),
+            item_descriptor: Box::new(Descriptor::Integer(IntegerKind::U8)),
             kind: ArrayKind::Fixed { size: 0 },
             ownership: Ownership::Full,
             element_size: None,
@@ -399,7 +399,7 @@ fn decode_with_context_array_non_ptr_storage_uses_storage_pointer() {
         ));
 
         let array_type = ArrayDescriptor {
-            item_type: Box::new(Descriptor::String(string_type())),
+            item_descriptor: Box::new(Descriptor::String(string_type())),
             kind: ArrayKind::Array,
             ownership: Ownership::Borrowed,
             element_size: None,
