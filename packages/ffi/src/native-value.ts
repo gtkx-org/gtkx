@@ -17,7 +17,7 @@ const wrapByDescriptorClass = (descriptor: Descriptor, value: Handle | null): ob
 
 export function fromNativeValue(descriptor: Descriptor, value: Value): unknown {
     switch (descriptor.kind) {
-        case "gobject":
+        case "object":
             return wrapHandle(value as Handle | null, undefined);
         case "struct":
             return wrapHandle(value as Handle | null, getDescriptorWrapperClass(descriptor));
@@ -48,7 +48,7 @@ const collectionToNativeValue = (descriptor: ArrayDescriptor, value: unknown): V
 
 export function toNativeValue(descriptor: Descriptor, value: unknown): Value {
     switch (descriptor.kind) {
-        case "gobject":
+        case "object":
         case "struct":
         case "boxed":
         case "fundamental":

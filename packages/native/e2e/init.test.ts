@@ -8,7 +8,7 @@ describe("init", () => {
             "gtk_label_new",
             [{ type: { kind: "string", ownership: "borrowed" }, value: "Test" }],
             {
-                kind: "gobject",
+                kind: "object",
                 ownership: "borrowed",
             },
         );

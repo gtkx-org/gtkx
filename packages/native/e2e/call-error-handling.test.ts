@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
     callArgs,
     createLabel,
-    GOBJECT,
-    GOBJECT_BORROWED,
+    OBJECT,
+    OBJECT_BORROWED,
     GOBJECT_LIB,
     GTK_LIB,
     INT32,
@@ -40,7 +40,7 @@ describe("call - error handling - type errors", () => {
                         value: "Test",
                     },
                 ],
-                GOBJECT,
+                OBJECT,
             );
         }).toThrow();
     });
@@ -53,7 +53,7 @@ describe("call - error handling - value errors", () => {
                 GTK_LIB,
                 "gtk_label_set_max_width_chars",
                 [
-                    { type: GOBJECT_BORROWED, value: createLabel("Test") },
+                    { type: OBJECT_BORROWED, value: createLabel("Test") },
                     { type: INT32, value: "not a number" },
                 ],
                 VOID,
@@ -63,7 +63,7 @@ describe("call - error handling - value errors", () => {
 
     it("throws on wrong value type for string", () => {
         expect(() => {
-            callArgs(GTK_LIB, "gtk_label_new", [{ type: STRING, value: 12345 }], GOBJECT);
+            callArgs(GTK_LIB, "gtk_label_new", [{ type: STRING, value: 12345 }], OBJECT);
         }).toThrow();
     });
 
@@ -73,12 +73,12 @@ describe("call - error handling - value errors", () => {
                 GOBJECT_LIB,
                 "g_signal_connect_data",
                 [
-                    { type: GOBJECT_BORROWED, value: createLabel("Test") },
+                    { type: OBJECT_BORROWED, value: createLabel("Test") },
                     { type: STRING, value: "clicked" },
                     {
                         type: {
                             kind: "callback",
-                            argDescriptors: [GOBJECT_BORROWED, UINT64],
+                            argDescriptors: [OBJECT_BORROWED, UINT64],
                             returnDescriptor: { kind: "void" },
                             hasDestroy: true,
                             userDataIndex: 1,
@@ -95,7 +95,7 @@ describe("call - error handling - value errors", () => {
 
 describe("call - error handling - argument count errors", () => {
     it("function works with correct number of arguments", () => {
-        const label = callArgs(GTK_LIB, "gtk_label_new", [{ type: STRING, value: "Test" }], GOBJECT);
+        const label = callArgs(GTK_LIB, "gtk_label_new", [{ type: STRING, value: "Test" }], OBJECT);
 
         expect(label).toBeDefined();
     });
@@ -104,7 +104,7 @@ describe("call - error handling - argument count errors", () => {
 describe("call - error handling - edge cases", () => {
     it("throws descriptive error for symbol lookup failure", () => {
         try {
-            callArgs(GTK_LIB, "gtk_nonexistent_widget_new", [], GOBJECT);
+            callArgs(GTK_LIB, "gtk_nonexistent_widget_new", [], OBJECT);
             expect.fail("Should have thrown");
         } catch (error) {
             expect(error).toBeInstanceOf(Error);

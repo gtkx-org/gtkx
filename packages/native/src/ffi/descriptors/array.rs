@@ -340,7 +340,7 @@ impl ItemCodec {
             Descriptor::BigInt(kind) => Self::BigInt(*kind),
             Descriptor::Float(kind) => Self::Float(*kind),
             Descriptor::Boolean(_) => Self::Boolean,
-            Descriptor::GObject(_)
+            Descriptor::Object(_)
             | Descriptor::Boxed(_)
             | Descriptor::Struct(_)
             | Descriptor::Fundamental(_) => Self::Pointer,

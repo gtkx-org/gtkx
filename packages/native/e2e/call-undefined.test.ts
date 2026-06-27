@@ -5,7 +5,7 @@ import {
     createBox,
     createButton,
     createLabel,
-    GOBJECT_BORROWED,
+    OBJECT_BORROWED,
     GTK_LIB,
     INT32,
     STRING,
@@ -21,7 +21,7 @@ describe("call - undefined type - basic void", () => {
             GTK_LIB,
             "gtk_label_set_text",
             [
-                { type: GOBJECT_BORROWED, value: label },
+                { type: OBJECT_BORROWED, value: label },
                 { type: STRING, value: "Updated" },
             ],
             VOID,
@@ -35,7 +35,7 @@ describe("call - undefined type - widget operations", () => {
     it("handles gtk_widget_hide", () => {
         const button = createButton("Test");
 
-        const result = callArgs(GTK_LIB, "gtk_widget_hide", [{ type: GOBJECT_BORROWED, value: button }], VOID);
+        const result = callArgs(GTK_LIB, "gtk_widget_hide", [{ type: OBJECT_BORROWED, value: button }], VOID);
 
         expect(result).toBeUndefined();
     });
@@ -47,7 +47,7 @@ describe("call - undefined type - widget operations", () => {
             GTK_LIB,
             "gtk_widget_set_sensitive",
             [
-                { type: GOBJECT_BORROWED, value: button },
+                { type: OBJECT_BORROWED, value: button },
                 { type: BOOLEAN, value: false },
             ],
             VOID,
@@ -66,8 +66,8 @@ describe("call - undefined type - box operations", () => {
             GTK_LIB,
             "gtk_box_append",
             [
-                { type: GOBJECT_BORROWED, value: box },
-                { type: GOBJECT_BORROWED, value: label },
+                { type: OBJECT_BORROWED, value: box },
+                { type: OBJECT_BORROWED, value: label },
             ],
             VOID,
         );
@@ -76,8 +76,8 @@ describe("call - undefined type - box operations", () => {
             GTK_LIB,
             "gtk_box_remove",
             [
-                { type: GOBJECT_BORROWED, value: box },
-                { type: GOBJECT_BORROWED, value: label },
+                { type: OBJECT_BORROWED, value: box },
+                { type: OBJECT_BORROWED, value: label },
             ],
             VOID,
         );
@@ -92,7 +92,7 @@ describe("call - undefined type - box operations", () => {
             GTK_LIB,
             "gtk_box_set_spacing",
             [
-                { type: GOBJECT_BORROWED, value: box },
+                { type: OBJECT_BORROWED, value: box },
                 { type: INT32, value: 10 },
             ],
             VOID,
@@ -110,7 +110,7 @@ describe("call - undefined type - edge cases identity", () => {
             GTK_LIB,
             "gtk_label_set_text",
             [
-                { type: GOBJECT_BORROWED, value: label },
+                { type: OBJECT_BORROWED, value: label },
                 { type: STRING, value: "Test" },
             ],
             VOID,
@@ -131,7 +131,7 @@ describe("call - undefined type - edge cases state change", () => {
             GTK_LIB,
             "gtk_label_set_text",
             [
-                { type: GOBJECT_BORROWED, value: label },
+                { type: OBJECT_BORROWED, value: label },
                 { type: STRING, value: "Modified" },
             ],
             VOID,
@@ -142,7 +142,7 @@ describe("call - undefined type - edge cases state change", () => {
         const text = callArgs(
             GTK_LIB,
             "gtk_label_get_text",
-            [{ type: GOBJECT_BORROWED, value: label }],
+            [{ type: OBJECT_BORROWED, value: label }],
             STRING_BORROWED,
         );
 

@@ -5,8 +5,8 @@ import {
     createProgressBar,
     createScale,
     FLOAT64,
-    GOBJECT,
-    GOBJECT_BORROWED,
+    OBJECT,
+    OBJECT_BORROWED,
     GTK_LIB,
     VOID,
 } from "./helpers/utils.js";
@@ -19,13 +19,13 @@ describe("call - float types - 64-bit float basic", () => {
             GTK_LIB,
             "gtk_widget_set_opacity",
             [
-                { type: GOBJECT_BORROWED, value: label },
+                { type: OBJECT_BORROWED, value: label },
                 { type: FLOAT64, value: 0.75 },
             ],
             VOID,
         );
 
-        const result = callArgs(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64);
+        const result = callArgs(GTK_LIB, "gtk_widget_get_opacity", [{ type: OBJECT_BORROWED, value: label }], FLOAT64);
 
         expect(result).toBeCloseTo(0.75);
     });
@@ -39,13 +39,13 @@ describe("call - float types - 64-bit float range", () => {
             GTK_LIB,
             "gtk_range_set_value",
             [
-                { type: GOBJECT_BORROWED, value: scale },
+                { type: OBJECT_BORROWED, value: scale },
                 { type: FLOAT64, value: 42.5 },
             ],
             VOID,
         );
 
-        const result = callArgs(GTK_LIB, "gtk_range_get_value", [{ type: GOBJECT_BORROWED, value: scale }], FLOAT64);
+        const result = callArgs(GTK_LIB, "gtk_range_get_value", [{ type: OBJECT_BORROWED, value: scale }], FLOAT64);
 
         expect(result).toBeCloseTo(42.5);
     });
@@ -57,7 +57,7 @@ describe("call - float types - 64-bit float range", () => {
             GTK_LIB,
             "gtk_progress_bar_set_fraction",
             [
-                { type: GOBJECT_BORROWED, value: progressBar },
+                { type: OBJECT_BORROWED, value: progressBar },
                 { type: FLOAT64, value: 0.65 },
             ],
             VOID,
@@ -66,7 +66,7 @@ describe("call - float types - 64-bit float range", () => {
         const result = callArgs(
             GTK_LIB,
             "gtk_progress_bar_get_fraction",
-            [{ type: GOBJECT_BORROWED, value: progressBar }],
+            [{ type: OBJECT_BORROWED, value: progressBar }],
             FLOAT64,
         );
 
@@ -87,13 +87,13 @@ describe("call - float types - 64-bit float adjustment", () => {
                 { type: FLOAT64, value: 10.0 },
                 { type: FLOAT64, value: 0.0 },
             ],
-            GOBJECT,
+            OBJECT,
         );
 
         const value = callArgs(
             GTK_LIB,
             "gtk_adjustment_get_value",
-            [{ type: GOBJECT_BORROWED, value: adjustment }],
+            [{ type: OBJECT_BORROWED, value: adjustment }],
             FLOAT64,
         );
 
@@ -103,7 +103,7 @@ describe("call - float types - 64-bit float adjustment", () => {
             GTK_LIB,
             "gtk_adjustment_set_value",
             [
-                { type: GOBJECT_BORROWED, value: adjustment },
+                { type: OBJECT_BORROWED, value: adjustment },
                 { type: FLOAT64, value: 75.0 },
             ],
             VOID,
@@ -112,7 +112,7 @@ describe("call - float types - 64-bit float adjustment", () => {
         const newValue = callArgs(
             GTK_LIB,
             "gtk_adjustment_get_value",
-            [{ type: GOBJECT_BORROWED, value: adjustment }],
+            [{ type: OBJECT_BORROWED, value: adjustment }],
             FLOAT64,
         );
 
@@ -128,13 +128,13 @@ describe("call - float types - edge cases zero", () => {
             GTK_LIB,
             "gtk_widget_set_opacity",
             [
-                { type: GOBJECT_BORROWED, value: label },
+                { type: OBJECT_BORROWED, value: label },
                 { type: FLOAT64, value: 0.0 },
             ],
             VOID,
         );
 
-        const result = callArgs(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64);
+        const result = callArgs(GTK_LIB, "gtk_widget_get_opacity", [{ type: OBJECT_BORROWED, value: label }], FLOAT64);
 
         expect(result).toBe(0.0);
     });
@@ -150,13 +150,13 @@ describe("call - float types - edge cases precision", () => {
             GTK_LIB,
             "gtk_range_set_value",
             [
-                { type: GOBJECT_BORROWED, value: scale },
+                { type: OBJECT_BORROWED, value: scale },
                 { type: FLOAT64, value: preciseValue },
             ],
             VOID,
         );
 
-        const result = callArgs(GTK_LIB, "gtk_range_get_value", [{ type: GOBJECT_BORROWED, value: scale }], FLOAT64);
+        const result = callArgs(GTK_LIB, "gtk_range_get_value", [{ type: OBJECT_BORROWED, value: scale }], FLOAT64);
 
         expect(result).toBeCloseTo(preciseValue, 6);
     });
@@ -170,28 +170,28 @@ describe("call - float types - edge cases boundary", () => {
             GTK_LIB,
             "gtk_widget_set_opacity",
             [
-                { type: GOBJECT_BORROWED, value: label },
+                { type: OBJECT_BORROWED, value: label },
                 { type: FLOAT64, value: 0.0 },
             ],
             VOID,
         );
 
         expect(
-            callArgs(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64),
+            callArgs(GTK_LIB, "gtk_widget_get_opacity", [{ type: OBJECT_BORROWED, value: label }], FLOAT64),
         ).toBeCloseTo(0.0);
 
         callArgs(
             GTK_LIB,
             "gtk_widget_set_opacity",
             [
-                { type: GOBJECT_BORROWED, value: label },
+                { type: OBJECT_BORROWED, value: label },
                 { type: FLOAT64, value: 1.0 },
             ],
             VOID,
         );
 
         expect(
-            callArgs(GTK_LIB, "gtk_widget_get_opacity", [{ type: GOBJECT_BORROWED, value: label }], FLOAT64),
+            callArgs(GTK_LIB, "gtk_widget_get_opacity", [{ type: OBJECT_BORROWED, value: label }], FLOAT64),
         ).toBeCloseTo(1.0);
     });
 });
@@ -209,34 +209,34 @@ describe("call - float types - edge cases multi-param", () => {
                 { type: FLOAT64, value: 5.0 },
                 { type: FLOAT64, value: 0.0 },
             ],
-            GOBJECT,
+            OBJECT,
         );
 
         const value = callArgs(
             GTK_LIB,
             "gtk_adjustment_get_value",
-            [{ type: GOBJECT_BORROWED, value: adjustment }],
+            [{ type: OBJECT_BORROWED, value: adjustment }],
             FLOAT64,
         );
 
         const lower = callArgs(
             GTK_LIB,
             "gtk_adjustment_get_lower",
-            [{ type: GOBJECT_BORROWED, value: adjustment }],
+            [{ type: OBJECT_BORROWED, value: adjustment }],
             FLOAT64,
         );
 
         const upper = callArgs(
             GTK_LIB,
             "gtk_adjustment_get_upper",
-            [{ type: GOBJECT_BORROWED, value: adjustment }],
+            [{ type: OBJECT_BORROWED, value: adjustment }],
             FLOAT64,
         );
 
         const stepIncrement = callArgs(
             GTK_LIB,
             "gtk_adjustment_get_step_increment",
-            [{ type: GOBJECT_BORROWED, value: adjustment }],
+            [{ type: OBJECT_BORROWED, value: adjustment }],
             FLOAT64,
         );
 

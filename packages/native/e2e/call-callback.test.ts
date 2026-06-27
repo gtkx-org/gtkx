@@ -9,7 +9,7 @@ import {
     disconnectSignal,
     forceGC,
     GIO_LIB,
-    GOBJECT_BORROWED,
+    OBJECT_BORROWED,
     getRefCount,
     isSignalHandlerConnected,
     startMemoryMeasurement,
@@ -36,7 +36,7 @@ describe("call - callback - invoke", () => {
             callbackInvoked = true;
         });
 
-        callArgs(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], VOID);
+        callArgs(GIO_LIB, "g_cancellable_cancel", [{ type: OBJECT_BORROWED, value: cancellable }], VOID);
 
         expect(callbackInvoked).toBe(true);
     });
@@ -67,7 +67,7 @@ describe("call - callback - multiple", () => {
             count2++;
         });
 
-        callArgs(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], VOID);
+        callArgs(GIO_LIB, "g_cancellable_cancel", [{ type: OBJECT_BORROWED, value: cancellable }], VOID);
 
         expect(count1).toBe(1);
         expect(count2).toBe(1);
@@ -86,7 +86,7 @@ describe("call - callback - destroy notify", () => {
         expect(typeof handlerId).toBe("number");
         expect(handlerId).toBeGreaterThan(0);
 
-        callArgs(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], VOID);
+        callArgs(GIO_LIB, "g_cancellable_cancel", [{ type: OBJECT_BORROWED, value: cancellable }], VOID);
 
         expect(callbackInvoked).toBe(true);
     });
@@ -101,7 +101,7 @@ describe("call - callback - argument types", () => {
             receivedObject = obj;
         });
 
-        callArgs(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], VOID);
+        callArgs(GIO_LIB, "g_cancellable_cancel", [{ type: OBJECT_BORROWED, value: cancellable }], VOID);
 
         expect(receivedObject).not.toBeNull();
     });
@@ -161,7 +161,7 @@ describe("call - callback - edge cases throw", () => {
 
         await suppressUnhandledRejections(() => {
             expect(() => {
-                callArgs(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], VOID);
+                callArgs(GIO_LIB, "g_cancellable_cancel", [{ type: OBJECT_BORROWED, value: cancellable }], VOID);
             }).not.toThrow();
         });
     });

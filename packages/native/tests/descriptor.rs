@@ -5,7 +5,7 @@ use std::ffi::c_void;
 use libffi::middle;
 use native::ffi::descriptors::{
     BooleanDescriptor, BufferDescriptor, CallbackDescriptor, Descriptor, FfiDecoder, FfiEncoder,
-    GObjectDescriptor, IntegerKind, Ownership, PointerWriter, ReadSource, RefDescriptor,
+    ObjectDescriptor, IntegerKind, Ownership, PointerWriter, ReadSource, RefDescriptor,
     StructDescriptor, VoidDescriptor,
 };
 use native::ffi::value::Value;
@@ -33,17 +33,17 @@ fn transfer_release_matches_codec_ownership() {
     helpers::run(|| {
         use native::ffi::PendingRelease;
         use native::ffi::descriptors::{
-            BoxedDescriptor, FfiEncoder as _, GObjectDescriptor, StructDescriptor,
+            BoxedDescriptor, FfiEncoder as _, ObjectDescriptor, StructDescriptor,
         };
 
-        let full_object = GObjectDescriptor {
+        let full_object = ObjectDescriptor {
             ownership: Ownership::Full,
         };
         assert!(matches!(
             full_object.transfer_release(),
             Some(PendingRelease::ObjectUnref)
         ));
-        let borrowed_object = GObjectDescriptor {
+        let borrowed_object = ObjectDescriptor {
             ownership: Ownership::Borrowed,
         };
         assert!(borrowed_object.transfer_release().is_none());
@@ -80,8 +80,8 @@ fn ownership_predicates_are_mutually_exclusive() {
     assert_ownership_predicates_mutually_exclusive();
 }
 
-fn gobject_descriptor() -> GObjectDescriptor {
-    GObjectDescriptor {
+fn object_descriptor() -> ObjectDescriptor {
+    ObjectDescriptor {
         ownership: Ownership::Borrowed,
     }
 }
@@ -109,7 +109,7 @@ fn callback_descriptor() -> CallbackDescriptor {
 fn can_be_return_accepts_value_shapes_and_rejects_argument_shapes() {
     assert!(Descriptor::Integer(IntegerKind::I32).can_be_return());
     assert!(Descriptor::Void(VoidDescriptor).can_be_return());
-    assert!(Descriptor::GObject(gobject_descriptor()).can_be_return());
+    assert!(Descriptor::Object(object_descriptor()).can_be_return());
     assert!(Descriptor::EnumFlags(helpers::enum_descriptor()).can_be_return());
 
     assert!(!Descriptor::Callback(callback_descriptor()).can_be_return());

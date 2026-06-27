@@ -62,11 +62,11 @@ impl FfiEncoder for RefDescriptor {
         match &*self.inner_type {
             Descriptor::Boxed(_)
             | Descriptor::Struct(_)
-            | Descriptor::GObject(_)
+            | Descriptor::Object(_)
             | Descriptor::Fundamental(_) => match &*ref_val.value {
                 value::Value::Null | value::Value::Undefined => Ok(Self::null_ptr_storage()),
                 _ => bail!(
-                    "Expected Null for Ref<Boxed/Struct/GObject/Fundamental>, got {:?}",
+                    "Expected Null for Ref<Boxed/Struct/Object/Fundamental>, got {:?}",
                     ref_val.value
                 ),
             },
@@ -167,7 +167,7 @@ impl FfiDecoder for RefDescriptor {
         };
 
         match &*self.inner_type {
-            Descriptor::GObject(_)
+            Descriptor::Object(_)
             | Descriptor::Boxed(_)
             | Descriptor::Fundamental(_)
             | Descriptor::Struct(_) => {

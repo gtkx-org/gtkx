@@ -13,13 +13,13 @@ import {
     type Float32Descriptor,
     type Float64Descriptor,
     type FundamentalDescriptor,
-    type GObjectDescriptor,
     type HashTableDescriptor,
     type Int8Descriptor,
     type Int16Descriptor,
     type Int32Descriptor,
     type Int64Descriptor,
     bind as nativeBind,
+    type ObjectDescriptor,
     type Ownership,
     type RefDescriptor,
     type StringDescriptor,
@@ -102,7 +102,7 @@ export const bufferT: BufferDescriptor = Object.freeze({ kind: "buffer" });
 export const stringT = (ownership: Ownership = "borrowed", length?: number): StringDescriptor =>
     length === undefined ? { kind: "string", ownership } : { kind: "string", ownership, length };
 
-export const objectT = (ownership: Ownership = "borrowed"): GObjectDescriptor => ({ kind: "gobject", ownership });
+export const objectT = (ownership: Ownership = "borrowed"): ObjectDescriptor => ({ kind: "object", ownership });
 
 type CallerAllocatable = {
     callerAllocated?: boolean;

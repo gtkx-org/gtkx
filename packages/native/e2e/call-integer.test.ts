@@ -9,8 +9,8 @@ import {
     createGrid,
     createLabel,
     disconnectSignal,
-    GOBJECT,
-    GOBJECT_BORROWED,
+    OBJECT,
+    OBJECT_BORROWED,
     GOBJECT_LIB,
     GTK_LIB,
     INT8,
@@ -29,7 +29,7 @@ function setAndGetLabelMaxWidthChars(label: Value, type: Descriptor, value: numb
         GTK_LIB,
         "gtk_label_set_max_width_chars",
         [
-            { type: GOBJECT_BORROWED, value: label },
+            { type: OBJECT_BORROWED, value: label },
             { type, value },
         ],
         VOID,
@@ -37,7 +37,7 @@ function setAndGetLabelMaxWidthChars(label: Value, type: Descriptor, value: numb
     return callArgs(
         GTK_LIB,
         "gtk_label_get_max_width_chars",
-        [{ type: GOBJECT_BORROWED, value: label }],
+        [{ type: OBJECT_BORROWED, value: label }],
         type,
     ) as number;
 }
@@ -50,13 +50,13 @@ describe("call - integer types - 8-bit signed", () => {
             GTK_LIB,
             "gtk_label_set_selectable",
             [
-                { type: GOBJECT_BORROWED, value: label },
+                { type: OBJECT_BORROWED, value: label },
                 { type: INT8, value: 1 },
             ],
             VOID,
         );
 
-        const result = callArgs(GTK_LIB, "gtk_label_get_selectable", [{ type: GOBJECT_BORROWED, value: label }], INT8);
+        const result = callArgs(GTK_LIB, "gtk_label_get_selectable", [{ type: OBJECT_BORROWED, value: label }], INT8);
 
         expect(result).toBe(1);
     });
@@ -70,13 +70,13 @@ describe("call - integer types - 8-bit unsigned", () => {
             GTK_LIB,
             "gtk_label_set_selectable",
             [
-                { type: GOBJECT_BORROWED, value: label },
+                { type: OBJECT_BORROWED, value: label },
                 { type: UINT8, value: 1 },
             ],
             VOID,
         );
 
-        const result = callArgs(GTK_LIB, "gtk_label_get_selectable", [{ type: GOBJECT_BORROWED, value: label }], UINT8);
+        const result = callArgs(GTK_LIB, "gtk_label_get_selectable", [{ type: OBJECT_BORROWED, value: label }], UINT8);
 
         expect(result).toBe(1);
     });
@@ -147,7 +147,7 @@ describe("call - integer types - 32-bit signed enums", () => {
                 { type: INT32, value: 0 },
                 { type: INT32, value: 0 },
             ],
-            GOBJECT,
+            OBJECT,
         );
 
         const boxVertical = callArgs(
@@ -157,20 +157,20 @@ describe("call - integer types - 32-bit signed enums", () => {
                 { type: INT32, value: 1 },
                 { type: INT32, value: 0 },
             ],
-            GOBJECT,
+            OBJECT,
         );
 
         const orientationH = callArgs(
             GTK_LIB,
             "gtk_orientable_get_orientation",
-            [{ type: GOBJECT_BORROWED, value: boxHorizontal }],
+            [{ type: OBJECT_BORROWED, value: boxHorizontal }],
             INT32,
         );
 
         const orientationV = callArgs(
             GTK_LIB,
             "gtk_orientable_get_orientation",
-            [{ type: GOBJECT_BORROWED, value: boxVertical }],
+            [{ type: OBJECT_BORROWED, value: boxVertical }],
             INT32,
         );
 
@@ -195,13 +195,13 @@ describe("call - integer types - 32-bit unsigned", () => {
             GTK_LIB,
             "gtk_box_set_spacing",
             [
-                { type: GOBJECT_BORROWED, value: box },
+                { type: OBJECT_BORROWED, value: box },
                 { type: UINT32, value: 10 },
             ],
             VOID,
         );
 
-        const spacing = callArgs(GTK_LIB, "gtk_box_get_spacing", [{ type: GOBJECT_BORROWED, value: box }], UINT32);
+        const spacing = callArgs(GTK_LIB, "gtk_box_get_spacing", [{ type: OBJECT_BORROWED, value: box }], UINT32);
 
         expect(spacing).toBe(10);
     });
@@ -241,7 +241,7 @@ describe("call - integer types - 64-bit unsigned disconnect", () => {
             GOBJECT_LIB,
             "g_signal_handler_is_connected",
             [
-                { type: GOBJECT_BORROWED, value: button },
+                { type: OBJECT_BORROWED, value: button },
                 { type: UINT64, value: handlerId },
             ],
             INT32,
@@ -260,8 +260,8 @@ describe("call - integer types - edge cases multi-arg", () => {
             GTK_LIB,
             "gtk_grid_attach",
             [
-                { type: GOBJECT_BORROWED, value: grid },
-                { type: GOBJECT_BORROWED, value: label },
+                { type: OBJECT_BORROWED, value: grid },
+                { type: OBJECT_BORROWED, value: label },
                 { type: INT32, value: 0 },
                 { type: INT32, value: 0 },
                 { type: INT32, value: 1 },
@@ -273,8 +273,8 @@ describe("call - integer types - edge cases multi-arg", () => {
         const firstChild = callArgs(
             GTK_LIB,
             "gtk_widget_get_first_child",
-            [{ type: GOBJECT_BORROWED, value: grid }],
-            GOBJECT_BORROWED,
+            [{ type: OBJECT_BORROWED, value: grid }],
+            OBJECT_BORROWED,
         );
 
         expect(firstChild).toBeDefined();
@@ -289,13 +289,13 @@ describe("call - integer types - edge cases spacing", () => {
             GTK_LIB,
             "gtk_box_set_spacing",
             [
-                { type: GOBJECT_BORROWED, value: box },
+                { type: OBJECT_BORROWED, value: box },
                 { type: INT32, value: 15 },
             ],
             VOID,
         );
 
-        const spacing = callArgs(GTK_LIB, "gtk_box_get_spacing", [{ type: GOBJECT_BORROWED, value: box }], INT32);
+        const spacing = callArgs(GTK_LIB, "gtk_box_get_spacing", [{ type: OBJECT_BORROWED, value: box }], INT32);
 
         expect(spacing).toBe(15);
     });

@@ -9,7 +9,7 @@ use native::Handle;
 use native::ffi::arg::Arg;
 use native::ffi::descriptors::{
     ArrayDescriptor, ArrayKind, BigIntKind, BooleanDescriptor, Descriptor, EnumFlagsDescriptor,
-    EnumFlagsKind, FfiDecoder, FfiEncoder, FloatKind, FundamentalDescriptor, GObjectDescriptor,
+    EnumFlagsKind, FfiDecoder, FfiEncoder, FloatKind, FundamentalDescriptor, ObjectDescriptor,
     IntegerKind, Ownership, PointerWriter, ReadSource, RefDescriptor, StringDescriptor,
     StructDescriptor,
 };
@@ -55,7 +55,7 @@ fn boxed_handle() -> Handle {
 }
 
 fn gobject_item_descriptor(ownership: Ownership) -> Descriptor {
-    Descriptor::GObject(GObjectDescriptor { ownership })
+    Descriptor::Object(ObjectDescriptor { ownership })
 }
 
 fn unresolvable_fundamental_item_descriptor() -> Descriptor {

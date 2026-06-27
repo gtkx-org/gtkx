@@ -8,8 +8,8 @@ import {
     createButton,
     createLabel,
     forceGC,
-    GOBJECT,
-    GOBJECT_BORROWED,
+    OBJECT,
+    OBJECT_BORROWED,
     GTK_LIB,
     getFirstChild,
     getNextSibling,
@@ -33,9 +33,9 @@ function appendLabelAndExpectRefIncrement(): { box: Value; label: Value; initial
     return { box, label, initialRefCount };
 }
 
-describe("call - gobject types - owned", () => {
+describe("call - object types - owned", () => {
     it("creates and returns owned GObject", () => {
-        const label = callArgs(GTK_LIB, "gtk_label_new", [{ type: STRING, value: "Test" }], GOBJECT);
+        const label = callArgs(GTK_LIB, "gtk_label_new", [{ type: STRING, value: "Test" }], OBJECT);
 
         expect(label).toBeDefined();
         expect(typeof label).toBe("object");
@@ -55,7 +55,7 @@ describe("call - gobject types - owned", () => {
     });
 });
 
-describe("call - gobject types - transfer none", () => {
+describe("call - object types - transfer none", () => {
     it("returns transfer none GObject (parent relationship)", () => {
         const box = createBox();
         const label = createLabel("Test");
@@ -71,7 +71,7 @@ describe("call - gobject types - transfer none", () => {
         const text = callArgs(
             GTK_LIB,
             "gtk_label_get_text",
-            [{ type: GOBJECT_BORROWED, value: label }],
+            [{ type: OBJECT_BORROWED, value: label }],
             STRING_BORROWED,
         );
 
@@ -79,7 +79,7 @@ describe("call - gobject types - transfer none", () => {
     });
 });
 
-describe("call - gobject types - widget hierarchy parent-child", () => {
+describe("call - object types - widget hierarchy parent-child", () => {
     it("creates parent-child relationships", () => {
         const box = createBox();
         const label1 = createLabel("First");
@@ -93,8 +93,8 @@ describe("call - gobject types - widget hierarchy parent-child", () => {
         const lastChild = callArgs(
             GTK_LIB,
             "gtk_widget_get_last_child",
-            [{ type: GOBJECT_BORROWED, value: box }],
-            GOBJECT_BORROWED,
+            [{ type: OBJECT_BORROWED, value: box }],
+            OBJECT_BORROWED,
         );
 
         expect(firstChild).toBeDefined();
@@ -103,7 +103,7 @@ describe("call - gobject types - widget hierarchy parent-child", () => {
     });
 });
 
-describe("call - gobject types - widget hierarchy children", () => {
+describe("call - object types - widget hierarchy children", () => {
     it("retrieves children from containers", () => {
         const box = createBox();
         const label = createLabel("Child");
@@ -114,7 +114,7 @@ describe("call - gobject types - widget hierarchy children", () => {
     });
 });
 
-describe("call - gobject types - widget hierarchy siblings", () => {
+describe("call - object types - widget hierarchy siblings", () => {
     it("traverses sibling chain", () => {
         const box = createBox();
         const label1 = createLabel("First");
@@ -135,7 +135,7 @@ describe("call - gobject types - widget hierarchy siblings", () => {
     });
 });
 
-describe("call - gobject types - widget hierarchy remove", () => {
+describe("call - object types - widget hierarchy remove", () => {
     it("removes child from parent", () => {
         const box = createBox();
         const label = createLabel("Removable");
@@ -150,7 +150,7 @@ describe("call - gobject types - widget hierarchy remove", () => {
     });
 });
 
-describe("call - gobject types - refcount management add", () => {
+describe("call - object types - refcount management add", () => {
     it("container adds ref when child is appended", () => {
         const { box } = appendLabelAndExpectRefIncrement();
 
@@ -158,20 +158,20 @@ describe("call - gobject types - refcount management add", () => {
     });
 });
 
-describe("call - gobject types - refcount transfer none", () => {
+describe("call - object types - refcount transfer none", () => {
     it("does not increase refcount when passing transfer none GObject", () => {
         const label = createLabel("Test");
         const initialRefCount = getRefCount(label);
 
         for (let i = 0; i < 100; i++) {
-            callArgs(GTK_LIB, "gtk_label_get_text", [{ type: GOBJECT_BORROWED, value: label }], STRING_BORROWED);
+            callArgs(GTK_LIB, "gtk_label_get_text", [{ type: OBJECT_BORROWED, value: label }], STRING_BORROWED);
         }
 
         expect(getRefCount(label)).toBe(initialRefCount);
     });
 });
 
-describe("call - gobject types - refcount release", () => {
+describe("call - object types - refcount release", () => {
     it("container releases ref when child is removed", () => {
         const { box, label, initialRefCount } = appendLabelAndExpectRefIncrement();
 
@@ -181,7 +181,7 @@ describe("call - gobject types - refcount release", () => {
     });
 });
 
-describe("call - gobject types - memory leaks creation", () => {
+describe("call - object types - memory leaks creation", () => {
     it("does not leak when creating many GObjects in loop", () => {
         const mem = startMemoryMeasurement();
 
@@ -193,7 +193,7 @@ describe("call - gobject types - memory leaks creation", () => {
     });
 });
 
-describe("call - gobject types - memory leaks container append", () => {
+describe("call - object types - memory leaks container append", () => {
     it("does not leak when passing GObject to container", () => {
         const box = createBox();
         const boxRefCount = getRefCount(box);
@@ -211,7 +211,7 @@ describe("call - gobject types - memory leaks container append", () => {
     });
 });
 
-describe("call - gobject types - memory leaks container remove", () => {
+describe("call - object types - memory leaks container remove", () => {
     it("does not leak when removing GObject from container", () => {
         const box = createBox();
         const boxRefCount = getRefCount(box);
@@ -235,7 +235,7 @@ describe("call - gobject types - memory leaks container remove", () => {
     });
 });
 
-describe("call - gobject types - edge cases null", () => {
+describe("call - object types - edge cases null", () => {
     it("handles null GObject when optional", () => {
         const label = createLabel("Test");
 
@@ -243,7 +243,7 @@ describe("call - gobject types - edge cases null", () => {
     });
 });
 
-describe("call - gobject types - edge cases multiple pass", () => {
+describe("call - object types - edge cases multiple pass", () => {
     it("handles same GObject passed multiple times", () => {
         const box = createBox();
         const label = createLabel("Test");
@@ -254,7 +254,7 @@ describe("call - gobject types - edge cases multiple pass", () => {
             GTK_LIB,
             "gtk_label_set_text",
             [
-                { type: GOBJECT_BORROWED, value: label },
+                { type: OBJECT_BORROWED, value: label },
                 { type: STRING, value: "Updated" },
             ],
             VOID,
@@ -263,7 +263,7 @@ describe("call - gobject types - edge cases multiple pass", () => {
         const text = callArgs(
             GTK_LIB,
             "gtk_label_get_text",
-            [{ type: GOBJECT_BORROWED, value: label }],
+            [{ type: OBJECT_BORROWED, value: label }],
             STRING_BORROWED,
         );
 
@@ -271,7 +271,7 @@ describe("call - gobject types - edge cases multiple pass", () => {
     });
 });
 
-describe("call - gobject types - edge cases nested", () => {
+describe("call - object types - edge cases nested", () => {
     it("handles deeply nested widget hierarchy", () => {
         const outerBox = createBox(1, 0);
         const middleBox = createBox(0, 0);

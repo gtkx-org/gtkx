@@ -17,7 +17,15 @@ export const onExit = (callback: () => void): void => {
     shutdownCallbacks.push(callback);
 };
 
-const quit = (): void => {
+/**
+ * Shuts the gtkx runtime down cleanly: runs every callback registered through
+ * {@link onExit}, then quits the GLib main loop and joins its thread. Idempotent
+ * and safe to call more than once. Registered as the `process.on("exit")`
+ * handler and also exposed so a host (such as a test harness) can quiesce the
+ * runtime before tearing down resources the GLib thread still depends on. The
+ * runtime is single-lifecycle: it cannot be re-initialized after this returns.
+ */
+export const quit = (): void => {
     if (hasQuit) return;
     hasQuit = true;
 

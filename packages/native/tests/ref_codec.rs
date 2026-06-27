@@ -7,7 +7,7 @@ use gtk4::prelude::ObjectType as _;
 
 use native::ffi::descriptors::{
     ArrayDescriptor, ArrayKind, BooleanDescriptor, Descriptor, EnumFlagsDescriptor, EnumFlagsKind,
-    FfiDecoder, FloatKind, GObjectDescriptor, IntegerKind, Ownership, ReadSource, RefDescriptor,
+    FfiDecoder, FloatKind, ObjectDescriptor, IntegerKind, Ownership, ReadSource, RefDescriptor,
     StringDescriptor, UnicharDescriptor,
 };
 use native::ffi::value::Value;
@@ -140,7 +140,7 @@ fn decode_gobject_delegates_to_inner_decoder() {
         let obj_ptr = obj.as_ptr() as *mut c_void;
         let storage = ptr_storage(obj_ptr);
 
-        let ref_type = RefDescriptor::new(Descriptor::GObject(GObjectDescriptor {
+        let ref_type = RefDescriptor::new(Descriptor::Object(ObjectDescriptor {
             ownership: Ownership::Borrowed,
         }))
         .expect("GObject is a valid Ref inner");
@@ -344,7 +344,7 @@ fn decode_with_context_array_container_released_by_array_decoder() {
         let storage = ptr_sized_malloc_storage();
 
         let array_type = ArrayDescriptor {
-            item_descriptor: Box::new(Descriptor::GObject(GObjectDescriptor {
+            item_descriptor: Box::new(Descriptor::Object(ObjectDescriptor {
                 ownership: Ownership::Borrowed,
             })),
             kind: ArrayKind::Array,

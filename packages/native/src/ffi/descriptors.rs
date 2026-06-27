@@ -63,9 +63,9 @@ mod boxed;
 mod buffer;
 mod callback;
 mod fundamental;
-mod gobject;
 mod hashtable;
 mod numeric;
+mod object;
 mod pointer;
 mod prelude;
 mod r#ref;
@@ -84,11 +84,11 @@ pub use callback::CallbackDescriptor;
 #[cfg(debug_assertions)]
 pub use callback::CallbackScope;
 pub use fundamental::FundamentalDescriptor;
-pub use gobject::GObjectDescriptor;
 pub use hashtable::HashTableDescriptor;
 #[cfg(debug_assertions)]
 pub use hashtable::HashTableEntryEncoder;
 pub use numeric::{EnumFlagsDescriptor, EnumFlagsKind, FloatKind, IntegerKind};
+pub use object::ObjectDescriptor;
 pub use r#ref::RefDescriptor;
 pub use string::{StringDescriptor, str_to_glib_full};
 pub use r#struct::StructDescriptor;
@@ -389,7 +389,7 @@ pub enum Descriptor {
     String(StringDescriptor),
     Void(VoidDescriptor),
     Boolean(BooleanDescriptor),
-    GObject(GObjectDescriptor),
+    Object(ObjectDescriptor),
     Boxed(BoxedDescriptor),
     Struct(StructDescriptor),
     Fundamental(FundamentalDescriptor),
@@ -414,7 +414,7 @@ impl std::fmt::Display for Descriptor {
             Self::String(_) => write!(f, "String"),
             Self::Void(_) => write!(f, "Void"),
             Self::Boolean(_) => write!(f, "Boolean"),
-            Self::GObject(_) => write!(f, "GObject"),
+            Self::Object(_) => write!(f, "Object"),
             Self::Boxed(t) => write!(f, "Boxed({})", t.type_name),
             Self::Struct(t) => write!(f, "Struct({})", t.ownership),
             Self::Fundamental(t) => write!(f, "Fundamental({})", t.unref_func),
@@ -460,7 +460,7 @@ impl Descriptor {
             "string" => Ok(Self::String(StringDescriptor::from_descriptor(env, &obj)?)),
             "boolean" => Ok(Self::Boolean(BooleanDescriptor)),
             "void" => Ok(Self::Void(VoidDescriptor)),
-            "gobject" => Ok(Self::GObject(GObjectDescriptor::from_descriptor(
+            "object" => Ok(Self::Object(ObjectDescriptor::from_descriptor(
                 env, &obj,
             )?)),
             "boxed" => Ok(Self::Boxed(BoxedDescriptor::from_descriptor(env, &obj)?)),

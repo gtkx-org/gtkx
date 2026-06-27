@@ -45,8 +45,8 @@ export const FLOAT64 = { kind: "float64" as const };
 export const BOOLEAN = { kind: "boolean" as const };
 export const STRING = { kind: "string" as const, ownership: "full" as const };
 export const STRING_BORROWED = { kind: "string" as const, ownership: "borrowed" as const };
-export const GOBJECT = { kind: "gobject" as const, ownership: "full" as const };
-export const GOBJECT_BORROWED = { kind: "gobject" as const, ownership: "borrowed" as const };
+export const OBJECT = { kind: "object" as const, ownership: "full" as const };
+export const OBJECT_BORROWED = { kind: "object" as const, ownership: "borrowed" as const };
 export const POINTER = { kind: "uint64" as const };
 export const VOID = { kind: "void" as const };
 export const STRING_ARRAY = {
@@ -57,14 +57,14 @@ export const STRING_ARRAY = {
 };
 
 export function createLabel(text: string = "Test"): Value {
-    return callArgs(GTK_LIB, "gtk_label_new", [{ type: STRING, value: text }], GOBJECT);
+    return callArgs(GTK_LIB, "gtk_label_new", [{ type: STRING, value: text }], OBJECT);
 }
 
 export function createButton(label?: string): Value {
     if (label !== undefined) {
-        return callArgs(GTK_LIB, "gtk_button_new_with_label", [{ type: STRING, value: label }], GOBJECT);
+        return callArgs(GTK_LIB, "gtk_button_new_with_label", [{ type: STRING, value: label }], OBJECT);
     }
-    return callArgs(GTK_LIB, "gtk_button_new", [], GOBJECT);
+    return callArgs(GTK_LIB, "gtk_button_new", [], OBJECT);
 }
 
 export function createBox(orientation: number = 0, spacing: number = 0): Value {
@@ -75,7 +75,7 @@ export function createBox(orientation: number = 0, spacing: number = 0): Value {
             { type: INT32, value: orientation },
             { type: INT32, value: spacing },
         ],
-        GOBJECT,
+        OBJECT,
     );
 }
 
@@ -89,20 +89,20 @@ export function createScale(orientation: number = 0, min: number = 0, max: numbe
             { type: FLOAT64, value: max },
             { type: FLOAT64, value: step },
         ],
-        GOBJECT,
+        OBJECT,
     );
 }
 
 export function createProgressBar(): Value {
-    return callArgs(GTK_LIB, "gtk_progress_bar_new", [], GOBJECT);
+    return callArgs(GTK_LIB, "gtk_progress_bar_new", [], OBJECT);
 }
 
 export function createGrid(): Value {
-    return callArgs(GTK_LIB, "gtk_grid_new", [], GOBJECT);
+    return callArgs(GTK_LIB, "gtk_grid_new", [], OBJECT);
 }
 
 export function createCancellable(): Value {
-    return callArgs(GIO_LIB, "g_cancellable_new", [], GOBJECT);
+    return callArgs(GIO_LIB, "g_cancellable_new", [], OBJECT);
 }
 
 export const typeFromName = (name: string): bigint =>
@@ -150,12 +150,12 @@ export function connectSignalReturning(
         GOBJECT_LIB,
         "g_signal_connect_data",
         [
-            { type: GOBJECT_BORROWED, value: obj as Handle },
+            { type: OBJECT_BORROWED, value: obj as Handle },
             { type: STRING, value: signalName },
             {
                 type: {
                     kind: "callback",
-                    argDescriptors: [GOBJECT_BORROWED, UINT64],
+                    argDescriptors: [OBJECT_BORROWED, UINT64],
                     returnDescriptor: { kind: "void" },
                     hasDestroy: true,
                     userDataIndex: 1,
@@ -173,7 +173,7 @@ export function connectSignalCallback(
     signalName: string,
     callback: (...args: unknown[]) => void,
     options: { argDescriptors: Descriptor[]; userDataIndex: number; hasDestroy?: boolean } = {
-        argDescriptors: [{ kind: "gobject", ownership: "borrowed" }, { kind: "uint64" }],
+        argDescriptors: [{ kind: "object", ownership: "borrowed" }, { kind: "uint64" }],
         userDataIndex: 1,
         hasDestroy: true,
     },
@@ -182,7 +182,7 @@ export function connectSignalCallback(
         GOBJECT_LIB,
         "g_signal_connect_data",
         [
-            { type: GOBJECT_BORROWED, value: obj as Handle },
+            { type: OBJECT_BORROWED, value: obj as Handle },
             { type: STRING, value: signalName },
             {
                 type: {
@@ -205,7 +205,7 @@ export function disconnectSignal(obj: Value, handlerId: number): void {
         GOBJECT_LIB,
         "g_signal_handler_disconnect",
         [
-            { type: GOBJECT_BORROWED, value: obj },
+            { type: OBJECT_BORROWED, value: obj },
             { type: UINT64, value: handlerId },
         ],
         VOID,
@@ -217,8 +217,8 @@ export function boxAppend(box: Value, child: Value): void {
         GTK_LIB,
         "gtk_box_append",
         [
-            { type: GOBJECT_BORROWED, value: box },
-            { type: GOBJECT_BORROWED, value: child },
+            { type: OBJECT_BORROWED, value: box },
+            { type: OBJECT_BORROWED, value: child },
         ],
         VOID,
     );
@@ -229,8 +229,8 @@ export function boxRemove(box: Value, child: Value): void {
         GTK_LIB,
         "gtk_box_remove",
         [
-            { type: GOBJECT_BORROWED, value: box },
-            { type: GOBJECT_BORROWED, value: child },
+            { type: OBJECT_BORROWED, value: box },
+            { type: OBJECT_BORROWED, value: child },
         ],
         VOID,
     );
@@ -240,8 +240,8 @@ export function getFirstChild(widget: Value): Value {
     return callArgs(
         GTK_LIB,
         "gtk_widget_get_first_child",
-        [{ type: GOBJECT_BORROWED, value: widget }],
-        GOBJECT_BORROWED,
+        [{ type: OBJECT_BORROWED, value: widget }],
+        OBJECT_BORROWED,
     );
 }
 
@@ -249,13 +249,13 @@ export function getNextSibling(widget: Value): Value {
     return callArgs(
         GTK_LIB,
         "gtk_widget_get_next_sibling",
-        [{ type: GOBJECT_BORROWED, value: widget }],
-        GOBJECT_BORROWED,
+        [{ type: OBJECT_BORROWED, value: widget }],
+        OBJECT_BORROWED,
     );
 }
 
 export function getParent(widget: Value): Value {
-    return callArgs(GTK_LIB, "gtk_widget_get_parent", [{ type: GOBJECT_BORROWED, value: widget }], GOBJECT_BORROWED);
+    return callArgs(GTK_LIB, "gtk_widget_get_parent", [{ type: OBJECT_BORROWED, value: widget }], OBJECT_BORROWED);
 }
 
 const INT32_REF = { kind: "ref" as const, innerType: INT32 };
@@ -282,7 +282,7 @@ export function measureWidget(options: MeasureWidgetOptions): void {
         GTK_LIB,
         "gtk_widget_measure",
         [
-            { type: GOBJECT_BORROWED, value: options.widget },
+            { type: OBJECT_BORROWED, value: options.widget },
             { type: INT32, value: options.orientation },
             { type: INT32, value: options.forSize },
             measureSlot(options.minRef ?? null),
@@ -299,7 +299,7 @@ export function measureWidgetAllNull(widget: Value): unknown {
         GTK_LIB,
         "gtk_widget_measure",
         [
-            { type: GOBJECT_BORROWED, value: widget },
+            { type: OBJECT_BORROWED, value: widget },
             { type: INT32, value: 0 },
             { type: INT32, value: -1 },
             { type: POINTER, value: 0 },
@@ -316,7 +316,7 @@ export function isSignalHandlerConnected(obj: Value, handlerId: number): boolean
         GOBJECT_LIB,
         "g_signal_handler_is_connected",
         [
-            { type: GOBJECT_BORROWED, value: obj },
+            { type: OBJECT_BORROWED, value: obj },
             { type: UINT64, value: handlerId },
         ],
         BOOLEAN,

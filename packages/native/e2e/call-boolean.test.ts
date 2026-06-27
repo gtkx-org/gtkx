@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { Value } from "../binding.js";
-import { BOOLEAN, callArgs, createButton, createLabel, GOBJECT_BORROWED, GTK_LIB, VOID } from "./helpers/utils.js";
+import { BOOLEAN, callArgs, createButton, createLabel, OBJECT_BORROWED, GTK_LIB, VOID } from "./helpers/utils.js";
 
 function setLabelSelectable(label: Value, value: boolean): void {
     callArgs(
         GTK_LIB,
         "gtk_label_set_selectable",
         [
-            { type: GOBJECT_BORROWED, value: label },
+            { type: OBJECT_BORROWED, value: label },
             { type: BOOLEAN, value },
         ],
         VOID,
@@ -18,7 +18,7 @@ function getLabelSelectable(label: Value): boolean {
     return callArgs(
         GTK_LIB,
         "gtk_label_get_selectable",
-        [{ type: GOBJECT_BORROWED, value: label }],
+        [{ type: OBJECT_BORROWED, value: label }],
         BOOLEAN,
     ) as boolean;
 }
@@ -65,7 +65,7 @@ describe("call - boolean type - widget properties", () => {
             GTK_LIB,
             "gtk_widget_set_visible",
             [
-                { type: GOBJECT_BORROWED, value: label },
+                { type: OBJECT_BORROWED, value: label },
                 { type: BOOLEAN, value: false },
             ],
             VOID,
@@ -74,7 +74,7 @@ describe("call - boolean type - widget properties", () => {
         const visible = callArgs(
             GTK_LIB,
             "gtk_widget_get_visible",
-            [{ type: GOBJECT_BORROWED, value: label }],
+            [{ type: OBJECT_BORROWED, value: label }],
             BOOLEAN,
         );
 
@@ -88,7 +88,7 @@ describe("call - boolean type - widget properties", () => {
             GTK_LIB,
             "gtk_widget_set_sensitive",
             [
-                { type: GOBJECT_BORROWED, value: button },
+                { type: OBJECT_BORROWED, value: button },
                 { type: BOOLEAN, value: false },
             ],
             VOID,
@@ -97,7 +97,7 @@ describe("call - boolean type - widget properties", () => {
         const sensitive = callArgs(
             GTK_LIB,
             "gtk_widget_get_sensitive",
-            [{ type: GOBJECT_BORROWED, value: button }],
+            [{ type: OBJECT_BORROWED, value: button }],
             BOOLEAN,
         );
 
@@ -113,7 +113,7 @@ describe("call - boolean type - widget styling", () => {
             GTK_LIB,
             "gtk_button_set_has_frame",
             [
-                { type: GOBJECT_BORROWED, value: button },
+                { type: OBJECT_BORROWED, value: button },
                 { type: BOOLEAN, value: false },
             ],
             VOID,
@@ -122,7 +122,7 @@ describe("call - boolean type - widget styling", () => {
         const hasFrame = callArgs(
             GTK_LIB,
             "gtk_button_get_has_frame",
-            [{ type: GOBJECT_BORROWED, value: button }],
+            [{ type: OBJECT_BORROWED, value: button }],
             BOOLEAN,
         );
 
@@ -136,13 +136,13 @@ describe("call - boolean type - widget styling", () => {
             GTK_LIB,
             "gtk_label_set_wrap",
             [
-                { type: GOBJECT_BORROWED, value: label },
+                { type: OBJECT_BORROWED, value: label },
                 { type: BOOLEAN, value: true },
             ],
             VOID,
         );
 
-        const wrap = callArgs(GTK_LIB, "gtk_label_get_wrap", [{ type: GOBJECT_BORROWED, value: label }], BOOLEAN);
+        const wrap = callArgs(GTK_LIB, "gtk_label_get_wrap", [{ type: OBJECT_BORROWED, value: label }], BOOLEAN);
 
         expect(wrap).toBe(true);
     });
@@ -156,7 +156,7 @@ describe("call - boolean type - label use_markup", () => {
             GTK_LIB,
             "gtk_label_set_use_markup",
             [
-                { type: GOBJECT_BORROWED, value: label },
+                { type: OBJECT_BORROWED, value: label },
                 { type: BOOLEAN, value: true },
             ],
             VOID,
@@ -165,7 +165,7 @@ describe("call - boolean type - label use_markup", () => {
         const useMarkup = callArgs(
             GTK_LIB,
             "gtk_label_get_use_markup",
-            [{ type: GOBJECT_BORROWED, value: label }],
+            [{ type: OBJECT_BORROWED, value: label }],
             BOOLEAN,
         );
 
@@ -189,7 +189,7 @@ describe("call - boolean type - edge cases", () => {
             GTK_LIB,
             "gtk_label_set_wrap",
             [
-                { type: GOBJECT_BORROWED, value: label },
+                { type: OBJECT_BORROWED, value: label },
                 { type: BOOLEAN, value: true },
             ],
             VOID,
@@ -199,15 +199,15 @@ describe("call - boolean type - edge cases", () => {
             GTK_LIB,
             "gtk_label_set_use_markup",
             [
-                { type: GOBJECT_BORROWED, value: label },
+                { type: OBJECT_BORROWED, value: label },
                 { type: BOOLEAN, value: false },
             ],
             VOID,
         );
 
         expect(getLabelSelectable(label)).toBe(true);
-        expect(callArgs(GTK_LIB, "gtk_label_get_wrap", [{ type: GOBJECT_BORROWED, value: label }], BOOLEAN)).toBe(true);
-        expect(callArgs(GTK_LIB, "gtk_label_get_use_markup", [{ type: GOBJECT_BORROWED, value: label }], BOOLEAN)).toBe(
+        expect(callArgs(GTK_LIB, "gtk_label_get_wrap", [{ type: OBJECT_BORROWED, value: label }], BOOLEAN)).toBe(true);
+        expect(callArgs(GTK_LIB, "gtk_label_get_use_markup", [{ type: OBJECT_BORROWED, value: label }], BOOLEAN)).toBe(
             false,
         );
     });

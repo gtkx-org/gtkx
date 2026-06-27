@@ -7,7 +7,7 @@ use gtk4::prelude::ObjectType as _;
 
 use native::ffi;
 use native::ffi::descriptors::{
-    FfiDecoder, FfiEncoder, GObjectDescriptor, Ownership, PointerWriter, ReadSource,
+    FfiDecoder, FfiEncoder, ObjectDescriptor, Ownership, PointerWriter, ReadSource,
 };
 use native::ffi::value::Value;
 use native::handle::Handle;
@@ -17,14 +17,14 @@ use helpers::{
     assert_write_return_err_writes_null, get_gobject_refcount, read_slot, write_return_into_slot,
 };
 
-fn borrowed() -> GObjectDescriptor {
-    GObjectDescriptor {
+fn borrowed() -> ObjectDescriptor {
+    ObjectDescriptor {
         ownership: Ownership::Borrowed,
     }
 }
 
-fn full() -> GObjectDescriptor {
-    GObjectDescriptor {
+fn full() -> ObjectDescriptor {
+    ObjectDescriptor {
         ownership: Ownership::Full,
     }
 }
@@ -41,7 +41,7 @@ fn object_value_of(ptr: *mut glib::gobject_ffi::GObject) -> Value {
 }
 
 fn encode_object(
-    ty: &GObjectDescriptor,
+    ty: &ObjectDescriptor,
     ptr: *mut glib::gobject_ffi::GObject,
 ) -> ffi::StashedValue {
     ty.encode(&object_value_of(ptr))

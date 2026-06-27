@@ -67,12 +67,12 @@ describe("Value boxed accessors", () => {
 describe("toGValue — gobject", () => {
     it("creates a GValue holding a GObject", () => {
         const label = new Gtk.Label({ label: "test" });
-        const v = toGValue({ kind: "gobject", ownership: "borrowed" }, label);
+        const v = toGValue({ kind: "object", ownership: "borrowed" }, label);
         expect(fromGValue(v)).not.toBeNull();
     });
 
     it("creates a GValue holding null", () => {
-        const v = toGValue({ kind: "gobject", ownership: "borrowed" }, null);
+        const v = toGValue({ kind: "object", ownership: "borrowed" }, null);
         expect(fromGValue(v)).toBeNull();
     });
 });
@@ -183,7 +183,7 @@ describe("toGValue — enums and flags", () => {
 describe("toGValue — objects and boxed", () => {
     it("builds a gobject value", () => {
         const label = new Gtk.Label({ label: "x" });
-        expect(fromGValue(toGValue({ kind: "gobject", ownership: "borrowed" }, label))).not.toBeNull();
+        expect(fromGValue(toGValue({ kind: "object", ownership: "borrowed" }, label))).not.toBeNull();
     });
 
     it("builds a boxed value via getTypeFn resolution", () => {
@@ -325,7 +325,7 @@ describe("newGValueForDescriptor — GType resolution from an FFI descriptor", (
         expect(gtypeOfEmpty({ kind: "uint64" })).toBe(TYPE_UINT64);
         expect(gtypeOfEmpty({ kind: "float32" })).toBe(TYPE_FLOAT);
         expect(gtypeOfEmpty({ kind: "float64" })).toBe(TYPE_DOUBLE);
-        expect(gtypeOfEmpty({ kind: "gobject", ownership: "borrowed" })).toBe(TYPE_OBJECT);
+        expect(gtypeOfEmpty({ kind: "object", ownership: "borrowed" })).toBe(TYPE_OBJECT);
     });
 
     it("resolves enum and flags descriptors through their get-type", () => {

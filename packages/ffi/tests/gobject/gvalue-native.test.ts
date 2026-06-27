@@ -96,11 +96,11 @@ describe("GValue enum and flags", () => {
 describe("GValue object", () => {
     it("round-trips a live GObject returning the same wrapper", () => {
         const label = new Gtk.Label({ label: "hello" });
-        expect(fromGValue(toGValue({ kind: "gobject", ownership: "borrowed" }, label))).toBe(label);
+        expect(fromGValue(toGValue({ kind: "object", ownership: "borrowed" }, label))).toBe(label);
     });
 
     it("round-trips a null object", () => {
-        expect(fromGValue(toGValue({ kind: "gobject", ownership: "borrowed" }, null))).toBeNull();
+        expect(fromGValue(toGValue({ kind: "object", ownership: "borrowed" }, null))).toBeNull();
     });
 });
 

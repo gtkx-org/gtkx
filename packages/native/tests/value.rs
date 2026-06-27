@@ -10,7 +10,7 @@ use gtk4::prelude::StaticType as _;
 
 use native::ffi;
 use native::ffi::descriptors::{
-    ArrayDescriptor, ArrayKind, BoxedDescriptor, Descriptor, FfiDecoder, GObjectDescriptor,
+    ArrayDescriptor, ArrayKind, BoxedDescriptor, Descriptor, FfiDecoder, ObjectDescriptor,
     Ownership, StringDescriptor,
 };
 use native::ffi::value::Value;
@@ -18,7 +18,7 @@ use native::ffi::value::Value;
 use helpers::get_gobject_refcount;
 
 fn gobject_type_of(ownership: Ownership) -> Descriptor {
-    Descriptor::GObject(GObjectDescriptor { ownership })
+    Descriptor::Object(ObjectDescriptor { ownership })
 }
 
 fn string_type_of(ownership: Ownership) -> Descriptor {

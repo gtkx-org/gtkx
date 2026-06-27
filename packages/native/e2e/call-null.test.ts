@@ -4,8 +4,8 @@ import {
     callArgs,
     createBox,
     createLabel,
-    GOBJECT,
-    GOBJECT_BORROWED,
+    OBJECT,
+    OBJECT_BORROWED,
     GTK_LIB,
     getFirstChild,
     getNextSibling,
@@ -17,12 +17,12 @@ import {
 
 describe("call - null pointer arguments - basic", () => {
     it("passes null pointer as optional argument", () => {
-        const label = callArgs(GTK_LIB, "gtk_label_new", [{ type: POINTER, value: 0 }], GOBJECT);
+        const label = callArgs(GTK_LIB, "gtk_label_new", [{ type: POINTER, value: 0 }], OBJECT);
 
         const text = callArgs(
             GTK_LIB,
             "gtk_label_get_text",
-            [{ type: GOBJECT_BORROWED, value: label }],
+            [{ type: OBJECT_BORROWED, value: label }],
             STRING_BORROWED,
         );
 

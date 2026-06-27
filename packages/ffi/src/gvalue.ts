@@ -297,7 +297,7 @@ export function gtypeFromDescriptor(descriptor: Descriptor): bigint {
             return TYPE_FLOAT;
         case "float64":
             return TYPE_DOUBLE;
-        case "gobject":
+        case "object":
             return TYPE_OBJECT;
         case "enum":
         case "flags":
@@ -401,7 +401,7 @@ function setGValuePayload(value: Handle, gtype: bigint, descriptor: Descriptor, 
 }
 
 export function toGValue(descriptor: Descriptor, jsValue: unknown): Handle {
-    if (descriptor.kind === "gobject") return objectToGValue(jsValue as object | null);
+    if (descriptor.kind === "object") return objectToGValue(jsValue as object | null);
     const gtype = gtypeFromDescriptor(descriptor);
     const value = newTypedGValue(gtype);
     setGValuePayload(value, gtype, descriptor, jsValue);

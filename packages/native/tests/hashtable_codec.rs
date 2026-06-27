@@ -10,7 +10,7 @@ use native::Handle;
 use native::ffi::StashedValue;
 use native::ffi::descriptors::{
     ArrayDescriptor, ArrayKind, BooleanDescriptor, BoxedDescriptor, Descriptor, FloatKind,
-    FundamentalDescriptor, GObjectDescriptor, HashTableDescriptor, HashTableEntryEncoder,
+    FundamentalDescriptor, ObjectDescriptor, HashTableDescriptor, HashTableEntryEncoder,
     IntegerKind, Ownership, StringDescriptor, StructDescriptor,
 };
 use native::ffi::descriptors::{FfiDecoder, FfiEncoder, PointerWriter, ReadSource};
@@ -57,7 +57,7 @@ fn borrowed_string_type() -> Descriptor {
 }
 
 fn full_gobject_type() -> Descriptor {
-    Descriptor::GObject(GObjectDescriptor {
+    Descriptor::Object(ObjectDescriptor {
         ownership: Ownership::Full,
     })
 }
@@ -585,7 +585,7 @@ fn native_handle_encoder_hash_equal_and_free() {
 
 #[test]
 fn full_gobject_encoder_installs_unref_destroy() {
-    let encoder = HashTableEntryEncoder::Handle(Box::new(Descriptor::GObject(GObjectDescriptor {
+    let encoder = HashTableEntryEncoder::Handle(Box::new(Descriptor::Object(ObjectDescriptor {
         ownership: Ownership::Full,
     })));
     assert!(encoder.free_func().unwrap().is_some());

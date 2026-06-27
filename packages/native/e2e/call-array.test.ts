@@ -3,7 +3,7 @@ import {
     callArgs,
     createLabel,
     forceGC,
-    GOBJECT_BORROWED,
+    OBJECT_BORROWED,
     GTK_LIB,
     getRefCount,
     STRING,
@@ -20,7 +20,7 @@ describe("call - array types - string arrays basic", () => {
             GTK_LIB,
             "gtk_widget_set_css_classes",
             [
-                { type: GOBJECT_BORROWED, value: label },
+                { type: OBJECT_BORROWED, value: label },
                 { type: STRING_ARRAY, value: ["class-a", "class-b", "class-c"] },
             ],
             VOID,
@@ -29,7 +29,7 @@ describe("call - array types - string arrays basic", () => {
         const result = callArgs(
             GTK_LIB,
             "gtk_widget_get_css_classes",
-            [{ type: GOBJECT_BORROWED, value: label }],
+            [{ type: OBJECT_BORROWED, value: label }],
             STRING_ARRAY,
         ) as string[];
 
@@ -45,7 +45,7 @@ describe("call - array types - string arrays empty and small", () => {
             GTK_LIB,
             "gtk_widget_set_css_classes",
             [
-                { type: GOBJECT_BORROWED, value: label },
+                { type: OBJECT_BORROWED, value: label },
                 { type: STRING_ARRAY, value: [] },
             ],
             VOID,
@@ -54,7 +54,7 @@ describe("call - array types - string arrays empty and small", () => {
         const result = callArgs(
             GTK_LIB,
             "gtk_widget_get_css_classes",
-            [{ type: GOBJECT_BORROWED, value: label }],
+            [{ type: OBJECT_BORROWED, value: label }],
             STRING_ARRAY,
         ) as string[];
 
@@ -70,7 +70,7 @@ describe("call - array types - string arrays special content", () => {
             GTK_LIB,
             "gtk_widget_set_css_classes",
             [
-                { type: GOBJECT_BORROWED, value: label },
+                { type: OBJECT_BORROWED, value: label },
                 { type: STRING_ARRAY, value: ["class-世界", "class-🎉"] },
             ],
             VOID,
@@ -79,7 +79,7 @@ describe("call - array types - string arrays special content", () => {
         const result = callArgs(
             GTK_LIB,
             "gtk_widget_get_css_classes",
-            [{ type: GOBJECT_BORROWED, value: label }],
+            [{ type: OBJECT_BORROWED, value: label }],
             STRING_ARRAY,
         ) as string[];
 
@@ -94,7 +94,7 @@ describe("call - array types - string arrays special content", () => {
             GTK_LIB,
             "gtk_widget_add_css_class",
             [
-                { type: GOBJECT_BORROWED, value: label },
+                { type: OBJECT_BORROWED, value: label },
                 { type: STRING, value: "my-class" },
             ],
             VOID,
@@ -103,7 +103,7 @@ describe("call - array types - string arrays special content", () => {
         const result = callArgs(
             GTK_LIB,
             "gtk_widget_get_css_classes",
-            [{ type: GOBJECT_BORROWED, value: label }],
+            [{ type: OBJECT_BORROWED, value: label }],
             STRING_ARRAY,
         ) as string[];
 
@@ -119,7 +119,7 @@ describe("call - array types - string arrays mutations", () => {
             GTK_LIB,
             "gtk_widget_set_css_classes",
             [
-                { type: GOBJECT_BORROWED, value: label },
+                { type: OBJECT_BORROWED, value: label },
                 { type: STRING_ARRAY, value: ["keep", "remove"] },
             ],
             VOID,
@@ -129,7 +129,7 @@ describe("call - array types - string arrays mutations", () => {
             GTK_LIB,
             "gtk_widget_remove_css_class",
             [
-                { type: GOBJECT_BORROWED, value: label },
+                { type: OBJECT_BORROWED, value: label },
                 { type: STRING, value: "remove" },
             ],
             VOID,
@@ -138,7 +138,7 @@ describe("call - array types - string arrays mutations", () => {
         const result = callArgs(
             GTK_LIB,
             "gtk_widget_get_css_classes",
-            [{ type: GOBJECT_BORROWED, value: label }],
+            [{ type: OBJECT_BORROWED, value: label }],
             STRING_ARRAY,
         ) as string[];
 
@@ -156,7 +156,7 @@ describe("call - array types - string arrays large", () => {
             GTK_LIB,
             "gtk_widget_set_css_classes",
             [
-                { type: GOBJECT_BORROWED, value: label },
+                { type: OBJECT_BORROWED, value: label },
                 { type: STRING_ARRAY, value: classes },
             ],
             VOID,
@@ -165,7 +165,7 @@ describe("call - array types - string arrays large", () => {
         const result = callArgs(
             GTK_LIB,
             "gtk_widget_get_css_classes",
-            [{ type: GOBJECT_BORROWED, value: label }],
+            [{ type: OBJECT_BORROWED, value: label }],
             STRING_ARRAY,
         ) as string[];
 
@@ -185,7 +185,7 @@ describe("call - array types - memory leaks", () => {
                 GTK_LIB,
                 "gtk_widget_set_css_classes",
                 [
-                    { type: GOBJECT_BORROWED, value: label },
+                    { type: OBJECT_BORROWED, value: label },
                     { type: STRING_ARRAY, value: [`class-${i}-a`, `class-${i}-b`] },
                 ],
                 VOID,
@@ -199,7 +199,7 @@ describe("call - array types - memory leaks", () => {
         const result = callArgs(
             GTK_LIB,
             "gtk_widget_get_css_classes",
-            [{ type: GOBJECT_BORROWED, value: label }],
+            [{ type: OBJECT_BORROWED, value: label }],
             STRING_ARRAY,
         ) as string[];
 
@@ -215,13 +215,13 @@ describe("call - array types - memory leaks", () => {
                 GTK_LIB,
                 "gtk_widget_set_css_classes",
                 [
-                    { type: GOBJECT_BORROWED, value: label },
+                    { type: OBJECT_BORROWED, value: label },
                     { type: STRING_ARRAY, value: Array.from({ length: 10 }, (_, j) => `class-${i}-${j}`) },
                 ],
                 VOID,
             );
 
-            callArgs(GTK_LIB, "gtk_widget_get_css_classes", [{ type: GOBJECT_BORROWED, value: label }], STRING_ARRAY);
+            callArgs(GTK_LIB, "gtk_widget_get_css_classes", [{ type: OBJECT_BORROWED, value: label }], STRING_ARRAY);
         }
 
         expect(mem.measure()).toBeLessThan(10 * 1024 * 1024);
@@ -238,14 +238,14 @@ describe("call - array types - memory leaks returned", () => {
             GTK_LIB,
             "gtk_widget_set_css_classes",
             [
-                { type: GOBJECT_BORROWED, value: label },
+                { type: OBJECT_BORROWED, value: label },
                 { type: STRING_ARRAY, value: ["test-class"] },
             ],
             VOID,
         );
 
         for (let i = 0; i < 1000; i++) {
-            callArgs(GTK_LIB, "gtk_widget_get_css_classes", [{ type: GOBJECT_BORROWED, value: label }], STRING_ARRAY);
+            callArgs(GTK_LIB, "gtk_widget_get_css_classes", [{ type: OBJECT_BORROWED, value: label }], STRING_ARRAY);
         }
 
         expect(getRefCount(label)).toBe(labelRefCount);
@@ -261,7 +261,7 @@ describe("call - array types - edge cases replacement", () => {
             GTK_LIB,
             "gtk_widget_set_css_classes",
             [
-                { type: GOBJECT_BORROWED, value: label },
+                { type: OBJECT_BORROWED, value: label },
                 { type: STRING_ARRAY, value: ["old-1", "old-2"] },
             ],
             VOID,
@@ -271,7 +271,7 @@ describe("call - array types - edge cases replacement", () => {
             GTK_LIB,
             "gtk_widget_set_css_classes",
             [
-                { type: GOBJECT_BORROWED, value: label },
+                { type: OBJECT_BORROWED, value: label },
                 { type: STRING_ARRAY, value: ["new-1", "new-2", "new-3"] },
             ],
             VOID,
@@ -280,7 +280,7 @@ describe("call - array types - edge cases replacement", () => {
         const result = callArgs(
             GTK_LIB,
             "gtk_widget_get_css_classes",
-            [{ type: GOBJECT_BORROWED, value: label }],
+            [{ type: OBJECT_BORROWED, value: label }],
             STRING_ARRAY,
         ) as string[];
 
@@ -300,7 +300,7 @@ describe("call - array types - edge cases duplicates and special", () => {
             GTK_LIB,
             "gtk_widget_set_css_classes",
             [
-                { type: GOBJECT_BORROWED, value: label },
+                { type: OBJECT_BORROWED, value: label },
                 { type: STRING_ARRAY, value: ["dup", "dup", "unique"] },
             ],
             VOID,
@@ -309,7 +309,7 @@ describe("call - array types - edge cases duplicates and special", () => {
         const result = callArgs(
             GTK_LIB,
             "gtk_widget_get_css_classes",
-            [{ type: GOBJECT_BORROWED, value: label }],
+            [{ type: OBJECT_BORROWED, value: label }],
             STRING_ARRAY,
         ) as string[];
 

@@ -71,22 +71,22 @@ unsafe fn tracked_gobject_value(
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct GObjectDescriptor {
+pub struct ObjectDescriptor {
     pub ownership: Ownership,
 }
 
-impl GObjectDescriptor {
+impl ObjectDescriptor {
     #[allow(clippy::trivially_copy_pass_by_ref)]
     #[cfg_attr(coverage_nightly, coverage(off))]
     pub(crate) fn from_descriptor(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
-        let ownership = Ownership::from_descriptor(obj, "gobject")?;
+        let ownership = Ownership::from_descriptor(obj, "object")?;
         Ok(Self { ownership })
     }
 }
 
-impl FfiEncoder for GObjectDescriptor {
+impl FfiEncoder for ObjectDescriptor {
     fn object_ptr_context(&self) -> &'static str {
-        "GObject"
+        "Object"
     }
 
     fn transfer_release(&self) -> Option<ffi::PendingRelease> {
@@ -115,9 +115,9 @@ impl FfiEncoder for GObjectDescriptor {
     }
 }
 
-impl FfiDecoder for GObjectDescriptor {
+impl FfiDecoder for ObjectDescriptor {
     fn read_call(&self, stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
-        let Some(object_ptr) = stashed_value.as_non_null_ptr("GObject")? else {
+        let Some(object_ptr) = stashed_value.as_non_null_ptr("Object")? else {
             return Ok(value::Value::Null);
         };
         // SAFETY: `as_non_null_ptr` yielded a non-null pointer returned by the C call as a live
@@ -141,7 +141,7 @@ impl FfiDecoder for GObjectDescriptor {
     }
 }
 
-impl PointerWriter for GObjectDescriptor {
+impl PointerWriter for ObjectDescriptor {
     unsafe fn write_return_to_pointer(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         self.write_return_with_ownership(ret, value, self.ownership, |ptr| {
             // SAFETY: `ptr` is a non-null live GObject (the helper skips null); `from_glib_none`
@@ -165,7 +165,7 @@ impl PointerWriter for GObjectDescriptor {
             swap_owned_slot(
                 ptr,
                 value,
-                "GObject field write",
+                "Object field write",
                 |new_ptr| {
                     let borrowed_new: Borrowed<glib::Object> =
                         from_glib_borrow(new_ptr as *mut glib::gobject_ffi::GObject);

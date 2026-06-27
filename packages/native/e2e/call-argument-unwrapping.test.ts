@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Handle } from "../binding.js";
-import { callArgs, createLabel, GOBJECT_BORROWED, STRING, VOID } from "./helpers/utils.js";
+import { callArgs, createLabel, OBJECT_BORROWED, STRING, VOID } from "./helpers/utils.js";
 
 describe("call argument unwrapping", () => {
     it("forwards a Handle argument to a function expecting an object pointer", () => {
@@ -10,13 +10,13 @@ describe("call argument unwrapping", () => {
             "libgtk-4.so.1",
             "gtk_label_set_text",
             [
-                { type: GOBJECT_BORROWED, value: label },
+                { type: OBJECT_BORROWED, value: label },
                 { type: STRING, value: "Updated" },
             ],
             VOID,
         );
 
-        const text = callArgs("libgtk-4.so.1", "gtk_label_get_text", [{ type: GOBJECT_BORROWED, value: label }], {
+        const text = callArgs("libgtk-4.so.1", "gtk_label_get_text", [{ type: OBJECT_BORROWED, value: label }], {
             kind: "string",
             ownership: "borrowed",
         });

@@ -7,6 +7,7 @@ export type Handle = ExternalObject<unknown>;
 export type CallDescriptor = ExternalObject<unknown>;
 export type Value = Ref | AnyValue | Value[] | ((...args: never[]) => unknown);
 export type Ref = { value: Value | null };
+export type Ownership = "full" | "borrowed";
 export type Int8Descriptor = { kind: "int8" };
 export type Uint8Descriptor = { kind: "uint8" };
 export type Int16Descriptor = { kind: "int16" };
@@ -22,9 +23,8 @@ export type Float64Descriptor = { kind: "float64" };
 export type EnumDescriptor = { kind: "enum"; sharedLibrary: string; getTypeFn: string; signed: boolean };
 export type FlagsDescriptor = { kind: "flags"; sharedLibrary: string; getTypeFn: string; signed: boolean };
 export type BooleanDescriptor = { kind: "boolean" };
-export type Ownership = "full" | "borrowed";
 export type StringDescriptor = { kind: "string"; ownership: Ownership; length?: number };
-export type GObjectDescriptor = { kind: "gobject"; ownership: Ownership };
+export type ObjectDescriptor = { kind: "object"; ownership: Ownership };
 export type UnicharDescriptor = { kind: "unichar" };
 export type VoidDescriptor = { kind: "void" };
 export type BufferDescriptor = { kind: "buffer" };
@@ -93,7 +93,7 @@ export type Descriptor =
     | FlagsDescriptor
     | BooleanDescriptor
     | StringDescriptor
-    | GObjectDescriptor
+    | ObjectDescriptor
     | BoxedDescriptor
     | StructDescriptor
     | FundamentalDescriptor

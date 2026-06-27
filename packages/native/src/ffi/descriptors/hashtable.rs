@@ -26,7 +26,7 @@ impl HashTableEntryEncoder {
             Descriptor::Integer(_) => Some(Self::Integer),
             Descriptor::Boolean(_) => Some(Self::Boolean),
             Descriptor::Float(_) => Some(Self::Float),
-            Descriptor::GObject(_)
+            Descriptor::Object(_)
             | Descriptor::Boxed(_)
             | Descriptor::Struct(_)
             | Descriptor::Fundamental(_) => Some(Self::Handle(Box::new(ty.clone()))),
@@ -68,7 +68,7 @@ impl HashTableEntryEncoder {
 
     fn transferred_entry_destroy(ty: &Descriptor) -> anyhow::Result<glib::ffi::GDestroyNotify> {
         match ty {
-            Descriptor::GObject(gobject) if gobject.ownership.is_full() => {
+            Descriptor::Object(object) if object.ownership.is_full() => {
                 Ok(Some(g_object_unref_wrapper))
             }
             Descriptor::Fundamental(fundamental) if fundamental.ownership.is_full() => {
