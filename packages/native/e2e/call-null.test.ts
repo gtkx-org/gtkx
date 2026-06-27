@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { expectSingleMinRefMeasurementPopulatesNumber } from "../call-null-ref-helpers.js";
+import { expectSingleMinRefMeasurementPopulatesNumber } from "./helpers/call-null-ref-helpers.js";
 import {
     boxAppend,
     callArgs,
@@ -14,7 +14,7 @@ import {
     measureWidgetAllNull,
     POINTER,
     STRING_BORROWED,
-} from "../utils.js";
+} from "./helpers/utils.js";
 
 describe("call - null pointer arguments - basic", () => {
     it("passes null pointer as optional argument", () => {

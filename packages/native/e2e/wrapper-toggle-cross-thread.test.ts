@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { getWrapper, type Handle, setWrapper } from "../../index.js";
-import { driveToggleFromThread, finalizeCount, watchObjectFinalize } from "./native-test-support.js";
-import { createLabel, forceGC, getRefCount } from "./utils.js";
+import { getWrapper, type Handle, setWrapper } from "../index.js";
+import { driveToggleFromThread, finalizeCount, watchObjectFinalize } from "../test-support.js";
+import { createLabel, forceGC, getRefCount } from "./helpers/utils.js";
 
 describe("toggle references under cross-thread churn", () => {
     it("keeps wrapper identity and refcount stable while toggle notifies race GC", async () => {

@@ -7,7 +7,7 @@ use napi::bindgen_prelude::*;
 use napi::{Env, JsObject, NapiRaw, sys};
 use napi_derive::napi;
 
-use crate::handle::NativeHandle;
+use crate::handle::Handle;
 use crate::handle::wrapper_registry;
 use crate::messaging::Mailbox;
 
@@ -45,11 +45,7 @@ unsafe extern "C" fn on_wrapper_finalize(
 
 #[napi(catch_unwind)]
 #[cfg_attr(test, allow(dead_code))]
-pub fn set_wrapper(
-    env: Env,
-    handle: &External<NativeHandle>,
-    wrapper: JsObject,
-) -> napi::Result<()> {
+pub fn set_wrapper(env: Env, handle: &External<Handle>, wrapper: JsObject) -> napi::Result<()> {
     let gobject_addr = handle.ptr() as usize;
     if gobject_addr == 0 {
         return Err(napi::Error::new(

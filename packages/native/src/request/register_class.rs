@@ -9,11 +9,11 @@ use napi::bindgen_prelude::*;
 use napi::{Env, JsFunction, JsObject, NapiValue as _};
 use napi_derive::napi;
 
-use super::NativeRequest;
+use super::Request;
 use crate::ffi::callback::{CallbackState, build_trampoline};
 use crate::ffi::descriptors::Descriptor;
 use crate::ffi::value::{JsRef, map_js_array};
-use crate::messaging::error_reporter::NativeErrorReporter;
+use crate::messaging::error_reporter::ErrorReporter;
 
 #[cfg_attr(test, allow(dead_code))]
 struct RawVfunc {
@@ -177,7 +177,7 @@ impl PreparedInterface {
         let iface_vtable =
             unsafe { gobject_ffi::g_type_interface_peek(class_ptr, self.gtype.into_glib()) };
         if iface_vtable.is_null() {
-            NativeErrorReporter::global().report_str(&format!(
+            ErrorReporter::global().report_str(&format!(
                 "register_class: registered type does not conform to interface {:#x}",
                 self.gtype.into_glib()
             ));
@@ -345,7 +345,7 @@ impl RegisterClassRequest {
     }
 }
 
-impl NativeRequest for RegisterClassRequest {
+impl Request for RegisterClassRequest {
     type Output = u64;
 
     #[cfg_attr(coverage_nightly, coverage(off))]

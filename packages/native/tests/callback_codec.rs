@@ -1,4 +1,4 @@
-mod common;
+mod helpers;
 
 use std::ffi::c_void;
 
@@ -63,7 +63,7 @@ fn scope_default_is_call() {
 
 #[test]
 fn append_ffi_arg_types_without_destroy_pushes_two_pointers() {
-    common::run(|| {
+    helpers::run(|| {
         let mut types: Vec<libffi::Type> = Vec::new();
         callback_type(false).append_ffi_arg_types(&mut types);
         assert_eq!(types.len(), 2);
@@ -72,7 +72,7 @@ fn append_ffi_arg_types_without_destroy_pushes_two_pointers() {
 
 #[test]
 fn append_ffi_arg_types_with_destroy_pushes_three_pointers() {
-    common::run(|| {
+    helpers::run(|| {
         let mut types: Vec<libffi::Type> = Vec::new();
         callback_type(true).append_ffi_arg_types(&mut types);
         assert_eq!(types.len(), 3);
@@ -81,14 +81,14 @@ fn append_ffi_arg_types_with_destroy_pushes_three_pointers() {
 
 #[test]
 fn encode_null_without_destroy_builds_callback() {
-    common::run(|| {
+    helpers::run(|| {
         assert_null_callback(&callback_type(false), &Value::Null, None);
     });
 }
 
 #[test]
 fn encode_null_with_destroy_builds_callback_with_destroy_slot() {
-    common::run(|| {
+    helpers::run(|| {
         assert_null_callback(
             &callback_type(true),
             &Value::Undefined,
@@ -99,7 +99,7 @@ fn encode_null_with_destroy_builds_callback_with_destroy_slot() {
 
 #[test]
 fn encode_null_builds_null_callback() {
-    common::run(|| {
+    helpers::run(|| {
         assert_null_callback(&callback_type(false), &Value::Null, None);
     });
 }

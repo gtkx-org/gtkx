@@ -1,4 +1,4 @@
-mod common;
+mod helpers;
 
 use std::ffi::c_void;
 
@@ -15,7 +15,7 @@ use native::ffi::descriptors::{
 };
 use native::ffi::value::Value;
 
-use common::get_gobject_refcount;
+use helpers::get_gobject_refcount;
 
 fn gobject_type_of(ownership: Ownership) -> Descriptor {
     Descriptor::GObject(GObjectDescriptor { ownership })
@@ -115,10 +115,10 @@ fn new_referenced_gobject() -> (glib::Object, *mut glib::gobject_ffi::GObject) {
     (obj, obj_ptr)
 }
 
-fn new_gobject_handle() -> (glib::Object, *mut c_void, native::NativeHandle) {
+fn new_gobject_handle() -> (glib::Object, *mut c_void, native::Handle) {
     let obj = glib::Object::new::<glib::Object>();
     let obj_ptr = obj.as_ptr() as *mut c_void;
-    let handle = native::NativeHandle::borrowed_gobject(obj_ptr);
+    let handle = native::Handle::borrowed_gobject(obj_ptr);
     (obj, obj_ptr, handle)
 }
 
@@ -195,7 +195,7 @@ fn assert_for_each(samples: Vec<Value>, predicate: impl Fn(&Value) -> bool) {
 
 #[test]
 fn gobject_transfer_none_does_not_take_ownership() {
-    common::run(|| {
+    helpers::run(|| {
         let obj = glib::Object::new::<glib::Object>();
         let obj_ptr = obj.as_ptr();
 
@@ -220,7 +220,7 @@ fn gobject_transfer_none_does_not_take_ownership() {
 
 #[test]
 fn gobject_full_transfer_keeps_pending_reference() {
-    common::run(|| {
+    helpers::run(|| {
         let (_obj, obj_ptr) = new_referenced_gobject();
 
         let ref_before_transfer = get_gobject_refcount(obj_ptr);
@@ -241,14 +241,14 @@ fn gobject_full_transfer_keeps_pending_reference() {
 
 #[test]
 fn gobject_null_returns_null_value() {
-    common::run(|| {
+    helpers::run(|| {
         assert_null_ptr_decodes_to_null(&gobject_type_of(Ownership::Full));
     });
 }
 
 #[test]
 fn gobject_floating_ref_gets_sunk() {
-    common::run(|| {
+    helpers::run(|| {
         let (_obj, obj_ptr) = new_referenced_gobject();
 
         // SAFETY: `obj_ptr` is the live object held by `_obj` plus the extra reference; forcing it
@@ -272,7 +272,7 @@ fn gobject_floating_ref_gets_sunk() {
 
 #[test]
 fn string_transfer_none_does_not_free() {
-    common::run(|| {
+    helpers::run(|| {
         let test_string = "test string content";
         let c_string = std::ffi::CString::new(test_string).unwrap();
         let ptr = c_string.as_ptr() as *mut c_void;
@@ -288,7 +288,7 @@ fn string_transfer_none_does_not_free() {
 
 #[test]
 fn string_full_transfer_frees_memory() {
-    common::run(|| {
+    helpers::run(|| {
         let test_string = "allocated string";
         let c_string = std::ffi::CString::new(test_string).unwrap();
         // SAFETY: `c_string` is alive with a valid NUL-terminated buffer; `g_strdup` returns a
@@ -305,20 +305,20 @@ fn string_full_transfer_frees_memory() {
 
 #[test]
 fn string_null_returns_null_value() {
-    common::run(|| {
+    helpers::run(|| {
         assert_null_ptr_decodes_to_null(&string_type_of(Ownership::Full));
     });
 }
 
 #[test]
 fn boxed_transfer_none_creates_copy() {
-    common::run(|| {
+    helpers::run(|| {
         let gtype = gdk::RGBA::static_type();
-        let original_ptr = common::allocate_test_boxed(gtype);
+        let original_ptr = helpers::allocate_test_boxed(gtype);
 
         decode_ptr(&rgba_boxed_type_of(Ownership::Borrowed), original_ptr);
 
-        assert!(common::is_valid_boxed_ptr(original_ptr, gtype));
+        assert!(helpers::is_valid_boxed_ptr(original_ptr, gtype));
 
         // SAFETY: the borrowed decode copied rather than took `original_ptr`, so it is still a live
         // boxed value of `gtype`; freeing it once with the matching gtype is sound.
@@ -330,9 +330,9 @@ fn boxed_transfer_none_creates_copy() {
 
 #[test]
 fn boxed_full_transfer_takes_ownership() {
-    common::run(|| {
+    helpers::run(|| {
         let gtype = gdk::RGBA::static_type();
-        let ptr = common::allocate_test_boxed(gtype);
+        let ptr = helpers::allocate_test_boxed(gtype);
 
         decode_ptr(&rgba_boxed_type_of(Ownership::Full), ptr);
     });
@@ -340,14 +340,14 @@ fn boxed_full_transfer_takes_ownership() {
 
 #[test]
 fn boxed_null_returns_null_value() {
-    common::run(|| {
+    helpers::run(|| {
         assert_null_ptr_decodes_to_null(&rgba_boxed_type_of(Ownership::Full));
     });
 }
 
 #[test]
 fn glist_transfer_none_does_not_free_list() {
-    common::run(|| {
+    helpers::run(|| {
         let list = build_gobject_glist(3);
 
         let items = decode_array(
@@ -383,7 +383,7 @@ fn glist_transfer_none_does_not_free_list() {
 
 #[test]
 fn glist_full_transfer_frees_list() {
-    common::run(|| {
+    helpers::run(|| {
         let list = build_gobject_glist(3);
 
         let items = decode_array(&gobject_glist_type_of(Ownership::Full), list as *mut c_void);
@@ -393,7 +393,7 @@ fn glist_full_transfer_frees_list() {
 
 #[test]
 fn glist_null_returns_empty_array() {
-    common::run(|| {
+    helpers::run(|| {
         let items = decode_array(
             &gobject_glist_type_of(Ownership::Full),
             std::ptr::null_mut(),
@@ -404,7 +404,7 @@ fn glist_null_returns_empty_array() {
 
 #[test]
 fn strv_transfer_none_does_not_free() {
-    common::run(|| {
+    helpers::run(|| {
         let strings = [
             std::ffi::CString::new("hello").unwrap(),
             std::ffi::CString::new("world").unwrap(),
@@ -433,7 +433,7 @@ fn strv_transfer_none_does_not_free() {
 
 #[test]
 fn strv_full_transfer_frees_strings() {
-    common::run(|| {
+    helpers::run(|| {
         // SAFETY: the `c"hello"` literal is a valid NUL-terminated C string; `g_strdup` returns a
         // freshly `g_malloc`-ed owned copy that the full-transfer decode below takes and frees.
         let s1 = unsafe { glib::ffi::g_strdup(c"hello".as_ptr()) };
@@ -461,7 +461,7 @@ fn strv_full_transfer_frees_strings() {
 
 #[test]
 fn from_cif_value_fundamental_gvariant_transfer_none() {
-    common::run(|| {
+    helpers::run(|| {
         // SAFETY: `g_variant_new_int32` returns a fresh floating GVariant; `g_variant_ref_sink`
         // converts the floating reference into one owned reference held by this test.
         let variant = unsafe {
@@ -486,14 +486,14 @@ fn from_cif_value_fundamental_gvariant_transfer_none() {
 
 #[test]
 fn from_cif_value_fundamental_null() {
-    common::run(|| {
+    helpers::run(|| {
         assert_null_ptr_decodes_to_null(&gvariant_fundamental_type_of(Ownership::Full));
     });
 }
 
 #[test]
 fn from_cif_value_ref_integer() {
-    common::run(|| {
+    helpers::run(|| {
         assert_scalar_ref_decodes_to_number(
             Descriptor::Integer(native::ffi::descriptors::IntegerKind::I32),
             &ffi::StashedValue::I32(12345),
@@ -504,7 +504,7 @@ fn from_cif_value_ref_integer() {
 
 #[test]
 fn from_cif_value_ref_float() {
-    common::run(|| {
+    helpers::run(|| {
         assert_scalar_ref_decodes_to_number(
             Descriptor::Float(native::ffi::descriptors::FloatKind::F64),
             &ffi::StashedValue::F64(3.15625),
@@ -515,7 +515,7 @@ fn from_cif_value_ref_float() {
 
 #[test]
 fn from_cif_value_ref_gobject() {
-    common::run(|| {
+    helpers::run(|| {
         let obj = glib::Object::new::<glib::Object>();
         let obj_ptr = obj.as_ptr() as *mut c_void;
 
@@ -538,7 +538,7 @@ fn from_cif_value_ref_gobject() {
 
 #[test]
 fn from_cif_value_ref_gobject_null_inner() {
-    common::run(|| {
+    helpers::run(|| {
         let cif_value = ptr_slot_storage(std::ptr::null_mut());
         let type_ = Descriptor::Ref(
             native::ffi::descriptors::RefDescriptor::new(gobject_type_of(Ownership::Borrowed))
@@ -554,9 +554,9 @@ fn from_cif_value_ref_gobject_null_inner() {
 
 #[test]
 fn from_cif_value_ref_boxed() {
-    common::run(|| {
+    helpers::run(|| {
         let gtype = gdk::RGBA::static_type();
-        let boxed_ptr = common::allocate_test_boxed(gtype);
+        let boxed_ptr = helpers::allocate_test_boxed(gtype);
 
         let cif_value = ptr_slot_storage(boxed_ptr);
         let type_ = Descriptor::Ref(
@@ -577,7 +577,7 @@ fn from_cif_value_ref_boxed() {
 
 #[test]
 fn glist_with_string_items() {
-    common::run(|| {
+    helpers::run(|| {
         let s1 = std::ffi::CString::new("hello").unwrap();
         let s2 = std::ffi::CString::new("world").unwrap();
 
@@ -607,42 +607,42 @@ fn glist_with_string_items() {
 
 #[test]
 fn from_cif_value_struct_transfer_none_logs_warning() {
-    common::run(|| {
+    helpers::run(|| {
         assert_struct_alloc_decodes_to_object(Ownership::Borrowed, Some(16), 16);
     });
 }
 
 #[test]
 fn from_cif_value_struct_full_transfer() {
-    common::run(|| {
+    helpers::run(|| {
         assert_struct_alloc_decodes_to_object(Ownership::Full, Some(32), 32);
     });
 }
 
 #[test]
 fn from_cif_value_struct_null_returns_null_value() {
-    common::run(|| {
+    helpers::run(|| {
         assert_null_ptr_decodes_to_null(&struct_type_of(Ownership::Borrowed, Some(16)));
     });
 }
 
 #[test]
 fn from_cif_value_struct_transfer_none_without_size_creates_unowned() {
-    common::run(|| {
+    helpers::run(|| {
         assert_struct_alloc_decodes_to_object(Ownership::Borrowed, None, 24);
     });
 }
 
 #[test]
 fn from_cif_value_struct_owned_without_size() {
-    common::run(|| {
+    helpers::run(|| {
         assert_struct_alloc_decodes_to_object(Ownership::Full, None, 24);
     });
 }
 
 #[test]
 fn result_to_ptr_returns_handle_pointer_for_object() {
-    common::run(|| {
+    helpers::run(|| {
         let (_obj, obj_ptr, handle) = new_gobject_handle();
 
         let result: Result<Value, ()> = Ok(Value::Object(handle));
@@ -725,7 +725,7 @@ fn as_array_is_none_for_other_variants() {
 
 #[test]
 fn object_ptr_returns_handle_pointer() {
-    common::run(|| {
+    helpers::run(|| {
         let (_obj, obj_ptr, handle) = new_gobject_handle();
 
         let value = Value::Object(handle);
@@ -754,7 +754,7 @@ fn object_ptr_errors_for_non_object_variants() {
 
 #[test]
 fn decode_with_context_decodes_integer() {
-    common::run(|| {
+    helpers::run(|| {
         let stashed_value = ffi::StashedValue::I32(99);
         let type_ = Descriptor::Integer(native::ffi::descriptors::IntegerKind::I32);
 

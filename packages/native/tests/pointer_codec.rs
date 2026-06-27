@@ -1,8 +1,8 @@
-mod common;
+mod helpers;
 
 use std::ffi::c_void;
 
-use native::NativeHandle;
+use native::Handle;
 use native::ffi::descriptors::{
     FfiDecoder, Ownership, PointerWriter, ReadSource, StructDescriptor,
 };
@@ -45,7 +45,7 @@ fn null_guarded_runs_decode_for_non_null_pointer() {
 #[test]
 fn write_object_ptr_writes_object_pointer() {
     let target: u64 = 1;
-    let handle = NativeHandle::borrowed(&target as *const u64 as *mut c_void);
+    let handle = Handle::borrowed(&target as *const u64 as *mut c_void);
 
     let mut slot: *mut c_void = std::ptr::null_mut();
     let slot_ptr = &mut slot as *mut *mut c_void as *mut c_void;
@@ -85,7 +85,7 @@ fn write_return_object_ptr_writes_null_for_error() {
 #[test]
 fn write_return_object_ptr_transfers_non_null_pointer() {
     let target: u64 = 2;
-    let handle = NativeHandle::borrowed(&target as *const u64 as *mut c_void);
+    let handle = Handle::borrowed(&target as *const u64 as *mut c_void);
 
     let mut slot: *mut c_void = std::ptr::null_mut();
     let ret = &mut slot as *mut *mut c_void as *mut c_void;

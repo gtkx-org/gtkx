@@ -1,4 +1,4 @@
-mod common;
+mod helpers;
 
 use std::ffi::c_void;
 
@@ -30,7 +30,7 @@ fn ownership_default_is_borrowed() {
 
 #[test]
 fn transfer_release_matches_codec_ownership() {
-    common::run(|| {
+    helpers::run(|| {
         use native::ffi::PendingRelease;
         use native::ffi::descriptors::{
             BoxedDescriptor, FfiEncoder as _, GObjectDescriptor, StructDescriptor,
@@ -110,7 +110,7 @@ fn can_be_return_type_accepts_value_shapes_and_rejects_argument_shapes() {
     assert!(Descriptor::Integer(IntegerKind::I32).can_be_return_type());
     assert!(Descriptor::Void(VoidDescriptor).can_be_return_type());
     assert!(Descriptor::GObject(gobject_type()).can_be_return_type());
-    assert!(Descriptor::EnumFlags(common::enum_type()).can_be_return_type());
+    assert!(Descriptor::EnumFlags(helpers::enum_type()).can_be_return_type());
 
     assert!(!Descriptor::Callback(callback_type()).can_be_return_type());
     assert!(!Descriptor::Buffer(BufferDescriptor).can_be_return_type());

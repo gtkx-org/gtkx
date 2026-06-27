@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { registerClass } from "../../index.js";
-import { BIGUINT64, callArgs, createLabel, GOBJECT_LIB, typeFromName } from "./utils.js";
+import { registerClass } from "../index.js";
+import { BIGUINT64, callArgs, createLabel, GOBJECT_LIB, typeFromName } from "./helpers/utils.js";
 
 const G_TYPE_INVALID_NAME = "ThisGTypeDefinitelyDoesNotExist";
 

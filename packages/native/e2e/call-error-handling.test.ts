@@ -10,7 +10,7 @@ import {
     STRING,
     UINT64,
     VOID,
-} from "../utils.js";
+} from "./helpers/utils.js";
 
 describe("call - error handling - symbol errors", () => {
     it("throws on invalid symbol name", () => {

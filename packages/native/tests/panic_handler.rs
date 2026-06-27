@@ -1,4 +1,4 @@
-mod common;
+mod helpers;
 
 use std::panic::PanicHookInfo;
 use std::sync::{Arc, Mutex};
@@ -23,7 +23,7 @@ fn capture_panic_report() -> (Arc<Mutex<String>>, PreviousHook) {
 
 #[test]
 fn formats_static_str_payload() {
-    let _guard = common::serial_guard();
+    let _guard = helpers::serial_guard();
     let previous = std::panic::take_hook();
     std::panic::set_hook(Box::new(|_| {}));
     let result = std::panic::catch_unwind(|| {
@@ -37,7 +37,7 @@ fn formats_static_str_payload() {
 
 #[test]
 fn formats_owned_string_payload() {
-    let _guard = common::serial_guard();
+    let _guard = helpers::serial_guard();
     let previous = std::panic::take_hook();
     std::panic::set_hook(Box::new(|_| {}));
     let result = std::panic::catch_unwind(|| {
@@ -51,7 +51,7 @@ fn formats_owned_string_payload() {
 
 #[test]
 fn format_panic_report_includes_thread_location_and_message() {
-    let _guard = common::serial_guard();
+    let _guard = helpers::serial_guard();
     let (captured, previous) = capture_panic_report();
 
     let thread_name = "panic_report_thread";
@@ -79,7 +79,7 @@ fn format_panic_report_includes_thread_location_and_message() {
 
 #[test]
 fn format_panic_report_uses_unnamed_when_thread_lacks_name() {
-    let _guard = common::serial_guard();
+    let _guard = helpers::serial_guard();
     let (captured, previous) = capture_panic_report();
 
     let handle = std::thread::spawn(|| {
@@ -95,7 +95,7 @@ fn format_panic_report_uses_unnamed_when_thread_lacks_name() {
 
 #[test]
 fn install_panic_hook_is_idempotent() {
-    let _guard = common::serial_guard();
+    let _guard = helpers::serial_guard();
     install_panic_hook();
     install_panic_hook();
 

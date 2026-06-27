@@ -6,7 +6,7 @@ use std::thread::JoinHandle;
 
 use parking_lot::Mutex;
 
-use super::error_reporter::NativeErrorReporter;
+use super::error_reporter::ErrorReporter;
 use super::log_handler::GlibLogHandler;
 use super::panic_handler::format_panic_payload;
 use super::{GlibTask, Mailbox, send_or_report};
@@ -26,7 +26,7 @@ impl GlibThread {
     pub fn set_handle(&self, handle: JoinHandle<()>) {
         let previous = self.handle.lock().replace(handle);
         if previous.is_some() {
-            NativeErrorReporter::global()
+            ErrorReporter::global()
                 .report_str("GLib thread handle replaced while a previous thread was unjoined");
         }
     }
@@ -69,7 +69,7 @@ impl GlibThread {
                 }));
 
                 if let Err(payload) = result {
-                    NativeErrorReporter::global().report_str(&format!(
+                    ErrorReporter::global().report_str(&format!(
                         "GLib thread panicked: {}",
                         format_panic_payload(&*payload)
                     ));
@@ -147,7 +147,7 @@ impl Mailbox {
             match task {
                 Some((_, task)) => {
                     if let Err(payload) = panic::catch_unwind(AssertUnwindSafe(task)) {
-                        NativeErrorReporter::global().report_str(&format!(
+                        ErrorReporter::global().report_str(&format!(
                             "panic in GLib-thread task: {}",
                             format_panic_payload(&*payload)
                         ));

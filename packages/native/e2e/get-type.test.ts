@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { getType, type Handle } from "../../index.js";
-import { createLabel, typeFromName } from "./utils.js";
+import { getType, type Handle } from "../index.js";
+import { createLabel, typeFromName } from "./helpers/utils.js";
 
 describe("getType", () => {
     it("returns the runtime GType of a GtkLabel instance", () => {

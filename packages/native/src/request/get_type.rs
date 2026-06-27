@@ -3,15 +3,15 @@ use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use super::NativeRequest;
-use crate::handle::NativeHandle;
+use super::Request;
+use crate::handle::Handle;
 
 #[cfg_attr(test, allow(dead_code))]
 struct GetTypeRequest {
     instance_addr: usize,
 }
 
-impl NativeRequest for GetTypeRequest {
+impl Request for GetTypeRequest {
     type Output = u64;
 
     fn execute(self) -> anyhow::Result<u64> {
@@ -46,7 +46,7 @@ mod napi_export {
     #[cfg_attr(test, allow(dead_code))]
     pub fn get_type<'env>(
         env: &'env Env,
-        handle: &External<NativeHandle>,
+        handle: &External<Handle>,
     ) -> napi::Result<Unknown<'env>> {
         GetTypeRequest {
             instance_addr: handle.ptr_as_usize(),

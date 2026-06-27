@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { expectSingleMinRefMeasurementPopulatesNumber } from "../call-null-ref-helpers.js";
-import { createLabel, getRefCount, measureWidget, measureWidgetAllNull, startMemoryMeasurement } from "../utils.js";
+import { expectSingleMinRefMeasurementPopulatesNumber } from "./helpers/call-null-ref-helpers.js";
+import {
+    createLabel,
+    getRefCount,
+    measureWidget,
+    measureWidgetAllNull,
+    startMemoryMeasurement,
+} from "./helpers/utils.js";
 
 describe("call - ref types - integer refs basic", () => {
     it("populates 32-bit signed integer ref", () => {

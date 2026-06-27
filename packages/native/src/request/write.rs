@@ -2,11 +2,11 @@ use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use super::NativeRequest;
+use super::Request;
 use super::read::FieldLocation;
 use crate::ffi::descriptors::{Descriptor, PointerWriter as _};
 use crate::ffi::value::Value;
-use crate::handle::NativeHandle;
+use crate::handle::Handle;
 
 #[cfg_attr(test, allow(dead_code))]
 struct WriteRequest {
@@ -15,11 +15,11 @@ struct WriteRequest {
     value: Value,
 }
 
-impl NativeRequest for WriteRequest {
+impl Request for WriteRequest {
     type Output = ();
 
     fn execute(self) -> anyhow::Result<()> {
-        // SAFETY: runs on the gtkx-glib thread; `location` was built from a live `NativeHandle`
+        // SAFETY: runs on the gtkx-glib thread; `location` was built from a live `Handle`
         // pointer plus an in-bounds field offset, satisfying `resolve`'s contract.
         let field_ptr = unsafe { self.location.resolve()? };
         // SAFETY: `field_ptr` addresses a valid, writable field slot of `field_type`; the codec
@@ -44,7 +44,7 @@ mod napi_export {
     #[cfg_attr(test, allow(dead_code))]
     pub fn write<'env>(
         env: &'env Env,
-        handle: &External<NativeHandle>,
+        handle: &External<Handle>,
         js_type: Unknown<'_>,
         offset: f64,
         value: Unknown<'_>,

@@ -7,7 +7,7 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
 use super::bind::CallDescriptor;
-use super::{NativeRequest, RefUpdate};
+use super::{RefUpdate, Request};
 use crate::ffi::{
     self,
     arg::Arg,
@@ -22,7 +22,7 @@ pub struct CallRequest {
     pub values: Vec<Value>,
 }
 
-impl NativeRequest for CallRequest {
+impl Request for CallRequest {
     type Output = (Value, Vec<RefUpdate>);
 
     fn execute(self) -> anyhow::Result<(Value, Vec<RefUpdate>)> {

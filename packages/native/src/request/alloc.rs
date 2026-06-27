@@ -3,8 +3,8 @@ use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use super::NativeRequest;
-use crate::handle::{Boxed, NativeHandle, NativeValue};
+use super::Request;
+use crate::handle::{Boxed, Handle, Value};
 
 #[cfg_attr(test, allow(dead_code))]
 struct AllocRequest {
@@ -12,10 +12,10 @@ struct AllocRequest {
     type_name: Option<String>,
 }
 
-impl NativeRequest for AllocRequest {
-    type Output = NativeHandle;
+impl Request for AllocRequest {
+    type Output = Handle;
 
-    fn execute(self) -> anyhow::Result<NativeHandle> {
+    fn execute(self) -> anyhow::Result<Handle> {
         let type_name = self
             .type_name
             .map(glib::GString::from_string_checked)
@@ -35,7 +35,7 @@ impl NativeRequest for AllocRequest {
         }
 
         let boxed = Boxed::from_alloc(type_name, ptr);
-        Ok(NativeValue::Boxed(boxed).into())
+        Ok(Value::Boxed(boxed).into())
     }
 
     fn error_context() -> &'static str {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { Handle } from "../../index.js";
-import { callArgs, createLabel, GOBJECT_BORROWED, STRING, VOID } from "./utils.js";
+import type { Handle } from "../index.js";
+import { callArgs, createLabel, GOBJECT_BORROWED, STRING, VOID } from "./helpers/utils.js";
 
 describe("call argument unwrapping", () => {
     it("forwards a Handle argument to a function expecting an object pointer", () => {

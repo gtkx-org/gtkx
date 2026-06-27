@@ -14,6 +14,8 @@
         "packages/*/src/**/*.tsx",
         "packages/*/tests/**/*.ts",
         "packages/*/tests/**/*.tsx",
+        "packages/native/e2e/**/*.ts",
+        "packages/native/e2e/**/*.tsx",
         "packages/*/vitest.config.ts",
         "packages/*/vitest.bench.config.ts",
         "packages/native/index.ts",

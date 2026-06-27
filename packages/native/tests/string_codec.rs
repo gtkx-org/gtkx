@@ -1,4 +1,4 @@
-mod common;
+mod helpers;
 
 use std::ffi::{CStr, CString, c_char, c_void};
 
@@ -10,7 +10,7 @@ use native::ffi::descriptors::{
 };
 use native::ffi::value::Value;
 
-use common::{
+use helpers::{
     assert_decode_null_yields_null, assert_read_null_yields_null, read_slot, write_return_into_slot,
 };
 
@@ -30,7 +30,7 @@ fn full() -> StringDescriptor {
 
 #[test]
 fn encode_borrowed_keeps_string_in_storage() {
-    common::run(|| {
+    helpers::run(|| {
         let encoded = borrowed()
             .encode(&Value::String("hello".to_owned()))
             .expect("borrowed encode should succeed");
@@ -46,7 +46,7 @@ fn encode_borrowed_keeps_string_in_storage() {
 
 #[test]
 fn encode_full_duplicates_into_glib_string() {
-    common::run(|| {
+    helpers::run(|| {
         let encoded = full()
             .encode(&Value::String("owned".to_owned()))
             .expect("full encode should succeed");
@@ -67,7 +67,7 @@ fn encode_full_duplicates_into_glib_string() {
 
 #[test]
 fn encode_full_releases_duplicate_when_call_never_happens() {
-    common::run(|| {
+    helpers::run(|| {
         let encoded = full()
             .encode(&Value::String("owned".to_owned()))
             .expect("full encode should succeed");
@@ -77,7 +77,7 @@ fn encode_full_releases_duplicate_when_call_never_happens() {
 
 #[test]
 fn encode_null_yields_null_pointer() {
-    common::run(|| {
+    helpers::run(|| {
         let encoded = borrowed()
             .encode(&Value::Null)
             .expect("null encode should succeed");
@@ -92,7 +92,7 @@ fn encode_null_yields_null_pointer() {
 
 #[test]
 fn decode_borrowed_reads_string() {
-    common::run(|| {
+    helpers::run(|| {
         let cstring = CString::new("decoded").unwrap();
         let decoded = borrowed()
             .decode(&ffi::StashedValue::Ptr(cstring.as_ptr() as *mut c_void))
@@ -103,7 +103,7 @@ fn decode_borrowed_reads_string() {
 
 #[test]
 fn decode_full_reads_and_frees() {
-    common::run(|| {
+    helpers::run(|| {
         // SAFETY: `c"owned-decode"` is a valid NUL-terminated C string literal; `g_strdup` returns
         // a freshly `g_malloc`-ed owned copy that the full decode below takes ownership of and frees.
         let owned = unsafe { glib::ffi::g_strdup(c"owned-decode".as_ptr()) };
@@ -116,14 +116,14 @@ fn decode_full_reads_and_frees() {
 
 #[test]
 fn decode_null_yields_null() {
-    common::run(|| {
+    helpers::run(|| {
         assert_decode_null_yields_null(&borrowed());
     });
 }
 
 #[test]
 fn ptr_to_value_reads_string() {
-    common::run(|| {
+    helpers::run(|| {
         let cstring = CString::new("ptr-value").unwrap();
         // SAFETY: `cstring` stays alive for the call, so the `ReadSource::Value` pointer addresses
         // a valid NUL-terminated C string that the borrowed string codec reads without taking it.
@@ -136,14 +136,14 @@ fn ptr_to_value_reads_string() {
 
 #[test]
 fn ptr_to_value_null_yields_null() {
-    common::run(|| {
+    helpers::run(|| {
         assert_read_null_yields_null(&borrowed());
     });
 }
 
 #[test]
 fn read_from_pointer_dereferences_pointer_slot() {
-    common::run(|| {
+    helpers::run(|| {
         let cstring = CString::new("slot").unwrap();
         // SAFETY: `read_slot` places `cstring`'s pointer into a pointer slot and reads through it;
         // `cstring` stays alive for the call, so the slot points to a valid NUL-terminated string.
@@ -155,7 +155,7 @@ fn read_from_pointer_dereferences_pointer_slot() {
 
 #[test]
 fn write_return_to_pointer_writes_duplicated_string() {
-    common::run(|| {
+    helpers::run(|| {
         let slot = write_return_into_slot(&borrowed(), &Ok(Value::String("ret".to_owned())));
 
         assert!(!slot.is_null());
@@ -170,7 +170,7 @@ fn write_return_to_pointer_writes_duplicated_string() {
 
 #[test]
 fn write_return_to_pointer_non_string_writes_null() {
-    common::run(|| {
+    helpers::run(|| {
         let slot = write_return_into_slot(&borrowed(), &Ok(Value::Number(1.0)));
         assert!(slot.is_null());
     });
@@ -178,7 +178,7 @@ fn write_return_to_pointer_non_string_writes_null() {
 
 #[test]
 fn write_value_to_pointer_writes_string() {
-    common::run(|| {
+    helpers::run(|| {
         let mut slot: *mut c_char = std::ptr::null_mut();
         // SAFETY: the address of the live, writable pointer stack local `slot` is the pointer slot
         // `write_value_to_pointer` stores the duplicated string pointer into, which is in bounds.
@@ -213,7 +213,7 @@ fn assert_write_value_to_pointer_writes_null(value: &Value) {
 
 #[test]
 fn write_value_to_pointer_writes_null() {
-    common::run(|| {
+    helpers::run(|| {
         assert_write_value_to_pointer_writes_null(&Value::Null);
         assert_write_value_to_pointer_writes_null(&Value::Undefined);
     });

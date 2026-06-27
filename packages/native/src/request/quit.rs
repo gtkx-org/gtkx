@@ -5,7 +5,7 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
 use crate::messaging::Mailbox;
-use crate::messaging::error_reporter::NativeErrorReporter;
+use crate::messaging::error_reporter::ErrorReporter;
 use crate::messaging::glib_mailbox::GlibThread;
 
 #[napi(catch_unwind)]
@@ -21,7 +21,7 @@ pub fn quit(env: Env, main_loop: &External<glib::MainLoop>) -> napi::Result<()> 
     })?;
 
     if let Some(msg) = GlibThread::global().join() {
-        NativeErrorReporter::global().report_str(&format!("GLib thread exited with panic: {msg}"));
+        ErrorReporter::global().report_str(&format!("GLib thread exited with panic: {msg}"));
     }
 
     Ok(())

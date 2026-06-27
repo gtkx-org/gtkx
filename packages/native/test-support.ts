@@ -1,4 +1,4 @@
-import * as native from "../../native-binding-test.cjs";
+import * as native from "./native-binding-test.cjs";
 
 type RawHandle = Parameters<typeof native.watchObjectFinalize>[0];
 

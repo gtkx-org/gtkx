@@ -3,12 +3,16 @@ import { DEFAULT_HEADLESS_SIZE, type HeadlessOptions, startHeadlessDisplay } fro
 
 /**
  * Vitest environment that provisions an isolated headless Wayland display for
- * each test worker. The display is started during {@link Environment.setup}; on
- * process exit the temporary runtime directory and session bus are torn down,
- * while the compositor carries a parent-death signal and is reaped by the kernel
- * only once the worker process terminates — which is after the native GLib main
- * loop has already quit — so GTK never observes its compositor disappearing
- * while it is still iterating.
+ * each test worker. The display is started during {@link Environment.setup} and
+ * torn down from {@link Environment.teardown}, which Vitest invokes during its
+ * graceful worker "stop" while the worker is still alive — by which point every
+ * test's React tree has been unmounted — so the compositor is killed before
+ * Vitest sends the worker SIGTERM. A `process.on("exit")` handler is kept as a
+ * fallback for any non-graceful exit. Deferring teardown to process exit alone is
+ * unsafe: Vitest terminates forks workers with SIGTERM, on which Node runs no
+ * "exit" handlers, so the compositor would instead be reaped by its parent-death
+ * signal at the same instant the worker dies and GTK would abort the worker on
+ * "Lost connection to Wayland compositor" mid-flight.
  */
 const gtkxEnvironment: Environment = {
     name: "gtkx",
@@ -20,14 +24,15 @@ const gtkxEnvironment: Environment = {
         });
 
         let torndown = false;
-        process.on("exit", () => {
+        const runTeardown = (): void => {
             if (torndown) return;
             torndown = true;
             teardown();
-        });
+        };
+        process.on("exit", runTeardown);
 
         return {
-            teardown() {},
+            teardown: runTeardown,
         };
     },
 };

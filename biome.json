@@ -121,7 +121,7 @@
             }
         },
         {
-            "includes": ["**/tests/**"],
+            "includes": ["**/tests/**", "packages/native/e2e/**"],
             "linter": {
                 "rules": {
                     "complexity": {

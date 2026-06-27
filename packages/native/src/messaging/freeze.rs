@@ -2,7 +2,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::messaging::Mailbox;
 use crate::messaging::wait_signal::WaitSignal;
-use crate::messaging::error_reporter::NativeErrorReporter;
+use crate::messaging::error_reporter::ErrorReporter;
 
 #[derive(Debug)]
 pub(super) struct FreezeController {
@@ -33,7 +33,7 @@ impl FreezeController {
         match previous {
             Ok(1) => self.wake.notify(),
             Ok(_) => {}
-            Err(_) => NativeErrorReporter::global()
+            Err(_) => ErrorReporter::global()
                 .report_str("unfreeze called without a matching freeze; ignoring"),
         }
     }

@@ -21,4 +21,4 @@ test_visible_modules! {
     messaging,
 }
 
-pub use handle::{Boxed, NativeHandle};
+pub use handle::{Boxed, Handle};

@@ -34,7 +34,7 @@ module.exports = {
             comment:
                 "Shipped code must not import a devDependency. Either move the dependency to " +
                 "'dependencies', or move the importing module into the test surface.",
-            from: { pathNot: ["(^|/)tests?/", "\\.(spec|test)\\.[tj]sx?$"] },
+            from: { pathNot: ["(^|/)(tests?|e2e)/", "\\.(spec|test)\\.[tj]sx?$"] },
             to: {
                 dependencyTypes: ["npm-dev"],
                 dependencyTypesNot: ["type-only"],

@@ -452,7 +452,7 @@ trait ArrayKindEncoder {
 
     fn encode_handles(
         &self,
-        handles: &[crate::handle::NativeHandle],
+        handles: &[crate::handle::Handle],
         item_descriptor: &Descriptor,
         ownership: Ownership,
     ) -> anyhow::Result<ffi::StashedValue>;
@@ -509,7 +509,7 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
 
     fn encode_handles(
         &self,
-        handles: &[crate::handle::NativeHandle],
+        handles: &[crate::handle::Handle],
         item_descriptor: &Descriptor,
         ownership: Ownership,
     ) -> anyhow::Result<ffi::StashedValue> {
@@ -583,7 +583,7 @@ fn group_with_container(
 }
 
 fn transfer_elements(
-    handles: &[crate::handle::NativeHandle],
+    handles: &[crate::handle::Handle],
     item_descriptor: &Descriptor,
     container_label: &str,
 ) -> anyhow::Result<(Vec<*mut c_void>, Vec<ffi::PendingTransfer>)> {
@@ -656,7 +656,7 @@ impl<F: ffi::ListFlavor> ArrayKindEncoder for ListEncoder<F> {
 
     fn encode_handles(
         &self,
-        handles: &[crate::handle::NativeHandle],
+        handles: &[crate::handle::Handle],
         item_descriptor: &Descriptor,
         ownership: Ownership,
     ) -> anyhow::Result<ffi::StashedValue> {
@@ -752,7 +752,7 @@ impl ArrayDescriptor {
 
     fn extract_handles(
         array: &[value::Value],
-    ) -> anyhow::Result<Vec<crate::handle::NativeHandle>> {
+    ) -> anyhow::Result<Vec<crate::handle::Handle>> {
         array
             .iter()
             .map(|v| match v {

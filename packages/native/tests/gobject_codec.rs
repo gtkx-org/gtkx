@@ -1,4 +1,4 @@
-mod common;
+mod helpers;
 
 use std::ffi::c_void;
 
@@ -10,9 +10,9 @@ use native::ffi::descriptors::{
     FfiDecoder, FfiEncoder, GObjectDescriptor, Ownership, PointerWriter, ReadSource,
 };
 use native::ffi::value::Value;
-use native::handle::NativeHandle;
+use native::handle::Handle;
 
-use common::{
+use helpers::{
     assert_decode_null_yields_null, assert_read_null_yields_null,
     assert_write_return_err_writes_null, get_gobject_refcount, read_slot, write_return_into_slot,
 };
@@ -37,7 +37,7 @@ fn fresh_gobject() -> (glib::Object, *mut glib::gobject_ffi::GObject, u32) {
 }
 
 fn object_value_of(ptr: *mut glib::gobject_ffi::GObject) -> Value {
-    Value::Object(NativeHandle::borrowed(ptr as *mut c_void))
+    Value::Object(Handle::borrowed(ptr as *mut c_void))
 }
 
 fn encode_object(
@@ -50,7 +50,7 @@ fn encode_object(
 
 #[test]
 fn encode_full_transfer_adds_exactly_one_ref() {
-    common::run(|| {
+    helpers::run(|| {
         let (_obj, obj_ptr, before) = fresh_gobject();
 
         let encoded = encode_object(&full(), obj_ptr);
@@ -72,7 +72,7 @@ fn encode_full_transfer_adds_exactly_one_ref() {
 
 #[test]
 fn encode_full_transfer_releases_reference_when_call_never_happens() {
-    common::run(|| {
+    helpers::run(|| {
         let (_obj, obj_ptr, before) = fresh_gobject();
 
         let encoded = encode_object(&full(), obj_ptr);
@@ -84,7 +84,7 @@ fn encode_full_transfer_releases_reference_when_call_never_happens() {
 
 #[test]
 fn encode_borrowed_does_not_change_refcount() {
-    common::run(|| {
+    helpers::run(|| {
         let (_obj, obj_ptr, before) = fresh_gobject();
 
         let encoded = encode_object(&borrowed(), obj_ptr);
@@ -96,14 +96,14 @@ fn encode_borrowed_does_not_change_refcount() {
 
 #[test]
 fn encode_null_object_stays_null() {
-    common::run(|| {
-        common::assert_encode_null_yields_null_ptr(&full());
+    helpers::run(|| {
+        helpers::assert_encode_null_yields_null_ptr(&full());
     });
 }
 
 #[test]
 fn ref_for_transfer_full_adds_one_ref() {
-    common::run(|| {
+    helpers::run(|| {
         let (_obj, obj_ptr, before) = fresh_gobject();
 
         // SAFETY: `obj_ptr` is the live GObject of the `_obj` binding; the full `ref_for_transfer`
@@ -122,7 +122,7 @@ fn ref_for_transfer_full_adds_one_ref() {
 
 #[test]
 fn ref_for_transfer_borrowed_keeps_refcount() {
-    common::run(|| {
+    helpers::run(|| {
         let (_obj, obj_ptr, before) = fresh_gobject();
 
         // SAFETY: `obj_ptr` is the live GObject of the `_obj` binding; the borrowed
@@ -137,7 +137,7 @@ fn ref_for_transfer_borrowed_keeps_refcount() {
 
 #[test]
 fn ref_for_transfer_full_null_is_noop() {
-    common::run(|| {
+    helpers::run(|| {
         // SAFETY: `ref_for_transfer` tolerates a null pointer, returning it without dereferencing
         // or taking a reference.
         let returned = unsafe { full().ref_for_transfer(std::ptr::null_mut()) }
@@ -148,7 +148,7 @@ fn ref_for_transfer_full_null_is_noop() {
 
 #[test]
 fn decode_borrowed_adds_exactly_one_ref() {
-    common::run(|| {
+    helpers::run(|| {
         let (_obj, obj_ptr, before) = fresh_gobject();
 
         let decoded = borrowed()
@@ -164,7 +164,7 @@ fn decode_borrowed_adds_exactly_one_ref() {
 
 #[test]
 fn decode_full_transfer_keeps_refcount_net_of_wrapper() {
-    common::run(|| {
+    helpers::run(|| {
         let (_obj, obj_ptr, _) = fresh_gobject();
 
         // SAFETY: `obj_ptr` is the live GObject of the `_obj` binding; this extra reference models
@@ -183,7 +183,7 @@ fn decode_full_transfer_keeps_refcount_net_of_wrapper() {
 
 #[test]
 fn decode_floating_object_is_sunk() {
-    common::run(|| {
+    helpers::run(|| {
         // SAFETY: `g_initially_unowned_get_type` is a valid GType and a null varargs terminator is
         // the documented "no properties" call, so `g_object_new` returns a fresh floating object.
         let obj_ptr = unsafe {
@@ -212,14 +212,14 @@ fn decode_floating_object_is_sunk() {
 
 #[test]
 fn decode_null_pointer_yields_null() {
-    common::run(|| {
+    helpers::run(|| {
         assert_decode_null_yields_null(&borrowed());
     });
 }
 
 #[test]
 fn ptr_to_value_wraps_borrowed_object() {
-    common::run(|| {
+    helpers::run(|| {
         let (_obj, obj_ptr, before) = fresh_gobject();
 
         // SAFETY: `obj_ptr` is the live GObject of the `_obj` binding; the borrowed `read` wraps it
@@ -235,14 +235,14 @@ fn ptr_to_value_wraps_borrowed_object() {
 
 #[test]
 fn ptr_to_value_null_yields_null() {
-    common::run(|| {
+    helpers::run(|| {
         assert_read_null_yields_null(&borrowed());
     });
 }
 
 #[test]
 fn read_from_pointer_dereferences_and_wraps() {
-    common::run(|| {
+    helpers::run(|| {
         let (_obj, obj_ptr, _) = fresh_gobject();
 
         // SAFETY: `read_slot` places `obj_ptr` into a pointer slot and reads through it; `obj_ptr`
@@ -256,7 +256,7 @@ fn read_from_pointer_dereferences_and_wraps() {
 
 #[test]
 fn write_return_to_pointer_full_transfer_writes_referenced_pointer() {
-    common::run(|| {
+    helpers::run(|| {
         let (_obj, obj_ptr, before) = fresh_gobject();
 
         let slot = write_return_into_slot(&full(), &Ok(object_value_of(obj_ptr)));
@@ -271,7 +271,7 @@ fn write_return_to_pointer_full_transfer_writes_referenced_pointer() {
 
 #[test]
 fn write_return_to_pointer_borrowed_keeps_refcount() {
-    common::run(|| {
+    helpers::run(|| {
         let (_obj, obj_ptr, before) = fresh_gobject();
 
         let slot = write_return_into_slot(&borrowed(), &Ok(object_value_of(obj_ptr)));
@@ -283,14 +283,14 @@ fn write_return_to_pointer_borrowed_keeps_refcount() {
 
 #[test]
 fn write_return_to_pointer_err_writes_null() {
-    common::run(|| {
+    helpers::run(|| {
         assert_write_return_err_writes_null(&borrowed());
     });
 }
 
 #[test]
 fn write_value_to_pointer_writes_object() {
-    common::run(|| {
+    helpers::run(|| {
         let (_obj, obj_ptr, before) = fresh_gobject();
 
         let mut slot: *mut c_void = std::ptr::null_mut();
@@ -316,7 +316,7 @@ fn write_value_to_pointer_writes_object() {
 
 #[test]
 fn write_value_to_pointer_unrefs_previous_object() {
-    common::run(|| {
+    helpers::run(|| {
         let (_old, old_ptr, _) = fresh_gobject();
         let (_new, new_ptr, _) = fresh_gobject();
 
@@ -350,7 +350,7 @@ fn write_value_to_pointer_unrefs_previous_object() {
 
 #[test]
 fn write_value_to_pointer_null_releases_previous_object() {
-    common::run(|| {
+    helpers::run(|| {
         let (_obj, obj_ptr, _) = fresh_gobject();
 
         // SAFETY: `obj_ptr` is the live GObject; this extra reference is the one the slot owns and

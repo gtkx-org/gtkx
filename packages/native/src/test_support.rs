@@ -8,14 +8,14 @@ use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use crate::handle::NativeHandle;
+use crate::handle::Handle;
 use crate::messaging::Mailbox;
 
 static FINALIZE_COUNT: AtomicU64 = AtomicU64::new(0);
 
 #[napi(catch_unwind)]
 #[cfg_attr(test, allow(dead_code))]
-pub fn watch_object_finalize(env: Env, handle: &External<NativeHandle>) -> napi::Result<()> {
+pub fn watch_object_finalize(env: Env, handle: &External<Handle>) -> napi::Result<()> {
     let addr = handle.ptr() as usize;
     Mailbox::global().dispatch_and_wait_napi(env, move || {
         // SAFETY: the closure runs on the gtkx-glib thread; `addr` is the handle's live GObject
@@ -41,7 +41,7 @@ pub fn finalize_count() -> napi::Result<f64> {
 #[cfg_attr(test, allow(dead_code))]
 pub fn drive_toggle_from_thread(
     env: Env,
-    handle: &External<NativeHandle>,
+    handle: &External<Handle>,
     iterations: u32,
 ) -> napi::Result<()> {
     let addr = handle.ptr() as usize;

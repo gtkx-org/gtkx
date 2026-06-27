@@ -5,7 +5,7 @@ export default defineConfig({
     plugins: [gtkx()],
     test: {
         name: "native",
-        setupFiles: ["./tests/module/setup.ts"],
+        setupFiles: ["./e2e/helpers/setup.ts"],
         execArgv: ["--expose-gc"],
     },
 });

@@ -2,7 +2,7 @@ use std::any::Any;
 use std::panic::{self, PanicHookInfo};
 use std::sync::OnceLock;
 
-use crate::messaging::error_reporter::NativeErrorReporter;
+use crate::messaging::error_reporter::ErrorReporter;
 
 static PANIC_HOOK_INSTALLED: OnceLock<()> = OnceLock::new();
 
@@ -34,7 +34,7 @@ pub fn install_panic_hook() {
         let previous = panic::take_hook();
         panic::set_hook(Box::new(move |info: &PanicHookInfo<'_>| {
             previous(info);
-            NativeErrorReporter::global().report_str(&format_panic_report(info));
+            ErrorReporter::global().report_str(&format_panic_report(info));
         }));
     });
 }

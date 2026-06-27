@@ -1,6 +1,6 @@
 #![allow(deprecated)]
 
-mod common;
+mod helpers;
 
 use std::ffi::c_void;
 use std::sync::Arc;

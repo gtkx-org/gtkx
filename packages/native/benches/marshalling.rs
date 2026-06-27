@@ -1,7 +1,7 @@
 #![allow(clippy::significant_drop_tightening)]
 
-#[path = "../tests/common/mod.rs"]
-mod common;
+#[path = "../tests/helpers/mod.rs"]
+mod helpers;
 
 use std::ffi::{CString, c_void};
 
@@ -16,7 +16,7 @@ use native::ffi::descriptors::{
 };
 use native::ffi::value::{BufferView, BufferViewKind, Value};
 
-use common::{f32_array_type, i32_array_type};
+use helpers::{f32_array_type, i32_array_type};
 
 const SIZES: [usize; 3] = [256, 1024, 4096];
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { getWrapper, type Handle, setWrapper } from "../../index.js";
-import { finalizeCount, watchObjectFinalize } from "./native-test-support.js";
-import { boxAppend, boxRemove, createBox, createLabel, forceGC, getRefCount } from "./utils.js";
+import { getWrapper, type Handle, setWrapper } from "../index.js";
+import { finalizeCount, watchObjectFinalize } from "../test-support.js";
+import { boxAppend, boxRemove, createBox, createLabel, forceGC, getRefCount } from "./helpers/utils.js";
 
 async function gcUntil(predicate: () => boolean, maxRounds = 100): Promise<boolean> {
     for (let i = 0; i < maxRounds; i++) {

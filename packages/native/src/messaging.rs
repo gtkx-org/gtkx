@@ -43,7 +43,7 @@ use parking_lot::Mutex;
 
 use crate::ffi::value::{JsRef, Value};
 use crate::handle::wrapper_registry::WrapperRefOp;
-use crate::messaging::error_reporter::NativeErrorReporter;
+use crate::messaging::error_reporter::ErrorReporter;
 use crate::messaging::freeze::FreezeController;
 use crate::messaging::wait_signal::WaitSignal;
 
@@ -200,7 +200,7 @@ impl Mailbox {
 
 pub(crate) fn send_or_report<T>(tx: &mpsc::Sender<T>, value: T, context: &str) {
     if tx.send(value).is_err() {
-        NativeErrorReporter::global().report_str(context);
+        ErrorReporter::global().report_str(context);
     }
 }
 

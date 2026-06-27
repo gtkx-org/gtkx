@@ -10,7 +10,7 @@ use glib::{
 use napi::{Env, JsObject};
 
 use super::prelude::*;
-use crate::handle::NativeHandle;
+use crate::handle::Handle;
 use crate::handle::wrapper_registry;
 
 /// Reads the `GTypeClass` pointer out of a live `GObject` instance.
@@ -65,7 +65,7 @@ unsafe fn tracked_gobject_value(
         unsafe { glib::gobject_ffi::g_object_ref(gobject_ptr) };
     }
 
-    Ok(value::Value::Object(NativeHandle::decoded_gobject(
+    Ok(value::Value::Object(Handle::decoded_gobject(
         gobject_ptr.cast(),
     )))
 }

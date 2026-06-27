@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { freeze, unfreeze } from "../../index.js";
+import { freeze, unfreeze } from "../index.js";
 
 describe("freeze and unfreeze", () => {
     it("can be called without arguments", () => {

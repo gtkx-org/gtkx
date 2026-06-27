@@ -1,4 +1,4 @@
-mod common;
+mod helpers;
 
 use std::ffi::c_void;
 
@@ -9,9 +9,9 @@ use native::ffi::descriptors::{
     FfiDecoder, FfiEncoder, FundamentalDescriptor, Ownership, PointerWriter, ReadSource,
 };
 use native::ffi::value::Value;
-use native::handle::NativeHandle;
+use native::handle::Handle;
 
-use common::{
+use helpers::{
     assert_decode_null_yields_null, assert_read_null_yields_null,
     assert_write_return_err_writes_null, read_slot, write_return_into_slot,
 };
@@ -81,7 +81,7 @@ fn fundamental_with_unresolvable_symbols(ownership: Ownership) -> FundamentalDes
 
 fn encode_param_spec(codec: &FundamentalDescriptor, pspec: *mut c_void) -> ffi::StashedValue {
     codec
-        .encode(&Value::Object(NativeHandle::borrowed(pspec)))
+        .encode(&Value::Object(Handle::borrowed(pspec)))
         .expect("encode should succeed")
 }
 
@@ -114,7 +114,7 @@ fn assert_write_return_writes_pointer(codec: &FundamentalDescriptor, expected_ex
     let pspec = create_param_spec();
     let before = param_spec_refcount(pspec);
 
-    let slot = write_return_into_slot(codec, &Ok(Value::Object(NativeHandle::borrowed(pspec))));
+    let slot = write_return_into_slot(codec, &Ok(Value::Object(Handle::borrowed(pspec))));
 
     assert_eq!(slot, pspec);
     assert_eq!(param_spec_refcount(pspec), before + expected_extra_refs);
@@ -124,7 +124,7 @@ fn assert_write_return_writes_pointer(codec: &FundamentalDescriptor, expected_ex
 
 #[test]
 fn lookup_fns_resolves_ref_and_unref() {
-    common::run(|| {
+    helpers::run(|| {
         let (ref_fn, unref_fn) = fundamental(Ownership::Borrowed)
             .lookup_fns()
             .expect("lookup_fns should succeed");
@@ -135,7 +135,7 @@ fn lookup_fns_resolves_ref_and_unref() {
 
 #[test]
 fn encode_full_adds_exactly_one_ref() {
-    common::run(|| {
+    helpers::run(|| {
         let pspec = create_param_spec();
         let before = param_spec_refcount(pspec);
 
@@ -150,7 +150,7 @@ fn encode_full_adds_exactly_one_ref() {
 
 #[test]
 fn encode_full_releases_reference_when_call_never_happens() {
-    common::run(|| {
+    helpers::run(|| {
         let pspec = create_param_spec();
         let before = param_spec_refcount(pspec);
 
@@ -164,42 +164,42 @@ fn encode_full_releases_reference_when_call_never_happens() {
 
 #[test]
 fn encode_borrowed_keeps_refcount() {
-    common::run(|| {
+    helpers::run(|| {
         assert_encode_returns_plain_pointer(&fundamental(Ownership::Borrowed), 0);
     });
 }
 
 #[test]
 fn encode_full_null_pointer_stays_null() {
-    common::run(|| {
-        common::assert_encode_null_yields_null_ptr(&fundamental(Ownership::Full));
+    helpers::run(|| {
+        helpers::assert_encode_null_yields_null_ptr(&fundamental(Ownership::Full));
     });
 }
 
 #[test]
 fn ref_for_transfer_full_adds_one_ref() {
-    common::run(|| {
+    helpers::run(|| {
         assert_ref_for_transfer(&fundamental(Ownership::Full), 1);
     });
 }
 
 #[test]
 fn ref_for_transfer_borrowed_keeps_refcount() {
-    common::run(|| {
+    helpers::run(|| {
         assert_ref_for_transfer(&fundamental(Ownership::Borrowed), 0);
     });
 }
 
 #[test]
 fn encode_full_without_unref_fn_returns_referenced_pointer() {
-    common::run(|| {
+    helpers::run(|| {
         assert_encode_returns_plain_pointer(&fundamental_without_unref_fn(Ownership::Full), 1);
     });
 }
 
 #[test]
 fn transfer_release_borrowed_is_none() {
-    common::run(|| {
+    helpers::run(|| {
         assert!(
             fundamental(Ownership::Borrowed)
                 .transfer_release()
@@ -210,7 +210,7 @@ fn transfer_release_borrowed_is_none() {
 
 #[test]
 fn transfer_release_full_without_fns_is_none() {
-    common::run(|| {
+    helpers::run(|| {
         assert!(
             fundamental_without_ref_fn(Ownership::Full)
                 .transfer_release()
@@ -221,7 +221,7 @@ fn transfer_release_full_without_fns_is_none() {
 
 #[test]
 fn transfer_release_full_with_unresolvable_symbols_is_none() {
-    common::run(|| {
+    helpers::run(|| {
         assert!(
             fundamental_with_unresolvable_symbols(Ownership::Full)
                 .transfer_release()
@@ -232,7 +232,7 @@ fn transfer_release_full_with_unresolvable_symbols_is_none() {
 
 #[test]
 fn transfer_release_full_releases_one_reference() {
-    common::run(|| {
+    helpers::run(|| {
         let release = fundamental(Ownership::Full)
             .transfer_release()
             .expect("full transfer_release should yield a release");
@@ -253,35 +253,35 @@ fn transfer_release_full_releases_one_reference() {
 
 #[test]
 fn ref_for_transfer_full_without_ref_fn_keeps_pointer() {
-    common::run(|| {
+    helpers::run(|| {
         assert_ref_for_transfer(&fundamental_without_ref_fn(Ownership::Full), 0);
     });
 }
 
 #[test]
 fn encode_full_without_ref_fn_keeps_pointer() {
-    common::run(|| {
+    helpers::run(|| {
         assert_encode_returns_plain_pointer(&fundamental_without_ref_fn(Ownership::Full), 0);
     });
 }
 
 #[test]
 fn write_return_to_pointer_without_ref_fn_writes_plain_pointer() {
-    common::run(|| {
+    helpers::run(|| {
         assert_write_return_writes_pointer(&fundamental_without_ref_fn(Ownership::Borrowed), 0);
     });
 }
 
 #[test]
 fn write_return_to_pointer_full_without_ref_fn_writes_plain_pointer() {
-    common::run(|| {
+    helpers::run(|| {
         assert_write_return_writes_pointer(&fundamental_without_ref_fn(Ownership::Full), 0);
     });
 }
 
 #[test]
 fn ref_for_transfer_full_null_is_noop() {
-    common::run(|| {
+    helpers::run(|| {
         // SAFETY: `ref_for_transfer` tolerates a null pointer, returning it without dereferencing
         // or calling the ref function.
         let returned =
@@ -293,7 +293,7 @@ fn ref_for_transfer_full_null_is_noop() {
 
 #[test]
 fn decode_borrowed_adds_exactly_one_ref() {
-    common::run(|| {
+    helpers::run(|| {
         let pspec = create_param_spec();
         let before = param_spec_refcount(pspec);
 
@@ -311,7 +311,7 @@ fn decode_borrowed_adds_exactly_one_ref() {
 
 #[test]
 fn decode_full_takes_ownership() {
-    common::run(|| {
+    helpers::run(|| {
         let pspec = create_param_spec();
         let before = param_spec_refcount(pspec);
 
@@ -327,14 +327,14 @@ fn decode_full_takes_ownership() {
 
 #[test]
 fn decode_null_yields_null() {
-    common::run(|| {
+    helpers::run(|| {
         assert_decode_null_yields_null(&fundamental(Ownership::Borrowed));
     });
 }
 
 #[test]
 fn ptr_to_value_wraps_fundamental() {
-    common::run(|| {
+    helpers::run(|| {
         let pspec = create_param_spec();
         let before = param_spec_refcount(pspec);
 
@@ -353,14 +353,14 @@ fn ptr_to_value_wraps_fundamental() {
 
 #[test]
 fn ptr_to_value_null_yields_null() {
-    common::run(|| {
+    helpers::run(|| {
         assert_read_null_yields_null(&fundamental(Ownership::Borrowed));
     });
 }
 
 #[test]
 fn read_from_pointer_dereferences_slot() {
-    common::run(|| {
+    helpers::run(|| {
         let pspec = create_param_spec();
 
         // SAFETY: `read_slot` places `pspec` into a pointer slot and reads through it; `pspec` is
@@ -375,28 +375,28 @@ fn read_from_pointer_dereferences_slot() {
 
 #[test]
 fn write_return_to_pointer_full_transfer_writes_referenced_pointer() {
-    common::run(|| {
+    helpers::run(|| {
         assert_write_return_writes_pointer(&fundamental(Ownership::Full), 1);
     });
 }
 
 #[test]
 fn write_return_to_pointer_borrowed_keeps_refcount() {
-    common::run(|| {
+    helpers::run(|| {
         assert_write_return_writes_pointer(&fundamental(Ownership::Borrowed), 0);
     });
 }
 
 #[test]
 fn write_return_to_pointer_err_writes_null() {
-    common::run(|| {
+    helpers::run(|| {
         assert_write_return_err_writes_null(&fundamental(Ownership::Borrowed));
     });
 }
 
 #[test]
 fn write_value_to_pointer_writes_fundamental() {
-    common::run(|| {
+    helpers::run(|| {
         let pspec = create_param_spec();
         let before = param_spec_refcount(pspec);
 
@@ -407,7 +407,7 @@ fn write_value_to_pointer_writes_fundamental() {
         unsafe {
             fundamental(Ownership::Borrowed).write_value_to_pointer(
                 &mut slot as *mut *mut c_void as *mut c_void,
-                &Value::Object(NativeHandle::borrowed(pspec)),
+                &Value::Object(Handle::borrowed(pspec)),
             )
         }
         .expect("write_value_to_pointer should succeed");
@@ -421,7 +421,7 @@ fn write_value_to_pointer_writes_fundamental() {
 
 #[test]
 fn write_value_to_pointer_unrefs_previous_fundamental() {
-    common::run(|| {
+    helpers::run(|| {
         let old = create_param_spec();
         let new = create_param_spec();
 
@@ -438,7 +438,7 @@ fn write_value_to_pointer_unrefs_previous_fundamental() {
         unsafe {
             fundamental(Ownership::Borrowed).write_value_to_pointer(
                 &mut slot as *mut *mut c_void as *mut c_void,
-                &Value::Object(NativeHandle::borrowed(new)),
+                &Value::Object(Handle::borrowed(new)),
             )
         }
         .expect("write_value_to_pointer should succeed");
@@ -454,7 +454,7 @@ fn write_value_to_pointer_unrefs_previous_fundamental() {
 
 #[test]
 fn write_value_to_pointer_null_releases_previous_fundamental() {
-    common::run(|| {
+    helpers::run(|| {
         let pspec = create_param_spec();
 
         // SAFETY: `pspec` is the live GParamSpec; this extra reference is the one the slot owns and

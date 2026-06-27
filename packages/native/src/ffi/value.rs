@@ -8,7 +8,7 @@ use napi::sys;
 use napi::{Env, JsFunction, JsObject, NapiRaw, NapiValue, ValueType};
 
 use crate::messaging::{JsRefDeletion, Mailbox};
-use crate::handle::NativeHandle;
+use crate::handle::Handle;
 
 pub struct JsRef<T> {
     raw: sys::napi_ref,
@@ -405,7 +405,7 @@ pub enum Value {
     BigInt(i128),
     String(String),
     Boolean(bool),
-    Object(NativeHandle),
+    Object(Handle),
     Null,
     Undefined,
     Array(Vec<Self>),
@@ -518,11 +518,11 @@ impl Value {
             ValueType::External => {
                 // SAFETY: `value_type` was confirmed `External`, so `value` is an external napi
                 // value of `env`. These externals are only ever created by `to_js_value` wrapping a
-                // `NativeHandle`, so decoding it back as `&External<NativeHandle>` matches the stored
+                // `Handle`, so decoding it back as `&External<Handle>` matches the stored
                 // type and borrows it for the duration of the call.
                 let external_ref =
-                    unsafe { <&External<NativeHandle>>::from_napi_value(env.raw(), value.raw())? };
-                Ok(Self::Object(NativeHandle::borrowed(external_ref.ptr())))
+                    unsafe { <&External<Handle>>::from_napi_value(env.raw(), value.raw())? };
+                Ok(Self::Object(Handle::borrowed(external_ref.ptr())))
             }
             ValueType::Function => {
                 let cb = Callback::from_js_value(env, value)?;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { alloc, read, write } from "../../index.js";
+import { alloc, read, write } from "../index.js";
 
 describe("read and write - float fields", () => {
     it("writes and reads float values at offset 0", () => {

@@ -5,7 +5,7 @@ use glib::{
 use napi::{Env, JsObject};
 
 use super::prelude::*;
-use crate::messaging::error_reporter::NativeErrorReporter;
+use crate::messaging::error_reporter::ErrorReporter;
 use crate::handle::Boxed;
 use crate::ffi::library_cache::GlibThreadState;
 
@@ -54,7 +54,7 @@ impl BoxedDescriptor {
             match self.try_resolve_gtype_from_library() {
                 Ok(gtype) => gtype,
                 Err(e) => {
-                    NativeErrorReporter::global().report(&e);
+                    ErrorReporter::global().report(&e);
                     None
                 }
             }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { expectNoLeakCreatingLabels } from "../call-gobject-string-helpers.js";
+import { expectNoLeakCreatingLabels } from "./helpers/call-gobject-string-helpers.js";
 import {
     callArgs,
     createButton,
@@ -13,7 +13,7 @@ import {
     STRING_BORROWED,
     startMemoryMeasurement,
     VOID,
-} from "../utils.js";
+} from "./helpers/utils.js";
 
 describe("call - string types - owned basic", () => {
     it("passes owned string as argument", () => {

@@ -15,15 +15,15 @@ use glib::thread_guard::ThreadGuard;
 use crate::messaging::Mailbox;
 
 enum AnchoredValue {
-    ThreadBound(ThreadGuard<NativeValue>),
+    ThreadBound(ThreadGuard<Value>),
     Transferable(TransferableValue),
 }
 
-struct TransferableValue(ManuallyDrop<NativeValue>);
+struct TransferableValue(ManuallyDrop<Value>);
 
 // SAFETY: `TransferableValue` is only constructed in `AnchoredValue::new` when the runtime is
 // initialized and the current thread is NOT the gtkx-glib main-context owner, i.e. the wrapped
-// `NativeValue` was created off the GLib thread and has never been bound to it. The value is moved
+// `Value` was created off the GLib thread and has never been bound to it. The value is moved
 // (never shared) to the gtkx-glib thread for its eventual drop, so transferring sole ownership
 // across the thread boundary touches the underlying GObject/boxed pointers only on the GLib thread.
 #[allow(clippy::non_send_fields_in_send_ty)]
@@ -31,7 +31,7 @@ unsafe impl Send for TransferableValue {}
 
 impl TransferableValue {
     #[cfg_attr(coverage_nightly, coverage(off))]
-    fn get_ref(&self) -> &NativeValue {
+    fn get_ref(&self) -> &Value {
         &self.0
     }
 }
@@ -40,7 +40,7 @@ impl Drop for TransferableValue {
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn drop(&mut self) {
         // SAFETY: `self.0` was initialized via `ManuallyDrop::new` in the constructor and is never
-        // taken out elsewhere, so this is the unique drop of the wrapped `NativeValue`; it runs
+        // taken out elsewhere, so this is the unique drop of the wrapped `Value`; it runs
         // exactly once when the `TransferableValue` is dropped.
         unsafe { ManuallyDrop::drop(&mut self.0) };
     }
@@ -48,7 +48,7 @@ impl Drop for TransferableValue {
 
 impl AnchoredValue {
     #[cfg_attr(coverage_nightly, coverage(off))]
-    fn new(value: NativeValue) -> Self {
+    fn new(value: Value) -> Self {
         let on_foreign_thread =
             Mailbox::global().is_initialized() && !glib::MainContext::default().is_owner();
         if on_foreign_thread {
@@ -59,7 +59,7 @@ impl AnchoredValue {
     }
 
     #[cfg_attr(coverage_nightly, coverage(off))]
-    fn get_ref(&self) -> &NativeValue {
+    fn get_ref(&self) -> &Value {
         match self {
             Self::ThreadBound(guard) => guard.get_ref(),
             Self::Transferable(value) => value.get_ref(),
@@ -75,24 +75,24 @@ impl AnchoredValue {
     }
 }
 
-pub struct NativeHandle {
+pub struct Handle {
     ptr: usize,
     size_hint: usize,
     owned_value: Option<AnchoredValue>,
     pending_gobject_ref: Option<Arc<AtomicBool>>,
 }
 
-impl std::fmt::Debug for NativeHandle {
+impl std::fmt::Debug for Handle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("NativeHandle")
+        f.debug_struct("Handle")
             .field("ptr", &(self.ptr as *const c_void))
             .field("owned", &self.owned_value.is_some())
             .finish_non_exhaustive()
     }
 }
 
-impl From<NativeValue> for NativeHandle {
-    fn from(value: NativeValue) -> Self {
+impl From<Value> for Handle {
+    fn from(value: Value) -> Self {
         let ptr = value.as_ptr() as usize;
         let size_hint = value.size_hint();
         Self {
@@ -104,7 +104,7 @@ impl From<NativeValue> for NativeHandle {
     }
 }
 
-impl Clone for NativeHandle {
+impl Clone for Handle {
     fn clone(&self) -> Self {
         Self {
             ptr: self.ptr,
@@ -118,7 +118,7 @@ impl Clone for NativeHandle {
     }
 }
 
-impl NativeHandle {
+impl Handle {
     #[must_use]
     pub fn borrowed(ptr: *mut c_void) -> Self {
         Self {
@@ -167,7 +167,7 @@ impl NativeHandle {
     }
 }
 
-impl Drop for NativeHandle {
+impl Drop for Handle {
     fn drop(&mut self) {
         if let Some(flag) = self.pending_gobject_ref.take()
             && Arc::strong_count(&flag) == 1
@@ -202,32 +202,32 @@ impl Drop for NativeHandle {
 }
 
 #[derive(Debug, Clone)]
-pub enum NativeValue {
+pub enum Value {
     Boxed(Boxed),
     Fundamental(Fundamental),
 }
 
-impl From<NativeValue> for crate::ffi::value::Value {
-    fn from(value: NativeValue) -> Self {
+impl From<Value> for crate::ffi::value::Value {
+    fn from(value: Value) -> Self {
         Self::Object(value.into())
     }
 }
 
 impl From<Boxed> for crate::ffi::value::Value {
     fn from(boxed: Boxed) -> Self {
-        NativeValue::Boxed(boxed).into()
+        Value::Boxed(boxed).into()
     }
 }
 
 impl From<Fundamental> for crate::ffi::value::Value {
     fn from(fundamental: Fundamental) -> Self {
-        NativeValue::Fundamental(fundamental).into()
+        Value::Fundamental(fundamental).into()
     }
 }
 
 const GOBJECT_SIZE_HINT: usize = 512;
 
-impl NativeValue {
+impl Value {
     #[must_use]
     pub fn as_ptr(&self) -> *mut c_void {
         match self {
@@ -245,7 +245,7 @@ impl NativeValue {
     }
 }
 
-impl NativeHandle {
+impl Handle {
     #[must_use]
     pub fn size_hint(&self) -> usize {
         self.size_hint

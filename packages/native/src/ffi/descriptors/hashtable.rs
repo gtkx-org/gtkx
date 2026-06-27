@@ -14,7 +14,7 @@ pub enum HashTableEntryEncoder {
     Integer,
     Boolean,
     Float,
-    NativeHandle(Box<Descriptor>),
+    Handle(Box<Descriptor>),
     PtrArray(Box<Descriptor>),
 }
 
@@ -27,7 +27,7 @@ impl HashTableEntryEncoder {
             Descriptor::Boolean(_) => Some(Self::Boolean),
             Descriptor::Float(_) => Some(Self::Float),
             Descriptor::GObject(_) | Descriptor::Boxed(_) | Descriptor::Struct(_) | Descriptor::Fundamental(_) => {
-                Some(Self::NativeHandle(Box::new(ty.clone())))
+                Some(Self::Handle(Box::new(ty.clone())))
             }
             Descriptor::Array(array_type) if array_type.kind == ArrayKind::GPtrArray => {
                 Some(Self::PtrArray(array_type.item_descriptor.clone()))
@@ -40,7 +40,7 @@ impl HashTableEntryEncoder {
         match self {
             Self::String => Some(glib::ffi::g_str_hash),
             Self::Float => Some(glib::ffi::g_double_hash),
-            Self::Integer | Self::Boolean | Self::NativeHandle(_) | Self::PtrArray(_) => {
+            Self::Integer | Self::Boolean | Self::Handle(_) | Self::PtrArray(_) => {
                 Some(glib::ffi::g_direct_hash)
             }
         }
@@ -50,7 +50,7 @@ impl HashTableEntryEncoder {
         match self {
             Self::String => Some(glib::ffi::g_str_equal),
             Self::Float => Some(glib::ffi::g_double_equal),
-            Self::Integer | Self::Boolean | Self::NativeHandle(_) | Self::PtrArray(_) => {
+            Self::Integer | Self::Boolean | Self::Handle(_) | Self::PtrArray(_) => {
                 Some(glib::ffi::g_direct_equal)
             }
         }
@@ -60,7 +60,7 @@ impl HashTableEntryEncoder {
         match self {
             Self::String | Self::Float => Ok(Some(glib::ffi::g_free)),
             Self::Integer | Self::Boolean => Ok(None),
-            Self::NativeHandle(ty) => Self::transferred_entry_destroy(ty),
+            Self::Handle(ty) => Self::transferred_entry_destroy(ty),
             Self::PtrArray(_) => Ok(Some(g_ptr_array_unref_wrapper)),
         }
     }
@@ -118,7 +118,7 @@ impl HashTableEntryEncoder {
                 }
                 _ => bail!("Expected number in GHashTable for float, got {val:?}"),
             },
-            Self::NativeHandle(_) => match val {
+            Self::Handle(_) => match val {
                 value::Value::Object(handle) => Ok(handle.ptr()),
                 value::Value::Null | value::Value::Undefined => Ok(std::ptr::null_mut()),
                 _ => bail!("Expected native object in GHashTable, got {val:?}"),

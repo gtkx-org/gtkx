@@ -1,11 +1,11 @@
-mod common;
+mod helpers;
 
 use std::ffi::{CString, c_char, c_void};
 
 use gtk4::glib;
 use gtk4::prelude::StaticType as _;
 
-use native::NativeHandle;
+use native::Handle;
 use native::ffi::arg::Arg;
 use native::ffi::descriptors::{
     ArrayDescriptor, ArrayKind, BigIntKind, BooleanDescriptor, Descriptor, EnumFlagsDescriptor,
@@ -49,9 +49,9 @@ fn array_type(item: Descriptor, kind: ArrayKind, ownership: Ownership) -> ArrayD
     }
 }
 
-fn boxed_handle() -> NativeHandle {
-    let ptr = common::allocate_test_boxed(gtk4::gdk::RGBA::static_type());
-    NativeHandle::borrowed(ptr)
+fn boxed_handle() -> Handle {
+    let ptr = helpers::allocate_test_boxed(gtk4::gdk::RGBA::static_type());
+    Handle::borrowed(ptr)
 }
 
 fn gobject_item_descriptor(ownership: Ownership) -> Descriptor {
@@ -82,12 +82,12 @@ fn new_gobject() -> (glib::Object, *mut c_void) {
 }
 
 fn assert_full_element_container_releases_on_drop(kind: ArrayKind, container: Ownership) {
-    common::run(|| {
+    helpers::run(|| {
         let (_obj, obj_ptr) = new_gobject();
         let before = gobject_refcount(obj_ptr);
 
         let ty = array_type(gobject_item_descriptor(Ownership::Full), kind, container);
-        let val = Value::Array(vec![Value::Object(NativeHandle::borrowed(obj_ptr))]);
+        let val = Value::Array(vec![Value::Object(Handle::borrowed(obj_ptr))]);
         let encoded = ty.encode(&val).unwrap();
         assert_eq!(gobject_refcount(obj_ptr), before + 1);
 
@@ -97,7 +97,7 @@ fn assert_full_element_container_releases_on_drop(kind: ArrayKind, container: Ow
 }
 
 fn assert_string_list_full_container_borrowed_elements_releases_spine(kind: ArrayKind) {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             string_item_descriptor(Ownership::Borrowed),
             kind,
@@ -126,7 +126,7 @@ fn encode_glist_handles_full_ownership_releases_when_call_never_happens() {
 
 #[test]
 fn encode_glist_handles_full_ownership_transfers_to_callee_when_disarmed() {
-    common::run(|| {
+    helpers::run(|| {
         let (_obj, obj_ptr) = new_gobject();
         let before = gobject_refcount(obj_ptr);
 
@@ -135,7 +135,7 @@ fn encode_glist_handles_full_ownership_transfers_to_callee_when_disarmed() {
             ArrayKind::GList,
             Ownership::Full,
         );
-        let val = Value::Array(vec![Value::Object(NativeHandle::borrowed(obj_ptr))]);
+        let val = Value::Array(vec![Value::Object(Handle::borrowed(obj_ptr))]);
         let encoded = ty.encode(&val).unwrap();
         encoded.disarm_pending_transfer();
 
@@ -158,7 +158,7 @@ fn encode_glist_handles_full_ownership_transfers_to_callee_when_disarmed() {
 
 #[test]
 fn encode_glist_handles_releases_acquired_elements_when_later_element_is_null() {
-    common::run(|| {
+    helpers::run(|| {
         let (_obj, obj_ptr) = new_gobject();
         let before = gobject_refcount(obj_ptr);
 
@@ -168,8 +168,8 @@ fn encode_glist_handles_releases_acquired_elements_when_later_element_is_null() 
             Ownership::Full,
         );
         let val = Value::Array(vec![
-            Value::Object(NativeHandle::borrowed(obj_ptr)),
-            Value::Object(NativeHandle::borrowed(std::ptr::null_mut())),
+            Value::Object(Handle::borrowed(obj_ptr)),
+            Value::Object(Handle::borrowed(std::ptr::null_mut())),
         ]);
         assert!(ty.encode(&val).is_err());
         assert_eq!(gobject_refcount(obj_ptr), before);
@@ -178,7 +178,7 @@ fn encode_glist_handles_releases_acquired_elements_when_later_element_is_null() 
 
 #[test]
 fn encode_gslist_strings_full_container_releases_when_call_never_happens() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             string_item_descriptor(Ownership::Full),
             ArrayKind::GSList,
@@ -192,7 +192,7 @@ fn encode_gslist_strings_full_container_releases_when_call_never_happens() {
 
 #[test]
 fn encode_garray_full_ownership_adopted_strings_release_when_call_never_happens() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             string_item_descriptor(Ownership::Full),
             ArrayKind::GArray,
@@ -506,9 +506,7 @@ fn encode_pointer_array_with_element_size_copies_into_buffer() {
 fn encode_pointer_array_with_element_size_rejects_null_handle() {
     let mut ty = array_type(struct_item_descriptor(), ArrayKind::Array, Ownership::Full);
     ty.element_size = Some(8);
-    let val = Value::Array(vec![Value::Object(NativeHandle::borrowed(
-        std::ptr::null_mut(),
-    ))]);
+    let val = Value::Array(vec![Value::Object(Handle::borrowed(std::ptr::null_mut()))]);
     assert!(ty.encode(&val).is_err());
 }
 
@@ -586,15 +584,13 @@ fn encode_pointer_array_null_terminated_empty_has_sentinel() {
 #[test]
 fn encode_pointer_array_null_terminated_rejects_null_handle() {
     let ty = array_type(struct_item_descriptor(), ArrayKind::Array, Ownership::Full);
-    let val = Value::Array(vec![Value::Object(NativeHandle::borrowed(
-        std::ptr::null_mut(),
-    ))]);
+    let val = Value::Array(vec![Value::Object(Handle::borrowed(std::ptr::null_mut()))]);
     assert!(ty.encode(&val).is_err());
 }
 
 #[test]
 fn encode_glist_strings_full_ownership_dups_elements() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             string_item_descriptor(Ownership::Full),
             ArrayKind::GList,
@@ -611,7 +607,7 @@ fn encode_glist_strings_full_ownership_dups_elements() {
 
 #[test]
 fn encode_glist_strings_borrowed_roundtrips() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             string_item_descriptor(Ownership::Borrowed),
             ArrayKind::GList,
@@ -631,7 +627,7 @@ fn encode_glist_strings_borrowed_roundtrips() {
 
 #[test]
 fn encode_glist_handles_roundtrips() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             struct_item_descriptor(),
             ArrayKind::GList,
@@ -648,22 +644,20 @@ fn encode_glist_handles_roundtrips() {
 
 #[test]
 fn encode_glist_handles_rejects_null() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             struct_item_descriptor(),
             ArrayKind::GList,
             Ownership::Borrowed,
         );
-        let val = Value::Array(vec![Value::Object(NativeHandle::borrowed(
-            std::ptr::null_mut(),
-        ))]);
+        let val = Value::Array(vec![Value::Object(Handle::borrowed(std::ptr::null_mut()))]);
         assert!(ty.encode(&val).is_err());
     });
 }
 
 #[test]
 fn encode_gslist_strings_full_ownership_dups_elements() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             string_item_descriptor(Ownership::Full),
             ArrayKind::GSList,
@@ -680,7 +674,7 @@ fn encode_gslist_strings_full_ownership_dups_elements() {
 
 #[test]
 fn encode_gslist_strings_borrowed_roundtrips() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             string_item_descriptor(Ownership::Borrowed),
             ArrayKind::GSList,
@@ -700,7 +694,7 @@ fn encode_gslist_strings_borrowed_roundtrips() {
 
 #[test]
 fn encode_gslist_handles_roundtrips() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             struct_item_descriptor(),
             ArrayKind::GSList,
@@ -717,22 +711,20 @@ fn encode_gslist_handles_roundtrips() {
 
 #[test]
 fn encode_gslist_handles_rejects_null() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             struct_item_descriptor(),
             ArrayKind::GSList,
             Ownership::Borrowed,
         );
-        let val = Value::Array(vec![Value::Object(NativeHandle::borrowed(
-            std::ptr::null_mut(),
-        ))]);
+        let val = Value::Array(vec![Value::Object(Handle::borrowed(std::ptr::null_mut()))]);
         assert!(ty.encode(&val).is_err());
     });
 }
 
 #[test]
 fn encode_gbytearray_roundtrips() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             Descriptor::Integer(IntegerKind::U8),
             ArrayKind::GByteArray,
@@ -753,7 +745,7 @@ fn encode_gbytearray_roundtrips() {
 
 #[test]
 fn encode_garray_integer_roundtrips() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             Descriptor::Integer(IntegerKind::I32),
             ArrayKind::GArray,
@@ -770,7 +762,7 @@ fn encode_garray_integer_roundtrips() {
 
 #[test]
 fn encode_garray_float_f32_roundtrips() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             Descriptor::Float(FloatKind::F32),
             ArrayKind::GArray,
@@ -787,7 +779,7 @@ fn encode_garray_float_f32_roundtrips() {
 
 #[test]
 fn encode_garray_float_f64_roundtrips() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             Descriptor::Float(FloatKind::F64),
             ArrayKind::GArray,
@@ -804,7 +796,7 @@ fn encode_garray_float_f64_roundtrips() {
 
 #[test]
 fn encode_garray_boolean_roundtrips() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             Descriptor::Boolean(BooleanDescriptor),
             ArrayKind::GArray,
@@ -821,7 +813,7 @@ fn encode_garray_boolean_roundtrips() {
 
 #[test]
 fn encode_garray_enum_flags_roundtrips() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             enum_flags_item_descriptor(),
             ArrayKind::GArray,
@@ -835,7 +827,7 @@ fn encode_garray_enum_flags_roundtrips() {
 
 #[test]
 fn encode_garray_handles_roundtrips() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             struct_item_descriptor(),
             ArrayKind::GArray,
@@ -852,22 +844,20 @@ fn encode_garray_handles_roundtrips() {
 
 #[test]
 fn encode_garray_handles_rejects_null() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             struct_item_descriptor(),
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
-        let val = Value::Array(vec![Value::Object(NativeHandle::borrowed(
-            std::ptr::null_mut(),
-        ))]);
+        let val = Value::Array(vec![Value::Object(Handle::borrowed(std::ptr::null_mut()))]);
         assert!(ty.encode(&val).is_err());
     });
 }
 
 #[test]
 fn encode_garray_strings_roundtrips() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             string_item_descriptor(Ownership::Full),
             ArrayKind::GArray,
@@ -881,7 +871,7 @@ fn encode_garray_strings_roundtrips() {
 
 #[test]
 fn encode_garray_explicit_element_size_used() {
-    common::run(|| {
+    helpers::run(|| {
         let mut ty = array_type(
             Descriptor::Integer(IntegerKind::I32),
             ArrayKind::GArray,
@@ -896,7 +886,7 @@ fn encode_garray_explicit_element_size_used() {
 
 #[test]
 fn decode_zero_terminated_scalar_array_reads_with_scalar_stride() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             Descriptor::Integer(IntegerKind::I32),
             ArrayKind::Array,
@@ -932,7 +922,7 @@ fn encode_bigint_array_roundtrips_through_storage() {
 
 #[test]
 fn encode_garray_bigint_roundtrips() {
-    common::run(|| {
+    helpers::run(|| {
         for kind in [BigIntKind::I64, BigIntKind::U64] {
             let ty = array_type(
                 Descriptor::BigInt(kind),
@@ -1011,7 +1001,7 @@ fn encode_bigint_array_rejects_out_of_range() {
 
 #[test]
 fn decode_gptrarray_frees_container_when_element_decode_fails() {
-    common::run(|| {
+    helpers::run(|| {
         // SAFETY: runs on the GTK-initialized test thread; returns a valid empty GPtrArray.
         let ptr_array = unsafe { glib::ffi::g_ptr_array_new() };
         // SAFETY: the GPtrArray is valid and the added pointer is stored by value (never dereferenced here).
@@ -1036,7 +1026,7 @@ fn decode_gptrarray_frees_container_when_element_decode_fails() {
 
 #[test]
 fn decode_glist_frees_spine_when_element_decode_fails() {
-    common::run(|| {
+    helpers::run(|| {
         // SAFETY: runs on the GTK-initialized test thread; appends one borrowed pointer to a
         // valid (possibly null) GList, returning the new head.
         let list = unsafe {
@@ -1057,7 +1047,7 @@ fn decode_glist_frees_spine_when_element_decode_fails() {
 
 #[test]
 fn encode_garray_append_error_unrefs_and_propagates() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             Descriptor::Integer(IntegerKind::I32),
             ArrayKind::GArray,
@@ -1130,7 +1120,7 @@ fn decode_null_terminated_string_array_from_ptr() {
 
 #[test]
 fn decode_null_terminated_string_array_full_ownership_frees() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             string_item_descriptor(Ownership::Full),
             ArrayKind::Array,
@@ -1155,7 +1145,7 @@ fn decode_null_terminated_string_array_full_ownership_frees() {
 
 #[test]
 fn decode_null_terminated_borrowed_string_array_full_ownership_frees_vector_only() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             string_item_descriptor(Ownership::Borrowed),
             ArrayKind::Array,
@@ -1198,7 +1188,7 @@ fn decode_null_terminated_ptr_array_from_ptr() {
 
 #[test]
 fn decode_null_terminated_ptr_array_full_ownership_frees() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(struct_item_descriptor(), ArrayKind::Array, Ownership::Full);
         // SAFETY: allocates a zeroed 2-slot pointer array (slot 1 is the NULL terminator) and
         // stores one boxed pointer in slot 0, producing a valid NULL-terminated owned pointer
@@ -1217,7 +1207,7 @@ fn decode_null_terminated_ptr_array_full_ownership_frees() {
 
 #[test]
 fn decode_glist_empty_and_populated() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(struct_item_descriptor(), ArrayKind::GList, Ownership::Full);
         let Value::Array(empty) = ty.decode(&StashedValue::Ptr(std::ptr::null_mut())).unwrap()
         else {
@@ -1238,7 +1228,7 @@ fn decode_glist_empty_and_populated() {
 
 #[test]
 fn decode_gslist_full_ownership_frees_list() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(struct_item_descriptor(), ArrayKind::GSList, Ownership::Full);
         // SAFETY: runs on the GTK-initialized test thread; appends one borrowed pointer to a
         // valid (possibly null) GSList, returning the new head.
@@ -1253,7 +1243,7 @@ fn decode_gslist_full_ownership_frees_list() {
 
 #[test]
 fn decode_garray_from_borrowed_ptr() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             Descriptor::Integer(IntegerKind::I32),
             ArrayKind::GArray,
@@ -1280,7 +1270,7 @@ fn decode_garray_from_borrowed_ptr() {
 
 #[test]
 fn decode_garray_null_yields_empty() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             Descriptor::Integer(IntegerKind::I32),
             ArrayKind::GArray,
@@ -1296,7 +1286,7 @@ fn decode_garray_null_yields_empty() {
 
 #[test]
 fn decode_garray_storage_owned_does_not_double_free() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             Descriptor::Integer(IntegerKind::I32),
             ArrayKind::GArray,
@@ -1321,7 +1311,7 @@ fn decode_garray_storage_owned_does_not_double_free() {
 
 #[test]
 fn decode_gptrarray_from_ptr() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             struct_item_descriptor(),
             ArrayKind::GPtrArray,
@@ -1356,7 +1346,7 @@ fn decode_gptrarray_null_yields_empty() {
 
 #[test]
 fn decode_gbytearray_from_ptr_and_empty() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             Descriptor::Integer(IntegerKind::U8),
             ArrayKind::GByteArray,
@@ -1391,7 +1381,7 @@ fn decode_gbytearray_from_ptr_and_empty() {
 
 #[test]
 fn decode_gbytearray_full_ownership_unrefs_raw_ptr() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             Descriptor::Integer(IntegerKind::U8),
             ArrayKind::GByteArray,
@@ -1673,7 +1663,7 @@ fn ptr_to_value_null_yields_empty() {
 
 #[test]
 fn ptr_to_value_gptrarray() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             struct_item_descriptor(),
             ArrayKind::GPtrArray,
@@ -1697,7 +1687,7 @@ fn ptr_to_value_gptrarray() {
 
 #[test]
 fn ptr_to_value_gbytearray() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             Descriptor::Integer(IntegerKind::U8),
             ArrayKind::GByteArray,
@@ -1722,7 +1712,7 @@ fn ptr_to_value_gbytearray() {
 
 #[test]
 fn ptr_to_value_garray() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             Descriptor::Integer(IntegerKind::I32),
             ArrayKind::GArray,
@@ -1749,7 +1739,7 @@ fn ptr_to_value_garray() {
 
 #[test]
 fn ptr_to_value_glist() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             struct_item_descriptor(),
             ArrayKind::GList,
@@ -1768,7 +1758,7 @@ fn ptr_to_value_glist() {
 
 #[test]
 fn ptr_to_value_plain_array() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             struct_item_descriptor(),
             ArrayKind::Array,
@@ -1891,7 +1881,7 @@ fn item_codec_resolves_pointer_kinds() {
 
 #[test]
 fn trait_methods_delegate_to_inherent_implementations() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             Descriptor::Integer(IntegerKind::I32),
             ArrayKind::Array,
@@ -1964,7 +1954,7 @@ fn encode_gslist_handles_full_ownership_releases_when_call_never_happens() {
 
 #[test]
 fn encode_glist_handles_fails_and_unwinds_when_element_transfer_fails() {
-    common::run(|| {
+    helpers::run(|| {
         // SAFETY: runs on the GTK-initialized test thread; all four string arguments are valid
         // NUL-terminated static C strings and the flags are valid `GParamFlags`, so
         // `g_param_spec_boolean` returns a new owned `GParamSpec` the test later unrefs.
@@ -1977,19 +1967,19 @@ fn encode_glist_handles_fails_and_unwinds_when_element_transfer_fails() {
                 glib::gobject_ffi::G_PARAM_READABLE,
             ) as *mut c_void
         };
-        let before = common::param_spec_refcount(pspec);
+        let before = helpers::param_spec_refcount(pspec);
 
         let ty = array_type(
             unresolvable_fundamental_item_descriptor(),
             ArrayKind::GList,
             Ownership::Full,
         );
-        let val = Value::Array(vec![Value::Object(NativeHandle::borrowed(pspec))]);
+        let val = Value::Array(vec![Value::Object(Handle::borrowed(pspec))]);
         let err = ty
             .encode(&val)
             .expect_err("an unresolvable element ref function must fail the transfer");
         assert!(err.to_string().contains("Failed to find ref symbol"));
-        assert_eq!(common::param_spec_refcount(pspec), before);
+        assert_eq!(helpers::param_spec_refcount(pspec), before);
 
         // SAFETY: the GParamSpec is live and the test owns the reference released here.
         unsafe { glib::gobject_ffi::g_param_spec_unref(pspec.cast()) };
@@ -1998,7 +1988,7 @@ fn encode_glist_handles_fails_and_unwinds_when_element_transfer_fails() {
 
 #[test]
 fn encode_glist_strings_full_container_full_elements_releases_when_call_never_happens() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             string_item_descriptor(Ownership::Full),
             ArrayKind::GList,
@@ -2037,7 +2027,7 @@ fn encode_gslist_strings_full_container_borrowed_elements_releases_spine_when_ca
 
 #[test]
 fn encode_gbytearray_full_ownership_releases_when_call_never_happens() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             Descriptor::Integer(IntegerKind::U8),
             ArrayKind::GByteArray,
@@ -2056,7 +2046,7 @@ fn encode_gbytearray_full_ownership_releases_when_call_never_happens() {
 
 #[test]
 fn encode_garray_borrowed_strings_installs_clear_func_and_roundtrips() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             string_item_descriptor(Ownership::Borrowed),
             ArrayKind::GArray,
@@ -2078,7 +2068,7 @@ fn encode_garray_borrowed_strings_installs_clear_func_and_roundtrips() {
 
 #[test]
 fn decode_zero_terminated_scalar_array_full_ownership_frees_buffer() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             Descriptor::Integer(IntegerKind::I32),
             ArrayKind::Array,
@@ -2108,7 +2098,7 @@ fn decode_zero_terminated_scalar_array_full_ownership_frees_buffer() {
 
 #[test]
 fn write_return_to_pointer_full_string_array_hands_caller_owned_container() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             string_item_descriptor(Ownership::Full),
             ArrayKind::Array,
@@ -2166,7 +2156,7 @@ fn write_return_to_pointer_null_err_and_non_array_write_null() {
 
 #[test]
 fn write_return_to_pointer_encode_error_writes_null() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = array_type(
             Descriptor::Integer(IntegerKind::I32),
             ArrayKind::Array,

@@ -8,21 +8,21 @@ use napi::{Env, Status, sys};
 
 pub type ErrorReporterTsfn = ThreadsafeFunction<String, (), String, Status, false, true>;
 
-pub struct NativeErrorReporter {
+pub struct ErrorReporter {
     tsfn: OnceLock<Arc<ErrorReporterTsfn>>,
 }
 
-impl std::fmt::Debug for NativeErrorReporter {
+impl std::fmt::Debug for ErrorReporter {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("NativeErrorReporter")
+        f.debug_struct("ErrorReporter")
             .field("initialized", &self.tsfn.get().is_some())
             .finish_non_exhaustive()
     }
 }
 
-static REPORTER: OnceLock<NativeErrorReporter> = OnceLock::new();
+static REPORTER: OnceLock<ErrorReporter> = OnceLock::new();
 
-impl NativeErrorReporter {
+impl ErrorReporter {
     pub fn global() -> &'static Self {
         REPORTER.get_or_init(|| Self {
             tsfn: OnceLock::new(),

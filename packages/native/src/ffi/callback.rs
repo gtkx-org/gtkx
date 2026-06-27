@@ -10,7 +10,7 @@ use ::libffi::middle as libffi;
 use napi::JsFunction;
 
 use crate::messaging::Mailbox;
-use crate::messaging::error_reporter::NativeErrorReporter;
+use crate::messaging::error_reporter::ErrorReporter;
 use crate::ffi::StashedValue;
 use crate::ffi::descriptors::{
     FfiDecoder as _, FfiEncoder as _, PointerWriter as _, ReadSource, Descriptor, str_to_glib_full,
@@ -217,7 +217,7 @@ impl CallbackData {
             match unsafe { ty.read(ReadSource::Slot(arg_ptr, "callback arg")) } {
                 Ok(val) => values.push(val),
                 Err(e) => {
-                    NativeErrorReporter::global()
+                    ErrorReporter::global()
                         .report(&e.context(format!("callback: failed to read arg {i}")));
                     values.push(Value::Null);
                 }
@@ -248,7 +248,7 @@ impl CallbackData {
                 self.write_return(result, &Ok(value));
             }
             Err(ref e) => {
-                NativeErrorReporter::global().report(&anyhow::anyhow!(
+                ErrorReporter::global().report(&anyhow::anyhow!(
                     "callback: JS callback error (return type: {}): {e:#}",
                     self.return_descriptor
                 ));
@@ -359,7 +359,7 @@ pub(crate) fn flush_out_cells(cells: &[(usize, Value)], out_targets: &[(*mut c_v
         // matching `Ref` argument, so writing `new_value` back through `inner_type` targets a
         // correctly typed, writable location.
         if let Err(e) = unsafe { inner_type.write_value_to_pointer(*ptr, new_value) } {
-            NativeErrorReporter::global()
+            ErrorReporter::global()
                 .report(&e.context("callback: failed to write out-parameter"));
         }
     }

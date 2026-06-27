@@ -1,4 +1,4 @@
-mod common;
+mod helpers;
 
 use std::ffi::c_void;
 use std::sync::Arc;
@@ -8,10 +8,10 @@ use std::thread;
 use gtk4::glib;
 use gtk4::prelude::ObjectType as _;
 
-use native::handle::{Fundamental, NativeHandle, NativeValue};
+use native::handle::{Fundamental, Handle, Value};
 use native::messaging::Mailbox;
 
-use common::{get_gobject_refcount, param_spec_ref, param_spec_refcount, param_spec_unref};
+use helpers::{get_gobject_refcount, param_spec_ref, param_spec_refcount, param_spec_unref};
 
 fn pump_default_context_until(done: impl Fn() -> bool) {
     let context = glib::MainContext::default();
@@ -26,7 +26,7 @@ fn pump_default_context_until(done: impl Fn() -> bool) {
 }
 
 fn param_spec_ptr() -> *mut c_void {
-    common::ensure_gtk_init();
+    helpers::ensure_gtk_init();
     // SAFETY: GTK is initialized above and the call runs on the test's GLib thread; the four
     // `c"..."` literals are valid NUL-terminated C strings and the flags are valid `GParamFlags`,
     // so `g_param_spec_boolean` returns a freshly owned (floating) GParamSpec.
@@ -42,8 +42,8 @@ fn param_spec_ptr() -> *mut c_void {
     }
 }
 
-fn owned_fundamental(ptr: *mut c_void) -> NativeHandle {
-    NativeValue::Fundamental(Fundamental::from_glib_full(
+fn owned_fundamental(ptr: *mut c_void) -> Handle {
+    Value::Fundamental(Fundamental::from_glib_full(
         ptr,
         Some(param_spec_ref),
         Some(param_spec_unref),
@@ -51,20 +51,16 @@ fn owned_fundamental(ptr: *mut c_void) -> NativeHandle {
     .into()
 }
 
-fn borrowed_fundamental(ptr: *mut c_void) -> NativeHandle {
+fn borrowed_fundamental(ptr: *mut c_void) -> Handle {
     // SAFETY: `ptr` is a live GParamSpec, and `param_spec_ref`/`param_spec_unref` are its matching
     // ref/unref functions; `from_glib_none` takes one new borrowed reference balanced by drop.
     let fundamental =
         unsafe { Fundamental::from_glib_none(ptr, Some(param_spec_ref), Some(param_spec_unref)) };
-    NativeValue::Fundamental(fundamental).into()
+    Value::Fundamental(fundamental).into()
 }
 
-fn extra_referenced_decoded_gobject() -> (
-    glib::Object,
-    *mut glib::gobject_ffi::GObject,
-    u32,
-    NativeHandle,
-) {
+fn extra_referenced_decoded_gobject() -> (glib::Object, *mut glib::gobject_ffi::GObject, u32, Handle)
+{
     let obj = glib::Object::new::<glib::Object>();
     let obj_ptr = obj.as_ptr();
     // SAFETY: `obj_ptr` is the live pointer of the `obj` binding kept alive for the test; adding
@@ -72,17 +68,17 @@ fn extra_referenced_decoded_gobject() -> (
     unsafe { glib::gobject_ffi::g_object_ref(obj_ptr) };
     let initial_ref = get_gobject_refcount(obj_ptr);
 
-    let handle = NativeHandle::decoded_gobject(obj_ptr as *mut c_void);
+    let handle = Handle::decoded_gobject(obj_ptr as *mut c_void);
     (obj, obj_ptr, initial_ref, handle)
 }
 
 #[test]
 fn borrowed_gobject_handle_records_pointer() {
-    common::run(|| {
+    helpers::run(|| {
         let obj = glib::Object::new::<glib::Object>();
         let expected = obj.as_ptr() as usize;
 
-        let handle = NativeHandle::borrowed_gobject(obj.as_ptr() as *mut c_void);
+        let handle = Handle::borrowed_gobject(obj.as_ptr() as *mut c_void);
 
         assert_eq!(handle.ptr_as_usize(), expected);
     });
@@ -90,10 +86,10 @@ fn borrowed_gobject_handle_records_pointer() {
 
 #[test]
 fn from_native_value_boxed_records_pointer() {
-    common::run(|| {
-        let (boxed, ptr) = common::owned_rgba_boxed();
+    helpers::run(|| {
+        let (boxed, ptr) = helpers::owned_rgba_boxed();
 
-        let handle: NativeHandle = NativeValue::Boxed(boxed).into();
+        let handle: Handle = Value::Boxed(boxed).into();
 
         assert_eq!(handle.ptr(), ptr);
     });
@@ -111,19 +107,19 @@ fn from_native_value_fundamental_records_pointer() {
 #[test]
 fn borrowed_handle_has_no_owned_value() {
     let raw = 0xABCD_1234usize as *mut c_void;
-    let handle = NativeHandle::borrowed(raw);
+    let handle = Handle::borrowed(raw);
 
     assert_eq!(handle.ptr(), raw);
     assert_eq!(handle.ptr_as_usize(), raw as usize);
 
     let debug_str = format!("{handle:?}");
-    assert!(debug_str.contains("NativeHandle"));
+    assert!(debug_str.contains("Handle"));
     assert!(debug_str.contains("owned: false"));
 }
 
 #[test]
 fn borrowed_handle_with_null_pointer() {
-    let handle = NativeHandle::borrowed(std::ptr::null_mut());
+    let handle = Handle::borrowed(std::ptr::null_mut());
 
     assert!(handle.ptr().is_null());
     assert_eq!(handle.ptr_as_usize(), 0);
@@ -131,7 +127,7 @@ fn borrowed_handle_with_null_pointer() {
 
 #[test]
 fn clone_owned_handle_preserves_pointer() {
-    common::run(|| {
+    helpers::run(|| {
         let ptr = param_spec_ptr();
         let initial_ref = param_spec_refcount(ptr);
 
@@ -150,7 +146,7 @@ fn clone_owned_handle_preserves_pointer() {
 #[test]
 fn clone_borrowed_handle_preserves_pointer() {
     let raw = 0x5555_0000usize as *mut c_void;
-    let handle = NativeHandle::borrowed(raw);
+    let handle = Handle::borrowed(raw);
     let cloned = handle.clone();
 
     assert_eq!(cloned.ptr(), handle.ptr());
@@ -160,7 +156,7 @@ fn clone_borrowed_handle_preserves_pointer() {
 
 #[test]
 fn drop_owned_handle_on_creating_thread_releases_value() {
-    common::run(|| {
+    helpers::run(|| {
         let ptr = param_spec_ptr();
         let handle = borrowed_fundamental(ptr);
         let initial_ref = param_spec_refcount(ptr);
@@ -176,13 +172,13 @@ fn drop_owned_handle_on_creating_thread_releases_value() {
 
 #[test]
 fn drop_borrowed_handle_is_noop() {
-    let handle = NativeHandle::borrowed(0x1111usize as *mut c_void);
+    let handle = Handle::borrowed(0x1111usize as *mut c_void);
     drop(handle);
 }
 
 #[test]
 fn a_consumed_decoded_handle_drop_releases_nothing() {
-    common::run(|| {
+    helpers::run(|| {
         let (_obj, obj_ptr, initial_ref, handle) = extra_referenced_decoded_gobject();
         assert!(handle.take_pending_gobject_ref());
         drop(handle);
@@ -204,7 +200,7 @@ fn a_consumed_decoded_handle_drop_releases_nothing() {
 
 #[test]
 fn a_decoded_handle_drop_releases_unconsumed_pending_ref() {
-    common::run(|| {
+    helpers::run(|| {
         let (_obj, obj_ptr, initial_ref, handle) = extra_referenced_decoded_gobject();
         drop(handle);
 
@@ -216,7 +212,7 @@ fn a_decoded_handle_drop_releases_unconsumed_pending_ref() {
 
 #[test]
 fn a_drop_owned_handle_off_thread_routes_through_glib_idle() {
-    common::run(|| {
+    helpers::run(|| {
         let ptr = param_spec_ptr();
         let handle = borrowed_fundamental(ptr);
         let initial_ref = param_spec_refcount(ptr);
@@ -237,7 +233,7 @@ fn a_drop_owned_handle_off_thread_routes_through_glib_idle() {
 
 #[test]
 fn drop_owned_handle_off_thread_while_not_running_leaks_value() {
-    common::run(|| {
+    helpers::run(|| {
         let ptr = param_spec_ptr();
         let handle = owned_fundamental(ptr);
 
@@ -259,9 +255,9 @@ fn drop_owned_handle_off_thread_while_not_running_leaks_value() {
 
 #[test]
 fn take_pending_gobject_ref_consumes_marker_once() {
-    common::run(|| {
+    helpers::run(|| {
         let obj = glib::Object::new::<glib::Object>();
-        let handle = NativeHandle::decoded_gobject(obj.as_ptr() as *mut c_void);
+        let handle = Handle::decoded_gobject(obj.as_ptr() as *mut c_void);
 
         assert!(handle.take_pending_gobject_ref());
         assert!(!handle.take_pending_gobject_ref());
@@ -270,9 +266,9 @@ fn take_pending_gobject_ref_consumes_marker_once() {
 
 #[test]
 fn take_pending_gobject_ref_without_marker_returns_false() {
-    common::run(|| {
+    helpers::run(|| {
         let obj = glib::Object::new::<glib::Object>();
-        let handle = NativeHandle::borrowed_gobject(obj.as_ptr() as *mut c_void);
+        let handle = Handle::borrowed_gobject(obj.as_ptr() as *mut c_void);
 
         assert!(!handle.take_pending_gobject_ref());
     });
@@ -280,9 +276,9 @@ fn take_pending_gobject_ref_without_marker_returns_false() {
 
 #[test]
 fn clones_share_pending_gobject_ref_marker() {
-    common::run(|| {
+    helpers::run(|| {
         let obj = glib::Object::new::<glib::Object>();
-        let handle = NativeHandle::decoded_gobject(obj.as_ptr() as *mut c_void);
+        let handle = Handle::decoded_gobject(obj.as_ptr() as *mut c_void);
         let cloned = handle.clone();
 
         assert!(cloned.take_pending_gobject_ref());
@@ -292,12 +288,12 @@ fn clones_share_pending_gobject_ref_marker() {
 
 #[test]
 fn size_hint_distinguishes_native_value_variants() {
-    common::run(|| {
-        let (boxed, _boxed_ptr) = common::owned_rgba_boxed();
-        let boxed_hint = NativeValue::Boxed(boxed).size_hint();
+    helpers::run(|| {
+        let (boxed, _boxed_ptr) = helpers::owned_rgba_boxed();
+        let boxed_hint = Value::Boxed(boxed).size_hint();
 
         let pspec = param_spec_ptr();
-        let fundamental_hint = NativeValue::Fundamental(Fundamental::from_glib_full(
+        let fundamental_hint = Value::Fundamental(Fundamental::from_glib_full(
             pspec,
             Some(param_spec_ref),
             Some(param_spec_unref),
@@ -313,28 +309,28 @@ fn size_hint_distinguishes_native_value_variants() {
 #[test]
 fn native_handle_caches_size_hint_at_construction() {
     let ptr = param_spec_ptr();
-    let value = NativeValue::Fundamental(Fundamental::from_glib_full(
+    let value = Value::Fundamental(Fundamental::from_glib_full(
         ptr,
         Some(param_spec_ref),
         Some(param_spec_unref),
     ));
     let expected = value.size_hint();
-    let handle: NativeHandle = value.into();
+    let handle: Handle = value.into();
 
     assert_eq!(handle.size_hint(), expected);
 }
 
 #[test]
 fn borrowed_native_handle_reports_zero_size_hint() {
-    let handle = NativeHandle::borrowed(0xDEAD_BEEFusize as *mut c_void);
+    let handle = Handle::borrowed(0xDEAD_BEEFusize as *mut c_void);
     assert_eq!(handle.size_hint(), 0);
 }
 
 #[test]
 fn borrowed_gobject_handle_reports_nonzero_size_hint() {
-    common::run(|| {
+    helpers::run(|| {
         let obj = glib::Object::new::<glib::Object>();
-        let handle = NativeHandle::borrowed_gobject(obj.as_ptr() as *mut c_void);
+        let handle = Handle::borrowed_gobject(obj.as_ptr() as *mut c_void);
         assert!(handle.size_hint() > 0);
     });
 }

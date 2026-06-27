@@ -1,4 +1,4 @@
-mod common;
+mod helpers;
 
 use std::sync::{
     Arc,
@@ -37,7 +37,7 @@ fn frozen_mailbox_with_task() -> (&'static Mailbox, Arc<AtomicUsize>) {
 
 #[test]
 fn dispatch_pending_returns_false_when_empty() {
-    common::run(|| {
+    helpers::run(|| {
         drain_pending();
         let dispatched = Mailbox::global().dispatch_pending();
         assert!(!dispatched);
@@ -46,7 +46,7 @@ fn dispatch_pending_returns_false_when_empty() {
 
 #[test]
 fn schedule_glib_then_dispatch_pending_runs_task() {
-    common::run(|| {
+    helpers::run(|| {
         let counter = schedule_incrementing_task();
         assert_eq!(counter.load(Ordering::SeqCst), 0);
 
@@ -58,7 +58,7 @@ fn schedule_glib_then_dispatch_pending_runs_task() {
 
 #[test]
 fn schedule_glib_drops_task_when_stopped() {
-    common::run(|| {
+    helpers::run(|| {
         let mailbox = Mailbox::new_for_test();
         mailbox.mark_not_running();
 
@@ -72,7 +72,7 @@ fn schedule_glib_drops_task_when_stopped() {
 
 #[test]
 fn freeze_returns_true_only_for_outermost_call() {
-    common::run(|| {
+    helpers::run(|| {
         let mailbox = Mailbox::global();
 
         assert!(mailbox.freeze());
@@ -90,7 +90,7 @@ fn freeze_returns_true_only_for_outermost_call() {
 
 #[test]
 fn a_schedule_glib_idle_source_dispatches_through_global_main_context() {
-    common::run(|| {
+    helpers::run(|| {
         let counter = schedule_incrementing_task();
 
         let context = gtk4::glib::MainContext::default();
@@ -109,7 +109,7 @@ fn a_schedule_glib_idle_source_dispatches_through_global_main_context() {
 
 #[test]
 fn is_not_running_reflects_mark_not_running() {
-    common::run(|| {
+    helpers::run(|| {
         let mailbox = Mailbox::new_for_test();
 
         assert!(!mailbox.is_not_running());
@@ -121,7 +121,7 @@ fn is_not_running_reflects_mark_not_running() {
 
 #[test]
 fn run_freeze_loop_drains_until_unfrozen() {
-    common::run(|| {
+    helpers::run(|| {
         let (mailbox, counter) = frozen_mailbox_with_task();
 
         let unfreezer = {
@@ -147,7 +147,7 @@ fn run_freeze_loop_drains_until_unfrozen() {
 
 #[test]
 fn run_freeze_loop_exits_when_stopped_while_frozen() {
-    common::run(|| {
+    helpers::run(|| {
         let mailbox = Mailbox::new_for_test();
         assert!(mailbox.freeze());
         let counter = schedule_increment(&mailbox);
@@ -171,7 +171,7 @@ fn run_freeze_loop_exits_when_stopped_while_frozen() {
 
 #[test]
 fn unfreeze_without_freeze_does_not_wrap_depth() {
-    common::run(|| {
+    helpers::run(|| {
         let mailbox = Mailbox::global();
 
         mailbox.unfreeze();
@@ -185,7 +185,7 @@ fn unfreeze_without_freeze_does_not_wrap_depth() {
 
 #[test]
 fn schedule_glib_inside_freeze_loop_skips_idle_source() {
-    common::run(|| {
+    helpers::run(|| {
         drain_pending();
         let mailbox = Mailbox::global();
         let nested_ran = Arc::new(AtomicUsize::new(0));
@@ -220,7 +220,7 @@ fn schedule_glib_inside_freeze_loop_skips_idle_source() {
 
 #[test]
 fn dispatch_pending_drains_multiple_tasks_in_fifo_order() {
-    common::run(|| {
+    helpers::run(|| {
         drain_pending();
         let order = Arc::new(std::sync::Mutex::new(Vec::<u32>::new()));
 
@@ -240,7 +240,7 @@ fn dispatch_pending_drains_multiple_tasks_in_fifo_order() {
 
 #[test]
 fn dispatch_pending_from_depth_defers_top_level_tasks() {
-    common::run(|| {
+    helpers::run(|| {
         drain_pending();
         let mailbox = Mailbox::global();
         let counter = schedule_increment(mailbox);
@@ -255,7 +255,7 @@ fn dispatch_pending_from_depth_defers_top_level_tasks() {
 
 #[test]
 fn dispatch_pending_from_depth_runs_nested_tasks() {
-    common::run(|| {
+    helpers::run(|| {
         drain_pending();
         let mailbox = Mailbox::global();
         let counter = Arc::new(AtomicUsize::new(0));
@@ -274,7 +274,7 @@ fn dispatch_pending_from_depth_runs_nested_tasks() {
 
 #[test]
 fn reentrant_freeze_loop_does_not_strand_outer_loop() {
-    common::run(|| {
+    helpers::run(|| {
         let mailbox = Mailbox::global();
         mailbox.reset_for_test();
         drain_pending();
@@ -337,7 +337,7 @@ fn reentrant_freeze_loop_does_not_strand_outer_loop() {
 
 #[test]
 fn dispatch_pending_from_depth_runs_deeper_task_before_shallower_one() {
-    common::run(|| {
+    helpers::run(|| {
         drain_pending();
         let mailbox = Mailbox::global();
         let order = Arc::new(std::sync::Mutex::new(Vec::<u32>::new()));

@@ -580,7 +580,7 @@ impl EnumFlagsDescriptor {
             return;
         };
         if enum_class.value(value).is_none() {
-            crate::messaging::error_reporter::NativeErrorReporter::global().report_str(&format!(
+            crate::messaging::error_reporter::ErrorReporter::global().report_str(&format!(
                 "Enum value {value} is not a valid member of {} (GType {gtype})",
                 self.get_type_fn
             ));

@@ -4,10 +4,10 @@ use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use super::NativeRequest;
+use super::Request;
 use crate::ffi::descriptors::{Descriptor, FfiDecoder as _, ReadSource};
 use crate::ffi::value::Value;
-use crate::handle::NativeHandle;
+use crate::handle::Handle;
 
 #[cfg_attr(test, allow(dead_code))]
 pub struct FieldLocation {
@@ -25,7 +25,7 @@ impl FieldLocation {
     #[cfg_attr(test, allow(dead_code))]
     pub unsafe fn resolve(&self) -> anyhow::Result<*mut c_void> {
         if self.base_addr == 0 {
-            anyhow::bail!("NativeHandle has a null pointer");
+            anyhow::bail!("Handle has a null pointer");
         }
         // SAFETY: `base_addr` is non-null (checked above) and, per the contract, `offset` lies
         // within the struct's allocation, so the `add` stays in bounds of the same object.
@@ -39,11 +39,11 @@ pub struct ReadRequest {
     pub field_type: Descriptor,
 }
 
-impl NativeRequest for ReadRequest {
+impl Request for ReadRequest {
     type Output = Value;
 
     fn execute(self) -> anyhow::Result<Value> {
-        // SAFETY: runs on the gtkx-glib thread; `location` was built from a live `NativeHandle`
+        // SAFETY: runs on the gtkx-glib thread; `location` was built from a live `Handle`
         // pointer plus an in-bounds field offset, satisfying `resolve`'s contract.
         let field_ptr = unsafe { self.location.resolve()? }.cast_const();
         // SAFETY: `field_ptr` addresses a valid field slot of `field_type`; reading from it as a
@@ -68,7 +68,7 @@ mod napi_export {
     #[cfg_attr(test, allow(dead_code))]
     pub fn read<'env>(
         env: &'env Env,
-        handle: &External<NativeHandle>,
+        handle: &External<Handle>,
         js_type: Unknown<'_>,
         offset: f64,
     ) -> napi::Result<Unknown<'env>> {

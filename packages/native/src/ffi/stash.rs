@@ -112,14 +112,14 @@ impl PendingTransfer {
 
 #[derive(Debug)]
 pub struct GListData {
-    pub handles: Vec<crate::handle::NativeHandle>,
+    pub handles: Vec<crate::handle::Handle>,
     pub list_ptr: *mut glib::ffi::GList,
     pub should_free: bool,
 }
 
 #[derive(Debug)]
 pub struct GSListData {
-    pub handles: Vec<crate::handle::NativeHandle>,
+    pub handles: Vec<crate::handle::Handle>,
     pub list_ptr: *mut glib::ffi::GSList,
     pub should_free: bool,
 }
@@ -171,7 +171,7 @@ pub trait ListFlavor {
     fn spine_release() -> PendingRelease;
 
     fn handle_storage(
-        handles: Vec<crate::handle::NativeHandle>,
+        handles: Vec<crate::handle::Handle>,
         list_ptr: *mut Self::Spine,
         should_free: bool,
     ) -> StashKind;
@@ -216,7 +216,7 @@ impl ListFlavor for GListFlavor {
     }
 
     fn handle_storage(
-        handles: Vec<crate::handle::NativeHandle>,
+        handles: Vec<crate::handle::Handle>,
         list_ptr: *mut glib::ffi::GList,
         should_free: bool,
     ) -> StashKind {
@@ -269,7 +269,7 @@ impl ListFlavor for GSListFlavor {
     }
 
     fn handle_storage(
-        handles: Vec<crate::handle::NativeHandle>,
+        handles: Vec<crate::handle::Handle>,
         list_ptr: *mut glib::ffi::GSList,
         should_free: bool,
     ) -> StashKind {
@@ -321,7 +321,7 @@ pub enum StashKind {
     F32Vec(Vec<f32>),
     F64Vec(Vec<f64>),
     StringArray(Vec<std::ffi::CString>, Vec<*mut c_void>),
-    ObjectArray(Vec<crate::handle::NativeHandle>, Vec<*mut c_void>),
+    ObjectArray(Vec<crate::handle::Handle>, Vec<*mut c_void>),
     GList(GListData),
     GSList(GSListData),
     StringGList(StringGListData),
@@ -452,7 +452,7 @@ impl Stash {
     }
 
     test_visible! {
-    fn as_object_array(&self) -> anyhow::Result<&Vec<crate::handle::NativeHandle>> {
+    fn as_object_array(&self) -> anyhow::Result<&Vec<crate::handle::Handle>> {
         match &self.kind {
             StashKind::ObjectArray(ids, _) => Ok(ids),
             _ => anyhow::bail!("Stash does not contain object array data"),

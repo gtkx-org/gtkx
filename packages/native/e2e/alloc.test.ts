@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { alloc, read, write } from "../../index.js";
+import { alloc, read, write } from "../index.js";
 import {
     allocRectangle,
     allocRgba,
     expectRectangleFields,
     readRgbaChannels,
     writeRectangleFields,
-} from "./call-boxed-alloc-helpers.js";
-import { FLOAT32 } from "./utils.js";
+} from "./helpers/call-boxed-alloc-helpers.js";
+import { FLOAT32 } from "./helpers/utils.js";
 
 describe("alloc", () => {
     it("allocates a zeroed struct for GdkRGBA", () => {

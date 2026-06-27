@@ -195,6 +195,7 @@ export const startHeadlessDisplay = async (options: HeadlessOptions): Promise<()
     ]);
 
     return () => {
+        compositor.child.kill("SIGKILL");
         busChild.kill("SIGKILL");
         rmSync(runtimeDir, { recursive: true, force: true });
     };

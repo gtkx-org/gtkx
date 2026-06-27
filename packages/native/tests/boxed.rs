@@ -1,4 +1,4 @@
-mod common;
+mod helpers;
 
 use gtk4::gdk;
 use gtk4::glib;
@@ -9,8 +9,8 @@ use native::Boxed;
 
 #[test]
 fn from_glib_full_sets_owned_flag() {
-    common::run(|| {
-        let (boxed, _ptr) = common::owned_rgba_boxed();
+    helpers::run(|| {
+        let (boxed, _ptr) = helpers::owned_rgba_boxed();
 
         assert!(boxed.is_owned());
         assert!(!boxed.as_ptr().is_null());
@@ -19,7 +19,7 @@ fn from_glib_full_sets_owned_flag() {
 
 #[test]
 fn from_glib_full_null_ptr_safe() {
-    common::run(|| {
+    helpers::run(|| {
         let gtype = gdk::RGBA::static_type();
         let boxed = Boxed::from_glib_full(Some(gtype), std::ptr::null_mut());
 
@@ -30,9 +30,9 @@ fn from_glib_full_null_ptr_safe() {
 
 #[test]
 fn from_glib_none_creates_copy() {
-    common::run(|| {
+    helpers::run(|| {
         let gtype = gdk::RGBA::static_type();
-        let original_ptr = common::allocate_test_boxed(gtype);
+        let original_ptr = helpers::allocate_test_boxed(gtype);
 
         let boxed = Boxed::from_glib_none(Some(gtype), original_ptr)
             .expect("from_glib_none with gtype should succeed");
@@ -51,7 +51,7 @@ fn from_glib_none_creates_copy() {
 
 #[test]
 fn from_glib_none_null_ptr_not_owned() {
-    common::run(|| {
+    helpers::run(|| {
         let gtype = gdk::RGBA::static_type();
         let boxed = Boxed::from_glib_none(Some(gtype), std::ptr::null_mut())
             .expect("from_glib_none with null ptr should succeed");
@@ -63,9 +63,9 @@ fn from_glib_none_null_ptr_not_owned() {
 
 #[test]
 fn clone_creates_independent_copy() {
-    common::run(|| {
+    helpers::run(|| {
         let gtype = gdk::RGBA::static_type();
-        let (boxed, _ptr) = common::owned_rgba_boxed();
+        let (boxed, _ptr) = helpers::owned_rgba_boxed();
 
         let cloned = boxed.clone();
 
@@ -75,14 +75,14 @@ fn clone_creates_independent_copy() {
 
         drop(boxed);
 
-        assert!(common::is_valid_boxed_ptr(cloned.as_ptr(), gtype));
+        assert!(helpers::is_valid_boxed_ptr(cloned.as_ptr(), gtype));
     });
 }
 
 #[test]
 fn as_ptr_returns_correct_pointer() {
-    common::run(|| {
-        let (boxed, ptr) = common::owned_rgba_boxed();
+    helpers::run(|| {
+        let (boxed, ptr) = helpers::owned_rgba_boxed();
 
         assert_eq!(boxed.as_ptr(), ptr);
     });
@@ -90,26 +90,26 @@ fn as_ptr_returns_correct_pointer() {
 
 #[test]
 fn drop_frees_owned_memory() {
-    common::run(|| {
-        let (boxed, _ptr) = common::owned_rgba_boxed();
+    helpers::run(|| {
+        let (boxed, _ptr) = helpers::owned_rgba_boxed();
         drop(boxed);
     });
 }
 
 #[test]
 fn drop_does_not_free_transfer_none_memory() {
-    common::run(|| {
+    helpers::run(|| {
         let gtype = gdk::RGBA::static_type();
-        let ptr = common::allocate_test_boxed(gtype);
+        let ptr = helpers::allocate_test_boxed(gtype);
 
-        let boxed = common::TestBoxed {
+        let boxed = helpers::TestBoxed {
             ptr,
             ty: Some(gtype),
             is_owned: false,
         };
         drop(boxed);
 
-        assert!(common::is_valid_boxed_ptr(ptr, gtype));
+        assert!(helpers::is_valid_boxed_ptr(ptr, gtype));
 
         // SAFETY: the unowned `TestBoxed` drop did not free `ptr`, so it is still a live boxed value
         // of `gtype`; freeing it once here with the matching gtype is sound.
@@ -121,7 +121,7 @@ fn drop_does_not_free_transfer_none_memory() {
 
 #[test]
 fn from_glib_full_none_type_plain_struct() {
-    common::run(|| {
+    helpers::run(|| {
         // SAFETY: `g_malloc0` with a non-zero size returns a freshly allocated, zeroed,
         // uniquely owned block that the wrapper under test takes ownership of and frees.
         let ptr = unsafe { glib::ffi::g_malloc0(16) };
@@ -135,7 +135,7 @@ fn from_glib_full_none_type_plain_struct() {
 
 #[test]
 fn from_glib_full_none_type_null_ptr() {
-    common::run(|| {
+    helpers::run(|| {
         let boxed = Boxed::from_glib_full(None, std::ptr::null_mut());
 
         assert!(boxed.is_owned());
@@ -145,7 +145,7 @@ fn from_glib_full_none_type_null_ptr() {
 
 #[test]
 fn drop_plain_struct_uses_g_free() {
-    common::run(|| {
+    helpers::run(|| {
         // SAFETY: `g_malloc0` with a non-zero size returns a freshly allocated, zeroed,
         // uniquely owned block that the wrapper under test takes ownership of and frees.
         let ptr = unsafe { glib::ffi::g_malloc0(32) };
@@ -157,7 +157,7 @@ fn drop_plain_struct_uses_g_free() {
 
 #[test]
 fn drop_plain_struct_null_ptr_safe() {
-    common::run(|| {
+    helpers::run(|| {
         let boxed = Boxed::from_glib_full(None, std::ptr::null_mut());
         drop(boxed);
     });
@@ -165,12 +165,12 @@ fn drop_plain_struct_null_ptr_safe() {
 
 #[test]
 fn plain_struct_not_owned_does_not_free() {
-    common::run(|| {
+    helpers::run(|| {
         // SAFETY: `g_malloc0` with a non-zero size returns a freshly allocated, zeroed,
         // uniquely owned block that the wrapper under test takes ownership of and frees.
         let ptr = unsafe { glib::ffi::g_malloc0(16) };
 
-        let boxed = common::TestBoxed {
+        let boxed = helpers::TestBoxed {
             ptr,
             ty: None,
             is_owned: false,
@@ -187,7 +187,7 @@ fn plain_struct_not_owned_does_not_free() {
 
 #[test]
 fn from_glib_none_null_ptr_with_none_type() {
-    common::run(|| {
+    helpers::run(|| {
         let boxed = Boxed::from_glib_none(None, std::ptr::null_mut())
             .expect("from_glib_none with null ptr should succeed");
 
@@ -198,7 +198,7 @@ fn from_glib_none_null_ptr_with_none_type() {
 
 #[test]
 fn as_ptr_returns_ptr_for_plain_struct() {
-    common::run(|| {
+    helpers::run(|| {
         // SAFETY: `g_malloc0` with a non-zero size returns a freshly allocated, zeroed,
         // uniquely owned block that the wrapper under test takes ownership of and frees.
         let ptr = unsafe { glib::ffi::g_malloc0(24) };
@@ -210,7 +210,7 @@ fn as_ptr_returns_ptr_for_plain_struct() {
 
 #[test]
 fn clone_without_gtype_shares_ownership() {
-    common::run(|| {
+    helpers::run(|| {
         // SAFETY: `g_malloc0` with a non-zero size returns a freshly allocated, zeroed,
         // uniquely owned block that the wrapper under test takes ownership of and frees.
         let ptr = unsafe { glib::ffi::g_malloc0(16) };
@@ -241,12 +241,12 @@ fn assert_null_boxed_clone_stays_null(gtype: Option<glib::Type>) {
 
 #[test]
 fn clone_null_ptr_with_gtype_stays_null() {
-    common::run(|| assert_null_boxed_clone_stays_null(Some(gdk::RGBA::static_type())));
+    helpers::run(|| assert_null_boxed_clone_stays_null(Some(gdk::RGBA::static_type())));
 }
 
 #[test]
 fn clone_null_ptr_without_gtype_stays_null() {
-    common::run(|| assert_null_boxed_clone_stays_null(None));
+    helpers::run(|| assert_null_boxed_clone_stays_null(None));
 }
 
 mod from_alloc {
@@ -257,7 +257,7 @@ mod from_alloc {
 
     use native::Boxed;
 
-    use super::common;
+    use super::helpers;
 
     static BOXED_FREE_CALLS: AtomicUsize = AtomicUsize::new(0);
     static LAST_BOXED_FREED_PTR: AtomicPtr<c_void> = AtomicPtr::new(std::ptr::null_mut());
@@ -312,7 +312,7 @@ mod from_alloc {
 
     #[test]
     fn unregistered_name_defers_destructor_and_g_frees() {
-        common::run(|| {
+        helpers::run(|| {
             let (boxed, _ptr) = deferred_boxed("GtkxTestNeverRegisteredBoxed");
             assert!(boxed.free_fn().is_none());
 
@@ -323,7 +323,7 @@ mod from_alloc {
 
     #[test]
     fn missing_name_binds_plain_g_free_cleanup() {
-        common::run(|| {
+        helpers::run(|| {
             // SAFETY: `g_malloc0` with a non-zero size returns a freshly allocated, zeroed,
             // uniquely owned block that the wrapper under test takes ownership of and frees.
             let ptr = unsafe { glib::ffi::g_malloc0(DEFERRED_ALLOC_SIZE) };
@@ -336,11 +336,11 @@ mod from_alloc {
 
     #[test]
     fn registered_name_binds_boxed_semantics_immediately() {
-        common::run(|| {
+        helpers::run(|| {
             use gtk4::prelude::StaticType as _;
 
             let gtype = gtk4::gdk::RGBA::static_type();
-            let ptr = common::allocate_test_boxed(gtype);
+            let ptr = helpers::allocate_test_boxed(gtype);
             let boxed = Boxed::from_alloc(Some(glib::GString::from(gtype.name())), ptr);
             assert!(boxed.is_owned());
             assert_eq!(boxed.gtype(), Some(gtype));
@@ -349,7 +349,7 @@ mod from_alloc {
 
     #[test]
     fn name_registered_by_release_time_uses_g_boxed_free() {
-        common::run(|| {
+        helpers::run(|| {
             let (boxed, ptr) = deferred_boxed("GtkxTestLateRegisteredBoxed");
 
             // SAFETY: `c"GtkxTestLateRegisteredBoxed"` is a valid NUL-terminated C string and the
@@ -382,7 +382,7 @@ mod free_fn {
 
     use native::Boxed;
 
-    use super::common;
+    use super::helpers;
 
     static FREE_CALLS: AtomicUsize = AtomicUsize::new(0);
     static LAST_FREED_PTR: AtomicPtr<c_void> = AtomicPtr::new(std::ptr::null_mut());
@@ -410,7 +410,7 @@ mod free_fn {
 
     #[test]
     fn drop_invokes_free_fn_for_owned_boxed() {
-        common::run(|| {
+        helpers::run(|| {
             let before = snapshot();
             // SAFETY: `g_malloc0` with a non-zero size returns a freshly allocated, zeroed,
             // uniquely owned block that the wrapper under test takes ownership of and frees.
@@ -430,7 +430,7 @@ mod free_fn {
 
     #[test]
     fn clone_of_free_fn_boxed_shares_ownership() {
-        common::run(|| {
+        helpers::run(|| {
             // SAFETY: `g_malloc0` with a non-zero size returns a freshly allocated, zeroed,
             // uniquely owned block that the wrapper under test takes ownership of and frees.
             let ptr = unsafe { glib::ffi::g_malloc0(16) };
@@ -452,7 +452,7 @@ mod free_fn {
 
     #[test]
     fn null_ptr_free_fn_boxed_skips_destructor() {
-        common::run(|| {
+        helpers::run(|| {
             let before = snapshot();
             let boxed = Boxed::from_glib_full_with_free_fn(std::ptr::null_mut(), record_free);
             drop(boxed);

@@ -1,4 +1,4 @@
-mod common;
+mod helpers;
 
 use std::ffi::c_void;
 
@@ -166,7 +166,7 @@ fn integer_encode_accepts_number_object_and_optional_null() {
     let encoded = FfiEncoder::encode(&IntegerKind::I32, &Value::Number(7.0)).unwrap();
     assert!(matches!(encoded, ffi::StashedValue::I32(7)));
 
-    let handle = native::NativeHandle::borrowed(16 as *mut c_void);
+    let handle = native::Handle::borrowed(16 as *mut c_void);
     let from_object = FfiEncoder::encode(&IntegerKind::I64, &Value::Object(handle)).unwrap();
     assert!(matches!(from_object, ffi::StashedValue::I64(16)));
 
@@ -480,8 +480,8 @@ fn float_call_cif_invokes_native_functions() {
 
 #[test]
 fn enum_flags_encode_decode_and_libffi_type() {
-    common::run(|| {
-        let enum_flags = common::enum_type();
+    helpers::run(|| {
+        let enum_flags = helpers::enum_type();
         let encoded = FfiEncoder::encode(&enum_flags, &Value::Number(1.0)).unwrap();
         assert!(matches!(encoded, ffi::StashedValue::I32(1)));
         let decoded = FfiDecoder::decode(&enum_flags, &ffi::StashedValue::I32(1)).unwrap();
@@ -495,8 +495,8 @@ fn enum_flags_encode_decode_and_libffi_type() {
 
 #[test]
 fn enum_flags_call_cif_invokes_native_function() {
-    common::run(|| {
-        let enum_flags = common::enum_type();
+    helpers::run(|| {
+        let enum_flags = helpers::enum_type();
         let cif = middle::Cif::new(Vec::new(), IntegerKind::I32.ffi_type());
         let result = FfiEncoder::call_cif(
             &enum_flags,
@@ -511,8 +511,8 @@ fn enum_flags_call_cif_invokes_native_function() {
 
 #[test]
 fn enum_flags_pointer_codec() {
-    common::run(|| {
-        let enum_flags = common::enum_type();
+    helpers::run(|| {
+        let enum_flags = helpers::enum_type();
         let mut slot: i64 = 0;
         let ptr = &mut slot as *mut i64 as *mut c_void;
         // SAFETY: `ptr` is the live, pointer-sized `slot` stack variable; the enum/flags codec
@@ -540,7 +540,7 @@ fn enum_flags_pointer_codec() {
 
 #[test]
 fn enum_flags_type_appears_in_descriptor_enum() {
-    let ty = Descriptor::EnumFlags(common::enum_type());
+    let ty = Descriptor::EnumFlags(helpers::enum_type());
     assert!(ty.can_be_return_type());
 }
 
@@ -572,7 +572,7 @@ fn integer_dispatch_methods_cover_every_kind() {
 
 #[test]
 fn integer_codec_covers_every_kind() {
-    common::run(|| {
+    helpers::run(|| {
         for kind in INTEGER_KINDS {
             kind.checked_to_stashed_value(1.0).unwrap();
             assert!(matches!(
@@ -600,7 +600,7 @@ fn integer_codec_covers_every_kind() {
 
 #[test]
 fn float_codec_covers_every_kind() {
-    common::run(|| {
+    helpers::run(|| {
         for kind in [FloatKind::F32, FloatKind::F64] {
             let _ = kind.ffi_type();
             let mut slot = [0u8; 8];

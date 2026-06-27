@@ -8,7 +8,7 @@ use glib::translate::IntoGlib as _;
 use parking_lot::Mutex;
 
 use crate::messaging::{JsRefDeletion, Mailbox};
-use crate::messaging::error_reporter::NativeErrorReporter;
+use crate::messaging::error_reporter::ErrorReporter;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WrapperRefOp {
@@ -152,7 +152,7 @@ impl WrapperRegistry {
             return;
         }
         if let Err(error) = mailbox.apply_wrapper_ref_op_and_wait(ref_ptr as usize, op) {
-            NativeErrorReporter::global().report(&error.context(
+            ErrorReporter::global().report(&error.context(
                 "toggle-reference operation failed; wrapper lifetime state may be inconsistent",
             ));
         }

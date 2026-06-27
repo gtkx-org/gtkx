@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { getWrapper, type Handle, setWrapper } from "../../index.js";
-import { createLabel } from "./utils.js";
+import { getWrapper, type Handle, setWrapper } from "../index.js";
+import { createLabel } from "./helpers/utils.js";
 
 describe("wrapper toggle references", () => {
     it("returns null for a GObject with no wrapper bound", () => {

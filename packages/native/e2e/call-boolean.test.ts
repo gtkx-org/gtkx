@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { BOOLEAN, callArgs, createButton, createLabel, GOBJECT_BORROWED, GTK_LIB, VOID } from "../utils.js";
-import { getLabelSelectable, setLabelSelectable } from "./_helpers.js";
+import { getLabelSelectable, setLabelSelectable } from "./helpers/label-helpers.js";
+import { BOOLEAN, callArgs, createButton, createLabel, GOBJECT_BORROWED, GTK_LIB, VOID } from "./helpers/utils.js";
 
 describe("call - boolean type - label selectable", () => {
     it("passes true and returns true", () => {

@@ -4,16 +4,13 @@ use napi::bindgen_prelude::*;
 use napi::{Env, sys};
 use napi_derive::napi;
 
-use crate::handle::NativeHandle;
+use crate::handle::Handle;
 use crate::handle::wrapper_registry;
 use crate::messaging::Mailbox;
 
 #[napi(catch_unwind)]
 #[cfg_attr(test, allow(dead_code))]
-pub fn get_wrapper<'env>(
-    env: &'env Env,
-    handle: &External<NativeHandle>,
-) -> napi::Result<Unknown<'env>> {
+pub fn get_wrapper<'env>(env: &'env Env, handle: &External<Handle>) -> napi::Result<Unknown<'env>> {
     let gobject_addr = handle.ptr() as usize;
 
     // SAFETY: the closure runs on the gtkx-glib thread; `gobject_addr` is the handle's GObject

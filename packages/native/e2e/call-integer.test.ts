@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { expectClickedSignalHandlerId } from "../call-callback-integer-helpers.js";
+import { expectClickedSignalHandlerId } from "./helpers/call-callback-integer-helpers.js";
+import { setAndGetLabelMaxWidthChars } from "./helpers/label-helpers.js";
 import {
     callArgs,
     connectSignal,
@@ -22,8 +23,7 @@ import {
     UINT32,
     UINT64,
     VOID,
-} from "../utils.js";
-import { setAndGetLabelMaxWidthChars } from "./_helpers.js";
+} from "./helpers/utils.js";
 
 describe("call - integer types - 8-bit signed", () => {
     it("handles signed 8-bit as part of boolean-like values", () => {

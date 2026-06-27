@@ -63,7 +63,7 @@
         "packages/native": {
             "includeEntryExports": true,
             "entry": ["types.ts!"],
-            "project": ["*.ts!", "tests/**/*.{ts,tsx}"]
+            "project": ["*.ts!", "e2e/**/*.{ts,tsx}"]
         },
         "packages/react": {
             "project": ["src/**/*.{ts,tsx}!"]

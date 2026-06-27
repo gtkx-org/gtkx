@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { getWrapper, type Handle, setWrapper } from "../../index.js";
-import { createLabel, getRefCount } from "./utils.js";
+import { getWrapper, type Handle, setWrapper } from "../index.js";
+import { createLabel, getRefCount } from "./helpers/utils.js";
 
 describe("toggle-ref rebind", () => {
     it("reuses a single toggle ref and tracks the latest wrapper across rebinds", () => {

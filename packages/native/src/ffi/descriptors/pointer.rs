@@ -85,7 +85,7 @@ where
     let stashed_value = match encode(value) {
         Ok(stashed_value) => stashed_value,
         Err(err) => {
-            crate::messaging::error_reporter::NativeErrorReporter::global().report(&err.context(context));
+            crate::messaging::error_reporter::ErrorReporter::global().report(&err.context(context));
             return std::ptr::null_mut();
         }
     };

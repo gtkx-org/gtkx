@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { Value } from "../../../index.js";
-import { appendLabelAndExpectRefIncrement, expectNoLeakCreatingLabels } from "../call-gobject-string-helpers.js";
+import type { Value } from "../index.js";
+import { appendLabelAndExpectRefIncrement, expectNoLeakCreatingLabels } from "./helpers/call-gobject-string-helpers.js";
 import {
     boxAppend,
     boxRemove,
@@ -20,7 +20,7 @@ import {
     STRING_BORROWED,
     startMemoryMeasurement,
     VOID,
-} from "../utils.js";
+} from "./helpers/utils.js";
 
 describe("call - gobject types - owned", () => {
     it("creates and returns owned GObject", () => {

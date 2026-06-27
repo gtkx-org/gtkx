@@ -1,4 +1,4 @@
-mod common;
+mod helpers;
 
 use std::ffi::{CStr, CString, c_char, c_void};
 
@@ -135,7 +135,7 @@ fn string_gslist_storage(
 
 #[test]
 fn hashtable_storage_unrefs_on_drop() {
-    common::run(|| {
+    helpers::run(|| {
         let hash_table = make_hash_table();
 
         // SAFETY: `hash_table` is the live, owned table just created; this extra reference is the
@@ -240,7 +240,7 @@ fn as_bool_slice_success_and_mismatch() {
 
 #[test]
 fn as_object_array_success_and_mismatch() {
-    let handles: Vec<native::NativeHandle> = Vec::new();
+    let handles: Vec<native::Handle> = Vec::new();
     let ptrs: Vec<*mut c_void> = Vec::new();
     let storage = Stash::new(std::ptr::null_mut(), StashKind::ObjectArray(handles, ptrs));
     assert!(storage.as_object_array().unwrap().is_empty());
@@ -293,7 +293,7 @@ fn drop_no_op_kinds_do_not_crash() {
 
 #[test]
 fn glist_storage_frees_when_should_free() {
-    common::run(|| {
+    helpers::run(|| {
         let list = make_glist_one();
         {
             let _storage = glist_storage(list, true);
@@ -303,7 +303,7 @@ fn glist_storage_frees_when_should_free() {
 
 #[test]
 fn glist_storage_keeps_when_not_freed() {
-    common::run(|| {
+    helpers::run(|| {
         let list = make_glist_one();
         {
             let _storage = glist_storage(list, false);
@@ -331,7 +331,7 @@ fn glist_storage_null_ptr_safe_on_drop() {
 
 #[test]
 fn gslist_storage_frees_when_should_free() {
-    common::run(|| {
+    helpers::run(|| {
         let list = make_gslist_one();
         {
             let _storage = gslist_storage(list, true);
@@ -341,7 +341,7 @@ fn gslist_storage_frees_when_should_free() {
 
 #[test]
 fn gslist_storage_keeps_when_not_freed() {
-    common::run(|| {
+    helpers::run(|| {
         let list = make_gslist_one();
         {
             let _storage = gslist_storage(list, false);
@@ -366,7 +366,7 @@ fn gslist_storage_null_ptr_safe_on_drop() {
 
 #[test]
 fn garray_storage_unrefs_when_should_free() {
-    common::run(|| {
+    helpers::run(|| {
         let array = make_g_array();
         {
             let _storage = garray_storage(array, true);
@@ -376,7 +376,7 @@ fn garray_storage_unrefs_when_should_free() {
 
 #[test]
 fn garray_storage_keeps_when_not_freed() {
-    common::run(|| {
+    helpers::run(|| {
         let array = make_g_array();
         {
             let _storage = garray_storage(array, false);
@@ -400,7 +400,7 @@ fn garray_storage_null_ptr_safe_on_drop() {
 
 #[test]
 fn gbytearray_storage_unrefs_when_should_free() {
-    common::run(|| {
+    helpers::run(|| {
         let array = make_g_byte_array();
         {
             let _storage = gbytearray_storage(array, true);
@@ -410,7 +410,7 @@ fn gbytearray_storage_unrefs_when_should_free() {
 
 #[test]
 fn gbytearray_storage_keeps_when_not_freed() {
-    common::run(|| {
+    helpers::run(|| {
         let array = make_g_byte_array();
         {
             let _storage = gbytearray_storage(array, false);
@@ -428,7 +428,7 @@ fn gbytearray_storage_without_ownership_safe_on_drop() {
 
 #[test]
 fn hashtable_storage_keeps_when_not_freed() {
-    common::run(|| {
+    helpers::run(|| {
         let hash_table = make_hash_table();
         {
             let _storage = hashtable_storage(hash_table, false);
@@ -463,7 +463,7 @@ fn build_string_glist(strings: &[CString], dup: bool) -> *mut glib::ffi::GList {
 
 #[test]
 fn string_glist_storage_frees_duped_elements() {
-    common::run(|| {
+    helpers::run(|| {
         let strings = vec![CString::new("a").unwrap(), CString::new("b").unwrap()];
         let list = build_string_glist(&strings, true);
         {
@@ -483,14 +483,14 @@ fn drop_borrowed_string_glist_storage(should_free: bool) -> *mut glib::ffi::GLis
 
 #[test]
 fn string_glist_storage_frees_shallow_when_not_duped() {
-    common::run(|| {
+    helpers::run(|| {
         drop_borrowed_string_glist_storage(true);
     });
 }
 
 #[test]
 fn string_glist_storage_keeps_when_not_freed() {
-    common::run(|| {
+    helpers::run(|| {
         let list = drop_borrowed_string_glist_storage(false);
         // SAFETY: the non-freeing storage left `list` intact, so it is still a live GList spine
         // (its elements borrow the now-dropped `CString`s, which `g_list_free` does not touch);
@@ -517,7 +517,7 @@ fn build_string_gslist(strings: &[CString], dup: bool) -> *mut glib::ffi::GSList
 
 #[test]
 fn string_gslist_storage_frees_duped_elements() {
-    common::run(|| {
+    helpers::run(|| {
         let strings = vec![CString::new("a").unwrap(), CString::new("b").unwrap()];
         let list = build_string_gslist(&strings, true);
         {
@@ -537,14 +537,14 @@ fn drop_borrowed_string_gslist_storage(should_free: bool) -> *mut glib::ffi::GSL
 
 #[test]
 fn string_gslist_storage_frees_shallow_when_not_duped() {
-    common::run(|| {
+    helpers::run(|| {
         drop_borrowed_string_gslist_storage(true);
     });
 }
 
 #[test]
 fn string_gslist_storage_keeps_when_not_freed() {
-    common::run(|| {
+    helpers::run(|| {
         let list = drop_borrowed_string_gslist_storage(false);
         // SAFETY: the non-freeing storage left `list` intact, so it is still a live GSList spine
         // whose elements borrow the dropped `CString`s; freeing the spine once is sound.
@@ -613,7 +613,7 @@ fn encode_string_array_element_transfer_frees_duplicates_when_call_never_happens
 
 #[test]
 fn encode_gbytearray_full_ownership_unrefs_when_call_never_happens() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = ArrayDescriptor {
             item_descriptor: Box::new(Descriptor::Integer(IntegerKind::U8)),
             kind: ArrayKind::GByteArray,

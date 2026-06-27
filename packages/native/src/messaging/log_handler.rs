@@ -4,7 +4,7 @@ use std::sync::OnceLock;
 
 use glib::{LogLevel, LogWriterOutput};
 
-use crate::messaging::error_reporter::NativeErrorReporter;
+use crate::messaging::error_reporter::ErrorReporter;
 
 static INSTALLED: OnceLock<()> = OnceLock::new();
 
@@ -26,7 +26,7 @@ impl GlibLogHandler {
         };
         let domain = field_value(fields, "GLIB_DOMAIN").unwrap_or("unknown");
         let message = field_value(fields, "MESSAGE").unwrap_or("(no message)");
-        NativeErrorReporter::global().report_str(&format!("{domain}-{level_str}: {message}"));
+        ErrorReporter::global().report_str(&format!("{domain}-{level_str}: {message}"));
         glib::log_writer_default(level, fields)
     }
 }

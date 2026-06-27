@@ -1,4 +1,4 @@
-mod common;
+mod helpers;
 
 use std::ffi::c_void;
 
@@ -6,7 +6,7 @@ use gtk4::glib;
 use gtk4::prelude::ObjectType as _;
 use gtk4::prelude::StaticType as _;
 
-use native::NativeHandle;
+use native::Handle;
 use native::ffi::StashedValue;
 use native::ffi::descriptors::{
     ArrayDescriptor, ArrayKind, BooleanDescriptor, BoxedDescriptor, Descriptor, FloatKind,
@@ -33,9 +33,9 @@ fn gptrarray_type() -> Descriptor {
     })
 }
 
-fn boxed_handle() -> NativeHandle {
-    let ptr = common::allocate_test_boxed(gtk4::gdk::RGBA::static_type());
-    NativeHandle::borrowed(ptr)
+fn boxed_handle() -> Handle {
+    let ptr = helpers::allocate_test_boxed(gtk4::gdk::RGBA::static_type());
+    Handle::borrowed(ptr)
 }
 
 fn full_boxed_type() -> Descriptor {
@@ -63,7 +63,7 @@ fn full_gobject_type() -> Descriptor {
 }
 
 fn full_variant_fundamental_encoder(ref_func: &str, unref_func: &str) -> HashTableEntryEncoder {
-    HashTableEntryEncoder::NativeHandle(Box::new(Descriptor::Fundamental(FundamentalDescriptor {
+    HashTableEntryEncoder::Handle(Box::new(Descriptor::Fundamental(FundamentalDescriptor {
         ownership: Ownership::Full,
         shared_library: "libglib-2.0.so.0".to_owned(),
         ref_func: ref_func.to_owned(),
@@ -158,7 +158,7 @@ fn gobject_key_boolean_ht() -> HashTableDescriptor {
 fn new_object_with_refcount() -> (glib::Object, *mut glib::gobject_ffi::GObject, u32) {
     let obj = glib::Object::new::<glib::Object>();
     let obj_ptr = obj.as_ptr();
-    let before = common::get_gobject_refcount(obj_ptr);
+    let before = helpers::get_gobject_refcount(obj_ptr);
     (obj, obj_ptr, before)
 }
 
@@ -336,7 +336,7 @@ fn ptr_to_value_struct_null() {
 
 #[test]
 fn ptr_to_value_struct_non_null() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = Descriptor::Struct(StructDescriptor {
             ownership: Ownership::Borrowed,
             size: Some(16),
@@ -364,7 +364,7 @@ fn ptr_to_value_struct_non_null() {
 
 #[test]
 fn hashtable_encode_decode_booleans() {
-    common::run(|| {
+    helpers::run(|| {
         let ht_type = boolean_boolean_ht();
 
         let input = Value::Array(vec![
@@ -383,7 +383,7 @@ fn hashtable_encode_decode_booleans() {
 
 #[test]
 fn hashtable_encode_decode_floats() {
-    common::run(|| {
+    helpers::run(|| {
         let ht_type = ht_type(
             Descriptor::Integer(IntegerKind::I32),
             Descriptor::Float(FloatKind::F64),
@@ -409,7 +409,7 @@ fn hashtable_encode_decode_floats() {
 
 #[test]
 fn hashtable_encode_decode_string_to_boolean() {
-    common::run(|| {
+    helpers::run(|| {
         let ht_type = ht_type(
             Descriptor::String(StringDescriptor {
                 ownership: Ownership::Borrowed,
@@ -441,7 +441,7 @@ fn hashtable_encode_decode_string_to_boolean() {
 
 #[test]
 fn hashtable_encode_decode_float_keys() {
-    common::run(|| {
+    helpers::run(|| {
         let ht_type = ht_type(
             Descriptor::Float(FloatKind::F64),
             Descriptor::Integer(IntegerKind::I32),
@@ -466,7 +466,7 @@ fn hashtable_encode_decode_float_keys() {
 
 #[test]
 fn hashtable_empty() {
-    common::run(|| {
+    helpers::run(|| {
         let ht_type = boolean_boolean_ht();
 
         let input = Value::Array(vec![]);
@@ -482,7 +482,7 @@ fn hashtable_empty() {
 
 #[test]
 fn hashtable_null_optional() {
-    common::run(|| {
+    helpers::run(|| {
         let ht_type = boolean_boolean_ht();
 
         let encoded = ht_type
@@ -498,14 +498,14 @@ fn hashtable_null_optional() {
 
 #[test]
 fn hashtable_borrowed_does_not_free() {
-    common::run(|| {
+    helpers::run(|| {
         let ht_type = ht_type(
             Descriptor::Integer(IntegerKind::I32),
             Descriptor::Integer(IntegerKind::I32),
             Ownership::Borrowed,
         );
 
-        let hash_table = common::make_integer_hash_table(&[(1, 100), (2, 200)]);
+        let hash_table = helpers::make_integer_hash_table(&[(1, 100), (2, 200)]);
 
         let stashed_value = StashedValue::Ptr(hash_table as *mut c_void);
         let decoded = ht_type
@@ -528,7 +528,7 @@ fn hashtable_borrowed_does_not_free() {
 
 #[test]
 fn float_memory_properly_freed_on_drop() {
-    common::run(|| {
+    helpers::run(|| {
         let ht_type = ht_type(
             Descriptor::Float(FloatKind::F64),
             Descriptor::Float(FloatKind::F64),
@@ -549,7 +549,7 @@ fn float_memory_properly_freed_on_drop() {
 fn encoder_from_type_native_handle() {
     assert!(matches!(
         HashTableEntryEncoder::from_type(&struct_type()),
-        Some(HashTableEntryEncoder::NativeHandle(_))
+        Some(HashTableEntryEncoder::Handle(_))
     ));
 }
 
@@ -577,7 +577,7 @@ fn string_encoder_hash_equal_and_free() {
 
 #[test]
 fn native_handle_encoder_hash_equal_and_free() {
-    let encoder = HashTableEntryEncoder::NativeHandle(Box::new(struct_type()));
+    let encoder = HashTableEntryEncoder::Handle(Box::new(struct_type()));
     assert!(encoder.hash_func().is_some());
     assert!(encoder.equal_func().is_some());
     assert!(encoder.free_func().unwrap().is_none());
@@ -585,16 +585,15 @@ fn native_handle_encoder_hash_equal_and_free() {
 
 #[test]
 fn full_gobject_encoder_installs_unref_destroy() {
-    let encoder =
-        HashTableEntryEncoder::NativeHandle(Box::new(Descriptor::GObject(GObjectDescriptor {
-            ownership: Ownership::Full,
-        })));
+    let encoder = HashTableEntryEncoder::Handle(Box::new(Descriptor::GObject(GObjectDescriptor {
+        ownership: Ownership::Full,
+    })));
     assert!(encoder.free_func().unwrap().is_some());
 }
 
 #[test]
 fn full_fundamental_encoder_installs_unref_destroy() {
-    common::run(|| {
+    helpers::run(|| {
         let encoder = full_variant_fundamental_encoder("g_variant_ref_sink", "g_variant_unref");
         assert!(encoder.free_func().unwrap().is_some());
     });
@@ -602,7 +601,7 @@ fn full_fundamental_encoder_installs_unref_destroy() {
 
 #[test]
 fn full_fundamental_encoder_without_ref_fn_installs_no_destroy() {
-    common::run(|| {
+    helpers::run(|| {
         let encoder = full_variant_fundamental_encoder("", "");
         assert!(encoder.free_func().unwrap().is_none());
     });
@@ -618,8 +617,8 @@ fn ptr_array_encoder_hash_equal_and_free() {
 
 #[test]
 fn encode_native_handle_value_null_and_wrong_type() {
-    common::run(|| {
-        let encoder = HashTableEntryEncoder::NativeHandle(Box::new(struct_type()));
+    helpers::run(|| {
+        let encoder = HashTableEntryEncoder::Handle(Box::new(struct_type()));
         let handle = boxed_handle();
         let ptr = encoder.encode(&Value::Object(handle.clone())).unwrap();
         assert_eq!(ptr, handle.ptr());
@@ -632,7 +631,7 @@ fn encode_native_handle_value_null_and_wrong_type() {
 
 #[test]
 fn encode_ptr_array_value_with_objects_and_nulls() {
-    common::run(|| {
+    helpers::run(|| {
         let encoder = HashTableEntryEncoder::PtrArray(Box::new(struct_type()));
         let ptr = encoder
             .encode(&Value::Array(vec![
@@ -649,7 +648,7 @@ fn encode_ptr_array_value_with_objects_and_nulls() {
 
 #[test]
 fn ptr_array_value_freed_when_hashtable_storage_drops() {
-    common::run(|| {
+    helpers::run(|| {
         let ht_type = ht_type(
             Descriptor::Integer(IntegerKind::I32),
             gptrarray_type(),
@@ -667,7 +666,7 @@ fn ptr_array_value_freed_when_hashtable_storage_drops() {
 
 #[test]
 fn hashtable_encode_propagates_key_encoder_error() {
-    common::run(|| {
+    helpers::run(|| {
         let ht_type = boolean_boolean_ht();
         let input = Value::Array(vec![Value::Array(vec![
             Value::Number(1.0),
@@ -688,7 +687,7 @@ fn hashtable_decode_null_yields_empty_array() {
 
 #[test]
 fn hashtable_ptr_to_value_null_and_populated() {
-    common::run(|| {
+    helpers::run(|| {
         let ht_type = ht_type(
             Descriptor::Integer(IntegerKind::I32),
             Descriptor::Integer(IntegerKind::I32),
@@ -700,7 +699,7 @@ fn hashtable_ptr_to_value_null_and_populated() {
             unsafe { ht_type.read(ReadSource::Value(std::ptr::null_mut(), "ctx")) }.unwrap();
         assert!(matches!(empty, Value::Array(items) if items.is_empty()));
 
-        let hash_table = common::make_integer_hash_table(&[(1, 10)]);
+        let hash_table = helpers::make_integer_hash_table(&[(1, 10)]);
         let decoded =
             // SAFETY: the pointer addresses a live value/container of the codec's type, valid for
             // this read.
@@ -713,13 +712,13 @@ fn hashtable_ptr_to_value_null_and_populated() {
 
 #[test]
 fn hashtable_decode_full_ownership_from_pointer_unrefs() {
-    common::run(|| {
+    helpers::run(|| {
         let ht_type = ht_type(
             Descriptor::Integer(IntegerKind::I32),
             Descriptor::Integer(IntegerKind::I32),
             Ownership::Full,
         );
-        let hash_table = common::make_integer_hash_table(&[(3, 30)]);
+        let hash_table = helpers::make_integer_hash_table(&[(3, 30)]);
         // SAFETY: `hash_table` is a valid GHashTable; this takes one extra owning reference
         // matched by an unref below.
         unsafe {
@@ -742,7 +741,7 @@ fn hashtable_decode_full_ownership_from_pointer_unrefs() {
 
 #[test]
 fn hashtable_encode_native_handle_keys_roundtrips() {
-    common::run(|| {
+    helpers::run(|| {
         let ht_type = ht_type(
             struct_type(),
             Descriptor::Integer(IntegerKind::I32),
@@ -759,7 +758,7 @@ fn hashtable_encode_native_handle_keys_roundtrips() {
 
 #[test]
 fn boolean_roundtrip_preserves_values() {
-    common::run(|| {
+    helpers::run(|| {
         let ht_type = ht_type(
             Descriptor::Integer(IntegerKind::I32),
             Descriptor::Boolean(BooleanDescriptor),
@@ -797,9 +796,9 @@ fn boolean_roundtrip_preserves_values() {
 
 #[test]
 fn fundamental_value_unreffed_when_hashtable_storage_drops() {
-    common::run(|| {
+    helpers::run(|| {
         let pspec = create_param_spec();
-        let before = common::param_spec_refcount(pspec);
+        let before = helpers::param_spec_refcount(pspec);
 
         let ht_type = ht_type(
             Descriptor::Integer(IntegerKind::I32),
@@ -808,14 +807,14 @@ fn fundamental_value_unreffed_when_hashtable_storage_drops() {
         );
         let input = Value::Array(vec![Value::Array(vec![
             Value::Number(1.0),
-            Value::Object(NativeHandle::borrowed(pspec)),
+            Value::Object(Handle::borrowed(pspec)),
         ])]);
 
         let encoded = ht_type.encode(&input).expect("encoding should succeed");
-        assert_eq!(common::param_spec_refcount(pspec), before + 1);
+        assert_eq!(helpers::param_spec_refcount(pspec), before + 1);
 
         drop(encoded);
-        assert_eq!(common::param_spec_refcount(pspec), before);
+        assert_eq!(helpers::param_spec_refcount(pspec), before);
 
         // SAFETY: the GParamSpec is live and the test owns the reference released here.
         unsafe { glib::gobject_ffi::g_param_spec_unref(pspec.cast()) };
@@ -824,7 +823,7 @@ fn fundamental_value_unreffed_when_hashtable_storage_drops() {
 
 #[test]
 fn gobject_value_unreffed_when_hashtable_storage_drops() {
-    common::run(|| {
+    helpers::run(|| {
         let (_obj, obj_ptr, before) = new_object_with_refcount();
 
         let ht_type = ht_type(
@@ -835,13 +834,13 @@ fn gobject_value_unreffed_when_hashtable_storage_drops() {
         let input = Value::Array(vec![
             Value::Array(vec![
                 Value::Number(1.0),
-                Value::Object(NativeHandle::borrowed(obj_ptr as *mut c_void)),
+                Value::Object(Handle::borrowed(obj_ptr as *mut c_void)),
             ]),
             Value::Array(vec![Value::Number(2.0), Value::Null]),
         ]);
 
         let encoded = ht_type.encode(&input).expect("encoding should succeed");
-        assert_eq!(common::get_gobject_refcount(obj_ptr), before + 1);
+        assert_eq!(helpers::get_gobject_refcount(obj_ptr), before + 1);
 
         let StashedValue::Storage(storage) = &encoded else {
             panic!("Expected Storage ffi value")
@@ -852,30 +851,30 @@ fn gobject_value_unreffed_when_hashtable_storage_drops() {
         assert_eq!(size, 2);
 
         drop(encoded);
-        assert_eq!(common::get_gobject_refcount(obj_ptr), before);
+        assert_eq!(helpers::get_gobject_refcount(obj_ptr), before);
     });
 }
 
 #[test]
 fn hashtable_encode_value_error_releases_transferred_gobject_key() {
-    common::run(|| {
+    helpers::run(|| {
         let (_obj, obj_ptr, before) = new_object_with_refcount();
 
         let ht_type = gobject_key_boolean_ht();
         let input = Value::Array(vec![Value::Array(vec![
-            Value::Object(NativeHandle::borrowed(obj_ptr as *mut c_void)),
+            Value::Object(Handle::borrowed(obj_ptr as *mut c_void)),
             Value::Number(1.0),
         ])]);
 
         let err = ht_type.encode(&input).expect_err("value encode must fail");
         assert!(err.to_string().contains("Expected boolean in GHashTable"));
-        assert_eq!(common::get_gobject_refcount(obj_ptr), before);
+        assert_eq!(helpers::get_gobject_refcount(obj_ptr), before);
     });
 }
 
 #[test]
 fn hashtable_encode_value_error_frees_duplicated_string_key() {
-    common::run(|| {
+    helpers::run(|| {
         let ht_type = ht_type(
             borrowed_string_type(),
             Descriptor::Boolean(BooleanDescriptor),
@@ -893,7 +892,7 @@ fn hashtable_encode_value_error_frees_duplicated_string_key() {
 
 #[test]
 fn hashtable_encode_value_destroy_error_releases_string_key() {
-    common::run(|| {
+    helpers::run(|| {
         let value_descriptor = Descriptor::Array(ArrayDescriptor {
             item_descriptor: Box::new(full_boxed_type()),
             kind: ArrayKind::GPtrArray,
@@ -915,26 +914,26 @@ fn hashtable_encode_value_destroy_error_releases_string_key() {
 
 #[test]
 fn hashtable_encode_second_tuple_error_unwinds_inserted_entries() {
-    common::run(|| {
+    helpers::run(|| {
         let (_inserted, inserted_ptr, inserted_before) = new_object_with_refcount();
         let (_failing, failing_ptr, failing_before) = new_object_with_refcount();
 
         let ht_type = gobject_key_boolean_ht();
         let input = Value::Array(vec![
             Value::Array(vec![
-                Value::Object(NativeHandle::borrowed(inserted_ptr as *mut c_void)),
+                Value::Object(Handle::borrowed(inserted_ptr as *mut c_void)),
                 Value::Boolean(true),
             ]),
             Value::Array(vec![
-                Value::Object(NativeHandle::borrowed(failing_ptr as *mut c_void)),
+                Value::Object(Handle::borrowed(failing_ptr as *mut c_void)),
                 Value::Number(1.0),
             ]),
         ]);
 
         let err = ht_type.encode(&input).expect_err("second tuple must fail");
         assert!(err.to_string().contains("Expected boolean in GHashTable"));
-        assert_eq!(common::get_gobject_refcount(inserted_ptr), inserted_before);
-        assert_eq!(common::get_gobject_refcount(failing_ptr), failing_before);
+        assert_eq!(helpers::get_gobject_refcount(inserted_ptr), inserted_before);
+        assert_eq!(helpers::get_gobject_refcount(failing_ptr), failing_before);
     });
 }
 
@@ -948,7 +947,7 @@ fn string_hashtable_type(ownership: Ownership) -> HashTableDescriptor {
 
 #[test]
 fn write_return_to_pointer_full_table_hands_caller_owned_table() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = string_hashtable_type(Ownership::Full);
         let val = Value::Array(vec![Value::Array(vec![
             Value::String("key".to_string()),
@@ -995,7 +994,7 @@ fn write_return_to_pointer_null_err_and_non_array_write_null() {
 
 #[test]
 fn write_return_to_pointer_encode_error_writes_null() {
-    common::run(|| {
+    helpers::run(|| {
         let ty = string_hashtable_type(Ownership::Full);
         let val = Value::Array(vec![Value::String("not a tuple".to_string())]);
         let mut slot: *mut c_void = 7 as *mut c_void;

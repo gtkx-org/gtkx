@@ -1,5 +1,3 @@
-mod common;
-
 use std::ffi::{CString, c_void};
 
 use native::ffi::arg::Arg;

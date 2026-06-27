@@ -1,4 +1,4 @@
-mod common;
+mod helpers;
 
 use std::ffi::{CString, c_char, c_void};
 
@@ -63,7 +63,7 @@ fn ptr_sized_malloc_storage() -> ffi::StashedValue {
 
 #[test]
 fn decode_rejects_non_storage_non_null_ptr() {
-    common::run(|| {
+    helpers::run(|| {
         let ref_type =
             RefDescriptor::new(Descriptor::Integer(IntegerKind::I32)).expect("valid Ref inner");
         let result = ref_type.decode(&ffi::StashedValue::I32(7));
@@ -73,7 +73,7 @@ fn decode_rejects_non_storage_non_null_ptr() {
 
 #[test]
 fn decode_null_ptr_yields_null() {
-    common::run(|| {
+    helpers::run(|| {
         let ref_type =
             RefDescriptor::new(Descriptor::Integer(IntegerKind::I32)).expect("valid Ref inner");
         let decoded = ref_type
@@ -85,7 +85,7 @@ fn decode_null_ptr_yields_null() {
 
 #[test]
 fn decode_integer_reads_number() {
-    common::run(|| {
+    helpers::run(|| {
         with_i32_storage_ref(4321, |stashed_value, ref_type| {
             let decoded = ref_type
                 .decode(stashed_value)
@@ -97,7 +97,7 @@ fn decode_integer_reads_number() {
 
 #[test]
 fn decode_enum_flags_reads_number() {
-    common::run(|| {
+    helpers::run(|| {
         let mut value: i32 = 9;
         let slot = &mut value as *mut i32 as *mut c_void;
         let stashed_value = ffi::StashedValue::Storage(Stash::new(slot, StashKind::Unit));
@@ -119,7 +119,7 @@ fn decode_enum_flags_reads_number() {
 
 #[test]
 fn decode_float_reads_number() {
-    common::run(|| {
+    helpers::run(|| {
         let mut value: f64 = 2.5;
         let slot = &mut value as *mut f64 as *mut c_void;
         let stashed_value = ffi::StashedValue::Storage(Stash::new(slot, StashKind::Unit));
@@ -135,7 +135,7 @@ fn decode_float_reads_number() {
 
 #[test]
 fn decode_gobject_delegates_to_inner_decoder() {
-    common::run(|| {
+    helpers::run(|| {
         let obj = glib::Object::new::<glib::Object>();
         let obj_ptr = obj.as_ptr() as *mut c_void;
         let storage = ptr_storage(obj_ptr);
@@ -154,7 +154,7 @@ fn decode_gobject_delegates_to_inner_decoder() {
 
 #[test]
 fn decode_string_reads_via_decode_ref_string() {
-    common::run(|| {
+    helpers::run(|| {
         let cstring = CString::new("ref-string").unwrap();
         let storage = ptr_storage(cstring.as_ptr() as *mut c_void);
 
@@ -169,7 +169,7 @@ fn decode_string_reads_via_decode_ref_string() {
 
 #[test]
 fn decode_array_inner_bails_without_context() {
-    common::run(|| {
+    helpers::run(|| {
         let storage = ptr_storage(std::ptr::null_mut());
 
         let ref_type = u8_array_ref_type();
@@ -179,7 +179,7 @@ fn decode_array_inner_bails_without_context() {
 
 #[test]
 fn decode_boolean_reads_bool() {
-    common::run(|| {
+    helpers::run(|| {
         let mut value: i32 = 1;
         let slot = &mut value as *mut i32 as *mut c_void;
         let stashed_value = ffi::StashedValue::Storage(Stash::new(slot, StashKind::Unit));
@@ -195,7 +195,7 @@ fn decode_boolean_reads_bool() {
 
 #[test]
 fn decode_unichar_reads_string() {
-    common::run(|| {
+    helpers::run(|| {
         let mut value: u32 = 'é' as u32;
         let slot = &mut value as *mut u32 as *mut c_void;
         let stashed_value = ffi::StashedValue::Storage(Stash::new(slot, StashKind::Unit));
@@ -211,7 +211,7 @@ fn decode_unichar_reads_string() {
 
 #[test]
 fn decode_ref_string_buffer_kind_reads_directly() {
-    common::run(|| {
+    helpers::run(|| {
         let mut buffer = b"buffered\0".to_vec();
         let ptr = buffer.as_mut_ptr() as *mut c_void;
         let storage = ffi::StashedValue::Storage(Stash::new(ptr, StashKind::Buffer(buffer)));
@@ -227,7 +227,7 @@ fn decode_ref_string_buffer_kind_reads_directly() {
 
 #[test]
 fn decode_ref_string_null_storage_pointer_yields_null() {
-    common::run(|| {
+    helpers::run(|| {
         let storage = ffi::StashedValue::Storage(Stash::new(std::ptr::null_mut(), StashKind::Unit));
         let ref_type =
             RefDescriptor::new(Descriptor::String(string_type())).expect("valid Ref inner");
@@ -240,7 +240,7 @@ fn decode_ref_string_null_storage_pointer_yields_null() {
 
 #[test]
 fn decode_ref_string_null_inner_pointer_yields_null() {
-    common::run(|| {
+    helpers::run(|| {
         let storage = ptr_storage(std::ptr::null_mut());
 
         let ref_type =
@@ -254,7 +254,7 @@ fn decode_ref_string_null_inner_pointer_yields_null() {
 
 #[test]
 fn decode_ref_string_full_ownership_frees_pointer() {
-    common::run(|| {
+    helpers::run(|| {
         // SAFETY: `c"owned-ref"` is a valid NUL-terminated C string literal; `g_strdup` returns a
         // freshly `g_malloc`-ed owned copy that the full-ownership string ref decode below frees.
         let owned = unsafe { glib::ffi::g_strdup(c"owned-ref".as_ptr()) };
@@ -275,7 +275,7 @@ fn decode_ref_string_full_ownership_frees_pointer() {
 
 #[test]
 fn decode_with_context_non_array_delegates_to_decode() {
-    common::run(|| {
+    helpers::run(|| {
         with_i32_storage_ref(11, |stashed_value, ref_type| {
             let decoded = ref_type
                 .decode_with_context(stashed_value, &[], &[])
@@ -287,7 +287,7 @@ fn decode_with_context_non_array_delegates_to_decode() {
 
 #[test]
 fn decode_with_context_trait_method_delegates() {
-    common::run(|| {
+    helpers::run(|| {
         with_i32_storage_ref(13, |stashed_value, ref_type| {
             let decoded = FfiDecoder::decode_with_context(ref_type, stashed_value, &[], &[])
                 .expect("trait decode_with_context should succeed");
@@ -298,7 +298,7 @@ fn decode_with_context_trait_method_delegates() {
 
 #[test]
 fn decode_with_context_array_null_ptr_yields_null() {
-    common::run(|| {
+    helpers::run(|| {
         let ref_type = u8_array_ref_type();
         let decoded = ref_type
             .decode_with_context(&ffi::StashedValue::Ptr(std::ptr::null_mut()), &[], &[])
@@ -309,7 +309,7 @@ fn decode_with_context_array_null_ptr_yields_null() {
 
 #[test]
 fn decode_with_context_array_ptr_storage_null_inner_yields_empty_array() {
-    common::run(|| {
+    helpers::run(|| {
         let storage = ptr_storage(std::ptr::null_mut());
 
         let ref_type = u8_array_ref_type();
@@ -322,7 +322,7 @@ fn decode_with_context_array_ptr_storage_null_inner_yields_empty_array() {
 
 #[test]
 fn decode_with_context_array_string_items_not_freed_by_ref() {
-    common::run(|| {
+    helpers::run(|| {
         // SAFETY: `g_malloc0` with a non-zero pointer-sized request returns a freshly allocated,
         // zeroed block (a NULL-terminated empty `char*` array) that the array decoder takes and frees.
         let inner = unsafe { glib::ffi::g_malloc0(std::mem::size_of::<*mut c_char>()) };
@@ -340,7 +340,7 @@ fn decode_with_context_array_string_items_not_freed_by_ref() {
 
 #[test]
 fn decode_with_context_array_container_released_by_array_decoder() {
-    common::run(|| {
+    helpers::run(|| {
         let storage = ptr_sized_malloc_storage();
 
         let array_type = ArrayDescriptor {
@@ -357,7 +357,7 @@ fn decode_with_context_array_container_released_by_array_decoder() {
 
 #[test]
 fn decode_with_context_garray_container_released_by_array_decoder() {
-    common::run(|| {
+    helpers::run(|| {
         // SAFETY: `g_array_sized_new` with a valid element size returns a freshly allocated, owned
         // empty `GArray`; the full-ownership GArray decoder under test takes ownership and unrefs it.
         let g_array =
@@ -376,7 +376,7 @@ fn decode_with_context_garray_container_released_by_array_decoder() {
 
 #[test]
 fn decode_with_context_array_non_string_items_freed_by_ref() {
-    common::run(|| {
+    helpers::run(|| {
         let storage = ptr_sized_malloc_storage();
 
         let array_type = ArrayDescriptor {
@@ -391,7 +391,7 @@ fn decode_with_context_array_non_string_items_freed_by_ref() {
 
 #[test]
 fn decode_with_context_array_non_ptr_storage_uses_storage_pointer() {
-    common::run(|| {
+    helpers::run(|| {
         let mut buffer: Vec<u8> = vec![0u8; std::mem::size_of::<*mut c_void>()];
         let storage = ffi::StashedValue::Storage(Stash::new(
             buffer.as_mut_ptr() as *mut c_void,
@@ -410,7 +410,7 @@ fn decode_with_context_array_non_ptr_storage_uses_storage_pointer() {
 
 #[test]
 fn read_from_pointer_null_inner_yields_null() {
-    common::run(|| {
+    helpers::run(|| {
         let inner: *mut c_void = std::ptr::null_mut();
         let ref_type =
             RefDescriptor::new(Descriptor::Integer(IntegerKind::I32)).expect("valid Ref inner");
@@ -429,7 +429,7 @@ fn read_from_pointer_null_inner_yields_null() {
 
 #[test]
 fn read_from_pointer_string_inner_reads_value() {
-    common::run(|| {
+    helpers::run(|| {
         let cstring = CString::new("raw-ref").unwrap();
         let char_ptr = cstring.as_ptr() as *mut c_void;
         let inner_slot: *mut c_void = &char_ptr as *const *mut c_void as *mut c_void;

@@ -1,4 +1,4 @@
-mod common;
+mod helpers;
 
 use std::ffi::c_void;
 
@@ -8,7 +8,7 @@ use native::ffi::descriptors::{
 };
 use native::ffi::value::{BufferView, BufferViewKind, Value};
 
-use common::{f32_array_type, i32_array_type};
+use helpers::{f32_array_type, i32_array_type};
 
 fn decode_array_items(array_type: &ArrayDescriptor, buffer_ptr: *const i32) -> Vec<Value> {
     let decoded = array_type

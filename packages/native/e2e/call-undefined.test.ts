@@ -11,7 +11,7 @@ import {
     STRING,
     STRING_BORROWED,
     VOID,
-} from "../utils.js";
+} from "./helpers/utils.js";
 
 describe("call - undefined type - basic void", () => {
     it("returns undefined for void functions", () => {

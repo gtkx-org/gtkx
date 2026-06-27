@@ -1,5 +1,5 @@
-import type { Descriptor, Value } from "../../../types.js";
-import { BOOLEAN, callArgs, GOBJECT_BORROWED, GTK_LIB, VOID } from "../utils.js";
+import type { Descriptor, Value } from "../../types.js";
+import { BOOLEAN, callArgs, GOBJECT_BORROWED, GTK_LIB, VOID } from "./utils.js";
 
 export function setLabelSelectable(label: Value, value: boolean): void {
     callArgs(

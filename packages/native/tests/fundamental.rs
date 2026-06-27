@@ -1,4 +1,4 @@
-mod common;
+mod helpers;
 
 use std::ffi::c_void;
 
@@ -6,10 +6,10 @@ use gtk4::glib;
 
 use native::handle::Fundamental;
 
-use common::{param_spec_ref, param_spec_refcount, param_spec_unref};
+use helpers::{param_spec_ref, param_spec_refcount, param_spec_unref};
 
 fn create_param_spec() -> *mut c_void {
-    common::ensure_gtk_init();
+    helpers::ensure_gtk_init();
 
     // SAFETY: GTK is initialized above; the four `c"..."` literals are valid NUL-terminated C
     // strings and the flags are valid `GParamFlags`, so `g_param_spec_boolean` returns a freshly

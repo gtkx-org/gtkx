@@ -1,4 +1,4 @@
-mod common;
+mod helpers;
 
 use std::ffi::c_void;
 
@@ -8,7 +8,7 @@ use native::handle::Boxed;
 
 fn owned_rgba_boxed() -> (glib::Type, *mut c_void, Boxed) {
     let gtype = gtk4::gdk::RGBA::static_type();
-    let ptr = common::allocate_test_boxed(gtype);
+    let ptr = helpers::allocate_test_boxed(gtype);
     let boxed = Boxed::from_glib_full(Some(gtype), ptr);
     (gtype, ptr, boxed)
 }
@@ -20,7 +20,7 @@ fn null_rgba_boxed() -> Boxed {
 
 #[test]
 fn boxed_from_glib_full_owns_pointer() {
-    common::run(|| {
+    helpers::run(|| {
         let (gtype, ptr, boxed) = owned_rgba_boxed();
 
         assert_eq!(boxed.as_ptr(), ptr);
@@ -39,16 +39,16 @@ fn boxed_from_glib_full_null_not_owned() {
 
 #[test]
 fn boxed_from_glib_none_copies_pointer() {
-    common::run(|| {
+    helpers::run(|| {
         let gtype = gtk4::gdk::RGBA::static_type();
-        let original_ptr = common::allocate_test_boxed(gtype);
+        let original_ptr = helpers::allocate_test_boxed(gtype);
 
         let boxed = Boxed::from_glib_none(Some(gtype), original_ptr)
             .expect("from_glib_none should succeed");
 
         assert_ne!(boxed.as_ptr(), original_ptr);
         assert!(boxed.is_owned());
-        assert!(common::is_valid_boxed_ptr(boxed.as_ptr(), gtype));
+        assert!(helpers::is_valid_boxed_ptr(boxed.as_ptr(), gtype));
 
         // SAFETY: `original_ptr` is the live boxed value of `gtype` allocated above and never
         // consumed (the wrapper copied it), so freeing it once with the matching gtype is sound.
@@ -60,7 +60,7 @@ fn boxed_from_glib_none_copies_pointer() {
 
 #[test]
 fn boxed_from_glib_none_null_not_owned() {
-    common::run(|| {
+    helpers::run(|| {
         let boxed = null_rgba_boxed();
 
         assert!(boxed.as_ptr().is_null());
@@ -70,20 +70,20 @@ fn boxed_from_glib_none_null_not_owned() {
 
 #[test]
 fn boxed_clone_copies_when_owned() {
-    common::run(|| {
+    helpers::run(|| {
         let (gtype, _ptr, boxed) = owned_rgba_boxed();
 
         let cloned = boxed.clone();
 
         assert_ne!(cloned.as_ptr(), boxed.as_ptr());
         assert!(cloned.is_owned());
-        assert!(common::is_valid_boxed_ptr(cloned.as_ptr(), gtype));
+        assert!(helpers::is_valid_boxed_ptr(cloned.as_ptr(), gtype));
     });
 }
 
 #[test]
 fn boxed_clone_null_remains_null() {
-    common::run(|| {
+    helpers::run(|| {
         let boxed = null_rgba_boxed();
 
         let cloned = boxed;

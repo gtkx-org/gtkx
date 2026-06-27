@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { expectClickedSignalHandlerId } from "../call-callback-integer-helpers.js";
-import { suppressUnhandledRejections } from "../lifecycle.js";
+import { expectClickedSignalHandlerId } from "./helpers/call-callback-integer-helpers.js";
+import { suppressUnhandledRejections } from "./helpers/lifecycle.js";
 import {
     callArgs,
     connectSignal,
@@ -15,7 +15,7 @@ import {
     isSignalHandlerConnected,
     startMemoryMeasurement,
     VOID,
-} from "../utils.js";
+} from "./helpers/utils.js";
 
 describe("call - callback - connect", () => {
     it("connects callback to signal", () => {

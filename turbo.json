@@ -28,7 +28,8 @@
                 "vitest.config.ts",
                 "packages/*/vitest.config.ts",
                 "packages/*/src/**/*.{ts,tsx}",
-                "packages/*/tests/**/*.{ts,tsx}"
+                "packages/*/tests/**/*.{ts,tsx}",
+                "packages/native/e2e/**/*.{ts,tsx}"
             ],
             "outputs": ["coverage/**"],
             "outputLogs": "new-only"
@@ -40,6 +41,7 @@
                 "packages/*/vitest.config.ts",
                 "packages/*/src/**/*.{ts,tsx}",
                 "packages/*/tests/**/*.{ts,tsx}",
+                "packages/native/e2e/**/*.{ts,tsx}",
                 "examples/gtk-demo/vitest.config.ts",
                 "examples/gtk-demo/src/**/*.{ts,tsx}",
                 "examples/gtk-demo/tests/**/*.{ts,tsx}"
@@ -78,8 +80,8 @@
             "inputs": [
                 "package.json",
                 "*.ts",
-                "tests/**/*.ts",
-                "tests/**/*.tsx",
+                "e2e/**/*.ts",
+                "e2e/**/*.tsx",
                 "tsconfig.json",
                 "tsconfig.lib.json",
                 "tsconfig.test.json"
@@ -140,6 +142,8 @@
                 "packages/*/src/**/*.tsx",
                 "packages/*/tests/**/*.ts",
                 "packages/*/tests/**/*.tsx",
+                "packages/native/e2e/**/*.ts",
+                "packages/native/e2e/**/*.tsx",
                 "packages/*/vitest.config.ts",
                 "packages/native/*.ts",
                 "scripts/**/*.ts",

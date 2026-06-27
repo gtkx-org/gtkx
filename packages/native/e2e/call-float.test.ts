@@ -9,7 +9,7 @@ import {
     GOBJECT_BORROWED,
     GTK_LIB,
     VOID,
-} from "../utils.js";
+} from "./helpers/utils.js";
 
 describe("call - float types - 32-bit float", () => {
     it("passes 32-bit float values (promoted to 64-bit for GTK)", () => {

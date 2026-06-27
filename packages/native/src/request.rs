@@ -20,12 +20,12 @@ use napi::bindgen_prelude::*;
 use napi::{Env, JsObject};
 
 use crate::ffi::value::{JsRef, Value};
-use crate::handle::NativeHandle;
+use crate::handle::Handle;
 use crate::messaging;
 
 #[cfg_attr(test, allow(dead_code))]
-pub trait NativeRequest: Sized + Send + 'static {
-    type Output: NativeResponse + Send + 'static;
+pub trait Request: Sized + Send + 'static {
+    type Output: Response + Send + 'static;
     fn execute(self) -> anyhow::Result<Self::Output>;
     fn error_context() -> &'static str;
 
@@ -43,24 +43,24 @@ pub trait NativeRequest: Sized + Send + 'static {
 }
 
 #[cfg_attr(test, allow(dead_code))]
-pub trait NativeResponse: Sized {
+pub trait Response: Sized {
     fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>>;
 }
 
-impl NativeResponse for Value {
+impl Response for Value {
     fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
         self.to_js_value(env)
     }
 }
 
-impl NativeResponse for NativeHandle {
+impl Response for Handle {
     fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
         let size_hint = self.size_hint();
         External::new_with_size_hint(self, size_hint).into_unknown(env)
     }
 }
 
-impl NativeResponse for Option<NativeHandle> {
+impl Response for Option<Handle> {
     fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
         self.map_or_else(
             || ().to_js_response(env),
@@ -69,13 +69,13 @@ impl NativeResponse for Option<NativeHandle> {
     }
 }
 
-impl NativeResponse for u64 {
+impl Response for u64 {
     fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
         BigInt::from(self).into_unknown(env)
     }
 }
 
-impl NativeResponse for () {
+impl Response for () {
     fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
         ().into_unknown(env)
     }
@@ -84,7 +84,7 @@ impl NativeResponse for () {
 #[cfg_attr(test, allow(dead_code))]
 pub type RefUpdate = (Arc<JsRef<JsObject>>, Value);
 
-impl NativeResponse for (Value, Vec<RefUpdate>) {
+impl Response for (Value, Vec<RefUpdate>) {
     fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
         let (value, ref_updates) = self;
         for (js_obj_ref, new_value) in ref_updates {

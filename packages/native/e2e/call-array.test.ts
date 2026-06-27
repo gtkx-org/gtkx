@@ -10,7 +10,7 @@ import {
     STRING_ARRAY,
     startMemoryMeasurement,
     VOID,
-} from "../utils.js";
+} from "./helpers/utils.js";
 
 describe("call - array types - string arrays basic", () => {
     it("passes string array argument", () => {
