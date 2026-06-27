@@ -190,7 +190,7 @@ impl PointerWriter for BigIntKind {
     /// # Safety
     ///
     /// `ret` must point to a writable return slot of at least 8 bytes, as provided by the
-    /// trampoline return path.
+    /// callback return path.
     unsafe fn write_return_to_pointer(
         &self,
         ret: *mut c_void,

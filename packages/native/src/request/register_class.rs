@@ -10,7 +10,7 @@ use napi::{Env, JsFunction, JsObject, NapiValue as _};
 use napi_derive::napi;
 
 use super::NativeRequest;
-use crate::ffi::callback::{TrampolineState, build_trampoline};
+use crate::ffi::callback::{CallbackState, build_trampoline};
 use crate::ffi::descriptors::Descriptor;
 use crate::ffi::value::{JsRef, map_js_array};
 use crate::messaging::error_reporter::NativeErrorReporter;
@@ -136,7 +136,7 @@ impl RawInterface {
 struct PreparedVfunc {
     byte_offset: usize,
     code_ptr: *mut c_void,
-    state: Box<TrampolineState>,
+    state: Box<CallbackState>,
 }
 
 #[cfg_attr(test, allow(dead_code))]
@@ -152,8 +152,8 @@ impl PreparedVfunc {
         for vfunc in vfuncs {
             // SAFETY: `byte_offset` was validated against the class/interface size and pointer
             // alignment in `validate_vfunc_offset`, so `vtable_base + byte_offset` is an in-bounds,
-            // pointer-aligned slot in this vtable. `slot.write` installs the trampoline code
-            // pointer into that slot; `mem::forget` keeps the backing `TrampolineState` alive for
+            // pointer-aligned slot in this vtable. `slot.write` installs the closure code
+            // pointer into that slot; `mem::forget` keeps the backing `CallbackState` alive for
             // the lifetime of the registered type, which outlives any vfunc dispatch.
             unsafe {
                 let slot = vtable_base

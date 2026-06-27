@@ -308,7 +308,7 @@ impl FfiDecoder for ArrayDescriptor {
 impl PointerWriter for ArrayDescriptor {
     /// # Safety
     ///
-    /// `ret` must point to a writable, pointer-sized return slot, as provided by the trampoline
+    /// `ret` must point to a writable, pointer-sized return slot, as provided by the callback
     /// return path.
     unsafe fn write_return_to_pointer(
         &self,

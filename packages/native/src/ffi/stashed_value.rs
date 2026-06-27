@@ -4,7 +4,7 @@ use std::ffi::c_void;
 use libffi::middle as libffi;
 
 use super::stash::Stash;
-use crate::ffi::callback::TrampolineState;
+use crate::ffi::callback::CallbackState;
 
 #[derive(Debug)]
 #[non_exhaustive]
@@ -29,8 +29,8 @@ pub struct CallbackValue {
     fn_ptr: *mut c_void,
     state_ptr: *mut c_void,
     destroy_ptr: Option<*mut c_void>,
-    _owned_state: Option<Box<TrampolineState>>,
-    armed_state: Cell<Option<Box<TrampolineState>>>,
+    _owned_state: Option<Box<CallbackState>>,
+    armed_state: Cell<Option<Box<CallbackState>>>,
 }
 
 impl CallbackValue {
@@ -39,7 +39,7 @@ impl CallbackValue {
         fn_ptr: *mut c_void,
         state_ptr: *mut c_void,
         destroy_ptr: Option<*mut c_void>,
-        owned_state: Option<Box<TrampolineState>>,
+        owned_state: Option<Box<CallbackState>>,
     ) -> Self {
         Self {
             fn_ptr,
@@ -54,9 +54,9 @@ impl CallbackValue {
     pub fn new_armed(
         fn_ptr: *mut c_void,
         destroy_ptr: Option<*mut c_void>,
-        state: Box<TrampolineState>,
+        state: Box<CallbackState>,
     ) -> Self {
-        let state_ptr = std::ptr::from_ref::<TrampolineState>(&state) as *mut c_void;
+        let state_ptr = std::ptr::from_ref::<CallbackState>(&state) as *mut c_void;
         Self {
             fn_ptr,
             state_ptr,

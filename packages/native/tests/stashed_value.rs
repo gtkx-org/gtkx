@@ -6,7 +6,7 @@ use std::ffi::c_void;
 use std::sync::Arc;
 
 use napi::{Env, JsFunction, NapiValue as _};
-use native::ffi::callback::{TrampolineData, TrampolineState};
+use native::ffi::callback::{CallbackData, CallbackState};
 use native::ffi::descriptors::{Descriptor, VoidDescriptor};
 use native::ffi::value::JsRef;
 use native::ffi::{CallbackValue, Stash, StashedValue};
@@ -39,14 +39,14 @@ fn armed_callback_value(
     destroy_ptr: Option<*mut c_void>,
 ) -> (CallbackValue, Arc<JsRef<JsFunction>>) {
     let js_func = js_func_ref();
-    let data = TrampolineData::new(
+    let data = CallbackData::new(
         Arc::clone(&js_func),
         Vec::new(),
         Descriptor::Void(VoidDescriptor),
         None,
         false,
     );
-    let state = Box::new(TrampolineState::create(data));
+    let state = Box::new(CallbackState::create(data));
     let fn_ptr = state.code_ptr;
     (
         CallbackValue::new_armed(fn_ptr, destroy_ptr, state),
@@ -56,22 +56,22 @@ fn armed_callback_value(
 
 fn release_handed_over_state(state_ptr: *mut c_void, js_func: &Arc<JsRef<JsFunction>>) {
     assert_eq!(Arc::strong_count(js_func), 2);
-    // SAFETY: `state_ptr` is the leaked `TrampolineState` raw pointer handed over by the armed
+    // SAFETY: `state_ptr` is the leaked `CallbackState` raw pointer handed over by the armed
     // `CallbackValue`; `destroy` reclaims and drops it exactly once, releasing its `Arc` clone.
-    unsafe { TrampolineState::destroy(state_ptr) };
+    unsafe { CallbackState::destroy(state_ptr) };
     assert_eq!(Arc::strong_count(js_func), 1);
 }
 
 #[test]
 fn new_armed_exposes_state_and_closure_pointers() {
-    let destroy_ptr = TrampolineState::destroy as *mut c_void;
+    let destroy_ptr = CallbackState::destroy as *mut c_void;
     let (tv, _js_func) = armed_callback_value(Some(destroy_ptr));
     assert!(!tv.fn_ptr().is_null());
     assert!(!tv.state_ptr().is_null());
     assert_eq!(tv.destroy_ptr(), Some(destroy_ptr));
-    // SAFETY: the armed `CallbackValue` still owns the boxed `TrampolineState`, so `state_ptr()`
+    // SAFETY: the armed `CallbackValue` still owns the boxed `CallbackState`, so `state_ptr()`
     // is a live, correctly-typed pointer; borrowing it to read `code_ptr` is sound.
-    let state = unsafe { &*(tv.state_ptr() as *const TrampolineState) };
+    let state = unsafe { &*(tv.state_ptr() as *const CallbackState) };
     assert_eq!(state.code_ptr, tv.fn_ptr());
 }
 
@@ -85,7 +85,7 @@ fn armed_state_drops_with_value_when_call_never_happens() {
 
 #[test]
 fn disarm_pending_transfer_hands_state_over_and_is_idempotent() {
-    let (tv, js_func) = armed_callback_value(Some(TrampolineState::destroy as *mut c_void));
+    let (tv, js_func) = armed_callback_value(Some(CallbackState::destroy as *mut c_void));
     let state_ptr = tv.state_ptr();
     tv.disarm_pending_transfer();
     tv.disarm_pending_transfer();

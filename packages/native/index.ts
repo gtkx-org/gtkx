@@ -3,6 +3,8 @@ import type { CallDescriptor, Descriptor, Handle, RegisterClassOptions, Value } 
 
 export * from "./types.js";
 
+let mainLoopHandle: Handle | null = native.init();
+
 export function bind(
     sharedLibrary: string,
     symbol: string,
@@ -15,8 +17,6 @@ export function bind(
 export function call(descriptor: CallDescriptor, values: Value[]): Value {
     return native.call(descriptor, values) as Value;
 }
-
-let mainLoopHandle: Handle | null = native.init();
 
 export function quit(): void {
     if (!mainLoopHandle) return;

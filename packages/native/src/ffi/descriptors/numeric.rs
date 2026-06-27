@@ -162,7 +162,7 @@ macro_rules! impl_numeric_codecs {
             /// # Safety
             ///
             /// `ret` must point to a writable return slot wide enough for this kind's wire type
-            /// (the trampoline widens integers to 8 bytes), as provided by the return path.
+            /// (the callback widens integers to 8 bytes), as provided by the return path.
             unsafe fn write_return_to_pointer(
                 &self,
                 ret: *mut c_void,
@@ -491,7 +491,7 @@ impl FloatKind {
     /// # Safety
     ///
     /// `ret` must point to at least 4 (`F32`) or 8 (`F64`) writable bytes, as provided by the
-    /// trampoline return path.
+    /// callback return path.
     unsafe fn write_return_widened(self, ret: *mut c_void, value: f64) {
         // SAFETY: `ret` addresses a writable float-width return slot per the contract; `write_ptr`
         // narrows and stores the value there.
@@ -621,7 +621,7 @@ impl PointerWriter for EnumFlagsDescriptor {
     /// # Safety
     ///
     /// `ret` must point to a writable return slot wide enough for the backing integer storage
-    /// type, as provided by the trampoline return path.
+    /// type, as provided by the callback return path.
     unsafe fn write_return_to_pointer(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         // SAFETY: `ret` satisfies the backing integer codec's return-slot precondition per this
         // method's contract; the delegate writes the tag value there.

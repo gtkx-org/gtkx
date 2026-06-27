@@ -17,18 +17,18 @@ use crate::ffi::descriptors::{
 };
 use crate::ffi::value::{JsRef, Value};
 
-pub struct TrampolineData {
+pub struct CallbackData {
     pub js_func: Arc<JsRef<JsFunction>>,
     pub arg_descriptors: Vec<Descriptor>,
     pub return_descriptor: Descriptor,
     pub user_data_index: Option<usize>,
     pub is_oneshot: bool,
-    pub oneshot_state_ptr: AtomicPtr<TrampolineState>,
+    pub oneshot_state_ptr: AtomicPtr<CallbackState>,
     pub retained_string_return: AtomicPtr<c_char>,
     pub retained_container_return: AtomicPtr<StashedValue>,
 }
 
-impl TrampolineData {
+impl CallbackData {
     #[must_use]
     pub fn new(
         js_func: Arc<JsRef<JsFunction>>,
@@ -50,7 +50,7 @@ impl TrampolineData {
     }
 }
 
-impl Drop for TrampolineData {
+impl Drop for CallbackData {
     fn drop(&mut self) {
         let retained = self
             .retained_string_return
@@ -73,9 +73,9 @@ impl Drop for TrampolineData {
     }
 }
 
-impl std::fmt::Debug for TrampolineData {
+impl std::fmt::Debug for CallbackData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("TrampolineData")
+        f.debug_struct("CallbackData")
             .field("arg_descriptors", &self.arg_descriptors)
             .field("return_descriptor", &self.return_descriptor)
             .field("user_data_index", &self.user_data_index)
@@ -84,21 +84,21 @@ impl std::fmt::Debug for TrampolineData {
     }
 }
 
-pub struct TrampolineState {
+pub struct CallbackState {
     closure: ManuallyDrop<libffi::Closure<'static>>,
     pub code_ptr: *mut c_void,
-    data: ManuallyDrop<Box<TrampolineData>>,
+    data: ManuallyDrop<Box<CallbackData>>,
 }
 
-impl std::fmt::Debug for TrampolineState {
+impl std::fmt::Debug for CallbackState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("TrampolineState")
+        f.debug_struct("CallbackState")
             .field("code_ptr", &self.code_ptr)
             .finish_non_exhaustive()
     }
 }
 
-impl Drop for TrampolineState {
+impl Drop for CallbackState {
     fn drop(&mut self) {
         // SAFETY: `drop` runs at most once, and these `ManuallyDrop` fields are only ever dropped
         // here, so each is moved out exactly once. The closure is destroyed before its `data`,
@@ -110,20 +110,20 @@ impl Drop for TrampolineState {
     }
 }
 
-impl TrampolineState {
+impl CallbackState {
     #[must_use]
-    pub fn data_ref(&self) -> &TrampolineData {
+    pub fn data_ref(&self) -> &CallbackData {
         &self.data
     }
 
-    pub fn create(data: TrampolineData) -> Self {
+    pub fn create(data: CallbackData) -> Self {
         let data = ManuallyDrop::new(Box::new(data));
-        let data_ptr: *const TrampolineData = &**data;
-        // SAFETY: `data` is a boxed `TrampolineData` that this `TrampolineState` stores and keeps
+        let data_ptr: *const CallbackData = &**data;
+        // SAFETY: `data` is a boxed `CallbackData` that this `CallbackState` stores and keeps
         // alive (via `ManuallyDrop`) for as long as the closure exists; the box is never moved, so
         // its heap address is stable. Re-borrowing it as `'static` is sound because the closure and
-        // the data are dropped together in `TrampolineState::drop`, the closure first.
-        let data_ref: &'static TrampolineData = unsafe { &*data_ptr };
+        // the data are dropped together in `CallbackState::drop`, the closure first.
+        let data_ref: &'static CallbackData = unsafe { &*data_ptr };
 
         let mut cif_arg_types: Vec<libffi::Type> = Vec::with_capacity(data_ref.arg_descriptors.len());
         for ty in &data_ref.arg_descriptors {
@@ -133,7 +133,7 @@ impl TrampolineState {
         let cif_return_type: libffi::Type = data_ref.return_descriptor.libffi_type();
         let cif = libffi::Cif::new(cif_arg_types, cif_return_type);
 
-        let closure = libffi::Closure::new(cif, trampoline_callback, data_ref);
+        let closure = libffi::Closure::new(cif, closure_entry, data_ref);
         let code_ptr = *closure.code_ptr() as *mut c_void;
 
         Self {
@@ -151,36 +151,36 @@ pub fn build_trampoline(
     return_descriptor: Descriptor,
     user_data_index: Option<usize>,
     is_oneshot: bool,
-) -> (*mut c_void, Box<TrampolineState>) {
-    let data = TrampolineData::new(js_func, arg_descriptors, return_descriptor, user_data_index, is_oneshot);
-    let state = Box::new(TrampolineState::create(data));
+) -> (*mut c_void, Box<CallbackState>) {
+    let data = CallbackData::new(js_func, arg_descriptors, return_descriptor, user_data_index, is_oneshot);
+    let state = Box::new(CallbackState::create(data));
     let code_ptr = state.code_ptr;
     (code_ptr, state)
 }
 
-impl TrampolineState {
-    /// `GDestroyNotify`-compatible callback that frees a `TrampolineState` boxed for a `Notified`
+impl CallbackState {
+    /// `GDestroyNotify`-compatible callback that frees a `CallbackState` boxed for a `Notified`
     /// or `Async` callback.
     ///
     /// # Safety
     ///
     /// `user_data` must be either null or a pointer obtained from `Box::into_raw` for a
-    /// `Box<TrampolineState>` that has not yet been freed. `GLib` invokes this exactly once when the
+    /// `Box<CallbackState>` that has not yet been freed. `GLib` invokes this exactly once when the
     /// associated callback is destroyed, so the state is reclaimed and dropped exactly once.
     pub unsafe extern "C" fn destroy(user_data: *mut c_void) {
         if !user_data.is_null() {
             // SAFETY: `user_data` is non-null (checked) and, per the contract, a live
-            // `Box<TrampolineState>` raw pointer; reconstructing and dropping the box frees it once.
+            // `Box<CallbackState>` raw pointer; reconstructing and dropping the box frees it once.
             drop(unsafe { Box::from_raw(user_data as *mut Self) });
         }
     }
 }
 
-impl TrampolineData {
+impl CallbackData {
     /// # Safety
     ///
-    /// Invoked from `trampoline_callback`, which libffi calls with the C ABI for the CIF built in
-    /// `TrampolineState::create`. `args` must point to an array of at least `self.arg_descriptors.len()`
+    /// Invoked from `closure_entry`, which libffi calls with the C ABI for the CIF built in
+    /// `CallbackState::create`. `args` must point to an array of at least `self.arg_descriptors.len()`
     /// argument slots laid out per that CIF, and `result` must point to the CIF's return slot. The
     /// `Descriptor` descriptors in `self.arg_descriptors`/`self.return_descriptor` must match that ABI so each slot
     /// read/write touches a correctly typed location.
@@ -188,7 +188,7 @@ impl TrampolineData {
         &self,
         args: *const *const c_void,
         result: *mut c_void,
-    ) -> Option<*mut TrampolineState> {
+    ) -> Option<*mut CallbackState> {
         let mut values = Vec::with_capacity(self.arg_descriptors.len());
         let mut out_cell_indices: Vec<usize> = Vec::new();
         let mut out_targets: Vec<(*mut c_void, &Descriptor)> = Vec::new();
@@ -214,11 +214,11 @@ impl TrampolineData {
             }
             // SAFETY: `arg_ptr` is the i-th argument slot and `ty` is the matching descriptor for
             // it (per the CIF/ABI contract), so reading that slot as `ty` is well typed.
-            match unsafe { ty.read(ReadSource::Slot(arg_ptr, "trampoline arg")) } {
+            match unsafe { ty.read(ReadSource::Slot(arg_ptr, "callback arg")) } {
                 Ok(val) => values.push(val),
                 Err(e) => {
                     NativeErrorReporter::global()
-                        .report(&e.context(format!("trampoline: failed to read arg {i}")));
+                        .report(&e.context(format!("callback: failed to read arg {i}")));
                     values.push(Value::Null);
                 }
             }
@@ -249,7 +249,7 @@ impl TrampolineData {
             }
             Err(ref e) => {
                 NativeErrorReporter::global().report(&anyhow::anyhow!(
-                    "trampoline: JS callback error (return type: {}): {e:#}",
+                    "callback: JS callback error (return type: {}): {e:#}",
                     self.return_descriptor
                 ));
                 self.write_return(result, &Err(()));
@@ -270,7 +270,7 @@ impl TrampolineData {
             self.write_retained_container_return(result, value);
             return;
         }
-        // SAFETY: `result` is the CIF return slot supplied by libffi for this trampoline, and
+        // SAFETY: `result` is the CIF return slot supplied by libffi for this callback, and
         // `self.return_descriptor` is the descriptor that matches that slot's ABI, so writing the encoded
         // return value through it targets a correctly typed, writable location.
         unsafe { self.return_descriptor.write_return_to_pointer(result, value) };
@@ -360,40 +360,40 @@ pub(crate) fn flush_out_cells(cells: &[(usize, Value)], out_targets: &[(*mut c_v
         // correctly typed, writable location.
         if let Err(e) = unsafe { inner_type.write_value_to_pointer(*ptr, new_value) } {
             NativeErrorReporter::global()
-                .report(&e.context("trampoline: failed to write out-parameter"));
+                .report(&e.context("callback: failed to write out-parameter"));
         }
     }
 }
 
-/// Schedules a one-shot trampoline's `TrampolineState` to be freed on the next main-loop idle.
+/// Schedules a one-shot callback's `CallbackState` to be freed on the next main-loop idle.
 ///
 /// # Safety
 ///
-/// `state_ptr` must be a pointer obtained from `Box::into_raw` for a `Box<TrampolineState>` that
+/// `state_ptr` must be a pointer obtained from `Box::into_raw` for a `Box<CallbackState>` that
 /// has not yet been freed and is no longer in use; deferring the free to an idle ensures the
 /// closure is not still executing when the box is dropped. It is reclaimed exactly once.
-unsafe fn defer_oneshot_free(state_ptr: *mut TrampolineState) {
+unsafe fn defer_oneshot_free(state_ptr: *mut CallbackState) {
     glib::idle_add_local_once(move || {
-        // SAFETY: `state_ptr` is the live `Box<TrampolineState>` raw pointer from the contract;
+        // SAFETY: `state_ptr` is the live `Box<CallbackState>` raw pointer from the contract;
         // by the time this idle runs the closure invocation has returned, so reconstructing and
         // dropping the box frees the state exactly once.
         drop(unsafe { Box::from_raw(state_ptr) });
     });
 }
 
-/// libffi closure entry point for a JS-backed callback trampoline.
+/// libffi closure entry point for a JS-backed callback.
 ///
 /// # Safety
 ///
-/// Called by libffi through the closure created in `TrampolineState::create`. `result` is the
+/// Called by libffi through the closure created in `CallbackState::create`. `result` is the
 /// CIF's return slot and `args` points to the CIF's argument slots, both laid out per that CIF;
-/// `data` is the `'static` borrow of the `TrampolineData` the closure was built with. The slot
+/// `data` is the `'static` borrow of the `CallbackData` the closure was built with. The slot
 /// layout must match `data`'s argument/return descriptors.
-unsafe extern "C" fn trampoline_callback(
+unsafe extern "C" fn closure_entry(
     _cif: &libffi_low::ffi_cif,
     result: &mut u64,
     args: *const *const c_void,
-    data: &TrampolineData,
+    data: &CallbackData,
 ) {
     // SAFETY: `args`/`result` satisfy `handle_call`'s contract (CIF-laid-out argument and return
     // slots matching `data`'s descriptors); `result` is reinterpreted as the raw return slot.

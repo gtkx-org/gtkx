@@ -4,7 +4,7 @@ use libffi::middle as libffi;
 use napi::{Env, JsObject};
 
 use super::prelude::*;
-use crate::ffi::callback::{TrampolineState, build_trampoline};
+use crate::ffi::callback::{CallbackState, build_trampoline};
 use crate::ffi::descriptors::Descriptor;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -119,12 +119,12 @@ impl FfiEncoder for CallbackDescriptor {
             ))),
             CallbackScope::Notified => Ok(ffi::StashedValue::Callback(ffi::CallbackValue::new_armed(
                 fn_ptr,
-                Some(TrampolineState::destroy as *mut c_void),
+                Some(CallbackState::destroy as *mut c_void),
                 state,
             ))),
             CallbackScope::Async => {
                 let state_ptr =
-                    std::ptr::from_ref::<TrampolineState>(&state) as *mut TrampolineState;
+                    std::ptr::from_ref::<CallbackState>(&state) as *mut CallbackState;
                 state
                     .data_ref()
                     .oneshot_state_ptr
@@ -134,7 +134,7 @@ impl FfiEncoder for CallbackDescriptor {
                 )))
             }
             CallbackScope::Call => {
-                let state_ptr = &*state as *const TrampolineState as *mut c_void;
+                let state_ptr = &*state as *const CallbackState as *mut c_void;
                 Ok(ffi::StashedValue::Callback(ffi::CallbackValue::new(
                     fn_ptr,
                     state_ptr,
