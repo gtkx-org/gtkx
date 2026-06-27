@@ -67,3 +67,13 @@ const withGlobalActEnvironment =
 const actImplementation: ActImplementation = reactAct as ActImplementation;
 
 export const act: ActImplementation = withGlobalActEnvironment(actImplementation);
+
+/**
+ * Runs `callback` inside React's act environment and resolves only once the act
+ * queue has flushed and the macrotask drained — so the reconciler's deferred
+ * commit work and React's passive effects have settled before the caller
+ * observes the tree. This is the single wrapper the harness applies around every
+ * render, rerender and event dispatch; it is intentionally not configurable.
+ */
+export const runInAct = (callback: () => unknown): Promise<void> =>
+    Promise.resolve(act(() => callback())).then(() => undefined);

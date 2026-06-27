@@ -1,4 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
+import { runWithActEnvironment } from "./act.js";
 import { getConfig } from "./config.js";
 import { timeoutError } from "./errors.js";
 import type { WaitForOptions } from "./types.js";
@@ -20,26 +21,30 @@ export const waitFor = <T>(callback: () => T | Promise<T>, options?: WaitForOpti
 
     const stackTraceError = options?.stackTraceError ?? new Error("STACK_TRACE_MESSAGE");
 
-    return getConfig().asyncWrapper(async () => {
-        const config = getConfig();
-        const { timeout = config.asyncUtilTimeout, interval = DEFAULT_INTERVAL, onTimeout } = options ?? {};
-        const startTime = Date.now();
-        let lastError: Error | null = null;
+    return Promise.resolve(
+        runWithActEnvironment(false, async () => {
+            const config = getConfig();
+            const { timeout = config.asyncUtilTimeout, interval = DEFAULT_INTERVAL, onTimeout } = options ?? {};
+            const startTime = Date.now();
+            let lastError: Error | null = null;
 
-        while (Date.now() - startTime < timeout) {
-            try {
-                return await callback();
-            } catch (error) {
-                lastError = error as Error;
-                await delay(interval);
+            while (Date.now() - startTime < timeout) {
+                try {
+                    const result = await callback();
+                    await delay(0);
+                    return result;
+                } catch (error) {
+                    lastError = error as Error;
+                    await delay(interval);
+                }
             }
-        }
 
-        const error = timeoutError(timeout, lastError);
-        const finalError = onTimeout ? onTimeout(error) : error;
-        copyStackTrace(finalError, stackTraceError);
-        throw finalError;
-    });
+            const error = timeoutError(timeout, lastError);
+            const finalError = onTimeout ? onTimeout(error) : error;
+            copyStackTrace(finalError, stackTraceError);
+            throw finalError;
+        }),
+    );
 };
 
 type RemovalTarget = Gtk.Widget | Gtk.Widget[] | null;

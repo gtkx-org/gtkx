@@ -1,8 +1,8 @@
 import type * as GObject from "@gtkx/gi/gobject";
-import { getConfig } from "./config.js";
+import { runInAct } from "./act.js";
 
 export const fireEvent = async (element: GObject.Object, signalName: string, ...args: unknown[]): Promise<void> => {
-    await getConfig().eventWrapper(() => {
+    await runInAct(() => {
         element.emit(signalName, ...args);
     });
 };

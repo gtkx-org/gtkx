@@ -7,8 +7,8 @@ import {
     setReconcilerErrorHandler,
 } from "@gtkx/react/internal";
 import { type ErrorInfo, type ReactNode, StrictMode } from "react";
+import { runInAct } from "./act.js";
 import { addToCleanupQueue, runCleanup } from "./cleanup-registry.js";
-import { getConfig } from "./config.js";
 import { logWidget, type PrettyWidgetOptions } from "./pretty-widget.js";
 import { logRoles } from "./role-helpers.js";
 import { clearScreen, setScreen } from "./screen.js";
@@ -34,7 +34,7 @@ const HARNESS_WINDOW_WIDTH = 800;
 const HARNESS_WINDOW_HEIGHT = 600;
 
 const update = async (element: ReactNode, root: ReconcilerRoot): Promise<void> => {
-    await getConfig().eventWrapper(() => {
+    await runInAct(() => {
         root.update(element);
     });
 
