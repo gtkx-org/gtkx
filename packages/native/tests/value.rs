@@ -9,7 +9,7 @@ use gtk4::prelude::ObjectType as _;
 use gtk4::prelude::StaticType as _;
 
 use native::ffi;
-use native::ffi::descriptors::{
+use native::ffi::descriptor::{
     ArrayDescriptor, ArrayKind, BoxedDescriptor, Descriptor, FfiDecoder, ObjectDescriptor,
     Ownership, StringDescriptor,
 };
@@ -40,7 +40,7 @@ fn rgba_boxed_type_of(ownership: Ownership) -> Descriptor {
 }
 
 fn gvariant_fundamental_type_of(ownership: Ownership) -> Descriptor {
-    Descriptor::Fundamental(native::ffi::descriptors::FundamentalDescriptor {
+    Descriptor::Fundamental(native::ffi::descriptor::FundamentalDescriptor {
         ownership,
         shared_library: "libglib-2.0.so.0".to_string(),
         ref_func: "g_variant_ref_sink".to_string(),
@@ -50,7 +50,7 @@ fn gvariant_fundamental_type_of(ownership: Ownership) -> Descriptor {
 }
 
 fn struct_type_of(ownership: Ownership, size: Option<usize>) -> Descriptor {
-    Descriptor::Struct(native::ffi::descriptors::StructDescriptor {
+    Descriptor::Struct(native::ffi::descriptor::StructDescriptor {
         ownership,
         size,
         caller_allocated: false,
@@ -153,7 +153,7 @@ fn assert_scalar_ref_decodes_to_number(
 ) {
     let cif_value = scalar_slot_storage(seeded);
     let type_ = Descriptor::Ref(
-        native::ffi::descriptors::RefDescriptor::new(inner).expect("valid Ref inner"),
+        native::ffi::descriptor::RefDescriptor::new(inner).expect("valid Ref inner"),
     );
     let Value::Number(n) = type_.decode(&cif_value).expect("Ref decode failed") else {
         panic!("Expected Value::Number");
@@ -495,7 +495,7 @@ fn from_cif_value_fundamental_null() {
 fn from_cif_value_ref_integer() {
     helpers::run(|| {
         assert_scalar_ref_decodes_to_number(
-            Descriptor::Integer(native::ffi::descriptors::IntegerKind::I32),
+            Descriptor::Integer(native::ffi::descriptor::IntegerKind::I32),
             &ffi::StashedValue::I32(12345),
             12345.0,
         );
@@ -506,7 +506,7 @@ fn from_cif_value_ref_integer() {
 fn from_cif_value_ref_float() {
     helpers::run(|| {
         assert_scalar_ref_decodes_to_number(
-            Descriptor::Float(native::ffi::descriptors::FloatKind::F64),
+            Descriptor::Float(native::ffi::descriptor::FloatKind::F64),
             &ffi::StashedValue::F64(3.15625),
             3.15625,
         );
@@ -521,7 +521,7 @@ fn from_cif_value_ref_gobject() {
 
         let cif_value = ptr_slot_storage(obj_ptr);
         let type_ = Descriptor::Ref(
-            native::ffi::descriptors::RefDescriptor::new(gobject_type_of(Ownership::Borrowed))
+            native::ffi::descriptor::RefDescriptor::new(gobject_type_of(Ownership::Borrowed))
                 .expect("GObject is a valid Ref inner"),
         );
 
@@ -541,7 +541,7 @@ fn from_cif_value_ref_gobject_null_inner() {
     helpers::run(|| {
         let cif_value = ptr_slot_storage(std::ptr::null_mut());
         let type_ = Descriptor::Ref(
-            native::ffi::descriptors::RefDescriptor::new(gobject_type_of(Ownership::Borrowed))
+            native::ffi::descriptor::RefDescriptor::new(gobject_type_of(Ownership::Borrowed))
                 .expect("GObject is a valid Ref inner"),
         );
 
@@ -560,7 +560,7 @@ fn from_cif_value_ref_boxed() {
 
         let cif_value = ptr_slot_storage(boxed_ptr);
         let type_ = Descriptor::Ref(
-            native::ffi::descriptors::RefDescriptor::new(rgba_boxed_type_of(Ownership::Borrowed))
+            native::ffi::descriptor::RefDescriptor::new(rgba_boxed_type_of(Ownership::Borrowed))
                 .expect("Boxed is a valid Ref inner"),
         );
 
@@ -756,7 +756,7 @@ fn object_ptr_errors_for_non_object_variants() {
 fn decode_with_context_decodes_integer() {
     helpers::run(|| {
         let stashed_value = ffi::StashedValue::I32(99);
-        let type_ = Descriptor::Integer(native::ffi::descriptors::IntegerKind::I32);
+        let type_ = Descriptor::Integer(native::ffi::descriptor::IntegerKind::I32);
 
         let result = type_.decode_with_context(&stashed_value, &[], &[]);
 

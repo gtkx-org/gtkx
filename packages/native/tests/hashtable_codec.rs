@@ -8,12 +8,12 @@ use gtk4::prelude::StaticType as _;
 
 use native::Handle;
 use native::ffi::StashedValue;
-use native::ffi::descriptors::{
+use native::ffi::descriptor::{
     ArrayDescriptor, ArrayKind, BooleanDescriptor, BoxedDescriptor, Descriptor, FloatKind,
     FundamentalDescriptor, ObjectDescriptor, HashTableDescriptor, HashTableEntryEncoder,
     IntegerKind, Ownership, StringDescriptor, StructDescriptor,
 };
-use native::ffi::descriptors::{FfiDecoder, FfiEncoder, PointerWriter, ReadSource};
+use native::ffi::descriptor::{FfiDecoder, FfiEncoder, PointerWriter, ReadSource};
 use native::ffi::value::Value;
 
 fn struct_type() -> Descriptor {

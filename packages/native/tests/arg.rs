@@ -1,7 +1,7 @@
 use std::ffi::{CString, c_void};
 
 use native::ffi::arg::Arg;
-use native::ffi::descriptors::{
+use native::ffi::descriptor::{
     ArrayDescriptor, ArrayKind, BooleanDescriptor, Descriptor, FloatKind, IntegerKind, Ownership,
     StringDescriptor, VoidDescriptor,
 };
@@ -450,7 +450,7 @@ fn value_to_libffi_arg_owned_ptr() {
 
 #[test]
 fn try_from_struct_null() {
-    let struct_type = native::ffi::descriptors::StructDescriptor {
+    let struct_type = native::ffi::descriptor::StructDescriptor {
         ownership: Ownership::Borrowed,
         size: Some(16),
         caller_allocated: false,
@@ -463,7 +463,7 @@ fn try_from_struct_null() {
 
 #[test]
 fn try_from_struct_undefined() {
-    let struct_type = native::ffi::descriptors::StructDescriptor {
+    let struct_type = native::ffi::descriptor::StructDescriptor {
         ownership: Ownership::Full,
         size: None,
         caller_allocated: false,
@@ -517,12 +517,12 @@ fn try_from_array_f32_storage_converts_to_libffi_arg() {
 
 #[test]
 fn try_from_struct_transfer_none_vs_full() {
-    let transfer_none_type = native::ffi::descriptors::StructDescriptor {
+    let transfer_none_type = native::ffi::descriptor::StructDescriptor {
         ownership: Ownership::Full,
         size: Some(16),
         caller_allocated: false,
     };
-    let transfer_full_type = native::ffi::descriptors::StructDescriptor {
+    let transfer_full_type = native::ffi::descriptor::StructDescriptor {
         ownership: Ownership::Borrowed,
         size: Some(16),
         caller_allocated: false,

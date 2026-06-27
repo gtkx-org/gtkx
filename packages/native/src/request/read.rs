@@ -5,7 +5,7 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
 use super::Request;
-use crate::ffi::descriptors::{Descriptor, FfiDecoder as _, ReadSource};
+use crate::ffi::descriptor::{Descriptor, FfiDecoder as _, ReadSource};
 use crate::ffi::value::Value;
 use crate::handle::Handle;
 
@@ -86,7 +86,7 @@ mod napi_export {
 
 #[cfg(test)]
 mod tests {
-    use crate::ffi::descriptors::IntegerKind;
+    use crate::ffi::descriptor::IntegerKind;
 
     use super::*;
 

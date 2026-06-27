@@ -8,7 +8,7 @@ use gtk4::glib::translate::IntoGlib as _;
 use gtk4::prelude::StaticType as _;
 
 use native::ffi;
-use native::ffi::descriptors::{
+use native::ffi::descriptor::{
     BoxedDescriptor, FfiDecoder, FfiEncoder, Ownership, PointerWriter, ReadSource, StructDescriptor,
 };
 use native::ffi::value::Value;
@@ -686,7 +686,7 @@ mod free_fn {
     use gtk4::glib;
 
     use native::ffi;
-    use native::ffi::descriptors::{BoxedDescriptor, FfiDecoder, Ownership, ReadSource};
+    use native::ffi::descriptor::{BoxedDescriptor, FfiDecoder, Ownership, ReadSource};
     use native::ffi::value::Value;
 
     use super::helpers;

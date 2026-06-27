@@ -2,7 +2,7 @@ use std::ffi::c_void;
 
 use napi::sys::TypedarrayType;
 use native::ffi::StashedValue;
-use native::ffi::descriptors::{
+use native::ffi::descriptor::{
     ArrayDescriptor, ArrayKind, BigIntKind, BooleanDescriptor, Descriptor, EnumFlagsDescriptor,
     EnumFlagsKind, FfiEncoder as _, FloatKind, IntegerKind, Ownership,
 };

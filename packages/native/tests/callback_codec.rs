@@ -5,7 +5,7 @@ use std::ffi::c_void;
 use libffi::middle as libffi;
 
 use native::ffi;
-use native::ffi::descriptors::{
+use native::ffi::descriptor::{
     CallbackDescriptor, CallbackScope, Descriptor, FfiEncoder, VoidDescriptor,
 };
 use native::ffi::value::Value;

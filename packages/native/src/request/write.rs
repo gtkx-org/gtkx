@@ -4,7 +4,7 @@ use napi_derive::napi;
 
 use super::Request;
 use super::read::FieldLocation;
-use crate::ffi::descriptors::{Descriptor, PointerWriter as _};
+use crate::ffi::descriptor::{Descriptor, PointerWriter as _};
 use crate::ffi::value::Value;
 use crate::handle::Handle;
 
@@ -65,7 +65,7 @@ mod napi_export {
 
 #[cfg(test)]
 mod tests {
-    use crate::ffi::descriptors::IntegerKind;
+    use crate::ffi::descriptor::IntegerKind;
     use crate::request::read::ReadRequest;
 
     use super::*;

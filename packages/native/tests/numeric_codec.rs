@@ -3,7 +3,7 @@ mod helpers;
 use std::ffi::c_void;
 
 use libffi::middle;
-use native::ffi::descriptors::{
+use native::ffi::descriptor::{
     Descriptor, FfiDecoder, FfiEncoder, FloatKind, IntegerKind, PointerWriter, ReadSource,
 };
 use native::ffi::value::Value;

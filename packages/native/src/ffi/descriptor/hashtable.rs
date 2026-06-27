@@ -4,8 +4,8 @@ use napi::{Env, JsObject};
 
 use super::prelude::*;
 use super::string::str_to_glib_full;
-use crate::ffi::descriptors::Descriptor;
-use crate::ffi::descriptors::array::ArrayKind;
+use crate::ffi::descriptor::Descriptor;
+use crate::ffi::descriptor::array::ArrayKind;
 use crate::ffi::{HashTableData, Stash, StashKind};
 
 #[derive(Clone, Debug)]

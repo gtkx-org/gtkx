@@ -10,7 +10,7 @@ use ::libffi::middle as libffi;
 use napi::JsFunction;
 
 use crate::ffi::StashedValue;
-use crate::ffi::descriptors::{
+use crate::ffi::descriptor::{
     Descriptor, FfiDecoder as _, FfiEncoder as _, PointerWriter as _, ReadSource, str_to_glib_full,
 };
 use crate::ffi::value::{JsRef, Value};

@@ -1,4 +1,4 @@
-use crate::ffi::descriptors::Descriptor;
+use crate::ffi::descriptor::Descriptor;
 use crate::ffi::value::Value;
 
 #[derive(Debug, Clone)]

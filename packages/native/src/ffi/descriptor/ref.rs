@@ -6,7 +6,7 @@ use napi::{Env, JsObject};
 
 use super::prelude::*;
 use crate::ffi::arg::Arg;
-use crate::ffi::descriptors::{ArrayKind, Descriptor};
+use crate::ffi::descriptor::{ArrayKind, Descriptor};
 use crate::ffi::{Stash, StashKind};
 
 #[derive(Debug, Clone)]
@@ -42,7 +42,7 @@ impl RefDescriptor {
     #[allow(clippy::trivially_copy_pass_by_ref)]
     #[cfg_attr(coverage_nightly, coverage(off))]
     pub(crate) fn from_descriptor(env: &Env, obj: &JsObject) -> napi::Result<Self> {
-        let inner_type_value: Unknown<'_> = obj.get_named_property("innerType")?;
+        let inner_type_value: Unknown<'_> = obj.get_named_property("innerDescriptor")?;
         let inner_type = Descriptor::from_descriptor(env, inner_type_value)?;
         Self::new(inner_type)
     }
@@ -318,7 +318,7 @@ impl RefDescriptor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ffi::descriptors::{FloatKind, IntegerKind};
+    use crate::ffi::descriptor::{FloatKind, IntegerKind};
 
     fn slot_storage(encoded: &ffi::StashedValue) -> &Stash {
         ref_storage_or_null(encoded, "scalar out slot")

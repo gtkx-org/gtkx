@@ -5,7 +5,7 @@ use std::ffi::c_void;
 use gtk4::glib;
 
 use native::ffi;
-use native::ffi::descriptors::{
+use native::ffi::descriptor::{
     FfiDecoder, FfiEncoder, FundamentalDescriptor, Ownership, PointerWriter, ReadSource,
 };
 use native::ffi::value::Value;

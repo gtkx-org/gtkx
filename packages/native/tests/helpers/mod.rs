@@ -9,7 +9,7 @@ use gtk4::gdk;
 use gtk4::glib::{self, translate::IntoGlib as _};
 use gtk4::prelude::StaticType as _;
 
-use native::ffi::descriptors::{
+use native::ffi::descriptor::{
     ArrayDescriptor, ArrayKind, Descriptor, EnumFlagsDescriptor, EnumFlagsKind, FfiDecoder,
     FfiEncoder, FloatKind, IntegerKind, Ownership, PointerWriter, ReadSource,
 };

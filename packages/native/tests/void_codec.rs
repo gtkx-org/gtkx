@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use libffi::middle;
 use native::ffi;
-use native::ffi::descriptors::{FfiDecoder, FfiEncoder, PointerWriter, ReadSource, VoidDescriptor};
+use native::ffi::descriptor::{FfiDecoder, FfiEncoder, PointerWriter, ReadSource, VoidDescriptor};
 use native::ffi::value::Value;
 
 static CALLED: AtomicBool = AtomicBool::new(false);

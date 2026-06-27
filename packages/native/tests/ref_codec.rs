@@ -5,7 +5,7 @@ use std::ffi::{CString, c_char, c_void};
 use gtk4::glib;
 use gtk4::prelude::ObjectType as _;
 
-use native::ffi::descriptors::{
+use native::ffi::descriptor::{
     ArrayDescriptor, ArrayKind, BooleanDescriptor, Descriptor, EnumFlagsDescriptor, EnumFlagsKind,
     FfiDecoder, FloatKind, ObjectDescriptor, IntegerKind, Ownership, ReadSource, RefDescriptor,
     StringDescriptor, UnicharDescriptor,

@@ -3,7 +3,7 @@ use std::ffi::c_void;
 
 use glib::translate::IntoGlib as _;
 
-use crate::ffi::descriptors::{BigIntKind, IntegerKind};
+use crate::ffi::descriptor::{BigIntKind, IntegerKind};
 use crate::handle::UnrefFn;
 
 pub struct Stash {
@@ -380,11 +380,11 @@ impl Stash {
         match (&self.kind, int_kind) {
             (StashKind::I64Vec(v), IntegerKind::I64) => v
                 .iter()
-                .map(|&x| crate::ffi::descriptors::lossless_f64(i128::from(x), "array element"))
+                .map(|&x| crate::ffi::descriptor::lossless_f64(i128::from(x), "array element"))
                 .collect(),
             (StashKind::U64Vec(v), IntegerKind::U64) => v
                 .iter()
-                .map(|&x| crate::ffi::descriptors::lossless_f64(i128::from(x), "array element"))
+                .map(|&x| crate::ffi::descriptor::lossless_f64(i128::from(x), "array element"))
                 .collect(),
             _ => {
                 macro_rules! dispatch {

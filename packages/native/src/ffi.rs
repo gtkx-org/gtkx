@@ -1,6 +1,6 @@
 pub mod arg;
 pub mod callback;
-pub mod descriptors;
+pub mod descriptor;
 pub mod library_cache;
 pub mod value;
 
@@ -15,7 +15,7 @@ pub use stash::{GListData, GSListData, StringGListData, StringGSListData};
 pub use stashed_value::{CallbackValue, StashedValue};
 
 use crate::ffi::arg::Arg;
-use crate::ffi::descriptors::FfiEncoder as _;
+use crate::ffi::descriptor::FfiEncoder as _;
 
 impl TryFrom<Arg> for StashedValue {
     type Error = anyhow::Error;

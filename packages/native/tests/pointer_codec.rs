@@ -3,7 +3,7 @@ mod helpers;
 use std::ffi::c_void;
 
 use native::Handle;
-use native::ffi::descriptors::{
+use native::ffi::descriptor::{
     FfiDecoder, Ownership, PointerWriter, ReadSource, StructDescriptor,
 };
 use native::ffi::value;

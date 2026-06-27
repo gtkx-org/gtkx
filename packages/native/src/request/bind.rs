@@ -4,7 +4,7 @@ use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use crate::ffi::descriptors::Descriptor;
+use crate::ffi::descriptor::Descriptor;
 
 /// A bound FFI call whose library, symbol, and type descriptors are parsed once.
 ///

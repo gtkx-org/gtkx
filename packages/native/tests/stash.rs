@@ -3,7 +3,7 @@ mod helpers;
 use std::ffi::{CStr, CString, c_char, c_void};
 
 use gtk4::glib;
-use native::ffi::descriptors::{
+use native::ffi::descriptor::{
     ArrayDescriptor, ArrayKind, Descriptor, FfiEncoder as _, IntegerKind, Ownership,
     StringDescriptor,
 };

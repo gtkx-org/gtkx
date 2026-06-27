@@ -10,7 +10,7 @@ use codspeed_criterion_compat::{
     BenchmarkGroup, BenchmarkId, Criterion, black_box, criterion_group, criterion_main,
 };
 use native::ffi::StashedValue;
-use native::ffi::descriptors::{
+use native::ffi::descriptor::{
     ArrayDescriptor, ArrayKind, BufferDescriptor, Descriptor, FfiDecoder as _, FfiEncoder as _,
     IntegerKind, Ownership, StringDescriptor,
 };

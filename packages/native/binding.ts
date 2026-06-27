@@ -29,7 +29,7 @@ export type UnicharDescriptor = { kind: "unichar" };
 export type VoidDescriptor = { kind: "void" };
 export type BufferDescriptor = { kind: "buffer" };
 export type StructDescriptor = { kind: "struct"; ownership: Ownership; size?: number; callerAllocated?: boolean };
-export type RefDescriptor = { kind: "ref"; innerType: Descriptor; inout?: boolean };
+export type RefDescriptor = { kind: "ref"; innerDescriptor: Descriptor; inout?: boolean };
 
 export type BoxedDescriptor = {
     kind: "boxed";

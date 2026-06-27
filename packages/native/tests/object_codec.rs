@@ -6,7 +6,7 @@ use gtk4::glib;
 use gtk4::prelude::ObjectType as _;
 
 use native::ffi;
-use native::ffi::descriptors::{
+use native::ffi::descriptor::{
     FfiDecoder, FfiEncoder, ObjectDescriptor, Ownership, PointerWriter, ReadSource,
 };
 use native::ffi::value::Value;

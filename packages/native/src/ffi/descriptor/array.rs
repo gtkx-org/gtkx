@@ -8,7 +8,7 @@ use napi::{Env, JsObject};
 use super::prelude::*;
 use super::string::str_to_glib_full;
 use crate::ffi::arg::Arg;
-use crate::ffi::descriptors::{BigIntKind, Descriptor, FloatKind, IntegerKind};
+use crate::ffi::descriptor::{BigIntKind, Descriptor, FloatKind, IntegerKind};
 use crate::ffi::value::BufferViewKind;
 use crate::ffi::{Stash, StashKind};
 

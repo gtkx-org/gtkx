@@ -258,7 +258,7 @@ export function getParent(widget: Value): Value {
     return callArgs(GTK_LIB, "gtk_widget_get_parent", [{ type: OBJECT_BORROWED, value: widget }], OBJECT_BORROWED);
 }
 
-const INT32_REF = { kind: "ref" as const, innerType: INT32 };
+const INT32_REF = { kind: "ref" as const, innerDescriptor: INT32 };
 
 function measureSlot(
     ref: { value: number } | null,

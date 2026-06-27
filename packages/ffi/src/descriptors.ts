@@ -160,8 +160,8 @@ export const fundamentalT = (
     return result;
 };
 
-export const refT = (innerType: Descriptor, inout = false): RefDescriptor =>
-    inout ? { kind: "ref", innerType, inout: true } : { kind: "ref", innerType };
+export const refT = (innerDescriptor: Descriptor, inout = false): RefDescriptor =>
+    inout ? { kind: "ref", innerDescriptor, inout: true } : { kind: "ref", innerDescriptor };
 
 export const hashTableT = (
     keyDescriptor: Descriptor,

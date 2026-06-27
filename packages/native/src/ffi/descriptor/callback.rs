@@ -5,7 +5,7 @@ use napi::{Env, JsObject};
 
 use super::prelude::*;
 use crate::ffi::callback::{CallbackState, build_trampoline};
-use crate::ffi::descriptors::Descriptor;
+use crate::ffi::descriptor::Descriptor;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]

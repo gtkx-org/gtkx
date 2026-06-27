@@ -3,7 +3,7 @@ mod helpers;
 use std::ffi::c_void;
 
 use libffi::middle;
-use native::ffi::descriptors::{
+use native::ffi::descriptor::{
     BooleanDescriptor, BufferDescriptor, CallbackDescriptor, Descriptor, FfiDecoder, FfiEncoder,
     ObjectDescriptor, IntegerKind, Ownership, PointerWriter, ReadSource, RefDescriptor,
     StructDescriptor, VoidDescriptor,
@@ -32,7 +32,7 @@ fn ownership_default_is_borrowed() {
 fn transfer_release_matches_codec_ownership() {
     helpers::run(|| {
         use native::ffi::PendingRelease;
-        use native::ffi::descriptors::{
+        use native::ffi::descriptor::{
             BoxedDescriptor, FfiEncoder as _, ObjectDescriptor, StructDescriptor,
         };
 

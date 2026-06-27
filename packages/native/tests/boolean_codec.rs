@@ -2,7 +2,7 @@ use std::ffi::c_void;
 
 use libffi::middle;
 use native::ffi;
-use native::ffi::descriptors::{
+use native::ffi::descriptor::{
     BooleanDescriptor, FfiDecoder, FfiEncoder, PointerWriter, ReadSource,
 };
 use native::ffi::value::Value;

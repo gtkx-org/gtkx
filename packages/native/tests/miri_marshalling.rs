@@ -3,7 +3,7 @@ mod helpers;
 use std::ffi::c_void;
 
 use native::ffi::StashedValue;
-use native::ffi::descriptors::{
+use native::ffi::descriptor::{
     ArrayDescriptor, BufferDescriptor, FfiDecoder as _, FfiEncoder as _,
 };
 use native::ffi::value::{BufferView, BufferViewKind, Value};

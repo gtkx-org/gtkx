@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use napi::{Env, JsFunction, NapiValue as _};
 use native::ffi::callback::{CallbackData, CallbackState};
-use native::ffi::descriptors::{Descriptor, VoidDescriptor};
+use native::ffi::descriptor::{Descriptor, VoidDescriptor};
 use native::ffi::value::JsRef;
 use native::ffi::{CallbackValue, Stash, StashedValue};
 

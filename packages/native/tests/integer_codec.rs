@@ -1,5 +1,5 @@
 use native::ffi;
-use native::ffi::descriptors::IntegerKind;
+use native::ffi::descriptor::IntegerKind;
 
 #[test]
 fn read_u8() {

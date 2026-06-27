@@ -183,8 +183,8 @@ impl StashedValue {
             Self::U16(v) => Ok(*v as f64),
             Self::I32(v) => Ok(*v as f64),
             Self::U32(v) => Ok(*v as f64),
-            Self::I64(v) => crate::ffi::descriptors::lossless_f64(i128::from(*v), "call result"),
-            Self::U64(v) => crate::ffi::descriptors::lossless_f64(i128::from(*v), "call result"),
+            Self::I64(v) => crate::ffi::descriptor::lossless_f64(i128::from(*v), "call result"),
+            Self::U64(v) => crate::ffi::descriptor::lossless_f64(i128::from(*v), "call result"),
             Self::F32(v) => Ok(*v as f64),
             Self::F64(v) => Ok(*v),
             Self::Ptr(_) | Self::Storage(_) | Self::Callback(_) | Self::Void => {

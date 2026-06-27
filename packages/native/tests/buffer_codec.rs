@@ -2,7 +2,7 @@ use std::ffi::c_void;
 
 use libffi::middle;
 use native::ffi::StashedValue;
-use native::ffi::descriptors::{BufferDescriptor, Descriptor, FfiDecoder, FfiEncoder as _};
+use native::ffi::descriptor::{BufferDescriptor, Descriptor, FfiDecoder, FfiEncoder as _};
 use native::ffi::value::{BufferView, BufferViewKind, Value};
 
 fn encode(value: &Value) -> anyhow::Result<StashedValue> {

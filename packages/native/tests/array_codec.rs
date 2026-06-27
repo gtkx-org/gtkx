@@ -7,7 +7,7 @@ use gtk4::prelude::StaticType as _;
 
 use native::Handle;
 use native::ffi::arg::Arg;
-use native::ffi::descriptors::{
+use native::ffi::descriptor::{
     ArrayDescriptor, ArrayKind, BigIntKind, BooleanDescriptor, Descriptor, EnumFlagsDescriptor,
     EnumFlagsKind, FfiDecoder, FfiEncoder, FloatKind, FundamentalDescriptor, ObjectDescriptor,
     IntegerKind, Ownership, PointerWriter, ReadSource, RefDescriptor, StringDescriptor,

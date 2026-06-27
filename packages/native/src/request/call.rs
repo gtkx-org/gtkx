@@ -11,7 +11,7 @@ use super::{RefUpdate, Request};
 use crate::ffi::{
     self,
     arg::Arg,
-    descriptors::{ArrayKind, Descriptor, FfiDecoder as _, FfiEncoder as _},
+    descriptor::{ArrayKind, Descriptor, FfiDecoder as _, FfiEncoder as _},
     library_cache::GlibThreadState,
     value::Value,
 };
@@ -182,7 +182,7 @@ mod napi_export {
 
 #[cfg(test)]
 mod tests {
-    use crate::ffi::descriptors::{
+    use crate::ffi::descriptor::{
         ArrayDescriptor, BufferDescriptor, IntegerKind, Ownership, StringDescriptor,
     };
     use crate::ffi::value::{BufferView, BufferViewKind};

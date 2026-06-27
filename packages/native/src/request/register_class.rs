@@ -11,7 +11,7 @@ use napi_derive::napi;
 
 use super::Request;
 use crate::ffi::callback::{CallbackState, build_trampoline};
-use crate::ffi::descriptors::Descriptor;
+use crate::ffi::descriptor::Descriptor;
 use crate::ffi::value::{JsRef, map_js_array};
 use crate::messaging::error_reporter::ErrorReporter;
 
