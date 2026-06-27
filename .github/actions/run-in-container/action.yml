@@ -97,13 +97,15 @@ runs:
         # user, so git refuses to operate on it until it is marked safe.
         TRUST_WORKSPACE="git config --global --add safe.directory /workspace"
 
-        # Materialize the full stable toolchain (rustc, cargo, rust-std, clippy)
-        # once, single-threaded, before any command that fans out into parallel
-        # cargo builds (turbo's native-build + native-build:dist). Whatever rustup
-        # would otherwise fetch lazily — a channel update or a missing component —
-        # is fetched here exactly once, so the parallel tasks never race on the
-        # shared rustup download directory (the "could not rename …partial" error).
-        WARM_TOOLCHAIN="rustup toolchain install stable --profile minimal --component clippy --component llvm-tools-preview >/dev/null 2>&1 || true"
+        # Materialize the full default stable toolchain (rustc, cargo, rust-std,
+        # rust-docs, rustfmt, clippy) plus llvm-tools once, single-threaded, before
+        # any command that fans out into parallel cargo builds (turbo's native-build
+        # + native-build:dist). The lazy auto-install those builds would otherwise
+        # trigger pulls the default profile, so anything less here leaves components
+        # for them to fetch concurrently and race on the shared rustup download
+        # directory (the "could not rename …partial" error). Output stays visible to
+        # surface the resolved RUSTUP_HOME and install result in the job log.
+        WARM_TOOLCHAIN='echo CI_RUSTUP_HOME=${RUSTUP_HOME:-unset} CI_HOME=$HOME; rustup toolchain install stable --profile default --component llvm-tools-preview 2>&1 | tail -8 || true'
 
         if [ "$INPUT_INSTALL" = "true" ]; then
           FULL_COMMAND="$TRUST_WORKSPACE && $WARM_TOOLCHAIN && pnpm install --frozen-lockfile && $INPUT_COMMAND"
