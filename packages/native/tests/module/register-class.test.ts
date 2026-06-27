@@ -51,7 +51,7 @@ describe("registerClass", () => {
                 { type: BIGUINT64, value: newGtype },
                 { type: BIGUINT64, value: buildableGtype },
             ],
-            { type: "boolean" },
+            { kind: "boolean" },
         );
         expect(stillImplementsBuildable).toBe(true);
     });

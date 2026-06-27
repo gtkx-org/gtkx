@@ -63,7 +63,7 @@ const toNativeValues = (plans: ArgPlan[], inputs: unknown[]): Value[] =>
         if (category.kind === "outCell") {
             return { value: consumesInput ? (inputs[inputIndex] as Value) : null };
         }
-        if (argSpec.type.type === "callback") {
+        if (argSpec.type.kind === "callback") {
             return wrapCallbackValue(argSpec.type, inputs[inputIndex]);
         }
         return inputs[inputIndex] as Value;
@@ -86,7 +86,7 @@ export function fn(library: string, symbol: string, signature: FnSignature): (..
     const { args: argSpecs, returns: returnType, throws = false } = signature;
     const nativeArgTypes = toNativeArgTypes(argSpecs, throws);
     const nativeFn = bind(library, symbol, nativeArgTypes, returnType);
-    const hasPrimary = returnType.type !== "void";
+    const hasPrimary = returnType.kind !== "void";
     const plans = planArgs(argSpecs);
 
     const shape = (inputs: unknown[], nativeValues: Value[], nativeResult: Value): unknown => {

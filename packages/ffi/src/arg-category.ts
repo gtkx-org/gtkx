@@ -31,10 +31,10 @@ export const classifyArgCategory = (meta: ArgDirectionMeta): ArgCategory => {
     return meta.callerAllocated ? { kind: "callerAllocated", inout } : { kind: "outCell", inout };
 };
 
-export const isOutCellType = (descriptor: Descriptor): descriptor is RefDescriptor => descriptor.type === "ref";
+export const isOutCellType = (descriptor: Descriptor): descriptor is RefDescriptor => descriptor.kind === "ref";
 
 const isCallerAllocatedBufferType = (descriptor: Descriptor): boolean =>
-    (descriptor.type === "boxed" || descriptor.type === "struct") && descriptor.callerAllocated === true;
+    (descriptor.kind === "boxed" || descriptor.kind === "struct") && descriptor.callerAllocated === true;
 
 const directionMetaOfType = (descriptor: Descriptor): ArgDirectionMeta => {
     if (isOutCellType(descriptor))

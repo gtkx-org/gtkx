@@ -6,9 +6,9 @@ describe("init", () => {
         const label = callArgs(
             GTK_LIB,
             "gtk_label_new",
-            [{ type: { type: "string", ownership: "borrowed" }, value: "Test" }],
+            [{ type: { kind: "string", ownership: "borrowed" }, value: "Test" }],
             {
-                type: "gobject",
+                kind: "gobject",
                 ownership: "borrowed",
             },
         );

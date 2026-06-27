@@ -60,7 +60,7 @@ describe("call - error handling - type errors", () => {
                 "gtk_label_new",
                 [
                     {
-                        type: { type: "invalid_type" as "int8" },
+                        type: { kind: "invalid_type" as "int8" },
                         value: "Test",
                     },
                 ],
@@ -76,7 +76,7 @@ describe("call - error handling - type errors", () => {
                 "gtk_label_set_max_width_chars",
                 [
                     { type: GOBJECT_BORROWED, value: createLabel("Test") },
-                    { type: { type: "int7" as "int8" }, value: 42 },
+                    { type: { kind: "int7" as "int8" }, value: 42 },
                 ],
                 VOID,
             );
@@ -90,7 +90,7 @@ describe("call - error handling - type errors", () => {
                 "gtk_widget_set_opacity",
                 [
                     { type: GOBJECT_BORROWED, value: createLabel("Test") },
-                    { type: { type: "float16" as "float32" }, value: 0.5 },
+                    { type: { kind: "float16" as "float32" }, value: 0.5 },
                 ],
                 VOID,
             );
@@ -129,9 +129,9 @@ describe("call - error handling - value errors", () => {
                     { type: STRING, value: "clicked" },
                     {
                         type: {
-                            type: "callback",
+                            kind: "callback",
                             argTypes: [GOBJECT_BORROWED, UINT64],
-                            returnType: { type: "void" },
+                            returnType: { kind: "void" },
                             hasDestroy: true,
                             userDataIndex: 1,
                         },
@@ -139,7 +139,7 @@ describe("call - error handling - value errors", () => {
                     },
                     { type: INT32, value: 0 },
                 ],
-                { type: "uint64" as const },
+                { kind: "uint64" as const },
             );
         }).toThrow();
     });

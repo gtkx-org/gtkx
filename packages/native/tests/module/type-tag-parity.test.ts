@@ -2,47 +2,47 @@ import { describe, expect, it } from "vitest";
 import type { Descriptor } from "../../index.js";
 import { callArgs } from "./utils.js";
 
-type DescriptorByTag = { [K in Descriptor["type"]]: Extract<Descriptor, { type: K }> };
+type DescriptorByTag = { [K in Descriptor["kind"]]: Extract<Descriptor, { kind: K }> };
 
 const REPRESENTATIVES: DescriptorByTag = {
-    int8: { type: "int8" },
-    uint8: { type: "uint8" },
-    int16: { type: "int16" },
-    uint16: { type: "uint16" },
-    int32: { type: "int32" },
-    uint32: { type: "uint32" },
-    int64: { type: "int64" },
-    uint64: { type: "uint64" },
-    bigint64: { type: "bigint64" },
-    biguint64: { type: "biguint64" },
-    float32: { type: "float32" },
-    float64: { type: "float64" },
-    enum: { type: "enum", library: "libexample.so", getTypeFn: "example_get_type", signed: false },
-    flags: { type: "flags", library: "libexample.so", getTypeFn: "example_get_type", signed: false },
-    boolean: { type: "boolean" },
-    string: { type: "string", ownership: "borrowed" },
-    gobject: { type: "gobject", ownership: "borrowed" },
-    boxed: { type: "boxed", ownership: "borrowed", innerType: "GdkRGBA" },
-    struct: { type: "struct", ownership: "borrowed" },
+    int8: { kind: "int8" },
+    uint8: { kind: "uint8" },
+    int16: { kind: "int16" },
+    uint16: { kind: "uint16" },
+    int32: { kind: "int32" },
+    uint32: { kind: "uint32" },
+    int64: { kind: "int64" },
+    uint64: { kind: "uint64" },
+    bigint64: { kind: "bigint64" },
+    biguint64: { kind: "biguint64" },
+    float32: { kind: "float32" },
+    float64: { kind: "float64" },
+    enum: { kind: "enum", library: "libexample.so", getTypeFn: "example_get_type", signed: false },
+    flags: { kind: "flags", library: "libexample.so", getTypeFn: "example_get_type", signed: false },
+    boolean: { kind: "boolean" },
+    string: { kind: "string", ownership: "borrowed" },
+    gobject: { kind: "gobject", ownership: "borrowed" },
+    boxed: { kind: "boxed", ownership: "borrowed", innerType: "GdkRGBA" },
+    struct: { kind: "struct", ownership: "borrowed" },
     fundamental: {
-        type: "fundamental",
+        kind: "fundamental",
         ownership: "borrowed",
         library: "libexample.so",
         refFn: "ref",
         unrefFn: "unref",
     },
-    array: { type: "array", itemType: { type: "int8" }, kind: "array", ownership: "borrowed" },
-    buffer: { type: "buffer" },
+    array: { kind: "array", itemType: { kind: "int8" }, arrayKind: "array", ownership: "borrowed" },
+    buffer: { kind: "buffer" },
     hashtable: {
-        type: "hashtable",
-        keyType: { type: "string", ownership: "borrowed" },
-        valueType: { type: "string", ownership: "borrowed" },
+        kind: "hashtable",
+        keyType: { kind: "string", ownership: "borrowed" },
+        valueType: { kind: "string", ownership: "borrowed" },
         ownership: "borrowed",
     },
-    ref: { type: "ref", innerType: { type: "int32" } },
-    callback: { type: "callback", argTypes: [], returnType: { type: "void" } },
-    unichar: { type: "unichar" },
-    void: { type: "void" },
+    ref: { kind: "ref", innerType: { kind: "int32" } },
+    callback: { kind: "callback", argTypes: [], returnType: { kind: "void" } },
+    unichar: { kind: "unichar" },
+    void: { kind: "void" },
 };
 
 const MISSING_LIBRARY = "libgtkx-type-tag-parity-nonexistent.so";
@@ -61,7 +61,7 @@ describe("Descriptor tag parity between the TS Descriptor union and Rust from_js
     }
 
     it("rejects an unregistered tag with an Unknown type error", () => {
-        const unknownDescriptor: { type: string } = { type: "definitely-not-a-real-tag" };
+        const unknownDescriptor: { kind: string } = { kind: "definitely-not-a-real-tag" };
         expect(() => parseReturnType(unknownDescriptor as Descriptor)).toThrow(UNKNOWN_TAG_ERROR);
     });
 });

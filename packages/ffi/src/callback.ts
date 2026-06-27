@@ -18,7 +18,7 @@ const copyBoxedFields = (target: object, source: object): void => {
 };
 
 const fillCallerAllocatedBuffer = (descriptor: Descriptor, target: object, source: object): void => {
-    if (descriptor.type === "boxed" && descriptor.innerType === "GValue") {
+    if (descriptor.kind === "boxed" && descriptor.innerType === "GValue") {
         valueCopyInto(getHandle(target), getHandle(source));
         return;
     }
@@ -86,7 +86,7 @@ export function wrapCallback(fn: UserCallback, spec: CallbackSpec, receiver: Cal
         if (outParams.length === 0) {
             return toNativeValue(returnType, result);
         }
-        const { primary, outValues } = splitTupleResult(result, returnType.type !== "void", outParams.length);
+        const { primary, outValues } = splitTupleResult(result, returnType.kind !== "void", outParams.length);
         writeOutParams(outParams, outValues);
         return toNativeValue(returnType, primary);
     };

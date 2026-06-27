@@ -430,7 +430,7 @@ impl Descriptor {
     #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn from_descriptor(env: &Env, value: Unknown<'_>) -> napi::Result<Self> {
         let obj: JsObject = crate::ffi::value::unknown_as_object(env, &value)?;
-        let ty: String = obj.get_named_property("type")?;
+        let ty: String = obj.get_named_property("kind")?;
 
         match ty.as_str() {
             "int8" => Ok(Self::Integer(IntegerKind::I8)),

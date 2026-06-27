@@ -7,14 +7,14 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { fromGValue, toGValue } from "../../src/gvalue.js";
 
 const alignDescriptor = {
-    type: "enum",
+    kind: "enum",
     library: "libgtk-4.so.1",
     getTypeFn: "gtk_align_get_type",
     signed: false,
 } as const;
 
 const bindingFlagsDescriptor = {
-    type: "flags",
+    kind: "flags",
     library: "libgobject-2.0.so.0",
     getTypeFn: "g_binding_flags_get_type",
     signed: false,
@@ -32,28 +32,28 @@ const variantDescriptor = t.fundamental("libgobject-2.0.so.0,libglib-2.0.so.0", 
 
 describe("GValue boolean", () => {
     it("round-trips true and false", () => {
-        expect(fromGValue(toGValue({ type: "boolean" }, true))).toBe(true);
-        expect(fromGValue(toGValue({ type: "boolean" }, false))).toBe(false);
+        expect(fromGValue(toGValue({ kind: "boolean" }, true))).toBe(true);
+        expect(fromGValue(toGValue({ kind: "boolean" }, false))).toBe(false);
     });
 });
 
 describe("GValue signed and unsigned integers", () => {
     it("round-trips an int", () => {
-        expect(fromGValue(toGValue({ type: "int32" }, -42))).toBe(-42);
+        expect(fromGValue(toGValue({ kind: "int32" }, -42))).toBe(-42);
     });
 
     it("round-trips a uint", () => {
-        expect(fromGValue(toGValue({ type: "uint32" }, 4_000_000_000))).toBe(4_000_000_000);
+        expect(fromGValue(toGValue({ kind: "uint32" }, 4_000_000_000))).toBe(4_000_000_000);
     });
 
     it("round-trips an int64 beyond the safe-integer range", () => {
-        expect(fromGValue(toGValue({ type: "bigint64" }, -9_223_372_036_854_775_808n))).toBe(
+        expect(fromGValue(toGValue({ kind: "bigint64" }, -9_223_372_036_854_775_808n))).toBe(
             -9_223_372_036_854_775_808n,
         );
     });
 
     it("round-trips a uint64 beyond the safe-integer range", () => {
-        expect(fromGValue(toGValue({ type: "biguint64" }, 18_446_744_073_709_551_615n))).toBe(
+        expect(fromGValue(toGValue({ kind: "biguint64" }, 18_446_744_073_709_551_615n))).toBe(
             18_446_744_073_709_551_615n,
         );
     });
@@ -61,25 +61,25 @@ describe("GValue signed and unsigned integers", () => {
 
 describe("GValue floating point", () => {
     it("round-trips a float within tolerance", () => {
-        expect(fromGValue(toGValue({ type: "float32" }, 1.5))).toBeCloseTo(1.5, 3);
+        expect(fromGValue(toGValue({ kind: "float32" }, 1.5))).toBeCloseTo(1.5, 3);
     });
 
     it("round-trips a double", () => {
-        expect(fromGValue(toGValue({ type: "float64" }, Math.PI))).toBeCloseTo(Math.PI);
+        expect(fromGValue(toGValue({ kind: "float64" }, Math.PI))).toBeCloseTo(Math.PI);
     });
 });
 
 describe("GValue string", () => {
     it("round-trips a non-empty string", () => {
-        expect(fromGValue(toGValue({ type: "string", ownership: "borrowed" }, "hello"))).toBe("hello");
+        expect(fromGValue(toGValue({ kind: "string", ownership: "borrowed" }, "hello"))).toBe("hello");
     });
 
     it("round-trips an empty string", () => {
-        expect(fromGValue(toGValue({ type: "string", ownership: "borrowed" }, ""))).toBe("");
+        expect(fromGValue(toGValue({ kind: "string", ownership: "borrowed" }, ""))).toBe("");
     });
 
     it("round-trips a null string as null", () => {
-        expect(fromGValue(toGValue({ type: "string", ownership: "borrowed" }, null))).toBeNull();
+        expect(fromGValue(toGValue({ kind: "string", ownership: "borrowed" }, null))).toBeNull();
     });
 });
 
@@ -96,11 +96,11 @@ describe("GValue enum and flags", () => {
 describe("GValue object", () => {
     it("round-trips a live GObject returning the same wrapper", () => {
         const label = new Gtk.Label({ label: "hello" });
-        expect(fromGValue(toGValue({ type: "gobject", ownership: "borrowed" }, label))).toBe(label);
+        expect(fromGValue(toGValue({ kind: "gobject", ownership: "borrowed" }, label))).toBe(label);
     });
 
     it("round-trips a null object", () => {
-        expect(fromGValue(toGValue({ type: "gobject", ownership: "borrowed" }, null))).toBeNull();
+        expect(fromGValue(toGValue({ kind: "gobject", ownership: "borrowed" }, null))).toBeNull();
     });
 });
 

@@ -39,7 +39,7 @@ impl std::str::FromStr for ArrayKind {
             "sized" => Ok(Self::Sized { size_index: 0 }),
             "fixed" => Ok(Self::Fixed { size: 0 }),
             _ => Err(format!(
-                "'kind' must be 'array', 'glist', 'gslist', 'gptrarray', 'garray', 'gbytearray', 'sized', or 'fixed'; got '{s}'"
+                "'arrayKind' must be 'array', 'glist', 'gslist', 'gptrarray', 'garray', 'gbytearray', 'sized', or 'fixed'; got '{s}'"
             )),
         }
     }
@@ -60,10 +60,10 @@ impl ArrayDescriptor {
         let item_type_value: Unknown<'_> = obj.get_named_property("itemType")?;
         let item_type = Descriptor::from_descriptor(env, item_type_value)?;
 
-        let kind_str: String = obj.get_named_property("kind").map_err(|_| {
+        let kind_str: String = obj.get_named_property("arrayKind").map_err(|_| {
             napi::Error::new(
                 napi::Status::InvalidArg,
-                "'kind' property is required for array types",
+                "'arrayKind' property is required for array types",
             )
         })?;
 

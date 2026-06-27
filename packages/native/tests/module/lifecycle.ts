@@ -73,7 +73,7 @@ export const start = (): void => {
     started = true;
 
     keepAlive();
-    callArgs("libgtk-4.so.1", "gtk_init", [], { type: "void" });
+    callArgs("libgtk-4.so.1", "gtk_init", [], { kind: "void" });
     registerExitHandlers();
 };
 

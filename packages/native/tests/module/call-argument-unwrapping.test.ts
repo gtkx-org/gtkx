@@ -17,7 +17,7 @@ describe("call argument unwrapping", () => {
         );
 
         const text = callArgs("libgtk-4.so.1", "gtk_label_get_text", [{ type: GOBJECT_BORROWED, value: label }], {
-            type: "string",
+            kind: "string",
             ownership: "borrowed",
         });
 

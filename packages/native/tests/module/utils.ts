@@ -31,28 +31,28 @@ export const GDK_LIB = "libgtk-4.so.1";
 export const GOBJECT_LIB = "libgobject-2.0.so.0";
 export const GIO_LIB = "libgio-2.0.so.0";
 export const PANGO_LIB = "libpango-1.0.so.0";
-export const INT8 = { type: "int8" as const };
-export const INT16 = { type: "int16" as const };
-export const INT32 = { type: "int32" as const };
-export const INT64 = { type: "int64" as const };
-export const UINT8 = { type: "uint8" as const };
-export const UINT16 = { type: "uint16" as const };
-export const UINT32 = { type: "uint32" as const };
-export const UINT64 = { type: "uint64" as const };
-export const BIGUINT64 = { type: "biguint64" as const };
-export const FLOAT32 = { type: "float32" as const };
-export const FLOAT64 = { type: "float64" as const };
-export const BOOLEAN = { type: "boolean" as const };
-export const STRING = { type: "string" as const, ownership: "full" as const };
-export const STRING_BORROWED = { type: "string" as const, ownership: "borrowed" as const };
-export const GOBJECT = { type: "gobject" as const, ownership: "full" as const };
-export const GOBJECT_BORROWED = { type: "gobject" as const, ownership: "borrowed" as const };
-export const POINTER = { type: "uint64" as const };
-export const VOID = { type: "void" as const };
+export const INT8 = { kind: "int8" as const };
+export const INT16 = { kind: "int16" as const };
+export const INT32 = { kind: "int32" as const };
+export const INT64 = { kind: "int64" as const };
+export const UINT8 = { kind: "uint8" as const };
+export const UINT16 = { kind: "uint16" as const };
+export const UINT32 = { kind: "uint32" as const };
+export const UINT64 = { kind: "uint64" as const };
+export const BIGUINT64 = { kind: "biguint64" as const };
+export const FLOAT32 = { kind: "float32" as const };
+export const FLOAT64 = { kind: "float64" as const };
+export const BOOLEAN = { kind: "boolean" as const };
+export const STRING = { kind: "string" as const, ownership: "full" as const };
+export const STRING_BORROWED = { kind: "string" as const, ownership: "borrowed" as const };
+export const GOBJECT = { kind: "gobject" as const, ownership: "full" as const };
+export const GOBJECT_BORROWED = { kind: "gobject" as const, ownership: "borrowed" as const };
+export const POINTER = { kind: "uint64" as const };
+export const VOID = { kind: "void" as const };
 export const STRING_ARRAY = {
-    type: "array" as const,
-    itemType: STRING,
     kind: "array" as const,
+    itemType: STRING,
+    arrayKind: "array" as const,
     ownership: "full" as const,
 };
 
@@ -116,7 +116,7 @@ export function forceGC(): void {
 }
 
 export function getRefCount(obj: unknown): number {
-    return read(obj as Handle, { type: "uint32" }, GOBJECT_REF_COUNT_OFFSET) as number;
+    return read(obj as Handle, { kind: "uint32" }, GOBJECT_REF_COUNT_OFFSET) as number;
 }
 
 type MemoryMeasurement = {
@@ -154,9 +154,9 @@ export function connectSignalReturning(
             { type: STRING, value: signalName },
             {
                 type: {
-                    type: "callback",
+                    kind: "callback",
                     argTypes: [GOBJECT_BORROWED, UINT64],
-                    returnType: { type: "void" },
+                    returnType: { kind: "void" },
                     hasDestroy: true,
                     userDataIndex: 1,
                 },
@@ -173,7 +173,7 @@ export function connectSignalCallback(
     signalName: string,
     callback: (...args: unknown[]) => void,
     options: { argTypes: Descriptor[]; userDataIndex: number; hasDestroy?: boolean } = {
-        argTypes: [{ type: "gobject", ownership: "borrowed" }, { type: "uint64" }],
+        argTypes: [{ kind: "gobject", ownership: "borrowed" }, { kind: "uint64" }],
         userDataIndex: 1,
         hasDestroy: true,
     },
@@ -186,9 +186,9 @@ export function connectSignalCallback(
             { type: STRING, value: signalName },
             {
                 type: {
-                    type: "callback",
+                    kind: "callback",
                     argTypes: options.argTypes,
-                    returnType: { type: "void" },
+                    returnType: { kind: "void" },
                     hasDestroy: options.hasDestroy ?? true,
                     userDataIndex: options.userDataIndex,
                 },
@@ -258,7 +258,7 @@ export function getParent(widget: Value): Value {
     return callArgs(GTK_LIB, "gtk_widget_get_parent", [{ type: GOBJECT_BORROWED, value: widget }], GOBJECT_BORROWED);
 }
 
-const INT32_REF = { type: "ref" as const, innerType: INT32 };
+const INT32_REF = { kind: "ref" as const, innerType: INT32 };
 
 function measureSlot(
     ref: { value: number } | null,

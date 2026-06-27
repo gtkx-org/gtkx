@@ -6,6 +6,7 @@ import {
     getType,
     type Handle,
     read,
+    type Value,
     write,
 } from "@gtkx/native";
 import { GVALUE_LAYOUT, GVALUE_SIZE, GVALUE_T, LIB } from "./constants.js";
@@ -86,34 +87,34 @@ const setGValuePointer = (value: Handle, pointer: Handle): void => {
     gValueSetPointer(value, pointer);
 };
 
-const scalarBind = <F extends Descriptor>(symbol: string, descriptor: F) => ({
+const scalarBind = <T>(symbol: string, descriptor: Descriptor) => ({
     set: bind(LIB, `g_value_set_${symbol}`, [GVALUE_T, descriptor], voidT),
-    get: bind(LIB, `g_value_get_${symbol}`, [GVALUE_T], descriptor),
+    get: bind(LIB, `g_value_get_${symbol}`, [GVALUE_T], descriptor) as (...values: Value[]) => T,
 });
 
-const booleanBind = scalarBind("boolean", booleanT);
-const intBind = scalarBind("int", int32T);
-const uintBind = scalarBind("uint", uint32T);
-const int64Bind = scalarBind("int64", bigint64T);
-const uint64Bind = scalarBind("uint64", biguint64T);
-const floatBind = scalarBind("float", float32T);
-const doubleBind = scalarBind("double", float64T);
-const stringBind = scalarBind("string", stringT("borrowed"));
-const enumBind = scalarBind("enum", int32T);
-const flagsBind = scalarBind("flags", uint32T);
-const objectBind = scalarBind("object", objectT("borrowed"));
+const booleanBind = scalarBind<boolean>("boolean", booleanT);
+const intBind = scalarBind<number>("int", int32T);
+const uintBind = scalarBind<number>("uint", uint32T);
+const int64Bind = scalarBind<bigint>("int64", bigint64T);
+const uint64Bind = scalarBind<bigint>("uint64", biguint64T);
+const floatBind = scalarBind<number>("float", float32T);
+const doubleBind = scalarBind<number>("double", float64T);
+const stringBind = scalarBind<string | null>("string", stringT("borrowed"));
+const enumBind = scalarBind<number>("enum", int32T);
+const flagsBind = scalarBind<number>("flags", uint32T);
+const objectBind = scalarBind<Handle | null>("object", objectT("borrowed"));
 
 const PARAM_FUNDAMENTAL = fundamentalT(LIB, "g_param_spec_ref", "g_param_spec_unref", {
     ownership: "borrowed",
     typeName: "GParam",
 });
-const paramBind = scalarBind("param", PARAM_FUNDAMENTAL);
+const paramBind = scalarBind<Handle | null>("param", PARAM_FUNDAMENTAL);
 
 const VARIANT_FUNDAMENTAL = fundamentalT(LIB, "g_variant_ref", "g_variant_unref", {
     ownership: "borrowed",
     typeName: "GVariant",
 });
-const variantBind = scalarBind("variant", VARIANT_FUNDAMENTAL);
+const variantBind = scalarBind<Handle | null>("variant", VARIANT_FUNDAMENTAL);
 
 const valueSetBoolean = (value: Handle, v: boolean): void => {
     booleanBind.set(value, v);
@@ -274,7 +275,7 @@ const resolveFundamentalGtype = (descriptor: FundamentalDescriptor): GType => {
 };
 
 export function gtypeFromDescriptor(descriptor: Descriptor): GType {
-    switch (descriptor.type) {
+    switch (descriptor.kind) {
         case "boolean":
             return TYPE_BOOLEAN;
         case "string":
@@ -307,10 +308,10 @@ export function gtypeFromDescriptor(descriptor: Descriptor): GType {
         case "fundamental":
             return resolveFundamentalGtype(descriptor);
         case "array":
-            if (descriptor.itemType.type === "string" && descriptor.kind === "array") return getStrvGtype();
-            throw new Error(`Unsupported array type ${descriptor.kind} of ${descriptor.itemType.type}`);
+            if (descriptor.itemType.kind === "string" && descriptor.arrayKind === "array") return getStrvGtype();
+            throw new Error(`Unsupported array type ${descriptor.arrayKind} of ${descriptor.itemType.kind}`);
         default:
-            throw new Error(`Unsupported type descriptor '${descriptor.type}'`);
+            throw new Error(`Unsupported type descriptor '${descriptor.kind}'`);
     }
 }
 
@@ -338,7 +339,7 @@ type PayloadHandler = {
 };
 
 const setBoxedOrStrv = (value: Handle, descriptor: Descriptor, jsValue: unknown): void => {
-    if (descriptor.type === "array") valueSetStrv(value, jsValue as string[]);
+    if (descriptor.kind === "array") valueSetStrv(value, jsValue as string[]);
     else valueSetBoxed(value, jsValue as object | null);
 };
 
@@ -401,7 +402,7 @@ function setGValuePayload(value: Handle, gtype: GType, descriptor: Descriptor, j
 }
 
 export function toGValue(descriptor: Descriptor, jsValue: unknown): Handle {
-    if (descriptor.type === "gobject") return objectToGValue(jsValue as object | null);
+    if (descriptor.kind === "gobject") return objectToGValue(jsValue as object | null);
     const gtype = gtypeFromDescriptor(descriptor);
     const value = newTypedGValue(gtype);
     setGValuePayload(value, gtype, descriptor, jsValue);
