@@ -1,4 +1,4 @@
-import type { Type, Value } from "@gtkx/native";
+import type { Descriptor, Value } from "@gtkx/native";
 import { type ArgCategory, categoryOfType, isOutCellType } from "./arg-category.js";
 import { valueCopyInto } from "./gvalue.js";
 import { fromNativeValue, toNativeValue } from "./native-value.js";
@@ -17,7 +17,7 @@ const copyBoxedFields = (target: object, source: object): void => {
     }
 };
 
-const fillCallerAllocatedBuffer = (descriptor: Type, target: object, source: object): void => {
+const fillCallerAllocatedBuffer = (descriptor: Descriptor, target: object, source: object): void => {
     if (descriptor.type === "boxed" && descriptor.innerType === "GValue") {
         valueCopyInto(getHandle(target), getHandle(source));
         return;
@@ -32,15 +32,15 @@ type Callback = (...args: Value[]) => Value;
 export type UserCallback = (...args: never[]) => unknown;
 
 type CallbackSpec = {
-    argTypes: Type[];
-    returnType: Type;
+    argTypes: Descriptor[];
+    returnType: Descriptor;
     userDataIndex?: number;
 };
 
-type OutParam = { value: unknown; descriptor: Type };
+type OutParam = { value: unknown; descriptor: Descriptor };
 
 const partitionCallbackArgs = (
-    effectiveTypes: Type[],
+    effectiveTypes: Descriptor[],
     wrapped: unknown[],
     start: number,
     receiver: CallbackReceiver,

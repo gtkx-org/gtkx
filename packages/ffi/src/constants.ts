@@ -1,4 +1,4 @@
-import type { BoxedType } from "@gtkx/native";
+import type { BoxedDescriptor } from "@gtkx/native";
 import { boxedT } from "./descriptors.js";
 
 export const LIB = "libgobject-2.0.so.0,libglib-2.0.so.0";
@@ -10,4 +10,4 @@ export const GVALUE_LAYOUT: { gTypeOffset: number; dataOffset: number } = {
     dataOffset: 8,
 };
 
-export const GVALUE_T: BoxedType = boxedT("GValue", { library: LIB, getTypeFn: "g_value_get_type" });
+export const GVALUE_T: BoxedDescriptor = boxedT("GValue", { library: LIB, getTypeFn: "g_value_get_type" });

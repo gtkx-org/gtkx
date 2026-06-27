@@ -1,4 +1,4 @@
-import type { Type, Value } from "../../../types.js";
+import type { Descriptor, Value } from "../../../types.js";
 import { BOOLEAN, callArgs, GOBJECT_BORROWED, GTK_LIB, VOID } from "../utils.js";
 
 export function setLabelSelectable(label: Value, value: boolean): void {
@@ -22,7 +22,7 @@ export function getLabelSelectable(label: Value): boolean {
     ) as boolean;
 }
 
-export function setAndGetLabelMaxWidthChars(label: Value, type: Type, value: number): number {
+export function setAndGetLabelMaxWidthChars(label: Value, type: Descriptor, value: number): number {
     callArgs(
         GTK_LIB,
         "gtk_label_set_max_width_chars",

@@ -1,21 +1,21 @@
-import type { ArrayType, Handle, Type, Value } from "@gtkx/native";
+import type { ArrayDescriptor, Descriptor, Handle, Value } from "@gtkx/native";
 import { getDescriptorWrapperClass } from "./descriptors.js";
 import { gtypeFromDescriptor } from "./gvalue.js";
 import { requireWrapperClass, tryGetHandle, wrapHandle } from "./registry.js";
 
-const collectionFromNativeValue = (descriptor: ArrayType, value: unknown): unknown => {
+const collectionFromNativeValue = (descriptor: ArrayDescriptor, value: unknown): unknown => {
     if (value === null) return null;
     return (value as Value[]).map((item) => fromNativeValue(descriptor.itemType, item));
 };
 
-const wrapByDescriptorClass = (descriptor: Type, value: Handle | null): object | null => {
+const wrapByDescriptorClass = (descriptor: Descriptor, value: Handle | null): object | null => {
     if (value === null) return null;
     const paired = getDescriptorWrapperClass(descriptor);
     if (paired !== undefined) return wrapHandle(value, paired);
     return wrapHandle(value, requireWrapperClass(gtypeFromDescriptor(descriptor)));
 };
 
-export function fromNativeValue(descriptor: Type, value: Value): unknown {
+export function fromNativeValue(descriptor: Descriptor, value: Value): unknown {
     switch (descriptor.type) {
         case "gobject":
             return wrapHandle(value as Handle | null, undefined);
@@ -41,12 +41,12 @@ export function fromNativeValue(descriptor: Type, value: Value): unknown {
     }
 }
 
-const collectionToNativeValue = (descriptor: ArrayType, value: unknown): Value => {
+const collectionToNativeValue = (descriptor: ArrayDescriptor, value: unknown): Value => {
     if (value == null) return null;
     return (value as unknown[]).map((item) => toNativeValue(descriptor.itemType, item));
 };
 
-export function toNativeValue(descriptor: Type, value: unknown): Value {
+export function toNativeValue(descriptor: Descriptor, value: unknown): Value {
     switch (descriptor.type) {
         case "gobject":
         case "struct":

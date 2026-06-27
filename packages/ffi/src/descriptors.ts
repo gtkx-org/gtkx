@@ -1,53 +1,53 @@
 import {
-    type ArrayType,
-    type BigInt64Type,
-    type BigUint64Type,
-    type BooleanType,
-    type BoxedType,
-    type BufferType,
-    type CallbackType,
+    type ArrayDescriptor,
+    type BigInt64Descriptor,
+    type BigUint64Descriptor,
+    type BooleanDescriptor,
+    type BoxedDescriptor,
+    type BufferDescriptor,
+    type CallbackDescriptor,
     call,
-    type EnumType,
-    type FlagsType,
-    type Float32Type,
-    type Float64Type,
-    type FundamentalType,
-    type GObjectType,
-    type HashTableType,
-    type Int8Type,
-    type Int16Type,
-    type Int32Type,
-    type Int64Type,
+    type Descriptor,
+    type EnumDescriptor,
+    type FlagsDescriptor,
+    type Float32Descriptor,
+    type Float64Descriptor,
+    type FundamentalDescriptor,
+    type GObjectDescriptor,
+    type HashTableDescriptor,
+    type Int8Descriptor,
+    type Int16Descriptor,
+    type Int32Descriptor,
+    type Int64Descriptor,
     bind as nativeBind,
     type Ownership,
-    type RefType,
-    type StringType,
-    type StructType,
-    type Type,
-    type Uint8Type,
-    type Uint16Type,
-    type Uint32Type,
-    type Uint64Type,
-    type UnicharType,
+    type RefDescriptor,
+    type StringDescriptor,
+    type StructDescriptor,
+    type Uint8Descriptor,
+    type Uint16Descriptor,
+    type Uint32Descriptor,
+    type Uint64Descriptor,
+    type UnicharDescriptor,
     type Value,
     type ValueOf,
-    type VoidType,
+    type VoidDescriptor,
 } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
 
-const wrapperClassByDescriptor = new WeakMap<Type, AnyClass>();
+const wrapperClassByDescriptor = new WeakMap<Descriptor, AnyClass>();
 
-const setDescriptorWrapperClass = (descriptor: Type, wrapperClass: AnyClass): void => {
+const setDescriptorWrapperClass = (descriptor: Descriptor, wrapperClass: AnyClass): void => {
     wrapperClassByDescriptor.set(descriptor, wrapperClass);
 };
 
-export const getDescriptorWrapperClass = (descriptor: Type): AnyClass | undefined =>
+export const getDescriptorWrapperClass = (descriptor: Descriptor): AnyClass | undefined =>
     wrapperClassByDescriptor.get(descriptor);
 
-export const bind = <R extends Type>(
+export const bind = <R extends Descriptor>(
     library: string,
     symbol: string,
-    argTypes: Type[],
+    argTypes: Descriptor[],
     returnType: R,
 ): ((...values: Value[]) => ValueOf<R>) => {
     const descriptor = nativeBind(library, symbol, argTypes, returnType);
@@ -73,16 +73,16 @@ export const createBindCache = (): ((key: string, make: () => BoundCall) => Boun
     };
 };
 
-export const int8T: Int8Type = Object.freeze({ type: "int8" });
-export const uint8T: Uint8Type = Object.freeze({ type: "uint8" });
-export const int16T: Int16Type = Object.freeze({ type: "int16" });
-export const uint16T: Uint16Type = Object.freeze({ type: "uint16" });
-export const int32T: Int32Type = Object.freeze({ type: "int32" });
-export const uint32T: Uint32Type = Object.freeze({ type: "uint32" });
-export const int64T: Int64Type = Object.freeze({ type: "int64" });
-export const uint64T: Uint64Type = Object.freeze({ type: "uint64" });
-export const bigint64T: BigInt64Type = Object.freeze({ type: "bigint64" });
-export const biguint64T: BigUint64Type = Object.freeze({ type: "biguint64" });
+export const int8T: Int8Descriptor = Object.freeze({ type: "int8" });
+export const uint8T: Uint8Descriptor = Object.freeze({ type: "uint8" });
+export const int16T: Int16Descriptor = Object.freeze({ type: "int16" });
+export const uint16T: Uint16Descriptor = Object.freeze({ type: "uint16" });
+export const int32T: Int32Descriptor = Object.freeze({ type: "int32" });
+export const uint32T: Uint32Descriptor = Object.freeze({ type: "uint32" });
+export const int64T: Int64Descriptor = Object.freeze({ type: "int64" });
+export const uint64T: Uint64Descriptor = Object.freeze({ type: "uint64" });
+export const bigint64T: BigInt64Descriptor = Object.freeze({ type: "bigint64" });
+export const biguint64T: BigUint64Descriptor = Object.freeze({ type: "biguint64" });
 
 const typeFunctionCache = createBindCache();
 
@@ -93,17 +93,17 @@ const typeFunctionCache = createBindCache();
  */
 export const callTypeFunction = (library: string, symbol: string): bigint =>
     typeFunctionCache(`${library} ${symbol}`, () => bind(library, symbol, [], biguint64T))() as bigint;
-export const float32T: Float32Type = Object.freeze({ type: "float32" });
-export const float64T: Float64Type = Object.freeze({ type: "float64" });
-export const booleanT: BooleanType = Object.freeze({ type: "boolean" });
-export const voidT: VoidType = Object.freeze({ type: "void" });
-export const unicharT: UnicharType = Object.freeze({ type: "unichar" });
-export const bufferT: BufferType = Object.freeze({ type: "buffer" });
+export const float32T: Float32Descriptor = Object.freeze({ type: "float32" });
+export const float64T: Float64Descriptor = Object.freeze({ type: "float64" });
+export const booleanT: BooleanDescriptor = Object.freeze({ type: "boolean" });
+export const voidT: VoidDescriptor = Object.freeze({ type: "void" });
+export const unicharT: UnicharDescriptor = Object.freeze({ type: "unichar" });
+export const bufferT: BufferDescriptor = Object.freeze({ type: "buffer" });
 
-export const stringT = (ownership: Ownership = "borrowed", length?: number): StringType =>
+export const stringT = (ownership: Ownership = "borrowed", length?: number): StringDescriptor =>
     length === undefined ? { type: "string", ownership } : { type: "string", ownership, length };
 
-export const objectT = (ownership: Ownership = "borrowed", typeName?: string): GObjectType =>
+export const objectT = (ownership: Ownership = "borrowed", typeName?: string): GObjectDescriptor =>
     typeName === undefined ? { type: "gobject", ownership } : { type: "gobject", ownership, typeName };
 
 type CallerAllocatable = {
@@ -122,8 +122,12 @@ type StructOptions = CallerAllocatable & {
     wrapperClass?: AnyClass;
 };
 
-export const boxedT = (innerTypeName: string, options: BoxedOptions = {}): BoxedType => {
-    const result: BoxedType = { type: "boxed", ownership: options.ownership ?? "borrowed", innerType: innerTypeName };
+export const boxedT = (innerTypeName: string, options: BoxedOptions = {}): BoxedDescriptor => {
+    const result: BoxedDescriptor = {
+        type: "boxed",
+        ownership: options.ownership ?? "borrowed",
+        innerType: innerTypeName,
+    };
     if (options.library !== undefined) result.library = options.library;
     if (options.getTypeFn !== undefined) result.getTypeFn = options.getTypeFn;
     if (options.freeFn !== undefined) result.freeFn = options.freeFn;
@@ -131,8 +135,8 @@ export const boxedT = (innerTypeName: string, options: BoxedOptions = {}): Boxed
     return result;
 };
 
-export const structT = (ownership: Ownership = "borrowed", options: StructOptions = {}): StructType => {
-    const result: StructType = { type: "struct", ownership };
+export const structT = (ownership: Ownership = "borrowed", options: StructOptions = {}): StructDescriptor => {
+    const result: StructDescriptor = { type: "struct", ownership };
     if (options.size !== undefined) result.size = options.size;
     if (options.wrapperClass !== undefined) setDescriptorWrapperClass(result, options.wrapperClass);
     if (options.callerAllocated) result.callerAllocated = true;
@@ -150,32 +154,36 @@ export const fundamentalT = (
     refFn: string,
     unrefFn: string,
     options: FundamentalOptions = {},
-): FundamentalType => {
+): FundamentalDescriptor => {
     const ownership = options.ownership ?? "borrowed";
-    const result: FundamentalType = { type: "fundamental", ownership, library, refFn, unrefFn };
+    const result: FundamentalDescriptor = { type: "fundamental", ownership, library, refFn, unrefFn };
     if (options.typeName !== undefined) result.typeName = options.typeName;
     if (options.wrapperClass !== undefined) setDescriptorWrapperClass(result, options.wrapperClass);
     return result;
 };
 
-export const refT = (innerType: Type, inout = false): RefType =>
+export const refT = (innerType: Descriptor, inout = false): RefDescriptor =>
     inout ? { type: "ref", innerType, inout: true } : { type: "ref", innerType };
 
-export const hashTableT = (keyType: Type, valueType: Type, ownership: Ownership = "borrowed"): HashTableType => ({
+export const hashTableT = (
+    keyType: Descriptor,
+    valueType: Descriptor,
+    ownership: Ownership = "borrowed",
+): HashTableDescriptor => ({
     type: "hashtable",
     keyType,
     valueType,
     ownership,
 });
 
-export const enumT = (library: string, getTypeFn: string, signed: boolean): EnumType => ({
+export const enumT = (library: string, getTypeFn: string, signed: boolean): EnumDescriptor => ({
     type: "enum",
     library,
     getTypeFn,
     signed,
 });
 
-export const flagsT = (library: string, getTypeFn: string, signed: boolean): FlagsType => ({
+export const flagsT = (library: string, getTypeFn: string, signed: boolean): FlagsDescriptor => ({
     type: "flags",
     library,
     getTypeFn,
@@ -189,54 +197,62 @@ type ArrayOptions = {
 };
 
 export const arrayT = (
-    itemType: Type,
-    kind: ArrayType["kind"] = "array",
+    itemType: Descriptor,
+    kind: ArrayDescriptor["kind"] = "array",
     ownership: Ownership = "borrowed",
     options?: ArrayOptions,
-): ArrayType => {
-    const result: ArrayType = { type: "array", itemType, kind, ownership };
+): ArrayDescriptor => {
+    const result: ArrayDescriptor = { type: "array", itemType, kind, ownership };
     if (options?.elementSize !== undefined) result.elementSize = options.elementSize;
     if (options?.sizeParamIndex !== undefined) result.sizeParamIndex = options.sizeParamIndex;
     if (options?.fixedSize !== undefined) result.fixedSize = options.fixedSize;
     return result;
 };
 
-export const listT = (itemType: Type, ownership: Ownership = "borrowed"): ArrayType =>
+export const listT = (itemType: Descriptor, ownership: Ownership = "borrowed"): ArrayDescriptor =>
     arrayT(itemType, "glist", ownership);
 
-export const slistT = (itemType: Type, ownership: Ownership = "borrowed"): ArrayType =>
+export const slistT = (itemType: Descriptor, ownership: Ownership = "borrowed"): ArrayDescriptor =>
     arrayT(itemType, "gslist", ownership);
 
-export const ptrArrayT = (itemType: Type, ownership: Ownership = "borrowed"): ArrayType =>
+export const ptrArrayT = (itemType: Descriptor, ownership: Ownership = "borrowed"): ArrayDescriptor =>
     arrayT(itemType, "gptrarray", ownership);
 
-export const gArrayT = (itemType: Type, ownership: Ownership = "borrowed", elementSize?: number): ArrayType =>
-    arrayT(itemType, "garray", ownership, elementSize === undefined ? undefined : { elementSize });
+export const gArrayT = (
+    itemType: Descriptor,
+    ownership: Ownership = "borrowed",
+    elementSize?: number,
+): ArrayDescriptor => arrayT(itemType, "garray", ownership, elementSize === undefined ? undefined : { elementSize });
 
-export const byteArrayT = (ownership: Ownership = "borrowed"): ArrayType => arrayT(uint8T, "gbytearray", ownership);
+export const byteArrayT = (ownership: Ownership = "borrowed"): ArrayDescriptor =>
+    arrayT(uint8T, "gbytearray", ownership);
 
 export const sizedArrayT = (
-    itemType: Type,
+    itemType: Descriptor,
     sizeParamIndex: number,
     ownership: Ownership = "borrowed",
     elementSize?: number,
-): ArrayType => arrayT(itemType, "sized", ownership, { sizeParamIndex, elementSize });
+): ArrayDescriptor => arrayT(itemType, "sized", ownership, { sizeParamIndex, elementSize });
 
 export const fixedArrayT = (
-    itemType: Type,
+    itemType: Descriptor,
     fixedSize: number,
     ownership: Ownership = "borrowed",
     elementSize?: number,
-): ArrayType => arrayT(itemType, "fixed", ownership, { fixedSize, elementSize });
+): ArrayDescriptor => arrayT(itemType, "fixed", ownership, { fixedSize, elementSize });
 
 type CallbackOptions = {
     hasDestroy?: boolean;
     userDataIndex?: number;
-    scope?: CallbackType["scope"];
+    scope?: CallbackDescriptor["scope"];
 };
 
-export const callbackT = (argTypes: Type[], returnType: Type, options?: CallbackOptions): CallbackType => {
-    const result: CallbackType = { type: "callback", argTypes, returnType };
+export const callbackT = (
+    argTypes: Descriptor[],
+    returnType: Descriptor,
+    options?: CallbackOptions,
+): CallbackDescriptor => {
+    const result: CallbackDescriptor = { type: "callback", argTypes, returnType };
     if (options?.hasDestroy !== undefined) result.hasDestroy = options.hasDestroy;
     if (options?.userDataIndex !== undefined) result.userDataIndex = options.userDataIndex;
     if (options?.scope !== undefined) result.scope = options.scope;

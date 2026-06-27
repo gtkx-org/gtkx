@@ -1,11 +1,11 @@
-import type { Handle, Type, Value } from "@gtkx/native";
+import type { Descriptor, Handle, Value } from "@gtkx/native";
 import { GVALUE_SIZE, GVALUE_T, LIB } from "./constants.js";
 import { biguint64T, bind, objectT, sizedArrayT, stringT, uint32T, voidT } from "./descriptors.js";
 import type { GType } from "./gtype.js";
 import { fromGValue, newGValueForDescriptor, toGValue } from "./gvalue.js";
 import { getHandle } from "./registry.js";
 
-type Property = [Type, Value];
+type Property = [Descriptor, Value];
 
 const gObjectNewWithProperties = bind(
     LIB,
@@ -40,12 +40,12 @@ const PROPERTY_CALL_ARGS = [objectT("borrowed"), stringT("borrowed"), GVALUE_T] 
 const gObjectGetProperty = bind(LIB, "g_object_get_property", [...PROPERTY_CALL_ARGS], voidT);
 const gObjectSetProperty = bind(LIB, "g_object_set_property", [...PROPERTY_CALL_ARGS], voidT);
 
-export function getGObjectProperty(obj: object, propertyName: string, descriptor: Type): unknown {
+export function getGObjectProperty(obj: object, propertyName: string, descriptor: Descriptor): unknown {
     const value = newGValueForDescriptor(descriptor);
     gObjectGetProperty(getHandle(obj), propertyName, value);
     return fromGValue(value);
 }
 
-export function setGObjectProperty(obj: object, propertyName: string, descriptor: Type, jsValue: unknown): void {
+export function setGObjectProperty(obj: object, propertyName: string, descriptor: Descriptor, jsValue: unknown): void {
     gObjectSetProperty(getHandle(obj), propertyName, toGValue(descriptor, jsValue));
 }

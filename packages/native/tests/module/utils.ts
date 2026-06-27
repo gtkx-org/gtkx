@@ -1,5 +1,5 @@
 import { bind, type Handle, call as nativeCall, read } from "../../index.js";
-import type { Type, Value } from "../../types.js";
+import type { Descriptor, Value } from "../../types.js";
 
 /**
  * Test convenience over the bound FFI call: binds a one-shot descriptor from the per-argument types
@@ -9,8 +9,8 @@ import type { Type, Value } from "../../types.js";
 export function callArgs(
     library: string,
     symbol: string,
-    args: { type: Type; value: Value }[],
-    returnType: Type,
+    args: { type: Descriptor; value: Value }[],
+    returnType: Descriptor,
 ): Value {
     const descriptor = bind(
         library,
@@ -144,7 +144,7 @@ export function connectSignalReturning(
     obj: unknown,
     signalName: string,
     callback: (...args: unknown[]) => void,
-    returnType: Type,
+    returnType: Descriptor,
 ): unknown {
     return callArgs(
         GOBJECT_LIB,
@@ -172,7 +172,7 @@ export function connectSignalCallback(
     obj: unknown,
     signalName: string,
     callback: (...args: unknown[]) => void,
-    options: { argTypes: Type[]; userDataIndex: number; hasDestroy?: boolean } = {
+    options: { argTypes: Descriptor[]; userDataIndex: number; hasDestroy?: boolean } = {
         argTypes: [{ type: "gobject", ownership: "borrowed" }, { type: "uint64" }],
         userDataIndex: 1,
         hasDestroy: true,

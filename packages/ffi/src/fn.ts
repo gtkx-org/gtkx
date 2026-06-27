@@ -1,4 +1,4 @@
-import type { CallbackType, Ref, Type, Value } from "@gtkx/native";
+import type { CallbackDescriptor, Descriptor, Ref, Value } from "@gtkx/native";
 import { type ArgCategory, classifyArgCategory } from "./arg-category.js";
 import { type UserCallback, wrapCallback } from "./callback.js";
 import { LIB } from "./constants.js";
@@ -8,11 +8,11 @@ import { fromNativeValue } from "./native-value.js";
 import { getHandle } from "./registry.js";
 import { packTupleResult } from "./tuple.js";
 
-const wrapCallbackValue = (spec: CallbackType, callback: unknown): Value =>
+const wrapCallbackValue = (spec: CallbackDescriptor, callback: unknown): Value =>
     callback == null ? (callback as Value) : wrapCallback(callback as UserCallback, spec, "none");
 
 type ArgSpec = {
-    type: Type;
+    type: Descriptor;
     direction?: "out" | "inout";
     callerAllocated?: boolean;
     consumed?: boolean;
@@ -20,11 +20,11 @@ type ArgSpec = {
 
 type FnSignature = {
     args: ArgSpec[];
-    returns: Type;
+    returns: Descriptor;
     throws?: boolean;
 };
 
-const toNativeArgTypes = (argSpecs: ArgSpec[], throws: boolean): Type[] => {
+const toNativeArgTypes = (argSpecs: ArgSpec[], throws: boolean): Descriptor[] => {
     const nativeArgTypes = argSpecs.map((argSpec) =>
         argSpec.direction !== undefined && argSpec.callerAllocated !== true ? refT(argSpec.type) : argSpec.type,
     );

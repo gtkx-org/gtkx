@@ -1,4 +1,4 @@
-import type { RefType, Type } from "@gtkx/native";
+import type { Descriptor, RefDescriptor } from "@gtkx/native";
 
 /**
  * The single source of truth for classifying an argument by its data-flow
@@ -31,12 +31,12 @@ export const classifyArgCategory = (meta: ArgDirectionMeta): ArgCategory => {
     return meta.callerAllocated ? { kind: "callerAllocated", inout } : { kind: "outCell", inout };
 };
 
-export const isOutCellType = (descriptor: Type): descriptor is RefType => descriptor.type === "ref";
+export const isOutCellType = (descriptor: Descriptor): descriptor is RefDescriptor => descriptor.type === "ref";
 
-const isCallerAllocatedBufferType = (descriptor: Type): boolean =>
+const isCallerAllocatedBufferType = (descriptor: Descriptor): boolean =>
     (descriptor.type === "boxed" || descriptor.type === "struct") && descriptor.callerAllocated === true;
 
-const directionMetaOfType = (descriptor: Type): ArgDirectionMeta => {
+const directionMetaOfType = (descriptor: Descriptor): ArgDirectionMeta => {
     if (isOutCellType(descriptor))
         return { direction: descriptor.inout === true ? "inout" : "out", callerAllocated: false };
     if (isCallerAllocatedBufferType(descriptor)) return { direction: "out", callerAllocated: true };
@@ -49,4 +49,5 @@ const directionMetaOfType = (descriptor: Type): ArgDirectionMeta => {
  * is set), and a caller-allocated boxed/struct is a caller-allocated output
  * buffer. Everything else is a plain input.
  */
-export const categoryOfType = (descriptor: Type): ArgCategory => classifyArgCategory(directionMetaOfType(descriptor));
+export const categoryOfType = (descriptor: Descriptor): ArgCategory =>
+    classifyArgCategory(directionMetaOfType(descriptor));

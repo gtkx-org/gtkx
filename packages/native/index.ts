@@ -1,9 +1,9 @@
 import * as native from "./native-binding.cjs";
-import type { CallDescriptor, Handle, RegisterClassOptions, Type, Value } from "./types.js";
+import type { CallDescriptor, Descriptor, Handle, RegisterClassOptions, Value } from "./types.js";
 
 export * from "./types.js";
 
-export function bind(library: string, symbol: string, argTypes: Type[], returnType: Type): CallDescriptor {
+export function bind(library: string, symbol: string, argTypes: Descriptor[], returnType: Descriptor): CallDescriptor {
     return native.bind(library, symbol, argTypes, returnType) as CallDescriptor;
 }
 
@@ -19,11 +19,11 @@ export function quit(): void {
     mainLoopHandle = null;
 }
 
-export function read(handle: Handle, type: Type, offset: number): Value {
+export function read(handle: Handle, type: Descriptor, offset: number): Value {
     return native.read(handle, type, offset) as Value;
 }
 
-export function write(handle: Handle, type: Type, offset: number, value: unknown): void {
+export function write(handle: Handle, type: Descriptor, offset: number, value: unknown): void {
     native.write(handle, type, offset, value);
 }
 

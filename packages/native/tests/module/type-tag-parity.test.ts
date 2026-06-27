@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { Type } from "../../index.js";
+import type { Descriptor } from "../../index.js";
 import { callArgs } from "./utils.js";
 
-type DescriptorByTag = { [K in Type["type"]]: Extract<Type, { type: K }> };
+type DescriptorByTag = { [K in Descriptor["type"]]: Extract<Descriptor, { type: K }> };
 
 const REPRESENTATIVES: DescriptorByTag = {
     int8: { type: "int8" },
@@ -49,11 +49,11 @@ const MISSING_LIBRARY = "libgtkx-type-tag-parity-nonexistent.so";
 const MISSING_SYMBOL = "gtkx_type_tag_parity_missing_symbol";
 const UNKNOWN_TAG_ERROR = /unknown type/i;
 
-const parseReturnType = (returnType: Type): void => {
+const parseReturnType = (returnType: Descriptor): void => {
     callArgs(MISSING_LIBRARY, MISSING_SYMBOL, [], returnType);
 };
 
-describe("Type tag parity between the TS Type union and Rust from_js_value", () => {
+describe("Descriptor tag parity between the TS Descriptor union and Rust from_js_value", () => {
     for (const [tag, descriptor] of Object.entries(REPRESENTATIVES)) {
         it(`recognizes the '${tag}' tag`, () => {
             expect(() => parseReturnType(descriptor)).not.toThrow(UNKNOWN_TAG_ERROR);
@@ -62,6 +62,6 @@ describe("Type tag parity between the TS Type union and Rust from_js_value", () 
 
     it("rejects an unregistered tag with an Unknown type error", () => {
         const unknownDescriptor: { type: string } = { type: "definitely-not-a-real-tag" };
-        expect(() => parseReturnType(unknownDescriptor as Type)).toThrow(UNKNOWN_TAG_ERROR);
+        expect(() => parseReturnType(unknownDescriptor as Descriptor)).toThrow(UNKNOWN_TAG_ERROR);
     });
 });

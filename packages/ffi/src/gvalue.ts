@@ -1,11 +1,11 @@
 import {
     alloc,
-    type BoxedType,
-    type FundamentalType,
+    type BoxedDescriptor,
+    type Descriptor,
+    type FundamentalDescriptor,
     getType,
     type Handle,
     read,
-    type Type,
     write,
 } from "@gtkx/native";
 import { GVALUE_LAYOUT, GVALUE_SIZE, GVALUE_T, LIB } from "./constants.js";
@@ -86,7 +86,7 @@ const setGValuePointer = (value: Handle, pointer: Handle): void => {
     gValueSetPointer(value, pointer);
 };
 
-const scalarBind = <F extends Type>(symbol: string, descriptor: F) => ({
+const scalarBind = <F extends Descriptor>(symbol: string, descriptor: F) => ({
     set: bind(LIB, `g_value_set_${symbol}`, [GVALUE_T, descriptor], voidT),
     get: bind(LIB, `g_value_get_${symbol}`, [GVALUE_T], descriptor),
 });
@@ -206,7 +206,10 @@ function valueSetStaticBoxed(value: Handle, boxed: object): void {
 
 const OUT_PARAM_STORAGE_SIZE = 8;
 
-export function outValueForDescriptor(descriptor: Type, initial?: unknown): { value: Handle; read: () => unknown } {
+export function outValueForDescriptor(
+    descriptor: Descriptor,
+    initial?: unknown,
+): { value: Handle; read: () => unknown } {
     const storage = alloc(OUT_PARAM_STORAGE_SIZE);
     write(storage, uint64T, 0, 0);
     if (initial !== undefined) write(storage, descriptor, 0, initial);
@@ -215,13 +218,13 @@ export function outValueForDescriptor(descriptor: Type, initial?: unknown): { va
     return { value, read: () => read(storage, descriptor, 0) };
 }
 
-export function outBoxedForDescriptor(descriptor: Type, boxed: object): Handle {
+export function outBoxedForDescriptor(descriptor: Descriptor, boxed: object): Handle {
     const value = newTypedGValue(gtypeFromDescriptor(descriptor));
     valueSetBoxed(value, boxed);
     return value;
 }
 
-export function inoutBoxedForDescriptor(descriptor: Type, boxed: object): Handle {
+export function inoutBoxedForDescriptor(descriptor: Descriptor, boxed: object): Handle {
     const value = newTypedGValue(gtypeFromDescriptor(descriptor));
     valueSetStaticBoxed(value, boxed);
     return value;
@@ -251,7 +254,7 @@ export function getGValueBoxed(value: object): object | null {
     return valueGetBoxed(getHandle(value));
 }
 
-const resolveBoxedInnerGtype = (descriptor: BoxedType): GType => {
+const resolveBoxedInnerGtype = (descriptor: BoxedDescriptor): GType => {
     if (descriptor.getTypeFn && descriptor.library) {
         return callTypeFunction(descriptor.library, descriptor.getTypeFn) as GType;
     }
@@ -262,7 +265,7 @@ const resolveBoxedInnerGtype = (descriptor: BoxedType): GType => {
     return gtype;
 };
 
-const resolveFundamentalGtype = (descriptor: FundamentalType): GType => {
+const resolveFundamentalGtype = (descriptor: FundamentalDescriptor): GType => {
     if (descriptor.typeName) {
         const gtype = typeFromName(descriptor.typeName);
         if (gtype !== TYPE_INVALID) return gtype;
@@ -270,7 +273,7 @@ const resolveFundamentalGtype = (descriptor: FundamentalType): GType => {
     throw new Error(`Cannot resolve gtype for fundamental type without a typeName`);
 };
 
-export function gtypeFromDescriptor(descriptor: Type): GType {
+export function gtypeFromDescriptor(descriptor: Descriptor): GType {
     switch (descriptor.type) {
         case "boolean":
             return TYPE_BOOLEAN;
@@ -311,7 +314,7 @@ export function gtypeFromDescriptor(descriptor: Type): GType {
     }
 }
 
-export function newGValueForDescriptor(descriptor: Type): Handle {
+export function newGValueForDescriptor(descriptor: Descriptor): Handle {
     return newTypedGValue(gtypeFromDescriptor(descriptor));
 }
 
@@ -330,11 +333,11 @@ const getPointerValue = (value: Handle): null => {
 };
 
 type PayloadHandler = {
-    set: (value: Handle, descriptor: Type, jsValue: unknown) => void;
+    set: (value: Handle, descriptor: Descriptor, jsValue: unknown) => void;
     get: (value: Handle) => unknown;
 };
 
-const setBoxedOrStrv = (value: Handle, descriptor: Type, jsValue: unknown): void => {
+const setBoxedOrStrv = (value: Handle, descriptor: Descriptor, jsValue: unknown): void => {
     if (descriptor.type === "array") valueSetStrv(value, jsValue as string[]);
     else valueSetBoxed(value, jsValue as object | null);
 };
@@ -391,13 +394,13 @@ const payloadHandlers = new Map<GType, PayloadHandler>([
     [TYPE_POINTER, { set: (value) => unsupportedSet(valueGetType(value)), get: getPointerValue }],
 ]);
 
-function setGValuePayload(value: Handle, gtype: GType, descriptor: Type, jsValue: unknown): void {
+function setGValuePayload(value: Handle, gtype: GType, descriptor: Descriptor, jsValue: unknown): void {
     const handler = payloadHandlers.get(typeFundamental(gtype));
     if (handler === undefined) unsupportedSet(gtype);
     else handler.set(value, descriptor, jsValue);
 }
 
-export function toGValue(descriptor: Type, jsValue: unknown): Handle {
+export function toGValue(descriptor: Descriptor, jsValue: unknown): Handle {
     if (descriptor.type === "gobject") return objectToGValue(jsValue as object | null);
     const gtype = gtypeFromDescriptor(descriptor);
     const value = newTypedGValue(gtype);
