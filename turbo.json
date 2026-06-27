@@ -2,7 +2,7 @@
     "$schema": "https://turborepo.com/schema.json",
     "globalDependencies": ["tsconfig.base.json", "tsconfig.lib.json", "tsconfig.app.json", "tsconfig.test.json"],
     "globalEnv": ["NODE_VERSION", "GTK4_VERSION", "VERSION"],
-    "globalPassThroughEnv": ["TURBO_TOKEN", "TURBO_TEAM"],
+    "globalPassThroughEnv": ["TURBO_TOKEN", "TURBO_TEAM", "RUSTUP_HOME", "CARGO_HOME"],
     "tasks": {
         "//#setup:store-link": {
             "dependsOn": ["@gtkx/cli#codegen"],

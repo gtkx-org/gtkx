@@ -43,11 +43,6 @@ runs:
 
         DOCKER_ARGS=(--rm -v "$WORKSPACE:/workspace" -w /workspace)
 
-        # Pin the toolchain locations to the image's pre-installed rustup/cargo so the
-        # container never falls back to an empty $HOME/.rustup and re-downloads the
-        # toolchain at runtime (which races across the parallel native-build tasks).
-        DOCKER_ARGS+=(-e RUSTUP_HOME=/usr/local/rustup -e CARGO_HOME=/usr/local/cargo)
-
         if [ "$INPUT_SECCOMP_UNCONFINED" = "true" ]; then
           DOCKER_ARGS+=(--security-opt seccomp=unconfined --security-opt apparmor=unconfined)
         fi
@@ -97,20 +92,10 @@ runs:
         # user, so git refuses to operate on it until it is marked safe.
         TRUST_WORKSPACE="git config --global --add safe.directory /workspace"
 
-        # Materialize the full default stable toolchain (rustc, cargo, rust-std,
-        # rust-docs, rustfmt, clippy) plus llvm-tools once, single-threaded, before
-        # any command that fans out into parallel cargo builds (turbo's native-build
-        # + native-build:dist). The lazy auto-install those builds would otherwise
-        # trigger pulls the default profile, so anything less here leaves components
-        # for them to fetch concurrently and race on the shared rustup download
-        # directory (the "could not rename …partial" error). Output stays visible to
-        # surface the resolved RUSTUP_HOME and install result in the job log.
-        WARM_TOOLCHAIN='echo CI_RUSTUP_HOME=${RUSTUP_HOME:-unset} CI_HOME=$HOME; rustup toolchain install stable --profile default --component llvm-tools-preview 2>&1 | tail -8 || true'
-
         if [ "$INPUT_INSTALL" = "true" ]; then
-          FULL_COMMAND="$TRUST_WORKSPACE && $WARM_TOOLCHAIN && pnpm install --frozen-lockfile && $INPUT_COMMAND"
+          FULL_COMMAND="$TRUST_WORKSPACE && pnpm install --frozen-lockfile && $INPUT_COMMAND"
         else
-          FULL_COMMAND="$TRUST_WORKSPACE && $WARM_TOOLCHAIN && $INPUT_COMMAND"
+          FULL_COMMAND="$TRUST_WORKSPACE && $INPUT_COMMAND"
         fi
 
         docker run "${DOCKER_ARGS[@]}" gtkx-ci:local bash -c "$FULL_COMMAND"
