@@ -102,8 +102,7 @@ export const bufferT: BufferDescriptor = Object.freeze({ kind: "buffer" });
 export const stringT = (ownership: Ownership = "borrowed", length?: number): StringDescriptor =>
     length === undefined ? { kind: "string", ownership } : { kind: "string", ownership, length };
 
-export const objectT = (ownership: Ownership = "borrowed", typeName?: string): GObjectDescriptor =>
-    typeName === undefined ? { kind: "gobject", ownership } : { kind: "gobject", ownership, typeName };
+export const objectT = (ownership: Ownership = "borrowed"): GObjectDescriptor => ({ kind: "gobject", ownership });
 
 type CallerAllocatable = {
     callerAllocated?: boolean;

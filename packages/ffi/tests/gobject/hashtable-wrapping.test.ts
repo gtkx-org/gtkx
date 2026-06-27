@@ -22,14 +22,6 @@ describe("fromNativeValue — hash-table entries are wrapped recursively", () =>
         expect((map as Map<string, unknown>).get("a")).toBe(label);
     });
 
-    it("wraps an interface-typed value (string → GtkConstraintTarget)", () => {
-        const label = new Gtk.Label({});
-        const map = fromNativeValue(t.hashTable(t.string("borrowed"), t.object("borrowed", "GtkConstraintTarget")), [
-            ["a", getHandle(label)],
-        ]);
-        expect((map as Map<string, unknown>).get("a")).toBe(label);
-    });
-
     it("self-resolves a boxed value reached through a hash table, with no threaded class", () => {
         const rect = new Gdk.Rectangle({ width: 7 });
         const map = fromNativeValue(t.hashTable(t.string("borrowed"), rectangleFfi), [["r", getHandle(rect)]]);

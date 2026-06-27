@@ -211,9 +211,6 @@ const classOrInterfaceExpression = (
 ): string => {
     const cls = resolved.value;
     if (cls.glibRefFunc === undefined || cls.glibUnrefFunc === undefined) {
-        if (resolved.kind === "interface" && cls.glibTypeName !== undefined) {
-            return tObject(ownership, cls.glibTypeName);
-        }
         return tObject(ownership);
     }
     return renderFundamental({
