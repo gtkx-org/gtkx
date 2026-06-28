@@ -1,5 +1,3 @@
-mod helpers;
-
 use std::ffi::c_void;
 
 use native::Handle;

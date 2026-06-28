@@ -1,4 +1,6 @@
-mod helpers;
+mod helpers {
+    pub use test_support::*;
+}
 
 use std::ffi::c_void;
 use std::sync::Arc;

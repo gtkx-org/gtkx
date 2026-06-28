@@ -77,13 +77,11 @@ impl Boxed {
         }
     }
 
-    #[must_use]
     pub fn from_glib_full(gtype: Option<glib::Type>, ptr: *mut c_void) -> Self {
         let destructor = gtype.map_or(BoxedDestructor::GFree, BoxedDestructor::BoxedFree);
         Self::owned(ptr, gtype, None, destructor)
     }
 
-    #[must_use]
     pub fn from_alloc(type_name: Option<glib::GString>, ptr: *mut c_void) -> Self {
         let Some(name) = type_name else {
             return Self::owned(ptr, None, None, BoxedDestructor::GFree);
@@ -94,12 +92,10 @@ impl Boxed {
         Self::owned(ptr, None, None, BoxedDestructor::GBoxedFreeByName(name))
     }
 
-    #[must_use]
     pub fn from_glib_full_with_free_fn(ptr: *mut c_void, free_fn: BoxedFreeFn) -> Self {
         Self::owned(ptr, None, Some(free_fn), BoxedDestructor::Custom(free_fn))
     }
 
-    #[must_use]
     pub(crate) fn from_glib_borrow(ptr: *mut c_void) -> Self {
         Self::borrowed(ptr, None, None)
     }
@@ -108,7 +104,6 @@ impl Boxed {
         unsafe { glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), ptr as *const _) }
     }
 
-    #[must_use]
     pub fn copy_with_size(ptr: *mut c_void, size: usize) -> Self {
         let cloned_ptr = unsafe {
             let dest = glib::ffi::g_malloc(size);
@@ -118,12 +113,14 @@ impl Boxed {
         Self::owned(cloned_ptr, None, None, BoxedDestructor::GFree)
     }
 
-    pub fn from_glib_none(gtype: Option<glib::Type>, ptr: *mut c_void) -> anyhow::Result<Self> {
-        Self::from_glib_none_with_size(gtype, ptr, None, None)
+    pub unsafe fn from_glib_none(
+        gtype: Option<glib::Type>,
+        ptr: *mut c_void,
+    ) -> anyhow::Result<Self> {
+        unsafe { Self::from_glib_none_with_size(gtype, ptr, None, None) }
     }
 
-    #[allow(clippy::not_unsafe_ptr_arg_deref)]
-    pub fn from_glib_none_with_size(
+    pub unsafe fn from_glib_none_with_size(
         gtype: Option<glib::Type>,
         ptr: *mut c_void,
         size: Option<usize>,
@@ -154,24 +151,20 @@ impl Boxed {
     }
 
     #[inline]
-    #[must_use]
     pub fn as_ptr(&self) -> *mut c_void {
         self.ptr
     }
 
     #[inline]
-    #[must_use]
     pub fn is_owned(&self) -> bool {
         self.ownership.is_some()
     }
 
-    #[must_use]
     pub fn gtype(&self) -> Option<glib::Type> {
         self.gtype
     }
 
     #[inline]
-    #[must_use]
     pub fn free_fn(&self) -> Option<BoxedFreeFn> {
         self.free_fn
     }

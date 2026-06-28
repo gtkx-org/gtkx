@@ -1,4 +1,6 @@
-mod helpers;
+mod helpers {
+    pub use test_support::*;
+}
 
 use std::panic::PanicHookInfo;
 use std::sync::{Arc, Mutex};

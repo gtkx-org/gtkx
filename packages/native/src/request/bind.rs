@@ -12,13 +12,10 @@ pub struct CallDescriptor {
     pub(crate) return_descriptor: Codec,
 }
 
-#[cfg_attr(coverage_nightly, coverage(off))]
-#[allow(clippy::wildcard_imports)]
-mod napi_export {
+pub mod napi_export {
     use super::*;
 
     #[napi(catch_unwind)]
-    #[cfg_attr(test, allow(dead_code))]
     pub fn bind(
         shared_library: String,
         symbol: String,

@@ -13,7 +13,6 @@ impl Default for WaitSignal {
 }
 
 impl WaitSignal {
-    #[must_use]
     pub fn new() -> Self {
         Self {
             state: Mutex::new(false),

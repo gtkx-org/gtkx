@@ -11,7 +11,6 @@ use crate::ffi::value::BufferViewKind;
 use crate::ffi::{Stash, StashKind};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[non_exhaustive]
 pub enum ArrayKind {
     Array,
     GList,

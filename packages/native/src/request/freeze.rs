@@ -1,12 +1,9 @@
-#![cfg_attr(coverage_nightly, coverage(off))]
-
 use napi::Env;
 use napi_derive::napi;
 
 use crate::messaging::Mailbox;
 
 #[napi(catch_unwind)]
-#[cfg_attr(test, allow(dead_code))]
 pub fn freeze(env: Env) -> napi::Result<()> {
     let mailbox = Mailbox::global();
     let is_outermost = mailbox.freeze();

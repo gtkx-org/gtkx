@@ -9,14 +9,12 @@ use crate::ffi::descriptor::{Codec, Descriptor, FfiDecoder as _, ReadSource};
 use crate::ffi::value::Value;
 use crate::handle::Handle;
 
-#[cfg_attr(test, allow(dead_code))]
 pub struct FieldLocation {
     pub base_addr: usize,
     pub offset: usize,
 }
 
 impl FieldLocation {
-    #[cfg_attr(test, allow(dead_code))]
     pub unsafe fn resolve(&self) -> anyhow::Result<*mut c_void> {
         if self.base_addr == 0 {
             anyhow::bail!("Handle has a null pointer");
@@ -25,7 +23,6 @@ impl FieldLocation {
     }
 }
 
-#[cfg_attr(test, allow(dead_code))]
 pub struct ReadRequest {
     pub location: FieldLocation,
     pub field_type: Codec,
@@ -47,13 +44,10 @@ impl Request for ReadRequest {
     }
 }
 
-#[cfg_attr(coverage_nightly, coverage(off))]
-#[allow(clippy::wildcard_imports)]
-mod napi_export {
+pub mod napi_export {
     use super::*;
 
     #[napi(catch_unwind)]
-    #[cfg_attr(test, allow(dead_code))]
     pub fn read<'env>(
         env: &'env Env,
         handle: &External<Handle>,

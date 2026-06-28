@@ -5,8 +5,8 @@ use glib::{
     self, gobject_ffi,
     translate::{FromGlib as _, IntoGlib as _},
 };
+use napi::Env;
 use napi::bindgen_prelude::*;
-use napi::{Env, JsFunction, NapiValue as _};
 use napi_derive::napi;
 
 use super::Request;
@@ -15,7 +15,7 @@ use crate::ffi::descriptor::{Codec, Descriptor};
 use crate::ffi::value::JsRef;
 use crate::messaging::error_reporter::ErrorReporter;
 
-pub struct VfuncCallback(Arc<JsRef<JsFunction>>);
+pub struct VfuncCallback(Arc<JsRef>);
 
 impl FromNapiValue for VfuncCallback {
     unsafe fn from_napi_value(env: sys::napi_env, napi_val: sys::napi_value) -> napi::Result<Self> {
@@ -27,8 +27,7 @@ impl FromNapiValue for VfuncCallback {
                 "register_class: vfunc 'fn' must be a function",
             ));
         }
-        let func = unsafe { JsFunction::from_raw_unchecked(env, napi_val) };
-        Ok(Self(Arc::new(JsRef::from_js_value(&env_wrapper, &func)?)))
+        Ok(Self(Arc::new(JsRef::from_js_value(&env_wrapper, &value)?)))
     }
 }
 
@@ -113,23 +112,19 @@ impl RegisterClassOptions {
     }
 }
 
-#[cfg_attr(test, allow(dead_code))]
 struct RawVfunc {
     byte_offset: usize,
-    js_func: Arc<JsRef<JsFunction>>,
+    js_func: Arc<JsRef>,
     arg_descriptors: Vec<Codec>,
     return_descriptor: Codec,
 }
 
-#[cfg_attr(test, allow(dead_code))]
 struct RawInterface {
     gtype: glib::Type,
     vfuncs: Vec<RawVfunc>,
 }
 
 impl RawVfunc {
-    #[cfg_attr(test, allow(dead_code))]
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn into_prepared(self) -> PreparedVfunc {
         let Self {
             byte_offset,
@@ -148,8 +143,6 @@ impl RawVfunc {
 }
 
 impl RawInterface {
-    #[cfg_attr(test, allow(dead_code))]
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn into_prepared(self) -> PreparedInterface {
         PreparedInterface {
             gtype: self.gtype,
@@ -162,22 +155,18 @@ impl RawInterface {
     }
 }
 
-#[cfg_attr(test, allow(dead_code))]
 struct PreparedVfunc {
     byte_offset: usize,
     code_ptr: *mut c_void,
     state: Box<CallbackState>,
 }
 
-#[cfg_attr(test, allow(dead_code))]
 struct PreparedInterface {
     gtype: glib::Type,
     vfuncs: Vec<PreparedVfunc>,
 }
 
 impl PreparedVfunc {
-    #[cfg_attr(test, allow(dead_code))]
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn install_all(vtable_base: *mut c_void, vfuncs: Vec<Self>) {
         for vfunc in vfuncs {
             unsafe {
@@ -193,8 +182,6 @@ impl PreparedVfunc {
 }
 
 impl PreparedInterface {
-    #[cfg_attr(test, allow(dead_code))]
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn install(self, class_ptr: *mut c_void) {
         let iface_vtable =
             unsafe { gobject_ffi::g_type_interface_peek(class_ptr, self.gtype.into_glib()) };
@@ -209,8 +196,6 @@ impl PreparedInterface {
     }
 }
 
-#[cfg_attr(test, allow(dead_code))]
-#[cfg_attr(coverage_nightly, coverage(off))]
 unsafe extern "C" fn class_init(g_class: *mut c_void, class_data: *mut c_void) {
     if class_data.is_null() {
         return;
@@ -219,7 +204,6 @@ unsafe extern "C" fn class_init(g_class: *mut c_void, class_data: *mut c_void) {
     PreparedVfunc::install_all(g_class, *vfuncs);
 }
 
-#[cfg_attr(test, allow(dead_code))]
 struct RegisterClassRequest {
     name: glib::GString,
     parent_gtype: glib::Type,
@@ -228,7 +212,6 @@ struct RegisterClassRequest {
 }
 
 impl RegisterClassRequest {
-    #[cfg_attr(test, allow(dead_code))]
     fn query_parent_gtype(&self) -> anyhow::Result<gobject_ffi::GTypeQuery> {
         if !self.parent_gtype.is_valid() {
             anyhow::bail!("parent gtype is invalid (G_TYPE_INVALID)");
@@ -269,8 +252,6 @@ impl RegisterClassRequest {
         Ok(())
     }
 
-    #[cfg_attr(test, allow(dead_code))]
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn validate_layout(&self, query: &gobject_ffi::GTypeQuery) -> anyhow::Result<()> {
         let pointer_align = std::mem::align_of::<*mut c_void>();
         let pointer_size = std::mem::size_of::<*mut c_void>();
@@ -302,8 +283,6 @@ impl RegisterClassRequest {
         Ok(())
     }
 
-    #[cfg_attr(test, allow(dead_code))]
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn register_type(
         parent_gtype: glib::Type,
         name_ptr: *const c_char,
@@ -347,7 +326,6 @@ impl RegisterClassRequest {
 impl Request for RegisterClassRequest {
     type Output = u64;
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn execute(self) -> anyhow::Result<u64> {
         let query = self.query_parent_gtype()?;
         self.validate_layout(&query)?;
@@ -383,14 +361,10 @@ impl Request for RegisterClassRequest {
     }
 }
 
-#[cfg_attr(coverage_nightly, coverage(off))]
-#[allow(clippy::wildcard_imports)]
-mod napi_export {
+pub mod napi_export {
     use super::*;
 
     #[napi(catch_unwind)]
-    #[allow(clippy::needless_pass_by_value)]
-    #[cfg_attr(test, allow(dead_code))]
     pub fn register_class(
         env: Env,
         name: String,

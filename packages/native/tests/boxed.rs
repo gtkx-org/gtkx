@@ -1,4 +1,6 @@
-mod helpers;
+mod helpers {
+    pub use test_support::*;
+}
 
 use gtk4::gdk;
 use gtk4::glib;
@@ -34,7 +36,7 @@ fn from_glib_none_creates_copy() {
         let gtype = gdk::RGBA::static_type();
         let original_ptr = helpers::allocate_test_boxed(gtype);
 
-        let boxed = Boxed::from_glib_none(Some(gtype), original_ptr)
+        let boxed = unsafe { Boxed::from_glib_none(Some(gtype), original_ptr) }
             .expect("from_glib_none with gtype should succeed");
 
         assert!(boxed.is_owned());
@@ -51,7 +53,7 @@ fn from_glib_none_creates_copy() {
 fn from_glib_none_null_ptr_not_owned() {
     helpers::run(|| {
         let gtype = gdk::RGBA::static_type();
-        let boxed = Boxed::from_glib_none(Some(gtype), std::ptr::null_mut())
+        let boxed = unsafe { Boxed::from_glib_none(Some(gtype), std::ptr::null_mut()) }
             .expect("from_glib_none with null ptr should succeed");
 
         assert!(!boxed.is_owned());
@@ -176,7 +178,7 @@ fn plain_struct_not_owned_does_not_free() {
 #[test]
 fn from_glib_none_null_ptr_with_none_type() {
     helpers::run(|| {
-        let boxed = Boxed::from_glib_none(None, std::ptr::null_mut())
+        let boxed = unsafe { Boxed::from_glib_none(None, std::ptr::null_mut()) }
             .expect("from_glib_none with null ptr should succeed");
 
         assert!(!boxed.is_owned());

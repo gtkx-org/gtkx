@@ -1,5 +1,3 @@
-#![cfg_attr(coverage_nightly, coverage(off))]
-
 use std::sync::{Arc, OnceLock};
 
 use napi::bindgen_prelude::*;
@@ -61,19 +59,15 @@ impl ErrorReporter {
     }
 }
 
-#[cfg_attr(test, allow(dead_code))]
 struct UnhandledRejection;
 
 impl UnhandledRejection {
-    #[allow(clippy::trivially_copy_pass_by_ref)]
-    #[cfg_attr(test, allow(dead_code))]
     fn emit(env: &Env, msg: &str) {
         if Self::try_emit(env, msg).is_none() {
             eprintln!("[gtkx] ERROR: {msg}");
         }
     }
 
-    #[cfg_attr(test, allow(dead_code))]
     fn try_emit(env: &Env, msg: &str) -> Option<()> {
         let raw_env = env.raw();
         unsafe {
@@ -116,7 +110,6 @@ impl UnhandledRejection {
         Some(())
     }
 
-    #[cfg_attr(test, allow(dead_code))]
     unsafe fn make_error_object(env: sys::napi_env, msg: &str) -> Option<sys::napi_value> {
         unsafe {
             let mut msg_value = std::ptr::null_mut();
@@ -140,7 +133,6 @@ impl UnhandledRejection {
         }
     }
 
-    #[cfg_attr(test, allow(dead_code))]
     unsafe fn make_resolved_promise(env: sys::napi_env) -> Option<sys::napi_value> {
         unsafe {
             let mut deferred = std::ptr::null_mut();

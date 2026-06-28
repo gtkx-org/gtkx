@@ -7,7 +7,6 @@ use crate::ffi::callback::{CallbackState, build_trampoline};
 use crate::ffi::descriptor::Codec;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-#[non_exhaustive]
 pub enum CallbackScope {
     #[default]
     Call,
@@ -52,7 +51,6 @@ impl FfiEncoder for CallbackDescriptor {
         }
     }
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn encode(&self, val: &value::Value) -> anyhow::Result<ffi::StashedValue> {
         use anyhow::bail;
 

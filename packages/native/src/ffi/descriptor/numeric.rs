@@ -4,7 +4,6 @@ use libffi::middle as libffi;
 use super::prelude::*;
 
 #[derive(Debug, Clone, Copy)]
-#[non_exhaustive]
 pub enum IntegerKind {
     U8,
     I8,
@@ -170,7 +169,6 @@ pub fn lossless_f64(value: i128, context: &str) -> anyhow::Result<f64> {
 }
 
 impl IntegerKind {
-    #[must_use]
     pub fn byte_size(self) -> usize {
         match self {
             Self::U8 | Self::I8 => 1,
@@ -302,14 +300,12 @@ impl From<IntegerKind> for libffi::Type {
 }
 
 #[derive(Debug, Clone, Copy)]
-#[non_exhaustive]
 pub enum FloatKind {
     F32,
     F64,
 }
 
 impl FloatKind {
-    #[must_use]
     pub fn ffi_type(self) -> libffi::Type {
         match self {
             Self::F32 => libffi::Type::f32(),
@@ -317,7 +313,6 @@ impl FloatKind {
         }
     }
 
-    #[must_use]
     pub unsafe fn read_ptr(self, ptr: *const u8) -> f64 {
         unsafe {
             match self {
@@ -348,7 +343,6 @@ impl FloatKind {
         }
     }
 
-    #[must_use]
     pub unsafe fn call_cif_raw(
         self,
         cif: &libffi::Cif,
@@ -363,7 +357,6 @@ impl FloatKind {
         }
     }
 
-    #[must_use]
     pub unsafe fn ptr_to_value_raw(self, ptr: *mut c_void) -> value::Value {
         if ptr.is_null() {
             return value::Value::Number(0.0);
@@ -371,7 +364,6 @@ impl FloatKind {
         value::Value::Number(unsafe { self.read_ptr(ptr as *const u8) })
     }
 
-    #[allow(clippy::unnecessary_wraps)]
     pub(crate) unsafe fn read_ptr_checked(
         self,
         ptr: *const u8,
@@ -396,7 +388,6 @@ impl FloatKind {
 impl_numeric_codecs!(
     FloatKind,
     "float",
-    #[allow(clippy::unnecessary_wraps)]
     unsafe fn ptr_to_value(
         &self,
         ptr: *mut c_void,
@@ -413,7 +404,6 @@ impl From<FloatKind> for libffi::Type {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[non_exhaustive]
 pub enum EnumFlagsKind {
     Enum,
     Flags,
@@ -432,15 +422,12 @@ impl EnumFlagsDescriptor {
         self.storage
     }
 
-    #[cfg(debug_assertions)]
     fn resolve_gtype(&self) -> anyhow::Result<glib::Type> {
         crate::ffi::library_cache::GlibThreadState::with(|state| {
             state.resolve_gtype(&self.shared_library, &self.get_type_fn)
         })
     }
 
-    #[cfg(debug_assertions)]
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn validate_enum_value(&self, value: i32) {
         let Ok(gtype) = self.resolve_gtype() else {
             return;
@@ -460,7 +447,6 @@ impl EnumFlagsDescriptor {
 impl FfiEncoder for EnumFlagsDescriptor {
     fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
         let result = FfiEncoder::encode(&self.storage, value)?;
-        #[cfg(debug_assertions)]
         if self.kind == EnumFlagsKind::Enum
             && let value::Value::Number(n) = value
         {

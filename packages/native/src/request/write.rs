@@ -8,7 +8,6 @@ use crate::ffi::descriptor::{Codec, Descriptor, PointerWriter as _};
 use crate::ffi::value::Value;
 use crate::handle::Handle;
 
-#[cfg_attr(test, allow(dead_code))]
 struct WriteRequest {
     location: FieldLocation,
     field_type: Codec,
@@ -31,13 +30,10 @@ impl Request for WriteRequest {
     }
 }
 
-#[cfg_attr(coverage_nightly, coverage(off))]
-#[allow(clippy::wildcard_imports)]
-mod napi_export {
+pub mod napi_export {
     use super::*;
 
     #[napi(catch_unwind)]
-    #[cfg_attr(test, allow(dead_code))]
     pub fn write<'env>(
         env: &'env Env,
         handle: &External<Handle>,

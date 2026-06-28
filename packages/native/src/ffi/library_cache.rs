@@ -12,7 +12,6 @@ thread_local! {
 
 pub struct LibraryCache {
     libraries: ManuallyDrop<HashMap<String, Library>>,
-    #[cfg(debug_assertions)]
     gtypes: HashMap<(String, String), glib::Type>,
 }
 
@@ -28,7 +27,6 @@ impl LibraryCache {
     fn new() -> Self {
         Self {
             libraries: ManuallyDrop::new(HashMap::new()),
-            #[cfg(debug_assertions)]
             gtypes: HashMap::new(),
         }
     }
@@ -55,7 +53,6 @@ impl LibraryCache {
         anyhow::bail!("Failed to load library '{name}': {err}")
     }
 
-    #[cfg(debug_assertions)]
     pub fn resolve_gtype(
         &mut self,
         lib_name: &str,
@@ -83,13 +80,10 @@ impl LibraryCache {
         Ok(gtype)
     }
 
-    #[must_use]
     pub fn len(&self) -> usize {
         self.libraries.len()
     }
 
-    #[cfg(debug_assertions)]
-    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.libraries.is_empty()
     }
@@ -219,7 +213,6 @@ impl GlibThreadState {
             .lookup(&mut self.libs, library_name, ref_func, unref_func)
     }
 
-    #[cfg(debug_assertions)]
     pub fn resolve_gtype(
         &mut self,
         lib_name: &str,

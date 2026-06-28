@@ -1,29 +1,26 @@
-#![cfg_attr(coverage_nightly, coverage(off))]
-
-mod alloc;
-mod bind;
-mod call;
-mod freeze;
-mod get_type;
-mod get_wrapper;
-mod init;
-mod quit;
-mod read;
-mod register_class;
-mod set_wrapper;
-mod unfreeze;
-mod write;
+pub mod alloc;
+pub mod bind;
+pub mod call;
+pub mod freeze;
+pub mod get_type;
+pub mod get_wrapper;
+pub mod init;
+pub mod quit;
+pub mod read;
+pub mod register_class;
+pub mod set_wrapper;
+pub mod unfreeze;
+pub mod write;
 
 use std::sync::Arc;
 
+use napi::Env;
 use napi::bindgen_prelude::*;
-use napi::{Env, JsObject};
 
 use crate::ffi::value::{JsRef, Value};
 use crate::handle::Handle;
 use crate::messaging;
 
-#[cfg_attr(test, allow(dead_code))]
 pub trait Request: Sized + Send + 'static {
     type Output: Response + Send + 'static;
     fn execute(self) -> anyhow::Result<Self::Output>;
@@ -45,7 +42,6 @@ pub trait Request: Sized + Send + 'static {
     }
 }
 
-#[cfg_attr(test, allow(dead_code))]
 pub trait Response: Sized {
     fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>>;
 }
@@ -84,14 +80,13 @@ impl Response for () {
     }
 }
 
-#[cfg_attr(test, allow(dead_code))]
-pub type RefUpdate = (Arc<JsRef<JsObject>>, Value);
+pub type RefUpdate = (Arc<JsRef>, Value);
 
 impl Response for (Value, Vec<RefUpdate>) {
     fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
         let (value, ref_updates) = self;
         for (js_obj_ref, new_value) in ref_updates {
-            let mut js_obj = js_obj_ref.get_value(env)?;
+            let mut js_obj: Object = js_obj_ref.get(env)?;
             let new_js_value = new_value.to_js_value(env)?;
             js_obj.set_named_property("value", new_js_value)?;
         }

@@ -17,7 +17,6 @@ pub enum HashTableEntryEncoder {
 }
 
 impl HashTableEntryEncoder {
-    #[must_use]
     pub fn from_descriptor(descriptor: &Codec) -> Option<Self> {
         match descriptor {
             Codec::String(_) => Some(Self::String),

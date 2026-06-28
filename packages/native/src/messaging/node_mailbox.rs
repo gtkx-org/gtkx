@@ -1,9 +1,9 @@
 use std::panic::{self, AssertUnwindSafe};
 use std::sync::{Arc, mpsc};
 
-use napi::bindgen_prelude::{FromNapiValue, Unknown};
+use napi::Env;
+use napi::bindgen_prelude::{FromNapiValue, JsObjectValue, JsValue, Object, Unknown};
 use napi::threadsafe_function::ThreadsafeFunctionCallMode;
-use napi::{Env, JsFunction, JsObject, NapiValue as _};
 
 use super::{
     GlibDispatchError, JsRefDeletion, Mailbox, NodeCallback, NodeCallbackResult, NodeTask,
@@ -13,7 +13,6 @@ use crate::ffi::value::{JsRef, Value};
 use crate::handle::wrapper_registry::WrapperRefOp;
 use crate::messaging::panic_handler::format_panic_payload;
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 fn node_channel_disconnected<R>() -> anyhow::Result<R> {
     Err(anyhow::anyhow!("JS callback channel disconnected"))
 }
@@ -24,7 +23,6 @@ pub struct ReadySignal {
 }
 
 impl ReadySignal {
-    #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn signal(self) {
         send_or_report(
             &self.tx,
@@ -35,7 +33,6 @@ impl ReadySignal {
     }
 }
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 fn poll_result<R>(rx: &mpsc::Receiver<R>) -> Result<Option<R>, GlibDispatchError> {
     match rx.try_recv() {
         Ok(result) => Ok(Some(result)),
@@ -45,12 +42,10 @@ fn poll_result<R>(rx: &mpsc::Receiver<R>) -> Result<Option<R>, GlibDispatchError
 }
 
 impl Mailbox {
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn set_wake_tsfn(&self, tsfn: Arc<WakeJsTsfn>) {
         let _ = self.wake_js_tsfn.set(tsfn);
     }
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn install_wake(&self, env: Env) -> napi::Result<()> {
         let wake_js_fn = env.create_function_from_closure::<(), _, _>("gtkx_wake_js", |ctx| {
             Self::global().process_node_pending(*ctx.env);
@@ -67,31 +62,26 @@ impl Mailbox {
         Ok(())
     }
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn push_node_task(&self, task: NodeTask) {
         self.node_inbox.lock().push_back(task);
         self.wake_js.notify();
     }
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn pop_node_task(&self) -> Option<NodeTask> {
         self.node_inbox.lock().pop_front()
     }
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn wake_node_thread(&self) {
         if let Some(tsfn) = self.wake_js_tsfn.get() {
             tsfn.call((), ThreadsafeFunctionCallMode::NonBlocking);
         }
     }
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
     pub(crate) fn schedule_js_reference_delete(&self, reference: JsRefDeletion) {
         self.push_node_task(NodeTask::DeleteReference(reference));
         self.wake_node_thread();
     }
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn dispatch_to_glib_and_wait<R, F>(&self, env: Env, task: F) -> Result<R, GlibDispatchError>
     where
         F: FnOnce() -> R + Send + 'static,
@@ -111,7 +101,6 @@ impl Mailbox {
             .map_err(|message| GlibDispatchError::task_panicked(&message))
     }
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn dispatch_and_wait_napi<R, F>(&self, env: Env, task: F) -> napi::Result<R>
     where
         F: FnOnce() -> R + Send + 'static,
@@ -121,7 +110,6 @@ impl Mailbox {
             .map_err(|e| napi::Error::new(napi::Status::GenericFailure, e.to_string()))
     }
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn dispatch_long_lived_glib_task<F>(&self, env: Env, task: F) -> napi::Result<()>
     where
         F: FnOnce(ReadySignal) + Send + 'static,
@@ -132,7 +120,6 @@ impl Mailbox {
             .map_err(|e| napi::Error::new(napi::Status::GenericFailure, e.to_string()))
     }
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn wait_for_glib_result<R>(
         &self,
         env: Env,
@@ -152,10 +139,9 @@ impl Mailbox {
         }
     }
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn invoke_node_and_wait_with_cells(
         &self,
-        callback: &Arc<JsRef<JsFunction>>,
+        callback: &Arc<JsRef>,
         args: Vec<Value>,
         capture_result: bool,
         out_cell_indices: Vec<usize>,
@@ -173,7 +159,6 @@ impl Mailbox {
         })
     }
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn apply_wrapper_ref_op_and_wait(
         &self,
         ref_ptr: usize,
@@ -187,7 +172,6 @@ impl Mailbox {
         })
     }
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn submit_blocking_node_task<R>(
         &self,
         build: impl FnOnce(mpsc::Sender<anyhow::Result<R>>, bool) -> NodeTask,
@@ -201,7 +185,6 @@ impl Mailbox {
         self.wait_node(&rx, wait_depth)
     }
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn node_wait_setup(&self) -> (bool, Option<usize>) {
         let glib_initiated = glib::MainContext::default().is_owner();
         let wait_depth = glib_initiated.then(|| {
@@ -212,7 +195,6 @@ impl Mailbox {
         (glib_initiated, wait_depth)
     }
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn wait_node<R>(
         &self,
         rx: &mpsc::Receiver<anyhow::Result<R>>,
@@ -224,7 +206,6 @@ impl Mailbox {
         self.wait_for_node_result(rx, depth)
     }
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn wait_for_node_result<R>(
         &self,
         rx: &mpsc::Receiver<anyhow::Result<R>>,
@@ -241,7 +222,6 @@ impl Mailbox {
         }
     }
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn process_node_pending(&self, env: Env) {
         while let Some(task) = self.pop_node_task() {
             match task {
@@ -290,7 +270,6 @@ impl Mailbox {
         }
     }
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn run_glib_initiated<R>(
         &self,
         glib_initiated: bool,
@@ -309,14 +288,12 @@ impl Mailbox {
         self.wake_glib.notify();
     }
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn wrap_out_cell<'env>(env: &'env Env, value: Unknown<'env>) -> napi::Result<Unknown<'env>> {
-        let mut cell = env.create_object()?;
+        let mut cell: Object<'env> = Object::new(env)?;
         cell.set_named_property("value", value)?;
-        Ok(unsafe { Unknown::from_raw_unchecked(env.raw(), napi::NapiRaw::raw(&cell)) })
+        Ok(cell.to_unknown())
     }
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn read_out_cells(
         env: &Env,
         js_args: &[Unknown<'_>],
@@ -327,18 +304,16 @@ impl Mailbox {
             let Some(arg) = js_args.get(index) else {
                 continue;
             };
-            let cell: JsObject =
-                unsafe { JsObject::from_raw_unchecked(env.raw(), napi::JsValue::raw(arg)) };
+            let cell = Object::from_raw(env.raw(), arg.raw());
             let slot: Unknown<'_> = cell.get_named_property("value")?;
             cells.push((index, Value::from_js_value(env, slot)?));
         }
         Ok(cells)
     }
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn execute_callback(
         env: Env,
-        callback: &Arc<JsRef<JsFunction>>,
+        callback: &Arc<JsRef>,
         args: Vec<Value>,
         capture_result: bool,
         out_cell_indices: &[usize],
@@ -363,11 +338,9 @@ impl Mailbox {
 
         let raw_args: Vec<sys::napi_value> = js_args.iter().map(napi::JsValue::raw).collect();
 
-        let func = callback
-            .get_value(&env)
+        let func_raw = callback
+            .get_raw(&env)
             .map_err(|e| anyhow::anyhow!("retrieving callback function: {e}"))?;
-
-        let func_raw = unsafe { napi::NapiRaw::raw(&func) };
 
         let mut undef_this = std::ptr::null_mut();
         unsafe {
@@ -406,7 +379,7 @@ impl Mailbox {
             .map_err(|e| anyhow::anyhow!("reading out-cell args: {e}"))?;
 
         let value = if capture_result {
-            let unknown = unsafe { Unknown::from_raw_unchecked(env.raw(), return_value) };
+            let unknown = unsafe { Unknown::from_napi_value(env.raw(), return_value)? };
             Value::from_js_value(&env, unknown)
                 .map_err(|e| anyhow::anyhow!("converting callback result: {e}"))?
         } else {
@@ -415,7 +388,6 @@ impl Mailbox {
         Ok((value, cells))
     }
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn extract_exception_message(
         env: napi::sys::napi_env,
         exception: napi::sys::napi_value,

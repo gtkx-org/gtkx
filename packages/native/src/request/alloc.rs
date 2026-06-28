@@ -6,7 +6,6 @@ use napi_derive::napi;
 use super::Request;
 use crate::handle::{Boxed, Handle, Value};
 
-#[cfg_attr(test, allow(dead_code))]
 struct AllocRequest {
     size: usize,
     type_name: Option<String>,
@@ -40,13 +39,10 @@ impl Request for AllocRequest {
     }
 }
 
-#[cfg_attr(coverage_nightly, coverage(off))]
-#[allow(clippy::wildcard_imports)]
-mod napi_export {
+pub mod napi_export {
     use super::*;
 
     #[napi(catch_unwind)]
-    #[cfg_attr(test, allow(dead_code))]
     pub fn alloc(env: Env, size: f64, type_name: Option<String>) -> napi::Result<External<Handle>> {
         let request = AllocRequest {
             size: size as usize,

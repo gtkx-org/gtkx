@@ -8,7 +8,6 @@ pub struct Arg {
 }
 
 impl Arg {
-    #[must_use]
     pub fn new(descriptor: Codec, value: Value) -> Self {
         Self { descriptor, value }
     }

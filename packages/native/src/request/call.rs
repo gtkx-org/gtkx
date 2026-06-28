@@ -16,7 +16,6 @@ use crate::ffi::{
     value::Value,
 };
 
-#[cfg_attr(test, allow(dead_code))]
 pub struct CallRequest {
     pub descriptor: Arc<CallDescriptor>,
     pub values: Vec<Value>,
@@ -123,7 +122,6 @@ impl CallRequest {
         }
     }
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn collect_ref_updates(
         args: &[Arg],
         stashed_values: &[ffi::StashedValue],
@@ -141,13 +139,10 @@ impl CallRequest {
     }
 }
 
-#[cfg_attr(coverage_nightly, coverage(off))]
-#[allow(clippy::wildcard_imports)]
-mod napi_export {
+pub mod napi_export {
     use super::*;
 
     #[napi(catch_unwind)]
-    #[cfg_attr(test, allow(dead_code))]
     pub fn call<'env>(
         env: &'env Env,
         descriptor: &External<Arc<CallDescriptor>>,

@@ -1,0 +1,13 @@
+[package]
+name = "test-support"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[lib]
+doctest = false
+
+[dependencies]
+native = { path = ".." }
+gtk4 = "0.11.3"
+anyhow = "1.0.102"

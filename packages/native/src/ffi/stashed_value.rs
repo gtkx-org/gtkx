@@ -7,7 +7,6 @@ use super::stash::Stash;
 use crate::ffi::callback::CallbackState;
 
 #[derive(Debug)]
-#[non_exhaustive]
 pub enum StashedValue {
     U8(u8),
     I8(i8),
@@ -34,7 +33,6 @@ pub struct CallbackValue {
 }
 
 impl CallbackValue {
-    #[must_use]
     pub fn new(
         fn_ptr: *mut c_void,
         state_ptr: *mut c_void,
@@ -50,7 +48,6 @@ impl CallbackValue {
         }
     }
 
-    #[must_use]
     pub fn new_armed(
         fn_ptr: *mut c_void,
         destroy_ptr: Option<*mut c_void>,
@@ -72,17 +69,14 @@ impl CallbackValue {
         }
     }
 
-    #[must_use]
     pub fn fn_ptr(&self) -> *mut c_void {
         self.fn_ptr
     }
 
-    #[must_use]
     pub fn state_ptr(&self) -> *mut c_void {
         self.state_ptr
     }
 
-    #[must_use]
     pub fn destroy_ptr(&self) -> Option<*mut c_void> {
         self.destroy_ptr
     }

@@ -19,7 +19,6 @@ pub struct BoxedDescriptor {
 }
 
 impl BoxedDescriptor {
-    #[must_use]
     pub fn gtype(&self) -> Option<glib::Type> {
         glib::Type::from_name(&self.type_name).or_else(|| {
             match self.try_resolve_gtype_from_library() {
@@ -120,9 +119,9 @@ impl FfiDecoder for BoxedDescriptor {
         let gtype = self.gtype();
         let boxed = match self.ownership {
             Ownership::Full => Boxed::from_glib_full(gtype, boxed_ptr),
-            Ownership::Borrowed => {
+            Ownership::Borrowed => unsafe {
                 Boxed::from_glib_none_with_size(gtype, boxed_ptr, None, Some(&self.type_name))?
-            }
+            },
         };
 
         Ok(boxed.into())
@@ -133,7 +132,7 @@ impl FfiDecoder for BoxedDescriptor {
             if self.free_fn.is_some() || self.caller_allocated {
                 return Ok(Boxed::from_glib_borrow(ptr).into());
             }
-            Ok(Boxed::from_glib_none(self.gtype(), ptr)?.into())
+            Ok(unsafe { Boxed::from_glib_none(self.gtype(), ptr) }?.into())
         })
     }
 }

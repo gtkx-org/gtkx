@@ -1,5 +1,3 @@
-#![cfg_attr(coverage_nightly, coverage(off))]
-
 use std::ffi::c_void;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, OnceLock};
@@ -101,7 +99,6 @@ impl WrapperRegistry {
         }
     }
 
-    #[must_use]
     pub unsafe fn wrapper_ref(&self, gobject: *mut glib::gobject_ffi::GObject) -> *mut c_void {
         let binding = unsafe { self.binding_ptr(gobject) };
         if binding.is_null() {
@@ -110,7 +107,6 @@ impl WrapperRegistry {
         unsafe { (*binding).napi_ref.load(Ordering::Relaxed) as *mut c_void }
     }
 
-    #[must_use]
     pub unsafe fn has_wrapper(&self, gobject: *mut glib::gobject_ffi::GObject) -> bool {
         !unsafe { self.binding_ptr(gobject) }.is_null()
     }

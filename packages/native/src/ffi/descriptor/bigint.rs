@@ -6,7 +6,6 @@ use super::numeric::MAX_SAFE_INTEGER;
 use super::prelude::*;
 
 #[derive(Debug, Clone, Copy)]
-#[non_exhaustive]
 pub enum BigIntKind {
     I64,
     U64,
@@ -20,7 +19,6 @@ impl BigIntKind {
         }
     }
 
-    #[must_use]
     pub fn ffi_type(self) -> libffi::Type {
         self.wire_kind().ffi_type()
     }
@@ -94,12 +92,10 @@ impl BigIntKind {
         }
     }
 
-    #[must_use]
     pub fn byte_size(self) -> usize {
         self.wire_kind().byte_size()
     }
 
-    #[must_use]
     pub unsafe fn read_slice(self, ptr: *const u8, len: usize) -> Vec<value::Value> {
         (0..len)
             .map(|i| value::Value::BigInt(unsafe { self.read_i128(ptr.add(i * self.byte_size())) }))

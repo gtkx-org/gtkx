@@ -1,34 +1,30 @@
 use std::ffi::c_void;
-use std::marker::PhantomData;
 use std::sync::Arc;
 use std::thread::ThreadId;
 
 use napi::bindgen_prelude::*;
 use napi::sys;
-use napi::{Env, JsFunction, JsObject, NapiRaw, NapiValue, ValueType};
+use napi::{Env, ValueType};
 
 use crate::handle::Handle;
 use crate::messaging::{JsRefDeletion, Mailbox};
 
-pub struct JsRef<T> {
+pub struct JsRef {
     raw: sys::napi_ref,
     env: sys::napi_env,
     owner_thread: ThreadId,
-    _marker: PhantomData<T>,
 }
 
-unsafe impl<T> Send for JsRef<T> {}
-unsafe impl<T> Sync for JsRef<T> {}
+unsafe impl Send for JsRef {}
+unsafe impl Sync for JsRef {}
 
-#[cfg_attr(coverage_nightly, coverage(off))]
-impl<T> std::fmt::Debug for JsRef<T> {
+impl std::fmt::Debug for JsRef {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("JsRef").finish_non_exhaustive()
     }
 }
 
-#[cfg_attr(coverage_nightly, coverage(off))]
-impl<T> Drop for JsRef<T> {
+impl Drop for JsRef {
     fn drop(&mut self) {
         let reference = JsRefDeletion::new(self.env, self.raw);
         if std::thread::current().id() == self.owner_thread {
@@ -39,10 +35,9 @@ impl<T> Drop for JsRef<T> {
     }
 }
 
-#[cfg_attr(coverage_nightly, coverage(off))]
-impl<T: NapiRaw + NapiValue> JsRef<T> {
-    pub fn from_js_value(env: &Env, value: &T) -> napi::Result<Self> {
-        let raw_value = unsafe { value.raw() };
+impl JsRef {
+    pub fn from_js_value<'a, V: JsValue<'a>>(env: &Env, value: &V) -> napi::Result<Self> {
+        let raw_value = value.raw();
         let mut raw_ref = std::ptr::null_mut();
         unsafe {
             let status = sys::napi_create_reference(env.raw(), raw_value, 1, &mut raw_ref);
@@ -57,11 +52,10 @@ impl<T: NapiRaw + NapiValue> JsRef<T> {
             raw: raw_ref,
             env: env.raw(),
             owner_thread: std::thread::current().id(),
-            _marker: PhantomData,
         })
     }
 
-    pub fn get_value(&self, env: &Env) -> napi::Result<T> {
+    pub fn get_raw(&self, env: &Env) -> napi::Result<sys::napi_value> {
         let mut raw_value = std::ptr::null_mut();
         unsafe {
             let status = sys::napi_get_reference_value(env.raw(), self.raw, &mut raw_value);
@@ -71,37 +65,37 @@ impl<T: NapiRaw + NapiValue> JsRef<T> {
                     "Failed to get reference value",
                 ));
             }
-            Ok(T::from_raw_unchecked(env.raw(), raw_value))
         }
+        Ok(raw_value)
+    }
+
+    pub fn get<T: FromNapiValue>(&self, env: &Env) -> napi::Result<T> {
+        let raw_value = self.get_raw(env)?;
+        unsafe { T::from_napi_value(env.raw(), raw_value) }
     }
 }
 
 pub struct Callback {
-    pub js_func: Arc<JsRef<JsFunction>>,
+    pub js_func: Arc<JsRef>,
 }
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 impl std::fmt::Debug for Callback {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Callback").finish_non_exhaustive()
     }
 }
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 impl Callback {
-    #[must_use]
-    pub fn new(js_func: Arc<JsRef<JsFunction>>) -> Self {
+    pub fn new(js_func: Arc<JsRef>) -> Self {
         Self { js_func }
     }
 
     pub fn from_js_value(env: &Env, value: Unknown<'_>) -> napi::Result<Self> {
-        let func: JsFunction = unsafe { JsFunction::from_raw_unchecked(env.raw(), value.raw()) };
-        let func_ref = JsRef::from_js_value(env, &func)?;
+        let func_ref = JsRef::from_js_value(env, &value)?;
         Ok(Self::new(Arc::new(func_ref)))
     }
 }
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 impl Clone for Callback {
     fn clone(&self) -> Self {
         Self {
@@ -112,10 +106,9 @@ impl Clone for Callback {
 
 pub struct Ref {
     pub value: Box<Value>,
-    pub js_obj: Arc<JsRef<JsObject>>,
+    pub js_obj: Arc<JsRef>,
 }
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 impl std::fmt::Debug for Ref {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Ref")
@@ -124,7 +117,6 @@ impl std::fmt::Debug for Ref {
     }
 }
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 impl Clone for Ref {
     fn clone(&self) -> Self {
         Self {
@@ -134,10 +126,8 @@ impl Clone for Ref {
     }
 }
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 impl Ref {
-    #[must_use]
-    pub fn new(value: Value, js_obj: Arc<JsRef<JsObject>>) -> Self {
+    pub fn new(value: Value, js_obj: Arc<JsRef>) -> Self {
         Self {
             value: Box::new(value),
             js_obj,
@@ -149,7 +139,7 @@ impl Ref {
     }
 
     fn from_js_value_at_depth(env: &Env, value: Unknown<'_>, depth: usize) -> napi::Result<Self> {
-        let obj: JsObject = unsafe { JsObject::from_raw_unchecked(env.raw(), value.raw()) };
+        let obj = Object::from_raw(env.raw(), value.raw());
         let value_prop: Unknown<'_> = obj.get_named_property("value")?;
         let inner = Value::from_js_value_at_depth(env, value_prop, depth)?;
         let js_obj_ref = JsRef::from_js_value(env, &obj)?;
@@ -159,7 +149,6 @@ impl Ref {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[non_exhaustive]
 pub enum BufferViewKind {
     Int8,
     Uint8,
@@ -200,7 +189,6 @@ impl TryFrom<sys::napi_typedarray_type> for BufferViewKind {
 }
 
 impl BufferViewKind {
-    #[must_use]
     pub fn element_size(self) -> usize {
         match self {
             Self::Int8 | Self::Uint8 | Self::Uint8Clamped | Self::DataView => 1,
@@ -244,7 +232,6 @@ unsafe impl Send for BufferView {}
 unsafe impl Sync for BufferView {}
 
 impl BufferView {
-    #[must_use]
     pub fn new(
         ptr: *mut c_void,
         byte_length: usize,
@@ -261,33 +248,27 @@ impl BufferView {
         }
     }
 
-    #[must_use]
     pub fn ptr(&self) -> *mut c_void {
         self.ptr
     }
 
-    #[must_use]
     pub fn byte_length(&self) -> usize {
         self.byte_length
     }
 
-    #[must_use]
     pub fn length(&self) -> usize {
         self.length
     }
 
-    #[must_use]
     pub fn kind(&self) -> BufferViewKind {
         self.kind
     }
 
-    #[must_use]
     pub fn is_shared(&self) -> bool {
         self.shared
     }
 }
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 impl BufferView {
     fn from_typed_array(env: &Env, value: &Unknown<'_>) -> napi::Result<Self> {
         let mut raw_kind: sys::napi_typedarray_type = sys::TypedarrayType::int8_array;
@@ -352,7 +333,6 @@ impl BufferView {
     }
 }
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 fn check_napi_status(status: sys::napi_status, message: &str) -> napi::Result<()> {
     if status == sys::Status::napi_ok {
         Ok(())
@@ -362,7 +342,6 @@ fn check_napi_status(status: sys::napi_status, message: &str) -> napi::Result<()
 }
 
 #[derive(Debug, Clone)]
-#[non_exhaustive]
 pub enum Value {
     Number(f64),
     BigInt(i128),
@@ -378,7 +357,6 @@ pub enum Value {
 }
 
 impl Value {
-    #[must_use]
     pub fn result_to_ptr(result: &std::result::Result<Self, ()>) -> *mut c_void {
         match result {
             Ok(Self::Object(handle)) => handle.ptr(),
@@ -386,7 +364,6 @@ impl Value {
         }
     }
 
-    #[must_use]
     pub fn as_number(&self) -> Option<f64> {
         match self {
             Self::Number(n) => Some(*n),
@@ -394,7 +371,6 @@ impl Value {
         }
     }
 
-    #[must_use]
     pub fn as_string(&self) -> Option<&str> {
         match self {
             Self::String(s) => Some(s),
@@ -402,7 +378,6 @@ impl Value {
         }
     }
 
-    #[must_use]
     pub fn as_array(&self) -> Option<&[Self]> {
         match self {
             Self::Array(items) => Some(items),
@@ -427,12 +402,10 @@ impl Value {
         }
     }
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn from_js_value(env: &Env, value: Unknown<'_>) -> napi::Result<Self> {
         Self::from_js_value_at_depth(env, value, 0)
     }
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn from_js_value_at_depth(env: &Env, value: Unknown<'_>, depth: usize) -> napi::Result<Self> {
         const MAX_VALUE_DEPTH: usize = 64;
         if depth >= MAX_VALUE_DEPTH {
@@ -501,7 +474,6 @@ impl Value {
         }
     }
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn to_js_value(self, env: &Env) -> napi::Result<Unknown<'_>> {
         match self {
             Self::Number(n) => n.into_unknown(env),
@@ -530,8 +502,6 @@ impl Value {
     }
 }
 
-#[allow(clippy::trivially_copy_pass_by_ref)]
-#[cfg_attr(coverage_nightly, coverage(off))]
 pub(crate) fn map_js_array<T>(
     env: &Env,
     array: &Array,

@@ -44,7 +44,6 @@ pub enum PendingRelease {
 }
 
 impl PendingTransfer {
-    #[must_use]
     pub fn new(ptr: *mut c_void, release: PendingRelease) -> Self {
         Self { ptr, release }
     }
@@ -310,7 +309,6 @@ impl Stash {
         Self::new(ptr, StashKind::Unit)
     }
 
-    #[must_use]
     pub fn with_pending_transfer(self, ptr: *mut c_void, release: PendingRelease) -> Self {
         self.pending_transfer
             .set(Some(PendingTransfer { ptr, release }));
@@ -322,18 +320,15 @@ impl Stash {
     }
 
     #[inline]
-    #[must_use]
     pub fn ptr(&self) -> *mut c_void {
         self.ptr
     }
 
     #[inline]
-    #[must_use]
     pub fn ptr_ref(&self) -> &*mut c_void {
         &self.ptr
     }
 
-    #[must_use]
     pub fn kind(&self) -> &StashKind {
         &self.kind
     }

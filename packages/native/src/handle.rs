@@ -21,25 +21,21 @@ enum AnchoredValue {
 
 struct TransferableValue(ManuallyDrop<Value>);
 
-#[allow(clippy::non_send_fields_in_send_ty)]
 unsafe impl Send for TransferableValue {}
 
 impl TransferableValue {
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn get_ref(&self) -> &Value {
         &self.0
     }
 }
 
 impl Drop for TransferableValue {
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn drop(&mut self) {
         unsafe { ManuallyDrop::drop(&mut self.0) };
     }
 }
 
 impl AnchoredValue {
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn new(value: Value) -> Self {
         let on_foreign_thread =
             Mailbox::global().is_initialized() && !glib::MainContext::default().is_owner();
@@ -50,7 +46,6 @@ impl AnchoredValue {
         }
     }
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn get_ref(&self) -> &Value {
         match self {
             Self::ThreadBound(guard) => guard.get_ref(),
@@ -58,7 +53,6 @@ impl AnchoredValue {
         }
     }
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn droppable_here(&self) -> bool {
         match self {
             Self::ThreadBound(guard) => guard.is_owner(),
@@ -111,7 +105,6 @@ impl Clone for Handle {
 }
 
 impl Handle {
-    #[must_use]
     pub fn borrowed(ptr: *mut c_void) -> Self {
         Self {
             ptr: ptr as usize,
@@ -121,7 +114,6 @@ impl Handle {
         }
     }
 
-    #[must_use]
     pub fn borrowed_gobject(ptr: *mut c_void) -> Self {
         Self {
             ptr: ptr as usize,
@@ -131,7 +123,6 @@ impl Handle {
         }
     }
 
-    #[must_use]
     pub fn decoded_gobject(ptr: *mut c_void) -> Self {
         Self {
             ptr: ptr as usize,
@@ -141,19 +132,16 @@ impl Handle {
         }
     }
 
-    #[must_use]
     pub fn take_pending_gobject_ref(&self) -> bool {
         self.pending_gobject_ref
             .as_ref()
             .is_some_and(|flag| flag.swap(false, Ordering::AcqRel))
     }
 
-    #[must_use]
     pub fn ptr(&self) -> *mut c_void {
         self.ptr as *mut c_void
     }
 
-    #[must_use]
     pub fn ptr_as_usize(&self) -> usize {
         self.ptr
     }
@@ -212,7 +200,6 @@ impl From<Fundamental> for crate::ffi::value::Value {
 const GOBJECT_SIZE_HINT: usize = 512;
 
 impl Value {
-    #[must_use]
     pub fn as_ptr(&self) -> *mut c_void {
         match self {
             Self::Boxed(boxed) => boxed.as_ptr(),
@@ -220,7 +207,6 @@ impl Value {
         }
     }
 
-    #[must_use]
     pub fn size_hint(&self) -> usize {
         match self {
             Self::Boxed(_) => Boxed::SIZE_HINT,
@@ -230,7 +216,6 @@ impl Value {
 }
 
 impl Handle {
-    #[must_use]
     pub fn size_hint(&self) -> usize {
         self.size_hint
     }

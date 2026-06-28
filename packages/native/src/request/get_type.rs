@@ -6,7 +6,6 @@ use napi_derive::napi;
 use super::Request;
 use crate::handle::Handle;
 
-#[cfg_attr(test, allow(dead_code))]
 struct GetTypeRequest {
     instance_addr: usize,
 }
@@ -32,13 +31,10 @@ impl Request for GetTypeRequest {
     }
 }
 
-#[cfg_attr(coverage_nightly, coverage(off))]
-#[allow(clippy::wildcard_imports)]
-mod napi_export {
+pub mod napi_export {
     use super::*;
 
     #[napi(catch_unwind)]
-    #[cfg_attr(test, allow(dead_code))]
     pub fn get_type(env: Env, handle: &External<Handle>) -> napi::Result<BigInt> {
         let gtype = GetTypeRequest {
             instance_addr: handle.ptr_as_usize(),

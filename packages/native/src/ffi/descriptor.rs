@@ -31,11 +31,9 @@ pub use boolean::BooleanDescriptor;
 pub use boxed::{BoxedDescriptor, BoxedFreeFn};
 pub use buffer::BufferDescriptor;
 pub use callback::CallbackDescriptor;
-#[cfg(debug_assertions)]
 pub use callback::CallbackScope;
 pub use fundamental::FundamentalDescriptor;
 pub use hashtable::HashTableDescriptor;
-#[cfg(debug_assertions)]
 pub use hashtable::HashTableEntryEncoder;
 pub use numeric::{EnumFlagsDescriptor, EnumFlagsKind, FloatKind, IntegerKind};
 pub use object::ObjectDescriptor;
@@ -49,7 +47,6 @@ pub use wire::{Descriptor, DescriptorRef};
 pub(crate) use numeric::lossless_f64;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-#[non_exhaustive]
 pub enum Ownership {
     #[default]
     Borrowed,
@@ -58,13 +55,11 @@ pub enum Ownership {
 
 impl Ownership {
     #[inline]
-    #[must_use]
     pub fn is_full(self) -> bool {
         matches!(self, Self::Full)
     }
 
     #[inline]
-    #[must_use]
     pub fn is_borrowed(self) -> bool {
         matches!(self, Self::Borrowed)
     }
@@ -185,7 +180,6 @@ pub trait FfiDecoder {
         unsafe { self.read(ReadSource::Value(inner_ptr, context)) }
     }
 
-    #[allow(clippy::unused_self)]
     fn null_guarded<F>(&self, ptr: *mut c_void, decode: F) -> anyhow::Result<value::Value>
     where
         F: FnOnce(*mut c_void) -> anyhow::Result<value::Value>,
@@ -217,7 +211,6 @@ pub trait PointerWriter {
         bail!("This type cannot be written to a raw pointer")
     }
 
-    #[allow(clippy::unused_self)]
     fn write_return_with_ownership<F>(
         &self,
         ret: *mut c_void,
@@ -239,7 +232,6 @@ pub trait PointerWriter {
 
 #[enum_dispatch(FfiEncoder, FfiDecoder, PointerWriter)]
 #[derive(Debug, Clone)]
-#[non_exhaustive]
 pub enum Codec {
     Integer(IntegerKind),
     BigInt(BigIntKind),
@@ -288,12 +280,10 @@ impl std::fmt::Display for Codec {
 }
 
 impl Codec {
-    #[must_use]
     pub fn can_be_return(&self) -> bool {
         !matches!(self, Self::Callback(_) | Self::Ref(_) | Self::Buffer(_))
     }
 
-    #[must_use]
     pub fn can_be_argument(&self) -> bool {
         !matches!(self, Self::Void(_))
     }

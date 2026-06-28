@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use std::ffi::c_void;
 use std::sync::mpsc::{RecvError, Sender, sync_channel};
 use std::sync::{Mutex, MutexGuard, OnceLock, PoisonError};
@@ -125,7 +123,6 @@ pub unsafe extern "C" fn param_spec_unref(ptr: *mut c_void) {
     }
 }
 
-#[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub fn param_spec_refcount(ptr: *mut c_void) -> u32 {
     if ptr.is_null() {
         return 0;
@@ -136,7 +133,6 @@ pub fn param_spec_refcount(ptr: *mut c_void) -> u32 {
     }
 }
 
-#[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub fn get_gobject_refcount(obj_ptr: *mut glib::gobject_ffi::GObject) -> u32 {
     if obj_ptr.is_null() {
         return 0;
@@ -144,7 +140,6 @@ pub fn get_gobject_refcount(obj_ptr: *mut glib::gobject_ffi::GObject) -> u32 {
     unsafe { (*obj_ptr).ref_count }
 }
 
-#[must_use]
 pub fn allocate_test_boxed(gtype: glib::Type) -> *mut std::ffi::c_void {
     unsafe {
         let rgba = gdk::RGBA::new(1.0, 0.5, 0.25, 1.0);
@@ -152,7 +147,6 @@ pub fn allocate_test_boxed(gtype: glib::Type) -> *mut std::ffi::c_void {
     }
 }
 
-#[must_use]
 pub fn owned_rgba_boxed() -> (Boxed, *mut std::ffi::c_void) {
     let gtype = gdk::RGBA::static_type();
     let ptr = allocate_test_boxed(gtype);
@@ -256,7 +250,6 @@ pub fn assert_write_return_err_writes_null<C: PointerWriter>(codec: &C) {
     assert!(slot.is_null());
 }
 
-#[must_use]
 pub fn i32_array_descriptor(size: usize) -> ArrayDescriptor {
     ArrayDescriptor {
         item_descriptor: Box::new(Codec::Integer(IntegerKind::I32)),
@@ -266,7 +259,6 @@ pub fn i32_array_descriptor(size: usize) -> ArrayDescriptor {
     }
 }
 
-#[must_use]
 pub fn f32_array_descriptor() -> ArrayDescriptor {
     ArrayDescriptor {
         item_descriptor: Box::new(Codec::Float(FloatKind::F32)),

@@ -1,5 +1,3 @@
-#![cfg_attr(coverage_nightly, coverage(off))]
-
 use napi::bindgen_prelude::*;
 use napi::{Env, sys};
 use napi_derive::napi;
@@ -9,7 +7,6 @@ use crate::handle::wrapper_registry;
 use crate::messaging::Mailbox;
 
 #[napi(catch_unwind)]
-#[cfg_attr(test, allow(dead_code))]
 pub fn get_wrapper<'env>(
     env: &'env Env,
     handle: &External<Handle>,

@@ -1,5 +1,3 @@
-#![cfg_attr(coverage_nightly, coverage(off))]
-
 use std::sync::OnceLock;
 
 use glib::{LogLevel, LogWriterOutput};

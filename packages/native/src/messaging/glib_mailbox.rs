@@ -42,7 +42,6 @@ impl GlibThread {
         None
     }
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn spawn(&self) -> napi::Result<glib::MainLoop> {
         let (tx, rx) = mpsc::channel::<glib::MainLoop>();
 

@@ -25,7 +25,6 @@ impl RefDescriptor {
         })
     }
 
-    #[must_use]
     pub fn supports_inner(inner: &Codec) -> bool {
         !matches!(
             inner,
@@ -39,7 +38,6 @@ impl RefDescriptor {
 }
 
 impl FfiEncoder for RefDescriptor {
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn encode(&self, val: &value::Value) -> anyhow::Result<ffi::StashedValue> {
         let ref_val = match val {
             value::Value::Ref(r) => r,
@@ -232,7 +230,6 @@ impl FfiDecoder for RefDescriptor {
 impl PointerWriter for RefDescriptor {}
 
 impl RefDescriptor {
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn null_ptr_storage() -> ffi::StashedValue {
         let mut slot: Vec<*mut c_void> = vec![std::ptr::null_mut()];
         let ptr = slot.as_mut_ptr() as *mut c_void;

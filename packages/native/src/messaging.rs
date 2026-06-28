@@ -12,7 +12,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, OnceLock, mpsc};
 
 use napi::threadsafe_function::ThreadsafeFunction;
-use napi::{JsFunction, Status, sys};
+use napi::{Status, sys};
 use parking_lot::Mutex;
 
 use crate::ffi::value::{JsRef, Value};
@@ -30,7 +30,7 @@ pub type WakeJsTsfn = ThreadsafeFunction<(), (), (), Status, false, true>;
 pub type NodeCallbackResult = (Value, Vec<(usize, Value)>);
 
 struct NodeCallback {
-    callback: Arc<JsRef<JsFunction>>,
+    callback: Arc<JsRef>,
     args: Vec<Value>,
     capture_result: bool,
     out_cell_indices: Vec<usize>,
@@ -58,12 +58,10 @@ pub(crate) struct JsRefDeletion {
 unsafe impl Send for JsRefDeletion {}
 
 impl JsRefDeletion {
-    #[cfg_attr(coverage_nightly, coverage(off))]
     pub(crate) fn new(env: sys::napi_env, raw: sys::napi_ref) -> Self {
         Self { env, raw }
     }
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
     pub(crate) fn delete_on_js_thread(self) {
         let status = unsafe { sys::napi_delete_reference(self.env, self.raw) };
         debug_assert_eq!(status, sys::Status::napi_ok);
@@ -115,8 +113,6 @@ impl Mailbox {
         }
     }
 
-    #[cfg(debug_assertions)]
-    #[must_use]
     pub fn new_for_test() -> Self {
         Self::new()
     }
@@ -128,7 +124,6 @@ impl Mailbox {
         self.freeze.wake_for_shutdown();
     }
 
-    #[cfg(debug_assertions)]
     pub fn reset_for_test(&self) {
         self.running.store(true, Ordering::Release);
     }

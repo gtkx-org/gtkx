@@ -1,4 +1,6 @@
-mod helpers;
+mod helpers {
+    pub use test_support::*;
+}
 
 use std::ffi::c_void;
 
@@ -15,7 +17,7 @@ fn owned_rgba_boxed() -> (glib::Type, *mut c_void, Boxed) {
 
 fn null_rgba_boxed() -> Boxed {
     let gtype = gtk4::gdk::RGBA::static_type();
-    Boxed::from_glib_none(Some(gtype), std::ptr::null_mut()).unwrap()
+    unsafe { Boxed::from_glib_none(Some(gtype), std::ptr::null_mut()) }.unwrap()
 }
 
 #[test]
@@ -43,7 +45,7 @@ fn boxed_from_glib_none_copies_pointer() {
         let gtype = gtk4::gdk::RGBA::static_type();
         let original_ptr = helpers::allocate_test_boxed(gtype);
 
-        let boxed = Boxed::from_glib_none(Some(gtype), original_ptr)
+        let boxed = unsafe { Boxed::from_glib_none(Some(gtype), original_ptr) }
             .expect("from_glib_none should succeed");
 
         assert_ne!(boxed.as_ptr(), original_ptr);
@@ -96,7 +98,8 @@ fn boxed_from_glib_none_with_size_copies_without_gtype() {
     let data: [u8; 16] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
     let ptr = data.as_ptr() as *mut c_void;
 
-    let boxed = Boxed::from_glib_none_with_size(None, ptr, Some(16), Some("TestStruct")).unwrap();
+    let boxed = unsafe { Boxed::from_glib_none_with_size(None, ptr, Some(16), Some("TestStruct")) }
+        .unwrap();
 
     assert!(!boxed.as_ptr().is_null());
     assert_ne!(boxed.as_ptr(), ptr);

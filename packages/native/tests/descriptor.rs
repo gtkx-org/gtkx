@@ -1,4 +1,6 @@
-mod helpers;
+mod helpers {
+    pub use test_support::*;
+}
 
 use std::ffi::c_void;
 
@@ -94,7 +96,6 @@ fn struct_descriptor() -> StructDescriptor {
     }
 }
 
-#[allow(clippy::default_trait_access)]
 fn callback_descriptor() -> CallbackDescriptor {
     CallbackDescriptor {
         arg_descriptors: vec![Codec::Integer(IntegerKind::I32)],

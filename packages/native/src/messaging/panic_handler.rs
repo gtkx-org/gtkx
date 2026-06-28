@@ -6,7 +6,6 @@ use crate::messaging::error_reporter::ErrorReporter;
 
 static PANIC_HOOK_INSTALLED: OnceLock<()> = OnceLock::new();
 
-#[must_use]
 pub fn format_panic_payload(payload: &(dyn Any + Send)) -> String {
     payload
         .downcast_ref::<&str>()
@@ -16,7 +15,6 @@ pub fn format_panic_payload(payload: &(dyn Any + Send)) -> String {
         .unwrap_or_else(|| "unknown panic".to_owned())
 }
 
-#[must_use]
 pub fn format_panic_report(info: &PanicHookInfo<'_>) -> String {
     let location = info
         .location()
@@ -28,7 +26,6 @@ pub fn format_panic_report(info: &PanicHookInfo<'_>) -> String {
     format!("native panic on thread '{thread_name}'{location}: {message}")
 }
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 pub fn install_panic_hook() {
     PANIC_HOOK_INSTALLED.get_or_init(|| {
         let previous = panic::take_hook();

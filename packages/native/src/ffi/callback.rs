@@ -1,5 +1,3 @@
-#![cfg_attr(coverage_nightly, coverage(off))]
-
 use std::ffi::{c_char, c_void};
 use std::mem::ManuallyDrop;
 use std::sync::Arc;
@@ -7,7 +5,6 @@ use std::sync::atomic::{AtomicPtr, Ordering};
 
 use ::libffi::low as libffi_low;
 use ::libffi::middle as libffi;
-use napi::JsFunction;
 
 use crate::ffi::StashedValue;
 use crate::ffi::descriptor::{
@@ -18,7 +15,7 @@ use crate::messaging::Mailbox;
 use crate::messaging::error_reporter::ErrorReporter;
 
 pub struct CallbackData {
-    pub js_func: Arc<JsRef<JsFunction>>,
+    pub js_func: Arc<JsRef>,
     pub arg_descriptors: Vec<Codec>,
     pub return_descriptor: Codec,
     pub user_data_index: Option<usize>,
@@ -29,9 +26,8 @@ pub struct CallbackData {
 }
 
 impl CallbackData {
-    #[must_use]
     pub fn new(
-        js_func: Arc<JsRef<JsFunction>>,
+        js_func: Arc<JsRef>,
         arg_descriptors: Vec<Codec>,
         return_descriptor: Codec,
         user_data_index: Option<usize>,
@@ -100,7 +96,6 @@ impl Drop for CallbackState {
 }
 
 impl CallbackState {
-    #[must_use]
     pub fn data_ref(&self) -> &CallbackData {
         &self.data
     }
@@ -130,9 +125,8 @@ impl CallbackState {
     }
 }
 
-#[must_use]
 pub fn build_trampoline(
-    js_func: Arc<JsRef<JsFunction>>,
+    js_func: Arc<JsRef>,
     arg_descriptors: Vec<Codec>,
     return_descriptor: Codec,
     user_data_index: Option<usize>,

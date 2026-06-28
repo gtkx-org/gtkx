@@ -1,11 +1,8 @@
-#![allow(deprecated)]
-
-mod helpers;
-
 use std::ffi::c_void;
 use std::sync::Arc;
 
-use napi::{Env, JsFunction, NapiValue as _};
+use napi::Env;
+use napi::bindgen_prelude::{FromNapiValue, Unknown};
 use native::ffi::callback::{CallbackData, CallbackState};
 use native::ffi::descriptor::{Codec, VoidDescriptor};
 use native::ffi::value::JsRef;
@@ -25,16 +22,14 @@ fn callback_value(destroy: bool) -> CallbackValue {
     )
 }
 
-fn js_func_ref() -> Arc<JsRef<JsFunction>> {
+fn js_func_ref() -> Arc<JsRef> {
     let env = Env::from_raw(std::ptr::null_mut());
-    let func =
-        unsafe { JsFunction::from_raw_unchecked(std::ptr::null_mut(), std::ptr::null_mut()) };
+    let func = unsafe { Unknown::from_napi_value(std::ptr::null_mut(), std::ptr::null_mut()) }
+        .expect("stubbed unknown creation should succeed");
     Arc::new(JsRef::from_js_value(&env, &func).expect("stubbed reference creation should succeed"))
 }
 
-fn armed_callback_value(
-    destroy_ptr: Option<*mut c_void>,
-) -> (CallbackValue, Arc<JsRef<JsFunction>>) {
+fn armed_callback_value(destroy_ptr: Option<*mut c_void>) -> (CallbackValue, Arc<JsRef>) {
     let js_func = js_func_ref();
     let data = CallbackData::new(
         Arc::clone(&js_func),
@@ -51,7 +46,7 @@ fn armed_callback_value(
     )
 }
 
-fn release_handed_over_state(state_ptr: *mut c_void, js_func: &Arc<JsRef<JsFunction>>) {
+fn release_handed_over_state(state_ptr: *mut c_void, js_func: &Arc<JsRef>) {
     assert_eq!(Arc::strong_count(js_func), 2);
     unsafe { CallbackState::destroy(state_ptr) };
     assert_eq!(Arc::strong_count(js_func), 1);

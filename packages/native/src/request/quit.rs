@@ -1,5 +1,3 @@
-#![cfg_attr(coverage_nightly, coverage(off))]
-
 use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
@@ -9,7 +7,6 @@ use crate::messaging::error_reporter::ErrorReporter;
 use crate::messaging::glib_mailbox::GlibThread;
 
 #[napi(catch_unwind)]
-#[cfg_attr(test, allow(dead_code))]
 pub fn quit(env: Env, main_loop: &External<glib::MainLoop>) -> napi::Result<()> {
     let main_loop = (**main_loop).clone();
 

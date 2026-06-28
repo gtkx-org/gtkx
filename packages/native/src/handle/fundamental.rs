@@ -14,7 +14,6 @@ pub struct Fundamental {
 impl Fundamental {
     pub(crate) const SIZE_HINT: usize = 128;
 
-    #[must_use]
     pub fn from_glib_full(
         ptr: *mut c_void,
         ref_fn: Option<RefFn>,
@@ -28,7 +27,6 @@ impl Fundamental {
         }
     }
 
-    #[must_use]
     pub unsafe fn from_glib_none(
         ptr: *mut c_void,
         ref_fn: Option<RefFn>,
@@ -54,13 +52,11 @@ impl Fundamental {
     }
 
     #[inline]
-    #[must_use]
     pub fn as_ptr(&self) -> *mut c_void {
         self.ptr
     }
 
     #[inline]
-    #[must_use]
     pub fn is_owned(&self) -> bool {
         self.owned
     }
