@@ -22,11 +22,8 @@ describe("attach-shape verification over Gtk and Adw", () => {
     });
 
     it("rejects same-named methods whose signature is not the widget-container shape", () => {
-        // GtkComboBoxText.append(id, text) / insert(position, id, text) / remove(position)
         expect(shapes["GtkComboBoxText"]).toBeUndefined();
-        // AdwMultiLayoutView.set_child(id, child) / get_child(id) take an id, not a bare child
         expect(shapes["AdwMultiLayoutView"]).toBeUndefined();
-        // AdwToggleGroup.add(AdwToggle) and AdwSidebar.append(AdwSidebarSection) take non-widgets
         expect(shapes["AdwToggleGroup"]).toBeUndefined();
         expect(shapes["AdwSidebar"]).toBeUndefined();
     });

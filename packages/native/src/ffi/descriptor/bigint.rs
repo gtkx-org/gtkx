@@ -85,13 +85,7 @@ impl BigIntKind {
         }
     }
 
-    /// # Safety
-    ///
-    /// `ptr` must point to at least 8 readable bytes holding a value of this kind's wire type
-    /// (`i64` or `u64`); alignment is not required because the read is unaligned.
     unsafe fn read_i128(self, ptr: *const u8) -> i128 {
-        // SAFETY: per the contract `ptr` addresses 8 readable bytes; `read_unaligned` loads the
-        // wire integer without an alignment requirement, then widens it losslessly to `i128`.
         unsafe {
             match self {
                 Self::I64 => i128::from(ptr.cast::<i64>().read_unaligned()),
@@ -105,15 +99,8 @@ impl BigIntKind {
         self.wire_kind().byte_size()
     }
 
-    /// # Safety
-    ///
-    /// `ptr` must point to a contiguous array of at least `len` elements of this kind's wire type
-    /// (`8 * len` readable bytes), as produced by the FFI marshalling layer.
     #[must_use]
     pub unsafe fn read_slice(self, ptr: *const u8, len: usize) -> Vec<value::Value> {
-        // SAFETY: per the contract there are `len` contiguous wire-type elements at `ptr`;
-        // `ptr.add(i * byte_size)` stays within that buffer for every `i < len`, and `read_i128`
-        // reads one in-bounds element each iteration.
         (0..len)
             .map(|i| value::Value::BigInt(unsafe { self.read_i128(ptr.add(i * self.byte_size())) }))
             .collect()
@@ -148,14 +135,8 @@ impl BigIntKind {
         }
     }
 
-    /// # Safety
-    ///
-    /// `ptr` must point to at least 8 writable bytes, into which the encoded 64-bit value is
-    /// written.
     pub unsafe fn append_into(self, ptr: *mut u8, value: &value::Value) -> anyhow::Result<()> {
         let stashed_value = self.checked_to_stashed_value(self.int_from_value(value)?)?;
-        // SAFETY: `stashed_value` is a range-checked 64-bit scalar and `ptr` addresses 8 writable
-        // bytes per the contract; `write_scalar_to` stores the scalar into that slot.
         unsafe { stashed_value.write_scalar_to(ptr.cast()) }
     }
 }
@@ -185,8 +166,6 @@ impl FfiDecoder for BigIntKind {
                 Self::U64 => i128::from(ptr as u64),
             })),
             ReadSource::Slot(ptr, _context) => {
-                // SAFETY: `ReadSource::Slot` carries a pointer to an 8-byte wire-type slot supplied
-                // by the marshalling layer, satisfying `read_i128`'s precondition.
                 Ok(value::Value::BigInt(unsafe { self.read_i128(ptr.cast()) }))
             }
         }
@@ -194,10 +173,6 @@ impl FfiDecoder for BigIntKind {
 }
 
 impl PointerWriter for BigIntKind {
-    /// # Safety
-    ///
-    /// `ret` must point to a writable return slot of at least 8 bytes, as provided by the
-    /// callback return path.
     unsafe fn write_return_to_pointer(
         &self,
         ret: *mut c_void,
@@ -211,15 +186,9 @@ impl PointerWriter for BigIntKind {
         let stashed_value = self
             .checked_to_stashed_value(int)
             .unwrap_or_else(|_| self.zero_stashed_value());
-        // SAFETY: `stashed_value` is a 64-bit scalar and `ret` addresses an 8-byte writable return
-        // slot per the contract; `write_scalar_to` stores the scalar there.
         let _ = unsafe { stashed_value.write_scalar_to(ret) };
     }
 
-    /// # Safety
-    ///
-    /// `ptr` must point to a writable field slot of at least 8 bytes, as provided by the field
-    /// marshalling layer.
     unsafe fn write_value_to_pointer(
         &self,
         ptr: *mut c_void,
@@ -227,8 +196,6 @@ impl PointerWriter for BigIntKind {
     ) -> anyhow::Result<()> {
         let int = self.int_from_value(value)?;
         let stashed_value = self.checked_to_stashed_value(int)?;
-        // SAFETY: `stashed_value` is a range-checked 64-bit scalar and `ptr` addresses an 8-byte
-        // writable slot per the contract; `write_scalar_to` stores the scalar there.
         unsafe { stashed_value.write_scalar_to(ptr) }
     }
 }
@@ -245,8 +212,6 @@ mod tests {
 
     fn assert_field_round_trip(kind: BigIntKind, big: i128) {
         let mut slot = [0u8; 8];
-        // SAFETY: `slot` is an 8-byte local buffer, satisfying the field-write and slot-read
-        // preconditions of `write_value_to_pointer` and `read(ReadSource::Slot)` for a 64-bit kind.
         unsafe {
             kind.write_value_to_pointer(slot.as_mut_ptr().cast(), &value::Value::BigInt(big))
                 .expect("write");
@@ -293,8 +258,6 @@ mod tests {
     #[test]
     fn ptr_to_value_reinterprets_pointer_bits() {
         let ptr = 0x1234usize as *mut std::ffi::c_void;
-        // SAFETY: `ReadSource::Value` reinterprets the pointer bits directly without dereferencing,
-        // so any pointer-sized value (here `0x1234`) is a valid input.
         let value =
             unsafe { BigIntKind::U64.read(ReadSource::Value(ptr, "test")) }.expect("convert");
         assert!(matches!(value, value::Value::BigInt(v) if v == 0x1234));
@@ -326,8 +289,6 @@ mod tests {
     #[test]
     fn ptr_to_value_i64_reinterprets_pointer_bits() {
         let ptr = usize::MAX as *mut std::ffi::c_void;
-        // SAFETY: `ReadSource::Value` reinterprets the pointer bits directly without dereferencing,
-        // so any pointer-sized value (here all-ones) is a valid input.
         let value =
             unsafe { BigIntKind::I64.read(ReadSource::Value(ptr, "test")) }.expect("convert");
         assert!(matches!(value, value::Value::BigInt(v) if v == -1));
@@ -342,8 +303,6 @@ mod tests {
     #[test]
     fn read_slice_reads_contiguous_elements() {
         let buffer: [u64; 3] = [u64::MAX, 0, 42];
-        // SAFETY: `buffer` is a contiguous array of 3 `u64` elements, matching the `len = 3`
-        // passed to `read_slice` for the U64 wire type.
         let values = unsafe { BigIntKind::U64.read_slice(buffer.as_ptr().cast(), 3) };
         assert_eq!(values.len(), 3);
         assert!(matches!(values[0], value::Value::BigInt(v) if v == i128::from(u64::MAX)));
@@ -381,13 +340,11 @@ mod tests {
     #[test]
     fn append_into_writes_value_into_slot() {
         let mut slot = [0u8; 8];
-        // SAFETY: `slot` is an 8-byte local buffer, satisfying `append_into`'s 8-byte write slot.
         unsafe {
             BigIntKind::I64
                 .append_into(slot.as_mut_ptr(), &value::Value::BigInt(-5))
                 .expect("write");
         }
-        // SAFETY: `slot` holds the 8-byte value just written, satisfying `read_i128`'s precondition.
         let read = unsafe { BigIntKind::I64.read_i128(slot.as_ptr()) };
         assert_eq!(read, -5);
     }
@@ -425,9 +382,7 @@ mod tests {
     fn write_return_writes_value() {
         let mut slot = [0u8; 8];
         let value: std::result::Result<value::Value, ()> = Ok(value::Value::BigInt(123));
-        // SAFETY: `slot` is an 8-byte local buffer, satisfying the return-slot precondition.
         unsafe { BigIntKind::I64.write_return_to_pointer(slot.as_mut_ptr().cast(), &value) };
-        // SAFETY: `slot` holds the 8-byte value just written, satisfying `read_i128`'s precondition.
         assert_eq!(unsafe { BigIntKind::I64.read_i128(slot.as_ptr()) }, 123);
     }
 
@@ -439,9 +394,7 @@ mod tests {
         ] {
             let mut slot = [0xFFu8; 8];
             let value: std::result::Result<value::Value, ()> = Ok(value::Value::BigInt(payload));
-            // SAFETY: `slot` is an 8-byte local buffer, satisfying the return-slot precondition.
             unsafe { kind.write_return_to_pointer(slot.as_mut_ptr().cast(), &value) };
-            // SAFETY: `slot` holds the 8 bytes just written, satisfying `read_i128`'s precondition.
             assert_eq!(unsafe { kind.read_i128(slot.as_ptr()) }, 0);
         }
     }

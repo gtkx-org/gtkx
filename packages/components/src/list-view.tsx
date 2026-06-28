@@ -29,22 +29,11 @@ const headerFactoryInstaller: FactoryInstaller<Gtk.ListView> = {
     uninstall: (widget: Gtk.ListView) => widget.setHeaderFactory(null),
 };
 
-/**
- * Information passed to a {@link ListView} `renderItem` callback for a single
- * row: the shared `item`/`index` info plus the tree `depth` and whether the row
- * is currently expanded.
- */
 export interface ListRenderItemInfo<T> extends RenderItemInfo<T> {
     depth: number;
     isExpanded: boolean;
 }
 
-/**
- * Props for the {@link ListView} component, replacing the raw `GtkListView`
- * factory/model surface with a declarative `items`/`sections` plus `renderItem`
- * API, optional controlled selection, section headers, and tree autoexpansion.
- * Supplying an external `model` switches to the uncontrolled form.
- */
 type ListViewDeclarativeProps<T = unknown, S = unknown> = CollectionItemSizeProps &
     (
         | (ControlledSelectionProps & {
@@ -68,20 +57,9 @@ type ListViewDeclarativeProps<T = unknown, S = unknown> = CollectionItemSizeProp
           }
     );
 
-/**
- * Props for the {@link ListView} component: the raw `GtkListView` element
- * surface with its factory/model wiring replaced by the declarative
- * {@link ListViewDeclarativeProps} API.
- */
 export type ListViewProps<T = unknown, S = unknown> = Omit<GtkListViewProps, keyof ListViewDeclarativeProps<T, S>> &
     ListViewDeclarativeProps<T, S>;
 
-/**
- * A `GtkListView` driven by a declarative `items`/`sections` plus `renderItem`
- * API with optional controlled selection, section headers, and tree
- * autoexpansion. Supplying an external `model` switches to the uncontrolled
- * form.
- */
 interface ListViewWiring<T, S> {
     setRef: (value: Gtk.ListView | null) => void;
     resolver: ItemResolver<T, S>;

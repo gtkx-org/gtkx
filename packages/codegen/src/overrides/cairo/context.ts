@@ -1,5 +1,5 @@
-import { getHandle, t, wrapHandle } from "@gtkx/ffi";
-import { alloc, type Handle, read, write } from "@gtkx/native";
+import { getHandle, type Handle, t, wrapHandle } from "@gtkx/ffi";
+import { alloc, read, write } from "@gtkx/native";
 import type {
     Antialias,
     Content,

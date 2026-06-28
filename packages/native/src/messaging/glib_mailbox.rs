@@ -42,8 +42,6 @@ impl GlibThread {
         None
     }
 
-    /// Spawns the single gtkx-glib thread, runs its `GLib` main loop, and returns the loop handle
-    /// once the thread signals readiness.
     #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn spawn(&self) -> napi::Result<glib::MainLoop> {
         let (tx, rx) = mpsc::channel::<glib::MainLoop>();
@@ -95,10 +93,6 @@ impl GlibThread {
 }
 
 impl Mailbox {
-    /// Enqueues a GLib-thread task tagged with the current `callback_depth`.
-    ///
-    /// The depth tag records the reentrancy frame that produced the task so that a nested wait
-    /// only drains tasks at or below its own depth; see the module-level reentrancy invariant.
     fn push_glib_task(&self, task: GlibTask) {
         let depth = self.callback_depth.load(Ordering::Acquire);
         self.glib_inbox.lock().push_back((depth, task));
@@ -127,11 +121,6 @@ impl Mailbox {
         self.dispatch_pending_from_depth(0)
     }
 
-    /// Drains GLib-thread tasks tagged with `depth >= min_depth`, leaving shallower tasks queued.
-    ///
-    /// A nested wait passes its own `wait_depth` as `min_depth` so it only runs work enqueued at
-    /// or below its frame and never re-enters a task belonging to an outer frame; see the
-    /// module-level depth-tagged reentrancy invariant.
     pub fn dispatch_pending_from_depth(&self, min_depth: usize) -> bool {
         let mut dispatched = false;
 

@@ -4,8 +4,11 @@ const KEEP_ALIVE_INTERVAL = 2147483647;
 
 export type ApplicationRunner = {
     getIsRegistered(): boolean;
+    getWindows?(): unknown[];
+    removeWindow?(window: unknown): void;
     register(cancellable: null): boolean;
     activate(): void;
+    run(argv: string[]): number;
     on(signal: "activate" | "shutdown", handler: () => void): unknown;
     emit(signal: "shutdown"): void;
 };
@@ -17,14 +20,6 @@ export const onExit = (callback: () => void): void => {
     shutdownCallbacks.push(callback);
 };
 
-/**
- * Shuts the gtkx runtime down cleanly: runs every callback registered through
- * {@link onExit}, then quits the GLib main loop and joins its thread. Idempotent
- * and safe to call more than once. Registered as the `process.on("exit")`
- * handler and also exposed so a host (such as a test harness) can quiesce the
- * runtime before tearing down resources the GLib thread still depends on. The
- * runtime is single-lifecycle: it cannot be re-initialized after this returns.
- */
 export const quit = (): void => {
     if (hasQuit) return;
     hasQuit = true;
@@ -57,5 +52,14 @@ export const runApplication = (application: ApplicationRunner): void => {
 };
 
 export const quitApplication = (application: ApplicationRunner): void => {
-    application.emit("shutdown");
+    if (!application.getIsRegistered()) {
+        application.emit("shutdown");
+        return;
+    }
+
+    for (const window of application.getWindows?.() ?? []) {
+        application.removeWindow?.(window);
+    }
+
+    application.run([]);
 };

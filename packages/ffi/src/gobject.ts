@@ -1,10 +1,11 @@
-import type { Descriptor, Handle, Value } from "@gtkx/native";
+import type { Descriptor } from "@gtkx/native";
 import { GVALUE_SIZE, GVALUE_T, LIB } from "./constants.js";
 import { biguint64T, bind, objectT, sizedArrayT, stringT, uint32T, voidT } from "./descriptors.js";
 import { fromGValue, newGValueForDescriptor, toGValue } from "./gvalue.js";
+import type { Handle } from "./handle.js";
 import { getHandle } from "./registry.js";
 
-type Property = [Descriptor, Value];
+type Property = [Descriptor, unknown];
 
 const gObjectNewWithProperties = bind(
     LIB,

@@ -1,4 +1,3 @@
-import "./setup-runtime.js";
 import "./register-test-hooks.js";
 
 export { act } from "./act.js";

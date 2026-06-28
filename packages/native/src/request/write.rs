@@ -4,14 +4,14 @@ use napi_derive::napi;
 
 use super::Request;
 use super::read::FieldLocation;
-use crate::ffi::descriptor::{Descriptor, PointerWriter as _};
+use crate::ffi::descriptor::{Codec, Descriptor, PointerWriter as _};
 use crate::ffi::value::Value;
 use crate::handle::Handle;
 
 #[cfg_attr(test, allow(dead_code))]
 struct WriteRequest {
     location: FieldLocation,
-    field_type: Descriptor,
+    field_type: Codec,
     value: Value,
 }
 
@@ -19,11 +19,7 @@ impl Request for WriteRequest {
     type Output = ();
 
     fn execute(self) -> anyhow::Result<()> {
-        // SAFETY: runs on the gtkx-glib thread; `location` was built from a live `Handle`
-        // pointer plus an in-bounds field offset, satisfying `resolve`'s contract.
         let field_ptr = unsafe { self.location.resolve()? };
-        // SAFETY: `field_ptr` addresses a valid, writable field slot of `field_type`; the codec
-        // writes `value` into it, balancing any owned pointer the slot previously held.
         unsafe {
             self.field_type
                 .write_value_to_pointer(field_ptr, &self.value)
@@ -45,11 +41,11 @@ mod napi_export {
     pub fn write<'env>(
         env: &'env Env,
         handle: &External<Handle>,
-        js_type: Unknown<'_>,
+        js_type: Descriptor,
         offset: f64,
         value: Unknown<'_>,
     ) -> napi::Result<Unknown<'env>> {
-        let field_type = Descriptor::from_descriptor(env, js_type)?;
+        let field_type = js_type.into_codec()?;
         let parsed_value = Value::from_js_value(env, value)?;
         let request = WriteRequest {
             location: FieldLocation {
@@ -80,7 +76,7 @@ mod tests {
                 base_addr,
                 offset: 8,
             },
-            field_type: Descriptor::Integer(IntegerKind::I32),
+            field_type: Codec::Integer(IntegerKind::I32),
             value: Value::Number(1234.0),
         };
         write.execute().expect("write should succeed");
@@ -90,7 +86,7 @@ mod tests {
                 base_addr,
                 offset: 8,
             },
-            field_type: Descriptor::Integer(IntegerKind::I32),
+            field_type: Codec::Integer(IntegerKind::I32),
         };
         let value = read.execute().expect("read should succeed");
         let n = value.as_number().expect("read result should be a number");
@@ -104,7 +100,7 @@ mod tests {
                 base_addr: 0,
                 offset: 0,
             },
-            field_type: Descriptor::Integer(IntegerKind::I32),
+            field_type: Codec::Integer(IntegerKind::I32),
             value: Value::Number(0.0),
         };
         let err = write.execute().expect_err("null base write should fail");

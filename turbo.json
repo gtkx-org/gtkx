@@ -73,12 +73,6 @@
             "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo"],
             "outputLogs": "new-only"
         },
-        "@gtkx/native#build": {
-            "dependsOn": ["^build", "build:debug", "@gtkx/cli#codegen"],
-            "inputs": ["package.json", "*.ts", "tsconfig.json", "tsconfig.lib.json"],
-            "outputs": ["binding.js", "binding.d.ts", "binding.js.map", "binding.d.ts.map", "*.tsbuildinfo"],
-            "outputLogs": "new-only"
-        },
         "@gtkx/cli#codegen": {
             "dependsOn": ["@gtkx/native#build:debug"],
             "cache": false

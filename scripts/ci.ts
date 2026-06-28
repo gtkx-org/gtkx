@@ -34,10 +34,6 @@ function runCodspeed(mode: string, measuredTask: string): void {
     });
 }
 
-function runRustBench(): void {
-    run("cargo", ["codspeed", "run"], { cwd: nativeDir });
-}
-
 function runTsBench(): void {
     const [command, args] = wlheadless("pnpm", ["--filter", "@gtkx/e2e", "bench"]);
     run(command, args, {
@@ -75,19 +71,6 @@ const tasks: Record<string, () => void> = {
             cwd: nativeDir,
             env: { ...process.env, RUSTUP_TOOLCHAIN: "nightly" },
         });
-    },
-    bench() {
-        runCodspeed("simulation", "bench:measured");
-    },
-    "bench:measured"() {
-        runRustBench();
-        runTsBench();
-    },
-    "bench:rust"() {
-        runCodspeed("simulation", "bench:rust:measured");
-    },
-    "bench:rust:measured"() {
-        runRustBench();
     },
     "bench:ts"() {
         runCodspeed("walltime", "bench:ts:measured");

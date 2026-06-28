@@ -1,5 +1,5 @@
+import type { Handle } from "@gtkx/ffi";
 import { getHandle, t, wrapHandle } from "@gtkx/ffi";
-import type { Handle } from "@gtkx/native";
 import { type Extend, type Filter, Pattern, type PatternType, type Status, type Surface } from "../cairo.js";
 import { type PathData, parsePath } from "./context.js";
 import { allocMatrix, type Matrix as CairoMatrix } from "./matrix.js";

@@ -30,15 +30,18 @@ pub trait Request: Sized + Send + 'static {
     fn error_context() -> &'static str;
 
     fn dispatch(self, env: &Env) -> napi::Result<Unknown<'_>> {
-        let result = messaging::Mailbox::global()
-            .dispatch_and_wait_napi(*env, move || self.execute())?
+        self.dispatch_output(*env)?.to_js_response(env)
+    }
+
+    fn dispatch_output(self, env: Env) -> napi::Result<Self::Output> {
+        messaging::Mailbox::global()
+            .dispatch_and_wait_napi(env, move || self.execute())?
             .map_err(|e| {
                 napi::Error::new(
                     napi::Status::GenericFailure,
                     format!("Error during {}: {e:#}", Self::error_context()),
                 )
-            })?;
-        result.to_js_response(env)
+            })
     }
 }
 

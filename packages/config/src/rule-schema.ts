@@ -2,12 +2,6 @@ import type * as GObject from "@gtkx/gi/gobject";
 
 export const RELATIONSHIP_NODE_ELEMENT = "__GTKX_RELATIONSHIP_NODE__";
 
-/**
- * The closed set of relationship-node kinds the reconciler discriminates on, in
- * declaration order. Each value names one synthetic child role (a meta-object
- * page, a layout child, an overlay, a container slot, an inline text node, and so
- * on) that maps a JSX subcomponent onto a specific attachment behavior.
- */
 export const RELATIONSHIP_KINDS = [
     "meta-object",
     "layout-child",
@@ -21,18 +15,10 @@ export const RELATIONSHIP_KINDS = [
     "label-text",
 ] as const;
 
-/**
- * One relationship-node kind drawn from {@link RELATIONSHIP_KINDS}; the
- * discriminant the reconciler routes synthetic children on.
- */
 export type RelationshipKind = (typeof RELATIONSHIP_KINDS)[number];
 
 const RELATIONSHIP_KIND_SET: ReadonlySet<string> = new Set(RELATIONSHIP_KINDS);
 
-/**
- * Narrow an arbitrary value to a {@link RelationshipKind}. Used at the reconciler
- * boundary where a relationship element's `kind` prop arrives untyped.
- */
 export const isRelationshipKind = (value: unknown): value is RelationshipKind =>
     typeof value === "string" && RELATIONSHIP_KIND_SET.has(value);
 
@@ -56,13 +42,6 @@ export const BUFFER_TEXT_KIND: RelationshipKind = "buffer-text";
 
 export const LABEL_TEXT_KIND: RelationshipKind = "label-text";
 
-/**
- * Names of the child-attachment method shapes a GObject type can satisfy. Each
- * shape corresponds to a runtime method whose presence *and* signature (argument
- * arity, parameter types, nullability) `@gtkx/codegen` verifies against the GIR
- * model, so the reconciler can rely on the call shape instead of duck-typing the
- * method name alone.
- */
 export type AttachShape =
     | "append"
     | "add"
@@ -75,36 +54,16 @@ export type AttachShape =
     | "insert"
     | "getFirstChild";
 
-/**
- * Maps a GLib type name to the verified {@link AttachShape}s its own methods
- * introduce. The reconciler resolves an instance's full shape set by unioning
- * the entries across its type-name chain and implemented interfaces.
- */
 export type AttachShapeTable = Record<string, AttachShape[]>;
 
-/**
- * Names of the constructor arguments a stack/notebook page add-method consumes,
- * in order, when attaching a meta-object child to its host.
- */
 export type AddMethodArg = "widget" | "id" | "title" | "iconName";
 
-/**
- * Describes one candidate add-method for a meta-object host (such as
- * `GtkStack`): the method name, the ordered arguments it receives, and the
- * subset of those arguments that must be present for the method to apply.
- */
 export type AddMethodRule = {
     method: string;
     args: AddMethodArg[];
     requires: AddMethodArg[];
 };
 
-/**
- * Describes one page-meta setter applied to a host page object after a
- * meta-object child is attached: the setter method, the prop it reads, an
- * optional fallback value, and whether to skip the setter when the prop is
- * absent.
- */
 export type PageMetaSetter = {
     setter: string;
     prop: string;
@@ -112,42 +71,22 @@ export type PageMetaSetter = {
     whenPresent?: boolean;
 };
 
-/**
- * Reconciler capability describing how a parent type owns an ordered collection
- * of children: the accessor returning the live collection, plus the
- * position-aware attach and detach method names. The reconciler uses these to
- * preserve insertion order and detect moves.
- */
 export type OrderedInsertSpec = {
     collection: string;
     attach: string;
     detach: string;
 };
 
-/**
- * The reconciler node a rule function receives: the live GObject instance, the
- * React prop bag currently committed for it, and the container-slot routing key
- * a relationship-node child carries (for example `"prefix"`, `"start"`, `"controllers"`).
- */
 export interface RuleNode {
     instance: GObject.Object;
     props: Record<string, unknown>;
     slotTag: string | undefined;
 }
 
-/**
- * A set of plain-function rules keyed in the {@link RuleRegistry} by GLib type
- * name. `appendChild`/`removeChild` attach or detach a child; `setProps`
- * applies synthetic and collection props after the generic GIR props.
- */
 export interface RuleSet {
     appendChild?: (parent: RuleNode, child: RuleNode) => void;
     removeChild?: (parent: RuleNode, child: RuleNode) => void;
     setProps?: (node: RuleNode, newProps: Record<string, unknown>, oldProps: Record<string, unknown> | null) => void;
 }
 
-/**
- * Maps a GLib type name to its {@link RuleSet}. The reconciler resolves an
- * instance's rule set by walking the type-name chain and interfaces.
- */
 export type RuleRegistry = Record<string, RuleSet>;

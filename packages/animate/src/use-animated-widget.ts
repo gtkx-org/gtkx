@@ -5,20 +5,6 @@ import { useIsInitialPresence, usePresence } from "./animate-presence.js";
 import type { WidgetAnimationProps } from "./types.js";
 import { useWidgetAnimation } from "./use-widget-animation.js";
 
-/**
- * Drives the enter and exit animation for a single GTK widget and returns the
- * ref to attach to it.
- *
- * The returned ref merges the supplied external ref with the animator's own
- * ref. On mount the enter animation plays (gated by {@link AnimatePresence}'s
- * initial-presence state); when the element is removed from an
- * {@link AnimatePresence}, the exit animation runs and presence completion is
- * signalled once it settles.
- *
- * @param externalRef - A caller-supplied ref to also receive the widget.
- * @param props - The {@link WidgetAnimationProps} describing the animation.
- * @returns A ref callback to attach to the animated widget.
- */
 export const useAnimatedWidget = (
     externalRef: Ref<Gtk.Widget | null> | undefined,
     props: WidgetAnimationProps,

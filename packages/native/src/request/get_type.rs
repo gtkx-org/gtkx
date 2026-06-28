@@ -19,15 +19,10 @@ impl Request for GetTypeRequest {
             return Ok(0);
         }
         let instance = self.instance_addr as *mut gobject_ffi::GTypeInstance;
-        // SAFETY: `instance_addr` is non-zero (checked above) and points to a live
-        // `GTypeInstance`; reading its `g_class` field is sound (the field may itself be null,
-        // which is handled below).
         let g_class = unsafe { (*instance).g_class };
         if g_class.is_null() {
             return Ok(0);
         }
-        // SAFETY: `g_class` is non-null (checked above) and points to the instance's live
-        // `GTypeClass`; reading its `g_type` field yields the registered GType.
         let gtype = unsafe { (*g_class).g_type };
         Ok(gtype as u64)
     }
@@ -44,14 +39,12 @@ mod napi_export {
 
     #[napi(catch_unwind)]
     #[cfg_attr(test, allow(dead_code))]
-    pub fn get_type<'env>(
-        env: &'env Env,
-        handle: &External<Handle>,
-    ) -> napi::Result<Unknown<'env>> {
-        GetTypeRequest {
+    pub fn get_type(env: Env, handle: &External<Handle>) -> napi::Result<BigInt> {
+        let gtype = GetTypeRequest {
             instance_addr: handle.ptr_as_usize(),
         }
-        .dispatch(env)
+        .dispatch_output(env)?;
+        Ok(BigInt::from(gtype))
     }
 }
 
@@ -86,8 +79,6 @@ mod tests {
 
     #[test]
     fn get_type_returns_zero_for_instance_without_class() {
-        // SAFETY: `GTypeInstance` is a single nullable `g_class` pointer field, for which an
-        // all-zero bit pattern is a valid value representing an instance with a null class.
         let mut instance: gobject_ffi::GTypeInstance = unsafe { std::mem::zeroed() };
         let request = GetTypeRequest {
             instance_addr: std::ptr::addr_of_mut!(instance) as usize,

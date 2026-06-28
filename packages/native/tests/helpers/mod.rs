@@ -10,8 +10,8 @@ use gtk4::glib::{self, translate::IntoGlib as _};
 use gtk4::prelude::StaticType as _;
 
 use native::ffi::descriptor::{
-    ArrayDescriptor, ArrayKind, Descriptor, EnumFlagsDescriptor, EnumFlagsKind, FfiDecoder,
-    FfiEncoder, FloatKind, IntegerKind, Ownership, PointerWriter, ReadSource,
+    ArrayDescriptor, ArrayKind, Codec, EnumFlagsDescriptor, EnumFlagsKind, FfiDecoder, FfiEncoder,
+    FloatKind, IntegerKind, Ownership, PointerWriter, ReadSource,
 };
 use native::ffi::library_cache::GlibThreadState;
 use native::ffi::value::Value;
@@ -21,14 +21,6 @@ static SERIAL: Mutex<()> = Mutex::new(());
 
 type GlibJob = Box<dyn FnOnce() + Send>;
 
-/// Channel into the dedicated `GLib` worker thread that owns the process default
-/// [`glib::MainContext`].
-///
-/// `GLib` acquires ownership of the default main context on whichever thread first runs
-/// [`gtk4::init`]; any code that iterates that context — pumping idle sources, draining the
-/// dispatch mailbox — only makes progress on the owning thread. The cargo test harness spreads
-/// test bodies across worker threads, so every `GLib`-touching body is funnelled onto this single
-/// thread to keep the `GLib`-owning thread and the executing thread identical.
 static GLIB_THREAD: OnceLock<Sender<GlibJob>> = OnceLock::new();
 
 thread_local! {
@@ -60,8 +52,6 @@ pub fn serial_guard() -> MutexGuard<'static, ()> {
     SERIAL.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
-/// Runs `f` on the dedicated `GLib` worker thread and returns its result, propagating any panic to
-/// the caller so test failures surface normally.
 fn on_glib_thread<F, R>(f: F) -> R
 where
     F: FnOnce() -> R + Send,
@@ -76,10 +66,6 @@ where
         let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f));
         let _ = result_tx.send(outcome);
     });
-    // SAFETY: `on_glib_thread` blocks on `result_rx.recv()` below until the job has run and sent its
-    // result, so neither `f` nor `R` outlives this stack frame. Erasing their non-`'static`
-    // lifetimes for the duration of that synchronous round trip is sound because the borrow cannot
-    // escape it.
     let job: Box<dyn FnOnce() + Send> = unsafe {
         std::mem::transmute::<Box<dyn FnOnce() + Send + '_>, Box<dyn FnOnce() + Send>>(scoped_job)
     };
@@ -108,10 +94,6 @@ where
 }
 
 pub fn make_integer_hash_table(entries: &[(usize, usize)]) -> *mut glib::ffi::GHashTable {
-    // SAFETY: this runs under `run`/`serial_guard` on the GLib-initialized test thread.
-    // `g_hash_table_new_full` with direct hash/equal and no destroy notifies yields a valid
-    // table that stores integer keys/values as borrowed pointers; the without-provenance
-    // pointers are never dereferenced, only compared and stored by value.
     unsafe {
         let table = glib::ffi::g_hash_table_new_full(
             Some(glib::ffi::g_direct_hash),
@@ -130,30 +112,14 @@ pub fn make_integer_hash_table(entries: &[(usize, usize)]) -> *mut glib::ffi::GH
     }
 }
 
-/// Ref function for a fundamental codec backed by `GParamSpec`.
-///
-/// # Safety
-///
-/// `ptr` must be null or point to a live `GParamSpec`; the call adds one reference and returns
-/// the same pointer, leaving the caller responsible for the matching unref.
 pub unsafe extern "C" fn param_spec_ref(ptr: *mut c_void) -> *mut c_void {
-    // SAFETY: `ptr` is a live `GParamSpec` per the contract; `g_param_spec_ref` takes one
-    // additional reference and returns it unchanged.
     unsafe {
         glib::gobject_ffi::g_param_spec_ref(ptr as *mut glib::gobject_ffi::GParamSpec)
             as *mut c_void
     }
 }
 
-/// Unref function for a fundamental codec backed by `GParamSpec`.
-///
-/// # Safety
-///
-/// `ptr` must point to a live `GParamSpec` for which the caller holds a reference; that
-/// reference is released and may free the spec, so `ptr` must not be used afterwards.
 pub unsafe extern "C" fn param_spec_unref(ptr: *mut c_void) {
-    // SAFETY: `ptr` is a live `GParamSpec` the caller owns a reference to per the contract;
-    // `g_param_spec_unref` releases exactly that reference.
     unsafe {
         glib::gobject_ffi::g_param_spec_unref(ptr as *mut glib::gobject_ffi::GParamSpec);
     }
@@ -164,8 +130,6 @@ pub fn param_spec_refcount(ptr: *mut c_void) -> u32 {
     if ptr.is_null() {
         return 0;
     }
-    // SAFETY: `ptr` is non-null (checked above) and points to a live `GParamSpec` supplied by the
-    // test; reading its `ref_count` field is a plain field access on a valid struct.
     unsafe {
         let param = ptr as *mut glib::gobject_ffi::GParamSpec;
         (*param).ref_count
@@ -177,16 +141,11 @@ pub fn get_gobject_refcount(obj_ptr: *mut glib::gobject_ffi::GObject) -> u32 {
     if obj_ptr.is_null() {
         return 0;
     }
-    // SAFETY: `obj_ptr` is non-null (checked above) and points to a live `GObject`; reading its
-    // `ref_count` field is a plain field access on a valid struct.
     unsafe { (*obj_ptr).ref_count }
 }
 
 #[must_use]
 pub fn allocate_test_boxed(gtype: glib::Type) -> *mut std::ffi::c_void {
-    // SAFETY: runs on the GLib-initialized test thread. `rgba.as_ptr()` is a valid pointer to a
-    // live `GdkRGBA` value, and `gtype` is its matching boxed type, so `g_boxed_copy` returns a
-    // newly owned boxed copy that the caller is responsible for freeing.
     unsafe {
         let rgba = gdk::RGBA::new(1.0, 0.5, 0.25, 1.0);
         glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), rgba.as_ptr() as *const _)
@@ -206,8 +165,6 @@ pub fn is_valid_boxed_ptr(ptr: *mut std::ffi::c_void, gtype: glib::Type) -> bool
     }
 
     if gtype == gdk::RGBA::static_type() {
-        // SAFETY: `ptr` is non-null (checked above) and `gtype` identifies it as a `GdkRGBA`, so
-        // reinterpreting it as `&GdkRGBA` and reading its float fields is valid.
         unsafe {
             let rgba: &gdk::ffi::GdkRGBA = &*(ptr as *const gdk::ffi::GdkRGBA);
             rgba.red >= 0.0 && rgba.red <= 1.0 && rgba.alpha >= 0.0 && rgba.alpha <= 1.0
@@ -226,10 +183,6 @@ pub struct TestBoxed {
 impl Drop for TestBoxed {
     fn drop(&mut self) {
         if self.is_owned && !self.ptr.is_null() {
-            // SAFETY: `is_owned` means this `TestBoxed` owns `self.ptr`, which is non-null
-            // (checked above). A `Some(gtype)` boxed value is freed with the matching
-            // `g_boxed_free`; a `None` plain allocation with `g_free`. Either frees the owned
-            // value exactly once as the wrapper is dropped.
             unsafe {
                 match self.descriptor {
                     Some(gtype) => {
@@ -259,24 +212,13 @@ pub fn assert_decode_null_yields_null<C: FfiDecoder>(codec: &C) {
 }
 
 pub fn assert_read_null_yields_null<C: FfiDecoder>(codec: &C) {
-    // SAFETY: `ReadSource::Value` with a null pointer is the documented null case; every decoder's
-    // `read_value` null-guards before dereferencing, so a null pointer reads as `Value::Null`.
     let value = unsafe { codec.read(ReadSource::Value(std::ptr::null_mut(), "ctx")) }
         .expect("null ptr_to_value should succeed");
     assert!(matches!(value, Value::Null));
 }
 
-/// Reads a value from a pointer-sized slot whose stored pointer is `ptr`, exercising the
-/// `ReadSource::Slot` decode path.
-///
-/// # Safety
-///
-/// `ptr` must be a value the decoder `C` can read from a slot — typically null or a live pointer
-/// of the type the codec expects, owned by the GTK-initialized test thread.
 pub unsafe fn read_slot<C: FfiDecoder>(codec: &C, ptr: *mut c_void) -> anyhow::Result<Value> {
     let slot: *mut c_void = ptr;
-    // SAFETY: `&slot` is a live, pointer-sized stack slot holding `ptr`; `read_pointer_slot`
-    // reads one pointer from it and decodes the pointee per the caller's `ptr` contract.
     unsafe {
         codec.read(ReadSource::Slot(
             &slot as *const *mut c_void as *const c_void,
@@ -290,8 +232,6 @@ pub fn write_return_into_slot<C: PointerWriter>(
     value: &Result<Value, ()>,
 ) -> *mut c_void {
     let mut slot: *mut c_void = std::ptr::null_mut();
-    // SAFETY: `&mut slot` is a live, pointer-sized stack slot; `write_return_to_pointer` writes
-    // exactly one pointer (or null) into it, which is read back after the call.
     unsafe { codec.write_return_to_pointer(&mut slot as *mut *mut c_void as *mut c_void, value) };
     slot
 }
@@ -302,8 +242,6 @@ pub fn write_value_into_slot<C: PointerWriter>(
     value: &Value,
 ) -> *mut c_void {
     let mut slot: *mut c_void = initial;
-    // SAFETY: `&mut slot` is a live, pointer-sized stack slot pre-seeded with `initial` (the prior
-    // owned pointer or null); `write_value_to_pointer` swaps in the new value, balancing ownership.
     unsafe { codec.write_value_to_pointer(&mut slot as *mut *mut c_void as *mut c_void, value) }
         .expect("write_value_to_pointer should succeed");
     slot
@@ -312,8 +250,6 @@ pub fn write_value_into_slot<C: PointerWriter>(
 pub fn assert_write_return_err_writes_null<C: PointerWriter>(codec: &C) {
     let mut slot: *mut c_void = std::ptr::dangling_mut::<c_void>();
     let value: Result<Value, ()> = Err(());
-    // SAFETY: `&mut slot` is a live, pointer-sized stack slot; on an `Err` value
-    // `write_return_to_pointer` writes null into it without reading the dangling initial value.
     unsafe {
         codec.write_return_to_pointer(&mut slot as *mut *mut c_void as *mut c_void, &value);
     }
@@ -323,7 +259,7 @@ pub fn assert_write_return_err_writes_null<C: PointerWriter>(codec: &C) {
 #[must_use]
 pub fn i32_array_descriptor(size: usize) -> ArrayDescriptor {
     ArrayDescriptor {
-        item_descriptor: Box::new(Descriptor::Integer(IntegerKind::I32)),
+        item_descriptor: Box::new(Codec::Integer(IntegerKind::I32)),
         kind: ArrayKind::Fixed { size },
         ownership: Ownership::Borrowed,
         element_size: None,
@@ -333,7 +269,7 @@ pub fn i32_array_descriptor(size: usize) -> ArrayDescriptor {
 #[must_use]
 pub fn f32_array_descriptor() -> ArrayDescriptor {
     ArrayDescriptor {
-        item_descriptor: Box::new(Descriptor::Float(FloatKind::F32)),
+        item_descriptor: Box::new(Codec::Float(FloatKind::F32)),
         kind: ArrayKind::Sized { size_index: 1 },
         ownership: Ownership::Borrowed,
         element_size: None,

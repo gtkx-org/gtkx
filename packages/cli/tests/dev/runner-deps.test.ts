@@ -4,7 +4,9 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const hoisted = vi.hoisted(() => ({
-    getDefault: vi.fn(() => null as { applicationId: string | null } | null),
+    getDefault: vi.fn(
+        () => null as { applicationId: string | null; on?: (signal: string, handler: () => void) => void } | null,
+    ),
     quitApplication: vi.fn(),
     installGracefulShutdown: vi.fn(),
     startMcpClient: vi.fn(async () => undefined),
@@ -76,25 +78,22 @@ describe("defaultDevRunnerDeps (wiring)", () => {
         expect(loadAppModule).toHaveBeenCalledWith("@gtkx/testing");
     });
 
-    it("installs a lifecycle whose quit forwards the app-graph default quit to the runner callback", async () => {
+    it("connects the runner shutdown handler to the live application's shutdown signal", () => {
         const deps = defaultDevRunnerDeps();
-        const setApplicationLifecycle = vi.fn();
-        const defaultApplicationLifecycle = { quit: vi.fn() };
-        const loadAppModule = vi.fn(async () => ({ setApplicationLifecycle, defaultApplicationLifecycle }));
-        const onQuit = vi.fn();
+        const on = vi.fn();
+        hoisted.getDefault.mockReturnValueOnce({ applicationId: null, on });
+        const onShutdown = vi.fn();
 
-        await deps.installApplicationLifecycle(loadAppModule, onQuit);
+        deps.watchApplicationShutdown(onShutdown);
 
-        expect(loadAppModule).toHaveBeenCalledWith("@gtkx/react");
-        expect(setApplicationLifecycle).toHaveBeenCalledTimes(1);
-        const installed = setApplicationLifecycle.mock.calls[0]?.[0] as { quit: (application: unknown) => void };
-        const app = { quit: vi.fn() };
-        installed.quit(app);
+        expect(on).toHaveBeenCalledWith("shutdown", onShutdown);
+    });
 
-        expect(onQuit).toHaveBeenCalledTimes(1);
-        const runDefaultQuit = onQuit.mock.calls[0]?.[0] as () => void;
-        runDefaultQuit();
-        expect(defaultApplicationLifecycle.quit).toHaveBeenCalledWith(app);
+    it("does nothing when no application is registered", () => {
+        const deps = defaultDevRunnerDeps();
+        hoisted.getDefault.mockReturnValueOnce(null);
+
+        expect(() => deps.watchApplicationShutdown(vi.fn())).not.toThrow();
     });
 });
 

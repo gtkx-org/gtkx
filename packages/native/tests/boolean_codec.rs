@@ -72,9 +72,6 @@ fn decode_reads_i32_and_rejects_other() {
 #[test]
 fn ptr_to_value_treats_nonzero_as_true() {
     let anchor: u8 = 0;
-    // SAFETY: `BooleanDescriptor` reads a `ReadSource::Value` by treating the pointer as nonzero/null
-    // truthiness only; the non-null `anchor` pointer is a live stack local that is never
-    // dereferenced, so the read is sound.
     let truthy = unsafe {
         FfiDecoder::read(
             &BooleanDescriptor,
@@ -84,8 +81,6 @@ fn ptr_to_value_treats_nonzero_as_true() {
     .unwrap();
     assert!(matches!(truthy, Value::Boolean(true)));
 
-    // SAFETY: a null `ReadSource::Value` pointer is the documented "false" case for `BooleanDescriptor`,
-    // which inspects only the pointer's nullness and never dereferences it.
     let falsy = unsafe {
         FfiDecoder::read(
             &BooleanDescriptor,
@@ -100,16 +95,12 @@ fn ptr_to_value_treats_nonzero_as_true() {
 fn read_from_pointer_reads_i32_slot() {
     let truthy_slot: i32 = 1;
     let truthy_ptr = &truthy_slot as *const i32 as *const c_void;
-    // SAFETY: `ReadSource::Slot` reads one `i32` from the slot; `truthy_ptr` points to the live,
-    // correctly-typed `truthy_slot` stack local, so the in-bounds read is sound.
     let read = unsafe { FfiDecoder::read(&BooleanDescriptor, ReadSource::Slot(truthy_ptr, "ctx")) }
         .unwrap();
     assert!(matches!(read, Value::Boolean(true)));
 
     let falsy_slot: i32 = 0;
     let falsy_ptr = &falsy_slot as *const i32 as *const c_void;
-    // SAFETY: `falsy_ptr` points to the live, correctly-typed `falsy_slot` `i32` stack local,
-    // so reading one `i32` from the slot is in bounds and sound.
     let read_zero =
         unsafe { FfiDecoder::read(&BooleanDescriptor, ReadSource::Slot(falsy_ptr, "ctx")) }
             .unwrap();
@@ -121,20 +112,16 @@ fn write_return_to_pointer_writes_truthiness() {
     let mut slot: i64 = -1;
     let ret = &mut slot as *mut i64 as *mut c_void;
 
-    // SAFETY: `ret` points to the live, writable `i64` stack local `slot`, which is at least as
-    // wide as the boolean return word `write_return_to_pointer` stores, so the write is in bounds.
     unsafe {
         PointerWriter::write_return_to_pointer(&BooleanDescriptor, ret, &Ok(Value::Boolean(true)));
     }
     assert_eq!(slot, 1);
 
-    // SAFETY: same writable `i64` slot `ret`; the boolean return word is written in bounds.
     unsafe {
         PointerWriter::write_return_to_pointer(&BooleanDescriptor, ret, &Ok(Value::Boolean(false)));
     }
     assert_eq!(slot, 0);
 
-    // SAFETY: same writable `i64` slot `ret`; the error case writes the zero return word in bounds.
     unsafe { PointerWriter::write_return_to_pointer(&BooleanDescriptor, ret, &Err(())) };
     assert_eq!(slot, 0);
 }
@@ -144,15 +131,12 @@ fn write_value_to_pointer_writes_boolean_and_rejects_other() {
     let mut slot: i32 = -1;
     let ptr = &mut slot as *mut i32 as *mut c_void;
 
-    // SAFETY: `ptr` points to the live, writable `i32` stack local `slot`, the exact width
-    // `write_value_to_pointer` stores a boolean field into, so the write is in bounds.
     unsafe {
         PointerWriter::write_value_to_pointer(&BooleanDescriptor, ptr, &Value::Boolean(true))
     }
     .unwrap();
     assert_eq!(slot, 1);
 
-    // SAFETY: same writable `i32` slot `ptr`; the boolean field is written in bounds.
     unsafe {
         PointerWriter::write_value_to_pointer(&BooleanDescriptor, ptr, &Value::Boolean(false))
     }
@@ -160,8 +144,6 @@ fn write_value_to_pointer_writes_boolean_and_rejects_other() {
     assert_eq!(slot, 0);
 
     assert!(
-        // SAFETY: same writable `i32` slot `ptr`; the call rejects the non-boolean value before
-        // any write, so the slot is untouched.
         unsafe {
             PointerWriter::write_value_to_pointer(&BooleanDescriptor, ptr, &Value::Number(1.0))
         }

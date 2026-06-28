@@ -5,12 +5,6 @@ export const GIR_LIBRARY_PATTERN: RegExp = /^[A-Za-z][A-Za-z0-9]*-\d+(?:\.\d+)*$
 const APPLICATION_ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]*(\.[A-Za-z_][A-Za-z0-9_-]*)+$/;
 const APPLICATION_ID_MAX_LENGTH = 255;
 
-/**
- * Validate a GTK application ID (a GApplication-style reverse-DNS identifier,
- * e.g. `com.example.MyApp`). Returns `true` when the value is a non-empty,
- * dot-separated identifier no longer than 255 characters whose every segment
- * starts with a letter or underscore.
- */
 export const isValidApplicationId = (applicationId: string): boolean => {
     if (applicationId.length === 0 || applicationId.length > APPLICATION_ID_MAX_LENGTH) {
         return false;

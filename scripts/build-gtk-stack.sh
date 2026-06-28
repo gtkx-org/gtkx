@@ -1,14 +1,4 @@
 #!/usr/bin/env bash
-# Builds the GTK 4.22.4 runtime stack from source into $PREFIX on Ubuntu 22.04
-# (jammy) ARM64, for the CodSpeed macro-runner Walltime bench job. Jammy ships
-# GTK 4.6; the bindings target 4.22.4, so the stack the benches exercise at
-# runtime (and whose .gir codegen reads) must be built here. The @gtkx/native
-# addon itself builds against jammy's glib, so this only provides the runtime
-# GTK + its introspection data.
-#
-# Idempotent: a content sentinel ($PREFIX/.stack-hash == STACK_VERSION) makes a
-# warm cache a no-op past the apt runtime prerequisites. The whole pinned set is
-# embedded here so the CI cache key (hashFiles of this file) rotates on any bump.
 set -euo pipefail
 
 PREFIX="${PREFIX:-/opt/gtkx}"
@@ -19,10 +9,6 @@ trap 'rm -rf "$WORK"' EXIT
 
 log() { printf '\n\033[1;36m[build-gtk-stack] %s\033[0m\n' "$*"; }
 
-# Runtime + build system dependencies reused from jammy apt (leaf libs whose
-# jammy versions are new enough and ABI-forward-compatible with the from-source
-# glib). Always run: the macro runner is ephemeral, so the cache only restores
-# $PREFIX, not these system packages.
 log "apt prerequisites"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
@@ -39,15 +25,10 @@ apt-get install -y --no-install-recommends \
     hicolor-icon-theme librsvg2-common fontconfig fonts-noto-core \
     fonts-dejavu-core gvfs dbus hwdata curl ca-certificates
 
-# CI has no GPU: drop hardware Vulkan ICDs so GTK selects llvmpipe.
 if [ -d /usr/share/vulkan/icd.d ]; then
     find /usr/share/vulkan/icd.d -type f -name '*.json' ! -name 'lvp_icd*' -delete || true
 fi
 
-# Environment for the from-source builds AND for g-ir-scanner, which dlopens the
-# freshly built libraries during introspection — LD_LIBRARY_PATH must point at
-# $PREFIX before any introspected component is configured, or it silently emits
-# no .gir and codegen later fails to find it.
 export PATH="$PREFIX/bin:$PATH"
 export PKG_CONFIG_PATH="$PREFIX/lib/$TRIPLET/pkgconfig:$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
 export LD_LIBRARY_PATH="$PREFIX/lib/$TRIPLET:$PREFIX/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
@@ -66,9 +47,6 @@ log "cold build of $STACK_VERSION into $PREFIX"
 python3 -m pip install --upgrade pip
 python3 -m pip install 'meson>=1.4' ninja
 
-# Download + extract a release tarball; echo the directory holding its top-level
-# meson.build. Locating it rather than assuming a strip depth tolerates tarballs
-# whose members carry a leading "./" component (e.g. AppStream's release archive).
 fetch() {
     local url="$1" name tmp root
     name="$(basename "$url")"
@@ -80,7 +58,6 @@ fetch() {
     echo "$root"
 }
 
-# meson build a component into $PREFIX. Args: <url> <meson flags...>
 build_meson() {
     local url="$1"; shift
     local dir; dir="$(fetch "$url")"
@@ -98,14 +75,6 @@ build_meson "https://download.savannah.gnu.org/releases/freetype/freetype-2.14.3
     -Dharfbuzz=disabled -Dbrotli=disabled
 build_meson "https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/2.18.1/fontconfig-2.18.1.tar.gz" \
     -Ddoc=disabled -Dtests=disabled -Dnls=disabled
-# glib <-> gobject-introspection bootstrap. glib installs its own
-# GLib/GObject/Gio/GModule gir, but only when introspection is enabled, which
-# needs g-ir-scanner from gobject-introspection; gobject-introspection in turn
-# links glib. Break the cycle in three passes: build glib without introspection,
-# build gobject-introspection (providing g-ir-scanner), then reconfigure the
-# same glib build tree with introspection on so the GLib-stack gir is built and
-# installed. gobject-introspection builds those gir only for its own use during
-# its build and never installs them, so glib is the only source of them.
 GLIB_FLAGS=(-Dman-pages=disabled -Ddocumentation=false -Dtests=false -Dnls=disabled -Dsysprof=disabled)
 GLIB_DIR="$(fetch "https://download.gnome.org/sources/glib/2.88/glib-2.88.1.tar.xz")"
 log "building glib (pass 1: introspection off)"
@@ -140,10 +109,6 @@ build_meson "https://download.gnome.org/sources/gtk/4.22/gtk-4.22.4.tar.xz" \
     -Dsysprof=disabled -Dcolord=disabled -Dbuild-demos=false \
     -Dbuild-testsuite=false -Dbuild-tests=false -Dbuild-examples=false \
     -Ddocumentation=false -Dman-pages=false
-# libadwaita hard-depends on appstream (>= 1.0 API, for AdwAboutDialog) and falls
-# back to building it from an unpinned git wrap when the system lacks it. Build a
-# pinned appstream here with the same minimal options libadwaita requests so it
-# resolves via pkg-config and the wrap is never fetched.
 build_meson "https://www.freedesktop.org/software/appstream/releases/AppStream-1.0.5.tar.xz" \
     -Dstemming=false -Dsystemd=false -Dvapi=false -Dqt=false -Dcompose=false \
     -Dgir=false -Dsvg-support=false -Ddocs=false -Dapidocs=false -Dinstall-docs=false
@@ -153,13 +118,7 @@ build_meson "https://download.gnome.org/sources/gtksourceview/5.18/gtksourceview
     -Dintrospection=enabled -Dbuild-testsuite=false -Ddocumentation=false \
     -Dinstall-tests=false -Dvapi=false -Dsysprof=false
 
-# Headless harness: weston 15 (jammy's is 9; the suite targets 15) built against
-# the from-source wayland into $PREFIX, and xwayland-run (provides
-# `wlheadless-run`), a pure-Python tool absent from jammy, installed into $PREFIX
-# so the whole runtime is one relocatable tree.
 log "building weston 15.0.1"
-# weston's build deps come via `apt-get build-dep`, which needs source repos;
-# jammy CI images ship them disabled, so mirror the ubuntu deb lines to deb-src.
 grep -hE '^deb .*ubuntu' /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null \
     | sed 's/^deb /deb-src /' > /etc/apt/sources.list.d/gtkx-debsrc.list || true
 apt-get update || true

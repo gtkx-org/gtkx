@@ -1,4 +1,4 @@
-import type { Descriptor, Value } from "@gtkx/native";
+import type { Descriptor } from "@gtkx/native";
 import { isCallerAllocatedType, isRefDescriptor } from "./arg.js";
 import { valueCopyInto } from "./gvalue.js";
 import { fromNativeValue, toNativeValue } from "./native-value.js";
@@ -27,7 +27,7 @@ const fillCallerAllocatedBuffer = (descriptor: Descriptor, target: object, sourc
 
 type CallbackReceiver = "this" | "emitter" | "none";
 
-type Callback = (...args: Value[]) => Value;
+type Callback = (...args: unknown[]) => unknown;
 
 export type UserCallback = (...args: never[]) => unknown;
 
@@ -77,7 +77,7 @@ export function wrapCallback(fn: UserCallback, spec: CallbackSpec, receiver: Cal
     const effectiveTypes =
         userDataIndex === undefined ? spec.argDescriptors : spec.argDescriptors.filter((_, i) => i !== userDataIndex);
     const start = receiver === "none" ? 0 : 1;
-    return (...rawArgs: Value[]): Value => {
+    return (...rawArgs: unknown[]): unknown => {
         const wrapped = effectiveTypes.map((descriptor, i) => fromNativeValue(descriptor, rawArgs[i]));
         const thisArg = receiver === "this" ? (wrapped[0] ?? null) : null;
         const { inputs, outParams } = partitionCallbackArgs(effectiveTypes, wrapped, start, receiver);

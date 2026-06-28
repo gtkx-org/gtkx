@@ -24,16 +24,18 @@ const callRunnerHook = (name: "afterEach" | "afterAll", callback: () => unknown)
 callRunnerHook("afterEach", collectGarbage);
 callRunnerHook("afterAll", quit);
 
+declare global {
+    var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
+}
+
 let previousIsReactActEnvironment: boolean | undefined;
 
-beforeAll(async () => {
+beforeAll(() => {
     callArgs(GTK_LIB, "gtk_init", [], { kind: "void" });
-    const { getIsReactActEnvironment, setIsReactActEnvironment } = await import("@gtkx/testing/act");
-    previousIsReactActEnvironment = getIsReactActEnvironment();
-    setIsReactActEnvironment(true);
+    previousIsReactActEnvironment = globalThis.IS_REACT_ACT_ENVIRONMENT;
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 });
 
-afterAll(async () => {
-    const { setIsReactActEnvironment } = await import("@gtkx/testing/act");
-    setIsReactActEnvironment(previousIsReactActEnvironment);
+afterAll(() => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = previousIsReactActEnvironment;
 });

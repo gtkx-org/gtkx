@@ -6,21 +6,119 @@ use glib::{
     translate::{FromGlib as _, IntoGlib as _},
 };
 use napi::bindgen_prelude::*;
-use napi::{Env, JsFunction, JsObject, NapiValue as _};
+use napi::{Env, JsFunction, NapiValue as _};
 use napi_derive::napi;
 
 use super::Request;
 use crate::ffi::callback::{CallbackState, build_trampoline};
-use crate::ffi::descriptor::Descriptor;
-use crate::ffi::value::{JsRef, map_js_array};
+use crate::ffi::descriptor::{Codec, Descriptor};
+use crate::ffi::value::JsRef;
 use crate::messaging::error_reporter::ErrorReporter;
+
+pub struct VfuncCallback(Arc<JsRef<JsFunction>>);
+
+impl FromNapiValue for VfuncCallback {
+    unsafe fn from_napi_value(env: sys::napi_env, napi_val: sys::napi_value) -> napi::Result<Self> {
+        let env_wrapper = Env::from(env);
+        let value = unsafe { Unknown::from_napi_value(env, napi_val)? };
+        if !matches!(value.get_type()?, napi::ValueType::Function) {
+            return Err(napi::Error::new(
+                napi::Status::InvalidArg,
+                "register_class: vfunc 'fn' must be a function",
+            ));
+        }
+        let func = unsafe { JsFunction::from_raw_unchecked(env, napi_val) };
+        Ok(Self(Arc::new(JsRef::from_js_value(&env_wrapper, &func)?)))
+    }
+}
+
+#[napi(object, object_to_js = false)]
+pub struct RegisterClassVfunc {
+    pub byte_offset: u32,
+    pub arg_descriptors: Vec<Descriptor>,
+    pub return_descriptor: Descriptor,
+    #[napi(ts_type = "(...args: never[]) => unknown")]
+    pub r#fn: VfuncCallback,
+}
+
+#[napi(object, object_to_js = false)]
+pub struct RegisterClassInterface {
+    pub gtype: BigInt,
+    pub vfuncs: Vec<RegisterClassVfunc>,
+}
+
+#[napi(object, object_to_js = false)]
+pub struct RegisterClassOptions {
+    pub vfuncs: Option<Vec<RegisterClassVfunc>>,
+    pub interfaces: Option<Vec<RegisterClassInterface>>,
+}
+
+impl RegisterClassVfunc {
+    fn into_raw(self) -> napi::Result<RawVfunc> {
+        Ok(RawVfunc {
+            byte_offset: self.byte_offset as usize,
+            js_func: self.r#fn.0,
+            arg_descriptors: self
+                .arg_descriptors
+                .into_iter()
+                .map(Descriptor::into_codec)
+                .collect::<napi::Result<_>>()?,
+            return_descriptor: self.return_descriptor.into_codec()?,
+        })
+    }
+}
+
+impl RegisterClassInterface {
+    fn into_raw(self) -> napi::Result<RawInterface> {
+        let (_, gtype_value, gtype_lossless) = self.gtype.get_u64();
+        if !gtype_lossless {
+            return Err(napi::Error::new(
+                napi::Status::InvalidArg,
+                "register_class: interface gtype exceeds the 64-bit GType range",
+            ));
+        }
+        let gtype = unsafe { glib::Type::from_glib(gtype_value as glib::ffi::GType) };
+        if !gtype.is_valid() {
+            return Err(napi::Error::new(
+                napi::Status::InvalidArg,
+                "register_class: interface gtype must be non-zero",
+            ));
+        }
+        Ok(RawInterface {
+            gtype,
+            vfuncs: self
+                .vfuncs
+                .into_iter()
+                .map(RegisterClassVfunc::into_raw)
+                .collect::<napi::Result<_>>()?,
+        })
+    }
+}
+
+impl RegisterClassOptions {
+    fn into_raw(self) -> napi::Result<(Vec<RawVfunc>, Vec<RawInterface>)> {
+        let vfuncs = self
+            .vfuncs
+            .unwrap_or_default()
+            .into_iter()
+            .map(RegisterClassVfunc::into_raw)
+            .collect::<napi::Result<_>>()?;
+        let interfaces = self
+            .interfaces
+            .unwrap_or_default()
+            .into_iter()
+            .map(RegisterClassInterface::into_raw)
+            .collect::<napi::Result<_>>()?;
+        Ok((vfuncs, interfaces))
+    }
+}
 
 #[cfg_attr(test, allow(dead_code))]
 struct RawVfunc {
     byte_offset: usize,
     js_func: Arc<JsRef<JsFunction>>,
-    arg_descriptors: Vec<Descriptor>,
-    return_descriptor: Descriptor,
+    arg_descriptors: Vec<Codec>,
+    return_descriptor: Codec,
 }
 
 #[cfg_attr(test, allow(dead_code))]
@@ -30,43 +128,6 @@ struct RawInterface {
 }
 
 impl RawVfunc {
-    #[cfg_attr(test, allow(dead_code))]
-    #[cfg_attr(coverage_nightly, coverage(off))]
-    fn from_js_value(env: &Env, item: Unknown<'_>) -> napi::Result<Self> {
-        let obj = crate::ffi::value::unknown_as_object(env, &item)?;
-        let byte_offset: f64 = obj.get_named_property("byteOffset")?;
-        if byte_offset < 0.0 {
-            return Err(napi::Error::new(
-                napi::Status::InvalidArg,
-                "register_class: vfunc byteOffset must be non-negative",
-            ));
-        }
-        let arg_descriptors_prop: Unknown<'_> = obj.get_named_property("argDescriptors")?;
-        let return_descriptor_prop: Unknown<'_> = obj.get_named_property("returnDescriptor")?;
-        let callback_prop: Unknown<'_> = obj.get_named_property("fn")?;
-        if !matches!(callback_prop.get_type()?, napi::ValueType::Function) {
-            return Err(napi::Error::new(
-                napi::Status::InvalidArg,
-                "register_class: vfunc 'fn' must be a function",
-            ));
-        }
-        // SAFETY: `callback_prop` was verified to be a function above, and its raw napi value is
-        // valid for the current `env`, so reconstructing a `JsFunction` from the pair is sound.
-        let callback: JsFunction =
-            unsafe { JsFunction::from_raw_unchecked(env.raw(), callback_prop.raw()) };
-
-        let arg_descriptors = parse_type_array(env, arg_descriptors_prop)?;
-        let return_descriptor = Descriptor::from_descriptor(env, return_descriptor_prop)?;
-        let js_func = Arc::new(JsRef::from_js_value(env, &callback)?);
-
-        Ok(Self {
-            byte_offset: byte_offset as usize,
-            js_func,
-            arg_descriptors,
-            return_descriptor,
-        })
-    }
-
     #[cfg_attr(test, allow(dead_code))]
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn into_prepared(self) -> PreparedVfunc {
@@ -87,37 +148,6 @@ impl RawVfunc {
 }
 
 impl RawInterface {
-    #[allow(clippy::trivially_copy_pass_by_ref)]
-    #[cfg_attr(test, allow(dead_code))]
-    #[cfg_attr(coverage_nightly, coverage(off))]
-    fn from_js_value(env: &Env, item: Unknown<'_>) -> napi::Result<Self> {
-        let obj = crate::ffi::value::unknown_as_object(env, &item)?;
-        let (_, gtype_value, gtype_lossless) = obj.get_named_property::<BigInt>("gtype")?.get_u64();
-        if !gtype_lossless {
-            return Err(napi::Error::new(
-                napi::Status::InvalidArg,
-                "register_class: interface gtype exceeds the 64-bit GType range",
-            ));
-        }
-        // SAFETY: `gtype_value` is a losslessly decoded u64 GType handle from JS; `from_glib`
-        // reinterprets it as a `glib::Type`, whose validity is checked immediately below.
-        let gtype = unsafe { glib::Type::from_glib(gtype_value as glib::ffi::GType) };
-        if !gtype.is_valid() {
-            return Err(napi::Error::new(
-                napi::Status::InvalidArg,
-                "register_class: interface gtype must be non-zero",
-            ));
-        }
-        let vfuncs_prop: Unknown<'_> = obj.get_named_property("vfuncs")?;
-        let vfuncs = parse_js_array(
-            env,
-            vfuncs_prop,
-            "interface vfuncs",
-            RawVfunc::from_js_value,
-        )?;
-        Ok(Self { gtype, vfuncs })
-    }
-
     #[cfg_attr(test, allow(dead_code))]
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn into_prepared(self) -> PreparedInterface {
@@ -150,11 +180,6 @@ impl PreparedVfunc {
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn install_all(vtable_base: *mut c_void, vfuncs: Vec<Self>) {
         for vfunc in vfuncs {
-            // SAFETY: `byte_offset` was validated against the class/interface size and pointer
-            // alignment in `validate_vfunc_offset`, so `vtable_base + byte_offset` is an in-bounds,
-            // pointer-aligned slot in this vtable. `slot.write` installs the closure code
-            // pointer into that slot; `mem::forget` keeps the backing `CallbackState` alive for
-            // the lifetime of the registered type, which outlives any vfunc dispatch.
             unsafe {
                 let slot = vtable_base
                     .cast::<u8>()
@@ -171,9 +196,6 @@ impl PreparedInterface {
     #[cfg_attr(test, allow(dead_code))]
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn install(self, class_ptr: *mut c_void) {
-        // SAFETY: `class_ptr` is the live class struct returned by `g_type_class_ref` for the
-        // just-registered type, and `self.gtype` is a valid interface GType; `g_type_interface_peek`
-        // returns the interface vtable for that pairing or null if the type does not conform.
         let iface_vtable =
             unsafe { gobject_ffi::g_type_interface_peek(class_ptr, self.gtype.into_glib()) };
         if iface_vtable.is_null() {
@@ -189,21 +211,10 @@ impl PreparedInterface {
 
 #[cfg_attr(test, allow(dead_code))]
 #[cfg_attr(coverage_nightly, coverage(off))]
-/// `GObject` `class_init` callback that installs the prepared class vfuncs into the new vtable.
-///
-/// # Safety
-///
-/// Invoked by `GObject` during type registration. `class_data` is the pointer stored in
-/// `GTypeInfo::class_data` by `register_type` — either null or a `Box<Vec<PreparedVfunc>>` leaked
-/// via `Box::into_raw` — and `g_class` is the class struct being initialized. This must be called
-/// at most once per registered type so the boxed vfuncs are reclaimed exactly once.
 unsafe extern "C" fn class_init(g_class: *mut c_void, class_data: *mut c_void) {
     if class_data.is_null() {
         return;
     }
-    // SAFETY: `class_data` is the non-null `Box<Vec<PreparedVfunc>>` raw pointer that
-    // `register_type` stored in `GTypeInfo::class_data`; reclaiming it here transfers ownership
-    // back so the vec is dropped after its vfuncs are installed.
     let vfuncs = unsafe { Box::from_raw(class_data.cast::<Vec<PreparedVfunc>>()) };
     PreparedVfunc::install_all(g_class, *vfuncs);
 }
@@ -227,11 +238,7 @@ impl RegisterClassRequest {
             anyhow::bail!("GType name '{}' is already registered", self.name);
         }
 
-        // SAFETY: `GTypeQuery` is a plain C struct of integers and a pointer, for which an
-        // all-zero bit pattern is a valid initial state that `g_type_query` then fills in.
         let mut query: gobject_ffi::GTypeQuery = unsafe { std::mem::zeroed() };
-        // SAFETY: `self.parent_gtype` was checked valid above; `g_type_query` writes the parent
-        // type's layout into the writable `query` struct.
         unsafe { gobject_ffi::g_type_query(self.parent_gtype.into_glib(), &mut query) };
         if query.type_ == 0 {
             anyhow::bail!("parent gtype could not be queried");
@@ -318,23 +325,15 @@ impl RegisterClassRequest {
             value_table: std::ptr::null(),
         };
 
-        // SAFETY: `parent_gtype` is valid, `name_ptr` points to the request's live NUL-terminated
-        // `GString`, and `info` is a fully initialized `GTypeInfo` whose `class_data` owns the
-        // boxed vfuncs that `class_init` reclaims; the call runs on the gtkx-glib thread.
         let new_gtype = unsafe {
             gobject_ffi::g_type_register_static(parent_gtype.into_glib(), name_ptr, &info, 0)
         };
 
         if new_gtype == 0 {
-            // SAFETY: registration failed before `class_init` could run, so the boxed
-            // vfuncs at `class_vfuncs_ptr` are still owned here; reclaiming and dropping them frees
-            // them exactly once.
             drop(unsafe { Box::from_raw(class_vfuncs_ptr.cast::<Vec<PreparedVfunc>>()) });
             anyhow::bail!("g_type_register_static returned G_TYPE_INVALID");
         }
 
-        // SAFETY: `new_gtype` is the valid type just registered; `g_type_class_ref` returns its
-        // live class struct (and drives `class_init`), holding a class reference for the process.
         let class_ptr = unsafe { gobject_ffi::g_type_class_ref(new_gtype) };
 
         for iface in interfaces {
@@ -384,74 +383,6 @@ impl Request for RegisterClassRequest {
     }
 }
 
-#[allow(clippy::trivially_copy_pass_by_ref)]
-#[cfg_attr(test, allow(dead_code))]
-#[cfg_attr(coverage_nightly, coverage(off))]
-fn parse_js_array<T>(
-    env: &Env,
-    prop: Unknown<'_>,
-    description: &str,
-    convert: impl FnMut(&Env, Unknown<'_>) -> napi::Result<T>,
-) -> napi::Result<Vec<T>> {
-    if !prop.is_array()? {
-        return Err(napi::Error::new(
-            napi::Status::InvalidArg,
-            format!("register_class: expected an array of {description}"),
-        ));
-    }
-    // SAFETY: `prop` was verified to be an array above, and its raw napi value is valid for the
-    // current `env`, so reconstructing an `Array` from the pair is sound.
-    let arr: Array = unsafe { Array::from_napi_value(env.raw(), prop.raw())? };
-    map_js_array(env, &arr, convert)
-}
-
-#[allow(clippy::trivially_copy_pass_by_ref)]
-#[cfg_attr(test, allow(dead_code))]
-#[cfg_attr(coverage_nightly, coverage(off))]
-fn parse_type_array(env: &Env, prop: Unknown<'_>) -> napi::Result<Vec<Descriptor>> {
-    parse_js_array(env, prop, "types", Descriptor::from_descriptor)
-}
-
-#[allow(clippy::trivially_copy_pass_by_ref)]
-#[cfg_attr(test, allow(dead_code))]
-#[cfg_attr(coverage_nightly, coverage(off))]
-fn parse_array_property<T>(
-    env: &Env,
-    options: &JsObject,
-    name: &str,
-    parser: impl FnMut(&Env, Unknown<'_>) -> napi::Result<T>,
-) -> napi::Result<Vec<T>> {
-    if !options.has_named_property(name)? {
-        return Ok(Vec::new());
-    }
-    let prop: Unknown<'_> = options.get_named_property(name)?;
-    if matches!(
-        prop.get_type()?,
-        napi::ValueType::Undefined | napi::ValueType::Null
-    ) {
-        return Ok(Vec::new());
-    }
-    parse_js_array(env, prop, name, parser)
-}
-
-#[allow(clippy::trivially_copy_pass_by_ref)]
-#[cfg_attr(test, allow(dead_code))]
-#[cfg_attr(coverage_nightly, coverage(off))]
-fn parse_register_options(
-    env: &Env,
-    options: Option<JsObject>,
-) -> napi::Result<(Vec<RawVfunc>, Vec<RawInterface>)> {
-    let Some(options) = options else {
-        return Ok((Vec::new(), Vec::new()));
-    };
-
-    let vfuncs = parse_array_property(env, &options, "vfuncs", RawVfunc::from_js_value)?;
-    let interfaces =
-        parse_array_property(env, &options, "interfaces", RawInterface::from_js_value)?;
-
-    Ok((vfuncs, interfaces))
-}
-
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[allow(clippy::wildcard_imports)]
 mod napi_export {
@@ -461,11 +392,11 @@ mod napi_export {
     #[allow(clippy::needless_pass_by_value)]
     #[cfg_attr(test, allow(dead_code))]
     pub fn register_class(
-        env: &Env,
+        env: Env,
         name: String,
         parent_gtype: BigInt,
-        options: Option<JsObject>,
-    ) -> napi::Result<Unknown<'_>> {
+        options: Option<RegisterClassOptions>,
+    ) -> napi::Result<BigInt> {
         let name = glib::GString::from_string_checked(name).map_err(|err| {
             napi::Error::new(
                 napi::Status::InvalidArg,
@@ -479,16 +410,18 @@ mod napi_export {
                 "register_class: parent gtype exceeds the 64-bit GType range",
             ));
         }
-        let (vfuncs, interfaces) = parse_register_options(env, options)?;
-        RegisterClassRequest {
+        let (vfuncs, interfaces) = match options {
+            Some(options) => options.into_raw()?,
+            None => (Vec::new(), Vec::new()),
+        };
+        let gtype = RegisterClassRequest {
             name,
-            // SAFETY: `parent_value` is a losslessly decoded u64 GType handle from JS; `from_glib`
-            // reinterprets it as a `glib::Type`, whose validity is enforced during execution.
             parent_gtype: unsafe { glib::Type::from_glib(parent_value as glib::ffi::GType) },
             vfuncs,
             interfaces,
         }
-        .dispatch(env)
+        .dispatch_output(env)?;
+        Ok(BigInt::from(gtype))
     }
 }
 

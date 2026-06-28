@@ -1,5 +1,6 @@
-import type { Handle, Ref } from "@gtkx/native";
+import type { Ref } from "./descriptors.js";
 import { getErrorGtype, isGtyped } from "./gtype.js";
+import type { Handle } from "./handle.js";
 import { requireWrapperClass, wrapHandle } from "./registry.js";
 
 export interface GError {

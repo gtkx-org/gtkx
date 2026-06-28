@@ -31,16 +31,11 @@
             "source": "./src/index.ts",
             "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
-        },
-        "./act": {
-            "source": "./src/act.ts",
-            "types": "./dist/act.d.ts",
-            "default": "./dist/act.js"
         }
     },
     "sideEffects": [
-        "./src/setup-runtime.ts",
-        "./dist/setup-runtime.js"
+        "./src/register-test-hooks.ts",
+        "./dist/register-test-hooks.js"
     ],
     "files": [
         "dist",

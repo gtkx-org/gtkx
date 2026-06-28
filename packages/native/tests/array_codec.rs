@@ -8,7 +8,7 @@ use gtk4::prelude::StaticType as _;
 use native::Handle;
 use native::ffi::arg::Arg;
 use native::ffi::descriptor::{
-    ArrayDescriptor, ArrayKind, BigIntKind, BooleanDescriptor, Descriptor, EnumFlagsDescriptor,
+    ArrayDescriptor, ArrayKind, BigIntKind, BooleanDescriptor, Codec, EnumFlagsDescriptor,
     EnumFlagsKind, FfiDecoder, FfiEncoder, FloatKind, FundamentalDescriptor, IntegerKind,
     ObjectDescriptor, Ownership, PointerWriter, ReadSource, RefDescriptor, StringDescriptor,
     StructDescriptor,
@@ -16,23 +16,23 @@ use native::ffi::descriptor::{
 use native::ffi::value::Value;
 use native::ffi::{GArrayData, StashKind, StashedValue};
 
-fn struct_item_descriptor() -> Descriptor {
-    Descriptor::Struct(StructDescriptor {
+fn struct_item_descriptor() -> Codec {
+    Codec::Struct(StructDescriptor {
         ownership: Ownership::Borrowed,
         size: Some(size_of::<gtk4::gdk::ffi::GdkRGBA>()),
         caller_allocated: false,
     })
 }
 
-fn string_item_descriptor(ownership: Ownership) -> Descriptor {
-    Descriptor::String(StringDescriptor {
+fn string_item_descriptor(ownership: Ownership) -> Codec {
+    Codec::String(StringDescriptor {
         ownership,
         length: None,
     })
 }
 
-fn enum_flags_item_descriptor() -> Descriptor {
-    Descriptor::EnumFlags(EnumFlagsDescriptor {
+fn enum_flags_item_descriptor() -> Codec {
+    Codec::EnumFlags(EnumFlagsDescriptor {
         kind: EnumFlagsKind::Enum,
         shared_library: "Gtk".to_string(),
         get_type_fn: "gtk_orientation_get_type".to_string(),
@@ -40,7 +40,7 @@ fn enum_flags_item_descriptor() -> Descriptor {
     })
 }
 
-fn array_type(item: Descriptor, kind: ArrayKind, ownership: Ownership) -> ArrayDescriptor {
+fn array_type(item: Codec, kind: ArrayKind, ownership: Ownership) -> ArrayDescriptor {
     ArrayDescriptor {
         item_descriptor: Box::new(item),
         kind,
@@ -54,12 +54,12 @@ fn boxed_handle() -> Handle {
     Handle::borrowed(ptr)
 }
 
-fn gobject_item_descriptor(ownership: Ownership) -> Descriptor {
-    Descriptor::Object(ObjectDescriptor { ownership })
+fn gobject_item_descriptor(ownership: Ownership) -> Codec {
+    Codec::Object(ObjectDescriptor { ownership })
 }
 
-fn unresolvable_fundamental_item_descriptor() -> Descriptor {
-    Descriptor::Fundamental(FundamentalDescriptor {
+fn unresolvable_fundamental_item_descriptor() -> Codec {
+    Codec::Fundamental(FundamentalDescriptor {
         ownership: Ownership::Full,
         shared_library: "libgobject-2.0.so.0".to_owned(),
         ref_func: "no_such_array_ref_symbol_12345".to_owned(),
@@ -69,8 +69,6 @@ fn unresolvable_fundamental_item_descriptor() -> Descriptor {
 }
 
 fn gobject_refcount(ptr: *mut std::ffi::c_void) -> u32 {
-    // SAFETY: callers pass `ptr` from a live `glib::Object` kept alive for the test's duration;
-    // reading its `ref_count` field is a plain field access on a valid `GObject`.
     unsafe { (*(ptr as *mut gtk4::glib::gobject_ffi::GObject)).ref_count }
 }
 
@@ -143,10 +141,6 @@ fn encode_glist_handles_full_ownership_transfers_to_callee_when_disarmed() {
             panic!("expected storage")
         };
         let list = storage.ptr() as *mut gtk4::glib::ffi::GList;
-        // SAFETY: the transfer was disarmed, so the test owns the encoded container; `list` is the
-        // valid GList spine from `storage.ptr()` and `obj_ptr` is the live object whose reference
-        // the full-ownership encode took. Freeing the spine and dropping that one reference here
-        // mirrors what the callee would have done, balancing ownership.
         unsafe {
             gtk4::glib::ffi::g_list_free(list);
             gtk4::glib::gobject_ffi::g_object_unref(obj_ptr.cast());
@@ -207,23 +201,19 @@ fn encode_garray_full_ownership_adopted_strings_release_when_call_never_happens(
 #[test]
 fn ptr_to_value_sized_reads_explicit_length() {
     let descriptor = array_type(
-        Descriptor::Integer(IntegerKind::I32),
+        Codec::Integer(IntegerKind::I32),
         ArrayKind::Sized { size_index: 1 },
         Ownership::Borrowed,
     );
     let data: Vec<i32> = vec![7, 8, 9];
-    let value =
-        // SAFETY: the data pointer is either null or a live buffer of at least the given
-        // length of the codec's element type, valid for this read.
-        unsafe { descriptor.ptr_to_value_sized(data.as_ptr() as *mut std::ffi::c_void, 3) }.unwrap();
+    let value = unsafe { descriptor.ptr_to_value_sized(data.as_ptr() as *mut std::ffi::c_void, 3) }
+        .unwrap();
     let Value::Array(items) = value else {
         panic!("expected array")
     };
     assert_eq!(items.len(), 3);
     assert!(matches!(items[0], Value::Number(n) if n == 7.0));
 
-    // SAFETY: the data pointer is either null or a live buffer of at least the given
-    // length of the codec's element type, valid for this read.
     let empty = unsafe { descriptor.ptr_to_value_sized(std::ptr::null_mut(), 5) }.unwrap();
     assert!(matches!(empty, Value::Array(items) if items.is_empty()));
 }
@@ -236,10 +226,8 @@ fn ptr_to_value_sized_reads_enum_flags_elements_without_range_guard() {
         Ownership::Borrowed,
     );
     let data: Vec<i32> = vec![0, 1, 2];
-    let value =
-        // SAFETY: the data pointer is either null or a live buffer of at least the given
-        // length of the codec's element type, valid for this read.
-        unsafe { descriptor.ptr_to_value_sized(data.as_ptr() as *mut std::ffi::c_void, 3) }.unwrap();
+    let value = unsafe { descriptor.ptr_to_value_sized(data.as_ptr() as *mut std::ffi::c_void, 3) }
+        .unwrap();
     let Value::Array(items) = value else {
         panic!("expected array")
     };
@@ -275,7 +263,7 @@ fn array_kind_from_str_parses_every_variant() {
 #[test]
 fn encode_optional_null_yields_null_ptr() {
     let descriptor = array_type(
-        Descriptor::Integer(IntegerKind::U8),
+        Codec::Integer(IntegerKind::U8),
         ArrayKind::Array,
         Ownership::Full,
     );
@@ -292,7 +280,7 @@ fn encode_optional_null_yields_null_ptr() {
 #[test]
 fn encode_integer_array_extract_error() {
     let descriptor = array_type(
-        Descriptor::Integer(IntegerKind::I32),
+        Codec::Integer(IntegerKind::I32),
         ArrayKind::Array,
         Ownership::Full,
     );
@@ -319,7 +307,7 @@ fn encode_enum_flags_array_roundtrips_through_storage() {
 #[test]
 fn encode_float_f32_array_roundtrips() {
     let descriptor = array_type(
-        Descriptor::Float(FloatKind::F32),
+        Codec::Float(FloatKind::F32),
         ArrayKind::Array,
         Ownership::Full,
     );
@@ -334,7 +322,7 @@ fn encode_float_f32_array_roundtrips() {
 #[test]
 fn encode_float_f64_array_roundtrips() {
     let descriptor = array_type(
-        Descriptor::Float(FloatKind::F64),
+        Codec::Float(FloatKind::F64),
         ArrayKind::Array,
         Ownership::Full,
     );
@@ -349,7 +337,7 @@ fn encode_float_f64_array_roundtrips() {
 #[test]
 fn encode_boolean_array_roundtrips() {
     let descriptor = array_type(
-        Descriptor::Boolean(BooleanDescriptor),
+        Codec::Boolean(BooleanDescriptor),
         ArrayKind::Array,
         Ownership::Full,
     );
@@ -364,7 +352,7 @@ fn encode_boolean_array_roundtrips() {
 #[test]
 fn encode_boolean_array_extract_error() {
     let descriptor = array_type(
-        Descriptor::Boolean(BooleanDescriptor),
+        Codec::Boolean(BooleanDescriptor),
         ArrayKind::Array,
         Ownership::Full,
     );
@@ -401,19 +389,12 @@ fn encode_string_array_full_ownership_transfers_glib_container() {
     };
 
     let container = storage.ptr() as *mut *mut std::ffi::c_char;
-    // SAFETY: the encode produced a NULL-terminated owned `char*` array (`g_strfreev`-shaped) with
-    // two entries; `*container` and `*container.add(1)` are the two valid NUL-terminated strings.
     let first = unsafe { std::ffi::CStr::from_ptr(*container) };
-    // SAFETY: `container.add(1)` is the second slot of the same two-element array, holding a valid
-    // NUL-terminated string.
     let second = unsafe { std::ffi::CStr::from_ptr(*container.add(1)) };
     assert_eq!(first.to_str().unwrap(), "foo");
     assert_eq!(second.to_str().unwrap(), "bar");
-    // SAFETY: `container.add(2)` is the in-bounds NULL terminator slot of the array.
     assert!(unsafe { (*container.add(2)).is_null() });
 
-    // SAFETY: `container` is the disarmed, caller-owned `g_strfreev`-shaped array; freeing it here
-    // releases the container and all its strings exactly once.
     unsafe { glib::ffi::g_strfreev(container) };
 }
 
@@ -469,11 +450,8 @@ fn encode_string_array_element_transfer_hands_over_duplicates() {
     assert_eq!(ptrs.len(), 2);
     assert!(ptrs[1].is_null());
 
-    // SAFETY: `ptrs[0]` is the disarmed, caller-owned duplicated string (`g_strdup`-shaped),
-    // a valid NUL-terminated `char*`.
     let dup = unsafe { std::ffi::CStr::from_ptr(ptrs[0] as *const std::ffi::c_char) };
     assert_eq!(dup.to_str().unwrap(), "foo");
-    // SAFETY: `ptrs[0]` is the caller-owned duplicate; `g_free` releases it exactly once.
     unsafe { glib::ffi::g_free(ptrs[0]) };
 }
 
@@ -533,14 +511,9 @@ fn encode_pointer_array_full_ownership_transfers_glib_container() {
     assert!(ptrs.is_empty());
 
     let container = storage.ptr() as *mut *mut std::ffi::c_void;
-    // SAFETY: the encode produced a NULL-terminated owned pointer array with one entry plus a
-    // terminator; `*container` reads the in-bounds first (non-null) slot.
     assert!(!unsafe { *container }.is_null());
-    // SAFETY: `container.add(1)` is the in-bounds NULL terminator slot of the same array.
     assert!(unsafe { *container.add(1) }.is_null());
 
-    // SAFETY: `container` is the disarmed, caller-owned pointer array allocated by the encode;
-    // `g_free` releases the container exactly once (the boxed elements are owned elsewhere).
     unsafe { glib::ffi::g_free(container as *mut std::ffi::c_void) };
 }
 
@@ -726,7 +699,7 @@ fn encode_gslist_handles_rejects_null() {
 fn encode_gbytearray_roundtrips() {
     helpers::run(|| {
         let descriptor = array_type(
-            Descriptor::Integer(IntegerKind::U8),
+            Codec::Integer(IntegerKind::U8),
             ArrayKind::GByteArray,
             Ownership::Borrowed,
         );
@@ -747,7 +720,7 @@ fn encode_gbytearray_roundtrips() {
 fn encode_garray_integer_roundtrips() {
     helpers::run(|| {
         let descriptor = array_type(
-            Descriptor::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerKind::I32),
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
@@ -764,7 +737,7 @@ fn encode_garray_integer_roundtrips() {
 fn encode_garray_float_f32_roundtrips() {
     helpers::run(|| {
         let descriptor = array_type(
-            Descriptor::Float(FloatKind::F32),
+            Codec::Float(FloatKind::F32),
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
@@ -781,7 +754,7 @@ fn encode_garray_float_f32_roundtrips() {
 fn encode_garray_float_f64_roundtrips() {
     helpers::run(|| {
         let descriptor = array_type(
-            Descriptor::Float(FloatKind::F64),
+            Codec::Float(FloatKind::F64),
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
@@ -798,7 +771,7 @@ fn encode_garray_float_f64_roundtrips() {
 fn encode_garray_boolean_roundtrips() {
     helpers::run(|| {
         let descriptor = array_type(
-            Descriptor::Boolean(BooleanDescriptor),
+            Codec::Boolean(BooleanDescriptor),
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
@@ -873,7 +846,7 @@ fn encode_garray_strings_roundtrips() {
 fn encode_garray_explicit_element_size_used() {
     helpers::run(|| {
         let mut descriptor = array_type(
-            Descriptor::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerKind::I32),
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
@@ -888,7 +861,7 @@ fn encode_garray_explicit_element_size_used() {
 fn decode_zero_terminated_scalar_array_reads_with_scalar_stride() {
     helpers::run(|| {
         let descriptor = array_type(
-            Descriptor::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerKind::I32),
             ArrayKind::Array,
             Ownership::Borrowed,
         );
@@ -908,7 +881,7 @@ fn decode_zero_terminated_scalar_array_reads_with_scalar_stride() {
 #[test]
 fn encode_bigint_array_roundtrips_through_storage() {
     for kind in [BigIntKind::I64, BigIntKind::U64] {
-        let descriptor = array_type(Descriptor::BigInt(kind), ArrayKind::Array, Ownership::Full);
+        let descriptor = array_type(Codec::BigInt(kind), ArrayKind::Array, Ownership::Full);
         let big = i128::from(u32::MAX) + 1;
         let val = Value::Array(vec![Value::BigInt(big), Value::BigInt(7)]);
         let encoded = descriptor.encode(&val).unwrap();
@@ -924,11 +897,8 @@ fn encode_bigint_array_roundtrips_through_storage() {
 fn encode_garray_bigint_roundtrips() {
     helpers::run(|| {
         for kind in [BigIntKind::I64, BigIntKind::U64] {
-            let descriptor = array_type(
-                Descriptor::BigInt(kind),
-                ArrayKind::GArray,
-                Ownership::Borrowed,
-            );
+            let descriptor =
+                array_type(Codec::BigInt(kind), ArrayKind::GArray, Ownership::Borrowed);
             let big = i128::from(u32::MAX) + 5;
             let val = Value::Array(vec![Value::BigInt(10), Value::BigInt(big)]);
             let encoded = descriptor.encode(&val).unwrap();
@@ -945,7 +915,7 @@ fn encode_garray_bigint_roundtrips() {
 fn decode_contiguous_bigint_elements() {
     for kind in [BigIntKind::I64, BigIntKind::U64] {
         let descriptor = array_type(
-            Descriptor::BigInt(kind),
+            Codec::BigInt(kind),
             ArrayKind::Fixed { size: 2 },
             Ownership::Borrowed,
         );
@@ -964,7 +934,7 @@ fn decode_contiguous_bigint_elements() {
 #[test]
 fn decode_zero_terminated_bigint_array() {
     let descriptor = array_type(
-        Descriptor::BigInt(BigIntKind::U64),
+        Codec::BigInt(BigIntKind::U64),
         ArrayKind::Array,
         Ownership::Borrowed,
     );
@@ -982,14 +952,14 @@ fn decode_zero_terminated_bigint_array() {
 #[test]
 fn encode_bigint_array_rejects_out_of_range() {
     let neg = array_type(
-        Descriptor::BigInt(BigIntKind::U64),
+        Codec::BigInt(BigIntKind::U64),
         ArrayKind::Array,
         Ownership::Full,
     );
     assert!(neg.encode(&Value::Array(vec![Value::BigInt(-1)])).is_err());
 
     let over = array_type(
-        Descriptor::BigInt(BigIntKind::I64),
+        Codec::BigInt(BigIntKind::I64),
         ArrayKind::Array,
         Ownership::Full,
     );
@@ -1002,15 +972,12 @@ fn encode_bigint_array_rejects_out_of_range() {
 #[test]
 fn decode_gptrarray_frees_container_when_element_decode_fails() {
     helpers::run(|| {
-        // SAFETY: runs on the GTK-initialized test thread; returns a valid empty GPtrArray.
         let ptr_array = unsafe { glib::ffi::g_ptr_array_new() };
-        // SAFETY: the GPtrArray is valid and the added pointer is stored by value (never dereferenced here).
         unsafe { glib::ffi::g_ptr_array_add(ptr_array, std::ptr::without_provenance_mut(0x4)) };
-        // SAFETY: the GPtrArray is valid; this takes one extra owning reference matched by an unref.
         unsafe { glib::ffi::g_ptr_array_ref(ptr_array) };
 
         let descriptor = array_type(
-            Descriptor::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerKind::I32),
             ArrayKind::GPtrArray,
             Ownership::Full,
         );
@@ -1020,7 +987,6 @@ fn decode_gptrarray_frees_container_when_element_decode_fails() {
                 .is_err()
         );
 
-        // SAFETY: the GPtrArray is valid and the test holds the reference being released here.
         unsafe { glib::ffi::g_ptr_array_unref(ptr_array) };
     });
 }
@@ -1028,14 +994,12 @@ fn decode_gptrarray_frees_container_when_element_decode_fails() {
 #[test]
 fn decode_glist_frees_spine_when_element_decode_fails() {
     helpers::run(|| {
-        // SAFETY: runs on the GTK-initialized test thread; appends one borrowed pointer to a
-        // valid (possibly null) GList, returning the new head.
         let list = unsafe {
             glib::ffi::g_list_append(std::ptr::null_mut(), std::ptr::without_provenance_mut(0x4))
         };
 
         let descriptor = array_type(
-            Descriptor::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerKind::I32),
             ArrayKind::GList,
             Ownership::Full,
         );
@@ -1051,7 +1015,7 @@ fn decode_glist_frees_spine_when_element_decode_fails() {
 fn encode_garray_append_error_unrefs_and_propagates() {
     helpers::run(|| {
         let descriptor = array_type(
-            Descriptor::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerKind::I32),
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
@@ -1075,7 +1039,7 @@ fn encode_gptrarray_uses_null_terminated_layout() {
 #[test]
 fn decode_integer_array_from_storage() {
     let descriptor = array_type(
-        Descriptor::Integer(IntegerKind::U16),
+        Codec::Integer(IntegerKind::U16),
         ArrayKind::Array,
         Ownership::Full,
     );
@@ -1091,7 +1055,7 @@ fn decode_integer_array_from_storage() {
 #[test]
 fn decode_null_ptr_yields_empty_array() {
     let descriptor = array_type(
-        Descriptor::Integer(IntegerKind::U8),
+        Codec::Integer(IntegerKind::U8),
         ArrayKind::Array,
         Ownership::Full,
     );
@@ -1131,9 +1095,6 @@ fn decode_null_terminated_string_array_full_ownership_frees() {
             ArrayKind::Array,
             Ownership::Full,
         );
-        // SAFETY: allocates a zeroed 3-slot pointer array (so slot 2 is the NULL terminator) and
-        // fills the first two slots with freshly `g_strdup`'d owned strings, producing a valid
-        // owned `strv` the full-ownership decode below will take and free.
         let strv = unsafe {
             let arr = glib::ffi::g_malloc0(size_of::<*mut c_char>() * 3) as *mut *mut c_char;
             *arr = glib::ffi::g_strdup(c"a".as_ptr());
@@ -1158,9 +1119,6 @@ fn decode_null_terminated_borrowed_string_array_full_ownership_frees_vector_only
             ArrayKind::Array,
             Ownership::Full,
         );
-        // SAFETY: allocates a zeroed 2-slot pointer array (slot 1 is the NULL terminator) and
-        // stores a borrowed static C string in slot 0, producing a valid NULL-terminated `strv`
-        // whose elements are borrowed (the borrowed decode frees only the container vector).
         let strv = unsafe {
             let arr = glib::ffi::g_malloc0(size_of::<*mut c_char>() * 2) as *mut *mut c_char;
             *arr = c"borrowed".as_ptr().cast_mut();
@@ -1199,9 +1157,6 @@ fn decode_null_terminated_ptr_array_from_ptr() {
 fn decode_null_terminated_ptr_array_full_ownership_frees() {
     helpers::run(|| {
         let descriptor = array_type(struct_item_descriptor(), ArrayKind::Array, Ownership::Full);
-        // SAFETY: allocates a zeroed 2-slot pointer array (slot 1 is the NULL terminator) and
-        // stores one boxed pointer in slot 0, producing a valid NULL-terminated owned pointer
-        // array that the full-ownership decode below takes and frees.
         let arr = unsafe {
             let mem = glib::ffi::g_malloc0(size_of::<*mut c_void>() * 2) as *mut *mut c_void;
             *mem = boxed_handle().ptr();
@@ -1229,8 +1184,6 @@ fn decode_glist_empty_and_populated() {
         };
         assert!(empty.is_empty());
 
-        // SAFETY: runs on the GTK-initialized test thread; appends one borrowed pointer to a
-        // valid (possibly null) GList, returning the new head.
         let list = unsafe { glib::ffi::g_list_append(std::ptr::null_mut(), boxed_handle().ptr()) };
         let Value::Array(items) = descriptor
             .decode(&StashedValue::Ptr(list as *mut c_void))
@@ -1246,8 +1199,6 @@ fn decode_glist_empty_and_populated() {
 fn decode_gslist_full_ownership_frees_list() {
     helpers::run(|| {
         let descriptor = array_type(struct_item_descriptor(), ArrayKind::GSList, Ownership::Full);
-        // SAFETY: runs on the GTK-initialized test thread; appends one borrowed pointer to a
-        // valid (possibly null) GSList, returning the new head.
         let list = unsafe { glib::ffi::g_slist_append(std::ptr::null_mut(), boxed_handle().ptr()) };
         let Value::Array(items) = descriptor
             .decode(&StashedValue::Ptr(list as *mut c_void))
@@ -1263,16 +1214,12 @@ fn decode_gslist_full_ownership_frees_list() {
 fn decode_garray_from_borrowed_ptr() {
     helpers::run(|| {
         let descriptor = array_type(
-            Descriptor::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerKind::I32),
             ArrayKind::GArray,
             Ownership::Full,
         );
-        // SAFETY: runs on the GTK-initialized test thread; constructs a valid GArray of i32-sized
-        // elements.
         let g_array = unsafe { glib::ffi::g_array_sized_new(0, 0, size_of::<i32>() as u32, 0) };
         let value: i32 = 42;
-        // SAFETY: `g_array` is the valid GArray above, and `&value` points to one live i32 whose
-        // size matches the array's element size, so appending one element is valid.
         unsafe {
             glib::ffi::g_array_append_vals(g_array, &value as *const i32 as *const c_void, 1);
         }
@@ -1290,7 +1237,7 @@ fn decode_garray_from_borrowed_ptr() {
 fn decode_garray_null_yields_empty() {
     helpers::run(|| {
         let descriptor = array_type(
-            Descriptor::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerKind::I32),
             ArrayKind::GArray,
             Ownership::Full,
         );
@@ -1308,12 +1255,10 @@ fn decode_garray_null_yields_empty() {
 fn decode_garray_storage_owned_does_not_double_free() {
     helpers::run(|| {
         let descriptor = array_type(
-            Descriptor::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerKind::I32),
             ArrayKind::GArray,
             Ownership::Full,
         );
-        // SAFETY: runs on the GTK-initialized test thread; constructs a valid empty GArray of
-        // i32-sized elements, ownership of which is handed to the `Stash` below.
         let g_array = unsafe { glib::ffi::g_array_sized_new(0, 0, size_of::<i32>() as u32, 0) };
         let storage = native::ffi::Stash::new(
             g_array as *mut c_void,
@@ -1338,9 +1283,7 @@ fn decode_gptrarray_from_ptr() {
             ArrayKind::GPtrArray,
             Ownership::Full,
         );
-        // SAFETY: runs on the GTK-initialized test thread; returns a valid empty GPtrArray.
         let ptr_array = unsafe { glib::ffi::g_ptr_array_new() };
-        // SAFETY: the GPtrArray is valid; the added pointer is stored by value, never dereferenced here.
         unsafe { glib::ffi::g_ptr_array_add(ptr_array, boxed_handle().ptr()) };
         let Value::Array(items) = descriptor
             .decode(&StashedValue::Ptr(ptr_array as *mut c_void))
@@ -1372,13 +1315,11 @@ fn decode_gptrarray_null_yields_empty() {
 fn decode_gbytearray_from_ptr_and_empty() {
     helpers::run(|| {
         let descriptor = array_type(
-            Descriptor::Integer(IntegerKind::U8),
+            Codec::Integer(IntegerKind::U8),
             ArrayKind::GByteArray,
             Ownership::Borrowed,
         );
         let bytes = [1u8, 2, 3];
-        // SAFETY: runs on the GTK-initialized test thread; `g_byte_array_sized_new` returns a
-        // valid GByteArray, and `bytes.as_ptr()` with length 3 is a valid source slice to append.
         let ba = unsafe {
             let ba = glib::ffi::g_byte_array_sized_new(3);
             glib::ffi::g_byte_array_append(ba, bytes.as_ptr(), 3);
@@ -1391,10 +1332,8 @@ fn decode_gbytearray_from_ptr_and_empty() {
             panic!("expected array")
         };
         assert_eq!(items.len(), 3);
-        // SAFETY: the GByteArray is valid and the test holds the reference released here.
         unsafe { glib::ffi::g_byte_array_unref(ba) };
 
-        // SAFETY: the GByteArray is valid and the test holds the reference released here.
         let empty = unsafe { glib::ffi::g_byte_array_new() };
         let Value::Array(items) = descriptor
             .decode(&StashedValue::Ptr(empty as *mut c_void))
@@ -1403,7 +1342,6 @@ fn decode_gbytearray_from_ptr_and_empty() {
             panic!("expected array")
         };
         assert!(items.is_empty());
-        // SAFETY: the GByteArray is valid and the test holds the reference released here.
         unsafe { glib::ffi::g_byte_array_unref(empty) };
     });
 }
@@ -1412,14 +1350,11 @@ fn decode_gbytearray_from_ptr_and_empty() {
 fn decode_gbytearray_full_ownership_unrefs_raw_ptr() {
     helpers::run(|| {
         let descriptor = array_type(
-            Descriptor::Integer(IntegerKind::U8),
+            Codec::Integer(IntegerKind::U8),
             ArrayKind::GByteArray,
             Ownership::Full,
         );
         let bytes = [7u8, 8];
-        // SAFETY: runs on the GTK-initialized test thread; `g_byte_array_sized_new` returns a
-        // valid GByteArray, `bytes.as_ptr()` with length 2 is a valid append source, and the extra
-        // `g_byte_array_ref` gives the test an owning reference matched by the unref below.
         let ba = unsafe {
             let ba = glib::ffi::g_byte_array_sized_new(2);
             glib::ffi::g_byte_array_append(ba, bytes.as_ptr(), 2);
@@ -1432,7 +1367,6 @@ fn decode_gbytearray_full_ownership_unrefs_raw_ptr() {
             panic!("expected array")
         };
         assert_eq!(items.len(), 2);
-        // SAFETY: the GByteArray is valid and the test holds the reference released here.
         unsafe { glib::ffi::g_byte_array_unref(ba) };
     });
 }
@@ -1440,7 +1374,7 @@ fn decode_gbytearray_full_ownership_unrefs_raw_ptr() {
 #[test]
 fn decode_gbytearray_null_yields_empty() {
     let descriptor = array_type(
-        Descriptor::Integer(IntegerKind::U8),
+        Codec::Integer(IntegerKind::U8),
         ArrayKind::GByteArray,
         Ownership::Full,
     );
@@ -1456,7 +1390,7 @@ fn decode_gbytearray_null_yields_empty() {
 #[test]
 fn decode_with_context_sized_array() {
     let descriptor = array_type(
-        Descriptor::Integer(IntegerKind::I32),
+        Codec::Integer(IntegerKind::I32),
         ArrayKind::Sized { size_index: 0 },
         Ownership::Borrowed,
     );
@@ -1464,7 +1398,7 @@ fn decode_with_context_sized_array() {
     let stashed_value = StashedValue::Ptr(data.as_ptr() as *mut c_void);
     let ffi_args = [StashedValue::U32(3)];
     let args = [Arg::new(
-        Descriptor::Integer(IntegerKind::U32),
+        Codec::Integer(IntegerKind::U32),
         Value::Number(3.0),
     )];
     let Value::Array(items) = descriptor
@@ -1479,14 +1413,14 @@ fn decode_with_context_sized_array() {
 #[test]
 fn decode_with_context_sized_array_null_ptr() {
     let descriptor = array_type(
-        Descriptor::Integer(IntegerKind::I32),
+        Codec::Integer(IntegerKind::I32),
         ArrayKind::Sized { size_index: 0 },
         Ownership::Borrowed,
     );
     let stashed_value = StashedValue::Ptr(std::ptr::null_mut());
     let ffi_args = [StashedValue::U32(3)];
     let args = [Arg::new(
-        Descriptor::Integer(IntegerKind::U32),
+        Codec::Integer(IntegerKind::U32),
         Value::Number(3.0),
     )];
     let Value::Array(items) = descriptor
@@ -1501,7 +1435,7 @@ fn decode_with_context_sized_array_null_ptr() {
 #[test]
 fn decode_with_context_sized_non_ptr_falls_through_to_decode() {
     let descriptor = array_type(
-        Descriptor::Integer(IntegerKind::I32),
+        Codec::Integer(IntegerKind::I32),
         ArrayKind::Sized { size_index: 0 },
         Ownership::Borrowed,
     );
@@ -1509,7 +1443,7 @@ fn decode_with_context_sized_non_ptr_falls_through_to_decode() {
     let stashed_value = StashedValue::Storage(storage);
     let ffi_args = [StashedValue::U32(2)];
     let args = [Arg::new(
-        Descriptor::Integer(IntegerKind::U32),
+        Codec::Integer(IntegerKind::U32),
         Value::Number(2.0),
     )];
     let Value::Array(items) = descriptor
@@ -1524,7 +1458,7 @@ fn decode_with_context_sized_non_ptr_falls_through_to_decode() {
 #[test]
 fn decode_with_context_fixed_array() {
     let descriptor = array_type(
-        Descriptor::Float(FloatKind::F64),
+        Codec::Float(FloatKind::F64),
         ArrayKind::Fixed { size: 2 },
         Ownership::Borrowed,
     );
@@ -1542,7 +1476,7 @@ fn decode_with_context_fixed_array() {
 #[test]
 fn decode_with_context_fixed_array_null_ptr() {
     let descriptor = array_type(
-        Descriptor::Float(FloatKind::F64),
+        Codec::Float(FloatKind::F64),
         ArrayKind::Fixed { size: 2 },
         Ownership::Borrowed,
     );
@@ -1559,7 +1493,7 @@ fn decode_with_context_fixed_array_null_ptr() {
 #[test]
 fn decode_with_context_fixed_non_ptr_falls_through() {
     let descriptor = array_type(
-        Descriptor::Integer(IntegerKind::I32),
+        Codec::Integer(IntegerKind::I32),
         ArrayKind::Fixed { size: 1 },
         Ownership::Borrowed,
     );
@@ -1576,7 +1510,7 @@ fn decode_with_context_fixed_non_ptr_falls_through() {
 #[test]
 fn decode_with_context_array_kind_delegates_to_decode() {
     let descriptor = array_type(
-        Descriptor::Integer(IntegerKind::I32),
+        Codec::Integer(IntegerKind::I32),
         ArrayKind::Array,
         Ownership::Borrowed,
     );
@@ -1593,7 +1527,7 @@ fn decode_with_context_array_kind_delegates_to_decode() {
 #[test]
 fn decode_contiguous_empty_and_null() {
     let descriptor = array_type(
-        Descriptor::Integer(IntegerKind::I32),
+        Codec::Integer(IntegerKind::I32),
         ArrayKind::Fixed { size: 0 },
         Ownership::Borrowed,
     );
@@ -1628,7 +1562,7 @@ fn decode_contiguous_pointer_elements() {
 #[test]
 fn decode_contiguous_float_and_boolean() {
     let f32_ty = array_type(
-        Descriptor::Float(FloatKind::F32),
+        Codec::Float(FloatKind::F32),
         ArrayKind::Fixed { size: 1 },
         Ownership::Borrowed,
     );
@@ -1645,7 +1579,7 @@ fn decode_contiguous_float_and_boolean() {
     ));
 
     let bool_ty = array_type(
-        Descriptor::Boolean(BooleanDescriptor),
+        Codec::Boolean(BooleanDescriptor),
         ArrayKind::Fixed { size: 1 },
         Ownership::Borrowed,
     );
@@ -1693,11 +1627,10 @@ fn decode_storage_pointer_elements() {
 #[test]
 fn ptr_to_value_null_yields_empty() {
     let descriptor = array_type(
-        Descriptor::Integer(IntegerKind::I32),
+        Codec::Integer(IntegerKind::I32),
         ArrayKind::Array,
         Ownership::Borrowed,
     );
-    // SAFETY: a null pointer is the documented null case; the array codec yields an empty array.
     let value =
         unsafe { descriptor.read(ReadSource::Value(std::ptr::null_mut(), "array")) }.unwrap();
     assert!(matches!(value, Value::Array(items) if items.is_empty()));
@@ -1711,18 +1644,12 @@ fn ptr_to_value_gptrarray() {
             ArrayKind::GPtrArray,
             Ownership::Borrowed,
         );
-        // SAFETY: the pointer is a live container/buffer of the codec's element type, valid
-        // for the duration of this read.
         let ptr_array = unsafe { glib::ffi::g_ptr_array_new() };
-        // SAFETY: the pointer is a live container/buffer of the codec's element type, valid
-        // for the duration of this read.
         unsafe { glib::ffi::g_ptr_array_add(ptr_array, boxed_handle().ptr()) };
         let value =
-            // SAFETY: the pointer is a live container/buffer of the codec's element type, valid
-            // for the duration of this read.
-            unsafe { descriptor.read(ReadSource::Value(ptr_array as *mut c_void, "array")) }.unwrap();
+            unsafe { descriptor.read(ReadSource::Value(ptr_array as *mut c_void, "array")) }
+                .unwrap();
         assert!(matches!(value, Value::Array(items) if items.len() == 1));
-        // SAFETY: the GPtrArray is valid and the test holds the reference released here.
         unsafe { glib::ffi::g_ptr_array_unref(ptr_array) };
     });
 }
@@ -1731,24 +1658,19 @@ fn ptr_to_value_gptrarray() {
 fn ptr_to_value_gbytearray() {
     helpers::run(|| {
         let descriptor = array_type(
-            Descriptor::Integer(IntegerKind::U8),
+            Codec::Integer(IntegerKind::U8),
             ArrayKind::GByteArray,
             Ownership::Borrowed,
         );
         let bytes = [9u8];
-        // SAFETY: runs on the GTK-initialized test thread; `g_byte_array_sized_new` returns a
-        // valid GByteArray, and `bytes.as_ptr()` with length 1 is a valid source slice to append.
         let ba = unsafe {
             let ba = glib::ffi::g_byte_array_sized_new(1);
             glib::ffi::g_byte_array_append(ba, bytes.as_ptr(), 1);
             ba
         };
-        // SAFETY: the pointer is a live container/buffer of the codec's element type, valid
-        // for the duration of this read.
         let value =
             unsafe { descriptor.read(ReadSource::Value(ba as *mut c_void, "array")) }.unwrap();
         assert!(matches!(value, Value::Array(items) if items.len() == 1));
-        // SAFETY: the GByteArray is valid and the test holds the reference released here.
         unsafe { glib::ffi::g_byte_array_unref(ba) };
     });
 }
@@ -1757,25 +1679,18 @@ fn ptr_to_value_gbytearray() {
 fn ptr_to_value_garray() {
     helpers::run(|| {
         let descriptor = array_type(
-            Descriptor::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerKind::I32),
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
-        // SAFETY: runs on the GTK-initialized test thread; constructs a valid GArray of i32-sized
-        // elements.
         let g_array = unsafe { glib::ffi::g_array_sized_new(0, 0, size_of::<i32>() as u32, 0) };
         let value: i32 = 1;
-        // SAFETY: `g_array` is the valid GArray above, and `&value` points to one live i32 matching
-        // its element size, so appending one element is valid.
         unsafe {
             glib::ffi::g_array_append_vals(g_array, &value as *const i32 as *const c_void, 1)
         };
         let decoded =
-            // SAFETY: the pointer is a live container/buffer of the codec's element type, valid
-            // for the duration of this read.
             unsafe { descriptor.read(ReadSource::Value(g_array as *mut c_void, "array")) }.unwrap();
         assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
-        // SAFETY: the GArray is valid and the test holds the reference released here.
         unsafe { glib::ffi::g_array_unref(g_array) };
     });
 }
@@ -1788,14 +1703,10 @@ fn ptr_to_value_glist() {
             ArrayKind::GList,
             Ownership::Borrowed,
         );
-        // SAFETY: a null pointer is the documented null case; the array codec yields an empty array.
         let list = unsafe { glib::ffi::g_list_append(std::ptr::null_mut(), boxed_handle().ptr()) };
-        // SAFETY: the pointer is a live container/buffer of the codec's element type, valid
-        // for the duration of this read.
         let decoded =
             unsafe { descriptor.read(ReadSource::Value(list as *mut c_void, "array")) }.unwrap();
         assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
-        // SAFETY: `list` is the valid GList spine built above; freeing it releases the spine once.
         unsafe { glib::ffi::g_list_free(list) };
     });
 }
@@ -1810,11 +1721,10 @@ fn ptr_to_value_plain_array() {
         );
         let h0 = boxed_handle();
         let mut data: Vec<*mut c_void> = vec![h0.ptr(), std::ptr::null_mut()];
-        let decoded =
-            // SAFETY: the pointer is a live container/buffer of the codec's element type, valid
-            // for the duration of this read.
-            unsafe { descriptor.read(ReadSource::Value(data.as_mut_ptr() as *mut c_void, "array")) }
-                .unwrap();
+        let decoded = unsafe {
+            descriptor.read(ReadSource::Value(data.as_mut_ptr() as *mut c_void, "array"))
+        }
+        .unwrap();
         assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
     });
 }
@@ -1822,7 +1732,7 @@ fn ptr_to_value_plain_array() {
 #[test]
 fn size_from_args_reads_integer_argument() {
     let descriptor = array_type(
-        Descriptor::Integer(IntegerKind::I32),
+        Codec::Integer(IntegerKind::I32),
         ArrayKind::Sized { size_index: 0 },
         Ownership::Borrowed,
     );
@@ -1830,7 +1740,7 @@ fn size_from_args_reads_integer_argument() {
     let stashed_value = StashedValue::Ptr(data.as_ptr() as *mut c_void);
     let ffi_args = [StashedValue::I32(2)];
     let args = [Arg::new(
-        Descriptor::Integer(IntegerKind::I32),
+        Codec::Integer(IntegerKind::I32),
         Value::Number(2.0),
     )];
     let Value::Array(items) = descriptor
@@ -1845,7 +1755,7 @@ fn size_from_args_reads_integer_argument() {
 #[test]
 fn size_from_args_reads_ref_integer_storage() {
     let descriptor = array_type(
-        Descriptor::Integer(IntegerKind::I32),
+        Codec::Integer(IntegerKind::I32),
         ArrayKind::Sized { size_index: 0 },
         Ownership::Borrowed,
     );
@@ -1854,9 +1764,7 @@ fn size_from_args_reads_ref_integer_storage() {
     let size_storage = native::ffi::Stash::from(vec![2i32]);
     let ffi_args = [StashedValue::Storage(size_storage)];
     let args = [Arg::new(
-        Descriptor::Ref(
-            RefDescriptor::new(Descriptor::Integer(IntegerKind::I32)).expect("valid Ref inner"),
-        ),
+        Codec::Ref(RefDescriptor::new(Codec::Integer(IntegerKind::I32)).expect("valid Ref inner")),
         Value::Number(2.0),
     )];
     let Value::Array(items) = descriptor
@@ -1871,7 +1779,7 @@ fn size_from_args_reads_ref_integer_storage() {
 #[test]
 fn size_from_args_reads_ref_integer_ptr() {
     let descriptor = array_type(
-        Descriptor::Integer(IntegerKind::I32),
+        Codec::Integer(IntegerKind::I32),
         ArrayKind::Sized { size_index: 0 },
         Ownership::Borrowed,
     );
@@ -1880,9 +1788,7 @@ fn size_from_args_reads_ref_integer_ptr() {
     let size: i32 = 2;
     let ffi_args = [StashedValue::Ptr(&size as *const i32 as *mut c_void)];
     let args = [Arg::new(
-        Descriptor::Ref(
-            RefDescriptor::new(Descriptor::Integer(IntegerKind::I32)).expect("valid Ref inner"),
-        ),
+        Codec::Ref(RefDescriptor::new(Codec::Integer(IntegerKind::I32)).expect("valid Ref inner")),
         Value::Number(2.0),
     )];
     let Value::Array(items) = descriptor
@@ -1897,7 +1803,7 @@ fn size_from_args_reads_ref_integer_ptr() {
 #[test]
 fn size_from_args_ref_null_ptr_falls_through_to_error() {
     let descriptor = array_type(
-        Descriptor::Integer(IntegerKind::I32),
+        Codec::Integer(IntegerKind::I32),
         ArrayKind::Sized { size_index: 0 },
         Ownership::Borrowed,
     );
@@ -1905,9 +1811,7 @@ fn size_from_args_ref_null_ptr_falls_through_to_error() {
     let stashed_value = StashedValue::Ptr(data.as_ptr() as *mut c_void);
     let ffi_args = [StashedValue::Ptr(std::ptr::null_mut())];
     let args = [Arg::new(
-        Descriptor::Ref(
-            RefDescriptor::new(Descriptor::Integer(IntegerKind::I32)).expect("valid Ref inner"),
-        ),
+        Codec::Ref(RefDescriptor::new(Codec::Integer(IntegerKind::I32)).expect("valid Ref inner")),
         Value::Number(0.0),
     )];
     assert!(
@@ -1928,7 +1832,7 @@ fn item_codec_resolves_pointer_kinds() {
 fn trait_methods_delegate_to_inherent_implementations() {
     helpers::run(|| {
         let descriptor = array_type(
-            Descriptor::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerKind::I32),
             ArrayKind::Array,
             Ownership::Borrowed,
         );
@@ -1951,8 +1855,6 @@ fn trait_methods_delegate_to_inherent_implementations() {
         );
         let h0 = boxed_handle();
         let mut data: Vec<*mut c_void> = vec![h0.ptr(), std::ptr::null_mut()];
-        // SAFETY: the pointer is a live container/buffer of the codec's element type, valid
-        // for the duration of this read.
         let from_ptr = unsafe {
             FfiDecoder::read(
                 &ptr_ty,
@@ -2001,9 +1903,6 @@ fn encode_gslist_handles_full_ownership_releases_when_call_never_happens() {
 #[test]
 fn encode_glist_handles_fails_and_unwinds_when_element_transfer_fails() {
     helpers::run(|| {
-        // SAFETY: runs on the GTK-initialized test thread; all four string arguments are valid
-        // NUL-terminated static C strings and the flags are valid `GParamFlags`, so
-        // `g_param_spec_boolean` returns a new owned `GParamSpec` the test later unrefs.
         let pspec = unsafe {
             glib::gobject_ffi::g_param_spec_boolean(
                 c"array-codec-cov".as_ptr(),
@@ -2027,7 +1926,6 @@ fn encode_glist_handles_fails_and_unwinds_when_element_transfer_fails() {
         assert!(err.to_string().contains("Failed to find ref symbol"));
         assert_eq!(helpers::param_spec_refcount(pspec), before);
 
-        // SAFETY: the GParamSpec is live and the test owns the reference released here.
         unsafe { glib::gobject_ffi::g_param_spec_unref(pspec.cast()) };
     });
 }
@@ -2053,8 +1951,6 @@ fn encode_glist_strings_full_container_full_elements_releases_when_call_never_ha
         };
         assert!(data.elements_duped);
         assert!(!data.should_free);
-        // SAFETY: `data.list_ptr` is the non-empty owned GList spine the encode built; its head
-        // node's `data` field is a valid duplicated NUL-terminated C string ("a").
         let first = unsafe { std::ffi::CStr::from_ptr((*data.list_ptr).data as *const c_char) };
         assert_eq!(first.to_str().unwrap(), "a");
         drop(encoded);
@@ -2075,7 +1971,7 @@ fn encode_gslist_strings_full_container_borrowed_elements_releases_spine_when_ca
 fn encode_gbytearray_full_ownership_releases_when_call_never_happens() {
     helpers::run(|| {
         let descriptor = array_type(
-            Descriptor::Integer(IntegerKind::U8),
+            Codec::Integer(IntegerKind::U8),
             ArrayKind::GByteArray,
             Ownership::Full,
         );
@@ -2116,13 +2012,10 @@ fn encode_garray_borrowed_strings_installs_clear_func_and_roundtrips() {
 fn decode_zero_terminated_scalar_array_full_ownership_frees_buffer() {
     helpers::run(|| {
         let descriptor = array_type(
-            Descriptor::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerKind::I32),
             ArrayKind::Array,
             Ownership::Full,
         );
-        // SAFETY: allocates a zeroed 4-element i32 buffer (the final zero acts as the
-        // zero-terminator) and writes three in-bounds values, producing a valid owned buffer the
-        // full-ownership decode below reads and frees.
         let buffer = unsafe {
             let mem = glib::ffi::g_malloc0(size_of::<i32>() * 4) as *mut i32;
             *mem = 7;
@@ -2156,17 +2049,11 @@ fn write_return_to_pointer_full_string_array_hands_caller_owned_container() {
         ]);
         let mut slot: *mut c_void = std::ptr::null_mut();
         let ret = &mut slot as *mut *mut c_void as *mut c_void;
-        // SAFETY: `ret` is a live, pointer-sized stack slot; `write_return_to_pointer` writes
-        // exactly one pointer (or null) into it, read back after the call.
         unsafe { PointerWriter::write_return_to_pointer(&descriptor, ret, &Ok(val)) };
         assert!(!slot.is_null());
-        // SAFETY: the full-ownership write placed a caller-owned, NULL-terminated `char*` array
-        // into `slot`; `StrV::from_glib_full` takes ownership of that array and frees it on drop.
         let strv = unsafe { glib::StrV::from_glib_full(slot as *mut *mut c_char) };
         let items: Vec<String> = strv
             .iter()
-            // SAFETY: each `item` is a live element of the owned `StrV`, so its pointer is a valid
-            // NUL-terminated C string for the duration of this read.
             .map(|item| unsafe { glib::GStr::from_ptr_lossy(item.as_ptr()) }.to_string())
             .collect();
         assert_eq!(items, vec!["alpha".to_string(), "beta".to_string()]);
@@ -2182,20 +2069,14 @@ fn write_return_to_pointer_null_err_and_non_array_write_null() {
     );
     let mut slot: *mut c_void = 7 as *mut c_void;
     let ret = &mut slot as *mut *mut c_void as *mut c_void;
-    // SAFETY: `ret` is a live, pointer-sized stack slot; `write_return_to_pointer` writes
-    // exactly one pointer (or null) into it, read back after the call.
     unsafe { PointerWriter::write_return_to_pointer(&descriptor, ret, &Ok(Value::Null)) };
     assert!(slot.is_null());
 
     slot = 7 as *mut c_void;
-    // SAFETY: `ret` is a live, pointer-sized stack slot; `write_return_to_pointer` writes
-    // exactly one pointer (or null) into it, read back after the call.
     unsafe { PointerWriter::write_return_to_pointer(&descriptor, ret, &Err(())) };
     assert!(slot.is_null());
 
     slot = 7 as *mut c_void;
-    // SAFETY: `ret` is a live, pointer-sized stack slot; `write_return_to_pointer` writes
-    // exactly one pointer (or null) into it, read back after the call.
     unsafe { PointerWriter::write_return_to_pointer(&descriptor, ret, &Ok(Value::Number(1.0))) };
     assert!(slot.is_null());
 }
@@ -2204,15 +2085,13 @@ fn write_return_to_pointer_null_err_and_non_array_write_null() {
 fn write_return_to_pointer_encode_error_writes_null() {
     helpers::run(|| {
         let descriptor = array_type(
-            Descriptor::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerKind::I32),
             ArrayKind::Array,
             Ownership::Full,
         );
         let val = Value::Array(vec![Value::String("not a number".to_string())]);
         let mut slot: *mut c_void = 7 as *mut c_void;
         let ret = &mut slot as *mut *mut c_void as *mut c_void;
-        // SAFETY: `ret` is a live, pointer-sized stack slot; `write_return_to_pointer` writes
-        // exactly one pointer (or null) into it, read back after the call.
         unsafe { PointerWriter::write_return_to_pointer(&descriptor, ret, &Ok(val)) };
         assert!(slot.is_null());
     });

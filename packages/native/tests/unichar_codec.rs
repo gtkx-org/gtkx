@@ -76,9 +76,6 @@ fn decode_reads_codepoint_and_rejects_invalid() {
 
 #[test]
 fn ptr_to_value_decodes_codepoint_and_replaces_invalid() {
-    // SAFETY: `UnicharDescriptor` reads a `ReadSource::Value` by interpreting the pointer's integer
-    // value as a codepoint; it never dereferences the pointer, so the synthesized `'X'` address
-    // is sound to pass.
     let valid = unsafe {
         FfiDecoder::read(
             &UnicharDescriptor,
@@ -88,8 +85,6 @@ fn ptr_to_value_decodes_codepoint_and_replaces_invalid() {
     .unwrap();
     assert!(matches!(valid, Value::String(ref s) if s == "X"));
 
-    // SAFETY: the out-of-range codepoint is again only read from the pointer's integer value,
-    // never dereferenced, and is replaced with the Unicode replacement character.
     let invalid = unsafe {
         FfiDecoder::read(
             &UnicharDescriptor,
@@ -104,16 +99,12 @@ fn ptr_to_value_decodes_codepoint_and_replaces_invalid() {
 fn read_from_pointer_decodes_codepoint_and_replaces_invalid() {
     let valid_slot: u32 = 'M' as u32;
     let valid_ptr = &valid_slot as *const u32 as *const c_void;
-    // SAFETY: `ReadSource::Slot` reads one `u32` codepoint from the slot; `valid_ptr` points to
-    // the live, correctly-typed `valid_slot` stack local, so the in-bounds read is sound.
     let read = unsafe { FfiDecoder::read(&UnicharDescriptor, ReadSource::Slot(valid_ptr, "ctx")) }
         .unwrap();
     assert!(matches!(read, Value::String(ref s) if s == "M"));
 
     let invalid_slot: u32 = 0x0011_0000;
     let invalid_ptr = &invalid_slot as *const u32 as *const c_void;
-    // SAFETY: `invalid_ptr` points to the live, correctly-typed `invalid_slot` `u32`; reading
-    // that one in-bounds value yields an out-of-range codepoint replaced with U+FFFD.
     let read_invalid =
         unsafe { FfiDecoder::read(&UnicharDescriptor, ReadSource::Slot(invalid_ptr, "ctx")) }
             .unwrap();
@@ -125,8 +116,6 @@ fn write_return_to_pointer_writes_string_number_and_default() {
     let mut slot: u64 = 9;
     let ret = &mut slot as *mut u64 as *mut c_void;
 
-    // SAFETY: `ret` points to the live, writable `u64` stack local `slot`, at least as wide as
-    // the codepoint word `write_return_to_pointer` stores, so each write below is in bounds.
     unsafe {
         PointerWriter::write_return_to_pointer(
             &UnicharDescriptor,
@@ -136,7 +125,6 @@ fn write_return_to_pointer_writes_string_number_and_default() {
     }
     assert_eq!(slot, u64::from('K' as u32));
 
-    // SAFETY: same writable `u64` slot `ret`; the empty string writes the zero codepoint in bounds.
     unsafe {
         PointerWriter::write_return_to_pointer(
             &UnicharDescriptor,
@@ -146,19 +134,15 @@ fn write_return_to_pointer_writes_string_number_and_default() {
     }
     assert_eq!(slot, 0);
 
-    // SAFETY: same writable `u64` slot `ret`; the numeric codepoint is written in bounds.
     unsafe {
         PointerWriter::write_return_to_pointer(&UnicharDescriptor, ret, &Ok(Value::Number(70.0)));
     }
     assert_eq!(slot, 70);
 
-    // SAFETY: same writable `u64` slot `ret`; the error case writes the zero default in bounds.
     unsafe { PointerWriter::write_return_to_pointer(&UnicharDescriptor, ret, &Err(())) };
     assert_eq!(slot, 0);
 
     slot = u64::MAX;
-    // SAFETY: same writable `u64` slot `ret`; the rejected boolean falls back to the zero default,
-    // written in bounds.
     unsafe {
         PointerWriter::write_return_to_pointer(&UnicharDescriptor, ret, &Ok(Value::Boolean(true)));
     }

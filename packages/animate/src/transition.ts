@@ -53,12 +53,6 @@ const buildSpringAnimation = (
     return animation;
 };
 
-/**
- * Builds the libadwaita animation for a {@link Transition}, driving a `0..1`
- * progress that the caller interpolates and writes to the widget. Spring
- * transitions use {@link Adw.SpringAnimation}; everything else uses
- * {@link Adw.TimedAnimation}.
- */
 export const buildAnimation = (
     widget: Gtk.Widget,
     target: Adw.AnimationTarget,

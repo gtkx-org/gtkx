@@ -7,11 +7,6 @@ import type { CellContainerStore, CellEntry } from "./utils/cell-container-store
 import type { ItemResolver } from "./utils/item-resolver.js";
 import type { TreeItemMetadata } from "./utils/list-item-flatten.js";
 
-/**
- * Renders the content for a single cell given its resolved value, owning tree
- * row, and its bound list position. Section-header cells reuse this shape but
- * receive only their value; the tree row and position are ignored.
- */
 export type CellRenderer<T, S> = (
     value: T | S | undefined,
     treeRow: Gtk.TreeListRow | null,
@@ -64,11 +59,6 @@ const Cell = memo(<T, S>({ container, store, resolver, render }: CellProps<T, S>
     return createPortal(portalled, container, store.keyFor(container));
 }) as <T, S>(props: CellProps<T, S>) => ReactNode;
 
-/**
- * Renders one {@link Cell} per container tracked by the given store, portalling
- * each cell's content into its container and keeping it in sync as positions
- * change.
- */
 export const CellRenderHost = <T, S>({ store, resolver, render }: CellRenderHostProps<T, S>): ReactNode => {
     const containers = useSyncExternalStore(
         store.subscribeSet,
@@ -90,21 +80,11 @@ export const CellRenderHost = <T, S>({ store, resolver, render }: CellRenderHost
     );
 };
 
-/**
- * Builds a {@link CellRenderer} that renders item cells through `render`,
- * passing the resolved value and bound list position as a `{ item, index }`
- * info object.
- */
 export const itemRenderer =
     <T, S>(render: (info: { item: T; index: number }) => ReactNode): CellRenderer<T, S> =>
     (value, _treeRow, position) =>
         render({ item: value as T, index: position });
 
-/**
- * Builds a {@link CellRenderer} that renders section headers through
- * `renderHeader`, passing the resolved section value as a `{ section }` info
- * object, and returning nothing when no header renderer is supplied.
- */
 export const headerRenderer =
     <T, S>(renderHeader: ((info: { section: S }) => ReactNode) | null | undefined): CellRenderer<T, S> =>
     (value) =>

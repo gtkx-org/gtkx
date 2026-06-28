@@ -1,5 +1,5 @@
-import { getHandle, t, wrapHandle } from "@gtkx/ffi";
-import { alloc, type Handle, read } from "@gtkx/native";
+import { getHandle, type Handle, t, wrapHandle } from "@gtkx/ffi";
+import { alloc, read } from "@gtkx/native";
 import type { FontOptions, FontType, Status, TextClusterFlags } from "../cairo.js";
 import { FontFace, ScaledFont } from "../cairo.js";
 import {

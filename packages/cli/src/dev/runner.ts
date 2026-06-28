@@ -15,10 +15,7 @@ export type DevRunnerDeps = {
         loadAppModule: (id: string) => Promise<Record<string, unknown>>,
     ): Promise<unknown>;
     stopMcpClient(): void;
-    installApplicationLifecycle(
-        loadAppModule: (id: string) => Promise<Record<string, unknown>>,
-        onQuit: (runDefaultQuit: () => void) => void,
-    ): Promise<void>;
+    watchApplicationShutdown(onShutdown: () => void): void;
     installShutdownHandlers(onSignal: () => void | Promise<void>): void;
     quitDefaultApplication(): void;
     performRefresh(): void;
@@ -93,20 +90,17 @@ export const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
         deps.log(`Loading entry: ${entryPath}`);
         await server.ssrLoadModule(entryPath);
 
-        await deps.installApplicationLifecycle(
-            (id) => server.ssrLoadModule(id),
-            (runDefaultQuit) => {
-                if (isShuttingDown) return;
-                if (refreshTracker.isRefreshing()) {
-                    deps.log("Application unmounted during Fast Refresh - restarting dev runner...");
-                    return deps.exit(RESTART_EXIT_CODE);
-                }
-                deps.log("Application quit - stopping dev runner...");
-                shutdown(runDefaultQuit).catch((cause: unknown) => {
-                    error("Error closing server:", cause);
-                });
-            },
-        );
+        deps.watchApplicationShutdown(() => {
+            if (isShuttingDown) return;
+            if (refreshTracker.isRefreshing()) {
+                deps.log("Application unmounted during Fast Refresh - restarting dev runner...");
+                return deps.exit(RESTART_EXIT_CODE);
+            }
+            deps.log("Application quit - stopping dev runner...");
+            shutdown(() => {}).catch((cause: unknown) => {
+                error("Error closing server:", cause);
+            });
+        });
 
         const liveApplicationId = deps.getApplicationId();
         if (liveApplicationId) {

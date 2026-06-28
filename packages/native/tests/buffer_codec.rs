@@ -2,7 +2,7 @@ use std::ffi::c_void;
 
 use libffi::middle;
 use native::ffi::StashedValue;
-use native::ffi::descriptor::{BufferDescriptor, Descriptor, FfiDecoder, FfiEncoder as _};
+use native::ffi::descriptor::{BufferDescriptor, Codec, FfiDecoder, FfiEncoder as _};
 use native::ffi::value::{BufferView, BufferViewKind, Value};
 
 fn encode(value: &Value) -> anyhow::Result<StashedValue> {
@@ -58,7 +58,7 @@ extern "C" fn ret_unit() {}
 
 #[test]
 fn buffer_cannot_be_a_return_type() {
-    assert!(!Descriptor::Buffer(BufferDescriptor).can_be_return());
+    assert!(!Codec::Buffer(BufferDescriptor).can_be_return());
 
     let cif = middle::Cif::new(Vec::new(), middle::Type::void());
     let err = BufferDescriptor

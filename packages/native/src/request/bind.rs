@@ -1,22 +1,15 @@
 use std::sync::Arc;
 
-use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use crate::ffi::descriptor::Descriptor;
+use crate::ffi::descriptor::{Codec, Descriptor};
 
-/// A bound FFI call whose library, symbol, and type descriptors are parsed once.
-///
-/// `bind` parses the descriptors a single time and returns this handle; `call` reuses it for every
-/// call, so the per-call path marshals only argument values and never re-walks the type descriptor
-/// objects. The handle is shared via `Arc`, so it is safe to dispatch onto the `GLib` thread
-/// without cloning the descriptor's fields per call.
 pub struct CallDescriptor {
     pub(crate) library_name: String,
     pub(crate) symbol_name: String,
-    pub(crate) arg_descriptors: Vec<Descriptor>,
-    pub(crate) return_descriptor: Descriptor,
+    pub(crate) arg_descriptors: Vec<Codec>,
+    pub(crate) return_descriptor: Codec,
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
@@ -27,15 +20,15 @@ mod napi_export {
     #[napi(catch_unwind)]
     #[cfg_attr(test, allow(dead_code))]
     pub fn bind(
-        env: Env,
         shared_library: String,
         symbol: String,
-        arg_descriptors: Array,
-        return_descriptor: Unknown<'_>,
+        arg_descriptors: Vec<Descriptor>,
+        return_descriptor: Descriptor,
     ) -> napi::Result<External<Arc<CallDescriptor>>> {
-        let parsed_arg_descriptors =
-            crate::ffi::value::map_js_array(&env, &arg_descriptors, |env, value| {
-                let descriptor = Descriptor::from_descriptor(env, value)?;
+        let parsed_arg_descriptors = arg_descriptors
+            .into_iter()
+            .map(|wire| {
+                let descriptor = wire.into_codec()?;
                 if !descriptor.can_be_argument() {
                     return Err(napi::Error::new(
                         napi::Status::InvalidArg,
@@ -43,8 +36,9 @@ mod napi_export {
                     ));
                 }
                 Ok(descriptor)
-            })?;
-        let return_descriptor = Descriptor::from_descriptor(&env, return_descriptor)?;
+            })
+            .collect::<napi::Result<Vec<_>>>()?;
+        let return_descriptor = return_descriptor.into_codec()?;
         if !return_descriptor.can_be_return() {
             return Err(napi::Error::new(
                 napi::Status::InvalidArg,

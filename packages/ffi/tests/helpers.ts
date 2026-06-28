@@ -1,6 +1,6 @@
-import { TYPE_INVALID } from "@gtkx/ffi";
+import { type Handle, TYPE_INVALID } from "@gtkx/ffi";
 import { type Type, typeIsA } from "@gtkx/gi/gobject";
-import { getType, type Handle } from "@gtkx/native";
+import { getType } from "@gtkx/native";
 
 export function instanceIsA(handle: Handle, gtype: Type): boolean {
     const instanceGtype: Type = BigInt(getType(handle));

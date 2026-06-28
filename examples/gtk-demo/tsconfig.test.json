@@ -24,9 +24,6 @@
             "path": "../../packages/gl/tsconfig.lib.json"
         },
         {
-            "path": "../../packages/native/tsconfig.lib.json"
-        },
-        {
             "path": "../../packages/react/tsconfig.lib.json"
         },
         {

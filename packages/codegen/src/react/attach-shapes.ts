@@ -40,11 +40,6 @@ const widget = (nullable?: boolean): ParamSpec =>
 
 const integer: ParamSpec = { kind: "int" };
 
-/**
- * The child-attachment method shapes the reconciler relies on, paired with the
- * exact GIR signature each must expose. `nullable` parameters are required to be
- * nullable because the reconciler passes `null` through them on detach.
- */
 const SHAPE_SPECS: ShapeSpec[] = [
     { shape: "append", method: "append", params: [widget()] },
     { shape: "add", method: "add", params: [widget()] },
@@ -115,12 +110,6 @@ const ownShapes = (library: Library, klass: GirClass): AttachShape[] => {
 
 type ShapeEntry = { glibName: string; shapes: AttachShape[] };
 
-/**
- * Scans every class and interface for the {@link SHAPE_SPECS}, keeping only the
- * shapes whose own method exists with the verified signature. The result is keyed
- * by GLib type name; the reconciler unions entries across an instance's type-name
- * chain and interfaces to recover its full capability set.
- */
 export const collectAttachShapes = (library: Library): AttachShapeTable => {
     const entries: ShapeEntry[] = [];
     for (const namespace of library.namespaces.values()) {

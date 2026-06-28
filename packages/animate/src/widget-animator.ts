@@ -19,14 +19,6 @@ const shouldAnimateOnMount = (props: WidgetAnimationProps): boolean => {
     return !shallowEqual(initial, animate);
 };
 
-/**
- * Imperative driver that animates a single GTK widget by writing interpolated
- * opacity and transform values to a per-widget GTK CSS provider.
- *
- * Obtain an instance from {@link useWidgetAnimation}, then call
- * {@link WidgetAnimator.startAnimation} to transition the widget toward a new
- * {@link AnimationTarget}.
- */
 export class WidgetAnimator {
     private cssProvider: AnimationCssProvider;
     private propsRef: RefObject<WidgetAnimationProps>;
@@ -35,26 +27,12 @@ export class WidgetAnimator {
     private currentAnimation: Adw.Animation | null = null;
     private delayTimer: ReturnType<typeof setTimeout> | null = null;
 
-    /**
-     * @param className - Unique GTK CSS class scoping this animator's styles.
-     * @param ref - Ref to the widget being animated.
-     * @param propsRef - Ref to the latest {@link WidgetAnimationProps}.
-     */
     constructor(className: string, ref: RefObject<Gtk.Widget | null>, propsRef: RefObject<WidgetAnimationProps>) {
         this.cssProvider = new AnimationCssProvider(className);
         this.ref = ref;
         this.propsRef = propsRef;
     }
 
-    /**
-     * Attaches the CSS provider to the widget and applies its mount state.
-     *
-     * When `animateOnMount` is `true` and the props request an enter transition,
-     * the widget starts from its `initial` values and animates to `animate`;
-     * otherwise it is written directly to its resting values.
-     *
-     * @param animateOnMount - Whether to play the enter animation on mount.
-     */
     public applyMount(animateOnMount: boolean): void {
         const widget = this.ref.current;
         if (!widget) return;
@@ -72,15 +50,6 @@ export class WidgetAnimator {
         }
     }
 
-    /**
-     * Animates the widget from its current values to the supplied target,
-     * honoring the transition configured on the current props.
-     *
-     * Any in-flight animation is cancelled before the new one begins.
-     *
-     * @param target - The {@link AnimationTarget} to animate toward.
-     * @param onComplete - Optional callback invoked once the animation settles.
-     */
     public startAnimation(target: AnimationTarget, onComplete?: () => void): void {
         const widget = this.ref.current;
         if (!widget) return;
@@ -111,10 +80,6 @@ export class WidgetAnimator {
         this.play(animation, secondsToMilliseconds(transition.delay ?? 0));
     }
 
-    /**
-     * Cancels any in-flight animation and detaches the CSS provider from the
-     * widget, releasing all resources held by this animator.
-     */
     public dispose(): void {
         this.cancelAnimation();
         this.cssProvider.dispose();

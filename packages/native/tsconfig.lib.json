@@ -1,9 +1,0 @@
-{
-    "extends": "../../tsconfig.lib.json",
-    "compilerOptions": {
-        "rootDir": "${configDir}",
-        "outDir": "${configDir}"
-    },
-    "include": ["${configDir}/binding.ts", "${configDir}/test-support.ts"],
-    "exclude": []
-}

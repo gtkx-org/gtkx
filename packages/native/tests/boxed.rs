@@ -41,8 +41,6 @@ fn from_glib_none_creates_copy() {
         assert!(!boxed.as_ptr().is_null());
         assert_ne!(boxed.as_ptr(), original_ptr);
 
-        // SAFETY: `original_ptr` is the live boxed value of `gtype` allocated above and not consumed
-        // (the wrapper copied it), so freeing it once with the matching gtype is sound.
         unsafe {
             glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original_ptr);
         }
@@ -111,8 +109,6 @@ fn drop_does_not_free_transfer_none_memory() {
 
         assert!(helpers::is_valid_boxed_ptr(ptr, gtype));
 
-        // SAFETY: the unowned `TestBoxed` drop did not free `ptr`, so it is still a live boxed value
-        // of `gtype`; freeing it once here with the matching gtype is sound.
         unsafe {
             glib::gobject_ffi::g_boxed_free(gtype.into_glib(), ptr);
         }
@@ -122,8 +118,6 @@ fn drop_does_not_free_transfer_none_memory() {
 #[test]
 fn from_glib_full_none_type_plain_struct() {
     helpers::run(|| {
-        // SAFETY: `g_malloc0` with a non-zero size returns a freshly allocated, zeroed,
-        // uniquely owned block that the wrapper under test takes ownership of and frees.
         let ptr = unsafe { glib::ffi::g_malloc0(16) };
 
         let boxed = Boxed::from_glib_full(None, ptr);
@@ -146,8 +140,6 @@ fn from_glib_full_none_type_null_ptr() {
 #[test]
 fn drop_plain_struct_uses_g_free() {
     helpers::run(|| {
-        // SAFETY: `g_malloc0` with a non-zero size returns a freshly allocated, zeroed,
-        // uniquely owned block that the wrapper under test takes ownership of and frees.
         let ptr = unsafe { glib::ffi::g_malloc0(32) };
 
         let boxed = Boxed::from_glib_full(None, ptr);
@@ -166,8 +158,6 @@ fn drop_plain_struct_null_ptr_safe() {
 #[test]
 fn plain_struct_not_owned_does_not_free() {
     helpers::run(|| {
-        // SAFETY: `g_malloc0` with a non-zero size returns a freshly allocated, zeroed,
-        // uniquely owned block that the wrapper under test takes ownership of and frees.
         let ptr = unsafe { glib::ffi::g_malloc0(16) };
 
         let boxed = helpers::TestBoxed {
@@ -177,8 +167,6 @@ fn plain_struct_not_owned_does_not_free() {
         };
         drop(boxed);
 
-        // SAFETY: the unowned `TestBoxed` drop did not free `ptr`, so it is still the live
-        // `g_malloc0`-ed block; `g_free` releases it exactly once.
         unsafe {
             glib::ffi::g_free(ptr);
         }
@@ -199,8 +187,6 @@ fn from_glib_none_null_ptr_with_none_type() {
 #[test]
 fn as_ptr_returns_ptr_for_plain_struct() {
     helpers::run(|| {
-        // SAFETY: `g_malloc0` with a non-zero size returns a freshly allocated, zeroed,
-        // uniquely owned block that the wrapper under test takes ownership of and frees.
         let ptr = unsafe { glib::ffi::g_malloc0(24) };
         let boxed = Boxed::from_glib_full(None, ptr);
 
@@ -211,8 +197,6 @@ fn as_ptr_returns_ptr_for_plain_struct() {
 #[test]
 fn clone_without_gtype_shares_ownership() {
     helpers::run(|| {
-        // SAFETY: `g_malloc0` with a non-zero size returns a freshly allocated, zeroed,
-        // uniquely owned block that the wrapper under test takes ownership of and frees.
         let ptr = unsafe { glib::ffi::g_malloc0(16) };
         let boxed = Boxed::from_glib_full(None, ptr);
 
@@ -221,8 +205,6 @@ fn clone_without_gtype_shares_ownership() {
         assert!(cloned.is_owned());
 
         drop(boxed);
-        // SAFETY: the no-gtype clone shares ownership of the still-live `g_malloc0`-ed block, so
-        // `cloned.as_ptr()` is non-null and addresses at least one readable, zeroed byte.
         let first_byte = unsafe { *(cloned.as_ptr() as *const u8) };
         assert_eq!(first_byte, 0);
     });
@@ -265,8 +247,6 @@ mod from_alloc {
     const DEFERRED_ALLOC_SIZE: usize = 16;
 
     fn deferred_boxed(type_name: &str) -> (Boxed, *mut c_void) {
-        // SAFETY: `g_malloc0` with a non-zero size returns a freshly allocated, zeroed,
-        // uniquely owned block that the wrapper under test takes ownership of and frees.
         let ptr = unsafe { glib::ffi::g_malloc0(DEFERRED_ALLOC_SIZE) };
         let name = glib::GString::from(type_name);
         assert!(glib::Type::from_name(name.as_str()).is_none());
@@ -279,16 +259,7 @@ mod from_alloc {
         (boxed, ptr)
     }
 
-    /// `GBoxed` copy function registered for the late-registered test type.
-    ///
-    /// # Safety
-    ///
-    /// Called by `GObject`'s boxed machinery with `ptr` pointing to a live boxed value of at least
-    /// `DEFERRED_ALLOC_SIZE` bytes; it returns a freshly `g_malloc`-ed independent copy.
     unsafe extern "C" fn late_boxed_copy(ptr: *mut c_void) -> *mut c_void {
-        // SAFETY: `g_malloc` returns a fresh `DEFERRED_ALLOC_SIZE` block, and `ptr` (per the
-        // contract) addresses at least that many readable bytes, so the non-overlapping copy of
-        // exactly `DEFERRED_ALLOC_SIZE` bytes between the two distinct blocks is in bounds.
         unsafe {
             let dest = glib::ffi::g_malloc(DEFERRED_ALLOC_SIZE);
             std::ptr::copy_nonoverlapping(ptr as *const u8, dest as *mut u8, DEFERRED_ALLOC_SIZE);
@@ -296,17 +267,9 @@ mod from_alloc {
         }
     }
 
-    /// `GBoxed` free function registered for the late-registered test type.
-    ///
-    /// # Safety
-    ///
-    /// Called by `GObject`'s boxed machinery with `ptr` owning a live boxed value previously produced
-    /// by [`late_boxed_copy`]; it records the call and frees the block exactly once.
     unsafe extern "C" fn late_boxed_free(ptr: *mut c_void) {
         BOXED_FREE_CALLS.fetch_add(1, Ordering::SeqCst);
         LAST_BOXED_FREED_PTR.store(ptr, Ordering::SeqCst);
-        // SAFETY: `ptr` is the owned boxed value passed by GObject; `g_free` releases the
-        // `g_malloc`-ed block exactly once.
         unsafe { glib::ffi::g_free(ptr) };
     }
 
@@ -324,8 +287,6 @@ mod from_alloc {
     #[test]
     fn missing_name_binds_plain_g_free_cleanup() {
         helpers::run(|| {
-            // SAFETY: `g_malloc0` with a non-zero size returns a freshly allocated, zeroed,
-            // uniquely owned block that the wrapper under test takes ownership of and frees.
             let ptr = unsafe { glib::ffi::g_malloc0(DEFERRED_ALLOC_SIZE) };
             let boxed = Boxed::from_alloc(None, ptr);
             assert!(boxed.is_owned());
@@ -352,9 +313,6 @@ mod from_alloc {
         helpers::run(|| {
             let (boxed, ptr) = deferred_boxed("GtkxTestLateRegisteredBoxed");
 
-            // SAFETY: `c"GtkxTestLateRegisteredBoxed"` is a valid NUL-terminated C string and the
-            // two callbacks have the required copy/free signatures, so registering this boxed type
-            // is sound; the type name was asserted unregistered by `deferred_boxed`.
             let registered = unsafe {
                 glib::gobject_ffi::g_boxed_type_register_static(
                     c"GtkxTestLateRegisteredBoxed".as_ptr(),
@@ -387,17 +345,9 @@ mod free_fn {
     static FREE_CALLS: AtomicUsize = AtomicUsize::new(0);
     static LAST_FREED_PTR: AtomicPtr<c_void> = AtomicPtr::new(std::ptr::null_mut());
 
-    /// Free function passed to `Boxed::from_glib_full_with_free_fn` in these tests.
-    ///
-    /// # Safety
-    ///
-    /// Invoked by the `Boxed` wrapper on drop with `ptr` owning a live `g_malloc`-ed block; it
-    /// records the call and frees the block exactly once.
     unsafe extern "C" fn record_free(ptr: *mut c_void) {
         FREE_CALLS.fetch_add(1, Ordering::SeqCst);
         LAST_FREED_PTR.store(ptr, Ordering::SeqCst);
-        // SAFETY: `ptr` is the owned block handed over by the `Boxed` wrapper; `g_free` releases it
-        // exactly once.
         unsafe { glib::ffi::g_free(ptr) };
     }
 
@@ -412,8 +362,6 @@ mod free_fn {
     fn drop_invokes_free_fn_for_owned_boxed() {
         helpers::run(|| {
             let before = snapshot();
-            // SAFETY: `g_malloc0` with a non-zero size returns a freshly allocated, zeroed,
-            // uniquely owned block that the wrapper under test takes ownership of and frees.
             let ptr = unsafe { glib::ffi::g_malloc0(16) };
 
             {
@@ -431,8 +379,6 @@ mod free_fn {
     #[test]
     fn clone_of_free_fn_boxed_shares_ownership() {
         helpers::run(|| {
-            // SAFETY: `g_malloc0` with a non-zero size returns a freshly allocated, zeroed,
-            // uniquely owned block that the wrapper under test takes ownership of and frees.
             let ptr = unsafe { glib::ffi::g_malloc0(16) };
             let boxed = Boxed::from_glib_full_with_free_fn(ptr, record_free);
 

@@ -53,13 +53,6 @@ type ColumnViewSortProps = {
     onSortChanged?: ((column: string | null, order: Gtk.SortType) => void) | null | undefined;
 };
 
-/**
- * Props for the {@link ColumnView} component, replacing the raw `GtkColumnView`
- * surface with a declarative `items`/`sections` model, optional controlled
- * selection, controlled sorting, and section headers. Columns are declared as
- * {@link ColumnViewColumn} children. Supplying an external `model` switches to
- * the uncontrolled form.
- */
 type ColumnViewDeclarativeProps<T = unknown, S = unknown> = ColumnViewSortProps &
     CollectionItemSizeProps &
     (
@@ -80,12 +73,6 @@ type ColumnViewDeclarativeProps<T = unknown, S = unknown> = ColumnViewSortProps 
           }
     );
 
-/**
- * Props for the {@link ColumnView} component: the raw `GtkColumnView` element
- * surface (minus its imperative `columns` property) with its model/sort wiring
- * replaced by the declarative {@link ColumnViewDeclarativeProps} API. Columns
- * are declared as {@link ColumnViewColumn} children.
- */
 export type ColumnViewProps<T = unknown, S = unknown> = Omit<
     GtkColumnViewProps,
     "columns" | keyof ColumnViewDeclarativeProps<T, S>
@@ -223,12 +210,6 @@ const ColumnViewComponent = <T = unknown, S = unknown>(props: ColumnViewProps<T,
     );
 };
 
-/**
- * A `GtkColumnView` driven by a declarative `items`/`sections` model with
- * optional controlled selection, controlled sorting, and section headers.
- * Columns are declared as {@link ColumnView.Column} children. Supplying an
- * external `model` switches to the uncontrolled form.
- */
 export const ColumnView: typeof ColumnViewComponent & {
     Column: typeof ColumnViewColumn;
 } = Object.assign(ColumnViewComponent, { Column: ColumnViewColumn });

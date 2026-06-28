@@ -29,7 +29,7 @@ export const renderEnumsModule = (
 
 export const renderTypesModule = (groupAliases: Map<string, string>): string => {
     const builder = new ModuleBuilder();
-    builder.imports.addNamed("@gtkx/native", "Handle", true);
+    builder.imports.addNamed("@gtkx/ffi", "Handle", true);
     builder.appendDeclaration(`/** An opaque \`GLsync\` fence handle. */\nexport type GLsync = Handle;`);
     builder.appendDeclaration(
         `/** An opaque native pointer handle (e.g. a \`glMapBufferRange\` mapping). */\nexport type GLpointer = Handle;`,

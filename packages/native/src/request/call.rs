@@ -11,7 +11,7 @@ use super::{RefUpdate, Request};
 use crate::ffi::{
     self,
     arg::Arg,
-    descriptor::{ArrayKind, Descriptor, FfiDecoder as _, FfiEncoder as _},
+    descriptor::{ArrayKind, Codec, FfiDecoder as _, FfiEncoder as _},
     library_cache::GlibThreadState,
     value::Value,
 };
@@ -67,9 +67,6 @@ impl Request for CallRequest {
             stashed_value.append_libffi_args(&mut ffi_args);
         }
 
-        // SAFETY: runs on the gtkx-glib thread; `state.library` returns a loaded library and
-        // `get` resolves the named symbol within it. The code pointer is only invoked through the
-        // `cif` built from `result_type`/`arg_types` below, which describes the symbol's real ABI.
         let symbol_ptr = unsafe {
             GlibThreadState::with::<_, anyhow::Result<libffi::CodePtr>>(|state| {
                 let library = state.library(&self.descriptor.library_name)?;
@@ -107,8 +104,8 @@ impl Request for CallRequest {
 }
 
 impl CallRequest {
-    fn release_sized_array_return(result_type: &Descriptor, result: &ffi::StashedValue) {
-        let Descriptor::Array(array_type) = result_type else {
+    fn release_sized_array_return(result_type: &Codec, result: &ffi::StashedValue) {
+        let Codec::Array(array_type) = result_type else {
             return;
         };
         if !array_type.ownership.is_full()
@@ -122,9 +119,6 @@ impl CallRequest {
         if let ffi::StashedValue::Ptr(ptr) = result
             && !ptr.is_null()
         {
-            // SAFETY: the result is a transfer-full sized/fixed array whose backing buffer the
-            // callee allocated with the GLib allocator; after decoding it above, freeing `*ptr`
-            // with `g_free` on the gtkx-glib thread releases that buffer exactly once.
             unsafe { glib::ffi::g_free(*ptr) };
         }
     }
@@ -190,12 +184,12 @@ mod tests {
     use super::*;
 
     fn int_arg(value: f64) -> Arg {
-        Arg::new(Descriptor::Integer(IntegerKind::I32), Value::Number(value))
+        Arg::new(Codec::Integer(IntegerKind::I32), Value::Number(value))
     }
 
-    fn u8_array(kind: ArrayKind, ownership: Ownership) -> Descriptor {
-        Descriptor::Array(ArrayDescriptor {
-            item_descriptor: Box::new(Descriptor::Integer(IntegerKind::U8)),
+    fn u8_array(kind: ArrayKind, ownership: Ownership) -> Codec {
+        Codec::Array(ArrayDescriptor {
+            item_descriptor: Box::new(Codec::Integer(IntegerKind::U8)),
             kind,
             ownership,
             element_size: None,
@@ -211,7 +205,7 @@ mod tests {
 
     fn borrowed_string_arg(value: &str) -> Arg {
         Arg::new(
-            Descriptor::String(string_type(Ownership::Borrowed)),
+            Codec::String(string_type(Ownership::Borrowed)),
             Value::String(value.into()),
         )
     }
@@ -220,7 +214,7 @@ mod tests {
         library_name: &str,
         symbol_name: &str,
         args: Vec<Arg>,
-        return_descriptor: Descriptor,
+        return_descriptor: Codec,
     ) -> CallRequest {
         let arg_descriptors = args.iter().map(|arg| arg.descriptor.clone()).collect();
         let values = args.into_iter().map(|arg| arg.value).collect();
@@ -241,7 +235,7 @@ mod tests {
             "g_memdup2",
             vec![
                 Arg::new(u8_array(ArrayKind::Array, Ownership::Borrowed), data),
-                Arg::new(Descriptor::Integer(IntegerKind::U64), Value::Number(3.0)),
+                Arg::new(Codec::Integer(IntegerKind::U64), Value::Number(3.0)),
             ],
             u8_array(ArrayKind::Sized { size_index: 1 }, Ownership::Full),
         )
@@ -255,10 +249,10 @@ mod tests {
             vec![
                 borrowed_string_arg("a,b"),
                 borrowed_string_arg(","),
-                Arg::new(Descriptor::Integer(IntegerKind::I32), Value::Number(-1.0)),
+                Arg::new(Codec::Integer(IntegerKind::I32), Value::Number(-1.0)),
             ],
-            Descriptor::Array(ArrayDescriptor {
-                item_descriptor: Box::new(Descriptor::String(string_type(Ownership::Full))),
+            Codec::Array(ArrayDescriptor {
+                item_descriptor: Box::new(Codec::String(string_type(Ownership::Full))),
                 kind: ArrayKind::Array,
                 ownership: Ownership::Full,
                 element_size: None,
@@ -319,15 +313,12 @@ mod tests {
             "g_unichar_to_utf8",
             vec![
                 Arg::new(
-                    Descriptor::Integer(IntegerKind::U32),
+                    Codec::Integer(IntegerKind::U32),
                     Value::Number(0x00E9 as f64),
                 ),
-                Arg::new(
-                    Descriptor::Buffer(BufferDescriptor),
-                    Value::BufferView(view),
-                ),
+                Arg::new(Codec::Buffer(BufferDescriptor), Value::BufferView(view)),
             ],
-            Descriptor::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerKind::I32),
         );
         let (value, ref_updates) = request
             .execute()
@@ -343,7 +334,7 @@ mod tests {
             "libglib-2.0.so.0",
             "g_random_int_range",
             vec![int_arg(10.0), int_arg(20.0)],
-            Descriptor::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerKind::I32),
         );
         let (value, ref_updates) = request.execute().expect("FFI call should succeed");
         assert!(ref_updates.is_empty());

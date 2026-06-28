@@ -9,23 +9,23 @@ use gtk4::prelude::StaticType as _;
 use native::Handle;
 use native::ffi::StashedValue;
 use native::ffi::descriptor::{
-    ArrayDescriptor, ArrayKind, BooleanDescriptor, BoxedDescriptor, Descriptor, FloatKind,
+    ArrayDescriptor, ArrayKind, BooleanDescriptor, BoxedDescriptor, Codec, FloatKind,
     FundamentalDescriptor, HashTableDescriptor, HashTableEntryEncoder, IntegerKind,
     ObjectDescriptor, Ownership, StringDescriptor, StructDescriptor,
 };
 use native::ffi::descriptor::{FfiDecoder, FfiEncoder, PointerWriter, ReadSource};
 use native::ffi::value::Value;
 
-fn struct_type() -> Descriptor {
-    Descriptor::Struct(StructDescriptor {
+fn struct_type() -> Codec {
+    Codec::Struct(StructDescriptor {
         ownership: Ownership::Borrowed,
         size: Some(size_of::<gtk4::gdk::ffi::GdkRGBA>()),
         caller_allocated: false,
     })
 }
 
-fn gptrarray_type() -> Descriptor {
-    Descriptor::Array(ArrayDescriptor {
+fn gptrarray_type() -> Codec {
+    Codec::Array(ArrayDescriptor {
         item_descriptor: Box::new(struct_type()),
         kind: ArrayKind::GPtrArray,
         ownership: Ownership::Borrowed,
@@ -38,8 +38,8 @@ fn boxed_handle() -> Handle {
     Handle::borrowed(ptr)
 }
 
-fn full_boxed_type() -> Descriptor {
-    Descriptor::Boxed(BoxedDescriptor {
+fn full_boxed_type() -> Codec {
+    Codec::Boxed(BoxedDescriptor {
         ownership: Ownership::Full,
         type_name: "GdkRGBA".to_string(),
         shared_library: None,
@@ -49,21 +49,21 @@ fn full_boxed_type() -> Descriptor {
     })
 }
 
-fn borrowed_string_type() -> Descriptor {
-    Descriptor::String(StringDescriptor {
+fn borrowed_string_type() -> Codec {
+    Codec::String(StringDescriptor {
         ownership: Ownership::Borrowed,
         length: None,
     })
 }
 
-fn full_gobject_type() -> Descriptor {
-    Descriptor::Object(ObjectDescriptor {
+fn full_gobject_type() -> Codec {
+    Codec::Object(ObjectDescriptor {
         ownership: Ownership::Full,
     })
 }
 
 fn full_variant_fundamental_encoder(ref_func: &str, unref_func: &str) -> HashTableEntryEncoder {
-    HashTableEntryEncoder::Handle(Box::new(Descriptor::Fundamental(FundamentalDescriptor {
+    HashTableEntryEncoder::Handle(Box::new(Codec::Fundamental(FundamentalDescriptor {
         ownership: Ownership::Full,
         shared_library: "libglib-2.0.so.0".to_owned(),
         ref_func: ref_func.to_owned(),
@@ -72,8 +72,8 @@ fn full_variant_fundamental_encoder(ref_func: &str, unref_func: &str) -> HashTab
     })))
 }
 
-fn param_spec_fundamental_type() -> Descriptor {
-    Descriptor::Fundamental(FundamentalDescriptor {
+fn param_spec_fundamental_type() -> Codec {
+    Codec::Fundamental(FundamentalDescriptor {
         ownership: Ownership::Full,
         shared_library: "libgobject-2.0.so.0".to_owned(),
         ref_func: "g_param_spec_ref".to_owned(),
@@ -83,8 +83,6 @@ fn param_spec_fundamental_type() -> Descriptor {
 }
 
 fn create_param_spec() -> *mut c_void {
-    // SAFETY: runs on the GTK-initialized test thread; the string arguments are valid static
-    // NUL-terminated C strings and the flags are valid, so this returns a new owned GParamSpec.
     unsafe {
         glib::gobject_ffi::g_param_spec_boolean(
             c"ht-cov-param".as_ptr(),
@@ -96,7 +94,7 @@ fn create_param_spec() -> *mut c_void {
     }
 }
 
-fn ht_type(key: Descriptor, value: Descriptor, ownership: Ownership) -> HashTableDescriptor {
+fn ht_type(key: Codec, value: Codec, ownership: Ownership) -> HashTableDescriptor {
     HashTableDescriptor {
         key_descriptor: Box::new(key),
         value_descriptor: Box::new(value),
@@ -112,8 +110,6 @@ fn roundtrip(ht: &HashTableDescriptor, input: &Value) -> Value {
 fn assert_encoded_float(encoder: &HashTableEntryEncoder, value: &Value, expected: f64) {
     let ptr = encoder.encode(value).expect("encoding should succeed");
 
-    // SAFETY: `ptr` is the non-null encoded float pointer the entry encoder returned;
-    // reinterpreting it as `*const f64` and reading through it yields the stored value.
     let stored_value = unsafe {
         *ptr.cast::<f64>()
             .as_ref()
@@ -121,17 +117,14 @@ fn assert_encoded_float(encoder: &HashTableEntryEncoder, value: &Value, expected
     };
     assert!((stored_value - expected).abs() < f64::EPSILON);
 
-    // SAFETY: the pointer is the test-owned allocation from above; `g_free` releases it once.
     unsafe { glib::ffi::g_free(ptr) };
 }
 
 fn assert_boolean_ptr_reads_true(ptr: *mut c_void) {
-    let descriptor = Descriptor::Boolean(BooleanDescriptor);
+    let descriptor = Codec::Boolean(BooleanDescriptor);
 
-    let value =
-        // SAFETY: the pointer addresses a live value/container of the codec's type, valid for
-        // this read.
-        unsafe { descriptor.read(ReadSource::Value(ptr, "test")) }.expect("decoding should succeed");
+    let value = unsafe { descriptor.read(ReadSource::Value(ptr, "test")) }
+        .expect("decoding should succeed");
 
     match value {
         Value::Boolean(true) => (),
@@ -141,8 +134,8 @@ fn assert_boolean_ptr_reads_true(ptr: *mut c_void) {
 
 fn boolean_boolean_ht() -> HashTableDescriptor {
     ht_type(
-        Descriptor::Boolean(BooleanDescriptor),
-        Descriptor::Boolean(BooleanDescriptor),
+        Codec::Boolean(BooleanDescriptor),
+        Codec::Boolean(BooleanDescriptor),
         Ownership::Full,
     )
 }
@@ -150,7 +143,7 @@ fn boolean_boolean_ht() -> HashTableDescriptor {
 fn gobject_key_boolean_ht() -> HashTableDescriptor {
     ht_type(
         full_gobject_type(),
-        Descriptor::Boolean(BooleanDescriptor),
+        Codec::Boolean(BooleanDescriptor),
         Ownership::Full,
     )
 }
@@ -181,28 +174,28 @@ where
 
 #[test]
 fn encoder_from_type_boolean() {
-    let descriptor = Descriptor::Boolean(BooleanDescriptor);
+    let descriptor = Codec::Boolean(BooleanDescriptor);
     let encoder = HashTableEntryEncoder::from_descriptor(&descriptor);
     assert!(matches!(encoder, Some(HashTableEntryEncoder::Boolean)));
 }
 
 #[test]
 fn encoder_from_type_float() {
-    let descriptor = Descriptor::Float(FloatKind::F64);
+    let descriptor = Codec::Float(FloatKind::F64);
     let encoder = HashTableEntryEncoder::from_descriptor(&descriptor);
     assert!(matches!(encoder, Some(HashTableEntryEncoder::Float)));
 }
 
 #[test]
 fn encoder_from_type_integer() {
-    let descriptor = Descriptor::Integer(IntegerKind::I32);
+    let descriptor = Codec::Integer(IntegerKind::I32);
     let encoder = HashTableEntryEncoder::from_descriptor(&descriptor);
     assert!(matches!(encoder, Some(HashTableEntryEncoder::Integer)));
 }
 
 #[test]
 fn encoder_from_type_string() {
-    let descriptor = Descriptor::String(StringDescriptor {
+    let descriptor = Codec::String(StringDescriptor {
         ownership: Ownership::Borrowed,
         length: None,
     });
@@ -271,13 +264,11 @@ fn ptr_to_value_boolean_true() {
 
 #[test]
 fn ptr_to_value_boolean_false() {
-    let descriptor = Descriptor::Boolean(BooleanDescriptor);
+    let descriptor = Codec::Boolean(BooleanDescriptor);
     let ptr = std::ptr::null_mut::<c_void>();
 
-    let value =
-        // SAFETY: the pointer addresses a live value/container of the codec's type, valid for
-        // this read.
-        unsafe { descriptor.read(ReadSource::Value(ptr, "test")) }.expect("decoding should succeed");
+    let value = unsafe { descriptor.read(ReadSource::Value(ptr, "test")) }
+        .expect("decoding should succeed");
 
     match value {
         Value::Boolean(false) => (),
@@ -292,39 +283,33 @@ fn ptr_to_value_boolean_nonzero_is_true() {
 
 #[test]
 fn ptr_to_value_float() {
-    let descriptor = Descriptor::Float(FloatKind::F64);
+    let descriptor = Codec::Float(FloatKind::F64);
     let float_val: f64 = std::f64::consts::E;
-    // SAFETY: `g_malloc` returns a block large enough for one `f64`, written through the
-    // suitably aligned pointer; the test owns and later frees it.
     let ptr = unsafe {
         let mem = glib::ffi::g_malloc(std::mem::size_of::<f64>()) as *mut f64;
         *mem = float_val;
         mem as *mut c_void
     };
 
-    let value =
-        // SAFETY: the pointer addresses a live value/container of the codec's type, valid for
-        // this read.
-        unsafe { descriptor.read(ReadSource::Value(ptr, "test")) }.expect("decoding should succeed");
+    let value = unsafe { descriptor.read(ReadSource::Value(ptr, "test")) }
+        .expect("decoding should succeed");
 
     match value {
         Value::Number(n) => assert!((n - std::f64::consts::E).abs() < f64::EPSILON),
         other => panic!("Expected Number, got {other:?}"),
     }
 
-    // SAFETY: the pointer is the test-owned allocation from above; `g_free` releases it once.
     unsafe { glib::ffi::g_free(ptr) };
 }
 
 #[test]
 fn ptr_to_value_struct_null() {
-    let descriptor = Descriptor::Struct(StructDescriptor {
+    let descriptor = Codec::Struct(StructDescriptor {
         ownership: Ownership::Borrowed,
         size: Some(16),
         caller_allocated: false,
     });
 
-    // SAFETY: a null pointer is the documented null case, decoded without dereferencing.
     let value = unsafe { descriptor.read(ReadSource::Value(std::ptr::null_mut(), "test")) }
         .expect("decoding should succeed");
 
@@ -337,27 +322,22 @@ fn ptr_to_value_struct_null() {
 #[test]
 fn ptr_to_value_struct_non_null() {
     helpers::run(|| {
-        let descriptor = Descriptor::Struct(StructDescriptor {
+        let descriptor = Codec::Struct(StructDescriptor {
             ownership: Ownership::Borrowed,
             size: Some(16),
             caller_allocated: false,
         });
 
-        // SAFETY: the pointer addresses a live value/container of the codec's type, valid for
-        // this read.
         let ptr = unsafe { glib::ffi::g_malloc0(16) };
 
-        let value =
-            // SAFETY: the pointer addresses a live value/container of the codec's type, valid for
-            // this read.
-            unsafe { descriptor.read(ReadSource::Value(ptr, "test")) }.expect("decoding should succeed");
+        let value = unsafe { descriptor.read(ReadSource::Value(ptr, "test")) }
+            .expect("decoding should succeed");
 
         match value {
             Value::Object(_) => (),
             other => panic!("Expected Object, got {other:?}"),
         }
 
-        // SAFETY: the pointer is the test-owned allocation from above; `g_free` releases it once.
         unsafe { glib::ffi::g_free(ptr) };
     });
 }
@@ -385,8 +365,8 @@ fn hashtable_encode_decode_booleans() {
 fn hashtable_encode_decode_floats() {
     helpers::run(|| {
         let ht_type = ht_type(
-            Descriptor::Integer(IntegerKind::I32),
-            Descriptor::Float(FloatKind::F64),
+            Codec::Integer(IntegerKind::I32),
+            Codec::Float(FloatKind::F64),
             Ownership::Full,
         );
 
@@ -411,11 +391,11 @@ fn hashtable_encode_decode_floats() {
 fn hashtable_encode_decode_string_to_boolean() {
     helpers::run(|| {
         let ht_type = ht_type(
-            Descriptor::String(StringDescriptor {
+            Codec::String(StringDescriptor {
                 ownership: Ownership::Borrowed,
                 length: None,
             }),
-            Descriptor::Boolean(BooleanDescriptor),
+            Codec::Boolean(BooleanDescriptor),
             Ownership::Full,
         );
 
@@ -443,8 +423,8 @@ fn hashtable_encode_decode_string_to_boolean() {
 fn hashtable_encode_decode_float_keys() {
     helpers::run(|| {
         let ht_type = ht_type(
-            Descriptor::Float(FloatKind::F64),
-            Descriptor::Integer(IntegerKind::I32),
+            Codec::Float(FloatKind::F64),
+            Codec::Integer(IntegerKind::I32),
             Ownership::Full,
         );
 
@@ -500,8 +480,8 @@ fn hashtable_null_optional() {
 fn hashtable_borrowed_does_not_free() {
     helpers::run(|| {
         let ht_type = ht_type(
-            Descriptor::Integer(IntegerKind::I32),
-            Descriptor::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerKind::I32),
             Ownership::Borrowed,
         );
 
@@ -517,11 +497,9 @@ fn hashtable_borrowed_does_not_free() {
             _ => panic!("Expected array"),
         }
 
-        // SAFETY: `hash_table`/`table` is a valid GHashTable and the test holds the reference released here.
         let size = unsafe { glib::ffi::g_hash_table_size(hash_table) };
         assert_eq!(size, 2);
 
-        // SAFETY: `hash_table`/`table` is a valid GHashTable and the test holds the reference released here.
         unsafe { glib::ffi::g_hash_table_unref(hash_table) };
     });
 }
@@ -530,8 +508,8 @@ fn hashtable_borrowed_does_not_free() {
 fn float_memory_properly_freed_on_drop() {
     helpers::run(|| {
         let ht_type = ht_type(
-            Descriptor::Float(FloatKind::F64),
-            Descriptor::Float(FloatKind::F64),
+            Codec::Float(FloatKind::F64),
+            Codec::Float(FloatKind::F64),
             Ownership::Full,
         );
 
@@ -585,7 +563,7 @@ fn native_handle_encoder_hash_equal_and_free() {
 
 #[test]
 fn full_gobject_encoder_installs_unref_destroy() {
-    let encoder = HashTableEntryEncoder::Handle(Box::new(Descriptor::Object(ObjectDescriptor {
+    let encoder = HashTableEntryEncoder::Handle(Box::new(Codec::Object(ObjectDescriptor {
         ownership: Ownership::Full,
     })));
     assert!(encoder.free_func().unwrap().is_some());
@@ -609,7 +587,7 @@ fn full_fundamental_encoder_without_ref_fn_installs_no_destroy() {
 
 #[test]
 fn ptr_array_encoder_hash_equal_and_free() {
-    let encoder = HashTableEntryEncoder::PtrArray(Box::new(Descriptor::Integer(IntegerKind::I32)));
+    let encoder = HashTableEntryEncoder::PtrArray(Box::new(Codec::Integer(IntegerKind::I32)));
     assert!(encoder.hash_func().is_some());
     assert!(encoder.equal_func().is_some());
     assert!(encoder.free_func().unwrap().is_some());
@@ -641,7 +619,6 @@ fn encode_ptr_array_value_with_objects_and_nulls() {
             ]))
             .unwrap();
         assert!(!ptr.is_null());
-        // SAFETY: the GPtrArray is valid and the test holds the reference released here.
         unsafe { glib::ffi::g_ptr_array_unref(ptr as *mut glib::ffi::GPtrArray) };
     });
 }
@@ -650,7 +627,7 @@ fn encode_ptr_array_value_with_objects_and_nulls() {
 fn ptr_array_value_freed_when_hashtable_storage_drops() {
     helpers::run(|| {
         let ht_type = ht_type(
-            Descriptor::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerKind::I32),
             gptrarray_type(),
             Ownership::Borrowed,
         );
@@ -689,23 +666,19 @@ fn hashtable_decode_null_yields_empty_array() {
 fn hashtable_ptr_to_value_null_and_populated() {
     helpers::run(|| {
         let ht_type = ht_type(
-            Descriptor::Integer(IntegerKind::I32),
-            Descriptor::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerKind::I32),
             Ownership::Borrowed,
         );
 
         let empty =
-            // SAFETY: a null pointer is the documented null case, decoded without dereferencing.
             unsafe { ht_type.read(ReadSource::Value(std::ptr::null_mut(), "ctx")) }.unwrap();
         assert!(matches!(empty, Value::Array(items) if items.is_empty()));
 
         let hash_table = helpers::make_integer_hash_table(&[(1, 10)]);
         let decoded =
-            // SAFETY: the pointer addresses a live value/container of the codec's type, valid for
-            // this read.
             unsafe { ht_type.read(ReadSource::Value(hash_table as *mut c_void, "ctx")) }.unwrap();
         assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
-        // SAFETY: `hash_table`/`table` is a valid GHashTable and the test holds the reference released here.
         unsafe { glib::ffi::g_hash_table_unref(hash_table) };
     });
 }
@@ -714,13 +687,11 @@ fn hashtable_ptr_to_value_null_and_populated() {
 fn hashtable_decode_full_ownership_from_pointer_unrefs() {
     helpers::run(|| {
         let ht_type = ht_type(
-            Descriptor::Integer(IntegerKind::I32),
-            Descriptor::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerKind::I32),
             Ownership::Full,
         );
         let hash_table = helpers::make_integer_hash_table(&[(3, 30)]);
-        // SAFETY: `hash_table` is a valid GHashTable; this takes one extra owning reference
-        // matched by an unref below.
         unsafe {
             glib::ffi::g_hash_table_ref(hash_table);
         }
@@ -730,11 +701,9 @@ fn hashtable_decode_full_ownership_from_pointer_unrefs() {
             .unwrap();
         assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
 
-        // SAFETY: `hash_table`/`table` is a valid GHashTable and the test holds the reference released here.
         let size = unsafe { glib::ffi::g_hash_table_size(hash_table) };
         assert_eq!(size, 1);
 
-        // SAFETY: `hash_table`/`table` is a valid GHashTable and the test holds the reference released here.
         unsafe { glib::ffi::g_hash_table_unref(hash_table) };
     });
 }
@@ -744,7 +713,7 @@ fn hashtable_encode_native_handle_keys_roundtrips() {
     helpers::run(|| {
         let ht_type = ht_type(
             struct_type(),
-            Descriptor::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerKind::I32),
             Ownership::Full,
         );
         let input = Value::Array(vec![Value::Array(vec![
@@ -760,8 +729,8 @@ fn hashtable_encode_native_handle_keys_roundtrips() {
 fn boolean_roundtrip_preserves_values() {
     helpers::run(|| {
         let ht_type = ht_type(
-            Descriptor::Integer(IntegerKind::I32),
-            Descriptor::Boolean(BooleanDescriptor),
+            Codec::Integer(IntegerKind::I32),
+            Codec::Boolean(BooleanDescriptor),
             Ownership::Full,
         );
 
@@ -801,7 +770,7 @@ fn fundamental_value_unreffed_when_hashtable_storage_drops() {
         let before = helpers::param_spec_refcount(pspec);
 
         let ht_type = ht_type(
-            Descriptor::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerKind::I32),
             param_spec_fundamental_type(),
             Ownership::Borrowed,
         );
@@ -816,7 +785,6 @@ fn fundamental_value_unreffed_when_hashtable_storage_drops() {
         drop(encoded);
         assert_eq!(helpers::param_spec_refcount(pspec), before);
 
-        // SAFETY: the GParamSpec is live and the test owns the reference released here.
         unsafe { glib::gobject_ffi::g_param_spec_unref(pspec.cast()) };
     });
 }
@@ -827,7 +795,7 @@ fn gobject_value_unreffed_when_hashtable_storage_drops() {
         let (_obj, obj_ptr, before) = new_object_with_refcount();
 
         let ht_type = ht_type(
-            Descriptor::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerKind::I32),
             full_gobject_type(),
             Ownership::Borrowed,
         );
@@ -846,7 +814,6 @@ fn gobject_value_unreffed_when_hashtable_storage_drops() {
             panic!("Expected Storage ffi value")
         };
         let size =
-            // SAFETY: the argument is a valid GHashTable pointer; reading its size only inspects it.
             unsafe { glib::ffi::g_hash_table_size(storage.ptr() as *mut glib::ffi::GHashTable) };
         assert_eq!(size, 2);
 
@@ -877,7 +844,7 @@ fn hashtable_encode_value_error_frees_duplicated_string_key() {
     helpers::run(|| {
         let ht_type = ht_type(
             borrowed_string_type(),
-            Descriptor::Boolean(BooleanDescriptor),
+            Codec::Boolean(BooleanDescriptor),
             Ownership::Full,
         );
         let input = Value::Array(vec![Value::Array(vec![
@@ -893,7 +860,7 @@ fn hashtable_encode_value_error_frees_duplicated_string_key() {
 #[test]
 fn hashtable_encode_value_destroy_error_releases_string_key() {
     helpers::run(|| {
-        let value_descriptor = Descriptor::Array(ArrayDescriptor {
+        let value_descriptor = Codec::Array(ArrayDescriptor {
             item_descriptor: Box::new(full_boxed_type()),
             kind: ArrayKind::GPtrArray,
             ownership: Ownership::Borrowed,
@@ -955,16 +922,11 @@ fn write_return_to_pointer_full_table_hands_caller_owned_table() {
         ])]);
         let mut slot: *mut c_void = std::ptr::null_mut();
         let ret = &mut slot as *mut *mut c_void as *mut c_void;
-        // SAFETY: `ret` is a live, pointer-sized stack slot; the call writes exactly one pointer
-        // (or null) into it, read back after the call.
         unsafe { PointerWriter::write_return_to_pointer(&descriptor, ret, &Ok(val)) };
         assert!(!slot.is_null());
         let table = slot as *mut glib::ffi::GHashTable;
-        // SAFETY: `hash_table`/`table` is a valid GHashTable and the test holds the reference released here.
         let size = unsafe { glib::ffi::g_hash_table_size(table) };
         assert_eq!(size, 1);
-        // SAFETY: `ret` is a live, pointer-sized stack slot; the call writes exactly one pointer
-        // (or null) into it, read back after the call.
         unsafe { glib::ffi::g_hash_table_unref(table) };
     });
 }
@@ -974,20 +936,14 @@ fn write_return_to_pointer_null_err_and_non_array_write_null() {
     let descriptor = string_hashtable_type(Ownership::Full);
     let mut slot: *mut c_void = 7 as *mut c_void;
     let ret = &mut slot as *mut *mut c_void as *mut c_void;
-    // SAFETY: `ret` is a live, pointer-sized stack slot; the call writes exactly one pointer
-    // (or null) into it, read back after the call.
     unsafe { PointerWriter::write_return_to_pointer(&descriptor, ret, &Ok(Value::Null)) };
     assert!(slot.is_null());
 
     slot = 7 as *mut c_void;
-    // SAFETY: `ret` is a live, pointer-sized stack slot; the call writes exactly one pointer
-    // (or null) into it, read back after the call.
     unsafe { PointerWriter::write_return_to_pointer(&descriptor, ret, &Err(())) };
     assert!(slot.is_null());
 
     slot = 7 as *mut c_void;
-    // SAFETY: `ret` is a live, pointer-sized stack slot; the call writes exactly one pointer
-    // (or null) into it, read back after the call.
     unsafe { PointerWriter::write_return_to_pointer(&descriptor, ret, &Ok(Value::Number(1.0))) };
     assert!(slot.is_null());
 }
@@ -999,8 +955,6 @@ fn write_return_to_pointer_encode_error_writes_null() {
         let val = Value::Array(vec![Value::String("not a tuple".to_string())]);
         let mut slot: *mut c_void = 7 as *mut c_void;
         let ret = &mut slot as *mut *mut c_void as *mut c_void;
-        // SAFETY: `ret` is a live, pointer-sized stack slot; the call writes exactly one pointer
-        // (or null) into it, read back after the call.
         unsafe { PointerWriter::write_return_to_pointer(&descriptor, ret, &Ok(val)) };
         assert!(slot.is_null());
     });

@@ -1,8 +1,19 @@
-import type { CallbackDescriptor, Descriptor, Handle, Value } from "@gtkx/native";
+import type { Descriptor } from "@gtkx/native";
 import { isCallerAllocatedArg, isInoutArg, isOutputArg } from "./arg.js";
 import { wrapCallback } from "./callback.js";
 import { GVALUE_SIZE, GVALUE_T, LIB } from "./constants.js";
-import { arrayT, biguint64T, bind, createBindCache, objectT, stringT, uint32T, uint64T, voidT } from "./descriptors.js";
+import {
+    arrayT,
+    biguint64T,
+    bind,
+    type CallbackDescriptor,
+    createBindCache,
+    objectT,
+    stringT,
+    uint32T,
+    uint64T,
+    voidT,
+} from "./descriptors.js";
 import type { GTyped } from "./gtype.js";
 import {
     fromGValue,
@@ -13,6 +24,7 @@ import {
     toGValue,
     valueGetBoxed,
 } from "./gvalue.js";
+import type { Handle } from "./handle.js";
 import { getHandle } from "./registry.js";
 import { packTupleResult } from "./tuple.js";
 
@@ -39,13 +51,7 @@ type SignalConnectSpec = {
 
 const connectCache = createBindCache();
 
-/**
- * Returns a memoized `g_signal_connect_data` binding for `(gtype, signal)`. The connect signature
- * varies only by the per-signal `callback` type, which the generated code rebuilds on each connect;
- * keying on `(gtype, base signal)` — a stable proxy for that callback structure — compiles the
- * signature once per class+signal and reuses it across connects.
- */
-function connectBind(gtype: bigint, signal: string, callback: CallbackDescriptor): (...values: Value[]) => Value {
+function connectBind(gtype: bigint, signal: string, callback: CallbackDescriptor): (...values: unknown[]) => unknown {
     const key = `${gtype}\0${signalBaseName(signal)}`;
     return connectCache(key, () =>
         bind(LIB, "g_signal_connect_data", [objectT("borrowed"), stringT("borrowed"), callback, uint32T], uint64T),

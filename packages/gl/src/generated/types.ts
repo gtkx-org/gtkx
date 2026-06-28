@@ -6,7 +6,7 @@
  * `pnpm --filter @gtkx/codegen codegen:gl`.
  */
 
-import type { Handle } from "@gtkx/native";
+import type { Handle } from "@gtkx/ffi";
 
 /** An opaque `GLsync` fence handle. */
 export type GLsync = Handle;

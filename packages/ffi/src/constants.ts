@@ -1,5 +1,4 @@
-import type { BoxedDescriptor } from "@gtkx/native";
-import { boxedT } from "./descriptors.js";
+import { type BoxedDescriptor, boxedT } from "./descriptors.js";
 
 export const LIB = "libgobject-2.0.so.0,libglib-2.0.so.0";
 

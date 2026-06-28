@@ -21,11 +21,6 @@ enum AnchoredValue {
 
 struct TransferableValue(ManuallyDrop<Value>);
 
-// SAFETY: `TransferableValue` is only constructed in `AnchoredValue::new` when the runtime is
-// initialized and the current thread is NOT the gtkx-glib main-context owner, i.e. the wrapped
-// `Value` was created off the GLib thread and has never been bound to it. The value is moved
-// (never shared) to the gtkx-glib thread for its eventual drop, so transferring sole ownership
-// across the thread boundary touches the underlying GObject/boxed pointers only on the GLib thread.
 #[allow(clippy::non_send_fields_in_send_ty)]
 unsafe impl Send for TransferableValue {}
 
@@ -39,9 +34,6 @@ impl TransferableValue {
 impl Drop for TransferableValue {
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn drop(&mut self) {
-        // SAFETY: `self.0` was initialized via `ManuallyDrop::new` in the constructor and is never
-        // taken out elsewhere, so this is the unique drop of the wrapped `Value`; it runs
-        // exactly once when the `TransferableValue` is dropped.
         unsafe { ManuallyDrop::drop(&mut self.0) };
     }
 }
@@ -175,16 +167,8 @@ impl Drop for Handle {
             && !Mailbox::global().is_not_running()
         {
             let gobject_addr = self.ptr;
-            glib::idle_add_once(move || {
-                // SAFETY: the closure runs on the gtkx-glib thread (via `idle_add_once`). The
-                // pending-gobject-ref flag was the sole remaining owner (strong count 1) and was
-                // atomically claimed above, so this releases exactly the one reference taken when
-                // the decoded GObject handle was created, on the thread that owns the object.
-                unsafe {
-                    glib::gobject_ffi::g_object_unref(
-                        gobject_addr as *mut glib::gobject_ffi::GObject,
-                    );
-                }
+            glib::idle_add_once(move || unsafe {
+                glib::gobject_ffi::g_object_unref(gobject_addr as *mut glib::gobject_ffi::GObject);
             });
         }
 

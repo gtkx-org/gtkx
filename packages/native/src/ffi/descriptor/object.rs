@@ -1,3 +1,6 @@
+use super::prelude::*;
+use crate::handle::Handle;
+use crate::handle::wrapper_registry;
 use anyhow::bail;
 use glib::{
     self,
@@ -7,23 +10,10 @@ use glib::{
         from_glib_full,
     },
 };
-use napi::{Env, JsObject};
 
-use super::prelude::*;
-use crate::handle::Handle;
-use crate::handle::wrapper_registry;
-
-/// Reads the `GTypeClass` pointer out of a live `GObject` instance.
-///
-/// # Safety
-///
-/// `ptr` must point to a live `GObject` instance owned by the gtkx-glib thread; a freed object may
-/// carry a null class pointer, which is reported as an error rather than dereferenced further.
 unsafe fn load_type_class(
     ptr: *mut glib::gobject_ffi::GObject,
 ) -> anyhow::Result<*mut glib::gobject_ffi::GTypeClass> {
-    // SAFETY: `ptr` is a live GObject per the contract; its embedded `g_type_instance.g_class`
-    // is the class pointer (possibly null for a freed object, checked below).
     let type_class = unsafe { (*ptr).g_type_instance.g_class };
     if type_class.is_null() {
         bail!("GObject has invalid type class (object may have been freed)");
@@ -31,37 +21,22 @@ unsafe fn load_type_class(
     Ok(type_class)
 }
 
-/// Builds a tracked [`value::Value`] handle for a live `GObject`, taking the reference the chosen
-/// [`Ownership`] implies (sinking a floating/initially-unowned object on full transfer, or
-/// adding a strong reference for a borrow).
-///
-/// # Safety
-///
-/// `gobject_ptr` must point to a live `GObject` owned by the gtkx-glib thread.
 unsafe fn tracked_gobject_value(
     gobject_ptr: *mut glib::gobject_ffi::GObject,
     ownership: Ownership,
 ) -> anyhow::Result<value::Value> {
-    // SAFETY: `gobject_ptr` is a live GObject per the contract.
     let type_class = unsafe { load_type_class(gobject_ptr)? };
-    // SAFETY: `type_class` is the object's non-null class struct; `g_type` is its registered GType.
     let gtype: glib::Type = unsafe { from_glib((*type_class).g_type) };
     let is_initially_unowned = gtype.is_a(glib::InitiallyUnowned::static_type());
-    // SAFETY: `gobject_ptr` is a live GObject; `g_object_is_floating` queries its floating state.
     let is_floating = unsafe { glib::gobject_ffi::g_object_is_floating(gobject_ptr) != 0 };
-    // SAFETY: `gobject_ptr` is a live GObject; `has_wrapper` only reads its qdata under the
-    // registry lock.
     let has_wrapper =
         unsafe { wrapper_registry::WrapperRegistry::global().has_wrapper(gobject_ptr) };
 
     if ownership.is_full() {
         if is_floating || (!has_wrapper && is_initially_unowned) {
-            // SAFETY: `gobject_ptr` is live; ref-sinking converts the floating/initial reference
-            // into the strong reference this full-ownership handle keeps.
             unsafe { glib::gobject_ffi::g_object_ref_sink(gobject_ptr) };
         }
     } else {
-        // SAFETY: `gobject_ptr` is live; this adds the strong reference the borrowed handle owns.
         unsafe { glib::gobject_ffi::g_object_ref(gobject_ptr) };
     }
 
@@ -75,15 +50,6 @@ pub struct ObjectDescriptor {
     pub ownership: Ownership,
 }
 
-impl ObjectDescriptor {
-    #[allow(clippy::trivially_copy_pass_by_ref)]
-    #[cfg_attr(coverage_nightly, coverage(off))]
-    pub(crate) fn from_descriptor(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
-        let ownership = Ownership::from_descriptor(obj, "object")?;
-        Ok(Self { ownership })
-    }
-}
-
 impl FfiEncoder for ObjectDescriptor {
     fn object_ptr_context(&self) -> &'static str {
         "Object"
@@ -95,16 +61,8 @@ impl FfiEncoder for ObjectDescriptor {
             .then_some(ffi::PendingRelease::ObjectUnref)
     }
 
-    /// # Safety
-    ///
-    /// `ptr` must be either null or a pointer to a live `GObject` owned by the gtkx-glib
-    /// thread; the call takes a new strong reference (`g_object_ref` via `from_glib_none` +
-    /// `into_glib_ptr`) that the caller is responsible for releasing.
     unsafe fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
         if self.ownership.is_full() && !ptr.is_null() {
-            // SAFETY: `ptr` is a non-null, live `GObject`; `from_glib_none` takes a borrowed
-            // reference and immediately re-owns it, and `into_glib_ptr` transfers that owned
-            // reference out as a raw pointer.
             let obj: glib::Object =
                 unsafe { glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject) };
             return Ok(
@@ -120,8 +78,6 @@ impl FfiDecoder for ObjectDescriptor {
         let Some(object_ptr) = stashed_value.as_non_null_ptr("Object")? else {
             return Ok(value::Value::Null);
         };
-        // SAFETY: `as_non_null_ptr` yielded a non-null pointer returned by the C call as a live
-        // GObject of the called function's return type, owned by the gtkx-glib thread.
         unsafe {
             tracked_gobject_value(
                 object_ptr as *mut glib::gobject_ffi::GObject,
@@ -131,12 +87,8 @@ impl FfiDecoder for ObjectDescriptor {
     }
 
     unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
-        self.null_guarded(ptr, |ptr| {
-            // SAFETY: `null_guarded` only invokes this closure with a non-null `ptr`, which the
-            // caller of `read_value` guarantees is a live GObject on the gtkx-glib thread.
-            unsafe {
-                tracked_gobject_value(ptr as *mut glib::gobject_ffi::GObject, Ownership::Borrowed)
-            }
+        self.null_guarded(ptr, |ptr| unsafe {
+            tracked_gobject_value(ptr as *mut glib::gobject_ffi::GObject, Ownership::Borrowed)
         })
     }
 }
@@ -144,9 +96,6 @@ impl FfiDecoder for ObjectDescriptor {
 impl PointerWriter for ObjectDescriptor {
     unsafe fn write_return_to_pointer(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         self.write_return_with_ownership(ret, value, self.ownership, |ptr| {
-            // SAFETY: `ptr` is a non-null live GObject (the helper skips null); `from_glib_none`
-            // re-owns a borrowed reference and `into_glib_ptr` transfers an owned pointer out for
-            // the full-ownership return.
             let obj: glib::Object =
                 unsafe { glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject) };
             IntoGlibPtr::<*mut glib::gobject_ffi::GObject>::into_glib_ptr(obj).cast::<c_void>()
@@ -158,9 +107,6 @@ impl PointerWriter for ObjectDescriptor {
         ptr: *mut c_void,
         value: &value::Value,
     ) -> anyhow::Result<()> {
-        // SAFETY: `ptr` is a GObject field slot per `write_value_to_pointer`'s contract; the
-        // closures keep its strong-reference count balanced (acquire via `to_glib_full`, release
-        // via `from_glib_full`), so `swap_owned_slot`'s slot invariants hold.
         unsafe {
             swap_owned_slot(
                 ptr,

@@ -1,11 +1,10 @@
 use std::sync::atomic::Ordering;
 
 use libffi::middle as libffi;
-use napi::{Env, JsObject};
 
 use super::prelude::*;
 use crate::ffi::callback::{CallbackState, build_trampoline};
-use crate::ffi::descriptor::Descriptor;
+use crate::ffi::descriptor::Codec;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
@@ -35,49 +34,11 @@ impl std::str::FromStr for CallbackScope {
 
 #[derive(Debug, Clone)]
 pub struct CallbackDescriptor {
-    pub arg_descriptors: Vec<Descriptor>,
-    pub return_descriptor: Box<Descriptor>,
+    pub arg_descriptors: Vec<Codec>,
+    pub return_descriptor: Box<Codec>,
     pub has_destroy: bool,
     pub user_data_index: Option<usize>,
     pub scope: CallbackScope,
-}
-
-impl CallbackDescriptor {
-    #[allow(clippy::trivially_copy_pass_by_ref)]
-    #[cfg_attr(coverage_nightly, coverage(off))]
-    pub(crate) fn from_descriptor(env: &Env, obj: &JsObject) -> napi::Result<Self> {
-        let (arg_descriptors, return_descriptor) =
-            super::parse_callback_arg_and_return_types(env, obj, "callback")?;
-
-        let has_destroy =
-            super::optional_descriptor_property::<bool>(obj, "hasDestroy")?.unwrap_or(false);
-
-        let user_data_index =
-            super::optional_descriptor_property::<f64>(obj, "userDataIndex")?.map(|v| v as usize);
-
-        let scope_prop: Option<String> = super::optional_descriptor_property(obj, "scope")?;
-
-        let scope = match scope_prop {
-            Some(s) => s
-                .parse()
-                .map_err(|e: String| napi::Error::new(napi::Status::InvalidArg, e))?,
-            None => {
-                if has_destroy {
-                    CallbackScope::Notified
-                } else {
-                    CallbackScope::Call
-                }
-            }
-        };
-
-        Ok(Self {
-            arg_descriptors,
-            return_descriptor,
-            has_destroy,
-            user_data_index,
-            scope,
-        })
-    }
 }
 
 impl FfiEncoder for CallbackDescriptor {

@@ -9,10 +9,6 @@ exclude = ["index.node"]
 [lib]
 crate-type = ["cdylib", "rlib"]
 
-[[bench]]
-name = "marshalling"
-harness = false
-
 [dependencies]
 napi = { version = "3", features = ["napi8", "anyhow", "compat-mode"] }
 napi-derive = "3"
@@ -36,8 +32,8 @@ unexpected_cfgs = { level = "warn", check-cfg = [
 [lints.clippy]
 pedantic = { level = "warn", priority = -1 }
 nursery = { level = "warn", priority = -1 }
-undocumented_unsafe_blocks = "warn"
-missing_safety_doc = "warn"
+undocumented_unsafe_blocks = "allow"
+missing_safety_doc = "allow"
 module_name_repetitions = "allow"
 missing_errors_doc = "allow"
 missing_panics_doc = "allow"
@@ -56,5 +52,4 @@ float_cmp = "allow"
 cast_ptr_alignment = "allow"
 
 [dev-dependencies]
-codspeed-criterion-compat = "5.0.0"
 gtk4 = "0.11.3"

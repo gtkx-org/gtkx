@@ -1,21 +1,19 @@
 use std::ffi::c_char;
 
 use anyhow::bail;
-use napi::bindgen_prelude::*;
-use napi::{Env, JsObject};
 
 use super::prelude::*;
 use crate::ffi::arg::Arg;
-use crate::ffi::descriptor::{ArrayKind, Descriptor};
+use crate::ffi::descriptor::{ArrayKind, Codec};
 use crate::ffi::{Stash, StashKind};
 
 #[derive(Debug, Clone)]
 pub struct RefDescriptor {
-    pub inner_descriptor: Box<Descriptor>,
+    pub inner_descriptor: Box<Codec>,
 }
 
 impl RefDescriptor {
-    pub fn new(inner_descriptor: Descriptor) -> napi::Result<Self> {
+    pub fn new(inner_descriptor: Codec) -> napi::Result<Self> {
         if !Self::supports_inner(&inner_descriptor) {
             return Err(napi::Error::new(
                 napi::Status::InvalidArg,
@@ -28,23 +26,15 @@ impl RefDescriptor {
     }
 
     #[must_use]
-    pub fn supports_inner(inner: &Descriptor) -> bool {
+    pub fn supports_inner(inner: &Codec) -> bool {
         !matches!(
             inner,
-            Descriptor::HashTable(_)
-                | Descriptor::Callback(_)
-                | Descriptor::Void(_)
-                | Descriptor::Buffer(_)
-                | Descriptor::Ref(_)
+            Codec::HashTable(_)
+                | Codec::Callback(_)
+                | Codec::Void(_)
+                | Codec::Buffer(_)
+                | Codec::Ref(_)
         )
-    }
-
-    #[allow(clippy::trivially_copy_pass_by_ref)]
-    #[cfg_attr(coverage_nightly, coverage(off))]
-    pub(crate) fn from_descriptor(env: &Env, obj: &JsObject) -> napi::Result<Self> {
-        let inner_descriptor_value: Unknown<'_> = obj.get_named_property("innerDescriptor")?;
-        let inner_descriptor = Descriptor::from_descriptor(env, inner_descriptor_value)?;
-        Self::new(inner_descriptor)
     }
 }
 
@@ -60,17 +50,16 @@ impl FfiEncoder for RefDescriptor {
         };
 
         match &*self.inner_descriptor {
-            Descriptor::Boxed(_)
-            | Descriptor::Struct(_)
-            | Descriptor::Object(_)
-            | Descriptor::Fundamental(_) => match &*ref_val.value {
-                value::Value::Null | value::Value::Undefined => Ok(Self::null_ptr_storage()),
-                _ => bail!(
-                    "Expected Null for Ref<Boxed/Struct/Object/Fundamental>, got {:?}",
-                    ref_val.value
-                ),
-            },
-            Descriptor::Array(array_descriptor) => match &*ref_val.value {
+            Codec::Boxed(_) | Codec::Struct(_) | Codec::Object(_) | Codec::Fundamental(_) => {
+                match &*ref_val.value {
+                    value::Value::Null | value::Value::Undefined => Ok(Self::null_ptr_storage()),
+                    _ => bail!(
+                        "Expected Null for Ref<Boxed/Struct/Object/Fundamental>, got {:?}",
+                        ref_val.value
+                    ),
+                }
+            }
+            Codec::Array(array_descriptor) => match &*ref_val.value {
                 value::Value::Array(arr) if !arr.is_empty() => {
                     let encoded = array_descriptor.encode(&ref_val.value)?;
                     match encoded {
@@ -88,7 +77,7 @@ impl FfiEncoder for RefDescriptor {
                     ref_val.value
                 ),
             },
-            Descriptor::String(string_descriptor) => {
+            Codec::String(string_descriptor) => {
                 let (buffer_size, initial_content) =
                     match (&string_descriptor.length, &*ref_val.value) {
                         (Some(len), value::Value::String(s)) => (*len, Some(s.as_bytes())),
@@ -151,14 +140,10 @@ impl FfiDecoder for RefDescriptor {
                 storage
             }
             ReadSource::Slot(ptr, _context) => {
-                // SAFETY: per the `ReadSource::Slot` contract `ptr` addresses a pointer-sized slot;
-                // dereferencing it yields the inner pointer the ref points at.
                 let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
                 if inner_ptr.is_null() {
                     return Ok(value::Value::Null);
                 }
-                // SAFETY: `inner_ptr` is the non-null pointee read above, a valid slot for the
-                // inner descriptor to read from.
                 return unsafe {
                     self.inner_descriptor
                         .read(ReadSource::Slot(inner_ptr, "ref inner"))
@@ -168,48 +153,33 @@ impl FfiDecoder for RefDescriptor {
         };
 
         match &*self.inner_descriptor {
-            Descriptor::Object(_)
-            | Descriptor::Boxed(_)
-            | Descriptor::Fundamental(_)
-            | Descriptor::Struct(_) => {
-                // SAFETY: for pointer inner descriptors the out-slot `storage.ptr()` holds a pointer to
-                // the produced value; dereferencing it loads that pointer for the inner decoder.
+            Codec::Object(_) | Codec::Boxed(_) | Codec::Fundamental(_) | Codec::Struct(_) => {
                 let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
                 self.inner_descriptor
                     .decode(&ffi::StashedValue::Ptr(actual_ptr))
             }
-            // SAFETY: `storage.ptr()` is the scalar out-slot the callee wrote; the inner integer
-            // codec reads it as a pointer slot, range-checking for lossless f64 conversion.
-            Descriptor::Integer(_) => unsafe {
+            Codec::Integer(_) => unsafe {
                 self.inner_descriptor
                     .read(ReadSource::Slot(storage.ptr(), "Ref<Integer>"))
             },
-            // SAFETY: `storage.ptr()` is the scalar out-slot the callee wrote; the inner enum/flags
-            // codec reads it as a pointer slot.
-            Descriptor::EnumFlags(_) => unsafe {
+            Codec::EnumFlags(_) => unsafe {
                 self.inner_descriptor
                     .read(ReadSource::Slot(storage.ptr(), "Ref<EnumFlags>"))
             },
-            // SAFETY: `storage.ptr()` is the scalar out-slot the callee wrote; the inner float codec
-            // reads it as a pointer slot.
-            Descriptor::Float(_) => unsafe {
+            Codec::Float(_) => unsafe {
                 self.inner_descriptor
                     .read(ReadSource::Slot(storage.ptr(), "Ref<Float>"))
             },
-            // SAFETY: `storage.ptr()` is the boolean out-slot the callee wrote; the inner boolean
-            // codec reads it as a pointer slot.
-            Descriptor::Boolean(boolean) => unsafe {
+            Codec::Boolean(boolean) => unsafe {
                 boolean.read(ReadSource::Slot(storage.ptr(), "Ref<Boolean>"))
             },
-            // SAFETY: `storage.ptr()` is the unichar out-slot the callee wrote; the inner unichar
-            // codec reads it as a pointer slot.
-            Descriptor::Unichar(unichar) => unsafe {
+            Codec::Unichar(unichar) => unsafe {
                 unichar.read(ReadSource::Slot(storage.ptr(), "Ref<Unichar>"))
             },
-            Descriptor::String(string_descriptor) => {
+            Codec::String(string_descriptor) => {
                 Ok(Self::decode_ref_string(storage, string_descriptor))
             }
-            Descriptor::Array(_) => {
+            Codec::Array(_) => {
                 bail!("Ref<Array> requires decode_with_context to get size from another parameter")
             }
             _ => bail!(
@@ -225,14 +195,12 @@ impl FfiDecoder for RefDescriptor {
         ffi_args: &[ffi::StashedValue],
         args: &[Arg],
     ) -> anyhow::Result<value::Value> {
-        if let Descriptor::Array(array_descriptor) = &*self.inner_descriptor {
+        if let Codec::Array(array_descriptor) = &*self.inner_descriptor {
             let Some(storage) = ref_storage_or_null(stashed_value, "Ref<Array>")? else {
                 return Ok(value::Value::Null);
             };
 
             let actual_ptr = match storage.kind() {
-                // SAFETY: a `PtrStorage` out-slot holds a pointer to the produced array; the slot
-                // is pointer-sized, so dereferencing it loads that array pointer.
                 StashKind::PtrStorage(_) => unsafe { *(storage.ptr() as *const *mut c_void) },
                 _ => storage.ptr(),
             };
@@ -251,9 +219,6 @@ impl FfiDecoder for RefDescriptor {
                     ArrayKind::Sized { .. } | ArrayKind::Fixed { .. }
                 )
             {
-                // SAFETY: full ownership of a sized/fixed array written through a `PtrStorage`
-                // out-parameter means the callee allocated `actual_ptr` with `g_malloc`; the
-                // elements were copied out during decode, so freeing the buffer once is correct.
                 unsafe { glib::ffi::g_free(actual_ptr) };
             }
 
@@ -276,8 +241,6 @@ impl RefDescriptor {
 
     fn scalar_out_slot(encoded: &ffi::StashedValue) -> anyhow::Result<ffi::StashedValue> {
         let storage = Stash::from(vec![0u64]);
-        // SAFETY: `storage` owns an 8-byte `u64` buffer, large enough for any scalar payload of
-        // `encoded`; `write_scalar_to` writes that payload into the slot.
         unsafe { encoded.write_scalar_to(storage.ptr())? };
         Ok(ffi::StashedValue::Storage(storage))
     }
@@ -295,25 +258,17 @@ impl RefDescriptor {
         }
 
         if let StashKind::Buffer(_) = storage.kind() {
-            // SAFETY: a `Buffer` out-slot is the NUL-terminated byte buffer the callee filled in
-            // place; `from_ptr_lossy` reads it up to the terminator as a string.
             let string =
                 unsafe { glib::GStr::from_ptr_lossy(storage.ptr() as *const c_char) }.to_string();
             value::Value::String(string)
         } else {
-            // SAFETY: a non-buffer string out-slot is pointer-sized and holds the callee's
-            // `char*`; dereferencing it loads that pointer (checked for null below).
             let str_ptr = unsafe { *(storage.ptr() as *const *const c_char) };
             if str_ptr.is_null() {
                 return value::Value::Null;
             }
-            // SAFETY: `str_ptr` is the non-null NUL-terminated C string written by the callee;
-            // `from_ptr_lossy` reads it up to the terminator.
             let string = unsafe { glib::GStr::from_ptr_lossy(str_ptr) }.to_string();
 
             if string_descriptor.ownership.is_full() {
-                // SAFETY: full ownership means the callee transferred the `g_malloc`-allocated
-                // string to us; after copying it out, freeing `str_ptr` once releases it.
                 unsafe { glib::ffi::g_free(str_ptr as *mut c_void) };
             }
 
@@ -338,8 +293,6 @@ mod tests {
         let slot = RefDescriptor::scalar_out_slot(&ffi::StashedValue::I32(7))
             .expect("i32 payload should produce a slot");
         let storage = slot_storage(&slot);
-        // SAFETY: `storage.ptr()` is the 8-byte scalar slot seeded with an i32 above; `read_ptr`
-        // reads it back as an i32.
         let seeded = unsafe { IntegerKind::I32.read_ptr(storage.ptr() as *const u8) };
         assert_eq!(seeded, 7.0);
     }
@@ -349,8 +302,6 @@ mod tests {
         let slot = RefDescriptor::scalar_out_slot(&ffi::StashedValue::F64(1.5))
             .expect("f64 payload should produce a slot");
         let storage = slot_storage(&slot);
-        // SAFETY: `storage.ptr()` is the 8-byte scalar slot seeded with an f64 above; `read_ptr`
-        // reads it back as an f64.
         let seeded = unsafe { FloatKind::F64.read_ptr(storage.ptr() as *const u8) };
         assert_eq!(seeded, 1.5);
     }
@@ -359,8 +310,6 @@ mod tests {
     fn zeroed_scalar_slot_is_zero_initialized() {
         let slot = RefDescriptor::zeroed_scalar_slot();
         let storage = slot_storage(&slot);
-        // SAFETY: `storage.ptr()` is the zero-initialized 8-byte scalar slot; `read_ptr` reads it
-        // back as an i32 (expected to be zero).
         let seeded = unsafe { IntegerKind::I32.read_ptr(storage.ptr() as *const u8) };
         assert_eq!(seeded, 0.0);
     }

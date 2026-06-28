@@ -97,14 +97,6 @@ export type RelationshipNodeElementProps = {
     [key: string]: unknown;
 };
 
-/**
- * The synthetic JSX props of each widget that has no backing GObject property,
- * keyed by GLib type name. These props are applied by the reconciler rules
- * rather than by GObject, so they cannot be derived from GIR. `@gtkx/codegen`
- * composes the matching entry onto each widget's element component through
- * {@link SyntheticPropsFor}, leaving the generated `<Glib>Props` interface pure
- * GIR. Augment this interface to type synthetic props for further widgets.
- */
 export interface SyntheticProps {
     GSimpleActionGroup: { prefix?: string | null | undefined };
     GtkApplication: { actionAccels?: ActionAccel[] | null | undefined };
@@ -123,13 +115,6 @@ type UnionToIntersection<U> = (U extends unknown ? (value: U) => void : never) e
     ? I
     : never;
 
-/**
- * Resolves the synthetic JSX props `@gtkx/codegen` composes onto an element
- * component. `K` is the union of the widget's GLib type name and its ancestor
- * type names, mirroring how the reconciler resolves rules by GType ancestry: it
- * intersects every synthetic entry any of those types contribute, resolving to
- * `unknown` (a no-op in an intersection) when none do.
- */
 export type SyntheticPropsFor<K extends string> = UnionToIntersection<
     K extends keyof SyntheticProps ? SyntheticProps[K] : never
 >;

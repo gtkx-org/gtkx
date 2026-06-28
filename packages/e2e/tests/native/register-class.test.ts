@@ -13,7 +13,7 @@ describe("registerClass", () => {
         const name = uniqueName("GtkxNativeBare");
         const gobjectGtype = typeFromName("GObject");
 
-        const newGtype = registerClass(name, gobjectGtype);
+        const newGtype = registerClass(name, gobjectGtype) as bigint;
 
         expect(newGtype).toBeGreaterThan(0);
         expect(newGtype).toBe(typeFromName(name));
@@ -23,7 +23,7 @@ describe("registerClass", () => {
         const name = uniqueName("GtkxNativeDuplicate");
         const gobjectGtype = typeFromName("GObject");
 
-        expect(registerClass(name, gobjectGtype)).toBeGreaterThan(0);
+        expect(registerClass(name, gobjectGtype) as bigint).toBeGreaterThan(0);
         expect(() => registerClass(name, gobjectGtype)).toThrow();
     });
 
@@ -42,7 +42,7 @@ describe("registerClass", () => {
 
         const newGtype = registerClass(name, widgetGtype, {
             interfaces: [{ gtype: buildableGtype, vfuncs: [] }],
-        });
+        }) as bigint;
 
         expect(newGtype).toBeGreaterThan(0);
 

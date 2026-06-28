@@ -46,8 +46,6 @@ impl FfiDecoder for BooleanDescriptor {
             }
             ReadSource::Value(ptr, _context) => Ok(value::Value::Boolean(ptr as isize != 0)),
             ReadSource::Slot(ptr, _context) => {
-                // SAFETY: a `Slot` source carries a pointer to an `i32`-sized, readable, properly
-                // aligned location holding the gboolean value; reading it yields that boolean.
                 let val = unsafe { *(ptr as *const i32) };
                 Ok(value::Value::Boolean(val != 0))
             }
@@ -58,8 +56,6 @@ impl FfiDecoder for BooleanDescriptor {
 impl PointerWriter for BooleanDescriptor {
     unsafe fn write_return_to_pointer(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         let val = f64::from(u8::from(matches!(value, Ok(value::Value::Boolean(true)))));
-        // SAFETY: `ret` is a marshalling-provided return slot sized for this boolean's wire kind
-        // (`i32`); `write_return_widened` writes the widened value into it for that kind.
         unsafe { WIRE_KIND.write_return_widened(ret, val) };
     }
 
@@ -71,8 +67,6 @@ impl PointerWriter for BooleanDescriptor {
         let value::Value::Boolean(b) = value else {
             anyhow::bail!("Expected a Boolean for boolean field write, got {value:?}");
         };
-        // SAFETY: `ptr` is a marshalling-provided field slot for an `i32`-sized, properly aligned
-        // gboolean; the store writes the encoded boolean into it.
         unsafe { *(ptr as *mut i32) = (*b).into_glib() };
         Ok(())
     }

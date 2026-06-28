@@ -9,13 +9,6 @@ export type ProductionRenderResult = {
     rerender: (element: ReactNode) => Promise<void>;
 };
 
-/**
- * Mounts `element` through the production reconciler (`@gtkx/react`'s `createRoot`,
- * with no test-only `act`), draining a macrotask so the reconciler's deferred
- * commit work has settled before returning. It mirrors the `render`/`cleanup`
- * surface of `@gtkx/testing` so the benchmarks can measure the real production
- * render path under `NODE_ENV=production`, where React omits `act`.
- */
 export const render = async (element: ReactNode): Promise<ProductionRenderResult> => {
     const root = createRoot();
     activeRoots.add(root);

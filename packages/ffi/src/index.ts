@@ -33,6 +33,7 @@ export {
     valueIsA,
 } from "./gtype.js";
 export { getGValueBoxed, setGValueBoxed } from "./gvalue.js";
+export type { Handle } from "./handle.js";
 export { type ApplicationRunner, onExit, quit, quitApplication, runApplication } from "./lifecycle.js";
 export { offSignal, onceSignal, onSignal } from "./listeners.js";
 export { installMixins, type Mixin } from "./mixin.js";

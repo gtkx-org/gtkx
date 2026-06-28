@@ -47,8 +47,4 @@ const easingByName: { [K in Easing]: Adw.Easing } = {
 
 const isAdwEasing = (ease: Easing | Adw.Easing): ease is Adw.Easing => typeof ease === "number";
 
-/**
- * Resolves a named {@link Easing} (or a raw {@link Adw.Easing} value passed
- * through unchanged) to the underlying libadwaita easing enum.
- */
 export const resolveEasing = (ease: Easing | Adw.Easing): Adw.Easing => (isAdwEasing(ease) ? ease : easingByName[ease]);

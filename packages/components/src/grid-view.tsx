@@ -21,18 +21,8 @@ const factoryInstaller: FactoryInstaller<Gtk.GridView> = {
     uninstall: (widget: Gtk.GridView) => widget.setFactory(null),
 };
 
-/**
- * Information passed to a {@link GridView} `renderItem` callback for a single
- * cell: its resolved value and bound list `index`.
- */
 export type GridRenderItemInfo<T> = RenderItemInfo<T>;
 
-/**
- * Props for the {@link GridView} component, replacing the raw `GtkGridView`
- * factory/model surface with a declarative `items`/`renderItem` API and
- * optional controlled selection. Supplying an external `model` switches to the
- * uncontrolled form.
- */
 type GridViewDeclarativeProps<T = unknown> = CollectionItemSizeProps &
     (
         | (ControlledSelectionProps & {
@@ -50,19 +40,9 @@ type GridViewDeclarativeProps<T = unknown> = CollectionItemSizeProps &
           }
     );
 
-/**
- * Props for the {@link GridView} component: the raw `GtkGridView` element
- * surface with its factory/model wiring replaced by the declarative
- * {@link GridViewDeclarativeProps} API.
- */
 export type GridViewProps<T = unknown> = Omit<GtkGridViewProps, keyof GridViewDeclarativeProps<T>> &
     GridViewDeclarativeProps<T>;
 
-/**
- * A `GtkGridView` driven by a declarative `items`/`renderItem` API with
- * optional controlled selection. Supplying an external `model` switches to the
- * uncontrolled form.
- */
 export const GridView = <T = unknown>(props: GridViewProps<T>): ReactNode => {
     const {
         ref,

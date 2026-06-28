@@ -1,5 +1,5 @@
+import type { Handle } from "@gtkx/ffi";
 import { getHandle, t, wrapHandle } from "@gtkx/ffi";
-import type { Handle } from "@gtkx/native";
 import type { FontSlant, FontType, FontWeight, Status } from "../cairo.js";
 import { FontFace } from "../cairo.js";
 

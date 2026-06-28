@@ -1,11 +1,6 @@
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 
-/**
- * Props for a `<ConstraintLayout.Constraint>` declaring a single relation
- * between a target attribute and a source attribute within a
- * `<ConstraintLayout>`.
- */
 export type ConstraintProps = {
     target?: string;
     targetAttribute: Gtk.ConstraintAttribute;
@@ -17,10 +12,6 @@ export type ConstraintProps = {
     strength?: number;
 };
 
-/**
- * Props for a `<ConstraintLayout.Guide>` declaring an invisible layout guide
- * that other constraints can reference by `id` within a `<ConstraintLayout>`.
- */
 export type ConstraintGuideProps = {
     id: string;
     minWidth?: number;
@@ -32,10 +23,6 @@ export type ConstraintGuideProps = {
     strength?: Gtk.ConstraintStrength;
 };
 
-/**
- * Props for a `<ConstraintLayout.Vfl>` declaring constraints through the GTK
- * Visual Format Language within a `<ConstraintLayout>`.
- */
 export type ConstraintVflProps = {
     lines: string[];
     hspacing?: number;

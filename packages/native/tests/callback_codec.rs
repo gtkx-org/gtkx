@@ -6,14 +6,14 @@ use libffi::middle as libffi;
 
 use native::ffi;
 use native::ffi::descriptor::{
-    CallbackDescriptor, CallbackScope, Descriptor, FfiEncoder, VoidDescriptor,
+    CallbackDescriptor, CallbackScope, Codec, FfiEncoder, VoidDescriptor,
 };
 use native::ffi::value::Value;
 
 fn callback_type(has_destroy: bool) -> CallbackDescriptor {
     CallbackDescriptor {
         arg_descriptors: Vec::new(),
-        return_descriptor: Box::new(Descriptor::Void(VoidDescriptor)),
+        return_descriptor: Box::new(Codec::Void(VoidDescriptor)),
         has_destroy,
         user_data_index: None,
         scope: CallbackScope::Call,

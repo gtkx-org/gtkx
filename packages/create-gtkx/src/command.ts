@@ -2,7 +2,6 @@ import { defineCommand } from "citty";
 import { isKnownPackageManager, PACKAGE_MANAGER_FLAG_DESCRIPTION, type PackageManager } from "./options.js";
 import { scaffold } from "./scaffolder.js";
 
-/** Raw, unparsed command-line arguments accepted by the create command. */
 export type CreateCommandArgs = {
     name?: string | undefined;
     "application-id"?: string | undefined;
@@ -21,10 +20,6 @@ const parsePackageManager = (value: string | undefined): PackageManager | undefi
     return value;
 };
 
-/**
- * Normalize raw create arguments and scaffold the application. Throws on an
- * unknown package manager before any files are written.
- */
 export const runCreate = async (args: CreateCommandArgs): Promise<void> => {
     const interactive = args["no-interactive"] ? false : args.yes ? false : process.stdin.isTTY === true;
     await scaffold({
@@ -37,11 +32,6 @@ export const runCreate = async (args: CreateCommandArgs): Promise<void> => {
     });
 };
 
-/**
- * The shared create command: scaffold a new gtkx application. Used as the
- * `gtkx create` subcommand and re-exposed by the standalone `create-gtkx`
- * binary.
- */
 export const createCommand = defineCommand({
     meta: {
         name: "create",

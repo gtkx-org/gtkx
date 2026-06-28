@@ -8,9 +8,6 @@
             "path": "../ffi/tsconfig.lib.json"
         },
         {
-            "path": "../native/tsconfig.lib.json"
-        },
-        {
             "path": "../utils/tsconfig.lib.json"
         }
     ]

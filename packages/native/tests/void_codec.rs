@@ -55,8 +55,6 @@ fn decode_yields_undefined() {
 
 #[test]
 fn ptr_to_value_yields_undefined() {
-    // SAFETY: `VoidDescriptor` ignores the `ReadSource::Value` pointer entirely and always yields
-    // `Undefined`, so passing null never dereferences anything.
     let from_null = unsafe {
         FfiDecoder::read(
             &VoidDescriptor,
@@ -66,8 +64,6 @@ fn ptr_to_value_yields_undefined() {
     .unwrap();
     assert!(matches!(from_null, Value::Undefined));
 
-    // SAFETY: `VoidDescriptor` ignores the `ReadSource::Value` pointer, so the dangling sentinel `8` is
-    // never dereferenced; the read is sound and yields `Undefined`.
     let from_ptr =
         unsafe { FfiDecoder::read(&VoidDescriptor, ReadSource::Value(8 as *mut c_void, "ctx")) }
             .unwrap();
@@ -78,8 +74,6 @@ fn ptr_to_value_yields_undefined() {
 fn read_from_pointer_yields_undefined() {
     let mut slot: usize = 42;
     let ptr = &mut slot as *mut usize as *const c_void;
-    // SAFETY: `VoidDescriptor` ignores the `ReadSource::Slot` pointer and always yields `Undefined`;
-    // `ptr` still references the live `slot` stack local and is never dereferenced.
     let read = unsafe { FfiDecoder::read(&VoidDescriptor, ReadSource::Slot(ptr, "ctx")) }.unwrap();
     assert!(matches!(read, Value::Undefined));
 }
@@ -88,10 +82,7 @@ fn read_from_pointer_yields_undefined() {
 fn write_return_to_pointer_is_a_no_op() {
     let mut slot: usize = 99;
     let ret = &mut slot as *mut usize as *mut c_void;
-    // SAFETY: `VoidDescriptor::write_return_to_pointer` is a no-op that never touches `ret`; the live
-    // `slot` pointer is passed only to satisfy the signature.
     unsafe { PointerWriter::write_return_to_pointer(&VoidDescriptor, ret, &Ok(Value::Undefined)) };
-    // SAFETY: same no-op write for the error case; `ret` is never dereferenced.
     unsafe { PointerWriter::write_return_to_pointer(&VoidDescriptor, ret, &Err(())) };
     assert_eq!(slot, 99);
 }

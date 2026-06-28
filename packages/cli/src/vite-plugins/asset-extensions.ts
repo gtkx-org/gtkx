@@ -36,5 +36,4 @@ const assetModuleBlock = (extension: string): string =>
         "}",
     ].join("\n");
 
-/** @public */
 export const renderAssetEnvModule = (extensions: string[]): string => extensions.map(assetModuleBlock).join("\n\n");

@@ -313,20 +313,20 @@ const createMutationConfig = (): MutationConfig => ({
 
 type CommitConfig = Pick<HostConfig, "commitUpdate" | "commitTextUpdate" | "prepareForCommit" | "resetAfterCommit">;
 
-const guardCommitStep = (step: () => void): void => {
+const catchErrors = (fn: () => void): void => {
     try {
-        step();
+        fn();
     } catch (error) {
         reportReconcilerError(error);
     }
 };
 
-const drainCommitQueue = (): void => guardCommitStep(runCommitFlush);
+const drainCommitQueue = (): void => catchErrors(runCommitFlush);
 
 const finalizeCommitAfterLayoutEffects = (): void => {
     drainCommitQueue();
     endCommit();
-    guardCommitStep(unfreeze);
+    catchErrors(unfreeze);
 };
 
 const createCommitConfig = (): CommitConfig => ({
@@ -338,7 +338,7 @@ const createCommitConfig = (): CommitConfig => ({
         else scheduleLabelTextRebuild(textInstance);
     },
     prepareForCommit: () => {
-        freeze();
+        catchErrors(freeze);
         beginCommit();
         return null;
     },

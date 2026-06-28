@@ -1,5 +1,5 @@
+import type { Handle } from "@gtkx/ffi";
 import { getHandle, setHandle, t } from "@gtkx/ffi";
-import type { Handle } from "@gtkx/native";
 import type { Antialias, HintMetrics, HintStyle, Status, SubpixelOrder } from "../cairo.js";
 import { FontOptions } from "../cairo.js";
 

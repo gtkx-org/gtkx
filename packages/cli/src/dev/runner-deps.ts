@@ -1,7 +1,6 @@
 import { loadResolvedGtkxConfig } from "@gtkx/config";
 import { quitApplication } from "@gtkx/ffi";
 import * as Gio from "@gtkx/gi/gio";
-import type { ApplicationLifecycleModule } from "@gtkx/react";
 import { installGracefulShutdown } from "@gtkx/utils";
 import { createServer } from "vite";
 import { info } from "../internal/log.js";
@@ -23,11 +22,8 @@ export const defaultDevRunnerDeps = (): DevRunnerDeps => ({
         return startMcpClient(applicationId);
     },
     stopMcpClient,
-    installApplicationLifecycle: async (loadAppModule, onQuit) => {
-        const react = (await loadAppModule("@gtkx/react")) as ApplicationLifecycleModule;
-        react.setApplicationLifecycle({
-            quit: (application) => onQuit(() => react.defaultApplicationLifecycle.quit(application)),
-        });
+    watchApplicationShutdown: (onShutdown) => {
+        Gio.Application.getDefault()?.on("shutdown", onShutdown);
     },
     installShutdownHandlers: (onSignal) => {
         installGracefulShutdown({ onSignal });

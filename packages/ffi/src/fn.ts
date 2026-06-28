@@ -1,15 +1,15 @@
-import type { CallbackDescriptor, Descriptor, Ref, Value } from "@gtkx/native";
+import type { Descriptor } from "@gtkx/native";
 import { isCallerAllocatedArg, isInoutArg, isOutputArg, isRefArg } from "./arg.js";
 import { type UserCallback, wrapCallback } from "./callback.js";
 import { LIB } from "./constants.js";
-import { bind, boxedT, refT } from "./descriptors.js";
+import { bind, boxedT, type CallbackDescriptor, type Ref, refT } from "./descriptors.js";
 import { checkError } from "./gerror.js";
 import { fromNativeValue } from "./native-value.js";
 import { getHandle } from "./registry.js";
 import { packTupleResult } from "./tuple.js";
 
-const wrapCallbackValue = (spec: CallbackDescriptor, callback: unknown): Value =>
-    callback == null ? (callback as Value) : wrapCallback(callback as UserCallback, spec, "none");
+const wrapCallbackValue = (spec: CallbackDescriptor, callback: unknown): unknown =>
+    callback == null ? callback : wrapCallback(callback as UserCallback, spec, "none");
 
 type ArgSpec = {
     type: Descriptor;
@@ -61,22 +61,22 @@ const planArgs = (argSpecs: ArgSpec[]): ArgPlan[] => {
     });
 };
 
-const toNativeValues = (plans: ArgPlan[], inputs: unknown[]): Value[] =>
+const toNativeValues = (plans: ArgPlan[], inputs: unknown[]): unknown[] =>
     plans.map(({ argSpec, isRef, isCallerAllocated, consumesInput, inputIndex }) => {
         if (isCallerAllocated) {
             const wrapper = inputs[inputIndex];
             return wrapper == null ? wrapper : getHandle(wrapper as object);
         }
         if (isRef) {
-            return { value: consumesInput ? (inputs[inputIndex] as Value) : null };
+            return { value: consumesInput ? inputs[inputIndex] : null };
         }
         if (argSpec.type.kind === "callback") {
             return wrapCallbackValue(argSpec.type, inputs[inputIndex]);
         }
-        return inputs[inputIndex] as Value;
+        return inputs[inputIndex];
     });
 
-const toOutParams = (plans: ArgPlan[], inputs: unknown[], nativeValues: Value[]): unknown[] => {
+const toOutParams = (plans: ArgPlan[], inputs: unknown[], nativeValues: unknown[]): unknown[] => {
     const outParams: unknown[] = [];
     plans.forEach(({ argSpec, isCallerAllocated, inputIndex, isOutParam }, index) => {
         if (!isOutParam) return;
@@ -94,7 +94,7 @@ export function fn(sharedLibrary: string, symbol: string, signature: FnSignature
     const hasPrimary = returnDescriptor.kind !== "void";
     const plans = planArgs(argSpecs);
 
-    const shape = (inputs: unknown[], nativeValues: Value[], nativeResult: Value): unknown => {
+    const shape = (inputs: unknown[], nativeValues: unknown[], nativeResult: unknown): unknown => {
         const primary = hasPrimary ? fromNativeValue(returnDescriptor, nativeResult) : undefined;
         return packTupleResult(toOutParams(plans, inputs, nativeValues), primary, hasPrimary);
     };

@@ -110,12 +110,6 @@ export const typeChainIncludes = (gtype: bigint, name: string): boolean => {
 export const isDefaultBlockableType = (gtype: bigint): boolean =>
     DEFAULT_BLOCKABLE_TYPES.some((name) => typeChainIncludes(gtype, name));
 
-/**
- * Resolves the verified child-attachment shapes a type satisfies by unioning the
- * codegen-emitted {@link ATTACH_SHAPES} entries across the type-name chain and its
- * implemented interfaces. Each shape is present only when codegen confirmed the
- * underlying method exists with the expected signature.
- */
 export const collectAttachShapes = (gtype: bigint): Set<AttachShape> => {
     const cached = attachShapesCache.get(gtype);
     if (cached) return cached;

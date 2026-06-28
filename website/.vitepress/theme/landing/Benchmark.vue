@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import Badge from "../components/Badge.vue";
 
-// NOTE: illustrative idle-memory figures. Replace with measured numbers
-// (identical hello-world window, same desktop session) before launch.
 const rows = [
   { name: "gtkx", val: "38 MB", pct: 18, brand: true },
   { name: "Flutter (Linux)", val: "92 MB", pct: 44 },

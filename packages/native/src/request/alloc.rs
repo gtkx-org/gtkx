@@ -22,9 +22,6 @@ impl Request for AllocRequest {
             .transpose()
             .map_err(|err| anyhow::anyhow!("invalid alloc type name: {err}"))?;
 
-        // SAFETY: runs on the gtkx-glib thread; `g_malloc0` allocates and zero-initializes
-        // `self.size` bytes (returning null only for a zero-size request, handled below), and the
-        // returned block's ownership is handed to the `Boxed` wrapper.
         let ptr = unsafe { g_malloc0(self.size) };
 
         if ptr.is_null() {
@@ -50,12 +47,14 @@ mod napi_export {
 
     #[napi(catch_unwind)]
     #[cfg_attr(test, allow(dead_code))]
-    pub fn alloc(env: &Env, size: f64, type_name: Option<String>) -> napi::Result<Unknown<'_>> {
+    pub fn alloc(env: Env, size: f64, type_name: Option<String>) -> napi::Result<External<Handle>> {
         let request = AllocRequest {
             size: size as usize,
             type_name,
         };
-        request.dispatch(env)
+        let handle = request.dispatch_output(env)?;
+        let size_hint = handle.size_hint();
+        Ok(External::new_with_size_hint(handle, size_hint))
     }
 }
 

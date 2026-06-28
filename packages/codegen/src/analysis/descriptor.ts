@@ -91,10 +91,8 @@ const optionsObject = (parts: Array<string | undefined>): string | undefined => 
 
 export const tVoid: string = T.void;
 
-/** @public */
 export const tBoolean: string = T.boolean;
 
-/** @public */
 export const tUint8: string = T.uint8;
 
 export const tUint32: string = T.uint32;
@@ -105,7 +103,6 @@ export const tUint64: string = T.uint64;
 
 export const tBigUint64: string = T.biguint64;
 
-/** @public */
 export const tBuffer: string = T.buffer;
 
 export type ScalarDescriptorName =
@@ -167,7 +164,6 @@ export const tStruct = (ownership: Ownership, options: StructOptions): string =>
         ]),
     ]);
 
-/** @public */
 export const tInlineStruct = (): string =>
     tStruct("borrowed", { size: undefined, wrapperClass: undefined, callerAllocated: false });
 

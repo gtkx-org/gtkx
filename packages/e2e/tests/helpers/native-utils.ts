@@ -1,16 +1,12 @@
-import type { Descriptor, Handle, Value } from "@gtkx/native";
-import { bind, call as nativeCall, read } from "@gtkx/native";
+import type { Handle } from "@gtkx/ffi";
+import { bind, type Descriptor, call as nativeCall, read } from "@gtkx/native";
 
-/**
- * Test convenience over the bound FFI call: binds a one-shot descriptor from the per-argument types
- * and invokes it with the values, so tests can pass `{ type, value }` arguments directly.
- */
 export function callArgs(
     sharedLibrary: string,
     symbol: string,
-    args: { type: Descriptor; value: Value }[],
+    args: { type: Descriptor; value: unknown }[],
     returnDescriptor: Descriptor,
-): Value {
+): unknown {
     const descriptor = bind(
         sharedLibrary,
         symbol,

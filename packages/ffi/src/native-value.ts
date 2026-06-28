@@ -1,11 +1,12 @@
-import type { ArrayDescriptor, Descriptor, Handle, Value } from "@gtkx/native";
-import { getDescriptorWrapperClass } from "./descriptors.js";
+import type { Descriptor } from "@gtkx/native";
+import { type ArrayDescriptor, getDescriptorWrapperClass } from "./descriptors.js";
 import { gtypeFromDescriptor } from "./gvalue.js";
+import type { Handle } from "./handle.js";
 import { requireWrapperClass, tryGetHandle, wrapHandle } from "./registry.js";
 
 const collectionFromNativeValue = (descriptor: ArrayDescriptor, value: unknown): unknown => {
     if (value === null) return null;
-    return (value as Value[]).map((item) => fromNativeValue(descriptor.itemDescriptor, item));
+    return (value as unknown[]).map((item) => fromNativeValue(descriptor.itemDescriptor, item));
 };
 
 const wrapByDescriptorClass = (descriptor: Descriptor, value: Handle | null): object | null => {
@@ -15,7 +16,7 @@ const wrapByDescriptorClass = (descriptor: Descriptor, value: Handle | null): ob
     return wrapHandle(value, requireWrapperClass(gtypeFromDescriptor(descriptor)));
 };
 
-export function fromNativeValue(descriptor: Descriptor, value: Value): unknown {
+export function fromNativeValue(descriptor: Descriptor, value: unknown): unknown {
     switch (descriptor.kind) {
         case "object":
             return wrapHandle(value as Handle | null, undefined);
@@ -28,7 +29,7 @@ export function fromNativeValue(descriptor: Descriptor, value: Value): unknown {
             return collectionFromNativeValue(descriptor, value);
         case "hashtable": {
             if (value === null) return null;
-            const entries = value as [Value, Value][];
+            const entries = value as [unknown, unknown][];
             return new Map(
                 entries.map(([key, val]): [unknown, unknown] => [
                     fromNativeValue(descriptor.keyDescriptor, key),
@@ -41,12 +42,12 @@ export function fromNativeValue(descriptor: Descriptor, value: Value): unknown {
     }
 }
 
-const collectionToNativeValue = (descriptor: ArrayDescriptor, value: unknown): Value => {
+const collectionToNativeValue = (descriptor: ArrayDescriptor, value: unknown): unknown => {
     if (value == null) return null;
     return (value as unknown[]).map((item) => toNativeValue(descriptor.itemDescriptor, item));
 };
 
-export function toNativeValue(descriptor: Descriptor, value: unknown): Value {
+export function toNativeValue(descriptor: Descriptor, value: unknown): unknown {
     switch (descriptor.kind) {
         case "object":
         case "struct":
@@ -57,12 +58,12 @@ export function toNativeValue(descriptor: Descriptor, value: unknown): Value {
             return collectionToNativeValue(descriptor, value);
         case "hashtable": {
             if (value == null) return null;
-            return [...(value as Map<unknown, unknown>)].map(([key, val]): [Value, Value] => [
+            return [...(value as Map<unknown, unknown>)].map(([key, val]): [unknown, unknown] => [
                 toNativeValue(descriptor.keyDescriptor, key),
                 toNativeValue(descriptor.valueDescriptor, val),
             ]);
         }
         default:
-            return value as Value;
+            return value;
     }
 }

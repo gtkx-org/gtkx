@@ -4,9 +4,5 @@ coverage
 *.node
 index.js
 index.d.ts
-binding.js
-binding.d.ts
-test-support.js
-test-support.d.ts
 *.map
 *.tsbuildinfo

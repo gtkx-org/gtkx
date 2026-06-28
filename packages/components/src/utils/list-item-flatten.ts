@@ -20,11 +20,6 @@ interface FlattenResult<T = unknown> {
 
 export type ListStructure = "flat" | "tree";
 
-/**
- * Classify a controlled item list as flat or tree without building a
- * {@link FlattenResult}. A list is a tree if any top-level item carries
- * children, and flat otherwise.
- */
 export const detectStructure = <T>(items: ItemNode<T>[] | undefined): ListStructure => {
     if (items === undefined) return "flat";
     for (const item of items) {
@@ -49,10 +44,6 @@ export const structuralSignature = <T>(items: ItemNode<T>[] | undefined): string
     return parts.join(",");
 };
 
-/**
- * Count an item list and all of its nested tree descendants, so a sectioned
- * model can size each section to the number of rows it flattens into.
- */
 export const countDescendants = <T>(items: ItemNode<T>[]): number => {
     let total = 0;
     for (const item of items) {

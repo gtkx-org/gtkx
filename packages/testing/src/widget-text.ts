@@ -80,13 +80,6 @@ export const getWidgetAccessibleName = (widget: Gtk.Widget): string | null => {
     return childLabels.length > 0 ? childLabels.join(" ") : null;
 };
 
-/**
- * Reads a widget's GTK buildable/CSS name via `getName()`.
- *
- * This is GTK's structural widget id rather than an accessibility affordance,
- * so the `ByName` query family that builds on it is gtkx's deliberate
- * `ByTestId` analogue.
- */
 export const getWidgetName = (widget: Gtk.Widget): string | null => {
     return widget.getName();
 };

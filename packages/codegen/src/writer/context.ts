@@ -20,16 +20,12 @@ export class ModuleContext {
         this.module.imports.addNamed("@gtkx/ffi", name, true);
     }
 
-    hoistDescriptor(expression: string): string {
-        return this.module.hoistDescriptor(expression);
-    }
-
     addNativeImport(name: string): void {
         this.module.imports.addNamed("@gtkx/native", name);
     }
 
-    addNativeTypeImport(name: string): void {
-        this.module.imports.addNamed("@gtkx/native", name, true);
+    hoistDescriptor(expression: string): string {
+        return this.module.hoistDescriptor(expression);
     }
 
     addGObjectBootstrapImports(): void {

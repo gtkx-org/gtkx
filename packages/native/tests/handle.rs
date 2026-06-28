@@ -27,9 +27,6 @@ fn pump_default_context_until(done: impl Fn() -> bool) {
 
 fn param_spec_ptr() -> *mut c_void {
     helpers::ensure_glib_init();
-    // SAFETY: GTK is initialized above and the call runs on the test's GLib thread; the four
-    // `c"..."` literals are valid NUL-terminated C strings and the flags are valid `GParamFlags`,
-    // so `g_param_spec_boolean` returns a freshly owned (floating) GParamSpec.
     unsafe {
         let param = glib::gobject_ffi::g_param_spec_boolean(
             c"managed-test".as_ptr(),
@@ -52,8 +49,6 @@ fn owned_fundamental(ptr: *mut c_void) -> Handle {
 }
 
 fn borrowed_fundamental(ptr: *mut c_void) -> Handle {
-    // SAFETY: `ptr` is a live GParamSpec, and `param_spec_ref`/`param_spec_unref` are its matching
-    // ref/unref functions; `from_glib_none` takes one new borrowed reference balanced by drop.
     let fundamental =
         unsafe { Fundamental::from_glib_none(ptr, Some(param_spec_ref), Some(param_spec_unref)) };
     Value::Fundamental(fundamental).into()
@@ -63,8 +58,6 @@ fn extra_referenced_decoded_gobject() -> (glib::Object, *mut glib::gobject_ffi::
 {
     let obj = glib::Object::new::<glib::Object>();
     let obj_ptr = obj.as_ptr();
-    // SAFETY: `obj_ptr` is the live pointer of the `obj` binding kept alive for the test; adding
-    // one extra strong reference is balanced by the explicit `g_object_unref` each caller performs.
     unsafe { glib::gobject_ffi::g_object_ref(obj_ptr) };
     let initial_ref = get_gobject_refcount(obj_ptr);
 
@@ -164,8 +157,6 @@ fn drop_owned_handle_on_creating_thread_releases_value() {
         drop(handle);
         assert_eq!(param_spec_refcount(ptr), initial_ref - 1);
 
-        // SAFETY: `ptr` is the still-live GParamSpec; this releases the one remaining reference
-        // created by `param_spec_ptr`, balancing its initial floating reference.
         unsafe { param_spec_unref(ptr) };
     });
 }
@@ -191,8 +182,6 @@ fn a_consumed_decoded_handle_drop_releases_nothing() {
         assert!(sentinel.load(Ordering::SeqCst));
         assert_eq!(get_gobject_refcount(obj_ptr), initial_ref);
 
-        // SAFETY: `obj_ptr` is still alive (the `_obj` binding plus the extra reference taken in
-        // `extra_referenced_decoded_gobject`); this releases that one extra reference.
         unsafe { glib::gobject_ffi::g_object_unref(obj_ptr) };
         assert_eq!(get_gobject_refcount(obj_ptr), initial_ref - 1);
     });
@@ -226,7 +215,6 @@ fn a_drop_owned_handle_off_thread_routes_through_glib_idle() {
         pump_default_context_until(|| param_spec_refcount(ptr) == initial_ref - 1);
 
         assert_eq!(param_spec_refcount(ptr), initial_ref - 1);
-        // SAFETY: `ptr` is the still-live GParamSpec; this releases its remaining reference.
         unsafe { param_spec_unref(ptr) };
     });
 }
@@ -247,8 +235,6 @@ fn drop_owned_handle_off_thread_while_not_running_leaks_value() {
         .expect("dropping handle while stopped should not panic");
 
         mailbox.reset_for_test();
-        // SAFETY: the mailbox was stopped so the off-thread drop leaked the owned reference; `ptr`
-        // is still live, and this releases that leaked reference to balance the count.
         unsafe { param_spec_unref(ptr) };
     });
 }

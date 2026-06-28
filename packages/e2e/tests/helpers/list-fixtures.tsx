@@ -15,11 +15,6 @@ import { render as testingRender } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject } from "react";
 import { ScrollWrapper } from "./scroll-wrapper.js";
 
-/**
- * Mounts an element and yields a `rerender`. Defaults to the `@gtkx/testing`
- * (act-wrapped, dev) render; benchmarks inject `@gtkx/react`'s production render
- * so they exercise the real render path under `NODE_ENV=production`.
- */
 export type FixtureRender = (element: ReactNode) => Promise<{ rerender: (element: ReactNode) => Promise<void> }>;
 
 export interface NamedValue {

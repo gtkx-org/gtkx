@@ -4,7 +4,7 @@ use std::ffi::c_void;
 
 use libffi::middle;
 use native::ffi::descriptor::{
-    BooleanDescriptor, BufferDescriptor, CallbackDescriptor, Descriptor, FfiDecoder, FfiEncoder,
+    BooleanDescriptor, BufferDescriptor, CallbackDescriptor, Codec, FfiDecoder, FfiEncoder,
     IntegerKind, ObjectDescriptor, Ownership, PointerWriter, ReadSource, RefDescriptor,
     StructDescriptor, VoidDescriptor,
 };
@@ -97,8 +97,8 @@ fn struct_descriptor() -> StructDescriptor {
 #[allow(clippy::default_trait_access)]
 fn callback_descriptor() -> CallbackDescriptor {
     CallbackDescriptor {
-        arg_descriptors: vec![Descriptor::Integer(IntegerKind::I32)],
-        return_descriptor: Box::new(Descriptor::Void(VoidDescriptor)),
+        arg_descriptors: vec![Codec::Integer(IntegerKind::I32)],
+        return_descriptor: Box::new(Codec::Void(VoidDescriptor)),
         has_destroy: false,
         user_data_index: None,
         scope: Default::default(),
@@ -107,16 +107,16 @@ fn callback_descriptor() -> CallbackDescriptor {
 
 #[test]
 fn can_be_return_accepts_value_shapes_and_rejects_argument_shapes() {
-    assert!(Descriptor::Integer(IntegerKind::I32).can_be_return());
-    assert!(Descriptor::Void(VoidDescriptor).can_be_return());
-    assert!(Descriptor::Object(object_descriptor()).can_be_return());
-    assert!(Descriptor::EnumFlags(helpers::enum_descriptor()).can_be_return());
+    assert!(Codec::Integer(IntegerKind::I32).can_be_return());
+    assert!(Codec::Void(VoidDescriptor).can_be_return());
+    assert!(Codec::Object(object_descriptor()).can_be_return());
+    assert!(Codec::EnumFlags(helpers::enum_descriptor()).can_be_return());
 
-    assert!(!Descriptor::Callback(callback_descriptor()).can_be_return());
-    assert!(!Descriptor::Buffer(BufferDescriptor).can_be_return());
+    assert!(!Codec::Callback(callback_descriptor()).can_be_return());
+    assert!(!Codec::Buffer(BufferDescriptor).can_be_return());
     let ref_descriptor =
-        RefDescriptor::new(Descriptor::Integer(IntegerKind::I32)).expect("valid Ref inner");
-    assert!(!Descriptor::Ref(ref_descriptor).can_be_return());
+        RefDescriptor::new(Codec::Integer(IntegerKind::I32)).expect("valid Ref inner");
+    assert!(!Codec::Ref(ref_descriptor).can_be_return());
 }
 
 #[test]
@@ -134,8 +134,6 @@ fn ffi_decoder_decode_with_context_default_delegates_to_decode() {
 #[test]
 fn pointer_codec_ptr_to_value_default_bails() {
     assert!(
-        // SAFETY: the default `read_value` for a callback type bails without dereferencing, so the
-        // dangling sentinel `8` is never read; the call is sound and returns an error.
         unsafe {
             FfiDecoder::read(
                 &callback_descriptor(),
@@ -150,9 +148,6 @@ fn pointer_codec_ptr_to_value_default_bails() {
 fn pointer_codec_read_from_pointer_default_dereferences_then_bails() {
     let mut inner: *mut c_void = 8 as *mut c_void;
     let ptr = &mut inner as *mut *mut c_void as *const c_void;
-    // SAFETY: `ptr` points to the live pointer-sized stack local `inner`; the default
-    // `read_pointer_slot` reads that one in-bounds pointer, then bails on the inner sentinel
-    // without dereferencing it.
     let result = unsafe { FfiDecoder::read(&callback_descriptor(), ReadSource::Slot(ptr, "ctx")) };
     assert!(result.is_err());
 }
@@ -161,8 +156,6 @@ fn pointer_codec_read_from_pointer_default_dereferences_then_bails() {
 fn pointer_codec_write_return_to_pointer_default_writes_null() {
     let mut slot: *mut c_void = 9 as *mut c_void;
     let ret = &mut slot as *mut *mut c_void as *mut c_void;
-    // SAFETY: `ret` points to the live, writable pointer-sized stack local `slot`; the default
-    // `write_return_to_pointer` writes null into that in-bounds slot.
     unsafe {
         PointerWriter::write_return_to_pointer(
             &callback_descriptor(),
@@ -173,7 +166,6 @@ fn pointer_codec_write_return_to_pointer_default_writes_null() {
     assert!(slot.is_null());
 
     slot = 9 as *mut c_void;
-    // SAFETY: same writable pointer-sized slot `ret`; the error case also writes null in bounds.
     unsafe { PointerWriter::write_return_to_pointer(&callback_descriptor(), ret, &Err(())) };
     assert!(slot.is_null());
 }
@@ -183,8 +175,6 @@ fn pointer_codec_write_value_to_pointer_default_bails() {
     let mut slot: *mut c_void = std::ptr::null_mut();
     let ptr = &mut slot as *mut *mut c_void as *mut c_void;
     assert!(
-        // SAFETY: the default `write_value_to_pointer` for a callback type bails before touching
-        // `ptr`, which nonetheless points to the live pointer-sized stack local `slot`.
         unsafe {
             PointerWriter::write_value_to_pointer(&callback_descriptor(), ptr, &Value::Number(1.0))
         }
@@ -209,8 +199,6 @@ fn ffi_encoder_defaults_cover_pointer_typed_codec() {
     FfiEncoder::append_ffi_arg_types(&st, &mut arg_descriptors);
     assert_eq!(arg_descriptors.len(), 1);
 
-    // SAFETY: the default `ref_for_transfer` returns its pointer argument unchanged without
-    // dereferencing it, so the sentinel `16` is never read; the call is sound.
     let transferred = unsafe { FfiEncoder::ref_for_transfer(&st, 16 as *mut c_void) }.unwrap();
     assert_eq!(transferred, 16 as *mut c_void);
 
@@ -222,7 +210,7 @@ fn ffi_encoder_defaults_cover_pointer_typed_codec() {
 
 #[test]
 fn descriptor_enum_dispatch_routes_codec_traits() {
-    let descriptor = Descriptor::Boolean(BooleanDescriptor);
+    let descriptor = Codec::Boolean(BooleanDescriptor);
     let encoded = FfiEncoder::encode(&descriptor, &value::Value::Boolean(true)).unwrap();
     assert!(matches!(encoded, ffi::StashedValue::I32(1)));
     let decoded = FfiDecoder::decode(&descriptor, &ffi::StashedValue::I32(0)).unwrap();

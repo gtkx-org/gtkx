@@ -20,9 +20,6 @@ inputs:
   turbo-env:
     description: Forward TURBO_TOKEN and TURBO_TEAM to the container
     default: "true"
-  seccomp-unconfined:
-    description: Drop the default seccomp and AppArmor profiles (needed for the Valgrind-based CodSpeed runner, which sets the process personality and performs memory operations the container defaults block)
-    default: "false"
 
 runs:
   using: composite
@@ -36,16 +33,11 @@ runs:
         INPUT_MOUNT_PNPM_STORE: ${{ inputs.mount-pnpm-store }}
         INPUT_EXTRA_ENV: ${{ inputs.extra-env }}
         INPUT_TURBO_ENV: ${{ inputs.turbo-env }}
-        INPUT_SECCOMP_UNCONFINED: ${{ inputs.seccomp-unconfined }}
         WORKSPACE: ${{ github.workspace }}
       run: |
         set -euo pipefail
 
         DOCKER_ARGS=(--rm -v "$WORKSPACE:/workspace" -w /workspace)
-
-        if [ "$INPUT_SECCOMP_UNCONFINED" = "true" ]; then
-          DOCKER_ARGS+=(--security-opt seccomp=unconfined --security-opt apparmor=unconfined)
-        fi
 
         if [ "$INPUT_MOUNT_CARGO_CACHE" = "true" ]; then
           DOCKER_ARGS+=(-v "$HOME/.cargo/registry:/usr/local/cargo/registry")
@@ -66,30 +58,12 @@ runs:
           fi
         done
 
-        # The CodSpeed runner authenticates over OIDC from inside the container.
-        # It detects GitHub Actions via GITHUB_ACTIONS and reads run metadata from
-        # the whole GITHUB_*/ACTIONS_* environment plus the event payload at
-        # GITHUB_EVENT_PATH, so forward all of it and bind-mount the event file at
-        # its original path.
-        if [ -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then
-          while IFS='=' read -r name _; do
-            case "$name" in
-              GITHUB_*|GH_*|RUNNER_*|ACTIONS_*|CI) DOCKER_ARGS+=(-e "$name") ;;
-            esac
-          done < <(env)
-          if [ -n "${GITHUB_EVENT_PATH:-}" ] && [ -f "$GITHUB_EVENT_PATH" ]; then
-            DOCKER_ARGS+=(-v "$GITHUB_EVENT_PATH:$GITHUB_EVENT_PATH:ro")
-          fi
-        fi
-
         if [ -n "$INPUT_EXTRA_ENV" ]; then
           for name in $INPUT_EXTRA_ENV; do
             DOCKER_ARGS+=(-e "$name")
           done
         fi
 
-        # The container runs as root while /workspace is owned by the runner
-        # user, so git refuses to operate on it until it is marked safe.
         TRUST_WORKSPACE="git config --global --add safe.directory /workspace"
 
         if [ "$INPUT_INSTALL" = "true" ]; then

@@ -201,13 +201,6 @@ impl Mailbox {
         self.wait_node(&rx, wait_depth)
     }
 
-    /// Computes whether a blocking node task is initiated from the `GLib` thread and, if so, the
-    /// depth at which the subsequent wait must drain `GLib` tasks.
-    ///
-    /// `glib_initiated` is true when the current thread owns the default `GLib` main context, i.e.
-    /// the task is being submitted from inside a GLib-thread callback. In that case the wait
-    /// must drain only tasks deeper than the current frame, so `wait_depth = callback_depth + 1`
-    /// (see the module-level depth-tagged reentrancy invariant in `dispatch`).
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn node_wait_setup(&self) -> (bool, Option<usize>) {
         let glib_initiated = glib::MainContext::default().is_owner();
@@ -231,13 +224,6 @@ impl Mailbox {
         self.wait_for_node_result(rx, depth)
     }
 
-    /// Blocks for a node-task result while keeping the `GLib` thread live at a bounded depth.
-    ///
-    /// This runs on the `GLib` thread for a task it itself initiated. While waiting, it repeatedly
-    /// drains `GLib` tasks tagged `depth >= callback_depth` via [`Mailbox::dispatch_pending_from_depth`]
-    /// — strictly the inner frame's own work — so the inner callback can make progress without
-    /// re-running a task enqueued by an outer frame, preventing a nested cross-thread deadlock
-    /// (see the module-level depth-tagged reentrancy invariant in `dispatch`).
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn wait_for_node_result<R>(
         &self,
@@ -327,8 +313,6 @@ impl Mailbox {
     fn wrap_out_cell<'env>(env: &'env Env, value: Unknown<'env>) -> napi::Result<Unknown<'env>> {
         let mut cell = env.create_object()?;
         cell.set_named_property("value", value)?;
-        // SAFETY: runs on the Node (JS) thread that owns `env`; `cell` is a live JS object just
-        // created in this `env`, so reconstructing an `Unknown` from its raw value is sound.
         Ok(unsafe { Unknown::from_raw_unchecked(env.raw(), napi::NapiRaw::raw(&cell)) })
     }
 
@@ -343,9 +327,6 @@ impl Mailbox {
             let Some(arg) = js_args.get(index) else {
                 continue;
             };
-            // SAFETY: runs on the Node (JS) thread that owns `env`; `arg` is a live JS value in
-            // this `env` (an out-cell object passed to the callback), so reconstructing a
-            // `JsObject` from its raw value is sound.
             let cell: JsObject =
                 unsafe { JsObject::from_raw_unchecked(env.raw(), napi::JsValue::raw(arg)) };
             let slot: Unknown<'_> = cell.get_named_property("value")?;
@@ -386,21 +367,14 @@ impl Mailbox {
             .get_value(&env)
             .map_err(|e| anyhow::anyhow!("retrieving callback function: {e}"))?;
 
-        // SAFETY: `func` is the live callback function retrieved from the napi reference for this
-        // `env`; reading its raw napi value is a plain accessor on the JS thread.
         let func_raw = unsafe { napi::NapiRaw::raw(&func) };
 
         let mut undef_this = std::ptr::null_mut();
-        // SAFETY: runs on the Node (JS) thread that owns `env`; `napi_get_undefined` writes the
-        // undefined value into the writable `undef_this` out-param.
         unsafe {
             sys::napi_get_undefined(env.raw(), &mut undef_this);
         }
 
         let mut return_value = std::ptr::null_mut();
-        // SAFETY: on the JS thread with a live `env`; `func_raw` is the callback, `undef_this` the
-        // receiver, and `raw_args`/`raw_args.len()` describe a valid argument array, so calling the
-        // function and writing its result into `return_value` is sound.
         let status = unsafe {
             sys::napi_call_function(
                 env.raw(),
@@ -414,8 +388,6 @@ impl Mailbox {
 
         if status == sys::Status::napi_pending_exception {
             let mut exception = std::ptr::null_mut();
-            // SAFETY: on the JS thread with a live `env`; a pending exception is present, so
-            // `napi_get_and_clear_last_exception` retrieves it into the writable out-param.
             unsafe {
                 sys::napi_get_and_clear_last_exception(env.raw(), &mut exception);
             }
@@ -434,8 +406,6 @@ impl Mailbox {
             .map_err(|e| anyhow::anyhow!("reading out-cell args: {e}"))?;
 
         let value = if capture_result {
-            // SAFETY: on the JS thread with a live `env`; `return_value` is the live result the
-            // successful `napi_call_function` produced, so wrapping it as an `Unknown` is sound.
             let unknown = unsafe { Unknown::from_raw_unchecked(env.raw(), return_value) };
             Value::from_js_value(&env, unknown)
                 .map_err(|e| anyhow::anyhow!("converting callback result: {e}"))?
@@ -453,29 +423,21 @@ impl Mailbox {
         use napi::sys;
 
         let mut value_type = sys::ValueType::napi_undefined;
-        // SAFETY: on the JS thread with a live `env`; `exception` is the live thrown value, and
-        // `napi_typeof` writes its type into the writable out-param.
         unsafe {
             sys::napi_typeof(env, exception, &mut value_type);
         }
 
         if value_type == sys::ValueType::napi_object {
             let mut message = std::ptr::null_mut();
-            // SAFETY: on the JS thread with a live `env`; `exception` is a live object, so reading
-            // its `message` property into the writable out-param is sound.
             unsafe {
                 sys::napi_get_named_property(env, exception, c"message".as_ptr(), &mut message);
             }
             if !message.is_null()
-                // SAFETY: `message` is non-null (guarded by the preceding condition) and a live JS
-                // value in `env`; converting it to a Rust `String` on the JS thread is sound.
                 && let Ok(s) = unsafe { String::from_napi_value(env, message) }
             {
                 return s;
             }
         } else if value_type == sys::ValueType::napi_string
-            // SAFETY: `exception` is a live JS string value in `env`; converting it to a Rust
-            // `String` on the JS thread is sound.
             && let Ok(s) = unsafe { String::from_napi_value(env, exception) }
         {
             return s;

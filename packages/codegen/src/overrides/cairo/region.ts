@@ -1,5 +1,5 @@
-import { getHandle, setHandle, t, wrapHandle } from "@gtkx/ffi";
-import { alloc, type Handle, write } from "@gtkx/native";
+import { getHandle, type Handle, setHandle, t, wrapHandle } from "@gtkx/ffi";
+import { alloc, write } from "@gtkx/native";
 import type { RegionOverlap, Status } from "../cairo.js";
 import { RectangleInt, Region } from "../cairo.js";
 

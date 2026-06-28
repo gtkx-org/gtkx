@@ -1,5 +1,5 @@
+import type { Handle } from "@gtkx/ffi";
 import { getHandle, t, wrapHandle } from "@gtkx/ffi";
-import type { Handle } from "@gtkx/native";
 import type { Content, Format, RectangleInt, Status, SurfaceType } from "../cairo.js";
 import { Surface } from "../cairo.js";
 import { FontOptions } from "./font-options.js";

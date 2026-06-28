@@ -3,9 +3,6 @@
     "references": [
         {
             "path": "../ffi/tsconfig.lib.json"
-        },
-        {
-            "path": "../native/tsconfig.lib.json"
         }
     ]
 }

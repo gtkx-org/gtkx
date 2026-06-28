@@ -28,26 +28,18 @@
     "exports": {
         "./package.json": "./package.json",
         ".": {
-            "source": "./binding.ts",
-            "types": "./binding.d.ts",
-            "default": "./binding.js"
-        },
-        "./test-support": {
-            "source": "./test-support.ts",
-            "types": "./test-support.d.ts",
-            "default": "./test-support.js"
+            "types": "./main.d.ts",
+            "default": "./main.js"
         }
     },
-    "sideEffects": false,
+    "sideEffects": [
+        "./main.js"
+    ],
     "files": [
-        "binding.ts",
-        "binding.js",
-        "binding.d.ts",
-        "test-support.ts",
-        "test-support.js",
-        "test-support.d.ts",
         "index.js",
-        "index.d.ts"
+        "index.d.ts",
+        "main.js",
+        "main.d.ts"
     ],
     "napi": {
         "binaryName": "native",
@@ -58,7 +50,6 @@
     },
     "scripts": {
         "artifacts": "napi artifacts",
-        "build": "tsc -b",
         "build:debug": "napi build --platform --esm --no-dts-cache",
         "build:release": "napi build --platform --release --esm --no-dts-cache",
         "coverage": "mkdir -p coverage && node ../../scripts/ci.ts headless cargo +nightly llvm-cov --lcov --output-path coverage/native.lcov.info --fail-under-lines 80 -- --test-threads=1",

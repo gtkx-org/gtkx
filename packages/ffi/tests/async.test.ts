@@ -1,6 +1,5 @@
-import { getHandle, promisify, setHandle } from "@gtkx/ffi";
+import { getHandle, type Handle, promisify, setHandle } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/gi/gtk";
-import type { Handle } from "@gtkx/native";
 import { describe, expect, it } from "vitest";
 
 const handle = (id: number): Handle => {

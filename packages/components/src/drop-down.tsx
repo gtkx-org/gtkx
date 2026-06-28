@@ -32,10 +32,6 @@ interface DropDownWidget extends Gtk.Widget {
     setHeaderFactory(factory: Gtk.ListItemFactory | null): void;
 }
 
-/**
- * Information passed to a {@link DropDown} or {@link ComboRow} cell renderer for
- * a single item: its resolved value and bound list `index`.
- */
 export type DropDownRenderItemInfo<T> = RenderItemInfo<T>;
 
 type DropDownItemRenderer<T> = (info: DropDownRenderItemInfo<T>) => ReactNode;
@@ -79,13 +75,6 @@ const createSelectionResolver = <T, S>(resolver: ItemResolver<T, S>, selectedPos
     resolve: (_position, treeRow) => resolver.resolve(selectedPosition, treeRow, null),
 });
 
-/**
- * Props shared by the {@link DropDown} and {@link ComboRow} components,
- * replacing the raw factory/model surface with declarative `items`, controlled
- * `selectedId`, and per-cell renderers for the current selection, the list
- * popup, and section headers. Supplying an external `model` switches to the
- * uncontrolled form.
- */
 type DropDownDeclarativeProps<T = unknown, S = unknown> =
     | {
           items?: ItemNode<T>[] | undefined;
@@ -108,19 +97,9 @@ type DropDownDeclarativeProps<T = unknown, S = unknown> =
           renderHeader?: never;
       };
 
-/**
- * Props for the {@link DropDown} component: the raw `GtkDropDown` element
- * surface with its factory/model wiring replaced by the declarative
- * {@link DropDownDeclarativeProps} API.
- */
 export type DropDownProps<T = unknown, S = unknown> = Omit<GtkDropDownProps, keyof DropDownDeclarativeProps<T, S>> &
     DropDownDeclarativeProps<T, S>;
 
-/**
- * Props for the {@link ComboRow} component: the raw `AdwComboRow` element
- * surface with its factory/model wiring replaced by the declarative
- * {@link DropDownDeclarativeProps} API.
- */
 export type ComboRowProps<T = unknown, S = unknown> = Omit<AdwComboRowProps, keyof DropDownDeclarativeProps<T, S>> &
     DropDownDeclarativeProps<T, S>;
 
@@ -260,22 +239,10 @@ const DropDownBody = <T, S, W extends DropDownWidget>({ element, props }: DropDo
     );
 };
 
-/**
- * A `GtkDropDown` driven by a declarative `items` model with a controlled
- * `selectedId` and per-cell renderers for the current selection, the list
- * popup, and section headers. Supplying an external `model` switches to the
- * uncontrolled form.
- */
 export const DropDown = <T = unknown, S = unknown>(props: DropDownProps<T, S>): ReactNode => (
     <DropDownBody<T, S, Gtk.DropDown> element={GtkDropDown} props={props} />
 );
 
-/**
- * An `AdwComboRow` driven by a declarative `items` model with a controlled
- * `selectedId` and per-cell renderers for the current selection, the list
- * popup, and section headers. Supplying an external `model` switches to the
- * uncontrolled form.
- */
 export const ComboRow = <T = unknown, S = unknown>(props: ComboRowProps<T, S>): ReactNode => (
     <DropDownBody<T, S, Adw.ComboRow> element={AdwComboRow} props={props} />
 );

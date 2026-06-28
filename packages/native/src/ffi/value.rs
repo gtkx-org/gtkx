@@ -17,14 +17,7 @@ pub struct JsRef<T> {
     _marker: PhantomData<T>,
 }
 
-// SAFETY: `JsRef` only stores raw napi handles (`napi_ref`/`napi_env`) plus the id of the thread
-// that created them. The handles are never dereferenced off their owning thread: cross-thread
-// `Drop` routes the deletion back to that thread via `Mailbox::schedule_js_reference_delete`, and
-// `get_value` is only called with an `Env` on the owning thread, so sharing/sending the handle
-// across threads cannot touch napi state from the wrong thread.
 unsafe impl<T> Send for JsRef<T> {}
-// SAFETY: see the `Send` impl above — the raw napi handles are inert data and only acted upon on
-// their owning thread, so concurrent `&JsRef` access never reaches napi from another thread.
 unsafe impl<T> Sync for JsRef<T> {}
 
 #[cfg_attr(coverage_nightly, coverage(off))]
@@ -49,13 +42,8 @@ impl<T> Drop for JsRef<T> {
 #[cfg_attr(coverage_nightly, coverage(off))]
 impl<T: NapiRaw + NapiValue> JsRef<T> {
     pub fn from_js_value(env: &Env, value: &T) -> napi::Result<Self> {
-        // SAFETY: `value` is a live napi value belonging to `env`; `raw()` simply exposes its
-        // underlying `napi_value` handle, which stays valid for the duration of this call.
         let raw_value = unsafe { value.raw() };
         let mut raw_ref = std::ptr::null_mut();
-        // SAFETY: `env.raw()` is the live napi env, `raw_value` is a valid napi value from it, and
-        // `raw_ref` points to a local out-pointer; `napi_create_reference` writes the new
-        // reference handle there with an initial refcount of 1.
         unsafe {
             let status = sys::napi_create_reference(env.raw(), raw_value, 1, &mut raw_ref);
             if status != sys::Status::napi_ok {
@@ -75,10 +63,6 @@ impl<T: NapiRaw + NapiValue> JsRef<T> {
 
     pub fn get_value(&self, env: &Env) -> napi::Result<T> {
         let mut raw_value = std::ptr::null_mut();
-        // SAFETY: this is called on the owning thread with that thread's live `env`; `self.raw` is
-        // the reference created in `from_js_value`, so `napi_get_reference_value` resolves it into
-        // `raw_value`, and `from_raw_unchecked` then wraps that valid `napi_value` as `T` (the
-        // value was originally created as a `T`).
         unsafe {
             let status = sys::napi_get_reference_value(env.raw(), self.raw, &mut raw_value);
             if status != sys::Status::napi_ok {
@@ -111,9 +95,6 @@ impl Callback {
     }
 
     pub fn from_js_value(env: &Env, value: Unknown<'_>) -> napi::Result<Self> {
-        // SAFETY: callers reach this path only after establishing `value` is a function
-        // (`ValueType::Function`); reconstructing it as a `JsFunction` from `env` and its raw
-        // handle is therefore well typed for the live `env`.
         let func: JsFunction = unsafe { JsFunction::from_raw_unchecked(env.raw(), value.raw()) };
         let func_ref = JsRef::from_js_value(env, &func)?;
         Ok(Self::new(Arc::new(func_ref)))
@@ -168,9 +149,6 @@ impl Ref {
     }
 
     fn from_js_value_at_depth(env: &Env, value: Unknown<'_>, depth: usize) -> napi::Result<Self> {
-        // SAFETY: this is reached from `Value::from_js_value_at_depth` only for the object branch
-        // (after array/typed-array/dataview were ruled out), so `value` is an object of `env`;
-        // reconstructing it as a `JsObject` from the raw pair is well typed.
         let obj: JsObject = unsafe { JsObject::from_raw_unchecked(env.raw(), value.raw()) };
         let value_prop: Unknown<'_> = obj.get_named_property("value")?;
         let inner = Value::from_js_value_at_depth(env, value_prop, depth)?;
@@ -262,13 +240,7 @@ pub struct BufferView {
     shared: bool,
 }
 
-// SAFETY: `BufferView` stores a raw data pointer into a JS ArrayBuffer plus plain `Copy` metadata.
-// The pointer is treated as inert address data here; it is only dereferenced by the marshalling
-// layer on the gtkx-glib thread while the backing buffer is kept alive, so moving the struct
-// between threads does not by itself touch the buffer.
 unsafe impl Send for BufferView {}
-// SAFETY: see the `Send` impl above — the contained pointer is inert address data under shared
-// access and never dereferenced through a shared `&BufferView`, so cross-thread sharing is sound.
 unsafe impl Sync for BufferView {}
 
 impl BufferView {
@@ -323,9 +295,6 @@ impl BufferView {
         let mut data = std::ptr::null_mut();
         let mut array_buffer = std::ptr::null_mut();
         let mut byte_offset = 0usize;
-        // SAFETY: callers reach this only after `value.is_typedarray()` succeeded, so `value` is a
-        // typed array belonging to `env`; every out-parameter points to a live local of the type
-        // `napi_get_typedarray_info` expects, which fills them in for that array.
         let status = unsafe {
             sys::napi_get_typedarray_info(
                 env.raw(),
@@ -354,9 +323,6 @@ impl BufferView {
         let mut data = std::ptr::null_mut();
         let mut array_buffer = std::ptr::null_mut();
         let mut byte_offset = 0usize;
-        // SAFETY: callers reach this only after `value.is_dataview()` succeeded, so `value` is a
-        // DataView belonging to `env`; every out-parameter points to a live local of the type
-        // `napi_get_dataview_info` expects, which fills them in for that view.
         let status = unsafe {
             sys::napi_get_dataview_info(
                 env.raw(),
@@ -380,9 +346,6 @@ impl BufferView {
 
     fn buffer_is_shared(env: &Env, buffer: sys::napi_value) -> napi::Result<bool> {
         let mut is_array_buffer = false;
-        // SAFETY: `buffer` is the backing-buffer handle just returned by napi for a view of `env`,
-        // and `is_array_buffer` is a live out-parameter; `napi_is_arraybuffer` writes the predicate
-        // result there. A non-ArrayBuffer backing implies a SharedArrayBuffer.
         let status = unsafe { sys::napi_is_arraybuffer(env.raw(), buffer, &mut is_array_buffer) };
         check_napi_status(status, "Failed to inspect a view's backing buffer")?;
         Ok(!is_array_buffer)
@@ -483,28 +446,20 @@ impl Value {
 
         match value_type {
             ValueType::Number => {
-                // SAFETY: `value_type` was confirmed `Number`, so `value` is a numeric napi value
-                // of `env`; `f64::from_napi_value` reads it as a double.
                 let n = unsafe { f64::from_napi_value(env.raw(), value.raw())? };
                 Ok(Self::Number(n))
             }
             ValueType::String => {
-                // SAFETY: `value_type` was confirmed `String`, so `value` is a string napi value of
-                // `env`; `String::from_napi_value` decodes it.
                 let s = unsafe { String::from_napi_value(env.raw(), value.raw())? };
                 Ok(Self::String(s))
             }
             ValueType::Boolean => {
-                // SAFETY: `value_type` was confirmed `Boolean`, so `value` is a boolean napi value
-                // of `env`; `bool::from_napi_value` decodes it.
                 let b = unsafe { bool::from_napi_value(env.raw(), value.raw())? };
                 Ok(Self::Boolean(b))
             }
             ValueType::Null => Ok(Self::Null),
             ValueType::Undefined => Ok(Self::Undefined),
             ValueType::BigInt => {
-                // SAFETY: `value_type` was confirmed `BigInt`, so `value` is a bigint napi value of
-                // `env`; `BigInt::from_napi_value` decodes it.
                 let big = unsafe { BigInt::from_napi_value(env.raw(), value.raw())? };
                 let (int, lossless) = big.get_i128();
                 if !lossless {
@@ -516,10 +471,6 @@ impl Value {
                 Ok(Self::BigInt(int))
             }
             ValueType::External => {
-                // SAFETY: `value_type` was confirmed `External`, so `value` is an external napi
-                // value of `env`. These externals are only ever created by `to_js_value` wrapping a
-                // `Handle`, so decoding it back as `&External<Handle>` matches the stored
-                // type and borrows it for the duration of the call.
                 let external_ref =
                     unsafe { <&External<Handle>>::from_napi_value(env.raw(), value.raw())? };
                 Ok(Self::Object(Handle::borrowed(external_ref.ptr())))
@@ -530,8 +481,6 @@ impl Value {
             }
             ValueType::Object => {
                 if value.is_array()? {
-                    // SAFETY: `value.is_array()` just confirmed `value` is an array of `env`, so
-                    // reconstructing an `Array` from the raw env/value pair is well typed.
                     let arr: Array = unsafe { Array::from_napi_value(env.raw(), value.raw())? };
                     Ok(Self::Array(map_js_array(env, &arr, |env, item| {
                         Self::from_js_value_at_depth(env, item, depth + 1)
@@ -579,13 +528,6 @@ impl Value {
             )),
         }
     }
-}
-
-#[cfg_attr(coverage_nightly, coverage(off))]
-pub(crate) fn unknown_as_object(env: &Env, value: &Unknown<'_>) -> napi::Result<JsObject> {
-    // SAFETY: `value` is a live napi value of `env`; `JsObject::from_napi_value` validates that it
-    // is an object and reconstructs it (or returns an error), so the raw pair is used soundly.
-    unsafe { JsObject::from_napi_value(env.raw(), value.raw()) }
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref)]

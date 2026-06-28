@@ -37,8 +37,6 @@ fn encode_borrowed_keeps_string_in_storage() {
         let ffi::StashedValue::Storage(storage) = encoded else {
             panic!("expected Storage ffi value");
         };
-        // SAFETY: the borrowed encode kept the source string alive inside `storage`, so its
-        // pointer addresses a valid NUL-terminated C string for `CStr::from_ptr`.
         let read = unsafe { CStr::from_ptr(storage.ptr() as *const c_char) };
         assert_eq!(read.to_str().unwrap(), "hello");
     });
@@ -56,11 +54,8 @@ fn encode_full_duplicates_into_glib_string() {
         };
         let ptr = storage.ptr();
         assert!(!ptr.is_null());
-        // SAFETY: the full encode produced a freshly `g_malloc`-ed NUL-terminated copy at `ptr`
-        // whose transfer was disarmed, so this owns it: `CStr::from_ptr` reads the valid string.
         let read = unsafe { CStr::from_ptr(ptr as *const c_char) };
         assert_eq!(read.to_str().unwrap(), "owned");
-        // SAFETY: `ptr` is the owned `g_malloc`-ed duplicate; `g_free` releases it exactly once.
         unsafe { glib::ffi::g_free(ptr) };
     });
 }
@@ -104,8 +99,6 @@ fn decode_borrowed_reads_string() {
 #[test]
 fn decode_full_reads_and_frees() {
     helpers::run(|| {
-        // SAFETY: `c"owned-decode"` is a valid NUL-terminated C string literal; `g_strdup` returns
-        // a freshly `g_malloc`-ed owned copy that the full decode below takes ownership of and frees.
         let owned = unsafe { glib::ffi::g_strdup(c"owned-decode".as_ptr()) };
         let decoded = full()
             .decode(&ffi::StashedValue::Ptr(owned as *mut c_void))
@@ -125,8 +118,6 @@ fn decode_null_yields_null() {
 fn ptr_to_value_reads_string() {
     helpers::run(|| {
         let cstring = CString::new("ptr-value").unwrap();
-        // SAFETY: `cstring` stays alive for the call, so the `ReadSource::Value` pointer addresses
-        // a valid NUL-terminated C string that the borrowed string codec reads without taking it.
         let value =
             unsafe { borrowed().read(ReadSource::Value(cstring.as_ptr() as *mut c_void, "ctx")) }
                 .expect("ptr_to_value should succeed");
@@ -145,8 +136,6 @@ fn ptr_to_value_null_yields_null() {
 fn read_from_pointer_dereferences_pointer_slot() {
     helpers::run(|| {
         let cstring = CString::new("slot").unwrap();
-        // SAFETY: `read_slot` places `cstring`'s pointer into a pointer slot and reads through it;
-        // `cstring` stays alive for the call, so the slot points to a valid NUL-terminated string.
         let value = unsafe { read_slot(&borrowed(), cstring.as_ptr() as *mut c_void) }
             .expect("read_from_pointer should succeed");
         assert!(matches!(value, Value::String(s) if s == "slot"));
@@ -159,11 +148,8 @@ fn write_return_to_pointer_writes_duplicated_string() {
         let slot = write_return_into_slot(&borrowed(), &Ok(Value::String("ret".to_owned())));
 
         assert!(!slot.is_null());
-        // SAFETY: the borrowed return write duplicated the string into the freshly `g_malloc`-ed
-        // `slot`, so it addresses a valid NUL-terminated C string for `CStr::from_ptr`.
         let read = unsafe { CStr::from_ptr(slot as *const c_char) };
         assert_eq!(read.to_str().unwrap(), "ret");
-        // SAFETY: `slot` is the owned `g_malloc`-ed duplicate; `g_free` releases it exactly once.
         unsafe { glib::ffi::g_free(slot) };
     });
 }
@@ -180,8 +166,6 @@ fn write_return_to_pointer_non_string_writes_null() {
 fn write_value_to_pointer_writes_string() {
     helpers::run(|| {
         let mut slot: *mut c_char = std::ptr::null_mut();
-        // SAFETY: the address of the live, writable pointer stack local `slot` is the pointer slot
-        // `write_value_to_pointer` stores the duplicated string pointer into, which is in bounds.
         unsafe {
             borrowed().write_value_to_pointer(
                 &mut slot as *mut *mut c_char as *mut c_void,
@@ -190,20 +174,14 @@ fn write_value_to_pointer_writes_string() {
         }
         .expect("write_value_to_pointer should succeed");
         assert!(!slot.is_null());
-        // SAFETY: `slot` now holds the freshly `g_malloc`-ed duplicate, a valid NUL-terminated C
-        // string for `CStr::from_ptr`.
         let read = unsafe { CStr::from_ptr(slot) };
         assert_eq!(read.to_str().unwrap(), "field");
-        // SAFETY: `slot` is the owned `g_malloc`-ed duplicate; `g_free` releases it exactly once.
         unsafe { glib::ffi::g_free(slot as *mut c_void) };
     });
 }
 
 fn assert_write_value_to_pointer_writes_null(value: &Value) {
     let mut slot: *const c_char = std::ptr::dangling::<c_char>();
-    // SAFETY: the address of the live, writable pointer stack local `slot` is the pointer slot
-    // `write_value_to_pointer` writes into; for a null/undefined value it stores a null pointer,
-    // overwriting the dangling sentinel without ever dereferencing it.
     unsafe {
         borrowed().write_value_to_pointer(&mut slot as *mut *const c_char as *mut c_void, value)
     }

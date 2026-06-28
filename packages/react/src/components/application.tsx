@@ -1,10 +1,10 @@
 import { applicationId as defaultApplicationId } from "virtual:gtkx-config";
+import { quitApplication, runApplication } from "@gtkx/ffi";
 import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { type ElementType, type ReactNode, type Ref, useCallback, useLayoutEffect, useState } from "react";
 import { ApplicationContext, useApplication } from "../hooks/use-application.js";
 import { useMergeRefs } from "../hooks/use-merge-refs.js";
-import { quitApplicationLifecycle, runApplicationLifecycle } from "../utils/application-lifecycle.js";
 import { withWindowPresentation } from "./top-level.js";
 
 type ApplicationOf<P> = P extends { ref?: Ref<infer T | null> }
@@ -27,10 +27,10 @@ const useApplicationInstance = <T extends Gtk.Application>(
 
     useLayoutEffect(() => {
         if (!app) return;
-        runApplicationLifecycle(app);
+        runApplication(app);
         setRegisteredApp(app);
         return () => {
-            quitApplicationLifecycle(app);
+            quitApplication(app);
         };
     }, [app]);
 

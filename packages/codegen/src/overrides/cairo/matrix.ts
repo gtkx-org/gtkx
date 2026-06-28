@@ -1,5 +1,5 @@
-import { getHandle, setHandle, t, wrapHandle } from "@gtkx/ffi";
-import { alloc, type Handle } from "@gtkx/native";
+import { getHandle, type Handle, setHandle, t, wrapHandle } from "@gtkx/ffi";
+import { alloc } from "@gtkx/native";
 import type { Status } from "../cairo.js";
 
 const { bind } = t;

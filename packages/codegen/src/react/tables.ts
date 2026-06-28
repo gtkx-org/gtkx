@@ -44,11 +44,6 @@ export const ORDERED_INSERT: Record<string, OrderedInsertSpec> = {
     GtkColumnView: { collection: "getColumns", attach: "insertColumn", detach: "removeColumn" },
 };
 
-/**
- * Per-host container-slot prop names whose values are wrapped as slot children
- * and routed to the parent rule set by `slotTag`. Used by codegen to type these
- * props as `ReactNode` and by the runtime split between slot and scalar props.
- */
 export const SLOT_PROPS_BY_TYPE: Record<string, string[]> = {
     GtkWidget: ["controllers", "actionGroups"],
     GtkShortcutController: ["shortcuts"],
@@ -73,15 +68,6 @@ export type AccessibleAttribute = {
     type: string;
 };
 
-/**
- * The single source of truth for the accessibility attributes shared by every
- * GTK Accessible implementor. Each entry pairs the public JSX type (`type`)
- * consumed by the jsx emitter with the runtime application data (`kind`,
- * `member`, `value`) emitted into `@gtkx/jsx/metadata` and consumed by the
- * `@gtkx/react` reconciler. `kind` selects the GTK accessible enum family,
- * `member` is the SCREAMING_SNAKE enum member name, and `value` selects the
- * `GObject.Value` coercion. Grouped by `kind` for readability.
- */
 export const ACCESSIBLE_ATTRIBUTES: Record<string, AccessibleAttribute> = {
     accessibleAutocomplete: {
         kind: "property",

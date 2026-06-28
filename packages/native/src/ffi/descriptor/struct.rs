@@ -1,5 +1,4 @@
 use anyhow::bail;
-use napi::{Env, JsObject};
 
 use super::prelude::*;
 use crate::handle::Boxed;
@@ -9,26 +8,6 @@ pub struct StructDescriptor {
     pub ownership: Ownership,
     pub size: Option<usize>,
     pub caller_allocated: bool,
-}
-
-impl StructDescriptor {
-    #[allow(clippy::trivially_copy_pass_by_ref)]
-    #[cfg_attr(coverage_nightly, coverage(off))]
-    pub(crate) fn from_descriptor(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
-        let ownership = Ownership::from_descriptor(obj, "struct")?;
-
-        let size: Option<usize> =
-            super::optional_descriptor_property::<f64>(obj, "size")?.map(|n| n as usize);
-
-        let caller_allocated: bool =
-            super::optional_descriptor_property(obj, "callerAllocated")?.unwrap_or(false);
-
-        Ok(Self {
-            ownership,
-            size,
-            caller_allocated,
-        })
-    }
 }
 
 impl FfiEncoder for StructDescriptor {
@@ -82,20 +61,13 @@ impl PointerWriter for StructDescriptor {
         if let Some(size) = self.size {
             let src_ptr = value.object_ptr("Struct field write")?;
             if src_ptr.is_null() {
-                // SAFETY: `ptr` is a pointer-sized writable field slot per the contract; a null
-                // source clears the slot.
                 unsafe { (ptr as *mut *mut c_void).write_unaligned(std::ptr::null_mut()) };
                 return Ok(());
             }
-            // SAFETY: `ptr` is a pointer-sized readable field slot per the contract; this loads the
-            // destination struct pointer it currently holds.
             let dst_ptr = unsafe { (ptr as *const *mut c_void).read_unaligned() };
             if dst_ptr.is_null() {
                 bail!("Struct field write into null pointer slot")
             }
-            // SAFETY: `src_ptr` is the non-null source struct and `dst_ptr` the non-null
-            // destination, both at least `size` bytes (the descriptor's struct size) and
-            // non-overlapping field storage; this copies the struct body by value into the slot.
             unsafe {
                 std::ptr::copy_nonoverlapping(src_ptr as *const u8, dst_ptr as *mut u8, size);
             }

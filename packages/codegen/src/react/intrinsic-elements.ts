@@ -65,12 +65,6 @@ const parentImplementedInterfaceKeys = (klass: GirClass, namespace: GirNamespace
     return keys;
 };
 
-/**
- * Resolves the prop-bearing interfaces a class introduces beyond those its parent
- * chain already implements, sorted deterministically. Used to compose each widget's
- * JSX prop interface from the prop interfaces of its newly implemented GObject
- * interfaces, mirroring the `implements` delta the FFI bindings emit.
- */
 export const newlyImplementedInterfaces = (
     klass: GirClass,
     namespace: GirNamespace,
@@ -83,12 +77,6 @@ export const newlyImplementedInterfaces = (
     return sortedStringsBy(own, qualifiedInterfaceKey);
 };
 
-/**
- * Collects the prop-bearing GObject interfaces implemented by any intrinsic element,
- * restricted to a target namespace and deduplicated, sorted deterministically. Drives
- * the emission of one `<GlibName>Props` interface per interface that contributes at
- * least one property or signal.
- */
 export const collectInterfacePropsClasses = (
     library: Library,
     targetNamespaceName: string,

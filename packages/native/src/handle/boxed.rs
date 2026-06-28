@@ -33,12 +33,6 @@ impl Drop for OwnedAllocation {
         if self.ptr.is_null() {
             return;
         }
-        // SAFETY: `self.ptr` is non-null (checked above) and owns an allocation whose kind matches
-        // the `destructor` chosen when this `OwnedAllocation` was built: `BoxedFree`/`GBoxedFreeByName`
-        // hold a boxed value of the named gtype freed with `g_boxed_free`, `GFree` a `g_malloc` block
-        // freed with `g_free`, and `Custom` a value freed by its matching free function. `OwnedAllocation`
-        // is the sole owner (held behind an `Rc`), so this frees the allocation exactly once. GTK/GObject
-        // frees run on the gtkx-glib thread that owns these wrappers.
         unsafe {
             match &self.destructor {
                 BoxedDestructor::BoxedFree(gtype) => {
@@ -110,24 +104,12 @@ impl Boxed {
         Self::borrowed(ptr, None, None)
     }
 
-    /// # Safety
-    ///
-    /// `ptr` must point to a live boxed value registered under `gtype`, and `gtype` must be a valid
-    /// boxed `GType`. The returned pointer is an independently owned copy that the caller must free
-    /// with `g_boxed_free` for the same `gtype`. Must run on the gtkx-glib thread.
     pub(crate) unsafe fn boxed_copy(gtype: glib::Type, ptr: *mut c_void) -> *mut c_void {
-        // SAFETY: per the contract `ptr` is a live boxed value of `gtype`; `g_boxed_copy` returns a
-        // freshly owned deep copy of it.
         unsafe { glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), ptr as *const _) }
     }
 
     #[must_use]
     pub fn copy_with_size(ptr: *mut c_void, size: usize) -> Self {
-        // SAFETY: the caller supplies `size` as the readable byte length of the value at `ptr`;
-        // `g_malloc(size)` returns a fresh, distinct block of at least that size, so the two
-        // regions cannot overlap and `copy_nonoverlapping` reads exactly `size` bytes from `ptr`
-        // and writes them into the new block. The owned copy is freed with `g_free` to match
-        // `g_malloc`.
         let cloned_ptr = unsafe {
             let dest = glib::ffi::g_malloc(size);
             std::ptr::copy_nonoverlapping(ptr as *const u8, dest as *mut u8, size);
@@ -152,9 +134,6 @@ impl Boxed {
         }
 
         if let Some(gt) = gtype {
-            // SAFETY: `ptr` is non-null (checked above) and, when a `gtype` is supplied, the caller
-            // guarantees it points to a live boxed value of `gt`; `boxed_copy` returns an owned deep
-            // copy freed below with the matching `g_boxed_free`.
             let cloned_ptr = unsafe { Self::boxed_copy(gt, ptr) };
             return Ok(Self::owned(
                 cloned_ptr,
@@ -207,9 +186,6 @@ impl Clone for Boxed {
         if let Some(gtype) = self.gtype
             && self.free_fn.is_none()
         {
-            // SAFETY: this branch is reached only for an owned boxed value (the borrowed/null cases
-            // returned earlier) whose `gtype` is set, so `self.ptr` is a live boxed value of `gtype`;
-            // `boxed_copy` produces an independently owned copy freed with the matching `g_boxed_free`.
             let cloned_ptr = unsafe { Self::boxed_copy(gtype, self.ptr) };
             return Self::owned(
                 cloned_ptr,

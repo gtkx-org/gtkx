@@ -272,11 +272,6 @@ const displayValueQueries = nameQueryFamily(
     ),
 );
 
-/**
- * The full set of built-in query functions keyed by their full names
- * (`queryByRole`, `getAllByText`, `findByName`, and so on), derived from the
- * per-suffix {@link NamedFamily} of every built-in matcher.
- */
 export type BuiltinQueries = NamedFamily<"Role", [role: Gtk.AccessibleRole, options?: ByRoleOptions]> &
     NamedFamily<"LabelText", [text: Matcher, options?: MatcherOptions]> &
     NamedFamily<"Text", [text: Matcher, options?: MatcherOptions]> &
@@ -284,10 +279,6 @@ export type BuiltinQueries = NamedFamily<"Role", [role: Gtk.AccessibleRole, opti
     NamedFamily<"PlaceholderText", [text: Matcher, options?: MatcherOptions]> &
     NamedFamily<"DisplayValue", [value: Matcher, options?: MatcherOptions]>;
 
-/**
- * Every built-in query keyed by its full name, assembled from the per-suffix
- * query families.
- */
 export const builtinQueries: BuiltinQueries = {
     ...roleQueries,
     ...labelTextQueries,

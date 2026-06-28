@@ -1,38 +1,37 @@
-import {
-    type ArrayDescriptor,
-    type BigInt64Descriptor,
-    type BigUint64Descriptor,
-    type BooleanDescriptor,
-    type BoxedDescriptor,
-    type BufferDescriptor,
-    type CallbackDescriptor,
-    call,
-    type Descriptor,
-    type EnumDescriptor,
-    type FlagsDescriptor,
-    type Float32Descriptor,
-    type Float64Descriptor,
-    type FundamentalDescriptor,
-    type HashTableDescriptor,
-    type Int8Descriptor,
-    type Int16Descriptor,
-    type Int32Descriptor,
-    type Int64Descriptor,
-    bind as nativeBind,
-    type ObjectDescriptor,
-    type Ownership,
-    type RefDescriptor,
-    type StringDescriptor,
-    type StructDescriptor,
-    type Uint8Descriptor,
-    type Uint16Descriptor,
-    type Uint32Descriptor,
-    type Uint64Descriptor,
-    type UnicharDescriptor,
-    type Value,
-    type VoidDescriptor,
-} from "@gtkx/native";
+import { call, type Descriptor, bind as nativeBind } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
+
+export type Ownership = "full" | "borrowed";
+
+export type Ref = { value: unknown };
+
+export type Int8Descriptor = Extract<Descriptor, { kind: "int8" }>;
+export type Uint8Descriptor = Extract<Descriptor, { kind: "uint8" }>;
+export type Int16Descriptor = Extract<Descriptor, { kind: "int16" }>;
+export type Uint16Descriptor = Extract<Descriptor, { kind: "uint16" }>;
+export type Int32Descriptor = Extract<Descriptor, { kind: "int32" }>;
+export type Uint32Descriptor = Extract<Descriptor, { kind: "uint32" }>;
+export type Int64Descriptor = Extract<Descriptor, { kind: "int64" }>;
+export type Uint64Descriptor = Extract<Descriptor, { kind: "uint64" }>;
+export type BigInt64Descriptor = Extract<Descriptor, { kind: "bigint64" }>;
+export type BigUint64Descriptor = Extract<Descriptor, { kind: "biguint64" }>;
+export type Float32Descriptor = Extract<Descriptor, { kind: "float32" }>;
+export type Float64Descriptor = Extract<Descriptor, { kind: "float64" }>;
+export type EnumDescriptor = Extract<Descriptor, { kind: "enum" }>;
+export type FlagsDescriptor = Extract<Descriptor, { kind: "flags" }>;
+export type BooleanDescriptor = Extract<Descriptor, { kind: "boolean" }>;
+export type StringDescriptor = Extract<Descriptor, { kind: "string" }>;
+export type ObjectDescriptor = Extract<Descriptor, { kind: "object" }>;
+export type UnicharDescriptor = Extract<Descriptor, { kind: "unichar" }>;
+export type VoidDescriptor = Extract<Descriptor, { kind: "void" }>;
+export type BufferDescriptor = Extract<Descriptor, { kind: "buffer" }>;
+export type BoxedDescriptor = Extract<Descriptor, { kind: "boxed" }>;
+export type StructDescriptor = Extract<Descriptor, { kind: "struct" }>;
+export type FundamentalDescriptor = Extract<Descriptor, { kind: "fundamental" }>;
+export type ArrayDescriptor = Extract<Descriptor, { kind: "array" }>;
+export type HashTableDescriptor = Extract<Descriptor, { kind: "hashtable" }>;
+export type CallbackDescriptor = Extract<Descriptor, { kind: "callback" }>;
+export type RefDescriptor = Extract<Descriptor, { kind: "ref" }>;
 
 const wrapperClassByDescriptor = new WeakMap<Descriptor, AnyClass>();
 
@@ -48,19 +47,13 @@ export const bind = (
     symbol: string,
     argDescriptors: Descriptor[],
     returnDescriptor: Descriptor,
-): ((...values: Value[]) => Value) => {
+): ((...values: unknown[]) => unknown) => {
     const descriptor = nativeBind(sharedLibrary, symbol, argDescriptors, returnDescriptor);
     return (...values) => call(descriptor, values);
 };
 
-type BoundCall = (...values: Value[]) => Value;
+type BoundCall = (...values: unknown[]) => unknown;
 
-/**
- * Creates a cache of compiled bindings keyed by string. The first call for a key builds the binding
- * (compiling its signature once); later calls reuse it. Use when a call site's signature varies
- * along a small, stable axis — e.g. a boxed type name, or a `(class, signal)` pair — so each
- * distinct signature is compiled exactly once instead of on every call.
- */
 export const createBindCache = (): ((key: string, make: () => BoundCall) => BoundCall) => {
     const cache = new Map<string, BoundCall>();
     return (key, make) => {
@@ -85,11 +78,6 @@ export const biguint64T: BigUint64Descriptor = Object.freeze({ kind: "biguint64"
 
 const typeFunctionCache = createBindCache();
 
-/**
- * Invokes a GObject `*_get_type()` function — no arguments, returning the `GType` as a `bigint` —
- * memoizing one `([], biguint64)` binding per `(sharedLibrary, symbol)` so each type function is bound
- * exactly once.
- */
 export const callTypeFunction = (sharedLibrary: string, symbol: string): bigint =>
     typeFunctionCache(`${sharedLibrary} ${symbol}`, () => bind(sharedLibrary, symbol, [], biguint64T))() as bigint;
 export const float32T: Float32Descriptor = Object.freeze({ kind: "float32" });

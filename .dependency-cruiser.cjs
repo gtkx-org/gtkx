@@ -24,6 +24,8 @@ module.exports = {
                     "tsconfig\\.json$",
                     "\\.(cjs|mjs|js)$",
                     "vitest\\.config\\.ts$",
+                    "(^|/)(tests?|e2e)/",
+                    "\\.(spec|test)\\.[tj]sx?$",
                 ],
             },
             to: {},

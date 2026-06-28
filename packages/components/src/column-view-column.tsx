@@ -12,17 +12,8 @@ const factoryInstaller: FactoryInstaller<Gtk.ColumnViewColumn> = {
     uninstall: (column) => column.setFactory(null),
 };
 
-/**
- * Information passed to a {@link ColumnViewColumn} `renderItem` callback for a
- * single cell: its resolved value and bound list `index`.
- */
 export type ColumnRenderItemInfo<T> = RenderItemInfo<T>;
 
-/**
- * Props for a single {@link ColumnViewColumn} of a {@link ColumnView},
- * replacing the raw `GtkColumnViewColumn` factory/sorter surface with a
- * declarative `renderItem` callback and an optional header context menu.
- */
 type ColumnViewColumnDeclarativeProps<T = unknown> = {
     title: string;
     expand?: boolean | undefined;
@@ -35,20 +26,9 @@ type ColumnViewColumnDeclarativeProps<T = unknown> = {
     headerMenu?: ReactNode;
 };
 
-/**
- * Props for the {@link ColumnViewColumn} component: the raw
- * `GtkColumnViewColumn` element surface (minus its imperative `factory` and
- * `sorter` properties) with its cell wiring replaced by the declarative
- * {@link ColumnViewColumnDeclarativeProps} API.
- */
 export type ColumnViewColumnProps<T = unknown> = Omit<GtkColumnViewColumnProps, "factory" | "sorter"> &
     ColumnViewColumnDeclarativeProps<T>;
 
-/**
- * A single column of a {@link ColumnView}, rendering each row's cell through
- * the declarative `renderItem` callback and optionally attaching a header
- * context menu.
- */
 export const ColumnViewColumn = <T = unknown>(props: ColumnViewColumnProps<T>): ReactNode => {
     const { id, title, sortable, renderItem, headerMenu, ...intrinsicProps } = props as ColumnViewColumnProps<T> & {
         [key: string]: unknown;

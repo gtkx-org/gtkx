@@ -1,17 +1,8 @@
-import {
-    alloc,
-    type BoxedDescriptor,
-    type Descriptor,
-    type FundamentalDescriptor,
-    getType,
-    type Handle,
-    read,
-    type Value,
-    write,
-} from "@gtkx/native";
+import { alloc, type Descriptor, getType, read, write } from "@gtkx/native";
 import { GVALUE_LAYOUT, GVALUE_SIZE, GVALUE_T, LIB } from "./constants.js";
 import {
     arrayT,
+    type BoxedDescriptor,
     bigint64T,
     biguint64T,
     bind,
@@ -19,6 +10,7 @@ import {
     boxedT,
     callTypeFunction,
     createBindCache,
+    type FundamentalDescriptor,
     float32T,
     float64T,
     fundamentalT,
@@ -51,6 +43,7 @@ import {
     typeFundamental,
     typeName,
 } from "./gtype.js";
+import type { Handle } from "./handle.js";
 import { getHandle, requireWrapperClass, tryGetHandle, wrapHandle } from "./registry.js";
 
 const newGValue = (): Handle => alloc(GVALUE_SIZE, "GValue");
@@ -88,7 +81,7 @@ const setGValuePointer = (value: Handle, pointer: Handle): void => {
 
 const scalarBind = <T>(symbol: string, descriptor: Descriptor) => ({
     set: bind(LIB, `g_value_set_${symbol}`, [GVALUE_T, descriptor], voidT),
-    get: bind(LIB, `g_value_get_${symbol}`, [GVALUE_T], descriptor) as (...values: Value[]) => T,
+    get: bind(LIB, `g_value_get_${symbol}`, [GVALUE_T], descriptor) as (...values: unknown[]) => T,
 });
 
 const booleanBind = scalarBind<boolean>("boolean", booleanT);

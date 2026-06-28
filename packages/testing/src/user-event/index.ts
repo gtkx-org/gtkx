@@ -40,13 +40,6 @@ export type UserEvent = {
 
 const instance = createInstance();
 
-/**
- * The simulated-input API over real GTK controllers and signals.
- *
- * `keyboard` and `pointer` thread a single shared input-device state so that
- * held modifiers and mouse buttons are observed across calls; every other
- * helper is stateless.
- */
 export const userEvent: UserEvent = {
     click,
     dblClick,

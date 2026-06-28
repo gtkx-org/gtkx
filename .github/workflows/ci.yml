@@ -28,21 +28,17 @@ jobs:
       code: ${{ steps.filter.outputs.code }}
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
 
       - name: Detect changes
         id: filter
-        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d
         with:
           filters: |
             code:
               - '**'
               - '!**/*.md'
 
-  # Builds the CI container from this run's Dockerfile and publishes it under a
-  # tag derived from the Dockerfile's content hash, so a Dockerfile change is
-  # exercised by the same run's jobs instead of leaking the previous `:latest`.
-  # Every container job below `needs: image` and pulls exactly this tag.
   image:
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -53,7 +49,7 @@ jobs:
       ref: ${{ steps.meta.outputs.ref }}
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
 
       - name: Compute image tags
         id: meta
@@ -71,18 +67,18 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5
 
       - name: Log in to GHCR
         if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push CI image
-        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf
         with:
           context: .github/docker
           push: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
@@ -99,7 +95,7 @@ jobs:
       CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
 
       - name: Setup CI
         uses: ./.github/actions/setup-ci
@@ -120,7 +116,7 @@ jobs:
       CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
 
       - name: Setup CI
         uses: ./.github/actions/setup-ci
@@ -141,7 +137,7 @@ jobs:
       CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
 
       - name: Setup CI
         uses: ./.github/actions/setup-ci
@@ -162,7 +158,7 @@ jobs:
       CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
 
       - name: Setup CI
         uses: ./.github/actions/setup-ci
@@ -183,7 +179,7 @@ jobs:
       CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
 
       - name: Setup CI
         uses: ./.github/actions/setup-ci
@@ -204,7 +200,7 @@ jobs:
       CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
 
       - name: Setup CI
         uses: ./.github/actions/setup-ci
@@ -215,79 +211,27 @@ jobs:
           command: pnpm miri
           mount-cargo-cache: "true"
 
-  # The Rust marshalling benches are pure CPU and run in CodSpeed Simulation
-  # (instrumented) mode inside the pinned amd64 CI image — deterministic and
-  # gate-worthy. run-in-container forwards the OIDC token and GitHub context.
-  bench-rust:
-    needs: [changes, image]
-    if: needs.changes.outputs.code == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 40
-    permissions:
-      contents: read
-      packages: read
-      id-token: write # public repo: authenticate to CodSpeed over OIDC, no token
-    env:
-      CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - name: Setup CI
-        uses: ./.github/actions/setup-ci
-
-      - name: Build the Rust benchmark
-        uses: ./.github/actions/run-in-container
-        with:
-          command: cd packages/native && cargo codspeed build --bench marshalling
-          mount-cargo-cache: "true"
-          mount-pnpm-store: "true"
-
-      - name: Run the Rust benchmarks under CodSpeed (simulation)
-        uses: ./.github/actions/run-in-container
-        with:
-          install: "false"
-          command: pnpm bench:rust
-          mount-cargo-cache: "true"
-          mount-pnpm-store: "true"
-          seccomp-unconfined: "true"
-
-  # The TypeScript/GTK benches measure multi-threaded, I/O-heavy work (the GLib
-  # main-loop thread, FFI, a headless compositor), which CodSpeed's instrumented
-  # Simulation mode cannot measure deterministically. They run in Walltime mode,
-  # which requires a CodSpeed Macro Runner (ARM64 bare metal); Macro Runners must
-  # be enabled for the org. The macro runner is bare Ubuntu 22.04 (GTK 4.6, no
-  # Docker), so the GTK 4.22.4 stack the benches target is built from source into
-  # /opt/gtkx by scripts/build-gtk-stack.sh and published as a GitHub Release
-  # asset keyed by the script hash; later runs download it instead of rebuilding.
-  # Codegen is restricted to the libraries the benches need (WebKit dropped) so
-  # WebKitGTK need not be built.
   bench-ts:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: codspeed-macro
-    timeout-minutes: 90 # first run builds + publishes the stack; later runs download it
+    timeout-minutes: 90
     permissions:
-      contents: write # publish/download the prebuilt GTK stack release asset
+      contents: write
       packages: read
-      id-token: write # public repo: authenticate to CodSpeed over OIDC, no token
+      id-token: write
     env:
       NODE24_VERSION: "24.18.0"
       NODE22_VERSION: "22.23.1"
       PREFIX: /opt/gtkx
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
 
       - name: Provision the GTK stack
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        # Download the prebuilt /opt/gtkx tree from the gtkx-stack-cache release
-        # when one matches this script's hash; otherwise build it from source and
-        # publish it so later runs skip the ~35-minute build. The build script's
-        # apt prerequisites run on both paths, so a downloaded stack still has
-        # weston's runtime libraries even though build-dep weston is skipped.
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq zstd
           if ! command -v gh >/dev/null; then
@@ -346,9 +290,6 @@ jobs:
 
       - name: Install the CodSpeed runner
         shell: bash
-        # The installer drops the codspeed binary under ~/.cargo/bin or ~/.local
-        # (already on PATH); locate it and mirror it into /usr/local/bin so it is
-        # also reachable under sudo.
         run: |
           curl -fsSL https://github.com/CodSpeedHQ/codspeed/releases/download/v4.18.1/codspeed-runner-installer.sh | bash
           sudo install -m 0755 "$(find "$HOME/.cargo" "$HOME/.local" /usr -name codspeed -type f -path '*bin*' 2>/dev/null | head -1)" /usr/local/bin/codspeed
@@ -356,15 +297,10 @@ jobs:
 
       - name: Restrict codegen to the bench library set
         shell: bash
-        # The benches use only Gtk/Adw/GtkSource; dropping WebKit-6.0 keeps the
-        # e2e build green without building WebKitGTK from source.
         run: sed -i 's/, *"WebKit-6.0"//' gtkx.config.ts
 
       - name: Build the e2e workspace and the native addon
         shell: bash
-        # Loose env mode lets codegen and the native build see the exported
-        # /opt/gtkx paths (PKG_CONFIG_PATH, GI_TYPELIB_PATH, ...); Turbo's default
-        # strict mode would strip them, so codegen could not locate the gir.
         run: |
           pnpm install --frozen-lockfile
           pnpm exec turbo build --filter=@gtkx/e2e --env-mode=loose

@@ -457,14 +457,6 @@ const TextTag: RuleSet = {
     },
 };
 
-/**
- * The hand-written rule registry keyed by GLib type name. Each entry supplies
- * the function-based attach/detach and prop-application behavior the reconciler
- * resolves by GType ancestry. Consumed at runtime by the generated
- * `virtual:gtkx-config` module via the `@gtkx/config/rules` export.
- *
- * @public
- */
 export const BUILT_IN_RULES: RuleRegistry = {
     GtkEventController: EventController,
     GtkLayoutManager: LayoutManager,
@@ -501,13 +493,5 @@ export const BUILT_IN_RULES: RuleRegistry = {
     GtkTextTag: TextTag,
 };
 
-/**
- * Merges the built-in registry with an optional user-supplied transform. The
- * transform receives the built-ins and returns the registry the runtime
- * consumes. Consumed at runtime by the generated `virtual:gtkx-config` module
- * via the `@gtkx/config/rules` export.
- *
- * @public
- */
 export const mergeRules = (builtins: RuleRegistry, user?: (builtins: RuleRegistry) => RuleRegistry): RuleRegistry =>
     user ? user(builtins) : builtins;

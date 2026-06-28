@@ -1,5 +1,5 @@
-import { getHandle, setHandle, t, wrapHandle } from "@gtkx/ffi";
-import { type Handle, read } from "@gtkx/native";
+import { getHandle, type Handle, setHandle, t, wrapHandle } from "@gtkx/ffi";
+import { read } from "@gtkx/native";
 import type { Format } from "../cairo.js";
 import { Surface } from "../cairo.js";
 

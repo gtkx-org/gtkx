@@ -11,9 +11,14 @@ vi.mock("@gtkx/native", async (importOriginal) => {
 type FakeApplication = {
     registerCalls: number;
     activateCalls: number;
+    runCalls: number;
+    windows: unknown[];
     getIsRegistered(): boolean;
+    getWindows(): unknown[];
+    removeWindow(window: unknown): void;
     register(cancellable: null): boolean;
     activate(): void;
+    run(argv: string[]): number;
     on(signal: "activate" | "shutdown", handler: () => void): unknown;
     emit(signal: "activate" | "shutdown"): void;
 };
@@ -24,7 +29,15 @@ const createFakeApplication = (): FakeApplication => {
     return {
         registerCalls: 0,
         activateCalls: 0,
+        runCalls: 0,
+        windows: [],
         getIsRegistered: () => registered,
+        getWindows() {
+            return this.windows;
+        },
+        removeWindow(window: unknown) {
+            this.windows = this.windows.filter((candidate) => candidate !== window);
+        },
         register(_cancellable: null) {
             this.registerCalls++;
             registered = true;
@@ -33,6 +46,13 @@ const createFakeApplication = (): FakeApplication => {
         activate() {
             this.activateCalls++;
             this.emit("activate");
+        },
+        run(_argv: string[]) {
+            this.runCalls++;
+            this.emit("activate");
+            this.emit("shutdown");
+            registered = false;
+            return 0;
         },
         on(signal, handler) {
             handlers[signal].push(handler);
@@ -79,6 +99,39 @@ describe("runApplication and quitApplication", () => {
             expect(app.registerCalls).toBe(1);
 
             quitApplication(app);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it("removes every window and runs the application to unregister it on quit", () => {
+        vi.useFakeTimers();
+        try {
+            const app = createFakeApplication();
+            const before = vi.getTimerCount();
+
+            runApplication(app);
+            app.windows = [{ id: "first" }, { id: "second" }];
+
+            quitApplication(app);
+
+            expect(app.runCalls).toBe(1);
+            expect(app.windows).toHaveLength(0);
+            expect(app.getIsRegistered()).toBe(false);
+            expect(vi.getTimerCount()).toBe(before);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it("emits shutdown without running when the application is not registered", () => {
+        vi.useFakeTimers();
+        try {
+            const app = createFakeApplication();
+
+            quitApplication(app);
+
+            expect(app.runCalls).toBe(0);
         } finally {
             vi.useRealTimers();
         }

@@ -12,12 +12,6 @@ export { createPortal } from "./reconciler/portal.js";
 export { createRoot, quit, type Root } from "./reconciler/render.js";
 export { createRootElement, type RootElement } from "./reconciler/root-element.js";
 export { getAccessibleMetadata } from "./utils/accessible-metadata.js";
-export {
-    type ApplicationLifecycle,
-    type ApplicationLifecycleModule,
-    defaultApplicationLifecycle,
-    setApplicationLifecycle,
-} from "./utils/application-lifecycle.js";
 export { createElementComponent } from "./utils/create-element-component.js";
 export type {
     ActionAccel,

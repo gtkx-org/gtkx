@@ -1,7 +1,3 @@
-/* ============================================================
-   gtkx — base reset, element defaults, and landing utilities.
-   Tokens do the heavy lifting; this keeps globals minimal.
-   ============================================================ */
 
 *,
 *::before,
@@ -79,8 +75,6 @@ samp {
 img {
   max-width: 100%;
 }
-
-/* ---- Landing utilities ---- */
 
 .gtkx-gradient-text {
   background: var(--gradient-text);

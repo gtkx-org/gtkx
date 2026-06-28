@@ -1,12 +1,7 @@
-import {
-    getType,
-    getWrapper,
-    type Handle,
-    type RegisterClassVfunc as NativeRegisterClassVfunc,
-    setWrapper,
-} from "@gtkx/native";
+import { getType, getWrapper, type RegisterClassVfunc as NativeRegisterClassVfunc, setWrapper } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
 import { type GTyped, TYPE_INVALID, typeFromName, typeInterfaces, typeIsA, typeName, typeParent } from "./gtype.js";
+import type { Handle } from "./handle.js";
 import type { Mixin } from "./mixin.js";
 
 const classRegistry = new Map<bigint, AnyClass>();

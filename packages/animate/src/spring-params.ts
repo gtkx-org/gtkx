@@ -11,14 +11,6 @@ const clamp01 = (value: number): number => Math.min(1, Math.max(0, value));
 
 const dampingFloor = (mass: number, stiffness: number): number => MIN_DAMPING_RATIO * 2 * Math.sqrt(mass * stiffness);
 
-/**
- * Builds the {@link Adw.SpringParams} for a spring {@link Transition}.
- *
- * `dampingRatio` and `bounce` map to libadwaita's ratio constructor, while a raw
- * `damping` coefficient maps to {@link Adw.SpringParams.newFull}. The effective
- * damping is floored to keep the spring underdamped-but-terminating, so an
- * otherwise undamped spring cannot produce an infinite estimated duration.
- */
 export const resolveSpringParams = (transition: Transition): Adw.SpringParams => {
     const stiffness = transition.stiffness ?? DEFAULT_STIFFNESS;
     const mass = transition.mass ?? DEFAULT_MASS;

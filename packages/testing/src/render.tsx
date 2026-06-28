@@ -8,13 +8,12 @@ import {
 } from "@gtkx/react/internal";
 import { type ErrorInfo, type ReactNode, StrictMode } from "react";
 import { runInAct } from "./act.js";
+import type { RenderResult } from "./bound-queries.js";
 import { addToCleanupQueue, runCleanup } from "./cleanup-registry.js";
 import { logWidget, type PrettyWidgetOptions } from "./pretty-widget.js";
 import { logRoles } from "./role-helpers.js";
 import { clearScreen, setScreen } from "./screen.js";
 import { captureAndSaveScreenshot } from "./screenshot.js";
-import "./setup-runtime.js";
-import type { RenderResult } from "./bound-queries.js";
 import { type Container, TOPLEVELS, traverse } from "./traversal.js";
 import type { QueryMap, RenderOptions, ScreenshotOptions, WindowSelector } from "./types.js";
 import { resetClipboard } from "./user-event/index.js";

@@ -76,11 +76,6 @@ impl UnhandledRejection {
     #[cfg_attr(test, allow(dead_code))]
     fn try_emit(env: &Env, msg: &str) -> Option<()> {
         let raw_env = env.raw();
-        // SAFETY: runs on the Node (JS) thread that owns `env`, so `raw_env` is its live napi env.
-        // Every napi call below passes that env with out-pointers to local, correctly typed slots,
-        // and each derived value (`global`, `process`, `emit_fn`, the argument values) is checked
-        // for success before use; `make_error_object`/`make_resolved_promise` are called with the
-        // same valid env. Any pending exception from the emit call is fetched and cleared.
         unsafe {
             let mut global = std::ptr::null_mut();
             (sys::napi_get_global(raw_env, &mut global) == sys::Status::napi_ok).then_some(())?;
@@ -121,15 +116,8 @@ impl UnhandledRejection {
         Some(())
     }
 
-    /// # Safety
-    ///
-    /// `env` must be a live napi env for the current (Node) thread. The returned value, if any, is
-    /// a napi `Error` object valid within that env.
     #[cfg_attr(test, allow(dead_code))]
     unsafe fn make_error_object(env: sys::napi_env, msg: &str) -> Option<sys::napi_value> {
-        // SAFETY: per the contract `env` is a live napi env; the string and error are created via
-        // napi calls with out-pointers to local slots, and each call's status is checked before the
-        // produced value is used. `msg.as_bytes()` provides a valid pointer/length for the string.
         unsafe {
             let mut msg_value = std::ptr::null_mut();
             let bytes = msg.as_bytes();
@@ -152,15 +140,8 @@ impl UnhandledRejection {
         }
     }
 
-    /// # Safety
-    ///
-    /// `env` must be a live napi env for the current (Node) thread. The returned value, if any, is
-    /// an already-resolved napi `Promise` valid within that env.
     #[cfg_attr(test, allow(dead_code))]
     unsafe fn make_resolved_promise(env: sys::napi_env) -> Option<sys::napi_value> {
-        // SAFETY: per the contract `env` is a live napi env; the promise/deferred pair and the
-        // undefined value are created via napi calls into local out-pointer slots, the create status
-        // is checked, and the deferred is resolved with that undefined value once.
         unsafe {
             let mut deferred = std::ptr::null_mut();
             let mut promise = std::ptr::null_mut();
