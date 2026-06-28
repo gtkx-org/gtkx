@@ -1,6 +1,7 @@
 pub mod alloc;
 pub mod bind;
 pub mod call;
+pub mod copy;
 pub mod freeze;
 pub mod get_type;
 pub mod get_wrapper;

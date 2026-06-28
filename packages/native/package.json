@@ -50,8 +50,8 @@
     },
     "scripts": {
         "artifacts": "napi artifacts",
-        "build:debug": "napi build --platform --esm --no-dts-cache",
-        "build:release": "napi build --platform --release --esm --no-dts-cache",
+        "build:debug": "napi build --platform --esm --no-dts-cache --no-const-enum",
+        "build:release": "napi build --platform --release --esm --no-dts-cache --no-const-enum",
         "coverage": "mkdir -p coverage && node ../../scripts/ci.ts headless cargo +nightly llvm-cov --lcov --output-path coverage/native.lcov.info --fail-under-lines 80 -- --test-threads=1",
         "create-npm-dirs": "napi create-npm-dirs",
         "lint": "cargo fmt --check && cargo clippy --all-targets -- -D warnings",
@@ -60,10 +60,6 @@
     },
     "engines": {
         "node": ">=24"
-    },
-    "optionalDependencies": {
-        "@gtkx/native-linux-arm64-gnu": "workspace:*",
-        "@gtkx/native-linux-x64-gnu": "workspace:*"
     },
     "devDependencies": {
         "@napi-rs/cli": "^3.7.2"

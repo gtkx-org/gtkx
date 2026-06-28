@@ -1,12 +1,13 @@
 use anyhow::bail;
+use libffi::middle as libffi;
 
 use super::numeric::MAX_SAFE_INTEGER;
 use super::prelude::*;
 
 #[derive(Debug, Clone, Copy)]
-pub struct BufferDescriptor;
+pub struct BufferCodec;
 
-impl BufferDescriptor {
+impl BufferCodec {
     fn address_from_number(value: f64) -> anyhow::Result<*mut c_void> {
         if !value.is_finite() || value.fract() != 0.0 || !(0.0..=MAX_SAFE_INTEGER).contains(&value)
         {
@@ -18,7 +19,7 @@ impl BufferDescriptor {
     }
 }
 
-impl FfiEncoder for BufferDescriptor {
+impl Encoder for BufferCodec {
     fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
         match value {
             value::Value::BufferView(view) => {
@@ -34,15 +35,22 @@ impl FfiEncoder for BufferDescriptor {
             }
             _ => {
                 bail!(
-                    "Expected an ArrayBufferView, number, or null for buffer descriptor, got {value:?}"
+                    "Expected an ArrayBufferView, number, or null for buffer codec, got {value:?}"
                 )
             }
         }
     }
 
-    arg_only_call_cif!("Buffer descriptors");
+    fn call_cif(
+        &self,
+        _cif: &libffi::Cif,
+        _ptr: libffi::CodePtr,
+        _args: &[libffi::Arg],
+    ) -> anyhow::Result<ffi::StashedValue> {
+        bail!("Buffer codec cannot be return codecs")
+    }
 }
 
-impl FfiDecoder for BufferDescriptor {}
+impl Decoder for BufferCodec {}
 
-impl PointerWriter for BufferDescriptor {}
+impl PointerWriter for BufferCodec {}

@@ -1,6 +1,6 @@
 use super::prelude::*;
 use crate::handle::Handle;
-use crate::handle::wrapper_registry;
+use crate::handle::wrapper;
 use anyhow::bail;
 use glib::{
     self,
@@ -29,8 +29,7 @@ unsafe fn tracked_gobject_value(
     let gtype: glib::Type = unsafe { from_glib((*type_class).g_type) };
     let is_initially_unowned = gtype.is_a(glib::InitiallyUnowned::static_type());
     let is_floating = unsafe { glib::gobject_ffi::g_object_is_floating(gobject_ptr) != 0 };
-    let has_wrapper =
-        unsafe { wrapper_registry::WrapperRegistry::global().has_wrapper(gobject_ptr) };
+    let has_wrapper = unsafe { wrapper::WrapperRegistry::global().has_wrapper(gobject_ptr) };
 
     if ownership.is_full() {
         if is_floating || (!has_wrapper && is_initially_unowned) {
@@ -46,11 +45,11 @@ unsafe fn tracked_gobject_value(
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct ObjectDescriptor {
+pub struct ObjectCodec {
     pub ownership: Ownership,
 }
 
-impl FfiEncoder for ObjectDescriptor {
+impl Encoder for ObjectCodec {
     fn object_ptr_context(&self) -> &'static str {
         "Object"
     }
@@ -73,7 +72,7 @@ impl FfiEncoder for ObjectDescriptor {
     }
 }
 
-impl FfiDecoder for ObjectDescriptor {
+impl Decoder for ObjectCodec {
     fn read_call(&self, stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
         let Some(object_ptr) = stashed_value.as_non_null_ptr("Object")? else {
             return Ok(value::Value::Null);
@@ -93,7 +92,7 @@ impl FfiDecoder for ObjectDescriptor {
     }
 }
 
-impl PointerWriter for ObjectDescriptor {
+impl PointerWriter for ObjectCodec {
     unsafe fn write_return_to_pointer(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         self.write_return_with_ownership(ret, value, self.ownership, |ptr| {
             let obj: glib::Object =

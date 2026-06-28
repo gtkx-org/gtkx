@@ -4,7 +4,7 @@ use std::sync::Arc;
 use napi::Env;
 use napi::bindgen_prelude::{FromNapiValue, Unknown};
 use native::ffi::callback::{CallbackData, CallbackState};
-use native::ffi::descriptor::{Codec, VoidDescriptor};
+use native::ffi::codec::{Codec, VoidCodec};
 use native::ffi::value::JsRef;
 use native::ffi::{CallbackValue, Stash, StashedValue};
 
@@ -34,7 +34,7 @@ fn armed_callback_value(destroy_ptr: Option<*mut c_void>) -> (CallbackValue, Arc
     let data = CallbackData::new(
         Arc::clone(&js_func),
         Vec::new(),
-        Codec::Void(VoidDescriptor),
+        Codec::Void(VoidCodec),
         None,
         false,
     );
@@ -123,12 +123,12 @@ fn callback_value_without_destroy_has_none() {
 #[test]
 fn write_scalar_to_writes_every_numeric_variant() {
     macro_rules! check {
-        ($variant:ident, $value:expr, $descriptor:ty) => {{
+        ($variant:ident, $value:expr, $codec:ty) => {{
             let mut slot: u64 = 0;
             let slot_ptr = &mut slot as *mut u64 as *mut c_void;
             let v = StashedValue::$variant($value);
             unsafe { v.write_scalar_to(slot_ptr) }.expect("scalar write should succeed");
-            let read = unsafe { *(slot_ptr as *const $descriptor) };
+            let read = unsafe { *(slot_ptr as *const $codec) };
             assert_eq!(read, $value);
         }};
     }
@@ -149,6 +149,9 @@ fn as_ptr_ptr_variant_returns_inner() {
     let inner = std::ptr::without_provenance_mut::<c_void>(0x42);
     let v = StashedValue::Ptr(inner);
     assert_eq!(v.as_ptr("test").unwrap(), inner);
+
+    let null = StashedValue::Ptr(std::ptr::null_mut());
+    assert!(null.as_ptr("test").unwrap().is_null());
 }
 
 #[test]
@@ -226,15 +229,6 @@ fn append_libffi_args_callback_with_destroy_pushes_three() {
     v.append_libffi_args(&mut args);
     assert_eq!(args.len(), 3);
 }
-
-#[test]
-fn append_libffi_args_scalar_pushes_one() {
-    let v = StashedValue::I32(99);
-    let mut args = Vec::new();
-    v.append_libffi_args(&mut args);
-    assert_eq!(args.len(), 1);
-}
-
 fn scalar_value_samples() -> Vec<StashedValue> {
     let storage: Stash = vec![1u8].into();
     vec![

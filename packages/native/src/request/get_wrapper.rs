@@ -3,7 +3,7 @@ use napi::{Env, sys};
 use napi_derive::napi;
 
 use crate::handle::Handle;
-use crate::handle::wrapper_registry;
+use crate::handle::wrapper;
 use crate::messaging::Mailbox;
 
 #[napi(catch_unwind)]
@@ -14,7 +14,7 @@ pub fn get_wrapper<'env>(
     let gobject_addr = handle.ptr() as usize;
 
     let ref_addr: usize = Mailbox::global().dispatch_and_wait_napi(*env, move || unsafe {
-        wrapper_registry::WrapperRegistry::global().wrapper_ref(gobject_addr as *mut _) as usize
+        wrapper::WrapperRegistry::global().wrapper_ref(gobject_addr as *mut _) as usize
     })?;
 
     if ref_addr != 0 {

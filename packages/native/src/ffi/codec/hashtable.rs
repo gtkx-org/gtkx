@@ -2,12 +2,12 @@ use anyhow::bail;
 
 use super::prelude::*;
 use super::string::str_to_glib_full;
-use crate::ffi::descriptor::Codec;
-use crate::ffi::descriptor::array::ArrayKind;
+use crate::ffi::codec::Codec;
+use crate::ffi::codec::array::ArrayKind;
 use crate::ffi::{HashTableData, Stash, StashKind};
 
 #[derive(Clone, Debug)]
-pub enum HashTableEntryEncoder {
+pub enum HashTableEntryCodec {
     String,
     Integer,
     Boolean,
@@ -16,18 +16,18 @@ pub enum HashTableEntryEncoder {
     PtrArray(Box<Codec>),
 }
 
-impl HashTableEntryEncoder {
-    pub fn from_descriptor(descriptor: &Codec) -> Option<Self> {
-        match descriptor {
+impl HashTableEntryCodec {
+    pub fn from_codec(codec: &Codec) -> Option<Self> {
+        match codec {
             Codec::String(_) => Some(Self::String),
             Codec::Integer(_) => Some(Self::Integer),
             Codec::Boolean(_) => Some(Self::Boolean),
             Codec::Float(_) => Some(Self::Float),
             Codec::Object(_) | Codec::Boxed(_) | Codec::Struct(_) | Codec::Fundamental(_) => {
-                Some(Self::Handle(Box::new(descriptor.clone())))
+                Some(Self::Handle(Box::new(codec.clone())))
             }
-            Codec::Array(array_descriptor) if array_descriptor.kind == ArrayKind::GPtrArray => {
-                Some(Self::PtrArray(array_descriptor.item_descriptor.clone()))
+            Codec::Array(array_codec) if array_codec.kind == ArrayKind::GPtrArray => {
+                Some(Self::PtrArray(array_codec.item_codec.clone()))
             }
             _ => None,
         }
@@ -57,13 +57,13 @@ impl HashTableEntryEncoder {
         match self {
             Self::String | Self::Float => Ok(Some(glib::ffi::g_free)),
             Self::Integer | Self::Boolean => Ok(None),
-            Self::Handle(descriptor) => Self::transferred_entry_destroy(descriptor),
+            Self::Handle(codec) => Self::transferred_entry_destroy(codec),
             Self::PtrArray(_) => Ok(Some(g_ptr_array_unref_wrapper)),
         }
     }
 
-    fn transferred_entry_destroy(descriptor: &Codec) -> anyhow::Result<glib::ffi::GDestroyNotify> {
-        match descriptor {
+    fn transferred_entry_destroy(codec: &Codec) -> anyhow::Result<glib::ffi::GDestroyNotify> {
+        match codec {
             Codec::Object(object) if object.ownership.is_full() => Ok(Some(g_object_unref_wrapper)),
             Codec::Fundamental(fundamental) if fundamental.ownership.is_full() => {
                 let (ref_fn, unref_fn) = fundamental.lookup_fns()?;
@@ -115,11 +115,11 @@ impl HashTableEntryEncoder {
                 value::Value::Null | value::Value::Undefined => Ok(std::ptr::null_mut()),
                 _ => bail!("Expected native object in GHashTable, got {val:?}"),
             },
-            Self::PtrArray(item_descriptor) => {
+            Self::PtrArray(item_codec) => {
                 let value::Value::Array(items) = val else {
                     bail!("Expected Array for GPtrArray in GHashTable, got {val:?}")
                 };
-                let elem_destroy = Self::transferred_entry_destroy(item_descriptor)?;
+                let elem_destroy = Self::transferred_entry_destroy(item_codec)?;
                 let ptr_array = unsafe { glib::ffi::g_ptr_array_new_with_free_func(elem_destroy) };
                 let build: anyhow::Result<()> = (|| {
                     for item in items {
@@ -131,7 +131,7 @@ impl HashTableEntryEncoder {
                         let item_ptr = if item_ptr.is_null() {
                             item_ptr
                         } else {
-                            unsafe { item_descriptor.ref_for_transfer(item_ptr)? }
+                            unsafe { item_codec.ref_for_transfer(item_ptr)? }
                         };
                         unsafe { glib::ffi::g_ptr_array_add(ptr_array, item_ptr) };
                     }
@@ -171,13 +171,13 @@ fn release_transferred(destroy: glib::ffi::GDestroyNotify, ptr: *mut c_void) {
 }
 
 #[derive(Debug, Clone)]
-pub struct HashTableDescriptor {
-    pub key_descriptor: Box<Codec>,
-    pub value_descriptor: Box<Codec>,
+pub struct HashTableCodec {
+    pub key_codec: Box<Codec>,
+    pub value_codec: Box<Codec>,
     pub ownership: Ownership,
 }
 
-impl HashTableDescriptor {
+impl HashTableCodec {
     fn tuple(value: &value::Value) -> anyhow::Result<(&value::Value, &value::Value)> {
         match value {
             value::Value::Array(arr) if arr.len() == 2 => Ok((&arr[0], &arr[1])),
@@ -188,8 +188,8 @@ impl HashTableDescriptor {
     fn encode_hashtable(
         &self,
         tuples: &[value::Value],
-        key_encoder: &HashTableEntryEncoder,
-        value_encoder: &HashTableEntryEncoder,
+        key_encoder: &HashTableEntryCodec,
+        value_encoder: &HashTableEntryCodec,
     ) -> anyhow::Result<ffi::StashedValue> {
         let key_free = key_encoder.free_func()?;
         let value_free = value_encoder.free_func()?;
@@ -207,7 +207,7 @@ impl HashTableDescriptor {
                 let (key, val) = Self::tuple(tuple)?;
 
                 let key_ptr = key_encoder.encode(key)?;
-                let key_ptr = unsafe { self.key_descriptor.ref_for_transfer(key_ptr)? };
+                let key_ptr = unsafe { self.key_codec.ref_for_transfer(key_ptr)? };
 
                 let val_ptr = match value_encoder.encode(val) {
                     Ok(encoded) => encoded,
@@ -216,7 +216,7 @@ impl HashTableDescriptor {
                         return Err(err);
                     }
                 };
-                let val_ptr = unsafe { self.value_descriptor.ref_for_transfer(val_ptr)? };
+                let val_ptr = unsafe { self.value_codec.ref_for_transfer(val_ptr)? };
 
                 unsafe {
                     glib::ffi::g_hash_table_insert(hash_table, key_ptr, val_ptr);
@@ -250,36 +250,29 @@ impl HashTableDescriptor {
     }
 }
 
-impl FfiEncoder for HashTableDescriptor {
+impl Encoder for HashTableCodec {
     fn encode(&self, val: &value::Value) -> anyhow::Result<ffi::StashedValue> {
         let tuples = match val {
             value::Value::Array(arr) => arr,
             value::Value::Null | value::Value::Undefined => {
                 return Ok(ffi::StashedValue::Ptr(std::ptr::null_mut()));
             }
-            _ => bail!("Expected an Array of tuples for GHashTable descriptor, got {val:?}"),
+            _ => bail!("Expected an Array of tuples for GHashTable codec, got {val:?}"),
         };
 
-        let key_encoder =
-            HashTableEntryEncoder::from_descriptor(&self.key_descriptor).ok_or_else(|| {
-                anyhow::anyhow!(
-                    "Unsupported GHashTable key descriptor: {:?}",
-                    self.key_descriptor
-                )
-            })?;
-        let value_encoder = HashTableEntryEncoder::from_descriptor(&self.value_descriptor)
-            .ok_or_else(|| {
-                anyhow::anyhow!(
-                    "Unsupported GHashTable value descriptor: {:?}",
-                    self.value_descriptor
-                )
+        let key_encoder = HashTableEntryCodec::from_codec(&self.key_codec).ok_or_else(|| {
+            anyhow::anyhow!("Unsupported GHashTable key codec: {:?}", self.key_codec)
+        })?;
+        let value_encoder =
+            HashTableEntryCodec::from_codec(&self.value_codec).ok_or_else(|| {
+                anyhow::anyhow!("Unsupported GHashTable value codec: {:?}", self.value_codec)
             })?;
 
         self.encode_hashtable(tuples, &key_encoder, &value_encoder)
     }
 }
 
-impl FfiDecoder for HashTableDescriptor {
+impl Decoder for HashTableCodec {
     unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
         let stashed_value = match src {
             ReadSource::Call(stashed_value) => stashed_value,
@@ -317,10 +310,10 @@ impl FfiDecoder for HashTableDescriptor {
                 ) != 0
                 {
                     let key_value = self
-                        .key_descriptor
+                        .key_codec
                         .read(ReadSource::Value(key_ptr, "hash table key"))?;
                     let val_value = self
-                        .value_descriptor
+                        .value_codec
                         .read(ReadSource::Value(value_ptr, "hash table value"))?;
                     pairs.push(value::Value::Array(vec![key_value, val_value]));
                 }
@@ -337,7 +330,7 @@ impl FfiDecoder for HashTableDescriptor {
     }
 }
 
-impl PointerWriter for HashTableDescriptor {
+impl PointerWriter for HashTableCodec {
     unsafe fn write_return_to_pointer(
         &self,
         ret: *mut c_void,

@@ -291,7 +291,7 @@ const structExpression = (
     const { size } = computeRecordFieldSlots(context, resolved.value.fields, resolved.value.isUnion);
     const wrapperClass = context.qualify(resolved.namespace.name, resolved.value.name);
     return tStruct(ownership, {
-        size: size > 0 && !callerAllocated ? size : undefined,
+        size: size > 0 ? size : undefined,
         wrapperClass,
         callerAllocated,
     });
@@ -323,11 +323,13 @@ const recordExpression = (
         return structExpression(context, resolved, ownership, callerAllocated);
     }
     const glibName = record.glibTypeName ?? record.cType ?? record.name;
+    const { size } = computeRecordFieldSlots(context, record.fields, record.isUnion);
     return tBoxed(glibName, {
         ownership,
         sharedLibrary: resolved.namespace.sharedLibrary,
         getTypeFn: record.glibGetType,
         callerAllocated,
+        size: size > 0 ? size : undefined,
     });
 };
 

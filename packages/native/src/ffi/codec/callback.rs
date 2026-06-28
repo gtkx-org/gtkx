@@ -1,11 +1,13 @@
 use std::sync::atomic::Ordering;
 
 use libffi::middle as libffi;
+use napi_derive::napi;
 
 use super::prelude::*;
 use crate::ffi::callback::{CallbackState, build_trampoline};
-use crate::ffi::descriptor::Codec;
+use crate::ffi::codec::Codec;
 
+#[napi(string_enum = "lowercase")]
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub enum CallbackScope {
     #[default]
@@ -15,33 +17,24 @@ pub enum CallbackScope {
     Forever,
 }
 
-impl std::str::FromStr for CallbackScope {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "call" => Ok(Self::Call),
-            "notified" => Ok(Self::Notified),
-            "async" => Ok(Self::Async),
-            "forever" => Ok(Self::Forever),
-            other => Err(format!(
-                "'scope' must be 'call', 'notified', 'async', or 'forever'; got '{other}'"
-            )),
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
-pub struct CallbackDescriptor {
-    pub arg_descriptors: Vec<Codec>,
-    pub return_descriptor: Box<Codec>,
+pub struct CallbackCodec {
+    pub arg_codecs: Vec<Codec>,
+    pub return_codec: Box<Codec>,
     pub has_destroy: bool,
     pub user_data_index: Option<usize>,
     pub scope: CallbackScope,
 }
 
-impl FfiEncoder for CallbackDescriptor {
-    arg_only_call_cif!("Callbacks");
+impl Encoder for CallbackCodec {
+    fn call_cif(
+        &self,
+        _cif: &libffi::Cif,
+        _ptr: libffi::CodePtr,
+        _args: &[libffi::Arg],
+    ) -> anyhow::Result<ffi::StashedValue> {
+        anyhow::bail!("Callbacks cannot be return codecs")
+    }
 
     fn append_ffi_arg_types(&self, types: &mut Vec<libffi::Type>) {
         types.push(libffi::Type::pointer());
@@ -59,15 +52,15 @@ impl FfiEncoder for CallbackDescriptor {
             value::Value::Null | value::Value::Undefined => {
                 return Ok(self.build_null_stashed_value());
             }
-            _ => bail!("Expected a Callback for the callback descriptor, got {val:?}"),
+            _ => bail!("Expected a Callback for the callback codec, got {val:?}"),
         };
 
         let is_oneshot = self.scope == CallbackScope::Async;
 
         let (fn_ptr, state) = build_trampoline(
             callback.js_func.clone(),
-            self.arg_descriptors.clone(),
-            (*self.return_descriptor).clone(),
+            self.arg_codecs.clone(),
+            (*self.return_codec).clone(),
             self.user_data_index,
             is_oneshot,
         );
@@ -106,11 +99,11 @@ impl FfiEncoder for CallbackDescriptor {
     }
 }
 
-impl FfiDecoder for CallbackDescriptor {}
+impl Decoder for CallbackCodec {}
 
-impl PointerWriter for CallbackDescriptor {}
+impl PointerWriter for CallbackCodec {}
 
-impl CallbackDescriptor {
+impl CallbackCodec {
     fn build_null_stashed_value(&self) -> ffi::StashedValue {
         ffi::StashedValue::Callback(ffi::CallbackValue::new(
             std::ptr::null_mut(),

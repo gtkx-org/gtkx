@@ -5,10 +5,9 @@ mod helpers {
 use std::ffi::c_void;
 
 use libffi::middle;
-use native::ffi::descriptor::{
-    BooleanDescriptor, BufferDescriptor, CallbackDescriptor, Codec, FfiDecoder, FfiEncoder,
-    IntegerKind, ObjectDescriptor, Ownership, PointerWriter, ReadSource, RefDescriptor,
-    StructDescriptor, VoidDescriptor,
+use native::ffi::codec::{
+    BooleanCodec, CallbackCodec, Codec, Decoder, Encoder, IntegerCodec, Ownership, PointerWriter,
+    ReadSource, StructCodec, VoidCodec,
 };
 use native::ffi::value::Value;
 use native::ffi::{self, value};
@@ -34,23 +33,21 @@ fn ownership_default_is_borrowed() {
 fn transfer_release_matches_codec_ownership() {
     helpers::run(|| {
         use native::ffi::PendingRelease;
-        use native::ffi::descriptor::{
-            BoxedDescriptor, FfiEncoder as _, ObjectDescriptor, StructDescriptor,
-        };
+        use native::ffi::codec::{BoxedCodec, Encoder as _, ObjectCodec, StructCodec};
 
-        let full_object = ObjectDescriptor {
+        let full_object = ObjectCodec {
             ownership: Ownership::Full,
         };
         assert!(matches!(
             full_object.transfer_release(),
             Some(PendingRelease::ObjectUnref)
         ));
-        let borrowed_object = ObjectDescriptor {
+        let borrowed_object = ObjectCodec {
             ownership: Ownership::Borrowed,
         };
         assert!(borrowed_object.transfer_release().is_none());
 
-        let full_boxed = BoxedDescriptor {
+        let full_boxed = BoxedCodec {
             ownership: Ownership::Full,
             type_name: "GdkRGBA".to_string(),
             shared_library: None,
@@ -62,13 +59,13 @@ fn transfer_release_matches_codec_ownership() {
             full_boxed.transfer_release(),
             Some(PendingRelease::BoxedFree(_))
         ));
-        let borrowed_boxed = BoxedDescriptor {
+        let borrowed_boxed = BoxedCodec {
             ownership: Ownership::Borrowed,
             ..full_boxed
         };
         assert!(borrowed_boxed.transfer_release().is_none());
 
-        let plain_struct = StructDescriptor {
+        let plain_struct = StructCodec {
             ownership: Ownership::Full,
             size: None,
             caller_allocated: false,
@@ -77,29 +74,18 @@ fn transfer_release_matches_codec_ownership() {
     });
 }
 
-#[test]
-fn ownership_predicates_are_mutually_exclusive() {
-    assert_ownership_predicates_mutually_exclusive();
-}
-
-fn object_descriptor() -> ObjectDescriptor {
-    ObjectDescriptor {
-        ownership: Ownership::Borrowed,
-    }
-}
-
-fn struct_descriptor() -> StructDescriptor {
-    StructDescriptor {
+fn struct_codec() -> StructCodec {
+    StructCodec {
         ownership: Ownership::Borrowed,
         size: Some(8),
         caller_allocated: false,
     }
 }
 
-fn callback_descriptor() -> CallbackDescriptor {
-    CallbackDescriptor {
-        arg_descriptors: vec![Codec::Integer(IntegerKind::I32)],
-        return_descriptor: Box::new(Codec::Void(VoidDescriptor)),
+fn callback_codec() -> CallbackCodec {
+    CallbackCodec {
+        arg_codecs: vec![Codec::Integer(IntegerCodec::I32)],
+        return_codec: Box::new(Codec::Void(VoidCodec)),
         has_destroy: false,
         user_data_index: None,
         scope: Default::default(),
@@ -107,28 +93,14 @@ fn callback_descriptor() -> CallbackDescriptor {
 }
 
 #[test]
-fn can_be_return_accepts_value_shapes_and_rejects_argument_shapes() {
-    assert!(Codec::Integer(IntegerKind::I32).can_be_return());
-    assert!(Codec::Void(VoidDescriptor).can_be_return());
-    assert!(Codec::Object(object_descriptor()).can_be_return());
-    assert!(Codec::EnumFlags(helpers::enum_descriptor()).can_be_return());
-
-    assert!(!Codec::Callback(callback_descriptor()).can_be_return());
-    assert!(!Codec::Buffer(BufferDescriptor).can_be_return());
-    let ref_descriptor =
-        RefDescriptor::new(Codec::Integer(IntegerKind::I32)).expect("valid Ref inner");
-    assert!(!Codec::Ref(ref_descriptor).can_be_return());
-}
-
-#[test]
 fn ffi_decoder_decode_default_bails() {
-    assert!(FfiDecoder::decode(&callback_descriptor(), &ffi::StashedValue::Void).is_err());
+    assert!(Decoder::decode(&callback_codec(), &ffi::StashedValue::Void).is_err());
 }
 
 #[test]
 fn ffi_decoder_decode_with_context_default_delegates_to_decode() {
     let result =
-        FfiDecoder::decode_with_context(&callback_descriptor(), &ffi::StashedValue::Void, &[], &[]);
+        Decoder::decode_with_context(&callback_codec(), &ffi::StashedValue::Void, &[], &[]);
     assert!(result.is_err());
 }
 
@@ -136,8 +108,8 @@ fn ffi_decoder_decode_with_context_default_delegates_to_decode() {
 fn pointer_codec_ptr_to_value_default_bails() {
     assert!(
         unsafe {
-            FfiDecoder::read(
-                &callback_descriptor(),
+            Decoder::read(
+                &callback_codec(),
                 ReadSource::Value(8 as *mut c_void, "ctx"),
             )
         }
@@ -149,7 +121,7 @@ fn pointer_codec_ptr_to_value_default_bails() {
 fn pointer_codec_read_from_pointer_default_dereferences_then_bails() {
     let mut inner: *mut c_void = 8 as *mut c_void;
     let ptr = &mut inner as *mut *mut c_void as *const c_void;
-    let result = unsafe { FfiDecoder::read(&callback_descriptor(), ReadSource::Slot(ptr, "ctx")) };
+    let result = unsafe { Decoder::read(&callback_codec(), ReadSource::Slot(ptr, "ctx")) };
     assert!(result.is_err());
 }
 
@@ -158,16 +130,12 @@ fn pointer_codec_write_return_to_pointer_default_writes_null() {
     let mut slot: *mut c_void = 9 as *mut c_void;
     let ret = &mut slot as *mut *mut c_void as *mut c_void;
     unsafe {
-        PointerWriter::write_return_to_pointer(
-            &callback_descriptor(),
-            ret,
-            &Ok(Value::Number(1.0)),
-        );
+        PointerWriter::write_return_to_pointer(&callback_codec(), ret, &Ok(Value::Number(1.0)));
     }
     assert!(slot.is_null());
 
     slot = 9 as *mut c_void;
-    unsafe { PointerWriter::write_return_to_pointer(&callback_descriptor(), ret, &Err(())) };
+    unsafe { PointerWriter::write_return_to_pointer(&callback_codec(), ret, &Err(())) };
     assert!(slot.is_null());
 }
 
@@ -177,7 +145,7 @@ fn pointer_codec_write_value_to_pointer_default_bails() {
     let ptr = &mut slot as *mut *mut c_void as *mut c_void;
     assert!(
         unsafe {
-            PointerWriter::write_value_to_pointer(&callback_descriptor(), ptr, &Value::Number(1.0))
+            PointerWriter::write_value_to_pointer(&callback_codec(), ptr, &Value::Number(1.0))
         }
         .is_err()
     );
@@ -189,31 +157,31 @@ extern "C" fn ret_ptr() -> *mut c_void {
 
 #[test]
 fn ffi_encoder_defaults_cover_pointer_typed_codec() {
-    let st = struct_descriptor();
+    let st = struct_codec();
 
     assert_eq!(
-        FfiEncoder::libffi_type(&st).as_raw_ptr(),
+        Encoder::libffi_type(&st).as_raw_ptr(),
         middle::Type::pointer().as_raw_ptr()
     );
 
-    let mut arg_descriptors: Vec<middle::Type> = Vec::new();
-    FfiEncoder::append_ffi_arg_types(&st, &mut arg_descriptors);
-    assert_eq!(arg_descriptors.len(), 1);
+    let mut arg_codecs: Vec<middle::Type> = Vec::new();
+    Encoder::append_ffi_arg_types(&st, &mut arg_codecs);
+    assert_eq!(arg_codecs.len(), 1);
 
-    let transferred = unsafe { FfiEncoder::ref_for_transfer(&st, 16 as *mut c_void) }.unwrap();
+    let transferred = unsafe { Encoder::ref_for_transfer(&st, 16 as *mut c_void) }.unwrap();
     assert_eq!(transferred, 16 as *mut c_void);
 
     let cif = middle::Cif::new(Vec::new(), middle::Type::pointer());
     let result =
-        FfiEncoder::call_cif(&st, &cif, middle::CodePtr(ret_ptr as *mut c_void), &[]).unwrap();
+        Encoder::call_cif(&st, &cif, middle::CodePtr(ret_ptr as *mut c_void), &[]).unwrap();
     assert!(matches!(result, ffi::StashedValue::Ptr(p) if p.is_null()));
 }
 
 #[test]
 fn descriptor_enum_dispatch_routes_codec_traits() {
-    let descriptor = Codec::Boolean(BooleanDescriptor);
-    let encoded = FfiEncoder::encode(&descriptor, &value::Value::Boolean(true)).unwrap();
+    let descriptor = Codec::Boolean(BooleanCodec);
+    let encoded = Encoder::encode(&descriptor, &value::Value::Boolean(true)).unwrap();
     assert!(matches!(encoded, ffi::StashedValue::I32(1)));
-    let decoded = FfiDecoder::decode(&descriptor, &ffi::StashedValue::I32(0)).unwrap();
+    let decoded = Decoder::decode(&descriptor, &ffi::StashedValue::I32(0)).unwrap();
     assert!(matches!(decoded, value::Value::Boolean(false)));
 }

@@ -67,7 +67,7 @@ const tasks: Record<string, () => void> = {
         });
     },
     miri() {
-        run("cargo", ["+nightly", "miri", "test", "--test", "miri_marshalling"], {
+        run("cargo", ["+nightly", "miri", "test", "--test", "marshalling"], {
             cwd: nativeDir,
             env: { ...process.env, RUSTUP_TOOLCHAIN: "nightly" },
         });

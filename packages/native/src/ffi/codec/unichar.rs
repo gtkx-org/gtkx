@@ -1,18 +1,18 @@
 use libffi::middle as libffi;
 
-use super::numeric::IntegerKind;
+use super::numeric::IntegerCodec;
 use super::prelude::*;
 
 #[derive(Debug, Clone, Copy)]
-pub struct UnicharDescriptor;
+pub struct UnicharCodec;
 
-impl FfiEncoder for UnicharDescriptor {
+impl Encoder for UnicharCodec {
     fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
         let cp = match value {
             value::Value::String(s) => s.chars().next().map_or(0, |c| c as u32),
             value::Value::Number(n) => *n as u32,
             value::Value::Null | value::Value::Undefined => 0,
-            _ => anyhow::bail!("Expected a string for unichar descriptor, got {value:?}"),
+            _ => anyhow::bail!("Expected a string for unichar codec, got {value:?}"),
         };
         Ok(ffi::StashedValue::U32(cp))
     }
@@ -27,11 +27,11 @@ impl FfiEncoder for UnicharDescriptor {
         ptr: libffi::CodePtr,
         args: &[libffi::Arg],
     ) -> anyhow::Result<ffi::StashedValue> {
-        IntegerKind::U32.call_cif(cif, ptr, args)
+        IntegerCodec::U32.call_cif(cif, ptr, args)
     }
 }
 
-impl FfiDecoder for UnicharDescriptor {
+impl Decoder for UnicharCodec {
     unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
         match src {
             ReadSource::Call(stashed_value) => {
@@ -59,13 +59,13 @@ impl FfiDecoder for UnicharDescriptor {
     }
 }
 
-impl PointerWriter for UnicharDescriptor {
+impl PointerWriter for UnicharCodec {
     unsafe fn write_return_to_pointer(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         let val = match value {
             Ok(value::Value::String(s)) => s.chars().next().map_or(0, |c| c as u32),
             Ok(value::Value::Number(n)) => *n as u32,
             _ => 0,
         };
-        unsafe { IntegerKind::U32.write_return_widened(ret, f64::from(val)) };
+        unsafe { IntegerCodec::U32.write_return_widened(ret, f64::from(val)) };
     }
 }

@@ -9,7 +9,7 @@ use crate::handle::Boxed;
 use crate::messaging::error_reporter::ErrorReporter;
 
 #[derive(Debug, Clone)]
-pub struct BoxedDescriptor {
+pub struct BoxedCodec {
     pub ownership: Ownership,
     pub type_name: String,
     pub shared_library: Option<String>,
@@ -18,7 +18,7 @@ pub struct BoxedDescriptor {
     pub caller_allocated: bool,
 }
 
-impl BoxedDescriptor {
+impl BoxedCodec {
     pub fn gtype(&self) -> Option<glib::Type> {
         glib::Type::from_name(&self.type_name).or_else(|| {
             match self.try_resolve_gtype_from_library() {
@@ -82,7 +82,7 @@ impl BoxedDescriptor {
 
 pub type BoxedFreeFn = unsafe extern "C" fn(*mut c_void);
 
-impl FfiEncoder for BoxedDescriptor {
+impl Encoder for BoxedCodec {
     fn object_ptr_context(&self) -> &'static str {
         "Boxed object"
     }
@@ -106,7 +106,7 @@ impl FfiEncoder for BoxedDescriptor {
     }
 }
 
-impl FfiDecoder for BoxedDescriptor {
+impl Decoder for BoxedCodec {
     fn read_call(&self, stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
         let Some(boxed_ptr) = stashed_value.as_non_null_ptr("Boxed")? else {
             return Ok(value::Value::Null);
@@ -137,7 +137,7 @@ impl FfiDecoder for BoxedDescriptor {
     }
 }
 
-impl PointerWriter for BoxedDescriptor {
+impl PointerWriter for BoxedCodec {
     unsafe fn write_return_to_pointer(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         self.write_return_with_ownership(ret, value, self.ownership, |ptr| {
             self.gtype()

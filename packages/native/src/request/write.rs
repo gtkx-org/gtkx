@@ -4,7 +4,8 @@ use napi_derive::napi;
 
 use super::Request;
 use super::read::FieldLocation;
-use crate::ffi::descriptor::{Codec, Descriptor, PointerWriter as _};
+use crate::ffi::codec::{Codec, PointerWriter as _};
+use crate::ffi::descriptor::Descriptor;
 use crate::ffi::value::Value;
 use crate::handle::Handle;
 
@@ -52,59 +53,5 @@ pub mod napi_export {
             value: parsed_value,
         };
         request.dispatch(env)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::ffi::descriptor::IntegerKind;
-    use crate::request::read::ReadRequest;
-
-    use super::*;
-
-    #[test]
-    fn write_then_read_round_trips_an_integer() {
-        let mut buffer = [0u8; 32];
-        let base_addr = buffer.as_mut_ptr() as usize;
-
-        let write = WriteRequest {
-            location: FieldLocation {
-                base_addr,
-                offset: 8,
-            },
-            field_type: Codec::Integer(IntegerKind::I32),
-            value: Value::Number(1234.0),
-        };
-        write.execute().expect("write should succeed");
-
-        let read = ReadRequest {
-            location: FieldLocation {
-                base_addr,
-                offset: 8,
-            },
-            field_type: Codec::Integer(IntegerKind::I32),
-        };
-        let value = read.execute().expect("read should succeed");
-        let n = value.as_number().expect("read result should be a number");
-        assert!((n - 1234.0).abs() < f64::EPSILON);
-    }
-
-    #[test]
-    fn write_rejects_null_base() {
-        let write = WriteRequest {
-            location: FieldLocation {
-                base_addr: 0,
-                offset: 0,
-            },
-            field_type: Codec::Integer(IntegerKind::I32),
-            value: Value::Number(0.0),
-        };
-        let err = write.execute().expect_err("null base write should fail");
-        assert!(err.to_string().contains("null pointer"));
-    }
-
-    #[test]
-    fn write_error_context_is_stable() {
-        assert_eq!(WriteRequest::error_context(), "field write");
     }
 }

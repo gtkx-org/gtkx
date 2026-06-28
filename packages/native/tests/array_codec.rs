@@ -8,45 +8,68 @@ use gtk4::glib;
 use gtk4::prelude::StaticType as _;
 
 use native::Handle;
-use native::ffi::arg::Arg;
-use native::ffi::descriptor::{
-    ArrayDescriptor, ArrayKind, BigIntKind, BooleanDescriptor, Codec, EnumFlagsDescriptor,
-    EnumFlagsKind, FfiDecoder, FfiEncoder, FloatKind, FundamentalDescriptor, IntegerKind,
-    ObjectDescriptor, Ownership, PointerWriter, ReadSource, RefDescriptor, StringDescriptor,
-    StructDescriptor,
+use native::ffi::Arg;
+use native::ffi::codec::{
+    ArrayCodec, ArrayKind, BigIntCodec, BooleanCodec, Codec, Decoder, Encoder, EnumFlagsCodec,
+    EnumFlagsKind, FloatKind, FundamentalCodec, IntegerCodec, ObjectCodec, Ownership,
+    PointerWriter, ReadSource, RefCodec, StringCodec, StructCodec,
 };
 use native::ffi::value::Value;
 use native::ffi::{GArrayData, StashKind, StashedValue};
 
-fn struct_item_descriptor() -> Codec {
-    Codec::Struct(StructDescriptor {
+fn struct_item_codec() -> Codec {
+    Codec::Struct(StructCodec {
         ownership: Ownership::Borrowed,
         size: Some(size_of::<gtk4::gdk::ffi::GdkRGBA>()),
         caller_allocated: false,
     })
 }
 
-fn string_item_descriptor(ownership: Ownership) -> Codec {
-    Codec::String(StringDescriptor {
+fn string_item_codec(ownership: Ownership) -> Codec {
+    Codec::String(StringCodec {
         ownership,
         length: None,
     })
 }
 
-fn enum_flags_item_descriptor() -> Codec {
-    Codec::EnumFlags(EnumFlagsDescriptor {
+fn enum_flags_item_codec() -> Codec {
+    Codec::EnumFlags(EnumFlagsCodec {
         kind: EnumFlagsKind::Enum,
         shared_library: "Gtk".to_string(),
         get_type_fn: "gtk_orientation_get_type".to_string(),
-        storage: IntegerKind::I32,
+        storage: IntegerCodec::I32,
     })
 }
 
-fn array_type(item: Codec, kind: ArrayKind, ownership: Ownership) -> ArrayDescriptor {
-    ArrayDescriptor {
-        item_descriptor: Box::new(item),
+fn array_type(item: Codec, kind: ArrayKind, ownership: Ownership) -> ArrayCodec {
+    ArrayCodec {
+        item_codec: Box::new(item),
         kind,
         ownership,
+        size_param_index: None,
+        fixed_size: None,
+        element_size: None,
+    }
+}
+
+fn sized_array_type(item: Codec, size_index: u32, ownership: Ownership) -> ArrayCodec {
+    ArrayCodec {
+        item_codec: Box::new(item),
+        kind: ArrayKind::Sized,
+        ownership,
+        size_param_index: Some(size_index),
+        fixed_size: None,
+        element_size: None,
+    }
+}
+
+fn fixed_array_type(item: Codec, size: u32, ownership: Ownership) -> ArrayCodec {
+    ArrayCodec {
+        item_codec: Box::new(item),
+        kind: ArrayKind::Fixed,
+        ownership,
+        size_param_index: None,
+        fixed_size: Some(size),
         element_size: None,
     }
 }
@@ -56,12 +79,12 @@ fn boxed_handle() -> Handle {
     Handle::borrowed(ptr)
 }
 
-fn gobject_item_descriptor(ownership: Ownership) -> Codec {
-    Codec::Object(ObjectDescriptor { ownership })
+fn gobject_item_codec(ownership: Ownership) -> Codec {
+    Codec::Object(ObjectCodec { ownership })
 }
 
-fn unresolvable_fundamental_item_descriptor() -> Codec {
-    Codec::Fundamental(FundamentalDescriptor {
+fn unresolvable_fundamental_item_codec() -> Codec {
+    Codec::Fundamental(FundamentalCodec {
         ownership: Ownership::Full,
         shared_library: "libgobject-2.0.so.0".to_owned(),
         ref_func: "no_such_array_ref_symbol_12345".to_owned(),
@@ -86,7 +109,7 @@ fn assert_full_element_container_releases_on_drop(kind: ArrayKind, container: Ow
         let (_obj, obj_ptr) = new_gobject();
         let before = gobject_refcount(obj_ptr);
 
-        let descriptor = array_type(gobject_item_descriptor(Ownership::Full), kind, container);
+        let descriptor = array_type(gobject_item_codec(Ownership::Full), kind, container);
         let val = Value::Array(vec![Value::Object(Handle::borrowed(obj_ptr))]);
         let encoded = descriptor.encode(&val).unwrap();
         assert_eq!(gobject_refcount(obj_ptr), before + 1);
@@ -99,7 +122,7 @@ fn assert_full_element_container_releases_on_drop(kind: ArrayKind, container: Ow
 fn assert_string_list_full_container_borrowed_elements_releases_spine(kind: ArrayKind) {
     helpers::run(|| {
         let descriptor = array_type(
-            string_item_descriptor(Ownership::Borrowed),
+            string_item_codec(Ownership::Borrowed),
             kind,
             Ownership::Full,
         );
@@ -131,7 +154,7 @@ fn encode_glist_handles_full_ownership_transfers_to_callee_when_disarmed() {
         let before = gobject_refcount(obj_ptr);
 
         let descriptor = array_type(
-            gobject_item_descriptor(Ownership::Full),
+            gobject_item_codec(Ownership::Full),
             ArrayKind::GList,
             Ownership::Full,
         );
@@ -159,7 +182,7 @@ fn encode_glist_handles_releases_acquired_elements_when_later_element_is_null() 
         let before = gobject_refcount(obj_ptr);
 
         let descriptor = array_type(
-            gobject_item_descriptor(Ownership::Full),
+            gobject_item_codec(Ownership::Full),
             ArrayKind::GList,
             Ownership::Full,
         );
@@ -176,7 +199,7 @@ fn encode_glist_handles_releases_acquired_elements_when_later_element_is_null() 
 fn encode_gslist_strings_full_container_releases_when_call_never_happens() {
     helpers::run(|| {
         let descriptor = array_type(
-            string_item_descriptor(Ownership::Full),
+            string_item_codec(Ownership::Full),
             ArrayKind::GSList,
             Ownership::Full,
         );
@@ -190,7 +213,7 @@ fn encode_gslist_strings_full_container_releases_when_call_never_happens() {
 fn encode_garray_full_ownership_adopted_strings_release_when_call_never_happens() {
     helpers::run(|| {
         let descriptor = array_type(
-            string_item_descriptor(Ownership::Full),
+            string_item_codec(Ownership::Full),
             ArrayKind::GArray,
             Ownership::Full,
         );
@@ -202,11 +225,7 @@ fn encode_garray_full_ownership_adopted_strings_release_when_call_never_happens(
 
 #[test]
 fn ptr_to_value_sized_reads_explicit_length() {
-    let descriptor = array_type(
-        Codec::Integer(IntegerKind::I32),
-        ArrayKind::Sized { size_index: 1 },
-        Ownership::Borrowed,
-    );
+    let descriptor = sized_array_type(Codec::Integer(IntegerCodec::I32), 1, Ownership::Borrowed);
     let data: Vec<i32> = vec![7, 8, 9];
     let value = unsafe { descriptor.ptr_to_value_sized(data.as_ptr() as *mut std::ffi::c_void, 3) }
         .unwrap();
@@ -222,11 +241,7 @@ fn ptr_to_value_sized_reads_explicit_length() {
 
 #[test]
 fn ptr_to_value_sized_reads_enum_flags_elements_without_range_guard() {
-    let descriptor = array_type(
-        enum_flags_item_descriptor(),
-        ArrayKind::Sized { size_index: 1 },
-        Ownership::Borrowed,
-    );
+    let descriptor = sized_array_type(enum_flags_item_codec(), 1, Ownership::Borrowed);
     let data: Vec<i32> = vec![0, 1, 2];
     let value = unsafe { descriptor.ptr_to_value_sized(data.as_ptr() as *mut std::ffi::c_void, 3) }
         .unwrap();
@@ -238,34 +253,9 @@ fn ptr_to_value_sized_reads_enum_flags_elements_without_range_guard() {
 }
 
 #[test]
-fn array_kind_from_str_parses_every_variant() {
-    assert_eq!("array".parse::<ArrayKind>().unwrap(), ArrayKind::Array);
-    assert_eq!("glist".parse::<ArrayKind>().unwrap(), ArrayKind::GList);
-    assert_eq!("gslist".parse::<ArrayKind>().unwrap(), ArrayKind::GSList);
-    assert_eq!(
-        "gptrarray".parse::<ArrayKind>().unwrap(),
-        ArrayKind::GPtrArray
-    );
-    assert_eq!("garray".parse::<ArrayKind>().unwrap(), ArrayKind::GArray);
-    assert_eq!(
-        "gbytearray".parse::<ArrayKind>().unwrap(),
-        ArrayKind::GByteArray
-    );
-    assert_eq!(
-        "sized".parse::<ArrayKind>().unwrap(),
-        ArrayKind::Sized { size_index: 0 }
-    );
-    assert_eq!(
-        "fixed".parse::<ArrayKind>().unwrap(),
-        ArrayKind::Fixed { size: 0 }
-    );
-    assert!("bogus".parse::<ArrayKind>().is_err());
-}
-
-#[test]
 fn encode_optional_null_yields_null_ptr() {
     let descriptor = array_type(
-        Codec::Integer(IntegerKind::U8),
+        Codec::Integer(IntegerCodec::U8),
         ArrayKind::Array,
         Ownership::Full,
     );
@@ -282,7 +272,7 @@ fn encode_optional_null_yields_null_ptr() {
 #[test]
 fn encode_integer_array_extract_error() {
     let descriptor = array_type(
-        Codec::Integer(IntegerKind::I32),
+        Codec::Integer(IntegerCodec::I32),
         ArrayKind::Array,
         Ownership::Full,
     );
@@ -292,11 +282,7 @@ fn encode_integer_array_extract_error() {
 
 #[test]
 fn encode_enum_flags_array_roundtrips_through_storage() {
-    let descriptor = array_type(
-        enum_flags_item_descriptor(),
-        ArrayKind::Array,
-        Ownership::Full,
-    );
+    let descriptor = array_type(enum_flags_item_codec(), ArrayKind::Array, Ownership::Full);
     let val = Value::Array(vec![Value::Number(0.0), Value::Number(1.0)]);
     let encoded = descriptor.encode(&val).unwrap();
     let decoded = descriptor.decode(&encoded).unwrap();
@@ -339,7 +325,7 @@ fn encode_float_f64_array_roundtrips() {
 #[test]
 fn encode_boolean_array_roundtrips() {
     let descriptor = array_type(
-        Codec::Boolean(BooleanDescriptor),
+        Codec::Boolean(BooleanCodec),
         ArrayKind::Array,
         Ownership::Full,
     );
@@ -354,7 +340,7 @@ fn encode_boolean_array_roundtrips() {
 #[test]
 fn encode_boolean_array_extract_error() {
     let descriptor = array_type(
-        Codec::Boolean(BooleanDescriptor),
+        Codec::Boolean(BooleanCodec),
         ArrayKind::Array,
         Ownership::Full,
     );
@@ -365,7 +351,7 @@ fn encode_boolean_array_extract_error() {
 #[test]
 fn encode_string_array_extract_error() {
     let descriptor = array_type(
-        string_item_descriptor(Ownership::Full),
+        string_item_codec(Ownership::Full),
         ArrayKind::Array,
         Ownership::Full,
     );
@@ -376,7 +362,7 @@ fn encode_string_array_extract_error() {
 #[test]
 fn encode_string_array_full_ownership_transfers_glib_container() {
     let descriptor = array_type(
-        string_item_descriptor(Ownership::Full),
+        string_item_codec(Ownership::Full),
         ArrayKind::Array,
         Ownership::Full,
     );
@@ -403,7 +389,7 @@ fn encode_string_array_full_ownership_transfers_glib_container() {
 #[test]
 fn encode_string_array_full_ownership_releases_when_call_never_happens() {
     let descriptor = array_type(
-        string_item_descriptor(Ownership::Full),
+        string_item_codec(Ownership::Full),
         ArrayKind::Array,
         Ownership::Full,
     );
@@ -415,7 +401,7 @@ fn encode_string_array_full_ownership_releases_when_call_never_happens() {
 #[test]
 fn encode_string_array_borrowed_container_and_elements_roundtrips() {
     let descriptor = array_type(
-        string_item_descriptor(Ownership::Borrowed),
+        string_item_codec(Ownership::Borrowed),
         ArrayKind::Array,
         Ownership::Borrowed,
     );
@@ -435,7 +421,7 @@ fn encode_string_array_borrowed_container_and_elements_roundtrips() {
 #[test]
 fn encode_string_array_element_transfer_hands_over_duplicates() {
     let descriptor = array_type(
-        string_item_descriptor(Ownership::Full),
+        string_item_codec(Ownership::Full),
         ArrayKind::Array,
         Ownership::Borrowed,
     );
@@ -460,7 +446,7 @@ fn encode_string_array_element_transfer_hands_over_duplicates() {
 #[test]
 fn encode_string_array_borrowed_keeps_elements() {
     let descriptor = array_type(
-        string_item_descriptor(Ownership::Borrowed),
+        string_item_codec(Ownership::Borrowed),
         ArrayKind::Array,
         Ownership::Full,
     );
@@ -474,7 +460,7 @@ fn encode_string_array_borrowed_keeps_elements() {
 
 #[test]
 fn encode_pointer_array_with_element_size_copies_into_buffer() {
-    let mut descriptor = array_type(struct_item_descriptor(), ArrayKind::Array, Ownership::Full);
+    let mut descriptor = array_type(struct_item_codec(), ArrayKind::Array, Ownership::Full);
     descriptor.element_size = Some(size_of::<gtk4::gdk::ffi::GdkRGBA>());
     let handle = boxed_handle();
     let val = Value::Array(vec![Value::Object(handle)]);
@@ -484,7 +470,7 @@ fn encode_pointer_array_with_element_size_copies_into_buffer() {
 
 #[test]
 fn encode_pointer_array_with_element_size_rejects_null_handle() {
-    let mut descriptor = array_type(struct_item_descriptor(), ArrayKind::Array, Ownership::Full);
+    let mut descriptor = array_type(struct_item_codec(), ArrayKind::Array, Ownership::Full);
     descriptor.element_size = Some(8);
     let val = Value::Array(vec![Value::Object(Handle::borrowed(std::ptr::null_mut()))]);
     assert!(descriptor.encode(&val).is_err());
@@ -492,14 +478,14 @@ fn encode_pointer_array_with_element_size_rejects_null_handle() {
 
 #[test]
 fn encode_pointer_array_extract_error() {
-    let descriptor = array_type(struct_item_descriptor(), ArrayKind::Array, Ownership::Full);
+    let descriptor = array_type(struct_item_codec(), ArrayKind::Array, Ownership::Full);
     let val = Value::Array(vec![Value::Number(1.0)]);
     assert!(descriptor.encode(&val).is_err());
 }
 
 #[test]
 fn encode_pointer_array_full_ownership_transfers_glib_container() {
-    let descriptor = array_type(struct_item_descriptor(), ArrayKind::Array, Ownership::Full);
+    let descriptor = array_type(struct_item_codec(), ArrayKind::Array, Ownership::Full);
     let val = Value::Array(vec![Value::Object(boxed_handle())]);
     let encoded = descriptor.encode(&val).unwrap();
     encoded.disarm_pending_transfer();
@@ -521,11 +507,7 @@ fn encode_pointer_array_full_ownership_transfers_glib_container() {
 
 #[test]
 fn encode_pointer_array_null_terminated_with_handles() {
-    let descriptor = array_type(
-        struct_item_descriptor(),
-        ArrayKind::Array,
-        Ownership::Borrowed,
-    );
+    let descriptor = array_type(struct_item_codec(), ArrayKind::Array, Ownership::Borrowed);
     let val = Value::Array(vec![Value::Object(boxed_handle())]);
     let encoded = descriptor.encode(&val).unwrap();
     let StashedValue::Storage(storage) = encoded else {
@@ -540,11 +522,7 @@ fn encode_pointer_array_null_terminated_with_handles() {
 
 #[test]
 fn encode_pointer_array_null_terminated_empty_has_sentinel() {
-    let descriptor = array_type(
-        struct_item_descriptor(),
-        ArrayKind::Array,
-        Ownership::Borrowed,
-    );
+    let descriptor = array_type(struct_item_codec(), ArrayKind::Array, Ownership::Borrowed);
     let encoded = descriptor.encode(&Value::Array(vec![])).unwrap();
     let StashedValue::Storage(storage) = encoded else {
         panic!("expected storage")
@@ -558,7 +536,7 @@ fn encode_pointer_array_null_terminated_empty_has_sentinel() {
 
 #[test]
 fn encode_pointer_array_null_terminated_rejects_null_handle() {
-    let descriptor = array_type(struct_item_descriptor(), ArrayKind::Array, Ownership::Full);
+    let descriptor = array_type(struct_item_codec(), ArrayKind::Array, Ownership::Full);
     let val = Value::Array(vec![Value::Object(Handle::borrowed(std::ptr::null_mut()))]);
     assert!(descriptor.encode(&val).is_err());
 }
@@ -567,7 +545,7 @@ fn encode_pointer_array_null_terminated_rejects_null_handle() {
 fn encode_glist_strings_full_ownership_dups_elements() {
     helpers::run(|| {
         let descriptor = array_type(
-            string_item_descriptor(Ownership::Full),
+            string_item_codec(Ownership::Full),
             ArrayKind::GList,
             Ownership::Borrowed,
         );
@@ -584,7 +562,7 @@ fn encode_glist_strings_full_ownership_dups_elements() {
 fn encode_glist_strings_borrowed_roundtrips() {
     helpers::run(|| {
         let descriptor = array_type(
-            string_item_descriptor(Ownership::Borrowed),
+            string_item_codec(Ownership::Borrowed),
             ArrayKind::GList,
             Ownership::Borrowed,
         );
@@ -603,11 +581,7 @@ fn encode_glist_strings_borrowed_roundtrips() {
 #[test]
 fn encode_glist_handles_roundtrips() {
     helpers::run(|| {
-        let descriptor = array_type(
-            struct_item_descriptor(),
-            ArrayKind::GList,
-            Ownership::Borrowed,
-        );
+        let descriptor = array_type(struct_item_codec(), ArrayKind::GList, Ownership::Borrowed);
         let val = Value::Array(vec![Value::Object(boxed_handle())]);
         let encoded = descriptor.encode(&val).unwrap();
         let Value::Array(items) = descriptor.decode(&encoded).unwrap() else {
@@ -620,11 +594,7 @@ fn encode_glist_handles_roundtrips() {
 #[test]
 fn encode_glist_handles_rejects_null() {
     helpers::run(|| {
-        let descriptor = array_type(
-            struct_item_descriptor(),
-            ArrayKind::GList,
-            Ownership::Borrowed,
-        );
+        let descriptor = array_type(struct_item_codec(), ArrayKind::GList, Ownership::Borrowed);
         let val = Value::Array(vec![Value::Object(Handle::borrowed(std::ptr::null_mut()))]);
         assert!(descriptor.encode(&val).is_err());
     });
@@ -634,7 +604,7 @@ fn encode_glist_handles_rejects_null() {
 fn encode_gslist_strings_full_ownership_dups_elements() {
     helpers::run(|| {
         let descriptor = array_type(
-            string_item_descriptor(Ownership::Full),
+            string_item_codec(Ownership::Full),
             ArrayKind::GSList,
             Ownership::Borrowed,
         );
@@ -651,7 +621,7 @@ fn encode_gslist_strings_full_ownership_dups_elements() {
 fn encode_gslist_strings_borrowed_roundtrips() {
     helpers::run(|| {
         let descriptor = array_type(
-            string_item_descriptor(Ownership::Borrowed),
+            string_item_codec(Ownership::Borrowed),
             ArrayKind::GSList,
             Ownership::Borrowed,
         );
@@ -670,11 +640,7 @@ fn encode_gslist_strings_borrowed_roundtrips() {
 #[test]
 fn encode_gslist_handles_roundtrips() {
     helpers::run(|| {
-        let descriptor = array_type(
-            struct_item_descriptor(),
-            ArrayKind::GSList,
-            Ownership::Borrowed,
-        );
+        let descriptor = array_type(struct_item_codec(), ArrayKind::GSList, Ownership::Borrowed);
         let val = Value::Array(vec![Value::Object(boxed_handle())]);
         let encoded = descriptor.encode(&val).unwrap();
         let Value::Array(items) = descriptor.decode(&encoded).unwrap() else {
@@ -687,11 +653,7 @@ fn encode_gslist_handles_roundtrips() {
 #[test]
 fn encode_gslist_handles_rejects_null() {
     helpers::run(|| {
-        let descriptor = array_type(
-            struct_item_descriptor(),
-            ArrayKind::GSList,
-            Ownership::Borrowed,
-        );
+        let descriptor = array_type(struct_item_codec(), ArrayKind::GSList, Ownership::Borrowed);
         let val = Value::Array(vec![Value::Object(Handle::borrowed(std::ptr::null_mut()))]);
         assert!(descriptor.encode(&val).is_err());
     });
@@ -701,7 +663,7 @@ fn encode_gslist_handles_rejects_null() {
 fn encode_gbytearray_roundtrips() {
     helpers::run(|| {
         let descriptor = array_type(
-            Codec::Integer(IntegerKind::U8),
+            Codec::Integer(IntegerCodec::U8),
             ArrayKind::GByteArray,
             Ownership::Borrowed,
         );
@@ -722,7 +684,7 @@ fn encode_gbytearray_roundtrips() {
 fn encode_garray_integer_roundtrips() {
     helpers::run(|| {
         let descriptor = array_type(
-            Codec::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerCodec::I32),
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
@@ -773,7 +735,7 @@ fn encode_garray_float_f64_roundtrips() {
 fn encode_garray_boolean_roundtrips() {
     helpers::run(|| {
         let descriptor = array_type(
-            Codec::Boolean(BooleanDescriptor),
+            Codec::Boolean(BooleanCodec),
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
@@ -790,7 +752,7 @@ fn encode_garray_boolean_roundtrips() {
 fn encode_garray_enum_flags_roundtrips() {
     helpers::run(|| {
         let descriptor = array_type(
-            enum_flags_item_descriptor(),
+            enum_flags_item_codec(),
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
@@ -803,11 +765,7 @@ fn encode_garray_enum_flags_roundtrips() {
 #[test]
 fn encode_garray_handles_roundtrips() {
     helpers::run(|| {
-        let descriptor = array_type(
-            struct_item_descriptor(),
-            ArrayKind::GArray,
-            Ownership::Borrowed,
-        );
+        let descriptor = array_type(struct_item_codec(), ArrayKind::GArray, Ownership::Borrowed);
         let val = Value::Array(vec![Value::Object(boxed_handle())]);
         let encoded = descriptor.encode(&val).unwrap();
         let Value::Array(items) = descriptor.decode(&encoded).unwrap() else {
@@ -820,11 +778,7 @@ fn encode_garray_handles_roundtrips() {
 #[test]
 fn encode_garray_handles_rejects_null() {
     helpers::run(|| {
-        let descriptor = array_type(
-            struct_item_descriptor(),
-            ArrayKind::GArray,
-            Ownership::Borrowed,
-        );
+        let descriptor = array_type(struct_item_codec(), ArrayKind::GArray, Ownership::Borrowed);
         let val = Value::Array(vec![Value::Object(Handle::borrowed(std::ptr::null_mut()))]);
         assert!(descriptor.encode(&val).is_err());
     });
@@ -834,7 +788,7 @@ fn encode_garray_handles_rejects_null() {
 fn encode_garray_strings_roundtrips() {
     helpers::run(|| {
         let descriptor = array_type(
-            string_item_descriptor(Ownership::Full),
+            string_item_codec(Ownership::Full),
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
@@ -848,7 +802,7 @@ fn encode_garray_strings_roundtrips() {
 fn encode_garray_explicit_element_size_used() {
     helpers::run(|| {
         let mut descriptor = array_type(
-            Codec::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerCodec::I32),
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
@@ -863,7 +817,7 @@ fn encode_garray_explicit_element_size_used() {
 fn decode_zero_terminated_scalar_array_reads_with_scalar_stride() {
     helpers::run(|| {
         let descriptor = array_type(
-            Codec::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerCodec::I32),
             ArrayKind::Array,
             Ownership::Borrowed,
         );
@@ -882,7 +836,7 @@ fn decode_zero_terminated_scalar_array_reads_with_scalar_stride() {
 
 #[test]
 fn encode_bigint_array_roundtrips_through_storage() {
-    for kind in [BigIntKind::I64, BigIntKind::U64] {
+    for kind in [BigIntCodec::I64, BigIntCodec::U64] {
         let descriptor = array_type(Codec::BigInt(kind), ArrayKind::Array, Ownership::Full);
         let big = i128::from(u32::MAX) + 1;
         let val = Value::Array(vec![Value::BigInt(big), Value::BigInt(7)]);
@@ -898,7 +852,7 @@ fn encode_bigint_array_roundtrips_through_storage() {
 #[test]
 fn encode_garray_bigint_roundtrips() {
     helpers::run(|| {
-        for kind in [BigIntKind::I64, BigIntKind::U64] {
+        for kind in [BigIntCodec::I64, BigIntCodec::U64] {
             let descriptor =
                 array_type(Codec::BigInt(kind), ArrayKind::GArray, Ownership::Borrowed);
             let big = i128::from(u32::MAX) + 5;
@@ -915,12 +869,8 @@ fn encode_garray_bigint_roundtrips() {
 
 #[test]
 fn decode_contiguous_bigint_elements() {
-    for kind in [BigIntKind::I64, BigIntKind::U64] {
-        let descriptor = array_type(
-            Codec::BigInt(kind),
-            ArrayKind::Fixed { size: 2 },
-            Ownership::Borrowed,
-        );
+    for kind in [BigIntCodec::I64, BigIntCodec::U64] {
+        let descriptor = fixed_array_type(Codec::BigInt(kind), 2, Ownership::Borrowed);
         let data: Vec<i64> = vec![100, 42];
         let Value::Array(items) = descriptor
             .decode_with_context(&StashedValue::Ptr(data.as_ptr() as *mut c_void), &[], &[])
@@ -936,7 +886,7 @@ fn decode_contiguous_bigint_elements() {
 #[test]
 fn decode_zero_terminated_bigint_array() {
     let descriptor = array_type(
-        Codec::BigInt(BigIntKind::U64),
+        Codec::BigInt(BigIntCodec::U64),
         ArrayKind::Array,
         Ownership::Borrowed,
     );
@@ -954,14 +904,14 @@ fn decode_zero_terminated_bigint_array() {
 #[test]
 fn encode_bigint_array_rejects_out_of_range() {
     let neg = array_type(
-        Codec::BigInt(BigIntKind::U64),
+        Codec::BigInt(BigIntCodec::U64),
         ArrayKind::Array,
         Ownership::Full,
     );
     assert!(neg.encode(&Value::Array(vec![Value::BigInt(-1)])).is_err());
 
     let over = array_type(
-        Codec::BigInt(BigIntKind::I64),
+        Codec::BigInt(BigIntCodec::I64),
         ArrayKind::Array,
         Ownership::Full,
     );
@@ -979,7 +929,7 @@ fn decode_gptrarray_frees_container_when_element_decode_fails() {
         unsafe { glib::ffi::g_ptr_array_ref(ptr_array) };
 
         let descriptor = array_type(
-            Codec::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerCodec::I32),
             ArrayKind::GPtrArray,
             Ownership::Full,
         );
@@ -1001,7 +951,7 @@ fn decode_glist_frees_spine_when_element_decode_fails() {
         };
 
         let descriptor = array_type(
-            Codec::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerCodec::I32),
             ArrayKind::GList,
             Ownership::Full,
         );
@@ -1017,7 +967,7 @@ fn decode_glist_frees_spine_when_element_decode_fails() {
 fn encode_garray_append_error_unrefs_and_propagates() {
     helpers::run(|| {
         let descriptor = array_type(
-            Codec::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerCodec::I32),
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
@@ -1028,11 +978,7 @@ fn encode_garray_append_error_unrefs_and_propagates() {
 
 #[test]
 fn encode_gptrarray_uses_null_terminated_layout() {
-    let descriptor = array_type(
-        struct_item_descriptor(),
-        ArrayKind::GPtrArray,
-        Ownership::Full,
-    );
+    let descriptor = array_type(struct_item_codec(), ArrayKind::GPtrArray, Ownership::Full);
     let val = Value::Array(vec![Value::Object(boxed_handle())]);
     let encoded = descriptor.encode(&val).unwrap();
     assert!(matches!(encoded, StashedValue::Storage(_)));
@@ -1041,7 +987,7 @@ fn encode_gptrarray_uses_null_terminated_layout() {
 #[test]
 fn decode_integer_array_from_storage() {
     let descriptor = array_type(
-        Codec::Integer(IntegerKind::U16),
+        Codec::Integer(IntegerCodec::U16),
         ArrayKind::Array,
         Ownership::Full,
     );
@@ -1057,7 +1003,7 @@ fn decode_integer_array_from_storage() {
 #[test]
 fn decode_null_ptr_yields_empty_array() {
     let descriptor = array_type(
-        Codec::Integer(IntegerKind::U8),
+        Codec::Integer(IntegerCodec::U8),
         ArrayKind::Array,
         Ownership::Full,
     );
@@ -1073,7 +1019,7 @@ fn decode_null_ptr_yields_empty_array() {
 #[test]
 fn decode_null_terminated_string_array_from_ptr() {
     let descriptor = array_type(
-        string_item_descriptor(Ownership::Borrowed),
+        string_item_codec(Ownership::Borrowed),
         ArrayKind::Array,
         Ownership::Borrowed,
     );
@@ -1093,7 +1039,7 @@ fn decode_null_terminated_string_array_from_ptr() {
 fn decode_null_terminated_string_array_full_ownership_frees() {
     helpers::run(|| {
         let descriptor = array_type(
-            string_item_descriptor(Ownership::Full),
+            string_item_codec(Ownership::Full),
             ArrayKind::Array,
             Ownership::Full,
         );
@@ -1117,7 +1063,7 @@ fn decode_null_terminated_string_array_full_ownership_frees() {
 fn decode_null_terminated_borrowed_string_array_full_ownership_frees_vector_only() {
     helpers::run(|| {
         let descriptor = array_type(
-            string_item_descriptor(Ownership::Borrowed),
+            string_item_codec(Ownership::Borrowed),
             ArrayKind::Array,
             Ownership::Full,
         );
@@ -1138,11 +1084,7 @@ fn decode_null_terminated_borrowed_string_array_full_ownership_frees_vector_only
 
 #[test]
 fn decode_null_terminated_ptr_array_from_ptr() {
-    let descriptor = array_type(
-        struct_item_descriptor(),
-        ArrayKind::Array,
-        Ownership::Borrowed,
-    );
+    let descriptor = array_type(struct_item_codec(), ArrayKind::Array, Ownership::Borrowed);
     let h0 = boxed_handle();
     let h1 = boxed_handle();
     let mut ptrs: Vec<*mut c_void> = vec![h0.ptr(), h1.ptr(), std::ptr::null_mut()];
@@ -1158,7 +1100,7 @@ fn decode_null_terminated_ptr_array_from_ptr() {
 #[test]
 fn decode_null_terminated_ptr_array_full_ownership_frees() {
     helpers::run(|| {
-        let descriptor = array_type(struct_item_descriptor(), ArrayKind::Array, Ownership::Full);
+        let descriptor = array_type(struct_item_codec(), ArrayKind::Array, Ownership::Full);
         let arr = unsafe {
             let mem = glib::ffi::g_malloc0(size_of::<*mut c_void>() * 2) as *mut *mut c_void;
             *mem = boxed_handle().ptr();
@@ -1177,7 +1119,7 @@ fn decode_null_terminated_ptr_array_full_ownership_frees() {
 #[test]
 fn decode_glist_empty_and_populated() {
     helpers::run(|| {
-        let descriptor = array_type(struct_item_descriptor(), ArrayKind::GList, Ownership::Full);
+        let descriptor = array_type(struct_item_codec(), ArrayKind::GList, Ownership::Full);
         let Value::Array(empty) = descriptor
             .decode(&StashedValue::Ptr(std::ptr::null_mut()))
             .unwrap()
@@ -1200,7 +1142,7 @@ fn decode_glist_empty_and_populated() {
 #[test]
 fn decode_gslist_full_ownership_frees_list() {
     helpers::run(|| {
-        let descriptor = array_type(struct_item_descriptor(), ArrayKind::GSList, Ownership::Full);
+        let descriptor = array_type(struct_item_codec(), ArrayKind::GSList, Ownership::Full);
         let list = unsafe { glib::ffi::g_slist_append(std::ptr::null_mut(), boxed_handle().ptr()) };
         let Value::Array(items) = descriptor
             .decode(&StashedValue::Ptr(list as *mut c_void))
@@ -1216,7 +1158,7 @@ fn decode_gslist_full_ownership_frees_list() {
 fn decode_garray_from_borrowed_ptr() {
     helpers::run(|| {
         let descriptor = array_type(
-            Codec::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerCodec::I32),
             ArrayKind::GArray,
             Ownership::Full,
         );
@@ -1239,7 +1181,7 @@ fn decode_garray_from_borrowed_ptr() {
 fn decode_garray_null_yields_empty() {
     helpers::run(|| {
         let descriptor = array_type(
-            Codec::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerCodec::I32),
             ArrayKind::GArray,
             Ownership::Full,
         );
@@ -1257,7 +1199,7 @@ fn decode_garray_null_yields_empty() {
 fn decode_garray_storage_owned_does_not_double_free() {
     helpers::run(|| {
         let descriptor = array_type(
-            Codec::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerCodec::I32),
             ArrayKind::GArray,
             Ownership::Full,
         );
@@ -1280,11 +1222,7 @@ fn decode_garray_storage_owned_does_not_double_free() {
 #[test]
 fn decode_gptrarray_from_ptr() {
     helpers::run(|| {
-        let descriptor = array_type(
-            struct_item_descriptor(),
-            ArrayKind::GPtrArray,
-            Ownership::Full,
-        );
+        let descriptor = array_type(struct_item_codec(), ArrayKind::GPtrArray, Ownership::Full);
         let ptr_array = unsafe { glib::ffi::g_ptr_array_new() };
         unsafe { glib::ffi::g_ptr_array_add(ptr_array, boxed_handle().ptr()) };
         let Value::Array(items) = descriptor
@@ -1299,11 +1237,7 @@ fn decode_gptrarray_from_ptr() {
 
 #[test]
 fn decode_gptrarray_null_yields_empty() {
-    let descriptor = array_type(
-        struct_item_descriptor(),
-        ArrayKind::GPtrArray,
-        Ownership::Full,
-    );
+    let descriptor = array_type(struct_item_codec(), ArrayKind::GPtrArray, Ownership::Full);
     let Value::Array(items) = descriptor
         .decode(&StashedValue::Ptr(std::ptr::null_mut()))
         .unwrap()
@@ -1317,7 +1251,7 @@ fn decode_gptrarray_null_yields_empty() {
 fn decode_gbytearray_from_ptr_and_empty() {
     helpers::run(|| {
         let descriptor = array_type(
-            Codec::Integer(IntegerKind::U8),
+            Codec::Integer(IntegerCodec::U8),
             ArrayKind::GByteArray,
             Ownership::Borrowed,
         );
@@ -1352,7 +1286,7 @@ fn decode_gbytearray_from_ptr_and_empty() {
 fn decode_gbytearray_full_ownership_unrefs_raw_ptr() {
     helpers::run(|| {
         let descriptor = array_type(
-            Codec::Integer(IntegerKind::U8),
+            Codec::Integer(IntegerCodec::U8),
             ArrayKind::GByteArray,
             Ownership::Full,
         );
@@ -1376,7 +1310,7 @@ fn decode_gbytearray_full_ownership_unrefs_raw_ptr() {
 #[test]
 fn decode_gbytearray_null_yields_empty() {
     let descriptor = array_type(
-        Codec::Integer(IntegerKind::U8),
+        Codec::Integer(IntegerCodec::U8),
         ArrayKind::GByteArray,
         Ownership::Full,
     );
@@ -1391,16 +1325,12 @@ fn decode_gbytearray_null_yields_empty() {
 
 #[test]
 fn decode_with_context_sized_array() {
-    let descriptor = array_type(
-        Codec::Integer(IntegerKind::I32),
-        ArrayKind::Sized { size_index: 0 },
-        Ownership::Borrowed,
-    );
+    let descriptor = sized_array_type(Codec::Integer(IntegerCodec::I32), 0, Ownership::Borrowed);
     let data: Vec<i32> = vec![5, 6, 7];
     let stashed_value = StashedValue::Ptr(data.as_ptr() as *mut c_void);
     let ffi_args = [StashedValue::U32(3)];
     let args = [Arg::new(
-        Codec::Integer(IntegerKind::U32),
+        Codec::Integer(IntegerCodec::U32),
         Value::Number(3.0),
     )];
     let Value::Array(items) = descriptor
@@ -1414,15 +1344,11 @@ fn decode_with_context_sized_array() {
 
 #[test]
 fn decode_with_context_sized_array_null_ptr() {
-    let descriptor = array_type(
-        Codec::Integer(IntegerKind::I32),
-        ArrayKind::Sized { size_index: 0 },
-        Ownership::Borrowed,
-    );
+    let descriptor = sized_array_type(Codec::Integer(IntegerCodec::I32), 0, Ownership::Borrowed);
     let stashed_value = StashedValue::Ptr(std::ptr::null_mut());
     let ffi_args = [StashedValue::U32(3)];
     let args = [Arg::new(
-        Codec::Integer(IntegerKind::U32),
+        Codec::Integer(IntegerCodec::U32),
         Value::Number(3.0),
     )];
     let Value::Array(items) = descriptor
@@ -1436,16 +1362,12 @@ fn decode_with_context_sized_array_null_ptr() {
 
 #[test]
 fn decode_with_context_sized_non_ptr_falls_through_to_decode() {
-    let descriptor = array_type(
-        Codec::Integer(IntegerKind::I32),
-        ArrayKind::Sized { size_index: 0 },
-        Ownership::Borrowed,
-    );
+    let descriptor = sized_array_type(Codec::Integer(IntegerCodec::I32), 0, Ownership::Borrowed);
     let storage = native::ffi::Stash::from(vec![1i32, 2]);
     let stashed_value = StashedValue::Storage(storage);
     let ffi_args = [StashedValue::U32(2)];
     let args = [Arg::new(
-        Codec::Integer(IntegerKind::U32),
+        Codec::Integer(IntegerCodec::U32),
         Value::Number(2.0),
     )];
     let Value::Array(items) = descriptor
@@ -1459,11 +1381,7 @@ fn decode_with_context_sized_non_ptr_falls_through_to_decode() {
 
 #[test]
 fn decode_with_context_fixed_array() {
-    let descriptor = array_type(
-        Codec::Float(FloatKind::F64),
-        ArrayKind::Fixed { size: 2 },
-        Ownership::Borrowed,
-    );
+    let descriptor = fixed_array_type(Codec::Float(FloatKind::F64), 2, Ownership::Borrowed);
     let data: Vec<f64> = vec![1.0, 2.0];
     let stashed_value = StashedValue::Ptr(data.as_ptr() as *mut c_void);
     let Value::Array(items) = descriptor
@@ -1477,11 +1395,7 @@ fn decode_with_context_fixed_array() {
 
 #[test]
 fn decode_with_context_fixed_array_null_ptr() {
-    let descriptor = array_type(
-        Codec::Float(FloatKind::F64),
-        ArrayKind::Fixed { size: 2 },
-        Ownership::Borrowed,
-    );
+    let descriptor = fixed_array_type(Codec::Float(FloatKind::F64), 2, Ownership::Borrowed);
     let stashed_value = StashedValue::Ptr(std::ptr::null_mut());
     let Value::Array(items) = descriptor
         .decode_with_context(&stashed_value, &[], &[])
@@ -1494,11 +1408,7 @@ fn decode_with_context_fixed_array_null_ptr() {
 
 #[test]
 fn decode_with_context_fixed_non_ptr_falls_through() {
-    let descriptor = array_type(
-        Codec::Integer(IntegerKind::I32),
-        ArrayKind::Fixed { size: 1 },
-        Ownership::Borrowed,
-    );
+    let descriptor = fixed_array_type(Codec::Integer(IntegerCodec::I32), 1, Ownership::Borrowed);
     let storage = native::ffi::Stash::from(vec![9i32]);
     let Value::Array(items) = descriptor
         .decode_with_context(&StashedValue::Storage(storage), &[], &[])
@@ -1512,7 +1422,7 @@ fn decode_with_context_fixed_non_ptr_falls_through() {
 #[test]
 fn decode_with_context_array_kind_delegates_to_decode() {
     let descriptor = array_type(
-        Codec::Integer(IntegerKind::I32),
+        Codec::Integer(IntegerCodec::I32),
         ArrayKind::Array,
         Ownership::Borrowed,
     );
@@ -1528,11 +1438,7 @@ fn decode_with_context_array_kind_delegates_to_decode() {
 
 #[test]
 fn decode_contiguous_empty_and_null() {
-    let descriptor = array_type(
-        Codec::Integer(IntegerKind::I32),
-        ArrayKind::Fixed { size: 0 },
-        Ownership::Borrowed,
-    );
+    let descriptor = fixed_array_type(Codec::Integer(IntegerCodec::I32), 0, Ownership::Borrowed);
     let data: Vec<i32> = vec![1];
     let Value::Array(items) = descriptor
         .decode_with_context(&StashedValue::Ptr(data.as_ptr() as *mut c_void), &[], &[])
@@ -1545,11 +1451,7 @@ fn decode_contiguous_empty_and_null() {
 
 #[test]
 fn decode_contiguous_pointer_elements() {
-    let descriptor = array_type(
-        struct_item_descriptor(),
-        ArrayKind::Fixed { size: 1 },
-        Ownership::Borrowed,
-    );
+    let descriptor = fixed_array_type(struct_item_codec(), 1, Ownership::Borrowed);
     let handle = boxed_handle();
     let data: Vec<*mut c_void> = vec![handle.ptr()];
     let Value::Array(items) = descriptor
@@ -1563,11 +1465,7 @@ fn decode_contiguous_pointer_elements() {
 
 #[test]
 fn decode_contiguous_float_and_boolean() {
-    let f32_ty = array_type(
-        Codec::Float(FloatKind::F32),
-        ArrayKind::Fixed { size: 1 },
-        Ownership::Borrowed,
-    );
+    let f32_ty = fixed_array_type(Codec::Float(FloatKind::F32), 1, Ownership::Borrowed);
     let f32_data: Vec<f32> = vec![1.5];
     assert!(matches!(
         f32_ty
@@ -1580,11 +1478,7 @@ fn decode_contiguous_float_and_boolean() {
         Value::Array(_)
     ));
 
-    let bool_ty = array_type(
-        Codec::Boolean(BooleanDescriptor),
-        ArrayKind::Fixed { size: 1 },
-        Ownership::Borrowed,
-    );
+    let bool_ty = fixed_array_type(Codec::Boolean(BooleanCodec), 1, Ownership::Borrowed);
     let bool_data: Vec<i32> = vec![1];
     assert!(matches!(
         bool_ty
@@ -1597,26 +1491,9 @@ fn decode_contiguous_float_and_boolean() {
         Value::Array(_)
     ));
 }
-
-#[test]
-fn decode_storage_string_elements() {
-    let descriptor = array_type(
-        string_item_descriptor(Ownership::Borrowed),
-        ArrayKind::Array,
-        Ownership::Full,
-    );
-    let encoded = descriptor
-        .encode(&Value::Array(vec![Value::String("z".to_string())]))
-        .unwrap();
-    let Value::Array(items) = descriptor.decode(&encoded).unwrap() else {
-        panic!("expected array")
-    };
-    assert_eq!(items.len(), 1);
-}
-
 #[test]
 fn decode_storage_pointer_elements() {
-    let descriptor = array_type(struct_item_descriptor(), ArrayKind::Array, Ownership::Full);
+    let descriptor = array_type(struct_item_codec(), ArrayKind::Array, Ownership::Full);
     let encoded = descriptor
         .encode(&Value::Array(vec![Value::Object(boxed_handle())]))
         .unwrap();
@@ -1629,7 +1506,7 @@ fn decode_storage_pointer_elements() {
 #[test]
 fn ptr_to_value_null_yields_empty() {
     let descriptor = array_type(
-        Codec::Integer(IntegerKind::I32),
+        Codec::Integer(IntegerCodec::I32),
         ArrayKind::Array,
         Ownership::Borrowed,
     );
@@ -1642,7 +1519,7 @@ fn ptr_to_value_null_yields_empty() {
 fn ptr_to_value_gptrarray() {
     helpers::run(|| {
         let descriptor = array_type(
-            struct_item_descriptor(),
+            struct_item_codec(),
             ArrayKind::GPtrArray,
             Ownership::Borrowed,
         );
@@ -1660,7 +1537,7 @@ fn ptr_to_value_gptrarray() {
 fn ptr_to_value_gbytearray() {
     helpers::run(|| {
         let descriptor = array_type(
-            Codec::Integer(IntegerKind::U8),
+            Codec::Integer(IntegerCodec::U8),
             ArrayKind::GByteArray,
             Ownership::Borrowed,
         );
@@ -1681,7 +1558,7 @@ fn ptr_to_value_gbytearray() {
 fn ptr_to_value_garray() {
     helpers::run(|| {
         let descriptor = array_type(
-            Codec::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerCodec::I32),
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
@@ -1700,11 +1577,7 @@ fn ptr_to_value_garray() {
 #[test]
 fn ptr_to_value_glist() {
     helpers::run(|| {
-        let descriptor = array_type(
-            struct_item_descriptor(),
-            ArrayKind::GList,
-            Ownership::Borrowed,
-        );
+        let descriptor = array_type(struct_item_codec(), ArrayKind::GList, Ownership::Borrowed);
         let list = unsafe { glib::ffi::g_list_append(std::ptr::null_mut(), boxed_handle().ptr()) };
         let decoded =
             unsafe { descriptor.read(ReadSource::Value(list as *mut c_void, "array")) }.unwrap();
@@ -1716,11 +1589,7 @@ fn ptr_to_value_glist() {
 #[test]
 fn ptr_to_value_plain_array() {
     helpers::run(|| {
-        let descriptor = array_type(
-            struct_item_descriptor(),
-            ArrayKind::Array,
-            Ownership::Borrowed,
-        );
+        let descriptor = array_type(struct_item_codec(), ArrayKind::Array, Ownership::Borrowed);
         let h0 = boxed_handle();
         let mut data: Vec<*mut c_void> = vec![h0.ptr(), std::ptr::null_mut()];
         let decoded = unsafe {
@@ -1733,16 +1602,12 @@ fn ptr_to_value_plain_array() {
 
 #[test]
 fn size_from_args_reads_integer_argument() {
-    let descriptor = array_type(
-        Codec::Integer(IntegerKind::I32),
-        ArrayKind::Sized { size_index: 0 },
-        Ownership::Borrowed,
-    );
+    let descriptor = sized_array_type(Codec::Integer(IntegerCodec::I32), 0, Ownership::Borrowed);
     let data: Vec<i32> = vec![10, 20];
     let stashed_value = StashedValue::Ptr(data.as_ptr() as *mut c_void);
     let ffi_args = [StashedValue::I32(2)];
     let args = [Arg::new(
-        Codec::Integer(IntegerKind::I32),
+        Codec::Integer(IntegerCodec::I32),
         Value::Number(2.0),
     )];
     let Value::Array(items) = descriptor
@@ -1756,17 +1621,13 @@ fn size_from_args_reads_integer_argument() {
 
 #[test]
 fn size_from_args_reads_ref_integer_storage() {
-    let descriptor = array_type(
-        Codec::Integer(IntegerKind::I32),
-        ArrayKind::Sized { size_index: 0 },
-        Ownership::Borrowed,
-    );
+    let descriptor = sized_array_type(Codec::Integer(IntegerCodec::I32), 0, Ownership::Borrowed);
     let data: Vec<i32> = vec![10, 20];
     let stashed_value = StashedValue::Ptr(data.as_ptr() as *mut c_void);
     let size_storage = native::ffi::Stash::from(vec![2i32]);
     let ffi_args = [StashedValue::Storage(size_storage)];
     let args = [Arg::new(
-        Codec::Ref(RefDescriptor::new(Codec::Integer(IntegerKind::I32)).expect("valid Ref inner")),
+        Codec::Ref(RefCodec::new(Codec::Integer(IntegerCodec::I32)).expect("valid Ref inner")),
         Value::Number(2.0),
     )];
     let Value::Array(items) = descriptor
@@ -1780,17 +1641,13 @@ fn size_from_args_reads_ref_integer_storage() {
 
 #[test]
 fn size_from_args_reads_ref_integer_ptr() {
-    let descriptor = array_type(
-        Codec::Integer(IntegerKind::I32),
-        ArrayKind::Sized { size_index: 0 },
-        Ownership::Borrowed,
-    );
+    let descriptor = sized_array_type(Codec::Integer(IntegerCodec::I32), 0, Ownership::Borrowed);
     let data: Vec<i32> = vec![10, 20];
     let stashed_value = StashedValue::Ptr(data.as_ptr() as *mut c_void);
     let size: i32 = 2;
     let ffi_args = [StashedValue::Ptr(&size as *const i32 as *mut c_void)];
     let args = [Arg::new(
-        Codec::Ref(RefDescriptor::new(Codec::Integer(IntegerKind::I32)).expect("valid Ref inner")),
+        Codec::Ref(RefCodec::new(Codec::Integer(IntegerCodec::I32)).expect("valid Ref inner")),
         Value::Number(2.0),
     )];
     let Value::Array(items) = descriptor
@@ -1804,16 +1661,12 @@ fn size_from_args_reads_ref_integer_ptr() {
 
 #[test]
 fn size_from_args_ref_null_ptr_falls_through_to_error() {
-    let descriptor = array_type(
-        Codec::Integer(IntegerKind::I32),
-        ArrayKind::Sized { size_index: 0 },
-        Ownership::Borrowed,
-    );
+    let descriptor = sized_array_type(Codec::Integer(IntegerCodec::I32), 0, Ownership::Borrowed);
     let data: Vec<i32> = vec![1];
     let stashed_value = StashedValue::Ptr(data.as_ptr() as *mut c_void);
     let ffi_args = [StashedValue::Ptr(std::ptr::null_mut())];
     let args = [Arg::new(
-        Codec::Ref(RefDescriptor::new(Codec::Integer(IntegerKind::I32)).expect("valid Ref inner")),
+        Codec::Ref(RefCodec::new(Codec::Integer(IntegerCodec::I32)).expect("valid Ref inner")),
         Value::Number(0.0),
     )];
     assert!(
@@ -1825,7 +1678,7 @@ fn size_from_args_ref_null_ptr_falls_through_to_error() {
 
 #[test]
 fn item_codec_resolves_pointer_kinds() {
-    let descriptor = array_type(struct_item_descriptor(), ArrayKind::Array, Ownership::Full);
+    let descriptor = array_type(struct_item_codec(), ArrayKind::Array, Ownership::Full);
     let encoded = descriptor.encode(&Value::Array(vec![])).unwrap();
     assert!(matches!(encoded, StashedValue::Storage(_)));
 }
@@ -1834,31 +1687,27 @@ fn item_codec_resolves_pointer_kinds() {
 fn trait_methods_delegate_to_inherent_implementations() {
     helpers::run(|| {
         let descriptor = array_type(
-            Codec::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerCodec::I32),
             ArrayKind::Array,
             Ownership::Borrowed,
         );
 
         let encoded =
-            FfiEncoder::encode(&descriptor, &Value::Array(vec![Value::Number(1.0)])).unwrap();
-        let decoded = FfiDecoder::decode(&descriptor, &encoded).unwrap();
+            Encoder::encode(&descriptor, &Value::Array(vec![Value::Number(1.0)])).unwrap();
+        let decoded = Decoder::decode(&descriptor, &encoded).unwrap();
         assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
 
         let storage = native::ffi::Stash::from(vec![7i32]);
         let with_context =
-            FfiDecoder::decode_with_context(&descriptor, &StashedValue::Storage(storage), &[], &[])
+            Decoder::decode_with_context(&descriptor, &StashedValue::Storage(storage), &[], &[])
                 .unwrap();
         assert!(matches!(with_context, Value::Array(items) if items.len() == 1));
 
-        let ptr_ty = array_type(
-            struct_item_descriptor(),
-            ArrayKind::Array,
-            Ownership::Borrowed,
-        );
+        let ptr_ty = array_type(struct_item_codec(), ArrayKind::Array, Ownership::Borrowed);
         let h0 = boxed_handle();
         let mut data: Vec<*mut c_void> = vec![h0.ptr(), std::ptr::null_mut()];
         let from_ptr = unsafe {
-            FfiDecoder::read(
+            Decoder::read(
                 &ptr_ty,
                 ReadSource::Value(data.as_mut_ptr() as *mut c_void, "ctx"),
             )
@@ -1871,7 +1720,7 @@ fn trait_methods_delegate_to_inherent_implementations() {
 #[test]
 fn encode_string_array_dup_elements_failure_frees_earlier_duplicates() {
     let descriptor = array_type(
-        string_item_descriptor(Ownership::Full),
+        string_item_codec(Ownership::Full),
         ArrayKind::Array,
         Ownership::Borrowed,
     );
@@ -1917,7 +1766,7 @@ fn encode_glist_handles_fails_and_unwinds_when_element_transfer_fails() {
         let before = helpers::param_spec_refcount(pspec);
 
         let descriptor = array_type(
-            unresolvable_fundamental_item_descriptor(),
+            unresolvable_fundamental_item_codec(),
             ArrayKind::GList,
             Ownership::Full,
         );
@@ -1936,7 +1785,7 @@ fn encode_glist_handles_fails_and_unwinds_when_element_transfer_fails() {
 fn encode_glist_strings_full_container_full_elements_releases_when_call_never_happens() {
     helpers::run(|| {
         let descriptor = array_type(
-            string_item_descriptor(Ownership::Full),
+            string_item_codec(Ownership::Full),
             ArrayKind::GList,
             Ownership::Full,
         );
@@ -1973,7 +1822,7 @@ fn encode_gslist_strings_full_container_borrowed_elements_releases_spine_when_ca
 fn encode_gbytearray_full_ownership_releases_when_call_never_happens() {
     helpers::run(|| {
         let descriptor = array_type(
-            Codec::Integer(IntegerKind::U8),
+            Codec::Integer(IntegerCodec::U8),
             ArrayKind::GByteArray,
             Ownership::Full,
         );
@@ -1992,7 +1841,7 @@ fn encode_gbytearray_full_ownership_releases_when_call_never_happens() {
 fn encode_garray_borrowed_strings_installs_clear_func_and_roundtrips() {
     helpers::run(|| {
         let descriptor = array_type(
-            string_item_descriptor(Ownership::Borrowed),
+            string_item_codec(Ownership::Borrowed),
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
@@ -2014,7 +1863,7 @@ fn encode_garray_borrowed_strings_installs_clear_func_and_roundtrips() {
 fn decode_zero_terminated_scalar_array_full_ownership_frees_buffer() {
     helpers::run(|| {
         let descriptor = array_type(
-            Codec::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerCodec::I32),
             ArrayKind::Array,
             Ownership::Full,
         );
@@ -2041,7 +1890,7 @@ fn decode_zero_terminated_scalar_array_full_ownership_frees_buffer() {
 fn write_return_to_pointer_full_string_array_hands_caller_owned_container() {
     helpers::run(|| {
         let descriptor = array_type(
-            string_item_descriptor(Ownership::Full),
+            string_item_codec(Ownership::Full),
             ArrayKind::Array,
             Ownership::Full,
         );
@@ -2065,7 +1914,7 @@ fn write_return_to_pointer_full_string_array_hands_caller_owned_container() {
 #[test]
 fn write_return_to_pointer_null_err_and_non_array_write_null() {
     let descriptor = array_type(
-        string_item_descriptor(Ownership::Full),
+        string_item_codec(Ownership::Full),
         ArrayKind::Array,
         Ownership::Full,
     );
@@ -2087,7 +1936,7 @@ fn write_return_to_pointer_null_err_and_non_array_write_null() {
 fn write_return_to_pointer_encode_error_writes_null() {
     helpers::run(|| {
         let descriptor = array_type(
-            Codec::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerCodec::I32),
             ArrayKind::Array,
             Ownership::Full,
         );

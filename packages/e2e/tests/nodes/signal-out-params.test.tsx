@@ -89,7 +89,7 @@ describe("signal inout-parameters - GtkEditable::insert-text", () => {
 });
 
 describe("signal out-parameters - GtkOverlay::get-child-position (caller-allocated out)", () => {
-    it("propagates a connected handler's GdkRectangle writes back through the caller-allocated boxed", async () => {
+    it("writes a handler's returned GdkRectangle tuple back through the caller-allocated boxed", async () => {
         const overlayRef = createRef<Gtk.Overlay>();
 
         await render(
@@ -106,11 +106,7 @@ describe("signal out-parameters - GtkOverlay::get-child-position (caller-allocat
 
         const handleGetChildPosition = vi.fn((_widget: Gtk.Widget, allocation: Gdk.Rectangle) => {
             expect(allocation).toBeInstanceOf(Gdk.Rectangle);
-            allocation.x = 11;
-            allocation.y = 22;
-            allocation.width = 33;
-            allocation.height = 44;
-            return true;
+            return [true, new Gdk.Rectangle({ x: 11, y: 22, width: 33, height: 44 })];
         });
         overlay.connect("get-child-position", handleGetChildPosition);
 
@@ -207,6 +203,34 @@ describe("signal emit() - boxed inout-parameter (GtkSource.View::push-snippet)",
 
         view.connect("push-snippet", (_snippet: GtkSource.Snippet, iter: Gtk.TextIter) => {
             iter.forwardChars(5);
+        });
+
+        view.emit("push-snippet", snippet, location);
+
+        expect(buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false)).toBe("helloX");
+    });
+
+    it("writes a handler's returned GtkTextIter back through the caller-allocated boxed (opaque payload)", async () => {
+        const viewRef = createRef<GtkSource.View>();
+
+        await render(<GtkSourceView ref={viewRef} />);
+
+        const view = viewRef.current as GtkSource.View;
+        const buffer = view.getBuffer() as GtkSource.Buffer;
+        buffer.setText("hello", -1);
+
+        const snippet = GtkSource.Snippet.new(null, null);
+        const chunk = GtkSource.SnippetChunk.new();
+        chunk.setSpec("X");
+        snippet.addChunk(chunk);
+
+        const location = buffer.getStartIter();
+        expect(location.getOffset()).toBe(0);
+
+        view.connect("push-snippet", (_snippet: GtkSource.Snippet, _iter: Gtk.TextIter) => {
+            const advanced = buffer.getStartIter();
+            advanced.forwardChars(5);
+            return advanced;
         });
 
         view.emit("push-snippet", snippet, location);

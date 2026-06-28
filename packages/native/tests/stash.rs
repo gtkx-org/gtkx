@@ -5,8 +5,8 @@ mod helpers {
 use std::ffi::{CStr, CString, c_char, c_void};
 
 use gtk4::glib;
-use native::ffi::descriptor::{
-    ArrayDescriptor, ArrayKind, Codec, FfiEncoder as _, IntegerKind, Ownership, StringDescriptor,
+use native::ffi::codec::{
+    ArrayCodec, ArrayKind, Codec, Encoder as _, IntegerCodec, Ownership, StringCodec,
 };
 use native::ffi::value::Value;
 use native::ffi::{
@@ -167,15 +167,15 @@ fn storage_ptr_ref_borrows_the_pointer() {
 
 #[test]
 fn as_numeric_slice_matches_every_integer_kind() {
-    let cases: [(IntegerKind, Stash); 8] = [
-        (IntegerKind::U8, vec![1u8, 2].into()),
-        (IntegerKind::I8, vec![-1i8, 2].into()),
-        (IntegerKind::U16, vec![1u16, 2].into()),
-        (IntegerKind::I16, vec![-1i16, 2].into()),
-        (IntegerKind::U32, vec![1u32, 2].into()),
-        (IntegerKind::I32, vec![-1i32, 2].into()),
-        (IntegerKind::U64, vec![1u64, 2].into()),
-        (IntegerKind::I64, vec![-1i64, 2].into()),
+    let cases: [(IntegerCodec, Stash); 8] = [
+        (IntegerCodec::U8, vec![1u8, 2].into()),
+        (IntegerCodec::I8, vec![-1i8, 2].into()),
+        (IntegerCodec::U16, vec![1u16, 2].into()),
+        (IntegerCodec::I16, vec![-1i16, 2].into()),
+        (IntegerCodec::U32, vec![1u32, 2].into()),
+        (IntegerCodec::I32, vec![-1i32, 2].into()),
+        (IntegerCodec::U64, vec![1u64, 2].into()),
+        (IntegerCodec::I64, vec![-1i64, 2].into()),
     ];
     for (kind, storage) in &cases {
         let slice = storage.as_numeric_slice(*kind).expect("kind should match");
@@ -520,22 +520,24 @@ fn string_gslist_storage_null_ptr_safe_on_drop() {
     let _storage = string_gslist_storage(Vec::new(), std::ptr::null_mut(), true, true);
 }
 
-fn string_full_item_array_type(kind: ArrayKind, container_ownership: Ownership) -> ArrayDescriptor {
-    ArrayDescriptor {
-        item_descriptor: Box::new(Codec::String(StringDescriptor {
+fn string_full_item_array_type(kind: ArrayKind, container_ownership: Ownership) -> ArrayCodec {
+    ArrayCodec {
+        item_codec: Box::new(Codec::String(StringCodec {
             ownership: Ownership::Full,
             length: None,
         })),
         kind,
         ownership: container_ownership,
+        size_param_index: None,
+        fixed_size: None,
         element_size: None,
     }
 }
 
 #[test]
 fn encode_empty_string_glist_full_container_arms_null_transfer_safe_on_drop() {
-    let descriptor = string_full_item_array_type(ArrayKind::GList, Ownership::Full);
-    let encoded = descriptor.encode(&Value::Array(Vec::new())).unwrap();
+    let codec = string_full_item_array_type(ArrayKind::GList, Ownership::Full);
+    let encoded = codec.encode(&Value::Array(Vec::new())).unwrap();
     let StashedValue::Storage(storage) = &encoded else {
         panic!("expected storage")
     };
@@ -551,12 +553,12 @@ fn encode_empty_string_glist_full_container_arms_null_transfer_safe_on_drop() {
 
 #[test]
 fn encode_string_array_element_transfer_frees_duplicates_when_call_never_happens() {
-    let descriptor = string_full_item_array_type(ArrayKind::Array, Ownership::Borrowed);
+    let codec = string_full_item_array_type(ArrayKind::Array, Ownership::Borrowed);
     let val = Value::Array(vec![
         Value::String("foo".to_string()),
         Value::String("bar".to_string()),
     ]);
-    let encoded = descriptor.encode(&val).unwrap();
+    let encoded = codec.encode(&val).unwrap();
     let StashedValue::Storage(storage) = &encoded else {
         panic!("expected storage")
     };
@@ -572,14 +574,16 @@ fn encode_string_array_element_transfer_frees_duplicates_when_call_never_happens
 #[test]
 fn encode_gbytearray_full_ownership_unrefs_when_call_never_happens() {
     helpers::run(|| {
-        let descriptor = ArrayDescriptor {
-            item_descriptor: Box::new(Codec::Integer(IntegerKind::U8)),
+        let codec = ArrayCodec {
+            item_codec: Box::new(Codec::Integer(IntegerCodec::U8)),
             kind: ArrayKind::GByteArray,
             ownership: Ownership::Full,
+            size_param_index: None,
+            fixed_size: None,
             element_size: None,
         };
         let val = Value::Array(vec![Value::Number(7.0), Value::Number(8.0)]);
-        let encoded = descriptor.encode(&val).unwrap();
+        let encoded = codec.encode(&val).unwrap();
         let StashedValue::Storage(storage) = &encoded else {
             panic!("expected storage")
         };

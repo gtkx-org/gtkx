@@ -254,26 +254,6 @@ fn dispatch_pending_from_depth_defers_top_level_tasks() {
         assert_eq!(counter.load(Ordering::SeqCst), 1);
     });
 }
-
-#[test]
-fn dispatch_pending_from_depth_runs_nested_tasks() {
-    helpers::run(|| {
-        drain_pending();
-        let mailbox = Mailbox::global();
-        let counter = Arc::new(AtomicUsize::new(0));
-
-        mailbox.enter_glib_callback();
-        let counter_clone = counter.clone();
-        mailbox.schedule_glib(Box::new(move || {
-            counter_clone.fetch_add(1, Ordering::SeqCst);
-        }));
-        mailbox.leave_glib_callback();
-
-        assert!(mailbox.dispatch_pending_from_depth(1));
-        assert_eq!(counter.load(Ordering::SeqCst), 1);
-    });
-}
-
 #[test]
 fn reentrant_freeze_loop_does_not_strand_outer_loop() {
     helpers::run(|| {

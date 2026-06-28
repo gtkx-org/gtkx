@@ -5,14 +5,12 @@ mod helpers {
 use std::ffi::c_void;
 
 use native::ffi::StashedValue;
-use native::ffi::descriptor::{
-    ArrayDescriptor, BufferDescriptor, FfiDecoder as _, FfiEncoder as _,
-};
+use native::ffi::codec::{ArrayCodec, BufferCodec, Decoder as _, Encoder as _};
 use native::ffi::value::{BufferView, BufferViewKind, Value};
 
-use helpers::{f32_array_descriptor, i32_array_descriptor};
+use helpers::{f32_array_codec, i32_array_codec};
 
-fn decode_array_items(array_type: &ArrayDescriptor, buffer_ptr: *const i32) -> Vec<Value> {
+fn decode_array_items(array_type: &ArrayCodec, buffer_ptr: *const i32) -> Vec<Value> {
     let decoded = array_type
         .decode_with_context(&StashedValue::Ptr(buffer_ptr as *mut c_void), &[], &[])
         .expect("contiguous decode");
@@ -25,7 +23,7 @@ fn decode_array_items(array_type: &ArrayDescriptor, buffer_ptr: *const i32) -> V
 #[test]
 fn decodes_contiguous_i32_array_from_buffer() {
     let buffer: Vec<i32> = vec![10, 20, 30, 40];
-    let array_type = i32_array_descriptor(buffer.len());
+    let array_type = i32_array_codec(buffer.len() as u32);
 
     let items = decode_array_items(&array_type, buffer.as_ptr());
 
@@ -34,7 +32,7 @@ fn decodes_contiguous_i32_array_from_buffer() {
 
 #[test]
 fn decodes_empty_contiguous_array() {
-    let array_type = i32_array_descriptor(0);
+    let array_type = i32_array_codec(0);
     let buffer: Vec<i32> = vec![1];
 
     let items = decode_array_items(&array_type, buffer.as_ptr());
@@ -59,7 +57,7 @@ fn buffer_view_array_passthrough_shares_the_backing_store() {
         BufferViewKind::Float32,
         false,
     );
-    let array_type = f32_array_descriptor();
+    let array_type = f32_array_codec();
 
     let encoded = array_type
         .encode(&Value::BufferView(view))
@@ -82,7 +80,7 @@ fn buffer_view_passthrough_reads_and_writes_the_backing_store() {
         false,
     );
 
-    let encoded = BufferDescriptor
+    let encoded = BufferCodec
         .encode(&Value::BufferView(view))
         .expect("buffer encode");
     let ptr = encoded_ptr(&encoded);

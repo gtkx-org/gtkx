@@ -3,7 +3,7 @@ use std::ffi::c_void;
 
 use glib::translate::IntoGlib as _;
 
-use crate::ffi::descriptor::{BigIntKind, IntegerKind};
+use crate::ffi::codec::{BigIntCodec, IntegerCodec};
 use crate::handle::UnrefFn;
 
 pub struct Stash {
@@ -333,41 +333,32 @@ impl Stash {
         &self.kind
     }
 
-    pub fn as_numeric_slice(&self, int_kind: IntegerKind) -> anyhow::Result<Vec<f64>> {
+    pub fn as_numeric_slice(&self, int_kind: IntegerCodec) -> anyhow::Result<Vec<f64>> {
         match (&self.kind, int_kind) {
-            (StashKind::I64Vec(v), IntegerKind::I64) => v
+            (StashKind::I64Vec(v), IntegerCodec::I64) => v
                 .iter()
-                .map(|&x| crate::ffi::descriptor::lossless_f64(i128::from(x), "array element"))
+                .map(|&x| crate::ffi::codec::lossless_f64(i128::from(x), "array element"))
                 .collect(),
-            (StashKind::U64Vec(v), IntegerKind::U64) => v
+            (StashKind::U64Vec(v), IntegerCodec::U64) => v
                 .iter()
-                .map(|&x| crate::ffi::descriptor::lossless_f64(i128::from(x), "array element"))
+                .map(|&x| crate::ffi::codec::lossless_f64(i128::from(x), "array element"))
                 .collect(),
-            _ => {
-                macro_rules! dispatch {
-                    ($($variant:ident : $descriptor:ident : $vec_variant:ident),+ $(,)?) => {
-                        match (&self.kind, int_kind) {
-                            $((StashKind::$vec_variant(v), IntegerKind::$variant) => {
-                                Ok(v.iter().map(|&x| x as f64).collect())
-                            }),+
-                            _ => anyhow::bail!(
-                                "Stash does not match integer kind {:?}",
-                                int_kind
-                            ),
-                        }
-                    };
-                }
-                with_integer_kinds!(dispatch)
-            }
+            (StashKind::U8Vec(v), IntegerCodec::U8) => Ok(v.iter().map(|&x| x as f64).collect()),
+            (StashKind::I8Vec(v), IntegerCodec::I8) => Ok(v.iter().map(|&x| x as f64).collect()),
+            (StashKind::U16Vec(v), IntegerCodec::U16) => Ok(v.iter().map(|&x| x as f64).collect()),
+            (StashKind::I16Vec(v), IntegerCodec::I16) => Ok(v.iter().map(|&x| x as f64).collect()),
+            (StashKind::U32Vec(v), IntegerCodec::U32) => Ok(v.iter().map(|&x| x as f64).collect()),
+            (StashKind::I32Vec(v), IntegerCodec::I32) => Ok(v.iter().map(|&x| x as f64).collect()),
+            _ => anyhow::bail!("Stash does not match integer kind {int_kind:?}"),
         }
     }
 
-    pub fn as_bigint_vec(&self, kind: BigIntKind) -> anyhow::Result<Vec<i128>> {
+    pub fn as_bigint_vec(&self, kind: BigIntCodec) -> anyhow::Result<Vec<i128>> {
         match (&self.kind, kind) {
-            (StashKind::I64Vec(v), BigIntKind::I64) => {
+            (StashKind::I64Vec(v), BigIntCodec::I64) => {
                 Ok(v.iter().map(|&x| i128::from(x)).collect())
             }
-            (StashKind::U64Vec(v), BigIntKind::U64) => {
+            (StashKind::U64Vec(v), BigIntCodec::U64) => {
                 Ok(v.iter().map(|&x| i128::from(x)).collect())
             }
             _ => anyhow::bail!("Stash does not match bigint kind {kind:?}"),
@@ -514,8 +505,8 @@ impl Drop for Stash {
     }
 }
 
-macro_rules! impl_stash_from_integer_vecs {
-    ($($variant:ident : $descriptor:ident : $vec_variant:ident),+ $(,)?) => {
+macro_rules! impl_stash_from_vec {
+    ($($descriptor:ty => $vec_variant:ident),+ $(,)?) => {
         $(
             impl From<Vec<$descriptor>> for Stash {
                 fn from(mut vec: Vec<$descriptor>) -> Self {
@@ -526,18 +517,16 @@ macro_rules! impl_stash_from_integer_vecs {
         )+
     };
 }
-with_integer_kinds!(impl_stash_from_integer_vecs);
 
-impl From<Vec<f32>> for Stash {
-    fn from(mut vec: Vec<f32>) -> Self {
-        let ptr = vec.as_mut_ptr() as *mut c_void;
-        Self::new(ptr, StashKind::F32Vec(vec))
-    }
-}
-
-impl From<Vec<f64>> for Stash {
-    fn from(mut vec: Vec<f64>) -> Self {
-        let ptr = vec.as_mut_ptr() as *mut c_void;
-        Self::new(ptr, StashKind::F64Vec(vec))
-    }
+impl_stash_from_vec! {
+    u8 => U8Vec,
+    i8 => I8Vec,
+    u16 => U16Vec,
+    i16 => I16Vec,
+    u32 => U32Vec,
+    i32 => I32Vec,
+    u64 => U64Vec,
+    i64 => I64Vec,
+    f32 => F32Vec,
+    f64 => F64Vec,
 }

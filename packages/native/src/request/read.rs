@@ -5,7 +5,8 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
 use super::Request;
-use crate::ffi::descriptor::{Codec, Descriptor, FfiDecoder as _, ReadSource};
+use crate::ffi::codec::{Codec, Decoder as _, ReadSource};
+use crate::ffi::descriptor::Descriptor;
 use crate::ffi::value::Value;
 use crate::handle::Handle;
 
@@ -63,52 +64,5 @@ pub mod napi_export {
             field_type,
         };
         request.dispatch(env)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::ffi::descriptor::IntegerKind;
-
-    use super::*;
-
-    #[test]
-    fn resolve_returns_offset_address() {
-        let mut buffer = [0u8; 32];
-        let base_addr = buffer.as_mut_ptr() as usize;
-        let location = FieldLocation {
-            base_addr,
-            offset: 8,
-        };
-        let resolved = unsafe { location.resolve() }.expect("resolve should succeed");
-        assert_eq!(resolved as usize, base_addr + 8);
-    }
-
-    #[test]
-    fn resolve_rejects_null_base() {
-        let location = FieldLocation {
-            base_addr: 0,
-            offset: 0,
-        };
-        let err = unsafe { location.resolve() }.expect_err("null base should fail");
-        assert!(err.to_string().contains("null pointer"));
-    }
-
-    #[test]
-    fn read_rejects_null_base() {
-        let read = ReadRequest {
-            location: FieldLocation {
-                base_addr: 0,
-                offset: 0,
-            },
-            field_type: Codec::Integer(IntegerKind::I32),
-        };
-        let err = read.execute().expect_err("null base read should fail");
-        assert!(err.to_string().contains("null pointer"));
-    }
-
-    #[test]
-    fn read_error_context_is_stable() {
-        assert_eq!(ReadRequest::error_context(), "field read");
     }
 }

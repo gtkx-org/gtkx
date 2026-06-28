@@ -2,17 +2,41 @@ use std::ffi::c_void;
 
 use napi::sys::TypedarrayType;
 use native::ffi::StashedValue;
-use native::ffi::descriptor::{
-    ArrayDescriptor, ArrayKind, BigIntKind, BooleanDescriptor, Codec, EnumFlagsDescriptor,
-    EnumFlagsKind, FfiEncoder as _, FloatKind, IntegerKind, Ownership,
+use native::ffi::codec::{
+    ArrayCodec, ArrayKind, BigIntCodec, BooleanCodec, Codec, Encoder as _, EnumFlagsCodec,
+    EnumFlagsKind, FloatKind, IntegerCodec, Ownership,
 };
 use native::ffi::value::{BufferView, BufferViewKind, Value};
 
-fn array_of(item: Codec, kind: ArrayKind, ownership: Ownership) -> ArrayDescriptor {
-    ArrayDescriptor {
-        item_descriptor: Box::new(item),
+fn array_of(item: Codec, kind: ArrayKind, ownership: Ownership) -> ArrayCodec {
+    ArrayCodec {
+        item_codec: Box::new(item),
         kind,
         ownership,
+        size_param_index: None,
+        fixed_size: None,
+        element_size: None,
+    }
+}
+
+fn sized_array_of(item: Codec, size_index: u32, ownership: Ownership) -> ArrayCodec {
+    ArrayCodec {
+        item_codec: Box::new(item),
+        kind: ArrayKind::Sized,
+        ownership,
+        size_param_index: Some(size_index),
+        fixed_size: None,
+        element_size: None,
+    }
+}
+
+fn fixed_array_of(item: Codec, size: u32, ownership: Ownership) -> ArrayCodec {
+    ArrayCodec {
+        item_codec: Box::new(item),
+        kind: ArrayKind::Fixed,
+        ownership,
+        size_param_index: None,
+        fixed_size: Some(size),
         element_size: None,
     }
 }
@@ -27,20 +51,15 @@ fn view_over(data: &mut [u8], length: usize, kind: BufferViewKind) -> BufferView
     )
 }
 
-fn encode_view(
-    item: Codec,
-    kind: ArrayKind,
-    ownership: Ownership,
-    view: BufferView,
-) -> anyhow::Result<StashedValue> {
-    array_of(item, kind, ownership).encode(&Value::BufferView(view))
+fn encode_view(codec: ArrayCodec, view: BufferView) -> anyhow::Result<StashedValue> {
+    codec.encode(&Value::BufferView(view))
 }
 
 fn assert_passthrough(item: Codec, view_kind: BufferViewKind) {
     let mut data = vec![0u8; 4 * view_kind.element_size()];
     let expected_ptr = data.as_mut_ptr() as *mut c_void;
     let view = view_over(&mut data, 4, view_kind);
-    let encoded = encode_view(item, ArrayKind::Array, Ownership::Borrowed, view)
+    let encoded = encode_view(array_of(item, ArrayKind::Array, Ownership::Borrowed), view)
         .expect("matching view should encode");
     let StashedValue::Ptr(ptr) = encoded else {
         panic!("expected a pointer passthrough, got {encoded:?}");
@@ -114,20 +133,20 @@ fn value_buffer_view_is_not_an_object_or_number() {
 
 #[test]
 fn array_encode_accepts_every_matching_view_kind() {
-    assert_passthrough(Codec::Integer(IntegerKind::I8), BufferViewKind::Int8);
-    assert_passthrough(Codec::Integer(IntegerKind::U8), BufferViewKind::Uint8);
+    assert_passthrough(Codec::Integer(IntegerCodec::I8), BufferViewKind::Int8);
+    assert_passthrough(Codec::Integer(IntegerCodec::U8), BufferViewKind::Uint8);
     assert_passthrough(
-        Codec::Integer(IntegerKind::U8),
+        Codec::Integer(IntegerCodec::U8),
         BufferViewKind::Uint8Clamped,
     );
-    assert_passthrough(Codec::Integer(IntegerKind::I16), BufferViewKind::Int16);
-    assert_passthrough(Codec::Integer(IntegerKind::U16), BufferViewKind::Uint16);
-    assert_passthrough(Codec::Integer(IntegerKind::I32), BufferViewKind::Int32);
-    assert_passthrough(Codec::Integer(IntegerKind::U32), BufferViewKind::Uint32);
-    assert_passthrough(Codec::Integer(IntegerKind::I64), BufferViewKind::BigInt64);
-    assert_passthrough(Codec::Integer(IntegerKind::U64), BufferViewKind::BigUint64);
-    assert_passthrough(Codec::BigInt(BigIntKind::I64), BufferViewKind::BigInt64);
-    assert_passthrough(Codec::BigInt(BigIntKind::U64), BufferViewKind::BigUint64);
+    assert_passthrough(Codec::Integer(IntegerCodec::I16), BufferViewKind::Int16);
+    assert_passthrough(Codec::Integer(IntegerCodec::U16), BufferViewKind::Uint16);
+    assert_passthrough(Codec::Integer(IntegerCodec::I32), BufferViewKind::Int32);
+    assert_passthrough(Codec::Integer(IntegerCodec::U32), BufferViewKind::Uint32);
+    assert_passthrough(Codec::Integer(IntegerCodec::I64), BufferViewKind::BigInt64);
+    assert_passthrough(Codec::Integer(IntegerCodec::U64), BufferViewKind::BigUint64);
+    assert_passthrough(Codec::BigInt(BigIntCodec::I64), BufferViewKind::BigInt64);
+    assert_passthrough(Codec::BigInt(BigIntCodec::U64), BufferViewKind::BigUint64);
     assert_passthrough(Codec::Float(FloatKind::F32), BufferViewKind::Float32);
     assert_passthrough(Codec::Float(FloatKind::F64), BufferViewKind::Float64);
 }
@@ -135,28 +154,28 @@ fn array_encode_accepts_every_matching_view_kind() {
 fn assert_view_rejected(item: Codec, view_kind: BufferViewKind) {
     let mut data = vec![0u8; 4 * view_kind.element_size()];
     let view = view_over(&mut data, 4, view_kind);
-    let err = encode_view(item, ArrayKind::Array, Ownership::Borrowed, view)
+    let err = encode_view(array_of(item, ArrayKind::Array, Ownership::Borrowed), view)
         .expect_err("a mismatched view must fail to supply array elements");
     assert!(err.to_string().contains("cannot supply"));
 }
 
 #[test]
 fn array_encode_rejects_mismatched_bigint_view() {
-    assert_view_rejected(Codec::BigInt(BigIntKind::U64), BufferViewKind::BigInt64);
+    assert_view_rejected(Codec::BigInt(BigIntCodec::U64), BufferViewKind::BigInt64);
 }
 
 #[test]
 fn array_encode_rejects_views_for_non_buffer_element_kinds() {
-    assert_view_rejected(Codec::Boolean(BooleanDescriptor), BufferViewKind::Uint8);
+    assert_view_rejected(Codec::Boolean(BooleanCodec), BufferViewKind::Uint8);
 }
 
 #[test]
 fn array_encode_accepts_views_for_enum_flags_storage() {
-    let enum_flags = EnumFlagsDescriptor {
+    let enum_flags = EnumFlagsCodec {
         kind: EnumFlagsKind::Enum,
         shared_library: "libgtk-4.so.1".to_owned(),
         get_type_fn: "gtk_orientation_get_type".to_owned(),
-        storage: IntegerKind::I32,
+        storage: IntegerCodec::I32,
     };
     assert_passthrough(Codec::EnumFlags(enum_flags), BufferViewKind::Int32);
 }
@@ -166,33 +185,29 @@ fn array_encode_rejects_views_for_transfer_full_arrays() {
     let mut data = vec![0u8; 4];
     let view = view_over(&mut data, 4, BufferViewKind::Uint8);
     let err = encode_view(
-        Codec::Integer(IntegerKind::U8),
-        ArrayKind::Array,
-        Ownership::Full,
+        array_of(
+            Codec::Integer(IntegerCodec::U8),
+            ArrayKind::Array,
+            Ownership::Full,
+        ),
         view,
     )
     .expect_err("transfer-full arrays must fail to encode");
     assert!(err.to_string().contains("transfer-full"));
 }
 
-fn assert_int32_view_passes_through(kind: ArrayKind, context: &str) {
+fn assert_int32_view_passes_through(codec: ArrayCodec, context: &str) {
     let mut data = vec![0u8; 16];
     let expected_ptr = data.as_mut_ptr() as *mut c_void;
     let view = view_over(&mut data, 4, BufferViewKind::Int32);
-    let encoded = encode_view(
-        Codec::Integer(IntegerKind::I32),
-        kind,
-        Ownership::Borrowed,
-        view,
-    )
-    .expect(context);
+    let encoded = encode_view(codec, view).expect(context);
     assert!(matches!(encoded, StashedValue::Ptr(ptr) if ptr == expected_ptr));
 }
 
 #[test]
 fn array_encode_accepts_views_for_sized_arrays() {
     assert_int32_view_passes_through(
-        ArrayKind::Sized { size_index: 1 },
+        sized_array_of(Codec::Integer(IntegerCodec::I32), 1, Ownership::Borrowed),
         "sized arrays should accept views",
     );
 }
@@ -200,16 +215,14 @@ fn array_encode_accepts_views_for_sized_arrays() {
 #[test]
 fn array_encode_checks_fixed_size_views_exactly() {
     assert_int32_view_passes_through(
-        ArrayKind::Fixed { size: 4 },
+        fixed_array_of(Codec::Integer(IntegerCodec::I32), 4, Ownership::Borrowed),
         "a fixed-size match should encode",
     );
 
     let mut short = vec![0u8; 8];
     let short_view = view_over(&mut short, 2, BufferViewKind::Int32);
     let err = encode_view(
-        Codec::Integer(IntegerKind::I32),
-        ArrayKind::Fixed { size: 4 },
-        Ownership::Borrowed,
+        fixed_array_of(Codec::Integer(IntegerCodec::I32), 4, Ownership::Borrowed),
         short_view,
     )
     .expect_err("a fixed-size mismatch must fail");

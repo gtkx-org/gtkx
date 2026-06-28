@@ -16,7 +16,7 @@ use napi::{Status, sys};
 use parking_lot::Mutex;
 
 use crate::ffi::value::{JsRef, Value};
-use crate::handle::wrapper_registry::WrapperRefOp;
+use crate::handle::wrapper::WrapperRefOp;
 use crate::messaging::error_reporter::ErrorReporter;
 use crate::messaging::freeze::FreezeController;
 use crate::messaging::wait_signal::WaitSignal;

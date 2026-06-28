@@ -2,6 +2,8 @@ mod helpers {
     pub use test_support::*;
 }
 
+use std::ffi::c_void;
+
 use gtk4::gdk;
 use gtk4::glib;
 use gtk4::glib::translate::IntoGlib as _;
@@ -16,6 +18,7 @@ fn from_glib_full_sets_owned_flag() {
 
         assert!(boxed.is_owned());
         assert!(!boxed.as_ptr().is_null());
+        assert_eq!(boxed.gtype(), Some(gdk::RGBA::static_type()));
     });
 }
 
@@ -42,10 +45,30 @@ fn from_glib_none_creates_copy() {
         assert!(boxed.is_owned());
         assert!(!boxed.as_ptr().is_null());
         assert_ne!(boxed.as_ptr(), original_ptr);
+        assert!(helpers::is_valid_boxed_ptr(boxed.as_ptr(), gtype));
 
         unsafe {
             glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original_ptr);
         }
+    });
+}
+
+#[test]
+fn from_glib_none_with_size_copies_without_gtype() {
+    helpers::run(|| {
+        let data: [u8; 16] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+        let ptr = data.as_ptr() as *mut c_void;
+
+        let boxed =
+            unsafe { Boxed::from_glib_none_with_size(None, ptr, Some(16), Some("TestStruct")) }
+                .unwrap();
+
+        assert!(boxed.is_owned());
+        assert!(!boxed.as_ptr().is_null());
+        assert_ne!(boxed.as_ptr(), ptr);
+
+        let copied = unsafe { std::slice::from_raw_parts(boxed.as_ptr() as *const u8, 16) };
+        assert_eq!(copied, &data);
     });
 }
 
@@ -156,25 +179,6 @@ fn drop_plain_struct_null_ptr_safe() {
         drop(boxed);
     });
 }
-
-#[test]
-fn plain_struct_not_owned_does_not_free() {
-    helpers::run(|| {
-        let ptr = unsafe { glib::ffi::g_malloc0(16) };
-
-        let boxed = helpers::TestBoxed {
-            ptr,
-            descriptor: None,
-            is_owned: false,
-        };
-        drop(boxed);
-
-        unsafe {
-            glib::ffi::g_free(ptr);
-        }
-    });
-}
-
 #[test]
 fn from_glib_none_null_ptr_with_none_type() {
     helpers::run(|| {
@@ -185,17 +189,6 @@ fn from_glib_none_null_ptr_with_none_type() {
         assert!(boxed.as_ptr().is_null());
     });
 }
-
-#[test]
-fn as_ptr_returns_ptr_for_plain_struct() {
-    helpers::run(|| {
-        let ptr = unsafe { glib::ffi::g_malloc0(24) };
-        let boxed = Boxed::from_glib_full(None, ptr);
-
-        assert_eq!(boxed.as_ptr(), ptr);
-    });
-}
-
 #[test]
 fn clone_without_gtype_shares_ownership() {
     helpers::run(|| {

@@ -6,13 +6,13 @@ use napi::{Env, sys};
 use napi_derive::napi;
 
 use crate::handle::Handle;
-use crate::handle::wrapper_registry;
+use crate::handle::wrapper;
 use crate::messaging::Mailbox;
 
 struct FinalizeData {
     gobject_addr: usize,
     ref_addr: usize,
-    binding: Option<Arc<wrapper_registry::WrapperBinding>>,
+    binding: Option<Arc<wrapper::WrapperBinding>>,
     generation: u64,
 }
 
@@ -22,7 +22,7 @@ unsafe extern "C" fn on_wrapper_finalize(
     _finalize_hint: *mut c_void,
 ) {
     let mut data = unsafe { Box::from_raw(finalize_data.cast::<FinalizeData>()) };
-    wrapper_registry::WrapperRegistry::global().schedule_cleanup(
+    wrapper::WrapperRegistry::global().schedule_cleanup(
         env as usize,
         data.binding.take(),
         data.generation,
@@ -69,10 +69,10 @@ pub fn set_wrapper(env: Env, handle: &External<Handle>, wrapper: Object<'_>) -> 
     unsafe { (*data).ref_addr = raw_ref as usize };
 
     let ref_addr = raw_ref as usize;
-    wrapper_registry::WrapperRefOp::Ref.apply(&env, ref_addr);
+    wrapper::WrapperRefOp::Ref.apply(&env, ref_addr);
     let consume_pending = handle.take_pending_gobject_ref();
     let (binding, generation) = Mailbox::global().dispatch_and_wait_napi(env, move || unsafe {
-        wrapper_registry::WrapperRegistry::global().install(
+        wrapper::WrapperRegistry::global().install(
             gobject_addr as *mut _,
             ref_addr as *mut c_void,
             consume_pending,

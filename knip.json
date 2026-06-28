@@ -28,18 +28,18 @@
             "project": ["src/**/*.{ts,tsx}!"]
         },
         "packages/cli": {
-            "entry": ["src/global.d.ts!"],
-            "project": ["src/**/*.{ts,tsx}!", "scripts/**/*.ts!", "tests/**/*.{ts,tsx}"]
+            "entry": ["src/global.d.ts!", "scripts/**/*.ts!"],
+            "project": ["src/**/*.{ts,tsx}!", "scripts/**/*.ts!", "tests/**/*.{ts,tsx}"],
+            "ignoreDependencies": ["^@gtkx/react$"]
         },
         "packages/codegen": {
-            "includeEntryExports": true,
+            "entry": ["scripts/**/*.ts!"],
             "project": ["src/**/*.ts!", "scripts/**/*.ts!", "!src/overrides/**"]
         },
         "packages/components": {
             "project": ["src/**/*.{ts,tsx}!"]
         },
         "packages/config": {
-            "includeEntryExports": true,
             "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
         },
         "packages/create-gtkx": {
@@ -64,7 +64,6 @@
             "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
         },
         "packages/utils": {
-            "includeEntryExports": true,
             "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
         },
         "packages/native": {

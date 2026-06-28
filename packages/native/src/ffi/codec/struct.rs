@@ -4,20 +4,20 @@ use super::prelude::*;
 use crate::handle::Boxed;
 
 #[derive(Debug, Clone)]
-pub struct StructDescriptor {
+pub struct StructCodec {
     pub ownership: Ownership,
     pub size: Option<usize>,
     pub caller_allocated: bool,
 }
 
-impl FfiEncoder for StructDescriptor {
+impl Encoder for StructCodec {
     fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
         let ptr = value.object_ptr("Struct object")?;
         Ok(ffi::StashedValue::Ptr(ptr))
     }
 }
 
-impl FfiDecoder for StructDescriptor {
+impl Decoder for StructCodec {
     fn read_call(&self, stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
         let Some(struct_ptr) = stashed_value.as_non_null_ptr("Struct")? else {
             return Ok(value::Value::Null);
@@ -48,7 +48,7 @@ impl FfiDecoder for StructDescriptor {
     }
 }
 
-impl PointerWriter for StructDescriptor {
+impl PointerWriter for StructCodec {
     unsafe fn write_return_to_pointer(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         write_return_object_ptr(ret, value, std::convert::identity);
     }

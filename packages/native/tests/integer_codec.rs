@@ -1,11 +1,11 @@
 use native::ffi;
-use native::ffi::descriptor::IntegerKind;
+use native::ffi::codec::IntegerCodec;
 
 #[test]
 fn read_u8() {
     let value: u8 = 200;
     let ptr = &value as *const u8;
-    let result = unsafe { IntegerKind::U8.read_ptr(ptr) };
+    let result = unsafe { IntegerCodec::U8.read_ptr(ptr) };
     assert_eq!(result, 200.0);
 }
 
@@ -13,7 +13,7 @@ fn read_u8() {
 fn read_i8() {
     let value: i8 = -50;
     let ptr = &value as *const i8 as *const u8;
-    let result = unsafe { IntegerKind::I8.read_ptr(ptr) };
+    let result = unsafe { IntegerCodec::I8.read_ptr(ptr) };
     assert_eq!(result, -50.0);
 }
 
@@ -21,7 +21,7 @@ fn read_i8() {
 fn read_u16() {
     let value: u16 = 50000;
     let ptr = &value as *const u16 as *const u8;
-    let result = unsafe { IntegerKind::U16.read_ptr(ptr) };
+    let result = unsafe { IntegerCodec::U16.read_ptr(ptr) };
     assert_eq!(result, 50000.0);
 }
 
@@ -29,7 +29,7 @@ fn read_u16() {
 fn read_i16() {
     let value: i16 = -20000;
     let ptr = &value as *const i16 as *const u8;
-    let result = unsafe { IntegerKind::I16.read_ptr(ptr) };
+    let result = unsafe { IntegerCodec::I16.read_ptr(ptr) };
     assert_eq!(result, -20000.0);
 }
 
@@ -37,7 +37,7 @@ fn read_i16() {
 fn read_u32() {
     let value: u32 = 3_000_000_000;
     let ptr = &value as *const u32 as *const u8;
-    let result = unsafe { IntegerKind::U32.read_ptr(ptr) };
+    let result = unsafe { IntegerCodec::U32.read_ptr(ptr) };
     assert_eq!(result, 3_000_000_000.0);
 }
 
@@ -45,7 +45,7 @@ fn read_u32() {
 fn read_i32() {
     let value: i32 = -1_000_000_000;
     let ptr = &value as *const i32 as *const u8;
-    let result = unsafe { IntegerKind::I32.read_ptr(ptr) };
+    let result = unsafe { IntegerCodec::I32.read_ptr(ptr) };
     assert_eq!(result, -1_000_000_000.0);
 }
 
@@ -53,7 +53,7 @@ fn read_i32() {
 fn read_u64() {
     let value: u64 = 9_000_000_000;
     let ptr = &value as *const u64 as *const u8;
-    let result = unsafe { IntegerKind::U64.read_ptr(ptr) };
+    let result = unsafe { IntegerCodec::U64.read_ptr(ptr) };
     assert_eq!(result, 9_000_000_000.0);
 }
 
@@ -61,7 +61,7 @@ fn read_u64() {
 fn read_i64() {
     let value: i64 = -5_000_000_000;
     let ptr = &value as *const i64 as *const u8;
-    let result = unsafe { IntegerKind::I64.read_ptr(ptr) };
+    let result = unsafe { IntegerCodec::I64.read_ptr(ptr) };
     assert_eq!(result, -5_000_000_000.0);
 }
 
@@ -69,7 +69,7 @@ fn read_i64() {
 fn write_u8() {
     let mut value: u8 = 0;
     let ptr = &mut value as *mut u8;
-    unsafe { IntegerKind::U8.write_ptr(ptr, 123.0) };
+    unsafe { IntegerCodec::U8.write_ptr(ptr, 123.0) };
     assert_eq!(value, 123);
 }
 
@@ -77,7 +77,7 @@ fn write_u8() {
 fn write_i8() {
     let mut value: i8 = 0;
     let ptr = &mut value as *mut i8 as *mut u8;
-    unsafe { IntegerKind::I8.write_ptr(ptr, -42.0) };
+    unsafe { IntegerCodec::I8.write_ptr(ptr, -42.0) };
     assert_eq!(value, -42);
 }
 
@@ -85,7 +85,7 @@ fn write_i8() {
 fn write_u16() {
     let mut value: u16 = 0;
     let ptr = &mut value as *mut u16 as *mut u8;
-    unsafe { IntegerKind::U16.write_ptr(ptr, 12345.0) };
+    unsafe { IntegerCodec::U16.write_ptr(ptr, 12345.0) };
     assert_eq!(value, 12345);
 }
 
@@ -93,7 +93,7 @@ fn write_u16() {
 fn write_i16() {
     let mut value: i16 = 0;
     let ptr = &mut value as *mut i16 as *mut u8;
-    unsafe { IntegerKind::I16.write_ptr(ptr, -12345.0) };
+    unsafe { IntegerCodec::I16.write_ptr(ptr, -12345.0) };
     assert_eq!(value, -12345);
 }
 
@@ -101,7 +101,7 @@ fn write_i16() {
 fn write_u32() {
     let mut value: u32 = 0;
     let ptr = &mut value as *mut u32 as *mut u8;
-    unsafe { IntegerKind::U32.write_ptr(ptr, 1_234_567_890.0) };
+    unsafe { IntegerCodec::U32.write_ptr(ptr, 1_234_567_890.0) };
     assert_eq!(value, 1_234_567_890);
 }
 
@@ -109,7 +109,7 @@ fn write_u32() {
 fn write_i32() {
     let mut value: i32 = 0;
     let ptr = &mut value as *mut i32 as *mut u8;
-    unsafe { IntegerKind::I32.write_ptr(ptr, -1_234_567_890.0) };
+    unsafe { IntegerCodec::I32.write_ptr(ptr, -1_234_567_890.0) };
     assert_eq!(value, -1_234_567_890);
 }
 
@@ -117,7 +117,7 @@ fn write_i32() {
 fn write_u64() {
     let mut value: u64 = 0;
     let ptr = &mut value as *mut u64 as *mut u8;
-    unsafe { IntegerKind::U64.write_ptr(ptr, 9_876_543_210.0) };
+    unsafe { IntegerCodec::U64.write_ptr(ptr, 9_876_543_210.0) };
     assert_eq!(value, 9_876_543_210);
 }
 
@@ -125,62 +125,62 @@ fn write_u64() {
 fn write_i64() {
     let mut value: i64 = 0;
     let ptr = &mut value as *mut i64 as *mut u8;
-    unsafe { IntegerKind::I64.write_ptr(ptr, -9_876_543_210.0) };
+    unsafe { IntegerCodec::I64.write_ptr(ptr, -9_876_543_210.0) };
     assert_eq!(value, -9_876_543_210);
 }
 
 #[test]
 fn to_stashed_value_u8() {
-    let result = IntegerKind::U8.to_stashed_value(100.0);
+    let result = IntegerCodec::U8.to_stashed_value(100.0);
     assert!(matches!(result, ffi::StashedValue::U8(100)));
 }
 
 #[test]
 fn to_stashed_value_i8() {
-    let result = IntegerKind::I8.to_stashed_value(-50.0);
+    let result = IntegerCodec::I8.to_stashed_value(-50.0);
     assert!(matches!(result, ffi::StashedValue::I8(-50)));
 }
 
 #[test]
 fn to_stashed_value_u16() {
-    let result = IntegerKind::U16.to_stashed_value(30000.0);
+    let result = IntegerCodec::U16.to_stashed_value(30000.0);
     assert!(matches!(result, ffi::StashedValue::U16(30000)));
 }
 
 #[test]
 fn to_stashed_value_i16() {
-    let result = IntegerKind::I16.to_stashed_value(-15000.0);
+    let result = IntegerCodec::I16.to_stashed_value(-15000.0);
     assert!(matches!(result, ffi::StashedValue::I16(-15000)));
 }
 
 #[test]
 fn to_stashed_value_u32() {
-    let result = IntegerKind::U32.to_stashed_value(2_000_000_000.0);
+    let result = IntegerCodec::U32.to_stashed_value(2_000_000_000.0);
     assert!(matches!(result, ffi::StashedValue::U32(2_000_000_000)));
 }
 
 #[test]
 fn to_stashed_value_i32() {
-    let result = IntegerKind::I32.to_stashed_value(-1_000_000_000.0);
+    let result = IntegerCodec::I32.to_stashed_value(-1_000_000_000.0);
     assert!(matches!(result, ffi::StashedValue::I32(-1_000_000_000)));
 }
 
 #[test]
 fn to_stashed_value_u64() {
-    let result = IntegerKind::U64.to_stashed_value(5_000_000_000.0);
+    let result = IntegerCodec::U64.to_stashed_value(5_000_000_000.0);
     assert!(matches!(result, ffi::StashedValue::U64(5_000_000_000)));
 }
 
 #[test]
 fn to_stashed_value_i64() {
-    let result = IntegerKind::I64.to_stashed_value(-5_000_000_000.0);
+    let result = IntegerCodec::I64.to_stashed_value(-5_000_000_000.0);
     assert!(matches!(result, ffi::StashedValue::I64(-5_000_000_000)));
 }
 
 #[test]
 fn to_stash_u8() {
     let values = [1.0, 2.0, 3.0];
-    let storage = IntegerKind::U8.to_stash(&values);
+    let storage = IntegerCodec::U8.to_stash(&values);
     match storage.kind() {
         ffi::StashKind::U8Vec(result) => assert_eq!(result, &vec![1u8, 2u8, 3u8]),
         _ => panic!("Expected U8Vec"),
@@ -190,7 +190,7 @@ fn to_stash_u8() {
 #[test]
 fn to_stash_i32() {
     let values = [-100.0, 0.0, 100.0];
-    let storage = IntegerKind::I32.to_stash(&values);
+    let storage = IntegerCodec::I32.to_stash(&values);
     match storage.kind() {
         ffi::StashKind::I32Vec(result) => assert_eq!(result, &vec![-100i32, 0i32, 100i32]),
         _ => panic!("Expected I32Vec"),
@@ -201,7 +201,7 @@ fn to_stash_i32() {
 fn vec_to_f64_u8() {
     let values: Vec<u8> = vec![10, 20, 30];
     let storage: ffi::Stash = values.into();
-    let result = IntegerKind::U8.vec_to_f64(&storage).unwrap();
+    let result = IntegerCodec::U8.vec_to_f64(&storage).unwrap();
     assert_eq!(result, vec![10.0, 20.0, 30.0]);
 }
 
@@ -209,6 +209,6 @@ fn vec_to_f64_u8() {
 fn vec_to_f64_i32() {
     let values: Vec<i32> = vec![-100, 0, 100];
     let storage: ffi::Stash = values.into();
-    let result = IntegerKind::I32.vec_to_f64(&storage).unwrap();
+    let result = IntegerCodec::I32.vec_to_f64(&storage).unwrap();
     assert_eq!(result, vec![-100.0, 0.0, 100.0]);
 }

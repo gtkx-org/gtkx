@@ -3,9 +3,9 @@ use libffi::middle as libffi;
 use super::prelude::*;
 
 #[derive(Debug, Clone, Copy)]
-pub struct VoidDescriptor;
+pub struct VoidCodec;
 
-impl FfiEncoder for VoidDescriptor {
+impl Encoder for VoidCodec {
     fn encode(&self, _value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
         Ok(ffi::StashedValue::Ptr(std::ptr::null_mut()))
     }
@@ -25,13 +25,13 @@ impl FfiEncoder for VoidDescriptor {
     }
 }
 
-impl FfiDecoder for VoidDescriptor {
+impl Decoder for VoidCodec {
     unsafe fn read(&self, _src: ReadSource<'_>) -> anyhow::Result<value::Value> {
         Ok(value::Value::Undefined)
     }
 }
 
-impl PointerWriter for VoidDescriptor {
+impl PointerWriter for VoidCodec {
     unsafe fn write_return_to_pointer(&self, _ret: *mut c_void, _value: &Result<value::Value, ()>) {
     }
 }

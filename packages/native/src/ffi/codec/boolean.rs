@@ -1,25 +1,25 @@
 use glib::translate::IntoGlib as _;
 use libffi::middle as libffi;
 
-use super::numeric::IntegerKind;
+use super::numeric::IntegerCodec;
 use super::prelude::*;
 
-const WIRE_KIND: IntegerKind = IntegerKind::I32;
+const WIRE_KIND: IntegerCodec = IntegerCodec::I32;
 
 #[derive(Debug, Clone, Copy)]
-pub struct BooleanDescriptor;
+pub struct BooleanCodec;
 
-impl FfiEncoder for BooleanDescriptor {
+impl Encoder for BooleanCodec {
     fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
         let boolean = match value {
             value::Value::Boolean(b) => *b,
-            _ => anyhow::bail!("Expected a Boolean for boolean descriptor, got {value:?}"),
+            _ => anyhow::bail!("Expected a Boolean for boolean codec, got {value:?}"),
         };
         Ok(ffi::StashedValue::I32(boolean.into_glib()))
     }
 
     fn libffi_type(&self) -> libffi::Type {
-        FfiEncoder::libffi_type(&WIRE_KIND)
+        Encoder::libffi_type(&WIRE_KIND)
     }
 
     fn call_cif(
@@ -28,11 +28,11 @@ impl FfiEncoder for BooleanDescriptor {
         ptr: libffi::CodePtr,
         args: &[libffi::Arg],
     ) -> anyhow::Result<ffi::StashedValue> {
-        FfiEncoder::call_cif(&WIRE_KIND, cif, ptr, args)
+        Encoder::call_cif(&WIRE_KIND, cif, ptr, args)
     }
 }
 
-impl FfiDecoder for BooleanDescriptor {
+impl Decoder for BooleanCodec {
     unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
         match src {
             ReadSource::Call(stashed_value) => {
@@ -53,7 +53,7 @@ impl FfiDecoder for BooleanDescriptor {
     }
 }
 
-impl PointerWriter for BooleanDescriptor {
+impl PointerWriter for BooleanCodec {
     unsafe fn write_return_to_pointer(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         let val = f64::from(u8::from(matches!(value, Ok(value::Value::Boolean(true)))));
         unsafe { WIRE_KIND.write_return_widened(ret, val) };

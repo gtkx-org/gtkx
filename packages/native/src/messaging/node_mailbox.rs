@@ -10,7 +10,7 @@ use super::{
     WakeJsTsfn, send_or_report,
 };
 use crate::ffi::value::{JsRef, Value};
-use crate::handle::wrapper_registry::WrapperRefOp;
+use crate::handle::wrapper::WrapperRefOp;
 use crate::messaging::panic_handler::format_panic_payload;
 
 fn node_channel_disconnected<R>() -> anyhow::Result<R> {

@@ -133,6 +133,7 @@ export type BoxedOptions = {
     sharedLibrary: string | undefined;
     getTypeFn: string;
     callerAllocated: boolean;
+    size: number | undefined;
 };
 
 export const tBoxed = (glibName: string, options: BoxedOptions): string =>
@@ -145,6 +146,7 @@ export const tBoxed = (glibName: string, options: BoxedOptions): string =>
                 : `sharedLibrary: ${sourceStringLiteral(options.sharedLibrary)}`,
             `getTypeFn: ${sourceStringLiteral(options.getTypeFn)}`,
             options.callerAllocated ? "callerAllocated: true" : undefined,
+            options.size === undefined ? undefined : `size: ${options.size}`,
         ]),
     ]);
 

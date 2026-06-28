@@ -3,8 +3,9 @@ use libffi::middle as libffi;
 
 use super::prelude::*;
 
-#[derive(Debug, Clone, Copy)]
-pub enum IntegerKind {
+#[derive(Debug, Clone, Copy, strum::IntoStaticStr)]
+#[strum(serialize_all = "lowercase")]
+pub enum IntegerCodec {
     U8,
     I8,
     U16,
@@ -15,19 +16,19 @@ pub enum IntegerKind {
     I64,
 }
 
-macro_rules! impl_integer_kind_dispatch {
-    ($($variant:ident : $descriptor:ident : $vec_variant:ident),+ $(,)?) => {
-        impl IntegerKind {
+macro_rules! impl_integer_codec_dispatch {
+    ($($variant:ident : $codec:ident),+ $(,)?) => {
+        impl IntegerCodec {
             pub fn ffi_type(self) -> libffi::Type {
                 match self {
-                    $(Self::$variant => libffi::Type::$descriptor()),+
+                    $(Self::$variant => libffi::Type::$codec()),+
                 }
             }
 
             pub unsafe fn read_ptr(self, ptr: *const u8) -> f64 {
                 unsafe {
                     match self {
-                        $(Self::$variant => ptr.cast::<$descriptor>().read_unaligned() as f64),+
+                        $(Self::$variant => ptr.cast::<$codec>().read_unaligned() as f64),+
                     }
                 }
             }
@@ -35,14 +36,14 @@ macro_rules! impl_integer_kind_dispatch {
             pub unsafe fn write_ptr(self, ptr: *mut u8, value: f64) {
                 unsafe {
                     match self {
-                        $(Self::$variant => ptr.cast::<$descriptor>().write_unaligned(value as $descriptor)),+
+                        $(Self::$variant => ptr.cast::<$codec>().write_unaligned(value as $codec)),+
                     }
                 }
             }
 
             pub fn to_stashed_value(self, value: f64) -> ffi::StashedValue {
                 match self {
-                    $(Self::$variant => ffi::StashedValue::$variant(value as $descriptor)),+
+                    $(Self::$variant => ffi::StashedValue::$variant(value as $codec)),+
                 }
             }
 
@@ -50,7 +51,7 @@ macro_rules! impl_integer_kind_dispatch {
                 unsafe {
                     match self {
                         $(Self::$variant => {
-                            std::slice::from_raw_parts(ptr.cast::<$descriptor>(), length)
+                            std::slice::from_raw_parts(ptr.cast::<$codec>(), length)
                                 .iter()
                                 .map(|&v| v as f64)
                                 .collect()
@@ -62,7 +63,7 @@ macro_rules! impl_integer_kind_dispatch {
             pub fn to_stash(self, values: &[f64]) -> ffi::Stash {
                 match self {
                     $(Self::$variant => {
-                        values.iter().map(|&v| v as $descriptor).collect::<Vec<_>>().into()
+                        values.iter().map(|&v| v as $codec).collect::<Vec<_>>().into()
                     }),+
                 }
             }
@@ -75,18 +76,27 @@ macro_rules! impl_integer_kind_dispatch {
             ) -> ffi::StashedValue {
                 unsafe {
                     match self {
-                        $(Self::$variant => ffi::StashedValue::$variant(cif.call::<$descriptor>(ptr, args))),+
+                        $(Self::$variant => ffi::StashedValue::$variant(cif.call::<$codec>(ptr, args))),+
                     }
                 }
             }
         }
     };
 }
-with_integer_kinds!(impl_integer_kind_dispatch);
+impl_integer_codec_dispatch! {
+    U8: u8,
+    I8: i8,
+    U16: u16,
+    I16: i16,
+    U32: u32,
+    I32: i32,
+    U64: u64,
+    I64: i64,
+}
 
 macro_rules! impl_numeric_codecs {
     ($kind:ty, $label:literal, $ptr_to_value:item) => {
-        impl FfiEncoder for $kind {
+        impl Encoder for $kind {
             fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
                 let number = Self::number_from_value(value)?;
                 self.checked_to_stashed_value(number)
@@ -110,7 +120,7 @@ macro_rules! impl_numeric_codecs {
             $ptr_to_value
         }
 
-        impl FfiDecoder for $kind {
+        impl Decoder for $kind {
             unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
                 match src {
                     ReadSource::Call(stashed_value) => Ok(value::Value::Number(stashed_value.to_number()?)),
@@ -162,13 +172,13 @@ pub(super) const MAX_SAFE_INTEGER: f64 = MAX_SAFE_INTEGER_I128 as f64;
 pub fn lossless_f64(value: i128, context: &str) -> anyhow::Result<f64> {
     if !(-MAX_SAFE_INTEGER_I128..=MAX_SAFE_INTEGER_I128).contains(&value) {
         bail!(
-            "{context}: value {value} exceeds the 2^53 range JavaScript numbers represent exactly; use a bigint descriptor (t.bigint64/t.biguint64) for this slot"
+            "{context}: value {value} exceeds the 2^53 range JavaScript numbers represent exactly; use a bigint codec (t.bigint64/t.biguint64) for this slot"
         );
     }
     Ok(value as f64)
 }
 
-impl IntegerKind {
+impl IntegerCodec {
     pub fn byte_size(self) -> usize {
         match self {
             Self::U8 | Self::I8 => 1,
@@ -179,15 +189,16 @@ impl IntegerKind {
     }
 
     fn check_range(self, value: f64) -> anyhow::Result<()> {
-        let (min, max, name) = match self {
-            Self::I8 => (i8::MIN as f64, i8::MAX as f64, "i8"),
-            Self::U8 => (0.0, u8::MAX as f64, "u8"),
-            Self::I16 => (i16::MIN as f64, i16::MAX as f64, "i16"),
-            Self::U16 => (0.0, u16::MAX as f64, "u16"),
-            Self::I32 => (i32::MIN as f64, i32::MAX as f64, "i32"),
-            Self::U32 => (0.0, u32::MAX as f64, "u32"),
-            Self::I64 => (-MAX_SAFE_INTEGER, MAX_SAFE_INTEGER, "i64"),
-            Self::U64 => (0.0, MAX_SAFE_INTEGER, "u64"),
+        let name: &'static str = (&self).into();
+        let (min, max) = match self {
+            Self::I8 => (i8::MIN as f64, i8::MAX as f64),
+            Self::U8 => (0.0, u8::MAX as f64),
+            Self::I16 => (i16::MIN as f64, i16::MAX as f64),
+            Self::U16 => (0.0, u16::MAX as f64),
+            Self::I32 => (i32::MIN as f64, i32::MAX as f64),
+            Self::U32 => (0.0, u32::MAX as f64),
+            Self::I64 => (-MAX_SAFE_INTEGER, MAX_SAFE_INTEGER),
+            Self::U64 => (0.0, MAX_SAFE_INTEGER),
         };
         if !value.is_finite() || value.fract() != 0.0 || value < min || value > max {
             bail!("Value {value} is out of range for {name} [{min}, {max}]");
@@ -265,7 +276,7 @@ impl IntegerKind {
             value::Value::Number(n) => Ok(*n),
             value::Value::Object(handle) => Ok(handle.ptr_as_usize() as f64),
             value::Value::Null | value::Value::Undefined => Ok(0.0),
-            _ => bail!("Expected a Number for integer descriptor, got {value:?}"),
+            _ => bail!("Expected a Number for integer codec, got {value:?}"),
         }
     }
 
@@ -286,20 +297,21 @@ impl IntegerKind {
 }
 
 impl_numeric_codecs!(
-    IntegerKind,
+    IntegerCodec,
     "integer",
     unsafe fn ptr_to_value(&self, ptr: *mut c_void, context: &str) -> anyhow::Result<value::Value> {
         self.ptr_to_value_raw(ptr, context)
     }
 );
 
-impl From<IntegerKind> for libffi::Type {
-    fn from(kind: IntegerKind) -> Self {
+impl From<IntegerCodec> for libffi::Type {
+    fn from(kind: IntegerCodec) -> Self {
         kind.ffi_type()
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, strum::IntoStaticStr)]
+#[strum(serialize_all = "lowercase")]
 pub enum FloatKind {
     F32,
     F64,
@@ -335,7 +347,8 @@ impl FloatKind {
         match self {
             Self::F32 => {
                 if value.is_finite() && (value > f32::MAX as f64 || value < -(f32::MAX as f64)) {
-                    bail!("Value {value} is out of range for f32");
+                    let name: &'static str = (&self).into();
+                    bail!("Value {value} is out of range for {name}");
                 }
                 Ok(ffi::StashedValue::F32(value as f32))
             }
@@ -400,86 +413,5 @@ impl_numeric_codecs!(
 impl From<FloatKind> for libffi::Type {
     fn from(kind: FloatKind) -> Self {
         kind.ffi_type()
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum EnumFlagsKind {
-    Enum,
-    Flags,
-}
-
-#[derive(Debug, Clone)]
-pub struct EnumFlagsDescriptor {
-    pub kind: EnumFlagsKind,
-    pub shared_library: String,
-    pub get_type_fn: String,
-    pub storage: IntegerKind,
-}
-
-impl EnumFlagsDescriptor {
-    fn wire_kind(&self) -> IntegerKind {
-        self.storage
-    }
-
-    fn resolve_gtype(&self) -> anyhow::Result<glib::Type> {
-        crate::ffi::library_cache::GlibThreadState::with(|state| {
-            state.resolve_gtype(&self.shared_library, &self.get_type_fn)
-        })
-    }
-
-    fn validate_enum_value(&self, value: i32) {
-        let Ok(gtype) = self.resolve_gtype() else {
-            return;
-        };
-        let Some(enum_class) = glib::EnumClass::with_type(gtype) else {
-            return;
-        };
-        if enum_class.value(value).is_none() {
-            crate::messaging::error_reporter::ErrorReporter::global().report_str(&format!(
-                "Enum value {value} is not a valid member of {} (GType {gtype})",
-                self.get_type_fn
-            ));
-        }
-    }
-}
-
-impl FfiEncoder for EnumFlagsDescriptor {
-    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
-        let result = FfiEncoder::encode(&self.storage, value)?;
-        if self.kind == EnumFlagsKind::Enum
-            && let value::Value::Number(n) = value
-        {
-            self.validate_enum_value(*n as i32);
-        }
-        Ok(result)
-    }
-
-    integer_wire_encoder!(wire_kind);
-}
-
-impl FfiDecoder for EnumFlagsDescriptor {
-    unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
-        match src {
-            ReadSource::Call(stashed_value) => FfiDecoder::decode(&self.storage, stashed_value),
-            ReadSource::Value(ptr, context) => self.storage.ptr_to_value_raw(ptr, context),
-            ReadSource::Slot(ptr, _context) => Ok(value::Value::Number(unsafe {
-                self.storage.read_ptr(ptr as *const u8)
-            })),
-        }
-    }
-}
-
-impl PointerWriter for EnumFlagsDescriptor {
-    unsafe fn write_return_to_pointer(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
-        unsafe { PointerWriter::write_return_to_pointer(&self.storage, ret, value) };
-    }
-
-    unsafe fn write_value_to_pointer(
-        &self,
-        ptr: *mut c_void,
-        value: &value::Value,
-    ) -> anyhow::Result<()> {
-        unsafe { PointerWriter::write_value_to_pointer(&self.storage, ptr, value) }
     }
 }

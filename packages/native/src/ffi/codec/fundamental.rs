@@ -3,7 +3,7 @@ use crate::ffi::library_cache::GlibThreadState;
 use crate::handle::{Fundamental, RefFn, UnrefFn};
 
 #[derive(Debug, Clone)]
-pub struct FundamentalDescriptor {
+pub struct FundamentalCodec {
     pub ownership: Ownership,
     pub shared_library: String,
     pub ref_func: String,
@@ -11,7 +11,7 @@ pub struct FundamentalDescriptor {
     pub type_name: Option<String>,
 }
 
-impl FundamentalDescriptor {
+impl FundamentalCodec {
     pub fn lookup_fns(&self) -> anyhow::Result<(Option<RefFn>, Option<UnrefFn>)> {
         GlibThreadState::with(|state| {
             state.lookup_fundamental_fns(&self.shared_library, &self.ref_func, &self.unref_func)
@@ -29,7 +29,7 @@ impl FundamentalDescriptor {
     }
 }
 
-impl FfiEncoder for FundamentalDescriptor {
+impl Encoder for FundamentalCodec {
     fn object_ptr_context(&self) -> &'static str {
         "Fundamental"
     }
@@ -55,7 +55,7 @@ impl FfiEncoder for FundamentalDescriptor {
     }
 }
 
-impl FfiDecoder for FundamentalDescriptor {
+impl Decoder for FundamentalCodec {
     fn read_call(&self, stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
         let Some(ptr) = stashed_value.as_non_null_ptr("Fundamental")? else {
             return Ok(value::Value::Null);
@@ -72,7 +72,7 @@ impl FfiDecoder for FundamentalDescriptor {
     }
 }
 
-impl PointerWriter for FundamentalDescriptor {
+impl PointerWriter for FundamentalCodec {
     unsafe fn write_return_to_pointer(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         self.write_return_with_ownership(ret, value, self.ownership, |ptr| {
             match self.lookup_fns() {

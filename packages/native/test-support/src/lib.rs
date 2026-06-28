@@ -7,9 +7,9 @@ use gtk4::gdk;
 use gtk4::glib::{self, translate::IntoGlib as _};
 use gtk4::prelude::StaticType as _;
 
-use native::ffi::descriptor::{
-    ArrayDescriptor, ArrayKind, Codec, EnumFlagsDescriptor, EnumFlagsKind, FfiDecoder, FfiEncoder,
-    FloatKind, IntegerKind, Ownership, PointerWriter, ReadSource,
+use native::ffi::codec::{
+    ArrayCodec, ArrayKind, Codec, EnumFlagsCodec, EnumFlagsKind, Decoder, Encoder,
+    FloatKind, IntegerCodec, Ownership, PointerWriter, ReadSource,
 };
 use native::ffi::library_cache::GlibThreadState;
 use native::ffi::value::Value;
@@ -191,27 +191,27 @@ impl Drop for TestBoxed {
     }
 }
 
-pub fn assert_encode_null_yields_null_ptr<C: FfiEncoder>(codec: &C) {
+pub fn assert_encode_null_yields_null_ptr<C: Encoder>(codec: &C) {
     let encoded = codec
         .encode(&Value::Null)
         .expect("null encode should succeed");
     assert!(matches!(encoded, native::ffi::StashedValue::Ptr(p) if p.is_null()));
 }
 
-pub fn assert_decode_null_yields_null<C: FfiDecoder>(codec: &C) {
+pub fn assert_decode_null_yields_null<C: Decoder>(codec: &C) {
     let decoded = codec
         .decode(&native::ffi::StashedValue::Ptr(std::ptr::null_mut()))
         .expect("null decode should succeed");
     assert!(matches!(decoded, Value::Null));
 }
 
-pub fn assert_read_null_yields_null<C: FfiDecoder>(codec: &C) {
+pub fn assert_read_null_yields_null<C: Decoder>(codec: &C) {
     let value = unsafe { codec.read(ReadSource::Value(std::ptr::null_mut(), "ctx")) }
         .expect("null ptr_to_value should succeed");
     assert!(matches!(value, Value::Null));
 }
 
-pub unsafe fn read_slot<C: FfiDecoder>(codec: &C, ptr: *mut c_void) -> anyhow::Result<Value> {
+pub unsafe fn read_slot<C: Decoder>(codec: &C, ptr: *mut c_void) -> anyhow::Result<Value> {
     let slot: *mut c_void = ptr;
     unsafe {
         codec.read(ReadSource::Slot(
@@ -250,38 +250,42 @@ pub fn assert_write_return_err_writes_null<C: PointerWriter>(codec: &C) {
     assert!(slot.is_null());
 }
 
-pub fn i32_array_descriptor(size: usize) -> ArrayDescriptor {
-    ArrayDescriptor {
-        item_descriptor: Box::new(Codec::Integer(IntegerKind::I32)),
-        kind: ArrayKind::Fixed { size },
+pub fn i32_array_codec(size: u32) -> ArrayCodec {
+    ArrayCodec {
+        item_codec: Box::new(Codec::Integer(IntegerCodec::I32)),
+        kind: ArrayKind::Fixed,
         ownership: Ownership::Borrowed,
+        size_param_index: None,
+        fixed_size: Some(size),
         element_size: None,
     }
 }
 
-pub fn f32_array_descriptor() -> ArrayDescriptor {
-    ArrayDescriptor {
-        item_descriptor: Box::new(Codec::Float(FloatKind::F32)),
-        kind: ArrayKind::Sized { size_index: 1 },
+pub fn f32_array_codec() -> ArrayCodec {
+    ArrayCodec {
+        item_codec: Box::new(Codec::Float(FloatKind::F32)),
+        kind: ArrayKind::Sized,
         ownership: Ownership::Borrowed,
+        size_param_index: Some(1),
+        fixed_size: None,
         element_size: None,
     }
 }
 
-pub fn enum_descriptor() -> EnumFlagsDescriptor {
-    EnumFlagsDescriptor {
+pub fn enum_codec() -> EnumFlagsCodec {
+    EnumFlagsCodec {
         kind: EnumFlagsKind::Enum,
         shared_library: "libgtk-4.so.1".to_owned(),
         get_type_fn: "gtk_orientation_get_type".to_owned(),
-        storage: IntegerKind::I32,
+        storage: IntegerCodec::I32,
     }
 }
 
-pub fn flags_descriptor() -> EnumFlagsDescriptor {
-    EnumFlagsDescriptor {
+pub fn flags_codec() -> EnumFlagsCodec {
+    EnumFlagsCodec {
         kind: EnumFlagsKind::Flags,
         shared_library: "libgtk-4.so.1".to_owned(),
         get_type_fn: "gtk_state_flags_get_type".to_owned(),
-        storage: IntegerKind::U32,
+        storage: IntegerCodec::U32,
     }
 }

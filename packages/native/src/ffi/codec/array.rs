@@ -2,15 +2,16 @@ use std::ffi::{CString, c_char};
 use std::marker::PhantomData;
 
 use anyhow::bail;
+use napi_derive::napi;
 
 use super::prelude::*;
 use super::string::str_to_glib_full;
-use crate::ffi::arg::Arg;
-use crate::ffi::descriptor::{BigIntKind, Codec, FloatKind, IntegerKind};
+use crate::ffi::codec::{BigIntCodec, Codec, FloatKind, IntegerCodec};
 use crate::ffi::value::BufferViewKind;
-use crate::ffi::{Stash, StashKind};
+use crate::ffi::{Arg, Stash, StashKind};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[napi(string_enum = "lowercase")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ArrayKind {
     Array,
     GList,
@@ -18,39 +19,21 @@ pub enum ArrayKind {
     GPtrArray,
     GArray,
     GByteArray,
-    Sized { size_index: usize },
-    Fixed { size: usize },
-}
-
-impl std::str::FromStr for ArrayKind {
-    type Err = String;
-
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        match s {
-            "array" => Ok(Self::Array),
-            "glist" => Ok(Self::GList),
-            "gslist" => Ok(Self::GSList),
-            "gptrarray" => Ok(Self::GPtrArray),
-            "garray" => Ok(Self::GArray),
-            "gbytearray" => Ok(Self::GByteArray),
-            "sized" => Ok(Self::Sized { size_index: 0 }),
-            "fixed" => Ok(Self::Fixed { size: 0 }),
-            _ => Err(format!(
-                "'arrayKind' must be 'array', 'glist', 'gslist', 'gptrarray', 'garray', 'gbytearray', 'sized', or 'fixed'; got '{s}'"
-            )),
-        }
-    }
+    Sized,
+    Fixed,
 }
 
 #[derive(Debug, Clone)]
-pub struct ArrayDescriptor {
-    pub item_descriptor: Box<Codec>,
+pub struct ArrayCodec {
+    pub item_codec: Box<Codec>,
     pub kind: ArrayKind,
     pub ownership: Ownership,
+    pub size_param_index: Option<u32>,
+    pub fixed_size: Option<u32>,
     pub element_size: Option<usize>,
 }
 
-impl FfiEncoder for ArrayDescriptor {
+impl Encoder for ArrayCodec {
     fn encode(&self, val: &value::Value) -> anyhow::Result<ffi::StashedValue> {
         let array = match val {
             value::Value::Array(arr) => arr,
@@ -58,7 +41,7 @@ impl FfiEncoder for ArrayDescriptor {
             value::Value::Null | value::Value::Undefined => {
                 return Ok(ffi::StashedValue::Ptr(std::ptr::null_mut()));
             }
-            _ => bail!("Expected an Array for array descriptor, got {val:?}"),
+            _ => bail!("Expected an Array for array codec, got {val:?}"),
         };
 
         if self.kind == ArrayKind::GByteArray {
@@ -89,7 +72,7 @@ impl FfiEncoder for ArrayDescriptor {
             ItemCodec::Boolean => Ok(Self::encode_boolean_array(&Self::extract_booleans(array)?)),
             ItemCodec::String => {
                 let dup_elements =
-                    matches!(&*self.item_descriptor, Codec::String(s) if s.ownership.is_full());
+                    matches!(&*self.item_codec, Codec::String(s) if s.ownership.is_full());
                 encoder.encode_strings(array, dup_elements, self.ownership)
             }
             ItemCodec::Pointer => {
@@ -114,20 +97,20 @@ impl FfiEncoder for ArrayDescriptor {
                     return Ok(ffi::StashedValue::Storage(buffer.into()));
                 }
 
-                encoder.encode_handles(&handles, &self.item_descriptor, self.ownership)
+                encoder.encode_handles(&handles, &self.item_codec, self.ownership)
             }
         }
     }
 }
 
-impl FfiDecoder for ArrayDescriptor {
+impl Decoder for ArrayCodec {
     fn read_call(&self, stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
         match &self.kind {
             ArrayKind::GList | ArrayKind::GSList => return self.decode_glist(stashed_value),
             ArrayKind::GArray => return self.decode_garray(stashed_value),
             ArrayKind::GPtrArray => return self.decode_gptrarray(stashed_value),
             ArrayKind::GByteArray => return self.decode_gbytearray(stashed_value),
-            ArrayKind::Array | ArrayKind::Sized { .. } | ArrayKind::Fixed { .. } => {}
+            ArrayKind::Array | ArrayKind::Sized | ArrayKind::Fixed => {}
         }
 
         if let ffi::StashedValue::Ptr(ptr) = stashed_value {
@@ -166,7 +149,7 @@ impl FfiDecoder for ArrayDescriptor {
                 for i in 0..len {
                     let item_ptr = unsafe { *pdata.add(i) };
                     let item_value = unsafe {
-                        self.item_descriptor
+                        self.item_codec
                             .read(ReadSource::Value(item_ptr, "GPtrArray item"))?
                     };
                     values.push(item_value);
@@ -185,7 +168,7 @@ impl FfiDecoder for ArrayDescriptor {
                 let stashed_value = ffi::StashedValue::Ptr(ptr);
                 self.decode_glist(&stashed_value)
             }
-            ArrayKind::Array | ArrayKind::Sized { .. } | ArrayKind::Fixed { .. } => {
+            ArrayKind::Array | ArrayKind::Sized | ArrayKind::Fixed => {
                 let stashed_value = ffi::StashedValue::Ptr(ptr);
                 self.decode(&stashed_value)
             }
@@ -196,11 +179,14 @@ impl FfiDecoder for ArrayDescriptor {
         &self,
         stashed_value: &ffi::StashedValue,
         ffi_args: &[ffi::StashedValue],
-        args: &[crate::ffi::arg::Arg],
+        args: &[crate::ffi::Arg],
     ) -> anyhow::Result<value::Value> {
-        match &self.kind {
-            ArrayKind::Sized { size_index } => {
-                let length = Self::size_from_args(ffi_args, args, *size_index)?;
+        match self.kind {
+            ArrayKind::Sized => {
+                let size_index = self
+                    .size_param_index
+                    .ok_or_else(|| anyhow::anyhow!("A sized array requires a sizeParamIndex"))?;
+                let length = Self::size_from_args(ffi_args, args, size_index as usize)?;
 
                 if let ffi::StashedValue::Ptr(ptr) = stashed_value {
                     if ptr.is_null() {
@@ -210,13 +196,17 @@ impl FfiDecoder for ArrayDescriptor {
                     return self.decode_sized_array(*ptr, length);
                 }
             }
-            ArrayKind::Fixed { size } => {
+            ArrayKind::Fixed => {
+                let size = self
+                    .fixed_size
+                    .ok_or_else(|| anyhow::anyhow!("A fixed array requires a fixedSize"))?;
+
                 if let ffi::StashedValue::Ptr(ptr) = stashed_value {
                     if ptr.is_null() {
                         return Ok(value::Value::Array(vec![]));
                     }
 
-                    return self.decode_sized_array(*ptr, *size);
+                    return self.decode_sized_array(*ptr, size as usize);
                 }
             }
             ArrayKind::Array
@@ -231,7 +221,7 @@ impl FfiDecoder for ArrayDescriptor {
     }
 }
 
-impl PointerWriter for ArrayDescriptor {
+impl PointerWriter for ArrayCodec {
     unsafe fn write_return_to_pointer(
         &self,
         ret: *mut c_void,
@@ -244,9 +234,9 @@ impl PointerWriter for ArrayDescriptor {
 
 #[derive(Debug, Clone, Copy)]
 enum ItemCodec {
-    Integer(IntegerKind),
-    EnumFlags(IntegerKind),
-    BigInt(BigIntKind),
+    Integer(IntegerCodec),
+    EnumFlags(IntegerCodec),
+    BigInt(BigIntCodec),
     Float(FloatKind),
     Boolean,
     Pointer,
@@ -254,8 +244,8 @@ enum ItemCodec {
 }
 
 impl ItemCodec {
-    fn resolve(item_descriptor: &Codec) -> Option<Self> {
-        Some(match item_descriptor {
+    fn resolve(item_codec: &Codec) -> Option<Self> {
+        Some(match item_codec {
             Codec::Integer(kind) => Self::Integer(*kind),
             Codec::EnumFlags(enum_flags) => Self::EnumFlags(enum_flags.storage),
             Codec::BigInt(kind) => Self::BigInt(*kind),
@@ -279,24 +269,24 @@ impl ItemCodec {
         match self {
             Self::Integer(kind) | Self::EnumFlags(kind) => matches!(
                 (kind, view_kind),
-                (IntegerKind::I8, BufferViewKind::Int8)
+                (IntegerCodec::I8, BufferViewKind::Int8)
                     | (
-                        IntegerKind::U8,
+                        IntegerCodec::U8,
                         BufferViewKind::Uint8 | BufferViewKind::Uint8Clamped
                     )
-                    | (IntegerKind::I16, BufferViewKind::Int16)
-                    | (IntegerKind::U16, BufferViewKind::Uint16)
-                    | (IntegerKind::I32, BufferViewKind::Int32)
-                    | (IntegerKind::U32, BufferViewKind::Uint32)
-                    | (IntegerKind::I64, BufferViewKind::BigInt64)
-                    | (IntegerKind::U64, BufferViewKind::BigUint64)
+                    | (IntegerCodec::I16, BufferViewKind::Int16)
+                    | (IntegerCodec::U16, BufferViewKind::Uint16)
+                    | (IntegerCodec::I32, BufferViewKind::Int32)
+                    | (IntegerCodec::U32, BufferViewKind::Uint32)
+                    | (IntegerCodec::I64, BufferViewKind::BigInt64)
+                    | (IntegerCodec::U64, BufferViewKind::BigUint64)
             ),
             Self::Float(FloatKind::F32) => view_kind == BufferViewKind::Float32,
             Self::Float(FloatKind::F64) => view_kind == BufferViewKind::Float64,
             Self::BigInt(kind) => matches!(
                 (kind, view_kind),
-                (BigIntKind::I64, BufferViewKind::BigInt64)
-                    | (BigIntKind::U64, BufferViewKind::BigUint64)
+                (BigIntCodec::I64, BufferViewKind::BigInt64)
+                    | (BigIntCodec::U64, BufferViewKind::BigUint64)
             ),
             Self::Boolean | Self::Pointer | Self::String => false,
         }
@@ -367,7 +357,7 @@ trait ArrayKindEncoder {
     fn encode_handles(
         &self,
         handles: &[crate::handle::Handle],
-        item_descriptor: &Codec,
+        item_codec: &Codec,
         ownership: Ownership,
     ) -> anyhow::Result<ffi::StashedValue>;
 }
@@ -399,7 +389,7 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
                 ))
             }
             (Ownership::Full, false) => {
-                let cstrings = ArrayDescriptor::extract_strings(array)?;
+                let cstrings = ArrayCodec::extract_strings(array)?;
                 let mut ptrs: Vec<*mut c_void> =
                     cstrings.iter().map(|s| s.as_ptr() as *mut c_void).collect();
                 ptrs.push(std::ptr::null_mut());
@@ -424,10 +414,10 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
     fn encode_handles(
         &self,
         handles: &[crate::handle::Handle],
-        item_descriptor: &Codec,
+        item_codec: &Codec,
         ownership: Ownership,
     ) -> anyhow::Result<ffi::StashedValue> {
-        let (mut ptrs, acquired) = transfer_elements(handles, item_descriptor, "array")?;
+        let (mut ptrs, acquired) = transfer_elements(handles, item_codec, "array")?;
         ptrs.push(std::ptr::null_mut());
 
         if ownership.is_full() {
@@ -460,7 +450,7 @@ fn string_list_parts(
     if dup_elements {
         Ok((Vec::new(), dup_strings_to_glib(array)?))
     } else {
-        let cstrings = ArrayDescriptor::extract_strings(array)?;
+        let cstrings = ArrayCodec::extract_strings(array)?;
         let ptrs = cstrings.iter().map(|s| s.as_ptr() as *mut c_void).collect();
         Ok((cstrings, ptrs))
     }
@@ -490,7 +480,7 @@ fn group_with_container(
 
 fn transfer_elements(
     handles: &[crate::handle::Handle],
-    item_descriptor: &Codec,
+    item_codec: &Codec,
     container_label: &str,
 ) -> anyhow::Result<(Vec<*mut c_void>, Vec<ffi::PendingTransfer>)> {
     let mut ptrs = Vec::with_capacity(handles.len() + 1);
@@ -501,14 +491,14 @@ fn transfer_elements(
             release_acquired(acquired);
             bail!("GObject in {container_label} has a null pointer");
         }
-        let element = match unsafe { item_descriptor.ref_for_transfer(ptr) } {
+        let element = match unsafe { item_codec.ref_for_transfer(ptr) } {
             Ok(element) => element,
             Err(e) => {
                 release_acquired(acquired);
                 return Err(e);
             }
         };
-        if let Some(release) = item_descriptor.transfer_release() {
+        if let Some(release) = item_codec.transfer_release() {
             acquired.push(ffi::PendingTransfer::new(element, release));
         }
         ptrs.push(element);
@@ -559,11 +549,11 @@ impl<F: ffi::ListFlavor> ArrayKindEncoder for ListEncoder<F> {
     fn encode_handles(
         &self,
         handles: &[crate::handle::Handle],
-        item_descriptor: &Codec,
+        item_codec: &Codec,
         ownership: Ownership,
     ) -> anyhow::Result<ffi::StashedValue> {
         let should_free = ownership.is_borrowed();
-        let (ptrs, acquired) = transfer_elements(handles, item_descriptor, F::LABEL)?;
+        let (ptrs, acquired) = transfer_elements(handles, item_codec, F::LABEL)?;
         let list = build_spine::<F>(&ptrs);
         let storage = Stash::new(
             list as *mut c_void,
@@ -586,14 +576,15 @@ impl<F: ffi::ListFlavor> ArrayKindEncoder for ListEncoder<F> {
     }
 }
 
-impl ArrayDescriptor {
+impl ArrayCodec {
     fn checked_f32_vec(values: &[f64]) -> anyhow::Result<Vec<f32>> {
         values
             .iter()
             .enumerate()
             .map(|(i, &v)| {
                 if v.is_finite() && (v > f32::MAX as f64 || v < -(f32::MAX as f64)) {
-                    bail!("Array element {i}: value {v} is out of range for f32");
+                    let name: &'static str = (&FloatKind::F32).into();
+                    bail!("Array element {i}: value {v} is out of range for {name}");
                 }
                 Ok(v as f32)
             })
@@ -602,7 +593,7 @@ impl ArrayDescriptor {
 
     fn encode_integer_array(
         values: &[f64],
-        integer_kind: IntegerKind,
+        integer_kind: IntegerCodec,
     ) -> anyhow::Result<ffi::StashedValue> {
         Ok(ffi::StashedValue::Storage(
             integer_kind.checked_to_stash(values)?,
@@ -666,15 +657,12 @@ impl ArrayDescriptor {
     }
 
     fn item_element_size(&self) -> Option<usize> {
-        ItemCodec::resolve(&self.item_descriptor).map(ItemCodec::element_size)
+        ItemCodec::resolve(&self.item_codec).map(ItemCodec::element_size)
     }
 
     fn item_codec(&self, context: &str) -> anyhow::Result<ItemCodec> {
-        ItemCodec::resolve(&self.item_descriptor).ok_or_else(|| {
-            anyhow::anyhow!(
-                "Unsupported {context} item descriptor: {:?}",
-                self.item_descriptor
-            )
+        ItemCodec::resolve(&self.item_codec).ok_or_else(|| {
+            anyhow::anyhow!("Unsupported {context} item codec: {:?}", self.item_codec)
         })
     }
 
@@ -720,10 +708,7 @@ impl ArrayDescriptor {
                 let ptrs = unsafe { std::slice::from_raw_parts(data.cast::<*mut c_void>(), len) };
                 return ptrs
                     .iter()
-                    .map(|&item_ptr| {
-                        self.item_descriptor
-                            .decode(&ffi::StashedValue::Ptr(item_ptr))
-                    })
+                    .map(|&item_ptr| self.item_codec.decode(&ffi::StashedValue::Ptr(item_ptr)))
                     .collect();
             }
         };
@@ -740,10 +725,13 @@ impl ArrayDescriptor {
             "A transfer-full array argument cannot be encoded from an ArrayBufferView: the callee would free the JavaScript buffer"
         );
         match self.kind {
-            ArrayKind::Array | ArrayKind::Sized { .. } => {}
-            ArrayKind::Fixed { size } => {
+            ArrayKind::Array | ArrayKind::Sized => {}
+            ArrayKind::Fixed => {
+                let size = self
+                    .fixed_size
+                    .ok_or_else(|| anyhow::anyhow!("A fixed array requires a fixedSize"))?;
                 anyhow::ensure!(
-                    view.length() == size,
+                    view.length() == size as usize,
                     "Expected a view of exactly {size} elements for a fixed-size array, got {}",
                     view.length()
                 );
@@ -764,7 +752,7 @@ impl ArrayDescriptor {
             codec.accepts_buffer_view(view.kind()),
             "A {} cannot supply {} array elements",
             view.kind(),
-            self.item_descriptor
+            self.item_codec
         );
         Ok(ffi::StashedValue::Ptr(view.ptr()))
     }
@@ -809,7 +797,7 @@ impl ArrayDescriptor {
 
     fn append_integer_values_to_garray(
         g_array: *mut glib::ffi::GArray,
-        integer_kind: super::IntegerKind,
+        integer_kind: super::IntegerCodec,
         array: &[value::Value],
     ) -> anyhow::Result<()> {
         let mut buf = [0u8; size_of::<i64>()];
@@ -824,7 +812,7 @@ impl ArrayDescriptor {
 
     fn append_bigint_values_to_garray(
         g_array: *mut glib::ffi::GArray,
-        kind: super::BigIntKind,
+        kind: super::BigIntCodec,
         array: &[value::Value],
     ) -> anyhow::Result<()> {
         let mut buf = [0u8; size_of::<i64>()];
@@ -868,7 +856,7 @@ impl ArrayDescriptor {
         array: &[value::Value],
     ) -> anyhow::Result<Vec<ffi::PendingTransfer>> {
         let handles = Self::extract_handles(array)?;
-        let (ptrs, acquired) = transfer_elements(&handles, &self.item_descriptor, "GArray")?;
+        let (ptrs, acquired) = transfer_elements(&handles, &self.item_codec, "GArray")?;
         for ptr in ptrs {
             unsafe {
                 glib::ffi::g_array_append_vals(
@@ -911,7 +899,7 @@ impl ArrayDescriptor {
             ItemCodec::Pointer => self.append_handle_values_to_garray(g_array, array),
             ItemCodec::String => {
                 let callee_adopts_strings =
-                    matches!(&*self.item_descriptor, Codec::String(s) if s.ownership.is_full());
+                    matches!(&*self.item_codec, Codec::String(s) if s.ownership.is_full());
                 if !callee_adopts_strings {
                     unsafe {
                         glib::ffi::g_array_set_clear_func(
@@ -942,8 +930,8 @@ impl ArrayDescriptor {
         let item_size = self.item_element_size();
         let element_size = self.element_size.or(item_size).ok_or_else(|| {
             anyhow::anyhow!(
-                "Cannot determine element size for GArray with item descriptor {:?}",
-                self.item_descriptor
+                "Cannot determine element size for GArray with item codec {:?}",
+                self.item_codec
             )
         })?;
 
@@ -951,8 +939,8 @@ impl ArrayDescriptor {
             && element_size != item_size
         {
             bail!(
-                "GArray element size override {element_size} does not match the {item_size}-byte layout of item descriptor {:?}",
-                self.item_descriptor
+                "GArray element size override {element_size} does not match the {item_size}-byte layout of item codec {:?}",
+                self.item_codec
             );
         }
 
@@ -993,7 +981,7 @@ impl ArrayDescriptor {
     }
 }
 
-impl ArrayDescriptor {
+impl ArrayCodec {
     pub(crate) fn decode_glist(
         &self,
         stashed_value: &ffi::StashedValue,
@@ -1008,7 +996,7 @@ impl ArrayDescriptor {
             while !current.is_null() {
                 let data = unsafe { (*current).data };
                 let item_ffi = ffi::StashedValue::Ptr(data);
-                values.push(self.item_descriptor.decode(&item_ffi)?);
+                values.push(self.item_codec.decode(&item_ffi)?);
                 current = unsafe { (*current).next };
             }
             Ok(values)
@@ -1060,8 +1048,7 @@ impl ArrayDescriptor {
         let values: anyhow::Result<Vec<value::Value>> = (0..len)
             .map(|i| {
                 let item_ptr = unsafe { *pdata.add(i) };
-                self.item_descriptor
-                    .decode(&ffi::StashedValue::Ptr(item_ptr))
+                self.item_codec.decode(&ffi::StashedValue::Ptr(item_ptr))
             })
             .collect();
 
@@ -1114,7 +1101,7 @@ impl ArrayDescriptor {
                     break;
                 }
                 let item_ffi = ffi::StashedValue::Ptr(item_ptr);
-                values.push(self.item_descriptor.decode(&item_ffi)?);
+                values.push(self.item_codec.decode(&item_ffi)?);
                 i += 1;
             }
             Ok(values)
@@ -1153,7 +1140,7 @@ impl ArrayDescriptor {
     }
 
     fn decode_null_terminated_string_array(&self, ptr: *mut c_void) -> value::Value {
-        let items_full = matches!(&*self.item_descriptor, Codec::String(string_descriptor) if string_descriptor.ownership.is_full());
+        let items_full = matches!(&*self.item_codec, Codec::String(string_codec) if string_codec.ownership.is_full());
 
         let read_strv = |items: &[glib::GStringPtr]| {
             items
@@ -1273,8 +1260,8 @@ impl ArrayDescriptor {
         let ffi_arg = &ffi_args[size_index];
         let arg = &args[size_index];
 
-        if let Codec::Ref(ref_descriptor) = &arg.descriptor
-            && let Codec::Integer(integer_kind) = &*ref_descriptor.inner_descriptor
+        if let Codec::Ref(ref_codec) = &arg.codec
+            && let Codec::Integer(integer_kind) = &*ref_codec.inner_codec
         {
             match ffi_arg {
                 ffi::StashedValue::Storage(storage) => {
@@ -1289,7 +1276,7 @@ impl ArrayDescriptor {
             }
         }
 
-        if let Codec::Integer(_) = &arg.descriptor
+        if let Codec::Integer(_) = &arg.codec
             && let Ok(num) = ffi_arg.to_number()
         {
             return Self::validated_size(num, size_index);
@@ -1298,7 +1285,7 @@ impl ArrayDescriptor {
         bail!(
             "Could not extract size from parameter at index {}: expected Ref<Integer> or Integer, got type {:?} with ffi value {:?}",
             size_index,
-            arg.descriptor,
+            arg.codec,
             ffi_arg
         );
     }

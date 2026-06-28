@@ -13,12 +13,12 @@ pub fn str_to_glib_full(s: &str) -> anyhow::Result<*mut c_char> {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct StringDescriptor {
+pub struct StringCodec {
     pub ownership: Ownership,
     pub length: Option<usize>,
 }
 
-impl FfiEncoder for StringDescriptor {
+impl Encoder for StringCodec {
     fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
         match value {
             value::Value::String(s) => {
@@ -40,12 +40,12 @@ impl FfiEncoder for StringDescriptor {
             value::Value::Null | value::Value::Undefined => {
                 Ok(ffi::StashedValue::Ptr(std::ptr::null_mut()))
             }
-            _ => bail!("Expected a String for string descriptor, got {value:?}"),
+            _ => bail!("Expected a String for string codec, got {value:?}"),
         }
     }
 }
 
-impl FfiDecoder for StringDescriptor {
+impl Decoder for StringCodec {
     fn read_call(&self, stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
         let Some(str_ptr) = stashed_value.as_non_null_ptr("string")? else {
             return Ok(value::Value::Null);
@@ -68,7 +68,7 @@ impl FfiDecoder for StringDescriptor {
     }
 }
 
-impl PointerWriter for StringDescriptor {
+impl PointerWriter for StringCodec {
     unsafe fn write_return_to_pointer(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         let ptr = match value {
             Ok(value::Value::String(s)) => {

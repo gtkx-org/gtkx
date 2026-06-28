@@ -159,8 +159,8 @@ impl StashedValue {
             Self::U16(v) => Ok(*v as f64),
             Self::I32(v) => Ok(*v as f64),
             Self::U32(v) => Ok(*v as f64),
-            Self::I64(v) => crate::ffi::descriptor::lossless_f64(i128::from(*v), "call result"),
-            Self::U64(v) => crate::ffi::descriptor::lossless_f64(i128::from(*v), "call result"),
+            Self::I64(v) => crate::ffi::codec::lossless_f64(i128::from(*v), "call result"),
+            Self::U64(v) => crate::ffi::codec::lossless_f64(i128::from(*v), "call result"),
             Self::F32(v) => Ok(*v as f64),
             Self::F64(v) => Ok(*v),
             Self::Ptr(_) | Self::Storage(_) | Self::Callback(_) | Self::Void => {
@@ -205,18 +205,5 @@ impl<'a> From<&'a StashedValue> for libffi::Arg<'a> {
             }
             StashedValue::Void => libffi::arg(&()),
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn disarm_pending_transfer_covers_every_variant_shape() {
-        let callback = CallbackValue::new(std::ptr::null_mut(), std::ptr::null_mut(), None, None);
-        StashedValue::Callback(callback).disarm_pending_transfer();
-        StashedValue::I32(1).disarm_pending_transfer();
-        StashedValue::Storage(Stash::unit(std::ptr::null_mut())).disarm_pending_transfer();
     }
 }

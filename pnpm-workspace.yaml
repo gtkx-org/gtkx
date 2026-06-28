@@ -1,7 +1,6 @@
 packages:
   - .
   - packages/*
-  - packages/native/npm/*
   - examples/*
 
 minimumReleaseAge: 1440

@@ -2,9 +2,7 @@ use std::ffi::c_void;
 
 use libffi::middle;
 use native::ffi;
-use native::ffi::descriptor::{
-    BooleanDescriptor, FfiDecoder, FfiEncoder, PointerWriter, ReadSource,
-};
+use native::ffi::codec::{BooleanCodec, Decoder, Encoder, PointerWriter, ReadSource};
 use native::ffi::value::Value;
 
 extern "C" fn ret_true() -> i32 {
@@ -17,20 +15,20 @@ extern "C" fn ret_false() -> i32 {
 
 #[test]
 fn encode_accepts_boolean_and_rejects_other() {
-    let encoded = FfiEncoder::encode(&BooleanDescriptor, &Value::Boolean(true)).unwrap();
+    let encoded = Encoder::encode(&BooleanCodec, &Value::Boolean(true)).unwrap();
     assert!(matches!(encoded, ffi::StashedValue::I32(1)));
 
-    let encoded_false = FfiEncoder::encode(&BooleanDescriptor, &Value::Boolean(false)).unwrap();
+    let encoded_false = Encoder::encode(&BooleanCodec, &Value::Boolean(false)).unwrap();
     assert!(matches!(encoded_false, ffi::StashedValue::I32(0)));
 
-    let err = FfiEncoder::encode(&BooleanDescriptor, &Value::Number(1.0));
+    let err = Encoder::encode(&BooleanCodec, &Value::Number(1.0));
     assert!(err.is_err());
 }
 
 #[test]
 fn libffi_type_is_i32() {
     assert_eq!(
-        FfiEncoder::libffi_type(&BooleanDescriptor).as_raw_ptr(),
+        Encoder::libffi_type(&BooleanCodec).as_raw_ptr(),
         middle::Type::i32().as_raw_ptr()
     );
 }
@@ -39,8 +37,8 @@ fn libffi_type_is_i32() {
 fn call_cif_invokes_native_function() {
     let cif = middle::Cif::new(Vec::new(), middle::Type::i32());
 
-    let truthy = FfiEncoder::call_cif(
-        &BooleanDescriptor,
+    let truthy = Encoder::call_cif(
+        &BooleanCodec,
         &cif,
         middle::CodePtr(ret_true as *mut c_void),
         &[],
@@ -48,8 +46,8 @@ fn call_cif_invokes_native_function() {
     .unwrap();
     assert!(matches!(truthy, ffi::StashedValue::I32(1)));
 
-    let falsy = FfiEncoder::call_cif(
-        &BooleanDescriptor,
+    let falsy = Encoder::call_cif(
+        &BooleanCodec,
         &cif,
         middle::CodePtr(ret_false as *mut c_void),
         &[],
@@ -60,21 +58,21 @@ fn call_cif_invokes_native_function() {
 
 #[test]
 fn decode_reads_i32_and_rejects_other() {
-    let decoded = FfiDecoder::decode(&BooleanDescriptor, &ffi::StashedValue::I32(1)).unwrap();
+    let decoded = Decoder::decode(&BooleanCodec, &ffi::StashedValue::I32(1)).unwrap();
     assert!(matches!(decoded, Value::Boolean(true)));
 
-    let decoded_zero = FfiDecoder::decode(&BooleanDescriptor, &ffi::StashedValue::I32(0)).unwrap();
+    let decoded_zero = Decoder::decode(&BooleanCodec, &ffi::StashedValue::I32(0)).unwrap();
     assert!(matches!(decoded_zero, Value::Boolean(false)));
 
-    assert!(FfiDecoder::decode(&BooleanDescriptor, &ffi::StashedValue::Void).is_err());
+    assert!(Decoder::decode(&BooleanCodec, &ffi::StashedValue::Void).is_err());
 }
 
 #[test]
 fn ptr_to_value_treats_nonzero_as_true() {
     let anchor: u8 = 0;
     let truthy = unsafe {
-        FfiDecoder::read(
-            &BooleanDescriptor,
+        Decoder::read(
+            &BooleanCodec,
             ReadSource::Value(&anchor as *const u8 as *mut c_void, "ctx"),
         )
     }
@@ -82,8 +80,8 @@ fn ptr_to_value_treats_nonzero_as_true() {
     assert!(matches!(truthy, Value::Boolean(true)));
 
     let falsy = unsafe {
-        FfiDecoder::read(
-            &BooleanDescriptor,
+        Decoder::read(
+            &BooleanCodec,
             ReadSource::Value(std::ptr::null_mut(), "ctx"),
         )
     }
@@ -95,15 +93,14 @@ fn ptr_to_value_treats_nonzero_as_true() {
 fn read_from_pointer_reads_i32_slot() {
     let truthy_slot: i32 = 1;
     let truthy_ptr = &truthy_slot as *const i32 as *const c_void;
-    let read = unsafe { FfiDecoder::read(&BooleanDescriptor, ReadSource::Slot(truthy_ptr, "ctx")) }
-        .unwrap();
+    let read =
+        unsafe { Decoder::read(&BooleanCodec, ReadSource::Slot(truthy_ptr, "ctx")) }.unwrap();
     assert!(matches!(read, Value::Boolean(true)));
 
     let falsy_slot: i32 = 0;
     let falsy_ptr = &falsy_slot as *const i32 as *const c_void;
     let read_zero =
-        unsafe { FfiDecoder::read(&BooleanDescriptor, ReadSource::Slot(falsy_ptr, "ctx")) }
-            .unwrap();
+        unsafe { Decoder::read(&BooleanCodec, ReadSource::Slot(falsy_ptr, "ctx")) }.unwrap();
     assert!(matches!(read_zero, Value::Boolean(false)));
 }
 
@@ -113,16 +110,16 @@ fn write_return_to_pointer_writes_truthiness() {
     let ret = &mut slot as *mut i64 as *mut c_void;
 
     unsafe {
-        PointerWriter::write_return_to_pointer(&BooleanDescriptor, ret, &Ok(Value::Boolean(true)));
+        PointerWriter::write_return_to_pointer(&BooleanCodec, ret, &Ok(Value::Boolean(true)));
     }
     assert_eq!(slot, 1);
 
     unsafe {
-        PointerWriter::write_return_to_pointer(&BooleanDescriptor, ret, &Ok(Value::Boolean(false)));
+        PointerWriter::write_return_to_pointer(&BooleanCodec, ret, &Ok(Value::Boolean(false)));
     }
     assert_eq!(slot, 0);
 
-    unsafe { PointerWriter::write_return_to_pointer(&BooleanDescriptor, ret, &Err(())) };
+    unsafe { PointerWriter::write_return_to_pointer(&BooleanCodec, ret, &Err(())) };
     assert_eq!(slot, 0);
 }
 
@@ -131,22 +128,16 @@ fn write_value_to_pointer_writes_boolean_and_rejects_other() {
     let mut slot: i32 = -1;
     let ptr = &mut slot as *mut i32 as *mut c_void;
 
-    unsafe {
-        PointerWriter::write_value_to_pointer(&BooleanDescriptor, ptr, &Value::Boolean(true))
-    }
-    .unwrap();
+    unsafe { PointerWriter::write_value_to_pointer(&BooleanCodec, ptr, &Value::Boolean(true)) }
+        .unwrap();
     assert_eq!(slot, 1);
 
-    unsafe {
-        PointerWriter::write_value_to_pointer(&BooleanDescriptor, ptr, &Value::Boolean(false))
-    }
-    .unwrap();
+    unsafe { PointerWriter::write_value_to_pointer(&BooleanCodec, ptr, &Value::Boolean(false)) }
+        .unwrap();
     assert_eq!(slot, 0);
 
     assert!(
-        unsafe {
-            PointerWriter::write_value_to_pointer(&BooleanDescriptor, ptr, &Value::Number(1.0))
-        }
-        .is_err()
+        unsafe { PointerWriter::write_value_to_pointer(&BooleanCodec, ptr, &Value::Number(1.0)) }
+            .is_err()
     );
 }

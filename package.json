@@ -14,7 +14,7 @@
         "coverage": "turbo run coverage:all @gtkx/native#coverage --filter=!gtkx",
         "coverage:all": "vitest run --coverage --project=!gtk-demo",
         "lint": "turbo run lint:all lint --filter=!gtkx",
-        "lint:all": "pnpm check:ts-refs && pnpm --filter @gtkx/cli check:env && pnpm lint:biome && pnpm lint:knip && pnpm lint:knip:prod && pnpm lint:deps",
+        "lint:all": "pnpm check:ts-refs && pnpm -C packages/cli check:env && pnpm lint:biome && pnpm lint:knip && pnpm lint:knip:prod && pnpm lint:deps",
         "lint:biome": "biome check .",
         "lint:deps": "depcruise packages",
         "lint:knip": "knip --no-gitignore --exclude files",

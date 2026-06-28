@@ -7,24 +7,22 @@ use std::ffi::{CStr, CString, c_char, c_void};
 use gtk4::glib;
 
 use native::ffi;
-use native::ffi::descriptor::{
-    FfiDecoder, FfiEncoder, Ownership, PointerWriter, ReadSource, StringDescriptor,
-};
+use native::ffi::codec::{Decoder, Encoder, Ownership, PointerWriter, ReadSource, StringCodec};
 use native::ffi::value::Value;
 
 use helpers::{
     assert_decode_null_yields_null, assert_read_null_yields_null, read_slot, write_return_into_slot,
 };
 
-fn borrowed() -> StringDescriptor {
-    StringDescriptor {
+fn borrowed() -> StringCodec {
+    StringCodec {
         ownership: Ownership::Borrowed,
         length: None,
     }
 }
 
-fn full() -> StringDescriptor {
-    StringDescriptor {
+fn full() -> StringCodec {
+    StringCodec {
         ownership: Ownership::Full,
         length: None,
     }
@@ -95,6 +93,9 @@ fn decode_borrowed_reads_string() {
             .decode(&ffi::StashedValue::Ptr(cstring.as_ptr() as *mut c_void))
             .expect("borrowed decode should succeed");
         assert!(matches!(decoded, Value::String(s) if s == "decoded"));
+
+        let still_valid = unsafe { CStr::from_ptr(cstring.as_ptr()) };
+        assert_eq!(still_valid.to_str().unwrap(), "decoded");
     });
 }
 

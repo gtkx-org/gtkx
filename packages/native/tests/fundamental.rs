@@ -99,25 +99,6 @@ fn from_glib_none_null_ptr_safe() {
 }
 
 #[test]
-fn clone_increases_refcount() {
-    let ptr = create_param_spec();
-    let initial_ref = param_spec_refcount(ptr);
-
-    let fundamental =
-        Fundamental::from_glib_full(ptr, Some(param_spec_ref), Some(param_spec_unref));
-
-    let cloned = fundamental.clone();
-
-    assert_eq!(param_spec_refcount(ptr), initial_ref + 1);
-    assert_eq!(cloned.as_ptr(), ptr);
-
-    drop(cloned);
-    assert_eq!(param_spec_refcount(ptr), initial_ref);
-
-    drop(fundamental);
-}
-
-#[test]
 fn clone_null_ptr_safe() {
     let fundamental: Fundamental = unsafe {
         Fundamental::from_glib_none(
@@ -175,6 +156,7 @@ fn multiple_clones_maintain_correct_refcount() {
 
     let clone1 = fundamental.clone();
     assert_eq!(param_spec_refcount(ptr), initial_ref + 1);
+    assert_eq!(clone1.as_ptr(), ptr);
 
     let clone2 = fundamental.clone();
     assert_eq!(param_spec_refcount(ptr), initial_ref + 2);

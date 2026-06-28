@@ -11,7 +11,8 @@ use napi_derive::napi;
 
 use super::Request;
 use crate::ffi::callback::{CallbackState, build_trampoline};
-use crate::ffi::descriptor::{Codec, Descriptor};
+use crate::ffi::codec::Codec;
+use crate::ffi::descriptor::Descriptor;
 use crate::ffi::value::JsRef;
 use crate::messaging::error_reporter::ErrorReporter;
 
@@ -396,69 +397,5 @@ pub mod napi_export {
         }
         .dispatch_output(env)?;
         Ok(BigInt::from(gtype))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::sync::atomic::{AtomicUsize, Ordering};
-
-    use gtk4::prelude::StaticType as _;
-
-    use super::*;
-
-    const POINTER_ALIGN: usize = 8;
-    const POINTER_SIZE: usize = 8;
-
-    static TYPE_COUNTER: AtomicUsize = AtomicUsize::new(0);
-
-    fn unique_name(prefix: &str) -> glib::GString {
-        let id = TYPE_COUNTER.fetch_add(1, Ordering::Relaxed);
-        glib::GString::from_string_checked(format!("{prefix}{id}")).unwrap()
-    }
-
-    fn object_parent_gtype() -> glib::Type {
-        glib::Object::static_type()
-    }
-
-    #[test]
-    fn execute_registers_a_new_gtype() {
-        let request = RegisterClassRequest {
-            name: unique_name("GtkxTestExecuteType"),
-            parent_gtype: object_parent_gtype(),
-            vfuncs: vec![],
-            interfaces: vec![],
-        };
-        let gtype = request.execute().expect("registration should succeed");
-        assert_ne!(gtype, 0);
-    }
-
-    #[test]
-    fn error_context_is_register_class() {
-        assert_eq!(RegisterClassRequest::error_context(), "register_class");
-    }
-
-    #[test]
-    fn validate_vfunc_offset_accepts_aligned_offset_within_class() {
-        let result = RegisterClassRequest::validate_vfunc_offset(
-            16,
-            POINTER_ALIGN,
-            POINTER_SIZE,
-            Some(64),
-            "vfunc",
-        );
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn validate_vfunc_offset_accepts_offset_when_class_size_unknown() {
-        let result = RegisterClassRequest::validate_vfunc_offset(
-            64,
-            POINTER_ALIGN,
-            POINTER_SIZE,
-            None,
-            "interface vfunc",
-        );
-        assert!(result.is_ok());
     }
 }

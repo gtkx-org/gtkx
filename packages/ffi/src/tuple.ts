@@ -13,11 +13,13 @@ export const splitTupleResult = (
     outCount: number,
 ): { primary: unknown; outValues: unknown[] } => {
     if (hasPrimary) {
-        const tuple = result as unknown[];
-        return { primary: tuple[0], outValues: tuple.slice(1) };
+        if (Array.isArray(result)) {
+            return { primary: result[0], outValues: result.slice(1) };
+        }
+        return { primary: result, outValues: [] };
     }
     if (outCount === 1) {
         return { primary: undefined, outValues: [result] };
     }
-    return { primary: undefined, outValues: result as unknown[] };
+    return { primary: undefined, outValues: Array.isArray(result) ? result : [] };
 };

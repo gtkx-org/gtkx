@@ -68,18 +68,6 @@ fn extra_referenced_decoded_gobject() -> (glib::Object, *mut glib::gobject_ffi::
 }
 
 #[test]
-fn borrowed_gobject_handle_records_pointer() {
-    helpers::run(|| {
-        let obj = glib::Object::new::<glib::Object>();
-        let expected = obj.as_ptr() as usize;
-
-        let handle = Handle::borrowed_gobject(obj.as_ptr() as *mut c_void);
-
-        assert_eq!(handle.ptr_as_usize(), expected);
-    });
-}
-
-#[test]
 fn from_native_value_boxed_records_pointer() {
     helpers::run(|| {
         let (boxed, ptr) = helpers::owned_rgba_boxed();
@@ -110,6 +98,9 @@ fn borrowed_handle_has_no_owned_value() {
     let debug_str = format!("{handle:?}");
     assert!(debug_str.contains("Handle"));
     assert!(debug_str.contains("owned: false"));
+
+    let moved = handle;
+    assert_eq!(moved.ptr(), raw);
 }
 
 #[test]

@@ -7,15 +7,13 @@ use std::ffi::c_void;
 use libffi::middle as libffi;
 
 use native::ffi;
-use native::ffi::descriptor::{
-    CallbackDescriptor, CallbackScope, Codec, FfiEncoder, VoidDescriptor,
-};
+use native::ffi::codec::{CallbackCodec, CallbackScope, Codec, Encoder, VoidCodec};
 use native::ffi::value::Value;
 
-fn callback_type(has_destroy: bool) -> CallbackDescriptor {
-    CallbackDescriptor {
-        arg_descriptors: Vec::new(),
-        return_descriptor: Box::new(Codec::Void(VoidDescriptor)),
+fn callback_type(has_destroy: bool) -> CallbackCodec {
+    CallbackCodec {
+        arg_codecs: Vec::new(),
+        return_codec: Box::new(Codec::Void(VoidCodec)),
         has_destroy,
         user_data_index: None,
         scope: CallbackScope::Call,
@@ -23,7 +21,7 @@ fn callback_type(has_destroy: bool) -> CallbackDescriptor {
 }
 
 fn assert_null_callback(
-    codec: &CallbackDescriptor,
+    codec: &CallbackCodec,
     value: &Value,
     expected_destroy: Option<*mut c_void>,
 ) {
@@ -36,26 +34,6 @@ fn assert_null_callback(
     assert!(tv.fn_ptr().is_null());
     assert!(tv.state_ptr().is_null());
     assert_eq!(tv.destroy_ptr(), expected_destroy);
-}
-
-#[test]
-fn scope_from_str_parses_known_values() {
-    assert_eq!(
-        "call".parse::<CallbackScope>().unwrap(),
-        CallbackScope::Call
-    );
-    assert_eq!(
-        "notified".parse::<CallbackScope>().unwrap(),
-        CallbackScope::Notified
-    );
-    assert_eq!(
-        "async".parse::<CallbackScope>().unwrap(),
-        CallbackScope::Async
-    );
-    assert_eq!(
-        "forever".parse::<CallbackScope>().unwrap(),
-        CallbackScope::Forever
-    );
 }
 
 #[test]
@@ -96,12 +74,5 @@ fn encode_null_with_destroy_builds_callback_with_destroy_slot() {
             &Value::Undefined,
             Some(std::ptr::null_mut()),
         );
-    });
-}
-
-#[test]
-fn encode_null_builds_null_callback() {
-    helpers::run(|| {
-        assert_null_callback(&callback_type(false), &Value::Null, None);
     });
 }

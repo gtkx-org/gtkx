@@ -11,27 +11,24 @@ use gtk4::prelude::ObjectType as _;
 use gtk4::prelude::StaticType as _;
 
 use native::ffi;
-use native::ffi::descriptor::{
-    ArrayDescriptor, ArrayKind, BoxedDescriptor, Codec, FfiDecoder, ObjectDescriptor, Ownership,
-    StringDescriptor,
+use native::ffi::codec::{
+    ArrayCodec, ArrayKind, BoxedCodec, Codec, Decoder, ObjectCodec, Ownership, StringCodec,
 };
 use native::ffi::value::Value;
 
-use helpers::get_gobject_refcount;
-
 fn gobject_type_of(ownership: Ownership) -> Codec {
-    Codec::Object(ObjectDescriptor { ownership })
+    Codec::Object(ObjectCodec { ownership })
 }
 
 fn string_type_of(ownership: Ownership) -> Codec {
-    Codec::String(StringDescriptor {
+    Codec::String(StringCodec {
         ownership,
         length: None,
     })
 }
 
 fn rgba_boxed_type_of(ownership: Ownership) -> Codec {
-    Codec::Boxed(BoxedDescriptor {
+    Codec::Boxed(BoxedCodec {
         ownership,
         type_name: "GdkRGBA".to_string(),
         shared_library: None,
@@ -42,7 +39,7 @@ fn rgba_boxed_type_of(ownership: Ownership) -> Codec {
 }
 
 fn gvariant_fundamental_type_of(ownership: Ownership) -> Codec {
-    Codec::Fundamental(native::ffi::descriptor::FundamentalDescriptor {
+    Codec::Fundamental(native::ffi::codec::FundamentalCodec {
         ownership,
         shared_library: "libglib-2.0.so.0".to_string(),
         ref_func: "g_variant_ref_sink".to_string(),
@@ -51,54 +48,43 @@ fn gvariant_fundamental_type_of(ownership: Ownership) -> Codec {
     })
 }
 
-fn struct_type_of(ownership: Ownership, size: Option<usize>) -> Codec {
-    Codec::Struct(native::ffi::descriptor::StructDescriptor {
-        ownership,
-        size,
-        caller_allocated: false,
-    })
-}
-
 fn gobject_glist_type_of(container: Ownership) -> Codec {
-    Codec::Array(ArrayDescriptor {
-        item_descriptor: Box::new(gobject_type_of(Ownership::Borrowed)),
+    Codec::Array(ArrayCodec {
+        item_codec: Box::new(gobject_type_of(Ownership::Borrowed)),
         kind: ArrayKind::GList,
         ownership: container,
+        size_param_index: None,
+        fixed_size: None,
         element_size: None,
     })
 }
 
 fn string_array_type_of(item: Ownership, container: Ownership, kind: ArrayKind) -> Codec {
-    Codec::Array(ArrayDescriptor {
-        item_descriptor: Box::new(string_type_of(item)),
+    Codec::Array(ArrayCodec {
+        item_codec: Box::new(string_type_of(item)),
         kind,
         ownership: container,
+        size_param_index: None,
+        fixed_size: None,
         element_size: None,
     })
 }
 
-fn decode_ptr(descriptor: &Codec, ptr: *mut c_void) -> Value {
-    descriptor
+fn decode_ptr(codec: &Codec, ptr: *mut c_void) -> Value {
+    codec
         .decode(&ffi::StashedValue::Ptr(ptr))
         .expect("decode should succeed")
 }
 
-fn assert_null_ptr_decodes_to_null(descriptor: &Codec) {
+fn assert_null_ptr_decodes_to_null(codec: &Codec) {
     assert!(matches!(
-        decode_ptr(descriptor, std::ptr::null_mut()),
+        decode_ptr(codec, std::ptr::null_mut()),
         Value::Null
     ));
 }
 
-fn assert_ptr_decodes_to_string(descriptor: &Codec, ptr: *mut c_void, expected: &str) {
-    let Value::String(s) = decode_ptr(descriptor, ptr) else {
-        panic!("Expected Value::String");
-    };
-    assert_eq!(s, expected);
-}
-
-fn decode_array(descriptor: &Codec, ptr: *mut c_void) -> Vec<Value> {
-    let Value::Array(items) = decode_ptr(descriptor, ptr) else {
+fn decode_array(codec: &Codec, ptr: *mut c_void) -> Vec<Value> {
+    let Value::Array(items) = decode_ptr(codec, ptr) else {
         panic!("Expected Value::Array");
     };
     items
@@ -108,15 +94,6 @@ fn assert_string_item(items: &[Value], index: usize, expected: &str) {
     if let Some(Value::String(s)) = items.get(index) {
         assert_eq!(s, expected);
     }
-}
-
-fn new_referenced_gobject() -> (glib::Object, *mut glib::gobject_ffi::GObject) {
-    let obj = glib::Object::new::<glib::Object>();
-    let obj_ptr = obj.as_ptr();
-    unsafe {
-        glib::gobject_ffi::g_object_ref(obj_ptr);
-    }
-    (obj, obj_ptr)
 }
 
 fn new_gobject_handle() -> (glib::Object, *mut c_void, native::Handle) {
@@ -138,22 +115,6 @@ fn build_gobject_glist(count: usize) -> *mut glib::ffi::GList {
     list
 }
 
-fn scalar_slot_storage(value: &ffi::StashedValue) -> ffi::StashedValue {
-    let storage = ffi::Stash::from(vec![0u64]);
-    unsafe { value.write_scalar_to(storage.ptr()) }.expect("scalar payload should write");
-    ffi::StashedValue::Storage(storage)
-}
-
-fn assert_scalar_ref_decodes_to_number(inner: Codec, seeded: &ffi::StashedValue, expected: f64) {
-    let cif_value = scalar_slot_storage(seeded);
-    let type_ =
-        Codec::Ref(native::ffi::descriptor::RefDescriptor::new(inner).expect("valid Ref inner"));
-    let Value::Number(n) = type_.decode(&cif_value).expect("Ref decode failed") else {
-        panic!("Expected Value::Number");
-    };
-    assert_eq!(n, expected);
-}
-
 fn ptr_slot_storage(ptr: *mut c_void) -> ffi::StashedValue {
     let mut slot: Vec<*mut c_void> = vec![ptr];
     let storage_ptr = slot.as_mut_ptr() as *mut c_void;
@@ -163,161 +124,10 @@ fn ptr_slot_storage(ptr: *mut c_void) -> ffi::StashedValue {
     ))
 }
 
-fn assert_struct_alloc_decodes_to_object(ownership: Ownership, size: Option<usize>, bytes: usize) {
-    let struct_ptr = unsafe { glib::ffi::g_malloc0(bytes) };
-
-    let result = decode_ptr(&struct_type_of(ownership, size), struct_ptr);
-    assert!(
-        matches!(result, Value::Object(_)),
-        "Expected Value::Object for struct"
-    );
-
-    if ownership.is_borrowed() {
-        unsafe { glib::ffi::g_free(struct_ptr) };
-    }
-}
-
 fn assert_for_each(samples: Vec<Value>, predicate: impl Fn(&Value) -> bool) {
     for sample in samples {
         assert!(predicate(&sample), "predicate failed for {sample:?}");
     }
-}
-
-#[test]
-fn gobject_transfer_none_does_not_take_ownership() {
-    helpers::run(|| {
-        let obj = glib::Object::new::<glib::Object>();
-        let obj_ptr = obj.as_ptr();
-
-        let initial_ref = get_gobject_refcount(obj_ptr);
-
-        let result = decode_ptr(
-            &gobject_type_of(Ownership::Borrowed),
-            obj_ptr as *mut c_void,
-        );
-
-        assert_eq!(get_gobject_refcount(obj_ptr), initial_ref + 1);
-
-        drop(result);
-        assert_eq!(get_gobject_refcount(obj_ptr), initial_ref + 1);
-
-        unsafe { glib::gobject_ffi::g_object_unref(obj_ptr) };
-        assert_eq!(get_gobject_refcount(obj_ptr), initial_ref);
-    });
-}
-
-#[test]
-fn gobject_full_transfer_keeps_pending_reference() {
-    helpers::run(|| {
-        let (_obj, obj_ptr) = new_referenced_gobject();
-
-        let ref_before_transfer = get_gobject_refcount(obj_ptr);
-
-        let result = decode_ptr(&gobject_type_of(Ownership::Full), obj_ptr as *mut c_void);
-
-        assert_eq!(get_gobject_refcount(obj_ptr), ref_before_transfer);
-
-        drop(result);
-        assert_eq!(get_gobject_refcount(obj_ptr), ref_before_transfer);
-
-        unsafe { glib::gobject_ffi::g_object_unref(obj_ptr) };
-        assert_eq!(get_gobject_refcount(obj_ptr), ref_before_transfer - 1);
-    });
-}
-
-#[test]
-fn gobject_null_returns_null_value() {
-    helpers::run(|| {
-        assert_null_ptr_decodes_to_null(&gobject_type_of(Ownership::Full));
-    });
-}
-
-#[test]
-fn gobject_floating_ref_gets_sunk() {
-    helpers::run(|| {
-        let (_obj, obj_ptr) = new_referenced_gobject();
-
-        unsafe {
-            glib::gobject_ffi::g_object_force_floating(obj_ptr);
-        }
-
-        let is_floating_before = unsafe { glib::gobject_ffi::g_object_is_floating(obj_ptr) != 0 };
-        assert!(is_floating_before);
-
-        decode_ptr(&gobject_type_of(Ownership::Full), obj_ptr as *mut c_void);
-
-        let is_floating_after = unsafe { glib::gobject_ffi::g_object_is_floating(obj_ptr) != 0 };
-        assert!(!is_floating_after);
-    });
-}
-
-#[test]
-fn string_transfer_none_does_not_free() {
-    helpers::run(|| {
-        let test_string = "test string content";
-        let c_string = std::ffi::CString::new(test_string).unwrap();
-        let ptr = c_string.as_ptr() as *mut c_void;
-
-        assert_ptr_decodes_to_string(&string_type_of(Ownership::Borrowed), ptr, test_string);
-
-        let still_valid = unsafe { std::ffi::CStr::from_ptr(c_string.as_ptr()) };
-        assert_eq!(still_valid.to_str().unwrap(), test_string);
-    });
-}
-
-#[test]
-fn string_full_transfer_frees_memory() {
-    helpers::run(|| {
-        let test_string = "allocated string";
-        let c_string = std::ffi::CString::new(test_string).unwrap();
-        let allocated_ptr = unsafe { glib::ffi::g_strdup(c_string.as_ptr()) };
-
-        assert_ptr_decodes_to_string(
-            &string_type_of(Ownership::Full),
-            allocated_ptr as *mut c_void,
-            test_string,
-        );
-    });
-}
-
-#[test]
-fn string_null_returns_null_value() {
-    helpers::run(|| {
-        assert_null_ptr_decodes_to_null(&string_type_of(Ownership::Full));
-    });
-}
-
-#[test]
-fn boxed_transfer_none_creates_copy() {
-    helpers::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let original_ptr = helpers::allocate_test_boxed(gtype);
-
-        decode_ptr(&rgba_boxed_type_of(Ownership::Borrowed), original_ptr);
-
-        assert!(helpers::is_valid_boxed_ptr(original_ptr, gtype));
-
-        unsafe {
-            glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original_ptr);
-        }
-    });
-}
-
-#[test]
-fn boxed_full_transfer_takes_ownership() {
-    helpers::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let ptr = helpers::allocate_test_boxed(gtype);
-
-        decode_ptr(&rgba_boxed_type_of(Ownership::Full), ptr);
-    });
-}
-
-#[test]
-fn boxed_null_returns_null_value() {
-    helpers::run(|| {
-        assert_null_ptr_decodes_to_null(&rgba_boxed_type_of(Ownership::Full));
-    });
 }
 
 #[test]
@@ -447,56 +257,11 @@ fn from_cif_value_fundamental_null() {
 }
 
 #[test]
-fn from_cif_value_ref_integer() {
-    helpers::run(|| {
-        assert_scalar_ref_decodes_to_number(
-            Codec::Integer(native::ffi::descriptor::IntegerKind::I32),
-            &ffi::StashedValue::I32(12345),
-            12345.0,
-        );
-    });
-}
-
-#[test]
-fn from_cif_value_ref_float() {
-    helpers::run(|| {
-        assert_scalar_ref_decodes_to_number(
-            Codec::Float(native::ffi::descriptor::FloatKind::F64),
-            &ffi::StashedValue::F64(3.15625),
-            3.15625,
-        );
-    });
-}
-
-#[test]
-fn from_cif_value_ref_gobject() {
-    helpers::run(|| {
-        let obj = glib::Object::new::<glib::Object>();
-        let obj_ptr = obj.as_ptr() as *mut c_void;
-
-        let cif_value = ptr_slot_storage(obj_ptr);
-        let type_ = Codec::Ref(
-            native::ffi::descriptor::RefDescriptor::new(gobject_type_of(Ownership::Borrowed))
-                .expect("GObject is a valid Ref inner"),
-        );
-
-        let result = type_
-            .decode(&cif_value)
-            .expect("Ref<GObject> decode failed");
-        if let Value::Object(handle) = result {
-            assert_eq!(handle.ptr(), obj_ptr);
-        } else {
-            panic!("Expected Value::Object");
-        }
-    });
-}
-
-#[test]
 fn from_cif_value_ref_gobject_null_inner() {
     helpers::run(|| {
         let cif_value = ptr_slot_storage(std::ptr::null_mut());
         let type_ = Codec::Ref(
-            native::ffi::descriptor::RefDescriptor::new(gobject_type_of(Ownership::Borrowed))
+            native::ffi::codec::RefCodec::new(gobject_type_of(Ownership::Borrowed))
                 .expect("GObject is a valid Ref inner"),
         );
 
@@ -515,7 +280,7 @@ fn from_cif_value_ref_boxed() {
 
         let cif_value = ptr_slot_storage(boxed_ptr);
         let type_ = Codec::Ref(
-            native::ffi::descriptor::RefDescriptor::new(rgba_boxed_type_of(Ownership::Borrowed))
+            native::ffi::codec::RefCodec::new(rgba_boxed_type_of(Ownership::Borrowed))
                 .expect("Boxed is a valid Ref inner"),
         );
 
@@ -549,41 +314,6 @@ fn glist_with_string_items() {
         unsafe {
             glib::ffi::g_list_free(list);
         }
-    });
-}
-
-#[test]
-fn from_cif_value_struct_transfer_none_logs_warning() {
-    helpers::run(|| {
-        assert_struct_alloc_decodes_to_object(Ownership::Borrowed, Some(16), 16);
-    });
-}
-
-#[test]
-fn from_cif_value_struct_full_transfer() {
-    helpers::run(|| {
-        assert_struct_alloc_decodes_to_object(Ownership::Full, Some(32), 32);
-    });
-}
-
-#[test]
-fn from_cif_value_struct_null_returns_null_value() {
-    helpers::run(|| {
-        assert_null_ptr_decodes_to_null(&struct_type_of(Ownership::Borrowed, Some(16)));
-    });
-}
-
-#[test]
-fn from_cif_value_struct_transfer_none_without_size_creates_unowned() {
-    helpers::run(|| {
-        assert_struct_alloc_decodes_to_object(Ownership::Borrowed, None, 24);
-    });
-}
-
-#[test]
-fn from_cif_value_struct_owned_without_size() {
-    helpers::run(|| {
-        assert_struct_alloc_decodes_to_object(Ownership::Full, None, 24);
     });
 }
 
@@ -703,7 +433,7 @@ fn object_ptr_errors_for_non_object_variants() {
 fn decode_with_context_decodes_integer() {
     helpers::run(|| {
         let stashed_value = ffi::StashedValue::I32(99);
-        let type_ = Codec::Integer(native::ffi::descriptor::IntegerKind::I32);
+        let type_ = Codec::Integer(native::ffi::codec::IntegerCodec::I32);
 
         let result = type_.decode_with_context(&stashed_value, &[], &[]);
 

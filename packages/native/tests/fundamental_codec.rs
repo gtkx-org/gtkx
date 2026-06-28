@@ -7,8 +7,8 @@ use std::ffi::c_void;
 use gtk4::glib;
 
 use native::ffi;
-use native::ffi::descriptor::{
-    FfiDecoder, FfiEncoder, FundamentalDescriptor, Ownership, PointerWriter, ReadSource,
+use native::ffi::codec::{
+    Decoder, Encoder, FundamentalCodec, Ownership, PointerWriter, ReadSource,
 };
 use native::ffi::value::Value;
 use native::handle::Handle;
@@ -48,8 +48,8 @@ fn fundamental_with_fns(
     ownership: Ownership,
     ref_func: &str,
     unref_func: &str,
-) -> FundamentalDescriptor {
-    FundamentalDescriptor {
+) -> FundamentalCodec {
+    FundamentalCodec {
         ownership,
         shared_library: "libgobject-2.0.so.0".to_owned(),
         ref_func: ref_func.to_owned(),
@@ -58,29 +58,29 @@ fn fundamental_with_fns(
     }
 }
 
-fn fundamental(ownership: Ownership) -> FundamentalDescriptor {
+fn fundamental(ownership: Ownership) -> FundamentalCodec {
     fundamental_with_fns(ownership, "g_param_spec_ref", "g_param_spec_unref")
 }
 
-fn fundamental_without_ref_fn(ownership: Ownership) -> FundamentalDescriptor {
+fn fundamental_without_ref_fn(ownership: Ownership) -> FundamentalCodec {
     fundamental_with_fns(ownership, "", "")
 }
 
-fn fundamental_without_unref_fn(ownership: Ownership) -> FundamentalDescriptor {
+fn fundamental_without_unref_fn(ownership: Ownership) -> FundamentalCodec {
     fundamental_with_fns(ownership, "g_param_spec_ref", "")
 }
 
-fn fundamental_with_unresolvable_symbols(ownership: Ownership) -> FundamentalDescriptor {
+fn fundamental_with_unresolvable_symbols(ownership: Ownership) -> FundamentalCodec {
     fundamental_with_fns(ownership, "gtkx_cov_missing_ref", "gtkx_cov_missing_unref")
 }
 
-fn encode_param_spec(codec: &FundamentalDescriptor, pspec: *mut c_void) -> ffi::StashedValue {
+fn encode_param_spec(codec: &FundamentalCodec, pspec: *mut c_void) -> ffi::StashedValue {
     codec
         .encode(&Value::Object(Handle::borrowed(pspec)))
         .expect("encode should succeed")
 }
 
-fn assert_encode_returns_plain_pointer(codec: &FundamentalDescriptor, expected_extra_refs: u32) {
+fn assert_encode_returns_plain_pointer(codec: &FundamentalCodec, expected_extra_refs: u32) {
     let pspec = create_param_spec();
     let before = param_spec_refcount(pspec);
 
@@ -91,7 +91,7 @@ fn assert_encode_returns_plain_pointer(codec: &FundamentalDescriptor, expected_e
     release_param_spec_refs(pspec, expected_extra_refs + 1);
 }
 
-fn assert_ref_for_transfer(codec: &FundamentalDescriptor, expected_extra_refs: u32) {
+fn assert_ref_for_transfer(codec: &FundamentalCodec, expected_extra_refs: u32) {
     let pspec = create_param_spec();
     let before = param_spec_refcount(pspec);
 
@@ -103,7 +103,7 @@ fn assert_ref_for_transfer(codec: &FundamentalDescriptor, expected_extra_refs: u
     release_param_spec_refs(pspec, expected_extra_refs + 1);
 }
 
-fn assert_write_return_writes_pointer(codec: &FundamentalDescriptor, expected_extra_refs: u32) {
+fn assert_write_return_writes_pointer(codec: &FundamentalCodec, expected_extra_refs: u32) {
     let pspec = create_param_spec();
     let before = param_spec_refcount(pspec);
 
@@ -255,14 +255,6 @@ fn encode_full_without_ref_fn_keeps_pointer() {
         assert_encode_returns_plain_pointer(&fundamental_without_ref_fn(Ownership::Full), 0);
     });
 }
-
-#[test]
-fn write_return_to_pointer_without_ref_fn_writes_plain_pointer() {
-    helpers::run(|| {
-        assert_write_return_writes_pointer(&fundamental_without_ref_fn(Ownership::Borrowed), 0);
-    });
-}
-
 #[test]
 fn write_return_to_pointer_full_without_ref_fn_writes_plain_pointer() {
     helpers::run(|| {

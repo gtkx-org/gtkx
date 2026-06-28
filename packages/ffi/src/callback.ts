@@ -1,28 +1,20 @@
-import type { Descriptor } from "@gtkx/native";
+import { copy, type Descriptor } from "@gtkx/native";
 import { isCallerAllocatedType, isRefDescriptor } from "./arg.js";
 import { valueCopyInto } from "./gvalue.js";
 import { fromNativeValue, toNativeValue } from "./native-value.js";
 import { getHandle } from "./registry.js";
 import { splitTupleResult } from "./tuple.js";
 
-const copyBoxedFields = (target: object, source: object): void => {
-    let proto: object | null = Object.getPrototypeOf(target);
-    while (proto !== null && proto !== Object.prototype) {
-        for (const [key, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(proto))) {
-            if (descriptor.get !== undefined && descriptor.set !== undefined) {
-                (target as Record<string, unknown>)[key] = (source as Record<string, unknown>)[key];
-            }
-        }
-        proto = Object.getPrototypeOf(proto);
-    }
-};
-
 const fillCallerAllocatedBuffer = (descriptor: Descriptor, target: object, source: object): void => {
     if (descriptor.kind === "boxed" && descriptor.typeName === "GValue") {
         valueCopyInto(getHandle(target), getHandle(source));
         return;
     }
-    copyBoxedFields(target, source);
+    if ((descriptor.kind === "boxed" || descriptor.kind === "struct") && descriptor.size !== undefined) {
+        copy(getHandle(target), getHandle(source), descriptor.size);
+        return;
+    }
+    throw new Error(`Cannot write caller-allocated ${descriptor.kind} out-parameter: no known byte size`);
 };
 
 type CallbackReceiver = "this" | "emitter" | "none";
@@ -43,7 +35,6 @@ const partitionCallbackArgs = (
     effectiveTypes: Descriptor[],
     wrapped: unknown[],
     start: number,
-    receiver: CallbackReceiver,
 ): { inputs: unknown[]; outParams: OutParam[] } => {
     const inputs: unknown[] = [];
     const outParams: OutParam[] = [];
@@ -52,7 +43,8 @@ const partitionCallbackArgs = (
         if (descriptor !== undefined && isRefDescriptor(descriptor)) {
             if (descriptor.inout === true) inputs.push((wrapped[i] as { value: unknown }).value);
             outParams.push({ value: wrapped[i], descriptor });
-        } else if (descriptor !== undefined && isCallerAllocatedType(descriptor) && receiver === "this") {
+        } else if (descriptor !== undefined && isCallerAllocatedType(descriptor)) {
+            inputs.push(wrapped[i]);
             outParams.push({ value: wrapped[i], descriptor });
         } else {
             inputs.push(wrapped[i]);
@@ -80,7 +72,7 @@ export function wrapCallback(fn: UserCallback, spec: CallbackSpec, receiver: Cal
     return (...rawArgs: unknown[]): unknown => {
         const wrapped = effectiveTypes.map((descriptor, i) => fromNativeValue(descriptor, rawArgs[i]));
         const thisArg = receiver === "this" ? (wrapped[0] ?? null) : null;
-        const { inputs, outParams } = partitionCallbackArgs(effectiveTypes, wrapped, start, receiver);
+        const { inputs, outParams } = partitionCallbackArgs(effectiveTypes, wrapped, start);
         const result = (fn as (this: unknown, ...args: unknown[]) => unknown).apply(thisArg, inputs);
         if (outParams.length === 0) {
             return toNativeValue(returnDescriptor, result);

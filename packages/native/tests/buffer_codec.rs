@@ -2,11 +2,11 @@ use std::ffi::c_void;
 
 use libffi::middle;
 use native::ffi::StashedValue;
-use native::ffi::descriptor::{BufferDescriptor, Codec, FfiDecoder, FfiEncoder as _};
+use native::ffi::codec::{BufferCodec, Decoder, Encoder as _};
 use native::ffi::value::{BufferView, BufferViewKind, Value};
 
 fn encode(value: &Value) -> anyhow::Result<StashedValue> {
-    BufferDescriptor.encode(value)
+    BufferCodec.encode(value)
 }
 
 fn encoded_address(value: &Value) -> usize {
@@ -51,21 +51,19 @@ fn buffer_encodes_null_and_undefined_as_null() {
 
 #[test]
 fn buffer_cannot_be_decoded() {
-    assert!(FfiDecoder::decode(&BufferDescriptor, &StashedValue::Void).is_err());
+    assert!(Decoder::decode(&BufferCodec, &StashedValue::Void).is_err());
 }
 
 extern "C" fn ret_unit() {}
 
 #[test]
 fn buffer_cannot_be_a_return_type() {
-    assert!(!Codec::Buffer(BufferDescriptor).can_be_return());
-
     let cif = middle::Cif::new(Vec::new(), middle::Type::void());
-    let err = BufferDescriptor
+    let err = BufferCodec
         .call_cif(&cif, middle::CodePtr(ret_unit as *mut c_void), &[])
         .expect_err("a buffer return slot must fail");
     assert!(
         err.to_string()
-            .contains("Buffer descriptors cannot be return descriptors")
+            .contains("Buffer codec cannot be return codecs")
     );
 }

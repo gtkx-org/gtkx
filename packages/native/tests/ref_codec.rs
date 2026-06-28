@@ -7,16 +7,15 @@ use std::ffi::{CString, c_char, c_void};
 use gtk4::glib;
 use gtk4::prelude::ObjectType as _;
 
-use native::ffi::descriptor::{
-    ArrayDescriptor, ArrayKind, BooleanDescriptor, Codec, EnumFlagsDescriptor, EnumFlagsKind,
-    FfiDecoder, FloatKind, IntegerKind, ObjectDescriptor, Ownership, ReadSource, RefDescriptor,
-    StringDescriptor, UnicharDescriptor,
+use native::ffi::codec::{
+    ArrayCodec, ArrayKind, BooleanCodec, Codec, Decoder, EnumFlagsCodec, EnumFlagsKind, FloatKind,
+    IntegerCodec, ObjectCodec, Ownership, ReadSource, RefCodec, StringCodec, UnicharCodec,
 };
 use native::ffi::value::Value;
 use native::ffi::{self, Stash, StashKind};
 
-fn string_type() -> StringDescriptor {
-    StringDescriptor {
+fn string_type() -> StringCodec {
+    StringCodec {
         ownership: Ownership::Borrowed,
         length: None,
     }
@@ -28,30 +27,31 @@ fn ptr_storage(inner: *mut c_void) -> ffi::StashedValue {
     ffi::StashedValue::Storage(Stash::new(raw, StashKind::PtrStorage(slot)))
 }
 
-fn u8_array_ref_type() -> RefDescriptor {
-    RefDescriptor::new(Codec::Array(ArrayDescriptor {
-        item_descriptor: Box::new(Codec::Integer(IntegerKind::U8)),
+fn u8_array_ref_type() -> RefCodec {
+    RefCodec::new(Codec::Array(ArrayCodec {
+        item_codec: Box::new(Codec::Integer(IntegerCodec::U8)),
         kind: ArrayKind::Array,
         ownership: Ownership::Borrowed,
+        size_param_index: None,
+        fixed_size: None,
         element_size: None,
     }))
     .expect("Array is a valid Ref inner")
 }
 
-fn assert_array_decodes_empty(array_type: ArrayDescriptor, storage: &ffi::StashedValue) {
-    let ref_type =
-        RefDescriptor::new(Codec::Array(array_type)).expect("Array is a valid Ref inner");
+fn assert_array_decodes_empty(array_type: ArrayCodec, storage: &ffi::StashedValue) {
+    let ref_type = RefCodec::new(Codec::Array(array_type)).expect("Array is a valid Ref inner");
     let decoded = ref_type
         .decode_with_context(storage, &[], &[])
         .expect("array decode should succeed");
     assert!(matches!(decoded, Value::Array(arr) if arr.is_empty()));
 }
 
-fn with_i32_storage_ref(value: i32, f: impl FnOnce(&ffi::StashedValue, &RefDescriptor)) {
+fn with_i32_storage_ref(value: i32, f: impl FnOnce(&ffi::StashedValue, &RefCodec)) {
     let mut value = value;
     let slot = &mut value as *mut i32 as *mut c_void;
     let stashed_value = ffi::StashedValue::Storage(Stash::new(slot, StashKind::Unit));
-    let ref_type = RefDescriptor::new(Codec::Integer(IntegerKind::I32)).expect("valid Ref inner");
+    let ref_type = RefCodec::new(Codec::Integer(IntegerCodec::I32)).expect("valid Ref inner");
     f(&stashed_value, &ref_type);
 }
 
@@ -63,8 +63,7 @@ fn ptr_sized_malloc_storage() -> ffi::StashedValue {
 #[test]
 fn decode_rejects_non_storage_non_null_ptr() {
     helpers::run(|| {
-        let ref_type =
-            RefDescriptor::new(Codec::Integer(IntegerKind::I32)).expect("valid Ref inner");
+        let ref_type = RefCodec::new(Codec::Integer(IntegerCodec::I32)).expect("valid Ref inner");
         let result = ref_type.decode(&ffi::StashedValue::I32(7));
         assert!(result.is_err());
     });
@@ -73,8 +72,7 @@ fn decode_rejects_non_storage_non_null_ptr() {
 #[test]
 fn decode_null_ptr_yields_null() {
     helpers::run(|| {
-        let ref_type =
-            RefDescriptor::new(Codec::Integer(IntegerKind::I32)).expect("valid Ref inner");
+        let ref_type = RefCodec::new(Codec::Integer(IntegerCodec::I32)).expect("valid Ref inner");
         let decoded = ref_type
             .decode(&ffi::StashedValue::Ptr(std::ptr::null_mut()))
             .expect("null ptr decode should succeed");
@@ -101,13 +99,13 @@ fn decode_enum_flags_reads_number() {
         let slot = &mut value as *mut i32 as *mut c_void;
         let stashed_value = ffi::StashedValue::Storage(Stash::new(slot, StashKind::Unit));
 
-        let enum_flags = EnumFlagsDescriptor {
+        let enum_flags = EnumFlagsCodec {
             kind: EnumFlagsKind::Enum,
             shared_library: "libgobject-2.0.so.0".to_owned(),
             get_type_fn: "g_unused_get_type".to_owned(),
-            storage: IntegerKind::I32,
+            storage: IntegerCodec::I32,
         };
-        let ref_type = RefDescriptor::new(Codec::EnumFlags(enum_flags)).expect("valid Ref inner");
+        let ref_type = RefCodec::new(Codec::EnumFlags(enum_flags)).expect("valid Ref inner");
         let decoded = ref_type
             .decode(&stashed_value)
             .expect("enum/flags ref decode should succeed");
@@ -122,7 +120,7 @@ fn decode_float_reads_number() {
         let slot = &mut value as *mut f64 as *mut c_void;
         let stashed_value = ffi::StashedValue::Storage(Stash::new(slot, StashKind::Unit));
 
-        let ref_type = RefDescriptor::new(Codec::Float(FloatKind::F64)).expect("valid Ref inner");
+        let ref_type = RefCodec::new(Codec::Float(FloatKind::F64)).expect("valid Ref inner");
         let decoded = ref_type
             .decode(&stashed_value)
             .expect("float ref decode should succeed");
@@ -137,15 +135,18 @@ fn decode_gobject_delegates_to_inner_decoder() {
         let obj_ptr = obj.as_ptr() as *mut c_void;
         let storage = ptr_storage(obj_ptr);
 
-        let ref_type = RefDescriptor::new(Codec::Object(ObjectDescriptor {
+        let ref_type = RefCodec::new(Codec::Object(ObjectCodec {
             ownership: Ownership::Borrowed,
         }))
         .expect("GObject is a valid Ref inner");
         let decoded = ref_type
             .decode(&storage)
             .expect("gobject ref decode should succeed");
-        assert!(matches!(decoded, Value::Object(_)));
-        drop(decoded);
+        let Value::Object(handle) = decoded else {
+            panic!("expected Value::Object");
+        };
+        assert_eq!(handle.ptr(), obj_ptr);
+        drop(handle);
     });
 }
 
@@ -155,7 +156,7 @@ fn decode_string_reads_via_decode_ref_string() {
         let cstring = CString::new("ref-string").unwrap();
         let storage = ptr_storage(cstring.as_ptr() as *mut c_void);
 
-        let ref_type = RefDescriptor::new(Codec::String(string_type())).expect("valid Ref inner");
+        let ref_type = RefCodec::new(Codec::String(string_type())).expect("valid Ref inner");
         let decoded = ref_type
             .decode(&storage)
             .expect("string ref decode should succeed");
@@ -180,8 +181,7 @@ fn decode_boolean_reads_bool() {
         let slot = &mut value as *mut i32 as *mut c_void;
         let stashed_value = ffi::StashedValue::Storage(Stash::new(slot, StashKind::Unit));
 
-        let ref_type =
-            RefDescriptor::new(Codec::Boolean(BooleanDescriptor)).expect("valid Ref inner");
+        let ref_type = RefCodec::new(Codec::Boolean(BooleanCodec)).expect("valid Ref inner");
         let decoded = ref_type
             .decode(&stashed_value)
             .expect("boolean ref decode should succeed");
@@ -196,8 +196,7 @@ fn decode_unichar_reads_string() {
         let slot = &mut value as *mut u32 as *mut c_void;
         let stashed_value = ffi::StashedValue::Storage(Stash::new(slot, StashKind::Unit));
 
-        let ref_type =
-            RefDescriptor::new(Codec::Unichar(UnicharDescriptor)).expect("valid Ref inner");
+        let ref_type = RefCodec::new(Codec::Unichar(UnicharCodec)).expect("valid Ref inner");
         let decoded = ref_type
             .decode(&stashed_value)
             .expect("unichar ref decode should succeed");
@@ -212,7 +211,7 @@ fn decode_ref_string_buffer_kind_reads_directly() {
         let ptr = buffer.as_mut_ptr() as *mut c_void;
         let storage = ffi::StashedValue::Storage(Stash::new(ptr, StashKind::Buffer(buffer)));
 
-        let ref_type = RefDescriptor::new(Codec::String(string_type())).expect("valid Ref inner");
+        let ref_type = RefCodec::new(Codec::String(string_type())).expect("valid Ref inner");
         let decoded = ref_type
             .decode(&storage)
             .expect("buffer string ref decode should succeed");
@@ -224,7 +223,7 @@ fn decode_ref_string_buffer_kind_reads_directly() {
 fn decode_ref_string_null_storage_pointer_yields_null() {
     helpers::run(|| {
         let storage = ffi::StashedValue::Storage(Stash::new(std::ptr::null_mut(), StashKind::Unit));
-        let ref_type = RefDescriptor::new(Codec::String(string_type())).expect("valid Ref inner");
+        let ref_type = RefCodec::new(Codec::String(string_type())).expect("valid Ref inner");
         let decoded = ref_type
             .decode(&storage)
             .expect("null storage string ref decode should succeed");
@@ -237,7 +236,7 @@ fn decode_ref_string_null_inner_pointer_yields_null() {
     helpers::run(|| {
         let storage = ptr_storage(std::ptr::null_mut());
 
-        let ref_type = RefDescriptor::new(Codec::String(string_type())).expect("valid Ref inner");
+        let ref_type = RefCodec::new(Codec::String(string_type())).expect("valid Ref inner");
         let decoded = ref_type
             .decode(&storage)
             .expect("null inner string ref decode should succeed");
@@ -251,11 +250,11 @@ fn decode_ref_string_full_ownership_frees_pointer() {
         let owned = unsafe { glib::ffi::g_strdup(c"owned-ref".as_ptr()) };
         let storage = ptr_storage(owned as *mut c_void);
 
-        let full_string = StringDescriptor {
+        let full_string = StringCodec {
             ownership: Ownership::Full,
             length: None,
         };
-        let ref_type = RefDescriptor::new(Codec::String(full_string)).expect("valid Ref inner");
+        let ref_type = RefCodec::new(Codec::String(full_string)).expect("valid Ref inner");
         let decoded = ref_type
             .decode(&storage)
             .expect("full string ref decode should succeed");
@@ -274,18 +273,6 @@ fn decode_with_context_non_array_delegates_to_decode() {
         });
     });
 }
-
-#[test]
-fn decode_with_context_trait_method_delegates() {
-    helpers::run(|| {
-        with_i32_storage_ref(13, |stashed_value, ref_type| {
-            let decoded = FfiDecoder::decode_with_context(ref_type, stashed_value, &[], &[])
-                .expect("trait decode_with_context should succeed");
-            assert!(matches!(decoded, Value::Number(n) if (n - 13.0).abs() < f64::EPSILON));
-        });
-    });
-}
-
 #[test]
 fn decode_with_context_array_null_ptr_yields_null() {
     helpers::run(|| {
@@ -316,10 +303,12 @@ fn decode_with_context_array_string_items_not_freed_by_ref() {
         let inner = unsafe { glib::ffi::g_malloc0(std::mem::size_of::<*mut c_char>()) };
         let storage = ptr_storage(inner);
 
-        let array_type = ArrayDescriptor {
-            item_descriptor: Box::new(Codec::String(string_type())),
+        let array_type = ArrayCodec {
+            item_codec: Box::new(Codec::String(string_type())),
             kind: ArrayKind::Array,
             ownership: Ownership::Full,
+            size_param_index: None,
+            fixed_size: None,
             element_size: None,
         };
         assert_array_decodes_empty(array_type, &storage);
@@ -331,12 +320,14 @@ fn decode_with_context_array_container_released_by_array_decoder() {
     helpers::run(|| {
         let storage = ptr_sized_malloc_storage();
 
-        let array_type = ArrayDescriptor {
-            item_descriptor: Box::new(Codec::Object(ObjectDescriptor {
+        let array_type = ArrayCodec {
+            item_codec: Box::new(Codec::Object(ObjectCodec {
                 ownership: Ownership::Borrowed,
             })),
             kind: ArrayKind::Array,
             ownership: Ownership::Full,
+            size_param_index: None,
+            fixed_size: None,
             element_size: None,
         };
         assert_array_decodes_empty(array_type, &storage);
@@ -350,10 +341,12 @@ fn decode_with_context_garray_container_released_by_array_decoder() {
             unsafe { glib::ffi::g_array_sized_new(0, 0, std::mem::size_of::<u8>() as u32, 0) };
         let storage = ptr_storage(g_array as *mut c_void);
 
-        let array_type = ArrayDescriptor {
-            item_descriptor: Box::new(Codec::Integer(IntegerKind::U8)),
+        let array_type = ArrayCodec {
+            item_codec: Box::new(Codec::Integer(IntegerCodec::U8)),
             kind: ArrayKind::GArray,
             ownership: Ownership::Full,
+            size_param_index: None,
+            fixed_size: None,
             element_size: None,
         };
         assert_array_decodes_empty(array_type, &storage);
@@ -365,10 +358,12 @@ fn decode_with_context_array_non_string_items_freed_by_ref() {
     helpers::run(|| {
         let storage = ptr_sized_malloc_storage();
 
-        let array_type = ArrayDescriptor {
-            item_descriptor: Box::new(Codec::Integer(IntegerKind::U8)),
-            kind: ArrayKind::Fixed { size: 0 },
+        let array_type = ArrayCodec {
+            item_codec: Box::new(Codec::Integer(IntegerCodec::U8)),
+            kind: ArrayKind::Fixed,
             ownership: Ownership::Full,
+            size_param_index: None,
+            fixed_size: Some(0),
             element_size: None,
         };
         assert_array_decodes_empty(array_type, &storage);
@@ -384,10 +379,12 @@ fn decode_with_context_array_non_ptr_storage_uses_storage_pointer() {
             StashKind::Buffer(buffer),
         ));
 
-        let array_type = ArrayDescriptor {
-            item_descriptor: Box::new(Codec::String(string_type())),
+        let array_type = ArrayCodec {
+            item_codec: Box::new(Codec::String(string_type())),
             kind: ArrayKind::Array,
             ownership: Ownership::Borrowed,
+            size_param_index: None,
+            fixed_size: None,
             element_size: None,
         };
         assert_array_decodes_empty(array_type, &storage);
@@ -398,8 +395,7 @@ fn decode_with_context_array_non_ptr_storage_uses_storage_pointer() {
 fn read_from_pointer_null_inner_yields_null() {
     helpers::run(|| {
         let inner: *mut c_void = std::ptr::null_mut();
-        let ref_type =
-            RefDescriptor::new(Codec::Integer(IntegerKind::I32)).expect("valid Ref inner");
+        let ref_type = RefCodec::new(Codec::Integer(IntegerCodec::I32)).expect("valid Ref inner");
         let value = unsafe {
             ref_type.read(ReadSource::Slot(
                 &inner as *const *mut c_void as *const c_void,
@@ -418,7 +414,7 @@ fn read_from_pointer_string_inner_reads_value() {
         let char_ptr = cstring.as_ptr() as *mut c_void;
         let inner_slot: *mut c_void = &char_ptr as *const *mut c_void as *mut c_void;
 
-        let ref_type = RefDescriptor::new(Codec::String(string_type())).expect("valid Ref inner");
+        let ref_type = RefCodec::new(Codec::String(string_type())).expect("valid Ref inner");
         let value = unsafe {
             ref_type.read(ReadSource::Slot(
                 &inner_slot as *const *mut c_void as *const c_void,

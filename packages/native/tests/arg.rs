@@ -1,9 +1,9 @@
 use std::ffi::{CString, c_void};
 
-use native::ffi::arg::Arg;
-use native::ffi::descriptor::{
-    ArrayDescriptor, ArrayKind, BooleanDescriptor, Codec, FloatKind, IntegerKind, Ownership,
-    StringDescriptor, VoidDescriptor,
+use native::ffi::Arg;
+use native::ffi::codec::{
+    ArrayCodec, ArrayKind, BooleanCodec, Codec, FloatKind, IntegerCodec, Ownership, StringCodec,
+    VoidCodec,
 };
 use native::ffi::value;
 use native::ffi::{Stash, StashKind, StashedValue};
@@ -23,10 +23,12 @@ macro_rules! expect_variant {
 
 fn u8_array_arg(value: value::Value) -> Arg {
     Arg::new(
-        Codec::Array(ArrayDescriptor {
-            item_descriptor: Box::new(Codec::Integer(IntegerKind::U8)),
+        Codec::Array(ArrayCodec {
+            item_codec: Box::new(Codec::Integer(IntegerCodec::U8)),
             kind: ArrayKind::Array,
             ownership: Ownership::Full,
+            size_param_index: None,
+            fixed_size: None,
             element_size: None,
         }),
         value,
@@ -34,7 +36,7 @@ fn u8_array_arg(value: value::Value) -> Arg {
 }
 
 #[test]
-fn owned_ptr_new_stores_value_and_ptr() {
+fn stash_new_stores_value_and_ptr() {
     let data = vec![1u32, 2, 3, 4, 5];
     let ptr = data.as_ptr() as *mut c_void;
     let owned = Stash::new(ptr, StashKind::U32Vec(data));
@@ -43,7 +45,7 @@ fn owned_ptr_new_stores_value_and_ptr() {
 }
 
 #[test]
-fn owned_ptr_from_vec_captures_correct_pointer() {
+fn stash_from_vec_captures_correct_pointer() {
     let data = vec![10u64, 20, 30];
     let owned: Stash = data.into();
 
@@ -54,7 +56,7 @@ fn owned_ptr_from_vec_captures_correct_pointer() {
 }
 
 #[test]
-fn owned_ptr_keeps_cstring_alive() {
+fn stash_keeps_cstring_alive() {
     let cstring = CString::new("test string").unwrap();
     let ptr = cstring.as_ptr() as *mut c_void;
     let owned = Stash::new(ptr, StashKind::CString(cstring));
@@ -66,7 +68,7 @@ fn owned_ptr_keeps_cstring_alive() {
 }
 
 #[test]
-fn owned_ptr_tuple_keeps_both_alive() {
+fn stash_tuple_keeps_both_alive() {
     let strings = vec![
         CString::new("hello").unwrap(),
         CString::new("world").unwrap(),
@@ -86,7 +88,7 @@ fn owned_ptr_tuple_keeps_both_alive() {
 }
 
 #[test]
-fn owned_ptr_drops_value_when_dropped() {
+fn stash_drops_value_when_dropped() {
     let data = vec![1u8, 2, 3, 4, 5];
     let ptr = data.as_ptr() as *mut c_void;
     let owned = Stash::new(ptr, StashKind::U8Vec(data));
@@ -96,7 +98,10 @@ fn owned_ptr_drops_value_when_dropped() {
 
 #[test]
 fn try_from_integer_i8() {
-    let arg = Arg::new(Codec::Integer(IntegerKind::I8), value::Value::Number(-42.0));
+    let arg = Arg::new(
+        Codec::Integer(IntegerCodec::I8),
+        value::Value::Number(-42.0),
+    );
 
     let v = expect_variant!(arg, I8);
     assert_eq!(v, -42);
@@ -104,7 +109,10 @@ fn try_from_integer_i8() {
 
 #[test]
 fn try_from_integer_u8() {
-    let arg = Arg::new(Codec::Integer(IntegerKind::U8), value::Value::Number(200.0));
+    let arg = Arg::new(
+        Codec::Integer(IntegerCodec::U8),
+        value::Value::Number(200.0),
+    );
 
     let v = expect_variant!(arg, U8);
     assert_eq!(v, 200);
@@ -113,7 +121,7 @@ fn try_from_integer_u8() {
 #[test]
 fn try_from_integer_i32() {
     let arg = Arg::new(
-        Codec::Integer(IntegerKind::I32),
+        Codec::Integer(IntegerCodec::I32),
         value::Value::Number(-123_456.0),
     );
 
@@ -124,7 +132,7 @@ fn try_from_integer_i32() {
 #[test]
 fn try_from_integer_u64() {
     let arg = Arg::new(
-        Codec::Integer(IntegerKind::U64),
+        Codec::Integer(IntegerCodec::U64),
         value::Value::Number(9_999_999_999.0),
     );
 
@@ -135,7 +143,7 @@ fn try_from_integer_u64() {
 #[test]
 fn try_from_integer_optional_null() {
     let arg = Arg {
-        descriptor: Codec::Integer(IntegerKind::I32),
+        codec: Codec::Integer(IntegerCodec::I32),
         value: value::Value::Null,
     };
 
@@ -162,7 +170,7 @@ fn try_from_float_f64() {
 #[test]
 fn try_from_string_full() {
     let arg = Arg::new(
-        Codec::String(StringDescriptor {
+        Codec::String(StringCodec {
             ownership: Ownership::Full,
             length: None,
         }),
@@ -185,7 +193,7 @@ fn try_from_string_full() {
 #[test]
 fn try_from_string_borrowed() {
     let arg = Arg::new(
-        Codec::String(StringDescriptor {
+        Codec::String(StringCodec {
             ownership: Ownership::Borrowed,
             length: None,
         }),
@@ -202,7 +210,7 @@ fn try_from_string_borrowed() {
 #[test]
 fn try_from_string_null() {
     let arg = Arg::new(
-        Codec::String(StringDescriptor {
+        Codec::String(StringCodec {
             ownership: Ownership::Full,
             length: None,
         }),
@@ -215,10 +223,7 @@ fn try_from_string_null() {
 
 #[test]
 fn try_from_boolean_true() {
-    let arg = Arg::new(
-        Codec::Boolean(BooleanDescriptor),
-        value::Value::Boolean(true),
-    );
+    let arg = Arg::new(Codec::Boolean(BooleanCodec), value::Value::Boolean(true));
 
     let v = expect_variant!(arg, I32);
     assert_eq!(v, 1);
@@ -226,10 +231,7 @@ fn try_from_boolean_true() {
 
 #[test]
 fn try_from_boolean_false() {
-    let arg = Arg::new(
-        Codec::Boolean(BooleanDescriptor),
-        value::Value::Boolean(false),
-    );
+    let arg = Arg::new(Codec::Boolean(BooleanCodec), value::Value::Boolean(false));
 
     let v = expect_variant!(arg, I32);
     assert_eq!(v, 0);
@@ -237,7 +239,7 @@ fn try_from_boolean_false() {
 
 #[test]
 fn try_from_null() {
-    let arg = Arg::new(Codec::Void(VoidDescriptor), value::Value::Null);
+    let arg = Arg::new(Codec::Void(VoidCodec), value::Value::Null);
 
     let ptr = expect_variant!(arg, Ptr);
     assert!(ptr.is_null());
@@ -245,7 +247,7 @@ fn try_from_null() {
 
 #[test]
 fn try_from_undefined() {
-    let arg = Arg::new(Codec::Void(VoidDescriptor), value::Value::Undefined);
+    let arg = Arg::new(Codec::Void(VoidCodec), value::Value::Undefined);
 
     let ptr = expect_variant!(arg, Ptr);
     assert!(ptr.is_null());
@@ -269,10 +271,12 @@ fn try_from_array_u8() {
 #[test]
 fn try_from_array_i32() {
     let arg = Arg::new(
-        Codec::Array(ArrayDescriptor {
-            item_descriptor: Box::new(Codec::Integer(IntegerKind::I32)),
+        Codec::Array(ArrayCodec {
+            item_codec: Box::new(Codec::Integer(IntegerCodec::I32)),
             kind: ArrayKind::Array,
             ownership: Ownership::Full,
+            size_param_index: None,
+            fixed_size: None,
             element_size: None,
         }),
         value::Value::Array(vec![
@@ -292,10 +296,12 @@ fn try_from_array_i32() {
 #[test]
 fn try_from_array_f64() {
     let arg = Arg::new(
-        Codec::Array(ArrayDescriptor {
-            item_descriptor: Box::new(Codec::Float(FloatKind::F64)),
+        Codec::Array(ArrayCodec {
+            item_codec: Box::new(Codec::Float(FloatKind::F64)),
             kind: ArrayKind::Array,
             ownership: Ownership::Full,
+            size_param_index: None,
+            fixed_size: None,
             element_size: None,
         }),
         value::Value::Array(vec![value::Value::Number(1.1), value::Value::Number(2.2)]),
@@ -312,13 +318,15 @@ fn try_from_array_f64() {
 #[test]
 fn try_from_array_string() {
     let arg = Arg::new(
-        Codec::Array(ArrayDescriptor {
-            item_descriptor: Box::new(Codec::String(StringDescriptor {
+        Codec::Array(ArrayCodec {
+            item_codec: Box::new(Codec::String(StringCodec {
                 ownership: Ownership::Full,
                 length: None,
             })),
             kind: ArrayKind::Array,
             ownership: Ownership::Full,
+            size_param_index: None,
+            fixed_size: None,
             element_size: None,
         }),
         value::Value::Array(vec![
@@ -341,10 +349,12 @@ fn try_from_array_string() {
 #[test]
 fn try_from_array_boolean() {
     let arg = Arg::new(
-        Codec::Array(ArrayDescriptor {
-            item_descriptor: Box::new(Codec::Boolean(BooleanDescriptor)),
+        Codec::Array(ArrayCodec {
+            item_codec: Box::new(Codec::Boolean(BooleanCodec)),
             kind: ArrayKind::Array,
             ownership: Ownership::Full,
+            size_param_index: None,
+            fixed_size: None,
             element_size: None,
         }),
         value::Value::Array(vec![
@@ -360,76 +370,9 @@ fn try_from_array_boolean() {
         assert_eq!(slice, &[1, 0, 1]);
     }
 }
-
-#[test]
-fn value_as_ptr_integer_types_fail() {
-    assert!(StashedValue::U8(42).as_ptr("test").is_err());
-    assert!(StashedValue::I32(-100).as_ptr("test").is_err());
-    assert!(StashedValue::U64(999).as_ptr("test").is_err());
-}
-
-#[test]
-fn value_as_ptr_float_types_fail() {
-    let v_f32 = StashedValue::F32(3.125);
-    let v_f64 = StashedValue::F64(2.625);
-
-    assert!(v_f32.as_ptr("test").is_err());
-    assert!(v_f64.as_ptr("test").is_err());
-}
-
-#[test]
-fn value_as_ptr_void() {
-    let v = StashedValue::Void;
-    assert!(v.as_ptr("test").is_err());
-}
-
-#[test]
-fn value_as_ptr_null_ptr() {
-    let v = StashedValue::Ptr(std::ptr::null_mut());
-    assert!(v.as_ptr("test").unwrap().is_null());
-}
-
-#[test]
-fn value_to_libffi_arg_integers() {
-    let v = StashedValue::I32(42);
-    let _arg: libffi::middle::Arg = (&v).into();
-}
-
-#[test]
-fn value_to_libffi_arg_floats() {
-    let v = StashedValue::F64(3.125);
-    let _arg: libffi::middle::Arg = (&v).into();
-}
-
-#[test]
-fn value_to_libffi_arg_ptr() {
-    let v = StashedValue::Ptr(std::ptr::null_mut());
-    let _arg: libffi::middle::Arg = (&v).into();
-}
-
-#[test]
-fn value_to_libffi_arg_owned_ptr() {
-    let storage: Stash = vec![1u8, 2, 3].into();
-    let v = StashedValue::Storage(storage);
-    let _arg: libffi::middle::Arg = (&v).into();
-}
-
-#[test]
-fn try_from_struct_null() {
-    let struct_type = native::ffi::descriptor::StructDescriptor {
-        ownership: Ownership::Borrowed,
-        size: Some(16),
-        caller_allocated: false,
-    };
-    let arg = Arg::new(Codec::Struct(struct_type), value::Value::Null);
-
-    let ptr = expect_variant!(arg, Ptr);
-    assert!(ptr.is_null());
-}
-
 #[test]
 fn try_from_struct_undefined() {
-    let struct_type = native::ffi::descriptor::StructDescriptor {
+    let struct_type = native::ffi::codec::StructCodec {
         ownership: Ownership::Full,
         size: None,
         caller_allocated: false,
@@ -443,10 +386,12 @@ fn try_from_struct_undefined() {
 #[test]
 fn try_from_array_optional_null_yields_null_ptr() {
     let arg = Arg {
-        descriptor: Codec::Array(ArrayDescriptor {
-            item_descriptor: Box::new(Codec::Integer(IntegerKind::U8)),
+        codec: Codec::Array(ArrayCodec {
+            item_codec: Box::new(Codec::Integer(IntegerCodec::U8)),
             kind: ArrayKind::Array,
             ownership: Ownership::Full,
+            size_param_index: None,
+            fixed_size: None,
             element_size: None,
         }),
         value: value::Value::Null,
@@ -468,10 +413,12 @@ fn try_from_array_propagates_encode_error() {
 #[test]
 fn try_from_array_f32_storage_converts_to_libffi_arg() {
     let arg = Arg::new(
-        Codec::Array(ArrayDescriptor {
-            item_descriptor: Box::new(Codec::Float(FloatKind::F32)),
+        Codec::Array(ArrayCodec {
+            item_codec: Box::new(Codec::Float(FloatKind::F32)),
             kind: ArrayKind::Array,
             ownership: Ownership::Full,
+            size_param_index: None,
+            fixed_size: None,
             element_size: None,
         }),
         value::Value::Array(vec![value::Value::Number(0.5)]),
@@ -483,12 +430,12 @@ fn try_from_array_f32_storage_converts_to_libffi_arg() {
 
 #[test]
 fn try_from_struct_transfer_none_vs_full() {
-    let transfer_none_type = native::ffi::descriptor::StructDescriptor {
+    let transfer_none_type = native::ffi::codec::StructCodec {
         ownership: Ownership::Full,
         size: Some(16),
         caller_allocated: false,
     };
-    let transfer_full_type = native::ffi::descriptor::StructDescriptor {
+    let transfer_full_type = native::ffi::codec::StructCodec {
         ownership: Ownership::Borrowed,
         size: Some(16),
         caller_allocated: false,

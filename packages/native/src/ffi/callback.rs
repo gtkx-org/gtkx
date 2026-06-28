@@ -7,8 +7,8 @@ use ::libffi::low as libffi_low;
 use ::libffi::middle as libffi;
 
 use crate::ffi::StashedValue;
-use crate::ffi::descriptor::{
-    Codec, FfiDecoder as _, FfiEncoder as _, PointerWriter as _, ReadSource, str_to_glib_full,
+use crate::ffi::codec::{
+    Codec, Decoder as _, Encoder as _, PointerWriter as _, ReadSource, str_to_glib_full,
 };
 use crate::ffi::value::{JsRef, Value};
 use crate::messaging::Mailbox;
@@ -125,25 +125,6 @@ impl CallbackState {
     }
 }
 
-pub fn build_trampoline(
-    js_func: Arc<JsRef>,
-    arg_descriptors: Vec<Codec>,
-    return_descriptor: Codec,
-    user_data_index: Option<usize>,
-    is_oneshot: bool,
-) -> (*mut c_void, Box<CallbackState>) {
-    let data = CallbackData::new(
-        js_func,
-        arg_descriptors,
-        return_descriptor,
-        user_data_index,
-        is_oneshot,
-    );
-    let state = Box::new(CallbackState::create(data));
-    let code_ptr = state.code_ptr;
-    (code_ptr, state)
-}
-
 impl CallbackState {
     pub unsafe extern "C" fn destroy(user_data: *mut c_void) {
         if !user_data.is_null() {
@@ -171,8 +152,8 @@ impl CallbackData {
             if let Codec::Ref(ref_type) = descriptor {
                 let inner_ptr = unsafe { *(arg_ptr as *const *mut c_void) };
                 out_cell_indices.push(values.len());
-                out_targets.push((inner_ptr, &ref_type.inner_descriptor));
-                values.push(seed_ref_cell(inner_ptr, &ref_type.inner_descriptor));
+                out_targets.push((inner_ptr, &ref_type.inner_codec));
+                values.push(seed_ref_cell(inner_ptr, &ref_type.inner_codec));
                 continue;
             }
             match unsafe { descriptor.read(ReadSource::Slot(arg_ptr, "callback arg")) } {
@@ -279,30 +260,30 @@ impl CallbackData {
     }
 }
 
-pub(crate) fn seed_ref_cell(inner_ptr: *mut c_void, inner_descriptor: &Codec) -> Value {
+pub(crate) fn seed_ref_cell(inner_ptr: *mut c_void, inner_codec: &Codec) -> Value {
     if inner_ptr.is_null() {
         return Value::Null;
     }
-    match inner_descriptor {
+    match inner_codec {
         Codec::Integer(_)
         | Codec::BigInt(_)
         | Codec::Float(_)
         | Codec::EnumFlags(_)
         | Codec::Boolean(_)
-        | Codec::Unichar(_) => unsafe {
-            inner_descriptor.read(ReadSource::Slot(inner_ptr.cast_const(), "inout cell seed"))
+        | Codec::Unichar(_) => {
+            unsafe { inner_codec.read(ReadSource::Slot(inner_ptr.cast_const(), "inout cell seed")) }
+                .unwrap_or(Value::Null)
         }
-        .unwrap_or(Value::Null),
         _ => Value::Null,
     }
 }
 
 pub(crate) fn flush_out_cells(cells: &[(usize, Value)], out_targets: &[(*mut c_void, &Codec)]) {
-    for ((_, new_value), (ptr, inner_descriptor)) in cells.iter().zip(out_targets.iter()) {
+    for ((_, new_value), (ptr, inner_codec)) in cells.iter().zip(out_targets.iter()) {
         if ptr.is_null() {
             continue;
         }
-        if let Err(e) = unsafe { inner_descriptor.write_value_to_pointer(*ptr, new_value) } {
+        if let Err(e) = unsafe { inner_codec.write_value_to_pointer(*ptr, new_value) } {
             ErrorReporter::global().report(&e.context("callback: failed to write out-parameter"));
         }
     }
@@ -312,6 +293,25 @@ unsafe fn defer_oneshot_free(state_ptr: *mut CallbackState) {
     glib::idle_add_local_once(move || {
         drop(unsafe { Box::from_raw(state_ptr) });
     });
+}
+
+pub fn build_trampoline(
+    js_func: Arc<JsRef>,
+    arg_descriptors: Vec<Codec>,
+    return_descriptor: Codec,
+    user_data_index: Option<usize>,
+    is_oneshot: bool,
+) -> (*mut c_void, Box<CallbackState>) {
+    let data = CallbackData::new(
+        js_func,
+        arg_descriptors,
+        return_descriptor,
+        user_data_index,
+        is_oneshot,
+    );
+    let state = Box::new(CallbackState::create(data));
+    let code_ptr = state.code_ptr;
+    (code_ptr, state)
 }
 
 unsafe extern "C" fn closure_entry(

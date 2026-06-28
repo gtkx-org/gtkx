@@ -6,13 +6,6 @@ use std::time::Duration;
 use native::messaging::wait_signal::WaitSignal;
 
 #[test]
-fn new_creates_unsignalled_state() {
-    let signal = WaitSignal::new();
-    signal.notify();
-    signal.wait();
-}
-
-#[test]
 fn default_matches_new() {
     let signal = WaitSignal::default();
     signal.notify();

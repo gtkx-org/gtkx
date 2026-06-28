@@ -3,7 +3,8 @@ use std::sync::Arc;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use crate::ffi::descriptor::{Codec, Descriptor};
+use crate::ffi::codec::Codec;
+use crate::ffi::descriptor::Descriptor;
 
 pub struct CallDescriptor {
     pub(crate) library_name: String,
@@ -26,22 +27,10 @@ pub mod napi_export {
             .into_iter()
             .map(|wire| {
                 let descriptor = wire.into_codec()?;
-                if !descriptor.can_be_argument() {
-                    return Err(napi::Error::new(
-                        napi::Status::InvalidArg,
-                        format!("'{descriptor}' cannot be used as a function argument type"),
-                    ));
-                }
                 Ok(descriptor)
             })
             .collect::<napi::Result<Vec<_>>>()?;
         let return_descriptor = return_descriptor.into_codec()?;
-        if !return_descriptor.can_be_return() {
-            return Err(napi::Error::new(
-                napi::Status::InvalidArg,
-                format!("'{return_descriptor}' cannot be used as a function return type"),
-            ));
-        }
         Ok(External::new(Arc::new(CallDescriptor {
             library_name: shared_library,
             symbol_name: symbol,

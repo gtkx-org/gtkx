@@ -1,12 +1,12 @@
 use std::ffi::c_void;
 
 use native::Handle;
-use native::ffi::descriptor::{FfiDecoder, Ownership, PointerWriter, ReadSource, StructDescriptor};
+use native::ffi::codec::{Decoder, Ownership, PointerWriter, ReadSource, StructCodec};
 use native::ffi::value;
 use native::ffi::value::Value;
 
-fn struct_type() -> StructDescriptor {
-    StructDescriptor {
+fn struct_type() -> StructCodec {
+    StructCodec {
         ownership: Ownership::Borrowed,
         size: None,
         caller_allocated: false,
@@ -16,7 +16,7 @@ fn struct_type() -> StructDescriptor {
 #[test]
 fn null_guarded_short_circuits_null_pointer() {
     let decoded = unsafe {
-        FfiDecoder::read(
+        Decoder::read(
             &struct_type(),
             ReadSource::Value(std::ptr::null_mut(), "ctx"),
         )
@@ -29,8 +29,7 @@ fn null_guarded_short_circuits_null_pointer() {
 fn null_guarded_runs_decode_for_non_null_pointer() {
     let source: u64 = 0xDEAD_BEEF;
     let ptr = &source as *const u64 as *mut c_void;
-    let decoded =
-        unsafe { FfiDecoder::read(&struct_type(), ReadSource::Value(ptr, "ctx")) }.unwrap();
+    let decoded = unsafe { Decoder::read(&struct_type(), ReadSource::Value(ptr, "ctx")) }.unwrap();
     assert!(matches!(decoded, Value::Object(_)));
 }
 

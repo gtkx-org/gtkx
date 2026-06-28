@@ -10,16 +10,16 @@ use gtk4::prelude::StaticType as _;
 
 use native::Handle;
 use native::ffi::StashedValue;
-use native::ffi::descriptor::{
-    ArrayDescriptor, ArrayKind, BooleanDescriptor, BoxedDescriptor, Codec, FloatKind,
-    FundamentalDescriptor, HashTableDescriptor, HashTableEntryEncoder, IntegerKind,
-    ObjectDescriptor, Ownership, StringDescriptor, StructDescriptor,
+use native::ffi::codec::{
+    ArrayCodec, ArrayKind, BooleanCodec, BoxedCodec, Codec, FloatKind, FundamentalCodec,
+    HashTableCodec, HashTableEntryCodec, IntegerCodec, ObjectCodec, Ownership, StringCodec,
+    StructCodec,
 };
-use native::ffi::descriptor::{FfiDecoder, FfiEncoder, PointerWriter, ReadSource};
+use native::ffi::codec::{Decoder, Encoder, PointerWriter, ReadSource};
 use native::ffi::value::Value;
 
 fn struct_type() -> Codec {
-    Codec::Struct(StructDescriptor {
+    Codec::Struct(StructCodec {
         ownership: Ownership::Borrowed,
         size: Some(size_of::<gtk4::gdk::ffi::GdkRGBA>()),
         caller_allocated: false,
@@ -27,10 +27,12 @@ fn struct_type() -> Codec {
 }
 
 fn gptrarray_type() -> Codec {
-    Codec::Array(ArrayDescriptor {
-        item_descriptor: Box::new(struct_type()),
+    Codec::Array(ArrayCodec {
+        item_codec: Box::new(struct_type()),
         kind: ArrayKind::GPtrArray,
         ownership: Ownership::Borrowed,
+        size_param_index: None,
+        fixed_size: None,
         element_size: None,
     })
 }
@@ -41,7 +43,7 @@ fn boxed_handle() -> Handle {
 }
 
 fn full_boxed_type() -> Codec {
-    Codec::Boxed(BoxedDescriptor {
+    Codec::Boxed(BoxedCodec {
         ownership: Ownership::Full,
         type_name: "GdkRGBA".to_string(),
         shared_library: None,
@@ -52,20 +54,20 @@ fn full_boxed_type() -> Codec {
 }
 
 fn borrowed_string_type() -> Codec {
-    Codec::String(StringDescriptor {
+    Codec::String(StringCodec {
         ownership: Ownership::Borrowed,
         length: None,
     })
 }
 
 fn full_gobject_type() -> Codec {
-    Codec::Object(ObjectDescriptor {
+    Codec::Object(ObjectCodec {
         ownership: Ownership::Full,
     })
 }
 
-fn full_variant_fundamental_encoder(ref_func: &str, unref_func: &str) -> HashTableEntryEncoder {
-    HashTableEntryEncoder::Handle(Box::new(Codec::Fundamental(FundamentalDescriptor {
+fn full_variant_fundamental_encoder(ref_func: &str, unref_func: &str) -> HashTableEntryCodec {
+    HashTableEntryCodec::Handle(Box::new(Codec::Fundamental(FundamentalCodec {
         ownership: Ownership::Full,
         shared_library: "libglib-2.0.so.0".to_owned(),
         ref_func: ref_func.to_owned(),
@@ -75,7 +77,7 @@ fn full_variant_fundamental_encoder(ref_func: &str, unref_func: &str) -> HashTab
 }
 
 fn param_spec_fundamental_type() -> Codec {
-    Codec::Fundamental(FundamentalDescriptor {
+    Codec::Fundamental(FundamentalCodec {
         ownership: Ownership::Full,
         shared_library: "libgobject-2.0.so.0".to_owned(),
         ref_func: "g_param_spec_ref".to_owned(),
@@ -96,20 +98,20 @@ fn create_param_spec() -> *mut c_void {
     }
 }
 
-fn ht_type(key: Codec, value: Codec, ownership: Ownership) -> HashTableDescriptor {
-    HashTableDescriptor {
-        key_descriptor: Box::new(key),
-        value_descriptor: Box::new(value),
+fn ht_type(key: Codec, value: Codec, ownership: Ownership) -> HashTableCodec {
+    HashTableCodec {
+        key_codec: Box::new(key),
+        value_codec: Box::new(value),
         ownership,
     }
 }
 
-fn roundtrip(ht: &HashTableDescriptor, input: &Value) -> Value {
+fn roundtrip(ht: &HashTableCodec, input: &Value) -> Value {
     let encoded = ht.encode(input).expect("encoding should succeed");
     ht.decode(&encoded).expect("decoding should succeed")
 }
 
-fn assert_encoded_float(encoder: &HashTableEntryEncoder, value: &Value, expected: f64) {
+fn assert_encoded_float(encoder: &HashTableEntryCodec, value: &Value, expected: f64) {
     let ptr = encoder.encode(value).expect("encoding should succeed");
 
     let stored_value = unsafe {
@@ -123,7 +125,7 @@ fn assert_encoded_float(encoder: &HashTableEntryEncoder, value: &Value, expected
 }
 
 fn assert_boolean_ptr_reads_true(ptr: *mut c_void) {
-    let descriptor = Codec::Boolean(BooleanDescriptor);
+    let descriptor = Codec::Boolean(BooleanCodec);
 
     let value = unsafe { descriptor.read(ReadSource::Value(ptr, "test")) }
         .expect("decoding should succeed");
@@ -134,18 +136,18 @@ fn assert_boolean_ptr_reads_true(ptr: *mut c_void) {
     }
 }
 
-fn boolean_boolean_ht() -> HashTableDescriptor {
+fn boolean_boolean_ht() -> HashTableCodec {
     ht_type(
-        Codec::Boolean(BooleanDescriptor),
-        Codec::Boolean(BooleanDescriptor),
+        Codec::Boolean(BooleanCodec),
+        Codec::Boolean(BooleanCodec),
         Ownership::Full,
     )
 }
 
-fn gobject_key_boolean_ht() -> HashTableDescriptor {
+fn gobject_key_boolean_ht() -> HashTableCodec {
     ht_type(
         full_gobject_type(),
-        Codec::Boolean(BooleanDescriptor),
+        Codec::Boolean(BooleanCodec),
         Ownership::Full,
     )
 }
@@ -176,38 +178,38 @@ where
 
 #[test]
 fn encoder_from_type_boolean() {
-    let descriptor = Codec::Boolean(BooleanDescriptor);
-    let encoder = HashTableEntryEncoder::from_descriptor(&descriptor);
-    assert!(matches!(encoder, Some(HashTableEntryEncoder::Boolean)));
+    let descriptor = Codec::Boolean(BooleanCodec);
+    let encoder = HashTableEntryCodec::from_codec(&descriptor);
+    assert!(matches!(encoder, Some(HashTableEntryCodec::Boolean)));
 }
 
 #[test]
 fn encoder_from_type_float() {
     let descriptor = Codec::Float(FloatKind::F64);
-    let encoder = HashTableEntryEncoder::from_descriptor(&descriptor);
-    assert!(matches!(encoder, Some(HashTableEntryEncoder::Float)));
+    let encoder = HashTableEntryCodec::from_codec(&descriptor);
+    assert!(matches!(encoder, Some(HashTableEntryCodec::Float)));
 }
 
 #[test]
 fn encoder_from_type_integer() {
-    let descriptor = Codec::Integer(IntegerKind::I32);
-    let encoder = HashTableEntryEncoder::from_descriptor(&descriptor);
-    assert!(matches!(encoder, Some(HashTableEntryEncoder::Integer)));
+    let descriptor = Codec::Integer(IntegerCodec::I32);
+    let encoder = HashTableEntryCodec::from_codec(&descriptor);
+    assert!(matches!(encoder, Some(HashTableEntryCodec::Integer)));
 }
 
 #[test]
 fn encoder_from_type_string() {
-    let descriptor = Codec::String(StringDescriptor {
+    let descriptor = Codec::String(StringCodec {
         ownership: Ownership::Borrowed,
         length: None,
     });
-    let encoder = HashTableEntryEncoder::from_descriptor(&descriptor);
-    assert!(matches!(encoder, Some(HashTableEntryEncoder::String)));
+    let encoder = HashTableEntryCodec::from_codec(&descriptor);
+    assert!(matches!(encoder, Some(HashTableEntryCodec::String)));
 }
 
 #[test]
 fn boolean_encoder_uses_direct_hash_and_equal() {
-    let encoder = HashTableEntryEncoder::Boolean;
+    let encoder = HashTableEntryCodec::Boolean;
 
     assert!(encoder.hash_func().is_some());
     assert!(encoder.equal_func().is_some());
@@ -216,7 +218,7 @@ fn boolean_encoder_uses_direct_hash_and_equal() {
 
 #[test]
 fn float_encoder_uses_double_hash_and_equal() {
-    let encoder = HashTableEntryEncoder::Float;
+    let encoder = HashTableEntryCodec::Float;
 
     assert!(encoder.hash_func().is_some());
     assert!(encoder.equal_func().is_some());
@@ -225,7 +227,7 @@ fn float_encoder_uses_double_hash_and_equal() {
 
 #[test]
 fn encode_boolean_true() {
-    let encoder = HashTableEntryEncoder::Boolean;
+    let encoder = HashTableEntryCodec::Boolean;
     let value = Value::Boolean(true);
 
     let ptr = encoder.encode(&value).expect("encoding should succeed");
@@ -235,7 +237,7 @@ fn encode_boolean_true() {
 
 #[test]
 fn encode_boolean_false() {
-    let encoder = HashTableEntryEncoder::Boolean;
+    let encoder = HashTableEntryCodec::Boolean;
     let value = Value::Boolean(false);
 
     let ptr = encoder.encode(&value).expect("encoding should succeed");
@@ -245,28 +247,19 @@ fn encode_boolean_false() {
 
 #[test]
 fn encode_float_value() {
-    let encoder = HashTableEntryEncoder::Float;
-    let value = Value::Number(std::f64::consts::PI);
+    let encoder = HashTableEntryCodec::Float;
 
-    assert_encoded_float(&encoder, &value, std::f64::consts::PI);
-}
-
-#[test]
-fn encode_float_negative() {
-    let encoder = HashTableEntryEncoder::Float;
-    let value = Value::Number(-123.456);
-
-    assert_encoded_float(&encoder, &value, -123.456);
-}
-
-#[test]
-fn ptr_to_value_boolean_true() {
-    assert_boolean_ptr_reads_true(std::ptr::dangling_mut::<c_void>());
+    assert_encoded_float(
+        &encoder,
+        &Value::Number(std::f64::consts::PI),
+        std::f64::consts::PI,
+    );
+    assert_encoded_float(&encoder, &Value::Number(-123.456), -123.456);
 }
 
 #[test]
 fn ptr_to_value_boolean_false() {
-    let descriptor = Codec::Boolean(BooleanDescriptor);
+    let descriptor = Codec::Boolean(BooleanCodec);
     let ptr = std::ptr::null_mut::<c_void>();
 
     let value = unsafe { descriptor.read(ReadSource::Value(ptr, "test")) }
@@ -306,7 +299,7 @@ fn ptr_to_value_float() {
 
 #[test]
 fn ptr_to_value_struct_null() {
-    let descriptor = Codec::Struct(StructDescriptor {
+    let descriptor = Codec::Struct(StructCodec {
         ownership: Ownership::Borrowed,
         size: Some(16),
         caller_allocated: false,
@@ -324,7 +317,7 @@ fn ptr_to_value_struct_null() {
 #[test]
 fn ptr_to_value_struct_non_null() {
     helpers::run(|| {
-        let descriptor = Codec::Struct(StructDescriptor {
+        let descriptor = Codec::Struct(StructCodec {
             ownership: Ownership::Borrowed,
             size: Some(16),
             caller_allocated: false,
@@ -367,7 +360,7 @@ fn hashtable_encode_decode_booleans() {
 fn hashtable_encode_decode_floats() {
     helpers::run(|| {
         let ht_type = ht_type(
-            Codec::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerCodec::I32),
             Codec::Float(FloatKind::F64),
             Ownership::Full,
         );
@@ -393,11 +386,11 @@ fn hashtable_encode_decode_floats() {
 fn hashtable_encode_decode_string_to_boolean() {
     helpers::run(|| {
         let ht_type = ht_type(
-            Codec::String(StringDescriptor {
+            Codec::String(StringCodec {
                 ownership: Ownership::Borrowed,
                 length: None,
             }),
-            Codec::Boolean(BooleanDescriptor),
+            Codec::Boolean(BooleanCodec),
             Ownership::Full,
         );
 
@@ -426,7 +419,7 @@ fn hashtable_encode_decode_float_keys() {
     helpers::run(|| {
         let ht_type = ht_type(
             Codec::Float(FloatKind::F64),
-            Codec::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerCodec::I32),
             Ownership::Full,
         );
 
@@ -482,8 +475,8 @@ fn hashtable_null_optional() {
 fn hashtable_borrowed_does_not_free() {
     helpers::run(|| {
         let ht_type = ht_type(
-            Codec::Integer(IntegerKind::I32),
-            Codec::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerCodec::I32),
+            Codec::Integer(IntegerCodec::I32),
             Ownership::Borrowed,
         );
 
@@ -528,20 +521,20 @@ fn float_memory_properly_freed_on_drop() {
 #[test]
 fn encoder_from_type_native_handle() {
     assert!(matches!(
-        HashTableEntryEncoder::from_descriptor(&struct_type()),
-        Some(HashTableEntryEncoder::Handle(_))
+        HashTableEntryCodec::from_codec(&struct_type()),
+        Some(HashTableEntryCodec::Handle(_))
     ));
 }
 
 #[test]
 fn encoder_from_type_ptr_array() {
-    let encoder = HashTableEntryEncoder::from_descriptor(&gptrarray_type());
-    assert!(matches!(encoder, Some(HashTableEntryEncoder::PtrArray(_))));
+    let encoder = HashTableEntryCodec::from_codec(&gptrarray_type());
+    assert!(matches!(encoder, Some(HashTableEntryCodec::PtrArray(_))));
 }
 
 #[test]
 fn integer_encoder_hash_equal_and_free() {
-    let encoder = HashTableEntryEncoder::Integer;
+    let encoder = HashTableEntryCodec::Integer;
     assert!(encoder.hash_func().is_some());
     assert!(encoder.equal_func().is_some());
     assert!(encoder.free_func().unwrap().is_none());
@@ -549,7 +542,7 @@ fn integer_encoder_hash_equal_and_free() {
 
 #[test]
 fn string_encoder_hash_equal_and_free() {
-    let encoder = HashTableEntryEncoder::String;
+    let encoder = HashTableEntryCodec::String;
     assert!(encoder.hash_func().is_some());
     assert!(encoder.equal_func().is_some());
     assert!(encoder.free_func().unwrap().is_some());
@@ -557,7 +550,7 @@ fn string_encoder_hash_equal_and_free() {
 
 #[test]
 fn native_handle_encoder_hash_equal_and_free() {
-    let encoder = HashTableEntryEncoder::Handle(Box::new(struct_type()));
+    let encoder = HashTableEntryCodec::Handle(Box::new(struct_type()));
     assert!(encoder.hash_func().is_some());
     assert!(encoder.equal_func().is_some());
     assert!(encoder.free_func().unwrap().is_none());
@@ -565,7 +558,7 @@ fn native_handle_encoder_hash_equal_and_free() {
 
 #[test]
 fn full_gobject_encoder_installs_unref_destroy() {
-    let encoder = HashTableEntryEncoder::Handle(Box::new(Codec::Object(ObjectDescriptor {
+    let encoder = HashTableEntryCodec::Handle(Box::new(Codec::Object(ObjectCodec {
         ownership: Ownership::Full,
     })));
     assert!(encoder.free_func().unwrap().is_some());
@@ -589,7 +582,7 @@ fn full_fundamental_encoder_without_ref_fn_installs_no_destroy() {
 
 #[test]
 fn ptr_array_encoder_hash_equal_and_free() {
-    let encoder = HashTableEntryEncoder::PtrArray(Box::new(Codec::Integer(IntegerKind::I32)));
+    let encoder = HashTableEntryCodec::PtrArray(Box::new(Codec::Integer(IntegerCodec::I32)));
     assert!(encoder.hash_func().is_some());
     assert!(encoder.equal_func().is_some());
     assert!(encoder.free_func().unwrap().is_some());
@@ -598,7 +591,7 @@ fn ptr_array_encoder_hash_equal_and_free() {
 #[test]
 fn encode_native_handle_value_null_and_wrong_type() {
     helpers::run(|| {
-        let encoder = HashTableEntryEncoder::Handle(Box::new(struct_type()));
+        let encoder = HashTableEntryCodec::Handle(Box::new(struct_type()));
         let handle = boxed_handle();
         let ptr = encoder.encode(&Value::Object(handle.clone())).unwrap();
         assert_eq!(ptr, handle.ptr());
@@ -612,7 +605,7 @@ fn encode_native_handle_value_null_and_wrong_type() {
 #[test]
 fn encode_ptr_array_value_with_objects_and_nulls() {
     helpers::run(|| {
-        let encoder = HashTableEntryEncoder::PtrArray(Box::new(struct_type()));
+        let encoder = HashTableEntryCodec::PtrArray(Box::new(struct_type()));
         let ptr = encoder
             .encode(&Value::Array(vec![
                 Value::Object(boxed_handle()),
@@ -629,7 +622,7 @@ fn encode_ptr_array_value_with_objects_and_nulls() {
 fn ptr_array_value_freed_when_hashtable_storage_drops() {
     helpers::run(|| {
         let ht_type = ht_type(
-            Codec::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerCodec::I32),
             gptrarray_type(),
             Ownership::Borrowed,
         );
@@ -668,8 +661,8 @@ fn hashtable_decode_null_yields_empty_array() {
 fn hashtable_ptr_to_value_null_and_populated() {
     helpers::run(|| {
         let ht_type = ht_type(
-            Codec::Integer(IntegerKind::I32),
-            Codec::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerCodec::I32),
+            Codec::Integer(IntegerCodec::I32),
             Ownership::Borrowed,
         );
 
@@ -689,8 +682,8 @@ fn hashtable_ptr_to_value_null_and_populated() {
 fn hashtable_decode_full_ownership_from_pointer_unrefs() {
     helpers::run(|| {
         let ht_type = ht_type(
-            Codec::Integer(IntegerKind::I32),
-            Codec::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerCodec::I32),
+            Codec::Integer(IntegerCodec::I32),
             Ownership::Full,
         );
         let hash_table = helpers::make_integer_hash_table(&[(3, 30)]);
@@ -715,7 +708,7 @@ fn hashtable_encode_native_handle_keys_roundtrips() {
     helpers::run(|| {
         let ht_type = ht_type(
             struct_type(),
-            Codec::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerCodec::I32),
             Ownership::Full,
         );
         let input = Value::Array(vec![Value::Array(vec![
@@ -731,8 +724,8 @@ fn hashtable_encode_native_handle_keys_roundtrips() {
 fn boolean_roundtrip_preserves_values() {
     helpers::run(|| {
         let ht_type = ht_type(
-            Codec::Integer(IntegerKind::I32),
-            Codec::Boolean(BooleanDescriptor),
+            Codec::Integer(IntegerCodec::I32),
+            Codec::Boolean(BooleanCodec),
             Ownership::Full,
         );
 
@@ -772,7 +765,7 @@ fn fundamental_value_unreffed_when_hashtable_storage_drops() {
         let before = helpers::param_spec_refcount(pspec);
 
         let ht_type = ht_type(
-            Codec::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerCodec::I32),
             param_spec_fundamental_type(),
             Ownership::Borrowed,
         );
@@ -797,7 +790,7 @@ fn gobject_value_unreffed_when_hashtable_storage_drops() {
         let (_obj, obj_ptr, before) = new_object_with_refcount();
 
         let ht_type = ht_type(
-            Codec::Integer(IntegerKind::I32),
+            Codec::Integer(IntegerCodec::I32),
             full_gobject_type(),
             Ownership::Borrowed,
         );
@@ -846,7 +839,7 @@ fn hashtable_encode_value_error_frees_duplicated_string_key() {
     helpers::run(|| {
         let ht_type = ht_type(
             borrowed_string_type(),
-            Codec::Boolean(BooleanDescriptor),
+            Codec::Boolean(BooleanCodec),
             Ownership::Full,
         );
         let input = Value::Array(vec![Value::Array(vec![
@@ -862,13 +855,15 @@ fn hashtable_encode_value_error_frees_duplicated_string_key() {
 #[test]
 fn hashtable_encode_value_destroy_error_releases_string_key() {
     helpers::run(|| {
-        let value_descriptor = Codec::Array(ArrayDescriptor {
-            item_descriptor: Box::new(full_boxed_type()),
+        let value_codec = Codec::Array(ArrayCodec {
+            item_codec: Box::new(full_boxed_type()),
             kind: ArrayKind::GPtrArray,
             ownership: Ownership::Borrowed,
+            size_param_index: None,
+            fixed_size: None,
             element_size: None,
         });
-        let ht_type = ht_type(borrowed_string_type(), value_descriptor, Ownership::Full);
+        let ht_type = ht_type(borrowed_string_type(), value_codec, Ownership::Full);
         let input = Value::Array(vec![Value::Array(vec![
             Value::String("orphaned-key".to_string()),
             Value::Array(vec![]),
@@ -906,10 +901,10 @@ fn hashtable_encode_second_tuple_error_unwinds_inserted_entries() {
     });
 }
 
-fn string_hashtable_type(ownership: Ownership) -> HashTableDescriptor {
-    HashTableDescriptor {
-        key_descriptor: Box::new(borrowed_string_type()),
-        value_descriptor: Box::new(borrowed_string_type()),
+fn string_hashtable_type(ownership: Ownership) -> HashTableCodec {
+    HashTableCodec {
+        key_codec: Box::new(borrowed_string_type()),
+        value_codec: Box::new(borrowed_string_type()),
         ownership,
     }
 }

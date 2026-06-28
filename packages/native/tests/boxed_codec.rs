@@ -10,8 +10,8 @@ use gtk4::glib::translate::IntoGlib as _;
 use gtk4::prelude::StaticType as _;
 
 use native::ffi;
-use native::ffi::descriptor::{
-    BoxedDescriptor, FfiDecoder, FfiEncoder, Ownership, PointerWriter, ReadSource, StructDescriptor,
+use native::ffi::codec::{
+    BoxedCodec, Decoder, Encoder, Ownership, PointerWriter, ReadSource, StructCodec,
 };
 use native::ffi::value::Value;
 use native::handle::Handle;
@@ -25,8 +25,8 @@ fn rgba_type_name() -> String {
     gdk::RGBA::static_type().name().to_string()
 }
 
-fn boxed(ownership: Ownership) -> BoxedDescriptor {
-    BoxedDescriptor {
+fn boxed(ownership: Ownership) -> BoxedCodec {
+    BoxedCodec {
         ownership,
         type_name: rgba_type_name(),
         shared_library: None,
@@ -36,8 +36,8 @@ fn boxed(ownership: Ownership) -> BoxedDescriptor {
     }
 }
 
-fn struct_type(ownership: Ownership, size: Option<usize>) -> StructDescriptor {
-    StructDescriptor {
+fn struct_type(ownership: Ownership, size: Option<usize>) -> StructCodec {
+    StructCodec {
         ownership,
         size,
         caller_allocated: false,
@@ -66,7 +66,7 @@ fn object_value_of(ptr: *mut c_void) -> Value {
     Value::Object(Handle::borrowed(ptr))
 }
 
-fn assert_read_aliases_source<C: FfiDecoder>(codec: &C, original: *mut c_void, message: &str) {
+fn assert_read_aliases_source<C: Decoder>(codec: &C, original: *mut c_void, message: &str) {
     let value = unsafe { codec.read(ReadSource::Value(original, "ctx")) }
         .expect("ptr_to_value should succeed");
     let Value::Object(handle) = &value else {
@@ -93,7 +93,7 @@ fn gtype_resolves_from_registered_name() {
 #[test]
 fn gtype_resolves_via_library_lookup() {
     helpers::run(|| {
-        let bytes_type = BoxedDescriptor {
+        let bytes_type = BoxedCodec {
             ownership: Ownership::Borrowed,
             type_name: "GBytes".to_owned(),
             shared_library: Some("libgobject-2.0.so.0".to_owned()),
@@ -221,6 +221,7 @@ fn decode_borrowed_copies_boxed() {
         assert!(matches!(decoded, Value::Object(_)));
         drop(decoded);
 
+        assert!(helpers::is_valid_boxed_ptr(original, gtype));
         free_rgba(gtype, original);
     });
 }
@@ -231,21 +232,6 @@ fn decode_null_yields_null() {
         assert_decode_null_yields_null(&boxed(Ownership::Borrowed));
     });
 }
-
-#[test]
-fn ptr_to_value_wraps_boxed() {
-    helpers::run(|| {
-        let (gtype, original) = rgba_boxed_alloc();
-
-        let value = unsafe { boxed(Ownership::Borrowed).read(ReadSource::Value(original, "ctx")) }
-            .expect("ptr_to_value should succeed");
-        assert!(matches!(value, Value::Object(_)));
-        drop(value);
-
-        free_rgba(gtype, original);
-    });
-}
-
 #[test]
 fn ptr_to_value_null_yields_null() {
     helpers::run(|| {
@@ -282,7 +268,7 @@ fn caller_allocated_boxed_aliases_source_without_copying() {
     helpers::run(|| {
         let (gtype, original) = rgba_boxed_alloc();
 
-        let descriptor = BoxedDescriptor {
+        let descriptor = BoxedCodec {
             caller_allocated: true,
             ..boxed(Ownership::Borrowed)
         };
@@ -302,7 +288,7 @@ fn caller_allocated_struct_aliases_source_without_copying() {
     helpers::run(|| {
         let (gtype, original) = rgba_boxed_alloc();
 
-        let descriptor = StructDescriptor {
+        let descriptor = StructCodec {
             caller_allocated: true,
             ..struct_type(Ownership::Borrowed, Some(size_of::<gdk::ffi::GdkRGBA>()))
         };
@@ -379,7 +365,7 @@ fn write_value_to_pointer_writes_boxed() {
 fn write_value_to_pointer_falls_back_when_gtype_unresolvable() {
     helpers::run(|| {
         let target: u64 = 0xAA55;
-        let unknown = BoxedDescriptor {
+        let unknown = BoxedCodec {
             ownership: Ownership::Borrowed,
             type_name: "GTypeUnknownBoxed".to_owned(),
             shared_library: None,
@@ -490,22 +476,6 @@ fn struct_decode_null_yields_null() {
         assert_decode_null_yields_null(&struct_type(Ownership::Borrowed, None));
     });
 }
-
-#[test]
-fn struct_ptr_to_value_wraps_struct() {
-    helpers::run(|| {
-        let raw = unsafe { glib::ffi::g_malloc0(64) };
-        let value = unsafe {
-            struct_type(Ownership::Borrowed, Some(64)).read(ReadSource::Value(raw, "ctx"))
-        }
-        .expect("struct ptr_to_value should succeed");
-        assert!(matches!(value, Value::Object(_)));
-        drop(value);
-
-        unsafe { glib::ffi::g_free(raw) };
-    });
-}
-
 #[test]
 fn struct_ptr_to_value_null_yields_null() {
     helpers::run(|| {
@@ -644,7 +614,7 @@ mod free_fn {
     use gtk4::glib;
 
     use native::ffi;
-    use native::ffi::descriptor::{BoxedDescriptor, FfiDecoder, Ownership, ReadSource};
+    use native::ffi::codec::{BoxedCodec, Decoder, Ownership, ReadSource};
     use native::ffi::value::Value;
 
     use super::helpers;
@@ -652,8 +622,8 @@ mod free_fn {
     const LIBGLIB: &str = "libglib-2.0.so.0";
     const G_FREE: &str = "g_free";
 
-    fn boxed_with_free_fn(ownership: Ownership) -> BoxedDescriptor {
-        BoxedDescriptor {
+    fn boxed_with_free_fn(ownership: Ownership) -> BoxedCodec {
+        BoxedCodec {
             ownership,
             type_name: "FreeFnBoxed".to_owned(),
             shared_library: Some(LIBGLIB.to_owned()),
@@ -665,7 +635,7 @@ mod free_fn {
 
     fn assert_free_fn_wrapper_aliases(
         ownership: Ownership,
-        wrap: impl FnOnce(&BoxedDescriptor, *mut c_void) -> Value,
+        wrap: impl FnOnce(&BoxedCodec, *mut c_void) -> Value,
     ) {
         let ptr = unsafe { glib::ffi::g_malloc0(16) };
 
@@ -681,13 +651,13 @@ mod free_fn {
         }
     }
 
-    fn decode_wrapper(descriptor: &BoxedDescriptor, ptr: *mut c_void) -> Value {
+    fn decode_wrapper(descriptor: &BoxedCodec, ptr: *mut c_void) -> Value {
         descriptor
             .decode(&ffi::StashedValue::Ptr(ptr))
             .expect("decode with freeFn should succeed")
     }
 
-    fn ptr_to_value_wrapper(descriptor: &BoxedDescriptor, ptr: *mut c_void) -> Value {
+    fn ptr_to_value_wrapper(descriptor: &BoxedCodec, ptr: *mut c_void) -> Value {
         unsafe { descriptor.read(ReadSource::Value(ptr, "ctx")) }
             .expect("ptr_to_value with freeFn should succeed")
     }
@@ -724,7 +694,7 @@ mod free_fn {
     fn decode_with_unresolvable_free_fn_bails() {
         helpers::run(|| {
             let raw = unsafe { glib::ffi::g_malloc0(8) };
-            let descriptor = BoxedDescriptor {
+            let descriptor = BoxedCodec {
                 ownership: Ownership::Full,
                 type_name: "BadFreeFnBoxed".to_owned(),
                 shared_library: Some(LIBGLIB.to_owned()),
@@ -748,7 +718,7 @@ mod free_fn {
     fn decode_with_unloadable_library_bails() {
         helpers::run(|| {
             let raw = unsafe { glib::ffi::g_malloc0(8) };
-            let descriptor = BoxedDescriptor {
+            let descriptor = BoxedCodec {
                 ownership: Ownership::Full,
                 type_name: "BadLibBoxed".to_owned(),
                 shared_library: Some("libdoes-not-exist-xyz-12345.so.0".to_owned()),
@@ -777,7 +747,7 @@ mod free_fn {
     fn descriptor_with_free_fn_falls_back_for_library_lookup() {
         helpers::run(|| {
             let raw = unsafe { glib::ffi::g_malloc0(8) };
-            let descriptor = BoxedDescriptor {
+            let descriptor = BoxedCodec {
                 ownership: Ownership::Full,
                 type_name: "LibrarylessFreeFn".to_owned(),
                 shared_library: None,

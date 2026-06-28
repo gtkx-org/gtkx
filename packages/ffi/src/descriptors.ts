@@ -1,7 +1,5 @@
-import { call, type Descriptor, bind as nativeBind } from "@gtkx/native";
+import { type ArrayKind, call, type Descriptor, bind as nativeBind, type Ownership } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
-
-export type Ownership = "full" | "borrowed";
 
 export type Ref = { value: unknown };
 
@@ -101,6 +99,7 @@ type BoxedOptions = CallerAllocatable & {
     sharedLibrary?: string;
     getTypeFn?: string;
     freeFn?: string;
+    size?: number;
 };
 
 type StructOptions = CallerAllocatable & {
@@ -118,6 +117,7 @@ export const boxedT = (typeName: string, options: BoxedOptions = {}): BoxedDescr
     if (options.getTypeFn !== undefined) result.getTypeFn = options.getTypeFn;
     if (options.freeFn !== undefined) result.freeFn = options.freeFn;
     if (options.callerAllocated) result.callerAllocated = true;
+    if (options.size !== undefined) result.size = options.size;
     return result;
 };
 
@@ -184,7 +184,7 @@ type ArrayOptions = {
 
 export const arrayT = (
     itemDescriptor: Descriptor,
-    arrayKind: ArrayDescriptor["arrayKind"] = "array",
+    arrayKind: ArrayKind = "array",
     ownership: Ownership = "borrowed",
     options?: ArrayOptions,
 ): ArrayDescriptor => {

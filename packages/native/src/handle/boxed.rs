@@ -4,7 +4,7 @@ use std::rc::Rc;
 use anyhow::bail;
 use glib::translate::IntoGlib as _;
 
-use crate::ffi::descriptor::BoxedFreeFn;
+use crate::ffi::codec::BoxedFreeFn;
 
 #[derive(Debug)]
 pub struct Boxed {
