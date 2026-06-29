@@ -634,9 +634,9 @@ dependencies = [
 
 [[package]]
 name = "gtk4"
-version = "0.11.3"
+version = "0.11.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7181b837f04cbe93f79441475f7a00560a92cba7a72e38cc1a68b6f8b78eaae2"
+checksum = "98a0a0466484f64b07b5b8184d43fa46be78eb0b8e04ae4e179af31d770b76d9"
 dependencies = [
  "cairo-rs",
  "field-offset",
