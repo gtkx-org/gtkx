@@ -41,6 +41,7 @@ export const createRoot = (container: RootElement = createRootElement()): Root =
     };
 };
 
-export const quit = (): void => {
+export const quit = (): true => {
     unmountAllReconcilerRoots(teardownRoot);
+    return true;
 };

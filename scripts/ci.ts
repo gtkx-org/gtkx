@@ -27,7 +27,7 @@ function run(command: string, args: string[], options: RunOptions = {}): void {
 }
 
 function runCodspeed(mode: string, measuredTask: string): void {
-    const profileFolder = process.env["CODSPEED_PROFILE_FOLDER"] ?? "/tmp/codspeed-profile";
+    const profileFolder = process.env.CODSPEED_PROFILE_FOLDER ?? "/tmp/codspeed-profile";
     mkdirSync(profileFolder, { recursive: true });
     run("codspeed", ["run", "-m", mode, "--", "node", selfPath, measuredTask], {
         env: { ...process.env, CODSPEED_PROFILE_FOLDER: profileFolder },
@@ -40,7 +40,7 @@ function runTsBench(): void {
         env: {
             ...process.env,
             ...HEADLESS_RENDER_ENV,
-            PATH: `/opt/node22/bin:${process.env["PATH"] ?? ""}`,
+            PATH: `/opt/node22/bin:${process.env.PATH ?? ""}`,
         },
     });
 }

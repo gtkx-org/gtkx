@@ -16,8 +16,8 @@ export const prepareDevSchemaDir = (root: string, dataDir: string | null): strin
     }
     compileSchemas(dir);
 
-    process.env["GTKX_DEV_SCHEMA_DIR"] = dir;
-    process.env["GSETTINGS_SCHEMA_DIR"] = prependSchemaDir(dir, process.env["GSETTINGS_SCHEMA_DIR"]);
+    process.env.GTKX_DEV_SCHEMA_DIR = dir;
+    process.env.GSETTINGS_SCHEMA_DIR = prependSchemaDir(dir, process.env.GSETTINGS_SCHEMA_DIR);
     process.once("exit", () => removeTempDir(dir));
 
     return dir;

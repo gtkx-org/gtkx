@@ -1,6 +1,6 @@
 import type { GlEnum, GlFeature, GlInterfaceBlock, GlRegistry } from "./model.js";
 
-export type GlProfile = "core";
+type GlProfile = "core";
 
 export type GlSelection = {
     api: string;

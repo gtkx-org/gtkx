@@ -1,10 +1,10 @@
-import { generateNamespaceModule } from "./ffi/pipeline.js";
 import { computeFingerprint } from "./fingerprint.js";
 import { Library } from "./gir/library.js";
 import { namespaceDirectory } from "./gir/namespace.js";
-import { generateJsxFiles } from "./react/pipeline.js";
+import { generateNamespaceModule } from "./store/gi/pipeline.js";
 import { type GiNamespaceInput, type GiStoreOptions, writeGiStore } from "./store/gi-store.js";
 import { type JsxStoreOptions, writeJsxStore } from "./store/jsx-store.js";
+import { generateJsxFiles } from "./store/react/pipeline.js";
 
 type CodegenRunnerOptions = {
     libraries: string[];
@@ -22,7 +22,7 @@ export type CodegenRunnerResult = {
 export const runCodegen = async (options: CodegenRunnerOptions): Promise<CodegenRunnerResult> => {
     const start = Date.now();
     const library = loadLibrary(options);
-    emitFfiStore(options, library);
+    emitGiStore(options, library);
     const intrinsicElements = emitJsxStore(options, library);
 
     return {
@@ -34,7 +34,7 @@ export const runCodegen = async (options: CodegenRunnerOptions): Promise<Codegen
 
 const loadLibrary = (options: CodegenRunnerOptions): Library => Library.load(options.libraries, options.girPath);
 
-const emitFfiStore = (options: CodegenRunnerOptions, library: Library): void => {
+const emitGiStore = (options: CodegenRunnerOptions, library: Library): void => {
     const namespaces: GiNamespaceInput[] = [];
     for (const namespace of library.namespaces.values()) {
         const { source } = generateNamespaceModule(namespace, library);

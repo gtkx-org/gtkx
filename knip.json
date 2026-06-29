@@ -1,108 +1,38 @@
 {
     "$schema": "https://unpkg.com/knip@6/schema.json",
     "ignoreExportsUsedInFile": true,
-    "ignore": [
-        "**/out-tsc/**",
-        "packages/native/index.js",
-        "packages/native/index.d.ts",
-        "packages/native/binding.js",
-        "packages/native/binding.d.ts",
-        ".claude/**"
-    ],
+    "ignore": ["**/out-tsc/**", "packages/native/index.js", "packages/native/index.d.ts"],
+    "ignoreDependencies": ["^@gtkx/gi(/.*)?$", "^@gtkx/jsx(/.*)?$", "^@gtkx/native-(\\w+)-(\\w+)(-\\w+)?$"],
     "ignoreBinaries": [
         "espeak-ng",
+        "pkg-config",
         "glib-compile-resources",
         "glib-compile-schemas",
-        "pkg-config",
         "setpriv",
         "weston"
     ],
-    "ignoreDependencies": ["^@gtkx/gi(/.*)?$", "^@gtkx/jsx(/.*)?$"],
-    "ignoreWorkspaces": ["packages/native/npm/*"],
+    "ignoreUnresolved": [".*\\.wasi\\.cjs"],
     "workspaces": {
         ".": {
-            "entry": ["gtkx.config.ts"],
-            "project": ["scripts/**/*.ts"]
-        },
-        "packages/animate": {
-            "project": ["src/**/*.{ts,tsx}!"]
-        },
-        "packages/cli": {
-            "entry": ["src/global.d.ts!", "scripts/**/*.ts!"],
-            "project": ["src/**/*.{ts,tsx}!", "scripts/**/*.ts!", "tests/**/*.{ts,tsx}"],
-            "ignoreDependencies": ["^@gtkx/react$"]
-        },
-        "packages/codegen": {
-            "entry": ["scripts/**/*.ts!"],
-            "project": ["src/**/*.ts!", "scripts/**/*.ts!", "!src/overrides/**"]
-        },
-        "packages/components": {
-            "project": ["src/**/*.{ts,tsx}!"]
-        },
-        "packages/config": {
-            "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
-        },
-        "packages/create-gtkx": {
-            "entry": ["src/cli.ts!"],
-            "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
-        },
-        "packages/css": {
-            "project": ["src/**/*.{ts,tsx}!", "tests/**/*.{ts,tsx}"]
+            "entry": ["gtkx.config.ts", "scripts/**/*.ts"]
         },
         "packages/e2e": {
-            "entry": ["gtkx.config.ts!"],
-            "project": ["tests/**/*.{ts,tsx}"]
-        },
-        "packages/ffi": {
-            "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
-        },
-        "packages/gl": {
-            "project": ["src/**/*.ts!"]
-        },
-        "packages/mcp": {
-            "entry": ["src/server.ts!"],
-            "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
-        },
-        "packages/utils": {
-            "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
-        },
-        "packages/native": {
-            "project": ["*.ts!"]
-        },
-        "packages/react": {
-            "project": ["src/**/*.{ts,tsx}!"]
+            "entry": ["gtkx.config.ts!"]
         },
         "packages/testing": {
-            "entry": ["gtkx.config.ts!"],
-            "project": ["src/**/*.{ts,tsx}!", "tests/**/*.{ts,tsx}"]
+            "entry": ["gtkx.config.ts!"]
+        },
+        "packages/cli": {
+            "entry": ["src/global.d.ts!", "scripts/**/*.ts!"]
+        },
+        "packages/codegen": {
+            "entry": ["scripts/**/*.ts!"]
         },
         "packages/vitest": {
-            "entry": ["src/worker-setup.ts!"],
-            "project": ["src/**/*.ts!"]
+            "entry": ["src/worker-setup.ts!"]
         },
-        "examples/browser": {
-            "entry": ["src/index.tsx!", "src/gtkx-env.d.ts!", "gtkx.config.ts!"],
-            "project": ["src/**/*.{ts,tsx}!"]
-        },
-        "examples/gtk-demo": {
-            "entry": ["src/index.tsx!", "src/gtkx-env.d.ts!", "gtkx.config.ts!"],
-            "project": ["src/**/*.{ts,tsx}!", "tests/**/*.{ts,tsx}"]
-        },
-        "examples/hello-world": {
-            "entry": ["src/index.tsx!", "src/gtkx-env.d.ts!", "gtkx.config.ts!"],
-            "project": ["src/**/*.{ts,tsx}!"]
-        },
-        "examples/tutorial": {
-            "entry": ["src/index.tsx!", "src/gtkx-env.d.ts!", "gtkx.config.ts!"],
-            "project": ["src/**/*.{ts,tsx}!", "scripts/**/*.ts"]
-        },
-        ".gtkx/gi": {
-            "entry": ["**/*.{js,d.ts}!"],
-            "ignoreDependencies": ["@gtkx/.*"]
-        },
-        ".gtkx/jsx": {
-            "entry": ["**/*.{js,d.ts}!"],
-            "ignoreDependencies": ["@gtkx/.*"]
+        "examples/*": {
+            "entry": ["gtkx.config.ts!", "src/gtkx-env.d.ts!", "src/app.tsx!", "src/index.tsx!"]
         }
     }
 }

@@ -34,7 +34,7 @@ export const trackedInstance = (node: Node): GObject.Object | undefined => {
     return child instanceof GObject.Object ? child : undefined;
 };
 
-export const relationshipChildren = <T extends GObject.Object>(node: Node, ctor: AnyClass<T>): T[] =>
+const relationshipChildren = <T extends GObject.Object>(node: Node, ctor: AnyClass<T>): T[] =>
     stateOf(node).children.filter((child): child is T => child instanceof ctor);
 
 export const relationshipChildWidgets = (node: Node): Gtk.Widget[] => relationshipChildren(node, Gtk.Widget);

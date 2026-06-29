@@ -97,7 +97,7 @@ const beginRegistration = async (ctx: ServerContext): Promise<PendingRegistratio
 
 const connectAndRegister = async (ctx: ServerContext): Promise<McpClient> => {
     const { client, connectPromise, registerLine } = await beginRegistration(ctx);
-    ctx.sockets[0]?.write(`${JSON.stringify({ id: registerLine?.["id"], result: {} })}\n`);
+    ctx.sockets[0]?.write(`${JSON.stringify({ id: registerLine?.id, result: {} })}\n`);
     await connectPromise;
     return client;
 };
@@ -117,10 +117,10 @@ describe("McpClient.connect", () => {
     it("connects and sends an app.register request as its first message", async () => {
         const { client, connectPromise, registerLine } = await beginRegistration(ctx);
 
-        expect(registerLine?.["method"]).toBe("app.register");
-        expect((registerLine?.["params"] as { applicationId: string }).applicationId).toBe("com.test.app");
+        expect(registerLine?.method).toBe("app.register");
+        expect((registerLine?.params as { applicationId: string }).applicationId).toBe("com.test.app");
 
-        ctx.sockets[0]?.write(`${JSON.stringify({ id: registerLine?.["id"], result: {} })}\n`);
+        ctx.sockets[0]?.write(`${JSON.stringify({ id: registerLine?.id, result: {} })}\n`);
         await connectPromise;
 
         client.disconnect();
@@ -132,7 +132,7 @@ describe("McpClient response correlation", () => {
         const { client, connectPromise, registerLine } = await beginRegistration(ctx);
 
         ctx.sockets[0]?.write(`${JSON.stringify({ id: "unknown-id", result: { stale: true } })}\n`);
-        ctx.sockets[0]?.write(`${JSON.stringify({ id: registerLine?.["id"], result: {} })}\n`);
+        ctx.sockets[0]?.write(`${JSON.stringify({ id: registerLine?.id, result: {} })}\n`);
 
         await expect(connectPromise).resolves.toBeUndefined();
 
@@ -151,8 +151,8 @@ describe("McpClient incoming requests", () => {
 
         await waitFor(() => ctx.received[0]?.length === 2);
         const [, responseLine] = parseLines(ctx.received[0] ?? []);
-        expect(responseLine?.["id"]).toBe("req-1");
-        expect((responseLine?.["error"] as { message: string }).message).toMatch(/not initialized/);
+        expect(responseLine?.id).toBe("req-1");
+        expect((responseLine?.error as { message: string }).message).toMatch(/not initialized/);
 
         client.disconnect();
     });
@@ -179,8 +179,8 @@ describe("McpClient incoming requests", () => {
 
         await waitFor(() => ctx.received[0]?.length === 2);
         const [, responseLine] = parseLines(ctx.received[0] ?? []);
-        expect(responseLine?.["id"]).toBe("req-ok");
-        expect((responseLine?.["result"] as { windows: unknown[] }).windows).toEqual([]);
+        expect(responseLine?.id).toBe("req-ok");
+        expect((responseLine?.result as { windows: unknown[] }).windows).toEqual([]);
 
         client.disconnect();
     });
@@ -193,9 +193,9 @@ describe("McpClient incoming requests", () => {
 
         await waitFor(() => ctx.received[0]?.length === 2);
         const [, responseLine] = parseLines(ctx.received[0] ?? []);
-        expect(responseLine?.["id"]).toBe("req-bad");
-        expect(typeof (responseLine?.["error"] as { code: number }).code).toBe("number");
-        expect((responseLine?.["error"] as { message: string }).message).toMatch(/does\.not\.exist/);
+        expect(responseLine?.id).toBe("req-bad");
+        expect(typeof (responseLine?.error as { code: number }).code).toBe("number");
+        expect((responseLine?.error as { message: string }).message).toMatch(/does\.not\.exist/);
 
         client.disconnect();
     });
@@ -209,7 +209,7 @@ describe("McpClient.disconnect", () => {
         await waitFor(() => ctx.received[0]?.length === 2);
 
         const [, unregisterLine] = parseLines(ctx.received[0] ?? []);
-        expect(unregisterLine?.["method"]).toBe("app.unregister");
+        expect(unregisterLine?.method).toBe("app.unregister");
     });
 
     it("rejects an in-flight connect() promise when disconnect is called first", async () => {
@@ -238,9 +238,7 @@ describe("McpClient connection failures", () => {
         const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
         const { client, connectPromise, registerLine } = await beginRegistration(ctx);
 
-        ctx.sockets[0]?.write(
-            `${JSON.stringify({ id: registerLine?.["id"], error: { code: -1, message: "refused" } })}\n`,
-        );
+        ctx.sockets[0]?.write(`${JSON.stringify({ id: registerLine?.id, error: { code: -1, message: "refused" } })}\n`);
 
         await expect(connectPromise).rejects.toThrow();
 

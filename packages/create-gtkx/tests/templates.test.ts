@@ -32,7 +32,7 @@ describe("renderFile", () => {
     });
 
     it("propagates the applicationId and title to templates that use them", () => {
-        const output = renderFile("gitignore", baseContext);
+        const output = renderFile(".gitignore", baseContext);
         expect(typeof output).toBe("string");
     });
 });
@@ -42,7 +42,7 @@ describe("listTemplates", () => {
         const templates = listTemplates();
 
         expect(templates).toEqual([
-            "gitignore",
+            ".gitignore",
             "gtkx.config.ts",
             "package.json",
             "src/app.tsx",

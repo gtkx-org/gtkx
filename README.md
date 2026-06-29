@@ -61,10 +61,7 @@ const Counter = () => {
       title="Hello GTKX"
       defaultWidth={400}
       defaultHeight={300}
-      onCloseRequest={() => {
-        quit();
-        return true;
-      }}
+      onCloseRequest={quit}
     >
       <GtkBox
         orientation={Gtk.Orientation.VERTICAL}

@@ -70,7 +70,7 @@ const parseDefinitions = (schemalist: RawNode, tag: string): Map<string, string[
 };
 
 const parseChoices = (key: RawNode): string[] => {
-    const choices = key["choices"];
+    const choices = key.choices;
     if (!isRawNode(choices)) return [];
     return children(choices, "choice")
         .map((choice) => attr(choice, "value"))
@@ -138,7 +138,7 @@ export const parseSchemaXml = (xml: string, fileName: string): ParsedSchemaFile 
     if (!isRawNode(document) || !("schemalist" in document)) {
         throw new SchemaParseError(`${fileName} has no <schemalist> root element`);
     }
-    const schemalist = isRawNode(document["schemalist"]) ? document["schemalist"] : {};
+    const schemalist = isRawNode(document.schemalist) ? document.schemalist : {};
     const rawSchemas = children(schemalist, "schema").map((schema) => parseRawSchema(schema, fileName));
     const byId = new Map(rawSchemas.map((schema) => [schema.id, schema]));
     return {

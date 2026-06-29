@@ -118,7 +118,7 @@ describe("runCodegen", () => {
 
 describe("ensureGenerated — announce path", () => {
     let cwd: string;
-    const originalEnv = process.env["GTKX_DISABLE_PREFLIGHT"];
+    const originalEnv = process.env.GTKX_DISABLE_PREFLIGHT;
 
     beforeEach(() => {
         cwd = mkdtempSync(join(tmpdir(), "gtkx-announce-"));
@@ -127,25 +127,25 @@ describe("ensureGenerated — announce path", () => {
     afterEach(() => {
         rmSync(cwd, { recursive: true, force: true });
         if (originalEnv === undefined) {
-            delete process.env["GTKX_DISABLE_PREFLIGHT"];
+            delete process.env.GTKX_DISABLE_PREFLIGHT;
         } else {
-            process.env["GTKX_DISABLE_PREFLIGHT"] = originalEnv;
+            process.env.GTKX_DISABLE_PREFLIGHT = originalEnv;
         }
     });
 
     it("returns silently when GTKX_DISABLE_PREFLIGHT=1", async () => {
-        process.env["GTKX_DISABLE_PREFLIGHT"] = "1";
+        process.env.GTKX_DISABLE_PREFLIGHT = "1";
         expect(await ensureGenerated(cwd, { announce: true })).toBe(false);
     });
 
     it("returns silently when there is no gtkx.config.ts", async () => {
-        delete process.env["GTKX_DISABLE_PREFLIGHT"];
+        delete process.env.GTKX_DISABLE_PREFLIGHT;
         installFfiPackage(cwd);
         expect(await ensureGenerated(cwd, { announce: true })).toBe(false);
     });
 
     it("propagates non-NotFound config errors", async () => {
-        delete process.env["GTKX_DISABLE_PREFLIGHT"];
+        delete process.env.GTKX_DISABLE_PREFLIGHT;
         installFfiPackage(cwd);
         writeConfig(cwd, `export default { libraries: [] };`);
 
@@ -153,7 +153,7 @@ describe("ensureGenerated — announce path", () => {
     });
 
     it("runs codegen when the gi store is missing", async () => {
-        delete process.env["GTKX_DISABLE_PREFLIGHT"];
+        delete process.env.GTKX_DISABLE_PREFLIGHT;
         installFfiPackage(cwd);
         writeConfig(cwd);
 
@@ -161,7 +161,7 @@ describe("ensureGenerated — announce path", () => {
     });
 
     it("skips codegen when the gi and jsx stores are present", async () => {
-        delete process.env["GTKX_DISABLE_PREFLIGHT"];
+        delete process.env.GTKX_DISABLE_PREFLIGHT;
         installFfiPackage(cwd);
         installReactStack(cwd);
         writeConfig(cwd);

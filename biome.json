@@ -1,7 +1,7 @@
 {
     "$schema": "https://biomejs.dev/schemas/2.5.1/schema.json",
     "files": {
-        "includes": ["**", "!**/*.svg", "!website", "!.design-handoff"]
+        "includes": ["**", "!**/*.svg"]
     },
     "css": {
         "parser": {
@@ -13,14 +13,9 @@
             "complexity": {
                 "noExcessiveCognitiveComplexity": "error",
                 "noExcessiveLinesPerFunction": "error",
-                "useMaxParams": "error",
-                "useLiteralKeys": "off"
+                "useMaxParams": "error"
             },
             "style": {
-                "noNonNullAssertion": "error",
-                "useNodejsImportProtocol": "error",
-                "useImportType": "error",
-                "useExportType": "error",
                 "useConsistentArrayType": {
                     "level": "error",
                     "options": {
@@ -111,21 +106,35 @@
             }
         },
         {
-            "includes": ["packages/codegen/src/overrides/**"],
+            "includes": ["**/tests/**", "**/*.test.ts", "**/*.test.tsx"],
             "linter": {
                 "rules": {
                     "complexity": {
-                        "useMaxParams": "off"
+                        "noExcessiveLinesPerFunction": "off"
                     }
                 }
             }
         },
         {
-            "includes": ["**/tests/**"],
+            "includes": ["website/**"],
             "linter": {
                 "rules": {
                     "complexity": {
-                        "noExcessiveLinesPerFunction": "off"
+                        "noImportantStyles": "off"
+                    },
+                    "style": {
+                        "useFilenamingConvention": "off"
+                    }
+                }
+            }
+        },
+        {
+            "includes": ["**/*.vue"],
+            "linter": {
+                "rules": {
+                    "correctness": {
+                        "noUnusedFunctionParameters": "off",
+                        "noUnusedVariables": "off"
                     }
                 }
             }

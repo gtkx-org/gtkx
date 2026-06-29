@@ -2,7 +2,6 @@
 import { useRoute } from "vitepress";
 import DefaultTheme from "vitepress/theme";
 import { computed } from "vue";
-import Landing from "./landing/Landing.vue";
 
 const { Layout } = DefaultTheme;
 const route = useRoute();

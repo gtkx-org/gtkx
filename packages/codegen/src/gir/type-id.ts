@@ -13,9 +13,9 @@ export const LIST_FLAVOR_BY_NAME = {
 
 export type ListFlavor = (typeof LIST_FLAVOR_BY_NAME)[keyof typeof LIST_FLAVOR_BY_NAME];
 
-export type PrimitiveType = { kind: "primitive"; category: PrimitiveCategory };
+type PrimitiveType = { kind: "primitive"; category: PrimitiveCategory };
 
-export type VarargsType = { kind: "varargs" };
+type VarargsType = { kind: "varargs" };
 
 export type CArrayType = {
     kind: "carray";

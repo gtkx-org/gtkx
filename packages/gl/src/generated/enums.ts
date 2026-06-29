@@ -3,7 +3,7 @@
  *
  * Emitted by the `@gtkx/codegen` Khronos generator from the vendored
  * `registry/gl.xml` (gl 4.6 core profile). Regenerate with
- * `pnpm --filter @gtkx/codegen codegen:gl`.
+ * `pnpm --filter @gtkx/codegen generate-gl`.
  */
 
 /** `GL_ACTIVE_ATOMIC_COUNTER_BUFFERS` — provided by `GL_VERSION_4_2`. Groups: `ProgramPropertyARB`. */

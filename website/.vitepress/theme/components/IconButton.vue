@@ -1,12 +1,12 @@
 <script setup lang="ts">
 withDefaults(
-  defineProps<{
-    size?: "sm" | "md" | "lg";
-    variant?: "ghost" | "outline" | "solid";
-    label: string;
-    href?: string;
-  }>(),
-  { size: "md", variant: "ghost" },
+    defineProps<{
+        size?: "sm" | "md" | "lg";
+        variant?: "ghost" | "outline" | "solid";
+        label: string;
+        href?: string;
+    }>(),
+    { size: "md", variant: "ghost" },
 );
 </script>
 

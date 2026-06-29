@@ -248,7 +248,7 @@ const createInstanceConfig = (): InstanceConfig => ({
         if (type !== RELATIONSHIP_NODE_ELEMENT) {
             return createElementInstance(type, props, rootContainer);
         }
-        const kind = props["kind"];
+        const kind = props.kind;
         if (!isRelationshipKind(kind)) {
             throw new Error(`Relationship node element has an invalid kind: ${JSON.stringify(kind)}`);
         }

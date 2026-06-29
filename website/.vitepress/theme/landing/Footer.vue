@@ -1,19 +1,28 @@
 <script setup lang="ts">
-import { LICENSE, REPO_URL } from "./content";
+import { REPO_URL } from "./content";
 
 type Link = { t: string; href?: string };
 const cols: { h: string; items: Link[] }[] = [
-  {
-    h: "Project",
-    items: [
-      { t: "GitHub", href: REPO_URL },
-      { t: "Examples", href: `${REPO_URL}/tree/main/examples` },
-      { t: "Issues", href: `${REPO_URL}/issues` },
-      { t: "Releases", href: `${REPO_URL}/releases` },
-    ],
-  },
-  { h: "Packages", items: [{ t: "@gtkx/react" }, { t: "@gtkx/ffi" }, { t: "@gtkx/cli" }, { t: "@gtkx/testing" }, { t: "@gtkx/mcp" }] },
-  { h: "Platform", items: [{ t: "GTK 4" }, { t: "libadwaita" }, { t: "GObject" }, { t: "GNOME" }] },
+    {
+        h: "Project",
+        items: [
+            { t: "GitHub", href: REPO_URL },
+            { t: "Examples", href: `${REPO_URL}/tree/main/examples` },
+            { t: "Issues", href: `${REPO_URL}/issues` },
+            { t: "Releases", href: `${REPO_URL}/releases` },
+        ],
+    },
+    {
+        h: "Packages",
+        items: [
+            { t: "@gtkx/react" },
+            { t: "@gtkx/ffi" },
+            { t: "@gtkx/cli" },
+            { t: "@gtkx/testing" },
+            { t: "@gtkx/mcp" },
+        ],
+    },
+    { h: "Platform", items: [{ t: "GTK 4" }, { t: "libadwaita" }, { t: "GObject" }, { t: "GNOME" }] },
 ];
 </script>
 

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 withDefaults(defineProps<{ interactive?: boolean; glow?: boolean; padding?: string }>(), {
-  interactive: false,
-  glow: false,
-  padding: "1.5rem",
+    interactive: false,
+    glow: false,
+    padding: "1.5rem",
 });
 </script>
 

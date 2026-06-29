@@ -1,17 +1,16 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
-const props = withDefaults(
-  defineProps<{ type?: "tip" | "info" | "note" | "warning" | "danger"; title?: string }>(),
-  { type: "tip" },
-);
+const props = withDefaults(defineProps<{ type?: "tip" | "info" | "note" | "warning" | "danger"; title?: string }>(), {
+    type: "tip",
+});
 
 const MAP = {
-  tip: { color: "var(--brand)", soft: "var(--brand-soft)", label: "TIP" },
-  info: { color: "var(--accent)", soft: "var(--accent-soft)", label: "INFO" },
-  note: { color: "var(--text-2)", soft: "var(--bg-soft)", label: "NOTE" },
-  warning: { color: "var(--warning)", soft: "var(--warning-soft)", label: "WARNING" },
-  danger: { color: "var(--danger)", soft: "var(--danger-soft)", label: "DANGER" },
+    tip: { color: "var(--brand)", soft: "var(--brand-soft)", label: "TIP" },
+    info: { color: "var(--accent)", soft: "var(--accent-soft)", label: "INFO" },
+    note: { color: "var(--text-2)", soft: "var(--bg-soft)", label: "NOTE" },
+    warning: { color: "var(--warning)", soft: "var(--warning-soft)", label: "WARNING" },
+    danger: { color: "var(--danger)", soft: "var(--danger-soft)", label: "DANGER" },
 } as const;
 
 const c = computed(() => MAP[props.type]);

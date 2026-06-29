@@ -1,6 +1,4 @@
 import { sourceStringLiteral } from "@gtkx/utils";
-import { isRecordInout } from "../ffi/param-marshal.js";
-import { computeRecordFieldSlots } from "../ffi/record-layout.js";
 import type { GirCallback } from "../gir/callback.js";
 import type { Library } from "../gir/library.js";
 import {
@@ -14,6 +12,8 @@ import {
 import type { PrimitiveCategory } from "../gir/primitives.js";
 import type { EntityType, GirType } from "../gir/type.js";
 import type { CArrayType, ListFlavor, TypeId } from "../gir/type-id.js";
+import { isRecordInout } from "../store/gi/param-marshal.js";
+import { computeRecordFieldSlots } from "../store/gi/record-layout.js";
 import type { ModuleContext } from "../writer/context.js";
 import {
     type ListDescriptorName,
@@ -42,7 +42,7 @@ import {
     tVoid,
 } from "./descriptor.js";
 
-const ffiOwnership = (transfer: ParameterTransfer): Ownership => {
+const transferOwnership = (transfer: ParameterTransfer): Ownership => {
     if (transfer === "full") return "full";
     if (transfer === "container") return "full";
     return "borrowed";
@@ -76,7 +76,7 @@ export const renderDescriptor = (
 ): string => {
     if (ref === undefined) return tVoid;
     const { argIndexOffset = 0 } = options;
-    const ownership = ffiOwnership(transfer);
+    const ownership = transferOwnership(transfer);
     const type = context.library.typeOf(ref);
     if (type === undefined) return tObject(ownership);
     switch (type.kind) {
@@ -264,7 +264,7 @@ export const renderSelfDescriptor = (context: ModuleContext, instance: GirParame
         return ancestor === undefined ? tObject("borrowed") : renderFundamental({ ...ancestor, ownership: "borrowed" });
     }
     if (type.kind === "record") {
-        return recordExpression(context, type, ffiOwnership(instance.transferOwnership));
+        return recordExpression(context, type, transferOwnership(instance.transferOwnership));
     }
     return tObject("borrowed");
 };
@@ -339,7 +339,7 @@ const expressionForResolved = (
     transfer: ParameterTransfer,
     options: RenderDescriptorOptions,
 ): string => {
-    const ownership = ffiOwnership(transfer);
+    const ownership = transferOwnership(transfer);
     switch (resolved.kind) {
         case "class":
         case "interface":
@@ -364,7 +364,7 @@ const arrayExpression = (
     transfer: ParameterTransfer,
     argIndexOffset: number,
 ): string => {
-    const ownership = ffiOwnership(transfer);
+    const ownership = transferOwnership(transfer);
     const element = renderDescriptor(context, ref.element, deriveElementTransfer(transfer), { argIndexOffset });
     const size = inlineElementSize(context, ref.element, ref.elementCType);
     if (ref.lengthParameterIndex !== undefined) {
@@ -398,7 +398,7 @@ const aliasExpression = (
     options: RenderDescriptorOptions,
 ): string => {
     if (target === undefined) {
-        return tObject(ffiOwnership(transfer));
+        return tObject(transferOwnership(transfer));
     }
     return renderDescriptor(context, target, transfer, options);
 };

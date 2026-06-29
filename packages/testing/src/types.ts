@@ -54,11 +54,11 @@ export type WrapperComponent = ComponentType<{
     children: ReactNode;
 }>;
 
-export type Query = (container: Container, ...args: never[]) => unknown;
+type Query = (container: Container, ...args: never[]) => unknown;
 
 export type QueryMap = Record<string, Query>;
 
-export type BoundQuery<Q extends Query> = Q extends (container: Container, ...args: infer A) => infer R
+type BoundQuery<Q extends Query> = Q extends (container: Container, ...args: infer A) => infer R
     ? (...args: A) => R
     : never;
 

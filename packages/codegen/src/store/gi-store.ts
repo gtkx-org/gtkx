@@ -1,10 +1,13 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import ejs from "ejs";
 import { type CodegenFingerprint, FINGERPRINT_FILENAME } from "../fingerprint.js";
 import { buildManifest, type StoreOptions, selfLink, subpathExport, writeStore } from "./store-fs.js";
 
-const OVERRIDES_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "src", "overrides");
+const OVERRIDES_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "gi", "overrides");
+
+const renderTemplate = (path: string): string => ejs.render(readFileSync(path, "utf8"), {});
 
 export type GiStoreOptions = StoreOptions & {
     realFfiDir: string;
@@ -19,15 +22,15 @@ export type GiNamespaceInput = {
 const overrideFiles = (directory: string): string[] => {
     const dir = join(OVERRIDES_ROOT, directory);
     if (!existsSync(dir)) return [];
-    return readdirSync(dir).filter((name) => name.endsWith(".ts") && name !== "index.ts");
+    return readdirSync(dir).filter((name) => name.endsWith(".ejs") && name !== "index.ts.ejs");
 };
 
 const barrelSource = (directory: string): string => {
-    const overrideIndex = join(OVERRIDES_ROOT, directory, "index.ts");
+    const overrideIndex = join(OVERRIDES_ROOT, directory, "index.ts.ejs");
     if (!existsSync(overrideIndex)) {
         return `export * from "./${directory}.js";\n`;
     }
-    return readFileSync(overrideIndex, "utf8");
+    return renderTemplate(overrideIndex);
 };
 
 type CollectedFile = {
@@ -49,9 +52,9 @@ const collectStoreSources = (
         });
         for (const file of overrideFiles(directory)) {
             collected.push({
-                stem: `${directory}/overrides/${file.slice(0, -".ts".length)}`,
-                fileName: `${directory}/overrides/${file}`,
-                source: readFileSync(join(OVERRIDES_ROOT, directory, file), "utf8"),
+                stem: `${directory}/overrides/${file.replace(/\.ts\.ejs$/, "")}`,
+                fileName: `${directory}/overrides/${file.replace(/\.ejs$/, "")}`,
+                source: renderTemplate(join(OVERRIDES_ROOT, directory, file)),
             });
         }
         collected.push({

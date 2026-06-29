@@ -70,7 +70,7 @@ const buildHarness = (
     const quitDefaultApp = vi.fn<DevRunnerDeps["quitDefaultApplication"]>();
     const performRefresh = vi.fn<DevRunnerDeps["performRefresh"]>();
     const isBoundary = vi.fn<DevRunnerDeps["isRefreshBoundary"]>((mod) =>
-        overrides.isBoundary ? overrides.isBoundary(mod) : mod["__isBoundary"] === true,
+        overrides.isBoundary ? overrides.isBoundary(mod) : mod.__isBoundary === true,
     );
     const log = vi.fn<DevRunnerDeps["log"]>();
     const exit = vi.fn<DevRunnerDeps["exit"]>((() => undefined) as never);

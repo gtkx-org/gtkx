@@ -55,13 +55,13 @@ const PLAN_POLICY: GlPlanPolicy = {
     singleValuedQueries: SINGLE_VALUED_QUERIES,
 };
 
-export type GlExclusion = {
+type GlExclusion = {
     command: string;
     reason: GlExclusionReason;
     detail: string;
 };
 
-export type GlGenerationReport = {
+type GlGenerationReport = {
     selection: GlSelection;
     selectedCommands: number;
     emittedCommands: number;

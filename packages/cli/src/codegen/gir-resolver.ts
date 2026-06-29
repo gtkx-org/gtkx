@@ -11,7 +11,7 @@ export const resolveGirPath = (configGirPath: string[] | undefined): string[] =>
         paths.push(...configGirPath);
     }
 
-    const envPath = process.env["GTKX_GIR_PATH"];
+    const envPath = process.env.GTKX_GIR_PATH;
     if (envPath) {
         paths.push(...envPath.split(":").filter((path) => path.length > 0));
     }

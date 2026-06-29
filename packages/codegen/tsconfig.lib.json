@@ -1,6 +1,5 @@
 {
     "extends": "../../tsconfig.lib.json",
-    "exclude": ["src/overrides"],
     "references": [
         {
             "path": "../config/tsconfig.lib.json"

@@ -54,11 +54,13 @@
         "@clack/prompts": "^1.6.0",
         "@gtkx/config": "workspace:*",
         "@gtkx/utils": "workspace:*",
+        "ejs": "catalog:",
         "citty": "^0.2.2",
         "nypm": "^0.6.7",
         "tinyexec": "^1.2.4"
     },
     "devDependencies": {
+        "@types/ejs": "catalog:",
         "@types/node": "catalog:",
         "memfs": "^4.57.8",
         "typescript": "catalog:",

@@ -1,15 +1,4 @@
 <script setup lang="ts">
-import Benchmark from "./Benchmark.vue";
-import Closing from "./Closing.vue";
-import { REPO_URL } from "./content";
-import Differentiators from "./Differentiators.vue";
-import Ecosystem from "./Ecosystem.vue";
-import Features from "./Features.vue";
-import Footer from "./Footer.vue";
-import Hero from "./Hero.vue";
-import HowItWorks from "./HowItWorks.vue";
-import Nav from "./Nav.vue";
-import Platform from "./Platform.vue";
 </script>
 
 <template>

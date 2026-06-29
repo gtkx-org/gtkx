@@ -1,11 +1,11 @@
-import { gtypeTsType } from "../ffi/gtype-binding.js";
 import type { Library } from "../gir/library.js";
 import { PRIMITIVE_TS_TYPE } from "../gir/primitives.js";
 import type { GirType } from "../gir/type.js";
 import type { TypeId } from "../gir/type-id.js";
+import { gtypeTsType } from "../store/gi/gtype-binding.js";
 import type { ModuleContext } from "../writer/context.js";
 
-export type ReferenceName = {
+type ReferenceName = {
     namespaceName: string;
     typeName: string;
 };

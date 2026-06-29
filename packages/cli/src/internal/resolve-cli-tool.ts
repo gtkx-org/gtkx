@@ -8,7 +8,7 @@ export const resolveCliTool = (() => {
         const cached = cache.get(executable);
         if (cached) return cached;
 
-        const dirs = (process.env["PATH"] ?? "").split(delimiter).filter(Boolean);
+        const dirs = (process.env.PATH ?? "").split(delimiter).filter(Boolean);
         for (const dir of dirs) {
             const candidate = join(dir, executable);
             if (existsSync(candidate) && statSync(candidate).isFile()) {

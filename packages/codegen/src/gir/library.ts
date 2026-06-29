@@ -241,7 +241,7 @@ export class Library {
 
 const readRepositoryNode = (path: string): RawNode => {
     const root = parseGirFile(path);
-    const repository = root["repository"];
+    const repository = root.repository;
     if (typeof repository !== "object" || repository === null) {
         throw new Error(`GIR file at ${path} has no <repository> root`);
     }

@@ -3,7 +3,7 @@
  *
  * Emitted by the `@gtkx/codegen` Khronos generator from the vendored
  * `registry/gl.xml` (gl 4.6 core profile). Regenerate with
- * `pnpm --filter @gtkx/codegen codegen:gl`.
+ * `pnpm --filter @gtkx/codegen generate-gl`.
  */
 
 import { t } from "@gtkx/ffi";

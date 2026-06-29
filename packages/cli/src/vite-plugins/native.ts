@@ -1,10 +1,16 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { arch, platform } from "node:os";
 import { dirname, join } from "node:path";
 import type { Plugin } from "vite";
 
 const EMITTED_BINDING_SPECIFIER = "./gtkx.node";
+
+function resolveBinaryPath(projectRequire: ReturnType<typeof createRequire>, currentArch: string): string {
+    const nativeRoot = dirname(projectRequire.resolve("@gtkx/native/package.json"));
+    const localBinary = join(nativeRoot, `native.linux-${currentArch}-gnu.node`);
+    return existsSync(localBinary) ? localBinary : projectRequire.resolve(`@gtkx/native-linux-${currentArch}-gnu`);
+}
 
 function resolvePlatformBinary(projectRequire: ReturnType<typeof createRequire>): Buffer {
     const currentPlatform = platform();
@@ -18,7 +24,7 @@ function resolvePlatformBinary(projectRequire: ReturnType<typeof createRequire>)
         throw new Error(`Unsupported build architecture: ${currentArch}, only x64 and arm64 are supported`);
     }
 
-    return readFileSync(projectRequire.resolve(`@gtkx/native-linux-${currentArch}-gnu`));
+    return readFileSync(resolveBinaryPath(projectRequire, currentArch));
 }
 
 function rewriteLoader(code: string): string {

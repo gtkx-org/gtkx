@@ -98,7 +98,7 @@ const resolveInputsOrNull = (cwd: string, config: GtkxConfig): CodegenInputs | n
 };
 
 export const ensureGenerated = async (cwd: string, options: { announce?: boolean } = {}): Promise<boolean> => {
-    if (options.announce && process.env["GTKX_DISABLE_PREFLIGHT"] === "1") {
+    if (options.announce && process.env.GTKX_DISABLE_PREFLIGHT === "1") {
         return false;
     }
 

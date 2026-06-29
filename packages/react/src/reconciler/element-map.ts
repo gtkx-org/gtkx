@@ -73,7 +73,7 @@ const widgetPropMapping: ElementMapping = {
     matches: (child, parent) => isRelationshipKind(child, WIDGET_PROP_KIND) && parent instanceof GObject.Object,
     attach: (child, parent) => {
         const childState = stateOf(child);
-        const prop = childState.props["propName"];
+        const prop = childState.props.propName;
         if (typeof prop !== "string" || !(parent instanceof GObject.Object)) return;
         const value = trackedInstance(child);
         const state = widgetPropState.get(child);
@@ -96,7 +96,7 @@ const sameInstances = (a: Node[], b: Node[]): boolean =>
     a.length === b.length && a.every((instance, index) => instance === b[index]);
 
 const slotTagOf = (node: Node): string | undefined => {
-    const slotTag = stateOf(node).props["slotTag"];
+    const slotTag = stateOf(node).props.slotTag;
     return typeof slotTag === "string" ? slotTag : undefined;
 };
 
@@ -189,15 +189,15 @@ const notebookTabLabel = (node: Node): Gtk.Widget => {
     const label = tab ? stateOf(tab).children[0] : undefined;
     if (label instanceof Gtk.Widget) return label;
     const synthesized = new Gtk.Label();
-    synthesized.setLabel(typeof nodeState.props["label"] === "string" ? nodeState.props["label"] : "");
+    synthesized.setLabel(typeof nodeState.props.label === "string" ? nodeState.props.label : "");
     return synthesized;
 };
 
 const applyNotebookMeta = (notebook: Gtk.Notebook, widget: Gtk.Widget, props: Props): void => {
     const page = notebook.getPage(widget);
     if (!page) return;
-    if (props["tabExpand"] !== undefined) Reflect.set(page, "tabExpand", props["tabExpand"]);
-    if (props["tabFill"] !== undefined) Reflect.set(page, "tabFill", props["tabFill"]);
+    if (props.tabExpand !== undefined) Reflect.set(page, "tabExpand", props.tabExpand);
+    if (props.tabFill !== undefined) Reflect.set(page, "tabFill", props.tabFill);
 };
 
 const updateNotebookTabLabel = (notebook: Gtk.Notebook, widget: Gtk.Widget, node: Node): void => {
@@ -205,7 +205,7 @@ const updateNotebookTabLabel = (notebook: Gtk.Notebook, widget: Gtk.Widget, node
     if (nodeState.children.some((child) => isRelationshipKind(child, TAB_LABEL_KIND))) return;
     const current = notebook.getTabLabel(widget);
     if (current instanceof Gtk.Label)
-        current.setLabel(typeof nodeState.props["label"] === "string" ? nodeState.props["label"] : "");
+        current.setLabel(typeof nodeState.props.label === "string" ? nodeState.props.label : "");
 };
 
 const attachNotebookPage = (notebook: Gtk.Notebook, widget: Gtk.Widget, node: Node): void => {
@@ -293,17 +293,17 @@ const resolveLayoutKind = (parent: GObject.Object): "grid" | "fixed" | null => {
 
 const buildFixedTransform = (props: Props): Gsk.Transform | null => {
     const point = new Graphene.Point();
-    point.init(typeof props["x"] === "number" ? props["x"] : 0, typeof props["y"] === "number" ? props["y"] : 0);
+    point.init(typeof props.x === "number" ? props.x : 0, typeof props.y === "number" ? props.y : 0);
     let value: Gsk.Transform | null = Gsk.Transform.new().translate(point);
-    if (props["transform"] instanceof Gsk.Transform && value) value = value.transform(props["transform"]);
+    if (props.transform instanceof Gsk.Transform && value) value = value.transform(props.transform);
     return value;
 };
 
 const applyGridLayoutChild = (layoutChild: Gtk.LayoutChild, props: Props): void => {
-    if ("column" in layoutChild) Reflect.set(layoutChild, "column", props["column"] ?? 0);
-    if ("row" in layoutChild) Reflect.set(layoutChild, "row", props["row"] ?? 0);
-    if ("columnSpan" in layoutChild) Reflect.set(layoutChild, "columnSpan", props["columnSpan"] ?? 1);
-    if ("rowSpan" in layoutChild) Reflect.set(layoutChild, "rowSpan", props["rowSpan"] ?? 1);
+    if ("column" in layoutChild) Reflect.set(layoutChild, "column", props.column ?? 0);
+    if ("row" in layoutChild) Reflect.set(layoutChild, "row", props.row ?? 0);
+    if ("columnSpan" in layoutChild) Reflect.set(layoutChild, "columnSpan", props.columnSpan ?? 1);
+    if ("rowSpan" in layoutChild) Reflect.set(layoutChild, "rowSpan", props.rowSpan ?? 1);
 };
 
 const applyFixedLayoutChild = (layoutChild: Gtk.LayoutChild, props: Props): void => {
@@ -373,8 +373,8 @@ const layoutChildMapping: ElementMapping = {
 };
 
 const applyOverlayFlags = (overlay: Gtk.Overlay, widget: Gtk.Widget, props: Props): void => {
-    overlay.setMeasureOverlay(widget, props["measure"] === true);
-    overlay.setClipOverlay(widget, props["clipOverlay"] === true);
+    overlay.setMeasureOverlay(widget, props.measure === true);
+    overlay.setClipOverlay(widget, props.clipOverlay === true);
 };
 
 const overlayMapping: ElementMapping = {
@@ -613,7 +613,7 @@ const promotedNestingGuardMapping: ElementMapping = {
     detach: () => {},
 };
 
-export const ELEMENT_MAP: ElementMapping[] = [
+const ELEMENT_MAP: ElementMapping[] = [
     widgetPropMapping,
     containerSlotMapping,
     notebookPageMapping,

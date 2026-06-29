@@ -136,6 +136,6 @@ export type ServerInitiatedMethod = keyof typeof ServerRequestParamsSchemas;
 
 export type Message = Request | Response;
 
-const getRuntimeDir = (): string => process.env["XDG_RUNTIME_DIR"] ?? tmpdir();
+const getRuntimeDir = (): string => process.env.XDG_RUNTIME_DIR ?? tmpdir();
 
 export const DEFAULT_SOCKET_PATH: string = join(getRuntimeDir(), "gtkx-mcp.sock");

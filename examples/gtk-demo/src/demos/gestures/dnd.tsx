@@ -207,7 +207,7 @@ function getItemStyleClass(style: ItemStyle): string[] {
 }
 
 function themeIsDark(): boolean {
-    const envTheme = process.env["GTK_THEME"];
+    const envTheme = process.env.GTK_THEME;
     if (envTheme != null) {
         return envTheme.endsWith(":dark") || envTheme.endsWith("-dark");
     }

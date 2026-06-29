@@ -91,7 +91,7 @@ export type DragSourceIcon = {
     hotY?: number | undefined;
 };
 
-export type RelationshipNodeElementProps = {
+type RelationshipNodeElementProps = {
     kind: string;
     children?: ReactNode;
     [key: string]: unknown;

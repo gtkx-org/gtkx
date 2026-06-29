@@ -1,11 +1,11 @@
 import { lowerFirst, toCamelCase, toCamelIdentifier, toPascalCase } from "@gtkx/utils";
-import { methodExportName } from "../ffi/method.js";
 import { ancestorChain, type ResolvedAncestor, resolveNamedType } from "../gir/ancestry.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
 import type { Library } from "../gir/library.js";
 import type { GirProperty } from "../gir/property.js";
 import type { TypeId } from "../gir/type-id.js";
+import { methodExportName } from "../store/gi/method.js";
 import type { ModuleContext } from "../writer/context.js";
 import { inputParameters } from "./param-structure.js";
 import { renderTsType } from "./ts-type.js";
@@ -21,7 +21,7 @@ export const resolveImplementedInterface = (
     defaultNamespace: string = context.namespace.name,
 ): ResolvedAncestor | undefined => resolveNamedType(context.library, defaultNamespace, name, ["interface"]);
 
-export const resolveDirectInterfaces = (
+const resolveDirectInterfaces = (
     context: AncestryContext,
     klass: GirClass,
     defaultNamespace: string,

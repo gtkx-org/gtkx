@@ -72,9 +72,9 @@ export class TextBufferController {
 
     private insertChild(buffer: Gtk.TextBuffer, child: Node): void {
         if (isBufferTextNode(child)) {
-            this.insertText(buffer, stateOf(child).props["text"] as string);
+            this.insertText(buffer, stateOf(child).props.text as string);
         } else if (isPaintableNode(child)) {
-            this.insertPaintable(buffer, stateOf(child).props["paintable"] as Gdk.Paintable);
+            this.insertPaintable(buffer, stateOf(child).props.paintable as Gdk.Paintable);
         } else if (isAnchorNode(child)) {
             this.insertAnchor(buffer, child);
         } else if (child instanceof Gtk.TextTag) {
@@ -96,7 +96,7 @@ export class TextBufferController {
 
     private insertAnchor(buffer: Gtk.TextBuffer, node: Node): void {
         const child = stateOf(node).children[0];
-        const replacement = stateOf(node).props["replacementChar"];
+        const replacement = stateOf(node).props.replacementChar;
         const anchor =
             typeof replacement === "string"
                 ? Gtk.TextChildAnchor.newWithReplacement(replacement)

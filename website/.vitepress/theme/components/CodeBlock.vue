@@ -2,14 +2,14 @@
 import { computed } from "vue";
 
 const props = withDefaults(
-  defineProps<{
-    code?: string;
-    lang?: string;
-    title?: string;
-    variant?: "code" | "terminal";
-    showLineNumbers?: boolean;
-  }>(),
-  { lang: "bash", variant: "code", showLineNumbers: false },
+    defineProps<{
+        code?: string;
+        lang?: string;
+        title?: string;
+        variant?: "code" | "terminal";
+        showLineNumbers?: boolean;
+    }>(),
+    { lang: "bash", variant: "code", showLineNumbers: false },
 );
 
 const isTerminal = computed(() => props.variant === "terminal");

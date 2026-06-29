@@ -49,7 +49,7 @@ describe("startHeadlessDisplay", () => {
     let savedEnv: { [key: string]: string | undefined };
 
     const fulfillSockets = (compositor: Compositor): void => {
-        const runtimeDir = process.env["XDG_RUNTIME_DIR"] ?? "";
+        const runtimeDir = process.env.XDG_RUNTIME_DIR ?? "";
         writeFileSync(join(runtimeDir, compositorSocketName[compositor]), "");
         writeFileSync(join(runtimeDir, "bus"), "");
     };
@@ -86,12 +86,12 @@ describe("startHeadlessDisplay", () => {
         fulfillSockets("sway");
         teardowns.push(await pending);
 
-        expect(process.env["WAYLAND_DISPLAY"]).toBe("wayland-1");
-        expect(process.env["WLR_BACKENDS"]).toBe("headless");
-        expect(process.env["WLR_RENDERER"]).toBe("pixman");
-        expect(process.env["WLR_RENDERER_ALLOW_SOFTWARE"]).toBe("1");
-        expect(process.env["WLR_LIBINPUT_NO_DEVICES"]).toBe("1");
-        expect(process.env["WLR_HEADLESS_OUTPUTS"]).toBe("1");
+        expect(process.env.WAYLAND_DISPLAY).toBe("wayland-1");
+        expect(process.env.WLR_BACKENDS).toBe("headless");
+        expect(process.env.WLR_RENDERER).toBe("pixman");
+        expect(process.env.WLR_RENDERER_ALLOW_SOFTWARE).toBe("1");
+        expect(process.env.WLR_LIBINPUT_NO_DEVICES).toBe("1");
+        expect(process.env.WLR_HEADLESS_OUTPUTS).toBe("1");
     });
 
     it("selects the wayland-0 socket for weston without WLR_* env", async () => {
@@ -99,8 +99,8 @@ describe("startHeadlessDisplay", () => {
         fulfillSockets("weston");
         teardowns.push(await pending);
 
-        expect(process.env["WAYLAND_DISPLAY"]).toBe("wayland-0");
-        expect(process.env["WLR_BACKENDS"]).toBeUndefined();
+        expect(process.env.WAYLAND_DISPLAY).toBe("wayland-0");
+        expect(process.env.WLR_BACKENDS).toBeUndefined();
     });
 
     it("passes the requested size through to the weston spawn arguments", async () => {
@@ -116,7 +116,7 @@ describe("startHeadlessDisplay", () => {
 
     it("renders the listen path, EXTERNAL auth, and policy lines in the bus config", async () => {
         const pending = startHeadlessDisplay({ size: DEFAULT_HEADLESS_SIZE, compositor: "weston" });
-        const runtimeDir = process.env["XDG_RUNTIME_DIR"] ?? "";
+        const runtimeDir = process.env.XDG_RUNTIME_DIR ?? "";
         fulfillSockets("weston");
         teardowns.push(await pending);
 

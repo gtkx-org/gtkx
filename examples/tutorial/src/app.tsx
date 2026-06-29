@@ -645,10 +645,7 @@ function NotesWindow() {
             title="Notes"
             defaultWidth={900}
             defaultHeight={600}
-            onCloseRequest={() => {
-                quit();
-                return true;
-            }}
+            onCloseRequest={quit}
             actions={<NotesWindowActions notes={notes} dialogs={dialogs} onShortcuts={onShortcuts} />}
             controllers={
                 <AppShortcuts

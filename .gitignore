@@ -2,7 +2,6 @@
 .turbo/
 *.log
 *.tsbuildinfo
-/.gtkx
 /.pnpm-store/
 /CLAUDE.md
 coverage/

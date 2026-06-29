@@ -3,7 +3,7 @@ import type { InArg, OutArg } from "./args.js";
 import type { GlCommand } from "./model.js";
 import type { ReturnPlan } from "./plan.js";
 
-export const REFPAGES_BASE = "https://registry.khronos.org/OpenGL-Refpages/gl4/html";
+const REFPAGES_BASE = "https://registry.khronos.org/OpenGL-Refpages/gl4/html";
 
 const formatPrototype = (command: GlCommand): string => {
     const params = command.params

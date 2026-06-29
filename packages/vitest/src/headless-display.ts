@@ -164,7 +164,7 @@ const waitForSocket = (path: string, { label, timeout = 15000, child }: WaitForS
 export const startHeadlessDisplay = async (options: HeadlessOptions): Promise<() => void> => {
     const runtimeDir = mkdtempSync(join(tmpdir(), "gtkx-xdg-"));
     chmodSync(runtimeDir, 0o700);
-    process.env["XDG_RUNTIME_DIR"] = runtimeDir;
+    process.env.XDG_RUNTIME_DIR = runtimeDir;
 
     const busConfigPath = join(runtimeDir, "session.conf");
     const busSocketPath = join(runtimeDir, "bus");
@@ -175,20 +175,20 @@ export const startHeadlessDisplay = async (options: HeadlessOptions): Promise<()
         [`--config-file=${busConfigPath}`],
         ["ignore", "ignore", "pipe"],
     );
-    process.env["DBUS_SESSION_BUS_ADDRESS"] = `unix:path=${busSocketPath}`;
+    process.env.DBUS_SESSION_BUS_ADDRESS = `unix:path=${busSocketPath}`;
 
     const compositor = startCompositor(runtimeDir, options);
 
-    process.env["WAYLAND_DISPLAY"] = compositor.socket;
-    process.env["GDK_BACKEND"] = "wayland";
-    process.env["GDK_DISABLE"] = "vulkan";
-    process.env["GSK_RENDERER"] = "cairo";
-    process.env["GTK_A11Y"] = "test";
-    process.env["LIBGL_ALWAYS_SOFTWARE"] = "1";
-    process.env["GST_GL_WINDOW"] = "none";
-    process.env["GSETTINGS_BACKEND"] = "memory";
-    process.env["ALSOFT_DRIVERS"] = "null";
-    process.env["ALSOFT_LOGLEVEL"] = "0";
+    process.env.WAYLAND_DISPLAY = compositor.socket;
+    process.env.GDK_BACKEND = "wayland";
+    process.env.GDK_DISABLE = "vulkan";
+    process.env.GSK_RENDERER = "cairo";
+    process.env.GTK_A11Y = "test";
+    process.env.LIBGL_ALWAYS_SOFTWARE = "1";
+    process.env.GST_GL_WINDOW = "none";
+    process.env.GSETTINGS_BACKEND = "memory";
+    process.env.ALSOFT_DRIVERS = "null";
+    process.env.ALSOFT_LOGLEVEL = "0";
 
     await Promise.all([
         waitForSocket(join(runtimeDir, compositor.socket), { label: "Compositor", child: compositor.child }),

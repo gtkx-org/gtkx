@@ -1,13 +1,13 @@
 <script setup lang="ts">
 withDefaults(
-  defineProps<{
-    variant?: "primary" | "secondary" | "ghost" | "accent";
-    size?: "sm" | "md" | "lg";
-    href?: string;
-    fullWidth?: boolean;
-    disabled?: boolean;
-  }>(),
-  { variant: "primary", size: "md", fullWidth: false, disabled: false },
+    defineProps<{
+        variant?: "primary" | "secondary" | "ghost" | "accent";
+        size?: "sm" | "md" | "lg";
+        href?: string;
+        fullWidth?: boolean;
+        disabled?: boolean;
+    }>(),
+    { variant: "primary", size: "md", fullWidth: false, disabled: false },
 );
 </script>
 

@@ -1,103 +1,102 @@
-
 .landing {
-  display: block;
-  width: 100%;
-  overflow-x: hidden;
+    display: block;
+    width: 100%;
+    overflow-x: hidden;
 }
 
 .glow {
-  position: absolute;
-  inset: 0;
-  background: var(--gradient-glow);
-  pointer-events: none;
-  z-index: 0;
+    position: absolute;
+    inset: 0;
+    background: var(--gradient-glow);
+    pointer-events: none;
+    z-index: 0;
 }
 
 .glow-soft {
-  opacity: 0.55;
+    opacity: 0.55;
 }
 
 .overline {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  font-weight: var(--fw-medium);
-  letter-spacing: var(--tracking-caps);
-  text-transform: uppercase;
-  color: var(--text-3);
-  margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    font-weight: var(--fw-medium);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin: 0;
 }
 
 .accent {
-  color: var(--brand);
+    color: var(--brand);
 }
 
 .section-narrow {
-  max-width: var(--container-md);
+    max-width: var(--container-md);
 }
 
 @media (max-width: 860px) {
-  .stack-md {
-    grid-template-columns: 1fr !important;
-  }
+    .stack-md {
+        grid-template-columns: 1fr !important;
+    }
 }
 
 @media (max-width: 640px) {
-  .stack-sm {
-    grid-template-columns: 1fr !important;
-  }
+    .stack-sm {
+        grid-template-columns: 1fr !important;
+    }
 }
 
 .tok-kw {
-  color: var(--accent);
+    color: var(--accent);
 }
 .tok-tag {
-  color: var(--brand);
+    color: var(--brand);
 }
 .tok-str {
-  color: var(--success);
+    color: var(--success);
 }
 .tok-com {
-  color: var(--text-3);
+    color: var(--text-3);
 }
 .tok-fn {
-  color: var(--text-1);
+    color: var(--text-1);
 }
 .tok-num {
-  color: var(--warning);
+    color: var(--warning);
 }
 .tok-punct {
-  color: var(--text-2);
+    color: var(--text-2);
 }
 .code-ok {
-  color: var(--success);
+    color: var(--success);
 }
 .code-dim {
-  color: var(--text-3);
+    color: var(--text-3);
 }
 
 .l-code {
-  font-family: var(--font-mono);
-  font-size: 0.9em;
-  color: var(--code-text);
-  background: var(--code-bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xs);
-  padding: 0.05em 0.35em;
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    color: var(--code-text);
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xs);
+    padding: 0.05em 0.35em;
 }
 
 .tcmd {
-  color: rgba(235, 235, 245, 0.9);
+    color: rgba(235, 235, 245, 0.9);
 }
 .tprompt {
-  color: var(--red-400);
-  padding-right: 0.5em;
+    color: var(--red-400);
+    padding-right: 0.5em;
 }
 .tout {
-  color: var(--success);
+    color: var(--success);
 }
 .tdim {
-  color: var(--text-3);
+    color: var(--text-3);
 }
 .tmark {
-  padding-right: 0.4em;
+    padding-right: 0.4em;
 }

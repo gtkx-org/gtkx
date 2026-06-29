@@ -3,7 +3,7 @@ import { getErrorGtype, isGtyped } from "./gtype.js";
 import type { Handle } from "./handle.js";
 import { requireWrapperClass, wrapHandle } from "./registry.js";
 
-export interface GError {
+interface GError {
     domain: number;
     code: number;
     message: string;

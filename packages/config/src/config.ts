@@ -24,11 +24,11 @@ export type GtkxConfig = {
     reactCompiler?: boolean | ReactCompilerOptions;
 };
 
-export type ReactCompilerCompilationMode = "infer" | "syntax" | "annotation" | "all";
+type ReactCompilerCompilationMode = "infer" | "syntax" | "annotation" | "all";
 
-export type ReactCompilerPanicThreshold = "none" | "critical_errors" | "all_errors";
+type ReactCompilerPanicThreshold = "none" | "critical_errors" | "all_errors";
 
-export type ReactCompilerOptions = {
+type ReactCompilerOptions = {
     compilationMode?: ReactCompilerCompilationMode;
     panicThreshold?: ReactCompilerPanicThreshold;
 };
@@ -126,7 +126,7 @@ export const validateGtkxConfig = (config: GtkxConfig): void => {
     validateReactCompiler(config.reactCompiler);
 };
 
-export type GtkxConfigEnv = {
+type GtkxConfigEnv = {
     mode?: string;
 };
 

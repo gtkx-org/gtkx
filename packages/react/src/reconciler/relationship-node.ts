@@ -1,4 +1,4 @@
-export const RELATIONSHIP_NODE: unique symbol = Symbol.for("gtkx.relationshipNode");
+const RELATIONSHIP_NODE: unique symbol = Symbol.for("gtkx.relationshipNode");
 
 export type RelationshipNode = { [RELATIONSHIP_NODE]: true };
 

@@ -1,0 +1,15 @@
+{
+    "name": "<%= name %>",
+    "version": "0.0.1",
+    "private": true,
+    "type": "module",
+    "imports": {
+        "#data/*": "./data/*"
+    },
+    "scripts": {
+        "dev": "gtkx dev",
+        "build": "gtkx build",
+        "typecheck": "gtkx codegen && tsc --noEmit",
+        "start": "node dist/bundle.js"
+    }
+}

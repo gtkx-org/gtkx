@@ -1,17 +1,13 @@
 <script setup lang="ts">
-import Badge from "../components/Badge.vue";
-import Icon from "../components/Icon.vue";
-import IconButton from "../components/IconButton.vue";
 import { useAppearance } from "../composables/useAppearance";
-import { REPO_URL } from "./content";
 
 const { isDark, toggle } = useAppearance();
 
 const links = [
-  { label: "Features", href: "#features" },
-  { label: "How it works", href: "#how" },
-  { label: "Platform", href: "#platform" },
-  { label: "Testing", href: "#testing" },
+    { label: "Features", href: "#features" },
+    { label: "How it works", href: "#how" },
+    { label: "Platform", href: "#platform" },
+    { label: "Testing", href: "#testing" },
 ];
 </script>
 

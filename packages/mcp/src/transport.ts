@@ -118,7 +118,7 @@ export class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
         }
 
         const message = parsed as Record<string, unknown>;
-        if (typeof message["method"] === "string") {
+        if (typeof message.method === "string") {
             const requestResult = RequestSchema.safeParse(parsed);
             if (requestResult.success) {
                 this.emit("request", requestResult.data);
@@ -132,7 +132,7 @@ export class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
             }
         }
 
-        const id = typeof message["id"] === "string" ? message["id"] : "unknown";
+        const id = typeof message.id === "string" ? message.id : "unknown";
         this.emit("invalid", { id, error: invalidRequestError("Invalid message format") });
     }
 

@@ -53,8 +53,8 @@
         "@gtkx/utils": "workspace:*"
     },
     "devDependencies": {
-        "@gtkx/components": "workspace:*",
         "@gtkx/config": "workspace:*",
+        "@gtkx/components": "workspace:*",
         "@gtkx/vitest": "workspace:*"
     }
 }

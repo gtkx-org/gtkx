@@ -7,11 +7,11 @@ const rebuildLabelText = (owner: Node): void => {
     if (!(owner instanceof Gtk.Label)) return;
     const state = stateOf(owner);
     const runs = state.children.filter(isLabelTextNode);
-    if (state.props["label"] !== undefined) {
+    if (state.props.label !== undefined) {
         if (runs.length === 0) return;
         throw new Error("<GtkLabel> cannot mix a `label` prop with text children; use one or the other");
     }
-    const text = runs.map((run) => String(stateOf(run).props["text"])).join("");
+    const text = runs.map((run) => String(stateOf(run).props.text)).join("");
     state.signalStore.blockAll();
     try {
         owner.setLabel(text);

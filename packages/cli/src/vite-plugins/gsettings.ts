@@ -42,7 +42,7 @@ type PluginContext = {
 
 const ensureSchemaDir = (state: PluginState): string => {
     if (!state.schemaDir) {
-        const runnerDir = process.env["GTKX_DEV_SCHEMA_DIR"];
+        const runnerDir = process.env.GTKX_DEV_SCHEMA_DIR;
         if (runnerDir) {
             state.schemaDir = runnerDir;
             return runnerDir;
@@ -69,7 +69,7 @@ const releaseSchemaDir = (state: PluginState): void => {
 const compileSchemaDir = (state: PluginState): void => {
     if (!state.schemaDir) return;
     compileSchemas(state.schemaDir);
-    process.env["GSETTINGS_SCHEMA_DIR"] = prependSchemaDir(state.schemaDir, process.env["GSETTINGS_SCHEMA_DIR"]);
+    process.env.GSETTINGS_SCHEMA_DIR = prependSchemaDir(state.schemaDir, process.env.GSETTINGS_SCHEMA_DIR);
 };
 
 const syncSchemaEnv = (state: PluginState): void => {

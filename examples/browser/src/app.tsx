@@ -111,15 +111,7 @@ const BrowserWindow = () => {
     }, []);
 
     return (
-        <AdwApplicationWindow
-            title="GTKX Browser"
-            defaultWidth={1024}
-            defaultHeight={768}
-            onCloseRequest={() => {
-                quit();
-                return true;
-            }}
-        >
+        <AdwApplicationWindow title="GTKX Browser" defaultWidth={1024} defaultHeight={768} onCloseRequest={quit}>
             <AdwToolbarView
                 topBar={
                     <AdwHeaderBar

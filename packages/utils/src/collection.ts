@@ -20,7 +20,7 @@ export const uniqBy = <T>(items: T[], key: (item: T) => string): T[] => {
     return result;
 };
 
-export const compareStrings = (a: string, b: string): number => a.localeCompare(b);
+const compareStrings = (a: string, b: string): number => a.localeCompare(b);
 
 export const sortedStrings = (values: Iterable<string>): string[] => [...values].sort(compareStrings);
 

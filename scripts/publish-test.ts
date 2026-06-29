@@ -144,7 +144,7 @@ function registryEnv(userConfig: string): NodeJS.ProcessEnv {
         NPM_CONFIG_REGISTRY: REGISTRY,
         NPM_CONFIG_USERCONFIG: userConfig,
     };
-    delete env["NPM_CONFIG_PROVENANCE"];
+    delete env.NPM_CONFIG_PROVENANCE;
     return env;
 }
 

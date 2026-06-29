@@ -4,6 +4,6 @@ import Layout from "./Layout.vue";
 import "./styles/index.css";
 
 export default {
-  extends: DefaultTheme,
-  Layout,
+    extends: DefaultTheme,
+    Layout,
 } satisfies Theme;

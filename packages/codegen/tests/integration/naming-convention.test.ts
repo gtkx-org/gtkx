@@ -4,10 +4,10 @@ import {
     glibNameOf,
     implementedInterfaces,
     interfaceHasPropsBody,
-} from "../../src/react/intrinsic-elements.js";
-import { generateJsxFiles } from "../../src/react/pipeline.js";
-import { ACCESSIBLE_ATTRIBUTES } from "../../src/react/tables.js";
-import { ffiModules, library } from "../helpers/library.js";
+} from "../../src/store/react/intrinsic-elements.js";
+import { generateJsxFiles } from "../../src/store/react/pipeline.js";
+import { ACCESSIBLE_ATTRIBUTES } from "../../src/store/react/tables.js";
+import { giModules, library } from "../helpers/library.js";
 
 const jsxSources = (): string[] => generateJsxFiles(library).namespaces.map((entry) => entry.source);
 
@@ -42,7 +42,7 @@ const matchAll = (sources: string[], pattern: RegExp): string[] =>
     sources.flatMap((source) => [...source.matchAll(pattern)].map((match) => match[1] ?? ""));
 
 const moduleSource = (directory: string): string => {
-    const found = ffiModules.find((entry) => entry.directory === directory);
+    const found = giModules.find((entry) => entry.directory === directory);
     expect(found, `expected generated module for ${directory}`).toBeDefined();
     return found?.source ?? "";
 };

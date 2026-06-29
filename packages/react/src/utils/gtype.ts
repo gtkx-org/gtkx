@@ -14,7 +14,7 @@ import { NOTIFY_SIGNAL, propToNotifySignal } from "./notify-name.js";
 
 const NOTIFY_PREFIX = "onNotify";
 
-export const resolveNotifySignal = (propName: string): string | null => {
+const resolveNotifySignal = (propName: string): string | null => {
     if (propName === NOTIFY_PREFIX) return NOTIFY_SIGNAL;
     if (!propName.startsWith(NOTIFY_PREFIX) || propName.length === NOTIFY_PREFIX.length) return null;
     const tail = propName.slice(NOTIFY_PREFIX.length);
@@ -48,7 +48,7 @@ export const collectTypeNameChain = (gtype: bigint): string[] => {
     return chain;
 };
 
-export const collectInterfaceNames = (gtype: bigint): string[] => {
+const collectInterfaceNames = (gtype: bigint): string[] => {
     const cached = interfaceNamesCache.get(gtype);
     if (cached) return cached;
 

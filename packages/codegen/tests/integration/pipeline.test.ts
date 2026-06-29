@@ -1,40 +1,40 @@
 import { describe, expect, it } from "vitest";
-import { generateJsxFiles } from "../../src/react/pipeline.js";
+import { generateJsxFiles } from "../../src/store/react/pipeline.js";
 import { transpileSource } from "../../src/transpile.js";
-import { ffiModules, library } from "../helpers/library.js";
+import { giModules, library } from "../helpers/library.js";
 
 const reactPipeline = generateJsxFiles(library);
 const sourceFor = (files: typeof reactPipeline, directory: string): string =>
     files.namespaces.find((entry) => entry.directory === directory)?.source ?? "";
 
-describe("codegen FFI pipeline", () => {
+describe("codegen gi pipeline", () => {
     it("resolves the transitive dependency closure of Gtk and Adw", () => {
         const names = [...library.namespaces.keys()];
         expect(names).toEqual(expect.arrayContaining(["GLib", "GObject", "Gio", "Gdk", "Gsk", "Gtk", "Adw"]));
     });
 
     it("emits one module per namespace under the expected directory", () => {
-        for (const { directory } of ffiModules) {
+        for (const { directory } of giModules) {
             expect(directory).toMatch(/^[a-z0-9]+$/);
         }
-        expect(ffiModules.length).toBe(library.namespaces.size);
+        expect(giModules.length).toBe(library.namespaces.size);
     });
 
     it("produces non-empty source with imports and exports for every namespace", () => {
-        for (const { source } of ffiModules) {
+        for (const { source } of giModules) {
             expect(source.length).toBeGreaterThan(0);
             expect(source).toContain("export");
         }
     });
 
     it("emits a registered GTK Button class binding", () => {
-        const gtk = ffiModules.find(({ directory }) => directory === "gtk");
+        const gtk = giModules.find(({ directory }) => directory === "gtk");
         expect(gtk).toBeDefined();
         expect(gtk?.source).toContain("Button");
     });
 
-    it("transpiles a generated FFI module to valid JS and declarations", () => {
-        const gtk = ffiModules.find(({ directory }) => directory === "gtk");
+    it("transpiles a generated gi module to valid JS and declarations", () => {
+        const gtk = giModules.find(({ directory }) => directory === "gtk");
         expect(gtk).toBeDefined();
         const { js, dts } = transpileSource(`${gtk?.directory ?? ""}.ts`, gtk?.source ?? "");
         expect(js.length).toBeGreaterThan(0);
@@ -45,27 +45,27 @@ describe("codegen FFI pipeline", () => {
 
 describe("codegen return-value convention", () => {
     it("folds an out-array length companion out of the return tuple", () => {
-        const gio = ffiModules.find(({ directory }) => directory === "gio");
+        const gio = giModules.find(({ directory }) => directory === "gio");
         const source = gio?.source ?? "";
         expect(source).toContain("loadContents(cancellable: Cancellable | null): [boolean, number[], string]");
         expect(source).not.toContain("[boolean, number[], number, string]");
     });
 
     it("returns a bare array when the only surfaced out is an array with a folded length", () => {
-        const pango = ffiModules.find(({ directory }) => directory === "pango");
+        const pango = giModules.find(({ directory }) => directory === "pango");
         const source = pango?.source ?? "";
         expect(source).toContain("listFamilies(): FontFamily[]");
         expect(source).not.toContain("listFamilies(): [FontFamily[], number]");
     });
 
     it("keeps an unlinked length out-parameter in the return tuple", () => {
-        const glib = ffiModules.find(({ directory }) => directory === "glib");
+        const glib = giModules.find(({ directory }) => directory === "glib");
         const source = glib?.source ?? "";
         expect(source).toContain("getGroups(): [string[], number]");
     });
 
     it("drops a skip-annotated return value from the surfaced result", () => {
-        const glib = ffiModules.find(({ directory }) => directory === "glib");
+        const glib = giModules.find(({ directory }) => directory === "glib");
         const source = glib?.source ?? "";
         expect(source).toContain(
             "uriSplit(uriRef: string, flags: UriFlags): [string, string, string, number, string, string, string]",
@@ -76,21 +76,21 @@ describe("codegen return-value convention", () => {
 
 describe("codegen notify detail signals", () => {
     it("keys each introduced property's notify detail off GObject.Object's notify member", () => {
-        const gobject = ffiModules.find(({ directory }) => directory === "gobject");
+        const gobject = giModules.find(({ directory }) => directory === "gobject");
         const source = gobject?.source ?? "";
         expect(source).toContain('"notify::source-property": ObjectSignalHandlers["notify"];');
         expect(source).toContain('"notify::source-property": ObjectSignalEmit["notify"];');
     });
 
     it("qualifies the notify member reference across namespaces", () => {
-        const gtk = ffiModules.find(({ directory }) => directory === "gtk");
+        const gtk = giModules.find(({ directory }) => directory === "gtk");
         const source = gtk?.source ?? "";
         expect(source).toContain('"notify::visible": GObject.ObjectSignalHandlers["notify"];');
         expect(source).toContain('"notify::visible": GObject.ObjectSignalEmit["notify"];');
     });
 
     it("inherits a property's notify detail through the parent map rather than re-listing it", () => {
-        const gtk = ffiModules.find(({ directory }) => directory === "gtk");
+        const gtk = giModules.find(({ directory }) => directory === "gtk");
         const source = gtk?.source ?? "";
         const buttonHandlers = source.slice(source.indexOf("export interface ButtonSignalHandlers"));
         const buttonBody = buttonHandlers.slice(0, buttonHandlers.indexOf("}"));
@@ -98,7 +98,7 @@ describe("codegen notify detail signals", () => {
     });
 
     it("gives a class that introduces properties but no signals its own typed overloads", () => {
-        const gobject = ffiModules.find(({ directory }) => directory === "gobject");
+        const gobject = giModules.find(({ directory }) => directory === "gobject");
         const source = gobject?.source ?? "";
         expect(source).toContain("export interface Binding {");
         expect(source).toContain("connect<K extends keyof BindingSignalHandlers>");

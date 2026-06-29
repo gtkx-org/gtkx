@@ -1,45 +1,126 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import Button from "../components/Button.vue";
-import CodeBlock from "../components/CodeBlock.vue";
-import Icon from "../components/Icon.vue";
-import Tabs from "../components/Tabs.vue";
-import { REPO_URL } from "./content";
 
 const pm = ref("pnpm");
 const CMDS: Record<string, string> = {
-  npm: "npm create gtkx@latest",
-  pnpm: "pnpm create gtkx",
-  yarn: "yarn create gtkx",
-  bun: "bun create gtkx",
+    npm: "npm create gtkx@latest",
+    pnpm: "pnpm create gtkx",
+    yarn: "yarn create gtkx",
+    bun: "bun create gtkx",
 };
 const cmd = computed(() => CMDS[pm.value]);
 const pms = [
-  { value: "npm", label: "npm" },
-  { value: "pnpm", label: "pnpm" },
-  { value: "yarn", label: "yarn" },
-  { value: "bun", label: "bun" },
+    { value: "npm", label: "npm" },
+    { value: "pnpm", label: "pnpm" },
+    { value: "yarn", label: "yarn" },
+    { value: "bun", label: "bun" },
 ];
 
 type Tok = { t: string; c?: string };
 const code: { indent?: number; toks: Tok[] }[] = [
-  { toks: [{ c: "kw", t: "import" }, { t: " { createRoot } " }, { c: "kw", t: "from" }, { t: " " }, { c: "str", t: '"@gtkx/react"' }] },
-  { toks: [{ c: "kw", t: "import" }, { t: " { " }, { c: "tag", t: "AdwApplication, AdwApplicationWindow, AdwHeaderBar" }, { t: " } " }, { c: "kw", t: "from" }, { t: " " }, { c: "str", t: '"@gtkx/jsx/adw"' }] },
-  { toks: [{ c: "kw", t: "import" }, { t: " { " }, { c: "tag", t: "GtkLabel" }, { t: " } " }, { c: "kw", t: "from" }, { t: " " }, { c: "str", t: '"@gtkx/jsx/gtk"' }] },
-  { toks: [{ c: "kw", t: "import" }, { t: " { applicationId } " }, { c: "kw", t: "from" }, { t: " " }, { c: "str", t: '"virtual:gtkx-config"' }] },
-  { toks: [] },
-  { toks: [{ c: "kw", t: "function" }, { t: " " }, { c: "fn", t: "App" }, { t: "() {" }] },
-  { indent: 1, toks: [{ c: "kw", t: "return" }, { t: " (" }] },
-  { indent: 2, toks: [{ c: "punct", t: "<" }, { c: "tag", t: "AdwApplication" }, { t: " applicationId={applicationId}" }, { c: "punct", t: ">" }] },
-  { indent: 3, toks: [{ c: "punct", t: "<" }, { c: "tag", t: "AdwApplicationWindow" }, { t: " title=" }, { c: "str", t: '"Recipes"' }, { c: "punct", t: ">" }] },
-  { indent: 4, toks: [{ c: "punct", t: "<" }, { c: "tag", t: "AdwHeaderBar" }, { t: " />" }] },
-  { indent: 4, toks: [{ c: "punct", t: "<" }, { c: "tag", t: "GtkLabel" }, { t: " label=" }, { c: "str", t: '"Hello from React 👋"' }, { t: " />" }] },
-  { indent: 3, toks: [{ c: "punct", t: "</" }, { c: "tag", t: "AdwApplicationWindow" }, { c: "punct", t: ">" }] },
-  { indent: 2, toks: [{ c: "punct", t: "</" }, { c: "tag", t: "AdwApplication" }, { c: "punct", t: ">" }] },
-  { indent: 1, toks: [{ t: ")" }] },
-  { toks: [{ t: "}" }] },
-  { toks: [] },
-  { toks: [{ c: "fn", t: "createRoot" }, { t: "()." }, { c: "fn", t: "render" }, { t: "(" }, { c: "punct", t: "<" }, { c: "tag", t: "App" }, { t: " />)" }] },
+    {
+        toks: [
+            { c: "kw", t: "import" },
+            { t: " { createRoot } " },
+            { c: "kw", t: "from" },
+            { t: " " },
+            { c: "str", t: '"@gtkx/react"' },
+        ],
+    },
+    {
+        toks: [
+            { c: "kw", t: "import" },
+            { t: " { " },
+            { c: "tag", t: "AdwApplication, AdwApplicationWindow, AdwHeaderBar" },
+            { t: " } " },
+            { c: "kw", t: "from" },
+            { t: " " },
+            { c: "str", t: '"@gtkx/jsx/adw"' },
+        ],
+    },
+    {
+        toks: [
+            { c: "kw", t: "import" },
+            { t: " { " },
+            { c: "tag", t: "GtkLabel" },
+            { t: " } " },
+            { c: "kw", t: "from" },
+            { t: " " },
+            { c: "str", t: '"@gtkx/jsx/gtk"' },
+        ],
+    },
+    {
+        toks: [
+            { c: "kw", t: "import" },
+            { t: " { applicationId } " },
+            { c: "kw", t: "from" },
+            { t: " " },
+            { c: "str", t: '"virtual:gtkx-config"' },
+        ],
+    },
+    { toks: [] },
+    { toks: [{ c: "kw", t: "function" }, { t: " " }, { c: "fn", t: "App" }, { t: "() {" }] },
+    { indent: 1, toks: [{ c: "kw", t: "return" }, { t: " (" }] },
+    {
+        indent: 2,
+        toks: [
+            { c: "punct", t: "<" },
+            { c: "tag", t: "AdwApplication" },
+            { t: " applicationId={applicationId}" },
+            { c: "punct", t: ">" },
+        ],
+    },
+    {
+        indent: 3,
+        toks: [
+            { c: "punct", t: "<" },
+            { c: "tag", t: "AdwApplicationWindow" },
+            { t: " title=" },
+            { c: "str", t: '"Recipes"' },
+            { c: "punct", t: ">" },
+        ],
+    },
+    { indent: 4, toks: [{ c: "punct", t: "<" }, { c: "tag", t: "AdwHeaderBar" }, { t: " />" }] },
+    {
+        indent: 4,
+        toks: [
+            { c: "punct", t: "<" },
+            { c: "tag", t: "GtkLabel" },
+            { t: " label=" },
+            { c: "str", t: '"Hello from React 👋"' },
+            { t: " />" },
+        ],
+    },
+    {
+        indent: 3,
+        toks: [
+            { c: "punct", t: "</" },
+            { c: "tag", t: "AdwApplicationWindow" },
+            { c: "punct", t: ">" },
+        ],
+    },
+    {
+        indent: 2,
+        toks: [
+            { c: "punct", t: "</" },
+            { c: "tag", t: "AdwApplication" },
+            { c: "punct", t: ">" },
+        ],
+    },
+    { indent: 1, toks: [{ t: ")" }] },
+    { toks: [{ t: "}" }] },
+    { toks: [] },
+    {
+        toks: [
+            { c: "fn", t: "createRoot" },
+            { t: "()." },
+            { c: "fn", t: "render" },
+            { t: "(" },
+            { c: "punct", t: "<" },
+            { c: "tag", t: "App" },
+            { t: " />)" },
+        ],
+    },
 ];
 </script>
 

@@ -1,8 +1,4 @@
 <script setup lang="ts">
-import Button from "../components/Button.vue";
-import CodeBlock from "../components/CodeBlock.vue";
-import Icon from "../components/Icon.vue";
-import { LICENSE, REPO_URL } from "./content";
 </script>
 
 <template>

@@ -10,7 +10,7 @@ export type OutputStream = {
 };
 
 const resolveDebugEnabled = (argv: string[], env: NodeJS.ProcessEnv): boolean =>
-    argv.includes("--debug") || env["GTKX_DEBUG"] === "1";
+    argv.includes("--debug") || env.GTKX_DEBUG === "1";
 
 const colorsFor = (stream: OutputStream): Colors => pc.createColors(pc.isColorSupported && stream.isTTY === true);
 

@@ -8,7 +8,7 @@ type AnySignalHandler = { handler(...args: unknown[]): unknown }["handler"];
 
 type AnySignalHandlers = Record<string, AnySignalHandler>;
 
-export type SignalHandlersOf<T extends GObject.Object> = T extends { __signals__?: infer H }
+type SignalHandlersOf<T extends GObject.Object> = T extends { __signals__?: infer H }
     ? unknown extends H
         ? AnySignalHandlers
         : NonNullable<H>

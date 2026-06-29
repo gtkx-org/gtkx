@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import Callout from "../components/Callout.vue";
-import CodeBlock from "../components/CodeBlock.vue";
-
 const appCode = `function App() {
   return (
     <AdwApplicationWindow title="Recipes">

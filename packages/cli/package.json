@@ -81,7 +81,6 @@
         "vite": "catalog:"
     },
     "devDependencies": {
-        "@gtkx/react": "workspace:*",
         "@gtkx/testing": "workspace:*",
         "@types/babel__core": "^7.20.5",
         "@types/react-refresh": "^0.14.7"

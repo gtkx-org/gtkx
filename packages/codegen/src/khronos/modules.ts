@@ -8,10 +8,6 @@ const LIB_CONSTANT = `export const LIB = "libGL.so.1";`;
 
 const GENERATED_HEADER = `/**
  * GENERATED FILE — do not edit.
- *
- * Emitted by the \`@gtkx/codegen\` Khronos generator from the vendored
- * \`registry/gl.xml\` (gl 4.6 core profile). Regenerate with
- * \`pnpm --filter @gtkx/codegen codegen:gl\`.
  */`;
 
 export const renderEnumsModule = (

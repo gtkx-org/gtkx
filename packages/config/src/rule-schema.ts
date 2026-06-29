@@ -56,7 +56,7 @@ export type AttachShape =
 
 export type AttachShapeTable = Record<string, AttachShape[]>;
 
-export type AddMethodArg = "widget" | "id" | "title" | "iconName";
+type AddMethodArg = "widget" | "id" | "title" | "iconName";
 
 export type AddMethodRule = {
     method: string;

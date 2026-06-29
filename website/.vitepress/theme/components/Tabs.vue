@@ -1,7 +1,7 @@
 <script setup lang="ts">
 defineProps<{
-  items: { value: string; label: string }[];
-  variant?: "underline" | "pill";
+    items: { value: string; label: string }[];
+    variant?: "underline" | "pill";
 }>();
 const model = defineModel<string>();
 </script>

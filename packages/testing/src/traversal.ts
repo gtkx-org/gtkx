@@ -2,7 +2,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 
 export const TOPLEVELS: unique symbol = Symbol("gtkx.toplevels");
 
-export type QueryContainer = Gtk.Widget | Gtk.EventController | Gtk.LayoutManager | Gtk.ListItem | Gtk.ListHeader;
+type QueryContainer = Gtk.Widget | Gtk.EventController | Gtk.LayoutManager | Gtk.ListItem | Gtk.ListHeader;
 
 export type Container = QueryContainer | Gtk.Application | typeof TOPLEVELS;
 

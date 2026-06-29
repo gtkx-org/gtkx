@@ -1,35 +1,33 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import CodeBlock from "../components/CodeBlock.vue";
-import Tabs from "../components/Tabs.vue";
 
 const tab = ref("dev");
 
 const STEPS: Record<string, { label: string; blurb: string; cmd: string; out: string[] }> = {
-  create: {
-    label: "create",
-    blurb: "Scaffold a typed app in seconds.",
-    cmd: "npm create gtkx@latest",
-    out: ["scaffolded recipes/ — typed widgets, tests, HMR", "installed @gtkx/react, @gtkx/ffi, @gtkx/css"],
-  },
-  dev: {
-    label: "dev",
-    blurb: "Hot-reloading dev server with Fast Refresh.",
-    cmd: "gtkx dev",
-    out: ["dev server ready in 412 ms", "Fast Refresh on the live native window"],
-  },
-  build: {
-    label: "build",
-    blurb: "Single-file production bundle, GTK assets and all.",
-    cmd: "gtkx build",
-    out: ["dist/bundle.js — one file", "bundled gtkx.node, gresources, compiled schemas"],
-  },
-  codegen: {
-    label: "codegen",
-    blurb: "Regenerate typed bindings from your GIR libraries.",
-    cmd: "gtkx codegen",
-    out: ["read GObject-Introspection for Gtk, Adw, Gio…", "@gtkx/gi + @gtkx/jsx stores refreshed"],
-  },
+    create: {
+        label: "create",
+        blurb: "Scaffold a typed app in seconds.",
+        cmd: "npm create gtkx@latest",
+        out: ["scaffolded recipes/ — typed widgets, tests, HMR", "installed @gtkx/react, @gtkx/ffi, @gtkx/css"],
+    },
+    dev: {
+        label: "dev",
+        blurb: "Hot-reloading dev server with Fast Refresh.",
+        cmd: "gtkx dev",
+        out: ["dev server ready in 412 ms", "Fast Refresh on the live native window"],
+    },
+    build: {
+        label: "build",
+        blurb: "Single-file production bundle, GTK assets and all.",
+        cmd: "gtkx build",
+        out: ["dist/bundle.js — one file", "bundled gtkx.node, gresources, compiled schemas"],
+    },
+    codegen: {
+        label: "codegen",
+        blurb: "Regenerate typed bindings from your GIR libraries.",
+        cmd: "gtkx codegen",
+        out: ["read GObject-Introspection for Gtk, Adw, Gio…", "@gtkx/gi + @gtkx/jsx stores refreshed"],
+    },
 };
 
 const items = Object.entries(STEPS).map(([value, s]) => ({ value, label: s.label }));

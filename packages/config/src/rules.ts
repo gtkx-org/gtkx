@@ -104,7 +104,7 @@ const SimpleAction: RuleSet = {
 
 const SimpleActionGroup: RuleSet = {
     appendChild: (parent, child) => {
-        const prefix = child.props["prefix"];
+        const prefix = child.props.prefix;
         if (
             parent.instance instanceof Gtk.Widget &&
             child.instance instanceof Gio.ActionGroup &&
@@ -114,7 +114,7 @@ const SimpleActionGroup: RuleSet = {
         }
     },
     removeChild: (parent, child) => {
-        const prefix = child.props["prefix"];
+        const prefix = child.props.prefix;
         if (parent.instance instanceof Gtk.Widget && typeof prefix === "string") {
             parent.instance.insertActionGroup(prefix, null);
         }
@@ -194,9 +194,9 @@ const Widget: RuleSet = {
         } else if (
             child.slotTag === "actionGroups" &&
             child.instance instanceof Gio.ActionGroup &&
-            typeof child.props["prefix"] === "string"
+            typeof child.props.prefix === "string"
         ) {
-            parent.instance.insertActionGroup(child.props["prefix"], child.instance);
+            parent.instance.insertActionGroup(child.props.prefix, child.instance);
         }
     },
     removeChild: (parent, child) => {
@@ -207,8 +207,8 @@ const Widget: RuleSet = {
             child.instance.getWidget() === parent.instance
         ) {
             parent.instance.removeController(child.instance);
-        } else if (child.slotTag === "actionGroups" && typeof child.props["prefix"] === "string") {
-            parent.instance.insertActionGroup(child.props["prefix"], null);
+        } else if (child.slotTag === "actionGroups" && typeof child.props.prefix === "string") {
+            parent.instance.insertActionGroup(child.props.prefix, null);
         }
     },
 };
@@ -254,16 +254,13 @@ interface ActionAccelItem {
 
 const Application: RuleSet = {
     setProps: (node, newProps, oldProps) => {
-        if (
-            !(node.instance instanceof Gtk.Application) ||
-            !changed(oldProps?.["actionAccels"], newProps["actionAccels"])
-        ) {
+        if (!(node.instance instanceof Gtk.Application) || !changed(oldProps?.actionAccels, newProps.actionAccels)) {
             return;
         }
-        for (const accel of asArray<ActionAccelItem>(oldProps?.["actionAccels"])) {
+        for (const accel of asArray<ActionAccelItem>(oldProps?.actionAccels)) {
             node.instance.setAccelsForAction(accel.action, []);
         }
-        for (const accel of asArray<ActionAccelItem>(newProps["actionAccels"])) {
+        for (const accel of asArray<ActionAccelItem>(newProps.actionAccels)) {
             node.instance.setAccelsForAction(accel.action, accel.accels);
         }
     },
@@ -271,9 +268,9 @@ const Application: RuleSet = {
 
 const SizeGroup: RuleSet = {
     setProps: (node, newProps, oldProps) => {
-        if (!(node.instance instanceof Gtk.SizeGroup) || !changed(oldProps?.["widgets"], newProps["widgets"])) return;
-        for (const widget of asArray<Gtk.Widget>(oldProps?.["widgets"])) node.instance.removeWidget(widget);
-        for (const widget of asArray<Gtk.Widget>(newProps["widgets"])) node.instance.addWidget(widget);
+        if (!(node.instance instanceof Gtk.SizeGroup) || !changed(oldProps?.widgets, newProps.widgets)) return;
+        for (const widget of asArray<Gtk.Widget>(oldProps?.widgets)) node.instance.removeWidget(widget);
+        for (const widget of asArray<Gtk.Widget>(newProps.widgets)) node.instance.addWidget(widget);
     },
 };
 
@@ -285,9 +282,9 @@ interface ScaleMarkItem {
 
 const Scale: RuleSet = {
     setProps: (node, newProps, oldProps) => {
-        if (!(node.instance instanceof Gtk.Scale) || !changed(oldProps?.["marks"], newProps["marks"])) return;
+        if (!(node.instance instanceof Gtk.Scale) || !changed(oldProps?.marks, newProps.marks)) return;
         node.instance.clearMarks();
-        for (const mark of asArray<ScaleMarkItem>(newProps["marks"])) {
+        for (const mark of asArray<ScaleMarkItem>(newProps.marks)) {
             node.instance.addMark(mark.value, mark.position ?? POSITION_TYPE_BOTTOM, mark.label ?? null);
         }
     },
@@ -300,11 +297,11 @@ interface LevelBarOffsetItem {
 
 const LevelBar: RuleSet = {
     setProps: (node, newProps, oldProps) => {
-        if (!(node.instance instanceof Gtk.LevelBar) || !changed(oldProps?.["offsets"], newProps["offsets"])) return;
-        for (const offset of asArray<LevelBarOffsetItem>(oldProps?.["offsets"])) {
+        if (!(node.instance instanceof Gtk.LevelBar) || !changed(oldProps?.offsets, newProps.offsets)) return;
+        for (const offset of asArray<LevelBarOffsetItem>(oldProps?.offsets)) {
             node.instance.removeOffsetValue(offset.id);
         }
-        for (const offset of asArray<LevelBarOffsetItem>(newProps["offsets"])) {
+        for (const offset of asArray<LevelBarOffsetItem>(newProps.offsets)) {
             node.instance.addOffsetValue(offset.id, offset.value);
         }
     },
@@ -312,11 +309,11 @@ const LevelBar: RuleSet = {
 
 const Calendar: RuleSet = {
     setProps: (node, newProps, oldProps) => {
-        if (!(node.instance instanceof Gtk.Calendar) || !changed(oldProps?.["markedDays"], newProps["markedDays"])) {
+        if (!(node.instance instanceof Gtk.Calendar) || !changed(oldProps?.markedDays, newProps.markedDays)) {
             return;
         }
         node.instance.clearMarks();
-        for (const day of asArray<number>(newProps["markedDays"])) node.instance.markDay(day);
+        for (const day of asArray<number>(newProps.markedDays)) node.instance.markDay(day);
     },
 };
 
@@ -329,13 +326,13 @@ interface AlertResponseItem {
 
 const AlertDialog: RuleSet = {
     setProps: (node, newProps, oldProps) => {
-        if (!isAlertDialog(node.instance) || !changed(oldProps?.["responses"], newProps["responses"])) {
+        if (!isAlertDialog(node.instance) || !changed(oldProps?.responses, newProps.responses)) {
             return;
         }
-        for (const response of asArray<AlertResponseItem>(oldProps?.["responses"])) {
+        for (const response of asArray<AlertResponseItem>(oldProps?.responses)) {
             node.instance.removeResponse(response.id);
         }
-        for (const response of asArray<AlertResponseItem>(newProps["responses"])) {
+        for (const response of asArray<AlertResponseItem>(newProps.responses)) {
             node.instance.addResponse(response.id, response.label);
             if (response.appearance !== undefined) {
                 node.instance.setResponseAppearance(response.id, response.appearance);
@@ -347,8 +344,8 @@ const AlertDialog: RuleSet = {
 
 const DropTarget: RuleSet = {
     setProps: (node, newProps, oldProps) => {
-        if (!(node.instance instanceof Gtk.DropTarget) || !changed(oldProps?.["types"], newProps["types"])) return;
-        node.instance.setGtypes(asArray<GObject.Type>(newProps["types"]));
+        if (!(node.instance instanceof Gtk.DropTarget) || !changed(oldProps?.types, newProps.types)) return;
+        node.instance.setGtypes(asArray<GObject.Type>(newProps.types));
     },
 };
 
@@ -361,12 +358,12 @@ const AboutDialog: RuleSet = {
     setProps: (node, newProps, oldProps) => {
         if (
             !(node.instance instanceof Gtk.AboutDialog) ||
-            !changed(oldProps?.["creditSections"], newProps["creditSections"])
+            !changed(oldProps?.creditSections, newProps.creditSections)
         ) {
             return;
         }
-        if (asArray<CreditSectionItem>(oldProps?.["creditSections"]).length !== 0) return;
-        for (const section of asArray<CreditSectionItem>(newProps["creditSections"])) {
+        if (asArray<CreditSectionItem>(oldProps?.creditSections).length !== 0) return;
+        for (const section of asArray<CreditSectionItem>(newProps.creditSections)) {
             node.instance.addCreditSection(section.name, section.people);
         }
     },
@@ -380,8 +377,8 @@ interface DragSourceIconItem {
 
 const DragSource: RuleSet = {
     setProps: (node, newProps, oldProps) => {
-        if (!(node.instance instanceof Gtk.DragSource) || !changed(oldProps?.["icon"], newProps["icon"])) return;
-        const icon = newProps["icon"];
+        if (!(node.instance instanceof Gtk.DragSource) || !changed(oldProps?.icon, newProps.icon)) return;
+        const icon = newProps.icon;
         if (icon == null) {
             node.instance.setIcon(null, 0, 0);
             return;
@@ -393,10 +390,10 @@ const DragSource: RuleSet = {
 
 const DrawingArea: RuleSet = {
     setProps: (node, newProps, oldProps) => {
-        if (!(node.instance instanceof Gtk.DrawingArea) || !changed(oldProps?.["drawFunc"], newProps["drawFunc"])) {
+        if (!(node.instance instanceof Gtk.DrawingArea) || !changed(oldProps?.drawFunc, newProps.drawFunc)) {
             return;
         }
-        const drawFunc = newProps["drawFunc"];
+        const drawFunc = newProps.drawFunc;
         node.instance.setDrawFunc(typeof drawFunc === "function" ? (drawFunc as Gtk.DrawingAreaDrawFunc) : null);
         node.instance.queueDraw();
     },
@@ -405,16 +402,16 @@ const DrawingArea: RuleSet = {
 const Editable: RuleSet = {
     setProps: (node, newProps, oldProps) => {
         if (!(node.instance instanceof Gtk.Editable)) return;
-        const value = newProps["text"];
-        if (!changed(oldProps?.["text"], value) || typeof value !== "string") return;
-        const committed = oldProps?.["text"];
+        const value = newProps.text;
+        if (!changed(oldProps?.text, value) || typeof value !== "string") return;
+        const committed = oldProps?.text;
         if (committed !== undefined && node.instance.getText() !== committed) return;
         Reflect.set(node.instance, "text", value);
     },
 };
 
 const applyStackPage = (instance: GObject.Object, newProps: Record<string, unknown>): void => {
-    const value = newProps["visibleChildName"];
+    const value = newProps.visibleChildName;
     if (typeof value !== "string" || value === "") return;
     if (callMethod(instance, "getVisibleChildName", []) !== value && callMethod(instance, "getChildByName", [value])) {
         callMethod(instance, "setVisibleChildName", [value]);
@@ -436,9 +433,9 @@ const ViewStack: RuleSet = {
 const ToggleGroup: RuleSet = {
     setProps: (node, newProps) => {
         if (!isToggleGroup(node.instance)) return;
-        const activeName = newProps["activeName"];
+        const activeName = newProps.activeName;
         if (activeName !== undefined) node.instance.setActiveName(typeof activeName === "string" ? activeName : null);
-        const active = newProps["active"];
+        const active = newProps.active;
         if (active != null && typeof active === "number") node.instance.setActive(active);
     },
 };
@@ -446,13 +443,13 @@ const ToggleGroup: RuleSet = {
 const TextTag: RuleSet = {
     setProps: (node, newProps) => {
         if (!(node.instance instanceof Gtk.TextTag)) return;
-        if (newProps["priority"] != null && typeof newProps["priority"] === "number") {
-            node.instance.setPriority(newProps["priority"]);
+        if (newProps.priority != null && typeof newProps.priority === "number") {
+            node.instance.setPriority(newProps.priority);
         }
-        if (newProps["foreground"] != null) Reflect.set(node.instance, "foreground", newProps["foreground"]);
-        if (newProps["background"] != null) Reflect.set(node.instance, "background", newProps["background"]);
-        if (newProps["paragraphBackground"] != null) {
-            Reflect.set(node.instance, "paragraphBackground", newProps["paragraphBackground"]);
+        if (newProps.foreground != null) Reflect.set(node.instance, "foreground", newProps.foreground);
+        if (newProps.background != null) Reflect.set(node.instance, "background", newProps.background);
+        if (newProps.paragraphBackground != null) {
+            Reflect.set(node.instance, "paragraphBackground", newProps.paragraphBackground);
         }
     },
 };

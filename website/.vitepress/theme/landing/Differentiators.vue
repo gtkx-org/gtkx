@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import Badge from "../components/Badge.vue";
-import CodeBlock from "../components/CodeBlock.vue";
-
 const testCode = `import * as Gtk from "@gtkx/gi/gtk";
 import { render, screen, userEvent } from "@gtkx/testing";
 import { Counter } from "./Counter";

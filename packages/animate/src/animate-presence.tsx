@@ -48,7 +48,7 @@ export const useIsInitialPresence = (): boolean => {
 const warned = new Set<string>();
 
 const warnOnceUnkeyedChild = (): void => {
-    if (process.env["NODE_ENV"] === "production") return;
+    if (process.env.NODE_ENV === "production") return;
     const message =
         "[gtkx/animate] AnimatePresence received a child without a key; exit animation is disabled for it until a unique key is supplied.";
     if (warned.has(message)) return;

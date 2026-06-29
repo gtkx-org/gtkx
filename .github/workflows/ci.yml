@@ -234,26 +234,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq zstd
-          if ! command -v gh >/dev/null; then
-            curl -fsSL https://github.com/cli/cli/releases/download/v2.62.0/gh_2.62.0_linux_arm64.tar.gz \
-              | sudo tar -xz -C /usr/local/bin --strip-components=2 gh_2.62.0_linux_arm64/bin/gh
-          fi
-          hash="$(sha256sum scripts/build-gtk-stack.sh | cut -c1-16)"
-          asset="gtkx-stack-${hash}.tar.zst"
-          tag="gtkx-stack-cache"
-          if gh release download "$tag" --pattern "$asset" --dir /tmp 2>/dev/null; then
-            echo "restoring prebuilt $asset"
-            sudo tar -C / -I zstd -xf "/tmp/$asset"
-          fi
           sudo -E bash scripts/build-gtk-stack.sh
-          if [ ! -f "/tmp/$asset" ]; then
-            echo "publishing $asset"
-            sudo tar -C / -I zstd -cf "/tmp/$asset" opt/gtkx
-            gh release view "$tag" >/dev/null 2>&1 \
-              || gh release create "$tag" --title "GTK stack cache" \
-                   --notes "Prebuilt /opt/gtkx GTK 4.22.4 stacks, keyed by build-gtk-stack.sh hash."
-            gh release upload "$tag" "/tmp/$asset" --clobber
-          fi
 
       - name: Export the GTK stack environment
         shell: bash

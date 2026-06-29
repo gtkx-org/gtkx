@@ -3,7 +3,7 @@ import { types } from "node:util";
 const isObject = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
 
 const isErrorLike = (value: unknown): value is { message: string } =>
-    isObject(value) && "message" in value && typeof value["message"] === "string";
+    isObject(value) && "message" in value && typeof value.message === "string";
 
 export const errorMessage = (error: unknown): string =>
     types.isNativeError(error) || isErrorLike(error) ? error.message : String(error);

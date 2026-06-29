@@ -118,10 +118,7 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
                 cssClasses={currentDemo.windowCssClasses}
                 defaultWidget={defaultWidget}
                 titlebar={titlebar}
-                onCloseRequest={() => {
-                    onClose();
-                    return true;
-                }}
+                onCloseRequest={quit}
             >
                 <DemoComponent onClose={onClose} window={windowRef} />
             </GtkWindow>
@@ -385,10 +382,7 @@ const MainWindow = () => {
                 onRun: handleRun,
                 onSearchToggle: setSearchMode,
             })}
-            onCloseRequest={() => {
-                quit();
-                return true;
-            }}
+            onCloseRequest={quit}
             actions={renderMainWindowActions({
                 onKeyboardShortcuts: handleKeyboardShortcuts,
                 onShowAbout: () => setShowAbout(true),
