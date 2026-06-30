@@ -53,10 +53,7 @@
         "src"
     ],
     "scripts": {
-        "build": "tsc -b",
-        "check:env": "node --conditions=source --import tsx scripts/generate-env-dts.ts --check",
-        "codegen": "node --conditions=source --import tsx src/cli.ts codegen --cwd ../..",
-        "generate:env": "node --conditions=source --import tsx scripts/generate-env-dts.ts"
+        "build": "tsc -b"
     },
     "engines": {
         "node": ">=24"

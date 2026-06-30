@@ -13,5 +13,5 @@ export function reportReconcilerError(error: unknown): void {
         errorHandler(error);
         return;
     }
-    console.error("[gtkx-react] unhandled reconciler error:", error);
+    console.error("[gtkx] unhandled reconciler error:", error);
 }

@@ -4,11 +4,6 @@
     "globalEnv": ["NODE_VERSION", "GTK4_VERSION", "VERSION"],
     "globalPassThroughEnv": ["TURBO_TOKEN", "TURBO_TEAM", "RUSTUP_HOME", "CARGO_HOME"],
     "tasks": {
-        "//#setup:store-link": {
-            "dependsOn": ["@gtkx/cli#codegen"],
-            "outputs": [".gtkx"],
-            "outputLogs": "new-only"
-        },
         "//#lint:all": {
             "dependsOn": ["//#setup:store-link", "@gtkx/cli#build", "@gtkx/vitest#build"],
             "inputs": [

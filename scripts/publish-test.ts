@@ -1,6 +1,5 @@
-#!/usr/bin/env node
+#!/usr/bin/env node --conditions=source
 
-import { spawn } from "node:child_process";
 import {
     copyFileSync,
     existsSync,
@@ -18,6 +17,7 @@ import { dirname, join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { runServer } from "verdaccio";
+import { runAsync } from "./_utils.js";
 
 const PORT = 4873;
 const HOST = `localhost:${PORT}`;
@@ -25,10 +25,10 @@ const REGISTRY = `http://${HOST}/`;
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = dirname(scriptDir);
 const nativeDir = join(repoRoot, "packages", "native");
-
 const APP_NAME = "smoke-app";
 const APPLICATION_ID = "com.gtkx.smoke";
 const BUILD_OUTPUTS = ["dist/bundle.js", "dist/gtkx.node"];
+
 const PUBLISH_MUTATED_MANIFESTS = [
     join(nativeDir, "package.json"),
     join(nativeDir, "npm", "linux-x64-gnu", "package.json"),
@@ -88,20 +88,6 @@ log:
 `;
 }
 
-function run(command: string, args: string[], options: RunOptions): Promise<void> {
-    return new Promise((resolve, reject) => {
-        const child = spawn(command, args, { cwd: options.cwd, env: options.env, stdio: "inherit" });
-        child.on("error", reject);
-        child.on("close", (code) => {
-            if (code === 0) {
-                resolve();
-            } else {
-                reject(new Error(`Command failed with exit code ${code ?? "unknown"}: ${command} ${args.join(" ")}`));
-            }
-        });
-    });
-}
-
 async function ping(): Promise<boolean> {
     try {
         const response = await fetch(`${REGISTRY}-/ping`);
@@ -149,7 +135,7 @@ function registryEnv(userConfig: string): NodeJS.ProcessEnv {
 }
 
 async function stageNativeArtifacts(): Promise<void> {
-    await run("pnpm", ["--filter", "@gtkx/native", "build:release"], { cwd: repoRoot });
+    await runAsync("pnpm", ["--filter", "@gtkx/native", "build:release"], { cwd: repoRoot });
     const artifactsDir = join(nativeDir, "artifacts");
     mkdirSync(artifactsDir, { recursive: true });
     let staged = 0;
@@ -166,13 +152,13 @@ async function stageNativeArtifacts(): Promise<void> {
 }
 
 async function publishPackages(env: NodeJS.ProcessEnv): Promise<void> {
-    await run("pnpm", ["release"], { cwd: repoRoot, env });
+    await runAsync("pnpm", ["release"], { cwd: repoRoot, env });
 }
 
 async function scaffoldConsumer(consumerRoot: string, env: NodeJS.ProcessEnv): Promise<string> {
     const cliPrefix = join(consumerRoot, "cli-prefix");
-    await run("npm", ["install", "--global", "--prefix", cliPrefix, "@gtkx/cli"], { cwd: consumerRoot, env });
-    await run(
+    await runAsync("npm", ["install", "--global", "--prefix", cliPrefix, "@gtkx/cli"], { cwd: consumerRoot, env });
+    await runAsync(
         join(cliPrefix, "bin", "gtkx"),
         ["create", APP_NAME, "--application-id", APPLICATION_ID, "--pm", "npm", "--vitest"],
         { cwd: consumerRoot, env },
@@ -181,15 +167,15 @@ async function scaffoldConsumer(consumerRoot: string, env: NodeJS.ProcessEnv): P
 }
 
 async function buildConsumer(appDir: string, env: NodeJS.ProcessEnv): Promise<void> {
-    await run("npm", ["run", "build"], { cwd: appDir, env });
+    await runAsync("npm", ["run", "build"], { cwd: appDir, env });
 }
 
 async function typecheckConsumer(appDir: string, env: NodeJS.ProcessEnv): Promise<void> {
-    await run("npm", ["run", "typecheck"], { cwd: appDir, env });
+    await runAsync("npm", ["run", "typecheck"], { cwd: appDir, env });
 }
 
 async function testConsumer(appDir: string, env: NodeJS.ProcessEnv): Promise<void> {
-    await run("npm", ["test"], { cwd: appDir, env });
+    await runAsync("npm", ["test"], { cwd: appDir, env });
 }
 
 function assertBuildOutputs(appDir: string): void {
@@ -226,22 +212,26 @@ async function main(): Promise<void> {
     const manifestSnapshot = snapshotManifests();
 
     let server: Server | undefined;
+
     try {
         writeFileSync(configPath, verdaccioConfig(registryDir));
         const activeServer: Server = await runServer(configPath);
         server = activeServer;
+
         await new Promise<void>((resolve, reject) => {
             activeServer.once("error", reject);
             activeServer.listen(PORT, () => resolve());
         });
+
         await waitForRegistry();
 
         const token = await createUserToken();
         writeFileSync(npmrcPath, `registry=${REGISTRY}\n//${HOST}/:_authToken=${token}\n`);
-        const env = registryEnv(npmrcPath);
 
+        const env = registryEnv(npmrcPath);
         await stageNativeArtifacts();
         await publishPackages(env);
+
         const appDir = await scaffoldConsumer(consumerRoot, env);
         await buildConsumer(appDir, env);
         assertBuildOutputs(appDir);
@@ -256,6 +246,7 @@ async function main(): Promise<void> {
                 runningServer.close(() => resolve());
             });
         }
+
         restoreManifests(manifestSnapshot);
         rmSync(registryDir, { recursive: true, force: true });
         rmSync(consumerRoot, { recursive: true, force: true });

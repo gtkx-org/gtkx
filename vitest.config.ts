@@ -16,7 +16,6 @@ export default defineConfig({
                 "**/*.spec.{ts,tsx}",
                 "packages/e2e/**",
                 "packages/vitest/**",
-                "packages/codegen/src/overrides/**",
                 "packages/gl/src/generated/**",
             ],
         },

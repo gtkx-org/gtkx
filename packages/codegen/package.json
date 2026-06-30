@@ -37,8 +37,7 @@
         "src"
     ],
     "scripts": {
-        "build": "tsc -b",
-        "generate-gl": "node --import tsx scripts/generate-gl.ts && biome check --write ../gl/src/generated"
+        "build": "tsc -b"
     },
     "engines": {
         "node": ">=24"

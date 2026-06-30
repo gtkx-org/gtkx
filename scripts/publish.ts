@@ -1,6 +1,6 @@
-#!/usr/bin/env node
+#!/usr/bin/env node --conditions=source
 
-import { spawnSync } from "node:child_process";
+import { run } from "./_utils.js";
 import { copyFile, readdir, readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -39,17 +39,11 @@ async function copyReadme(): Promise<void> {
     await Promise.all(publishedDirs.map((packageDir) => copyFile(readmeSource, join(packageDir, "README.md"))));
 }
 
-function run(command: string, args: string[]): void {
-    const result = spawnSync(command, args, { cwd: repoRoot, stdio: "inherit" });
-
-    if (result.status !== 0) {
-        process.exit(result.status ?? 1);
-    }
-}
-
 run("pnpm", ["build"]);
 run("pnpm", ["--filter", "@gtkx/native", "build:release"]);
+
 await copyReadme();
+
 run("pnpm", ["--filter", "@gtkx/native", "create-npm-dirs"]);
 run("pnpm", ["--filter", "@gtkx/native", "artifacts"]);
 run("pnpm", ["-r", "publish", "--access", "public", "--no-git-checks"]);

@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { generateGlModules } from "../src/khronos/pipeline.js";
+import { generateGlModules } from "@gtkx/codegen";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const registryPath = join(scriptDir, "..", "registry", "gl.xml");
@@ -22,26 +22,21 @@ const companionExportNames = (path: string): Set<string> => {
 
 const companionExports = companionExportNames(join(glSrcDir, "companion.ts"));
 const { files, report } = generateGlModules({ registryPath, companionExports });
-
 mkdirSync(outputDir, { recursive: true });
+
 for (const [fileName, source] of files) {
     writeFileSync(join(outputDir, fileName), source);
 }
 
 const exclusionCounts = new Map<string, number>();
+
 for (const exclusion of report.exclusions) {
     exclusionCounts.set(exclusion.reason, (exclusionCounts.get(exclusion.reason) ?? 0) + 1);
 }
 
 console.log(`[gtkx] khronos codegen: ${report.selection.api} ${report.selection.version} ${report.selection.profile}`);
+
 console.log(
     `[gtkx] commands: ${report.selectedCommands} selected, ${report.emittedCommands} emitted, ` +
         `${report.derivedSingulars} derived singulars, ${report.exclusions.length} excluded`,
 );
-for (const [reason, count] of [...exclusionCounts.entries()].sort(([a], [b]) => a.localeCompare(b))) {
-    console.log(`[gtkx]   excluded (${reason}): ${count}`);
-}
-console.log(`[gtkx] enums: ${report.selectedEnums} selected, ${report.emittedEnums} emitted`);
-for (const skipped of report.skippedEnums) {
-    console.log(`[gtkx]   skipped enum ${skipped.name}: ${skipped.reason}`);
-}

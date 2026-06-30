@@ -24,7 +24,7 @@ describe("StyleSheet", () => {
             const stylesheet = new StyleSheet();
             stylesheet.insert(".bad { not-a-real-property: 1; }");
             await new Promise<void>((resolve) => queueMicrotask(resolve));
-            expect(warn).toHaveBeenCalledWith(expect.stringContaining("[gtkx/css] GTK rejected CSS"));
+            expect(warn).toHaveBeenCalledWith(expect.stringContaining("[gtkx] GTK rejected CSS"));
         } finally {
             warn.mockRestore();
         }

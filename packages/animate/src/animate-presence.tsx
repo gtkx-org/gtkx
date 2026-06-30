@@ -50,7 +50,7 @@ const warned = new Set<string>();
 const warnOnceUnkeyedChild = (): void => {
     if (process.env.NODE_ENV === "production") return;
     const message =
-        "[gtkx/animate] AnimatePresence received a child without a key; exit animation is disabled for it until a unique key is supplied.";
+        "[gtkx] AnimatePresence received a child without a key; exit animation is disabled for it until a unique key is supplied.";
     if (warned.has(message)) return;
     warned.add(message);
     console.warn(message);
@@ -73,7 +73,7 @@ export const onlyElements = (children: ReactNode): ReactElement[] => {
 
 export const getChildKey = (child: ReactElement): Key => {
     if (child.key === null) {
-        throw new Error("[gtkx/animate] AnimatePresence child is missing a key; onlyElements should have filtered it.");
+        throw new Error("[gtkx] AnimatePresence child is missing a key; onlyElements should have filtered it.");
     }
     return child.key;
 };

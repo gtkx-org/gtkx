@@ -12,7 +12,7 @@ export class StyleSheet {
         this.provider = provider;
         if (process.env.NODE_ENV !== "production") {
             provider.on("parsing-error", (section, error) => {
-                console.warn(`[gtkx/css] GTK rejected CSS at ${section.toString()}: ${error.message}`);
+                console.warn(`[gtkx] GTK rejected CSS at ${section.toString()}: ${error.message}`);
             });
         }
         return provider;

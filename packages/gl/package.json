@@ -38,12 +38,16 @@
         "src"
     ],
     "scripts": {
-        "build": "tsc -b"
+        "build": "tsc -b",
+        "codegen": "./scripts/codegen.ts"
     },
     "engines": {
         "node": ">=24"
     },
     "dependencies": {
         "@gtkx/ffi": "workspace:*"
+    },
+    "devDependencies": {
+        "@gtkx/codegen": "workspace:*"
     }
 }

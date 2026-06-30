@@ -1,15 +1,13 @@
-import { types } from "node:util";
-
 const isObject = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
 
 const isErrorLike = (value: unknown): value is { message: string } =>
     isObject(value) && "message" in value && typeof value.message === "string";
 
 export const errorMessage = (error: unknown): string =>
-    types.isNativeError(error) || isErrorLike(error) ? error.message : String(error);
+    Error.isError(error) || isErrorLike(error) ? error.message : String(error);
 
 export const normalizeError = (error: unknown): Error => {
-    if (types.isNativeError(error)) return error;
+    if (Error.isError(error)) return error;
     return Object.assign(new Error(errorMessage(error)), isErrorLike(error) ? error : {});
 };
 

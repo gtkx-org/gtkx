@@ -1,12 +1,11 @@
-#!/usr/bin/env node
+#!/usr/bin/env node --conditions=source
 
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { REPO_ROOT } from "./_utils.js";
+import { join } from "node:path";
 
-const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
-const packagesDir = join(repoRoot, "packages");
+const packagesDir = join(REPO_ROOT, "packages");
 
 interface PackageVersion {
     name: string;
