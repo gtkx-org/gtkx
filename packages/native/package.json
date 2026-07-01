@@ -57,8 +57,7 @@
         "test:asan": "RUSTFLAGS=\"-Zsanitizer=address\" ASAN_OPTIONS=\"detect_leaks=0:abort_on_error=1:detect_stack_use_after_return=1\" tsx ../../scripts/run-headless.ts cargo +nightly test -- --test-threads=1",
         "test:miri": "tsx ../../scripts/run-headless.ts cargo +nightly miri test --test marshalling",
         "test": "tsx ../../scripts/run-headless.ts cargo +nightly test -- --test-threads=1",
-        "prepublishOnly": "napi prepublish -t npm",
-        "release": "cp ../../README.md README.md && pnpm publish --access public --no-git-checks"
+        "release": "napi prepublish -t npm && cp ../../README.md README.md && pnpm publish --access public --no-git-checks"
     },
     "engines": {
         "node": ">=24"
