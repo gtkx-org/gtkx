@@ -7,7 +7,7 @@ import { resolveDataDir } from "../internal/data-dir.js";
 import { GtkxError } from "../internal/errors.js";
 import { info } from "../internal/log.js";
 import { type CodegenInputs, isCodegenStale, resolveCodegenInputs } from "./freshness.js";
-import { type CodegenStore, findCodegenRoot, isWorkspaceRoot, resolveCodegenContext } from "./store-resolver.js";
+import { type CodegenStore, resolveCodegenContext } from "./store-resolver.js";
 
 export type RunCodegenOptions = {
     cwd?: string;
@@ -36,25 +36,20 @@ const codegenOptions = (store: CodegenStore, libraries: string[], girPath: strin
     gi: {
         storeDir: store.giStoreDir,
         linkDir: store.giLinkDir,
-        realFfiDir: store.realFfiDir,
-        realNativeDir: store.realNativeDir,
         version: store.ffiVersion,
     },
     jsx:
-        store.react !== null && store.realReactRuntimeDir !== null
+        store.react !== null
             ? {
                   storeDir: store.jsxStoreDir,
                   linkDir: store.jsxLinkDir,
-                  giStoreDir: store.giStoreDir,
-                  realReactRuntimeDir: store.realReactRuntimeDir,
-                  realReactPackageDir: store.react.realDir,
                   version: store.react.version,
               }
             : undefined,
 });
 
 export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenResult> => {
-    const cwd = findCodegenRoot(options.cwd ?? process.cwd());
+    const cwd = options.cwd ?? process.cwd();
 
     const { config, configFile } = options.resolved ?? (await loadGtkxConfig(cwd));
 
@@ -85,8 +80,9 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
 };
 
 export const syncSchemaEnv = (cwd: string): void => {
-    if (isWorkspaceRoot(cwd)) return;
-    emitSchemaEnv(cwd, resolveDataDir(cwd));
+    const dataDir = resolveDataDir(cwd);
+    if (dataDir === null) return;
+    emitSchemaEnv(cwd, dataDir);
 };
 
 const resolveInputsOrNull = (cwd: string, config: GtkxConfig): CodegenInputs | null => {
@@ -122,9 +118,8 @@ export const ensureGenerated = async (cwd: string, options: { announce?: boolean
 export const resolveConfigWatch = async (
     cwd: string,
 ): Promise<{ paths: string[]; regenerate: () => Promise<void> } | undefined> => {
-    const codegenRoot = findCodegenRoot(cwd);
     try {
-        const { configFile, root } = await loadGtkxConfig(codegenRoot);
+        const { configFile, root } = await loadGtkxConfig(cwd);
         if (configFile === undefined) return undefined;
         return {
             paths: [resolve(root, configFile)],

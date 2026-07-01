@@ -34,6 +34,7 @@
     "sideEffects": false,
     "files": [
         "dist",
+        "overrides",
         "src"
     ],
     "scripts": {

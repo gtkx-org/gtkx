@@ -29,7 +29,6 @@ const namespaceBarrelPath = (giStoreDir: string, library: string): string => {
 };
 
 const giStoreLinksResolve = (giStoreDir: string): boolean =>
-    existsSync(join(giStoreDir, "node_modules", "@gtkx", "ffi", "package.json")) &&
     existsSync(join(giStoreDir, "node_modules", "@gtkx", "gi", "package.json"));
 
 const fingerprintStale = (giStoreDir: string, libraries: string[]): boolean => {
@@ -62,7 +61,7 @@ export const isCodegenStale = (inputs: CodegenInputs): boolean => {
         if (libraries.some((library) => !existsSync(namespaceBarrelPath(store.giStoreDir, library)))) {
             return true;
         }
-        if (store.react !== null && store.realReactRuntimeDir !== null) {
+        if (store.react !== null) {
             if (!existsSync(store.jsxLinkDir)) return true;
             if (REACT_GENERATED_MODULES.some((module) => !existsSync(join(store.jsxStoreDir, module)))) return true;
         }

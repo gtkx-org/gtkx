@@ -45,11 +45,9 @@ const writeGiBarrel = (cwd: string, namespace: string) => {
     mkdirSync(join(cwd, "node_modules", ".gtkx", "gi", namespace), { recursive: true });
     writeFileSync(join(cwd, "node_modules", ".gtkx", "gi", namespace, "index.js"), "");
     mkdirSync(join(cwd, "node_modules", "@gtkx", "gi"), { recursive: true });
-    for (const pkg of ["ffi", "gi"]) {
-        const linkDir = join(cwd, "node_modules", ".gtkx", "gi", "node_modules", "@gtkx", pkg);
-        mkdirSync(linkDir, { recursive: true });
-        writeFileSync(join(linkDir, "package.json"), JSON.stringify({ name: `@gtkx/${pkg}`, version: "0.0.0" }));
-    }
+    const linkDir = join(cwd, "node_modules", ".gtkx", "gi", "node_modules", "@gtkx", "gi");
+    mkdirSync(linkDir, { recursive: true });
+    writeFileSync(join(linkDir, "package.json"), JSON.stringify({ name: "@gtkx/gi", version: "0.0.0" }));
 };
 
 const writeDefaultGiBarrels = (cwd: string) => {
@@ -245,7 +243,7 @@ describe("ensureGenerated — store links", () => {
         writeConfig(cwd);
         writeDefaultGiBarrels(cwd);
         writeJsxStore(cwd);
-        rmSync(join(cwd, "node_modules", ".gtkx", "gi", "node_modules", "@gtkx", "ffi"), {
+        rmSync(join(cwd, "node_modules", ".gtkx", "gi", "node_modules", "@gtkx", "gi"), {
             recursive: true,
             force: true,
         });

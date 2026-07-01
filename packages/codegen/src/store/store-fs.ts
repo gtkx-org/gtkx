@@ -30,21 +30,29 @@ export type Manifest = {
     version: string;
     sideEffects: true;
     exports: Record<string, unknown>;
+    peerDependencies?: Record<string, string>;
 };
 
 export type ManifestInput = {
     name: string;
     version: string;
     exports: Record<string, unknown>;
+    peerDependencies?: Record<string, string>;
 };
 
-export const buildManifest = (input: ManifestInput): Manifest => ({
-    name: input.name,
-    type: "module",
-    version: input.version,
-    sideEffects: true,
-    exports: { "./package.json": "./package.json", ...input.exports },
-});
+export const buildManifest = (input: ManifestInput): Manifest => {
+    const manifest: Manifest = {
+        name: input.name,
+        type: "module",
+        version: input.version,
+        sideEffects: true,
+        exports: { "./package.json": "./package.json", ...input.exports },
+    };
+    if (input.peerDependencies) {
+        manifest.peerDependencies = input.peerDependencies;
+    }
+    return manifest;
+};
 
 export const selfLink = (...segments: string[]): StoreSymlink => ({ segments, target: "self" });
 

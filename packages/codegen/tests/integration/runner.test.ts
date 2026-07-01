@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -11,9 +11,6 @@ afterAll(() => {
     rmSync(workDir, { recursive: true, force: true });
 });
 
-const REAL_FFI_DIR = join(import.meta.dirname, "..", "..", "..", "ffi");
-const REAL_NATIVE_DIR = join(import.meta.dirname, "..", "..", "..", "native");
-
 const giOptions = (name: string) => {
     const root = join(workDir, name);
     return {
@@ -21,8 +18,6 @@ const giOptions = (name: string) => {
         gi: {
             storeDir: join(root, "node_modules", ".gtkx", "gi"),
             linkDir: join(root, "node_modules", "@gtkx", "gi"),
-            realFfiDir: REAL_FFI_DIR,
-            realNativeDir: REAL_NATIVE_DIR,
             version: "0.0.0",
         },
     };
@@ -50,16 +45,9 @@ describe("runCodegen", () => {
 
     it("writes the jsx unit when jsx options are given", async () => {
         const { root, gi } = giOptions("with-jsx");
-        const realReactRuntimeDir = join(root, "fake-react");
-        const realReactPackageDir = join(root, "fake-gtkx-react");
-        mkdirSync(realReactRuntimeDir, { recursive: true });
-        mkdirSync(realReactPackageDir, { recursive: true });
         const jsx = {
             storeDir: join(root, "node_modules", ".gtkx", "jsx"),
             linkDir: join(root, "node_modules", "@gtkx", "jsx"),
-            giStoreDir: gi.storeDir,
-            realReactRuntimeDir,
-            realReactPackageDir,
             version: "0.0.0",
         };
 

@@ -5,14 +5,11 @@ import ejs from "ejs";
 import { type CodegenFingerprint, FINGERPRINT_FILENAME } from "../fingerprint.js";
 import { buildManifest, type StoreOptions, selfLink, subpathExport, writeStore } from "./store-fs.js";
 
-const OVERRIDES_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "gi", "overrides");
+const OVERRIDES_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "overrides");
 
 const renderTemplate = (path: string): string => ejs.render(readFileSync(path, "utf8"), {});
 
-export type GiStoreOptions = StoreOptions & {
-    realFfiDir: string;
-    realNativeDir: string;
-};
+export type GiStoreOptions = StoreOptions;
 
 export type GiNamespaceInput = {
     directory: string;
@@ -78,12 +75,13 @@ export const writeGiStore = (
         storeDir: options.storeDir,
         linkDir: options.linkDir,
         files: collected,
-        manifest: buildManifest({ name: "@gtkx/gi", version: options.version, exports: exportsMap }),
+        manifest: buildManifest({
+            name: "@gtkx/gi",
+            version: options.version,
+            exports: exportsMap,
+            peerDependencies: { "@gtkx/ffi": "*", "@gtkx/native": "*" },
+        }),
         rawFiles: [{ relativePath: FINGERPRINT_FILENAME, content: `${JSON.stringify(fingerprint, null, 2)}\n` }],
-        symlinks: [
-            { segments: ["node_modules", "@gtkx", "ffi"], target: options.realFfiDir },
-            { segments: ["node_modules", "@gtkx", "native"], target: options.realNativeDir },
-            selfLink("node_modules", "@gtkx", "gi"),
-        ],
+        symlinks: [selfLink("node_modules", "@gtkx", "gi")],
     });
 };
