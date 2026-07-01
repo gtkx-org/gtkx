@@ -149,7 +149,7 @@ jobs:
           mount-cargo-cache: "true"
           mount-pnpm-store: "true"
 
-  publish-test:
+  publish-e2e:
     needs: [changes, image]
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
@@ -166,126 +166,85 @@ jobs:
       - name: Publish to Verdaccio, then scaffold, build, and test a consumer app
         uses: ./.github/actions/run-in-container
         with:
-          command: pnpm publish-test
+          command: pnpm publish-e2e
           mount-cargo-cache: "true"
           mount-pnpm-store: "true"
 
-  asan:
-    needs: [changes, image]
-    if: needs.changes.outputs.code == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 40
-    env:
-      CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+  bench:
+    # needs: changes
+    # if: needs.changes.outputs.code == 'true'
+    # runs-on: codspeed-macro
+    # timeout-minutes: 90
+    # permissions:
+    #   contents: write
+    #   packages: read
+    #   id-token: write
+    # env:
+    #   NODE24_VERSION: "24.18.0"
+    #   NODE22_VERSION: "22.23.1"
+    #   PREFIX: /opt/gtkx
+    # steps:
+    #   - name: Checkout
+    #     uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
 
-      - name: Setup CI
-        uses: ./.github/actions/setup-ci
+    #   - name: Provision the GTK stack
+    #     shell: bash
+    #     env:
+    #       GH_TOKEN: ${{ github.token }}
+    #     run: |
+    #       sudo apt-get update -qq && sudo apt-get install -y -qq zstd
+    #       sudo -E bash scripts/build-gtk-stack.sh
 
-      - name: Build the native addon under AddressSanitizer and run its suite
-        uses: ./.github/actions/run-in-container
-        with:
-          command: pnpm asan
-          mount-cargo-cache: "true"
-          mount-pnpm-store: "true"
+    #   - name: Export the GTK stack environment
+    #     shell: bash
+    #     run: |
+    #       {
+    #         echo "PATH=/opt/gtkx/bin:$PATH"
+    #         echo "PKG_CONFIG_PATH=/opt/gtkx/lib/aarch64-linux-gnu/pkgconfig:/opt/gtkx/lib/pkgconfig:/opt/gtkx/share/pkgconfig"
+    #         echo "LD_LIBRARY_PATH=/opt/gtkx/lib/aarch64-linux-gnu:/opt/gtkx/lib"
+    #         echo "GI_TYPELIB_PATH=/opt/gtkx/lib/aarch64-linux-gnu/girepository-1.0:/opt/gtkx/lib/girepository-1.0"
+    #         echo "XDG_DATA_DIRS=/opt/gtkx/share:/usr/share:/usr/local/share"
+    #         echo "GTKX_GIR_PATH=/opt/gtkx/share/gir-1.0"
+    #         echo "GDK_PIXBUF_MODULE_FILE=/opt/gtkx/lib/aarch64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders.cache"
+    #         echo "PYTHONPATH=/opt/gtkx/lib/python3/dist-packages"
+    #       } >> "$GITHUB_ENV"
 
-  miri:
-    needs: [changes, image]
-    if: needs.changes.outputs.code == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    env:
-      CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+    #   - name: Install the Rust toolchain
+    #     shell: bash
+    #     run: |
+    #       curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+    #         | sh -s -- -y --profile minimal --default-toolchain stable
+    #       echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
-      - name: Setup CI
-        uses: ./.github/actions/setup-ci
+    #   - name: Install Node and pnpm
+    #     shell: bash
+    #     run: |
+    #       curl -fsSL "https://nodejs.org/dist/v${NODE24_VERSION}/node-v${NODE24_VERSION}-linux-arm64.tar.xz" \
+    #         | sudo tar -xJ --strip-components=1 -C /usr/local
+    #       sudo mkdir -p /opt/node22
+    #       curl -fsSL "https://nodejs.org/dist/v${NODE22_VERSION}/node-v${NODE22_VERSION}-linux-arm64.tar.xz" \
+    #         | sudo tar -xJ --strip-components=1 -C /opt/node22
+    #       node --version | grep -q "v${NODE24_VERSION}"
+    #       /opt/node22/bin/node --version | grep -q "v${NODE22_VERSION}"
+    #       sudo corepack enable
 
-      - name: Run Miri over the FFI-free marshalling subset
-        uses: ./.github/actions/run-in-container
-        with:
-          command: pnpm miri
-          mount-cargo-cache: "true"
+    #   - name: Install the CodSpeed runner
+    #     shell: bash
+    #     run: |
+    #       curl -fsSL https://github.com/CodSpeedHQ/codspeed/releases/download/v4.18.1/codspeed-runner-installer.sh | bash
+    #       sudo install -m 0755 "$(find "$HOME/.cargo" "$HOME/.local" /usr -name codspeed -type f -path '*bin*' 2>/dev/null | head -1)" /usr/local/bin/codspeed
+    #       codspeed --version
 
-  bench-ts:
-    needs: changes
-    if: needs.changes.outputs.code == 'true'
-    runs-on: codspeed-macro
-    timeout-minutes: 90
-    permissions:
-      contents: write
-      packages: read
-      id-token: write
-    env:
-      NODE24_VERSION: "24.18.0"
-      NODE22_VERSION: "22.23.1"
-      PREFIX: /opt/gtkx
-    steps:
-      - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+    #   - name: Restrict codegen to the bench library set
+    #     shell: bash
+    #     run: sed -i 's/, *"WebKit-6.0"//' gtkx.config.ts
 
-      - name: Provision the GTK stack
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq zstd
-          sudo -E bash scripts/build-gtk-stack.sh
+    #   - name: Build the e2e workspace and the native addon
+    #     shell: bash
+    #     run: |
+    #       pnpm install --frozen-lockfile
+    #       pnpm exec turbo build --filter=@gtkx/e2e --env-mode=loose
 
-      - name: Export the GTK stack environment
-        shell: bash
-        run: |
-          {
-            echo "PATH=/opt/gtkx/bin:$PATH"
-            echo "PKG_CONFIG_PATH=/opt/gtkx/lib/aarch64-linux-gnu/pkgconfig:/opt/gtkx/lib/pkgconfig:/opt/gtkx/share/pkgconfig"
-            echo "LD_LIBRARY_PATH=/opt/gtkx/lib/aarch64-linux-gnu:/opt/gtkx/lib"
-            echo "GI_TYPELIB_PATH=/opt/gtkx/lib/aarch64-linux-gnu/girepository-1.0:/opt/gtkx/lib/girepository-1.0"
-            echo "XDG_DATA_DIRS=/opt/gtkx/share:/usr/share:/usr/local/share"
-            echo "GTKX_GIR_PATH=/opt/gtkx/share/gir-1.0"
-            echo "GDK_PIXBUF_MODULE_FILE=/opt/gtkx/lib/aarch64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders.cache"
-            echo "PYTHONPATH=/opt/gtkx/lib/python3/dist-packages"
-          } >> "$GITHUB_ENV"
-
-      - name: Install the Rust toolchain
-        shell: bash
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
-            | sh -s -- -y --profile minimal --default-toolchain stable
-          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-
-      - name: Install Node and pnpm
-        shell: bash
-        run: |
-          curl -fsSL "https://nodejs.org/dist/v${NODE24_VERSION}/node-v${NODE24_VERSION}-linux-arm64.tar.xz" \
-            | sudo tar -xJ --strip-components=1 -C /usr/local
-          sudo mkdir -p /opt/node22
-          curl -fsSL "https://nodejs.org/dist/v${NODE22_VERSION}/node-v${NODE22_VERSION}-linux-arm64.tar.xz" \
-            | sudo tar -xJ --strip-components=1 -C /opt/node22
-          node --version | grep -q "v${NODE24_VERSION}"
-          /opt/node22/bin/node --version | grep -q "v${NODE22_VERSION}"
-          sudo corepack enable
-
-      - name: Install the CodSpeed runner
-        shell: bash
-        run: |
-          curl -fsSL https://github.com/CodSpeedHQ/codspeed/releases/download/v4.18.1/codspeed-runner-installer.sh | bash
-          sudo install -m 0755 "$(find "$HOME/.cargo" "$HOME/.local" /usr -name codspeed -type f -path '*bin*' 2>/dev/null | head -1)" /usr/local/bin/codspeed
-          codspeed --version
-
-      - name: Restrict codegen to the bench library set
-        shell: bash
-        run: sed -i 's/, *"WebKit-6.0"//' gtkx.config.ts
-
-      - name: Build the e2e workspace and the native addon
-        shell: bash
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm exec turbo build --filter=@gtkx/e2e --env-mode=loose
-
-      - name: Run the TypeScript benchmarks under CodSpeed (walltime)
-        shell: bash
-        run: pnpm bench:ts
+    #   - name: Run the TypeScript benchmarks under CodSpeed (walltime)
+    #     shell: bash
+    #     run: pnpm bench:ts

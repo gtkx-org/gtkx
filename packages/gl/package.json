@@ -39,7 +39,7 @@
     ],
     "scripts": {
         "build": "tsc -b",
-        "codegen": "./scripts/codegen.ts"
+        "codegen": "tsx ./scripts/codegen.ts"
     },
     "engines": {
         "node": ">=24"

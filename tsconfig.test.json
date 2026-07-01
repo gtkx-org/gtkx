@@ -2,7 +2,7 @@
     "extends": "./tsconfig.base.json",
     "compilerOptions": {
         "outDir": "${configDir}/out-tsc/test",
-        "tsBuildInfoFile": "${configDir}/out-tsc/test/tsconfig.test.tsbuildinfo",
+        "tsBuildInfoFile": "${configDir}/tsconfig.test.tsbuildinfo",
         "emitDeclarationOnly": true
     },
     "include": ["${configDir}/tests/**/*.ts", "${configDir}/tests/**/*.tsx", "${configDir}/vitest.config.ts"]

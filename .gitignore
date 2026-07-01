@@ -10,3 +10,4 @@ gschemas.compiled
 node_modules/
 out-tsc/
 packages/**/README.md
+.codspeed/

@@ -50,13 +50,13 @@
     },
     "scripts": {
         "artifacts": "napi artifacts",
-        "build:debug": "napi build --platform --esm --no-dts-cache --no-const-enum",
-        "build:release": "napi build --platform --release --esm --no-dts-cache --no-const-enum",
-        "coverage": "mkdir -p coverage && node ../../scripts/ci.ts headless cargo +nightly llvm-cov --lcov --output-path coverage/native.lcov.info --fail-under-lines 80 -- --test-threads=1",
+        "build": "napi build --platform --release --esm --no-dts-cache --no-const-enum",
+        "coverage": "mkdir -p coverage && tsx ../../scripts/run-headless.ts cargo +nightly llvm-cov --lcov --output-path coverage/native.lcov.info --fail-under-lines 80 -- --test-threads=1",
         "create-npm-dirs": "napi create-npm-dirs",
         "lint": "cargo fmt --check && cargo clippy --all-targets -- -D warnings",
-        "prepublishOnly": "napi prepublish -t npm",
-        "test": "node ../../scripts/ci.ts headless cargo test -- --test-threads=1"
+        "test:asan": "RUSTFLAGS=\"-Zsanitizer=address\" ASAN_OPTIONS=\"detect_leaks=0:abort_on_error=1:detect_stack_use_after_return=1\" tsx ../../scripts/run-headless.ts cargo +nightly test -- --test-threads=1",
+        "test:miri": "tsx ../../scripts/run-headless.ts cargo +nightly miri test --test marshalling",
+        "test": "tsx ../../scripts/run-headless.ts cargo +nightly test -- --test-threads=1"
     },
     "engines": {
         "node": ">=24"

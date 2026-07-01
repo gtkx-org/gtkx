@@ -3,7 +3,8 @@
     "compilerOptions": {
         "isolatedDeclarations": true,
         "rootDir": "${configDir}/src",
-        "outDir": "${configDir}/dist"
+        "outDir": "${configDir}/dist",
+        "tsBuildInfoFile": "${configDir}/tsconfig.lib.tsbuildinfo"
     },
     "include": ["${configDir}/src/**/*"]
 }

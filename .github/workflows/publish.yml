@@ -37,7 +37,7 @@ jobs:
       - name: Build native binary
         uses: ./.github/actions/run-in-container
         with:
-          command: pnpm --filter @gtkx/native build:release
+          command: pnpm turbo run build --filter=@gtkx/native
           mount-cargo-cache: "true"
           mount-pnpm-store: "true"
 

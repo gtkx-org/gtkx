@@ -8,7 +8,7 @@ export default defineConfig({
         name: "e2e-bench",
         setupFiles: ["./tests/setup.ts"],
         benchmark: {
-            include: ["tests/bench/**/*.bench.{ts,tsx}"],
+            include: ["bench/**/*.bench.{ts,tsx}"],
         },
     },
 });

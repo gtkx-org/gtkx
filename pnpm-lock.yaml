@@ -57,6 +57,9 @@ importers:
       react:
         specifier: 'catalog:'
         version: 19.2.7
+      tsx:
+        specifier: ^4.22.4
+        version: 4.22.4
       turbo:
         specifier: ^2.9.18
         version: 2.10.0
@@ -8627,7 +8630,6 @@ snapshots:
       esbuild: 0.28.1
     optionalDependencies:
       fsevents: 2.3.3
-    optional: true
 
   tunnel-agent@0.6.0:
     dependencies:

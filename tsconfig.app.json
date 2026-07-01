@@ -3,7 +3,7 @@
     "compilerOptions": {
         "rootDir": "${configDir}/src",
         "outDir": "${configDir}/out-tsc/app",
-        "tsBuildInfoFile": "${configDir}/out-tsc/app/tsconfig.app.tsbuildinfo"
+        "tsBuildInfoFile": "${configDir}/tsconfig.app.tsbuildinfo"
     },
     "include": ["${configDir}/src/**/*"]
 }
