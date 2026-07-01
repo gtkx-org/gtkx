@@ -24,10 +24,10 @@ impl Request for AllocRequest {
         let ptr = unsafe { g_malloc0(self.size) };
 
         if ptr.is_null() {
-            let type_desc = type_name
+            let type_description = type_name
                 .as_ref()
                 .map_or("plain struct", |name| name.as_str());
-            anyhow::bail!("Failed to allocate memory for {type_desc}");
+            anyhow::bail!("Failed to allocate memory for {type_description}");
         }
 
         let boxed = Boxed::from_alloc(type_name, ptr);

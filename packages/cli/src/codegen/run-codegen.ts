@@ -30,6 +30,22 @@ export type RunCodegenResult = {
     libraries?: string[] | undefined;
 };
 
+/**
+ * Deletes a project-local binding store and its `@gtkx/{gi,jsx}` links so the
+ * bare specifiers resolve to a store installed higher in the tree. The gsettings
+ * schema typing at `node_modules/.gtkx/env.d.ts` is per-project and preserved.
+ */
+const removeSharedStoreShadow = (cwd: string): void => {
+    for (const path of [
+        resolve(cwd, "node_modules/.gtkx/gi"),
+        resolve(cwd, "node_modules/.gtkx/jsx"),
+        resolve(cwd, "node_modules/@gtkx/gi"),
+        resolve(cwd, "node_modules/@gtkx/jsx"),
+    ]) {
+        rmSync(path, { recursive: true, force: true });
+    }
+};
+
 const codegenOptions = (store: CodegenStore, libraries: string[], girPath: string[]) => ({
     libraries,
     girPath,
@@ -52,6 +68,11 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
     const cwd = options.cwd ?? process.cwd();
 
     const { config, configFile } = options.resolved ?? (await loadGtkxConfig(cwd));
+
+    if (config.codegen === false) {
+        removeSharedStoreShadow(cwd);
+        return { namespaces: 0, intrinsicElements: 0, duration: 0, girPath: [], configFile, libraries: [] };
+    }
 
     const { girPath, libraries, store } = options.inputs ?? resolveCodegenInputs(cwd, config);
 
@@ -79,6 +100,15 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
     };
 };
 
+export const isCodegenDisabled = async (cwd: string): Promise<boolean> => {
+    try {
+        const { config } = await loadGtkxConfig(cwd);
+        return config.codegen === false;
+    } catch {
+        return false;
+    }
+};
+
 export const syncSchemaEnv = (cwd: string): void => {
     const dataDir = resolveDataDir(cwd);
     if (dataDir === null) return;
@@ -103,6 +133,10 @@ export const ensureGenerated = async (cwd: string, options: { announce?: boolean
         return false;
     }
     syncSchemaEnv(cwd);
+    if (context.config.codegen === false) {
+        removeSharedStoreShadow(context.root);
+        return false;
+    }
     const inputs = resolveInputsOrNull(context.root, context.config);
     if (inputs !== null && !isCodegenStale(inputs)) {
         return false;

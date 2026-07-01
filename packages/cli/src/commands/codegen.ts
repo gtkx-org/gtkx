@@ -1,6 +1,6 @@
 import { defineCommand } from "citty";
 import { formatCodegenResult } from "../codegen/report.js";
-import { ensureGenerated, runCodegen, syncSchemaEnv } from "../codegen/run-codegen.js";
+import { ensureGenerated, isCodegenDisabled, runCodegen, syncSchemaEnv } from "../codegen/run-codegen.js";
 import { cwdArg, resolveCwd } from "../internal/entry-arg.js";
 import { info } from "../internal/log.js";
 
@@ -19,6 +19,12 @@ export const codegen = defineCommand({
     },
     async run({ args }) {
         const cwd = resolveCwd(args);
+
+        if (await isCodegenDisabled(cwd)) {
+            await runCodegen({ cwd });
+            info("codegen: disabled for this project; reusing an installed binding store");
+            return;
+        }
 
         if (!args.force) {
             const ran = await ensureGenerated(cwd);

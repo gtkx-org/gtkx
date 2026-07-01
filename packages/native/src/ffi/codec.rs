@@ -273,8 +273,8 @@ impl std::fmt::Display for Codec {
             Self::BigInt(kind) => write!(f, "BigInt({kind:?})"),
             Self::Float(kind) => write!(f, "Float({kind:?})"),
             Self::EnumFlags(t) => match t.kind {
-                EnumFlagsKind::Enum => write!(f, "Enum({})", t.get_type_fn),
-                EnumFlagsKind::Flags => write!(f, "Flags({})", t.get_type_fn),
+                EnumFlagsKind::Enum => write!(f, "Enum({})", t.get_type_fn_name),
+                EnumFlagsKind::Flags => write!(f, "Flags({})", t.get_type_fn_name),
             },
             Self::String(_) => write!(f, "String"),
             Self::Void(_) => write!(f, "Void"),

@@ -32,8 +32,8 @@ fn rgba_boxed_type_of(ownership: Ownership) -> Codec {
         ownership,
         type_name: "GdkRGBA".to_string(),
         shared_library: None,
-        get_type_fn: None,
-        free_fn: None,
+        get_type_fn_name: None,
+        free_fn_name: None,
         caller_allocated: false,
     })
 }

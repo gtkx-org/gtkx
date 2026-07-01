@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
@@ -6,7 +7,10 @@ use napi_derive::napi;
 use crate::ffi::codec::Codec;
 use crate::ffi::descriptor::Descriptor;
 
+static NEXT_DESCRIPTOR_ID: AtomicU64 = AtomicU64::new(0);
+
 pub struct CallDescriptor {
+    pub(crate) id: u64,
     pub(crate) library_name: String,
     pub(crate) symbol_name: String,
     pub(crate) arg_codecs: Vec<Codec>,
@@ -32,6 +36,7 @@ pub mod napi_export {
             .collect::<napi::Result<Vec<_>>>()?;
         let return_codec = return_descriptor.into_codec()?;
         Ok(External::new(Arc::new(CallDescriptor {
+            id: NEXT_DESCRIPTOR_ID.fetch_add(1, Ordering::Relaxed),
             library_name: shared_library,
             symbol_name: symbol,
             arg_codecs,

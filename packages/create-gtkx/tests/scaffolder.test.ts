@@ -189,7 +189,13 @@ describe("scaffold (dependency installation)", () => {
 
         expect(addDependencyMock).toHaveBeenCalledTimes(2);
         const [prodCall, devCall] = addDependencyMock.mock.calls;
-        expect(prodCall?.[0]).toEqual([pin("@gtkx/css"), pin("@gtkx/ffi"), pin("@gtkx/react"), "react"]);
+        expect(prodCall?.[0]).toEqual([
+            pin("@gtkx/css"),
+            pin("@gtkx/ffi"),
+            pin("@gtkx/native"),
+            pin("@gtkx/react"),
+            "react",
+        ]);
         expect(prodCall?.[1]).toEqual({
             cwd: `${TEST_DIR}/test-app`,
             packageManager: "pnpm",

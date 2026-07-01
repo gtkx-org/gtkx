@@ -41,11 +41,10 @@
     "files": [
         "bin",
         "dist",
-        "src",
-        "templates"
+        "src"
     ],
     "scripts": {
-        "build": "tsc -b tsconfig.lib.json",
+        "build": "tsc -b tsconfig.lib.json && rm -rf dist/templates && cp -r src/templates dist/templates",
         "typecheck": "tsc -b --emitDeclarationOnly",
         "release": "cp ../../README.md README.md && pnpm publish --access public --no-git-checks"
     },

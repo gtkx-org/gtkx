@@ -9,8 +9,8 @@ pub(super) fn write_object_ptr(
     value: &value::Value,
     label: &str,
 ) -> anyhow::Result<()> {
-    let obj_ptr = value.object_ptr(label)?;
-    unsafe { ffi::Slot::new(ptr).store(obj_ptr) };
+    let object_ptr = value.object_ptr(label)?;
+    unsafe { ffi::Slot::new(ptr).store(object_ptr) };
     Ok(())
 }
 

@@ -435,8 +435,8 @@ impl Value {
                 Ok(Self::Object(Handle::borrowed(external_ref.ptr())))
             }
             ValueType::Function => {
-                let cb = Callback::from_js_value(env, value)?;
-                Ok(Self::Callback(cb))
+                let callback = Callback::from_js_value(env, value)?;
+                Ok(Self::Callback(callback))
             }
             ValueType::Object => {
                 if value.is_array()? {

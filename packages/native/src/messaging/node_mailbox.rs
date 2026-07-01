@@ -365,12 +365,12 @@ impl Mailbox {
             unsafe {
                 sys::napi_get_and_clear_last_exception(env.raw(), &mut exception);
             }
-            let msg = if exception.is_null() {
+            let message = if exception.is_null() {
                 "JS callback threw an exception".to_owned()
             } else {
                 Self::extract_exception_message(env.raw(), exception)
             };
-            return Err(anyhow::anyhow!("{msg}"));
+            return Err(anyhow::anyhow!("{message}"));
         }
         if status != sys::Status::napi_ok {
             return Err(anyhow::anyhow!("napi_call_function failed: {status:?}"));

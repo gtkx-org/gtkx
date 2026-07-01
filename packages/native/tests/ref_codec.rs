@@ -102,7 +102,7 @@ fn decode_enum_flags_reads_number() {
         let enum_flags = EnumFlagsCodec {
             kind: EnumFlagsKind::Enum,
             shared_library: "libgobject-2.0.so.0".to_owned(),
-            get_type_fn: "g_unused_get_type".to_owned(),
+            get_type_fn_name: "g_unused_get_type".to_owned(),
             storage: IntegerCodec::I32,
         };
         let ref_type = RefCodec::new(Codec::EnumFlags(enum_flags)).expect("valid Ref inner");

@@ -35,16 +35,6 @@ impl Request for CallRequest {
         let symbol_name = &self.descriptor.symbol_name;
         let return_codec = &self.descriptor.return_codec;
 
-        let mut arg_types: Vec<libffi::Type> = Vec::with_capacity(args.len() + 1);
-        for arg in args.iter() {
-            arg.codec.append_ffi_arg_types(&mut arg_types);
-        }
-
-        let cif = libffi::Builder::new()
-            .res(return_codec.libffi_type())
-            .args(arg_types)
-            .into_cif();
-
         let stashed_values = args
             .iter()
             .enumerate()
@@ -60,15 +50,25 @@ impl Request for CallRequest {
             stashed_value.append_libffi_args(&mut ffi_args);
         }
 
-        let symbol_ptr = unsafe {
-            GlibThreadState::with::<_, anyhow::Result<libffi::CodePtr>>(|state| {
-                let library = state.library(&self.descriptor.library_name)?;
-                let symbol = library.get::<unsafe extern "C" fn() -> ()>(symbol_name.as_bytes())?;
+        let (cif, symbol_ptr) = GlibThreadState::with::<_, anyhow::Result<_>>(|state| {
+            let cif = state.cached_cif(self.descriptor.id, || {
+                let mut arg_types: Vec<libffi::Type> =
+                    Vec::with_capacity(self.descriptor.arg_codecs.len());
+                for codec in &self.descriptor.arg_codecs {
+                    codec.append_ffi_arg_types(&mut arg_types);
+                }
+                libffi::Builder::new()
+                    .res(return_codec.libffi_type())
+                    .args(arg_types)
+                    .into_cif()
+            });
 
-                let ptr = *symbol as *mut c_void;
-                Ok(libffi::CodePtr(ptr))
-            })?
-        };
+            let library = state.library(&self.descriptor.library_name)?;
+            let symbol =
+                unsafe { library.get::<unsafe extern "C" fn() -> ()>(symbol_name.as_bytes())? };
+            let ptr = *symbol as *mut c_void;
+            Ok((cif, libffi::CodePtr(ptr)))
+        })?;
 
         let result = return_codec
             .call_cif(&cif, symbol_ptr, &ffi_args)

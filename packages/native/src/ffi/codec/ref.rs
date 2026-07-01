@@ -39,13 +39,13 @@ impl RefCodec {
 }
 
 impl Encoder for RefCodec {
-    fn encode(&self, val: &value::Value) -> anyhow::Result<ffi::StashedValue> {
-        let ref_val = match val {
+    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
+        let ref_val = match value {
             value::Value::Ref(r) => r,
             value::Value::Null | value::Value::Undefined => {
                 return Ok(ffi::StashedValue::Ptr(std::ptr::null_mut()));
             }
-            _ => bail!("Expected a Ref for ref codec, got {val:?}"),
+            _ => bail!("Expected a Ref for ref codec, got {value:?}"),
         };
 
         match &*self.inner_codec {
@@ -227,7 +227,7 @@ impl RefCodec {
 
     fn scalar_out_stashed(encoded: &ffi::StashedValue) -> anyhow::Result<ffi::StashedValue> {
         let storage = Stash::from(vec![0u64]);
-        unsafe { encoded.write_scalar_to(storage.ptr())? };
+        unsafe { encoded.write_scalar_to_ptr(storage.ptr())? };
         Ok(ffi::StashedValue::Stashed(storage))
     }
 

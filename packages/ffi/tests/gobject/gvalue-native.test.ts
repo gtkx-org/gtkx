@@ -9,14 +9,14 @@ import { fromGValue, toGValue } from "../../src/gvalue.js";
 const alignDescriptor = {
     kind: "enum",
     sharedLibrary: "libgtk-4.so.1",
-    getTypeFn: "gtk_align_get_type",
+    getTypeFnName: "gtk_align_get_type",
     signed: false,
 } as const;
 
 const bindingFlagsDescriptor = {
     kind: "flags",
     sharedLibrary: "libgobject-2.0.so.0",
-    getTypeFn: "g_binding_flags_get_type",
+    getTypeFnName: "g_binding_flags_get_type",
     signed: false,
 } as const;
 

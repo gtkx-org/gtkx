@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/codegen/run-codegen.js", () => ({
     ensureGenerated: vi.fn(async () => true),
+    isCodegenDisabled: vi.fn(async () => false),
     syncSchemaEnv: vi.fn(),
     runCodegen: vi.fn(async () => ({
         configFile: "/project/gtkx.config.ts",
@@ -13,11 +14,12 @@ vi.mock("../../src/codegen/run-codegen.js", () => ({
     })),
 }));
 
-import { ensureGenerated, runCodegen, syncSchemaEnv } from "../../src/codegen/run-codegen.js";
+import { ensureGenerated, isCodegenDisabled, runCodegen, syncSchemaEnv } from "../../src/codegen/run-codegen.js";
 import { codegen } from "../../src/commands/codegen.js";
 
 const runCodegenMock = vi.mocked(runCodegen);
 const ensureGeneratedMock = vi.mocked(ensureGenerated);
+const isCodegenDisabledMock = vi.mocked(isCodegenDisabled);
 const syncSchemaEnvMock = vi.mocked(syncSchemaEnv);
 
 type CodegenArgs = { force?: boolean; cwd?: string };
@@ -65,6 +67,16 @@ describe("codegen command (default — conditional)", () => {
         await run({});
 
         expect(collectLogged(state.stderrSpy)).toContain("bindings up to date");
+    });
+
+    it("cleans up and reports a shared store when codegen is disabled", async () => {
+        isCodegenDisabledMock.mockResolvedValueOnce(true);
+
+        await run({ force: true, cwd: "/custom/dir" });
+
+        expect(runCodegenMock).toHaveBeenCalledWith({ cwd: expect.stringContaining("custom/dir") });
+        expect(ensureGeneratedMock).not.toHaveBeenCalled();
+        expect(collectLogged(state.stderrSpy)).toContain("reusing an installed binding store");
     });
 });
 

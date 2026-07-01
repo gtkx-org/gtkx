@@ -62,12 +62,12 @@ impl PtrWriter for StructCodec {
                 unsafe { ffi::Slot::new(ptr).store(std::ptr::null_mut()) };
                 return Ok(());
             }
-            let dst_ptr = unsafe { ffi::Slot::new(ptr).load() };
-            if dst_ptr.is_null() {
+            let dest_ptr = unsafe { ffi::Slot::new(ptr).load() };
+            if dest_ptr.is_null() {
                 bail!("Struct field write into null pointer slot")
             }
             unsafe {
-                std::ptr::copy_nonoverlapping(src_ptr as *const u8, dst_ptr as *mut u8, size);
+                std::ptr::copy_nonoverlapping(src_ptr as *const u8, dest_ptr as *mut u8, size);
             }
             return Ok(());
         }

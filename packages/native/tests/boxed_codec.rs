@@ -30,8 +30,8 @@ fn boxed(ownership: Ownership) -> BoxedCodec {
         ownership,
         type_name: rgba_type_name(),
         shared_library: None,
-        get_type_fn: None,
-        free_fn: None,
+        get_type_fn_name: None,
+        free_fn_name: None,
         caller_allocated: false,
     }
 }
@@ -97,8 +97,8 @@ fn gtype_resolves_via_library_lookup() {
             ownership: Ownership::Borrowed,
             type_name: "GBytes".to_owned(),
             shared_library: Some("libgobject-2.0.so.0".to_owned()),
-            get_type_fn: Some("g_bytes_get_type".to_owned()),
-            free_fn: None,
+            get_type_fn_name: Some("g_bytes_get_type".to_owned()),
+            free_fn_name: None,
             caller_allocated: false,
         };
         let resolved = bytes_type.gtype();
@@ -369,8 +369,8 @@ fn write_value_to_pointer_falls_back_when_gtype_unresolvable() {
             ownership: Ownership::Borrowed,
             type_name: "GTypeUnknownBoxed".to_owned(),
             shared_library: None,
-            get_type_fn: None,
-            free_fn: None,
+            get_type_fn_name: None,
+            free_fn_name: None,
             caller_allocated: false,
         };
 
@@ -626,8 +626,8 @@ mod free_fn {
             ownership,
             type_name: "FreeFnBoxed".to_owned(),
             shared_library: Some(LIBGLIB.to_owned()),
-            get_type_fn: None,
-            free_fn: Some(G_FREE.to_owned()),
+            get_type_fn_name: None,
+            free_fn_name: Some(G_FREE.to_owned()),
             caller_allocated: false,
         }
     }
@@ -653,12 +653,12 @@ mod free_fn {
     fn decode_wrapper(descriptor: &BoxedCodec, ptr: *mut c_void) -> Value {
         descriptor
             .decode(&ffi::StashedValue::Ptr(ptr))
-            .expect("decode with freeFn should succeed")
+            .expect("decode with freeFnName should succeed")
     }
 
     fn ptr_to_value_wrapper(descriptor: &BoxedCodec, ptr: *mut c_void) -> Value {
         unsafe { descriptor.read(ReadSource::Value(ptr, "ctx")) }
-            .expect("ptr_to_value with freeFn should succeed")
+            .expect("ptr_to_value with freeFnName should succeed")
     }
 
     #[test]
@@ -697,8 +697,8 @@ mod free_fn {
                 ownership: Ownership::Full,
                 type_name: "BadFreeFnBoxed".to_owned(),
                 shared_library: Some(LIBGLIB.to_owned()),
-                get_type_fn: None,
-                free_fn: Some("definitely_not_a_real_symbol_xyz".to_owned()),
+                get_type_fn_name: None,
+                free_fn_name: Some("definitely_not_a_real_symbol_xyz".to_owned()),
                 caller_allocated: false,
             };
 
@@ -721,8 +721,8 @@ mod free_fn {
                 ownership: Ownership::Full,
                 type_name: "BadLibBoxed".to_owned(),
                 shared_library: Some("libdoes-not-exist-xyz-12345.so.0".to_owned()),
-                get_type_fn: None,
-                free_fn: Some(G_FREE.to_owned()),
+                get_type_fn_name: None,
+                free_fn_name: Some(G_FREE.to_owned()),
                 caller_allocated: false,
             };
 
@@ -750,8 +750,8 @@ mod free_fn {
                 ownership: Ownership::Full,
                 type_name: "LibrarylessFreeFn".to_owned(),
                 shared_library: None,
-                get_type_fn: None,
-                free_fn: Some(G_FREE.to_owned()),
+                get_type_fn_name: None,
+                free_fn_name: Some(G_FREE.to_owned()),
                 caller_allocated: false,
             };
 

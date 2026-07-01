@@ -13,6 +13,7 @@ type T = {
     uint64: typeof helpers.uint64T;
     bigint64: typeof helpers.bigint64T;
     biguint64: typeof helpers.biguint64T;
+    gtype: typeof helpers.gtypeT;
     float32: typeof helpers.float32T;
     float64: typeof helpers.float64T;
     boolean: typeof helpers.booleanT;
@@ -52,6 +53,7 @@ export const t: T = {
     uint64: helpers.uint64T,
     bigint64: helpers.bigint64T,
     biguint64: helpers.biguint64T,
+    gtype: helpers.gtypeT,
     float32: helpers.float32T,
     float64: helpers.float64T,
     boolean: helpers.booleanT,

@@ -276,7 +276,7 @@ pub fn enum_codec() -> EnumFlagsCodec {
     EnumFlagsCodec {
         kind: EnumFlagsKind::Enum,
         shared_library: "libgtk-4.so.1".to_owned(),
-        get_type_fn: "gtk_orientation_get_type".to_owned(),
+        get_type_fn_name: "gtk_orientation_get_type".to_owned(),
         storage: IntegerCodec::I32,
     }
 }
@@ -285,7 +285,7 @@ pub fn flags_codec() -> EnumFlagsCodec {
     EnumFlagsCodec {
         kind: EnumFlagsKind::Flags,
         shared_library: "libgtk-4.so.1".to_owned(),
-        get_type_fn: "gtk_state_flags_get_type".to_owned(),
+        get_type_fn_name: "gtk_state_flags_get_type".to_owned(),
         storage: IntegerCodec::U32,
     }
 }

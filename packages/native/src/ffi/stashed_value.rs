@@ -117,7 +117,7 @@ impl StashedValue {
         }
     }
 
-    pub unsafe fn write_scalar_to(&self, slot: *mut c_void) -> anyhow::Result<()> {
+    pub unsafe fn write_scalar_to_ptr(&self, slot: *mut c_void) -> anyhow::Result<()> {
         match self {
             Self::U8(value) => unsafe { slot.cast::<u8>().write_unaligned(*value) },
             Self::I8(value) => unsafe { slot.cast::<i8>().write_unaligned(*value) },

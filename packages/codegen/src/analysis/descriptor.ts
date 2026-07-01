@@ -15,6 +15,7 @@ type DescriptorName =
     | "uint64"
     | "bigint64"
     | "biguint64"
+    | "gtype"
     | "float32"
     | "float64"
     | "boolean"
@@ -55,6 +56,7 @@ const T: DescriptorNames = {
     uint64: "t.uint64",
     bigint64: "t.bigint64",
     biguint64: "t.biguint64",
+    gtype: "t.gtype",
     float32: "t.float32",
     float64: "t.float64",
     boolean: "t.boolean",
@@ -103,6 +105,8 @@ export const tUint64: string = T.uint64;
 
 export const tBigUint64: string = T.biguint64;
 
+export const tGtype: string = T.gtype;
+
 export const tBuffer: string = T.buffer;
 
 export type ScalarDescriptorName =
@@ -131,7 +135,7 @@ export const tObject = (ownership: Ownership): string => call("object", [sourceS
 export type BoxedOptions = {
     ownership: Ownership;
     sharedLibrary: string | undefined;
-    getTypeFn: string;
+    getTypeFnName: string;
     callerAllocated: boolean;
     size: number | undefined;
 };
@@ -144,7 +148,7 @@ export const tBoxed = (glibName: string, options: BoxedOptions): string =>
             options.sharedLibrary === undefined
                 ? undefined
                 : `sharedLibrary: ${sourceStringLiteral(options.sharedLibrary)}`,
-            `getTypeFn: ${sourceStringLiteral(options.getTypeFn)}`,
+            `getTypeFnName: ${sourceStringLiteral(options.getTypeFnName)}`,
             options.callerAllocated ? "callerAllocated: true" : undefined,
             options.size === undefined ? undefined : `size: ${options.size}`,
         ]),

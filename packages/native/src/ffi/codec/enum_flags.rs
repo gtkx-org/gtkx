@@ -16,7 +16,7 @@ pub enum EnumFlagsKind {
 pub struct EnumFlagsCodec {
     pub kind: EnumFlagsKind,
     pub shared_library: String,
-    pub get_type_fn: String,
+    pub get_type_fn_name: String,
     pub storage: IntegerCodec,
 }
 
@@ -27,7 +27,7 @@ impl EnumFlagsCodec {
 
     fn resolve_gtype(&self) -> anyhow::Result<glib::Type> {
         crate::ffi::library_cache::GlibThreadState::with(|state| {
-            state.resolve_gtype(&self.shared_library, &self.get_type_fn)
+            state.resolve_gtype(&self.shared_library, &self.get_type_fn_name)
         })
     }
 
@@ -41,7 +41,7 @@ impl EnumFlagsCodec {
         if enum_class.value(value).is_none() {
             crate::messaging::error_reporter::ErrorReporter::global().report_str(&format!(
                 "Enum value {value} is not a valid member of {} (GType {gtype})",
-                self.get_type_fn
+                self.get_type_fn_name
             ));
         }
     }

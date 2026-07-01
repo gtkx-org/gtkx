@@ -10,8 +10,8 @@ pub struct BoxedCodec {
     pub ownership: Ownership,
     pub type_name: String,
     pub shared_library: Option<String>,
-    pub get_type_fn: Option<String>,
-    pub free_fn: Option<String>,
+    pub get_type_fn_name: Option<String>,
+    pub free_fn_name: Option<String>,
     pub caller_allocated: bool,
 }
 
@@ -28,15 +28,17 @@ impl BoxedCodec {
         })
     }
 
-    fn lookup_free_fn(lib_name: &str, free_fn: &str) -> anyhow::Result<BoxedFreeFn> {
+    fn lookup_free_fn(lib_name: &str, free_fn_name: &str) -> anyhow::Result<BoxedFreeFn> {
         GlibThreadState::with(|state| -> anyhow::Result<_> {
             let library = state.library(lib_name)?;
-            let sym = unsafe {
+            let symbol = unsafe {
                 library
-                    .get::<BoxedFreeFn>(free_fn.as_bytes())
-                    .map_err(|e| anyhow::anyhow!("Failed to find free symbol '{free_fn}': {e}"))?
+                    .get::<BoxedFreeFn>(free_fn_name.as_bytes())
+                    .map_err(|e| {
+                        anyhow::anyhow!("Failed to find free symbol '{free_fn_name}': {e}")
+                    })?
             };
-            Ok(*sym)
+            Ok(*symbol)
         })
     }
 
@@ -54,13 +56,13 @@ impl BoxedCodec {
     }
 
     fn try_resolve_gtype_from_library(&self) -> anyhow::Result<Option<glib::Type>> {
-        let (Some(lib_name), Some(get_type_fn)) =
-            (self.shared_library.as_ref(), self.get_type_fn.as_ref())
+        let (Some(lib_name), Some(get_type_fn_name)) =
+            (self.shared_library.as_ref(), self.get_type_fn_name.as_ref())
         else {
             return Ok(None);
         };
 
-        let gtype = GlibThreadState::with(|state| state.resolve_gtype(lib_name, get_type_fn))?;
+        let gtype = GlibThreadState::with(|state| state.resolve_gtype(lib_name, get_type_fn_name))?;
         Ok(Some(gtype).filter(|t| t.is_valid()))
     }
 }
@@ -94,7 +96,7 @@ impl Encoder for BoxedCodec {
 impl Decoder for BoxedCodec {
     fn read_call(&self, stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
         self.read_call_non_null(stashed_value, "Boxed", |boxed_ptr| {
-            if let Some(free_fn_name) = self.free_fn.as_deref() {
+            if let Some(free_fn_name) = self.free_fn_name.as_deref() {
                 return Ok(self.boxed_with_free_fn(boxed_ptr, free_fn_name)?.into());
             }
 
@@ -112,7 +114,7 @@ impl Decoder for BoxedCodec {
 
     unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         self.decode_non_null(ptr, |ptr| {
-            if self.free_fn.is_some() || self.caller_allocated {
+            if self.free_fn_name.is_some() || self.caller_allocated {
                 return Ok(Boxed::from_glib_borrow(ptr).into());
             }
             Ok(unsafe { Boxed::from_glib_none(self.gtype(), ptr) }?.into())

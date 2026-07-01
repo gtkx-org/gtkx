@@ -74,6 +74,20 @@ export const uint64T: Uint64Descriptor = Object.freeze({ kind: "uint64" });
 export const bigint64T: BigInt64Descriptor = Object.freeze({ kind: "bigint64" });
 export const biguint64T: BigUint64Descriptor = Object.freeze({ kind: "biguint64" });
 
+/**
+ * A GType-valued descriptor. It marshals identically to {@link biguint64T} across
+ * the native boundary (a GType is a `gsize`, and native ignores the extra `gtype`
+ * marker), while the JS-only GValue layer reads the marker to build and read the
+ * value through `g_value_get_gtype`/`g_value_set_gtype` instead of the `guint64`
+ * accessors, which GObject rejects for a `G_TYPE_GTYPE` property.
+ */
+export type GtypeDescriptor = BigUint64Descriptor & { gtype: true };
+
+export const gtypeT: GtypeDescriptor = Object.freeze({ kind: "biguint64", gtype: true });
+
+export const isGtypeDescriptor = (descriptor: Descriptor): boolean =>
+    "gtype" in descriptor && descriptor.gtype === true;
+
 const typeFunctionCache = createBindCache();
 
 export const callTypeFunction = (sharedLibrary: string, symbol: string): bigint =>
@@ -97,8 +111,8 @@ type CallerAllocatable = {
 type BoxedOptions = CallerAllocatable & {
     ownership?: Ownership;
     sharedLibrary?: string;
-    getTypeFn?: string;
-    freeFn?: string;
+    getTypeFnName?: string;
+    freeFnName?: string;
     size?: number;
 };
 
@@ -114,8 +128,8 @@ export const boxedT = (typeName: string, options: BoxedOptions = {}): BoxedDescr
         typeName,
     };
     if (options.sharedLibrary !== undefined) result.sharedLibrary = options.sharedLibrary;
-    if (options.getTypeFn !== undefined) result.getTypeFn = options.getTypeFn;
-    if (options.freeFn !== undefined) result.freeFn = options.freeFn;
+    if (options.getTypeFnName !== undefined) result.getTypeFnName = options.getTypeFnName;
+    if (options.freeFnName !== undefined) result.freeFnName = options.freeFnName;
     if (options.callerAllocated) result.callerAllocated = true;
     if (options.size !== undefined) result.size = options.size;
     return result;
@@ -137,12 +151,12 @@ type FundamentalOptions = {
 
 export const fundamentalT = (
     sharedLibrary: string,
-    refFn: string,
-    unrefFn: string,
+    refFnName: string,
+    unrefFnName: string,
     options: FundamentalOptions = {},
 ): FundamentalDescriptor => {
     const ownership = options.ownership ?? "borrowed";
-    const result: FundamentalDescriptor = { kind: "fundamental", ownership, sharedLibrary, refFn, unrefFn };
+    const result: FundamentalDescriptor = { kind: "fundamental", ownership, sharedLibrary, refFnName, unrefFnName };
     if (options.typeName !== undefined) result.typeName = options.typeName;
     if (options.wrapperClass !== undefined) setDescriptorWrapperClass(result, options.wrapperClass);
     return result;
@@ -162,17 +176,17 @@ export const hashTableT = (
     ownership,
 });
 
-export const enumT = (sharedLibrary: string, getTypeFn: string, signed: boolean): EnumDescriptor => ({
+export const enumT = (sharedLibrary: string, getTypeFnName: string, signed: boolean): EnumDescriptor => ({
     kind: "enum",
     sharedLibrary,
-    getTypeFn,
+    getTypeFnName,
     signed,
 });
 
-export const flagsT = (sharedLibrary: string, getTypeFn: string, signed: boolean): FlagsDescriptor => ({
+export const flagsT = (sharedLibrary: string, getTypeFnName: string, signed: boolean): FlagsDescriptor => ({
     kind: "flags",
     sharedLibrary,
-    getTypeFn,
+    getTypeFnName,
     signed,
 });
 

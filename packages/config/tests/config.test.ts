@@ -162,6 +162,14 @@ describe("validateGtkxConfig reactCompiler validation", () => {
             /invalid `reactCompiler\.panicThreshold` "warn"/,
         );
     });
+
+    it("rejects a non-boolean codegen", () => {
+        expect(() => validateUnknown({ codegen: "no" })).toThrow(/`codegen` must be a boolean/);
+    });
+
+    it("accepts a boolean codegen", () => {
+        expect(() => validateGtkxConfig({ codegen: false })).not.toThrow();
+    });
 });
 
 describe("resolveReactCompilerOptions", () => {
@@ -191,6 +199,7 @@ describe("resolveGtkxConfig", () => {
             applicationId: undefined,
             rules: undefined,
             reactCompiler: { target: "19" },
+            codegen: true,
         });
     });
 
@@ -205,6 +214,7 @@ describe("resolveGtkxConfig", () => {
         expect(resolveGtkxConfig(configured)).toEqual({
             ...configured,
             reactCompiler: { target: "19", compilationMode: "annotation" },
+            codegen: true,
         });
     });
 
@@ -214,5 +224,10 @@ describe("resolveGtkxConfig", () => {
 
     it("collapses a disabled reactCompiler to null", () => {
         expect(resolveGtkxConfig({ reactCompiler: false }).reactCompiler).toBeNull();
+    });
+
+    it("defaults codegen to true and carries an explicit false", () => {
+        expect(resolveGtkxConfig({}).codegen).toBe(true);
+        expect(resolveGtkxConfig({ codegen: false }).codegen).toBe(false);
     });
 });

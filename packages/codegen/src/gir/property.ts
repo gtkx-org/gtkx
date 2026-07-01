@@ -6,6 +6,7 @@ import { typeRefFromNode } from "./type-ref.js";
 export type GirProperty = {
     name: string;
     type: TypeId | undefined;
+    readable: boolean;
     writable: boolean;
     construct: boolean;
     constructOnly: boolean;
@@ -22,6 +23,7 @@ export const isConstructableProperty = (property: GirProperty): boolean =>
 export const propertyFromNode = (node: RawNode, context: ParseContext): GirProperty => ({
     name: nameAttr(node),
     type: typeRefFromNode(node, context),
+    readable: attrBool(node, "readable", true),
     writable: attrBool(node, "writable"),
     construct: attrBool(node, "construct"),
     constructOnly: attrBool(node, "construct-only"),

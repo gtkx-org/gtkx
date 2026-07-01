@@ -16,18 +16,18 @@ impl ArrayCodec {
     pub(super) fn size_from_args(
         ffi_args: &[ffi::StashedValue],
         args: &[Arg],
-        size_index: usize,
+        size_param_index: usize,
     ) -> anyhow::Result<usize> {
-        if size_index >= ffi_args.len() {
+        if size_param_index >= ffi_args.len() {
             bail!(
                 "Size parameter index {} is out of bounds (args count: {})",
-                size_index,
+                size_param_index,
                 ffi_args.len()
             );
         }
 
-        let ffi_arg = &ffi_args[size_index];
-        let arg = &args[size_index];
+        let ffi_arg = &ffi_args[size_param_index];
+        let arg = &args[size_param_index];
 
         if let Codec::Ref(ref_codec) = &arg.codec
             && let Codec::Integer(integer_codec) = &*ref_codec.inner_codec
@@ -35,25 +35,25 @@ impl ArrayCodec {
             match ffi_arg {
                 ffi::StashedValue::Stashed(storage) => {
                     let size = unsafe { integer_codec.read_ptr(storage.ptr() as *const u8) };
-                    return Self::validated_size(size, size_index);
+                    return Self::validated_size(size, size_param_index);
                 }
                 ffi::StashedValue::Ptr(ptr) if !ptr.is_null() => {
                     let size = unsafe { integer_codec.read_ptr(*ptr as *const u8) };
-                    return Self::validated_size(size, size_index);
+                    return Self::validated_size(size, size_param_index);
                 }
                 _ => {}
             }
         }
 
         if let Codec::Integer(_) = &arg.codec
-            && let Ok(num) = ffi_arg.to_number()
+            && let Ok(size) = ffi_arg.to_number()
         {
-            return Self::validated_size(num, size_index);
+            return Self::validated_size(size, size_param_index);
         }
 
         bail!(
             "Could not extract size from parameter at index {}: expected Ref<Integer> or Integer, got type {:?} with ffi value {:?}",
-            size_index,
+            size_param_index,
             arg.codec,
             ffi_arg
         );

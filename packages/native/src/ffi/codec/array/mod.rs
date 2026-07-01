@@ -37,14 +37,14 @@ pub struct ArrayCodec {
 }
 
 impl Encoder for ArrayCodec {
-    fn encode(&self, val: &value::Value) -> anyhow::Result<ffi::StashedValue> {
-        let array = match val {
+    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
+        let array = match value {
             value::Value::Array(arr) => arr,
             value::Value::BufferView(view) => return self.encode_buffer_view(view),
             value::Value::Null | value::Value::Undefined => {
                 return Ok(ffi::StashedValue::Ptr(std::ptr::null_mut()));
             }
-            _ => bail!("Expected an Array for array codec, got {val:?}"),
+            _ => bail!("Expected an Array for array codec, got {value:?}"),
         };
 
         if self.kind == ArrayKind::GByteArray {
@@ -136,7 +136,7 @@ impl Decoder for ArrayCodec {
             bail!("Expected a Storage ffi::StashedValue for Array, got {stashed_value:?}")
         };
 
-        self.decode_storage(storage)
+        self.decode_stash(storage)
     }
 
     unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
@@ -154,10 +154,10 @@ impl Decoder for ArrayCodec {
     ) -> anyhow::Result<value::Value> {
         match self.kind {
             ArrayKind::Sized => {
-                let size_index = self
+                let size_param_index = self
                     .size_param_index
                     .ok_or_else(|| anyhow::anyhow!("A sized array requires a sizeParamIndex"))?;
-                let length = Self::size_from_args(ffi_args, args, size_index as usize)?;
+                let length = Self::size_from_args(ffi_args, args, size_param_index as usize)?;
 
                 if let ffi::StashedValue::Ptr(ptr) = stashed_value {
                     if ptr.is_null() {
@@ -797,7 +797,7 @@ impl ArrayCodec {
         value::Value::Array(values)
     }
 
-    fn decode_storage(&self, stash: &Stash) -> anyhow::Result<value::Value> {
+    fn decode_stash(&self, stash: &Stash) -> anyhow::Result<value::Value> {
         let values = match self.item_codec("array")? {
             ItemCodec::Integer(kind) | ItemCodec::EnumFlags(kind) => kind
                 .vec_to_f64(stash)?

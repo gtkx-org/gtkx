@@ -21,6 +21,7 @@ const isNullablePropertyType = (context: ModuleContext, type: TypeId | undefined
 type ResolvedAccessor = {
     jsName: string;
     tsType: string;
+    hasGetter: boolean;
     writable: boolean;
     getterMember: string | undefined;
     getMethod: GirFunction | undefined;
@@ -49,6 +50,9 @@ const resolveAccessor = (args: PropertyAccessorArgs): ResolvedAccessor | undefin
         setterMember !== undefined && property.setter !== undefined ? methodByName.get(property.setter) : undefined;
     const setParam = setMethod?.parameters[0];
 
+    const hasGetter = property.readable || getterMember !== undefined;
+    if (!hasGetter && !writable) return undefined;
+
     const tsType =
         setParam !== undefined
             ? renderTsType(context, setParam.type, setParam.nullable || setParam.optional)
@@ -56,7 +60,7 @@ const resolveAccessor = (args: PropertyAccessorArgs): ResolvedAccessor | undefin
               ? renderMethodReturnType(context, getMethod)
               : renderTsType(context, property.type, isNullablePropertyType(context, property.type));
 
-    return { jsName, tsType, writable, getterMember, getMethod, setterMember };
+    return { jsName, tsType, hasGetter, writable, getterMember, getMethod, setterMember };
 };
 
 const withAccessor = (
@@ -71,11 +75,13 @@ const withAccessor = (
 export const renderPropertyAccessor = (args: PropertyAccessorArgs): string | undefined =>
     withAccessor(args, (accessor) => {
         const { context, property } = args;
-        const { jsName, tsType, writable, getterMember, getMethod, setterMember } = accessor;
+        const { jsName, tsType, hasGetter, writable, getterMember, getMethod, setterMember } = accessor;
 
         const blocks: string[] = [];
-        const getBody = renderGetterBody({ context, property, getterMember, getMethod, tsType });
-        blocks.push(renderBlock(`get ${jsName}(): ${tsType}`, getBody));
+        if (hasGetter) {
+            const getBody = renderGetterBody({ context, property, getterMember, getMethod, tsType });
+            blocks.push(renderBlock(`get ${jsName}(): ${tsType}`, getBody));
+        }
 
         if (writable) {
             const setBody =
@@ -86,9 +92,11 @@ export const renderPropertyAccessor = (args: PropertyAccessorArgs): string | und
     });
 
 export const renderPropertyAccessorSignature = (args: PropertyAccessorArgs): string | undefined =>
-    withAccessor(args, ({ jsName, tsType, writable }) =>
-        writable ? `${jsName}: ${tsType};` : `get ${jsName}(): ${tsType};`,
-    );
+    withAccessor(args, ({ jsName, tsType, hasGetter, writable }) => {
+        if (hasGetter && writable) return `${jsName}: ${tsType};`;
+        if (hasGetter) return `get ${jsName}(): ${tsType};`;
+        return `set ${jsName}(value: ${tsType});`;
+    });
 
 const renderPropertyDescriptor = (context: ModuleContext, property: GirProperty): string =>
     renderDescriptor(context, property.type, property.transferOwnership);

@@ -15,6 +15,7 @@ import {
     float64T,
     fundamentalT,
     int32T,
+    isGtypeDescriptor,
     objectT,
     stringT,
     uint32T,
@@ -29,6 +30,7 @@ import {
     TYPE_ENUM,
     TYPE_FLAGS,
     TYPE_FLOAT,
+    TYPE_GTYPE,
     TYPE_INT,
     TYPE_INT64,
     TYPE_INVALID,
@@ -85,6 +87,7 @@ const scalarBind = <T>(symbol: string, descriptor: Descriptor) => ({
 });
 
 const booleanBind = scalarBind<boolean>("boolean", booleanT);
+const gtypeBind = scalarBind<bigint>("gtype", biguint64T);
 const intBind = scalarBind<number>("int", int32T);
 const uintBind = scalarBind<number>("uint", uint32T);
 const int64Bind = scalarBind<bigint>("int64", bigint64T);
@@ -112,6 +115,10 @@ const valueSetBoolean = (value: Handle, v: boolean): void => {
     booleanBind.set(value, v);
 };
 const valueGetBoolean = (value: Handle): boolean => Boolean(booleanBind.get(value));
+const valueSetGtype = (value: Handle, v: bigint | number): void => {
+    gtypeBind.set(value, v);
+};
+const valueGetGtype = (value: Handle): bigint => gtypeBind.get(value);
 const valueSetInt = (value: Handle, v: number): void => {
     intBind.set(value, v);
 };
@@ -248,8 +255,8 @@ export function getGValueBoxed(value: object): object | null {
 }
 
 const resolveBoxedInnerGtype = (descriptor: BoxedDescriptor): bigint => {
-    if (descriptor.getTypeFn && descriptor.sharedLibrary) {
-        return callTypeFunction(descriptor.sharedLibrary, descriptor.getTypeFn) as bigint;
+    if (descriptor.getTypeFnName && descriptor.sharedLibrary) {
+        return callTypeFunction(descriptor.sharedLibrary, descriptor.getTypeFnName) as bigint;
     }
     const gtype = typeFromName(descriptor.typeName);
     if (gtype === TYPE_INVALID) {
@@ -267,6 +274,7 @@ const resolveFundamentalGtype = (descriptor: FundamentalDescriptor): bigint => {
 };
 
 export function gtypeFromDescriptor(descriptor: Descriptor): bigint {
+    if (isGtypeDescriptor(descriptor)) return TYPE_GTYPE;
     switch (descriptor.kind) {
         case "boolean":
             return TYPE_BOOLEAN;
@@ -294,7 +302,7 @@ export function gtypeFromDescriptor(descriptor: Descriptor): bigint {
             return TYPE_OBJECT;
         case "enum":
         case "flags":
-            return callTypeFunction(descriptor.sharedLibrary, descriptor.getTypeFn) as bigint;
+            return callTypeFunction(descriptor.sharedLibrary, descriptor.getTypeFnName) as bigint;
         case "boxed":
             return resolveBoxedInnerGtype(descriptor);
         case "fundamental":
@@ -365,6 +373,13 @@ const payloadHandlers = new Map<bigint, PayloadHandler>([
     [
         TYPE_STRING,
         { set: (value, _descriptor, jsValue) => valueSetString(value, jsValue as string | null), get: valueGetString },
+    ],
+    [
+        TYPE_GTYPE,
+        {
+            set: (value, _descriptor, jsValue) => valueSetGtype(value, jsValue as bigint | number),
+            get: valueGetGtype,
+        },
     ],
     [TYPE_ENUM, { set: (value, _descriptor, jsValue) => valueSetEnum(value, jsValue as number), get: valueGetEnum }],
     [TYPE_FLAGS, { set: (value, _descriptor, jsValue) => valueSetFlags(value, jsValue as number), get: valueGetFlags }],

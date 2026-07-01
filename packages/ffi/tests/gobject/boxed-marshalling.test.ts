@@ -7,7 +7,7 @@ describe("boxed GValue marshalling — caller-allocated out copies, inout shares
     const rectangleFfi = t.boxed("GdkRectangle", {
         ownership: "borrowed",
         sharedLibrary: "libgtk-4.so.1",
-        getTypeFn: "gdk_rectangle_get_type",
+        getTypeFnName: "gdk_rectangle_get_type",
     });
 
     it("inoutBoxedForDescriptor shares the caller's wrapper so an in-place mutation is visible", () => {

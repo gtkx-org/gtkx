@@ -135,7 +135,7 @@ impl BigIntCodec {
 
     pub unsafe fn append_into(self, ptr: *mut u8, value: &value::Value) -> anyhow::Result<()> {
         let stashed_value = self.checked_to_stashed_value(self.integer_from_value(value)?)?;
-        unsafe { stashed_value.write_scalar_to(ptr.cast()) }
+        unsafe { stashed_value.write_scalar_to_ptr(ptr.cast()) }
     }
 }
 
@@ -184,7 +184,7 @@ impl PtrWriter for BigIntCodec {
         let stashed_value = self
             .checked_to_stashed_value(int)
             .unwrap_or_else(|_| self.zero_stashed_value());
-        let _ = unsafe { stashed_value.write_scalar_to(ret) };
+        let _ = unsafe { stashed_value.write_scalar_to_ptr(ret) };
     }
 
     unsafe fn write_value_to_ptr(
@@ -194,7 +194,7 @@ impl PtrWriter for BigIntCodec {
     ) -> anyhow::Result<()> {
         let int = self.integer_from_value(value)?;
         let stashed_value = self.checked_to_stashed_value(int)?;
-        unsafe { stashed_value.write_scalar_to(ptr) }
+        unsafe { stashed_value.write_scalar_to_ptr(ptr) }
     }
 }
 

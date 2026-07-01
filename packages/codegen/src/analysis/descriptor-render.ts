@@ -20,7 +20,6 @@ import {
     type Ownership,
     type ScalarDescriptorName,
     tArray,
-    tBigUint64,
     tBoxed,
     tByteArray,
     tCallback,
@@ -28,6 +27,7 @@ import {
     tFixedArray,
     tFlags,
     tFundamental,
+    tGtype,
     tHashTable,
     tInt32,
     tList,
@@ -180,7 +180,7 @@ const primitiveExpression = (category: PrimitiveCategory, ownership: Ownership):
     if (category === "void") return tVoid;
     if (category === "string") return tString(ownership);
     if (category === "pointer") return tUint64;
-    if (category === "gtype") return tBigUint64;
+    if (category === "gtype") return tGtype;
     return tScalar(category satisfies ScalarDescriptorName);
 };
 
@@ -327,7 +327,7 @@ const recordExpression = (
     return tBoxed(glibName, {
         ownership,
         sharedLibrary: resolved.namespace.sharedLibrary,
-        getTypeFn: record.glibGetType,
+        getTypeFnName: record.glibGetType,
         callerAllocated,
         size: size > 0 ? size : undefined,
     });

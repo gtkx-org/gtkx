@@ -47,8 +47,8 @@ fn full_boxed_type() -> Codec {
         ownership: Ownership::Full,
         type_name: "GdkRGBA".to_string(),
         shared_library: None,
-        get_type_fn: None,
-        free_fn: None,
+        get_type_fn_name: None,
+        free_fn_name: None,
         caller_allocated: false,
     })
 }

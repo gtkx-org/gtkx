@@ -45,6 +45,11 @@
             "inputs": [],
             "outputs": ["dist/**", "tsconfig.lib.tsbuildinfo"]
         },
+        "@gtkx/website#build": {
+            "dependsOn": ["production", "^build"],
+            "inputs": [],
+            "outputs": [".vitepress/dist/**"]
+        },
         "lint": {
             "inputs": ["$TURBO_DEFAULT$"],
             "outputs": []

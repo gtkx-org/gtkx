@@ -1,7 +1,9 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::mem::ManuallyDrop;
+use std::rc::Rc;
 
+use libffi::middle::Cif;
 use libloading::os::unix::{Library, RTLD_GLOBAL, RTLD_NOW};
 
 use crate::handle::{RefFn, UnrefFn};
@@ -12,7 +14,7 @@ thread_local! {
 
 pub struct LibraryCache {
     libraries: ManuallyDrop<HashMap<String, Library>>,
-    gtypes: HashMap<(String, String), glib::Type>,
+    gtypes: HashMap<String, HashMap<String, glib::Type>>,
 }
 
 impl std::fmt::Debug for LibraryCache {
@@ -62,8 +64,11 @@ impl LibraryCache {
 
         type GetTypeFn = unsafe extern "C" fn() -> glib::ffi::GType;
 
-        let key = (lib_name.to_owned(), get_type_fn_name.to_owned());
-        if let Some(cached) = self.gtypes.get(&key) {
+        if let Some(cached) = self
+            .gtypes
+            .get(lib_name)
+            .and_then(|by_fn| by_fn.get(get_type_fn_name))
+        {
             return Ok(*cached);
         }
 
@@ -76,7 +81,10 @@ impl LibraryCache {
 
         let raw_gtype = unsafe { symbol() };
         let gtype = unsafe { glib::Type::from_glib(raw_gtype) };
-        self.gtypes.insert(key, gtype);
+        self.gtypes
+            .entry(lib_name.to_owned())
+            .or_default()
+            .insert(get_type_fn_name.to_owned(), gtype);
         Ok(gtype)
     }
 
@@ -91,25 +99,8 @@ impl LibraryCache {
 
 type FundamentalFns = (Option<RefFn>, Option<UnrefFn>);
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct FundamentalFnKey {
-    library_name: String,
-    ref_fn_name: String,
-    unref_fn_name: String,
-}
-
-impl FundamentalFnKey {
-    fn new(library_name: &str, ref_fn_name: &str, unref_fn_name: &str) -> Self {
-        Self {
-            library_name: library_name.to_owned(),
-            ref_fn_name: ref_fn_name.to_owned(),
-            unref_fn_name: unref_fn_name.to_owned(),
-        }
-    }
-}
-
 pub struct FundamentalFnCache {
-    cache: HashMap<FundamentalFnKey, FundamentalFns>,
+    cache: HashMap<String, HashMap<String, HashMap<String, FundamentalFns>>>,
 }
 
 impl std::fmt::Debug for FundamentalFnCache {
@@ -134,8 +125,12 @@ impl FundamentalFnCache {
         ref_fn_name: &str,
         unref_fn_name: &str,
     ) -> anyhow::Result<FundamentalFns> {
-        let key = FundamentalFnKey::new(library_name, ref_fn_name, unref_fn_name);
-        if let Some(cached) = self.cache.get(&key) {
+        if let Some(cached) = self
+            .cache
+            .get(library_name)
+            .and_then(|by_ref| by_ref.get(ref_fn_name))
+            .and_then(|by_unref| by_unref.get(unref_fn_name))
+        {
             return Ok(*cached);
         }
 
@@ -170,7 +165,12 @@ impl FundamentalFnCache {
         }
 
         let result = (ref_fn, unref_fn);
-        self.cache.insert(key, result);
+        self.cache
+            .entry(library_name.to_owned())
+            .or_default()
+            .entry(ref_fn_name.to_owned())
+            .or_default()
+            .insert(unref_fn_name.to_owned(), result);
         Ok(result)
     }
 }
@@ -178,6 +178,7 @@ impl FundamentalFnCache {
 pub struct GlibThreadState {
     pub libs: LibraryCache,
     pub fundamental_fns: FundamentalFnCache,
+    cifs: HashMap<u64, Rc<Cif>>,
 }
 
 impl Default for GlibThreadState {
@@ -185,6 +186,7 @@ impl Default for GlibThreadState {
         Self {
             libs: LibraryCache::new(),
             fundamental_fns: FundamentalFnCache::new(),
+            cifs: HashMap::new(),
         }
     }
 }
@@ -225,5 +227,22 @@ impl GlibThreadState {
 
     pub fn library(&mut self, name: &str) -> anyhow::Result<&Library> {
         self.libs.get_or_load(name)
+    }
+
+    /// Returns the libffi [`Cif`] for the call descriptor identified by `id`,
+    /// building it with `build` on first use and memoizing it thereafter.
+    ///
+    /// The `Cif` is a pure function of a descriptor's argument and return types,
+    /// so it is stable for the descriptor's lifetime. Caching it here — on the
+    /// single GLib thread that performs every call — avoids rebuilding the
+    /// libffi type array and re-preparing the CIF on every invocation, and keeps
+    /// the non-`Send` `Cif` off the shared descriptor.
+    pub fn cached_cif(&mut self, id: u64, build: impl FnOnce() -> Cif) -> Rc<Cif> {
+        if let Some(cif) = self.cifs.get(&id) {
+            return Rc::clone(cif);
+        }
+        let cif = Rc::new(build());
+        self.cifs.insert(id, Rc::clone(&cif));
+        cif
     }
 }

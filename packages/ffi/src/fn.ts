@@ -30,7 +30,7 @@ const toNativeArgTypes = (argSpecs: ArgSpec[], throws: boolean): Descriptor[] =>
     );
     if (throws)
         nativeArgTypes.push(
-            refT(boxedT("GError", { ownership: "full", sharedLibrary: LIB, getTypeFn: "g_error_get_type" })),
+            refT(boxedT("GError", { ownership: "full", sharedLibrary: LIB, getTypeFnName: "g_error_get_type" })),
         );
     return nativeArgTypes;
 };

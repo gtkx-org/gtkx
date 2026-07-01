@@ -39,44 +39,44 @@ function verdaccioConfig(workDir: string): string {
     return `
         storage: ${join(workDir, "storage")}
         auth:
-        htpasswd:
-            file: ${join(workDir, "htpasswd")}
-            max_users: 1000
+            htpasswd:
+                file: ${join(workDir, "htpasswd")}
+                max_users: 1000
         uplinks:
-        npmjs:
-            url: https://registry.npmjs.org/
-            maxage: 60m
-            cache: true
+            npmjs:
+                url: https://registry.npmjs.org/
+                maxage: 60m
+                cache: true
         packages:
-        '@gtkx/*':
-            access: $all
-            publish: $all
-            unpublish: $all
-        'create-gtkx':
-            access: $all
-            publish: $all
-            unpublish: $all
-        '@*/*':
-            access: $all
-            publish: $all
-            proxy: npmjs
-        '**':
-            access: $all
-            publish: $all
-            proxy: npmjs
+            '@gtkx/*':
+                access: $all
+                publish: $all
+                unpublish: $all
+            'create-gtkx':
+                access: $all
+                publish: $all
+                unpublish: $all
+            '@*/*':
+                access: $all
+                publish: $all
+                proxy: npmjs
+            '**':
+                access: $all
+                publish: $all
+                proxy: npmjs
         security:
-        api:
-            jwt:
-            sign:
-                expiresIn: 1d
-        web:
-            sign:
-            expiresIn: 1d
+            api:
+                jwt:
+                    sign:
+                        expiresIn: 1d
+            web:
+                sign:
+                    expiresIn: 1d
         listen: ${HOST}
         log:
-        type: stdout
-        format: pretty
-        level: warn
+            type: stdout
+            format: pretty
+            level: warn
     `;
 }
 
@@ -130,7 +130,7 @@ async function publishPackages(env: NodeJS.ProcessEnv): Promise<void> {
 }
 
 async function scaffoldConsumer(consumerRoot: string, env: NodeJS.ProcessEnv): Promise<string> {
-    await runAsync("npm", ["create", "gtkx", APP_NAME, "--application-id", APPLICATION_ID, "--pm", "npm", "--vitest"], {
+    await runAsync("npm", ["create", "gtkx", APP_NAME, "--", "--application-id", APPLICATION_ID, "--pm", "npm", "--vitest"], {
         cwd: consumerRoot,
         env,
     });

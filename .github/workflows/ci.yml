@@ -166,7 +166,7 @@ jobs:
       - name: Publish to Verdaccio, then scaffold, build, and test a consumer app
         uses: ./.github/actions/run-in-container
         with:
-          command: pnpm publish-e2e
+          command: pnpm release-e2e
           mount-cargo-cache: "true"
           mount-pnpm-store: "true"
 

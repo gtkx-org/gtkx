@@ -22,6 +22,15 @@ export type GtkxConfig = {
     rules?: string;
 
     reactCompiler?: boolean | ReactCompilerOptions;
+
+    /**
+     * Whether this project generates its own binding store (`@gtkx/gi`/`@gtkx/jsx`).
+     * Defaults to `true`. Set to `false` for a project that reuses a binding store
+     * already installed higher in the dependency tree (e.g. a monorepo example that
+     * shares the workspace-root store); its own codegen becomes a no-op and no local
+     * store is materialized, so every consumer resolves the bindings to a single copy.
+     */
+    codegen?: boolean;
 };
 
 type ReactCompilerCompilationMode = "infer" | "syntax" | "annotation" | "all";
@@ -118,12 +127,19 @@ const validateRules = (rules: GtkxConfig["rules"]): void => {
     }
 };
 
+const validateCodegen = (codegen: GtkxConfig["codegen"]): void => {
+    if (codegen !== undefined && typeof codegen !== "boolean") {
+        throw new Error("gtkx.config.ts: `codegen` must be a boolean if provided");
+    }
+};
+
 export const validateGtkxConfig = (config: GtkxConfig): void => {
     validateLibraries(config.libraries);
     validateGirPath(config.girPath);
     validateApplicationId(config.applicationId);
     validateRules(config.rules);
     validateReactCompiler(config.reactCompiler);
+    validateCodegen(config.codegen);
 };
 
 type GtkxConfigEnv = {
@@ -178,6 +194,7 @@ export type ResolvedGtkxConfig = {
     applicationId: string | undefined;
     rules: string | undefined;
     reactCompiler: ResolvedReactCompilerOptions | null;
+    codegen: boolean;
 };
 
 export const resolveGtkxConfig = (config: GtkxConfig): ResolvedGtkxConfig => ({
@@ -186,4 +203,5 @@ export const resolveGtkxConfig = (config: GtkxConfig): ResolvedGtkxConfig => ({
     applicationId: config.applicationId,
     rules: config.rules,
     reactCompiler: resolveReactCompilerOptions(config.reactCompiler),
+    codegen: config.codegen ?? true,
 });

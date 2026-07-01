@@ -100,7 +100,7 @@ impl CallbackState {
         &self.data
     }
 
-    pub fn create(data: CallbackData) -> Self {
+    pub fn new(data: CallbackData) -> Self {
         let data = ManuallyDrop::new(Box::new(data));
         let data_ptr: *const CallbackData = &**data;
         let data_ref: &'static CallbackData = unsafe { &*data_ptr };
@@ -131,7 +131,7 @@ impl CallbackState {
         is_oneshot: bool,
     ) -> Box<Self> {
         let data = CallbackData::new(js_fn, arg_codecs, return_codec, user_data_index, is_oneshot);
-        Box::new(Self::create(data))
+        Box::new(Self::new(data))
     }
 }
 

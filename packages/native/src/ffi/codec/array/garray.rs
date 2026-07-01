@@ -49,11 +49,11 @@ impl ArrayCodec {
         integer_codec: IntegerCodec,
         array: &[value::Value],
     ) -> anyhow::Result<()> {
-        let mut buf = [0u8; size_of::<i64>()];
+        let mut buffer = [0u8; size_of::<i64>()];
         for n in Self::extract_numbers(array)? {
-            unsafe { integer_codec.write_ptr(buf.as_mut_ptr(), n) };
+            unsafe { integer_codec.write_ptr(buffer.as_mut_ptr(), n) };
             unsafe {
-                glib::ffi::g_array_append_vals(g_array, buf.as_ptr() as *const c_void, 1);
+                glib::ffi::g_array_append_vals(g_array, buffer.as_ptr() as *const c_void, 1);
             }
         }
         Ok(())
@@ -64,11 +64,11 @@ impl ArrayCodec {
         kind: BigIntCodec,
         array: &[value::Value],
     ) -> anyhow::Result<()> {
-        let mut buf = [0u8; size_of::<i64>()];
+        let mut buffer = [0u8; size_of::<i64>()];
         for v in array {
-            unsafe { kind.append_into(buf.as_mut_ptr(), v)? };
+            unsafe { kind.append_into(buffer.as_mut_ptr(), v)? };
             unsafe {
-                glib::ffi::g_array_append_vals(g_array, buf.as_ptr() as *const c_void, 1);
+                glib::ffi::g_array_append_vals(g_array, buffer.as_ptr() as *const c_void, 1);
             }
         }
         Ok(())

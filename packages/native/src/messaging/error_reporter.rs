@@ -30,8 +30,8 @@ impl ErrorReporter {
     pub fn install(&self, env: Env) -> napi::Result<()> {
         let error_fn =
             env.create_function_from_closure::<String, (), _>("gtkx_report_error", |ctx| {
-                let msg: String = ctx.get(0)?;
-                UnhandledRejection::emit(ctx.env, &msg);
+                let message: String = ctx.get(0)?;
+                UnhandledRejection::emit(ctx.env, &message);
                 Ok(())
             })?;
 
@@ -83,13 +83,13 @@ impl<T> ReportErr<T> for anyhow::Result<T> {
 struct UnhandledRejection;
 
 impl UnhandledRejection {
-    fn emit(env: &Env, msg: &str) {
-        if Self::try_emit(env, msg).is_none() {
-            eprintln!("[gtkx] ERROR: {msg}");
+    fn emit(env: &Env, message: &str) {
+        if Self::try_emit(env, message).is_none() {
+            eprintln!("[gtkx] ERROR: {message}");
         }
     }
 
-    fn try_emit(env: &Env, msg: &str) -> Option<()> {
+    fn try_emit(env: &Env, message: &str) -> Option<()> {
         let raw_env = env.raw();
         unsafe {
             let mut global = std::ptr::null_mut();
@@ -107,7 +107,7 @@ impl UnhandledRejection {
 
             let event_name =
                 String::to_napi_value(raw_env, "unhandledRejection".to_owned()).ok()?;
-            let error_obj = Self::make_error_object(raw_env, msg)?;
+            let error_obj = Self::make_error_object(raw_env, message)?;
             let promise = Self::make_resolved_promise(raw_env)?;
 
             let args = [event_name, error_obj, promise];
@@ -124,28 +124,28 @@ impl UnhandledRejection {
             let mut had_exception = false;
             sys::napi_is_exception_pending(raw_env, &mut had_exception);
             if had_exception {
-                let mut exc = std::ptr::null_mut();
-                sys::napi_get_and_clear_last_exception(raw_env, &mut exc);
+                let mut exception = std::ptr::null_mut();
+                sys::napi_get_and_clear_last_exception(raw_env, &mut exception);
             }
         }
         Some(())
     }
 
-    unsafe fn make_error_object(env: sys::napi_env, msg: &str) -> Option<sys::napi_value> {
+    unsafe fn make_error_object(env: sys::napi_env, message: &str) -> Option<sys::napi_value> {
         unsafe {
-            let mut msg_value = std::ptr::null_mut();
-            let bytes = msg.as_bytes();
+            let mut message_value = std::ptr::null_mut();
+            let bytes = message.as_bytes();
             if sys::napi_create_string_utf8(
                 env,
                 bytes.as_ptr().cast(),
                 bytes.len() as isize,
-                &mut msg_value,
+                &mut message_value,
             ) != sys::Status::napi_ok
             {
                 return None;
             }
             let mut error = std::ptr::null_mut();
-            if sys::napi_create_error(env, std::ptr::null_mut(), msg_value, &mut error)
+            if sys::napi_create_error(env, std::ptr::null_mut(), message_value, &mut error)
                 != sys::Status::napi_ok
             {
                 return None;

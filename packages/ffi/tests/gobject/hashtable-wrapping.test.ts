@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 const rectangleFfi = t.boxed("GdkRectangle", {
     ownership: "borrowed",
     sharedLibrary: "libgtk-4.so.1",
-    getTypeFn: "gdk_rectangle_get_type",
+    getTypeFnName: "gdk_rectangle_get_type",
 });
 
 describe("fromNativeValue — hash-table entries are wrapped recursively", () => {
