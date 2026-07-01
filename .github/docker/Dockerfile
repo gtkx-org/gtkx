@@ -20,20 +20,8 @@ RUN apt-get update \
         libadwaita-1-dev \
         libgtksourceview-5-dev \
         libwebkitgtk-6.0-dev \
-        libvte-2.91-gtk4-dev \
-        libsoup-3.0-dev \
-        libjson-glib-dev \
-        libgtk4-layer-shell-dev \
-        libgstreamer1.0-dev \
-        libgstreamer-plugins-base1.0-dev \
-        libxml2-dev \
-        libsecret-1-dev \
-        libatspi2.0-dev \
-        libappstream-dev \
         libgirepository1.0-dev \
         gobject-introspection \
-        gir1.2-gstreamer-1.0 \
-        gir1.2-gst-plugins-base-1.0 \
         gvfs \
         libgles2 \
         libgl1-mesa-dri \

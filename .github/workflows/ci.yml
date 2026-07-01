@@ -193,10 +193,10 @@ jobs:
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           pnpm install --frozen-lockfile
-          pnpm turbo run production --filter=@gtkx/e2e
+          pnpm turbo run build --filter=@gtkx/vitest
 
       - name: Run the TypeScript benchmarks under CodSpeed
         uses: CodSpeedHQ/action@a4a36bb07c0638b0b4ca52bf1f3dad1b4289e52f
         with:
-          mode: simulation
+          mode: walltime
           run: pnpm --filter @gtkx/e2e bench

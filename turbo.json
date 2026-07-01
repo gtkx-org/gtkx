@@ -45,6 +45,10 @@
             "inputs": [],
             "outputs": ["dist/**", "tsconfig.lib.tsbuildinfo"]
         },
+        "lint": {
+            "inputs": ["$TURBO_DEFAULT$"],
+            "outputs": []
+        },
         "codegen": {
             "dependsOn": ["//#codegen:all"],
             "inputs": ["$TURBO_DEFAULT$"],

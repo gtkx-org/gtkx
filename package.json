@@ -10,7 +10,7 @@
         "bench": "turbo run bench --filter=!gtkx",
         "build": "turbo run build --filter=!gtkx",
         "codegen": "turbo run codegen:all && turbo run codegen --filter=!gtkx",
-        "codegen:all": "NODE_OPTIONS=--conditions=source pnpm --filter @gtkx/cli exec tsx ./src/cli.ts codegen",
+        "codegen:all": "NODE_OPTIONS=--conditions=source pnpm exec tsx packages/cli/src/cli.ts codegen",
         "coverage": "turbo run coverage:all && turbo run coverage --filter=!gtkx",
         "coverage:all": "vitest run --coverage",
         "lint": "turbo run lint:all && turbo run lint --filter=!gtkx",
@@ -26,6 +26,9 @@
     },
     "devDependencies": {
         "@biomejs/biome": "^2.5.1",
+        "@gtkx/ffi": "workspace:*",
+        "@gtkx/native": "workspace:*",
+        "@gtkx/react": "workspace:*",
         "@types/node": "catalog:",
         "@types/react": "^19.2.17",
         "@vitest/coverage-v8": "catalog:",
