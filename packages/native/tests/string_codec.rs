@@ -7,7 +7,7 @@ use std::ffi::{CStr, CString, c_char, c_void};
 use gtk4::glib;
 
 use native::ffi;
-use native::ffi::codec::{Decoder, Encoder, Ownership, PointerWriter, ReadSource, StringCodec};
+use native::ffi::codec::{Decoder, Encoder, Ownership, PtrWriter, ReadSource, StringCodec};
 use native::ffi::value::Value;
 
 use helpers::{
@@ -34,7 +34,7 @@ fn encode_borrowed_keeps_string_in_storage() {
         let encoded = borrowed()
             .encode(&Value::String("hello".to_owned()))
             .expect("borrowed encode should succeed");
-        let ffi::StashedValue::Storage(storage) = encoded else {
+        let ffi::StashedValue::Stashed(storage) = encoded else {
             panic!("expected Storage ffi value");
         };
         let read = unsafe { CStr::from_ptr(storage.ptr() as *const c_char) };
@@ -49,7 +49,7 @@ fn encode_full_duplicates_into_glib_string() {
             .encode(&Value::String("owned".to_owned()))
             .expect("full encode should succeed");
         encoded.disarm_pending_transfer();
-        let ffi::StashedValue::Storage(storage) = &encoded else {
+        let ffi::StashedValue::Stashed(storage) = &encoded else {
             panic!("expected Storage ffi value");
         };
         let ptr = storage.ptr();
@@ -170,12 +170,12 @@ fn write_value_to_pointer_writes_string() {
     helpers::run(|| {
         let mut slot: *mut c_char = std::ptr::null_mut();
         unsafe {
-            borrowed().write_value_to_pointer(
+            borrowed().write_value_to_ptr(
                 &mut slot as *mut *mut c_char as *mut c_void,
                 &Value::String("field".to_owned()),
             )
         }
-        .expect("write_value_to_pointer should succeed");
+        .expect("write_value_to_ptr should succeed");
         assert!(!slot.is_null());
         let read = unsafe { CStr::from_ptr(slot) };
         assert_eq!(read.to_str().unwrap(), "field");
@@ -185,10 +185,8 @@ fn write_value_to_pointer_writes_string() {
 
 fn assert_write_value_to_pointer_writes_null(value: &Value) {
     let mut slot: *const c_char = std::ptr::dangling::<c_char>();
-    unsafe {
-        borrowed().write_value_to_pointer(&mut slot as *mut *const c_char as *mut c_void, value)
-    }
-    .expect("write should succeed");
+    unsafe { borrowed().write_value_to_ptr(&mut slot as *mut *const c_char as *mut c_void, value) }
+        .expect("write should succeed");
     assert!(slot.is_null());
 }
 

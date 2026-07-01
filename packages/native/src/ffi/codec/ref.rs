@@ -6,7 +6,7 @@ use libffi::middle as libffi;
 use super::prelude::*;
 use crate::ffi::Arg;
 use crate::ffi::codec::{ArrayKind, Codec};
-use crate::ffi::{Stash, StashKind};
+use crate::ffi::{Stash, StashStorage};
 
 #[derive(Debug, Clone)]
 pub struct RefCodec {
@@ -51,7 +51,7 @@ impl Encoder for RefCodec {
         match &*self.inner_codec {
             Codec::Boxed(_) | Codec::Struct(_) | Codec::Object(_) | Codec::Fundamental(_) => {
                 match &*ref_val.value {
-                    value::Value::Null | value::Value::Undefined => Ok(Self::null_ptr_storage()),
+                    value::Value::Null | value::Value::Undefined => Ok(Self::null_ptr_stashed()),
                     _ => bail!(
                         "Expected Null for Ref<Boxed/Struct/Object/Fundamental>, got {:?}",
                         ref_val.value
@@ -62,14 +62,14 @@ impl Encoder for RefCodec {
                 value::Value::Array(arr) if !arr.is_empty() => {
                     let encoded = array_codec.encode(&ref_val.value)?;
                     match encoded {
-                        ffi::StashedValue::Storage(storage) => {
-                            Ok(ffi::StashedValue::Storage(storage))
+                        ffi::StashedValue::Stashed(storage) => {
+                            Ok(ffi::StashedValue::Stashed(storage))
                         }
                         _ => bail!("Expected Storage from array encode for Ref<Array>"),
                     }
                 }
                 value::Value::Null | value::Value::Undefined | value::Value::Array(_) => {
-                    Ok(Self::null_ptr_storage())
+                    Ok(Self::null_ptr_stashed())
                 }
                 _ => bail!(
                     "Expected Array, Null, or Undefined for Ref<Array>, got {:?}",
@@ -82,7 +82,7 @@ impl Encoder for RefCodec {
                     (Some(len), value::Value::Null | value::Value::Undefined) => (*len, None),
                     (None, value::Value::String(s)) => (s.len() + 1, Some(s.as_bytes())),
                     (None, value::Value::Null | value::Value::Undefined) => {
-                        return Ok(Self::null_ptr_storage());
+                        return Ok(Self::null_ptr_stashed());
                     }
                     _ => bail!(
                         "Expected a String, Null, or length for Ref<String>, got {:?}",
@@ -98,17 +98,17 @@ impl Encoder for RefCodec {
                 }
 
                 let ptr = buffer.as_mut_ptr() as *mut c_void;
-                Ok(ffi::StashedValue::Storage(Stash::new(
+                Ok(ffi::StashedValue::Stashed(Stash::new(
                     ptr,
-                    StashKind::Buffer(buffer),
+                    StashStorage::Buffer(buffer),
                 )))
             }
             _ => match &*ref_val.value {
-                value::Value::Null | value::Value::Undefined => Ok(Self::zeroed_scalar_slot()),
+                value::Value::Null | value::Value::Undefined => Ok(Self::zeroed_scalar_stashed()),
                 _ => {
                     let ref_arg = Arg::new(*self.inner_codec.clone(), *ref_val.value.clone());
                     let encoded = ffi::StashedValue::try_from(ref_arg)?;
-                    Self::scalar_out_slot(&encoded)
+                    Self::scalar_out_stashed(&encoded)
                 }
             },
         }
@@ -128,7 +128,7 @@ impl Decoder for RefCodec {
     unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
         let storage = match src {
             ReadSource::Call(stashed_value) => {
-                let Some(storage) = stashed_value.as_storage_or_null("Ref")? else {
+                let Some(storage) = stashed_value.as_stashed_or_null("Ref")? else {
                     return Ok(value::Value::Null);
                 };
                 storage
@@ -187,13 +187,13 @@ impl Decoder for RefCodec {
         args: &[Arg],
     ) -> anyhow::Result<value::Value> {
         if let Codec::Array(array_codec) = &*self.inner_codec {
-            let Some(storage) = stashed_value.as_storage_or_null("Ref<Array>")? else {
+            let Some(stash) = stashed_value.as_stashed_or_null("Ref<Array>")? else {
                 return Ok(value::Value::Null);
             };
 
-            let actual_ptr = match storage.kind() {
-                StashKind::PtrStorage(_) => unsafe { *(storage.ptr() as *const *mut c_void) },
-                _ => storage.ptr(),
+            let actual_ptr = match stash.storage() {
+                StashStorage::PtrSlot(_) => unsafe { *(stash.ptr() as *const *mut c_void) },
+                _ => stash.ptr(),
             };
 
             if actual_ptr.is_null() {
@@ -203,7 +203,7 @@ impl Decoder for RefCodec {
             let ptr_stashed_value = ffi::StashedValue::Ptr(actual_ptr);
             let result = array_codec.decode_with_context(&ptr_stashed_value, ffi_args, args);
 
-            if matches!(storage.kind(), StashKind::PtrStorage(_))
+            if matches!(stash.storage(), StashStorage::PtrSlot(_))
                 && array_codec.ownership.is_full()
                 && matches!(array_codec.kind, ArrayKind::Sized | ArrayKind::Fixed)
             {
@@ -217,36 +217,36 @@ impl Decoder for RefCodec {
     }
 }
 
-impl PointerWriter for RefCodec {}
+impl PtrWriter for RefCodec {}
 
 impl RefCodec {
-    fn null_ptr_storage() -> ffi::StashedValue {
+    fn null_ptr_stashed() -> ffi::StashedValue {
         let mut slot: Vec<*mut c_void> = vec![std::ptr::null_mut()];
         let ptr = slot.as_mut_ptr() as *mut c_void;
-        ffi::StashedValue::Storage(Stash::new(ptr, StashKind::PtrStorage(slot)))
+        ffi::StashedValue::Stashed(Stash::new(ptr, StashStorage::PtrSlot(slot)))
     }
 
-    fn scalar_out_slot(encoded: &ffi::StashedValue) -> anyhow::Result<ffi::StashedValue> {
+    fn scalar_out_stashed(encoded: &ffi::StashedValue) -> anyhow::Result<ffi::StashedValue> {
         let storage = Stash::from(vec![0u64]);
         unsafe { encoded.write_scalar_to(storage.ptr())? };
-        Ok(ffi::StashedValue::Storage(storage))
+        Ok(ffi::StashedValue::Stashed(storage))
     }
 
-    fn zeroed_scalar_slot() -> ffi::StashedValue {
-        ffi::StashedValue::Storage(Stash::from(vec![0u64]))
+    fn zeroed_scalar_stashed() -> ffi::StashedValue {
+        ffi::StashedValue::Stashed(Stash::from(vec![0u64]))
     }
 
-    fn decode_ref_string(storage: &Stash, string_codec: &super::StringCodec) -> value::Value {
-        if storage.ptr().is_null() {
+    fn decode_ref_string(stash: &Stash, string_codec: &super::StringCodec) -> value::Value {
+        if stash.ptr().is_null() {
             return value::Value::Null;
         }
 
-        if let StashKind::Buffer(_) = storage.kind() {
+        if let StashStorage::Buffer(_) = stash.storage() {
             let string =
-                unsafe { glib::GStr::from_ptr_lossy(storage.ptr() as *const c_char) }.to_string();
+                unsafe { glib::GStr::from_ptr_lossy(stash.ptr() as *const c_char) }.to_string();
             value::Value::String(string)
         } else {
-            let str_ptr = unsafe { *(storage.ptr() as *const *const c_char) };
+            let str_ptr = unsafe { *(stash.ptr() as *const *const c_char) };
             if str_ptr.is_null() {
                 return value::Value::Null;
             }

@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use libffi::middle;
 use native::ffi;
-use native::ffi::codec::{Decoder, Encoder, PointerWriter, ReadSource, VoidCodec};
+use native::ffi::codec::{Decoder, Encoder, PtrWriter, ReadSource, VoidCodec};
 use native::ffi::value::Value;
 
 static CALLED: AtomicBool = AtomicBool::new(false);
@@ -77,7 +77,7 @@ fn read_from_pointer_yields_undefined() {
 fn write_return_to_pointer_is_a_no_op() {
     let mut slot: usize = 99;
     let ret = &mut slot as *mut usize as *mut c_void;
-    unsafe { PointerWriter::write_return_to_pointer(&VoidCodec, ret, &Ok(Value::Undefined)) };
-    unsafe { PointerWriter::write_return_to_pointer(&VoidCodec, ret, &Err(())) };
+    unsafe { PtrWriter::write_return_to_ptr(&VoidCodec, ret, &Ok(Value::Undefined)) };
+    unsafe { PtrWriter::write_return_to_ptr(&VoidCodec, ret, &Err(())) };
     assert_eq!(slot, 99);
 }

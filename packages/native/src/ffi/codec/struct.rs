@@ -35,7 +35,7 @@ impl Decoder for StructCodec {
     }
 
     unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
-        self.null_guarded(ptr, |ptr| {
+        self.decode_non_null(ptr, |ptr| {
             if self.caller_allocated {
                 return Ok(Boxed::from_glib_borrow(ptr).into());
             }
@@ -48,12 +48,12 @@ impl Decoder for StructCodec {
     }
 }
 
-impl PointerWriter for StructCodec {
-    unsafe fn write_return_to_pointer(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+impl PtrWriter for StructCodec {
+    unsafe fn write_return_to_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         write_return_object_ptr(ret, value, std::convert::identity);
     }
 
-    unsafe fn write_value_to_pointer(
+    unsafe fn write_value_to_ptr(
         &self,
         ptr: *mut c_void,
         value: &value::Value,

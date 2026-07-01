@@ -8,16 +8,16 @@ use ::libffi::middle as libffi;
 
 use crate::ffi::StashedValue;
 use crate::ffi::codec::{
-    Codec, Decoder as _, Encoder as _, PointerWriter as _, ReadSource, str_to_glib_full,
+    Codec, Decoder as _, Encoder as _, PtrWriter as _, ReadSource, str_to_glib_full,
 };
 use crate::ffi::value::{JsRef, Value};
 use crate::messaging::Mailbox;
 use crate::messaging::error_reporter::{ErrorReporter, ReportErr};
 
 pub struct CallbackData {
-    pub js_func: Arc<JsRef>,
-    pub arg_descriptors: Vec<Codec>,
-    pub return_descriptor: Codec,
+    pub js_fn: Arc<JsRef>,
+    pub arg_codecs: Vec<Codec>,
+    pub return_codec: Codec,
     pub user_data_index: Option<usize>,
     pub is_oneshot: bool,
     pub oneshot_state_ptr: AtomicPtr<CallbackState>,
@@ -27,16 +27,16 @@ pub struct CallbackData {
 
 impl CallbackData {
     pub fn new(
-        js_func: Arc<JsRef>,
-        arg_descriptors: Vec<Codec>,
-        return_descriptor: Codec,
+        js_fn: Arc<JsRef>,
+        arg_codecs: Vec<Codec>,
+        return_codec: Codec,
         user_data_index: Option<usize>,
         is_oneshot: bool,
     ) -> Self {
         Self {
-            js_func,
-            arg_descriptors,
-            return_descriptor,
+            js_fn,
+            arg_codecs,
+            return_codec,
             user_data_index,
             is_oneshot,
             oneshot_state_ptr: AtomicPtr::new(std::ptr::null_mut()),
@@ -66,8 +66,8 @@ impl Drop for CallbackData {
 impl std::fmt::Debug for CallbackData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("CallbackData")
-            .field("arg_descriptors", &self.arg_descriptors)
-            .field("return_descriptor", &self.return_descriptor)
+            .field("arg_codecs", &self.arg_codecs)
+            .field("return_codec", &self.return_codec)
             .field("user_data_index", &self.user_data_index)
             .field("is_oneshot", &self.is_oneshot)
             .finish_non_exhaustive()
@@ -105,13 +105,12 @@ impl CallbackState {
         let data_ptr: *const CallbackData = &**data;
         let data_ref: &'static CallbackData = unsafe { &*data_ptr };
 
-        let mut cif_arg_types: Vec<libffi::Type> =
-            Vec::with_capacity(data_ref.arg_descriptors.len());
-        for descriptor in &data_ref.arg_descriptors {
-            cif_arg_types.push(descriptor.libffi_type());
+        let mut cif_arg_types: Vec<libffi::Type> = Vec::with_capacity(data_ref.arg_codecs.len());
+        for codec in &data_ref.arg_codecs {
+            cif_arg_types.push(codec.libffi_type());
         }
 
-        let cif_return_type: libffi::Type = data_ref.return_descriptor.libffi_type();
+        let cif_return_type: libffi::Type = data_ref.return_codec.libffi_type();
         let cif = libffi::Cif::new(cif_arg_types, cif_return_type);
 
         let closure = libffi::Closure::new(cif, closure_entry, data_ref);
@@ -125,19 +124,13 @@ impl CallbackState {
     }
 
     pub fn boxed(
-        js_func: Arc<JsRef>,
-        arg_descriptors: Vec<Codec>,
-        return_descriptor: Codec,
+        js_fn: Arc<JsRef>,
+        arg_codecs: Vec<Codec>,
+        return_codec: Codec,
         user_data_index: Option<usize>,
         is_oneshot: bool,
     ) -> Box<Self> {
-        let data = CallbackData::new(
-            js_func,
-            arg_descriptors,
-            return_descriptor,
-            user_data_index,
-            is_oneshot,
-        );
+        let data = CallbackData::new(js_fn, arg_codecs, return_codec, user_data_index, is_oneshot);
         Box::new(Self::create(data))
     }
 }
@@ -154,24 +147,24 @@ impl CallbackData {
         args: *const *const c_void,
         result: *mut c_void,
     ) -> Option<*mut CallbackState> {
-        let mut values = Vec::with_capacity(self.arg_descriptors.len());
-        let mut out_cell_indices: Vec<usize> = Vec::new();
-        let mut out_targets: Vec<(*mut c_void, &Codec)> = Vec::new();
+        let mut values = Vec::with_capacity(self.arg_codecs.len());
+        let mut ref_indices: Vec<usize> = Vec::new();
+        let mut ref_targets: Vec<(*mut c_void, &Codec)> = Vec::new();
 
-        for (i, descriptor) in self.arg_descriptors.iter().enumerate() {
+        for (i, codec) in self.arg_codecs.iter().enumerate() {
             if self.user_data_index == Some(i) {
                 continue;
             }
 
             let arg_ptr = unsafe { *args.add(i) };
-            if let Codec::Ref(ref_type) = descriptor {
+            if let Codec::Ref(ref_codec) = codec {
                 let inner_ptr = unsafe { *(arg_ptr as *const *mut c_void) };
-                out_cell_indices.push(values.len());
-                out_targets.push((inner_ptr, &ref_type.inner_codec));
-                values.push(seed_ref_cell(inner_ptr, &ref_type.inner_codec));
+                ref_indices.push(values.len());
+                ref_targets.push((inner_ptr, &ref_codec.inner_codec));
+                values.push(seed_ref(inner_ptr, &ref_codec.inner_codec));
                 continue;
             }
-            match unsafe { descriptor.read(ReadSource::Slot(arg_ptr, "callback arg")) } {
+            match unsafe { codec.read(ReadSource::Slot(arg_ptr, "callback arg")) } {
                 Ok(val) => values.push(val),
                 Err(e) => {
                     ErrorReporter::global()
@@ -181,7 +174,7 @@ impl CallbackData {
             }
         }
 
-        let capture_result = !matches!(self.return_descriptor, Codec::Void(_));
+        let capture_result = !matches!(self.return_codec, Codec::Void(_));
 
         let state_ptr = if self.is_oneshot {
             let ptr = self
@@ -192,22 +185,22 @@ impl CallbackData {
             None
         };
 
-        let js_result = Mailbox::global().invoke_node_and_wait_with_cells(
-            &self.js_func,
+        let js_result = Mailbox::global().invoke_node_and_wait_with_refs(
+            &self.js_fn,
             values,
             capture_result,
-            out_cell_indices,
+            ref_indices,
         );
 
         match js_result {
-            Ok((value, cells)) => {
-                flush_out_cells(&cells, &out_targets);
+            Ok((value, refs)) => {
+                flush_refs(&refs, &ref_targets);
                 self.write_return(result, &Ok(value));
             }
             Err(ref e) => {
                 ErrorReporter::global().report(&anyhow::anyhow!(
                     "callback: JS callback error (return type: {}): {e:#}",
-                    self.return_descriptor
+                    self.return_codec
                 ));
                 self.write_return(result, &Err(()));
             }
@@ -217,8 +210,8 @@ impl CallbackData {
     }
 
     fn write_return(&self, result: *mut c_void, value: &Result<Value, ()>) {
-        if let Codec::String(string_type) = &self.return_descriptor
-            && string_type.ownership.is_borrowed()
+        if let Codec::String(string_codec) = &self.return_codec
+            && string_codec.ownership.is_borrowed()
         {
             self.write_retained_string_return(result, value);
             return;
@@ -228,22 +221,21 @@ impl CallbackData {
             return;
         }
         unsafe {
-            self.return_descriptor
-                .write_return_to_pointer(result, value);
+            self.return_codec.write_return_to_ptr(result, value);
         };
     }
 
     fn return_type_is_borrowed_container(&self) -> bool {
-        match &self.return_descriptor {
-            Codec::Array(array_type) => array_type.ownership.is_borrowed(),
-            Codec::HashTable(hash_type) => hash_type.ownership.is_borrowed(),
+        match &self.return_codec {
+            Codec::Array(array_codec) => array_codec.ownership.is_borrowed(),
+            Codec::HashTable(hash_table_codec) => hash_table_codec.ownership.is_borrowed(),
             _ => false,
         }
     }
 
     fn write_retained_container_return(&self, result: *mut c_void, value: &Result<Value, ()>) {
         let built = match value {
-            Ok(value) => self.return_descriptor.encode(value).ok(),
+            Ok(value) => self.return_codec.encode(value).ok(),
             Err(()) => None,
         };
         let ptr = built
@@ -275,7 +267,7 @@ impl CallbackData {
     }
 }
 
-pub(crate) fn seed_ref_cell(inner_ptr: *mut c_void, inner_codec: &Codec) -> Value {
+pub(crate) fn seed_ref(inner_ptr: *mut c_void, inner_codec: &Codec) -> Value {
     if inner_ptr.is_null() {
         return Value::Null;
     }
@@ -286,20 +278,20 @@ pub(crate) fn seed_ref_cell(inner_ptr: *mut c_void, inner_codec: &Codec) -> Valu
         | Codec::EnumFlags(_)
         | Codec::Boolean(_)
         | Codec::Unichar(_) => {
-            unsafe { inner_codec.read(ReadSource::Slot(inner_ptr.cast_const(), "inout cell seed")) }
-                .report_err("callback: failed to seed inout cell")
+            unsafe { inner_codec.read(ReadSource::Slot(inner_ptr.cast_const(), "inout ref seed")) }
+                .report_err("callback: failed to seed inout ref")
                 .unwrap_or(Value::Null)
         }
         _ => Value::Null,
     }
 }
 
-pub(crate) fn flush_out_cells(cells: &[(usize, Value)], out_targets: &[(*mut c_void, &Codec)]) {
-    for ((_, new_value), (ptr, inner_codec)) in cells.iter().zip(out_targets.iter()) {
+pub(crate) fn flush_refs(refs: &[(usize, Value)], ref_targets: &[(*mut c_void, &Codec)]) {
+    for ((_, new_value), (ptr, inner_codec)) in refs.iter().zip(ref_targets.iter()) {
         if ptr.is_null() {
             continue;
         }
-        unsafe { inner_codec.write_value_to_pointer(*ptr, new_value) }
+        unsafe { inner_codec.write_value_to_ptr(*ptr, new_value) }
             .report_err("callback: failed to write out-parameter");
     }
 }

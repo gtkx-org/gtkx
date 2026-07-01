@@ -42,8 +42,8 @@ fn gvariant_fundamental_type_of(ownership: Ownership) -> Codec {
     Codec::Fundamental(native::ffi::codec::FundamentalCodec {
         ownership,
         shared_library: "libglib-2.0.so.0".to_string(),
-        ref_func: "g_variant_ref_sink".to_string(),
-        unref_func: "g_variant_unref".to_string(),
+        ref_fn_name: "g_variant_ref_sink".to_string(),
+        unref_fn_name: "g_variant_unref".to_string(),
         type_name: Some("GVariant".to_string()),
     })
 }
@@ -118,9 +118,9 @@ fn build_gobject_glist(count: usize) -> *mut glib::ffi::GList {
 fn ptr_slot_storage(ptr: *mut c_void) -> ffi::StashedValue {
     let mut slot: Vec<*mut c_void> = vec![ptr];
     let storage_ptr = slot.as_mut_ptr() as *mut c_void;
-    ffi::StashedValue::Storage(ffi::Stash::new(
+    ffi::StashedValue::Stashed(ffi::Stash::new(
         storage_ptr,
-        ffi::StashKind::PtrStorage(slot),
+        ffi::StashStorage::PtrSlot(slot),
     ))
 }
 

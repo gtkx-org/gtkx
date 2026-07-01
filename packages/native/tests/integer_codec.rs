@@ -181,8 +181,8 @@ fn to_stashed_value_i64() {
 fn to_stash_u8() {
     let values = [1.0, 2.0, 3.0];
     let storage = IntegerCodec::U8.to_stash(&values);
-    match storage.kind() {
-        ffi::StashKind::U8Vec(result) => assert_eq!(result, &vec![1u8, 2u8, 3u8]),
+    match storage.storage() {
+        ffi::StashStorage::U8Vec(result) => assert_eq!(result, &vec![1u8, 2u8, 3u8]),
         _ => panic!("Expected U8Vec"),
     }
 }
@@ -191,8 +191,8 @@ fn to_stash_u8() {
 fn to_stash_i32() {
     let values = [-100.0, 0.0, 100.0];
     let storage = IntegerCodec::I32.to_stash(&values);
-    match storage.kind() {
-        ffi::StashKind::I32Vec(result) => assert_eq!(result, &vec![-100i32, 0i32, 100i32]),
+    match storage.storage() {
+        ffi::StashStorage::I32Vec(result) => assert_eq!(result, &vec![-100i32, 0i32, 100i32]),
         _ => panic!("Expected I32Vec"),
     }
 }

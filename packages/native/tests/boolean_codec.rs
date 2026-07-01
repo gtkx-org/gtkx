@@ -2,7 +2,7 @@ use std::ffi::c_void;
 
 use libffi::middle;
 use native::ffi;
-use native::ffi::codec::{BooleanCodec, Decoder, Encoder, PointerWriter, ReadSource};
+use native::ffi::codec::{BooleanCodec, Decoder, Encoder, PtrWriter, ReadSource};
 use native::ffi::value::Value;
 
 extern "C" fn ret_true() -> i32 {
@@ -110,16 +110,16 @@ fn write_return_to_pointer_writes_truthiness() {
     let ret = &mut slot as *mut i64 as *mut c_void;
 
     unsafe {
-        PointerWriter::write_return_to_pointer(&BooleanCodec, ret, &Ok(Value::Boolean(true)));
+        PtrWriter::write_return_to_ptr(&BooleanCodec, ret, &Ok(Value::Boolean(true)));
     }
     assert_eq!(slot, 1);
 
     unsafe {
-        PointerWriter::write_return_to_pointer(&BooleanCodec, ret, &Ok(Value::Boolean(false)));
+        PtrWriter::write_return_to_ptr(&BooleanCodec, ret, &Ok(Value::Boolean(false)));
     }
     assert_eq!(slot, 0);
 
-    unsafe { PointerWriter::write_return_to_pointer(&BooleanCodec, ret, &Err(())) };
+    unsafe { PtrWriter::write_return_to_ptr(&BooleanCodec, ret, &Err(())) };
     assert_eq!(slot, 0);
 }
 
@@ -128,16 +128,13 @@ fn write_value_to_pointer_writes_boolean_and_rejects_other() {
     let mut slot: i32 = -1;
     let ptr = &mut slot as *mut i32 as *mut c_void;
 
-    unsafe { PointerWriter::write_value_to_pointer(&BooleanCodec, ptr, &Value::Boolean(true)) }
-        .unwrap();
+    unsafe { PtrWriter::write_value_to_ptr(&BooleanCodec, ptr, &Value::Boolean(true)) }.unwrap();
     assert_eq!(slot, 1);
 
-    unsafe { PointerWriter::write_value_to_pointer(&BooleanCodec, ptr, &Value::Boolean(false)) }
-        .unwrap();
+    unsafe { PtrWriter::write_value_to_ptr(&BooleanCodec, ptr, &Value::Boolean(false)) }.unwrap();
     assert_eq!(slot, 0);
 
     assert!(
-        unsafe { PointerWriter::write_value_to_pointer(&BooleanCodec, ptr, &Value::Number(1.0)) }
-            .is_err()
+        unsafe { PtrWriter::write_value_to_ptr(&BooleanCodec, ptr, &Value::Number(1.0)) }.is_err()
     );
 }

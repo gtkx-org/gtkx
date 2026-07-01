@@ -52,12 +52,12 @@ impl GlibThread {
                     GlibLogHandler::install();
 
                     let main_loop = glib::MainLoop::new(None, false);
-                    let main_loop_for_js = main_loop.clone();
+                    let main_loop_for_node = main_loop.clone();
 
                     glib::idle_add_once(move || {
                         send_or_report(
                             &tx,
-                            main_loop_for_js,
+                            main_loop_for_node,
                             "GLib main loop ready but startup channel was closed",
                         );
                     });
@@ -111,16 +111,16 @@ impl Mailbox {
         }
 
         glib::idle_add_full(glib::Priority::HIGH_IDLE, || {
-            Self::global().dispatch_pending();
+            Self::global().process_glib_pending();
             glib::ControlFlow::Break
         });
     }
 
-    pub fn dispatch_pending(&self) -> bool {
-        self.dispatch_pending_from_depth(0)
+    pub fn process_glib_pending(&self) -> bool {
+        self.process_glib_pending_from_depth(0)
     }
 
-    pub fn dispatch_pending_from_depth(&self, min_depth: usize) -> bool {
+    pub fn process_glib_pending_from_depth(&self, min_depth: usize) -> bool {
         let mut dispatched = false;
 
         loop {
@@ -147,7 +147,7 @@ impl Mailbox {
         }
 
         if dispatched {
-            self.wake_js.notify();
+            self.wake_node.notify();
         }
 
         dispatched

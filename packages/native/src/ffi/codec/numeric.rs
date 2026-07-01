@@ -126,7 +126,7 @@ macro_rules! impl_numeric_codecs {
                     ReadSource::Call(stashed_value) => Ok(value::Value::Number(stashed_value.to_number()?)),
                     ReadSource::Slot(ptr, context) => {
                         Ok(value::Value::Number(unsafe {
-                            self.read_ptr_checked(ptr as *const u8, context)?
+                            self.checked_read_ptr(ptr as *const u8, context)?
                         }))
                     }
                     ReadSource::Value(ptr, context) => unsafe { self.ptr_to_value(ptr, context) },
@@ -134,8 +134,8 @@ macro_rules! impl_numeric_codecs {
             }
         }
 
-        impl PointerWriter for $kind {
-            unsafe fn write_return_to_pointer(
+        impl PtrWriter for $kind {
+            unsafe fn write_return_to_ptr(
                 &self,
                 ret: *mut c_void,
                 value: &Result<value::Value, ()>,
@@ -147,7 +147,7 @@ macro_rules! impl_numeric_codecs {
                 unsafe { self.write_return_widened(ret, n) };
             }
 
-            unsafe fn write_value_to_pointer(
+            unsafe fn write_value_to_ptr(
                 &self,
                 ptr: *mut c_void,
                 value: &value::Value,
@@ -224,7 +224,7 @@ impl IntegerCodec {
         storage.as_numeric_slice(self)
     }
 
-    pub unsafe fn read_slice_checked(
+    pub unsafe fn checked_read_slice(
         self,
         ptr: *const u8,
         length: usize,
@@ -245,7 +245,7 @@ impl IntegerCodec {
         }
     }
 
-    pub(crate) unsafe fn read_ptr_checked(
+    pub(crate) unsafe fn checked_read_ptr(
         self,
         ptr: *const u8,
         context: &str,
@@ -312,12 +312,12 @@ impl From<IntegerCodec> for libffi::Type {
 
 #[derive(Debug, Clone, Copy, strum::IntoStaticStr)]
 #[strum(serialize_all = "lowercase")]
-pub enum FloatKind {
+pub enum FloatCodec {
     F32,
     F64,
 }
 
-impl FloatKind {
+impl FloatCodec {
     pub fn ffi_type(self) -> libffi::Type {
         match self {
             Self::F32 => libffi::Type::f32(),
@@ -377,7 +377,7 @@ impl FloatKind {
         value::Value::Number(unsafe { self.read_ptr(ptr as *const u8) })
     }
 
-    pub(crate) unsafe fn read_ptr_checked(
+    pub(crate) unsafe fn checked_read_ptr(
         self,
         ptr: *const u8,
         _context: &str,
@@ -399,7 +399,7 @@ impl FloatKind {
 }
 
 impl_numeric_codecs!(
-    FloatKind,
+    FloatCodec,
     "float",
     unsafe fn ptr_to_value(
         &self,
@@ -410,8 +410,8 @@ impl_numeric_codecs!(
     }
 );
 
-impl From<FloatKind> for libffi::Type {
-    fn from(kind: FloatKind) -> Self {
+impl From<FloatCodec> for libffi::Type {
+    fn from(kind: FloatCodec) -> Self {
         kind.ffi_type()
     }
 }

@@ -30,9 +30,9 @@ fn js_func_ref() -> Arc<JsRef> {
 }
 
 fn armed_callback_value(destroy_ptr: Option<*mut c_void>) -> (CallbackValue, Arc<JsRef>) {
-    let js_func = js_func_ref();
+    let js_fn = js_func_ref();
     let data = CallbackData::new(
-        Arc::clone(&js_func),
+        Arc::clone(&js_fn),
         Vec::new(),
         Codec::Void(VoidCodec),
         None,
@@ -41,15 +41,15 @@ fn armed_callback_value(destroy_ptr: Option<*mut c_void>) -> (CallbackValue, Arc
     let state = Box::new(CallbackState::create(data));
     let fn_ptr = state.code_ptr;
     (
-        CallbackValue::new_armed(fn_ptr, destroy_ptr, state),
-        js_func,
+        CallbackValue::new_pending_transfer(fn_ptr, destroy_ptr, state),
+        js_fn,
     )
 }
 
-fn release_handed_over_state(state_ptr: *mut c_void, js_func: &Arc<JsRef>) {
-    assert_eq!(Arc::strong_count(js_func), 2);
+fn release_handed_over_state(state_ptr: *mut c_void, js_fn: &Arc<JsRef>) {
+    assert_eq!(Arc::strong_count(js_fn), 2);
     unsafe { CallbackState::destroy(state_ptr) };
-    assert_eq!(Arc::strong_count(js_func), 1);
+    assert_eq!(Arc::strong_count(js_fn), 1);
 }
 
 #[test]
@@ -65,30 +65,30 @@ fn new_armed_exposes_state_and_closure_pointers() {
 
 #[test]
 fn armed_state_drops_with_value_when_call_never_happens() {
-    let (tv, js_func) = armed_callback_value(None);
-    assert_eq!(Arc::strong_count(&js_func), 2);
+    let (tv, js_fn) = armed_callback_value(None);
+    assert_eq!(Arc::strong_count(&js_fn), 2);
     drop(tv);
-    assert_eq!(Arc::strong_count(&js_func), 1);
+    assert_eq!(Arc::strong_count(&js_fn), 1);
 }
 
 #[test]
 fn disarm_pending_transfer_hands_state_over_and_is_idempotent() {
-    let (tv, js_func) = armed_callback_value(Some(CallbackState::destroy as *mut c_void));
+    let (tv, js_fn) = armed_callback_value(Some(CallbackState::destroy as *mut c_void));
     let state_ptr = tv.state_ptr();
     tv.disarm_pending_transfer();
     tv.disarm_pending_transfer();
     drop(tv);
-    release_handed_over_state(state_ptr, &js_func);
+    release_handed_over_state(state_ptr, &js_fn);
 }
 
 #[test]
 fn stashed_value_disarm_pending_transfer_routes_to_callback() {
-    let (tv, js_func) = armed_callback_value(None);
+    let (tv, js_fn) = armed_callback_value(None);
     let state_ptr = tv.state_ptr();
     let value = StashedValue::Callback(tv);
     value.disarm_pending_transfer();
     drop(value);
-    release_handed_over_state(state_ptr, &js_func);
+    release_handed_over_state(state_ptr, &js_fn);
 }
 
 #[test]
@@ -158,7 +158,7 @@ fn as_ptr_ptr_variant_returns_inner() {
 fn as_ptr_storage_returns_storage_ptr() {
     let storage: Stash = vec![9u8].into();
     let storage_ptr = storage.ptr();
-    let v = StashedValue::Storage(storage);
+    let v = StashedValue::Stashed(storage);
     assert_eq!(v.as_ptr("test").unwrap(), storage_ptr);
 }
 
@@ -243,7 +243,7 @@ fn scalar_value_samples() -> Vec<StashedValue> {
         StashedValue::F32(1.0),
         StashedValue::F64(1.0),
         StashedValue::Ptr(std::ptr::null_mut()),
-        StashedValue::Storage(storage),
+        StashedValue::Stashed(storage),
         StashedValue::Void,
     ]
 }

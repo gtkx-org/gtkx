@@ -74,8 +74,8 @@ impl BoxedCodec {
             Ok(*sym)
         })?;
 
-        let gtype_raw = unsafe { symbol() };
-        let gtype = unsafe { glib::Type::from_glib(gtype_raw) };
+        let raw_gtype = unsafe { symbol() };
+        let gtype = unsafe { glib::Type::from_glib(raw_gtype) };
         Ok(Some(gtype).filter(|t| t.is_valid()))
     }
 }
@@ -128,7 +128,7 @@ impl Decoder for BoxedCodec {
     }
 
     unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
-        self.null_guarded(ptr, |ptr| {
+        self.decode_non_null(ptr, |ptr| {
             if self.free_fn.is_some() || self.caller_allocated {
                 return Ok(Boxed::from_glib_borrow(ptr).into());
             }
@@ -137,15 +137,15 @@ impl Decoder for BoxedCodec {
     }
 }
 
-impl PointerWriter for BoxedCodec {
-    unsafe fn write_return_to_pointer(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+impl PtrWriter for BoxedCodec {
+    unsafe fn write_return_to_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         self.write_return_with_ownership(ret, value, self.ownership, |ptr| {
             self.gtype()
                 .map_or(ptr, |gtype| unsafe { Boxed::boxed_copy(gtype, ptr) })
         });
     }
 
-    unsafe fn write_value_to_pointer(
+    unsafe fn write_value_to_ptr(
         &self,
         ptr: *mut c_void,
         value: &value::Value,

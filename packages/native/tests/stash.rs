@@ -10,7 +10,7 @@ use native::ffi::codec::{
 };
 use native::ffi::value::Value;
 use native::ffi::{
-    GArrayData, GListData, GSListData, HashTableData, Stash, StashKind, StashedValue,
+    GArrayData, GListData, GSListData, HashTableData, Stash, StashStorage, StashedValue,
     StringGListData, StringGSListData,
 };
 
@@ -44,7 +44,7 @@ fn make_hash_table() -> *mut glib::ffi::GHashTable {
 fn glist_storage(list_ptr: *mut glib::ffi::GList, should_free: bool) -> Stash {
     Stash::new(
         list_ptr as *mut c_void,
-        StashKind::GList(GListData {
+        StashStorage::GList(GListData {
             handles: Vec::new(),
             list_ptr,
             should_free,
@@ -55,7 +55,7 @@ fn glist_storage(list_ptr: *mut glib::ffi::GList, should_free: bool) -> Stash {
 fn gslist_storage(list_ptr: *mut glib::ffi::GSList, should_free: bool) -> Stash {
     Stash::new(
         list_ptr as *mut c_void,
-        StashKind::GSList(GSListData {
+        StashStorage::GSList(GSListData {
             handles: Vec::new(),
             list_ptr,
             should_free,
@@ -66,7 +66,7 @@ fn gslist_storage(list_ptr: *mut glib::ffi::GSList, should_free: bool) -> Stash 
 fn garray_storage(array_ptr: *mut glib::ffi::GArray, should_free: bool) -> Stash {
     Stash::new(
         array_ptr as *mut c_void,
-        StashKind::GArray(GArrayData {
+        StashStorage::GArray(GArrayData {
             array_ptr,
             should_free,
         }),
@@ -76,13 +76,13 @@ fn garray_storage(array_ptr: *mut glib::ffi::GArray, should_free: bool) -> Stash
 fn gbytearray_storage(array_ptr: *mut glib::ffi::GByteArray, should_free: bool) -> Stash {
     let owned: Option<glib::ByteArray> =
         should_free.then(|| unsafe { glib::translate::from_glib_full(array_ptr) });
-    Stash::new(array_ptr as *mut c_void, StashKind::GByteArray(owned))
+    Stash::new(array_ptr as *mut c_void, StashStorage::GByteArray(owned))
 }
 
 fn hashtable_storage(handle: *mut glib::ffi::GHashTable, should_free: bool) -> Stash {
     Stash::new(
         handle as *mut c_void,
-        StashKind::HashTable(HashTableData {
+        StashStorage::HashTable(HashTableData {
             handle,
             should_free,
         }),
@@ -97,7 +97,7 @@ fn string_glist_storage(
 ) -> Stash {
     Stash::new(
         list_ptr as *mut c_void,
-        StashKind::StringGList(StringGListData {
+        StashStorage::StringGList(StringGListData {
             strings,
             list_ptr,
             should_free,
@@ -114,7 +114,7 @@ fn string_gslist_storage(
 ) -> Stash {
     Stash::new(
         list_ptr as *mut c_void,
-        StashKind::StringGSList(StringGSListData {
+        StashStorage::StringGSList(StringGSListData {
             strings,
             list_ptr,
             should_free,
@@ -143,7 +143,7 @@ fn hashtable_storage_null_handle_safe_on_drop() {
     {
         let _storage = Stash::new(
             std::ptr::null_mut(),
-            StashKind::HashTable(HashTableData {
+            StashStorage::HashTable(HashTableData {
                 handle: std::ptr::null_mut(),
                 should_free: true,
             }),
@@ -156,7 +156,7 @@ fn unit_storage_carries_provided_pointer() {
     let ptr = std::ptr::without_provenance_mut::<c_void>(0x10);
     let storage = Stash::unit(ptr);
     assert_eq!(storage.ptr(), ptr);
-    assert!(matches!(storage.kind(), StashKind::Unit));
+    assert!(matches!(storage.storage(), StashStorage::Unit));
 }
 
 #[test]
@@ -207,7 +207,7 @@ fn as_cstring_array_success_and_mismatch() {
     let ptrs: Vec<*mut c_void> = strings.iter().map(|s| s.as_ptr() as *mut c_void).collect();
     let storage = Stash::new(
         ptrs.as_ptr() as *mut c_void,
-        StashKind::StringArray(strings, ptrs),
+        StashStorage::StringArray(strings, ptrs),
     );
     assert_eq!(storage.as_cstring_array().unwrap().len(), 1);
 
@@ -228,7 +228,10 @@ fn as_bool_slice_success_and_mismatch() {
 fn as_object_array_success_and_mismatch() {
     let handles: Vec<native::Handle> = Vec::new();
     let ptrs: Vec<*mut c_void> = Vec::new();
-    let storage = Stash::new(std::ptr::null_mut(), StashKind::ObjectArray(handles, ptrs));
+    let storage = Stash::new(
+        std::ptr::null_mut(),
+        StashStorage::ObjectArray(handles, ptrs),
+    );
     assert!(storage.as_object_array().unwrap().is_empty());
 
     let other: Stash = vec![1u8].into();
@@ -238,25 +241,25 @@ fn as_object_array_success_and_mismatch() {
 #[test]
 fn from_vec_covers_every_integer_and_float_type() {
     let u8s: Stash = vec![1u8].into();
-    assert!(matches!(u8s.kind(), StashKind::U8Vec(_)));
+    assert!(matches!(u8s.storage(), StashStorage::U8Vec(_)));
     let i8s: Stash = vec![1i8].into();
-    assert!(matches!(i8s.kind(), StashKind::I8Vec(_)));
+    assert!(matches!(i8s.storage(), StashStorage::I8Vec(_)));
     let u16s: Stash = vec![1u16].into();
-    assert!(matches!(u16s.kind(), StashKind::U16Vec(_)));
+    assert!(matches!(u16s.storage(), StashStorage::U16Vec(_)));
     let i16s: Stash = vec![1i16].into();
-    assert!(matches!(i16s.kind(), StashKind::I16Vec(_)));
+    assert!(matches!(i16s.storage(), StashStorage::I16Vec(_)));
     let u32s: Stash = vec![1u32].into();
-    assert!(matches!(u32s.kind(), StashKind::U32Vec(_)));
+    assert!(matches!(u32s.storage(), StashStorage::U32Vec(_)));
     let i32s: Stash = vec![1i32].into();
-    assert!(matches!(i32s.kind(), StashKind::I32Vec(_)));
+    assert!(matches!(i32s.storage(), StashStorage::I32Vec(_)));
     let u64s: Stash = vec![1u64].into();
-    assert!(matches!(u64s.kind(), StashKind::U64Vec(_)));
+    assert!(matches!(u64s.storage(), StashStorage::U64Vec(_)));
     let i64s: Stash = vec![1i64].into();
-    assert!(matches!(i64s.kind(), StashKind::I64Vec(_)));
+    assert!(matches!(i64s.storage(), StashStorage::I64Vec(_)));
     let f32s: Stash = vec![1.0f32].into();
-    assert!(matches!(f32s.kind(), StashKind::F32Vec(_)));
+    assert!(matches!(f32s.storage(), StashStorage::F32Vec(_)));
     let f64s: Stash = vec![1.0f64].into();
-    assert!(matches!(f64s.kind(), StashKind::F64Vec(_)));
+    assert!(matches!(f64s.storage(), StashStorage::F64Vec(_)));
 }
 
 #[test]
@@ -265,14 +268,14 @@ fn drop_no_op_kinds_do_not_crash() {
     drop(unit);
     let cstring = Stash::new(
         std::ptr::null_mut(),
-        StashKind::CString(CString::new("x").unwrap()),
+        StashStorage::CString(CString::new("x").unwrap()),
     );
     drop(cstring);
-    let buffer = Stash::new(std::ptr::null_mut(), StashKind::Buffer(vec![1u8]));
+    let buffer = Stash::new(std::ptr::null_mut(), StashStorage::Buffer(vec![1u8]));
     drop(buffer);
     let ptr_storage = Stash::new(
         std::ptr::null_mut(),
-        StashKind::PtrStorage(vec![std::ptr::null_mut()]),
+        StashStorage::PtrSlot(vec![std::ptr::null_mut()]),
     );
     drop(ptr_storage);
 }
@@ -304,7 +307,7 @@ fn glist_storage_keeps_when_not_freed() {
 fn glist_storage_null_ptr_safe_on_drop() {
     let _storage = Stash::new(
         std::ptr::null_mut(),
-        StashKind::GList(GListData {
+        StashStorage::GList(GListData {
             handles: Vec::new(),
             list_ptr: std::ptr::null_mut(),
             should_free: true,
@@ -337,7 +340,7 @@ fn gslist_storage_keeps_when_not_freed() {
 fn gslist_storage_null_ptr_safe_on_drop() {
     let _storage = Stash::new(
         std::ptr::null_mut(),
-        StashKind::GSList(GSListData {
+        StashStorage::GSList(GSListData {
             handles: Vec::new(),
             list_ptr: std::ptr::null_mut(),
             should_free: true,
@@ -370,7 +373,7 @@ fn garray_storage_keeps_when_not_freed() {
 fn garray_storage_null_ptr_safe_on_drop() {
     let _storage = Stash::new(
         std::ptr::null_mut(),
-        StashKind::GArray(GArrayData {
+        StashStorage::GArray(GArrayData {
             array_ptr: std::ptr::null_mut(),
             should_free: true,
         }),
@@ -400,7 +403,7 @@ fn gbytearray_storage_keeps_when_not_freed() {
 
 #[test]
 fn gbytearray_storage_without_ownership_safe_on_drop() {
-    let _storage = Stash::new(std::ptr::null_mut(), StashKind::GByteArray(None));
+    let _storage = Stash::new(std::ptr::null_mut(), StashStorage::GByteArray(None));
 }
 
 #[test]
@@ -538,11 +541,11 @@ fn string_full_item_array_type(kind: ArrayKind, container_ownership: Ownership) 
 fn encode_empty_string_glist_full_container_arms_null_transfer_safe_on_drop() {
     let codec = string_full_item_array_type(ArrayKind::GList, Ownership::Full);
     let encoded = codec.encode(&Value::Array(Vec::new())).unwrap();
-    let StashedValue::Storage(storage) = &encoded else {
+    let StashedValue::Stashed(storage) = &encoded else {
         panic!("expected storage")
     };
     assert!(storage.ptr().is_null());
-    let StashKind::StringGList(data) = storage.kind() else {
+    let StashStorage::StringGList(data) = storage.storage() else {
         panic!("expected string GList storage")
     };
     assert!(data.list_ptr.is_null());
@@ -559,7 +562,7 @@ fn encode_string_array_element_transfer_frees_duplicates_when_call_never_happens
         Value::String("bar".to_string()),
     ]);
     let encoded = codec.encode(&val).unwrap();
-    let StashedValue::Storage(storage) = &encoded else {
+    let StashedValue::Stashed(storage) = &encoded else {
         panic!("expected storage")
     };
     let block = storage.ptr() as *mut *mut c_char;
@@ -584,10 +587,10 @@ fn encode_gbytearray_full_ownership_unrefs_when_call_never_happens() {
         };
         let val = Value::Array(vec![Value::Number(7.0), Value::Number(8.0)]);
         let encoded = codec.encode(&val).unwrap();
-        let StashedValue::Storage(storage) = &encoded else {
+        let StashedValue::Stashed(storage) = &encoded else {
             panic!("expected storage")
         };
-        assert!(matches!(storage.kind(), StashKind::GByteArray(None)));
+        assert!(matches!(storage.storage(), StashStorage::GByteArray(None)));
         let byte_array = storage.ptr() as *mut glib::ffi::GByteArray;
         unsafe { glib::ffi::g_byte_array_ref(byte_array) };
         drop(encoded);

@@ -2,7 +2,7 @@ use std::ffi::c_void;
 
 use libffi::middle;
 use native::ffi;
-use native::ffi::codec::{Decoder, Encoder, PointerWriter, ReadSource, UnicharCodec};
+use native::ffi::codec::{Decoder, Encoder, PtrWriter, ReadSource, UnicharCodec};
 use native::ffi::value::Value;
 
 extern "C" fn ret_codepoint() -> u32 {
@@ -101,34 +101,26 @@ fn write_return_to_pointer_writes_string_number_and_default() {
     let ret = &mut slot as *mut u64 as *mut c_void;
 
     unsafe {
-        PointerWriter::write_return_to_pointer(
-            &UnicharCodec,
-            ret,
-            &Ok(Value::String("Kkk".to_owned())),
-        );
+        PtrWriter::write_return_to_ptr(&UnicharCodec, ret, &Ok(Value::String("Kkk".to_owned())));
     }
     assert_eq!(slot, u64::from('K' as u32));
 
     unsafe {
-        PointerWriter::write_return_to_pointer(
-            &UnicharCodec,
-            ret,
-            &Ok(Value::String(String::new())),
-        );
+        PtrWriter::write_return_to_ptr(&UnicharCodec, ret, &Ok(Value::String(String::new())));
     }
     assert_eq!(slot, 0);
 
     unsafe {
-        PointerWriter::write_return_to_pointer(&UnicharCodec, ret, &Ok(Value::Number(70.0)));
+        PtrWriter::write_return_to_ptr(&UnicharCodec, ret, &Ok(Value::Number(70.0)));
     }
     assert_eq!(slot, 70);
 
-    unsafe { PointerWriter::write_return_to_pointer(&UnicharCodec, ret, &Err(())) };
+    unsafe { PtrWriter::write_return_to_ptr(&UnicharCodec, ret, &Err(())) };
     assert_eq!(slot, 0);
 
     slot = u64::MAX;
     unsafe {
-        PointerWriter::write_return_to_pointer(&UnicharCodec, ret, &Ok(Value::Boolean(true)));
+        PtrWriter::write_return_to_ptr(&UnicharCodec, ret, &Ok(Value::Boolean(true)));
     }
     assert_eq!(slot, 0);
 }

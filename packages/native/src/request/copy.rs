@@ -6,8 +6,8 @@ use super::Request;
 use crate::handle::Handle;
 
 struct CopyRequest {
-    dest_addr: usize,
-    src_addr: usize,
+    dest_ptr: usize,
+    src_ptr: usize,
     size: usize,
 }
 
@@ -16,16 +16,16 @@ impl Request for CopyRequest {
 
     fn execute(self) -> anyhow::Result<()> {
         if self.size == 0
-            || self.dest_addr == 0
-            || self.src_addr == 0
-            || self.dest_addr == self.src_addr
+            || self.dest_ptr == 0
+            || self.src_ptr == 0
+            || self.dest_ptr == self.src_ptr
         {
             return Ok(());
         }
         unsafe {
             std::ptr::copy_nonoverlapping(
-                self.src_addr as *const u8,
-                self.dest_addr as *mut u8,
+                self.src_ptr as *const u8,
+                self.dest_ptr as *mut u8,
                 self.size,
             );
         }
@@ -48,8 +48,8 @@ pub mod napi_export {
         size: f64,
     ) -> napi::Result<Unknown<'env>> {
         let request = CopyRequest {
-            dest_addr: dest.ptr_as_usize(),
-            src_addr: src.ptr_as_usize(),
+            dest_ptr: dest.ptr_as_usize(),
+            src_ptr: src.ptr_as_usize(),
             size: size as usize,
         };
         request.dispatch(env)

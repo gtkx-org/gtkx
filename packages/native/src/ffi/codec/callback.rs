@@ -50,7 +50,7 @@ impl Encoder for CallbackCodec {
         let callback = match val {
             value::Value::Callback(callback) => callback,
             value::Value::Null | value::Value::Undefined => {
-                return Ok(self.build_null_stashed_value());
+                return Ok(self.null_callback_value());
             }
             _ => bail!("Expected a Callback for the callback codec, got {val:?}"),
         };
@@ -58,7 +58,7 @@ impl Encoder for CallbackCodec {
         let is_oneshot = self.scope == CallbackScope::Async;
 
         let state = CallbackState::boxed(
-            callback.js_func.clone(),
+            callback.js_fn.clone(),
             self.arg_codecs.clone(),
             (*self.return_codec).clone(),
             self.user_data_index,
@@ -68,24 +68,24 @@ impl Encoder for CallbackCodec {
 
         match self.scope {
             CallbackScope::Forever => Ok(ffi::StashedValue::Callback(
-                ffi::CallbackValue::new_armed(fn_ptr, None, state),
+                ffi::CallbackValue::new_pending_transfer(fn_ptr, None, state),
             )),
-            CallbackScope::Notified => {
-                Ok(ffi::StashedValue::Callback(ffi::CallbackValue::new_armed(
+            CallbackScope::Notified => Ok(ffi::StashedValue::Callback(
+                ffi::CallbackValue::new_pending_transfer(
                     fn_ptr,
                     Some(CallbackState::destroy as *mut c_void),
                     state,
-                )))
-            }
+                ),
+            )),
             CallbackScope::Async => {
                 let state_ptr = std::ptr::from_ref::<CallbackState>(&state) as *mut CallbackState;
                 state
                     .data_ref()
                     .oneshot_state_ptr
                     .store(state_ptr, Ordering::Release);
-                Ok(ffi::StashedValue::Callback(ffi::CallbackValue::new_armed(
-                    fn_ptr, None, state,
-                )))
+                Ok(ffi::StashedValue::Callback(
+                    ffi::CallbackValue::new_pending_transfer(fn_ptr, None, state),
+                ))
             }
             CallbackScope::Call => {
                 let state_ptr = &*state as *const CallbackState as *mut c_void;
@@ -102,10 +102,10 @@ impl Encoder for CallbackCodec {
 
 impl Decoder for CallbackCodec {}
 
-impl PointerWriter for CallbackCodec {}
+impl PtrWriter for CallbackCodec {}
 
 impl CallbackCodec {
-    fn build_null_stashed_value(&self) -> ffi::StashedValue {
+    fn null_callback_value(&self) -> ffi::StashedValue {
         ffi::StashedValue::Callback(ffi::CallbackValue::new(
             std::ptr::null_mut(),
             std::ptr::null_mut(),

@@ -6,15 +6,19 @@ use crate::handle::{Fundamental, RefFn, UnrefFn};
 pub struct FundamentalCodec {
     pub ownership: Ownership,
     pub shared_library: String,
-    pub ref_func: String,
-    pub unref_func: String,
+    pub ref_fn_name: String,
+    pub unref_fn_name: String,
     pub type_name: Option<String>,
 }
 
 impl FundamentalCodec {
     pub fn lookup_fns(&self) -> anyhow::Result<(Option<RefFn>, Option<UnrefFn>)> {
         GlibThreadState::with(|state| {
-            state.lookup_fundamental_fns(&self.shared_library, &self.ref_func, &self.unref_func)
+            state.lookup_fundamental_fns(
+                &self.shared_library,
+                &self.ref_fn_name,
+                &self.unref_fn_name,
+            )
         })
     }
 
@@ -64,7 +68,7 @@ impl Decoder for FundamentalCodec {
     }
 
     unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
-        self.null_guarded(ptr, |ptr| {
+        self.decode_non_null(ptr, |ptr| {
             let (ref_fn, unref_fn) = self.lookup_fns()?;
             let fundamental = unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) };
             Ok(fundamental.into())
@@ -72,8 +76,8 @@ impl Decoder for FundamentalCodec {
     }
 }
 
-impl PointerWriter for FundamentalCodec {
-    unsafe fn write_return_to_pointer(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+impl PtrWriter for FundamentalCodec {
+    unsafe fn write_return_to_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         self.write_return_with_ownership(ret, value, self.ownership, |ptr| {
             match self.lookup_fns() {
                 Ok((Some(ref_fn), _)) => unsafe { ref_fn(ptr) },
@@ -82,7 +86,7 @@ impl PointerWriter for FundamentalCodec {
         });
     }
 
-    unsafe fn write_value_to_pointer(
+    unsafe fn write_value_to_ptr(
         &self,
         ptr: *mut c_void,
         value: &value::Value,

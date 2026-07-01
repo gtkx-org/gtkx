@@ -3,17 +3,17 @@ use napi_derive::napi;
 
 use crate::ffi::codec::{
     ArrayCodec, ArrayKind, BigIntCodec, BooleanCodec, BoxedCodec, BufferCodec, CallbackCodec,
-    CallbackScope, Codec, EnumFlagsCodec, EnumFlagsKind, FloatKind, FundamentalCodec,
+    CallbackScope, Codec, EnumFlagsCodec, EnumFlagsKind, FloatCodec, FundamentalCodec,
     HashTableCodec, IntegerCodec, ObjectCodec, Ownership, RefCodec, StringCodec, StructCodec,
     UnicharCodec, VoidCodec,
 };
 
 #[derive(Debug)]
-pub struct InnerDescriptor(pub Box<Descriptor>);
+pub struct NestedDescriptor(pub Box<Descriptor>);
 
 type Descriptors = Vec<Descriptor>;
 
-impl FromNapiValue for InnerDescriptor {
+impl FromNapiValue for NestedDescriptor {
     unsafe fn from_napi_value(env: sys::napi_env, napi_val: sys::napi_value) -> napi::Result<Self> {
         Ok(Self(Box::new(unsafe {
             Descriptor::from_napi_value(env, napi_val)?
@@ -85,7 +85,7 @@ pub enum Descriptor {
     },
     Array {
         #[napi(ts_type = "Descriptor")]
-        item_descriptor: InnerDescriptor,
+        item_descriptor: NestedDescriptor,
         array_kind: ArrayKind,
         ownership: Ownership,
         size_param_index: Option<u32>,
@@ -94,28 +94,28 @@ pub enum Descriptor {
     },
     Hashtable {
         #[napi(ts_type = "Descriptor")]
-        key_descriptor: InnerDescriptor,
+        key_descriptor: NestedDescriptor,
         #[napi(ts_type = "Descriptor")]
-        value_descriptor: InnerDescriptor,
+        value_descriptor: NestedDescriptor,
         ownership: Ownership,
     },
     Callback {
         #[napi(ts_type = "Array<Descriptor>")]
         arg_descriptors: Descriptors,
         #[napi(ts_type = "Descriptor")]
-        return_descriptor: InnerDescriptor,
+        return_descriptor: NestedDescriptor,
         has_destroy: Option<bool>,
         user_data_index: Option<u32>,
         scope: Option<CallbackScope>,
     },
     Ref {
         #[napi(ts_type = "Descriptor")]
-        inner_descriptor: InnerDescriptor,
+        inner_descriptor: NestedDescriptor,
         inout: Option<bool>,
     },
 }
 
-impl InnerDescriptor {
+impl NestedDescriptor {
     fn into_codec(self) -> napi::Result<Box<Codec>> {
         Ok(Box::new((*self.0).into_codec()?))
     }
@@ -134,8 +134,8 @@ impl Descriptor {
             Self::Uint64 => Codec::Integer(IntegerCodec::U64),
             Self::Bigint64 => Codec::BigInt(BigIntCodec::I64),
             Self::Biguint64 => Codec::BigInt(BigIntCodec::U64),
-            Self::Float32 => Codec::Float(FloatKind::F32),
-            Self::Float64 => Codec::Float(FloatKind::F64),
+            Self::Float32 => Codec::Float(FloatCodec::F32),
+            Self::Float64 => Codec::Float(FloatCodec::F64),
             Self::Boolean => Codec::Boolean(BooleanCodec),
             Self::Unichar => Codec::Unichar(UnicharCodec),
             Self::Void => Codec::Void(VoidCodec),
@@ -195,8 +195,8 @@ impl Descriptor {
             } => Codec::Fundamental(FundamentalCodec {
                 ownership,
                 shared_library,
-                ref_func: ref_fn,
-                unref_func: unref_fn,
+                ref_fn_name: ref_fn,
+                unref_fn_name: unref_fn,
                 type_name,
             }),
             Self::Array {

@@ -19,7 +19,7 @@ pub enum StashedValue {
     F32(f32),
     F64(f64),
     Ptr(*mut c_void),
-    Storage(Stash),
+    Stashed(Stash),
     Callback(CallbackValue),
     Void,
 }
@@ -29,7 +29,7 @@ pub struct CallbackValue {
     state_ptr: *mut c_void,
     destroy_ptr: Option<*mut c_void>,
     _owned_state: Option<Box<CallbackState>>,
-    armed_state: Cell<Option<Box<CallbackState>>>,
+    pending_transfer: Cell<Option<Box<CallbackState>>>,
 }
 
 impl CallbackValue {
@@ -44,11 +44,11 @@ impl CallbackValue {
             state_ptr,
             destroy_ptr,
             _owned_state: owned_state,
-            armed_state: Cell::new(None),
+            pending_transfer: Cell::new(None),
         }
     }
 
-    pub fn new_armed(
+    pub fn new_pending_transfer(
         fn_ptr: *mut c_void,
         destroy_ptr: Option<*mut c_void>,
         state: Box<CallbackState>,
@@ -59,12 +59,12 @@ impl CallbackValue {
             state_ptr,
             destroy_ptr,
             _owned_state: None,
-            armed_state: Cell::new(Some(state)),
+            pending_transfer: Cell::new(Some(state)),
         }
     }
 
     pub fn disarm_pending_transfer(&self) {
-        if let Some(state) = self.armed_state.take() {
+        if let Some(state) = self.pending_transfer.take() {
             let _ = Box::into_raw(state);
         }
     }
@@ -111,7 +111,7 @@ macro_rules! ffi_numeric_with {
 impl StashedValue {
     pub fn disarm_pending_transfer(&self) {
         match self {
-            Self::Storage(storage) => storage.disarm_pending_transfer(),
+            Self::Stashed(storage) => storage.disarm_pending_transfer(),
             Self::Callback(callback) => callback.disarm_pending_transfer(),
             _ => {}
         }
@@ -129,7 +129,7 @@ impl StashedValue {
             Self::I64(value) => unsafe { slot.cast::<i64>().write_unaligned(*value) },
             Self::F32(value) => unsafe { slot.cast::<f32>().write_unaligned(*value) },
             Self::F64(value) => unsafe { slot.cast::<f64>().write_unaligned(*value) },
-            Self::Ptr(_) | Self::Storage(_) | Self::Callback(_) | Self::Void => {
+            Self::Ptr(_) | Self::Stashed(_) | Self::Callback(_) | Self::Void => {
                 anyhow::bail!("{self:?} has no scalar payload for an out-parameter slot")
             }
         }
@@ -139,7 +139,7 @@ impl StashedValue {
     pub fn as_ptr(&self, type_name: &str) -> anyhow::Result<*mut c_void> {
         match self {
             Self::Ptr(ptr) => Ok(*ptr),
-            Self::Storage(storage) => Ok(storage.ptr()),
+            Self::Stashed(storage) => Ok(storage.ptr()),
             ffi_numeric_with!(Self::Callback(_) | Self::Void) => {
                 anyhow::bail!("Expected a pointer StashedValue for {type_name}, got {self:?}")
             }
@@ -151,11 +151,11 @@ impl StashedValue {
         Ok(if ptr.is_null() { None } else { Some(ptr) })
     }
 
-    pub fn as_storage_or_null(&self, kind: &str) -> anyhow::Result<Option<&Stash>> {
+    pub fn as_stashed_or_null(&self, kind: &str) -> anyhow::Result<Option<&Stash>> {
         match self {
-            Self::Storage(storage) => Ok(Some(storage)),
+            Self::Stashed(storage) => Ok(Some(storage)),
             Self::Ptr(ptr) if ptr.is_null() => Ok(None),
-            _ => anyhow::bail!("Expected a Storage ffi::StashedValue for {kind}, got {self:?}"),
+            _ => anyhow::bail!("Expected a Stashed ffi::StashedValue for {kind}, got {self:?}"),
         }
     }
 
@@ -171,7 +171,7 @@ impl StashedValue {
             Self::U64(v) => crate::ffi::codec::lossless_f64(i128::from(*v), "call result"),
             Self::F32(v) => Ok(*v as f64),
             Self::F64(v) => Ok(*v),
-            Self::Ptr(_) | Self::Storage(_) | Self::Callback(_) | Self::Void => {
+            Self::Ptr(_) | Self::Stashed(_) | Self::Callback(_) | Self::Void => {
                 anyhow::bail!("Expected a numeric StashedValue, got {self:?}")
             }
         }
@@ -186,7 +186,7 @@ impl StashedValue {
                     args.push(libffi::arg(destroy_ptr));
                 }
             }
-            ffi_numeric_with!(Self::Ptr(_) | Self::Storage(_) | Self::Void) => {
+            ffi_numeric_with!(Self::Ptr(_) | Self::Stashed(_) | Self::Void) => {
                 args.push(self.into());
             }
         }
@@ -207,7 +207,7 @@ impl<'a> From<&'a StashedValue> for libffi::Arg<'a> {
             StashedValue::F32(value) => libffi::arg(value),
             StashedValue::F64(value) => libffi::arg(value),
             StashedValue::Ptr(ptr) => libffi::arg(ptr),
-            StashedValue::Storage(storage) => libffi::arg(storage.ptr_ref()),
+            StashedValue::Stashed(storage) => libffi::arg(storage.ptr_ref()),
             StashedValue::Callback(_) => {
                 unreachable!("Callback requires append_libffi_args for multiple arguments")
             }

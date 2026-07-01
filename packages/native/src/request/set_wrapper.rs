@@ -10,8 +10,8 @@ use crate::handle::wrapper;
 use crate::messaging::Mailbox;
 
 struct FinalizeData {
-    gobject_addr: usize,
-    ref_addr: usize,
+    gobject_ptr: usize,
+    ref_ptr: usize,
     binding: Option<Arc<wrapper::WrapperBinding>>,
     generation: u64,
 }
@@ -26,15 +26,15 @@ unsafe extern "C" fn on_wrapper_finalize(
         env as usize,
         data.binding.take(),
         data.generation,
-        data.gobject_addr,
-        data.ref_addr,
+        data.gobject_ptr,
+        data.ref_ptr,
     );
 }
 
 #[napi(catch_unwind)]
 pub fn set_wrapper(env: Env, handle: &External<Handle>, wrapper: Object<'_>) -> napi::Result<()> {
-    let gobject_addr = handle.ptr() as usize;
-    if gobject_addr == 0 {
+    let gobject_ptr = handle.ptr() as usize;
+    if gobject_ptr == 0 {
         return Err(napi::Error::new(
             napi::Status::InvalidArg,
             "set_wrapper: handle has a null pointer",
@@ -42,8 +42,8 @@ pub fn set_wrapper(env: Env, handle: &External<Handle>, wrapper: Object<'_>) -> 
     }
 
     let data = Box::into_raw(Box::new(FinalizeData {
-        gobject_addr,
-        ref_addr: 0,
+        gobject_ptr,
+        ref_ptr: 0,
         binding: None,
         generation: 0,
     }));
@@ -66,18 +66,19 @@ pub fn set_wrapper(env: Env, handle: &External<Handle>, wrapper: Object<'_>) -> 
             "failed to add wrapper finalizer",
         ));
     }
-    unsafe { (*data).ref_addr = raw_ref as usize };
+    unsafe { (*data).ref_ptr = raw_ref as usize };
 
-    let ref_addr = raw_ref as usize;
-    wrapper::WrapperRefOp::Ref.apply(&env, ref_addr);
+    let ref_ptr = raw_ref as usize;
+    wrapper::WrapperRefOp::Ref.apply(&env, ref_ptr);
     let consume_pending = handle.take_pending_gobject_ref();
-    let (binding, generation) = Mailbox::global().dispatch_and_wait_napi(env, move || unsafe {
-        wrapper::WrapperRegistry::global().install(
-            gobject_addr as *mut _,
-            ref_addr as *mut c_void,
-            consume_pending,
-        )
-    })?;
+    let (binding, generation) =
+        Mailbox::global().invoke_glib_and_wait_napi(env, move || unsafe {
+            wrapper::WrapperRegistry::global().install(
+                gobject_ptr as *mut _,
+                ref_ptr as *mut c_void,
+                consume_pending,
+            )
+        })?;
     unsafe {
         (*data).binding = Some(binding);
         (*data).generation = generation;

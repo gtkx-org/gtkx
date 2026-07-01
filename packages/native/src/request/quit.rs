@@ -10,7 +10,7 @@ use crate::messaging::glib_mailbox::GlibThread;
 pub fn quit(env: Env, main_loop: &External<glib::MainLoop>) -> napi::Result<()> {
     let main_loop = (**main_loop).clone();
 
-    Mailbox::global().dispatch_and_wait_napi(env, move || {
+    Mailbox::global().invoke_glib_and_wait_napi(env, move || {
         Mailbox::global().mark_not_running();
         let context = glib::MainContext::default();
         while context.iteration(false) {}

@@ -57,7 +57,7 @@ impl RegisterClassVfunc {
     fn into_raw(self) -> napi::Result<RawVfunc> {
         Ok(RawVfunc {
             byte_offset: self.byte_offset as usize,
-            js_func: self.r#fn.0,
+            js_fn: self.r#fn.0,
             arg_descriptors: self
                 .arg_descriptors
                 .into_iter()
@@ -115,7 +115,7 @@ impl RegisterClassOptions {
 
 struct RawVfunc {
     byte_offset: usize,
-    js_func: Arc<JsRef>,
+    js_fn: Arc<JsRef>,
     arg_descriptors: Vec<Codec>,
     return_descriptor: Codec,
 }
@@ -129,11 +129,11 @@ impl RawVfunc {
     fn into_prepared(self) -> PreparedVfunc {
         let Self {
             byte_offset,
-            js_func,
+            js_fn,
             arg_descriptors,
             return_descriptor,
         } = self;
-        let state = CallbackState::boxed(js_func, arg_descriptors, return_descriptor, None, false);
+        let state = CallbackState::boxed(js_fn, arg_descriptors, return_descriptor, None, false);
         PreparedVfunc {
             byte_offset,
             code_ptr: state.code_ptr,

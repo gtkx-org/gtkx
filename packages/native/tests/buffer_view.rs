@@ -4,7 +4,7 @@ use napi::sys::TypedarrayType;
 use native::ffi::StashedValue;
 use native::ffi::codec::{
     ArrayCodec, ArrayKind, BigIntCodec, BooleanCodec, Codec, Encoder as _, EnumFlagsCodec,
-    EnumFlagsKind, FloatKind, IntegerCodec, Ownership,
+    EnumFlagsKind, FloatCodec, IntegerCodec, Ownership,
 };
 use native::ffi::value::{BufferView, BufferViewKind, Value};
 
@@ -147,8 +147,8 @@ fn array_encode_accepts_every_matching_view_kind() {
     assert_passthrough(Codec::Integer(IntegerCodec::U64), BufferViewKind::BigUint64);
     assert_passthrough(Codec::BigInt(BigIntCodec::I64), BufferViewKind::BigInt64);
     assert_passthrough(Codec::BigInt(BigIntCodec::U64), BufferViewKind::BigUint64);
-    assert_passthrough(Codec::Float(FloatKind::F32), BufferViewKind::Float32);
-    assert_passthrough(Codec::Float(FloatKind::F64), BufferViewKind::Float64);
+    assert_passthrough(Codec::Float(FloatCodec::F32), BufferViewKind::Float32);
+    assert_passthrough(Codec::Float(FloatCodec::F64), BufferViewKind::Float64);
 }
 
 fn assert_view_rejected(item: Codec, view_kind: BufferViewKind) {

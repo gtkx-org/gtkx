@@ -36,7 +36,7 @@ pub use enum_flags::{EnumFlagsCodec, EnumFlagsKind};
 pub use fundamental::FundamentalCodec;
 pub use hashtable::HashTableCodec;
 pub use hashtable::HashTableEntryCodec;
-pub use numeric::{FloatKind, IntegerCodec, lossless_f64};
+pub use numeric::{FloatCodec, IntegerCodec, lossless_f64};
 pub use object::ObjectCodec;
 pub use r#ref::RefCodec;
 pub use string::{StringCodec, str_to_glib_full};
@@ -87,7 +87,7 @@ pub trait Encoder {
         let transferred = unsafe { self.ref_for_transfer(ptr)? };
         match self.transfer_release() {
             Some(release) if !transferred.is_null() => {
-                Ok(prelude::full_transfer_storage(transferred, release))
+                Ok(prelude::full_transfer_stashed(transferred, release))
             }
             _ => Ok(ffi::StashedValue::Ptr(transferred)),
         }
@@ -165,7 +165,7 @@ pub trait Decoder {
         unsafe { self.read(ReadSource::Value(inner_ptr, context)) }
     }
 
-    fn null_guarded<F>(&self, ptr: *mut c_void, decode: F) -> anyhow::Result<value::Value>
+    fn decode_non_null<F>(&self, ptr: *mut c_void, decode: F) -> anyhow::Result<value::Value>
     where
         F: FnOnce(*mut c_void) -> anyhow::Result<value::Value>,
     {
@@ -177,8 +177,8 @@ pub trait Decoder {
 }
 
 #[enum_dispatch]
-pub trait PointerWriter {
-    unsafe fn write_return_to_pointer(
+pub trait PtrWriter {
+    unsafe fn write_return_to_ptr(
         &self,
         ret: *mut c_void,
         value: &std::result::Result<value::Value, ()>,
@@ -187,7 +187,7 @@ pub trait PointerWriter {
         unsafe { ffi::Slot::new(ret).store(std::ptr::null_mut()) };
     }
 
-    unsafe fn write_value_to_pointer(
+    unsafe fn write_value_to_ptr(
         &self,
         ptr: *mut c_void,
         value: &value::Value,
@@ -215,12 +215,12 @@ pub trait PointerWriter {
     }
 }
 
-#[enum_dispatch(Encoder, Decoder, PointerWriter)]
+#[enum_dispatch(Encoder, Decoder, PtrWriter)]
 #[derive(Debug, Clone)]
 pub enum Codec {
     Integer(IntegerCodec),
     BigInt(BigIntCodec),
-    Float(FloatKind),
+    Float(FloatCodec),
     EnumFlags(EnumFlagsCodec),
     String(StringCodec),
     Void(VoidCodec),
@@ -253,7 +253,7 @@ impl std::fmt::Display for Codec {
             Self::Object(_) => write!(f, "Object"),
             Self::Boxed(t) => write!(f, "Boxed({})", t.type_name),
             Self::Struct(t) => write!(f, "Struct({})", t.ownership),
-            Self::Fundamental(t) => write!(f, "Fundamental({})", t.unref_func),
+            Self::Fundamental(t) => write!(f, "Fundamental({})", t.unref_fn_name),
             Self::Array(_) => write!(f, "Array"),
             Self::Buffer(_) => write!(f, "Buffer"),
             Self::HashTable(_) => write!(f, "HashTable"),

@@ -1,4 +1,4 @@
-pub(super) use super::{Decoder, Encoder, Ownership, PointerWriter, ReadSource};
+pub(super) use super::{Decoder, Encoder, Ownership, PtrWriter, ReadSource};
 pub(super) use crate::ffi::{self, value};
 pub(super) use std::ffi::c_void;
 
@@ -69,11 +69,11 @@ where
     container
 }
 
-pub(super) fn full_transfer_storage(
+pub(super) fn full_transfer_stashed(
     ptr: *mut c_void,
     release: crate::ffi::PendingRelease,
 ) -> crate::ffi::StashedValue {
-    crate::ffi::StashedValue::Storage(
+    crate::ffi::StashedValue::Stashed(
         crate::ffi::Stash::unit(ptr).with_pending_transfer(ptr, release),
     )
 }

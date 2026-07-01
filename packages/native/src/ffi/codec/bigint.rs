@@ -13,7 +13,7 @@ pub enum BigIntCodec {
 }
 
 impl BigIntCodec {
-    fn wire_kind(self) -> IntegerCodec {
+    fn wire_codec(self) -> IntegerCodec {
         match self {
             Self::I64 => IntegerCodec::I64,
             Self::U64 => IntegerCodec::U64,
@@ -21,7 +21,7 @@ impl BigIntCodec {
     }
 
     pub fn ffi_type(self) -> libffi::Type {
-        self.wire_kind().ffi_type()
+        self.wire_codec().ffi_type()
     }
 
     fn label(self) -> &'static str {
@@ -38,7 +38,7 @@ impl BigIntCodec {
         }
     }
 
-    fn int_from_value(self, value: &value::Value) -> anyhow::Result<i128> {
+    fn integer_from_value(self, value: &value::Value) -> anyhow::Result<i128> {
         match value {
             value::Value::BigInt(v) => Ok(*v),
             value::Value::Number(n) => {
@@ -94,7 +94,7 @@ impl BigIntCodec {
     }
 
     pub fn byte_size(self) -> usize {
-        self.wire_kind().byte_size()
+        self.wire_codec().byte_size()
     }
 
     pub unsafe fn read_slice(self, ptr: *const u8, len: usize) -> Vec<value::Value> {
@@ -104,8 +104,8 @@ impl BigIntCodec {
     }
 
     pub fn to_stash(self, array: &[value::Value]) -> anyhow::Result<ffi::Stash> {
-        let int_at = |i: usize, v: &value::Value| {
-            self.int_from_value(v)
+        let integer_at = |i: usize, v: &value::Value| {
+            self.integer_from_value(v)
                 .map_err(|e| anyhow::anyhow!("Array element {i}: {e}"))
         };
         match self {
@@ -113,7 +113,7 @@ impl BigIntCodec {
                 .iter()
                 .enumerate()
                 .map(|(i, v)| {
-                    i64::try_from(int_at(i, v)?).map_err(|_| {
+                    i64::try_from(integer_at(i, v)?).map_err(|_| {
                         anyhow::anyhow!("Array element {i}: value out of range for bigint64")
                     })
                 })
@@ -123,7 +123,7 @@ impl BigIntCodec {
                 .iter()
                 .enumerate()
                 .map(|(i, v)| {
-                    u64::try_from(int_at(i, v)?).map_err(|_| {
+                    u64::try_from(integer_at(i, v)?).map_err(|_| {
                         anyhow::anyhow!("Array element {i}: value out of range for biguint64")
                     })
                 })
@@ -133,19 +133,19 @@ impl BigIntCodec {
     }
 
     pub unsafe fn append_into(self, ptr: *mut u8, value: &value::Value) -> anyhow::Result<()> {
-        let stashed_value = self.checked_to_stashed_value(self.int_from_value(value)?)?;
+        let stashed_value = self.checked_to_stashed_value(self.integer_from_value(value)?)?;
         unsafe { stashed_value.write_scalar_to(ptr.cast()) }
     }
 }
 
 impl Encoder for BigIntCodec {
     fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
-        let int = self.int_from_value(value)?;
+        let int = self.integer_from_value(value)?;
         self.checked_to_stashed_value(int)
     }
 
     fn libffi_type(&self) -> libffi::Type {
-        Encoder::libffi_type(&self.wire_kind())
+        Encoder::libffi_type(&self.wire_codec())
     }
 
     fn call_cif(
@@ -154,7 +154,7 @@ impl Encoder for BigIntCodec {
         ptr: libffi::CodePtr,
         args: &[libffi::Arg],
     ) -> anyhow::Result<ffi::StashedValue> {
-        Encoder::call_cif(&self.wire_kind(), cif, ptr, args)
+        Encoder::call_cif(&self.wire_codec(), cif, ptr, args)
     }
 }
 
@@ -180,8 +180,8 @@ impl Decoder for BigIntCodec {
     }
 }
 
-impl PointerWriter for BigIntCodec {
-    unsafe fn write_return_to_pointer(
+impl PtrWriter for BigIntCodec {
+    unsafe fn write_return_to_ptr(
         &self,
         ret: *mut c_void,
         value: &std::result::Result<value::Value, ()>,
@@ -189,7 +189,7 @@ impl PointerWriter for BigIntCodec {
         let int = value
             .as_ref()
             .ok()
-            .and_then(|v| self.int_from_value(v).ok())
+            .and_then(|v| self.integer_from_value(v).ok())
             .unwrap_or(0);
         let stashed_value = self
             .checked_to_stashed_value(int)
@@ -197,12 +197,12 @@ impl PointerWriter for BigIntCodec {
         let _ = unsafe { stashed_value.write_scalar_to(ret) };
     }
 
-    unsafe fn write_value_to_pointer(
+    unsafe fn write_value_to_ptr(
         &self,
         ptr: *mut c_void,
         value: &value::Value,
     ) -> anyhow::Result<()> {
-        let int = self.int_from_value(value)?;
+        let int = self.integer_from_value(value)?;
         let stashed_value = self.checked_to_stashed_value(int)?;
         unsafe { stashed_value.write_scalar_to(ptr) }
     }

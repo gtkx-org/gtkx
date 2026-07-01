@@ -8,7 +8,7 @@ use super::prelude::*;
 pub struct BufferCodec;
 
 impl BufferCodec {
-    fn address_from_number(value: f64) -> anyhow::Result<*mut c_void> {
+    fn ptr_from_number(value: f64) -> anyhow::Result<*mut c_void> {
         if !value.is_finite() || value.fract() != 0.0 || !(0.0..=MAX_SAFE_INTEGER).contains(&value)
         {
             bail!(
@@ -29,7 +29,7 @@ impl Encoder for BufferCodec {
                 );
                 Ok(ffi::StashedValue::Ptr(view.ptr()))
             }
-            value::Value::Number(n) => Ok(ffi::StashedValue::Ptr(Self::address_from_number(*n)?)),
+            value::Value::Number(n) => Ok(ffi::StashedValue::Ptr(Self::ptr_from_number(*n)?)),
             value::Value::Null | value::Value::Undefined => {
                 Ok(ffi::StashedValue::Ptr(std::ptr::null_mut()))
             }
@@ -53,4 +53,4 @@ impl Encoder for BufferCodec {
 
 impl Decoder for BufferCodec {}
 
-impl PointerWriter for BufferCodec {}
+impl PtrWriter for BufferCodec {}

@@ -11,7 +11,7 @@ use gtk4::prelude::StaticType as _;
 
 use native::ffi;
 use native::ffi::codec::{
-    BoxedCodec, Decoder, Encoder, Ownership, PointerWriter, ReadSource, StructCodec,
+    BoxedCodec, Decoder, Encoder, Ownership, PtrWriter, ReadSource, StructCodec,
 };
 use native::ffi::value::Value;
 use native::handle::Handle;
@@ -113,7 +113,7 @@ fn encode_full_copies_to_distinct_pointer() {
 
         let encoded = encode_rgba(Ownership::Full, original);
         encoded.disarm_pending_transfer();
-        let ffi::StashedValue::Storage(storage) = &encoded else {
+        let ffi::StashedValue::Stashed(storage) = &encoded else {
             panic!("expected Storage ffi value");
         };
         let copied = storage.ptr();
@@ -597,11 +597,10 @@ fn struct_write_value_to_pointer_with_size_bails_for_null_dst() {
         let mut slot: *mut c_void = std::ptr::null_mut();
 
         let err = unsafe {
-            struct_type(Ownership::Borrowed, Some(std::mem::size_of::<u64>()))
-                .write_value_to_pointer(
-                    &mut slot as *mut *mut c_void as *mut c_void,
-                    &Value::Object(Handle::borrowed(&src as *const u64 as *mut c_void)),
-                )
+            struct_type(Ownership::Borrowed, Some(std::mem::size_of::<u64>())).write_value_to_ptr(
+                &mut slot as *mut *mut c_void as *mut c_void,
+                &Value::Object(Handle::borrowed(&src as *const u64 as *mut c_void)),
+            )
         };
 
         assert!(err.is_err());

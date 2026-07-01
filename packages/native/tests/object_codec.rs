@@ -8,7 +8,7 @@ use gtk4::glib;
 use gtk4::prelude::ObjectType as _;
 
 use native::ffi;
-use native::ffi::codec::{Decoder, Encoder, ObjectCodec, Ownership, PointerWriter, ReadSource};
+use native::ffi::codec::{Decoder, Encoder, ObjectCodec, Ownership, PtrWriter, ReadSource};
 use native::ffi::value::Value;
 use native::handle::Handle;
 
@@ -56,7 +56,7 @@ fn encode_full_transfer_adds_exactly_one_ref() {
 
         assert_eq!(get_gobject_refcount(obj_ptr), before + 1);
 
-        let ffi::StashedValue::Storage(storage) = &encoded else {
+        let ffi::StashedValue::Stashed(storage) = &encoded else {
             panic!("expected Storage ffi value");
         };
         assert_eq!(storage.ptr(), obj_ptr as *mut c_void);
@@ -270,12 +270,12 @@ fn write_value_to_pointer_writes_object() {
 
         let mut slot: *mut c_void = std::ptr::null_mut();
         unsafe {
-            borrowed().write_value_to_pointer(
+            borrowed().write_value_to_ptr(
                 &mut slot as *mut *mut c_void as *mut c_void,
                 &object_value_of(obj_ptr),
             )
         }
-        .expect("write_value_to_pointer should succeed");
+        .expect("write_value_to_ptr should succeed");
 
         assert_eq!(slot, obj_ptr as *mut c_void);
         assert_eq!(get_gobject_refcount(obj_ptr), before + 1);
@@ -296,12 +296,12 @@ fn write_value_to_pointer_unrefs_previous_object() {
         let new_before = get_gobject_refcount(new_ptr);
 
         unsafe {
-            borrowed().write_value_to_pointer(
+            borrowed().write_value_to_ptr(
                 &mut slot as *mut *mut c_void as *mut c_void,
                 &object_value_of(new_ptr),
             )
         }
-        .expect("write_value_to_pointer should succeed");
+        .expect("write_value_to_ptr should succeed");
 
         assert_eq!(slot, new_ptr as *mut c_void);
         assert_eq!(get_gobject_refcount(new_ptr), new_before + 1);
@@ -322,9 +322,9 @@ fn write_value_to_pointer_null_releases_previous_object() {
 
         unsafe {
             borrowed()
-                .write_value_to_pointer(&mut slot as *mut *mut c_void as *mut c_void, &Value::Null)
+                .write_value_to_ptr(&mut slot as *mut *mut c_void as *mut c_void, &Value::Null)
         }
-        .expect("write_value_to_pointer should succeed");
+        .expect("write_value_to_ptr should succeed");
 
         assert!(slot.is_null());
         assert_eq!(get_gobject_refcount(obj_ptr), before - 1);

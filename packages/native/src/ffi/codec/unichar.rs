@@ -59,8 +59,8 @@ impl Decoder for UnicharCodec {
     }
 }
 
-impl PointerWriter for UnicharCodec {
-    unsafe fn write_return_to_pointer(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+impl PtrWriter for UnicharCodec {
+    unsafe fn write_return_to_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         let val = match value {
             Ok(value::Value::String(s)) => s.chars().next().map_or(0, |c| c as u32),
             Ok(value::Value::Number(n)) => *n as u32,

@@ -8,7 +8,7 @@ use crate::handle::UnrefFn;
 
 pub struct Stash {
     ptr: *mut c_void,
-    kind: StashKind,
+    storage: StashStorage,
     pending_transfer: Cell<Option<PendingTransfer>>,
 }
 
@@ -16,7 +16,7 @@ impl std::fmt::Debug for Stash {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Stash")
             .field("ptr", &self.ptr)
-            .field("kind", &self.kind)
+            .field("storage", &self.storage)
             .finish_non_exhaustive()
     }
 }
@@ -38,8 +38,8 @@ pub enum PendingRelease {
     HashTableUnref,
     GArrayUnref,
     GByteArrayUnref,
-    GListSpineFree,
-    GSListSpineFree,
+    GListFree,
+    GSListFree,
     Group(Vec<PendingTransfer>),
 }
 
@@ -85,10 +85,10 @@ impl PendingTransfer {
                 PendingRelease::GByteArrayUnref => {
                     glib::ffi::g_byte_array_unref(self.ptr as *mut glib::ffi::GByteArray);
                 }
-                PendingRelease::GListSpineFree => {
+                PendingRelease::GListFree => {
                     glib::ffi::g_list_free(self.ptr as *mut glib::ffi::GList);
                 }
-                PendingRelease::GSListSpineFree => {
+                PendingRelease::GSListFree => {
                     glib::ffi::g_slist_free(self.ptr as *mut glib::ffi::GSList);
                 }
                 PendingRelease::Group(entries) => {
@@ -167,92 +167,88 @@ pub struct StringGSListData {
     pub elements_duped: bool,
 }
 
-pub trait ListFlavor {
-    type Spine;
+pub trait ListKind {
+    type Node;
     const LABEL: &'static str;
 
-    unsafe fn prepend(list: *mut Self::Spine, ptr: *mut c_void) -> *mut Self::Spine;
+    unsafe fn prepend(list: *mut Self::Node, ptr: *mut c_void) -> *mut Self::Node;
 
-    unsafe fn free_spine(list: *mut Self::Spine);
+    unsafe fn free(list: *mut Self::Node);
 
-    unsafe fn free_spine_full(list: *mut Self::Spine);
+    unsafe fn free_full(list: *mut Self::Node);
 
-    fn spine_release() -> PendingRelease;
+    fn pending_release() -> PendingRelease;
 
     fn handle_storage(
         handles: Vec<crate::handle::Handle>,
-        list_ptr: *mut Self::Spine,
+        list_ptr: *mut Self::Node,
         should_free: bool,
-    ) -> StashKind;
+    ) -> StashStorage;
 
     fn string_storage(
         strings: Vec<std::ffi::CString>,
-        list_ptr: *mut Self::Spine,
+        list_ptr: *mut Self::Node,
         should_free: bool,
         elements_duped: bool,
-    ) -> StashKind;
+    ) -> StashStorage;
 
-    fn build_spine(ptrs: &[*mut c_void]) -> *mut Self::Spine {
-        let mut list: *mut Self::Spine = std::ptr::null_mut();
+    fn build_list(ptrs: &[*mut c_void]) -> *mut Self::Node {
+        let mut list: *mut Self::Node = std::ptr::null_mut();
         for ptr in ptrs.iter().rev() {
             list = unsafe { Self::prepend(list, *ptr) };
         }
         list
     }
 
-    unsafe fn free_handle_spine(list_ptr: *mut Self::Spine, should_free: bool) {
+    unsafe fn free_handle_list(list_ptr: *mut Self::Node, should_free: bool) {
         if should_free && !list_ptr.is_null() {
-            unsafe { Self::free_spine(list_ptr) };
+            unsafe { Self::free(list_ptr) };
         }
     }
 
-    unsafe fn free_string_spine(
-        list_ptr: *mut Self::Spine,
-        should_free: bool,
-        elements_duped: bool,
-    ) {
+    unsafe fn free_string_list(list_ptr: *mut Self::Node, should_free: bool, elements_duped: bool) {
         if !should_free || list_ptr.is_null() {
             return;
         }
         if elements_duped {
-            unsafe { Self::free_spine_full(list_ptr) };
+            unsafe { Self::free_full(list_ptr) };
         } else {
-            unsafe { Self::free_spine(list_ptr) };
+            unsafe { Self::free(list_ptr) };
         }
     }
 }
 
 #[derive(Debug)]
-pub struct GListFlavor;
+pub struct GListKind;
 #[derive(Debug)]
-pub struct GSListFlavor;
+pub struct GSListKind;
 
-impl ListFlavor for GListFlavor {
-    type Spine = glib::ffi::GList;
+impl ListKind for GListKind {
+    type Node = glib::ffi::GList;
     const LABEL: &'static str = "GList";
 
     unsafe fn prepend(list: *mut glib::ffi::GList, ptr: *mut c_void) -> *mut glib::ffi::GList {
         unsafe { glib::ffi::g_list_prepend(list, ptr) }
     }
 
-    unsafe fn free_spine(list: *mut glib::ffi::GList) {
+    unsafe fn free(list: *mut glib::ffi::GList) {
         unsafe { glib::ffi::g_list_free(list) };
     }
 
-    unsafe fn free_spine_full(list: *mut glib::ffi::GList) {
+    unsafe fn free_full(list: *mut glib::ffi::GList) {
         unsafe { glib::ffi::g_list_free_full(list, Some(glib::ffi::g_free)) };
     }
 
-    fn spine_release() -> PendingRelease {
-        PendingRelease::GListSpineFree
+    fn pending_release() -> PendingRelease {
+        PendingRelease::GListFree
     }
 
     fn handle_storage(
         handles: Vec<crate::handle::Handle>,
         list_ptr: *mut glib::ffi::GList,
         should_free: bool,
-    ) -> StashKind {
-        StashKind::GList(GListData {
+    ) -> StashStorage {
+        StashStorage::GList(GListData {
             handles,
             list_ptr,
             should_free,
@@ -264,8 +260,8 @@ impl ListFlavor for GListFlavor {
         list_ptr: *mut glib::ffi::GList,
         should_free: bool,
         elements_duped: bool,
-    ) -> StashKind {
-        StashKind::StringGList(StringGListData {
+    ) -> StashStorage {
+        StashStorage::StringGList(StringGListData {
             strings,
             list_ptr,
             should_free,
@@ -274,32 +270,32 @@ impl ListFlavor for GListFlavor {
     }
 }
 
-impl ListFlavor for GSListFlavor {
-    type Spine = glib::ffi::GSList;
+impl ListKind for GSListKind {
+    type Node = glib::ffi::GSList;
     const LABEL: &'static str = "GSList";
 
     unsafe fn prepend(list: *mut glib::ffi::GSList, ptr: *mut c_void) -> *mut glib::ffi::GSList {
         unsafe { glib::ffi::g_slist_prepend(list, ptr) }
     }
 
-    unsafe fn free_spine(list: *mut glib::ffi::GSList) {
+    unsafe fn free(list: *mut glib::ffi::GSList) {
         unsafe { glib::ffi::g_slist_free(list) };
     }
 
-    unsafe fn free_spine_full(list: *mut glib::ffi::GSList) {
+    unsafe fn free_full(list: *mut glib::ffi::GSList) {
         unsafe { glib::ffi::g_slist_free_full(list, Some(glib::ffi::g_free)) };
     }
 
-    fn spine_release() -> PendingRelease {
-        PendingRelease::GSListSpineFree
+    fn pending_release() -> PendingRelease {
+        PendingRelease::GSListFree
     }
 
     fn handle_storage(
         handles: Vec<crate::handle::Handle>,
         list_ptr: *mut glib::ffi::GSList,
         should_free: bool,
-    ) -> StashKind {
-        StashKind::GSList(GSListData {
+    ) -> StashStorage {
+        StashStorage::GSList(GSListData {
             handles,
             list_ptr,
             should_free,
@@ -311,8 +307,8 @@ impl ListFlavor for GSListFlavor {
         list_ptr: *mut glib::ffi::GSList,
         should_free: bool,
         elements_duped: bool,
-    ) -> StashKind {
-        StashKind::StringGSList(StringGSListData {
+    ) -> StashStorage {
+        StashStorage::StringGSList(StringGSListData {
             strings,
             list_ptr,
             should_free,
@@ -334,7 +330,7 @@ pub struct HashTableData {
 }
 
 #[derive(Debug)]
-pub enum StashKind {
+pub enum StashStorage {
     Unit,
     U8Vec(Vec<u8>),
     I8Vec(Vec<i8>),
@@ -356,22 +352,22 @@ pub enum StashKind {
     GArray(GArrayData),
     GByteArray(Option<glib::ByteArray>),
     Buffer(Vec<u8>),
-    PtrStorage(Vec<*mut c_void>),
+    PtrSlot(Vec<*mut c_void>),
     StrV(glib::StrV),
     HashTable(HashTableData),
 }
 
 impl Stash {
-    pub fn new(ptr: *mut c_void, kind: StashKind) -> Self {
+    pub fn new(ptr: *mut c_void, storage: StashStorage) -> Self {
         Self {
             ptr,
-            kind,
+            storage,
             pending_transfer: Cell::new(None),
         }
     }
 
     pub fn unit(ptr: *mut c_void) -> Self {
-        Self::new(ptr, StashKind::Unit)
+        Self::new(ptr, StashStorage::Unit)
     }
 
     pub fn with_pending_transfer(self, ptr: *mut c_void, release: PendingRelease) -> Self {
@@ -394,36 +390,44 @@ impl Stash {
         &self.ptr
     }
 
-    pub fn kind(&self) -> &StashKind {
-        &self.kind
+    pub fn storage(&self) -> &StashStorage {
+        &self.storage
     }
 
-    pub fn as_numeric_slice(&self, int_kind: IntegerCodec) -> anyhow::Result<Vec<f64>> {
-        match (&self.kind, int_kind) {
-            (StashKind::I64Vec(v), IntegerCodec::I64) => v
+    pub fn as_numeric_slice(&self, integer_codec: IntegerCodec) -> anyhow::Result<Vec<f64>> {
+        match (&self.storage, integer_codec) {
+            (StashStorage::I64Vec(v), IntegerCodec::I64) => v
                 .iter()
                 .map(|&x| crate::ffi::codec::lossless_f64(i128::from(x), "array element"))
                 .collect(),
-            (StashKind::U64Vec(v), IntegerCodec::U64) => v
+            (StashStorage::U64Vec(v), IntegerCodec::U64) => v
                 .iter()
                 .map(|&x| crate::ffi::codec::lossless_f64(i128::from(x), "array element"))
                 .collect(),
-            (StashKind::U8Vec(v), IntegerCodec::U8) => Ok(v.iter().map(|&x| x as f64).collect()),
-            (StashKind::I8Vec(v), IntegerCodec::I8) => Ok(v.iter().map(|&x| x as f64).collect()),
-            (StashKind::U16Vec(v), IntegerCodec::U16) => Ok(v.iter().map(|&x| x as f64).collect()),
-            (StashKind::I16Vec(v), IntegerCodec::I16) => Ok(v.iter().map(|&x| x as f64).collect()),
-            (StashKind::U32Vec(v), IntegerCodec::U32) => Ok(v.iter().map(|&x| x as f64).collect()),
-            (StashKind::I32Vec(v), IntegerCodec::I32) => Ok(v.iter().map(|&x| x as f64).collect()),
-            _ => anyhow::bail!("Stash does not match integer kind {int_kind:?}"),
+            (StashStorage::U8Vec(v), IntegerCodec::U8) => Ok(v.iter().map(|&x| x as f64).collect()),
+            (StashStorage::I8Vec(v), IntegerCodec::I8) => Ok(v.iter().map(|&x| x as f64).collect()),
+            (StashStorage::U16Vec(v), IntegerCodec::U16) => {
+                Ok(v.iter().map(|&x| x as f64).collect())
+            }
+            (StashStorage::I16Vec(v), IntegerCodec::I16) => {
+                Ok(v.iter().map(|&x| x as f64).collect())
+            }
+            (StashStorage::U32Vec(v), IntegerCodec::U32) => {
+                Ok(v.iter().map(|&x| x as f64).collect())
+            }
+            (StashStorage::I32Vec(v), IntegerCodec::I32) => {
+                Ok(v.iter().map(|&x| x as f64).collect())
+            }
+            _ => anyhow::bail!("Stash does not match integer kind {integer_codec:?}"),
         }
     }
 
     pub fn as_bigint_vec(&self, kind: BigIntCodec) -> anyhow::Result<Vec<i128>> {
-        match (&self.kind, kind) {
-            (StashKind::I64Vec(v), BigIntCodec::I64) => {
+        match (&self.storage, kind) {
+            (StashStorage::I64Vec(v), BigIntCodec::I64) => {
                 Ok(v.iter().map(|&x| i128::from(x)).collect())
             }
-            (StashKind::U64Vec(v), BigIntCodec::U64) => {
+            (StashStorage::U64Vec(v), BigIntCodec::U64) => {
                 Ok(v.iter().map(|&x| i128::from(x)).collect())
             }
             _ => anyhow::bail!("Stash does not match bigint kind {kind:?}"),
@@ -431,49 +435,49 @@ impl Stash {
     }
 
     pub fn as_f32_slice(&self) -> anyhow::Result<&[f32]> {
-        match &self.kind {
-            StashKind::F32Vec(v) => Ok(v),
+        match &self.storage {
+            StashStorage::F32Vec(v) => Ok(v),
             _ => anyhow::bail!("Stash does not contain f32 data"),
         }
     }
 
     pub fn as_f64_slice(&self) -> anyhow::Result<&[f64]> {
-        match &self.kind {
-            StashKind::F64Vec(v) => Ok(v),
+        match &self.storage {
+            StashStorage::F64Vec(v) => Ok(v),
             _ => anyhow::bail!("Stash does not contain f64 data"),
         }
     }
 
     pub fn as_cstring_array(&self) -> anyhow::Result<&Vec<std::ffi::CString>> {
-        match &self.kind {
-            StashKind::StringArray(strings, _) => Ok(strings),
+        match &self.storage {
+            StashStorage::StringArray(strings, _) => Ok(strings),
             _ => anyhow::bail!("Stash does not contain string array data"),
         }
     }
 
     pub fn as_bool_slice(&self) -> anyhow::Result<&[i32]> {
-        match &self.kind {
-            StashKind::I32Vec(v) => Ok(v),
+        match &self.storage {
+            StashStorage::I32Vec(v) => Ok(v),
             _ => anyhow::bail!("Stash does not contain bool/i32 data"),
         }
     }
 
     pub fn as_object_array(&self) -> anyhow::Result<&Vec<crate::handle::Handle>> {
-        match &self.kind {
-            StashKind::ObjectArray(ids, _) => Ok(ids),
+        match &self.storage {
+            StashStorage::ObjectArray(ids, _) => Ok(ids),
             _ => anyhow::bail!("Stash does not contain object array data"),
         }
     }
 }
 
 impl Stash {
-    fn drop_hash_table(data: &HashTableData) {
+    fn free_hash_table(data: &HashTableData) {
         if data.should_free && !data.handle.is_null() {
             unsafe { glib::ffi::g_hash_table_unref(data.handle) };
         }
     }
 
-    fn drop_garray(data: &GArrayData) {
+    fn free_garray(data: &GArrayData) {
         if data.should_free && !data.array_ptr.is_null() {
             unsafe { glib::ffi::g_array_unref(data.array_ptr) };
         }
@@ -485,47 +489,39 @@ impl Drop for Stash {
         if let Some(pending) = self.pending_transfer.take() {
             pending.release();
         }
-        match &self.kind {
-            StashKind::HashTable(data) => Self::drop_hash_table(data),
-            StashKind::GList(data) => unsafe {
-                GListFlavor::free_handle_spine(data.list_ptr, data.should_free);
+        match &self.storage {
+            StashStorage::HashTable(data) => Self::free_hash_table(data),
+            StashStorage::GList(data) => unsafe {
+                GListKind::free_handle_list(data.list_ptr, data.should_free);
             },
-            StashKind::GSList(data) => unsafe {
-                GSListFlavor::free_handle_spine(data.list_ptr, data.should_free);
+            StashStorage::GSList(data) => unsafe {
+                GSListKind::free_handle_list(data.list_ptr, data.should_free);
             },
-            StashKind::GArray(data) => Self::drop_garray(data),
-            StashKind::StringGList(data) => unsafe {
-                GListFlavor::free_string_spine(
-                    data.list_ptr,
-                    data.should_free,
-                    data.elements_duped,
-                );
+            StashStorage::GArray(data) => Self::free_garray(data),
+            StashStorage::StringGList(data) => unsafe {
+                GListKind::free_string_list(data.list_ptr, data.should_free, data.elements_duped);
             },
-            StashKind::StringGSList(data) => unsafe {
-                GSListFlavor::free_string_spine(
-                    data.list_ptr,
-                    data.should_free,
-                    data.elements_duped,
-                );
+            StashStorage::StringGSList(data) => unsafe {
+                GSListKind::free_string_list(data.list_ptr, data.should_free, data.elements_duped);
             },
-            StashKind::GByteArray(_)
-            | StashKind::Unit
-            | StashKind::U8Vec(_)
-            | StashKind::I8Vec(_)
-            | StashKind::U16Vec(_)
-            | StashKind::I16Vec(_)
-            | StashKind::U32Vec(_)
-            | StashKind::I32Vec(_)
-            | StashKind::U64Vec(_)
-            | StashKind::I64Vec(_)
-            | StashKind::F32Vec(_)
-            | StashKind::F64Vec(_)
-            | StashKind::StringArray(_, _)
-            | StashKind::ObjectArray(_, _)
-            | StashKind::CString(_)
-            | StashKind::Buffer(_)
-            | StashKind::PtrStorage(_)
-            | StashKind::StrV(_) => {}
+            StashStorage::GByteArray(_)
+            | StashStorage::Unit
+            | StashStorage::U8Vec(_)
+            | StashStorage::I8Vec(_)
+            | StashStorage::U16Vec(_)
+            | StashStorage::I16Vec(_)
+            | StashStorage::U32Vec(_)
+            | StashStorage::I32Vec(_)
+            | StashStorage::U64Vec(_)
+            | StashStorage::I64Vec(_)
+            | StashStorage::F32Vec(_)
+            | StashStorage::F64Vec(_)
+            | StashStorage::StringArray(_, _)
+            | StashStorage::ObjectArray(_, _)
+            | StashStorage::CString(_)
+            | StashStorage::Buffer(_)
+            | StashStorage::PtrSlot(_)
+            | StashStorage::StrV(_) => {}
         }
     }
 }
@@ -536,7 +532,7 @@ macro_rules! impl_stash_from_vec {
             impl From<Vec<$descriptor>> for Stash {
                 fn from(mut vec: Vec<$descriptor>) -> Self {
                     let ptr = vec.as_mut_ptr() as *mut c_void;
-                    Self::new(ptr, StashKind::$vec_variant(vec))
+                    Self::new(ptr, StashStorage::$vec_variant(vec))
                 }
             }
         )+

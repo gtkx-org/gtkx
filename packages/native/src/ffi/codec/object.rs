@@ -72,7 +72,7 @@ impl Decoder for ObjectCodec {
     }
 
     unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
-        self.null_guarded(ptr, |ptr| {
+        self.decode_non_null(ptr, |ptr| {
             Ok(unsafe {
                 tracked_gobject_value(ptr as *mut glib::gobject_ffi::GObject, Ownership::Borrowed)
             })
@@ -80,8 +80,8 @@ impl Decoder for ObjectCodec {
     }
 }
 
-impl PointerWriter for ObjectCodec {
-    unsafe fn write_return_to_pointer(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+impl PtrWriter for ObjectCodec {
+    unsafe fn write_return_to_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         self.write_return_with_ownership(ret, value, self.ownership, |ptr| {
             let obj: glib::Object =
                 unsafe { glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject) };
@@ -89,7 +89,7 @@ impl PointerWriter for ObjectCodec {
         });
     }
 
-    unsafe fn write_value_to_pointer(
+    unsafe fn write_value_to_ptr(
         &self,
         ptr: *mut c_void,
         value: &value::Value,

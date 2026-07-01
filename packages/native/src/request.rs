@@ -33,7 +33,7 @@ pub trait Request: Sized + Send + 'static {
 
     fn dispatch_output(self, env: Env) -> napi::Result<Self::Output> {
         messaging::Mailbox::global()
-            .dispatch_and_wait_napi(env, move || self.execute())?
+            .invoke_glib_and_wait_napi(env, move || self.execute())?
             .map_err(|e| {
                 napi::Error::new(
                     napi::Status::GenericFailure,

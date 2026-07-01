@@ -2,11 +2,11 @@ use std::ffi::{CString, c_void};
 
 use native::ffi::Arg;
 use native::ffi::codec::{
-    ArrayCodec, ArrayKind, BooleanCodec, Codec, FloatKind, IntegerCodec, Ownership, StringCodec,
+    ArrayCodec, ArrayKind, BooleanCodec, Codec, FloatCodec, IntegerCodec, Ownership, StringCodec,
     VoidCodec,
 };
 use native::ffi::value;
-use native::ffi::{Stash, StashKind, StashedValue};
+use native::ffi::{Stash, StashStorage, StashedValue};
 
 macro_rules! expect_variant {
     ($arg:expr, $variant:ident) => {{
@@ -39,7 +39,7 @@ fn u8_array_arg(value: value::Value) -> Arg {
 fn stash_new_stores_value_and_ptr() {
     let data = vec![1u32, 2, 3, 4, 5];
     let ptr = data.as_ptr() as *mut c_void;
-    let owned = Stash::new(ptr, StashKind::U32Vec(data));
+    let owned = Stash::new(ptr, StashStorage::U32Vec(data));
 
     assert_eq!(owned.ptr(), ptr);
 }
@@ -59,7 +59,7 @@ fn stash_from_vec_captures_correct_pointer() {
 fn stash_keeps_cstring_alive() {
     let cstring = CString::new("test string").unwrap();
     let ptr = cstring.as_ptr() as *mut c_void;
-    let owned = Stash::new(ptr, StashKind::CString(cstring));
+    let owned = Stash::new(ptr, StashStorage::CString(cstring));
 
     unsafe {
         let s = std::ffi::CStr::from_ptr(owned.ptr() as *const i8);
@@ -76,7 +76,7 @@ fn stash_tuple_keeps_both_alive() {
     let ptrs: Vec<*mut c_void> = strings.iter().map(|s| s.as_ptr() as *mut c_void).collect();
     let tuple_ptr = ptrs.as_ptr() as *mut c_void;
 
-    let owned = Stash::new(tuple_ptr, StashKind::StringArray(strings, ptrs));
+    let owned = Stash::new(tuple_ptr, StashStorage::StringArray(strings, ptrs));
 
     unsafe {
         let ptr_slice = std::slice::from_raw_parts(owned.ptr() as *const *const i8, 2);
@@ -91,7 +91,7 @@ fn stash_tuple_keeps_both_alive() {
 fn stash_drops_value_when_dropped() {
     let data = vec![1u8, 2, 3, 4, 5];
     let ptr = data.as_ptr() as *mut c_void;
-    let owned = Stash::new(ptr, StashKind::U8Vec(data));
+    let owned = Stash::new(ptr, StashStorage::U8Vec(data));
 
     drop(owned);
 }
@@ -153,7 +153,7 @@ fn try_from_integer_optional_null() {
 
 #[test]
 fn try_from_float_f32() {
-    let arg = Arg::new(Codec::Float(FloatKind::F32), value::Value::Number(3.125));
+    let arg = Arg::new(Codec::Float(FloatCodec::F32), value::Value::Number(3.125));
 
     let v = expect_variant!(arg, F32);
     assert!((v - 3.125).abs() < 0.001);
@@ -161,7 +161,7 @@ fn try_from_float_f32() {
 
 #[test]
 fn try_from_float_f64() {
-    let arg = Arg::new(Codec::Float(FloatKind::F64), value::Value::Number(2.625));
+    let arg = Arg::new(Codec::Float(FloatCodec::F64), value::Value::Number(2.625));
 
     let v = expect_variant!(arg, F64);
     assert!((v - 2.625).abs() < 0.000_000_1);
@@ -179,8 +179,8 @@ fn try_from_string_full() {
 
     let encoded = StashedValue::try_from(arg).expect("full string should encode");
     encoded.disarm_pending_transfer();
-    let StashedValue::Storage(storage) = &encoded else {
-        panic!("Expected StashedValue::Storage, got {encoded:?}");
+    let StashedValue::Stashed(storage) = &encoded else {
+        panic!("Expected StashedValue::Stashed, got {encoded:?}");
     };
     let ptr = storage.ptr();
     unsafe {
@@ -200,7 +200,7 @@ fn try_from_string_borrowed() {
         value::Value::String("hello world".to_string()),
     );
 
-    let owned = expect_variant!(arg, Storage);
+    let owned = expect_variant!(arg, Stashed);
     unsafe {
         let s = std::ffi::CStr::from_ptr(owned.ptr() as *const i8);
         assert_eq!(s.to_str().unwrap(), "hello world");
@@ -261,7 +261,7 @@ fn try_from_array_u8() {
         value::Value::Number(3.0),
     ]));
 
-    let owned = expect_variant!(arg, Storage);
+    let owned = expect_variant!(arg, Stashed);
     unsafe {
         let slice = std::slice::from_raw_parts(owned.ptr() as *const u8, 3);
         assert_eq!(slice, &[1, 2, 3]);
@@ -286,7 +286,7 @@ fn try_from_array_i32() {
         ]),
     );
 
-    let owned = expect_variant!(arg, Storage);
+    let owned = expect_variant!(arg, Stashed);
     unsafe {
         let slice = std::slice::from_raw_parts(owned.ptr() as *const i32, 3);
         assert_eq!(slice, &[-10, 0, 10]);
@@ -297,7 +297,7 @@ fn try_from_array_i32() {
 fn try_from_array_f64() {
     let arg = Arg::new(
         Codec::Array(ArrayCodec {
-            item_codec: Box::new(Codec::Float(FloatKind::F64)),
+            item_codec: Box::new(Codec::Float(FloatCodec::F64)),
             kind: ArrayKind::Array,
             ownership: Ownership::Full,
             size_param_index: None,
@@ -307,7 +307,7 @@ fn try_from_array_f64() {
         value::Value::Array(vec![value::Value::Number(1.1), value::Value::Number(2.2)]),
     );
 
-    let owned = expect_variant!(arg, Storage);
+    let owned = expect_variant!(arg, Stashed);
     unsafe {
         let slice = std::slice::from_raw_parts(owned.ptr() as *const f64, 2);
         assert!((slice[0] - 1.1).abs() < 0.001);
@@ -335,7 +335,7 @@ fn try_from_array_string() {
         ]),
     );
 
-    let owned = expect_variant!(arg, Storage);
+    let owned = expect_variant!(arg, Stashed);
     unsafe {
         let ptrs = std::slice::from_raw_parts(owned.ptr() as *const *const i8, 3);
         let s0 = std::ffi::CStr::from_ptr(ptrs[0]);
@@ -364,7 +364,7 @@ fn try_from_array_boolean() {
         ]),
     );
 
-    let owned = expect_variant!(arg, Storage);
+    let owned = expect_variant!(arg, Stashed);
     unsafe {
         let slice = std::slice::from_raw_parts(owned.ptr() as *const i32, 3);
         assert_eq!(slice, &[1, 0, 1]);
@@ -414,7 +414,7 @@ fn try_from_array_propagates_encode_error() {
 fn try_from_array_f32_storage_converts_to_libffi_arg() {
     let arg = Arg::new(
         Codec::Array(ArrayCodec {
-            item_codec: Box::new(Codec::Float(FloatKind::F32)),
+            item_codec: Box::new(Codec::Float(FloatCodec::F32)),
             kind: ArrayKind::Array,
             ownership: Ownership::Full,
             size_param_index: None,

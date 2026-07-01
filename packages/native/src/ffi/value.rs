@@ -28,7 +28,7 @@ impl Drop for JsRef {
     fn drop(&mut self) {
         let reference = JsRefDeletion::new(self.env, self.raw);
         if std::thread::current().id() == self.owner_thread {
-            reference.delete_on_js_thread();
+            reference.delete_on_node_thread();
         } else {
             Mailbox::global().schedule_js_reference_delete(reference);
         }
@@ -76,7 +76,7 @@ impl JsRef {
 }
 
 pub struct Callback {
-    pub js_func: Arc<JsRef>,
+    pub js_fn: Arc<JsRef>,
 }
 
 impl std::fmt::Debug for Callback {
@@ -86,8 +86,8 @@ impl std::fmt::Debug for Callback {
 }
 
 impl Callback {
-    pub fn new(js_func: Arc<JsRef>) -> Self {
-        Self { js_func }
+    pub fn new(js_fn: Arc<JsRef>) -> Self {
+        Self { js_fn }
     }
 
     pub fn from_js_value(env: &Env, value: Unknown<'_>) -> napi::Result<Self> {
@@ -99,7 +99,7 @@ impl Callback {
 impl Clone for Callback {
     fn clone(&self) -> Self {
         Self {
-            js_func: self.js_func.clone(),
+            js_fn: self.js_fn.clone(),
         }
     }
 }

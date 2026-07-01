@@ -9,7 +9,7 @@ use gtk4::prelude::StaticType as _;
 
 use native::ffi::codec::{
     ArrayCodec, ArrayKind, Codec, EnumFlagsCodec, EnumFlagsKind, Decoder, Encoder,
-    FloatKind, IntegerCodec, Ownership, PointerWriter, ReadSource,
+    FloatCodec, IntegerCodec, Ownership, PtrWriter, ReadSource,
 };
 use native::ffi::library_cache::GlibThreadState;
 use native::ffi::value::Value;
@@ -221,31 +221,31 @@ pub unsafe fn read_slot<C: Decoder>(codec: &C, ptr: *mut c_void) -> anyhow::Resu
     }
 }
 
-pub fn write_return_into_slot<C: PointerWriter>(
+pub fn write_return_into_slot<C: PtrWriter>(
     codec: &C,
     value: &Result<Value, ()>,
 ) -> *mut c_void {
     let mut slot: *mut c_void = std::ptr::null_mut();
-    unsafe { codec.write_return_to_pointer(&mut slot as *mut *mut c_void as *mut c_void, value) };
+    unsafe { codec.write_return_to_ptr(&mut slot as *mut *mut c_void as *mut c_void, value) };
     slot
 }
 
-pub fn write_value_into_slot<C: PointerWriter>(
+pub fn write_value_into_slot<C: PtrWriter>(
     codec: &C,
     initial: *mut c_void,
     value: &Value,
 ) -> *mut c_void {
     let mut slot: *mut c_void = initial;
-    unsafe { codec.write_value_to_pointer(&mut slot as *mut *mut c_void as *mut c_void, value) }
-        .expect("write_value_to_pointer should succeed");
+    unsafe { codec.write_value_to_ptr(&mut slot as *mut *mut c_void as *mut c_void, value) }
+        .expect("write_value_to_ptr should succeed");
     slot
 }
 
-pub fn assert_write_return_err_writes_null<C: PointerWriter>(codec: &C) {
+pub fn assert_write_return_err_writes_null<C: PtrWriter>(codec: &C) {
     let mut slot: *mut c_void = std::ptr::dangling_mut::<c_void>();
     let value: Result<Value, ()> = Err(());
     unsafe {
-        codec.write_return_to_pointer(&mut slot as *mut *mut c_void as *mut c_void, &value);
+        codec.write_return_to_ptr(&mut slot as *mut *mut c_void as *mut c_void, &value);
     }
     assert!(slot.is_null());
 }
@@ -263,7 +263,7 @@ pub fn i32_array_codec(size: u32) -> ArrayCodec {
 
 pub fn f32_array_codec() -> ArrayCodec {
     ArrayCodec {
-        item_codec: Box::new(Codec::Float(FloatKind::F32)),
+        item_codec: Box::new(Codec::Float(FloatCodec::F32)),
         kind: ArrayKind::Sized,
         ownership: Ownership::Borrowed,
         size_param_index: Some(1),

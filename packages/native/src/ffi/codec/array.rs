@@ -6,9 +6,9 @@ use napi_derive::napi;
 
 use super::prelude::*;
 use super::string::str_to_glib_full;
-use crate::ffi::codec::{BigIntCodec, Codec, FloatKind, IntegerCodec};
+use crate::ffi::codec::{BigIntCodec, Codec, FloatCodec, IntegerCodec};
 use crate::ffi::value::BufferViewKind;
-use crate::ffi::{Arg, Stash, StashKind};
+use crate::ffi::{Arg, Stash, StashStorage};
 
 #[napi(string_enum = "lowercase")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -53,8 +53,8 @@ impl Encoder for ArrayCodec {
         }
 
         let encoder: &dyn ArrayKindEncoder = match &self.kind {
-            ArrayKind::GList => &ListEncoder::<ffi::GListFlavor>(PhantomData),
-            ArrayKind::GSList => &ListEncoder::<ffi::GSListFlavor>(PhantomData),
+            ArrayKind::GList => &ListEncoder::<ffi::GListKind>(PhantomData),
+            ArrayKind::GSList => &ListEncoder::<ffi::GSListKind>(PhantomData),
             _ => &NullTerminatedArrayEncoder,
         };
 
@@ -62,10 +62,10 @@ impl Encoder for ArrayCodec {
             ItemCodec::Integer(kind) => {
                 Self::encode_integer_array(&Self::extract_numbers(array)?, kind)
             }
-            ItemCodec::EnumFlags(kind) => Ok(ffi::StashedValue::Storage(
+            ItemCodec::EnumFlags(kind) => Ok(ffi::StashedValue::Stashed(
                 kind.to_stash(&Self::extract_numbers(array)?),
             )),
-            ItemCodec::BigInt(kind) => Ok(ffi::StashedValue::Storage(kind.to_stash(array)?)),
+            ItemCodec::BigInt(kind) => Ok(ffi::StashedValue::Stashed(kind.to_stash(array)?)),
             ItemCodec::Float(kind) => {
                 Self::encode_float_array(&Self::extract_numbers(array)?, kind)
             }
@@ -94,7 +94,7 @@ impl Encoder for ArrayCodec {
                             );
                         }
                     }
-                    return Ok(ffi::StashedValue::Storage(buffer.into()));
+                    return Ok(ffi::StashedValue::Stashed(buffer.into()));
                 }
 
                 encoder.encode_handles(&handles, &self.item_codec, self.ownership)
@@ -129,7 +129,7 @@ impl Decoder for ArrayCodec {
             };
         }
 
-        let ffi::StashedValue::Storage(storage) = stashed_value else {
+        let ffi::StashedValue::Stashed(storage) = stashed_value else {
             bail!("Expected a Storage ffi::StashedValue for Array, got {stashed_value:?}")
         };
 
@@ -221,8 +221,8 @@ impl Decoder for ArrayCodec {
     }
 }
 
-impl PointerWriter for ArrayCodec {
-    unsafe fn write_return_to_pointer(
+impl PtrWriter for ArrayCodec {
+    unsafe fn write_return_to_ptr(
         &self,
         ret: *mut c_void,
         value: &std::result::Result<value::Value, ()>,
@@ -237,7 +237,7 @@ enum ItemCodec {
     Integer(IntegerCodec),
     EnumFlags(IntegerCodec),
     BigInt(BigIntCodec),
-    Float(FloatKind),
+    Float(FloatCodec),
     Boolean,
     Pointer,
     String,
@@ -281,8 +281,8 @@ impl ItemCodec {
                     | (IntegerCodec::I64, BufferViewKind::BigInt64)
                     | (IntegerCodec::U64, BufferViewKind::BigUint64)
             ),
-            Self::Float(FloatKind::F32) => view_kind == BufferViewKind::Float32,
-            Self::Float(FloatKind::F64) => view_kind == BufferViewKind::Float64,
+            Self::Float(FloatCodec::F32) => view_kind == BufferViewKind::Float32,
+            Self::Float(FloatCodec::F64) => view_kind == BufferViewKind::Float64,
             Self::BigInt(kind) => matches!(
                 (kind, view_kind),
                 (BigIntCodec::I64, BufferViewKind::BigInt64)
@@ -296,8 +296,8 @@ impl ItemCodec {
         match self {
             Self::Integer(kind) | Self::EnumFlags(kind) => kind.byte_size(),
             Self::BigInt(kind) => kind.byte_size(),
-            Self::Float(FloatKind::F32) => size_of::<f32>(),
-            Self::Float(FloatKind::F64) => size_of::<f64>(),
+            Self::Float(FloatCodec::F32) => size_of::<f32>(),
+            Self::Float(FloatCodec::F64) => size_of::<f64>(),
             Self::Boolean => size_of::<i32>(),
             Self::Pointer | Self::String => size_of::<*mut c_void>(),
         }
@@ -375,15 +375,15 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
             (Ownership::Borrowed, false) => {
                 let strv = build_strv(array)?;
                 let ptr = strv.as_ptr() as *mut c_void;
-                Ok(ffi::StashedValue::Storage(Stash::new(
+                Ok(ffi::StashedValue::Stashed(Stash::new(
                     ptr,
-                    StashKind::StrV(strv),
+                    StashStorage::StrV(strv),
                 )))
             }
             (Ownership::Full, true) => {
                 let strv = build_strv(array)?;
                 let container = strv.into_raw() as *mut c_void;
-                Ok(full_transfer_storage(
+                Ok(full_transfer_stashed(
                     container,
                     ffi::PendingRelease::StrFreeV,
                 ))
@@ -394,8 +394,8 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
                     cstrings.iter().map(|s| s.as_ptr() as *mut c_void).collect();
                 ptrs.push(std::ptr::null_mut());
                 let container = leak_container_to_callee(&ptrs);
-                Ok(ffi::StashedValue::Storage(
-                    Stash::new(container, StashKind::StringArray(cstrings, Vec::new()))
+                Ok(ffi::StashedValue::Stashed(
+                    Stash::new(container, StashStorage::StringArray(cstrings, Vec::new()))
                         .with_pending_transfer(container, ffi::PendingRelease::GFree),
                 ))
             }
@@ -403,8 +403,8 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
                 let mut ptrs = dup_strings_to_glib(array)?;
                 ptrs.push(std::ptr::null_mut());
                 let ptr = ptrs.as_mut_ptr() as *mut c_void;
-                Ok(ffi::StashedValue::Storage(
-                    Stash::new(ptr, StashKind::StringArray(Vec::new(), ptrs))
+                Ok(ffi::StashedValue::Stashed(
+                    Stash::new(ptr, StashStorage::StringArray(Vec::new(), ptrs))
                         .with_pending_transfer(ptr, ffi::PendingRelease::StringElements),
                 ))
             }
@@ -424,23 +424,23 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
             let container = leak_container_to_callee(&ptrs);
             let release =
                 ffi::PendingRelease::grouped(acquired, container, ffi::PendingRelease::GFree);
-            return Ok(ffi::StashedValue::Storage(
+            return Ok(ffi::StashedValue::Stashed(
                 Stash::new(
                     container,
-                    StashKind::ObjectArray(handles.to_vec(), Vec::new()),
+                    StashStorage::ObjectArray(handles.to_vec(), Vec::new()),
                 )
                 .with_pending_transfer(container, release),
             ));
         }
 
         let ptr = ptrs.as_mut_ptr() as *mut c_void;
-        let storage = Stash::new(ptr, StashKind::ObjectArray(handles.to_vec(), ptrs));
+        let storage = Stash::new(ptr, StashStorage::ObjectArray(handles.to_vec(), ptrs));
         let storage = if acquired.is_empty() {
             storage
         } else {
             storage.with_pending_transfer(ptr, ffi::PendingRelease::Group(acquired))
         };
-        Ok(ffi::StashedValue::Storage(storage))
+        Ok(ffi::StashedValue::Stashed(storage))
     }
 }
 
@@ -478,9 +478,9 @@ fn transfer_elements(
     Ok((ptrs, acquired.into_inner()))
 }
 
-struct ListEncoder<F: ffi::ListFlavor>(PhantomData<F>);
+struct ListEncoder<F: ffi::ListKind>(PhantomData<F>);
 
-impl<F: ffi::ListFlavor> ArrayKindEncoder for ListEncoder<F> {
+impl<F: ffi::ListKind> ArrayKindEncoder for ListEncoder<F> {
     fn encode_strings(
         &self,
         array: &[value::Value],
@@ -489,7 +489,7 @@ impl<F: ffi::ListFlavor> ArrayKindEncoder for ListEncoder<F> {
     ) -> anyhow::Result<ffi::StashedValue> {
         let should_free = ownership.is_borrowed();
         let (strings, ptrs) = string_list_parts(array, dup_elements)?;
-        let list = F::build_spine(&ptrs);
+        let list = F::build_list(&ptrs);
         let storage = Stash::new(
             list as *mut c_void,
             F::string_storage(strings, list, should_free, dup_elements),
@@ -504,10 +504,10 @@ impl<F: ffi::ListFlavor> ArrayKindEncoder for ListEncoder<F> {
             } else {
                 Vec::new()
             };
-            let release = ffi::PendingRelease::grouped(acquired, list.cast(), F::spine_release());
+            let release = ffi::PendingRelease::grouped(acquired, list.cast(), F::pending_release());
             storage.with_pending_transfer(list as *mut c_void, release)
         };
-        Ok(ffi::StashedValue::Storage(storage))
+        Ok(ffi::StashedValue::Stashed(storage))
     }
 
     fn encode_handles(
@@ -518,7 +518,7 @@ impl<F: ffi::ListFlavor> ArrayKindEncoder for ListEncoder<F> {
     ) -> anyhow::Result<ffi::StashedValue> {
         let should_free = ownership.is_borrowed();
         let (ptrs, acquired) = transfer_elements(handles, item_codec, F::LABEL)?;
-        let list = F::build_spine(&ptrs);
+        let list = F::build_list(&ptrs);
         let storage = Stash::new(
             list as *mut c_void,
             F::handle_storage(handles.to_vec(), list, should_free),
@@ -533,10 +533,10 @@ impl<F: ffi::ListFlavor> ArrayKindEncoder for ListEncoder<F> {
                 )
             }
         } else {
-            let release = ffi::PendingRelease::grouped(acquired, list.cast(), F::spine_release());
+            let release = ffi::PendingRelease::grouped(acquired, list.cast(), F::pending_release());
             storage.with_pending_transfer(list as *mut c_void, release)
         };
-        Ok(ffi::StashedValue::Storage(storage))
+        Ok(ffi::StashedValue::Stashed(storage))
     }
 }
 
@@ -547,7 +547,7 @@ impl ArrayCodec {
             .enumerate()
             .map(|(i, &v)| {
                 if v.is_finite() && (v > f32::MAX as f64 || v < -(f32::MAX as f64)) {
-                    let name: &'static str = (&FloatKind::F32).into();
+                    let name: &'static str = (&FloatCodec::F32).into();
                     bail!("Array element {i}: value {v} is out of range for {name}");
                 }
                 Ok(v as f32)
@@ -557,27 +557,27 @@ impl ArrayCodec {
 
     fn encode_integer_array(
         values: &[f64],
-        integer_kind: IntegerCodec,
+        integer_codec: IntegerCodec,
     ) -> anyhow::Result<ffi::StashedValue> {
-        Ok(ffi::StashedValue::Storage(
-            integer_kind.checked_to_stash(values)?,
+        Ok(ffi::StashedValue::Stashed(
+            integer_codec.checked_to_stash(values)?,
         ))
     }
 
     fn encode_float_array(
         values: &[f64],
-        float_kind: FloatKind,
+        float_codec: FloatCodec,
     ) -> anyhow::Result<ffi::StashedValue> {
-        match float_kind {
-            FloatKind::F32 => Ok(ffi::StashedValue::Storage(
+        match float_codec {
+            FloatCodec::F32 => Ok(ffi::StashedValue::Stashed(
                 Self::checked_f32_vec(values)?.into(),
             )),
-            FloatKind::F64 => Ok(ffi::StashedValue::Storage(values.to_vec().into())),
+            FloatCodec::F64 => Ok(ffi::StashedValue::Stashed(values.to_vec().into())),
         }
     }
 
     fn encode_boolean_array(values: &[i32]) -> ffi::StashedValue {
-        ffi::StashedValue::Storage(values.to_vec().into())
+        ffi::StashedValue::Stashed(values.to_vec().into())
     }
 
     fn extract_numbers(array: &[value::Value]) -> anyhow::Result<Vec<f64>> {
@@ -641,7 +641,7 @@ impl ArrayCodec {
         }
         let values = match codec {
             ItemCodec::Integer(kind) => {
-                unsafe { kind.read_slice_checked(data, len, "array element") }?
+                unsafe { kind.checked_read_slice(data, len, "array element") }?
                     .into_iter()
                     .map(value::Value::Number)
                     .collect()
@@ -651,13 +651,13 @@ impl ArrayCodec {
                 .map(value::Value::Number)
                 .collect(),
             ItemCodec::BigInt(kind) => unsafe { kind.read_slice(data, len) },
-            ItemCodec::Float(FloatKind::F32) => {
+            ItemCodec::Float(FloatCodec::F32) => {
                 unsafe { std::slice::from_raw_parts(data.cast::<f32>(), len) }
                     .iter()
                     .map(|&v| value::Value::Number(f64::from(v)))
                     .collect()
             }
-            ItemCodec::Float(FloatKind::F64) => {
+            ItemCodec::Float(FloatCodec::F64) => {
                 unsafe { std::slice::from_raw_parts(data.cast::<f64>(), len) }
                     .iter()
                     .copied()
@@ -747,7 +747,7 @@ impl ArrayCodec {
             .is_borrowed()
             .then(|| unsafe { glib::translate::from_glib_full(byte_array) });
 
-        let storage = Stash::new(byte_array as *mut c_void, StashKind::GByteArray(owned));
+        let storage = Stash::new(byte_array as *mut c_void, StashStorage::GByteArray(owned));
         let storage = if self.ownership.is_full() {
             storage.with_pending_transfer(
                 byte_array as *mut c_void,
@@ -756,17 +756,17 @@ impl ArrayCodec {
         } else {
             storage
         };
-        Ok(ffi::StashedValue::Storage(storage))
+        Ok(ffi::StashedValue::Stashed(storage))
     }
 
     fn append_integer_values_to_garray(
         g_array: *mut glib::ffi::GArray,
-        integer_kind: super::IntegerCodec,
+        integer_codec: super::IntegerCodec,
         array: &[value::Value],
     ) -> anyhow::Result<()> {
         let mut buf = [0u8; size_of::<i64>()];
         for n in Self::extract_numbers(array)? {
-            unsafe { integer_kind.write_ptr(buf.as_mut_ptr(), n) };
+            unsafe { integer_codec.write_ptr(buf.as_mut_ptr(), n) };
             unsafe {
                 glib::ffi::g_array_append_vals(g_array, buf.as_ptr() as *const c_void, 1);
             }
@@ -791,12 +791,12 @@ impl ArrayCodec {
 
     fn append_float_values_to_garray(
         g_array: *mut glib::ffi::GArray,
-        float_kind: super::FloatKind,
+        float_codec: super::FloatCodec,
         array: &[value::Value],
     ) -> anyhow::Result<()> {
         for n in Self::extract_numbers(array)? {
-            match float_kind {
-                super::FloatKind::F32 => {
+            match float_codec {
+                super::FloatCodec::F32 => {
                     let v = n as f32;
                     unsafe {
                         glib::ffi::g_array_append_vals(
@@ -806,7 +806,7 @@ impl ArrayCodec {
                         );
                     }
                 }
-                super::FloatKind::F64 => unsafe {
+                super::FloatCodec::F64 => unsafe {
                     glib::ffi::g_array_append_vals(g_array, &n as *const f64 as *const c_void, 1);
                 },
             }
@@ -865,9 +865,9 @@ impl ArrayCodec {
                 unsafe extern "C" fn free_garray_string_element(slot: glib::ffi::gpointer) {
                     unsafe { glib::ffi::g_free(*(slot as *mut glib::ffi::gpointer)) };
                 }
-                let callee_adopts_strings =
+                let callee_owns_strings =
                     matches!(&*self.item_codec, Codec::String(s) if s.ownership.is_full());
-                if !callee_adopts_strings {
+                if !callee_owns_strings {
                     unsafe {
                         glib::ffi::g_array_set_clear_func(
                             g_array,
@@ -877,7 +877,7 @@ impl ArrayCodec {
                 }
                 let mut acquired = Vec::new();
                 for dup in dup_strings_to_glib(array)? {
-                    if callee_adopts_strings {
+                    if callee_owns_strings {
                         acquired.push(ffi::PendingTransfer::new(dup, ffi::PendingRelease::GFree));
                     }
                     unsafe {
@@ -925,7 +925,7 @@ impl ArrayCodec {
         let should_free = self.ownership.is_borrowed();
         let storage = Stash::new(
             g_array as *mut c_void,
-            StashKind::GArray(ffi::GArrayData {
+            StashStorage::GArray(ffi::GArrayData {
                 array_ptr: g_array,
                 should_free,
             }),
@@ -947,7 +947,7 @@ impl ArrayCodec {
             );
             storage.with_pending_transfer(g_array as *mut c_void, release)
         };
-        Ok(ffi::StashedValue::Storage(storage))
+        Ok(ffi::StashedValue::Stashed(storage))
     }
 }
 
@@ -998,7 +998,7 @@ impl ArrayCodec {
         let values = self.decode_contiguous(codec, data, len);
 
         if self.ownership.is_full() {
-            let storage_owns = matches!(stashed_value, ffi::StashedValue::Storage(_));
+            let storage_owns = matches!(stashed_value, ffi::StashedValue::Stashed(_));
             if !storage_owns {
                 unsafe { glib::ffi::g_array_unref(array_ptr as *mut glib::ffi::GArray) };
             }
@@ -1035,7 +1035,7 @@ impl ArrayCodec {
         };
 
         let byte_array = ptr as *mut glib::ffi::GByteArray;
-        let storage_owns = matches!(stashed_value, ffi::StashedValue::Storage(_));
+        let storage_owns = matches!(stashed_value, ffi::StashedValue::Stashed(_));
         let adopted: Option<glib::ByteArray> = (self.ownership.is_full() && !storage_owns)
             .then(|| unsafe { glib::translate::from_glib_full(byte_array) });
 
@@ -1138,40 +1138,40 @@ impl ArrayCodec {
         value::Value::Array(values)
     }
 
-    fn decode_storage(&self, storage: &Stash) -> anyhow::Result<value::Value> {
+    fn decode_storage(&self, stash: &Stash) -> anyhow::Result<value::Value> {
         let values = match self.item_codec("array")? {
             ItemCodec::Integer(kind) | ItemCodec::EnumFlags(kind) => kind
-                .vec_to_f64(storage)?
+                .vec_to_f64(stash)?
                 .into_iter()
                 .map(value::Value::Number)
                 .collect(),
-            ItemCodec::BigInt(kind) => storage
+            ItemCodec::BigInt(kind) => stash
                 .as_bigint_vec(kind)?
                 .into_iter()
                 .map(value::Value::BigInt)
                 .collect(),
-            ItemCodec::Float(FloatKind::F32) => storage
+            ItemCodec::Float(FloatCodec::F32) => stash
                 .as_f32_slice()?
                 .iter()
                 .map(|v| value::Value::Number(f64::from(*v)))
                 .collect(),
-            ItemCodec::Float(FloatKind::F64) => storage
+            ItemCodec::Float(FloatCodec::F64) => stash
                 .as_f64_slice()?
                 .iter()
                 .map(|v| value::Value::Number(*v))
                 .collect(),
-            ItemCodec::Boolean => storage
+            ItemCodec::Boolean => stash
                 .as_bool_slice()?
                 .iter()
                 .map(|v| value::Value::Boolean(*v != 0))
                 .collect(),
-            ItemCodec::Pointer => storage
+            ItemCodec::Pointer => stash
                 .as_object_array()?
                 .iter()
                 .map(|handle| value::Value::Object(handle.clone()))
                 .collect(),
-            ItemCodec::String => match storage.kind() {
-                StashKind::StrV(strv) => strv
+            ItemCodec::String => match stash.storage() {
+                StashStorage::StrV(strv) => strv
                     .iter()
                     .map(|item| {
                         value::Value::String(
@@ -1179,7 +1179,7 @@ impl ArrayCodec {
                         )
                     })
                     .collect(),
-                _ => storage
+                _ => stash
                     .as_cstring_array()?
                     .iter()
                     .map(|cstr| Ok(value::Value::String(cstr.to_str()?.to_string())))
@@ -1231,15 +1231,15 @@ impl ArrayCodec {
         let arg = &args[size_index];
 
         if let Codec::Ref(ref_codec) = &arg.codec
-            && let Codec::Integer(integer_kind) = &*ref_codec.inner_codec
+            && let Codec::Integer(integer_codec) = &*ref_codec.inner_codec
         {
             match ffi_arg {
-                ffi::StashedValue::Storage(storage) => {
-                    let size = unsafe { integer_kind.read_ptr(storage.ptr() as *const u8) };
+                ffi::StashedValue::Stashed(storage) => {
+                    let size = unsafe { integer_codec.read_ptr(storage.ptr() as *const u8) };
                     return Self::validated_size(size, size_index);
                 }
                 ffi::StashedValue::Ptr(ptr) if !ptr.is_null() => {
-                    let size = unsafe { integer_kind.read_ptr(*ptr as *const u8) };
+                    let size = unsafe { integer_codec.read_ptr(*ptr as *const u8) };
                     return Self::validated_size(size, size_index);
                 }
                 _ => {}

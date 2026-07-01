@@ -26,14 +26,14 @@ impl Request for CallRequest {
     fn execute(self) -> anyhow::Result<(Value, Vec<RefUpdate>)> {
         let args: Vec<Arg> = self
             .descriptor
-            .arg_descriptors
+            .arg_codecs
             .iter()
             .cloned()
             .zip(self.values)
-            .map(|(descriptor, value)| Arg::new(descriptor, value))
+            .map(|(codec, value)| Arg::new(codec, value))
             .collect();
         let symbol_name = &self.descriptor.symbol_name;
-        let return_descriptor = &self.descriptor.return_descriptor;
+        let return_codec = &self.descriptor.return_codec;
 
         let mut arg_types: Vec<libffi::Type> = Vec::with_capacity(args.len() + 1);
         for arg in args.iter() {
@@ -41,7 +41,7 @@ impl Request for CallRequest {
         }
 
         let cif = libffi::Builder::new()
-            .res(return_descriptor.libffi_type())
+            .res(return_codec.libffi_type())
             .args(arg_types)
             .into_cif();
 
@@ -70,7 +70,7 @@ impl Request for CallRequest {
             })?
         };
 
-        let result = return_descriptor
+        let result = return_codec
             .call_cif(&cif, symbol_ptr, &ffi_args)
             .with_context(|| format!("calling {symbol_name}"))?;
 
@@ -80,11 +80,11 @@ impl Request for CallRequest {
 
         let ref_updates = Self::collect_ref_updates(&args, &stashed_values);
 
-        let return_value = return_descriptor
+        let return_value = return_codec
             .decode_with_context(&result, &stashed_values, &args)
             .with_context(|| format!("decoding return value of {symbol_name}"));
 
-        Self::release_sized_array_return(return_descriptor, &result);
+        Self::release_sized_array_return(return_codec, &result);
 
         let ref_updates = ref_updates?;
         let return_value = return_value?;
@@ -97,12 +97,12 @@ impl Request for CallRequest {
 }
 
 impl CallRequest {
-    fn release_sized_array_return(result_type: &Codec, result: &ffi::StashedValue) {
-        let Codec::Array(array_type) = result_type else {
+    fn release_sized_array_return(result_codec: &Codec, result: &ffi::StashedValue) {
+        let Codec::Array(array_codec) = result_codec else {
             return;
         };
-        if !array_type.ownership.is_full()
-            || !matches!(array_type.kind, ArrayKind::Sized | ArrayKind::Fixed)
+        if !array_codec.ownership.is_full()
+            || !matches!(array_codec.kind, ArrayKind::Sized | ArrayKind::Fixed)
         {
             return;
         }
@@ -141,13 +141,13 @@ pub mod napi_export {
     ) -> napi::Result<Unknown<'env>> {
         let descriptor: Arc<CallDescriptor> = Arc::clone(descriptor);
         let parsed_values = crate::ffi::value::map_js_array(env, &values, Value::from_js_value)?;
-        if parsed_values.len() != descriptor.arg_descriptors.len() {
+        if parsed_values.len() != descriptor.arg_codecs.len() {
             return Err(napi::Error::new(
                 napi::Status::InvalidArg,
                 format!(
                     "{}: expected {} arguments, received {}",
                     descriptor.symbol_name,
-                    descriptor.arg_descriptors.len(),
+                    descriptor.arg_codecs.len(),
                     parsed_values.len()
                 ),
             ));

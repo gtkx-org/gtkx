@@ -55,13 +55,13 @@ impl FreezeController {
     pub(super) fn run_loop(&self, mailbox: &Mailbox) {
         self.live_loops.fetch_add(1, Ordering::AcqRel);
         loop {
-            mailbox.dispatch_pending();
+            mailbox.process_glib_pending();
             if self.depth.load(Ordering::Acquire) == 0 || mailbox.is_not_running() {
                 break;
             }
             self.wake.wait();
         }
         self.live_loops.fetch_sub(1, Ordering::AcqRel);
-        mailbox.dispatch_pending();
+        mailbox.process_glib_pending();
     }
 }

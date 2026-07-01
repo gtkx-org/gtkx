@@ -11,7 +11,7 @@ pub struct Boxed {
     ptr: *mut c_void,
     gtype: Option<glib::Type>,
     free_fn: Option<BoxedFreeFn>,
-    ownership: Option<Rc<OwnedAllocation>>,
+    allocation: Option<Rc<OwnedAllocation>>,
 }
 
 #[derive(Debug)]
@@ -64,7 +64,7 @@ impl Boxed {
             ptr,
             gtype,
             free_fn,
-            ownership: Some(Rc::new(OwnedAllocation { ptr, destructor })),
+            allocation: Some(Rc::new(OwnedAllocation { ptr, destructor })),
         }
     }
 
@@ -73,7 +73,7 @@ impl Boxed {
             ptr,
             gtype,
             free_fn,
-            ownership: None,
+            allocation: None,
         }
     }
 
@@ -157,7 +157,7 @@ impl Boxed {
 
     #[inline]
     pub fn is_owned(&self) -> bool {
-        self.ownership.is_some()
+        self.allocation.is_some()
     }
 
     pub fn gtype(&self) -> Option<glib::Type> {
@@ -172,7 +172,7 @@ impl Boxed {
 
 impl Clone for Boxed {
     fn clone(&self) -> Self {
-        if self.ptr.is_null() || self.ownership.is_none() {
+        if self.ptr.is_null() || self.allocation.is_none() {
             return Self::borrowed(self.ptr, self.gtype, self.free_fn);
         }
 
@@ -192,7 +192,7 @@ impl Clone for Boxed {
             ptr: self.ptr,
             gtype: self.gtype,
             free_fn: self.free_fn,
-            ownership: self.ownership.clone(),
+            allocation: self.allocation.clone(),
         }
     }
 }

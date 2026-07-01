@@ -25,7 +25,7 @@ type GlibTask = Box<dyn FnOnce() + Send + 'static>;
 
 type DepthTaggedTask = (usize, GlibTask);
 
-pub type WakeJsTsfn = ThreadsafeFunction<(), (), (), Status, false, true>;
+pub type WakeNodeTsfn = ThreadsafeFunction<(), (), (), Status, false, true>;
 
 pub type NodeCallbackResult = (Value, Vec<(usize, Value)>);
 
@@ -33,7 +33,7 @@ struct NodeCallback {
     callback: Arc<JsRef>,
     args: Vec<Value>,
     capture_result: bool,
-    out_cell_indices: Vec<usize>,
+    ref_indices: Vec<usize>,
     result_tx: mpsc::Sender<anyhow::Result<NodeCallbackResult>>,
     glib_initiated: bool,
 }
@@ -62,7 +62,7 @@ impl JsRefDeletion {
         Self { env, raw }
     }
 
-    pub(crate) fn delete_on_js_thread(self) {
+    pub(crate) fn delete_on_node_thread(self) {
         let status = unsafe { sys::napi_delete_reference(self.env, self.raw) };
         debug_assert_eq!(status, sys::Status::napi_ok);
     }
@@ -74,10 +74,10 @@ pub struct Mailbox {
 
     callback_depth: AtomicUsize,
 
-    wake_js: WaitSignal,
+    wake_node: WaitSignal,
     wake_glib: WaitSignal,
 
-    wake_js_tsfn: OnceLock<Arc<WakeJsTsfn>>,
+    wake_node_tsfn: OnceLock<Arc<WakeNodeTsfn>>,
 
     running: AtomicBool,
 
@@ -105,9 +105,9 @@ impl Mailbox {
             glib_inbox: Mutex::new(VecDeque::new()),
             node_inbox: Mutex::new(VecDeque::new()),
             callback_depth: AtomicUsize::new(0),
-            wake_js: WaitSignal::new(),
+            wake_node: WaitSignal::new(),
             wake_glib: WaitSignal::new(),
-            wake_js_tsfn: OnceLock::new(),
+            wake_node_tsfn: OnceLock::new(),
             running: AtomicBool::new(true),
             freeze: FreezeController::new(),
         }
@@ -119,7 +119,7 @@ impl Mailbox {
 
     pub fn mark_not_running(&self) {
         self.running.store(false, Ordering::Release);
-        self.wake_js.notify();
+        self.wake_node.notify();
         self.wake_glib.notify();
         self.freeze.wake_for_shutdown();
     }
@@ -145,7 +145,7 @@ impl Mailbox {
     }
 
     pub fn is_initialized(&self) -> bool {
-        self.wake_js_tsfn.get().is_some()
+        self.wake_node_tsfn.get().is_some()
     }
 
     pub fn enter_glib_callback(&self) {
@@ -164,9 +164,9 @@ pub(crate) fn send_or_report<T>(tx: &mpsc::Sender<T>, value: T, context: &str) {
 }
 
 #[derive(Debug, Clone)]
-pub struct GlibDispatchError(String);
+pub struct GlibInvokeError(String);
 
-impl GlibDispatchError {
+impl GlibInvokeError {
     pub(crate) fn disconnected() -> Self {
         Self("GLib thread disconnected".to_owned())
     }
@@ -176,10 +176,10 @@ impl GlibDispatchError {
     }
 }
 
-impl std::fmt::Display for GlibDispatchError {
+impl std::fmt::Display for GlibInvokeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
     }
 }
 
-impl std::error::Error for GlibDispatchError {}
+impl std::error::Error for GlibInvokeError {}

@@ -16,20 +16,20 @@ use crate::messaging::Mailbox;
 
 enum AnchoredValue {
     ThreadBound(ThreadGuard<Value>),
-    Transferable(TransferableValue),
+    Sendable(SendableValue),
 }
 
-struct TransferableValue(ManuallyDrop<Value>);
+struct SendableValue(ManuallyDrop<Value>);
 
-unsafe impl Send for TransferableValue {}
+unsafe impl Send for SendableValue {}
 
-impl TransferableValue {
+impl SendableValue {
     fn get_ref(&self) -> &Value {
         &self.0
     }
 }
 
-impl Drop for TransferableValue {
+impl Drop for SendableValue {
     fn drop(&mut self) {
         unsafe { ManuallyDrop::drop(&mut self.0) };
     }
@@ -40,7 +40,7 @@ impl AnchoredValue {
         let on_foreign_thread =
             Mailbox::global().is_initialized() && !glib::MainContext::default().is_owner();
         if on_foreign_thread {
-            Self::Transferable(TransferableValue(ManuallyDrop::new(value)))
+            Self::Sendable(SendableValue(ManuallyDrop::new(value)))
         } else {
             Self::ThreadBound(ThreadGuard::new(value))
         }
@@ -49,14 +49,14 @@ impl AnchoredValue {
     fn get_ref(&self) -> &Value {
         match self {
             Self::ThreadBound(guard) => guard.get_ref(),
-            Self::Transferable(value) => value.get_ref(),
+            Self::Sendable(value) => value.get_ref(),
         }
     }
 
-    fn droppable_here(&self) -> bool {
+    fn droppable_on_current_thread(&self) -> bool {
         match self {
             Self::ThreadBound(guard) => guard.is_owner(),
-            Self::Transferable(_) => glib::MainContext::default().is_owner(),
+            Self::Sendable(_) => glib::MainContext::default().is_owner(),
         }
     }
 }
@@ -154,16 +154,16 @@ impl Drop for Handle {
             && flag.swap(false, Ordering::AcqRel)
             && !Mailbox::global().is_not_running()
         {
-            let gobject_addr = self.ptr;
+            let gobject_ptr = self.ptr;
             glib::idle_add_once(move || unsafe {
-                glib::gobject_ffi::g_object_unref(gobject_addr as *mut glib::gobject_ffi::GObject);
+                glib::gobject_ffi::g_object_unref(gobject_ptr as *mut glib::gobject_ffi::GObject);
             });
         }
 
         let Some(anchored) = self.owned_value.take() else {
             return;
         };
-        if anchored.droppable_here() {
+        if anchored.droppable_on_current_thread() {
             drop(anchored);
         } else if Mailbox::global().is_not_running() {
             std::mem::forget(anchored);

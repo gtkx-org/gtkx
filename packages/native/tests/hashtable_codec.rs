@@ -11,11 +11,11 @@ use gtk4::prelude::StaticType as _;
 use native::Handle;
 use native::ffi::StashedValue;
 use native::ffi::codec::{
-    ArrayCodec, ArrayKind, BooleanCodec, BoxedCodec, Codec, FloatKind, FundamentalCodec,
+    ArrayCodec, ArrayKind, BooleanCodec, BoxedCodec, Codec, FloatCodec, FundamentalCodec,
     HashTableCodec, HashTableEntryCodec, IntegerCodec, ObjectCodec, Ownership, StringCodec,
     StructCodec,
 };
-use native::ffi::codec::{Decoder, Encoder, PointerWriter, ReadSource};
+use native::ffi::codec::{Decoder, Encoder, PtrWriter, ReadSource};
 use native::ffi::value::Value;
 
 fn struct_type() -> Codec {
@@ -66,12 +66,12 @@ fn full_gobject_type() -> Codec {
     })
 }
 
-fn full_variant_fundamental_encoder(ref_func: &str, unref_func: &str) -> HashTableEntryCodec {
+fn full_variant_fundamental_encoder(ref_fn_name: &str, unref_fn_name: &str) -> HashTableEntryCodec {
     HashTableEntryCodec::Handle(Box::new(Codec::Fundamental(FundamentalCodec {
         ownership: Ownership::Full,
         shared_library: "libglib-2.0.so.0".to_owned(),
-        ref_func: ref_func.to_owned(),
-        unref_func: unref_func.to_owned(),
+        ref_fn_name: ref_fn_name.to_owned(),
+        unref_fn_name: unref_fn_name.to_owned(),
         type_name: Some("GVariant".to_owned()),
     })))
 }
@@ -80,8 +80,8 @@ fn param_spec_fundamental_type() -> Codec {
     Codec::Fundamental(FundamentalCodec {
         ownership: Ownership::Full,
         shared_library: "libgobject-2.0.so.0".to_owned(),
-        ref_func: "g_param_spec_ref".to_owned(),
-        unref_func: "g_param_spec_unref".to_owned(),
+        ref_fn_name: "g_param_spec_ref".to_owned(),
+        unref_fn_name: "g_param_spec_unref".to_owned(),
         type_name: Some("GParam".to_owned()),
     })
 }
@@ -185,7 +185,7 @@ fn encoder_from_type_boolean() {
 
 #[test]
 fn encoder_from_type_float() {
-    let descriptor = Codec::Float(FloatKind::F64);
+    let descriptor = Codec::Float(FloatCodec::F64);
     let encoder = HashTableEntryCodec::from_codec(&descriptor);
     assert!(matches!(encoder, Some(HashTableEntryCodec::Float)));
 }
@@ -278,7 +278,7 @@ fn ptr_to_value_boolean_nonzero_is_true() {
 
 #[test]
 fn ptr_to_value_float() {
-    let descriptor = Codec::Float(FloatKind::F64);
+    let descriptor = Codec::Float(FloatCodec::F64);
     let float_val: f64 = std::f64::consts::E;
     let ptr = unsafe {
         let mem = glib::ffi::g_malloc(std::mem::size_of::<f64>()) as *mut f64;
@@ -361,7 +361,7 @@ fn hashtable_encode_decode_floats() {
     helpers::run(|| {
         let ht_type = ht_type(
             Codec::Integer(IntegerCodec::I32),
-            Codec::Float(FloatKind::F64),
+            Codec::Float(FloatCodec::F64),
             Ownership::Full,
         );
 
@@ -418,7 +418,7 @@ fn hashtable_encode_decode_string_to_boolean() {
 fn hashtable_encode_decode_float_keys() {
     helpers::run(|| {
         let ht_type = ht_type(
-            Codec::Float(FloatKind::F64),
+            Codec::Float(FloatCodec::F64),
             Codec::Integer(IntegerCodec::I32),
             Ownership::Full,
         );
@@ -503,8 +503,8 @@ fn hashtable_borrowed_does_not_free() {
 fn float_memory_properly_freed_on_drop() {
     helpers::run(|| {
         let ht_type = ht_type(
-            Codec::Float(FloatKind::F64),
-            Codec::Float(FloatKind::F64),
+            Codec::Float(FloatCodec::F64),
+            Codec::Float(FloatCodec::F64),
             Ownership::Full,
         );
 
@@ -805,7 +805,7 @@ fn gobject_value_unreffed_when_hashtable_storage_drops() {
         let encoded = ht_type.encode(&input).expect("encoding should succeed");
         assert_eq!(helpers::get_gobject_refcount(obj_ptr), before + 1);
 
-        let StashedValue::Storage(storage) = &encoded else {
+        let StashedValue::Stashed(storage) = &encoded else {
             panic!("Expected Storage ffi value")
         };
         let size =
@@ -919,7 +919,7 @@ fn write_return_to_pointer_full_table_hands_caller_owned_table() {
         ])]);
         let mut slot: *mut c_void = std::ptr::null_mut();
         let ret = &mut slot as *mut *mut c_void as *mut c_void;
-        unsafe { PointerWriter::write_return_to_pointer(&descriptor, ret, &Ok(val)) };
+        unsafe { PtrWriter::write_return_to_ptr(&descriptor, ret, &Ok(val)) };
         assert!(!slot.is_null());
         let table = slot as *mut glib::ffi::GHashTable;
         let size = unsafe { glib::ffi::g_hash_table_size(table) };
@@ -933,15 +933,15 @@ fn write_return_to_pointer_null_err_and_non_array_write_null() {
     let descriptor = string_hashtable_type(Ownership::Full);
     let mut slot: *mut c_void = 7 as *mut c_void;
     let ret = &mut slot as *mut *mut c_void as *mut c_void;
-    unsafe { PointerWriter::write_return_to_pointer(&descriptor, ret, &Ok(Value::Null)) };
+    unsafe { PtrWriter::write_return_to_ptr(&descriptor, ret, &Ok(Value::Null)) };
     assert!(slot.is_null());
 
     slot = 7 as *mut c_void;
-    unsafe { PointerWriter::write_return_to_pointer(&descriptor, ret, &Err(())) };
+    unsafe { PtrWriter::write_return_to_ptr(&descriptor, ret, &Err(())) };
     assert!(slot.is_null());
 
     slot = 7 as *mut c_void;
-    unsafe { PointerWriter::write_return_to_pointer(&descriptor, ret, &Ok(Value::Number(1.0))) };
+    unsafe { PtrWriter::write_return_to_ptr(&descriptor, ret, &Ok(Value::Number(1.0))) };
     assert!(slot.is_null());
 }
 
@@ -952,7 +952,7 @@ fn write_return_to_pointer_encode_error_writes_null() {
         let val = Value::Array(vec![Value::String("not a tuple".to_string())]);
         let mut slot: *mut c_void = 7 as *mut c_void;
         let ret = &mut slot as *mut *mut c_void as *mut c_void;
-        unsafe { PointerWriter::write_return_to_pointer(&descriptor, ret, &Ok(val)) };
+        unsafe { PtrWriter::write_return_to_ptr(&descriptor, ret, &Ok(val)) };
         assert!(slot.is_null());
     });
 }

@@ -10,8 +10,8 @@ use native::ffi::value::{BufferView, BufferViewKind, Value};
 
 use helpers::{f32_array_codec, i32_array_codec};
 
-fn decode_array_items(array_type: &ArrayCodec, buffer_ptr: *const i32) -> Vec<Value> {
-    let decoded = array_type
+fn decode_array_items(array_codec: &ArrayCodec, buffer_ptr: *const i32) -> Vec<Value> {
+    let decoded = array_codec
         .decode_with_context(&StashedValue::Ptr(buffer_ptr as *mut c_void), &[], &[])
         .expect("contiguous decode");
     let Value::Array(items) = decoded else {
@@ -23,19 +23,19 @@ fn decode_array_items(array_type: &ArrayCodec, buffer_ptr: *const i32) -> Vec<Va
 #[test]
 fn decodes_contiguous_i32_array_from_buffer() {
     let buffer: Vec<i32> = vec![10, 20, 30, 40];
-    let array_type = i32_array_codec(buffer.len() as u32);
+    let array_codec = i32_array_codec(buffer.len() as u32);
 
-    let items = decode_array_items(&array_type, buffer.as_ptr());
+    let items = decode_array_items(&array_codec, buffer.as_ptr());
 
     assert_eq!(items.len(), buffer.len());
 }
 
 #[test]
 fn decodes_empty_contiguous_array() {
-    let array_type = i32_array_codec(0);
+    let array_codec = i32_array_codec(0);
     let buffer: Vec<i32> = vec![1];
 
-    let items = decode_array_items(&array_type, buffer.as_ptr());
+    let items = decode_array_items(&array_codec, buffer.as_ptr());
 
     assert!(items.is_empty());
 }
@@ -57,9 +57,9 @@ fn buffer_view_array_passthrough_shares_the_backing_store() {
         BufferViewKind::Float32,
         false,
     );
-    let array_type = f32_array_codec();
+    let array_codec = f32_array_codec();
 
-    let encoded = array_type
+    let encoded = array_codec
         .encode(&Value::BufferView(view))
         .expect("view encode");
     let ptr = encoded_ptr(&encoded);

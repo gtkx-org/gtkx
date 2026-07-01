@@ -69,13 +69,13 @@ impl LibraryCache {
 
         let lib = self.get_or_load(lib_name)?;
 
-        let func = unsafe {
+        let symbol = unsafe {
             lib.get::<GetTypeFn>(get_type_fn_name.as_bytes())
                 .map_err(|e| anyhow::anyhow!("Failed to find symbol '{get_type_fn_name}': {e}"))?
         };
 
-        let gtype_raw = unsafe { func() };
-        let gtype = unsafe { glib::Type::from_glib(gtype_raw) };
+        let raw_gtype = unsafe { symbol() };
+        let gtype = unsafe { glib::Type::from_glib(raw_gtype) };
         self.gtypes.insert(key, gtype);
         Ok(gtype)
     }
@@ -94,16 +94,16 @@ type FundamentalFns = (Option<RefFn>, Option<UnrefFn>);
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct FundamentalFnKey {
     library_name: String,
-    ref_func: String,
-    unref_func: String,
+    ref_fn_name: String,
+    unref_fn_name: String,
 }
 
 impl FundamentalFnKey {
-    fn new(library_name: &str, ref_func: &str, unref_func: &str) -> Self {
+    fn new(library_name: &str, ref_fn_name: &str, unref_fn_name: &str) -> Self {
         Self {
             library_name: library_name.to_owned(),
-            ref_func: ref_func.to_owned(),
-            unref_func: unref_func.to_owned(),
+            ref_fn_name: ref_fn_name.to_owned(),
+            unref_fn_name: unref_fn_name.to_owned(),
         }
     }
 }
@@ -131,39 +131,41 @@ impl FundamentalFnCache {
         &mut self,
         libs: &mut LibraryCache,
         library_name: &str,
-        ref_func: &str,
-        unref_func: &str,
+        ref_fn_name: &str,
+        unref_fn_name: &str,
     ) -> anyhow::Result<FundamentalFns> {
-        let key = FundamentalFnKey::new(library_name, ref_func, unref_func);
+        let key = FundamentalFnKey::new(library_name, ref_fn_name, unref_fn_name);
         if let Some(cached) = self.cache.get(&key) {
             return Ok(*cached);
         }
 
         let library = libs.get_or_load(library_name)?;
 
-        let ref_fn = if ref_func.is_empty() {
+        let ref_fn = if ref_fn_name.is_empty() {
+            None
+        } else {
+            Some(unsafe {
+                *library.get::<RefFn>(ref_fn_name.as_bytes()).map_err(|e| {
+                    anyhow::anyhow!("Failed to find ref symbol '{ref_fn_name}': {e}")
+                })?
+            })
+        };
+
+        let unref_fn = if unref_fn_name.is_empty() {
             None
         } else {
             Some(unsafe {
                 *library
-                    .get::<RefFn>(ref_func.as_bytes())
-                    .map_err(|e| anyhow::anyhow!("Failed to find ref symbol '{ref_func}': {e}"))?
-            })
-        };
-
-        let unref_fn = if unref_func.is_empty() {
-            None
-        } else {
-            Some(unsafe {
-                *library.get::<UnrefFn>(unref_func.as_bytes()).map_err(|e| {
-                    anyhow::anyhow!("Failed to find unref symbol '{unref_func}': {e}")
-                })?
+                    .get::<UnrefFn>(unref_fn_name.as_bytes())
+                    .map_err(|e| {
+                        anyhow::anyhow!("Failed to find unref symbol '{unref_fn_name}': {e}")
+                    })?
             })
         };
 
         if ref_fn.is_none() && unref_fn.is_some() {
             anyhow::bail!(
-                "Fundamental type declares unref '{unref_func}' without a ref function; a wrapper built from it would release a reference it never took"
+                "Fundamental type declares unref '{unref_fn_name}' without a ref function; a wrapper built from it would release a reference it never took"
             );
         }
 
@@ -206,11 +208,11 @@ impl GlibThreadState {
     pub fn lookup_fundamental_fns(
         &mut self,
         library_name: &str,
-        ref_func: &str,
-        unref_func: &str,
+        ref_fn_name: &str,
+        unref_fn_name: &str,
     ) -> anyhow::Result<(Option<RefFn>, Option<UnrefFn>)> {
         self.fundamental_fns
-            .lookup(&mut self.libs, library_name, ref_func, unref_func)
+            .lookup(&mut self.libs, library_name, ref_fn_name, unref_fn_name)
     }
 
     pub fn resolve_gtype(

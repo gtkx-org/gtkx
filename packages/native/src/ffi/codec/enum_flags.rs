@@ -2,7 +2,7 @@ use std::ffi::c_void;
 
 use crate::ffi::{
     self,
-    codec::{Decoder, Encoder, IntegerCodec, PointerWriter, ReadSource},
+    codec::{Decoder, Encoder, IntegerCodec, PtrWriter, ReadSource},
     value,
 };
 use libffi::middle as libffi;
@@ -22,7 +22,7 @@ pub struct EnumFlagsCodec {
 }
 
 impl EnumFlagsCodec {
-    fn wire_kind(&self) -> IntegerCodec {
+    fn wire_codec(&self) -> IntegerCodec {
         self.storage
     }
 
@@ -60,7 +60,7 @@ impl Encoder for EnumFlagsCodec {
     }
 
     fn libffi_type(&self) -> libffi::Type {
-        Encoder::libffi_type(&self.wire_kind())
+        Encoder::libffi_type(&self.wire_codec())
     }
 
     fn call_cif(
@@ -69,7 +69,7 @@ impl Encoder for EnumFlagsCodec {
         ptr: libffi::CodePtr,
         args: &[libffi::Arg],
     ) -> anyhow::Result<ffi::StashedValue> {
-        Encoder::call_cif(&self.wire_kind(), cif, ptr, args)
+        Encoder::call_cif(&self.wire_codec(), cif, ptr, args)
     }
 }
 
@@ -85,16 +85,16 @@ impl Decoder for EnumFlagsCodec {
     }
 }
 
-impl PointerWriter for EnumFlagsCodec {
-    unsafe fn write_return_to_pointer(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
-        unsafe { PointerWriter::write_return_to_pointer(&self.storage, ret, value) };
+impl PtrWriter for EnumFlagsCodec {
+    unsafe fn write_return_to_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+        unsafe { PtrWriter::write_return_to_ptr(&self.storage, ret, value) };
     }
 
-    unsafe fn write_value_to_pointer(
+    unsafe fn write_value_to_ptr(
         &self,
         ptr: *mut c_void,
         value: &value::Value,
     ) -> anyhow::Result<()> {
-        unsafe { PointerWriter::write_value_to_pointer(&self.storage, ptr, value) }
+        unsafe { PtrWriter::write_value_to_ptr(&self.storage, ptr, value) }
     }
 }

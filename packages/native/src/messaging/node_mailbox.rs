@@ -6,8 +6,8 @@ use napi::bindgen_prelude::{FromNapiValue, JsObjectValue, JsValue, Object, Unkno
 use napi::threadsafe_function::ThreadsafeFunctionCallMode;
 
 use super::{
-    GlibDispatchError, JsRefDeletion, Mailbox, NodeCallback, NodeCallbackResult, NodeTask,
-    WakeJsTsfn, send_or_report,
+    GlibInvokeError, JsRefDeletion, Mailbox, NodeCallback, NodeCallbackResult, NodeTask,
+    WakeNodeTsfn, send_or_report,
 };
 use crate::ffi::value::{JsRef, Value};
 use crate::handle::wrapper::WrapperRefOp;
@@ -29,30 +29,31 @@ impl ReadySignal {
             (),
             "Long-lived GLib task ready signal channel was closed",
         );
-        Mailbox::global().wake_js.notify();
+        Mailbox::global().wake_node.notify();
     }
 }
 
-fn poll_result<R>(rx: &mpsc::Receiver<R>) -> Result<Option<R>, GlibDispatchError> {
+fn poll_result<R>(rx: &mpsc::Receiver<R>) -> Result<Option<R>, GlibInvokeError> {
     match rx.try_recv() {
         Ok(result) => Ok(Some(result)),
-        Err(mpsc::TryRecvError::Disconnected) => Err(GlibDispatchError::disconnected()),
+        Err(mpsc::TryRecvError::Disconnected) => Err(GlibInvokeError::disconnected()),
         Err(mpsc::TryRecvError::Empty) => Ok(None),
     }
 }
 
 impl Mailbox {
-    fn set_wake_tsfn(&self, tsfn: Arc<WakeJsTsfn>) {
-        let _ = self.wake_js_tsfn.set(tsfn);
+    fn set_wake_tsfn(&self, tsfn: Arc<WakeNodeTsfn>) {
+        let _ = self.wake_node_tsfn.set(tsfn);
     }
 
     pub fn install_wake(&self, env: Env) -> napi::Result<()> {
-        let wake_js_fn = env.create_function_from_closure::<(), _, _>("gtkx_wake_js", |ctx| {
-            Self::global().process_node_pending(*ctx.env);
-            Ok(())
-        })?;
+        let wake_node_fn =
+            env.create_function_from_closure::<(), _, _>("gtkx_wake_node", |ctx| {
+                Self::global().process_node_pending(*ctx.env);
+                Ok(())
+            })?;
 
-        let wake_tsfn: WakeJsTsfn = wake_js_fn
+        let wake_tsfn: WakeNodeTsfn = wake_node_fn
             .build_threadsafe_function::<()>()
             .weak::<true>()
             .callee_handled::<false>()
@@ -64,25 +65,25 @@ impl Mailbox {
 
     fn push_node_task(&self, task: NodeTask) {
         self.node_inbox.lock().push_back(task);
-        self.wake_js.notify();
+        self.wake_node.notify();
     }
 
     fn pop_node_task(&self) -> Option<NodeTask> {
         self.node_inbox.lock().pop_front()
     }
 
-    fn wake_node_thread(&self) {
-        if let Some(tsfn) = self.wake_js_tsfn.get() {
+    fn wake_node_loop(&self) {
+        if let Some(tsfn) = self.wake_node_tsfn.get() {
             tsfn.call((), ThreadsafeFunctionCallMode::NonBlocking);
         }
     }
 
     pub(crate) fn schedule_js_reference_delete(&self, reference: JsRefDeletion) {
         self.push_node_task(NodeTask::DeleteReference(reference));
-        self.wake_node_thread();
+        self.wake_node_loop();
     }
 
-    fn dispatch_to_glib_and_wait<R, F>(&self, env: Env, task: F) -> Result<R, GlibDispatchError>
+    fn invoke_glib_and_wait<R, F>(&self, env: Env, task: F) -> Result<R, GlibInvokeError>
     where
         F: FnOnce() -> R + Send + 'static,
         R: Send + 'static,
@@ -98,19 +99,19 @@ impl Mailbox {
             );
         }));
         self.wait_for_glib_result(env, &rx)?
-            .map_err(|message| GlibDispatchError::task_panicked(&message))
+            .map_err(|message| GlibInvokeError::task_panicked(&message))
     }
 
-    pub fn dispatch_and_wait_napi<R, F>(&self, env: Env, task: F) -> napi::Result<R>
+    pub fn invoke_glib_and_wait_napi<R, F>(&self, env: Env, task: F) -> napi::Result<R>
     where
         F: FnOnce() -> R + Send + 'static,
         R: Send + 'static,
     {
-        self.dispatch_to_glib_and_wait(env, task)
+        self.invoke_glib_and_wait(env, task)
             .map_err(|e| napi::Error::new(napi::Status::GenericFailure, e.to_string()))
     }
 
-    pub fn dispatch_long_lived_glib_task<F>(&self, env: Env, task: F) -> napi::Result<()>
+    pub fn invoke_long_lived_glib_task<F>(&self, env: Env, task: F) -> napi::Result<()>
     where
         F: FnOnce(ReadySignal) + Send + 'static,
     {
@@ -124,7 +125,7 @@ impl Mailbox {
         &self,
         env: Env,
         rx: &mpsc::Receiver<R>,
-    ) -> Result<R, GlibDispatchError> {
+    ) -> Result<R, GlibInvokeError> {
         loop {
             if let Some(result) = poll_result(rx)? {
                 return Ok(result);
@@ -135,24 +136,24 @@ impl Mailbox {
             if let Some(result) = poll_result(rx)? {
                 return Ok(result);
             }
-            self.wake_js.wait();
+            self.wake_node.wait();
         }
     }
 
-    pub fn invoke_node_and_wait_with_cells(
+    pub fn invoke_node_and_wait_with_refs(
         &self,
         callback: &Arc<JsRef>,
         args: Vec<Value>,
         capture_result: bool,
-        out_cell_indices: Vec<usize>,
+        ref_indices: Vec<usize>,
     ) -> anyhow::Result<super::NodeCallbackResult> {
         let callback = callback.clone();
-        self.submit_blocking_node_task(move |result_tx, glib_initiated| {
+        self.invoke_node_task_and_wait(move |result_tx, glib_initiated| {
             NodeTask::Callback(NodeCallback {
                 callback,
                 args,
                 capture_result,
-                out_cell_indices,
+                ref_indices,
                 result_tx,
                 glib_initiated,
             })
@@ -164,7 +165,7 @@ impl Mailbox {
         ref_ptr: usize,
         op: WrapperRefOp,
     ) -> anyhow::Result<()> {
-        self.submit_blocking_node_task(|result_tx, glib_initiated| NodeTask::WrapperRefOp {
+        self.invoke_node_task_and_wait(|result_tx, glib_initiated| NodeTask::WrapperRefOp {
             ref_ptr,
             op,
             result_tx,
@@ -172,7 +173,7 @@ impl Mailbox {
         })
     }
 
-    fn submit_blocking_node_task<R>(
+    fn invoke_node_task_and_wait<R>(
         &self,
         build: impl FnOnce(mpsc::Sender<anyhow::Result<R>>, bool) -> NodeTask,
     ) -> anyhow::Result<R> {
@@ -181,7 +182,7 @@ impl Mailbox {
 
         self.push_node_task(build(tx, glib_initiated));
 
-        self.wake_node_thread();
+        self.wake_node_loop();
         self.wait_node(&rx, wait_depth)
     }
 
@@ -212,7 +213,7 @@ impl Mailbox {
         callback_depth: usize,
     ) -> anyhow::Result<R> {
         loop {
-            self.dispatch_pending_from_depth(callback_depth);
+            self.process_glib_pending_from_depth(callback_depth);
 
             match rx.try_recv() {
                 Ok(result) => return result,
@@ -230,7 +231,7 @@ impl Mailbox {
                         callback,
                         args,
                         capture_result,
-                        out_cell_indices,
+                        ref_indices,
                         result_tx,
                         glib_initiated,
                     } = pending;
@@ -244,12 +245,12 @@ impl Mailbox {
                                 &callback,
                                 args,
                                 capture_result,
-                                &out_cell_indices,
+                                &ref_indices,
                             )
                         },
                     );
                 }
-                NodeTask::DeleteReference(reference) => reference.delete_on_js_thread(),
+                NodeTask::DeleteReference(reference) => reference.delete_on_node_thread(),
                 NodeTask::WrapperRefOp {
                     ref_ptr,
                     op,
@@ -288,27 +289,27 @@ impl Mailbox {
         self.wake_glib.notify();
     }
 
-    fn wrap_out_cell<'env>(env: &'env Env, value: Unknown<'env>) -> napi::Result<Unknown<'env>> {
-        let mut cell: Object<'env> = Object::new(env)?;
-        cell.set_named_property("value", value)?;
-        Ok(cell.to_unknown())
+    fn wrap_ref<'env>(env: &'env Env, value: Unknown<'env>) -> napi::Result<Unknown<'env>> {
+        let mut ref_obj: Object<'env> = Object::new(env)?;
+        ref_obj.set_named_property("value", value)?;
+        Ok(ref_obj.to_unknown())
     }
 
-    fn read_out_cells(
+    fn read_refs(
         env: &Env,
         js_args: &[Unknown<'_>],
-        out_cell_indices: &[usize],
+        ref_indices: &[usize],
     ) -> napi::Result<Vec<(usize, Value)>> {
-        let mut cells = Vec::with_capacity(out_cell_indices.len());
-        for &index in out_cell_indices {
+        let mut refs = Vec::with_capacity(ref_indices.len());
+        for &index in ref_indices {
             let Some(arg) = js_args.get(index) else {
                 continue;
             };
-            let cell = Object::from_raw(env.raw(), arg.raw());
-            let slot: Unknown<'_> = cell.get_named_property("value")?;
-            cells.push((index, Value::from_js_value(env, slot)?));
+            let ref_obj = Object::from_raw(env.raw(), arg.raw());
+            let inner: Unknown<'_> = ref_obj.get_named_property("value")?;
+            refs.push((index, Value::from_js_value(env, inner)?));
         }
-        Ok(cells)
+        Ok(refs)
     }
 
     fn execute_callback(
@@ -316,7 +317,7 @@ impl Mailbox {
         callback: &Arc<JsRef>,
         args: Vec<Value>,
         capture_result: bool,
-        out_cell_indices: &[usize],
+        ref_indices: &[usize],
     ) -> anyhow::Result<NodeCallbackResult> {
         use napi::sys;
 
@@ -327,9 +328,9 @@ impl Mailbox {
                 let converted = v
                     .to_js_value(&env)
                     .map_err(|e| anyhow::anyhow!("converting callback arg: {e}"))?;
-                if out_cell_indices.contains(&index) {
-                    Self::wrap_out_cell(&env, converted)
-                        .map_err(|e| anyhow::anyhow!("wrapping out-cell arg: {e}"))
+                if ref_indices.contains(&index) {
+                    Self::wrap_ref(&env, converted)
+                        .map_err(|e| anyhow::anyhow!("wrapping ref arg: {e}"))
                 } else {
                     Ok(converted)
                 }
@@ -338,7 +339,7 @@ impl Mailbox {
 
         let raw_args: Vec<sys::napi_value> = js_args.iter().map(napi::JsValue::raw).collect();
 
-        let func_raw = callback
+        let raw_fn = callback
             .get_raw(&env)
             .map_err(|e| anyhow::anyhow!("retrieving callback function: {e}"))?;
 
@@ -352,7 +353,7 @@ impl Mailbox {
             sys::napi_call_function(
                 env.raw(),
                 undef_this,
-                func_raw,
+                raw_fn,
                 raw_args.len(),
                 raw_args.as_ptr(),
                 &mut return_value,
@@ -375,8 +376,8 @@ impl Mailbox {
             return Err(anyhow::anyhow!("napi_call_function failed: {status:?}"));
         }
 
-        let cells = Self::read_out_cells(&env, &js_args, out_cell_indices)
-            .map_err(|e| anyhow::anyhow!("reading out-cell args: {e}"))?;
+        let refs = Self::read_refs(&env, &js_args, ref_indices)
+            .map_err(|e| anyhow::anyhow!("reading ref args: {e}"))?;
 
         let value = if capture_result {
             let unknown = unsafe { Unknown::from_napi_value(env.raw(), return_value)? };
@@ -385,7 +386,7 @@ impl Mailbox {
         } else {
             Value::Undefined
         };
-        Ok((value, cells))
+        Ok((value, refs))
     }
 
     fn extract_exception_message(

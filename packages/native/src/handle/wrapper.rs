@@ -123,14 +123,14 @@ impl WrapperRegistry {
         }
     }
 
-    fn schedule_reference_delete(env_addr: usize, ref_addr: usize) {
+    fn schedule_reference_delete(env_ptr: usize, ref_ptr: usize) {
         let mailbox = Mailbox::global();
         if mailbox.is_not_running() {
             return;
         }
         mailbox.schedule_js_reference_delete(JsRefDeletion::new(
-            env_addr as napi::sys::napi_env,
-            ref_addr as napi::sys::napi_ref,
+            env_ptr as napi::sys::napi_env,
+            ref_ptr as napi::sys::napi_ref,
         ));
     }
 
@@ -178,27 +178,27 @@ impl WrapperRegistry {
 
     pub(crate) fn schedule_cleanup(
         &'static self,
-        env_addr: usize,
+        env_ptr: usize,
         binding: Option<Arc<WrapperBinding>>,
         generation: u64,
-        gobject_addr: usize,
-        ref_addr: usize,
+        gobject_ptr: usize,
+        ref_ptr: usize,
     ) {
         if Mailbox::global().is_not_running() {
             return;
         }
         glib::idle_add_once(move || {
             let Some(binding) = binding else {
-                Self::schedule_reference_delete(env_addr, ref_addr);
+                Self::schedule_reference_delete(env_ptr, ref_ptr);
                 return;
             };
 
             if binding.generation.load(Ordering::Relaxed) != generation {
-                Self::schedule_reference_delete(env_addr, ref_addr);
+                Self::schedule_reference_delete(env_ptr, ref_ptr);
                 return;
             }
 
-            let gobject = gobject_addr as *mut glib::gobject_ffi::GObject;
+            let gobject = gobject_ptr as *mut glib::gobject_ffi::GObject;
             binding.generation.store(0, Ordering::Relaxed);
             {
                 let _serialized = self.lookup_lock.lock();
@@ -211,7 +211,7 @@ impl WrapperRegistry {
                     drop(Arc::from_raw(Arc::as_ptr(&binding)));
                 }
             }
-            Self::schedule_reference_delete(env_addr, ref_addr);
+            Self::schedule_reference_delete(env_ptr, ref_ptr);
             unsafe {
                 glib::gobject_ffi::g_object_remove_toggle_ref(
                     gobject,
@@ -247,13 +247,13 @@ unsafe extern "C" fn on_toggle_notify(
     let Some(binding) = (unsafe { registry.binding_arc(gobject) }) else {
         return;
     };
-    let gobject_addr = gobject as usize;
+    let gobject_ptr = gobject as usize;
     Mailbox::global().schedule_glib(Box::new(move || {
         if binding.generation.load(Ordering::Relaxed) == 0 {
             return;
         }
         let ref_ptr = binding.napi_ref.load(Ordering::Relaxed) as *mut c_void;
-        let gobject = gobject_addr as *mut glib::gobject_ffi::GObject;
+        let gobject = gobject_ptr as *mut glib::gobject_ffi::GObject;
         let ref_count = unsafe { (*gobject).ref_count };
         WrapperRegistry::apply_wrapper_level(&binding, ref_ptr, ref_count > 1);
     }));

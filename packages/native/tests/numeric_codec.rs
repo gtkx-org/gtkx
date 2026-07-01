@@ -5,7 +5,7 @@ mod helpers {
 use std::ffi::c_void;
 
 use libffi::middle;
-use native::ffi::codec::{Decoder, Encoder, FloatKind, IntegerCodec, PointerWriter, ReadSource};
+use native::ffi::codec::{Decoder, Encoder, FloatCodec, IntegerCodec, PtrWriter, ReadSource};
 use native::ffi::value::Value;
 use native::ffi::{self, value};
 
@@ -61,7 +61,7 @@ fn integer_kind_byte_size() {
 
 #[test]
 fn float_dispatch_ffi_type_f32() {
-    let kind = FloatKind::F32;
+    let kind = FloatCodec::F32;
     let ffi_type = kind.ffi_type();
     assert_eq!(
         ffi_type.as_raw_ptr(),
@@ -71,7 +71,7 @@ fn float_dispatch_ffi_type_f32() {
 
 #[test]
 fn float_dispatch_ffi_type_f64() {
-    let kind = FloatKind::F64;
+    let kind = FloatCodec::F64;
     let ffi_type = kind.ffi_type();
     assert_eq!(
         ffi_type.as_raw_ptr(),
@@ -84,7 +84,7 @@ fn float_dispatch_read_ptr_f32() {
     let value: f32 = 3.125;
     let ptr = &value as *const f32 as *const u8;
 
-    let result = unsafe { FloatKind::F32.read_ptr(ptr) };
+    let result = unsafe { FloatCodec::F32.read_ptr(ptr) };
     assert!((result - 3.125).abs() < 0.001);
 }
 
@@ -93,7 +93,7 @@ fn float_dispatch_read_ptr_f64() {
     let value: f64 = std::f64::consts::E;
     let ptr = &value as *const f64 as *const u8;
 
-    let result = unsafe { FloatKind::F64.read_ptr(ptr) };
+    let result = unsafe { FloatCodec::F64.read_ptr(ptr) };
     assert!((result - std::f64::consts::E).abs() < 0.000_000_1);
 }
 
@@ -102,7 +102,7 @@ fn float_dispatch_write_ptr_f32() {
     let mut value: f32 = 0.0;
     let ptr = &mut value as *mut f32 as *mut u8;
 
-    unsafe { FloatKind::F32.write_ptr(ptr, 1.5) };
+    unsafe { FloatCodec::F32.write_ptr(ptr, 1.5) };
     assert!((value - 1.5).abs() < 0.001);
 }
 
@@ -111,7 +111,7 @@ fn float_dispatch_write_ptr_f64() {
     let mut value: f64 = 0.0;
     let ptr = &mut value as *mut f64 as *mut u8;
 
-    unsafe { FloatKind::F64.write_ptr(ptr, std::f64::consts::PI) };
+    unsafe { FloatCodec::F64.write_ptr(ptr, std::f64::consts::PI) };
     assert!((value - std::f64::consts::PI).abs() < 0.000_000_1);
 }
 
@@ -187,28 +187,25 @@ fn integer_pointer_codec_round_trips() {
     for kind in INTEGER_KINDS {
         let mut slot: i64 = 0;
         let ret = &mut slot as *mut i64 as *mut c_void;
-        unsafe { PointerWriter::write_return_to_pointer(&kind, ret, &Ok(Value::Number(5.0))) };
+        unsafe { PtrWriter::write_return_to_ptr(&kind, ret, &Ok(Value::Number(5.0))) };
         let read =
             unsafe { Decoder::read(&kind, ReadSource::Slot(ret as *const c_void, "ctx")) }.unwrap();
         assert!(matches!(read, Value::Number(n) if n == 5.0));
 
-        unsafe { PointerWriter::write_return_to_pointer(&kind, ret, &Err(())) };
+        unsafe { PtrWriter::write_return_to_ptr(&kind, ret, &Err(())) };
         let zero =
             unsafe { Decoder::read(&kind, ReadSource::Slot(ret as *const c_void, "ctx")) }.unwrap();
         assert!(matches!(zero, Value::Number(n) if n == 0.0));
 
         let mut field: i64 = 0;
         let field_ptr = &mut field as *mut i64 as *mut c_void;
-        unsafe { PointerWriter::write_value_to_pointer(&kind, field_ptr, &Value::Number(9.0)) }
-            .unwrap();
+        unsafe { PtrWriter::write_value_to_ptr(&kind, field_ptr, &Value::Number(9.0)) }.unwrap();
         let from_field =
             unsafe { Decoder::read(&kind, ReadSource::Value(12 as *mut c_void, "ctx")) }.unwrap();
         assert!(matches!(from_field, Value::Number(n) if n == 12.0));
         assert!(
-            unsafe {
-                PointerWriter::write_value_to_pointer(&kind, field_ptr, &Value::Boolean(true))
-            }
-            .is_err()
+            unsafe { PtrWriter::write_value_to_ptr(&kind, field_ptr, &Value::Boolean(true)) }
+                .is_err()
         );
     }
 }
@@ -263,7 +260,7 @@ impl LibffiKind for IntegerCodec {
     }
 }
 
-impl LibffiKind for FloatKind {
+impl LibffiKind for FloatCodec {
     fn as_ffi_type(self) -> middle::Type {
         self.ffi_type()
     }
@@ -281,12 +278,12 @@ where
 
 unsafe fn assert_pointer_codec_round_trip<K>(kind: &K, slot: &mut [u8; 8], value_ptr: *mut c_void)
 where
-    K: PointerWriter + Decoder,
+    K: PtrWriter + Decoder,
 {
     let ptr = slot.as_mut_ptr().cast::<c_void>();
-    unsafe { PointerWriter::write_value_to_pointer(kind, ptr, &Value::Number(2.0)) }.unwrap();
+    unsafe { PtrWriter::write_value_to_ptr(kind, ptr, &Value::Number(2.0)) }.unwrap();
     unsafe { Decoder::read(kind, ReadSource::Slot(ptr.cast_const(), "c")) }.unwrap();
-    unsafe { PointerWriter::write_return_to_pointer(kind, ptr, &Ok(Value::Number(1.0))) };
+    unsafe { PtrWriter::write_return_to_ptr(kind, ptr, &Ok(Value::Number(1.0))) };
     unsafe { Decoder::read(kind, ReadSource::Value(value_ptr, "c")) }.unwrap();
 }
 
@@ -341,19 +338,19 @@ fn integer_call_cif_raw_covers_all_widths() {
 #[test]
 fn float_checked_to_stashed_value_handles_range() {
     assert!(matches!(
-        FloatKind::F32.checked_to_stashed_value(1.5).unwrap(),
+        FloatCodec::F32.checked_to_stashed_value(1.5).unwrap(),
         ffi::StashedValue::F32(_)
     ));
-    assert!(FloatKind::F32.checked_to_stashed_value(1e40).is_err());
-    assert!(FloatKind::F32.checked_to_stashed_value(-1e40).is_err());
+    assert!(FloatCodec::F32.checked_to_stashed_value(1e40).is_err());
+    assert!(FloatCodec::F32.checked_to_stashed_value(-1e40).is_err());
     assert!(matches!(
-        FloatKind::F32
+        FloatCodec::F32
             .checked_to_stashed_value(f64::INFINITY)
             .unwrap(),
         ffi::StashedValue::F32(_)
     ));
     assert!(matches!(
-        FloatKind::F64.checked_to_stashed_value(1e40).unwrap(),
+        FloatCodec::F64.checked_to_stashed_value(1e40).unwrap(),
         ffi::StashedValue::F64(_)
     ));
 }
@@ -363,24 +360,24 @@ fn float_ptr_to_value_raw_handles_null_and_value() {
     let value: f64 = 4.25;
     let ptr = &value as *const f64 as *mut c_void;
     assert!(matches!(
-        unsafe { FloatKind::F64.ptr_to_value_raw(ptr) },
+        unsafe { FloatCodec::F64.ptr_to_value_raw(ptr) },
         Value::Number(n) if (n - 4.25).abs() < 1e-9
     ));
     assert!(matches!(
-        unsafe { FloatKind::F64.ptr_to_value_raw(std::ptr::null_mut()) },
+        unsafe { FloatCodec::F64.ptr_to_value_raw(std::ptr::null_mut()) },
         Value::Number(n) if n == 0.0
     ));
     let f: f32 = 1.25;
     let fptr = &f as *const f32 as *mut c_void;
     assert!(matches!(
-        unsafe { FloatKind::F32.ptr_to_value_raw(fptr) },
+        unsafe { FloatCodec::F32.ptr_to_value_raw(fptr) },
         Value::Number(n) if (n - 1.25).abs() < 1e-6
     ));
 }
 
 #[test]
 fn float_codec_encode_decode_and_raw_ptr() {
-    for kind in [FloatKind::F32, FloatKind::F64] {
+    for kind in [FloatCodec::F32, FloatCodec::F64] {
         let encoded = Encoder::encode(&kind, &Value::Number(2.5)).unwrap();
         assert!(Decoder::decode(&kind, &encoded).is_ok());
         assert!(Encoder::encode(&kind, &Value::Null).is_ok());
@@ -389,26 +386,24 @@ fn float_codec_encode_decode_and_raw_ptr() {
 
         let mut slot: f64 = 0.0;
         let ret = &mut slot as *mut f64 as *mut c_void;
-        unsafe { PointerWriter::write_return_to_pointer(&kind, ret, &Ok(Value::Number(1.0))) };
+        unsafe { PtrWriter::write_return_to_ptr(&kind, ret, &Ok(Value::Number(1.0))) };
         assert!(
             unsafe { Decoder::read(&kind, ReadSource::Slot(ret as *const c_void, "c")) }.is_ok()
         );
-        unsafe { PointerWriter::write_return_to_pointer(&kind, ret, &Err(())) };
-        unsafe { PointerWriter::write_value_to_pointer(&kind, ret, &Value::Number(3.0)) }.unwrap();
+        unsafe { PtrWriter::write_return_to_ptr(&kind, ret, &Err(())) };
+        unsafe { PtrWriter::write_value_to_ptr(&kind, ret, &Value::Number(3.0)) }.unwrap();
         assert!(
             unsafe { Decoder::read(&kind, ReadSource::Value(std::ptr::null_mut(), "c")) }.is_ok()
         );
-        assert!(
-            unsafe { PointerWriter::write_value_to_pointer(&kind, ret, &Value::Null) }.is_err()
-        );
+        assert!(unsafe { PtrWriter::write_value_to_ptr(&kind, ret, &Value::Null) }.is_err());
     }
 }
 
 #[test]
 fn float_call_cif_invokes_native_functions() {
-    let cif32 = middle::Cif::new(Vec::new(), FloatKind::F32.ffi_type());
+    let cif32 = middle::Cif::new(Vec::new(), FloatCodec::F32.ffi_type());
     let r32 = Encoder::call_cif(
-        &FloatKind::F32,
+        &FloatCodec::F32,
         &cif32,
         middle::CodePtr(ret_f32 as *mut c_void),
         &[],
@@ -416,9 +411,9 @@ fn float_call_cif_invokes_native_functions() {
     .unwrap();
     assert!((r32.to_number().unwrap() - 1.5).abs() < 1e-6);
 
-    let cif64 = middle::Cif::new(Vec::new(), FloatKind::F64.ffi_type());
+    let cif64 = middle::Cif::new(Vec::new(), FloatCodec::F64.ffi_type());
     let r64 = unsafe {
-        FloatKind::F64.call_cif_raw(&cif64, middle::CodePtr(ret_f64 as *mut c_void), &[])
+        FloatCodec::F64.call_cif_raw(&cif64, middle::CodePtr(ret_f64 as *mut c_void), &[])
     };
     assert!((r64.to_number().unwrap() - 2.5).abs() < 1e-9);
 }
@@ -460,14 +455,13 @@ fn enum_flags_pointer_codec() {
         let enum_flags = helpers::enum_codec();
         let mut slot: i64 = 0;
         let ptr = &mut slot as *mut i64 as *mut c_void;
-        unsafe { PointerWriter::write_value_to_pointer(&enum_flags, ptr, &Value::Number(2.0)) }
-            .unwrap();
+        unsafe { PtrWriter::write_value_to_ptr(&enum_flags, ptr, &Value::Number(2.0)) }.unwrap();
         let read =
             unsafe { Decoder::read(&enum_flags, ReadSource::Slot(ptr as *const c_void, "c")) }
                 .unwrap();
         assert!(matches!(read, Value::Number(n) if n == 2.0));
         unsafe {
-            PointerWriter::write_return_to_pointer(&enum_flags, ptr, &Ok(Value::Number(4.0)));
+            PtrWriter::write_return_to_ptr(&enum_flags, ptr, &Ok(Value::Number(4.0)));
         }
         let from_ptr =
             unsafe { Decoder::read(&enum_flags, ReadSource::Value(3 as *mut c_void, "c")) }
@@ -524,7 +518,7 @@ fn integer_codec_covers_every_kind() {
 #[test]
 fn float_codec_covers_every_kind() {
     helpers::run(|| {
-        for kind in [FloatKind::F32, FloatKind::F64] {
+        for kind in [FloatCodec::F32, FloatCodec::F64] {
             let _ = kind.ffi_type();
             let mut slot = [0u8; 8];
             unsafe { kind.write_ptr(slot.as_mut_ptr(), 1.5) };
@@ -608,13 +602,13 @@ fn stashed_value_to_number_guards_64_bit_payloads() {
 fn u64_slice_read_beyond_2_53_errors() {
     let data: [u64; 2] = [1, 9_007_199_254_740_993];
     let err =
-        unsafe { IntegerCodec::U64.read_slice_checked(data.as_ptr().cast(), 2, "test slice") }
+        unsafe { IntegerCodec::U64.checked_read_slice(data.as_ptr().cast(), 2, "test slice") }
             .expect_err("a 64-bit element beyond 2^53 must not round silently");
     assert!(err.to_string().contains("2^53"));
 
     let small: [u64; 2] = [1, 2];
     let values =
-        unsafe { IntegerCodec::U64.read_slice_checked(small.as_ptr().cast(), 2, "test slice") }
+        unsafe { IntegerCodec::U64.checked_read_slice(small.as_ptr().cast(), 2, "test slice") }
             .expect("small 64-bit elements convert exactly");
     assert_eq!(values, vec![1.0, 2.0]);
 }
@@ -623,12 +617,12 @@ fn u64_slice_read_beyond_2_53_errors() {
 fn i64_slice_read_checked_converts_small_and_rejects_beyond_2_53() {
     let small: [i64; 3] = [-7, 0, 7];
     let values =
-        unsafe { IntegerCodec::I64.read_slice_checked(small.as_ptr().cast(), 3, "test slice") }
+        unsafe { IntegerCodec::I64.checked_read_slice(small.as_ptr().cast(), 3, "test slice") }
             .expect("small 64-bit elements convert exactly");
     assert_eq!(values, vec![-7.0, 0.0, 7.0]);
 
     let big: [i64; 1] = [-9_007_199_254_740_993];
-    let err = unsafe { IntegerCodec::I64.read_slice_checked(big.as_ptr().cast(), 1, "test slice") }
+    let err = unsafe { IntegerCodec::I64.checked_read_slice(big.as_ptr().cast(), 1, "test slice") }
         .expect_err("a 64-bit element beyond -2^53 must not round silently");
     assert!(err.to_string().contains("2^53"));
 }

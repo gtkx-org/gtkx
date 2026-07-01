@@ -4,7 +4,7 @@ use super::prelude::*;
 use super::string::str_to_glib_full;
 use crate::ffi::codec::Codec;
 use crate::ffi::codec::array::ArrayKind;
-use crate::ffi::{HashTableData, Stash, StashKind};
+use crate::ffi::{HashTableData, Stash, StashStorage};
 
 #[derive(Clone, Debug)]
 pub enum HashTableEntryCodec {
@@ -233,7 +233,7 @@ impl HashTableCodec {
         let should_free = self.ownership.is_borrowed();
         let storage = Stash::new(
             hash_table as *mut c_void,
-            StashKind::HashTable(HashTableData {
+            StashStorage::HashTable(HashTableData {
                 handle: hash_table,
                 should_free,
             }),
@@ -246,7 +246,7 @@ impl HashTableCodec {
                 ffi::PendingRelease::HashTableUnref,
             )
         };
-        Ok(ffi::StashedValue::Storage(storage))
+        Ok(ffi::StashedValue::Stashed(storage))
     }
 }
 
@@ -321,7 +321,7 @@ impl Decoder for HashTableCodec {
             Ok(pairs)
         })();
 
-        let storage_owns_table = matches!(stashed_value, ffi::StashedValue::Storage(_));
+        let storage_owns_table = matches!(stashed_value, ffi::StashedValue::Stashed(_));
         if self.ownership.is_full() && !storage_owns_table {
             unsafe { glib::ffi::g_hash_table_unref(hash_ptr as *mut glib::ffi::GHashTable) };
         }
@@ -330,8 +330,8 @@ impl Decoder for HashTableCodec {
     }
 }
 
-impl PointerWriter for HashTableCodec {
-    unsafe fn write_return_to_pointer(
+impl PtrWriter for HashTableCodec {
+    unsafe fn write_return_to_ptr(
         &self,
         ret: *mut c_void,
         value: &std::result::Result<value::Value, ()>,

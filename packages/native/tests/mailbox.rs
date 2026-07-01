@@ -12,7 +12,7 @@ use native::messaging::Mailbox;
 
 fn drain_pending() {
     let mailbox = Mailbox::global();
-    while mailbox.dispatch_pending() {}
+    while mailbox.process_glib_pending() {}
 }
 
 fn schedule_increment(mailbox: &Mailbox) -> Arc<AtomicUsize> {
@@ -41,7 +41,7 @@ fn frozen_mailbox_with_task() -> (&'static Mailbox, Arc<AtomicUsize>) {
 fn dispatch_pending_returns_false_when_empty() {
     helpers::run(|| {
         drain_pending();
-        let dispatched = Mailbox::global().dispatch_pending();
+        let dispatched = Mailbox::global().process_glib_pending();
         assert!(!dispatched);
     });
 }
@@ -52,7 +52,7 @@ fn schedule_glib_then_dispatch_pending_runs_task() {
         let counter = schedule_incrementing_task();
         assert_eq!(counter.load(Ordering::SeqCst), 0);
 
-        let dispatched = Mailbox::global().dispatch_pending();
+        let dispatched = Mailbox::global().process_glib_pending();
         assert!(dispatched);
         assert_eq!(counter.load(Ordering::SeqCst), 1);
     });
@@ -66,7 +66,7 @@ fn schedule_glib_drops_task_when_stopped() {
 
         let counter = schedule_increment(&mailbox);
 
-        let dispatched = mailbox.dispatch_pending();
+        let dispatched = mailbox.process_glib_pending();
         assert!(!dispatched);
         assert_eq!(counter.load(Ordering::SeqCst), 0);
     });
@@ -233,7 +233,7 @@ fn dispatch_pending_drains_multiple_tasks_in_fifo_order() {
             }));
         }
 
-        Mailbox::global().dispatch_pending();
+        Mailbox::global().process_glib_pending();
 
         let collected = order.lock().unwrap().clone();
         assert_eq!(collected, vec![0, 1, 2, 3, 4]);
@@ -247,10 +247,10 @@ fn dispatch_pending_from_depth_defers_top_level_tasks() {
         let mailbox = Mailbox::global();
         let counter = schedule_increment(mailbox);
 
-        assert!(!mailbox.dispatch_pending_from_depth(1));
+        assert!(!mailbox.process_glib_pending_from_depth(1));
         assert_eq!(counter.load(Ordering::SeqCst), 0);
 
-        assert!(mailbox.dispatch_pending_from_depth(0));
+        assert!(mailbox.process_glib_pending_from_depth(0));
         assert_eq!(counter.load(Ordering::SeqCst), 1);
     });
 }
@@ -324,10 +324,10 @@ fn dispatch_pending_from_depth_runs_deeper_task_before_shallower_one() {
         }));
         mailbox.leave_glib_callback();
 
-        assert!(mailbox.dispatch_pending_from_depth(1));
+        assert!(mailbox.process_glib_pending_from_depth(1));
         assert_eq!(*order.lock().unwrap(), vec![1]);
 
-        assert!(mailbox.dispatch_pending());
+        assert!(mailbox.process_glib_pending());
         assert_eq!(*order.lock().unwrap(), vec![1, 0]);
     });
 }

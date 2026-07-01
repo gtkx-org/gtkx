@@ -6,7 +6,7 @@ use std::ffi::c_void;
 
 use libffi::middle;
 use native::ffi::codec::{
-    BooleanCodec, CallbackCodec, Codec, Decoder, Encoder, IntegerCodec, Ownership, PointerWriter,
+    BooleanCodec, CallbackCodec, Codec, Decoder, Encoder, IntegerCodec, Ownership, PtrWriter,
     ReadSource, StructCodec, VoidCodec,
 };
 use native::ffi::value::Value;
@@ -130,12 +130,12 @@ fn pointer_codec_write_return_to_pointer_default_writes_null() {
     let mut slot: *mut c_void = 9 as *mut c_void;
     let ret = &mut slot as *mut *mut c_void as *mut c_void;
     unsafe {
-        PointerWriter::write_return_to_pointer(&callback_codec(), ret, &Ok(Value::Number(1.0)));
+        PtrWriter::write_return_to_ptr(&callback_codec(), ret, &Ok(Value::Number(1.0)));
     }
     assert!(slot.is_null());
 
     slot = 9 as *mut c_void;
-    unsafe { PointerWriter::write_return_to_pointer(&callback_codec(), ret, &Err(())) };
+    unsafe { PtrWriter::write_return_to_ptr(&callback_codec(), ret, &Err(())) };
     assert!(slot.is_null());
 }
 
@@ -144,10 +144,8 @@ fn pointer_codec_write_value_to_pointer_default_bails() {
     let mut slot: *mut c_void = std::ptr::null_mut();
     let ptr = &mut slot as *mut *mut c_void as *mut c_void;
     assert!(
-        unsafe {
-            PointerWriter::write_value_to_pointer(&callback_codec(), ptr, &Value::Number(1.0))
-        }
-        .is_err()
+        unsafe { PtrWriter::write_value_to_ptr(&callback_codec(), ptr, &Value::Number(1.0)) }
+            .is_err()
     );
 }
 
