@@ -2,10 +2,9 @@ use std::ffi::c_void;
 
 use crate::ffi::{
     self,
-    codec::{Decoder, Encoder, IntegerCodec, PtrWriter, ReadSource},
+    codec::{Decoder, Encoder, IntegerCodec, PtrWriter, ReadSource, forward_ffi_encoder},
     value,
 };
-use libffi::middle as libffi;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EnumFlagsKind {
@@ -22,7 +21,7 @@ pub struct EnumFlagsCodec {
 }
 
 impl EnumFlagsCodec {
-    fn wire_codec(&self) -> IntegerCodec {
+    fn ffi_codec(&self) -> IntegerCodec {
         self.storage
     }
 
@@ -59,18 +58,7 @@ impl Encoder for EnumFlagsCodec {
         Ok(result)
     }
 
-    fn libffi_type(&self) -> libffi::Type {
-        Encoder::libffi_type(&self.wire_codec())
-    }
-
-    fn call_cif(
-        &self,
-        cif: &libffi::Cif,
-        ptr: libffi::CodePtr,
-        args: &[libffi::Arg],
-    ) -> anyhow::Result<ffi::StashedValue> {
-        Encoder::call_cif(&self.wire_codec(), cif, ptr, args)
-    }
+    forward_ffi_encoder!();
 }
 
 impl Decoder for EnumFlagsCodec {

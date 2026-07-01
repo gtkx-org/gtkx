@@ -166,7 +166,7 @@ fn storage_ptr_ref_borrows_the_pointer() {
 }
 
 #[test]
-fn as_numeric_slice_matches_every_integer_kind() {
+fn to_f64_vec_matches_every_integer_kind() {
     let cases: [(IntegerCodec, Stash); 8] = [
         (IntegerCodec::U8, vec![1u8, 2].into()),
         (IntegerCodec::I8, vec![-1i8, 2].into()),
@@ -178,7 +178,7 @@ fn as_numeric_slice_matches_every_integer_kind() {
         (IntegerCodec::I64, vec![-1i64, 2].into()),
     ];
     for (kind, storage) in &cases {
-        let slice = storage.as_numeric_slice(*kind).expect("kind should match");
+        let slice = storage.to_f64_vec(*kind).expect("kind should match");
         assert_eq!(slice.len(), 2);
     }
 }

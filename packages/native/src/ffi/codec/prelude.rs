@@ -77,3 +77,29 @@ pub(super) fn full_transfer_stashed(
         crate::ffi::Stash::unit(ptr).with_pending_transfer(ptr, release),
     )
 }
+
+/// Arms a container `Stash` with the pending transfer implied by its ownership.
+///
+/// When the container is borrowed the storage frees itself on drop, so only the
+/// `acquired` element transfers need arming. When it is transfer-full the callee
+/// takes the container, so the undo-on-error release groups the acquired transfers
+/// with `container_release`.
+pub(super) fn finalize_container_stash(
+    storage: ffi::Stash,
+    should_free: bool,
+    acquired: Vec<ffi::PendingTransfer>,
+    container_release: ffi::PendingRelease,
+) -> ffi::StashedValue {
+    let container = storage.ptr();
+    let storage = if should_free {
+        if acquired.is_empty() {
+            storage
+        } else {
+            storage.with_pending_transfer(container, ffi::PendingRelease::Group(acquired))
+        }
+    } else {
+        let release = ffi::PendingRelease::grouped(acquired, container, container_release);
+        storage.with_pending_transfer(container, release)
+    };
+    ffi::StashedValue::Stashed(storage)
+}

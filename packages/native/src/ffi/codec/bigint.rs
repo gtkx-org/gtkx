@@ -2,6 +2,7 @@ use anyhow::bail;
 use libffi::middle as libffi;
 
 use super::IntegerCodec;
+use super::forward_ffi_encoder;
 use super::numeric::MAX_SAFE_INTEGER;
 use super::prelude::*;
 use crate::ffi::descriptor::Descriptor;
@@ -13,7 +14,7 @@ pub enum BigIntCodec {
 }
 
 impl BigIntCodec {
-    fn wire_codec(self) -> IntegerCodec {
+    fn ffi_codec(self) -> IntegerCodec {
         match self {
             Self::I64 => IntegerCodec::I64,
             Self::U64 => IntegerCodec::U64,
@@ -21,7 +22,7 @@ impl BigIntCodec {
     }
 
     pub fn ffi_type(self) -> libffi::Type {
-        self.wire_codec().ffi_type()
+        self.ffi_codec().ffi_type()
     }
 
     fn label(self) -> &'static str {
@@ -94,7 +95,7 @@ impl BigIntCodec {
     }
 
     pub fn byte_size(self) -> usize {
-        self.wire_codec().byte_size()
+        self.ffi_codec().byte_size()
     }
 
     pub unsafe fn read_slice(self, ptr: *const u8, len: usize) -> Vec<value::Value> {
@@ -144,18 +145,7 @@ impl Encoder for BigIntCodec {
         self.checked_to_stashed_value(int)
     }
 
-    fn libffi_type(&self) -> libffi::Type {
-        Encoder::libffi_type(&self.wire_codec())
-    }
-
-    fn call_cif(
-        &self,
-        cif: &libffi::Cif,
-        ptr: libffi::CodePtr,
-        args: &[libffi::Arg],
-    ) -> anyhow::Result<ffi::StashedValue> {
-        Encoder::call_cif(&self.wire_codec(), cif, ptr, args)
-    }
+    forward_ffi_encoder!();
 }
 
 impl Decoder for BigIntCodec {

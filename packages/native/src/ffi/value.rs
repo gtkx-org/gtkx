@@ -39,15 +39,8 @@ impl JsRef {
     pub fn from_js_value<'a, V: JsValue<'a>>(env: &Env, value: &V) -> napi::Result<Self> {
         let raw_value = value.raw();
         let mut raw_ref = std::ptr::null_mut();
-        unsafe {
-            let status = sys::napi_create_reference(env.raw(), raw_value, 1, &mut raw_ref);
-            if status != sys::Status::napi_ok {
-                return Err(napi::Error::new(
-                    napi::Status::GenericFailure,
-                    "Failed to create reference",
-                ));
-            }
-        }
+        let status = unsafe { sys::napi_create_reference(env.raw(), raw_value, 1, &mut raw_ref) };
+        check_napi_status(status, "Failed to create reference")?;
         Ok(Self {
             raw: raw_ref,
             env: env.raw(),
@@ -57,15 +50,8 @@ impl JsRef {
 
     pub fn get_raw(&self, env: &Env) -> napi::Result<sys::napi_value> {
         let mut raw_value = std::ptr::null_mut();
-        unsafe {
-            let status = sys::napi_get_reference_value(env.raw(), self.raw, &mut raw_value);
-            if status != sys::Status::napi_ok {
-                return Err(napi::Error::new(
-                    napi::Status::GenericFailure,
-                    "Failed to get reference value",
-                ));
-            }
-        }
+        let status = unsafe { sys::napi_get_reference_value(env.raw(), self.raw, &mut raw_value) };
+        check_napi_status(status, "Failed to get reference value")?;
         Ok(raw_value)
     }
 

@@ -141,12 +141,14 @@ impl CallbackState {
     }
 }
 
+struct CallbackArgs<'a> {
+    values: Vec<Value>,
+    ref_indices: Vec<usize>,
+    ref_targets: Vec<(*mut c_void, &'a Codec)>,
+}
+
 impl CallbackData {
-    unsafe fn handle_call(
-        &self,
-        args: *const *const c_void,
-        result: *mut c_void,
-    ) -> Option<*mut CallbackState> {
+    unsafe fn read_args(&self, args: *const *const c_void) -> CallbackArgs<'_> {
         let mut values = Vec::with_capacity(self.arg_codecs.len());
         let mut ref_indices: Vec<usize> = Vec::new();
         let mut ref_targets: Vec<(*mut c_void, &Codec)> = Vec::new();
@@ -173,6 +175,24 @@ impl CallbackData {
                 }
             }
         }
+
+        CallbackArgs {
+            values,
+            ref_indices,
+            ref_targets,
+        }
+    }
+
+    unsafe fn handle_call(
+        &self,
+        args: *const *const c_void,
+        result: *mut c_void,
+    ) -> Option<*mut CallbackState> {
+        let CallbackArgs {
+            values,
+            ref_indices,
+            ref_targets,
+        } = unsafe { self.read_args(args) };
 
         let capture_result = !matches!(self.return_codec, Codec::Void(_));
 

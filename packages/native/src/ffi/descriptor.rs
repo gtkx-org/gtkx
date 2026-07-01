@@ -150,12 +150,6 @@ impl Descriptor {
                 get_type_fn,
                 signed,
             } => Self::enum_flags(EnumFlagsKind::Flags, shared_library, get_type_fn, signed),
-            compound => return compound.into_compound_codec(),
-        })
-    }
-
-    fn into_compound_codec(self) -> napi::Result<Codec> {
-        Ok(match self {
             Self::String { ownership, length } => Codec::String(StringCodec {
                 ownership,
                 length: length.map(|n| n as usize),
@@ -246,7 +240,6 @@ impl Descriptor {
                 inner_descriptor,
                 inout: _,
             } => Codec::Ref(RefCodec::new(*inner_descriptor.into_codec()?)?),
-            _ => unreachable!("scalar and enum/flags variants are handled by into_codec"),
         })
     }
 

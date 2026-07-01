@@ -44,8 +44,31 @@ pub use r#struct::StructCodec;
 pub use unichar::UnicharCodec;
 pub use void::VoidCodec;
 
+/// Emits the `Encoder::libffi_type` and `Encoder::call_cif` methods for a codec that
+/// travels over the C ABI as an integer (booleans, unichars, enums/flags, bigints).
+/// The codec must expose an inherent `ffi_codec(&self) -> IntegerCodec` describing the
+/// integer it forwards to. Reach it through `codec::prelude`, which re-exports it.
+macro_rules! forward_ffi_encoder {
+    () => {
+        fn libffi_type(&self) -> ::libffi::middle::Type {
+            $crate::ffi::codec::Encoder::libffi_type(&self.ffi_codec())
+        }
+
+        fn call_cif(
+            &self,
+            cif: &::libffi::middle::Cif,
+            ptr: ::libffi::middle::CodePtr,
+            args: &[::libffi::middle::Arg],
+        ) -> ::anyhow::Result<$crate::ffi::StashedValue> {
+            $crate::ffi::codec::Encoder::call_cif(&self.ffi_codec(), cif, ptr, args)
+        }
+    };
+}
+pub(crate) use forward_ffi_encoder;
+
 #[napi(string_enum = "lowercase")]
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, strum::Display)]
+#[strum(serialize_all = "lowercase")]
 pub enum Ownership {
     #[default]
     Borrowed,
@@ -61,15 +84,6 @@ impl Ownership {
     #[inline]
     pub fn is_borrowed(self) -> bool {
         matches!(self, Self::Borrowed)
-    }
-}
-
-impl std::fmt::Display for Ownership {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Borrowed => write!(f, "borrowed"),
-            Self::Full => write!(f, "full"),
-        }
     }
 }
 
@@ -173,6 +187,21 @@ pub trait Decoder {
             return Ok(value::Value::Null);
         }
         decode(ptr)
+    }
+
+    fn read_call_non_null<F>(
+        &self,
+        stashed_value: &ffi::StashedValue,
+        label: &str,
+        decode: F,
+    ) -> anyhow::Result<value::Value>
+    where
+        F: FnOnce(*mut c_void) -> anyhow::Result<value::Value>,
+    {
+        match stashed_value.as_non_null_ptr(label)? {
+            Some(ptr) => decode(ptr),
+            None => Ok(value::Value::Null),
+        }
     }
 }
 

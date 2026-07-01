@@ -1,13 +1,19 @@
 use glib::translate::IntoGlib as _;
-use libffi::middle as libffi;
 
+use super::forward_ffi_encoder;
 use super::numeric::IntegerCodec;
 use super::prelude::*;
 
-const WIRE_CODEC: IntegerCodec = IntegerCodec::I32;
+const FFI_CODEC: IntegerCodec = IntegerCodec::I32;
 
 #[derive(Debug, Clone, Copy)]
 pub struct BooleanCodec;
+
+impl BooleanCodec {
+    fn ffi_codec(&self) -> IntegerCodec {
+        FFI_CODEC
+    }
+}
 
 impl Encoder for BooleanCodec {
     fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
@@ -18,18 +24,7 @@ impl Encoder for BooleanCodec {
         Ok(ffi::StashedValue::I32(boolean.into_glib()))
     }
 
-    fn libffi_type(&self) -> libffi::Type {
-        Encoder::libffi_type(&WIRE_CODEC)
-    }
-
-    fn call_cif(
-        &self,
-        cif: &libffi::Cif,
-        ptr: libffi::CodePtr,
-        args: &[libffi::Arg],
-    ) -> anyhow::Result<ffi::StashedValue> {
-        Encoder::call_cif(&WIRE_CODEC, cif, ptr, args)
-    }
+    forward_ffi_encoder!();
 }
 
 impl Decoder for BooleanCodec {
@@ -56,7 +51,7 @@ impl Decoder for BooleanCodec {
 impl PtrWriter for BooleanCodec {
     unsafe fn write_return_to_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         let val = f64::from(u8::from(matches!(value, Ok(value::Value::Boolean(true)))));
-        unsafe { WIRE_CODEC.write_return_widened(ret, val) };
+        unsafe { FFI_CODEC.write_return_widened(ret, val) };
     }
 
     unsafe fn write_value_to_ptr(

@@ -105,11 +105,7 @@ impl Boxed {
     }
 
     pub fn copy_with_size(ptr: *mut c_void, size: usize) -> Self {
-        let cloned_ptr = unsafe {
-            let dest = glib::ffi::g_malloc(size);
-            std::ptr::copy_nonoverlapping(ptr as *const u8, dest as *mut u8, size);
-            dest
-        };
+        let cloned_ptr = unsafe { crate::ffi::dup_to_glib_heap(ptr as *const u8, size) };
         Self::owned(cloned_ptr, None, None, BoxedDestructor::GFree)
     }
 

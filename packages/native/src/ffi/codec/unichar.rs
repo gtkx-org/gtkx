@@ -1,10 +1,15 @@
-use libffi::middle as libffi;
-
+use super::forward_ffi_encoder;
 use super::numeric::IntegerCodec;
 use super::prelude::*;
 
 #[derive(Debug, Clone, Copy)]
 pub struct UnicharCodec;
+
+impl UnicharCodec {
+    fn ffi_codec(&self) -> IntegerCodec {
+        IntegerCodec::U32
+    }
+}
 
 impl Encoder for UnicharCodec {
     fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
@@ -17,18 +22,7 @@ impl Encoder for UnicharCodec {
         Ok(ffi::StashedValue::U32(cp))
     }
 
-    fn libffi_type(&self) -> libffi::Type {
-        libffi::Type::u32()
-    }
-
-    fn call_cif(
-        &self,
-        cif: &libffi::Cif,
-        ptr: libffi::CodePtr,
-        args: &[libffi::Arg],
-    ) -> anyhow::Result<ffi::StashedValue> {
-        IntegerCodec::U32.call_cif(cif, ptr, args)
-    }
+    forward_ffi_encoder!();
 }
 
 impl Decoder for UnicharCodec {

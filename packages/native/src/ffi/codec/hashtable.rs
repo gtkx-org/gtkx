@@ -100,14 +100,12 @@ impl HashTableEntryCodec {
                 _ => bail!("Expected boolean in GHashTable, got {val:?}"),
             },
             Self::Float => match val {
-                value::Value::Number(n) => {
-                    let ptr = unsafe {
-                        let mem = glib::ffi::g_malloc(std::mem::size_of::<f64>()) as *mut f64;
-                        *mem = *n;
-                        mem as *mut c_void
-                    };
-                    Ok(ptr)
-                }
+                value::Value::Number(n) => Ok(unsafe {
+                    ffi::dup_to_glib_heap(
+                        (n as *const f64).cast::<u8>(),
+                        std::mem::size_of::<f64>(),
+                    )
+                }),
                 _ => bail!("Expected number in GHashTable for float, got {val:?}"),
             },
             Self::Handle(_) => match val {
@@ -238,15 +236,12 @@ impl HashTableCodec {
                 should_free,
             }),
         );
-        let storage = if should_free {
-            storage
-        } else {
-            storage.with_pending_transfer(
-                hash_table as *mut c_void,
-                ffi::PendingRelease::HashTableUnref,
-            )
-        };
-        Ok(ffi::StashedValue::Stashed(storage))
+        Ok(finalize_container_stash(
+            storage,
+            should_free,
+            Vec::new(),
+            ffi::PendingRelease::HashTableUnref,
+        ))
     }
 }
 

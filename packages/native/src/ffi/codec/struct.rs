@@ -19,19 +19,17 @@ impl Encoder for StructCodec {
 
 impl Decoder for StructCodec {
     fn read_call(&self, stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
-        let Some(struct_ptr) = stashed_value.as_non_null_ptr("Struct")? else {
-            return Ok(value::Value::Null);
-        };
+        self.read_call_non_null(stashed_value, "Struct", |struct_ptr| {
+            let boxed = match self.ownership {
+                Ownership::Full => Boxed::from_glib_full(None, struct_ptr),
+                Ownership::Borrowed => self.size.map_or_else(
+                    || Boxed::from_glib_borrow(struct_ptr),
+                    |size| Boxed::copy_with_size(struct_ptr, size),
+                ),
+            };
 
-        let boxed = match self.ownership {
-            Ownership::Full => Boxed::from_glib_full(None, struct_ptr),
-            Ownership::Borrowed => self.size.map_or_else(
-                || Boxed::from_glib_borrow(struct_ptr),
-                |size| Boxed::copy_with_size(struct_ptr, size),
-            ),
-        };
-
-        Ok(boxed.into())
+            Ok(boxed.into())
+        })
     }
 
     unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {

@@ -44,17 +44,16 @@ impl Encoder for StringCodec {
 
 impl Decoder for StringCodec {
     fn read_call(&self, stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
-        let Some(str_ptr) = stashed_value.as_non_null_ptr("string")? else {
-            return Ok(value::Value::Null);
-        };
+        self.read_call_non_null(stashed_value, "string", |str_ptr| {
+            let string =
+                unsafe { glib::GStr::from_ptr_lossy(str_ptr as *const c_char) }.to_string();
 
-        let string = unsafe { glib::GStr::from_ptr_lossy(str_ptr as *const c_char) }.to_string();
+            if self.ownership.is_full() {
+                unsafe { glib::ffi::g_free(str_ptr) };
+            }
 
-        if self.ownership.is_full() {
-            unsafe { glib::ffi::g_free(str_ptr) };
-        }
-
-        Ok(value::Value::String(string))
+            Ok(value::Value::String(string))
+        })
     }
 
     unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {

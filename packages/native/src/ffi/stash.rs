@@ -137,36 +137,6 @@ impl Drop for AcquiredTransfers {
     }
 }
 
-#[derive(Debug)]
-pub struct GListData {
-    pub handles: Vec<crate::handle::Handle>,
-    pub list_ptr: *mut glib::ffi::GList,
-    pub should_free: bool,
-}
-
-#[derive(Debug)]
-pub struct GSListData {
-    pub handles: Vec<crate::handle::Handle>,
-    pub list_ptr: *mut glib::ffi::GSList,
-    pub should_free: bool,
-}
-
-#[derive(Debug)]
-pub struct StringGListData {
-    pub strings: Vec<std::ffi::CString>,
-    pub list_ptr: *mut glib::ffi::GList,
-    pub should_free: bool,
-    pub elements_duped: bool,
-}
-
-#[derive(Debug)]
-pub struct StringGSListData {
-    pub strings: Vec<std::ffi::CString>,
-    pub list_ptr: *mut glib::ffi::GSList,
-    pub should_free: bool,
-    pub elements_duped: bool,
-}
-
 pub trait ListKind {
     type Node;
     const LABEL: &'static str;
@@ -218,103 +188,111 @@ pub trait ListKind {
     }
 }
 
-#[derive(Debug)]
-pub struct GListKind;
-#[derive(Debug)]
-pub struct GSListKind;
+/// Generates a [`ListKind`] implementation for a GLib singly/doubly linked list,
+/// along with its handle- and string-payload storage structs. Both `GList` and
+/// `GSList` differ only in their node type, the `g_list_*`/`g_slist_*` free and
+/// prepend functions, and the storage variants they map to.
+macro_rules! impl_list_kind {
+    (
+        kind = $kind:ident,
+        node = $node:path,
+        handle_data = $handle_data:ident => $handle_variant:ident,
+        string_data = $string_data:ident => $string_variant:ident,
+        label = $label:literal,
+        prepend = $prepend:path,
+        free = $free:path,
+        free_full = $free_full:path,
+        pending = $pending:ident,
+    ) => {
+        #[derive(Debug)]
+        pub struct $handle_data {
+            pub handles: Vec<crate::handle::Handle>,
+            pub list_ptr: *mut $node,
+            pub should_free: bool,
+        }
 
-impl ListKind for GListKind {
-    type Node = glib::ffi::GList;
-    const LABEL: &'static str = "GList";
+        #[derive(Debug)]
+        pub struct $string_data {
+            pub strings: Vec<std::ffi::CString>,
+            pub list_ptr: *mut $node,
+            pub should_free: bool,
+            pub elements_duped: bool,
+        }
 
-    unsafe fn prepend(list: *mut glib::ffi::GList, ptr: *mut c_void) -> *mut glib::ffi::GList {
-        unsafe { glib::ffi::g_list_prepend(list, ptr) }
-    }
+        #[derive(Debug)]
+        pub struct $kind;
 
-    unsafe fn free(list: *mut glib::ffi::GList) {
-        unsafe { glib::ffi::g_list_free(list) };
-    }
+        impl ListKind for $kind {
+            type Node = $node;
+            const LABEL: &'static str = $label;
 
-    unsafe fn free_full(list: *mut glib::ffi::GList) {
-        unsafe { glib::ffi::g_list_free_full(list, Some(glib::ffi::g_free)) };
-    }
+            unsafe fn prepend(list: *mut $node, ptr: *mut c_void) -> *mut $node {
+                unsafe { $prepend(list, ptr) }
+            }
 
-    fn pending_release() -> PendingRelease {
-        PendingRelease::GListFree
-    }
+            unsafe fn free(list: *mut $node) {
+                unsafe { $free(list) };
+            }
 
-    fn handle_storage(
-        handles: Vec<crate::handle::Handle>,
-        list_ptr: *mut glib::ffi::GList,
-        should_free: bool,
-    ) -> StashStorage {
-        StashStorage::GList(GListData {
-            handles,
-            list_ptr,
-            should_free,
-        })
-    }
+            unsafe fn free_full(list: *mut $node) {
+                unsafe { $free_full(list, Some(glib::ffi::g_free)) };
+            }
 
-    fn string_storage(
-        strings: Vec<std::ffi::CString>,
-        list_ptr: *mut glib::ffi::GList,
-        should_free: bool,
-        elements_duped: bool,
-    ) -> StashStorage {
-        StashStorage::StringGList(StringGListData {
-            strings,
-            list_ptr,
-            should_free,
-            elements_duped,
-        })
-    }
+            fn pending_release() -> PendingRelease {
+                PendingRelease::$pending
+            }
+
+            fn handle_storage(
+                handles: Vec<crate::handle::Handle>,
+                list_ptr: *mut $node,
+                should_free: bool,
+            ) -> StashStorage {
+                StashStorage::$handle_variant($handle_data {
+                    handles,
+                    list_ptr,
+                    should_free,
+                })
+            }
+
+            fn string_storage(
+                strings: Vec<std::ffi::CString>,
+                list_ptr: *mut $node,
+                should_free: bool,
+                elements_duped: bool,
+            ) -> StashStorage {
+                StashStorage::$string_variant($string_data {
+                    strings,
+                    list_ptr,
+                    should_free,
+                    elements_duped,
+                })
+            }
+        }
+    };
 }
 
-impl ListKind for GSListKind {
-    type Node = glib::ffi::GSList;
-    const LABEL: &'static str = "GSList";
+impl_list_kind! {
+    kind = GListKind,
+    node = glib::ffi::GList,
+    handle_data = GListData => GList,
+    string_data = StringGListData => StringGList,
+    label = "GList",
+    prepend = glib::ffi::g_list_prepend,
+    free = glib::ffi::g_list_free,
+    free_full = glib::ffi::g_list_free_full,
+    pending = GListFree,
+}
 
-    unsafe fn prepend(list: *mut glib::ffi::GSList, ptr: *mut c_void) -> *mut glib::ffi::GSList {
-        unsafe { glib::ffi::g_slist_prepend(list, ptr) }
-    }
-
-    unsafe fn free(list: *mut glib::ffi::GSList) {
-        unsafe { glib::ffi::g_slist_free(list) };
-    }
-
-    unsafe fn free_full(list: *mut glib::ffi::GSList) {
-        unsafe { glib::ffi::g_slist_free_full(list, Some(glib::ffi::g_free)) };
-    }
-
-    fn pending_release() -> PendingRelease {
-        PendingRelease::GSListFree
-    }
-
-    fn handle_storage(
-        handles: Vec<crate::handle::Handle>,
-        list_ptr: *mut glib::ffi::GSList,
-        should_free: bool,
-    ) -> StashStorage {
-        StashStorage::GSList(GSListData {
-            handles,
-            list_ptr,
-            should_free,
-        })
-    }
-
-    fn string_storage(
-        strings: Vec<std::ffi::CString>,
-        list_ptr: *mut glib::ffi::GSList,
-        should_free: bool,
-        elements_duped: bool,
-    ) -> StashStorage {
-        StashStorage::StringGSList(StringGSListData {
-            strings,
-            list_ptr,
-            should_free,
-            elements_duped,
-        })
-    }
+impl_list_kind! {
+    kind = GSListKind,
+    node = glib::ffi::GSList,
+    handle_data = GSListData => GSList,
+    string_data = StringGSListData => StringGSList,
+    label = "GSList",
+    prepend = glib::ffi::g_slist_prepend,
+    free = glib::ffi::g_slist_free,
+    free_full = glib::ffi::g_slist_free_full,
+    pending = GSListFree,
 }
 
 #[derive(Debug)]
@@ -394,7 +372,7 @@ impl Stash {
         &self.storage
     }
 
-    pub fn as_numeric_slice(&self, integer_codec: IntegerCodec) -> anyhow::Result<Vec<f64>> {
+    pub fn to_f64_vec(&self, integer_codec: IntegerCodec) -> anyhow::Result<Vec<f64>> {
         match (&self.storage, integer_codec) {
             (StashStorage::I64Vec(v), IntegerCodec::I64) => v
                 .iter()
@@ -422,7 +400,7 @@ impl Stash {
         }
     }
 
-    pub fn as_bigint_vec(&self, kind: BigIntCodec) -> anyhow::Result<Vec<i128>> {
+    pub fn to_bigint_vec(&self, kind: BigIntCodec) -> anyhow::Result<Vec<i128>> {
         match (&self.storage, kind) {
             (StashStorage::I64Vec(v), BigIntCodec::I64) => {
                 Ok(v.iter().map(|&x| i128::from(x)).collect())

@@ -1,7 +1,4 @@
-use glib::{
-    self,
-    translate::{FromGlib as _, IntoGlib as _},
-};
+use glib::{self, translate::IntoGlib as _};
 
 use super::prelude::*;
 use crate::ffi::library_cache::GlibThreadState;
@@ -57,25 +54,13 @@ impl BoxedCodec {
     }
 
     fn try_resolve_gtype_from_library(&self) -> anyhow::Result<Option<glib::Type>> {
-        let Some(lib_name) = self.shared_library.as_ref() else {
-            return Ok(None);
-        };
-        let Some(get_type_fn) = self.get_type_fn.as_ref() else {
+        let (Some(lib_name), Some(get_type_fn)) =
+            (self.shared_library.as_ref(), self.get_type_fn.as_ref())
+        else {
             return Ok(None);
         };
 
-        let symbol = GlibThreadState::with(|state| -> anyhow::Result<_> {
-            let library = state.library(lib_name)?;
-            let sym = unsafe {
-                library
-                    .get::<unsafe extern "C" fn() -> glib::ffi::GType>(get_type_fn.as_bytes())
-                    .map_err(|e| anyhow::anyhow!("Failed to find symbol '{get_type_fn}': {e}"))?
-            };
-            Ok(*sym)
-        })?;
-
-        let raw_gtype = unsafe { symbol() };
-        let gtype = unsafe { glib::Type::from_glib(raw_gtype) };
+        let gtype = GlibThreadState::with(|state| state.resolve_gtype(lib_name, get_type_fn))?;
         Ok(Some(gtype).filter(|t| t.is_valid()))
     }
 }
@@ -108,23 +93,21 @@ impl Encoder for BoxedCodec {
 
 impl Decoder for BoxedCodec {
     fn read_call(&self, stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
-        let Some(boxed_ptr) = stashed_value.as_non_null_ptr("Boxed")? else {
-            return Ok(value::Value::Null);
-        };
+        self.read_call_non_null(stashed_value, "Boxed", |boxed_ptr| {
+            if let Some(free_fn_name) = self.free_fn.as_deref() {
+                return Ok(self.boxed_with_free_fn(boxed_ptr, free_fn_name)?.into());
+            }
 
-        if let Some(free_fn_name) = self.free_fn.as_deref() {
-            return Ok(self.boxed_with_free_fn(boxed_ptr, free_fn_name)?.into());
-        }
+            let gtype = self.gtype();
+            let boxed = match self.ownership {
+                Ownership::Full => Boxed::from_glib_full(gtype, boxed_ptr),
+                Ownership::Borrowed => unsafe {
+                    Boxed::from_glib_none_with_size(gtype, boxed_ptr, None, Some(&self.type_name))?
+                },
+            };
 
-        let gtype = self.gtype();
-        let boxed = match self.ownership {
-            Ownership::Full => Boxed::from_glib_full(gtype, boxed_ptr),
-            Ownership::Borrowed => unsafe {
-                Boxed::from_glib_none_with_size(gtype, boxed_ptr, None, Some(&self.type_name))?
-            },
-        };
-
-        Ok(boxed.into())
+            Ok(boxed.into())
+        })
     }
 
     unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {

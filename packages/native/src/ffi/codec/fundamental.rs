@@ -61,10 +61,7 @@ impl Encoder for FundamentalCodec {
 
 impl Decoder for FundamentalCodec {
     fn read_call(&self, stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
-        let Some(ptr) = stashed_value.as_non_null_ptr("Fundamental")? else {
-            return Ok(value::Value::Null);
-        };
-        self.wrap_ptr(ptr)
+        self.read_call_non_null(stashed_value, "Fundamental", |ptr| self.wrap_ptr(ptr))
     }
 
     unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {

@@ -60,14 +60,13 @@ impl Encoder for ObjectCodec {
 
 impl Decoder for ObjectCodec {
     fn read_call(&self, stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
-        let Some(object_ptr) = stashed_value.as_non_null_ptr("Object")? else {
-            return Ok(value::Value::Null);
-        };
-        Ok(unsafe {
-            tracked_gobject_value(
-                object_ptr as *mut glib::gobject_ffi::GObject,
-                self.ownership,
-            )
+        self.read_call_non_null(stashed_value, "Object", |object_ptr| {
+            Ok(unsafe {
+                tracked_gobject_value(
+                    object_ptr as *mut glib::gobject_ffi::GObject,
+                    self.ownership,
+                )
+            })
         })
     }
 

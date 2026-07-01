@@ -178,6 +178,15 @@ pub fn lossless_f64(value: i128, context: &str) -> anyhow::Result<f64> {
     Ok(value as f64)
 }
 
+fn coerce_number(value: &value::Value, label: &str, allow_object: bool) -> anyhow::Result<f64> {
+    match value {
+        value::Value::Number(n) => Ok(*n),
+        value::Value::Object(handle) if allow_object => Ok(handle.ptr_as_usize() as f64),
+        value::Value::Null | value::Value::Undefined => Ok(0.0),
+        _ => bail!("Expected a Number for {label}, got {value:?}"),
+    }
+}
+
 impl IntegerCodec {
     pub fn byte_size(self) -> usize {
         match self {
@@ -188,7 +197,7 @@ impl IntegerCodec {
         }
     }
 
-    fn check_range(self, value: f64) -> anyhow::Result<()> {
+    pub(super) fn check_range(self, value: f64) -> anyhow::Result<()> {
         let name: &'static str = (&self).into();
         let (min, max) = match self {
             Self::I8 => (i8::MIN as f64, i8::MAX as f64),
@@ -221,7 +230,7 @@ impl IntegerCodec {
     }
 
     pub fn vec_to_f64(self, storage: &ffi::Stash) -> anyhow::Result<Vec<f64>> {
-        storage.as_numeric_slice(self)
+        storage.to_f64_vec(self)
     }
 
     pub unsafe fn checked_read_slice(
@@ -272,12 +281,7 @@ impl IntegerCodec {
     }
 
     fn number_from_value(value: &value::Value) -> anyhow::Result<f64> {
-        match value {
-            value::Value::Number(n) => Ok(*n),
-            value::Value::Object(handle) => Ok(handle.ptr_as_usize() as f64),
-            value::Value::Null | value::Value::Undefined => Ok(0.0),
-            _ => bail!("Expected a Number for integer codec, got {value:?}"),
-        }
+        coerce_number(value, "integer codec", true)
     }
 
     pub(super) unsafe fn write_return_widened(self, ret: *mut c_void, value: f64) {
@@ -343,16 +347,37 @@ impl FloatCodec {
         }
     }
 
+    fn check_range(self, value: f64) -> anyhow::Result<()> {
+        if let Self::F32 = self
+            && value.is_finite()
+            && (value > f32::MAX as f64 || value < -(f32::MAX as f64))
+        {
+            let name: &'static str = (&self).into();
+            bail!("Value {value} is out of range for {name}");
+        }
+        Ok(())
+    }
+
     pub fn checked_to_stashed_value(self, value: f64) -> anyhow::Result<ffi::StashedValue> {
+        self.check_range(value)?;
+        Ok(match self {
+            Self::F32 => ffi::StashedValue::F32(value as f32),
+            Self::F64 => ffi::StashedValue::F64(value),
+        })
+    }
+
+    pub fn checked_to_stash(self, values: &[f64]) -> anyhow::Result<ffi::Stash> {
         match self {
             Self::F32 => {
-                if value.is_finite() && (value > f32::MAX as f64 || value < -(f32::MAX as f64)) {
-                    let name: &'static str = (&self).into();
-                    bail!("Value {value} is out of range for {name}");
+                let mut out = Vec::with_capacity(values.len());
+                for (i, &v) in values.iter().enumerate() {
+                    self.check_range(v)
+                        .map_err(|e| anyhow::anyhow!("Array element {i}: {e}"))?;
+                    out.push(v as f32);
                 }
-                Ok(ffi::StashedValue::F32(value as f32))
+                Ok(out.into())
             }
-            Self::F64 => Ok(ffi::StashedValue::F64(value)),
+            Self::F64 => Ok(values.to_vec().into()),
         }
     }
 
@@ -386,11 +411,7 @@ impl FloatCodec {
     }
 
     fn number_from_value(value: &value::Value) -> anyhow::Result<f64> {
-        match value {
-            value::Value::Number(n) => Ok(*n),
-            value::Value::Null | value::Value::Undefined => Ok(0.0),
-            _ => bail!("Expected a Number for float type, got {value:?}"),
-        }
+        coerce_number(value, "float type", false)
     }
 
     unsafe fn write_return_widened(self, ret: *mut c_void, value: f64) {

@@ -106,8 +106,7 @@ impl Encoder for RefCodec {
             _ => match &*ref_val.value {
                 value::Value::Null | value::Value::Undefined => Ok(Self::zeroed_scalar_stashed()),
                 _ => {
-                    let ref_arg = Arg::new(*self.inner_codec.clone(), *ref_val.value.clone());
-                    let encoded = ffi::StashedValue::try_from(ref_arg)?;
+                    let encoded = self.inner_codec.encode(&ref_val.value)?;
                     Self::scalar_out_stashed(&encoded)
                 }
             },
