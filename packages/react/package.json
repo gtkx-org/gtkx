@@ -45,7 +45,9 @@
         "!**/*.tsbuildinfo"
     ],
     "scripts": {
-        "build": "tsc -b"
+        "build": "tsc -b tsconfig.lib.json",
+        "typecheck": "tsc -b --emitDeclarationOnly",
+        "release": "cp ../../README.md README.md && pnpm publish --access public --no-git-checks"
     },
     "engines": {
         "node": ">=24"

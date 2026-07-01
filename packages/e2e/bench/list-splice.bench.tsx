@@ -1,6 +1,6 @@
 import { bench, describe } from "vitest";
-import { renderListView } from "../helpers/list-fixtures.js";
-import { cleanup, render } from "../helpers/production-render.js";
+import { renderListView } from "../tests/helpers/list-fixtures.js";
+import { cleanup, render } from "../tests/helpers/production-render.js";
 
 const SIZES = [100, 400];
 

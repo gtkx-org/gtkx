@@ -2,9 +2,9 @@ import type { ItemNode } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
 import { bench, describe } from "vitest";
-import { renderListView } from "../helpers/list-fixtures.js";
-import { cleanup, render } from "../helpers/production-render.js";
-import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
+import { renderListView } from "../tests/helpers/list-fixtures.js";
+import { cleanup, render } from "../tests/helpers/production-render.js";
+import { ScrollWrapper } from "../tests/helpers/scroll-wrapper.js";
 
 const SIZES = [100, 200, 400];
 

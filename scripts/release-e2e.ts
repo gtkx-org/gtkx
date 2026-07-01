@@ -1,9 +1,5 @@
 import { spawn } from "node:child_process";
-import {
-    mkdtempSync,
-    rmSync,
-    writeFileSync,
-} from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import type { Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -18,7 +14,7 @@ const APPLICATION_ID = "com.gtkx.release-e2e";
 
 type UserResponse = {
     token?: string;
-}
+};
 
 type RunOptions = {
     cwd?: string | undefined;
@@ -134,7 +130,10 @@ async function publishPackages(env: NodeJS.ProcessEnv): Promise<void> {
 }
 
 async function scaffoldConsumer(consumerRoot: string, env: NodeJS.ProcessEnv): Promise<string> {
-    await runAsync("npm", ["create", "gtkx", APP_NAME, "--application-id", APPLICATION_ID, "--pm", "npm", "--vitest"], { cwd: consumerRoot, env });
+    await runAsync("npm", ["create", "gtkx", APP_NAME, "--application-id", APPLICATION_ID, "--pm", "npm", "--vitest"], {
+        cwd: consumerRoot,
+        env,
+    });
     return join(consumerRoot, APP_NAME);
 }
 

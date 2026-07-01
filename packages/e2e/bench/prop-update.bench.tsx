@@ -1,8 +1,8 @@
 import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
 import type { ReactNode } from "react";
 import { bench, describe } from "vitest";
-import { cleanup, render } from "../helpers/production-render.js";
-import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
+import { cleanup, render } from "../tests/helpers/production-render.js";
+import { ScrollWrapper } from "../tests/helpers/scroll-wrapper.js";
 
 const SIZES = [100, 400];
 

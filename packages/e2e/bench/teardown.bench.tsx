@@ -1,6 +1,6 @@
 import { beforeEach, bench, describe } from "vitest";
-import { drawButtonBox } from "../helpers/button-box.js";
-import { cleanup, render } from "../helpers/production-render.js";
+import { drawButtonBox } from "../tests/helpers/button-box.js";
+import { cleanup, render } from "../tests/helpers/production-render.js";
 
 const SIZES = [100, 400];
 

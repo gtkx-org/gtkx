@@ -1,10 +1,12 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { generateGlModules } from "@gtkx/codegen";
 
+const require = createRequire(import.meta.url);
 const scriptDir = dirname(fileURLToPath(import.meta.url));
-const registryPath = join(scriptDir, "..", "registry", "gl.xml");
+const registryPath = join(dirname(require.resolve("@gtkx/codegen/package.json")), "registry", "gl.xml");
 const glSrcDir = join(scriptDir, "..", "..", "gl", "src");
 const outputDir = join(glSrcDir, "generated");
 

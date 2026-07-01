@@ -1,5 +1,5 @@
 name: Compute Turbo Env
-description: Inspect the CI container for NODE_VERSION, GTK4_VERSION, and a content-hash VERSION; export them to $GITHUB_ENV so they participate in Turbo cache keys.
+description: Inspect the CI container for NODE_VERSION and GTK4_VERSION; export them to $GITHUB_ENV so they participate in Turbo cache keys.
 
 runs:
   using: composite
@@ -11,7 +11,6 @@ runs:
           docker run --rm -v "${{ github.workspace }}:/workspace" -w /workspace gtkx-ci:local bash -c '
             printf "NODE_VERSION=%s\n" "$(node -v)"
             printf "GTK4_VERSION=%s\n" "$(pkg-config --modversion gtk4)"
-            printf "VERSION=%s\n" "$(scripts/get-version-hash.ts)"
           '
         }
         read_versions >> "$GITHUB_ENV"

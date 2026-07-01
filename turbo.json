@@ -7,13 +7,9 @@
         "knip.json",
         "tsconfig.json",
         "tsconfig.*.json",
-        "vitest.config.ts",
+        "vitest.config.ts"
     ],
-    "globalEnv": [
-        "NODE_VERSION",
-        "GTK4_VERSION",
-        "VERSION"
-    ],
+    "globalEnv": ["NODE_VERSION", "GTK4_VERSION"],
     "globalPassThroughEnv": [
         "TURBO_TOKEN",
         "TURBO_TEAM",
@@ -24,12 +20,7 @@
     ],
     "tasks": {
         "production": {
-            "dependsOn": [
-                "//#codegen:all",
-                "codegen",
-                "@gtkx/native#build",
-                "^production"
-            ],
+            "dependsOn": ["//#codegen:all", "codegen", "@gtkx/native#build", "^production"],
             "inputs": [
                 "$TURBO_DEFAULT$",
                 "src/**",
@@ -38,162 +29,95 @@
                 "tsconfig.lib.json",
                 {
                     "mode": "dependencyOutputs",
-                    "from": ["codegen", "//#codegen:all"],
-                    "globs": ["**"]
+                    "from": ["//#codegen:all", "codegen"],
+                    "globs": ["node_modules/.gtkx/**", "src/generated/**"]
                 }
             ],
             "outputs": []
         },
         "bench": {
-            "dependsOn": [
-                "production"
-            ],
-            "inputs": [
-                "$TURBO_DEFAULT$",
-                "bench/**/*.bench.{ts,tsx}",
-                "vitest.bench.config.ts"
-            ],
+            "dependsOn": ["production"],
+            "inputs": ["$TURBO_DEFAULT$", "bench/**/*.bench.{ts,tsx}", "vitest.bench.config.ts"],
             "outputs": []
         },
         "build": {
-            "dependsOn": [
-                "production"
-            ],
+            "dependsOn": ["production", "^build"],
             "inputs": [],
-            "outputs": [
-                "dist/**",
-                "tsconfig.lib.tsbuildinfo"
-            ]
+            "outputs": ["dist/**", "tsconfig.lib.tsbuildinfo"]
         },
         "codegen": {
-            "dependsOn": [
-                "production"
-            ],
-            "inputs": [
-                "$TURBO_DEFAULT$",
-                "scripts/codegen.ts"
-            ],
-            "outputs": [
-                "src/generated/**"
-            ]
+            "dependsOn": ["//#codegen:all"],
+            "inputs": ["$TURBO_DEFAULT$"],
+            "outputs": ["src/generated/**"]
         },
         "coverage": {
-            "dependsOn": [
-                "production"
-            ],
-            "inputs": [
-                "$TURBO_DEFAULT$",
-                "tests/**",
-                "vitest.config.ts"
-            ],
-            "outputs": [
-                "coverage/**"
-            ]
+            "dependsOn": ["production"],
+            "inputs": ["$TURBO_DEFAULT$", "tests/**", "vitest.config.ts"],
+            "outputs": ["coverage/**"]
         },
         "release": {
-            "dependsOn": [
-                "build"
-            ],
+            "dependsOn": ["build"],
             "cache": false
         },
         "typecheck": {
-            "dependsOn": [
-                "production"
-            ],
-            "inputs": [
-                "$TURBO_DEFAULT$",
-                "tests/**"
-            ],
+            "dependsOn": ["production", "^build"],
+            "inputs": ["$TURBO_DEFAULT$", "tests/**"],
             "outputs": ["*.tsbuildinfo"]
         },
         "@gtkx/native#production": {
-            "dependsOn": [
-                "^production"
-            ],
-            "inputs": [
-                "$TURBO_DEFAULT$",
-                "main.d.ts",
-                "main.js",
-                "Cargo.toml",
-                "Cargo.lock"
-            ],
+            "dependsOn": ["^production"],
+            "inputs": ["$TURBO_DEFAULT$", "main.d.ts", "main.js", "Cargo.toml", "Cargo.lock"],
             "outputs": []
         },
         "@gtkx/native#artifacts": {
-            "dependsOn": [
-                "build"
-            ],
+            "dependsOn": ["build"],
             "inputs": [],
-            "outputs": [
-                "artifacts/**"
-            ]
+            "outputs": ["artifacts/**"]
         },
         "@gtkx/native#create-npm-dirs": {
-            "dependsOn": [
-                "build"
-            ],
+            "dependsOn": ["build"],
             "inputs": [],
-            "outputs": [
-                "npm/**"
-            ]
+            "outputs": ["npm/**"]
         },
         "@gtkx/native#release": {
-            "dependsOn": [
-                "artifacts",
-                "create-npm-dirs"
-            ]
+            "dependsOn": ["artifacts", "create-npm-dirs"],
+            "cache": false
         },
         "@gtkx/native#build": {
-            "outputs": [
-                "target/**",
-                "index.d.ts",
-                "index.js",
-                "native.*.node"
-            ],
-            "inputs": []
+            "inputs": ["Cargo.toml", "Cargo.lock", "build.rs", "src/**", "package.json"],
+            "outputs": ["index.d.ts", "index.js", "native.*.node"]
         },
         "@gtkx/native#test": {
-            "dependsOn": [
-                "build",
-                "test:asan",
-                "test:miri"
-            ],
-            "inputs": [
-                "$TURBO_DEFAULT$",
-                "$TURBO_ROOT$/scripts/run-headless.ts"
-            ],
+            "dependsOn": ["build", "test:asan", "test:miri"],
+            "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/scripts/run-headless.ts"],
             "outputs": []
         },
         "@gtkx/native#test:asan": {
-            "dependsOn": [
-                "build"
-            ],
+            "dependsOn": ["build"],
             "inputs": [],
             "outputs": []
         },
         "@gtkx/native#test:miri": {
-            "dependsOn": [
-                "build"
-            ],
+            "dependsOn": ["build"],
             "inputs": [],
             "outputs": []
         },
         "//#codegen:all": {
+            "dependsOn": ["@gtkx/native#build"],
             "inputs": [
-                "$TURBO_DEFAULT$",
+                "gtkx.config.ts",
                 "packages/cli/src/**",
-                "packages/codegen/src/**"
+                "packages/codegen/src/**",
+                "packages/config/src/**",
+                "packages/utils/src/**",
+                "packages/ffi/src/**",
+                "packages/ffi/package.json",
+                "packages/react/package.json"
             ],
-            "outputs": [
-                "node_modules/.gtkx/**"
-            ]
+            "outputs": ["node_modules/.gtkx/**"]
         },
         "//#coverage:all": {
-            "dependsOn": [
-                "codegen",
-                "//#codegen:all",
-                "@gtkx/native#build"
-            ],
+            "dependsOn": ["//#codegen:all", "@gtkx/native#build"],
             "inputs": [
                 "$TURBO_DEFAULT$",
                 "packages/**/src/**",
@@ -201,20 +125,14 @@
                 "packages/**/vitest.config.ts",
                 {
                     "mode": "dependencyOutputs",
-                    "from": ["codegen", "//#codegen:all"],
-                    "globs": ["**"]
+                    "from": ["//#codegen:all"],
+                    "globs": ["node_modules/.gtkx/**"]
                 }
             ],
-            "outputs": [
-                "coverage/**"
-            ]
+            "outputs": ["coverage/**"]
         },
         "//#lint:all": {
-            "dependsOn": [
-                "//#lint:deps",
-                "//#lint:knip",
-                "//#lint:ts-refs"
-            ],
+            "dependsOn": ["//#lint:deps", "//#lint:knip"],
             "inputs": [
                 "$TURBO_DEFAULT$",
                 "packages/**/src/**",
@@ -225,10 +143,7 @@
             "outputs": []
         },
         "//#lint:deps": {
-            "dependsOn": [
-                "codegen",
-                "//#codegen:all"
-            ],
+            "dependsOn": ["//#codegen:all"],
             "inputs": [
                 "$TURBO_DEFAULT$",
                 "packages/**/src/**",
@@ -237,17 +152,14 @@
                 "packages/**/gtkx.config.ts",
                 {
                     "mode": "dependencyOutputs",
-                    "from": ["codegen", "//#codegen:all"],
-                    "globs": ["**"]
+                    "from": ["//#codegen:all"],
+                    "globs": ["node_modules/.gtkx/**"]
                 }
             ],
             "outputs": []
         },
         "//#lint:knip": {
-            "dependsOn": [
-                "codegen",
-                "//#codegen:all"
-            ],
+            "dependsOn": ["//#codegen:all"],
             "inputs": [
                 "packages/**/src/**",
                 "packages/**/tests/**",
@@ -255,29 +167,14 @@
                 "packages/**/package.json",
                 {
                     "mode": "dependencyOutputs",
-                    "from": ["codegen", "//#codegen:all"],
-                    "globs": ["**"]
+                    "from": ["//#codegen:all"],
+                    "globs": ["node_modules/.gtkx/**"]
                 }
             ],
             "outputs": []
         },
-        "//#lint:ts-refs": {
-            "inputs": [
-                "packages/**/src/**",
-                "packages/**/tests/**",
-                "packages/**/gtkx.config.ts",
-                "packages/**/package.json",
-                "packages/**/tsconfig.json",
-                "packages/**/tsconfig.*.json"
-            ],
-            "outputs": []
-        },
         "//#test:all": {
-            "dependsOn": [
-                "codegen",
-                "//#codegen:all",
-                "@gtkx/native#build"
-            ],
+            "dependsOn": ["//#codegen:all", "@gtkx/native#build"],
             "inputs": [
                 "$TURBO_DEFAULT$",
                 "packages/**/src/**",
@@ -286,18 +183,14 @@
                 "packages/**/vitest.config.ts",
                 {
                     "mode": "dependencyOutputs",
-                    "from": ["codegen", "//#codegen:all"],
-                    "globs": ["**"]
+                    "from": ["//#codegen:all"],
+                    "globs": ["node_modules/.gtkx/**"]
                 }
             ],
             "outputs": []
         },
         "//#typecheck:all": {
-            "dependsOn": [
-                "codegen",
-                "//#codegen:all",
-                "@gtkx/native#build"
-            ],
+            "dependsOn": ["//#codegen:all", "@gtkx/native#build"],
             "inputs": [
                 "$TURBO_DEFAULT$",
                 "**/scripts/**",
@@ -306,8 +199,8 @@
                 "vitest.config.ts",
                 {
                     "mode": "dependencyOutputs",
-                    "from": ["codegen", "//#codegen:all"],
-                    "globs": ["**"]
+                    "from": ["//#codegen:all"],
+                    "globs": ["node_modules/.gtkx/**"]
                 }
             ],
             "outputs": []

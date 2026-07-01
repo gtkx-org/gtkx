@@ -1,10 +1,10 @@
-import { spawnSync } from "child_process";
+import { spawnSync } from "node:child_process";
 
 const command = process.argv[2];
 const args = process.argv.slice(3);
 
 if (!command) {
-    console.error('Usage: tsx ./scripts/run-headless.ts <command> [args...]');
+    console.error("Usage: tsx ./scripts/run-headless.ts <command> [args...]");
     process.exit(1);
 }
 

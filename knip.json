@@ -1,20 +1,23 @@
 {
     "$schema": "https://unpkg.com/knip@6/schema.json",
     "ignoreExportsUsedInFile": true,
-    "ignore": ["**/out-tsc/**", "packages/native/index.js", "packages/native/index.d.ts"],
-    "ignoreDependencies": ["^@gtkx/gi(/.*)?$", "^@gtkx/jsx(/.*)?$", "^@gtkx/native-(\\w+)-(\\w+)(-\\w+)?$"],
+    "ignore": ["packages/native/index.js"],
+    "ignoreDependencies": ["^@gtkx/gi(/.*)?$", "^@gtkx/jsx(/.*)?$"],
     "ignoreBinaries": [
         "espeak-ng",
         "pkg-config",
         "glib-compile-resources",
         "glib-compile-schemas",
         "setpriv",
-        "weston"
+        "weston",
+        "wlheadless-run"
     ],
-    "ignoreUnresolved": [".*\\.wasi\\.cjs"],
     "workspaces": {
         ".": {
             "entry": ["gtkx.config.ts", "scripts/**/*.ts"]
+        },
+        "website": {
+            "entry": [".vitepress/theme/**/*.{ts,vue}"]
         },
         "packages/e2e": {
             "entry": ["gtkx.config.ts!"]
@@ -23,10 +26,7 @@
             "entry": ["gtkx.config.ts!"]
         },
         "packages/cli": {
-            "entry": ["src/global.d.ts!", "scripts/**/*.ts!"]
-        },
-        "packages/codegen": {
-            "entry": ["scripts/**/*.ts!"]
+            "entry": ["src/cli.ts!", "src/global.d.ts!"]
         },
         "packages/vitest": {
             "entry": ["src/worker-setup.ts!"]

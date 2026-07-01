@@ -37,6 +37,7 @@ RUN apt-get update \
         gvfs \
         libgles2 \
         libgl1-mesa-dri \
+        weston \
         xwayland-run \
         dbus \
         git \
@@ -59,41 +60,11 @@ RUN apt-get update \
 COPY 60-gtkx-noto-sans.conf /etc/fonts/conf.d/60-gtkx-noto-sans.conf
 RUN fc-cache -f
 
-ARG WESTON_VERSION=15.0.1
-RUN sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.sources \
-    && apt-get update \
-    && apt-get build-dep -y weston \
-    && apt-get install -y --no-install-recommends meson ninja-build \
-    && curl -fsSL -o /tmp/weston.tar.xz \
-        "https://gitlab.freedesktop.org/wayland/weston/-/releases/${WESTON_VERSION}/downloads/weston-${WESTON_VERSION}.tar.xz" \
-    && echo "551d039bfb0c837ba5a4d027cdb8ee16bded0eedb789821f8025d8a64b791f6d  /tmp/weston.tar.xz" | sha256sum -c - \
-    && mkdir -p /tmp/weston-src \
-    && tar -xJf /tmp/weston.tar.xz --strip-components=1 -C /tmp/weston-src \
-    && meson setup /tmp/weston-src/build /tmp/weston-src --prefix=/usr/local --buildtype=release \
-        -Dbackend-headless=true -Dbackend-default=headless \
-        -Dbackend-drm=false -Dbackend-pipewire=false -Dbackend-rdp=false \
-        -Dbackend-vnc=false -Dbackend-wayland=false -Dbackend-x11=false \
-        -Drenderer-gl=true -Drenderer-vulkan=false \
-        -Dxwayland=false -Dsystemd=false -Dremoting=false -Dpipewire=false \
-        -Dshell-desktop=true -Dshell-ivi=false -Dshell-kiosk=false -Dshell-lua=false \
-        -Dcolor-management-lcms=false -Dimage-jpeg=false -Dimage-webp=false \
-        -Ddemo-clients=false -Dresize-pool=false \
-        -Dwcap-decode=false -Dtests=false -Dtest-junit-xml=false \
-    && ninja -C /tmp/weston-src/build install \
-    && ldconfig \
-    && rm -rf /tmp/weston-src /tmp/weston.tar.xz /var/lib/apt/lists/* \
-    && weston --version | grep -q "weston ${WESTON_VERSION}"
-
 ARG NODE24_VERSION=24.18.0
-ARG NODE22_VERSION=22.23.1
 RUN set -eux \
     && curl -fsSL "https://nodejs.org/dist/v${NODE24_VERSION}/node-v${NODE24_VERSION}-linux-x64.tar.xz" \
         | tar -xJ --strip-components=1 -C /usr/local \
-    && mkdir -p /opt/node22 \
-    && curl -fsSL "https://nodejs.org/dist/v${NODE22_VERSION}/node-v${NODE22_VERSION}-linux-x64.tar.xz" \
-        | tar -xJ --strip-components=1 -C /opt/node22 \
-    && node --version | grep -q "v${NODE24_VERSION}" \
-    && /opt/node22/bin/node --version | grep -q "v${NODE22_VERSION}"
+    && node --version | grep -q "v${NODE24_VERSION}"
 
 RUN npm install -g corepack@latest && corepack enable && corepack prepare pnpm@latest --activate
 
