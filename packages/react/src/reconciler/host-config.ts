@@ -16,7 +16,7 @@ import { createElementInstance, createRelationshipInstance } from "./instance.js
 import { scheduleLabelTextRebuild } from "./label-text-rebuild.js";
 import { reportReconcilerError } from "./reconciler-error-handler.js";
 import { isRelationshipNode } from "./relationship-node.js";
-import { isRuleManagedProp, resolveSetPropsRuleSet, ruleNodeOf } from "./rule-registry.js";
+import { isRuleManagedProp, RULE_CONTEXT, resolveSetPropsRuleSet, ruleNodeOf } from "./rule-registry.js";
 import { ensureState, type Node, stateOf } from "./state.js";
 import { scheduleBufferRebuild } from "./text-buffer-rebuild.js";
 import { isBufferContentNode, isLabelTextNode } from "./text-node.js";
@@ -143,7 +143,7 @@ const commitInstanceProps = (instance: Node, oldProps: Props | null, newProps: P
     const ruleSet = resolveSetPropsRuleSet(instance.__gtype__);
     if (ruleSet?.setProps) {
         const node = ruleNodeOf(instance);
-        if (node) ruleSet.setProps(node, newProps, oldProps);
+        if (node) ruleSet.setProps(node, newProps, oldProps, RULE_CONTEXT);
     }
     if (instance instanceof Gtk.TextTag) scheduleBufferRebuild(instance);
 };

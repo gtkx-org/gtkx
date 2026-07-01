@@ -1,30 +1,9 @@
-import type * as Adw from "@gtkx/gi/adw";
-import * as Gio from "@gtkx/gi/gio";
-import * as GObject from "@gtkx/gi/gobject";
-import * as Gtk from "@gtkx/gi/gtk";
 import { callMethod } from "@gtkx/utils";
-import type { RuleRegistry, RuleSet } from "./rule-schema.js";
+import type { RuleContext, RuleRegistry, RuleSet } from "./rule-schema.js";
 
 const POSITION_TYPE_BOTTOM = 3;
 
-const isType = <T extends GObject.Object>(instance: GObject.Object, typeName: string): instance is T => {
-    let current = instance.__gtype__;
-    while (current !== 0n) {
-        if (GObject.typeName(current) === typeName) return true;
-        current = GObject.typeParent(current);
-    }
-    return false;
-};
-
-const isToggleGroup = (instance: GObject.Object): instance is Adw.ToggleGroup =>
-    isType<Adw.ToggleGroup>(instance, "AdwToggleGroup");
-const isToggle = (instance: GObject.Object): instance is Adw.Toggle => isType<Adw.Toggle>(instance, "AdwToggle");
-const isAlertDialog = (instance: GObject.Object): instance is Adw.AlertDialog =>
-    isType<Adw.AlertDialog>(instance, "AdwAlertDialog");
-const isViewStack = (instance: GObject.Object): instance is Adw.ViewStack =>
-    isType<Adw.ViewStack>(instance, "AdwViewStack");
-
-const nameOf = (instance: GObject.Object): string => {
+const nameOf = (instance: object): string => {
     const value = callMethod(instance, "getName", []);
     return typeof value === "string" ? value : "";
 };
@@ -33,58 +12,68 @@ const changed = (oldValue: unknown, newValue: unknown): boolean => oldValue !== 
 
 const asArray = <T>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : []);
 
+const attachShortcut = (parent: object, child: object, ctx: RuleContext): void => {
+    if (ctx.instanceIsA(parent, "GtkShortcutController") && ctx.instanceIsA(child, "GtkShortcut")) {
+        callMethod(parent, "addShortcut", [child]);
+    }
+};
+
+const detachShortcut = (parent: object, child: object, ctx: RuleContext): void => {
+    if (ctx.instanceIsA(parent, "GtkShortcutController") && ctx.instanceIsA(child, "GtkShortcut")) {
+        callMethod(parent, "removeShortcut", [child]);
+    }
+};
+
 const EventController: RuleSet = {
-    appendChild: (parent, child) => {
-        if (parent.instance instanceof Gtk.Widget && child.instance instanceof Gtk.EventController) {
-            parent.instance.addController(child.instance);
+    appendChild: (parent, child, ctx) => {
+        if (ctx.instanceIsA(parent.instance, "GtkWidget") && ctx.instanceIsA(child.instance, "GtkEventController")) {
+            callMethod(parent.instance, "addController", [child.instance]);
         }
     },
-    removeChild: (parent, child) => {
+    removeChild: (parent, child, ctx) => {
         if (
-            parent.instance instanceof Gtk.Widget &&
-            child.instance instanceof Gtk.EventController &&
-            child.instance.getWidget() === parent.instance
+            ctx.instanceIsA(parent.instance, "GtkWidget") &&
+            ctx.instanceIsA(child.instance, "GtkEventController") &&
+            callMethod(child.instance, "getWidget", []) === parent.instance
         ) {
-            parent.instance.removeController(child.instance);
+            callMethod(parent.instance, "removeController", [child.instance]);
         }
     },
 };
 
 const LayoutManager: RuleSet = {
-    appendChild: (parent, child) => {
-        if (parent.instance instanceof Gtk.Widget && child.instance instanceof Gtk.LayoutManager) {
-            parent.instance.setLayoutManager(child.instance);
+    appendChild: (parent, child, ctx) => {
+        if (ctx.instanceIsA(parent.instance, "GtkWidget") && ctx.instanceIsA(child.instance, "GtkLayoutManager")) {
+            callMethod(parent.instance, "setLayoutManager", [child.instance]);
         }
     },
-    removeChild: (parent, child) => {
-        if (parent.instance instanceof Gtk.Widget && parent.instance.getLayoutManager() === child.instance) {
-            parent.instance.setLayoutManager(null);
+    removeChild: (parent, child, ctx) => {
+        if (
+            ctx.instanceIsA(parent.instance, "GtkWidget") &&
+            callMethod(parent.instance, "getLayoutManager", []) === child.instance
+        ) {
+            callMethod(parent.instance, "setLayoutManager", [null]);
         }
     },
 };
 
 const Shortcut: RuleSet = {
-    appendChild: (parent, child) => {
-        if (parent.instance instanceof Gtk.ShortcutController && child.instance instanceof Gtk.Shortcut) {
-            parent.instance.addShortcut(child.instance);
-        }
-    },
-    removeChild: (parent, child) => {
-        if (parent.instance instanceof Gtk.ShortcutController && child.instance instanceof Gtk.Shortcut) {
-            parent.instance.removeShortcut(child.instance);
-        }
-    },
+    appendChild: (parent, child, ctx) => attachShortcut(parent.instance, child.instance, ctx),
+    removeChild: (parent, child, ctx) => detachShortcut(parent.instance, child.instance, ctx),
 };
 
 const TextBuffer: RuleSet = {
-    appendChild: (parent, child) => {
-        if (parent.instance instanceof Gtk.TextView && child.instance instanceof Gtk.TextBuffer) {
-            parent.instance.setBuffer(child.instance);
+    appendChild: (parent, child, ctx) => {
+        if (ctx.instanceIsA(parent.instance, "GtkTextView") && ctx.instanceIsA(child.instance, "GtkTextBuffer")) {
+            callMethod(parent.instance, "setBuffer", [child.instance]);
         }
     },
-    removeChild: (parent, child) => {
-        if (parent.instance instanceof Gtk.TextView && parent.instance.getBuffer() === child.instance) {
-            parent.instance.setBuffer(null);
+    removeChild: (parent, child, ctx) => {
+        if (
+            ctx.instanceIsA(parent.instance, "GtkTextView") &&
+            callMethod(parent.instance, "getBuffer", []) === child.instance
+        ) {
+            callMethod(parent.instance, "setBuffer", [null]);
         }
     },
 };
@@ -103,51 +92,57 @@ const SimpleAction: RuleSet = {
 };
 
 const SimpleActionGroup: RuleSet = {
-    appendChild: (parent, child) => {
+    appendChild: (parent, child, ctx) => {
         const prefix = child.props.prefix;
         if (
-            parent.instance instanceof Gtk.Widget &&
-            child.instance instanceof Gio.ActionGroup &&
+            ctx.instanceIsA(parent.instance, "GtkWidget") &&
+            ctx.instanceIsA(child.instance, "GActionGroup") &&
             typeof prefix === "string"
         ) {
-            parent.instance.insertActionGroup(prefix, child.instance);
+            callMethod(parent.instance, "insertActionGroup", [prefix, child.instance]);
         }
     },
-    removeChild: (parent, child) => {
+    removeChild: (parent, child, ctx) => {
         const prefix = child.props.prefix;
-        if (parent.instance instanceof Gtk.Widget && typeof prefix === "string") {
-            parent.instance.insertActionGroup(prefix, null);
+        if (ctx.instanceIsA(parent.instance, "GtkWidget") && typeof prefix === "string") {
+            callMethod(parent.instance, "insertActionGroup", [prefix, null]);
         }
     },
 };
 
 const ColumnViewColumn: RuleSet = {
-    appendChild: (parent, child) => {
-        if (parent.instance instanceof Gtk.ColumnView && child.instance instanceof Gtk.ColumnViewColumn) {
-            parent.instance.appendColumn(child.instance);
+    appendChild: (parent, child, ctx) => {
+        if (
+            ctx.instanceIsA(parent.instance, "GtkColumnView") &&
+            ctx.instanceIsA(child.instance, "GtkColumnViewColumn")
+        ) {
+            callMethod(parent.instance, "appendColumn", [child.instance]);
         }
     },
-    removeChild: (parent, child) => {
-        if (parent.instance instanceof Gtk.ColumnView && child.instance instanceof Gtk.ColumnViewColumn) {
-            parent.instance.removeColumn(child.instance);
+    removeChild: (parent, child, ctx) => {
+        if (
+            ctx.instanceIsA(parent.instance, "GtkColumnView") &&
+            ctx.instanceIsA(child.instance, "GtkColumnViewColumn")
+        ) {
+            callMethod(parent.instance, "removeColumn", [child.instance]);
         }
     },
 };
 
 const Toggle: RuleSet = {
-    appendChild: (parent, child) => {
-        if (isToggleGroup(parent.instance) && isToggle(child.instance)) {
-            parent.instance.add(child.instance);
+    appendChild: (parent, child, ctx) => {
+        if (ctx.instanceIsA(parent.instance, "AdwToggleGroup") && ctx.instanceIsA(child.instance, "AdwToggle")) {
+            callMethod(parent.instance, "add", [child.instance]);
         }
     },
-    removeChild: (parent, child) => {
-        if (isToggleGroup(parent.instance) && isToggle(child.instance)) {
-            parent.instance.remove(child.instance);
+    removeChild: (parent, child, ctx) => {
+        if (ctx.instanceIsA(parent.instance, "AdwToggleGroup") && ctx.instanceIsA(child.instance, "AdwToggle")) {
+            callMethod(parent.instance, "remove", [child.instance]);
         }
     },
 };
 
-type SlotAttach = (parent: GObject.Object, child: GObject.Object) => void;
+type SlotAttach = (parent: object, child: object) => void;
 
 const reflectAdd =
     (method: string): SlotAttach =>
@@ -187,50 +182,38 @@ const ToolbarView = slots({
 const ActionBar = slots(PACK);
 
 const Widget: RuleSet = {
-    appendChild: (parent, child) => {
-        if (!(parent.instance instanceof Gtk.Widget)) return;
-        if (child.slotTag === "controllers" && child.instance instanceof Gtk.EventController) {
-            parent.instance.addController(child.instance);
+    appendChild: (parent, child, ctx) => {
+        if (!ctx.instanceIsA(parent.instance, "GtkWidget")) return;
+        if (child.slotTag === "controllers" && ctx.instanceIsA(child.instance, "GtkEventController")) {
+            callMethod(parent.instance, "addController", [child.instance]);
         } else if (
             child.slotTag === "actionGroups" &&
-            child.instance instanceof Gio.ActionGroup &&
+            ctx.instanceIsA(child.instance, "GActionGroup") &&
             typeof child.props.prefix === "string"
         ) {
-            parent.instance.insertActionGroup(child.props.prefix, child.instance);
+            callMethod(parent.instance, "insertActionGroup", [child.props.prefix, child.instance]);
         }
     },
-    removeChild: (parent, child) => {
-        if (!(parent.instance instanceof Gtk.Widget)) return;
+    removeChild: (parent, child, ctx) => {
+        if (!ctx.instanceIsA(parent.instance, "GtkWidget")) return;
         if (
             child.slotTag === "controllers" &&
-            child.instance instanceof Gtk.EventController &&
-            child.instance.getWidget() === parent.instance
+            ctx.instanceIsA(child.instance, "GtkEventController") &&
+            callMethod(child.instance, "getWidget", []) === parent.instance
         ) {
-            parent.instance.removeController(child.instance);
+            callMethod(parent.instance, "removeController", [child.instance]);
         } else if (child.slotTag === "actionGroups" && typeof child.props.prefix === "string") {
-            parent.instance.insertActionGroup(child.props.prefix, null);
+            callMethod(parent.instance, "insertActionGroup", [child.props.prefix, null]);
         }
     },
 };
 
 const ShortcutController: RuleSet = {
-    appendChild: (parent, child) => {
-        if (
-            child.slotTag === "shortcuts" &&
-            parent.instance instanceof Gtk.ShortcutController &&
-            child.instance instanceof Gtk.Shortcut
-        ) {
-            parent.instance.addShortcut(child.instance);
-        }
+    appendChild: (parent, child, ctx) => {
+        if (child.slotTag === "shortcuts") attachShortcut(parent.instance, child.instance, ctx);
     },
-    removeChild: (parent, child) => {
-        if (
-            child.slotTag === "shortcuts" &&
-            parent.instance instanceof Gtk.ShortcutController &&
-            child.instance instanceof Gtk.Shortcut
-        ) {
-            parent.instance.removeShortcut(child.instance);
-        }
+    removeChild: (parent, child, ctx) => {
+        if (child.slotTag === "shortcuts") detachShortcut(parent.instance, child.instance, ctx);
     },
 };
 
@@ -253,24 +236,27 @@ interface ActionAccelItem {
 }
 
 const Application: RuleSet = {
-    setProps: (node, newProps, oldProps) => {
-        if (!(node.instance instanceof Gtk.Application) || !changed(oldProps?.actionAccels, newProps.actionAccels)) {
+    setProps: (node, newProps, oldProps, ctx) => {
+        if (
+            !ctx.instanceIsA(node.instance, "GtkApplication") ||
+            !changed(oldProps?.actionAccels, newProps.actionAccels)
+        ) {
             return;
         }
         for (const accel of asArray<ActionAccelItem>(oldProps?.actionAccels)) {
-            node.instance.setAccelsForAction(accel.action, []);
+            callMethod(node.instance, "setAccelsForAction", [accel.action, []]);
         }
         for (const accel of asArray<ActionAccelItem>(newProps.actionAccels)) {
-            node.instance.setAccelsForAction(accel.action, accel.accels);
+            callMethod(node.instance, "setAccelsForAction", [accel.action, accel.accels]);
         }
     },
 };
 
 const SizeGroup: RuleSet = {
-    setProps: (node, newProps, oldProps) => {
-        if (!(node.instance instanceof Gtk.SizeGroup) || !changed(oldProps?.widgets, newProps.widgets)) return;
-        for (const widget of asArray<Gtk.Widget>(oldProps?.widgets)) node.instance.removeWidget(widget);
-        for (const widget of asArray<Gtk.Widget>(newProps.widgets)) node.instance.addWidget(widget);
+    setProps: (node, newProps, oldProps, ctx) => {
+        if (!ctx.instanceIsA(node.instance, "GtkSizeGroup") || !changed(oldProps?.widgets, newProps.widgets)) return;
+        for (const widget of asArray<object>(oldProps?.widgets)) callMethod(node.instance, "removeWidget", [widget]);
+        for (const widget of asArray<object>(newProps.widgets)) callMethod(node.instance, "addWidget", [widget]);
     },
 };
 
@@ -281,11 +267,15 @@ interface ScaleMarkItem {
 }
 
 const Scale: RuleSet = {
-    setProps: (node, newProps, oldProps) => {
-        if (!(node.instance instanceof Gtk.Scale) || !changed(oldProps?.marks, newProps.marks)) return;
-        node.instance.clearMarks();
+    setProps: (node, newProps, oldProps, ctx) => {
+        if (!ctx.instanceIsA(node.instance, "GtkScale") || !changed(oldProps?.marks, newProps.marks)) return;
+        callMethod(node.instance, "clearMarks", []);
         for (const mark of asArray<ScaleMarkItem>(newProps.marks)) {
-            node.instance.addMark(mark.value, mark.position ?? POSITION_TYPE_BOTTOM, mark.label ?? null);
+            callMethod(node.instance, "addMark", [
+                mark.value,
+                mark.position ?? POSITION_TYPE_BOTTOM,
+                mark.label ?? null,
+            ]);
         }
     },
 };
@@ -296,24 +286,24 @@ interface LevelBarOffsetItem {
 }
 
 const LevelBar: RuleSet = {
-    setProps: (node, newProps, oldProps) => {
-        if (!(node.instance instanceof Gtk.LevelBar) || !changed(oldProps?.offsets, newProps.offsets)) return;
+    setProps: (node, newProps, oldProps, ctx) => {
+        if (!ctx.instanceIsA(node.instance, "GtkLevelBar") || !changed(oldProps?.offsets, newProps.offsets)) return;
         for (const offset of asArray<LevelBarOffsetItem>(oldProps?.offsets)) {
-            node.instance.removeOffsetValue(offset.id);
+            callMethod(node.instance, "removeOffsetValue", [offset.id]);
         }
         for (const offset of asArray<LevelBarOffsetItem>(newProps.offsets)) {
-            node.instance.addOffsetValue(offset.id, offset.value);
+            callMethod(node.instance, "addOffsetValue", [offset.id, offset.value]);
         }
     },
 };
 
 const Calendar: RuleSet = {
-    setProps: (node, newProps, oldProps) => {
-        if (!(node.instance instanceof Gtk.Calendar) || !changed(oldProps?.markedDays, newProps.markedDays)) {
+    setProps: (node, newProps, oldProps, ctx) => {
+        if (!ctx.instanceIsA(node.instance, "GtkCalendar") || !changed(oldProps?.markedDays, newProps.markedDays)) {
             return;
         }
-        node.instance.clearMarks();
-        for (const day of asArray<number>(newProps.markedDays)) node.instance.markDay(day);
+        callMethod(node.instance, "clearMarks", []);
+        for (const day of asArray<number>(newProps.markedDays)) callMethod(node.instance, "markDay", [day]);
     },
 };
 
@@ -325,27 +315,29 @@ interface AlertResponseItem {
 }
 
 const AlertDialog: RuleSet = {
-    setProps: (node, newProps, oldProps) => {
-        if (!isAlertDialog(node.instance) || !changed(oldProps?.responses, newProps.responses)) {
+    setProps: (node, newProps, oldProps, ctx) => {
+        if (!ctx.instanceIsA(node.instance, "AdwAlertDialog") || !changed(oldProps?.responses, newProps.responses)) {
             return;
         }
         for (const response of asArray<AlertResponseItem>(oldProps?.responses)) {
-            node.instance.removeResponse(response.id);
+            callMethod(node.instance, "removeResponse", [response.id]);
         }
         for (const response of asArray<AlertResponseItem>(newProps.responses)) {
-            node.instance.addResponse(response.id, response.label);
+            callMethod(node.instance, "addResponse", [response.id, response.label]);
             if (response.appearance !== undefined) {
-                node.instance.setResponseAppearance(response.id, response.appearance);
+                callMethod(node.instance, "setResponseAppearance", [response.id, response.appearance]);
             }
-            if (response.enabled !== undefined) node.instance.setResponseEnabled(response.id, response.enabled);
+            if (response.enabled !== undefined) {
+                callMethod(node.instance, "setResponseEnabled", [response.id, response.enabled]);
+            }
         }
     },
 };
 
 const DropTarget: RuleSet = {
-    setProps: (node, newProps, oldProps) => {
-        if (!(node.instance instanceof Gtk.DropTarget) || !changed(oldProps?.types, newProps.types)) return;
-        node.instance.setGtypes(asArray<GObject.Type>(newProps.types));
+    setProps: (node, newProps, oldProps, ctx) => {
+        if (!ctx.instanceIsA(node.instance, "GtkDropTarget") || !changed(oldProps?.types, newProps.types)) return;
+        callMethod(node.instance, "setGtypes", [asArray<bigint>(newProps.types)]);
     },
 };
 
@@ -355,62 +347,62 @@ interface CreditSectionItem {
 }
 
 const AboutDialog: RuleSet = {
-    setProps: (node, newProps, oldProps) => {
+    setProps: (node, newProps, oldProps, ctx) => {
         if (
-            !(node.instance instanceof Gtk.AboutDialog) ||
+            !ctx.instanceIsA(node.instance, "GtkAboutDialog") ||
             !changed(oldProps?.creditSections, newProps.creditSections)
         ) {
             return;
         }
         if (asArray<CreditSectionItem>(oldProps?.creditSections).length !== 0) return;
         for (const section of asArray<CreditSectionItem>(newProps.creditSections)) {
-            node.instance.addCreditSection(section.name, section.people);
+            callMethod(node.instance, "addCreditSection", [section.name, section.people]);
         }
     },
 };
 
 interface DragSourceIconItem {
-    paintable: import("@gtkx/gi/gdk").Paintable;
+    paintable: object;
     hotX?: number;
     hotY?: number;
 }
 
 const DragSource: RuleSet = {
-    setProps: (node, newProps, oldProps) => {
-        if (!(node.instance instanceof Gtk.DragSource) || !changed(oldProps?.icon, newProps.icon)) return;
+    setProps: (node, newProps, oldProps, ctx) => {
+        if (!ctx.instanceIsA(node.instance, "GtkDragSource") || !changed(oldProps?.icon, newProps.icon)) return;
         const icon = newProps.icon;
         if (icon == null) {
-            node.instance.setIcon(null, 0, 0);
+            callMethod(node.instance, "setIcon", [null, 0, 0]);
             return;
         }
         const value = icon as DragSourceIconItem;
-        node.instance.setIcon(value.paintable, value.hotX ?? 0, value.hotY ?? 0);
+        callMethod(node.instance, "setIcon", [value.paintable, value.hotX ?? 0, value.hotY ?? 0]);
     },
 };
 
 const DrawingArea: RuleSet = {
-    setProps: (node, newProps, oldProps) => {
-        if (!(node.instance instanceof Gtk.DrawingArea) || !changed(oldProps?.drawFunc, newProps.drawFunc)) {
+    setProps: (node, newProps, oldProps, ctx) => {
+        if (!ctx.instanceIsA(node.instance, "GtkDrawingArea") || !changed(oldProps?.drawFunc, newProps.drawFunc)) {
             return;
         }
         const drawFunc = newProps.drawFunc;
-        node.instance.setDrawFunc(typeof drawFunc === "function" ? (drawFunc as Gtk.DrawingAreaDrawFunc) : null);
-        node.instance.queueDraw();
+        callMethod(node.instance, "setDrawFunc", [typeof drawFunc === "function" ? drawFunc : null]);
+        callMethod(node.instance, "queueDraw", []);
     },
 };
 
 const Editable: RuleSet = {
-    setProps: (node, newProps, oldProps) => {
-        if (!(node.instance instanceof Gtk.Editable)) return;
+    setProps: (node, newProps, oldProps, ctx) => {
+        if (!ctx.instanceIsA(node.instance, "GtkEditable")) return;
         const value = newProps.text;
         if (!changed(oldProps?.text, value) || typeof value !== "string") return;
         const committed = oldProps?.text;
-        if (committed !== undefined && node.instance.getText() !== committed) return;
+        if (committed !== undefined && callMethod(node.instance, "getText", []) !== committed) return;
         Reflect.set(node.instance, "text", value);
     },
 };
 
-const applyStackPage = (instance: GObject.Object, newProps: Record<string, unknown>): void => {
+const applyStackPage = (instance: object, newProps: Record<string, unknown>): void => {
     const value = newProps.visibleChildName;
     if (typeof value !== "string" || value === "") return;
     if (callMethod(instance, "getVisibleChildName", []) !== value && callMethod(instance, "getChildByName", [value])) {
@@ -419,32 +411,34 @@ const applyStackPage = (instance: GObject.Object, newProps: Record<string, unkno
 };
 
 const Stack: RuleSet = {
-    setProps: (node, newProps) => {
-        if (node.instance instanceof Gtk.Stack) applyStackPage(node.instance, newProps);
+    setProps: (node, newProps, _oldProps, ctx) => {
+        if (ctx.instanceIsA(node.instance, "GtkStack")) applyStackPage(node.instance, newProps);
     },
 };
 
 const ViewStack: RuleSet = {
-    setProps: (node, newProps) => {
-        if (isViewStack(node.instance)) applyStackPage(node.instance, newProps);
+    setProps: (node, newProps, _oldProps, ctx) => {
+        if (ctx.instanceIsA(node.instance, "AdwViewStack")) applyStackPage(node.instance, newProps);
     },
 };
 
 const ToggleGroup: RuleSet = {
-    setProps: (node, newProps) => {
-        if (!isToggleGroup(node.instance)) return;
+    setProps: (node, newProps, _oldProps, ctx) => {
+        if (!ctx.instanceIsA(node.instance, "AdwToggleGroup")) return;
         const activeName = newProps.activeName;
-        if (activeName !== undefined) node.instance.setActiveName(typeof activeName === "string" ? activeName : null);
+        if (activeName !== undefined) {
+            callMethod(node.instance, "setActiveName", [typeof activeName === "string" ? activeName : null]);
+        }
         const active = newProps.active;
-        if (active != null && typeof active === "number") node.instance.setActive(active);
+        if (active != null && typeof active === "number") callMethod(node.instance, "setActive", [active]);
     },
 };
 
 const TextTag: RuleSet = {
-    setProps: (node, newProps) => {
-        if (!(node.instance instanceof Gtk.TextTag)) return;
+    setProps: (node, newProps, _oldProps, ctx) => {
+        if (!ctx.instanceIsA(node.instance, "GtkTextTag")) return;
         if (newProps.priority != null && typeof newProps.priority === "number") {
-            node.instance.setPriority(newProps.priority);
+            callMethod(node.instance, "setPriority", [newProps.priority]);
         }
         if (newProps.foreground != null) Reflect.set(node.instance, "foreground", newProps.foreground);
         if (newProps.background != null) Reflect.set(node.instance, "background", newProps.background);

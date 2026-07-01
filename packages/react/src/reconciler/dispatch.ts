@@ -2,7 +2,7 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { attachOrderedInsert, detachOrderedInsert, resolveOrderedInsert } from "./ordered-insert.js";
 import { isRelationshipNode } from "./relationship-node.js";
-import { resolveAppendRuleSet, ruleNodeOf } from "./rule-registry.js";
+import { RULE_CONTEXT, resolveAppendRuleSet, ruleNodeOf } from "./rule-registry.js";
 import { type Node, stateOf } from "./state.js";
 
 export interface ElementMapping {
@@ -42,13 +42,13 @@ export const childRuleSetMapping: ElementMapping = {
         const parentNode = ruleNodeOf(parent);
         const childNode = ruleNodeOf(child);
         if (!parentNode || !childNode || !(child instanceof GObject.Object)) return;
-        resolveAppendRuleSet(child.__gtype__)?.appendChild?.(parentNode, childNode);
+        resolveAppendRuleSet(child.__gtype__)?.appendChild?.(parentNode, childNode, RULE_CONTEXT);
     },
     detach: (child, parent) => {
         const parentNode = ruleNodeOf(parent);
         const childNode = ruleNodeOf(child);
         if (!parentNode || !childNode || !(child instanceof GObject.Object)) return;
-        resolveAppendRuleSet(child.__gtype__)?.removeChild?.(parentNode, childNode);
+        resolveAppendRuleSet(child.__gtype__)?.removeChild?.(parentNode, childNode, RULE_CONTEXT);
     },
 };
 

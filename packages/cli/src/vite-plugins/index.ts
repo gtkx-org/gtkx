@@ -1,4 +1,5 @@
-import { createGtkxConfigLoader, createGtkxConfigPlugin } from "@gtkx/config";
+import { createGtkxConfigLoader } from "@gtkx/config";
+import { createGtkxConfigPlugin } from "@gtkx/config/plugin";
 import type { Plugin } from "vite";
 import { gtkxAssets } from "./assets.js";
 import { gtkxGResources } from "./gresources.js";

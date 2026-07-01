@@ -1,6 +1,6 @@
 import { join } from "node:path";
 
-import { createGtkxConfigPlugin } from "@gtkx/config";
+import { createGtkxConfigPlugin } from "@gtkx/config/plugin";
 import type { Plugin } from "vitest/config";
 import type { HeadlessOptions } from "./headless-display.js";
 

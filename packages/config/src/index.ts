@@ -16,7 +16,6 @@ export {
     loadGtkxConfig,
     loadResolvedGtkxConfig,
 } from "./loader.js";
-export { createGtkxConfigPlugin } from "./plugin.js";
 export {
     type AddMethodRule,
     type AttachShape,
@@ -33,6 +32,7 @@ export {
     RELATIONSHIP_KINDS,
     RELATIONSHIP_NODE_ELEMENT,
     type RelationshipKind,
+    type RuleContext,
     type RuleNode,
     type RuleRegistry,
     type RuleSet,

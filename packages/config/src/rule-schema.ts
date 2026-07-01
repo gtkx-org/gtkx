@@ -1,5 +1,3 @@
-import type * as GObject from "@gtkx/gi/gobject";
-
 export const RELATIONSHIP_NODE_ELEMENT = "__GTKX_RELATIONSHIP_NODE__";
 
 export const RELATIONSHIP_KINDS = [
@@ -78,15 +76,30 @@ export type OrderedInsertSpec = {
 };
 
 export interface RuleNode {
-    instance: GObject.Object;
+    instance: object;
     props: Record<string, unknown>;
     slotTag: string | undefined;
 }
 
+/**
+ * Runtime services injected into rule callbacks by the host reconciler
+ * (`@gtkx/react`). Rules are duck-typed and never import the generated GObject
+ * bindings, so any genuine runtime type check goes through here.
+ */
+export type RuleContext = {
+    /** Whether `instance` is, or derives from, the GObject type named `typeName` (respecting interfaces). */
+    instanceIsA: (instance: object, typeName: string) => boolean;
+};
+
 export interface RuleSet {
-    appendChild?: (parent: RuleNode, child: RuleNode) => void;
-    removeChild?: (parent: RuleNode, child: RuleNode) => void;
-    setProps?: (node: RuleNode, newProps: Record<string, unknown>, oldProps: Record<string, unknown> | null) => void;
+    appendChild?: (parent: RuleNode, child: RuleNode, ctx: RuleContext) => void;
+    removeChild?: (parent: RuleNode, child: RuleNode, ctx: RuleContext) => void;
+    setProps?: (
+        node: RuleNode,
+        newProps: Record<string, unknown>,
+        oldProps: Record<string, unknown> | null,
+        ctx: RuleContext,
+    ) => void;
 }
 
 export type RuleRegistry = Record<string, RuleSet>;

@@ -42,7 +42,7 @@ import {
     trackedInstance,
     trackedWidget,
 } from "./relationship-content.js";
-import { namedRuleSet, resolveAppendRuleSet, ruleNodeOf } from "./rule-registry.js";
+import { namedRuleSet, RULE_CONTEXT, resolveAppendRuleSet, ruleNodeOf } from "./rule-registry.js";
 import { SLOT_HOST_BASE_TYPE } from "./slot-props.js";
 import { isRelationshipKind, type Node, stateOf } from "./state.js";
 import type { Props } from "./types.js";
@@ -108,13 +108,13 @@ const slotHostRuleSet = (host: GObject.Object, slotTag: string) => {
 const attachContainerSlotChild = (instance: Node, parent: GObject.Object, slotTag: string): void => {
     const parentNode = ruleNodeOf(parent);
     const childNode = ruleNodeOf(instance, slotTag);
-    if (parentNode && childNode) slotHostRuleSet(parent, slotTag)?.appendChild?.(parentNode, childNode);
+    if (parentNode && childNode) slotHostRuleSet(parent, slotTag)?.appendChild?.(parentNode, childNode, RULE_CONTEXT);
 };
 
 const detachContainerSlotChild = (instance: Node, parent: GObject.Object, slotTag: string): void => {
     const parentNode = ruleNodeOf(parent);
     const childNode = ruleNodeOf(instance, slotTag);
-    if (parentNode && childNode) slotHostRuleSet(parent, slotTag)?.removeChild?.(parentNode, childNode);
+    if (parentNode && childNode) slotHostRuleSet(parent, slotTag)?.removeChild?.(parentNode, childNode, RULE_CONTEXT);
     if (instance instanceof Gtk.Widget && instance.getParent() !== null) unparentWidget(instance);
 };
 

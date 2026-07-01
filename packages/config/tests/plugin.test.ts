@@ -1,7 +1,8 @@
 import type { HookHandler, Plugin } from "vite";
 import { describe, expect, it, vi } from "vitest";
 import { resolveGtkxConfig } from "../src/config.js";
-import { createGtkxConfigPlugin, type GtkxConfigLoader } from "../src/index.js";
+import type { GtkxConfigLoader } from "../src/index.js";
+import { createGtkxConfigPlugin } from "../src/plugin.js";
 import { GTKX_CONFIG_VIRTUAL_ID, RESOLVED_GTKX_CONFIG_VIRTUAL_ID } from "../src/virtual.js";
 
 const hookHandlerOf = <K extends keyof Plugin>(
