@@ -24,10 +24,7 @@ impl Encoder for StringCodec {
             value::Value::String(s) => {
                 if self.ownership.is_full() {
                     let glib_ptr = str_to_glib_full(s)? as *mut c_void;
-                    Ok(ffi::StashedValue::Storage(
-                        ffi::Stash::unit(glib_ptr)
-                            .with_pending_transfer(glib_ptr, ffi::PendingRelease::GFree),
-                    ))
+                    Ok(full_transfer_storage(glib_ptr, ffi::PendingRelease::GFree))
                 } else {
                     let cstring = CString::new(s.as_bytes())?;
                     let ptr = cstring.as_ptr() as *mut c_void;
@@ -76,7 +73,7 @@ impl PointerWriter for StringCodec {
             }
             _ => std::ptr::null_mut(),
         };
-        unsafe { *(ret as *mut *mut c_void) = ptr };
+        unsafe { ffi::Slot::new(ret).store(ptr) };
     }
 
     unsafe fn write_value_to_pointer(
@@ -87,10 +84,10 @@ impl PointerWriter for StringCodec {
         match value {
             value::Value::String(s) => {
                 let duped = str_to_glib_full(s)?;
-                unsafe { (ptr as *mut *mut c_char).write_unaligned(duped) };
+                unsafe { ffi::Slot::new(ptr).store(duped.cast()) };
             }
             value::Value::Null | value::Value::Undefined => unsafe {
-                (ptr as *mut *const c_char).write_unaligned(std::ptr::null());
+                ffi::Slot::new(ptr).store(std::ptr::null_mut());
             },
             _ => bail!("Expected a String for string field write, got {value:?}"),
         }

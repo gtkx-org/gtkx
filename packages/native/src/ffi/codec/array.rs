@@ -228,7 +228,7 @@ impl PointerWriter for ArrayCodec {
         value: &std::result::Result<value::Value, ()>,
     ) {
         let container = encode_and_leak_container(value, "array vfunc return", |v| self.encode(v));
-        unsafe { (ret as *mut *mut c_void).write_unaligned(container) };
+        unsafe { ffi::Slot::new(ret).store(container) };
     }
 }
 
@@ -383,9 +383,9 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
             (Ownership::Full, true) => {
                 let strv = build_strv(array)?;
                 let container = strv.into_raw() as *mut c_void;
-                Ok(ffi::StashedValue::Storage(
-                    Stash::unit(container)
-                        .with_pending_transfer(container, ffi::PendingRelease::StrFreeV),
+                Ok(full_transfer_storage(
+                    container,
+                    ffi::PendingRelease::StrFreeV,
                 ))
             }
             (Ownership::Full, false) => {
@@ -422,7 +422,8 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
 
         if ownership.is_full() {
             let container = leak_container_to_callee(&ptrs);
-            let release = group_with_container(acquired, container, ffi::PendingRelease::GFree);
+            let release =
+                ffi::PendingRelease::grouped(acquired, container, ffi::PendingRelease::GFree);
             return Ok(ffi::StashedValue::Storage(
                 Stash::new(
                     container,
@@ -456,62 +457,25 @@ fn string_list_parts(
     }
 }
 
-fn release_acquired(acquired: Vec<ffi::PendingTransfer>) {
-    for entry in acquired {
-        entry.release_now();
-    }
-}
-
-unsafe extern "C" fn free_garray_string_element(slot: glib::ffi::gpointer) {
-    unsafe { glib::ffi::g_free(*(slot as *mut glib::ffi::gpointer)) };
-}
-
-fn group_with_container(
-    mut acquired: Vec<ffi::PendingTransfer>,
-    container: *mut c_void,
-    container_release: ffi::PendingRelease,
-) -> ffi::PendingRelease {
-    if acquired.is_empty() {
-        return container_release;
-    }
-    acquired.push(ffi::PendingTransfer::new(container, container_release));
-    ffi::PendingRelease::Group(acquired)
-}
-
 fn transfer_elements(
     handles: &[crate::handle::Handle],
     item_codec: &Codec,
     container_label: &str,
 ) -> anyhow::Result<(Vec<*mut c_void>, Vec<ffi::PendingTransfer>)> {
     let mut ptrs = Vec::with_capacity(handles.len() + 1);
-    let mut acquired: Vec<ffi::PendingTransfer> = Vec::new();
+    let mut acquired = ffi::AcquiredTransfers::default();
     for handle in handles {
         let ptr = handle.ptr();
         if ptr.is_null() {
-            release_acquired(acquired);
             bail!("GObject in {container_label} has a null pointer");
         }
-        let element = match unsafe { item_codec.ref_for_transfer(ptr) } {
-            Ok(element) => element,
-            Err(e) => {
-                release_acquired(acquired);
-                return Err(e);
-            }
-        };
+        let element = unsafe { item_codec.ref_for_transfer(ptr)? };
         if let Some(release) = item_codec.transfer_release() {
             acquired.push(ffi::PendingTransfer::new(element, release));
         }
         ptrs.push(element);
     }
-    Ok((ptrs, acquired))
-}
-
-fn build_spine<F: ffi::ListFlavor>(ptrs: &[*mut c_void]) -> *mut F::Spine {
-    let mut list: *mut F::Spine = std::ptr::null_mut();
-    for ptr in ptrs.iter().rev() {
-        list = unsafe { F::prepend(list, *ptr) };
-    }
-    list
+    Ok((ptrs, acquired.into_inner()))
 }
 
 struct ListEncoder<F: ffi::ListFlavor>(PhantomData<F>);
@@ -525,7 +489,7 @@ impl<F: ffi::ListFlavor> ArrayKindEncoder for ListEncoder<F> {
     ) -> anyhow::Result<ffi::StashedValue> {
         let should_free = ownership.is_borrowed();
         let (strings, ptrs) = string_list_parts(array, dup_elements)?;
-        let list = build_spine::<F>(&ptrs);
+        let list = F::build_spine(&ptrs);
         let storage = Stash::new(
             list as *mut c_void,
             F::string_storage(strings, list, should_free, dup_elements),
@@ -540,7 +504,7 @@ impl<F: ffi::ListFlavor> ArrayKindEncoder for ListEncoder<F> {
             } else {
                 Vec::new()
             };
-            let release = group_with_container(acquired, list.cast(), F::spine_release());
+            let release = ffi::PendingRelease::grouped(acquired, list.cast(), F::spine_release());
             storage.with_pending_transfer(list as *mut c_void, release)
         };
         Ok(ffi::StashedValue::Storage(storage))
@@ -554,7 +518,7 @@ impl<F: ffi::ListFlavor> ArrayKindEncoder for ListEncoder<F> {
     ) -> anyhow::Result<ffi::StashedValue> {
         let should_free = ownership.is_borrowed();
         let (ptrs, acquired) = transfer_elements(handles, item_codec, F::LABEL)?;
-        let list = build_spine::<F>(&ptrs);
+        let list = F::build_spine(&ptrs);
         let storage = Stash::new(
             list as *mut c_void,
             F::handle_storage(handles.to_vec(), list, should_free),
@@ -569,7 +533,7 @@ impl<F: ffi::ListFlavor> ArrayKindEncoder for ListEncoder<F> {
                 )
             }
         } else {
-            let release = group_with_container(acquired, list.cast(), F::spine_release());
+            let release = ffi::PendingRelease::grouped(acquired, list.cast(), F::spine_release());
             storage.with_pending_transfer(list as *mut c_void, release)
         };
         Ok(ffi::StashedValue::Storage(storage))
@@ -898,6 +862,9 @@ impl ArrayCodec {
             }
             ItemCodec::Pointer => self.append_handle_values_to_garray(g_array, array),
             ItemCodec::String => {
+                unsafe extern "C" fn free_garray_string_element(slot: glib::ffi::gpointer) {
+                    unsafe { glib::ffi::g_free(*(slot as *mut glib::ffi::gpointer)) };
+                }
                 let callee_adopts_strings =
                     matches!(&*self.item_codec, Codec::String(s) if s.ownership.is_full());
                 if !callee_adopts_strings {
@@ -973,8 +940,11 @@ impl ArrayCodec {
                 )
             }
         } else {
-            let release =
-                group_with_container(acquired, g_array.cast(), ffi::PendingRelease::GArrayUnref);
+            let release = ffi::PendingRelease::grouped(
+                acquired,
+                g_array.cast(),
+                ffi::PendingRelease::GArrayUnref,
+            );
             storage.with_pending_transfer(g_array as *mut c_void, release)
         };
         Ok(ffi::StashedValue::Storage(storage))

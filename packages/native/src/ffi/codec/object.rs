@@ -1,7 +1,6 @@
 use super::prelude::*;
 use crate::handle::Handle;
 use crate::handle::wrapper;
-use anyhow::bail;
 use glib::{
     self,
     prelude::StaticType as _,
@@ -11,22 +10,11 @@ use glib::{
     },
 };
 
-unsafe fn load_type_class(
-    ptr: *mut glib::gobject_ffi::GObject,
-) -> anyhow::Result<*mut glib::gobject_ffi::GTypeClass> {
-    let type_class = unsafe { (*ptr).g_type_instance.g_class };
-    if type_class.is_null() {
-        bail!("GObject has invalid type class (object may have been freed)");
-    }
-    Ok(type_class)
-}
-
 unsafe fn tracked_gobject_value(
     gobject_ptr: *mut glib::gobject_ffi::GObject,
     ownership: Ownership,
-) -> anyhow::Result<value::Value> {
-    let type_class = unsafe { load_type_class(gobject_ptr)? };
-    let gtype: glib::Type = unsafe { from_glib((*type_class).g_type) };
+) -> value::Value {
+    let gtype: glib::Type = unsafe { from_glib((*(*gobject_ptr).g_type_instance.g_class).g_type) };
     let is_initially_unowned = gtype.is_a(glib::InitiallyUnowned::static_type());
     let is_floating = unsafe { glib::gobject_ffi::g_object_is_floating(gobject_ptr) != 0 };
     let has_wrapper = unsafe { wrapper::WrapperRegistry::global().has_wrapper(gobject_ptr) };
@@ -39,9 +27,7 @@ unsafe fn tracked_gobject_value(
         unsafe { glib::gobject_ffi::g_object_ref(gobject_ptr) };
     }
 
-    Ok(value::Value::Object(Handle::decoded_gobject(
-        gobject_ptr.cast(),
-    )))
+    value::Value::Object(Handle::decoded_gobject(gobject_ptr.cast()))
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -77,17 +63,19 @@ impl Decoder for ObjectCodec {
         let Some(object_ptr) = stashed_value.as_non_null_ptr("Object")? else {
             return Ok(value::Value::Null);
         };
-        unsafe {
+        Ok(unsafe {
             tracked_gobject_value(
                 object_ptr as *mut glib::gobject_ffi::GObject,
                 self.ownership,
             )
-        }
+        })
     }
 
     unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
-        self.null_guarded(ptr, |ptr| unsafe {
-            tracked_gobject_value(ptr as *mut glib::gobject_ffi::GObject, Ownership::Borrowed)
+        self.null_guarded(ptr, |ptr| {
+            Ok(unsafe {
+                tracked_gobject_value(ptr as *mut glib::gobject_ffi::GObject, Ownership::Borrowed)
+            })
         })
     }
 }

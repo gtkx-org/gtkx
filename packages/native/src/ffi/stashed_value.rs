@@ -151,6 +151,14 @@ impl StashedValue {
         Ok(if ptr.is_null() { None } else { Some(ptr) })
     }
 
+    pub fn as_storage_or_null(&self, kind: &str) -> anyhow::Result<Option<&Stash>> {
+        match self {
+            Self::Storage(storage) => Ok(Some(storage)),
+            Self::Ptr(ptr) if ptr.is_null() => Ok(None),
+            _ => anyhow::bail!("Expected a Storage ffi::StashedValue for {kind}, got {self:?}"),
+        }
+    }
+
     pub fn to_number(&self) -> anyhow::Result<f64> {
         match self {
             Self::I8(v) => Ok(*v as f64),

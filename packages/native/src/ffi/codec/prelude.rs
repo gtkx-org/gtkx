@@ -2,13 +2,15 @@ pub(super) use super::{Decoder, Encoder, Ownership, PointerWriter, ReadSource};
 pub(super) use crate::ffi::{self, value};
 pub(super) use std::ffi::c_void;
 
+use crate::messaging::error_reporter::ReportErr as _;
+
 pub(super) fn write_object_ptr(
     ptr: *mut c_void,
     value: &value::Value,
     label: &str,
 ) -> anyhow::Result<()> {
     let obj_ptr = value.object_ptr(label)?;
-    unsafe { (ptr as *mut *mut c_void).write_unaligned(obj_ptr) };
+    unsafe { ffi::Slot::new(ptr).store(obj_ptr) };
     Ok(())
 }
 
@@ -21,7 +23,7 @@ pub(super) fn write_return_object_ptr<F>(
 {
     let ptr = value::Value::result_to_ptr(value);
     let owned = if ptr.is_null() { ptr } else { transfer(ptr) };
-    unsafe { (ret as *mut *mut c_void).write_unaligned(owned) };
+    unsafe { ffi::Slot::new(ret).store(owned) };
 }
 
 pub(super) unsafe fn swap_owned_slot<A, R>(
@@ -36,13 +38,12 @@ where
     R: FnOnce(*mut c_void),
 {
     let new_ptr = value.object_ptr(label)?;
-    let old_ptr = unsafe { (ptr as *const *mut c_void).read_unaligned() };
     let owned_new = if new_ptr.is_null() {
         new_ptr
     } else {
         acquire(new_ptr)
     };
-    unsafe { (ptr as *mut *mut c_void).write_unaligned(owned_new) };
+    let old_ptr = unsafe { ffi::Slot::new(ptr).swap(owned_new) };
     if !old_ptr.is_null() {
         release(old_ptr);
     }
@@ -60,16 +61,10 @@ where
     let Ok(value @ value::Value::Array(_)) = value else {
         return std::ptr::null_mut();
     };
-    let stashed_value = match encode(value) {
-        Ok(stashed_value) => stashed_value,
-        Err(err) => {
-            crate::messaging::error_reporter::ErrorReporter::global().report(&err.context(context));
-            return std::ptr::null_mut();
-        }
+    let Some(stashed_value) = encode(value).report_err(context) else {
+        return std::ptr::null_mut();
     };
-    let container = stashed_value
-        .as_ptr(context)
-        .unwrap_or(std::ptr::null_mut());
+    let container = stashed_value.as_ptr(context).expect(context);
     std::mem::forget(stashed_value);
     container
 }

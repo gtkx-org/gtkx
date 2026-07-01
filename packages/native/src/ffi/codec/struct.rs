@@ -61,10 +61,10 @@ impl PointerWriter for StructCodec {
         if let Some(size) = self.size {
             let src_ptr = value.object_ptr("Struct field write")?;
             if src_ptr.is_null() {
-                unsafe { (ptr as *mut *mut c_void).write_unaligned(std::ptr::null_mut()) };
+                unsafe { ffi::Slot::new(ptr).store(std::ptr::null_mut()) };
                 return Ok(());
             }
-            let dst_ptr = unsafe { (ptr as *const *mut c_void).read_unaligned() };
+            let dst_ptr = unsafe { ffi::Slot::new(ptr).load() };
             if dst_ptr.is_null() {
                 bail!("Struct field write into null pointer slot")
             }

@@ -184,7 +184,7 @@ pub trait PointerWriter {
         value: &std::result::Result<value::Value, ()>,
     ) {
         let _ = value;
-        unsafe { *(ret as *mut *mut c_void) = std::ptr::null_mut() };
+        unsafe { ffi::Slot::new(ret).store(std::ptr::null_mut()) };
     }
 
     unsafe fn write_value_to_pointer(

@@ -12,7 +12,7 @@ use crate::ffi::codec::{
 };
 use crate::ffi::value::{JsRef, Value};
 use crate::messaging::Mailbox;
-use crate::messaging::error_reporter::ErrorReporter;
+use crate::messaging::error_reporter::{ErrorReporter, ReportErr};
 
 pub struct CallbackData {
     pub js_func: Arc<JsRef>,
@@ -123,13 +123,28 @@ impl CallbackState {
             data,
         }
     }
+
+    pub fn boxed(
+        js_func: Arc<JsRef>,
+        arg_descriptors: Vec<Codec>,
+        return_descriptor: Codec,
+        user_data_index: Option<usize>,
+        is_oneshot: bool,
+    ) -> Box<Self> {
+        let data = CallbackData::new(
+            js_func,
+            arg_descriptors,
+            return_descriptor,
+            user_data_index,
+            is_oneshot,
+        );
+        Box::new(Self::create(data))
+    }
 }
 
 impl CallbackState {
     pub unsafe extern "C" fn destroy(user_data: *mut c_void) {
-        if !user_data.is_null() {
-            drop(unsafe { Box::from_raw(user_data as *mut Self) });
-        }
+        drop(unsafe { Box::from_raw(user_data as *mut Self) });
     }
 }
 
@@ -244,7 +259,7 @@ impl CallbackData {
         if !previous.is_null() {
             drop(unsafe { Box::from_raw(previous) });
         }
-        unsafe { (result as *mut *mut c_void).write_unaligned(ptr) };
+        unsafe { crate::ffi::Slot::new(result).store(ptr) };
     }
 
     fn write_retained_string_return(&self, result: *mut c_void, value: &Result<Value, ()>) {
@@ -256,7 +271,7 @@ impl CallbackData {
         if !previous.is_null() {
             unsafe { glib::ffi::g_free(previous.cast()) };
         }
-        unsafe { (result as *mut *mut c_char).write_unaligned(new_ptr) };
+        unsafe { crate::ffi::Slot::new(result).store(new_ptr.cast()) };
     }
 }
 
@@ -272,6 +287,7 @@ pub(crate) fn seed_ref_cell(inner_ptr: *mut c_void, inner_codec: &Codec) -> Valu
         | Codec::Boolean(_)
         | Codec::Unichar(_) => {
             unsafe { inner_codec.read(ReadSource::Slot(inner_ptr.cast_const(), "inout cell seed")) }
+                .report_err("callback: failed to seed inout cell")
                 .unwrap_or(Value::Null)
         }
         _ => Value::Null,
@@ -283,35 +299,9 @@ pub(crate) fn flush_out_cells(cells: &[(usize, Value)], out_targets: &[(*mut c_v
         if ptr.is_null() {
             continue;
         }
-        if let Err(e) = unsafe { inner_codec.write_value_to_pointer(*ptr, new_value) } {
-            ErrorReporter::global().report(&e.context("callback: failed to write out-parameter"));
-        }
+        unsafe { inner_codec.write_value_to_pointer(*ptr, new_value) }
+            .report_err("callback: failed to write out-parameter");
     }
-}
-
-unsafe fn defer_oneshot_free(state_ptr: *mut CallbackState) {
-    glib::idle_add_local_once(move || {
-        drop(unsafe { Box::from_raw(state_ptr) });
-    });
-}
-
-pub fn build_trampoline(
-    js_func: Arc<JsRef>,
-    arg_descriptors: Vec<Codec>,
-    return_descriptor: Codec,
-    user_data_index: Option<usize>,
-    is_oneshot: bool,
-) -> (*mut c_void, Box<CallbackState>) {
-    let data = CallbackData::new(
-        js_func,
-        arg_descriptors,
-        return_descriptor,
-        user_data_index,
-        is_oneshot,
-    );
-    let state = Box::new(CallbackState::create(data));
-    let code_ptr = state.code_ptr;
-    (code_ptr, state)
 }
 
 unsafe extern "C" fn closure_entry(
@@ -322,6 +312,6 @@ unsafe extern "C" fn closure_entry(
 ) {
     let state_ptr = unsafe { data.handle_call(args, result as *mut u64 as *mut c_void) };
     if let Some(ptr) = state_ptr {
-        unsafe { defer_oneshot_free(ptr) };
+        glib::idle_add_local_once(move || drop(unsafe { Box::from_raw(ptr) }));
     }
 }

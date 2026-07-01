@@ -10,7 +10,7 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
 use super::Request;
-use crate::ffi::callback::{CallbackState, build_trampoline};
+use crate::ffi::callback::CallbackState;
 use crate::ffi::codec::Codec;
 use crate::ffi::descriptor::Descriptor;
 use crate::ffi::value::JsRef;
@@ -133,11 +133,10 @@ impl RawVfunc {
             arg_descriptors,
             return_descriptor,
         } = self;
-        let (code_ptr, state) =
-            build_trampoline(js_func, arg_descriptors, return_descriptor, None, false);
+        let state = CallbackState::boxed(js_func, arg_descriptors, return_descriptor, None, false);
         PreparedVfunc {
             byte_offset,
-            code_ptr,
+            code_ptr: state.code_ptr,
             state,
         }
     }
@@ -198,9 +197,6 @@ impl PreparedInterface {
 }
 
 unsafe extern "C" fn class_init(g_class: *mut c_void, class_data: *mut c_void) {
-    if class_data.is_null() {
-        return;
-    }
     let vfuncs = unsafe { Box::from_raw(class_data.cast::<Vec<PreparedVfunc>>()) };
     PreparedVfunc::install_all(g_class, *vfuncs);
 }

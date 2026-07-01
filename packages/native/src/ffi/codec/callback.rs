@@ -4,7 +4,7 @@ use libffi::middle as libffi;
 use napi_derive::napi;
 
 use super::prelude::*;
-use crate::ffi::callback::{CallbackState, build_trampoline};
+use crate::ffi::callback::CallbackState;
 use crate::ffi::codec::Codec;
 
 #[napi(string_enum = "lowercase")]
@@ -57,13 +57,14 @@ impl Encoder for CallbackCodec {
 
         let is_oneshot = self.scope == CallbackScope::Async;
 
-        let (fn_ptr, state) = build_trampoline(
+        let state = CallbackState::boxed(
             callback.js_func.clone(),
             self.arg_codecs.clone(),
             (*self.return_codec).clone(),
             self.user_data_index,
             is_oneshot,
         );
+        let fn_ptr = state.code_ptr;
 
         match self.scope {
             CallbackScope::Forever => Ok(ffi::StashedValue::Callback(

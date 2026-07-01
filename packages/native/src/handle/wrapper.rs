@@ -240,9 +240,6 @@ unsafe extern "C" fn on_toggle_notify(
         }
         let binding = unsafe { &*binding };
         let ref_ptr = binding.napi_ref.load(Ordering::Relaxed) as *mut c_void;
-        if ref_ptr.is_null() {
-            return;
-        }
         WrapperRegistry::apply_wrapper_level(binding, ref_ptr, is_last_ref == 0);
         return;
     }
@@ -256,9 +253,6 @@ unsafe extern "C" fn on_toggle_notify(
             return;
         }
         let ref_ptr = binding.napi_ref.load(Ordering::Relaxed) as *mut c_void;
-        if ref_ptr.is_null() {
-            return;
-        }
         let gobject = gobject_addr as *mut glib::gobject_ffi::GObject;
         let ref_count = unsafe { (*gobject).ref_count };
         WrapperRegistry::apply_wrapper_level(&binding, ref_ptr, ref_count > 1);

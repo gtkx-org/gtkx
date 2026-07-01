@@ -59,6 +59,27 @@ impl ErrorReporter {
     }
 }
 
+pub trait ReportErr<T> {
+    fn report_err<C>(self, context: C) -> Option<T>
+    where
+        C: std::fmt::Display + Send + Sync + 'static;
+}
+
+impl<T> ReportErr<T> for anyhow::Result<T> {
+    fn report_err<C>(self, context: C) -> Option<T>
+    where
+        C: std::fmt::Display + Send + Sync + 'static,
+    {
+        match self {
+            Ok(value) => Some(value),
+            Err(error) => {
+                ErrorReporter::global().report(&error.context(context));
+                None
+            }
+        }
+    }
+}
+
 struct UnhandledRejection;
 
 impl UnhandledRejection {

@@ -101,6 +101,42 @@ impl PendingTransfer {
     }
 }
 
+impl PendingRelease {
+    pub fn grouped(
+        mut acquired: Vec<PendingTransfer>,
+        container: *mut c_void,
+        container_release: PendingRelease,
+    ) -> PendingRelease {
+        if acquired.is_empty() {
+            return container_release;
+        }
+        acquired.push(PendingTransfer::new(container, container_release));
+        PendingRelease::Group(acquired)
+    }
+}
+
+#[derive(Default)]
+pub struct AcquiredTransfers(Vec<PendingTransfer>);
+
+impl AcquiredTransfers {
+    pub fn push(&mut self, transfer: PendingTransfer) {
+        self.0.push(transfer);
+    }
+
+    pub fn into_inner(self) -> Vec<PendingTransfer> {
+        let mut this = std::mem::ManuallyDrop::new(self);
+        std::mem::take(&mut this.0)
+    }
+}
+
+impl Drop for AcquiredTransfers {
+    fn drop(&mut self) {
+        for entry in self.0.drain(..) {
+            entry.release_now();
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct GListData {
     pub handles: Vec<crate::handle::Handle>,
@@ -155,6 +191,35 @@ pub trait ListFlavor {
         should_free: bool,
         elements_duped: bool,
     ) -> StashKind;
+
+    fn build_spine(ptrs: &[*mut c_void]) -> *mut Self::Spine {
+        let mut list: *mut Self::Spine = std::ptr::null_mut();
+        for ptr in ptrs.iter().rev() {
+            list = unsafe { Self::prepend(list, *ptr) };
+        }
+        list
+    }
+
+    unsafe fn free_handle_spine(list_ptr: *mut Self::Spine, should_free: bool) {
+        if should_free && !list_ptr.is_null() {
+            unsafe { Self::free_spine(list_ptr) };
+        }
+    }
+
+    unsafe fn free_string_spine(
+        list_ptr: *mut Self::Spine,
+        should_free: bool,
+        elements_duped: bool,
+    ) {
+        if !should_free || list_ptr.is_null() {
+            return;
+        }
+        if elements_duped {
+            unsafe { Self::free_spine_full(list_ptr) };
+        } else {
+            unsafe { Self::free_spine(list_ptr) };
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -401,46 +466,6 @@ impl Stash {
     }
 }
 
-fn free_string_list<F, G>(
-    should_free: bool,
-    is_null: bool,
-    elements_duped: bool,
-    free_full: F,
-    free_simple: G,
-) where
-    F: FnOnce(),
-    G: FnOnce(),
-{
-    if !should_free || is_null {
-        return;
-    }
-    if elements_duped {
-        free_full();
-    } else {
-        free_simple();
-    }
-}
-
-fn drop_handle_spine<F: ListFlavor>(list_ptr: *mut F::Spine, should_free: bool) {
-    if should_free && !list_ptr.is_null() {
-        unsafe { F::free_spine(list_ptr) };
-    }
-}
-
-fn drop_string_spine<F: ListFlavor>(
-    list_ptr: *mut F::Spine,
-    should_free: bool,
-    elements_duped: bool,
-) {
-    free_string_list(
-        should_free,
-        list_ptr.is_null(),
-        elements_duped,
-        || unsafe { F::free_spine_full(list_ptr) },
-        || unsafe { F::free_spine(list_ptr) },
-    );
-}
-
 impl Stash {
     fn drop_hash_table(data: &HashTableData) {
         if data.should_free && !data.handle.is_null() {
@@ -462,27 +487,27 @@ impl Drop for Stash {
         }
         match &self.kind {
             StashKind::HashTable(data) => Self::drop_hash_table(data),
-            StashKind::GList(data) => {
-                drop_handle_spine::<GListFlavor>(data.list_ptr, data.should_free);
-            }
-            StashKind::GSList(data) => {
-                drop_handle_spine::<GSListFlavor>(data.list_ptr, data.should_free);
-            }
+            StashKind::GList(data) => unsafe {
+                GListFlavor::free_handle_spine(data.list_ptr, data.should_free);
+            },
+            StashKind::GSList(data) => unsafe {
+                GSListFlavor::free_handle_spine(data.list_ptr, data.should_free);
+            },
             StashKind::GArray(data) => Self::drop_garray(data),
-            StashKind::StringGList(data) => {
-                drop_string_spine::<GListFlavor>(
+            StashKind::StringGList(data) => unsafe {
+                GListFlavor::free_string_spine(
                     data.list_ptr,
                     data.should_free,
                     data.elements_duped,
                 );
-            }
-            StashKind::StringGSList(data) => {
-                drop_string_spine::<GSListFlavor>(
+            },
+            StashKind::StringGSList(data) => unsafe {
+                GSListFlavor::free_string_spine(
                     data.list_ptr,
                     data.should_free,
                     data.elements_duped,
                 );
-            }
+            },
             StashKind::GByteArray(_)
             | StashKind::Unit
             | StashKind::U8Vec(_)

@@ -4,12 +4,15 @@ pub mod descriptor;
 pub mod library_cache;
 pub mod value;
 
+mod slot;
 mod stash;
 mod stashed_value;
 
+pub use slot::Slot;
+
 pub use stash::{
-    GArrayData, GListFlavor, GSListFlavor, HashTableData, ListFlavor, PendingRelease,
-    PendingTransfer, Stash, StashKind,
+    AcquiredTransfers, GArrayData, GListFlavor, GSListFlavor, HashTableData, ListFlavor,
+    PendingRelease, PendingTransfer, Stash, StashKind,
 };
 pub use stash::{GListData, GSListData, StringGListData, StringGSListData};
 pub use stashed_value::{CallbackValue, StashedValue};

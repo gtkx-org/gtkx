@@ -124,22 +124,11 @@ impl Encoder for RefCodec {
     }
 }
 
-fn ref_storage_or_null<'a>(
-    stashed_value: &'a ffi::StashedValue,
-    kind: &str,
-) -> anyhow::Result<Option<&'a Stash>> {
-    match stashed_value {
-        ffi::StashedValue::Storage(s) => Ok(Some(s)),
-        ffi::StashedValue::Ptr(ptr) if ptr.is_null() => Ok(None),
-        _ => bail!("Expected a Storage ffi::StashedValue for {kind}, got {stashed_value:?}"),
-    }
-}
-
 impl Decoder for RefCodec {
     unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
         let storage = match src {
             ReadSource::Call(stashed_value) => {
-                let Some(storage) = ref_storage_or_null(stashed_value, "Ref")? else {
+                let Some(storage) = stashed_value.as_storage_or_null("Ref")? else {
                     return Ok(value::Value::Null);
                 };
                 storage
@@ -198,7 +187,7 @@ impl Decoder for RefCodec {
         args: &[Arg],
     ) -> anyhow::Result<value::Value> {
         if let Codec::Array(array_codec) = &*self.inner_codec {
-            let Some(storage) = ref_storage_or_null(stashed_value, "Ref<Array>")? else {
+            let Some(storage) = stashed_value.as_storage_or_null("Ref<Array>")? else {
                 return Ok(value::Value::Null);
             };
 
