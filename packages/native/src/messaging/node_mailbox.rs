@@ -2,74 +2,59 @@ use std::panic::{self, AssertUnwindSafe};
 use std::sync::{Arc, mpsc};
 
 use napi::Env;
-use napi::bindgen_prelude::{FromNapiValue, JsObjectValue, JsValue, Object, Unknown};
+use napi::bindgen_prelude::{Function, JsObjectValue, JsValue, JsValuesTupleIntoVec, Object, Unknown};
 use napi::threadsafe_function::ThreadsafeFunctionCallMode;
 
 use super::{
-    GlibInvokeError, JsRefDeletion, Mailbox, NodeCallback, NodeCallbackResult, NodeTask,
-    WakeNodeTsfn, send_or_report,
+    JsRefDeletion, LockExt as _, Mailbox, NodeCallback, NodeCallbackResult, NodeTask,
+    send_or_report,
 };
 use crate::ffi::value::{JsRef, Value};
 use crate::handle::wrapper::WrapperRefOp;
 use crate::messaging::panic_handler::format_panic_payload;
 
+struct CallbackArgs(Vec<napi::sys::napi_value>);
+
+impl JsValuesTupleIntoVec for CallbackArgs {
+    fn into_vec(self, _env: napi::sys::napi_env) -> napi::Result<Vec<napi::sys::napi_value>> {
+        Ok(self.0)
+    }
+}
+
 fn node_channel_disconnected<R>() -> anyhow::Result<R> {
     Err(anyhow::anyhow!("JS callback channel disconnected"))
 }
 
-#[derive(Debug)]
-pub struct ReadySignal {
-    tx: mpsc::Sender<()>,
-}
-
-impl ReadySignal {
-    pub fn signal(self) {
-        send_or_report(
-            &self.tx,
-            (),
-            "Long-lived GLib task ready signal channel was closed",
-        );
-        Mailbox::global().wake_node.notify();
-    }
-}
-
-fn poll_result<R>(rx: &mpsc::Receiver<R>) -> Result<Option<R>, GlibInvokeError> {
+fn poll_result<R>(rx: &mpsc::Receiver<R>) -> napi::Result<Option<R>> {
     match rx.try_recv() {
         Ok(result) => Ok(Some(result)),
-        Err(mpsc::TryRecvError::Disconnected) => Err(GlibInvokeError::disconnected()),
+        Err(mpsc::TryRecvError::Disconnected) => Err(napi::Error::new(
+            napi::Status::GenericFailure,
+            "GLib thread disconnected",
+        )),
         Err(mpsc::TryRecvError::Empty) => Ok(None),
     }
 }
 
 impl Mailbox {
-    fn set_wake_tsfn(&self, tsfn: Arc<WakeNodeTsfn>) {
-        let _ = self.wake_node_tsfn.set(tsfn);
-    }
-
     pub fn install_wake(&self, env: Env) -> napi::Result<()> {
-        let wake_node_fn =
-            env.create_function_from_closure::<(), _, _>("gtkx_wake_node", |ctx| {
-                Self::global().process_node_pending(*ctx.env);
-                Ok(())
-            })?;
+        let wake_tsfn = super::build_weak_tsfn::<(), _>(env, "gtkx_wake_node", |ctx| {
+            Self::global().process_node_pending(*ctx.env);
+            Ok(())
+        })?;
 
-        let wake_tsfn: WakeNodeTsfn = wake_node_fn
-            .build_threadsafe_function::<()>()
-            .weak::<true>()
-            .callee_handled::<false>()
-            .build()?;
-
-        self.set_wake_tsfn(Arc::new(wake_tsfn));
+        let _ = self.wake_node_tsfn.set(wake_tsfn);
         Ok(())
     }
 
     fn push_node_task(&self, task: NodeTask) {
-        self.node_inbox.lock().push_back(task);
+        self.node_inbox.lock_unpoison().push_back(task);
         self.wake_node.notify();
+        self.wake_node_loop();
     }
 
     fn pop_node_task(&self) -> Option<NodeTask> {
-        self.node_inbox.lock().pop_front()
+        self.node_inbox.lock_unpoison().pop_front()
     }
 
     fn wake_node_loop(&self) {
@@ -80,10 +65,9 @@ impl Mailbox {
 
     pub(crate) fn schedule_js_reference_delete(&self, reference: JsRefDeletion) {
         self.push_node_task(NodeTask::DeleteReference(reference));
-        self.wake_node_loop();
     }
 
-    fn invoke_glib_and_wait<R, F>(&self, env: Env, task: F) -> Result<R, GlibInvokeError>
+    pub fn invoke_glib_and_wait_napi<R, F>(&self, env: Env, task: F) -> napi::Result<R>
     where
         F: FnOnce() -> R + Send + 'static,
         R: Send + 'static,
@@ -98,34 +82,16 @@ impl Mailbox {
                 "GLib dispatch completed but result channel was closed",
             );
         }));
-        self.wait_for_glib_result(env, &rx)?
-            .map_err(|message| GlibInvokeError::task_panicked(&message))
+        match self.wait_for_glib_result(env, &rx)? {
+            Ok(value) => Ok(value),
+            Err(message) => Err(napi::Error::new(
+                napi::Status::GenericFailure,
+                format!("GLib task panicked: {message}"),
+            )),
+        }
     }
 
-    pub fn invoke_glib_and_wait_napi<R, F>(&self, env: Env, task: F) -> napi::Result<R>
-    where
-        F: FnOnce() -> R + Send + 'static,
-        R: Send + 'static,
-    {
-        self.invoke_glib_and_wait(env, task)
-            .map_err(|e| napi::Error::new(napi::Status::GenericFailure, e.to_string()))
-    }
-
-    pub fn invoke_long_lived_glib_task<F>(&self, env: Env, task: F) -> napi::Result<()>
-    where
-        F: FnOnce(ReadySignal) + Send + 'static,
-    {
-        let (tx, rx) = mpsc::channel::<()>();
-        self.schedule_glib(Box::new(move || task(ReadySignal { tx })));
-        self.wait_for_glib_result(env, &rx)
-            .map_err(|e| napi::Error::new(napi::Status::GenericFailure, e.to_string()))
-    }
-
-    fn wait_for_glib_result<R>(
-        &self,
-        env: Env,
-        rx: &mpsc::Receiver<R>,
-    ) -> Result<R, GlibInvokeError> {
+    fn wait_for_glib_result<R>(&self, env: Env, rx: &mpsc::Receiver<R>) -> napi::Result<R> {
         loop {
             if let Some(result) = poll_result(rx)? {
                 return Ok(result);
@@ -182,7 +148,6 @@ impl Mailbox {
 
         self.push_node_task(build(tx, glib_initiated));
 
-        self.wake_node_loop();
         self.wait_node(&rx, wait_depth)
     }
 
@@ -319,8 +284,6 @@ impl Mailbox {
         capture_result: bool,
         ref_indices: &[usize],
     ) -> anyhow::Result<NodeCallbackResult> {
-        use napi::sys;
-
         let js_args: Vec<Unknown<'_>> = args
             .into_iter()
             .enumerate()
@@ -337,85 +300,24 @@ impl Mailbox {
             })
             .collect::<anyhow::Result<Vec<_>>>()?;
 
-        let raw_args: Vec<sys::napi_value> = js_args.iter().map(napi::JsValue::raw).collect();
+        let raw_args: Vec<_> = js_args.iter().map(napi::JsValue::raw).collect();
 
-        let raw_fn = callback
-            .get_raw(&env)
+        let function: Function<CallbackArgs, Unknown> = callback
+            .get(&env)
             .map_err(|e| anyhow::anyhow!("retrieving callback function: {e}"))?;
-
-        let mut undef_this = std::ptr::null_mut();
-        unsafe {
-            sys::napi_get_undefined(env.raw(), &mut undef_this);
-        }
-
-        let mut return_value = std::ptr::null_mut();
-        let status = unsafe {
-            sys::napi_call_function(
-                env.raw(),
-                undef_this,
-                raw_fn,
-                raw_args.len(),
-                raw_args.as_ptr(),
-                &mut return_value,
-            )
-        };
-
-        if status == sys::Status::napi_pending_exception {
-            let mut exception = std::ptr::null_mut();
-            unsafe {
-                sys::napi_get_and_clear_last_exception(env.raw(), &mut exception);
-            }
-            let message = if exception.is_null() {
-                "JS callback threw an exception".to_owned()
-            } else {
-                Self::extract_exception_message(env.raw(), exception)
-            };
-            return Err(anyhow::anyhow!("{message}"));
-        }
-        if status != sys::Status::napi_ok {
-            return Err(anyhow::anyhow!("napi_call_function failed: {status:?}"));
-        }
+        let return_value = function
+            .call(CallbackArgs(raw_args))
+            .map_err(|e| anyhow::anyhow!("{}", e.reason))?;
 
         let refs = Self::read_refs(&env, &js_args, ref_indices)
             .map_err(|e| anyhow::anyhow!("reading ref args: {e}"))?;
 
         let value = if capture_result {
-            let unknown = unsafe { Unknown::from_napi_value(env.raw(), return_value)? };
-            Value::from_js_value(&env, unknown)
+            Value::from_js_value(&env, return_value)
                 .map_err(|e| anyhow::anyhow!("converting callback result: {e}"))?
         } else {
             Value::Undefined
         };
         Ok((value, refs))
-    }
-
-    fn extract_exception_message(
-        env: napi::sys::napi_env,
-        exception: napi::sys::napi_value,
-    ) -> String {
-        use napi::sys;
-
-        let mut value_type = sys::ValueType::napi_undefined;
-        unsafe {
-            sys::napi_typeof(env, exception, &mut value_type);
-        }
-
-        if value_type == sys::ValueType::napi_object {
-            let mut message = std::ptr::null_mut();
-            unsafe {
-                sys::napi_get_named_property(env, exception, c"message".as_ptr(), &mut message);
-            }
-            if !message.is_null()
-                && let Ok(s) = unsafe { String::from_napi_value(env, message) }
-            {
-                return s;
-            }
-        } else if value_type == sys::ValueType::napi_string
-            && let Ok(s) = unsafe { String::from_napi_value(env, exception) }
-        {
-            return s;
-        }
-
-        "unknown exception".to_owned()
     }
 }

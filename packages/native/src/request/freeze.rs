@@ -8,14 +8,12 @@ pub fn freeze(env: Env) -> napi::Result<()> {
     let mailbox = Mailbox::global();
     let is_outermost = mailbox.freeze();
 
-    if is_outermost
-        && let Err(err) = mailbox.invoke_long_lived_glib_task(env, |ready| {
-            ready.signal();
-            Mailbox::global().run_freeze_loop();
-        })
-    {
-        mailbox.unfreeze();
-        return Err(err);
+    if is_outermost {
+        mailbox.schedule_glib(Box::new(|| Mailbox::global().run_freeze_loop()));
+        if let Err(err) = mailbox.invoke_glib_and_wait_napi(env, || ()) {
+            mailbox.unfreeze();
+            return Err(err);
+        }
     }
 
     Ok(())

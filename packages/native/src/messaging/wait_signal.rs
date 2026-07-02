@@ -1,4 +1,6 @@
-use parking_lot::{Condvar, Mutex};
+use std::sync::{Condvar, Mutex};
+
+use crate::messaging::LockExt as _;
 
 #[derive(Debug)]
 pub struct WaitSignal {
@@ -22,16 +24,19 @@ impl WaitSignal {
 
     pub fn notify(&self) {
         {
-            let mut notified = self.state.lock();
+            let mut notified = self.state.lock_unpoison();
             *notified = true;
         }
         self.condvar.notify_one();
     }
 
     pub fn wait(&self) {
-        let mut notified = self.state.lock();
+        let mut notified = self.state.lock_unpoison();
         while !*notified {
-            self.condvar.wait(&mut notified);
+            notified = self
+                .condvar
+                .wait(notified)
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
         }
         *notified = false;
     }

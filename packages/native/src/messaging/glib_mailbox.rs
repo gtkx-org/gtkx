@@ -1,15 +1,12 @@
 use std::panic::{self, AssertUnwindSafe};
-use std::sync::OnceLock;
 use std::sync::atomic::Ordering;
-use std::sync::mpsc;
+use std::sync::{Mutex, OnceLock, mpsc};
 use std::thread::JoinHandle;
-
-use parking_lot::Mutex;
 
 use super::error_reporter::ErrorReporter;
 use super::log_handler::GlibLogHandler;
 use super::panic_handler::format_panic_payload;
-use super::{GlibTask, Mailbox, send_or_report};
+use super::{GlibTask, LockExt as _, Mailbox, send_or_report};
 
 #[derive(Debug, Default)]
 pub struct GlibThread {
@@ -24,7 +21,7 @@ impl GlibThread {
     }
 
     pub fn set_handle(&self, handle: JoinHandle<()>) {
-        let previous = self.handle.lock().replace(handle);
+        let previous = self.handle.lock_unpoison().replace(handle);
         if previous.is_some() {
             ErrorReporter::global()
                 .report_str("GLib thread handle replaced while a previous thread was unjoined");
@@ -32,7 +29,7 @@ impl GlibThread {
     }
 
     pub fn join(&self) -> Option<String> {
-        let handle = self.handle.lock().take();
+        let handle = self.handle.lock_unpoison().take();
 
         if let Some(handle) = handle
             && let Err(payload) = handle.join()
@@ -94,7 +91,7 @@ impl GlibThread {
 impl Mailbox {
     fn push_glib_task(&self, task: GlibTask) {
         let depth = self.callback_depth.load(Ordering::Acquire);
-        self.glib_inbox.lock().push_back((depth, task));
+        self.glib_inbox.lock_unpoison().push_back((depth, task));
         self.freeze.notify_if_active();
         self.wake_glib.notify();
     }
@@ -125,7 +122,7 @@ impl Mailbox {
 
         loop {
             let task = {
-                let mut inbox = self.glib_inbox.lock();
+                let mut inbox = self.glib_inbox.lock_unpoison();
                 inbox
                     .iter()
                     .position(|(depth, _)| *depth >= min_depth)

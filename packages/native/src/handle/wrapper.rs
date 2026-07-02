@@ -1,14 +1,13 @@
 use std::ffi::c_void;
 use std::ptr::NonNull;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 
 use glib::prelude::ObjectExt as _;
 use glib::translate::{Borrowed, from_glib_borrow};
-use parking_lot::Mutex;
 
 use crate::messaging::error_reporter::ErrorReporter;
-use crate::messaging::{JsRefDeletion, Mailbox};
+use crate::messaging::{JsRefDeletion, LockExt as _, Mailbox};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WrapperRefOp {
@@ -59,7 +58,7 @@ unsafe fn binding_qdata(
 }
 
 unsafe fn binding_arc(gobject: *mut glib::gobject_ffi::GObject) -> Option<Arc<WrapperBinding>> {
-    let _serialized = LOOKUP_LOCK.lock();
+    let _serialized = LOOKUP_LOCK.lock_unpoison();
     unsafe { binding_qdata(gobject) }.map(|nn| Arc::clone(unsafe { nn.as_ref() }))
 }
 
@@ -167,7 +166,7 @@ pub(crate) fn schedule_cleanup(
         let gobject = gobject_ptr as *mut glib::gobject_ffi::GObject;
         binding.generation.store(0, Ordering::Relaxed);
         {
-            let _serialized = LOOKUP_LOCK.lock();
+            let _serialized = LOOKUP_LOCK.lock_unpoison();
             unsafe {
                 drop(borrow_object(gobject).steal_qdata::<Arc<WrapperBinding>>(quark()));
             }

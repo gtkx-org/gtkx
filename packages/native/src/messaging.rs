@@ -9,11 +9,22 @@ pub mod panic_handler;
 
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::{Arc, OnceLock, mpsc};
+use std::sync::{Arc, Mutex, MutexGuard, OnceLock, PoisonError, mpsc};
 
+use napi::Env;
+use napi::bindgen_prelude::{FunctionCallContext, JsValuesTupleIntoVec};
 use napi::threadsafe_function::ThreadsafeFunction;
 use napi::{Status, sys};
-use parking_lot::Mutex;
+
+pub(crate) trait LockExt<T> {
+    fn lock_unpoison(&self) -> MutexGuard<'_, T>;
+}
+
+impl<T> LockExt<T> for Mutex<T> {
+    fn lock_unpoison(&self) -> MutexGuard<'_, T> {
+        self.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+}
 
 use crate::ffi::value::{JsRef, Value};
 use crate::handle::wrapper::WrapperRefOp;
@@ -26,6 +37,22 @@ type GlibTask = Box<dyn FnOnce() + Send + 'static>;
 type DepthTaggedTask = (usize, GlibTask);
 
 pub type WakeNodeTsfn = ThreadsafeFunction<(), (), (), Status, false, true>;
+
+pub(crate) fn build_weak_tsfn<T, F>(
+    env: Env,
+    name: &str,
+    handler: F,
+) -> napi::Result<ThreadsafeFunction<T, (), T, Status, false, true>>
+where
+    T: 'static + JsValuesTupleIntoVec,
+    F: 'static + Fn(FunctionCallContext) -> napi::Result<()>,
+{
+    env.create_function_from_closure::<T, (), F>(name, handler)?
+        .build_threadsafe_function::<T>()
+        .weak::<true>()
+        .callee_handled::<false>()
+        .build()
+}
 
 pub type NodeCallbackResult = (Value, Vec<(usize, Value)>);
 
@@ -77,20 +104,11 @@ pub struct Mailbox {
     wake_node: WaitSignal,
     wake_glib: WaitSignal,
 
-    wake_node_tsfn: OnceLock<Arc<WakeNodeTsfn>>,
+    wake_node_tsfn: OnceLock<WakeNodeTsfn>,
 
     running: AtomicBool,
 
     freeze: FreezeController,
-}
-
-impl std::fmt::Debug for Mailbox {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Mailbox")
-            .field("running", &self.running)
-            .field("freeze", &self.freeze)
-            .finish_non_exhaustive()
-    }
 }
 
 static MAILBOX: OnceLock<Mailbox> = OnceLock::new();
@@ -163,23 +181,3 @@ pub(crate) fn send_or_report<T>(tx: &mpsc::Sender<T>, value: T, context: &str) {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct GlibInvokeError(String);
-
-impl GlibInvokeError {
-    pub(crate) fn disconnected() -> Self {
-        Self("GLib thread disconnected".to_owned())
-    }
-
-    pub(crate) fn task_panicked(message: &str) -> Self {
-        Self(format!("GLib task panicked: {message}"))
-    }
-}
-
-impl std::fmt::Display for GlibInvokeError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl std::error::Error for GlibInvokeError {}
