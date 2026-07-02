@@ -18,14 +18,14 @@ pub enum HashTableEntryCodec {
 
 impl HashTableEntryCodec {
     pub fn from_codec(codec: &Codec) -> Option<Self> {
+        if codec.is_handle_backed() {
+            return Some(Self::Handle(Box::new(codec.clone())));
+        }
         match codec {
             Codec::String(_) => Some(Self::String),
             Codec::Integer(_) => Some(Self::Integer),
             Codec::Boolean(_) => Some(Self::Boolean),
             Codec::Float(_) => Some(Self::Float),
-            Codec::Object(_) | Codec::Boxed(_) | Codec::Struct(_) | Codec::Fundamental(_) => {
-                Some(Self::Handle(Box::new(codec.clone())))
-            }
             Codec::Array(array_codec) if array_codec.kind == ArrayKind::GPtrArray => {
                 Some(Self::PtrArray(array_codec.item_codec.clone()))
             }

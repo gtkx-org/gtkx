@@ -26,14 +26,25 @@ impl RefCodec {
     }
 
     pub fn supports_inner(inner: &Codec) -> bool {
-        !matches!(
-            inner,
+        match inner {
             Codec::HashTable(_)
-                | Codec::Callback(_)
-                | Codec::Void(_)
-                | Codec::Buffer(_)
-                | Codec::Ref(_)
-        )
+            | Codec::Callback(_)
+            | Codec::Void(_)
+            | Codec::Buffer(_)
+            | Codec::Ref(_) => false,
+            Codec::Integer(_)
+            | Codec::BigInt(_)
+            | Codec::Float(_)
+            | Codec::EnumFlags(_)
+            | Codec::String(_)
+            | Codec::Boolean(_)
+            | Codec::Object(_)
+            | Codec::Boxed(_)
+            | Codec::Struct(_)
+            | Codec::Fundamental(_)
+            | Codec::Array(_)
+            | Codec::Unichar(_) => true,
+        }
     }
 }
 
@@ -47,16 +58,17 @@ impl Encoder for RefCodec {
             _ => bail_expected!("a Ref", "ref", value),
         };
 
+        if self.inner_codec.is_handle_backed() {
+            return match &*ref_val.value {
+                value::Value::Null | value::Value::Undefined => Ok(Self::null_ptr_stashed()),
+                _ => bail!(
+                    "Expected Null for Ref<Boxed/Struct/Object/Fundamental>, got {:?}",
+                    ref_val.value
+                ),
+            };
+        }
+
         match &*self.inner_codec {
-            Codec::Boxed(_) | Codec::Struct(_) | Codec::Object(_) | Codec::Fundamental(_) => {
-                match &*ref_val.value {
-                    value::Value::Null | value::Value::Undefined => Ok(Self::null_ptr_stashed()),
-                    _ => bail!(
-                        "Expected Null for Ref<Boxed/Struct/Object/Fundamental>, got {:?}",
-                        ref_val.value
-                    ),
-                }
-            }
             Codec::Array(array_codec) => match &*ref_val.value {
                 value::Value::Array(arr) if !arr.is_empty() => {
                     let encoded = array_codec.encode(&ref_val.value)?;
@@ -143,11 +155,12 @@ impl Decoder for RefCodec {
             ReadSource::Value(..) => bail!("This codec cannot be read from pointer"),
         };
 
+        if self.inner_codec.is_handle_backed() {
+            let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
+            return self.inner_codec.decode(&ffi::StashedValue::Ptr(actual_ptr));
+        }
+
         match &*self.inner_codec {
-            Codec::Object(_) | Codec::Boxed(_) | Codec::Fundamental(_) | Codec::Struct(_) => {
-                let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
-                self.inner_codec.decode(&ffi::StashedValue::Ptr(actual_ptr))
-            }
             Codec::Integer(_)
             | Codec::EnumFlags(_)
             | Codec::Float(_)

@@ -222,16 +222,19 @@ enum ItemCodec {
 
 impl ItemCodec {
     fn from_codec(item_codec: &Codec) -> Option<Self> {
+        if item_codec.is_handle_backed() {
+            return Some(Self::Pointer);
+        }
         Some(match item_codec {
             Codec::Integer(kind) => Self::Integer(*kind),
             Codec::EnumFlags(enum_flags) => Self::EnumFlags(enum_flags.storage),
             Codec::BigInt(kind) => Self::BigInt(*kind),
             Codec::Float(kind) => Self::Float(*kind),
             Codec::Boolean(_) => Self::Boolean,
-            Codec::Object(_) | Codec::Boxed(_) | Codec::Struct(_) | Codec::Fundamental(_) => {
-                Self::Pointer
-            }
             Codec::String(_) => Self::String,
+            Codec::Object(_) | Codec::Boxed(_) | Codec::Struct(_) | Codec::Fundamental(_) => {
+                unreachable!("handle-backed codecs are classified as pointers above")
+            }
             Codec::Void(_)
             | Codec::Array(_)
             | Codec::Buffer(_)
