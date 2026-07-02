@@ -10,7 +10,7 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
 use super::Request;
-use crate::ffi::callback::CallbackState;
+use crate::ffi::closure::ClosureState;
 use crate::ffi::codec::Codec;
 use crate::ffi::descriptor::Descriptor;
 use crate::ffi::value::JsRef;
@@ -138,7 +138,7 @@ impl RawVfunc {
             arg_codecs,
             return_codec,
         } = self;
-        let state = CallbackState::boxed(js_fn, arg_codecs, return_codec, None, false);
+        let state = ClosureState::boxed(js_fn, arg_codecs, return_codec, None, false);
         unsafe {
             let slot = vtable_base
                 .cast::<u8>()

@@ -3,7 +3,7 @@ use std::ffi::c_void;
 
 use libffi::middle as libffi;
 
-use crate::ffi::callback::CallbackState;
+use crate::ffi::closure::ClosureState;
 
 mod storage;
 
@@ -34,8 +34,8 @@ pub struct CallbackValue {
     fn_ptr: *mut c_void,
     state_ptr: *mut c_void,
     destroy_ptr: Option<*mut c_void>,
-    _owned_state: Option<Box<CallbackState>>,
-    pending_transfer: Cell<Option<Box<CallbackState>>>,
+    _owned_state: Option<Box<ClosureState>>,
+    pending_transfer: Cell<Option<Box<ClosureState>>>,
 }
 
 impl CallbackValue {
@@ -43,7 +43,7 @@ impl CallbackValue {
         fn_ptr: *mut c_void,
         state_ptr: *mut c_void,
         destroy_ptr: Option<*mut c_void>,
-        owned_state: Option<Box<CallbackState>>,
+        owned_state: Option<Box<ClosureState>>,
     ) -> Self {
         Self {
             fn_ptr,
@@ -57,9 +57,9 @@ impl CallbackValue {
     pub fn new_pending_transfer(
         fn_ptr: *mut c_void,
         destroy_ptr: Option<*mut c_void>,
-        state: Box<CallbackState>,
+        state: Box<ClosureState>,
     ) -> Self {
-        let state_ptr = std::ptr::from_ref::<CallbackState>(&state) as *mut c_void;
+        let state_ptr = std::ptr::from_ref::<ClosureState>(&state) as *mut c_void;
         Self {
             fn_ptr,
             state_ptr,

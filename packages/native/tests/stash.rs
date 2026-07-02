@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use napi::Env;
 use napi::bindgen_prelude::{FromNapiValue, Unknown};
-use native::ffi::callback::{CallbackData, CallbackState};
+use native::ffi::closure::{ClosureData, ClosureState};
 use native::ffi::codec::{Codec, VoidCodec};
 use native::ffi::value::JsRef;
 use native::ffi::{CallbackValue, Stash, StashStorage};
@@ -31,14 +31,14 @@ fn js_func_ref() -> Arc<JsRef> {
 
 fn armed_callback_value(destroy_ptr: Option<*mut c_void>) -> (CallbackValue, Arc<JsRef>) {
     let js_fn = js_func_ref();
-    let data = CallbackData::new(
+    let data = ClosureData::new(
         Arc::clone(&js_fn),
         Vec::new(),
         Codec::Void(VoidCodec),
         None,
         false,
     );
-    let state = Box::new(CallbackState::new(data));
+    let state = Box::new(ClosureState::new(data));
     let fn_ptr = state.code_ptr;
     (
         CallbackValue::new_pending_transfer(fn_ptr, destroy_ptr, state),
@@ -48,18 +48,18 @@ fn armed_callback_value(destroy_ptr: Option<*mut c_void>) -> (CallbackValue, Arc
 
 fn release_handed_over_state(state_ptr: *mut c_void, js_fn: &Arc<JsRef>) {
     assert_eq!(Arc::strong_count(js_fn), 2);
-    unsafe { CallbackState::destroy(state_ptr) };
+    unsafe { ClosureState::destroy(state_ptr) };
     assert_eq!(Arc::strong_count(js_fn), 1);
 }
 
 #[test]
 fn new_armed_exposes_state_and_closure_pointers() {
-    let destroy_ptr = CallbackState::destroy as *mut c_void;
+    let destroy_ptr = ClosureState::destroy as *mut c_void;
     let (tv, _js_func) = armed_callback_value(Some(destroy_ptr));
     assert!(!tv.fn_ptr().is_null());
     assert!(!tv.state_ptr().is_null());
     assert_eq!(tv.destroy_ptr(), Some(destroy_ptr));
-    let state = unsafe { &*(tv.state_ptr() as *const CallbackState) };
+    let state = unsafe { &*(tv.state_ptr() as *const ClosureState) };
     assert_eq!(state.code_ptr, tv.fn_ptr());
 }
 
@@ -73,7 +73,7 @@ fn armed_state_drops_with_value_when_call_never_happens() {
 
 #[test]
 fn disarm_pending_transfer_hands_state_over_and_is_idempotent() {
-    let (tv, js_fn) = armed_callback_value(Some(CallbackState::destroy as *mut c_void));
+    let (tv, js_fn) = armed_callback_value(Some(ClosureState::destroy as *mut c_void));
     let state_ptr = tv.state_ptr();
     tv.disarm_pending_transfer();
     tv.disarm_pending_transfer();

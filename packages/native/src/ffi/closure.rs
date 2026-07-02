@@ -14,18 +14,18 @@ use crate::messaging::Mailbox;
 use crate::messaging::error_reporter::{ErrorReporter, ReportErr};
 use crate::messaging::panic_handler::guard_ffi_boundary;
 
-pub struct CallbackData {
+pub struct ClosureData {
     pub js_fn: Arc<JsRef>,
     pub arg_codecs: Vec<Codec>,
     pub return_codec: Codec,
     pub user_data_index: Option<usize>,
     pub is_oneshot: bool,
-    pub oneshot_state_ptr: AtomicPtr<CallbackState>,
+    pub oneshot_state_ptr: AtomicPtr<ClosureState>,
     pub retained_string_return: AtomicPtr<c_char>,
     pub retained_container_return: AtomicPtr<Stash>,
 }
 
-impl CallbackData {
+impl ClosureData {
     pub fn new(
         js_fn: Arc<JsRef>,
         arg_codecs: Vec<Codec>,
@@ -46,7 +46,7 @@ impl CallbackData {
     }
 }
 
-impl Drop for CallbackData {
+impl Drop for ClosureData {
     fn drop(&mut self) {
         let retained = self
             .retained_string_return
@@ -63,9 +63,9 @@ impl Drop for CallbackData {
     }
 }
 
-impl std::fmt::Debug for CallbackData {
+impl std::fmt::Debug for ClosureData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("CallbackData")
+        f.debug_struct("ClosureData")
             .field("arg_codecs", &self.arg_codecs)
             .field("return_codec", &self.return_codec)
             .field("user_data_index", &self.user_data_index)
@@ -74,29 +74,29 @@ impl std::fmt::Debug for CallbackData {
     }
 }
 
-pub struct CallbackState {
+pub struct ClosureState {
     _closure: libffi::Closure<'static>,
     pub code_ptr: *mut c_void,
-    data: Box<CallbackData>,
+    data: Box<ClosureData>,
 }
 
-impl std::fmt::Debug for CallbackState {
+impl std::fmt::Debug for ClosureState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("CallbackState")
+        f.debug_struct("ClosureState")
             .field("code_ptr", &self.code_ptr)
             .finish_non_exhaustive()
     }
 }
 
-impl CallbackState {
-    pub fn data_ref(&self) -> &CallbackData {
+impl ClosureState {
+    pub fn data_ref(&self) -> &ClosureData {
         &self.data
     }
 
-    pub fn new(data: CallbackData) -> Self {
+    pub fn new(data: ClosureData) -> Self {
         let data = Box::new(data);
-        let data_ptr: *const CallbackData = &*data;
-        let data_ref: &'static CallbackData = unsafe { &*data_ptr };
+        let data_ptr: *const ClosureData = &*data;
+        let data_ref: &'static ClosureData = unsafe { &*data_ptr };
 
         let mut cif_arg_types: Vec<libffi::Type> = Vec::with_capacity(data_ref.arg_codecs.len());
         for codec in &data_ref.arg_codecs {
@@ -123,7 +123,7 @@ impl CallbackState {
         user_data_index: Option<usize>,
         is_oneshot: bool,
     ) -> Box<Self> {
-        let data = CallbackData::new(js_fn, arg_codecs, return_codec, user_data_index, is_oneshot);
+        let data = ClosureData::new(js_fn, arg_codecs, return_codec, user_data_index, is_oneshot);
         let boxed = Box::new(Self::new(data));
         if is_oneshot {
             let state_ptr = std::ptr::from_ref::<Self>(&*boxed) as *mut Self;
@@ -136,20 +136,20 @@ impl CallbackState {
     }
 }
 
-impl CallbackState {
+impl ClosureState {
     pub unsafe extern "C" fn destroy(user_data: *mut c_void) {
         drop(unsafe { Box::from_raw(user_data as *mut Self) });
     }
 }
 
-struct CallbackArgs<'a> {
+struct ClosureArgs<'a> {
     values: Vec<Value>,
     ref_indices: Vec<usize>,
     ref_targets: Vec<(*mut c_void, &'a Codec)>,
 }
 
-impl CallbackData {
-    unsafe fn read_args(&self, args: *const *const c_void) -> CallbackArgs<'_> {
+impl ClosureData {
+    unsafe fn read_args(&self, args: *const *const c_void) -> ClosureArgs<'_> {
         let mut values = Vec::with_capacity(self.arg_codecs.len());
         let mut ref_indices: Vec<usize> = Vec::new();
         let mut ref_targets: Vec<(*mut c_void, &Codec)> = Vec::new();
@@ -177,7 +177,7 @@ impl CallbackData {
             }
         }
 
-        CallbackArgs {
+        ClosureArgs {
             values,
             ref_indices,
             ref_targets,
@@ -188,8 +188,8 @@ impl CallbackData {
         &self,
         args: *const *const c_void,
         result: *mut c_void,
-    ) -> Option<*mut CallbackState> {
-        let CallbackArgs {
+    ) -> Option<*mut ClosureState> {
+        let ClosureArgs {
             values,
             ref_indices,
             ref_targets,
@@ -319,7 +319,7 @@ unsafe extern "C" fn closure_entry(
     _cif: &libffi_low::ffi_cif,
     result: &mut u64,
     args: *const *const c_void,
-    data: &CallbackData,
+    data: &ClosureData,
 ) {
     *result = 0;
     let state_ptr = guard_ffi_boundary("callback trampoline", || unsafe {

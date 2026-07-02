@@ -2,7 +2,7 @@ use libffi::middle as libffi;
 use napi_derive::napi;
 
 use super::prelude::*;
-use crate::ffi::callback::CallbackState;
+use crate::ffi::closure::ClosureState;
 use crate::ffi::codec::Codec;
 
 #[napi(string_enum = "lowercase")]
@@ -53,7 +53,7 @@ impl Encoder for CallbackCodec {
 
         let is_oneshot = self.scope == CallbackScope::Async;
 
-        let state = CallbackState::boxed(
+        let state = ClosureState::boxed(
             callback.js_fn.clone(),
             self.arg_codecs.clone(),
             (*self.return_codec).clone(),
@@ -63,11 +63,11 @@ impl Encoder for CallbackCodec {
         let fn_ptr = state.code_ptr;
 
         let destroy = (self.scope == CallbackScope::Notified)
-            .then_some(CallbackState::destroy as *mut c_void);
+            .then_some(ClosureState::destroy as *mut c_void);
 
         match self.scope {
             CallbackScope::Call => {
-                let state_ptr = &*state as *const CallbackState as *mut c_void;
+                let state_ptr = &*state as *const ClosureState as *mut c_void;
                 Ok(ffi::Stash::Callback(ffi::CallbackValue::new(
                     fn_ptr,
                     state_ptr,
