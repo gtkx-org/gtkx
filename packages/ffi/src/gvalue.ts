@@ -1,4 +1,4 @@
-import { alloc, type Descriptor, getType, read, write } from "@gtkx/native";
+import { alloc, bindField, type Descriptor, getType, read, write } from "@gtkx/native";
 import { GVALUE_LAYOUT, GVALUE_SIZE, GVALUE_T, LIB } from "./constants.js";
 import {
     arrayT,
@@ -50,8 +50,11 @@ import { getHandle, requireWrapperClass, tryGetHandle, wrapHandle } from "./regi
 
 const newGValue = (): Handle => alloc(GVALUE_SIZE, "GValue");
 
+const BIGUINT64_FIELD = bindField(biguint64T);
+const UINT64_FIELD = bindField(uint64T);
+
 export function valueGetType(value: Handle): bigint {
-    return read(value, biguint64T, GVALUE_LAYOUT.gTypeOffset) as bigint;
+    return read(value, BIGUINT64_FIELD, GVALUE_LAYOUT.gTypeOffset) as bigint;
 }
 
 const gValueInit = bind(LIB, "g_value_init", [GVALUE_T, biguint64T], voidT);
@@ -211,11 +214,12 @@ export function outValueForDescriptor(
     initial?: unknown,
 ): { value: Handle; read: () => unknown } {
     const storage = alloc(OUT_PARAM_STORAGE_SIZE);
-    write(storage, uint64T, 0, 0);
-    if (initial !== undefined) write(storage, descriptor, 0, initial);
+    const fieldCodec = bindField(descriptor);
+    write(storage, UINT64_FIELD, 0, 0);
+    if (initial !== undefined) write(storage, fieldCodec, 0, initial);
     const value = newTypedGValue(TYPE_POINTER);
     setGValuePointer(value, storage);
-    return { value, read: () => read(storage, descriptor, 0) };
+    return { value, read: () => read(storage, fieldCodec, 0) };
 }
 
 export function outBoxedForDescriptor(descriptor: Descriptor, boxed: object): Handle {
@@ -326,7 +330,7 @@ function objectToGValue(value: object | null): Handle {
 }
 
 const getPointerValue = (value: Handle): null => {
-    const ptr = read(value, uint64T, GVALUE_LAYOUT.dataOffset) as number;
+    const ptr = read(value, UINT64_FIELD, GVALUE_LAYOUT.dataOffset) as number;
     if (ptr !== 0) {
         throw new Error("G_TYPE_POINTER non-null values cannot be marshalled to JS");
     }

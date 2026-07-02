@@ -13,6 +13,11 @@ import { refIsClassStruct } from "./class-struct-record.js";
 import { computeRecordFieldSlots, type RecordFieldSlot } from "./record-layout.js";
 import { wrapReturnValue } from "./return-wrap.js";
 
+const hoistFieldCodec = (context: ModuleContext, descriptor: string): string => {
+    context.addNativeImport("bindField");
+    return context.hoistDescriptor(`bindField(${descriptor})`);
+};
+
 export const renderRecordFieldAccessor = (
     context: ModuleContext,
     slot: RecordFieldSlot,
@@ -37,7 +42,7 @@ export const renderRecordFieldAccessor = (
         return `declare ${jsName}: ${tsType};`;
     }
 
-    const descriptor = renderDescriptor(context, field.type, "none");
+    const descriptor = hoistFieldCodec(context, renderDescriptor(context, field.type, "none"));
     const tsType = renderTsType(context, field.type, false);
     const accessorOptions: AccessorOptions = {
         context,
@@ -134,7 +139,7 @@ const visitInlineStructFields = (
             continue;
         }
         if (!isAccessorEligibleType(context, field.type)) continue;
-        const descriptor = renderDescriptor(context, field.type, "none");
+        const descriptor = hoistFieldCodec(context, renderDescriptor(context, field.type, "none"));
         visitors.leaf({ jsName, descriptor, offset, slot, type: field.type });
     }
 };
@@ -216,7 +221,8 @@ const structArrayGetterBlock = (options: StructArrayAccessorOptions): string => 
     const element = renderElementReadObject(context, elementFields, 0);
     const loop = [`const __base = __index * ${elementSize};`, `__result.push(${element});`].join("\n");
     const body = [
-        `const __array = read(getHandle(this), ${elementDescriptor}, ${offset});`,
+        `const __codec = bindField(${elementDescriptor});`,
+        `const __array = read(getHandle(this), __codec, ${offset});`,
         `const __result: ${tsType} = [];`,
         `for (let __index = 0; __index < ${lengthExpr}; __index++) {`,
         indent(loop, 1),
@@ -239,11 +245,12 @@ const structArraySetterBlock = (options: StructArrayAccessorOptions): string => 
         "\n",
     );
     const body = [
-        `const __array = read(getHandle(this), ${elementDescriptor}, ${offset});`,
+        `const __codec = bindField(${elementDescriptor});`,
+        `const __array = read(getHandle(this), __codec, ${offset});`,
         `for (let __index = 0; __index < __value.length; __index++) {`,
         indent(loop, 1),
         "}",
-        `write(getHandle(this), ${elementDescriptor}, ${offset}, __array);`,
+        `write(getHandle(this), __codec, ${offset}, __array);`,
     ].join("\n");
     return renderBlock(`set ${jsName}(__value: ${tsType})`, body);
 };
@@ -261,6 +268,7 @@ const renderStructArrayAccessor = (context: ModuleContext, target: StructArrayTa
     if (elementSize === 0) return undefined;
 
     context.addNativeImport("read");
+    context.addNativeImport("bindField");
     context.addRuntimeImport("getHandle");
     context.addRuntimeImport("t");
     const options: StructArrayAccessorOptions = {

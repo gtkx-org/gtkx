@@ -1,4 +1,5 @@
 use std::ffi::c_void;
+use std::sync::Arc;
 
 use napi::Env;
 use napi::bindgen_prelude::*;
@@ -6,13 +7,12 @@ use napi_derive::napi;
 
 use super::Request;
 use crate::ffi::codec::{Codec, PtrWriter as _};
-use crate::ffi::descriptor::Descriptor;
 use crate::ffi::value::Value;
 use crate::handle::Handle;
 
 struct WriteRequest {
     field_ptr: usize,
-    field_codec: Codec,
+    field_codec: Arc<Codec>,
     value: Value,
 }
 
@@ -36,15 +36,14 @@ pub mod napi_export {
     pub fn write<'env>(
         env: &'env Env,
         handle: &External<Handle>,
-        field_descriptor: Descriptor,
+        field_codec: &External<Arc<Codec>>,
         offset: f64,
         value: Unknown<'_>,
     ) -> napi::Result<Unknown<'env>> {
-        let field_codec = field_descriptor.into_codec()?;
         let parsed_value = Value::from_js_value(env, value)?;
         let request = WriteRequest {
             field_ptr: handle.ptr_as_usize().wrapping_add(offset as usize),
-            field_codec,
+            field_codec: Arc::clone(field_codec),
             value: parsed_value,
         };
         request.dispatch(env)

@@ -1,4 +1,5 @@
 use std::ffi::c_void;
+use std::sync::Arc;
 
 use napi::Env;
 use napi::bindgen_prelude::*;
@@ -6,13 +7,12 @@ use napi_derive::napi;
 
 use super::Request;
 use crate::ffi::codec::{Codec, Decoder as _, ReadSource};
-use crate::ffi::descriptor::Descriptor;
 use crate::ffi::value::Value;
 use crate::handle::Handle;
 
 pub struct ReadRequest {
     pub field_ptr: usize,
-    pub field_codec: Codec,
+    pub field_codec: Arc<Codec>,
 }
 
 impl Request for ReadRequest {
@@ -38,13 +38,12 @@ pub mod napi_export {
     pub fn read<'env>(
         env: &'env Env,
         handle: &External<Handle>,
-        field_descriptor: Descriptor,
+        field_codec: &External<Arc<Codec>>,
         offset: f64,
     ) -> napi::Result<Unknown<'env>> {
-        let field_codec = field_descriptor.into_codec()?;
         let request = ReadRequest {
             field_ptr: handle.ptr_as_usize().wrapping_add(offset as usize),
-            field_codec,
+            field_codec: Arc::clone(field_codec),
         };
         request.dispatch(env)
     }

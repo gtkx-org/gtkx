@@ -1,4 +1,5 @@
 export { promisify } from "./async.js";
+export { readField, writeField } from "./field.js";
 export { createErrorDomain, type ErrorDomain } from "./gerror.js";
 export { getGObjectProperty, newGObjectWithProperties, setGObjectProperty } from "./gobject.js";
 export {

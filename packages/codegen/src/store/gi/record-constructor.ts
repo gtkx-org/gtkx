@@ -70,7 +70,10 @@ const allocArgs = (record: GirRecord, size: number): string[] => {
 const renderFieldWrite = (context: ModuleContext, entry: WritableFieldSlot): string => {
     context.addRuntimeImport("t");
     context.addNativeImport("write");
-    const descriptor = renderDescriptor(context, entry.field.type, "none");
+    context.addNativeImport("bindField");
+    const descriptor = context.hoistDescriptor(
+        `bindField(${renderDescriptor(context, entry.field.type, "none")})`,
+    );
     const name = toCamelIdentifier(entry.field.name);
     const offset = entry.slot.byteOffset;
     if (entry.slot.bitWidth === undefined) {
