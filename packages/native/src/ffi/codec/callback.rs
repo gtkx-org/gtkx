@@ -1,5 +1,3 @@
-use std::sync::atomic::Ordering;
-
 use libffi::middle as libffi;
 use napi_derive::napi;
 
@@ -66,14 +64,6 @@ impl Encoder for CallbackCodec {
 
         let destroy = (self.scope == CallbackScope::Notified)
             .then_some(CallbackState::destroy as *mut c_void);
-
-        if is_oneshot {
-            let state_ptr = std::ptr::from_ref::<CallbackState>(&state) as *mut CallbackState;
-            state
-                .data_ref()
-                .oneshot_state_ptr
-                .store(state_ptr, Ordering::Release);
-        }
 
         match self.scope {
             CallbackScope::Call => {
