@@ -31,31 +31,32 @@ impl EnumFlagsCodec {
         })
     }
 
-    fn validate_enum_value(&self, value: i32) {
-        let Ok(gtype) = self.resolve_gtype() else {
-            return;
-        };
-        let Some(enum_class) = glib::EnumClass::with_type(gtype) else {
-            return;
-        };
+    fn validate_enum_value(&self, value: i32) -> anyhow::Result<()> {
+        let gtype = self.resolve_gtype()?;
+        let enum_class = glib::EnumClass::with_type(gtype).ok_or_else(|| {
+            anyhow::anyhow!(
+                "{} (GType {gtype}) is not an enumeration type",
+                self.get_type_fn_name
+            )
+        })?;
         if enum_class.value(value).is_none() {
-            crate::messaging::error_reporter::ErrorReporter::global().report_str(&format!(
+            anyhow::bail!(
                 "Enum value {value} is not a valid member of {} (GType {gtype})",
                 self.get_type_fn_name
-            ));
+            );
         }
+        Ok(())
     }
 }
 
 impl Encoder for EnumFlagsCodec {
     fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
-        let result = Encoder::encode(&self.storage, value)?;
         if self.kind == EnumFlagsKind::Enum
             && let value::Value::Number(n) = value
         {
-            self.validate_enum_value(*n as i32);
+            self.validate_enum_value(*n as i32)?;
         }
-        Ok(result)
+        Encoder::encode(&self.storage, value)
     }
 
     forward_ffi_encoder!();

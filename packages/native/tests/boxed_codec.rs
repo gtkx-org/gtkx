@@ -83,7 +83,7 @@ fn encode_rgba(ownership: Ownership, ptr: *mut c_void) -> ffi::StashedValue {
 #[test]
 fn gtype_resolves_from_registered_name() {
     helpers::run(|| {
-        let resolved = boxed(Ownership::Borrowed).gtype();
+        let resolved = boxed(Ownership::Borrowed).gtype().expect("gtype resolves");
         assert_eq!(resolved, Some(gdk::RGBA::static_type()));
     });
 }
@@ -99,7 +99,7 @@ fn gtype_resolves_via_library_lookup() {
             free_fn_name: None,
             caller_allocated: false,
         };
-        let resolved = bytes_type.gtype();
+        let resolved = bytes_type.gtype().expect("gtype resolves");
         assert_eq!(resolved, Some(glib::Bytes::static_type()));
     });
 }
