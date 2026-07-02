@@ -13,43 +13,10 @@ use glib::thread_guard::ThreadGuard;
 
 use crate::messaging::Mailbox;
 
-enum AnchoredValue {
-    ThreadBound(ThreadGuard<Value>),
-    Sendable(Value),
-}
-
-unsafe impl Send for AnchoredValue {}
-
-impl AnchoredValue {
-    fn new(value: Value) -> Self {
-        let on_foreign_thread =
-            Mailbox::global().is_initialized() && !glib::MainContext::default().is_owner();
-        if on_foreign_thread {
-            Self::Sendable(value)
-        } else {
-            Self::ThreadBound(ThreadGuard::new(value))
-        }
-    }
-
-    fn get_ref(&self) -> &Value {
-        match self {
-            Self::ThreadBound(guard) => guard.get_ref(),
-            Self::Sendable(value) => value,
-        }
-    }
-
-    fn droppable_on_current_thread(&self) -> bool {
-        match self {
-            Self::ThreadBound(guard) => guard.is_owner(),
-            Self::Sendable(_) => glib::MainContext::default().is_owner(),
-        }
-    }
-}
-
 pub struct Handle {
     ptr: usize,
     size_hint: usize,
-    owned_value: Option<AnchoredValue>,
+    owned_value: Option<ThreadGuard<Value>>,
     pending_gobject_ref: Option<Arc<AtomicBool>>,
 }
 
@@ -69,7 +36,7 @@ impl From<Value> for Handle {
         Self {
             ptr,
             size_hint,
-            owned_value: Some(AnchoredValue::new(value)),
+            owned_value: Some(ThreadGuard::new(value)),
             pending_gobject_ref: None,
         }
     }
@@ -83,7 +50,7 @@ impl Clone for Handle {
             owned_value: self
                 .owned_value
                 .as_ref()
-                .map(|anchored| AnchoredValue::new(anchored.get_ref().clone())),
+                .map(|guard| ThreadGuard::new(guard.get_ref().clone())),
             pending_gobject_ref: self.pending_gobject_ref.clone(),
         }
     }
@@ -136,15 +103,15 @@ impl Drop for Handle {
             });
         }
 
-        let Some(anchored) = self.owned_value.take() else {
+        let Some(guard) = self.owned_value.take() else {
             return;
         };
-        if anchored.droppable_on_current_thread() {
-            drop(anchored);
+        if guard.is_owner() {
+            drop(guard);
         } else if Mailbox::global().is_not_running() {
-            std::mem::forget(anchored);
+            std::mem::forget(guard);
         } else {
-            glib::idle_add_once(move || drop(anchored));
+            glib::idle_add_once(move || drop(guard));
         }
     }
 }
