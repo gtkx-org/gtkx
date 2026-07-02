@@ -308,12 +308,6 @@ impl_numeric_codecs!(
     }
 );
 
-impl From<IntegerCodec> for libffi::Type {
-    fn from(kind: IntegerCodec) -> Self {
-        kind.ffi_type()
-    }
-}
-
 #[derive(Debug, Clone, Copy, strum::IntoStaticStr)]
 #[strum(serialize_all = "lowercase")]
 pub enum FloatCodec {
@@ -430,9 +424,3 @@ impl_numeric_codecs!(
         Ok(unsafe { self.ptr_to_value_raw(ptr) })
     }
 );
-
-impl From<FloatCodec> for libffi::Type {
-    fn from(kind: FloatCodec) -> Self {
-        kind.ffi_type()
-    }
-}

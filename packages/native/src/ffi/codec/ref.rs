@@ -241,15 +241,14 @@ impl RefCodec {
         }
 
         if let StashStorage::Buffer(_) = stash.storage() {
-            let string =
-                unsafe { glib::GStr::from_ptr_lossy(stash.ptr() as *const c_char) }.to_string();
+            let string = unsafe { lossy_c_string(stash.ptr() as *const c_char) };
             value::Value::String(string)
         } else {
             let str_ptr = unsafe { *(stash.ptr() as *const *const c_char) };
             if str_ptr.is_null() {
                 return value::Value::Null;
             }
-            let string = unsafe { glib::GStr::from_ptr_lossy(str_ptr) }.to_string();
+            let string = unsafe { lossy_c_string(str_ptr) };
 
             if string_codec.ownership.is_full() {
                 unsafe { glib::ffi::g_free(str_ptr as *mut c_void) };

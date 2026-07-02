@@ -30,11 +30,7 @@ use crate::ffi::value::Value;
 /// # Safety
 /// `src` must be valid for reads of `len` bytes.
 pub(crate) unsafe fn dup_to_glib_heap(src: *const u8, len: usize) -> *mut c_void {
-    unsafe {
-        let dest = glib::ffi::g_malloc(len);
-        std::ptr::copy_nonoverlapping(src, dest.cast::<u8>(), len);
-        dest
-    }
+    unsafe { glib::ffi::g_memdup2(src.cast(), len) }
 }
 
 #[derive(Debug, Clone)]

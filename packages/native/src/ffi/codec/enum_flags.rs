@@ -63,13 +63,7 @@ impl Encoder for EnumFlagsCodec {
 
 impl Decoder for EnumFlagsCodec {
     unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
-        match src {
-            ReadSource::Call(stashed_value) => Decoder::decode(&self.storage, stashed_value),
-            ReadSource::Value(ptr, context) => self.storage.ptr_to_value_raw(ptr, context),
-            ReadSource::Slot(ptr, _context) => Ok(value::Value::Number(unsafe {
-                self.storage.read_ptr(ptr as *const u8)
-            })),
-        }
+        unsafe { self.storage.read(src) }
     }
 }
 

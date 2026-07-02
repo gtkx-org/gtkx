@@ -3,6 +3,16 @@ pub(super) use crate::ffi::{self, value};
 pub(super) use std::ffi::c_void;
 
 use crate::messaging::error_reporter::ReportErr as _;
+use std::ffi::c_char;
+
+/// Decodes a NUL-terminated C string into an owned `String`, replacing invalid
+/// UTF-8 with the Unicode replacement character.
+///
+/// # Safety
+/// `ptr` must be non-null and point to a valid NUL-terminated C string.
+pub(super) unsafe fn lossy_c_string(ptr: *const c_char) -> String {
+    unsafe { glib::GStr::from_ptr_lossy(ptr) }.to_string()
+}
 
 pub(super) fn write_object_ptr(
     ptr: *mut c_void,

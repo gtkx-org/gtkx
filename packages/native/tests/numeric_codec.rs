@@ -247,10 +247,7 @@ fn call_zero_arg(kind: IntegerCodec, code: *mut c_void) -> f64 {
     result.to_number().unwrap()
 }
 
-trait LibffiKind: Encoder + Copy
-where
-    middle::Type: From<Self>,
-{
+trait LibffiKind: Encoder + Copy {
     fn as_ffi_type(self) -> middle::Type;
 }
 
@@ -269,11 +266,9 @@ impl LibffiKind for FloatCodec {
 fn assert_libffi_type_matches<K>(kind: K)
 where
     K: LibffiKind,
-    middle::Type: From<K>,
 {
     let expected = kind.as_ffi_type().as_raw_ptr();
     assert_eq!(Encoder::libffi_type(&kind).as_raw_ptr(), expected);
-    assert_eq!(middle::Type::from(kind).as_raw_ptr(), expected);
 }
 
 unsafe fn assert_pointer_codec_round_trip<K>(kind: &K, slot: &mut [u8; 8], value_ptr: *mut c_void)

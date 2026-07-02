@@ -89,7 +89,6 @@ fn unresolvable_fundamental_item_codec() -> Codec {
         shared_library: "libgobject-2.0.so.0".to_owned(),
         ref_fn_name: "no_such_array_ref_symbol_12345".to_owned(),
         unref_fn_name: "g_param_spec_unref".to_owned(),
-        type_name: Some("GParam".to_owned()),
     })
 }
 
@@ -224,28 +223,16 @@ fn encode_garray_full_ownership_adopted_strings_release_when_call_never_happens(
 }
 
 #[test]
-fn ptr_to_value_sized_reads_explicit_length() {
-    let descriptor = sized_array_type(Codec::Integer(IntegerCodec::I32), 1, Ownership::Borrowed);
-    let data: Vec<i32> = vec![7, 8, 9];
-    let value = unsafe { descriptor.ptr_to_value_sized(data.as_ptr() as *mut std::ffi::c_void, 3) }
-        .unwrap();
-    let Value::Array(items) = value else {
-        panic!("expected array")
-    };
-    assert_eq!(items.len(), 3);
-    assert!(matches!(items[0], Value::Number(n) if n == 7.0));
-
-    let empty = unsafe { descriptor.ptr_to_value_sized(std::ptr::null_mut(), 5) }.unwrap();
-    assert!(matches!(empty, Value::Array(items) if items.is_empty()));
-}
-
-#[test]
-fn ptr_to_value_sized_reads_enum_flags_elements_without_range_guard() {
-    let descriptor = sized_array_type(enum_flags_item_codec(), 1, Ownership::Borrowed);
+fn decode_with_context_sized_enum_flags_elements_without_range_guard() {
+    let descriptor = sized_array_type(enum_flags_item_codec(), 0, Ownership::Borrowed);
     let data: Vec<i32> = vec![0, 1, 2];
-    let value = unsafe { descriptor.ptr_to_value_sized(data.as_ptr() as *mut std::ffi::c_void, 3) }
-        .unwrap();
-    let Value::Array(items) = value else {
+    let stashed_value = StashedValue::Ptr(data.as_ptr() as *mut c_void);
+    let ffi_args = [StashedValue::U32(3)];
+    let args = [Arg::new(Codec::Integer(IntegerCodec::U32), Value::Number(3.0))];
+    let Value::Array(items) = descriptor
+        .decode_with_context(&stashed_value, &ffi_args, &args)
+        .unwrap()
+    else {
         panic!("expected array")
     };
     assert_eq!(items.len(), 3);

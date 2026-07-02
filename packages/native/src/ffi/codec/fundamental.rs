@@ -8,7 +8,6 @@ pub struct FundamentalCodec {
     pub shared_library: String,
     pub ref_fn_name: String,
     pub unref_fn_name: String,
-    pub type_name: Option<String>,
 }
 
 impl FundamentalCodec {

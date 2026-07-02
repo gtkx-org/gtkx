@@ -195,13 +195,12 @@ impl Descriptor {
                 shared_library,
                 ref_fn_name,
                 unref_fn_name,
-                type_name,
+                type_name: _,
             } => Codec::Fundamental(FundamentalCodec {
                 ownership,
                 shared_library,
                 ref_fn_name,
                 unref_fn_name,
-                type_name,
             }),
             Self::Array {
                 item_descriptor,

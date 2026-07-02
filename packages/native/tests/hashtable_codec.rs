@@ -72,7 +72,6 @@ fn full_variant_fundamental_encoder(ref_fn_name: &str, unref_fn_name: &str) -> H
         shared_library: "libglib-2.0.so.0".to_owned(),
         ref_fn_name: ref_fn_name.to_owned(),
         unref_fn_name: unref_fn_name.to_owned(),
-        type_name: Some("GVariant".to_owned()),
     })))
 }
 
@@ -82,7 +81,6 @@ fn param_spec_fundamental_type() -> Codec {
         shared_library: "libgobject-2.0.so.0".to_owned(),
         ref_fn_name: "g_param_spec_ref".to_owned(),
         unref_fn_name: "g_param_spec_unref".to_owned(),
-        type_name: Some("GParam".to_owned()),
     })
 }
 

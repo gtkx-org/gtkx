@@ -3,10 +3,8 @@ use crate::handle::Handle;
 use crate::handle::wrapper;
 use glib::{
     self,
-    prelude::StaticType as _,
     translate::{
-        Borrowed, FromGlibPtrNone as _, IntoGlibPtr, ToGlibPtr, from_glib, from_glib_borrow,
-        from_glib_full,
+        Borrowed, FromGlibPtrNone as _, IntoGlibPtr, ToGlibPtr, from_glib_borrow, from_glib_full,
     },
 };
 
@@ -14,12 +12,11 @@ unsafe fn tracked_gobject_value(
     gobject_ptr: *mut glib::gobject_ffi::GObject,
     ownership: Ownership,
 ) -> value::Value {
-    let gtype: glib::Type = unsafe { from_glib((*(*gobject_ptr).g_type_instance.g_class).g_type) };
-    let is_initially_unowned = gtype.is_a(glib::InitiallyUnowned::static_type());
-    let is_floating = unsafe { glib::gobject_ffi::g_object_is_floating(gobject_ptr) != 0 };
-    let has_wrapper = unsafe { wrapper::WrapperRegistry::global().has_wrapper(gobject_ptr) };
-
     if ownership.is_full() {
+        let is_initially_unowned =
+            unsafe { glib::types::instance_of::<glib::InitiallyUnowned>(gobject_ptr.cast()) };
+        let is_floating = unsafe { glib::gobject_ffi::g_object_is_floating(gobject_ptr) != 0 };
+        let has_wrapper = unsafe { wrapper::WrapperRegistry::global().has_wrapper(gobject_ptr) };
         if is_floating || (!has_wrapper && is_initially_unowned) {
             unsafe { glib::gobject_ffi::g_object_ref_sink(gobject_ptr) };
         }

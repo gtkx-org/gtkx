@@ -62,17 +62,19 @@ impl Encoder for ArrayCodec {
         };
 
         match self.item_codec("array")? {
-            ItemCodec::Integer(kind) => {
-                Self::encode_integer_array(&Self::extract_numbers(array)?, kind)
-            }
+            ItemCodec::Integer(kind) => Ok(ffi::StashedValue::Stashed(
+                kind.checked_to_stash(&Self::extract_numbers(array)?)?,
+            )),
             ItemCodec::EnumFlags(kind) => Ok(ffi::StashedValue::Stashed(
                 kind.to_stash(&Self::extract_numbers(array)?),
             )),
             ItemCodec::BigInt(kind) => Ok(ffi::StashedValue::Stashed(kind.to_stash(array)?)),
-            ItemCodec::Float(kind) => {
-                Self::encode_float_array(&Self::extract_numbers(array)?, kind)
-            }
-            ItemCodec::Boolean => Ok(Self::encode_boolean_array(&Self::extract_booleans(array)?)),
+            ItemCodec::Float(kind) => Ok(ffi::StashedValue::Stashed(
+                kind.checked_to_stash(&Self::extract_numbers(array)?)?,
+            )),
+            ItemCodec::Boolean => Ok(ffi::StashedValue::Stashed(
+                Self::extract_booleans(array)?.into(),
+            )),
             ItemCodec::String => {
                 let dup_elements =
                     matches!(&*self.item_codec, Codec::String(s) if s.ownership.is_full());
@@ -494,28 +496,6 @@ impl<F: ffi::ListKind> ArrayKindEncoder for ListEncoder<F> {
 }
 
 impl ArrayCodec {
-    fn encode_integer_array(
-        values: &[f64],
-        integer_codec: IntegerCodec,
-    ) -> anyhow::Result<ffi::StashedValue> {
-        Ok(ffi::StashedValue::Stashed(
-            integer_codec.checked_to_stash(values)?,
-        ))
-    }
-
-    fn encode_float_array(
-        values: &[f64],
-        float_codec: FloatCodec,
-    ) -> anyhow::Result<ffi::StashedValue> {
-        Ok(ffi::StashedValue::Stashed(
-            float_codec.checked_to_stash(values)?,
-        ))
-    }
-
-    fn encode_boolean_array(values: &[i32]) -> ffi::StashedValue {
-        ffi::StashedValue::Stashed(values.to_vec().into())
-    }
-
     fn extract_numbers(array: &[value::Value]) -> anyhow::Result<Vec<f64>> {
         array
             .iter()
@@ -775,9 +755,7 @@ impl ArrayCodec {
             items
                 .iter()
                 .map(|item| {
-                    value::Value::String(
-                        unsafe { glib::GStr::from_ptr_lossy(item.as_ptr()) }.to_string(),
-                    )
+                    value::Value::String(unsafe { lossy_c_string(item.as_ptr()) })
                 })
                 .collect::<Vec<_>>()
         };
@@ -833,9 +811,7 @@ impl ArrayCodec {
                 StashStorage::StrV(strv) => strv
                     .iter()
                     .map(|item| {
-                        value::Value::String(
-                            unsafe { glib::GStr::from_ptr_lossy(item.as_ptr()) }.to_string(),
-                        )
+                        value::Value::String(unsafe { lossy_c_string(item.as_ptr()) })
                     })
                     .collect(),
                 _ => stash
@@ -853,16 +829,5 @@ impl ArrayCodec {
         let codec = self.item_codec("sized array")?;
         let values = self.decode_contiguous(codec, ptr.cast::<u8>(), length)?;
         Ok(value::Value::Array(values))
-    }
-
-    pub unsafe fn ptr_to_value_sized(
-        &self,
-        ptr: *mut c_void,
-        length: usize,
-    ) -> anyhow::Result<value::Value> {
-        if ptr.is_null() {
-            return Ok(value::Value::Array(vec![]));
-        }
-        self.decode_sized_array(ptr, length)
     }
 }

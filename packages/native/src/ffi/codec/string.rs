@@ -45,8 +45,7 @@ impl Encoder for StringCodec {
 impl Decoder for StringCodec {
     fn read_call(&self, stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
         self.read_call_non_null(stashed_value, "string", |str_ptr| {
-            let string =
-                unsafe { glib::GStr::from_ptr_lossy(str_ptr as *const c_char) }.to_string();
+            let string = unsafe { lossy_c_string(str_ptr as *const c_char) };
 
             if self.ownership.is_full() {
                 unsafe { glib::ffi::g_free(str_ptr) };
@@ -58,7 +57,7 @@ impl Decoder for StringCodec {
 
     unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         self.decode_non_null(ptr, |ptr| {
-            let string = unsafe { glib::GStr::from_ptr_lossy(ptr as *const c_char) }.to_string();
+            let string = unsafe { lossy_c_string(ptr as *const c_char) };
             Ok(value::Value::String(string))
         })
     }

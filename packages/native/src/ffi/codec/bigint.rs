@@ -1,5 +1,4 @@
 use anyhow::bail;
-use libffi::middle as libffi;
 
 use super::IntegerCodec;
 use super::forward_ffi_encoder;
@@ -19,10 +18,6 @@ impl BigIntCodec {
             Self::I64 => IntegerCodec::I64,
             Self::U64 => IntegerCodec::U64,
         }
-    }
-
-    pub fn ffi_type(self) -> libffi::Type {
-        self.ffi_codec().ffi_type()
     }
 
     fn label(self) -> &'static str {
@@ -195,11 +190,5 @@ impl PtrWriter for BigIntCodec {
         let int = self.integer_from_value(value)?;
         let stashed_value = self.checked_to_stashed_value(int)?;
         unsafe { stashed_value.write_scalar_to_ptr(ptr) }
-    }
-}
-
-impl From<BigIntCodec> for libffi::Type {
-    fn from(kind: BigIntCodec) -> Self {
-        kind.ffi_type()
     }
 }

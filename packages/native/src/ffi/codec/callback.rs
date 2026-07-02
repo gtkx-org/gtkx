@@ -66,27 +66,18 @@ impl Encoder for CallbackCodec {
         );
         let fn_ptr = state.code_ptr;
 
+        let destroy =
+            (self.scope == CallbackScope::Notified).then_some(CallbackState::destroy as *mut c_void);
+
+        if is_oneshot {
+            let state_ptr = std::ptr::from_ref::<CallbackState>(&state) as *mut CallbackState;
+            state
+                .data_ref()
+                .oneshot_state_ptr
+                .store(state_ptr, Ordering::Release);
+        }
+
         match self.scope {
-            CallbackScope::Forever => Ok(ffi::StashedValue::Callback(
-                ffi::CallbackValue::new_pending_transfer(fn_ptr, None, state),
-            )),
-            CallbackScope::Notified => Ok(ffi::StashedValue::Callback(
-                ffi::CallbackValue::new_pending_transfer(
-                    fn_ptr,
-                    Some(CallbackState::destroy as *mut c_void),
-                    state,
-                ),
-            )),
-            CallbackScope::Async => {
-                let state_ptr = std::ptr::from_ref::<CallbackState>(&state) as *mut CallbackState;
-                state
-                    .data_ref()
-                    .oneshot_state_ptr
-                    .store(state_ptr, Ordering::Release);
-                Ok(ffi::StashedValue::Callback(
-                    ffi::CallbackValue::new_pending_transfer(fn_ptr, None, state),
-                ))
-            }
             CallbackScope::Call => {
                 let state_ptr = &*state as *const CallbackState as *mut c_void;
                 Ok(ffi::StashedValue::Callback(ffi::CallbackValue::new(
@@ -96,6 +87,9 @@ impl Encoder for CallbackCodec {
                     Some(state),
                 )))
             }
+            _ => Ok(ffi::StashedValue::Callback(
+                ffi::CallbackValue::new_pending_transfer(fn_ptr, destroy, state),
+            )),
         }
     }
 }
