@@ -1,16 +1,17 @@
+use std::ffi::c_void;
+
 use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
 use super::Request;
-use super::read::FieldLocation;
 use crate::ffi::codec::{Codec, PtrWriter as _};
 use crate::ffi::descriptor::Descriptor;
 use crate::ffi::value::Value;
 use crate::handle::Handle;
 
 struct WriteRequest {
-    location: FieldLocation,
+    field_ptr: usize,
     field_codec: Codec,
     value: Value,
 }
@@ -19,7 +20,7 @@ impl Request for WriteRequest {
     type Output = ();
 
     fn execute(self) -> anyhow::Result<()> {
-        let field_ptr = unsafe { self.location.resolve()? };
+        let field_ptr = self.field_ptr as *mut c_void;
         unsafe { self.field_codec.write_value_to_ptr(field_ptr, &self.value) }
     }
 
@@ -42,10 +43,7 @@ pub mod napi_export {
         let field_codec = field_descriptor.into_codec()?;
         let parsed_value = Value::from_js_value(env, value)?;
         let request = WriteRequest {
-            location: FieldLocation {
-                base_ptr: handle.ptr_as_usize(),
-                offset: offset as usize,
-            },
+            field_ptr: handle.ptr_as_usize().wrapping_add(offset as usize),
             field_codec,
             value: parsed_value,
         };

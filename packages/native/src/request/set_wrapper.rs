@@ -34,12 +34,6 @@ unsafe extern "C" fn on_wrapper_finalize(
 #[napi(catch_unwind)]
 pub fn set_wrapper(env: Env, handle: &External<Handle>, wrapper: Object<'_>) -> napi::Result<()> {
     let gobject_ptr = handle.ptr() as usize;
-    if gobject_ptr == 0 {
-        return Err(napi::Error::new(
-            napi::Status::InvalidArg,
-            "set_wrapper: handle has a null pointer",
-        ));
-    }
 
     let data = Box::into_raw(Box::new(FinalizeData {
         gobject_ptr,

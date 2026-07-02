@@ -11,8 +11,8 @@ mod stashed_value;
 pub use slot::Slot;
 
 pub use stash::{
-    AcquiredTransfers, GArrayData, GListKind, GSListKind, ListKind, PendingRelease, PendingTransfer,
-    Stash, StashStorage,
+    GArrayData, GListKind, GSListKind, ListKind, PendingRelease, PendingTransfer, Stash,
+    StashStorage,
 };
 pub use stash::{GListData, GSListData, StringGListData, StringGSListData};
 pub use stashed_value::{CallbackValue, StashedValue};

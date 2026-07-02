@@ -15,11 +15,7 @@ impl Request for CopyRequest {
     type Output = ();
 
     fn execute(self) -> anyhow::Result<()> {
-        if self.size == 0
-            || self.dest_ptr == 0
-            || self.src_ptr == 0
-            || self.dest_ptr == self.src_ptr
-        {
+        if self.size == 0 || self.dest_ptr == self.src_ptr {
             return Ok(());
         }
         unsafe {

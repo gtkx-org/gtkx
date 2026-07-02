@@ -19,9 +19,6 @@ impl Request for GetTypeRequest {
         }
         let instance = self.instance_ptr as *mut gobject_ffi::GTypeInstance;
         let g_class = unsafe { (*instance).g_class };
-        if g_class.is_null() {
-            return Ok(0);
-        }
         let gtype = unsafe { (*g_class).g_type };
         Ok(gtype as u64)
     }

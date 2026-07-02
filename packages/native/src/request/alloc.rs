@@ -22,14 +22,6 @@ impl Request for AllocRequest {
             .map_err(|err| anyhow::anyhow!("invalid alloc type name: {err}"))?;
 
         let ptr = unsafe { g_malloc0(self.size) };
-
-        if ptr.is_null() {
-            let type_description = type_name
-                .as_ref()
-                .map_or("plain struct", |name| name.as_str());
-            anyhow::bail!("Failed to allocate memory for {type_description}");
-        }
-
         let boxed = Boxed::from_alloc(type_name, ptr);
         Ok(Value::Boxed(boxed).into())
     }

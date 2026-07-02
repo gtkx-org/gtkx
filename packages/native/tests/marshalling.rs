@@ -53,7 +53,6 @@ fn buffer_view_array_passthrough_shares_the_backing_store() {
         buffer.len() * size_of::<f32>(),
         buffer.len(),
         BufferViewKind::Float32,
-        false,
     );
     let array_codec = f32_array_codec();
 
@@ -75,7 +74,6 @@ fn buffer_view_passthrough_reads_and_writes_the_backing_store() {
         buffer.len(),
         buffer.len(),
         BufferViewKind::Uint8,
-        false,
     );
 
     let encoded = BufferCodec

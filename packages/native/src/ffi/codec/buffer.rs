@@ -22,13 +22,7 @@ impl BufferCodec {
 impl Encoder for BufferCodec {
     fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
         match value {
-            value::Value::BufferView(view) => {
-                anyhow::ensure!(
-                    !view.is_shared(),
-                    "SharedArrayBuffer-backed views cannot cross the FFI boundary"
-                );
-                Ok(ffi::StashedValue::Ptr(view.ptr()))
-            }
+            value::Value::BufferView(view) => Ok(ffi::StashedValue::Ptr(view.ptr())),
             value::Value::Number(n) => Ok(ffi::StashedValue::Ptr(Self::ptr_from_number(*n)?)),
             value::Value::Null | value::Value::Undefined => {
                 Ok(ffi::StashedValue::Ptr(std::ptr::null_mut()))

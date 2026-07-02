@@ -47,7 +47,6 @@ fn view_over(data: &mut [u8], length: usize, kind: BufferViewKind) -> BufferView
         data.len(),
         length,
         kind,
-        false,
     )
 }
 
@@ -114,13 +113,11 @@ fn buffer_view_exposes_its_fields() {
         8,
         2,
         BufferViewKind::Float32,
-        true,
     );
     assert_eq!(view.ptr(), data.as_mut_ptr() as *mut c_void);
     assert_eq!(view.byte_length(), 8);
     assert_eq!(view.length(), 2);
     assert_eq!(view.kind(), BufferViewKind::Float32);
-    assert!(view.is_shared());
 }
 
 #[test]

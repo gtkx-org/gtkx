@@ -428,25 +428,38 @@ fn string_list_parts(
     }
 }
 
+fn release_transfers(transfers: Vec<ffi::PendingTransfer>) {
+    for transfer in transfers {
+        transfer.release_now();
+    }
+}
+
 fn transfer_elements(
     handles: &[crate::handle::Handle],
     item_codec: &Codec,
     container_label: &str,
 ) -> anyhow::Result<(Vec<*mut c_void>, Vec<ffi::PendingTransfer>)> {
     let mut ptrs = Vec::with_capacity(handles.len() + 1);
-    let mut acquired = ffi::AcquiredTransfers::default();
+    let mut acquired: Vec<ffi::PendingTransfer> = Vec::new();
     for handle in handles {
         let ptr = handle.ptr();
         if ptr.is_null() {
+            release_transfers(acquired);
             bail!("GObject in {container_label} has a null pointer");
         }
-        let element = unsafe { item_codec.ref_for_transfer(ptr)? };
+        let element = match unsafe { item_codec.ref_for_transfer(ptr) } {
+            Ok(element) => element,
+            Err(err) => {
+                release_transfers(acquired);
+                return Err(err);
+            }
+        };
         if let Some(release) = item_codec.transfer_release() {
             acquired.push(ffi::PendingTransfer::new(element, release));
         }
         ptrs.push(element);
     }
-    Ok((ptrs, acquired.into_inner()))
+    Ok((ptrs, acquired))
 }
 
 struct ListEncoder<F: ffi::ListKind>(PhantomData<F>);
@@ -603,10 +616,6 @@ impl ArrayCodec {
     }
 
     fn encode_buffer_view(&self, view: &value::BufferView) -> anyhow::Result<ffi::StashedValue> {
-        anyhow::ensure!(
-            !view.is_shared(),
-            "SharedArrayBuffer-backed views cannot cross the FFI boundary"
-        );
         anyhow::ensure!(
             self.ownership.is_borrowed(),
             "A transfer-full array argument cannot be encoded from an ArrayBufferView: the callee would free the JavaScript buffer"

@@ -115,28 +115,6 @@ impl PendingRelease {
     }
 }
 
-#[derive(Default)]
-pub struct AcquiredTransfers(Vec<PendingTransfer>);
-
-impl AcquiredTransfers {
-    pub fn push(&mut self, transfer: PendingTransfer) {
-        self.0.push(transfer);
-    }
-
-    pub fn into_inner(self) -> Vec<PendingTransfer> {
-        let mut this = std::mem::ManuallyDrop::new(self);
-        std::mem::take(&mut this.0)
-    }
-}
-
-impl Drop for AcquiredTransfers {
-    fn drop(&mut self) {
-        for entry in self.0.drain(..) {
-            entry.release_now();
-        }
-    }
-}
-
 pub trait ListKind {
     type Node;
     const LABEL: &'static str;

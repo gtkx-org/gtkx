@@ -25,7 +25,6 @@ fn buffer_encodes_a_view_as_its_backing_pointer() {
         8,
         8,
         BufferViewKind::Uint8,
-        false,
     );
     assert_eq!(
         encoded_address(&Value::BufferView(view)),

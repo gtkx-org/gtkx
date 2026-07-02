@@ -10,22 +10,8 @@ use crate::ffi::descriptor::Descriptor;
 use crate::ffi::value::Value;
 use crate::handle::Handle;
 
-pub struct FieldLocation {
-    pub base_ptr: usize,
-    pub offset: usize,
-}
-
-impl FieldLocation {
-    pub unsafe fn resolve(&self) -> anyhow::Result<*mut c_void> {
-        if self.base_ptr == 0 {
-            anyhow::bail!("Handle has a null pointer");
-        }
-        Ok(unsafe { (self.base_ptr as *mut u8).add(self.offset) as *mut c_void })
-    }
-}
-
 pub struct ReadRequest {
-    pub location: FieldLocation,
+    pub field_ptr: usize,
     pub field_codec: Codec,
 }
 
@@ -33,7 +19,7 @@ impl Request for ReadRequest {
     type Output = Value;
 
     fn execute(self) -> anyhow::Result<Value> {
-        let field_ptr = unsafe { self.location.resolve()? }.cast_const();
+        let field_ptr = self.field_ptr as *const c_void;
         unsafe {
             self.field_codec
                 .read(ReadSource::Slot(field_ptr, "field read"))
@@ -57,10 +43,7 @@ pub mod napi_export {
     ) -> napi::Result<Unknown<'env>> {
         let field_codec = field_descriptor.into_codec()?;
         let request = ReadRequest {
-            location: FieldLocation {
-                base_ptr: handle.ptr_as_usize(),
-                offset: offset as usize,
-            },
+            field_ptr: handle.ptr_as_usize().wrapping_add(offset as usize),
             field_codec,
         };
         request.dispatch(env)

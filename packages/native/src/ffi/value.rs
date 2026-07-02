@@ -192,26 +192,18 @@ pub struct BufferView {
     byte_length: usize,
     length: usize,
     kind: BufferViewKind,
-    shared: bool,
 }
 
 unsafe impl Send for BufferView {}
 unsafe impl Sync for BufferView {}
 
 impl BufferView {
-    pub fn new(
-        ptr: *mut c_void,
-        byte_length: usize,
-        length: usize,
-        kind: BufferViewKind,
-        shared: bool,
-    ) -> Self {
+    pub fn new(ptr: *mut c_void, byte_length: usize, length: usize, kind: BufferViewKind) -> Self {
         Self {
             ptr,
             byte_length,
             length,
             kind,
-            shared,
         }
     }
 
@@ -229,10 +221,6 @@ impl BufferView {
 
     pub fn kind(&self) -> BufferViewKind {
         self.kind
-    }
-
-    pub fn is_shared(&self) -> bool {
-        self.shared
     }
 }
 
@@ -256,14 +244,8 @@ impl BufferView {
         };
         check_status!(status, "Failed to read typed-array info")?;
         let kind = BufferViewKind::try_from(raw_kind)?;
-        let shared = Self::buffer_is_shared(env, array_buffer)?;
-        Ok(Self::new(
-            data,
-            length * kind.element_size(),
-            length,
-            kind,
-            shared,
-        ))
+        Self::reject_if_shared(env, array_buffer)?;
+        Ok(Self::new(data, length * kind.element_size(), length, kind))
     }
 
     fn from_data_view(env: &Env, value: &Unknown<'_>) -> napi::Result<Self> {
@@ -282,21 +264,26 @@ impl BufferView {
             )
         };
         check_status!(status, "Failed to read DataView info")?;
-        let shared = Self::buffer_is_shared(env, array_buffer)?;
+        Self::reject_if_shared(env, array_buffer)?;
         Ok(Self::new(
             data,
             byte_length,
             byte_length,
             BufferViewKind::DataView,
-            shared,
         ))
     }
 
-    fn buffer_is_shared(env: &Env, buffer: sys::napi_value) -> napi::Result<bool> {
+    fn reject_if_shared(env: &Env, buffer: sys::napi_value) -> napi::Result<()> {
         let mut is_array_buffer = false;
         let status = unsafe { sys::napi_is_arraybuffer(env.raw(), buffer, &mut is_array_buffer) };
         check_status!(status, "Failed to inspect a view's backing buffer")?;
-        Ok(!is_array_buffer)
+        if !is_array_buffer {
+            return Err(napi::Error::new(
+                napi::Status::InvalidArg,
+                "SharedArrayBuffer-backed views cannot cross the FFI boundary",
+            ));
+        }
+        Ok(())
     }
 }
 
