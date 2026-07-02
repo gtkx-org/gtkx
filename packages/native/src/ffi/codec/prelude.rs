@@ -104,19 +104,12 @@ pub(super) fn full_transfer_stashed(
 pub(super) fn finalize_container_stash(
     storage: ffi::Stash,
     should_free: bool,
-    acquired: Vec<ffi::PendingTransfer>,
+    mut acquired: Vec<ffi::PendingTransfer>,
     container_release: ffi::PendingRelease,
 ) -> ffi::StashedValue {
     let container = storage.ptr();
-    let storage = if should_free {
-        if acquired.is_empty() {
-            storage
-        } else {
-            storage.with_pending_transfer(container, ffi::PendingRelease::Group(acquired))
-        }
-    } else {
-        let release = ffi::PendingRelease::grouped(acquired, container, container_release);
-        storage.with_pending_transfer(container, release)
-    };
-    ffi::StashedValue::Stashed(storage)
+    if !should_free {
+        acquired.push(ffi::PendingTransfer::new(container, container_release));
+    }
+    ffi::StashedValue::Stashed(storage.with_pending_transfers(acquired))
 }

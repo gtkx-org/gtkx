@@ -9,7 +9,7 @@ use crate::handle::UnrefFn;
 pub struct Stash {
     ptr: *mut c_void,
     storage: StashStorage,
-    pending_transfer: Cell<Option<PendingTransfer>>,
+    pending_transfer: Cell<Vec<PendingTransfer>>,
 }
 
 impl std::fmt::Debug for Stash {
@@ -21,13 +21,13 @@ impl std::fmt::Debug for Stash {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct PendingTransfer {
     ptr: *mut c_void,
     release: PendingRelease,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum PendingRelease {
     GFree,
     ObjectUnref,
@@ -40,7 +40,6 @@ pub enum PendingRelease {
     GByteArrayUnref,
     GListFree,
     GSListFree,
-    Group(Vec<PendingTransfer>),
 }
 
 impl PendingTransfer {
@@ -49,10 +48,6 @@ impl PendingTransfer {
     }
 
     pub fn release_now(self) {
-        self.release();
-    }
-
-    fn release(self) {
         if self.ptr.is_null() {
             return;
         }
@@ -91,27 +86,8 @@ impl PendingTransfer {
                 PendingRelease::GSListFree => {
                     glib::ffi::g_slist_free(self.ptr as *mut glib::ffi::GSList);
                 }
-                PendingRelease::Group(entries) => {
-                    for entry in entries {
-                        entry.release();
-                    }
-                }
             }
         }
-    }
-}
-
-impl PendingRelease {
-    pub fn grouped(
-        mut acquired: Vec<PendingTransfer>,
-        container: *mut c_void,
-        container_release: PendingRelease,
-    ) -> PendingRelease {
-        if acquired.is_empty() {
-            return container_release;
-        }
-        acquired.push(PendingTransfer::new(container, container_release));
-        PendingRelease::Group(acquired)
     }
 }
 
@@ -312,7 +288,7 @@ impl Stash {
         Self {
             ptr,
             storage,
-            pending_transfer: Cell::new(None),
+            pending_transfer: Cell::new(Vec::new()),
         }
     }
 
@@ -321,13 +297,21 @@ impl Stash {
     }
 
     pub fn with_pending_transfer(self, ptr: *mut c_void, release: PendingRelease) -> Self {
-        self.pending_transfer
-            .set(Some(PendingTransfer { ptr, release }));
+        let mut transfers = self.pending_transfer.take();
+        transfers.push(PendingTransfer { ptr, release });
+        self.pending_transfer.set(transfers);
+        self
+    }
+
+    pub fn with_pending_transfers(self, transfers: Vec<PendingTransfer>) -> Self {
+        let mut existing = self.pending_transfer.take();
+        existing.extend(transfers);
+        self.pending_transfer.set(existing);
         self
     }
 
     pub fn disarm_pending_transfer(&self) {
-        self.pending_transfer.set(None);
+        self.pending_transfer.set(Vec::new());
     }
 
     #[inline]
@@ -430,8 +414,8 @@ impl Stash {
 
 impl Drop for Stash {
     fn drop(&mut self) {
-        if let Some(pending) = self.pending_transfer.take() {
-            pending.release();
+        for pending in self.pending_transfer.take() {
+            pending.release_now();
         }
         match &self.storage {
             StashStorage::HashTable => {
