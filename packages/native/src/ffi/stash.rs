@@ -152,7 +152,7 @@ pub enum ListPayload {
     Handles(Vec<crate::handle::Handle>),
     Strings {
         strings: Vec<std::ffi::CString>,
-        elements_duped: bool,
+        items_duped: bool,
     },
 }
 
@@ -266,8 +266,7 @@ impl Drop for Stash {
                 if data.should_free && !data.ptr.is_null() {
                     let free = match &data.payload {
                         ListPayload::Strings {
-                            elements_duped: true,
-                            ..
+                            items_duped: true, ..
                         } => data.ops.free_full,
                         ListPayload::Handles(_) | ListPayload::Strings { .. } => data.ops.free,
                     };

@@ -169,19 +169,19 @@ impl RawInterface {
 
 struct RegisterClassRequest {
     name: glib::GString,
-    parent_gtype: glib::Type,
+    parent_type: glib::Type,
     vfuncs: Vec<RawVfunc>,
     interfaces: Vec<RawInterface>,
 }
 
 impl RegisterClassRequest {
-    fn query_parent_gtype(&self) -> anyhow::Result<gobject_ffi::GTypeQuery> {
+    fn query_parent_type(&self) -> anyhow::Result<gobject_ffi::GTypeQuery> {
         if glib::Type::from_name(&self.name).is_some() {
             anyhow::bail!("GType name '{}' is already registered", self.name);
         }
 
         let mut query: gobject_ffi::GTypeQuery = unsafe { std::mem::zeroed() };
-        unsafe { gobject_ffi::g_type_query(self.parent_gtype.into_glib(), &mut query) };
+        unsafe { gobject_ffi::g_type_query(self.parent_type.into_glib(), &mut query) };
         if query.type_ == 0 {
             anyhow::bail!("parent gtype could not be queried");
         }
@@ -240,7 +240,7 @@ impl RegisterClassRequest {
     }
 
     fn register_type(
-        parent_gtype: glib::Type,
+        parent_type: glib::Type,
         name_ptr: *const c_char,
         vfuncs: Vec<RawVfunc>,
         interfaces: Vec<RawInterface>,
@@ -261,7 +261,7 @@ impl RegisterClassRequest {
         };
 
         let new_gtype = unsafe {
-            gobject_ffi::g_type_register_static(parent_gtype.into_glib(), name_ptr, &info, 0)
+            gobject_ffi::g_type_register_static(parent_type.into_glib(), name_ptr, &info, 0)
         };
 
         if new_gtype == 0 {
@@ -286,14 +286,14 @@ impl Request for RegisterClassRequest {
     type Output = u64;
 
     fn execute(self) -> anyhow::Result<u64> {
-        let query = self.query_parent_gtype()?;
+        let query = self.query_parent_type()?;
         self.validate_layout(&query)?;
 
         let class_size = query.class_size as u16;
         let instance_size = query.instance_size as u16;
 
         let new_gtype = Self::register_type(
-            self.parent_gtype,
+            self.parent_type,
             self.name.as_ptr(),
             self.vfuncs,
             self.interfaces,
@@ -316,7 +316,7 @@ pub mod napi_export {
     pub fn register_class(
         env: Env,
         name: String,
-        parent_gtype: BigInt,
+        parent_type: BigInt,
         options: Option<RegisterClassOptions>,
     ) -> napi::Result<BigInt> {
         let name = glib::GString::from_string_checked(name).map_err(|err| {
@@ -325,14 +325,14 @@ pub mod napi_export {
                 format!("register_class: invalid type name: {err}"),
             )
         })?;
-        let parent_gtype = gtype_from_bigint(parent_gtype, "parent")?;
+        let parent_type = gtype_from_bigint(parent_type, "parent")?;
         let (vfuncs, interfaces) = match options {
             Some(options) => options.into_raw()?,
             None => (Vec::new(), Vec::new()),
         };
         let gtype = RegisterClassRequest {
             name,
-            parent_gtype,
+            parent_type,
             vfuncs,
             interfaces,
         }

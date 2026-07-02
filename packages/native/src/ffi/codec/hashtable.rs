@@ -3,7 +3,6 @@ use anyhow::bail;
 use super::prelude::*;
 use super::string::str_to_glib_full;
 use crate::ffi::codec::Codec;
-use crate::ffi::codec::array::ArrayKind;
 use crate::ffi::{Stash, StashStorage};
 
 #[derive(Clone, Debug)]
@@ -26,9 +25,7 @@ impl HashTableEntryCodec {
             Codec::Integer(_) => Some(Self::Integer),
             Codec::Boolean(_) => Some(Self::Boolean),
             Codec::Float(_) => Some(Self::Float),
-            Codec::Array(array_codec) if array_codec.kind == ArrayKind::GPtrArray => {
-                Some(Self::PtrArray(array_codec.item_codec.clone()))
-            }
+            Codec::Array(array_codec) => array_codec.ptr_array_item().map(Self::PtrArray),
             _ => None,
         }
     }

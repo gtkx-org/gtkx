@@ -4,7 +4,7 @@ use anyhow::bail;
 use libffi::middle as libffi;
 
 use super::prelude::*;
-use crate::ffi::codec::{ArrayKind, Codec};
+use crate::ffi::codec::Codec;
 use crate::ffi::{Stash, StashStorage};
 
 #[derive(Debug, Clone)]
@@ -205,7 +205,7 @@ impl Decoder for RefCodec {
 
             if matches!(stash.storage(), StashStorage::PtrSlot(_))
                 && array_codec.ownership.is_full()
-                && matches!(array_codec.kind, ArrayKind::Sized | ArrayKind::Fixed)
+                && array_codec.is_length_bounded()
             {
                 unsafe { glib::ffi::g_free(actual_ptr) };
             }

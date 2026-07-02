@@ -85,7 +85,7 @@ fn string_glist_storage(
     strings: Vec<CString>,
     ptr: *mut glib::ffi::GList,
     should_free: bool,
-    elements_duped: bool,
+    items_duped: bool,
 ) -> Stash {
     Stash::new(
         ptr as *mut c_void,
@@ -95,7 +95,7 @@ fn string_glist_storage(
             should_free,
             payload: ListPayload::Strings {
                 strings,
-                elements_duped,
+                items_duped,
             },
         }),
     )
@@ -105,7 +105,7 @@ fn string_gslist_storage(
     strings: Vec<CString>,
     ptr: *mut glib::ffi::GSList,
     should_free: bool,
-    elements_duped: bool,
+    items_duped: bool,
 ) -> Stash {
     Stash::new(
         ptr as *mut c_void,
@@ -115,7 +115,7 @@ fn string_gslist_storage(
             should_free,
             payload: ListPayload::Strings {
                 strings,
-                elements_duped,
+                items_duped,
             },
         }),
     )
@@ -445,17 +445,18 @@ fn string_gslist_storage_null_ptr_safe_on_drop() {
 }
 
 fn string_full_item_array_type(kind: ArrayKind, container_ownership: Ownership) -> ArrayCodec {
-    ArrayCodec {
-        item_codec: Box::new(Codec::String(StringCodec {
+    ArrayCodec::new(
+        Box::new(Codec::String(StringCodec {
             ownership: Ownership::Full,
             length: None,
         })),
         kind,
-        ownership: container_ownership,
-        size_param_index: None,
-        fixed_size: None,
-        element_size: None,
-    }
+        container_ownership,
+        None,
+        None,
+        None,
+    )
+    .expect("valid array codec")
 }
 
 #[test]
@@ -469,12 +470,12 @@ fn encode_empty_string_glist_full_container_arms_null_transfer_safe_on_drop() {
     let StashStorage::List(data) = storage.storage() else {
         panic!("expected string GList storage")
     };
-    let ListPayload::Strings { elements_duped, .. } = &data.payload else {
+    let ListPayload::Strings { items_duped, .. } = &data.payload else {
         panic!("expected string payload")
     };
     assert!(data.ptr.is_null());
     assert!(!data.should_free);
-    assert!(*elements_duped);
+    assert!(*items_duped);
     drop(encoded);
 }
 
@@ -501,14 +502,15 @@ fn encode_string_array_element_transfer_frees_duplicates_when_call_never_happens
 #[test]
 fn encode_gbytearray_full_ownership_unrefs_when_call_never_happens() {
     helpers::run(|| {
-        let codec = ArrayCodec {
-            item_codec: Box::new(Codec::Integer(IntegerCodec::U8)),
-            kind: ArrayKind::GByteArray,
-            ownership: Ownership::Full,
-            size_param_index: None,
-            fixed_size: None,
-            element_size: None,
-        };
+        let codec = ArrayCodec::new(
+            Box::new(Codec::Integer(IntegerCodec::U8)),
+            ArrayKind::GByteArray,
+            Ownership::Full,
+            None,
+            None,
+            None,
+        )
+        .expect("valid gbytearray codec");
         let val = Value::Array(vec![Value::Number(7.0), Value::Number(8.0)]);
         let encoded = codec.encode(&val).unwrap();
         let StashedValue::Stashed(storage) = &encoded else {

@@ -1,0 +1,134 @@
+use std::ffi::CString;
+
+use super::super::prelude::*;
+use super::container::ArrayContainer;
+use super::{ArrayCodec, ArrayKindEncoder, dup_strings_to_glib, transfer_items};
+use crate::ffi::codec::Codec;
+use crate::ffi::{Stash, StashStorage};
+
+#[derive(Debug, Clone)]
+pub(crate) struct ListArrayCodec {
+    ops: &'static ffi::ListOps,
+}
+
+impl ListArrayCodec {
+    pub(super) fn new(ops: &'static ffi::ListOps) -> Self {
+        Self { ops }
+    }
+}
+
+impl ArrayContainer for ListArrayCodec {
+    fn encode(
+        &self,
+        codec: &ArrayCodec,
+        array: &[value::Value],
+    ) -> anyhow::Result<ffi::StashedValue> {
+        codec.encode_items(&ListEncoder(self.ops), array)
+    }
+
+    fn decode(
+        &self,
+        codec: &ArrayCodec,
+        stashed_value: &ffi::StashedValue,
+    ) -> anyhow::Result<value::Value> {
+        let ops = self.ops;
+        let Some(ptr) = stashed_value.as_non_null_ptr(ops.label)? else {
+            return Ok(value::Value::Array(vec![]));
+        };
+
+        let mut current = ptr as *mut glib::ffi::GList;
+        let nodes = std::iter::from_fn(move || {
+            if current.is_null() {
+                return None;
+            }
+            let data = unsafe { (*current).data };
+            current = unsafe { (*current).next };
+            Some(data)
+        });
+
+        let is_full = codec.ownership.is_full();
+        codec.decode_ptr_iter(nodes, move || {
+            if is_full {
+                unsafe { (ops.free)(ptr) };
+            }
+        })
+    }
+
+    fn name(&self) -> &'static str {
+        self.ops.label
+    }
+}
+
+fn string_list_parts(
+    array: &[value::Value],
+    dup_items: bool,
+) -> anyhow::Result<(Vec<CString>, Vec<*mut c_void>)> {
+    if dup_items {
+        Ok((Vec::new(), dup_strings_to_glib(array)?))
+    } else {
+        let cstrings = ArrayCodec::extract_strings(array)?;
+        let ptrs = cstrings.iter().map(|s| s.as_ptr() as *mut c_void).collect();
+        Ok((cstrings, ptrs))
+    }
+}
+
+struct ListEncoder(&'static ffi::ListOps);
+
+impl ListEncoder {
+    fn finalize_list(
+        &self,
+        list: *mut c_void,
+        should_free: bool,
+        payload: ffi::ListPayload,
+        acquired: Vec<ffi::PendingTransfer>,
+    ) -> ffi::StashedValue {
+        let storage = Stash::new(
+            list,
+            StashStorage::List(ffi::ListData {
+                ops: self.0,
+                ptr: list,
+                should_free,
+                payload,
+            }),
+        );
+        finalize_container_stash(storage, should_free, acquired, self.0.pending)
+    }
+}
+
+impl ArrayKindEncoder for ListEncoder {
+    fn encode_strings(
+        &self,
+        array: &[value::Value],
+        dup_items: bool,
+        ownership: Ownership,
+    ) -> anyhow::Result<ffi::StashedValue> {
+        let should_free = ownership.is_borrowed();
+        let (strings, ptrs) = string_list_parts(array, dup_items)?;
+        let list = ffi::build_list(self.0, &ptrs);
+        let acquired: Vec<ffi::PendingTransfer> = if !should_free && dup_items {
+            ptrs.iter()
+                .map(|p| ffi::PendingTransfer::new(*p, ffi::PendingRelease::GFree))
+                .collect()
+        } else {
+            Vec::new()
+        };
+        let payload = ffi::ListPayload::Strings {
+            strings,
+            items_duped: dup_items,
+        };
+        Ok(self.finalize_list(list, should_free, payload, acquired))
+    }
+
+    fn encode_handles(
+        &self,
+        handles: &[crate::handle::Handle],
+        item_codec: &Codec,
+        ownership: Ownership,
+    ) -> anyhow::Result<ffi::StashedValue> {
+        let should_free = ownership.is_borrowed();
+        let (ptrs, acquired) = transfer_items(handles, item_codec, self.0.label)?;
+        let list = ffi::build_list(self.0, &ptrs);
+        let payload = ffi::ListPayload::Handles(handles.to_vec());
+        Ok(self.finalize_list(list, should_free, payload, acquired))
+    }
+}

@@ -20,15 +20,20 @@ macro_rules! expect_variant {
     }};
 }
 
+fn array_full(item: Codec) -> ArrayCodec {
+    ArrayCodec::new(
+        Box::new(item),
+        ArrayKind::Array,
+        Ownership::Full,
+        None,
+        None,
+        None,
+    )
+    .expect("valid array codec")
+}
+
 fn u8_array_codec() -> Codec {
-    Codec::Array(ArrayCodec {
-        item_codec: Box::new(Codec::Integer(IntegerCodec::U8)),
-        kind: ArrayKind::Array,
-        ownership: Ownership::Full,
-        size_param_index: None,
-        fixed_size: None,
-        element_size: None,
-    })
+    Codec::Array(array_full(Codec::Integer(IntegerCodec::U8)))
 }
 
 #[test]
@@ -260,14 +265,7 @@ fn encode_array_u8() {
 #[test]
 fn encode_array_i32() {
     let owned = expect_variant!(
-        Codec::Array(ArrayCodec {
-            item_codec: Box::new(Codec::Integer(IntegerCodec::I32)),
-            kind: ArrayKind::Array,
-            ownership: Ownership::Full,
-            size_param_index: None,
-            fixed_size: None,
-            element_size: None,
-        }),
+        Codec::Array(array_full(Codec::Integer(IntegerCodec::I32))),
         value::Value::Array(vec![
             value::Value::Number(-10.0),
             value::Value::Number(0.0),
@@ -284,14 +282,7 @@ fn encode_array_i32() {
 #[test]
 fn encode_array_f64() {
     let owned = expect_variant!(
-        Codec::Array(ArrayCodec {
-            item_codec: Box::new(Codec::Float(FloatCodec::F64)),
-            kind: ArrayKind::Array,
-            ownership: Ownership::Full,
-            size_param_index: None,
-            fixed_size: None,
-            element_size: None,
-        }),
+        Codec::Array(array_full(Codec::Float(FloatCodec::F64))),
         value::Value::Array(vec![value::Value::Number(1.1), value::Value::Number(2.2)]),
         Stashed
     );
@@ -305,17 +296,10 @@ fn encode_array_f64() {
 #[test]
 fn encode_array_string() {
     let owned = expect_variant!(
-        Codec::Array(ArrayCodec {
-            item_codec: Box::new(Codec::String(StringCodec {
-                ownership: Ownership::Full,
-                length: None,
-            })),
-            kind: ArrayKind::Array,
+        Codec::Array(array_full(Codec::String(StringCodec {
             ownership: Ownership::Full,
-            size_param_index: None,
-            fixed_size: None,
-            element_size: None,
-        }),
+            length: None,
+        }))),
         value::Value::Array(vec![
             value::Value::String("foo".to_string()),
             value::Value::String("bar".to_string()),
@@ -335,14 +319,7 @@ fn encode_array_string() {
 #[test]
 fn encode_array_boolean() {
     let owned = expect_variant!(
-        Codec::Array(ArrayCodec {
-            item_codec: Box::new(Codec::Boolean(BooleanCodec)),
-            kind: ArrayKind::Array,
-            ownership: Ownership::Full,
-            size_param_index: None,
-            fixed_size: None,
-            element_size: None,
-        }),
+        Codec::Array(array_full(Codec::Boolean(BooleanCodec))),
         value::Value::Array(vec![
             value::Value::Boolean(true),
             value::Value::Boolean(false),
@@ -382,14 +359,7 @@ fn encode_array_propagates_encode_error() {
 
 #[test]
 fn encode_array_f32_storage_converts_to_libffi_arg() {
-    let codec = Codec::Array(ArrayCodec {
-        item_codec: Box::new(Codec::Float(FloatCodec::F32)),
-        kind: ArrayKind::Array,
-        ownership: Ownership::Full,
-        size_param_index: None,
-        fixed_size: None,
-        element_size: None,
-    });
+    let codec = Codec::Array(array_full(Codec::Float(FloatCodec::F32)));
     let stashed_value = codec
         .encode(&value::Value::Array(vec![value::Value::Number(0.5)]))
         .unwrap();

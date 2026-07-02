@@ -3,6 +3,10 @@ use libffi::middle as libffi;
 
 use super::prelude::*;
 
+pub const MAX_SAFE_INTEGER_I128: i128 = 9_007_199_254_740_992;
+
+pub(super) const MAX_SAFE_INTEGER: f64 = MAX_SAFE_INTEGER_I128 as f64;
+
 #[derive(Debug, Clone, Copy)]
 pub enum IntegerCodec {
     U8,
@@ -82,6 +86,7 @@ macro_rules! impl_integer_codec_dispatch {
         }
     };
 }
+
 impl_integer_codec_dispatch! {
     U8: u8,
     I8: i8,
@@ -163,10 +168,6 @@ macro_rules! impl_numeric_codecs {
         }
     };
 }
-
-pub const MAX_SAFE_INTEGER_I128: i128 = 9_007_199_254_740_992;
-
-pub(super) const MAX_SAFE_INTEGER: f64 = MAX_SAFE_INTEGER_I128 as f64;
 
 pub fn lossless_f64(value: i128, context: &str) -> anyhow::Result<f64> {
     if !(-MAX_SAFE_INTEGER_I128..=MAX_SAFE_INTEGER_I128).contains(&value) {

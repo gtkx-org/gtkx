@@ -291,25 +291,27 @@ pub fn assert_write_return_err_writes_null<C: PtrWriter>(codec: &C) {
 }
 
 pub fn i32_array_codec(size: u32) -> ArrayCodec {
-    ArrayCodec {
-        item_codec: Box::new(Codec::Integer(IntegerCodec::I32)),
-        kind: ArrayKind::Fixed,
-        ownership: Ownership::Borrowed,
-        size_param_index: None,
-        fixed_size: Some(size),
-        element_size: None,
-    }
+    ArrayCodec::new(
+        Box::new(Codec::Integer(IntegerCodec::I32)),
+        ArrayKind::Fixed,
+        Ownership::Borrowed,
+        None,
+        Some(size),
+        None,
+    )
+    .expect("valid fixed array codec")
 }
 
 pub fn f32_array_codec() -> ArrayCodec {
-    ArrayCodec {
-        item_codec: Box::new(Codec::Float(FloatCodec::F32)),
-        kind: ArrayKind::Sized,
-        ownership: Ownership::Borrowed,
-        size_param_index: Some(1),
-        fixed_size: None,
-        element_size: None,
-    }
+    ArrayCodec::new(
+        Box::new(Codec::Float(FloatCodec::F32)),
+        ArrayKind::Sized,
+        Ownership::Borrowed,
+        Some(1),
+        None,
+        None,
+    )
+    .expect("valid sized array codec")
 }
 
 pub fn enum_codec() -> EnumFlagsCodec {

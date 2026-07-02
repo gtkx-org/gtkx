@@ -1,49 +1,96 @@
 use anyhow::bail;
-use glib::translate::{IntoGlibPtr, ToGlibPtr};
 
 use super::super::prelude::*;
-use super::{ArrayCodec, ItemCodec, dup_strings_to_glib, transfer_elements};
-use crate::ffi::codec::{Codec, FloatCodec, IntegerCodec};
+use super::container::ArrayContainer;
+use super::item::ItemCodec;
+use super::{ArrayCodec, dup_strings_to_glib, transfer_items};
+use crate::ffi::codec::{Codec, FloatCodec};
 use crate::ffi::{Stash, StashStorage};
 
-impl ArrayCodec {
-    pub(super) fn encode_gbytearray(
+#[derive(Debug, Clone)]
+pub(crate) struct GArrayCodec;
+
+impl ArrayContainer for GArrayCodec {
+    fn encode(
         &self,
+        codec: &ArrayCodec,
         array: &[value::Value],
     ) -> anyhow::Result<ffi::StashedValue> {
-        let bytes: Vec<u8> = array
-            .iter()
-            .enumerate()
-            .map(|(i, v)| match v {
-                value::Value::Number(n) => {
-                    IntegerCodec::U8
-                        .check_range(*n)
-                        .map_err(|e| anyhow::anyhow!("GByteArray element {i}: {e}"))?;
-                    Ok(*n as u8)
-                }
-                _ => bail!("Expected a Number for GByteArray element, got {v:?}"),
-            })
-            .collect::<anyhow::Result<Vec<u8>>>()?;
+        let item_size = codec.item_element_size();
+        let element_size = codec.element_size.or(item_size).ok_or_else(|| {
+            anyhow::anyhow!(
+                "Cannot determine element size for GArray with item codec {:?}",
+                codec.item_codec
+            )
+        })?;
 
-        let byte_array = glib::ByteArray::from(bytes.as_slice());
-        let should_free = self.ownership.is_borrowed();
-        let (ptr, owned) = if should_free {
-            let ptr = ToGlibPtr::<*mut glib::ffi::GByteArray>::to_glib_none(&byte_array).0;
-            (ptr, Some(byte_array))
-        } else {
-            let ptr = IntoGlibPtr::<*mut glib::ffi::GByteArray>::into_glib_ptr(byte_array);
-            (ptr, None)
+        if let Some(item_size) = item_size
+            && element_size != item_size
+        {
+            bail!(
+                "GArray element size override {element_size} does not match the {item_size}-byte layout of item codec {:?}",
+                codec.item_codec
+            );
+        }
+
+        let g_array =
+            unsafe { glib::ffi::g_array_sized_new(0, 0, element_size as u32, array.len() as u32) };
+
+        let acquired = match codec.append_items_to_garray(g_array, array) {
+            Ok(acquired) => acquired,
+            Err(err) => {
+                unsafe { glib::ffi::g_array_unref(g_array) };
+                return Err(err);
+            }
         };
 
-        let storage = Stash::new(ptr as *mut c_void, StashStorage::GByteArray(owned));
+        let should_free = codec.ownership.is_borrowed();
+        let storage = Stash::new(
+            g_array as *mut c_void,
+            StashStorage::GArray(ffi::GArrayData {
+                ptr: g_array,
+                should_free,
+            }),
+        );
         Ok(finalize_container_stash(
             storage,
             should_free,
-            Vec::new(),
-            ffi::PendingRelease::GByteArrayUnref,
+            acquired,
+            ffi::PendingRelease::GArrayUnref,
         ))
     }
 
+    fn decode(
+        &self,
+        codec: &ArrayCodec,
+        stashed_value: &ffi::StashedValue,
+    ) -> anyhow::Result<value::Value> {
+        let Some(ptr) = stashed_value.as_non_null_ptr("GArray")? else {
+            return Ok(value::Value::Array(vec![]));
+        };
+
+        let item = codec.item_codec("GArray")?;
+        let g_array = ptr as *const glib::ffi::GArray;
+        let data = unsafe { (*g_array).data as *const u8 };
+        let len = unsafe { (*g_array).len as usize };
+        let values = codec.decode_contiguous(item, data, len);
+
+        if codec.ownership.is_full() {
+            let storage_owns = matches!(stashed_value, ffi::StashedValue::Stashed(_));
+            if !storage_owns {
+                unsafe { glib::ffi::g_array_unref(ptr as *mut glib::ffi::GArray) };
+            }
+        }
+
+        Ok(value::Value::Array(values?))
+    }
+
+    fn name(&self) -> &'static str {
+        "GArray"
+    }
+}
+
+impl ArrayCodec {
     fn append_vals(g_array: *mut glib::ffi::GArray, data: *const c_void, len: usize) {
         unsafe {
             glib::ffi::g_array_append_vals(g_array, data, len as u32);
@@ -56,7 +103,7 @@ impl ArrayCodec {
         array: &[value::Value],
     ) -> anyhow::Result<Vec<ffi::PendingTransfer>> {
         let handles = Self::extract_handles(array)?;
-        let (ptrs, acquired) = transfer_elements(&handles, &self.item_codec, "GArray")?;
+        let (ptrs, acquired) = transfer_items(&handles, &self.item_codec, "GArray")?;
         Self::append_vals(g_array, ptrs.as_ptr().cast::<c_void>(), ptrs.len());
         Ok(acquired)
     }
@@ -122,111 +169,5 @@ impl ArrayCodec {
                 Ok(acquired)
             }
         }
-    }
-
-    pub(super) fn encode_garray(
-        &self,
-        array: &[value::Value],
-    ) -> anyhow::Result<ffi::StashedValue> {
-        let item_size = self.item_element_size();
-        let element_size = self.element_size.or(item_size).ok_or_else(|| {
-            anyhow::anyhow!(
-                "Cannot determine element size for GArray with item codec {:?}",
-                self.item_codec
-            )
-        })?;
-
-        if let Some(item_size) = item_size
-            && element_size != item_size
-        {
-            bail!(
-                "GArray element size override {element_size} does not match the {item_size}-byte layout of item codec {:?}",
-                self.item_codec
-            );
-        }
-
-        let g_array =
-            unsafe { glib::ffi::g_array_sized_new(0, 0, element_size as u32, array.len() as u32) };
-
-        let acquired = match self.append_items_to_garray(g_array, array) {
-            Ok(acquired) => acquired,
-            Err(err) => {
-                unsafe { glib::ffi::g_array_unref(g_array) };
-                return Err(err);
-            }
-        };
-
-        let should_free = self.ownership.is_borrowed();
-        let storage = Stash::new(
-            g_array as *mut c_void,
-            StashStorage::GArray(ffi::GArrayData {
-                ptr: g_array,
-                should_free,
-            }),
-        );
-        Ok(finalize_container_stash(
-            storage,
-            should_free,
-            acquired,
-            ffi::PendingRelease::GArrayUnref,
-        ))
-    }
-
-    pub(super) fn decode_garray(
-        &self,
-        stashed_value: &ffi::StashedValue,
-    ) -> anyhow::Result<value::Value> {
-        let Some(ptr) = stashed_value.as_non_null_ptr("GArray")? else {
-            return Ok(value::Value::Array(vec![]));
-        };
-
-        let codec = self.item_codec("GArray")?;
-        let g_array = ptr as *const glib::ffi::GArray;
-        let data = unsafe { (*g_array).data as *const u8 };
-        let len = unsafe { (*g_array).len as usize };
-        let values = self.decode_contiguous(codec, data, len);
-
-        if self.ownership.is_full() {
-            let storage_owns = matches!(stashed_value, ffi::StashedValue::Stashed(_));
-            if !storage_owns {
-                unsafe { glib::ffi::g_array_unref(ptr as *mut glib::ffi::GArray) };
-            }
-        }
-
-        Ok(value::Value::Array(values?))
-    }
-
-    pub(super) fn decode_gbytearray(
-        &self,
-        stashed_value: &ffi::StashedValue,
-    ) -> anyhow::Result<value::Value> {
-        let Some(ptr) = stashed_value.as_non_null_ptr("GByteArray")? else {
-            return Ok(value::Value::Array(vec![]));
-        };
-
-        let byte_array = ptr as *mut glib::ffi::GByteArray;
-        let storage_owns = matches!(stashed_value, ffi::StashedValue::Stashed(_));
-        let adopted: Option<glib::ByteArray> = (self.ownership.is_full() && !storage_owns)
-            .then(|| unsafe { glib::translate::from_glib_full(byte_array) });
-
-        let data = unsafe { (*byte_array).data };
-        let len = unsafe { (*byte_array).len as usize };
-
-        let values: Vec<value::Value> = if data.is_null() || len == 0 {
-            vec![]
-        } else if let Some(owned) = &adopted {
-            owned
-                .iter()
-                .map(|&b| value::Value::Number(f64::from(b)))
-                .collect()
-        } else {
-            unsafe { std::slice::from_raw_parts(data, len) }
-                .iter()
-                .map(|&b| value::Value::Number(b as f64))
-                .collect()
-        };
-
-        drop(adopted);
-        Ok(value::Value::Array(values))
     }
 }

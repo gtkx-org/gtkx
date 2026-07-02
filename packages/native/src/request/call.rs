@@ -10,7 +10,7 @@ use super::bind::CallDescriptor;
 use super::{RefUpdate, Request};
 use crate::ffi::{
     self,
-    codec::{ArrayKind, Codec, Decoder as _, Encoder as _},
+    codec::{Codec, Decoder as _, Encoder as _},
     library_cache::GlibThreadState,
     value::Value,
 };
@@ -96,9 +96,7 @@ impl CallRequest {
         let Codec::Array(array_codec) = return_codec else {
             return;
         };
-        if !array_codec.ownership.is_full()
-            || !matches!(array_codec.kind, ArrayKind::Sized | ArrayKind::Fixed)
-        {
+        if !array_codec.ownership.is_full() || !array_codec.is_length_bounded() {
             return;
         }
         if let ffi::StashedValue::Ptr(ptr) = result

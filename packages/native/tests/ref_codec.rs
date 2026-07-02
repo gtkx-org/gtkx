@@ -26,14 +26,17 @@ fn ptr_storage(inner: *mut c_void) -> ffi::StashedValue {
 }
 
 fn u8_array_ref_type() -> RefCodec {
-    RefCodec::new(Codec::Array(ArrayCodec {
-        item_codec: Box::new(Codec::Integer(IntegerCodec::U8)),
-        kind: ArrayKind::Array,
-        ownership: Ownership::Borrowed,
-        size_param_index: None,
-        fixed_size: None,
-        element_size: None,
-    }))
+    RefCodec::new(Codec::Array(
+        ArrayCodec::new(
+            Box::new(Codec::Integer(IntegerCodec::U8)),
+            ArrayKind::Array,
+            Ownership::Borrowed,
+            None,
+            None,
+            None,
+        )
+        .expect("valid array codec"),
+    ))
     .expect("Array is a valid Ref inner")
 }
 
@@ -302,14 +305,15 @@ fn decode_with_context_array_string_items_not_freed_by_ref() {
         let inner = unsafe { glib::ffi::g_malloc0(std::mem::size_of::<*mut c_char>()) };
         let storage = ptr_storage(inner);
 
-        let array_codec = ArrayCodec {
-            item_codec: Box::new(Codec::String(string_type())),
-            kind: ArrayKind::Array,
-            ownership: Ownership::Full,
-            size_param_index: None,
-            fixed_size: None,
-            element_size: None,
-        };
+        let array_codec = ArrayCodec::new(
+            Box::new(Codec::String(string_type())),
+            ArrayKind::Array,
+            Ownership::Full,
+            None,
+            None,
+            None,
+        )
+        .expect("valid array codec");
         assert_array_decodes_empty(array_codec, &storage);
     });
 }
@@ -319,16 +323,17 @@ fn decode_with_context_array_container_released_by_array_decoder() {
     helpers::run(|| {
         let storage = ptr_sized_malloc_storage();
 
-        let array_codec = ArrayCodec {
-            item_codec: Box::new(Codec::Object(ObjectCodec {
+        let array_codec = ArrayCodec::new(
+            Box::new(Codec::Object(ObjectCodec {
                 ownership: Ownership::Borrowed,
             })),
-            kind: ArrayKind::Array,
-            ownership: Ownership::Full,
-            size_param_index: None,
-            fixed_size: None,
-            element_size: None,
-        };
+            ArrayKind::Array,
+            Ownership::Full,
+            None,
+            None,
+            None,
+        )
+        .expect("valid array codec");
         assert_array_decodes_empty(array_codec, &storage);
     });
 }
@@ -340,14 +345,15 @@ fn decode_with_context_garray_container_released_by_array_decoder() {
             unsafe { glib::ffi::g_array_sized_new(0, 0, std::mem::size_of::<u8>() as u32, 0) };
         let storage = ptr_storage(g_array as *mut c_void);
 
-        let array_codec = ArrayCodec {
-            item_codec: Box::new(Codec::Integer(IntegerCodec::U8)),
-            kind: ArrayKind::GArray,
-            ownership: Ownership::Full,
-            size_param_index: None,
-            fixed_size: None,
-            element_size: None,
-        };
+        let array_codec = ArrayCodec::new(
+            Box::new(Codec::Integer(IntegerCodec::U8)),
+            ArrayKind::GArray,
+            Ownership::Full,
+            None,
+            None,
+            None,
+        )
+        .expect("valid garray codec");
         assert_array_decodes_empty(array_codec, &storage);
     });
 }
@@ -357,14 +363,15 @@ fn decode_with_context_array_non_string_items_freed_by_ref() {
     helpers::run(|| {
         let storage = ptr_sized_malloc_storage();
 
-        let array_codec = ArrayCodec {
-            item_codec: Box::new(Codec::Integer(IntegerCodec::U8)),
-            kind: ArrayKind::Fixed,
-            ownership: Ownership::Full,
-            size_param_index: None,
-            fixed_size: Some(0),
-            element_size: None,
-        };
+        let array_codec = ArrayCodec::new(
+            Box::new(Codec::Integer(IntegerCodec::U8)),
+            ArrayKind::Fixed,
+            Ownership::Full,
+            None,
+            Some(0),
+            None,
+        )
+        .expect("valid fixed array codec");
         assert_array_decodes_empty(array_codec, &storage);
     });
 }
@@ -378,14 +385,15 @@ fn decode_with_context_array_non_ptr_storage_uses_storage_pointer() {
             StashStorage::Buffer(buffer),
         ));
 
-        let array_codec = ArrayCodec {
-            item_codec: Box::new(Codec::String(string_type())),
-            kind: ArrayKind::Array,
-            ownership: Ownership::Borrowed,
-            size_param_index: None,
-            fixed_size: None,
-            element_size: None,
-        };
+        let array_codec = ArrayCodec::new(
+            Box::new(Codec::String(string_type())),
+            ArrayKind::Array,
+            Ownership::Borrowed,
+            None,
+            None,
+            None,
+        )
+        .expect("valid array codec");
         assert_array_decodes_empty(array_codec, &storage);
     });
 }

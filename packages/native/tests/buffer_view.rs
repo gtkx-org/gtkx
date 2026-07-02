@@ -9,36 +9,31 @@ use native::ffi::codec::{
 use native::ffi::value::{BufferView, BufferViewKind, Value};
 
 fn array_of(item: Codec, kind: ArrayKind, ownership: Ownership) -> ArrayCodec {
-    ArrayCodec {
-        item_codec: Box::new(item),
-        kind,
-        ownership,
-        size_param_index: None,
-        fixed_size: None,
-        element_size: None,
-    }
+    ArrayCodec::new(Box::new(item), kind, ownership, None, None, None).expect("valid array codec")
 }
 
 fn sized_array_of(item: Codec, size_index: u32, ownership: Ownership) -> ArrayCodec {
-    ArrayCodec {
-        item_codec: Box::new(item),
-        kind: ArrayKind::Sized,
+    ArrayCodec::new(
+        Box::new(item),
+        ArrayKind::Sized,
         ownership,
-        size_param_index: Some(size_index),
-        fixed_size: None,
-        element_size: None,
-    }
+        Some(size_index),
+        None,
+        None,
+    )
+    .expect("valid sized array codec")
 }
 
 fn fixed_array_of(item: Codec, size: u32, ownership: Ownership) -> ArrayCodec {
-    ArrayCodec {
-        item_codec: Box::new(item),
-        kind: ArrayKind::Fixed,
+    ArrayCodec::new(
+        Box::new(item),
+        ArrayKind::Fixed,
         ownership,
-        size_param_index: None,
-        fixed_size: Some(size),
-        element_size: None,
-    }
+        None,
+        Some(size),
+        None,
+    )
+    .expect("valid fixed array codec")
 }
 
 fn view_over(data: &mut [u8], length: usize, kind: BufferViewKind) -> BufferView {

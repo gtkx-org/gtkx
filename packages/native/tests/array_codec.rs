@@ -38,36 +38,31 @@ fn enum_flags_item_codec() -> Codec {
 }
 
 fn array_codec(item: Codec, kind: ArrayKind, ownership: Ownership) -> ArrayCodec {
-    ArrayCodec {
-        item_codec: Box::new(item),
-        kind,
-        ownership,
-        size_param_index: None,
-        fixed_size: None,
-        element_size: None,
-    }
+    ArrayCodec::new(Box::new(item), kind, ownership, None, None, None).expect("valid array codec")
 }
 
 fn sized_array_type(item: Codec, size_index: u32, ownership: Ownership) -> ArrayCodec {
-    ArrayCodec {
-        item_codec: Box::new(item),
-        kind: ArrayKind::Sized,
+    ArrayCodec::new(
+        Box::new(item),
+        ArrayKind::Sized,
         ownership,
-        size_param_index: Some(size_index),
-        fixed_size: None,
-        element_size: None,
-    }
+        Some(size_index),
+        None,
+        None,
+    )
+    .expect("valid sized array codec")
 }
 
 fn fixed_array_type(item: Codec, size: u32, ownership: Ownership) -> ArrayCodec {
-    ArrayCodec {
-        item_codec: Box::new(item),
-        kind: ArrayKind::Fixed,
+    ArrayCodec::new(
+        Box::new(item),
+        ArrayKind::Fixed,
         ownership,
-        size_param_index: None,
-        fixed_size: Some(size),
-        element_size: None,
-    }
+        None,
+        Some(size),
+        None,
+    )
+    .expect("valid fixed array codec")
 }
 
 use helpers::boxed_handle;
@@ -123,18 +118,18 @@ fn assert_string_list_full_container_borrowed_elements_releases_spine(kind: Arra
         let StashedValue::Stashed(storage) = &encoded else {
             panic!("expected storage")
         };
-        let (elements_duped, retained) = match storage.storage() {
+        let (items_duped, retained) = match storage.storage() {
             StashStorage::List(ListData {
                 payload:
                     ListPayload::Strings {
                         strings,
-                        elements_duped,
+                        items_duped,
                     },
                 ..
-            }) => (*elements_duped, strings.len()),
+            }) => (*items_duped, strings.len()),
             other => panic!("expected string list storage, got {other:?}"),
         };
-        assert!(!elements_duped);
+        assert!(!items_duped);
         assert_eq!(retained, 1);
         drop(encoded);
     });
@@ -1786,10 +1781,10 @@ fn encode_glist_strings_full_container_full_elements_releases_when_call_never_ha
         let StashStorage::List(data) = storage.storage() else {
             panic!("expected string glist storage")
         };
-        let ListPayload::Strings { elements_duped, .. } = &data.payload else {
+        let ListPayload::Strings { items_duped, .. } = &data.payload else {
             panic!("expected string payload")
         };
-        assert!(*elements_duped);
+        assert!(*items_duped);
         assert!(!data.should_free);
         let first = unsafe {
             std::ffi::CStr::from_ptr((*(data.ptr as *mut glib::ffi::GList)).data as *const c_char)

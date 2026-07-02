@@ -46,25 +46,31 @@ fn gvariant_fundamental_type_of(ownership: Ownership) -> Codec {
 }
 
 fn gobject_glist_type_of(container: Ownership) -> Codec {
-    Codec::Array(ArrayCodec {
-        item_codec: Box::new(gobject_type_of(Ownership::Borrowed)),
-        kind: ArrayKind::GList,
-        ownership: container,
-        size_param_index: None,
-        fixed_size: None,
-        element_size: None,
-    })
+    Codec::Array(
+        ArrayCodec::new(
+            Box::new(gobject_type_of(Ownership::Borrowed)),
+            ArrayKind::GList,
+            container,
+            None,
+            None,
+            None,
+        )
+        .expect("valid glist codec"),
+    )
 }
 
 fn string_array_type_of(item: Ownership, container: Ownership, kind: ArrayKind) -> Codec {
-    Codec::Array(ArrayCodec {
-        item_codec: Box::new(string_type_of(item)),
-        kind,
-        ownership: container,
-        size_param_index: None,
-        fixed_size: None,
-        element_size: None,
-    })
+    Codec::Array(
+        ArrayCodec::new(
+            Box::new(string_type_of(item)),
+            kind,
+            container,
+            None,
+            None,
+            None,
+        )
+        .expect("valid array codec"),
+    )
 }
 
 fn decode_ptr(codec: &Codec, ptr: *mut c_void) -> Value {

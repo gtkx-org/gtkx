@@ -208,14 +208,17 @@ impl Descriptor {
                 size_param_index,
                 fixed_size,
                 element_size,
-            } => Codec::Array(ArrayCodec {
-                item_codec: item_descriptor.into_codec()?,
-                kind: array_kind,
-                ownership,
-                size_param_index,
-                fixed_size,
-                element_size: element_size.map(|n| n as usize),
-            }),
+            } => Codec::Array(
+                ArrayCodec::new(
+                    item_descriptor.into_codec()?,
+                    array_kind,
+                    ownership,
+                    size_param_index,
+                    fixed_size,
+                    element_size.map(|n| n as usize),
+                )
+                .map_err(|error| Error::from_reason(error.to_string()))?,
+            ),
             Self::Hashtable {
                 key_descriptor,
                 value_descriptor,

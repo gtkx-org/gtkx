@@ -28,14 +28,17 @@ fn struct_type() -> Codec {
 }
 
 fn gptrarray_type() -> Codec {
-    Codec::Array(ArrayCodec {
-        item_codec: Box::new(struct_type()),
-        kind: ArrayKind::GPtrArray,
-        ownership: Ownership::Borrowed,
-        size_param_index: None,
-        fixed_size: None,
-        element_size: None,
-    })
+    Codec::Array(
+        ArrayCodec::new(
+            Box::new(struct_type()),
+            ArrayKind::GPtrArray,
+            Ownership::Borrowed,
+            None,
+            None,
+            None,
+        )
+        .expect("valid gptrarray codec"),
+    )
 }
 
 fn full_boxed_type() -> Codec {
@@ -844,14 +847,17 @@ fn hashtable_encode_value_error_frees_duplicated_string_key() {
 #[test]
 fn hashtable_encode_value_destroy_error_releases_string_key() {
     helpers::run(|| {
-        let value_codec = Codec::Array(ArrayCodec {
-            item_codec: Box::new(full_boxed_type()),
-            kind: ArrayKind::GPtrArray,
-            ownership: Ownership::Borrowed,
-            size_param_index: None,
-            fixed_size: None,
-            element_size: None,
-        });
+        let value_codec = Codec::Array(
+            ArrayCodec::new(
+                Box::new(full_boxed_type()),
+                ArrayKind::GPtrArray,
+                Ownership::Borrowed,
+                None,
+                None,
+                None,
+            )
+            .expect("valid gptrarray codec"),
+        );
         let ht_type = ht_type(borrowed_string_type(), value_codec, Ownership::Full);
         let input = Value::Array(vec![Value::Array(vec![
             Value::String("orphaned-key".to_string()),
