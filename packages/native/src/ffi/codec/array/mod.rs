@@ -458,6 +458,27 @@ fn transfer_elements(
 
 struct ListEncoder(&'static ffi::ListOps);
 
+impl ListEncoder {
+    fn finalize_list(
+        &self,
+        list: *mut c_void,
+        should_free: bool,
+        payload: ffi::ListPayload,
+        acquired: Vec<ffi::PendingTransfer>,
+    ) -> ffi::StashedValue {
+        let storage = Stash::new(
+            list,
+            StashStorage::List(ffi::ListData {
+                ops: self.0,
+                list_ptr: list,
+                should_free,
+                payload,
+            }),
+        );
+        finalize_container_stash(storage, should_free, acquired, self.0.pending)
+    }
+}
+
 impl ArrayKindEncoder for ListEncoder {
     fn encode_strings(
         &self,
@@ -468,18 +489,6 @@ impl ArrayKindEncoder for ListEncoder {
         let should_free = ownership.is_borrowed();
         let (strings, ptrs) = string_list_parts(array, dup_elements)?;
         let list = ffi::build_list(self.0, &ptrs);
-        let storage = Stash::new(
-            list,
-            StashStorage::List(ffi::ListData {
-                ops: self.0,
-                list_ptr: list,
-                should_free,
-                payload: ffi::ListPayload::Strings {
-                    strings,
-                    elements_duped: dup_elements,
-                },
-            }),
-        );
         let acquired: Vec<ffi::PendingTransfer> = if !should_free && dup_elements {
             ptrs.iter()
                 .map(|p| ffi::PendingTransfer::new(*p, ffi::PendingRelease::GFree))
@@ -487,12 +496,11 @@ impl ArrayKindEncoder for ListEncoder {
         } else {
             Vec::new()
         };
-        Ok(finalize_container_stash(
-            storage,
-            should_free,
-            acquired,
-            self.0.pending,
-        ))
+        let payload = ffi::ListPayload::Strings {
+            strings,
+            elements_duped: dup_elements,
+        };
+        Ok(self.finalize_list(list, should_free, payload, acquired))
     }
 
     fn encode_handles(
@@ -504,21 +512,8 @@ impl ArrayKindEncoder for ListEncoder {
         let should_free = ownership.is_borrowed();
         let (ptrs, acquired) = transfer_elements(handles, item_codec, self.0.label)?;
         let list = ffi::build_list(self.0, &ptrs);
-        let storage = Stash::new(
-            list,
-            StashStorage::List(ffi::ListData {
-                ops: self.0,
-                list_ptr: list,
-                should_free,
-                payload: ffi::ListPayload::Handles(handles.to_vec()),
-            }),
-        );
-        Ok(finalize_container_stash(
-            storage,
-            should_free,
-            acquired,
-            self.0.pending,
-        ))
+        let payload = ffi::ListPayload::Handles(handles.to_vec());
+        Ok(self.finalize_list(list, should_free, payload, acquired))
     }
 }
 
