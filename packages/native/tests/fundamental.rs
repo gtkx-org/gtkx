@@ -48,7 +48,6 @@ fn from_glib_full_takes_ownership() {
     let fundamental =
         Fundamental::from_glib_full(ptr, Some(param_spec_ref), Some(param_spec_unref));
 
-    assert!(fundamental.is_owned());
     assert_eq!(fundamental.as_ptr(), ptr);
     assert_eq!(param_spec_refcount(ptr), initial_ref);
 }
@@ -73,7 +72,6 @@ fn from_glib_none_refs_pointer() {
     let fundamental =
         unsafe { Fundamental::from_glib_none(ptr, Some(param_spec_ref), Some(param_spec_unref)) };
 
-    assert!(fundamental.is_owned());
     assert_eq!(fundamental.as_ptr(), ptr);
     assert_eq!(param_spec_refcount(ptr), initial_ref + 1);
 
@@ -94,7 +92,6 @@ fn from_glib_none_null_ptr_safe() {
         )
     };
 
-    assert!(!fundamental.is_owned());
     assert!(fundamental.as_ptr().is_null());
 }
 
@@ -111,7 +108,6 @@ fn clone_null_ptr_safe() {
     let cloned = fundamental.clone();
 
     assert!(cloned.as_ptr().is_null());
-    assert!(!cloned.is_owned());
     assert!(fundamental.as_ptr().is_null());
 }
 
@@ -136,7 +132,6 @@ fn from_glib_none_without_ref_fn_does_not_ref() {
 
     let fundamental = unsafe { Fundamental::from_glib_none(ptr, None, Some(param_spec_unref)) };
 
-    assert!(!fundamental.is_owned());
     assert_eq!(param_spec_refcount(ptr), initial_ref);
 
     drop(fundamental);

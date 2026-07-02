@@ -55,11 +55,6 @@ impl Fundamental {
     pub fn as_ptr(&self) -> *mut c_void {
         self.ptr
     }
-
-    #[inline]
-    pub fn is_owned(&self) -> bool {
-        self.owned
-    }
 }
 
 impl Clone for Fundamental {

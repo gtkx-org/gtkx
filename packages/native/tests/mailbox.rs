@@ -61,7 +61,7 @@ fn schedule_glib_then_dispatch_pending_runs_task() {
 #[test]
 fn schedule_glib_drops_task_when_stopped() {
     helpers::run(|| {
-        let mailbox = Mailbox::new_for_test();
+        let mailbox = Mailbox::new();
         mailbox.mark_not_running();
 
         let counter = schedule_increment(&mailbox);
@@ -112,7 +112,7 @@ fn a_schedule_glib_idle_source_dispatches_through_global_main_context() {
 #[test]
 fn is_not_running_reflects_mark_not_running() {
     helpers::run(|| {
-        let mailbox = Mailbox::new_for_test();
+        let mailbox = Mailbox::new();
 
         assert!(!mailbox.is_not_running());
 
@@ -150,7 +150,7 @@ fn run_freeze_loop_drains_until_unfrozen() {
 #[test]
 fn run_freeze_loop_exits_when_stopped_while_frozen() {
     helpers::run(|| {
-        let mailbox = Mailbox::new_for_test();
+        let mailbox = Mailbox::new();
         assert!(mailbox.freeze());
         let counter = schedule_increment(&mailbox);
 

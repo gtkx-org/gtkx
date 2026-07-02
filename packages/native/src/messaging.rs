@@ -113,12 +113,18 @@ pub struct Mailbox {
 
 static MAILBOX: OnceLock<Mailbox> = OnceLock::new();
 
+impl Default for Mailbox {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Mailbox {
     pub fn global() -> &'static Self {
         MAILBOX.get_or_init(Self::new)
     }
 
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             glib_inbox: Mutex::new(VecDeque::new()),
             node_inbox: Mutex::new(VecDeque::new()),
@@ -129,10 +135,6 @@ impl Mailbox {
             running: AtomicBool::new(true),
             freeze: FreezeController::new(),
         }
-    }
-
-    pub fn new_for_test() -> Self {
-        Self::new()
     }
 
     pub fn mark_not_running(&self) {
