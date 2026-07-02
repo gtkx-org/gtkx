@@ -20,12 +20,12 @@ impl BufferCodec {
 }
 
 impl Encoder for BufferCodec {
-    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
+    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::Stash> {
         match value {
-            value::Value::BufferView(view) => Ok(ffi::StashedValue::Ptr(view.ptr())),
-            value::Value::Number(n) => Ok(ffi::StashedValue::Ptr(Self::ptr_from_number(*n)?)),
+            value::Value::BufferView(view) => Ok(ffi::Stash::Ptr(view.ptr())),
+            value::Value::Number(n) => Ok(ffi::Stash::Ptr(Self::ptr_from_number(*n)?)),
             value::Value::Null | value::Value::Undefined => {
-                Ok(ffi::StashedValue::Ptr(std::ptr::null_mut()))
+                Ok(ffi::Stash::Ptr(std::ptr::null_mut()))
             }
             _ => {
                 bail!(
@@ -40,7 +40,7 @@ impl Encoder for BufferCodec {
         _cif: &libffi::Cif,
         _ptr: libffi::CodePtr,
         _args: &[libffi::Arg],
-    ) -> anyhow::Result<ffi::StashedValue> {
+    ) -> anyhow::Result<ffi::Stash> {
         bail!("Buffer codec cannot be return codecs")
     }
 }

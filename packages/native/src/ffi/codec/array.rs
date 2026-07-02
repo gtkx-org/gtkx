@@ -56,12 +56,12 @@ impl ArrayCodec {
 }
 
 impl Encoder for ArrayCodec {
-    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
+    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::Stash> {
         match value {
             value::Value::Array(array) => self.container.encode(self, array),
             value::Value::BufferView(view) => self.container.encode_buffer_view(self, view),
             value::Value::Null | value::Value::Undefined => {
-                Ok(ffi::StashedValue::Ptr(std::ptr::null_mut()))
+                Ok(ffi::Stash::Ptr(std::ptr::null_mut()))
             }
             _ => bail_expected!("an Array", "array", value),
         }
@@ -69,25 +69,25 @@ impl Encoder for ArrayCodec {
 }
 
 impl Decoder for ArrayCodec {
-    fn decode_call(&self, stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
-        self.container.decode(self, stashed_value)
+    fn decode_call(&self, stash: &ffi::Stash) -> anyhow::Result<value::Value> {
+        self.container.decode(self, stash)
     }
 
     unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         if ptr.is_null() {
             return Ok(value::Value::Array(vec![]));
         }
-        self.decode_call(&ffi::StashedValue::Ptr(ptr))
+        self.decode_call(&ffi::Stash::Ptr(ptr))
     }
 
     fn decode_with_context(
         &self,
-        stashed_value: &ffi::StashedValue,
-        ffi_args: &[ffi::StashedValue],
+        stash: &ffi::Stash,
+        ffi_args: &[ffi::Stash],
         arg_codecs: &[Codec],
     ) -> anyhow::Result<value::Value> {
         self.container
-            .decode_with_context(self, stashed_value, ffi_args, arg_codecs)
+            .decode_with_context(self, stash, ffi_args, arg_codecs)
     }
 }
 
@@ -128,14 +128,14 @@ trait ArrayKindEncoder {
         array: &[value::Value],
         dup_items: bool,
         ownership: Ownership,
-    ) -> anyhow::Result<ffi::StashedValue>;
+    ) -> anyhow::Result<ffi::Stash>;
 
     fn encode_handles(
         &self,
         handles: &[crate::handle::Handle],
         item_codec: &Codec,
         ownership: Ownership,
-    ) -> anyhow::Result<ffi::StashedValue>;
+    ) -> anyhow::Result<ffi::Stash>;
 }
 
 fn release_transfers(transfers: Vec<ffi::PendingTransfer>) {
@@ -227,21 +227,19 @@ impl ArrayCodec {
         &self,
         encoder: &dyn ArrayKindEncoder,
         array: &[value::Value],
-    ) -> anyhow::Result<ffi::StashedValue> {
+    ) -> anyhow::Result<ffi::Stash> {
         match self.item_codec("array")? {
-            ItemCodec::Integer(kind) => Ok(ffi::StashedValue::Stashed(
-                kind.checked_to_stash(&Self::extract_numbers(array)?)?,
+            ItemCodec::Integer(kind) => Ok(ffi::Stash::Storage(
+                kind.checked_to_stash_storage(&Self::extract_numbers(array)?)?,
             )),
-            ItemCodec::EnumFlags(kind) => Ok(ffi::StashedValue::Stashed(
-                kind.to_stash(&Self::extract_numbers(array)?),
+            ItemCodec::EnumFlags(kind) => Ok(ffi::Stash::Storage(
+                kind.to_stash_storage(&Self::extract_numbers(array)?),
             )),
-            ItemCodec::BigInt(kind) => Ok(ffi::StashedValue::Stashed(kind.to_stash(array)?)),
-            ItemCodec::Float(kind) => Ok(ffi::StashedValue::Stashed(
-                kind.checked_to_stash(&Self::extract_numbers(array)?)?,
+            ItemCodec::BigInt(kind) => Ok(ffi::Stash::Storage(kind.to_stash_storage(array)?)),
+            ItemCodec::Float(kind) => Ok(ffi::Stash::Storage(
+                kind.checked_to_stash_storage(&Self::extract_numbers(array)?)?,
             )),
-            ItemCodec::Boolean => Ok(ffi::StashedValue::Stashed(
-                Self::extract_booleans(array)?.into(),
-            )),
+            ItemCodec::Boolean => Ok(ffi::Stash::Storage(Self::extract_booleans(array)?.into())),
             ItemCodec::String => {
                 let dup_items =
                     matches!(&*self.item_codec, Codec::String(s) if s.ownership.is_full());
@@ -266,7 +264,7 @@ impl ArrayCodec {
                             );
                         }
                     }
-                    return Ok(ffi::StashedValue::Stashed(buffer.into()));
+                    return Ok(ffi::Stash::Storage(buffer.into()));
                 }
 
                 encoder.encode_handles(&handles, &self.item_codec, self.ownership)
@@ -316,7 +314,7 @@ impl ArrayCodec {
                 let ptrs = unsafe { std::slice::from_raw_parts(data.cast::<*mut c_void>(), len) };
                 return ptrs
                     .iter()
-                    .map(|&item_ptr| self.item_codec.decode(&ffi::StashedValue::Ptr(item_ptr)))
+                    .map(|&item_ptr| self.item_codec.decode(&ffi::Stash::Ptr(item_ptr)))
                     .collect();
             }
         };
@@ -327,7 +325,7 @@ impl ArrayCodec {
         &self,
         view: &value::BufferView,
         expected_length: Option<usize>,
-    ) -> anyhow::Result<ffi::StashedValue> {
+    ) -> anyhow::Result<ffi::Stash> {
         anyhow::ensure!(
             self.ownership.is_borrowed(),
             "A transfer-full array argument cannot be encoded from an ArrayBufferView: the callee would free the JavaScript buffer"
@@ -346,7 +344,7 @@ impl ArrayCodec {
             view.kind(),
             self.item_codec
         );
-        Ok(ffi::StashedValue::Ptr(view.ptr()))
+        Ok(ffi::Stash::Ptr(view.ptr()))
     }
 
     fn decode_ptr_iter(
@@ -356,7 +354,7 @@ impl ArrayCodec {
     ) -> anyhow::Result<value::Value> {
         let mut values = Vec::with_capacity(ptrs.size_hint().0);
         let result = ptrs.try_for_each(|item_ptr| {
-            values.push(self.item_codec.decode(&ffi::StashedValue::Ptr(item_ptr))?);
+            values.push(self.item_codec.decode(&ffi::Stash::Ptr(item_ptr))?);
             anyhow::Ok(())
         });
         release();

@@ -28,30 +28,22 @@ pub enum ArrayKind {
 
 #[enum_dispatch]
 pub(super) trait ArrayContainer {
-    fn encode(
-        &self,
-        codec: &ArrayCodec,
-        array: &[value::Value],
-    ) -> anyhow::Result<ffi::StashedValue> {
+    fn encode(&self, codec: &ArrayCodec, array: &[value::Value]) -> anyhow::Result<ffi::Stash> {
         codec.encode_items(&NullTerminatedArrayEncoder, array)
     }
 
-    fn decode(
-        &self,
-        codec: &ArrayCodec,
-        stashed_value: &ffi::StashedValue,
-    ) -> anyhow::Result<value::Value> {
-        codec.decode_null_terminated(self.name(), stashed_value)
+    fn decode(&self, codec: &ArrayCodec, stash: &ffi::Stash) -> anyhow::Result<value::Value> {
+        codec.decode_null_terminated(self.name(), stash)
     }
 
     fn decode_with_context(
         &self,
         codec: &ArrayCodec,
-        stashed_value: &ffi::StashedValue,
-        _ffi_args: &[ffi::StashedValue],
+        stash: &ffi::Stash,
+        _ffi_args: &[ffi::Stash],
         _arg_codecs: &[Codec],
     ) -> anyhow::Result<value::Value> {
-        self.decode(codec, stashed_value)
+        self.decode(codec, stash)
     }
 
     fn buffer_view_support(&self) -> BufferViewSupport {
@@ -62,7 +54,7 @@ pub(super) trait ArrayContainer {
         &self,
         codec: &ArrayCodec,
         view: &value::BufferView,
-    ) -> anyhow::Result<ffi::StashedValue> {
+    ) -> anyhow::Result<ffi::Stash> {
         match self.buffer_view_support() {
             BufferViewSupport::Contiguous(expected_length) => {
                 codec.buffer_view_passthrough(view, expected_length)

@@ -125,18 +125,18 @@ const INTEGER_KINDS: [IntegerCodec; 8] = [
 ];
 
 #[test]
-fn integer_checked_to_stashed_value_accepts_in_range() {
+fn integer_checked_to_stash_accepts_in_range() {
     for kind in INTEGER_KINDS {
-        assert!(kind.checked_to_stashed_value(1.0).is_ok());
-        assert!(kind.checked_to_stashed_value(0.0).is_ok());
+        assert!(kind.checked_to_stash(1.0).is_ok());
+        assert!(kind.checked_to_stash(0.0).is_ok());
     }
 }
 
 #[test]
 fn integer_checked_to_stash_accepts_and_rejects() {
-    let ok = IntegerCodec::U8.checked_to_stash(&[1.0, 2.0, 3.0]);
+    let ok = IntegerCodec::U8.checked_to_stash_storage(&[1.0, 2.0, 3.0]);
     assert!(ok.is_ok());
-    let bad = IntegerCodec::U8.checked_to_stash(&[1.0, 999.0]);
+    let bad = IntegerCodec::U8.checked_to_stash_storage(&[1.0, 999.0]);
     let err = bad.expect_err("out-of-range element should fail");
     assert!(err.to_string().contains("element 1"));
 }
@@ -154,16 +154,16 @@ fn integer_ptr_to_value_raw_round_trips() {
 #[test]
 fn integer_encode_accepts_number_object_and_optional_null() {
     let encoded = Encoder::encode(&IntegerCodec::I32, &Value::Number(7.0)).unwrap();
-    assert!(matches!(encoded, ffi::StashedValue::I32(7)));
+    assert!(matches!(encoded, ffi::Stash::I32(7)));
 
     let handle = native::Handle::from_glib_borrow(16 as *mut c_void);
     let from_object = Encoder::encode(&IntegerCodec::I64, &Value::Object(handle)).unwrap();
-    assert!(matches!(from_object, ffi::StashedValue::I64(16)));
+    assert!(matches!(from_object, ffi::Stash::I64(16)));
 
     let optional = Encoder::encode(&IntegerCodec::I32, &Value::Null).unwrap();
-    assert!(matches!(optional, ffi::StashedValue::I32(0)));
+    assert!(matches!(optional, ffi::Stash::I32(0)));
     let optional_undef = Encoder::encode(&IntegerCodec::U32, &Value::Undefined).unwrap();
-    assert!(matches!(optional_undef, ffi::StashedValue::U32(0)));
+    assert!(matches!(optional_undef, ffi::Stash::U32(0)));
 }
 
 #[test]
@@ -175,9 +175,9 @@ fn integer_libffi_type_matches_ffi_type() {
 
 #[test]
 fn integer_decode_reads_number_and_rejects_non_numeric() {
-    let decoded = Decoder::decode(&IntegerCodec::I32, &ffi::StashedValue::I32(42)).unwrap();
+    let decoded = Decoder::decode(&IntegerCodec::I32, &ffi::Stash::I32(42)).unwrap();
     assert!(matches!(decoded, Value::Number(n) if n == 42.0));
-    assert!(Decoder::decode(&IntegerCodec::I32, &ffi::StashedValue::Void).is_err());
+    assert!(Decoder::decode(&IntegerCodec::I32, &ffi::Stash::Void).is_err());
 }
 
 #[test]
@@ -329,22 +329,20 @@ fn integer_call_cif_raw_covers_all_widths() {
 }
 
 #[test]
-fn float_checked_to_stashed_value_handles_range() {
+fn float_checked_to_stash_handles_range() {
     assert!(matches!(
-        FloatCodec::F32.checked_to_stashed_value(1.5).unwrap(),
-        ffi::StashedValue::F32(_)
+        FloatCodec::F32.checked_to_stash(1.5).unwrap(),
+        ffi::Stash::F32(_)
     ));
-    assert!(FloatCodec::F32.checked_to_stashed_value(1e40).is_err());
-    assert!(FloatCodec::F32.checked_to_stashed_value(-1e40).is_err());
+    assert!(FloatCodec::F32.checked_to_stash(1e40).is_err());
+    assert!(FloatCodec::F32.checked_to_stash(-1e40).is_err());
     assert!(matches!(
-        FloatCodec::F32
-            .checked_to_stashed_value(f64::INFINITY)
-            .unwrap(),
-        ffi::StashedValue::F32(_)
+        FloatCodec::F32.checked_to_stash(f64::INFINITY).unwrap(),
+        ffi::Stash::F32(_)
     ));
     assert!(matches!(
-        FloatCodec::F64.checked_to_stashed_value(1e40).unwrap(),
-        ffi::StashedValue::F64(_)
+        FloatCodec::F64.checked_to_stash(1e40).unwrap(),
+        ffi::Stash::F64(_)
     ));
 }
 
@@ -416,8 +414,8 @@ fn enum_flags_encode_decode_and_libffi_type() {
     helpers::run(|| {
         let enum_flags = helpers::enum_codec();
         let encoded = Encoder::encode(&enum_flags, &Value::Number(1.0)).unwrap();
-        assert!(matches!(encoded, ffi::StashedValue::I32(1)));
-        let decoded = Decoder::decode(&enum_flags, &ffi::StashedValue::I32(1)).unwrap();
+        assert!(matches!(encoded, ffi::Stash::I32(1)));
+        let decoded = Decoder::decode(&enum_flags, &ffi::Stash::I32(1)).unwrap();
         assert!(matches!(decoded, Value::Number(n) if n == 1.0));
         assert_eq!(
             Encoder::libffi_type(&enum_flags).as_raw_ptr(),
@@ -438,7 +436,7 @@ fn enum_flags_call_cif_invokes_native_function() {
             &[],
         )
         .unwrap();
-        assert!(matches!(result, ffi::StashedValue::I32(-32)));
+        assert!(matches!(result, ffi::Stash::I32(-32)));
     });
 }
 
@@ -475,8 +473,8 @@ fn integer_dispatch_methods_cover_every_kind() {
 
         assert!(unsafe { kind.read_slice(buffer.as_ptr(), 2) }.len() == 2);
 
-        let stashed_value = kind.to_stashed_value(1.0);
-        assert!(stashed_value.to_number().is_ok());
+        let stash = kind.to_stash(1.0);
+        assert!(stash.to_number().is_ok());
     }
 }
 
@@ -484,7 +482,7 @@ fn integer_dispatch_methods_cover_every_kind() {
 fn integer_codec_covers_every_kind() {
     helpers::run(|| {
         for kind in INTEGER_KINDS {
-            kind.checked_to_stashed_value(1.0).unwrap();
+            kind.checked_to_stash(1.0).unwrap();
             assert!(matches!(
                 kind.ptr_to_value_raw(4 as *mut c_void, "test"),
                 Ok(Value::Number(_))
@@ -513,7 +511,7 @@ fn float_codec_covers_every_kind() {
             let mut slot = [0u8; 8];
             unsafe { kind.write_ptr(slot.as_mut_ptr(), 1.5) };
             let _ = unsafe { kind.read_ptr(slot.as_ptr()) };
-            kind.checked_to_stashed_value(1.5).unwrap();
+            kind.checked_to_stash(1.5).unwrap();
             assert!(matches!(
                 unsafe { kind.ptr_to_value_raw(std::ptr::null_mut()) },
                 Value::Number(_)
@@ -574,18 +572,18 @@ fn i64_pointer_payload_of_all_bits_set_is_minus_one() {
 }
 
 #[test]
-fn stashed_value_to_number_guards_64_bit_payloads() {
-    let err = ffi::StashedValue::U64(u64::MAX)
+fn stash_to_number_guards_64_bit_payloads() {
+    let err = ffi::Stash::U64(u64::MAX)
         .to_number()
         .expect_err("u64::MAX must not round silently");
     assert!(err.to_string().contains("2^53"));
 
-    let err = ffi::StashedValue::I64(i64::MIN)
+    let err = ffi::Stash::I64(i64::MIN)
         .to_number()
         .expect_err("i64::MIN must not round silently");
     assert!(err.to_string().contains("2^53"));
 
-    assert_eq!(ffi::StashedValue::U64(42).to_number().unwrap(), 42.0);
+    assert_eq!(ffi::Stash::U64(42).to_number().unwrap(), 42.0);
 }
 
 #[test]

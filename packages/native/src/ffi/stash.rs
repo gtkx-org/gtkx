@@ -1,323 +1,217 @@
 use std::cell::Cell;
 use std::ffi::c_void;
 
-use glib::translate::IntoGlib as _;
+use libffi::middle as libffi;
 
-use crate::handle::UnrefFn;
+use super::stash_storage::StashStorage;
+use crate::ffi::callback::CallbackState;
 
-pub struct Stash {
-    ptr: *mut c_void,
-    storage: StashStorage,
-    pending_transfer: Cell<Vec<PendingTransfer>>,
+#[derive(Debug)]
+pub enum Stash {
+    U8(u8),
+    I8(i8),
+    U16(u16),
+    I16(i16),
+    U32(u32),
+    I32(i32),
+    U64(u64),
+    I64(i64),
+    F32(f32),
+    F64(f64),
+    Ptr(*mut c_void),
+    Storage(StashStorage),
+    Callback(CallbackValue),
+    Void,
 }
 
-impl std::fmt::Debug for Stash {
+pub struct CallbackValue {
+    fn_ptr: *mut c_void,
+    state_ptr: *mut c_void,
+    destroy_ptr: Option<*mut c_void>,
+    _owned_state: Option<Box<CallbackState>>,
+    pending_transfer: Cell<Option<Box<CallbackState>>>,
+}
+
+impl CallbackValue {
+    pub fn new(
+        fn_ptr: *mut c_void,
+        state_ptr: *mut c_void,
+        destroy_ptr: Option<*mut c_void>,
+        owned_state: Option<Box<CallbackState>>,
+    ) -> Self {
+        Self {
+            fn_ptr,
+            state_ptr,
+            destroy_ptr,
+            _owned_state: owned_state,
+            pending_transfer: Cell::new(None),
+        }
+    }
+
+    pub fn new_pending_transfer(
+        fn_ptr: *mut c_void,
+        destroy_ptr: Option<*mut c_void>,
+        state: Box<CallbackState>,
+    ) -> Self {
+        let state_ptr = std::ptr::from_ref::<CallbackState>(&state) as *mut c_void;
+        Self {
+            fn_ptr,
+            state_ptr,
+            destroy_ptr,
+            _owned_state: None,
+            pending_transfer: Cell::new(Some(state)),
+        }
+    }
+
+    pub fn disarm_pending_transfer(&self) {
+        if let Some(state) = self.pending_transfer.take() {
+            let _ = Box::into_raw(state);
+        }
+    }
+
+    pub fn fn_ptr(&self) -> *mut c_void {
+        self.fn_ptr
+    }
+
+    pub fn state_ptr(&self) -> *mut c_void {
+        self.state_ptr
+    }
+
+    pub fn destroy_ptr(&self) -> Option<*mut c_void> {
+        self.destroy_ptr
+    }
+}
+
+impl std::fmt::Debug for CallbackValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Stash")
-            .field("ptr", &self.ptr)
-            .field("storage", &self.storage)
+        f.debug_struct("CallbackValue")
+            .field("fn_ptr", &self.fn_ptr)
+            .field("state_ptr", &self.state_ptr)
+            .field("destroy_ptr", &self.destroy_ptr)
             .finish_non_exhaustive()
     }
 }
 
-#[derive(Debug)]
-pub struct PendingTransfer {
-    ptr: *mut c_void,
-    release: PendingRelease,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum PendingRelease {
-    GFree,
-    ObjectUnref,
-    BoxedFree(glib::Type),
-    Fundamental(UnrefFn),
-    StrFreeV,
-    StringElements,
-    HashTableUnref,
-    GArrayUnref,
-    GByteArrayUnref,
-    GListFree,
-    GSListFree,
-}
-
-impl PendingTransfer {
-    pub fn new(ptr: *mut c_void, release: PendingRelease) -> Self {
-        Self { ptr, release }
-    }
-
-    pub fn release_now(self) {
-        if self.ptr.is_null() {
-            return;
-        }
-        unsafe {
-            match self.release {
-                PendingRelease::GFree => glib::ffi::g_free(self.ptr),
-                PendingRelease::ObjectUnref => {
-                    glib::gobject_ffi::g_object_unref(self.ptr as *mut glib::gobject_ffi::GObject);
-                }
-                PendingRelease::BoxedFree(gtype) => {
-                    glib::gobject_ffi::g_boxed_free(gtype.into_glib(), self.ptr);
-                }
-                PendingRelease::Fundamental(unref) => unref(self.ptr),
-                PendingRelease::StrFreeV => {
-                    glib::ffi::g_strfreev(self.ptr as *mut *mut std::ffi::c_char);
-                }
-                PendingRelease::StringElements => {
-                    let mut slot = self.ptr as *mut *mut std::ffi::c_char;
-                    while !(*slot).is_null() {
-                        glib::ffi::g_free((*slot).cast());
-                        slot = slot.add(1);
-                    }
-                }
-                PendingRelease::HashTableUnref => {
-                    glib::ffi::g_hash_table_unref(self.ptr as *mut glib::ffi::GHashTable);
-                }
-                PendingRelease::GArrayUnref => {
-                    glib::ffi::g_array_unref(self.ptr as *mut glib::ffi::GArray);
-                }
-                PendingRelease::GByteArrayUnref => {
-                    glib::ffi::g_byte_array_unref(self.ptr as *mut glib::ffi::GByteArray);
-                }
-                PendingRelease::GListFree => {
-                    glib::ffi::g_list_free(self.ptr as *mut glib::ffi::GList);
-                }
-                PendingRelease::GSListFree => {
-                    glib::ffi::g_slist_free(self.ptr as *mut glib::ffi::GSList);
-                }
-            }
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct ListOps {
-    pub label: &'static str,
-    pub pending: PendingRelease,
-    pub prepend: unsafe fn(*mut c_void, *mut c_void) -> *mut c_void,
-    pub free: unsafe fn(*mut c_void),
-    pub free_full: unsafe fn(*mut c_void),
-}
-
-unsafe fn glist_prepend(list: *mut c_void, data: *mut c_void) -> *mut c_void {
-    unsafe { glib::ffi::g_list_prepend(list as *mut glib::ffi::GList, data).cast() }
-}
-unsafe fn glist_free(list: *mut c_void) {
-    unsafe { glib::ffi::g_list_free(list as *mut glib::ffi::GList) };
-}
-unsafe fn glist_free_full(list: *mut c_void) {
-    unsafe {
-        glib::ffi::g_list_free_full(list as *mut glib::ffi::GList, Some(glib::ffi::g_free));
-    }
-}
-
-unsafe fn gslist_prepend(list: *mut c_void, data: *mut c_void) -> *mut c_void {
-    unsafe { glib::ffi::g_slist_prepend(list as *mut glib::ffi::GSList, data).cast() }
-}
-unsafe fn gslist_free(list: *mut c_void) {
-    unsafe { glib::ffi::g_slist_free(list as *mut glib::ffi::GSList) };
-}
-unsafe fn gslist_free_full(list: *mut c_void) {
-    unsafe {
-        glib::ffi::g_slist_free_full(list as *mut glib::ffi::GSList, Some(glib::ffi::g_free));
-    }
-}
-
-pub static GLIST_OPS: ListOps = ListOps {
-    label: "GList",
-    pending: PendingRelease::GListFree,
-    prepend: glist_prepend,
-    free: glist_free,
-    free_full: glist_free_full,
-};
-
-pub static GSLIST_OPS: ListOps = ListOps {
-    label: "GSList",
-    pending: PendingRelease::GSListFree,
-    prepend: gslist_prepend,
-    free: gslist_free,
-    free_full: gslist_free_full,
-};
-
-pub fn build_list(ops: &ListOps, ptrs: &[*mut c_void]) -> *mut c_void {
-    let mut list: *mut c_void = std::ptr::null_mut();
-    for ptr in ptrs.iter().rev() {
-        list = unsafe { (ops.prepend)(list, *ptr) };
-    }
-    list
-}
-
-#[derive(Debug)]
-pub enum ListPayload {
-    Handles(Vec<crate::handle::Handle>),
-    Strings {
-        strings: Vec<std::ffi::CString>,
-        items_duped: bool,
-    },
-}
-
-#[derive(Debug)]
-pub struct ListData {
-    pub ops: &'static ListOps,
-    pub ptr: *mut c_void,
-    pub should_free: bool,
-    pub payload: ListPayload,
-}
-
-#[derive(Debug)]
-pub struct GArrayData {
-    pub ptr: *mut glib::ffi::GArray,
-    pub should_free: bool,
-}
-
-#[derive(Debug)]
-pub enum StashStorage {
-    Unit,
-    U8Vec(Vec<u8>),
-    I8Vec(Vec<i8>),
-    U16Vec(Vec<u16>),
-    I16Vec(Vec<i16>),
-    U32Vec(Vec<u32>),
-    I32Vec(Vec<i32>),
-    U64Vec(Vec<u64>),
-    I64Vec(Vec<i64>),
-    F32Vec(Vec<f32>),
-    F64Vec(Vec<f64>),
-    StringArray(Vec<std::ffi::CString>, Vec<*mut c_void>),
-    ObjectArray(Vec<crate::handle::Handle>, Vec<*mut c_void>),
-    List(ListData),
-    CString(std::ffi::CString),
-    GArray(GArrayData),
-    GByteArray(Option<glib::ByteArray>),
-    Buffer(Vec<u8>),
-    PtrSlot(Vec<*mut c_void>),
-    StrV(glib::StrV),
-    HashTable,
-}
-
-impl Stash {
-    pub fn new(ptr: *mut c_void, storage: StashStorage) -> Self {
-        Self {
-            ptr,
-            storage,
-            pending_transfer: Cell::new(Vec::new()),
-        }
-    }
-
-    pub fn unit(ptr: *mut c_void) -> Self {
-        Self::new(ptr, StashStorage::Unit)
-    }
-
-    pub fn with_pending_transfer(self, ptr: *mut c_void, release: PendingRelease) -> Self {
-        let mut transfers = self.pending_transfer.take();
-        transfers.push(PendingTransfer { ptr, release });
-        self.pending_transfer.set(transfers);
-        self
-    }
-
-    pub fn with_pending_transfers(self, transfers: Vec<PendingTransfer>) -> Self {
-        let mut existing = self.pending_transfer.take();
-        existing.extend(transfers);
-        self.pending_transfer.set(existing);
-        self
-    }
-
-    pub fn disarm_pending_transfer(&self) {
-        self.pending_transfer.set(Vec::new());
-    }
-
-    #[inline]
-    pub fn ptr(&self) -> *mut c_void {
-        self.ptr
-    }
-
-    #[inline]
-    pub fn ptr_ref(&self) -> &*mut c_void {
-        &self.ptr
-    }
-
-    pub fn storage(&self) -> &StashStorage {
-        &self.storage
-    }
-}
-
-impl Stash {
-    fn free_garray(data: &GArrayData) {
-        if data.should_free && !data.ptr.is_null() {
-            unsafe { glib::ffi::g_array_unref(data.ptr) };
-        }
-    }
-}
-
-impl Drop for Stash {
-    fn drop(&mut self) {
-        for pending in self.pending_transfer.take() {
-            pending.release_now();
-        }
-        match &self.storage {
-            StashStorage::HashTable => {
-                if !self.ptr.is_null() {
-                    unsafe {
-                        glib::ffi::g_hash_table_unref(self.ptr as *mut glib::ffi::GHashTable)
-                    };
-                }
-            }
-            StashStorage::List(data) => {
-                if data.should_free && !data.ptr.is_null() {
-                    let free = match &data.payload {
-                        ListPayload::Strings {
-                            items_duped: true, ..
-                        } => data.ops.free_full,
-                        ListPayload::Handles(_) | ListPayload::Strings { .. } => data.ops.free,
-                    };
-                    unsafe { free(data.ptr) };
-                }
-            }
-            StashStorage::GArray(data) => Self::free_garray(data),
-            StashStorage::GByteArray(_)
-            | StashStorage::Unit
-            | StashStorage::U8Vec(_)
-            | StashStorage::I8Vec(_)
-            | StashStorage::U16Vec(_)
-            | StashStorage::I16Vec(_)
-            | StashStorage::U32Vec(_)
-            | StashStorage::I32Vec(_)
-            | StashStorage::U64Vec(_)
-            | StashStorage::I64Vec(_)
-            | StashStorage::F32Vec(_)
-            | StashStorage::F64Vec(_)
-            | StashStorage::StringArray(_, _)
-            | StashStorage::ObjectArray(_, _)
-            | StashStorage::CString(_)
-            | StashStorage::Buffer(_)
-            | StashStorage::PtrSlot(_)
-            | StashStorage::StrV(_) => {}
-        }
-    }
-}
-
-macro_rules! impl_stash_from_vec {
-    ($($descriptor:ty => $vec_variant:ident),+ $(,)?) => {
-        $(
-            impl From<Vec<$descriptor>> for Stash {
-                fn from(mut vec: Vec<$descriptor>) -> Self {
-                    let ptr = vec.as_mut_ptr() as *mut c_void;
-                    Self::new(ptr, StashStorage::$vec_variant(vec))
-                }
-            }
-        )+
+macro_rules! ffi_numeric_with {
+    ($($rest:pat_param)|*) => {
+        Self::U8(_)
+            | Self::I8(_)
+            | Self::U16(_)
+            | Self::I16(_)
+            | Self::U32(_)
+            | Self::I32(_)
+            | Self::U64(_)
+            | Self::I64(_)
+            | Self::F32(_)
+            | Self::F64(_)
+            $(| $rest)*
     };
 }
 
-impl_stash_from_vec! {
-    u8 => U8Vec,
-    i8 => I8Vec,
-    u16 => U16Vec,
-    i16 => I16Vec,
-    u32 => U32Vec,
-    i32 => I32Vec,
-    u64 => U64Vec,
-    i64 => I64Vec,
-    f32 => F32Vec,
-    f64 => F64Vec,
+impl Stash {
+    pub fn disarm_pending_transfer(&self) {
+        match self {
+            Self::Storage(storage) => storage.disarm_pending_transfer(),
+            Self::Callback(callback) => callback.disarm_pending_transfer(),
+            _ => {}
+        }
+    }
+
+    pub unsafe fn write_scalar_to_ptr(&self, slot: *mut c_void) -> anyhow::Result<()> {
+        match self {
+            Self::U8(value) => unsafe { slot.cast::<u8>().write_unaligned(*value) },
+            Self::I8(value) => unsafe { slot.cast::<i8>().write_unaligned(*value) },
+            Self::U16(value) => unsafe { slot.cast::<u16>().write_unaligned(*value) },
+            Self::I16(value) => unsafe { slot.cast::<i16>().write_unaligned(*value) },
+            Self::U32(value) => unsafe { slot.cast::<u32>().write_unaligned(*value) },
+            Self::I32(value) => unsafe { slot.cast::<i32>().write_unaligned(*value) },
+            Self::U64(value) => unsafe { slot.cast::<u64>().write_unaligned(*value) },
+            Self::I64(value) => unsafe { slot.cast::<i64>().write_unaligned(*value) },
+            Self::F32(value) => unsafe { slot.cast::<f32>().write_unaligned(*value) },
+            Self::F64(value) => unsafe { slot.cast::<f64>().write_unaligned(*value) },
+            Self::Ptr(_) | Self::Storage(_) | Self::Callback(_) | Self::Void => {
+                anyhow::bail!("{self:?} has no scalar payload for an out-parameter slot")
+            }
+        }
+        Ok(())
+    }
+
+    pub fn as_ptr(&self, type_name: &str) -> anyhow::Result<*mut c_void> {
+        match self {
+            Self::Ptr(ptr) => Ok(*ptr),
+            Self::Storage(storage) => Ok(storage.ptr()),
+            ffi_numeric_with!(Self::Callback(_) | Self::Void) => {
+                anyhow::bail!("Expected a pointer Stash for {type_name}, got {self:?}")
+            }
+        }
+    }
+
+    pub fn as_non_null_ptr(&self, type_name: &str) -> anyhow::Result<Option<*mut c_void>> {
+        let ptr = self.as_ptr(type_name)?;
+        Ok(if ptr.is_null() { None } else { Some(ptr) })
+    }
+
+    pub fn as_storage_or_null(&self, kind: &str) -> anyhow::Result<Option<&StashStorage>> {
+        match self {
+            Self::Storage(storage) => Ok(Some(storage)),
+            Self::Ptr(ptr) if ptr.is_null() => Ok(None),
+            _ => anyhow::bail!("Expected a Storage ffi::Stash for {kind}, got {self:?}"),
+        }
+    }
+
+    pub fn to_number(&self) -> anyhow::Result<f64> {
+        match self {
+            Self::I8(value) => Ok(*value as f64),
+            Self::U8(value) => Ok(*value as f64),
+            Self::I16(value) => Ok(*value as f64),
+            Self::U16(value) => Ok(*value as f64),
+            Self::I32(value) => Ok(*value as f64),
+            Self::U32(value) => Ok(*value as f64),
+            Self::I64(value) => crate::ffi::codec::lossless_f64(i128::from(*value), "call result"),
+            Self::U64(value) => crate::ffi::codec::lossless_f64(i128::from(*value), "call result"),
+            Self::F32(value) => Ok(*value as f64),
+            Self::F64(value) => Ok(*value),
+            Self::Ptr(_) | Self::Storage(_) | Self::Callback(_) | Self::Void => {
+                anyhow::bail!("Expected a numeric Stash, got {self:?}")
+            }
+        }
+    }
+
+    pub fn append_libffi_args<'a>(&'a self, args: &mut Vec<libffi::Arg<'a>>) {
+        match self {
+            Self::Callback(tv) => {
+                args.push(libffi::arg(&tv.fn_ptr));
+                args.push(libffi::arg(&tv.state_ptr));
+                if let Some(destroy_ptr) = &tv.destroy_ptr {
+                    args.push(libffi::arg(destroy_ptr));
+                }
+            }
+            ffi_numeric_with!(Self::Ptr(_) | Self::Storage(_) | Self::Void) => {
+                args.push(self.into());
+            }
+        }
+    }
+}
+
+impl<'a> From<&'a Stash> for libffi::Arg<'a> {
+    fn from(arg: &'a Stash) -> Self {
+        match arg {
+            Stash::U8(value) => libffi::arg(value),
+            Stash::I8(value) => libffi::arg(value),
+            Stash::U16(value) => libffi::arg(value),
+            Stash::I16(value) => libffi::arg(value),
+            Stash::U32(value) => libffi::arg(value),
+            Stash::I32(value) => libffi::arg(value),
+            Stash::U64(value) => libffi::arg(value),
+            Stash::I64(value) => libffi::arg(value),
+            Stash::F32(value) => libffi::arg(value),
+            Stash::F64(value) => libffi::arg(value),
+            Stash::Ptr(ptr) => libffi::arg(ptr),
+            Stash::Storage(storage) => libffi::arg(storage.ptr_ref()),
+            Stash::Callback(_) => {
+                unreachable!("Callback requires append_libffi_args for multiple arguments")
+            }
+            Stash::Void => libffi::arg(&()),
+        }
+    }
 }

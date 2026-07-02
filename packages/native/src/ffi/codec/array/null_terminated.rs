@@ -7,7 +7,7 @@ use super::container::{ArrayContainer, BufferViewSupport};
 use super::item::ItemCodec;
 use super::{ArrayCodec, ArrayKindEncoder, dup_strings_to_glib, transfer_items};
 use crate::ffi::codec::Codec;
-use crate::ffi::{Stash, StashStorage};
+use crate::ffi::{StashData, StashStorage};
 
 fn gstring_ptrs_to_string_values(items: &[glib::GStringPtr]) -> Vec<value::Value> {
     items
@@ -54,20 +54,20 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
         array: &[value::Value],
         dup_items: bool,
         ownership: Ownership,
-    ) -> anyhow::Result<ffi::StashedValue> {
+    ) -> anyhow::Result<ffi::Stash> {
         match (ownership, dup_items) {
             (Ownership::Borrowed, false) => {
                 let strv = build_strv(array)?;
                 let ptr = strv.as_ptr() as *mut c_void;
-                Ok(ffi::StashedValue::Stashed(Stash::new(
+                Ok(ffi::Stash::Storage(StashStorage::new(
                     ptr,
-                    StashStorage::StrV(strv),
+                    StashData::StrV(strv),
                 )))
             }
             (Ownership::Full, true) => {
                 let strv = build_strv(array)?;
                 let container = strv.into_raw() as *mut c_void;
-                Ok(full_transfer_stashed(
+                Ok(full_transfer_stash(
                     container,
                     ffi::PendingRelease::StrFreeV,
                 ))
@@ -78,8 +78,8 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
                     cstrings.iter().map(|s| s.as_ptr() as *mut c_void).collect();
                 ptrs.push(std::ptr::null_mut());
                 let container = leak_container_to_callee(&ptrs);
-                Ok(ffi::StashedValue::Stashed(
-                    Stash::new(container, StashStorage::StringArray(cstrings, Vec::new()))
+                Ok(ffi::Stash::Storage(
+                    StashStorage::new(container, StashData::StringArray(cstrings, Vec::new()))
                         .with_pending_transfer(container, ffi::PendingRelease::GFree),
                 ))
             }
@@ -87,8 +87,8 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
                 let mut ptrs = dup_strings_to_glib(array)?;
                 ptrs.push(std::ptr::null_mut());
                 let ptr = ptrs.as_mut_ptr() as *mut c_void;
-                Ok(ffi::StashedValue::Stashed(
-                    Stash::new(ptr, StashStorage::StringArray(Vec::new(), ptrs))
+                Ok(ffi::Stash::Storage(
+                    StashStorage::new(ptr, StashData::StringArray(Vec::new(), ptrs))
                         .with_pending_transfer(ptr, ffi::PendingRelease::StringElements),
                 ))
             }
@@ -100,19 +100,19 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
         handles: &[crate::handle::Handle],
         item_codec: &Codec,
         ownership: Ownership,
-    ) -> anyhow::Result<ffi::StashedValue> {
+    ) -> anyhow::Result<ffi::Stash> {
         let (mut ptrs, acquired) = transfer_items(handles, item_codec, "array")?;
         ptrs.push(std::ptr::null_mut());
 
         let should_free = ownership.is_borrowed();
         let storage = if should_free {
             let ptr = ptrs.as_mut_ptr() as *mut c_void;
-            Stash::new(ptr, StashStorage::ObjectArray(handles.to_vec(), ptrs))
+            StashStorage::new(ptr, StashData::ObjectArray(handles.to_vec(), ptrs))
         } else {
             let container = leak_container_to_callee(&ptrs);
-            Stash::new(
+            StashStorage::new(
                 container,
-                StashStorage::ObjectArray(handles.to_vec(), Vec::new()),
+                StashData::ObjectArray(handles.to_vec(), Vec::new()),
             )
         };
         Ok(finalize_container_stash(
@@ -128,9 +128,9 @@ impl ArrayCodec {
     pub(super) fn decode_null_terminated(
         &self,
         name: &str,
-        stashed_value: &ffi::StashedValue,
+        stash: &ffi::Stash,
     ) -> anyhow::Result<value::Value> {
-        let ffi::StashedValue::Ptr(ptr) = stashed_value else {
+        let ffi::Stash::Ptr(ptr) = stash else {
             anyhow::bail!("A {name} can only be decoded from a raw pointer")
         };
         if ptr.is_null() {

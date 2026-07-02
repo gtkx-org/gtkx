@@ -26,7 +26,7 @@ fn assert_null_callback(
     let encoded = codec
         .encode(value)
         .expect("encode should build the null callback");
-    let ffi::StashedValue::Callback(tv) = encoded else {
+    let ffi::Stash::Callback(tv) = encoded else {
         panic!("expected Callback ffi value");
     };
     assert!(tv.fn_ptr().is_null());

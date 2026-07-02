@@ -5,17 +5,13 @@ use super::super::prelude::*;
 use super::ArrayCodec;
 use super::container::ArrayContainer;
 use crate::ffi::codec::IntegerCodec;
-use crate::ffi::{Stash, StashStorage};
+use crate::ffi::{StashData, StashStorage};
 
 #[derive(Debug, Clone)]
 pub(crate) struct GByteArrayCodec;
 
 impl ArrayContainer for GByteArrayCodec {
-    fn encode(
-        &self,
-        codec: &ArrayCodec,
-        array: &[value::Value],
-    ) -> anyhow::Result<ffi::StashedValue> {
+    fn encode(&self, codec: &ArrayCodec, array: &[value::Value]) -> anyhow::Result<ffi::Stash> {
         let bytes: Vec<u8> = array
             .iter()
             .enumerate()
@@ -40,7 +36,7 @@ impl ArrayContainer for GByteArrayCodec {
             (ptr, None)
         };
 
-        let storage = Stash::new(ptr as *mut c_void, StashStorage::GByteArray(owned));
+        let storage = StashStorage::new(ptr as *mut c_void, StashData::GByteArray(owned));
         Ok(finalize_container_stash(
             storage,
             should_free,
@@ -49,17 +45,13 @@ impl ArrayContainer for GByteArrayCodec {
         ))
     }
 
-    fn decode(
-        &self,
-        codec: &ArrayCodec,
-        stashed_value: &ffi::StashedValue,
-    ) -> anyhow::Result<value::Value> {
-        let Some(ptr) = stashed_value.as_non_null_ptr("GByteArray")? else {
+    fn decode(&self, codec: &ArrayCodec, stash: &ffi::Stash) -> anyhow::Result<value::Value> {
+        let Some(ptr) = stash.as_non_null_ptr("GByteArray")? else {
             return Ok(value::Value::Array(vec![]));
         };
 
         let byte_array = ptr as *mut glib::ffi::GByteArray;
-        let storage_owns = matches!(stashed_value, ffi::StashedValue::Stashed(_));
+        let storage_owns = matches!(stash, ffi::Stash::Storage(_));
         let adopted: Option<glib::ByteArray> = (codec.ownership.is_full() && !storage_owns)
             .then(|| unsafe { glib::translate::from_glib_full(byte_array) });
 

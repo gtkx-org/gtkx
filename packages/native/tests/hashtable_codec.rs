@@ -5,7 +5,7 @@ use std::ffi::c_void;
 use gtk4::glib;
 
 use native::Handle;
-use native::ffi::StashedValue;
+use native::ffi::Stash;
 use native::ffi::codec::{
     ArrayCodec, ArrayKind, BooleanCodec, BoxedCodec, Codec, FloatCodec, FundamentalCodec,
     HashTableCodec, HashTableEntryCodec, IntegerCodec, ObjectCodec, Ownership, StringCodec,
@@ -93,14 +93,14 @@ fn ht_type(key: Codec, value: Codec, ownership: Ownership) -> HashTableCodec {
 
 fn roundtrip(ht: &HashTableCodec, input: &Value) -> Value {
     let encoded = ht.encode(input).expect("encoding should succeed");
-    let StashedValue::Stashed(stash) = &encoded else {
-        panic!("hash table encode must produce a stashed table");
+    let Stash::Storage(storage) = &encoded else {
+        panic!("hash table encode must produce a Storage stash");
     };
-    let ptr = stash.ptr();
+    let ptr = storage.ptr();
     if ht.ownership.is_full() {
         unsafe { glib::ffi::g_hash_table_ref(ptr as *mut glib::ffi::GHashTable) };
     }
-    ht.decode(&StashedValue::Ptr(ptr))
+    ht.decode(&Stash::Ptr(ptr))
         .expect("decoding should succeed")
 }
 
@@ -453,7 +453,7 @@ fn hashtable_null_optional() {
             .expect("encoding should succeed");
 
         match encoded {
-            StashedValue::Ptr(ptr) => assert!(ptr.is_null()),
+            Stash::Ptr(ptr) => assert!(ptr.is_null()),
             _ => panic!("Expected null pointer"),
         }
     });
@@ -470,10 +470,8 @@ fn hashtable_borrowed_does_not_free() {
 
         let hash_table = helpers::make_integer_hash_table(&[(1, 100), (2, 200)]);
 
-        let stashed_value = StashedValue::Ptr(hash_table as *mut c_void);
-        let decoded = ht_type
-            .decode(&stashed_value)
-            .expect("decoding should succeed");
+        let stash = Stash::Ptr(hash_table as *mut c_void);
+        let decoded = ht_type.decode(&stash).expect("decoding should succeed");
 
         match decoded {
             Value::Array(pairs) => assert_eq!(pairs.len(), 2),
@@ -643,9 +641,7 @@ fn hashtable_encode_propagates_key_encoder_error() {
 #[test]
 fn hashtable_decode_null_yields_empty_array() {
     let ht_type = boolean_boolean_ht();
-    let decoded = ht_type
-        .decode(&StashedValue::Ptr(std::ptr::null_mut()))
-        .unwrap();
+    let decoded = ht_type.decode(&Stash::Ptr(std::ptr::null_mut())).unwrap();
     assert!(matches!(decoded, Value::Array(items) if items.is_empty()));
 }
 
@@ -684,7 +680,7 @@ fn hashtable_decode_full_ownership_from_pointer_unrefs() {
         }
 
         let decoded = ht_type
-            .decode(&StashedValue::Ptr(hash_table as *mut c_void))
+            .decode(&Stash::Ptr(hash_table as *mut c_void))
             .unwrap();
         assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
 
@@ -797,7 +793,7 @@ fn gobject_value_unreffed_when_hashtable_storage_drops() {
         let encoded = ht_type.encode(&input).expect("encoding should succeed");
         assert_eq!(helpers::get_gobject_refcount(obj_ptr), before + 1);
 
-        let StashedValue::Stashed(storage) = &encoded else {
+        let Stash::Storage(storage) = &encoded else {
             panic!("Expected Storage ffi value")
         };
         let size =

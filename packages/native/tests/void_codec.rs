@@ -15,10 +15,10 @@ extern "C" fn ret_void() {
 #[test]
 fn encode_always_yields_null_pointer() {
     let encoded = Encoder::encode(&VoidCodec, &Value::Undefined).unwrap();
-    assert!(matches!(encoded, ffi::StashedValue::Ptr(p) if p.is_null()));
+    assert!(matches!(encoded, ffi::Stash::Ptr(p) if p.is_null()));
 
     let encoded_other = Encoder::encode(&VoidCodec, &Value::Number(1.0)).unwrap();
-    assert!(matches!(encoded_other, ffi::StashedValue::Ptr(p) if p.is_null()));
+    assert!(matches!(encoded_other, ffi::Stash::Ptr(p) if p.is_null()));
 }
 
 #[test]
@@ -40,16 +40,16 @@ fn call_cif_invokes_native_function() {
         &[],
     )
     .unwrap();
-    assert!(matches!(result, ffi::StashedValue::Void));
+    assert!(matches!(result, ffi::Stash::Void));
     assert!(CALLED.load(Ordering::SeqCst));
 }
 
 #[test]
 fn decode_yields_undefined() {
-    let decoded = Decoder::decode(&VoidCodec, &ffi::StashedValue::Void).unwrap();
+    let decoded = Decoder::decode(&VoidCodec, &ffi::Stash::Void).unwrap();
     assert!(matches!(decoded, Value::Undefined));
 
-    let decoded_other = Decoder::decode(&VoidCodec, &ffi::StashedValue::I32(3)).unwrap();
+    let decoded_other = Decoder::decode(&VoidCodec, &ffi::Stash::I32(3)).unwrap();
     assert!(matches!(decoded_other, Value::Undefined));
 }
 

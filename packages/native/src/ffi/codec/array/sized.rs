@@ -20,13 +20,13 @@ impl ArrayContainer for SizedArrayCodec {
     fn decode_with_context(
         &self,
         codec: &ArrayCodec,
-        stashed_value: &ffi::StashedValue,
-        ffi_args: &[ffi::StashedValue],
+        stash: &ffi::Stash,
+        ffi_args: &[ffi::Stash],
         arg_codecs: &[Codec],
     ) -> anyhow::Result<value::Value> {
         let length =
             ArrayCodec::size_from_args(ffi_args, arg_codecs, self.size_param_index as usize)?;
-        codec.decode_length_bounded(self.name(), stashed_value, length)
+        codec.decode_length_bounded(self.name(), stash, length)
     }
 
     fn buffer_view_support(&self) -> BufferViewSupport {
@@ -47,7 +47,7 @@ impl ArrayCodec {
     }
 
     fn size_from_args(
-        ffi_args: &[ffi::StashedValue],
+        ffi_args: &[ffi::Stash],
         arg_codecs: &[Codec],
         size_param_index: usize,
     ) -> anyhow::Result<usize> {
@@ -66,11 +66,11 @@ impl ArrayCodec {
             && let Codec::Integer(integer_codec) = &*ref_codec.inner_codec
         {
             match ffi_arg {
-                ffi::StashedValue::Stashed(storage) => {
+                ffi::Stash::Storage(storage) => {
                     let size = unsafe { integer_codec.read_ptr(storage.ptr() as *const u8) };
                     return Self::validated_size(size, size_param_index);
                 }
-                ffi::StashedValue::Ptr(ptr) if !ptr.is_null() => {
+                ffi::Stash::Ptr(ptr) if !ptr.is_null() => {
                     let size = unsafe { integer_codec.read_ptr(*ptr as *const u8) };
                     return Self::validated_size(size, size_param_index);
                 }
@@ -100,10 +100,10 @@ impl ArrayCodec {
 
     fn decode_sized_from_stash(
         &self,
-        stashed_value: &ffi::StashedValue,
+        stash: &ffi::Stash,
         length: usize,
     ) -> Option<anyhow::Result<value::Value>> {
-        let ffi::StashedValue::Ptr(ptr) = stashed_value else {
+        let ffi::Stash::Ptr(ptr) = stash else {
             return None;
         };
         if ptr.is_null() {
@@ -115,12 +115,12 @@ impl ArrayCodec {
     pub(super) fn decode_length_bounded(
         &self,
         name: &str,
-        stashed_value: &ffi::StashedValue,
+        stash: &ffi::Stash,
         length: usize,
     ) -> anyhow::Result<value::Value> {
-        match self.decode_sized_from_stash(stashed_value, length) {
+        match self.decode_sized_from_stash(stash, length) {
             Some(result) => result,
-            None => self.decode_null_terminated(name, stashed_value),
+            None => self.decode_null_terminated(name, stash),
         }
     }
 }

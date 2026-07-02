@@ -75,7 +75,7 @@ fn string_array_type_of(item: Ownership, container: Ownership, kind: ArrayKind) 
 
 fn decode_ptr(codec: &Codec, ptr: *mut c_void) -> Value {
     codec
-        .decode(&ffi::StashedValue::Ptr(ptr))
+        .decode(&ffi::Stash::Ptr(ptr))
         .expect("decode should succeed")
 }
 
@@ -118,12 +118,12 @@ fn build_gobject_glist(count: usize) -> *mut glib::ffi::GList {
     list
 }
 
-fn ptr_slot_storage(ptr: *mut c_void) -> ffi::StashedValue {
+fn ptr_slot_stash(ptr: *mut c_void) -> ffi::Stash {
     let mut slot: Vec<*mut c_void> = vec![ptr];
     let storage_ptr = slot.as_mut_ptr() as *mut c_void;
-    ffi::StashedValue::Stashed(ffi::Stash::new(
+    ffi::Stash::Storage(ffi::StashStorage::new(
         storage_ptr,
-        ffi::StashStorage::PtrSlot(slot),
+        ffi::StashData::PtrSlot(slot),
     ))
 }
 
@@ -262,7 +262,7 @@ fn from_cif_value_fundamental_null() {
 #[test]
 fn from_cif_value_ref_gobject_null_inner() {
     helpers::run(|| {
-        let cif_value = ptr_slot_storage(std::ptr::null_mut());
+        let cif_value = ptr_slot_stash(std::ptr::null_mut());
         let type_ = Codec::Ref(
             native::ffi::codec::RefCodec::new(gobject_type_of(Ownership::Borrowed))
                 .expect("GObject is a valid Ref inner"),
@@ -281,7 +281,7 @@ fn from_cif_value_ref_boxed() {
         let gtype = gdk::RGBA::static_type();
         let ptr = helpers::allocate_test_boxed(gtype);
 
-        let cif_value = ptr_slot_storage(ptr);
+        let cif_value = ptr_slot_stash(ptr);
         let type_ = Codec::Ref(
             native::ffi::codec::RefCodec::new(rgba_boxed_type_of(Ownership::Borrowed))
                 .expect("Boxed is a valid Ref inner"),
@@ -374,10 +374,10 @@ fn object_ptr_errors_for_non_object_variants() {
 #[test]
 fn decode_with_context_decodes_integer() {
     helpers::run(|| {
-        let stashed_value = ffi::StashedValue::I32(99);
+        let stash = ffi::Stash::I32(99);
         let type_ = Codec::Integer(native::ffi::codec::IntegerCodec::I32);
 
-        let result = type_.decode_with_context(&stashed_value, &[], &[]);
+        let result = type_.decode_with_context(&stash, &[], &[]);
 
         assert!(result.is_ok());
         if let Value::Number(n) = result.unwrap() {

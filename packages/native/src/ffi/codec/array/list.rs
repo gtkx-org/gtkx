@@ -4,7 +4,7 @@ use super::super::prelude::*;
 use super::container::ArrayContainer;
 use super::{ArrayCodec, ArrayKindEncoder, dup_strings_to_glib, transfer_items};
 use crate::ffi::codec::Codec;
-use crate::ffi::{Stash, StashStorage};
+use crate::ffi::{StashData, StashStorage};
 
 #[derive(Debug, Clone)]
 pub(crate) struct ListArrayCodec {
@@ -18,21 +18,13 @@ impl ListArrayCodec {
 }
 
 impl ArrayContainer for ListArrayCodec {
-    fn encode(
-        &self,
-        codec: &ArrayCodec,
-        array: &[value::Value],
-    ) -> anyhow::Result<ffi::StashedValue> {
+    fn encode(&self, codec: &ArrayCodec, array: &[value::Value]) -> anyhow::Result<ffi::Stash> {
         codec.encode_items(&ListEncoder(self.ops), array)
     }
 
-    fn decode(
-        &self,
-        codec: &ArrayCodec,
-        stashed_value: &ffi::StashedValue,
-    ) -> anyhow::Result<value::Value> {
+    fn decode(&self, codec: &ArrayCodec, stash: &ffi::Stash) -> anyhow::Result<value::Value> {
         let ops = self.ops;
-        let Some(ptr) = stashed_value.as_non_null_ptr(ops.label)? else {
+        let Some(ptr) = stash.as_non_null_ptr(ops.label)? else {
             return Ok(value::Value::Array(vec![]));
         };
 
@@ -81,10 +73,10 @@ impl ListEncoder {
         should_free: bool,
         payload: ffi::ListPayload,
         acquired: Vec<ffi::PendingTransfer>,
-    ) -> ffi::StashedValue {
-        let storage = Stash::new(
+    ) -> ffi::Stash {
+        let storage = StashStorage::new(
             list,
-            StashStorage::List(ffi::ListData {
+            StashData::List(ffi::ListData {
                 ops: self.0,
                 ptr: list,
                 should_free,
@@ -101,7 +93,7 @@ impl ArrayKindEncoder for ListEncoder {
         array: &[value::Value],
         dup_items: bool,
         ownership: Ownership,
-    ) -> anyhow::Result<ffi::StashedValue> {
+    ) -> anyhow::Result<ffi::Stash> {
         let should_free = ownership.is_borrowed();
         let (strings, ptrs) = string_list_parts(array, dup_items)?;
         let list = ffi::build_list(self.0, &ptrs);
@@ -124,7 +116,7 @@ impl ArrayKindEncoder for ListEncoder {
         handles: &[crate::handle::Handle],
         item_codec: &Codec,
         ownership: Ownership,
-    ) -> anyhow::Result<ffi::StashedValue> {
+    ) -> anyhow::Result<ffi::Stash> {
         let should_free = ownership.is_borrowed();
         let (ptrs, acquired) = transfer_items(handles, item_codec, self.0.label)?;
         let list = ffi::build_list(self.0, &ptrs);

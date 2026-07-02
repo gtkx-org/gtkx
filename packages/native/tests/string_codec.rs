@@ -32,7 +32,7 @@ fn encode_borrowed_keeps_string_in_storage() {
         let encoded = borrowed()
             .encode(&Value::String("hello".to_owned()))
             .expect("borrowed encode should succeed");
-        let ffi::StashedValue::Stashed(storage) = encoded else {
+        let ffi::Stash::Storage(storage) = encoded else {
             panic!("expected Storage ffi value");
         };
         let read = unsafe { CStr::from_ptr(storage.ptr() as *const c_char) };
@@ -47,7 +47,7 @@ fn encode_full_duplicates_into_glib_string() {
             .encode(&Value::String("owned".to_owned()))
             .expect("full encode should succeed");
         encoded.disarm_pending_transfer();
-        let ffi::StashedValue::Stashed(storage) = &encoded else {
+        let ffi::Stash::Storage(storage) = &encoded else {
             panic!("expected Storage ffi value");
         };
         let ptr = storage.ptr();
@@ -74,12 +74,12 @@ fn encode_null_yields_null_pointer() {
         let encoded = borrowed()
             .encode(&Value::Null)
             .expect("null encode should succeed");
-        assert!(matches!(encoded, ffi::StashedValue::Ptr(p) if p.is_null()));
+        assert!(matches!(encoded, ffi::Stash::Ptr(p) if p.is_null()));
 
         let encoded = borrowed()
             .encode(&Value::Undefined)
             .expect("undefined encode should succeed");
-        assert!(matches!(encoded, ffi::StashedValue::Ptr(p) if p.is_null()));
+        assert!(matches!(encoded, ffi::Stash::Ptr(p) if p.is_null()));
     });
 }
 
@@ -88,7 +88,7 @@ fn decode_borrowed_reads_string() {
     helpers::run(|| {
         let cstring = CString::new("decoded").unwrap();
         let decoded = borrowed()
-            .decode(&ffi::StashedValue::Ptr(cstring.as_ptr() as *mut c_void))
+            .decode(&ffi::Stash::Ptr(cstring.as_ptr() as *mut c_void))
             .expect("borrowed decode should succeed");
         assert!(matches!(decoded, Value::String(s) if s == "decoded"));
 
@@ -102,7 +102,7 @@ fn decode_full_reads_and_frees() {
     helpers::run(|| {
         let owned = unsafe { glib::ffi::g_strdup(c"owned-decode".as_ptr()) };
         let decoded = full()
-            .decode(&ffi::StashedValue::Ptr(owned as *mut c_void))
+            .decode(&ffi::Stash::Ptr(owned as *mut c_void))
             .expect("full decode should succeed");
         assert!(matches!(decoded, Value::String(s) if s == "owned-decode"));
     });

@@ -19,23 +19,23 @@ pub struct StringCodec {
 }
 
 impl Encoder for StringCodec {
-    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
+    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::Stash> {
         match value {
             value::Value::String(s) => {
                 if self.ownership.is_full() {
                     let glib_ptr = str_to_glib_full(s)? as *mut c_void;
-                    Ok(full_transfer_stashed(glib_ptr, ffi::PendingRelease::GFree))
+                    Ok(full_transfer_stash(glib_ptr, ffi::PendingRelease::GFree))
                 } else {
                     let cstring = CString::new(s.as_bytes())?;
                     let ptr = cstring.as_ptr() as *mut c_void;
-                    Ok(ffi::StashedValue::Stashed(ffi::Stash::new(
+                    Ok(ffi::Stash::Storage(ffi::StashStorage::new(
                         ptr,
-                        ffi::StashStorage::CString(cstring),
+                        ffi::StashData::CString(cstring),
                     )))
                 }
             }
             value::Value::Null | value::Value::Undefined => {
-                Ok(ffi::StashedValue::Ptr(std::ptr::null_mut()))
+                Ok(ffi::Stash::Ptr(std::ptr::null_mut()))
             }
             _ => bail_expected!("a String", "string", value),
         }
@@ -43,8 +43,8 @@ impl Encoder for StringCodec {
 }
 
 impl Decoder for StringCodec {
-    fn decode_call(&self, stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
-        self.decode_call_non_null(stashed_value, "string", |str_ptr| {
+    fn decode_call(&self, stash: &ffi::Stash) -> anyhow::Result<value::Value> {
+        self.decode_call_non_null(stash, "string", |str_ptr| {
             let string = unsafe { lossy_c_string(str_ptr as *const c_char) };
 
             if self.ownership.is_full() {

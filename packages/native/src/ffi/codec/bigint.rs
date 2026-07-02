@@ -26,10 +26,10 @@ impl BigIntCodec {
         }
     }
 
-    fn zero_stashed_value(self) -> ffi::StashedValue {
+    fn zero_stash(self) -> ffi::Stash {
         match self {
-            Self::I64 => ffi::StashedValue::I64(0),
-            Self::U64 => ffi::StashedValue::U64(0),
+            Self::I64 => ffi::Stash::I64(0),
+            Self::U64 => ffi::Stash::U64(0),
         }
     }
 
@@ -54,25 +54,21 @@ impl BigIntCodec {
         }
     }
 
-    fn checked_to_stashed_value(self, value: i128) -> anyhow::Result<ffi::StashedValue> {
+    fn checked_to_stash(self, value: i128) -> anyhow::Result<ffi::Stash> {
         match self {
-            Self::I64 => i64::try_from(value)
-                .map(ffi::StashedValue::I64)
-                .map_err(|_| {
-                    anyhow::anyhow!(
-                        "Value {value} is out of range for bigint64 [{}, {}]",
-                        i64::MIN,
-                        i64::MAX
-                    )
-                }),
-            Self::U64 => u64::try_from(value)
-                .map(ffi::StashedValue::U64)
-                .map_err(|_| {
-                    anyhow::anyhow!(
-                        "Value {value} is out of range for biguint64 [0, {}]",
-                        u64::MAX
-                    )
-                }),
+            Self::I64 => i64::try_from(value).map(ffi::Stash::I64).map_err(|_| {
+                anyhow::anyhow!(
+                    "Value {value} is out of range for bigint64 [{}, {}]",
+                    i64::MIN,
+                    i64::MAX
+                )
+            }),
+            Self::U64 => u64::try_from(value).map(ffi::Stash::U64).map_err(|_| {
+                anyhow::anyhow!(
+                    "Value {value} is out of range for biguint64 [0, {}]",
+                    u64::MAX
+                )
+            }),
         }
     }
 
@@ -95,7 +91,7 @@ impl BigIntCodec {
             .collect()
     }
 
-    pub fn to_stash(self, array: &[value::Value]) -> anyhow::Result<ffi::Stash> {
+    pub fn to_stash_storage(self, array: &[value::Value]) -> anyhow::Result<ffi::StashStorage> {
         let integer_at = |i: usize, v: &value::Value| {
             self.integer_from_value(v)
                 .map_err(|e| anyhow::anyhow!("Array element {i}: {e}"))
@@ -125,15 +121,15 @@ impl BigIntCodec {
     }
 
     pub unsafe fn append_into(self, ptr: *mut u8, value: &value::Value) -> anyhow::Result<()> {
-        let stashed_value = self.checked_to_stashed_value(self.integer_from_value(value)?)?;
-        unsafe { stashed_value.write_scalar_to_ptr(ptr.cast()) }
+        let stash = self.checked_to_stash(self.integer_from_value(value)?)?;
+        unsafe { stash.write_scalar_to_ptr(ptr.cast()) }
     }
 }
 
 impl Encoder for BigIntCodec {
-    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
+    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::Stash> {
         let int = self.integer_from_value(value)?;
-        self.checked_to_stashed_value(int)
+        self.checked_to_stash(int)
     }
 
     forward_ffi_encoder!();
@@ -142,13 +138,10 @@ impl Encoder for BigIntCodec {
 impl Decoder for BigIntCodec {
     unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
         match src {
-            ReadSource::Call(stashed_value) => match stashed_value {
-                ffi::StashedValue::I64(v) => Ok(value::Value::BigInt(i128::from(*v))),
-                ffi::StashedValue::U64(v) => Ok(value::Value::BigInt(i128::from(*v))),
-                other => bail!(
-                    "Expected a 64-bit StashedValue for {}, got {other:?}",
-                    self.name()
-                ),
+            ReadSource::Call(stash) => match stash {
+                ffi::Stash::I64(v) => Ok(value::Value::BigInt(i128::from(*v))),
+                ffi::Stash::U64(v) => Ok(value::Value::BigInt(i128::from(*v))),
+                other => bail!("Expected a 64-bit Stash for {}, got {other:?}", self.name()),
             },
             ReadSource::Value(ptr, _context) => Ok(value::Value::BigInt(match self {
                 Self::I64 => i128::from(ptr as i64),
@@ -172,10 +165,10 @@ impl PtrWriter for BigIntCodec {
             .ok()
             .and_then(|v| self.integer_from_value(v).ok())
             .unwrap_or(0);
-        let stashed_value = self
-            .checked_to_stashed_value(int)
-            .unwrap_or_else(|_| self.zero_stashed_value());
-        let _ = unsafe { stashed_value.write_scalar_to_ptr(ret) };
+        let stash = self
+            .checked_to_stash(int)
+            .unwrap_or_else(|_| self.zero_stash());
+        let _ = unsafe { stash.write_scalar_to_ptr(ret) };
     }
 
     unsafe fn write_value_to_ptr(
@@ -184,7 +177,7 @@ impl PtrWriter for BigIntCodec {
         value: &value::Value,
     ) -> anyhow::Result<()> {
         let int = self.integer_from_value(value)?;
-        let stashed_value = self.checked_to_stashed_value(int)?;
-        unsafe { stashed_value.write_scalar_to_ptr(ptr) }
+        let stash = self.checked_to_stash(int)?;
+        unsafe { stash.write_scalar_to_ptr(ptr) }
     }
 }

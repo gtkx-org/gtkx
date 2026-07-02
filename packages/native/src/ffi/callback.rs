@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicPtr, Ordering};
 use ::libffi::low as libffi_low;
 use ::libffi::middle as libffi;
 
-use crate::ffi::StashedValue;
+use crate::ffi::Stash;
 use crate::ffi::codec::{
     Codec, Decoder as _, Encoder as _, PtrWriter as _, ReadSource, str_to_glib_full,
 };
@@ -22,7 +22,7 @@ pub struct CallbackData {
     pub is_oneshot: bool,
     pub oneshot_state_ptr: AtomicPtr<CallbackState>,
     pub retained_string_return: AtomicPtr<c_char>,
-    pub retained_container_return: AtomicPtr<StashedValue>,
+    pub retained_container_return: AtomicPtr<Stash>,
 }
 
 impl CallbackData {
@@ -261,11 +261,9 @@ impl CallbackData {
         };
         let ptr = built
             .as_ref()
-            .and_then(|stashed_value| stashed_value.as_ptr("container return").ok())
+            .and_then(|stash| stash.as_ptr("container return").ok())
             .unwrap_or(std::ptr::null_mut());
-        let new_ptr = built.map_or(std::ptr::null_mut(), |stashed_value| {
-            Box::into_raw(Box::new(stashed_value))
-        });
+        let new_ptr = built.map_or(std::ptr::null_mut(), |stash| Box::into_raw(Box::new(stash)));
         let previous = self
             .retained_container_return
             .swap(new_ptr, Ordering::AcqRel);

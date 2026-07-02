@@ -16,10 +16,10 @@ extern "C" fn ret_false() -> i32 {
 #[test]
 fn encode_accepts_boolean_and_rejects_other() {
     let encoded = Encoder::encode(&BooleanCodec, &Value::Boolean(true)).unwrap();
-    assert!(matches!(encoded, ffi::StashedValue::I32(1)));
+    assert!(matches!(encoded, ffi::Stash::I32(1)));
 
     let encoded_false = Encoder::encode(&BooleanCodec, &Value::Boolean(false)).unwrap();
-    assert!(matches!(encoded_false, ffi::StashedValue::I32(0)));
+    assert!(matches!(encoded_false, ffi::Stash::I32(0)));
 
     let err = Encoder::encode(&BooleanCodec, &Value::Number(1.0));
     assert!(err.is_err());
@@ -44,7 +44,7 @@ fn call_cif_invokes_native_function() {
         &[],
     )
     .unwrap();
-    assert!(matches!(truthy, ffi::StashedValue::I32(1)));
+    assert!(matches!(truthy, ffi::Stash::I32(1)));
 
     let falsy = Encoder::call_cif(
         &BooleanCodec,
@@ -53,18 +53,18 @@ fn call_cif_invokes_native_function() {
         &[],
     )
     .unwrap();
-    assert!(matches!(falsy, ffi::StashedValue::I32(0)));
+    assert!(matches!(falsy, ffi::Stash::I32(0)));
 }
 
 #[test]
 fn decode_reads_i32_and_rejects_other() {
-    let decoded = Decoder::decode(&BooleanCodec, &ffi::StashedValue::I32(1)).unwrap();
+    let decoded = Decoder::decode(&BooleanCodec, &ffi::Stash::I32(1)).unwrap();
     assert!(matches!(decoded, Value::Boolean(true)));
 
-    let decoded_zero = Decoder::decode(&BooleanCodec, &ffi::StashedValue::I32(0)).unwrap();
+    let decoded_zero = Decoder::decode(&BooleanCodec, &ffi::Stash::I32(0)).unwrap();
     assert!(matches!(decoded_zero, Value::Boolean(false)));
 
-    assert!(Decoder::decode(&BooleanCodec, &ffi::StashedValue::Void).is_err());
+    assert!(Decoder::decode(&BooleanCodec, &ffi::Stash::Void).is_err());
 }
 
 #[test]

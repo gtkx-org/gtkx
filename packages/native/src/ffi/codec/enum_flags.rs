@@ -50,7 +50,7 @@ impl EnumFlagsCodec {
 }
 
 impl Encoder for EnumFlagsCodec {
-    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
+    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::Stash> {
         if self.kind == EnumFlagsKind::Enum
             && let value::Value::Number(n) = value
         {

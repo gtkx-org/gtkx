@@ -3,7 +3,7 @@ use anyhow::bail;
 use super::prelude::*;
 use super::string::str_to_glib_full;
 use crate::ffi::codec::Codec;
-use crate::ffi::{Stash, StashStorage};
+use crate::ffi::{StashData, StashStorage};
 
 #[derive(Clone, Debug)]
 pub enum HashTableEntryCodec {
@@ -171,7 +171,7 @@ impl HashTableCodec {
         tuples: &[value::Value],
         key_encoder: &HashTableEntryCodec,
         value_encoder: &HashTableEntryCodec,
-    ) -> anyhow::Result<ffi::StashedValue> {
+    ) -> anyhow::Result<ffi::Stash> {
         let key_free = key_encoder.free_func()?;
         let value_free = value_encoder.free_func()?;
         let (hash_func, equal_func) = key_encoder.hash_and_equal();
@@ -207,27 +207,27 @@ impl HashTableCodec {
             return Err(err);
         }
 
-        let storage = if self.ownership.is_borrowed() {
-            ffi::StashedValue::Stashed(Stash::new(
+        let stash = if self.ownership.is_borrowed() {
+            ffi::Stash::Storage(StashStorage::new(
                 hash_table as *mut c_void,
-                StashStorage::HashTable,
+                StashData::HashTable,
             ))
         } else {
-            full_transfer_stashed(
+            full_transfer_stash(
                 hash_table as *mut c_void,
                 ffi::PendingRelease::HashTableUnref,
             )
         };
-        Ok(storage)
+        Ok(stash)
     }
 }
 
 impl Encoder for HashTableCodec {
-    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
+    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::Stash> {
         let tuples = match value {
             value::Value::Array(arr) => arr,
             value::Value::Null | value::Value::Undefined => {
-                return Ok(ffi::StashedValue::Ptr(std::ptr::null_mut()));
+                return Ok(ffi::Stash::Ptr(std::ptr::null_mut()));
             }
             _ => bail!("Expected an Array of tuples for GHashTable codec, got {value:?}"),
         };
@@ -245,8 +245,8 @@ impl Encoder for HashTableCodec {
 }
 
 impl Decoder for HashTableCodec {
-    fn decode_call(&self, stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
-        let Some(hash_ptr) = stashed_value.as_non_null_ptr("GHashTable")? else {
+    fn decode_call(&self, stash: &ffi::Stash) -> anyhow::Result<value::Value> {
+        let Some(hash_ptr) = stash.as_non_null_ptr("GHashTable")? else {
             return Ok(value::Value::Array(vec![]));
         };
 
@@ -288,7 +288,7 @@ impl Decoder for HashTableCodec {
     }
 
     unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
-        self.decode_call(&ffi::StashedValue::Ptr(ptr))
+        self.decode_call(&ffi::Stash::Ptr(ptr))
     }
 }
 

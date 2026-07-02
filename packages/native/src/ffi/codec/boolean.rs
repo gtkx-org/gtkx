@@ -16,12 +16,12 @@ impl BooleanCodec {
 }
 
 impl Encoder for BooleanCodec {
-    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
+    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::Stash> {
         let boolean = match value {
             value::Value::Boolean(b) => *b,
             _ => bail_expected!("a Boolean", "boolean", value),
         };
-        Ok(ffi::StashedValue::I32(boolean.into_glib()))
+        Ok(ffi::Stash::I32(boolean.into_glib()))
     }
 
     forward_ffi_encoder!();
@@ -30,11 +30,11 @@ impl Encoder for BooleanCodec {
 impl Decoder for BooleanCodec {
     unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
         match src {
-            ReadSource::Call(stashed_value) => {
-                let b = match stashed_value {
-                    ffi::StashedValue::I32(value) => *value != 0,
+            ReadSource::Call(stash) => {
+                let b = match stash {
+                    ffi::Stash::I32(value) => *value != 0,
                     _ => {
-                        anyhow::bail!("Expected a boolean ffi::StashedValue, got {stashed_value:?}")
+                        anyhow::bail!("Expected a boolean ffi::Stash, got {stash:?}")
                     }
                 };
                 Ok(value::Value::Boolean(b))

@@ -6,8 +6,8 @@ use super::prelude::*;
 pub struct VoidCodec;
 
 impl Encoder for VoidCodec {
-    fn encode(&self, _value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
-        Ok(ffi::StashedValue::Ptr(std::ptr::null_mut()))
+    fn encode(&self, _value: &value::Value) -> anyhow::Result<ffi::Stash> {
+        Ok(ffi::Stash::Ptr(std::ptr::null_mut()))
     }
 
     fn libffi_type(&self) -> libffi::Type {
@@ -19,9 +19,9 @@ impl Encoder for VoidCodec {
         cif: &libffi::Cif,
         ptr: libffi::CodePtr,
         args: &[libffi::Arg],
-    ) -> anyhow::Result<ffi::StashedValue> {
+    ) -> anyhow::Result<ffi::Stash> {
         unsafe { cif.call::<()>(ptr, args) };
-        Ok(ffi::StashedValue::Void)
+        Ok(ffi::Stash::Void)
     }
 }
 

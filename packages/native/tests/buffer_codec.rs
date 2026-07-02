@@ -1,17 +1,17 @@
 use std::ffi::c_void;
 
 use libffi::middle;
-use native::ffi::StashedValue;
+use native::ffi::Stash;
 use native::ffi::codec::{BufferCodec, Decoder, Encoder as _};
 use native::ffi::value::{BufferView, BufferViewKind, Value};
 
-fn encode(value: &Value) -> anyhow::Result<StashedValue> {
+fn encode(value: &Value) -> anyhow::Result<Stash> {
     BufferCodec.encode(value)
 }
 
 fn encoded_address(value: &Value) -> usize {
     let encoded = encode(value).expect("buffer value should encode");
-    let StashedValue::Ptr(ptr) = encoded else {
+    let Stash::Ptr(ptr) = encoded else {
         panic!("expected a pointer, got {encoded:?}");
     };
     ptr as usize
@@ -50,7 +50,7 @@ fn buffer_encodes_null_and_undefined_as_null() {
 
 #[test]
 fn buffer_cannot_be_decoded() {
-    assert!(Decoder::decode(&BufferCodec, &StashedValue::Void).is_err());
+    assert!(Decoder::decode(&BufferCodec, &Stash::Void).is_err());
 }
 
 extern "C" fn ret_unit() {}

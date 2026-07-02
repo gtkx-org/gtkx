@@ -5,17 +5,13 @@ use super::container::ArrayContainer;
 use super::item::ItemCodec;
 use super::{ArrayCodec, dup_strings_to_glib, transfer_items};
 use crate::ffi::codec::{Codec, FloatCodec};
-use crate::ffi::{Stash, StashStorage};
+use crate::ffi::{StashData, StashStorage};
 
 #[derive(Debug, Clone)]
 pub(crate) struct GArrayCodec;
 
 impl ArrayContainer for GArrayCodec {
-    fn encode(
-        &self,
-        codec: &ArrayCodec,
-        array: &[value::Value],
-    ) -> anyhow::Result<ffi::StashedValue> {
+    fn encode(&self, codec: &ArrayCodec, array: &[value::Value]) -> anyhow::Result<ffi::Stash> {
         let item_size = codec.item_element_size();
         let element_size = codec.element_size.or(item_size).ok_or_else(|| {
             anyhow::anyhow!(
@@ -45,9 +41,9 @@ impl ArrayContainer for GArrayCodec {
         };
 
         let should_free = codec.ownership.is_borrowed();
-        let storage = Stash::new(
+        let storage = StashStorage::new(
             g_array as *mut c_void,
-            StashStorage::GArray(ffi::GArrayData {
+            StashData::GArray(ffi::GArrayData {
                 ptr: g_array,
                 should_free,
             }),
@@ -60,12 +56,8 @@ impl ArrayContainer for GArrayCodec {
         ))
     }
 
-    fn decode(
-        &self,
-        codec: &ArrayCodec,
-        stashed_value: &ffi::StashedValue,
-    ) -> anyhow::Result<value::Value> {
-        let Some(ptr) = stashed_value.as_non_null_ptr("GArray")? else {
+    fn decode(&self, codec: &ArrayCodec, stash: &ffi::Stash) -> anyhow::Result<value::Value> {
+        let Some(ptr) = stash.as_non_null_ptr("GArray")? else {
             return Ok(value::Value::Array(vec![]));
         };
 
@@ -76,7 +68,7 @@ impl ArrayContainer for GArrayCodec {
         let values = codec.decode_contiguous(item, data, len);
 
         if codec.ownership.is_full() {
-            let storage_owns = matches!(stashed_value, ffi::StashedValue::Stashed(_));
+            let storage_owns = matches!(stash, ffi::Stash::Storage(_));
             if !storage_owns {
                 unsafe { glib::ffi::g_array_unref(ptr as *mut glib::ffi::GArray) };
             }
@@ -115,18 +107,18 @@ impl ArrayCodec {
     ) -> anyhow::Result<Vec<ffi::PendingTransfer>> {
         match self.item_codec("GArray")? {
             ItemCodec::Integer(kind) | ItemCodec::EnumFlags(kind) => {
-                let stash = kind.to_stash(&Self::extract_numbers(array)?);
-                Self::append_vals(g_array, stash.ptr(), array.len());
+                let storage = kind.to_stash_storage(&Self::extract_numbers(array)?);
+                Self::append_vals(g_array, storage.ptr(), array.len());
                 Ok(Vec::new())
             }
             ItemCodec::BigInt(kind) => {
-                let stash = kind.to_stash(array)?;
-                Self::append_vals(g_array, stash.ptr(), array.len());
+                let storage = kind.to_stash_storage(array)?;
+                Self::append_vals(g_array, storage.ptr(), array.len());
                 Ok(Vec::new())
             }
             ItemCodec::Float(kind) => {
                 let numbers = Self::extract_numbers(array)?;
-                let stash: Stash = match kind {
+                let storage: StashStorage = match kind {
                     FloatCodec::F32 => numbers
                         .iter()
                         .map(|&v| v as f32)
@@ -134,12 +126,12 @@ impl ArrayCodec {
                         .into(),
                     FloatCodec::F64 => numbers.into(),
                 };
-                Self::append_vals(g_array, stash.ptr(), array.len());
+                Self::append_vals(g_array, storage.ptr(), array.len());
                 Ok(Vec::new())
             }
             ItemCodec::Boolean => {
-                let stash: Stash = Self::extract_booleans(array)?.into();
-                Self::append_vals(g_array, stash.ptr(), array.len());
+                let storage: StashStorage = Self::extract_booleans(array)?.into();
+                Self::append_vals(g_array, storage.ptr(), array.len());
                 Ok(Vec::new())
             }
             ItemCodec::Pointer => self.append_handle_values_to_garray(g_array, array),

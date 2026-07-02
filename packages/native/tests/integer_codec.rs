@@ -130,69 +130,69 @@ fn write_i64() {
 }
 
 #[test]
-fn to_stashed_value_u8() {
-    let result = IntegerCodec::U8.to_stashed_value(100.0);
-    assert!(matches!(result, ffi::StashedValue::U8(100)));
-}
-
-#[test]
-fn to_stashed_value_i8() {
-    let result = IntegerCodec::I8.to_stashed_value(-50.0);
-    assert!(matches!(result, ffi::StashedValue::I8(-50)));
-}
-
-#[test]
-fn to_stashed_value_u16() {
-    let result = IntegerCodec::U16.to_stashed_value(30000.0);
-    assert!(matches!(result, ffi::StashedValue::U16(30000)));
-}
-
-#[test]
-fn to_stashed_value_i16() {
-    let result = IntegerCodec::I16.to_stashed_value(-15000.0);
-    assert!(matches!(result, ffi::StashedValue::I16(-15000)));
-}
-
-#[test]
-fn to_stashed_value_u32() {
-    let result = IntegerCodec::U32.to_stashed_value(2_000_000_000.0);
-    assert!(matches!(result, ffi::StashedValue::U32(2_000_000_000)));
-}
-
-#[test]
-fn to_stashed_value_i32() {
-    let result = IntegerCodec::I32.to_stashed_value(-1_000_000_000.0);
-    assert!(matches!(result, ffi::StashedValue::I32(-1_000_000_000)));
-}
-
-#[test]
-fn to_stashed_value_u64() {
-    let result = IntegerCodec::U64.to_stashed_value(5_000_000_000.0);
-    assert!(matches!(result, ffi::StashedValue::U64(5_000_000_000)));
-}
-
-#[test]
-fn to_stashed_value_i64() {
-    let result = IntegerCodec::I64.to_stashed_value(-5_000_000_000.0);
-    assert!(matches!(result, ffi::StashedValue::I64(-5_000_000_000)));
-}
-
-#[test]
 fn to_stash_u8() {
+    let result = IntegerCodec::U8.to_stash(100.0);
+    assert!(matches!(result, ffi::Stash::U8(100)));
+}
+
+#[test]
+fn to_stash_i8() {
+    let result = IntegerCodec::I8.to_stash(-50.0);
+    assert!(matches!(result, ffi::Stash::I8(-50)));
+}
+
+#[test]
+fn to_stash_u16() {
+    let result = IntegerCodec::U16.to_stash(30000.0);
+    assert!(matches!(result, ffi::Stash::U16(30000)));
+}
+
+#[test]
+fn to_stash_i16() {
+    let result = IntegerCodec::I16.to_stash(-15000.0);
+    assert!(matches!(result, ffi::Stash::I16(-15000)));
+}
+
+#[test]
+fn to_stash_u32() {
+    let result = IntegerCodec::U32.to_stash(2_000_000_000.0);
+    assert!(matches!(result, ffi::Stash::U32(2_000_000_000)));
+}
+
+#[test]
+fn to_stash_i32() {
+    let result = IntegerCodec::I32.to_stash(-1_000_000_000.0);
+    assert!(matches!(result, ffi::Stash::I32(-1_000_000_000)));
+}
+
+#[test]
+fn to_stash_u64() {
+    let result = IntegerCodec::U64.to_stash(5_000_000_000.0);
+    assert!(matches!(result, ffi::Stash::U64(5_000_000_000)));
+}
+
+#[test]
+fn to_stash_i64() {
+    let result = IntegerCodec::I64.to_stash(-5_000_000_000.0);
+    assert!(matches!(result, ffi::Stash::I64(-5_000_000_000)));
+}
+
+#[test]
+fn to_stash_storage_u8() {
     let values = [1.0, 2.0, 3.0];
-    let storage = IntegerCodec::U8.to_stash(&values);
-    match storage.storage() {
-        ffi::StashStorage::U8Vec(result) => assert_eq!(result, &vec![1u8, 2u8, 3u8]),
+    let storage = IntegerCodec::U8.to_stash_storage(&values);
+    match storage.data() {
+        ffi::StashData::U8Vec(result) => assert_eq!(result, &vec![1u8, 2u8, 3u8]),
         _ => panic!("Expected U8Vec"),
     }
 }
 
 #[test]
-fn to_stash_i32() {
+fn to_stash_storage_i32() {
     let values = [-100.0, 0.0, 100.0];
-    let storage = IntegerCodec::I32.to_stash(&values);
-    match storage.storage() {
-        ffi::StashStorage::I32Vec(result) => assert_eq!(result, &vec![-100i32, 0i32, 100i32]),
+    let storage = IntegerCodec::I32.to_stash_storage(&values);
+    match storage.data() {
+        ffi::StashData::I32Vec(result) => assert_eq!(result, &vec![-100i32, 0i32, 100i32]),
         _ => panic!("Expected I32Vec"),
     }
 }

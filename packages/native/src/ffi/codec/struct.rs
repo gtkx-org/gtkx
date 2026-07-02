@@ -26,8 +26,8 @@ impl StructCodec {
 }
 
 impl Decoder for StructCodec {
-    fn decode_call(&self, stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
-        self.decode_call_non_null(stashed_value, "Struct", |struct_ptr| {
+    fn decode_call(&self, stash: &ffi::Stash) -> anyhow::Result<value::Value> {
+        self.decode_call_non_null(stash, "Struct", |struct_ptr| {
             let boxed = match self.ownership {
                 Ownership::Full => Boxed::from_glib_full(None, struct_ptr),
                 Ownership::Borrowed => self.borrow_or_copy(struct_ptr),

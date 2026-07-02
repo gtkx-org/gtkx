@@ -55,7 +55,7 @@ macro_rules! forward_ffi_encoder {
             cif: &::libffi::middle::Cif,
             ptr: ::libffi::middle::CodePtr,
             args: &[::libffi::middle::Arg],
-        ) -> ::anyhow::Result<$crate::ffi::StashedValue> {
+        ) -> ::anyhow::Result<$crate::ffi::Stash> {
             $crate::ffi::codec::Encoder::call_cif(&self.ffi_codec(), cif, ptr, args)
         }
     };
@@ -93,21 +93,21 @@ impl Ownership {
 
 #[derive(Debug)]
 pub enum ReadSource<'a> {
-    Call(&'a ffi::StashedValue),
+    Call(&'a ffi::Stash),
     Slot(*const c_void, &'a str),
     Value(*mut c_void, &'a str),
 }
 
 #[enum_dispatch]
 pub trait Encoder {
-    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
+    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::Stash> {
         let ptr = value.object_ptr(self.object_ptr_context())?;
         let transferred = unsafe { self.ref_for_transfer(ptr)? };
         match self.transfer_release() {
             Some(release) if !transferred.is_null() => {
-                Ok(prelude::full_transfer_stashed(transferred, release))
+                Ok(prelude::full_transfer_stash(transferred, release))
             }
-            _ => Ok(ffi::StashedValue::Ptr(transferred)),
+            _ => Ok(ffi::Stash::Ptr(transferred)),
         }
     }
 
@@ -132,8 +132,8 @@ pub trait Encoder {
         cif: &libffi::Cif,
         ptr: libffi::CodePtr,
         args: &[libffi::Arg],
-    ) -> anyhow::Result<ffi::StashedValue> {
-        Ok(ffi::StashedValue::Ptr(unsafe {
+    ) -> anyhow::Result<ffi::Stash> {
+        Ok(ffi::Stash::Ptr(unsafe {
             cif.call::<*mut c_void>(ptr, args)
         }))
     }
@@ -147,31 +147,31 @@ pub trait Encoder {
 pub trait Decoder {
     unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
         match src {
-            ReadSource::Call(stashed_value) => self.decode_call(stashed_value),
+            ReadSource::Call(stash) => self.decode_call(stash),
             ReadSource::Value(ptr, context) => unsafe { self.read_value(ptr, context) },
             ReadSource::Slot(ptr, context) => unsafe { self.read_pointer_slot(ptr, context) },
         }
     }
 
-    fn decode_call(&self, _stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
-        bail!("This type cannot be decoded from StashedValue")
+    fn decode_call(&self, _stash: &ffi::Stash) -> anyhow::Result<value::Value> {
+        bail!("This type cannot be decoded from Stash")
     }
 
     unsafe fn read_value(&self, _ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         bail!("This type cannot be read from pointer")
     }
 
-    fn decode(&self, stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
-        unsafe { self.read(ReadSource::Call(stashed_value)) }
+    fn decode(&self, stash: &ffi::Stash) -> anyhow::Result<value::Value> {
+        unsafe { self.read(ReadSource::Call(stash)) }
     }
 
     fn decode_with_context(
         &self,
-        stashed_value: &ffi::StashedValue,
-        _ffi_args: &[ffi::StashedValue],
+        stash: &ffi::Stash,
+        _ffi_args: &[ffi::Stash],
         _arg_codecs: &[Codec],
     ) -> anyhow::Result<value::Value> {
-        self.decode(stashed_value)
+        self.decode(stash)
     }
 
     unsafe fn read_pointer_slot(
@@ -195,14 +195,14 @@ pub trait Decoder {
 
     fn decode_call_non_null<F>(
         &self,
-        stashed_value: &ffi::StashedValue,
+        stash: &ffi::Stash,
         label: &str,
         decode: F,
     ) -> anyhow::Result<value::Value>
     where
         F: FnOnce(*mut c_void) -> anyhow::Result<value::Value>,
     {
-        match stashed_value.as_non_null_ptr(label)? {
+        match stash.as_non_null_ptr(label)? {
             Some(ptr) => decode(ptr),
             None => Ok(value::Value::Null),
         }

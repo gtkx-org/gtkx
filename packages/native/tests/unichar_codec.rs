@@ -12,19 +12,19 @@ extern "C" fn ret_codepoint() -> u32 {
 #[test]
 fn encode_accepts_string_number_and_optional_null() {
     let from_string = Encoder::encode(&UnicharCodec, &Value::String("Aaa".to_owned())).unwrap();
-    assert!(matches!(from_string, ffi::StashedValue::U32(c) if c == 'A' as u32));
+    assert!(matches!(from_string, ffi::Stash::U32(c) if c == 'A' as u32));
 
     let from_empty = Encoder::encode(&UnicharCodec, &Value::String(String::new())).unwrap();
-    assert!(matches!(from_empty, ffi::StashedValue::U32(0)));
+    assert!(matches!(from_empty, ffi::Stash::U32(0)));
 
     let from_number = Encoder::encode(&UnicharCodec, &Value::Number(66.0)).unwrap();
-    assert!(matches!(from_number, ffi::StashedValue::U32(66)));
+    assert!(matches!(from_number, ffi::Stash::U32(66)));
 
     let optional_null = Encoder::encode(&UnicharCodec, &Value::Null).unwrap();
-    assert!(matches!(optional_null, ffi::StashedValue::U32(0)));
+    assert!(matches!(optional_null, ffi::Stash::U32(0)));
 
     let optional_undef = Encoder::encode(&UnicharCodec, &Value::Undefined).unwrap();
-    assert!(matches!(optional_undef, ffi::StashedValue::U32(0)));
+    assert!(matches!(optional_undef, ffi::Stash::U32(0)));
 
     assert!(Encoder::encode(&UnicharCodec, &Value::Boolean(true)).is_err());
 }
@@ -46,17 +46,17 @@ fn call_cif_invokes_native_function() {
         &[],
     )
     .unwrap();
-    assert!(matches!(result, ffi::StashedValue::U32(c) if c == 'Z' as u32));
+    assert!(matches!(result, ffi::Stash::U32(c) if c == 'Z' as u32));
 }
 
 #[test]
 fn decode_reads_codepoint_and_rejects_invalid() {
-    let decoded = Decoder::decode(&UnicharCodec, &ffi::StashedValue::U32('Q' as u32)).unwrap();
+    let decoded = Decoder::decode(&UnicharCodec, &ffi::Stash::U32('Q' as u32)).unwrap();
     assert!(matches!(decoded, Value::String(ref s) if s == "Q"));
 
-    assert!(Decoder::decode(&UnicharCodec, &ffi::StashedValue::Void).is_err());
+    assert!(Decoder::decode(&UnicharCodec, &ffi::Stash::Void).is_err());
 
-    let invalid = Decoder::decode(&UnicharCodec, &ffi::StashedValue::U32(0x0011_0000));
+    let invalid = Decoder::decode(&UnicharCodec, &ffi::Stash::U32(0x0011_0000));
     assert!(invalid.is_err());
 }
 

@@ -1,7 +1,7 @@
 use std::ffi::c_void;
 
 use napi::sys::TypedarrayType;
-use native::ffi::StashedValue;
+use native::ffi::Stash;
 use native::ffi::codec::{
     ArrayCodec, ArrayKind, BigIntCodec, BooleanCodec, Codec, Encoder as _, EnumFlagsCodec,
     EnumFlagsKind, FloatCodec, IntegerCodec, Ownership,
@@ -40,7 +40,7 @@ fn view_over(data: &mut [u8], length: usize, kind: BufferViewKind) -> BufferView
     BufferView::new(data.as_mut_ptr() as *mut c_void, data.len(), length, kind)
 }
 
-fn encode_view(codec: ArrayCodec, view: BufferView) -> anyhow::Result<StashedValue> {
+fn encode_view(codec: ArrayCodec, view: BufferView) -> anyhow::Result<Stash> {
     codec.encode(&Value::BufferView(view))
 }
 
@@ -50,7 +50,7 @@ fn assert_passthrough(item: Codec, view_kind: BufferViewKind) {
     let view = view_over(&mut data, 4, view_kind);
     let encoded = encode_view(array_of(item, ArrayKind::Array, Ownership::Borrowed), view)
         .expect("matching view should encode");
-    let StashedValue::Ptr(ptr) = encoded else {
+    let Stash::Ptr(ptr) = encoded else {
         panic!("expected a pointer passthrough, got {encoded:?}");
     };
     assert_eq!(ptr, expected_ptr);
@@ -187,7 +187,7 @@ fn assert_int32_view_passes_through(codec: ArrayCodec, context: &str) {
     let expected_ptr = data.as_mut_ptr() as *mut c_void;
     let view = view_over(&mut data, 4, BufferViewKind::Int32);
     let encoded = encode_view(codec, view).expect(context);
-    assert!(matches!(encoded, StashedValue::Ptr(ptr) if ptr == expected_ptr));
+    assert!(matches!(encoded, Stash::Ptr(ptr) if ptr == expected_ptr));
 }
 
 #[test]

@@ -1,530 +1,265 @@
-use test_support as helpers;
+use std::ffi::c_void;
+use std::sync::Arc;
 
-use std::ffi::{CStr, CString, c_char, c_void};
+use napi::Env;
+use napi::bindgen_prelude::{FromNapiValue, Unknown};
+use native::ffi::callback::{CallbackData, CallbackState};
+use native::ffi::codec::{Codec, VoidCodec};
+use native::ffi::value::JsRef;
+use native::ffi::{CallbackValue, Stash, StashStorage};
 
-use gtk4::glib;
-use native::ffi::codec::{
-    ArrayCodec, ArrayKind, Codec, Encoder as _, IntegerCodec, Ownership, StringCodec,
-};
-use native::ffi::value::Value;
-use native::ffi::{GArrayData, ListData, ListPayload, Stash, StashStorage, StashedValue};
-
-fn make_glist_one() -> *mut glib::ffi::GList {
-    unsafe { glib::ffi::g_list_append(std::ptr::null_mut(), std::ptr::without_provenance_mut(1)) }
-}
-
-fn make_gslist_one() -> *mut glib::ffi::GSList {
-    unsafe { glib::ffi::g_slist_append(std::ptr::null_mut(), std::ptr::without_provenance_mut(1)) }
-}
-
-fn make_g_array() -> *mut glib::ffi::GArray {
-    unsafe { glib::ffi::g_array_sized_new(0, 0, size_of::<i32>() as u32, 0) }
-}
-
-fn make_g_byte_array() -> *mut glib::ffi::GByteArray {
-    unsafe { glib::ffi::g_byte_array_sized_new(0) }
-}
-
-fn make_hash_table() -> *mut glib::ffi::GHashTable {
-    unsafe {
-        glib::ffi::g_hash_table_new_full(
-            Some(glib::ffi::g_direct_hash),
-            Some(glib::ffi::g_direct_equal),
-            None,
-            None,
-        )
-    }
-}
-
-fn glist_storage(ptr: *mut glib::ffi::GList, should_free: bool) -> Stash {
-    Stash::new(
-        ptr as *mut c_void,
-        StashStorage::List(ListData {
-            ops: &native::ffi::GLIST_OPS,
-            ptr: ptr as *mut c_void,
-            should_free,
-            payload: ListPayload::Handles(Vec::new()),
-        }),
-    )
-}
-
-fn gslist_storage(ptr: *mut glib::ffi::GSList, should_free: bool) -> Stash {
-    Stash::new(
-        ptr as *mut c_void,
-        StashStorage::List(ListData {
-            ops: &native::ffi::GSLIST_OPS,
-            ptr: ptr as *mut c_void,
-            should_free,
-            payload: ListPayload::Handles(Vec::new()),
-        }),
-    )
-}
-
-fn garray_storage(ptr: *mut glib::ffi::GArray, should_free: bool) -> Stash {
-    Stash::new(
-        ptr as *mut c_void,
-        StashStorage::GArray(GArrayData { ptr, should_free }),
-    )
-}
-
-fn gbytearray_storage(ptr: *mut glib::ffi::GByteArray, should_free: bool) -> Stash {
-    let owned: Option<glib::ByteArray> =
-        should_free.then(|| unsafe { glib::translate::from_glib_full(ptr) });
-    Stash::new(ptr as *mut c_void, StashStorage::GByteArray(owned))
-}
-
-fn hashtable_storage(handle: *mut glib::ffi::GHashTable, should_free: bool) -> Stash {
-    if should_free {
-        Stash::new(handle as *mut c_void, StashStorage::HashTable)
+fn callback_value(destroy: bool) -> CallbackValue {
+    let destroy_ptr = if destroy {
+        Some(std::ptr::without_provenance_mut::<c_void>(0xDEAD))
     } else {
-        Stash::unit(handle as *mut c_void)
-    }
+        None
+    };
+    CallbackValue::new(
+        std::ptr::without_provenance_mut::<c_void>(0xCAFE),
+        std::ptr::without_provenance_mut::<c_void>(0xBEEF),
+        destroy_ptr,
+        None,
+    )
 }
 
-fn string_glist_storage(
-    strings: Vec<CString>,
-    ptr: *mut glib::ffi::GList,
-    should_free: bool,
-    items_duped: bool,
-) -> Stash {
-    Stash::new(
-        ptr as *mut c_void,
-        StashStorage::List(ListData {
-            ops: &native::ffi::GLIST_OPS,
-            ptr: ptr as *mut c_void,
-            should_free,
-            payload: ListPayload::Strings {
-                strings,
-                items_duped,
-            },
-        }),
+fn js_func_ref() -> Arc<JsRef> {
+    let env = Env::from_raw(std::ptr::null_mut());
+    let func = unsafe { Unknown::from_napi_value(std::ptr::null_mut(), std::ptr::null_mut()) }
+        .expect("stubbed unknown creation should succeed");
+    Arc::new(JsRef::from_js_value(&env, &func).expect("stubbed reference creation should succeed"))
+}
+
+fn armed_callback_value(destroy_ptr: Option<*mut c_void>) -> (CallbackValue, Arc<JsRef>) {
+    let js_fn = js_func_ref();
+    let data = CallbackData::new(
+        Arc::clone(&js_fn),
+        Vec::new(),
+        Codec::Void(VoidCodec),
+        None,
+        false,
+    );
+    let state = Box::new(CallbackState::new(data));
+    let fn_ptr = state.code_ptr;
+    (
+        CallbackValue::new_pending_transfer(fn_ptr, destroy_ptr, state),
+        js_fn,
     )
 }
 
-fn string_gslist_storage(
-    strings: Vec<CString>,
-    ptr: *mut glib::ffi::GSList,
-    should_free: bool,
-    items_duped: bool,
-) -> Stash {
-    Stash::new(
-        ptr as *mut c_void,
-        StashStorage::List(ListData {
-            ops: &native::ffi::GSLIST_OPS,
-            ptr: ptr as *mut c_void,
-            should_free,
-            payload: ListPayload::Strings {
-                strings,
-                items_duped,
-            },
-        }),
-    )
+fn release_handed_over_state(state_ptr: *mut c_void, js_fn: &Arc<JsRef>) {
+    assert_eq!(Arc::strong_count(js_fn), 2);
+    unsafe { CallbackState::destroy(state_ptr) };
+    assert_eq!(Arc::strong_count(js_fn), 1);
 }
 
 #[test]
-fn hashtable_storage_unrefs_on_drop() {
-    helpers::run(|| {
-        let hash_table = make_hash_table();
-
-        unsafe { glib::ffi::g_hash_table_ref(hash_table) };
-
-        {
-            let _storage = hashtable_storage(hash_table, true);
-        }
-
-        unsafe { glib::ffi::g_hash_table_unref(hash_table) };
-    });
+fn new_armed_exposes_state_and_closure_pointers() {
+    let destroy_ptr = CallbackState::destroy as *mut c_void;
+    let (tv, _js_func) = armed_callback_value(Some(destroy_ptr));
+    assert!(!tv.fn_ptr().is_null());
+    assert!(!tv.state_ptr().is_null());
+    assert_eq!(tv.destroy_ptr(), Some(destroy_ptr));
+    let state = unsafe { &*(tv.state_ptr() as *const CallbackState) };
+    assert_eq!(state.code_ptr, tv.fn_ptr());
 }
 
 #[test]
-fn hashtable_storage_null_handle_safe_on_drop() {
-    {
-        let _storage = Stash::new(std::ptr::null_mut(), StashStorage::HashTable);
-    }
+fn armed_state_drops_with_value_when_call_never_happens() {
+    let (tv, js_fn) = armed_callback_value(None);
+    assert_eq!(Arc::strong_count(&js_fn), 2);
+    drop(tv);
+    assert_eq!(Arc::strong_count(&js_fn), 1);
 }
 
 #[test]
-fn unit_storage_carries_provided_pointer() {
-    let ptr = std::ptr::without_provenance_mut::<c_void>(0x10);
-    let storage = Stash::unit(ptr);
-    assert_eq!(storage.ptr(), ptr);
-    assert!(matches!(storage.storage(), StashStorage::Unit));
+fn disarm_pending_transfer_hands_state_over_and_is_idempotent() {
+    let (tv, js_fn) = armed_callback_value(Some(CallbackState::destroy as *mut c_void));
+    let state_ptr = tv.state_ptr();
+    tv.disarm_pending_transfer();
+    tv.disarm_pending_transfer();
+    drop(tv);
+    release_handed_over_state(state_ptr, &js_fn);
 }
 
 #[test]
-fn storage_ptr_ref_borrows_the_pointer() {
-    let storage: Stash = vec![1u8].into();
-    assert_eq!(*storage.ptr_ref(), storage.ptr());
+fn stash_disarm_pending_transfer_routes_to_callback() {
+    let (tv, js_fn) = armed_callback_value(None);
+    let state_ptr = tv.state_ptr();
+    let value = Stash::Callback(tv);
+    value.disarm_pending_transfer();
+    drop(value);
+    release_handed_over_state(state_ptr, &js_fn);
 }
 
 #[test]
-fn from_vec_covers_every_integer_and_float_type() {
-    let u8s: Stash = vec![1u8].into();
-    assert!(matches!(u8s.storage(), StashStorage::U8Vec(_)));
-    let i8s: Stash = vec![1i8].into();
-    assert!(matches!(i8s.storage(), StashStorage::I8Vec(_)));
-    let u16s: Stash = vec![1u16].into();
-    assert!(matches!(u16s.storage(), StashStorage::U16Vec(_)));
-    let i16s: Stash = vec![1i16].into();
-    assert!(matches!(i16s.storage(), StashStorage::I16Vec(_)));
-    let u32s: Stash = vec![1u32].into();
-    assert!(matches!(u32s.storage(), StashStorage::U32Vec(_)));
-    let i32s: Stash = vec![1i32].into();
-    assert!(matches!(i32s.storage(), StashStorage::I32Vec(_)));
-    let u64s: Stash = vec![1u64].into();
-    assert!(matches!(u64s.storage(), StashStorage::U64Vec(_)));
-    let i64s: Stash = vec![1i64].into();
-    assert!(matches!(i64s.storage(), StashStorage::I64Vec(_)));
-    let f32s: Stash = vec![1.0f32].into();
-    assert!(matches!(f32s.storage(), StashStorage::F32Vec(_)));
-    let f64s: Stash = vec![1.0f64].into();
-    assert!(matches!(f64s.storage(), StashStorage::F64Vec(_)));
+fn stash_disarm_pending_transfer_is_a_noop_for_scalars() {
+    Stash::I32(7).disarm_pending_transfer();
+    Stash::F64(1.5).disarm_pending_transfer();
 }
 
 #[test]
-fn drop_no_op_kinds_do_not_crash() {
-    let unit = Stash::unit(std::ptr::null_mut());
-    drop(unit);
-    let cstring = Stash::new(
-        std::ptr::null_mut(),
-        StashStorage::CString(CString::new("x").unwrap()),
+fn callback_value_accessors_expose_pointers() {
+    let tv = callback_value(true);
+    assert_eq!(
+        tv.fn_ptr(),
+        std::ptr::without_provenance_mut::<c_void>(0xCAFE)
     );
-    drop(cstring);
-    let buffer = Stash::new(std::ptr::null_mut(), StashStorage::Buffer(vec![1u8]));
-    drop(buffer);
-    let ptr_storage = Stash::new(
-        std::ptr::null_mut(),
-        StashStorage::PtrSlot(vec![std::ptr::null_mut()]),
+    assert_eq!(
+        tv.state_ptr(),
+        std::ptr::without_provenance_mut::<c_void>(0xBEEF)
     );
-    drop(ptr_storage);
-}
-
-#[test]
-fn glist_storage_frees_when_should_free() {
-    helpers::run(|| {
-        let list = make_glist_one();
-        {
-            let _storage = glist_storage(list, true);
-        }
-    });
-}
-
-#[test]
-fn glist_storage_keeps_when_not_freed() {
-    helpers::run(|| {
-        let list = make_glist_one();
-        {
-            let _storage = glist_storage(list, false);
-        }
-        let len = unsafe { glib::ffi::g_list_length(list) };
-        assert_eq!(len, 1);
-        unsafe { glib::ffi::g_list_free(list) };
-    });
-}
-
-#[test]
-fn glist_storage_null_ptr_safe_on_drop() {
-    let _storage = Stash::new(
-        std::ptr::null_mut(),
-        StashStorage::List(ListData {
-            ops: &native::ffi::GLIST_OPS,
-            ptr: std::ptr::null_mut(),
-            should_free: true,
-            payload: ListPayload::Handles(Vec::new()),
-        }),
+    assert_eq!(
+        tv.destroy_ptr(),
+        Some(std::ptr::without_provenance_mut::<c_void>(0xDEAD))
     );
 }
 
 #[test]
-fn gslist_storage_frees_when_should_free() {
-    helpers::run(|| {
-        let list = make_gslist_one();
-        {
-            let _storage = gslist_storage(list, true);
-        }
-    });
+fn callback_value_without_destroy_has_none() {
+    let tv = callback_value(false);
+    assert_eq!(tv.destroy_ptr(), None);
 }
 
 #[test]
-fn gslist_storage_keeps_when_not_freed() {
-    helpers::run(|| {
-        let list = make_gslist_one();
-        {
-            let _storage = gslist_storage(list, false);
-        }
-        unsafe { glib::ffi::g_slist_free(list) };
-    });
+fn write_scalar_to_ptr_writes_every_numeric_variant() {
+    macro_rules! check {
+        ($variant:ident, $value:expr, $codec:ty) => {{
+            let mut slot: u64 = 0;
+            let slot_ptr = &mut slot as *mut u64 as *mut c_void;
+            let v = Stash::$variant($value);
+            unsafe { v.write_scalar_to_ptr(slot_ptr) }.expect("scalar write should succeed");
+            let read = unsafe { *(slot_ptr as *const $codec) };
+            assert_eq!(read, $value);
+        }};
+    }
+    check!(U8, 12u8, u8);
+    check!(I8, -5i8, i8);
+    check!(U16, 1234u16, u16);
+    check!(I16, -321i16, i16);
+    check!(U32, 99999u32, u32);
+    check!(I32, -42i32, i32);
+    check!(U64, 7u64, u64);
+    check!(I64, -7i64, i64);
+    check!(F32, 1.5f32, f32);
+    check!(F64, 2.5f64, f64);
 }
 
 #[test]
-fn gslist_storage_null_ptr_safe_on_drop() {
-    let _storage = Stash::new(
-        std::ptr::null_mut(),
-        StashStorage::List(ListData {
-            ops: &native::ffi::GSLIST_OPS,
-            ptr: std::ptr::null_mut(),
-            should_free: true,
-            payload: ListPayload::Handles(Vec::new()),
-        }),
+fn as_ptr_ptr_variant_returns_inner() {
+    let inner = std::ptr::without_provenance_mut::<c_void>(0x42);
+    let v = Stash::Ptr(inner);
+    assert_eq!(v.as_ptr("test").unwrap(), inner);
+
+    let null = Stash::Ptr(std::ptr::null_mut());
+    assert!(null.as_ptr("test").unwrap().is_null());
+}
+
+#[test]
+fn as_ptr_storage_returns_storage_ptr() {
+    let storage: StashStorage = vec![9u8].into();
+    let storage_ptr = storage.ptr();
+    let v = Stash::Storage(storage);
+    assert_eq!(v.as_ptr("test").unwrap(), storage_ptr);
+}
+
+#[test]
+fn as_ptr_scalar_and_callback_and_void_fail() {
+    assert!(Stash::U8(1).as_ptr("test").is_err());
+    assert!(Stash::I8(1).as_ptr("test").is_err());
+    assert!(Stash::U16(1).as_ptr("test").is_err());
+    assert!(Stash::I16(1).as_ptr("test").is_err());
+    assert!(Stash::U32(1).as_ptr("test").is_err());
+    assert!(Stash::I32(1).as_ptr("test").is_err());
+    assert!(Stash::U64(1).as_ptr("test").is_err());
+    assert!(Stash::I64(1).as_ptr("test").is_err());
+    assert!(Stash::F32(1.0).as_ptr("test").is_err());
+    assert!(Stash::F64(1.0).as_ptr("test").is_err());
+    assert!(
+        Stash::Callback(callback_value(false))
+            .as_ptr("test")
+            .is_err()
     );
+    assert!(Stash::Void.as_ptr("test").is_err());
 }
 
 #[test]
-fn garray_storage_unrefs_when_should_free() {
-    helpers::run(|| {
-        let array = make_g_array();
-        {
-            let _storage = garray_storage(array, true);
-        }
-    });
+fn as_non_null_ptr_null_returns_none() {
+    let v = Stash::Ptr(std::ptr::null_mut());
+    assert_eq!(v.as_non_null_ptr("test").unwrap(), None);
 }
 
 #[test]
-fn garray_storage_keeps_when_not_freed() {
-    helpers::run(|| {
-        let array = make_g_array();
-        {
-            let _storage = garray_storage(array, false);
-        }
-        unsafe { glib::ffi::g_array_unref(array) };
-    });
+fn as_non_null_ptr_non_null_returns_some() {
+    let inner = std::ptr::without_provenance_mut::<c_void>(0x55);
+    let v = Stash::Ptr(inner);
+    assert_eq!(v.as_non_null_ptr("test").unwrap(), Some(inner));
 }
 
 #[test]
-fn garray_storage_null_ptr_safe_on_drop() {
-    let _storage = Stash::new(
-        std::ptr::null_mut(),
-        StashStorage::GArray(GArrayData {
-            ptr: std::ptr::null_mut(),
-            should_free: true,
-        }),
-    );
+fn as_non_null_ptr_propagates_error() {
+    assert!(Stash::Void.as_non_null_ptr("test").is_err());
 }
 
 #[test]
-fn gbytearray_storage_unrefs_when_should_free() {
-    helpers::run(|| {
-        let array = make_g_byte_array();
-        {
-            let _storage = gbytearray_storage(array, true);
-        }
-    });
+fn to_number_handles_every_numeric_variant() {
+    assert_eq!(Stash::I8(-3).to_number().unwrap(), -3.0);
+    assert_eq!(Stash::U8(3).to_number().unwrap(), 3.0);
+    assert_eq!(Stash::I16(-300).to_number().unwrap(), -300.0);
+    assert_eq!(Stash::U16(300).to_number().unwrap(), 300.0);
+    assert_eq!(Stash::I32(-30000).to_number().unwrap(), -30000.0);
+    assert_eq!(Stash::U32(30000).to_number().unwrap(), 30000.0);
+    assert_eq!(Stash::I64(-7).to_number().unwrap(), -7.0);
+    assert_eq!(Stash::U64(7).to_number().unwrap(), 7.0);
+    assert!((Stash::F32(1.25).to_number().unwrap() - 1.25).abs() < 1e-6);
+    assert_eq!(Stash::F64(2.5).to_number().unwrap(), 2.5);
 }
 
 #[test]
-fn gbytearray_storage_keeps_when_not_freed() {
-    helpers::run(|| {
-        let array = make_g_byte_array();
-        {
-            let _storage = gbytearray_storage(array, false);
-        }
-        unsafe { glib::ffi::g_byte_array_unref(array) };
-    });
+fn append_libffi_args_callback_without_destroy_pushes_two() {
+    let v = Stash::Callback(callback_value(false));
+    let mut args = Vec::new();
+    v.append_libffi_args(&mut args);
+    assert_eq!(args.len(), 2);
 }
 
 #[test]
-fn gbytearray_storage_without_ownership_safe_on_drop() {
-    let _storage = Stash::new(std::ptr::null_mut(), StashStorage::GByteArray(None));
+fn append_libffi_args_callback_with_destroy_pushes_three() {
+    let v = Stash::Callback(callback_value(true));
+    let mut args = Vec::new();
+    v.append_libffi_args(&mut args);
+    assert_eq!(args.len(), 3);
+}
+fn scalar_value_samples() -> Vec<Stash> {
+    let storage: StashStorage = vec![1u8].into();
+    vec![
+        Stash::U8(1),
+        Stash::I8(1),
+        Stash::U16(1),
+        Stash::I16(1),
+        Stash::U32(1),
+        Stash::I32(1),
+        Stash::U64(1),
+        Stash::I64(1),
+        Stash::F32(1.0),
+        Stash::F64(1.0),
+        Stash::Ptr(std::ptr::null_mut()),
+        Stash::Storage(storage),
+        Stash::Void,
+    ]
 }
 
 #[test]
-fn hashtable_storage_keeps_when_not_freed() {
-    helpers::run(|| {
-        let hash_table = make_hash_table();
-        {
-            let _storage = hashtable_storage(hash_table, false);
-        }
-        unsafe { glib::ffi::g_hash_table_unref(hash_table) };
-    });
-}
-
-fn string_list_element_ptr(s: &CString, dup: bool) -> *mut c_void {
-    if dup {
-        unsafe { glib::ffi::g_strdup(s.as_ptr()) as *mut c_void }
-    } else {
-        s.as_ptr() as *mut c_void
+fn append_libffi_args_handles_every_scalar_variant() {
+    for v in &scalar_value_samples() {
+        let mut args = Vec::new();
+        v.append_libffi_args(&mut args);
+        assert_eq!(args.len(), 1);
     }
 }
 
-fn build_string_glist(strings: &[CString], dup: bool) -> *mut glib::ffi::GList {
-    let mut list: *mut glib::ffi::GList = std::ptr::null_mut();
-    for s in strings {
-        let ptr = string_list_element_ptr(s, dup);
-        list = unsafe { glib::ffi::g_list_append(list, ptr) };
+#[test]
+fn libffi_arg_conversion_covers_every_scalar_variant() {
+    for v in &scalar_value_samples() {
+        let _arg: libffi::middle::Arg = v.into();
     }
-    list
-}
-
-#[test]
-fn string_glist_storage_frees_duped_elements() {
-    helpers::run(|| {
-        let strings = vec![CString::new("a").unwrap(), CString::new("b").unwrap()];
-        let list = build_string_glist(&strings, true);
-        {
-            let _storage = string_glist_storage(strings, list, true, true);
-        }
-    });
-}
-
-fn drop_borrowed_string_glist_storage(should_free: bool) -> *mut glib::ffi::GList {
-    let strings = vec![CString::new("a").unwrap()];
-    let list = build_string_glist(&strings, false);
-    {
-        let _storage = string_glist_storage(strings, list, should_free, false);
-    }
-    list
-}
-
-#[test]
-fn string_glist_storage_frees_shallow_when_not_duped() {
-    helpers::run(|| {
-        drop_borrowed_string_glist_storage(true);
-    });
-}
-
-#[test]
-fn string_glist_storage_keeps_when_not_freed() {
-    helpers::run(|| {
-        let list = drop_borrowed_string_glist_storage(false);
-        unsafe { glib::ffi::g_list_free(list) };
-    });
-}
-
-#[test]
-fn string_glist_storage_null_ptr_safe_on_drop() {
-    let _storage = string_glist_storage(Vec::new(), std::ptr::null_mut(), true, true);
-}
-
-fn build_string_gslist(strings: &[CString], dup: bool) -> *mut glib::ffi::GSList {
-    let mut list: *mut glib::ffi::GSList = std::ptr::null_mut();
-    for s in strings.iter().rev() {
-        let ptr = string_list_element_ptr(s, dup);
-        list = unsafe { glib::ffi::g_slist_prepend(list, ptr) };
-    }
-    list
-}
-
-#[test]
-fn string_gslist_storage_frees_duped_elements() {
-    helpers::run(|| {
-        let strings = vec![CString::new("a").unwrap(), CString::new("b").unwrap()];
-        let list = build_string_gslist(&strings, true);
-        {
-            let _storage = string_gslist_storage(strings, list, true, true);
-        }
-    });
-}
-
-fn drop_borrowed_string_gslist_storage(should_free: bool) -> *mut glib::ffi::GSList {
-    let strings = vec![CString::new("a").unwrap()];
-    let list = build_string_gslist(&strings, false);
-    {
-        let _storage = string_gslist_storage(strings, list, should_free, false);
-    }
-    list
-}
-
-#[test]
-fn string_gslist_storage_frees_shallow_when_not_duped() {
-    helpers::run(|| {
-        drop_borrowed_string_gslist_storage(true);
-    });
-}
-
-#[test]
-fn string_gslist_storage_keeps_when_not_freed() {
-    helpers::run(|| {
-        let list = drop_borrowed_string_gslist_storage(false);
-        unsafe { glib::ffi::g_slist_free(list) };
-    });
-}
-
-#[test]
-fn string_gslist_storage_null_ptr_safe_on_drop() {
-    let _storage = string_gslist_storage(Vec::new(), std::ptr::null_mut(), true, true);
-}
-
-fn string_full_item_array_type(kind: ArrayKind, container_ownership: Ownership) -> ArrayCodec {
-    ArrayCodec::new(
-        Box::new(Codec::String(StringCodec {
-            ownership: Ownership::Full,
-            length: None,
-        })),
-        kind,
-        container_ownership,
-        None,
-        None,
-        None,
-    )
-    .expect("valid array codec")
-}
-
-#[test]
-fn encode_empty_string_glist_full_container_arms_null_transfer_safe_on_drop() {
-    let codec = string_full_item_array_type(ArrayKind::GList, Ownership::Full);
-    let encoded = codec.encode(&Value::Array(Vec::new())).unwrap();
-    let StashedValue::Stashed(storage) = &encoded else {
-        panic!("expected storage")
-    };
-    assert!(storage.ptr().is_null());
-    let StashStorage::List(data) = storage.storage() else {
-        panic!("expected string GList storage")
-    };
-    let ListPayload::Strings { items_duped, .. } = &data.payload else {
-        panic!("expected string payload")
-    };
-    assert!(data.ptr.is_null());
-    assert!(!data.should_free);
-    assert!(*items_duped);
-    drop(encoded);
-}
-
-#[test]
-fn encode_string_array_element_transfer_frees_duplicates_when_call_never_happens() {
-    let codec = string_full_item_array_type(ArrayKind::Array, Ownership::Borrowed);
-    let val = Value::Array(vec![
-        Value::String("foo".to_string()),
-        Value::String("bar".to_string()),
-    ]);
-    let encoded = codec.encode(&val).unwrap();
-    let StashedValue::Stashed(storage) = &encoded else {
-        panic!("expected storage")
-    };
-    let block = storage.ptr() as *mut *mut c_char;
-    let first = unsafe { CStr::from_ptr(*block) };
-    let second = unsafe { CStr::from_ptr(*block.add(1)) };
-    assert_eq!(first.to_str().unwrap(), "foo");
-    assert_eq!(second.to_str().unwrap(), "bar");
-    assert!(unsafe { (*block.add(2)).is_null() });
-    drop(encoded);
-}
-
-#[test]
-fn encode_gbytearray_full_ownership_unrefs_when_call_never_happens() {
-    helpers::run(|| {
-        let codec = ArrayCodec::new(
-            Box::new(Codec::Integer(IntegerCodec::U8)),
-            ArrayKind::GByteArray,
-            Ownership::Full,
-            None,
-            None,
-            None,
-        )
-        .expect("valid gbytearray codec");
-        let val = Value::Array(vec![Value::Number(7.0), Value::Number(8.0)]);
-        let encoded = codec.encode(&val).unwrap();
-        let StashedValue::Stashed(storage) = &encoded else {
-            panic!("expected storage")
-        };
-        assert!(matches!(storage.storage(), StashStorage::GByteArray(None)));
-        let byte_array = storage.ptr() as *mut glib::ffi::GByteArray;
-        unsafe { glib::ffi::g_byte_array_ref(byte_array) };
-        drop(encoded);
-        unsafe {
-            assert_eq!((*byte_array).len, 2);
-            assert_eq!(*(*byte_array).data, 7);
-            assert_eq!(*(*byte_array).data.add(1), 8);
-            glib::ffi::g_byte_array_unref(byte_array);
-        }
-    });
 }

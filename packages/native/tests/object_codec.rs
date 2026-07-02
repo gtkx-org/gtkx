@@ -31,7 +31,7 @@ fn object_value_of(ptr: *mut glib::gobject_ffi::GObject) -> Value {
     Value::Object(Handle::from_glib_borrow(ptr as *mut c_void))
 }
 
-fn encode_object(codec: &ObjectCodec, ptr: *mut glib::gobject_ffi::GObject) -> ffi::StashedValue {
+fn encode_object(codec: &ObjectCodec, ptr: *mut glib::gobject_ffi::GObject) -> ffi::Stash {
     codec
         .encode(&object_value_of(ptr))
         .expect("encode should succeed")
@@ -47,7 +47,7 @@ fn encode_full_transfer_adds_exactly_one_ref() {
 
         assert_eq!(get_gobject_refcount(obj_ptr), before + 1);
 
-        let ffi::StashedValue::Stashed(storage) = &encoded else {
+        let ffi::Stash::Storage(storage) = &encoded else {
             panic!("expected Storage ffi value");
         };
         assert_eq!(storage.ptr(), obj_ptr as *mut c_void);
@@ -77,7 +77,7 @@ fn encode_borrowed_does_not_change_refcount() {
         let encoded = encode_object(&borrowed(), obj_ptr);
 
         assert_eq!(get_gobject_refcount(obj_ptr), before);
-        assert!(matches!(encoded, ffi::StashedValue::Ptr(_)));
+        assert!(matches!(encoded, ffi::Stash::Ptr(_)));
     });
 }
 
@@ -132,7 +132,7 @@ fn decode_borrowed_adds_exactly_one_ref() {
         let (_obj, obj_ptr, before) = fresh_gobject();
 
         let decoded = borrowed()
-            .decode(&ffi::StashedValue::Ptr(obj_ptr as *mut c_void))
+            .decode(&ffi::Stash::Ptr(obj_ptr as *mut c_void))
             .expect("borrowed decode should succeed");
 
         assert_eq!(get_gobject_refcount(obj_ptr), before + 1);
@@ -151,7 +151,7 @@ fn decode_full_transfer_keeps_refcount_net_of_wrapper() {
         let before = get_gobject_refcount(obj_ptr);
 
         let decoded = full()
-            .decode(&ffi::StashedValue::Ptr(obj_ptr as *mut c_void))
+            .decode(&ffi::Stash::Ptr(obj_ptr as *mut c_void))
             .expect("full decode should succeed");
 
         assert_eq!(get_gobject_refcount(obj_ptr), before);
@@ -173,7 +173,7 @@ fn decode_floating_object_is_sunk() {
         let before = get_gobject_refcount(obj_ptr);
 
         let decoded = full()
-            .decode(&ffi::StashedValue::Ptr(obj_ptr as *mut c_void))
+            .decode(&ffi::Stash::Ptr(obj_ptr as *mut c_void))
             .expect("floating decode should succeed");
 
         assert!(!unsafe { glib::gobject_ffi::g_object_is_floating(obj_ptr) != 0 });

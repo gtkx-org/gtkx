@@ -74,7 +74,7 @@ fn assert_read_aliases_source<C: Decoder>(codec: &C, original: *mut c_void, mess
     drop(value);
 }
 
-fn encode_rgba(ownership: Ownership, ptr: *mut c_void) -> ffi::StashedValue {
+fn encode_rgba(ownership: Ownership, ptr: *mut c_void) -> ffi::Stash {
     boxed(ownership)
         .encode(&object_value_of(ptr))
         .expect("encode should succeed")
@@ -111,7 +111,7 @@ fn encode_full_copies_to_distinct_pointer() {
 
         let encoded = encode_rgba(Ownership::Full, original);
         encoded.disarm_pending_transfer();
-        let ffi::StashedValue::Stashed(storage) = &encoded else {
+        let ffi::Stash::Storage(storage) = &encoded else {
             panic!("expected Storage ffi value");
         };
         let copied = storage.ptr();
@@ -142,7 +142,7 @@ fn encode_borrowed_keeps_same_pointer() {
         let (gtype, original) = rgba_boxed_alloc();
 
         let encoded = encode_rgba(Ownership::Borrowed, original);
-        let ffi::StashedValue::Ptr(ptr) = encoded else {
+        let ffi::Stash::Ptr(ptr) = encoded else {
             panic!("expected Ptr ffi value");
         };
         assert_eq!(ptr, original);
@@ -201,7 +201,7 @@ fn decode_full_dups_owned_boxed() {
         let (_gtype, original) = rgba_boxed_alloc();
 
         let decoded = boxed(Ownership::Full)
-            .decode(&ffi::StashedValue::Ptr(original))
+            .decode(&ffi::Stash::Ptr(original))
             .expect("full decode should succeed");
         assert!(matches!(decoded, Value::Object(_)));
         drop(decoded);
@@ -214,7 +214,7 @@ fn decode_borrowed_copies_boxed() {
         let (gtype, original) = rgba_boxed_alloc();
 
         let decoded = boxed(Ownership::Borrowed)
-            .decode(&ffi::StashedValue::Ptr(original))
+            .decode(&ffi::Stash::Ptr(original))
             .expect("borrowed decode should succeed");
         assert!(matches!(decoded, Value::Object(_)));
         drop(decoded);
@@ -422,7 +422,7 @@ fn struct_encode_keeps_pointer() {
         let encoded = struct_type(Ownership::Borrowed, None)
             .encode(&Value::Object(Handle::from_glib_borrow(original)))
             .expect("struct encode should succeed");
-        assert!(matches!(encoded, ffi::StashedValue::Ptr(p) if p == original));
+        assert!(matches!(encoded, ffi::Stash::Ptr(p) if p == original));
 
         unsafe { glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original) };
     });
@@ -433,7 +433,7 @@ fn struct_decode_full_takes_ownership() {
     helpers::run(|| {
         let raw = unsafe { glib::ffi::g_malloc0(64) };
         let decoded = struct_type(Ownership::Full, None)
-            .decode(&ffi::StashedValue::Ptr(raw))
+            .decode(&ffi::Stash::Ptr(raw))
             .expect("struct full decode should succeed");
         assert!(matches!(decoded, Value::Object(_)));
         drop(decoded);
@@ -445,7 +445,7 @@ fn struct_decode_borrowed_with_size_copies() {
     helpers::run(|| {
         let raw = unsafe { glib::ffi::g_malloc0(64) };
         let decoded = struct_type(Ownership::Borrowed, Some(64))
-            .decode(&ffi::StashedValue::Ptr(raw))
+            .decode(&ffi::Stash::Ptr(raw))
             .expect("struct sized decode should succeed");
         assert!(matches!(decoded, Value::Object(_)));
         drop(decoded);
@@ -459,7 +459,7 @@ fn struct_decode_borrowed_without_size_is_unowned() {
     helpers::run(|| {
         let raw = unsafe { glib::ffi::g_malloc0(64) };
         let decoded = struct_type(Ownership::Borrowed, None)
-            .decode(&ffi::StashedValue::Ptr(raw))
+            .decode(&ffi::Stash::Ptr(raw))
             .expect("struct unowned decode should succeed");
         assert!(matches!(decoded, Value::Object(_)));
         drop(decoded);
@@ -650,7 +650,7 @@ mod free_fn {
 
     fn decode_wrapper(descriptor: &BoxedCodec, ptr: *mut c_void) -> Value {
         descriptor
-            .decode(&ffi::StashedValue::Ptr(ptr))
+            .decode(&ffi::Stash::Ptr(ptr))
             .expect("decode with freeFnName should succeed")
     }
 
@@ -701,7 +701,7 @@ mod free_fn {
             };
 
             let err = descriptor
-                .decode(&ffi::StashedValue::Ptr(raw))
+                .decode(&ffi::Stash::Ptr(raw))
                 .expect_err("decode with missing free symbol should fail");
             let msg = format!("{err}");
             assert!(msg.contains("BadFreeFnBoxed"));
@@ -725,7 +725,7 @@ mod free_fn {
             };
 
             let err = descriptor
-                .decode(&ffi::StashedValue::Ptr(raw))
+                .decode(&ffi::Stash::Ptr(raw))
                 .expect_err("decode with missing library should fail");
             assert!(format!("{err}").contains("BadLibBoxed"));
 
@@ -754,7 +754,7 @@ mod free_fn {
             };
 
             let err = descriptor
-                .decode(&ffi::StashedValue::Ptr(raw))
+                .decode(&ffi::Stash::Ptr(raw))
                 .expect_err("decode without library should fail");
             assert!(format!("{err}").contains("LibrarylessFreeFn"));
 

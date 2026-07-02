@@ -91,8 +91,8 @@ impl Encoder for BoxedCodec {
 }
 
 impl Decoder for BoxedCodec {
-    fn decode_call(&self, stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
-        self.decode_call_non_null(stashed_value, "Boxed", |ptr| {
+    fn decode_call(&self, stash: &ffi::Stash) -> anyhow::Result<value::Value> {
+        self.decode_call_non_null(stash, "Boxed", |ptr| {
             if let Some(free_fn_name) = self.free_fn_name.as_deref() {
                 return Ok(self.boxed_with_free_fn(ptr, free_fn_name)?.into());
             }

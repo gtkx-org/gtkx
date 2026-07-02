@@ -73,37 +73,37 @@ pub(super) fn encode_and_leak_container<F>(
     encode: F,
 ) -> *mut c_void
 where
-    F: FnOnce(&value::Value) -> anyhow::Result<crate::ffi::StashedValue>,
+    F: FnOnce(&value::Value) -> anyhow::Result<crate::ffi::Stash>,
 {
     let Ok(value @ value::Value::Array(_)) = value else {
         return std::ptr::null_mut();
     };
-    let Some(stashed_value) = encode(value).report_err(context) else {
+    let Some(stash) = encode(value).report_err(context) else {
         return std::ptr::null_mut();
     };
-    let container = stashed_value.as_ptr(context).expect(context);
-    std::mem::forget(stashed_value);
+    let container = stash.as_ptr(context).expect(context);
+    std::mem::forget(stash);
     container
 }
 
-pub(super) fn full_transfer_stashed(
+pub(super) fn full_transfer_stash(
     ptr: *mut c_void,
     release: crate::ffi::PendingRelease,
-) -> crate::ffi::StashedValue {
-    crate::ffi::StashedValue::Stashed(
-        crate::ffi::Stash::unit(ptr).with_pending_transfer(ptr, release),
+) -> crate::ffi::Stash {
+    crate::ffi::Stash::Storage(
+        crate::ffi::StashStorage::unit(ptr).with_pending_transfer(ptr, release),
     )
 }
 
 pub(super) fn finalize_container_stash(
-    storage: ffi::Stash,
+    storage: ffi::StashStorage,
     should_free: bool,
     mut acquired: Vec<ffi::PendingTransfer>,
     container_release: ffi::PendingRelease,
-) -> ffi::StashedValue {
+) -> ffi::Stash {
     let container = storage.ptr();
     if !should_free {
         acquired.push(ffi::PendingTransfer::new(container, container_release));
     }
-    ffi::StashedValue::Stashed(storage.with_pending_transfers(acquired))
+    ffi::Stash::Storage(storage.with_pending_transfers(acquired))
 }

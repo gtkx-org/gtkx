@@ -2,7 +2,7 @@ use test_support as helpers;
 
 use std::ffi::c_void;
 
-use native::ffi::StashedValue;
+use native::ffi::Stash;
 use native::ffi::codec::{ArrayCodec, BufferCodec, Decoder as _, Encoder as _};
 use native::ffi::value::{BufferView, BufferViewKind, Value};
 
@@ -10,7 +10,7 @@ use helpers::{f32_array_codec, i32_array_codec};
 
 fn decode_array_items(array_codec: &ArrayCodec, buffer_ptr: *const i32) -> Vec<Value> {
     let decoded = array_codec
-        .decode_with_context(&StashedValue::Ptr(buffer_ptr as *mut c_void), &[], &[])
+        .decode_with_context(&Stash::Ptr(buffer_ptr as *mut c_void), &[], &[])
         .expect("contiguous decode");
     let Value::Array(items) = decoded else {
         panic!("expected an array value");
@@ -38,8 +38,8 @@ fn decodes_empty_contiguous_array() {
     assert!(items.is_empty());
 }
 
-fn encoded_ptr(encoded: &StashedValue) -> *mut c_void {
-    let StashedValue::Ptr(ptr) = encoded else {
+fn encoded_ptr(encoded: &Stash) -> *mut c_void {
+    let Stash::Ptr(ptr) = encoded else {
         panic!("expected a pointer passthrough, got {encoded:?}");
     };
     *ptr

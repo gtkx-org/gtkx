@@ -6,12 +6,8 @@ use super::container::ArrayContainer;
 pub(crate) struct GPtrArrayCodec;
 
 impl ArrayContainer for GPtrArrayCodec {
-    fn decode(
-        &self,
-        codec: &ArrayCodec,
-        stashed_value: &ffi::StashedValue,
-    ) -> anyhow::Result<value::Value> {
-        let Some(ptr) = stashed_value.as_non_null_ptr("GPtrArray")? else {
+    fn decode(&self, codec: &ArrayCodec, stash: &ffi::Stash) -> anyhow::Result<value::Value> {
+        let Some(ptr) = stash.as_non_null_ptr("GPtrArray")? else {
             return Ok(value::Value::Array(vec![]));
         };
 

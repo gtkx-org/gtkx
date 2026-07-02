@@ -30,7 +30,7 @@ impl Encoder for CallbackCodec {
         _cif: &libffi::Cif,
         _ptr: libffi::CodePtr,
         _args: &[libffi::Arg],
-    ) -> anyhow::Result<ffi::StashedValue> {
+    ) -> anyhow::Result<ffi::Stash> {
         anyhow::bail!("Callbacks cannot be return codecs")
     }
 
@@ -42,7 +42,7 @@ impl Encoder for CallbackCodec {
         }
     }
 
-    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
+    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::Stash> {
         let callback = match value {
             value::Value::Callback(callback) => callback,
             value::Value::Null | value::Value::Undefined => {
@@ -68,14 +68,14 @@ impl Encoder for CallbackCodec {
         match self.scope {
             CallbackScope::Call => {
                 let state_ptr = &*state as *const CallbackState as *mut c_void;
-                Ok(ffi::StashedValue::Callback(ffi::CallbackValue::new(
+                Ok(ffi::Stash::Callback(ffi::CallbackValue::new(
                     fn_ptr,
                     state_ptr,
                     None,
                     Some(state),
                 )))
             }
-            _ => Ok(ffi::StashedValue::Callback(
+            _ => Ok(ffi::Stash::Callback(
                 ffi::CallbackValue::new_pending_transfer(fn_ptr, destroy, state),
             )),
         }
@@ -87,8 +87,8 @@ impl Decoder for CallbackCodec {}
 impl PtrWriter for CallbackCodec {}
 
 impl CallbackCodec {
-    fn null_callback_value(&self) -> ffi::StashedValue {
-        ffi::StashedValue::Callback(ffi::CallbackValue::new(
+    fn null_callback_value(&self) -> ffi::Stash {
+        ffi::Stash::Callback(ffi::CallbackValue::new(
             std::ptr::null_mut(),
             std::ptr::null_mut(),
             if self.has_destroy {

@@ -92,13 +92,12 @@ fn callback_codec() -> CallbackCodec {
 
 #[test]
 fn ffi_decoder_decode_default_bails() {
-    assert!(Decoder::decode(&callback_codec(), &ffi::StashedValue::Void).is_err());
+    assert!(Decoder::decode(&callback_codec(), &ffi::Stash::Void).is_err());
 }
 
 #[test]
 fn ffi_decoder_decode_with_context_default_delegates_to_decode() {
-    let result =
-        Decoder::decode_with_context(&callback_codec(), &ffi::StashedValue::Void, &[], &[]);
+    let result = Decoder::decode_with_context(&callback_codec(), &ffi::Stash::Void, &[], &[]);
     assert!(result.is_err());
 }
 
@@ -170,14 +169,14 @@ fn ffi_encoder_defaults_cover_pointer_typed_codec() {
     let cif = middle::Cif::new(Vec::new(), middle::Type::pointer());
     let result =
         Encoder::call_cif(&st, &cif, middle::CodePtr(ret_ptr as *mut c_void), &[]).unwrap();
-    assert!(matches!(result, ffi::StashedValue::Ptr(p) if p.is_null()));
+    assert!(matches!(result, ffi::Stash::Ptr(p) if p.is_null()));
 }
 
 #[test]
 fn descriptor_enum_dispatch_routes_codec_traits() {
     let descriptor = Codec::Boolean(BooleanCodec);
     let encoded = Encoder::encode(&descriptor, &value::Value::Boolean(true)).unwrap();
-    assert!(matches!(encoded, ffi::StashedValue::I32(1)));
-    let decoded = Decoder::decode(&descriptor, &ffi::StashedValue::I32(0)).unwrap();
+    assert!(matches!(encoded, ffi::Stash::I32(1)));
+    let decoded = Decoder::decode(&descriptor, &ffi::Stash::I32(0)).unwrap();
     assert!(matches!(decoded, value::Value::Boolean(false)));
 }

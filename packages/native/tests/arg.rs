@@ -5,17 +5,13 @@ use native::ffi::codec::{
     StringCodec, VoidCodec,
 };
 use native::ffi::value;
-use native::ffi::{Stash, StashStorage, StashedValue};
+use native::ffi::{Stash, StashData, StashStorage};
 
 macro_rules! expect_variant {
     ($codec:expr, $value:expr, $variant:ident) => {{
         match $codec.encode(&$value).expect("conversion should succeed") {
-            StashedValue::$variant(v) => v,
-            other => panic!(
-                "Expected StashedValue::{}, got {:?}",
-                stringify!($variant),
-                other
-            ),
+            Stash::$variant(v) => v,
+            other => panic!("Expected Stash::{}, got {:?}", stringify!($variant), other),
         }
     }};
 }
@@ -40,7 +36,7 @@ fn u8_array_codec() -> Codec {
 fn stash_new_stores_value_and_ptr() {
     let data = vec![1u32, 2, 3, 4, 5];
     let ptr = data.as_ptr() as *mut c_void;
-    let owned = Stash::new(ptr, StashStorage::U32Vec(data));
+    let owned = StashStorage::new(ptr, StashData::U32Vec(data));
 
     assert_eq!(owned.ptr(), ptr);
 }
@@ -48,7 +44,7 @@ fn stash_new_stores_value_and_ptr() {
 #[test]
 fn stash_from_vec_captures_correct_pointer() {
     let data = vec![10u64, 20, 30];
-    let owned: Stash = data.into();
+    let owned: StashStorage = data.into();
 
     unsafe {
         let slice = std::slice::from_raw_parts(owned.ptr() as *const u64, 3);
@@ -60,7 +56,7 @@ fn stash_from_vec_captures_correct_pointer() {
 fn stash_keeps_cstring_alive() {
     let cstring = CString::new("test string").unwrap();
     let ptr = cstring.as_ptr() as *mut c_void;
-    let owned = Stash::new(ptr, StashStorage::CString(cstring));
+    let owned = StashStorage::new(ptr, StashData::CString(cstring));
 
     unsafe {
         let s = std::ffi::CStr::from_ptr(owned.ptr() as *const i8);
@@ -77,7 +73,7 @@ fn stash_tuple_keeps_both_alive() {
     let ptrs: Vec<*mut c_void> = strings.iter().map(|s| s.as_ptr() as *mut c_void).collect();
     let tuple_ptr = ptrs.as_ptr() as *mut c_void;
 
-    let owned = Stash::new(tuple_ptr, StashStorage::StringArray(strings, ptrs));
+    let owned = StashStorage::new(tuple_ptr, StashData::StringArray(strings, ptrs));
 
     unsafe {
         let ptr_slice = std::slice::from_raw_parts(owned.ptr() as *const *const i8, 2);
@@ -92,7 +88,7 @@ fn stash_tuple_keeps_both_alive() {
 fn stash_drops_value_when_dropped() {
     let data = vec![1u8, 2, 3, 4, 5];
     let ptr = data.as_ptr() as *mut c_void;
-    let owned = Stash::new(ptr, StashStorage::U8Vec(data));
+    let owned = StashStorage::new(ptr, StashData::U8Vec(data));
 
     drop(owned);
 }
@@ -173,8 +169,8 @@ fn encode_string_full() {
         .encode(&value::Value::String("hello world".to_string()))
         .expect("full string should encode");
     encoded.disarm_pending_transfer();
-    let StashedValue::Stashed(storage) = &encoded else {
-        panic!("Expected StashedValue::Stashed, got {encoded:?}");
+    let Stash::Storage(storage) = &encoded else {
+        panic!("Expected Stash::Storage, got {encoded:?}");
     };
     let ptr = storage.ptr();
     unsafe {
@@ -192,7 +188,7 @@ fn encode_string_borrowed() {
             length: None,
         }),
         value::Value::String("hello world".to_string()),
-        Stashed
+        Storage
     );
     unsafe {
         let s = std::ffi::CStr::from_ptr(owned.ptr() as *const i8);
@@ -254,7 +250,7 @@ fn encode_array_u8() {
             value::Value::Number(2.0),
             value::Value::Number(3.0),
         ]),
-        Stashed
+        Storage
     );
     unsafe {
         let slice = std::slice::from_raw_parts(owned.ptr() as *const u8, 3);
@@ -271,7 +267,7 @@ fn encode_array_i32() {
             value::Value::Number(0.0),
             value::Value::Number(10.0),
         ]),
-        Stashed
+        Storage
     );
     unsafe {
         let slice = std::slice::from_raw_parts(owned.ptr() as *const i32, 3);
@@ -284,7 +280,7 @@ fn encode_array_f64() {
     let owned = expect_variant!(
         Codec::Array(array_full(Codec::Float(FloatCodec::F64))),
         value::Value::Array(vec![value::Value::Number(1.1), value::Value::Number(2.2)]),
-        Stashed
+        Storage
     );
     unsafe {
         let slice = std::slice::from_raw_parts(owned.ptr() as *const f64, 2);
@@ -304,7 +300,7 @@ fn encode_array_string() {
             value::Value::String("foo".to_string()),
             value::Value::String("bar".to_string()),
         ]),
-        Stashed
+        Storage
     );
     unsafe {
         let ptrs = std::slice::from_raw_parts(owned.ptr() as *const *const i8, 3);
@@ -325,7 +321,7 @@ fn encode_array_boolean() {
             value::Value::Boolean(false),
             value::Value::Boolean(true),
         ]),
-        Stashed
+        Storage
     );
     unsafe {
         let slice = std::slice::from_raw_parts(owned.ptr() as *const i32, 3);
@@ -347,8 +343,8 @@ fn encode_struct_undefined() {
 #[test]
 fn encode_array_optional_null_yields_null_ptr() {
     match u8_array_codec().encode(&value::Value::Null).unwrap() {
-        StashedValue::Ptr(ptr) => assert!(ptr.is_null()),
-        other => panic!("Expected null StashedValue::Ptr, got {other:?}"),
+        Stash::Ptr(ptr) => assert!(ptr.is_null()),
+        other => panic!("Expected null Stash::Ptr, got {other:?}"),
     }
 }
 
@@ -360,10 +356,10 @@ fn encode_array_propagates_encode_error() {
 #[test]
 fn encode_array_f32_storage_converts_to_libffi_arg() {
     let codec = Codec::Array(array_full(Codec::Float(FloatCodec::F32)));
-    let stashed_value = codec
+    let stash = codec
         .encode(&value::Value::Array(vec![value::Value::Number(0.5)]))
         .unwrap();
-    let _arg: libffi::middle::Arg = (&stashed_value).into();
+    let _arg: libffi::middle::Arg = (&stash).into();
 }
 
 #[test]
@@ -385,12 +381,12 @@ fn encode_struct_transfer_none_vs_full() {
     assert!(transfer_none_result.is_ok());
     assert!(transfer_full_result.is_ok());
 
-    if let (StashedValue::Ptr(ptr1), StashedValue::Ptr(ptr2)) =
+    if let (Stash::Ptr(ptr1), Stash::Ptr(ptr2)) =
         (transfer_none_result.unwrap(), transfer_full_result.unwrap())
     {
         assert!(ptr1.is_null());
         assert!(ptr2.is_null());
     } else {
-        panic!("Expected StashedValue::Ptr for both");
+        panic!("Expected Stash::Ptr for both");
     }
 }

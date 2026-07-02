@@ -12,14 +12,14 @@ impl UnicharCodec {
 }
 
 impl Encoder for UnicharCodec {
-    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
+    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::Stash> {
         let cp = match value {
             value::Value::String(s) => s.chars().next().map_or(0, |c| c as u32),
             value::Value::Number(n) => *n as u32,
             value::Value::Null | value::Value::Undefined => 0,
             _ => bail_expected!("a String", "unichar", value),
         };
-        Ok(ffi::StashedValue::U32(cp))
+        Ok(ffi::Stash::U32(cp))
     }
 
     forward_ffi_encoder!();
@@ -28,12 +28,10 @@ impl Encoder for UnicharCodec {
 impl Decoder for UnicharCodec {
     unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
         match src {
-            ReadSource::Call(stashed_value) => {
-                let cp = match stashed_value {
-                    ffi::StashedValue::U32(v) => *v,
-                    _ => anyhow::bail!(
-                        "Expected StashedValue::U32 for unichar, got {stashed_value:?}"
-                    ),
+            ReadSource::Call(stash) => {
+                let cp = match stash {
+                    ffi::Stash::U32(v) => *v,
+                    _ => anyhow::bail!("Expected Stash::U32 for unichar, got {stash:?}"),
                 };
                 let ch = char::from_u32(cp)
                     .ok_or_else(|| anyhow::anyhow!("Invalid Unicode codepoint: 0x{cp:X}"))?;

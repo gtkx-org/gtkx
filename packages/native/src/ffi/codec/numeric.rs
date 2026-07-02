@@ -44,9 +44,9 @@ macro_rules! impl_integer_codec_dispatch {
                 }
             }
 
-            pub fn to_stashed_value(self, value: f64) -> ffi::StashedValue {
+            pub fn to_stash(self, value: f64) -> ffi::Stash {
                 match self {
-                    $(Self::$variant => ffi::StashedValue::$variant(value as $codec)),+
+                    $(Self::$variant => ffi::Stash::$variant(value as $codec)),+
                 }
             }
 
@@ -63,7 +63,7 @@ macro_rules! impl_integer_codec_dispatch {
                 }
             }
 
-            pub fn to_stash(self, values: &[f64]) -> ffi::Stash {
+            pub fn to_stash_storage(self, values: &[f64]) -> ffi::StashStorage {
                 match self {
                     $(Self::$variant => {
                         values.iter().map(|&v| v as $codec).collect::<Vec<_>>().into()
@@ -76,10 +76,10 @@ macro_rules! impl_integer_codec_dispatch {
                 cif: &libffi::Cif,
                 ptr: libffi::CodePtr,
                 args: &[libffi::Arg],
-            ) -> ffi::StashedValue {
+            ) -> ffi::Stash {
                 unsafe {
                     match self {
-                        $(Self::$variant => ffi::StashedValue::$variant(cif.call::<$codec>(ptr, args))),+
+                        $(Self::$variant => ffi::Stash::$variant(cif.call::<$codec>(ptr, args))),+
                     }
                 }
             }
@@ -101,9 +101,9 @@ impl_integer_codec_dispatch! {
 macro_rules! impl_numeric_codecs {
     ($kind:ty, $label:literal, $ptr_to_value:item) => {
         impl Encoder for $kind {
-            fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
+            fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::Stash> {
                 let number = Self::number_from_value(value)?;
-                self.checked_to_stashed_value(number)
+                self.checked_to_stash(number)
             }
 
             fn libffi_type(&self) -> libffi::Type {
@@ -115,7 +115,7 @@ macro_rules! impl_numeric_codecs {
                 cif: &libffi::Cif,
                 ptr: libffi::CodePtr,
                 args: &[libffi::Arg],
-            ) -> anyhow::Result<ffi::StashedValue> {
+            ) -> anyhow::Result<ffi::Stash> {
                 Ok(unsafe { Self::call_cif_raw(*self, cif, ptr, args) })
             }
         }
@@ -127,7 +127,7 @@ macro_rules! impl_numeric_codecs {
         impl Decoder for $kind {
             unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
                 match src {
-                    ReadSource::Call(stashed_value) => Ok(value::Value::Number(stashed_value.to_number()?)),
+                    ReadSource::Call(stash) => Ok(value::Value::Number(stash.to_number()?)),
                     ReadSource::Slot(ptr, context) => {
                         Ok(value::Value::Number(unsafe {
                             self.checked_read_ptr(ptr as *const u8, context)?
@@ -228,18 +228,18 @@ impl IntegerCodec {
         Ok(())
     }
 
-    pub fn checked_to_stashed_value(self, value: f64) -> anyhow::Result<ffi::StashedValue> {
+    pub fn checked_to_stash(self, value: f64) -> anyhow::Result<ffi::Stash> {
         self.check_range(value)?;
-        Ok(self.to_stashed_value(value))
+        Ok(self.to_stash(value))
     }
 
-    pub fn checked_to_stash(self, values: &[f64]) -> anyhow::Result<ffi::Stash> {
+    pub fn checked_to_stash_storage(self, values: &[f64]) -> anyhow::Result<ffi::StashStorage> {
         for (i, &v) in values.iter().enumerate() {
-            if let Err(e) = self.checked_to_stashed_value(v) {
+            if let Err(e) = self.checked_to_stash(v) {
                 bail!("Array element {i}: {e}");
             }
         }
-        Ok(self.to_stash(values))
+        Ok(self.to_stash_storage(values))
     }
 
     pub unsafe fn checked_read_slice(
@@ -367,15 +367,15 @@ impl FloatCodec {
         Ok(())
     }
 
-    pub fn checked_to_stashed_value(self, value: f64) -> anyhow::Result<ffi::StashedValue> {
+    pub fn checked_to_stash(self, value: f64) -> anyhow::Result<ffi::Stash> {
         self.check_range(value)?;
         Ok(match self {
-            Self::F32 => ffi::StashedValue::F32(value as f32),
-            Self::F64 => ffi::StashedValue::F64(value),
+            Self::F32 => ffi::Stash::F32(value as f32),
+            Self::F64 => ffi::Stash::F64(value),
         })
     }
 
-    pub fn checked_to_stash(self, values: &[f64]) -> anyhow::Result<ffi::Stash> {
+    pub fn checked_to_stash_storage(self, values: &[f64]) -> anyhow::Result<ffi::StashStorage> {
         match self {
             Self::F32 => {
                 let mut out = Vec::with_capacity(values.len());
@@ -395,11 +395,11 @@ impl FloatCodec {
         cif: &libffi::Cif,
         ptr: libffi::CodePtr,
         args: &[libffi::Arg],
-    ) -> ffi::StashedValue {
+    ) -> ffi::Stash {
         unsafe {
             match self {
-                Self::F32 => ffi::StashedValue::F32(cif.call::<f32>(ptr, args)),
-                Self::F64 => ffi::StashedValue::F64(cif.call::<f64>(ptr, args)),
+                Self::F32 => ffi::Stash::F32(cif.call::<f32>(ptr, args)),
+                Self::F64 => ffi::Stash::F64(cif.call::<f64>(ptr, args)),
             }
         }
     }

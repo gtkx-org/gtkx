@@ -50,7 +50,7 @@ fn fundamental_with_unresolvable_symbols(ownership: Ownership) -> FundamentalCod
     fundamental_with_fns(ownership, "gtkx_cov_missing_ref", "gtkx_cov_missing_unref")
 }
 
-fn encode_param_spec(codec: &FundamentalCodec, pspec: *mut c_void) -> ffi::StashedValue {
+fn encode_param_spec(codec: &FundamentalCodec, pspec: *mut c_void) -> ffi::Stash {
     codec
         .encode(&Value::Object(Handle::from_glib_borrow(pspec)))
         .expect("encode should succeed")
@@ -61,7 +61,7 @@ fn assert_encode_returns_plain_pointer(codec: &FundamentalCodec, expected_extra_
     let before = param_spec_refcount(pspec);
 
     let encoded = encode_param_spec(codec, pspec);
-    assert!(matches!(encoded, ffi::StashedValue::Ptr(p) if p == pspec));
+    assert!(matches!(encoded, ffi::Stash::Ptr(p) if p == pspec));
     assert_eq!(param_spec_refcount(pspec), before + expected_extra_refs);
 
     release_param_spec_refs(pspec, expected_extra_refs + 1);
@@ -110,7 +110,7 @@ fn encode_full_adds_exactly_one_ref() {
 
         let encoded = encode_param_spec(&fundamental(Ownership::Full), pspec);
         encoded.disarm_pending_transfer();
-        assert!(matches!(&encoded, ffi::StashedValue::Stashed(s) if s.ptr() == pspec));
+        assert!(matches!(&encoded, ffi::Stash::Storage(s) if s.ptr() == pspec));
         assert_eq!(param_spec_refcount(pspec), before + 1);
 
         release_param_spec_refs(pspec, 2);
@@ -255,7 +255,7 @@ fn decode_borrowed_adds_exactly_one_ref() {
         let before = param_spec_refcount(pspec);
 
         let decoded = fundamental(Ownership::Borrowed)
-            .decode(&ffi::StashedValue::Ptr(pspec))
+            .decode(&ffi::Stash::Ptr(pspec))
             .expect("borrowed decode should succeed");
         assert!(matches!(decoded, Value::Object(_)));
         assert_eq!(param_spec_refcount(pspec), before + 1);
@@ -273,7 +273,7 @@ fn decode_full_takes_ownership() {
         let before = param_spec_refcount(pspec);
 
         let decoded = fundamental(Ownership::Full)
-            .decode(&ffi::StashedValue::Ptr(pspec))
+            .decode(&ffi::Stash::Ptr(pspec))
             .expect("full decode should succeed");
         assert!(matches!(decoded, Value::Object(_)));
         assert_eq!(param_spec_refcount(pspec), before);

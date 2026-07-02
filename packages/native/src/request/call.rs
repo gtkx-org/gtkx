@@ -29,7 +29,7 @@ impl Request for CallRequest {
         let arg_codecs = &self.descriptor.arg_codecs;
         let values = &self.values;
 
-        let stashed_values = arg_codecs
+        let stashes = arg_codecs
             .iter()
             .zip(values)
             .enumerate()
@@ -38,11 +38,11 @@ impl Request for CallRequest {
                     .encode(value)
                     .with_context(|| format!("encoding arg {i} of {symbol_name}"))
             })
-            .collect::<anyhow::Result<Vec<ffi::StashedValue>>>()?;
+            .collect::<anyhow::Result<Vec<ffi::Stash>>>()?;
 
-        let mut ffi_args: Vec<libffi::Arg> = Vec::with_capacity(stashed_values.len() + 1);
-        for stashed_value in &stashed_values {
-            stashed_value.append_libffi_args(&mut ffi_args);
+        let mut ffi_args: Vec<libffi::Arg> = Vec::with_capacity(stashes.len() + 1);
+        for stash in &stashes {
+            stash.append_libffi_args(&mut ffi_args);
         }
 
         let (cif, symbol_ptr) = GlibThreadState::with::<_, anyhow::Result<_>>(|state| {
@@ -69,14 +69,14 @@ impl Request for CallRequest {
             .call_cif(&cif, symbol_ptr, &ffi_args)
             .with_context(|| format!("calling {symbol_name}"))?;
 
-        for stashed_value in &stashed_values {
-            stashed_value.disarm_pending_transfer();
+        for stash in &stashes {
+            stash.disarm_pending_transfer();
         }
 
-        let ref_updates = Self::collect_ref_updates(arg_codecs, values, &stashed_values);
+        let ref_updates = Self::collect_ref_updates(arg_codecs, values, &stashes);
 
         let return_value = return_codec
-            .decode_with_context(&result, &stashed_values, arg_codecs)
+            .decode_with_context(&result, &stashes, arg_codecs)
             .with_context(|| format!("decoding return value of {symbol_name}"));
 
         Self::release_sized_array_return(return_codec, &result);
@@ -92,14 +92,14 @@ impl Request for CallRequest {
 }
 
 impl CallRequest {
-    fn release_sized_array_return(return_codec: &Codec, result: &ffi::StashedValue) {
+    fn release_sized_array_return(return_codec: &Codec, result: &ffi::Stash) {
         let Codec::Array(array_codec) = return_codec else {
             return;
         };
         if !array_codec.ownership.is_full() || !array_codec.is_length_bounded() {
             return;
         }
-        if let ffi::StashedValue::Ptr(ptr) = result
+        if let ffi::Stash::Ptr(ptr) = result
             && !ptr.is_null()
         {
             unsafe { glib::ffi::g_free(*ptr) };
@@ -109,13 +109,12 @@ impl CallRequest {
     fn collect_ref_updates(
         arg_codecs: &[Codec],
         values: &[Value],
-        stashed_values: &[ffi::StashedValue],
+        stashes: &[ffi::Stash],
     ) -> anyhow::Result<Vec<RefUpdate>> {
         let mut ref_updates = Vec::new();
         for (i, (codec, value)) in arg_codecs.iter().zip(values).enumerate() {
             if let Value::Ref(ref_val) = value {
-                let new_value =
-                    codec.decode_with_context(&stashed_values[i], stashed_values, arg_codecs)?;
+                let new_value = codec.decode_with_context(&stashes[i], stashes, arg_codecs)?;
                 ref_updates.push((Arc::clone(&ref_val.js_obj), new_value));
             }
         }

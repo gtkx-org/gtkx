@@ -235,12 +235,12 @@ pub fn assert_encode_null_yields_null_ptr<C: Encoder>(codec: &C) {
     let encoded = codec
         .encode(&Value::Null)
         .expect("null encode should succeed");
-    assert!(matches!(encoded, native::ffi::StashedValue::Ptr(p) if p.is_null()));
+    assert!(matches!(encoded, native::ffi::Stash::Ptr(p) if p.is_null()));
 }
 
 pub fn assert_decode_null_yields_null<C: Decoder>(codec: &C) {
     let decoded = codec
-        .decode(&native::ffi::StashedValue::Ptr(std::ptr::null_mut()))
+        .decode(&native::ffi::Stash::Ptr(std::ptr::null_mut()))
         .expect("null decode should succeed");
     assert!(matches!(decoded, Value::Null));
 }
