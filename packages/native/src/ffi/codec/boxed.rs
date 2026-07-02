@@ -2,7 +2,7 @@ use glib::{self, translate::IntoGlib as _};
 
 use super::prelude::*;
 use crate::ffi::library_cache::GlibThreadState;
-use crate::handle::Boxed;
+use crate::handle::{Boxed, BoxedFreeFn};
 use crate::messaging::error_reporter::ReportErr as _;
 
 #[derive(Debug, Clone)]
@@ -62,8 +62,6 @@ impl BoxedCodec {
         Ok(Some(gtype).filter(|t| t.is_valid()))
     }
 }
-
-pub type BoxedFreeFn = unsafe extern "C" fn(*mut c_void);
 
 impl Encoder for BoxedCodec {
     fn object_ptr_context(&self) -> &'static str {

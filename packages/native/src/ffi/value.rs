@@ -302,6 +302,24 @@ pub enum Value {
     Ref(Ref),
 }
 
+impl From<crate::handle::Value> for Value {
+    fn from(value: crate::handle::Value) -> Self {
+        Self::Object(value.into())
+    }
+}
+
+impl From<crate::handle::Boxed> for Value {
+    fn from(boxed: crate::handle::Boxed) -> Self {
+        crate::handle::Value::Boxed(boxed).into()
+    }
+}
+
+impl From<crate::handle::Fundamental> for Value {
+    fn from(fundamental: crate::handle::Fundamental) -> Self {
+        crate::handle::Value::Fundamental(fundamental).into()
+    }
+}
+
 impl Value {
     pub fn result_to_ptr(result: &std::result::Result<Self, ()>) -> *mut c_void {
         match result {

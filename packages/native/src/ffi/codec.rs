@@ -28,7 +28,7 @@ pub use array::ArrayCodec;
 pub use array::ArrayKind;
 pub use bigint::BigIntCodec;
 pub use boolean::BooleanCodec;
-pub use boxed::{BoxedCodec, BoxedFreeFn};
+pub use boxed::BoxedCodec;
 pub use buffer::BufferCodec;
 pub use callback::CallbackCodec;
 pub use callback::CallbackScope;

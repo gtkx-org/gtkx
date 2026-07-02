@@ -27,7 +27,6 @@ impl<T> LockExt<T> for Mutex<T> {
 }
 
 use crate::ffi::value::{JsRef, Value};
-use crate::handle::wrapper::WrapperRefOp;
 use crate::messaging::error_reporter::ErrorReporter;
 use crate::messaging::freeze::FreezeController;
 use crate::messaging::wait_signal::WaitSignal;
@@ -74,6 +73,29 @@ enum NodeTask {
         result_tx: mpsc::Sender<anyhow::Result<()>>,
         glib_initiated: bool,
     },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum WrapperRefOp {
+    Unref,
+    Ref,
+}
+
+impl WrapperRefOp {
+    pub(crate) fn apply(self, env: &Env, napi_ref: usize) {
+        let raw_ref = napi_ref as sys::napi_ref;
+        let mut count: u32 = 0;
+        unsafe {
+            match self {
+                Self::Ref => {
+                    sys::napi_reference_ref(env.raw(), raw_ref, &mut count);
+                }
+                Self::Unref => {
+                    sys::napi_reference_unref(env.raw(), raw_ref, &mut count);
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug)]

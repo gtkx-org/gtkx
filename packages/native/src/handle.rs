@@ -2,7 +2,7 @@ mod boxed;
 mod fundamental;
 pub(crate) mod wrapper;
 
-pub use boxed::Boxed;
+pub use boxed::{Boxed, BoxedFreeFn};
 pub use fundamental::{Fundamental, RefFn, UnrefFn};
 
 use std::ffi::c_void;
@@ -153,24 +153,6 @@ impl Drop for Handle {
 pub enum Value {
     Boxed(Boxed),
     Fundamental(Fundamental),
-}
-
-impl From<Value> for crate::ffi::value::Value {
-    fn from(value: Value) -> Self {
-        Self::Object(value.into())
-    }
-}
-
-impl From<Boxed> for crate::ffi::value::Value {
-    fn from(boxed: Boxed) -> Self {
-        Value::Boxed(boxed).into()
-    }
-}
-
-impl From<Fundamental> for crate::ffi::value::Value {
-    fn from(fundamental: Fundamental) -> Self {
-        Value::Fundamental(fundamental).into()
-    }
 }
 
 const GOBJECT_SIZE_HINT: usize = 512;

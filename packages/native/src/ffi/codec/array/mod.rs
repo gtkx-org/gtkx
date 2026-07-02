@@ -318,7 +318,9 @@ fn dup_strings_to_glib(array: &[value::Value]) -> anyhow::Result<Vec<*mut c_void
 }
 
 fn leak_container_to_callee(ptrs: &[*mut c_void]) -> *mut c_void {
-    unsafe { ffi::dup_to_glib_heap(ptrs.as_ptr().cast::<u8>(), std::mem::size_of_val(ptrs)) }
+    unsafe {
+        crate::glib_heap::dup_to_glib_heap(ptrs.as_ptr().cast::<u8>(), std::mem::size_of_val(ptrs))
+    }
 }
 
 trait ArrayKindEncoder {

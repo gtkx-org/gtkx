@@ -7,7 +7,7 @@ use napi_derive::napi;
 
 use crate::handle::Handle;
 use crate::handle::wrapper;
-use crate::messaging::Mailbox;
+use crate::messaging::{Mailbox, WrapperRefOp};
 
 struct FinalizeData {
     gobject_ptr: usize,
@@ -63,7 +63,7 @@ pub fn set_wrapper(env: Env, handle: &External<Handle>, wrapper: Object<'_>) -> 
     unsafe { (*data).napi_ref = raw_ref as usize };
 
     let napi_ref = raw_ref as usize;
-    wrapper::WrapperRefOp::Ref.apply(&env, napi_ref);
+    WrapperRefOp::Ref.apply(&env, napi_ref);
     let consume_pending = handle.take_pending_gobject_ref();
     let (binding, generation) =
         Mailbox::global().invoke_glib_and_wait_napi(env, move || unsafe {

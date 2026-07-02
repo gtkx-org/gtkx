@@ -8,32 +8,7 @@ use glib::translate::{Borrowed, from_glib_borrow};
 
 use crate::messaging::error_reporter::ErrorReporter;
 use crate::messaging::panic_handler::guard_ffi_boundary;
-use crate::messaging::{JsRefDeletion, LockExt as _, Mailbox};
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum WrapperRefOp {
-    Unref,
-    Ref,
-}
-
-impl WrapperRefOp {
-    pub(crate) fn apply(self, env: &napi::Env, napi_ref: usize) {
-        use napi::sys;
-
-        let raw_ref = napi_ref as sys::napi_ref;
-        let mut count: u32 = 0;
-        unsafe {
-            match self {
-                Self::Ref => {
-                    sys::napi_reference_ref(env.raw(), raw_ref, &mut count);
-                }
-                Self::Unref => {
-                    sys::napi_reference_unref(env.raw(), raw_ref, &mut count);
-                }
-            }
-        }
-    }
-}
+use crate::messaging::{JsRefDeletion, LockExt as _, Mailbox, WrapperRefOp};
 
 pub struct WrapperBinding {
     napi_ref: AtomicUsize,

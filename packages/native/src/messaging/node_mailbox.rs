@@ -8,11 +8,10 @@ use napi::bindgen_prelude::{
 use napi::threadsafe_function::ThreadsafeFunctionCallMode;
 
 use super::{
-    JsRefDeletion, LockExt as _, Mailbox, NodeCallback, NodeCallbackResult, NodeTask,
+    JsRefDeletion, LockExt as _, Mailbox, NodeCallback, NodeCallbackResult, NodeTask, WrapperRefOp,
     send_or_report,
 };
 use crate::ffi::value::{JsRef, Value};
-use crate::handle::wrapper::WrapperRefOp;
 use crate::messaging::panic_handler::format_panic_payload;
 
 struct CallbackArgs(Vec<napi::sys::napi_value>);
@@ -128,7 +127,7 @@ impl Mailbox {
         })
     }
 
-    pub fn apply_wrapper_ref_op_and_wait(
+    pub(crate) fn apply_wrapper_ref_op_and_wait(
         &self,
         napi_ref: usize,
         op: WrapperRefOp,
