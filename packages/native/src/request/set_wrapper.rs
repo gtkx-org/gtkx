@@ -22,7 +22,7 @@ unsafe extern "C" fn on_wrapper_finalize(
     _finalize_hint: *mut c_void,
 ) {
     let mut data = unsafe { Box::from_raw(finalize_data.cast::<FinalizeData>()) };
-    wrapper::WrapperRegistry::global().schedule_cleanup(
+    wrapper::schedule_cleanup(
         env as usize,
         data.binding.take(),
         data.generation,
@@ -73,7 +73,7 @@ pub fn set_wrapper(env: Env, handle: &External<Handle>, wrapper: Object<'_>) -> 
     let consume_pending = handle.take_pending_gobject_ref();
     let (binding, generation) =
         Mailbox::global().invoke_glib_and_wait_napi(env, move || unsafe {
-            wrapper::WrapperRegistry::global().install(
+            wrapper::install(
                 gobject_ptr as *mut _,
                 ref_ptr as *mut c_void,
                 consume_pending,

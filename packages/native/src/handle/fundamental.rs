@@ -64,25 +64,7 @@ impl Fundamental {
 
 impl Clone for Fundamental {
     fn clone(&self) -> Self {
-        if self.ptr.is_null() {
-            return Self {
-                ptr: std::ptr::null_mut(),
-                owned: false,
-                ref_fn: self.ref_fn,
-                unref_fn: self.unref_fn,
-            };
-        }
-
-        let cloned_ptr = self
-            .ref_fn
-            .map_or(self.ptr, |ref_fn| unsafe { ref_fn(self.ptr) });
-
-        Self {
-            ptr: cloned_ptr,
-            owned: self.ref_fn.is_some(),
-            ref_fn: self.ref_fn,
-            unref_fn: self.unref_fn,
-        }
+        unsafe { Self::from_glib_none(self.ptr, self.ref_fn, self.unref_fn) }
     }
 }
 

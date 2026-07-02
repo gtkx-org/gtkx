@@ -16,7 +16,7 @@ unsafe fn tracked_gobject_value(
         let is_initially_unowned =
             unsafe { glib::types::instance_of::<glib::InitiallyUnowned>(gobject_ptr.cast()) };
         let is_floating = unsafe { glib::gobject_ffi::g_object_is_floating(gobject_ptr) != 0 };
-        let has_wrapper = unsafe { wrapper::WrapperRegistry::global().has_wrapper(gobject_ptr) };
+        let has_wrapper = unsafe { wrapper::has_wrapper(gobject_ptr) };
         if is_floating || (!has_wrapper && is_initially_unowned) {
             unsafe { glib::gobject_ffi::g_object_ref_sink(gobject_ptr) };
         }

@@ -6,7 +6,6 @@ pub use boxed::Boxed;
 pub use fundamental::{Fundamental, RefFn, UnrefFn};
 
 use std::ffi::c_void;
-use std::mem::ManuallyDrop;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -16,31 +15,17 @@ use crate::messaging::Mailbox;
 
 enum AnchoredValue {
     ThreadBound(ThreadGuard<Value>),
-    Sendable(SendableValue),
+    Sendable(Value),
 }
 
-struct SendableValue(ManuallyDrop<Value>);
-
-unsafe impl Send for SendableValue {}
-
-impl SendableValue {
-    fn get_ref(&self) -> &Value {
-        &self.0
-    }
-}
-
-impl Drop for SendableValue {
-    fn drop(&mut self) {
-        unsafe { ManuallyDrop::drop(&mut self.0) };
-    }
-}
+unsafe impl Send for AnchoredValue {}
 
 impl AnchoredValue {
     fn new(value: Value) -> Self {
         let on_foreign_thread =
             Mailbox::global().is_initialized() && !glib::MainContext::default().is_owner();
         if on_foreign_thread {
-            Self::Sendable(SendableValue(ManuallyDrop::new(value)))
+            Self::Sendable(value)
         } else {
             Self::ThreadBound(ThreadGuard::new(value))
         }
@@ -49,7 +34,7 @@ impl AnchoredValue {
     fn get_ref(&self) -> &Value {
         match self {
             Self::ThreadBound(guard) => guard.get_ref(),
-            Self::Sendable(value) => value.get_ref(),
+            Self::Sendable(value) => value,
         }
     }
 
@@ -109,15 +94,6 @@ impl Handle {
         Self {
             ptr: ptr as usize,
             size_hint: 0,
-            owned_value: None,
-            pending_gobject_ref: None,
-        }
-    }
-
-    pub fn borrowed_gobject(ptr: *mut c_void) -> Self {
-        Self {
-            ptr: ptr as usize,
-            size_hint: GOBJECT_SIZE_HINT,
             owned_value: None,
             pending_gobject_ref: None,
         }

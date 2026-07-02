@@ -104,7 +104,7 @@ impl Decoder for BoxedCodec {
             let boxed = match self.ownership {
                 Ownership::Full => Boxed::from_glib_full(gtype, boxed_ptr),
                 Ownership::Borrowed => unsafe {
-                    Boxed::from_glib_none_with_size(gtype, boxed_ptr, None, Some(&self.type_name))?
+                    Boxed::from_glib_none(gtype, boxed_ptr, Some(&self.type_name))?
                 },
             };
 
@@ -117,7 +117,7 @@ impl Decoder for BoxedCodec {
             if self.free_fn_name.is_some() || self.caller_allocated {
                 return Ok(Boxed::from_glib_borrow(ptr).into());
             }
-            Ok(unsafe { Boxed::from_glib_none(self.gtype(), ptr) }?.into())
+            Ok(unsafe { Boxed::from_glib_none(self.gtype(), ptr, None) }?.into())
         })
     }
 }

@@ -39,7 +39,7 @@ fn from_glib_none_creates_copy() {
         let gtype = gdk::RGBA::static_type();
         let original_ptr = helpers::allocate_test_boxed(gtype);
 
-        let boxed = unsafe { Boxed::from_glib_none(Some(gtype), original_ptr) }
+        let boxed = unsafe { Boxed::from_glib_none(Some(gtype), original_ptr, None) }
             .expect("from_glib_none with gtype should succeed");
 
         assert!(boxed.is_owned());
@@ -54,14 +54,12 @@ fn from_glib_none_creates_copy() {
 }
 
 #[test]
-fn from_glib_none_with_size_copies_without_gtype() {
+fn copy_with_size_copies_without_gtype() {
     helpers::run(|| {
         let data: [u8; 16] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
         let ptr = data.as_ptr() as *mut c_void;
 
-        let boxed =
-            unsafe { Boxed::from_glib_none_with_size(None, ptr, Some(16), Some("TestStruct")) }
-                .unwrap();
+        let boxed = Boxed::copy_with_size(ptr, 16);
 
         assert!(boxed.is_owned());
         assert!(!boxed.as_ptr().is_null());
@@ -76,7 +74,7 @@ fn from_glib_none_with_size_copies_without_gtype() {
 fn from_glib_none_null_ptr_not_owned() {
     helpers::run(|| {
         let gtype = gdk::RGBA::static_type();
-        let boxed = unsafe { Boxed::from_glib_none(Some(gtype), std::ptr::null_mut()) }
+        let boxed = unsafe { Boxed::from_glib_none(Some(gtype), std::ptr::null_mut(), None) }
             .expect("from_glib_none with null ptr should succeed");
 
         assert!(!boxed.is_owned());
@@ -182,7 +180,7 @@ fn drop_plain_struct_null_ptr_safe() {
 #[test]
 fn from_glib_none_null_ptr_with_none_type() {
     helpers::run(|| {
-        let boxed = unsafe { Boxed::from_glib_none(None, std::ptr::null_mut()) }
+        let boxed = unsafe { Boxed::from_glib_none(None, std::ptr::null_mut(), None) }
             .expect("from_glib_none with null ptr should succeed");
 
         assert!(!boxed.is_owned());

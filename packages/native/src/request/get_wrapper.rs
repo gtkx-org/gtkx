@@ -14,7 +14,7 @@ pub fn get_wrapper<'env>(
     let gobject_ptr = handle.ptr() as usize;
 
     let ref_ptr: usize = Mailbox::global().invoke_glib_and_wait_napi(*env, move || unsafe {
-        wrapper::WrapperRegistry::global().wrapper_ref(gobject_ptr as *mut _) as usize
+        wrapper::wrapper_ref(gobject_ptr as *mut _) as usize
     })?;
 
     if ref_ptr != 0 {

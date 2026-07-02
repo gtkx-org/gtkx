@@ -247,7 +247,7 @@ fn take_pending_gobject_ref_consumes_marker_once() {
 fn take_pending_gobject_ref_without_marker_returns_false() {
     helpers::run(|| {
         let obj = glib::Object::new::<glib::Object>();
-        let handle = Handle::borrowed_gobject(obj.as_ptr() as *mut c_void);
+        let handle = Handle::borrowed(obj.as_ptr() as *mut c_void);
 
         assert!(!handle.take_pending_gobject_ref());
     });
@@ -306,10 +306,11 @@ fn borrowed_native_handle_reports_zero_size_hint() {
 }
 
 #[test]
-fn borrowed_gobject_handle_reports_nonzero_size_hint() {
+fn decoded_gobject_handle_reports_nonzero_size_hint() {
     helpers::run(|| {
         let obj = glib::Object::new::<glib::Object>();
-        let handle = Handle::borrowed_gobject(obj.as_ptr() as *mut c_void);
+        let handle = Handle::decoded_gobject(obj.as_ptr() as *mut c_void);
         assert!(handle.size_hint() > 0);
+        assert!(handle.take_pending_gobject_ref());
     });
 }

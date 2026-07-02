@@ -18,7 +18,7 @@ fn create_test_gobject() -> glib::Object {
 fn gobject_handle_carries_object_pointer() {
     let obj = create_test_gobject();
     let expected_ptr = obj.as_ptr() as usize;
-    let handle = Handle::borrowed_gobject(obj.as_ptr() as *mut c_void);
+    let handle = Handle::borrowed(obj.as_ptr() as *mut c_void);
 
     assert_eq!(handle.ptr_as_usize(), expected_ptr);
     assert!(handle.ptr_as_usize() != 0);
@@ -30,8 +30,8 @@ fn gobject_handles_for_distinct_objects_have_distinct_pointers() {
     let obj1 = create_test_gobject();
     let obj2 = create_test_gobject();
 
-    let handle1 = Handle::borrowed_gobject(obj1.as_ptr() as *mut c_void);
-    let handle2 = Handle::borrowed_gobject(obj2.as_ptr() as *mut c_void);
+    let handle1 = Handle::borrowed(obj1.as_ptr() as *mut c_void);
+    let handle2 = Handle::borrowed(obj2.as_ptr() as *mut c_void);
 
     assert_ne!(handle1.ptr_as_usize(), handle2.ptr_as_usize());
 }
@@ -42,7 +42,7 @@ fn gobject_handle_does_not_own_a_reference() {
     let ptr = obj.as_ptr();
     let initial_ref = helpers::get_gobject_refcount(ptr);
 
-    let handle = Handle::borrowed_gobject(ptr as *mut c_void);
+    let handle = Handle::borrowed(ptr as *mut c_void);
     assert_eq!(helpers::get_gobject_refcount(ptr), initial_ref);
 
     drop(handle);

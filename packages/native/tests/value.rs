@@ -98,7 +98,7 @@ fn assert_string_item(items: &[Value], index: usize, expected: &str) {
 fn new_gobject_handle() -> (glib::Object, *mut c_void, native::Handle) {
     let obj = glib::Object::new::<glib::Object>();
     let obj_ptr = obj.as_ptr() as *mut c_void;
-    let handle = native::Handle::borrowed_gobject(obj_ptr);
+    let handle = native::Handle::borrowed(obj_ptr);
     (obj, obj_ptr, handle)
 }
 

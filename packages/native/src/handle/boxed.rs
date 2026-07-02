@@ -112,14 +112,6 @@ impl Boxed {
     pub unsafe fn from_glib_none(
         gtype: Option<glib::Type>,
         ptr: *mut c_void,
-    ) -> anyhow::Result<Self> {
-        unsafe { Self::from_glib_none_with_size(gtype, ptr, None, None) }
-    }
-
-    pub unsafe fn from_glib_none_with_size(
-        gtype: Option<glib::Type>,
-        ptr: *mut c_void,
-        size: Option<usize>,
         type_name: Option<&str>,
     ) -> anyhow::Result<Self> {
         if ptr.is_null() {
@@ -136,14 +128,11 @@ impl Boxed {
             ));
         }
 
-        let Some(s) = size else {
-            let name = type_name.unwrap_or("unknown");
-            bail!(
-                "Cannot copy boxed type '{name}': no size or GType available. \
-                 Pointer {ptr:p} may become dangling if the source is freed"
-            )
-        };
-        Ok(Self::copy_with_size(ptr, s))
+        let name = type_name.unwrap_or("unknown");
+        bail!(
+            "Cannot copy boxed type '{name}': no GType available. \
+             Pointer {ptr:p} may become dangling if the source is freed"
+        )
     }
 
     #[inline]
