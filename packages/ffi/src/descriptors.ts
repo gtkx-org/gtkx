@@ -30,6 +30,7 @@ export type ArrayDescriptor = Extract<Descriptor, { kind: "array" }>;
 export type HashTableDescriptor = Extract<Descriptor, { kind: "hashtable" }>;
 export type CallbackDescriptor = Extract<Descriptor, { kind: "callback" }>;
 export type RefDescriptor = Extract<Descriptor, { kind: "ref" }>;
+export type GtypeDescriptor = BigUint64Descriptor & { gtype: true };
 
 const wrapperClassByDescriptor = new WeakMap<Descriptor, AnyClass>();
 
@@ -73,16 +74,6 @@ export const int64T: Int64Descriptor = Object.freeze({ kind: "int64" });
 export const uint64T: Uint64Descriptor = Object.freeze({ kind: "uint64" });
 export const bigint64T: BigInt64Descriptor = Object.freeze({ kind: "bigint64" });
 export const biguint64T: BigUint64Descriptor = Object.freeze({ kind: "biguint64" });
-
-/**
- * A GType-valued descriptor. It marshals identically to {@link biguint64T} across
- * the native boundary (a GType is a `gsize`, and native ignores the extra `gtype`
- * marker), while the JS-only GValue layer reads the marker to build and read the
- * value through `g_value_get_gtype`/`g_value_set_gtype` instead of the `guint64`
- * accessors, which GObject rejects for a `G_TYPE_GTYPE` property.
- */
-export type GtypeDescriptor = BigUint64Descriptor & { gtype: true };
-
 export const gtypeT: GtypeDescriptor = Object.freeze({ kind: "biguint64", gtype: true });
 
 export const isGtypeDescriptor = (descriptor: Descriptor): boolean =>

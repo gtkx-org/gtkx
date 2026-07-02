@@ -44,10 +44,6 @@ pub use r#struct::StructCodec;
 pub use unichar::UnicharCodec;
 pub use void::VoidCodec;
 
-/// Emits the `Encoder::libffi_type` and `Encoder::call_cif` methods for a codec that
-/// travels over the C ABI as an integer (booleans, unichars, enums/flags, bigints).
-/// The codec must expose an inherent `ffi_codec(&self) -> IntegerCodec` describing the
-/// integer it forwards to. Reach it through `codec::prelude`, which re-exports it.
 macro_rules! forward_ffi_encoder {
     () => {
         fn libffi_type(&self) -> ::libffi::middle::Type {

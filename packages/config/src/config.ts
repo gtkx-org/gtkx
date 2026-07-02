@@ -14,22 +14,10 @@ export const isValidApplicationId = (applicationId: string): boolean => {
 
 export type GtkxConfig = {
     libraries?: typeof LIBRARIES_WILDCARD | string[];
-
     girPath?: string[];
-
     applicationId?: string;
-
     rules?: string;
-
     reactCompiler?: boolean | ReactCompilerOptions;
-
-    /**
-     * Whether this project generates its own binding store (`@gtkx/gi`/`@gtkx/jsx`).
-     * Defaults to `true`. Set to `false` for a project that reuses a binding store
-     * already installed higher in the dependency tree (e.g. a monorepo example that
-     * shares the workspace-root store); its own codegen becomes a no-op and no local
-     * store is materialized, so every consumer resolves the bindings to a single copy.
-     */
     codegen?: boolean;
 };
 

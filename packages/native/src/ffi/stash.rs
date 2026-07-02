@@ -90,10 +90,6 @@ impl PendingTransfer {
     }
 }
 
-/// Runtime dispatch table for a GLib singly/doubly linked list. `GList` and
-/// `GSList` differ only in their node type and the `g_list_*`/`g_slist_*`
-/// prepend/free functions, so a pair of `&'static ListOps` constants replaces
-/// the compile-time-generic list machinery.
 #[derive(Debug)]
 pub struct ListOps {
     pub label: &'static str,

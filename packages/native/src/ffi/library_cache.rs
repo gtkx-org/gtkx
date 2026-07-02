@@ -229,14 +229,6 @@ impl GlibThreadState {
         self.libs.get_or_load(name)
     }
 
-    /// Returns the libffi [`Cif`] for the call descriptor identified by `id`,
-    /// building it with `build` on first use and memoizing it thereafter.
-    ///
-    /// The `Cif` is a pure function of a descriptor's argument and return types,
-    /// so it is stable for the descriptor's lifetime. Caching it here — on the
-    /// single GLib thread that performs every call — avoids rebuilding the
-    /// libffi type array and re-preparing the CIF on every invocation, and keeps
-    /// the non-`Send` `Cif` off the shared descriptor.
     pub fn cached_cif(&mut self, id: u64, build: impl FnOnce() -> Cif) -> Rc<Cif> {
         if let Some(cif) = self.cifs.get(&id) {
             return Rc::clone(cif);

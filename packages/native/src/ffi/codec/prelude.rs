@@ -12,11 +12,6 @@ macro_rules! bail_expected {
 }
 pub(super) use bail_expected;
 
-/// Decodes a NUL-terminated C string into an owned `String`, replacing invalid
-/// UTF-8 with the Unicode replacement character.
-///
-/// # Safety
-/// `ptr` must be non-null and point to a valid NUL-terminated C string.
 pub(super) unsafe fn lossy_c_string(ptr: *const c_char) -> String {
     unsafe { glib::GStr::from_ptr_lossy(ptr) }.to_string()
 }
@@ -95,12 +90,6 @@ pub(super) fn full_transfer_stashed(
     )
 }
 
-/// Arms a container `Stash` with the pending transfer implied by its ownership.
-///
-/// When the container is borrowed the storage frees itself on drop, so only the
-/// `acquired` element transfers need arming. When it is transfer-full the callee
-/// takes the container, so the undo-on-error release groups the acquired transfers
-/// with `container_release`.
 pub(super) fn finalize_container_stash(
     storage: ffi::Stash,
     should_free: bool,

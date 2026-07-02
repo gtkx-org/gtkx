@@ -7,11 +7,6 @@ import * as GObject from "@gtkx/gi/gobject";
 import { foldInheritedTableWithInterfaces } from "../utils/gtype.js";
 import { type Node, stateOf } from "./state.js";
 
-/**
- * Runtime services handed to the duck-typed `@gtkx/config` rules. `@gtkx/config`
- * is a leaf package with no binding dependency, so it delegates genuine GObject
- * type/inheritance checks back to the reconciler through this context.
- */
 export const RULE_CONTEXT: RuleContext = {
     instanceIsA: (instance, typeName) => typeIsA((instance as GTyped).__gtype__, typeFromName(typeName)),
 };

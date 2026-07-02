@@ -81,13 +81,7 @@ export interface RuleNode {
     slotTag: string | undefined;
 }
 
-/**
- * Runtime services injected into rule callbacks by the host reconciler
- * (`@gtkx/react`). Rules are duck-typed and never import the generated GObject
- * bindings, so any genuine runtime type check goes through here.
- */
 export type RuleContext = {
-    /** Whether `instance` is, or derives from, the GObject type named `typeName` (respecting interfaces). */
     instanceIsA: (instance: object, typeName: string) => boolean;
 };
 
