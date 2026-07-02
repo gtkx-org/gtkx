@@ -11,10 +11,9 @@ mod stashed_value;
 pub use slot::Slot;
 
 pub use stash::{
-    GArrayData, GListKind, GSListKind, ListKind, PendingRelease, PendingTransfer, Stash,
-    StashStorage,
+    GArrayData, GLIST_OPS, GSLIST_OPS, ListData, ListOps, ListPayload, PendingRelease,
+    PendingTransfer, Stash, StashStorage, build_list,
 };
-pub use stash::{GListData, GSListData, StringGListData, StringGSListData};
 pub use stashed_value::{CallbackValue, StashedValue};
 
 use std::ffi::c_void;

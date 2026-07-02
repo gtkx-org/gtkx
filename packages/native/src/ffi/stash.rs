@@ -26,7 +26,7 @@ pub struct PendingTransfer {
     release: PendingRelease,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum PendingRelease {
     GFree,
     ObjectUnref,
@@ -90,162 +90,82 @@ impl PendingTransfer {
     }
 }
 
-pub trait ListKind {
-    type Node;
-    const LABEL: &'static str;
+/// Runtime dispatch table for a GLib singly/doubly linked list. `GList` and
+/// `GSList` differ only in their node type and the `g_list_*`/`g_slist_*`
+/// prepend/free functions, so a pair of `&'static ListOps` constants replaces
+/// the compile-time-generic list machinery.
+#[derive(Debug)]
+pub struct ListOps {
+    pub label: &'static str,
+    pub pending: PendingRelease,
+    pub prepend: unsafe fn(*mut c_void, *mut c_void) -> *mut c_void,
+    pub free: unsafe fn(*mut c_void),
+    pub free_full: unsafe fn(*mut c_void),
+}
 
-    unsafe fn prepend(list: *mut Self::Node, ptr: *mut c_void) -> *mut Self::Node;
+unsafe fn glist_prepend(list: *mut c_void, data: *mut c_void) -> *mut c_void {
+    unsafe { glib::ffi::g_list_prepend(list as *mut glib::ffi::GList, data).cast() }
+}
+unsafe fn glist_free(list: *mut c_void) {
+    unsafe { glib::ffi::g_list_free(list as *mut glib::ffi::GList) };
+}
+unsafe fn glist_free_full(list: *mut c_void) {
+    unsafe {
+        glib::ffi::g_list_free_full(list as *mut glib::ffi::GList, Some(glib::ffi::g_free));
+    }
+}
 
-    unsafe fn free(list: *mut Self::Node);
+unsafe fn gslist_prepend(list: *mut c_void, data: *mut c_void) -> *mut c_void {
+    unsafe { glib::ffi::g_slist_prepend(list as *mut glib::ffi::GSList, data).cast() }
+}
+unsafe fn gslist_free(list: *mut c_void) {
+    unsafe { glib::ffi::g_slist_free(list as *mut glib::ffi::GSList) };
+}
+unsafe fn gslist_free_full(list: *mut c_void) {
+    unsafe {
+        glib::ffi::g_slist_free_full(list as *mut glib::ffi::GSList, Some(glib::ffi::g_free));
+    }
+}
 
-    unsafe fn free_full(list: *mut Self::Node);
+pub static GLIST_OPS: ListOps = ListOps {
+    label: "GList",
+    pending: PendingRelease::GListFree,
+    prepend: glist_prepend,
+    free: glist_free,
+    free_full: glist_free_full,
+};
 
-    fn pending_release() -> PendingRelease;
+pub static GSLIST_OPS: ListOps = ListOps {
+    label: "GSList",
+    pending: PendingRelease::GSListFree,
+    prepend: gslist_prepend,
+    free: gslist_free,
+    free_full: gslist_free_full,
+};
 
-    fn handle_storage(
-        handles: Vec<crate::handle::Handle>,
-        list_ptr: *mut Self::Node,
-        should_free: bool,
-    ) -> StashStorage;
+pub fn build_list(ops: &ListOps, ptrs: &[*mut c_void]) -> *mut c_void {
+    let mut list: *mut c_void = std::ptr::null_mut();
+    for ptr in ptrs.iter().rev() {
+        list = unsafe { (ops.prepend)(list, *ptr) };
+    }
+    list
+}
 
-    fn string_storage(
+#[derive(Debug)]
+pub enum ListPayload {
+    Handles(Vec<crate::handle::Handle>),
+    Strings {
         strings: Vec<std::ffi::CString>,
-        list_ptr: *mut Self::Node,
-        should_free: bool,
         elements_duped: bool,
-    ) -> StashStorage;
-
-    fn build_list(ptrs: &[*mut c_void]) -> *mut Self::Node {
-        let mut list: *mut Self::Node = std::ptr::null_mut();
-        for ptr in ptrs.iter().rev() {
-            list = unsafe { Self::prepend(list, *ptr) };
-        }
-        list
-    }
-
-    unsafe fn free_handle_list(list_ptr: *mut Self::Node, should_free: bool) {
-        if should_free && !list_ptr.is_null() {
-            unsafe { Self::free(list_ptr) };
-        }
-    }
-
-    unsafe fn free_string_list(list_ptr: *mut Self::Node, should_free: bool, elements_duped: bool) {
-        if !should_free || list_ptr.is_null() {
-            return;
-        }
-        if elements_duped {
-            unsafe { Self::free_full(list_ptr) };
-        } else {
-            unsafe { Self::free(list_ptr) };
-        }
-    }
+    },
 }
 
-/// Generates a [`ListKind`] implementation for a GLib singly/doubly linked list,
-/// along with its handle- and string-payload storage structs. Both `GList` and
-/// `GSList` differ only in their node type, the `g_list_*`/`g_slist_*` free and
-/// prepend functions, and the storage variants they map to.
-macro_rules! impl_list_kind {
-    (
-        kind = $kind:ident,
-        node = $node:path,
-        handle_data = $handle_data:ident => $handle_variant:ident,
-        string_data = $string_data:ident => $string_variant:ident,
-        label = $label:literal,
-        prepend = $prepend:path,
-        free = $free:path,
-        free_full = $free_full:path,
-        pending = $pending:ident,
-    ) => {
-        #[derive(Debug)]
-        pub struct $handle_data {
-            pub handles: Vec<crate::handle::Handle>,
-            pub list_ptr: *mut $node,
-            pub should_free: bool,
-        }
-
-        #[derive(Debug)]
-        pub struct $string_data {
-            pub strings: Vec<std::ffi::CString>,
-            pub list_ptr: *mut $node,
-            pub should_free: bool,
-            pub elements_duped: bool,
-        }
-
-        #[derive(Debug)]
-        pub struct $kind;
-
-        impl ListKind for $kind {
-            type Node = $node;
-            const LABEL: &'static str = $label;
-
-            unsafe fn prepend(list: *mut $node, ptr: *mut c_void) -> *mut $node {
-                unsafe { $prepend(list, ptr) }
-            }
-
-            unsafe fn free(list: *mut $node) {
-                unsafe { $free(list) };
-            }
-
-            unsafe fn free_full(list: *mut $node) {
-                unsafe { $free_full(list, Some(glib::ffi::g_free)) };
-            }
-
-            fn pending_release() -> PendingRelease {
-                PendingRelease::$pending
-            }
-
-            fn handle_storage(
-                handles: Vec<crate::handle::Handle>,
-                list_ptr: *mut $node,
-                should_free: bool,
-            ) -> StashStorage {
-                StashStorage::$handle_variant($handle_data {
-                    handles,
-                    list_ptr,
-                    should_free,
-                })
-            }
-
-            fn string_storage(
-                strings: Vec<std::ffi::CString>,
-                list_ptr: *mut $node,
-                should_free: bool,
-                elements_duped: bool,
-            ) -> StashStorage {
-                StashStorage::$string_variant($string_data {
-                    strings,
-                    list_ptr,
-                    should_free,
-                    elements_duped,
-                })
-            }
-        }
-    };
-}
-
-impl_list_kind! {
-    kind = GListKind,
-    node = glib::ffi::GList,
-    handle_data = GListData => GList,
-    string_data = StringGListData => StringGList,
-    label = "GList",
-    prepend = glib::ffi::g_list_prepend,
-    free = glib::ffi::g_list_free,
-    free_full = glib::ffi::g_list_free_full,
-    pending = GListFree,
-}
-
-impl_list_kind! {
-    kind = GSListKind,
-    node = glib::ffi::GSList,
-    handle_data = GSListData => GSList,
-    string_data = StringGSListData => StringGSList,
-    label = "GSList",
-    prepend = glib::ffi::g_slist_prepend,
-    free = glib::ffi::g_slist_free,
-    free_full = glib::ffi::g_slist_free_full,
-    pending = GSListFree,
+#[derive(Debug)]
+pub struct ListData {
+    pub ops: &'static ListOps,
+    pub list_ptr: *mut c_void,
+    pub should_free: bool,
+    pub payload: ListPayload,
 }
 
 #[derive(Debug)]
@@ -269,10 +189,7 @@ pub enum StashStorage {
     F64Vec(Vec<f64>),
     StringArray(Vec<std::ffi::CString>, Vec<*mut c_void>),
     ObjectArray(Vec<crate::handle::Handle>, Vec<*mut c_void>),
-    GList(GListData),
-    GSList(GSListData),
-    StringGList(StringGListData),
-    StringGSList(StringGSListData),
+    List(ListData),
     CString(std::ffi::CString),
     GArray(GArrayData),
     GByteArray(Option<glib::ByteArray>),
@@ -347,19 +264,19 @@ impl Drop for Stash {
                     unsafe { glib::ffi::g_hash_table_unref(self.ptr as *mut glib::ffi::GHashTable) };
                 }
             }
-            StashStorage::GList(data) => unsafe {
-                GListKind::free_handle_list(data.list_ptr, data.should_free);
-            },
-            StashStorage::GSList(data) => unsafe {
-                GSListKind::free_handle_list(data.list_ptr, data.should_free);
-            },
+            StashStorage::List(data) => {
+                if data.should_free && !data.list_ptr.is_null() {
+                    let free = match &data.payload {
+                        ListPayload::Strings {
+                            elements_duped: true,
+                            ..
+                        } => data.ops.free_full,
+                        ListPayload::Handles(_) | ListPayload::Strings { .. } => data.ops.free,
+                    };
+                    unsafe { free(data.list_ptr) };
+                }
+            }
             StashStorage::GArray(data) => Self::free_garray(data),
-            StashStorage::StringGList(data) => unsafe {
-                GListKind::free_string_list(data.list_ptr, data.should_free, data.elements_duped);
-            },
-            StashStorage::StringGSList(data) => unsafe {
-                GSListKind::free_string_list(data.list_ptr, data.should_free, data.elements_duped);
-            },
             StashStorage::GByteArray(_)
             | StashStorage::Unit
             | StashStorage::U8Vec(_)

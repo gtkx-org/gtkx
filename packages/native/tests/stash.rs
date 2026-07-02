@@ -7,10 +7,7 @@ use native::ffi::codec::{
     ArrayCodec, ArrayKind, Codec, Encoder as _, IntegerCodec, Ownership, StringCodec,
 };
 use native::ffi::value::Value;
-use native::ffi::{
-    GArrayData, GListData, GSListData, Stash, StashStorage, StashedValue, StringGListData,
-    StringGSListData,
-};
+use native::ffi::{GArrayData, ListData, ListPayload, Stash, StashStorage, StashedValue};
 
 fn make_glist_one() -> *mut glib::ffi::GList {
     unsafe { glib::ffi::g_list_append(std::ptr::null_mut(), std::ptr::without_provenance_mut(1)) }
@@ -42,10 +39,11 @@ fn make_hash_table() -> *mut glib::ffi::GHashTable {
 fn glist_storage(list_ptr: *mut glib::ffi::GList, should_free: bool) -> Stash {
     Stash::new(
         list_ptr as *mut c_void,
-        StashStorage::GList(GListData {
-            handles: Vec::new(),
-            list_ptr,
+        StashStorage::List(ListData {
+            ops: &native::ffi::GLIST_OPS,
+            list_ptr: list_ptr as *mut c_void,
             should_free,
+            payload: ListPayload::Handles(Vec::new()),
         }),
     )
 }
@@ -53,10 +51,11 @@ fn glist_storage(list_ptr: *mut glib::ffi::GList, should_free: bool) -> Stash {
 fn gslist_storage(list_ptr: *mut glib::ffi::GSList, should_free: bool) -> Stash {
     Stash::new(
         list_ptr as *mut c_void,
-        StashStorage::GSList(GSListData {
-            handles: Vec::new(),
-            list_ptr,
+        StashStorage::List(ListData {
+            ops: &native::ffi::GSLIST_OPS,
+            list_ptr: list_ptr as *mut c_void,
             should_free,
+            payload: ListPayload::Handles(Vec::new()),
         }),
     )
 }
@@ -93,11 +92,14 @@ fn string_glist_storage(
 ) -> Stash {
     Stash::new(
         list_ptr as *mut c_void,
-        StashStorage::StringGList(StringGListData {
-            strings,
-            list_ptr,
+        StashStorage::List(ListData {
+            ops: &native::ffi::GLIST_OPS,
+            list_ptr: list_ptr as *mut c_void,
             should_free,
-            elements_duped,
+            payload: ListPayload::Strings {
+                strings,
+                elements_duped,
+            },
         }),
     )
 }
@@ -110,11 +112,14 @@ fn string_gslist_storage(
 ) -> Stash {
     Stash::new(
         list_ptr as *mut c_void,
-        StashStorage::StringGSList(StringGSListData {
-            strings,
-            list_ptr,
+        StashStorage::List(ListData {
+            ops: &native::ffi::GSLIST_OPS,
+            list_ptr: list_ptr as *mut c_void,
             should_free,
-            elements_duped,
+            payload: ListPayload::Strings {
+                strings,
+                elements_duped,
+            },
         }),
     )
 }
@@ -224,10 +229,11 @@ fn glist_storage_keeps_when_not_freed() {
 fn glist_storage_null_ptr_safe_on_drop() {
     let _storage = Stash::new(
         std::ptr::null_mut(),
-        StashStorage::GList(GListData {
-            handles: Vec::new(),
+        StashStorage::List(ListData {
+            ops: &native::ffi::GLIST_OPS,
             list_ptr: std::ptr::null_mut(),
             should_free: true,
+            payload: ListPayload::Handles(Vec::new()),
         }),
     );
 }
@@ -257,10 +263,11 @@ fn gslist_storage_keeps_when_not_freed() {
 fn gslist_storage_null_ptr_safe_on_drop() {
     let _storage = Stash::new(
         std::ptr::null_mut(),
-        StashStorage::GSList(GSListData {
-            handles: Vec::new(),
+        StashStorage::List(ListData {
+            ops: &native::ffi::GSLIST_OPS,
             list_ptr: std::ptr::null_mut(),
             should_free: true,
+            payload: ListPayload::Handles(Vec::new()),
         }),
     );
 }
@@ -462,12 +469,15 @@ fn encode_empty_string_glist_full_container_arms_null_transfer_safe_on_drop() {
         panic!("expected storage")
     };
     assert!(storage.ptr().is_null());
-    let StashStorage::StringGList(data) = storage.storage() else {
+    let StashStorage::List(data) = storage.storage() else {
         panic!("expected string GList storage")
+    };
+    let ListPayload::Strings { elements_duped, .. } = &data.payload else {
+        panic!("expected string payload")
     };
     assert!(data.list_ptr.is_null());
     assert!(!data.should_free);
-    assert!(data.elements_duped);
+    assert!(*elements_duped);
     drop(encoded);
 }
 

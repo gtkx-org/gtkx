@@ -11,7 +11,7 @@ use native::ffi::codec::{
     ReadSource, RefCodec, StringCodec, StructCodec,
 };
 use native::ffi::value::Value;
-use native::ffi::{GArrayData, StashStorage, StashedValue};
+use native::ffi::{GArrayData, ListData, ListPayload, StashStorage, StashedValue};
 
 fn struct_item_codec() -> Codec {
     Codec::Struct(StructCodec {
@@ -124,8 +124,14 @@ fn assert_string_list_full_container_borrowed_elements_releases_spine(kind: Arra
             panic!("expected storage")
         };
         let (elements_duped, retained) = match storage.storage() {
-            StashStorage::StringGList(data) => (data.elements_duped, data.strings.len()),
-            StashStorage::StringGSList(data) => (data.elements_duped, data.strings.len()),
+            StashStorage::List(ListData {
+                payload:
+                    ListPayload::Strings {
+                        strings,
+                        elements_duped,
+                    },
+                ..
+            }) => (*elements_duped, strings.len()),
             other => panic!("expected string list storage, got {other:?}"),
         };
         assert!(!elements_duped);
@@ -1761,12 +1767,17 @@ fn encode_glist_strings_full_container_full_elements_releases_when_call_never_ha
         let StashedValue::Stashed(storage) = &encoded else {
             panic!("expected storage")
         };
-        let StashStorage::StringGList(data) = storage.storage() else {
+        let StashStorage::List(data) = storage.storage() else {
             panic!("expected string glist storage")
         };
-        assert!(data.elements_duped);
+        let ListPayload::Strings { elements_duped, .. } = &data.payload else {
+            panic!("expected string payload")
+        };
+        assert!(*elements_duped);
         assert!(!data.should_free);
-        let first = unsafe { std::ffi::CStr::from_ptr((*data.list_ptr).data as *const c_char) };
+        let first = unsafe {
+            std::ffi::CStr::from_ptr((*(data.list_ptr as *mut glib::ffi::GList)).data as *const c_char)
+        };
         assert_eq!(first.to_str().unwrap(), "a");
         drop(encoded);
     });

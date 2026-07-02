@@ -1,5 +1,4 @@
 use std::ffi::{CString, c_char};
-use std::marker::PhantomData;
 
 use anyhow::bail;
 use napi_derive::napi;
@@ -63,8 +62,8 @@ impl Encoder for ArrayCodec {
         }
 
         let encoder: &dyn ArrayKindEncoder = match &self.kind {
-            ArrayKind::GList => &ListEncoder::<ffi::GListKind>(PhantomData),
-            ArrayKind::GSList => &ListEncoder::<ffi::GSListKind>(PhantomData),
+            ArrayKind::GList => &ListEncoder(&ffi::GLIST_OPS),
+            ArrayKind::GSList => &ListEncoder(&ffi::GSLIST_OPS),
             _ => &NullTerminatedArrayEncoder,
         };
 
@@ -457,9 +456,9 @@ fn transfer_elements(
     Ok((ptrs, acquired))
 }
 
-struct ListEncoder<F: ffi::ListKind>(PhantomData<F>);
+struct ListEncoder(&'static ffi::ListOps);
 
-impl<F: ffi::ListKind> ArrayKindEncoder for ListEncoder<F> {
+impl ArrayKindEncoder for ListEncoder {
     fn encode_strings(
         &self,
         array: &[value::Value],
@@ -468,10 +467,18 @@ impl<F: ffi::ListKind> ArrayKindEncoder for ListEncoder<F> {
     ) -> anyhow::Result<ffi::StashedValue> {
         let should_free = ownership.is_borrowed();
         let (strings, ptrs) = string_list_parts(array, dup_elements)?;
-        let list = F::build_list(&ptrs);
+        let list = ffi::build_list(self.0, &ptrs);
         let storage = Stash::new(
-            list as *mut c_void,
-            F::string_storage(strings, list, should_free, dup_elements),
+            list,
+            StashStorage::List(ffi::ListData {
+                ops: self.0,
+                list_ptr: list,
+                should_free,
+                payload: ffi::ListPayload::Strings {
+                    strings,
+                    elements_duped: dup_elements,
+                },
+            }),
         );
         let acquired: Vec<ffi::PendingTransfer> = if !should_free && dup_elements {
             ptrs.iter()
@@ -484,7 +491,7 @@ impl<F: ffi::ListKind> ArrayKindEncoder for ListEncoder<F> {
             storage,
             should_free,
             acquired,
-            F::pending_release(),
+            self.0.pending,
         ))
     }
 
@@ -495,17 +502,22 @@ impl<F: ffi::ListKind> ArrayKindEncoder for ListEncoder<F> {
         ownership: Ownership,
     ) -> anyhow::Result<ffi::StashedValue> {
         let should_free = ownership.is_borrowed();
-        let (ptrs, acquired) = transfer_elements(handles, item_codec, F::LABEL)?;
-        let list = F::build_list(&ptrs);
+        let (ptrs, acquired) = transfer_elements(handles, item_codec, self.0.label)?;
+        let list = ffi::build_list(self.0, &ptrs);
         let storage = Stash::new(
-            list as *mut c_void,
-            F::handle_storage(handles.to_vec(), list, should_free),
+            list,
+            StashStorage::List(ffi::ListData {
+                ops: self.0,
+                list_ptr: list,
+                should_free,
+                payload: ffi::ListPayload::Handles(handles.to_vec()),
+            }),
         );
         Ok(finalize_container_stash(
             storage,
             should_free,
             acquired,
-            F::pending_release(),
+            self.0.pending,
         ))
     }
 }
@@ -684,14 +696,14 @@ impl ArrayCodec {
         });
 
         let is_full = self.ownership.is_full();
-        let is_slist = self.kind == ArrayKind::GSList;
+        let ops: &'static ffi::ListOps = if self.kind == ArrayKind::GSList {
+            &ffi::GSLIST_OPS
+        } else {
+            &ffi::GLIST_OPS
+        };
         self.decode_ptr_iter(nodes, move || {
             if is_full {
-                if is_slist {
-                    unsafe { glib::ffi::g_slist_free(list_ptr as *mut glib::ffi::GSList) };
-                } else {
-                    unsafe { glib::ffi::g_list_free(list_ptr as *mut glib::ffi::GList) };
-                }
+                unsafe { (ops.free)(list_ptr) };
             }
         })
     }
