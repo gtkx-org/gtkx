@@ -5,7 +5,10 @@ use std::thread;
 
 use gtk4::gdk;
 use gtk4::glib::{self, translate::IntoGlib as _};
+use gtk4::prelude::ObjectType as _;
 use gtk4::prelude::StaticType as _;
+
+use native::Handle;
 
 use native::ffi::codec::{
     ArrayCodec, ArrayKind, Codec, EnumFlagsCodec, EnumFlagsKind, Decoder, Encoder,
@@ -138,6 +141,43 @@ pub fn get_gobject_refcount(obj_ptr: *mut glib::gobject_ffi::GObject) -> u32 {
         return 0;
     }
     unsafe { (*obj_ptr).ref_count }
+}
+
+pub fn make_bool_param_spec() -> *mut c_void {
+    ensure_glib_init();
+    unsafe {
+        glib::gobject_ffi::g_param_spec_boolean(
+            c"gtkx-test-param".as_ptr(),
+            c"Test".as_ptr(),
+            c"A test parameter".as_ptr(),
+            glib::ffi::GFALSE,
+            glib::gobject_ffi::G_PARAM_READABLE,
+        ) as *mut c_void
+    }
+}
+
+pub fn fresh_gobject() -> (glib::Object, *mut glib::gobject_ffi::GObject, u32) {
+    let obj = glib::Object::new::<glib::Object>();
+    let obj_ptr = obj.as_ptr();
+    let before = get_gobject_refcount(obj_ptr);
+    (obj, obj_ptr, before)
+}
+
+pub fn boxed_handle() -> Handle {
+    let ptr = allocate_test_boxed(gdk::RGBA::static_type());
+    Handle::borrowed(ptr)
+}
+
+pub fn pump_default_context_until(done: impl Fn() -> bool) {
+    let context = glib::MainContext::default();
+    for _ in 0..1000 {
+        if done() {
+            return;
+        }
+        if !context.iteration(false) {
+            thread::yield_now();
+        }
+    }
 }
 
 pub fn allocate_test_boxed(gtype: glib::Type) -> *mut std::ffi::c_void {
@@ -278,14 +318,5 @@ pub fn enum_codec() -> EnumFlagsCodec {
         shared_library: "libgtk-4.so.1".to_owned(),
         get_type_fn_name: "gtk_orientation_get_type".to_owned(),
         storage: IntegerCodec::I32,
-    }
-}
-
-pub fn flags_codec() -> EnumFlagsCodec {
-    EnumFlagsCodec {
-        kind: EnumFlagsKind::Flags,
-        shared_library: "libgtk-4.so.1".to_owned(),
-        get_type_fn_name: "gtk_state_flags_get_type".to_owned(),
-        storage: IntegerCodec::U32,
     }
 }

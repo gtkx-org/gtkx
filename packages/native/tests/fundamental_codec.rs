@@ -1,6 +1,4 @@
-mod helpers {
-    pub use test_support::*;
-}
+use test_support as helpers;
 
 use std::ffi::c_void;
 
@@ -13,28 +11,9 @@ use native::handle::Handle;
 
 use helpers::{
     assert_decode_null_yields_null, assert_read_null_yields_null,
-    assert_write_return_err_writes_null, read_slot, write_return_into_slot,
+    assert_write_return_err_writes_null, make_bool_param_spec as create_param_spec,
+    param_spec_refcount, read_slot, write_return_into_slot,
 };
-
-fn create_param_spec() -> *mut c_void {
-    unsafe {
-        let param = glib::gobject_ffi::g_param_spec_boolean(
-            c"cov-param".as_ptr(),
-            c"Cov".as_ptr(),
-            c"A coverage parameter".as_ptr(),
-            glib::ffi::GFALSE,
-            glib::gobject_ffi::G_PARAM_READABLE,
-        );
-        param as *mut c_void
-    }
-}
-
-fn param_spec_refcount(ptr: *mut c_void) -> u32 {
-    if ptr.is_null() {
-        return 0;
-    }
-    unsafe { (*(ptr as *mut glib::gobject_ffi::GParamSpec)).ref_count }
-}
 
 fn release_param_spec_refs(ptr: *mut c_void, count: u32) {
     for _ in 0..count {

@@ -1,6 +1,4 @@
-mod helpers {
-    pub use test_support::*;
-}
+use test_support as helpers;
 
 use std::ffi::c_void;
 

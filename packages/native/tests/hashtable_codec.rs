@@ -1,12 +1,8 @@
-mod helpers {
-    pub use test_support::*;
-}
+use test_support as helpers;
 
 use std::ffi::c_void;
 
 use gtk4::glib;
-use gtk4::prelude::ObjectType as _;
-use gtk4::prelude::StaticType as _;
 
 use native::Handle;
 use native::ffi::StashedValue;
@@ -17,6 +13,11 @@ use native::ffi::codec::{
 };
 use native::ffi::codec::{Decoder, Encoder, PtrWriter, ReadSource};
 use native::ffi::value::Value;
+
+use helpers::{
+    boxed_handle, fresh_gobject as new_object_with_refcount,
+    make_bool_param_spec as create_param_spec,
+};
 
 fn struct_type() -> Codec {
     Codec::Struct(StructCodec {
@@ -35,11 +36,6 @@ fn gptrarray_type() -> Codec {
         fixed_size: None,
         element_size: None,
     })
-}
-
-fn boxed_handle() -> Handle {
-    let ptr = helpers::allocate_test_boxed(gtk4::gdk::RGBA::static_type());
-    Handle::borrowed(ptr)
 }
 
 fn full_boxed_type() -> Codec {
@@ -82,18 +78,6 @@ fn param_spec_fundamental_type() -> Codec {
         ref_fn_name: "g_param_spec_ref".to_owned(),
         unref_fn_name: "g_param_spec_unref".to_owned(),
     })
-}
-
-fn create_param_spec() -> *mut c_void {
-    unsafe {
-        glib::gobject_ffi::g_param_spec_boolean(
-            c"ht-cov-param".as_ptr(),
-            c"HtCov".as_ptr(),
-            c"A hashtable coverage parameter".as_ptr(),
-            glib::ffi::GFALSE,
-            glib::gobject_ffi::G_PARAM_READABLE,
-        ) as *mut c_void
-    }
 }
 
 fn ht_type(key: Codec, value: Codec, ownership: Ownership) -> HashTableCodec {
@@ -148,13 +132,6 @@ fn gobject_key_boolean_ht() -> HashTableCodec {
         Codec::Boolean(BooleanCodec),
         Ownership::Full,
     )
-}
-
-fn new_object_with_refcount() -> (glib::Object, *mut glib::gobject_ffi::GObject, u32) {
-    let obj = glib::Object::new::<glib::Object>();
-    let obj_ptr = obj.as_ptr();
-    let before = helpers::get_gobject_refcount(obj_ptr);
-    (obj, obj_ptr, before)
 }
 
 fn assert_kv_pairs<F>(decoded: Value, expected_len: usize, check_kv: F)

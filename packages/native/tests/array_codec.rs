@@ -1,11 +1,8 @@
-mod helpers {
-    pub use test_support::*;
-}
+use test_support as helpers;
 
 use std::ffi::{CString, c_char, c_void};
 
 use gtk4::glib;
-use gtk4::prelude::StaticType as _;
 
 use native::Handle;
 use native::ffi::codec::{
@@ -73,10 +70,7 @@ fn fixed_array_type(item: Codec, size: u32, ownership: Ownership) -> ArrayCodec 
     }
 }
 
-fn boxed_handle() -> Handle {
-    let ptr = helpers::allocate_test_boxed(gtk4::gdk::RGBA::static_type());
-    Handle::borrowed(ptr)
-}
+use helpers::boxed_handle;
 
 fn gobject_item_codec(ownership: Ownership) -> Codec {
     Codec::Object(ObjectCodec { ownership })
@@ -1722,15 +1716,7 @@ fn encode_gslist_handles_full_ownership_releases_when_call_never_happens() {
 #[test]
 fn encode_glist_handles_fails_and_unwinds_when_element_transfer_fails() {
     helpers::run(|| {
-        let pspec = unsafe {
-            glib::gobject_ffi::g_param_spec_boolean(
-                c"array-codec-cov".as_ptr(),
-                c"Cov".as_ptr(),
-                c"A coverage parameter".as_ptr(),
-                glib::ffi::GFALSE,
-                glib::gobject_ffi::G_PARAM_READABLE,
-            ) as *mut c_void
-        };
+        let pspec = helpers::make_bool_param_spec();
         let before = helpers::param_spec_refcount(pspec);
 
         let descriptor = array_codec(

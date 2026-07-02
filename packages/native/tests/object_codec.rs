@@ -1,11 +1,8 @@
-mod helpers {
-    pub use test_support::*;
-}
+use test_support as helpers;
 
 use std::ffi::c_void;
 
 use gtk4::glib;
-use gtk4::prelude::ObjectType as _;
 
 use native::ffi;
 use native::ffi::codec::{Decoder, Encoder, ObjectCodec, Ownership, PtrWriter, ReadSource};
@@ -14,7 +11,8 @@ use native::handle::Handle;
 
 use helpers::{
     assert_decode_null_yields_null, assert_read_null_yields_null,
-    assert_write_return_err_writes_null, get_gobject_refcount, read_slot, write_return_into_slot,
+    assert_write_return_err_writes_null, fresh_gobject, get_gobject_refcount, read_slot,
+    write_return_into_slot,
 };
 
 fn borrowed() -> ObjectCodec {
@@ -27,13 +25,6 @@ fn full() -> ObjectCodec {
     ObjectCodec {
         ownership: Ownership::Full,
     }
-}
-
-fn fresh_gobject() -> (glib::Object, *mut glib::gobject_ffi::GObject, u32) {
-    let obj = glib::Object::new::<glib::Object>();
-    let obj_ptr = obj.as_ptr();
-    let before = get_gobject_refcount(obj_ptr);
-    (obj, obj_ptr, before)
 }
 
 fn object_value_of(ptr: *mut glib::gobject_ffi::GObject) -> Value {

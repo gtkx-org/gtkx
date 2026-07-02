@@ -1,6 +1,4 @@
-mod helpers {
-    pub use test_support::*;
-}
+use test_support as helpers;
 
 use std::ffi::c_void;
 use std::sync::Arc;
@@ -13,33 +11,10 @@ use gtk4::prelude::ObjectType as _;
 use native::handle::{Fundamental, Handle, Value};
 use native::messaging::Mailbox;
 
-use helpers::{get_gobject_refcount, param_spec_ref, param_spec_refcount, param_spec_unref};
-
-fn pump_default_context_until(done: impl Fn() -> bool) {
-    let context = glib::MainContext::default();
-    for _ in 0..1000 {
-        if done() {
-            return;
-        }
-        if !context.iteration(false) {
-            thread::yield_now();
-        }
-    }
-}
-
-fn param_spec_ptr() -> *mut c_void {
-    helpers::ensure_glib_init();
-    unsafe {
-        let param = glib::gobject_ffi::g_param_spec_boolean(
-            c"managed-test".as_ptr(),
-            c"Managed".as_ptr(),
-            c"A managed test parameter".as_ptr(),
-            glib::ffi::GFALSE,
-            glib::gobject_ffi::G_PARAM_READABLE,
-        );
-        param as *mut c_void
-    }
-}
+use helpers::{
+    get_gobject_refcount, make_bool_param_spec as param_spec_ptr, param_spec_ref,
+    param_spec_refcount, param_spec_unref, pump_default_context_until,
+};
 
 fn owned_fundamental(ptr: *mut c_void) -> Handle {
     Value::Fundamental(Fundamental::from_glib_full(

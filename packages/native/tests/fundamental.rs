@@ -1,6 +1,4 @@
-mod helpers {
-    pub use test_support::*;
-}
+use test_support as helpers;
 
 use std::ffi::c_void;
 
@@ -8,22 +6,9 @@ use gtk4::glib;
 
 use native::handle::Fundamental;
 
-use helpers::{param_spec_ref, param_spec_refcount, param_spec_unref};
-
-fn create_param_spec() -> *mut c_void {
-    helpers::ensure_glib_init();
-
-    unsafe {
-        let param = glib::gobject_ffi::g_param_spec_boolean(
-            c"test-param".as_ptr(),
-            c"Test".as_ptr(),
-            c"A test parameter".as_ptr(),
-            glib::ffi::GFALSE,
-            glib::gobject_ffi::G_PARAM_READABLE,
-        );
-        param as *mut c_void
-    }
-}
+use helpers::{
+    make_bool_param_spec as create_param_spec, param_spec_ref, param_spec_refcount, param_spec_unref,
+};
 
 fn ref_after_extra_ref_and_scoped_full(
     ptr: *mut c_void,

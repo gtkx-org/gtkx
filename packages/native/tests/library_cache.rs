@@ -1,6 +1,4 @@
-mod helpers {
-    pub use test_support::*;
-}
+use test_support as helpers;
 
 use native::ffi::library_cache::GlibThreadState;
 use native::messaging::glib_mailbox::GlibThread;

@@ -1,6 +1,4 @@
-mod helpers {
-    pub use test_support::*;
-}
+use test_support as helpers;
 
 use std::sync::{
     Arc,
@@ -95,15 +93,7 @@ fn a_schedule_glib_idle_source_dispatches_through_global_main_context() {
     helpers::run(|| {
         let counter = schedule_incrementing_task();
 
-        let context = gtk4::glib::MainContext::default();
-        for _ in 0..1000 {
-            if counter.load(Ordering::SeqCst) == 1 {
-                break;
-            }
-            if !context.iteration(false) {
-                std::thread::yield_now();
-            }
-        }
+        helpers::pump_default_context_until(|| counter.load(Ordering::SeqCst) == 1);
 
         assert_eq!(counter.load(Ordering::SeqCst), 1);
     });
