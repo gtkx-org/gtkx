@@ -4,7 +4,6 @@ use super::IntegerCodec;
 use super::forward_ffi_encoder;
 use super::numeric::MAX_SAFE_INTEGER;
 use super::prelude::*;
-use crate::ffi::descriptor::Descriptor;
 
 #[derive(Debug, Clone, Copy)]
 pub enum BigIntCodec {
@@ -22,8 +21,8 @@ impl BigIntCodec {
 
     fn label(self) -> &'static str {
         match self {
-            Self::I64 => (&Descriptor::Bigint64).into(),
-            Self::U64 => (&Descriptor::Biguint64).into(),
+            Self::I64 => "bigint64",
+            Self::U64 => "biguint64",
         }
     }
 

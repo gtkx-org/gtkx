@@ -3,8 +3,7 @@ use libffi::middle as libffi;
 
 use super::prelude::*;
 
-#[derive(Debug, Clone, Copy, strum::IntoStaticStr)]
-#[strum(serialize_all = "lowercase")]
+#[derive(Debug, Clone, Copy)]
 pub enum IntegerCodec {
     U8,
     I8,
@@ -197,8 +196,21 @@ impl IntegerCodec {
         }
     }
 
+    fn name(self) -> &'static str {
+        match self {
+            Self::U8 => "u8",
+            Self::I8 => "i8",
+            Self::U16 => "u16",
+            Self::I16 => "i16",
+            Self::U32 => "u32",
+            Self::I32 => "i32",
+            Self::U64 => "u64",
+            Self::I64 => "i64",
+        }
+    }
+
     pub(super) fn check_range(self, value: f64) -> anyhow::Result<()> {
-        let name: &'static str = (&self).into();
+        let name = self.name();
         let (min, max) = match self {
             Self::I8 => (i8::MIN as f64, i8::MAX as f64),
             Self::U8 => (0.0, u8::MAX as f64),
@@ -308,8 +320,7 @@ impl_numeric_codecs!(
     }
 );
 
-#[derive(Debug, Clone, Copy, strum::IntoStaticStr)]
-#[strum(serialize_all = "lowercase")]
+#[derive(Debug, Clone, Copy)]
 pub enum FloatCodec {
     F32,
     F64,
@@ -341,12 +352,19 @@ impl FloatCodec {
         }
     }
 
+    fn name(self) -> &'static str {
+        match self {
+            Self::F32 => "f32",
+            Self::F64 => "f64",
+        }
+    }
+
     fn check_range(self, value: f64) -> anyhow::Result<()> {
         if let Self::F32 = self
             && value.is_finite()
             && (value > f32::MAX as f64 || value < -(f32::MAX as f64))
         {
-            let name: &'static str = (&self).into();
+            let name = self.name();
             bail!("Value {value} is out of range for {name}");
         }
         Ok(())

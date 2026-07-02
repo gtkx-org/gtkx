@@ -26,8 +26,7 @@ impl FromNapiValue for NestedDescriptor {
     discriminant_case = "camelCase",
     object_to_js = false
 )]
-#[derive(Debug, strum::IntoStaticStr)]
-#[strum(serialize_all = "camelCase")]
+#[derive(Debug)]
 pub enum Descriptor {
     Int8,
     Uint8,

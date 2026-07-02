@@ -67,12 +67,20 @@ macro_rules! forward_ffi_encoder {
 pub(crate) use forward_ffi_encoder;
 
 #[napi(string_enum = "lowercase")]
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, strum::Display)]
-#[strum(serialize_all = "lowercase")]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Ownership {
     #[default]
     Borrowed,
     Full,
+}
+
+impl std::fmt::Display for Ownership {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Borrowed => "borrowed",
+            Self::Full => "full",
+        })
+    }
 }
 
 impl Ownership {
