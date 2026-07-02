@@ -40,7 +40,7 @@ impl JsRef {
         let raw_value = value.raw();
         let mut raw_ref = std::ptr::null_mut();
         let status = unsafe { sys::napi_create_reference(env.raw(), raw_value, 1, &mut raw_ref) };
-        check_napi_status(status, "Failed to create reference")?;
+        check_status!(status, "Failed to create reference")?;
         Ok(Self {
             raw: raw_ref,
             env: env.raw(),
@@ -51,7 +51,7 @@ impl JsRef {
     pub fn get_raw(&self, env: &Env) -> napi::Result<sys::napi_value> {
         let mut raw_value = std::ptr::null_mut();
         let status = unsafe { sys::napi_get_reference_value(env.raw(), self.raw, &mut raw_value) };
-        check_napi_status(status, "Failed to get reference value")?;
+        check_status!(status, "Failed to get reference value")?;
         Ok(raw_value)
     }
 
@@ -61,6 +61,7 @@ impl JsRef {
     }
 }
 
+#[derive(Clone)]
 pub struct Callback {
     pub js_fn: Arc<JsRef>,
 }
@@ -82,14 +83,7 @@ impl Callback {
     }
 }
 
-impl Clone for Callback {
-    fn clone(&self) -> Self {
-        Self {
-            js_fn: self.js_fn.clone(),
-        }
-    }
-}
-
+#[derive(Clone)]
 pub struct Ref {
     pub value: Box<Value>,
     pub js_obj: Arc<JsRef>,
@@ -103,25 +97,12 @@ impl std::fmt::Debug for Ref {
     }
 }
 
-impl Clone for Ref {
-    fn clone(&self) -> Self {
-        Self {
-            value: self.value.clone(),
-            js_obj: self.js_obj.clone(),
-        }
-    }
-}
-
 impl Ref {
     pub fn new(value: Value, js_obj: Arc<JsRef>) -> Self {
         Self {
             value: Box::new(value),
             js_obj,
         }
-    }
-
-    pub fn from_js_value(env: &Env, value: Unknown<'_>) -> napi::Result<Self> {
-        Self::from_js_value_at_depth(env, value, 0)
     }
 
     fn from_js_value_at_depth(env: &Env, value: Unknown<'_>, depth: usize) -> napi::Result<Self> {
@@ -273,7 +254,7 @@ impl BufferView {
                 &mut byte_offset,
             )
         };
-        check_napi_status(status, "Failed to read typed-array info")?;
+        check_status!(status, "Failed to read typed-array info")?;
         let kind = BufferViewKind::try_from(raw_kind)?;
         let shared = Self::buffer_is_shared(env, array_buffer)?;
         Ok(Self::new(
@@ -300,7 +281,7 @@ impl BufferView {
                 &mut byte_offset,
             )
         };
-        check_napi_status(status, "Failed to read DataView info")?;
+        check_status!(status, "Failed to read DataView info")?;
         let shared = Self::buffer_is_shared(env, array_buffer)?;
         Ok(Self::new(
             data,
@@ -314,16 +295,8 @@ impl BufferView {
     fn buffer_is_shared(env: &Env, buffer: sys::napi_value) -> napi::Result<bool> {
         let mut is_array_buffer = false;
         let status = unsafe { sys::napi_is_arraybuffer(env.raw(), buffer, &mut is_array_buffer) };
-        check_napi_status(status, "Failed to inspect a view's backing buffer")?;
+        check_status!(status, "Failed to inspect a view's backing buffer")?;
         Ok(!is_array_buffer)
-    }
-}
-
-fn check_napi_status(status: sys::napi_status, message: &str) -> napi::Result<()> {
-    if status == sys::Status::napi_ok {
-        Ok(())
-    } else {
-        Err(napi::Error::new(napi::Status::GenericFailure, message))
     }
 }
 
@@ -347,27 +320,6 @@ impl Value {
         match result {
             Ok(Self::Object(handle)) => handle.ptr(),
             _ => std::ptr::null_mut(),
-        }
-    }
-
-    pub fn as_number(&self) -> Option<f64> {
-        match self {
-            Self::Number(n) => Some(*n),
-            _ => None,
-        }
-    }
-
-    pub fn as_string(&self) -> Option<&str> {
-        match self {
-            Self::String(s) => Some(s),
-            _ => None,
-        }
-    }
-
-    pub fn as_array(&self) -> Option<&[Self]> {
-        match self {
-            Self::Array(items) => Some(items),
-            _ => None,
         }
     }
 

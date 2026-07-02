@@ -1,5 +1,4 @@
 use std::ffi::{c_char, c_void};
-use std::mem::ManuallyDrop;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicPtr, Ordering};
 
@@ -75,9 +74,9 @@ impl std::fmt::Debug for CallbackData {
 }
 
 pub struct CallbackState {
-    closure: ManuallyDrop<libffi::Closure<'static>>,
+    _closure: libffi::Closure<'static>,
     pub code_ptr: *mut c_void,
-    data: ManuallyDrop<Box<CallbackData>>,
+    data: Box<CallbackData>,
 }
 
 impl std::fmt::Debug for CallbackState {
@@ -88,21 +87,14 @@ impl std::fmt::Debug for CallbackState {
     }
 }
 
-impl Drop for CallbackState {
-    fn drop(&mut self) {
-        unsafe { ManuallyDrop::drop(&mut self.closure) };
-        unsafe { ManuallyDrop::drop(&mut self.data) };
-    }
-}
-
 impl CallbackState {
     pub fn data_ref(&self) -> &CallbackData {
         &self.data
     }
 
     pub fn new(data: CallbackData) -> Self {
-        let data = ManuallyDrop::new(Box::new(data));
-        let data_ptr: *const CallbackData = &**data;
+        let data = Box::new(data);
+        let data_ptr: *const CallbackData = &*data;
         let data_ref: &'static CallbackData = unsafe { &*data_ptr };
 
         let mut cif_arg_types: Vec<libffi::Type> = Vec::with_capacity(data_ref.arg_codecs.len());
@@ -117,7 +109,7 @@ impl CallbackState {
         let code_ptr = *closure.code_ptr() as *mut c_void;
 
         Self {
-            closure: ManuallyDrop::new(closure),
+            _closure: closure,
             code_ptr,
             data,
         }

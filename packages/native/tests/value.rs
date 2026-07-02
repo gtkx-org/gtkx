@@ -339,67 +339,6 @@ fn result_to_ptr_returns_null_for_err() {
 }
 
 #[test]
-fn as_number_extracts_number_payload() {
-    assert_eq!(Value::Number(3.5).as_number(), Some(3.5));
-}
-
-#[test]
-fn as_number_is_none_for_other_variants() {
-    assert_for_each(
-        vec![
-            Value::String("x".to_string()),
-            Value::Boolean(true),
-            Value::Null,
-            Value::Undefined,
-        ],
-        |v| v.as_number().is_none(),
-    );
-}
-
-#[test]
-fn as_string_extracts_string_payload() {
-    assert_eq!(Value::String("x".to_string()).as_string(), Some("x"));
-}
-
-#[test]
-fn as_string_is_none_for_other_variants() {
-    assert_for_each(
-        vec![
-            Value::Number(3.5),
-            Value::Boolean(true),
-            Value::Null,
-            Value::Undefined,
-        ],
-        |v| v.as_string().is_none(),
-    );
-}
-
-#[test]
-fn as_array_extracts_array_elements() {
-    let value = Value::Array(vec![Value::Number(1.0), Value::Number(2.0)]);
-    let items = value
-        .as_array()
-        .expect("array variant should yield its elements");
-    assert_eq!(items.len(), 2);
-    assert_eq!(items[0].as_number(), Some(1.0));
-    assert_eq!(items[1].as_number(), Some(2.0));
-}
-
-#[test]
-fn as_array_is_none_for_other_variants() {
-    assert_for_each(
-        vec![
-            Value::Number(3.5),
-            Value::String("x".to_string()),
-            Value::Boolean(true),
-            Value::Null,
-            Value::Undefined,
-        ],
-        |v| v.as_array().is_none(),
-    );
-}
-
-#[test]
 fn object_ptr_returns_handle_pointer() {
     helpers::run(|| {
         let (_obj, obj_ptr, handle) = new_gobject_handle();

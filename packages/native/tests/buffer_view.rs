@@ -124,11 +124,10 @@ fn buffer_view_exposes_its_fields() {
 }
 
 #[test]
-fn value_buffer_view_is_not_an_object_or_number() {
+fn value_buffer_view_is_not_an_object() {
     let mut data = vec![0u8; 4];
     let view = view_over(&mut data, 4, BufferViewKind::Uint8);
     assert!(Value::BufferView(view).object_ptr("GObject").is_err());
-    assert_eq!(Value::BufferView(view).as_number(), None);
 }
 
 #[test]
