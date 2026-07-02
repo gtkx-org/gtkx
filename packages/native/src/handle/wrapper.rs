@@ -66,10 +66,15 @@ fn invoke_ref_op(napi_ref: *mut c_void, op: WrapperRefOp) {
     if mailbox.is_not_running() {
         return;
     }
-    if let Err(error) = mailbox.apply_wrapper_ref_op_and_wait(napi_ref as usize, op) {
-        ErrorReporter::global().report(&error.context(
-            "toggle-reference operation failed; wrapper lifetime state may be inconsistent",
-        ));
+    match op {
+        WrapperRefOp::Unref => mailbox.schedule_wrapper_unref(napi_ref as usize),
+        WrapperRefOp::Ref => {
+            if let Err(error) = mailbox.apply_wrapper_ref_op_and_wait(napi_ref as usize, op) {
+                ErrorReporter::global().report(&error.context(
+                    "toggle-reference operation failed; wrapper lifetime state may be inconsistent",
+                ));
+            }
+        }
     }
 }
 

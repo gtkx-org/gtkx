@@ -73,6 +73,9 @@ enum NodeTask {
         result_tx: mpsc::Sender<anyhow::Result<()>>,
         glib_initiated: bool,
     },
+    WrapperUnref {
+        napi_ref: usize,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

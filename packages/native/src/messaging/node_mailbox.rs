@@ -68,6 +68,10 @@ impl Mailbox {
         self.push_node_task(NodeTask::DeleteReference(reference));
     }
 
+    pub(crate) fn schedule_wrapper_unref(&self, napi_ref: usize) {
+        self.push_node_task(NodeTask::WrapperUnref { napi_ref });
+    }
+
     pub fn invoke_glib_and_wait_napi<R, F>(&self, env: Env, task: F) -> napi::Result<R>
     where
         F: FnOnce() -> R + Send + 'static,
@@ -233,6 +237,7 @@ impl Mailbox {
                         },
                     );
                 }
+                NodeTask::WrapperUnref { napi_ref } => WrapperRefOp::Unref.apply(&env, napi_ref),
             }
         }
     }
