@@ -16,6 +16,24 @@ use crate::ffi::descriptor::Descriptor;
 use crate::ffi::value::JsRef;
 use crate::messaging::error_reporter::ErrorReporter;
 
+fn gtype_from_bigint(value: BigInt, label: &str) -> napi::Result<glib::Type> {
+    let (_, gtype_value, lossless) = value.get_u64();
+    if !lossless {
+        return Err(napi::Error::new(
+            napi::Status::InvalidArg,
+            format!("register_class: {label} gtype exceeds the 64-bit GType range"),
+        ));
+    }
+    let gtype = unsafe { glib::Type::from_glib(gtype_value as glib::ffi::GType) };
+    if !gtype.is_valid() {
+        return Err(napi::Error::new(
+            napi::Status::InvalidArg,
+            format!("register_class: {label} gtype must be non-zero"),
+        ));
+    }
+    Ok(gtype)
+}
+
 pub struct VfuncCallback(Arc<JsRef>);
 
 impl FromNapiValue for VfuncCallback {
@@ -70,20 +88,7 @@ impl RegisterClassVfunc {
 
 impl RegisterClassInterface {
     fn into_raw(self) -> napi::Result<RawInterface> {
-        let (_, gtype_value, gtype_lossless) = self.gtype.get_u64();
-        if !gtype_lossless {
-            return Err(napi::Error::new(
-                napi::Status::InvalidArg,
-                "register_class: interface gtype exceeds the 64-bit GType range",
-            ));
-        }
-        let gtype = unsafe { glib::Type::from_glib(gtype_value as glib::ffi::GType) };
-        if !gtype.is_valid() {
-            return Err(napi::Error::new(
-                napi::Status::InvalidArg,
-                "register_class: interface gtype must be non-zero",
-            ));
-        }
+        let gtype = gtype_from_bigint(self.gtype, "interface")?;
         Ok(RawInterface {
             gtype,
             vfuncs: self
@@ -126,7 +131,7 @@ struct RawInterface {
 }
 
 impl RawVfunc {
-    fn into_prepared(self) -> PreparedVfunc {
+    fn install_into(self, vtable_base: *mut c_void) {
         let Self {
             byte_offset,
             js_fn,
@@ -134,54 +139,18 @@ impl RawVfunc {
             return_descriptor,
         } = self;
         let state = CallbackState::boxed(js_fn, arg_descriptors, return_descriptor, None, false);
-        PreparedVfunc {
-            byte_offset,
-            code_ptr: state.code_ptr,
-            state,
+        unsafe {
+            let slot = vtable_base
+                .cast::<u8>()
+                .add(byte_offset)
+                .cast::<*mut c_void>();
+            slot.write(state.code_ptr);
         }
+        std::mem::forget(state);
     }
 }
 
 impl RawInterface {
-    fn into_prepared(self) -> PreparedInterface {
-        PreparedInterface {
-            gtype: self.gtype,
-            vfuncs: self
-                .vfuncs
-                .into_iter()
-                .map(RawVfunc::into_prepared)
-                .collect(),
-        }
-    }
-}
-
-struct PreparedVfunc {
-    byte_offset: usize,
-    code_ptr: *mut c_void,
-    state: Box<CallbackState>,
-}
-
-struct PreparedInterface {
-    gtype: glib::Type,
-    vfuncs: Vec<PreparedVfunc>,
-}
-
-impl PreparedVfunc {
-    fn install_all(vtable_base: *mut c_void, vfuncs: Vec<Self>) {
-        for vfunc in vfuncs {
-            unsafe {
-                let slot = vtable_base
-                    .cast::<u8>()
-                    .add(vfunc.byte_offset)
-                    .cast::<*mut c_void>();
-                slot.write(vfunc.code_ptr);
-            }
-            std::mem::forget(vfunc.state);
-        }
-    }
-}
-
-impl PreparedInterface {
     fn install(self, class_ptr: *mut c_void) {
         let iface_vtable =
             unsafe { gobject_ffi::g_type_interface_peek(class_ptr, self.gtype.into_glib()) };
@@ -192,13 +161,10 @@ impl PreparedInterface {
             ));
             return;
         }
-        PreparedVfunc::install_all(iface_vtable, self.vfuncs);
+        for vfunc in self.vfuncs {
+            vfunc.install_into(iface_vtable);
+        }
     }
-}
-
-unsafe extern "C" fn class_init(g_class: *mut c_void, class_data: *mut c_void) {
-    let vfuncs = unsafe { Box::from_raw(class_data.cast::<Vec<PreparedVfunc>>()) };
-    PreparedVfunc::install_all(g_class, *vfuncs);
 }
 
 struct RegisterClassRequest {
@@ -210,10 +176,6 @@ struct RegisterClassRequest {
 
 impl RegisterClassRequest {
     fn query_parent_gtype(&self) -> anyhow::Result<gobject_ffi::GTypeQuery> {
-        if !self.parent_gtype.is_valid() {
-            anyhow::bail!("parent gtype is invalid (G_TYPE_INVALID)");
-        }
-
         if glib::Type::from_name(&self.name).is_some() {
             anyhow::bail!("GType name '{}' is already registered", self.name);
         }
@@ -264,9 +226,6 @@ impl RegisterClassRequest {
         }
 
         for iface in &self.interfaces {
-            if !iface.gtype.is_valid() {
-                anyhow::bail!("interface gtype is invalid (G_TYPE_INVALID)");
-            }
             for vfunc in &iface.vfuncs {
                 Self::validate_vfunc_offset(
                     vfunc.byte_offset,
@@ -283,8 +242,8 @@ impl RegisterClassRequest {
     fn register_type(
         parent_gtype: glib::Type,
         name_ptr: *const c_char,
-        class_vfuncs_ptr: *mut c_void,
-        interfaces: Vec<PreparedInterface>,
+        vfuncs: Vec<RawVfunc>,
+        interfaces: Vec<RawInterface>,
         class_size: u16,
         instance_size: u16,
     ) -> anyhow::Result<usize> {
@@ -292,9 +251,9 @@ impl RegisterClassRequest {
             class_size,
             base_init: None,
             base_finalize: None,
-            class_init: Some(class_init),
+            class_init: None,
             class_finalize: None,
-            class_data: class_vfuncs_ptr,
+            class_data: std::ptr::null_mut(),
             instance_size,
             n_preallocs: 0,
             instance_init: None,
@@ -306,11 +265,14 @@ impl RegisterClassRequest {
         };
 
         if new_gtype == 0 {
-            drop(unsafe { Box::from_raw(class_vfuncs_ptr.cast::<Vec<PreparedVfunc>>()) });
             anyhow::bail!("g_type_register_static returned G_TYPE_INVALID");
         }
 
         let class_ptr = unsafe { gobject_ffi::g_type_class_ref(new_gtype) };
+
+        for vfunc in vfuncs {
+            vfunc.install_into(class_ptr);
+        }
 
         for iface in interfaces {
             iface.install(class_ptr);
@@ -329,23 +291,12 @@ impl Request for RegisterClassRequest {
 
         let class_size = query.class_size as u16;
         let instance_size = query.instance_size as u16;
-        let class_vfuncs: Vec<PreparedVfunc> = self
-            .vfuncs
-            .into_iter()
-            .map(RawVfunc::into_prepared)
-            .collect();
-        let interfaces: Vec<PreparedInterface> = self
-            .interfaces
-            .into_iter()
-            .map(RawInterface::into_prepared)
-            .collect();
-        let class_vfuncs_ptr = Box::into_raw(Box::new(class_vfuncs)).cast::<c_void>();
 
         let new_gtype = Self::register_type(
             self.parent_gtype,
             self.name.as_ptr(),
-            class_vfuncs_ptr,
-            interfaces,
+            self.vfuncs,
+            self.interfaces,
             class_size,
             instance_size,
         )?;
@@ -374,20 +325,14 @@ pub mod napi_export {
                 format!("register_class: invalid type name: {err}"),
             )
         })?;
-        let (_, parent_value, parent_lossless) = parent_gtype.get_u64();
-        if !parent_lossless {
-            return Err(napi::Error::new(
-                napi::Status::InvalidArg,
-                "register_class: parent gtype exceeds the 64-bit GType range",
-            ));
-        }
+        let parent_gtype = gtype_from_bigint(parent_gtype, "parent")?;
         let (vfuncs, interfaces) = match options {
             Some(options) => options.into_raw()?,
             None => (Vec::new(), Vec::new()),
         };
         let gtype = RegisterClassRequest {
             name,
-            parent_gtype: unsafe { glib::Type::from_glib(parent_value as glib::ffi::GType) },
+            parent_gtype,
             vfuncs,
             interfaces,
         }

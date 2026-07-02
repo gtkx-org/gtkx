@@ -1,5 +1,4 @@
 use napi::Env;
-use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
 use crate::messaging::Mailbox;
@@ -7,8 +6,10 @@ use crate::messaging::error_reporter::ErrorReporter;
 use crate::messaging::glib_mailbox::GlibThread;
 
 #[napi(catch_unwind)]
-pub fn quit(env: Env, main_loop: &External<glib::MainLoop>) -> napi::Result<()> {
-    let main_loop = (**main_loop).clone();
+pub fn quit(env: Env) -> napi::Result<()> {
+    let Some(main_loop) = GlibThread::global().take_main_loop() else {
+        return Ok(());
+    };
 
     Mailbox::global().invoke_glib_and_wait_napi(env, move || {
         Mailbox::global().mark_not_running();

@@ -11,6 +11,7 @@ use super::{GlibTask, LockExt as _, Mailbox, send_or_report};
 #[derive(Debug, Default)]
 pub struct GlibThread {
     handle: Mutex<Option<JoinHandle<()>>>,
+    main_loop: Mutex<Option<glib::MainLoop>>,
 }
 
 static GLIB_THREAD: OnceLock<GlibThread> = OnceLock::new();
@@ -39,35 +40,31 @@ impl GlibThread {
         None
     }
 
-    pub fn spawn(&self) -> napi::Result<glib::MainLoop> {
-        let (tx, rx) = mpsc::channel::<glib::MainLoop>();
+    pub fn take_main_loop(&self) -> Option<glib::MainLoop> {
+        self.main_loop.lock_unpoison().take()
+    }
+
+    pub fn spawn(&self) -> napi::Result<()> {
+        let (tx, rx) = mpsc::channel::<()>();
+
+        let main_loop = glib::MainLoop::new(None, false);
+        let main_loop_for_thread = main_loop.clone();
+        *self.main_loop.lock_unpoison() = Some(main_loop);
 
         let handle = std::thread::Builder::new()
             .name("gtkx-glib".to_owned())
             .spawn(move || {
-                let result = panic::catch_unwind(AssertUnwindSafe(|| {
-                    GlibLogHandler::install();
+                GlibLogHandler::install();
 
-                    let main_loop = glib::MainLoop::new(None, false);
-                    let main_loop_for_node = main_loop.clone();
+                glib::idle_add_once(move || {
+                    send_or_report(
+                        &tx,
+                        (),
+                        "GLib main loop ready but startup channel was closed",
+                    );
+                });
 
-                    glib::idle_add_once(move || {
-                        send_or_report(
-                            &tx,
-                            main_loop_for_node,
-                            "GLib main loop ready but startup channel was closed",
-                        );
-                    });
-
-                    main_loop.run();
-                }));
-
-                if let Err(payload) = result {
-                    ErrorReporter::global().report_str(&format!(
-                        "GLib thread panicked: {}",
-                        format_panic_payload(&*payload)
-                    ));
-                }
+                main_loop_for_thread.run();
             })
             .map_err(|err| {
                 napi::Error::new(
@@ -84,7 +81,8 @@ impl GlibThread {
                 napi::Status::GenericFailure,
                 format!("Error starting GLib thread: {cause}"),
             )
-        })
+        })?;
+        Ok(())
     }
 }
 

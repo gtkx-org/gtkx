@@ -19,15 +19,17 @@ use napi::Env;
 use napi::bindgen_prelude::*;
 
 use crate::ffi::value::{JsRef, Value};
-use crate::handle::Handle;
 use crate::messaging;
 
 pub trait Request: Sized + Send + 'static {
-    type Output: Response + Send + 'static;
+    type Output: Send + 'static;
     fn execute(self) -> anyhow::Result<Self::Output>;
     fn error_context() -> &'static str;
 
-    fn dispatch(self, env: &Env) -> napi::Result<Unknown<'_>> {
+    fn dispatch(self, env: &Env) -> napi::Result<Unknown<'_>>
+    where
+        Self::Output: Response,
+    {
         self.dispatch_output(*env)?.to_js_response(env)
     }
 
@@ -50,28 +52,6 @@ pub trait Response: Sized {
 impl Response for Value {
     fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
         self.to_js_value(env)
-    }
-}
-
-impl Response for Handle {
-    fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
-        let size_hint = self.size_hint();
-        External::new_with_size_hint(self, size_hint).into_unknown(env)
-    }
-}
-
-impl Response for Option<Handle> {
-    fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
-        self.map_or_else(
-            || ().to_js_response(env),
-            |handle| handle.to_js_response(env),
-        )
-    }
-}
-
-impl Response for u64 {
-    fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
-        BigInt::from(self).into_unknown(env)
     }
 }
 

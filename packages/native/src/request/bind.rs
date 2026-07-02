@@ -29,10 +29,7 @@ pub mod napi_export {
     ) -> napi::Result<External<Arc<CallDescriptor>>> {
         let arg_codecs = arg_descriptors
             .into_iter()
-            .map(|wire| {
-                let codec = wire.into_codec()?;
-                Ok(codec)
-            })
+            .map(Descriptor::into_codec)
             .collect::<napi::Result<Vec<_>>>()?;
         let return_codec = return_descriptor.into_codec()?;
         Ok(External::new(Arc::new(CallDescriptor {

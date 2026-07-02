@@ -22,12 +22,10 @@ pub fn get_wrapper<'env>(
         let mut raw_value: sys::napi_value = std::ptr::null_mut();
         unsafe { sys::napi_get_reference_value(env.raw(), raw_ref, &mut raw_value) };
         if !raw_value.is_null() {
-            if handle.take_pending_gobject_ref() {
-                Mailbox::global().invoke_glib_and_wait_napi(*env, move || unsafe {
-                    glib::gobject_ffi::g_object_unref(
-                        gobject_ptr as *mut glib::gobject_ffi::GObject,
-                    );
-                })?;
+            if handle.take_pending_gobject_ref() && !Mailbox::global().is_not_running() {
+                glib::idle_add_once(move || unsafe {
+                    glib::gobject_ffi::g_object_unref(gobject_ptr as *mut glib::gobject_ffi::GObject);
+                });
             }
             return Ok(Some(unsafe {
                 Object::from_napi_value(env.raw(), raw_value)?
