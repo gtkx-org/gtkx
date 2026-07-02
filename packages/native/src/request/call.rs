@@ -9,7 +9,7 @@ use napi_derive::napi;
 use super::bind::CallDescriptor;
 use super::{RefUpdate, Request};
 use crate::ffi::{
-    self, Arg,
+    self,
     codec::{ArrayKind, Codec, Decoder as _, Encoder as _},
     library_cache::GlibThreadState,
     value::Value,
@@ -24,23 +24,18 @@ impl Request for CallRequest {
     type Output = (Value, Vec<RefUpdate>);
 
     fn execute(self) -> anyhow::Result<(Value, Vec<RefUpdate>)> {
-        let args: Vec<Arg> = self
-            .descriptor
-            .arg_codecs
-            .iter()
-            .cloned()
-            .zip(self.values)
-            .map(|(codec, value)| Arg::new(codec, value))
-            .collect();
         let symbol_name = &self.descriptor.symbol_name;
         let return_codec = &self.descriptor.return_codec;
+        let arg_codecs = &self.descriptor.arg_codecs;
+        let values = &self.values;
 
-        let stashed_values = args
+        let stashed_values = arg_codecs
             .iter()
+            .zip(values)
             .enumerate()
-            .map(|(i, arg)| {
-                arg.codec
-                    .encode(&arg.value)
+            .map(|(i, (codec, value))| {
+                codec
+                    .encode(value)
                     .with_context(|| format!("encoding arg {i} of {symbol_name}"))
             })
             .collect::<anyhow::Result<Vec<ffi::StashedValue>>>()?;
@@ -78,10 +73,10 @@ impl Request for CallRequest {
             stashed_value.disarm_pending_transfer();
         }
 
-        let ref_updates = Self::collect_ref_updates(&args, &stashed_values);
+        let ref_updates = Self::collect_ref_updates(arg_codecs, values, &stashed_values);
 
         let return_value = return_codec
-            .decode_with_context(&result, &stashed_values, &args)
+            .decode_with_context(&result, &stashed_values, arg_codecs)
             .with_context(|| format!("decoding return value of {symbol_name}"));
 
         Self::release_sized_array_return(return_codec, &result);
@@ -114,15 +109,15 @@ impl CallRequest {
     }
 
     fn collect_ref_updates(
-        args: &[Arg],
+        arg_codecs: &[Codec],
+        values: &[Value],
         stashed_values: &[ffi::StashedValue],
     ) -> anyhow::Result<Vec<RefUpdate>> {
         let mut ref_updates = Vec::new();
-        for (i, arg) in args.iter().enumerate() {
-            if let Value::Ref(ref_val) = &arg.value {
+        for (i, (codec, value)) in arg_codecs.iter().zip(values).enumerate() {
+            if let Value::Ref(ref_val) = value {
                 let new_value =
-                    arg.codec
-                        .decode_with_context(&stashed_values[i], stashed_values, args)?;
+                    codec.decode_with_context(&stashed_values[i], stashed_values, arg_codecs)?;
                 ref_updates.push((Arc::clone(&ref_val.js_obj), new_value));
             }
         }

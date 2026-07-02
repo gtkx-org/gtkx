@@ -2,7 +2,6 @@ use anyhow::bail;
 
 use super::super::prelude::*;
 use super::ArrayCodec;
-use crate::ffi::Arg;
 use crate::ffi::codec::Codec;
 
 impl ArrayCodec {
@@ -15,7 +14,7 @@ impl ArrayCodec {
 
     pub(super) fn size_from_args(
         ffi_args: &[ffi::StashedValue],
-        args: &[Arg],
+        arg_codecs: &[Codec],
         size_param_index: usize,
     ) -> anyhow::Result<usize> {
         if size_param_index >= ffi_args.len() {
@@ -27,9 +26,9 @@ impl ArrayCodec {
         }
 
         let ffi_arg = &ffi_args[size_param_index];
-        let arg = &args[size_param_index];
+        let arg_codec = &arg_codecs[size_param_index];
 
-        if let Codec::Ref(ref_codec) = &arg.codec
+        if let Codec::Ref(ref_codec) = arg_codec
             && let Codec::Integer(integer_codec) = &*ref_codec.inner_codec
         {
             match ffi_arg {
@@ -45,7 +44,7 @@ impl ArrayCodec {
             }
         }
 
-        if let Codec::Integer(_) = &arg.codec
+        if let Codec::Integer(_) = arg_codec
             && let Ok(size) = ffi_arg.to_number()
         {
             return Self::validated_size(size, size_param_index);
@@ -54,7 +53,7 @@ impl ArrayCodec {
         bail!(
             "Could not extract size from parameter at index {}: expected Ref<Integer> or Integer, got type {:?} with ffi value {:?}",
             size_param_index,
-            arg.codec,
+            arg_codec,
             ffi_arg
         );
     }

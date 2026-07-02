@@ -152,14 +152,14 @@ impl Decoder for ArrayCodec {
         &self,
         stashed_value: &ffi::StashedValue,
         ffi_args: &[ffi::StashedValue],
-        args: &[crate::ffi::Arg],
+        arg_codecs: &[Codec],
     ) -> anyhow::Result<value::Value> {
         match self.kind {
             ArrayKind::Sized => {
                 let size_param_index = self
                     .size_param_index
                     .ok_or_else(|| anyhow::anyhow!("A sized array requires a sizeParamIndex"))?;
-                let length = Self::size_from_args(ffi_args, args, size_param_index as usize)?;
+                let length = Self::size_from_args(ffi_args, arg_codecs, size_param_index as usize)?;
 
                 if let ffi::StashedValue::Ptr(ptr) = stashed_value {
                     if ptr.is_null() {

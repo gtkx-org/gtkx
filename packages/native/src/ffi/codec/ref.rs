@@ -4,7 +4,6 @@ use anyhow::bail;
 use libffi::middle as libffi;
 
 use super::prelude::*;
-use crate::ffi::Arg;
 use crate::ffi::codec::{ArrayKind, Codec};
 use crate::ffi::{Stash, StashStorage};
 
@@ -150,23 +149,13 @@ impl Decoder for RefCodec {
                 let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
                 self.inner_codec.decode(&ffi::StashedValue::Ptr(actual_ptr))
             }
-            Codec::Integer(_) => unsafe {
+            Codec::Integer(_)
+            | Codec::EnumFlags(_)
+            | Codec::Float(_)
+            | Codec::Boolean(_)
+            | Codec::Unichar(_) => unsafe {
                 self.inner_codec
-                    .read(ReadSource::Slot(storage.ptr(), "Ref<Integer>"))
-            },
-            Codec::EnumFlags(_) => unsafe {
-                self.inner_codec
-                    .read(ReadSource::Slot(storage.ptr(), "Ref<EnumFlags>"))
-            },
-            Codec::Float(_) => unsafe {
-                self.inner_codec
-                    .read(ReadSource::Slot(storage.ptr(), "Ref<Float>"))
-            },
-            Codec::Boolean(boolean) => unsafe {
-                boolean.read(ReadSource::Slot(storage.ptr(), "Ref<Boolean>"))
-            },
-            Codec::Unichar(unichar) => unsafe {
-                unichar.read(ReadSource::Slot(storage.ptr(), "Ref<Unichar>"))
+                    .read(ReadSource::Slot(storage.ptr(), "Ref inner"))
             },
             Codec::String(string_codec) => Ok(Self::decode_ref_string(storage, string_codec)),
             Codec::Array(_) => {
@@ -183,7 +172,7 @@ impl Decoder for RefCodec {
         &self,
         stashed_value: &ffi::StashedValue,
         ffi_args: &[ffi::StashedValue],
-        args: &[Arg],
+        arg_codecs: &[Codec],
     ) -> anyhow::Result<value::Value> {
         if let Codec::Array(array_codec) = &*self.inner_codec {
             let Some(stash) = stashed_value.as_stashed_or_null("Ref<Array>")? else {
@@ -200,7 +189,7 @@ impl Decoder for RefCodec {
             }
 
             let ptr_stashed_value = ffi::StashedValue::Ptr(actual_ptr);
-            let result = array_codec.decode_with_context(&ptr_stashed_value, ffi_args, args);
+            let result = array_codec.decode_with_context(&ptr_stashed_value, ffi_args, arg_codecs);
 
             if matches!(stash.storage(), StashStorage::PtrSlot(_))
                 && array_codec.ownership.is_full()

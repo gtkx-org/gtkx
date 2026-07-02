@@ -165,7 +165,7 @@ pub trait Decoder {
         &self,
         stashed_value: &ffi::StashedValue,
         _ffi_args: &[ffi::StashedValue],
-        _args: &[crate::ffi::Arg],
+        _arg_codecs: &[Codec],
     ) -> anyhow::Result<value::Value> {
         self.decode(stashed_value)
     }

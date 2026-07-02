@@ -8,7 +8,6 @@ use gtk4::glib;
 use gtk4::prelude::StaticType as _;
 
 use native::Handle;
-use native::ffi::Arg;
 use native::ffi::codec::{
     ArrayCodec, ArrayKind, BigIntCodec, BooleanCodec, Codec, Decoder, Encoder, EnumFlagsCodec,
     EnumFlagsKind, FloatCodec, FundamentalCodec, IntegerCodec, ObjectCodec, Ownership, PtrWriter,
@@ -228,9 +227,9 @@ fn decode_with_context_sized_enum_flags_elements_without_range_guard() {
     let data: Vec<i32> = vec![0, 1, 2];
     let stashed_value = StashedValue::Ptr(data.as_ptr() as *mut c_void);
     let ffi_args = [StashedValue::U32(3)];
-    let args = [Arg::new(Codec::Integer(IntegerCodec::U32), Value::Number(3.0))];
+    let arg_codecs = [Codec::Integer(IntegerCodec::U32)];
     let Value::Array(items) = descriptor
-        .decode_with_context(&stashed_value, &ffi_args, &args)
+        .decode_with_context(&stashed_value, &ffi_args, &arg_codecs)
         .unwrap()
     else {
         panic!("expected array")
@@ -1316,12 +1315,9 @@ fn decode_with_context_sized_array() {
     let data: Vec<i32> = vec![5, 6, 7];
     let stashed_value = StashedValue::Ptr(data.as_ptr() as *mut c_void);
     let ffi_args = [StashedValue::U32(3)];
-    let args = [Arg::new(
-        Codec::Integer(IntegerCodec::U32),
-        Value::Number(3.0),
-    )];
+    let arg_codecs = [Codec::Integer(IntegerCodec::U32)];
     let Value::Array(items) = descriptor
-        .decode_with_context(&stashed_value, &ffi_args, &args)
+        .decode_with_context(&stashed_value, &ffi_args, &arg_codecs)
         .unwrap()
     else {
         panic!("expected array")
@@ -1334,12 +1330,9 @@ fn decode_with_context_sized_array_null_ptr() {
     let descriptor = sized_array_type(Codec::Integer(IntegerCodec::I32), 0, Ownership::Borrowed);
     let stashed_value = StashedValue::Ptr(std::ptr::null_mut());
     let ffi_args = [StashedValue::U32(3)];
-    let args = [Arg::new(
-        Codec::Integer(IntegerCodec::U32),
-        Value::Number(3.0),
-    )];
+    let arg_codecs = [Codec::Integer(IntegerCodec::U32)];
     let Value::Array(items) = descriptor
-        .decode_with_context(&stashed_value, &ffi_args, &args)
+        .decode_with_context(&stashed_value, &ffi_args, &arg_codecs)
         .unwrap()
     else {
         panic!("expected array")
@@ -1353,12 +1346,9 @@ fn decode_with_context_sized_non_ptr_falls_through_to_decode() {
     let storage = native::ffi::Stash::from(vec![1i32, 2]);
     let stashed_value = StashedValue::Stashed(storage);
     let ffi_args = [StashedValue::U32(2)];
-    let args = [Arg::new(
-        Codec::Integer(IntegerCodec::U32),
-        Value::Number(2.0),
-    )];
+    let arg_codecs = [Codec::Integer(IntegerCodec::U32)];
     let Value::Array(items) = descriptor
-        .decode_with_context(&stashed_value, &ffi_args, &args)
+        .decode_with_context(&stashed_value, &ffi_args, &arg_codecs)
         .unwrap()
     else {
         panic!("expected array")
@@ -1593,12 +1583,9 @@ fn size_from_args_reads_integer_argument() {
     let data: Vec<i32> = vec![10, 20];
     let stashed_value = StashedValue::Ptr(data.as_ptr() as *mut c_void);
     let ffi_args = [StashedValue::I32(2)];
-    let args = [Arg::new(
-        Codec::Integer(IntegerCodec::I32),
-        Value::Number(2.0),
-    )];
+    let arg_codecs = [Codec::Integer(IntegerCodec::I32)];
     let Value::Array(items) = descriptor
-        .decode_with_context(&stashed_value, &ffi_args, &args)
+        .decode_with_context(&stashed_value, &ffi_args, &arg_codecs)
         .unwrap()
     else {
         panic!("expected array")
@@ -1613,12 +1600,10 @@ fn size_from_args_reads_ref_integer_storage() {
     let stashed_value = StashedValue::Ptr(data.as_ptr() as *mut c_void);
     let size_storage = native::ffi::Stash::from(vec![2i32]);
     let ffi_args = [StashedValue::Stashed(size_storage)];
-    let args = [Arg::new(
-        Codec::Ref(RefCodec::new(Codec::Integer(IntegerCodec::I32)).expect("valid Ref inner")),
-        Value::Number(2.0),
-    )];
+    let arg_codecs =
+        [Codec::Ref(RefCodec::new(Codec::Integer(IntegerCodec::I32)).expect("valid Ref inner"))];
     let Value::Array(items) = descriptor
-        .decode_with_context(&stashed_value, &ffi_args, &args)
+        .decode_with_context(&stashed_value, &ffi_args, &arg_codecs)
         .unwrap()
     else {
         panic!("expected array")
@@ -1633,12 +1618,10 @@ fn size_from_args_reads_ref_integer_ptr() {
     let stashed_value = StashedValue::Ptr(data.as_ptr() as *mut c_void);
     let size: i32 = 2;
     let ffi_args = [StashedValue::Ptr(&size as *const i32 as *mut c_void)];
-    let args = [Arg::new(
-        Codec::Ref(RefCodec::new(Codec::Integer(IntegerCodec::I32)).expect("valid Ref inner")),
-        Value::Number(2.0),
-    )];
+    let arg_codecs =
+        [Codec::Ref(RefCodec::new(Codec::Integer(IntegerCodec::I32)).expect("valid Ref inner"))];
     let Value::Array(items) = descriptor
-        .decode_with_context(&stashed_value, &ffi_args, &args)
+        .decode_with_context(&stashed_value, &ffi_args, &arg_codecs)
         .unwrap()
     else {
         panic!("expected array")
@@ -1652,13 +1635,11 @@ fn size_from_args_ref_null_ptr_falls_through_to_error() {
     let data: Vec<i32> = vec![1];
     let stashed_value = StashedValue::Ptr(data.as_ptr() as *mut c_void);
     let ffi_args = [StashedValue::Ptr(std::ptr::null_mut())];
-    let args = [Arg::new(
-        Codec::Ref(RefCodec::new(Codec::Integer(IntegerCodec::I32)).expect("valid Ref inner")),
-        Value::Number(0.0),
-    )];
+    let arg_codecs =
+        [Codec::Ref(RefCodec::new(Codec::Integer(IntegerCodec::I32)).expect("valid Ref inner"))];
     assert!(
         descriptor
-            .decode_with_context(&stashed_value, &ffi_args, &args)
+            .decode_with_context(&stashed_value, &ffi_args, &arg_codecs)
             .is_err()
     );
 }
