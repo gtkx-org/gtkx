@@ -5,6 +5,13 @@ pub(super) use std::ffi::c_void;
 use crate::messaging::error_reporter::ReportErr as _;
 use std::ffi::c_char;
 
+macro_rules! bail_expected {
+    ($expected:expr, $label:expr, $value:expr) => {
+        ::anyhow::bail!("Expected {} for {} codec, got {:?}", $expected, $label, $value)
+    };
+}
+pub(super) use bail_expected;
+
 /// Decodes a NUL-terminated C string into an owned `String`, replacing invalid
 /// UTF-8 with the Unicode replacement character.
 ///

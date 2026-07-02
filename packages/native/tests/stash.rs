@@ -8,8 +8,8 @@ use native::ffi::codec::{
 };
 use native::ffi::value::Value;
 use native::ffi::{
-    GArrayData, GListData, GSListData, HashTableData, Stash, StashStorage, StashedValue,
-    StringGListData, StringGSListData,
+    GArrayData, GListData, GSListData, Stash, StashStorage, StashedValue, StringGListData,
+    StringGSListData,
 };
 
 fn make_glist_one() -> *mut glib::ffi::GList {
@@ -78,13 +78,11 @@ fn gbytearray_storage(array_ptr: *mut glib::ffi::GByteArray, should_free: bool) 
 }
 
 fn hashtable_storage(handle: *mut glib::ffi::GHashTable, should_free: bool) -> Stash {
-    Stash::new(
-        handle as *mut c_void,
-        StashStorage::HashTable(HashTableData {
-            handle,
-            should_free,
-        }),
-    )
+    if should_free {
+        Stash::new(handle as *mut c_void, StashStorage::HashTable)
+    } else {
+        Stash::unit(handle as *mut c_void)
+    }
 }
 
 fn string_glist_storage(
@@ -139,13 +137,7 @@ fn hashtable_storage_unrefs_on_drop() {
 #[test]
 fn hashtable_storage_null_handle_safe_on_drop() {
     {
-        let _storage = Stash::new(
-            std::ptr::null_mut(),
-            StashStorage::HashTable(HashTableData {
-                handle: std::ptr::null_mut(),
-                should_free: true,
-            }),
-        );
+        let _storage = Stash::new(std::ptr::null_mut(), StashStorage::HashTable);
     }
 }
 

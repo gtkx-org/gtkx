@@ -17,7 +17,7 @@ impl Encoder for UnicharCodec {
             value::Value::String(s) => s.chars().next().map_or(0, |c| c as u32),
             value::Value::Number(n) => *n as u32,
             value::Value::Null | value::Value::Undefined => 0,
-            _ => anyhow::bail!("Expected a string for unichar codec, got {value:?}"),
+            _ => bail_expected!("a String", "unichar", value),
         };
         Ok(ffi::StashedValue::U32(cp))
     }

@@ -37,7 +37,7 @@ impl Encoder for StringCodec {
             value::Value::Null | value::Value::Undefined => {
                 Ok(ffi::StashedValue::Ptr(std::ptr::null_mut()))
             }
-            _ => bail!("Expected a String for string codec, got {value:?}"),
+            _ => bail_expected!("a String", "string", value),
         }
     }
 }

@@ -19,7 +19,7 @@ impl Encoder for BooleanCodec {
     fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
         let boolean = match value {
             value::Value::Boolean(b) => *b,
-            _ => anyhow::bail!("Expected a Boolean for boolean codec, got {value:?}"),
+            _ => bail_expected!("a Boolean", "boolean", value),
         };
         Ok(ffi::StashedValue::I32(boolean.into_glib()))
     }

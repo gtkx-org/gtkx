@@ -44,9 +44,9 @@ impl ArrayCodec {
         ))
     }
 
-    fn append_stash(g_array: *mut glib::ffi::GArray, stash: &Stash, len: usize) {
+    fn append_vals(g_array: *mut glib::ffi::GArray, data: *const c_void, len: usize) {
         unsafe {
-            glib::ffi::g_array_append_vals(g_array, stash.ptr(), len as u32);
+            glib::ffi::g_array_append_vals(g_array, data, len as u32);
         }
     }
 
@@ -57,15 +57,7 @@ impl ArrayCodec {
     ) -> anyhow::Result<Vec<ffi::PendingTransfer>> {
         let handles = Self::extract_handles(array)?;
         let (ptrs, acquired) = transfer_elements(&handles, &self.item_codec, "GArray")?;
-        for ptr in ptrs {
-            unsafe {
-                glib::ffi::g_array_append_vals(
-                    g_array,
-                    &ptr as *const *mut c_void as *const c_void,
-                    1,
-                );
-            }
-        }
+        Self::append_vals(g_array, ptrs.as_ptr().cast::<c_void>(), ptrs.len());
         Ok(acquired)
     }
 
@@ -77,12 +69,12 @@ impl ArrayCodec {
         match self.item_codec("GArray")? {
             ItemCodec::Integer(kind) | ItemCodec::EnumFlags(kind) => {
                 let stash = kind.to_stash(&Self::extract_numbers(array)?);
-                Self::append_stash(g_array, &stash, array.len());
+                Self::append_vals(g_array, stash.ptr(), array.len());
                 Ok(Vec::new())
             }
             ItemCodec::BigInt(kind) => {
                 let stash = kind.to_stash(array)?;
-                Self::append_stash(g_array, &stash, array.len());
+                Self::append_vals(g_array, stash.ptr(), array.len());
                 Ok(Vec::new())
             }
             ItemCodec::Float(kind) => {
@@ -93,12 +85,12 @@ impl ArrayCodec {
                     }
                     FloatCodec::F64 => numbers.into(),
                 };
-                Self::append_stash(g_array, &stash, array.len());
+                Self::append_vals(g_array, stash.ptr(), array.len());
                 Ok(Vec::new())
             }
             ItemCodec::Boolean => {
                 let stash: Stash = Self::extract_booleans(array)?.into();
-                Self::append_stash(g_array, &stash, array.len());
+                Self::append_vals(g_array, stash.ptr(), array.len());
                 Ok(Vec::new())
             }
             ItemCodec::Pointer => self.append_handle_values_to_garray(g_array, array),
@@ -116,19 +108,15 @@ impl ArrayCodec {
                         );
                     }
                 }
-                let mut acquired = Vec::new();
-                for dup in dup_strings_to_glib(array)? {
-                    if callee_owns_strings {
-                        acquired.push(ffi::PendingTransfer::new(dup, ffi::PendingRelease::GFree));
-                    }
-                    unsafe {
-                        glib::ffi::g_array_append_vals(
-                            g_array,
-                            &dup as *const *mut c_void as *const c_void,
-                            1,
-                        );
-                    }
-                }
+                let dups = dup_strings_to_glib(array)?;
+                let acquired = if callee_owns_strings {
+                    dups.iter()
+                        .map(|&dup| ffi::PendingTransfer::new(dup, ffi::PendingRelease::GFree))
+                        .collect()
+                } else {
+                    Vec::new()
+                };
+                Self::append_vals(g_array, dups.as_ptr().cast::<c_void>(), dups.len());
                 Ok(acquired)
             }
         }

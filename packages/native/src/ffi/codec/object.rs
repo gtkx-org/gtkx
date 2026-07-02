@@ -27,6 +27,12 @@ unsafe fn tracked_gobject_value(
     value::Value::Object(Handle::decoded_gobject(gobject_ptr.cast()))
 }
 
+unsafe fn object_ref_full(ptr: *mut c_void) -> *mut c_void {
+    let obj: glib::Object =
+        unsafe { glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject) };
+    IntoGlibPtr::<*mut glib::gobject_ffi::GObject>::into_glib_ptr(obj).cast::<c_void>()
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct ObjectCodec {
     pub ownership: Ownership,
@@ -45,11 +51,7 @@ impl Encoder for ObjectCodec {
 
     unsafe fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
         if self.ownership.is_full() && !ptr.is_null() {
-            let obj: glib::Object =
-                unsafe { glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject) };
-            return Ok(
-                IntoGlibPtr::<*mut glib::gobject_ffi::GObject>::into_glib_ptr(obj).cast::<c_void>(),
-            );
+            return Ok(unsafe { object_ref_full(ptr) });
         }
         Ok(ptr)
     }
@@ -78,10 +80,8 @@ impl Decoder for ObjectCodec {
 
 impl PtrWriter for ObjectCodec {
     unsafe fn write_return_to_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
-        self.write_return_with_ownership(ret, value, self.ownership, |ptr| {
-            let obj: glib::Object =
-                unsafe { glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject) };
-            IntoGlibPtr::<*mut glib::gobject_ffi::GObject>::into_glib_ptr(obj).cast::<c_void>()
+        self.write_return_with_ownership(ret, value, self.ownership, |ptr| unsafe {
+            object_ref_full(ptr)
         });
     }
 

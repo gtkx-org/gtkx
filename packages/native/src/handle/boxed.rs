@@ -10,7 +10,6 @@ use crate::ffi::codec::BoxedFreeFn;
 pub struct Boxed {
     ptr: *mut c_void,
     gtype: Option<glib::Type>,
-    free_fn: Option<BoxedFreeFn>,
     allocation: Option<Rc<OwnedAllocation>>,
 }
 
@@ -54,50 +53,43 @@ impl Drop for OwnedAllocation {
 impl Boxed {
     pub(crate) const SIZE_HINT: usize = 256;
 
-    fn owned(
-        ptr: *mut c_void,
-        gtype: Option<glib::Type>,
-        free_fn: Option<BoxedFreeFn>,
-        destructor: BoxedDestructor,
-    ) -> Self {
+    fn owned(ptr: *mut c_void, gtype: Option<glib::Type>, destructor: BoxedDestructor) -> Self {
         Self {
             ptr,
             gtype,
-            free_fn,
             allocation: Some(Rc::new(OwnedAllocation { ptr, destructor })),
         }
     }
 
-    fn borrowed(ptr: *mut c_void, gtype: Option<glib::Type>, free_fn: Option<BoxedFreeFn>) -> Self {
+    fn borrowed(ptr: *mut c_void, gtype: Option<glib::Type>) -> Self {
         Self {
             ptr,
             gtype,
-            free_fn,
             allocation: None,
         }
     }
 
     pub fn from_glib_full(gtype: Option<glib::Type>, ptr: *mut c_void) -> Self {
         let destructor = gtype.map_or(BoxedDestructor::GFree, BoxedDestructor::BoxedFree);
-        Self::owned(ptr, gtype, None, destructor)
+        Self::owned(ptr, gtype, destructor)
     }
 
     pub fn from_alloc(type_name: Option<glib::GString>, ptr: *mut c_void) -> Self {
         let Some(name) = type_name else {
-            return Self::owned(ptr, None, None, BoxedDestructor::GFree);
+            return Self::owned(ptr, None, BoxedDestructor::GFree);
         };
         if let Some(gtype) = glib::Type::from_name(&name) {
-            return Self::owned(ptr, Some(gtype), None, BoxedDestructor::BoxedFree(gtype));
+            return Self::owned(ptr, Some(gtype), BoxedDestructor::BoxedFree(gtype));
         }
-        Self::owned(ptr, None, None, BoxedDestructor::GBoxedFreeByName(name))
+        Self::owned(ptr, None, BoxedDestructor::GBoxedFreeByName(name))
     }
 
     pub fn from_glib_full_with_free_fn(ptr: *mut c_void, free_fn: BoxedFreeFn) -> Self {
-        Self::owned(ptr, None, Some(free_fn), BoxedDestructor::Custom(free_fn))
+        Self::owned(ptr, None, BoxedDestructor::Custom(free_fn))
     }
 
     pub(crate) fn from_glib_borrow(ptr: *mut c_void) -> Self {
-        Self::borrowed(ptr, None, None)
+        Self::borrowed(ptr, None)
     }
 
     pub(crate) unsafe fn boxed_copy(gtype: glib::Type, ptr: *mut c_void) -> *mut c_void {
@@ -106,7 +98,7 @@ impl Boxed {
 
     pub fn copy_with_size(ptr: *mut c_void, size: usize) -> Self {
         let cloned_ptr = unsafe { crate::ffi::dup_to_glib_heap(ptr as *const u8, size) };
-        Self::owned(cloned_ptr, None, None, BoxedDestructor::GFree)
+        Self::owned(cloned_ptr, None, BoxedDestructor::GFree)
     }
 
     pub unsafe fn from_glib_none(
@@ -115,17 +107,12 @@ impl Boxed {
         type_name: Option<&str>,
     ) -> anyhow::Result<Self> {
         if ptr.is_null() {
-            return Ok(Self::borrowed(ptr, gtype, None));
+            return Ok(Self::borrowed(ptr, gtype));
         }
 
         if let Some(gt) = gtype {
             let cloned_ptr = unsafe { Self::boxed_copy(gt, ptr) };
-            return Ok(Self::owned(
-                cloned_ptr,
-                gtype,
-                None,
-                BoxedDestructor::BoxedFree(gt),
-            ));
+            return Ok(Self::owned(cloned_ptr, gtype, BoxedDestructor::BoxedFree(gt)));
         }
 
         let name = type_name.unwrap_or("unknown");
@@ -151,32 +138,27 @@ impl Boxed {
 
     #[inline]
     pub fn free_fn(&self) -> Option<BoxedFreeFn> {
-        self.free_fn
+        match &self.allocation.as_ref()?.destructor {
+            BoxedDestructor::Custom(free_fn) => Some(*free_fn),
+            _ => None,
+        }
     }
 }
 
 impl Clone for Boxed {
     fn clone(&self) -> Self {
         if self.ptr.is_null() || self.allocation.is_none() {
-            return Self::borrowed(self.ptr, self.gtype, self.free_fn);
+            return Self::borrowed(self.ptr, self.gtype);
         }
 
-        if let Some(gtype) = self.gtype
-            && self.free_fn.is_none()
-        {
+        if let Some(gtype) = self.gtype {
             let cloned_ptr = unsafe { Self::boxed_copy(gtype, self.ptr) };
-            return Self::owned(
-                cloned_ptr,
-                self.gtype,
-                None,
-                BoxedDestructor::BoxedFree(gtype),
-            );
+            return Self::owned(cloned_ptr, self.gtype, BoxedDestructor::BoxedFree(gtype));
         }
 
         Self {
             ptr: self.ptr,
             gtype: self.gtype,
-            free_fn: self.free_fn,
             allocation: self.allocation.clone(),
         }
     }

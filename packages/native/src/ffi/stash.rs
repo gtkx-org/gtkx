@@ -302,12 +302,6 @@ pub struct GArrayData {
 }
 
 #[derive(Debug)]
-pub struct HashTableData {
-    pub handle: *mut glib::ffi::GHashTable,
-    pub should_free: bool,
-}
-
-#[derive(Debug)]
 pub enum StashStorage {
     Unit,
     U8Vec(Vec<u8>),
@@ -332,7 +326,7 @@ pub enum StashStorage {
     Buffer(Vec<u8>),
     PtrSlot(Vec<*mut c_void>),
     StrV(glib::StrV),
-    HashTable(HashTableData),
+    HashTable,
 }
 
 impl Stash {
@@ -449,12 +443,6 @@ impl Stash {
 }
 
 impl Stash {
-    fn free_hash_table(data: &HashTableData) {
-        if data.should_free && !data.handle.is_null() {
-            unsafe { glib::ffi::g_hash_table_unref(data.handle) };
-        }
-    }
-
     fn free_garray(data: &GArrayData) {
         if data.should_free && !data.array_ptr.is_null() {
             unsafe { glib::ffi::g_array_unref(data.array_ptr) };
@@ -468,7 +456,11 @@ impl Drop for Stash {
             pending.release();
         }
         match &self.storage {
-            StashStorage::HashTable(data) => Self::free_hash_table(data),
+            StashStorage::HashTable => {
+                if !self.ptr.is_null() {
+                    unsafe { glib::ffi::g_hash_table_unref(self.ptr as *mut glib::ffi::GHashTable) };
+                }
+            }
             StashStorage::GList(data) => unsafe {
                 GListKind::free_handle_list(data.list_ptr, data.should_free);
             },

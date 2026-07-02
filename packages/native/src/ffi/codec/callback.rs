@@ -45,14 +45,12 @@ impl Encoder for CallbackCodec {
     }
 
     fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
-        use anyhow::bail;
-
         let callback = match value {
             value::Value::Callback(callback) => callback,
             value::Value::Null | value::Value::Undefined => {
                 return Ok(self.null_callback_value());
             }
-            _ => bail!("Expected a Callback for the callback codec, got {value:?}"),
+            _ => bail_expected!("a Callback", "callback", value),
         };
 
         let is_oneshot = self.scope == CallbackScope::Async;

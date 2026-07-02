@@ -11,9 +11,17 @@ pub struct StructCodec {
 }
 
 impl Encoder for StructCodec {
-    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::StashedValue> {
-        let ptr = value.object_ptr("Struct object")?;
-        Ok(ffi::StashedValue::Ptr(ptr))
+    fn object_ptr_context(&self) -> &'static str {
+        "Struct object"
+    }
+}
+
+impl StructCodec {
+    fn borrow_or_copy(&self, ptr: *mut c_void) -> Boxed {
+        self.size.map_or_else(
+            || Boxed::from_glib_borrow(ptr),
+            |size| Boxed::copy_with_size(ptr, size),
+        )
     }
 }
 
@@ -22,10 +30,7 @@ impl Decoder for StructCodec {
         self.read_call_non_null(stashed_value, "Struct", |struct_ptr| {
             let boxed = match self.ownership {
                 Ownership::Full => Boxed::from_glib_full(None, struct_ptr),
-                Ownership::Borrowed => self.size.map_or_else(
-                    || Boxed::from_glib_borrow(struct_ptr),
-                    |size| Boxed::copy_with_size(struct_ptr, size),
-                ),
+                Ownership::Borrowed => self.borrow_or_copy(struct_ptr),
             };
 
             Ok(boxed.into())
@@ -37,11 +42,7 @@ impl Decoder for StructCodec {
             if self.caller_allocated {
                 return Ok(Boxed::from_glib_borrow(ptr).into());
             }
-            let boxed = self.size.map_or_else(
-                || Boxed::from_glib_borrow(ptr),
-                |size| Boxed::copy_with_size(ptr, size),
-            );
-            Ok(boxed.into())
+            Ok(self.borrow_or_copy(ptr).into())
         })
     }
 }

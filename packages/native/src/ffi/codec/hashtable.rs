@@ -4,7 +4,7 @@ use super::prelude::*;
 use super::string::str_to_glib_full;
 use crate::ffi::codec::Codec;
 use crate::ffi::codec::array::ArrayKind;
-use crate::ffi::{HashTableData, Stash, StashStorage};
+use crate::ffi::{Stash, StashStorage};
 
 #[derive(Clone, Debug)]
 pub enum HashTableEntryCodec {
@@ -33,22 +33,12 @@ impl HashTableEntryCodec {
         }
     }
 
-    pub fn hash_func(&self) -> glib::ffi::GHashFunc {
+    pub fn hash_and_equal(&self) -> (glib::ffi::GHashFunc, glib::ffi::GEqualFunc) {
         match self {
-            Self::String => Some(glib::ffi::g_str_hash),
-            Self::Float => Some(glib::ffi::g_double_hash),
+            Self::String => (Some(glib::ffi::g_str_hash), Some(glib::ffi::g_str_equal)),
+            Self::Float => (Some(glib::ffi::g_double_hash), Some(glib::ffi::g_double_equal)),
             Self::Integer | Self::Boolean | Self::Handle(_) | Self::PtrArray(_) => {
-                Some(glib::ffi::g_direct_hash)
-            }
-        }
-    }
-
-    pub fn equal_func(&self) -> glib::ffi::GEqualFunc {
-        match self {
-            Self::String => Some(glib::ffi::g_str_equal),
-            Self::Float => Some(glib::ffi::g_double_equal),
-            Self::Integer | Self::Boolean | Self::Handle(_) | Self::PtrArray(_) => {
-                Some(glib::ffi::g_direct_equal)
+                (Some(glib::ffi::g_direct_hash), Some(glib::ffi::g_direct_equal))
             }
         }
     }
@@ -108,11 +98,7 @@ impl HashTableEntryCodec {
                 }),
                 _ => bail!("Expected number in GHashTable for float, got {value:?}"),
             },
-            Self::Handle(_) => match value {
-                value::Value::Object(handle) => Ok(handle.ptr()),
-                value::Value::Null | value::Value::Undefined => Ok(std::ptr::null_mut()),
-                _ => bail!("Expected native object in GHashTable, got {value:?}"),
-            },
+            Self::Handle(_) => value.object_ptr("GHashTable entry"),
             Self::PtrArray(item_codec) => {
                 let value::Value::Array(items) = value else {
                     bail!("Expected Array for GPtrArray in GHashTable, got {value:?}")
@@ -121,11 +107,7 @@ impl HashTableEntryCodec {
                 let ptr_array = unsafe { glib::ffi::g_ptr_array_new_with_free_func(elem_destroy) };
                 let build: anyhow::Result<()> = (|| {
                     for item in items {
-                        let item_ptr = match item {
-                            value::Value::Object(handle) => handle.ptr(),
-                            value::Value::Null | value::Value::Undefined => std::ptr::null_mut(),
-                            _ => bail!("Expected Object in GPtrArray, got {item:?}"),
-                        };
+                        let item_ptr = item.object_ptr("GPtrArray element")?;
                         let item_ptr = if item_ptr.is_null() {
                             item_ptr
                         } else {
@@ -191,13 +173,9 @@ impl HashTableCodec {
     ) -> anyhow::Result<ffi::StashedValue> {
         let key_free = key_encoder.free_func()?;
         let value_free = value_encoder.free_func()?;
+        let (hash_func, equal_func) = key_encoder.hash_and_equal();
         let hash_table = unsafe {
-            glib::ffi::g_hash_table_new_full(
-                key_encoder.hash_func(),
-                key_encoder.equal_func(),
-                key_free,
-                value_free,
-            )
+            glib::ffi::g_hash_table_new_full(hash_func, equal_func, key_free, value_free)
         };
 
         let build: anyhow::Result<()> = (|| {
@@ -228,20 +206,12 @@ impl HashTableCodec {
             return Err(err);
         }
 
-        let should_free = self.ownership.is_borrowed();
-        let storage = Stash::new(
-            hash_table as *mut c_void,
-            StashStorage::HashTable(HashTableData {
-                handle: hash_table,
-                should_free,
-            }),
-        );
-        Ok(finalize_container_stash(
-            storage,
-            should_free,
-            Vec::new(),
-            ffi::PendingRelease::HashTableUnref,
-        ))
+        let storage = if self.ownership.is_borrowed() {
+            ffi::StashedValue::Stashed(Stash::new(hash_table as *mut c_void, StashStorage::HashTable))
+        } else {
+            full_transfer_stashed(hash_table as *mut c_void, ffi::PendingRelease::HashTableUnref)
+        };
+        Ok(storage)
     }
 }
 
@@ -268,20 +238,7 @@ impl Encoder for HashTableCodec {
 }
 
 impl Decoder for HashTableCodec {
-    unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
-        let stashed_value = match src {
-            ReadSource::Call(stashed_value) => stashed_value,
-            ReadSource::Value(ptr, _context) => {
-                if ptr.is_null() {
-                    return Ok(value::Value::Array(vec![]));
-                }
-                return self.decode(&ffi::StashedValue::Ptr(ptr));
-            }
-            ReadSource::Slot(ptr, context) => {
-                return unsafe { self.read_pointer_slot(ptr, context) };
-            }
-        };
-
+    fn read_call(&self, stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
         let Some(hash_ptr) = stashed_value.as_non_null_ptr("GHashTable")? else {
             return Ok(value::Value::Array(vec![]));
         };
@@ -316,12 +273,15 @@ impl Decoder for HashTableCodec {
             Ok(pairs)
         })();
 
-        let storage_owns_table = matches!(stashed_value, ffi::StashedValue::Stashed(_));
-        if self.ownership.is_full() && !storage_owns_table {
+        if self.ownership.is_full() {
             unsafe { glib::ffi::g_hash_table_unref(hash_ptr as *mut glib::ffi::GHashTable) };
         }
 
         Ok(value::Value::Array(pairs?))
+    }
+
+    unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
+        self.read_call(&ffi::StashedValue::Ptr(ptr))
     }
 }
 

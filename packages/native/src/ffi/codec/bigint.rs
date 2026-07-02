@@ -50,10 +50,7 @@ impl BigIntCodec {
                 Ok(*n as i128)
             }
             value::Value::Null | value::Value::Undefined => Ok(0),
-            _ => bail!(
-                "Expected a BigInt for {} codec, got {value:?}",
-                self.label()
-            ),
+            _ => bail_expected!("a BigInt", self.label(), value),
         }
     }
 

@@ -13,6 +13,13 @@ use crate::ffi::{Stash, StashStorage};
 mod garray;
 mod size;
 
+fn gstring_ptrs_to_string_values(items: &[glib::GStringPtr]) -> Vec<value::Value> {
+    items
+        .iter()
+        .map(|item| value::Value::String(unsafe { lossy_c_string(item.as_ptr()) }))
+        .collect()
+}
+
 #[napi(string_enum = "lowercase")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ArrayKind {
@@ -44,7 +51,7 @@ impl Encoder for ArrayCodec {
             value::Value::Null | value::Value::Undefined => {
                 return Ok(ffi::StashedValue::Ptr(std::ptr::null_mut()));
             }
-            _ => bail!("Expected an Array for array codec, got {value:?}"),
+            _ => bail_expected!("an Array", "array", value),
         };
 
         if self.kind == ArrayKind::GByteArray {
@@ -751,25 +758,16 @@ impl ArrayCodec {
     fn decode_null_terminated_string_array(&self, ptr: *mut c_void) -> value::Value {
         let items_full = matches!(&*self.item_codec, Codec::String(string_codec) if string_codec.ownership.is_full());
 
-        let read_strv = |items: &[glib::GStringPtr]| {
-            items
-                .iter()
-                .map(|item| {
-                    value::Value::String(unsafe { lossy_c_string(item.as_ptr()) })
-                })
-                .collect::<Vec<_>>()
-        };
-
         let values = if self.ownership.is_full() {
             let strv = if items_full {
                 unsafe { glib::StrV::from_glib_full(ptr as *mut *mut c_char) }
             } else {
                 unsafe { glib::StrV::from_glib_container(ptr as *mut *const c_char) }
             };
-            read_strv(&strv)
+            gstring_ptrs_to_string_values(&strv)
         } else {
             let borrowed = unsafe { glib::StrVRef::from_glib_borrow(ptr as *const *const c_char) };
-            read_strv(borrowed)
+            gstring_ptrs_to_string_values(borrowed)
         };
 
         value::Value::Array(values)

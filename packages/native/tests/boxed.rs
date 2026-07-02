@@ -268,7 +268,6 @@ mod from_alloc {
     fn unregistered_name_defers_destructor_and_g_frees() {
         helpers::run(|| {
             let (boxed, _ptr) = deferred_boxed("GtkxTestNeverRegisteredBoxed");
-            assert!(boxed.free_fn().is_none());
 
             drop(boxed);
             assert!(glib::Type::from_name("GtkxTestNeverRegisteredBoxed").is_none());
@@ -358,7 +357,6 @@ mod free_fn {
             {
                 let boxed = Boxed::from_glib_full_with_free_fn(ptr, record_free);
                 assert!(boxed.is_owned());
-                assert!(boxed.free_fn().is_some());
             }
 
             let after = snapshot();

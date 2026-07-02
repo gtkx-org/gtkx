@@ -44,7 +44,7 @@ impl Encoder for RefCodec {
             value::Value::Null | value::Value::Undefined => {
                 return Ok(ffi::StashedValue::Ptr(std::ptr::null_mut()));
             }
-            _ => bail!("Expected a Ref for ref codec, got {value:?}"),
+            _ => bail_expected!("a Ref", "ref", value),
         };
 
         match &*self.inner_codec {
@@ -60,12 +60,11 @@ impl Encoder for RefCodec {
             Codec::Array(array_codec) => match &*ref_val.value {
                 value::Value::Array(arr) if !arr.is_empty() => {
                     let encoded = array_codec.encode(&ref_val.value)?;
-                    match encoded {
-                        ffi::StashedValue::Stashed(storage) => {
-                            Ok(ffi::StashedValue::Stashed(storage))
-                        }
-                        _ => bail!("Expected Storage from array encode for Ref<Array>"),
-                    }
+                    anyhow::ensure!(
+                        matches!(encoded, ffi::StashedValue::Stashed(_)),
+                        "Expected Storage from array encode for Ref<Array>"
+                    );
+                    Ok(encoded)
                 }
                 value::Value::Null | value::Value::Undefined | value::Value::Array(_) => {
                     Ok(Self::null_ptr_stashed())
