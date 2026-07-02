@@ -1,8 +1,7 @@
-import type { Descriptor } from "@gtkx/native";
+import type { Descriptor, ExternalObject, Handle } from "@gtkx/native";
 import { GVALUE_SIZE, GVALUE_T, LIB } from "./constants.js";
 import { biguint64T, bind, objectT, sizedArrayT, stringT, uint32T, voidT } from "./descriptors.js";
 import { fromGValue, newGValueForDescriptor, toGValue } from "./gvalue.js";
-import type { Handle } from "./handle.js";
 import { getHandle } from "./registry.js";
 
 type Property = [Descriptor, unknown];
@@ -19,9 +18,9 @@ const gObjectNewWithProperties = bind(
     objectT("full"),
 );
 
-export function newGObjectWithProperties(gtype: bigint, props: Record<string, Property>): Handle {
+export function newGObjectWithProperties(gtype: bigint, props: Record<string, Property>): ExternalObject<Handle> {
     const names: string[] = [];
-    const values: Handle[] = [];
+    const values: ExternalObject<Handle>[] = [];
 
     for (const name in props) {
         const entry = props[name];
@@ -32,7 +31,7 @@ export function newGObjectWithProperties(gtype: bigint, props: Record<string, Pr
         values.push(toGValue(descriptor, value));
     }
 
-    return gObjectNewWithProperties(gtype, names.length, names, values) as Handle;
+    return gObjectNewWithProperties(gtype, names.length, names, values) as ExternalObject<Handle>;
 }
 
 const PROPERTY_CALL_ARGS = [objectT("borrowed"), stringT("borrowed"), GVALUE_T] as const;

@@ -130,10 +130,14 @@ async function publishPackages(env: NodeJS.ProcessEnv): Promise<void> {
 }
 
 async function scaffoldConsumer(consumerRoot: string, env: NodeJS.ProcessEnv): Promise<string> {
-    await runAsync("npm", ["create", "gtkx", APP_NAME, "--", "--application-id", APPLICATION_ID, "--pm", "npm", "--vitest"], {
-        cwd: consumerRoot,
-        env,
-    });
+    await runAsync(
+        "npm",
+        ["create", "gtkx", APP_NAME, "--", "--application-id", APPLICATION_ID, "--pm", "npm", "--vitest"],
+        {
+            cwd: consumerRoot,
+            env,
+        },
+    );
     return join(consumerRoot, APP_NAME);
 }
 

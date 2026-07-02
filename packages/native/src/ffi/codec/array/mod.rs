@@ -165,12 +165,8 @@ impl Decoder for ArrayCodec {
                     .ok_or_else(|| anyhow::anyhow!("A sized array requires a sizeParamIndex"))?;
                 let length = Self::size_from_args(ffi_args, arg_codecs, size_param_index as usize)?;
 
-                if let ffi::StashedValue::Ptr(ptr) = stashed_value {
-                    if ptr.is_null() {
-                        return Ok(value::Value::Array(vec![]));
-                    }
-
-                    return self.decode_sized_array(*ptr, length);
+                if let Some(result) = self.decode_sized_from_stash(stashed_value, length) {
+                    return result;
                 }
             }
             ArrayKind::Fixed => {
@@ -178,12 +174,8 @@ impl Decoder for ArrayCodec {
                     .fixed_size
                     .ok_or_else(|| anyhow::anyhow!("A fixed array requires a fixedSize"))?;
 
-                if let ffi::StashedValue::Ptr(ptr) = stashed_value {
-                    if ptr.is_null() {
-                        return Ok(value::Value::Array(vec![]));
-                    }
-
-                    return self.decode_sized_array(*ptr, size as usize);
+                if let Some(result) = self.decode_sized_from_stash(stashed_value, size as usize) {
+                    return result;
                 }
             }
             ArrayKind::Array
@@ -319,7 +311,7 @@ fn dup_strings_to_glib(array: &[value::Value]) -> anyhow::Result<Vec<*mut c_void
 
 fn leak_container_to_callee(ptrs: &[*mut c_void]) -> *mut c_void {
     unsafe {
-        crate::glib_heap::dup_to_glib_heap(ptrs.as_ptr().cast::<u8>(), std::mem::size_of_val(ptrs))
+        glib::ffi::g_memdup2(ptrs.as_ptr().cast::<c_void>(), std::mem::size_of_val(ptrs))
     }
 }
 
@@ -796,5 +788,19 @@ impl ArrayCodec {
         let codec = self.item_codec("sized array")?;
         let values = self.decode_contiguous(codec, ptr.cast::<u8>(), length)?;
         Ok(value::Value::Array(values))
+    }
+
+    fn decode_sized_from_stash(
+        &self,
+        stashed_value: &ffi::StashedValue,
+        length: usize,
+    ) -> Option<anyhow::Result<value::Value>> {
+        let ffi::StashedValue::Ptr(ptr) = stashed_value else {
+            return None;
+        };
+        if ptr.is_null() {
+            return Some(Ok(value::Value::Array(vec![])));
+        }
+        Some(self.decode_sized_array(*ptr, length))
     }
 }

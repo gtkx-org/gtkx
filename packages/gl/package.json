@@ -47,7 +47,8 @@
         "node": ">=24"
     },
     "dependencies": {
-        "@gtkx/ffi": "workspace:*"
+        "@gtkx/ffi": "workspace:*",
+        "@gtkx/native": "workspace:*"
     },
     "devDependencies": {
         "@gtkx/codegen": "workspace:*"

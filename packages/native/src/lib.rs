@@ -1,7 +1,6 @@
 pub mod request;
 
 pub mod ffi;
-mod glib_heap;
 pub mod handle;
 pub mod messaging;
 

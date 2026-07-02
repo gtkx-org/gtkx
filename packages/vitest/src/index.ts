@@ -17,6 +17,7 @@ const gtkx = (options: GtkxPluginOptions = {}): Plugin => {
             return {
                 test: {
                     globals: true,
+                    env: { GDK_DEBUG: "no-vsync" },
                     setupFiles: [workerSetupPath],
                     provide: { gtkxHeadless: options },
                     testTimeout: 20000,

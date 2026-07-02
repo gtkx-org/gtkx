@@ -95,8 +95,8 @@ impl HashTableEntryCodec {
             },
             Self::Float => match value {
                 value::Value::Number(n) => Ok(unsafe {
-                    crate::glib_heap::dup_to_glib_heap(
-                        (n as *const f64).cast::<u8>(),
+                    glib::ffi::g_memdup2(
+                        (n as *const f64).cast::<c_void>(),
                         std::mem::size_of::<f64>(),
                     )
                 }),

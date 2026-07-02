@@ -7,9 +7,8 @@ import { CellRenderHost, headerRenderer } from "./cell.js";
 import { ColumnViewColumn } from "./column-view-column.js";
 import { type ColumnRegistration, ColumnViewContext, type ColumnViewContextValue } from "./column-view-context.js";
 import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
-import { useControlledSelectionModel } from "./hooks/use-controlled-selection-model.js";
+import { useCollectionModel } from "./hooks/use-collection-model.js";
 import { useInstalledModel } from "./hooks/use-installed-model.js";
-import { useListModel } from "./hooks/use-list-model.js";
 import { useSortHandler } from "./hooks/use-sort-handler.js";
 import type { CollectionItemSizeProps, ControlledSelectionProps, ItemNode, SectionNode } from "./types.js";
 import type { CellContainerStore } from "./utils/cell-container-store.js";
@@ -102,21 +101,18 @@ const useColumnViewWiring = <T, S>(
     const widgetRef = useRef<Gtk.ColumnView | null>(null);
     const setRef = useMergeRefs<Gtk.ColumnView>(props.ref, widgetRef);
 
-    const externalModel = props.model as Gio.ListModel | undefined;
-    const listModel = useListModel<T, S>(
-        externalModel === undefined ? { items: props.items, sections: props.sections } : { model: externalModel },
-    );
-
-    const installedModel = useControlledSelectionModel<T, S>(externalModel, {
-        base: listModel.model,
-        resolver: listModel.resolver,
+    const collection = useCollectionModel<T, S>({
+        model: props.model as Gio.ListModel | undefined,
+        items: props.items,
+        sections: props.sections,
         selectionMode: props.selectionMode,
         selectedIds: props.selectedIds,
         onSelectionChanged: props.onSelectionChanged,
+        renderHeader: props.renderHeader,
     });
-    useInstalledModel(widgetRef, installedModel, (widget, model) => widget.setModel(model));
+    useInstalledModel(widgetRef, collection.installedModel, (widget, model) => widget.setModel(model));
 
-    const useHeader = externalModel === undefined && typeof props.renderHeader === "function";
+    const useHeader = collection.useHeader;
     const headerStore = useCellContainers<Gtk.ColumnView>({
         target: useHeader ? widgetRef : null,
         installer: headerFactoryInstaller,
@@ -134,17 +130,17 @@ const useColumnViewWiring = <T, S>(
     const contextValue = useMemo<ColumnViewContextValue>(
         () => ({
             columnView: widgetRef,
-            resolver: listModel.resolver as ItemResolver<unknown, unknown>,
+            resolver: collection.resolver as ItemResolver<unknown, unknown>,
             register: registry.register,
             unregister: registry.unregister,
         }),
-        [listModel.resolver, registry.register, registry.unregister],
+        [collection.resolver, registry.register, registry.unregister],
     );
 
     return {
         setRef,
-        resolver: listModel.resolver,
-        headerResolver: listModel.headerResolver,
+        resolver: collection.resolver,
+        headerResolver: collection.headerResolver,
         headerStore,
         useHeader,
         contextValue,

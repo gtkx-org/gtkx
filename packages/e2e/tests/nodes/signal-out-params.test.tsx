@@ -24,6 +24,33 @@ const setTextAndUpdate = async (spin: Gtk.SpinButton, text: string): Promise<voi
     await act(() => spin.update());
 };
 
+interface SnippetView {
+    view: GtkSource.View;
+    buffer: GtkSource.Buffer;
+    snippet: GtkSource.Snippet;
+    location: Gtk.TextIter;
+}
+
+const renderSnippetView = async (spec: string, initialText?: string): Promise<SnippetView> => {
+    const viewRef = createRef<GtkSource.View>();
+
+    await render(<GtkSourceView ref={viewRef} />);
+
+    const view = viewRef.current as GtkSource.View;
+    const buffer = view.getBuffer() as GtkSource.Buffer;
+    if (initialText !== undefined) buffer.setText(initialText, -1);
+
+    const snippet = GtkSource.Snippet.new(null, null);
+    const chunk = GtkSource.SnippetChunk.new();
+    chunk.setSpec(spec);
+    snippet.addChunk(chunk);
+
+    const location = buffer.getStartIter();
+    expect(location.getOffset()).toBe(0);
+
+    return { view, buffer, snippet, location };
+};
+
 describe("signal out-parameters - GtkSpinButton::input (pure out)", () => {
     it("writes the handler's tuple out-value back through the new_value pointer", async () => {
         const spin = await renderSpinButton((spinButton) => {
@@ -164,19 +191,7 @@ describe("signal emit() - caller-allocated out-parameter", () => {
 
 describe("signal emit() - boxed inout-parameter (GtkSource.View::push-snippet)", () => {
     it("advances the caller's TextIter in place through the shared boxed inout", async () => {
-        const viewRef = createRef<GtkSource.View>();
-
-        await render(<GtkSourceView ref={viewRef} />);
-
-        const view = viewRef.current as GtkSource.View;
-        const buffer = view.getBuffer() as GtkSource.Buffer;
-        const snippet = GtkSource.Snippet.new(null, null);
-        const chunk = GtkSource.SnippetChunk.new();
-        chunk.setSpec("abc");
-        snippet.addChunk(chunk);
-
-        const location = buffer.getStartIter();
-        expect(location.getOffset()).toBe(0);
+        const { view, buffer, snippet, location } = await renderSnippetView("abc");
 
         view.emit("push-snippet", snippet, location);
 
@@ -185,21 +200,7 @@ describe("signal emit() - boxed inout-parameter (GtkSource.View::push-snippet)",
     });
 
     it("honors a connected handler's in-place advance of the inout TextIter", async () => {
-        const viewRef = createRef<GtkSource.View>();
-
-        await render(<GtkSourceView ref={viewRef} />);
-
-        const view = viewRef.current as GtkSource.View;
-        const buffer = view.getBuffer() as GtkSource.Buffer;
-        buffer.setText("hello", -1);
-
-        const snippet = GtkSource.Snippet.new(null, null);
-        const chunk = GtkSource.SnippetChunk.new();
-        chunk.setSpec("X");
-        snippet.addChunk(chunk);
-
-        const location = buffer.getStartIter();
-        expect(location.getOffset()).toBe(0);
+        const { view, buffer, snippet, location } = await renderSnippetView("X", "hello");
 
         view.connect("push-snippet", (_snippet: GtkSource.Snippet, iter: Gtk.TextIter) => {
             iter.forwardChars(5);
@@ -211,21 +212,7 @@ describe("signal emit() - boxed inout-parameter (GtkSource.View::push-snippet)",
     });
 
     it("writes a handler's returned GtkTextIter back through the caller-allocated boxed (opaque payload)", async () => {
-        const viewRef = createRef<GtkSource.View>();
-
-        await render(<GtkSourceView ref={viewRef} />);
-
-        const view = viewRef.current as GtkSource.View;
-        const buffer = view.getBuffer() as GtkSource.Buffer;
-        buffer.setText("hello", -1);
-
-        const snippet = GtkSource.Snippet.new(null, null);
-        const chunk = GtkSource.SnippetChunk.new();
-        chunk.setSpec("X");
-        snippet.addChunk(chunk);
-
-        const location = buffer.getStartIter();
-        expect(location.getOffset()).toBe(0);
+        const { view, buffer, snippet, location } = await renderSnippetView("X", "hello");
 
         view.connect("push-snippet", (_snippet: GtkSource.Snippet, _iter: Gtk.TextIter) => {
             const advanced = buffer.getStartIter();

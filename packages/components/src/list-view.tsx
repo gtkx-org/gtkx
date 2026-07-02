@@ -5,9 +5,8 @@ import { useMergeRefs } from "@gtkx/react";
 import { createElement, type ReactElement, type ReactNode, type Ref, useRef } from "react";
 import { type CellRenderer, CellRenderHost, headerRenderer } from "./cell.js";
 import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
-import { useControlledSelectionModel } from "./hooks/use-controlled-selection-model.js";
+import { useCollectionModel } from "./hooks/use-collection-model.js";
 import { useInstalledModel } from "./hooks/use-installed-model.js";
-import { useListModel } from "./hooks/use-list-model.js";
 import type {
     CollectionItemSizeProps,
     ControlledSelectionProps,
@@ -73,22 +72,18 @@ const useListViewWiring = <T, S>(props: NormalizedListViewProps<T, S>): ListView
     const widgetRef = useRef<Gtk.ListView | null>(null);
     const setRef = useMergeRefs<Gtk.ListView>(props.ref, widgetRef);
 
-    const externalModel = props.model as Gio.ListModel | undefined;
-    const listModel = useListModel<T, S>(
-        externalModel === undefined
-            ? { items: props.items, sections: props.sections, autoexpand: props.autoexpand }
-            : { model: externalModel },
-    );
-
-    const installedModel = useControlledSelectionModel<T, S>(externalModel, {
-        base: listModel.model,
-        resolver: listModel.resolver,
+    const collection = useCollectionModel<T, S>({
+        model: props.model as Gio.ListModel | undefined,
+        items: props.items,
+        sections: props.sections,
+        autoexpand: props.autoexpand,
         selectionMode: props.selectionMode,
         selectedIds: props.selectedIds,
         onSelectionChanged: props.onSelectionChanged,
+        renderHeader: props.renderHeader,
     });
 
-    const useHeader = externalModel === undefined && typeof props.renderHeader === "function";
+    const useHeader = collection.useHeader;
 
     const itemStore = useCellContainers<Gtk.ListView>({
         target: widgetRef,
@@ -103,12 +98,12 @@ const useListViewWiring = <T, S>(props: NormalizedListViewProps<T, S>): ListView
         estimatedWidth: props.estimatedItemWidth,
     });
 
-    useInstalledModel(widgetRef, installedModel, (widget, value) => widget.setModel(value));
+    useInstalledModel(widgetRef, collection.installedModel, (widget, value) => widget.setModel(value));
 
     return {
         setRef,
-        resolver: listModel.resolver,
-        headerResolver: listModel.headerResolver,
+        resolver: collection.resolver,
+        headerResolver: collection.headerResolver,
         itemStore,
         headerStore,
         useHeader,

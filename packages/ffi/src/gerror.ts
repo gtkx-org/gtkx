@@ -1,6 +1,6 @@
+import type { ExternalObject, Handle } from "@gtkx/native";
 import type { Ref } from "./descriptors.js";
 import { getErrorGtype, isGtyped } from "./gtype.js";
-import type { Handle } from "./handle.js";
 import { requireWrapperClass, wrapHandle } from "./registry.js";
 
 interface GError {
@@ -11,7 +11,7 @@ interface GError {
 
 export function checkError(error: Ref): void {
     if (error.value !== null) {
-        const gerror = wrapHandle<GError>(error.value as Handle, requireWrapperClass(getErrorGtype()));
+        const gerror = wrapHandle<GError>(error.value as ExternalObject<Handle>, requireWrapperClass(getErrorGtype()));
         const carrier = new Error(gerror.message);
         Error.captureStackTrace?.(carrier, checkError);
         Object.defineProperty(gerror, "stack", {

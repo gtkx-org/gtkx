@@ -1,7 +1,13 @@
-import { getType, getWrapper, type RegisterClassVfunc as NativeRegisterClassVfunc, setWrapper } from "@gtkx/native";
+import {
+    type ExternalObject,
+    getType,
+    getWrapper,
+    type Handle,
+    type RegisterClassVfunc as NativeRegisterClassVfunc,
+    setWrapper,
+} from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
 import { type GTyped, TYPE_INVALID, typeFromName, typeInterfaces, typeIsA, typeName, typeParent } from "./gtype.js";
-import type { Handle } from "./handle.js";
 import type { Mixin } from "./mixin.js";
 
 const classRegistry = new Map<bigint, AnyClass>();
@@ -45,18 +51,24 @@ export function getInstanceGtype(instance: object): bigint {
     return getClassGtype(instance.constructor as AnyClass);
 }
 
-function instantiate<T extends object>(cls: AnyClass<T>, handle: Handle): T {
+function instantiate<T extends object>(cls: AnyClass<T>, handle: ExternalObject<Handle>): T {
     const instance = Object.create(cls.prototype) as T;
     setHandle(instance, handle);
     return instance;
 }
 
-export function wrapHandle<T extends object>(handle: Handle, cls: AnyClass<T>): T;
-export function wrapHandle<T extends object>(handle: Handle | null | undefined, cls: AnyClass<T>): T | null;
+export function wrapHandle<T extends object>(handle: ExternalObject<Handle>, cls: AnyClass<T>): T;
+export function wrapHandle<T extends object>(
+    handle: ExternalObject<Handle> | null | undefined,
+    cls: AnyClass<T>,
+): T | null;
 export function wrapHandle(handle: null | undefined, cls?: AnyClass): null;
-export function wrapHandle<T extends object = GTyped>(handle: Handle, cls?: AnyClass): T;
-export function wrapHandle<T extends object = GTyped>(handle: Handle | null | undefined, cls?: AnyClass): T | null;
-export function wrapHandle(handle: Handle | null | undefined, cls?: AnyClass): object | null {
+export function wrapHandle<T extends object = GTyped>(handle: ExternalObject<Handle>, cls?: AnyClass): T;
+export function wrapHandle<T extends object = GTyped>(
+    handle: ExternalObject<Handle> | null | undefined,
+    cls?: AnyClass,
+): T | null;
+export function wrapHandle(handle: ExternalObject<Handle> | null | undefined, cls?: AnyClass): object | null {
     if (handle === null || handle === undefined) return null;
     if (cls === undefined) {
         return resolveWrapper(handle);
@@ -133,7 +145,7 @@ function resolveComposedClass(runtimeGtype: bigint): AnyClass | null {
     return composed;
 }
 
-function resolveWrapper(handle: Handle): object {
+function resolveWrapper(handle: ExternalObject<Handle>): object {
     const existing = getWrapper(handle);
     if (existing) return existing;
 
@@ -164,9 +176,9 @@ export function walkClassChain<T>(cls: AnyClass | null, visit: (ancestor: AnyCla
     return undefined;
 }
 
-const handleMap = new WeakMap<object, Handle>();
+const handleMap = new WeakMap<object, ExternalObject<Handle>>();
 
-export function getHandle(instance: object): Handle {
+export function getHandle(instance: object): ExternalObject<Handle> {
     const handle = handleMap.get(instance);
     if (handle === undefined) {
         const name = (instance as { constructor?: { name?: string } }).constructor?.name ?? "object";
@@ -175,15 +187,15 @@ export function getHandle(instance: object): Handle {
     return handle;
 }
 
-export function tryGetHandle(instance: object | null | undefined): Handle | undefined {
+export function tryGetHandle(instance: object | null | undefined): ExternalObject<Handle> | undefined {
     return instance == null ? undefined : handleMap.get(instance);
 }
 
-export function setHandle(instance: object, handle: Handle): void {
+export function setHandle(instance: object, handle: ExternalObject<Handle>): void {
     handleMap.set(instance, handle);
 }
 
-function linkGObjectWrapper(handle: Handle, instance: object): void {
+function linkGObjectWrapper(handle: ExternalObject<Handle>, instance: object): void {
     setHandle(instance, handle);
     setWrapper(handle, instance);
 }

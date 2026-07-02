@@ -1,5 +1,11 @@
-import { bindField, type Descriptor, read as nativeRead, write as nativeWrite } from "@gtkx/native";
-import type { Handle } from "./handle.js";
+import {
+    bindField,
+    type Descriptor,
+    type ExternalObject,
+    type Handle,
+    read as nativeRead,
+    write as nativeWrite,
+} from "@gtkx/native";
 
 const fieldCodecCache = new Map<string, ReturnType<typeof bindField>>();
 
@@ -13,11 +19,11 @@ const boundFieldCodec = (descriptor: Descriptor): ReturnType<typeof bindField> =
     return codec;
 };
 
-export const readField = (handle: Handle, descriptor: Descriptor, offset: number): unknown =>
+export const readField = (handle: ExternalObject<Handle>, descriptor: Descriptor, offset: number): unknown =>
     nativeRead(handle, boundFieldCodec(descriptor), offset);
 
 export const writeField = (
-    handle: Handle,
+    handle: ExternalObject<Handle>,
     descriptor: Descriptor,
     offset: number,
     value: unknown,

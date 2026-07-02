@@ -1,7 +1,6 @@
-import type { Descriptor } from "@gtkx/native";
+import type { Descriptor, ExternalObject, Handle } from "@gtkx/native";
 import { type ArrayDescriptor, getDescriptorWrapperClass } from "./descriptors.js";
 import { gtypeFromDescriptor } from "./gvalue.js";
-import type { Handle } from "./handle.js";
 import { requireWrapperClass, tryGetHandle, wrapHandle } from "./registry.js";
 
 const collectionFromNativeValue = (descriptor: ArrayDescriptor, value: unknown): unknown => {
@@ -9,7 +8,7 @@ const collectionFromNativeValue = (descriptor: ArrayDescriptor, value: unknown):
     return (value as unknown[]).map((item) => fromNativeValue(descriptor.itemDescriptor, item));
 };
 
-const wrapByDescriptorClass = (descriptor: Descriptor, value: Handle | null): object | null => {
+const wrapByDescriptorClass = (descriptor: Descriptor, value: ExternalObject<Handle> | null): object | null => {
     if (value === null) return null;
     const paired = getDescriptorWrapperClass(descriptor);
     if (paired !== undefined) return wrapHandle(value, paired);
@@ -19,12 +18,12 @@ const wrapByDescriptorClass = (descriptor: Descriptor, value: Handle | null): ob
 export function fromNativeValue(descriptor: Descriptor, value: unknown): unknown {
     switch (descriptor.kind) {
         case "object":
-            return wrapHandle(value as Handle | null, undefined);
+            return wrapHandle(value as ExternalObject<Handle> | null, undefined);
         case "struct":
-            return wrapHandle(value as Handle | null, getDescriptorWrapperClass(descriptor));
+            return wrapHandle(value as ExternalObject<Handle> | null, getDescriptorWrapperClass(descriptor));
         case "boxed":
         case "fundamental":
-            return wrapByDescriptorClass(descriptor, value as Handle | null);
+            return wrapByDescriptorClass(descriptor, value as ExternalObject<Handle> | null);
         case "array":
             return collectionFromNativeValue(descriptor, value);
         case "hashtable": {

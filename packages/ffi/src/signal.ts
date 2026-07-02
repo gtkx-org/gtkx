@@ -1,4 +1,4 @@
-import type { Descriptor } from "@gtkx/native";
+import type { Descriptor, ExternalObject, Handle } from "@gtkx/native";
 import { isCallerAllocatedArg, isInoutArg, isOutputArg } from "./arg.js";
 import { wrapCallback } from "./callback.js";
 import { GVALUE_SIZE, GVALUE_T, LIB } from "./constants.js";
@@ -24,7 +24,6 @@ import {
     toGValue,
     valueGetBoxed,
 } from "./gvalue.js";
-import type { Handle } from "./handle.js";
 import { getHandle } from "./registry.js";
 import { packTupleResult } from "./tuple.js";
 
@@ -82,7 +81,7 @@ type EmitArg = {
     value?: unknown;
 };
 
-const emitValue = (arg: EmitArg): { value: Handle; read?: () => unknown } => {
+const emitValue = (arg: EmitArg): { value: ExternalObject<Handle>; read?: () => unknown } => {
     if (!isOutputArg(arg)) return { value: toGValue(arg.type, arg.value) };
     if (isCallerAllocatedArg(arg)) {
         if (isInoutArg(arg)) return { value: inoutBoxedForDescriptor(arg.type, arg.value as object) };
@@ -102,7 +101,7 @@ export function emitGObjectSignal(
     const signalId = gSignalLookup(signalBaseName(signal), gtype) as number;
     const detail = signalDetailQuark(signal);
 
-    const values: Handle[] = [toGValue(objectT("full"), instance)];
+    const values: ExternalObject<Handle>[] = [toGValue(objectT("full"), instance)];
     const reads: (() => unknown)[] = [];
     for (const arg of args) {
         const { value, read } = emitValue(arg);

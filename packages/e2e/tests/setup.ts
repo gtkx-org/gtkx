@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { quit } from "@gtkx/ffi";
+import { callRunnerHook } from "@gtkx/testing";
 import { afterAll, beforeAll } from "vitest";
 import { callArgs, GTK_LIB } from "./helpers/native-utils.js";
 
@@ -14,11 +15,6 @@ process.env.GSETTINGS_BACKEND = "memory";
 
 const collectGarbage = (): void => {
     if (global.gc) global.gc();
-};
-
-const callRunnerHook = (name: "afterEach" | "afterAll", callback: () => unknown): void => {
-    const hook: unknown = Reflect.get(globalThis, name);
-    if (typeof hook === "function") (hook as (callback: () => unknown) => void)(callback);
 };
 
 callRunnerHook("afterEach", collectGarbage);

@@ -30,3 +30,4 @@ Homepage: https://gtkx.dev
 ## Working in this repo
 
 - Never use `as unknown as`, the `!` non-null assertion, or `readonly`. Do not add comments or docs. American English everywhere.
+- A new source file must earn its existence: it holds a substantial, cohesive responsibility with no natural home in an existing module. Do not create a file for a trivial or single-item unit — a lone small helper, a thin wrapper around one call, a re-export shim, or a placeholder for code that doesn't exist yet. Put such code in the existing module it belongs to and extend that file. Breaking an import cycle or extracting for reuse justifies relocating code into a suitable existing module, never minting a single-function file like the former `glib_heap.rs`.

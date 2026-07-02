@@ -1,7 +1,6 @@
-import type { Handle } from "@gtkx/ffi";
 import { getHandle } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/gi/gtk";
-import { getWrapper } from "@gtkx/native";
+import { type ExternalObject, getWrapper, type Handle } from "@gtkx/native";
 import { describe, expect, it } from "vitest";
 import { forceGC, getRefCount } from "../helpers/native-utils.js";
 
@@ -15,13 +14,13 @@ async function gcUntil(predicate: () => boolean, maxRounds = 100): Promise<boole
     return predicate();
 }
 
-function detachLabel(): { handle: Handle; weak: WeakRef<object> } {
+function detachLabel(): { handle: ExternalObject<Handle>; weak: WeakRef<object> } {
     const label = new Gtk.Label();
     const handle = getHandle(label);
     return { handle, weak: new WeakRef(label) };
 }
 
-function appendDetachedLabel(box: Gtk.Box): { handle: Handle; weak: WeakRef<object> } {
+function appendDetachedLabel(box: Gtk.Box): { handle: ExternalObject<Handle>; weak: WeakRef<object> } {
     const label = new Gtk.Label();
     box.append(label);
     return { handle: getHandle(label), weak: new WeakRef(label) };

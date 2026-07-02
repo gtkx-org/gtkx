@@ -1,5 +1,12 @@
-import type { Handle } from "@gtkx/ffi";
-import { bind, bindField, type Descriptor, call as nativeCall, read } from "@gtkx/native";
+import {
+    bind,
+    bindField,
+    type Descriptor,
+    type ExternalObject,
+    type Handle,
+    call as nativeCall,
+    read,
+} from "@gtkx/native";
 
 export function callArgs(
     sharedLibrary: string,
@@ -39,6 +46,6 @@ export function forceGC(): void {
 
 const REF_COUNT_CODEC = bindField({ kind: "uint32" });
 
-export function getRefCount(handle: Handle): number {
+export function getRefCount(handle: ExternalObject<Handle>): number {
     return read(handle, REF_COUNT_CODEC, GOBJECT_REF_COUNT_OFFSET) as number;
 }

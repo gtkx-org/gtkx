@@ -1,10 +1,6 @@
 import { quit } from "@gtkx/ffi";
 import { cleanup } from "./render.js";
-
-const callRunnerHook = (name: "afterEach" | "afterAll", callback: () => unknown): void => {
-    const hook: unknown = Reflect.get(globalThis, name);
-    if (typeof hook === "function") (hook as (callback: () => unknown) => void)(callback);
-};
+import { callRunnerHook } from "./runner-hooks.js";
 
 const registerTestRuntimeHooks = (): void => {
     callRunnerHook("afterEach", cleanup);

@@ -71,9 +71,7 @@ const renderFieldWrite = (context: ModuleContext, entry: WritableFieldSlot): str
     context.addRuntimeImport("t");
     context.addNativeImport("write");
     context.addNativeImport("bindField");
-    const descriptor = context.hoistDescriptor(
-        `bindField(${renderDescriptor(context, entry.field.type, "none")})`,
-    );
+    const descriptor = context.hoistDescriptor(`bindField(${renderDescriptor(context, entry.field.type, "none")})`);
     const name = toCamelIdentifier(entry.field.name);
     const offset = entry.slot.byteOffset;
     if (entry.slot.bitWidth === undefined) {

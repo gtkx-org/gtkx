@@ -6,16 +6,14 @@ use crate::messaging::error_reporter::ErrorReporter;
 
 static PANIC_HOOK_INSTALLED: OnceLock<()> = OnceLock::new();
 
-/// Runs `body`, catching any panic that would otherwise unwind across an
-/// enclosing `extern "C"` boundary and abort the process. A caught panic is
-/// reported to the [`ErrorReporter`] tagged with `context`, and `None` is
-/// returned in its place.
 pub fn guard_ffi_boundary<R>(context: &str, body: impl FnOnce() -> R) -> Option<R> {
     match panic::catch_unwind(AssertUnwindSafe(body)) {
         Ok(value) => Some(value),
         Err(payload) => {
-            ErrorReporter::global()
-                .report_str(&format!("panic at {context}: {}", format_panic_payload(&*payload)));
+            ErrorReporter::global().report_str(&format!(
+                "panic at {context}: {}",
+                format_panic_payload(&*payload)
+            ));
             None
         }
     }
