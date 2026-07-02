@@ -2,7 +2,9 @@ use std::panic::{self, AssertUnwindSafe};
 use std::sync::{Arc, mpsc};
 
 use napi::Env;
-use napi::bindgen_prelude::{Function, JsObjectValue, JsValue, JsValuesTupleIntoVec, Object, Unknown};
+use napi::bindgen_prelude::{
+    Function, JsObjectValue, JsValue, JsValuesTupleIntoVec, Object, Unknown,
+};
 use napi::threadsafe_function::ThreadsafeFunctionCallMode;
 
 use super::{
@@ -74,11 +76,11 @@ impl Mailbox {
     {
         let (tx, rx) = mpsc::channel();
         self.schedule_glib(Box::new(move || {
-            let outcome = panic::catch_unwind(AssertUnwindSafe(task))
+            let result = panic::catch_unwind(AssertUnwindSafe(task))
                 .map_err(|payload| format_panic_payload(&*payload));
             send_or_report(
                 &tx,
-                outcome,
+                result,
                 "GLib dispatch completed but result channel was closed",
             );
         }));
@@ -128,11 +130,11 @@ impl Mailbox {
 
     pub fn apply_wrapper_ref_op_and_wait(
         &self,
-        ref_ptr: usize,
+        napi_ref: usize,
         op: WrapperRefOp,
     ) -> anyhow::Result<()> {
         self.invoke_node_task_and_wait(|result_tx, glib_initiated| NodeTask::WrapperRefOp {
-            ref_ptr,
+            napi_ref,
             op,
             result_tx,
             glib_initiated,
@@ -166,19 +168,19 @@ impl Mailbox {
         rx: &mpsc::Receiver<anyhow::Result<R>>,
         wait_depth: Option<usize>,
     ) -> anyhow::Result<R> {
-        let Some(depth) = wait_depth else {
+        let Some(wait_depth) = wait_depth else {
             return rx.recv().unwrap_or_else(|_| node_channel_disconnected());
         };
-        self.wait_for_node_result(rx, depth)
+        self.wait_for_node_result(rx, wait_depth)
     }
 
     fn wait_for_node_result<R>(
         &self,
         rx: &mpsc::Receiver<anyhow::Result<R>>,
-        callback_depth: usize,
+        wait_depth: usize,
     ) -> anyhow::Result<R> {
         loop {
-            self.process_glib_pending_from_depth(callback_depth);
+            self.process_glib_pending_from_depth(wait_depth);
 
             match rx.try_recv() {
                 Ok(result) => return result,
@@ -217,7 +219,7 @@ impl Mailbox {
                 }
                 NodeTask::DeleteReference(reference) => reference.delete_on_node_thread(),
                 NodeTask::WrapperRefOp {
-                    ref_ptr,
+                    napi_ref,
                     op,
                     result_tx,
                     glib_initiated,
@@ -227,7 +229,7 @@ impl Mailbox {
                         &result_tx,
                         "Wrapper reference operation completed but result channel was closed",
                         || {
-                            op.apply(&env, ref_ptr);
+                            op.apply(&env, napi_ref);
                             Ok(())
                         },
                     );
@@ -240,7 +242,7 @@ impl Mailbox {
         &self,
         glib_initiated: bool,
         result_tx: &mpsc::Sender<anyhow::Result<R>>,
-        closed_message: &'static str,
+        message: &'static str,
         op: impl FnOnce() -> anyhow::Result<R>,
     ) {
         if glib_initiated {
@@ -250,7 +252,7 @@ impl Mailbox {
         if glib_initiated {
             self.leave_glib_callback();
         }
-        send_or_report(result_tx, result, closed_message);
+        send_or_report(result_tx, result, message);
         self.wake_glib.notify();
     }
 

@@ -7,6 +7,7 @@ use glib::prelude::ObjectExt as _;
 use glib::translate::{Borrowed, from_glib_borrow};
 
 use crate::messaging::error_reporter::ErrorReporter;
+use crate::messaging::panic_handler::guard_ffi_boundary;
 use crate::messaging::{JsRefDeletion, LockExt as _, Mailbox};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -16,10 +17,10 @@ pub enum WrapperRefOp {
 }
 
 impl WrapperRefOp {
-    pub(crate) fn apply(self, env: &napi::Env, ref_ptr: usize) {
+    pub(crate) fn apply(self, env: &napi::Env, napi_ref: usize) {
         use napi::sys;
 
-        let raw_ref = ref_ptr as sys::napi_ref;
+        let raw_ref = napi_ref as sys::napi_ref;
         let mut count: u32 = 0;
         unsafe {
             match self {
@@ -62,7 +63,7 @@ unsafe fn binding_arc(gobject: *mut glib::gobject_ffi::GObject) -> Option<Arc<Wr
     unsafe { binding_qdata(gobject) }.map(|nn| Arc::clone(unsafe { nn.as_ref() }))
 }
 
-fn apply_wrapper_level(binding: &WrapperBinding, ref_ptr: *mut c_void, strong: bool) {
+fn apply_wrapper_level(binding: &WrapperBinding, napi_ref: *mut c_void, strong: bool) {
     if binding.wrapper_strong.swap(strong, Ordering::AcqRel) == strong {
         return;
     }
@@ -71,7 +72,7 @@ fn apply_wrapper_level(binding: &WrapperBinding, ref_ptr: *mut c_void, strong: b
     } else {
         WrapperRefOp::Unref
     };
-    invoke_ref_op(ref_ptr, op);
+    invoke_ref_op(napi_ref, op);
 }
 
 pub unsafe fn wrapper_ref(gobject: *mut glib::gobject_ffi::GObject) -> *mut c_void {
@@ -85,55 +86,55 @@ pub unsafe fn has_wrapper(gobject: *mut glib::gobject_ffi::GObject) -> bool {
     unsafe { binding_qdata(gobject) }.is_some()
 }
 
-fn invoke_ref_op(ref_ptr: *mut c_void, op: WrapperRefOp) {
+fn invoke_ref_op(napi_ref: *mut c_void, op: WrapperRefOp) {
     let mailbox = Mailbox::global();
     if mailbox.is_not_running() {
         return;
     }
-    if let Err(error) = mailbox.apply_wrapper_ref_op_and_wait(ref_ptr as usize, op) {
+    if let Err(error) = mailbox.apply_wrapper_ref_op_and_wait(napi_ref as usize, op) {
         ErrorReporter::global().report(&error.context(
             "toggle-reference operation failed; wrapper lifetime state may be inconsistent",
         ));
     }
 }
 
-fn schedule_reference_delete(env_ptr: usize, ref_ptr: usize) {
+fn schedule_reference_delete(env_ptr: usize, napi_ref: usize) {
     let mailbox = Mailbox::global();
     if mailbox.is_not_running() {
         return;
     }
     mailbox.schedule_js_reference_delete(JsRefDeletion::new(
         env_ptr as napi::sys::napi_env,
-        ref_ptr as napi::sys::napi_ref,
+        napi_ref as napi::sys::napi_ref,
     ));
 }
 
 pub(crate) unsafe fn install(
     gobject: *mut glib::gobject_ffi::GObject,
-    ref_ptr: *mut c_void,
+    napi_ref: *mut c_void,
     consume_pending: bool,
 ) -> (Arc<WrapperBinding>, u64) {
     unsafe {
         let result = if let Some(nn) = binding_qdata(gobject) {
             let binding = nn.as_ref();
             let generation = binding.generation.load(Ordering::Relaxed) + 1;
-            binding.napi_ref.store(ref_ptr as usize, Ordering::Relaxed);
+            binding.napi_ref.store(napi_ref as usize, Ordering::Relaxed);
             binding.generation.store(generation, Ordering::Relaxed);
             binding.wrapper_strong.store(true, Ordering::Release);
             (Arc::clone(binding), generation)
         } else {
-            let cell = Arc::new(WrapperBinding {
-                napi_ref: AtomicUsize::new(ref_ptr as usize),
+            let binding = Arc::new(WrapperBinding {
+                napi_ref: AtomicUsize::new(napi_ref as usize),
                 generation: AtomicU64::new(1),
                 wrapper_strong: AtomicBool::new(true),
             });
-            borrow_object(gobject).set_qdata::<Arc<WrapperBinding>>(quark(), Arc::clone(&cell));
+            borrow_object(gobject).set_qdata::<Arc<WrapperBinding>>(quark(), Arc::clone(&binding));
             glib::gobject_ffi::g_object_add_toggle_ref(
                 gobject,
                 Some(on_toggle_notify),
                 std::ptr::null_mut(),
             );
-            (cell, 1)
+            (binding, 1)
         };
         if consume_pending {
             glib::gobject_ffi::g_object_unref(gobject);
@@ -147,38 +148,40 @@ pub(crate) fn schedule_cleanup(
     binding: Option<Arc<WrapperBinding>>,
     generation: u64,
     gobject_ptr: usize,
-    ref_ptr: usize,
+    napi_ref: usize,
 ) {
     if Mailbox::global().is_not_running() {
         return;
     }
     glib::idle_add_once(move || {
-        let Some(binding) = binding else {
-            schedule_reference_delete(env_ptr, ref_ptr);
-            return;
-        };
+        guard_ffi_boundary("wrapper cleanup", || {
+            let Some(binding) = binding else {
+                schedule_reference_delete(env_ptr, napi_ref);
+                return;
+            };
 
-        if binding.generation.load(Ordering::Relaxed) != generation {
-            schedule_reference_delete(env_ptr, ref_ptr);
-            return;
-        }
-
-        let gobject = gobject_ptr as *mut glib::gobject_ffi::GObject;
-        binding.generation.store(0, Ordering::Relaxed);
-        {
-            let _serialized = LOOKUP_LOCK.lock_unpoison();
-            unsafe {
-                drop(borrow_object(gobject).steal_qdata::<Arc<WrapperBinding>>(quark()));
+            if binding.generation.load(Ordering::Relaxed) != generation {
+                schedule_reference_delete(env_ptr, napi_ref);
+                return;
             }
-        }
-        schedule_reference_delete(env_ptr, ref_ptr);
-        unsafe {
-            glib::gobject_ffi::g_object_remove_toggle_ref(
-                gobject,
-                Some(on_toggle_notify),
-                std::ptr::null_mut(),
-            );
-        }
+
+            let gobject = gobject_ptr as *mut glib::gobject_ffi::GObject;
+            binding.generation.store(0, Ordering::Relaxed);
+            {
+                let _serialized = LOOKUP_LOCK.lock_unpoison();
+                unsafe {
+                    drop(borrow_object(gobject).steal_qdata::<Arc<WrapperBinding>>(quark()));
+                }
+            }
+            schedule_reference_delete(env_ptr, napi_ref);
+            unsafe {
+                glib::gobject_ffi::g_object_remove_toggle_ref(
+                    gobject,
+                    Some(on_toggle_notify),
+                    std::ptr::null_mut(),
+                );
+            }
+        });
     });
 }
 
@@ -187,27 +190,29 @@ unsafe extern "C" fn on_toggle_notify(
     gobject: *mut glib::gobject_ffi::GObject,
     is_last_ref: glib::ffi::gboolean,
 ) {
-    if glib::MainContext::default().is_owner() {
-        let Some(nn) = (unsafe { binding_qdata(gobject) }) else {
-            return;
-        };
-        let binding = unsafe { nn.as_ref() };
-        let ref_ptr = binding.napi_ref.load(Ordering::Relaxed) as *mut c_void;
-        apply_wrapper_level(binding, ref_ptr, is_last_ref == 0);
-        return;
-    }
-
-    let Some(binding) = (unsafe { binding_arc(gobject) }) else {
-        return;
-    };
-    let gobject_ptr = gobject as usize;
-    Mailbox::global().schedule_glib(Box::new(move || {
-        if binding.generation.load(Ordering::Relaxed) == 0 {
+    guard_ffi_boundary("toggle-reference notify", || {
+        if glib::MainContext::default().is_owner() {
+            let Some(nn) = (unsafe { binding_qdata(gobject) }) else {
+                return;
+            };
+            let binding = unsafe { nn.as_ref() };
+            let napi_ref = binding.napi_ref.load(Ordering::Relaxed) as *mut c_void;
+            apply_wrapper_level(binding, napi_ref, is_last_ref == 0);
             return;
         }
-        let ref_ptr = binding.napi_ref.load(Ordering::Relaxed) as *mut c_void;
-        let gobject = gobject_ptr as *mut glib::gobject_ffi::GObject;
-        let ref_count = unsafe { borrow_object(gobject).ref_count() };
-        apply_wrapper_level(&binding, ref_ptr, ref_count > 1);
-    }));
+
+        let Some(binding) = (unsafe { binding_arc(gobject) }) else {
+            return;
+        };
+        let gobject_ptr = gobject as usize;
+        Mailbox::global().schedule_glib(Box::new(move || {
+            if binding.generation.load(Ordering::Relaxed) == 0 {
+                return;
+            }
+            let napi_ref = binding.napi_ref.load(Ordering::Relaxed) as *mut c_void;
+            let gobject = gobject_ptr as *mut glib::gobject_ffi::GObject;
+            let ref_count = unsafe { borrow_object(gobject).ref_count() };
+            apply_wrapper_level(&binding, napi_ref, ref_count > 1);
+        }));
+    });
 }

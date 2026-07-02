@@ -161,16 +161,16 @@ impl StashedValue {
 
     pub fn to_number(&self) -> anyhow::Result<f64> {
         match self {
-            Self::I8(v) => Ok(*v as f64),
-            Self::U8(v) => Ok(*v as f64),
-            Self::I16(v) => Ok(*v as f64),
-            Self::U16(v) => Ok(*v as f64),
-            Self::I32(v) => Ok(*v as f64),
-            Self::U32(v) => Ok(*v as f64),
-            Self::I64(v) => crate::ffi::codec::lossless_f64(i128::from(*v), "call result"),
-            Self::U64(v) => crate::ffi::codec::lossless_f64(i128::from(*v), "call result"),
-            Self::F32(v) => Ok(*v as f64),
-            Self::F64(v) => Ok(*v),
+            Self::I8(value) => Ok(*value as f64),
+            Self::U8(value) => Ok(*value as f64),
+            Self::I16(value) => Ok(*value as f64),
+            Self::U16(value) => Ok(*value as f64),
+            Self::I32(value) => Ok(*value as f64),
+            Self::U32(value) => Ok(*value as f64),
+            Self::I64(value) => crate::ffi::codec::lossless_f64(i128::from(*value), "call result"),
+            Self::U64(value) => crate::ffi::codec::lossless_f64(i128::from(*value), "call result"),
+            Self::F32(value) => Ok(*value as f64),
+            Self::F64(value) => Ok(*value),
             Self::Ptr(_) | Self::Stashed(_) | Self::Callback(_) | Self::Void => {
                 anyhow::bail!("Expected a numeric StashedValue, got {self:?}")
             }

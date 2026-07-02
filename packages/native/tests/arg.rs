@@ -134,23 +134,27 @@ fn encode_integer_u64() {
 
 #[test]
 fn encode_integer_optional_null() {
-    let v = expect_variant!(
-        Codec::Integer(IntegerCodec::I32),
-        value::Value::Null,
-        I32
-    );
+    let v = expect_variant!(Codec::Integer(IntegerCodec::I32), value::Value::Null, I32);
     assert_eq!(v, 0);
 }
 
 #[test]
 fn encode_float_f32() {
-    let v = expect_variant!(Codec::Float(FloatCodec::F32), value::Value::Number(3.125), F32);
+    let v = expect_variant!(
+        Codec::Float(FloatCodec::F32),
+        value::Value::Number(3.125),
+        F32
+    );
     assert!((v - 3.125).abs() < 0.001);
 }
 
 #[test]
 fn encode_float_f64() {
-    let v = expect_variant!(Codec::Float(FloatCodec::F64), value::Value::Number(2.625), F64);
+    let v = expect_variant!(
+        Codec::Float(FloatCodec::F64),
+        value::Value::Number(2.625),
+        F64
+    );
     assert!((v - 2.625).abs() < 0.000_000_1);
 }
 
@@ -206,13 +210,21 @@ fn encode_string_null() {
 
 #[test]
 fn encode_boolean_true() {
-    let v = expect_variant!(Codec::Boolean(BooleanCodec), value::Value::Boolean(true), I32);
+    let v = expect_variant!(
+        Codec::Boolean(BooleanCodec),
+        value::Value::Boolean(true),
+        I32
+    );
     assert_eq!(v, 1);
 }
 
 #[test]
 fn encode_boolean_false() {
-    let v = expect_variant!(Codec::Boolean(BooleanCodec), value::Value::Boolean(false), I32);
+    let v = expect_variant!(
+        Codec::Boolean(BooleanCodec),
+        value::Value::Boolean(false),
+        I32
+    );
     assert_eq!(v, 0);
 }
 

@@ -42,12 +42,7 @@ fn fixed_array_of(item: Codec, size: u32, ownership: Ownership) -> ArrayCodec {
 }
 
 fn view_over(data: &mut [u8], length: usize, kind: BufferViewKind) -> BufferView {
-    BufferView::new(
-        data.as_mut_ptr() as *mut c_void,
-        data.len(),
-        length,
-        kind,
-    )
+    BufferView::new(data.as_mut_ptr() as *mut c_void, data.len(), length, kind)
 }
 
 fn encode_view(codec: ArrayCodec, view: BufferView) -> anyhow::Result<StashedValue> {

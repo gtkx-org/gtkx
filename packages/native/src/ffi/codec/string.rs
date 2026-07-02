@@ -43,8 +43,8 @@ impl Encoder for StringCodec {
 }
 
 impl Decoder for StringCodec {
-    fn read_call(&self, stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
-        self.read_call_non_null(stashed_value, "string", |str_ptr| {
+    fn decode_call(&self, stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
+        self.decode_call_non_null(stashed_value, "string", |str_ptr| {
             let string = unsafe { lossy_c_string(str_ptr as *const c_char) };
 
             if self.ownership.is_full() {
@@ -81,8 +81,8 @@ impl PtrWriter for StringCodec {
     ) -> anyhow::Result<()> {
         match value {
             value::Value::String(s) => {
-                let duped = str_to_glib_full(s)?;
-                unsafe { ffi::Slot::new(ptr).store(duped.cast()) };
+                let glib_ptr = str_to_glib_full(s)?;
+                unsafe { ffi::Slot::new(ptr).store(glib_ptr.cast()) };
             }
             value::Value::Null | value::Value::Undefined => unsafe {
                 ffi::Slot::new(ptr).store(std::ptr::null_mut());

@@ -102,7 +102,7 @@ fn assert_full_element_container_releases_on_drop(kind: ArrayKind, container: Ow
         let before = gobject_refcount(obj_ptr);
 
         let descriptor = array_codec(gobject_item_codec(Ownership::Full), kind, container);
-        let val = Value::Array(vec![Value::Object(Handle::borrowed(obj_ptr))]);
+        let val = Value::Array(vec![Value::Object(Handle::from_glib_borrow(obj_ptr))]);
         let encoded = descriptor.encode(&val).unwrap();
         assert_eq!(gobject_refcount(obj_ptr), before + 1);
 
@@ -156,7 +156,7 @@ fn encode_glist_handles_full_ownership_transfers_to_callee_when_disarmed() {
             ArrayKind::GList,
             Ownership::Full,
         );
-        let val = Value::Array(vec![Value::Object(Handle::borrowed(obj_ptr))]);
+        let val = Value::Array(vec![Value::Object(Handle::from_glib_borrow(obj_ptr))]);
         let encoded = descriptor.encode(&val).unwrap();
         encoded.disarm_pending_transfer();
 
@@ -185,8 +185,8 @@ fn encode_glist_handles_releases_acquired_elements_when_later_element_is_null() 
             Ownership::Full,
         );
         let val = Value::Array(vec![
-            Value::Object(Handle::borrowed(obj_ptr)),
-            Value::Object(Handle::borrowed(std::ptr::null_mut())),
+            Value::Object(Handle::from_glib_borrow(obj_ptr)),
+            Value::Object(Handle::from_glib_borrow(std::ptr::null_mut())),
         ]);
         assert!(descriptor.encode(&val).is_err());
         assert_eq!(gobject_refcount(obj_ptr), before);
@@ -466,7 +466,9 @@ fn encode_pointer_array_with_element_size_copies_into_buffer() {
 fn encode_pointer_array_with_element_size_rejects_null_handle() {
     let mut descriptor = array_codec(struct_item_codec(), ArrayKind::Array, Ownership::Full);
     descriptor.element_size = Some(8);
-    let val = Value::Array(vec![Value::Object(Handle::borrowed(std::ptr::null_mut()))]);
+    let val = Value::Array(vec![Value::Object(Handle::from_glib_borrow(
+        std::ptr::null_mut(),
+    ))]);
     assert!(descriptor.encode(&val).is_err());
 }
 
@@ -531,7 +533,9 @@ fn encode_pointer_array_null_terminated_empty_has_sentinel() {
 #[test]
 fn encode_pointer_array_null_terminated_rejects_null_handle() {
     let descriptor = array_codec(struct_item_codec(), ArrayKind::Array, Ownership::Full);
-    let val = Value::Array(vec![Value::Object(Handle::borrowed(std::ptr::null_mut()))]);
+    let val = Value::Array(vec![Value::Object(Handle::from_glib_borrow(
+        std::ptr::null_mut(),
+    ))]);
     assert!(descriptor.encode(&val).is_err());
 }
 
@@ -589,7 +593,9 @@ fn encode_glist_handles_roundtrips() {
 fn encode_glist_handles_rejects_null() {
     helpers::run(|| {
         let descriptor = array_codec(struct_item_codec(), ArrayKind::GList, Ownership::Borrowed);
-        let val = Value::Array(vec![Value::Object(Handle::borrowed(std::ptr::null_mut()))]);
+        let val = Value::Array(vec![Value::Object(Handle::from_glib_borrow(
+            std::ptr::null_mut(),
+        ))]);
         assert!(descriptor.encode(&val).is_err());
     });
 }
@@ -648,7 +654,9 @@ fn encode_gslist_handles_roundtrips() {
 fn encode_gslist_handles_rejects_null() {
     helpers::run(|| {
         let descriptor = array_codec(struct_item_codec(), ArrayKind::GSList, Ownership::Borrowed);
-        let val = Value::Array(vec![Value::Object(Handle::borrowed(std::ptr::null_mut()))]);
+        let val = Value::Array(vec![Value::Object(Handle::from_glib_borrow(
+            std::ptr::null_mut(),
+        ))]);
         assert!(descriptor.encode(&val).is_err());
     });
 }
@@ -773,7 +781,9 @@ fn encode_garray_handles_roundtrips() {
 fn encode_garray_handles_rejects_null() {
     helpers::run(|| {
         let descriptor = array_codec(struct_item_codec(), ArrayKind::GArray, Ownership::Borrowed);
-        let val = Value::Array(vec![Value::Object(Handle::borrowed(std::ptr::null_mut()))]);
+        let val = Value::Array(vec![Value::Object(Handle::from_glib_borrow(
+            std::ptr::null_mut(),
+        ))]);
         assert!(descriptor.encode(&val).is_err());
     });
 }
@@ -1090,7 +1100,7 @@ fn decode_null_terminated_ptr_array_from_ptr() {
     let descriptor = array_codec(struct_item_codec(), ArrayKind::Array, Ownership::Borrowed);
     let h0 = boxed_handle();
     let h1 = boxed_handle();
-    let mut ptrs: Vec<*mut c_void> = vec![h0.ptr(), h1.ptr(), std::ptr::null_mut()];
+    let mut ptrs: Vec<*mut c_void> = vec![h0.as_ptr(), h1.as_ptr(), std::ptr::null_mut()];
     let Value::Array(items) = descriptor
         .decode(&StashedValue::Ptr(ptrs.as_mut_ptr() as *mut c_void))
         .unwrap()
@@ -1106,7 +1116,7 @@ fn decode_null_terminated_ptr_array_full_ownership_frees() {
         let descriptor = array_codec(struct_item_codec(), ArrayKind::Array, Ownership::Full);
         let arr = unsafe {
             let mem = glib::ffi::g_malloc0(size_of::<*mut c_void>() * 2) as *mut *mut c_void;
-            *mem = boxed_handle().ptr();
+            *mem = boxed_handle().as_ptr();
             mem
         };
         let Value::Array(items) = descriptor
@@ -1131,7 +1141,8 @@ fn decode_glist_empty_and_populated() {
         };
         assert!(empty.is_empty());
 
-        let list = unsafe { glib::ffi::g_list_append(std::ptr::null_mut(), boxed_handle().ptr()) };
+        let list =
+            unsafe { glib::ffi::g_list_append(std::ptr::null_mut(), boxed_handle().as_ptr()) };
         let Value::Array(items) = descriptor
             .decode(&StashedValue::Ptr(list as *mut c_void))
             .unwrap()
@@ -1146,7 +1157,8 @@ fn decode_glist_empty_and_populated() {
 fn decode_gslist_full_ownership_frees_list() {
     helpers::run(|| {
         let descriptor = array_codec(struct_item_codec(), ArrayKind::GSList, Ownership::Full);
-        let list = unsafe { glib::ffi::g_slist_append(std::ptr::null_mut(), boxed_handle().ptr()) };
+        let list =
+            unsafe { glib::ffi::g_slist_append(std::ptr::null_mut(), boxed_handle().as_ptr()) };
         let Value::Array(items) = descriptor
             .decode(&StashedValue::Ptr(list as *mut c_void))
             .unwrap()
@@ -1210,7 +1222,7 @@ fn decode_garray_storage_owned_does_not_double_free() {
         let storage = native::ffi::Stash::new(
             g_array as *mut c_void,
             native::ffi::StashStorage::GArray(GArrayData {
-                array_ptr: g_array,
+                ptr: g_array,
                 should_free: true,
             }),
         );
@@ -1227,7 +1239,7 @@ fn decode_gptrarray_from_ptr() {
     helpers::run(|| {
         let descriptor = array_codec(struct_item_codec(), ArrayKind::GPtrArray, Ownership::Full);
         let ptr_array = unsafe { glib::ffi::g_ptr_array_new() };
-        unsafe { glib::ffi::g_ptr_array_add(ptr_array, boxed_handle().ptr()) };
+        unsafe { glib::ffi::g_ptr_array_add(ptr_array, boxed_handle().as_ptr()) };
         let Value::Array(items) = descriptor
             .decode(&StashedValue::Ptr(ptr_array as *mut c_void))
             .unwrap()
@@ -1441,7 +1453,7 @@ fn decode_contiguous_empty_and_null() {
 fn decode_contiguous_pointer_elements() {
     let descriptor = fixed_array_type(struct_item_codec(), 1, Ownership::Borrowed);
     let handle = boxed_handle();
-    let data: Vec<*mut c_void> = vec![handle.ptr()];
+    let data: Vec<*mut c_void> = vec![handle.as_ptr()];
     let Value::Array(items) = descriptor
         .decode_with_context(&StashedValue::Ptr(data.as_ptr() as *mut c_void), &[], &[])
         .unwrap()
@@ -1514,7 +1526,7 @@ fn ptr_to_value_gptrarray() {
             Ownership::Borrowed,
         );
         let ptr_array = unsafe { glib::ffi::g_ptr_array_new() };
-        unsafe { glib::ffi::g_ptr_array_add(ptr_array, boxed_handle().ptr()) };
+        unsafe { glib::ffi::g_ptr_array_add(ptr_array, boxed_handle().as_ptr()) };
         let value =
             unsafe { descriptor.read(ReadSource::Value(ptr_array as *mut c_void, "array")) }
                 .unwrap();
@@ -1568,7 +1580,8 @@ fn ptr_to_value_garray() {
 fn ptr_to_value_glist() {
     helpers::run(|| {
         let descriptor = array_codec(struct_item_codec(), ArrayKind::GList, Ownership::Borrowed);
-        let list = unsafe { glib::ffi::g_list_append(std::ptr::null_mut(), boxed_handle().ptr()) };
+        let list =
+            unsafe { glib::ffi::g_list_append(std::ptr::null_mut(), boxed_handle().as_ptr()) };
         let decoded =
             unsafe { descriptor.read(ReadSource::Value(list as *mut c_void, "array")) }.unwrap();
         assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
@@ -1581,7 +1594,7 @@ fn ptr_to_value_plain_array() {
     helpers::run(|| {
         let descriptor = array_codec(struct_item_codec(), ArrayKind::Array, Ownership::Borrowed);
         let h0 = boxed_handle();
-        let mut data: Vec<*mut c_void> = vec![h0.ptr(), std::ptr::null_mut()];
+        let mut data: Vec<*mut c_void> = vec![h0.as_ptr(), std::ptr::null_mut()];
         let decoded = unsafe {
             descriptor.read(ReadSource::Value(data.as_mut_ptr() as *mut c_void, "array"))
         }
@@ -1613,8 +1626,9 @@ fn size_from_args_reads_ref_integer_storage() {
     let stashed_value = StashedValue::Ptr(data.as_ptr() as *mut c_void);
     let size_storage = native::ffi::Stash::from(vec![2i32]);
     let ffi_args = [StashedValue::Stashed(size_storage)];
-    let arg_codecs =
-        [Codec::Ref(RefCodec::new(Codec::Integer(IntegerCodec::I32)).expect("valid Ref inner"))];
+    let arg_codecs = [Codec::Ref(
+        RefCodec::new(Codec::Integer(IntegerCodec::I32)).expect("valid Ref inner"),
+    )];
     let Value::Array(items) = descriptor
         .decode_with_context(&stashed_value, &ffi_args, &arg_codecs)
         .unwrap()
@@ -1631,8 +1645,9 @@ fn size_from_args_reads_ref_integer_ptr() {
     let stashed_value = StashedValue::Ptr(data.as_ptr() as *mut c_void);
     let size: i32 = 2;
     let ffi_args = [StashedValue::Ptr(&size as *const i32 as *mut c_void)];
-    let arg_codecs =
-        [Codec::Ref(RefCodec::new(Codec::Integer(IntegerCodec::I32)).expect("valid Ref inner"))];
+    let arg_codecs = [Codec::Ref(
+        RefCodec::new(Codec::Integer(IntegerCodec::I32)).expect("valid Ref inner"),
+    )];
     let Value::Array(items) = descriptor
         .decode_with_context(&stashed_value, &ffi_args, &arg_codecs)
         .unwrap()
@@ -1648,8 +1663,9 @@ fn size_from_args_ref_null_ptr_falls_through_to_error() {
     let data: Vec<i32> = vec![1];
     let stashed_value = StashedValue::Ptr(data.as_ptr() as *mut c_void);
     let ffi_args = [StashedValue::Ptr(std::ptr::null_mut())];
-    let arg_codecs =
-        [Codec::Ref(RefCodec::new(Codec::Integer(IntegerCodec::I32)).expect("valid Ref inner"))];
+    let arg_codecs = [Codec::Ref(
+        RefCodec::new(Codec::Integer(IntegerCodec::I32)).expect("valid Ref inner"),
+    )];
     assert!(
         descriptor
             .decode_with_context(&stashed_value, &ffi_args, &arg_codecs)
@@ -1683,7 +1699,7 @@ fn trait_methods_delegate_to_inherent_implementations() {
 
         let ptr_ty = array_codec(struct_item_codec(), ArrayKind::Array, Ownership::Borrowed);
         let h0 = boxed_handle();
-        let mut data: Vec<*mut c_void> = vec![h0.ptr(), std::ptr::null_mut()];
+        let mut data: Vec<*mut c_void> = vec![h0.as_ptr(), std::ptr::null_mut()];
         let from_ptr = unsafe {
             Decoder::read(
                 &ptr_ty,
@@ -1740,7 +1756,7 @@ fn encode_glist_handles_fails_and_unwinds_when_element_transfer_fails() {
             ArrayKind::GList,
             Ownership::Full,
         );
-        let val = Value::Array(vec![Value::Object(Handle::borrowed(pspec))]);
+        let val = Value::Array(vec![Value::Object(Handle::from_glib_borrow(pspec))]);
         let err = descriptor
             .encode(&val)
             .expect_err("an unresolvable element ref function must fail the transfer");
@@ -1776,7 +1792,7 @@ fn encode_glist_strings_full_container_full_elements_releases_when_call_never_ha
         assert!(*elements_duped);
         assert!(!data.should_free);
         let first = unsafe {
-            std::ffi::CStr::from_ptr((*(data.list_ptr as *mut glib::ffi::GList)).data as *const c_char)
+            std::ffi::CStr::from_ptr((*(data.ptr as *mut glib::ffi::GList)).data as *const c_char)
         };
         assert_eq!(first.to_str().unwrap(), "a");
         drop(encoded);

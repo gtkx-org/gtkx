@@ -61,7 +61,7 @@ fn free_rgba(gtype: glib::Type, ptr: *mut c_void) {
 }
 
 fn object_value_of(ptr: *mut c_void) -> Value {
-    Value::Object(Handle::borrowed(ptr))
+    Value::Object(Handle::from_glib_borrow(ptr))
 }
 
 fn assert_read_aliases_source<C: Decoder>(codec: &C, original: *mut c_void, message: &str) {
@@ -70,7 +70,7 @@ fn assert_read_aliases_source<C: Decoder>(codec: &C, original: *mut c_void, mess
     let Value::Object(handle) = &value else {
         panic!("expected Object value");
     };
-    assert_eq!(handle.ptr(), original, "{message}");
+    assert_eq!(handle.as_ptr(), original, "{message}");
     drop(value);
 }
 
@@ -249,7 +249,7 @@ fn ptr_to_value_defensive_copies_regardless_of_ownership_tag() {
                 panic!("expected Object value");
             };
             assert_ne!(
-                handle.ptr(),
+                handle.as_ptr(),
                 original,
                 "ptr_to_value must produce an independent copy, not alias the source"
             );
@@ -420,7 +420,7 @@ fn struct_encode_keeps_pointer() {
         let original = helpers::allocate_test_boxed(gtype);
 
         let encoded = struct_type(Ownership::Borrowed, None)
-            .encode(&Value::Object(Handle::borrowed(original)))
+            .encode(&Value::Object(Handle::from_glib_borrow(original)))
             .expect("struct encode should succeed");
         assert!(matches!(encoded, ffi::StashedValue::Ptr(p) if p == original));
 
@@ -494,7 +494,7 @@ fn struct_ptr_to_value_defensive_copies_regardless_of_ownership_tag() {
                 panic!("expected Object value");
             };
             assert_ne!(
-                handle.ptr(),
+                handle.as_ptr(),
                 raw,
                 "struct ptr_to_value must produce an independent copy when size is known"
             );
@@ -517,7 +517,7 @@ fn struct_ptr_to_value_without_size_wraps_unowned() {
             panic!("expected Object value");
         };
         assert_eq!(
-            handle.ptr(),
+            handle.as_ptr(),
             raw,
             "without size the wrapper aliases the source pointer; the parent allocation owns it"
         );
@@ -597,7 +597,7 @@ fn struct_write_value_to_pointer_with_size_bails_for_null_dst() {
         let err = unsafe {
             struct_type(Ownership::Borrowed, Some(std::mem::size_of::<u64>())).write_value_to_ptr(
                 &mut slot as *mut *mut c_void as *mut c_void,
-                &Value::Object(Handle::borrowed(&src as *const u64 as *mut c_void)),
+                &Value::Object(Handle::from_glib_borrow(&src as *const u64 as *mut c_void)),
             )
         };
 
@@ -640,7 +640,7 @@ mod free_fn {
         let Value::Object(handle) = &value else {
             panic!("expected Object value");
         };
-        assert_eq!(handle.ptr(), ptr);
+        assert_eq!(handle.as_ptr(), ptr);
         drop(value);
 
         if ownership.is_borrowed() {

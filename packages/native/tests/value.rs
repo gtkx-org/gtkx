@@ -96,7 +96,7 @@ fn assert_string_item(items: &[Value], index: usize, expected: &str) {
 fn new_gobject_handle() -> (glib::Object, *mut c_void, native::Handle) {
     let obj = glib::Object::new::<glib::Object>();
     let obj_ptr = obj.as_ptr() as *mut c_void;
-    let handle = native::Handle::borrowed(obj_ptr);
+    let handle = native::Handle::from_glib_borrow(obj_ptr);
     (obj, obj_ptr, handle)
 }
 
@@ -273,9 +273,9 @@ fn from_cif_value_ref_gobject_null_inner() {
 fn from_cif_value_ref_boxed() {
     helpers::run(|| {
         let gtype = gdk::RGBA::static_type();
-        let boxed_ptr = helpers::allocate_test_boxed(gtype);
+        let ptr = helpers::allocate_test_boxed(gtype);
 
-        let cif_value = ptr_slot_storage(boxed_ptr);
+        let cif_value = ptr_slot_storage(ptr);
         let type_ = Codec::Ref(
             native::ffi::codec::RefCodec::new(rgba_boxed_type_of(Ownership::Borrowed))
                 .expect("Boxed is a valid Ref inner"),
@@ -285,7 +285,7 @@ fn from_cif_value_ref_boxed() {
         assert!(matches!(result, Value::Object(_)));
 
         unsafe {
-            glib::gobject_ffi::g_boxed_free(gtype.into_glib(), boxed_ptr);
+            glib::gobject_ffi::g_boxed_free(gtype.into_glib(), ptr);
         }
     });
 }

@@ -19,7 +19,7 @@ impl BigIntCodec {
         }
     }
 
-    fn label(self) -> &'static str {
+    fn name(self) -> &'static str {
         match self {
             Self::I64 => "bigint64",
             Self::U64 => "biguint64",
@@ -44,13 +44,13 @@ impl BigIntCodec {
                 {
                     bail!(
                         "Value {n} is not an integer Number exactly representable as {}; pass a bigint",
-                        self.label()
+                        self.name()
                     );
                 }
                 Ok(*n as i128)
             }
             value::Value::Null | value::Value::Undefined => Ok(0),
-            _ => bail_expected!("a BigInt", self.label(), value),
+            _ => bail_expected!("a BigInt", self.name(), value),
         }
     }
 
@@ -147,7 +147,7 @@ impl Decoder for BigIntCodec {
                 ffi::StashedValue::U64(v) => Ok(value::Value::BigInt(i128::from(*v))),
                 other => bail!(
                     "Expected a 64-bit StashedValue for {}, got {other:?}",
-                    self.label()
+                    self.name()
                 ),
             },
             ReadSource::Value(ptr, _context) => Ok(value::Value::BigInt(match self {

@@ -45,8 +45,8 @@ impl Decoder for UnicharCodec {
                 Ok(value::Value::String(ch.to_string()))
             }
             ReadSource::Slot(ptr, _context) => {
-                let val = unsafe { *(ptr as *const u32) };
-                let ch = char::from_u32(val).unwrap_or('\u{FFFD}');
+                let cp = unsafe { *(ptr as *const u32) };
+                let ch = char::from_u32(cp).unwrap_or('\u{FFFD}');
                 Ok(value::Value::String(ch.to_string()))
             }
         }
@@ -55,11 +55,11 @@ impl Decoder for UnicharCodec {
 
 impl PtrWriter for UnicharCodec {
     unsafe fn write_return_to_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
-        let val = match value {
+        let cp = match value {
             Ok(value::Value::String(s)) => s.chars().next().map_or(0, |c| c as u32),
             Ok(value::Value::Number(n)) => *n as u32,
             _ => 0,
         };
-        unsafe { IntegerCodec::U32.write_return_widened(ret, f64::from(val)) };
+        unsafe { IntegerCodec::U32.write_return_widened(ret, f64::from(cp)) };
     }
 }

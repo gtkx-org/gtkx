@@ -12,6 +12,7 @@ use crate::ffi::codec::{
 use crate::ffi::value::{JsRef, Value};
 use crate::messaging::Mailbox;
 use crate::messaging::error_reporter::{ErrorReporter, ReportErr};
+use crate::messaging::panic_handler::guard_ffi_boundary;
 
 pub struct CallbackData {
     pub js_fn: Arc<JsRef>,
@@ -314,8 +315,16 @@ unsafe extern "C" fn closure_entry(
     args: *const *const c_void,
     data: &CallbackData,
 ) {
-    let state_ptr = unsafe { data.handle_call(args, result as *mut u64 as *mut c_void) };
+    *result = 0;
+    let state_ptr = guard_ffi_boundary("callback trampoline", || unsafe {
+        data.handle_call(args, result as *mut u64 as *mut c_void)
+    })
+    .flatten();
     if let Some(ptr) = state_ptr {
-        glib::idle_add_local_once(move || drop(unsafe { Box::from_raw(ptr) }));
+        glib::idle_add_local_once(move || {
+            guard_ffi_boundary("callback one-shot cleanup", || {
+                drop(unsafe { Box::from_raw(ptr) });
+            });
+        });
     }
 }

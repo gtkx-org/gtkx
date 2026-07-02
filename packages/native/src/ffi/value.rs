@@ -305,14 +305,14 @@ pub enum Value {
 impl Value {
     pub fn result_to_ptr(result: &std::result::Result<Self, ()>) -> *mut c_void {
         match result {
-            Ok(Self::Object(handle)) => handle.ptr(),
+            Ok(Self::Object(handle)) => handle.as_ptr(),
             _ => std::ptr::null_mut(),
         }
     }
 
     pub fn object_ptr(&self, type_name: &str) -> anyhow::Result<*mut c_void> {
         match self {
-            Self::Object(handle) => Ok(handle.ptr()),
+            Self::Object(handle) => Ok(handle.as_ptr()),
             Self::Null | Self::Undefined => Ok(std::ptr::null_mut()),
             Self::Number(_)
             | Self::BigInt(_)
@@ -371,7 +371,9 @@ impl Value {
             ValueType::External => {
                 let external_ref =
                     unsafe { <&External<Handle>>::from_napi_value(env.raw(), value.raw())? };
-                Ok(Self::Object(Handle::borrowed(external_ref.ptr())))
+                Ok(Self::Object(Handle::from_glib_borrow(
+                    external_ref.as_ptr(),
+                )))
             }
             ValueType::Function => {
                 let callback = Callback::from_js_value(env, value)?;

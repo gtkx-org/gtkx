@@ -33,18 +33,18 @@ impl LibraryCache {
         }
     }
 
-    pub fn get_or_load(&mut self, name: &str) -> anyhow::Result<&Library> {
-        if !self.libraries.contains_key(name) {
-            let library = Self::load(name)?;
-            self.libraries.insert(name.to_owned(), library);
+    pub fn get_or_load(&mut self, library_name: &str) -> anyhow::Result<&Library> {
+        if !self.libraries.contains_key(library_name) {
+            let library = Self::load(library_name)?;
+            self.libraries.insert(library_name.to_owned(), library);
         }
-        Ok(&self.libraries[name])
+        Ok(&self.libraries[library_name])
     }
 
-    fn load(name: &str) -> anyhow::Result<Library> {
+    fn load(library_name: &str) -> anyhow::Result<Library> {
         let mut last_error = None;
 
-        for lib_name in name.split(',') {
+        for lib_name in library_name.split(',') {
             match unsafe { Library::open(Some(lib_name), RTLD_NOW | RTLD_GLOBAL) } {
                 Ok(lib) => return Ok(lib),
                 Err(err) => last_error = Some(err),
@@ -52,12 +52,12 @@ impl LibraryCache {
         }
 
         let err = last_error.expect("str::split always yields at least one candidate");
-        anyhow::bail!("Failed to load library '{name}': {err}")
+        anyhow::bail!("Failed to load library '{library_name}': {err}")
     }
 
     pub fn resolve_gtype(
         &mut self,
-        lib_name: &str,
+        library_name: &str,
         get_type_fn_name: &str,
     ) -> anyhow::Result<glib::Type> {
         use glib::translate::FromGlib as _;
@@ -66,13 +66,13 @@ impl LibraryCache {
 
         if let Some(cached) = self
             .gtypes
-            .get(lib_name)
+            .get(library_name)
             .and_then(|by_fn| by_fn.get(get_type_fn_name))
         {
             return Ok(*cached);
         }
 
-        let lib = self.get_or_load(lib_name)?;
+        let lib = self.get_or_load(library_name)?;
 
         let symbol = unsafe {
             lib.get::<GetTypeFn>(get_type_fn_name.as_bytes())
@@ -82,7 +82,7 @@ impl LibraryCache {
         let raw_gtype = unsafe { symbol() };
         let gtype = unsafe { glib::Type::from_glib(raw_gtype) };
         self.gtypes
-            .entry(lib_name.to_owned())
+            .entry(library_name.to_owned())
             .or_default()
             .insert(get_type_fn_name.to_owned(), gtype);
         Ok(gtype)
@@ -219,14 +219,14 @@ impl GlibThreadState {
 
     pub fn resolve_gtype(
         &mut self,
-        lib_name: &str,
+        library_name: &str,
         get_type_fn_name: &str,
     ) -> anyhow::Result<glib::Type> {
-        self.libs.resolve_gtype(lib_name, get_type_fn_name)
+        self.libs.resolve_gtype(library_name, get_type_fn_name)
     }
 
-    pub fn library(&mut self, name: &str) -> anyhow::Result<&Library> {
-        self.libs.get_or_load(name)
+    pub fn library(&mut self, library_name: &str) -> anyhow::Result<&Library> {
+        self.libs.get_or_load(library_name)
     }
 
     pub fn cached_cif(&mut self, id: u64, build: impl FnOnce() -> Cif) -> Rc<Cif> {

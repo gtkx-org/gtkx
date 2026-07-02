@@ -23,7 +23,7 @@ pub mod napi_export {
     #[napi(catch_unwind)]
     pub fn bind(
         shared_library: String,
-        symbol: String,
+        symbol_name: String,
         arg_descriptors: Vec<Descriptor>,
         return_descriptor: Descriptor,
     ) -> napi::Result<External<Arc<CallDescriptor>>> {
@@ -35,7 +35,7 @@ pub mod napi_export {
         Ok(External::new(Arc::new(CallDescriptor {
             id: NEXT_DESCRIPTOR_ID.fetch_add(1, Ordering::Relaxed),
             library_name: shared_library,
-            symbol_name: symbol,
+            symbol_name,
             arg_codecs,
             return_codec,
         })))

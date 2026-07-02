@@ -583,7 +583,7 @@ fn encode_native_handle_value_null_and_wrong_type() {
         let encoder = HashTableEntryCodec::Handle(Box::new(struct_type()));
         let handle = boxed_handle();
         let ptr = encoder.encode(&Value::Object(handle.clone())).unwrap();
-        assert_eq!(ptr, handle.ptr());
+        assert_eq!(ptr, handle.as_ptr());
 
         assert!(encoder.encode(&Value::Null).unwrap().is_null());
         assert!(encoder.encode(&Value::Undefined).unwrap().is_null());
@@ -760,7 +760,7 @@ fn fundamental_value_unreffed_when_hashtable_storage_drops() {
         );
         let input = Value::Array(vec![Value::Array(vec![
             Value::Number(1.0),
-            Value::Object(Handle::borrowed(pspec)),
+            Value::Object(Handle::from_glib_borrow(pspec)),
         ])]);
 
         let encoded = ht_type.encode(&input).expect("encoding should succeed");
@@ -786,7 +786,7 @@ fn gobject_value_unreffed_when_hashtable_storage_drops() {
         let input = Value::Array(vec![
             Value::Array(vec![
                 Value::Number(1.0),
-                Value::Object(Handle::borrowed(obj_ptr as *mut c_void)),
+                Value::Object(Handle::from_glib_borrow(obj_ptr as *mut c_void)),
             ]),
             Value::Array(vec![Value::Number(2.0), Value::Null]),
         ]);
@@ -813,7 +813,7 @@ fn hashtable_encode_value_error_releases_transferred_gobject_key() {
 
         let ht_type = gobject_key_boolean_ht();
         let input = Value::Array(vec![Value::Array(vec![
-            Value::Object(Handle::borrowed(obj_ptr as *mut c_void)),
+            Value::Object(Handle::from_glib_borrow(obj_ptr as *mut c_void)),
             Value::Number(1.0),
         ])]);
 
@@ -874,11 +874,11 @@ fn hashtable_encode_second_tuple_error_unwinds_inserted_entries() {
         let ht_type = gobject_key_boolean_ht();
         let input = Value::Array(vec![
             Value::Array(vec![
-                Value::Object(Handle::borrowed(inserted_ptr as *mut c_void)),
+                Value::Object(Handle::from_glib_borrow(inserted_ptr as *mut c_void)),
                 Value::Boolean(true),
             ]),
             Value::Array(vec![
-                Value::Object(Handle::borrowed(failing_ptr as *mut c_void)),
+                Value::Object(Handle::from_glib_borrow(failing_ptr as *mut c_void)),
                 Value::Number(1.0),
             ]),
         ]);

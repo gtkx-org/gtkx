@@ -80,9 +80,11 @@ impl ArrayCodec {
             ItemCodec::Float(kind) => {
                 let numbers = Self::extract_numbers(array)?;
                 let stash: Stash = match kind {
-                    FloatCodec::F32 => {
-                        numbers.iter().map(|&v| v as f32).collect::<Vec<f32>>().into()
-                    }
+                    FloatCodec::F32 => numbers
+                        .iter()
+                        .map(|&v| v as f32)
+                        .collect::<Vec<f32>>()
+                        .into(),
                     FloatCodec::F64 => numbers.into(),
                 };
                 Self::append_vals(g_array, stash.ptr(), array.len());
@@ -158,7 +160,7 @@ impl ArrayCodec {
         let storage = Stash::new(
             g_array as *mut c_void,
             StashStorage::GArray(ffi::GArrayData {
-                array_ptr: g_array,
+                ptr: g_array,
                 should_free,
             }),
         );
@@ -174,12 +176,12 @@ impl ArrayCodec {
         &self,
         stashed_value: &ffi::StashedValue,
     ) -> anyhow::Result<value::Value> {
-        let Some(array_ptr) = stashed_value.as_non_null_ptr("GArray")? else {
+        let Some(ptr) = stashed_value.as_non_null_ptr("GArray")? else {
             return Ok(value::Value::Array(vec![]));
         };
 
         let codec = self.item_codec("GArray")?;
-        let g_array = array_ptr as *const glib::ffi::GArray;
+        let g_array = ptr as *const glib::ffi::GArray;
         let data = unsafe { (*g_array).data as *const u8 };
         let len = unsafe { (*g_array).len as usize };
         let values = self.decode_contiguous(codec, data, len);
@@ -187,7 +189,7 @@ impl ArrayCodec {
         if self.ownership.is_full() {
             let storage_owns = matches!(stashed_value, ffi::StashedValue::Stashed(_));
             if !storage_owns {
-                unsafe { glib::ffi::g_array_unref(array_ptr as *mut glib::ffi::GArray) };
+                unsafe { glib::ffi::g_array_unref(ptr as *mut glib::ffi::GArray) };
             }
         }
 

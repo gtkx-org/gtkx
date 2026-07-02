@@ -52,7 +52,7 @@ fn fundamental_with_unresolvable_symbols(ownership: Ownership) -> FundamentalCod
 
 fn encode_param_spec(codec: &FundamentalCodec, pspec: *mut c_void) -> ffi::StashedValue {
     codec
-        .encode(&Value::Object(Handle::borrowed(pspec)))
+        .encode(&Value::Object(Handle::from_glib_borrow(pspec)))
         .expect("encode should succeed")
 }
 
@@ -83,7 +83,7 @@ fn assert_write_return_writes_pointer(codec: &FundamentalCodec, expected_extra_r
     let pspec = create_param_spec();
     let before = param_spec_refcount(pspec);
 
-    let slot = write_return_into_slot(codec, &Ok(Value::Object(Handle::borrowed(pspec))));
+    let slot = write_return_into_slot(codec, &Ok(Value::Object(Handle::from_glib_borrow(pspec))));
 
     assert_eq!(slot, pspec);
     assert_eq!(param_spec_refcount(pspec), before + expected_extra_refs);
@@ -357,7 +357,7 @@ fn write_value_to_pointer_writes_fundamental() {
         unsafe {
             fundamental(Ownership::Borrowed).write_value_to_ptr(
                 &mut slot as *mut *mut c_void as *mut c_void,
-                &Value::Object(Handle::borrowed(pspec)),
+                &Value::Object(Handle::from_glib_borrow(pspec)),
             )
         }
         .expect("write_value_to_ptr should succeed");
@@ -383,7 +383,7 @@ fn write_value_to_pointer_unrefs_previous_fundamental() {
         unsafe {
             fundamental(Ownership::Borrowed).write_value_to_ptr(
                 &mut slot as *mut *mut c_void as *mut c_void,
-                &Value::Object(Handle::borrowed(new)),
+                &Value::Object(Handle::from_glib_borrow(new)),
             )
         }
         .expect("write_value_to_ptr should succeed");

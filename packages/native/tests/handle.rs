@@ -49,7 +49,7 @@ fn from_native_value_boxed_records_pointer() {
 
         let handle: Handle = Value::Boxed(boxed).into();
 
-        assert_eq!(handle.ptr(), ptr);
+        assert_eq!(handle.as_ptr(), ptr);
     });
 }
 
@@ -59,15 +59,15 @@ fn from_native_value_fundamental_records_pointer() {
 
     let handle = owned_fundamental(ptr);
 
-    assert_eq!(handle.ptr(), ptr);
+    assert_eq!(handle.as_ptr(), ptr);
 }
 
 #[test]
 fn borrowed_handle_has_no_owned_value() {
     let raw = 0xABCD_1234usize as *mut c_void;
-    let handle = Handle::borrowed(raw);
+    let handle = Handle::from_glib_borrow(raw);
 
-    assert_eq!(handle.ptr(), raw);
+    assert_eq!(handle.as_ptr(), raw);
     assert_eq!(handle.ptr_as_usize(), raw as usize);
 
     let debug_str = format!("{handle:?}");
@@ -75,14 +75,14 @@ fn borrowed_handle_has_no_owned_value() {
     assert!(debug_str.contains("owned: false"));
 
     let moved = handle;
-    assert_eq!(moved.ptr(), raw);
+    assert_eq!(moved.as_ptr(), raw);
 }
 
 #[test]
 fn borrowed_handle_with_null_pointer() {
-    let handle = Handle::borrowed(std::ptr::null_mut());
+    let handle = Handle::from_glib_borrow(std::ptr::null_mut());
 
-    assert!(handle.ptr().is_null());
+    assert!(handle.as_ptr().is_null());
     assert_eq!(handle.ptr_as_usize(), 0);
 }
 
@@ -95,7 +95,7 @@ fn clone_owned_handle_preserves_pointer() {
         let handle = owned_fundamental(ptr);
         let cloned = handle.clone();
 
-        assert_eq!(cloned.ptr(), handle.ptr());
+        assert_eq!(cloned.as_ptr(), handle.as_ptr());
         assert_eq!(param_spec_refcount(ptr), initial_ref + 1);
 
         drop(cloned);
@@ -107,12 +107,12 @@ fn clone_owned_handle_preserves_pointer() {
 #[test]
 fn clone_borrowed_handle_preserves_pointer() {
     let raw = 0x5555_0000usize as *mut c_void;
-    let handle = Handle::borrowed(raw);
+    let handle = Handle::from_glib_borrow(raw);
     let cloned = handle.clone();
 
-    assert_eq!(cloned.ptr(), handle.ptr());
+    assert_eq!(cloned.as_ptr(), handle.as_ptr());
     assert_eq!(cloned.ptr_as_usize(), handle.ptr_as_usize());
-    assert_eq!(cloned.ptr(), raw);
+    assert_eq!(cloned.as_ptr(), raw);
 }
 
 #[test]
@@ -131,7 +131,7 @@ fn drop_owned_handle_on_creating_thread_releases_value() {
 
 #[test]
 fn drop_borrowed_handle_is_noop() {
-    let handle = Handle::borrowed(0x1111usize as *mut c_void);
+    let handle = Handle::from_glib_borrow(0x1111usize as *mut c_void);
     drop(handle);
 }
 
@@ -222,7 +222,7 @@ fn take_pending_gobject_ref_consumes_marker_once() {
 fn take_pending_gobject_ref_without_marker_returns_false() {
     helpers::run(|| {
         let obj = glib::Object::new::<glib::Object>();
-        let handle = Handle::borrowed(obj.as_ptr() as *mut c_void);
+        let handle = Handle::from_glib_borrow(obj.as_ptr() as *mut c_void);
 
         assert!(!handle.take_pending_gobject_ref());
     });
@@ -276,7 +276,7 @@ fn native_handle_caches_size_hint_at_construction() {
 
 #[test]
 fn borrowed_native_handle_reports_zero_size_hint() {
-    let handle = Handle::borrowed(0xDEAD_BEEFusize as *mut c_void);
+    let handle = Handle::from_glib_borrow(0xDEAD_BEEFusize as *mut c_void);
     assert_eq!(handle.size_hint(), 0);
 }
 

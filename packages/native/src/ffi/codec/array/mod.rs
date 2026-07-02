@@ -92,7 +92,7 @@ impl Encoder for ArrayCodec {
                 if let Some(element_size) = self.element_size {
                     let mut buffer = vec![0u8; handles.len() * element_size];
                     for (i, handle) in handles.iter().enumerate() {
-                        let ptr = handle.ptr();
+                        let ptr = handle.as_ptr();
                         if ptr.is_null() {
                             bail!("GObject in array has a null pointer");
                         }
@@ -115,7 +115,7 @@ impl Encoder for ArrayCodec {
 }
 
 impl Decoder for ArrayCodec {
-    fn read_call(&self, stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
+    fn decode_call(&self, stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
         match &self.kind {
             ArrayKind::GList | ArrayKind::GSList => return self.decode_glist(stashed_value),
             ArrayKind::GArray => return self.decode_garray(stashed_value),
@@ -125,7 +125,10 @@ impl Decoder for ArrayCodec {
         }
 
         let ffi::StashedValue::Ptr(ptr) = stashed_value else {
-            bail!("Array of kind {:?} can only be decoded from a raw pointer", self.kind)
+            bail!(
+                "Array of kind {:?} can only be decoded from a raw pointer",
+                self.kind
+            )
         };
         if ptr.is_null() {
             return Ok(value::Value::Array(vec![]));
@@ -146,7 +149,7 @@ impl Decoder for ArrayCodec {
         if ptr.is_null() {
             return Ok(value::Value::Array(vec![]));
         }
-        self.read_call(&ffi::StashedValue::Ptr(ptr))
+        self.decode_call(&ffi::StashedValue::Ptr(ptr))
     }
 
     fn decode_with_context(
@@ -218,7 +221,7 @@ enum ItemCodec {
 }
 
 impl ItemCodec {
-    fn resolve(item_codec: &Codec) -> Option<Self> {
+    fn from_codec(item_codec: &Codec) -> Option<Self> {
         Some(match item_codec {
             Codec::Integer(kind) => Self::Integer(*kind),
             Codec::EnumFlags(enum_flags) => Self::EnumFlags(enum_flags.storage),
@@ -431,15 +434,15 @@ fn release_transfers(transfers: Vec<ffi::PendingTransfer>) {
 fn transfer_elements(
     handles: &[crate::handle::Handle],
     item_codec: &Codec,
-    container_label: &str,
+    context: &str,
 ) -> anyhow::Result<(Vec<*mut c_void>, Vec<ffi::PendingTransfer>)> {
     let mut ptrs = Vec::with_capacity(handles.len() + 1);
     let mut acquired: Vec<ffi::PendingTransfer> = Vec::new();
     for handle in handles {
-        let ptr = handle.ptr();
+        let ptr = handle.as_ptr();
         if ptr.is_null() {
             release_transfers(acquired);
-            bail!("GObject in {container_label} has a null pointer");
+            bail!("GObject in {context} has a null pointer");
         }
         let element = match unsafe { item_codec.ref_for_transfer(ptr) } {
             Ok(element) => element,
@@ -470,7 +473,7 @@ impl ListEncoder {
             list,
             StashStorage::List(ffi::ListData {
                 ops: self.0,
-                list_ptr: list,
+                ptr: list,
                 should_free,
                 payload,
             }),
@@ -559,11 +562,11 @@ impl ArrayCodec {
     }
 
     fn item_element_size(&self) -> Option<usize> {
-        ItemCodec::resolve(&self.item_codec).map(ItemCodec::element_size)
+        ItemCodec::from_codec(&self.item_codec).map(ItemCodec::element_size)
     }
 
     fn item_codec(&self, context: &str) -> anyhow::Result<ItemCodec> {
-        ItemCodec::resolve(&self.item_codec).ok_or_else(|| {
+        ItemCodec::from_codec(&self.item_codec).ok_or_else(|| {
             anyhow::anyhow!("Unsupported {context} item codec: {:?}", self.item_codec)
         })
     }
@@ -663,12 +666,12 @@ impl ArrayCodec {
         release: impl FnOnce(),
     ) -> anyhow::Result<value::Value> {
         let mut values = Vec::with_capacity(ptrs.size_hint().0);
-        let outcome = ptrs.try_for_each(|item_ptr| {
+        let result = ptrs.try_for_each(|item_ptr| {
             values.push(self.item_codec.decode(&ffi::StashedValue::Ptr(item_ptr))?);
             anyhow::Ok(())
         });
         release();
-        outcome?;
+        result?;
         Ok(value::Value::Array(values))
     }
 
@@ -676,11 +679,11 @@ impl ArrayCodec {
         &self,
         stashed_value: &ffi::StashedValue,
     ) -> anyhow::Result<value::Value> {
-        let Some(list_ptr) = stashed_value.as_non_null_ptr("GList/GSList")? else {
+        let Some(ptr) = stashed_value.as_non_null_ptr("GList/GSList")? else {
             return Ok(value::Value::Array(vec![]));
         };
 
-        let mut current = list_ptr as *mut glib::ffi::GList;
+        let mut current = ptr as *mut glib::ffi::GList;
         let nodes = std::iter::from_fn(move || {
             if current.is_null() {
                 return None;
@@ -698,7 +701,7 @@ impl ArrayCodec {
         };
         self.decode_ptr_iter(nodes, move || {
             if is_full {
-                unsafe { (ops.free)(list_ptr) };
+                unsafe { (ops.free)(ptr) };
             }
         })
     }

@@ -76,12 +76,12 @@ impl RegisterClassVfunc {
         Ok(RawVfunc {
             byte_offset: self.byte_offset as usize,
             js_fn: self.r#fn.0,
-            arg_descriptors: self
+            arg_codecs: self
                 .arg_descriptors
                 .into_iter()
                 .map(Descriptor::into_codec)
                 .collect::<napi::Result<_>>()?,
-            return_descriptor: self.return_descriptor.into_codec()?,
+            return_codec: self.return_descriptor.into_codec()?,
         })
     }
 }
@@ -121,8 +121,8 @@ impl RegisterClassOptions {
 struct RawVfunc {
     byte_offset: usize,
     js_fn: Arc<JsRef>,
-    arg_descriptors: Vec<Codec>,
-    return_descriptor: Codec,
+    arg_codecs: Vec<Codec>,
+    return_codec: Codec,
 }
 
 struct RawInterface {
@@ -135,10 +135,10 @@ impl RawVfunc {
         let Self {
             byte_offset,
             js_fn,
-            arg_descriptors,
-            return_descriptor,
+            arg_codecs,
+            return_codec,
         } = self;
-        let state = CallbackState::boxed(js_fn, arg_descriptors, return_descriptor, None, false);
+        let state = CallbackState::boxed(js_fn, arg_codecs, return_codec, None, false);
         unsafe {
             let slot = vtable_base
                 .cast::<u8>()

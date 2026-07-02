@@ -143,7 +143,7 @@ fn decode_gobject_delegates_to_inner_decoder() {
         let Value::Object(handle) = decoded else {
             panic!("expected Value::Object");
         };
-        assert_eq!(handle.ptr(), obj_ptr);
+        assert_eq!(handle.as_ptr(), obj_ptr);
         drop(handle);
     });
 }

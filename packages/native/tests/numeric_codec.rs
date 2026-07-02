@@ -156,7 +156,7 @@ fn integer_encode_accepts_number_object_and_optional_null() {
     let encoded = Encoder::encode(&IntegerCodec::I32, &Value::Number(7.0)).unwrap();
     assert!(matches!(encoded, ffi::StashedValue::I32(7)));
 
-    let handle = native::Handle::borrowed(16 as *mut c_void);
+    let handle = native::Handle::from_glib_borrow(16 as *mut c_void);
     let from_object = Encoder::encode(&IntegerCodec::I64, &Value::Object(handle)).unwrap();
     assert!(matches!(from_object, ffi::StashedValue::I64(16)));
 

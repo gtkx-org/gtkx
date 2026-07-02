@@ -59,8 +59,8 @@ impl Encoder for FundamentalCodec {
 }
 
 impl Decoder for FundamentalCodec {
-    fn read_call(&self, stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
-        self.read_call_non_null(stashed_value, "Fundamental", |ptr| self.wrap_ptr(ptr))
+    fn decode_call(&self, stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
+        self.decode_call_non_null(stashed_value, "Fundamental", |ptr| self.wrap_ptr(ptr))
     }
 
     unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {

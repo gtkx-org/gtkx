@@ -7,17 +7,17 @@ use super::Request;
 use crate::handle::Handle;
 
 struct GetTypeRequest {
-    instance_ptr: usize,
+    gobject_ptr: usize,
 }
 
 impl Request for GetTypeRequest {
     type Output = u64;
 
     fn execute(self) -> anyhow::Result<u64> {
-        if self.instance_ptr == 0 {
+        if self.gobject_ptr == 0 {
             return Ok(0);
         }
-        let instance = self.instance_ptr as *mut gobject_ffi::GTypeInstance;
+        let instance = self.gobject_ptr as *mut gobject_ffi::GTypeInstance;
         let g_class = unsafe { (*instance).g_class };
         let gtype = unsafe { (*g_class).g_type };
         Ok(gtype as u64)
@@ -34,7 +34,7 @@ pub mod napi_export {
     #[napi(catch_unwind)]
     pub fn get_type(env: Env, handle: &External<Handle>) -> napi::Result<BigInt> {
         let gtype = GetTypeRequest {
-            instance_ptr: handle.ptr_as_usize(),
+            gobject_ptr: handle.ptr_as_usize(),
         }
         .dispatch_output(env)?;
         Ok(BigInt::from(gtype))

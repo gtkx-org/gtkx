@@ -36,10 +36,14 @@ impl HashTableEntryCodec {
     pub fn hash_and_equal(&self) -> (glib::ffi::GHashFunc, glib::ffi::GEqualFunc) {
         match self {
             Self::String => (Some(glib::ffi::g_str_hash), Some(glib::ffi::g_str_equal)),
-            Self::Float => (Some(glib::ffi::g_double_hash), Some(glib::ffi::g_double_equal)),
-            Self::Integer | Self::Boolean | Self::Handle(_) | Self::PtrArray(_) => {
-                (Some(glib::ffi::g_direct_hash), Some(glib::ffi::g_direct_equal))
-            }
+            Self::Float => (
+                Some(glib::ffi::g_double_hash),
+                Some(glib::ffi::g_double_equal),
+            ),
+            Self::Integer | Self::Boolean | Self::Handle(_) | Self::PtrArray(_) => (
+                Some(glib::ffi::g_direct_hash),
+                Some(glib::ffi::g_direct_equal),
+            ),
         }
     }
 
@@ -207,9 +211,15 @@ impl HashTableCodec {
         }
 
         let storage = if self.ownership.is_borrowed() {
-            ffi::StashedValue::Stashed(Stash::new(hash_table as *mut c_void, StashStorage::HashTable))
+            ffi::StashedValue::Stashed(Stash::new(
+                hash_table as *mut c_void,
+                StashStorage::HashTable,
+            ))
         } else {
-            full_transfer_stashed(hash_table as *mut c_void, ffi::PendingRelease::HashTableUnref)
+            full_transfer_stashed(
+                hash_table as *mut c_void,
+                ffi::PendingRelease::HashTableUnref,
+            )
         };
         Ok(storage)
     }
@@ -238,7 +248,7 @@ impl Encoder for HashTableCodec {
 }
 
 impl Decoder for HashTableCodec {
-    fn read_call(&self, stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
+    fn decode_call(&self, stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
         let Some(hash_ptr) = stashed_value.as_non_null_ptr("GHashTable")? else {
             return Ok(value::Value::Array(vec![]));
         };
@@ -281,7 +291,7 @@ impl Decoder for HashTableCodec {
     }
 
     unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
-        self.read_call(&ffi::StashedValue::Ptr(ptr))
+        self.decode_call(&ffi::StashedValue::Ptr(ptr))
     }
 }
 

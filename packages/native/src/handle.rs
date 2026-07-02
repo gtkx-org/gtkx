@@ -90,7 +90,7 @@ impl Clone for Handle {
 }
 
 impl Handle {
-    pub fn borrowed(ptr: *mut c_void) -> Self {
+    pub fn from_glib_borrow(ptr: *mut c_void) -> Self {
         Self {
             ptr: ptr as usize,
             size_hint: 0,
@@ -114,7 +114,7 @@ impl Handle {
             .is_some_and(|flag| flag.swap(false, Ordering::AcqRel))
     }
 
-    pub fn ptr(&self) -> *mut c_void {
+    pub fn as_ptr(&self) -> *mut c_void {
         self.ptr as *mut c_void
     }
 

@@ -58,8 +58,8 @@ impl Encoder for ObjectCodec {
 }
 
 impl Decoder for ObjectCodec {
-    fn read_call(&self, stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
-        self.read_call_non_null(stashed_value, "Object", |object_ptr| {
+    fn decode_call(&self, stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
+        self.decode_call_non_null(stashed_value, "Object", |object_ptr| {
             Ok(unsafe {
                 tracked_gobject_value(
                     object_ptr as *mut glib::gobject_ffi::GObject,

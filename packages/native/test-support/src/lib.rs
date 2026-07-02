@@ -165,7 +165,7 @@ pub fn fresh_gobject() -> (glib::Object, *mut glib::gobject_ffi::GObject, u32) {
 
 pub fn boxed_handle() -> Handle {
     let ptr = allocate_test_boxed(gdk::RGBA::static_type());
-    Handle::borrowed(ptr)
+    Handle::from_glib_borrow(ptr)
 }
 
 pub fn pump_default_context_until(done: impl Fn() -> bool) {

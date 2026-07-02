@@ -110,9 +110,13 @@ impl Boxed {
             return Ok(Self::borrowed(ptr, gtype));
         }
 
-        if let Some(gt) = gtype {
-            let cloned_ptr = unsafe { Self::boxed_copy(gt, ptr) };
-            return Ok(Self::owned(cloned_ptr, gtype, BoxedDestructor::BoxedFree(gt)));
+        if let Some(gtype) = gtype {
+            let cloned_ptr = unsafe { Self::boxed_copy(gtype, ptr) };
+            return Ok(Self::owned(
+                cloned_ptr,
+                Some(gtype),
+                BoxedDestructor::BoxedFree(gtype),
+            ));
         }
 
         let name = type_name.unwrap_or("unknown");

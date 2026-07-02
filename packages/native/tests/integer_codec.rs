@@ -196,4 +196,3 @@ fn to_stash_i32() {
         _ => panic!("Expected I32Vec"),
     }
 }
-

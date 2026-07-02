@@ -147,13 +147,13 @@ pub trait Encoder {
 pub trait Decoder {
     unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
         match src {
-            ReadSource::Call(stashed_value) => self.read_call(stashed_value),
+            ReadSource::Call(stashed_value) => self.decode_call(stashed_value),
             ReadSource::Value(ptr, context) => unsafe { self.read_value(ptr, context) },
             ReadSource::Slot(ptr, context) => unsafe { self.read_pointer_slot(ptr, context) },
         }
     }
 
-    fn read_call(&self, _stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
+    fn decode_call(&self, _stashed_value: &ffi::StashedValue) -> anyhow::Result<value::Value> {
         bail!("This type cannot be decoded from StashedValue")
     }
 
@@ -193,7 +193,7 @@ pub trait Decoder {
         decode(ptr)
     }
 
-    fn read_call_non_null<F>(
+    fn decode_call_non_null<F>(
         &self,
         stashed_value: &ffi::StashedValue,
         label: &str,

@@ -11,7 +11,7 @@ use crate::messaging::Mailbox;
 
 struct FinalizeData {
     gobject_ptr: usize,
-    ref_ptr: usize,
+    napi_ref: usize,
     binding: Option<Arc<wrapper::WrapperBinding>>,
     generation: u64,
 }
@@ -27,17 +27,17 @@ unsafe extern "C" fn on_wrapper_finalize(
         data.binding.take(),
         data.generation,
         data.gobject_ptr,
-        data.ref_ptr,
+        data.napi_ref,
     );
 }
 
 #[napi(catch_unwind)]
 pub fn set_wrapper(env: Env, handle: &External<Handle>, wrapper: Object<'_>) -> napi::Result<()> {
-    let gobject_ptr = handle.ptr() as usize;
+    let gobject_ptr = handle.as_ptr() as usize;
 
     let data = Box::into_raw(Box::new(FinalizeData {
         gobject_ptr,
-        ref_ptr: 0,
+        napi_ref: 0,
         binding: None,
         generation: 0,
     }));
@@ -60,16 +60,16 @@ pub fn set_wrapper(env: Env, handle: &External<Handle>, wrapper: Object<'_>) -> 
             "failed to add wrapper finalizer",
         ));
     }
-    unsafe { (*data).ref_ptr = raw_ref as usize };
+    unsafe { (*data).napi_ref = raw_ref as usize };
 
-    let ref_ptr = raw_ref as usize;
-    wrapper::WrapperRefOp::Ref.apply(&env, ref_ptr);
+    let napi_ref = raw_ref as usize;
+    wrapper::WrapperRefOp::Ref.apply(&env, napi_ref);
     let consume_pending = handle.take_pending_gobject_ref();
     let (binding, generation) =
         Mailbox::global().invoke_glib_and_wait_napi(env, move || unsafe {
             wrapper::install(
                 gobject_ptr as *mut _,
-                ref_ptr as *mut c_void,
+                napi_ref as *mut c_void,
                 consume_pending,
             )
         })?;

@@ -41,7 +41,7 @@ impl Fundamental {
             };
         }
 
-        let owned_ptr = ref_fn.map_or(ptr, |do_ref| unsafe { do_ref(ptr) });
+        let owned_ptr = ref_fn.map_or(ptr, |ref_fn| unsafe { ref_fn(ptr) });
 
         Self {
             ptr: owned_ptr,

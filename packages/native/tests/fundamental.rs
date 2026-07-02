@@ -7,7 +7,8 @@ use gtk4::glib;
 use native::handle::Fundamental;
 
 use helpers::{
-    make_bool_param_spec as create_param_spec, param_spec_ref, param_spec_refcount, param_spec_unref,
+    make_bool_param_spec as create_param_spec, param_spec_ref, param_spec_refcount,
+    param_spec_unref,
 };
 
 fn ref_after_extra_ref_and_scoped_full(

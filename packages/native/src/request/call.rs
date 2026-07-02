@@ -92,8 +92,8 @@ impl Request for CallRequest {
 }
 
 impl CallRequest {
-    fn release_sized_array_return(result_codec: &Codec, result: &ffi::StashedValue) {
-        let Codec::Array(array_codec) = result_codec else {
+    fn release_sized_array_return(return_codec: &Codec, result: &ffi::StashedValue) {
+        let Codec::Array(array_codec) = return_codec else {
             return;
         };
         if !array_codec.ownership.is_full()

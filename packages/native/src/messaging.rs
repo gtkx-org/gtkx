@@ -69,7 +69,7 @@ enum NodeTask {
     Callback(NodeCallback),
     DeleteReference(JsRefDeletion),
     WrapperRefOp {
-        ref_ptr: usize,
+        napi_ref: usize,
         op: WrapperRefOp,
         result_tx: mpsc::Sender<anyhow::Result<()>>,
         glib_initiated: bool,
@@ -177,9 +177,8 @@ impl Mailbox {
     }
 }
 
-pub(crate) fn send_or_report<T>(tx: &mpsc::Sender<T>, value: T, context: &str) {
+pub(crate) fn send_or_report<T>(tx: &mpsc::Sender<T>, value: T, message: &str) {
     if tx.send(value).is_err() {
-        ErrorReporter::global().report_str(context);
+        ErrorReporter::global().report_str(message);
     }
 }
-

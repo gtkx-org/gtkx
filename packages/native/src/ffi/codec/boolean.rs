@@ -32,7 +32,7 @@ impl Decoder for BooleanCodec {
         match src {
             ReadSource::Call(stashed_value) => {
                 let b = match stashed_value {
-                    ffi::StashedValue::I32(v) => *v != 0,
+                    ffi::StashedValue::I32(value) => *value != 0,
                     _ => {
                         anyhow::bail!("Expected a boolean ffi::StashedValue, got {stashed_value:?}")
                     }

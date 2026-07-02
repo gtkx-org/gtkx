@@ -28,7 +28,7 @@ fn full() -> ObjectCodec {
 }
 
 fn object_value_of(ptr: *mut glib::gobject_ffi::GObject) -> Value {
-    Value::Object(Handle::borrowed(ptr as *mut c_void))
+    Value::Object(Handle::from_glib_borrow(ptr as *mut c_void))
 }
 
 fn encode_object(codec: &ObjectCodec, ptr: *mut glib::gobject_ffi::GObject) -> ffi::StashedValue {

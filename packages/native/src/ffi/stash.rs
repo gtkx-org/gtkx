@@ -159,14 +159,14 @@ pub enum ListPayload {
 #[derive(Debug)]
 pub struct ListData {
     pub ops: &'static ListOps,
-    pub list_ptr: *mut c_void,
+    pub ptr: *mut c_void,
     pub should_free: bool,
     pub payload: ListPayload,
 }
 
 #[derive(Debug)]
 pub struct GArrayData {
-    pub array_ptr: *mut glib::ffi::GArray,
+    pub ptr: *mut glib::ffi::GArray,
     pub should_free: bool,
 }
 
@@ -243,8 +243,8 @@ impl Stash {
 
 impl Stash {
     fn free_garray(data: &GArrayData) {
-        if data.should_free && !data.array_ptr.is_null() {
-            unsafe { glib::ffi::g_array_unref(data.array_ptr) };
+        if data.should_free && !data.ptr.is_null() {
+            unsafe { glib::ffi::g_array_unref(data.ptr) };
         }
     }
 }
@@ -257,11 +257,13 @@ impl Drop for Stash {
         match &self.storage {
             StashStorage::HashTable => {
                 if !self.ptr.is_null() {
-                    unsafe { glib::ffi::g_hash_table_unref(self.ptr as *mut glib::ffi::GHashTable) };
+                    unsafe {
+                        glib::ffi::g_hash_table_unref(self.ptr as *mut glib::ffi::GHashTable)
+                    };
                 }
             }
             StashStorage::List(data) => {
-                if data.should_free && !data.list_ptr.is_null() {
+                if data.should_free && !data.ptr.is_null() {
                     let free = match &data.payload {
                         ListPayload::Strings {
                             elements_duped: true,
@@ -269,7 +271,7 @@ impl Drop for Stash {
                         } => data.ops.free_full,
                         ListPayload::Handles(_) | ListPayload::Strings { .. } => data.ops.free,
                     };
-                    unsafe { free(data.list_ptr) };
+                    unsafe { free(data.ptr) };
                 }
             }
             StashStorage::GArray(data) => Self::free_garray(data),

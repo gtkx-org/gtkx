@@ -7,7 +7,12 @@ use std::ffi::c_char;
 
 macro_rules! bail_expected {
     ($expected:expr, $label:expr, $value:expr) => {
-        ::anyhow::bail!("Expected {} for {} codec, got {:?}", $expected, $label, $value)
+        ::anyhow::bail!(
+            "Expected {} for {} codec, got {:?}",
+            $expected,
+            $label,
+            $value
+        )
     };
 }
 pub(super) use bail_expected;
@@ -50,12 +55,12 @@ where
     R: FnOnce(*mut c_void),
 {
     let new_ptr = value.object_ptr(label)?;
-    let owned_new = if new_ptr.is_null() {
+    let owned = if new_ptr.is_null() {
         new_ptr
     } else {
         acquire(new_ptr)
     };
-    let old_ptr = unsafe { ffi::Slot::new(ptr).swap(owned_new) };
+    let old_ptr = unsafe { ffi::Slot::new(ptr).swap(owned) };
     if !old_ptr.is_null() {
         release(old_ptr);
     }

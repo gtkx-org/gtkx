@@ -36,44 +36,41 @@ fn make_hash_table() -> *mut glib::ffi::GHashTable {
     }
 }
 
-fn glist_storage(list_ptr: *mut glib::ffi::GList, should_free: bool) -> Stash {
+fn glist_storage(ptr: *mut glib::ffi::GList, should_free: bool) -> Stash {
     Stash::new(
-        list_ptr as *mut c_void,
+        ptr as *mut c_void,
         StashStorage::List(ListData {
             ops: &native::ffi::GLIST_OPS,
-            list_ptr: list_ptr as *mut c_void,
+            ptr: ptr as *mut c_void,
             should_free,
             payload: ListPayload::Handles(Vec::new()),
         }),
     )
 }
 
-fn gslist_storage(list_ptr: *mut glib::ffi::GSList, should_free: bool) -> Stash {
+fn gslist_storage(ptr: *mut glib::ffi::GSList, should_free: bool) -> Stash {
     Stash::new(
-        list_ptr as *mut c_void,
+        ptr as *mut c_void,
         StashStorage::List(ListData {
             ops: &native::ffi::GSLIST_OPS,
-            list_ptr: list_ptr as *mut c_void,
+            ptr: ptr as *mut c_void,
             should_free,
             payload: ListPayload::Handles(Vec::new()),
         }),
     )
 }
 
-fn garray_storage(array_ptr: *mut glib::ffi::GArray, should_free: bool) -> Stash {
+fn garray_storage(ptr: *mut glib::ffi::GArray, should_free: bool) -> Stash {
     Stash::new(
-        array_ptr as *mut c_void,
-        StashStorage::GArray(GArrayData {
-            array_ptr,
-            should_free,
-        }),
+        ptr as *mut c_void,
+        StashStorage::GArray(GArrayData { ptr, should_free }),
     )
 }
 
-fn gbytearray_storage(array_ptr: *mut glib::ffi::GByteArray, should_free: bool) -> Stash {
+fn gbytearray_storage(ptr: *mut glib::ffi::GByteArray, should_free: bool) -> Stash {
     let owned: Option<glib::ByteArray> =
-        should_free.then(|| unsafe { glib::translate::from_glib_full(array_ptr) });
-    Stash::new(array_ptr as *mut c_void, StashStorage::GByteArray(owned))
+        should_free.then(|| unsafe { glib::translate::from_glib_full(ptr) });
+    Stash::new(ptr as *mut c_void, StashStorage::GByteArray(owned))
 }
 
 fn hashtable_storage(handle: *mut glib::ffi::GHashTable, should_free: bool) -> Stash {
@@ -86,15 +83,15 @@ fn hashtable_storage(handle: *mut glib::ffi::GHashTable, should_free: bool) -> S
 
 fn string_glist_storage(
     strings: Vec<CString>,
-    list_ptr: *mut glib::ffi::GList,
+    ptr: *mut glib::ffi::GList,
     should_free: bool,
     elements_duped: bool,
 ) -> Stash {
     Stash::new(
-        list_ptr as *mut c_void,
+        ptr as *mut c_void,
         StashStorage::List(ListData {
             ops: &native::ffi::GLIST_OPS,
-            list_ptr: list_ptr as *mut c_void,
+            ptr: ptr as *mut c_void,
             should_free,
             payload: ListPayload::Strings {
                 strings,
@@ -106,15 +103,15 @@ fn string_glist_storage(
 
 fn string_gslist_storage(
     strings: Vec<CString>,
-    list_ptr: *mut glib::ffi::GSList,
+    ptr: *mut glib::ffi::GSList,
     should_free: bool,
     elements_duped: bool,
 ) -> Stash {
     Stash::new(
-        list_ptr as *mut c_void,
+        ptr as *mut c_void,
         StashStorage::List(ListData {
             ops: &native::ffi::GSLIST_OPS,
-            list_ptr: list_ptr as *mut c_void,
+            ptr: ptr as *mut c_void,
             should_free,
             payload: ListPayload::Strings {
                 strings,
@@ -231,7 +228,7 @@ fn glist_storage_null_ptr_safe_on_drop() {
         std::ptr::null_mut(),
         StashStorage::List(ListData {
             ops: &native::ffi::GLIST_OPS,
-            list_ptr: std::ptr::null_mut(),
+            ptr: std::ptr::null_mut(),
             should_free: true,
             payload: ListPayload::Handles(Vec::new()),
         }),
@@ -265,7 +262,7 @@ fn gslist_storage_null_ptr_safe_on_drop() {
         std::ptr::null_mut(),
         StashStorage::List(ListData {
             ops: &native::ffi::GSLIST_OPS,
-            list_ptr: std::ptr::null_mut(),
+            ptr: std::ptr::null_mut(),
             should_free: true,
             payload: ListPayload::Handles(Vec::new()),
         }),
@@ -298,7 +295,7 @@ fn garray_storage_null_ptr_safe_on_drop() {
     let _storage = Stash::new(
         std::ptr::null_mut(),
         StashStorage::GArray(GArrayData {
-            array_ptr: std::ptr::null_mut(),
+            ptr: std::ptr::null_mut(),
             should_free: true,
         }),
     );
@@ -475,7 +472,7 @@ fn encode_empty_string_glist_full_container_arms_null_transfer_safe_on_drop() {
     let ListPayload::Strings { elements_duped, .. } = &data.payload else {
         panic!("expected string payload")
     };
-    assert!(data.list_ptr.is_null());
+    assert!(data.ptr.is_null());
     assert!(!data.should_free);
     assert!(*elements_duped);
     drop(encoded);
