@@ -6,12 +6,10 @@ pub mod value;
 
 mod slot;
 mod stash;
-mod stash_storage;
 
 pub use slot::Slot;
 
-pub use stash::{CallbackValue, Stash};
-pub use stash_storage::{
-    GArrayData, GLIST_OPS, GSLIST_OPS, ListData, ListOps, ListPayload, PendingRelease,
-    PendingTransfer, StashData, StashStorage, build_list,
+pub use stash::{
+    CallbackValue, GArrayData, GLIST_OPS, GSLIST_OPS, ListData, ListOps, ListPayload,
+    PendingRelease, PendingTransfer, Stash, StashData, StashStorage, build_list,
 };

@@ -3,8 +3,14 @@ use std::ffi::c_void;
 
 use libffi::middle as libffi;
 
-use super::stash_storage::StashStorage;
 use crate::ffi::callback::CallbackState;
+
+mod storage;
+
+pub use storage::{
+    GArrayData, GLIST_OPS, GSLIST_OPS, ListData, ListOps, ListPayload, PendingRelease,
+    PendingTransfer, StashData, StashStorage, build_list,
+};
 
 #[derive(Debug)]
 pub enum Stash {
