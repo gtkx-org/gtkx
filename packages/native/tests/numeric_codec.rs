@@ -475,9 +475,6 @@ fn integer_dispatch_methods_cover_every_kind() {
 
         assert!(unsafe { kind.read_slice(buffer.as_ptr(), 2) }.len() == 2);
 
-        let storage = kind.to_stash(&[1.0, 2.0, 3.0]);
-        assert_eq!(kind.vec_to_f64(&storage).unwrap(), vec![1.0, 2.0, 3.0]);
-
         let stashed_value = kind.to_stashed_value(1.0);
         assert!(stashed_value.to_number().is_ok());
     }

@@ -197,18 +197,3 @@ fn to_stash_i32() {
     }
 }
 
-#[test]
-fn vec_to_f64_u8() {
-    let values: Vec<u8> = vec![10, 20, 30];
-    let storage: ffi::Stash = values.into();
-    let result = IntegerCodec::U8.vec_to_f64(&storage).unwrap();
-    assert_eq!(result, vec![10.0, 20.0, 30.0]);
-}
-
-#[test]
-fn vec_to_f64_i32() {
-    let values: Vec<i32> = vec![-100, 0, 100];
-    let storage: ffi::Stash = values.into();
-    let result = IntegerCodec::I32.vec_to_f64(&storage).unwrap();
-    assert_eq!(result, vec![-100.0, 0.0, 100.0]);
-}

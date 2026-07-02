@@ -265,11 +265,11 @@ fn encode_enum_flags_array_roundtrips_through_storage() {
     let descriptor = array_codec(enum_flags_item_codec(), ArrayKind::Array, Ownership::Full);
     let val = Value::Array(vec![Value::Number(0.0), Value::Number(1.0)]);
     let encoded = descriptor.encode(&val).unwrap();
-    let decoded = descriptor.decode(&encoded).unwrap();
-    let Value::Array(items) = decoded else {
-        panic!("expected array")
+    let StashedValue::Stashed(storage) = &encoded else {
+        panic!("expected stashed")
     };
-    assert_eq!(items.len(), 2);
+    let slice = unsafe { std::slice::from_raw_parts(storage.ptr() as *const i32, 2) };
+    assert_eq!(slice, &[0, 1]);
 }
 
 #[test]
@@ -281,10 +281,11 @@ fn encode_float_f32_array_roundtrips() {
     );
     let val = Value::Array(vec![Value::Number(1.5), Value::Number(2.5)]);
     let encoded = descriptor.encode(&val).unwrap();
-    let Value::Array(items) = descriptor.decode(&encoded).unwrap() else {
-        panic!("expected array")
+    let StashedValue::Stashed(storage) = &encoded else {
+        panic!("expected stashed")
     };
-    assert_eq!(items.len(), 2);
+    let slice = unsafe { std::slice::from_raw_parts(storage.ptr() as *const f32, 2) };
+    assert_eq!(slice, &[1.5f32, 2.5]);
 }
 
 #[test]
@@ -296,10 +297,11 @@ fn encode_float_f64_array_roundtrips() {
     );
     let val = Value::Array(vec![Value::Number(1.25)]);
     let encoded = descriptor.encode(&val).unwrap();
-    let Value::Array(items) = descriptor.decode(&encoded).unwrap() else {
-        panic!("expected array")
+    let StashedValue::Stashed(storage) = &encoded else {
+        panic!("expected stashed")
     };
-    assert_eq!(items.len(), 1);
+    let slice = unsafe { std::slice::from_raw_parts(storage.ptr() as *const f64, 1) };
+    assert_eq!(slice, &[1.25f64]);
 }
 
 #[test]
@@ -311,10 +313,11 @@ fn encode_boolean_array_roundtrips() {
     );
     let val = Value::Array(vec![Value::Boolean(true), Value::Boolean(false)]);
     let encoded = descriptor.encode(&val).unwrap();
-    let Value::Array(items) = descriptor.decode(&encoded).unwrap() else {
-        panic!("expected array")
+    let StashedValue::Stashed(storage) = &encoded else {
+        panic!("expected stashed")
     };
-    assert_eq!(items.len(), 2);
+    let slice = unsafe { std::slice::from_raw_parts(storage.ptr() as *const i32, 2) };
+    assert_eq!(slice, &[1, 0]);
 }
 
 #[test]
@@ -392,10 +395,11 @@ fn encode_string_array_borrowed_container_and_elements_roundtrips() {
     };
     assert!(matches!(storage.storage(), StashStorage::StrV(_)));
 
-    let Value::Array(items) = descriptor.decode(&encoded).unwrap() else {
-        panic!("expected array")
-    };
-    assert!(matches!(&items[0], Value::String(s) if s == "foo"));
+    let ptrs =
+        unsafe { std::slice::from_raw_parts(storage.ptr() as *const *const std::ffi::c_char, 2) };
+    let s = unsafe { std::ffi::CStr::from_ptr(ptrs[0]) };
+    assert_eq!(s.to_str().unwrap(), "foo");
+    assert!(ptrs[1].is_null());
 }
 
 #[test]
@@ -432,10 +436,14 @@ fn encode_string_array_borrowed_keeps_elements() {
     );
     let val = Value::Array(vec![Value::String("foo".to_string())]);
     let encoded = descriptor.encode(&val).unwrap();
-    let Value::Array(items) = descriptor.decode(&encoded).unwrap() else {
-        panic!("expected array")
+    let StashedValue::Stashed(storage) = &encoded else {
+        panic!("expected storage")
     };
-    assert_eq!(items.len(), 1);
+    let ptrs =
+        unsafe { std::slice::from_raw_parts(storage.ptr() as *const *const std::ffi::c_char, 2) };
+    let s = unsafe { std::ffi::CStr::from_ptr(ptrs[0]) };
+    assert_eq!(s.to_str().unwrap(), "foo");
+    assert!(ptrs[1].is_null());
 }
 
 #[test]
@@ -821,11 +829,19 @@ fn encode_bigint_array_roundtrips_through_storage() {
         let big = i128::from(u32::MAX) + 1;
         let val = Value::Array(vec![Value::BigInt(big), Value::BigInt(7)]);
         let encoded = descriptor.encode(&val).unwrap();
-        let Value::Array(items) = descriptor.decode(&encoded).unwrap() else {
-            panic!("expected array")
+        let StashedValue::Stashed(storage) = &encoded else {
+            panic!("expected stashed")
         };
-        assert_eq!(items.len(), 2);
-        assert!(matches!(items[0], Value::BigInt(v) if v == big));
+        match kind {
+            BigIntCodec::I64 => {
+                let slice = unsafe { std::slice::from_raw_parts(storage.ptr() as *const i64, 2) };
+                assert_eq!(slice, &[big as i64, 7]);
+            }
+            BigIntCodec::U64 => {
+                let slice = unsafe { std::slice::from_raw_parts(storage.ptr() as *const u64, 2) };
+                assert_eq!(slice, &[big as u64, 7]);
+            }
+        }
     }
 }
 
@@ -965,7 +981,7 @@ fn encode_gptrarray_uses_null_terminated_layout() {
 }
 
 #[test]
-fn decode_integer_array_from_storage() {
+fn encode_integer_array_into_storage() {
     let descriptor = array_codec(
         Codec::Integer(IntegerCodec::U16),
         ArrayKind::Array,
@@ -974,10 +990,11 @@ fn decode_integer_array_from_storage() {
     let encoded = descriptor
         .encode(&Value::Array(vec![Value::Number(1.0), Value::Number(2.0)]))
         .unwrap();
-    let Value::Array(items) = descriptor.decode(&encoded).unwrap() else {
-        panic!("expected array")
+    let StashedValue::Stashed(storage) = &encoded else {
+        panic!("expected stashed")
     };
-    assert_eq!(items.len(), 2);
+    let slice = unsafe { std::slice::from_raw_parts(storage.ptr() as *const u16, 2) };
+    assert_eq!(slice, &[1u16, 2]);
 }
 
 #[test]
@@ -1335,19 +1352,17 @@ fn decode_with_context_sized_array_null_ptr() {
 }
 
 #[test]
-fn decode_with_context_sized_non_ptr_falls_through_to_decode() {
+fn decode_with_context_sized_rejects_non_ptr() {
     let descriptor = sized_array_type(Codec::Integer(IntegerCodec::I32), 0, Ownership::Borrowed);
     let storage = native::ffi::Stash::from(vec![1i32, 2]);
     let stashed_value = StashedValue::Stashed(storage);
     let ffi_args = [StashedValue::U32(2)];
     let arg_codecs = [Codec::Integer(IntegerCodec::U32)];
-    let Value::Array(items) = descriptor
-        .decode_with_context(&stashed_value, &ffi_args, &arg_codecs)
-        .unwrap()
-    else {
-        panic!("expected array")
-    };
-    assert_eq!(items.len(), 2);
+    assert!(
+        descriptor
+            .decode_with_context(&stashed_value, &ffi_args, &arg_codecs)
+            .is_err()
+    );
 }
 
 #[test]
@@ -1378,33 +1393,29 @@ fn decode_with_context_fixed_array_null_ptr() {
 }
 
 #[test]
-fn decode_with_context_fixed_non_ptr_falls_through() {
+fn decode_with_context_fixed_rejects_non_ptr() {
     let descriptor = fixed_array_type(Codec::Integer(IntegerCodec::I32), 1, Ownership::Borrowed);
     let storage = native::ffi::Stash::from(vec![9i32]);
-    let Value::Array(items) = descriptor
-        .decode_with_context(&StashedValue::Stashed(storage), &[], &[])
-        .unwrap()
-    else {
-        panic!("expected array")
-    };
-    assert_eq!(items.len(), 1);
+    assert!(
+        descriptor
+            .decode_with_context(&StashedValue::Stashed(storage), &[], &[])
+            .is_err()
+    );
 }
 
 #[test]
-fn decode_with_context_array_kind_delegates_to_decode() {
+fn decode_with_context_array_kind_rejects_non_ptr() {
     let descriptor = array_codec(
         Codec::Integer(IntegerCodec::I32),
         ArrayKind::Array,
         Ownership::Borrowed,
     );
     let storage = native::ffi::Stash::from(vec![1i32]);
-    let Value::Array(items) = descriptor
-        .decode_with_context(&StashedValue::Stashed(storage), &[], &[])
-        .unwrap()
-    else {
-        panic!("expected array")
-    };
-    assert_eq!(items.len(), 1);
+    assert!(
+        descriptor
+            .decode_with_context(&StashedValue::Stashed(storage), &[], &[])
+            .is_err()
+    );
 }
 
 #[test]
@@ -1463,15 +1474,17 @@ fn decode_contiguous_float_and_boolean() {
     ));
 }
 #[test]
-fn decode_storage_pointer_elements() {
+fn encode_storage_pointer_elements() {
     let descriptor = array_codec(struct_item_codec(), ArrayKind::Array, Ownership::Full);
     let encoded = descriptor
         .encode(&Value::Array(vec![Value::Object(boxed_handle())]))
         .unwrap();
-    let Value::Array(items) = descriptor.decode(&encoded).unwrap() else {
-        panic!("expected array")
+    let StashedValue::Stashed(storage) = &encoded else {
+        panic!("expected stashed")
     };
-    assert_eq!(items.len(), 1);
+    let ptrs = unsafe { std::slice::from_raw_parts(storage.ptr() as *const *mut c_void, 2) };
+    assert!(!ptrs[0].is_null());
+    assert!(ptrs[1].is_null());
 }
 
 #[test]
@@ -1656,14 +1669,11 @@ fn trait_methods_delegate_to_inherent_implementations() {
 
         let encoded =
             Encoder::encode(&descriptor, &Value::Array(vec![Value::Number(1.0)])).unwrap();
-        let decoded = Decoder::decode(&descriptor, &encoded).unwrap();
-        assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
-
-        let storage = native::ffi::Stash::from(vec![7i32]);
-        let with_context =
-            Decoder::decode_with_context(&descriptor, &StashedValue::Stashed(storage), &[], &[])
-                .unwrap();
-        assert!(matches!(with_context, Value::Array(items) if items.len() == 1));
+        let StashedValue::Stashed(storage) = &encoded else {
+            panic!("expected stashed")
+        };
+        let slice = unsafe { std::slice::from_raw_parts(storage.ptr() as *const i32, 1) };
+        assert_eq!(slice, &[1]);
 
         let ptr_ty = array_codec(struct_item_codec(), ArrayKind::Array, Ownership::Borrowed);
         let h0 = boxed_handle();

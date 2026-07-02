@@ -125,27 +125,22 @@ impl Decoder for ArrayCodec {
             ArrayKind::Array | ArrayKind::Sized | ArrayKind::Fixed => {}
         }
 
-        if let ffi::StashedValue::Ptr(ptr) = stashed_value {
-            if ptr.is_null() {
-                return Ok(value::Value::Array(vec![]));
-            }
-
-            return match self.item_codec("array")? {
-                ItemCodec::String => Ok(self.decode_null_terminated_string_array(*ptr)),
-                ItemCodec::Pointer => self.decode_null_terminated_ptr_array(*ptr),
-                codec @ (ItemCodec::Integer(_)
-                | ItemCodec::EnumFlags(_)
-                | ItemCodec::BigInt(_)
-                | ItemCodec::Float(_)
-                | ItemCodec::Boolean) => self.decode_zero_terminated_scalar_array(codec, *ptr),
-            };
+        let ffi::StashedValue::Ptr(ptr) = stashed_value else {
+            bail!("Array of kind {:?} can only be decoded from a raw pointer", self.kind)
+        };
+        if ptr.is_null() {
+            return Ok(value::Value::Array(vec![]));
         }
 
-        let ffi::StashedValue::Stashed(storage) = stashed_value else {
-            bail!("Expected a Storage ffi::StashedValue for Array, got {stashed_value:?}")
-        };
-
-        self.decode_stash(storage)
+        match self.item_codec("array")? {
+            ItemCodec::String => Ok(self.decode_null_terminated_string_array(*ptr)),
+            ItemCodec::Pointer => self.decode_null_terminated_ptr_array(*ptr),
+            codec @ (ItemCodec::Integer(_)
+            | ItemCodec::EnumFlags(_)
+            | ItemCodec::BigInt(_)
+            | ItemCodec::Float(_)
+            | ItemCodec::Boolean) => self.decode_zero_terminated_scalar_array(codec, *ptr),
+        }
     }
 
     unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
@@ -780,56 +775,6 @@ impl ArrayCodec {
         };
 
         value::Value::Array(values)
-    }
-
-    fn decode_stash(&self, stash: &Stash) -> anyhow::Result<value::Value> {
-        let values = match self.item_codec("array")? {
-            ItemCodec::Integer(kind) | ItemCodec::EnumFlags(kind) => kind
-                .vec_to_f64(stash)?
-                .into_iter()
-                .map(value::Value::Number)
-                .collect(),
-            ItemCodec::BigInt(kind) => stash
-                .to_bigint_vec(kind)?
-                .into_iter()
-                .map(value::Value::BigInt)
-                .collect(),
-            ItemCodec::Float(FloatCodec::F32) => stash
-                .as_f32_slice()?
-                .iter()
-                .map(|v| value::Value::Number(f64::from(*v)))
-                .collect(),
-            ItemCodec::Float(FloatCodec::F64) => stash
-                .as_f64_slice()?
-                .iter()
-                .map(|v| value::Value::Number(*v))
-                .collect(),
-            ItemCodec::Boolean => stash
-                .as_bool_slice()?
-                .iter()
-                .map(|v| value::Value::Boolean(*v != 0))
-                .collect(),
-            ItemCodec::Pointer => stash
-                .as_object_array()?
-                .iter()
-                .map(|handle| value::Value::Object(handle.clone()))
-                .collect(),
-            ItemCodec::String => match stash.storage() {
-                StashStorage::StrV(strv) => strv
-                    .iter()
-                    .map(|item| {
-                        value::Value::String(unsafe { lossy_c_string(item.as_ptr()) })
-                    })
-                    .collect(),
-                _ => stash
-                    .as_cstring_array()?
-                    .iter()
-                    .map(|cstr| Ok(value::Value::String(cstr.to_str()?.to_string())))
-                    .collect::<anyhow::Result<Vec<value::Value>>>()?,
-            },
-        };
-
-        Ok(value::Value::Array(values))
     }
 
     fn decode_sized_array(&self, ptr: *mut c_void, length: usize) -> anyhow::Result<value::Value> {

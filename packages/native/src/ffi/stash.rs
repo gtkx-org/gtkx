@@ -3,7 +3,6 @@ use std::ffi::c_void;
 
 use glib::translate::IntoGlib as _;
 
-use crate::ffi::codec::{BigIntCodec, IntegerCodec};
 use crate::handle::UnrefFn;
 
 pub struct Stash {
@@ -326,81 +325,6 @@ impl Stash {
 
     pub fn storage(&self) -> &StashStorage {
         &self.storage
-    }
-
-    pub fn to_f64_vec(&self, integer_codec: IntegerCodec) -> anyhow::Result<Vec<f64>> {
-        match (&self.storage, integer_codec) {
-            (StashStorage::I64Vec(v), IntegerCodec::I64) => v
-                .iter()
-                .map(|&x| crate::ffi::codec::lossless_f64(i128::from(x), "array element"))
-                .collect(),
-            (StashStorage::U64Vec(v), IntegerCodec::U64) => v
-                .iter()
-                .map(|&x| crate::ffi::codec::lossless_f64(i128::from(x), "array element"))
-                .collect(),
-            (StashStorage::U8Vec(v), IntegerCodec::U8) => Ok(v.iter().map(|&x| x as f64).collect()),
-            (StashStorage::I8Vec(v), IntegerCodec::I8) => Ok(v.iter().map(|&x| x as f64).collect()),
-            (StashStorage::U16Vec(v), IntegerCodec::U16) => {
-                Ok(v.iter().map(|&x| x as f64).collect())
-            }
-            (StashStorage::I16Vec(v), IntegerCodec::I16) => {
-                Ok(v.iter().map(|&x| x as f64).collect())
-            }
-            (StashStorage::U32Vec(v), IntegerCodec::U32) => {
-                Ok(v.iter().map(|&x| x as f64).collect())
-            }
-            (StashStorage::I32Vec(v), IntegerCodec::I32) => {
-                Ok(v.iter().map(|&x| x as f64).collect())
-            }
-            _ => anyhow::bail!("Stash does not match integer kind {integer_codec:?}"),
-        }
-    }
-
-    pub fn to_bigint_vec(&self, kind: BigIntCodec) -> anyhow::Result<Vec<i128>> {
-        match (&self.storage, kind) {
-            (StashStorage::I64Vec(v), BigIntCodec::I64) => {
-                Ok(v.iter().map(|&x| i128::from(x)).collect())
-            }
-            (StashStorage::U64Vec(v), BigIntCodec::U64) => {
-                Ok(v.iter().map(|&x| i128::from(x)).collect())
-            }
-            _ => anyhow::bail!("Stash does not match bigint kind {kind:?}"),
-        }
-    }
-
-    pub fn as_f32_slice(&self) -> anyhow::Result<&[f32]> {
-        match &self.storage {
-            StashStorage::F32Vec(v) => Ok(v),
-            _ => anyhow::bail!("Stash does not contain f32 data"),
-        }
-    }
-
-    pub fn as_f64_slice(&self) -> anyhow::Result<&[f64]> {
-        match &self.storage {
-            StashStorage::F64Vec(v) => Ok(v),
-            _ => anyhow::bail!("Stash does not contain f64 data"),
-        }
-    }
-
-    pub fn as_cstring_array(&self) -> anyhow::Result<&Vec<std::ffi::CString>> {
-        match &self.storage {
-            StashStorage::StringArray(strings, _) => Ok(strings),
-            _ => anyhow::bail!("Stash does not contain string array data"),
-        }
-    }
-
-    pub fn as_bool_slice(&self) -> anyhow::Result<&[i32]> {
-        match &self.storage {
-            StashStorage::I32Vec(v) => Ok(v),
-            _ => anyhow::bail!("Stash does not contain bool/i32 data"),
-        }
-    }
-
-    pub fn as_object_array(&self) -> anyhow::Result<&Vec<crate::handle::Handle>> {
-        match &self.storage {
-            StashStorage::ObjectArray(ids, _) => Ok(ids),
-            _ => anyhow::bail!("Stash does not contain object array data"),
-        }
     }
 }
 

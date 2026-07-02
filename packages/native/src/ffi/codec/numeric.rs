@@ -241,10 +241,6 @@ impl IntegerCodec {
         Ok(self.to_stash(values))
     }
 
-    pub fn vec_to_f64(self, storage: &ffi::Stash) -> anyhow::Result<Vec<f64>> {
-        storage.to_f64_vec(self)
-    }
-
     pub unsafe fn checked_read_slice(
         self,
         ptr: *const u8,
