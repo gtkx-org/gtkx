@@ -1,13 +1,7 @@
 import { tryGetHandle } from "./registry.js";
 
 type AsyncStartFn = (...args: unknown[]) => void;
-
 type AsyncFinishFn = (result: object) => unknown;
-
-type PromisifyArgs = {
-    leading: unknown[];
-    trailing?: unknown[];
-};
 
 const attachCreationSite = (error: unknown, creationSite: Error | undefined): void => {
     if (creationSite === undefined || !(error instanceof Error)) return;
@@ -19,7 +13,7 @@ export const promisify = (
     asyncFn: AsyncStartFn,
     finish: AsyncFinishFn,
     cancellable: object | null | undefined,
-    args: PromisifyArgs,
+    ...leading: unknown[]
 ): Promise<unknown> =>
     new Promise((resolve, reject) => {
         let creationSite: Error | undefined;
@@ -27,17 +21,12 @@ export const promisify = (
             creationSite = new Error("gtkx async operation started here");
             Error.captureStackTrace(creationSite, promisify);
         }
-        asyncFn(
-            ...args.leading,
-            tryGetHandle(cancellable),
-            ...(args.trailing ?? []),
-            (_source: object | null, asyncResult: object) => {
-                try {
-                    resolve(finish(asyncResult));
-                } catch (error) {
-                    attachCreationSite(error, creationSite);
-                    reject(error);
-                }
-            },
-        );
+        asyncFn(...leading, tryGetHandle(cancellable), (_source: object | null, asyncResult: object) => {
+            try {
+                resolve(finish(asyncResult));
+            } catch (error) {
+                attachCreationSite(error, creationSite);
+                reject(error);
+            }
+        });
     });

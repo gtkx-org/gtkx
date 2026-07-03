@@ -29,23 +29,11 @@ describe("promisify", () => {
         const cancellableHandle = handle(99);
         setHandle(cancellable, cancellableHandle);
 
-        const value = await promisify(asyncFn, () => "done", cancellable, { leading: ["a", "b"] });
+        const value = await promisify(asyncFn, () => "done", cancellable, "a", "b");
         expect(value).toBe("done");
         const args = calls[0] ?? [];
         expect(args.slice(0, 3)).toEqual(["a", "b", cancellableHandle]);
         expect(typeof args[3]).toBe("function");
-    });
-
-    it("splices trailing args between the cancellable slot and the callback", async () => {
-        let captured: unknown[] = [];
-        const asyncFn = (...args: unknown[]): void => {
-            captured = args;
-            invokeCallback(...args);
-        };
-
-        await promisify(asyncFn, () => 0, undefined, { leading: ["lead"], trailing: ["progress"] });
-        expect(captured.slice(0, 3)).toEqual(["lead", undefined, "progress"]);
-        expect(typeof captured[3]).toBe("function");
     });
 
     it("forwards the already-wrapped GAsyncResult straight to the finish callable", async () => {
@@ -54,9 +42,7 @@ describe("promisify", () => {
             (args[args.length - 1] as (source: object | null, result: object) => void)(null, asyncResult);
         };
 
-        const resolvedHandle = await promisify(asyncFn, (result: object) => getHandle(result), undefined, {
-            leading: [],
-        });
+        const resolvedHandle = await promisify(asyncFn, (result: object) => getHandle(result), undefined);
         expect(resolvedHandle).toBe(getHandle(asyncResult));
     });
 
@@ -70,7 +56,6 @@ describe("promisify", () => {
                     throw failure;
                 },
                 undefined,
-                { leading: [] },
             ),
         ).rejects.toBe(failure);
     });
@@ -82,7 +67,6 @@ describe("promisify", () => {
                 throw new Error("boom");
             },
             undefined,
-            { leading: [] },
         ).then(
             () => {
                 throw new Error("expected rejection");

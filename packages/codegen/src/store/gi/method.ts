@@ -103,8 +103,8 @@ export const renderPromisifiedBody = (
         }
         leadingExpressions.push(parameterCallExpression(context, parameter, index));
     });
-    const leadingLiteral = `[${leadingExpressions.join(", ")}]`;
-    return `return promisify(${bindingExpression}, this.${finishMember}.bind(this), ${cancellableExpression}, { leading: ${leadingLiteral} });`;
+    const leadingArguments = leadingExpressions.length > 0 ? `, ${leadingExpressions.join(", ")}` : "";
+    return `return promisify(${bindingExpression}, this.${finishMember}.bind(this), ${cancellableExpression}${leadingArguments});`;
 };
 
 const findCancellableIndex = (context: ModuleContext, parameters: GirParameter[]): number => {
