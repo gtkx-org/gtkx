@@ -94,26 +94,26 @@ fn library_cache_load_total_failure_reports_error() {
 }
 
 #[test]
-fn resolve_gtype_resolves_known_get_type_function() {
+fn resolve_type_resolves_known_get_type_function() {
     helpers::run(|| {
-        let gtype = GlibThreadState::with(|state| {
-            state.resolve_gtype("libgtk-4.so.1", "gtk_widget_get_type")
+        let type_ = GlibThreadState::with(|state| {
+            state.resolve_type("libgtk-4.so.1", "gtk_widget_get_type")
         });
 
-        let gtype = gtype.expect("gtk_widget_get_type should resolve");
-        assert_ne!(gtype, gtk4::glib::Type::INVALID);
+        let type_ = type_.expect("gtk_widget_get_type should resolve");
+        assert_ne!(type_, gtk4::glib::Type::INVALID);
     });
 }
 
 #[test]
-fn resolve_gtype_caches_repeated_resolutions() {
+fn resolve_type_caches_repeated_resolutions() {
     helpers::run(|| {
         GlibThreadState::with(|state| {
             let first = state
-                .resolve_gtype("libgtk-4.so.1", "gtk_button_get_type")
+                .resolve_type("libgtk-4.so.1", "gtk_button_get_type")
                 .expect("first resolution should succeed");
             let second = state
-                .resolve_gtype("libgtk-4.so.1", "gtk_button_get_type")
+                .resolve_type("libgtk-4.so.1", "gtk_button_get_type")
                 .expect("cached resolution should succeed");
 
             assert_ne!(first, gtk4::glib::Type::INVALID);

@@ -14,7 +14,7 @@ thread_local! {
 
 pub struct LibraryCache {
     libraries: ManuallyDrop<HashMap<String, Library>>,
-    gtypes: HashMap<String, HashMap<String, glib::Type>>,
+    types: HashMap<String, HashMap<String, glib::Type>>,
 }
 
 impl std::fmt::Debug for LibraryCache {
@@ -29,7 +29,7 @@ impl LibraryCache {
     fn new() -> Self {
         Self {
             libraries: ManuallyDrop::new(HashMap::new()),
-            gtypes: HashMap::new(),
+            types: HashMap::new(),
         }
     }
 
@@ -55,7 +55,7 @@ impl LibraryCache {
         anyhow::bail!("Failed to load library '{library_name}': {err}")
     }
 
-    pub fn resolve_gtype(
+    pub fn resolve_type(
         &mut self,
         library_name: &str,
         get_type_fn_name: &str,
@@ -65,7 +65,7 @@ impl LibraryCache {
         type GetTypeFn = unsafe extern "C" fn() -> glib::ffi::GType;
 
         if let Some(cached) = self
-            .gtypes
+            .types
             .get(library_name)
             .and_then(|by_fn| by_fn.get(get_type_fn_name))
         {
@@ -79,13 +79,13 @@ impl LibraryCache {
                 .map_err(|e| anyhow::anyhow!("Failed to find symbol '{get_type_fn_name}': {e}"))?
         };
 
-        let raw_gtype = unsafe { symbol() };
-        let gtype = unsafe { glib::Type::from_glib(raw_gtype) };
-        self.gtypes
+        let raw_type = unsafe { symbol() };
+        let type_ = unsafe { glib::Type::from_glib(raw_type) };
+        self.types
             .entry(library_name.to_owned())
             .or_default()
-            .insert(get_type_fn_name.to_owned(), gtype);
-        Ok(gtype)
+            .insert(get_type_fn_name.to_owned(), type_);
+        Ok(type_)
     }
 
     pub fn len(&self) -> usize {
@@ -217,12 +217,12 @@ impl GlibThreadState {
             .lookup(&mut self.libs, library_name, ref_fn_name, unref_fn_name)
     }
 
-    pub fn resolve_gtype(
+    pub fn resolve_type(
         &mut self,
         library_name: &str,
         get_type_fn_name: &str,
     ) -> anyhow::Result<glib::Type> {
-        self.libs.resolve_gtype(library_name, get_type_fn_name)
+        self.libs.resolve_type(library_name, get_type_fn_name)
     }
 
     pub fn library(&mut self, library_name: &str) -> anyhow::Result<&Library> {

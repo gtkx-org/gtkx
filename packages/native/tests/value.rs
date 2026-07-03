@@ -263,12 +263,12 @@ fn from_cif_value_fundamental_null() {
 fn from_cif_value_ref_gobject_null_inner() {
     helpers::run(|| {
         let cif_value = ptr_slot_stash(std::ptr::null_mut());
-        let type_ = Codec::Ref(
+        let codec = Codec::Ref(
             native::ffi::codec::RefCodec::new(gobject_type_of(Ownership::Borrowed))
                 .expect("GObject is a valid Ref inner"),
         );
 
-        let result = type_
+        let result = codec
             .decode(&cif_value)
             .expect("Ref<GObject> null decode failed");
         assert!(matches!(result, Value::Null));
@@ -278,20 +278,20 @@ fn from_cif_value_ref_gobject_null_inner() {
 #[test]
 fn from_cif_value_ref_boxed() {
     helpers::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let ptr = helpers::allocate_test_boxed(gtype);
+        let type_ = gdk::RGBA::static_type();
+        let ptr = helpers::allocate_test_boxed(type_);
 
         let cif_value = ptr_slot_stash(ptr);
-        let type_ = Codec::Ref(
+        let codec = Codec::Ref(
             native::ffi::codec::RefCodec::new(rgba_boxed_type_of(Ownership::Borrowed))
                 .expect("Boxed is a valid Ref inner"),
         );
 
-        let result = type_.decode(&cif_value).expect("Ref<Boxed> decode failed");
+        let result = codec.decode(&cif_value).expect("Ref<Boxed> decode failed");
         assert!(matches!(result, Value::Object(_)));
 
         unsafe {
-            glib::gobject_ffi::g_boxed_free(gtype.into_glib(), ptr);
+            glib::gobject_ffi::g_boxed_free(type_.into_glib(), ptr);
         }
     });
 }
@@ -375,9 +375,9 @@ fn object_ptr_errors_for_non_object_variants() {
 fn decode_with_context_decodes_integer() {
     helpers::run(|| {
         let stash = ffi::Stash::I32(99);
-        let type_ = Codec::Integer(native::ffi::codec::IntegerCodec::I32);
+        let codec = Codec::Integer(native::ffi::codec::IntegerCodec::I32);
 
-        let result = type_.decode_with_context(&stash, &[], &[]);
+        let result = codec.decode_with_context(&stash, &[], &[]);
 
         assert!(result.is_ok());
         if let Value::Number(n) = result.unwrap() {

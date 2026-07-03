@@ -25,23 +25,23 @@ impl EnumFlagsCodec {
         self.storage
     }
 
-    fn resolve_gtype(&self) -> anyhow::Result<glib::Type> {
+    fn resolve_type(&self) -> anyhow::Result<glib::Type> {
         crate::ffi::library_cache::GlibThreadState::with(|state| {
-            state.resolve_gtype(&self.shared_library, &self.get_type_fn_name)
+            state.resolve_type(&self.shared_library, &self.get_type_fn_name)
         })
     }
 
     fn validate_enum_value(&self, value: i32) -> anyhow::Result<()> {
-        let gtype = self.resolve_gtype()?;
-        let enum_class = glib::EnumClass::with_type(gtype).ok_or_else(|| {
+        let type_ = self.resolve_type()?;
+        let enum_class = glib::EnumClass::with_type(type_).ok_or_else(|| {
             anyhow::anyhow!(
-                "{} (GType {gtype}) is not an enumeration type",
+                "{} (GType {type_}) is not an enumeration type",
                 self.get_type_fn_name
             )
         })?;
         if enum_class.value(value).is_none() {
             anyhow::bail!(
-                "Enum value {value} is not a valid member of {} (GType {gtype})",
+                "Enum value {value} is not a valid member of {} (GType {type_})",
                 self.get_type_fn_name
             );
         }

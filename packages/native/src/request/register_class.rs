@@ -16,22 +16,22 @@ use crate::ffi::descriptor::Descriptor;
 use crate::ffi::value::JsRef;
 use crate::messaging::error_reporter::ErrorReporter;
 
-fn gtype_from_bigint(value: BigInt, label: &str) -> napi::Result<glib::Type> {
-    let (_, gtype_value, lossless) = value.get_u64();
+fn type_from_bigint(value: BigInt, label: &str) -> napi::Result<glib::Type> {
+    let (_, type_value, lossless) = value.get_u64();
     if !lossless {
         return Err(napi::Error::new(
             napi::Status::InvalidArg,
             format!("register_class: {label} gtype exceeds the 64-bit GType range"),
         ));
     }
-    let gtype = unsafe { glib::Type::from_glib(gtype_value as glib::ffi::GType) };
-    if !gtype.is_valid() {
+    let type_ = unsafe { glib::Type::from_glib(type_value as glib::ffi::GType) };
+    if !type_.is_valid() {
         return Err(napi::Error::new(
             napi::Status::InvalidArg,
             format!("register_class: {label} gtype must be non-zero"),
         ));
     }
-    Ok(gtype)
+    Ok(type_)
 }
 
 pub struct VfuncCallback(Arc<JsRef>);
@@ -61,7 +61,7 @@ pub struct RegisterClassVfunc {
 
 #[napi(object, object_to_js = false)]
 pub struct RegisterClassInterface {
-    pub gtype: BigInt,
+    pub r#type: BigInt,
     pub vfuncs: Vec<RegisterClassVfunc>,
 }
 
@@ -88,9 +88,9 @@ impl RegisterClassVfunc {
 
 impl RegisterClassInterface {
     fn into_raw(self) -> napi::Result<RawInterface> {
-        let gtype = gtype_from_bigint(self.gtype, "interface")?;
+        let type_ = type_from_bigint(self.r#type, "interface")?;
         Ok(RawInterface {
-            gtype,
+            type_,
             vfuncs: self
                 .vfuncs
                 .into_iter()
@@ -126,7 +126,7 @@ struct RawVfunc {
 }
 
 struct RawInterface {
-    gtype: glib::Type,
+    type_: glib::Type,
     vfuncs: Vec<RawVfunc>,
 }
 
@@ -153,11 +153,11 @@ impl RawVfunc {
 impl RawInterface {
     fn install(self, class_ptr: *mut c_void) {
         let iface_vtable =
-            unsafe { gobject_ffi::g_type_interface_peek(class_ptr, self.gtype.into_glib()) };
+            unsafe { gobject_ffi::g_type_interface_peek(class_ptr, self.type_.into_glib()) };
         if iface_vtable.is_null() {
             ErrorReporter::global().report_str(&format!(
                 "register_class: registered type does not conform to interface {:#x}",
-                self.gtype.into_glib()
+                self.type_.into_glib()
             ));
             return;
         }
@@ -260,15 +260,15 @@ impl RegisterClassRequest {
             value_table: std::ptr::null(),
         };
 
-        let new_gtype = unsafe {
+        let new_type = unsafe {
             gobject_ffi::g_type_register_static(parent_type.into_glib(), name_ptr, &info, 0)
         };
 
-        if new_gtype == 0 {
+        if new_type == 0 {
             anyhow::bail!("g_type_register_static returned G_TYPE_INVALID");
         }
 
-        let class_ptr = unsafe { gobject_ffi::g_type_class_ref(new_gtype) };
+        let class_ptr = unsafe { gobject_ffi::g_type_class_ref(new_type) };
 
         for vfunc in vfuncs {
             vfunc.install_into(class_ptr);
@@ -278,7 +278,7 @@ impl RegisterClassRequest {
             iface.install(class_ptr);
         }
 
-        Ok(new_gtype)
+        Ok(new_type)
     }
 }
 
@@ -292,7 +292,7 @@ impl Request for RegisterClassRequest {
         let class_size = query.class_size as u16;
         let instance_size = query.instance_size as u16;
 
-        let new_gtype = Self::register_type(
+        let new_type = Self::register_type(
             self.parent_type,
             self.name.as_ptr(),
             self.vfuncs,
@@ -301,7 +301,7 @@ impl Request for RegisterClassRequest {
             instance_size,
         )?;
 
-        Ok(new_gtype as u64)
+        Ok(new_type as u64)
     }
 
     fn error_context() -> &'static str {
@@ -325,18 +325,18 @@ pub mod napi_export {
                 format!("register_class: invalid type name: {err}"),
             )
         })?;
-        let parent_type = gtype_from_bigint(parent_type, "parent")?;
+        let parent_type = type_from_bigint(parent_type, "parent")?;
         let (vfuncs, interfaces) = match options {
             Some(options) => options.into_raw()?,
             None => (Vec::new(), Vec::new()),
         };
-        let gtype = RegisterClassRequest {
+        let type_ = RegisterClassRequest {
             name,
             parent_type,
             vfuncs,
             interfaces,
         }
         .dispatch_output(env)?;
-        Ok(BigInt::from(gtype))
+        Ok(BigInt::from(type_))
     }
 }

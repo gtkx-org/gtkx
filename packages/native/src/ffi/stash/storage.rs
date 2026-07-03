@@ -56,8 +56,8 @@ impl PendingTransfer {
                 ReleaseKind::ObjectUnref => {
                     glib::gobject_ffi::g_object_unref(self.ptr as *mut glib::gobject_ffi::GObject);
                 }
-                ReleaseKind::BoxedFree(gtype) => {
-                    glib::gobject_ffi::g_boxed_free(gtype.into_glib(), self.ptr);
+                ReleaseKind::BoxedFree(type_) => {
+                    glib::gobject_ffi::g_boxed_free(type_.into_glib(), self.ptr);
                 }
                 ReleaseKind::Fundamental(unref) => unref(self.ptr),
                 ReleaseKind::StrFreeV => {

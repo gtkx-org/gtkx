@@ -16,15 +16,15 @@ fn from_glib_full_sets_owned_flag() {
 
         assert!(boxed.is_owned());
         assert!(!boxed.as_ptr().is_null());
-        assert_eq!(boxed.gtype(), Some(gdk::RGBA::static_type()));
+        assert_eq!(boxed.type_(), Some(gdk::RGBA::static_type()));
     });
 }
 
 #[test]
 fn from_glib_full_null_ptr_safe() {
     helpers::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let boxed = Boxed::from_glib_full(Some(gtype), std::ptr::null_mut());
+        let type_ = gdk::RGBA::static_type();
+        let boxed = Boxed::from_glib_full(Some(type_), std::ptr::null_mut());
 
         assert!(boxed.is_owned());
         assert!(boxed.as_ptr().is_null());
@@ -34,25 +34,25 @@ fn from_glib_full_null_ptr_safe() {
 #[test]
 fn from_glib_none_creates_copy() {
     helpers::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let original_ptr = helpers::allocate_test_boxed(gtype);
+        let type_ = gdk::RGBA::static_type();
+        let original_ptr = helpers::allocate_test_boxed(type_);
 
-        let boxed = unsafe { Boxed::from_glib_none(Some(gtype), original_ptr, None) }
+        let boxed = unsafe { Boxed::from_glib_none(Some(type_), original_ptr, None) }
             .expect("from_glib_none with gtype should succeed");
 
         assert!(boxed.is_owned());
         assert!(!boxed.as_ptr().is_null());
         assert_ne!(boxed.as_ptr(), original_ptr);
-        assert!(helpers::is_valid_boxed_ptr(boxed.as_ptr(), gtype));
+        assert!(helpers::is_valid_boxed_ptr(boxed.as_ptr(), type_));
 
         unsafe {
-            glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original_ptr);
+            glib::gobject_ffi::g_boxed_free(type_.into_glib(), original_ptr);
         }
     });
 }
 
 #[test]
-fn copy_with_size_copies_without_gtype() {
+fn copy_with_size_copies_without_type() {
     helpers::run(|| {
         let data: [u8; 16] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
         let ptr = data.as_ptr() as *mut c_void;
@@ -71,8 +71,8 @@ fn copy_with_size_copies_without_gtype() {
 #[test]
 fn from_glib_none_null_ptr_not_owned() {
     helpers::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let boxed = unsafe { Boxed::from_glib_none(Some(gtype), std::ptr::null_mut(), None) }
+        let type_ = gdk::RGBA::static_type();
+        let boxed = unsafe { Boxed::from_glib_none(Some(type_), std::ptr::null_mut(), None) }
             .expect("from_glib_none with null ptr should succeed");
 
         assert!(!boxed.is_owned());
@@ -83,7 +83,7 @@ fn from_glib_none_null_ptr_not_owned() {
 #[test]
 fn clone_creates_independent_copy() {
     helpers::run(|| {
-        let gtype = gdk::RGBA::static_type();
+        let type_ = gdk::RGBA::static_type();
         let (boxed, _ptr) = helpers::owned_rgba_boxed();
 
         let cloned = boxed.clone();
@@ -94,7 +94,7 @@ fn clone_creates_independent_copy() {
 
         drop(boxed);
 
-        assert!(helpers::is_valid_boxed_ptr(cloned.as_ptr(), gtype));
+        assert!(helpers::is_valid_boxed_ptr(cloned.as_ptr(), type_));
     });
 }
 
@@ -118,20 +118,20 @@ fn drop_frees_owned_memory() {
 #[test]
 fn drop_does_not_free_transfer_none_memory() {
     helpers::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let ptr = helpers::allocate_test_boxed(gtype);
+        let type_ = gdk::RGBA::static_type();
+        let ptr = helpers::allocate_test_boxed(type_);
 
         let boxed = helpers::TestBoxed {
             ptr,
-            descriptor: Some(gtype),
+            descriptor: Some(type_),
             is_owned: false,
         };
         drop(boxed);
 
-        assert!(helpers::is_valid_boxed_ptr(ptr, gtype));
+        assert!(helpers::is_valid_boxed_ptr(ptr, type_));
 
         unsafe {
-            glib::gobject_ffi::g_boxed_free(gtype.into_glib(), ptr);
+            glib::gobject_ffi::g_boxed_free(type_.into_glib(), ptr);
         }
     });
 }
@@ -186,7 +186,7 @@ fn from_glib_none_null_ptr_with_none_type() {
     });
 }
 #[test]
-fn clone_without_gtype_shares_ownership() {
+fn clone_without_type_shares_ownership() {
     helpers::run(|| {
         let ptr = unsafe { glib::ffi::g_malloc0(16) };
         let boxed = Boxed::from_glib_full(None, ptr);
@@ -201,24 +201,24 @@ fn clone_without_gtype_shares_ownership() {
     });
 }
 
-fn assert_null_boxed_clone_stays_null(gtype: Option<glib::Type>) {
-    let boxed = Boxed::from_glib_full(gtype, std::ptr::null_mut());
+fn assert_null_boxed_clone_stays_null(type_: Option<glib::Type>) {
+    let boxed = Boxed::from_glib_full(type_, std::ptr::null_mut());
 
     let cloned = boxed.clone();
 
     assert!(cloned.as_ptr().is_null());
     assert!(!cloned.is_owned());
-    assert_eq!(cloned.gtype(), boxed.gtype());
-    assert_eq!(cloned.gtype(), gtype);
+    assert_eq!(cloned.type_(), boxed.type_());
+    assert_eq!(cloned.type_(), type_);
 }
 
 #[test]
-fn clone_null_ptr_with_gtype_stays_null() {
+fn clone_null_ptr_with_type_stays_null() {
     helpers::run(|| assert_null_boxed_clone_stays_null(Some(gdk::RGBA::static_type())));
 }
 
 #[test]
-fn clone_null_ptr_without_gtype_stays_null() {
+fn clone_null_ptr_without_type_stays_null() {
     helpers::run(|| assert_null_boxed_clone_stays_null(None));
 }
 
@@ -246,7 +246,7 @@ mod from_alloc {
 
         assert!(boxed.is_owned());
         assert_eq!(boxed.as_ptr(), ptr);
-        assert_eq!(boxed.gtype(), None);
+        assert_eq!(boxed.type_(), None);
         (boxed, ptr)
     }
 
@@ -281,7 +281,7 @@ mod from_alloc {
             let boxed = Boxed::from_alloc(None, ptr);
             assert!(boxed.is_owned());
             assert_eq!(boxed.as_ptr(), ptr);
-            assert_eq!(boxed.gtype(), None);
+            assert_eq!(boxed.type_(), None);
         });
     }
 
@@ -290,11 +290,11 @@ mod from_alloc {
         helpers::run(|| {
             use gtk4::prelude::StaticType as _;
 
-            let gtype = gtk4::gdk::RGBA::static_type();
-            let ptr = helpers::allocate_test_boxed(gtype);
-            let boxed = Boxed::from_alloc(Some(glib::GString::from(gtype.name())), ptr);
+            let type_ = gtk4::gdk::RGBA::static_type();
+            let ptr = helpers::allocate_test_boxed(type_);
+            let boxed = Boxed::from_alloc(Some(glib::GString::from(type_.name())), ptr);
             assert!(boxed.is_owned());
-            assert_eq!(boxed.gtype(), Some(gtype));
+            assert_eq!(boxed.type_(), Some(type_));
         });
     }
 

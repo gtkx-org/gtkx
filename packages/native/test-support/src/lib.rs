@@ -180,25 +180,25 @@ pub fn pump_default_context_until(done: impl Fn() -> bool) {
     }
 }
 
-pub fn allocate_test_boxed(gtype: glib::Type) -> *mut std::ffi::c_void {
+pub fn allocate_test_boxed(type_: glib::Type) -> *mut std::ffi::c_void {
     unsafe {
         let rgba = gdk::RGBA::new(1.0, 0.5, 0.25, 1.0);
-        glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), rgba.as_ptr() as *const _)
+        glib::gobject_ffi::g_boxed_copy(type_.into_glib(), rgba.as_ptr() as *const _)
     }
 }
 
 pub fn owned_rgba_boxed() -> (Boxed, *mut std::ffi::c_void) {
-    let gtype = gdk::RGBA::static_type();
-    let ptr = allocate_test_boxed(gtype);
-    (Boxed::from_glib_full(Some(gtype), ptr), ptr)
+    let type_ = gdk::RGBA::static_type();
+    let ptr = allocate_test_boxed(type_);
+    (Boxed::from_glib_full(Some(type_), ptr), ptr)
 }
 
-pub fn is_valid_boxed_ptr(ptr: *mut std::ffi::c_void, gtype: glib::Type) -> bool {
+pub fn is_valid_boxed_ptr(ptr: *mut std::ffi::c_void, type_: glib::Type) -> bool {
     if ptr.is_null() {
         return false;
     }
 
-    if gtype == gdk::RGBA::static_type() {
+    if type_ == gdk::RGBA::static_type() {
         unsafe {
             let rgba: &gdk::ffi::GdkRGBA = &*(ptr as *const gdk::ffi::GdkRGBA);
             rgba.red >= 0.0 && rgba.red <= 1.0 && rgba.alpha >= 0.0 && rgba.alpha <= 1.0
@@ -219,8 +219,8 @@ impl Drop for TestBoxed {
         if self.is_owned && !self.ptr.is_null() {
             unsafe {
                 match self.descriptor {
-                    Some(gtype) => {
-                        glib::gobject_ffi::g_boxed_free(gtype.into_glib(), self.ptr);
+                    Some(type_) => {
+                        glib::gobject_ffi::g_boxed_free(type_.into_glib(), self.ptr);
                     }
                     None => {
                         glib::ffi::g_free(self.ptr);

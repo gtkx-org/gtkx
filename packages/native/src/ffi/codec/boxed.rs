@@ -16,11 +16,11 @@ pub struct BoxedCodec {
 }
 
 impl BoxedCodec {
-    pub fn gtype(&self) -> anyhow::Result<Option<glib::Type>> {
-        if let Some(gtype) = glib::Type::from_name(&self.type_name) {
-            return Ok(Some(gtype));
+    pub fn type_(&self) -> anyhow::Result<Option<glib::Type>> {
+        if let Some(type_) = glib::Type::from_name(&self.type_name) {
+            return Ok(Some(type_));
         }
-        self.try_resolve_gtype_from_library()
+        self.try_resolve_type_from_library()
     }
 
     fn lookup_free_fn(library_name: &str, free_fn_name: &str) -> anyhow::Result<BoxedFreeFn> {
@@ -50,16 +50,16 @@ impl BoxedCodec {
         }
     }
 
-    fn try_resolve_gtype_from_library(&self) -> anyhow::Result<Option<glib::Type>> {
+    fn try_resolve_type_from_library(&self) -> anyhow::Result<Option<glib::Type>> {
         let (Some(library_name), Some(get_type_fn_name)) =
             (self.shared_library.as_ref(), self.get_type_fn_name.as_ref())
         else {
             return Ok(None);
         };
 
-        let gtype =
-            GlibThreadState::with(|state| state.resolve_gtype(library_name, get_type_fn_name))?;
-        Ok(Some(gtype).filter(|t| t.is_valid()))
+        let type_ =
+            GlibThreadState::with(|state| state.resolve_type(library_name, get_type_fn_name))?;
+        Ok(Some(type_).filter(|t| t.is_valid()))
     }
 }
 
@@ -72,7 +72,7 @@ impl Encoder for BoxedCodec {
         if self.ownership.is_borrowed() {
             return None;
         }
-        self.gtype()
+        self.type_()
             .report_err("Boxed transfer release: cannot resolve GType")
             .flatten()
             .map(ffi::ReleaseKind::BoxedFree)
@@ -81,9 +81,9 @@ impl Encoder for BoxedCodec {
     unsafe fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
         if self.ownership.is_full()
             && !ptr.is_null()
-            && let Some(gtype) = self.gtype()?
+            && let Some(type_) = self.type_()?
         {
-            let copied = unsafe { Boxed::boxed_copy(gtype, ptr) };
+            let copied = unsafe { Boxed::boxed_copy(type_, ptr) };
             return Ok(copied);
         }
         Ok(ptr)
@@ -97,11 +97,11 @@ impl Decoder for BoxedCodec {
                 return Ok(self.boxed_with_free_fn(ptr, free_fn_name)?.into());
             }
 
-            let gtype = self.gtype()?;
+            let type_ = self.type_()?;
             let boxed = match self.ownership {
-                Ownership::Full => Boxed::from_glib_full(gtype, ptr),
+                Ownership::Full => Boxed::from_glib_full(type_, ptr),
                 Ownership::Borrowed => unsafe {
-                    Boxed::from_glib_none(gtype, ptr, Some(&self.type_name))?
+                    Boxed::from_glib_none(type_, ptr, Some(&self.type_name))?
                 },
             };
 
@@ -114,7 +114,7 @@ impl Decoder for BoxedCodec {
             if self.free_fn_name.is_some() || self.caller_allocated {
                 return Ok(Boxed::from_glib_borrow(ptr).into());
             }
-            Ok(unsafe { Boxed::from_glib_none(self.gtype()?, ptr, None) }?.into())
+            Ok(unsafe { Boxed::from_glib_none(self.type_()?, ptr, None) }?.into())
         })
     }
 }
@@ -122,10 +122,10 @@ impl Decoder for BoxedCodec {
 impl PtrWriter for BoxedCodec {
     unsafe fn write_return_to_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         self.write_return_with_ownership(ret, value, self.ownership, |ptr| {
-            self.gtype()
+            self.type_()
                 .report_err("Boxed return: cannot resolve GType")
                 .flatten()
-                .map_or(ptr, |gtype| unsafe { Boxed::boxed_copy(gtype, ptr) })
+                .map_or(ptr, |type_| unsafe { Boxed::boxed_copy(type_, ptr) })
         });
     }
 
@@ -134,7 +134,7 @@ impl PtrWriter for BoxedCodec {
         ptr: *mut c_void,
         value: &value::Value,
     ) -> anyhow::Result<()> {
-        let Some(gtype) = self.gtype()? else {
+        let Some(type_) = self.type_()? else {
             return write_object_ptr(ptr, value, "Boxed field write");
         };
         unsafe {
@@ -142,9 +142,9 @@ impl PtrWriter for BoxedCodec {
                 ptr,
                 value,
                 "Boxed field write",
-                |new_ptr| Boxed::boxed_copy(gtype, new_ptr),
+                |new_ptr| Boxed::boxed_copy(type_, new_ptr),
                 |old_ptr| {
-                    glib::gobject_ffi::g_boxed_free(gtype.into_glib(), old_ptr);
+                    glib::gobject_ffi::g_boxed_free(type_.into_glib(), old_ptr);
                 },
             )
         }

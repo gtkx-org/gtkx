@@ -42,22 +42,22 @@ fn struct_type(ownership: Ownership, size: Option<usize>) -> StructCodec {
     }
 }
 
-fn assert_slot_holds_copy_then_free(slot: *mut c_void, original: *mut c_void, gtype: glib::Type) {
+fn assert_slot_holds_copy_then_free(slot: *mut c_void, original: *mut c_void, type_: glib::Type) {
     assert!(!slot.is_null());
     assert_ne!(slot, original);
     unsafe {
-        glib::gobject_ffi::g_boxed_free(gtype.into_glib(), slot);
-        glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original);
+        glib::gobject_ffi::g_boxed_free(type_.into_glib(), slot);
+        glib::gobject_ffi::g_boxed_free(type_.into_glib(), original);
     }
 }
 
 fn rgba_boxed_alloc() -> (glib::Type, *mut c_void) {
-    let gtype = gdk::RGBA::static_type();
-    (gtype, helpers::allocate_test_boxed(gtype))
+    let type_ = gdk::RGBA::static_type();
+    (type_, helpers::allocate_test_boxed(type_))
 }
 
-fn free_rgba(gtype: glib::Type, ptr: *mut c_void) {
-    unsafe { glib::gobject_ffi::g_boxed_free(gtype.into_glib(), ptr) };
+fn free_rgba(type_: glib::Type, ptr: *mut c_void) {
+    unsafe { glib::gobject_ffi::g_boxed_free(type_.into_glib(), ptr) };
 }
 
 fn object_value_of(ptr: *mut c_void) -> Value {
@@ -81,15 +81,15 @@ fn encode_rgba(ownership: Ownership, ptr: *mut c_void) -> ffi::Stash {
 }
 
 #[test]
-fn gtype_resolves_from_registered_name() {
+fn type_resolves_from_registered_name() {
     helpers::run(|| {
-        let resolved = boxed(Ownership::Borrowed).gtype().expect("gtype resolves");
+        let resolved = boxed(Ownership::Borrowed).type_().expect("gtype resolves");
         assert_eq!(resolved, Some(gdk::RGBA::static_type()));
     });
 }
 
 #[test]
-fn gtype_resolves_via_library_lookup() {
+fn type_resolves_via_library_lookup() {
     helpers::run(|| {
         let bytes_type = BoxedCodec {
             ownership: Ownership::Borrowed,
@@ -99,7 +99,7 @@ fn gtype_resolves_via_library_lookup() {
             free_fn_name: None,
             caller_allocated: false,
         };
-        let resolved = bytes_type.gtype().expect("gtype resolves");
+        let resolved = bytes_type.type_().expect("gtype resolves");
         assert_eq!(resolved, Some(glib::Bytes::static_type()));
     });
 }
@@ -107,7 +107,7 @@ fn gtype_resolves_via_library_lookup() {
 #[test]
 fn encode_full_copies_to_distinct_pointer() {
     helpers::run(|| {
-        let (gtype, original) = rgba_boxed_alloc();
+        let (type_, original) = rgba_boxed_alloc();
 
         let encoded = encode_rgba(Ownership::Full, original);
         encoded.disarm_pending_transfer();
@@ -117,29 +117,29 @@ fn encode_full_copies_to_distinct_pointer() {
         let copied = storage.ptr();
         assert!(!copied.is_null());
         assert_ne!(copied, original);
-        assert!(helpers::is_valid_boxed_ptr(copied, gtype));
+        assert!(helpers::is_valid_boxed_ptr(copied, type_));
 
-        free_rgba(gtype, copied);
-        free_rgba(gtype, original);
+        free_rgba(type_, copied);
+        free_rgba(type_, original);
     });
 }
 
 #[test]
 fn encode_full_releases_copy_when_call_never_happens() {
     helpers::run(|| {
-        let (gtype, original) = rgba_boxed_alloc();
+        let (type_, original) = rgba_boxed_alloc();
 
         let encoded = encode_rgba(Ownership::Full, original);
         drop(encoded);
 
-        free_rgba(gtype, original);
+        free_rgba(type_, original);
     });
 }
 
 #[test]
 fn encode_borrowed_keeps_same_pointer() {
     helpers::run(|| {
-        let (gtype, original) = rgba_boxed_alloc();
+        let (type_, original) = rgba_boxed_alloc();
 
         let encoded = encode_rgba(Ownership::Borrowed, original);
         let ffi::Stash::Ptr(ptr) = encoded else {
@@ -147,7 +147,7 @@ fn encode_borrowed_keeps_same_pointer() {
         };
         assert_eq!(ptr, original);
 
-        free_rgba(gtype, original);
+        free_rgba(type_, original);
     });
 }
 
@@ -161,28 +161,28 @@ fn encode_full_null_pointer_stays_null() {
 #[test]
 fn ref_for_transfer_full_copies_to_distinct_pointer() {
     helpers::run(|| {
-        let (gtype, original) = rgba_boxed_alloc();
+        let (type_, original) = rgba_boxed_alloc();
 
         let copied = unsafe { boxed(Ownership::Full).ref_for_transfer(original) }
             .expect("ref_for_transfer should succeed");
         assert!(!copied.is_null());
         assert_ne!(copied, original);
 
-        free_rgba(gtype, copied);
-        free_rgba(gtype, original);
+        free_rgba(type_, copied);
+        free_rgba(type_, original);
     });
 }
 
 #[test]
 fn ref_for_transfer_borrowed_returns_same_pointer() {
     helpers::run(|| {
-        let (gtype, original) = rgba_boxed_alloc();
+        let (type_, original) = rgba_boxed_alloc();
 
         let returned = unsafe { boxed(Ownership::Borrowed).ref_for_transfer(original) }
             .expect("ref_for_transfer should succeed");
         assert_eq!(returned, original);
 
-        free_rgba(gtype, original);
+        free_rgba(type_, original);
     });
 }
 
@@ -198,7 +198,7 @@ fn ref_for_transfer_full_null_is_noop() {
 #[test]
 fn decode_full_dups_owned_boxed() {
     helpers::run(|| {
-        let (_gtype, original) = rgba_boxed_alloc();
+        let (_type, original) = rgba_boxed_alloc();
 
         let decoded = boxed(Ownership::Full)
             .decode(&ffi::Stash::Ptr(original))
@@ -211,7 +211,7 @@ fn decode_full_dups_owned_boxed() {
 #[test]
 fn decode_borrowed_copies_boxed() {
     helpers::run(|| {
-        let (gtype, original) = rgba_boxed_alloc();
+        let (type_, original) = rgba_boxed_alloc();
 
         let decoded = boxed(Ownership::Borrowed)
             .decode(&ffi::Stash::Ptr(original))
@@ -219,8 +219,8 @@ fn decode_borrowed_copies_boxed() {
         assert!(matches!(decoded, Value::Object(_)));
         drop(decoded);
 
-        assert!(helpers::is_valid_boxed_ptr(original, gtype));
-        free_rgba(gtype, original);
+        assert!(helpers::is_valid_boxed_ptr(original, type_));
+        free_rgba(type_, original);
     });
 }
 
@@ -240,7 +240,7 @@ fn ptr_to_value_null_yields_null() {
 #[test]
 fn ptr_to_value_defensive_copies_regardless_of_ownership_tag() {
     helpers::run(|| {
-        let (gtype, original) = rgba_boxed_alloc();
+        let (type_, original) = rgba_boxed_alloc();
 
         for ownership in [Ownership::Borrowed, Ownership::Full] {
             let value = unsafe { boxed(ownership).read(ReadSource::Value(original, "ctx")) }
@@ -254,17 +254,17 @@ fn ptr_to_value_defensive_copies_regardless_of_ownership_tag() {
                 "ptr_to_value must produce an independent copy, not alias the source"
             );
             drop(value);
-            assert!(helpers::is_valid_boxed_ptr(original, gtype));
+            assert!(helpers::is_valid_boxed_ptr(original, type_));
         }
 
-        free_rgba(gtype, original);
+        free_rgba(type_, original);
     });
 }
 
 #[test]
 fn caller_allocated_boxed_aliases_source_without_copying() {
     helpers::run(|| {
-        let (gtype, original) = rgba_boxed_alloc();
+        let (type_, original) = rgba_boxed_alloc();
 
         let descriptor = BoxedCodec {
             caller_allocated: true,
@@ -275,16 +275,16 @@ fn caller_allocated_boxed_aliases_source_without_copying() {
             original,
             "a caller-allocated out boxed must alias the caller's buffer, not copy it",
         );
-        assert!(helpers::is_valid_boxed_ptr(original, gtype));
+        assert!(helpers::is_valid_boxed_ptr(original, type_));
 
-        free_rgba(gtype, original);
+        free_rgba(type_, original);
     });
 }
 
 #[test]
 fn caller_allocated_struct_aliases_source_without_copying() {
     helpers::run(|| {
-        let (gtype, original) = rgba_boxed_alloc();
+        let (type_, original) = rgba_boxed_alloc();
 
         let descriptor = StructCodec {
             caller_allocated: true,
@@ -296,45 +296,45 @@ fn caller_allocated_struct_aliases_source_without_copying() {
             "a caller-allocated out struct must alias the caller's buffer, not copy it",
         );
 
-        free_rgba(gtype, original);
+        free_rgba(type_, original);
     });
 }
 
 #[test]
 fn read_from_pointer_dereferences_slot() {
     helpers::run(|| {
-        let (gtype, original) = rgba_boxed_alloc();
+        let (type_, original) = rgba_boxed_alloc();
 
         let value = unsafe { read_slot(&boxed(Ownership::Borrowed), original) }
             .expect("read_from_pointer should succeed");
         assert!(matches!(value, Value::Object(_)));
         drop(value);
 
-        free_rgba(gtype, original);
+        free_rgba(type_, original);
     });
 }
 
 #[test]
 fn write_return_to_pointer_full_transfer_copies_boxed() {
     helpers::run(|| {
-        let (gtype, original) = rgba_boxed_alloc();
+        let (type_, original) = rgba_boxed_alloc();
 
         let slot = write_return_into_slot(&boxed(Ownership::Full), &Ok(object_value_of(original)));
 
-        assert_slot_holds_copy_then_free(slot, original, gtype);
+        assert_slot_holds_copy_then_free(slot, original, type_);
     });
 }
 
 #[test]
 fn write_return_to_pointer_borrowed_writes_same_pointer() {
     helpers::run(|| {
-        let (gtype, original) = rgba_boxed_alloc();
+        let (type_, original) = rgba_boxed_alloc();
 
         let slot =
             write_return_into_slot(&boxed(Ownership::Borrowed), &Ok(object_value_of(original)));
 
         assert_eq!(slot, original);
-        free_rgba(gtype, original);
+        free_rgba(type_, original);
     });
 }
 
@@ -348,19 +348,19 @@ fn write_return_to_pointer_err_writes_null() {
 #[test]
 fn write_value_to_pointer_writes_boxed() {
     helpers::run(|| {
-        let (gtype, original) = rgba_boxed_alloc();
+        let (type_, original) = rgba_boxed_alloc();
 
         let slot = write_value_into_slot(
             &boxed(Ownership::Borrowed),
             std::ptr::null_mut(),
             &object_value_of(original),
         );
-        assert_slot_holds_copy_then_free(slot, original, gtype);
+        assert_slot_holds_copy_then_free(slot, original, type_);
     });
 }
 
 #[test]
-fn write_value_to_pointer_falls_back_when_gtype_unresolvable() {
+fn write_value_to_pointer_falls_back_when_type_unresolvable() {
     helpers::run(|| {
         let target: u64 = 0xAA55;
         let unknown = BoxedCodec {
@@ -396,8 +396,8 @@ fn write_value_to_pointer_writes_null_when_src_is_null() {
 #[test]
 fn write_value_to_pointer_frees_previous_pointer_in_slot() {
     helpers::run(|| {
-        let (gtype, original) = rgba_boxed_alloc();
-        let previous = helpers::allocate_test_boxed(gtype);
+        let (type_, original) = rgba_boxed_alloc();
+        let previous = helpers::allocate_test_boxed(type_);
 
         let slot = write_value_into_slot(
             &boxed(Ownership::Borrowed),
@@ -408,23 +408,23 @@ fn write_value_to_pointer_frees_previous_pointer_in_slot() {
         assert_ne!(slot, original);
         assert_ne!(slot, previous);
 
-        free_rgba(gtype, slot);
-        free_rgba(gtype, original);
+        free_rgba(type_, slot);
+        free_rgba(type_, original);
     });
 }
 
 #[test]
 fn struct_encode_keeps_pointer() {
     helpers::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let original = helpers::allocate_test_boxed(gtype);
+        let type_ = gdk::RGBA::static_type();
+        let original = helpers::allocate_test_boxed(type_);
 
         let encoded = struct_type(Ownership::Borrowed, None)
             .encode(&Value::Object(Handle::from_glib_borrow(original)))
             .expect("struct encode should succeed");
         assert!(matches!(encoded, ffi::Stash::Ptr(p) if p == original));
 
-        unsafe { glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original) };
+        unsafe { glib::gobject_ffi::g_boxed_free(type_.into_glib(), original) };
     });
 }
 
@@ -530,7 +530,7 @@ fn struct_ptr_to_value_without_size_wraps_unowned() {
 #[test]
 fn struct_write_return_to_pointer_writes_pointer() {
     helpers::run(|| {
-        let (gtype, original) = rgba_boxed_alloc();
+        let (type_, original) = rgba_boxed_alloc();
 
         let slot = write_return_into_slot(
             &struct_type(Ownership::Borrowed, None),
@@ -538,14 +538,14 @@ fn struct_write_return_to_pointer_writes_pointer() {
         );
         assert_eq!(slot, original);
 
-        free_rgba(gtype, original);
+        free_rgba(type_, original);
     });
 }
 
 #[test]
 fn struct_write_value_to_pointer_writes_pointer() {
     helpers::run(|| {
-        let (gtype, original) = rgba_boxed_alloc();
+        let (type_, original) = rgba_boxed_alloc();
 
         let slot = write_value_into_slot(
             &struct_type(Ownership::Borrowed, None),
@@ -554,7 +554,7 @@ fn struct_write_value_to_pointer_writes_pointer() {
         );
         assert_eq!(slot, original);
 
-        free_rgba(gtype, original);
+        free_rgba(type_, original);
     });
 }
 

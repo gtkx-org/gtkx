@@ -19,8 +19,8 @@ impl Request for GetTypeRequest {
         }
         let instance = self.gobject_ptr as *mut gobject_ffi::GTypeInstance;
         let g_class = unsafe { (*instance).g_class };
-        let gtype = unsafe { (*g_class).g_type };
-        Ok(gtype as u64)
+        let type_ = unsafe { (*g_class).g_type };
+        Ok(type_ as u64)
     }
 
     fn error_context() -> &'static str {
@@ -33,10 +33,10 @@ pub mod napi_export {
 
     #[napi(catch_unwind)]
     pub fn get_type(env: Env, handle: &External<Handle>) -> napi::Result<BigInt> {
-        let gtype = GetTypeRequest {
+        let type_ = GetTypeRequest {
             gobject_ptr: handle.ptr_as_usize(),
         }
         .dispatch_output(env)?;
-        Ok(BigInt::from(gtype))
+        Ok(BigInt::from(type_))
     }
 }
