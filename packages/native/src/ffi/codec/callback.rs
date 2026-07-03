@@ -62,8 +62,8 @@ impl Encoder for CallbackCodec {
         );
         let fn_ptr = state.code_ptr;
 
-        let destroy = (self.scope == CallbackScope::Notified)
-            .then_some(ClosureState::destroy as *mut c_void);
+        let destroy =
+            (self.scope == CallbackScope::Notified).then_some(ClosureState::destroy as *mut c_void);
 
         match self.scope {
             CallbackScope::Call => {

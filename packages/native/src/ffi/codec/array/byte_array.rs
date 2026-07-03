@@ -41,7 +41,7 @@ impl ArrayContainer for GByteArrayCodec {
             storage,
             should_free,
             Vec::new(),
-            ffi::PendingRelease::GByteArrayUnref,
+            ffi::ReleaseKind::GByteArrayUnref,
         ))
     }
 

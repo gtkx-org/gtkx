@@ -11,14 +11,13 @@ vi.mock("@gtkx/native", async (importOriginal) => {
 type FakeApplication = {
     registerCalls: number;
     activateCalls: number;
-    runCalls: number;
+    shutdownEmits: number;
     windows: unknown[];
     getIsRegistered(): boolean;
     getWindows(): unknown[];
     removeWindow(window: unknown): void;
     register(cancellable: null): boolean;
     activate(): void;
-    run(argv: string[]): number;
     on(signal: "activate" | "shutdown", handler: () => void): unknown;
     emit(signal: "activate" | "shutdown"): void;
 };
@@ -29,7 +28,7 @@ const createFakeApplication = (): FakeApplication => {
     return {
         registerCalls: 0,
         activateCalls: 0,
-        runCalls: 0,
+        shutdownEmits: 0,
         windows: [],
         getIsRegistered: () => registered,
         getWindows() {
@@ -47,18 +46,12 @@ const createFakeApplication = (): FakeApplication => {
             this.activateCalls++;
             this.emit("activate");
         },
-        run(_argv: string[]) {
-            this.runCalls++;
-            this.emit("activate");
-            this.emit("shutdown");
-            registered = false;
-            return 0;
-        },
         on(signal, handler) {
             handlers[signal].push(handler);
             return undefined;
         },
         emit(signal) {
+            if (signal === "shutdown") this.shutdownEmits++;
             for (const handler of handlers[signal]) handler();
         },
     };
@@ -104,7 +97,7 @@ describe("runApplication and quitApplication", () => {
         }
     });
 
-    it("removes every window and runs the application to unregister it on quit", () => {
+    it("removes every window and emits shutdown to tear the application down on quit", () => {
         vi.useFakeTimers();
         try {
             const app = createFakeApplication();
@@ -115,23 +108,24 @@ describe("runApplication and quitApplication", () => {
 
             quitApplication(app);
 
-            expect(app.runCalls).toBe(1);
+            expect(app.shutdownEmits).toBe(1);
             expect(app.windows).toHaveLength(0);
-            expect(app.getIsRegistered()).toBe(false);
             expect(vi.getTimerCount()).toBe(before);
         } finally {
             vi.useRealTimers();
         }
     });
 
-    it("emits shutdown without running when the application is not registered", () => {
+    it("emits shutdown without touching windows when the application is not registered", () => {
         vi.useFakeTimers();
         try {
             const app = createFakeApplication();
+            app.windows = [{ id: "orphan" }];
 
             quitApplication(app);
 
-            expect(app.runCalls).toBe(0);
+            expect(app.shutdownEmits).toBe(1);
+            expect(app.windows).toHaveLength(1);
         } finally {
             vi.useRealTimers();
         }

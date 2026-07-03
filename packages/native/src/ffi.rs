@@ -11,5 +11,5 @@ pub use slot::Slot;
 
 pub use stash::{
     CallbackValue, GArrayData, GLIST_OPS, GSLIST_OPS, ListData, ListOps, ListPayload,
-    PendingRelease, PendingTransfer, Stash, StashData, StashStorage, build_list,
+    PendingTransfer, ReleaseKind, Stash, StashData, StashStorage, build_list,
 };

@@ -30,7 +30,7 @@ fn ownership_default_is_borrowed() {
 #[test]
 fn transfer_release_matches_codec_ownership() {
     helpers::run(|| {
-        use native::ffi::PendingRelease;
+        use native::ffi::ReleaseKind;
         use native::ffi::codec::{BoxedCodec, Encoder as _, ObjectCodec, StructCodec};
 
         let full_object = ObjectCodec {
@@ -38,7 +38,7 @@ fn transfer_release_matches_codec_ownership() {
         };
         assert!(matches!(
             full_object.transfer_release(),
-            Some(PendingRelease::ObjectUnref)
+            Some(ReleaseKind::ObjectUnref)
         ));
         let borrowed_object = ObjectCodec {
             ownership: Ownership::Borrowed,
@@ -55,7 +55,7 @@ fn transfer_release_matches_codec_ownership() {
         };
         assert!(matches!(
             full_boxed.transfer_release(),
-            Some(PendingRelease::BoxedFree(_))
+            Some(ReleaseKind::BoxedFree(_))
         ));
         let borrowed_boxed = BoxedCodec {
             ownership: Ownership::Borrowed,

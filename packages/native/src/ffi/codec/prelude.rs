@@ -88,7 +88,7 @@ where
 
 pub(super) fn full_transfer_stash(
     ptr: *mut c_void,
-    release: crate::ffi::PendingRelease,
+    release: crate::ffi::ReleaseKind,
 ) -> crate::ffi::Stash {
     crate::ffi::Stash::Storage(
         crate::ffi::StashStorage::unit(ptr).with_pending_transfer(ptr, release),
@@ -99,7 +99,7 @@ pub(super) fn finalize_container_stash(
     storage: ffi::StashStorage,
     should_free: bool,
     mut acquired: Vec<ffi::PendingTransfer>,
-    container_release: ffi::PendingRelease,
+    container_release: ffi::ReleaseKind,
 ) -> ffi::Stash {
     let container = storage.ptr();
     if !should_free {

@@ -68,14 +68,14 @@ impl Encoder for BoxedCodec {
         "Boxed object"
     }
 
-    fn transfer_release(&self) -> Option<ffi::PendingRelease> {
+    fn transfer_release(&self) -> Option<ffi::ReleaseKind> {
         if self.ownership.is_borrowed() {
             return None;
         }
         self.gtype()
             .report_err("Boxed transfer release: cannot resolve GType")
             .flatten()
-            .map(ffi::PendingRelease::BoxedFree)
+            .map(ffi::ReleaseKind::BoxedFree)
     }
 
     unsafe fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {

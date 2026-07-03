@@ -52,7 +52,7 @@ impl ArrayContainer for GArrayCodec {
             storage,
             should_free,
             acquired,
-            ffi::PendingRelease::GArrayUnref,
+            ffi::ReleaseKind::GArrayUnref,
         ))
     }
 
@@ -152,7 +152,7 @@ impl ArrayCodec {
                 let dups = dup_strings_to_glib(array)?;
                 let acquired = if callee_owns_strings {
                     dups.iter()
-                        .map(|&dup| ffi::PendingTransfer::new(dup, ffi::PendingRelease::GFree))
+                        .map(|&dup| ffi::PendingTransfer::new(dup, ffi::ReleaseKind::GFree))
                         .collect()
                 } else {
                     Vec::new()

@@ -24,7 +24,7 @@ impl Encoder for StringCodec {
             value::Value::String(s) => {
                 if self.ownership.is_full() {
                     let glib_ptr = str_to_glib_full(s)? as *mut c_void;
-                    Ok(full_transfer_stash(glib_ptr, ffi::PendingRelease::GFree))
+                    Ok(full_transfer_stash(glib_ptr, ffi::ReleaseKind::GFree))
                 } else {
                     let cstring = CString::new(s.as_bytes())?;
                     let ptr = cstring.as_ptr() as *mut c_void;

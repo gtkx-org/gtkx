@@ -115,7 +115,7 @@ pub trait Encoder {
         "object"
     }
 
-    fn transfer_release(&self) -> Option<ffi::PendingRelease> {
+    fn transfer_release(&self) -> Option<ffi::ReleaseKind> {
         None
     }
 

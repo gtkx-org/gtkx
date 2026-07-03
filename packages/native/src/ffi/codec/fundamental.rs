@@ -37,14 +37,14 @@ impl Encoder for FundamentalCodec {
         "Fundamental"
     }
 
-    fn transfer_release(&self) -> Option<ffi::PendingRelease> {
+    fn transfer_release(&self) -> Option<ffi::ReleaseKind> {
         if self.ownership.is_borrowed() {
             return None;
         }
         let Ok((Some(_), Some(unref_fn))) = self.lookup_fns() else {
             return None;
         };
-        Some(ffi::PendingRelease::Fundamental(unref_fn))
+        Some(ffi::ReleaseKind::Fundamental(unref_fn))
     }
 
     unsafe fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {

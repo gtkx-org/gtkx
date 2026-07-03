@@ -205,7 +205,7 @@ fn transfer_release_full_releases_one_reference() {
         let release = fundamental(Ownership::Full)
             .transfer_release()
             .expect("full transfer_release should yield a release");
-        assert!(matches!(release, ffi::PendingRelease::Fundamental(_)));
+        assert!(matches!(release, ffi::ReleaseKind::Fundamental(_)));
 
         let pspec = create_param_spec();
         unsafe { glib::gobject_ffi::g_param_spec_ref(pspec.cast()) };

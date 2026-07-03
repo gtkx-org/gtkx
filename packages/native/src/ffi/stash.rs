@@ -8,8 +8,8 @@ use crate::ffi::closure::ClosureState;
 mod storage;
 
 pub use storage::{
-    GArrayData, GLIST_OPS, GSLIST_OPS, ListData, ListOps, ListPayload, PendingRelease,
-    PendingTransfer, StashData, StashStorage, build_list,
+    GArrayData, GLIST_OPS, GSLIST_OPS, ListData, ListOps, ListPayload, PendingTransfer,
+    ReleaseKind, StashData, StashStorage, build_list,
 };
 
 #[derive(Debug)]

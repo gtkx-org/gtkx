@@ -213,10 +213,7 @@ impl HashTableCodec {
                 StashData::HashTable,
             ))
         } else {
-            full_transfer_stash(
-                hash_table as *mut c_void,
-                ffi::PendingRelease::HashTableUnref,
-            )
+            full_transfer_stash(hash_table as *mut c_void, ffi::ReleaseKind::HashTableUnref)
         };
         Ok(stash)
     }

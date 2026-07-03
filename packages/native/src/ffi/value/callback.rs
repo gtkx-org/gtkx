@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use napi::bindgen_prelude::*;
 use napi::Env;
+use napi::bindgen_prelude::*;
 
 use super::js_ref::JsRef;
 

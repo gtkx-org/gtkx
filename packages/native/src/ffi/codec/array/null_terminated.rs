@@ -67,10 +67,7 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
             (Ownership::Full, true) => {
                 let strv = build_strv(array)?;
                 let container = strv.into_raw() as *mut c_void;
-                Ok(full_transfer_stash(
-                    container,
-                    ffi::PendingRelease::StrFreeV,
-                ))
+                Ok(full_transfer_stash(container, ffi::ReleaseKind::StrFreeV))
             }
             (Ownership::Full, false) => {
                 let cstrings = ArrayCodec::extract_strings(array)?;
@@ -80,7 +77,7 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
                 let container = leak_container_to_callee(&ptrs);
                 Ok(ffi::Stash::Storage(
                     StashStorage::new(container, StashData::StringArray(cstrings, Vec::new()))
-                        .with_pending_transfer(container, ffi::PendingRelease::GFree),
+                        .with_pending_transfer(container, ffi::ReleaseKind::GFree),
                 ))
             }
             (Ownership::Borrowed, true) => {
@@ -89,7 +86,7 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
                 let ptr = ptrs.as_mut_ptr() as *mut c_void;
                 Ok(ffi::Stash::Storage(
                     StashStorage::new(ptr, StashData::StringArray(Vec::new(), ptrs))
-                        .with_pending_transfer(ptr, ffi::PendingRelease::StringElements),
+                        .with_pending_transfer(ptr, ffi::ReleaseKind::StringElements),
                 ))
             }
         }
@@ -119,7 +116,7 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
             storage,
             should_free,
             acquired,
-            ffi::PendingRelease::GFree,
+            ffi::ReleaseKind::GFree,
         ))
     }
 }

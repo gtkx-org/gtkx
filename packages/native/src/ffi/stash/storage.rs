@@ -23,11 +23,11 @@ impl std::fmt::Debug for StashStorage {
 #[derive(Debug)]
 pub struct PendingTransfer {
     ptr: *mut c_void,
-    release: PendingRelease,
+    release: ReleaseKind,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum PendingRelease {
+pub enum ReleaseKind {
     GFree,
     ObjectUnref,
     BoxedFree(glib::Type),
@@ -42,7 +42,7 @@ pub enum PendingRelease {
 }
 
 impl PendingTransfer {
-    pub fn new(ptr: *mut c_void, release: PendingRelease) -> Self {
+    pub fn new(ptr: *mut c_void, release: ReleaseKind) -> Self {
         Self { ptr, release }
     }
 
@@ -52,37 +52,37 @@ impl PendingTransfer {
         }
         unsafe {
             match self.release {
-                PendingRelease::GFree => glib::ffi::g_free(self.ptr),
-                PendingRelease::ObjectUnref => {
+                ReleaseKind::GFree => glib::ffi::g_free(self.ptr),
+                ReleaseKind::ObjectUnref => {
                     glib::gobject_ffi::g_object_unref(self.ptr as *mut glib::gobject_ffi::GObject);
                 }
-                PendingRelease::BoxedFree(gtype) => {
+                ReleaseKind::BoxedFree(gtype) => {
                     glib::gobject_ffi::g_boxed_free(gtype.into_glib(), self.ptr);
                 }
-                PendingRelease::Fundamental(unref) => unref(self.ptr),
-                PendingRelease::StrFreeV => {
+                ReleaseKind::Fundamental(unref) => unref(self.ptr),
+                ReleaseKind::StrFreeV => {
                     glib::ffi::g_strfreev(self.ptr as *mut *mut std::ffi::c_char);
                 }
-                PendingRelease::StringElements => {
+                ReleaseKind::StringElements => {
                     let mut slot = self.ptr as *mut *mut std::ffi::c_char;
                     while !(*slot).is_null() {
                         glib::ffi::g_free((*slot).cast());
                         slot = slot.add(1);
                     }
                 }
-                PendingRelease::HashTableUnref => {
+                ReleaseKind::HashTableUnref => {
                     glib::ffi::g_hash_table_unref(self.ptr as *mut glib::ffi::GHashTable);
                 }
-                PendingRelease::GArrayUnref => {
+                ReleaseKind::GArrayUnref => {
                     glib::ffi::g_array_unref(self.ptr as *mut glib::ffi::GArray);
                 }
-                PendingRelease::GByteArrayUnref => {
+                ReleaseKind::GByteArrayUnref => {
                     glib::ffi::g_byte_array_unref(self.ptr as *mut glib::ffi::GByteArray);
                 }
-                PendingRelease::GListFree => {
+                ReleaseKind::GListFree => {
                     glib::ffi::g_list_free(self.ptr as *mut glib::ffi::GList);
                 }
-                PendingRelease::GSListFree => {
+                ReleaseKind::GSListFree => {
                     glib::ffi::g_slist_free(self.ptr as *mut glib::ffi::GSList);
                 }
             }
@@ -93,7 +93,7 @@ impl PendingTransfer {
 #[derive(Debug)]
 pub struct ListOps {
     pub label: &'static str,
-    pub pending: PendingRelease,
+    pub pending: ReleaseKind,
     pub prepend: unsafe fn(*mut c_void, *mut c_void) -> *mut c_void,
     pub free: unsafe fn(*mut c_void),
     pub free_full: unsafe fn(*mut c_void),
@@ -115,7 +115,7 @@ unsafe fn glist_free_full(list: *mut c_void) {
 
 pub static GLIST_OPS: ListOps = ListOps {
     label: "GList",
-    pending: PendingRelease::GListFree,
+    pending: ReleaseKind::GListFree,
     prepend: glist_prepend,
     free: glist_free,
     free_full: glist_free_full,
@@ -137,7 +137,7 @@ unsafe fn gslist_free_full(list: *mut c_void) {
 
 pub static GSLIST_OPS: ListOps = ListOps {
     label: "GSList",
-    pending: PendingRelease::GSListFree,
+    pending: ReleaseKind::GSListFree,
     prepend: gslist_prepend,
     free: gslist_free,
     free_full: gslist_free_full,
@@ -212,7 +212,7 @@ impl StashStorage {
         Self::new(ptr, StashData::Unit)
     }
 
-    pub fn with_pending_transfer(self, ptr: *mut c_void, release: PendingRelease) -> Self {
+    pub fn with_pending_transfer(self, ptr: *mut c_void, release: ReleaseKind) -> Self {
         let mut transfers = self.pending_transfer.take();
         transfers.push(PendingTransfer { ptr, release });
         self.pending_transfer.set(transfers);

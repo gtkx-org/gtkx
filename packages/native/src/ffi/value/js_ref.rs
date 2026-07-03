@@ -1,8 +1,8 @@
 use std::thread::ThreadId;
 
+use napi::Env;
 use napi::bindgen_prelude::*;
 use napi::sys;
-use napi::Env;
 
 use crate::messaging::{JsRefDeletion, Mailbox};
 

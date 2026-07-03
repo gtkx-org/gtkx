@@ -99,7 +99,7 @@ impl ArrayKindEncoder for ListEncoder {
         let list = ffi::build_list(self.0, &ptrs);
         let acquired: Vec<ffi::PendingTransfer> = if !should_free && dup_items {
             ptrs.iter()
-                .map(|p| ffi::PendingTransfer::new(*p, ffi::PendingRelease::GFree))
+                .map(|p| ffi::PendingTransfer::new(*p, ffi::ReleaseKind::GFree))
                 .collect()
         } else {
             Vec::new()

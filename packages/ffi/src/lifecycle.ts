@@ -8,7 +8,6 @@ export type ApplicationRunner = {
     removeWindow?(window: unknown): void;
     register(cancellable: null): boolean;
     activate(): void;
-    run(argv: string[]): number;
     on(signal: "activate" | "shutdown", handler: () => void): unknown;
     emit(signal: "shutdown"): void;
 };
@@ -52,14 +51,11 @@ export const runApplication = (application: ApplicationRunner): void => {
 };
 
 export const quitApplication = (application: ApplicationRunner): void => {
-    if (!application.getIsRegistered()) {
-        application.emit("shutdown");
-        return;
+    if (application.getIsRegistered()) {
+        for (const window of application.getWindows?.() ?? []) {
+            application.removeWindow?.(window);
+        }
     }
 
-    for (const window of application.getWindows?.() ?? []) {
-        application.removeWindow?.(window);
-    }
-
-    application.run([]);
+    application.emit("shutdown");
 };
