@@ -9,8 +9,6 @@ type PromisifyArgs = {
     trailing?: unknown[];
 };
 
-const captureCreationSite = process.env.NODE_ENV !== "production";
-
 const attachCreationSite = (error: unknown, creationSite: Error | undefined): void => {
     if (creationSite === undefined || !(error instanceof Error)) return;
     if (error.cause !== undefined || !Object.isExtensible(error)) return;
@@ -25,7 +23,7 @@ export const promisify = (
 ): Promise<unknown> =>
     new Promise((resolve, reject) => {
         let creationSite: Error | undefined;
-        if (captureCreationSite) {
+        if (process.env.NODE_ENV !== "production") {
             creationSite = new Error("gtkx async operation started here");
             Error.captureStackTrace(creationSite, promisify);
         }

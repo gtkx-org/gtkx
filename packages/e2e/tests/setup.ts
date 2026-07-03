@@ -1,7 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { quit } from "@gtkx/ffi";
 import { callRunnerHook } from "@gtkx/testing";
 import { afterAll, beforeAll } from "vitest";
 import { callArgs, GTK_LIB } from "./helpers/native-utils.js";
@@ -18,7 +17,6 @@ const collectGarbage = (): void => {
 };
 
 callRunnerHook("afterEach", collectGarbage);
-callRunnerHook("afterAll", quit);
 
 declare global {
     var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;

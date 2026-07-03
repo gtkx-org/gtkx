@@ -33,13 +33,13 @@ impl EnumFlagsCodec {
         let type_ = self.resolve_type()?;
         let enum_class = glib::EnumClass::with_type(type_).ok_or_else(|| {
             anyhow::anyhow!(
-                "{} (GType {type_}) is not an enumeration type",
+                "{} (Type {type_}) is not an enumeration type",
                 self.get_type_fn_name
             )
         })?;
         if enum_class.value(value).is_none() {
             anyhow::bail!(
-                "Enum value {value} is not a valid member of {} (GType {type_})",
+                "Enum value {value} is not a valid member of {} (Type {type_})",
                 self.get_type_fn_name
             );
         }

@@ -121,7 +121,7 @@ impl Boxed {
 
         let name = type_name.unwrap_or("unknown");
         bail!(
-            "Cannot copy boxed type '{name}': no GType available. \
+            "Cannot copy boxed type '{name}': no type available. \
              Pointer {ptr:p} may become dangling if the source is freed"
         )
     }

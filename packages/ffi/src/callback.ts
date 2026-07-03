@@ -5,18 +5,6 @@ import { fromNativeValue, toNativeValue } from "./native-value.js";
 import { getHandle } from "./registry.js";
 import { splitTupleResult } from "./tuple.js";
 
-const fillCallerAllocatedBuffer = (descriptor: Descriptor, target: object, source: object): void => {
-    if (descriptor.kind === "boxed" && descriptor.typeName === "GValue") {
-        valueCopyInto(getHandle(target), getHandle(source));
-        return;
-    }
-    if ((descriptor.kind === "boxed" || descriptor.kind === "struct") && descriptor.size !== undefined) {
-        copy(getHandle(target), getHandle(source), descriptor.size);
-        return;
-    }
-    throw new Error(`Cannot write caller-allocated ${descriptor.kind} out-parameter: no known byte size`);
-};
-
 type CallbackReceiver = "this" | "emitter" | "none";
 
 type Callback = (...args: unknown[]) => unknown;
@@ -30,6 +18,18 @@ type CallbackSpec = {
 };
 
 type OutParam = { value: unknown; descriptor: Descriptor };
+
+const fillCallerAllocatedBuffer = (descriptor: Descriptor, target: object, source: object): void => {
+    if (descriptor.kind === "boxed" && descriptor.typeName === "GValue") {
+        valueCopyInto(getHandle(target), getHandle(source));
+        return;
+    }
+    if ((descriptor.kind === "boxed" || descriptor.kind === "struct") && descriptor.size !== undefined) {
+        copy(getHandle(target), getHandle(source), descriptor.size);
+        return;
+    }
+    throw new Error(`Cannot write caller-allocated ${descriptor.kind} out-parameter: no known byte size`);
+};
 
 const partitionCallbackArgs = (
     effectiveTypes: Descriptor[],

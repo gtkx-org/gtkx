@@ -38,7 +38,7 @@ fn from_glib_none_creates_copy() {
         let original_ptr = helpers::allocate_test_boxed(type_);
 
         let boxed = unsafe { Boxed::from_glib_none(Some(type_), original_ptr, None) }
-            .expect("from_glib_none with gtype should succeed");
+            .expect("from_glib_none with type should succeed");
 
         assert!(boxed.is_owned());
         assert!(!boxed.as_ptr().is_null());

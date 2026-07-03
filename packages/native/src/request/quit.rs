@@ -12,9 +12,9 @@ pub fn quit(env: Env) -> napi::Result<()> {
     };
 
     Mailbox::global().invoke_glib_and_wait_napi(env, move || {
-        Mailbox::global().mark_not_running();
         let context = glib::MainContext::default();
         while context.iteration(false) {}
+        Mailbox::global().mark_not_running();
         main_loop.quit();
     })?;
 

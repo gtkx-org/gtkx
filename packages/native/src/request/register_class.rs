@@ -20,14 +20,14 @@ fn type_from_bigint(value: BigInt, label: &str) -> napi::Result<glib::Type> {
     if !lossless {
         return Err(napi::Error::new(
             napi::Status::InvalidArg,
-            format!("register_class: {label} gtype exceeds the 64-bit GType range"),
+            format!("register_class: {label} type exceeds the 64-bit type range"),
         ));
     }
     let type_ = unsafe { glib::Type::from_glib(type_value as glib::ffi::GType) };
     if !type_.is_valid() {
         return Err(napi::Error::new(
             napi::Status::InvalidArg,
-            format!("register_class: {label} gtype must be non-zero"),
+            format!("register_class: {label} type must be non-zero"),
         ));
     }
     Ok(type_)
@@ -176,7 +176,7 @@ struct RegisterClassRequest {
 impl RegisterClassRequest {
     fn query_parent_type(&self) -> anyhow::Result<gobject_ffi::GTypeQuery> {
         if glib::Type::from_name(&self.name).is_some() {
-            anyhow::bail!("GType name '{}' is already registered", self.name);
+            anyhow::bail!("Type name '{}' is already registered", self.name);
         }
 
         let mut query = gobject_ffi::GTypeQuery {
@@ -187,7 +187,7 @@ impl RegisterClassRequest {
         };
         unsafe { gobject_ffi::g_type_query(self.parent_type.into_glib(), &mut query) };
         if query.type_ == 0 {
-            anyhow::bail!("parent gtype could not be queried");
+            anyhow::bail!("parent type could not be queried");
         }
         Ok(query)
     }

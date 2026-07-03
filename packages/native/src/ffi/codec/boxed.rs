@@ -65,7 +65,7 @@ impl Encoder for BoxedCodec {
             return None;
         }
         self.type_()
-            .report_err("Boxed transfer release: cannot resolve GType")
+            .report_err("Boxed transfer release: cannot resolve type")
             .flatten()
             .map(ffi::ReleaseKind::BoxedFree)
     }
@@ -115,7 +115,7 @@ impl PtrWriter for BoxedCodec {
     fn write_return_to_ptr(&self, ret: ffi::Slot, value: &Result<value::Value, ()>) {
         self.write_return_with_ownership(ret, value, self.ownership, |ptr| {
             self.type_()
-                .report_err("Boxed return: cannot resolve GType")
+                .report_err("Boxed return: cannot resolve type")
                 .flatten()
                 .map_or(ptr, |type_| unsafe { Boxed::boxed_copy(type_, ptr) })
         });
