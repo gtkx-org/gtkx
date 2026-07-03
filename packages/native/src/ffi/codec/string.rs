@@ -64,29 +64,25 @@ impl Decoder for StringCodec {
 }
 
 impl PtrWriter for StringCodec {
-    unsafe fn write_return_to_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+    fn write_return_to_ptr(&self, ret: ffi::Slot, value: &Result<value::Value, ()>) {
         let ptr = match value {
             Ok(value::Value::String(s)) => {
                 str_to_glib_full(s).map_or(std::ptr::null_mut(), |p| p as *mut c_void)
             }
             _ => std::ptr::null_mut(),
         };
-        unsafe { ffi::Slot::new(ret).store(ptr) };
+        unsafe { ret.store(ptr) };
     }
 
-    unsafe fn write_value_to_ptr(
-        &self,
-        ptr: *mut c_void,
-        value: &value::Value,
-    ) -> anyhow::Result<()> {
+    fn write_value_to_ptr(&self, slot: ffi::Slot, value: &value::Value) -> anyhow::Result<()> {
         match value {
             value::Value::String(s) => {
                 let glib_ptr = str_to_glib_full(s)?;
-                unsafe { ffi::Slot::new(ptr).store(glib_ptr.cast()) };
+                unsafe { slot.store(glib_ptr.cast()) };
             }
-            value::Value::Null | value::Value::Undefined => unsafe {
-                ffi::Slot::new(ptr).store(std::ptr::null_mut());
-            },
+            value::Value::Null | value::Value::Undefined => {
+                unsafe { slot.store(std::ptr::null_mut()) };
+            }
             _ => bail!("Expected a String for string field write, got {value:?}"),
         }
         Ok(())

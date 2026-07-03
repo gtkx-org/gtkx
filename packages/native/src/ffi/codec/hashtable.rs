@@ -290,12 +290,8 @@ impl Decoder for HashTableCodec {
 }
 
 impl PtrWriter for HashTableCodec {
-    unsafe fn write_return_to_ptr(
-        &self,
-        ret: *mut c_void,
-        value: &std::result::Result<value::Value, ()>,
-    ) {
+    fn write_return_to_ptr(&self, ret: ffi::Slot, value: &std::result::Result<value::Value, ()>) {
         let table = encode_and_leak_container(value, "hashtable vfunc return", |v| self.encode(v));
-        unsafe { ffi::Slot::new(ret).store(table) };
+        unsafe { ret.store(table) };
     }
 }

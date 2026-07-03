@@ -24,16 +24,8 @@ impl BoxedCodec {
     }
 
     fn lookup_free_fn(library_name: &str, free_fn_name: &str) -> anyhow::Result<BoxedFreeFn> {
-        GlibThreadState::with(|state| -> anyhow::Result<_> {
-            let library = state.library(library_name)?;
-            let symbol = unsafe {
-                library
-                    .get::<BoxedFreeFn>(free_fn_name.as_bytes())
-                    .map_err(|e| {
-                        anyhow::anyhow!("Failed to find free symbol '{free_fn_name}': {e}")
-                    })?
-            };
-            Ok(*symbol)
+        GlibThreadState::with(|state| {
+            state.resolve_symbol::<BoxedFreeFn>(library_name, free_fn_name)
         })
     }
 
@@ -120,7 +112,7 @@ impl Decoder for BoxedCodec {
 }
 
 impl PtrWriter for BoxedCodec {
-    unsafe fn write_return_to_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+    fn write_return_to_ptr(&self, ret: ffi::Slot, value: &Result<value::Value, ()>) {
         self.write_return_with_ownership(ret, value, self.ownership, |ptr| {
             self.type_()
                 .report_err("Boxed return: cannot resolve GType")
@@ -129,24 +121,18 @@ impl PtrWriter for BoxedCodec {
         });
     }
 
-    unsafe fn write_value_to_ptr(
-        &self,
-        ptr: *mut c_void,
-        value: &value::Value,
-    ) -> anyhow::Result<()> {
+    fn write_value_to_ptr(&self, slot: ffi::Slot, value: &value::Value) -> anyhow::Result<()> {
         let Some(type_) = self.type_()? else {
-            return write_object_ptr(ptr, value, "Boxed field write");
+            return write_object_ptr(slot, value, "Boxed field write");
         };
-        unsafe {
-            swap_owned_slot(
-                ptr,
-                value,
-                "Boxed field write",
-                |new_ptr| Boxed::boxed_copy(type_, new_ptr),
-                |old_ptr| {
-                    glib::gobject_ffi::g_boxed_free(type_.into_glib(), old_ptr);
-                },
-            )
-        }
+        swap_owned_slot(
+            slot,
+            value,
+            "Boxed field write",
+            |new_ptr| unsafe { Boxed::boxed_copy(type_, new_ptr) },
+            |old_ptr| unsafe {
+                glib::gobject_ffi::g_boxed_free(type_.into_glib(), old_ptr);
+            },
+        )
     }
 }

@@ -32,5 +32,5 @@ impl Decoder for VoidCodec {
 }
 
 impl PtrWriter for VoidCodec {
-    unsafe fn write_return_to_ptr(&self, _ret: *mut c_void, _value: &Result<value::Value, ()>) {}
+    fn write_return_to_ptr(&self, _ret: ffi::Slot, _value: &Result<value::Value, ()>) {}
 }

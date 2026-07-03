@@ -167,13 +167,12 @@ fn write_return_to_pointer_non_string_writes_null() {
 fn write_value_to_pointer_writes_string() {
     helpers::run(|| {
         let mut slot: *mut c_char = std::ptr::null_mut();
-        unsafe {
-            borrowed().write_value_to_ptr(
-                &mut slot as *mut *mut c_char as *mut c_void,
+        borrowed()
+            .write_value_to_ptr(
+                unsafe { ffi::Slot::new(&mut slot as *mut *mut c_char as *mut c_void) },
                 &Value::String("field".to_owned()),
             )
-        }
-        .expect("write_value_to_ptr should succeed");
+            .expect("write_value_to_ptr should succeed");
         assert!(!slot.is_null());
         let read = unsafe { CStr::from_ptr(slot) };
         assert_eq!(read.to_str().unwrap(), "field");
@@ -183,7 +182,11 @@ fn write_value_to_pointer_writes_string() {
 
 fn assert_write_value_to_pointer_writes_null(value: &Value) {
     let mut slot: *const c_char = std::ptr::dangling::<c_char>();
-    unsafe { borrowed().write_value_to_ptr(&mut slot as *mut *const c_char as *mut c_void, value) }
+    borrowed()
+        .write_value_to_ptr(
+            unsafe { ffi::Slot::new(&mut slot as *mut *const c_char as *mut c_void) },
+            value,
+        )
         .expect("write should succeed");
     assert!(slot.is_null());
 }

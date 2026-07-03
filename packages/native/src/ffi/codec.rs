@@ -211,27 +211,19 @@ pub trait Decoder {
 
 #[enum_dispatch]
 pub trait PtrWriter {
-    unsafe fn write_return_to_ptr(
-        &self,
-        ret: *mut c_void,
-        value: &std::result::Result<value::Value, ()>,
-    ) {
+    fn write_return_to_ptr(&self, ret: ffi::Slot, value: &std::result::Result<value::Value, ()>) {
         let _ = value;
-        unsafe { ffi::Slot::new(ret).store(std::ptr::null_mut()) };
+        unsafe { ret.store(std::ptr::null_mut()) };
     }
 
-    unsafe fn write_value_to_ptr(
-        &self,
-        ptr: *mut c_void,
-        value: &value::Value,
-    ) -> anyhow::Result<()> {
-        let _ = (ptr, value);
+    fn write_value_to_ptr(&self, slot: ffi::Slot, value: &value::Value) -> anyhow::Result<()> {
+        let _ = (slot, value);
         bail!("This type cannot be written to a raw pointer")
     }
 
     fn write_return_with_ownership<F>(
         &self,
-        ret: *mut c_void,
+        ret: ffi::Slot,
         value: &std::result::Result<value::Value, ()>,
         ownership: Ownership,
         acquire: F,

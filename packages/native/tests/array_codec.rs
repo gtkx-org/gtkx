@@ -11,7 +11,7 @@ use native::ffi::codec::{
     ReadSource, RefCodec, StringCodec, StructCodec,
 };
 use native::ffi::value::Value;
-use native::ffi::{GArrayData, ListData, ListPayload, Stash, StashData};
+use native::ffi::{GArrayData, ListData, ListPayload, Slot, Stash, StashData};
 
 fn struct_item_codec() -> Codec {
     Codec::Struct(StructCodec {
@@ -1724,7 +1724,7 @@ fn encode_glist_handles_fails_and_unwinds_when_element_transfer_fails() {
         let err = descriptor
             .encode(&val)
             .expect_err("an unresolvable element ref function must fail the transfer");
-        assert!(err.to_string().contains("Failed to find ref symbol"));
+        assert!(err.to_string().contains("Failed to find symbol"));
         assert_eq!(helpers::param_spec_refcount(pspec), before);
 
         unsafe { glib::gobject_ffi::g_param_spec_unref(pspec.cast()) };
@@ -1855,7 +1855,7 @@ fn write_return_to_pointer_full_string_array_hands_caller_owned_container() {
         ]);
         let mut slot: *mut c_void = std::ptr::null_mut();
         let ret = &mut slot as *mut *mut c_void as *mut c_void;
-        unsafe { PtrWriter::write_return_to_ptr(&descriptor, ret, &Ok(val)) };
+        PtrWriter::write_return_to_ptr(&descriptor, unsafe { Slot::new(ret) }, &Ok(val));
         assert!(!slot.is_null());
         let strv = unsafe { glib::StrV::from_glib_full(slot as *mut *mut c_char) };
         let items: Vec<String> = strv
@@ -1875,15 +1875,19 @@ fn write_return_to_pointer_null_err_and_non_array_write_null() {
     );
     let mut slot: *mut c_void = 7 as *mut c_void;
     let ret = &mut slot as *mut *mut c_void as *mut c_void;
-    unsafe { PtrWriter::write_return_to_ptr(&descriptor, ret, &Ok(Value::Null)) };
+    PtrWriter::write_return_to_ptr(&descriptor, unsafe { Slot::new(ret) }, &Ok(Value::Null));
     assert!(slot.is_null());
 
     slot = 7 as *mut c_void;
-    unsafe { PtrWriter::write_return_to_ptr(&descriptor, ret, &Err(())) };
+    PtrWriter::write_return_to_ptr(&descriptor, unsafe { Slot::new(ret) }, &Err(()));
     assert!(slot.is_null());
 
     slot = 7 as *mut c_void;
-    unsafe { PtrWriter::write_return_to_ptr(&descriptor, ret, &Ok(Value::Number(1.0))) };
+    PtrWriter::write_return_to_ptr(
+        &descriptor,
+        unsafe { Slot::new(ret) },
+        &Ok(Value::Number(1.0)),
+    );
     assert!(slot.is_null());
 }
 
@@ -1898,7 +1902,7 @@ fn write_return_to_pointer_encode_error_writes_null() {
         let val = Value::Array(vec![Value::String("not a number".to_string())]);
         let mut slot: *mut c_void = 7 as *mut c_void;
         let ret = &mut slot as *mut *mut c_void as *mut c_void;
-        unsafe { PtrWriter::write_return_to_ptr(&descriptor, ret, &Ok(val)) };
+        PtrWriter::write_return_to_ptr(&descriptor, unsafe { Slot::new(ret) }, &Ok(val));
         assert!(slot.is_null());
     });
 }

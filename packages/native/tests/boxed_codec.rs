@@ -594,12 +594,11 @@ fn struct_write_value_to_pointer_with_size_bails_for_null_dst() {
         let src: u64 = 1;
         let mut slot: *mut c_void = std::ptr::null_mut();
 
-        let err = unsafe {
-            struct_type(Ownership::Borrowed, Some(std::mem::size_of::<u64>())).write_value_to_ptr(
-                &mut slot as *mut *mut c_void as *mut c_void,
+        let err = struct_type(Ownership::Borrowed, Some(std::mem::size_of::<u64>()))
+            .write_value_to_ptr(
+                unsafe { ffi::Slot::new(&mut slot as *mut *mut c_void as *mut c_void) },
                 &Value::Object(Handle::from_glib_borrow(&src as *const u64 as *mut c_void)),
-            )
-        };
+            );
 
         assert!(err.is_err());
     });

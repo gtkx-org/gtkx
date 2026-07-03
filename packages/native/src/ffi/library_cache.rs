@@ -55,6 +55,17 @@ impl LibraryCache {
         anyhow::bail!("Failed to load library '{library_name}': {err}")
     }
 
+    pub fn resolve_symbol<T: Copy>(
+        &mut self,
+        library_name: &str,
+        symbol_name: &str,
+    ) -> anyhow::Result<T> {
+        let library = self.get_or_load(library_name)?;
+        let symbol = unsafe { library.get::<T>(symbol_name.as_bytes()) }
+            .map_err(|e| anyhow::anyhow!("Failed to find symbol '{symbol_name}': {e}"))?;
+        Ok(*symbol)
+    }
+
     pub fn resolve_type(
         &mut self,
         library_name: &str,
@@ -72,14 +83,8 @@ impl LibraryCache {
             return Ok(*cached);
         }
 
-        let lib = self.get_or_load(library_name)?;
-
-        let symbol = unsafe {
-            lib.get::<GetTypeFn>(get_type_fn_name.as_bytes())
-                .map_err(|e| anyhow::anyhow!("Failed to find symbol '{get_type_fn_name}': {e}"))?
-        };
-
-        let raw_type = unsafe { symbol() };
+        let get_type_fn = self.resolve_symbol::<GetTypeFn>(library_name, get_type_fn_name)?;
+        let raw_type = unsafe { get_type_fn() };
         let type_ = unsafe { glib::Type::from_glib(raw_type) };
         self.types
             .entry(library_name.to_owned())
@@ -134,28 +139,16 @@ impl FundamentalFnCache {
             return Ok(*cached);
         }
 
-        let library = libs.get_or_load(library_name)?;
-
         let ref_fn = if ref_fn_name.is_empty() {
             None
         } else {
-            Some(unsafe {
-                *library.get::<RefFn>(ref_fn_name.as_bytes()).map_err(|e| {
-                    anyhow::anyhow!("Failed to find ref symbol '{ref_fn_name}': {e}")
-                })?
-            })
+            Some(libs.resolve_symbol::<RefFn>(library_name, ref_fn_name)?)
         };
 
         let unref_fn = if unref_fn_name.is_empty() {
             None
         } else {
-            Some(unsafe {
-                *library
-                    .get::<UnrefFn>(unref_fn_name.as_bytes())
-                    .map_err(|e| {
-                        anyhow::anyhow!("Failed to find unref symbol '{unref_fn_name}': {e}")
-                    })?
-            })
+            Some(libs.resolve_symbol::<UnrefFn>(library_name, unref_fn_name)?)
         };
 
         if ref_fn.is_none() && unref_fn.is_some() {
@@ -215,6 +208,14 @@ impl GlibThreadState {
     ) -> anyhow::Result<(Option<RefFn>, Option<UnrefFn>)> {
         self.fundamental_fns
             .lookup(&mut self.libs, library_name, ref_fn_name, unref_fn_name)
+    }
+
+    pub fn resolve_symbol<T: Copy>(
+        &mut self,
+        library_name: &str,
+        symbol_name: &str,
+    ) -> anyhow::Result<T> {
+        self.libs.resolve_symbol(library_name, symbol_name)
     }
 
     pub fn resolve_type(

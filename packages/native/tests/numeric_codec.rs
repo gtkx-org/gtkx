@@ -3,6 +3,7 @@ use test_support as helpers;
 use std::ffi::c_void;
 
 use libffi::middle;
+use native::ffi::Slot;
 use native::ffi::codec::{Decoder, Encoder, FloatCodec, IntegerCodec, PtrWriter, ReadSource};
 use native::ffi::value::Value;
 use native::ffi::{self, value};
@@ -185,25 +186,30 @@ fn integer_pointer_codec_round_trips() {
     for kind in INTEGER_KINDS {
         let mut slot: i64 = 0;
         let ret = &mut slot as *mut i64 as *mut c_void;
-        unsafe { PtrWriter::write_return_to_ptr(&kind, ret, &Ok(Value::Number(5.0))) };
+        PtrWriter::write_return_to_ptr(&kind, unsafe { Slot::new(ret) }, &Ok(Value::Number(5.0)));
         let read =
             unsafe { Decoder::read(&kind, ReadSource::Slot(ret as *const c_void, "ctx")) }.unwrap();
         assert!(matches!(read, Value::Number(n) if n == 5.0));
 
-        unsafe { PtrWriter::write_return_to_ptr(&kind, ret, &Err(())) };
+        PtrWriter::write_return_to_ptr(&kind, unsafe { Slot::new(ret) }, &Err(()));
         let zero =
             unsafe { Decoder::read(&kind, ReadSource::Slot(ret as *const c_void, "ctx")) }.unwrap();
         assert!(matches!(zero, Value::Number(n) if n == 0.0));
 
         let mut field: i64 = 0;
         let field_ptr = &mut field as *mut i64 as *mut c_void;
-        unsafe { PtrWriter::write_value_to_ptr(&kind, field_ptr, &Value::Number(9.0)) }.unwrap();
+        PtrWriter::write_value_to_ptr(&kind, unsafe { Slot::new(field_ptr) }, &Value::Number(9.0))
+            .unwrap();
         let from_field =
             unsafe { Decoder::read(&kind, ReadSource::Value(12 as *mut c_void, "ctx")) }.unwrap();
         assert!(matches!(from_field, Value::Number(n) if n == 12.0));
         assert!(
-            unsafe { PtrWriter::write_value_to_ptr(&kind, field_ptr, &Value::Boolean(true)) }
-                .is_err()
+            PtrWriter::write_value_to_ptr(
+                &kind,
+                unsafe { Slot::new(field_ptr) },
+                &Value::Boolean(true)
+            )
+            .is_err()
         );
     }
 }
@@ -274,9 +280,9 @@ where
     K: PtrWriter + Decoder,
 {
     let ptr = slot.as_mut_ptr().cast::<c_void>();
-    unsafe { PtrWriter::write_value_to_ptr(kind, ptr, &Value::Number(2.0)) }.unwrap();
+    PtrWriter::write_value_to_ptr(kind, unsafe { Slot::new(ptr) }, &Value::Number(2.0)).unwrap();
     unsafe { Decoder::read(kind, ReadSource::Slot(ptr.cast_const(), "c")) }.unwrap();
-    unsafe { PtrWriter::write_return_to_ptr(kind, ptr, &Ok(Value::Number(1.0))) };
+    PtrWriter::write_return_to_ptr(kind, unsafe { Slot::new(ptr) }, &Ok(Value::Number(1.0)));
     unsafe { Decoder::read(kind, ReadSource::Value(value_ptr, "c")) }.unwrap();
 }
 
@@ -311,7 +317,7 @@ fn integer_call_cif_invokes_native_functions() {
 }
 
 #[test]
-fn integer_call_cif_raw_covers_all_widths() {
+fn integer_call_return_covers_all_widths() {
     for (kind, code) in [
         (IntegerCodec::U8, ret_u8 as *mut c_void),
         (IntegerCodec::I8, ret_i8 as *mut c_void),
@@ -323,7 +329,7 @@ fn integer_call_cif_raw_covers_all_widths() {
         (IntegerCodec::I64, ret_i64 as *mut c_void),
     ] {
         let cif = middle::Cif::new(Vec::new(), kind.ffi_type());
-        let value = unsafe { kind.call_cif_raw(&cif, middle::CodePtr(code), &[]) };
+        let value = kind.call_return(&cif, middle::CodePtr(code), &[]);
         assert!(value.to_number().is_ok());
     }
 }
@@ -377,16 +383,19 @@ fn float_codec_encode_decode_and_raw_ptr() {
 
         let mut slot: f64 = 0.0;
         let ret = &mut slot as *mut f64 as *mut c_void;
-        unsafe { PtrWriter::write_return_to_ptr(&kind, ret, &Ok(Value::Number(1.0))) };
+        PtrWriter::write_return_to_ptr(&kind, unsafe { Slot::new(ret) }, &Ok(Value::Number(1.0)));
         assert!(
             unsafe { Decoder::read(&kind, ReadSource::Slot(ret as *const c_void, "c")) }.is_ok()
         );
-        unsafe { PtrWriter::write_return_to_ptr(&kind, ret, &Err(())) };
-        unsafe { PtrWriter::write_value_to_ptr(&kind, ret, &Value::Number(3.0)) }.unwrap();
+        PtrWriter::write_return_to_ptr(&kind, unsafe { Slot::new(ret) }, &Err(()));
+        PtrWriter::write_value_to_ptr(&kind, unsafe { Slot::new(ret) }, &Value::Number(3.0))
+            .unwrap();
         assert!(
             unsafe { Decoder::read(&kind, ReadSource::Value(std::ptr::null_mut(), "c")) }.is_ok()
         );
-        assert!(unsafe { PtrWriter::write_value_to_ptr(&kind, ret, &Value::Null) }.is_err());
+        assert!(
+            PtrWriter::write_value_to_ptr(&kind, unsafe { Slot::new(ret) }, &Value::Null).is_err()
+        );
     }
 }
 
@@ -403,9 +412,7 @@ fn float_call_cif_invokes_native_functions() {
     assert!((r32.to_number().unwrap() - 1.5).abs() < 1e-6);
 
     let cif64 = middle::Cif::new(Vec::new(), FloatCodec::F64.ffi_type());
-    let r64 = unsafe {
-        FloatCodec::F64.call_cif_raw(&cif64, middle::CodePtr(ret_f64 as *mut c_void), &[])
-    };
+    let r64 = FloatCodec::F64.call_return(&cif64, middle::CodePtr(ret_f64 as *mut c_void), &[]);
     assert!((r64.to_number().unwrap() - 2.5).abs() < 1e-9);
 }
 
@@ -446,14 +453,17 @@ fn enum_flags_pointer_codec() {
         let enum_flags = helpers::enum_codec();
         let mut slot: i64 = 0;
         let ptr = &mut slot as *mut i64 as *mut c_void;
-        unsafe { PtrWriter::write_value_to_ptr(&enum_flags, ptr, &Value::Number(2.0)) }.unwrap();
+        PtrWriter::write_value_to_ptr(&enum_flags, unsafe { Slot::new(ptr) }, &Value::Number(2.0))
+            .unwrap();
         let read =
             unsafe { Decoder::read(&enum_flags, ReadSource::Slot(ptr as *const c_void, "c")) }
                 .unwrap();
         assert!(matches!(read, Value::Number(n) if n == 2.0));
-        unsafe {
-            PtrWriter::write_return_to_ptr(&enum_flags, ptr, &Ok(Value::Number(4.0)));
-        }
+        PtrWriter::write_return_to_ptr(
+            &enum_flags,
+            unsafe { Slot::new(ptr) },
+            &Ok(Value::Number(4.0)),
+        );
         let from_ptr =
             unsafe { Decoder::read(&enum_flags, ReadSource::Value(3 as *mut c_void, "c")) }
                 .unwrap();

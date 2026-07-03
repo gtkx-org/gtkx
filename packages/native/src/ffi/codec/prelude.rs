@@ -22,17 +22,17 @@ pub(super) unsafe fn lossy_c_string(ptr: *const c_char) -> String {
 }
 
 pub(super) fn write_object_ptr(
-    ptr: *mut c_void,
+    slot: ffi::Slot,
     value: &value::Value,
     label: &str,
 ) -> anyhow::Result<()> {
     let object_ptr = value.object_ptr(label)?;
-    unsafe { ffi::Slot::new(ptr).store(object_ptr) };
+    unsafe { slot.store(object_ptr) };
     Ok(())
 }
 
 pub(super) fn write_return_object_ptr<F>(
-    ret: *mut c_void,
+    ret: ffi::Slot,
     value: &std::result::Result<value::Value, ()>,
     transfer: F,
 ) where
@@ -40,11 +40,11 @@ pub(super) fn write_return_object_ptr<F>(
 {
     let ptr = value::Value::result_to_ptr(value);
     let owned = if ptr.is_null() { ptr } else { transfer(ptr) };
-    unsafe { ffi::Slot::new(ret).store(owned) };
+    unsafe { ret.store(owned) };
 }
 
-pub(super) unsafe fn swap_owned_slot<A, R>(
-    ptr: *mut c_void,
+pub(super) fn swap_owned_slot<A, R>(
+    slot: ffi::Slot,
     value: &value::Value,
     label: &str,
     acquire: A,
@@ -60,7 +60,7 @@ where
     } else {
         acquire(new_ptr)
     };
-    let old_ptr = unsafe { ffi::Slot::new(ptr).swap(owned) };
+    let old_ptr = unsafe { slot.swap(owned) };
     if !old_ptr.is_null() {
         release(old_ptr);
     }

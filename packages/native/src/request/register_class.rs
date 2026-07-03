@@ -179,7 +179,12 @@ impl RegisterClassRequest {
             anyhow::bail!("GType name '{}' is already registered", self.name);
         }
 
-        let mut query: gobject_ffi::GTypeQuery = unsafe { std::mem::zeroed() };
+        let mut query = gobject_ffi::GTypeQuery {
+            type_: 0,
+            type_name: std::ptr::null(),
+            class_size: 0,
+            instance_size: 0,
+        };
         unsafe { gobject_ffi::g_type_query(self.parent_type.into_glib(), &mut query) };
         if query.type_ == 0 {
             anyhow::bail!("parent gtype could not be queried");

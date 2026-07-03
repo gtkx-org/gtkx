@@ -1,9 +1,13 @@
 use std::ffi::c_void;
 
 use napi::bindgen_prelude::*;
-use napi::{Env, ValueType};
+use napi::{Env, ValueType, sys};
 
 use crate::handle::Handle;
+
+fn from_napi<T: FromNapiValue>(env: &Env, raw: sys::napi_value) -> napi::Result<T> {
+    unsafe { T::from_napi_value(env.raw(), raw) }
+}
 
 mod buffer_view;
 mod callback;
@@ -91,21 +95,21 @@ impl Value {
 
         match value_type {
             ValueType::Number => {
-                let n = unsafe { f64::from_napi_value(env.raw(), value.raw())? };
+                let n = from_napi::<f64>(env, value.raw())?;
                 Ok(Self::Number(n))
             }
             ValueType::String => {
-                let s = unsafe { String::from_napi_value(env.raw(), value.raw())? };
+                let s = from_napi::<String>(env, value.raw())?;
                 Ok(Self::String(s))
             }
             ValueType::Boolean => {
-                let b = unsafe { bool::from_napi_value(env.raw(), value.raw())? };
+                let b = from_napi::<bool>(env, value.raw())?;
                 Ok(Self::Boolean(b))
             }
             ValueType::Null => Ok(Self::Null),
             ValueType::Undefined => Ok(Self::Undefined),
             ValueType::BigInt => {
-                let big = unsafe { BigInt::from_napi_value(env.raw(), value.raw())? };
+                let big = from_napi::<BigInt>(env, value.raw())?;
                 let (int, lossless) = big.get_i128();
                 if !lossless {
                     return Err(napi::Error::new(
@@ -116,8 +120,7 @@ impl Value {
                 Ok(Self::BigInt(int))
             }
             ValueType::External => {
-                let external_ref =
-                    unsafe { <&External<Handle>>::from_napi_value(env.raw(), value.raw())? };
+                let external_ref = from_napi::<&External<Handle>>(env, value.raw())?;
                 Ok(Self::Object(Handle::from_glib_borrow(
                     external_ref.as_ptr(),
                 )))
@@ -128,7 +131,7 @@ impl Value {
             }
             ValueType::Object => {
                 if value.is_array()? {
-                    let arr: Array = unsafe { Array::from_napi_value(env.raw(), value.raw())? };
+                    let arr = from_napi::<Array>(env, value.raw())?;
                     Ok(Self::Array(map_js_array(env, &arr, |env, item| {
                         Self::from_js_value_at_depth(env, item, depth + 1)
                     })?))

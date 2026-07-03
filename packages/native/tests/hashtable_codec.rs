@@ -5,6 +5,7 @@ use std::ffi::c_void;
 use gtk4::glib;
 
 use native::Handle;
+use native::ffi::Slot;
 use native::ffi::Stash;
 use native::ffi::codec::{
     ArrayCodec, ArrayKind, BooleanCodec, BoxedCodec, Codec, FloatCodec, FundamentalCodec,
@@ -910,7 +911,7 @@ fn write_return_to_pointer_full_table_hands_caller_owned_table() {
         ])]);
         let mut slot: *mut c_void = std::ptr::null_mut();
         let ret = &mut slot as *mut *mut c_void as *mut c_void;
-        unsafe { PtrWriter::write_return_to_ptr(&descriptor, ret, &Ok(val)) };
+        PtrWriter::write_return_to_ptr(&descriptor, unsafe { Slot::new(ret) }, &Ok(val));
         assert!(!slot.is_null());
         let table = slot as *mut glib::ffi::GHashTable;
         let size = unsafe { glib::ffi::g_hash_table_size(table) };
@@ -924,15 +925,19 @@ fn write_return_to_pointer_null_err_and_non_array_write_null() {
     let descriptor = string_hashtable_type(Ownership::Full);
     let mut slot: *mut c_void = 7 as *mut c_void;
     let ret = &mut slot as *mut *mut c_void as *mut c_void;
-    unsafe { PtrWriter::write_return_to_ptr(&descriptor, ret, &Ok(Value::Null)) };
+    PtrWriter::write_return_to_ptr(&descriptor, unsafe { Slot::new(ret) }, &Ok(Value::Null));
     assert!(slot.is_null());
 
     slot = 7 as *mut c_void;
-    unsafe { PtrWriter::write_return_to_ptr(&descriptor, ret, &Err(())) };
+    PtrWriter::write_return_to_ptr(&descriptor, unsafe { Slot::new(ret) }, &Err(()));
     assert!(slot.is_null());
 
     slot = 7 as *mut c_void;
-    unsafe { PtrWriter::write_return_to_ptr(&descriptor, ret, &Ok(Value::Number(1.0))) };
+    PtrWriter::write_return_to_ptr(
+        &descriptor,
+        unsafe { Slot::new(ret) },
+        &Ok(Value::Number(1.0)),
+    );
     assert!(slot.is_null());
 }
 
@@ -943,7 +948,7 @@ fn write_return_to_pointer_encode_error_writes_null() {
         let val = Value::Array(vec![Value::String("not a tuple".to_string())]);
         let mut slot: *mut c_void = 7 as *mut c_void;
         let ret = &mut slot as *mut *mut c_void as *mut c_void;
-        unsafe { PtrWriter::write_return_to_ptr(&descriptor, ret, &Ok(val)) };
+        PtrWriter::write_return_to_ptr(&descriptor, unsafe { Slot::new(ret) }, &Ok(val));
         assert!(slot.is_null());
     });
 }

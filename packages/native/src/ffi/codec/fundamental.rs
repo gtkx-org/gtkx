@@ -73,7 +73,7 @@ impl Decoder for FundamentalCodec {
 }
 
 impl PtrWriter for FundamentalCodec {
-    unsafe fn write_return_to_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+    fn write_return_to_ptr(&self, ret: ffi::Slot, value: &Result<value::Value, ()>) {
         self.write_return_with_ownership(ret, value, self.ownership, |ptr| {
             match self.lookup_fns() {
                 Ok((Some(ref_fn), _)) => unsafe { ref_fn(ptr) },
@@ -82,24 +82,18 @@ impl PtrWriter for FundamentalCodec {
         });
     }
 
-    unsafe fn write_value_to_ptr(
-        &self,
-        ptr: *mut c_void,
-        value: &value::Value,
-    ) -> anyhow::Result<()> {
+    fn write_value_to_ptr(&self, slot: ffi::Slot, value: &value::Value) -> anyhow::Result<()> {
         let (ref_fn, unref_fn) = self.lookup_fns()?;
-        unsafe {
-            swap_owned_slot(
-                ptr,
-                value,
-                "Fundamental field write",
-                |new_ptr| ref_fn.map_or(new_ptr, |f| f(new_ptr)),
-                |old_ptr| {
-                    if let Some(unref_fn) = unref_fn {
-                        unref_fn(old_ptr);
-                    }
-                },
-            )
-        }
+        swap_owned_slot(
+            slot,
+            value,
+            "Fundamental field write",
+            |new_ptr| unsafe { ref_fn.map_or(new_ptr, |f| f(new_ptr)) },
+            |old_ptr| unsafe {
+                if let Some(unref_fn) = unref_fn {
+                    unref_fn(old_ptr);
+                }
+            },
+        )
     }
 }

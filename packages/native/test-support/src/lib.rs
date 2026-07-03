@@ -14,6 +14,7 @@ use native::ffi::codec::{
     ArrayCodec, ArrayKind, Codec, EnumFlagsCodec, EnumFlagsKind, Decoder, Encoder,
     FloatCodec, IntegerCodec, Ownership, PtrWriter, ReadSource,
 };
+use native::ffi::Slot;
 use native::ffi::library_cache::GlibThreadState;
 use native::ffi::value::Value;
 use native::handle::Boxed;
@@ -266,7 +267,10 @@ pub fn write_return_into_slot<C: PtrWriter>(
     value: &Result<Value, ()>,
 ) -> *mut c_void {
     let mut slot: *mut c_void = std::ptr::null_mut();
-    unsafe { codec.write_return_to_ptr(&mut slot as *mut *mut c_void as *mut c_void, value) };
+    codec.write_return_to_ptr(
+        unsafe { Slot::new(&mut slot as *mut *mut c_void as *mut c_void) },
+        value,
+    );
     slot
 }
 
@@ -276,7 +280,11 @@ pub fn write_value_into_slot<C: PtrWriter>(
     value: &Value,
 ) -> *mut c_void {
     let mut slot: *mut c_void = initial;
-    unsafe { codec.write_value_to_ptr(&mut slot as *mut *mut c_void as *mut c_void, value) }
+    codec
+        .write_value_to_ptr(
+            unsafe { Slot::new(&mut slot as *mut *mut c_void as *mut c_void) },
+            value,
+        )
         .expect("write_value_to_ptr should succeed");
     slot
 }
@@ -284,9 +292,10 @@ pub fn write_value_into_slot<C: PtrWriter>(
 pub fn assert_write_return_err_writes_null<C: PtrWriter>(codec: &C) {
     let mut slot: *mut c_void = std::ptr::dangling_mut::<c_void>();
     let value: Result<Value, ()> = Err(());
-    unsafe {
-        codec.write_return_to_ptr(&mut slot as *mut *mut c_void as *mut c_void, &value);
-    }
+    codec.write_return_to_ptr(
+        unsafe { Slot::new(&mut slot as *mut *mut c_void as *mut c_void) },
+        &value,
+    );
     assert!(slot.is_null());
 }
 

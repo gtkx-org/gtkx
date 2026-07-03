@@ -21,7 +21,8 @@ impl Request for WriteRequest {
 
     fn execute(self) -> anyhow::Result<()> {
         let field_ptr = self.field_ptr as *mut c_void;
-        unsafe { self.field_codec.write_value_to_ptr(field_ptr, &self.value) }
+        self.field_codec
+            .write_value_to_ptr(unsafe { crate::ffi::Slot::new(field_ptr) }, &self.value)
     }
 
     fn error_context() -> &'static str {

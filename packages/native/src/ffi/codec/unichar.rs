@@ -52,12 +52,12 @@ impl Decoder for UnicharCodec {
 }
 
 impl PtrWriter for UnicharCodec {
-    unsafe fn write_return_to_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+    fn write_return_to_ptr(&self, ret: ffi::Slot, value: &Result<value::Value, ()>) {
         let cp = match value {
             Ok(value::Value::String(s)) => s.chars().next().map_or(0, |c| c as u32),
             Ok(value::Value::Number(n)) => *n as u32,
             _ => 0,
         };
-        unsafe { IntegerCodec::U32.write_return_widened(ret, f64::from(cp)) };
+        unsafe { IntegerCodec::U32.write_return_widened(ret.as_ptr(), f64::from(cp)) };
     }
 }

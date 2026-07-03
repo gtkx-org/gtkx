@@ -71,7 +71,7 @@ macro_rules! impl_integer_codec_dispatch {
                 }
             }
 
-            pub unsafe fn call_cif_raw(
+            pub fn call_return(
                 self,
                 cif: &libffi::Cif,
                 ptr: libffi::CodePtr,
@@ -116,7 +116,7 @@ macro_rules! impl_numeric_codecs {
                 ptr: libffi::CodePtr,
                 args: &[libffi::Arg],
             ) -> anyhow::Result<ffi::Stash> {
-                Ok(unsafe { Self::call_cif_raw(*self, cif, ptr, args) })
+                Ok(self.call_return(cif, ptr, args))
             }
         }
 
@@ -139,21 +139,17 @@ macro_rules! impl_numeric_codecs {
         }
 
         impl PtrWriter for $kind {
-            unsafe fn write_return_to_ptr(
-                &self,
-                ret: *mut c_void,
-                value: &Result<value::Value, ()>,
-            ) {
+            fn write_return_to_ptr(&self, ret: ffi::Slot, value: &Result<value::Value, ()>) {
                 let n = match value {
                     Ok(value::Value::Number(n)) => *n,
                     _ => 0.0,
                 };
-                unsafe { self.write_return_widened(ret, n) };
+                unsafe { self.write_return_widened(ret.as_ptr(), n) };
             }
 
-            unsafe fn write_value_to_ptr(
+            fn write_value_to_ptr(
                 &self,
-                ptr: *mut c_void,
+                slot: ffi::Slot,
                 value: &value::Value,
             ) -> anyhow::Result<()> {
                 let value::Value::Number(n) = value else {
@@ -162,7 +158,7 @@ macro_rules! impl_numeric_codecs {
                         $label
                     );
                 };
-                unsafe { self.write_ptr(ptr as *mut u8, *n) };
+                unsafe { self.write_ptr(slot.as_ptr() as *mut u8, *n) };
                 Ok(())
             }
         }
@@ -390,7 +386,7 @@ impl FloatCodec {
         }
     }
 
-    pub unsafe fn call_cif_raw(
+    pub fn call_return(
         self,
         cif: &libffi::Cif,
         ptr: libffi::CodePtr,

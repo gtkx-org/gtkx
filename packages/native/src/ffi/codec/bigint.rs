@@ -155,11 +155,7 @@ impl Decoder for BigIntCodec {
 }
 
 impl PtrWriter for BigIntCodec {
-    unsafe fn write_return_to_ptr(
-        &self,
-        ret: *mut c_void,
-        value: &std::result::Result<value::Value, ()>,
-    ) {
+    fn write_return_to_ptr(&self, ret: ffi::Slot, value: &std::result::Result<value::Value, ()>) {
         let int = value
             .as_ref()
             .ok()
@@ -168,16 +164,12 @@ impl PtrWriter for BigIntCodec {
         let stash = self
             .checked_to_stash(int)
             .unwrap_or_else(|_| self.zero_stash());
-        let _ = unsafe { stash.write_scalar_to_ptr(ret) };
+        let _ = unsafe { stash.write_scalar_to_ptr(ret.as_ptr()) };
     }
 
-    unsafe fn write_value_to_ptr(
-        &self,
-        ptr: *mut c_void,
-        value: &value::Value,
-    ) -> anyhow::Result<()> {
+    fn write_value_to_ptr(&self, slot: ffi::Slot, value: &value::Value) -> anyhow::Result<()> {
         let int = self.integer_from_value(value)?;
         let stash = self.checked_to_stash(int)?;
-        unsafe { stash.write_scalar_to_ptr(ptr) }
+        unsafe { stash.write_scalar_to_ptr(slot.as_ptr()) }
     }
 }

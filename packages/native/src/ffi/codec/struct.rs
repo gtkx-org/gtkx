@@ -48,22 +48,18 @@ impl Decoder for StructCodec {
 }
 
 impl PtrWriter for StructCodec {
-    unsafe fn write_return_to_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+    fn write_return_to_ptr(&self, ret: ffi::Slot, value: &Result<value::Value, ()>) {
         write_return_object_ptr(ret, value, std::convert::identity);
     }
 
-    unsafe fn write_value_to_ptr(
-        &self,
-        ptr: *mut c_void,
-        value: &value::Value,
-    ) -> anyhow::Result<()> {
+    fn write_value_to_ptr(&self, slot: ffi::Slot, value: &value::Value) -> anyhow::Result<()> {
         if let Some(size) = self.size {
             let src_ptr = value.object_ptr("Struct field write")?;
             if src_ptr.is_null() {
-                unsafe { ffi::Slot::new(ptr).store(std::ptr::null_mut()) };
+                unsafe { slot.store(std::ptr::null_mut()) };
                 return Ok(());
             }
-            let dest_ptr = unsafe { ffi::Slot::new(ptr).load() };
+            let dest_ptr = unsafe { slot.load() };
             if dest_ptr.is_null() {
                 bail!("Struct field write into null pointer slot")
             }
@@ -72,6 +68,6 @@ impl PtrWriter for StructCodec {
             }
             return Ok(());
         }
-        write_object_ptr(ptr, value, "Struct field write")
+        write_object_ptr(slot, value, "Struct field write")
     }
 }

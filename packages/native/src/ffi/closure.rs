@@ -47,18 +47,8 @@ impl ClosureData {
 
 impl Drop for ClosureData {
     fn drop(&mut self) {
-        let retained = self
-            .retained_string_return
-            .swap(std::ptr::null_mut(), Ordering::AcqRel);
-        if !retained.is_null() {
-            unsafe { glib::ffi::g_free(retained.cast()) };
-        }
-        let container = self
-            .retained_container_return
-            .swap(std::ptr::null_mut(), Ordering::AcqRel);
-        if !container.is_null() {
-            drop(unsafe { Box::from_raw(container) });
-        }
+        self.replace_string_return(std::ptr::null_mut());
+        self.replace_container_return(std::ptr::null_mut());
     }
 }
 
@@ -240,9 +230,8 @@ impl ClosureData {
             self.write_retained_container_return(result, value);
             return;
         }
-        unsafe {
-            self.return_codec.write_return_to_ptr(result, value);
-        };
+        self.return_codec
+            .write_return_to_ptr(unsafe { crate::ffi::Slot::new(result) }, value);
     }
 
     fn return_type_is_borrowed_container(&self) -> bool {
@@ -250,6 +239,22 @@ impl ClosureData {
             Codec::Array(array_codec) => array_codec.ownership.is_borrowed(),
             Codec::HashTable(hash_table_codec) => hash_table_codec.ownership.is_borrowed(),
             _ => false,
+        }
+    }
+
+    fn replace_container_return(&self, new_ptr: *mut Stash) {
+        let previous = self
+            .retained_container_return
+            .swap(new_ptr, Ordering::AcqRel);
+        if !previous.is_null() {
+            drop(unsafe { Box::from_raw(previous) });
+        }
+    }
+
+    fn replace_string_return(&self, new_ptr: *mut c_char) {
+        let previous = self.retained_string_return.swap(new_ptr, Ordering::AcqRel);
+        if !previous.is_null() {
+            unsafe { glib::ffi::g_free(previous.cast()) };
         }
     }
 
@@ -263,12 +268,7 @@ impl ClosureData {
             .and_then(|stash| stash.as_ptr("container return").ok())
             .unwrap_or(std::ptr::null_mut());
         let new_ptr = built.map_or(std::ptr::null_mut(), |stash| Box::into_raw(Box::new(stash)));
-        let previous = self
-            .retained_container_return
-            .swap(new_ptr, Ordering::AcqRel);
-        if !previous.is_null() {
-            drop(unsafe { Box::from_raw(previous) });
-        }
+        self.replace_container_return(new_ptr);
         unsafe { crate::ffi::Slot::new(result).store(ptr) };
     }
 
@@ -277,10 +277,7 @@ impl ClosureData {
             Ok(Value::String(s)) => str_to_glib_full(s).unwrap_or(std::ptr::null_mut()),
             _ => std::ptr::null_mut(),
         };
-        let previous = self.retained_string_return.swap(new_ptr, Ordering::AcqRel);
-        if !previous.is_null() {
-            unsafe { glib::ffi::g_free(previous.cast()) };
-        }
+        self.replace_string_return(new_ptr);
         unsafe { crate::ffi::Slot::new(result).store(new_ptr.cast()) };
     }
 }
@@ -309,7 +306,8 @@ pub(crate) fn flush_refs(refs: &[(usize, Value)], ref_targets: &[(*mut c_void, &
         if ptr.is_null() {
             continue;
         }
-        unsafe { inner_codec.write_value_to_ptr(*ptr, new_value) }
+        inner_codec
+            .write_value_to_ptr(unsafe { crate::ffi::Slot::new(*ptr) }, new_value)
             .report_err("callback: failed to write out-parameter");
     }
 }

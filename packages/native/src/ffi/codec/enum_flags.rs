@@ -1,5 +1,3 @@
-use std::ffi::c_void;
-
 use crate::ffi::{
     self,
     codec::{Decoder, Encoder, IntegerCodec, PtrWriter, ReadSource, forward_ffi_encoder},
@@ -69,15 +67,11 @@ impl Decoder for EnumFlagsCodec {
 }
 
 impl PtrWriter for EnumFlagsCodec {
-    unsafe fn write_return_to_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
-        unsafe { PtrWriter::write_return_to_ptr(&self.storage, ret, value) };
+    fn write_return_to_ptr(&self, ret: ffi::Slot, value: &Result<value::Value, ()>) {
+        PtrWriter::write_return_to_ptr(&self.storage, ret, value);
     }
 
-    unsafe fn write_value_to_ptr(
-        &self,
-        ptr: *mut c_void,
-        value: &value::Value,
-    ) -> anyhow::Result<()> {
-        unsafe { PtrWriter::write_value_to_ptr(&self.storage, ptr, value) }
+    fn write_value_to_ptr(&self, slot: ffi::Slot, value: &value::Value) -> anyhow::Result<()> {
+        PtrWriter::write_value_to_ptr(&self.storage, slot, value)
     }
 }

@@ -79,34 +79,27 @@ impl Decoder for ObjectCodec {
 }
 
 impl PtrWriter for ObjectCodec {
-    unsafe fn write_return_to_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+    fn write_return_to_ptr(&self, ret: ffi::Slot, value: &Result<value::Value, ()>) {
         self.write_return_with_ownership(ret, value, self.ownership, |ptr| unsafe {
             object_ref_full(ptr)
         });
     }
 
-    unsafe fn write_value_to_ptr(
-        &self,
-        ptr: *mut c_void,
-        value: &value::Value,
-    ) -> anyhow::Result<()> {
-        unsafe {
-            swap_owned_slot(
-                ptr,
-                value,
-                "Object field write",
-                |new_ptr| {
-                    let borrowed_new: Borrowed<glib::Object> =
-                        from_glib_borrow(new_ptr as *mut glib::gobject_ffi::GObject);
-                    ToGlibPtr::<*mut glib::gobject_ffi::GObject>::to_glib_full(&*borrowed_new)
-                        .cast()
-                },
-                |old_ptr| {
-                    let released: glib::Object =
-                        from_glib_full(old_ptr as *mut glib::gobject_ffi::GObject);
-                    drop(released);
-                },
-            )
-        }
+    fn write_value_to_ptr(&self, slot: ffi::Slot, value: &value::Value) -> anyhow::Result<()> {
+        swap_owned_slot(
+            slot,
+            value,
+            "Object field write",
+            |new_ptr| unsafe {
+                let borrowed_new: Borrowed<glib::Object> =
+                    from_glib_borrow(new_ptr as *mut glib::gobject_ffi::GObject);
+                ToGlibPtr::<*mut glib::gobject_ffi::GObject>::to_glib_full(&*borrowed_new).cast()
+            },
+            |old_ptr| unsafe {
+                let released: glib::Object =
+                    from_glib_full(old_ptr as *mut glib::gobject_ffi::GObject);
+                drop(released);
+            },
+        )
     }
 }

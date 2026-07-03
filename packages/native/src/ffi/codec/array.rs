@@ -92,13 +92,9 @@ impl Decoder for ArrayCodec {
 }
 
 impl PtrWriter for ArrayCodec {
-    unsafe fn write_return_to_ptr(
-        &self,
-        ret: *mut c_void,
-        value: &std::result::Result<value::Value, ()>,
-    ) {
+    fn write_return_to_ptr(&self, ret: ffi::Slot, value: &std::result::Result<value::Value, ()>) {
         let container = encode_and_leak_container(value, "array vfunc return", |v| self.encode(v));
-        unsafe { ffi::Slot::new(ret).store(container) };
+        unsafe { ret.store(container) };
     }
 }
 

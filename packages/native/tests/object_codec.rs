@@ -260,13 +260,12 @@ fn write_value_to_pointer_writes_object() {
         let (_obj, obj_ptr, before) = fresh_gobject();
 
         let mut slot: *mut c_void = std::ptr::null_mut();
-        unsafe {
-            borrowed().write_value_to_ptr(
-                &mut slot as *mut *mut c_void as *mut c_void,
+        borrowed()
+            .write_value_to_ptr(
+                unsafe { ffi::Slot::new(&mut slot as *mut *mut c_void as *mut c_void) },
                 &object_value_of(obj_ptr),
             )
-        }
-        .expect("write_value_to_ptr should succeed");
+            .expect("write_value_to_ptr should succeed");
 
         assert_eq!(slot, obj_ptr as *mut c_void);
         assert_eq!(get_gobject_refcount(obj_ptr), before + 1);
@@ -286,13 +285,12 @@ fn write_value_to_pointer_unrefs_previous_object() {
         let old_before = get_gobject_refcount(old_ptr);
         let new_before = get_gobject_refcount(new_ptr);
 
-        unsafe {
-            borrowed().write_value_to_ptr(
-                &mut slot as *mut *mut c_void as *mut c_void,
+        borrowed()
+            .write_value_to_ptr(
+                unsafe { ffi::Slot::new(&mut slot as *mut *mut c_void as *mut c_void) },
                 &object_value_of(new_ptr),
             )
-        }
-        .expect("write_value_to_ptr should succeed");
+            .expect("write_value_to_ptr should succeed");
 
         assert_eq!(slot, new_ptr as *mut c_void);
         assert_eq!(get_gobject_refcount(new_ptr), new_before + 1);
@@ -311,11 +309,12 @@ fn write_value_to_pointer_null_releases_previous_object() {
         let mut slot: *mut c_void = obj_ptr as *mut c_void;
         let before = get_gobject_refcount(obj_ptr);
 
-        unsafe {
-            borrowed()
-                .write_value_to_ptr(&mut slot as *mut *mut c_void as *mut c_void, &Value::Null)
-        }
-        .expect("write_value_to_ptr should succeed");
+        borrowed()
+            .write_value_to_ptr(
+                unsafe { ffi::Slot::new(&mut slot as *mut *mut c_void as *mut c_void) },
+                &Value::Null,
+            )
+            .expect("write_value_to_ptr should succeed");
 
         assert!(slot.is_null());
         assert_eq!(get_gobject_refcount(obj_ptr), before - 1);

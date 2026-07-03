@@ -49,20 +49,16 @@ impl Decoder for BooleanCodec {
 }
 
 impl PtrWriter for BooleanCodec {
-    unsafe fn write_return_to_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+    fn write_return_to_ptr(&self, ret: ffi::Slot, value: &Result<value::Value, ()>) {
         let val = f64::from(u8::from(matches!(value, Ok(value::Value::Boolean(true)))));
-        unsafe { FFI_CODEC.write_return_widened(ret, val) };
+        unsafe { FFI_CODEC.write_return_widened(ret.as_ptr(), val) };
     }
 
-    unsafe fn write_value_to_ptr(
-        &self,
-        ptr: *mut c_void,
-        value: &value::Value,
-    ) -> anyhow::Result<()> {
+    fn write_value_to_ptr(&self, slot: ffi::Slot, value: &value::Value) -> anyhow::Result<()> {
         let value::Value::Boolean(b) = value else {
             anyhow::bail!("Expected a Boolean for boolean field write, got {value:?}");
         };
-        unsafe { *(ptr as *mut i32) = (*b).into_glib() };
+        unsafe { *(slot.as_ptr() as *mut i32) = (*b).into_glib() };
         Ok(())
     }
 }

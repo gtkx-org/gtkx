@@ -58,10 +58,11 @@ impl Request for CallRequest {
                     .into_cif()
             });
 
-            let library = state.library(&self.descriptor.library_name)?;
-            let symbol =
-                unsafe { library.get::<unsafe extern "C" fn() -> ()>(symbol_name.as_bytes())? };
-            let ptr = *symbol as *mut c_void;
+            let symbol = state.resolve_symbol::<unsafe extern "C" fn() -> ()>(
+                &self.descriptor.library_name,
+                symbol_name,
+            )?;
+            let ptr = symbol as *mut c_void;
             Ok((cif, libffi::CodePtr(ptr)))
         })?;
 

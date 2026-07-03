@@ -354,13 +354,12 @@ fn write_value_to_pointer_writes_fundamental() {
         let before = param_spec_refcount(pspec);
 
         let mut slot: *mut c_void = std::ptr::null_mut();
-        unsafe {
-            fundamental(Ownership::Borrowed).write_value_to_ptr(
-                &mut slot as *mut *mut c_void as *mut c_void,
+        fundamental(Ownership::Borrowed)
+            .write_value_to_ptr(
+                unsafe { ffi::Slot::new(&mut slot as *mut *mut c_void as *mut c_void) },
                 &Value::Object(Handle::from_glib_borrow(pspec)),
             )
-        }
-        .expect("write_value_to_ptr should succeed");
+            .expect("write_value_to_ptr should succeed");
 
         assert_eq!(slot, pspec);
         assert_eq!(param_spec_refcount(pspec), before + 1);
@@ -380,13 +379,12 @@ fn write_value_to_pointer_unrefs_previous_fundamental() {
         let old_before = param_spec_refcount(old);
         let new_before = param_spec_refcount(new);
 
-        unsafe {
-            fundamental(Ownership::Borrowed).write_value_to_ptr(
-                &mut slot as *mut *mut c_void as *mut c_void,
+        fundamental(Ownership::Borrowed)
+            .write_value_to_ptr(
+                unsafe { ffi::Slot::new(&mut slot as *mut *mut c_void as *mut c_void) },
                 &Value::Object(Handle::from_glib_borrow(new)),
             )
-        }
-        .expect("write_value_to_ptr should succeed");
+            .expect("write_value_to_ptr should succeed");
 
         assert_eq!(slot, new);
         assert_eq!(param_spec_refcount(new), new_before + 1);
@@ -406,11 +404,12 @@ fn write_value_to_pointer_null_releases_previous_fundamental() {
         let mut slot: *mut c_void = pspec;
         let before = param_spec_refcount(pspec);
 
-        unsafe {
-            fundamental(Ownership::Borrowed)
-                .write_value_to_ptr(&mut slot as *mut *mut c_void as *mut c_void, &Value::Null)
-        }
-        .expect("write_value_to_ptr should succeed");
+        fundamental(Ownership::Borrowed)
+            .write_value_to_ptr(
+                unsafe { ffi::Slot::new(&mut slot as *mut *mut c_void as *mut c_void) },
+                &Value::Null,
+            )
+            .expect("write_value_to_ptr should succeed");
 
         assert!(slot.is_null());
         assert_eq!(param_spec_refcount(pspec), before - 1);
