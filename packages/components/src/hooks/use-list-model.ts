@@ -19,29 +19,29 @@ import {
 } from "../utils/item-resolver.js";
 import { detectStructure, type ListStructure, structuralSignature } from "../utils/list-item-flatten.js";
 
-interface ControlledListMode<T, S> {
+type ControlledListMode<T, S> = {
     items: ItemNode<T>[] | undefined;
     sections?: SectionNode<S, T>[] | undefined;
     autoexpand?: boolean | undefined;
     model?: never;
-}
+};
 
-interface UncontrolledListMode {
+type UncontrolledListMode = {
     model: Gio.ListModel;
     items?: never;
     sections?: never;
     autoexpand?: never;
-}
+};
 
-interface ListModelResult<T, S> {
+type ListModelResult<T, S> = {
     model: Gio.ListModel;
     resolver: ItemResolver<T, S>;
     headerResolver: ItemResolver<T, S>;
-}
+};
 
 type ControlledStructure = "sections" | ListStructure;
 
-interface ControlledState<T, S> {
+type ControlledState<T, S> = {
     model: Gio.ListModel;
     flatModel: Gtk.StringList | undefined;
     items: ItemNode<T>[] | undefined;
@@ -51,7 +51,7 @@ interface ControlledState<T, S> {
     signature: string;
     rowValues: WeakMap<GObject.Object, RowValue<T>>;
     placeholdersById: Map<string, GObject.Object>;
-}
+};
 
 const sectionRows = <T, S>(sections: SectionNode<S, T>[] | undefined): ItemNode<T>[] => {
     if (sections === undefined) return [];
@@ -79,13 +79,13 @@ const controlledSignature = <T, S>(
     return structure === "flat" ? "" : `${structure}|${autoexpand ? 1 : 0}|${structuralSignature(items)}`;
 };
 
-interface ControlledInput<T, S> {
+type ControlledInput<T, S> = {
     items: ItemNode<T>[] | undefined;
     sections: SectionNode<S, T>[] | undefined;
     autoexpand: boolean;
     structure: ControlledStructure;
     signature: string;
-}
+};
 
 const buildControlledState = <T, S>(input: ControlledInput<T, S>): ControlledState<T, S> => {
     const { items, sections, autoexpand, structure, signature } = input;

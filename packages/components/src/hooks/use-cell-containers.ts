@@ -4,11 +4,11 @@ import { type GObjectTarget, useTargetRegistration } from "@gtkx/react/internal"
 import { useRef } from "react";
 import { CellContainerStore } from "../utils/cell-container-store.js";
 
-interface ChildContainer {
+type ChildContainer = {
     getChild(): Gtk.Widget | null;
     setChild(child: Gtk.Widget | null): void;
     getItem(): GObject.Object | null;
-}
+};
 
 const isChildContainer = (container: GObject.Object): container is GObject.Object & ChildContainer =>
     container instanceof Gtk.ListItem || container instanceof Gtk.ListHeader;
@@ -19,17 +19,17 @@ const positionOf = (container: GObject.Object & ChildContainer): number => {
     return -1;
 };
 
-export interface FactoryInstaller<W extends GObject.Object> {
+export type FactoryInstaller<W extends GObject.Object> = {
     install(widget: W, factory: Gtk.SignalListItemFactory): void;
     uninstall(widget: W): void;
-}
+};
 
-interface CellContainersOptions<W extends GObject.Object> {
+type CellContainersOptions<W extends GObject.Object> = {
     target: GObjectTarget<W>;
     installer: FactoryInstaller<W>;
     estimatedHeight?: number | undefined;
     estimatedWidth?: number | undefined;
-}
+};
 
 const applyEstimatedSize = (child: Gtk.Widget, height: number | undefined, width: number | undefined): void => {
     if (height === undefined && width === undefined) return;

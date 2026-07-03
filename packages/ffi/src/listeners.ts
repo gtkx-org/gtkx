@@ -1,11 +1,14 @@
-import type { SignalHandler } from "./signal.js";
+type SignalHandler = (...args: unknown[]) => void;
 
-interface SignalConnectable {
+type SignalConnectable = {
     connect(signal: string, handler: SignalHandler, after?: boolean): number;
     disconnect(handlerId: number): void;
-}
+};
 
 const listenerTable = new WeakMap<object, Map<string, Map<SignalHandler, number>>>();
+
+const findListenerHandlerId = (instance: object, signal: string, handler: SignalHandler): number | undefined =>
+    listenerTable.get(instance)?.get(signal)?.get(handler);
 
 const trackListener = (instance: object, signal: string, handler: SignalHandler, handlerId: number): void => {
     let bySignal = listenerTable.get(instance);
@@ -20,9 +23,6 @@ const trackListener = (instance: object, signal: string, handler: SignalHandler,
     }
     byHandler.set(handler, handlerId);
 };
-
-const findListenerHandlerId = (instance: object, signal: string, handler: SignalHandler): number | undefined =>
-    listenerTable.get(instance)?.get(signal)?.get(handler);
 
 const untrackListener = (instance: object, signal: string, handler: SignalHandler): void => {
     const bySignal = listenerTable.get(instance);

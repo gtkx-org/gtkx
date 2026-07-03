@@ -1,8 +1,8 @@
-import { type ApplicationRunner, onExit, quitApplication, runApplication } from "@gtkx/ffi";
+import { type ApplicationLike, onExit, quitApplication, runApplication } from "@gtkx/ffi";
 import { describe, expect, it, vi } from "vitest";
 
 const nativeMock = vi.hoisted(() => ({ quit: vi.fn() }));
-const signalMock = vi.hoisted(() => ({ blockGObjectSignalHandlers: vi.fn() }));
+const signalMock = vi.hoisted(() => ({ blockMatchedSignalHandlers: vi.fn() }));
 
 vi.mock("@gtkx/native", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@gtkx/native")>();
@@ -11,10 +11,10 @@ vi.mock("@gtkx/native", async (importOriginal) => {
 
 vi.mock("../src/signal.js", async (importOriginal) => {
     const actual = await importOriginal<typeof import("../src/signal.js")>();
-    return { ...actual, blockGObjectSignalHandlers: signalMock.blockGObjectSignalHandlers };
+    return { ...actual, blockMatchedSignalHandlers: signalMock.blockMatchedSignalHandlers };
 });
 
-type FakeApplication = ApplicationRunner & {
+type FakeApplication = ApplicationLike & {
     registerCalls: number;
     activateCalls: number;
     quitCalls: number;
@@ -91,7 +91,7 @@ describe("runApplication and quitApplication", () => {
             expect(vi.getTimerCount()).toBe(before + 1);
 
             quitApplication(app);
-            expect(signalMock.blockGObjectSignalHandlers).toHaveBeenCalledWith(app, "activate");
+            expect(signalMock.blockMatchedSignalHandlers).toHaveBeenCalledWith(app, "activate");
             expect(app.lastRunArgv).toEqual([]);
             expect(app.shutdownEmits).toBe(1);
             expect(app.quitCalls).toBe(1);
@@ -109,7 +109,7 @@ describe("runApplication and quitApplication", () => {
     it("blocks activate handlers before running the application", () => {
         const app = createFakeApplication();
         const order: string[] = [];
-        signalMock.blockGObjectSignalHandlers.mockImplementationOnce(() => order.push("block"));
+        signalMock.blockMatchedSignalHandlers.mockImplementationOnce(() => order.push("block"));
         const originalRun = app.run.bind(app);
         app.run = (argv: string[]) => {
             order.push("run");

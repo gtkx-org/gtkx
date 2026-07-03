@@ -7,7 +7,7 @@ import type { Container, Props } from "./types.js";
 
 export type Node = GObject.Object | RelationshipNode | RootElement;
 
-export interface State {
+export type State = {
     name?: string | undefined;
     kind?: RelationshipKind | undefined;
     props: Props;
@@ -15,7 +15,7 @@ export interface State {
     children: Node[];
     rootContainer: Container;
     signalStore: SignalStore;
-}
+};
 
 const stateMap = new WeakMap<Node, State>();
 

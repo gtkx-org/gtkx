@@ -1,4 +1,5 @@
-import { getHandle, type Handle, setHandle, t, wrapHandle, writeField as write } from "@gtkx/ffi";
+import type { ExternalObject, Handle } from "@gtkx/native";
+import { getHandle, setHandle, t, wrapHandle, writeField as write } from "@gtkx/ffi";
 import { alloc } from "@gtkx/native";
 import type { RegionOverlap, Status } from "../cairo.js";
 import { RectangleInt, Region } from "../cairo.js";
@@ -68,19 +69,19 @@ const cairoRegionCreateRectangles = bind(
 class RegionImpl extends Region {
     constructor(rect: RectangleInt) {
         super();
-        setHandle(this, cairoRegionCreateRectangle(getHandle(rect)) as Handle);
+        setHandle(this, cairoRegionCreateRectangle(getHandle(rect)) as ExternalObject<Handle>);
     }
 
     static empty(): Region {
-        return wrapHandle(cairoRegionCreate() as Handle, RegionImpl);
+        return wrapHandle(cairoRegionCreate() as ExternalObject<Handle>, RegionImpl);
     }
 
     static copy(original: Region): Region {
-        return wrapHandle(cairoRegionCopy(getHandle(original)) as Handle, RegionImpl);
+        return wrapHandle(cairoRegionCopy(getHandle(original)) as ExternalObject<Handle>, RegionImpl);
     }
 
     static forRectangle(rect: RectangleInt): Region {
-        return wrapHandle(cairoRegionCreateRectangle(getHandle(rect)) as Handle, RegionImpl);
+        return wrapHandle(cairoRegionCreateRectangle(getHandle(rect)) as ExternalObject<Handle>, RegionImpl);
     }
 
     static createRectangles(rects: Array<{ x: number; y: number; width: number; height: number }>): Region {
@@ -96,7 +97,7 @@ class RegionImpl extends Region {
             write(buf, t.int32, offset + 12, rect.height);
             offset += 16;
         }
-        const ptr = cairoRegionCreateRectangles(buf, rects.length) as Handle;
+        const ptr = cairoRegionCreateRectangles(buf, rects.length) as ExternalObject<Handle>;
         return wrapHandle(ptr, Region) as Region;
     }
 }
@@ -114,7 +115,7 @@ const cairoRegionCopy = bind(
     }),
 );
 Region.prototype.copy = function (): Region {
-    return wrapHandle(cairoRegionCopy(getHandle(this)) as Handle, Region) as Region;
+    return wrapHandle(cairoRegionCopy(getHandle(this)) as ExternalObject<Handle>, Region) as Region;
 };
 
 const cairoRegionStatus = bind("libcairo.so.2", "cairo_region_status", [REGION_T], t.int32);

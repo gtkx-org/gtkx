@@ -56,12 +56,12 @@ export const renderClassConstructor = (
 const PROPS_RECORD = "Record<string, unknown>";
 
 const renderRootConstructor = (context: ModuleContext): string => {
-    context.addRuntimeImport("getInstanceGtype");
-    context.addRuntimeImport("newGObjectWithProperties");
+    context.addRuntimeImport("getInstanceType");
+    context.addRuntimeImport("newObjectWithProperties");
     context.addRuntimeImport("setHandle");
     context.addNativeImport("setWrapper");
     const body = [
-        "const handle = newGObjectWithProperties(getInstanceGtype(this), props);",
+        "const handle = newObjectWithProperties(getInstanceType(this), props);",
         "setHandle(this, handle);",
         "setWrapper(handle, this);",
     ].join("\n");

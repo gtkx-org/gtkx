@@ -1,11 +1,11 @@
 import { copy, type Descriptor } from "@gtkx/native";
-import { isCallerAllocatedDescriptor, isRefDescriptor } from "./descriptors.js";
-import { valueCopyInto } from "./gvalue.js";
+import type { CallbackDescriptor } from "./descriptors.js";
 import { fromNativeValue, toNativeValue } from "./native-value.js";
 import { getHandle } from "./registry.js";
 import { splitTupleResult } from "./tuple.js";
+import { copyValue } from "./value.js";
 
-export type Callback = (...args: unknown[]) => unknown;
+type Callback = (...args: unknown[]) => unknown;
 type CallbackReceiver = "this" | "emitter" | "none";
 type OutParam = { value: unknown; descriptor: Descriptor };
 
@@ -17,7 +17,7 @@ type CallbackSpec = {
 
 const fillCallerAllocatedBuffer = (descriptor: Descriptor, target: object, source: object): void => {
     if (descriptor.kind === "boxed" && descriptor.typeName === "GValue") {
-        valueCopyInto(getHandle(target), getHandle(source));
+        copyValue(getHandle(target), getHandle(source));
         return;
     }
     if ((descriptor.kind === "boxed" || descriptor.kind === "struct") && descriptor.size !== undefined) {
@@ -36,10 +36,14 @@ const partitionCallbackArgs = (
     const outParams: OutParam[] = [];
     for (let i = start; i < effectiveTypes.length; i++) {
         const descriptor = effectiveTypes[i];
-        if (descriptor !== undefined && isRefDescriptor(descriptor)) {
+        if (descriptor !== undefined && descriptor.kind === "ref") {
             if (descriptor.inout === true) inputs.push((wrapped[i] as { value: unknown }).value);
             outParams.push({ value: wrapped[i], descriptor });
-        } else if (descriptor !== undefined && isCallerAllocatedDescriptor(descriptor)) {
+        } else if (
+            descriptor !== undefined &&
+            (descriptor.kind === "boxed" || descriptor.kind === "struct") &&
+            descriptor.callerAllocated === true
+        ) {
             inputs.push(wrapped[i]);
             outParams.push({ value: wrapped[i], descriptor });
         } else {
@@ -52,13 +56,16 @@ const partitionCallbackArgs = (
 const writeOutParams = (outParams: OutParam[], outValues: unknown[]): void => {
     outParams.forEach((outParam, position) => {
         const outValue = outValues[position];
-        if (isRefDescriptor(outParam.descriptor)) {
+        if (outParam.descriptor.kind === "ref") {
             (outParam.value as { value: unknown }).value = outValue;
         } else if (outValue != null && outParam.value != null) {
             fillCallerAllocatedBuffer(outParam.descriptor, outParam.value as object, outValue as object);
         }
     });
 };
+
+export const wrapCallbackValue = (spec: CallbackDescriptor, callback: unknown): unknown =>
+    callback == null ? callback : wrapCallback(callback as Callback, spec, "none");
 
 export function wrapCallback(fn: Callback, spec: CallbackSpec, receiver: CallbackReceiver): Callback {
     const { returnDescriptor, userDataIndex } = spec;

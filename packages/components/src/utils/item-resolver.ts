@@ -16,25 +16,25 @@ const treeRowItem = (treeRow: Gtk.TreeListRow): GObject.Object | null => {
     return item;
 };
 
-interface Resolved<T = unknown, S = unknown> {
+export type Resolved<T = unknown, S = unknown> = {
     value: T | S | undefined;
     present: boolean;
     isHeader: boolean;
     treeRow: Gtk.TreeListRow | null;
     metadata: TreeItemMetadata;
-}
+};
 
-export interface ItemResolver<T = unknown, S = unknown> {
+export type ItemResolver<T = unknown, S = unknown> = {
     resolve(position: number, treeRow: Gtk.TreeListRow | null, boundItem: GObject.Object | null): Resolved<T, S>;
     positionOfId(id: string): number;
     idOf(position: number): string | undefined;
-}
+};
 
-export interface RowValue<T = unknown> {
+export type RowValue<T = unknown> = {
     id: string;
     value: T;
     metadata: TreeItemMetadata;
-}
+};
 
 export const createControlledResolver = <T, S>(
     items: ItemNode<T>[] | undefined,

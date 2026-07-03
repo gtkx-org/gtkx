@@ -1,8 +1,9 @@
+import { bind } from "./bind.js";
 import * as helpers from "./descriptors.js";
 import { fn } from "./fn.js";
 
 type T = {
-    bind: typeof helpers.bind;
+    bind: typeof bind;
     int8: typeof helpers.int8T;
     uint8: typeof helpers.uint8T;
     int16: typeof helpers.int16T;
@@ -42,7 +43,7 @@ type T = {
 };
 
 export const t: T = {
-    bind: helpers.bind,
+    bind,
     int8: helpers.int8T,
     uint8: helpers.uint8T,
     int16: helpers.int16T,

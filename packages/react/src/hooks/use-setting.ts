@@ -3,12 +3,12 @@ import { useCallback, useMemo } from "react";
 import { resolveAccessor } from "../utils/settings-accessor.js";
 import { useGObjectValue } from "./use-gobject-value.js";
 
-export interface SchemaRef<K extends object = Record<string, unknown>> {
+export type SchemaRef<K extends object = Record<string, unknown>> = {
     id: string;
     path: string | null;
     keys: { [P in keyof K]: string };
     __keys__?: K;
-}
+};
 
 export function useSetting<K extends object, P extends keyof K & string>(
     schema: SchemaRef<K>,

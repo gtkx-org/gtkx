@@ -1,4 +1,4 @@
-import type { AnyClass } from "@gtkx/utils";
+import type { AnyClass } from "./class.js";
 
 export type Mixin = (base: AnyClass) => AnyClass;
 

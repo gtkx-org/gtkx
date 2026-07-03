@@ -1,7 +1,7 @@
 import type { Descriptor, ExternalObject, Handle } from "@gtkx/native";
 import type { ArrayDescriptor, StructDescriptor } from "./descriptors.js";
-import { gtypeFromDescriptor } from "./gvalue.js";
-import { requireWrapperClass, tryGetHandle, wrapHandle } from "./registry.js";
+import { getWrapperClass, tryGetHandle, wrapHandle } from "./registry.js";
+import { resolveDescriptorType } from "./type.js";
 
 const collectionFromNativeValue = (descriptor: ArrayDescriptor, value: unknown): unknown => {
     if (value === null) return null;
@@ -18,7 +18,7 @@ export function fromNativeValue(descriptor: Descriptor, value: unknown): unknown
         case "fundamental":
             return wrapHandle(
                 value as ExternalObject<Handle> | null,
-                requireWrapperClass(gtypeFromDescriptor(descriptor)),
+                getWrapperClass(resolveDescriptorType(descriptor)),
             );
         case "array":
             return collectionFromNativeValue(descriptor, value);

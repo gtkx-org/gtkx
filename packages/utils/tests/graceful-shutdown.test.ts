@@ -42,9 +42,9 @@ const restoreListeners = (snap: Snapshot): void => {
     }
 };
 
-interface ShutdownFixture {
+type ShutdownFixture = {
     exitSpy: ReturnType<typeof vi.spyOn>;
-}
+};
 
 const installFixture = (): ShutdownFixture => {
     const fixture = {} as ShutdownFixture;
@@ -86,7 +86,7 @@ describe("installGracefulShutdown — basic exit codes", () => {
     });
 });
 
-describe("installGracefulShutdown — async + force-kill behaviour", () => {
+describe("installGracefulShutdown — async + force-kill behavior", () => {
     const fixture = installFixture();
 
     it("awaits an async onSignal before exiting", async () => {

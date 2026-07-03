@@ -44,10 +44,10 @@ interface PastedContent {
     filePath?: string;
 }
 
-const gdkRgbaType = Gdk.RGBA.prototype.__gtype__;
-const gdkPaintableType = Gdk.Paintable.prototype.__gtype__;
-const gfileType = Gio.File.prototype.__gtype__;
-const gdkTextureType = Gdk.Texture.prototype.__gtype__;
+const gdkRgbaType = Gdk.RGBA.prototype.__type__;
+const gdkPaintableType = Gdk.Paintable.prototype.__type__;
+const gfileType = Gio.File.prototype.__type__;
+const gdkTextureType = Gdk.Texture.prototype.__type__;
 
 const SOURCE_TYPES: SourceType[] = ["Text", "Color", "Image", "File", "Folder"];
 

@@ -349,12 +349,12 @@ describe("buildTools — gtkx_take_screenshot", () => {
     });
 });
 
-interface MainSetup {
+type MainSetup = {
     errorSpy: ReturnType<typeof vi.spyOn>;
     exitSpy: ReturnType<typeof vi.spyOn>;
     prevSigInt: NodeJS.SignalsListener[];
     prevSigTerm: NodeJS.SignalsListener[];
-}
+};
 
 function resetMainMocks(): void {
     mcpServerInstances.length = 0;

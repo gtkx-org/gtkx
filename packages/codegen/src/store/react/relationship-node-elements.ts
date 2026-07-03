@@ -64,7 +64,7 @@ const TEXT_PAINTABLE: RelationshipNodeElement = {
 
 const TEXT_VIEW_SUBCOMPONENTS: RelationshipNodeElement[] = [TEXT_ANCHOR, TEXT_PAINTABLE];
 
-const RELATIONSHIP_NODE_ELEMENTS_BY_PARENT: Record<string, RelationshipNodeElement[]> = Object.freeze({
+const RELATIONSHIP_NODE_ELEMENTS_BY_PARENT: Record<string, RelationshipNodeElement[]> = {
     GtkStack: [STACK_PAGE],
     AdwViewStack: [VIEW_STACK_PAGE],
     GtkNotebook: [NOTEBOOK_PAGE],
@@ -73,7 +73,7 @@ const RELATIONSHIP_NODE_ELEMENTS_BY_PARENT: Record<string, RelationshipNodeEleme
     GtkOverlay: [OVERLAY_CHILD],
     GtkTextView: TEXT_VIEW_SUBCOMPONENTS,
     GtkSourceView: TEXT_VIEW_SUBCOMPONENTS,
-});
+};
 
 export type RelationshipNodeElementEntry = {
     parentGlibName: string;

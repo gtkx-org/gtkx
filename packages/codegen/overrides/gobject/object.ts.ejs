@@ -5,7 +5,7 @@ type Listener = (...args: unknown[]) => unknown;
 
 declare module "../gobject.js" {
     interface Object {
-        __gtype__: Type;
+        __type__: Type;
 
         disconnect(handlerId: number): void;
 

@@ -15,12 +15,12 @@ const LIFECYCLE_SIGNALS = new Set([
     "render",
 ]);
 
-export interface SignalBinding {
+export type SignalBinding = {
     instance: GObject.Object;
     signal: string;
     handler?: SignalHandler | null | undefined;
     blockable?: boolean | undefined;
-}
+};
 
 export class SignalStore {
     private instanceHandlers: Map<GObject.Object, Map<string, number>> = new Map();

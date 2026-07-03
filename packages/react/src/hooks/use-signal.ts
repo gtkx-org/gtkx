@@ -26,17 +26,17 @@ export type SignalHandlerFor<T extends GObject.Object, S extends string> = S ext
           : AnySignalHandler
       : AnySignalHandler;
 
-export interface UseSignalOptions {
+export type UseSignalOptions = {
     after?: boolean;
     immediate?: boolean;
-}
+};
 
-interface SignalSubscription {
+type SignalSubscription = {
     obj: GObject.Object;
     signal: string;
     after: boolean;
     listener: SignalHandler;
-}
+};
 
 export function useSignal<T extends GObject.Object, S extends SignalNameOf<T>>(
     target: GObjectTarget<T>,

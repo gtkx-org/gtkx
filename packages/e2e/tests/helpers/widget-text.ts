@@ -11,9 +11,9 @@ const firstLabelWithin = (widget: Gtk.Widget): string | null => {
     return null;
 };
 
-export interface ChildTextOptions {
+export type ChildTextOptions = {
     recursive?: boolean;
-}
+};
 
 export const getChildTexts = (container: Gtk.Widget, options: ChildTextOptions = {}): string[] => {
     const recursive = options.recursive ?? true;

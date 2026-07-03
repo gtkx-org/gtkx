@@ -3,7 +3,7 @@ import { getWrapperClassByName } from "@gtkx/ffi";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { freeze, unfreeze } from "@gtkx/native";
-import { createContext } from "react";
+import { type Context, createContext } from "react";
 import type ReactReconciler from "react-reconciler";
 import { DiscreteEventPriority } from "react-reconciler/constants.js";
 import { isDefaultBlockableType } from "../utils/gtype.js";
@@ -137,10 +137,10 @@ const commitInstanceProps = (instance: Node, oldProps: Props | null, newProps: P
     } else {
         applyProps(instance, oldProps, newProps, {
             exclude: excludeRuleManaged,
-            defaultBlockable: isDefaultBlockableType(instance.__gtype__),
+            defaultBlockable: isDefaultBlockableType(instance.__type__),
         });
     }
-    const ruleSet = resolveSetPropsRuleSet(instance.__gtype__);
+    const ruleSet = resolveSetPropsRuleSet(instance.__type__);
     if (ruleSet?.setProps) {
         const node = ruleNodeOf(instance);
         if (node) ruleSet.setProps(node, newProps, oldProps, RULE_CONTEXT);
@@ -374,7 +374,7 @@ type NoopConfig = Pick<
 const createNoopConfig = (): NoopConfig => ({
     preparePortalMount: () => {},
     NotPendingTransition: null,
-    HostTransitionContext: createContext(0) as unknown as ReactReconciler.ReactContext<number>,
+    HostTransitionContext: createContext(0) as Context<number> & ReactReconciler.ReactContext<number>,
     getInstanceFromNode: () => null,
     beforeActiveInstanceBlur: () => {},
     afterActiveInstanceBlur: () => {},

@@ -12,10 +12,10 @@ import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
 class NameObject extends GObject.Object {
     name = "";
 }
-registerClass(NameObject, { gtypeName: "GtkxTestModelNameObject" });
+registerClass(NameObject, { typeName: "GtkxTestModelNameObject" });
 
 const namedStore = (names: string[]): Gio.ListStore => {
-    const store = Gio.ListStore.new(NameObject.prototype.__gtype__);
+    const store = Gio.ListStore.new(NameObject.prototype.__type__);
     for (const name of names) {
         const item = new NameObject();
         item.name = name;
@@ -188,7 +188,7 @@ describe("wrapper identity", () => {
     it("returns the same wrapper instance for an item held by a store", () => {
         const item = new NameObject();
         item.name = "Persisted";
-        const store = Gio.ListStore.new(NameObject.prototype.__gtype__);
+        const store = Gio.ListStore.new(NameObject.prototype.__type__);
         store.append(item);
 
         expect(store.getItem(0)).toBe(item);

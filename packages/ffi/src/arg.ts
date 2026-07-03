@@ -1,4 +1,11 @@
-type Arg = { direction?: "out" | "inout"; callerAllocated?: boolean };
+import type { Descriptor } from "@gtkx/native";
+
+export type Arg = {
+    type: Descriptor;
+    direction?: "out" | "inout";
+    callerAllocated?: boolean;
+    consumed?: boolean;
+};
 
 export const isOutputArg = (arg: Arg): boolean => arg.direction !== undefined;
 export const isInoutArg = (arg: Arg): boolean => arg.direction === "inout";

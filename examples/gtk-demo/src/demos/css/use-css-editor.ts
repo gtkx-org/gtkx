@@ -13,13 +13,13 @@ const clearTags = (buffer: Gtk.TextBuffer) => {
     buffer.removeAllTags(startIter, endIter);
 };
 
-interface MarkParsingErrorArgs {
+type MarkParsingErrorArgs = {
     textView: Gtk.TextView | null;
     section: Gtk.CssSection;
     error: GLib.Error;
     warningTag: Gtk.TextTag | null;
     errorTag: Gtk.TextTag | null;
-}
+};
 
 const markParsingError = ({ textView, section, error, warningTag, errorTag }: MarkParsingErrorArgs) => {
     if (!textView) return;
@@ -37,11 +37,11 @@ const markParsingError = ({ textView, section, error, warningTag, errorTag }: Ma
     if (tag) buffer.applyTag(tag, startIter, endIter);
 };
 
-interface SetupTagsArgs {
+type SetupTagsArgs = {
     buffer: Gtk.TextBuffer;
     errorTagRef: RefObject<Gtk.TextTag | null>;
     warningTagRef: RefObject<Gtk.TextTag | null>;
-}
+};
 
 const setupTags = ({ buffer, errorTagRef, warningTagRef }: SetupTagsArgs) => {
     const tagTable = buffer.getTagTable();

@@ -1,31 +1,28 @@
 import { tryGetHandle } from "./registry.js";
 
-type AsyncStartFn = (...args: unknown[]) => void;
-type AsyncFinishFn = (result: object) => unknown;
-
-const attachCreationSite = (error: unknown, creationSite: Error | undefined): void => {
-    if (creationSite === undefined || !(error instanceof Error)) return;
+const attachCreationStack = (error: unknown, creationStack: Error | undefined): void => {
+    if (creationStack === undefined || !(error instanceof Error)) return;
     if (error.cause !== undefined || !Object.isExtensible(error)) return;
-    error.cause = creationSite;
+    error.cause = creationStack;
 };
 
 export const promisify = (
-    asyncFn: AsyncStartFn,
-    finish: AsyncFinishFn,
+    asyncFn: (...args: unknown[]) => void,
+    finish: (result: object) => unknown,
     cancellable: object | null | undefined,
     ...leading: unknown[]
 ): Promise<unknown> =>
     new Promise((resolve, reject) => {
-        let creationSite: Error | undefined;
+        let creationStack: Error | undefined;
         if (process.env.NODE_ENV !== "production") {
-            creationSite = new Error("gtkx async operation started here");
-            Error.captureStackTrace(creationSite, promisify);
+            creationStack = new Error("gtkx async operation started here");
+            Error.captureStackTrace(creationStack, promisify);
         }
         asyncFn(...leading, tryGetHandle(cancellable), (_source: object | null, asyncResult: object) => {
             try {
                 resolve(finish(asyncResult));
             } catch (error) {
-                attachCreationSite(error, creationSite);
+                attachCreationStack(error, creationStack);
                 reject(error);
             }
         });

@@ -102,7 +102,7 @@ const slotTagOf = (node: Node): string | undefined => {
 
 const slotHostRuleSet = (host: GObject.Object, slotTag: string) => {
     const baseType = SLOT_HOST_BASE_TYPE[slotTag];
-    return baseType ? namedRuleSet(baseType) : resolveAppendRuleSet(host.__gtype__);
+    return baseType ? namedRuleSet(baseType) : resolveAppendRuleSet(host.__type__);
 };
 
 const attachContainerSlotChild = (instance: Node, parent: GObject.Object, slotTag: string): void => {
@@ -153,7 +153,7 @@ type MetaState = { widget: Gtk.Widget; page: object };
 
 const metaAddRules = (target: GObject.Object | undefined): AddMethodRule[] | null => {
     if (!target) return null;
-    return findInheritedRow(target.__gtype__, META_OBJECT_ADD_METHODS) ?? null;
+    return findInheritedRow(target.__type__, META_OBJECT_ADD_METHODS) ?? null;
 };
 
 const pagePropValue = (props: Props, key: string): string | null =>
@@ -598,7 +598,7 @@ const promotedTargetFor = (child: Node, parent: Node): PromotedChildTarget | nul
 
 const displayName = (node: Node): string => {
     const state = stateOf(node);
-    if (node instanceof GObject.Object) return collectTypeNameChain(node.__gtype__)[0] ?? state.name ?? "GObject";
+    if (node instanceof GObject.Object) return collectTypeNameChain(node.__type__)[0] ?? state.name ?? "GObject";
     return state.name ?? state.kind ?? "node";
 };
 

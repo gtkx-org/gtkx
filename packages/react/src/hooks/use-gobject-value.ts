@@ -3,11 +3,11 @@ import type * as GObject from "@gtkx/gi/gobject";
 import { useCallback, useRef, useSyncExternalStore } from "react";
 import { type GObjectTarget, resolveGObjectTarget } from "../utils/gobject-target.js";
 
-interface GObjectValueCache<T extends GObject.Object, V> {
+type GObjectValueCache<T extends GObject.Object, V> = {
     target: T | null;
     signal: string;
     value: V;
-}
+};
 
 export function useGObjectValue<T extends GObject.Object, V>(
     target: GObjectTarget<T>,

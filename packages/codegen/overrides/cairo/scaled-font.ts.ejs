@@ -1,4 +1,5 @@
-import { getHandle, type Handle, readField as read, t, wrapHandle } from "@gtkx/ffi";
+import type { ExternalObject, Handle } from "@gtkx/native";
+import { getHandle, readField as read, t, wrapHandle } from "@gtkx/ffi";
 import { alloc } from "@gtkx/native";
 import type { FontOptions, FontType, Status, TextClusterFlags } from "../cairo.js";
 import { FontFace, ScaledFont } from "../cairo.js";
@@ -91,7 +92,7 @@ ScaledFontWithStatics.create = (
         getHandle(fontMatrix),
         getHandle(ctm),
         getHandle(options),
-    ) as Handle;
+    ) as ExternalObject<Handle>;
     return wrapHandle(ptr, ScaledFont) as ScaledFont;
 };
 
@@ -157,7 +158,7 @@ const cairoScaledFontGetFontFace = bind(
     }),
 );
 ScaledFont.prototype.getFontFace = function (): FontFace {
-    return wrapHandle(cairoScaledFontGetFontFace(getHandle(this)) as Handle, FontFace) as FontFace;
+    return wrapHandle(cairoScaledFontGetFontFace(getHandle(this)) as ExternalObject<Handle>, FontFace) as FontFace;
 };
 
 const cairoScaledFontGetFontOptions = bind(
@@ -274,9 +275,9 @@ ScaledFont.prototype.textToGlyphs = function (
 ): [CairoGlyph[], CairoTextCluster[], TextClusterFlags] {
     const utf8 = new TextEncoder().encode(text);
 
-    const glyphsRef: { value: Handle | null } = { value: null };
+    const glyphsRef: { value: ExternalObject<Handle> | null } = { value: null };
     const numGlyphsRef = { value: 0 };
-    const clustersRef: { value: Handle | null } = { value: null };
+    const clustersRef: { value: ExternalObject<Handle> | null } = { value: null };
     const numClustersRef = { value: 0 };
     const clusterFlagsRef = { value: 0 };
 

@@ -54,12 +54,12 @@ const waitForConnection = (registry: ConnectionRegistry): Promise<ProtocolConnec
         };
     });
 
-interface SocketServerContext {
+type SocketServerContext = {
     tmpDir: string;
     socketPath: string;
     server: SocketServer;
     registry: ConnectionRegistry;
-}
+};
 
 const socketCtx = {} as SocketServerContext;
 

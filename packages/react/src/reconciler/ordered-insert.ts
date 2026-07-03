@@ -13,7 +13,7 @@ const orderedInsertCache = new Map<GObject.Type, OrderedInsertSpec | null>();
 
 export const resolveOrderedInsert = (parent: Node): OrderedInsertSpec | null => {
     if (!(parent instanceof GObject.Object)) return null;
-    const gtype = parent.__gtype__;
+    const gtype = parent.__type__;
     const cached = orderedInsertCache.get(gtype);
     if (cached !== undefined) return cached;
     const resolved = findInheritedRow(gtype, ORDERED_INSERT) ?? null;

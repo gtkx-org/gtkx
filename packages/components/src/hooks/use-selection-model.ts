@@ -4,13 +4,13 @@ import { useSignal } from "@gtkx/react";
 import { useLayoutEffect, useRef } from "react";
 import type { ItemResolver } from "../utils/item-resolver.js";
 
-interface SelectionModelOptions<T, S> {
+type SelectionModelOptions<T, S> = {
     base: Gio.ListModel;
     selectionMode: Gtk.SelectionMode | null | undefined;
     selectedIds: string[] | null | undefined;
     onSelectionChanged: ((ids: string[]) => void) | null | undefined;
     resolver: ItemResolver<T, S>;
-}
+};
 
 type WrappingSelectionModel = (Gtk.SingleSelection | Gtk.MultiSelection | Gtk.NoSelection) & Gtk.SelectionModel;
 

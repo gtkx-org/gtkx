@@ -57,7 +57,7 @@ const childModelOf = <T>(
     rowValues: WeakMap<GObject.Object, RowValue<T>>,
     placeholdersById: Map<string, GObject.Object>,
 ): Gio.ListStore => {
-    const store = Gio.ListStore.new(Gtk.StringObject.prototype.__gtype__);
+    const store = Gio.ListStore.new(Gtk.StringObject.prototype.__type__);
     for (const child of children) {
         store.append(
             createTaggedRow(
@@ -77,7 +77,7 @@ export const createTreeModel = <T>(
     placeholdersById: Map<string, GObject.Object>,
 ): Gtk.TreeListModel => {
     const childrenByRow = new WeakMap<GObject.Object, ItemNode<T>[]>();
-    const root = Gio.ListStore.new(Gtk.StringObject.prototype.__gtype__);
+    const root = Gio.ListStore.new(Gtk.StringObject.prototype.__type__);
     for (const item of items) {
         const placeholder = createTaggedRow(
             { id: item.id, value: item.value, metadata: treeItemMetadata(item) },
@@ -106,7 +106,7 @@ export const createTreeModel = <T>(
 };
 
 export const createSectionModel = <S, T>(sections: SectionNode<S, T>[]): Gtk.FlattenListModel => {
-    const store = Gio.ListStore.new(Gtk.StringList.prototype.__gtype__);
+    const store = Gio.ListStore.new(Gtk.StringList.prototype.__type__);
     for (const section of sections) {
         store.append(Gtk.StringList.new(emptyStrings(countDescendants(section.data))));
     }

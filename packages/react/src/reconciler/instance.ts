@@ -26,7 +26,7 @@ const pickConstructProps = (gtype: bigint, props: Props): Props => {
 const constructWrapperInstance = (type: string, props: Props): GObject.Object => {
     const cls = requireClassByName(type);
     const skip = CONSTRUCTION_SKIP_PROPS[type];
-    const picked = pickConstructProps(cls.prototype.__gtype__, skip ? omit(props, skip) : props);
+    const picked = pickConstructProps(cls.prototype.__type__, skip ? omit(props, skip) : props);
     return constructWrapper(cls, picked) as GObject.Object;
 };
 

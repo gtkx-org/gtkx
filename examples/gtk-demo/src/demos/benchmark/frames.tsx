@@ -65,7 +65,7 @@ class ColorWidget extends Gtk.Widget {
     }
 }
 
-registerClass(ColorWidget, { gtypeName: COLOR_WIDGET_TYPE_NAME });
+registerClass(ColorWidget, { typeName: COLOR_WIDGET_TYPE_NAME });
 
 declare module "react" {
     namespace JSX {

@@ -14,7 +14,7 @@ const openVideoDialog = async (window: Gtk.Window | null, setVideoFile: (f: Gio.
     const dialog = new Gtk.FileDialog();
     dialog.setTitle("Select a video");
 
-    const filters = Gio.ListStore.new(Gtk.FileFilter.prototype.__gtype__);
+    const filters = Gio.ListStore.new(Gtk.FileFilter.prototype.__type__);
 
     const allFilter = new Gtk.FileFilter();
     allFilter.setName("All Files");

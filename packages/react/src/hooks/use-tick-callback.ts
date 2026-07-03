@@ -3,10 +3,10 @@ import { useRef } from "react";
 import type { GObjectTarget } from "../utils/gobject-target.js";
 import { useTargetRegistration } from "./use-target-registration.js";
 
-interface TickRegistration {
+type TickRegistration = {
     widget: Gtk.Widget;
     id: number | null;
-}
+};
 
 export function useTickCallback(target: GObjectTarget<Gtk.Widget>, callback: Gtk.TickCallback): void {
     const callbackRef = useRef(callback);

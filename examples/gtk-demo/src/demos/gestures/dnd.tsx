@@ -121,7 +121,7 @@ interface CanvasItem {
     angleDelta: number;
 }
 
-const gdkRgbaType = Gdk.RGBA.prototype.__gtype__;
+const gdkRgbaType = Gdk.RGBA.prototype.__type__;
 
 interface ContextMenuState {
     x: number;

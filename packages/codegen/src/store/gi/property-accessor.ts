@@ -102,15 +102,15 @@ const renderPropertyDescriptor = (context: ModuleContext, property: GirProperty)
     renderDescriptor(context, property.type, property.transferOwnership);
 
 const renderGenericGetBody = (context: ModuleContext, property: GirProperty, tsType: string): string => {
-    context.addRuntimeImport("getGObjectProperty");
+    context.addRuntimeImport("getObjectProperty");
     context.addRuntimeImport("t");
-    return `return getGObjectProperty(this, ${sourceStringLiteral(property.name)}, ${renderPropertyDescriptor(context, property)}) as ${tsType};`;
+    return `return getObjectProperty(this, ${sourceStringLiteral(property.name)}, ${renderPropertyDescriptor(context, property)}) as ${tsType};`;
 };
 
 const renderGenericSetBody = (context: ModuleContext, property: GirProperty): string => {
-    context.addRuntimeImport("setGObjectProperty");
+    context.addRuntimeImport("setObjectProperty");
     context.addRuntimeImport("t");
-    return `setGObjectProperty(this, ${sourceStringLiteral(property.name)}, ${renderPropertyDescriptor(context, property)}, value);`;
+    return `setObjectProperty(this, ${sourceStringLiteral(property.name)}, ${renderPropertyDescriptor(context, property)}, value);`;
 };
 
 type GetterBodyOptions = {

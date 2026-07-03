@@ -1,4 +1,4 @@
-import type { Handle } from "@gtkx/ffi";
+import type { ExternalObject, Handle } from "@gtkx/native";
 import { getHandle, t, wrapHandle } from "@gtkx/ffi";
 import { type Extend, type Filter, Pattern, type PatternType, type Status, type Surface } from "../cairo.js";
 import { type PathData, parsePath } from "./context.js";
@@ -351,7 +351,7 @@ export class MeshPattern extends Pattern {
     }
 
     getPath(patchNum: number): PathData[] {
-        return parsePath(cairoMeshPatternGetPath(getHandle(this), patchNum) as Handle);
+        return parsePath(cairoMeshPatternGetPath(getHandle(this), patchNum) as ExternalObject<Handle>);
     }
 
     getControlPoint(patchNum: number, pointNum: number): { x: number; y: number } {
@@ -390,7 +390,7 @@ const cairoPatternCreateRgb = bind(
     }),
 );
 PatternWithStatics.createRgb = (red: number, green: number, blue: number): Pattern => {
-    return wrapHandle(cairoPatternCreateRgb(red, green, blue) as Handle, Pattern);
+    return wrapHandle(cairoPatternCreateRgb(red, green, blue) as ExternalObject<Handle>, Pattern);
 };
 
 const cairoPatternCreateRgba = bind(
@@ -404,7 +404,7 @@ const cairoPatternCreateRgba = bind(
     }),
 );
 PatternWithStatics.createRgba = (red: number, green: number, blue: number, alpha: number): Pattern => {
-    return wrapHandle(cairoPatternCreateRgba(red, green, blue, alpha) as Handle, Pattern);
+    return wrapHandle(cairoPatternCreateRgba(red, green, blue, alpha) as ExternalObject<Handle>, Pattern);
 };
 
 const cairoPatternCreateLinear = bind(
@@ -418,7 +418,7 @@ const cairoPatternCreateLinear = bind(
     }),
 );
 PatternWithStatics.createLinear = (x0: number, y0: number, x1: number, y1: number): LinearPattern => {
-    return wrapHandle(cairoPatternCreateLinear(x0, y0, x1, y1) as Handle, LinearPattern);
+    return wrapHandle(cairoPatternCreateLinear(x0, y0, x1, y1) as ExternalObject<Handle>, LinearPattern);
 };
 
 const cairoPatternCreateRadial = bind(
@@ -439,7 +439,7 @@ PatternWithStatics.createRadial = (
     cy1: number,
     radius1: number,
 ): RadialPattern => {
-    return wrapHandle(cairoPatternCreateRadial(cx0, cy0, radius0, cx1, cy1, radius1) as Handle, RadialPattern);
+    return wrapHandle(cairoPatternCreateRadial(cx0, cy0, radius0, cx1, cy1, radius1) as ExternalObject<Handle>, RadialPattern);
 };
 
 const cairoPatternCreateMesh = bind(
@@ -453,7 +453,7 @@ const cairoPatternCreateMesh = bind(
     }),
 );
 PatternWithStatics.createMesh = (): MeshPattern => {
-    return wrapHandle(cairoPatternCreateMesh() as Handle, MeshPattern);
+    return wrapHandle(cairoPatternCreateMesh() as ExternalObject<Handle>, MeshPattern);
 };
 
 const cairoPatternCreateForSurface = bind(
@@ -473,5 +473,5 @@ const cairoPatternCreateForSurface = bind(
     }),
 );
 PatternWithStatics.createForSurface = (surface: Surface): Pattern => {
-    return wrapHandle(cairoPatternCreateForSurface(getHandle(surface)) as Handle, Pattern);
+    return wrapHandle(cairoPatternCreateForSurface(getHandle(surface)) as ExternalObject<Handle>, Pattern);
 };

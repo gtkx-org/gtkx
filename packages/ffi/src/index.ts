@@ -1,10 +1,28 @@
 export { read as readField, write as writeField } from "@gtkx/native";
+export { installMixins, type Mixin } from "@gtkx/utils";
 export { promisify } from "./async.js";
-export { resolveType } from "./descriptors.js";
-export { createErrorDomain, type ErrorDomain } from "./gerror.js";
-export { getGObjectProperty, newGObjectWithProperties, setGObjectProperty } from "./gobject.js";
+export { createErrorDomain, type ErrorDomain } from "./error.js";
+export { type ApplicationLike, onExit, quit, quitApplication, runApplication } from "./lifecycle.js";
+export { offSignal, onceSignal, onSignal } from "./listeners.js";
+export { fromNativeValue } from "./native-value.js";
+export { getObjectProperty, newObjectWithProperties, setObjectProperty } from "./object.js";
+export { registerClass } from "./register-class.js";
 export {
-    type GTyped,
+    constructWrapper,
+    getHandle,
+    getInstanceType,
+    getWrapperClassByName,
+    registerInterface,
+    registerWrapperClass,
+    requireWrapperClassByName,
+    setHandle,
+    tryGetHandle,
+    wrapHandle,
+} from "./registry.js";
+export { connectSignal, emitSignal, getSignalBaseName, type SignalHandler } from "./signal.js";
+export { t } from "./t.js";
+export {
+    resolveType,
     TYPE_BOOLEAN,
     TYPE_BOXED,
     TYPE_CHAR,
@@ -29,30 +47,12 @@ export {
     TYPE_ULONG,
     TYPE_UNICHAR,
     TYPE_VARIANT,
+    type TypedClass,
     typeFromName,
     typeInterfaces,
     typeIsA,
     typeName,
     typeParent,
     valueIsA,
-} from "./gtype.js";
-export { getGValueBoxed, setGValueBoxed } from "./gvalue.js";
-export { type ApplicationRunner, onExit, quit, quitApplication, runApplication } from "./lifecycle.js";
-export { offSignal, onceSignal, onSignal } from "./listeners.js";
-export { installMixins, type Mixin } from "./mixin.js";
-export { fromNativeValue } from "./native-value.js";
-export { registerClass } from "./register-class.js";
-export {
-    constructWrapper,
-    getHandle,
-    getInstanceGtype,
-    getWrapperClassByName,
-    registerInterface,
-    registerWrapperClass,
-    requireWrapperClassByName,
-    setHandle,
-    tryGetHandle,
-    wrapHandle,
-} from "./registry.js";
-export { connectGObjectSignal, emitGObjectSignal, type SignalHandler, signalBaseName } from "./signal.js";
-export { t } from "./t.js";
+} from "./type.js";
+export { getValueBoxed, setValueBoxed } from "./value.js";

@@ -6,7 +6,7 @@ import type { ItemResolver } from "../utils/item-resolver.js";
 import { useControlledSelectionModel } from "./use-controlled-selection-model.js";
 import { useListModel } from "./use-list-model.js";
 
-interface CollectionModelInput<T, S> {
+type CollectionModelInput<T, S> = {
     model: Gio.ListModel | undefined;
     items: ItemNode<T>[] | undefined;
     sections: SectionNode<S, T>[] | undefined;
@@ -15,14 +15,14 @@ interface CollectionModelInput<T, S> {
     selectedIds: string[] | null | undefined;
     onSelectionChanged: ((ids: string[]) => void) | null | undefined;
     renderHeader: ((info: { section: S }) => ReactNode) | null | undefined;
-}
+};
 
-interface CollectionModelResult<T, S> {
+type CollectionModelResult<T, S> = {
     resolver: ItemResolver<T, S>;
     headerResolver: ItemResolver<T, S>;
     installedModel: Gtk.SelectionModel;
     useHeader: boolean;
-}
+};
 
 export const useCollectionModel = <T, S>(input: CollectionModelInput<T, S>): CollectionModelResult<T, S> => {
     const externalModel = input.model;

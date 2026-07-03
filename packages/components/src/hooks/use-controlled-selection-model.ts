@@ -3,13 +3,13 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import type { ItemResolver } from "../utils/item-resolver.js";
 import { useSelectionModel } from "./use-selection-model.js";
 
-interface ControlledSelectionInput<T, S> {
+type ControlledSelectionInput<T, S> = {
     base: Gio.ListModel;
     resolver: ItemResolver<T, S>;
     selectionMode: Gtk.SelectionMode | null | undefined;
     selectedIds: string[] | null | undefined;
     onSelectionChanged: ((ids: string[]) => void) | null | undefined;
-}
+};
 
 export const useControlledSelectionModel = <T, S>(
     externalModel: Gio.ListModel | undefined,

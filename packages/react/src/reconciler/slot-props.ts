@@ -19,7 +19,7 @@ export const slotPropsFor = (elementName: string): Set<string> => {
     const cls = getWrapperClassByName(elementName);
     const names = cls
         ? foldInheritedTable(
-              cls.prototype.__gtype__,
+              cls.prototype.__type__,
               SLOT_PROPS,
               (collected: Set<string>, propNames) => {
                   for (const name of propNames) collected.add(name);

@@ -1,4 +1,4 @@
-import type { Handle } from "@gtkx/ffi";
+import type { ExternalObject, Handle } from "@gtkx/native";
 import { getHandle, setHandle, t } from "@gtkx/ffi";
 import type { Antialias, HintMetrics, HintStyle, Status, SubpixelOrder } from "../cairo.js";
 import { FontOptions } from "../cairo.js";
@@ -50,7 +50,7 @@ class FontOptionsImpl extends FontOptions {
     constructor(other?: FontOptions) {
         super();
         const handle = other === undefined ? cairoFontOptionsCreate() : cairoFontOptionsCopy(getHandle(other));
-        setHandle(this, handle as Handle);
+        setHandle(this, handle as ExternalObject<Handle>);
     }
 
     static create(): FontOptionsImpl {

@@ -3,13 +3,13 @@ import { type GObjectTarget, resolveGObjectTarget } from "@gtkx/react/internal";
 import { useLayoutEffect, useRef } from "react";
 import type { ColumnRegistration } from "../column-view-context.js";
 
-interface SortHandlerOptions {
+type SortHandlerOptions = {
     columnView: GObjectTarget<Gtk.ColumnView>;
     sortColumn: string | null | undefined;
     sortOrder: Gtk.SortType | null | undefined;
     onSortChanged: ((column: string | null, order: Gtk.SortType) => void) | null | undefined;
     columns: ColumnRegistration[];
-}
+};
 
 const neutralSorter = (): Gtk.CustomSorter => Gtk.CustomSorter.new(() => 0);
 
@@ -46,10 +46,10 @@ const primarySort = (sorter: Gtk.Sorter): { column: Gtk.ColumnViewColumn | null;
         ? { column: sorter.getPrimarySortColumn(), order: sorter.getPrimarySortOrder() }
         : { column: null, order: Gtk.SortType.ASCENDING };
 
-interface SorterSubscription {
+type SorterSubscription = {
     sorter: Gtk.Sorter | null;
     handler: ((change: Gtk.SorterChange) => void) | null;
-}
+};
 
 const disconnectSorter = (subscription: SorterSubscription): void => {
     if (subscription.sorter !== null && subscription.handler !== null) {

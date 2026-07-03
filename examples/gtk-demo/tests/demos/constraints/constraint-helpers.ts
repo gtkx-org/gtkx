@@ -2,11 +2,11 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { screen } from "@gtkx/testing";
 import { expect } from "vitest";
 
-export interface ChildButtons {
+export type ChildButtons = {
     button1: Gtk.Button;
     button2: Gtk.Button;
     button3: Gtk.Button;
-}
+};
 
 export const findChildButtons = async (): Promise<ChildButtons> => ({
     button1: (await screen.findByName("button1")) as Gtk.Button,

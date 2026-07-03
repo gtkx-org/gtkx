@@ -5,11 +5,11 @@ import { isRelationshipNode } from "./relationship-node.js";
 import { RULE_CONTEXT, resolveAppendRuleSet, ruleNodeOf } from "./rule-registry.js";
 import { type Node, stateOf } from "./state.js";
 
-export interface ElementMapping {
+export type ElementMapping = {
     matches(child: Node, parent: Node): boolean;
     attach(child: Node, parent: Node, anchor?: GObject.Object | null, fresh?: boolean): void;
     detach(child: Node, parent: Node): void;
-}
+};
 
 let elementMap: ElementMapping[] = [];
 
@@ -21,7 +21,7 @@ const isSelfAttachingChild = (child: Node, parent: Node): boolean =>
     child instanceof GObject.Object &&
     !(child instanceof Gtk.Widget) &&
     parent instanceof GObject.Object &&
-    resolveAppendRuleSet(child.__gtype__) !== null;
+    resolveAppendRuleSet(child.__type__) !== null;
 
 export const orderedInsertMapping: ElementMapping = {
     matches: (child, parent) =>
@@ -42,13 +42,13 @@ export const childRuleSetMapping: ElementMapping = {
         const parentNode = ruleNodeOf(parent);
         const childNode = ruleNodeOf(child);
         if (!parentNode || !childNode || !(child instanceof GObject.Object)) return;
-        resolveAppendRuleSet(child.__gtype__)?.appendChild?.(parentNode, childNode, RULE_CONTEXT);
+        resolveAppendRuleSet(child.__type__)?.appendChild?.(parentNode, childNode, RULE_CONTEXT);
     },
     detach: (child, parent) => {
         const parentNode = ruleNodeOf(parent);
         const childNode = ruleNodeOf(child);
         if (!parentNode || !childNode || !(child instanceof GObject.Object)) return;
-        resolveAppendRuleSet(child.__gtype__)?.removeChild?.(parentNode, childNode, RULE_CONTEXT);
+        resolveAppendRuleSet(child.__type__)?.removeChild?.(parentNode, childNode, RULE_CONTEXT);
     },
 };
 

@@ -75,17 +75,17 @@ export type OrderedInsertSpec = {
     detach: string;
 };
 
-export interface RuleNode {
+export type RuleNode = {
     instance: object;
     props: Record<string, unknown>;
     slotTag: string | undefined;
-}
+};
 
 export type RuleContext = {
     instanceIsA: (instance: object, typeName: string) => boolean;
 };
 
-export interface RuleSet {
+export type RuleSet = {
     appendChild?: (parent: RuleNode, child: RuleNode, ctx: RuleContext) => void;
     removeChild?: (parent: RuleNode, child: RuleNode, ctx: RuleContext) => void;
     setProps?: (
@@ -94,6 +94,6 @@ export interface RuleSet {
         oldProps: Record<string, unknown> | null,
         ctx: RuleContext,
     ) => void;
-}
+};
 
 export type RuleRegistry = Record<string, RuleSet>;

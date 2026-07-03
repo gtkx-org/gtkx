@@ -1,4 +1,5 @@
-import { getHandle, type Handle, readField as read, t, wrapHandle, writeField as write } from "@gtkx/ffi";
+import type { ExternalObject, Handle } from "@gtkx/native";
+import { getHandle, readField as read, t, wrapHandle, writeField as write } from "@gtkx/ffi";
 import { alloc } from "@gtkx/native";
 import type {
     Antialias,
@@ -27,7 +28,7 @@ const CONTEXT_T = t.boxed("CairoContext", {
 export type CairoGlyph = { index: number; x: number; y: number };
 export type CairoTextCluster = { numBytes: number; numGlyphs: number };
 
-export const allocGlyphBuffer = (glyphs: CairoGlyph[]): Handle => {
+export const allocGlyphBuffer = (glyphs: CairoGlyph[]): ExternalObject<Handle> => {
     const buf = alloc(glyphs.length * 24, "cairo_glyph_t[]");
     let offset = 0;
     for (const glyph of glyphs) {
@@ -39,7 +40,7 @@ export const allocGlyphBuffer = (glyphs: CairoGlyph[]): Handle => {
     return buf;
 };
 
-export const allocClusterBuffer = (clusters: CairoTextCluster[]): Handle => {
+export const allocClusterBuffer = (clusters: CairoTextCluster[]): ExternalObject<Handle> => {
     const buf = alloc(clusters.length * 8, "cairo_text_cluster_t[]");
     let offset = 0;
     for (const cluster of clusters) {
@@ -67,7 +68,7 @@ export type FontExtents = {
     maxYAdvance: number;
 };
 
-export const readTextExtents = (handle: Handle): TextExtents => ({
+export const readTextExtents = (handle: ExternalObject<Handle>): TextExtents => ({
     xBearing: read(handle, t.float64, 0) as number,
     yBearing: read(handle, t.float64, 8) as number,
     width: read(handle, t.float64, 16) as number,
@@ -76,7 +77,7 @@ export const readTextExtents = (handle: Handle): TextExtents => ({
     yAdvance: read(handle, t.float64, 40) as number,
 });
 
-export const readFontExtents = (handle: Handle): FontExtents => ({
+export const readFontExtents = (handle: ExternalObject<Handle>): FontExtents => ({
     ascent: read(handle, t.float64, 0) as number,
     descent: read(handle, t.float64, 8) as number,
     height: read(handle, t.float64, 16) as number,
@@ -95,11 +96,11 @@ const PATH_LINE_TO = 1;
 const PATH_CURVE_TO = 2;
 const PATH_CLOSE_PATH = 3;
 
-export const parsePath = (pathHandle: Handle): PathData[] => {
+export const parsePath = (pathHandle: ExternalObject<Handle>): PathData[] => {
     const numData = read(pathHandle, t.int32, 16) as number;
     if (numData === 0) return [];
 
-    const dataArray = read(pathHandle, t.struct("borrowed", { size: numData * 16 }), 8) as Handle;
+    const dataArray = read(pathHandle, t.struct("borrowed", { size: numData * 16 }), 8) as ExternalObject<Handle>;
     const result: PathData[] = [];
     let i = 0;
     while (i < numData) {
@@ -685,7 +686,7 @@ const cairoGetTarget = bind(
     }),
 );
 Context.prototype.getTarget = function (): Surface {
-    return wrapHandle(cairoGetTarget(getHandle(this)) as Handle, Surface) as Surface;
+    return wrapHandle(cairoGetTarget(getHandle(this)) as ExternalObject<Handle>, Surface) as Surface;
 };
 
 const cairoSetSourceSurface = bind(
@@ -739,7 +740,7 @@ const cairoGetSource = bind(
     }),
 );
 Context.prototype.getSource = function (): Pattern {
-    return wrapHandle(cairoGetSource(getHandle(this)) as Handle, Pattern) as Pattern;
+    return wrapHandle(cairoGetSource(getHandle(this)) as ExternalObject<Handle>, Pattern) as Pattern;
 };
 
 const EXTENTS_ARGS = [CONTEXT_T, t.ref(t.float64), t.ref(t.float64), t.ref(t.float64), t.ref(t.float64)] as const;
@@ -810,14 +811,14 @@ Context.prototype.copyClipRectangleList = function (): Array<{
     width: number;
     height: number;
 }> {
-    const listHandle = cairoCopyClipRectangleList(getHandle(this)) as Handle;
+    const listHandle = cairoCopyClipRectangleList(getHandle(this)) as ExternalObject<Handle>;
 
     const numRectangles = read(listHandle, t.int32, 16) as number;
     if (numRectangles === 0) {
         cairoRectangleListDestroy(listHandle);
         return [];
     }
-    const rectsArray = read(listHandle, t.struct("full", { size: numRectangles * 32 }), 8) as Handle;
+    const rectsArray = read(listHandle, t.struct("full", { size: numRectangles * 32 }), 8) as ExternalObject<Handle>;
     const result: Array<{ x: number; y: number; width: number; height: number }> = [];
 
     for (let i = 0; i < numRectangles; i++) {
@@ -1002,7 +1003,7 @@ const cairoPopGroup = bind(
     }),
 );
 Context.prototype.popGroup = function (): Pattern {
-    return wrapHandle(cairoPopGroup(getHandle(this)) as Handle, Pattern) as Pattern;
+    return wrapHandle(cairoPopGroup(getHandle(this)) as ExternalObject<Handle>, Pattern) as Pattern;
 };
 
 const cairoPopGroupToSource = bind("libcairo.so.2", "cairo_pop_group_to_source", [CONTEXT_T], t.void);
@@ -1021,7 +1022,7 @@ const cairoGetGroupTarget = bind(
     }),
 );
 Context.prototype.getGroupTarget = function (): Surface {
-    return wrapHandle(cairoGetGroupTarget(getHandle(this)) as Handle, Surface) as Surface;
+    return wrapHandle(cairoGetGroupTarget(getHandle(this)) as ExternalObject<Handle>, Surface) as Surface;
 };
 
 const cairoSetFontFace = bind(
@@ -1052,7 +1053,7 @@ const cairoGetFontFace = bind(
     }),
 );
 Context.prototype.getFontFace = function (): FontFace {
-    return wrapHandle(cairoGetFontFace(getHandle(this)) as Handle, FontFace) as FontFace;
+    return wrapHandle(cairoGetFontFace(getHandle(this)) as ExternalObject<Handle>, FontFace) as FontFace;
 };
 
 const cairoSetFontMatrix = bind(
@@ -1105,7 +1106,7 @@ const cairoGetScaledFont = bind(
     }),
 );
 Context.prototype.getScaledFont = function (): ScaledFont {
-    return wrapHandle(cairoGetScaledFont(getHandle(this)) as Handle, ScaledFont) as ScaledFont;
+    return wrapHandle(cairoGetScaledFont(getHandle(this)) as ExternalObject<Handle>, ScaledFont) as ScaledFont;
 };
 
 const cairoShowGlyphs = bind(
@@ -1153,7 +1154,7 @@ const cairoCopyPath = bind(
     t.boxed("cairo_path_t", { ownership: "full", sharedLibrary: "libcairo.so.2", freeFn: "cairo_path_destroy" }),
 );
 Context.prototype.copyPath = function (): PathData[] {
-    return parsePath(cairoCopyPath(getHandle(this)) as Handle);
+    return parsePath(cairoCopyPath(getHandle(this)) as ExternalObject<Handle>);
 };
 
 const cairoCopyPathFlat = bind(
@@ -1163,7 +1164,7 @@ const cairoCopyPathFlat = bind(
     t.boxed("cairo_path_t", { ownership: "full", sharedLibrary: "libcairo.so.2", freeFn: "cairo_path_destroy" }),
 );
 Context.prototype.copyPathFlat = function (): PathData[] {
-    return parsePath(cairoCopyPathFlat(getHandle(this)) as Handle);
+    return parsePath(cairoCopyPathFlat(getHandle(this)) as ExternalObject<Handle>);
 };
 
 Context.prototype.appendPath = function (data: PathData[]): void {
@@ -1205,7 +1206,7 @@ const cairoCreate = bind(
 
 class ContextImpl extends Context {
     static create(surface: Surface): ContextImpl {
-        return wrapHandle(cairoCreate(getHandle(surface)) as Handle, ContextImpl);
+        return wrapHandle(cairoCreate(getHandle(surface)) as ExternalObject<Handle>, ContextImpl);
     }
 }
 

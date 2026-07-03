@@ -1,12 +1,12 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
 
-export interface CellEntry {
+export type CellEntry = {
     container: GObject.Object;
     position: number;
     treeRow: Gtk.TreeListRow | null;
     item: GObject.Object | null;
-}
+};
 
 let nextKey = 0;
 

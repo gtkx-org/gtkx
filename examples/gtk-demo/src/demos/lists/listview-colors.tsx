@@ -183,7 +183,7 @@ const PLACEHOLDER_COLOR_ITEM: ColorItem = createColorItem(0);
 class ColorObject extends GObject.Object {
     colorItem: ColorItem = PLACEHOLDER_COLOR_ITEM;
 }
-registerClass(ColorObject, { gtypeName: "GtkxDemoColorObject" });
+registerClass(ColorObject, { typeName: "GtkxDemoColorObject" });
 
 function createColorObject(position: number): ColorObject {
     const obj = new ColorObject();
@@ -369,7 +369,7 @@ interface ColorsModels {
 function useColorsModels(): ColorsModels {
     const ref = useRef<ColorsModels | null>(null);
     if (ref.current === null) {
-        const baseStore = Gio.ListStore.new(ColorObject.prototype.__gtype__);
+        const baseStore = Gio.ListStore.new(ColorObject.prototype.__type__);
         const selection = new Gtk.MultiSelection({ model: baseStore });
         ref.current = { baseStore, selection, liveRefs: [] };
     }

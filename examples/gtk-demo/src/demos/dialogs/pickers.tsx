@@ -18,7 +18,7 @@ import { useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./pickers.tsx?raw";
 
-const gfileType = Gio.File.prototype.__gtype__;
+const gfileType = Gio.File.prototype.__type__;
 
 const DIALOG_TIMEOUT_SECONDS = 20;
 

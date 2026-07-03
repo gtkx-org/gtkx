@@ -1,4 +1,4 @@
-import type { Handle } from "@gtkx/ffi";
+import type { ExternalObject, Handle } from "@gtkx/native";
 import { getHandle, t, wrapHandle } from "@gtkx/ffi";
 import type { Content, Format, RectangleInt, Status, SurfaceType } from "../cairo.js";
 import { Surface } from "../cairo.js";
@@ -19,7 +19,7 @@ declare module "../cairo.js" {
         status(): Status;
         finish(): void;
         flush(): void;
-        getDevice(): Handle | null;
+        getDevice(): ExternalObject<Handle> | null;
         getFontOptions(): FontOptions;
         getContent(): Content;
         markDirty(): void;
@@ -66,7 +66,7 @@ const cairoSurfaceCreateSimilar = bind(
     }),
 );
 SurfaceWithStatics.createSimilar = (other: Surface, content: Content, width: number, height: number): Surface => {
-    return wrapHandle(cairoSurfaceCreateSimilar(getHandle(other), content, width, height) as Handle, Surface);
+    return wrapHandle(cairoSurfaceCreateSimilar(getHandle(other), content, width, height) as ExternalObject<Handle>, Surface);
 };
 
 const cairoSurfaceCreateSimilarImage = bind(
@@ -80,7 +80,7 @@ const cairoSurfaceCreateSimilarImage = bind(
     }),
 );
 SurfaceWithStatics.createSimilarImage = (other: Surface, format: Format, width: number, height: number): Surface => {
-    return wrapHandle(cairoSurfaceCreateSimilarImage(getHandle(other), format, width, height) as Handle, Surface);
+    return wrapHandle(cairoSurfaceCreateSimilarImage(getHandle(other), format, width, height) as ExternalObject<Handle>, Surface);
 };
 
 const cairoSurfaceCreateForRectangle = bind(
@@ -100,7 +100,7 @@ SurfaceWithStatics.createForRectangle = (
     width: number,
     height: number,
 ): Surface => {
-    return wrapHandle(cairoSurfaceCreateForRectangle(getHandle(target), x, y, width, height) as Handle, Surface);
+    return wrapHandle(cairoSurfaceCreateForRectangle(getHandle(target), x, y, width, height) as ExternalObject<Handle>, Surface);
 };
 
 const cairoSurfaceWriteToPng = bind(
@@ -129,8 +129,8 @@ Surface.prototype.flush = function (): void {
 };
 
 const cairoSurfaceGetDevice = bind("libcairo.so.2", "cairo_surface_get_device", [SURFACE_T], DEVICE_T_NONE);
-Surface.prototype.getDevice = function (): Handle | null {
-    return cairoSurfaceGetDevice(getHandle(this)) as Handle | null;
+Surface.prototype.getDevice = function (): ExternalObject<Handle> | null {
+    return cairoSurfaceGetDevice(getHandle(this)) as ExternalObject<Handle> | null;
 };
 
 const cairoSurfaceGetFontOptions = bind(
@@ -288,7 +288,7 @@ const cairoSurfaceMapToImage = bind(
     SURFACE_T,
 );
 Surface.prototype.mapToImage = function (extents: RectangleInt): Surface {
-    return wrapHandle(cairoSurfaceMapToImage(getHandle(this), getHandle(extents)) as Handle, ImageSurface);
+    return wrapHandle(cairoSurfaceMapToImage(getHandle(this), getHandle(extents)) as ExternalObject<Handle>, ImageSurface);
 };
 
 const cairoSurfaceUnmapImage = bind("libcairo.so.2", "cairo_surface_unmap_image", [SURFACE_T, SURFACE_T], t.void);

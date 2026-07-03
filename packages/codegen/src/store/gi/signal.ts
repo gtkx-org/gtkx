@@ -33,8 +33,8 @@ export const renderSignalMembers = (context: ModuleContext, klass: GirClass): st
     if (signals.length === 0) return [];
     const isRootObject = context.namespace.name === "GObject" && klass.name === "Object";
 
-    context.addRuntimeImport("connectGObjectSignal");
-    context.addRuntimeImport("signalBaseName");
+    context.addRuntimeImport("connectSignal");
+    context.addRuntimeImport("getSignalBaseName");
     context.addRuntimeImport("t");
 
     const connectCases = signals.map((signal) => renderConnectCase(context, signal));
@@ -46,8 +46,8 @@ export const renderSignalMembers = (context: ModuleContext, klass: GirClass): st
         ? `default:\n    throw new globalThis.Error("Unknown signal '" + sigName + "'");`
         : "default:\n    return super.emit(sigName, ...args);";
 
-    const connectSwitch = `switch (signalBaseName(signal)) {\n${indent([...connectCases, connectDefault].join("\n"), 1)}\n}`;
-    const emitSwitch = `switch (signalBaseName(sigName)) {\n${indent([...emitCases, emitDefault].join("\n"), 1)}\n}`;
+    const connectSwitch = `switch (getSignalBaseName(signal)) {\n${indent([...connectCases, connectDefault].join("\n"), 1)}\n}`;
+    const emitSwitch = `switch (getSignalBaseName(sigName)) {\n${indent([...emitCases, emitDefault].join("\n"), 1)}\n}`;
 
     return [
         renderBlock(`connect(signal: string, handler: ${SIGNAL_HANDLER_TYPE}, after?: boolean): number`, connectSwitch),
@@ -207,7 +207,7 @@ const renderSignalEmitEntry = (context: ModuleContext, signal: GirSignal): strin
 
 const renderConnectCase = (context: ModuleContext, signal: GirSignal): string => {
     const callback = renderCallback(context, signal);
-    const body = `return connectGObjectSignal(this, signal, { callback: ${callback}, handler, after: after ?? false });`;
+    const body = `return connectSignal(this, signal, { callback: ${callback}, handler, after: after ?? false });`;
     return renderBlock(`case ${sourceStringLiteral(signal.name)}:`, body);
 };
 
@@ -216,7 +216,7 @@ const renderEmitCase = (context: ModuleContext, signal: GirSignal): string => {
     if (params.some((parameter) => isCallerAllocatedOut(parameter) && !isRecordCallerOut(context, parameter))) {
         return renderUnsupportedEmitCase(signal);
     }
-    context.addRuntimeImport("emitGObjectSignal");
+    context.addRuntimeImport("emitSignal");
 
     let argIndex = 0;
     const argLiterals = params.map((parameter) => {
@@ -240,7 +240,7 @@ const renderEmitCase = (context: ModuleContext, signal: GirSignal): string => {
     const returnArg = isVoid
         ? ""
         : `, ${renderDescriptor(context, signal.returnValue.type, signal.returnValue.transferOwnership)}`;
-    const body = `return emitGObjectSignal(this, sigName, [${argLiterals.join(", ")}]${returnArg});`;
+    const body = `return emitSignal(this, sigName, [${argLiterals.join(", ")}]${returnArg});`;
 
     return renderBlock(`case ${sourceStringLiteral(signal.name)}:`, body);
 };

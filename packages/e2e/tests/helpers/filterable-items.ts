@@ -1,7 +1,7 @@
-interface FilterableItem {
+type FilterableItem = {
     id: string;
     active: boolean;
-}
+};
 
 const FILTERABLE_ITEMS: FilterableItem[] = [
     { id: "1", active: true },

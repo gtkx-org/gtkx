@@ -6,177 +6,155 @@ import {
     type RegisterClassVfunc as NativeRegisterClassVfunc,
     setWrapper,
 } from "@gtkx/native";
-import type { AnyClass } from "@gtkx/utils";
-import { type GTyped, TYPE_INVALID, typeFromName, typeInterfaces, typeIsA, typeName, typeParent } from "./gtype.js";
-import type { Mixin } from "./mixin.js";
+import type { AnyClass, Mixin } from "@gtkx/utils";
+import { TYPE_INVALID, type TypedClass, typeFromName, typeInterfaces, typeIsA, typeName, typeParent } from "./type.js";
+
+export type VfuncDescriptor<K extends "class" | "interface"> = {
+    kind: K;
+    className: string;
+    vfuncName: string;
+    byteOffset: number;
+    argDescriptors: NativeRegisterClassVfunc["argDescriptors"];
+    returnDescriptor: NativeRegisterClassVfunc["returnDescriptor"];
+};
+
+export type VfuncRegistry = Record<string, VfuncDescriptor<"class"> | VfuncDescriptor<"interface">>;
 
 const classRegistry = new Map<bigint, AnyClass>();
+const interfaceMixinRegistry = new Map<bigint, Mixin>();
+const composedClassRegistry = new Map<bigint, AnyClass>();
+const handleMap = new WeakMap<object, ExternalObject<Handle>>();
+const vfuncRegistry = new WeakMap<object, VfuncRegistry>();
+const interfaceVfuncRegistry = new Map<bigint, VfuncRegistry>();
 
-function stampGtype(cls: AnyClass, gtype: bigint): void {
-    (cls.prototype as { [K in keyof GTyped]: GTyped[K] }).__gtype__ = gtype;
+function setClassType(cls: AnyClass, type: bigint): void {
+    (cls.prototype as { [K in keyof TypedClass]: TypedClass[K] }).__type__ = type;
 }
 
-function ownStampedGtype(cls: AnyClass): bigint {
+export function getClassType(cls: AnyClass): bigint {
     const proto: object = cls.prototype;
-    return Object.hasOwn(proto, "__gtype__") ? (proto as GTyped).__gtype__ : TYPE_INVALID;
+    return Object.hasOwn(proto, "__type__") ? (proto as TypedClass).__type__ : TYPE_INVALID;
 }
 
-export function setClassGtype(cls: AnyClass, gtype: bigint): void {
-    if (gtype !== TYPE_INVALID) {
-        classRegistry.set(gtype, cls);
-        stampGtype(cls, gtype);
+export function getInstanceType(instance: object): bigint {
+    return getClassType(instance.constructor as AnyClass);
+}
+
+export function registerClassType(cls: AnyClass, type: bigint): void {
+    if (type !== TYPE_INVALID) {
+        classRegistry.set(type, cls);
+        setClassType(cls, type);
     }
 }
 
-export function registerWrapperClass(cls: AnyClass, gtype: bigint, vfuncs?: VfuncRegistry): void {
-    setClassGtype(cls, gtype);
+export function registerWrapperClass(cls: AnyClass, type: bigint, vfuncs?: VfuncRegistry): void {
+    registerClassType(cls, type);
     if (vfuncs) registerVfuncRegistry(cls, vfuncs);
 }
 
-const interfaceMixinByGtype = new Map<bigint, Mixin>();
-const composedClassByGtype = new Map<bigint, AnyClass>();
-
-export function registerInterface(cls: AnyClass, gtype: bigint, mixin: Mixin, vfuncs?: VfuncRegistry): void {
-    if (gtype === TYPE_INVALID) return;
-    stampGtype(cls, gtype);
-    interfaceMixinByGtype.set(gtype, mixin);
-    if (vfuncs) registerInterfaceVfuncRegistry(gtype, vfuncs);
+export function registerInterface(cls: AnyClass, type: bigint, mixin: Mixin, vfuncs?: VfuncRegistry): void {
+    if (type === TYPE_INVALID) return;
+    setClassType(cls, type);
+    interfaceMixinRegistry.set(type, mixin);
+    if (vfuncs) registerInterfaceVfuncRegistry(type, vfuncs);
 }
 
-export function getClassGtype(cls: AnyClass): bigint {
-    return ownStampedGtype(cls);
-}
-
-export function getInstanceGtype(instance: object): bigint {
-    return getClassGtype(instance.constructor as AnyClass);
-}
-
-function instantiate<T extends object>(cls: AnyClass<T>, handle: ExternalObject<Handle>): T {
-    const instance = Object.create(cls.prototype) as T;
-    setHandle(instance, handle);
-    return instance;
-}
-
+export function wrapHandle(handle: null | undefined, cls?: AnyClass): null;
 export function wrapHandle<T extends object>(handle: ExternalObject<Handle>, cls: AnyClass<T>): T;
 export function wrapHandle<T extends object>(
     handle: ExternalObject<Handle> | null | undefined,
     cls: AnyClass<T>,
 ): T | null;
-export function wrapHandle(handle: null | undefined, cls?: AnyClass): null;
-export function wrapHandle<T extends object = GTyped>(handle: ExternalObject<Handle>, cls?: AnyClass): T;
-export function wrapHandle<T extends object = GTyped>(
+export function wrapHandle<T extends object = TypedClass>(handle: ExternalObject<Handle>, cls?: AnyClass): T;
+export function wrapHandle<T extends object = TypedClass>(
     handle: ExternalObject<Handle> | null | undefined,
     cls?: AnyClass,
 ): T | null;
 export function wrapHandle(handle: ExternalObject<Handle> | null | undefined, cls?: AnyClass): object | null {
     if (handle === null || handle === undefined) return null;
     if (cls === undefined) {
-        return resolveWrapper(handle);
+        return getOrCreateWrapper(handle);
     }
-    return instantiate(cls, handle);
+    const instance: object = Object.create(cls.prototype);
+    setHandle(instance, handle);
+    return instance;
 }
 
-export function getWrapperClass(gtype: bigint): AnyClass | null {
-    return classRegistry.get(gtype) ?? null;
-}
-
-export function requireWrapperClass(gtype: bigint): AnyClass {
-    const cls = getWrapperClass(gtype);
+export function getWrapperClass(type: bigint): AnyClass {
+    const cls = classRegistry.get(type);
     if (!cls) {
-        throw new Error(`No registered wrapper class for GType '${typeName(gtype) ?? String(gtype)}'`);
+        throw new Error(`No registered wrapper class for type '${typeName(type) ?? String(type)}'`);
     }
     return cls;
 }
 
-export function getWrapperClassByName(name: string): AnyClass<GTyped> | null {
-    return getWrapperClass(typeFromName(name)) as AnyClass<GTyped> | null;
+export function getWrapperClassByName(name: string): AnyClass<TypedClass> | null {
+    return (classRegistry.get(typeFromName(name)) ?? null) as AnyClass<TypedClass> | null;
 }
 
-export function requireWrapperClassByName(name: string, describe: (name: string) => string): AnyClass<GTyped> {
+export function requireWrapperClassByName(name: string, describe: (name: string) => string): AnyClass<TypedClass> {
     const cls = getWrapperClassByName(name);
     if (!cls) throw new Error(describe(name));
     return cls;
 }
 
-export function constructWrapper(cls: AnyClass<GTyped>, props: Record<string, unknown>): GTyped {
-    return new (cls as new (props: Record<string, unknown>) => GTyped)(props);
+export function constructWrapper(cls: AnyClass<TypedClass>, props: Record<string, unknown>): TypedClass {
+    return new (cls as new (props: Record<string, unknown>) => TypedClass)(props);
 }
 
-export function findWrapperClassInChain(gtype: bigint): AnyClass | null {
-    const direct = getWrapperClass(gtype);
-    if (direct) return direct;
-    let currentGtype = gtype;
-    while (currentGtype !== TYPE_INVALID) {
-        const parentGtype = typeParent(currentGtype);
-        if (parentGtype === TYPE_INVALID) break;
-        const parentCls = getWrapperClass(parentGtype);
-        if (parentCls) return parentCls;
-        currentGtype = parentGtype;
+export function resolveWrapperClass(type: bigint): AnyClass | null {
+    let currentType = type;
+    while (currentType !== TYPE_INVALID) {
+        const cls = classRegistry.get(currentType);
+        if (cls) return cls;
+        currentType = typeParent(currentType);
     }
-
     return null;
 }
 
-function composeInterfaces(base: AnyClass, runtimeGtype: bigint): AnyClass {
-    const baseGtype = getClassGtype(base);
+function createComposedClass(base: AnyClass, runtimeType: bigint): AnyClass {
+    const baseType = getClassType(base);
     const applied = new Set<bigint>();
     let cls: AnyClass = base;
-    for (const gtype of typeInterfaces(runtimeGtype)) {
-        if (applied.has(gtype) || typeIsA(baseGtype, gtype)) continue;
-        const mixin = interfaceMixinByGtype.get(gtype);
+    for (const type of typeInterfaces(runtimeType)) {
+        if (applied.has(type) || typeIsA(baseType, type)) continue;
+        const mixin = interfaceMixinRegistry.get(type);
         if (mixin === undefined) continue;
-        applied.add(gtype);
+        applied.add(type);
         cls = mixin(cls);
     }
     return applied.size === 0 ? base : cls;
 }
 
-function resolveComposedClass(runtimeGtype: bigint): AnyClass | null {
-    const exact = getWrapperClass(runtimeGtype);
+function resolveComposedClass(runtimeType: bigint): AnyClass | null {
+    const exact = classRegistry.get(runtimeType);
     if (exact) return exact;
-    const cached = composedClassByGtype.get(runtimeGtype);
+    const cached = composedClassRegistry.get(runtimeType);
     if (cached) return cached;
-    const base = findWrapperClassInChain(runtimeGtype);
+    const base = resolveWrapperClass(runtimeType);
     if (base === null) return null;
-    const composed = composeInterfaces(base, runtimeGtype);
+    const composed = createComposedClass(base, runtimeType);
     if (composed === base) return base;
-    stampGtype(composed, runtimeGtype);
-    composedClassByGtype.set(runtimeGtype, composed);
+    setClassType(composed, runtimeType);
+    composedClassRegistry.set(runtimeType, composed);
     return composed;
 }
 
-function resolveWrapper(handle: ExternalObject<Handle>): object {
+function getOrCreateWrapper(handle: ExternalObject<Handle>): object {
     const existing = getWrapper(handle);
     if (existing) return existing;
 
-    const runtimeGtype: bigint = getType(handle);
-    if (runtimeGtype === TYPE_INVALID) {
+    const runtimeType: bigint = getType(handle);
+    if (runtimeType === TYPE_INVALID) {
         throw new Error("Cannot resolve runtime GLib type from handle");
     }
 
-    const cls = resolveComposedClass(runtimeGtype);
-    if (!cls) throw new Error(`Expected registered GLib type, got gtype ${String(runtimeGtype)}`);
-    const instance = Object.create(cls.prototype) as GTyped;
-    linkGObjectWrapper(handle, instance);
+    const cls = resolveComposedClass(runtimeType);
+    if (!cls) throw new Error(`Expected registered GLib type, got type ${String(runtimeType)}`);
+    const instance: object = Object.create(cls.prototype);
+    registerWrapper(handle, instance);
     return instance;
 }
-
-export function getParentClass(cls: AnyClass): AnyClass | null {
-    const parent: unknown = Object.getPrototypeOf(cls);
-    return typeof parent === "function" && parent !== Function.prototype ? (parent as AnyClass) : null;
-}
-
-export function walkClassChain<T>(cls: AnyClass | null, visit: (ancestor: AnyClass) => T | undefined): T | undefined {
-    let current = cls;
-    while (current !== null) {
-        const result = visit(current);
-        if (result !== undefined) return result;
-        current = getParentClass(current);
-    }
-    return undefined;
-}
-
-const handleMap = new WeakMap<object, ExternalObject<Handle>>();
 
 export function getHandle(instance: object): ExternalObject<Handle> {
     const handle = handleMap.get(instance);
@@ -195,39 +173,24 @@ export function setHandle(instance: object, handle: ExternalObject<Handle>): voi
     handleMap.set(instance, handle);
 }
 
-function linkGObjectWrapper(handle: ExternalObject<Handle>, instance: object): void {
+function registerWrapper(handle: ExternalObject<Handle>, instance: object): void {
     setHandle(instance, handle);
     setWrapper(handle, instance);
 }
 
-export type VfuncDescriptor<K extends "class" | "interface"> = {
-    kind: K;
-    className: string;
-    vfuncName: string;
-    byteOffset: number;
-    argDescriptors: NativeRegisterClassVfunc["argDescriptors"];
-    returnDescriptor: NativeRegisterClassVfunc["returnDescriptor"];
-};
-
-type VfuncRegistry = Record<string, VfuncDescriptor<"class"> | VfuncDescriptor<"interface">>;
-
-const vfuncRegistryByClass = new WeakMap<object, VfuncRegistry>();
-
 function registerVfuncRegistry(cls: object, registry: VfuncRegistry): void {
-    vfuncRegistryByClass.set(cls, registry);
+    vfuncRegistry.set(cls, registry);
 }
 
 export function getVfuncRegistry(cls: object): VfuncRegistry | undefined {
-    return vfuncRegistryByClass.get(cls);
+    return vfuncRegistry.get(cls);
 }
 
-const interfaceVfuncRegistryByGtype = new Map<bigint, VfuncRegistry>();
-
-function registerInterfaceVfuncRegistry(gtype: bigint, vfuncRegistry: VfuncRegistry): void {
-    if (gtype === TYPE_INVALID) return;
-    interfaceVfuncRegistryByGtype.set(gtype, vfuncRegistry);
+function registerInterfaceVfuncRegistry(type: bigint, registry: VfuncRegistry): void {
+    if (type === TYPE_INVALID) return;
+    interfaceVfuncRegistry.set(type, registry);
 }
 
-export function getInterfaceVfuncRegistry(gtype: bigint): VfuncRegistry | undefined {
-    return interfaceVfuncRegistryByGtype.get(gtype);
+export function getInterfaceVfuncRegistry(type: bigint): VfuncRegistry | undefined {
+    return interfaceVfuncRegistry.get(type);
 }

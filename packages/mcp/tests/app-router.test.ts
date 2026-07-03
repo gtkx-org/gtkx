@@ -49,10 +49,10 @@ function lastOutgoingRequest(conn: TestConnection): Request {
     return JSON.parse(line) as Request;
 }
 
-interface ManagerContext {
+type ManagerContext = {
     connections: FakeAppConnections;
     manager: AppRouter;
-}
+};
 
 const ctx = {} as ManagerContext;
 

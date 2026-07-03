@@ -1,22 +1,22 @@
 import type { ItemNode } from "../types.js";
 
-export interface TreeItemMetadata {
+export type TreeItemMetadata = {
     hideExpander: boolean;
     indentForDepth: boolean;
     indentForIcon: boolean;
-}
+};
 
-interface FlattenedRecord<T = unknown> {
+type FlattenedRecord<T = unknown> = {
     id: string;
     value: T;
     metadata: TreeItemMetadata;
-}
+};
 
-interface FlattenResult<T = unknown> {
+type FlattenResult<T = unknown> = {
     records: FlattenedRecord<T>[];
     idToPosition: Map<string, number>;
     positionToId: Map<number, string>;
-}
+};
 
 export type ListStructure = "flat" | "tree";
 

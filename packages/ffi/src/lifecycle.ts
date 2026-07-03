@@ -1,16 +1,16 @@
 import { quit as nativeQuit } from "@gtkx/native";
-import { blockGObjectSignalHandlers } from "./signal.js";
+import { blockMatchedSignalHandlers } from "./signal.js";
 
 const KEEP_ALIVE_INTERVAL = 2147483647;
 
-export type ApplicationRunner = {
+export type ApplicationLike = {
     getIsRegistered(): boolean;
     register(cancellable: null): boolean;
     activate(): void;
     quit(): void;
     run(argv: string[]): number;
-    getWindows(): object[];
-    removeWindow(window: object): void;
+    getWindows?(): object[];
+    removeWindow?(window: object): void;
     on(signal: "activate" | "shutdown", handler: () => void): unknown;
 };
 
@@ -32,7 +32,7 @@ export const quit = (): void => {
 
 process.on("exit", quit);
 
-export const runApplication = (application: ApplicationRunner): void => {
+export const runApplication = (application: ApplicationLike): void => {
     let keepAliveTimeout: ReturnType<typeof setTimeout> | null = null;
 
     const scheduleKeepAlive = (): void => {
@@ -42,6 +42,7 @@ export const runApplication = (application: ApplicationRunner): void => {
     application.on("activate", () => {
         if (keepAliveTimeout === null) scheduleKeepAlive();
     });
+
     application.on("shutdown", () => {
         if (keepAliveTimeout === null) return;
         clearTimeout(keepAliveTimeout);
@@ -52,10 +53,10 @@ export const runApplication = (application: ApplicationRunner): void => {
     application.activate();
 };
 
-export const quitApplication = (application: ApplicationRunner): void => {
+export const quitApplication = (application: ApplicationLike): void => {
     if (!application.getIsRegistered()) return;
-    for (const window of application.getWindows()) application.removeWindow(window);
+    for (const window of application.getWindows?.() ?? []) application.removeWindow?.(window);
     application.on("shutdown", () => application.quit());
-    blockGObjectSignalHandlers(application, "activate");
+    blockMatchedSignalHandlers(application, "activate");
     application.run([]);
 };

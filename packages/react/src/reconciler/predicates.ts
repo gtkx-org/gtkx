@@ -25,7 +25,7 @@ export type SingleChildContainer = {
 };
 
 const widgetShapes = (obj: unknown): Set<AttachShape> | null =>
-    obj instanceof Gtk.Widget ? collectAttachShapes(obj.__gtype__) : null;
+    obj instanceof Gtk.Widget ? collectAttachShapes(obj.__type__) : null;
 
 export const isAppendable = (obj: unknown): obj is AppendableWidget => widgetShapes(obj)?.has("append") ?? false;
 
@@ -51,6 +51,6 @@ export const isInsertable = (obj: unknown): obj is InsertableWidget => {
 
 export const isSingleChildContainer = (obj: unknown): obj is SingleChildContainer => {
     if (!(obj instanceof GObject.Object)) return false;
-    const shapes = collectAttachShapes(obj.__gtype__);
+    const shapes = collectAttachShapes(obj.__type__);
     return shapes.has("getChild") && shapes.has("setChild");
 };

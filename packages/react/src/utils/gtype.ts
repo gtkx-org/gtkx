@@ -9,7 +9,7 @@ import {
     SIGNALS,
 } from "virtual:gtkx-config";
 import type { AttachShape } from "@gtkx/config";
-import { type GTyped, typeInterfaces, typeName, typeParent } from "@gtkx/ffi";
+import { type TypedClass, typeInterfaces, typeName, typeParent } from "@gtkx/ffi";
 import { NOTIFY_SIGNAL, propToNotifySignal } from "./notify-name.js";
 
 const NOTIFY_PREFIX = "onNotify";
@@ -128,11 +128,11 @@ export const collectAttachShapes = (gtype: bigint): Set<AttachShape> => {
 
 const memoize = <T>(
     cache: Map<bigint, Map<string, T>>,
-    instance: GTyped,
+    instance: TypedClass,
     key: string,
     compute: (typeNames: string[]) => T,
 ): T => {
-    const gtype = instance.__gtype__;
+    const gtype = instance.__type__;
     let perGtype = cache.get(gtype);
     if (!perGtype) {
         perGtype = new Map();
@@ -161,7 +161,7 @@ export const collectConstructableProps = (gtype: bigint): Set<string> => {
     return names;
 };
 
-export const isConstructOnlyProp = (instance: GTyped, key: string): boolean =>
+export const isConstructOnlyProp = (instance: TypedClass, key: string): boolean =>
     memoize(constructOnlyCache, instance, key, (typeNames) => {
         for (const name of typeNames) {
             if (CONSTRUCT_ONLY_PROPS[name]?.has(key)) return true;
@@ -169,7 +169,7 @@ export const isConstructOnlyProp = (instance: GTyped, key: string): boolean =>
         return false;
     });
 
-export const resolveSignal = (instance: GTyped, propName: string): string | null => {
+export const resolveSignal = (instance: TypedClass, propName: string): string | null => {
     const notify = resolveNotifySignal(propName);
     if (notify) return notify;
     return memoize(signalCache, instance, propName, (typeNames) => {
@@ -185,7 +185,7 @@ export type DefaultPropLookup = { has: boolean; value: unknown };
 
 const NO_DEFAULT_PROP: DefaultPropLookup = { has: false, value: undefined };
 
-export const resolveDefaultProp = (instance: GTyped, key: string): DefaultPropLookup =>
+export const resolveDefaultProp = (instance: TypedClass, key: string): DefaultPropLookup =>
     memoize(defaultPropCache, instance, key, (typeNames) => {
         for (const name of typeNames) {
             const table = DEFAULT_PROPS[name];

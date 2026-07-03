@@ -18,7 +18,7 @@ export type PrimitiveCategory =
     | "unichar"
     | "pointer";
 
-export const PRIMITIVE_SIZE: Record<PrimitiveCategory, number> = Object.freeze({
+export const PRIMITIVE_SIZE: Record<PrimitiveCategory, number> = {
     void: 0,
     boolean: 4,
     int8: 1,
@@ -37,7 +37,7 @@ export const PRIMITIVE_SIZE: Record<PrimitiveCategory, number> = Object.freeze({
     string: 8,
     unichar: 4,
     pointer: 8,
-});
+};
 
 const PRIMITIVE_BY_NAME: Map<string, PrimitiveCategory> = new Map([
     ["none", "void"],
@@ -93,7 +93,7 @@ const PRIMITIVE_BY_NAME: Map<string, PrimitiveCategory> = new Map([
 
 export const primitiveCategory = (name: string): PrimitiveCategory | undefined => PRIMITIVE_BY_NAME.get(name);
 
-export const PRIMITIVE_TS_TYPE: Record<PrimitiveCategory, string> = Object.freeze({
+export const PRIMITIVE_TS_TYPE: Record<PrimitiveCategory, string> = {
     void: "void",
     boolean: "boolean",
     int8: "number",
@@ -112,4 +112,4 @@ export const PRIMITIVE_TS_TYPE: Record<PrimitiveCategory, string> = Object.freez
     string: "string",
     unichar: "string",
     pointer: "number",
-});
+};

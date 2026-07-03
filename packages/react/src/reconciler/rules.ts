@@ -230,10 +230,10 @@ const ApplicationWindow: RuleSet = {
     },
 };
 
-interface ActionAccelItem {
+type ActionAccelItem = {
     action: string;
     accels: string[];
-}
+};
 
 const Application: RuleSet = {
     setProps: (node, newProps, oldProps, ctx) => {
@@ -260,11 +260,11 @@ const SizeGroup: RuleSet = {
     },
 };
 
-interface ScaleMarkItem {
+type ScaleMarkItem = {
     value: number;
     position?: number;
     label?: string | null;
-}
+};
 
 const Scale: RuleSet = {
     setProps: (node, newProps, oldProps, ctx) => {
@@ -280,10 +280,10 @@ const Scale: RuleSet = {
     },
 };
 
-interface LevelBarOffsetItem {
+type LevelBarOffsetItem = {
     id: string;
     value: number;
-}
+};
 
 const LevelBar: RuleSet = {
     setProps: (node, newProps, oldProps, ctx) => {
@@ -307,12 +307,12 @@ const Calendar: RuleSet = {
     },
 };
 
-interface AlertResponseItem {
+type AlertResponseItem = {
     id: string;
     label: string;
     appearance?: number;
     enabled?: boolean;
-}
+};
 
 const AlertDialog: RuleSet = {
     setProps: (node, newProps, oldProps, ctx) => {
@@ -341,10 +341,10 @@ const DropTarget: RuleSet = {
     },
 };
 
-interface CreditSectionItem {
+type CreditSectionItem = {
     name: string;
     people: string[];
-}
+};
 
 const AboutDialog: RuleSet = {
     setProps: (node, newProps, oldProps, ctx) => {
@@ -361,11 +361,11 @@ const AboutDialog: RuleSet = {
     },
 };
 
-interface DragSourceIconItem {
+type DragSourceIconItem = {
     paintable: object;
     hotX?: number;
     hotY?: number;
-}
+};
 
 const DragSource: RuleSet = {
     setProps: (node, newProps, oldProps, ctx) => {

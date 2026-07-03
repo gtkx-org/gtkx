@@ -5,17 +5,17 @@ import { type GObjectTarget, resolveGObjectTarget, useGObjectValue } from "@gtkx
 import { useLayoutEffect, useRef } from "react";
 import type { ItemResolver } from "../utils/item-resolver.js";
 
-interface DropDownSelectionTarget extends GObject.Object {
+type DropDownSelectionTarget = GObject.Object & {
     getSelected(): number;
     setSelected(position: number): void;
-}
+};
 
-interface DropDownSelectionOptions<T, S> {
+type DropDownSelectionOptions<T, S> = {
     widget: GObjectTarget<DropDownSelectionTarget>;
     resolver: ItemResolver<T, S>;
     selectedId: string | null | undefined;
     onSelectionChanged: ((id: string) => void) | null | undefined;
-}
+};
 
 const normalizeSelected = (position: number): number =>
     position === Gtk.INVALID_LIST_POSITION || position < 0 ? -1 : position;

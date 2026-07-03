@@ -1,4 +1,5 @@
-import { getHandle, type Handle, readField as read, setHandle, t, wrapHandle } from "@gtkx/ffi";
+import type { ExternalObject, Handle } from "@gtkx/native";
+import { getHandle, readField as read, setHandle, t, wrapHandle } from "@gtkx/ffi";
 import type { Format } from "../cairo.js";
 import { Surface } from "../cairo.js";
 
@@ -76,15 +77,15 @@ const cairoImageSurfaceGetStride = bind(
 export class ImageSurface extends Surface {
     constructor(format: Format, width: number, height: number) {
         super();
-        setHandle(this, cairoImageSurfaceCreate(format, width, height) as Handle);
+        setHandle(this, cairoImageSurfaceCreate(format, width, height) as ExternalObject<Handle>);
     }
 
     static create(format: Format, width: number, height: number): ImageSurface {
-        return wrapHandle(cairoImageSurfaceCreate(format, width, height) as Handle, ImageSurface);
+        return wrapHandle(cairoImageSurfaceCreate(format, width, height) as ExternalObject<Handle>, ImageSurface);
     }
 
     static createFromPng(filename: string): ImageSurface {
-        return wrapHandle(cairoImageSurfaceCreateFromPng(filename) as Handle, ImageSurface);
+        return wrapHandle(cairoImageSurfaceCreateFromPng(filename) as ExternalObject<Handle>, ImageSurface);
     }
 
     getWidth(): number {
@@ -121,7 +122,7 @@ export class ImageSurface extends Surface {
             ],
             t.struct("borrowed", { size: totalBytes }),
         );
-        const ptr = getImageData(getHandle(this)) as Handle | null;
+        const ptr = getImageData(getHandle(this)) as ExternalObject<Handle> | null;
         if (ptr === null) return new Uint8Array(0);
         const result = new Uint8Array(totalBytes);
         for (let i = 0; i < totalBytes; i++) {
