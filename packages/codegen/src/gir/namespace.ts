@@ -15,6 +15,7 @@ export type GirConstant = {
 
 export type GirAlias = {
     name: string;
+    cType: string | undefined;
     target: TypeId | undefined;
     targetCType: string | undefined;
 };
@@ -98,6 +99,7 @@ export const populateNamespaceBody = (shell: GirNamespace, namespaceNode: RawNod
     }));
     shell.aliases = childrenOf(namespaceNode, "alias").map((alias) => ({
         name: nameAttr(alias),
+        cType: attr(alias, "c:type"),
         target: typeRefFromNode(alias, context),
         targetCType: attr(childOf(alias, "type"), "c:type"),
     }));

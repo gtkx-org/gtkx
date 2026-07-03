@@ -1,8 +1,9 @@
 import { sourceStringLiteral } from "@gtkx/utils";
+import { PRIMITIVE_TS_TYPE } from "../../gir/primitives.js";
 import type { ModuleContext } from "../../writer/context.js";
 
 export const gtypeTsType = (context: ModuleContext): string =>
-    context.namespace.name === "GObject" ? "Type" : "bigint";
+    context.namespace.name === "GObject" ? "Type" : PRIMITIVE_TS_TYPE.gtype;
 
 export const gtypeMemberDeclaration = (context: ModuleContext): string => `declare __gtype__: ${gtypeTsType(context)};`;
 

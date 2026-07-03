@@ -77,16 +77,19 @@ impl std::fmt::Display for BufferViewKind {
 
 #[derive(Debug, Clone, Copy)]
 pub struct BufferView {
-    ptr: usize,
+    ptr: *mut c_void,
     byte_length: usize,
     length: usize,
     kind: BufferViewKind,
 }
 
+unsafe impl Send for BufferView {}
+unsafe impl Sync for BufferView {}
+
 impl BufferView {
     pub fn new(ptr: *mut c_void, byte_length: usize, length: usize, kind: BufferViewKind) -> Self {
         Self {
-            ptr: ptr as usize,
+            ptr,
             byte_length,
             length,
             kind,
@@ -94,7 +97,7 @@ impl BufferView {
     }
 
     pub fn ptr(&self) -> *mut c_void {
-        self.ptr as *mut c_void
+        self.ptr
     }
 
     pub fn byte_length(&self) -> usize {

@@ -76,10 +76,11 @@ export const isGtypeDescriptor = (descriptor: Descriptor): boolean =>
 const resolvedTypeCache = new Map<string, bigint>();
 
 export const resolveType = (sharedLibrary: string, getTypeFnName: string): bigint => {
-    const cached = resolvedTypeCache.get(getTypeFnName);
+    const fullyQualifiedName = `${sharedLibrary}:${getTypeFnName}`;
+    const cached = resolvedTypeCache.get(fullyQualifiedName);
     if (cached !== undefined) return cached;
     const gtype = bind(sharedLibrary, getTypeFnName, [], biguint64T)() as bigint;
-    resolvedTypeCache.set(getTypeFnName, gtype);
+    resolvedTypeCache.set(fullyQualifiedName, gtype);
     return gtype;
 };
 export const float32T: Float32Descriptor = Object.freeze({ kind: "float32" });
