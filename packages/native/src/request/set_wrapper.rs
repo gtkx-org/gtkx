@@ -17,13 +17,12 @@ struct FinalizeData {
 }
 
 unsafe extern "C" fn on_wrapper_finalize(
-    env: sys::napi_env,
+    _env: sys::napi_env,
     finalize_data: *mut c_void,
     _finalize_hint: *mut c_void,
 ) {
     let mut data = unsafe { Box::from_raw(finalize_data.cast::<FinalizeData>()) };
     wrapper::schedule_cleanup(
-        env as usize,
         data.binding.take(),
         data.generation,
         data.gobject_ptr,

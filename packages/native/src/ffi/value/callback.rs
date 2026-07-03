@@ -1,13 +1,11 @@
-use std::sync::Arc;
-
 use napi::Env;
 use napi::bindgen_prelude::*;
 
-use super::js_ref::JsRef;
+use super::js_ref::JsHandle;
 
 #[derive(Clone)]
 pub struct Callback {
-    pub js_fn: Arc<JsRef>,
+    pub js_fn: JsHandle,
 }
 
 impl std::fmt::Debug for Callback {
@@ -17,12 +15,11 @@ impl std::fmt::Debug for Callback {
 }
 
 impl Callback {
-    pub fn new(js_fn: Arc<JsRef>) -> Self {
+    pub fn new(js_fn: JsHandle) -> Self {
         Self { js_fn }
     }
 
     pub fn from_js_value(env: &Env, value: Unknown<'_>) -> napi::Result<Self> {
-        let func_ref = JsRef::from_js_value(env, &value)?;
-        Ok(Self::new(Arc::new(func_ref)))
+        Ok(Self::new(JsHandle::from_js_value(env, &value)?))
     }
 }

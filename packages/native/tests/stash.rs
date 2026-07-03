@@ -1,11 +1,10 @@
 use std::ffi::c_void;
-use std::sync::Arc;
 
 use napi::Env;
 use napi::bindgen_prelude::{FromNapiValue, Unknown};
 use native::ffi::closure::{ClosureData, ClosureState};
 use native::ffi::codec::{Codec, VoidCodec};
-use native::ffi::value::JsRef;
+use native::ffi::value::JsHandle;
 use native::ffi::{CallbackValue, Stash, StashStorage};
 
 fn callback_value(destroy: bool) -> CallbackValue {
@@ -22,17 +21,17 @@ fn callback_value(destroy: bool) -> CallbackValue {
     )
 }
 
-fn js_func_ref() -> Arc<JsRef> {
+fn js_func_ref() -> JsHandle {
     let env = Env::from_raw(std::ptr::null_mut());
     let func = unsafe { Unknown::from_napi_value(std::ptr::null_mut(), std::ptr::null_mut()) }
         .expect("stubbed unknown creation should succeed");
-    Arc::new(JsRef::from_js_value(&env, &func).expect("stubbed reference creation should succeed"))
+    JsHandle::from_js_value(&env, &func).expect("stubbed reference creation should succeed")
 }
 
-fn armed_callback_value(destroy_ptr: Option<*mut c_void>) -> (CallbackValue, Arc<JsRef>) {
+fn armed_callback_value(destroy_ptr: Option<*mut c_void>) -> (CallbackValue, JsHandle) {
     let js_fn = js_func_ref();
     let data = ClosureData::new(
-        Arc::clone(&js_fn),
+        js_fn.clone(),
         Vec::new(),
         Codec::Void(VoidCodec),
         None,
@@ -46,10 +45,10 @@ fn armed_callback_value(destroy_ptr: Option<*mut c_void>) -> (CallbackValue, Arc
     )
 }
 
-fn release_handed_over_state(state_ptr: *mut c_void, js_fn: &Arc<JsRef>) {
-    assert_eq!(Arc::strong_count(js_fn), 2);
+fn release_handed_over_state(state_ptr: *mut c_void, js_fn: &JsHandle) {
+    assert_eq!(js_fn.ref_count(), 2);
     unsafe { ClosureState::destroy(state_ptr) };
-    assert_eq!(Arc::strong_count(js_fn), 1);
+    assert_eq!(js_fn.ref_count(), 1);
 }
 
 #[test]
@@ -66,9 +65,9 @@ fn new_armed_exposes_state_and_closure_pointers() {
 #[test]
 fn armed_state_drops_with_value_when_call_never_happens() {
     let (tv, js_fn) = armed_callback_value(None);
-    assert_eq!(Arc::strong_count(&js_fn), 2);
+    assert_eq!(js_fn.ref_count(), 2);
     drop(tv);
-    assert_eq!(Arc::strong_count(&js_fn), 1);
+    assert_eq!(js_fn.ref_count(), 1);
 }
 
 #[test]

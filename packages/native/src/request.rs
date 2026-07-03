@@ -13,12 +13,10 @@ pub mod set_wrapper;
 pub mod unfreeze;
 pub mod write;
 
-use std::sync::Arc;
-
 use napi::Env;
 use napi::bindgen_prelude::*;
 
-use crate::ffi::value::{JsRef, Value};
+use crate::ffi::value::{JsHandle, Value};
 use crate::messaging;
 
 pub trait Request: Sized + Send + 'static {
@@ -61,7 +59,7 @@ impl Response for () {
     }
 }
 
-pub type RefUpdate = (Arc<JsRef>, Value);
+pub type RefUpdate = (JsHandle, Value);
 
 impl Response for (Value, Vec<RefUpdate>) {
     fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {

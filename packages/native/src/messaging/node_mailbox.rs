@@ -1,5 +1,5 @@
 use std::panic::{self, AssertUnwindSafe};
-use std::sync::{Arc, mpsc};
+use std::sync::mpsc;
 
 use napi::Env;
 use napi::bindgen_prelude::{
@@ -8,10 +8,9 @@ use napi::bindgen_prelude::{
 use napi::threadsafe_function::ThreadsafeFunctionCallMode;
 
 use super::{
-    JsRefDeletion, LockExt as _, Mailbox, NodeCallback, NodeCallbackResult, NodeTask, WrapperRefOp,
-    send_or_report,
+    LockExt as _, Mailbox, NodeCallback, NodeCallbackResult, NodeTask, WrapperRefOp, send_or_report,
 };
-use crate::ffi::value::{JsRef, Value};
+use crate::ffi::value::{JsHandle, Value, release_registered_js_ref};
 use crate::messaging::panic_handler::format_panic_payload;
 
 struct CallbackArgs(Vec<napi::sys::napi_value>);
@@ -64,8 +63,12 @@ impl Mailbox {
         }
     }
 
-    pub(crate) fn schedule_js_reference_delete(&self, reference: JsRefDeletion) {
-        self.push_node_task(NodeTask::DeleteReference(reference));
+    pub(crate) fn schedule_js_reference_release(&self, id: u64) {
+        self.push_node_task(NodeTask::ReleaseJsRef { id });
+    }
+
+    pub(crate) fn schedule_wrapper_ref_delete(&self, napi_ref: usize) {
+        self.push_node_task(NodeTask::DeleteWrapperRef { napi_ref });
     }
 
     pub(crate) fn schedule_wrapper_unref(&self, napi_ref: usize) {
@@ -113,7 +116,7 @@ impl Mailbox {
 
     pub fn invoke_node_and_wait_with_refs(
         &self,
-        callback: &Arc<JsRef>,
+        callback: &JsHandle,
         args: Vec<Value>,
         capture_result: bool,
         ref_indices: Vec<usize>,
@@ -220,7 +223,12 @@ impl Mailbox {
                         },
                     );
                 }
-                NodeTask::DeleteReference(reference) => reference.delete_on_node_thread(),
+                NodeTask::ReleaseJsRef { id } => release_registered_js_ref(id),
+                NodeTask::DeleteWrapperRef { napi_ref } => {
+                    let raw_ref = napi_ref as napi::sys::napi_ref;
+                    let status = unsafe { napi::sys::napi_delete_reference(env.raw(), raw_ref) };
+                    debug_assert_eq!(status, napi::sys::Status::napi_ok);
+                }
                 NodeTask::WrapperRefOp {
                     napi_ref,
                     op,
@@ -285,7 +293,7 @@ impl Mailbox {
 
     fn execute_callback(
         env: Env,
-        callback: &Arc<JsRef>,
+        callback: &JsHandle,
         args: Vec<Value>,
         capture_result: bool,
         ref_indices: &[usize],

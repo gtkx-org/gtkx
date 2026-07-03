@@ -8,7 +8,7 @@ use glib::translate::{Borrowed, from_glib_borrow};
 
 use crate::messaging::error_reporter::ErrorReporter;
 use crate::messaging::panic_handler::guard_ffi_boundary;
-use crate::messaging::{JsRefDeletion, LockExt as _, Mailbox, WrapperRefOp};
+use crate::messaging::{LockExt as _, Mailbox, WrapperRefOp};
 
 pub struct WrapperBinding {
     napi_ref: AtomicUsize,
@@ -78,15 +78,12 @@ fn invoke_ref_op(napi_ref: *mut c_void, op: WrapperRefOp) {
     }
 }
 
-fn schedule_reference_delete(env_ptr: usize, napi_ref: usize) {
+fn schedule_reference_delete(napi_ref: usize) {
     let mailbox = Mailbox::global();
     if mailbox.is_not_running() {
         return;
     }
-    mailbox.schedule_js_reference_delete(JsRefDeletion::new(
-        env_ptr as napi::sys::napi_env,
-        napi_ref as napi::sys::napi_ref,
-    ));
+    mailbox.schedule_wrapper_ref_delete(napi_ref);
 }
 
 pub(crate) unsafe fn install(
@@ -124,7 +121,6 @@ pub(crate) unsafe fn install(
 }
 
 pub(crate) fn schedule_cleanup(
-    env_ptr: usize,
     binding: Option<Arc<WrapperBinding>>,
     generation: u64,
     gobject_ptr: usize,
@@ -136,12 +132,12 @@ pub(crate) fn schedule_cleanup(
     glib::idle_add_once(move || {
         guard_ffi_boundary("wrapper cleanup", || {
             let Some(binding) = binding else {
-                schedule_reference_delete(env_ptr, napi_ref);
+                schedule_reference_delete(napi_ref);
                 return;
             };
 
             if binding.generation.load(Ordering::Relaxed) != generation {
-                schedule_reference_delete(env_ptr, napi_ref);
+                schedule_reference_delete(napi_ref);
                 return;
             }
 
@@ -153,7 +149,7 @@ pub(crate) fn schedule_cleanup(
                     drop(borrow_object(gobject).steal_qdata::<Arc<WrapperBinding>>(quark()));
                 }
             }
-            schedule_reference_delete(env_ptr, napi_ref);
+            schedule_reference_delete(napi_ref);
             unsafe {
                 glib::gobject_ffi::g_object_remove_toggle_ref(
                     gobject,

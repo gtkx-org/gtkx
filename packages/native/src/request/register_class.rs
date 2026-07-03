@@ -1,5 +1,4 @@
 use std::ffi::{c_char, c_void};
-use std::sync::Arc;
 
 use glib::{
     self, gobject_ffi,
@@ -13,7 +12,7 @@ use super::Request;
 use crate::ffi::closure::ClosureState;
 use crate::ffi::codec::Codec;
 use crate::ffi::descriptor::Descriptor;
-use crate::ffi::value::JsRef;
+use crate::ffi::value::JsHandle;
 use crate::messaging::error_reporter::ErrorReporter;
 
 fn type_from_bigint(value: BigInt, label: &str) -> napi::Result<glib::Type> {
@@ -34,7 +33,7 @@ fn type_from_bigint(value: BigInt, label: &str) -> napi::Result<glib::Type> {
     Ok(type_)
 }
 
-pub struct VfuncCallback(Arc<JsRef>);
+pub struct VfuncCallback(JsHandle);
 
 impl FromNapiValue for VfuncCallback {
     unsafe fn from_napi_value(env: sys::napi_env, napi_val: sys::napi_value) -> napi::Result<Self> {
@@ -46,7 +45,7 @@ impl FromNapiValue for VfuncCallback {
                 "register_class: vfunc 'fn' must be a function",
             ));
         }
-        Ok(Self(Arc::new(JsRef::from_js_value(&env_wrapper, &value)?)))
+        Ok(Self(JsHandle::from_js_value(&env_wrapper, &value)?))
     }
 }
 
@@ -120,7 +119,7 @@ impl RegisterClassOptions {
 
 struct RawVfunc {
     byte_offset: usize,
-    js_fn: Arc<JsRef>,
+    js_fn: JsHandle,
     arg_codecs: Vec<Codec>,
     return_codec: Codec,
 }

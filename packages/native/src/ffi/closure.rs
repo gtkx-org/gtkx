@@ -1,5 +1,4 @@
 use std::ffi::{c_char, c_void};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicPtr, Ordering};
 
 use ::libffi::low as libffi_low;
@@ -9,13 +8,13 @@ use crate::ffi::Stash;
 use crate::ffi::codec::{
     Codec, Decoder as _, Encoder as _, PtrWriter as _, ReadSource, str_to_glib_full,
 };
-use crate::ffi::value::{JsRef, Value};
+use crate::ffi::value::{JsHandle, Value};
 use crate::messaging::Mailbox;
 use crate::messaging::error_reporter::{ErrorReporter, ReportErr};
 use crate::messaging::panic_handler::guard_ffi_boundary;
 
 pub struct ClosureData {
-    pub js_fn: Arc<JsRef>,
+    pub js_fn: JsHandle,
     pub arg_codecs: Vec<Codec>,
     pub return_codec: Codec,
     pub user_data_index: Option<usize>,
@@ -27,7 +26,7 @@ pub struct ClosureData {
 
 impl ClosureData {
     pub fn new(
-        js_fn: Arc<JsRef>,
+        js_fn: JsHandle,
         arg_codecs: Vec<Codec>,
         return_codec: Codec,
         user_data_index: Option<usize>,
@@ -117,7 +116,7 @@ impl ClosureState {
     }
 
     pub fn boxed(
-        js_fn: Arc<JsRef>,
+        js_fn: JsHandle,
         arg_codecs: Vec<Codec>,
         return_codec: Codec,
         user_data_index: Option<usize>,

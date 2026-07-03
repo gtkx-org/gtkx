@@ -9,7 +9,7 @@ pub mod panic_handler;
 
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex, MutexGuard, OnceLock, PoisonError, mpsc};
+use std::sync::{Mutex, MutexGuard, OnceLock, PoisonError, mpsc};
 
 use napi::Env;
 use napi::bindgen_prelude::{FunctionCallContext, JsValuesTupleIntoVec};
@@ -26,7 +26,7 @@ impl<T> LockExt<T> for Mutex<T> {
     }
 }
 
-use crate::ffi::value::{JsRef, Value};
+use crate::ffi::value::{JsHandle, Value};
 use crate::messaging::error_reporter::ErrorReporter;
 use crate::messaging::freeze::FreezeController;
 use crate::messaging::wait_signal::WaitSignal;
@@ -56,7 +56,7 @@ where
 pub type NodeCallbackResult = (Value, Vec<(usize, Value)>);
 
 struct NodeCallback {
-    callback: Arc<JsRef>,
+    callback: JsHandle,
     args: Vec<Value>,
     capture_result: bool,
     ref_indices: Vec<usize>,
@@ -66,7 +66,12 @@ struct NodeCallback {
 
 enum NodeTask {
     Callback(NodeCallback),
-    DeleteReference(JsRefDeletion),
+    ReleaseJsRef {
+        id: u64,
+    },
+    DeleteWrapperRef {
+        napi_ref: usize,
+    },
     WrapperRefOp {
         napi_ref: usize,
         op: WrapperRefOp,
@@ -98,25 +103,6 @@ impl WrapperRefOp {
                 }
             }
         }
-    }
-}
-
-#[derive(Debug)]
-pub(crate) struct JsRefDeletion {
-    env: sys::napi_env,
-    raw: sys::napi_ref,
-}
-
-unsafe impl Send for JsRefDeletion {}
-
-impl JsRefDeletion {
-    pub(crate) fn new(env: sys::napi_env, raw: sys::napi_ref) -> Self {
-        Self { env, raw }
-    }
-
-    pub(crate) fn delete_on_node_thread(self) {
-        let status = unsafe { sys::napi_delete_reference(self.env, self.raw) };
-        debug_assert_eq!(status, sys::Status::napi_ok);
     }
 }
 

@@ -12,7 +12,8 @@ mod r#ref;
 
 pub use buffer_view::{BufferView, BufferViewKind};
 pub use callback::Callback;
-pub use js_ref::JsRef;
+pub use js_ref::JsHandle;
+pub(crate) use js_ref::release_registered_js_ref;
 pub use r#ref::Ref;
 
 #[derive(Debug, Clone)]

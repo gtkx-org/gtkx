@@ -115,7 +115,7 @@ impl CallRequest {
         for (i, (codec, value)) in arg_codecs.iter().zip(values).enumerate() {
             if let Value::Ref(ref_val) = value {
                 let new_value = codec.decode_with_context(&stashes[i], stashes, arg_codecs)?;
-                ref_updates.push((Arc::clone(&ref_val.js_obj), new_value));
+                ref_updates.push((ref_val.js_obj.clone(), new_value));
             }
         }
         Ok(ref_updates)

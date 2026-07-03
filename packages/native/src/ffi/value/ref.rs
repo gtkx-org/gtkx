@@ -1,15 +1,13 @@
-use std::sync::Arc;
-
 use napi::Env;
 use napi::bindgen_prelude::*;
 
 use super::Value;
-use super::js_ref::JsRef;
+use super::js_ref::JsHandle;
 
 #[derive(Clone)]
 pub struct Ref {
     pub value: Box<Value>,
-    pub js_obj: Arc<JsRef>,
+    pub js_obj: JsHandle,
 }
 
 impl std::fmt::Debug for Ref {
@@ -21,7 +19,7 @@ impl std::fmt::Debug for Ref {
 }
 
 impl Ref {
-    pub fn new(value: Value, js_obj: Arc<JsRef>) -> Self {
+    pub fn new(value: Value, js_obj: JsHandle) -> Self {
         Self {
             value: Box::new(value),
             js_obj,
@@ -36,8 +34,8 @@ impl Ref {
         let obj = Object::from_raw(env.raw(), value.raw());
         let value_prop: Unknown<'_> = obj.get_named_property("value")?;
         let inner = Value::from_js_value_at_depth(env, value_prop, depth)?;
-        let js_obj_ref = JsRef::from_js_value(env, &obj)?;
+        let js_obj = JsHandle::from_js_value(env, &obj)?;
 
-        Ok(Self::new(inner, Arc::new(js_obj_ref)))
+        Ok(Self::new(inner, js_obj))
     }
 }
