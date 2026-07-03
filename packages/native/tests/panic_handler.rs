@@ -21,15 +21,20 @@ fn capture_panic_report() -> (Arc<Mutex<String>>, PreviousHook) {
     (captured, previous)
 }
 
+fn catch_with_silent_hook<F: FnOnce() + std::panic::UnwindSafe>(f: F) -> std::thread::Result<()> {
+    let previous = std::panic::take_hook();
+    std::panic::set_hook(Box::new(|_| {}));
+    let result = std::panic::catch_unwind(f);
+    std::panic::set_hook(previous);
+    result
+}
+
 #[test]
 fn formats_static_str_payload() {
     let _guard = helpers::serial_guard();
-    let previous = std::panic::take_hook();
-    std::panic::set_hook(Box::new(|_| {}));
-    let result = std::panic::catch_unwind(|| {
+    let result = catch_with_silent_hook(|| {
         std::panic::panic_any("static slice payload");
     });
-    std::panic::set_hook(previous);
 
     let payload = result.expect_err("catch_unwind should capture the panic");
     assert_eq!(format_panic_payload(&*payload), "static slice payload");
@@ -38,12 +43,9 @@ fn formats_static_str_payload() {
 #[test]
 fn formats_owned_string_payload() {
     let _guard = helpers::serial_guard();
-    let previous = std::panic::take_hook();
-    std::panic::set_hook(Box::new(|_| {}));
-    let result = std::panic::catch_unwind(|| {
+    let result = catch_with_silent_hook(|| {
         panic!("{}", String::from("owned string payload"));
     });
-    std::panic::set_hook(previous);
 
     let payload = result.expect_err("catch_unwind should capture the panic");
     assert_eq!(format_panic_payload(&*payload), "owned string payload");
@@ -99,12 +101,9 @@ fn install_panic_hook_is_idempotent() {
     install_panic_hook();
     install_panic_hook();
 
-    let previous = std::panic::take_hook();
-    std::panic::set_hook(Box::new(|_| {}));
-    let result = std::panic::catch_unwind(|| {
+    let result = catch_with_silent_hook(|| {
         panic!("hook installed twice should not re-stack");
     });
-    std::panic::set_hook(previous);
 
     assert!(result.is_err());
 }

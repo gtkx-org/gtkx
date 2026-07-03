@@ -193,3 +193,17 @@ pub(crate) fn send_or_report<T>(tx: &mpsc::Sender<T>, value: T, message: &str) {
         ErrorReporter::global().report_str(message);
     }
 }
+
+pub(crate) const NATIVE_LOG_PREFIX: &str = "[gtkx:native]";
+
+pub(crate) fn native_debug_enabled() -> bool {
+    if std::env::args().any(|arg| arg == "--debug") {
+        return true;
+    }
+    match std::env::var("GTKX_DEBUG") {
+        Ok(spec) => spec
+            .split(|c: char| c == ',' || c.is_whitespace())
+            .any(|name| matches!(name, "1" | "*" | "native")),
+        Err(_) => false,
+    }
+}

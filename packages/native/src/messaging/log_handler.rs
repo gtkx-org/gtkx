@@ -3,6 +3,7 @@ use std::sync::OnceLock;
 use glib::{LogLevel, LogWriterOutput};
 
 use crate::messaging::error_reporter::ErrorReporter;
+use crate::messaging::{NATIVE_LOG_PREFIX, native_debug_enabled};
 
 static INSTALLED: OnceLock<()> = OnceLock::new();
 
@@ -17,15 +18,32 @@ impl GlibLogHandler {
     }
 
     fn write_log(level: LogLevel, fields: &[glib::LogField<'_>]) -> LogWriterOutput {
-        let level_str = match level {
-            LogLevel::Error => "ERROR",
-            LogLevel::Critical => "CRITICAL",
-            _ => return glib::log_writer_default(level, fields),
-        };
         let domain = field_value(fields, "GLIB_DOMAIN").unwrap_or("unknown");
         let message = field_value(fields, "MESSAGE").unwrap_or("(no message)");
-        ErrorReporter::global().report_str(&format!("{domain}-{level_str}: {message}"));
-        glib::log_writer_default(level, fields)
+        match level {
+            LogLevel::Error => {
+                ErrorReporter::global().report_str(&format!("{domain}-ERROR: {message}"));
+                glib::log_writer_default(level, fields)
+            }
+            LogLevel::Critical => {
+                ErrorReporter::global().report_str(&format!("{domain}-CRITICAL: {message}"));
+                glib::log_writer_default(level, fields)
+            }
+            LogLevel::Warning => {
+                eprintln!("{NATIVE_LOG_PREFIX} warn {domain}: {message}");
+                LogWriterOutput::Handled
+            }
+            LogLevel::Message | LogLevel::Info => {
+                eprintln!("{NATIVE_LOG_PREFIX} {domain}: {message}");
+                LogWriterOutput::Handled
+            }
+            LogLevel::Debug => {
+                if native_debug_enabled() {
+                    eprintln!("{NATIVE_LOG_PREFIX} {domain}: {message}");
+                }
+                LogWriterOutput::Handled
+            }
+        }
     }
 }
 

@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
+import { error } from "@gtkx/utils";
 import { resolveDataDir } from "../internal/data-dir.js";
-import { error } from "../internal/log.js";
 import { createDevRunner } from "./runner.js";
 import { prepareDevSchemaDir } from "./schema-dir.js";
 

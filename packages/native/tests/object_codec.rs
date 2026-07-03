@@ -5,7 +5,7 @@ use std::ffi::c_void;
 use gtk4::glib;
 
 use native::ffi;
-use native::ffi::codec::{Decoder, Encoder, ObjectCodec, Ownership, PtrWriter, ReadSource};
+use native::ffi::codec::{Decoder, Encoder, ObjectCodec, Ownership, ReadSource};
 use native::ffi::value::Value;
 use native::handle::Handle;
 
@@ -259,13 +259,7 @@ fn write_value_to_pointer_writes_object() {
     helpers::run(|| {
         let (_obj, obj_ptr, before) = fresh_gobject();
 
-        let mut slot: *mut c_void = std::ptr::null_mut();
-        borrowed()
-            .write_value_to_ptr(
-                unsafe { ffi::Slot::new(&mut slot as *mut *mut c_void as *mut c_void) },
-                &object_value_of(obj_ptr),
-            )
-            .expect("write_value_to_ptr should succeed");
+        let slot = helpers::write_value_into_slot(&borrowed(), std::ptr::null_mut(), &object_value_of(obj_ptr));
 
         assert_eq!(slot, obj_ptr as *mut c_void);
         assert_eq!(get_gobject_refcount(obj_ptr), before + 1);
@@ -281,16 +275,10 @@ fn write_value_to_pointer_unrefs_previous_object() {
         let (_new, new_ptr, _) = fresh_gobject();
 
         unsafe { glib::gobject_ffi::g_object_ref(old_ptr.cast()) };
-        let mut slot: *mut c_void = old_ptr as *mut c_void;
         let old_before = get_gobject_refcount(old_ptr);
         let new_before = get_gobject_refcount(new_ptr);
 
-        borrowed()
-            .write_value_to_ptr(
-                unsafe { ffi::Slot::new(&mut slot as *mut *mut c_void as *mut c_void) },
-                &object_value_of(new_ptr),
-            )
-            .expect("write_value_to_ptr should succeed");
+        let slot = helpers::write_value_into_slot(&borrowed(), old_ptr as *mut c_void, &object_value_of(new_ptr));
 
         assert_eq!(slot, new_ptr as *mut c_void);
         assert_eq!(get_gobject_refcount(new_ptr), new_before + 1);
@@ -306,15 +294,9 @@ fn write_value_to_pointer_null_releases_previous_object() {
         let (_obj, obj_ptr, _) = fresh_gobject();
 
         unsafe { glib::gobject_ffi::g_object_ref(obj_ptr.cast()) };
-        let mut slot: *mut c_void = obj_ptr as *mut c_void;
         let before = get_gobject_refcount(obj_ptr);
 
-        borrowed()
-            .write_value_to_ptr(
-                unsafe { ffi::Slot::new(&mut slot as *mut *mut c_void as *mut c_void) },
-                &Value::Null,
-            )
-            .expect("write_value_to_ptr should succeed");
+        let slot = helpers::write_value_into_slot(&borrowed(), obj_ptr as *mut c_void, &Value::Null);
 
         assert!(slot.is_null());
         assert_eq!(get_gobject_refcount(obj_ptr), before - 1);

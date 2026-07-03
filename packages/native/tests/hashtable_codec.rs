@@ -20,6 +20,13 @@ use helpers::{
     make_bool_param_spec as create_param_spec,
 };
 
+fn assert_hash_equal_and_free(encoder: HashTableEntryCodec, installs_free: bool) {
+    let (hash, equal) = encoder.hash_and_equal();
+    assert!(hash.is_some());
+    assert!(equal.is_some());
+    assert_eq!(encoder.free_func().unwrap().is_some(), installs_free);
+}
+
 fn struct_type() -> Codec {
     Codec::Struct(StructCodec {
         ownership: Ownership::Borrowed,
@@ -196,22 +203,12 @@ fn encoder_from_type_string() {
 
 #[test]
 fn boolean_encoder_uses_direct_hash_and_equal() {
-    let encoder = HashTableEntryCodec::Boolean;
-
-    let (hash, equal) = encoder.hash_and_equal();
-    assert!(hash.is_some());
-    assert!(equal.is_some());
-    assert!(encoder.free_func().unwrap().is_none());
+    assert_hash_equal_and_free(HashTableEntryCodec::Boolean, false);
 }
 
 #[test]
 fn float_encoder_uses_double_hash_and_equal() {
-    let encoder = HashTableEntryCodec::Float;
-
-    let (hash, equal) = encoder.hash_and_equal();
-    assert!(hash.is_some());
-    assert!(equal.is_some());
-    assert!(encoder.free_func().unwrap().is_some());
+    assert_hash_equal_and_free(HashTableEntryCodec::Float, true);
 }
 
 #[test]
@@ -521,29 +518,17 @@ fn encoder_from_type_ptr_array() {
 
 #[test]
 fn integer_encoder_hash_equal_and_free() {
-    let encoder = HashTableEntryCodec::Integer;
-    let (hash, equal) = encoder.hash_and_equal();
-    assert!(hash.is_some());
-    assert!(equal.is_some());
-    assert!(encoder.free_func().unwrap().is_none());
+    assert_hash_equal_and_free(HashTableEntryCodec::Integer, false);
 }
 
 #[test]
 fn string_encoder_hash_equal_and_free() {
-    let encoder = HashTableEntryCodec::String;
-    let (hash, equal) = encoder.hash_and_equal();
-    assert!(hash.is_some());
-    assert!(equal.is_some());
-    assert!(encoder.free_func().unwrap().is_some());
+    assert_hash_equal_and_free(HashTableEntryCodec::String, true);
 }
 
 #[test]
 fn native_handle_encoder_hash_equal_and_free() {
-    let encoder = HashTableEntryCodec::Handle(Box::new(struct_type()));
-    let (hash, equal) = encoder.hash_and_equal();
-    assert!(hash.is_some());
-    assert!(equal.is_some());
-    assert!(encoder.free_func().unwrap().is_none());
+    assert_hash_equal_and_free(HashTableEntryCodec::Handle(Box::new(struct_type())), false);
 }
 
 #[test]
@@ -572,11 +557,10 @@ fn full_fundamental_encoder_without_ref_fn_installs_no_destroy() {
 
 #[test]
 fn ptr_array_encoder_hash_equal_and_free() {
-    let encoder = HashTableEntryCodec::PtrArray(Box::new(Codec::Integer(IntegerCodec::I32)));
-    let (hash, equal) = encoder.hash_and_equal();
-    assert!(hash.is_some());
-    assert!(equal.is_some());
-    assert!(encoder.free_func().unwrap().is_some());
+    assert_hash_equal_and_free(
+        HashTableEntryCodec::PtrArray(Box::new(Codec::Integer(IntegerCodec::I32))),
+        true,
+    );
 }
 
 #[test]

@@ -371,7 +371,7 @@ function resetMainMocks(): void {
 function setupMainMocks(): MainSetup {
     resetMainMocks();
     return {
-        errorSpy: vi.spyOn(console, "error").mockImplementation(() => undefined),
+        errorSpy: vi.spyOn(process.stderr, "write").mockImplementation(() => true),
         exitSpy: vi.spyOn(process, "exit").mockImplementation((() => undefined) as never),
         prevSigInt: process.listeners("SIGINT"),
         prevSigTerm: process.listeners("SIGTERM"),
@@ -424,7 +424,7 @@ describe("main — error logging", () => {
         registry.emit("error", Object.assign(new Error("conn gone"), { code: "ECONNRESET" }));
         registry.emit("error", Object.assign(new Error("real boom"), { code: "EACCES" }));
 
-        const messages = setup.errorSpy.mock.calls.map((c: unknown[]) => String(c[1] ?? c[0]));
+        const messages = setup.errorSpy.mock.calls.map((c: unknown[]) => String(c[0]));
         expect(messages.filter((m: string) => m.includes("real boom"))).toHaveLength(1);
         expect(messages.some((m: string) => m.includes("pipe gone"))).toBe(false);
         expect(messages.some((m: string) => m.includes("conn gone"))).toBe(false);
@@ -439,8 +439,8 @@ describe("main — error logging", () => {
         appRouter.emit("appUnregistered", "app-a");
 
         const messages = setup.errorSpy.mock.calls.map((c: unknown[]) => String(c[0]));
-        expect(messages.some((m: string) => m.includes("App registered: app-a (PID: 42)"))).toBe(true);
-        expect(messages.some((m: string) => m.includes("App unregistered: app-a"))).toBe(true);
+        expect(messages.some((m: string) => m.includes("app registered: app-a (PID: 42)"))).toBe(true);
+        expect(messages.some((m: string) => m.includes("app unregistered: app-a"))).toBe(true);
     });
 });
 

@@ -2,8 +2,7 @@ import * as net from "node:net";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { DEFAULT_SOCKET_PATH, ErrorCode, ProtocolConnection, ProtocolError, type Request } from "@gtkx/mcp";
-import { errorMessage, normalizeError } from "@gtkx/utils";
-import { error, info, warn } from "../internal/log.js";
+import { error, errorMessage, info, normalizeError, warn } from "@gtkx/utils";
 import { dispatch } from "./handlers.js";
 import { WidgetRegistry } from "./widget-registry.js";
 

@@ -1,5 +1,5 @@
 import { copy, type Descriptor } from "@gtkx/native";
-import { isCallerAllocatedType, isRefDescriptor } from "./arg.js";
+import { isCallerAllocatedDescriptor, isRefDescriptor } from "./arg.js";
 import { valueCopyInto } from "./gvalue.js";
 import { fromNativeValue, toNativeValue } from "./native-value.js";
 import { getHandle } from "./registry.js";
@@ -43,7 +43,7 @@ const partitionCallbackArgs = (
         if (descriptor !== undefined && isRefDescriptor(descriptor)) {
             if (descriptor.inout === true) inputs.push((wrapped[i] as { value: unknown }).value);
             outParams.push({ value: wrapped[i], descriptor });
-        } else if (descriptor !== undefined && isCallerAllocatedType(descriptor)) {
+        } else if (descriptor !== undefined && isCallerAllocatedDescriptor(descriptor)) {
             inputs.push(wrapped[i]);
             outParams.push({ value: wrapped[i], descriptor });
         } else {

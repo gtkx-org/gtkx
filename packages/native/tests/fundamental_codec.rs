@@ -5,7 +5,7 @@ use std::ffi::c_void;
 use gtk4::glib;
 
 use native::ffi;
-use native::ffi::codec::{Decoder, Encoder, FundamentalCodec, Ownership, PtrWriter, ReadSource};
+use native::ffi::codec::{Decoder, Encoder, FundamentalCodec, Ownership, ReadSource};
 use native::ffi::value::Value;
 use native::handle::Handle;
 
@@ -353,13 +353,11 @@ fn write_value_to_pointer_writes_fundamental() {
         let pspec = create_param_spec();
         let before = param_spec_refcount(pspec);
 
-        let mut slot: *mut c_void = std::ptr::null_mut();
-        fundamental(Ownership::Borrowed)
-            .write_value_to_ptr(
-                unsafe { ffi::Slot::new(&mut slot as *mut *mut c_void as *mut c_void) },
-                &Value::Object(Handle::from_glib_borrow(pspec)),
-            )
-            .expect("write_value_to_ptr should succeed");
+        let slot = helpers::write_value_into_slot(
+            &fundamental(Ownership::Borrowed),
+            std::ptr::null_mut(),
+            &Value::Object(Handle::from_glib_borrow(pspec)),
+        );
 
         assert_eq!(slot, pspec);
         assert_eq!(param_spec_refcount(pspec), before + 1);
@@ -375,16 +373,14 @@ fn write_value_to_pointer_unrefs_previous_fundamental() {
         let new = create_param_spec();
 
         unsafe { glib::gobject_ffi::g_param_spec_ref(old.cast()) };
-        let mut slot: *mut c_void = old;
         let old_before = param_spec_refcount(old);
         let new_before = param_spec_refcount(new);
 
-        fundamental(Ownership::Borrowed)
-            .write_value_to_ptr(
-                unsafe { ffi::Slot::new(&mut slot as *mut *mut c_void as *mut c_void) },
-                &Value::Object(Handle::from_glib_borrow(new)),
-            )
-            .expect("write_value_to_ptr should succeed");
+        let slot = helpers::write_value_into_slot(
+            &fundamental(Ownership::Borrowed),
+            old,
+            &Value::Object(Handle::from_glib_borrow(new)),
+        );
 
         assert_eq!(slot, new);
         assert_eq!(param_spec_refcount(new), new_before + 1);
@@ -401,15 +397,9 @@ fn write_value_to_pointer_null_releases_previous_fundamental() {
         let pspec = create_param_spec();
 
         unsafe { glib::gobject_ffi::g_param_spec_ref(pspec.cast()) };
-        let mut slot: *mut c_void = pspec;
         let before = param_spec_refcount(pspec);
 
-        fundamental(Ownership::Borrowed)
-            .write_value_to_ptr(
-                unsafe { ffi::Slot::new(&mut slot as *mut *mut c_void as *mut c_void) },
-                &Value::Null,
-            )
-            .expect("write_value_to_ptr should succeed");
+        let slot = helpers::write_value_into_slot(&fundamental(Ownership::Borrowed), pspec, &Value::Null);
 
         assert!(slot.is_null());
         assert_eq!(param_spec_refcount(pspec), before - 1);

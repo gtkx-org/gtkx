@@ -21,6 +21,9 @@ export interface NamedValue {
     name: string;
 }
 
+export const valueItems = (values: string[]): Array<{ id: string; value: string }> =>
+    values.map((value, index) => ({ id: String(index + 1), value }));
+
 export type FixtureInput<T> = string[] | ItemNode<T>[];
 
 const toListItems = <T,>(items: FixtureInput<T>): ItemNode<T>[] =>

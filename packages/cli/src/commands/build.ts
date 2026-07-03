@@ -1,8 +1,8 @@
+import { info } from "@gtkx/utils";
 import { defineCommand } from "citty";
 import { build as buildApp } from "../builder.js";
 import { ensureGenerated } from "../codegen/run-codegen.js";
 import { entryArg, resolveEntry } from "../internal/entry-arg.js";
-import { info } from "../internal/log.js";
 
 export const build = defineCommand({
     meta: {

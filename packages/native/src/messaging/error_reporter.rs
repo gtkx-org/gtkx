@@ -36,7 +36,7 @@ impl ErrorReporter {
 
     pub fn report_str(&self, message: &str) {
         let Some(tsfn) = self.tsfn.get() else {
-            eprintln!("[gtkx] ERROR (not initialized): {message}");
+            eprintln!("{} error {message}", super::NATIVE_LOG_PREFIX);
             return;
         };
 
@@ -70,7 +70,7 @@ struct UnhandledRejection;
 impl UnhandledRejection {
     fn emit(env: &Env, message: &str) {
         if Self::try_emit(env, message).is_err() {
-            eprintln!("[gtkx] ERROR: {message}");
+            eprintln!("{} error {message}", super::NATIVE_LOG_PREFIX);
         }
     }
 

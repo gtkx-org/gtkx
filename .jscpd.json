@@ -1,0 +1,16 @@
+{
+    "reporters": ["ai"],
+    "ignore": [
+        "**/node_modules/**",
+        "**/dist/**",
+        "**/coverage/**",
+        "**/out-tsc/**",
+        "**/target/**",
+        "**/.gtkx/**",
+        "**/*.tsbuildinfo",
+        "**/package.json",
+        "packages/native/index.js",
+        "packages/native/npm/**",
+        "packages/gl/src/generated/**"
+    ]
+}

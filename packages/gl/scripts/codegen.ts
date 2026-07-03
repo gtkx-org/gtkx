@@ -3,6 +3,9 @@ import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { generateGlModules } from "@gtkx/codegen";
+import { createLogger } from "@gtkx/utils";
+
+const log = createLogger("gl");
 
 const require = createRequire(import.meta.url);
 const scriptDir = dirname(fileURLToPath(import.meta.url));
@@ -36,9 +39,9 @@ for (const exclusion of report.exclusions) {
     exclusionCounts.set(exclusion.reason, (exclusionCounts.get(exclusion.reason) ?? 0) + 1);
 }
 
-console.log(`[gtkx] khronos codegen: ${report.selection.api} ${report.selection.version} ${report.selection.profile}`);
+log.info(`khronos codegen: ${report.selection.api} ${report.selection.version} ${report.selection.profile}`);
 
-console.log(
-    `[gtkx] commands: ${report.selectedCommands} selected, ${report.emittedCommands} emitted, ` +
+log.info(
+    `commands: ${report.selectedCommands} selected, ${report.emittedCommands} emitted, ` +
         `${report.derivedSingulars} derived singulars, ${report.exclusions.length} excluded`,
 );

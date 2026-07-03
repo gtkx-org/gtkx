@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-import { main } from "../dist/server.js";
+import { log, main } from "../dist/server.js";
 
 try {
     await main();
 } catch (error) {
-    console.error("[gtkx] Fatal error:", error);
+    log.error("fatal error", error);
     process.exit(1);
 }

@@ -1,3 +1,4 @@
+import { createLogger } from "@gtkx/utils";
 import {
     Children,
     createContext,
@@ -12,6 +13,8 @@ import {
     useRef,
     useState,
 } from "react";
+
+const log = createLogger("animate");
 
 interface PresenceContextProps {
     isPresent: boolean;
@@ -50,10 +53,10 @@ const warned = new Set<string>();
 const warnOnceUnkeyedChild = (): void => {
     if (process.env.NODE_ENV === "production") return;
     const message =
-        "[gtkx] AnimatePresence received a child without a key; exit animation is disabled for it until a unique key is supplied.";
+        "AnimatePresence received a child without a key; exit animation is disabled for it until a unique key is supplied.";
     if (warned.has(message)) return;
     warned.add(message);
-    console.warn(message);
+    log.warn(message);
 };
 
 export const onlyElements = (children: ReactNode): ReactElement[] => {

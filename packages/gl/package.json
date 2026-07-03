@@ -51,6 +51,7 @@
         "@gtkx/native": "workspace:*"
     },
     "devDependencies": {
-        "@gtkx/codegen": "workspace:*"
+        "@gtkx/codegen": "workspace:*",
+        "@gtkx/utils": "workspace:*"
     }
 }

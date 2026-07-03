@@ -1,5 +1,8 @@
 import type * as Gtk from "@gtkx/gi/gtk";
+import { createLogger } from "@gtkx/utils";
 import { registerProviderForDefaultDisplay } from "./provider.js";
+
+const log = createLogger("css");
 
 export class StyleSheet {
     private css = "";
@@ -12,7 +15,7 @@ export class StyleSheet {
         this.provider = provider;
         if (process.env.NODE_ENV !== "production") {
             provider.on("parsing-error", (section, error) => {
-                console.warn(`[gtkx] GTK rejected CSS at ${section.toString()}: ${error.message}`);
+                log.warn(`GTK rejected CSS at ${section.toString()}: ${error.message}`);
             });
         }
         return provider;

@@ -13,5 +13,5 @@ export const isRefArg = (arg: Arg): boolean => arg.direction !== undefined && ar
 
 export const isRefDescriptor = (descriptor: Descriptor): descriptor is RefDescriptor => descriptor.kind === "ref";
 
-export const isCallerAllocatedType = (descriptor: Descriptor): boolean =>
+export const isCallerAllocatedDescriptor = (descriptor: Descriptor): boolean =>
     (descriptor.kind === "boxed" || descriptor.kind === "struct") && descriptor.callerAllocated === true;

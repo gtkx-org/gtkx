@@ -251,9 +251,6 @@ importers:
       fast-xml-parser:
         specifier: ^5.9.3
         version: 5.9.3
-      picocolors:
-        specifier: ^1.1.1
-        version: 1.1.1
       react:
         specifier: ^19
         version: 19.2.7
@@ -376,6 +373,9 @@ importers:
       '@emotion/serialize':
         specifier: ^1.3.3
         version: 1.3.3
+      '@gtkx/utils':
+        specifier: workspace:*
+        version: link:../utils
       stylis:
         specifier: ^4.4.0
         version: 4.4.0
@@ -448,6 +448,9 @@ importers:
       '@gtkx/codegen':
         specifier: workspace:*
         version: link:../codegen
+      '@gtkx/utils':
+        specifier: workspace:*
+        version: link:../utils
 
   packages/mcp:
     dependencies:
@@ -517,7 +520,11 @@ importers:
         specifier: workspace:*
         version: link:../vitest
 
-  packages/utils: {}
+  packages/utils:
+    dependencies:
+      picocolors:
+        specifier: ^1.1.1
+        version: 1.1.1
 
   packages/vitest:
     dependencies:

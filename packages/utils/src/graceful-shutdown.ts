@@ -1,3 +1,5 @@
+import { error } from "./log.js";
+
 const HANDLED_SIGNALS = ["SIGINT", "SIGTERM", "SIGHUP"] as const satisfies NodeJS.Signals[];
 const DEFAULT_FORCE_KILL_TIMEOUT_MS = 5000;
 
@@ -47,8 +49,8 @@ export const installGracefulShutdown = (options: GracefulShutdownOptions): void 
             }
             Promise.resolve()
                 .then(() => options.onSignal(signal))
-                .catch((error: unknown) => {
-                    console.error("Graceful shutdown error:", error);
+                .catch((reason: unknown) => {
+                    error("graceful shutdown failed", reason);
                 })
                 .finally(() => finish(signal));
             return;

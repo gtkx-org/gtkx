@@ -2,10 +2,10 @@ import { rmSync } from "node:fs";
 import { resolve } from "node:path";
 import { runCodegen as runCodegenCore } from "@gtkx/codegen";
 import { type GtkxConfig, GtkxConfigNotFoundError, loadGtkxConfig } from "@gtkx/config";
+import { info } from "@gtkx/utils";
 import { emitSchemaEnv } from "../gsettings/env.js";
 import { resolveDataDir } from "../internal/data-dir.js";
 import { GtkxError } from "../internal/errors.js";
-import { info } from "../internal/log.js";
 import { type CodegenInputs, isCodegenStale, resolveCodegenInputs } from "./freshness.js";
 import { type CodegenStore, resolveCodegenContext } from "./store-resolver.js";
 
@@ -30,11 +30,6 @@ export type RunCodegenResult = {
     libraries?: string[] | undefined;
 };
 
-/**
- * Deletes a project-local binding store and its `@gtkx/{gi,jsx}` links so the
- * bare specifiers resolve to a store installed higher in the tree. The gsettings
- * schema typing at `node_modules/.gtkx/env.d.ts` is per-project and preserved.
- */
 const removeSharedStoreShadow = (cwd: string): void => {
     for (const path of [
         resolve(cwd, "node_modules/.gtkx/gi"),

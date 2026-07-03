@@ -10,7 +10,7 @@ describe("onlyElements", () => {
     let warnSpy: ReturnType<typeof vi.spyOn>;
 
     beforeEach(() => {
-        warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+        warnSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
     });
 
     afterEach(() => {

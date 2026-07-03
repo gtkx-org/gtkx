@@ -1,3 +1,7 @@
+import { createLogger, type Logger } from "@gtkx/utils";
+
+export const log: Logger = createLogger("react");
+
 export type ReconcilerErrorHandler = (error: unknown) => void;
 
 let errorHandler: ReconcilerErrorHandler | null = null;
@@ -13,5 +17,5 @@ export function reportReconcilerError(error: unknown): void {
         errorHandler(error);
         return;
     }
-    console.error("[gtkx] unhandled reconciler error:", error);
+    log.error("unhandled reconciler error", error);
 }

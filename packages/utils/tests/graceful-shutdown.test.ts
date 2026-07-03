@@ -143,17 +143,15 @@ describe("installGracefulShutdown — force-kill escalation and error paths", ()
     });
 
     it("logs an error and still exits when onSignal rejects", async () => {
-        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+        const errorSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
         const onSignal = vi.fn().mockRejectedValue(new Error("shutdown boom"));
         installGracefulShutdown({ onSignal });
 
         process.emit("SIGTERM", "SIGTERM");
         await flush();
 
-        expect(errorSpy).toHaveBeenCalledWith(
-            "Graceful shutdown error:",
-            expect.objectContaining({ message: "shutdown boom" }),
-        );
+        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("graceful shutdown failed"));
+        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("shutdown boom"));
         expect(fixture.exitSpy).toHaveBeenCalledWith(143);
         errorSpy.mockRestore();
     });

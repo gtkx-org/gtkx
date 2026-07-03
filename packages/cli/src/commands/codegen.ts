@@ -1,8 +1,8 @@
+import { info } from "@gtkx/utils";
 import { defineCommand } from "citty";
 import { formatCodegenResult } from "../codegen/report.js";
 import { ensureGenerated, isCodegenDisabled, runCodegen, syncSchemaEnv } from "../codegen/run-codegen.js";
 import { cwdArg, resolveCwd } from "../internal/entry-arg.js";
-import { info } from "../internal/log.js";
 
 export const codegen = defineCommand({
     meta: {

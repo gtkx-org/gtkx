@@ -1,5 +1,5 @@
 import { createRequire } from "node:module";
-import { installGracefulShutdown } from "@gtkx/utils";
+import { createLogger, installGracefulShutdown, type Logger } from "@gtkx/utils";
 import { McpServer, type ToolCallback } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
@@ -19,6 +19,8 @@ import { SocketServer } from "./socket-server.js";
 
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json") as { version: string };
+
+export const log: Logger = createLogger("mcp");
 
 const APPLICATION_ID_DESCRIPTION = "Application ID to query. If not specified, uses the first connected app.";
 const WIDGET_ID_DESCRIPTION =
@@ -279,16 +281,16 @@ export const createMcpServer = (options: CreateMcpServerOptions): McpServerHandl
     registry.on("error", (error) => {
         const code = (error as NodeJS.ErrnoException).code;
         if (code !== "EPIPE" && code !== "ECONNRESET") {
-            console.error("[gtkx] Socket error:", error.message);
+            log.error(`socket error: ${error.message}`);
         }
     });
 
     appRouter.on("appRegistered", (appInfo) => {
-        console.error(`[gtkx] App registered: ${appInfo.applicationId} (PID: ${appInfo.pid})`);
+        log.info(`app registered: ${appInfo.applicationId} (PID: ${appInfo.pid})`);
     });
 
     appRouter.on("appUnregistered", (applicationId) => {
-        console.error(`[gtkx] App unregistered: ${applicationId}`);
+        log.info(`app unregistered: ${applicationId}`);
     });
 
     const mcpServer = new McpServer({ name: "gtkx-mcp", version: options.version });
@@ -302,7 +304,7 @@ export const createMcpServer = (options: CreateMcpServerOptions): McpServerHandl
     return {
         async start() {
             await socketServer.start();
-            console.error(`[gtkx] Socket server listening on ${socketPath}`);
+            log.info(`socket server listening on ${socketPath}`);
             const transport = new StdioServerTransport();
             process.stdin.on("end", () => void this.stop());
             process.stdin.on("close", () => void this.stop());

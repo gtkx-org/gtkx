@@ -3,10 +3,9 @@ import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } fro
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { createGtkxConfigLoader, type GtkxConfigLoader } from "@gtkx/config";
-import { formatChildProcessError } from "@gtkx/utils";
+import { error, formatChildProcessError, info } from "@gtkx/utils";
 import type { Plugin, ResolvedConfig, UserConfig, ViteDevServer } from "vite";
 import { DATA_IMPORT_PREFIX } from "../internal/data-dir.js";
-import { error, info } from "../internal/log.js";
 import { resolveCliTool } from "../internal/resolve-cli-tool.js";
 import { withStagingDir } from "../internal/staging-dir.js";
 import { ASSET_PATH_RE, ASSET_RE } from "./asset-extensions.js";

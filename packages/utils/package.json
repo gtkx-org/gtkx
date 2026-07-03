@@ -32,6 +32,9 @@
         "typecheck": "tsc -b --emitDeclarationOnly",
         "release": "cp ../../README.md README.md && pnpm publish --access public --no-git-checks"
     },
+    "dependencies": {
+        "picocolors": "^1.1.1"
+    },
     "engines": {
         "node": ">=24"
     }

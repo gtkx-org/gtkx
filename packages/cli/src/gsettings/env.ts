@@ -1,9 +1,8 @@
 import { createHash } from "node:crypto";
 import { copyFileSync, type Dirent, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
-import { sortedStrings } from "@gtkx/utils";
+import { sortedStrings, warn } from "@gtkx/utils";
 import { DATA_IMPORT_PREFIX } from "../internal/data-dir.js";
-import { warn } from "../internal/log.js";
 import { type ParsedSchemaFile, parseSchemaXml, SchemaParseError } from "./parser.js";
 import { renderEnvModule } from "./render.js";
 
