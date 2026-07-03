@@ -34,11 +34,6 @@
         "./env": {
             "types": "./env.d.ts"
         },
-        "./rules": {
-            "source": "./src/rules.ts",
-            "types": "./dist/rules.d.ts",
-            "default": "./dist/rules.js"
-        },
         "./plugin": {
             "source": "./src/plugin.ts",
             "types": "./dist/plugin.d.ts",
@@ -60,7 +55,6 @@
         "node": ">=24"
     },
     "dependencies": {
-        "@gtkx/utils": "workspace:*",
         "c12": "^3.3.4",
         "vite": "catalog:"
     },

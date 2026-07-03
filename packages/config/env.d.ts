@@ -18,7 +18,7 @@ declare module "virtual:gtkx-config" {
             value: "string" | "boolean" | "int" | "double" | "object" | "ref-list";
         }
     >;
-    export const RULE_REGISTRY: import("@gtkx/config").RuleRegistry;
+    export const USER_RULES: import("@gtkx/config").RuleRegistry | undefined;
     export const libraries: import("@gtkx/config").ResolvedGtkxConfig["libraries"];
     export const girPath: import("@gtkx/config").ResolvedGtkxConfig["girPath"];
     export const applicationId: import("@gtkx/config").ResolvedGtkxConfig["applicationId"];

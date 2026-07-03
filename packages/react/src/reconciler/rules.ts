@@ -1,5 +1,5 @@
+import type { RuleContext, RuleRegistry, RuleSet } from "@gtkx/config";
 import { callMethod } from "@gtkx/utils";
-import type { RuleContext, RuleRegistry, RuleSet } from "./rule-schema.js";
 
 const POSITION_TYPE_BOTTOM = 3;
 
@@ -483,6 +483,3 @@ export const BUILT_IN_RULES: RuleRegistry = {
     AdwViewStack: ViewStack,
     GtkTextTag: TextTag,
 };
-
-export const mergeRules = (builtins: RuleRegistry, user?: (builtins: RuleRegistry) => RuleRegistry): RuleRegistry =>
-    user ? user(builtins) : builtins;

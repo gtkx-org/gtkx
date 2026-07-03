@@ -1,11 +1,14 @@
 /// <reference types="@gtkx/config/env" />
 
-import { RULE_REGISTRY } from "virtual:gtkx-config";
+import { USER_RULES } from "virtual:gtkx-config";
 import type { RuleContext, RuleNode, RuleSet } from "@gtkx/config";
 import { type GTyped, typeFromName, typeIsA } from "@gtkx/ffi";
 import * as GObject from "@gtkx/gi/gobject";
 import { foldInheritedTableWithInterfaces } from "../utils/gtype.js";
+import { BUILT_IN_RULES } from "./rules.js";
 import { type Node, stateOf } from "./state.js";
+
+const RULE_REGISTRY = { ...BUILT_IN_RULES, ...USER_RULES };
 
 export const RULE_CONTEXT: RuleContext = {
     instanceIsA: (instance, typeName) => typeIsA((instance as GTyped).__gtype__, typeFromName(typeName)),

@@ -109,9 +109,7 @@ const validateReactCompiler = (reactCompiler: GtkxConfig["reactCompiler"]): void
 
 const validateRules = (rules: GtkxConfig["rules"]): void => {
     if (rules !== undefined && (typeof rules !== "string" || rules.length === 0)) {
-        throw new Error(
-            "gtkx.config.ts: `rules` must be a module specifier string default-exporting a `(builtins) => registry` function",
-        );
+        throw new Error("gtkx.config.ts: `rules` must be a module specifier string default-exporting a `RuleRegistry`");
     }
 };
 
