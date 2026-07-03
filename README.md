@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="logo.svg" alt="gtkx" width="100" />
+  <img src="logo.svg" alt="GTKX" width="100" />
 </p>
 
-<h1 align="center">gtkx</h1>
+<h1 align="center">GTKX</h1>
 
 <p align="center">
   Linux desktop application development for the modern age.<br />
-  Write declarative JSX; gtkx renders real native GTK4 and libadwaita widgets — no webview, no Electron.
+  Write declarative JSX; GTKX renders real native GTK4 and libadwaita widgets — no webview, no Electron.
 </p>
 
 <p align="center">
@@ -28,12 +28,12 @@
 
 ---
 
-gtkx is a framework for building native GTK4/libadwaita desktop applications with React, TypeScript, and JSX. You write declarative JSX whose element types are GTK widget names; a custom react-reconciler maps that tree to live GObject instances, while a Rust napi addon owns the single GLib main-loop thread and performs every call into GTK. A build-time generator turns GObject-Introspection (GIR) XML into typed bindings, JSX element types, and reconciler metadata, and a Vite-based CLI provides scaffolding, a hot-reloading dev server, single-file production bundling, and GTK-asset integration.
+GTKX is a framework for building native GTK4/libadwaita desktop applications with React, TypeScript, and JSX. You write declarative JSX whose element types are GTK widget names; a custom react-reconciler maps that tree to live GObject instances, while a Rust napi addon owns the single GLib main-loop thread and performs every call into GTK. A build-time generator turns GObject-Introspection (GIR) XML into typed bindings, JSX element types, and reconciler metadata, and a Vite-based CLI provides scaffolding, a hot-reloading dev server, single-file production bundling, and GTK-asset integration.
 
 ## Table of contents
 
 - [Demo](#demo)
-- [Why gtkx](#why-gtkx)
+- [Why GTKX](#why-gtkx)
 - [Quick start](#quick-start)
 - [Examples](#examples)
 - [Packages](#packages)
@@ -43,7 +43,7 @@ gtkx is a framework for building native GTK4/libadwaita desktop applications wit
 
 ## Demo
 
-![gtkx demo](demo.gif)
+![GTKX demo](demo.gif)
 
 The window above is rendered by the app below. The JSX element types are real GTK widgets, and standard React (hooks, events) drives them:
 
@@ -96,7 +96,7 @@ createRoot().render(<App />);
 
 This is the [`hello-world`](examples/hello-world) example, verbatim.
 
-## Why gtkx
+## Why GTKX
 
 - **Real React.** Declarative JSX, hooks, and Fast Refresh, backed by a custom react-reconciler that maps your component tree to live GObject instances.
 - **Full GTK4 + libadwaita.** Typed bindings, JSX element types, and reconciler metadata generated from GObject-Introspection (GIR) XML — the whole widget surface, fully typed.
@@ -105,7 +105,7 @@ This is the [`hello-world`](examples/hello-world) example, verbatim.
 - **Styling + animation.** `@gtkx/css` brings Emotion-style CSS-in-JS to GTK CSS classes, and `@gtkx/animate` provides libadwaita-driven animation components.
 - **Testing + AI.** A Testing Library-style harness (`@gtkx/testing`) with `@gtkx/vitest` headless display isolation, plus an MCP server (`@gtkx/mcp`) that exposes live widgets to AI agents.
 
-gtkx binds the GNOME stack (GTK4, libadwaita, GLib/GObject) the same way [GJS](https://gitlab.gnome.org/GNOME/gjs), [node-gtk](https://github.com/romgrk/node-gtk), and PyGObject do — but gives you the React programming model on top.
+GTKX binds the GNOME stack (GTK4, libadwaita, GLib/GObject) the same way [GJS](https://gitlab.gnome.org/GNOME/gjs), [node-gtk](https://github.com/romgrk/node-gtk), and PyGObject do — but gives you the React programming model on top.
 
 ## Quick start
 

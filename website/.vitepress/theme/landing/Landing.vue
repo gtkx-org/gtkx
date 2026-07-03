@@ -5,7 +5,7 @@
   <div class="landing">
     <a class="ann" :href="`${REPO_URL}/releases`">
       <span class="ann__tag">NEW</span>
-      <span class="ann__txt">gtkx v1.0 — native GTK4 desktop apps, written in React</span>
+      <span class="ann__txt">GTKX v1.0 — native GTK4 desktop apps, written in React</span>
       <span class="ann__arrow">→</span>
     </a>
     <Nav />

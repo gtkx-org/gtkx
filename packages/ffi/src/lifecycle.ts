@@ -1,15 +1,17 @@
 import { quit as nativeQuit } from "@gtkx/native";
+import { blockGObjectSignalHandlers } from "./signal.js";
 
 const KEEP_ALIVE_INTERVAL = 2147483647;
 
 export type ApplicationRunner = {
     getIsRegistered(): boolean;
-    getWindows?(): unknown[];
-    removeWindow?(window: unknown): void;
     register(cancellable: null): boolean;
     activate(): void;
+    quit(): void;
+    run(argv: string[]): number;
+    getWindows(): object[];
+    removeWindow(window: object): void;
     on(signal: "activate" | "shutdown", handler: () => void): unknown;
-    emit(signal: "shutdown"): void;
 };
 
 const shutdownCallbacks: (() => void)[] = [];
@@ -51,11 +53,9 @@ export const runApplication = (application: ApplicationRunner): void => {
 };
 
 export const quitApplication = (application: ApplicationRunner): void => {
-    if (application.getIsRegistered()) {
-        for (const window of application.getWindows?.() ?? []) {
-            application.removeWindow?.(window);
-        }
-    }
-
-    application.emit("shutdown");
+    if (!application.getIsRegistered()) return;
+    for (const window of application.getWindows()) application.removeWindow(window);
+    application.on("shutdown", () => application.quit());
+    blockGObjectSignalHandlers(application, "activate");
+    application.run([]);
 };

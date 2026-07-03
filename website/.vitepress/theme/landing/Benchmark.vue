@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const rows = [
-    { name: "gtkx", val: "38 MB", pct: 18, brand: true },
+    { name: "GTKX", val: "38 MB", pct: 18, brand: true },
     { name: "Flutter (Linux)", val: "92 MB", pct: 44 },
     { name: "Tauri (webview)", val: "120 MB", pct: 57 },
     { name: "Electron + React", val: "210 MB", pct: 100 },

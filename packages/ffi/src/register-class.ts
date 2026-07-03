@@ -174,7 +174,7 @@ function toNativeOptions(
     if (hasClassVfuncs) options.vfuncs = [...classVfuncs];
     if (hasInterfaces) {
         options.interfaces = interfaceBindings.map((binding) => ({
-            gtype: binding.gtype,
+            type: binding.gtype,
             vfuncs: [...binding.vfuncs],
         }));
     }

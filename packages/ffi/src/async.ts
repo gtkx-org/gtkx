@@ -9,12 +9,12 @@ type PromisifyArgs = {
     trailing?: unknown[];
 };
 
-const PROMISE_CREATION_MARKER = "### Promise created here: ###";
+const captureCreationSite = process.env.NODE_ENV !== "production";
 
-const spliceCreationStack = (error: unknown, creationStack: string | undefined): void => {
-    if (!(error instanceof Error) || creationStack === undefined) return;
-    const callerFrames = creationStack.split("\n").slice(2).join("\n");
-    error.stack = `${error.stack ?? ""}\n${PROMISE_CREATION_MARKER}\n${callerFrames}`;
+const attachCreationSite = (error: unknown, creationSite: Error | undefined): void => {
+    if (creationSite === undefined || !(error instanceof Error)) return;
+    if (error.cause !== undefined || !Object.isExtensible(error)) return;
+    error.cause = creationSite;
 };
 
 export const promisify = (
@@ -24,7 +24,11 @@ export const promisify = (
     args: PromisifyArgs,
 ): Promise<unknown> =>
     new Promise((resolve, reject) => {
-        const creationError = new Error();
+        let creationSite: Error | undefined;
+        if (captureCreationSite) {
+            creationSite = new Error("gtkx async operation started here");
+            Error.captureStackTrace(creationSite, promisify);
+        }
         asyncFn(
             ...args.leading,
             tryGetHandle(cancellable),
@@ -33,7 +37,7 @@ export const promisify = (
                 try {
                     resolve(finish(asyncResult));
                 } catch (error) {
-                    spliceCreationStack(error, creationError.stack);
+                    attachCreationSite(error, creationSite);
                     reject(error);
                 }
             },

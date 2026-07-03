@@ -1,6 +1,7 @@
 import { loadResolvedGtkxConfig } from "@gtkx/config";
 import { quitApplication } from "@gtkx/ffi";
 import * as Gio from "@gtkx/gi/gio";
+import type * as Gtk from "@gtkx/gi/gtk";
 import { installGracefulShutdown } from "@gtkx/utils";
 import { createServer } from "vite";
 import { info } from "../internal/log.js";
@@ -30,7 +31,7 @@ export const defaultDevRunnerDeps = (): DevRunnerDeps => ({
     },
     quitDefaultApplication: () => {
         const application = Gio.Application.getDefault();
-        if (application) quitApplication(application);
+        if (application) quitApplication(application as Gtk.Application);
     },
     performRefresh,
     isRefreshBoundary,

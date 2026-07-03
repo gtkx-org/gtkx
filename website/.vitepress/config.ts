@@ -1,8 +1,8 @@
 import { defineConfig } from "vitepress";
 
-const title = "gtkx";
+const title = "GTKX";
 const description =
-    "Linux desktop application development for the modern age. Write declarative JSX; gtkx renders real native GTK4 and libadwaita widgets — no webview, no Electron.";
+    "Linux desktop application development for the modern age. Write declarative JSX; GTKX renders real native GTK4 and libadwaita widgets — no webview, no Electron.";
 const url = "https://gtkx.dev";
 const ogImage = `${url}/og.png`;
 

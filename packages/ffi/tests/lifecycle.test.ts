@@ -1,42 +1,44 @@
-import { onExit, quitApplication, runApplication } from "@gtkx/ffi";
+import { type ApplicationRunner, onExit, quitApplication, runApplication } from "@gtkx/ffi";
 import { describe, expect, it, vi } from "vitest";
 
 const nativeMock = vi.hoisted(() => ({ quit: vi.fn() }));
+const signalMock = vi.hoisted(() => ({ blockGObjectSignalHandlers: vi.fn() }));
 
 vi.mock("@gtkx/native", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@gtkx/native")>();
     return { ...actual, quit: nativeMock.quit };
 });
 
-type FakeApplication = {
+vi.mock("../src/signal.js", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("../src/signal.js")>();
+    return { ...actual, blockGObjectSignalHandlers: signalMock.blockGObjectSignalHandlers };
+});
+
+type FakeApplication = ApplicationRunner & {
     registerCalls: number;
     activateCalls: number;
+    quitCalls: number;
+    runCalls: number;
     shutdownEmits: number;
-    windows: unknown[];
-    getIsRegistered(): boolean;
-    getWindows(): unknown[];
-    removeWindow(window: unknown): void;
-    register(cancellable: null): boolean;
-    activate(): void;
-    on(signal: "activate" | "shutdown", handler: () => void): unknown;
+    lastRunArgv: string[] | null;
+    windows: object[];
+    windowsAtRun: number | null;
     emit(signal: "activate" | "shutdown"): void;
 };
 
-const createFakeApplication = (): FakeApplication => {
+const createFakeApplication = (windows: object[] = []): FakeApplication => {
     const handlers: Record<"activate" | "shutdown", (() => void)[]> = { activate: [], shutdown: [] };
     let registered = false;
     return {
         registerCalls: 0,
         activateCalls: 0,
+        quitCalls: 0,
+        runCalls: 0,
         shutdownEmits: 0,
-        windows: [],
+        lastRunArgv: null,
+        windows: [...windows],
+        windowsAtRun: null,
         getIsRegistered: () => registered,
-        getWindows() {
-            return this.windows;
-        },
-        removeWindow(window: unknown) {
-            this.windows = this.windows.filter((candidate) => candidate !== window);
-        },
         register(_cancellable: null) {
             this.registerCalls++;
             registered = true;
@@ -45,6 +47,23 @@ const createFakeApplication = (): FakeApplication => {
         activate() {
             this.activateCalls++;
             this.emit("activate");
+        },
+        quit() {
+            this.quitCalls++;
+        },
+        run(argv: string[]) {
+            this.runCalls++;
+            this.lastRunArgv = argv;
+            this.windowsAtRun = this.windows.length;
+            registered = false;
+            this.emit("shutdown");
+            return 0;
+        },
+        getWindows() {
+            return [...this.windows];
+        },
+        removeWindow(window: object) {
+            this.windows = this.windows.filter((candidate) => candidate !== window);
         },
         on(signal, handler) {
             handlers[signal].push(handler);
@@ -72,13 +91,45 @@ describe("runApplication and quitApplication", () => {
             expect(vi.getTimerCount()).toBe(before + 1);
 
             quitApplication(app);
+            expect(signalMock.blockGObjectSignalHandlers).toHaveBeenCalledWith(app, "activate");
+            expect(app.lastRunArgv).toEqual([]);
+            expect(app.shutdownEmits).toBe(1);
+            expect(app.quitCalls).toBe(1);
+            expect(app.getIsRegistered()).toBe(false);
             expect(vi.getTimerCount()).toBe(before);
 
             quitApplication(app);
+            expect(app.runCalls).toBe(1);
             expect(vi.getTimerCount()).toBe(before);
         } finally {
             vi.useRealTimers();
         }
+    });
+
+    it("blocks activate handlers before running the application", () => {
+        const app = createFakeApplication();
+        const order: string[] = [];
+        signalMock.blockGObjectSignalHandlers.mockImplementationOnce(() => order.push("block"));
+        const originalRun = app.run.bind(app);
+        app.run = (argv: string[]) => {
+            order.push("run");
+            return originalRun(argv);
+        };
+
+        runApplication(app);
+        quitApplication(app);
+
+        expect(order).toEqual(["block", "run"]);
+    });
+
+    it("removes every held window before running the application", () => {
+        const app = createFakeApplication([{ id: "w1" }, { id: "w2" }]);
+
+        runApplication(app);
+        quitApplication(app);
+
+        expect(app.windows).toEqual([]);
+        expect(app.windowsAtRun).toBe(0);
     });
 
     it("does not re-register an already-registered application", () => {
@@ -97,38 +148,14 @@ describe("runApplication and quitApplication", () => {
         }
     });
 
-    it("removes every window and emits shutdown to tear the application down on quit", () => {
-        vi.useFakeTimers();
-        try {
-            const app = createFakeApplication();
-            const before = vi.getTimerCount();
+    it("does nothing when the application was never registered", () => {
+        const app = createFakeApplication();
 
-            runApplication(app);
-            app.windows = [{ id: "first" }, { id: "second" }];
+        quitApplication(app);
 
-            quitApplication(app);
-
-            expect(app.shutdownEmits).toBe(1);
-            expect(app.windows).toHaveLength(0);
-            expect(vi.getTimerCount()).toBe(before);
-        } finally {
-            vi.useRealTimers();
-        }
-    });
-
-    it("emits shutdown without touching windows when the application is not registered", () => {
-        vi.useFakeTimers();
-        try {
-            const app = createFakeApplication();
-            app.windows = [{ id: "orphan" }];
-
-            quitApplication(app);
-
-            expect(app.shutdownEmits).toBe(1);
-            expect(app.windows).toHaveLength(1);
-        } finally {
-            vi.useRealTimers();
-        }
+        expect(app.runCalls).toBe(0);
+        expect(app.shutdownEmits).toBe(0);
+        expect(app.activateCalls).toBe(0);
     });
 
     it("keeps a single keepalive when the application activates again", () => {

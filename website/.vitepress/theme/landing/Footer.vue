@@ -34,7 +34,7 @@ const cols: { h: string; items: Link[] }[] = [
         <div class="footer__brand">
           <div class="footer__lockup">
             <img src="/gtkx-mark.svg" width="32" height="32" alt="" />
-            <span class="footer__word">gtkx</span>
+            <span class="footer__word">GTKX</span>
           </div>
           <p class="footer__tag">
             The React renderer for native Linux desktop apps. Free &amp; open source.

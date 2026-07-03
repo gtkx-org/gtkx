@@ -74,6 +74,21 @@ const gSignalEmitv = bind(
 
 const gSignalLookup = bind(LIB, "g_signal_lookup", [stringT("borrowed"), biguint64T], uint32T);
 
+const G_SIGNAL_MATCH_ID = 1;
+
+const gSignalHandlersBlockMatched = bind(
+    LIB,
+    "g_signal_handlers_block_matched",
+    [objectT("borrowed"), uint32T, uint32T, uint32T, objectT("borrowed"), objectT("borrowed"), objectT("borrowed")],
+    uint32T,
+);
+
+export function blockGObjectSignalHandlers(instance: object, signal: string): void {
+    const gtype: bigint = (instance as GTyped).__gtype__;
+    const signalId = gSignalLookup(signalBaseName(signal), gtype) as number;
+    gSignalHandlersBlockMatched(getHandle(instance), G_SIGNAL_MATCH_ID, signalId, 0, undefined, undefined, undefined);
+}
+
 type EmitArg = {
     type: Descriptor;
     direction?: "out" | "inout";

@@ -10,71 +10,62 @@ const handle = (id: number): ExternalObject<Handle> => {
 
 const gobjectHandle = (): ExternalObject<Handle> => getHandle(new Gtk.Label({ label: "" }));
 
+const invokeCallback = (...args: unknown[]): void => {
+    (args[args.length - 1] as (source: ExternalObject<Handle>, result: ExternalObject<Handle>) => void)(
+        handle(1),
+        gobjectHandle(),
+    );
+};
+
 describe("promisify", () => {
-    it("forwards leading args, the resolved cancellable and the callback to the async fn", () => {
+    it("forwards leading args, the resolved cancellable and the callback to the async fn", async () => {
         const calls: unknown[][] = [];
         const asyncFn = (...args: unknown[]): void => {
             calls.push(args);
-            const callback = args[args.length - 1] as (
-                source: ExternalObject<Handle>,
-                result: ExternalObject<Handle>,
-            ) => void;
-            callback(handle(1), gobjectHandle());
+            invokeCallback(...args);
         };
 
         const cancellable = {};
         const cancellableHandle = handle(99);
         setHandle(cancellable, cancellableHandle);
 
-        return promisify(asyncFn, () => "done", cancellable, { leading: ["a", "b"] }).then((value) => {
-            expect(value).toBe("done");
-            const args = calls[0] ?? [];
-            expect(args.slice(0, 3)).toEqual(["a", "b", cancellableHandle]);
-            expect(typeof args[3]).toBe("function");
-        });
+        const value = await promisify(asyncFn, () => "done", cancellable, { leading: ["a", "b"] });
+        expect(value).toBe("done");
+        const args = calls[0] ?? [];
+        expect(args.slice(0, 3)).toEqual(["a", "b", cancellableHandle]);
+        expect(typeof args[3]).toBe("function");
     });
 
-    it("splices trailing args between the cancellable slot and the callback", () => {
+    it("splices trailing args between the cancellable slot and the callback", async () => {
         let captured: unknown[] = [];
         const asyncFn = (...args: unknown[]): void => {
             captured = args;
-            (args[args.length - 1] as (source: ExternalObject<Handle>, result: ExternalObject<Handle>) => void)(
-                handle(1),
-                gobjectHandle(),
-            );
+            invokeCallback(...args);
         };
 
-        return promisify(asyncFn, () => 0, undefined, { leading: ["lead"], trailing: ["progress"] }).then(() => {
-            expect(captured.slice(0, 3)).toEqual(["lead", undefined, "progress"]);
-            expect(typeof captured[3]).toBe("function");
-        });
+        await promisify(asyncFn, () => 0, undefined, { leading: ["lead"], trailing: ["progress"] });
+        expect(captured.slice(0, 3)).toEqual(["lead", undefined, "progress"]);
+        expect(typeof captured[3]).toBe("function");
     });
 
-    it("forwards the already-wrapped GAsyncResult straight to the finish callable", () => {
+    it("forwards the already-wrapped GAsyncResult straight to the finish callable", async () => {
         const asyncResult = new Gtk.Label({ label: "" });
         const asyncFn = (...args: unknown[]): void => {
             (args[args.length - 1] as (source: object | null, result: object) => void)(null, asyncResult);
         };
 
-        return promisify(asyncFn, (result: object) => getHandle(result), undefined, { leading: [] }).then(
-            (resolvedHandle) => {
-                expect(resolvedHandle).toBe(getHandle(asyncResult));
-            },
-        );
+        const resolvedHandle = await promisify(asyncFn, (result: object) => getHandle(result), undefined, {
+            leading: [],
+        });
+        expect(resolvedHandle).toBe(getHandle(asyncResult));
     });
 
     it("rejects with the error thrown by the finish callable", () => {
         const failure = new Error("boom");
-        const asyncFn = (...args: unknown[]): void => {
-            (args[args.length - 1] as (source: ExternalObject<Handle>, result: ExternalObject<Handle>) => void)(
-                handle(1),
-                gobjectHandle(),
-            );
-        };
 
         return expect(
             promisify(
-                asyncFn,
+                invokeCallback,
                 () => {
                     throw failure;
                 },
@@ -84,16 +75,9 @@ describe("promisify", () => {
         ).rejects.toBe(failure);
     });
 
-    it("splices the creation call-stack into the rejected error", () => {
-        const asyncFn = (...args: unknown[]): void => {
-            (args[args.length - 1] as (source: ExternalObject<Handle>, result: ExternalObject<Handle>) => void)(
-                handle(1),
-                gobjectHandle(),
-            );
-        };
-
+    it("attaches the creation call-site as the rejected error's cause", () => {
         return promisify(
-            asyncFn,
+            invokeCallback,
             () => {
                 throw new Error("boom");
             },
@@ -105,7 +89,10 @@ describe("promisify", () => {
             },
             (error: unknown) => {
                 expect(error).toBeInstanceOf(Error);
-                expect((error as Error).stack).toContain("### Promise created here: ###");
+                const cause = (error as Error).cause;
+                expect(cause).toBeInstanceOf(Error);
+                expect((cause as Error).message).toBe("gtkx async operation started here");
+                expect((cause as Error).stack).toContain("async.test.ts");
             },
         );
     });

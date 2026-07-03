@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-gtkx is a framework for building native GTK4/libadwaita desktop applications with React, TypeScript, and JSX. App authors write declarative JSX whose element types are GTK widget names; a custom react-reconciler maps that tree to live GObject instances, while a Rust napi addon owns the single GLib main-loop thread and performs every libffi call into GTK. A build-time generator turns GObject-Introspection (GIR) XML into the typed bindings, JSX element types, and reconciler metadata the runtime consumes, and a Vite-based CLI provides scaffolding, hot-reloading dev, single-file production bundling, and GTK-asset integration.
+GTKX is a framework for building native GTK4/libadwaita desktop applications with React, TypeScript, and JSX. App authors write declarative JSX whose element types are GTK widget names; a custom react-reconciler maps that tree to live GObject instances, while a Rust napi addon owns the single GLib main-loop thread and performs every libffi call into GTK. A build-time generator turns GObject-Introspection (GIR) XML into the typed bindings, JSX element types, and reconciler metadata the runtime consumes, and a Vite-based CLI provides scaffolding, hot-reloading dev, single-file production bundling, and GTK-asset integration.
 
 Homepage: https://gtkx.dev
 
@@ -21,9 +21,9 @@ Homepage: https://gtkx.dev
 | `@gtkx/css` | Emotion-based CSS-in-JS that compiles tagged-template styles into GTK CSS classes pushed through a process-wide CSS provider; raw global stylesheet injection; supports GTK `@named-colors`. |
 | `@gtkx/animate` | React animation components (tween/spring transitions and presence-aware enter/exit) that interpolate opacity/transform via libadwaita animations and write them out as per-element GTK CSS. |
 | `@gtkx/gl` | Hand-curated OpenGL core bindings generated from the vendored Khronos registry plus companion helpers, for use inside GL-area render callbacks. |
-| `@gtkx/mcp` | Model Context Protocol server exposing widget-inspection/interaction tools to AI agents over stdio, bridged to live gtkx apps over a Unix socket. |
+| `@gtkx/mcp` | Model Context Protocol server exposing widget-inspection/interaction tools to AI agents over stdio, bridged to live GTKX apps over a Unix socket. |
 | `@gtkx/testing` | Testing Library-style harness over real GObject widgets: render/cleanup, accessibility-first queries, `userEvent`/`fireEvent` via real GTK controllers/signals, screenshots, all inside React `act()`. |
-| `@gtkx/vitest` | Vitest plugin provisioning per-worker headless display isolation and wiring the gtkx config virtual module identically to production. |
+| `@gtkx/vitest` | Vitest plugin provisioning per-worker headless display isolation and wiring the GTKX config virtual module identically to production. |
 | `@gtkx/e2e` | Private in-repo end-to-end suite exercising the whole framework plus performance benchmarks under the headless harness. |
 | `@gtkx/utils` | Dependency-free leaf of pure helpers: string casing, safe source-text/identifier generation, collection helpers, error normalization, graceful-shutdown installer, and the shared structural any-constructor type. |
 

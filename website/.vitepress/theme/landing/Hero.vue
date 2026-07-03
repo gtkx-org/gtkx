@@ -135,7 +135,7 @@ const code: { indent?: number; toks: Tok[] }[] = [
           <span class="gtkx-gradient-text">modern age</span>
         </h1>
         <p class="hero__lede">
-          Write declarative JSX. gtkx renders real native
+          Write declarative JSX. GTKX renders real native
           <strong>GTK4 &amp; libadwaita</strong> widgets — no webview, no Electron —
           backed by a Rust GObject runtime.
         </p>

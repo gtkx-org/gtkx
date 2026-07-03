@@ -36,7 +36,7 @@ const features = [
 <template>
   <section id="features" class="features">
     <div class="features__head">
-      <p class="overline">Why gtkx</p>
+      <p class="overline">Why GTKX</p>
       <h2 class="features__title">Native. Declarative. <span class="accent">Typed.</span></h2>
       <p class="features__sub">Everything a desktop app needs, and nothing a browser drags along.</p>
     </div>
