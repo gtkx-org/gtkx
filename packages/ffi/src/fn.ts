@@ -1,15 +1,15 @@
-import type { Descriptor } from "@gtkx/native";
+import type { Descriptor, Ref } from "@gtkx/native";
 import { isCallerAllocatedArg, isInoutArg, isOutputArg, isRefArg } from "./arg.js";
-import { type UserCallback, wrapCallback } from "./callback.js";
+import { type Callback, wrapCallback } from "./callback.js";
 import { LIB } from "./constants.js";
-import { bind, boxedT, type CallbackDescriptor, type Ref, refT } from "./descriptors.js";
+import { bind, boxedT, type CallbackDescriptor, refT } from "./descriptors.js";
 import { checkError } from "./gerror.js";
 import { fromNativeValue } from "./native-value.js";
 import { getHandle } from "./registry.js";
 import { packTupleResult } from "./tuple.js";
 
 const wrapCallbackValue = (spec: CallbackDescriptor, callback: unknown): unknown =>
-    callback == null ? callback : wrapCallback(callback as UserCallback, spec, "none");
+    callback == null ? callback : wrapCallback(callback as Callback, spec, "none");
 
 type ArgSpec = {
     type: Descriptor;

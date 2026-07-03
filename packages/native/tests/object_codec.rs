@@ -259,7 +259,11 @@ fn write_value_to_pointer_writes_object() {
     helpers::run(|| {
         let (_obj, obj_ptr, before) = fresh_gobject();
 
-        let slot = helpers::write_value_into_slot(&borrowed(), std::ptr::null_mut(), &object_value_of(obj_ptr));
+        let slot = helpers::write_value_into_slot(
+            &borrowed(),
+            std::ptr::null_mut(),
+            &object_value_of(obj_ptr),
+        );
 
         assert_eq!(slot, obj_ptr as *mut c_void);
         assert_eq!(get_gobject_refcount(obj_ptr), before + 1);
@@ -278,7 +282,11 @@ fn write_value_to_pointer_unrefs_previous_object() {
         let old_before = get_gobject_refcount(old_ptr);
         let new_before = get_gobject_refcount(new_ptr);
 
-        let slot = helpers::write_value_into_slot(&borrowed(), old_ptr as *mut c_void, &object_value_of(new_ptr));
+        let slot = helpers::write_value_into_slot(
+            &borrowed(),
+            old_ptr as *mut c_void,
+            &object_value_of(new_ptr),
+        );
 
         assert_eq!(slot, new_ptr as *mut c_void);
         assert_eq!(get_gobject_refcount(new_ptr), new_before + 1);
@@ -296,7 +304,8 @@ fn write_value_to_pointer_null_releases_previous_object() {
         unsafe { glib::gobject_ffi::g_object_ref(obj_ptr.cast()) };
         let before = get_gobject_refcount(obj_ptr);
 
-        let slot = helpers::write_value_into_slot(&borrowed(), obj_ptr as *mut c_void, &Value::Null);
+        let slot =
+            helpers::write_value_into_slot(&borrowed(), obj_ptr as *mut c_void, &Value::Null);
 
         assert!(slot.is_null());
         assert_eq!(get_gobject_refcount(obj_ptr), before - 1);

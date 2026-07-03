@@ -399,7 +399,8 @@ fn write_value_to_pointer_null_releases_previous_fundamental() {
         unsafe { glib::gobject_ffi::g_param_spec_ref(pspec.cast()) };
         let before = param_spec_refcount(pspec);
 
-        let slot = helpers::write_value_into_slot(&fundamental(Ownership::Borrowed), pspec, &Value::Null);
+        let slot =
+            helpers::write_value_into_slot(&fundamental(Ownership::Borrowed), pspec, &Value::Null);
 
         assert!(slot.is_null());
         assert_eq!(param_spec_refcount(pspec), before - 1);

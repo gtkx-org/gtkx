@@ -4,7 +4,7 @@ import {
     registerClass as nativeRegisterClass,
 } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
-import { wrapCallback } from "./callback.js";
+import { type Callback, wrapCallback } from "./callback.js";
 import { TYPE_INVALID, typeInterfaces } from "./gtype.js";
 import {
     getClassGtype,
@@ -117,7 +117,7 @@ function wrapVfunc(
     argDescriptors: NativeRegisterClassVfunc["argDescriptors"],
     returnDescriptor: NativeRegisterClassVfunc["returnDescriptor"],
 ): VfuncFn {
-    return wrapCallback(fn, { argDescriptors, returnDescriptor }, "this");
+    return wrapCallback(fn as Callback, { argDescriptors, returnDescriptor }, "this");
 }
 
 function discoverInheritedInterfaceVfuncs(

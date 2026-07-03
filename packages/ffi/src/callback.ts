@@ -1,23 +1,19 @@
 import { copy, type Descriptor } from "@gtkx/native";
-import { isCallerAllocatedDescriptor, isRefDescriptor } from "./arg.js";
+import { isCallerAllocatedDescriptor, isRefDescriptor } from "./descriptors.js";
 import { valueCopyInto } from "./gvalue.js";
 import { fromNativeValue, toNativeValue } from "./native-value.js";
 import { getHandle } from "./registry.js";
 import { splitTupleResult } from "./tuple.js";
 
+export type Callback = (...args: unknown[]) => unknown;
 type CallbackReceiver = "this" | "emitter" | "none";
-
-type Callback = (...args: unknown[]) => unknown;
-
-export type UserCallback = (...args: never[]) => unknown;
+type OutParam = { value: unknown; descriptor: Descriptor };
 
 type CallbackSpec = {
     argDescriptors: Descriptor[];
     returnDescriptor: Descriptor;
     userDataIndex?: number;
 };
-
-type OutParam = { value: unknown; descriptor: Descriptor };
 
 const fillCallerAllocatedBuffer = (descriptor: Descriptor, target: object, source: object): void => {
     if (descriptor.kind === "boxed" && descriptor.typeName === "GValue") {
@@ -64,7 +60,7 @@ const writeOutParams = (outParams: OutParam[], outValues: unknown[]): void => {
     });
 };
 
-export function wrapCallback(fn: UserCallback, spec: CallbackSpec, receiver: CallbackReceiver): Callback {
+export function wrapCallback(fn: Callback, spec: CallbackSpec, receiver: CallbackReceiver): Callback {
     const { returnDescriptor, userDataIndex } = spec;
     const effectiveTypes =
         userDataIndex === undefined ? spec.argDescriptors : spec.argDescriptors.filter((_, i) => i !== userDataIndex);

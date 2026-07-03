@@ -1,5 +1,4 @@
-import type { ExternalObject, Handle } from "@gtkx/native";
-import type { Ref } from "./descriptors.js";
+import type { ExternalObject, Handle, Ref } from "@gtkx/native";
 import { getErrorGtype, isGtyped } from "./gtype.js";
 import { requireWrapperClass, wrapHandle } from "./registry.js";
 

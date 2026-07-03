@@ -40,9 +40,4 @@ pub mod napi_export {
             return_codec,
         })))
     }
-
-    #[napi(catch_unwind)]
-    pub fn bind_field(field_descriptor: Descriptor) -> napi::Result<External<Arc<Codec>>> {
-        Ok(External::new(Arc::new(field_descriptor.into_codec()?)))
-    }
 }

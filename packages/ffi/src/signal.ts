@@ -1,7 +1,7 @@
 import type { Descriptor, ExternalObject, Handle } from "@gtkx/native";
 import { isCallerAllocatedArg, isInoutArg, isOutputArg } from "./arg.js";
 import { wrapCallback } from "./callback.js";
-import { GVALUE_SIZE, GVALUE_T, LIB } from "./constants.js";
+import { LIB, VALUE_SIZE, VALUE_T } from "./constants.js";
 import {
     arrayT,
     biguint64T,
@@ -52,8 +52,12 @@ const connectCache = createBindCache();
 
 function connectBind(gtype: bigint, signal: string, callback: CallbackDescriptor): (...values: unknown[]) => unknown {
     const key = `${gtype}\0${signalBaseName(signal)}`;
-    return connectCache(key, () =>
-        bind(LIB, "g_signal_connect_data", [objectT("borrowed"), stringT("borrowed"), callback, uint32T], uint64T),
+    return connectCache(
+        key,
+        LIB,
+        "g_signal_connect_data",
+        [objectT("borrowed"), stringT("borrowed"), callback, uint32T],
+        uint64T,
     );
 }
 
@@ -68,7 +72,7 @@ export function connectGObjectSignal(instance: object, signal: string, spec: Sig
 const gSignalEmitv = bind(
     LIB,
     "g_signal_emitv",
-    [arrayT(GVALUE_T, "array", "borrowed", { elementSize: GVALUE_SIZE }), uint32T, uint32T, GVALUE_T],
+    [arrayT(VALUE_T, "array", "borrowed", { elementSize: VALUE_SIZE }), uint32T, uint32T, VALUE_T],
     voidT,
 );
 

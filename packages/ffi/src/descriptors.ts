@@ -1,8 +1,6 @@
 import { type ArrayKind, call, type Descriptor, bind as nativeBind, type Ownership } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
 
-export type Ref = { value: unknown };
-
 export type Int8Descriptor = Extract<Descriptor, { kind: "int8" }>;
 export type Uint8Descriptor = Extract<Descriptor, { kind: "uint8" }>;
 export type Int16Descriptor = Extract<Descriptor, { kind: "int16" }>;
@@ -24,22 +22,18 @@ export type UnicharDescriptor = Extract<Descriptor, { kind: "unichar" }>;
 export type VoidDescriptor = Extract<Descriptor, { kind: "void" }>;
 export type BufferDescriptor = Extract<Descriptor, { kind: "buffer" }>;
 export type BoxedDescriptor = Extract<Descriptor, { kind: "boxed" }>;
-export type StructDescriptor = Extract<Descriptor, { kind: "struct" }>;
-export type FundamentalDescriptor = Extract<Descriptor, { kind: "fundamental" }>;
+export type StructDescriptor = Extract<Descriptor, { kind: "struct" }> & { wrapperClass?: AnyClass };
+export type FundamentalDescriptor = Extract<Descriptor, { kind: "fundamental" }> & { wrapperClass?: AnyClass };
 export type ArrayDescriptor = Extract<Descriptor, { kind: "array" }>;
 export type HashTableDescriptor = Extract<Descriptor, { kind: "hashtable" }>;
 export type CallbackDescriptor = Extract<Descriptor, { kind: "callback" }>;
 export type RefDescriptor = Extract<Descriptor, { kind: "ref" }>;
 export type GtypeDescriptor = BigUint64Descriptor & { gtype: true };
 
-const wrapperClassByDescriptor = new WeakMap<Descriptor, AnyClass>();
+export const isRefDescriptor = (descriptor: Descriptor): descriptor is RefDescriptor => descriptor.kind === "ref";
 
-const setDescriptorWrapperClass = (descriptor: Descriptor, wrapperClass: AnyClass): void => {
-    wrapperClassByDescriptor.set(descriptor, wrapperClass);
-};
-
-export const getDescriptorWrapperClass = (descriptor: Descriptor): AnyClass | undefined =>
-    wrapperClassByDescriptor.get(descriptor);
+export const isCallerAllocatedDescriptor = (descriptor: Descriptor): boolean =>
+    (descriptor.kind === "boxed" || descriptor.kind === "struct") && descriptor.callerAllocated === true;
 
 export const bind = (
     sharedLibrary: string,
@@ -53,12 +47,12 @@ export const bind = (
 
 type BoundCall = (...values: unknown[]) => unknown;
 
-export const createBindCache = (): ((key: string, make: () => BoundCall) => BoundCall) => {
+export const createBindCache = (): ((key: string, ...args: Parameters<typeof bind>) => BoundCall) => {
     const cache = new Map<string, BoundCall>();
-    return (key, make) => {
+    return (key, ...args) => {
         const existing = cache.get(key);
         if (existing !== undefined) return existing;
-        const bound = make();
+        const bound = bind(...args);
         cache.set(key, bound);
         return bound;
     };
@@ -79,10 +73,15 @@ export const gtypeT: GtypeDescriptor = Object.freeze({ kind: "biguint64", gtype:
 export const isGtypeDescriptor = (descriptor: Descriptor): boolean =>
     "gtype" in descriptor && descriptor.gtype === true;
 
-const typeFunctionCache = createBindCache();
+const resolvedTypeCache = new Map<string, bigint>();
 
-export const callTypeFunction = (sharedLibrary: string, symbol: string): bigint =>
-    typeFunctionCache(`${sharedLibrary} ${symbol}`, () => bind(sharedLibrary, symbol, [], biguint64T))() as bigint;
+export const resolveType = (sharedLibrary: string, getTypeFnName: string): bigint => {
+    const cached = resolvedTypeCache.get(getTypeFnName);
+    if (cached !== undefined) return cached;
+    const gtype = bind(sharedLibrary, getTypeFnName, [], biguint64T)() as bigint;
+    resolvedTypeCache.set(getTypeFnName, gtype);
+    return gtype;
+};
 export const float32T: Float32Descriptor = Object.freeze({ kind: "float32" });
 export const float64T: Float64Descriptor = Object.freeze({ kind: "float64" });
 export const booleanT: BooleanDescriptor = Object.freeze({ kind: "boolean" });
@@ -129,7 +128,7 @@ export const boxedT = (typeName: string, options: BoxedOptions = {}): BoxedDescr
 export const structT = (ownership: Ownership = "borrowed", options: StructOptions = {}): StructDescriptor => {
     const result: StructDescriptor = { kind: "struct", ownership };
     if (options.size !== undefined) result.size = options.size;
-    if (options.wrapperClass !== undefined) setDescriptorWrapperClass(result, options.wrapperClass);
+    if (options.wrapperClass !== undefined) result.wrapperClass = options.wrapperClass;
     if (options.callerAllocated) result.callerAllocated = true;
     return result;
 };
@@ -149,7 +148,7 @@ export const fundamentalT = (
     const ownership = options.ownership ?? "borrowed";
     const result: FundamentalDescriptor = { kind: "fundamental", ownership, sharedLibrary, refFnName, unrefFnName };
     if (options.typeName !== undefined) result.typeName = options.typeName;
-    if (options.wrapperClass !== undefined) setDescriptorWrapperClass(result, options.wrapperClass);
+    if (options.wrapperClass !== undefined) result.wrapperClass = options.wrapperClass;
     return result;
 };
 

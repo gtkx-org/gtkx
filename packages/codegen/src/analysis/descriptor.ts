@@ -103,8 +103,6 @@ export const tInt32: string = T.int32;
 
 export const tUint64: string = T.uint64;
 
-export const tBigUint64: string = T.biguint64;
-
 export const tGtype: string = T.gtype;
 
 export const tBuffer: string = T.buffer;

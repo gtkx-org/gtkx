@@ -1,12 +1,5 @@
 import { type BoxedDescriptor, boxedT } from "./descriptors.js";
 
 export const LIB = "libgobject-2.0.so.0,libglib-2.0.so.0";
-
-export const GVALUE_SIZE = 24;
-
-export const GVALUE_LAYOUT: { gTypeOffset: number; dataOffset: number } = {
-    gTypeOffset: 0,
-    dataOffset: 8,
-};
-
-export const GVALUE_T: BoxedDescriptor = boxedT("GValue", { sharedLibrary: LIB, getTypeFnName: "g_value_get_type" });
+export const VALUE_SIZE = 24;
+export const VALUE_T: BoxedDescriptor = boxedT("GValue", { sharedLibrary: LIB, getTypeFnName: "g_value_get_type" });

@@ -1,14 +1,5 @@
-import {
-    alloc,
-    bindField,
-    type Descriptor,
-    type ExternalObject,
-    getType,
-    type Handle,
-    read,
-    write,
-} from "@gtkx/native";
-import { GVALUE_LAYOUT, GVALUE_SIZE, GVALUE_T, LIB } from "./constants.js";
+import { alloc, type Descriptor, type ExternalObject, getType, type Handle, read, write } from "@gtkx/native";
+import { LIB, VALUE_SIZE, VALUE_T } from "./constants.js";
 import {
     arrayT,
     type BoxedDescriptor,
@@ -17,7 +8,6 @@ import {
     bind,
     booleanT,
     boxedT,
-    callTypeFunction,
     createBindCache,
     type FundamentalDescriptor,
     float32T,
@@ -26,6 +16,7 @@ import {
     int32T,
     isGtypeDescriptor,
     objectT,
+    resolveType,
     stringT,
     uint32T,
     uint64T,
@@ -56,16 +47,13 @@ import {
 } from "./gtype.js";
 import { getHandle, requireWrapperClass, tryGetHandle, wrapHandle } from "./registry.js";
 
-const newGValue = (): ExternalObject<Handle> => alloc(GVALUE_SIZE, "GValue");
-
-const BIGUINT64_FIELD = bindField(biguint64T);
-const UINT64_FIELD = bindField(uint64T);
+const newGValue = (): ExternalObject<Handle> => alloc(VALUE_SIZE, "GValue");
 
 export function valueGetType(value: ExternalObject<Handle>): bigint {
-    return read(value, BIGUINT64_FIELD, GVALUE_LAYOUT.gTypeOffset) as bigint;
+    return read(value, biguint64T, 0) as bigint;
 }
 
-const gValueInit = bind(LIB, "g_value_init", [GVALUE_T, biguint64T], voidT);
+const gValueInit = bind(LIB, "g_value_init", [VALUE_T, biguint64T], voidT);
 
 const valueInit = (value: ExternalObject<Handle>, gtype: bigint): void => {
     gValueInit(value, gtype);
@@ -77,7 +65,7 @@ const newTypedGValue = (gtype: bigint): ExternalObject<Handle> => {
     return value;
 };
 
-const gValueCopy = bind(LIB, "g_value_copy", [GVALUE_T, GVALUE_T], voidT);
+const gValueCopy = bind(LIB, "g_value_copy", [VALUE_T, VALUE_T], voidT);
 
 export const valueCopyInto = (dest: ExternalObject<Handle>, src: ExternalObject<Handle>): void => {
     if (valueGetType(dest) === TYPE_INVALID) {
@@ -86,15 +74,15 @@ export const valueCopyInto = (dest: ExternalObject<Handle>, src: ExternalObject<
     gValueCopy(src, dest);
 };
 
-const gValueSetPointer = bind(LIB, "g_value_set_pointer", [GVALUE_T, uint64T], voidT);
+const gValueSetPointer = bind(LIB, "g_value_set_pointer", [VALUE_T, uint64T], voidT);
 
 const setGValuePointer = (value: ExternalObject<Handle>, pointer: ExternalObject<Handle>): void => {
     gValueSetPointer(value, pointer);
 };
 
 const scalarBind = <T>(symbol: string, descriptor: Descriptor) => ({
-    set: bind(LIB, `g_value_set_${symbol}`, [GVALUE_T, descriptor], voidT),
-    get: bind(LIB, `g_value_get_${symbol}`, [GVALUE_T], descriptor) as (...values: unknown[]) => T,
+    set: bind(LIB, `g_value_set_${symbol}`, [VALUE_T, descriptor], voidT),
+    get: bind(LIB, `g_value_get_${symbol}`, [VALUE_T], descriptor) as (...values: unknown[]) => T,
 });
 
 const booleanBind = scalarBind<boolean>("boolean", booleanT);
@@ -185,8 +173,8 @@ const valueGetVariant = (value: ExternalObject<Handle>): object | null => {
     return result === null ? null : wrapHandle(result, requireWrapperClass(TYPE_VARIANT));
 };
 
-const gValueSetBoxedStrv = bind(LIB, "g_value_set_boxed", [GVALUE_T, arrayT(stringT("borrowed"))], voidT);
-const gValueGetBoxedStrv = bind(LIB, "g_value_get_boxed", [GVALUE_T], arrayT(stringT("borrowed")));
+const gValueSetBoxedStrv = bind(LIB, "g_value_set_boxed", [VALUE_T, arrayT(stringT("borrowed"))], voidT);
+const gValueGetBoxedStrv = bind(LIB, "g_value_get_boxed", [VALUE_T], arrayT(stringT("borrowed")));
 
 const valueSetStrv = (value: ExternalObject<Handle>, v: string[]): void => {
     gValueSetBoxedStrv(value, v);
@@ -201,8 +189,12 @@ const setBoxedPayload = (
     boxedHandle: ExternalObject<Handle> | null,
 ): void => {
     const name = typeName(valueGetType(value)) ?? "GBoxed";
-    const setBoxed = setBoxedCache(`${symbol} ${name}`, () =>
-        bind(LIB, symbol, [GVALUE_T, boxedT(name, { sharedLibrary: LIB })], voidT),
+    const setBoxed = setBoxedCache(
+        `${symbol} ${name}`,
+        LIB,
+        symbol,
+        [VALUE_T, boxedT(name, { sharedLibrary: LIB })],
+        voidT,
     );
     setBoxed(value, boxedHandle);
 };
@@ -222,12 +214,11 @@ export function outValueForDescriptor(
     initial?: unknown,
 ): { value: ExternalObject<Handle>; read: () => unknown } {
     const storage = alloc(OUT_PARAM_STORAGE_SIZE);
-    const fieldCodec = bindField(descriptor);
-    write(storage, UINT64_FIELD, 0, 0);
-    if (initial !== undefined) write(storage, fieldCodec, 0, initial);
+    write(storage, uint64T, 0, 0);
+    if (initial !== undefined) write(storage, descriptor, 0, initial);
     const value = newTypedGValue(TYPE_POINTER);
     setGValuePointer(value, storage);
-    return { value, read: () => read(storage, fieldCodec, 0) };
+    return { value, read: () => read(storage, descriptor, 0) };
 }
 
 export function outBoxedForDescriptor(descriptor: Descriptor, boxed: object): ExternalObject<Handle> {
@@ -251,8 +242,12 @@ export function valueGetBoxed(value: ExternalObject<Handle>): object | null {
     }
     const cls = requireWrapperClass(gtype);
     const name = typeName(gtype) ?? "GBoxed";
-    const dupBoxed = dupBoxedCache(name, () =>
-        bind(LIB, "g_value_dup_boxed", [GVALUE_T], boxedT(name, { ownership: "full", sharedLibrary: LIB })),
+    const dupBoxed = dupBoxedCache(
+        name,
+        LIB,
+        "g_value_dup_boxed",
+        [VALUE_T],
+        boxedT(name, { ownership: "full", sharedLibrary: LIB }),
     );
     const ptr = dupBoxed(value);
     return ptr === null ? null : wrapHandle(ptr as ExternalObject<Handle>, cls);
@@ -268,7 +263,7 @@ export function getGValueBoxed(value: object): object | null {
 
 const resolveBoxedInnerGtype = (descriptor: BoxedDescriptor): bigint => {
     if (descriptor.getTypeFnName && descriptor.sharedLibrary) {
-        return callTypeFunction(descriptor.sharedLibrary, descriptor.getTypeFnName) as bigint;
+        return resolveType(descriptor.sharedLibrary, descriptor.getTypeFnName);
     }
     const gtype = typeFromName(descriptor.typeName);
     if (gtype === TYPE_INVALID) {
@@ -314,7 +309,7 @@ export function gtypeFromDescriptor(descriptor: Descriptor): bigint {
             return TYPE_OBJECT;
         case "enum":
         case "flags":
-            return callTypeFunction(descriptor.sharedLibrary, descriptor.getTypeFnName) as bigint;
+            return resolveType(descriptor.sharedLibrary, descriptor.getTypeFnName);
         case "boxed":
             return resolveBoxedInnerGtype(descriptor);
         case "fundamental":
@@ -338,7 +333,7 @@ function objectToGValue(value: object | null): ExternalObject<Handle> {
 }
 
 const getPointerValue = (value: ExternalObject<Handle>): null => {
-    const ptr = read(value, UINT64_FIELD, GVALUE_LAYOUT.dataOffset) as number;
+    const ptr = read(value, uint64T, 8) as number;
     if (ptr !== 0) {
         throw new Error("G_TYPE_POINTER non-null values cannot be marshalled to JS");
     }
