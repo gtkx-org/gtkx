@@ -15,15 +15,10 @@ import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { callMethod, callRequiredMethod } from "@gtkx/utils";
-import { collectTypeNameChain, findInheritedRow } from "../utils/gtype.js";
+import { findInheritedRow } from "../utils/gtype.js";
 import { applyProps } from "./apply-props.js";
-import {
-    attachToParent,
-    childRuleSetMapping,
-    type ElementMapping,
-    orderedInsertMapping,
-    setElementMap,
-} from "./dispatch.js";
+import { attachToParent, type ElementMapping, setElementMap } from "./dispatch.js";
+import { attachSlotChild, detachSlotChild, ruleChildMapping } from "./relationship-apply.js";
 import {
     type InsertableWidget,
     isAddable,
@@ -43,8 +38,6 @@ import {
     trackedInstance,
     trackedWidget,
 } from "./relationship-content.js";
-import { namedRuleSet, RULE_CONTEXT, resolveAppendRuleSet, ruleNodeOf } from "./rule-registry.js";
-import { SLOT_HOST_BASE_TYPE } from "./slot-props.js";
 import { isRelationshipKind, type Node, registeredStateOf, registerState, stateOf } from "./state.js";
 import type { Props } from "./types.js";
 import { attachChild, detachChild, getFocusWidget, isAttachedTo, isDescendantOf, unparentWidget } from "./widget.js";
@@ -101,21 +94,12 @@ const slotTagOf = (node: Node): string | undefined => {
     return typeof slotTag === "string" ? slotTag : undefined;
 };
 
-const slotHostRuleSet = (host: GObject.Object, slotTag: string) => {
-    const baseType = SLOT_HOST_BASE_TYPE[slotTag];
-    return baseType ? namedRuleSet(baseType) : resolveAppendRuleSet(host.__type__);
-};
-
 const attachContainerSlotChild = (instance: Node, parent: GObject.Object, slotTag: string): void => {
-    const parentNode = ruleNodeOf(parent);
-    const childNode = ruleNodeOf(instance, slotTag);
-    if (parentNode && childNode) slotHostRuleSet(parent, slotTag)?.appendChild?.(parentNode, childNode, RULE_CONTEXT);
+    if (instance instanceof GObject.Object) attachSlotChild(parent, instance, slotTag);
 };
 
 const detachContainerSlotChild = (instance: Node, parent: GObject.Object, slotTag: string): void => {
-    const parentNode = ruleNodeOf(parent);
-    const childNode = ruleNodeOf(instance, slotTag);
-    if (parentNode && childNode) slotHostRuleSet(parent, slotTag)?.removeChild?.(parentNode, childNode, RULE_CONTEXT);
+    if (instance instanceof GObject.Object) detachSlotChild(parent, instance, slotTag);
     if (instance instanceof Gtk.Widget && instance.getParent() !== null) unparentWidget(instance);
 };
 
@@ -582,60 +566,6 @@ const widgetContainerMapping: ElementMapping = {
     },
 };
 
-type PromotedChildTarget = {
-    matchesChild: (child: GObject.Object) => boolean;
-    acceptsParent: (parent: GObject.Object, child: GObject.Object) => boolean;
-    prop: string;
-};
-
-const PROMOTED_CHILD_TARGETS: PromotedChildTarget[] = [
-    {
-        matchesChild: (child) => child instanceof Gtk.EventController,
-        acceptsParent: (parent) => parent instanceof Gtk.Widget,
-        prop: "controllers",
-    },
-    {
-        matchesChild: (child) => child instanceof Gtk.LayoutManager,
-        acceptsParent: (parent) => parent instanceof Gtk.Widget,
-        prop: "layoutManager",
-    },
-    {
-        matchesChild: (child) => child instanceof Gtk.Shortcut,
-        acceptsParent: (parent) => parent instanceof Gtk.ShortcutController,
-        prop: "shortcuts",
-    },
-    {
-        matchesChild: (child) => child instanceof Gtk.TextBuffer,
-        acceptsParent: (parent) => parent instanceof Gtk.TextView,
-        prop: "buffer",
-    },
-];
-
-const promotedTargetFor = (child: Node, parent: Node): PromotedChildTarget | null => {
-    if (!(child instanceof GObject.Object) || !(parent instanceof GObject.Object)) return null;
-    for (const target of PROMOTED_CHILD_TARGETS) {
-        if (target.matchesChild(child) && !target.acceptsParent(parent, child)) return target;
-    }
-    return null;
-};
-
-const displayName = (node: Node): string => {
-    const state = stateOf(node);
-    if (node instanceof GObject.Object) return collectTypeNameChain(node.__type__)[0] ?? state.name ?? "GObject";
-    return state.name ?? state.kind ?? "node";
-};
-
-const promotedNestingGuardMapping: ElementMapping = {
-    matches: (child, parent) => promotedTargetFor(child, parent) !== null,
-    attach: (child, parent) => {
-        const target = promotedTargetFor(child, parent);
-        throw new Error(
-            `<${displayName(child)}> cannot be a child of <${displayName(parent)}>: pass it through the \`${target?.prop}\` prop instead.`,
-        );
-    },
-    detach: () => {},
-};
-
 const ELEMENT_MAP: ElementMapping[] = [
     widgetPropMapping,
     containerSlotMapping,
@@ -643,9 +573,7 @@ const ELEMENT_MAP: ElementMapping[] = [
     metaObjectMapping,
     layoutChildMapping,
     overlayMapping,
-    promotedNestingGuardMapping,
-    orderedInsertMapping,
-    childRuleSetMapping,
+    ruleChildMapping,
     toplevelSkipMapping,
     listItemChildMapping,
     widgetContainerMapping,

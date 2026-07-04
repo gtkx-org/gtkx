@@ -1,8 +1,5 @@
 import * as GObject from "@gtkx/gi/gobject";
-import * as Gtk from "@gtkx/gi/gtk";
-import { attachOrderedInsert, detachOrderedInsert, resolveOrderedInsert } from "./ordered-insert.js";
 import { isRelationshipNode } from "./relationship-node.js";
-import { RULE_CONTEXT, resolveAppendRuleSet, ruleNodeOf } from "./rule-registry.js";
 import { type Node, stateOf } from "./state.js";
 
 export type ElementMapping = {
@@ -15,41 +12,6 @@ let elementMap: ElementMapping[] = [];
 
 export const setElementMap = (mappings: ElementMapping[]): void => {
     elementMap = mappings;
-};
-
-const isSelfAttachingChild = (child: Node, parent: Node): boolean =>
-    child instanceof GObject.Object &&
-    !(child instanceof Gtk.Widget) &&
-    parent instanceof GObject.Object &&
-    resolveAppendRuleSet(child.__type__) !== null;
-
-export const orderedInsertMapping: ElementMapping = {
-    matches: (child, parent) =>
-        child instanceof GObject.Object && parent instanceof GObject.Object && resolveOrderedInsert(parent) !== null,
-    attach: (child, parent, anchor) => {
-        const spec = resolveOrderedInsert(parent);
-        if (spec) attachOrderedInsert(spec, child, parent, anchor);
-    },
-    detach: (child, parent) => {
-        const spec = resolveOrderedInsert(parent);
-        if (spec) detachOrderedInsert(spec, child, parent);
-    },
-};
-
-export const childRuleSetMapping: ElementMapping = {
-    matches: isSelfAttachingChild,
-    attach: (child, parent) => {
-        const parentNode = ruleNodeOf(parent);
-        const childNode = ruleNodeOf(child);
-        if (!parentNode || !childNode || !(child instanceof GObject.Object)) return;
-        resolveAppendRuleSet(child.__type__)?.appendChild?.(parentNode, childNode, RULE_CONTEXT);
-    },
-    detach: (child, parent) => {
-        const parentNode = ruleNodeOf(parent);
-        const childNode = ruleNodeOf(child);
-        if (!parentNode || !childNode || !(child instanceof GObject.Object)) return;
-        resolveAppendRuleSet(child.__type__)?.removeChild?.(parentNode, childNode, RULE_CONTEXT);
-    },
 };
 
 const resolveMapping = (child: Node, parent: Node): ElementMapping | undefined =>

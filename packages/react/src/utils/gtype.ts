@@ -63,6 +63,16 @@ const collectInterfaceNames = (gtype: bigint): string[] => {
     return names;
 };
 
+const typeNamesWithInterfacesCache = new Map<bigint, string[]>();
+
+export const collectTypeNamesWithInterfaces = (gtype: bigint): string[] => {
+    const cached = typeNamesWithInterfacesCache.get(gtype);
+    if (cached) return cached;
+    const names = [...collectTypeNameChain(gtype), ...collectInterfaceNames(gtype)];
+    typeNamesWithInterfacesCache.set(gtype, names);
+    return names;
+};
+
 export const foldInheritedTable = <R, T>(
     gtype: bigint,
     table: Record<string, R>,

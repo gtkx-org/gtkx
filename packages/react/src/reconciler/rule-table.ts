@@ -1,9 +1,18 @@
 /// <reference types="@gtkx/config/env" />
 
-import { SYNTHETIC_PROPS } from "virtual:gtkx-config";
-import type { Arg, Call, SyntheticPropRule } from "@gtkx/config";
+import { RELATIONSHIPS, SYNTHETIC_PROPS } from "virtual:gtkx-config";
+import type {
+    Arg,
+    AttachRule,
+    Call,
+    CompanionRule,
+    LayoutChildRule,
+    RejectRule,
+    SyntheticPropRule,
+} from "@gtkx/config";
+import { typeFromName } from "@gtkx/gi/gobject";
 import { callMethod } from "@gtkx/utils";
-import { foldInheritedTableWithInterfaces } from "../utils/gtype.js";
+import { collectTypeNamesWithInterfaces, foldInheritedTableWithInterfaces } from "../utils/gtype.js";
 
 export type CallScope = {
     child?: unknown;
@@ -59,6 +68,89 @@ export const runCall = (target: object, call: Call, defaults: unknown[], scope: 
 export const writeTarget = (instance: object, name: string, value: unknown): void => {
     if (typeof Reflect.get(instance, name) === "function") callMethod(instance, name, [value]);
     else Reflect.set(instance, name, value);
+};
+
+const attachIndex = new Map<string, AttachRule>();
+const rejectIndex = new Map<string, RejectRule>();
+const elementIndex = new Map<string, CompanionRule | LayoutChildRule>();
+const skippedTypes = new Set<string>();
+const slotsByParent: Record<string, string[]> = {};
+
+for (const rule of RELATIONSHIPS) {
+    switch (rule.kind) {
+        case "attach":
+            attachIndex.set(`${rule.parent}:${rule.child}:${rule.slot ?? ""}`, rule);
+            if (rule.slot !== undefined) (slotsByParent[rule.parent] ??= []).push(rule.slot);
+            break;
+        case "reject":
+            rejectIndex.set(`${rule.parent}:${rule.child}`, rule);
+            break;
+        case "companion":
+        case "layout-child":
+            elementIndex.set(rule.element, rule);
+            break;
+        case "skip":
+            skippedTypes.add(rule.child);
+            break;
+    }
+}
+
+export type ResolvedRelationship = { kind: "attach"; rule: AttachRule } | { kind: "reject"; rule: RejectRule };
+
+const relationshipCache = new Map<string, ResolvedRelationship | null>();
+
+export const resolveAttachRule = (
+    parentType: bigint,
+    childType: bigint,
+    slot: string | undefined,
+): ResolvedRelationship | null => {
+    const cacheKey = `${parentType}:${childType}:${slot ?? ""}`;
+    const cached = relationshipCache.get(cacheKey);
+    if (cached !== undefined) return cached;
+    let resolved: ResolvedRelationship | null = null;
+    const parentNames = collectTypeNamesWithInterfaces(parentType);
+    outer: for (const childName of collectTypeNamesWithInterfaces(childType)) {
+        for (const parentName of parentNames) {
+            const attach = attachIndex.get(`${parentName}:${childName}:${slot ?? ""}`);
+            if (attach !== undefined) {
+                resolved = { kind: "attach", rule: attach };
+                break outer;
+            }
+            if (slot === undefined) {
+                const reject = rejectIndex.get(`${parentName}:${childName}`);
+                if (reject !== undefined) {
+                    resolved = { kind: "reject", rule: reject };
+                    break outer;
+                }
+            }
+        }
+    }
+    relationshipCache.set(cacheKey, resolved);
+    return resolved;
+};
+
+export const elementRuleFor = (element: string): CompanionRule | LayoutChildRule | undefined =>
+    elementIndex.get(element);
+
+export const isSkippedChildType = (childType: bigint): boolean =>
+    collectTypeNamesWithInterfaces(childType).some((name) => skippedTypes.has(name));
+
+const slotPropsCache = new Map<string, Set<string>>();
+
+export const slotPropsFor = (elementName: string): Set<string> => {
+    const cached = slotPropsCache.get(elementName);
+    if (cached) return cached;
+    const names = foldInheritedTableWithInterfaces(
+        typeFromName(elementName),
+        slotsByParent,
+        (collected: Set<string>, slotNames) => {
+            for (const name of slotNames) collected.add(name);
+            return collected;
+        },
+        new Set<string>(),
+    );
+    slotPropsCache.set(elementName, names);
+    return names;
 };
 
 const SYNTHETIC_BY_TYPE: Record<string, SyntheticPropRule[]> = {};

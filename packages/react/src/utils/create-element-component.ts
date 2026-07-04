@@ -1,6 +1,6 @@
 import { CONTAINER_SLOT_KIND, RELATIONSHIP_NODE_ELEMENT, WIDGET_PROP_KIND } from "@gtkx/config";
 import { createElement, isValidElement, type ReactNode } from "react";
-import { slotPropsFor } from "../reconciler/slot-props.js";
+import { slotPropsFor } from "../reconciler/rule-table.js";
 
 const needsSplit = (props: object, slotProps: Set<string>): boolean => {
     for (const [name, value] of Object.entries(props)) {
