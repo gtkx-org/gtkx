@@ -14,8 +14,9 @@ import { createElementInstance, createRelationshipInstance } from "./instance.js
 import { scheduleLabelTextRebuild } from "./label-text-rebuild.js";
 import { reportReconcilerError } from "./reconciler-error-handler.js";
 import { isRelationshipNode } from "./relationship-node.js";
-import { isRuleManagedProp, RULE_CONTEXT, resolveSetPropsRuleSet, ruleNodeOf } from "./rule-registry.js";
+import { isSyntheticProp } from "./rule-table.js";
 import { ensureState, type Node, stateOf } from "./state.js";
+import { applySyntheticProps, hasSelectionProps, reapplySelectionProps } from "./synthetic-props.js";
 import { scheduleBufferRebuild } from "./text-buffer-rebuild.js";
 import { isBufferContentNode, isLabelTextNode } from "./text-node.js";
 import type { Container, Props } from "./types.js";
@@ -98,17 +99,24 @@ const scheduleTextRebuilds = (parent: Node, child: Node): void => {
     maybeScheduleLabelTextRebuild(parent, child);
 };
 
+const reapplyParentSelection = (parent: Node): void => {
+    if (!(parent instanceof GObject.Object) || !hasSelectionProps(parent)) return;
+    withSignalsBlocked(parent, () => reapplySelectionProps(parent, stateOf(parent).props));
+};
+
 const appendChild = (parent: Node, child: Node): void => {
     const fresh = stateOf(child).parent === null;
     link(parent, child);
     attachNode(parent, child, null, fresh);
     scheduleTextRebuilds(parent, child);
+    reapplyParentSelection(parent);
 };
 
 const insertBefore = (parent: Node, child: Node, before: Node): void => {
     linkBefore(parent, child, before);
     attachNode(parent, child, before, false);
     scheduleTextRebuilds(parent, child);
+    reapplyParentSelection(parent);
 };
 
 const removeChild = (parent: Node, child: Node): void => {
@@ -126,23 +134,19 @@ const commitInstanceProps = (instance: Node, oldProps: Props | null, newProps: P
         return;
     }
     if (!(instance instanceof GObject.Object)) return;
-    const excludeRuleManaged = (name: string): boolean => isRuleManagedProp(instance, name);
+    const excludeSynthetic = (name: string): boolean => isSyntheticProp(instance.__type__, name);
     if (instance instanceof Gtk.Accessible) {
         applyAccessibleProps(instance, oldProps, newProps);
         applyProps(instance, oldProps, newProps, {
-            exclude: (name) => isAccessibleProp(name) || excludeRuleManaged(name),
+            exclude: (name) => isAccessibleProp(name) || excludeSynthetic(name),
         });
     } else {
         applyProps(instance, oldProps, newProps, {
-            exclude: excludeRuleManaged,
+            exclude: excludeSynthetic,
             defaultBlockable: isDefaultBlockableType(instance.__type__),
         });
     }
-    const ruleSet = resolveSetPropsRuleSet(instance.__type__);
-    if (ruleSet?.setProps) {
-        const node = ruleNodeOf(instance);
-        if (node) ruleSet.setProps(node, newProps, oldProps, RULE_CONTEXT);
-    }
+    applySyntheticProps(instance, oldProps, newProps);
     if (instance instanceof Gtk.TextTag) scheduleBufferRebuild(instance);
 };
 

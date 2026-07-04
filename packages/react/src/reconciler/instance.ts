@@ -1,32 +1,25 @@
 import type { RelationshipKind } from "@gtkx/config";
 import * as GObject from "@gtkx/gi/gobject";
-import { omit } from "@gtkx/utils";
 import { collectConstructableProps } from "../utils/gtype.js";
 import { requireClassByName } from "../utils/gtype-predicates.js";
 import { createRelationshipNode } from "./relationship-node.js";
+import { constructionSkipProps } from "./rule-table.js";
 import { type Node, registerState } from "./state.js";
 import type { Container, Props } from "./types.js";
 
-const CONSTRUCTION_SKIP_PROPS: Record<string, string[]> = {
-    GtkStack: ["visibleChildName"],
-    AdwViewStack: ["visibleChildName"],
-    AdwToggleGroup: ["activeName", "active"],
-};
-
 const pickConstructProps = (gtype: bigint, props: Props): Props => {
     const constructable = collectConstructableProps(gtype);
+    const skipped = constructionSkipProps(gtype);
     const result: Props = {};
     for (const name in props) {
-        if (constructable.has(name)) result[name] = props[name];
+        if (constructable.has(name) && !skipped.has(name)) result[name] = props[name];
     }
     return result;
 };
 
 const constructWrapperInstance = (type: string, props: Props): GObject.Object => {
     const cls = requireClassByName(type);
-    const skip = CONSTRUCTION_SKIP_PROPS[type];
-    const picked = pickConstructProps(GObject.typeFromName(type), skip ? omit(props, skip) : props);
-    return new cls(picked);
+    return new cls(pickConstructProps(GObject.typeFromName(type), props));
 };
 
 export const createElementInstance = (type: string, props: Props, rootContainer: Container): Node => {
