@@ -3,6 +3,8 @@ import { ensureGenerated, resolveConfigWatch } from "../codegen/run-codegen.js";
 import { type DevWatch, runDevSupervisor } from "../dev/supervisor.js";
 import { entryArg, resolveEntry } from "../internal/entry-arg.js";
 
+const DEV_MODE = "development";
+
 export const dev = defineCommand({
     meta: {
         name: "dev",
@@ -14,10 +16,10 @@ export const dev = defineCommand({
     async run({ args }) {
         const { cwd, entry: entryPath } = resolveEntry(args);
 
-        await ensureGenerated(cwd, { announce: true });
+        await ensureGenerated(cwd, { announce: true, mode: DEV_MODE });
 
-        const watch: DevWatch | undefined = await resolveConfigWatch(cwd);
+        const watch: DevWatch | undefined = await resolveConfigWatch(cwd, DEV_MODE);
 
-        await runDevSupervisor(entryPath, watch);
+        await runDevSupervisor(entryPath, cwd, watch);
     },
 });

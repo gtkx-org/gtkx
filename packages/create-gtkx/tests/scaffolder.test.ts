@@ -219,13 +219,15 @@ describe("scaffold (dependency installation)", () => {
         expect(addDependencyMock.mock.calls[1]?.[1]).toMatchObject({ packageManager: "npm" });
     });
 
-    it("continues past an install failure and logs a manual hint", async () => {
+    it("aborts with a non-zero exit and a manual install command when installation fails", async () => {
         addDependencyMock.mockRejectedValueOnce(new Error("install failed"));
 
-        await run();
+        await run({ packageManager: "npm" });
 
         expect(clack.log.error.mock.calls.some(([m]) => String(m).includes("install failed"))).toBe(true);
         expect(clack.log.info.mock.calls.some(([m]) => String(m).includes("cd test-app"))).toBe(true);
+        expect(clack.log.info.mock.calls.some(([m]) => String(m).includes("npm install"))).toBe(true);
+        expect(exitSpy).toHaveBeenCalledWith(1);
     });
 });
 
@@ -339,7 +341,7 @@ describe("scaffold (non-interactive and overwrite)", () => {
         expect(lastError()).toContain("lowercase letters");
     });
 
-    it("rejects a flag-supplied name whose directory already exists without overwrite", async () => {
+    it("rejects a flag-supplied name whose directory is non-empty without overwrite", async () => {
         vol.mkdirSync(`${TEST_DIR}/test-app`, { recursive: true });
         vol.writeFileSync(`${TEST_DIR}/test-app/keep.txt`, "keep");
 
@@ -352,7 +354,58 @@ describe("scaffold (non-interactive and overwrite)", () => {
         });
 
         expect(exitSpy).toHaveBeenCalledWith(1);
-        expect(lastError()).toContain("already exists");
+        expect(lastError()).toContain("is not empty");
+    });
+
+    it("proceeds without prompting when the target directory exists but is empty", async () => {
+        vol.mkdirSync(`${TEST_DIR}/test-app`, { recursive: true });
+
+        await scaffold({
+            name: "test-app",
+            applicationId: "org.test.app",
+            packageManager: "pnpm",
+            includeTesting: false,
+            interactive: false,
+        });
+
+        expect(exitSpy).not.toHaveBeenCalled();
+        expect(vol.existsSync(`${TEST_DIR}/test-app/package.json`)).toBe(true);
+    });
+
+    it("proceeds when the target directory contains only a .git folder and preserves it", async () => {
+        vol.mkdirSync(`${TEST_DIR}/test-app/.git`, { recursive: true });
+        vol.writeFileSync(`${TEST_DIR}/test-app/.git/config`, "[core]");
+
+        await scaffold({
+            name: "test-app",
+            applicationId: "org.test.app",
+            packageManager: "pnpm",
+            includeTesting: false,
+            interactive: false,
+        });
+
+        expect(exitSpy).not.toHaveBeenCalled();
+        expect(vol.existsSync(`${TEST_DIR}/test-app/.git/config`)).toBe(true);
+        expect(vol.existsSync(`${TEST_DIR}/test-app/package.json`)).toBe(true);
+    });
+
+    it("preserves .git while clearing other files when --overwrite is set", async () => {
+        vol.mkdirSync(`${TEST_DIR}/test-app/.git`, { recursive: true });
+        vol.writeFileSync(`${TEST_DIR}/test-app/.git/config`, "[core]");
+        vol.writeFileSync(`${TEST_DIR}/test-app/stale.txt`, "stale");
+
+        await scaffold({
+            name: "test-app",
+            applicationId: "org.test.app",
+            packageManager: "pnpm",
+            includeTesting: false,
+            interactive: false,
+            overwrite: true,
+        });
+
+        expect(vol.existsSync(`${TEST_DIR}/test-app/stale.txt`)).toBe(false);
+        expect(vol.existsSync(`${TEST_DIR}/test-app/.git/config`)).toBe(true);
+        expect(vol.existsSync(`${TEST_DIR}/test-app/package.json`)).toBe(true);
     });
 
     it("resolves defaults from a partial non-TTY invocation without prompting", async () => {
@@ -386,5 +439,36 @@ describe("scaffold (non-interactive and overwrite)", () => {
 
         expect(vol.existsSync(`${TEST_DIR}/test-app/stale.txt`)).toBe(false);
         expect(vol.existsSync(`${TEST_DIR}/test-app/package.json`)).toBe(true);
+    });
+});
+
+describe("scaffold (directory target)", () => {
+    it("scaffolds into a nested path and derives the package name from its basename", async () => {
+        await scaffold({
+            name: "apps/my-app",
+            applicationId: "org.test.app",
+            packageManager: "pnpm",
+            includeTesting: false,
+            interactive: false,
+        });
+
+        expect(vol.existsSync(`${TEST_DIR}/apps/my-app/src/index.tsx`)).toBe(true);
+        const pkg = JSON.parse(read(`${TEST_DIR}/apps/my-app/package.json`));
+        expect(pkg.name).toBe("my-app");
+    });
+
+    it("scaffolds into the current directory when the target is '.'", async () => {
+        await scaffold({
+            name: ".",
+            applicationId: "org.test.app",
+            packageManager: "pnpm",
+            includeTesting: false,
+            interactive: false,
+        });
+
+        expect(vol.existsSync(`${TEST_DIR}/package.json`)).toBe(true);
+        const pkg = JSON.parse(read(`${TEST_DIR}/package.json`));
+        expect(pkg.name).toBe("test-workspace");
+        expect(lastNote()).not.toContain("cd .");
     });
 });

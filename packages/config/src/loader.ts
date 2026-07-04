@@ -10,7 +10,7 @@ export type LoadedConfig = {
 };
 
 export type LoadGtkxConfigOptions = {
-    mode?: string;
+    mode?: string | undefined;
 };
 
 export const loadGtkxConfig = async (cwd: string, options: LoadGtkxConfigOptions = {}): Promise<LoadedConfig> => {

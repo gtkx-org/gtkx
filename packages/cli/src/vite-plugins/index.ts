@@ -6,8 +6,8 @@ import { gtkxGResources } from "./gresources.js";
 import { gtkxGSettings } from "./gsettings.js";
 import { gtkxReactCompiler } from "./react-compiler.js";
 
-export const gtkxVitePlugins = (): Plugin[] => {
-    const loadConfig = createGtkxConfigLoader();
+export const gtkxVitePlugins = (mode?: string): Plugin[] => {
+    const loadConfig = createGtkxConfigLoader(mode !== undefined ? { mode } : {});
     return [
         createGtkxConfigPlugin({ name: "gtkx:config", loadConfig }),
         gtkxGSettings(),

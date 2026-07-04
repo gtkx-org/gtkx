@@ -1,5 +1,5 @@
-import { defineCommand, runCommand } from "citty";
-import { printError } from "./internal/errors.js";
+import { defineCommand, runMain } from "citty";
+import { withErrorBoundary } from "./internal/errors.js";
 import { version } from "./version.js";
 
 export const main = defineCommand({
@@ -9,15 +9,11 @@ export const main = defineCommand({
         description: "CLI for GTKX - create and develop GTK4 React applications",
     },
     subCommands: {
-        dev: () => import("./commands/dev.js").then((m) => m.dev),
-        build: () => import("./commands/build.js").then((m) => m.build),
-        codegen: () => import("./commands/codegen.js").then((m) => m.codegen),
-        create: () => import("create-gtkx").then((m) => m.createCommand),
+        dev: () => import("./commands/dev.js").then((m) => withErrorBoundary(m.dev)),
+        build: () => import("./commands/build.js").then((m) => withErrorBoundary(m.build)),
+        codegen: () => import("./commands/codegen.js").then((m) => withErrorBoundary(m.codegen)),
+        create: () => import("create-gtkx").then((m) => withErrorBoundary(m.createCommand)),
     },
 });
 
-try {
-    await runCommand(main, { rawArgs: process.argv.slice(2) });
-} catch (cause) {
-    printError(cause);
-}
+await runMain(main);

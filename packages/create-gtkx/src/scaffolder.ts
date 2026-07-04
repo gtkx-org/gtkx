@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { basename, dirname, join, resolve } from "node:path";
 import * as p from "@clack/prompts";
 import { isValidApplicationId } from "@gtkx/config";
 import { errorMessage, upperFirst } from "@gtkx/utils";
@@ -23,6 +23,7 @@ export type CreateOptions = {
 };
 
 type ResolvedOptions = {
+    target: string;
     name: string;
     applicationId: string;
     packageManager: PackageManager;
@@ -39,14 +40,33 @@ const DEV_COMMAND: Record<PackageManager, string> = Object.fromEntries(
     PACKAGE_MANAGERS.map((manager) => [manager.value, manager.devCommand]),
 ) as Record<PackageManager, string>;
 
+const INSTALL_COMMAND: Record<PackageManager, string> = Object.fromEntries(
+    PACKAGE_MANAGERS.map((manager) => [manager.value, manager.installCommand]),
+) as Record<PackageManager, string>;
+
 const pinGtkxDependency = (name: string, version: string): string =>
     name.startsWith("@gtkx/") ? `${name}@^${version}` : name;
 
 const getDevCommand = (packageManager: PackageManager): string => DEV_COMMAND[packageManager];
 
+const getInstallCommand = (packageManager: PackageManager): string => INSTALL_COMMAND[packageManager];
+
 const titleFromName = (name: string): string => name.split("-").map(upperFirst).join(" ");
 
 const suggestApplicationId = (name: string): string => `com.${name.replaceAll("-", "")}.app`;
+
+const formatTargetDir = (target: string): string =>
+    target
+        .trim()
+        .replace(/[<>:"\\|?*]/g, "")
+        .replace(/\/+$/g, "");
+
+const deriveProjectName = (target: string): string => basename(resolve(process.cwd(), target));
+
+const isDirEmpty = (dir: string): boolean => {
+    const entries = readdirSync(dir);
+    return entries.length === 0 || (entries.length === 1 && entries[0] === ".git");
+};
 
 const getDevDependencies = (includeTesting: boolean): string[] => {
     const devDeps = [...DEV_DEPENDENCIES];
@@ -85,12 +105,17 @@ const fail = (message: string): never => {
     process.exit(1);
 };
 
-const promptName = async (): Promise<string> =>
+const validateTarget = (value: string | undefined): string | undefined => {
+    if (!value) return "Project directory is required";
+    return validateProjectName(deriveProjectName(formatTargetDir(value)));
+};
+
+const promptTarget = async (): Promise<string> =>
     guardCancellation(
         await p.text({
-            message: "Project name",
+            message: "Project directory",
             placeholder: "my-app",
-            validate: (value) => validateProjectName(value),
+            validate: validateTarget,
         }),
     );
 
@@ -136,7 +161,10 @@ const promptTesting = async (): Promise<boolean> =>
     );
 
 const emptyDir = (root: string): void => {
-    rmSync(root, { recursive: true, force: true });
+    for (const entry of readdirSync(root)) {
+        if (entry === ".git") continue;
+        rmSync(join(root, entry), { recursive: true, force: true });
+    }
 };
 
 const validateResolvedOptions = (name: string, applicationId: string): void => {
@@ -146,41 +174,42 @@ const validateResolvedOptions = (name: string, applicationId: string): void => {
     if (applicationIdError) fail(applicationIdError);
 };
 
-const confirmOverwrite = async (name: string, options: CreateOptions): Promise<boolean> => {
+const confirmOverwrite = async (target: string, options: CreateOptions): Promise<boolean> => {
     if (!options.interactive) return options.overwrite === true;
     return guardCancellation(
         await p.confirm({
-            message: `Directory "${name}" already exists. Overwrite its contents?`,
+            message: `Directory "${target}" is not empty. Overwrite its contents?`,
             initialValue: false,
         }),
     );
 };
 
-const handleExistingDirectory = async (root: string, name: string, options: CreateOptions): Promise<void> => {
-    if (!existsSync(root)) return;
-    if (await confirmOverwrite(name, options)) {
+const handleTargetDirectory = async (root: string, target: string, options: CreateOptions): Promise<void> => {
+    if (!existsSync(root) || isDirEmpty(root)) return;
+    if (await confirmOverwrite(target, options)) {
         emptyDir(root);
         return;
     }
-    fail(`Directory "${name}" already exists`);
+    fail(`Directory "${target}" is not empty`);
 };
 
-const resolveName = async (options: CreateOptions): Promise<string> => {
-    if (options.name !== undefined) return options.name;
-    if (!options.interactive) return fail("Project name is required");
-    return promptName();
+const resolveTarget = async (options: CreateOptions): Promise<string> => {
+    if (options.name !== undefined) return formatTargetDir(options.name);
+    if (!options.interactive) return fail("Project directory is required");
+    return formatTargetDir(await promptTarget());
 };
 
 const resolveOptions = async (options: CreateOptions): Promise<ResolvedOptions> => {
-    const name = await resolveName(options);
+    const target = await resolveTarget(options);
+    const name = deriveProjectName(target);
 
     const applicationId =
         options.applicationId ?? (options.interactive ? await promptApplicationId(name) : suggestApplicationId(name));
 
     validateResolvedOptions(name, applicationId);
 
-    const root = resolve(process.cwd(), name);
-    await handleExistingDirectory(root, name, options);
+    const root = resolve(process.cwd(), target);
+    await handleTargetDirectory(root, target, options);
 
     const packageManager =
         options.packageManager ??
@@ -190,7 +219,7 @@ const resolveOptions = async (options: CreateOptions): Promise<ResolvedOptions> 
 
     const includeTesting = options.includeTesting ?? (options.interactive ? await promptTesting() : true);
 
-    return { name, applicationId, packageManager, includeTesting };
+    return { target, name, applicationId, packageManager, includeTesting };
 };
 
 const TESTING_TEMPLATES = new Set(["vitest.config.ts", "tests/app.test.tsx"]);
@@ -241,13 +270,13 @@ const installDependencies = async (options: InstallDependenciesOptions): Promise
 
 type InstallAllOptions = {
     root: string;
-    name: string;
+    target: string;
     packageManager: PackageManager;
     devDependencies: string[];
 };
 
 const installAllDependencies = async (options: InstallAllOptions): Promise<void> => {
-    const { root, name, packageManager, devDependencies } = options;
+    const { root, target, packageManager, devDependencies } = options;
     const spinner = p.spinner();
     spinner.start("Installing dependencies...");
 
@@ -259,9 +288,9 @@ const installAllDependencies = async (options: InstallAllOptions): Promise<void>
         spinner.stop("Dependencies installed!");
     } catch (error) {
         spinner.stop("Failed to install dependencies");
-        p.log.error(`Error: ${errorMessage(error)}`);
-        p.log.info("You can install dependencies manually by running:");
-        p.log.info(`  cd ${name}`);
+        p.log.error(`Failed to install dependencies: ${errorMessage(error)}`);
+        p.log.info(`Install them manually by running:\n  cd ${target}\n  ${getInstallCommand(packageManager)}`);
+        process.exit(1);
     }
 };
 
@@ -293,16 +322,16 @@ To run tests, you need a headless Wayland compositor installed:
 
 const printNextSteps = (resolved: ResolvedOptions): void => {
     const devCmd = getDevCommand(resolved.packageManager);
-    const nextSteps = `cd ${resolved.name}\n${devCmd}`;
+    const cdStep = resolved.target === "." ? "" : `cd ${resolved.target}\n`;
     const testingNote = resolved.includeTesting ? HEADLESS_COMPOSITOR_NOTE : "";
-    p.note(`${nextSteps}${testingNote}`, "Next steps");
+    p.note(`${cdStep}${devCmd}${testingNote}`, "Next steps");
 };
 
 export const scaffold = async (options: CreateOptions = {}): Promise<void> => {
     p.intro("Create gtkx App");
 
     const resolved = await resolveOptions(options);
-    const root = resolve(process.cwd(), resolved.name);
+    const root = resolve(process.cwd(), resolved.target);
     const devDeps = getDevDependencies(resolved.includeTesting);
 
     const projectSpinner = p.spinner();
@@ -312,7 +341,7 @@ export const scaffold = async (options: CreateOptions = {}): Promise<void> => {
 
     await installAllDependencies({
         root,
-        name: resolved.name,
+        target: resolved.target,
         packageManager: resolved.packageManager,
         devDependencies: devDeps,
     });

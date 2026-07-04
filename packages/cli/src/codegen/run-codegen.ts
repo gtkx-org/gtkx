@@ -11,6 +11,7 @@ import { type CodegenStore, resolveCodegenContext } from "./store-resolver.js";
 
 export type RunCodegenOptions = {
     cwd?: string;
+    mode?: string | undefined;
     force?: boolean;
     inputs?: CodegenInputs;
     resolved?: ResolvedGtkxConfig;
@@ -62,7 +63,7 @@ const codegenOptions = (store: CodegenStore, libraries: string[], girPath: strin
 export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenResult> => {
     const cwd = options.cwd ?? process.cwd();
 
-    const { config, configFile } = options.resolved ?? (await loadGtkxConfig(cwd));
+    const { config, configFile } = options.resolved ?? (await loadGtkxConfig(cwd, { mode: options.mode }));
 
     if (config.codegen === false) {
         removeSharedStoreShadow(cwd);
@@ -95,9 +96,9 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
     };
 };
 
-export const isCodegenDisabled = async (cwd: string): Promise<boolean> => {
+export const isCodegenDisabled = async (cwd: string, mode?: string): Promise<boolean> => {
     try {
-        const { config } = await loadGtkxConfig(cwd);
+        const { config } = await loadGtkxConfig(cwd, { mode });
         return config.codegen === false;
     } catch {
         return false;
@@ -118,12 +119,15 @@ const resolveInputsOrNull = (cwd: string, config: GtkxConfig): CodegenInputs | n
     }
 };
 
-export const ensureGenerated = async (cwd: string, options: { announce?: boolean } = {}): Promise<boolean> => {
+export const ensureGenerated = async (
+    cwd: string,
+    options: { announce?: boolean; mode?: string } = {},
+): Promise<boolean> => {
     if (options.announce && process.env.GTKX_DISABLE_PREFLIGHT === "1") {
         return false;
     }
 
-    const context = await resolveCodegenContext(cwd);
+    const context = await resolveCodegenContext(cwd, options.mode);
     if (!context) {
         return false;
     }
@@ -140,19 +144,24 @@ export const ensureGenerated = async (cwd: string, options: { announce?: boolean
         info("generated bindings missing; running codegen...");
     }
     const resolved = { config: context.config, configFile: context.configFile };
-    await runCodegen(inputs === null ? { cwd: context.root, resolved } : { cwd: context.root, inputs, resolved });
+    await runCodegen(
+        inputs === null
+            ? { cwd: context.root, mode: options.mode, resolved }
+            : { cwd: context.root, mode: options.mode, inputs, resolved },
+    );
     return true;
 };
 
 export const resolveConfigWatch = async (
     cwd: string,
+    mode?: string,
 ): Promise<{ paths: string[]; regenerate: () => Promise<void> } | undefined> => {
-    const { configFile, root } = await loadGtkxConfig(cwd);
+    const { configFile, root } = await loadGtkxConfig(cwd, { mode });
     if (configFile === undefined) return undefined;
     return {
         paths: [resolve(root, configFile)],
         regenerate: async () => {
-            await runCodegen({ cwd: root });
+            await runCodegen({ cwd: root, mode });
         },
     };
 };

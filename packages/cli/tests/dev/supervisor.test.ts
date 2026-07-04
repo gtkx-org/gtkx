@@ -38,8 +38,10 @@ function createFakeChild(): FakeChild {
 
 const forkMock = vi.fn<ForkRunner>();
 
-const startWithForkMock = (entry: string, watch?: Parameters<typeof runDevSupervisor>[1]): void => {
-    runDevSupervisor(entry, watch, forkMock).catch(() => undefined);
+const TEST_CWD = "/proj";
+
+const startWithForkMock = (entry: string, watch?: Parameters<typeof runDevSupervisor>[2]): void => {
+    runDevSupervisor(entry, TEST_CWD, watch, forkMock).catch(() => undefined);
 };
 
 function queueChild(): FakeChild {
@@ -123,12 +125,13 @@ const startSupervisor = async (entry = "/abs/src/main.tsx"): Promise<FakeChild> 
 describe("runDevSupervisor (startup)", () => {
     setupSupervisorCtx();
 
-    it("forks the dev runner with the supplied entry", async () => {
+    it("forks the dev runner with the supplied entry and project cwd", async () => {
         await startSupervisor("/abs/src/main.tsx");
 
         expect(forkMock).toHaveBeenCalledOnce();
-        const [, args] = forkMock.mock.calls[0] ?? [];
+        const [, args, cwd] = forkMock.mock.calls[0] ?? [];
         expect(Array.isArray(args) ? args[0] : undefined).toBe("/abs/src/main.tsx");
+        expect(cwd).toBe(TEST_CWD);
     });
 });
 

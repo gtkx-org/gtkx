@@ -1,4 +1,5 @@
 import { logger } from "@gtkx/utils";
+import type { ArgsDef, CommandDef } from "citty";
 
 const ERROR_EXIT_CODE = 1;
 
@@ -20,4 +21,19 @@ export const printError = (cause: unknown): never => {
         logger.debug(cause.stack);
     }
     process.exit(ERROR_EXIT_CODE);
+};
+
+export const withErrorBoundary = <T extends ArgsDef>(command: CommandDef<T>): CommandDef<T> => {
+    const run = command.run;
+    if (run === undefined) return command;
+    return {
+        ...command,
+        run: async (context) => {
+            try {
+                return await run(context);
+            } catch (cause) {
+                printError(cause);
+            }
+        },
+    };
 };

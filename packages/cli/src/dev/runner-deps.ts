@@ -12,10 +12,13 @@ import { gtkxVitePlugins } from "../vite-plugins/index.js";
 import { gtkxReactDomPrebundle } from "../vite-plugins/react-dom-prebundle.js";
 import type { DevRunnerDeps } from "./runner.js";
 
+const DEV_MODE = "development";
+
 export const defaultDevRunnerDeps = (): DevRunnerDeps => ({
     createServer,
     getApplicationId: () => Gio.Application.getDefault()?.applicationId ?? null,
-    getConfiguredApplicationId: async (root: string) => (await loadGtkxConfig(root)).config.applicationId,
+    getConfiguredApplicationId: async (root: string) =>
+        (await loadGtkxConfig(root, { mode: DEV_MODE })).config.applicationId,
     startMcpClient: (applicationId, loadAppModule) => {
         setTestingModuleLoader(() => loadAppModule("@gtkx/testing") as Promise<typeof import("@gtkx/testing")>);
         return startMcpClient(applicationId);
@@ -33,7 +36,7 @@ export const defaultDevRunnerDeps = (): DevRunnerDeps => ({
     },
     performRefresh,
     isRefreshBoundary,
-    plugins: () => [...gtkxVitePlugins(), ...gtkxFastRefresh(), gtkxReactDomPrebundle()],
+    plugins: () => [...gtkxVitePlugins(DEV_MODE), ...gtkxFastRefresh(), gtkxReactDomPrebundle()],
     log: info,
     exit: (code: number): never => process.exit(code),
 });

@@ -40,7 +40,7 @@ export const createCommand = defineCommand({
     args: {
         name: {
             type: "positional",
-            description: "Project name (used as directory name)",
+            description: "Target directory or project name (e.g. my-app, ., apps/my-app)",
             required: false,
         },
         "application-id": {

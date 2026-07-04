@@ -18,9 +18,10 @@ export type SupervisedChild = {
     once(event: "exit", listener: (code: number | null, signal: NodeJS.Signals | null) => void): void;
 };
 
-export type ForkRunner = (modulePath: string, args: string[]) => SupervisedChild;
+export type ForkRunner = (modulePath: string, args: string[], cwd: string) => SupervisedChild;
 
-const defaultForkRunner: ForkRunner = (modulePath, args) => nodeFork(modulePath, [...args], { stdio: "inherit" });
+const defaultForkRunner: ForkRunner = (modulePath, args, cwd) =>
+    nodeFork(modulePath, [...args], { cwd, stdio: "inherit" });
 
 export type DevWatch = {
     paths: string[];
@@ -30,6 +31,7 @@ export type DevWatch = {
 type SupervisorState = {
     runnerPath: string;
     entryPath: string;
+    cwd: string;
     watch: DevWatch | undefined;
     watchers: FSWatcher[];
     fork: ForkRunner;
@@ -53,7 +55,7 @@ const forceKillChild = (child: SupervisedChild | null): void => {
 };
 
 const launch = (state: SupervisorState): void => {
-    const child = state.fork(state.runnerPath, [state.entryPath]);
+    const child = state.fork(state.runnerPath, [state.entryPath], state.cwd);
     state.child = child;
     child.on("exit", (code, signal) => {
         state.child = null;
@@ -150,12 +152,14 @@ const installShutdown = (state: SupervisorState): void => {
 
 export const runDevSupervisor = async (
     entryPath: string,
+    cwd: string,
     watch?: DevWatch,
     fork: ForkRunner = defaultForkRunner,
 ): Promise<never> => {
     const state: SupervisorState = {
         runnerPath: fileURLToPath(DEV_RUNNER_URL),
         entryPath,
+        cwd,
         watch,
         watchers: [],
         fork,

@@ -4,6 +4,8 @@ import { build as buildApp } from "../builder.js";
 import { ensureGenerated } from "../codegen/run-codegen.js";
 import { entryArg, resolveEntry } from "../internal/entry-arg.js";
 
+const BUILD_MODE = "production";
+
 export const build = defineCommand({
     meta: {
         name: "build",
@@ -20,7 +22,7 @@ export const build = defineCommand({
         const { cwd, entry } = resolveEntry(args);
         info(`Building ${entry}`);
 
-        await ensureGenerated(cwd, { announce: true });
+        await ensureGenerated(cwd, { announce: true, mode: BUILD_MODE });
 
         await buildApp({
             entry,

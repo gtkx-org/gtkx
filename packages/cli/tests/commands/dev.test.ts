@@ -41,11 +41,13 @@ describe("dev command", () => {
     it("runs preflight codegen and hands off to the supervisor with the resolved entry", async () => {
         await runDev("src/main.tsx");
 
-        expect(ensureGeneratedMock).toHaveBeenCalledWith(expect.any(String), { announce: true });
+        expect(ensureGeneratedMock).toHaveBeenCalledWith(expect.any(String), { announce: true, mode: "development" });
         expect(resolveConfigWatchMock).toHaveBeenCalledOnce();
+        expect(resolveConfigWatchMock).toHaveBeenCalledWith(expect.any(String), "development");
         expect(runDevSupervisorMock).toHaveBeenCalledOnce();
-        const [entryPath, watch] = runDevSupervisorMock.mock.calls[0] ?? [];
+        const [entryPath, cwd, watch] = runDevSupervisorMock.mock.calls[0] ?? [];
         expect(entryPath).toMatch(/src\/main\.tsx$/);
+        expect(typeof cwd).toBe("string");
         expect(watch).toBe(watchSentinel);
     });
 

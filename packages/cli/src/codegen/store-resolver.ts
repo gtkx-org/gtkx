@@ -69,8 +69,8 @@ export type CodegenContext = {
     configFile: string | undefined;
 };
 
-export const resolveCodegenContext = async (cwd: string): Promise<CodegenContext | null> => {
-    const { config, configFile } = await loadGtkxConfig(cwd);
+export const resolveCodegenContext = async (cwd: string, mode?: string): Promise<CodegenContext | null> => {
+    const { config, configFile } = await loadGtkxConfig(cwd, { mode });
     if (configFile === undefined) return null;
     return { root: cwd, config, configFile };
 };
