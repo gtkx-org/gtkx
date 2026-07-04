@@ -1,6 +1,6 @@
 import { copy, type Descriptor } from "@gtkx/native";
 import type { CallbackDescriptor } from "./descriptors.js";
-import { fromNativeValue, toNativeValue } from "./native-value.js";
+import { fromNative, toNative } from "./native-value.js";
 import { getHandle } from "./registry.js";
 import { splitTupleResult } from "./tuple.js";
 import { copyValue } from "./value.js";
@@ -73,15 +73,15 @@ export function wrapCallback(fn: Callback, spec: CallbackSpec, receiver: Callbac
         userDataIndex === undefined ? spec.argDescriptors : spec.argDescriptors.filter((_, i) => i !== userDataIndex);
     const start = receiver === "none" ? 0 : 1;
     return (...rawArgs: unknown[]): unknown => {
-        const wrapped = effectiveTypes.map((descriptor, i) => fromNativeValue(descriptor, rawArgs[i]));
+        const wrapped = effectiveTypes.map((descriptor, i) => fromNative(descriptor, rawArgs[i]));
         const thisArg = receiver === "this" ? (wrapped[0] ?? null) : null;
         const { inputs, outParams } = partitionCallbackArgs(effectiveTypes, wrapped, start);
         const result = (fn as (this: unknown, ...args: unknown[]) => unknown).apply(thisArg, inputs);
         if (outParams.length === 0) {
-            return toNativeValue(returnDescriptor, result);
+            return toNative(returnDescriptor, result);
         }
         const { primary, outValues } = splitTupleResult(result, returnDescriptor.kind !== "void", outParams.length);
         writeOutParams(outParams, outValues);
-        return toNativeValue(returnDescriptor, primary);
+        return toNative(returnDescriptor, primary);
     };
 }

@@ -33,9 +33,9 @@ export const wrapReturnValue = (context: ModuleContext, options: WrapReturnOptio
 };
 
 const wrapValue = (context: ModuleContext, ref: TypeId, valueExpression: string): string => {
-    context.addRuntimeImport("fromNativeValue");
+    context.addRuntimeImport("fromNative");
     const descriptor = context.hoistDescriptor(renderDescriptor(context, ref, "none"));
-    return `fromNativeValue(${descriptor}, ${valueExpression})`;
+    return `fromNative(${descriptor}, ${valueExpression})`;
 };
 
 const wrapPrimitive = (category: PrimitiveCategory, nullable: boolean, valueExpression: string): string => {

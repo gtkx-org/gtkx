@@ -18,7 +18,7 @@ const EXPECTED_RUNTIME_EXPORTS = [
     "createErrorDomain",
     "registerWrapperClass",
     "getSignalBaseName",
-    "fromNativeValue",
+    "fromNative",
     "installMixins",
 ] as const;
 
@@ -29,7 +29,7 @@ const PRIVATE_MARSHALLING_INTERNALS = [
     "fromValue",
     "getValueType",
     "copyValue",
-    "valueGetBoxed",
+    "readValueBoxed",
     "newValueForDescriptor",
     "outValueForDescriptor",
     "outValueForBoxedDescriptor",

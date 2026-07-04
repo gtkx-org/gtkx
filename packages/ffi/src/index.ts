@@ -4,7 +4,7 @@ export { promisify } from "./async.js";
 export { createErrorDomain, type ErrorDomain } from "./error.js";
 export { type ApplicationLike, onExit, quit, quitApplication, runApplication } from "./lifecycle.js";
 export { offSignal, onceSignal, onSignal } from "./listeners.js";
-export { fromNativeValue } from "./native-value.js";
+export { fromNative } from "./native-value.js";
 export { getObjectProperty, newObjectWithProperties, setObjectProperty } from "./object.js";
 export { registerClass } from "./register-class.js";
 export {

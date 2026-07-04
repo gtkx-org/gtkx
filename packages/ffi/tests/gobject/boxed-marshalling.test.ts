@@ -1,7 +1,7 @@
 import { t } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/gi/gdk";
 import { describe, expect, it } from "vitest";
-import { inoutValueForBoxedDescriptor, outValueForBoxedDescriptor, valueGetBoxed } from "../../src/value.js";
+import { inoutValueForBoxedDescriptor, outValueForBoxedDescriptor, readValueBoxed } from "../../src/value.js";
 
 describe("boxed GValue marshalling — caller-allocated out copies, inout shares", () => {
     const rectangleFfi = t.boxed("GdkRectangle", {
@@ -14,7 +14,7 @@ describe("boxed GValue marshalling — caller-allocated out copies, inout shares
         const rect = new Gdk.Rectangle({ width: 1 });
         const value = inoutValueForBoxedDescriptor(rectangleFfi, rect);
         rect.width = 42;
-        const seen = valueGetBoxed(value) as Gdk.Rectangle;
+        const seen = readValueBoxed(value) as Gdk.Rectangle;
         expect(seen.width).toBe(42);
     });
 
@@ -22,7 +22,7 @@ describe("boxed GValue marshalling — caller-allocated out copies, inout shares
         const rect = new Gdk.Rectangle({ width: 1 });
         const value = outValueForBoxedDescriptor(rectangleFfi, rect);
         rect.width = 42;
-        const seen = valueGetBoxed(value) as Gdk.Rectangle;
+        const seen = readValueBoxed(value) as Gdk.Rectangle;
         expect(seen.width).toBe(1);
     });
 });

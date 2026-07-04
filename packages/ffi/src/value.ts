@@ -16,7 +16,7 @@ import {
     voidT,
 } from "./descriptors.js";
 import { LIB, PARAM_T, VALUE_SIZE, VALUE_T, VARIANT_T } from "./library.js";
-import { toNativeValue } from "./native-value.js";
+import { toNative } from "./native-value.js";
 import { getHandle, getWrapperClass, wrapHandle } from "./registry.js";
 import {
     getStrvType,
@@ -184,15 +184,13 @@ export function newValueForDescriptor(descriptor: Descriptor): ExternalObject<Ha
     return newTypedValue(resolveDescriptorType(descriptor));
 }
 
-const toHandleValue = (descriptor: Descriptor, value: unknown): unknown => {
-    if (descriptor.kind === "object" || descriptor.kind === "boxed") {
-        return value == null ? null : getHandle(value as object);
-    }
-    return toNativeValue(descriptor, value);
-};
-
 export function toValue(descriptor: Descriptor, value: unknown): ExternalObject<Handle> {
-    const nativeValue = toHandleValue(descriptor, value);
+    const isHandleKind = descriptor.kind === "object" || descriptor.kind === "boxed";
+    const nativeValue = isHandleKind
+        ? value == null
+            ? null
+            : getHandle(value as object)
+        : toNative(descriptor, value);
     const type = descriptor.kind === "object" ? objectValueTypeFor(nativeValue) : resolveDescriptorType(descriptor);
     const gValue = newTypedValue(type);
     resolveValueTypeBind(descriptor).set(gValue, nativeValue);
@@ -219,7 +217,7 @@ const getPointerValue = (value: ExternalObject<Handle>): null => {
     return null;
 };
 
-export function valueGetBoxed(value: ExternalObject<Handle>): object | null {
+export function readValueBoxed(value: ExternalObject<Handle>): object | null {
     const type = getValueType(value);
     if (typeFundamental(type) !== TYPE_BOXED) {
         return null;
@@ -262,7 +260,7 @@ const resolveValueGetter = (fundamental: bigint): ((value: ExternalObject<Handle
         case TYPE_VARIANT:
             return getFundamentalValue(variantValueType, TYPE_VARIANT);
         case TYPE_BOXED:
-            return valueGetBoxed;
+            return readValueBoxed;
         case TYPE_POINTER:
             return getPointerValue;
         default:
@@ -280,6 +278,27 @@ export function fromValue(value: ExternalObject<Handle>): unknown {
     return get(value);
 }
 
+const newBoxedValue = (
+    descriptor: Descriptor,
+    boxed: object,
+    resolveSetBind: (name: string) => ValueTypeBind["set"],
+): ExternalObject<Handle> => {
+    const type = resolveDescriptorType(descriptor);
+    const value = newTypedValue(type);
+    resolveSetBind(boxedTypeName(type))(value, getHandle(boxed));
+    return value;
+};
+
+export function setValueBoxed(value: object, boxed: object | null): void {
+    const gValue = getHandle(value);
+    const name = boxedTypeName(getValueType(gValue));
+    setBoxedBind(name)(gValue, boxed === null ? null : getHandle(boxed));
+}
+
+export function getValueBoxed(value: object): object | null {
+    return readValueBoxed(getHandle(value));
+}
+
 export function outValueForDescriptor(
     descriptor: Descriptor,
     initial?: unknown,
@@ -292,31 +311,10 @@ export function outValueForDescriptor(
     return { value, read: () => read(storage, descriptor, 0) };
 }
 
-const newBoxedValue = (
-    descriptor: Descriptor,
-    boxed: object,
-    resolveSetBind: (name: string) => ValueTypeBind["set"],
-): ExternalObject<Handle> => {
-    const type = resolveDescriptorType(descriptor);
-    const value = newTypedValue(type);
-    resolveSetBind(boxedTypeName(type))(value, getHandle(boxed));
-    return value;
-};
-
 export function outValueForBoxedDescriptor(descriptor: Descriptor, boxed: object): ExternalObject<Handle> {
     return newBoxedValue(descriptor, boxed, setBoxedBind);
 }
 
 export function inoutValueForBoxedDescriptor(descriptor: Descriptor, boxed: object): ExternalObject<Handle> {
     return newBoxedValue(descriptor, boxed, setStaticBoxedBind);
-}
-
-export function setValueBoxed(value: object, boxed: object | null): void {
-    const gValue = getHandle(value);
-    const name = boxedTypeName(getValueType(gValue));
-    setBoxedBind(name)(gValue, boxed === null ? null : getHandle(boxed));
-}
-
-export function getValueBoxed(value: object): object | null {
-    return valueGetBoxed(getHandle(value));
 }

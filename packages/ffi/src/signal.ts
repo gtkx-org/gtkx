@@ -22,8 +22,8 @@ import {
     newValueForDescriptor,
     outValueForBoxedDescriptor,
     outValueForDescriptor,
+    readValueBoxed,
     toValue,
-    valueGetBoxed,
 } from "./value.js";
 
 export type SignalHandler = (...args: unknown[]) => unknown;
@@ -95,7 +95,7 @@ const createEmitValue = (arg: EmitArg): { value: ExternalObject<Handle>; read?: 
     if (isCallerAllocatedArg(arg)) {
         if (isInoutArg(arg)) return { value: inoutValueForBoxedDescriptor(arg.type, arg.value as object) };
         const value = outValueForBoxedDescriptor(arg.type, arg.value as object);
-        return { value, read: () => valueGetBoxed(value) };
+        return { value, read: () => readValueBoxed(value) };
     }
     return isInoutArg(arg) ? outValueForDescriptor(arg.type, arg.value) : outValueForDescriptor(arg.type);
 };

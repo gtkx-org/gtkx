@@ -5,7 +5,7 @@ import { wrapCallbackValue } from "./callback.js";
 import { boxedT, refT } from "./descriptors.js";
 import { checkError } from "./error.js";
 import { LIB } from "./library.js";
-import { fromNativeValue } from "./native-value.js";
+import { fromNative } from "./native-value.js";
 import { getHandle } from "./registry.js";
 import { packTupleResult } from "./tuple.js";
 
@@ -24,7 +24,7 @@ type ArgSpec = {
     isOutParam: boolean;
 };
 
-const toNativeArgTypes = (args: Arg[], throws: boolean): Descriptor[] => {
+const buildNativeArgTypes = (args: Arg[], throws: boolean): Descriptor[] => {
     const nativeArgTypes = args.map((argSpec) =>
         argSpec.direction !== undefined && argSpec.callerAllocated !== true ? refT(argSpec.type) : argSpec.type,
     );
@@ -35,7 +35,7 @@ const toNativeArgTypes = (args: Arg[], throws: boolean): Descriptor[] => {
     return nativeArgTypes;
 };
 
-const toArgSpecs = (args: Arg[]): ArgSpec[] => {
+const buildArgSpecs = (args: Arg[]): ArgSpec[] => {
     let inputCursor = 0;
     return args.map((arg) => {
         const isRef = isRefArg(arg);
@@ -52,7 +52,7 @@ const toArgSpecs = (args: Arg[]): ArgSpec[] => {
     });
 };
 
-const toNativeValues = (plans: ArgSpec[], inputs: unknown[]): unknown[] =>
+const buildNativeValues = (plans: ArgSpec[], inputs: unknown[]): unknown[] =>
     plans.map(({ arg, isRef, isCallerAllocated, consumesInput, inputIndex }) => {
         if (isCallerAllocated) {
             const wrapper = inputs[inputIndex];
@@ -67,12 +67,12 @@ const toNativeValues = (plans: ArgSpec[], inputs: unknown[]): unknown[] =>
         return inputs[inputIndex];
     });
 
-const toOutParams = (plans: ArgSpec[], inputs: unknown[], nativeValues: unknown[]): unknown[] => {
+const readOutParams = (plans: ArgSpec[], inputs: unknown[], nativeValues: unknown[]): unknown[] => {
     const outParams: unknown[] = [];
     plans.forEach(({ arg, isCallerAllocated, inputIndex, isOutParam }, index) => {
         if (!isOutParam) return;
         outParams.push(
-            isCallerAllocated ? inputs[inputIndex] : fromNativeValue(arg.type, (nativeValues[index] as Ref).value),
+            isCallerAllocated ? inputs[inputIndex] : fromNative(arg.type, (nativeValues[index] as Ref).value),
         );
     });
     return outParams;
@@ -80,19 +80,19 @@ const toOutParams = (plans: ArgSpec[], inputs: unknown[], nativeValues: unknown[
 
 export function fn(sharedLibrary: string, symbol: string, spec: FnSpec): (...inputs: unknown[]) => unknown {
     const { args, returns: returnDescriptor, throws = false } = spec;
-    const nativeArgTypes = toNativeArgTypes(args, throws);
+    const nativeArgTypes = buildNativeArgTypes(args, throws);
     const nativeFn = bind(sharedLibrary, symbol, nativeArgTypes, returnDescriptor);
     const hasPrimary = returnDescriptor.kind !== "void";
-    const plans = toArgSpecs(args);
+    const plans = buildArgSpecs(args);
 
     const shape = (inputs: unknown[], nativeValues: unknown[], nativeResult: unknown): unknown => {
-        const primary = hasPrimary ? fromNativeValue(returnDescriptor, nativeResult) : undefined;
-        return packTupleResult(toOutParams(plans, inputs, nativeValues), primary, hasPrimary);
+        const primary = hasPrimary ? fromNative(returnDescriptor, nativeResult) : undefined;
+        return packTupleResult(readOutParams(plans, inputs, nativeValues), primary, hasPrimary);
     };
 
     if (throws) {
         return (...inputs) => {
-            const nativeValues = toNativeValues(plans, inputs);
+            const nativeValues = buildNativeValues(plans, inputs);
             const errorRef: Ref = { value: null };
             nativeValues.push(errorRef);
             const nativeResult = nativeFn(...nativeValues);
@@ -102,7 +102,7 @@ export function fn(sharedLibrary: string, symbol: string, spec: FnSpec): (...inp
     }
 
     return (...inputs) => {
-        const nativeValues = toNativeValues(plans, inputs);
+        const nativeValues = buildNativeValues(plans, inputs);
         return shape(inputs, nativeValues, nativeFn(...nativeValues));
     };
 }
