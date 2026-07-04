@@ -22,7 +22,7 @@ import type { Container, Props } from "./types.js";
 
 const FIXED_UPDATE_PRIORITY = DiscreteEventPriority;
 
-type PublicInstance = Gtk.Widget | Gtk.Application;
+type PublicInstance = GObject.Object;
 
 type HostContext = {
     textHost?: "label" | "buffer";
@@ -270,7 +270,10 @@ const createInstanceConfig = (): InstanceConfig => ({
         withSignalsBlocked(instance, () => commitInstanceProps(instance, null, props));
         return false;
     },
-    getPublicInstance: (instance) => instance as PublicInstance,
+    getPublicInstance: (instance) => {
+        const adopted = isRelationshipNode(instance) ? stateOf(instance).adoptedInstance : undefined;
+        return (adopted ?? instance) as PublicInstance;
+    },
 });
 
 type MutationConfig = Pick<

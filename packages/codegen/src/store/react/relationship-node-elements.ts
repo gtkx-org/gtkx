@@ -17,6 +17,7 @@ export type RelationshipNodeElement = {
     flatName: string;
     kind: RelationshipKind;
     propsType: string;
+    propsTypeArg?: string;
     slot?: RelationshipNodeElementSlot;
 };
 
@@ -29,6 +30,7 @@ const VIEW_STACK_PAGE: RelationshipNodeElement = {
     flatName: "AdwViewStackPage",
     kind: META_OBJECT_KIND,
     propsType: "StackPageProps",
+    propsTypeArg: "Adw.ViewStackPage",
 };
 const NOTEBOOK_PAGE: RelationshipNodeElement = {
     flatName: "GtkNotebookPage",

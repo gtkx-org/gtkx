@@ -108,12 +108,13 @@ const renderPositionalSlotChild = (kind: string, prop: string): string =>
     `{${prop} != null && <${RELATIONSHIP_NODE_ELEMENT_CONST} kind=${sourceStringLiteral(kind)}>{${prop}}</${RELATIONSHIP_NODE_ELEMENT_CONST}>}`;
 
 const renderRelationshipNodeElementExport = (relationshipNode: RelationshipNodeElement): string => {
-    const { flatName, kind, propsType, slot } = relationshipNode;
+    const { flatName, kind, propsType, propsTypeArg, slot } = relationshipNode;
+    const propsTypeRef = propsTypeArg === undefined ? propsType : `${propsType}<${propsTypeArg}>`;
     if (slot === undefined) {
-        return `export const ${flatName} = (props: ${propsType}): ReactNode => (\n    <${RELATIONSHIP_NODE_ELEMENT_CONST} kind=${sourceStringLiteral(kind)} {...props} />\n);`;
+        return `export const ${flatName} = (props: ${propsTypeRef}): ReactNode => (\n    <${RELATIONSHIP_NODE_ELEMENT_CONST} kind=${sourceStringLiteral(kind)} {...props} />\n);`;
     }
     return [
-        `export const ${flatName} = (props: ${propsType}): ReactNode => {`,
+        `export const ${flatName} = (props: ${propsTypeRef}): ReactNode => {`,
         `    const { ${slot.prop}, children, ...rest } = props;`,
         "    return (",
         `        <${RELATIONSHIP_NODE_ELEMENT_CONST} kind=${sourceStringLiteral(kind)} {...rest}>`,

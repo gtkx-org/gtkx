@@ -2,7 +2,7 @@ import type * as Gdk from "@gtkx/gi/gdk";
 import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gsk from "@gtkx/gi/gsk";
 import type * as Gtk from "@gtkx/gi/gtk";
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 
 export type TextAnchorProps = {
     replacementChar?: string;
@@ -55,14 +55,19 @@ export type FixedChildProps = {
 
 export type NotebookPageProps = {
     children?: ReactNode;
+    ref?: Ref<Gtk.NotebookPage> | undefined;
     label?: string | undefined;
     tabLabel?: ReactNode;
     tabExpand?: boolean | undefined;
     tabFill?: boolean | undefined;
+    reorderable?: boolean | undefined;
+    detachable?: boolean | undefined;
+    menuLabel?: string | undefined;
 };
 
-export type StackPageProps = {
+export type StackPageProps<Page extends GObject.Object = Gtk.StackPage> = {
     children?: ReactNode;
+    ref?: Ref<Page> | undefined;
     id?: string | undefined;
     title?: string | undefined;
     iconName?: string | undefined;

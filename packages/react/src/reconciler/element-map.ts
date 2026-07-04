@@ -16,6 +16,7 @@ import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { callMethod, callRequiredMethod } from "@gtkx/utils";
 import { collectTypeNameChain, findInheritedRow } from "../utils/gtype.js";
+import { applyProps } from "./apply-props.js";
 import {
     attachToParent,
     childRuleSetMapping,
@@ -44,7 +45,7 @@ import {
 } from "./relationship-content.js";
 import { namedRuleSet, RULE_CONTEXT, resolveAppendRuleSet, ruleNodeOf } from "./rule-registry.js";
 import { SLOT_HOST_BASE_TYPE } from "./slot-props.js";
-import { isRelationshipKind, type Node, stateOf } from "./state.js";
+import { isRelationshipKind, type Node, registeredStateOf, registerState, stateOf } from "./state.js";
 import type { Props } from "./types.js";
 import { attachChild, detachChild, getFocusWidget, isAttachedTo, isDescendantOf, unparentWidget } from "./widget.js";
 
@@ -149,7 +150,20 @@ const applyPageMeta = (page: object, props: Props): void => {
     }
 };
 
-type MetaState = { widget: Gtk.Widget; page: object };
+const adoptPage = (node: Node, page: GObject.Object): void => {
+    const nodeState = stateOf(node);
+    nodeState.adoptedInstance = page;
+    if (!registeredStateOf(page)) registerState(page, { props: {}, rootContainer: nodeState.rootContainer });
+};
+
+const releasePage = (node: Node): void => {
+    const nodeState = stateOf(node);
+    const page = nodeState.adoptedInstance;
+    nodeState.adoptedInstance = undefined;
+    if (page) registeredStateOf(page)?.signalStore.clear(page);
+};
+
+type MetaState = { widget: Gtk.Widget; page: GObject.Object };
 
 const metaAddRules = (target: GObject.Object | undefined): AddMethodRule[] | null => {
     if (!target) return null;
@@ -164,12 +178,12 @@ const addStackPage = (
     rules: AddMethodRule[],
     widget: Gtk.Widget,
     props: Props,
-): object | undefined => {
+): GObject.Object | undefined => {
     for (const rule of rules) {
         if (!rule.requires.every((key) => pagePropValue(props, key) !== null)) continue;
         const args = rule.args.map((arg) => (arg === "widget" ? widget : pagePropValue(props, arg)));
         const page = callRequiredMethod(stack, rule.method, args);
-        return typeof page === "object" && page !== null ? page : undefined;
+        return page instanceof GObject.Object ? page : undefined;
     }
     return undefined;
 };
@@ -193,11 +207,13 @@ const notebookTabLabel = (node: Node): Gtk.Widget => {
     return synthesized;
 };
 
-const applyNotebookMeta = (notebook: Gtk.Notebook, widget: Gtk.Widget, props: Props): void => {
-    const page = notebook.getPage(widget);
-    if (!page) return;
-    if (props.tabExpand !== undefined) Reflect.set(page, "tabExpand", props.tabExpand);
-    if (props.tabFill !== undefined) Reflect.set(page, "tabFill", props.tabFill);
+const NOTEBOOK_PAGE_EXCLUDED_PROPS = new Set(["kind", "label", "tabLabel", "position", "ref"]);
+
+const applyNotebookPageProps = (page: GObject.Object, node: Node): void => {
+    const pageState = stateOf(page);
+    const props = stateOf(node).props;
+    applyProps(page, pageState.props, props, { exclude: (name) => NOTEBOOK_PAGE_EXCLUDED_PROPS.has(name) });
+    pageState.props = props;
 };
 
 const updateNotebookTabLabel = (notebook: Gtk.Notebook, widget: Gtk.Widget, node: Node): void => {
@@ -213,7 +229,10 @@ const attachNotebookPage = (notebook: Gtk.Notebook, widget: Gtk.Widget, node: No
     const position = notebookPosition(node);
     if (position == null) notebook.appendPage(widget, label);
     else notebook.insertPage(widget, label, position);
-    applyNotebookMeta(notebook, widget, stateOf(node).props);
+    const page = notebook.getPage(widget);
+    if (!page) return;
+    adoptPage(node, page);
+    applyNotebookPageProps(page, node);
 };
 
 type NotebookPageState = { widget: Gtk.Widget };
@@ -228,7 +247,8 @@ const notebookPageMapping: ElementMapping = {
         const state = notebookPageState.get(child);
         if (state && state.widget === widget) {
             updateNotebookTabLabel(parent, state.widget, child);
-            applyNotebookMeta(parent, state.widget, stateOf(child).props);
+            const page = stateOf(child).adoptedInstance;
+            if (page) applyNotebookPageProps(page, child);
             return;
         }
         if (state) notebookPageMapping.detach(child, parent);
@@ -240,6 +260,7 @@ const notebookPageMapping: ElementMapping = {
         if (!(parent instanceof Gtk.Notebook)) return;
         const state = notebookPageState.get(child);
         notebookPageState.delete(child);
+        releasePage(child);
         if (!state) return;
         const pageNum = parent.pageNum(state.widget);
         if (pageNum !== -1) parent.removePage(pageNum);
@@ -267,12 +288,14 @@ const metaObjectMapping: ElementMapping = {
         if (!target || !rules) return;
         const page = addStackPage(target, rules, widget, childState.props);
         if (!page) return;
+        adoptPage(child, page);
         applyPageMeta(page, childState.props);
         metaState.set(child, { widget, page });
     },
     detach: (child, parent) => {
         const state = metaState.get(child);
         metaState.delete(child);
+        releasePage(child);
         if (!state) return;
         if (parent instanceof Gtk.Widget && metaAddRules(parent) !== null && isAttachedTo(state.widget, parent)) {
             callMethod(parent, "remove", [state.widget]);

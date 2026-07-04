@@ -15,6 +15,7 @@ export type State = {
     children: Node[];
     rootContainer: Container;
     signalStore: SignalStore;
+    adoptedInstance?: GObject.Object | undefined;
 };
 
 const stateMap = new WeakMap<Node, State>();
@@ -42,6 +43,8 @@ export const registerState = (node: Node, { name, kind, props, rootContainer }: 
 
 export const ensureState = (container: Container): State =>
     stateMap.get(container) ?? registerState(container, { props: {}, rootContainer: container });
+
+export const registeredStateOf = (node: Node): State | undefined => stateMap.get(node);
 
 export const stateOf = (node: Node): State => {
     const state = stateMap.get(node);
