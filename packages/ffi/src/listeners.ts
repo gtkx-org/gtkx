@@ -1,4 +1,4 @@
-type SignalHandler = (...args: unknown[]) => void;
+import type { SignalHandler } from "./signal.js";
 
 type SignalConnectable = {
     connect(signal: string, handler: SignalHandler, after?: boolean): number;

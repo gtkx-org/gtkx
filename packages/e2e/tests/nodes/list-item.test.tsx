@@ -1,7 +1,7 @@
 import { DropDown, type ListRenderItemInfo, ListView } from "@gtkx/components";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
-import { render, screen } from "@gtkx/testing";
+import { render, screen, userEvent } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
 import { expectAllVisibleOnce } from "../helpers/list-collection-render.js";
@@ -158,10 +158,10 @@ describe("render - ListItem (5)", () => {
 
             await screen.findAllByText("First");
 
-            dropDownRef.current?.setSelected(1);
+            if (dropDownRef.current) await userEvent.selectOptions(dropDownRef.current, 1);
             await screen.findAllByText("Second");
 
-            dropDownRef.current?.setSelected(2);
+            if (dropDownRef.current) await userEvent.selectOptions(dropDownRef.current, 2);
             await screen.findAllByText("Third");
         });
 
@@ -171,17 +171,17 @@ describe("render - ListItem (5)", () => {
             const { rerender } = await renderChildren(["first", "last"], buildValueDropDown(dropDownRef));
             await screen.findAllByText("first");
 
-            dropDownRef.current?.setSelected(1);
+            if (dropDownRef.current) await userEvent.selectOptions(dropDownRef.current, 1);
             await screen.findAllByText("last");
 
             await rerender(["first", "middle", "last"]);
-            dropDownRef.current?.setSelected(0);
+            if (dropDownRef.current) await userEvent.selectOptions(dropDownRef.current, 0);
             await screen.findAllByText("first");
 
-            dropDownRef.current?.setSelected(1);
+            if (dropDownRef.current) await userEvent.selectOptions(dropDownRef.current, 1);
             await screen.findAllByText("middle");
 
-            dropDownRef.current?.setSelected(2);
+            if (dropDownRef.current) await userEvent.selectOptions(dropDownRef.current, 2);
             await screen.findAllByText("last");
         });
     });

@@ -1,10 +1,9 @@
 import * as path from "node:path/posix";
 import { Menu } from "@gtkx/components";
-import * as Adw from "@gtkx/gi/adw";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { AdwAboutDialog } from "@gtkx/jsx/adw";
+import { AdwAboutDialog, AdwShortcutsDialog, AdwShortcutsItem, AdwShortcutsSection } from "@gtkx/jsx/adw";
 import { GSimpleAction } from "@gtkx/jsx/gio";
 import {
     GtkApplication,
@@ -126,22 +125,24 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
     );
 };
 
-const showShortcutsDialog = (activeWindow: Gtk.Window) => {
-    const dialog = new Adw.ShortcutsDialog();
+interface ShortcutsDialogProps {
+    activeWindow: Gtk.Window;
+    onClose: () => void;
+}
 
-    const general = Adw.ShortcutsSection.new("General");
-    general.add(Adw.ShortcutsItem.new("Search demos", "<Control>f"));
-    general.add(Adw.ShortcutsItem.new("Open Inspector", "<Control><Shift>i"));
-    general.add(Adw.ShortcutsItem.new("Keyboard Shortcuts", "<Control>question"));
-    dialog.add(general);
-
-    const navigation = Adw.ShortcutsSection.new("Navigation");
-    navigation.add(Adw.ShortcutsItem.new("Next tab", "<Control>Page_Down"));
-    navigation.add(Adw.ShortcutsItem.new("Previous tab", "<Control>Page_Up"));
-    dialog.add(navigation);
-
-    dialog.present(activeWindow);
-};
+const ShortcutsDialog = ({ activeWindow, onClose }: ShortcutsDialogProps) => (
+    <AdwShortcutsDialog parent={activeWindow} onClosed={onClose}>
+        <AdwShortcutsSection title="General">
+            <AdwShortcutsItem title="Search demos" accelerator="<Control>f" />
+            <AdwShortcutsItem title="Open Inspector" accelerator="<Control><Shift>i" />
+            <AdwShortcutsItem title="Keyboard Shortcuts" accelerator="<Control>question" />
+        </AdwShortcutsSection>
+        <AdwShortcutsSection title="Navigation">
+            <AdwShortcutsItem title="Next tab" accelerator="<Control>Page_Down" />
+            <AdwShortcutsItem title="Previous tab" accelerator="<Control>Page_Up" />
+        </AdwShortcutsSection>
+    </AdwShortcutsDialog>
+);
 
 interface AppHeaderBarProps {
     hasDemo: boolean;
@@ -354,6 +355,7 @@ const MainWindow = () => {
     const { currentDemo, setSearchQuery } = useDemo();
     const [searchMode, setSearchMode] = useState(false);
     const [showAbout, setShowAbout] = useState(false);
+    const [showShortcuts, setShowShortcuts] = useState(false);
     const [notebookPage, setNotebookPage] = useState(0);
     const { demoWindows, openWindow, closeWindow } = useDemoWindows();
     const app = useApplication();
@@ -367,8 +369,7 @@ const MainWindow = () => {
     };
 
     const handleKeyboardShortcuts = () => {
-        if (!activeWindow) return;
-        showShortcutsDialog(activeWindow);
+        setShowShortcuts(true);
     };
 
     return (
@@ -401,6 +402,9 @@ const MainWindow = () => {
             ))}
             {showAbout && activeWindow && (
                 <AboutDialog activeWindow={activeWindow} onClose={() => setShowAbout(false)} />
+            )}
+            {showShortcuts && activeWindow && (
+                <ShortcutsDialog activeWindow={activeWindow} onClose={() => setShowShortcuts(false)} />
             )}
         </GtkApplicationWindow>
     );

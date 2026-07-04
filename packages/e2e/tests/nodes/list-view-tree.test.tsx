@@ -442,7 +442,7 @@ describe("render - ListView (tree) (6)", () => {
 
             const row = expandableExpanders()[0]?.getListRow();
             if (!row) throw new Error("Expected row to exist");
-            row.setExpanded(true);
+            await act(() => row.setExpanded(true));
 
             await waitFor(() => expect(getChildTexts(ref.current)).toEqual(["Parent", "Child 1", "Child 2"]));
         });
@@ -558,7 +558,7 @@ describe("render - ListView (tree) (9)", () => {
             const row = expandableExpanders()[1]?.getListRow();
             if (!row) throw new Error("Expected row to exist");
 
-            row.setExpanded(true);
+            await act(() => row.setExpanded(true));
 
             await waitFor(() => {
                 expect(screen.queryAllByText("Loading...")).toHaveLength(0);
@@ -681,7 +681,7 @@ describe("render - ListView (tree) (12)", () => {
             const row = expandableExpanders()[0]?.getListRow();
             if (!row) throw new Error("Expected row to exist");
 
-            row.setExpanded(true);
+            await act(() => row.setExpanded(true));
 
             await waitFor(() => {
                 expect(screen.queryAllByText("Loading...")).toHaveLength(0);
@@ -722,7 +722,7 @@ describe("render - ListView (tree) (13)", () => {
             const row = expanders[0]?.getListRow();
             if (!row) throw new Error("Expected row to exist");
 
-            row.setExpanded(true);
+            await act(() => row.setExpanded(true));
 
             await waitFor(() =>
                 expect(getChildTexts(ref.current)).toEqual([
@@ -746,7 +746,7 @@ describe("render - ListView (tree) (14) > settings tree regression (3)", () => {
         const expandAndVerify = async (categoryIndex: number, expectedChildren: string[]) => {
             const row = expandableExpanders()[categoryIndex]?.getListRow();
             if (!row) throw new Error("Expected row to exist");
-            row.setExpanded(true);
+            await act(() => row.setExpanded(true));
 
             await waitFor(() => {
                 expect(screen.queryAllByText("Loading...")).toHaveLength(0);
@@ -759,7 +759,7 @@ describe("render - ListView (tree) (14) > settings tree regression (3)", () => {
         const collapseRow = async (categoryIndex: number) => {
             const row = expandableExpanders()[categoryIndex]?.getListRow();
             if (!row) throw new Error("Expected row to exist");
-            row.setExpanded(false);
+            await act(() => row.setExpanded(false));
         };
 
         await expandAndVerify(0, ["Dark Mode", "Large Text", "Enable Animations", "Transparency Effects"]);
@@ -855,7 +855,7 @@ describe("render - ListView (tree) (16)", () => {
                 { autoexpand: true },
             );
 
-            expect(getChildTexts(ref.current)).toEqual(["Delta", "D-Two"]);
+            await waitFor(() => expect(getChildTexts(ref.current)).toEqual(["Delta", "D-Two"]));
         });
     });
 });
@@ -877,7 +877,7 @@ describe("render - ListView (tree) (17)", () => {
                 { autoexpand: true },
             );
 
-            expect(getChildTexts(ref.current)).toEqual(["Alpha", "Bravo", "B-One"]);
+            await waitFor(() => expect(getChildTexts(ref.current)).toEqual(["Alpha", "Bravo", "B-One"]));
 
             await rerender(fullItems, { autoexpand: true });
 
@@ -892,7 +892,7 @@ describe("render - ListView (tree) (17)", () => {
                 { autoexpand: true },
             );
 
-            expect(getChildTexts(ref.current)).toEqual(["Delta", "D-Two"]);
+            await waitFor(() => expect(getChildTexts(ref.current)).toEqual(["Delta", "D-Two"]));
         });
     });
 });
@@ -1010,7 +1010,9 @@ describe("render - ListView (tree) (21)", () => {
                 { autoexpand: true },
             );
 
-            expect(getChildTexts(ref.current)).toEqual(["Alpha", "Bravo", "B-One", "Delta", "D-One"]);
+            await waitFor(() =>
+                expect(getChildTexts(ref.current)).toEqual(["Alpha", "Bravo", "B-One", "Delta", "D-One"]),
+            );
 
             await rerender(
                 [
@@ -1023,7 +1025,7 @@ describe("render - ListView (tree) (21)", () => {
                 { autoexpand: true },
             );
 
-            expect(getChildTexts(ref.current)).toEqual(["Delta", "D-Two"]);
+            await waitFor(() => expect(getChildTexts(ref.current)).toEqual(["Delta", "D-Two"]));
         });
     });
 });

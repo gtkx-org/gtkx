@@ -1,7 +1,7 @@
 import { DropDown } from "@gtkx/components";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
-import { render, screen, waitFor } from "@gtkx/testing";
+import { render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { valueItems } from "../helpers/list-fixtures.js";
@@ -12,7 +12,7 @@ const buildDropDown = (dropDownRef: RefObject<Gtk.DropDown | null>) => (items: s
 );
 
 const expectSelectedText = async (dropDown: Gtk.DropDown | null, index: number, text: string): Promise<void> => {
-    dropDown?.setSelected(index);
+    if (dropDown) await userEvent.selectOptions(dropDown, index);
     await screen.findAllByText(text);
 };
 
@@ -60,7 +60,7 @@ describe("render - DropDown > DropDownNode (2)", () => {
             />,
         );
 
-        dropDownRef.current?.setSelected(1);
+        if (dropDownRef.current) await userEvent.selectOptions(dropDownRef.current, 1);
 
         await waitFor(() => expect(onSelectionChanged).toHaveBeenCalledWith("2"));
     });

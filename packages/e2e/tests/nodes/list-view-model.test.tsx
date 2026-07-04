@@ -4,7 +4,7 @@ import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
-import { render, screen, waitFor } from "@gtkx/testing";
+import { act, render, screen, waitFor } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
@@ -69,7 +69,7 @@ describe("ListView model prop", () => {
 
         const next = new NameObject();
         next.name = "Second";
-        store.append(next);
+        await act(() => store.append(next));
 
         await screen.findAllByText("Second");
         await screen.findAllByText("First");
@@ -80,7 +80,7 @@ describe("ListView model prop", () => {
 
         await screen.findAllByText("Drop");
 
-        store.remove(1);
+        await act(() => store.remove(1));
 
         await waitFor(() => {
             expect(screen.queryAllByText("Drop")).toHaveLength(0);
