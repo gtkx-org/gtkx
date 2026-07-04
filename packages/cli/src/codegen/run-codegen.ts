@@ -1,7 +1,7 @@
 import { rmSync } from "node:fs";
 import { resolve } from "node:path";
 import { runCodegen as runCodegenCore } from "@gtkx/codegen";
-import { type GtkxConfig, loadGtkxConfig } from "@gtkx/config";
+import { type GtkxConfig, loadGtkxConfig, type ResolvedGtkxRules } from "@gtkx/config";
 import { info } from "@gtkx/utils";
 import { emitSchemaEnv } from "../gsettings/env.js";
 import { resolveDataDir } from "../internal/data-dir.js";
@@ -42,9 +42,10 @@ const removeSharedStoreShadow = (cwd: string): void => {
     }
 };
 
-const codegenOptions = (store: CodegenStore, libraries: string[], girPath: string[]) => ({
+const codegenOptions = (store: CodegenStore, libraries: string[], girPath: string[], rules: ResolvedGtkxRules) => ({
     libraries,
     girPath,
+    rules,
     gi: {
         storeDir: store.giStoreDir,
         linkDir: store.giLinkDir,
@@ -70,7 +71,7 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
         return { namespaces: 0, intrinsicElements: 0, duration: 0, girPath: [], configFile, libraries: [] };
     }
 
-    const { girPath, libraries, store } = options.inputs ?? resolveCodegenInputs(cwd, config);
+    const { girPath, libraries, rules, store } = options.inputs ?? resolveCodegenInputs(cwd, config);
 
     if (girPath.length === 0) {
         throw new GtkxError(
@@ -84,7 +85,7 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
         }
     }
 
-    const result = await runCodegenCore(codegenOptions(store, libraries, girPath));
+    const result = await runCodegenCore(codegenOptions(store, libraries, girPath, rules));
 
     return {
         namespaces: result.namespaces,

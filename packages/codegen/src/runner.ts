@@ -1,3 +1,4 @@
+import { type ResolvedGtkxRules, resolveGtkxRules } from "@gtkx/config";
 import { computeFingerprint } from "./fingerprint.js";
 import { Library } from "./gir/library.js";
 import { namespaceDirectory } from "./gir/namespace.js";
@@ -9,6 +10,7 @@ import { generateJsxFiles } from "./store/react/pipeline.js";
 type CodegenRunnerOptions = {
     libraries: string[];
     girPath: string[];
+    rules?: ResolvedGtkxRules | undefined;
     gi: GiStoreOptions;
     jsx?: JsxStoreOptions | undefined;
 };
@@ -42,7 +44,7 @@ const emitGiStore = (options: CodegenRunnerOptions, library: Library): void => {
     }
     const libraries = [...options.libraries];
     writeGiStore(options.gi, namespaces, {
-        value: computeFingerprint(library.girFiles, libraries),
+        value: computeFingerprint(library.girFiles, libraries, resolveGtkxRules(options.rules)),
         girFiles: library.girFiles,
         libraries,
     });

@@ -20,14 +20,11 @@ describe("renderGtkxConfigModule", () => {
         expect(source).toContain('export * from "@gtkx/jsx/metadata";');
     });
 
-    it("defaults the user rule registry to undefined", () => {
-        const lines = renderGtkxConfigModule(resolveGtkxConfig({})).split("\n");
-        expect(lines).toContain("export const USER_RULES = undefined;");
-    });
-
-    it("re-exports the user rules module as USER_RULES when configured", () => {
-        const lines = renderGtkxConfigModule(resolveGtkxConfig({ rules: "./gtkx.rules.ts" })).split("\n");
-        expect(lines).toContain('export { default as USER_RULES } from "./gtkx.rules.ts";');
+    it("does not export any rules binding", () => {
+        const rules = { relationships: [{ kind: "skip" as const, child: "GtkWindow" }] };
+        const source = renderGtkxConfigModule(resolveGtkxConfig({ rules }));
+        expect(source).not.toContain("RULES");
+        expect(source).not.toContain("rules");
     });
 
     it("serializes each resolved config field as a named constant", () => {

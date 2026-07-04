@@ -23,9 +23,6 @@ export const serializeGtkxConfig = (config: ResolvedGtkxConfig): SerializedGtkxC
 export const renderGtkxConfigModule = (config: ResolvedGtkxConfig): string =>
     [
         `export * from ${JSON.stringify(METADATA_SPECIFIER)};`,
-        config.rules !== undefined
-            ? `export { default as USER_RULES } from ${JSON.stringify(config.rules)};`
-            : "export const USER_RULES = undefined;",
         ...Object.entries(serializeGtkxConfig(config)).map(
             ([key, value]) => `export const ${key} = ${serializeConfigValue(value)};`,
         ),

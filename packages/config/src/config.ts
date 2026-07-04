@@ -1,5 +1,6 @@
 import { createDefineConfig, type DefineConfig } from "c12";
 import { defu } from "defu";
+import { type GtkxRules, type ResolvedGtkxRules, resolveGtkxRules, validateGtkxRules } from "./rule-schema.js";
 
 export const LIBRARIES_WILDCARD = "*";
 
@@ -21,7 +22,7 @@ export type GtkxConfig = {
     libraries?: typeof LIBRARIES_WILDCARD | string[];
     girPath?: string[];
     applicationId?: string;
-    rules?: string;
+    rules?: GtkxRules;
     reactCompiler?: boolean | ReactCompilerOptions;
     codegen?: boolean;
 };
@@ -113,9 +114,13 @@ const validateReactCompiler = (reactCompiler: GtkxConfig["reactCompiler"]): void
 };
 
 const validateRules = (rules: GtkxConfig["rules"]): void => {
-    if (rules !== undefined && (typeof rules !== "string" || rules.length === 0)) {
-        throw new Error("gtkx.config.ts: `rules` must be a module specifier string default-exporting a `RuleRegistry`");
+    if (rules === undefined) return;
+    if (typeof rules === "string") {
+        throw new Error(
+            "gtkx.config.ts: `rules` is inline data ({ relationships, syntheticProps }); module-specifier rule registries were removed",
+        );
     }
+    validateGtkxRules(rules);
 };
 
 const validateCodegen = (codegen: GtkxConfig["codegen"]): void => {
@@ -141,7 +146,7 @@ export type ResolvedGtkxConfig = {
     libraries: typeof LIBRARIES_WILDCARD | string[];
     girPath: string[];
     applicationId: string;
-    rules: string | undefined;
+    rules: ResolvedGtkxRules;
     reactCompiler: ResolvedReactCompilerOptions | null;
     codegen: boolean;
 };
@@ -150,7 +155,7 @@ export const resolveGtkxConfig = (config: GtkxConfig): ResolvedGtkxConfig => ({
     libraries: config.libraries ?? [],
     girPath: config.girPath ?? [],
     applicationId: config.applicationId ?? DEFAULT_APPLICATION_ID,
-    rules: config.rules,
+    rules: resolveGtkxRules(config.rules),
     reactCompiler: resolveReactCompilerOptions(config.reactCompiler),
     codegen: config.codegen ?? true,
 });
