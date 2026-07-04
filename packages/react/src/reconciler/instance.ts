@@ -1,6 +1,5 @@
 import type { RelationshipKind } from "@gtkx/config";
-import { constructWrapper } from "@gtkx/ffi";
-import type * as GObject from "@gtkx/gi/gobject";
+import * as GObject from "@gtkx/gi/gobject";
 import { omit } from "@gtkx/utils";
 import { collectConstructableProps } from "../utils/gtype.js";
 import { requireClassByName } from "../utils/gtype-predicates.js";
@@ -26,8 +25,8 @@ const pickConstructProps = (gtype: bigint, props: Props): Props => {
 const constructWrapperInstance = (type: string, props: Props): GObject.Object => {
     const cls = requireClassByName(type);
     const skip = CONSTRUCTION_SKIP_PROPS[type];
-    const picked = pickConstructProps(cls.prototype.__type__, skip ? omit(props, skip) : props);
-    return constructWrapper(cls, picked) as GObject.Object;
+    const picked = pickConstructProps(GObject.typeFromName(type), skip ? omit(props, skip) : props);
+    return new cls(picked);
 };
 
 export const createElementInstance = (type: string, props: Props, rootContainer: Container): Node => {

@@ -8,13 +8,11 @@ export { fromNative } from "./native-value.js";
 export { getObjectProperty, newObjectWithProperties, setObjectProperty } from "./object.js";
 export { registerClass } from "./register-class.js";
 export {
-    constructWrapper,
     getHandle,
     getInstanceType,
-    getWrapperClassByName,
+    getWrapperClass,
     registerInterface,
     registerWrapperClass,
-    requireWrapperClassByName,
     setHandle,
     tryGetHandle,
     wrapHandle,

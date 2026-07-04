@@ -18,11 +18,11 @@ import { packTupleResult } from "./tuple.js";
 import type { TypedClass } from "./type.js";
 import {
     fromValue,
+    getBoxedValue,
     inoutValueForBoxedDescriptor,
     newValueForDescriptor,
     outValueForBoxedDescriptor,
     outValueForDescriptor,
-    readValueBoxed,
     toValue,
 } from "./value.js";
 
@@ -95,7 +95,7 @@ const createEmitValue = (arg: EmitArg): { value: ExternalObject<Handle>; read?: 
     if (isCallerAllocatedArg(arg)) {
         if (isInoutArg(arg)) return { value: inoutValueForBoxedDescriptor(arg.type, arg.value as object) };
         const value = outValueForBoxedDescriptor(arg.type, arg.value as object);
-        return { value, read: () => readValueBoxed(value) };
+        return { value, read: () => getBoxedValue(value) };
     }
     return isInoutArg(arg) ? outValueForDescriptor(arg.type, arg.value) : outValueForDescriptor(arg.type);
 };

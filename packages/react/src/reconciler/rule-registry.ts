@@ -2,7 +2,7 @@
 
 import { USER_RULES } from "virtual:gtkx-config";
 import type { RuleContext, RuleNode, RuleSet } from "@gtkx/config";
-import { type TypedClass, typeFromName, typeIsA } from "@gtkx/ffi";
+import type { TypedClass } from "@gtkx/ffi";
 import * as GObject from "@gtkx/gi/gobject";
 import { foldInheritedTableWithInterfaces } from "../utils/gtype.js";
 import { BUILT_IN_RULES } from "./rules.js";
@@ -11,7 +11,8 @@ import { type Node, stateOf } from "./state.js";
 const RULE_REGISTRY = { ...BUILT_IN_RULES, ...USER_RULES };
 
 export const RULE_CONTEXT: RuleContext = {
-    instanceIsA: (instance, typeName) => typeIsA((instance as TypedClass).__type__, typeFromName(typeName)),
+    instanceIsA: (instance, typeName) =>
+        GObject.typeIsA((instance as TypedClass).__type__, GObject.typeFromName(typeName)),
 };
 
 type RuleCapability = "appendChild" | "setProps";

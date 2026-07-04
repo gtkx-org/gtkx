@@ -9,7 +9,8 @@ import {
     SIGNALS,
 } from "virtual:gtkx-config";
 import type { AttachShape } from "@gtkx/config";
-import { type TypedClass, typeInterfaces, typeName, typeParent } from "@gtkx/ffi";
+import type { TypedClass } from "@gtkx/ffi";
+import { typeInterfaces, typeName, typeParent } from "@gtkx/gi/gobject";
 import { NOTIFY_SIGNAL, propToNotifySignal } from "./notify-name.js";
 
 const NOTIFY_PREFIX = "onNotify";

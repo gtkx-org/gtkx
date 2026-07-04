@@ -7,7 +7,7 @@ import {
     setWrapper,
 } from "@gtkx/native";
 import type { AnyClass, Mixin } from "@gtkx/utils";
-import { TYPE_INVALID, type TypedClass, typeFromName, typeInterfaces, typeIsA, typeName, typeParent } from "./type.js";
+import { TYPE_INVALID, type TypedClass, typeInterfaces, typeIsA, typeName, typeParent } from "./type.js";
 
 export type VfuncDescriptor<K extends "class" | "interface"> = {
     kind: K;
@@ -81,25 +81,11 @@ export function wrapHandle(handle: ExternalObject<Handle> | null | undefined, cl
 }
 
 export function getWrapperClass(type: bigint): AnyClass {
-    const cls = classRegistry.get(type);
+    const cls = resolveWrapperClass(type);
     if (!cls) {
         throw new Error(`No registered wrapper class for type '${typeName(type) ?? String(type)}'`);
     }
     return cls;
-}
-
-export function getWrapperClassByName(name: string): AnyClass<TypedClass> | null {
-    return (classRegistry.get(typeFromName(name)) ?? null) as AnyClass<TypedClass> | null;
-}
-
-export function requireWrapperClassByName(name: string, describe: (name: string) => string): AnyClass<TypedClass> {
-    const cls = getWrapperClassByName(name);
-    if (!cls) throw new Error(describe(name));
-    return cls;
-}
-
-export function constructWrapper(cls: AnyClass<TypedClass>, props: Record<string, unknown>): TypedClass {
-    return new (cls as new (props: Record<string, unknown>) => TypedClass)(props);
 }
 
 export function resolveWrapperClass(type: bigint): AnyClass | null {

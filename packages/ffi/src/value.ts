@@ -45,18 +45,34 @@ import {
     typeName,
 } from "./type.js";
 
-type ValueTypeBind = {
+type ValueType = {
     set: (value: ExternalObject<Handle>, nativeValue: unknown) => void;
     get: (value: ExternalObject<Handle>) => unknown;
 };
 
+const getBoxedTypeName = (type: bigint): string => typeName(type) ?? "GBoxed";
+const newValue = (): ExternalObject<Handle> => alloc(VALUE_SIZE, "GValue");
+
+const setBoxedCache = createBindCache();
+const setStaticBoxedCache = createBindCache();
+const dupBoxedCache = createBindCache();
+
 const gValueInit = bind(LIB, "g_value_init", [VALUE_T, biguint64T], voidT);
 const gValueCopy = bind(LIB, "g_value_copy", [VALUE_T, VALUE_T], voidT);
 
-const bindValueType = (symbol: string, descriptor: Descriptor): ValueTypeBind => ({
+const bindValueType = (symbol: string, descriptor: Descriptor): ValueType => ({
     set: bind(LIB, `g_value_set_${symbol}`, [VALUE_T, descriptor], voidT),
     get: bind(LIB, `g_value_get_${symbol}`, [VALUE_T], descriptor),
 });
+
+const setBoxedBind = (name: string) =>
+    setBoxedCache(name, LIB, "g_value_set_boxed", [VALUE_T, boxedT(name, { sharedLibrary: LIB })], voidT);
+
+const setStaticBoxedBind = (name: string) =>
+    setStaticBoxedCache(name, LIB, "g_value_set_static_boxed", [VALUE_T, boxedT(name, { sharedLibrary: LIB })], voidT);
+
+const dupBoxedBind = (name: string) =>
+    dupBoxedCache(name, LIB, "g_value_dup_boxed", [VALUE_T], boxedT(name, { ownership: "full", sharedLibrary: LIB }));
 
 const booleanValueType = bindValueType("boolean", booleanT);
 const typeValueType = bindValueType("gtype", biguint64T);
@@ -73,32 +89,29 @@ const objectValueType = bindValueType("object", objectT("borrowed"));
 const paramValueType = bindValueType("param", PARAM_T);
 const variantValueType = bindValueType("variant", VARIANT_T);
 const pointerValueType = bindValueType("pointer", uint64T);
-const strvValueType: ValueTypeBind = {
+
+const strvValueType: ValueType = {
     set: bind(LIB, "g_value_set_boxed", [VALUE_T, arrayT(stringT("borrowed"))], voidT),
     get: bind(LIB, "g_value_get_boxed", [VALUE_T], arrayT(stringT("borrowed"))),
 };
 
-const setBoxedCache = createBindCache();
-const setStaticBoxedCache = createBindCache();
-const dupBoxedCache = createBindCache();
+const boxedValueType = (type: bigint): ValueType => {
+    const name = getBoxedTypeName(type);
+    return { set: setBoxedBind(name), get: dupBoxedBind(name) };
+};
 
-const boxedTypeName = (type: bigint): string => typeName(type) ?? "GBoxed";
+const enumOrFlagsValueType = (type: bigint): ValueType =>
+    typeFundamental(type) === TYPE_FLAGS ? flagsValueType : enumValueType;
 
-const setBoxedBind = (name: string) =>
-    setBoxedCache(name, LIB, "g_value_set_boxed", [VALUE_T, boxedT(name, { sharedLibrary: LIB })], voidT);
-
-const setStaticBoxedBind = (name: string) =>
-    setStaticBoxedCache(name, LIB, "g_value_set_static_boxed", [VALUE_T, boxedT(name, { sharedLibrary: LIB })], voidT);
-
-const dupBoxedBind = (name: string) =>
-    dupBoxedCache(name, LIB, "g_value_dup_boxed", [VALUE_T], boxedT(name, { ownership: "full", sharedLibrary: LIB }));
-
-const newValue = (): ExternalObject<Handle> => alloc(VALUE_SIZE, "GValue");
-
-const newTypedValue = (type: bigint): ExternalObject<Handle> => {
-    const value = newValue();
-    gValueInit(value, type);
-    return value;
+const fundamentalValueType = (type: bigint): ValueType => {
+    switch (typeFundamental(type)) {
+        case TYPE_PARAM:
+            return paramValueType;
+        case TYPE_VARIANT:
+            return variantValueType;
+        default:
+            throw new Error(`Unsupported fundamental type '${typeName(type) ?? String(type)}' for value`);
+    }
 };
 
 export function getValueType(value: ExternalObject<Handle>): bigint {
@@ -112,26 +125,42 @@ export function copyValue(dest: ExternalObject<Handle>, src: ExternalObject<Hand
     gValueCopy(src, dest);
 }
 
-const boxedValueType = (type: bigint): ValueTypeBind => {
-    const name = boxedTypeName(type);
-    return { set: setBoxedBind(name), get: dupBoxedBind(name) };
+const newTypedValue = (type: bigint): ExternalObject<Handle> => {
+    const value = newValue();
+    gValueInit(value, type);
+    return value;
 };
 
-const enumOrFlagsValueType = (type: bigint): ValueTypeBind =>
-    typeFundamental(type) === TYPE_FLAGS ? flagsValueType : enumValueType;
-
-const fundamentalValueType = (type: bigint): ValueTypeBind => {
-    switch (typeFundamental(type)) {
-        case TYPE_PARAM:
-            return paramValueType;
-        case TYPE_VARIANT:
-            return variantValueType;
-        default:
-            throw new Error(`Unsupported fundamental type '${typeName(type) ?? String(type)}' for GValue`);
-    }
+const newBoxedValue = (
+    descriptor: Descriptor,
+    boxed: object,
+    resolveSetBind: (name: string) => ValueType["set"],
+): ExternalObject<Handle> => {
+    const type = resolveDescriptorType(descriptor);
+    const value = newTypedValue(type);
+    resolveSetBind(getBoxedTypeName(type))(value, getHandle(boxed));
+    return value;
 };
 
-const resolveValueTypeBind = (descriptor: Descriptor): ValueTypeBind => {
+export function getBoxedValue(value: ExternalObject<Handle>): object | null {
+    const type = getValueType(value);
+    if (typeFundamental(type) !== TYPE_BOXED) return null;
+    const cls = getWrapperClass(type);
+    const boxed = dupBoxedBind(getBoxedTypeName(type))(value) as ExternalObject<Handle> | null;
+    return wrapHandle(boxed, cls);
+}
+
+export function getValueBoxed(value: object): object | null {
+    return getBoxedValue(getHandle(value));
+}
+
+export function setValueBoxed(value: object, boxed: object | null): void {
+    const gValue = getHandle(value);
+    const name = getBoxedTypeName(getValueType(gValue));
+    setBoxedBind(name)(gValue, boxed === null ? null : getHandle(boxed));
+}
+
+const resolveValueType = (descriptor: Descriptor): ValueType => {
     if (descriptor.kind === "biguint64" && "type" in descriptor) {
         return typeValueType;
     }
@@ -177,58 +206,6 @@ const resolveValueTypeBind = (descriptor: Descriptor): ValueTypeBind => {
     }
 };
 
-const objectValueTypeFor = (handle: unknown): bigint =>
-    handle === null || handle === undefined ? TYPE_OBJECT : getType(handle as ExternalObject<Handle>);
-
-export function newValueForDescriptor(descriptor: Descriptor): ExternalObject<Handle> {
-    return newTypedValue(resolveDescriptorType(descriptor));
-}
-
-export function toValue(descriptor: Descriptor, value: unknown): ExternalObject<Handle> {
-    const isHandleKind = descriptor.kind === "object" || descriptor.kind === "boxed";
-    const nativeValue = isHandleKind
-        ? value == null
-            ? null
-            : getHandle(value as object)
-        : toNative(descriptor, value);
-    const type = descriptor.kind === "object" ? objectValueTypeFor(nativeValue) : resolveDescriptorType(descriptor);
-    const gValue = newTypedValue(type);
-    resolveValueTypeBind(descriptor).set(gValue, nativeValue);
-    return gValue;
-}
-
-const getStringValue = (value: ExternalObject<Handle>): string | null =>
-    (stringValueType.get(value) ?? null) as string | null;
-
-const getObjectValue = (value: ExternalObject<Handle>): object | null =>
-    wrapHandle(objectValueType.get(value) as ExternalObject<Handle> | null);
-
-const getFundamentalValue = (valueType: ValueTypeBind, type: bigint) => {
-    return (value: ExternalObject<Handle>): object | null => {
-        const handle = valueType.get(value) as ExternalObject<Handle> | null;
-        return handle === null ? null : wrapHandle(handle, getWrapperClass(type));
-    };
-};
-
-const getPointerValue = (value: ExternalObject<Handle>): null => {
-    if (pointerValueType.get(value)) {
-        throw new Error("G_TYPE_POINTER non-null values cannot be marshalled to JS");
-    }
-    return null;
-};
-
-export function readValueBoxed(value: ExternalObject<Handle>): object | null {
-    const type = getValueType(value);
-    if (typeFundamental(type) !== TYPE_BOXED) {
-        return null;
-    }
-    const cls = getWrapperClass(type);
-    const boxed = dupBoxedBind(boxedTypeName(type))(value) as ExternalObject<Handle> | null;
-    return wrapHandle(boxed, cls);
-}
-
-const getStrvValue = (value: ExternalObject<Handle>): string[] => (strvValueType.get(value) as string[] | null) ?? [];
-
 const resolveValueGetter = (fundamental: bigint): ((value: ExternalObject<Handle>) => unknown) | undefined => {
     switch (fundamental) {
         case TYPE_BOOLEAN:
@@ -252,51 +229,59 @@ const resolveValueGetter = (fundamental: bigint): ((value: ExternalObject<Handle
         case TYPE_FLAGS:
             return flagsValueType.get;
         case TYPE_STRING:
-            return getStringValue;
+            return (value) => stringValueType.get(value) ?? null;
         case TYPE_OBJECT:
-            return getObjectValue;
+            return (value) => wrapHandle(objectValueType.get(value) as ExternalObject<Handle> | null);
         case TYPE_PARAM:
-            return getFundamentalValue(paramValueType, TYPE_PARAM);
+            return (value) =>
+                wrapHandle(paramValueType.get(value) as ExternalObject<Handle> | null, getWrapperClass(TYPE_PARAM));
         case TYPE_VARIANT:
-            return getFundamentalValue(variantValueType, TYPE_VARIANT);
+            return (value) =>
+                wrapHandle(variantValueType.get(value) as ExternalObject<Handle> | null, getWrapperClass(TYPE_VARIANT));
         case TYPE_BOXED:
-            return readValueBoxed;
+            return getBoxedValue;
         case TYPE_POINTER:
-            return getPointerValue;
+            return (value) => {
+                if (pointerValueType.get(value)) {
+                    throw new Error("G_TYPE_POINTER non-null values cannot be marshalled to JS");
+                }
+                return null;
+            };
         default:
             return undefined;
     }
 };
 
+export function toValue(descriptor: Descriptor, value: unknown): ExternalObject<Handle> {
+    const isHandleKind = descriptor.kind === "object" || descriptor.kind === "boxed";
+    const nativeValue = isHandleKind
+        ? value == null
+            ? null
+            : getHandle(value as object)
+        : toNative(descriptor, value);
+    const type =
+        descriptor.kind === "object"
+            ? nativeValue == null
+                ? TYPE_OBJECT
+                : getType(nativeValue as ExternalObject<Handle>)
+            : resolveDescriptorType(descriptor);
+    const gValue = newTypedValue(type);
+    resolveValueType(descriptor).set(gValue, nativeValue);
+    return gValue;
+}
+
 export function fromValue(value: ExternalObject<Handle>): unknown {
     const type = getValueType(value);
-    if (type === getStrvType()) return getStrvValue(value);
+    if (type === getStrvType()) return strvValueType.get(value);
     const get = resolveValueGetter(typeFundamental(type));
     if (get === undefined) {
-        throw new Error(`Unsupported GType for fromValue: ${typeName(type) ?? String(type)}`);
+        throw new Error(`Unsupported type for fromValue: ${typeName(type) ?? String(type)}`);
     }
     return get(value);
 }
 
-const newBoxedValue = (
-    descriptor: Descriptor,
-    boxed: object,
-    resolveSetBind: (name: string) => ValueTypeBind["set"],
-): ExternalObject<Handle> => {
-    const type = resolveDescriptorType(descriptor);
-    const value = newTypedValue(type);
-    resolveSetBind(boxedTypeName(type))(value, getHandle(boxed));
-    return value;
-};
-
-export function setValueBoxed(value: object, boxed: object | null): void {
-    const gValue = getHandle(value);
-    const name = boxedTypeName(getValueType(gValue));
-    setBoxedBind(name)(gValue, boxed === null ? null : getHandle(boxed));
-}
-
-export function getValueBoxed(value: object): object | null {
-    return readValueBoxed(getHandle(value));
+export function newValueForDescriptor(descriptor: Descriptor): ExternalObject<Handle> {
+    return newTypedValue(resolveDescriptorType(descriptor));
 }
 
 export function outValueForDescriptor(

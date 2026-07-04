@@ -29,7 +29,7 @@ const PRIVATE_MARSHALLING_INTERNALS = [
     "fromValue",
     "getValueType",
     "copyValue",
-    "readValueBoxed",
+    "getBoxedValue",
     "newValueForDescriptor",
     "outValueForDescriptor",
     "outValueForBoxedDescriptor",
