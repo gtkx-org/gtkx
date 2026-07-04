@@ -94,7 +94,7 @@ export type AttachRule = {
     parent: string;
     child: string;
     slot?: string;
-    add: Call;
+    add?: Call;
     remove?: Call;
     insert?: Call;
     reorder?: Call;
@@ -157,6 +157,7 @@ export type ValueRule = {
     type: string;
     prop: string;
     call: Call;
+    or?: JsonValue;
     then?: string;
 };
 
@@ -300,7 +301,10 @@ const validateRelationshipRule = (path: string, value: unknown): void => {
             requireName(`${path}.parent`, value.parent);
             requireName(`${path}.child`, value.child);
             if (value.slot !== undefined) requireName(`${path}.slot`, value.slot);
-            validateCall(`${path}.add`, value.add);
+            if (value.add === undefined && value.remove === undefined) {
+                throw ruleError(path, "must define at least one of `add` or `remove`");
+            }
+            validateOptionalCall(`${path}.add`, value.add);
             validateOptionalCall(`${path}.remove`, value.remove);
             validateOptionalCall(`${path}.insert`, value.insert);
             validateOptionalCall(`${path}.reorder`, value.reorder);
@@ -353,7 +357,7 @@ const validateRelationshipRule = (path: string, value: unknown): void => {
 const SYNTHETIC_KEYS: Record<string, string[]> = {
     list: ["clear", "add"],
     "keyed-list": ["add", "remove", "key", "setters"],
-    value: ["call", "then"],
+    value: ["call", "or", "then"],
     selection: ["get", "set", "lookup"],
     "controlled-text": ["get", "set"],
     reassert: ["set"],
@@ -390,6 +394,7 @@ const validateSyntheticPropRule = (path: string, value: unknown): void => {
             return;
         case "value":
             validateCall(`${path}.call`, value.call);
+            if (value.or !== undefined) requireJson(`${path}.or`, value.or);
             if (value.then !== undefined) requireName(`${path}.then`, value.then);
             return;
         case "selection":

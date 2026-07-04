@@ -52,7 +52,7 @@ const emitGiStore = (options: CodegenRunnerOptions, library: Library): void => {
 
 const emitJsxStore = (options: CodegenRunnerOptions, library: Library): number => {
     if (options.jsx === undefined) return 0;
-    const reactPipeline = generateJsxFiles(library);
+    const reactPipeline = generateJsxFiles(library, resolveGtkxRules(options.rules));
     writeJsxStore(options.jsx, reactPipeline.namespaces, reactPipeline.metadata);
     return reactPipeline.intrinsicElementCount;
 };

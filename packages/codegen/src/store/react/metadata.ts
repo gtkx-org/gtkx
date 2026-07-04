@@ -1,4 +1,11 @@
-import type { AddMethodRule, AttachShapeTable, OrderedInsertSpec, PageMetaSetter } from "@gtkx/config";
+import type {
+    AddMethodRule,
+    AttachShapeTable,
+    OrderedInsertSpec,
+    PageMetaSetter,
+    RelationshipRule,
+    SyntheticPropRule,
+} from "@gtkx/config";
 import { sortedStringsBy, sourceStringLiteral, toCamelIdentifier } from "@gtkx/utils";
 import type { GirClass } from "../../gir/class.js";
 import type { GirEnum } from "../../gir/enum.js";
@@ -22,6 +29,8 @@ export type RuntimeTables = {
     attachShapes: AttachShapeTable;
     orderedInsert: Record<string, OrderedInsertSpec>;
     slotProps: Record<string, string[]>;
+    relationships: RelationshipRule[];
+    syntheticProps: SyntheticPropRule[];
 };
 
 const configType = (name: string): string => `import("@gtkx/config").${name}`;
@@ -45,6 +54,8 @@ const RUNTIME_TABLE_SPECS: Record<keyof RuntimeTables, RuntimeTableSpec> = {
     attachShapes: { name: "ATTACH_SHAPES", annotation: recordOfArray("AttachShape") },
     orderedInsert: { name: "ORDERED_INSERT", annotation: recordOf("OrderedInsertSpec") },
     slotProps: { name: "SLOT_PROPS", annotation: "Record<string, string[]>" },
+    relationships: { name: "RELATIONSHIPS", annotation: arrayOf("RelationshipRule") },
+    syntheticProps: { name: "SYNTHETIC_PROPS", annotation: arrayOf("SyntheticPropRule") },
 };
 
 const RUNTIME_TABLE_KEYS = Object.keys(RUNTIME_TABLE_SPECS) as Array<keyof RuntimeTables>;

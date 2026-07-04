@@ -10,6 +10,8 @@ declare module "virtual:gtkx-config" {
     export const ATTACH_SHAPES: import("@gtkx/config").AttachShapeTable;
     export const ORDERED_INSERT: Record<string, import("@gtkx/config").OrderedInsertSpec>;
     export const SLOT_PROPS: Record<string, string[]>;
+    export const RELATIONSHIPS: import("@gtkx/config").RelationshipRule[];
+    export const SYNTHETIC_PROPS: import("@gtkx/config").SyntheticPropRule[];
     export const ACCESSIBLE_ATTRIBUTES: Record<
         string,
         {

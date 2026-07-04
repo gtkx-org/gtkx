@@ -43,6 +43,15 @@ describe("codegen gi pipeline", () => {
     }, 60000);
 });
 
+describe("codegen reconciler metadata", () => {
+    it("emits the serializable relationship and synthetic-prop tables", () => {
+        expect(reactPipeline.metadata).toContain("export const RELATIONSHIPS:");
+        expect(reactPipeline.metadata).toContain("export const SYNTHETIC_PROPS:");
+        expect(reactPipeline.metadata).toContain('"element": "GtkStackPage"');
+        expect(reactPipeline.metadata).toContain('"prop": "marks"');
+    });
+});
+
 describe("codegen return-value convention", () => {
     it("folds an out-array length companion out of the return tuple", () => {
         const gio = giModules.find(({ directory }) => directory === "gio");

@@ -1,3 +1,4 @@
+import { type ResolvedGtkxRules, resolveGtkxRules } from "@gtkx/config";
 import { sortedStringsBy } from "@gtkx/utils";
 import type { Library } from "../../gir/library.js";
 import { type GirNamespace, namespaceDirectory } from "../../gir/namespace.js";
@@ -7,6 +8,7 @@ import { generateElementComponentsSection } from "./element-components.js";
 import { collectIntrinsicElementClasses } from "./intrinsic-elements.js";
 import { generateJsxSection } from "./jsx.js";
 import { generateMetadata } from "./metadata.js";
+import { assembleRuleTables } from "./rule-tables.js";
 import {
     DEFAULT_BLOCKABLE_TYPES,
     META_OBJECT_ADD_METHODS,
@@ -27,7 +29,7 @@ export type JsxFiles = {
     intrinsicElementCount: number;
 };
 
-export const generateJsxFiles = (library: Library): JsxFiles => {
+export const generateJsxFiles = (library: Library, userRules?: ResolvedGtkxRules): JsxFiles => {
     const namespacesWithIntrinsicElements = new Map<string, GirNamespace>();
     for (const entry of collectIntrinsicElementClasses(library)) {
         namespacesWithIntrinsicElements.set(entry.namespace.name, entry.namespace);
@@ -41,6 +43,7 @@ export const generateJsxFiles = (library: Library): JsxFiles => {
         intrinsicElementCount += count;
     }
 
+    const ruleTables = assembleRuleTables(library, resolveGtkxRules(userRules));
     const metadata = generateMetadata(library, {
         toplevelTypes: TOPLEVEL_TYPES,
         defaultBlockableTypes: DEFAULT_BLOCKABLE_TYPES,
@@ -49,6 +52,8 @@ export const generateJsxFiles = (library: Library): JsxFiles => {
         attachShapes: collectAttachShapes(library),
         orderedInsert: ORDERED_INSERT,
         slotProps: SLOT_PROPS_BY_TYPE,
+        relationships: ruleTables.relationships,
+        syntheticProps: ruleTables.syntheticProps,
     });
 
     return { namespaces, metadata, intrinsicElementCount };

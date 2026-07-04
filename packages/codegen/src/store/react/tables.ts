@@ -1,4 +1,10 @@
-import type { AddMethodRule, OrderedInsertSpec, PageMetaSetter } from "@gtkx/config";
+import type {
+    AddMethodRule,
+    OrderedInsertSpec,
+    PageMetaSetter,
+    RelationshipRule,
+    SyntheticPropRule,
+} from "@gtkx/config";
 
 export type AncestryWrapperName =
     | "withWindowPresentation"
@@ -16,6 +22,208 @@ export const BUILT_IN_ANCESTRY_WRAPPERS: AncestryWrapperRule[] = [
 export const TOPLEVEL_TYPES: string[] = ["GtkWindow", "AdwDialog"];
 
 export const DEFAULT_BLOCKABLE_TYPES: string[] = ["GtkTextBuffer"];
+
+const PREFIX_SUFFIX_SLOT_RULES = (parent: string): RelationshipRule[] => [
+    { kind: "attach", parent, child: "GtkWidget", slot: "prefix", add: "addPrefix" },
+    { kind: "attach", parent, child: "GtkWidget", slot: "suffix", add: "addSuffix" },
+];
+
+const PACK_SLOT_RULES = (parent: string): RelationshipRule[] => [
+    { kind: "attach", parent, child: "GtkWidget", slot: "start", add: "packStart" },
+    { kind: "attach", parent, child: "GtkWidget", slot: "end", add: "packEnd" },
+];
+
+const ACTION_CALLS = {
+    add: "addAction",
+    remove: { method: "removeAction", args: [{ prop: "name" }] },
+} satisfies Pick<Extract<RelationshipRule, { kind: "attach" }>, "add" | "remove">;
+
+const ACTION_GROUP_CALLS = {
+    add: { method: "insertActionGroup", args: [{ prop: "prefix" }, "child"] },
+    remove: { method: "insertActionGroup", args: [{ prop: "prefix" }, { literal: null }] },
+} satisfies Pick<Extract<RelationshipRule, { kind: "attach" }>, "add" | "remove">;
+
+const CONTROLLER_CALLS = {
+    add: "addController",
+    remove: "removeController",
+} satisfies Pick<Extract<RelationshipRule, { kind: "attach" }>, "add" | "remove">;
+
+const SHORTCUT_CALLS = {
+    add: "addShortcut",
+    remove: "removeShortcut",
+} satisfies Pick<Extract<RelationshipRule, { kind: "attach" }>, "add" | "remove">;
+
+const AUTOWRAP_RULE = (parent: string, wrapper: string): RelationshipRule => ({
+    kind: "attach",
+    parent,
+    child: "GtkWidget",
+    add: "append",
+    remove: "remove",
+    insert: { method: "insert", args: ["child", "index"] },
+    autowrap: wrapper,
+});
+
+export const RELATIONSHIP_RULES: RelationshipRule[] = [
+    { kind: "attach", parent: "GtkWidget", child: "GtkEventController", ...CONTROLLER_CALLS },
+    { kind: "attach", parent: "GtkWidget", child: "GtkEventController", slot: "controllers", ...CONTROLLER_CALLS },
+    { kind: "reject", parent: "GObject", child: "GtkEventController", prop: "controllers" },
+    {
+        kind: "attach",
+        parent: "GtkWidget",
+        child: "GtkLayoutManager",
+        add: "setLayoutManager",
+        remove: { method: "setLayoutManager", args: [{ literal: null }] },
+    },
+    { kind: "reject", parent: "GObject", child: "GtkLayoutManager", prop: "layoutManager" },
+    { kind: "attach", parent: "GtkShortcutController", child: "GtkShortcut", ...SHORTCUT_CALLS },
+    { kind: "attach", parent: "GtkShortcutController", child: "GtkShortcut", slot: "shortcuts", ...SHORTCUT_CALLS },
+    { kind: "reject", parent: "GObject", child: "GtkShortcut", prop: "shortcuts" },
+    {
+        kind: "attach",
+        parent: "GtkTextView",
+        child: "GtkTextBuffer",
+        add: "setBuffer",
+        remove: { method: "setBuffer", args: [{ literal: null }] },
+    },
+    { kind: "reject", parent: "GObject", child: "GtkTextBuffer", prop: "buffer" },
+    { kind: "attach", parent: "GActionMap", child: "GAction", ...ACTION_CALLS },
+    { kind: "attach", parent: "GtkApplicationWindow", child: "GAction", slot: "actions", ...ACTION_CALLS },
+    { kind: "attach", parent: "GtkWidget", child: "GActionGroup", ...ACTION_GROUP_CALLS },
+    { kind: "attach", parent: "GtkWidget", child: "GActionGroup", slot: "actionGroups", ...ACTION_GROUP_CALLS },
+    {
+        kind: "attach",
+        parent: "GtkColumnView",
+        child: "GtkColumnViewColumn",
+        add: "appendColumn",
+        remove: "removeColumn",
+        insert: { method: "insertColumn", args: ["index", "child"] },
+    },
+    { kind: "attach", parent: "AdwToggleGroup", child: "AdwToggle", add: "add", remove: "remove" },
+    { kind: "attach", parent: "AdwShortcutsDialog", child: "AdwShortcutsSection", add: "add" },
+    { kind: "attach", parent: "AdwShortcutsSection", child: "AdwShortcutsItem", add: "add" },
+    ...PREFIX_SUFFIX_SLOT_RULES("AdwActionRow"),
+    ...PREFIX_SUFFIX_SLOT_RULES("AdwEntryRow"),
+    ...PREFIX_SUFFIX_SLOT_RULES("AdwExpanderRow"),
+    { kind: "attach", parent: "AdwExpanderRow", child: "GtkWidget", slot: "rows", add: "addRow" },
+    { kind: "attach", parent: "AdwExpanderRow", child: "GtkWidget", slot: "actions", add: "addAction" },
+    ...PACK_SLOT_RULES("AdwHeaderBar"),
+    ...PACK_SLOT_RULES("GtkHeaderBar"),
+    ...PACK_SLOT_RULES("GtkActionBar"),
+    { kind: "attach", parent: "AdwToolbarView", child: "GtkWidget", slot: "topBar", add: "addTopBar" },
+    { kind: "attach", parent: "AdwToolbarView", child: "GtkWidget", slot: "bottomBar", add: "addBottomBar" },
+    AUTOWRAP_RULE("GtkListBox", "GtkListBoxRow"),
+    AUTOWRAP_RULE("GtkFlowBox", "GtkFlowBoxChild"),
+    { kind: "companion", element: "GtkStackPage", parent: "GtkStack", add: "addChild", remove: "remove" },
+    { kind: "companion", element: "AdwViewStackPage", parent: "AdwViewStack", add: "add", remove: "remove" },
+    {
+        kind: "companion",
+        element: "GtkNotebookPage",
+        parent: "GtkNotebook",
+        add: { method: "appendPage", args: ["child", { literal: null }] },
+        insert: { method: "insertPage", args: ["child", { literal: null }, "index"] },
+        remove: "detachTab",
+        companion: "getPage",
+        setters: { label: "setTabLabelText", tabLabel: "setTabLabel" },
+    },
+    {
+        kind: "companion",
+        element: "GtkOverlayChild",
+        parent: "GtkOverlay",
+        add: "addOverlay",
+        remove: "removeOverlay",
+        setters: { measure: "setMeasureOverlay", clipOverlay: "setClipOverlay" },
+        multi: true,
+    },
+    { kind: "layout-child", element: "GtkGridChild", parent: "GtkWidget", layout: "GtkGridLayout" },
+    { kind: "layout-child", element: "GtkFixedChild", parent: "GtkWidget", layout: "GtkFixedLayout" },
+    { kind: "skip", child: "GtkWindow" },
+    { kind: "skip", child: "AdwDialog" },
+];
+
+export const SYNTHETIC_PROP_RULES: SyntheticPropRule[] = [
+    {
+        kind: "list",
+        type: "GtkScale",
+        prop: "marks",
+        clear: "clearMarks",
+        add: {
+            method: "addMark",
+            args: [{ field: "value" }, { field: "position", or: 3 }, { field: "label", or: null }],
+        },
+    },
+    { kind: "list", type: "GtkCalendar", prop: "markedDays", clear: "clearMarks", add: "markDay" },
+    {
+        kind: "keyed-list",
+        type: "GtkLevelBar",
+        prop: "offsets",
+        add: { method: "addOffsetValue", args: [{ field: "id" }, { field: "value" }] },
+        remove: { method: "removeOffsetValue", args: [{ field: "id" }] },
+    },
+    {
+        kind: "keyed-list",
+        type: "GtkApplication",
+        prop: "actionAccels",
+        add: { method: "setAccelsForAction", args: [{ field: "action" }, { field: "accels" }] },
+        remove: { method: "setAccelsForAction", args: [{ field: "action" }, { literal: [] }] },
+    },
+    { kind: "keyed-list", type: "GtkSizeGroup", prop: "widgets", add: "addWidget", remove: "removeWidget" },
+    {
+        kind: "keyed-list",
+        type: "AdwAlertDialog",
+        prop: "responses",
+        key: "id",
+        add: { method: "addResponse", args: [{ field: "id" }, { field: "label" }] },
+        remove: { method: "removeResponse", args: [{ field: "id" }] },
+        setters: { appearance: "setResponseAppearance", enabled: "setResponseEnabled" },
+    },
+    { kind: "value", type: "GtkDropTarget", prop: "types", call: "setGtypes", or: [] },
+    { kind: "value", type: "GtkDrawingArea", prop: "drawFunc", call: "setDrawFunc", or: null, then: "queueDraw" },
+    {
+        kind: "value",
+        type: "GtkDragSource",
+        prop: "icon",
+        call: {
+            method: "setIcon",
+            args: [{ field: "paintable", or: null }, { field: "hotX", or: 0 }, { field: "hotY", or: 0 }],
+        },
+    },
+    {
+        kind: "write-once-list",
+        type: "GtkAboutDialog",
+        prop: "creditSections",
+        add: { method: "addCreditSection", args: [{ field: "name" }, { field: "people" }] },
+    },
+    { kind: "controlled-text", type: "GtkEditable", prop: "text", get: "getText", set: "text" },
+    {
+        kind: "selection",
+        type: "GtkStack",
+        prop: "visibleChildName",
+        get: "getVisibleChildName",
+        set: "setVisibleChildName",
+        lookup: "getChildByName",
+    },
+    {
+        kind: "selection",
+        type: "AdwViewStack",
+        prop: "visibleChildName",
+        get: "getVisibleChildName",
+        set: "setVisibleChildName",
+        lookup: "getChildByName",
+    },
+    {
+        kind: "selection",
+        type: "AdwToggleGroup",
+        prop: "activeName",
+        get: "getActiveName",
+        set: "setActiveName",
+        lookup: "getToggleByName",
+    },
+    { kind: "selection", type: "AdwToggleGroup", prop: "active", get: "getActive", set: "setActive" },
+    { kind: "reassert", type: "GtkTextTag", prop: "priority", set: "setPriority" },
+    { kind: "reassert", type: "GtkTextTag", prop: "foreground", set: "foreground" },
+    { kind: "reassert", type: "GtkTextTag", prop: "background", set: "background" },
+    { kind: "reassert", type: "GtkTextTag", prop: "paragraphBackground", set: "paragraphBackground" },
+];
 
 export const META_OBJECT_ADD_METHODS: Record<string, AddMethodRule[]> = {
     AdwViewStack: [
