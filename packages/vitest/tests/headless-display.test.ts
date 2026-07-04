@@ -1,17 +1,29 @@
-import { type ChildProcess, spawn } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
+import { type ChildProcess, type SpawnSyncReturns, spawn, spawnSync } from "node:child_process";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("node:child_process", async (importOriginal) => {
     const actual = await importOriginal<typeof import("node:child_process")>();
-    return { ...actual, spawn: vi.fn() };
+    return { ...actual, spawn: vi.fn(), spawnSync: vi.fn() };
 });
 
 const { spawn: realSpawn } = await vi.importActual<typeof import("node:child_process")>("node:child_process");
-const { DEFAULT_HEADLESS_SIZE, startHeadlessDisplay } = await import("../src/headless-display.js");
+const { DEFAULT_HEADLESS_SIZE, installTeardownHandlers, resolveHeadlessOptions, startHeadlessDisplay } = await import(
+    "../src/headless-display.js"
+);
 
 const spawnMock = vi.mocked(spawn);
+const spawnSyncMock = vi.mocked(spawnSync);
+
+const westonHelp = (text: string): SpawnSyncReturns<string> => ({
+    pid: 0,
+    output: [null, text, ""],
+    stdout: text,
+    stderr: "",
+    status: 0,
+    signal: null,
+});
 
 const spawnIdleChild = (): ChildProcess => realSpawn(process.execPath, ["-e", "setTimeout(() => {}, 60000)"]);
 
@@ -40,7 +52,10 @@ const trackedEnvKeys = [
     "GSK_RENDERER",
     "GTK_A11Y",
     "LIBGL_ALWAYS_SOFTWARE",
+    "GST_GL_WINDOW",
     "GSETTINGS_BACKEND",
+    "ALSOFT_DRIVERS",
+    "ALSOFT_LOGLEVEL",
 ];
 
 describe("startHeadlessDisplay", () => {
@@ -54,6 +69,35 @@ describe("startHeadlessDisplay", () => {
         writeFileSync(join(runtimeDir, "bus"), "");
     };
 
+    const startFulfilled = async (options: {
+        size: string;
+        compositor: Compositor;
+    }): Promise<{ teardown: () => void; runtimeDir: string }> => {
+        const pending = startHeadlessDisplay(options);
+        const runtimeDir = process.env.XDG_RUNTIME_DIR ?? "";
+        fulfillSockets(options.compositor);
+        const teardown = await pending;
+        teardowns.push(teardown);
+        return { teardown, runtimeDir };
+    };
+
+    const expectStartupFailure = async (makeChild: () => ChildProcess, message: RegExp): Promise<void> => {
+        spawnMock.mockReset();
+        spawnMock.mockImplementation(() => {
+            const child = makeChild();
+            children.push(child);
+            return child;
+        });
+
+        const pending = startHeadlessDisplay({ size: "800x600", compositor: "weston" });
+        const runtimeDir = process.env.XDG_RUNTIME_DIR ?? "";
+
+        await expect(pending).rejects.toThrow(message);
+
+        expect(existsSync(runtimeDir)).toBe(false);
+        expect(process.env.XDG_RUNTIME_DIR).toBeUndefined();
+    };
+
     beforeEach(() => {
         children = [];
         teardowns = [];
@@ -62,6 +106,8 @@ describe("startHeadlessDisplay", () => {
             savedEnv[key] = process.env[key];
             delete process.env[key];
         }
+        spawnSyncMock.mockReset();
+        spawnSyncMock.mockReturnValue(westonHelp("--fake-seat"));
         spawnMock.mockReset();
         spawnMock.mockImplementation(() => {
             const child = spawnIdleChild();
@@ -79,12 +125,11 @@ describe("startHeadlessDisplay", () => {
             else process.env[key] = value;
         }
         spawnMock.mockReset();
+        spawnSyncMock.mockReset();
     });
 
     it("selects the wayland-1 socket and sets the WLR_* env for sway", async () => {
-        const pending = startHeadlessDisplay({ size: "800x600", compositor: "sway" });
-        fulfillSockets("sway");
-        teardowns.push(await pending);
+        await startFulfilled({ size: "800x600", compositor: "sway" });
 
         expect(process.env.WAYLAND_DISPLAY).toBe("wayland-1");
         expect(process.env.WLR_BACKENDS).toBe("headless");
@@ -95,18 +140,14 @@ describe("startHeadlessDisplay", () => {
     });
 
     it("selects the wayland-0 socket for weston without WLR_* env", async () => {
-        const pending = startHeadlessDisplay({ size: "800x600", compositor: "weston" });
-        fulfillSockets("weston");
-        teardowns.push(await pending);
+        await startFulfilled({ size: "800x600", compositor: "weston" });
 
         expect(process.env.WAYLAND_DISPLAY).toBe("wayland-0");
         expect(process.env.WLR_BACKENDS).toBeUndefined();
     });
 
     it("passes the requested size through to the weston spawn arguments", async () => {
-        const pending = startHeadlessDisplay({ size: "640x480", compositor: "weston" });
-        fulfillSockets("weston");
-        teardowns.push(await pending);
+        await startFulfilled({ size: "640x480", compositor: "weston" });
 
         const westonCall = spawnMock.mock.calls.find((call) => call[1]?.includes("weston"));
         const args = westonCall?.[1] ?? [];
@@ -114,11 +155,37 @@ describe("startHeadlessDisplay", () => {
         expect(args).toContain("--height=480");
     });
 
-    it("renders the listen path, EXTERNAL auth, and policy lines in the bus config", async () => {
-        const pending = startHeadlessDisplay({ size: DEFAULT_HEADLESS_SIZE, compositor: "weston" });
-        const runtimeDir = process.env.XDG_RUNTIME_DIR ?? "";
+    it("includes --fake-seat when weston advertises the flag", async () => {
+        await startFulfilled({ size: "800x600", compositor: "weston" });
+
+        const westonCall = spawnMock.mock.calls.find((call) => call[1]?.includes("weston"));
+        expect(westonCall?.[1]).toContain("--fake-seat");
+    });
+
+    it("omits --fake-seat when weston lacks the flag", async () => {
+        vi.resetModules();
+        spawnSyncMock.mockReturnValue(westonHelp("usage: weston [OPTIONS]"));
+        const fresh = await import("../src/headless-display.js");
+
+        const pending = fresh.startHeadlessDisplay({ size: "800x600", compositor: "weston" });
         fulfillSockets("weston");
         teardowns.push(await pending);
+
+        const westonCall = spawnMock.mock.calls.find((call) => call[1]?.includes("weston"));
+        expect(westonCall?.[1]).not.toContain("--fake-seat");
+    });
+
+    it("writes the resolution and border rules into the sway config", async () => {
+        const { runtimeDir } = await startFulfilled({ size: "800x600", compositor: "sway" });
+
+        const conf = readFileSync(join(runtimeDir, "sway.conf"), "utf8");
+        expect(conf).toContain("output HEADLESS-1 resolution 800x600");
+        expect(conf).toContain("xwayland disable");
+        expect(conf).toContain("default_border none");
+    });
+
+    it("renders the listen path, EXTERNAL auth, and policy lines in the bus config", async () => {
+        const { runtimeDir } = await startFulfilled({ size: DEFAULT_HEADLESS_SIZE, compositor: "weston" });
 
         const xml = readFileSync(join(runtimeDir, "session.conf"), "utf8");
         const socketPath = join(runtimeDir, "bus");
@@ -128,19 +195,83 @@ describe("startHeadlessDisplay", () => {
         expect(xml).toContain('<policy context="default">');
     });
 
-    it("rejects when a spawned child exits before its socket appears", async () => {
-        spawnMock.mockReset();
-        spawnMock.mockImplementation(() => {
-            const child = realSpawn(process.execPath, [
-                "-e",
-                "process.stderr.write('boom on startup\\n'); process.exit(1);",
-            ]);
-            children.push(child);
-            return child;
-        });
+    it("reaps the bus and runtime dir but leaves the compositor for its parent-death signal", async () => {
+        process.env.GDK_BACKEND = "prior-value";
+        const { teardown, runtimeDir } = await startFulfilled({ size: DEFAULT_HEADLESS_SIZE, compositor: "weston" });
 
-        await expect(startHeadlessDisplay({ size: "800x600", compositor: "weston" })).rejects.toThrow(
+        expect(process.env.GDK_BACKEND).toBe("wayland");
+        expect(existsSync(runtimeDir)).toBe(true);
+
+        teardown();
+
+        expect(existsSync(runtimeDir)).toBe(false);
+        expect(process.env.GDK_BACKEND).toBe("prior-value");
+        expect(process.env.XDG_RUNTIME_DIR).toBeUndefined();
+
+        const [busChild, compositorChild] = children;
+        expect(busChild?.killed).toBe(true);
+        expect(compositorChild?.killed).toBe(false);
+    });
+
+    it("rejects and cleans up when a spawned child exits before its socket appears", async () => {
+        await expectStartupFailure(
+            () => realSpawn(process.execPath, ["-e", "process.stderr.write('boom on startup\\n'); process.exit(1);"]),
             /exited \(code 1, signal null\)[\s\S]*boom on startup/,
         );
+    });
+
+    it("rejects and cleans up when a child fails to spawn", async () => {
+        await expectStartupFailure(() => realSpawn("gtkx-nonexistent-binary-xyz", []), /failed to spawn/);
+    });
+});
+
+describe("resolveHeadlessOptions", () => {
+    it("fills the size and compositor defaults when nothing is provided", () => {
+        expect(resolveHeadlessOptions({})).toEqual({ size: "1024x768", compositor: "weston" });
+    });
+
+    it("keeps the provided size and compositor", () => {
+        expect(resolveHeadlessOptions({ size: "640x480", compositor: "sway" })).toEqual({
+            size: "640x480",
+            compositor: "sway",
+        });
+    });
+});
+
+describe("installTeardownHandlers", () => {
+    let registered: [string, (...args: unknown[]) => void][];
+
+    const lifecycleEvents = ["exit", "SIGINT", "SIGTERM", "SIGHUP"];
+
+    beforeEach(() => {
+        registered = [];
+    });
+
+    afterEach(() => {
+        for (const [event, listener] of registered) process.removeListener(event, listener);
+    });
+
+    const install = (teardown: () => void): void => {
+        const onSpy = vi.spyOn(process, "on");
+        installTeardownHandlers(teardown);
+        for (const [event, listener] of onSpy.mock.calls) {
+            if (typeof event === "string" && lifecycleEvents.includes(event)) {
+                registered.push([event, listener]);
+            }
+        }
+        onSpy.mockRestore();
+    };
+
+    it("registers teardown on process exit and each termination signal", () => {
+        install(vi.fn());
+        expect(registered.map(([event]) => event).sort()).toEqual([...lifecycleEvents].sort());
+    });
+
+    it("runs teardown only once no matter how many handlers fire", () => {
+        const teardown = vi.fn();
+        install(teardown);
+        for (const [, listener] of registered) listener();
+        for (const [, listener] of registered) listener();
+        expect(teardown).toHaveBeenCalledTimes(1);
     });
 });

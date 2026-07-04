@@ -13,6 +13,29 @@ export type HeadlessOptions = {
     compositor: CompositorId;
 };
 
+const DEFAULT_HEADLESS_COMPOSITOR: CompositorId = "weston";
+
+export const resolveHeadlessOptions = (provided: Partial<HeadlessOptions>): HeadlessOptions => ({
+    size: provided.size ?? DEFAULT_HEADLESS_SIZE,
+    compositor: provided.compositor ?? DEFAULT_HEADLESS_COMPOSITOR,
+});
+
+type EnvSnapshot = { [name: string]: string | undefined };
+
+const applyEnv = (snapshot: EnvSnapshot, values: { [name: string]: string }): void => {
+    for (const [name, value] of Object.entries(values)) {
+        if (!(name in snapshot)) snapshot[name] = process.env[name];
+        process.env[name] = value;
+    }
+};
+
+const restoreEnv = (snapshot: EnvSnapshot): void => {
+    for (const [name, previous] of Object.entries(snapshot)) {
+        if (previous === undefined) delete process.env[name];
+        else process.env[name] = previous;
+    }
+};
+
 const spawnWithParentDeathSignal = (command: string, args: string[], stdio: StdioOptions): ChildProcess => {
     const child = spawn("setpriv", ["--pdeathsig", "SIGKILL", command, ...args], { stdio });
     child.unref();
@@ -87,13 +110,11 @@ type SpawnedCompositor = {
     socket: string;
 };
 
-const startCompositor = (runtimeDir: string, options: HeadlessOptions): SpawnedCompositor => {
+const startCompositor = (runtimeDir: string, options: HeadlessOptions, env: EnvSnapshot): SpawnedCompositor => {
     const descriptor = compositorRegistry[options.compositor];
 
     const [width = "", height = ""] = options.size.split("x");
-    for (const [name, value] of Object.entries(descriptor.env)) {
-        process.env[name] = value;
-    }
+    applyEnv(env, descriptor.env);
 
     return { child: descriptor.start(runtimeDir, width, height), socket: descriptor.socket };
 };
@@ -119,9 +140,10 @@ type WaitForSocketOptions = {
     label: string;
     timeout?: number;
     child?: ChildProcess;
+    signal?: AbortSignal;
 };
 
-const waitForSocket = (path: string, { label, timeout = 15000, child }: WaitForSocketOptions): Promise<void> =>
+const waitForSocket = (path: string, { label, timeout = 15000, child, signal }: WaitForSocketOptions): Promise<void> =>
     new Promise((resolve, reject) => {
         let log = "";
         const stderr = child?.stderr ?? null;
@@ -135,17 +157,27 @@ const waitForSocket = (path: string, { label, timeout = 15000, child }: WaitForS
             clearTimeout(timer);
             clearInterval(poll);
             child?.removeListener("exit", onExit);
+            child?.removeListener("error", onError);
+            signal?.removeEventListener("abort", onAbort);
             stderr?.removeAllListeners("data");
             stderr?.resume();
             if (stderr instanceof Socket) stderr.unref();
         };
-        const onExit = (code: number | null, signal: NodeJS.Signals | null): void => {
+        const onExit = (code: number | null, terminationSignal: NodeJS.Signals | null): void => {
             stopListening();
             reject(
                 new Error(
-                    `${label} exited (code ${code ?? "null"}, signal ${signal ?? "null"}) before ${path} appeared\n${log}`,
+                    `${label} exited (code ${code ?? "null"}, signal ${terminationSignal ?? "null"}) before ${path} appeared\n${log}`,
                 ),
             );
+        };
+        const onError = (cause: Error): void => {
+            stopListening();
+            reject(new Error(`${label} failed to spawn: ${cause.message}\n${log}`));
+        };
+        const onAbort = (): void => {
+            stopListening();
+            reject(new Error(`${label} startup aborted before ${path} appeared`));
         };
         poll = setInterval(() => {
             if (existsSync(path)) {
@@ -159,45 +191,108 @@ const waitForSocket = (path: string, { label, timeout = 15000, child }: WaitForS
             reject(new Error(`${label} did not become available within ${timeout}ms${suffix}`));
         }, timeout);
         child?.on("exit", onExit);
+        child?.on("error", onError);
+        if (signal) {
+            if (signal.aborted) {
+                onAbort();
+                return;
+            }
+            signal.addEventListener("abort", onAbort);
+        }
     });
 
+const STATIC_HEADLESS_ENV = {
+    GDK_BACKEND: "wayland",
+    GDK_DISABLE: "vulkan",
+    GSK_RENDERER: "cairo",
+    GTK_A11Y: "test",
+    LIBGL_ALWAYS_SOFTWARE: "1",
+    GST_GL_WINDOW: "none",
+    GSETTINGS_BACKEND: "memory",
+    ALSOFT_DRIVERS: "null",
+    ALSOFT_LOGLEVEL: "0",
+};
+
+/**
+ * Starts an isolated headless Wayland compositor and D-Bus session for one test
+ * worker, applies the process environment GTK needs to render against them, and
+ * resolves once both sockets are live.
+ *
+ * The returned teardown reaps the session bus, restores the environment it
+ * mutated, and removes the runtime directory. It deliberately does not kill the
+ * compositor: the compositor carries a parent-death signal and is reaped by the
+ * kernel only once the worker process terminates — after the native GLib main
+ * loop has already quit — so GTK never observes its compositor vanish while it is
+ * still iterating and aborts the worker on "Lost connection to Wayland
+ * compositor". A startup failure instead kills every spawned child eagerly,
+ * because the worker keeps running.
+ */
 export const startHeadlessDisplay = async (options: HeadlessOptions): Promise<() => void> => {
+    const env: EnvSnapshot = {};
     const runtimeDir = mkdtempSync(join(tmpdir(), "gtkx-xdg-"));
     chmodSync(runtimeDir, 0o700);
-    process.env.XDG_RUNTIME_DIR = runtimeDir;
+    const spawned: ChildProcess[] = [];
 
-    const busConfigPath = join(runtimeDir, "session.conf");
-    const busSocketPath = join(runtimeDir, "bus");
-    writeBusConfig(busConfigPath, busSocketPath);
-
-    const busChild = spawnWithParentDeathSignal(
-        "dbus-daemon",
-        [`--config-file=${busConfigPath}`],
-        ["ignore", "ignore", "pipe"],
-    );
-    process.env.DBUS_SESSION_BUS_ADDRESS = `unix:path=${busSocketPath}`;
-
-    const compositor = startCompositor(runtimeDir, options);
-
-    process.env.WAYLAND_DISPLAY = compositor.socket;
-    process.env.GDK_BACKEND = "wayland";
-    process.env.GDK_DISABLE = "vulkan";
-    process.env.GSK_RENDERER = "cairo";
-    process.env.GTK_A11Y = "test";
-    process.env.LIBGL_ALWAYS_SOFTWARE = "1";
-    process.env.GST_GL_WINDOW = "none";
-    process.env.GSETTINGS_BACKEND = "memory";
-    process.env.ALSOFT_DRIVERS = "null";
-    process.env.ALSOFT_LOGLEVEL = "0";
-
-    await Promise.all([
-        waitForSocket(join(runtimeDir, compositor.socket), { label: "Compositor", child: compositor.child }),
-        waitForSocket(busSocketPath, { label: "D-Bus session bus", child: busChild }),
-    ]);
-
-    return () => {
-        compositor.child.kill("SIGKILL");
-        busChild.kill("SIGKILL");
+    const removeRuntime = (): void => {
+        restoreEnv(env);
         rmSync(runtimeDir, { recursive: true, force: true });
     };
+
+    try {
+        applyEnv(env, { XDG_RUNTIME_DIR: runtimeDir });
+
+        const busConfigPath = join(runtimeDir, "session.conf");
+        const busSocketPath = join(runtimeDir, "bus");
+        writeBusConfig(busConfigPath, busSocketPath);
+
+        const busChild = spawnWithParentDeathSignal(
+            "dbus-daemon",
+            [`--config-file=${busConfigPath}`],
+            ["ignore", "ignore", "pipe"],
+        );
+        spawned.push(busChild);
+        applyEnv(env, { DBUS_SESSION_BUS_ADDRESS: `unix:path=${busSocketPath}` });
+
+        const compositor = startCompositor(runtimeDir, options, env);
+        spawned.push(compositor.child);
+
+        applyEnv(env, { WAYLAND_DISPLAY: compositor.socket, ...STATIC_HEADLESS_ENV });
+
+        const abort = new AbortController();
+        try {
+            await Promise.all([
+                waitForSocket(join(runtimeDir, compositor.socket), {
+                    label: "Compositor",
+                    child: compositor.child,
+                    signal: abort.signal,
+                }),
+                waitForSocket(busSocketPath, { label: "D-Bus session bus", child: busChild, signal: abort.signal }),
+            ]);
+        } finally {
+            abort.abort();
+        }
+
+        return (): void => {
+            busChild.kill("SIGKILL");
+            removeRuntime();
+        };
+    } catch (cause) {
+        for (const child of spawned) child.kill("SIGKILL");
+        removeRuntime();
+        throw cause;
+    }
+};
+
+export const installTeardownHandlers = (teardown: () => void): void => {
+    let torndown = false;
+    const runTeardown = (): void => {
+        if (torndown) return;
+        torndown = true;
+        teardown();
+    };
+
+    process.on("exit", runTeardown);
+    for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"] as const satisfies NodeJS.Signals[]) {
+        process.on(signal, runTeardown);
+    }
 };
