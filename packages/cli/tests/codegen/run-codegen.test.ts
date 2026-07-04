@@ -85,16 +85,21 @@ describe("runCodegen", () => {
         rmSync(cwd, { recursive: true, force: true });
     });
 
-    it("throws when no gtkx.config.ts is present", async () => {
+    it("generates with default settings when no gtkx.config.ts is present", async () => {
         installFfiPackage(cwd);
-        await expect(runCodegen({ cwd })).rejects.toThrow();
+        const result = await runCodegen({ cwd });
+        expect(result.configFile).toBeUndefined();
+        expect(result.namespaces).toBe(1);
     });
 
     it("falls back to process.cwd() when options.cwd is omitted", async () => {
+        installFfiPackage(cwd);
+        writeConfig(cwd);
         const originalCwd = process.cwd();
         process.chdir(cwd);
         try {
-            await expect(runCodegen()).rejects.toThrow();
+            const result = await runCodegen();
+            expect(result.configFile).toBeDefined();
         } finally {
             process.chdir(originalCwd);
         }

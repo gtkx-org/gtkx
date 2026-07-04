@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { createGtkxConfigLoader, type GtkxConfigLoader } from "@gtkx/config";
+import { createGtkxConfigLoader, DEFAULT_APPLICATION_ID, type GtkxConfigLoader } from "@gtkx/config";
 import { error, formatChildProcessError, info } from "@gtkx/utils";
 import type { Plugin, ResolvedConfig, UserConfig, ViteDevServer } from "vite";
 import { DATA_IMPORT_PREFIX } from "../internal/data-dir.js";
@@ -23,13 +23,9 @@ import {
 const DATA_PREFIX = `${DATA_IMPORT_PREFIX}/`;
 
 const RESOURCE_COMPILER = "glib-compile-resources";
-const DEFAULT_RESOURCE_PREFIX = "/gtkx/app";
 const MANIFEST_PREFIX = "/";
 
-const deriveResourcePrefix = (applicationId?: string): string => {
-    if (!applicationId) return DEFAULT_RESOURCE_PREFIX;
-    return `/${applicationId.replaceAll(".", "/")}`;
-};
+const deriveResourcePrefix = (applicationId: string): string => `/${applicationId.replaceAll(".", "/")}`;
 
 const stripQuery = (source: string): string => {
     const queryIndex = source.indexOf("?");
@@ -180,7 +176,7 @@ const attachResourceWatcher = (state: PluginState, server: ViteDevServer): void 
 
 export function gtkxGResources(loadConfig: GtkxConfigLoader = createGtkxConfigLoader()): Plugin {
     const state: PluginState = {
-        prefix: DEFAULT_RESOURCE_PREFIX,
+        prefix: deriveResourcePrefix(DEFAULT_APPLICATION_ID),
         isBuild: false,
         entries: new Map(),
         sourcePaths: new Set(),

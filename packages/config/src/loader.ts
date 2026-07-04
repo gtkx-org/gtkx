@@ -9,23 +9,6 @@ export type LoadedConfig = {
     root: string;
 };
 
-export class GtkxConfigNotFoundError extends Error {
-    constructor(cwd: string) {
-        super(
-            `No gtkx.config.ts found in ${cwd}.\n` +
-                `Create one with:\n` +
-                `\n` +
-                `  // gtkx.config.ts\n` +
-                `  import { defineConfig } from "@gtkx/config";\n` +
-                `\n` +
-                `  export default defineConfig({\n` +
-                `      libraries: ["Gtk-4.0", "Adw-1"],\n` +
-                `  });\n`,
-        );
-        this.name = "GtkxConfigNotFoundError";
-    }
-}
-
 export type LoadGtkxConfigOptions = {
     mode?: string;
 };
@@ -38,43 +21,32 @@ export const loadGtkxConfig = async (cwd: string, options: LoadGtkxConfigOptions
         globalRc: false,
         packageJson: false,
         context: { mode: options.mode },
+        ...(options.mode !== undefined ? { envName: options.mode } : {}),
     });
 
-    if (!result.configFile || !result.config || !existsSync(resolve(cwd, result.configFile))) {
-        throw new GtkxConfigNotFoundError(cwd);
-    }
+    const config = result.config ?? {};
+    validateGtkxConfig(config);
 
-    validateGtkxConfig(result.config);
+    const found = result.configFile !== undefined && existsSync(resolve(cwd, result.configFile));
 
     return {
-        config: result.config,
-        configFile: result.configFile,
+        config,
+        configFile: found ? result.configFile : undefined,
         root: result.cwd ?? cwd,
     };
 };
 
-export type LoadResolvedGtkxConfigOptions = LoadGtkxConfigOptions & {
-    allowMissing?: boolean;
-};
-
 export const loadResolvedGtkxConfig = async (
     cwd: string,
-    options: LoadResolvedGtkxConfigOptions = {},
+    options: LoadGtkxConfigOptions = {},
 ): Promise<ResolvedGtkxConfig> => {
-    try {
-        const { config } = await loadGtkxConfig(cwd, options);
-        return resolveGtkxConfig(config);
-    } catch (error) {
-        if (options.allowMissing && error instanceof GtkxConfigNotFoundError) {
-            return resolveGtkxConfig({});
-        }
-        throw error;
-    }
+    const { config } = await loadGtkxConfig(cwd, options);
+    return resolveGtkxConfig(config);
 };
 
 export type GtkxConfigLoader = (cwd: string) => Promise<ResolvedGtkxConfig>;
 
-export const createGtkxConfigLoader = (options: LoadResolvedGtkxConfigOptions = {}): GtkxConfigLoader => {
+export const createGtkxConfigLoader = (options: LoadGtkxConfigOptions = {}): GtkxConfigLoader => {
     const cache = new Map<string, Promise<ResolvedGtkxConfig>>();
     return (cwd: string): Promise<ResolvedGtkxConfig> => {
         const root = resolve(cwd);

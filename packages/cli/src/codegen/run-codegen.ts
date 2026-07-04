@@ -1,7 +1,7 @@
 import { rmSync } from "node:fs";
 import { resolve } from "node:path";
 import { runCodegen as runCodegenCore } from "@gtkx/codegen";
-import { type GtkxConfig, GtkxConfigNotFoundError, loadGtkxConfig } from "@gtkx/config";
+import { type GtkxConfig, loadGtkxConfig } from "@gtkx/config";
 import { info } from "@gtkx/utils";
 import { emitSchemaEnv } from "../gsettings/env.js";
 import { resolveDataDir } from "../internal/data-dir.js";
@@ -147,17 +147,12 @@ export const ensureGenerated = async (cwd: string, options: { announce?: boolean
 export const resolveConfigWatch = async (
     cwd: string,
 ): Promise<{ paths: string[]; regenerate: () => Promise<void> } | undefined> => {
-    try {
-        const { configFile, root } = await loadGtkxConfig(cwd);
-        if (configFile === undefined) return undefined;
-        return {
-            paths: [resolve(root, configFile)],
-            regenerate: async () => {
-                await runCodegen({ cwd: root });
-            },
-        };
-    } catch (error) {
-        if (error instanceof GtkxConfigNotFoundError) return undefined;
-        throw error;
-    }
+    const { configFile, root } = await loadGtkxConfig(cwd);
+    if (configFile === undefined) return undefined;
+    return {
+        paths: [resolve(root, configFile)],
+        regenerate: async () => {
+            await runCodegen({ cwd: root });
+        },
+    };
 };

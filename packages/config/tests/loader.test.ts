@@ -3,12 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { resolveGtkxConfig } from "../src/config.js";
-import {
-    createGtkxConfigLoader,
-    GtkxConfigNotFoundError,
-    loadGtkxConfig,
-    loadResolvedGtkxConfig,
-} from "../src/index.js";
+import { createGtkxConfigLoader, loadGtkxConfig, loadResolvedGtkxConfig } from "../src/index.js";
 
 let cwd: string;
 
@@ -56,8 +51,10 @@ describe("loadGtkxConfig", () => {
         expect(result.config.libraries).toBe("*");
     });
 
-    it("throws GtkxConfigNotFoundError when no config file exists", async () => {
-        await expect(loadGtkxConfig(cwd)).rejects.toBeInstanceOf(GtkxConfigNotFoundError);
+    it("returns an undefined configFile when no config file exists", async () => {
+        const result = await loadGtkxConfig(cwd);
+        expect(result.configFile).toBeUndefined();
+        expect(result.config).toEqual({});
     });
 
     it("propagates validation errors from the loader", async () => {
@@ -72,22 +69,18 @@ describe("loadGtkxConfig", () => {
         await expect(loadGtkxConfig(cwd)).rejects.toThrow(/invalid library identifier/);
     });
 
-    it("passes the mode to a function-form config as env.mode", async () => {
+    it("applies a c12 $production layer when the mode is production", async () => {
+        writeConfig(`export default { applicationId: "org.gtk.Base", $production: { applicationId: "org.gtk.Prod" } };\n`);
+        const result = await loadGtkxConfig(cwd, { mode: "production" });
+        expect(result.config.applicationId).toBe("org.gtk.Prod");
+    });
+
+    it("passes the mode to a function-form config through the c12 context", async () => {
         writeConfig(
-            `${defineConfigImport()}export default defineConfig((env) => ({ libraries: env.mode === "production" ? ["Gtk-4.0"] : ["Gtk-4.0", "Adw-1"] }));\n`,
+            `export default (env) => ({ applicationId: env.mode === "production" ? "org.gtk.Prod" : "org.gtk.Dev" });\n`,
         );
         const result = await loadGtkxConfig(cwd, { mode: "production" });
-        expect(result.config.libraries).toEqual(["Gtk-4.0"]);
-    });
-});
-
-describe("GtkxConfigNotFoundError", () => {
-    it("includes the cwd in the message and a sample config", () => {
-        const error = new GtkxConfigNotFoundError("/some/dir");
-        expect(error.name).toBe("GtkxConfigNotFoundError");
-        expect(error.message).toContain("/some/dir");
-        expect(error.message).toContain("defineConfig");
-        expect(error.message).toContain('"Gtk-4.0"');
+        expect(result.config.applicationId).toBe("org.gtk.Prod");
     });
 });
 
@@ -108,12 +101,8 @@ describe("loadResolvedGtkxConfig", () => {
         expect(resolved.reactCompiler).toEqual({ target: "19" });
     });
 
-    it("surfaces GtkxConfigNotFoundError when no config file exists", async () => {
-        await expect(loadResolvedGtkxConfig(cwd)).rejects.toBeInstanceOf(GtkxConfigNotFoundError);
-    });
-
-    it("returns the empty resolved config when no config file exists and allowMissing is set", async () => {
-        await expect(loadResolvedGtkxConfig(cwd, { allowMissing: true })).resolves.toEqual(resolveGtkxConfig({}));
+    it("returns defaults when no config file exists", async () => {
+        await expect(loadResolvedGtkxConfig(cwd)).resolves.toEqual(resolveGtkxConfig({}));
     });
 
     it("propagates validation errors from the loader", async () => {

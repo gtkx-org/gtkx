@@ -37,9 +37,9 @@ describe("renderGtkxConfigModule", () => {
         expect(lines).toContain("export const libraries = [];");
     });
 
-    it("serializes an unset applicationId as undefined", () => {
+    it("serializes an unset applicationId as the default application id", () => {
         const source = renderGtkxConfigModule(resolveGtkxConfig({}));
-        expect(source.split("\n")).toContain("export const applicationId = undefined;");
+        expect(source.split("\n")).toContain('export const applicationId = "org.gtkx.app";');
     });
 });
 

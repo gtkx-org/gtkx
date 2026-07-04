@@ -1,6 +1,11 @@
+import { createDefineConfig, type DefineConfig } from "c12";
+import { defu } from "defu";
+
 export const LIBRARIES_WILDCARD = "*";
 
 export const GIR_LIBRARY_PATTERN: RegExp = /^[A-Za-z][A-Za-z0-9]*-\d+(?:\.\d+)*$/;
+
+export const DEFAULT_APPLICATION_ID = "org.gtkx.app";
 
 const APPLICATION_ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]*(\.[A-Za-z_][A-Za-z0-9_-]*)+$/;
 const APPLICATION_ID_MAX_LENGTH = 255;
@@ -128,56 +133,14 @@ export const validateGtkxConfig = (config: GtkxConfig): void => {
     validateCodegen(config.codegen);
 };
 
-type GtkxConfigEnv = {
-    mode?: string;
-};
+export const defineConfig: DefineConfig<GtkxConfig> = createDefineConfig<GtkxConfig>();
 
-export type GtkxConfigFnObject = (env: GtkxConfigEnv) => GtkxConfig;
-
-export type GtkxConfigFnPromise = (env: GtkxConfigEnv) => Promise<GtkxConfig>;
-
-export type GtkxConfigFn = (env: GtkxConfigEnv) => GtkxConfig | Promise<GtkxConfig>;
-
-export type GtkxConfigExport =
-    | GtkxConfig
-    | Promise<GtkxConfig>
-    | GtkxConfigFnObject
-    | GtkxConfigFnPromise
-    | GtkxConfigFn;
-
-export function defineConfig(config: GtkxConfig): GtkxConfig;
-export function defineConfig(config: Promise<GtkxConfig>): Promise<GtkxConfig>;
-export function defineConfig(config: GtkxConfigFnObject): GtkxConfigFnObject;
-export function defineConfig(config: GtkxConfigFnPromise): GtkxConfigFnPromise;
-export function defineConfig(config: GtkxConfigFn): GtkxConfigFn;
-export function defineConfig(config: GtkxConfigExport): GtkxConfigExport {
-    return config;
-}
-
-const isMergeableObject = (value: unknown): value is Record<string, unknown> =>
-    typeof value === "object" && value !== null && !Array.isArray(value);
-
-const mergeConfigValue = (base: unknown, override: unknown): unknown => {
-    if (override === undefined) return base;
-    if (base === undefined) return override;
-    if (Array.isArray(base) && Array.isArray(override)) return [...base, ...override];
-    if (isMergeableObject(base) && isMergeableObject(override)) {
-        const merged: Record<string, unknown> = { ...base };
-        for (const key of Object.keys(override)) {
-            merged[key] = mergeConfigValue(base[key], override[key]);
-        }
-        return merged;
-    }
-    return override;
-};
-
-export const mergeConfig = (base: GtkxConfig, override: GtkxConfig): GtkxConfig =>
-    mergeConfigValue(base, override) as GtkxConfig;
+export const mergeConfig = (base: GtkxConfig, override: GtkxConfig): GtkxConfig => defu(override, base);
 
 export type ResolvedGtkxConfig = {
     libraries: typeof LIBRARIES_WILDCARD | string[];
     girPath: string[];
-    applicationId: string | undefined;
+    applicationId: string;
     rules: string | undefined;
     reactCompiler: ResolvedReactCompilerOptions | null;
     codegen: boolean;
@@ -186,7 +149,7 @@ export type ResolvedGtkxConfig = {
 export const resolveGtkxConfig = (config: GtkxConfig): ResolvedGtkxConfig => ({
     libraries: config.libraries ?? [],
     girPath: config.girPath ?? [],
-    applicationId: config.applicationId,
+    applicationId: config.applicationId ?? DEFAULT_APPLICATION_ID,
     rules: config.rules,
     reactCompiler: resolveReactCompilerOptions(config.reactCompiler),
     codegen: config.codegen ?? true,

@@ -180,14 +180,14 @@ describe("gtkxGResources (init module)", () => {
 describe("gtkxGResources (default prefix)", () => {
     setupTmpDir();
 
-    it("falls back to the default /gtkx/app prefix when no applicationId is configured", async () => {
+    it("uses the default org.gtkx.app prefix when no applicationId is configured", async () => {
         const plugin = gtkxGResources();
         await initPlugin(plugin, "build", tmpDir);
 
         const assetPath = dataAssetPath("icons", "foo.svg");
         const out = (plugin.load as LoadHook)(virtualAssetId(assetPath, "icons/foo.svg")) as string;
 
-        expect(out).toContain(`export const path = "/gtkx/app/icons/foo.svg";`);
+        expect(out).toContain(`export const path = "/org/gtkx/app/icons/foo.svg";`);
     });
 });
 

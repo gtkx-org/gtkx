@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+    DEFAULT_APPLICATION_ID,
     defineConfig,
     type GtkxConfig,
     resolveGtkxConfig,
@@ -15,18 +16,12 @@ describe("defineConfig", () => {
         expect(defineConfig(config)).toBe(config);
     });
 
-    it("returns a config-defining function unchanged", () => {
-        const fn = (env: { mode?: string }): GtkxConfig => ({
-            libraries: env.mode === "production" ? ["Gtk-4.0"] : ["Gtk-4.0", "Adw-1"],
+    it("accepts c12 environment-branch keys", () => {
+        const config = defineConfig({
+            libraries: ["Gtk-4.0"],
+            $production: { applicationId: "org.gtk.Prod" },
         });
-        expect(defineConfig(fn)).toBe(fn);
-        expect(defineConfig(fn)({ mode: "production" }).libraries).toEqual(["Gtk-4.0"]);
-    });
-
-    it("returns a promise-returning config unchanged", async () => {
-        const promised = Promise.resolve<GtkxConfig>({ libraries: ["Gtk-4.0"] });
-        expect(defineConfig(promised)).toBe(promised);
-        expect((await defineConfig(promised)).libraries).toEqual(["Gtk-4.0"]);
+        expect(config.libraries).toEqual(["Gtk-4.0"]);
     });
 });
 
@@ -196,7 +191,7 @@ describe("resolveGtkxConfig", () => {
         expect(resolveGtkxConfig({})).toEqual({
             libraries: [],
             girPath: [],
-            applicationId: undefined,
+            applicationId: DEFAULT_APPLICATION_ID,
             rules: undefined,
             reactCompiler: { target: "19" },
             codegen: true,

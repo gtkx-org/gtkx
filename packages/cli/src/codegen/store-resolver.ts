@@ -2,7 +2,7 @@ import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { type GtkxConfig, GtkxConfigNotFoundError, loadGtkxConfig } from "@gtkx/config";
+import { type GtkxConfig, loadGtkxConfig } from "@gtkx/config";
 import { GtkxError } from "../internal/errors.js";
 
 export type CodegenStore = {
@@ -70,11 +70,7 @@ export type CodegenContext = {
 };
 
 export const resolveCodegenContext = async (cwd: string): Promise<CodegenContext | null> => {
-    try {
-        const { config, configFile } = await loadGtkxConfig(cwd);
-        return { root: cwd, config, configFile };
-    } catch (error) {
-        if (error instanceof GtkxConfigNotFoundError) return null;
-        throw error;
-    }
+    const { config, configFile } = await loadGtkxConfig(cwd);
+    if (configFile === undefined) return null;
+    return { root: cwd, config, configFile };
 };

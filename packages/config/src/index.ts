@@ -1,4 +1,5 @@
 export {
+    DEFAULT_APPLICATION_ID,
     defineConfig,
     GIR_LIBRARY_PATTERN,
     type GtkxConfig,
@@ -12,7 +13,6 @@ export {
 export {
     createGtkxConfigLoader,
     type GtkxConfigLoader,
-    GtkxConfigNotFoundError,
     loadGtkxConfig,
     loadResolvedGtkxConfig,
 } from "./loader.js";
