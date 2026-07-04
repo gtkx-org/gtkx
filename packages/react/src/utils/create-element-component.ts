@@ -1,4 +1,4 @@
-import { CONTAINER_SLOT_KIND, RELATIONSHIP_NODE_ELEMENT, WIDGET_PROP_KIND } from "@gtkx/config";
+import { COMPANION_KIND, CONTAINER_SLOT_KIND, RELATIONSHIP_NODE_ELEMENT, WIDGET_PROP_KIND } from "@gtkx/config";
 import { createElement, isValidElement, type ReactNode } from "react";
 import { slotPropsFor } from "../reconciler/rule-table.js";
 
@@ -59,5 +59,19 @@ export const createElementComponent = <P extends object>(elementName: string): (
         if (!needsSplit(props, slotProps)) return createElement(elementName, props);
         const { rest, wrappers, children } = splitProps(props, slotProps);
         return createElement(elementName, rest, children, ...wrappers);
+    };
+};
+
+const NO_SLOT_PROPS: Set<string> = new Set();
+
+export const createRelationshipComponent = <P extends object>(element: string): ((props: P) => ReactNode) => {
+    return (props: P): ReactNode => {
+        const { rest, wrappers, children } = splitProps(props, NO_SLOT_PROPS);
+        return createElement(
+            RELATIONSHIP_NODE_ELEMENT,
+            { kind: COMPANION_KIND, element, ...rest },
+            children,
+            ...wrappers,
+        );
     };
 };

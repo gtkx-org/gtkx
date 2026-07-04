@@ -94,7 +94,7 @@ describe("assembled relationship table", () => {
         expect(elementRuleFor("GtkNotebookPage")).toMatchObject({
             kind: "companion",
             companion: "getPage",
-            setters: { label: "setTabLabelText", tabLabel: "setTabLabel" },
+            setters: { tabLabel: "setTabLabel" },
         });
         expect(elementRuleFor("GtkGridChild")).toMatchObject({ kind: "layout-child", layout: "GtkGridLayout" });
     });

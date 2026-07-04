@@ -27,6 +27,7 @@ export {
     BUFFER_TEXT_KIND,
     type Call,
     type CompanionRule,
+    COMPANION_KIND,
     CONTAINER_SLOT_KIND,
     type ControlledTextRule,
     type GtkxRules,

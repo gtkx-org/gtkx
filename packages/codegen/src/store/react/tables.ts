@@ -113,8 +113,22 @@ export const RELATIONSHIP_RULES: RelationshipRule[] = [
     { kind: "attach", parent: "AdwToolbarView", child: "GtkWidget", slot: "bottomBar", add: "addBottomBar" },
     AUTOWRAP_RULE("GtkListBox", "GtkListBoxRow"),
     AUTOWRAP_RULE("GtkFlowBox", "GtkFlowBoxChild"),
-    { kind: "companion", element: "GtkStackPage", parent: "GtkStack", add: "addChild", remove: "remove" },
-    { kind: "companion", element: "AdwViewStackPage", parent: "AdwViewStack", add: "add", remove: "remove" },
+    {
+        kind: "companion",
+        element: "GtkStackPage",
+        parent: "GtkStack",
+        add: "addChild",
+        remove: "remove",
+        aliases: { id: "name" },
+    },
+    {
+        kind: "companion",
+        element: "AdwViewStackPage",
+        parent: "AdwViewStack",
+        add: "add",
+        remove: "remove",
+        aliases: { id: "name" },
+    },
     {
         kind: "companion",
         element: "GtkNotebookPage",
@@ -123,7 +137,7 @@ export const RELATIONSHIP_RULES: RelationshipRule[] = [
         insert: { method: "insertPage", args: ["child", { literal: null }, "index"] },
         remove: "detachTab",
         companion: "getPage",
-        setters: { label: "setTabLabelText", tabLabel: "setTabLabel" },
+        setters: { tabLabel: "setTabLabel" },
     },
     {
         kind: "companion",

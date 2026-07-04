@@ -151,11 +151,15 @@ describe("codegen React pipeline", () => {
         expect(js.length).toBeGreaterThan(0);
     });
 
-    it("desugars a virtual subcomponent's slot into a positional wrapper child", () => {
+    it("emits companion elements as relationship components", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
-        expect(gtk).toContain("export const GtkNotebookPage");
-        expect(gtk).toContain('kind="tab-label"');
-        expect(gtk).toContain("tabLabel");
+        expect(gtk).toContain(
+            'export const GtkNotebookPage: (props: NotebookPageProps) => ReactNode = withNotebookTabLabel(createRelationshipComponent<NotebookPageProps>("GtkNotebookPage"));',
+        );
+        expect(gtk).toContain(
+            'export const GtkFixedChild: (props: FixedChildProps) => ReactNode = withFixedTransform(createRelationshipComponent<FixedChildProps>("GtkFixedChild"));',
+        );
+        expect(gtk).toContain('createRelationshipComponent<StackPageProps>("GtkStackPage")');
         expect(gtk).not.toContain("GtkNotebookPageTab");
     });
 });

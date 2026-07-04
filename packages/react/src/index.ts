@@ -1,6 +1,7 @@
 import "./utils/element-props.js";
 
 export { withApplicationLifecycle, withApplicationWindowPresentation } from "./components/application.js";
+export { withFixedTransform, withNotebookTabLabel } from "./components/companion-props.js";
 export { type ToplevelParentProps, withWindowPresentation } from "./components/top-level.js";
 export { useApplication } from "./hooks/use-application.js";
 export { useMergeRefs } from "./hooks/use-merge-refs.js";
@@ -12,7 +13,7 @@ export { createPortal } from "./reconciler/portal.js";
 export { createRoot, quit, type Root } from "./reconciler/render.js";
 export { createRootElement, type RootElement } from "./reconciler/root-element.js";
 export { getAccessibleMetadata } from "./utils/accessible-metadata.js";
-export { createElementComponent } from "./utils/create-element-component.js";
+export { createElementComponent, createRelationshipComponent } from "./utils/create-element-component.js";
 export type {
     ActionAccel,
     AlertDialogResponseProps,

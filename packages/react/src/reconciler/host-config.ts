@@ -9,7 +9,7 @@ import { isDefaultBlockableType, typeChainIncludes } from "../utils/gtype.js";
 import { applyAccessibleProps, isAccessibleProp } from "./accessible.js";
 import { applyProps } from "./apply-props.js";
 import { beginCommit, endCommit, runCommitFlush } from "./commit-flush.js";
-import { attachNode, detachFromParent, detachNode, resyncRelationshipNode } from "./element-map.js";
+import { attachNode, detachFromParent, detachNode, resyncRelationshipNode } from "./dispatch.js";
 import { createElementInstance, createRelationshipInstance } from "./instance.js";
 import { scheduleLabelTextRebuild } from "./label-text-rebuild.js";
 import { reportReconcilerError } from "./reconciler-error-handler.js";

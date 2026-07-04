@@ -1,6 +1,7 @@
 export const RELATIONSHIP_NODE_ELEMENT = "__GTKX_RELATIONSHIP_NODE__";
 
 export const RELATIONSHIP_KINDS = [
+    "companion",
     "meta-object",
     "layout-child",
     "overlay",
@@ -19,6 +20,8 @@ const RELATIONSHIP_KIND_SET: ReadonlySet<string> = new Set(RELATIONSHIP_KINDS);
 
 export const isRelationshipKind = (value: unknown): value is RelationshipKind =>
     typeof value === "string" && RELATIONSHIP_KIND_SET.has(value);
+
+export const COMPANION_KIND: RelationshipKind = "companion";
 
 export const META_OBJECT_KIND: RelationshipKind = "meta-object";
 
@@ -110,6 +113,7 @@ export type CompanionRule = {
     remove?: Call;
     companion?: Call;
     setters?: Record<string, string>;
+    aliases?: Record<string, string>;
     multi?: boolean;
 };
 
@@ -320,6 +324,7 @@ const validateRelationshipRule = (path: string, value: unknown): void => {
                 "remove",
                 "companion",
                 "setters",
+                "aliases",
                 "multi",
             ]);
             requireName(`${path}.element`, value.element);
@@ -329,6 +334,7 @@ const validateRelationshipRule = (path: string, value: unknown): void => {
             validateOptionalCall(`${path}.remove`, value.remove);
             validateOptionalCall(`${path}.companion`, value.companion);
             validateSetters(`${path}.setters`, value.setters);
+            validateSetters(`${path}.aliases`, value.aliases);
             if (value.multi !== undefined && typeof value.multi !== "boolean") {
                 throw ruleError(`${path}.multi`, "must be a boolean");
             }

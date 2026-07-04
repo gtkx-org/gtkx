@@ -1,4 +1,11 @@
 import * as GObject from "@gtkx/gi/gobject";
+import { containerMapping, toplevelSkipMapping } from "./container-attach.js";
+import {
+    companionMapping,
+    containerSlotMapping,
+    ruleChildMapping,
+    widgetPropMapping,
+} from "./relationship-apply.js";
 import { isRelationshipNode } from "./relationship-node.js";
 import { type Node, stateOf } from "./state.js";
 
@@ -8,14 +15,17 @@ export type ElementMapping = {
     detach(child: Node, parent: Node): void;
 };
 
-let elementMap: ElementMapping[] = [];
-
-export const setElementMap = (mappings: ElementMapping[]): void => {
-    elementMap = mappings;
-};
+const ELEMENT_MAP: ElementMapping[] = [
+    widgetPropMapping,
+    containerSlotMapping,
+    companionMapping,
+    ruleChildMapping,
+    toplevelSkipMapping,
+    containerMapping,
+];
 
 const resolveMapping = (child: Node, parent: Node): ElementMapping | undefined =>
-    elementMap.find((mapping) => mapping.matches(child, parent));
+    ELEMENT_MAP.find((mapping) => mapping.matches(child, parent));
 
 export const attachToParent = (child: Node, parent: Node, anchor?: GObject.Object | null, fresh?: boolean): void => {
     resolveMapping(child, parent)?.attach(child, parent, anchor, fresh);

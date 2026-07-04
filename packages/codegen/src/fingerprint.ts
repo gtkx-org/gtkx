@@ -10,7 +10,7 @@ export const FINGERPRINT_FILENAME = ".codegen-fingerprint.json";
 
 const CODEGEN_VERSION: string = (require("../package.json") as { version: string }).version;
 
-const METADATA_SCHEMA_VERSION = 2;
+const METADATA_SCHEMA_VERSION = 4;
 
 export type CodegenFingerprint = {
     value: string;

@@ -3,6 +3,7 @@
 import { RELATIONSHIPS, SYNTHETIC_PROPS } from "virtual:gtkx-config";
 import type {
     Arg,
+    ArgRef,
     AttachRule,
     Call,
     CompanionRule,
@@ -54,15 +55,34 @@ const evalArg = (arg: Arg, scope: CallScope): unknown => {
     return value;
 };
 
-export const runCall = (target: object, call: Call, defaults: unknown[], scope: CallScope): boolean => {
+export type CallResult = {
+    called: boolean;
+    value: unknown;
+};
+
+export const runCallValue = (target: object, call: Call, defaults: unknown[], scope: CallScope): CallResult => {
     if (typeof call === "string") {
-        callMethod(target, call, defaults);
-        return true;
+        return { called: true, value: callMethod(target, call, defaults) };
     }
     const args = call.args.map((arg) => evalArg(arg, scope));
-    if (args.includes(MISSING_ARG)) return false;
-    callMethod(target, call.method, args);
-    return true;
+    if (args.includes(MISSING_ARG)) return { called: false, value: undefined };
+    return { called: true, value: callMethod(target, call.method, args) };
+};
+
+export const runCall = (target: object, call: Call, defaults: unknown[], scope: CallScope): boolean =>
+    runCallValue(target, call, defaults, scope).called;
+
+export const callUsesRef = (call: Call | undefined, ref: ArgRef): boolean =>
+    call !== undefined && typeof call !== "string" && call.args.some((arg) => arg === ref);
+
+export const nullSetterCurrentHolder = (target: object, call: Call): unknown => {
+    if (typeof call === "string" || !call.method.startsWith("set")) return undefined;
+    if (!call.args.some((arg) => typeof arg === "object" && "literal" in arg && arg.literal === null)) {
+        return undefined;
+    }
+    const getter = `get${call.method.slice(3)}`;
+    if (typeof Reflect.get(target, getter) !== "function") return undefined;
+    return callMethod(target, getter, []);
 };
 
 export const writeTarget = (instance: object, name: string, value: unknown): void => {
