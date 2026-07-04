@@ -1,4 +1,4 @@
-import { getValueBoxed, setValueBoxed } from "@gtkx/ffi";
+import { getBoxedValue, getHandle, setBoxedValue } from "@gtkx/ffi";
 import { type Type, Value } from "../gobject.js";
 
 export const buildValue = (gtype: Type, populate: (value: Value) => void): Value => {
@@ -9,9 +9,9 @@ export const buildValue = (gtype: Type, populate: (value: Value) => void): Value
 };
 
 Value.prototype.getBoxed = function <T = unknown>(this: Value): T {
-    return getValueBoxed(this) as T;
+    return getBoxedValue(getHandle(this)) as T;
 };
 
 Value.prototype.setBoxed = function (this: Value, boxed: object | null): void {
-    setValueBoxed(this, boxed);
+    setBoxedValue(getHandle(this), boxed);
 };

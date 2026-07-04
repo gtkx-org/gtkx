@@ -150,14 +150,9 @@ export function getBoxedValue(value: ExternalObject<Handle>): object | null {
     return wrapHandle(boxed, cls);
 }
 
-export function getValueBoxed(value: object): object | null {
-    return getBoxedValue(getHandle(value));
-}
-
-export function setValueBoxed(value: object, boxed: object | null): void {
-    const gValue = getHandle(value);
-    const name = getBoxedTypeName(getValueType(gValue));
-    setBoxedBind(name)(gValue, boxed === null ? null : getHandle(boxed));
+export function setBoxedValue(value: ExternalObject<Handle>, boxed: object | null): void {
+    const name = getBoxedTypeName(getValueType(value));
+    setBoxedBind(name)(value, boxed === null ? null : getHandle(boxed));
 }
 
 const resolveValueType = (descriptor: Descriptor): ValueType => {

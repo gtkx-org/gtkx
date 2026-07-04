@@ -53,4 +53,4 @@ export {
     typeParent,
     valueIsA,
 } from "./type.js";
-export { getValueBoxed, setValueBoxed } from "./value.js";
+export { getBoxedValue, setBoxedValue } from "./value.js";
