@@ -142,6 +142,28 @@ const Toggle: RuleSet = {
     },
 };
 
+const ShortcutsSection: RuleSet = {
+    appendChild: (parent, child, ctx) => {
+        if (
+            ctx.instanceIsA(parent.instance, "AdwShortcutsDialog") &&
+            ctx.instanceIsA(child.instance, "AdwShortcutsSection")
+        ) {
+            callMethod(parent.instance, "add", [child.instance]);
+        }
+    },
+};
+
+const ShortcutsItem: RuleSet = {
+    appendChild: (parent, child, ctx) => {
+        if (
+            ctx.instanceIsA(parent.instance, "AdwShortcutsSection") &&
+            ctx.instanceIsA(child.instance, "AdwShortcutsItem")
+        ) {
+            callMethod(parent.instance, "add", [child.instance]);
+        }
+    },
+};
+
 type SlotAttach = (parent: object, child: object) => void;
 
 const reflectAdd =
@@ -457,6 +479,8 @@ export const BUILT_IN_RULES: RuleRegistry = {
     GSimpleActionGroup: SimpleActionGroup,
     GtkColumnViewColumn: ColumnViewColumn,
     AdwToggle: Toggle,
+    AdwShortcutsSection: ShortcutsSection,
+    AdwShortcutsItem: ShortcutsItem,
     AdwActionRow: ActionRow,
     AdwEntryRow: EntryRow,
     AdwExpanderRow: ExpanderRow,

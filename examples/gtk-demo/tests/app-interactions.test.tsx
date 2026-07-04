@@ -110,6 +110,7 @@ describe("App keyboard shortcuts dialog", () => {
             const dialogs = await screen.findAllByRole(Gtk.AccessibleRole.DIALOG);
             expect(dialogs.length).toBeGreaterThan(0);
         });
+        expect((await screen.findAllByText("Search demos")).length).toBeGreaterThan(0);
     });
 });
 
