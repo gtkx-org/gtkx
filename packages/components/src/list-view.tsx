@@ -1,9 +1,8 @@
-import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkListView, type GtkListViewProps } from "@gtkx/jsx/gtk";
 import { useMergeRefs } from "@gtkx/react";
 import { createElement, type ReactElement, type ReactNode, type Ref, useRef } from "react";
-import { type CellRenderer, CellRenderHost, headerRenderer } from "./cell.js";
+import { type CellRenderer, CellRenderHost, HeaderRenderHost } from "./cell.js";
 import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
 import { useCollectionModel } from "./hooks/use-collection-model.js";
 import { useInstalledModel } from "./hooks/use-installed-model.js";
@@ -13,7 +12,6 @@ import type {
     ItemNode,
     RenderItemInfo,
     SectionNode,
-    UncontrolledItemType,
 } from "./types.js";
 import type { CellContainerStore } from "./utils/cell-container-store.js";
 import type { ItemResolver } from "./utils/item-resolver.js";
@@ -34,27 +32,13 @@ export interface ListRenderItemInfo<T> extends RenderItemInfo<T> {
 }
 
 type ListViewDeclarativeProps<T = unknown, S = unknown> = CollectionItemSizeProps &
-    (
-        | (ControlledSelectionProps & {
-              items?: ItemNode<T>[] | undefined;
-              sections?: SectionNode<S, T>[] | undefined;
-              renderItem: (info: ListRenderItemInfo<T>) => ReactNode;
-              autoexpand?: boolean | undefined;
-              renderHeader?: ((info: { section: S }) => ReactNode) | null | undefined;
-              model?: never;
-          })
-        | {
-              model: Gio.ListModel;
-              renderItem: (info: ListRenderItemInfo<UncontrolledItemType<T>>) => ReactNode;
-              items?: never;
-              sections?: never;
-              autoexpand?: never;
-              renderHeader?: never;
-              selectedIds?: never;
-              onSelectionChanged?: never;
-              selectionMode?: never;
-          }
-    );
+    ControlledSelectionProps & {
+        items?: ItemNode<T>[] | undefined;
+        sections?: SectionNode<S, T>[] | undefined;
+        renderItem: (info: ListRenderItemInfo<T>) => ReactNode;
+        autoexpand?: boolean | undefined;
+        renderHeader?: ((info: { section: S }) => ReactNode) | null | undefined;
+    };
 
 export type ListViewProps<T = unknown, S = unknown> = Omit<GtkListViewProps, keyof ListViewDeclarativeProps<T, S>> &
     ListViewDeclarativeProps<T, S>;
@@ -73,7 +57,6 @@ const useListViewWiring = <T, S>(props: NormalizedListViewProps<T, S>): ListView
     const setRef = useMergeRefs<Gtk.ListView>(props.ref, widgetRef);
 
     const collection = useCollectionModel<T, S>({
-        model: props.model as Gio.ListModel | undefined,
         items: props.items,
         sections: props.sections,
         autoexpand: props.autoexpand,
@@ -122,7 +105,6 @@ export const ListView = <T = unknown, S = unknown>(props: ListViewProps<T, S>): 
         ref,
         items,
         sections,
-        model,
         renderItem,
         autoexpand,
         renderHeader,
@@ -134,9 +116,8 @@ export const ListView = <T = unknown, S = unknown>(props: ListViewProps<T, S>): 
         ...intrinsicProps
     } = props as NormalizedListViewProps<T, S>;
 
-    const renderItemFn = renderItem as (info: ListRenderItemInfo<T>) => ReactNode;
     const cellRenderer: CellRenderer<T, S> = (value, treeRow, position) =>
-        renderItemFn({
+        renderItem({
             item: value as T,
             index: position,
             depth: treeRow === null ? 0 : treeRow.getDepth(),
@@ -147,7 +128,6 @@ export const ListView = <T = unknown, S = unknown>(props: ListViewProps<T, S>): 
         ref,
         items,
         sections,
-        model,
         autoexpand,
         renderHeader,
         selectedIds,
@@ -163,13 +143,12 @@ export const ListView = <T = unknown, S = unknown>(props: ListViewProps<T, S>): 
         <>
             {intrinsic}
             <CellRenderHost store={wiring.itemStore} resolver={wiring.resolver} render={cellRenderer} />
-            {wiring.useHeader ? (
-                <CellRenderHost
-                    store={wiring.headerStore}
-                    resolver={wiring.headerResolver}
-                    render={headerRenderer<T, S>(renderHeader)}
-                />
-            ) : null}
+            <HeaderRenderHost
+                useHeader={wiring.useHeader}
+                store={wiring.headerStore}
+                resolver={wiring.headerResolver}
+                renderHeader={renderHeader}
+            />
         </>
     );
 };

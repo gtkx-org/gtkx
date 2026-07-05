@@ -1,13 +1,11 @@
-import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { ReactNode } from "react";
 import type { ItemNode, SectionNode } from "../types.js";
 import type { ItemResolver } from "../utils/item-resolver.js";
-import { useControlledSelectionModel } from "./use-controlled-selection-model.js";
 import { useListModel } from "./use-list-model.js";
+import { useSelectionModel } from "./use-selection-model.js";
 
 type CollectionModelInput<T, S> = {
-    model: Gio.ListModel | undefined;
     items: ItemNode<T>[] | undefined;
     sections: SectionNode<S, T>[] | undefined;
     autoexpand?: boolean | undefined;
@@ -25,14 +23,13 @@ type CollectionModelResult<T, S> = {
 };
 
 export const useCollectionModel = <T, S>(input: CollectionModelInput<T, S>): CollectionModelResult<T, S> => {
-    const externalModel = input.model;
-    const listModel = useListModel<T, S>(
-        externalModel === undefined
-            ? { items: input.items, sections: input.sections, autoexpand: input.autoexpand }
-            : { model: externalModel },
-    );
+    const listModel = useListModel<T, S>({
+        items: input.items,
+        sections: input.sections,
+        autoexpand: input.autoexpand,
+    });
 
-    const installedModel = useControlledSelectionModel<T, S>(externalModel, {
+    const installedModel = useSelectionModel<T, S>({
         base: listModel.model,
         resolver: listModel.resolver,
         selectionMode: input.selectionMode,
@@ -40,7 +37,7 @@ export const useCollectionModel = <T, S>(input: CollectionModelInput<T, S>): Col
         onSelectionChanged: input.onSelectionChanged,
     });
 
-    const useHeader = externalModel === undefined && typeof input.renderHeader === "function";
+    const useHeader = typeof input.renderHeader === "function";
 
     return { resolver: listModel.resolver, headerResolver: listModel.headerResolver, installedModel, useHeader };
 };

@@ -12,25 +12,16 @@ import {
 } from "../utils/item-models.js";
 import {
     createControlledResolver,
-    createModelResolver,
     createSectionHeaderResolver,
     type ItemResolver,
     type RowValue,
 } from "../utils/item-resolver.js";
 import { detectStructure, type ListStructure, structuralSignature } from "../utils/list-item-flatten.js";
 
-type ControlledListMode<T, S> = {
+type ListModelInput<T, S> = {
     items: ItemNode<T>[] | undefined;
     sections?: SectionNode<S, T>[] | undefined;
     autoexpand?: boolean | undefined;
-    model?: never;
-};
-
-type UncontrolledListMode = {
-    model: Gio.ListModel;
-    items?: never;
-    sections?: never;
-    autoexpand?: never;
 };
 
 type ListModelResult<T, S> = {
@@ -132,7 +123,7 @@ const resolveControlledState = <T, S>(
     return prev;
 };
 
-const useControlledModel = <T, S>(mode: ControlledListMode<T, S>): ListModelResult<T, S> => {
+export const useListModel = <T, S>(mode: ListModelInput<T, S>): ListModelResult<T, S> => {
     const { items, sections } = mode;
     const autoexpand = mode.autoexpand ?? false;
     const stateRef = useRef<ControlledState<T, S> | null>(null);
@@ -160,24 +151,3 @@ const useControlledModel = <T, S>(mode: ControlledListMode<T, S>): ListModelResu
 
     return { model: state.model, resolver, headerResolver };
 };
-
-const useUncontrolledModel = <T, S>(mode: UncontrolledListMode): ListModelResult<T, S> => {
-    const { model } = mode;
-    const resolver = useMemo<ItemResolver<T, S>>(() => createModelResolver(model), [model]);
-    const headerResolver = useMemo<ItemResolver<T, S>>(() => createSectionHeaderResolver<T, S>(undefined), []);
-    return { model, resolver, headerResolver };
-};
-
-export const useListModel = <T, S>(mode: ControlledListMode<T, S> | UncontrolledListMode): ListModelResult<T, S> => {
-    const controlled = useControlledModel<T, S>(
-        mode.model === undefined
-            ? { items: mode.items, sections: mode.sections, autoexpand: mode.autoexpand }
-            : { items: [] },
-    );
-    const uncontrolled = useUncontrolledModel<T, S>(
-        mode.model === undefined ? { model: EMPTY_MODEL } : { model: mode.model },
-    );
-    return mode.model === undefined ? controlled : uncontrolled;
-};
-
-const EMPTY_MODEL: Gio.ListModel = createFlatModel(0);

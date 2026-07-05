@@ -1,8 +1,15 @@
-import { getHandle } from "@gtkx/ffi";
+import { getHandle, registerClass } from "@gtkx/ffi";
+import * as Gio from "@gtkx/gi/gio";
+import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { type ExternalObject, getWrapper, type Handle } from "@gtkx/native";
 import { describe, expect, it } from "vitest";
 import { forceGC, getRefCount } from "../helpers/native-utils.js";
+
+class NameObject extends GObject.Object {
+    name = "";
+}
+registerClass(NameObject, { typeName: "GtkxTestModelNameObject" });
 
 async function gcUntil(predicate: () => boolean, maxRounds = 100): Promise<boolean> {
     for (let i = 0; i < maxRounds; i++) {
@@ -53,6 +60,16 @@ describe("wrapper identity and reference counting", () => {
         expect(getRefCount(handle)).toBe(1);
 
         expect(getWrapper(handle)).toBe(label);
+    });
+
+    it("returns the same wrapper instance for a subclassed item held by a list store", () => {
+        const item = new NameObject();
+        item.name = "Persisted";
+        const store = Gio.ListStore.new(NameObject.prototype.__type__);
+        store.append(item);
+
+        expect(store.getItem(0)).toBe(item);
+        expect((store.getItem(0) as NameObject).name).toBe("Persisted");
     });
 });
 

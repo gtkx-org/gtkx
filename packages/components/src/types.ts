@@ -1,4 +1,3 @@
-import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
 
 export type ItemNode<T = unknown> = {
@@ -31,8 +30,6 @@ export type ControlledSelectionProps = {
     onSelectionChanged?: ((ids: string[]) => void) | null | undefined;
     selectionMode?: Gtk.SelectionMode | null | undefined;
 };
-
-export type UncontrolledItemType<T> = [T] extends [GObject.Object] ? T : GObject.Object;
 
 export type MenuEntry = {
     label?: string | undefined;

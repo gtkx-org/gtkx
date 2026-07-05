@@ -14,12 +14,12 @@ import {
     useRef,
     useState,
 } from "react";
-import { type CellRenderer, CellRenderHost, headerRenderer, itemRenderer } from "./cell.js";
+import { type CellRenderer, CellRenderHost, HeaderRenderHost, itemRenderer } from "./cell.js";
 import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
 import { useDropDownSelection } from "./hooks/use-drop-down-selection.js";
 import { useInstalledModel } from "./hooks/use-installed-model.js";
 import { useListModel } from "./hooks/use-list-model.js";
-import type { ItemNode, RenderItemInfo, SectionNode, UncontrolledItemType } from "./types.js";
+import type { ItemNode, RenderItemInfo, SectionNode } from "./types.js";
 import type { CellContainerStore } from "./utils/cell-container-store.js";
 import type { ItemResolver } from "./utils/item-resolver.js";
 
@@ -75,27 +75,15 @@ const createSelectionResolver = <T, S>(resolver: ItemResolver<T, S>, selectedPos
     resolve: (_position, treeRow) => resolver.resolve(selectedPosition, treeRow, null),
 });
 
-type DropDownDeclarativeProps<T = unknown, S = unknown> =
-    | {
-          items?: ItemNode<T>[] | undefined;
-          sections?: SectionNode<S, T>[] | undefined;
-          selectedId?: string | null | undefined;
-          onSelectionChanged?: ((id: string) => void) | null | undefined;
-          renderItem?: DropDownItemRenderer<T> | null | undefined;
-          renderListItem?: DropDownItemRenderer<T> | null | undefined;
-          renderHeader?: ((info: { section: S }) => ReactNode) | null | undefined;
-          model?: never;
-      }
-    | {
-          model: Gio.ListModel;
-          renderItem?: DropDownItemRenderer<UncontrolledItemType<T>> | null | undefined;
-          renderListItem?: DropDownItemRenderer<UncontrolledItemType<T>> | null | undefined;
-          items?: never;
-          sections?: never;
-          selectedId?: never;
-          onSelectionChanged?: never;
-          renderHeader?: never;
-      };
+type DropDownDeclarativeProps<T = unknown, S = unknown> = {
+    items?: ItemNode<T>[] | undefined;
+    sections?: SectionNode<S, T>[] | undefined;
+    selectedId?: string | null | undefined;
+    onSelectionChanged?: ((id: string) => void) | null | undefined;
+    renderItem?: DropDownItemRenderer<T> | null | undefined;
+    renderListItem?: DropDownItemRenderer<T> | null | undefined;
+    renderHeader?: ((info: { section: S }) => ReactNode) | null | undefined;
+};
 
 export type DropDownProps<T = unknown, S = unknown> = Omit<GtkDropDownProps, keyof DropDownDeclarativeProps<T, S>> &
     DropDownDeclarativeProps<T, S>;
@@ -112,7 +100,6 @@ interface NormalizedDropDownProps<T, S, W extends DropDownWidget> {
     ref: Ref<W | null> | undefined;
     items: ItemNode<T>[] | undefined;
     sections: SectionNode<S, T>[] | undefined;
-    model: Gio.ListModel | undefined;
     selectedId: string | null | undefined;
     onSelectionChanged: ((id: string) => void) | null | undefined;
     renderHeader: ((info: { section: S }) => ReactNode) | null | undefined;
@@ -140,12 +127,9 @@ const useDropDownWiring = <T, S, W extends DropDownWidget>(
     }, []);
     const setRef = useMergeRefs<W>(props.ref, captureWidget);
 
-    const externalModel = props.model;
-    const listModel = useListModel<T, S>(
-        externalModel === undefined ? { items: props.items, sections: props.sections } : { model: externalModel },
-    );
+    const listModel = useListModel<T, S>({ items: props.items, sections: props.sections });
 
-    const useHeader = externalModel === undefined && typeof props.renderHeader === "function";
+    const useHeader = typeof props.renderHeader === "function";
 
     const selectionStore = useCellContainers<DropDownWidget>({ target: widgetRef, installer: itemFactoryInstaller });
     const listStore = useCellContainers<DropDownWidget>({ target: widgetRef, installer: listFactoryInstaller });
@@ -187,7 +171,6 @@ const DropDownBody = <T, S, W extends DropDownWidget>({ element, props }: DropDo
         ref,
         items,
         sections,
-        model,
         renderItem,
         renderListItem,
         renderHeader,
@@ -207,7 +190,6 @@ const DropDownBody = <T, S, W extends DropDownWidget>({ element, props }: DropDo
         ref,
         items: items as ItemNode<T>[] | undefined,
         sections: sections as SectionNode<S, T>[] | undefined,
-        model: model as Gio.ListModel | undefined,
         selectedId: selectedId as string | null | undefined,
         onSelectionChanged: onSelectionChanged as ((id: string) => void) | null | undefined,
         renderHeader: renderHeaderFn,
@@ -228,13 +210,12 @@ const DropDownBody = <T, S, W extends DropDownWidget>({ element, props }: DropDo
                 resolver={wiring.resolver}
                 render={toListRenderer<T, S>(renderListItemFn, renderItemFn)}
             />
-            {wiring.useHeader ? (
-                <CellRenderHost
-                    store={wiring.headerStore}
-                    resolver={wiring.headerResolver}
-                    render={headerRenderer<T, S>(renderHeaderFn)}
-                />
-            ) : null}
+            <HeaderRenderHost
+                useHeader={wiring.useHeader}
+                store={wiring.headerStore}
+                resolver={wiring.headerResolver}
+                renderHeader={renderHeaderFn}
+            />
         </>
     );
 };

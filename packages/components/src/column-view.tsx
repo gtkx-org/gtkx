@@ -1,9 +1,8 @@
-import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkColumnView, type GtkColumnViewProps } from "@gtkx/jsx/gtk";
 import { useMergeRefs } from "@gtkx/react";
 import { createElement, type ReactNode, type Ref, useCallback, useMemo, useRef, useState } from "react";
-import { CellRenderHost, headerRenderer } from "./cell.js";
+import { HeaderRenderHost } from "./cell.js";
 import { ColumnViewColumn } from "./column-view-column.js";
 import { type ColumnRegistration, ColumnViewContext, type ColumnViewContextValue } from "./column-view-context.js";
 import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
@@ -54,23 +53,11 @@ type ColumnViewSortProps = {
 
 type ColumnViewDeclarativeProps<T = unknown, S = unknown> = ColumnViewSortProps &
     CollectionItemSizeProps &
-    (
-        | (ControlledSelectionProps & {
-              items?: ItemNode<T>[] | undefined;
-              sections?: SectionNode<S, T>[] | undefined;
-              renderHeader?: ((info: { section: S }) => ReactNode) | null | undefined;
-              model?: never;
-          })
-        | {
-              model: Gio.ListModel;
-              items?: never;
-              sections?: never;
-              renderHeader?: never;
-              selectedIds?: never;
-              onSelectionChanged?: never;
-              selectionMode?: never;
-          }
-    );
+    ControlledSelectionProps & {
+        items?: ItemNode<T>[] | undefined;
+        sections?: SectionNode<S, T>[] | undefined;
+        renderHeader?: ((info: { section: S }) => ReactNode) | null | undefined;
+    };
 
 export type ColumnViewProps<T = unknown, S = unknown> = Omit<
     GtkColumnViewProps,
@@ -102,7 +89,6 @@ const useColumnViewWiring = <T, S>(
     const setRef = useMergeRefs<Gtk.ColumnView>(props.ref, widgetRef);
 
     const collection = useCollectionModel<T, S>({
-        model: props.model as Gio.ListModel | undefined,
         items: props.items,
         sections: props.sections,
         selectionMode: props.selectionMode,
@@ -152,7 +138,6 @@ const ColumnViewComponent = <T = unknown, S = unknown>(props: ColumnViewProps<T,
         ref,
         items,
         sections,
-        model,
         selectedIds,
         selectionMode,
         onSelectionChanged,
@@ -172,7 +157,6 @@ const ColumnViewComponent = <T = unknown, S = unknown>(props: ColumnViewProps<T,
             ref,
             items,
             sections,
-            model,
             selectedIds,
             selectionMode,
             onSelectionChanged,
@@ -195,13 +179,12 @@ const ColumnViewComponent = <T = unknown, S = unknown>(props: ColumnViewProps<T,
     return (
         <>
             {intrinsic}
-            {wiring.useHeader ? (
-                <CellRenderHost
-                    store={wiring.headerStore}
-                    resolver={wiring.headerResolver}
-                    render={headerRenderer<T, S>(renderHeader)}
-                />
-            ) : null}
+            <HeaderRenderHost
+                useHeader={wiring.useHeader}
+                store={wiring.headerStore}
+                resolver={wiring.headerResolver}
+                renderHeader={renderHeader}
+            />
         </>
     );
 };

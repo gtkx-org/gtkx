@@ -89,3 +89,18 @@ export const headerRenderer =
     <T, S>(renderHeader: ((info: { section: S }) => ReactNode) | null | undefined): CellRenderer<T, S> =>
     (value) =>
         renderHeader ? renderHeader({ section: value as S }) : null;
+
+interface HeaderRenderHostProps<T, S> {
+    useHeader: boolean;
+    store: CellContainerStore;
+    resolver: ItemResolver<T, S>;
+    renderHeader: ((info: { section: S }) => ReactNode) | null | undefined;
+}
+
+export const HeaderRenderHost = <T, S>({
+    useHeader,
+    store,
+    resolver,
+    renderHeader,
+}: HeaderRenderHostProps<T, S>): ReactNode =>
+    useHeader ? <CellRenderHost store={store} resolver={resolver} render={headerRenderer<T, S>(renderHeader)} /> : null;
