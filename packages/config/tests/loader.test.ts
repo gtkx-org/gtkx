@@ -70,7 +70,9 @@ describe("loadGtkxConfig", () => {
     });
 
     it("applies a c12 $production layer when the mode is production", async () => {
-        writeConfig(`export default { applicationId: "org.gtk.Base", $production: { applicationId: "org.gtk.Prod" } };\n`);
+        writeConfig(
+            `export default { applicationId: "org.gtk.Base", $production: { applicationId: "org.gtk.Prod" } };\n`,
+        );
         const result = await loadGtkxConfig(cwd, { mode: "production" });
         expect(result.config.applicationId).toBe("org.gtk.Prod");
     });

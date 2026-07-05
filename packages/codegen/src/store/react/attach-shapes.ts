@@ -1,4 +1,3 @@
-import type { AttachShape, AttachShapeTable } from "@gtkx/config";
 import { sortedStringsBy } from "@gtkx/utils";
 import { ancestorChain } from "../../gir/ancestry.js";
 import type { GirClass } from "../../gir/class.js";
@@ -8,6 +7,20 @@ import type { GirParameter } from "../../gir/parameter.js";
 import type { PrimitiveCategory } from "../../gir/primitives.js";
 import type { GirType } from "../../gir/type.js";
 import type { TypeId } from "../../gir/type-id.js";
+
+export type AttachShape =
+    | "append"
+    | "add"
+    | "setContent"
+    | "setChild"
+    | "getChild"
+    | "remove"
+    | "reorderChildAfter"
+    | "insertChildAfter"
+    | "insert"
+    | "getFirstChild";
+
+export type AttachShapeTable = Record<string, AttachShape[]>;
 
 type ParamKind = "widget" | "int";
 

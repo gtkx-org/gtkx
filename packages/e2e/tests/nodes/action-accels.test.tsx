@@ -5,6 +5,7 @@ import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
 import { createRootElement } from "@gtkx/react";
 
 type ActionAccel = { action: string; accels: string[] };
+
 import { render } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject } from "react";
 import { describe, expect, it } from "vitest";

@@ -16,10 +16,10 @@ import { TYPE_INVALID, typeInterfaces } from "./type.js";
 
 type RegisterClassOptions = { typeName?: string };
 type VfuncFn = NativeRegisterClassVfunc["fn"];
-type DiscoveredVfunc<K extends "class" | "interface"> = VfuncDescriptor<K> & { methodName: string; fn: VfuncFn; };
+type DiscoveredVfunc<K extends "class" | "interface"> = VfuncDescriptor<K> & { methodName: string; fn: VfuncFn };
 type DiscoveredClassVfunc = DiscoveredVfunc<"class">;
 type DiscoveredInterfaceVfunc = DiscoveredVfunc<"interface">;
-type InterfaceVfuncBinding = { gtype: bigint; vfuncs: DiscoveredInterfaceVfunc[]; };
+type InterfaceVfuncBinding = { gtype: bigint; vfuncs: DiscoveredInterfaceVfunc[] };
 
 export function registerClass<T extends AnyClass>(klass: T, options: RegisterClassOptions = {}): T {
     const parentType = resolveParentType(klass);

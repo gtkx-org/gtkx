@@ -1,11 +1,4 @@
-import type {
-    AddMethodRule,
-    AttachShapeTable,
-    OrderedInsertSpec,
-    PageMetaSetter,
-    RelationshipRule,
-    SyntheticPropRule,
-} from "@gtkx/config";
+import type { RelationshipRule, SyntheticPropRule } from "@gtkx/config";
 import { sortedStringsBy, sourceStringLiteral, toCamelIdentifier } from "@gtkx/utils";
 import type { GirClass } from "../../gir/class.js";
 import type { GirEnum } from "../../gir/enum.js";
@@ -24,22 +17,13 @@ import { ACCESSIBLE_ATTRIBUTES } from "./tables.js";
 export type RuntimeTables = {
     toplevelTypes: string[];
     defaultBlockableTypes: string[];
-    metaObjectAddMethods: Record<string, AddMethodRule[]>;
-    pageMetaSetters: PageMetaSetter[];
-    attachShapes: AttachShapeTable;
-    orderedInsert: Record<string, OrderedInsertSpec>;
-    slotProps: Record<string, string[]>;
     relationships: RelationshipRule[];
     syntheticProps: SyntheticPropRule[];
 };
 
 const configType = (name: string): string => `import("@gtkx/config").${name}`;
 
-const recordOfArray = (rowType: string): string => `Record<string, Array<${configType(rowType)}>>`;
-
 const arrayOf = (rowType: string): string => `Array<${configType(rowType)}>`;
-
-const recordOf = (rowType: string): string => `Record<string, ${configType(rowType)}>`;
 
 type RuntimeTableSpec = {
     name: string;
@@ -49,11 +33,6 @@ type RuntimeTableSpec = {
 const RUNTIME_TABLE_SPECS: Record<keyof RuntimeTables, RuntimeTableSpec> = {
     toplevelTypes: { name: "TOPLEVEL_TYPES", annotation: "string[]" },
     defaultBlockableTypes: { name: "DEFAULT_BLOCKABLE_TYPES", annotation: "string[]" },
-    metaObjectAddMethods: { name: "META_OBJECT_ADD_METHODS", annotation: recordOfArray("AddMethodRule") },
-    pageMetaSetters: { name: "PAGE_META_SETTERS", annotation: arrayOf("PageMetaSetter") },
-    attachShapes: { name: "ATTACH_SHAPES", annotation: recordOfArray("AttachShape") },
-    orderedInsert: { name: "ORDERED_INSERT", annotation: recordOf("OrderedInsertSpec") },
-    slotProps: { name: "SLOT_PROPS", annotation: "Record<string, string[]>" },
     relationships: { name: "RELATIONSHIPS", annotation: arrayOf("RelationshipRule") },
     syntheticProps: { name: "SYNTHETIC_PROPS", annotation: arrayOf("SyntheticPropRule") },
 };

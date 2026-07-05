@@ -1,17 +1,10 @@
-import type {
-    AttachRule,
-    AttachShape,
-    Call,
-    RelationshipRule,
-    ResolvedGtkxRules,
-    SyntheticPropRule,
-} from "@gtkx/config";
+import type { AttachRule, Call, RelationshipRule, ResolvedGtkxRules, SyntheticPropRule } from "@gtkx/config";
 import { toCamelIdentifier } from "@gtkx/utils";
 import { ancestorChain } from "../../gir/ancestry.js";
 import type { GirClass } from "../../gir/class.js";
 import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
-import { collectAttachShapes } from "./attach-shapes.js";
+import { type AttachShape, collectAttachShapes } from "./attach-shapes.js";
 import { glibNameOf, implementedInterfaces } from "./intrinsic-elements.js";
 import { RELATIONSHIP_RULES, SYNTHETIC_PROP_RULES } from "./tables.js";
 
@@ -26,10 +19,13 @@ type TypeEntry = {
     isInterface: boolean;
 };
 
-type TypeIndex = Map<string, TypeEntry>;
+type GirContext = {
+    library: Library;
+    index: Map<string, TypeEntry>;
+};
 
-const buildTypeIndex = (library: Library): TypeIndex => {
-    const index: TypeIndex = new Map();
+const buildGirContext = (library: Library): GirContext => {
+    const index = new Map<string, TypeEntry>();
     for (const namespace of library.namespaces.values()) {
         for (const klass of namespace.classes) {
             const glibName = glibNameOf(klass);
@@ -44,29 +40,29 @@ const buildTypeIndex = (library: Library): TypeIndex => {
             }
         }
     }
-    return index;
+    return { library, index };
 };
 
-const chainOf = (library: Library, entry: TypeEntry): GirClass[] => {
+const chainOf = (context: GirContext, entry: TypeEntry): GirClass[] => {
     if (entry.isInterface) return [entry.klass];
     const chain: GirClass[] = [];
-    for (const { klass } of ancestorChain(library, entry.klass, entry.namespace.name)) chain.push(klass);
-    for (const iface of implementedInterfaces(entry.klass, entry.namespace, library)) chain.push(iface.klass);
+    for (const { klass } of ancestorChain(context.library, entry.klass, entry.namespace.name)) chain.push(klass);
+    for (const iface of implementedInterfaces(entry.klass, entry.namespace, context.library)) chain.push(iface.klass);
     return chain;
 };
 
-const hasMethod = (library: Library, index: TypeIndex, typeName: string, camelName: string): boolean => {
-    const entry = index.get(typeName);
+const hasMethod = (context: GirContext, typeName: string, camelName: string): boolean => {
+    const entry = context.index.get(typeName);
     if (entry === undefined) return false;
-    return chainOf(library, entry).some((klass) =>
+    return chainOf(context, entry).some((klass) =>
         klass.methods.some((method) => method.introspectable && toCamelIdentifier(method.name) === camelName),
     );
 };
 
-const hasProperty = (library: Library, index: TypeIndex, typeName: string, camelName: string): boolean => {
-    const entry = index.get(typeName);
+const hasProperty = (context: GirContext, typeName: string, camelName: string): boolean => {
+    const entry = context.index.get(typeName);
     if (entry === undefined) return false;
-    return chainOf(library, entry).some((klass) =>
+    return chainOf(context, entry).some((klass) =>
         klass.properties.some((property) => toCamelIdentifier(property.name) === camelName),
     );
 };
@@ -93,13 +89,9 @@ const relationshipCalls = (rule: RelationshipRule): Call[] => {
         case "attach":
             return [rule.add, rule.remove, rule.insert, rule.reorder].filter((call) => call !== undefined);
         case "companion":
-            return [
-                rule.add,
-                rule.insert,
-                rule.remove,
-                rule.companion,
-                ...Object.values(rule.setters ?? {}),
-            ].filter((call) => call !== undefined);
+            return [rule.add, rule.insert, rule.remove, rule.companion, ...Object.values(rule.setters ?? {})].filter(
+                (call) => call !== undefined,
+            );
         default:
             return [];
     }
@@ -122,7 +114,7 @@ const syntheticCalls = (rule: SyntheticPropRule): Call[] => {
         case "keyed-list":
             return [rule.add, rule.remove, ...Object.values(rule.setters ?? {})];
         case "value":
-            return rule.then === undefined ? [rule.call] : [rule.call, rule.then];
+            return rule.after === undefined ? [rule.call] : [rule.call, rule.after];
         case "selection":
             return rule.lookup === undefined ? [rule.get, rule.set] : [rule.get, rule.set, rule.lookup];
         case "controlled-text":
@@ -145,38 +137,38 @@ const syntheticSettableNames = (rule: SyntheticPropRule): string[] => {
     }
 };
 
-const knownTypes = (index: TypeIndex, names: string[]): boolean => names.every((name) => index.has(name));
+const knownTypes = (context: GirContext, names: string[]): boolean => names.every((name) => context.index.has(name));
 
 const userRuleError = (path: string, message: string): Error => new Error(`gtkx.config.ts: \`${path}\` ${message}`);
 
-const validateUserTypeNames = (index: TypeIndex, path: string, names: string[]): void => {
+const validateUserTypeNames = (context: GirContext, path: string, names: string[]): void => {
     for (const name of names) {
-        if (!index.has(name)) {
+        if (!context.index.has(name)) {
             throw userRuleError(path, `references "${name}", which is not a type in the generated libraries`);
         }
     }
 };
 
-const validateUserCalls = (library: Library, index: TypeIndex, path: string, host: string, calls: Call[]): void => {
+const validateUserCalls = (context: GirContext, path: string, host: string, calls: Call[]): void => {
     for (const call of calls) {
         const method = callMethodName(call);
-        if (!hasMethod(library, index, host, method)) {
+        if (!hasMethod(context, host, method)) {
             throw userRuleError(path, `references method "${method}", which does not exist on ${host}`);
         }
     }
 };
 
-const validateUserRelationship = (library: Library, index: TypeIndex, path: string, rule: RelationshipRule): void => {
-    validateUserTypeNames(index, path, relationshipTypeNames(rule));
+const validateUserRelationship = (context: GirContext, path: string, rule: RelationshipRule): void => {
+    validateUserTypeNames(context, path, relationshipTypeNames(rule));
     const host = relationshipCallHost(rule);
-    if (host !== undefined) validateUserCalls(library, index, path, host, relationshipCalls(rule));
+    if (host !== undefined) validateUserCalls(context, path, host, relationshipCalls(rule));
 };
 
-const validateUserSynthetic = (library: Library, index: TypeIndex, path: string, rule: SyntheticPropRule): void => {
-    validateUserTypeNames(index, path, [rule.type]);
-    validateUserCalls(library, index, path, rule.type, syntheticCalls(rule));
+const validateUserSynthetic = (context: GirContext, path: string, rule: SyntheticPropRule): void => {
+    validateUserTypeNames(context, path, [rule.type]);
+    validateUserCalls(context, path, rule.type, syntheticCalls(rule));
     for (const name of syntheticSettableNames(rule)) {
-        if (!hasMethod(library, index, rule.type, name) && !hasProperty(library, index, rule.type, name)) {
+        if (!hasMethod(context, rule.type, name) && !hasProperty(context, rule.type, name)) {
             throw userRuleError(path, `references "${name}", which is neither a method nor a property of ${rule.type}`);
         }
     }
@@ -241,52 +233,64 @@ const STRATEGY_SHAPES: Set<AttachShape> = new Set([
     "reorderChildAfter",
 ]);
 
-const collectGeneratedRelationships = (library: Library, index: TypeIndex): AttachRule[] => {
-    const shapeTable = collectAttachShapes(library);
+const effectiveShapes = (
+    context: GirContext,
+    shapeTable: Record<string, AttachShape[]>,
+    entry: TypeEntry,
+): Set<AttachShape> => {
+    const effective = new Set<AttachShape>();
+    for (const klass of chainOf(context, entry)) {
+        const chainName = glibNameOf(klass);
+        if (chainName === undefined) continue;
+        for (const shape of shapeTable[chainName] ?? []) effective.add(shape);
+    }
+    return effective;
+};
+
+const generatedRuleFor = (glibName: string, shapes: Set<AttachShape>): AttachRule | undefined => {
+    const add = generatedAdd(shapes);
+    const remove = generatedRemove(shapes);
+    if (add === undefined && remove === undefined) return undefined;
+    const rule: AttachRule = { kind: "attach", parent: glibName, child: "GtkWidget" };
+    if (add !== undefined) rule.add = add;
+    if (remove !== undefined) rule.remove = remove;
+    const insert = generatedInsert(shapes);
+    if (insert !== undefined) rule.insert = insert;
+    const reorder = generatedReorder(shapes);
+    if (reorder !== undefined) rule.reorder = reorder;
+    return rule;
+};
+
+const collectGeneratedRelationships = (context: GirContext): AttachRule[] => {
+    const shapeTable = collectAttachShapes(context.library);
     const rules: AttachRule[] = [];
     for (const [glibName, ownShapes] of Object.entries(shapeTable)) {
         if (!ownShapes.some((shape) => STRATEGY_SHAPES.has(shape))) continue;
-        const entry = index.get(glibName);
+        const entry = context.index.get(glibName);
         if (entry === undefined) continue;
-        const effective = new Set<AttachShape>();
-        for (const klass of chainOf(library, entry)) {
-            const chainName = glibNameOf(klass);
-            if (chainName === undefined) continue;
-            for (const shape of shapeTable[chainName] ?? []) effective.add(shape);
-        }
-        const rule: AttachRule = { kind: "attach", parent: glibName, child: "GtkWidget" };
-        const add = generatedAdd(effective);
-        const remove = generatedRemove(effective);
-        const insert = generatedInsert(effective);
-        const reorder = generatedReorder(effective);
-        if (add === undefined && remove === undefined) continue;
-        if (add !== undefined) rule.add = add;
-        if (remove !== undefined) rule.remove = remove;
-        if (insert !== undefined) rule.insert = insert;
-        if (reorder !== undefined) rule.reorder = reorder;
-        rules.push(rule);
+        const rule = generatedRuleFor(glibName, effectiveShapes(context, shapeTable, entry));
+        if (rule !== undefined) rules.push(rule);
     }
     return rules;
 };
 
 export const assembleRuleTables = (library: Library, userRules: ResolvedGtkxRules): RuleTables => {
-    const index = buildTypeIndex(library);
-    userRules.relationships.forEach((rule, position) =>
-        validateUserRelationship(library, index, `rules.relationships[${position}]`, rule),
-    );
-    userRules.syntheticProps.forEach((rule, position) =>
-        validateUserSynthetic(library, index, `rules.syntheticProps[${position}]`, rule),
-    );
-    const generated = collectGeneratedRelationships(library, index);
-    const curatedRelationships = RELATIONSHIP_RULES.filter((rule) =>
-        knownTypes(index, relationshipTypeNames(rule)),
-    );
-    const curatedSynthetics = SYNTHETIC_PROP_RULES.filter((rule) => index.has(rule.type));
+    const context = buildGirContext(library);
+    let position = 0;
+    for (const rule of userRules.relationships) {
+        validateUserRelationship(context, `rules.relationships[${position}]`, rule);
+        position++;
+    }
+    position = 0;
+    for (const rule of userRules.syntheticProps) {
+        validateUserSynthetic(context, `rules.syntheticProps[${position}]`, rule);
+        position++;
+    }
+    const generated = collectGeneratedRelationships(context);
+    const curatedRelationships = RELATIONSHIP_RULES.filter((rule) => knownTypes(context, relationshipTypeNames(rule)));
+    const curatedSynthetics = SYNTHETIC_PROP_RULES.filter((rule) => context.index.has(rule.type));
     return {
-        relationships: mergeByKey(
-            [generated, curatedRelationships, userRules.relationships],
-            relationshipKey,
-        ),
+        relationships: mergeByKey([generated, curatedRelationships, userRules.relationships], relationshipKey),
         syntheticProps: mergeByKey([curatedSynthetics, userRules.syntheticProps], syntheticKey),
     };
 };

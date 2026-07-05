@@ -7,6 +7,12 @@ import type { Container, Props } from "./types.js";
 
 export type Node = GObject.Object | RelationshipNode | RootElement;
 
+export type ElementMapping = {
+    matches(child: Node, parent: Node): boolean;
+    attach(child: Node, parent: Node, anchor?: GObject.Object | null, fresh?: boolean): void;
+    detach(child: Node, parent: Node): void;
+};
+
 export type State = {
     name?: string | undefined;
     kind?: RelationshipKind | undefined;

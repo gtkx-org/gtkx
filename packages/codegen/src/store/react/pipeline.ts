@@ -3,21 +3,13 @@ import { sortedStringsBy } from "@gtkx/utils";
 import type { Library } from "../../gir/library.js";
 import { type GirNamespace, namespaceDirectory } from "../../gir/namespace.js";
 import { ImportsBuilder } from "../../writer/imports.js";
-import { collectAttachShapes } from "./attach-shapes.js";
 import { generateElementComponentsSection } from "./element-components.js";
 import { collectIntrinsicElementClasses } from "./intrinsic-elements.js";
 import { generateJsxSection } from "./jsx.js";
 import { generateMetadata } from "./metadata.js";
 import { assembleRuleTables } from "./rule-tables.js";
 import { createRuleTypegen, type RuleTypegen } from "./synthetic-prop-types.js";
-import {
-    DEFAULT_BLOCKABLE_TYPES,
-    META_OBJECT_ADD_METHODS,
-    ORDERED_INSERT,
-    PAGE_META_SETTERS,
-    SLOT_PROPS_BY_TYPE,
-    TOPLEVEL_TYPES,
-} from "./tables.js";
+import { DEFAULT_BLOCKABLE_TYPES, TOPLEVEL_TYPES } from "./tables.js";
 
 export type JsxNamespaceFile = {
     directory: string;
@@ -50,11 +42,6 @@ export const generateJsxFiles = (library: Library, userRules?: ResolvedGtkxRules
     const metadata = generateMetadata(library, {
         toplevelTypes: TOPLEVEL_TYPES,
         defaultBlockableTypes: DEFAULT_BLOCKABLE_TYPES,
-        metaObjectAddMethods: META_OBJECT_ADD_METHODS,
-        pageMetaSetters: PAGE_META_SETTERS,
-        attachShapes: collectAttachShapes(library),
-        orderedInsert: ORDERED_INSERT,
-        slotProps: SLOT_PROPS_BY_TYPE,
         relationships: ruleTables.relationships,
         syntheticProps: ruleTables.syntheticProps,
     });

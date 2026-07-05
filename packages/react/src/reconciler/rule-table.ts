@@ -98,10 +98,15 @@ const slotsByParent: Record<string, string[]> = {};
 
 for (const rule of RELATIONSHIPS) {
     switch (rule.kind) {
-        case "attach":
+        case "attach": {
             attachIndex.set(`${rule.parent}:${rule.child}:${rule.slot ?? ""}`, rule);
-            if (rule.slot !== undefined) (slotsByParent[rule.parent] ??= []).push(rule.slot);
+            if (rule.slot !== undefined) {
+                const slots = slotsByParent[rule.parent] ?? [];
+                slots.push(rule.slot);
+                slotsByParent[rule.parent] = slots;
+            }
             break;
+        }
         case "reject":
             rejectIndex.set(`${rule.parent}:${rule.child}`, rule);
             break;
@@ -119,6 +124,20 @@ export type ResolvedRelationship = { kind: "attach"; rule: AttachRule } | { kind
 
 const relationshipCache = new Map<string, ResolvedRelationship | null>();
 
+const lookupRelationship = (
+    parentName: string,
+    childName: string,
+    slot: string | undefined,
+): ResolvedRelationship | null => {
+    const attach = attachIndex.get(`${parentName}:${childName}:${slot ?? ""}`);
+    if (attach !== undefined) return { kind: "attach", rule: attach };
+    if (slot === undefined) {
+        const reject = rejectIndex.get(`${parentName}:${childName}`);
+        if (reject !== undefined) return { kind: "reject", rule: reject };
+    }
+    return null;
+};
+
 export const resolveAttachRule = (
     parentType: bigint,
     childType: bigint,
@@ -129,21 +148,12 @@ export const resolveAttachRule = (
     if (cached !== undefined) return cached;
     let resolved: ResolvedRelationship | null = null;
     const parentNames = collectTypeNamesWithInterfaces(parentType);
-    outer: for (const childName of collectTypeNamesWithInterfaces(childType)) {
+    for (const childName of collectTypeNamesWithInterfaces(childType)) {
         for (const parentName of parentNames) {
-            const attach = attachIndex.get(`${parentName}:${childName}:${slot ?? ""}`);
-            if (attach !== undefined) {
-                resolved = { kind: "attach", rule: attach };
-                break outer;
-            }
-            if (slot === undefined) {
-                const reject = rejectIndex.get(`${parentName}:${childName}`);
-                if (reject !== undefined) {
-                    resolved = { kind: "reject", rule: reject };
-                    break outer;
-                }
-            }
+            resolved = lookupRelationship(parentName, childName, slot);
+            if (resolved !== null) break;
         }
+        if (resolved !== null) break;
     }
     relationshipCache.set(cacheKey, resolved);
     return resolved;
@@ -172,7 +182,9 @@ export const slotPropsFor = (elementName: string): Set<string> => {
 
 const SYNTHETIC_BY_TYPE: Record<string, SyntheticPropRule[]> = {};
 for (const rule of SYNTHETIC_PROPS) {
-    (SYNTHETIC_BY_TYPE[rule.type] ??= []).push(rule);
+    const rules = SYNTHETIC_BY_TYPE[rule.type] ?? [];
+    rules.push(rule);
+    SYNTHETIC_BY_TYPE[rule.type] = rules;
 }
 
 const syntheticRulesCache = new Map<bigint, Map<string, SyntheticPropRule>>();

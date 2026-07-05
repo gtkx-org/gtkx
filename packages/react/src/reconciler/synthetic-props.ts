@@ -40,7 +40,7 @@ const applyValue = (instance: object, rule: ValueRule, oldValue: unknown, newVal
     let value = newValue;
     if (value == null && "or" in rule) value = rule.or;
     runCall(instance, rule.call, [value], { value, item: value });
-    if (rule.then !== undefined) callMethod(instance, rule.then, []);
+    if (rule.after !== undefined) callMethod(instance, rule.after, []);
 };
 
 const applyWriteOnceList = (instance: object, rule: WriteOnceListRule, oldValue: unknown, newValue: unknown): void => {
@@ -48,7 +48,12 @@ const applyWriteOnceList = (instance: object, rule: WriteOnceListRule, oldValue:
     for (const item of asArray(newValue)) runCall(instance, rule.add, [item], { item });
 };
 
-const applyControlledText = (instance: object, rule: ControlledTextRule, oldValue: unknown, newValue: unknown): void => {
+const applyControlledText = (
+    instance: object,
+    rule: ControlledTextRule,
+    oldValue: unknown,
+    newValue: unknown,
+): void => {
     if (oldValue === newValue || typeof newValue !== "string") return;
     if (oldValue !== undefined && callMethod(instance, rule.get, []) !== oldValue) return;
     writeTarget(instance, rule.set, newValue);

@@ -1,8 +1,8 @@
 import {
     type AttachRule,
     COMPANION_KIND,
-    type CompanionRule,
     CONTAINER_SLOT_KIND,
+    type CompanionRule,
     type LayoutChildRule,
     WIDGET_PROP_KIND,
 } from "@gtkx/config";
@@ -11,15 +11,14 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { callMethod } from "@gtkx/utils";
 import { collectTypeNameChain, typeChainIncludes } from "../utils/gtype.js";
 import { applyProps } from "./apply-props.js";
+import { attachChild, detachChild, getFocusWidget, isDescendantOf, unparentWidget } from "./container-attach.js";
+
 import {
-    attachChild,
-    detachChild,
-    getFocusWidget,
-    isDescendantOf,
-    unparentWidget,
-} from "./container-attach.js";
-import type { ElementMapping } from "./dispatch.js";
-import { relationshipChildInstances, relationshipChildWidgets, trackedInstance, trackedWidget } from "./relationship-content.js";
+    relationshipChildInstances,
+    relationshipChildWidgets,
+    trackedInstance,
+    trackedWidget,
+} from "./relationship-content.js";
 import {
     type CallScope,
     elementRuleFor,
@@ -28,7 +27,14 @@ import {
     runCall,
     runCallValue,
 } from "./rule-table.js";
-import { isRelationshipKind, type Node, registeredStateOf, registerState, stateOf } from "./state.js";
+import {
+    type ElementMapping,
+    isRelationshipKind,
+    type Node,
+    registeredStateOf,
+    registerState,
+    stateOf,
+} from "./state.js";
 import type { Props } from "./types.js";
 
 const attachedParent = new WeakMap<GObject.Object, GObject.Object>();
@@ -307,13 +313,15 @@ const setterValueOf = (node: Node, prop: string): { present: boolean; value: unk
     return { present: value !== undefined, value };
 };
 
-const applyCompanionSetters = (
-    parent: GObject.Object,
-    rule: CompanionRule | LayoutChildRule,
-    node: Node,
-    content: Gtk.Widget,
-    sync: CompanionSync,
-): void => {
+type CompanionContext = {
+    parent: GObject.Object;
+    rule: CompanionRule | LayoutChildRule;
+    node: Node;
+    sync: CompanionSync;
+};
+
+const applyCompanionSetters = (context: CompanionContext, content: Gtk.Widget): void => {
+    const { parent, rule, node, sync } = context;
     if (rule.kind !== "companion" || rule.setters === undefined) return;
     let applied = sync.appliedSetters.get(content);
     if (applied === undefined) {
@@ -347,33 +355,23 @@ const companionOrdinal = (parent: Node, node: Node): number => {
     return ordinal;
 };
 
-const detachCompanionContent = (
-    parent: GObject.Object,
-    rule: CompanionRule | LayoutChildRule,
-    content: Gtk.Widget,
-    sync: CompanionSync,
-): void => {
+const detachCompanionContent = (context: CompanionContext, content: Gtk.Widget): void => {
+    const { parent, rule, sync } = context;
     const companion = sync.companions.get(content);
     sync.companions.delete(content);
     sync.appliedSetters.delete(content);
     if (companion) registeredStateOf(companion)?.signalStore.clear(companion);
     if (rule.kind === "companion" && rule.remove !== undefined) {
         const stillInside =
-            !(parent instanceof Gtk.Widget) ||
-            (content.getParent() !== null && isDescendantOf(content, parent));
+            !(parent instanceof Gtk.Widget) || (content.getParent() !== null && isDescendantOf(content, parent));
         if (stillInside) runCall(parent, rule.remove, [content], { child: content });
         return;
     }
     detachChild(content, parent);
 };
 
-const attachCompanionContent = (
-    parent: GObject.Object,
-    rule: CompanionRule | LayoutChildRule,
-    node: Node,
-    content: Gtk.Widget,
-    ordinal: number | null,
-): unknown => {
+const attachCompanionContent = (context: CompanionContext, content: Gtk.Widget, ordinal: number | null): unknown => {
+    const { parent, rule, node } = context;
     if (rule.kind === "companion" && rule.insert !== undefined && ordinal !== null) {
         return runCallValue(parent, rule.insert, [content, ordinal], {
             child: content,
@@ -388,39 +386,40 @@ const attachCompanionContent = (
     return undefined;
 };
 
-const syncCompanionMulti = (parent: GObject.Object, rule: CompanionRule | LayoutChildRule, node: Node): void => {
-    const sync = companionState.get(node) ?? freshCompanionSync();
-    const nodeProps = stateOf(node).props;
-    const built = companionPropsOf(rule, nodeProps);
+const syncCompanionContent = (context: CompanionContext, content: Gtk.Widget, built: Props): void => {
+    const { parent, rule, sync } = context;
+    const alreadyHeld = parent instanceof Gtk.Widget && content.getParent() === parent;
+    const known = sync.companions.has(content);
+    const addResult = alreadyHeld || known ? undefined : attachCompanionContent(context, content, null);
+    let companion = sync.companions.get(content);
+    if (companion === undefined) {
+        companion = acquireCompanion(parent, rule, content, addResult);
+        if (companion) sync.companions.set(content, companion);
+    }
+    if (companion) applyCompanionProps(companion, built, known ? sync.appliedProps : null);
+    applyCompanionSetters(context, content);
+};
+
+const syncCompanionMulti = (context: CompanionContext): void => {
+    const { node, sync } = context;
+    const built = companionPropsOf(context.rule, stateOf(node).props);
     const desired = relationshipChildWidgets(node);
     for (const previous of sync.contents) {
-        if (!desired.includes(previous)) detachCompanionContent(parent, rule, previous, sync);
+        if (!desired.includes(previous)) detachCompanionContent(context, previous);
     }
-    for (const content of desired) {
-        const alreadyHeld = parent instanceof Gtk.Widget && content.getParent() === parent;
-        const known = sync.companions.has(content);
-        const addResult = alreadyHeld || known ? undefined : attachCompanionContent(parent, rule, node, content, null);
-        let companion = sync.companions.get(content);
-        if (companion === undefined) {
-            companion = acquireCompanion(parent, rule, content, addResult);
-            if (companion) sync.companions.set(content, companion);
-        }
-        if (companion) applyCompanionProps(companion, built, known ? sync.appliedProps : null);
-        applyCompanionSetters(parent, rule, node, content, sync);
-    }
+    for (const content of desired) syncCompanionContent(context, content, built);
     sync.contents = desired;
     sync.appliedProps = built;
     companionState.set(node, sync);
 };
 
-const syncCompanionSingle = (parent: GObject.Object, rule: CompanionRule | LayoutChildRule, node: Node): void => {
-    const sync = companionState.get(node) ?? freshCompanionSync();
-    const nodeProps = stateOf(node).props;
-    const built = companionPropsOf(rule, nodeProps);
+const syncCompanionSingle = (context: CompanionContext): void => {
+    const { parent, rule, node, sync } = context;
+    const built = companionPropsOf(rule, stateOf(node).props);
     const content = trackedWidget(node);
     const previous = sync.contents[0];
     if (previous !== undefined && previous !== content) {
-        detachCompanionContent(parent, rule, previous, sync);
+        detachCompanionContent(context, previous);
         releaseAdopted(node);
         sync.contents = [];
     }
@@ -432,20 +431,20 @@ const syncCompanionSingle = (parent: GObject.Object, rule: CompanionRule | Layou
     if (sync.contents[0] === content) {
         const companion = sync.companions.get(content);
         if (companion) applyCompanionProps(companion, built, sync.appliedProps);
-        applyCompanionSetters(parent, rule, node, content, sync);
+        applyCompanionSetters(context, content);
         sync.appliedProps = built;
         companionState.set(node, sync);
         return;
     }
     const ordinal = rule.kind === "companion" && rule.insert !== undefined ? companionOrdinal(parent, node) : null;
-    const addResult = attachCompanionContent(parent, rule, node, content, ordinal);
+    const addResult = attachCompanionContent(context, content, ordinal);
     const companion = acquireCompanion(parent, rule, content, addResult);
     if (companion) {
         adoptCompanion(node, companion);
         sync.companions.set(content, companion);
         applyCompanionProps(companion, built, null);
     }
-    applyCompanionSetters(parent, rule, node, content, sync);
+    applyCompanionSetters(context, content);
     sync.contents = [content];
     sync.appliedProps = built;
     companionState.set(node, sync);
@@ -453,15 +452,19 @@ const syncCompanionSingle = (parent: GObject.Object, rule: CompanionRule | Layou
 
 export const companionMapping: ElementMapping = {
     matches: (child, parent) =>
-        isRelationshipKind(child, COMPANION_KIND) && parent instanceof GObject.Object && companionRuleOf(child) !== null,
+        isRelationshipKind(child, COMPANION_KIND) &&
+        parent instanceof GObject.Object &&
+        companionRuleOf(child) !== null,
     attach: (child, parent) => {
         if (!(parent instanceof GObject.Object)) return;
         const rule = companionRuleOf(child);
         if (rule === null) return;
         if (rule.kind === "layout-child" && layoutManagerOf(parent, rule) === null) return;
+        const sync = companionState.get(child) ?? freshCompanionSync();
+        const context: CompanionContext = { parent, rule, node: child, sync };
         const multi = rule.kind === "layout-child" || rule.multi === true;
-        if (multi) syncCompanionMulti(parent, rule, child);
-        else syncCompanionSingle(parent, rule, child);
+        if (multi) syncCompanionMulti(context);
+        else syncCompanionSingle(context);
     },
     detach: (child, parent) => {
         const sync = companionState.get(child);
@@ -470,6 +473,7 @@ export const companionMapping: ElementMapping = {
         if (!sync || !(parent instanceof GObject.Object)) return;
         const rule = companionRuleOf(child);
         if (rule === null) return;
-        for (const content of sync.contents) detachCompanionContent(parent, rule, content, sync);
+        const context: CompanionContext = { parent, rule, node: child, sync };
+        for (const content of sync.contents) detachCompanionContent(context, content);
     },
 };

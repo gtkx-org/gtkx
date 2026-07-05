@@ -1,10 +1,4 @@
-import type {
-    AddMethodRule,
-    OrderedInsertSpec,
-    PageMetaSetter,
-    RelationshipRule,
-    SyntheticPropRule,
-} from "@gtkx/config";
+import type { RelationshipRule, SyntheticPropRule } from "@gtkx/config";
 
 export type AncestryWrapperName =
     | "withWindowPresentation"
@@ -196,14 +190,18 @@ export const SYNTHETIC_PROP_RULES: SyntheticPropRule[] = [
         setters: { appearance: "setResponseAppearance", enabled: "setResponseEnabled" },
     },
     { kind: "value", type: "GtkDropTarget", prop: "types", call: "setGtypes", or: [] },
-    { kind: "value", type: "GtkDrawingArea", prop: "drawFunc", call: "setDrawFunc", or: null, then: "queueDraw" },
+    { kind: "value", type: "GtkDrawingArea", prop: "drawFunc", call: "setDrawFunc", or: null, after: "queueDraw" },
     {
         kind: "value",
         type: "GtkDragSource",
         prop: "icon",
         call: {
             method: "setIcon",
-            args: [{ field: "paintable", or: null }, { field: "hotX", or: 0 }, { field: "hotY", or: 0 }],
+            args: [
+                { field: "paintable", or: null },
+                { field: "hotX", or: 0 },
+                { field: "hotY", or: 0 },
+            ],
         },
     },
     {
@@ -243,46 +241,6 @@ export const SYNTHETIC_PROP_RULES: SyntheticPropRule[] = [
     { kind: "reassert", type: "GtkTextTag", prop: "background", set: "background" },
     { kind: "reassert", type: "GtkTextTag", prop: "paragraphBackground", set: "paragraphBackground" },
 ];
-
-export const META_OBJECT_ADD_METHODS: Record<string, AddMethodRule[]> = {
-    AdwViewStack: [
-        { method: "addTitledWithIcon", args: ["widget", "id", "title", "iconName"], requires: ["title", "iconName"] },
-        { method: "addTitled", args: ["widget", "id", "title"], requires: ["title"] },
-        { method: "addNamed", args: ["widget", "id"], requires: ["id"] },
-        { method: "add", args: ["widget"], requires: [] },
-    ],
-    GtkStack: [
-        { method: "addTitled", args: ["widget", "id", "title"], requires: ["title"] },
-        { method: "addNamed", args: ["widget", "id"], requires: ["id"] },
-        { method: "addChild", args: ["widget"], requires: [] },
-    ],
-};
-
-export const PAGE_META_SETTERS: PageMetaSetter[] = [
-    { setter: "setTitle", prop: "title", whenPresent: true },
-    { setter: "setIconName", prop: "iconName", whenPresent: true },
-    { setter: "setNeedsAttention", prop: "needsAttention", fallback: false },
-    { setter: "setVisible", prop: "visible", fallback: true },
-    { setter: "setUseUnderline", prop: "useUnderline", fallback: false },
-    { setter: "setBadgeNumber", prop: "badgeNumber", whenPresent: true },
-];
-
-export const ORDERED_INSERT: Record<string, OrderedInsertSpec> = {
-    GtkColumnView: { collection: "getColumns", attach: "insertColumn", detach: "removeColumn" },
-};
-
-export const SLOT_PROPS_BY_TYPE: Record<string, string[]> = {
-    GtkWidget: ["controllers", "actionGroups"],
-    GtkShortcutController: ["shortcuts"],
-    GtkApplicationWindow: ["actions"],
-    AdwActionRow: ["prefix", "suffix"],
-    AdwEntryRow: ["prefix", "suffix"],
-    AdwExpanderRow: ["prefix", "suffix", "rows", "actions"],
-    AdwHeaderBar: ["start", "end"],
-    AdwToolbarView: ["topBar", "bottomBar"],
-    GtkActionBar: ["start", "end"],
-    GtkHeaderBar: ["start", "end"],
-};
 
 type AccessibleAttributeKind = "property" | "state" | "relation";
 

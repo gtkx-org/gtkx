@@ -154,7 +154,7 @@ describe("validateGtkxConfig rules validation", () => {
                     remove: { method: "removeResponse", args: [{ field: "id" }] },
                     setters: { appearance: "setResponseAppearance", enabled: "setResponseEnabled" },
                 },
-                { kind: "value", type: "GtkDrawingArea", prop: "drawFunc", call: "setDrawFunc", then: "queueDraw" },
+                { kind: "value", type: "GtkDrawingArea", prop: "drawFunc", call: "setDrawFunc", after: "queueDraw" },
                 {
                     kind: "selection",
                     type: "GtkStack",
@@ -228,9 +228,9 @@ describe("validateGtkxConfig rules validation", () => {
     });
 
     it("rejects a synthetic rule without a target prop", () => {
-        expect(() => validateUnknown({ rules: { syntheticProps: [{ kind: "value", type: "GtkDropTarget" }] } })).toThrow(
-            /`rules\.syntheticProps\[0\]\.prop` must be a non-empty string/,
-        );
+        expect(() =>
+            validateUnknown({ rules: { syntheticProps: [{ kind: "value", type: "GtkDropTarget" }] } }),
+        ).toThrow(/`rules\.syntheticProps\[0\]\.prop` must be a non-empty string/);
     });
 
     it("rejects keyed-list setters without a key", () => {

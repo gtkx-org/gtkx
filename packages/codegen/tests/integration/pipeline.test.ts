@@ -227,7 +227,9 @@ describe("codegen synthetic props", () => {
 
     it("emits companion element props from the companion class interface", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
-        expect(gtk).toMatch(/export type GtkStackPageElementProps = Omit<GtkStackPageProps, [^;]*"child"[^;]*> & \{ id\?: string \| null \| undefined; \};/);
+        expect(gtk).toMatch(
+            /export type GtkStackPageElementProps = Omit<GtkStackPageProps, [^;]*"child"[^;]*> & \{ id\?: string \| null \| undefined; \};/,
+        );
         expect(gtk).toContain("export type GtkGridChildElementProps =");
         expect(gtk).toMatch(/export type GtkNotebookPageElementProps = [^;]*tabLabel\?: ReactNode[^;]*;/);
     });
@@ -250,29 +252,25 @@ describe("codegen read-only props", () => {
 });
 
 describe("codegen runtime tables", () => {
-    it("bakes the genuine GIR capability tables into the metadata module", () => {
+    it("bakes only the serializable rule tables into the metadata module", () => {
         expect(reactPipeline.metadata).toContain("export const TOPLEVEL_TYPES");
         expect(reactPipeline.metadata).toContain("export const DEFAULT_BLOCKABLE_TYPES");
-        expect(reactPipeline.metadata).toContain("export const META_OBJECT_ADD_METHODS");
-        expect(reactPipeline.metadata).toContain("export const PAGE_META_SETTERS");
-        expect(reactPipeline.metadata).toContain("export const ATTACH_SHAPES");
-        expect(reactPipeline.metadata).toContain("export const ORDERED_INSERT");
-        expect(reactPipeline.metadata).toContain("export const SLOT_PROPS");
+        expect(reactPipeline.metadata).toContain("export const RELATIONSHIPS");
+        expect(reactPipeline.metadata).toContain("export const SYNTHETIC_PROPS");
+        expect(reactPipeline.metadata).not.toContain("SLOT_PROPS");
+        expect(reactPipeline.metadata).not.toContain("ATTACH_SHAPES");
+        expect(reactPipeline.metadata).not.toContain("META_OBJECT_ADD_METHODS");
+        expect(reactPipeline.metadata).not.toContain("PAGE_META_SETTERS");
+        expect(reactPipeline.metadata).not.toContain("ORDERED_INSERT");
     });
 
-    it("no longer bakes the deleted serialized rule tables", () => {
-        expect(reactPipeline.metadata).not.toContain("export const ELEMENT_MAP");
-        expect(reactPipeline.metadata).not.toContain("export const LIST_PROP_RULES");
-        expect(reactPipeline.metadata).not.toContain("export const PROP_RULES");
-        expect(reactPipeline.metadata).not.toContain("export const CHILD_ATTACH_RULES");
+    it("bakes the ColumnView ordered insert as an attach rule", () => {
+        expect(reactPipeline.metadata).toMatch(/"method": "insertColumn"/);
+        expect(reactPipeline.metadata).toMatch(/"parent": "GtkColumnView"/);
     });
 
-    it("bakes the ColumnView ordered-insert capability", () => {
-        expect(reactPipeline.metadata).toMatch(/"GtkColumnView":\s*\{\s*"collection": "getColumns"/);
-    });
-
-    it("bakes the per-host slot prop names", () => {
-        expect(reactPipeline.metadata).toMatch(/"AdwHeaderBar":\s*\[\s*"start",\s*"end"\s*\]/);
+    it("bakes slot attach rules for named slots", () => {
+        expect(reactPipeline.metadata).toMatch(/"parent": "AdwHeaderBar",[\s\S]{0,120}"slot": "start"/);
     });
 });
 

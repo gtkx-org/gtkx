@@ -5,11 +5,6 @@ declare module "virtual:gtkx-config" {
     export const DEFAULT_PROPS: Record<string, Record<string, unknown>>;
     export const TOPLEVEL_TYPES: string[];
     export const DEFAULT_BLOCKABLE_TYPES: string[];
-    export const META_OBJECT_ADD_METHODS: Record<string, import("@gtkx/config").AddMethodRule[]>;
-    export const PAGE_META_SETTERS: import("@gtkx/config").PageMetaSetter[];
-    export const ATTACH_SHAPES: import("@gtkx/config").AttachShapeTable;
-    export const ORDERED_INSERT: Record<string, import("@gtkx/config").OrderedInsertSpec>;
-    export const SLOT_PROPS: Record<string, string[]>;
     export const RELATIONSHIPS: import("@gtkx/config").RelationshipRule[];
     export const SYNTHETIC_PROPS: import("@gtkx/config").SyntheticPropRule[];
     export const ACCESSIBLE_ATTRIBUTES: Record<

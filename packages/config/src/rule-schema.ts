@@ -2,10 +2,6 @@ export const RELATIONSHIP_NODE_ELEMENT = "__GTKX_RELATIONSHIP_NODE__";
 
 export const RELATIONSHIP_KINDS = [
     "companion",
-    "meta-object",
-    "layout-child",
-    "overlay",
-    "tab-label",
     "widget-prop",
     "container-slot",
     "text-anchor",
@@ -23,14 +19,6 @@ export const isRelationshipKind = (value: unknown): value is RelationshipKind =>
 
 export const COMPANION_KIND: RelationshipKind = "companion";
 
-export const META_OBJECT_KIND: RelationshipKind = "meta-object";
-
-export const LAYOUT_CHILD_KIND: RelationshipKind = "layout-child";
-
-export const OVERLAY_KIND: RelationshipKind = "overlay";
-
-export const TAB_LABEL_KIND: RelationshipKind = "tab-label";
-
 export const WIDGET_PROP_KIND: RelationshipKind = "widget-prop";
 
 export const CONTAINER_SLOT_KIND: RelationshipKind = "container-slot";
@@ -42,41 +30,6 @@ export const TEXT_PAINTABLE_KIND: RelationshipKind = "text-paintable";
 export const BUFFER_TEXT_KIND: RelationshipKind = "buffer-text";
 
 export const LABEL_TEXT_KIND: RelationshipKind = "label-text";
-
-export type AttachShape =
-    | "append"
-    | "add"
-    | "setContent"
-    | "setChild"
-    | "getChild"
-    | "remove"
-    | "reorderChildAfter"
-    | "insertChildAfter"
-    | "insert"
-    | "getFirstChild";
-
-export type AttachShapeTable = Record<string, AttachShape[]>;
-
-type AddMethodArg = "widget" | "id" | "title" | "iconName";
-
-export type AddMethodRule = {
-    method: string;
-    args: AddMethodArg[];
-    requires: AddMethodArg[];
-};
-
-export type PageMetaSetter = {
-    setter: string;
-    prop: string;
-    fallback?: unknown;
-    whenPresent?: boolean;
-};
-
-export type OrderedInsertSpec = {
-    collection: string;
-    attach: string;
-    detach: string;
-};
 
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 
@@ -162,7 +115,7 @@ export type ValueRule = {
     prop: string;
     call: Call;
     or?: JsonValue;
-    then?: string;
+    after?: string;
 };
 
 export type SelectionRule = {
@@ -284,7 +237,9 @@ const validateCall = (path: string, value: unknown): void => {
     const record = requireRecord(path, value, ["method", "args"]);
     requireName(`${path}.method`, record.method);
     if (!Array.isArray(record.args)) throw ruleError(`${path}.args`, "must be an array");
-    record.args.forEach((arg, index) => validateArg(`${path}.args[${index}]`, arg));
+    record.args.forEach((arg, index) => {
+        validateArg(`${path}.args[${index}]`, arg);
+    });
 };
 
 const validateOptionalCall = (path: string, value: unknown): void => {
@@ -297,47 +252,55 @@ const validateSetters = (path: string, value: unknown): void => {
     for (const [prop, method] of Object.entries(value)) requireName(`${path}.${prop}`, method);
 };
 
+const validateAttachRule = (path: string, value: Record<string, unknown>): void => {
+    requireRecord(path, value, ["kind", "parent", "child", "slot", "add", "remove", "insert", "reorder", "autowrap"]);
+    requireName(`${path}.parent`, value.parent);
+    requireName(`${path}.child`, value.child);
+    if (value.slot !== undefined) requireName(`${path}.slot`, value.slot);
+    if (value.add === undefined && value.remove === undefined) {
+        throw ruleError(path, "must define at least one of `add` or `remove`");
+    }
+    validateOptionalCall(`${path}.add`, value.add);
+    validateOptionalCall(`${path}.remove`, value.remove);
+    validateOptionalCall(`${path}.insert`, value.insert);
+    validateOptionalCall(`${path}.reorder`, value.reorder);
+    if (value.autowrap !== undefined) requireName(`${path}.autowrap`, value.autowrap);
+};
+
+const validateCompanionRule = (path: string, value: Record<string, unknown>): void => {
+    requireRecord(path, value, [
+        "kind",
+        "element",
+        "parent",
+        "add",
+        "insert",
+        "remove",
+        "companion",
+        "setters",
+        "aliases",
+        "multi",
+    ]);
+    requireName(`${path}.element`, value.element);
+    requireName(`${path}.parent`, value.parent);
+    validateOptionalCall(`${path}.add`, value.add);
+    validateOptionalCall(`${path}.insert`, value.insert);
+    validateOptionalCall(`${path}.remove`, value.remove);
+    validateOptionalCall(`${path}.companion`, value.companion);
+    validateSetters(`${path}.setters`, value.setters);
+    validateSetters(`${path}.aliases`, value.aliases);
+    if (value.multi !== undefined && typeof value.multi !== "boolean") {
+        throw ruleError(`${path}.multi`, "must be a boolean");
+    }
+};
+
 const validateRelationshipRule = (path: string, value: unknown): void => {
     if (!isRecord(value)) throw ruleError(path, "must be an object");
     switch (value.kind) {
         case "attach":
-            requireRecord(path, value, ["kind", "parent", "child", "slot", "add", "remove", "insert", "reorder", "autowrap"]);
-            requireName(`${path}.parent`, value.parent);
-            requireName(`${path}.child`, value.child);
-            if (value.slot !== undefined) requireName(`${path}.slot`, value.slot);
-            if (value.add === undefined && value.remove === undefined) {
-                throw ruleError(path, "must define at least one of `add` or `remove`");
-            }
-            validateOptionalCall(`${path}.add`, value.add);
-            validateOptionalCall(`${path}.remove`, value.remove);
-            validateOptionalCall(`${path}.insert`, value.insert);
-            validateOptionalCall(`${path}.reorder`, value.reorder);
-            if (value.autowrap !== undefined) requireName(`${path}.autowrap`, value.autowrap);
+            validateAttachRule(path, value);
             return;
         case "companion":
-            requireRecord(path, value, [
-                "kind",
-                "element",
-                "parent",
-                "add",
-                "insert",
-                "remove",
-                "companion",
-                "setters",
-                "aliases",
-                "multi",
-            ]);
-            requireName(`${path}.element`, value.element);
-            requireName(`${path}.parent`, value.parent);
-            validateOptionalCall(`${path}.add`, value.add);
-            validateOptionalCall(`${path}.insert`, value.insert);
-            validateOptionalCall(`${path}.remove`, value.remove);
-            validateOptionalCall(`${path}.companion`, value.companion);
-            validateSetters(`${path}.setters`, value.setters);
-            validateSetters(`${path}.aliases`, value.aliases);
-            if (value.multi !== undefined && typeof value.multi !== "boolean") {
-                throw ruleError(`${path}.multi`, "must be a boolean");
-            }
+            validateCompanionRule(path, value);
             return;
         case "layout-child":
             requireRecord(path, value, ["kind", "element", "parent", "layout"]);
@@ -363,7 +326,7 @@ const validateRelationshipRule = (path: string, value: unknown): void => {
 const SYNTHETIC_KEYS: Record<string, string[]> = {
     list: ["clear", "add"],
     "keyed-list": ["add", "remove", "key", "setters"],
-    value: ["call", "or", "then"],
+    value: ["call", "or", "after"],
     selection: ["get", "set", "lookup"],
     "controlled-text": ["get", "set"],
     reassert: ["set"],
@@ -401,7 +364,7 @@ const validateSyntheticPropRule = (path: string, value: unknown): void => {
         case "value":
             validateCall(`${path}.call`, value.call);
             if (value.or !== undefined) requireJson(`${path}.or`, value.or);
-            if (value.then !== undefined) requireName(`${path}.then`, value.then);
+            if (value.after !== undefined) requireName(`${path}.after`, value.after);
             return;
         case "selection":
             requireGetSet(path, value);
@@ -423,37 +386,14 @@ export const validateGtkxRules = (value: unknown, path = "rules"): void => {
     const record = requireRecord(path, value, ["relationships", "syntheticProps"]);
     if (record.relationships !== undefined) {
         if (!Array.isArray(record.relationships)) throw ruleError(`${path}.relationships`, "must be an array");
-        record.relationships.forEach((rule, index) =>
-            validateRelationshipRule(`${path}.relationships[${index}]`, rule),
-        );
+        record.relationships.forEach((rule, index) => {
+            validateRelationshipRule(`${path}.relationships[${index}]`, rule);
+        });
     }
     if (record.syntheticProps !== undefined) {
         if (!Array.isArray(record.syntheticProps)) throw ruleError(`${path}.syntheticProps`, "must be an array");
-        record.syntheticProps.forEach((rule, index) =>
-            validateSyntheticPropRule(`${path}.syntheticProps[${index}]`, rule),
-        );
+        record.syntheticProps.forEach((rule, index) => {
+            validateSyntheticPropRule(`${path}.syntheticProps[${index}]`, rule);
+        });
     }
 };
-
-export type RuleNode = {
-    instance: object;
-    props: Record<string, unknown>;
-    slotTag: string | undefined;
-};
-
-export type RuleContext = {
-    instanceIsA: (instance: object, typeName: string) => boolean;
-};
-
-export type RuleSet = {
-    appendChild?: (parent: RuleNode, child: RuleNode, ctx: RuleContext) => void;
-    removeChild?: (parent: RuleNode, child: RuleNode, ctx: RuleContext) => void;
-    setProps?: (
-        node: RuleNode,
-        newProps: Record<string, unknown>,
-        oldProps: Record<string, unknown> | null,
-        ctx: RuleContext,
-    ) => void;
-};
-
-export type RuleRegistry = Record<string, RuleSet>;

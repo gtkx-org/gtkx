@@ -21,6 +21,12 @@ const TEXT_NODE_ELEMENTS: TextNodeElement[] = [
     { flatName: "GtkTextPaintable", kind: "text-paintable", propsType: "TextPaintableProps", parent: "GtkTextView" },
 ];
 
+type ExportCollector = {
+    imports: ImportsBuilder;
+    exportedNames: Set<string>;
+    exportLines: string[];
+};
+
 export const generateElementComponentsSection = (
     targetNamespace: GirNamespace,
     library: Library,
@@ -29,9 +35,7 @@ export const generateElementComponentsSection = (
         typegen: RuleTypegen;
     },
 ): { source: string; exportedNames: Set<string> } => {
-    const { imports, typegen } = options;
-    const exportedNames = new Set<string>();
-    const exportLines: string[] = [];
+    const collector: ExportCollector = { imports: options.imports, exportedNames: new Set(), exportLines: [] };
 
     const namespaceByGlib = new Map(
         collectIntrinsicElementClasses(library).map((entry) => [entry.glibName, entry.namespace.name]),
@@ -39,51 +43,66 @@ export const generateElementComponentsSection = (
     const inTargetNamespace = (parentGlibName: string): boolean =>
         namespaceByGlib.get(parentGlibName) === targetNamespace.name;
 
-    const companionElements = typegen.companionExports(targetNamespace.name);
+    const companionElements = options.typegen.companionExports(targetNamespace.name);
     const textNodes = TEXT_NODE_ELEMENTS.filter((node) => inTargetNamespace(node.parent));
     const virtualNames = new Set([
         ...companionElements.map((entry) => entry.element),
         ...textNodes.map((node) => node.flatName),
     ]);
 
+    collectCandidateExports(collector, targetNamespace, library, virtualNames);
+    collectCompanionExports(collector, companionElements);
+    collectTextNodeExports(collector, textNodes);
+
+    const sections = [
+        textNodes.length > 0
+            ? `const ${RELATIONSHIP_NODE_ELEMENT_CONST} = ${sourceStringLiteral(RELATIONSHIP_NODE_ELEMENT)} as const;`
+            : "",
+        collector.exportLines.join("\n\n"),
+    ];
+    const source = sections.filter((section) => section.length > 0).join("\n\n");
+    return { source, exportedNames: collector.exportedNames };
+};
+
+const collectCandidateExports = (
+    collector: ExportCollector,
+    targetNamespace: GirNamespace,
+    library: Library,
+    virtualNames: Set<string>,
+): void => {
     for (const candidate of collectIntrinsicElementClasses(library)) {
         if (candidate.namespace.name !== targetNamespace.name) continue;
         if (virtualNames.has(candidate.glibName)) continue;
-        const line = renderCandidateExport(candidate, library, imports);
+        const line = renderCandidateExport(candidate, library, collector.imports);
         if (line === null) continue;
-        exportLines.push(line);
-        exportedNames.add(candidate.glibName);
+        collector.exportLines.push(line);
+        collector.exportedNames.add(candidate.glibName);
     }
+};
 
+const collectCompanionExports = (collector: ExportCollector, companionElements: CompanionExportSpec[]): void => {
     for (const spec of companionElements) {
-        imports.addNamed("@gtkx/react", "createRelationshipComponent", false);
-        imports.addNamed("react", "ReactNode", true);
+        collector.imports.addNamed("@gtkx/react", "createRelationshipComponent", false);
+        collector.imports.addNamed("react", "ReactNode", true);
         for (const [namespaceName, alias] of spec.imports) {
-            if (namespaceName !== "") imports.addNamespace(`@gtkx/gi/${namespaceName.toLowerCase()}`, alias, true);
+            if (namespaceName !== "") {
+                collector.imports.addNamespace(`@gtkx/gi/${namespaceName.toLowerCase()}`, alias, true);
+            }
         }
         const wrapper = COMPANION_WRAPPERS[spec.element];
-        if (wrapper !== undefined) imports.addNamed("@gtkx/react", wrapper, false);
-        exportLines.push(renderCompanionExport(spec, wrapper));
-        exportedNames.add(spec.element);
+        if (wrapper !== undefined) collector.imports.addNamed("@gtkx/react", wrapper, false);
+        collector.exportLines.push(renderCompanionExport(spec, wrapper));
+        collector.exportedNames.add(spec.element);
     }
+};
 
-    let needsWrapperConst = false;
+const collectTextNodeExports = (collector: ExportCollector, textNodes: TextNodeElement[]): void => {
     for (const node of textNodes) {
-        needsWrapperConst = true;
-        imports.addNamed("@gtkx/react", node.propsType, true);
-        imports.addNamed("react", "ReactNode", true);
-        exportLines.push(renderTextNodeExport(node));
-        exportedNames.add(node.flatName);
+        collector.imports.addNamed("@gtkx/react", node.propsType, true);
+        collector.imports.addNamed("react", "ReactNode", true);
+        collector.exportLines.push(renderTextNodeExport(node));
+        collector.exportedNames.add(node.flatName);
     }
-
-    const sections = [
-        needsWrapperConst
-            ? `const ${RELATIONSHIP_NODE_ELEMENT_CONST} = ${sourceStringLiteral(RELATIONSHIP_NODE_ELEMENT)} as const;`
-            : "",
-        exportLines.join("\n\n"),
-    ];
-    const source = sections.filter((section) => section.length > 0).join("\n\n");
-    return { source, exportedNames };
 };
 
 const renderCompanionExport = (spec: CompanionExportSpec, wrapper: string | undefined): string => {

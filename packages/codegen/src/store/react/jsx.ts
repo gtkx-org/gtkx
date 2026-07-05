@@ -15,7 +15,7 @@ import {
 } from "./intrinsic-elements.js";
 import { buildElementPropsEntries, buildInterfacePropsEntries } from "./props.js";
 import type { RuleTypegen } from "./synthetic-prop-types.js";
-import { ACCESSIBLE_ATTRIBUTES, SLOT_PROPS_BY_TYPE } from "./tables.js";
+import { ACCESSIBLE_ATTRIBUTES } from "./tables.js";
 
 export type GenerateJsxOptions = {
     excludeNames: Set<string>;
@@ -185,7 +185,7 @@ const renderPropBlock = (
     entry: GlibNamedClass,
     context: RenderPropBlockContext,
 ): { block: string; slotPropNames: string[] } => {
-    const slotProps = SLOT_PROPS_BY_TYPE[entry.glibName] ?? [];
+    const slotProps = context.typegen.slotNamesFor(entry.glibName);
     const { propLines, imports, slotPropNames } = buildElementPropsEntries({
         library,
         klass: entry.klass,

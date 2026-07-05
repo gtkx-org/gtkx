@@ -1,19 +1,8 @@
 import * as GObject from "@gtkx/gi/gobject";
 import { containerMapping, toplevelSkipMapping } from "./container-attach.js";
-import {
-    companionMapping,
-    containerSlotMapping,
-    ruleChildMapping,
-    widgetPropMapping,
-} from "./relationship-apply.js";
+import { companionMapping, containerSlotMapping, ruleChildMapping, widgetPropMapping } from "./relationship-apply.js";
 import { isRelationshipNode } from "./relationship-node.js";
-import { type Node, stateOf } from "./state.js";
-
-export type ElementMapping = {
-    matches(child: Node, parent: Node): boolean;
-    attach(child: Node, parent: Node, anchor?: GObject.Object | null, fresh?: boolean): void;
-    detach(child: Node, parent: Node): void;
-};
+import { type ElementMapping, type Node, stateOf } from "./state.js";
 
 const ELEMENT_MAP: ElementMapping[] = [
     widgetPropMapping,

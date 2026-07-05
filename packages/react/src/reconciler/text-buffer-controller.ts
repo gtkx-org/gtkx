@@ -1,9 +1,9 @@
 import type * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
+import { unparentWidget } from "./container-attach.js";
 import { type Node, stateOf } from "./state.js";
 import { isAnchorNode, isBufferContentNode, isBufferTextNode, isPaintableNode } from "./text-node.js";
-import { unparentWidget } from "./container-attach.js";
 
 export class TextBufferController {
     private managesContent = false;
