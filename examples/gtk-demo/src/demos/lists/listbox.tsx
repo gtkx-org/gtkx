@@ -7,7 +7,7 @@ import {
     GtkBox,
     GtkButton,
     GtkGrid,
-    GtkGridChild,
+    GtkGridLayoutChild,
     GtkImage,
     GtkLabel,
     GtkLinkButton,
@@ -89,7 +89,7 @@ interface MessageRowProps {
 }
 
 const MessageAvatar = ({ message }: { message: Message }) => (
-    <GtkGridChild column={0} row={0} rowSpan={5}>
+    <GtkGridLayoutChild column={0} row={0} rowSpan={5}>
         <GtkImage
             {...(message.senderNick === "GTKtoolkit" ? { iconName: "org.gtk.Demo4" } : { paintable: appleRedTexture })}
             iconSize={Gtk.IconSize.LARGE}
@@ -102,11 +102,11 @@ const MessageAvatar = ({ message }: { message: Message }) => (
             marginStart={8}
             marginEnd={8}
         />
-    </GtkGridChild>
+    </GtkGridLayoutChild>
 );
 
 const MessageHeader = ({ message }: { message: Message }) => (
-    <GtkGridChild column={1} row={0}>
+    <GtkGridLayoutChild column={1} row={0}>
         <GtkBox hexpand baselinePosition={Gtk.BaselinePosition.TOP}>
             <GtkButton receivesDefault hasFrame={false} valign={Gtk.Align.BASELINE}>
                 <GtkLabel label={message.senderName} valign={Gtk.Align.BASELINE} attributes={boldAttrs} />
@@ -120,11 +120,11 @@ const MessageHeader = ({ message }: { message: Message }) => (
                 cssClasses={["dim-label"]}
             />
         </GtkBox>
-    </GtkGridChild>
+    </GtkGridLayoutChild>
 );
 
 const MessageBody = ({ message }: { message: Message }) => (
-    <GtkGridChild column={1} row={1}>
+    <GtkGridLayoutChild column={1} row={1}>
         <GtkLabel
             label={message.message}
             halign={Gtk.Align.START}
@@ -133,17 +133,17 @@ const MessageBody = ({ message }: { message: Message }) => (
             yalign={0}
             wrap
         />
-    </GtkGridChild>
+    </GtkGridLayoutChild>
 );
 
 const MessageResentBy = ({ message }: { message: Message }) => (
-    <GtkGridChild column={1} row={2}>
+    <GtkGridLayoutChild column={1} row={2}>
         <GtkBox visible={message.resentBy !== null}>
             <GtkImage iconName="media-playlist-repeat" />
             <GtkLabel label="Resent by" />
             <GtkLinkButton label={message.resentBy ?? ""} receivesDefault hasFrame={false} uri="https://www.gtk.org" />
         </GtkBox>
-    </GtkGridChild>
+    </GtkGridLayoutChild>
 );
 
 interface MessageActionsProps {
@@ -163,7 +163,7 @@ const MessageActions = ({
     onFavorite,
     onReshare,
 }: MessageActionsProps) => (
-    <GtkGridChild column={1} row={3}>
+    <GtkGridLayoutChild column={1} row={3}>
         <GtkBox spacing={6}>
             <GtkButton
                 name="expand-button"
@@ -201,11 +201,11 @@ const MessageActions = ({
                 />
             </GtkBox>
         </GtkBox>
-    </GtkGridChild>
+    </GtkGridLayoutChild>
 );
 
 const MessageDetails = ({ message, expanded }: { message: Message; expanded: boolean }) => (
-    <GtkGridChild column={1} row={4}>
+    <GtkGridLayoutChild column={1} row={4}>
         <GtkRevealer name="details-revealer" revealChild={expanded}>
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkBox marginTop={2} marginBottom={2} spacing={8}>
@@ -226,7 +226,7 @@ const MessageDetails = ({ message, expanded }: { message: Message; expanded: boo
                 </GtkBox>
             </GtkBox>
         </GtkRevealer>
-    </GtkGridChild>
+    </GtkGridLayoutChild>
 );
 
 const MessageRow = ({ message, expanded, onToggleExpand, onFavorite, onReshare }: MessageRowProps) => {

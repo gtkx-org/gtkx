@@ -120,7 +120,7 @@ describe("validateGtkxConfig rules validation", () => {
                     remove: { method: "insertActionGroup", args: [{ prop: "prefix" }, { literal: null }] },
                 },
                 { kind: "companion", element: "GtkStackPage", parent: "GtkStack", add: "addChild" },
-                { kind: "layout-child", element: "GtkGridChild", parent: "GtkWidget", layout: "GtkGridLayout" },
+                { kind: "layout-child", element: "GtkGridLayoutChild", parent: "GtkWidget", layout: "GtkGridLayout" },
                 {
                     kind: "companion",
                     element: "GtkNotebookPage",

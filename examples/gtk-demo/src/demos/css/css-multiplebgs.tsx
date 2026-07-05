@@ -1,10 +1,9 @@
+import { Overlay } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
     GtkBox,
     GtkButton,
     GtkDrawingArea,
-    GtkOverlay,
-    GtkOverlayChild,
     GtkPaned,
     GtkScrolledWindow,
     GtkTextBuffer,
@@ -161,9 +160,9 @@ const CssMultiplebgsDemo = () => {
     const { textViewRef, onChanged } = useCssEditor(DEFAULT_CSS);
 
     return (
-        <GtkOverlay name="overlay">
+        <Overlay name="overlay">
             <GtkDrawingArea name="canvas" hexpand vexpand />
-            <GtkOverlayChild>
+            <Overlay.Child>
                 <GtkButton
                     name="bricks-button"
                     halign={Gtk.Align.CENTER}
@@ -171,8 +170,8 @@ const CssMultiplebgsDemo = () => {
                     widthRequest={250}
                     heightRequest={84}
                 />
-            </GtkOverlayChild>
-            <GtkOverlayChild>
+            </Overlay.Child>
+            <Overlay.Child>
                 <GtkPaned
                     name="paned"
                     orientation={Gtk.Orientation.VERTICAL}
@@ -187,8 +186,8 @@ const CssMultiplebgsDemo = () => {
                         </GtkScrolledWindow>
                     }
                 />
-            </GtkOverlayChild>
-        </GtkOverlay>
+            </Overlay.Child>
+        </Overlay>
     );
 };
 

@@ -1,5 +1,6 @@
+import { Overlay } from "@gtkx/components";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkButton, GtkLabel, GtkOverlay, GtkOverlayChild } from "@gtkx/jsx/gtk";
+import { GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
@@ -12,12 +13,12 @@ describe("render - OverlayChild > OverlayChildNode (1)", () => {
         const overlayChildRef = createRef<Gtk.Button>();
 
         await render(
-            <GtkOverlay ref={overlayRef}>
+            <Overlay ref={overlayRef}>
                 <GtkLabel ref={mainRef} label="Main Content" />
-                <GtkOverlayChild>
+                <Overlay.Child>
                     <GtkButton ref={overlayChildRef} label="Overlay Button" />
-                </GtkOverlayChild>
-            </GtkOverlay>,
+                </Overlay.Child>
+            </Overlay>,
         );
 
         const child = overlayRef.current?.getChild();
@@ -31,12 +32,12 @@ describe("render - OverlayChild > OverlayChildNode (1)", () => {
         const buttonRef = createRef<Gtk.Button>();
 
         await render(
-            <GtkOverlay ref={overlayRef}>
+            <Overlay ref={overlayRef}>
                 <GtkLabel label="Main" />
-                <GtkOverlayChild measure={true}>
+                <Overlay.Child measure={true}>
                     <GtkButton ref={buttonRef} label="Measured Overlay" />
-                </GtkOverlayChild>
-            </GtkOverlay>,
+                </Overlay.Child>
+            </Overlay>,
         );
 
         const isMeasured = overlayRef.current?.getMeasureOverlay(buttonRef.current as Gtk.Widget);
@@ -50,12 +51,12 @@ describe("render - OverlayChild > OverlayChildNode (2)", () => {
         const buttonRef = createRef<Gtk.Button>();
 
         await render(
-            <GtkOverlay ref={overlayRef}>
+            <Overlay ref={overlayRef}>
                 <GtkLabel label="Main" />
-                <GtkOverlayChild clipOverlay={true}>
+                <Overlay.Child clipOverlay={true}>
                     <GtkButton ref={buttonRef} label="Clipped Overlay" />
-                </GtkOverlayChild>
-            </GtkOverlay>,
+                </Overlay.Child>
+            </Overlay>,
         );
 
         const isClipped = overlayRef.current?.getClipOverlay(buttonRef.current as Gtk.Widget);
@@ -69,14 +70,14 @@ describe("render - OverlayChild > OverlayChildNode (3)", () => {
 
         function App({ showOverlay }: { showOverlay: boolean }) {
             return (
-                <GtkOverlay ref={overlayRef}>
+                <Overlay ref={overlayRef}>
                     <GtkLabel label="Main" />
                     {showOverlay && (
-                        <GtkOverlayChild>
+                        <Overlay.Child>
                             <GtkButton label="Removable Overlay" />
-                        </GtkOverlayChild>
+                        </Overlay.Child>
                     )}
-                </GtkOverlay>
+                </Overlay>
             );
         }
 
@@ -93,15 +94,15 @@ describe("render - OverlayChild > OverlayChildNode (4)", () => {
         const overlayRef = createRef<Gtk.Overlay>();
 
         await render(
-            <GtkOverlay ref={overlayRef}>
+            <Overlay ref={overlayRef}>
                 <GtkLabel label="Main" />
-                <GtkOverlayChild>
+                <Overlay.Child>
                     <GtkButton label="First Overlay" />
-                </GtkOverlayChild>
-                <GtkOverlayChild>
+                </Overlay.Child>
+                <Overlay.Child>
                     <GtkButton label="Second Overlay" />
-                </GtkOverlayChild>
-            </GtkOverlay>,
+                </Overlay.Child>
+            </Overlay>,
         );
 
         expect(countChildren(overlayRef.current)).toBe(3);
@@ -120,13 +121,13 @@ const renderTwoButtonOverlay = async (measure?: boolean): Promise<TwoButtonOverl
     const secondRef = createRef<Gtk.Button>();
 
     await render(
-        <GtkOverlay ref={overlayRef}>
+        <Overlay ref={overlayRef}>
             <GtkLabel label="Main" />
-            <GtkOverlayChild measure={measure}>
+            <Overlay.Child measure={measure}>
                 <GtkButton ref={firstRef} label="First" />
                 <GtkButton ref={secondRef} label="Second" />
-            </GtkOverlayChild>
-        </GtkOverlay>,
+            </Overlay.Child>
+        </Overlay>,
     );
 
     return { overlayRef, firstRef, secondRef };

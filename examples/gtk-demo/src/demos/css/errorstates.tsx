@@ -4,7 +4,7 @@ import {
     GtkAdjustment,
     GtkEntry,
     GtkGrid,
-    GtkGridChild,
+    GtkGridLayoutChild,
     GtkLabel,
     GtkScale,
     GtkShortcut,
@@ -90,7 +90,7 @@ interface EntryRowProps {
 
 const DetailsEntryRow = ({ detailsEntry, setDetailsEntry, onChange }: EntryRowProps) => (
     <>
-        <GtkGridChild column={0} row={0}>
+        <GtkGridLayoutChild column={0} row={0}>
             <GtkLabel
                 label="_Details"
                 useUnderline
@@ -99,10 +99,10 @@ const DetailsEntryRow = ({ detailsEntry, setDetailsEntry, onChange }: EntryRowPr
                 cssClasses={["dim-label"]}
                 mnemonicWidget={detailsEntry}
             />
-        </GtkGridChild>
-        <GtkGridChild column={1} row={0} columnSpan={2}>
+        </GtkGridLayoutChild>
+        <GtkGridLayoutChild column={1} row={0} columnSpan={2}>
             <GtkEntry ref={setDetailsEntry} valign={Gtk.Align.BASELINE} onChanged={onChange} />
-        </GtkGridChild>
+        </GtkGridLayoutChild>
     </>
 );
 
@@ -120,7 +120,7 @@ const MoreDetailsEntryRow = ({
     onChange,
 }: MoreDetailsRowProps) => (
     <>
-        <GtkGridChild column={0} row={1}>
+        <GtkGridLayoutChild column={0} row={1}>
             <GtkLabel
                 label="More D_etails"
                 useUnderline
@@ -129,8 +129,8 @@ const MoreDetailsEntryRow = ({
                 cssClasses={["dim-label"]}
                 mnemonicWidget={moreDetailsEntry}
             />
-        </GtkGridChild>
-        <GtkGridChild column={1} row={1} columnSpan={2}>
+        </GtkGridLayoutChild>
+        <GtkGridLayoutChild column={1} row={1} columnSpan={2}>
             <GtkEntry
                 ref={setMoreDetailsEntry}
                 valign={Gtk.Align.BASELINE}
@@ -141,7 +141,7 @@ const MoreDetailsEntryRow = ({
                 }
                 onChanged={onChange}
             />
-        </GtkGridChild>
+        </GtkGridLayoutChild>
     </>
 );
 
@@ -153,7 +153,7 @@ interface LevelScaleProps {
 
 const LevelScaleRow = ({ levelScale, setLevelScale, onValueChanged }: LevelScaleProps) => (
     <>
-        <GtkGridChild column={0} row={2}>
+        <GtkGridLayoutChild column={0} row={2}>
             <GtkLabel
                 label="_Level"
                 useUnderline
@@ -162,8 +162,8 @@ const LevelScaleRow = ({ levelScale, setLevelScale, onValueChanged }: LevelScale
                 cssClasses={["dim-label"]}
                 mnemonicWidget={levelScale}
             />
-        </GtkGridChild>
-        <GtkGridChild column={1} row={2} columnSpan={2}>
+        </GtkGridLayoutChild>
+        <GtkGridLayoutChild column={1} row={2} columnSpan={2}>
             <GtkScale
                 ref={setLevelScale}
                 orientation={Gtk.Orientation.HORIZONTAL}
@@ -172,7 +172,7 @@ const LevelScaleRow = ({ levelScale, setLevelScale, onValueChanged }: LevelScale
                 adjustment={<GtkAdjustment value={50} lower={0} upper={100} stepIncrement={1} pageIncrement={10} />}
                 onValueChanged={(scale) => onValueChanged(scale.getValue())}
             />
-        </GtkGridChild>
+        </GtkGridLayoutChild>
     </>
 );
 
@@ -185,7 +185,7 @@ const ModeSwitchRow = ({ state, onStateSet }: ModeSwitchRowProps) => {
     const { modeSwitch, setModeSwitch, showError, errorLabel, setErrorLabel } = state;
     return (
         <>
-            <GtkGridChild column={0} row={3}>
+            <GtkGridLayoutChild column={0} row={3}>
                 <GtkLabel
                     label="_Mode"
                     useUnderline
@@ -194,8 +194,8 @@ const ModeSwitchRow = ({ state, onStateSet }: ModeSwitchRowProps) => {
                     cssClasses={["dim-label"]}
                     mnemonicWidget={modeSwitch}
                 />
-            </GtkGridChild>
-            <GtkGridChild column={1} row={3}>
+            </GtkGridLayoutChild>
+            <GtkGridLayoutChild column={1} row={3}>
                 <GtkSwitch
                     ref={setModeSwitch}
                     halign={Gtk.Align.START}
@@ -219,8 +219,8 @@ const ModeSwitchRow = ({ state, onStateSet }: ModeSwitchRowProps) => {
                         />
                     }
                 />
-            </GtkGridChild>
-            <GtkGridChild column={2} row={3}>
+            </GtkGridLayoutChild>
+            <GtkGridLayoutChild column={2} row={3}>
                 {showError && (
                     <GtkLabel
                         ref={setErrorLabel}
@@ -230,7 +230,7 @@ const ModeSwitchRow = ({ state, onStateSet }: ModeSwitchRowProps) => {
                         cssClasses={["error"]}
                     />
                 )}
-            </GtkGridChild>
+            </GtkGridLayoutChild>
         </>
     );
 };

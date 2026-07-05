@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkAdjustment, GtkGrid, GtkGridChild, GtkLabel, GtkScale } from "@gtkx/jsx/gtk";
+import { GtkAdjustment, GtkGrid, GtkGridLayoutChild, GtkLabel, GtkScale } from "@gtkx/jsx/gtk";
 import type { Demo } from "../types.js";
 import sourceCode from "./scale.tsx?raw";
 
@@ -13,10 +13,10 @@ interface ScaleRowProps {
 
 const ScaleRow = ({ label, row, scaleProps }: ScaleRowProps) => (
     <>
-        <GtkGridChild column={0} row={row}>
+        <GtkGridLayoutChild column={0} row={row}>
             <GtkLabel label={label} xalign={0} />
-        </GtkGridChild>
-        <GtkGridChild column={1} row={row}>
+        </GtkGridLayoutChild>
+        <GtkGridLayoutChild column={1} row={row}>
             <GtkScale
                 widthRequest={200}
                 drawValue={false}
@@ -24,7 +24,7 @@ const ScaleRow = ({ label, row, scaleProps }: ScaleRowProps) => (
                 adjustment={<GtkAdjustment value={2} upper={4} stepIncrement={0.1} pageIncrement={1} />}
                 {...scaleProps}
             />
-        </GtkGridChild>
+        </GtkGridLayoutChild>
     </>
 );
 

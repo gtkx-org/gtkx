@@ -5,7 +5,7 @@ import type { GirNamespace } from "../../gir/namespace.js";
 import type { ImportsBuilder } from "../../writer/imports.js";
 import { ancestorGlibNames, collectIntrinsicElementClasses, type GlibNamedClass } from "./intrinsic-elements.js";
 import type { CompanionExportSpec, RuleTypegen } from "./synthetic-prop-types.js";
-import { type AncestryWrapperName, BUILT_IN_ANCESTRY_WRAPPERS, COMPANION_WRAPPERS } from "./tables.js";
+import { type AncestryWrapperName, BUILT_IN_ANCESTRY_WRAPPERS } from "./tables.js";
 
 const RELATIONSHIP_NODE_ELEMENT_CONST = "RelationshipNodeElement";
 
@@ -89,9 +89,7 @@ const collectCompanionExports = (collector: ExportCollector, companionElements: 
                 collector.imports.addNamespace(`@gtkx/gi/${namespaceName.toLowerCase()}`, alias, true);
             }
         }
-        const wrapper = COMPANION_WRAPPERS[spec.element];
-        if (wrapper !== undefined) collector.imports.addNamed("@gtkx/react", wrapper, false);
-        collector.exportLines.push(renderCompanionExport(spec, wrapper));
+        collector.exportLines.push(renderCompanionExport(spec));
         collector.exportedNames.add(spec.element);
     }
 };
@@ -105,12 +103,9 @@ const collectTextNodeExports = (collector: ExportCollector, textNodes: TextNodeE
     }
 };
 
-const renderCompanionExport = (spec: CompanionExportSpec, wrapper: string | undefined): string => {
+const renderCompanionExport = (spec: CompanionExportSpec): string => {
     const factory = `createRelationshipComponent<${spec.typeName}>(${sourceStringLiteral(spec.element)})`;
-    const component =
-        wrapper === undefined
-            ? `export const ${spec.element}: (props: ${spec.typeName}) => ReactNode = ${factory};`
-            : `export const ${spec.element}: ReturnType<typeof ${wrapper}<${spec.typeName}>> = ${wrapper}(${factory});`;
+    const component = `export const ${spec.element}: (props: ${spec.typeName}) => ReactNode = ${factory};`;
     return `${spec.typeSource}\n\n${component}`;
 };
 

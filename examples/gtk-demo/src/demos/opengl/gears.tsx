@@ -1,16 +1,8 @@
+import { Overlay } from "@gtkx/components";
 import type * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as gl from "@gtkx/gl";
-import {
-    GtkAdjustment,
-    GtkBox,
-    GtkFrame,
-    GtkGLArea,
-    GtkLabel,
-    GtkOverlay,
-    GtkOverlayChild,
-    GtkScale,
-} from "@gtkx/jsx/gtk";
+import { GtkAdjustment, GtkBox, GtkFrame, GtkGLArea, GtkLabel, GtkScale } from "@gtkx/jsx/gtk";
 import { useTickCallback } from "@gtkx/react";
 import { useEffect, useRef, useState } from "react";
 import { useLatest } from "../../use-latest.js";
@@ -664,7 +656,7 @@ const GearsDemo = () => {
     if (state.error) return <GearsError error={state.error} />;
 
     return (
-        <GtkOverlay marginStart={12} marginEnd={12} marginTop={12} marginBottom={12}>
+        <Overlay marginStart={12} marginEnd={12} marginTop={12} marginBottom={12}>
             <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={6}>
                 <GtkGLArea
                     name="gl-area"
@@ -680,7 +672,7 @@ const GearsDemo = () => {
                 <AxisSlider axis="Y" value={state.viewRotY} onChange={state.setViewRotY} />
                 <AxisSlider axis="Z" value={state.viewRotZ} onChange={state.setViewRotZ} />
             </GtkBox>
-            <GtkOverlayChild>
+            <Overlay.Child>
                 <GtkLabel
                     label={state.fps > 0 ? `FPS: ${state.fps.toFixed(1)}` : "FPS: ---"}
                     halign={Gtk.Align.START}
@@ -689,8 +681,8 @@ const GearsDemo = () => {
                     marginTop={12}
                     cssClasses={["app-notification"]}
                 />
-            </GtkOverlayChild>
-        </GtkOverlay>
+            </Overlay.Child>
+        </Overlay>
     );
 };
 

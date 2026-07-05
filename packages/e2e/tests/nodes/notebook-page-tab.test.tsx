@@ -12,10 +12,11 @@ function SingleTabPage(props: {
     tabExpand?: boolean;
     tabFill?: boolean;
 }): ReactNode {
-    const { notebookRef, contentRef, ...pageProps } = props;
+    const { notebookRef, contentRef, label, tabLabel, ...pageProps } = props;
+    const resolvedTabLabel = tabLabel ?? (label !== undefined ? <GtkLabel label={label} /> : undefined);
     return (
         <GtkNotebook ref={notebookRef}>
-            <GtkNotebookPage {...pageProps}>
+            <GtkNotebookPage tabLabel={resolvedTabLabel} {...pageProps}>
                 <GtkLabel ref={contentRef} label="Content" />
             </GtkNotebookPage>
         </GtkNotebook>
@@ -45,24 +46,6 @@ describe("render - NotebookPageTab > NotebookPageTabNode (1)", () => {
         expect(notebookRef.current?.getNPages()).toBe(1);
         const tabLabel = notebookRef.current?.getTabLabel(contentRef.current as Gtk.Widget);
         expect(tabLabel && tabRef.current && tabLabel === tabRef.current).toBe(true);
-    });
-
-    it("uses custom tab when both label prop and tabLabel are provided", async () => {
-        const notebookRef = createRef<Gtk.Notebook>();
-        const contentRef = createRef<Gtk.Label>();
-        const tabRef = createRef<Gtk.Label>();
-
-        await render(
-            <GtkNotebook ref={notebookRef}>
-                <GtkNotebookPage label="Ignored Label" tabLabel={<GtkLabel ref={tabRef} label="Custom Tab Wins" />}>
-                    <GtkLabel ref={contentRef} label="Content" />
-                </GtkNotebookPage>
-            </GtkNotebook>,
-        );
-
-        const tabLabel = notebookRef.current?.getTabLabel(contentRef.current as Gtk.Widget);
-        expect(tabLabel && tabRef.current && tabLabel === tabRef.current).toBe(true);
-        expect((tabLabel as Gtk.Label)?.getLabel()).toBe("Custom Tab Wins");
     });
 });
 
@@ -130,7 +113,7 @@ describe("render - NotebookPageTab > NotebookPageTabNode (4)", () => {
 
         await render(
             <GtkNotebook ref={notebookRef}>
-                <GtkNotebookPage label="Text Tab">
+                <GtkNotebookPage tabLabel={<GtkLabel label="Text Tab" />}>
                     <GtkLabel ref={content1Ref} label="Content 1" />
                 </GtkNotebookPage>
                 <GtkNotebookPage

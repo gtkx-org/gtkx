@@ -392,7 +392,7 @@ const SourcePageText = ({
     state: ClipboardState;
     createTextDragProvider: () => Gdk.ContentProvider;
 }) => (
-    <GtkStackPage id="Text">
+    <GtkStackPage name="Text">
         <GtkEntry
             name="source-entry"
             text={state.sourceText}
@@ -411,7 +411,7 @@ const SourcePageColor = ({
     state: ClipboardState;
     createColorDragProvider: () => Gdk.ContentProvider;
 }) => (
-    <GtkStackPage id="Color">
+    <GtkStackPage name="Color">
         <GtkColorDialogButton
             name="color-button"
             rgba={state.sourceColor}
@@ -433,7 +433,7 @@ interface SourcePageImageProps {
 }
 
 const SourcePageImage = ({ state, textures, createImageDragProvider }: SourcePageImageProps) => (
-    <GtkStackPage id="Image">
+    <GtkStackPage name="Image">
         <GtkBox valign={Gtk.Align.CENTER} cssClasses={["linked"]}>
             <ImageToggle
                 name="image_rose"
@@ -498,7 +498,7 @@ interface SourcePageFileProps {
 }
 
 const SourcePageFile = ({ id, label, state, onClick, createFileDragProvider }: SourcePageFileProps) => (
-    <GtkStackPage id={id}>
+    <GtkStackPage name={id}>
         <GtkButton
             valign={Gtk.Align.CENTER}
             accessibleLabel={label}
@@ -525,10 +525,10 @@ interface ClipboardPasteSectionProps {
 
 const renderPasteStackPages = (pastedContent: PastedContent) => (
     <>
-        <GtkStackPage id="Empty">
+        <GtkStackPage name="Empty">
             <GtkLabel label="" />
         </GtkStackPage>
-        <GtkStackPage id="Text">
+        <GtkStackPage name="Text">
             <GtkLabel
                 label={pastedContent.text ?? ""}
                 halign={Gtk.Align.END}
@@ -537,7 +537,7 @@ const renderPasteStackPages = (pastedContent: PastedContent) => (
                 ellipsize={3}
             />
         </GtkStackPage>
-        <GtkStackPage id="Image">
+        <GtkStackPage name="Image">
             {pastedContent.paintable ? (
                 <GtkImage
                     paintable={pastedContent.paintable}
@@ -549,7 +549,7 @@ const renderPasteStackPages = (pastedContent: PastedContent) => (
                 <GtkLabel label="" />
             )}
         </GtkStackPage>
-        <GtkStackPage id="Color">
+        <GtkStackPage name="Color">
             <GtkDrawingArea
                 contentWidth={32}
                 contentHeight={32}
@@ -561,7 +561,7 @@ const renderPasteStackPages = (pastedContent: PastedContent) => (
                 }}
             />
         </GtkStackPage>
-        <GtkStackPage id="File">
+        <GtkStackPage name="File">
             <GtkLabel
                 label={pastedContent.filePath ?? ""}
                 halign={Gtk.Align.END}

@@ -1,14 +1,6 @@
+import { Overlay } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
-import {
-    GtkBox,
-    GtkButton,
-    GtkEntry,
-    GtkGrid,
-    GtkGridChild,
-    GtkLabel,
-    GtkOverlay,
-    GtkOverlayChild,
-} from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton, GtkEntry, GtkGrid, GtkGridLayoutChild, GtkLabel } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./overlay.tsx?raw";
@@ -29,17 +21,17 @@ const OverlayDemo = () => {
         for (let i = 0; i < 5; i++) {
             const num = 5 * j + i;
             buttons.push(
-                <GtkGridChild key={num} column={i} row={j}>
+                <GtkGridLayoutChild key={num} column={i} row={j}>
                     <GtkButton label={String(num)} hexpand vexpand onClicked={() => handleNumber(num)} />
-                </GtkGridChild>,
+                </GtkGridLayoutChild>,
             );
         }
     }
 
     return (
-        <GtkOverlay>
+        <Overlay>
             <GtkGrid name="number-grid">{buttons}</GtkGrid>
-            <GtkOverlayChild>
+            <Overlay.Child>
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
                     halign={Gtk.Align.CENTER}
@@ -56,8 +48,8 @@ const OverlayDemo = () => {
                         marginBottom={8}
                     />
                 </GtkBox>
-            </GtkOverlayChild>
-            <GtkOverlayChild>
+            </Overlay.Child>
+            <Overlay.Child>
                 <GtkEntry
                     text={value}
                     placeholderText="Your Lucky Number"
@@ -67,8 +59,8 @@ const OverlayDemo = () => {
                     marginBottom={8}
                     onChanged={handleEntryChanged}
                 />
-            </GtkOverlayChild>
-        </GtkOverlay>
+            </Overlay.Child>
+        </Overlay>
     );
 };
 

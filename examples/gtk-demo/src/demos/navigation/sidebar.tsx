@@ -27,7 +27,7 @@ const SidebarDemo = () => {
             {stack && <GtkStackSidebar name="sidebar" stack={stack} />}
             <GtkStack ref={setStack} name="stack" transitionType={Gtk.StackTransitionType.SLIDE_UP_DOWN} hexpand>
                 {pages.map((title, index) => (
-                    <GtkStackPage key={title} id={title} title={title}>
+                    <GtkStackPage key={title} name={title} title={title}>
                         {index === 0 ? (
                             <GtkImage
                                 gicon={demoIcon}

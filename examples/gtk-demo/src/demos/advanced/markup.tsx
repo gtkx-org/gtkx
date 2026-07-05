@@ -53,7 +53,7 @@ const MarkupStack = ({ showSource, formattedViewRef, sourceViewRef, onFormattedR
         hexpand
         transitionType={Gtk.StackTransitionType.NONE}
     >
-        <GtkStackPage id="formatted" title="Formatted">
+        <GtkStackPage name="formatted" title="Formatted">
             <GtkScrolledWindow
                 vexpand
                 hexpand
@@ -71,7 +71,7 @@ const MarkupStack = ({ showSource, formattedViewRef, sourceViewRef, onFormattedR
                 />
             </GtkScrolledWindow>
         </GtkStackPage>
-        <GtkStackPage id="source" title="Source">
+        <GtkStackPage name="source" title="Source">
             <GtkScrolledWindow
                 vexpand
                 hexpand

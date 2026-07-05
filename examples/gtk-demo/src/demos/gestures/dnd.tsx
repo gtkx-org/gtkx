@@ -13,7 +13,7 @@ import {
     GtkDropTarget,
     GtkEntry,
     GtkFixed,
-    GtkFixedChild,
+    GtkFixedLayoutChild,
     GtkGestureClick,
     GtkGestureRotate,
     GtkImage,
@@ -29,6 +29,12 @@ import { useContextMenuGesture } from "../../use-context-menu-gesture.js";
 import { useImperativeDragVisibility } from "../../use-imperative-drag-visibility.js";
 import type { Demo } from "../types.js";
 import sourceCode from "./dnd.tsx?raw";
+
+const at = (x: number, y: number, transform?: Gsk.Transform | null): Gsk.Transform | null => {
+    let composed = Gsk.Transform.new().translate(Graphene.Point.create(x, y));
+    if (transform != null && composed !== null) composed = composed.transform(transform);
+    return composed;
+};
 
 const buildRectangle = (x: number, y: number, width: number, height: number): Gdk.Rectangle => {
     const rectangle = new Gdk.Rectangle();
@@ -483,10 +489,8 @@ const DndItem = ({ item, dnd }: { item: CanvasItem; dnd: DndState }) => {
     const halfW = refs.itemHalves.current.get(item.id)?.halfW ?? ITEM_SIZE / 2;
     const halfH = refs.itemHalves.current.get(item.id)?.halfH ?? ITEM_SIZE / 2;
     return (
-        <GtkFixedChild
-            x={item.x}
-            y={item.y}
-            transform={createRotationTransform(halfW, halfH, item.angle + item.angleDelta)}
+        <GtkFixedLayoutChild
+            transform={at(item.x, item.y, createRotationTransform(halfW, halfH, item.angle + item.angleDelta))}
         >
             <GtkLabel
                 ref={(ref) => {
@@ -534,14 +538,14 @@ const DndItem = ({ item, dnd }: { item: CanvasItem; dnd: DndState }) => {
                     </>
                 }
             />
-        </GtkFixedChild>
+        </GtkFixedLayoutChild>
     );
 };
 
 const DndContextMenu = ({ dnd }: { dnd: DndState }) => {
     const { refs, contextMenu, setContextMenu, handlers } = dnd;
     return (
-        <GtkFixedChild x={0} y={0}>
+        <GtkFixedLayoutChild transform={at(0, 0)}>
             <GtkPopover
                 name="context-menu"
                 ref={refs.contextMenuRef}
@@ -568,7 +572,7 @@ const DndContextMenu = ({ dnd }: { dnd: DndState }) => {
                     />
                 </GtkBox>
             </GtkPopover>
-        </GtkFixedChild>
+        </GtkFixedLayoutChild>
     );
 };
 
@@ -576,7 +580,7 @@ const DndItemEditor = ({ dnd, editingItem }: { dnd: DndState; editingItem: Canva
     const { refs, handlers, setEditState } = dnd;
     const halfH = refs.itemHalves.current.get(editingItem.id)?.halfH ?? ITEM_SIZE / 2;
     return (
-        <GtkFixedChild x={editingItem.x} y={editingItem.y + 2 * halfH}>
+        <GtkFixedLayoutChild transform={at(editingItem.x, editingItem.y + 2 * halfH)}>
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkEntry
                     ref={refs.entryRef}
@@ -592,7 +596,7 @@ const DndItemEditor = ({ dnd, editingItem }: { dnd: DndState; editingItem: Canva
                     drawValue={false}
                 />
             </GtkBox>
-        </GtkFixedChild>
+        </GtkFixedLayoutChild>
     );
 };
 
@@ -619,7 +623,7 @@ const DndTrashZone = ({ boxRef, trashHovering, setTrashHovering, handleTrashDrop
     };
 
     return (
-        <GtkFixedChild x={20} y={20}>
+        <GtkFixedLayoutChild transform={at(20, 20)}>
             <GtkBox
                 ref={boxRef}
                 visible={false}
@@ -652,7 +656,7 @@ const DndTrashZone = ({ boxRef, trashHovering, setTrashHovering, handleTrashDrop
             >
                 <GtkImage paintable={svg} pixelSize={64} cssClasses={["error"]} onRealize={attachFrameClockAndPlay} />
             </GtkBox>
-        </GtkFixedChild>
+        </GtkFixedLayoutChild>
     );
 };
 

@@ -12,7 +12,7 @@ describe("render - page adoption > NotebookPage", () => {
 
         await render(
             <GtkNotebook ref={notebookRef}>
-                <GtkNotebookPage ref={pageRef} label="Page">
+                <GtkNotebookPage ref={pageRef} tabLabel={<GtkLabel label="Page" />}>
                     <GtkLabel ref={contentRef} label="Content" />
                 </GtkNotebookPage>
             </GtkNotebook>,
@@ -29,7 +29,7 @@ describe("render - page adoption > NotebookPage", () => {
 
         await render(
             <GtkNotebook ref={notebookRef}>
-                <GtkNotebookPage label="Page" reorderable detachable menuLabel="Menu Entry">
+                <GtkNotebookPage tabLabel={<GtkLabel label="Page" />} reorderable detachable menuLabel="Menu Entry">
                     <GtkLabel ref={contentRef} label="Content" />
                 </GtkNotebookPage>
             </GtkNotebook>,
@@ -48,7 +48,7 @@ describe("render - page adoption > NotebookPage", () => {
         function App({ reorderable }: { reorderable: boolean }) {
             return (
                 <GtkNotebook ref={notebookRef}>
-                    <GtkNotebookPage label="Page" reorderable={reorderable}>
+                    <GtkNotebookPage tabLabel={<GtkLabel label="Page" />} reorderable={reorderable}>
                         <GtkLabel ref={contentRef} label="Content" />
                     </GtkNotebookPage>
                 </GtkNotebook>
@@ -73,7 +73,7 @@ describe("render - page adoption > StackPage", () => {
 
         await render(
             <GtkStack ref={stackRef}>
-                <GtkStackPage ref={pageRef} id="page" title="Title">
+                <GtkStackPage ref={pageRef} name="page" title="Title">
                     <GtkLabel ref={contentRef} label="Content" />
                 </GtkStackPage>
             </GtkStack>,

@@ -257,29 +257,13 @@ const constructOnlyNames = (context: TypegenContext, entry: TypeEntry): string[]
     return names;
 };
 
-const propertyType = (context: TypegenContext, imports: TypeImports, entry: TypeEntry, camelName: string): string => {
-    for (const link of chainOf(context, entry)) {
-        const property = link.klass.properties.find((candidate) => toCamelIdentifier(candidate.name) === camelName);
-        if (property !== undefined) {
-            return renderBaseTypeFor(context.library, syntheticTarget(context.library, imports), property.type);
-        }
-    }
-    return "unknown";
-};
-
 const companionExtraLines = (
     context: TypegenContext,
     imports: TypeImports,
     rule: CompanionRule | LayoutChildRule,
-    companionClass: TypeEntry | undefined,
 ): string[] => {
     const setters = rule.kind === "companion" ? (rule.setters ?? {}) : {};
-    const aliases = rule.kind === "companion" ? (rule.aliases ?? {}) : {};
     const extraLines: string[] = [];
-    for (const [from, to] of Object.entries(aliases)) {
-        const type = companionClass === undefined ? "unknown" : propertyType(context, imports, companionClass, to);
-        extraLines.push(optionalLine(from, type));
-    }
     for (const [prop, method] of Object.entries(setters)) {
         const resolved = findMethod(context, rule.parent, method);
         const param = resolved?.params[1];
@@ -296,8 +280,7 @@ const companionExportOf = (
     if (!context.typeIndex.has(rule.parent)) return undefined;
     const imports: TypeImports = new Map();
     const companionClass = companionClassOf(context, rule);
-    const aliases = rule.kind === "companion" ? (rule.aliases ?? {}) : {};
-    const extraLines = companionExtraLines(context, imports, rule, companionClass);
+    const extraLines = companionExtraLines(context, imports, rule);
     const typeName = `${rule.element}ElementProps`;
     const extras = extraLines.length === 0 ? "" : ` & { ${extraLines.join(" ")} }`;
     let typeSource: string;
@@ -305,7 +288,8 @@ const companionExportOf = (
         typeSource = `export type ${typeName} = { children?: ReactNode }${extras};`;
     } else {
         const baseName = glibNameOf(companionClass.klass) ?? rule.element;
-        const omitted = [...new Set([...constructOnlyNames(context, companionClass), ...Object.values(aliases)])];
+        const setterNames = rule.kind === "companion" ? Object.keys(rule.setters ?? {}) : [];
+        const omitted = [...new Set([...constructOnlyNames(context, companionClass), ...setterNames])];
         const omitUnion = omitted.map((name) => JSON.stringify(name)).join(" | ");
         const base = omitted.length === 0 ? `${baseName}Props` : `Omit<${baseName}Props, ${omitUnion}>`;
         typeSource = `export type ${typeName} = ${base}${extras};`;

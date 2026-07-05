@@ -8,7 +8,7 @@ import { renderChildren } from "../helpers/render-children.js";
 const buildIdStack = (ref: RefObject<Gtk.Stack | null>) => (pages: string[]) => (
     <GtkStack ref={ref}>
         {pages.map((name) => (
-            <GtkStackPage key={name} id={name}>
+            <GtkStackPage key={name} name={name}>
                 <GtkLabel label={name} />
             </GtkStackPage>
         ))}
@@ -30,7 +30,7 @@ describe("render - Stack (1)", () => {
         it("adds named page", async () => {
             await render(
                 <GtkStack>
-                    <GtkStackPage id="page1">
+                    <GtkStackPage name="page1">
                         <GtkLabel label="Page 1" />
                     </GtkStackPage>
                 </GtkStack>,
@@ -44,7 +44,7 @@ describe("render - Stack (1)", () => {
 
             await render(
                 <GtkStack ref={stackRef}>
-                    <GtkStackPage title="Page Title" id="titled">
+                    <GtkStackPage title="Page Title" name="titled">
                         <GtkLabel label="Titled Content" />
                     </GtkStackPage>
                 </GtkStack>,
@@ -77,7 +77,7 @@ describe("render - Stack (2)", () => {
 
             await render(
                 <GtkStack ref={stackRef}>
-                    <GtkStackPage id="props-test" iconName="dialog-information" needsAttention={true}>
+                    <GtkStackPage name="props-test" iconName="dialog-information" needsAttention={true}>
                         <GtkLabel label="With Props" />
                     </GtkStackPage>
                 </GtkStack>,
@@ -125,7 +125,7 @@ describe("render - Stack (3)", () => {
             function App({ iconName }: { iconName: string }) {
                 return (
                     <GtkStack ref={stackRef}>
-                        <GtkStackPage id="dynamic" iconName={iconName}>
+                        <GtkStackPage name="dynamic" iconName={iconName}>
                             <GtkLabel label="Dynamic" />
                         </GtkStackPage>
                     </GtkStack>
@@ -153,10 +153,10 @@ describe("render - Stack (4)", () => {
 
             await render(
                 <GtkStack ref={stackRef} visibleChildName="page2">
-                    <GtkStackPage id="page1">
+                    <GtkStackPage name="page1">
                         <GtkLabel label="Page 1 Content" />
                     </GtkStackPage>
-                    <GtkStackPage id="page2">
+                    <GtkStackPage name="page2">
                         <GtkLabel label="Page 2 Content" />
                     </GtkStackPage>
                 </GtkStack>,
@@ -172,7 +172,7 @@ describe("render - Stack (4)", () => {
                 return (
                     <GtkStack ref={stackRef} visibleChildName="target">
                         {pages.map((name) => (
-                            <GtkStackPage key={name} id={name}>
+                            <GtkStackPage key={name} name={name}>
                                 <GtkLabel label={name} />
                             </GtkStackPage>
                         ))}
@@ -200,10 +200,10 @@ describe("render - Stack (5)", () => {
                 const [page] = useState("page1");
                 return (
                     <GtkStack ref={stackRef} visibleChildName={page}>
-                        <GtkStackPage id="page1">
+                        <GtkStackPage name="page1">
                             <GtkLabel label="First Page" />
                         </GtkStackPage>
-                        <GtkStackPage id="page2">
+                        <GtkStackPage name="page2">
                             <GtkLabel label="Second Page" />
                         </GtkStackPage>
                     </GtkStack>
@@ -220,13 +220,13 @@ describe("render - Stack (5)", () => {
 
             await render(
                 <GtkStack ref={stackRef} visibleChildName="settings">
-                    <GtkStackPage id="home">
+                    <GtkStackPage name="home">
                         <GtkLabel label="Welcome Home" />
                     </GtkStackPage>
-                    <GtkStackPage id="settings">
+                    <GtkStackPage name="settings">
                         <GtkLabel label="Settings Panel" />
                     </GtkStackPage>
-                    <GtkStackPage id="about">
+                    <GtkStackPage name="about">
                         <GtkLabel label="About This App" />
                     </GtkStackPage>
                 </GtkStack>,

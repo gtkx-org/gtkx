@@ -13,11 +13,6 @@ export const BUILT_IN_ANCESTRY_WRAPPERS: AncestryWrapperRule[] = [
     { ancestors: ["GtkWindow", "AdwDialog"], wrapper: "withWindowPresentation" },
 ];
 
-export const COMPANION_WRAPPERS: Record<string, string> = {
-    GtkFixedChild: "withFixedTransform",
-    GtkNotebookPage: "withNotebookTabLabel",
-};
-
 export const TOPLEVEL_TYPES: string[] = ["GtkWindow", "AdwDialog"];
 
 export const DEFAULT_BLOCKABLE_TYPES: string[] = ["GtkTextBuffer"];
@@ -118,7 +113,6 @@ export const RELATIONSHIP_RULES: RelationshipRule[] = [
         parent: "GtkStack",
         add: "addChild",
         remove: "remove",
-        aliases: { id: "name" },
     },
     {
         kind: "companion",
@@ -126,7 +120,6 @@ export const RELATIONSHIP_RULES: RelationshipRule[] = [
         parent: "AdwViewStack",
         add: "add",
         remove: "remove",
-        aliases: { id: "name" },
     },
     {
         kind: "companion",
@@ -138,17 +131,8 @@ export const RELATIONSHIP_RULES: RelationshipRule[] = [
         companion: "getPage",
         setters: { tabLabel: "setTabLabel" },
     },
-    {
-        kind: "companion",
-        element: "GtkOverlayChild",
-        parent: "GtkOverlay",
-        add: "addOverlay",
-        remove: "removeOverlay",
-        setters: { measure: "setMeasureOverlay", clipOverlay: "setClipOverlay" },
-        multi: true,
-    },
-    { kind: "layout-child", element: "GtkGridChild", parent: "GtkWidget", layout: "GtkGridLayout" },
-    { kind: "layout-child", element: "GtkFixedChild", parent: "GtkWidget", layout: "GtkFixedLayout" },
+    { kind: "layout-child", element: "GtkGridLayoutChild", parent: "GtkWidget", layout: "GtkGridLayout" },
+    { kind: "layout-child", element: "GtkFixedLayoutChild", parent: "GtkWidget", layout: "GtkFixedLayout" },
     { kind: "skip", child: "GtkWindow" },
     { kind: "skip", child: "AdwDialog" },
 ];

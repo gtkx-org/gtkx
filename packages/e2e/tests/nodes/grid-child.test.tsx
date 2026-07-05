@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkGrid, GtkGridChild, GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkGrid, GtkGridLayoutChild, GtkLabel } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -11,9 +11,9 @@ describe("render - GridChild > GridChildNode (1)", () => {
 
         await render(
             <GtkGrid ref={gridRef}>
-                <GtkGridChild column={1} row={2}>
+                <GtkGridLayoutChild column={1} row={2}>
                     <GtkLabel ref={labelRef} label="Cell" />
-                </GtkGridChild>
+                </GtkGridLayoutChild>
             </GtkGrid>,
         );
 
@@ -27,9 +27,9 @@ describe("render - GridChild > GridChildNode (1)", () => {
 
         await render(
             <GtkGrid ref={gridRef}>
-                <GtkGridChild>
+                <GtkGridLayoutChild>
                     <GtkLabel ref={labelRef} label="Default" />
-                </GtkGridChild>
+                </GtkGridLayoutChild>
             </GtkGrid>,
         );
 
@@ -45,9 +45,9 @@ describe("render - GridChild > GridChildNode (2)", () => {
 
         await render(
             <GtkGrid ref={gridRef}>
-                <GtkGridChild column={0} row={0} columnSpan={3}>
+                <GtkGridLayoutChild column={0} row={0} columnSpan={3}>
                     <GtkLabel ref={labelRef} label="Wide" />
-                </GtkGridChild>
+                </GtkGridLayoutChild>
             </GtkGrid>,
         );
 
@@ -65,9 +65,9 @@ describe("render - GridChild > GridChildNode (2)", () => {
 
         await render(
             <GtkGrid ref={gridRef}>
-                <GtkGridChild column={0} row={0} rowSpan={2}>
+                <GtkGridLayoutChild column={0} row={0} rowSpan={2}>
                     <GtkLabel ref={labelRef} label="Tall" />
-                </GtkGridChild>
+                </GtkGridLayoutChild>
             </GtkGrid>,
         );
 
@@ -86,9 +86,9 @@ describe("render - GridChild > GridChildNode (3)", () => {
         function App({ col, row }: { col: number; row: number }) {
             return (
                 <GtkGrid ref={gridRef}>
-                    <GtkGridChild column={col} row={row}>
+                    <GtkGridLayoutChild column={col} row={row}>
                         <GtkLabel ref={labelRef} label="Moving" />
-                    </GtkGridChild>
+                    </GtkGridLayoutChild>
                 </GtkGrid>
             );
         }
@@ -109,12 +109,12 @@ describe("render - GridChild > GridChildNode (3)", () => {
 
         await render(
             <GtkGrid ref={gridRef}>
-                <GtkGridChild column={0} row={0}>
+                <GtkGridLayoutChild column={0} row={0}>
                     <GtkLabel ref={label1Ref} label="Top Left" />
-                </GtkGridChild>
-                <GtkGridChild column={1} row={1}>
+                </GtkGridLayoutChild>
+                <GtkGridLayoutChild column={1} row={1}>
                     <GtkLabel ref={label2Ref} label="Bottom Right" />
-                </GtkGridChild>
+                </GtkGridLayoutChild>
             </GtkGrid>,
         );
 
@@ -134,9 +134,9 @@ describe("render - GridChild > GridChildNode (4)", () => {
             return (
                 <GtkGrid ref={gridRef}>
                     {showChild && (
-                        <GtkGridChild column={0} row={0}>
+                        <GtkGridLayoutChild column={0} row={0}>
                             <GtkLabel ref={labelRef} label="Removable" />
-                        </GtkGridChild>
+                        </GtkGridLayoutChild>
                     )}
                 </GtkGrid>
             );

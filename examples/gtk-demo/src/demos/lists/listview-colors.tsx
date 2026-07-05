@@ -1,4 +1,4 @@
-import { DropDown, type GridRenderItemInfo, GridView } from "@gtkx/components";
+import { DropDown, type GridRenderItemInfo, GridView, Overlay } from "@gtkx/components";
 import { css } from "@gtkx/css";
 import { registerClass } from "@gtkx/ffi";
 import type { Context } from "@gtkx/gi/cairo";
@@ -11,11 +11,9 @@ import {
     GtkButton,
     GtkDrawingArea,
     GtkGrid,
-    GtkGridChild,
+    GtkGridLayoutChild,
     GtkHeaderBar,
     GtkLabel,
-    GtkOverlay,
-    GtkOverlayChild,
     GtkProgressBar,
     GtkRevealer,
     GtkScrolledWindow,
@@ -285,10 +283,10 @@ const SelectionInfoPanel = ({
 }) => {
     return (
         <GtkGrid marginStart={10} marginEnd={10} marginTop={10} marginBottom={10} rowSpacing={10} columnSpacing={10}>
-            <GtkGridChild column={0} row={0} columnSpan={5}>
+            <GtkGridLayoutChild column={0} row={0} columnSpan={5}>
                 <GtkLabel label="Selection" hexpand cssClasses={TITLE_CSS} />
-            </GtkGridChild>
-            <GtkGridChild column={0} row={1} columnSpan={5}>
+            </GtkGridLayoutChild>
+            <GtkGridLayoutChild column={0} row={1} columnSpan={5}>
                 <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER} vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
                     <GridView
                         maxColumns={200}
@@ -298,17 +296,17 @@ const SelectionInfoPanel = ({
                         items={selectedColors.map((c) => ({ id: c.id, value: c }))}
                     />
                 </GtkScrolledWindow>
-            </GtkGridChild>
-            <GtkGridChild column={0} row={2}>
+            </GtkGridLayoutChild>
+            <GtkGridLayoutChild column={0} row={2}>
                 <GtkLabel label="Size:" />
-            </GtkGridChild>
-            <GtkGridChild column={1} row={2}>
+            </GtkGridLayoutChild>
+            <GtkGridLayoutChild column={1} row={2}>
                 <GtkLabel label={String(selectedColors.length)} />
-            </GtkGridChild>
-            <GtkGridChild column={2} row={2}>
+            </GtkGridLayoutChild>
+            <GtkGridLayoutChild column={2} row={2}>
                 <GtkLabel label="Average:" />
-            </GtkGridChild>
-            <GtkGridChild column={3} row={2}>
+            </GtkGridLayoutChild>
+            <GtkGridLayoutChild column={3} row={2}>
                 <GtkDrawingArea
                     contentWidth={32}
                     contentHeight={32}
@@ -322,10 +320,10 @@ const SelectionInfoPanel = ({
                         })
                     }
                 />
-            </GtkGridChild>
-            <GtkGridChild column={4} row={2}>
+            </GtkGridLayoutChild>
+            <GtkGridLayoutChild column={4} row={2}>
                 <GtkLabel label="" hexpand />
-            </GtkGridChild>
+            </GtkGridLayoutChild>
         </GtkGrid>
     );
 };
@@ -671,7 +669,7 @@ const ColorsGridOverlay = () => {
     useStoreProgressBar(models.baseStore, state.colorLimit, progressBarRef);
 
     return (
-        <GtkOverlay name="grid-overlay" vexpand hexpand>
+        <Overlay name="grid-overlay" vexpand hexpand>
             <GtkScrolledWindow name="grid-scrolled" vexpand hexpand>
                 <GridView<ColorObject>
                     ref={setGridView}
@@ -685,10 +683,10 @@ const ColorsGridOverlay = () => {
                     renderItem={computed.renderGridItem}
                 />
             </GtkScrolledWindow>
-            <GtkOverlayChild>
+            <Overlay.Child>
                 <GtkProgressBar ref={progressBarRef} visible={false} halign={Gtk.Align.FILL} valign={Gtk.Align.START} />
-            </GtkOverlayChild>
-        </GtkOverlay>
+            </Overlay.Child>
+        </Overlay>
     );
 };
 

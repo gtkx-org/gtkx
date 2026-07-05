@@ -255,12 +255,11 @@ const RESERVED_COMPANION_PROPS = new Set(["children", "ref", "key", "kind", "ele
 
 const companionPropsOf = (rule: CompanionRule | LayoutChildRule, nodeProps: Props): Props => {
     const setters = rule.kind === "companion" ? rule.setters : undefined;
-    const aliases = rule.kind === "companion" ? rule.aliases : undefined;
     const built: Props = {};
     for (const [name, value] of Object.entries(nodeProps)) {
         if (RESERVED_COMPANION_PROPS.has(name)) continue;
         if (setters !== undefined && name in setters) continue;
-        built[aliases?.[name] ?? name] = value;
+        built[name] = value;
     }
     return built;
 };

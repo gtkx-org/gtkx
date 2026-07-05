@@ -12,4 +12,5 @@ export {
 export { type GridRenderItemInfo, GridView, type GridViewProps } from "./grid-view.js";
 export { type ListRenderItemInfo, ListView, type ListViewProps } from "./list-view.js";
 export { Menu, type MenuProps } from "./menu.js";
+export { Overlay, type OverlayChildProps, type OverlayProps } from "./overlay.js";
 export type { ItemNode, MenuEntry, SectionNode } from "./types.js";

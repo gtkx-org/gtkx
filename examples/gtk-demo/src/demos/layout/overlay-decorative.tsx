@@ -1,9 +1,8 @@
+import { Overlay } from "@gtkx/components";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
     GtkAdjustment,
-    GtkOverlay,
-    GtkOverlayChild,
     GtkPicture,
     GtkScale,
     GtkScrolledWindow,
@@ -24,7 +23,7 @@ const OverlayDecorativeDemo = () => {
     const decor2 = Gdk.Texture.newFromResource(decor2Path);
 
     return (
-        <GtkOverlay name="overlay">
+        <Overlay name="overlay">
             <GtkScrolledWindow
                 name="scrolled"
                 hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
@@ -45,7 +44,7 @@ const OverlayDecorativeDemo = () => {
                     }
                 />
             </GtkScrolledWindow>
-            <GtkOverlayChild>
+            <Overlay.Child>
                 <GtkPicture
                     name="picture-start"
                     paintable={decor1}
@@ -53,8 +52,8 @@ const OverlayDecorativeDemo = () => {
                     valign={Gtk.Align.START}
                     canTarget={false}
                 />
-            </GtkOverlayChild>
-            <GtkOverlayChild>
+            </Overlay.Child>
+            <Overlay.Child>
                 <GtkPicture
                     name="picture-end"
                     paintable={decor2}
@@ -62,8 +61,8 @@ const OverlayDecorativeDemo = () => {
                     valign={Gtk.Align.END}
                     canTarget={false}
                 />
-            </GtkOverlayChild>
-            <GtkOverlayChild>
+            </Overlay.Child>
+            <Overlay.Child>
                 <GtkScale
                     name="margin-scale"
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -80,8 +79,8 @@ const OverlayDecorativeDemo = () => {
                     }
                     onValueChanged={(scale) => setMargin(scale.getValue())}
                 />
-            </GtkOverlayChild>
-        </GtkOverlay>
+            </Overlay.Child>
+        </Overlay>
     );
 };
 

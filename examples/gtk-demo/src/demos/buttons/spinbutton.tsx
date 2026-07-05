@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkAdjustment, GtkGrid, GtkGridChild, GtkLabel, GtkSpinButton } from "@gtkx/jsx/gtk";
+import { GtkAdjustment, GtkGrid, GtkGridLayoutChild, GtkLabel, GtkSpinButton } from "@gtkx/jsx/gtk";
 import { useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./spinbutton.tsx?raw";
@@ -94,10 +94,10 @@ interface SpinRowConfig extends SpinRowProps {
 
 const SpinRow = ({ row, label, spinName, value, setValue, spinRef, adjustment, spin }: SpinRowConfig) => (
     <>
-        <GtkGridChild column={0} row={row}>
+        <GtkGridLayoutChild column={0} row={row}>
             <GtkLabel label={label} useUnderline xalign={1} mnemonicWidget={spinRef.current} />
-        </GtkGridChild>
-        <GtkGridChild column={1} row={row}>
+        </GtkGridLayoutChild>
+        <GtkGridLayoutChild column={1} row={row}>
             <GtkSpinButton
                 ref={spinRef}
                 name={spinName}
@@ -106,10 +106,10 @@ const SpinRow = ({ row, label, spinName, value, setValue, spinRef, adjustment, s
                 onValueChanged={(widget) => setValue(widget.getValue())}
                 {...spin}
             />
-        </GtkGridChild>
-        <GtkGridChild column={2} row={row}>
+        </GtkGridLayoutChild>
+        <GtkGridLayoutChild column={2} row={row}>
             <GtkLabel label={String(value)} widthChars={10} xalign={1} />
-        </GtkGridChild>
+        </GtkGridLayoutChild>
     </>
 );
 

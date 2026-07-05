@@ -15,7 +15,7 @@ import {
     GtkFontDialogButton,
     GtkGestureClick,
     GtkGrid,
-    GtkGridChild,
+    GtkGridLayoutChild,
     GtkHeaderBar,
     GtkLabel,
     GtkScale,
@@ -724,31 +724,31 @@ const FontFeaturesColorRows = ({ state, handlers }: { state: FontFeaturesState; 
     const { fgColor, setFgColor, bgColor, setBgColor } = state;
     return (
         <>
-            <GtkGridChild column={0} row={3}>
+            <GtkGridLayoutChild column={0} row={3}>
                 <GtkLabel label="Foreground" xalign={0} valign={Gtk.Align.BASELINE} />
-            </GtkGridChild>
-            <GtkGridChild column={1} row={3}>
+            </GtkGridLayoutChild>
+            <GtkGridLayoutChild column={1} row={3}>
                 <GtkColorDialogButton
                     rgba={fgColor}
                     dialog={<GtkColorDialog />}
                     onNotifyRgba={(value) => value && setFgColor(value)}
                     valign={Gtk.Align.BASELINE}
                 />
-            </GtkGridChild>
+            </GtkGridLayoutChild>
 
-            <GtkGridChild column={0} row={4}>
+            <GtkGridLayoutChild column={0} row={4}>
                 <GtkLabel label="Background" xalign={0} valign={Gtk.Align.BASELINE} />
-            </GtkGridChild>
-            <GtkGridChild column={1} row={4}>
+            </GtkGridLayoutChild>
+            <GtkGridLayoutChild column={1} row={4}>
                 <GtkColorDialogButton
                     rgba={bgColor}
                     dialog={<GtkColorDialog />}
                     onNotifyRgba={(value) => value && setBgColor(value)}
                     valign={Gtk.Align.BASELINE}
                 />
-            </GtkGridChild>
+            </GtkGridLayoutChild>
 
-            <GtkGridChild column={2} row={3} rowSpan={2}>
+            <GtkGridLayoutChild column={2} row={3} rowSpan={2}>
                 <GtkButton
                     name="swap-colors"
                     iconName="object-flip-vertical-symbolic"
@@ -758,7 +758,7 @@ const FontFeaturesColorRows = ({ state, handlers }: { state: FontFeaturesState; 
                     tooltipText="Swap colors"
                     onClicked={handlers.swapColors}
                 />
-            </GtkGridChild>
+            </GtkGridLayoutChild>
         </>
     );
 };
@@ -794,10 +794,10 @@ const SliderEntryRow = ({
 }: SliderEntryRowProps) => {
     return (
         <>
-            <GtkGridChild column={0} row={row}>
+            <GtkGridLayoutChild column={0} row={row}>
                 <GtkLabel label={label} xalign={0} valign={Gtk.Align.BASELINE} />
-            </GtkGridChild>
-            <GtkGridChild column={1} row={row}>
+            </GtkGridLayoutChild>
+            <GtkGridLayoutChild column={1} row={row}>
                 <GtkScale
                     hexpand
                     widthRequest={100}
@@ -814,8 +814,8 @@ const SliderEntryRow = ({
                     onValueChanged={(scale) => onValueChanged(scale.getValue())}
                     sensitive={sensitive}
                 />
-            </GtkGridChild>
-            <GtkGridChild column={2} row={row}>
+            </GtkGridLayoutChild>
+            <GtkGridLayoutChild column={2} row={row}>
                 <GtkEntry
                     name={entryName}
                     widthChars={4}
@@ -825,7 +825,7 @@ const SliderEntryRow = ({
                     onActivate={onEntryActivate}
                     sensitive={sensitive}
                 />
-            </GtkGridChild>
+            </GtkGridLayoutChild>
         </>
     );
 };
@@ -1098,10 +1098,10 @@ const FontFeaturesPreview = ({ state, styles, handlers, stackPage, previewAttrib
             cssClasses={[styles.bgStyle]}
         >
             <GtkStack name="stack" visibleChildName={stackPage}>
-                <GtkStackPage id="label">
+                <GtkStackPage name="label">
                     <FontFeaturesPreviewLabel state={state} styles={styles} attributes={previewAttributes} />
                 </GtkStackPage>
-                <GtkStackPage id="entry">
+                <GtkStackPage name="entry">
                     <GtkTextView
                         ref={state.editTextViewRef}
                         cssClasses={[styles.editStyle]}

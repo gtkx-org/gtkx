@@ -96,7 +96,7 @@ describe("assembled relationship table", () => {
             companion: "getPage",
             setters: { tabLabel: "setTabLabel" },
         });
-        expect(elementRuleFor("GtkGridChild")).toMatchObject({ kind: "layout-child", layout: "GtkGridLayout" });
+        expect(elementRuleFor("GtkGridLayoutChild")).toMatchObject({ kind: "layout-child", layout: "GtkGridLayout" });
     });
 
     it("keeps skip rules for toplevels", () => {

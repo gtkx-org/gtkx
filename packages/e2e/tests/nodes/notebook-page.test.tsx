@@ -12,7 +12,7 @@ describe("render - NotebookPage > NotebookPageNode (1)", () => {
 
         await render(
             <GtkNotebook ref={notebookRef}>
-                <GtkNotebookPage label="Page 1">
+                <GtkNotebookPage tabLabel={<GtkLabel label="Page 1" />}>
                     <GtkLabel label="Content 1" />
                 </GtkNotebookPage>
             </GtkNotebook>,
@@ -27,7 +27,7 @@ describe("render - NotebookPage > NotebookPageNode (1)", () => {
 
         await render(
             <GtkNotebook ref={notebookRef}>
-                <GtkNotebookPage label="My Tab">
+                <GtkNotebookPage tabLabel={<GtkLabel label="My Tab" />}>
                     <GtkLabel ref={contentRef} label="Content" />
                 </GtkNotebookPage>
             </GtkNotebook>,
@@ -46,7 +46,7 @@ describe("render - NotebookPage > NotebookPageNode (2)", () => {
         function App({ labelText }: { labelText: string }) {
             return (
                 <GtkNotebook ref={notebookRef}>
-                    <GtkNotebookPage label={labelText}>
+                    <GtkNotebookPage tabLabel={<GtkLabel label={labelText} />}>
                         <GtkLabel ref={contentRef} label="Content" />
                     </GtkNotebookPage>
                 </GtkNotebook>
@@ -67,13 +67,13 @@ describe("render - NotebookPage > NotebookPageNode (2)", () => {
 
         await render(
             <GtkNotebook ref={notebookRef}>
-                <GtkNotebookPage label="Page 1">
+                <GtkNotebookPage tabLabel={<GtkLabel label="Page 1" />}>
                     <GtkLabel label="Content 1" />
                 </GtkNotebookPage>
-                <GtkNotebookPage label="Page 2">
+                <GtkNotebookPage tabLabel={<GtkLabel label="Page 2" />}>
                     <GtkLabel label="Content 2" />
                 </GtkNotebookPage>
-                <GtkNotebookPage label="Page 3">
+                <GtkNotebookPage tabLabel={<GtkLabel label="Page 3" />}>
                     <GtkLabel label="Content 3" />
                 </GtkNotebookPage>
             </GtkNotebook>,

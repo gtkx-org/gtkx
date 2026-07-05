@@ -14,13 +14,13 @@ const StackDemo = () => {
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
             <GtkStackSwitcher halign={Gtk.Align.CENTER} stack={stack} />
             <GtkStack ref={setStack} name="stack" transitionType={Gtk.StackTransitionType.CROSSFADE}>
-                <GtkStackPage id="page1" title="Page 1">
+                <GtkStackPage name="page1" title="Page 1">
                     <GtkImage gicon={demoIcon} pixelSize={100} marginTop={20} marginBottom={20} />
                 </GtkStackPage>
-                <GtkStackPage id="page2" title="Page 2">
+                <GtkStackPage name="page2" title="Page 2">
                     <GtkCheckButton label="Page 2" halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} />
                 </GtkStackPage>
-                <GtkStackPage id="page3" iconName="face-laugh-symbolic">
+                <GtkStackPage name="page3" iconName="face-laugh-symbolic">
                     <GtkSpinner spinning halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} />
                 </GtkStackPage>
             </GtkStack>

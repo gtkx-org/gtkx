@@ -1,7 +1,6 @@
 import "./utils/element-props.js";
 
 export { withApplicationLifecycle, withApplicationWindowPresentation } from "./components/application.js";
-export { withFixedTransform, withNotebookTabLabel } from "./components/companion-props.js";
 export { type ToplevelParentProps, withWindowPresentation } from "./components/top-level.js";
 export { useApplication } from "./hooks/use-application.js";
 export { useMergeRefs } from "./hooks/use-merge-refs.js";

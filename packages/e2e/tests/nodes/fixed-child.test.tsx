@@ -1,8 +1,16 @@
+import * as Graphene from "@gtkx/gi/graphene";
+import * as Gsk from "@gtkx/gi/gsk";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkFixed, GtkFixedChild, GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkFixed, GtkFixedLayoutChild, GtkLabel } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
+
+const at = (x: number, y: number, transform?: Gsk.Transform | null): Gsk.Transform | null => {
+    let composed = Gsk.Transform.new().translate(Graphene.Point.create(x, y));
+    if (transform != null && composed !== null) composed = composed.transform(transform);
+    return composed;
+};
 
 function getChildPosition(fixed: Gtk.Fixed | null, child: Gtk.Widget | null): { x: number; y: number } {
     if (!fixed || !child) throw new Error("Refs should be set after render");
@@ -21,9 +29,9 @@ describe("render - FixedChild > FixedChildNode (1)", () => {
 
         await render(
             <GtkFixed ref={fixedRef}>
-                <GtkFixedChild x={100} y={50}>
+                <GtkFixedLayoutChild transform={at(100, 50)}>
                     <GtkLabel ref={labelRef} label="Positioned" />
-                </GtkFixedChild>
+                </GtkFixedLayoutChild>
             </GtkFixed>,
         );
 
@@ -39,9 +47,9 @@ describe("render - FixedChild > FixedChildNode (1)", () => {
 
         await render(
             <GtkFixed ref={fixedRef}>
-                <GtkFixedChild>
+                <GtkFixedLayoutChild>
                     <GtkLabel ref={labelRef} label="Default" />
-                </GtkFixedChild>
+                </GtkFixedLayoutChild>
             </GtkFixed>,
         );
 
@@ -60,9 +68,9 @@ describe("render - FixedChild > FixedChildNode (2)", () => {
         function App({ posX, posY }: { posX: number; posY: number }) {
             return (
                 <GtkFixed ref={fixedRef}>
-                    <GtkFixedChild x={posX} y={posY}>
+                    <GtkFixedLayoutChild transform={at(posX, posY)}>
                         <GtkLabel ref={labelRef} label="Moving" />
-                    </GtkFixedChild>
+                    </GtkFixedLayoutChild>
                 </GtkFixed>
             );
         }
@@ -89,12 +97,12 @@ describe("render - FixedChild > FixedChildNode (3)", () => {
 
         await render(
             <GtkFixed ref={fixedRef}>
-                <GtkFixedChild x={10} y={20}>
+                <GtkFixedLayoutChild transform={at(10, 20)}>
                     <GtkLabel ref={label1Ref} label="First" />
-                </GtkFixedChild>
-                <GtkFixedChild x={100} y={80}>
+                </GtkFixedLayoutChild>
+                <GtkFixedLayoutChild transform={at(100, 80)}>
                     <GtkLabel ref={label2Ref} label="Second" />
-                </GtkFixedChild>
+                </GtkFixedLayoutChild>
             </GtkFixed>,
         );
 
@@ -121,9 +129,9 @@ describe("render - FixedChild > FixedChildNode (4)", () => {
             return (
                 <GtkFixed ref={fixedRef}>
                     {showChild && (
-                        <GtkFixedChild x={0} y={0}>
+                        <GtkFixedLayoutChild transform={at(0, 0)}>
                             <GtkLabel ref={labelRef} label="Removable" />
-                        </GtkFixedChild>
+                        </GtkFixedLayoutChild>
                     )}
                 </GtkFixed>
             );

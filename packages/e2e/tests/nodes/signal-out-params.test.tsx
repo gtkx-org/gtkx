@@ -1,8 +1,9 @@
+import { Overlay } from "@gtkx/components";
 import * as Gdk from "@gtkx/gi/gdk";
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as GtkSource from "@gtkx/gi/gtksource";
-import { GtkBox, GtkLabel, GtkOverlay, GtkOverlayChild, GtkSpinButton, GtkText } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkLabel, GtkSpinButton, GtkText } from "@gtkx/jsx/gtk";
 import { GtkSourceView } from "@gtkx/jsx/gtksource";
 import { act, render, waitFor } from "@gtkx/testing";
 import { type ComponentProps, createRef } from "react";
@@ -120,12 +121,12 @@ describe("signal out-parameters - GtkOverlay::get-child-position (caller-allocat
         const overlayRef = createRef<Gtk.Overlay>();
 
         await render(
-            <GtkOverlay ref={overlayRef} widthRequest={200} heightRequest={200}>
+            <Overlay ref={overlayRef} widthRequest={200} heightRequest={200}>
                 <GtkLabel label="Main Content" />
-                <GtkOverlayChild>
+                <Overlay.Child>
                     <GtkBox widthRequest={40} heightRequest={20} />
-                </GtkOverlayChild>
-            </GtkOverlay>,
+                </Overlay.Child>
+            </Overlay>,
         );
 
         const overlay = overlayRef.current as Gtk.Overlay;
@@ -166,12 +167,12 @@ describe("signal emit() - caller-allocated out-parameter", () => {
         const overlayRef = createRef<Gtk.Overlay>();
 
         await render(
-            <GtkOverlay ref={overlayRef} widthRequest={200} heightRequest={200}>
+            <Overlay ref={overlayRef} widthRequest={200} heightRequest={200}>
                 <GtkLabel label="Main" />
-                <GtkOverlayChild>
+                <Overlay.Child>
                     <GtkBox widthRequest={40} heightRequest={20} />
-                </GtkOverlayChild>
-            </GtkOverlay>,
+                </Overlay.Child>
+            </Overlay>,
         );
 
         const overlay = overlayRef.current as Gtk.Overlay;

@@ -128,7 +128,6 @@ const companionSchema = z.strictObject({
     remove: callSchema.optional(),
     companion: callSchema.optional(),
     setters: settersSchema.optional(),
-    aliases: settersSchema.optional(),
     multi: z.boolean({ error: "must be a boolean" }).optional(),
 });
 
