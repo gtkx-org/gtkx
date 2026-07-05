@@ -131,13 +131,6 @@ const companionSchema = z.strictObject({
     multi: z.boolean({ error: "must be a boolean" }).optional(),
 });
 
-const layoutChildSchema = z.strictObject({
-    kind: z.literal("layout-child"),
-    element: nameSchema,
-    parent: nameSchema,
-    layout: nameSchema,
-});
-
 const rejectSchema = z.strictObject({
     kind: z.literal("reject"),
     parent: nameSchema,
@@ -151,8 +144,8 @@ const skipSchema = z.strictObject({
 });
 
 const relationshipSchema = z
-    .discriminatedUnion("kind", [attachSchema, companionSchema, layoutChildSchema, rejectSchema, skipSchema], {
-        error: "must be one of attach, companion, layout-child, reject, skip",
+    .discriminatedUnion("kind", [attachSchema, companionSchema, rejectSchema, skipSchema], {
+        error: "must be one of attach, companion, reject, skip",
     })
     .check((ctx) => {
         const rule = ctx.value;
@@ -164,8 +157,6 @@ const relationshipSchema = z
 export type AttachRule = z.infer<typeof attachSchema>;
 
 export type CompanionRule = z.infer<typeof companionSchema>;
-
-export type LayoutChildRule = z.infer<typeof layoutChildSchema>;
 
 export type RejectRule = z.infer<typeof rejectSchema>;
 

@@ -120,7 +120,6 @@ describe("validateGtkxConfig rules validation", () => {
                     remove: { method: "insertActionGroup", args: [{ prop: "prefix" }, { literal: null }] },
                 },
                 { kind: "companion", element: "GtkStackPage", parent: "GtkStack", add: "addChild" },
-                { kind: "layout-child", element: "GtkGridLayoutChild", parent: "GtkWidget", layout: "GtkGridLayout" },
                 {
                     kind: "companion",
                     element: "GtkNotebookPage",
@@ -186,7 +185,7 @@ describe("validateGtkxConfig rules validation", () => {
 
     it("rejects an unknown rule kind", () => {
         expect(() => validateUnknown({ rules: { relationships: [{ kind: "wrap" }] } })).toThrow(
-            /`rules\.relationships\[0\]\.kind` must be one of attach, companion, layout-child, reject, skip/,
+            /`rules\.relationships\[0\]\.kind` must be one of attach, companion, reject, skip/,
         );
     });
 

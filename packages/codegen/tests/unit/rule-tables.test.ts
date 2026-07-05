@@ -25,8 +25,6 @@ const relationshipTypeNames = (rule: RelationshipRule): string[] => {
             return rule.autowrap === undefined ? [rule.parent, rule.child] : [rule.parent, rule.child, rule.autowrap];
         case "companion":
             return [rule.parent];
-        case "layout-child":
-            return [rule.parent, rule.layout];
         case "reject":
             return [rule.parent, rule.child];
         case "skip":
@@ -40,9 +38,7 @@ const attachRuleFor = (parent: string, slot?: string) =>
     );
 
 const elementRuleFor = (element: string) =>
-    tables.relationships.find(
-        (rule) => (rule.kind === "companion" || rule.kind === "layout-child") && rule.element === element,
-    );
+    tables.relationships.find((rule) => rule.kind === "companion" && rule.element === element);
 
 describe("curated rule tables", () => {
     it("pass schema validation", () => {
@@ -89,14 +85,13 @@ describe("assembled relationship table", () => {
         });
     });
 
-    it("keeps companion and layout-child element rules", () => {
+    it("keeps companion element rules", () => {
         expect(elementRuleFor("GtkStackPage")).toMatchObject({ kind: "companion", add: "addChild" });
         expect(elementRuleFor("GtkNotebookPage")).toMatchObject({
             kind: "companion",
             companion: "getPage",
             setters: { tabLabel: "setTabLabel" },
         });
-        expect(elementRuleFor("GtkGridLayoutChild")).toMatchObject({ kind: "layout-child", layout: "GtkGridLayout" });
     });
 
     it("keeps skip rules for toplevels", () => {

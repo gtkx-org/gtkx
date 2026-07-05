@@ -1,4 +1,4 @@
-import type { Call, CompanionRule, LayoutChildRule, SyntheticPropRule } from "@gtkx/config";
+import type { Call, CompanionRule, SyntheticPropRule } from "@gtkx/config";
 import { toCamelIdentifier } from "@gtkx/utils";
 import { renderBaseTypeFor, type TsTypeTarget } from "../../analysis/ts-type.js";
 import { ancestorChain } from "../../gir/ancestry.js";
@@ -242,10 +242,8 @@ const directTypeNames = (context: TypegenContext, klass: GirClass, namespace: Gi
     return names;
 };
 
-const companionClassOf = (context: TypegenContext, rule: CompanionRule | LayoutChildRule): TypeEntry | undefined => {
-    if (rule.kind === "layout-child") return context.typeIndex.get(`${rule.layout}Child`);
-    return context.typeIndex.get(rule.element);
-};
+const companionClassOf = (context: TypegenContext, rule: CompanionRule): TypeEntry | undefined =>
+    context.typeIndex.get(rule.element);
 
 const constructOnlyNames = (context: TypegenContext, entry: TypeEntry): string[] => {
     const names: string[] = [];
@@ -257,12 +255,8 @@ const constructOnlyNames = (context: TypegenContext, entry: TypeEntry): string[]
     return names;
 };
 
-const companionExtraLines = (
-    context: TypegenContext,
-    imports: TypeImports,
-    rule: CompanionRule | LayoutChildRule,
-): string[] => {
-    const setters = rule.kind === "companion" ? (rule.setters ?? {}) : {};
+const companionExtraLines = (context: TypegenContext, imports: TypeImports, rule: CompanionRule): string[] => {
+    const setters = rule.setters ?? {};
     const extraLines: string[] = [];
     for (const [prop, method] of Object.entries(setters)) {
         const resolved = findMethod(context, rule.parent, method);
@@ -273,10 +267,7 @@ const companionExtraLines = (
     return extraLines;
 };
 
-const companionExportOf = (
-    context: TypegenContext,
-    rule: CompanionRule | LayoutChildRule,
-): CompanionExportSpec | undefined => {
+const companionExportOf = (context: TypegenContext, rule: CompanionRule): CompanionExportSpec | undefined => {
     if (!context.typeIndex.has(rule.parent)) return undefined;
     const imports: TypeImports = new Map();
     const companionClass = companionClassOf(context, rule);
@@ -288,7 +279,7 @@ const companionExportOf = (
         typeSource = `export type ${typeName} = { children?: ReactNode }${extras};`;
     } else {
         const baseName = glibNameOf(companionClass.klass) ?? rule.element;
-        const setterNames = rule.kind === "companion" ? Object.keys(rule.setters ?? {}) : [];
+        const setterNames = Object.keys(rule.setters ?? {});
         const omitted = [...new Set([...constructOnlyNames(context, companionClass), ...setterNames])];
         const omitUnion = omitted.map((name) => JSON.stringify(name)).join(" | ");
         const base = omitted.length === 0 ? `${baseName}Props` : `Omit<${baseName}Props, ${omitUnion}>`;
@@ -300,7 +291,7 @@ const companionExportOf = (
 const collectCompanionSpecs = (context: TypegenContext, tables: RuleTables): Map<string, CompanionExportSpec[]> => {
     const companionSpecs = new Map<string, CompanionExportSpec[]>();
     for (const rule of tables.relationships) {
-        if (rule.kind !== "companion" && rule.kind !== "layout-child") continue;
+        if (rule.kind !== "companion") continue;
         const parent = context.typeIndex.get(rule.parent);
         if (parent === undefined) continue;
         const spec = companionExportOf(context, rule);

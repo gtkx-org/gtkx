@@ -41,7 +41,6 @@ export {
     type GtkxRules,
     type JsonValue,
     type KeyedListRule,
-    type LayoutChildRule,
     type ListRule,
     type ReassertRule,
     type RejectRule,

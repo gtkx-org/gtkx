@@ -1,16 +1,7 @@
 /// <reference types="@gtkx/config/env" />
 
 import { RELATIONSHIPS, SYNTHETIC_PROPS } from "virtual:gtkx-config";
-import type {
-    Arg,
-    ArgRef,
-    AttachRule,
-    Call,
-    CompanionRule,
-    LayoutChildRule,
-    RejectRule,
-    SyntheticPropRule,
-} from "@gtkx/config";
+import type { Arg, ArgRef, AttachRule, Call, CompanionRule, RejectRule, SyntheticPropRule } from "@gtkx/config";
 import { typeFromName } from "@gtkx/gi/gobject";
 import { callMethod } from "@gtkx/utils";
 import { collectTypeNamesWithInterfaces, foldInheritedTableWithInterfaces } from "../utils/gtype.js";
@@ -92,7 +83,7 @@ export const writeTarget = (instance: object, name: string, value: unknown): voi
 
 const attachIndex = new Map<string, AttachRule>();
 const rejectIndex = new Map<string, RejectRule>();
-const elementIndex = new Map<string, CompanionRule | LayoutChildRule>();
+const elementIndex = new Map<string, CompanionRule>();
 const skippedTypes = new Set<string>();
 const slotsByParent: Record<string, string[]> = {};
 
@@ -111,7 +102,6 @@ for (const rule of RELATIONSHIPS) {
             rejectIndex.set(`${rule.parent}:${rule.child}`, rule);
             break;
         case "companion":
-        case "layout-child":
             elementIndex.set(rule.element, rule);
             break;
         case "skip":
@@ -159,8 +149,7 @@ export const resolveAttachRule = (
     return resolved;
 };
 
-export const elementRuleFor = (element: string): CompanionRule | LayoutChildRule | undefined =>
-    elementIndex.get(element);
+export const elementRuleFor = (element: string): CompanionRule | undefined => elementIndex.get(element);
 
 const slotPropsCache = new Map<string, Set<string>>();
 

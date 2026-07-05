@@ -1,3 +1,4 @@
+import { Grid } from "@gtkx/components";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
@@ -10,8 +11,6 @@ import {
     GtkDropTarget,
     GtkFontDialog,
     GtkFontDialogButton,
-    GtkGrid,
-    GtkGridLayoutChild,
     GtkLabel,
 } from "@gtkx/jsx/gtk";
 import { useState } from "react";
@@ -140,19 +139,31 @@ interface ColorRowProps {
 
 const ColorPickerRow = ({ colorWidget, setColorWidget }: ColorRowProps) => (
     <>
-        <GtkGridLayoutChild column={0} row={0}>
-            <GtkLabel
-                label="_Color:"
-                useUnderline
-                halign={Gtk.Align.START}
-                valign={Gtk.Align.CENTER}
-                hexpand
-                mnemonicWidget={colorWidget}
-            />
-        </GtkGridLayoutChild>
-        <GtkGridLayoutChild column={1} row={0}>
-            <GtkColorDialogButton name="color-button" ref={setColorWidget} dialog={<GtkColorDialog />} />
-        </GtkGridLayoutChild>
+        <Grid.Child column={0} row={0}>
+            {(ref) => (
+                <GtkLabel
+                    ref={ref}
+                    label="_Color:"
+                    useUnderline
+                    halign={Gtk.Align.START}
+                    valign={Gtk.Align.CENTER}
+                    hexpand
+                    mnemonicWidget={colorWidget}
+                />
+            )}
+        </Grid.Child>
+        <Grid.Child column={1} row={0}>
+            {(ref) => (
+                <GtkColorDialogButton
+                    name="color-button"
+                    ref={(node) => {
+                        ref(node);
+                        setColorWidget(node);
+                    }}
+                    dialog={<GtkColorDialog />}
+                />
+            )}
+        </Grid.Child>
     </>
 );
 
@@ -163,19 +174,31 @@ interface FontRowProps {
 
 const FontPickerRow = ({ fontWidget, setFontWidget }: FontRowProps) => (
     <>
-        <GtkGridLayoutChild column={0} row={1}>
-            <GtkLabel
-                label="_Font:"
-                useUnderline
-                halign={Gtk.Align.START}
-                valign={Gtk.Align.CENTER}
-                hexpand
-                mnemonicWidget={fontWidget}
-            />
-        </GtkGridLayoutChild>
-        <GtkGridLayoutChild column={1} row={1}>
-            <GtkFontDialogButton name="font-button" ref={setFontWidget} dialog={<GtkFontDialog />} />
-        </GtkGridLayoutChild>
+        <Grid.Child column={0} row={1}>
+            {(ref) => (
+                <GtkLabel
+                    ref={ref}
+                    label="_Font:"
+                    useUnderline
+                    halign={Gtk.Align.START}
+                    valign={Gtk.Align.CENTER}
+                    hexpand
+                    mnemonicWidget={fontWidget}
+                />
+            )}
+        </Grid.Child>
+        <Grid.Child column={1} row={1}>
+            {(ref) => (
+                <GtkFontDialogButton
+                    name="font-button"
+                    ref={(node) => {
+                        ref(node);
+                        setFontWidget(node);
+                    }}
+                    dialog={<GtkFontDialog />}
+                />
+            )}
+        </Grid.Child>
     </>
 );
 
@@ -188,62 +211,67 @@ interface FilePickerRowProps {
 
 const FilePickerRow = ({ fileState, handlers, fileButtonWidget, setFileButtonWidget }: FilePickerRowProps) => (
     <>
-        <GtkGridLayoutChild column={0} row={2}>
-            <GtkLabel
-                label="_File:"
-                useUnderline
-                halign={Gtk.Align.START}
-                valign={Gtk.Align.CENTER}
-                hexpand
-                mnemonicWidget={fileButtonWidget}
-            />
-        </GtkGridLayoutChild>
-        <GtkGridLayoutChild column={1} row={2}>
-            <GtkBox spacing={6}>
-                <GtkLabel label={fileState.fileName} xalign={0} ellipsize={2} hexpand />
-                <GtkButton
-                    name="select-file-button"
-                    ref={setFileButtonWidget}
-                    iconName="document-open-symbolic"
-                    accessibleLabel="Select File"
-                    accessibleHasPopup
-                    onClicked={() => void handlers.handleOpenFile()}
-                    controllers={
-                        <GtkDropTarget
-                            types={[gfileType]}
-                            actions={Gdk.DragAction.COPY}
-                            onDrop={handlers.handleFileDrop}
-                        />
-                    }
+        <Grid.Child column={0} row={2}>
+            {(ref) => (
+                <GtkLabel
+                    ref={ref}
+                    label="_File:"
+                    useUnderline
+                    halign={Gtk.Align.START}
+                    valign={Gtk.Align.CENTER}
+                    hexpand
+                    mnemonicWidget={fileButtonWidget}
                 />
-                <GtkButton
-                    name="open-file-button"
-                    iconName="system-run-symbolic"
-                    accessibleLabel="Open File"
-                    accessibleHasPopup
-                    halign={Gtk.Align.END}
-                    sensitive={fileState.selectedFile !== null}
-                    onClicked={() => void handlers.handleLaunchApp()}
-                />
-                <GtkButton
-                    name="open-folder-button"
-                    iconName="folder-symbolic"
-                    accessibleLabel="Open in Folder"
-                    accessibleHasPopup
-                    halign={Gtk.Align.END}
-                    sensitive={fileState.selectedFile !== null}
-                    onClicked={() => void handlers.handleOpenFolder()}
-                />
-                <GtkButton
-                    name="print-button"
-                    iconName="printer-symbolic"
-                    accessibleLabel="Print File"
-                    tooltipText="Print File"
-                    sensitive={fileState.isPdf}
-                    onClicked={() => void handlers.handlePrintFile()}
-                />
-            </GtkBox>
-        </GtkGridLayoutChild>
+            )}
+        </Grid.Child>
+        <Grid.Child column={1} row={2}>
+            {(ref) => (
+                <GtkBox ref={ref} spacing={6}>
+                    <GtkLabel label={fileState.fileName} xalign={0} ellipsize={2} hexpand />
+                    <GtkButton
+                        name="select-file-button"
+                        ref={setFileButtonWidget}
+                        iconName="document-open-symbolic"
+                        accessibleLabel="Select File"
+                        accessibleHasPopup
+                        onClicked={() => void handlers.handleOpenFile()}
+                        controllers={
+                            <GtkDropTarget
+                                types={[gfileType]}
+                                actions={Gdk.DragAction.COPY}
+                                onDrop={handlers.handleFileDrop}
+                            />
+                        }
+                    />
+                    <GtkButton
+                        name="open-file-button"
+                        iconName="system-run-symbolic"
+                        accessibleLabel="Open File"
+                        accessibleHasPopup
+                        halign={Gtk.Align.END}
+                        sensitive={fileState.selectedFile !== null}
+                        onClicked={() => void handlers.handleLaunchApp()}
+                    />
+                    <GtkButton
+                        name="open-folder-button"
+                        iconName="folder-symbolic"
+                        accessibleLabel="Open in Folder"
+                        accessibleHasPopup
+                        halign={Gtk.Align.END}
+                        sensitive={fileState.selectedFile !== null}
+                        onClicked={() => void handlers.handleOpenFolder()}
+                    />
+                    <GtkButton
+                        name="print-button"
+                        iconName="printer-symbolic"
+                        accessibleLabel="Print File"
+                        tooltipText="Print File"
+                        sensitive={fileState.isPdf}
+                        onClicked={() => void handlers.handlePrintFile()}
+                    />
+                </GtkBox>
+            )}
+        </Grid.Child>
     </>
 );
 
@@ -255,25 +283,33 @@ interface UriRowProps {
 
 const UriPickerRow = ({ uriButtonWidget, setUriButtonWidget, onLaunchUri }: UriRowProps) => (
     <>
-        <GtkGridLayoutChild column={0} row={3}>
-            <GtkLabel
-                label="_URI:"
-                useUnderline
-                halign={Gtk.Align.START}
-                valign={Gtk.Align.CENTER}
-                hexpand
-                mnemonicWidget={uriButtonWidget}
-            />
-        </GtkGridLayoutChild>
-        <GtkGridLayoutChild column={1} row={3}>
-            <GtkButton
-                ref={setUriButtonWidget}
-                label="www.gtk.org"
-                accessibleLabel="Open www.gtk.org"
-                accessibleHasPopup
-                onClicked={() => void onLaunchUri()}
-            />
-        </GtkGridLayoutChild>
+        <Grid.Child column={0} row={3}>
+            {(ref) => (
+                <GtkLabel
+                    ref={ref}
+                    label="_URI:"
+                    useUnderline
+                    halign={Gtk.Align.START}
+                    valign={Gtk.Align.CENTER}
+                    hexpand
+                    mnemonicWidget={uriButtonWidget}
+                />
+            )}
+        </Grid.Child>
+        <Grid.Child column={1} row={3}>
+            {(ref) => (
+                <GtkButton
+                    ref={(node) => {
+                        ref(node);
+                        setUriButtonWidget(node);
+                    }}
+                    label="www.gtk.org"
+                    accessibleLabel="Open www.gtk.org"
+                    accessibleHasPopup
+                    onClicked={() => void onLaunchUri()}
+                />
+            )}
+        </Grid.Child>
     </>
 );
 
@@ -286,7 +322,7 @@ const PickersDemo = ({ window }: DemoProps) => {
     const [uriButtonWidget, setUriButtonWidget] = useState<Gtk.Button | null>(null);
 
     return (
-        <GtkGrid rowSpacing={6} columnSpacing={6} marginStart={20} marginEnd={20} marginTop={20} marginBottom={20}>
+        <Grid rowSpacing={6} columnSpacing={6} marginStart={20} marginEnd={20} marginTop={20} marginBottom={20}>
             <ColorPickerRow colorWidget={colorWidget} setColorWidget={setColorWidget} />
             <FontPickerRow fontWidget={fontWidget} setFontWidget={setFontWidget} />
             <FilePickerRow
@@ -300,7 +336,7 @@ const PickersDemo = ({ window }: DemoProps) => {
                 setUriButtonWidget={setUriButtonWidget}
                 onLaunchUri={handlers.handleLaunchUri}
             />
-        </GtkGrid>
+        </Grid>
     );
 };
 

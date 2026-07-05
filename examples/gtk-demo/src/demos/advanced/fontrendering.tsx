@@ -1,4 +1,4 @@
-import { DropDown } from "@gtkx/components";
+import { DropDown, Grid } from "@gtkx/components";
 import {
     Antialias,
     Content,
@@ -22,8 +22,6 @@ import {
     GtkEntry,
     GtkFontDialog,
     GtkFontDialogButton,
-    GtkGrid,
-    GtkGridLayoutChild,
     GtkHeaderBar,
     GtkLabel,
     GtkScrolledWindow,
@@ -668,38 +666,41 @@ interface FontRenderingControlsProps {
 }
 
 const FontRenderingControls = ({ state, onZoomIn, onZoomOut }: FontRenderingControlsProps) => (
-    <GtkGrid halign={Gtk.Align.CENTER} marginTop={10} marginBottom={10} rowSpacing={10} columnSpacing={10}>
+    <Grid halign={Gtk.Align.CENTER} marginTop={10} marginBottom={10} rowSpacing={10} columnSpacing={10}>
         <FontRenderingTextRow state={state} />
         <FontRenderingOverlayChecks state={state} />
         <FontRenderingHintControls state={state} />
         <FontRenderingExtraOverlays state={state} />
         <FontRenderingZoomButtons state={state} onZoomIn={onZoomIn} onZoomOut={onZoomOut} />
-        <GtkGridLayoutChild column={8} row={0}>
-            <GtkLabel label="" hexpand />
-        </GtkGridLayoutChild>
-    </GtkGrid>
+        <Grid.Child column={8} row={0}>
+            {(ref) => <GtkLabel ref={ref} label="" hexpand />}
+        </Grid.Child>
+    </Grid>
 );
 
 const FontRenderingTextRow = ({ state }: { state: FontRenderingState }) => {
     const { text, setText, fontDesc, setFontDesc } = state;
     return (
         <>
-            <GtkGridLayoutChild column={1} row={0}>
-                <GtkLabel label="Text" xalign={1} marginStart={10} cssClasses={["dim-label"]} />
-            </GtkGridLayoutChild>
-            <GtkGridLayoutChild column={2} row={0}>
-                <GtkEntry name="entry" text={text} onChanged={(entry) => setText(entry.getText())} />
-            </GtkGridLayoutChild>
-            <GtkGridLayoutChild column={1} row={1}>
-                <GtkLabel label="Font" xalign={1} marginStart={10} cssClasses={["dim-label"]} />
-            </GtkGridLayoutChild>
-            <GtkGridLayoutChild column={2} row={1}>
-                <GtkFontDialogButton
-                    fontDesc={fontDesc}
-                    dialog={<GtkFontDialog />}
-                    onNotifyFontDesc={(value) => value && setFontDesc(value)}
-                />
-            </GtkGridLayoutChild>
+            <Grid.Child column={1} row={0}>
+                {(ref) => <GtkLabel ref={ref} label="Text" xalign={1} marginStart={10} cssClasses={["dim-label"]} />}
+            </Grid.Child>
+            <Grid.Child column={2} row={0}>
+                {(ref) => <GtkEntry ref={ref} name="entry" text={text} onChanged={(entry) => setText(entry.getText())} />}
+            </Grid.Child>
+            <Grid.Child column={1} row={1}>
+                {(ref) => <GtkLabel ref={ref} label="Font" xalign={1} marginStart={10} cssClasses={["dim-label"]} />}
+            </Grid.Child>
+            <Grid.Child column={2} row={1}>
+                {(ref) => (
+                    <GtkFontDialogButton
+                        ref={ref}
+                        fontDesc={fontDesc}
+                        dialog={<GtkFontDialog />}
+                        onNotifyFontDesc={(value) => value && setFontDesc(value)}
+                    />
+                )}
+            </Grid.Child>
         </>
     );
 };
@@ -708,22 +709,28 @@ const FontRenderingOverlayChecks = ({ state }: { state: FontRenderingState }) =>
     const { overlays, setOverlays } = state;
     return (
         <>
-            <GtkGridLayoutChild column={3} row={0}>
-                <GtkCheckButton
-                    label="Show _Pixels"
-                    useUnderline
-                    active={overlays.showPixels}
-                    onToggled={(btn) => setOverlays((o) => ({ ...o, showPixels: btn.getActive() }))}
-                />
-            </GtkGridLayoutChild>
-            <GtkGridLayoutChild column={3} row={1}>
-                <GtkCheckButton
-                    label="Show _Outline"
-                    useUnderline
-                    active={overlays.showOutlines}
-                    onToggled={(btn) => setOverlays((o) => ({ ...o, showOutlines: btn.getActive() }))}
-                />
-            </GtkGridLayoutChild>
+            <Grid.Child column={3} row={0}>
+                {(ref) => (
+                    <GtkCheckButton
+                        ref={ref}
+                        label="Show _Pixels"
+                        useUnderline
+                        active={overlays.showPixels}
+                        onToggled={(btn) => setOverlays((o) => ({ ...o, showPixels: btn.getActive() }))}
+                    />
+                )}
+            </Grid.Child>
+            <Grid.Child column={3} row={1}>
+                {(ref) => (
+                    <GtkCheckButton
+                        ref={ref}
+                        label="Show _Outline"
+                        useUnderline
+                        active={overlays.showOutlines}
+                        onToggled={(btn) => setOverlays((o) => ({ ...o, showOutlines: btn.getActive() }))}
+                    />
+                )}
+            </Grid.Child>
         </>
     );
 };
@@ -732,37 +739,45 @@ const FontRenderingHintControls = ({ state }: { state: FontRenderingState }) => 
     const { hintStyle, setHintStyle, antialias, setAntialias, hintMetrics, setHintMetrics } = state;
     return (
         <>
-            <GtkGridLayoutChild column={4} row={0} columnSpan={2}>
-                <GtkBox spacing={6}>
-                    <GtkLabel label="_Hinting" useUnderline cssClasses={["dim-label"]} />
-                    <DropDown
-                        name="hinting"
-                        valign={Gtk.Align.CENTER}
-                        selectedId={hintStyleOptions.find((o) => o.value === hintStyle)?.id}
-                        onSelectionChanged={(id) => {
-                            const opt = hintStyleOptions.find((o) => o.id === id);
-                            if (opt) setHintStyle(opt.value);
-                        }}
-                        items={hintStyleOptions.map((opt) => ({ id: opt.id, value: opt.label }))}
+            <Grid.Child column={4} row={0} columnSpan={2}>
+                {(ref) => (
+                    <GtkBox ref={ref} spacing={6}>
+                        <GtkLabel label="_Hinting" useUnderline cssClasses={["dim-label"]} />
+                        <DropDown
+                            name="hinting"
+                            valign={Gtk.Align.CENTER}
+                            selectedId={hintStyleOptions.find((o) => o.value === hintStyle)?.id}
+                            onSelectionChanged={(id) => {
+                                const opt = hintStyleOptions.find((o) => o.id === id);
+                                if (opt) setHintStyle(opt.value);
+                            }}
+                            items={hintStyleOptions.map((opt) => ({ id: opt.id, value: opt.label }))}
+                        />
+                    </GtkBox>
+                )}
+            </Grid.Child>
+            <Grid.Child column={4} row={1}>
+                {(ref) => (
+                    <GtkCheckButton
+                        ref={ref}
+                        label="_Antialias"
+                        useUnderline
+                        active={antialias}
+                        onToggled={(btn) => setAntialias(btn.getActive())}
                     />
-                </GtkBox>
-            </GtkGridLayoutChild>
-            <GtkGridLayoutChild column={4} row={1}>
-                <GtkCheckButton
-                    label="_Antialias"
-                    useUnderline
-                    active={antialias}
-                    onToggled={(btn) => setAntialias(btn.getActive())}
-                />
-            </GtkGridLayoutChild>
-            <GtkGridLayoutChild column={5} row={1}>
-                <GtkCheckButton
-                    label="Hint _Metrics"
-                    useUnderline
-                    active={hintMetrics}
-                    onToggled={(btn) => setHintMetrics(btn.getActive())}
-                />
-            </GtkGridLayoutChild>
+                )}
+            </Grid.Child>
+            <Grid.Child column={5} row={1}>
+                {(ref) => (
+                    <GtkCheckButton
+                        ref={ref}
+                        label="Hint _Metrics"
+                        useUnderline
+                        active={hintMetrics}
+                        onToggled={(btn) => setHintMetrics(btn.getActive())}
+                    />
+                )}
+            </Grid.Child>
         </>
     );
 };
@@ -771,22 +786,28 @@ const FontRenderingExtraOverlays = ({ state }: { state: FontRenderingState }) =>
     const { overlays, setOverlays } = state;
     return (
         <>
-            <GtkGridLayoutChild column={6} row={0}>
-                <GtkCheckButton
-                    label="Show _Extents"
-                    useUnderline
-                    active={overlays.showExtents}
-                    onToggled={(btn) => setOverlays((o) => ({ ...o, showExtents: btn.getActive() }))}
-                />
-            </GtkGridLayoutChild>
-            <GtkGridLayoutChild column={6} row={1}>
-                <GtkCheckButton
-                    label="Show _Grid"
-                    useUnderline
-                    active={overlays.showGrid}
-                    onToggled={(btn) => setOverlays((o) => ({ ...o, showGrid: btn.getActive() }))}
-                />
-            </GtkGridLayoutChild>
+            <Grid.Child column={6} row={0}>
+                {(ref) => (
+                    <GtkCheckButton
+                        ref={ref}
+                        label="Show _Extents"
+                        useUnderline
+                        active={overlays.showExtents}
+                        onToggled={(btn) => setOverlays((o) => ({ ...o, showExtents: btn.getActive() }))}
+                    />
+                )}
+            </Grid.Child>
+            <Grid.Child column={6} row={1}>
+                {(ref) => (
+                    <GtkCheckButton
+                        ref={ref}
+                        label="Show _Grid"
+                        useUnderline
+                        active={overlays.showGrid}
+                        onToggled={(btn) => setOverlays((o) => ({ ...o, showGrid: btn.getActive() }))}
+                    />
+                )}
+            </Grid.Child>
         </>
     );
 };
@@ -803,30 +824,36 @@ const FontRenderingZoomButtons = ({
     const { scale } = state;
     return (
         <>
-            <GtkGridLayoutChild column={7} row={0}>
-                <GtkButton
-                    name="up_button"
-                    iconName="list-add-symbolic"
-                    onClicked={onZoomIn}
-                    sensitive={scale < 32}
-                    cssClasses={["circular"]}
-                    halign={Gtk.Align.CENTER}
-                    valign={Gtk.Align.CENTER}
-                    accessibleLabel="Zoom in"
-                />
-            </GtkGridLayoutChild>
-            <GtkGridLayoutChild column={7} row={1}>
-                <GtkButton
-                    name="down_button"
-                    iconName="list-remove-symbolic"
-                    onClicked={onZoomOut}
-                    sensitive={scale > 1}
-                    cssClasses={["circular"]}
-                    halign={Gtk.Align.CENTER}
-                    valign={Gtk.Align.CENTER}
-                    accessibleLabel="Zoom out"
-                />
-            </GtkGridLayoutChild>
+            <Grid.Child column={7} row={0}>
+                {(ref) => (
+                    <GtkButton
+                        ref={ref}
+                        name="up_button"
+                        iconName="list-add-symbolic"
+                        onClicked={onZoomIn}
+                        sensitive={scale < 32}
+                        cssClasses={["circular"]}
+                        halign={Gtk.Align.CENTER}
+                        valign={Gtk.Align.CENTER}
+                        accessibleLabel="Zoom in"
+                    />
+                )}
+            </Grid.Child>
+            <Grid.Child column={7} row={1}>
+                {(ref) => (
+                    <GtkButton
+                        ref={ref}
+                        name="down_button"
+                        iconName="list-remove-symbolic"
+                        onClicked={onZoomOut}
+                        sensitive={scale > 1}
+                        cssClasses={["circular"]}
+                        halign={Gtk.Align.CENTER}
+                        valign={Gtk.Align.CENTER}
+                        accessibleLabel="Zoom out"
+                    />
+                )}
+            </Grid.Child>
         </>
     );
 };

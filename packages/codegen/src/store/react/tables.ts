@@ -131,8 +131,6 @@ export const RELATIONSHIP_RULES: RelationshipRule[] = [
         companion: "getPage",
         setters: { tabLabel: "setTabLabel" },
     },
-    { kind: "layout-child", element: "GtkGridLayoutChild", parent: "GtkWidget", layout: "GtkGridLayout" },
-    { kind: "layout-child", element: "GtkFixedLayoutChild", parent: "GtkWidget", layout: "GtkFixedLayout" },
     { kind: "skip", child: "GtkWindow" },
     { kind: "skip", child: "AdwDialog" },
 ];

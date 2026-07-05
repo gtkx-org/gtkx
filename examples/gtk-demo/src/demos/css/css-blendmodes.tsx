@@ -1,8 +1,7 @@
+import { Grid } from "@gtkx/components";
 import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
-    GtkGrid,
-    GtkGridLayoutChild,
     GtkImage,
     GtkLabel,
     GtkListBox,
@@ -142,26 +141,26 @@ interface BlendPageProps {
 }
 
 const BlendPage = ({ labels, leftClass, rightClass, blendClass }: BlendPageProps) => (
-    <GtkGrid halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} vexpand rowSpacing={12} columnSpacing={12}>
-        <GtkGridLayoutChild column={0} row={0}>
-            <GtkLabel label={labels[0]} />
-        </GtkGridLayoutChild>
-        <GtkGridLayoutChild column={1} row={0}>
-            <GtkLabel label={labels[1]} />
-        </GtkGridLayoutChild>
-        <GtkGridLayoutChild column={0} row={1}>
-            <GtkImage cssClasses={[leftClass]} />
-        </GtkGridLayoutChild>
-        <GtkGridLayoutChild column={1} row={1}>
-            <GtkImage cssClasses={[rightClass]} />
-        </GtkGridLayoutChild>
-        <GtkGridLayoutChild column={0} row={2} columnSpan={2}>
-            <GtkLabel label="Blended picture" />
-        </GtkGridLayoutChild>
-        <GtkGridLayoutChild column={0} row={3} columnSpan={2}>
-            <GtkImage halign={Gtk.Align.CENTER} cssClasses={[blendClass]} />
-        </GtkGridLayoutChild>
-    </GtkGrid>
+    <Grid halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} vexpand rowSpacing={12} columnSpacing={12}>
+        <Grid.Child column={0} row={0}>
+            {(ref) => <GtkLabel ref={ref} label={labels[0]} />}
+        </Grid.Child>
+        <Grid.Child column={1} row={0}>
+            {(ref) => <GtkLabel ref={ref} label={labels[1]} />}
+        </Grid.Child>
+        <Grid.Child column={0} row={1}>
+            {(ref) => <GtkImage ref={ref} cssClasses={[leftClass]} />}
+        </Grid.Child>
+        <Grid.Child column={1} row={1}>
+            {(ref) => <GtkImage ref={ref} cssClasses={[rightClass]} />}
+        </Grid.Child>
+        <Grid.Child column={0} row={2} columnSpan={2}>
+            {(ref) => <GtkLabel ref={ref} label="Blended picture" />}
+        </Grid.Child>
+        <Grid.Child column={0} row={3} columnSpan={2}>
+            {(ref) => <GtkImage ref={ref} halign={Gtk.Align.CENTER} cssClasses={[blendClass]} />}
+        </Grid.Child>
+    </Grid>
 );
 
 const DuckyPage = () => (
@@ -171,32 +170,32 @@ const DuckyPage = () => (
 const BlendsPage = () => <BlendPage labels={["Red", "Blue"]} leftClass="red" rightClass="blue" blendClass="blend1" />;
 
 const CmykPage = () => (
-    <GtkGrid halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} hexpand vexpand rowSpacing={6} columnSpacing={12}>
-        <GtkGridLayoutChild column={0} row={0}>
-            <GtkLabel label="Cyan" xalign={0} cssClasses={["dim-label"]} />
-        </GtkGridLayoutChild>
-        <GtkGridLayoutChild column={1} row={0}>
-            <GtkLabel label="Magenta" xalign={0} cssClasses={["dim-label"]} />
-        </GtkGridLayoutChild>
-        <GtkGridLayoutChild column={0} row={1}>
-            <GtkImage cssClasses={["cyan"]} />
-        </GtkGridLayoutChild>
-        <GtkGridLayoutChild column={1} row={1}>
-            <GtkImage cssClasses={["magenta"]} />
-        </GtkGridLayoutChild>
-        <GtkGridLayoutChild column={0} row={2}>
-            <GtkLabel label="Yellow" xalign={0} cssClasses={["dim-label"]} />
-        </GtkGridLayoutChild>
-        <GtkGridLayoutChild column={1} row={2}>
-            <GtkLabel label="<b>Blended picture</b>" useMarkup xalign={0} />
-        </GtkGridLayoutChild>
-        <GtkGridLayoutChild column={0} row={3}>
-            <GtkImage cssClasses={["yellow"]} />
-        </GtkGridLayoutChild>
-        <GtkGridLayoutChild column={1} row={3}>
-            <GtkImage halign={Gtk.Align.CENTER} cssClasses={["blend2"]} />
-        </GtkGridLayoutChild>
-    </GtkGrid>
+    <Grid halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} hexpand vexpand rowSpacing={6} columnSpacing={12}>
+        <Grid.Child column={0} row={0}>
+            {(ref) => <GtkLabel ref={ref} label="Cyan" xalign={0} cssClasses={["dim-label"]} />}
+        </Grid.Child>
+        <Grid.Child column={1} row={0}>
+            {(ref) => <GtkLabel ref={ref} label="Magenta" xalign={0} cssClasses={["dim-label"]} />}
+        </Grid.Child>
+        <Grid.Child column={0} row={1}>
+            {(ref) => <GtkImage ref={ref} cssClasses={["cyan"]} />}
+        </Grid.Child>
+        <Grid.Child column={1} row={1}>
+            {(ref) => <GtkImage ref={ref} cssClasses={["magenta"]} />}
+        </Grid.Child>
+        <Grid.Child column={0} row={2}>
+            {(ref) => <GtkLabel ref={ref} label="Yellow" xalign={0} cssClasses={["dim-label"]} />}
+        </Grid.Child>
+        <Grid.Child column={1} row={2}>
+            {(ref) => <GtkLabel ref={ref} label="<b>Blended picture</b>" useMarkup xalign={0} />}
+        </Grid.Child>
+        <Grid.Child column={0} row={3}>
+            {(ref) => <GtkImage ref={ref} cssClasses={["yellow"]} />}
+        </Grid.Child>
+        <Grid.Child column={1} row={3}>
+            {(ref) => <GtkImage ref={ref} halign={Gtk.Align.CENTER} cssClasses={["blend2"]} />}
+        </Grid.Child>
+    </Grid>
 );
 
 const CssBlendmodesDemo = () => {
@@ -222,7 +221,7 @@ const CssBlendmodesDemo = () => {
     };
 
     return (
-        <GtkGrid
+        <Grid
             cssClasses={[blendCss]}
             marginStart={12}
             marginEnd={12}
@@ -231,34 +230,46 @@ const CssBlendmodesDemo = () => {
             rowSpacing={12}
             columnSpacing={12}
         >
-            <GtkGridLayoutChild column={0} row={0}>
-                <GtkLabel label="Blend mode:" xalign={0} cssClasses={["dim-label"]} />
-            </GtkGridLayoutChild>
+            <Grid.Child column={0} row={0}>
+                {(ref) => <GtkLabel ref={ref} label="Blend mode:" xalign={0} cssClasses={["dim-label"]} />}
+            </Grid.Child>
 
-            <GtkGridLayoutChild column={0} row={1}>
-                <GtkScrolledWindow vexpand hasFrame minContentWidth={150}>
-                    <GtkListBox
-                        name="blend-list"
-                        onRowActivated={handleRowActivated}
-                        onRealize={selectAndFocusNormalRow}
-                    >
-                        {BLEND_MODES.map((mode) => (
-                            <GtkListBoxRow key={mode.id}>
-                                <GtkLabel label={mode.name} xalign={0} />
-                            </GtkListBoxRow>
-                        ))}
-                    </GtkListBox>
-                </GtkScrolledWindow>
-            </GtkGridLayoutChild>
+            <Grid.Child column={0} row={1}>
+                {(ref) => (
+                    <GtkScrolledWindow ref={ref} vexpand hasFrame minContentWidth={150}>
+                        <GtkListBox
+                            name="blend-list"
+                            onRowActivated={handleRowActivated}
+                            onRealize={selectAndFocusNormalRow}
+                        >
+                            {BLEND_MODES.map((mode) => (
+                                <GtkListBoxRow key={mode.id}>
+                                    <GtkLabel label={mode.name} xalign={0} />
+                                </GtkListBoxRow>
+                            ))}
+                        </GtkListBox>
+                    </GtkScrolledWindow>
+                )}
+            </Grid.Child>
 
-            <GtkGridLayoutChild column={1} row={0}>
-                <GtkStackSwitcher stack={stack} halign={Gtk.Align.CENTER} hexpand visible={stack !== null} />
-            </GtkGridLayoutChild>
+            <Grid.Child column={1} row={0}>
+                {(ref) => (
+                    <GtkStackSwitcher ref={ref} stack={stack} halign={Gtk.Align.CENTER} hexpand visible={stack !== null} />
+                )}
+            </Grid.Child>
 
-            <GtkGridLayoutChild column={1} row={1}>
-                <BlendStack stackRef={setStack} visible={stack !== null} />
-            </GtkGridLayoutChild>
-        </GtkGrid>
+            <Grid.Child column={1} row={1}>
+                {(ref) => (
+                    <BlendStack
+                        stackRef={(node) => {
+                            ref(node);
+                            setStack(node);
+                        }}
+                        visible={stack !== null}
+                    />
+                )}
+            </Grid.Child>
+        </Grid>
     );
 };
 

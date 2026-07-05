@@ -45,40 +45,49 @@ const OverlayDecorativeDemo = () => {
                 />
             </GtkScrolledWindow>
             <Overlay.Child>
-                <GtkPicture
-                    name="picture-start"
-                    paintable={decor1}
-                    halign={Gtk.Align.START}
-                    valign={Gtk.Align.START}
-                    canTarget={false}
-                />
+                {(ref) => (
+                    <GtkPicture
+                        ref={ref}
+                        name="picture-start"
+                        paintable={decor1}
+                        halign={Gtk.Align.START}
+                        valign={Gtk.Align.START}
+                        canTarget={false}
+                    />
+                )}
             </Overlay.Child>
             <Overlay.Child>
-                <GtkPicture
-                    name="picture-end"
-                    paintable={decor2}
-                    halign={Gtk.Align.END}
-                    valign={Gtk.Align.END}
-                    canTarget={false}
-                />
+                {(ref) => (
+                    <GtkPicture
+                        ref={ref}
+                        name="picture-end"
+                        paintable={decor2}
+                        halign={Gtk.Align.END}
+                        valign={Gtk.Align.END}
+                        canTarget={false}
+                    />
+                )}
             </Overlay.Child>
             <Overlay.Child>
-                <GtkScale
-                    name="margin-scale"
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    drawValue={false}
-                    widthRequest={120}
-                    halign={Gtk.Align.START}
-                    valign={Gtk.Align.END}
-                    marginStart={20}
-                    marginEnd={20}
-                    marginBottom={20}
-                    tooltipText="Margin"
-                    adjustment={
-                        <GtkAdjustment value={margin} lower={0} upper={100} stepIncrement={1} pageIncrement={1} />
-                    }
-                    onValueChanged={(scale) => setMargin(scale.getValue())}
-                />
+                {(ref) => (
+                    <GtkScale
+                        ref={ref}
+                        name="margin-scale"
+                        orientation={Gtk.Orientation.HORIZONTAL}
+                        drawValue={false}
+                        widthRequest={120}
+                        halign={Gtk.Align.START}
+                        valign={Gtk.Align.END}
+                        marginStart={20}
+                        marginEnd={20}
+                        marginBottom={20}
+                        tooltipText="Margin"
+                        adjustment={
+                            <GtkAdjustment value={margin} lower={0} upper={100} stepIncrement={1} pageIncrement={1} />
+                        }
+                        onValueChanged={(scale) => setMargin(scale.getValue())}
+                    />
+                )}
             </Overlay.Child>
         </Overlay>
     );

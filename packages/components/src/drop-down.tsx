@@ -1,7 +1,5 @@
-import type * as Adw from "@gtkx/gi/adw";
 import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { AdwComboRow, type AdwComboRowProps } from "@gtkx/jsx/adw";
 import { GtkDropDown, type GtkDropDownProps, GtkLabel } from "@gtkx/jsx/gtk";
 import { useMergeRefs } from "@gtkx/react";
 import {
@@ -75,7 +73,7 @@ const createSelectionResolver = <T, S>(resolver: ItemResolver<T, S>, selectedPos
     resolve: (_position, treeRow) => resolver.resolve(selectedPosition, treeRow, null),
 });
 
-type DropDownDeclarativeProps<T = unknown, S = unknown> = {
+export type DropDownDeclarativeProps<T = unknown, S = unknown> = {
     items?: ItemNode<T>[] | undefined;
     sections?: SectionNode<S, T>[] | undefined;
     selectedId?: string | null | undefined;
@@ -86,9 +84,6 @@ type DropDownDeclarativeProps<T = unknown, S = unknown> = {
 };
 
 export type DropDownProps<T = unknown, S = unknown> = Omit<GtkDropDownProps, keyof DropDownDeclarativeProps<T, S>> &
-    DropDownDeclarativeProps<T, S>;
-
-export type ComboRowProps<T = unknown, S = unknown> = Omit<AdwComboRowProps, keyof DropDownDeclarativeProps<T, S>> &
     DropDownDeclarativeProps<T, S>;
 
 interface DropDownBodyProps<T, S, W extends DropDownWidget> {
@@ -166,7 +161,10 @@ const useDropDownWiring = <T, S, W extends DropDownWidget>(
     };
 };
 
-const DropDownBody = <T, S, W extends DropDownWidget>({ element, props }: DropDownBodyProps<T, S, W>): ReactNode => {
+export const DropDownBody = <T, S, W extends DropDownWidget>({
+    element,
+    props,
+}: DropDownBodyProps<T, S, W>): ReactNode => {
     const {
         ref,
         items,
@@ -222,8 +220,4 @@ const DropDownBody = <T, S, W extends DropDownWidget>({ element, props }: DropDo
 
 export const DropDown = <T = unknown, S = unknown>(props: DropDownProps<T, S>): ReactNode => (
     <DropDownBody<T, S, Gtk.DropDown> element={GtkDropDown} props={props} />
-);
-
-export const ComboRow = <T = unknown, S = unknown>(props: ComboRowProps<T, S>): ReactNode => (
-    <DropDownBody<T, S, Adw.ComboRow> element={AdwComboRow} props={props} />
 );

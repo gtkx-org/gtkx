@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkBoxLayout, GtkFixedLayout, GtkGridLayout, GtkGridLayoutChild, GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkBoxLayout, GtkFixedLayout, GtkGridLayout } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -83,35 +83,5 @@ describe("render - LayoutManagerNode lifecycle", () => {
 
         await rerender(<App useGrid={true} />);
         expect(boxRef.current?.getLayoutManager()).toBeInstanceOf(Gtk.GridLayout);
-    });
-});
-
-describe("render - GtkGridLayoutChild against a generic widget with GridLayout", () => {
-    it("positions widgets via the layout-child API", async () => {
-        const boxRef = createRef<Gtk.Box>();
-        const labelARef = createRef<Gtk.Label>();
-        const labelBRef = createRef<Gtk.Label>();
-
-        await render(
-            <GtkBox ref={boxRef} layoutManager={<GtkGridLayout />}>
-                <GtkGridLayoutChild column={0} row={0}>
-                    <GtkLabel ref={labelARef} label="A" />
-                </GtkGridLayoutChild>
-                <GtkGridLayoutChild column={1} row={1}>
-                    <GtkLabel ref={labelBRef} label="B" />
-                </GtkGridLayoutChild>
-            </GtkBox>,
-        );
-
-        expect(labelARef.current).not.toBeNull();
-        expect(labelBRef.current).not.toBeNull();
-
-        const layout = boxRef.current?.getLayoutManager() as Gtk.GridLayout;
-        const childA = layout.getLayoutChild(labelARef.current as Gtk.Label) as Gtk.GridLayoutChild;
-        const childB = layout.getLayoutChild(labelBRef.current as Gtk.Label) as Gtk.GridLayoutChild;
-        expect(childA.column).toBe(0);
-        expect(childA.row).toBe(0);
-        expect(childB.column).toBe(1);
-        expect(childB.row).toBe(1);
     });
 });

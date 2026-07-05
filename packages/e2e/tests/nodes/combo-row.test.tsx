@@ -1,4 +1,4 @@
-import { ComboRow } from "@gtkx/components";
+import { ComboRow } from "@gtkx/components/adw";
 import type * as Adw from "@gtkx/gi/adw";
 
 import { GtkLabel, GtkListBox } from "@gtkx/jsx/gtk";

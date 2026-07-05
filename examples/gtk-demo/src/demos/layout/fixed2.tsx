@@ -1,7 +1,8 @@
+import { Fixed } from "@gtkx/components";
 import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkFixed, GtkFixedLayoutChild, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
+import { GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { useTickCallback } from "@gtkx/react";
 import { useRef } from "react";
 import type { Demo } from "../types.js";
@@ -59,11 +60,20 @@ const Fixed2Demo = () => {
 
     return (
         <GtkScrolledWindow name="scrolled" hexpand vexpand>
-            <GtkFixed name="fixed" ref={fixedRef} hexpand vexpand overflow={Gtk.Overflow.VISIBLE}>
-                <GtkFixedLayoutChild transform={at(0, 0)}>
-                    <GtkLabel ref={labelRef} name="fixed-label" label="All fixed?" />
-                </GtkFixedLayoutChild>
-            </GtkFixed>
+            <Fixed name="fixed" ref={fixedRef} hexpand vexpand overflow={Gtk.Overflow.VISIBLE}>
+                <Fixed.Child transform={at(0, 0)}>
+                    {(ref) => (
+                        <GtkLabel
+                            ref={(node) => {
+                                ref(node);
+                                labelRef.current = node;
+                            }}
+                            name="fixed-label"
+                            label="All fixed?"
+                        />
+                    )}
+                </Fixed.Child>
+            </Fixed>
         </GtkScrolledWindow>
     );
 };

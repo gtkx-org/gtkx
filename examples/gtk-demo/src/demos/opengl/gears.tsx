@@ -673,14 +673,17 @@ const GearsDemo = () => {
                 <AxisSlider axis="Z" value={state.viewRotZ} onChange={state.setViewRotZ} />
             </GtkBox>
             <Overlay.Child>
-                <GtkLabel
-                    label={state.fps > 0 ? `FPS: ${state.fps.toFixed(1)}` : "FPS: ---"}
-                    halign={Gtk.Align.START}
-                    valign={Gtk.Align.START}
-                    marginStart={12}
-                    marginTop={12}
-                    cssClasses={["app-notification"]}
-                />
+                {(ref) => (
+                    <GtkLabel
+                        ref={ref}
+                        label={state.fps > 0 ? `FPS: ${state.fps.toFixed(1)}` : "FPS: ---"}
+                        halign={Gtk.Align.START}
+                        valign={Gtk.Align.START}
+                        marginStart={12}
+                        marginTop={12}
+                        cssClasses={["app-notification"]}
+                    />
+                )}
             </Overlay.Child>
         </Overlay>
     );

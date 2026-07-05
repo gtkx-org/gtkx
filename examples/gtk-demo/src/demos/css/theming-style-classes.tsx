@@ -1,10 +1,11 @@
+import { Grid } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkGrid, GtkGridLayoutChild } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
 import type { Demo } from "../types.js";
 import sourceCode from "./theming-style-classes.tsx?raw";
 
 const ThemingStyleClassesDemo = () => (
-    <GtkGrid
+    <Grid
         name="root-grid"
         rowSpacing={10}
         marginStart={10}
@@ -13,21 +14,31 @@ const ThemingStyleClassesDemo = () => (
         marginBottom={10}
         orientation={Gtk.Orientation.VERTICAL}
     >
-        <GtkGridLayoutChild column={0} row={0}>
-            <GtkBox name="linked-buttons" cssClasses={["linked"]} valign={Gtk.Align.CENTER} halign={Gtk.Align.CENTER}>
-                <GtkButton label="Hi, I am a button" receivesDefault />
-                <GtkButton label="And I'm another button" receivesDefault />
-                <GtkButton label="This is a button party!" receivesDefault />
-            </GtkBox>
-        </GtkGridLayoutChild>
-        <GtkGridLayoutChild column={0} row={1}>
-            <GtkBox spacing={10}>
-                <GtkButton label="Plain" halign={Gtk.Align.END} hexpand />
-                <GtkButton label="Destructive" cssClasses={["destructive-action"]} />
-                <GtkButton label="Suggested" cssClasses={["suggested-action"]} />
-            </GtkBox>
-        </GtkGridLayoutChild>
-    </GtkGrid>
+        <Grid.Child column={0} row={0}>
+            {(ref) => (
+                <GtkBox
+                    ref={ref}
+                    name="linked-buttons"
+                    cssClasses={["linked"]}
+                    valign={Gtk.Align.CENTER}
+                    halign={Gtk.Align.CENTER}
+                >
+                    <GtkButton label="Hi, I am a button" receivesDefault />
+                    <GtkButton label="And I'm another button" receivesDefault />
+                    <GtkButton label="This is a button party!" receivesDefault />
+                </GtkBox>
+            )}
+        </Grid.Child>
+        <Grid.Child column={0} row={1}>
+            {(ref) => (
+                <GtkBox ref={ref} spacing={10}>
+                    <GtkButton label="Plain" halign={Gtk.Align.END} hexpand />
+                    <GtkButton label="Destructive" cssClasses={["destructive-action"]} />
+                    <GtkButton label="Suggested" cssClasses={["suggested-action"]} />
+                </GtkBox>
+            )}
+        </Grid.Child>
+    </Grid>
 );
 
 export const themingStyleClassesDemo: Demo = {

@@ -30,6 +30,11 @@
             "source": "./src/index.ts",
             "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
+        },
+        "./adw": {
+            "source": "./src/combo-row.tsx",
+            "types": "./dist/combo-row.d.ts",
+            "default": "./dist/combo-row.js"
         }
     },
     "sideEffects": false,

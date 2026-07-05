@@ -75,8 +75,6 @@ const relationshipTypeNames = (rule: RelationshipRule): string[] => {
             return rule.autowrap === undefined ? [rule.parent, rule.child] : [rule.parent, rule.child, rule.autowrap];
         case "companion":
             return [rule.parent];
-        case "layout-child":
-            return [rule.parent, rule.layout];
         case "reject":
             return [rule.parent, rule.child];
         case "skip":
@@ -179,7 +177,6 @@ const relationshipKey = (rule: RelationshipRule): string => {
         case "attach":
             return `attach:${rule.parent}:${rule.child}:${rule.slot ?? ""}`;
         case "companion":
-        case "layout-child":
             return `element:${rule.element}`;
         case "reject":
             return `reject:${rule.parent}:${rule.child}`;

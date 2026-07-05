@@ -156,9 +156,6 @@ describe("codegen React pipeline", () => {
         expect(gtk).toContain(
             'export const GtkNotebookPage: (props: GtkNotebookPageElementProps) => ReactNode = createWrapperComponent<GtkNotebookPageElementProps>("GtkNotebookPage");',
         );
-        expect(gtk).toContain(
-            'export const GtkFixedLayoutChild: (props: GtkFixedLayoutChildElementProps) => ReactNode = createWrapperComponent<GtkFixedLayoutChildElementProps>("GtkFixedLayoutChild");',
-        );
         expect(gtk).toContain('createWrapperComponent<GtkStackPageElementProps>("GtkStackPage")');
         expect(gtk).not.toContain("GtkNotebookPageTab");
     });
@@ -228,7 +225,6 @@ describe("codegen synthetic props", () => {
     it("emits companion element props from the companion class interface", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
         expect(gtk).toContain('export type GtkStackPageElementProps = Omit<GtkStackPageProps, "child">;');
-        expect(gtk).toContain("export type GtkGridLayoutChildElementProps =");
         expect(gtk).toMatch(/export type GtkNotebookPageElementProps = [^;]*tabLabel\?: ReactNode[^;]*;/);
     });
 });
