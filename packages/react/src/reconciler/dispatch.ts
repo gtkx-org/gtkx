@@ -1,8 +1,8 @@
 import * as GObject from "@gtkx/gi/gobject";
 import { containerMapping, toplevelSkipMapping } from "./container-attach.js";
-import { companionMapping, containerSlotMapping, ruleChildMapping, widgetPropMapping } from "./relationship-apply.js";
-import { isRelationshipNode } from "./relationship-node.js";
 import { type ElementMapping, type Node, stateOf } from "./state.js";
+import { companionMapping, containerSlotMapping, ruleChildMapping, widgetPropMapping } from "./wrapper-apply.js";
+import { isWrapperNode } from "./wrapper-node.js";
 
 const ELEMENT_MAP: ElementMapping[] = [
     widgetPropMapping,
@@ -24,9 +24,9 @@ export const detachFromParent = (child: Node, parent: Node): void => {
     resolveMapping(child, parent)?.detach(child, parent);
 };
 
-export const resyncRelationshipNode = (node: Node): void => {
+export const resyncWrapperNode = (node: Node): void => {
     const parent = stateOf(node).parent;
-    if (isRelationshipNode(node) && parent) attachToParent(node, parent);
+    if (isWrapperNode(node) && parent) attachToParent(node, parent);
 };
 
 const anchorWrapper = (before: Node): GObject.Object | null => {
@@ -39,16 +39,16 @@ const anchorWrapper = (before: Node): GObject.Object | null => {
 
 export const attachNode = (parent: Node, child: Node, before: Node | null, fresh: boolean): void => {
     if (before === null) {
-        if (isRelationshipNode(child) || !isRelationshipNode(parent)) attachToParent(child, parent, null, fresh);
-    } else if (isRelationshipNode(child)) {
+        if (isWrapperNode(child) || !isWrapperNode(parent)) attachToParent(child, parent, null, fresh);
+    } else if (isWrapperNode(child)) {
         attachToParent(child, parent);
-    } else if (!isRelationshipNode(parent)) {
+    } else if (!isWrapperNode(parent)) {
         attachToParent(child, parent, anchorWrapper(before));
     }
-    if (isRelationshipNode(parent)) resyncRelationshipNode(parent);
+    if (isWrapperNode(parent)) resyncWrapperNode(parent);
 };
 
 export const detachNode = (parent: Node, child: Node): void => {
-    if (isRelationshipNode(child) || !isRelationshipNode(parent)) detachFromParent(child, parent);
-    if (isRelationshipNode(parent)) resyncRelationshipNode(parent);
+    if (isWrapperNode(child) || !isWrapperNode(parent)) detachFromParent(child, parent);
+    if (isWrapperNode(parent)) resyncWrapperNode(parent);
 };

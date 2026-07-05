@@ -1,4 +1,4 @@
-import { BUFFER_TEXT_KIND, isRelationshipKind, LABEL_TEXT_KIND, RELATIONSHIP_NODE_ELEMENT } from "@gtkx/config";
+import { BUFFER_TEXT_KIND, isWrapperKind, LABEL_TEXT_KIND, WRAPPER_NODE_ELEMENT } from "@gtkx/config";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { freeze, unfreeze } from "@gtkx/native";
@@ -9,17 +9,17 @@ import { isDefaultBlockableType, typeChainIncludes } from "../utils/gtype.js";
 import { applyAccessibleProps, isAccessibleProp } from "./accessible.js";
 import { applyProps } from "./apply-props.js";
 import { beginCommit, endCommit, runCommitFlush } from "./commit-flush.js";
-import { attachNode, detachFromParent, detachNode, resyncRelationshipNode } from "./dispatch.js";
-import { createElementInstance, createRelationshipInstance } from "./instance.js";
+import { attachNode, detachFromParent, detachNode, resyncWrapperNode } from "./dispatch.js";
+import { createElementInstance, createWrapperInstance } from "./instance.js";
 import { scheduleLabelTextRebuild } from "./label-text-rebuild.js";
 import { reportReconcilerError } from "./reconciler-error-handler.js";
-import { isRelationshipNode } from "./relationship-node.js";
 import { isSyntheticProp } from "./rule-table.js";
 import { ensureState, type Node, stateOf } from "./state.js";
 import { applySyntheticProps, hasSelectionProps, reapplySelectionProps } from "./synthetic-props.js";
 import { scheduleBufferRebuild } from "./text-buffer-rebuild.js";
 import { isBufferContentNode, isLabelTextNode } from "./text-node.js";
 import type { Container, Props } from "./types.js";
+import { isWrapperNode } from "./wrapper-node.js";
 
 const FIXED_UPDATE_PRIORITY = DiscreteEventPriority;
 
@@ -128,9 +128,9 @@ const removeChild = (parent: Node, child: Node): void => {
 const commitInstanceProps = (instance: Node, oldProps: Props | null, newProps: Props): void => {
     const state = stateOf(instance);
     state.props = newProps;
-    if (isRelationshipNode(instance)) {
+    if (isWrapperNode(instance)) {
         if (isBufferContentNode(instance)) scheduleBufferRebuild(instance);
-        else resyncRelationshipNode(instance);
+        else resyncWrapperNode(instance);
         return;
     }
     if (!(instance instanceof GObject.Object)) return;
@@ -247,21 +247,21 @@ type InstanceConfig = Pick<
 
 const createInstanceConfig = (): InstanceConfig => ({
     createInstance: (type, props, rootContainer) => {
-        if (type !== RELATIONSHIP_NODE_ELEMENT) {
+        if (type !== WRAPPER_NODE_ELEMENT) {
             return createElementInstance(type, props, rootContainer);
         }
         const kind = props.kind;
-        if (!isRelationshipKind(kind)) {
-            throw new Error(`Relationship node element has an invalid kind: ${JSON.stringify(kind)}`);
+        if (!isWrapperKind(kind)) {
+            throw new Error(`Wrapper node element has an invalid kind: ${JSON.stringify(kind)}`);
         }
-        return createRelationshipInstance(kind, props, rootContainer);
+        return createWrapperInstance(kind, props, rootContainer);
     },
     createTextInstance: (text, rootContainer, hostContext) => {
         if (hostContext.textHost === "buffer") {
-            return createRelationshipInstance(BUFFER_TEXT_KIND, { text }, rootContainer);
+            return createWrapperInstance(BUFFER_TEXT_KIND, { text }, rootContainer);
         }
         if (hostContext.textHost === "label") {
-            return createRelationshipInstance(LABEL_TEXT_KIND, { text }, rootContainer);
+            return createWrapperInstance(LABEL_TEXT_KIND, { text }, rootContainer);
         }
         throw new Error(
             `Text strings must be rendered within a <GtkLabel> or <GtkTextBuffer> element; received ${JSON.stringify(text)}`,
@@ -275,7 +275,7 @@ const createInstanceConfig = (): InstanceConfig => ({
         return false;
     },
     getPublicInstance: (instance) => {
-        const adopted = isRelationshipNode(instance) ? stateOf(instance).adoptedInstance : undefined;
+        const adopted = isWrapperNode(instance) ? stateOf(instance).adoptedInstance : undefined;
         return (adopted ?? instance) as PublicInstance;
     },
 });

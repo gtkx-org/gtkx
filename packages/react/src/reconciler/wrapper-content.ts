@@ -5,8 +5,8 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import type { AnyClass } from "@gtkx/utils";
 import { hasType } from "../utils/gtype-predicates.js";
-import { isRelationshipNode } from "./relationship-node.js";
 import { type Node, stateOf } from "./state.js";
+import { isWrapperNode } from "./wrapper-node.js";
 
 const isToplevelType = (widget: GObject.Object): boolean =>
     TOPLEVEL_TYPES.some((typeName) => hasType(widget, typeName));
@@ -21,7 +21,7 @@ export const isToplevel = (instance: Node): boolean => instance instanceof GObje
 
 const trackedChild = (node: Node): Node | null => {
     const { children } = stateOf(node);
-    return children.find((child) => !isRelationshipNode(child)) ?? children[0] ?? null;
+    return children.find((child) => !isWrapperNode(child)) ?? children[0] ?? null;
 };
 
 export const trackedWidget = (node: Node): Gtk.Widget | null => {
@@ -34,9 +34,9 @@ export const trackedInstance = (node: Node): GObject.Object | undefined => {
     return child instanceof GObject.Object ? child : undefined;
 };
 
-const relationshipChildren = <T extends GObject.Object>(node: Node, ctor: AnyClass<T>): T[] =>
+const wrapperChildren = <T extends GObject.Object>(node: Node, ctor: AnyClass<T>): T[] =>
     stateOf(node).children.filter((child): child is T => child instanceof ctor);
 
-export const relationshipChildWidgets = (node: Node): Gtk.Widget[] => relationshipChildren(node, Gtk.Widget);
+export const wrapperChildWidgets = (node: Node): Gtk.Widget[] => wrapperChildren(node, Gtk.Widget);
 
-export const relationshipChildInstances = (node: Node): GObject.Object[] => relationshipChildren(node, GObject.Object);
+export const wrapperChildInstances = (node: Node): GObject.Object[] => wrapperChildren(node, GObject.Object);

@@ -1,4 +1,4 @@
-import { COMPANION_KIND, CONTAINER_SLOT_KIND, RELATIONSHIP_NODE_ELEMENT, WIDGET_PROP_KIND } from "@gtkx/config";
+import { COMPANION_KIND, CONTAINER_SLOT_KIND, WIDGET_PROP_KIND, WRAPPER_NODE_ELEMENT } from "@gtkx/config";
 import { createElement, isValidElement, type ReactNode } from "react";
 import { slotPropsFor } from "../reconciler/rule-table.js";
 
@@ -30,7 +30,7 @@ const splitProps = (props: object, slotProps: Set<string>): SplitProps => {
             if (value != null) {
                 wrappers.push(
                     createElement(
-                        RELATIONSHIP_NODE_ELEMENT,
+                        WRAPPER_NODE_ELEMENT,
                         { kind: CONTAINER_SLOT_KIND, slotTag: name, key: `container-slot:${name}` },
                         value as ReactNode,
                     ),
@@ -41,7 +41,7 @@ const splitProps = (props: object, slotProps: Set<string>): SplitProps => {
         if (isValidElement(value)) {
             wrappers.push(
                 createElement(
-                    RELATIONSHIP_NODE_ELEMENT,
+                    WRAPPER_NODE_ELEMENT,
                     { kind: WIDGET_PROP_KIND, propName: name, key: `widget-prop:${name}` },
                     value as ReactNode,
                 ),
@@ -64,14 +64,9 @@ export const createElementComponent = <P extends object>(elementName: string): (
 
 const NO_SLOT_PROPS: Set<string> = new Set();
 
-export const createRelationshipComponent = <P extends object>(element: string): ((props: P) => ReactNode) => {
+export const createWrapperComponent = <P extends object>(element: string): ((props: P) => ReactNode) => {
     return (props: P): ReactNode => {
         const { rest, wrappers, children } = splitProps(props, NO_SLOT_PROPS);
-        return createElement(
-            RELATIONSHIP_NODE_ELEMENT,
-            { kind: COMPANION_KIND, element, ...rest },
-            children,
-            ...wrappers,
-        );
+        return createElement(WRAPPER_NODE_ELEMENT, { kind: COMPANION_KIND, element, ...rest }, children, ...wrappers);
     };
 };

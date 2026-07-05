@@ -1,11 +1,11 @@
-import type { RelationshipKind } from "@gtkx/config";
+import type { WrapperKind } from "@gtkx/config";
 import * as GObject from "@gtkx/gi/gobject";
 import { collectConstructableProps } from "../utils/gtype.js";
 import { requireClassByName } from "../utils/gtype-predicates.js";
-import { createRelationshipNode } from "./relationship-node.js";
 import { constructionSkipProps } from "./rule-table.js";
 import { type Node, registerState } from "./state.js";
 import type { Container, Props } from "./types.js";
+import { createWrapperNode } from "./wrapper-node.js";
 
 const pickConstructProps = (gtype: bigint, props: Props): Props => {
     const constructable = collectConstructableProps(gtype);
@@ -28,8 +28,8 @@ export const createElementInstance = (type: string, props: Props, rootContainer:
     return node;
 };
 
-export const createRelationshipInstance = (kind: RelationshipKind, props: Props, rootContainer: Container): Node => {
-    const node = createRelationshipNode();
+export const createWrapperInstance = (kind: WrapperKind, props: Props, rootContainer: Container): Node => {
+    const node = createWrapperNode();
     registerState(node, { kind, props, rootContainer });
     return node;
 };

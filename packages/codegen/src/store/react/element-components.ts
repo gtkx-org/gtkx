@@ -1,4 +1,4 @@
-import { RELATIONSHIP_NODE_ELEMENT } from "@gtkx/config";
+import { WRAPPER_NODE_ELEMENT } from "@gtkx/config";
 import { sourceStringLiteral } from "@gtkx/utils";
 import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
@@ -7,7 +7,7 @@ import { ancestorGlibNames, collectIntrinsicElementClasses, type GlibNamedClass 
 import type { CompanionExportSpec, RuleTypegen } from "./synthetic-prop-types.js";
 import { type AncestryWrapperName, BUILT_IN_ANCESTRY_WRAPPERS } from "./tables.js";
 
-const RELATIONSHIP_NODE_ELEMENT_CONST = "RelationshipNodeElement";
+const WRAPPER_NODE_ELEMENT_CONST = "WrapperNodeElement";
 
 type TextNodeElement = {
     flatName: string;
@@ -56,7 +56,7 @@ export const generateElementComponentsSection = (
 
     const sections = [
         textNodes.length > 0
-            ? `const ${RELATIONSHIP_NODE_ELEMENT_CONST} = ${sourceStringLiteral(RELATIONSHIP_NODE_ELEMENT)} as const;`
+            ? `const ${WRAPPER_NODE_ELEMENT_CONST} = ${sourceStringLiteral(WRAPPER_NODE_ELEMENT)} as const;`
             : "",
         collector.exportLines.join("\n\n"),
     ];
@@ -82,7 +82,7 @@ const collectCandidateExports = (
 
 const collectCompanionExports = (collector: ExportCollector, companionElements: CompanionExportSpec[]): void => {
     for (const spec of companionElements) {
-        collector.imports.addNamed("@gtkx/react", "createRelationshipComponent", false);
+        collector.imports.addNamed("@gtkx/react", "createWrapperComponent", false);
         collector.imports.addNamed("react", "ReactNode", true);
         for (const [namespaceName, alias] of spec.imports) {
             if (namespaceName !== "") {
@@ -104,13 +104,13 @@ const collectTextNodeExports = (collector: ExportCollector, textNodes: TextNodeE
 };
 
 const renderCompanionExport = (spec: CompanionExportSpec): string => {
-    const factory = `createRelationshipComponent<${spec.typeName}>(${sourceStringLiteral(spec.element)})`;
+    const factory = `createWrapperComponent<${spec.typeName}>(${sourceStringLiteral(spec.element)})`;
     const component = `export const ${spec.element}: (props: ${spec.typeName}) => ReactNode = ${factory};`;
     return `${spec.typeSource}\n\n${component}`;
 };
 
 const renderTextNodeExport = (node: TextNodeElement): string =>
-    `export const ${node.flatName} = (props: ${node.propsType}): ReactNode => (\n    <${RELATIONSHIP_NODE_ELEMENT_CONST} kind=${sourceStringLiteral(node.kind)} {...props} />\n);`;
+    `export const ${node.flatName} = (props: ${node.propsType}): ReactNode => (\n    <${WRAPPER_NODE_ELEMENT_CONST} kind=${sourceStringLiteral(node.kind)} {...props} />\n);`;
 
 const renderCandidateExport = (candidate: GlibNamedClass, library: Library, imports: ImportsBuilder): string | null => {
     const { glibName, klass, namespace } = candidate;

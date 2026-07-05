@@ -12,6 +12,6 @@ export { createPortal } from "./reconciler/portal.js";
 export { createRoot, quit, type Root } from "./reconciler/render.js";
 export { createRootElement, type RootElement } from "./reconciler/root-element.js";
 export { getAccessibleMetadata } from "./utils/accessible-metadata.js";
-export { createElementComponent, createRelationshipComponent } from "./utils/create-element-component.js";
+export { createElementComponent, createWrapperComponent } from "./utils/create-element-component.js";
 export type { TextAnchorProps, TextPaintableProps } from "./utils/element-props.js";
 export type { GObjectTarget } from "./utils/gobject-target.js";

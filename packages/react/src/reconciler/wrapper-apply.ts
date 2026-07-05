@@ -12,13 +12,6 @@ import { callMethod } from "@gtkx/utils";
 import { collectTypeNameChain, typeChainIncludes } from "../utils/gtype.js";
 import { applyProps } from "./apply-props.js";
 import { attachChild, detachChild, getFocusWidget, isDescendantOf, unparentWidget } from "./container-attach.js";
-
-import {
-    relationshipChildInstances,
-    relationshipChildWidgets,
-    trackedInstance,
-    trackedWidget,
-} from "./relationship-content.js";
 import {
     type CallScope,
     elementRuleFor,
@@ -27,15 +20,9 @@ import {
     runCall,
     runCallValue,
 } from "./rule-table.js";
-import {
-    type ElementMapping,
-    isRelationshipKind,
-    type Node,
-    registeredStateOf,
-    registerState,
-    stateOf,
-} from "./state.js";
+import { type ElementMapping, isWrapperKind, type Node, registeredStateOf, registerState, stateOf } from "./state.js";
 import type { Props } from "./types.js";
+import { trackedInstance, trackedWidget, wrapperChildInstances, wrapperChildWidgets } from "./wrapper-content.js";
 
 const attachedParent = new WeakMap<GObject.Object, GObject.Object>();
 
@@ -164,12 +151,12 @@ const LAYOUT_MANAGER_PROP = "layoutManager";
 
 const resyncCompanionSiblings = (parent: Node): void => {
     for (const sibling of stateOf(parent).children) {
-        if (isRelationshipKind(sibling, COMPANION_KIND)) companionMapping.attach(sibling, parent);
+        if (isWrapperKind(sibling, COMPANION_KIND)) companionMapping.attach(sibling, parent);
     }
 };
 
 export const widgetPropMapping: ElementMapping = {
-    matches: (child, parent) => isRelationshipKind(child, WIDGET_PROP_KIND) && parent instanceof GObject.Object,
+    matches: (child, parent) => isWrapperKind(child, WIDGET_PROP_KIND) && parent instanceof GObject.Object,
     attach: (child, parent) => {
         const childState = stateOf(child);
         const prop = childState.props.propName;
@@ -207,11 +194,11 @@ const detachContainerSlotChild = (instance: Node, parent: GObject.Object, slotTa
 };
 
 export const containerSlotMapping: ElementMapping = {
-    matches: (child, parent) => isRelationshipKind(child, CONTAINER_SLOT_KIND) && parent instanceof GObject.Object,
+    matches: (child, parent) => isWrapperKind(child, CONTAINER_SLOT_KIND) && parent instanceof GObject.Object,
     attach: (child, parent) => {
         const slotTag = slotTagOf(child);
         if (slotTag === undefined || !(parent instanceof GObject.Object)) return;
-        const desired = relationshipChildInstances(child);
+        const desired = wrapperChildInstances(child);
         const prev = containerSlotState.get(child) ?? [];
         if (sameInstances(prev, desired)) return;
         for (const instance of prev) detachContainerSlotChild(instance, parent, slotTag);
@@ -304,7 +291,7 @@ const releaseAdopted = (node: Node): void => {
 
 const setterValueOf = (node: Node, prop: string): { present: boolean; value: unknown } => {
     for (const child of stateOf(node).children) {
-        if (isRelationshipKind(child, WIDGET_PROP_KIND) && stateOf(child).props.propName === prop) {
+        if (isWrapperKind(child, WIDGET_PROP_KIND) && stateOf(child).props.propName === prop) {
             return { present: true, value: trackedInstance(child) ?? null };
         }
     }
@@ -349,7 +336,7 @@ const companionOrdinal = (parent: Node, node: Node): number => {
     let ordinal = 0;
     for (const sibling of stateOf(parent).children) {
         if (sibling === node) return ordinal;
-        if (isRelationshipKind(sibling, COMPANION_KIND) && stateOf(sibling).props.element === element) ordinal++;
+        if (isWrapperKind(sibling, COMPANION_KIND) && stateOf(sibling).props.element === element) ordinal++;
     }
     return ordinal;
 };
@@ -402,7 +389,7 @@ const syncCompanionContent = (context: CompanionContext, content: Gtk.Widget, bu
 const syncCompanionMulti = (context: CompanionContext): void => {
     const { node, sync } = context;
     const built = companionPropsOf(context.rule, stateOf(node).props);
-    const desired = relationshipChildWidgets(node);
+    const desired = wrapperChildWidgets(node);
     for (const previous of sync.contents) {
         if (!desired.includes(previous)) detachCompanionContent(context, previous);
     }
@@ -451,9 +438,7 @@ const syncCompanionSingle = (context: CompanionContext): void => {
 
 export const companionMapping: ElementMapping = {
     matches: (child, parent) =>
-        isRelationshipKind(child, COMPANION_KIND) &&
-        parent instanceof GObject.Object &&
-        companionRuleOf(child) !== null,
+        isWrapperKind(child, COMPANION_KIND) && parent instanceof GObject.Object && companionRuleOf(child) !== null,
     attach: (child, parent) => {
         if (!(parent instanceof GObject.Object)) return;
         const rule = companionRuleOf(child);

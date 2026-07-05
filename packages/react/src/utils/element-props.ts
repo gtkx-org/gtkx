@@ -10,7 +10,7 @@ export type TextPaintableProps = {
     paintable: Gdk.Paintable;
 };
 
-type RelationshipNodeElementProps = {
+type WrapperNodeElementProps = {
     kind: string;
     children?: ReactNode;
     [key: string]: unknown;
@@ -20,7 +20,7 @@ declare global {
     namespace React {
         namespace JSX {
             interface IntrinsicElements {
-                __GTKX_RELATIONSHIP_NODE__: RelationshipNodeElementProps;
+                __GTKX_WRAPPER_NODE__: WrapperNodeElementProps;
             }
         }
     }

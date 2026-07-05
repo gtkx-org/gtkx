@@ -2,10 +2,9 @@ import type { AttachRule } from "@gtkx/config";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { typeChainIncludes } from "../utils/gtype.js";
-
-import { childWidget, isToplevel } from "./relationship-content.js";
 import { callUsesRef, nullSetterCurrentHolder, resolveAttachRule, runCall } from "./rule-table.js";
 import { type ElementMapping, type Node, registeredStateOf, stateOf } from "./state.js";
+import { childWidget, isToplevel } from "./wrapper-content.js";
 
 const containerRuleFor = (container: GObject.Object, child: Gtk.Widget): AttachRule | null => {
     const resolved = resolveAttachRule(container.__type__, child.__type__, undefined);

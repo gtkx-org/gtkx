@@ -151,15 +151,15 @@ describe("codegen React pipeline", () => {
         expect(js.length).toBeGreaterThan(0);
     });
 
-    it("emits companion elements as relationship components", () => {
+    it("emits companion elements as wrapper components", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
         expect(gtk).toContain(
-            'export const GtkNotebookPage: (props: GtkNotebookPageElementProps) => ReactNode = createRelationshipComponent<GtkNotebookPageElementProps>("GtkNotebookPage");',
+            'export const GtkNotebookPage: (props: GtkNotebookPageElementProps) => ReactNode = createWrapperComponent<GtkNotebookPageElementProps>("GtkNotebookPage");',
         );
         expect(gtk).toContain(
-            'export const GtkFixedLayoutChild: (props: GtkFixedLayoutChildElementProps) => ReactNode = createRelationshipComponent<GtkFixedLayoutChildElementProps>("GtkFixedLayoutChild");',
+            'export const GtkFixedLayoutChild: (props: GtkFixedLayoutChildElementProps) => ReactNode = createWrapperComponent<GtkFixedLayoutChildElementProps>("GtkFixedLayoutChild");',
         );
-        expect(gtk).toContain('createRelationshipComponent<GtkStackPageElementProps>("GtkStackPage")');
+        expect(gtk).toContain('createWrapperComponent<GtkStackPageElementProps>("GtkStackPage")');
         expect(gtk).not.toContain("GtkNotebookPageTab");
     });
 });

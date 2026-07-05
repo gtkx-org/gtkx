@@ -1,11 +1,11 @@
-import type { RelationshipKind } from "@gtkx/config";
+import type { WrapperKind } from "@gtkx/config";
 import * as GObject from "@gtkx/gi/gobject";
-import { isRelationshipNode, type RelationshipNode } from "./relationship-node.js";
 import { isRootElement, type RootElement } from "./root-element.js";
 import { getSignalStore, type SignalStore } from "./signal-store.js";
 import type { Container, Props } from "./types.js";
+import { isWrapperNode, type WrapperNode } from "./wrapper-node.js";
 
-export type Node = GObject.Object | RelationshipNode | RootElement;
+export type Node = GObject.Object | WrapperNode | RootElement;
 
 export type ElementMapping = {
     matches(child: Node, parent: Node): boolean;
@@ -15,7 +15,7 @@ export type ElementMapping = {
 
 export type State = {
     name?: string | undefined;
-    kind?: RelationshipKind | undefined;
+    kind?: WrapperKind | undefined;
     props: Props;
     parent: Node | null;
     children: Node[];
@@ -28,7 +28,7 @@ const stateMap = new WeakMap<Node, State>();
 
 export type StateSeed = {
     name?: string;
-    kind?: RelationshipKind;
+    kind?: WrapperKind;
     props: Props;
     rootContainer: Container;
 };
@@ -59,8 +59,8 @@ export const stateOf = (node: Node): State => {
     throw new Error("reconciler node has no registered state");
 };
 
-export const isRelationshipKind = (node: Node, kind: RelationshipKind): boolean =>
-    isRelationshipNode(node) && stateOf(node).kind === kind;
+export const isWrapperKind = (node: Node, kind: WrapperKind): boolean =>
+    isWrapperNode(node) && stateOf(node).kind === kind;
 
 export const closestInstance = (node: Node, matches: (node: Node) => boolean): Node | null => {
     let current: Node | null = node;
