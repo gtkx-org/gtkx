@@ -9,6 +9,7 @@ pub mod init;
 pub mod quit;
 pub mod read;
 pub mod register_class;
+pub mod resolve_type;
 pub mod set_wrapper;
 pub mod unfreeze;
 pub mod write;

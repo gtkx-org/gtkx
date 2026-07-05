@@ -1,4 +1,4 @@
-import type { Descriptor } from "@gtkx/native";
+import { type Descriptor, resolveType as nativeResolveType } from "@gtkx/native";
 import { bind } from "./bind.js";
 import {
     type BoxedDescriptor,
@@ -96,7 +96,7 @@ export const resolveType = (sharedLibrary: string, getTypeFnName: string): bigin
     const key = `${sharedLibrary}:${getTypeFnName}`;
     const cached = resolvedTypeCache.get(key);
     if (cached !== undefined) return cached;
-    const gtype = bind(sharedLibrary, getTypeFnName, [], biguint64T)() as bigint;
+    const gtype = nativeResolveType(sharedLibrary, getTypeFnName);
     resolvedTypeCache.set(key, gtype);
     return gtype;
 };

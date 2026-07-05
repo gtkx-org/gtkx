@@ -123,6 +123,45 @@ fn resolve_type_caches_repeated_resolutions() {
 }
 
 #[test]
+fn resolve_type_optional_resolves_known_get_type_function() {
+    helpers::run(|| {
+        let type_ = GlibThreadState::with(|state| {
+            state.resolve_type_optional("libgtk-4.so.1", "gtk_widget_get_type")
+        });
+
+        let type_ = type_.expect("resolving a present symbol should succeed");
+        assert_ne!(type_, gtk4::glib::Type::INVALID);
+    });
+}
+
+#[test]
+fn resolve_type_optional_returns_invalid_for_missing_symbol() {
+    helpers::run(|| {
+        let type_ = GlibThreadState::with(|state| {
+            state.resolve_type_optional("libgio-2.0.so.0", "g_totally_nonexistent_symbol_get_type")
+        });
+
+        let type_ = type_.expect("a missing symbol must not error, only yield INVALID");
+        assert_eq!(type_, gtk4::glib::Type::INVALID);
+    });
+}
+
+#[test]
+fn resolve_type_optional_still_errors_when_library_missing() {
+    helpers::run(|| {
+        let err = GlibThreadState::with(|state| {
+            state
+                .resolve_type_optional("libnope_resolve_optional_12345.so", "g_something_get_type")
+                .err()
+                .map(|e| e.to_string())
+        });
+
+        let message = err.expect("a missing library must remain a fatal error");
+        assert!(message.contains("Failed to load library"));
+    });
+}
+
+#[test]
 fn lookup_fundamental_fns_resolves_ref_and_unref() {
     helpers::run(|| {
         let resolved = GlibThreadState::with(|state| {

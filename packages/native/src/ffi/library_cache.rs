@@ -8,6 +8,8 @@ use libloading::os::unix::{Library, RTLD_GLOBAL, RTLD_NOW};
 
 use crate::handle::{RefFn, UnrefFn};
 
+type GetTypeFn = unsafe extern "C" fn() -> glib::ffi::GType;
+
 thread_local! {
     static GLIB_THREAD_STATE: RefCell<GlibThreadState> = RefCell::new(GlibThreadState::default());
 }
@@ -71,26 +73,50 @@ impl LibraryCache {
         library_name: &str,
         get_type_fn_name: &str,
     ) -> anyhow::Result<glib::Type> {
-        use glib::translate::FromGlib as _;
+        if let Some(cached) = self.cached_type(library_name, get_type_fn_name) {
+            return Ok(cached);
+        }
+        let get_type_fn = self.resolve_symbol::<GetTypeFn>(library_name, get_type_fn_name)?;
+        Ok(self.invoke_and_cache_type(library_name, get_type_fn_name, get_type_fn))
+    }
 
-        type GetTypeFn = unsafe extern "C" fn() -> glib::ffi::GType;
+    pub fn resolve_type_optional(
+        &mut self,
+        library_name: &str,
+        get_type_fn_name: &str,
+    ) -> anyhow::Result<glib::Type> {
+        if let Some(cached) = self.cached_type(library_name, get_type_fn_name) {
+            return Ok(cached);
+        }
+        let library = self.get_or_load(library_name)?;
+        let get_type_fn = match unsafe { library.get::<GetTypeFn>(get_type_fn_name.as_bytes()) } {
+            Ok(symbol) => *symbol,
+            Err(_) => return Ok(glib::Type::INVALID),
+        };
+        Ok(self.invoke_and_cache_type(library_name, get_type_fn_name, get_type_fn))
+    }
 
-        if let Some(cached) = self
-            .types
+    fn cached_type(&self, library_name: &str, get_type_fn_name: &str) -> Option<glib::Type> {
+        self.types
             .get(library_name)
             .and_then(|by_fn| by_fn.get(get_type_fn_name))
-        {
-            return Ok(*cached);
-        }
+            .copied()
+    }
 
-        let get_type_fn = self.resolve_symbol::<GetTypeFn>(library_name, get_type_fn_name)?;
+    fn invoke_and_cache_type(
+        &mut self,
+        library_name: &str,
+        get_type_fn_name: &str,
+        get_type_fn: GetTypeFn,
+    ) -> glib::Type {
+        use glib::translate::FromGlib as _;
         let raw_type = unsafe { get_type_fn() };
         let type_ = unsafe { glib::Type::from_glib(raw_type) };
         self.types
             .entry(library_name.to_owned())
             .or_default()
             .insert(get_type_fn_name.to_owned(), type_);
-        Ok(type_)
+        type_
     }
 
     pub fn len(&self) -> usize {
@@ -224,6 +250,15 @@ impl GlibThreadState {
         get_type_fn_name: &str,
     ) -> anyhow::Result<glib::Type> {
         self.libs.resolve_type(library_name, get_type_fn_name)
+    }
+
+    pub fn resolve_type_optional(
+        &mut self,
+        library_name: &str,
+        get_type_fn_name: &str,
+    ) -> anyhow::Result<glib::Type> {
+        self.libs
+            .resolve_type_optional(library_name, get_type_fn_name)
     }
 
     pub fn library(&mut self, library_name: &str) -> anyhow::Result<&Library> {
