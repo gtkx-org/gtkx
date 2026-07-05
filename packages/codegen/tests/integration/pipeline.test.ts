@@ -154,12 +154,12 @@ describe("codegen React pipeline", () => {
     it("emits companion elements as relationship components", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
         expect(gtk).toContain(
-            'export const GtkNotebookPage: (props: NotebookPageProps) => ReactNode = withNotebookTabLabel(createRelationshipComponent<NotebookPageProps>("GtkNotebookPage"));',
+            'export const GtkNotebookPage: ReturnType<typeof withNotebookTabLabel<GtkNotebookPageElementProps>> = withNotebookTabLabel(createRelationshipComponent<GtkNotebookPageElementProps>("GtkNotebookPage"));',
         );
         expect(gtk).toContain(
-            'export const GtkFixedChild: (props: FixedChildProps) => ReactNode = withFixedTransform(createRelationshipComponent<FixedChildProps>("GtkFixedChild"));',
+            'export const GtkFixedChild: ReturnType<typeof withFixedTransform<GtkFixedChildElementProps>> = withFixedTransform(createRelationshipComponent<GtkFixedChildElementProps>("GtkFixedChild"));',
         );
-        expect(gtk).toContain('createRelationshipComponent<StackPageProps>("GtkStackPage")');
+        expect(gtk).toContain('createRelationshipComponent<GtkStackPageElementProps>("GtkStackPage")');
         expect(gtk).not.toContain("GtkNotebookPageTab");
     });
 });
@@ -207,26 +207,29 @@ const interfaceBody = (jsxSource: string, glibName: string): string => {
 };
 
 describe("codegen synthetic props", () => {
-    it("composes the runtime-owned synthetic props onto every element component and imports the helper", () => {
+    it("derives synthetic prop lines from GIR signatures into the owning props interface", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
-        expect(gtk).toMatch(/createElementComponent<GtkScaleProps & SyntheticPropsFor<"GtkScale"[^>]*>>\("GtkScale"\)/);
-        expect(gtk).toMatch(
-            /createElementComponent<GtkButtonProps & SyntheticPropsFor<"GtkButton"[^>]*>>\("GtkButton"\)/,
+        expect(interfaceBody(gtk, "GtkScale")).toContain(
+            "marks?: { value: number; position?: Gtk.PositionType; label?: string | null; }[] | null | undefined;",
         );
-        expect(gtk).toMatch(/import \{[^}]*type SyntheticPropsFor[^}]*\} from "@gtkx\/react";/);
-    });
-
-    it("unions a subclass with its ancestors so inherited synthetic props resolve", () => {
-        const adw = sourceFor(reactPipeline, "adw");
-        expect(adw).toMatch(/AdwApplicationProps & SyntheticPropsFor<"AdwApplication" \| "GtkApplication"/);
-    });
-
-    it("keeps the generated props interface and intrinsic-element map free of synthetic props", () => {
-        const gtk = sourceFor(reactPipeline, "gtk");
-        expect(interfaceBody(gtk, "GtkScale")).not.toContain("marks?:");
+        expect(interfaceBody(gtk, "GtkSizeGroup")).toContain("widgets?: Gtk.Widget[] | null | undefined;");
+        expect(interfaceBody(gtk, "GtkDropTarget")).toContain("types?: GObject.Type[] | null | undefined;");
         expect(gtk).toContain("GtkScale: GtkScaleProps;");
+        expect(gtk).not.toContain("SyntheticPropsFor");
         const { dts } = transpileSource("gtk/gtk.tsx", gtk);
         expect(dts).not.toContain("TS2717");
+    });
+
+    it("contributes attach-rule prop arguments to the child element's props", () => {
+        const gio = sourceFor(reactPipeline, "gio");
+        expect(interfaceBody(gio, "GSimpleActionGroup")).toContain("prefix?: string | null | undefined;");
+    });
+
+    it("emits companion element props from the companion class interface", () => {
+        const gtk = sourceFor(reactPipeline, "gtk");
+        expect(gtk).toMatch(/export type GtkStackPageElementProps = Omit<GtkStackPageProps, [^;]*"child"[^;]*> & \{ id\?: string \| null \| undefined; \};/);
+        expect(gtk).toContain("export type GtkGridChildElementProps =");
+        expect(gtk).toMatch(/export type GtkNotebookPageElementProps = [^;]*tabLabel\?: ReactNode[^;]*;/);
     });
 });
 

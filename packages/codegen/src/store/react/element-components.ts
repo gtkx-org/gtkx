@@ -1,29 +1,13 @@
-import { RELATIONSHIP_NODE_ELEMENT, type RelationshipRule } from "@gtkx/config";
-import { sortedStringsBy, sourceStringLiteral } from "@gtkx/utils";
+import { RELATIONSHIP_NODE_ELEMENT } from "@gtkx/config";
+import { sourceStringLiteral } from "@gtkx/utils";
 import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
 import type { ImportsBuilder } from "../../writer/imports.js";
 import { ancestorGlibNames, collectIntrinsicElementClasses, type GlibNamedClass } from "./intrinsic-elements.js";
-import { type AncestryWrapperName, BUILT_IN_ANCESTRY_WRAPPERS } from "./tables.js";
+import type { CompanionExportSpec, RuleTypegen } from "./synthetic-prop-types.js";
+import { type AncestryWrapperName, BUILT_IN_ANCESTRY_WRAPPERS, COMPANION_WRAPPERS } from "./tables.js";
 
 const RELATIONSHIP_NODE_ELEMENT_CONST = "RelationshipNodeElement";
-
-type CompanionComponentSpec = {
-    propsType: string;
-    propsTypeArg?: string;
-    hoc?: string;
-};
-
-const COMPANION_COMPONENT_SPECS: Record<string, CompanionComponentSpec> = {
-    GtkStackPage: { propsType: "StackPageProps" },
-    AdwViewStackPage: { propsType: "StackPageProps", propsTypeArg: "Adw.ViewStackPage" },
-    GtkNotebookPage: { propsType: "NotebookPageProps", hoc: "withNotebookTabLabel" },
-    GtkGridChild: { propsType: "GridChildProps" },
-    GtkFixedChild: { propsType: "FixedChildProps", hoc: "withFixedTransform" },
-    GtkOverlayChild: { propsType: "OverlayChildProps" },
-};
-
-const GENERIC_COMPANION_PROPS = "Record<string, unknown>";
 
 type TextNodeElement = {
     flatName: string;
@@ -37,20 +21,15 @@ const TEXT_NODE_ELEMENTS: TextNodeElement[] = [
     { flatName: "GtkTextPaintable", kind: "text-paintable", propsType: "TextPaintableProps", parent: "GtkTextView" },
 ];
 
-type CompanionElement = {
-    element: string;
-    spec: CompanionComponentSpec;
-};
-
 export const generateElementComponentsSection = (
     targetNamespace: GirNamespace,
     library: Library,
     options: {
         imports: ImportsBuilder;
-        relationships: RelationshipRule[];
+        typegen: RuleTypegen;
     },
 ): { source: string; exportedNames: Set<string> } => {
-    const { imports, relationships } = options;
+    const { imports, typegen } = options;
     const exportedNames = new Set<string>();
     const exportLines: string[] = [];
 
@@ -60,7 +39,7 @@ export const generateElementComponentsSection = (
     const inTargetNamespace = (parentGlibName: string): boolean =>
         namespaceByGlib.get(parentGlibName) === targetNamespace.name;
 
-    const companionElements = collectCompanionElements(relationships, inTargetNamespace);
+    const companionElements = typegen.companionExports(targetNamespace.name);
     const textNodes = TEXT_NODE_ELEMENTS.filter((node) => inTargetNamespace(node.parent));
     const virtualNames = new Set([
         ...companionElements.map((entry) => entry.element),
@@ -76,13 +55,16 @@ export const generateElementComponentsSection = (
         exportedNames.add(candidate.glibName);
     }
 
-    for (const { element, spec } of companionElements) {
+    for (const spec of companionElements) {
         imports.addNamed("@gtkx/react", "createRelationshipComponent", false);
-        if (spec.hoc !== undefined) imports.addNamed("@gtkx/react", spec.hoc, false);
-        if (spec.propsType !== GENERIC_COMPANION_PROPS) imports.addNamed("@gtkx/react", spec.propsType, true);
         imports.addNamed("react", "ReactNode", true);
-        exportLines.push(renderCompanionExport(element, spec));
-        exportedNames.add(element);
+        for (const [namespaceName, alias] of spec.imports) {
+            if (namespaceName !== "") imports.addNamespace(`@gtkx/gi/${namespaceName.toLowerCase()}`, alias, true);
+        }
+        const wrapper = COMPANION_WRAPPERS[spec.element];
+        if (wrapper !== undefined) imports.addNamed("@gtkx/react", wrapper, false);
+        exportLines.push(renderCompanionExport(spec, wrapper));
+        exportedNames.add(spec.element);
     }
 
     let needsWrapperConst = false;
@@ -104,28 +86,13 @@ export const generateElementComponentsSection = (
     return { source, exportedNames };
 };
 
-const collectCompanionElements = (
-    relationships: RelationshipRule[],
-    inTargetNamespace: (parentGlibName: string) => boolean,
-): CompanionElement[] => {
-    const seen = new Set<string>();
-    const result: CompanionElement[] = [];
-    for (const rule of relationships) {
-        if (rule.kind !== "companion" && rule.kind !== "layout-child") continue;
-        if (seen.has(rule.element) || !inTargetNamespace(rule.parent)) continue;
-        seen.add(rule.element);
-        const spec = COMPANION_COMPONENT_SPECS[rule.element] ?? { propsType: GENERIC_COMPANION_PROPS };
-        result.push({ element: rule.element, spec });
-    }
-    return sortedStringsBy(result, (entry) => entry.element);
-};
-
-const renderCompanionExport = (element: string, spec: CompanionComponentSpec): string => {
-    const propsTypeRef =
-        spec.propsTypeArg === undefined ? spec.propsType : `${spec.propsType}<${spec.propsTypeArg}>`;
-    const factory = `createRelationshipComponent<${propsTypeRef}>(${sourceStringLiteral(element)})`;
-    const annotated = spec.hoc === undefined ? factory : `${spec.hoc}(${factory})`;
-    return `export const ${element}: (props: ${propsTypeRef}) => ReactNode = ${annotated};`;
+const renderCompanionExport = (spec: CompanionExportSpec, wrapper: string | undefined): string => {
+    const factory = `createRelationshipComponent<${spec.typeName}>(${sourceStringLiteral(spec.element)})`;
+    const component =
+        wrapper === undefined
+            ? `export const ${spec.element}: (props: ${spec.typeName}) => ReactNode = ${factory};`
+            : `export const ${spec.element}: ReturnType<typeof ${wrapper}<${spec.typeName}>> = ${wrapper}(${factory});`;
+    return `${spec.typeSource}\n\n${component}`;
 };
 
 const renderTextNodeExport = (node: TextNodeElement): string =>
@@ -136,13 +103,11 @@ const renderCandidateExport = (candidate: GlibNamedClass, library: Library, impo
     const ancestry = new Set(ancestorGlibNames(klass, namespace, library));
     const wrapper = resolveAncestryWrapper(ancestry);
     imports.addNamed("@gtkx/react", "createElementComponent", false);
-    imports.addNamed("@gtkx/react", "SyntheticPropsFor", true);
     imports.addNamed("react", "ReactNode", true);
     if (wrapper !== undefined) imports.addNamed("@gtkx/react", wrapper, false);
     const isDialog = wrapper === "withWindowPresentation" && ancestry.has("AdwDialog");
     if (isDialog) imports.addNamed("@gtkx/react", "ToplevelParentProps", true);
-    const syntheticUnion = [...ancestry].map((name) => sourceStringLiteral(name)).join(" | ");
-    return renderElementComponentExport(glibName, wrapper, isDialog, syntheticUnion);
+    return renderElementComponentExport(glibName, wrapper, isDialog);
 };
 
 const resolveAncestryWrapper = (ancestry: Set<string>): AncestryWrapperName | undefined => {
@@ -156,9 +121,8 @@ const renderElementComponentExport = (
     glibName: string,
     wrapper: AncestryWrapperName | undefined,
     isDialog: boolean,
-    syntheticUnion: string,
 ): string => {
-    const propsType = `${glibName}Props & SyntheticPropsFor<${syntheticUnion}>`;
+    const propsType = `${glibName}Props`;
     if (wrapper === undefined) {
         return `export const ${glibName}: (props: ${propsType}) => ReactNode = createElementComponent<${propsType}>(${sourceStringLiteral(glibName)});`;
     }

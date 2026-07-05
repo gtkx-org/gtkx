@@ -38,12 +38,6 @@ export function detachChild(child: Gtk.Widget, container: GObject.Object): void 
     if (child.getParent() === container) child.unparent();
 }
 
-export function isAttachedTo(child: Gtk.Widget | null, parent: Gtk.Widget | null): boolean {
-    if (!child || !parent) return false;
-    const childParent = child.getParent();
-    return childParent !== null && childParent === parent;
-}
-
 export function unparentWidget(widget: Gtk.Widget): void {
     const currentParent = widget.getParent();
     if (currentParent === null) return;

@@ -1,9 +1,10 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkAboutDialog } from "@gtkx/jsx/gtk";
-import type { CreditSection } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
+
+type CreditSection = { name: string; people: string[] };
 
 const SECTIONS: CreditSection[] = [
     { name: "Design", people: ["Ada Lovelace"] },

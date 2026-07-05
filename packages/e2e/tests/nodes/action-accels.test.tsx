@@ -2,7 +2,9 @@ import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GSimpleAction } from "@gtkx/jsx/gio";
 import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
-import { type ActionAccel, createRootElement } from "@gtkx/react";
+import { createRootElement } from "@gtkx/react";
+
+type ActionAccel = { action: string; accels: string[] };
 import { render } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject } from "react";
 import { describe, expect, it } from "vitest";

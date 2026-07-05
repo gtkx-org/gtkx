@@ -14,23 +14,5 @@ export { createRoot, quit, type Root } from "./reconciler/render.js";
 export { createRootElement, type RootElement } from "./reconciler/root-element.js";
 export { getAccessibleMetadata } from "./utils/accessible-metadata.js";
 export { createElementComponent, createRelationshipComponent } from "./utils/create-element-component.js";
-export type {
-    ActionAccel,
-    AlertDialogResponseProps,
-    CalendarMark,
-    CreditSection,
-    DragSourceIcon,
-    DropTargetType,
-    FixedChildProps,
-    GridChildProps,
-    LevelBarOffset,
-    NotebookPageProps,
-    OverlayChildProps,
-    ScaleMark,
-    StackPageProps,
-    SyntheticProps,
-    SyntheticPropsFor,
-    TextAnchorProps,
-    TextPaintableProps,
-} from "./utils/element-props.js";
+export type { TextAnchorProps, TextPaintableProps } from "./utils/element-props.js";
 export type { GObjectTarget } from "./utils/gobject-target.js";

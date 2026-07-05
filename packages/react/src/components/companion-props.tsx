@@ -5,18 +5,18 @@ import { createElement, type ReactNode } from "react";
 type FixedTransformProps = {
     x?: number | undefined;
     y?: number | undefined;
-    transform?: Gsk.Transform | undefined;
+    transform?: Gsk.Transform | null | undefined;
 };
 
-const composeTransform = (x: number, y: number, transform: Gsk.Transform | undefined): Gsk.Transform | undefined => {
+const composeTransform = (x: number, y: number, transform: Gsk.Transform | null | undefined): Gsk.Transform | null => {
     const point = new Graphene.Point();
     point.init(x, y);
     let composed = Gsk.Transform.new().translate(point);
-    if (transform !== undefined && composed !== null) composed = composed.transform(transform);
-    return composed ?? undefined;
+    if (transform != null && composed !== null) composed = composed.transform(transform);
+    return composed;
 };
 
-export const withFixedTransform = <P extends { transform?: Gsk.Transform | undefined }>(
+export const withFixedTransform = <P extends { transform?: Gsk.Transform | null | undefined }>(
     Component: (props: P) => ReactNode,
 ): ((props: Omit<P, "transform"> & FixedTransformProps) => ReactNode) => {
     return (props) => {

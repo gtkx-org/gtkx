@@ -152,9 +152,6 @@ export const resolveAttachRule = (
 export const elementRuleFor = (element: string): CompanionRule | LayoutChildRule | undefined =>
     elementIndex.get(element);
 
-export const isSkippedChildType = (childType: bigint): boolean =>
-    collectTypeNamesWithInterfaces(childType).some((name) => skippedTypes.has(name));
-
 const slotPropsCache = new Map<string, Set<string>>();
 
 export const slotPropsFor = (elementName: string): Set<string> => {

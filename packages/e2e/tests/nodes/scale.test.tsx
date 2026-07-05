@@ -1,9 +1,10 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkAdjustment, GtkScale } from "@gtkx/jsx/gtk";
-import type { ScaleMark } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
+
+type ScaleMark = { value: number; position?: Gtk.PositionType; label?: string | null };
 
 const ScaleWithMarks = ({ marks, scaleRef }: { marks?: ScaleMark[]; scaleRef: RefObject<Gtk.Scale | null> }) => (
     <GtkScale ref={scaleRef} adjustment={<GtkAdjustment value={0} lower={0} upper={100} />} marks={marks} />

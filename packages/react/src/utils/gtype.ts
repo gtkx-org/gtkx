@@ -1,14 +1,12 @@
 /// <reference types="@gtkx/config/env" />
 
 import {
-    ATTACH_SHAPES,
     CONSTRUCT_ONLY_PROPS,
     CONSTRUCT_PROPS,
     DEFAULT_BLOCKABLE_TYPES,
     DEFAULT_PROPS,
     SIGNALS,
 } from "virtual:gtkx-config";
-import type { AttachShape } from "@gtkx/config";
 import type { TypedClass } from "@gtkx/ffi";
 import { typeInterfaces, typeName, typeParent } from "@gtkx/gi/gobject";
 import { NOTIFY_SIGNAL, propToNotifySignal } from "./notify-name.js";
@@ -30,7 +28,6 @@ const signalCache = new Map<bigint, Map<string, string | null>>();
 const constructOnlyCache = new Map<bigint, Map<string, boolean>>();
 const defaultPropCache = new Map<bigint, Map<string, DefaultPropLookup>>();
 const constructablePropsCache = new Map<bigint, Set<string>>();
-const attachShapesCache = new Map<bigint, Set<AttachShape>>();
 
 export const collectTypeNameChain = (gtype: bigint): string[] => {
     const cached = typeNameChainCache.get(gtype);
@@ -101,14 +98,6 @@ export const foldInheritedTableWithInterfaces = <R, T>(
     return accumulator;
 };
 
-export const findInheritedRow = <R>(gtype: bigint, table: Record<string, R>): R | undefined => {
-    for (const name of collectTypeNameChain(gtype)) {
-        const row = table[name];
-        if (row !== undefined) return row;
-    }
-    return undefined;
-};
-
 export const typeChainIncludes = (gtype: bigint, name: string): boolean => {
     let names = typeNameSetCache.get(gtype);
     if (!names) {
@@ -120,22 +109,6 @@ export const typeChainIncludes = (gtype: bigint, name: string): boolean => {
 
 export const isDefaultBlockableType = (gtype: bigint): boolean =>
     DEFAULT_BLOCKABLE_TYPES.some((name) => typeChainIncludes(gtype, name));
-
-export const collectAttachShapes = (gtype: bigint): Set<AttachShape> => {
-    const cached = attachShapesCache.get(gtype);
-    if (cached) return cached;
-    const shapes = foldInheritedTableWithInterfaces<AttachShape[], Set<AttachShape>>(
-        gtype,
-        ATTACH_SHAPES,
-        (collected, row) => {
-            for (const shape of row) collected.add(shape);
-            return collected;
-        },
-        new Set<AttachShape>(),
-    );
-    attachShapesCache.set(gtype, shapes);
-    return shapes;
-};
 
 const memoize = <T>(
     cache: Map<bigint, Map<string, T>>,

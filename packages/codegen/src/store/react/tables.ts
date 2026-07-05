@@ -19,6 +19,11 @@ export const BUILT_IN_ANCESTRY_WRAPPERS: AncestryWrapperRule[] = [
     { ancestors: ["GtkWindow", "AdwDialog"], wrapper: "withWindowPresentation" },
 ];
 
+export const COMPANION_WRAPPERS: Record<string, string> = {
+    GtkFixedChild: "withFixedTransform",
+    GtkNotebookPage: "withNotebookTabLabel",
+};
+
 export const TOPLEVEL_TYPES: string[] = ["GtkWindow", "AdwDialog"];
 
 export const DEFAULT_BLOCKABLE_TYPES: string[] = ["GtkTextBuffer"];

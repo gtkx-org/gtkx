@@ -1,4 +1,4 @@
-import { type RelationshipRule, type ResolvedGtkxRules, resolveGtkxRules } from "@gtkx/config";
+import { type ResolvedGtkxRules, resolveGtkxRules } from "@gtkx/config";
 import { sortedStringsBy } from "@gtkx/utils";
 import type { Library } from "../../gir/library.js";
 import { type GirNamespace, namespaceDirectory } from "../../gir/namespace.js";
@@ -9,6 +9,7 @@ import { collectIntrinsicElementClasses } from "./intrinsic-elements.js";
 import { generateJsxSection } from "./jsx.js";
 import { generateMetadata } from "./metadata.js";
 import { assembleRuleTables } from "./rule-tables.js";
+import { createRuleTypegen, type RuleTypegen } from "./synthetic-prop-types.js";
 import {
     DEFAULT_BLOCKABLE_TYPES,
     META_OBJECT_ADD_METHODS,
@@ -36,11 +37,12 @@ export const generateJsxFiles = (library: Library, userRules?: ResolvedGtkxRules
     }
 
     const ruleTables = assembleRuleTables(library, resolveGtkxRules(userRules));
+    const typegen = createRuleTypegen(library, ruleTables);
 
     const namespaces: JsxNamespaceFile[] = [];
     let intrinsicElementCount = 0;
     for (const namespace of sortedStringsBy(namespacesWithIntrinsicElements.values(), (entry) => entry.name)) {
-        const { source, count } = generateJsxNamespace(namespace, library, ruleTables.relationships);
+        const { source, count } = generateJsxNamespace(namespace, library, typegen);
         namespaces.push({ directory: namespaceDirectory(namespace), source });
         intrinsicElementCount += count;
     }
@@ -63,17 +65,18 @@ export const generateJsxFiles = (library: Library, userRules?: ResolvedGtkxRules
 const generateJsxNamespace = (
     targetNamespace: GirNamespace,
     library: Library,
-    relationships: RelationshipRule[],
+    typegen: RuleTypegen,
 ): { source: string; count: number } => {
     const targetDirectory = namespaceDirectory(targetNamespace);
     const imports = new ImportsBuilder();
     imports.addSideEffect(`@gtkx/gi/${targetDirectory}`);
 
-    const elementComponents = generateElementComponentsSection(targetNamespace, library, { imports, relationships });
+    const elementComponents = generateElementComponentsSection(targetNamespace, library, { imports, typegen });
     const excludeNames = new Set<string>(elementComponents.exportedNames);
     const { source: jsxSection, intrinsicCount } = generateJsxSection(targetNamespace, library, {
         excludeNames,
         imports,
+        typegen,
     });
 
     const body = [imports.toSource().trimEnd(), "", jsxSection];
