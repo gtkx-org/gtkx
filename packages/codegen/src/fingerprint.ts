@@ -10,8 +10,6 @@ export const FINGERPRINT_FILENAME = ".codegen-fingerprint.json";
 
 const CODEGEN_VERSION: string = (require("../package.json") as { version: string }).version;
 
-const METADATA_SCHEMA_VERSION = 6;
-
 export type CodegenFingerprint = {
     value: string;
     girFiles: string[];
@@ -21,8 +19,6 @@ export type CodegenFingerprint = {
 export const computeFingerprint = (girFiles: string[], libraries: string[], rules: ResolvedGtkxRules): string => {
     const hash = createHash("sha256");
     hash.update(CODEGEN_VERSION);
-    hash.update("\n");
-    hash.update(String(METADATA_SCHEMA_VERSION));
     hash.update("\n");
     hash.update(JSON.stringify(rules));
     hash.update("\n");
