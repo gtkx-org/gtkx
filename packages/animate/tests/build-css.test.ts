@@ -1,3 +1,4 @@
+import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
 import { buildCss } from "../src/build-css.js";
 
@@ -42,5 +43,27 @@ describe("buildCss", () => {
         expect(css).toBe(
             ".anim { opacity: 0.5; transform: translate(10px, 0px) scale(2) rotate(45deg) skewX(5deg) skewY(6deg); }",
         );
+    });
+
+    it("emits transform and opacity CSS that GTK parses without error", () => {
+        const provider = new Gtk.CssProvider();
+        const errors: string[] = [];
+        provider.on("parsing-error", (_section, error) => {
+            errors.push(error.message);
+        });
+
+        provider.loadFromString(
+            buildCss("gtkx-anim-probe", {
+                opacity: 0.5,
+                x: 10,
+                y: 5,
+                scale: 2,
+                rotate: 45,
+                skewX: 5,
+                skewY: 6,
+            }),
+        );
+
+        expect(errors).toEqual([]);
     });
 });

@@ -19,12 +19,18 @@ const shouldAnimateOnMount = (props: WidgetAnimationProps): boolean => {
     return !shallowEqual(initial, animate);
 };
 
+/**
+ * Drives a widget's animation lifecycle: writes CSS for the current values, plays libadwaita
+ * tween or spring animations toward a target, and cleans up on disposal. Consumers receive this
+ * through {@link animated} components rather than constructing it directly.
+ */
 export class WidgetAnimator {
     private cssProvider: AnimationCssProvider;
     private propsRef: RefObject<WidgetAnimationProps>;
     private ref: RefObject<Gtk.Widget | null>;
     private currentValues: AnimationTarget = {};
     private currentAnimation: Adw.Animation | null = null;
+    private cancelCurrent: (() => void) | null = null;
     private delayTimer: ReturnType<typeof setTimeout> | null = null;
 
     constructor(className: string, ref: RefObject<Gtk.Widget | null>, propsRef: RefObject<WidgetAnimationProps>) {
@@ -33,6 +39,10 @@ export class WidgetAnimator {
         this.propsRef = propsRef;
     }
 
+    /**
+     * Attach the CSS provider and apply the resolved values. When `animateOnMount` is set and
+     * `initial` differs from `animate`, the widget animates from `initial` toward `animate`.
+     */
     public applyMount(animateOnMount: boolean): void {
         const widget = this.ref.current;
         if (!widget) return;
@@ -50,6 +60,10 @@ export class WidgetAnimator {
         }
     }
 
+    /**
+     * Animate from the current values to `target`, interrupting any running animation without
+     * snapping to its target. `onComplete` runs only when this animation finishes naturally.
+     */
     public startAnimation(target: AnimationTarget, onComplete?: () => void): void {
         const widget = this.ref.current;
         if (!widget) return;
@@ -69,9 +83,15 @@ export class WidgetAnimator {
         });
 
         const animation = buildAnimation(widget, callback, transition);
+        let cancelled = false;
+        this.cancelCurrent = () => {
+            cancelled = true;
+        };
         animation.on("done", () => {
+            if (cancelled) return;
             this.currentValues = { ...to };
             this.currentAnimation = null;
+            this.cancelCurrent = null;
             this.propsRef.current.onAnimationComplete?.();
             onComplete?.();
         });
@@ -80,6 +100,7 @@ export class WidgetAnimator {
         this.play(animation, secondsToMilliseconds(transition.delay ?? 0));
     }
 
+    /** Cancel any running animation and detach the CSS provider. */
     public dispose(): void {
         this.cancelAnimation();
         this.cssProvider.dispose();
@@ -109,8 +130,12 @@ export class WidgetAnimator {
     private cancelAnimation(): void {
         this.clearDelay();
         if (this.currentAnimation) {
-            this.currentAnimation.skip();
+            this.cancelCurrent?.();
+            if (this.currentAnimation.getState() === Adw.AnimationState.PLAYING) {
+                this.currentAnimation.pause();
+            }
             this.currentAnimation = null;
+            this.cancelCurrent = null;
         }
     }
 }

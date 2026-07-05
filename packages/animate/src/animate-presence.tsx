@@ -6,6 +6,7 @@ import {
     type Key,
     type ReactElement,
     type ReactNode,
+    type RefObject,
     useContext,
     useId,
     useLayoutEffect,
@@ -36,7 +37,7 @@ export const usePresence = (): UsePresenceResult => {
     useLayoutEffect(() => {
         if (context === null) return;
         return context.register(presenceId);
-    }, [context, presenceId]);
+    }, [presenceId]);
 
     if (context === null) return alwaysPresent;
     if (context.isPresent) return [true];
@@ -90,6 +91,13 @@ type PresenceChildProps = {
 
 const PresenceChild = ({ isPresent, initial, onExitComplete, children }: PresenceChildProps): ReactNode => {
     const registrationsRef = useRef<Map<string, boolean>>(new Map());
+    const isPresentRef = useRef(isPresent);
+    const onExitCompleteRef = useRef(onExitComplete);
+
+    useLayoutEffect(() => {
+        isPresentRef.current = isPresent;
+        onExitCompleteRef.current = onExitComplete;
+    });
 
     const context = useMemo<PresenceContextProps>(() => {
         const registrations = registrationsRef.current;
@@ -102,17 +110,17 @@ const PresenceChild = ({ isPresent, initial, onExitComplete, children }: Presenc
                 for (const isComplete of registrations.values()) {
                     if (!isComplete) return;
                 }
-                onExitComplete?.();
+                onExitCompleteRef.current?.();
             },
             register: (id: string) => {
                 registrations.set(id, false);
                 return () => {
                     registrations.delete(id);
-                    if (!isPresent && registrations.size === 0) onExitComplete?.();
+                    if (!isPresentRef.current && registrations.size === 0) onExitCompleteRef.current?.();
                 };
             },
         };
-    }, [isPresent, initial, onExitComplete]);
+    }, [isPresent, initial]);
 
     useLayoutEffect(() => {
         if (!isPresent && registrationsRef.current.size === 0) onExitComplete?.();
@@ -120,6 +128,9 @@ const PresenceChild = ({ isPresent, initial, onExitComplete, children }: Presenc
 
     return <PresenceContext.Provider value={context}>{children}</PresenceContext.Provider>;
 };
+
+const exitingChildrenOf = (renderedChildren: ReactElement[], presentKeys: Key[]): ReactElement[] =>
+    renderedChildren.filter((child) => !presentKeys.includes(getChildKey(child)));
 
 const mergeExitingChildren = (
     presentChildren: ReactElement[],
@@ -139,33 +150,121 @@ const mergeExitingChildren = (
 type ExitContext = {
     key: Key;
     exitComplete: Map<Key, boolean>;
+    exitingComponents: Set<Key>;
     pending: ReactElement[];
     commit: (children: ReactElement[]) => void;
+    onAllComplete?: (() => void) | undefined;
 };
 
 const completeExit = (context: ExitContext): void => {
-    if (context.exitComplete.get(context.key) === true) return;
+    if (context.exitingComponents.has(context.key)) return;
+    if (!context.exitComplete.has(context.key)) return;
+
+    context.exitingComponents.add(context.key);
     context.exitComplete.set(context.key, true);
+
     for (const isExitComplete of context.exitComplete.values()) {
         if (!isExitComplete) return;
     }
+
     context.exitComplete.clear();
+    context.exitingComponents.clear();
     context.commit(context.pending);
+    context.onAllComplete?.();
 };
 
+const syncExitTracking = (
+    renderedChildren: ReactElement[],
+    presentKeys: Key[],
+    exitComplete: Map<Key, boolean>,
+    exitingComponents: Set<Key>,
+): void => {
+    for (const child of renderedChildren) {
+        const childKey = getChildKey(child);
+        if (presentKeys.includes(childKey)) {
+            exitComplete.delete(childKey);
+            exitingComponents.delete(childKey);
+        } else if (exitComplete.get(childKey) !== true) {
+            exitComplete.set(childKey, false);
+        }
+    }
+};
+
+type RenderPresenceParams = {
+    renderedChildren: ReactElement[];
+    presentKeys: Key[];
+    presenceInitial: boolean;
+    exitComplete: Map<Key, boolean>;
+    exitingComponents: Set<Key>;
+    pendingPresentChildren: RefObject<ReactElement[]>;
+    commit: (children: ReactElement[]) => void;
+    onAllComplete?: (() => void) | undefined;
+};
+
+const renderPresenceChildren = (params: RenderPresenceParams): ReactNode =>
+    params.renderedChildren.map((child) => {
+        const childKey = getChildKey(child);
+        const isPresent = params.presentKeys.includes(childKey);
+        const onExitComplete = isPresent
+            ? undefined
+            : () =>
+                  completeExit({
+                      key: childKey,
+                      exitComplete: params.exitComplete,
+                      exitingComponents: params.exitingComponents,
+                      pending: params.pendingPresentChildren.current,
+                      commit: params.commit,
+                      onAllComplete: params.onAllComplete,
+                  });
+        return (
+            <PresenceChild
+                key={childKey}
+                isPresent={isPresent}
+                initial={params.presenceInitial}
+                onExitComplete={onExitComplete}
+            >
+                {child}
+            </PresenceChild>
+        );
+    });
+
+/**
+ * How {@link AnimatePresence} schedules entering and exiting children. `sync` animates them
+ * concurrently; `wait` holds an incoming child until the outgoing exit animations finish.
+ */
+export type AnimatePresenceMode = "sync" | "wait";
+
+/** Props for {@link AnimatePresence}. */
+export type AnimatePresenceProps = {
+    /** Keyed children to track across mounts and unmounts. */
+    children: ReactNode;
+    /** Whether children animate from their `initial` values on the first render. Defaults to `true`. */
+    initial?: boolean;
+    /** Enter and exit scheduling. See {@link AnimatePresenceMode}. Defaults to `sync`. */
+    mode?: AnimatePresenceMode;
+    /** Called once after every exiting child has finished animating out. */
+    onExitComplete?: () => void;
+};
+
+/**
+ * Animates keyed children as they mount and unmount. A child removed from `children` stays
+ * rendered until its `exit` animation completes and then unmounts; a child re-added before its
+ * exit finishes animates back in. Every child must carry a unique `key`. Motion's `custom` and
+ * `propagate` options are not supported.
+ */
 export const AnimatePresence = ({
     children,
     initial = true,
-}: {
-    children: ReactNode;
-    initial?: boolean;
-}): ReactNode => {
+    mode = "sync",
+    onExitComplete,
+}: AnimatePresenceProps): ReactNode => {
     const presentChildren = useMemo(() => onlyElements(children), [children]);
     const presentKeys = presentChildren.map(getChildKey);
 
     const isInitialRender = useRef(true);
     const pendingPresentChildren = useRef(presentChildren);
     const exitComplete = useRef<Map<Key, boolean>>(new Map());
+    const exitingComponents = useRef<Set<Key>>(new Set());
 
     const [diffedChildren, setDiffedChildren] = useState(presentChildren);
     const [renderedChildren, setRenderedChildren] = useState(presentChildren);
@@ -178,46 +277,31 @@ export const AnimatePresence = ({
 
     useLayoutEffect(() => {
         pendingPresentChildren.current = presentChildren;
-        for (const child of renderedChildren) {
-            const childKey = getChildKey(child);
-            if (presentKeys.includes(childKey)) {
-                exitComplete.current.delete(childKey);
-            } else if (exitComplete.current.get(childKey) !== true) {
-                exitComplete.current.set(childKey, false);
-            }
-        }
+        syncExitTracking(renderedChildren, presentKeys, exitComplete.current, exitingComponents.current);
     }, [renderedChildren, presentKeys.join("-"), presentChildren]);
 
     if (presentChildren !== diffedChildren) {
-        setRenderedChildren(mergeExitingChildren(presentChildren, renderedChildren, presentKeys));
+        const exiting = exitingChildrenOf(renderedChildren, presentKeys);
+        const nextChildren =
+            mode === "wait" && exiting.length > 0
+                ? exiting
+                : mergeExitingChildren(presentChildren, renderedChildren, presentKeys);
+        setRenderedChildren(nextChildren);
         setDiffedChildren(presentChildren);
         return null;
     }
 
     return (
         <>
-            {renderedChildren.map((child) => {
-                const childKey = getChildKey(child);
-                const isPresent = presentKeys.includes(childKey);
-                const onExitComplete = isPresent
-                    ? undefined
-                    : () =>
-                          completeExit({
-                              key: childKey,
-                              exitComplete: exitComplete.current,
-                              pending: pendingPresentChildren.current,
-                              commit: setRenderedChildren,
-                          });
-                return (
-                    <PresenceChild
-                        key={childKey}
-                        isPresent={isPresent}
-                        initial={presenceInitial}
-                        onExitComplete={onExitComplete}
-                    >
-                        {child}
-                    </PresenceChild>
-                );
+            {renderPresenceChildren({
+                renderedChildren,
+                presentKeys,
+                presenceInitial,
+                exitComplete: exitComplete.current,
+                exitingComponents: exitingComponents.current,
+                pendingPresentChildren,
+                commit: setRenderedChildren,
+                onAllComplete: onExitComplete,
             })}
         </>
     );

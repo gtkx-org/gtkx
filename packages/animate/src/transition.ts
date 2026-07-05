@@ -30,7 +30,9 @@ const buildTweenAnimation = (
 
     animation.setEasing(resolveEasing(transition.ease ?? DEFAULT_EASE));
     if (transition.repeat !== undefined) animation.setRepeatCount(resolveRepeatCount(transition.repeat));
-    if (transition.repeatType !== undefined) animation.setAlternate(transition.repeatType === "reverse");
+    if (transition.repeatType !== undefined) {
+        animation.setAlternate(transition.repeatType === "reverse" || transition.repeatType === "mirror");
+    }
     if (transition.reverse !== undefined) animation.setReverse(transition.reverse);
     applyShared(animation, transition);
 
@@ -45,8 +47,7 @@ const buildSpringAnimation = (
     const animation = Adw.SpringAnimation.new(widget, 0, 1, resolveSpringParams(transition), target);
 
     if (transition.velocity !== undefined) animation.setInitialVelocity(transition.velocity);
-    const epsilon = transition.epsilon ?? transition.restDelta;
-    if (epsilon !== undefined) animation.setEpsilon(epsilon);
+    if (transition.epsilon !== undefined) animation.setEpsilon(transition.epsilon);
     if (transition.clamp !== undefined) animation.setClamp(transition.clamp);
     applyShared(animation, transition);
 

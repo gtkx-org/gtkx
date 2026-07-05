@@ -73,4 +73,56 @@ describe("WidgetAnimator", () => {
         playSpy.mockRestore();
         animator.dispose();
     });
+
+    it("fires completion callbacks exactly once on a natural completion", () => {
+        const onAnimationComplete = vi.fn();
+        const onComplete = vi.fn();
+        const widget = new Gtk.Box();
+        const animator = makeAnimator(widget, { transition: { duration: 0.05 }, onAnimationComplete });
+
+        animator.startAnimation({ opacity: 1 }, onComplete);
+
+        expect(onAnimationComplete).toHaveBeenCalledTimes(1);
+        expect(onComplete).toHaveBeenCalledTimes(1);
+        animator.dispose();
+    });
+
+    it("fires no completion callbacks when disposed during a delay", () => {
+        vi.useFakeTimers();
+        const onAnimationComplete = vi.fn();
+        const onComplete = vi.fn();
+        const widget = new Gtk.Box();
+        const animator = makeAnimator(widget, {
+            transition: { duration: 0.05, delay: 0.2 },
+            onAnimationComplete,
+        });
+
+        animator.startAnimation({ opacity: 1 }, onComplete);
+        animator.dispose();
+        vi.advanceTimersByTime(500);
+
+        expect(onAnimationComplete).not.toHaveBeenCalled();
+        expect(onComplete).not.toHaveBeenCalled();
+    });
+
+    it("suppresses the interrupted animation's completion callbacks", () => {
+        vi.useFakeTimers();
+        const onAnimationComplete = vi.fn();
+        const widget = new Gtk.Box();
+        const animator = makeAnimator(widget, {
+            transition: { duration: 0.05, delay: 0.2 },
+            onAnimationComplete,
+        });
+
+        const doneInterrupted = vi.fn();
+        const doneSurviving = vi.fn();
+        animator.startAnimation({ opacity: 1 }, doneInterrupted);
+        animator.startAnimation({ opacity: 0.5 }, doneSurviving);
+        vi.advanceTimersByTime(500);
+
+        expect(doneInterrupted).not.toHaveBeenCalled();
+        expect(doneSurviving).toHaveBeenCalledTimes(1);
+        expect(onAnimationComplete).toHaveBeenCalledTimes(1);
+        animator.dispose();
+    });
 });
