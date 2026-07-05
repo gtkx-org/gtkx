@@ -48,5 +48,4 @@ export const click = async (widget: Gtk.Widget): Promise<void> => {
 };
 
 export const dblClick = (widget: Gtk.Widget): Promise<void> => emitClickSequence(widget, 2);
-
 export const tripleClick = (widget: Gtk.Widget): Promise<void> => emitClickSequence(widget, 3);

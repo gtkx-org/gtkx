@@ -53,6 +53,6 @@
     "dependencies": {
         "@gtkx/utils": "workspace:*",
         "@modelcontextprotocol/sdk": "^1.29.0",
-        "zod": "^4.4.3"
+        "zod": "catalog:"
     }
 }

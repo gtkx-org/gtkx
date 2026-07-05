@@ -7,7 +7,7 @@ import {
     resolveReactCompilerOptions,
     validateGtkxConfig,
 } from "../src/config.js";
-import type { GtkxRules } from "../src/rule-schema.js";
+import type { GtkxRules } from "../src/index.js";
 
 const validateUnknown = (config: unknown): void => validateGtkxConfig(config as GtkxConfig);
 

@@ -1,5 +1,3 @@
-/// <reference types="@gtkx/config/env" />
-
 import { ACCESSIBLE_ATTRIBUTES } from "virtual:gtkx-config";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";

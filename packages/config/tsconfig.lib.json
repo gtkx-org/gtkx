@@ -1,5 +1,8 @@
 {
     "extends": "../../tsconfig.lib.json",
+    "compilerOptions": {
+        "isolatedDeclarations": false
+    },
     "references": [
         {
             "path": "../utils/tsconfig.lib.json"

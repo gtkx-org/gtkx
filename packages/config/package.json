@@ -57,7 +57,8 @@
     "dependencies": {
         "c12": "^3.3.4",
         "defu": "^6.1.7",
-        "vite": "catalog:"
+        "vite": "catalog:",
+        "zod": "catalog:"
     },
     "devDependencies": {
         "rolldown": "1.1.3"
