@@ -34,6 +34,7 @@ export const BUFFER_TEXT_KIND: WrapperKind = "buffer-text";
 export const LABEL_TEXT_KIND: WrapperKind = "label-text";
 
 export const resolveGtkxRules = (rules: GtkxRules | undefined): ResolvedGtkxRules => ({
+    containerProps: rules?.containerProps ?? {},
     relationships: rules?.relationships ?? [],
     syntheticProps: rules?.syntheticProps ?? [],
 });

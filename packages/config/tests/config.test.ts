@@ -321,7 +321,7 @@ describe("resolveGtkxConfig", () => {
             libraries: [],
             girPath: [],
             applicationId: DEFAULT_APPLICATION_ID,
-            rules: { relationships: [], syntheticProps: [] },
+            rules: { containerProps: {}, relationships: [], syntheticProps: [] },
             reactCompiler: { target: "19" },
             codegen: true,
         });
@@ -342,6 +342,7 @@ describe("resolveGtkxConfig", () => {
         expect(resolveGtkxConfig(configured)).toEqual({
             ...configured,
             rules: {
+                containerProps: {},
                 relationships: [
                     { kind: "reject", parent: "GObject", child: "GtkEventController", prop: "controllers" },
                 ],

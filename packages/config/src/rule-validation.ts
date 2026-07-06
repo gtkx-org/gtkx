@@ -252,7 +252,51 @@ export type WriteOnceListRule = z.infer<typeof writeOnceListSchema>;
 
 export type SyntheticPropRule = z.infer<typeof syntheticPropSchema>;
 
+const propertyRefSchema = z.strictObject({ property: nameSchema });
+
+const setTargetSchema = z.union([callSchema, propertyRefSchema]);
+
+const adoptSchema = z.strictObject({
+    element: nameSchema,
+    accessor: callSchema.optional(),
+    setters: settersSchema.optional(),
+});
+
+const manyContainerPropSchema = z.strictObject({
+    arity: z.literal("many"),
+    prop: nameSchema,
+    child: nameSchema,
+    append: callSchema,
+    remove: callSchema.optional(),
+    insert: callSchema.optional(),
+    reorder: callSchema.optional(),
+    autowrap: nameSchema.optional(),
+    adopt: adoptSchema.optional(),
+});
+
+const oneContainerPropSchema = z.strictObject({
+    arity: z.literal("one"),
+    prop: nameSchema,
+    child: nameSchema,
+    set: setTargetSchema,
+    unset: setTargetSchema.optional(),
+    adopt: adoptSchema.optional(),
+});
+
+export const containerPropSchema = z.discriminatedUnion("arity", [manyContainerPropSchema, oneContainerPropSchema]);
+
+export type PropertyRef = z.infer<typeof propertyRefSchema>;
+
+export type Adopt = z.infer<typeof adoptSchema>;
+
+export type ManyContainerProp = z.infer<typeof manyContainerPropSchema>;
+
+export type OneContainerProp = z.infer<typeof oneContainerPropSchema>;
+
+export type ContainerProp = z.infer<typeof containerPropSchema>;
+
 export const gtkxRulesSchema = z.strictObject({
+    containerProps: z.record(nameSchema, z.array(containerPropSchema)).optional(),
     relationships: z.array(relationshipSchema).optional(),
     syntheticProps: z.array(syntheticPropSchema).optional(),
 });
@@ -260,6 +304,7 @@ export const gtkxRulesSchema = z.strictObject({
 export type GtkxRules = z.infer<typeof gtkxRulesSchema>;
 
 export type ResolvedGtkxRules = {
+    containerProps: Record<string, ContainerProp[]>;
     relationships: RelationshipRule[];
     syntheticProps: SyntheticPropRule[];
 };

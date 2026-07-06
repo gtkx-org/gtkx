@@ -5,7 +5,7 @@ import { assembleRuleTables } from "../../src/store/react/rule-tables.js";
 import { RELATIONSHIP_RULES, SYNTHETIC_PROP_RULES } from "../../src/store/react/tables.js";
 import { library } from "../helpers/library.js";
 
-const EMPTY_RULES = { relationships: [], syntheticProps: [] };
+const EMPTY_RULES = { containerProps: {}, relationships: [], syntheticProps: [] };
 
 const tables = assembleRuleTables(library, EMPTY_RULES);
 
@@ -51,7 +51,7 @@ describe("curated rule tables", () => {
             relationshipTypeNames(rule).every((name) => known.has(name)),
         );
         const syntheticProps = SYNTHETIC_PROP_RULES.filter((rule) => known.has(rule.type));
-        expect(() => assembleRuleTables(library, { relationships, syntheticProps })).not.toThrow();
+        expect(() => assembleRuleTables(library, { containerProps: {}, relationships, syntheticProps })).not.toThrow();
     });
 });
 
@@ -110,21 +110,21 @@ describe("user rules", () => {
             prop: "marks",
             call: "clearMarks",
         };
-        const merged = assembleRuleTables(library, { relationships: [], syntheticProps: [override] });
+        const merged = assembleRuleTables(library, { containerProps: {}, relationships: [], syntheticProps: [override] });
         const marks = merged.syntheticProps.filter((rule) => rule.type === "GtkScale" && rule.prop === "marks");
         expect(marks).toEqual([override]);
     });
 
     it("reject unknown types with provenance", () => {
         const rule: RelationshipRule = { kind: "attach", parent: "ShumateMap", child: "GtkWidget", add: "add" };
-        expect(() => assembleRuleTables(library, { relationships: [rule], syntheticProps: [] })).toThrow(
+        expect(() => assembleRuleTables(library, { containerProps: {}, relationships: [rule], syntheticProps: [] })).toThrow(
             /`rules\.relationships\[0\]` references "ShumateMap", which is not a type/,
         );
     });
 
     it("reject unknown methods with provenance", () => {
         const rule: RelationshipRule = { kind: "attach", parent: "GtkBox", child: "GtkWidget", add: "attachWidget" };
-        expect(() => assembleRuleTables(library, { relationships: [rule], syntheticProps: [] })).toThrow(
+        expect(() => assembleRuleTables(library, { containerProps: {}, relationships: [rule], syntheticProps: [] })).toThrow(
             /`rules\.relationships\[0\]` references method "attachWidget", which does not exist on GtkBox/,
         );
     });
