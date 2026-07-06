@@ -16,6 +16,7 @@ export {
     loadGtkxConfig,
     loadResolvedGtkxConfig,
 } from "./loader.js";
+export { containerPropToAttach, containerPropToCompanion } from "./rule-conversions.js";
 export {
     BUFFER_TEXT_KIND,
     COMPANION_KIND,

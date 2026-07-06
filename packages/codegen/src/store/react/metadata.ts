@@ -1,4 +1,4 @@
-import type { RelationshipRule, SyntheticPropRule } from "@gtkx/config";
+import type { ContainerProp, RelationshipRule, SyntheticPropRule } from "@gtkx/config";
 import { sortedStringsBy, sourceStringLiteral, toCamelIdentifier } from "@gtkx/utils";
 import type { GirClass } from "../../gir/class.js";
 import type { GirEnum } from "../../gir/enum.js";
@@ -16,6 +16,7 @@ import { ACCESSIBLE_ATTRIBUTES } from "./tables.js";
 
 export type RuntimeTables = {
     defaultBlockableTypes: string[];
+    containerProps: Record<string, ContainerProp[]>;
     relationships: RelationshipRule[];
     syntheticProps: SyntheticPropRule[];
 };
@@ -31,6 +32,7 @@ type RuntimeTableSpec = {
 
 const RUNTIME_TABLE_SPECS: Record<keyof RuntimeTables, RuntimeTableSpec> = {
     defaultBlockableTypes: { name: "DEFAULT_BLOCKABLE_TYPES", annotation: "string[]" },
+    containerProps: { name: "CONTAINER_PROPS", annotation: `Record<string, ${arrayOf("ContainerProp")}>` },
     relationships: { name: "RELATIONSHIPS", annotation: arrayOf("RelationshipRule") },
     syntheticProps: { name: "SYNTHETIC_PROPS", annotation: arrayOf("SyntheticPropRule") },
 };

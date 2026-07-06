@@ -1,7 +1,8 @@
 /// <reference types="@gtkx/config/env" />
 
-import { RELATIONSHIPS, SYNTHETIC_PROPS } from "virtual:gtkx-config";
+import { CONTAINER_PROPS, RELATIONSHIPS, SYNTHETIC_PROPS } from "virtual:gtkx-config";
 import type { Arg, ArgRef, AttachRule, Call, CompanionRule, RejectRule, SyntheticPropRule } from "@gtkx/config";
+import { containerPropToAttach, containerPropToCompanion } from "@gtkx/config";
 import { typeFromName } from "@gtkx/gi/gobject";
 import { callMethod } from "@gtkx/utils";
 import { collectTypeNamesWithInterfaces, foldInheritedTableWithInterfaces } from "../utils/gtype.js";
@@ -86,24 +87,24 @@ const rejectIndex = new Map<string, RejectRule>();
 const elementIndex = new Map<string, CompanionRule>();
 const slotsByParent: Record<string, string[]> = {};
 
-for (const rule of RELATIONSHIPS) {
-    switch (rule.kind) {
-        case "attach": {
-            attachIndex.set(`${rule.parent}:${rule.child}:${rule.slot ?? ""}`, rule);
-            if (rule.slot !== undefined) {
-                const slots = slotsByParent[rule.parent] ?? [];
-                slots.push(rule.slot);
-                slotsByParent[rule.parent] = slots;
-            }
-            break;
+for (const [parent, props] of Object.entries(CONTAINER_PROPS)) {
+    for (const cp of props) {
+        attachIndex.set(
+            `${parent}:${cp.child}:${cp.prop === "children" ? "" : cp.prop}`,
+            containerPropToAttach(parent, cp),
+        );
+        if (cp.prop !== "children") {
+            const slots = slotsByParent[parent] ?? [];
+            slots.push(cp.prop);
+            slotsByParent[parent] = slots;
         }
-        case "reject":
-            rejectIndex.set(`${rule.parent}:${rule.child}`, rule);
-            break;
-        case "companion":
-            elementIndex.set(rule.element, rule);
-            break;
+        const companion = containerPropToCompanion(parent, cp);
+        if (companion !== undefined) elementIndex.set(companion.element, companion);
     }
+}
+
+for (const rule of RELATIONSHIPS) {
+    if (rule.kind === "reject") rejectIndex.set(`${rule.parent}:${rule.child}`, rule);
 }
 
 export type ResolvedRelationship = { kind: "attach"; rule: AttachRule } | { kind: "reject"; rule: RejectRule };

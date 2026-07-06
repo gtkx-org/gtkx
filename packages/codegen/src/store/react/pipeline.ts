@@ -41,6 +41,7 @@ export const generateJsxFiles = (library: Library, userRules?: ResolvedGtkxRules
 
     const metadata = generateMetadata(library, {
         defaultBlockableTypes: DEFAULT_BLOCKABLE_TYPES,
+        containerProps: ruleTables.containerProps,
         relationships: ruleTables.relationships,
         syntheticProps: ruleTables.syntheticProps,
     });

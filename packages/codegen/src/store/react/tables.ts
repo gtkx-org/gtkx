@@ -1,16 +1,5 @@
-import type {
-    Adopt,
-    AttachRule,
-    Call,
-    CompanionRule,
-    ContainerProp,
-    ManyContainerProp,
-    OneContainerProp,
-    PropertyRef,
-    RejectRule,
-    RelationshipRule,
-    SyntheticPropRule,
-} from "@gtkx/config";
+import type { ContainerProp, ManyContainerProp, RejectRule, RelationshipRule, SyntheticPropRule } from "@gtkx/config";
+import { containerPropToAttach, containerPropToCompanion } from "@gtkx/config";
 
 export type AncestryWrapperName =
     | "withWindowPresentation"
@@ -161,55 +150,11 @@ const REJECT_RULES: RejectRule[] = [
     { kind: "reject", parent: "GObject", child: "GtkTextBuffer", prop: "buffer" },
 ];
 
-const setterCall = (target: Call | PropertyRef): Call | undefined => {
-    if (typeof target === "string") return target;
-    return "method" in target ? target : undefined;
-};
-
-const applyManyAttach = (rule: AttachRule, cp: ManyContainerProp): void => {
-    rule.add = cp.append;
-    if (cp.remove !== undefined) rule.remove = cp.remove;
-    if (cp.insert !== undefined) rule.insert = cp.insert;
-    if (cp.reorder !== undefined) rule.reorder = cp.reorder;
-    if (cp.autowrap !== undefined) rule.autowrap = cp.autowrap;
-};
-
-const applyOneAttach = (rule: AttachRule, cp: OneContainerProp): void => {
-    const add = setterCall(cp.set);
-    if (add !== undefined) rule.add = add;
-    const remove = cp.unset === undefined ? undefined : setterCall(cp.unset);
-    if (remove !== undefined) rule.remove = remove;
-};
-
-const attachFromContainerProp = (parent: string, cp: ContainerProp): AttachRule => {
-    const rule: AttachRule = { kind: "attach", parent, child: cp.child };
-    if (cp.prop !== "children") rule.slot = cp.prop;
-    if (cp.arity === "many") applyManyAttach(rule, cp);
-    else applyOneAttach(rule, cp);
-    return rule;
-};
-
-const companionFromContainerProp = (parent: string, cp: ContainerProp, adopt: Adopt): CompanionRule => {
-    const rule: CompanionRule = { kind: "companion", element: adopt.element, parent };
-    if (cp.arity === "many") {
-        if (cp.append !== undefined) rule.add = cp.append;
-        if (cp.insert !== undefined) rule.insert = cp.insert;
-        if (cp.remove !== undefined) rule.remove = cp.remove;
-    }
-    if (adopt.accessor !== undefined) rule.companion = adopt.accessor;
-    if (adopt.setters !== undefined) rule.setters = adopt.setters;
-    return rule;
-};
-
-const containerPropsToRelationships = (containerProps: Record<string, ContainerProp[]>): RelationshipRule[] => {
+export const containerPropsToRelationships = (containerProps: Record<string, ContainerProp[]>): RelationshipRule[] => {
     const rules: RelationshipRule[] = [];
     for (const [parent, props] of Object.entries(containerProps)) {
         for (const cp of props) {
-            rules.push(
-                cp.adopt === undefined
-                    ? attachFromContainerProp(parent, cp)
-                    : companionFromContainerProp(parent, cp, cp.adopt),
-            );
+            rules.push(containerPropToCompanion(parent, cp) ?? containerPropToAttach(parent, cp));
         }
     }
     return rules;

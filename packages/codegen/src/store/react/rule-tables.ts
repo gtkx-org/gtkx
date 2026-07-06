@@ -1,4 +1,13 @@
-import type { AttachRule, Call, RelationshipRule, ResolvedGtkxRules, SyntheticPropRule } from "@gtkx/config";
+import type {
+    AttachRule,
+    Call,
+    ContainerProp,
+    ManyContainerProp,
+    OneContainerProp,
+    RelationshipRule,
+    ResolvedGtkxRules,
+    SyntheticPropRule,
+} from "@gtkx/config";
 import { toCamelIdentifier } from "@gtkx/utils";
 import { ancestorChain } from "../../gir/ancestry.js";
 import type { GirClass } from "../../gir/class.js";
@@ -6,9 +15,10 @@ import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
 import { type AttachShape, collectAttachShapes } from "./attach-shapes.js";
 import { glibNameOf, implementedInterfaces } from "./intrinsic-elements.js";
-import { RELATIONSHIP_RULES, SYNTHETIC_PROP_RULES } from "./tables.js";
+import { CONTAINER_PROPS, containerPropsToRelationships, RELATIONSHIP_RULES, SYNTHETIC_PROP_RULES } from "./tables.js";
 
 export type RuleTables = {
+    containerProps: Record<string, ContainerProp[]>;
     relationships: RelationshipRule[];
     syntheticProps: SyntheticPropRule[];
 };
@@ -267,12 +277,86 @@ const collectGeneratedRelationships = (context: GirContext): AttachRule[] => {
     return rules;
 };
 
+const SETTER_METHODS: Set<string> = new Set(["setChild", "setContent"]);
+
+const isSetterMethod = (call: Call): boolean => SETTER_METHODS.has(callMethodName(call));
+
+const containerPropFromAttach = (rule: AttachRule): ContainerProp => {
+    const prop = rule.slot ?? "children";
+    if (rule.add !== undefined && isSetterMethod(rule.add)) {
+        const one: OneContainerProp = { arity: "one", prop, child: rule.child, set: rule.add };
+        if (rule.remove !== undefined) one.unset = rule.remove;
+        return one;
+    }
+    const many: ManyContainerProp = { arity: "many", prop, child: rule.child };
+    if (rule.add !== undefined) many.append = rule.add;
+    if (rule.remove !== undefined) many.remove = rule.remove;
+    if (rule.insert !== undefined) many.insert = rule.insert;
+    if (rule.reorder !== undefined) many.reorder = rule.reorder;
+    if (rule.autowrap !== undefined) many.autowrap = rule.autowrap;
+    return many;
+};
+
+const containerPropTypeNames = (parent: string, cp: ContainerProp): string[] => {
+    const names = [parent, cp.child];
+    if (cp.arity === "many" && cp.autowrap !== undefined) names.push(cp.autowrap);
+    if (cp.adopt !== undefined) names.push(cp.adopt.element);
+    return names;
+};
+
+const containerPropKey = (cp: ContainerProp): string =>
+    cp.adopt === undefined ? `${cp.prop}:${cp.child}` : `adopt:${cp.adopt.element}`;
+
+const mergeContainerProps = (layers: Record<string, ContainerProp[]>[]): Record<string, ContainerProp[]> => {
+    const byParent = new Map<string, Map<string, ContainerProp>>();
+    for (const layer of layers) {
+        for (const [parent, props] of Object.entries(layer)) {
+            const merged = byParent.get(parent) ?? new Map<string, ContainerProp>();
+            for (const cp of props) {
+                const key = containerPropKey(cp);
+                merged.delete(key);
+                merged.set(key, cp);
+            }
+            byParent.set(parent, merged);
+        }
+    }
+    const result: Record<string, ContainerProp[]> = {};
+    for (const [parent, merged] of byParent) result[parent] = [...merged.values()];
+    return result;
+};
+
+const collectGeneratedContainerProps = (context: GirContext): Record<string, ContainerProp[]> => {
+    const result: Record<string, ContainerProp[]> = {};
+    for (const rule of collectGeneratedRelationships(context)) {
+        const props = result[rule.parent] ?? [];
+        props.push(containerPropFromAttach(rule));
+        result[rule.parent] = props;
+    }
+    return result;
+};
+
+const filterKnownContainerProps = (
+    context: GirContext,
+    map: Record<string, ContainerProp[]>,
+): Record<string, ContainerProp[]> => {
+    const result: Record<string, ContainerProp[]> = {};
+    for (const [parent, props] of Object.entries(map)) {
+        const kept = props.filter((cp) => knownTypes(context, containerPropTypeNames(parent, cp)));
+        if (kept.length > 0) result[parent] = kept;
+    }
+    return result;
+};
+
 export const assembleRuleTables = (library: Library, userRules: ResolvedGtkxRules): RuleTables => {
     const context = buildGirContext(library);
+    const userContainerRelationships = containerPropsToRelationships(userRules.containerProps);
     let position = 0;
     for (const rule of userRules.relationships) {
         validateUserRelationship(context, `rules.relationships[${position}]`, rule);
         position++;
+    }
+    for (const rule of userContainerRelationships) {
+        validateUserRelationship(context, "rules.containerProps", rule);
     }
     position = 0;
     for (const rule of userRules.syntheticProps) {
@@ -282,8 +366,17 @@ export const assembleRuleTables = (library: Library, userRules: ResolvedGtkxRule
     const generated = collectGeneratedRelationships(context);
     const curatedRelationships = RELATIONSHIP_RULES.filter((rule) => knownTypes(context, relationshipTypeNames(rule)));
     const curatedSynthetics = SYNTHETIC_PROP_RULES.filter((rule) => context.index.has(rule.type));
+    const containerProps = mergeContainerProps([
+        collectGeneratedContainerProps(context),
+        filterKnownContainerProps(context, CONTAINER_PROPS),
+        filterKnownContainerProps(context, userRules.containerProps),
+    ]);
     return {
-        relationships: mergeByKey([generated, curatedRelationships, userRules.relationships], relationshipKey),
+        containerProps,
+        relationships: mergeByKey(
+            [generated, curatedRelationships, userRules.relationships, userContainerRelationships],
+            relationshipKey,
+        ),
         syntheticProps: mergeByKey([curatedSynthetics, userRules.syntheticProps], syntheticKey),
     };
 };

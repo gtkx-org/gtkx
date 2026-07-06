@@ -266,7 +266,7 @@ const manyContainerPropSchema = z.strictObject({
     arity: z.literal("many"),
     prop: nameSchema,
     child: nameSchema,
-    append: callSchema,
+    append: callSchema.optional(),
     remove: callSchema.optional(),
     insert: callSchema.optional(),
     reorder: callSchema.optional(),
@@ -283,7 +283,14 @@ const oneContainerPropSchema = z.strictObject({
     adopt: adoptSchema.optional(),
 });
 
-export const containerPropSchema = z.discriminatedUnion("arity", [manyContainerPropSchema, oneContainerPropSchema]);
+export const containerPropSchema = z
+    .discriminatedUnion("arity", [manyContainerPropSchema, oneContainerPropSchema])
+    .check((ctx) => {
+        const cp = ctx.value;
+        if (cp.arity === "many" && cp.append === undefined && cp.remove === undefined) {
+            ctx.issues.push(rawIssue(cp, [], "must define at least one of `append` or `remove`"));
+        }
+    });
 
 export type PropertyRef = z.infer<typeof propertyRefSchema>;
 
