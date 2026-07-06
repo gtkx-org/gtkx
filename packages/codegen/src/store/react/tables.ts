@@ -54,22 +54,17 @@ const autowrapProp = (wrapper: string): ContainerProp => ({
 
 export const CONTAINER_PROPS: Record<string, ContainerProp[]> = {
     GtkWidget: [
-        { arity: "many", prop: "children", child: "GtkEventController", ...CONTROLLER_METHODS },
         { arity: "many", prop: "controllers", child: "GtkEventController", ...CONTROLLER_METHODS },
         {
             arity: "one",
-            prop: "children",
+            prop: "layoutManager",
             child: "GtkLayoutManager",
             set: "setLayoutManager",
             unset: { method: "setLayoutManager", args: [{ literal: null }] },
         },
-        { arity: "many", prop: "children", child: "GActionGroup", ...ACTION_GROUP_METHODS },
         { arity: "many", prop: "actionGroups", child: "GActionGroup", ...ACTION_GROUP_METHODS },
     ],
-    GtkShortcutController: [
-        { arity: "many", prop: "children", child: "GtkShortcut", ...SHORTCUT_METHODS },
-        { arity: "many", prop: "shortcuts", child: "GtkShortcut", ...SHORTCUT_METHODS },
-    ],
+    GtkShortcutController: [{ arity: "many", prop: "shortcuts", child: "GtkShortcut", ...SHORTCUT_METHODS }],
     GtkTextView: [
         {
             arity: "one",

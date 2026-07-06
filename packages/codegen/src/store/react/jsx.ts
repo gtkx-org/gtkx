@@ -205,7 +205,7 @@ const renderPropBlock = (
     const widgetTypeRef = `${entry.namespace.name}.${entry.klass.name} | null`;
     const slotPropLines = slotProps.map((propName) => `${propName}?: ReactNode | null | undefined;`);
     const ownerLines = [
-        "children?: ReactNode;",
+        ...(context.typegen.acceptsChildren(entry.glibName) ? ["children?: ReactNode;"] : []),
         `ref?: Ref<${widgetTypeRef}> | undefined;`,
         ...propLines,
         ...slotPropLines,

@@ -44,6 +44,7 @@ export type RuleTypegen = {
     classPropLines: (glibName: string, klass: GirClass, namespace: GirNamespace, imports: TypeImports) => string[];
     companionExports: (namespaceName: string) => CompanionExportSpec[];
     slotNamesFor: (glibName: string) => string[];
+    acceptsChildren: (glibName: string) => boolean;
 };
 
 const syntheticTarget = (library: Library, imports: TypeImports): TsTypeTarget => ({
@@ -328,6 +329,26 @@ export const createRuleTypegen = (library: Library, tables: RuleTables): RuleTyp
     const companionSpecs = collectCompanionSpecs(context, tables);
     const slotNamesByParent = collectSlotNames(tables);
 
+    const childrenContainers = new Set<string>(["GtkLabel", "GtkTextBuffer", "GtkTextTag", "GtkTextView"]);
+    for (const props of Object.values(tables.containerProps)) {
+        for (const cp of props) {
+            if (cp.adopt !== undefined) childrenContainers.add(cp.adopt.element);
+        }
+    }
+    for (const [parent, props] of Object.entries(tables.containerProps)) {
+        if (props.some((cp) => cp.prop === "children")) childrenContainers.add(parent);
+    }
+
+    const acceptsChildren = (glibName: string): boolean => {
+        if (childrenContainers.has(glibName)) return true;
+        const entry = context.typeIndex.get(glibName);
+        if (entry === undefined) return false;
+        return chainOf(context, entry).some((link) => {
+            const name = glibNameOf(link.klass);
+            return name !== undefined && childrenContainers.has(name);
+        });
+    };
+
     const classPropLines = (
         glibName: string,
         klass: GirClass,
@@ -351,5 +372,6 @@ export const createRuleTypegen = (library: Library, tables: RuleTables): RuleTyp
         classPropLines,
         companionExports: (namespaceName) => companionSpecs.get(namespaceName) ?? [],
         slotNamesFor: (glibName) => slotNamesByParent.get(glibName) ?? [],
+        acceptsChildren,
     };
 };
