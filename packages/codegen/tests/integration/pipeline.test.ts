@@ -44,11 +44,10 @@ describe("codegen gi pipeline", () => {
 });
 
 describe("codegen reconciler metadata", () => {
-    it("emits the serializable container-prop and synthetic-prop tables", () => {
-        expect(reactPipeline.metadata).toContain("export const CONTAINER_PROPS:");
-        expect(reactPipeline.metadata).toContain("export const SYNTHETIC_PROPS:");
+    it("emits the serializable element-prop table", () => {
+        expect(reactPipeline.metadata).toContain("export const ELEMENT_PROPS:");
         expect(reactPipeline.metadata).toContain('"adopt": true');
-        expect(reactPipeline.metadata).toContain('"prop": "marks"');
+        expect(reactPipeline.metadata).toContain('"kind": "lazy"');
     });
 });
 
@@ -157,11 +156,10 @@ describe("codegen React pipeline", () => {
             "export const GtkNotebookPage: (props: GtkNotebookPageElementProps) => ReactNode = createLazyElementComponent<GtkNotebookPageElementProps>();",
         );
         expect(gtk).toContain("createLazyElementComponent<GtkStackPageElementProps>()");
-        expect(gtk).not.toContain("GtkNotebookPageTab");
     });
 });
 
-describe("codegen React pipeline (auto-derived slots)", () => {
+describe("codegen widget-slot props", () => {
     it("widens a settable GObject-class property into a ReactElement slot", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
         expect(interfaceBody(gtk, "GtkWindow")).toContain("titlebar?: Gtk.Widget | ReactElement | null | undefined;");
@@ -178,10 +176,6 @@ describe("codegen React pipeline (auto-derived slots)", () => {
         const body = interfaceBody(sourceFor(reactPipeline, "gtk"), "GtkButton");
         expect(body).toContain("child?: Gtk.Widget | null | undefined;");
         expect(body).not.toContain("child?: Gtk.Widget | ReactElement");
-    });
-
-    it("emits no runtime slot table", () => {
-        expect(reactPipeline.metadata).not.toContain("export const SLOTS");
     });
 
     it("types the built-in container-slot props as ReactNode on their host", () => {
@@ -203,21 +197,15 @@ const interfaceBody = (jsxSource: string, glibName: string): string => {
     return block.slice(0, block.indexOf("\n}"));
 };
 
-describe("codegen synthetic props", () => {
-    it("derives synthetic prop lines from GIR signatures into the owning props interface", () => {
+describe("codegen applied element props", () => {
+    it("types a value prop from its setter signature", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
-        expect(interfaceBody(gtk, "GtkScale")).toContain(
-            "marks?: { value: number; position?: Gtk.PositionType; label?: string | null; }[] | null | undefined;",
-        );
-        expect(interfaceBody(gtk, "GtkSizeGroup")).toContain("widgets?: Gtk.Widget[] | null | undefined;");
         expect(interfaceBody(gtk, "GtkDropTarget")).toContain("types?: GObject.Type[] | null | undefined;");
-        expect(gtk).toContain("GtkScale: GtkScaleProps;");
-        expect(gtk).not.toContain("SyntheticPropsFor");
         const { dts } = transpileSource("gtk/gtk.tsx", gtk);
         expect(dts).not.toContain("TS2717");
     });
 
-    it("contributes attach-rule prop arguments to the child element's props", () => {
+    it("contributes container-prop arguments to the child element's props", () => {
         const gio = sourceFor(reactPipeline, "gio");
         expect(interfaceBody(gio, "GSimpleActionGroup")).toContain("prefix?: string | null | undefined;");
     });
@@ -247,15 +235,8 @@ describe("codegen read-only props", () => {
 });
 
 describe("codegen runtime tables", () => {
-    it("bakes only the serializable rule tables into the metadata module", () => {
-        expect(reactPipeline.metadata).toContain("export const DEFAULT_BLOCKABLE_TYPES");
-        expect(reactPipeline.metadata).toContain("export const CONTAINER_PROPS");
-        expect(reactPipeline.metadata).toContain("export const SYNTHETIC_PROPS");
-        expect(reactPipeline.metadata).not.toContain("SLOT_PROPS");
-        expect(reactPipeline.metadata).not.toContain("ATTACH_SHAPES");
-        expect(reactPipeline.metadata).not.toContain("META_OBJECT_ADD_METHODS");
-        expect(reactPipeline.metadata).not.toContain("PAGE_META_SETTERS");
-        expect(reactPipeline.metadata).not.toContain("ORDERED_INSERT");
+    it("bakes the element-prop table into the metadata module", () => {
+        expect(reactPipeline.metadata).toContain("export const ELEMENT_PROPS");
     });
 
     it("bakes the ColumnView ordered insert as a container prop", () => {

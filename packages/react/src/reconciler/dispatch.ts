@@ -1,14 +1,14 @@
 import * as GObject from "@gtkx/gi/gobject";
 import { containerMapping } from "./container-attach.js";
 import { type ElementMapping, type Node, stateOf } from "./state.js";
-import { containerSlotMapping, lazyElementMapping, ruleChildMapping, widgetPropMapping } from "./wrapper-apply.js";
+import { containerSlotMapping, lazyElementMapping, containerChildMapping, widgetPropMapping } from "./wrapper-apply.js";
 import { isWrapperNode } from "./wrapper-node.js";
 
 const ELEMENT_MAP: ElementMapping[] = [
     widgetPropMapping,
     containerSlotMapping,
     lazyElementMapping,
-    ruleChildMapping,
+    containerChildMapping,
     containerMapping,
 ];
 

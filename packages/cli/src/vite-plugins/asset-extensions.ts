@@ -26,14 +26,3 @@ export const ASSET_EXTENSIONS = [
 export const ASSET_RE = new RegExp(String.raw`\.(?:${ASSET_EXTENSIONS.join("|")})$`, "i");
 
 export const ASSET_PATH_RE = new RegExp(String.raw`\.(?:${ASSET_EXTENSIONS.join("|")})(?:\?.*)?$`, "i");
-
-const assetModuleBlock = (extension: string): string =>
-    [
-        `declare module "*.${extension}" {`,
-        "    const resourceUri: string;",
-        "    export const path: string;",
-        "    export default resourceUri;",
-        "}",
-    ].join("\n");
-
-export const renderAssetEnvModule = (extensions: string[]): string => extensions.map(assetModuleBlock).join("\n\n");

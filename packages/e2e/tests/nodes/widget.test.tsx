@@ -298,7 +298,7 @@ describe("widget - props (3)", () => {
             expect(ref.current).not.toBeNull();
         });
 
-        it("handles node-specific consumed props", async () => {
+        it("applies the active prop to GtkSwitch", async () => {
             await render(<GtkSwitch active={true} />);
 
             const switchWidget = await screen.findByRole(Gtk.AccessibleRole.SWITCH);
@@ -744,15 +744,11 @@ describe("widget - signals (11)", () => {
     describe("onNotify", () => {
         it("connects onNotify handler for property changes", async () => {
             const handleNotify = vi.fn();
-            const ref = createRef<Gtk.Label>();
 
-            function App({ text }: { text: string }) {
-                return <GtkLabel ref={ref} label={text} onNotify={handleNotify} />;
-            }
+            await render(<GtkSwitch onNotify={handleNotify} />);
 
-            const { rerender } = await render(<App text="Initial" />);
-
-            await rerender(<App text="Updated" />);
+            const switchWidget = await screen.findByRole(Gtk.AccessibleRole.SWITCH);
+            await userEvent.click(switchWidget);
 
             await waitFor(() => {
                 expect(handleNotify).toHaveBeenCalled();
@@ -762,14 +758,13 @@ describe("widget - signals (11)", () => {
         it("receives the changed ParamSpec and source widget in callback", async () => {
             const handleNotify = vi.fn();
 
-            function App({ text }: { text: string }) {
-                return <GtkLabel label={text} onNotify={handleNotify} />;
-            }
+            await render(<GtkSwitch onNotify={handleNotify} />);
 
-            await render(<App text="Initial" />);
+            const switchWidget = await screen.findByRole(Gtk.AccessibleRole.SWITCH);
+            await userEvent.click(switchWidget);
 
             await waitFor(() => {
-                expect(handleNotify).toHaveBeenCalledWith(expect.any(GObject.ParamSpec), expect.any(Gtk.Label));
+                expect(handleNotify).toHaveBeenCalledWith(expect.any(GObject.ParamSpec), expect.any(Gtk.Switch));
             });
         });
     });
@@ -989,8 +984,8 @@ describe("widget - AboutDialog (1)", () => {
                         ref={ref}
                         programName="Test App"
                         creditSections={[
-                            { name: "Contributors", people: ["Alice", "Bob"] },
-                            { name: "Testers", people: ["Charlie"] },
+                            { sectionName: "Contributors", people: ["Alice", "Bob"] },
+                            { sectionName: "Testers", people: ["Charlie"] },
                         ]}
                     />
                 </GtkApplicationWindow>,

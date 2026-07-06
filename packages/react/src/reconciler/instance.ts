@@ -2,7 +2,7 @@ import type { WrapperKind } from "@gtkx/config";
 import * as GObject from "@gtkx/gi/gobject";
 import { collectConstructableProps } from "../utils/gtype.js";
 import { requireClassByName } from "../utils/gtype-predicates.js";
-import { constructionSkipProps } from "./rule-table.js";
+import { constructionSkipProps } from "./element-props.js";
 import { type Node, registerState } from "./state.js";
 import type { Container, Props } from "./types.js";
 import { createWrapperNode } from "./wrapper-node.js";

@@ -1,7 +1,6 @@
-import { Grid } from "@gtkx/components";
+import { AlertDialog, Grid } from "@gtkx/components";
 import { Dialog } from "@gtkx/components/adw";
 import * as Gtk from "@gtkx/gi/gtk";
-import { AdwAlertDialog } from "@gtkx/jsx/adw";
 import { GtkBox, GtkButton, GtkEntry, GtkLabel, GtkSeparator } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
@@ -79,18 +78,17 @@ const MessageDialog = ({
     onClose: () => void;
 }) => (
     <Dialog parent={target}>
-        <AdwAlertDialog
+        <AlertDialog
             name="message-dialog"
             heading="Test message"
             body={clickCount === 1 ? "Has been shown once" : `Has been shown ${clickCount} times`}
             defaultResponse="ok"
             closeResponse="cancel"
             onResponse={onClose}
-            responses={[
-                { id: "cancel", label: "_Cancel" },
-                { id: "ok", label: "_OK" },
-            ]}
-        />
+        >
+            <AlertDialog.Response id="cancel" label="_Cancel" />
+            <AlertDialog.Response id="ok" label="_OK" />
+        </AlertDialog>
     </Dialog>
 );
 
@@ -115,7 +113,7 @@ const InteractiveDialog = ({
     const [dialogEntry2Widget, setDialogEntry2Widget] = useState<Gtk.Entry | null>(null);
     return (
         <Dialog parent={target}>
-            <AdwAlertDialog
+            <AlertDialog
                 name="interactive-dialog"
                 heading="Interactive Dialog"
                 defaultResponse="ok"
@@ -168,11 +166,10 @@ const InteractiveDialog = ({
                         </Grid.Child>
                     </Grid>
                 }
-                responses={[
-                    { id: "cancel", label: "_Cancel" },
-                    { id: "ok", label: "_OK" },
-                ]}
-            />
+            >
+                <AlertDialog.Response id="cancel" label="_Cancel" />
+                <AlertDialog.Response id="ok" label="_OK" />
+            </AlertDialog>
         </Dialog>
     );
 };

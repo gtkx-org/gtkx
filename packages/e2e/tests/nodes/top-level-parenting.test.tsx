@@ -1,8 +1,8 @@
+import { AlertDialog } from "@gtkx/components";
 import { Dialog } from "@gtkx/components/adw";
 import type * as Adw from "@gtkx/gi/adw";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { AdwAlertDialog } from "@gtkx/jsx/adw";
 import { GtkApplication, GtkApplicationWindow, GtkWindow } from "@gtkx/jsx/gtk";
 import { createRootElement } from "@gtkx/react";
 import { render } from "@gtkx/testing";
@@ -82,7 +82,7 @@ describe("explicit top-level parenting", () => {
             <ParentedTree parentRef={parentRef}>
                 {(parent) => (
                     <Dialog parent={parent}>
-                        <AdwAlertDialog ref={dialogRef} heading="Parented" />
+                        <AlertDialog ref={dialogRef} heading="Parented" />
                     </Dialog>
                 )}
             </ParentedTree>,

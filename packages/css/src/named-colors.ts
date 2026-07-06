@@ -1,16 +1,4 @@
-export const AT_RULE_KEYWORDS: Set<string> = new Set([
-    "binding-set",
-    "charset",
-    "define-color",
-    "document",
-    "font-face",
-    "import",
-    "keyframes",
-    "media",
-    "namespace",
-    "page",
-    "supports",
-]);
+export const AT_RULE_KEYWORDS: Set<string> = new Set(["define-color", "import", "keyframes", "media"]);
 
 const AT_IDENTIFIER_PATTERN = /@([A-Za-z_][\w-]*)/g;
 

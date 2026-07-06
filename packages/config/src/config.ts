@@ -1,8 +1,7 @@
 import { createDefineConfig, type DefineConfig } from "c12";
 import { defu } from "defu";
 import { z } from "zod";
-import { resolveGtkxRules } from "./rule-schema.js";
-import { configError, gtkxRulesSchema, isRecord, type ResolvedGtkxRules, rawIssue } from "./rule-validation.js";
+import { configError, type ElementProps, elementPropsSchema, isRecord, rawIssue } from "./element-props.js";
 
 export const LIBRARIES_WILDCARD = "*";
 
@@ -137,19 +136,14 @@ const gtkxConfigSchema = z.object({
     libraries: librariesSchema.optional(),
     girPath: z.array(z.string(), { error: "must be an array of strings if provided" }).optional(),
     applicationId: applicationIdSchema.optional(),
-    rules: gtkxRulesSchema.optional(),
+    elementProps: elementPropsSchema.optional(),
     reactCompiler: reactCompilerSchema.optional(),
     codegen: z.boolean({ error: "must be a boolean" }).optional(),
 });
 
 export type GtkxConfig = z.infer<typeof gtkxConfigSchema>;
 
-const RULES_INLINE_MESSAGE =
-    "gtkx.config.ts: `rules` is inline data ({ containerProps, syntheticProps }); module-specifier rule registries were removed";
-
 export const validateGtkxConfig = (config: GtkxConfig): void => {
-    const rulesValue: unknown = config.rules;
-    if (typeof rulesValue === "string") throw new Error(RULES_INLINE_MESSAGE);
     const result = gtkxConfigSchema.safeParse(config);
     if (!result.success) throw configError(result.error);
 };
@@ -162,7 +156,7 @@ export type ResolvedGtkxConfig = {
     libraries: typeof LIBRARIES_WILDCARD | string[];
     girPath: string[];
     applicationId: string;
-    rules: ResolvedGtkxRules;
+    elementProps: ElementProps;
     reactCompiler: ResolvedReactCompilerOptions | null;
     codegen: boolean;
 };
@@ -171,7 +165,7 @@ export const resolveGtkxConfig = (config: GtkxConfig): ResolvedGtkxConfig => ({
     libraries: config.libraries ?? [],
     girPath: config.girPath ?? [],
     applicationId: config.applicationId ?? DEFAULT_APPLICATION_ID,
-    rules: resolveGtkxRules(config.rules),
+    elementProps: config.elementProps ?? {},
     reactCompiler: resolveReactCompilerOptions(config.reactCompiler),
     codegen: config.codegen ?? true,
 });

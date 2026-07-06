@@ -3,13 +3,13 @@ import * as Gtk from "@gtkx/gi/gtk";
 import type { RefObject } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AnimationCssProvider } from "../src/animation-css-provider.js";
-import type { WidgetAnimationProps } from "../src/types.js";
+import type { AnimationProps } from "../src/types.js";
 import { WidgetAnimator } from "../src/widget-animator.js";
 
 const widgetRef = (widget: Gtk.Widget): RefObject<Gtk.Widget | null> => ({ current: widget });
-const propsRef = (props: WidgetAnimationProps): RefObject<WidgetAnimationProps> => ({ current: props });
+const propsRef = (props: AnimationProps): RefObject<AnimationProps> => ({ current: props });
 
-const makeAnimator = (widget: Gtk.Widget, props: WidgetAnimationProps): WidgetAnimator =>
+const makeAnimator = (widget: Gtk.Widget, props: AnimationProps): WidgetAnimator =>
     new WidgetAnimator("gtkx-anim-test", widgetRef(widget), propsRef(props));
 
 describe("WidgetAnimator", () => {

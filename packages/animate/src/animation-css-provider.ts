@@ -32,7 +32,7 @@ class AnimationStyleSheet {
 
     private ensureProvider(): Gtk.CssProvider {
         if (this.provider) return this.provider;
-        const { provider } = registerProviderForDefaultDisplay(ANIMATION_PROVIDER_PRIORITY);
+        const provider = registerProviderForDefaultDisplay(ANIMATION_PROVIDER_PRIORITY);
         this.provider = provider;
         if (process.env.NODE_ENV !== "production") {
             provider.on("parsing-error", (section, error) => {

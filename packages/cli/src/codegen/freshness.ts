@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { type CodegenFingerprint, computeFingerprint, FINGERPRINT_FILENAME } from "@gtkx/codegen";
-import { type GtkxConfig, type ResolvedGtkxRules, resolveGtkxRules } from "@gtkx/config";
+import type { ElementProp, GtkxConfig } from "@gtkx/config";
 import { sortedStrings } from "@gtkx/utils";
 import { resolveGirPath } from "./gir-resolver.js";
 import { resolveLibraries } from "./library-resolver.js";
@@ -10,7 +10,7 @@ import { type CodegenStore, resolveCodegenStore } from "./store-resolver.js";
 export type CodegenInputs = {
     girPath: string[];
     libraries: string[];
-    rules: ResolvedGtkxRules;
+    elementProps: Record<string, ElementProp[]>;
     store: CodegenStore;
 };
 
@@ -18,7 +18,7 @@ export const resolveCodegenInputs = (cwd: string, config: GtkxConfig): CodegenIn
     const girPath = resolveGirPath(config.girPath);
     const libraries = resolveLibraries(config.libraries, girPath);
     const store = resolveCodegenStore(cwd);
-    return { girPath, libraries, rules: resolveGtkxRules(config.rules), store };
+    return { girPath, libraries, elementProps: config.elementProps ?? {}, store };
 };
 
 const REACT_GENERATED_MODULES: string[] = ["metadata.js", join("gtk", "gtk.js")];
@@ -32,7 +32,11 @@ const namespaceBarrelPath = (giStoreDir: string, library: string): string => {
 const giStoreLinksResolve = (giStoreDir: string): boolean =>
     existsSync(join(giStoreDir, "node_modules", "@gtkx", "gi", "package.json"));
 
-const fingerprintStale = (giStoreDir: string, libraries: string[], rules: ResolvedGtkxRules): boolean => {
+const fingerprintStale = (
+    giStoreDir: string,
+    libraries: string[],
+    elementProps: Record<string, ElementProp[]>,
+): boolean => {
     const sentinelPath = join(giStoreDir, FINGERPRINT_FILENAME);
     if (!existsSync(sentinelPath)) return true;
     let sentinel: CodegenFingerprint;
@@ -44,7 +48,7 @@ const fingerprintStale = (giStoreDir: string, libraries: string[], rules: Resolv
     const sortAlpha = (values: string[]): string => sortedStrings(values).join(",");
     if (sortAlpha(sentinel.libraries) !== sortAlpha(libraries)) return true;
     try {
-        return computeFingerprint(sentinel.girFiles, sentinel.libraries, rules) !== sentinel.value;
+        return computeFingerprint(sentinel.girFiles, sentinel.libraries, elementProps) !== sentinel.value;
     } catch {
         return true;
     }
@@ -52,7 +56,7 @@ const fingerprintStale = (giStoreDir: string, libraries: string[], rules: Resolv
 
 export const isCodegenStale = (inputs: CodegenInputs): boolean => {
     try {
-        const { store, libraries, rules } = inputs;
+        const { store, libraries, elementProps } = inputs;
         if (!existsSync(store.giLinkDir) || !existsSync(store.giStoreDir)) {
             return true;
         }
@@ -66,7 +70,7 @@ export const isCodegenStale = (inputs: CodegenInputs): boolean => {
             if (!existsSync(store.jsxLinkDir)) return true;
             if (REACT_GENERATED_MODULES.some((module) => !existsSync(join(store.jsxStoreDir, module)))) return true;
         }
-        return fingerprintStale(store.giStoreDir, libraries, rules);
+        return fingerprintStale(store.giStoreDir, libraries, elementProps);
     } catch {
         return true;
     }

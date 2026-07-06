@@ -3,9 +3,7 @@ declare module "virtual:gtkx-config" {
     export const CONSTRUCT_ONLY_PROPS: Record<string, Set<string>>;
     export const CONSTRUCT_PROPS: Record<string, Set<string>>;
     export const DEFAULT_PROPS: Record<string, Record<string, unknown>>;
-    export const DEFAULT_BLOCKABLE_TYPES: string[];
-    export const CONTAINER_PROPS: Record<string, import("@gtkx/config").ContainerProp[]>;
-    export const SYNTHETIC_PROPS: import("@gtkx/config").SyntheticPropRule[];
+    export const ELEMENT_PROPS: Record<string, import("@gtkx/config").ElementProp[]>;
     export const ACCESSIBLE_ATTRIBUTES: Record<
         string,
         {

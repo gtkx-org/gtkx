@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { omit, uniqBy } from "../src/collection.js";
+import { uniqBy } from "../src/collection.js";
 
 describe("uniqBy", () => {
     it("keeps the first item seen for each distinct key", () => {
@@ -26,22 +26,5 @@ describe("uniqBy", () => {
         const source = ["a", "a"];
         uniqBy(source, (value) => value);
         expect(source).toEqual(["a", "a"]);
-    });
-});
-
-describe("omit", () => {
-    it("removes the listed keys", () => {
-        expect(omit({ a: 1, b: 2, c: 3 }, ["b"])).toEqual({ a: 1, c: 3 });
-    });
-
-    it("ignores keys absent from the record", () => {
-        const record: Record<string, number> = { a: 1 };
-        expect(omit(record, ["x"])).toEqual({ a: 1 });
-    });
-
-    it("does not mutate the source record", () => {
-        const source = { a: 1, b: 2 };
-        omit(source, ["a"]);
-        expect(source).toEqual({ a: 1, b: 2 });
     });
 });

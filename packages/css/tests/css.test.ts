@@ -1,7 +1,37 @@
+import type { Element } from "stylis";
 import type { MockInstance } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { type Css, createCss } from "../src/create-css.js";
+import { type Css, createCss, removeLabel } from "../src/create-css.js";
 import { StyleSheet } from "../src/stylesheet.js";
+
+const declElement = (value: string): Element => ({
+    parent: null,
+    children: "",
+    root: null,
+    type: "decl",
+    props: "",
+    value,
+    length: value.length,
+    return: `${value};`,
+    line: 0,
+    column: 0,
+});
+
+describe("removeLabel", () => {
+    it("clears a label declaration", () => {
+        const element = declElement("label:btn");
+        removeLabel(element);
+        expect(element.value).toBe("");
+        expect(element.return).toBe("");
+    });
+
+    it("leaves a non-label declaration intact", () => {
+        const element = declElement("padding:8px");
+        removeLabel(element);
+        expect(element.value).toBe("padding:8px");
+        expect(element.return).toBe("padding:8px;");
+    });
+});
 
 describe("css", () => {
     let instance: Css;

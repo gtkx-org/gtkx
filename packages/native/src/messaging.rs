@@ -175,10 +175,6 @@ impl Mailbox {
         self.freeze.run_loop(self);
     }
 
-    pub fn is_initialized(&self) -> bool {
-        self.wake_node_tsfn.get().is_some()
-    }
-
     pub fn enter_glib_callback(&self) {
         self.callback_depth.fetch_add(1, Ordering::AcqRel);
     }

@@ -54,37 +54,37 @@ fn release_handed_over_state(state_ptr: *mut c_void, js_fn: &JsHandle) {
 #[test]
 fn new_armed_exposes_state_and_closure_pointers() {
     let destroy_ptr = ClosureState::destroy as *mut c_void;
-    let (tv, _js_func) = armed_callback_value(Some(destroy_ptr));
-    assert!(!tv.fn_ptr().is_null());
-    assert!(!tv.state_ptr().is_null());
-    assert_eq!(tv.destroy_ptr(), Some(destroy_ptr));
-    let state = unsafe { &*(tv.state_ptr() as *const ClosureState) };
-    assert_eq!(state.code_ptr, tv.fn_ptr());
+    let (callback, _js_func) = armed_callback_value(Some(destroy_ptr));
+    assert!(!callback.fn_ptr().is_null());
+    assert!(!callback.state_ptr().is_null());
+    assert_eq!(callback.destroy_ptr(), Some(destroy_ptr));
+    let state = unsafe { &*(callback.state_ptr() as *const ClosureState) };
+    assert_eq!(state.code_ptr, callback.fn_ptr());
 }
 
 #[test]
 fn armed_state_drops_with_value_when_call_never_happens() {
-    let (tv, js_fn) = armed_callback_value(None);
+    let (callback, js_fn) = armed_callback_value(None);
     assert_eq!(js_fn.ref_count(), 2);
-    drop(tv);
+    drop(callback);
     assert_eq!(js_fn.ref_count(), 1);
 }
 
 #[test]
 fn disarm_pending_transfer_hands_state_over_and_is_idempotent() {
-    let (tv, js_fn) = armed_callback_value(Some(ClosureState::destroy as *mut c_void));
-    let state_ptr = tv.state_ptr();
-    tv.disarm_pending_transfer();
-    tv.disarm_pending_transfer();
-    drop(tv);
+    let (callback, js_fn) = armed_callback_value(Some(ClosureState::destroy as *mut c_void));
+    let state_ptr = callback.state_ptr();
+    callback.disarm_pending_transfer();
+    callback.disarm_pending_transfer();
+    drop(callback);
     release_handed_over_state(state_ptr, &js_fn);
 }
 
 #[test]
 fn stash_disarm_pending_transfer_routes_to_callback() {
-    let (tv, js_fn) = armed_callback_value(None);
-    let state_ptr = tv.state_ptr();
-    let value = Stash::Callback(tv);
+    let (callback, js_fn) = armed_callback_value(None);
+    let state_ptr = callback.state_ptr();
+    let value = Stash::Callback(callback);
     value.disarm_pending_transfer();
     drop(value);
     release_handed_over_state(state_ptr, &js_fn);
@@ -98,25 +98,25 @@ fn stash_disarm_pending_transfer_is_a_noop_for_scalars() {
 
 #[test]
 fn callback_value_accessors_expose_pointers() {
-    let tv = callback_value(true);
+    let callback = callback_value(true);
     assert_eq!(
-        tv.fn_ptr(),
+        callback.fn_ptr(),
         std::ptr::without_provenance_mut::<c_void>(0xCAFE)
     );
     assert_eq!(
-        tv.state_ptr(),
+        callback.state_ptr(),
         std::ptr::without_provenance_mut::<c_void>(0xBEEF)
     );
     assert_eq!(
-        tv.destroy_ptr(),
+        callback.destroy_ptr(),
         Some(std::ptr::without_provenance_mut::<c_void>(0xDEAD))
     );
 }
 
 #[test]
 fn callback_value_without_destroy_has_none() {
-    let tv = callback_value(false);
-    assert_eq!(tv.destroy_ptr(), None);
+    let callback = callback_value(false);
+    assert_eq!(callback.destroy_ptr(), None);
 }
 
 #[test]

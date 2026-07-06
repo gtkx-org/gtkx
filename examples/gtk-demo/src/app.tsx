@@ -428,8 +428,8 @@ export const App = () => (
     <GtkApplication
         flags={Gio.ApplicationFlags.NON_UNIQUE}
         actionAccels={[
-            { action: "win.inspector", accels: ["<Control><Shift>i"] },
-            { action: "win.shortcuts", accels: ["<Control>question"] },
+            { detailedActionName: "win.inspector", accels: ["<Control><Shift>i"] },
+            { detailedActionName: "win.shortcuts", accels: ["<Control>question"] },
         ]}
     >
         <Demo />

@@ -6,7 +6,7 @@ import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 import { expectDialogModalProp, expectDialogTitleTracksProp } from "../helpers/dialog-button-render.js";
 
-describe("render - FontDialogButton > FontDialogButtonNode (1)", () => {
+describe("render - FontDialogButton (1)", () => {
     it("creates FontDialogButton widget", async () => {
         const ref = createRef<Gtk.FontDialogButton>();
 
@@ -48,7 +48,7 @@ describe("render - FontDialogButton > FontDialogButtonNode (1)", () => {
     });
 });
 
-describe("render - FontDialogButton > FontDialogButtonNode (2)", () => {
+describe("render - FontDialogButton (2)", () => {
     it("sets dialog title", async () => {
         const ref = createRef<Gtk.FontDialogButton>();
 
@@ -81,7 +81,7 @@ describe("render - FontDialogButton > FontDialogButtonNode (2)", () => {
     });
 });
 
-describe("render - FontDialogButton > FontDialogButtonNode (3)", () => {
+describe("render - FontDialogButton (3)", () => {
     it("updates useFont when prop changes", async () => {
         const ref = createRef<Gtk.FontDialogButton>();
 
@@ -129,7 +129,7 @@ describe("render - FontDialogButton > FontDialogButtonNode (3)", () => {
     });
 });
 
-describe("render - FontDialogButton > FontDialogButtonNode (4)", () => {
+describe("render - FontDialogButton (4)", () => {
     it("updates level when prop changes", async () => {
         const ref = createRef<Gtk.FontDialogButton>();
 

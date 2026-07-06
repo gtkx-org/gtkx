@@ -5,7 +5,7 @@ import { freeze, unfreeze } from "@gtkx/native";
 import { type Context, createContext } from "react";
 import type ReactReconciler from "react-reconciler";
 import { DiscreteEventPriority } from "react-reconciler/constants.js";
-import { isDefaultBlockableType, typeChainIncludes } from "../utils/gtype.js";
+import { typeChainIncludes } from "../utils/gtype.js";
 import { applyAccessibleProps, isAccessibleProp } from "./accessible.js";
 import { applyProps } from "./apply-props.js";
 import { beginCommit, endCommit, runCommitFlush } from "./commit-flush.js";
@@ -13,9 +13,10 @@ import { attachNode, detachFromParent, detachNode, resyncWrapperNode } from "./d
 import { createElementInstance, createWrapperInstance } from "./instance.js";
 import { scheduleLabelTextRebuild } from "./label-text-rebuild.js";
 import { reportReconcilerError } from "./reconciler-error-handler.js";
-import { isSyntheticProp } from "./rule-table.js";
+import { isAppliedProp } from "./element-props.js";
+import { applyElementProps, hasLazyProps, reapplyLazyProps } from "./element-prop-appliers.js";
+import { getSignalStore } from "./signal-store.js";
 import { ensureState, type Node, stateOf } from "./state.js";
-import { applySyntheticProps, hasSelectionProps, reapplySelectionProps } from "./synthetic-props.js";
 import { scheduleBufferRebuild } from "./text-buffer-rebuild.js";
 import { isBufferContentNode, isLabelTextNode } from "./text-node.js";
 import type { Container, Props } from "./types.js";
@@ -47,16 +48,6 @@ type HostConfig = ReactReconciler.HostConfig<
 >;
 
 export type ReconcilerInstance = ReactReconciler.Reconciler<Container, Node, Node, never, never, PublicInstance>;
-
-const withSignalsBlocked = <T>(instance: Node, fn: () => T): T => {
-    const { signalStore } = stateOf(instance);
-    signalStore.blockAll();
-    try {
-        return fn();
-    } finally {
-        signalStore.unblockAll();
-    }
-};
 
 const link = (parent: Node, child: Node): void => {
     const { children } = stateOf(parent);
@@ -99,9 +90,9 @@ const scheduleTextRebuilds = (parent: Node, child: Node): void => {
     maybeScheduleLabelTextRebuild(parent, child);
 };
 
-const reapplyParentSelection = (parent: Node): void => {
-    if (!(parent instanceof GObject.Object) || !hasSelectionProps(parent)) return;
-    withSignalsBlocked(parent, () => reapplySelectionProps(parent, stateOf(parent).props));
+const reapplyParentLazy = (parent: Node): void => {
+    if (!(parent instanceof GObject.Object) || !hasLazyProps(parent)) return;
+    reapplyLazyProps(parent, stateOf(parent).props);
 };
 
 const appendChild = (parent: Node, child: Node): void => {
@@ -109,14 +100,14 @@ const appendChild = (parent: Node, child: Node): void => {
     link(parent, child);
     attachNode(parent, child, null, fresh);
     scheduleTextRebuilds(parent, child);
-    reapplyParentSelection(parent);
+    reapplyParentLazy(parent);
 };
 
 const insertBefore = (parent: Node, child: Node, before: Node): void => {
     linkBefore(parent, child, before);
     attachNode(parent, child, before, false);
     scheduleTextRebuilds(parent, child);
-    reapplyParentSelection(parent);
+    reapplyParentLazy(parent);
 };
 
 const removeChild = (parent: Node, child: Node): void => {
@@ -134,19 +125,24 @@ const commitInstanceProps = (instance: Node, oldProps: Props | null, newProps: P
         return;
     }
     if (!(instance instanceof GObject.Object)) return;
-    const excludeSynthetic = (name: string): boolean => isSyntheticProp(instance.__type__, name);
-    if (instance instanceof Gtk.Accessible) {
-        applyAccessibleProps(instance, oldProps, newProps);
-        applyProps(instance, oldProps, newProps, {
-            exclude: (name) => isAccessibleProp(name) || excludeSynthetic(name),
-        });
+    const excludeApplied = (name: string): boolean => isAppliedProp(instance.__type__, name);
+    const applyGenericAndSignals = (): void => {
+        if (instance instanceof Gtk.Accessible) {
+            applyAccessibleProps(instance, oldProps, newProps);
+            applyProps(instance, oldProps, newProps, {
+                exclude: (name) => isAccessibleProp(name) || excludeApplied(name),
+            });
+        } else {
+            applyProps(instance, oldProps, newProps, { exclude: excludeApplied });
+        }
+    };
+    if (oldProps === null) {
+        applyElementProps(instance, oldProps, newProps);
+        applyGenericAndSignals();
     } else {
-        applyProps(instance, oldProps, newProps, {
-            exclude: excludeSynthetic,
-            defaultBlockable: isDefaultBlockableType(instance.__type__),
-        });
+        applyGenericAndSignals();
+        applyElementProps(instance, oldProps, newProps);
     }
-    applySyntheticProps(instance, oldProps, newProps);
     if (instance instanceof Gtk.TextTag) scheduleBufferRebuild(instance);
 };
 
@@ -271,7 +267,7 @@ const createInstanceConfig = (): InstanceConfig => ({
         appendChild(parent, child);
     },
     finalizeInitialChildren: (instance, _type, props) => {
-        withSignalsBlocked(instance, () => commitInstanceProps(instance, null, props));
+        commitInstanceProps(instance, null, props);
         return false;
     },
     getPublicInstance: (instance) => {
@@ -328,28 +324,29 @@ const catchErrors = (fn: () => void): void => {
 
 const drainCommitQueue = (): void => catchErrors(runCommitFlush);
 
-const finalizeCommitAfterLayoutEffects = (): void => {
+const finalizeCommitAfterLayoutEffects = (container: Container): void => {
     drainCommitQueue();
     endCommit();
+    getSignalStore(container).unblock();
     catchErrors(unfreeze);
 };
 
 const createCommitConfig = (): CommitConfig => ({
-    commitUpdate: (instance, _type, oldProps, newProps) =>
-        withSignalsBlocked(instance, () => commitInstanceProps(instance, oldProps, newProps)),
+    commitUpdate: (instance, _type, oldProps, newProps) => commitInstanceProps(instance, oldProps, newProps),
     commitTextUpdate: (textInstance, _oldText, newText) => {
         stateOf(textInstance).props = { text: newText };
         if (isBufferContentNode(textInstance)) scheduleBufferRebuild(textInstance);
         else scheduleLabelTextRebuild(textInstance);
     },
-    prepareForCommit: () => {
+    prepareForCommit: (container) => {
         catchErrors(freeze);
+        getSignalStore(container).block();
         beginCommit();
         return null;
     },
-    resetAfterCommit: () => {
+    resetAfterCommit: (container) => {
         drainCommitQueue();
-        queueMicrotask(finalizeCommitAfterLayoutEffects);
+        queueMicrotask(() => finalizeCommitAfterLayoutEffects(container));
     },
 });
 

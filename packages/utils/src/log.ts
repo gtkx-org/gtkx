@@ -75,8 +75,6 @@ export class Logger {
     }
 }
 
-export type LogLevel = "debug" | "info" | "warn" | "error";
-
 export const createLogger = (namespace: string, options: Omit<LoggerOptions, "namespace"> = {}): Logger =>
     new Logger({ ...options, namespace });
 

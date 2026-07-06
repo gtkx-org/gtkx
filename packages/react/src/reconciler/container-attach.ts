@@ -2,34 +2,34 @@ import type { ContainerProp } from "@gtkx/config";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { typeChainIncludes } from "../utils/gtype.js";
-import { callUsesRef, nullSetterCurrentHolder, resolveAttachRule, runCall } from "./rule-table.js";
+import { callUsesRef, nullSetterCurrentHolder, resolveContainerProp, runCall } from "./element-props.js";
 import { type ElementMapping, type Node, registeredStateOf, stateOf } from "./state.js";
 import { childWidget } from "./wrapper-content.js";
 
-const containerRuleFor = (container: GObject.Object, child: Gtk.Widget): ContainerProp | null =>
-    resolveAttachRule(container.__type__, child.__type__, undefined);
+const containerPropFor = (container: GObject.Object, child: Gtk.Widget): ContainerProp | null =>
+    resolveContainerProp(container.__type__, child.__type__, undefined);
 
 const scopeFor = (child: Gtk.Widget) => ({ child, props: registeredStateOf(child)?.props ?? {} });
 
 export function attachChild(child: Gtk.Widget, container: GObject.Object): void {
-    const rule = containerRuleFor(container, child);
-    if (rule?.append !== undefined) {
-        runCall(container, rule.append, [child], scopeFor(child));
+    const cp = containerPropFor(container, child);
+    if (cp?.append !== undefined) {
+        runCall(container, cp.append, [child], scopeFor(child));
         return;
     }
     if (container instanceof Gtk.Widget) child.setParent(container);
 }
 
 export function detachChild(child: Gtk.Widget, container: GObject.Object): void {
-    const rule = containerRuleFor(container, child);
-    if (rule?.remove !== undefined) {
-        const holder = nullSetterCurrentHolder(container, rule.remove);
+    const cp = containerPropFor(container, child);
+    if (cp?.remove !== undefined) {
+        const holder = nullSetterCurrentHolder(container, cp.remove);
         if (holder !== undefined) {
-            if (holder === child) runCall(container, rule.remove, [child], scopeFor(child));
+            if (holder === child) runCall(container, cp.remove, [child], scopeFor(child));
             return;
         }
         if (container instanceof Gtk.Widget && child.getParent() !== container) return;
-        runCall(container, rule.remove, [child], scopeFor(child));
+        runCall(container, cp.remove, [child], scopeFor(child));
         return;
     }
     if (child.getParent() === container) child.unparent();
@@ -55,8 +55,8 @@ export function isDescendantOf(widget: Gtk.Widget, ancestor: Gtk.Widget): boolea
     return false;
 }
 
-const isAutowrapChild = (rule: ContainerProp | null, widget: Gtk.Widget): boolean =>
-    rule?.autowrap !== undefined && !typeChainIncludes(widget.__type__, rule.autowrap);
+const isAutowrapChild = (cp: ContainerProp | null, widget: Gtk.Widget): boolean =>
+    cp?.autowrap !== undefined && !typeChainIncludes(widget.__type__, cp.autowrap);
 
 const detachAutowrapped = (widget: Gtk.Widget): void => {
     const wrapper = widget.getParent();
@@ -113,32 +113,32 @@ const insertAtIndex = (
     container: Gtk.Widget,
     widget: Gtk.Widget,
     anchor: Gtk.Widget,
-    rule: ContainerProp & { insert: NonNullable<ContainerProp["insert"]> },
+    cp: ContainerProp & { insert: NonNullable<ContainerProp["insert"]> },
 ): void => {
-    if (rule.autowrap !== undefined) {
+    if (cp.autowrap !== undefined) {
         if (widget.getParent() !== null) {
-            if (isAutowrapChild(rule, widget)) detachAutowrapped(widget);
+            if (isAutowrapChild(cp, widget)) detachAutowrapped(widget);
             else unparentWidget(widget);
         }
-        const position = findWrappedPosition(container, anchor, rule.autowrap);
+        const position = findWrappedPosition(container, anchor, cp.autowrap);
         if (position === null) attachChild(widget, container);
-        else runCall(container, rule.insert, [widget, position], { child: widget, index: position });
+        else runCall(container, cp.insert, [widget, position], { child: widget, index: position });
         return;
     }
     unparentWidget(widget);
     const position = findInsertPosition(container, anchor);
-    runCall(container, rule.insert, [widget, position], { child: widget, index: position });
+    runCall(container, cp.insert, [widget, position], { child: widget, index: position });
 };
 
-const insertBySibling = (container: Gtk.Widget, widget: Gtk.Widget, anchor: Gtk.Widget, rule: ContainerProp): void => {
+const insertBySibling = (container: Gtk.Widget, widget: Gtk.Widget, anchor: Gtk.Widget, cp: ContainerProp): void => {
     const previous = findPrevSibling(container, anchor);
     const scope = { child: widget, sibling: previous ?? null };
-    if (widget.getParent() === container && rule.reorder !== undefined) {
-        runCall(container, rule.reorder, [widget, previous], scope);
+    if (widget.getParent() === container && cp.reorder !== undefined) {
+        runCall(container, cp.reorder, [widget, previous], scope);
         return;
     }
     unparentWidget(widget);
-    if (rule.insert !== undefined) runCall(container, rule.insert, [widget, previous], scope);
+    if (cp.insert !== undefined) runCall(container, cp.insert, [widget, previous], scope);
     else attachChild(widget, container);
 };
 
@@ -153,16 +153,16 @@ const reinsertAll = (parent: Node, container: GObject.Object): void => {
 };
 
 const insertWidgetBefore = (parent: Node, container: GObject.Object, widget: Gtk.Widget, anchor: Gtk.Widget): void => {
-    const rule = containerRuleFor(container, widget);
-    if (rule?.insert !== undefined && callUsesRef(rule.insert, "index") && container instanceof Gtk.Widget) {
-        insertAtIndex(container, widget, anchor, { ...rule, insert: rule.insert });
+    const cp = containerPropFor(container, widget);
+    if (cp?.insert !== undefined && callUsesRef(cp.insert, "index") && container instanceof Gtk.Widget) {
+        insertAtIndex(container, widget, anchor, { ...cp, insert: cp.insert });
         return;
     }
     if (
         container instanceof Gtk.Widget &&
-        (rule?.reorder !== undefined || (rule?.insert !== undefined && callUsesRef(rule.insert, "sibling")))
+        (cp?.reorder !== undefined || (cp?.insert !== undefined && callUsesRef(cp.insert, "sibling")))
     ) {
-        insertBySibling(container, widget, anchor, rule);
+        insertBySibling(container, widget, anchor, cp);
         return;
     }
     reinsertAll(parent, container);
@@ -170,16 +170,16 @@ const insertWidgetBefore = (parent: Node, container: GObject.Object, widget: Gtk
 
 const appendWidget = (container: GObject.Object, widget: Gtk.Widget, fresh: boolean): void => {
     if (!fresh && widget.getParent() !== null) {
-        const rule = containerRuleFor(container, widget);
-        if (isAutowrapChild(rule, widget)) detachAutowrapped(widget);
+        const cp = containerPropFor(container, widget);
+        if (isAutowrapChild(cp, widget)) detachAutowrapped(widget);
         else unparentWidget(widget);
     }
     attachChild(widget, container);
 };
 
 const removeWidget = (container: GObject.Object, widget: Gtk.Widget): void => {
-    const rule = containerRuleFor(container, widget);
-    if (!isAutowrapChild(rule, widget)) {
+    const cp = containerPropFor(container, widget);
+    if (!isAutowrapChild(cp, widget)) {
         detachChild(widget, container);
         return;
     }
@@ -195,7 +195,7 @@ export const containerMapping: ElementMapping = {
     attach: (child, parent, anchor, fresh) => {
         const widget = childWidget(child);
         if (!(parent instanceof GObject.Object) || !widget) return;
-        if (!(parent instanceof Gtk.Widget) && containerRuleFor(parent, widget) === null) return;
+        if (!(parent instanceof Gtk.Widget) && containerPropFor(parent, widget) === null) return;
         if (anchor instanceof Gtk.Widget) insertWidgetBefore(parent, parent, widget, anchor);
         else appendWidget(parent, widget, fresh === true);
     },

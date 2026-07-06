@@ -8,7 +8,6 @@ export default {
     extends: defaultStrictRulesPath,
     options: {
         includeOnly: "packages/[^/]+/src/",
-        exclude: "packages/codegen/src/overrides/",
         tsConfig: { fileName: "tsconfig.base.json" },
         tsPreCompilationDeps: true,
         enhancedResolveOptions: {

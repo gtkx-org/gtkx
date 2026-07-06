@@ -2,7 +2,7 @@
     "$schema": "https://unpkg.com/knip@6/schema.json",
     "ignoreExportsUsedInFile": true,
     "ignore": ["packages/native/index.js"],
-    "ignoreDependencies": ["^@gtkx/gi(/.*)?$", "^@gtkx/jsx(/.*)?$", "rolldown", "scheduler"],
+    "ignoreDependencies": ["^@gtkx/gi(/.*)?$", "^@gtkx/jsx(/.*)?$", "scheduler"],
     "ignoreBinaries": [
         "espeak-ng",
         "pkg-config",

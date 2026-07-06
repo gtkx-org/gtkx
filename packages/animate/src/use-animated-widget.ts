@@ -3,14 +3,14 @@ import { useMergeRefs } from "@gtkx/react";
 import { shallowEqual } from "@gtkx/utils";
 import { type Ref, type RefCallback, useId, useLayoutEffect, useRef } from "react";
 import { useIsInitialPresence, usePresence } from "./animate-presence.js";
-import type { AnimationTarget, WidgetAnimationProps } from "./types.js";
+import type { AnimationProps, AnimationTarget } from "./types.js";
 import { WidgetAnimator } from "./widget-animator.js";
 
 const sanitizeId = (id: string): string => `gtkx-anim-${id.replace(/[^a-zA-Z0-9]/g, "")}`;
 
 export const useAnimatedWidget = (
     externalRef: Ref<Gtk.Widget | null> | undefined,
-    props: WidgetAnimationProps,
+    props: AnimationProps,
 ): RefCallback<Gtk.Widget> => {
     const widgetRef = useRef<Gtk.Widget | null>(null);
     const mergedRef = useMergeRefs(externalRef, widgetRef);

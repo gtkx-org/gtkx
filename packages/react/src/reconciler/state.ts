@@ -59,7 +59,7 @@ export const stateOf = (node: Node): State => {
     throw new Error("reconciler node has no registered state");
 };
 
-export const isWrapperKind = (node: Node, kind: WrapperKind): boolean =>
+export const hasWrapperKind = (node: Node, kind: WrapperKind): boolean =>
     isWrapperNode(node) && stateOf(node).kind === kind;
 
 export const closestInstance = (node: Node, matches: (node: Node) => boolean): Node | null => {

@@ -4,7 +4,7 @@ import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
-describe("render - LevelBar > LevelBarNode (1)", () => {
+describe("render - LevelBar (1)", () => {
     it("creates LevelBar widget without offsets", async () => {
         const ref = createRef<Gtk.LevelBar>();
 
@@ -20,8 +20,8 @@ describe("render - LevelBar > LevelBarNode (1)", () => {
             <GtkLevelBar
                 ref={ref}
                 offsets={[
-                    { id: "low", value: 0.25 },
-                    { id: "high", value: 0.75 },
+                    { name: "low", value: 0.25 },
+                    { name: "high", value: 0.75 },
                 ]}
             />,
         );
@@ -41,7 +41,7 @@ describe("render - LevelBar > LevelBarNode (1)", () => {
         const ref = createRef<Gtk.LevelBar>();
 
         function App({ value }: { value: number }) {
-            return <GtkLevelBar ref={ref} offsets={[{ id: "threshold", value }]} />;
+            return <GtkLevelBar ref={ref} offsets={[{ name: "threshold", value }]} />;
         }
 
         await render(<App value={0.5} />);
@@ -54,12 +54,12 @@ describe("render - LevelBar > LevelBarNode (1)", () => {
     });
 });
 
-describe("render - LevelBar > LevelBarNode (2)", () => {
+describe("render - LevelBar (2)", () => {
     it("updates offset name", async () => {
         const ref = createRef<Gtk.LevelBar>();
 
         function App({ name }: { name: string }) {
-            return <GtkLevelBar ref={ref} offsets={[{ id: name, value: 0.5 }]} />;
+            return <GtkLevelBar ref={ref} offsets={[{ name, value: 0.5 }]} />;
         }
 
         await render(<App name="old-name" />);
@@ -79,10 +79,10 @@ describe("render - LevelBar > LevelBarNode (2)", () => {
         function App({ showExtra }: { showExtra: boolean }) {
             const offsets = showExtra
                 ? [
-                      { id: "always", value: 0.5 },
-                      { id: "extra", value: 0.75 },
+                      { name: "always", value: 0.5 },
+                      { name: "extra", value: 0.75 },
                   ]
-                : [{ id: "always", value: 0.5 }];
+                : [{ name: "always", value: 0.5 }];
             return <GtkLevelBar ref={ref} offsets={offsets} />;
         }
 

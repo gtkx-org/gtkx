@@ -5,15 +5,15 @@ import type { RefObject } from "react";
 import { AnimationCssProvider } from "./animation-css-provider.js";
 import { interpolate } from "./interpolation.js";
 import { buildAnimation, secondsToMilliseconds } from "./transition.js";
-import type { AnimationTarget, WidgetAnimationProps } from "./types.js";
+import type { AnimationProps, AnimationTarget } from "./types.js";
 
-const restValuesOf = (props: WidgetAnimationProps): AnimationTarget => {
+const restValuesOf = (props: AnimationProps): AnimationTarget => {
     if (props.animate) return { ...props.animate };
     if (props.initial) return { ...props.initial };
     return {};
 };
 
-const shouldAnimateOnMount = (props: WidgetAnimationProps): boolean => {
+const shouldAnimateOnMount = (props: AnimationProps): boolean => {
     const { initial, animate } = props;
     if (initial === undefined || initial === false || animate === undefined) return false;
     return !shallowEqual(initial, animate);
@@ -21,19 +21,18 @@ const shouldAnimateOnMount = (props: WidgetAnimationProps): boolean => {
 
 /**
  * Drives a widget's animation lifecycle: writes CSS for the current values, plays libadwaita
- * tween or spring animations toward a target, and cleans up on disposal. Consumers receive this
- * through {@link animated} components rather than constructing it directly.
+ * tween or spring animations toward a target, and cleans up on disposal.
  */
 export class WidgetAnimator {
     private cssProvider: AnimationCssProvider;
-    private propsRef: RefObject<WidgetAnimationProps>;
+    private propsRef: RefObject<AnimationProps>;
     private ref: RefObject<Gtk.Widget | null>;
     private currentValues: AnimationTarget = {};
     private currentAnimation: Adw.Animation | null = null;
     private cancelCurrent: (() => void) | null = null;
     private delayTimer: ReturnType<typeof setTimeout> | null = null;
 
-    constructor(className: string, ref: RefObject<Gtk.Widget | null>, propsRef: RefObject<WidgetAnimationProps>) {
+    constructor(className: string, ref: RefObject<Gtk.Widget | null>, propsRef: RefObject<AnimationProps>) {
         this.cssProvider = new AnimationCssProvider(className);
         this.ref = ref;
         this.propsRef = propsRef;

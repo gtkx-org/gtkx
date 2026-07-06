@@ -18,11 +18,11 @@ export type Root = {
 
 export const createRoot = (container: RootElement = createRootElement()): Root => {
     const onUncaughtError = (error: unknown): void => {
-        getSignalStore(container).forceUnblockAll();
+        getSignalStore(container).unblock();
         throw error;
     };
     const onCaughtError = (error: unknown): void => {
-        getSignalStore(container).forceUnblockAll();
+        getSignalStore(container).unblock();
         log.error("caught render error", error);
     };
 

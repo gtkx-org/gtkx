@@ -11,7 +11,7 @@ export class StyleSheet {
 
     private ensureProvider(): Gtk.CssProvider {
         if (this.provider) return this.provider;
-        const { provider } = registerProviderForDefaultDisplay();
+        const provider = registerProviderForDefaultDisplay();
         this.provider = provider;
         if (process.env.NODE_ENV !== "production") {
             provider.on("parsing-error", (section, error) => {

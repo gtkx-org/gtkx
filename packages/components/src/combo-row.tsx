@@ -5,7 +5,10 @@ import { DropDownBody, type DropDownDeclarativeProps, type DropDownRenderItemInf
 
 export type { DropDownRenderItemInfo as ComboRowRenderItemInfo };
 
-export type ComboRowProps<T = unknown, S = unknown> = Omit<AdwComboRowProps, keyof DropDownDeclarativeProps<T, S>> &
+export type ComboRowProps<T = unknown, S = unknown> = Omit<
+    AdwComboRowProps,
+    keyof DropDownDeclarativeProps<T, S> | "model" | "factory" | "listFactory" | "headerFactory"
+> &
     DropDownDeclarativeProps<T, S>;
 
 export const ComboRow = <T = unknown, S = unknown>(props: ComboRowProps<T, S>): ReactNode => (

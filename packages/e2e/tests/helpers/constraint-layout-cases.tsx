@@ -7,11 +7,11 @@ import { expect } from "vitest";
 
 export const renderConstraintBox = async (
     boxRef: RefObject<Gtk.Box | null>,
-    markers: ReactNode,
+    constraintChildren: ReactNode,
     children?: ReactNode,
 ): Promise<void> => {
     await render(
-        <GtkBox ref={boxRef} layoutManager={<ConstraintLayout>{markers}</ConstraintLayout>}>
+        <GtkBox ref={boxRef} layoutManager={<ConstraintLayout>{constraintChildren}</ConstraintLayout>}>
             {children}
         </GtkBox>,
     );
@@ -56,7 +56,7 @@ export const onlyConstraint = (boxRef: RefObject<Gtk.Box | null>): Gtk.Constrain
     return constraint;
 };
 
-export const LabelMarker = ({
+export const NamedLabel = ({
     id,
     label,
     labelRef,
@@ -66,6 +66,6 @@ export const LabelMarker = ({
     labelRef?: RefObject<Gtk.Label | null>;
 }): ReactNode => <GtkLabel ref={labelRef} name={id} label={label} />;
 
-export const ButtonMarker = ({ id, label }: { id: string; label: string }): ReactNode => (
+export const NamedButton = ({ id, label }: { id: string; label: string }): ReactNode => (
     <GtkButton name={id} label={label} />
 );

@@ -97,154 +97,94 @@ const callSchema = z.custom<Call>().check((ctx) => {
     ctx.issues.push(...collectCallIssues(ctx.value).map((issue) => rawIssue(ctx.value, issue.path, issue.message)));
 });
 
-const jsonSchema = z.custom<JsonValue>().check((ctx) => {
-    if (!isJsonValue(ctx.value)) ctx.issues.push(rawIssue(ctx.value, [], JSON_MESSAGE));
-});
-
 const nameSchema = z.string({ error: NAME_MESSAGE }).min(1, { error: NAME_MESSAGE });
-
-const settersSchema = z.record(z.string(), nameSchema, {
-    error: "must be an object mapping prop names to method names",
-});
-
-const listSchema = z.strictObject({
-    kind: z.literal("list"),
-    type: nameSchema,
-    prop: nameSchema,
-    clear: callSchema,
-    add: callSchema,
-});
-
-const keyedListSchema = z.strictObject({
-    kind: z.literal("keyed-list"),
-    type: nameSchema,
-    prop: nameSchema,
-    add: callSchema,
-    remove: callSchema,
-    key: nameSchema.optional(),
-    setters: settersSchema.optional(),
-});
-
-const valueSchema = z.strictObject({
-    kind: z.literal("value"),
-    type: nameSchema,
-    prop: nameSchema,
-    call: callSchema,
-    or: jsonSchema.optional(),
-    after: nameSchema.optional(),
-});
-
-const selectionSchema = z.strictObject({
-    kind: z.literal("selection"),
-    type: nameSchema,
-    prop: nameSchema,
-    get: nameSchema,
-    set: nameSchema,
-    lookup: nameSchema.optional(),
-});
-
-const controlledTextSchema = z.strictObject({
-    kind: z.literal("controlled-text"),
-    type: nameSchema,
-    prop: nameSchema,
-    get: nameSchema,
-    set: nameSchema,
-});
-
-const reassertSchema = z.strictObject({
-    kind: z.literal("reassert"),
-    type: nameSchema,
-    prop: nameSchema,
-    set: callSchema,
-});
-
-const writeOnceListSchema = z.strictObject({
-    kind: z.literal("write-once-list"),
-    type: nameSchema,
-    prop: nameSchema,
-    add: callSchema,
-});
-
-const syntheticPropSchema = z
-    .discriminatedUnion(
-        "kind",
-        [
-            listSchema,
-            keyedListSchema,
-            valueSchema,
-            selectionSchema,
-            controlledTextSchema,
-            reassertSchema,
-            writeOnceListSchema,
-        ],
-        { error: "must be one of list, keyed-list, value, selection, controlled-text, reassert, write-once-list" },
-    )
-    .check((ctx) => {
-        const rule = ctx.value;
-        if (rule.kind === "keyed-list" && rule.setters !== undefined && rule.key === undefined) {
-            ctx.issues.push(rawIssue(rule, ["setters"], "requires `key` to address items"));
-        }
-    });
-
-export type ListRule = z.infer<typeof listSchema>;
-
-export type KeyedListRule = z.infer<typeof keyedListSchema>;
-
-export type ValueRule = z.infer<typeof valueSchema>;
-
-export type SelectionRule = z.infer<typeof selectionSchema>;
-
-export type ControlledTextRule = z.infer<typeof controlledTextSchema>;
-
-export type ReassertRule = z.infer<typeof reassertSchema>;
-
-export type WriteOnceListRule = z.infer<typeof writeOnceListSchema>;
-
-export type SyntheticPropRule = z.infer<typeof syntheticPropSchema>;
 
 const adoptSchema = z.union([z.literal(true), nameSchema], {
     error: "must be `true` or the name of a getter method",
 });
 
-export const containerPropSchema = z
-    .strictObject({
-        prop: nameSchema,
-        child: nameSchema,
-        append: callSchema.optional(),
-        remove: callSchema.optional(),
-        insert: callSchema.optional(),
-        reorder: callSchema.optional(),
-        autowrap: nameSchema.optional(),
-        adopt: adoptSchema.optional(),
+const containerSchema = z.strictObject({
+    kind: z.literal("container"),
+    prop: nameSchema,
+    child: nameSchema,
+    append: callSchema.optional(),
+    remove: callSchema.optional(),
+    insert: callSchema.optional(),
+    reorder: callSchema.optional(),
+    autowrap: nameSchema.optional(),
+    adopt: adoptSchema.optional(),
+});
+
+const valueSchema = z.strictObject({
+    kind: z.literal("value"),
+    prop: nameSchema,
+    call: callSchema,
+    after: nameSchema.optional(),
+});
+
+const controlledTextSchema = z.strictObject({
+    kind: z.literal("controlled-text"),
+    prop: nameSchema,
+});
+
+const lazySchema = z.strictObject({
+    kind: z.literal("lazy"),
+    prop: nameSchema,
+    lookup: nameSchema.optional(),
+});
+
+const listSchema = z.strictObject({
+    kind: z.literal("list"),
+    prop: nameSchema,
+    add: callSchema,
+    remove: callSchema.optional(),
+    clear: callSchema.optional(),
+});
+
+export const elementPropSchema = z
+    .discriminatedUnion("kind", [containerSchema, valueSchema, controlledTextSchema, lazySchema, listSchema], {
+        error: "must be one of container, value, controlled-text, lazy, list",
     })
     .check((ctx) => {
-        const cp = ctx.value;
-        if (cp.append === undefined && cp.remove === undefined) {
-            ctx.issues.push(rawIssue(cp, [], "must define at least one of `append` or `remove`"));
+        const prop = ctx.value;
+        if (prop.kind === "container" && prop.append === undefined && prop.remove === undefined) {
+            ctx.issues.push(rawIssue(prop, [], "must define at least one of `append` or `remove`"));
         }
     });
+
+export const elementPropsSchema = z.record(nameSchema, z.array(elementPropSchema));
 
 /**
  * A container prop: a JSX prop whose value is one or more child GObjects attached
  * to a parent through generated methods. `adopt` marks a child that the parent
  * instantiates on attach — `true` when the append method returns the created
- * companion (e.g. `GtkStack.addChild`), or the name of a getter that retrieves it
- * from a freshly appended child (e.g. `GtkNotebook.getPage`). The companion's own
+ * child (e.g. `GtkStack.addChild`), or the name of a getter that retrieves it
+ * from a freshly appended child (e.g. `GtkNotebook.getPage`). The adopted child's own
  * GType is inferred by codegen from that method's return type.
  */
-export type ContainerProp = z.infer<typeof containerPropSchema>;
+export type ContainerProp = z.infer<typeof containerSchema>;
 
-export const gtkxRulesSchema = z.strictObject({
-    containerProps: z.record(nameSchema, z.array(containerPropSchema)).optional(),
-    syntheticProps: z.array(syntheticPropSchema).optional(),
-});
+export type ValueProp = z.infer<typeof valueSchema>;
 
-export type GtkxRules = z.infer<typeof gtkxRulesSchema>;
+export type ControlledTextProp = z.infer<typeof controlledTextSchema>;
 
-export type ResolvedGtkxRules = {
-    containerProps: Record<string, ContainerProp[]>;
-    syntheticProps: SyntheticPropRule[];
-};
+export type LazyProp = z.infer<typeof lazySchema>;
+
+/**
+ * A method slot: a JSX prop whose value is an array of method-call arguments.
+ * The item type is derived from `add`'s parameter signature — a single parameter
+ * yields an array of that parameter's type, two or more yield an array of objects
+ * keyed by the parameter names. `clear` present drives a full rebuild on every
+ * change; `remove` present drives a keyed diff (the key being the fields `remove`
+ * references); neither makes it add-only.
+ */
+export type ListProp = z.infer<typeof listSchema>;
+
+export type AppliedProp = ValueProp | ControlledTextProp | LazyProp | ListProp;
+
+export type ElementProp = z.infer<typeof elementPropSchema>;
+
+export type ElementProps = Record<string, ElementProp[]>;
 
 const CONFIG_PREFIX = "gtkx.config.ts:";
 
@@ -268,14 +208,8 @@ const formatIssue = (issue: z.core.$ZodIssue, fullPath: PropertyKey[]): string =
     return path === "" ? `${CONFIG_PREFIX} ${issue.message}` : `${CONFIG_PREFIX} \`${path}\` ${issue.message}`;
 };
 
-export const configError = (error: z.ZodError, basePath?: string): Error => {
+export const configError = (error: z.ZodError): Error => {
     const issue = error.issues[0];
     if (issue === undefined) return new Error(`${CONFIG_PREFIX} invalid configuration`);
-    const fullPath = basePath === undefined ? issue.path : [basePath, ...issue.path];
-    return new Error(formatIssue(issue, fullPath));
-};
-
-export const validateGtkxRules = (value: unknown, path = "rules"): void => {
-    const result = gtkxRulesSchema.safeParse(value);
-    if (!result.success) throw configError(result.error, path);
+    return new Error(formatIssue(issue, issue.path));
 };

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import type { ResolvedGtkxRules } from "@gtkx/config";
+import type { ElementProp } from "@gtkx/config";
 import { sortedStrings } from "@gtkx/utils";
 
 const require = createRequire(import.meta.url);
@@ -16,11 +16,15 @@ export type CodegenFingerprint = {
     libraries: string[];
 };
 
-export const computeFingerprint = (girFiles: string[], libraries: string[], rules: ResolvedGtkxRules): string => {
+export const computeFingerprint = (
+    girFiles: string[],
+    libraries: string[],
+    elementProps: Record<string, ElementProp[]>,
+): string => {
     const hash = createHash("sha256");
     hash.update(CODEGEN_VERSION);
     hash.update("\n");
-    hash.update(JSON.stringify(rules));
+    hash.update(JSON.stringify(elementProps));
     hash.update("\n");
     hash.update(sortedStrings(libraries).join(","));
     for (const file of sortedStrings(girFiles)) {

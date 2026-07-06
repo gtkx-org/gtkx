@@ -19,7 +19,7 @@ This project follows the [Contributor Covenant Code of Conduct](https://www.cont
 ### System Dependencies
 
 GTKX requires GTK4 and related development libraries. Install them using your distribution's package manager.
-Check the [CI workflow file](.github/workflows/ci.yml) for a complete list of dependencies.
+Check the [CI Docker image](.github/docker/Dockerfile) for a complete list of dependencies.
 
 ### Development Setup
 
@@ -147,11 +147,16 @@ API docs are generated from TypeScript with TypeDoc. Add JSDoc comments to expor
 
 ```typescript
 /**
- * Renders a React element into a GTK application.
- * @param element - The root React element to render
- * @param app - The GTK application that hosts the rendered tree
+ * Creates a reconciler root bound to a GTKX container.
+ * @param container - The root container element to render into
  */
-export function render(element: ReactNode, app: Gtk.Application): void;
+export const createRoot: (container?: RootElement) => Root;
+```
+
+Usage:
+
+```tsx
+createRoot().render(<App />);
 ```
 
 ### Examples
@@ -162,7 +167,7 @@ Examples in `examples/` serve as both documentation and integration tests. When 
 
 - **Questions:** Open a [GitHub Discussion](https://github.com/gtkx-org/gtkx/discussions)
 - **Bugs:** Open a [GitHub Issue](https://github.com/gtkx-org/gtkx/issues)
-- **Security:** Report security vulnerabilities privately via GitHub's security advisory feature
+- **Security:** Email eugeniodepalo@gmail.com directly — do not open a public issue (see SECURITY.md)
 
 ---
 

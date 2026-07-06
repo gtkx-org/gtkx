@@ -1,5 +1,6 @@
 import type { ExternalObject, Handle } from "@gtkx/native";
-import { getHandle, readField as read, setHandle, t, writeField as write } from "@gtkx/ffi";
+import { getHandle, setHandle, t } from "@gtkx/ffi";
+import { read, write } from "@gtkx/native";
 import { alloc } from "@gtkx/native";
 import type { Content } from "../cairo.js";
 import { Surface } from "../cairo.js";

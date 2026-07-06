@@ -1,15 +1,12 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { cleanup, render, screen } from "@gtkx/testing";
-import { afterEach, describe, expect, it } from "vitest";
+import { createRootElement } from "@gtkx/react";
+import { render, screen } from "@gtkx/testing";
+import { describe, expect, it } from "vitest";
 import App from "../src/app.js";
-
-afterEach(async () => {
-    await cleanup();
-});
 
 describe("App", () => {
     it("renders the increment button", async () => {
-        await render(<App />, { wrapper: false });
+        await render(<App />, { container: createRootElement() });
         const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Increment" });
         expect(button).toBeDefined();
     });

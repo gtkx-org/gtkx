@@ -8,7 +8,7 @@ const getPolicy = (scrolledWindow: Gtk.ScrolledWindow): [Gtk.PolicyType, Gtk.Pol
     return scrolledWindow.getPolicy() as [Gtk.PolicyType, Gtk.PolicyType];
 };
 
-describe("render - ScrolledWindow > ScrolledWindowNode (1)", () => {
+describe("render - ScrolledWindow (1)", () => {
     it("creates ScrolledWindow widget", async () => {
         const ref = createRef<Gtk.ScrolledWindow>();
 
@@ -50,7 +50,7 @@ describe("render - ScrolledWindow > ScrolledWindowNode (1)", () => {
     });
 });
 
-describe("render - ScrolledWindow > ScrolledWindowNode (2)", () => {
+describe("render - ScrolledWindow (2)", () => {
     it("sets vertical scroll policy", async () => {
         const ref = createRef<Gtk.ScrolledWindow>();
 
@@ -83,7 +83,7 @@ describe("render - ScrolledWindow > ScrolledWindowNode (2)", () => {
     });
 });
 
-describe("render - ScrolledWindow > ScrolledWindowNode (3)", () => {
+describe("render - ScrolledWindow (3)", () => {
     it("updates scroll policy when props change", async () => {
         const ref = createRef<Gtk.ScrolledWindow>();
 
@@ -121,7 +121,7 @@ describe("render - ScrolledWindow > ScrolledWindowNode (3)", () => {
     });
 });
 
-describe("render - ScrolledWindow > ScrolledWindowNode (4)", () => {
+describe("render - ScrolledWindow (4)", () => {
     it("works with Box as child", async () => {
         const scrollRef = createRef<Gtk.ScrolledWindow>();
         const boxRef = createRef<Gtk.Box>();

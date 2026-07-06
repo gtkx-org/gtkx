@@ -16,7 +16,7 @@ const expectSelectedText = async (dropDown: Gtk.DropDown | null, index: number, 
     await screen.findAllByText(text);
 };
 
-describe("render - DropDown > DropDownNode (1)", () => {
+describe("render - DropDown (1)", () => {
     it("creates DropDown widget", async () => {
         const ref = createRef<Gtk.DropDown>();
 
@@ -47,7 +47,7 @@ describe("render - DropDown > DropDownNode (1)", () => {
     });
 });
 
-describe("render - DropDown > DropDownNode (2)", () => {
+describe("render - DropDown (2)", () => {
     it("calls onSelectionChanged when selection changes", async () => {
         const dropDownRef = createRef<Gtk.DropDown>();
         const onSelectionChanged = vi.fn();
@@ -94,7 +94,7 @@ describe("render - DropDown > DropDownNode (2)", () => {
     });
 });
 
-describe("render - DropDown > DropDownNode (3)", () => {
+describe("render - DropDown (3)", () => {
     it("wires a header factory when renderHeader is provided on a sectioned dropdown", async () => {
         const dropDownRef = createRef<Gtk.DropDown>();
 

@@ -200,6 +200,38 @@ fn drop_no_op_kinds_do_not_crash() {
 }
 
 #[test]
+fn stash_keeps_cstring_alive() {
+    let cstring = CString::new("test string").unwrap();
+    let ptr = cstring.as_ptr() as *mut c_void;
+    let owned = StashStorage::new(ptr, StashData::CString(cstring));
+
+    unsafe {
+        let s = CStr::from_ptr(owned.ptr() as *const c_char);
+        assert_eq!(s.to_str().unwrap(), "test string");
+    }
+}
+
+#[test]
+fn stash_tuple_keeps_both_alive() {
+    let strings = vec![
+        CString::new("hello").unwrap(),
+        CString::new("world").unwrap(),
+    ];
+    let ptrs: Vec<*mut c_void> = strings.iter().map(|s| s.as_ptr() as *mut c_void).collect();
+    let tuple_ptr = ptrs.as_ptr() as *mut c_void;
+
+    let owned = StashStorage::new(tuple_ptr, StashData::StringArray(strings, ptrs));
+
+    unsafe {
+        let ptr_slice = std::slice::from_raw_parts(owned.ptr() as *const *const c_char, 2);
+        let s0 = CStr::from_ptr(ptr_slice[0]);
+        let s1 = CStr::from_ptr(ptr_slice[1]);
+        assert_eq!(s0.to_str().unwrap(), "hello");
+        assert_eq!(s1.to_str().unwrap(), "world");
+    }
+}
+
+#[test]
 fn glist_storage_frees_when_should_free() {
     helpers::run(|| {
         let list = make_glist_one();

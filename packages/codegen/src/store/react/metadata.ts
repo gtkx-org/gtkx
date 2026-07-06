@@ -1,4 +1,4 @@
-import type { ContainerProp, SyntheticPropRule } from "@gtkx/config";
+import type { ElementProp } from "@gtkx/config";
 import { sortedStringsBy, sourceStringLiteral, toCamelIdentifier } from "@gtkx/utils";
 import type { GirClass } from "../../gir/class.js";
 import type { GirEnum } from "../../gir/enum.js";
@@ -15,9 +15,7 @@ import {
 import { ACCESSIBLE_ATTRIBUTES } from "./tables.js";
 
 export type RuntimeTables = {
-    defaultBlockableTypes: string[];
-    containerProps: Record<string, ContainerProp[]>;
-    syntheticProps: SyntheticPropRule[];
+    elementProps: Record<string, ElementProp[]>;
 };
 
 const configType = (name: string): string => `import("@gtkx/config").${name}`;
@@ -30,9 +28,7 @@ type RuntimeTableSpec = {
 };
 
 const RUNTIME_TABLE_SPECS: Record<keyof RuntimeTables, RuntimeTableSpec> = {
-    defaultBlockableTypes: { name: "DEFAULT_BLOCKABLE_TYPES", annotation: "string[]" },
-    containerProps: { name: "CONTAINER_PROPS", annotation: `Record<string, ${arrayOf("ContainerProp")}>` },
-    syntheticProps: { name: "SYNTHETIC_PROPS", annotation: arrayOf("SyntheticPropRule") },
+    elementProps: { name: "ELEMENT_PROPS", annotation: `Record<string, ${arrayOf("ElementProp")}>` },
 };
 
 const RUNTIME_TABLE_KEYS = Object.keys(RUNTIME_TABLE_SPECS) as Array<keyof RuntimeTables>;

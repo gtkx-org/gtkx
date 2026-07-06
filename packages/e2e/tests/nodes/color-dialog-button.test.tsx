@@ -18,7 +18,7 @@ const renderDialogSlot = async (dialog: ReactElement): Promise<Gtk.ColorDialog |
 const makeRgba = (red: number, green: number, blue: number, alpha: number): Gdk.RGBA =>
     Object.assign(new Gdk.RGBA(), { red, green, blue, alpha });
 
-describe("render - ColorDialogButton > ColorDialogButtonNode (1)", () => {
+describe("render - ColorDialogButton (1)", () => {
     it("creates ColorDialogButton widget", async () => {
         const dialog = await renderDialogSlot(<GtkColorDialog />);
 
@@ -63,7 +63,7 @@ describe("render - ColorDialogButton > ColorDialogButtonNode (1)", () => {
     });
 });
 
-describe("render - ColorDialogButton > ColorDialogButtonNode (2)", () => {
+describe("render - ColorDialogButton (2)", () => {
     it("sets dialog title", async () => {
         const dialog = await renderDialogSlot(<GtkColorDialog title="Pick a Color" />);
 
@@ -89,7 +89,7 @@ describe("render - ColorDialogButton > ColorDialogButtonNode (2)", () => {
     });
 });
 
-describe("render - ColorDialogButton > ColorDialogButtonNode (3)", () => {
+describe("render - ColorDialogButton (3)", () => {
     it("updates withAlpha when the slot element changes", async () => {
         const ref = createRef<Gtk.ColorDialogButton>();
 

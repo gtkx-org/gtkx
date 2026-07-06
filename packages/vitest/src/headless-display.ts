@@ -201,9 +201,10 @@ const waitForSocket = (path: string, { label, timeout = 15000, child, signal }: 
         }
     });
 
-const STATIC_HEADLESS_ENV = {
+export const STATIC_HEADLESS_ENV = {
     GDK_BACKEND: "wayland",
     GDK_DISABLE: "vulkan",
+    GDK_DEBUG: "no-vsync",
     GSK_RENDERER: "cairo",
     GTK_A11Y: "test",
     LIBGL_ALWAYS_SOFTWARE: "1",
@@ -256,7 +257,7 @@ export const startHeadlessDisplay = async (options: HeadlessOptions): Promise<()
         const compositor = startCompositor(runtimeDir, options, env);
         spawned.push(compositor.child);
 
-        applyEnv(env, { WAYLAND_DISPLAY: compositor.socket, ...STATIC_HEADLESS_ENV });
+        applyEnv(env, { WAYLAND_DISPLAY: compositor.socket });
 
         const abort = new AbortController();
         try {

@@ -40,7 +40,10 @@ type ListViewDeclarativeProps<T = unknown, S = unknown> = CollectionItemSizeProp
         renderHeader?: ((info: { section: S }) => ReactNode) | null | undefined;
     };
 
-export type ListViewProps<T = unknown, S = unknown> = Omit<GtkListViewProps, keyof ListViewDeclarativeProps<T, S>> &
+export type ListViewProps<T = unknown, S = unknown> = Omit<
+    GtkListViewProps,
+    "model" | "factory" | "headerFactory" | keyof ListViewDeclarativeProps<T, S>
+> &
     ListViewDeclarativeProps<T, S>;
 
 interface ListViewWiring<T, S> {

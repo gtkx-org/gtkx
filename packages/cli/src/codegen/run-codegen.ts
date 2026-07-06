@@ -1,7 +1,7 @@
 import { rmSync } from "node:fs";
 import { resolve } from "node:path";
 import { runCodegen as runCodegenCore } from "@gtkx/codegen";
-import { type GtkxConfig, loadGtkxConfig, type ResolvedGtkxRules } from "@gtkx/config";
+import { type ElementProp, type GtkxConfig, loadGtkxConfig } from "@gtkx/config";
 import { info } from "@gtkx/utils";
 import { emitSchemaEnv } from "../gsettings/env.js";
 import { resolveDataDir } from "../internal/data-dir.js";
@@ -14,10 +14,10 @@ export type RunCodegenOptions = {
     mode?: string | undefined;
     force?: boolean;
     inputs?: CodegenInputs;
-    resolved?: ResolvedGtkxConfig;
+    resolved?: LoadedConfig;
 };
 
-type ResolvedGtkxConfig = {
+type LoadedConfig = {
     config: GtkxConfig;
     configFile: string | undefined;
 };
@@ -42,10 +42,15 @@ const removeSharedStoreShadow = (cwd: string): void => {
     }
 };
 
-const codegenOptions = (store: CodegenStore, libraries: string[], girPath: string[], rules: ResolvedGtkxRules) => ({
+const codegenOptions = (
+    store: CodegenStore,
+    libraries: string[],
+    girPath: string[],
+    elementProps: Record<string, ElementProp[]>,
+) => ({
     libraries,
     girPath,
-    rules,
+    elementProps,
     gi: {
         storeDir: store.giStoreDir,
         linkDir: store.giLinkDir,
@@ -71,7 +76,7 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
         return { namespaces: 0, intrinsicElements: 0, duration: 0, girPath: [], configFile, libraries: [] };
     }
 
-    const { girPath, libraries, rules, store } = options.inputs ?? resolveCodegenInputs(cwd, config);
+    const { girPath, libraries, elementProps, store } = options.inputs ?? resolveCodegenInputs(cwd, config);
 
     if (girPath.length === 0) {
         throw new GtkxError(
@@ -85,7 +90,7 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
         }
     }
 
-    const result = await runCodegenCore(codegenOptions(store, libraries, girPath, rules));
+    const result = await runCodegenCore(codegenOptions(store, libraries, girPath, elementProps));
 
     return {
         namespaces: result.namespaces,

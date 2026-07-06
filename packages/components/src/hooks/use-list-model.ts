@@ -11,7 +11,7 @@ import {
     retagRows,
 } from "../utils/item-models.js";
 import {
-    createControlledResolver,
+    createItemResolver,
     createSectionHeaderResolver,
     type ItemResolver,
     type RowValue,
@@ -30,14 +30,14 @@ type ListModelResult<T, S> = {
     headerResolver: ItemResolver<T, S>;
 };
 
-type ControlledStructure = "sections" | ListStructure;
+type ListModelStructure = "sections" | ListStructure;
 
-type ControlledState<T, S> = {
+type ListModelState<T, S> = {
     model: Gio.ListModel;
     flatModel: Gtk.StringList | undefined;
     items: ItemNode<T>[] | undefined;
     sections: SectionNode<S, T>[] | undefined;
-    structure: ControlledStructure;
+    structure: ListModelStructure;
     autoexpand: boolean;
     signature: string;
     rowValues: WeakMap<GObject.Object, RowValue<T>>;
@@ -60,8 +60,8 @@ const sectionSignature = <T, S>(sections: SectionNode<S, T>[] | undefined): stri
     return parts.join(",");
 };
 
-const controlledSignature = <T, S>(
-    structure: ControlledStructure,
+const signatureOf = <T, S>(
+    structure: ListModelStructure,
     autoexpand: boolean,
     items: ItemNode<T>[] | undefined,
     sections: SectionNode<S, T>[] | undefined,
@@ -70,15 +70,15 @@ const controlledSignature = <T, S>(
     return structure === "flat" ? "" : `${structure}|${autoexpand ? 1 : 0}|${structuralSignature(items)}`;
 };
 
-type ControlledInput<T, S> = {
+type ListModelInternalInput<T, S> = {
     items: ItemNode<T>[] | undefined;
     sections: SectionNode<S, T>[] | undefined;
     autoexpand: boolean;
-    structure: ControlledStructure;
+    structure: ListModelStructure;
     signature: string;
 };
 
-const buildControlledState = <T, S>(input: ControlledInput<T, S>): ControlledState<T, S> => {
+const buildState = <T, S>(input: ListModelInternalInput<T, S>): ListModelState<T, S> => {
     const { items, sections, autoexpand, structure, signature } = input;
     const rowValues = new WeakMap<GObject.Object, RowValue<T>>();
     const placeholdersById = new Map<string, GObject.Object>();
@@ -95,23 +95,23 @@ const buildControlledState = <T, S>(input: ControlledInput<T, S>): ControlledSta
     return { model, flatModel, items, sections, structure, autoexpand, signature, rowValues, placeholdersById };
 };
 
-const resolveControlledState = <T, S>(
-    prev: ControlledState<T, S> | null,
+const resolveState = <T, S>(
+    prev: ListModelState<T, S> | null,
     items: ItemNode<T>[] | undefined,
     sections: SectionNode<S, T>[] | undefined,
     autoexpand: boolean,
-): ControlledState<T, S> => {
+): ListModelState<T, S> => {
     if (prev !== null && prev.items === items && prev.sections === sections && prev.autoexpand === autoexpand) {
         return prev;
     }
-    const structure: ControlledStructure = sections !== undefined ? "sections" : detectStructure(items);
-    const signature = controlledSignature(structure, autoexpand, items, sections);
-    const input: ControlledInput<T, S> = { items, sections, autoexpand, structure, signature };
+    const structure: ListModelStructure = sections !== undefined ? "sections" : detectStructure(items);
+    const signature = signatureOf(structure, autoexpand, items, sections);
+    const input: ListModelInternalInput<T, S> = { items, sections, autoexpand, structure, signature };
     if (prev === null || prev.structure !== structure) {
-        return buildControlledState(input);
+        return buildState(input);
     }
     if (structure !== "flat" && prev.signature !== signature) {
-        return buildControlledState(input);
+        return buildState(input);
     }
     if (structure === "tree") {
         retagRows(items ?? [], prev.rowValues, prev.placeholdersById);
@@ -123,11 +123,11 @@ const resolveControlledState = <T, S>(
     return prev;
 };
 
-export const useListModel = <T, S>(mode: ListModelInput<T, S>): ListModelResult<T, S> => {
-    const { items, sections } = mode;
-    const autoexpand = mode.autoexpand ?? false;
-    const stateRef = useRef<ControlledState<T, S> | null>(null);
-    const state = resolveControlledState(stateRef.current, items, sections, autoexpand);
+export const useListModel = <T, S>(input: ListModelInput<T, S>): ListModelResult<T, S> => {
+    const { items, sections } = input;
+    const autoexpand = input.autoexpand ?? false;
+    const stateRef = useRef<ListModelState<T, S> | null>(null);
+    const state = resolveState(stateRef.current, items, sections, autoexpand);
     stateRef.current = state;
     const { structure, flatModel } = state;
 
@@ -139,9 +139,9 @@ export const useListModel = <T, S>(mode: ListModelInput<T, S>): ListModelResult<
 
     const resolver = useMemo(() => {
         if (structure === "sections") {
-            return createControlledResolver<T, S>(sectionRows(sections), true, state.rowValues);
+            return createItemResolver<T, S>(sectionRows(sections), true, state.rowValues);
         }
-        return createControlledResolver<T, S>(items, structure === "tree" && autoexpand, state.rowValues);
+        return createItemResolver<T, S>(items, structure === "tree" && autoexpand, state.rowValues);
     }, [items, sections, structure, autoexpand, state.rowValues]);
 
     const headerResolver = useMemo(

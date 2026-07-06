@@ -1,114 +1,186 @@
+import { SizeGroup } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkFrame, GtkLabel, GtkSizeGroup } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkFrame, GtkLabel } from "@gtkx/jsx/gtk";
+import { useMergeRefs } from "@gtkx/react";
 import { render } from "@gtkx/testing";
-import { createRef, type RefObject, useState } from "react";
+import { createRef, type ReactNode, type RefCallback, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
 
-const definedWidgets = (widgets: (Gtk.Widget | null)[]): Gtk.Widget[] =>
-    widgets.filter((widget): widget is Gtk.Widget => widget !== null);
+const NARROW_WIDTH = 24;
+const WIDE_WIDTH = 160;
+const SHORT_HEIGHT = 10;
+const TALL_HEIGHT = 80;
+
+const naturalWidth = (widget: Gtk.Widget | null): number => widget?.measure(Gtk.Orientation.HORIZONTAL, -1)[1] ?? 0;
+
+const naturalHeight = (widget: Gtk.Widget | null): number => widget?.measure(Gtk.Orientation.VERTICAL, -1)[1] ?? 0;
+
+const MeasuredLabel = ({
+    groupRef,
+    captureRef,
+    label,
+    widthRequest,
+    heightRequest,
+}: {
+    groupRef: RefCallback<Gtk.Widget>;
+    captureRef: RefObject<Gtk.Label | null>;
+    label: string;
+    widthRequest: number;
+    heightRequest?: number;
+}) => {
+    const ref = useMergeRefs<Gtk.Label>(groupRef, captureRef);
+    return <GtkLabel ref={ref} label={label} widthRequest={widthRequest} heightRequest={heightRequest} />;
+};
 
 const GroupedLabels = ({
-    groupRef,
+    labelARef,
+    labelBRef,
     count,
     mode,
 }: {
-    groupRef: RefObject<Gtk.SizeGroup | null>;
+    labelARef: RefObject<Gtk.Label | null>;
+    labelBRef: RefObject<Gtk.Label | null>;
     count: 0 | 1 | 2;
     mode?: Gtk.SizeGroupMode;
-}) => {
-    const [labelA, setLabelA] = useState<Gtk.Label | null>(null);
-    const [labelB, setLabelB] = useState<Gtk.Label | null>(null);
-    const widgets = definedWidgets([count >= 1 ? labelA : null, count >= 2 ? labelB : null]);
-    return (
-        <GtkBox>
-            <GtkSizeGroup ref={groupRef} mode={mode} widgets={widgets} />
-            <GtkLabel ref={setLabelA} label="A" />
-            <GtkLabel ref={setLabelB} label="B" />
-        </GtkBox>
-    );
-};
+}) => (
+    <GtkBox>
+        <SizeGroup mode={mode}>
+            {(ref) => (
+                <>
+                    {count >= 1 && (
+                        <MeasuredLabel groupRef={ref} captureRef={labelARef} label="A" widthRequest={NARROW_WIDTH} />
+                    )}
+                    {count >= 2 && (
+                        <MeasuredLabel groupRef={ref} captureRef={labelBRef} label="B" widthRequest={WIDE_WIDTH} />
+                    )}
+                </>
+            )}
+        </SizeGroup>
+    </GtkBox>
+);
 
 const renderGroupOfTwo = async () => {
-    const groupRef = createRef<Gtk.SizeGroup>();
-    const { rerender } = await render(<GroupedLabels groupRef={groupRef} count={2} />);
-    expect(groupRef.current?.getWidgets()).toHaveLength(2);
-    return { groupRef, rerender };
+    const labelARef = createRef<Gtk.Label>();
+    const labelBRef = createRef<Gtk.Label>();
+    const { rerender } = await render(
+        <GroupedLabels labelARef={labelARef} labelBRef={labelBRef} count={2} mode={Gtk.SizeGroupMode.HORIZONTAL} />,
+    );
+    expect(naturalWidth(labelARef.current)).toBe(WIDE_WIDTH);
+    expect(naturalWidth(labelBRef.current)).toBe(WIDE_WIDTH);
+    return { labelARef, labelBRef, rerender };
 };
 
-describe("GtkSizeGroup widgets prop", () => {
-    it("adds the widgets passed in the array", async () => {
+describe("SizeGroup members", () => {
+    it("stretches every member to the widest member's natural size", async () => {
         await renderGroupOfTwo();
     });
 
-    it("removes a widget when it leaves the array", async () => {
-        const { groupRef, rerender } = await renderGroupOfTwo();
+    it("stops sharing size with a widget once it leaves the group", async () => {
+        const { labelARef, rerender } = await renderGroupOfTwo();
 
-        await rerender(<GroupedLabels groupRef={groupRef} count={1} />);
-        expect(groupRef.current?.getWidgets()).toHaveLength(1);
-    });
-
-    it("clears membership when the array empties", async () => {
-        const { groupRef, rerender } = await renderGroupOfTwo();
-
-        await rerender(<GroupedLabels groupRef={groupRef} count={0} />);
-        expect(groupRef.current?.getWidgets()).toHaveLength(0);
-    });
-});
-
-describe("GtkSizeGroup mode", () => {
-    it("applies and updates the mode prop", async () => {
-        const groupRef = createRef<Gtk.SizeGroup>();
-
-        const { rerender } = await render(
-            <GroupedLabels groupRef={groupRef} count={2} mode={Gtk.SizeGroupMode.HORIZONTAL} />,
+        await rerender(
+            <GroupedLabels
+                labelARef={labelARef}
+                labelBRef={createRef<Gtk.Label>()}
+                count={1}
+                mode={Gtk.SizeGroupMode.HORIZONTAL}
+            />,
         );
-        expect(groupRef.current?.getMode()).toBe(Gtk.SizeGroupMode.HORIZONTAL);
+        expect(naturalWidth(labelARef.current)).toBe(NARROW_WIDTH);
+    });
 
-        await rerender(<GroupedLabels groupRef={groupRef} count={2} mode={Gtk.SizeGroupMode.BOTH} />);
-        expect(groupRef.current?.getMode()).toBe(Gtk.SizeGroupMode.BOTH);
+    it("clears membership when the group empties", async () => {
+        const { rerender } = await renderGroupOfTwo();
+
+        await rerender(
+            <GroupedLabels
+                labelARef={createRef<Gtk.Label>()}
+                labelBRef={createRef<Gtk.Label>()}
+                count={0}
+                mode={Gtk.SizeGroupMode.HORIZONTAL}
+            />,
+        );
+
+        const freshLabelRef = createRef<Gtk.Label>();
+        await rerender(
+            <GroupedLabels
+                labelARef={freshLabelRef}
+                labelBRef={createRef<Gtk.Label>()}
+                count={1}
+                mode={Gtk.SizeGroupMode.HORIZONTAL}
+            />,
+        );
+        expect(naturalWidth(freshLabelRef.current)).toBe(NARROW_WIDTH);
     });
 });
 
-describe("GtkSizeGroup across subtrees", () => {
-    it("groups widgets living in separate containers", async () => {
-        const groupRef = createRef<Gtk.SizeGroup>();
+describe("SizeGroup mode", () => {
+    it("applies and updates the mode prop", async () => {
         const labelARef = createRef<Gtk.Label>();
         const labelBRef = createRef<Gtk.Label>();
 
-        const App = () => {
-            const [labelA, setLabelA] = useState<Gtk.Label | null>(null);
-            const [labelB, setLabelB] = useState<Gtk.Label | null>(null);
-            const captureA = (label: Gtk.Label | null): void => {
-                labelARef.current = label;
-                setLabelA(label);
-            };
-            const captureB = (label: Gtk.Label | null): void => {
-                labelBRef.current = label;
-                setLabelB(label);
-            };
-            return (
-                <GtkBox>
-                    <GtkSizeGroup
-                        ref={groupRef}
-                        mode={Gtk.SizeGroupMode.HORIZONTAL}
-                        widgets={definedWidgets([labelA, labelB])}
-                    />
-                    <GtkFrame label="Frame A">
-                        <GtkLabel ref={captureA} label="A" />
-                    </GtkFrame>
-                    <GtkFrame label="Frame B">
-                        <GtkLabel ref={captureB} label="B" />
-                    </GtkFrame>
-                </GtkBox>
-            );
-        };
+        const GroupedLabelsWithMode = ({ mode }: { mode: Gtk.SizeGroupMode }): ReactNode => (
+            <GtkBox>
+                <SizeGroup mode={mode}>
+                    {(ref) => (
+                        <>
+                            <MeasuredLabel
+                                groupRef={ref}
+                                captureRef={labelARef}
+                                label="A"
+                                widthRequest={NARROW_WIDTH}
+                                heightRequest={TALL_HEIGHT}
+                            />
+                            <MeasuredLabel
+                                groupRef={ref}
+                                captureRef={labelBRef}
+                                label="B"
+                                widthRequest={WIDE_WIDTH}
+                                heightRequest={SHORT_HEIGHT}
+                            />
+                        </>
+                    )}
+                </SizeGroup>
+            </GtkBox>
+        );
+
+        const { rerender } = await render(<GroupedLabelsWithMode mode={Gtk.SizeGroupMode.HORIZONTAL} />);
+        expect(naturalWidth(labelARef.current)).toBe(WIDE_WIDTH);
+        expect(naturalHeight(labelARef.current)).toBe(TALL_HEIGHT);
+        expect(naturalHeight(labelBRef.current)).not.toBe(naturalHeight(labelARef.current));
+
+        await rerender(<GroupedLabelsWithMode mode={Gtk.SizeGroupMode.BOTH} />);
+        expect(naturalHeight(labelARef.current)).toBe(TALL_HEIGHT);
+        expect(naturalHeight(labelBRef.current)).toBe(TALL_HEIGHT);
+    });
+});
+
+describe("SizeGroup across subtrees", () => {
+    it("groups widgets living in separate containers", async () => {
+        const labelARef = createRef<Gtk.Label>();
+        const labelBRef = createRef<Gtk.Label>();
+
+        const App = () => (
+            <GtkBox>
+                <SizeGroup mode={Gtk.SizeGroupMode.HORIZONTAL}>
+                    {(ref) => (
+                        <>
+                            <GtkFrame label="Frame A">
+                                <MeasuredLabel groupRef={ref} captureRef={labelARef} label="A" widthRequest={NARROW_WIDTH} />
+                            </GtkFrame>
+                            <GtkFrame label="Frame B">
+                                <MeasuredLabel groupRef={ref} captureRef={labelBRef} label="B" widthRequest={WIDE_WIDTH} />
+                            </GtkFrame>
+                        </>
+                    )}
+                </SizeGroup>
+            </GtkBox>
+        );
 
         await render(<App />);
 
-        const widgets = groupRef.current?.getWidgets() ?? [];
-        expect(widgets).toHaveLength(2);
-        expect(widgets).toContain(labelARef.current);
-        expect(widgets).toContain(labelBRef.current);
+        expect(naturalWidth(labelARef.current)).toBe(WIDE_WIDTH);
+        expect(naturalWidth(labelBRef.current)).toBe(WIDE_WIDTH);
         expect(labelARef.current?.getParent()).not.toBe(labelBRef.current?.getParent());
     });
 });

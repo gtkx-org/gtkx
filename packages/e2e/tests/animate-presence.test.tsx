@@ -1,7 +1,10 @@
 import { AnimatePresence, animated } from "@gtkx/animate";
 import { GtkBox } from "@gtkx/jsx/gtk";
-import { render, screen, waitFor } from "@gtkx/testing";
+import { render as baseRender, screen, waitFor } from "@gtkx/testing";
+import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
+
+const render = (element: ReactNode) => baseRender(element, { animations: true });
 
 describe("AnimatePresence (exit gating)", () => {
     it("fires onExitComplete once after every exiting child finishes", async () => {

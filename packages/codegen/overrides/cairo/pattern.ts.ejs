@@ -265,7 +265,7 @@ const cairoMeshPatternGetPath = bind(
     "libcairo.so.2",
     "cairo_mesh_pattern_get_path",
     [PATTERN_T, t.int32],
-    t.boxed("cairo_path_t", { ownership: "full", sharedLibrary: "libcairo.so.2", freeFn: "cairo_path_destroy" }),
+    t.boxed("cairo_path_t", { ownership: "full", sharedLibrary: "libcairo.so.2", freeFnName: "cairo_path_destroy" }),
 );
 const cairoMeshPatternGetControlPoint = bind(
     "libcairo.so.2",

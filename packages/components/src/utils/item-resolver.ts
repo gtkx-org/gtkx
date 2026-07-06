@@ -35,7 +35,7 @@ export type RowValue<T = unknown> = {
     metadata: TreeItemMetadata;
 };
 
-export const createControlledResolver = <T, S>(
+export const createItemResolver = <T, S>(
     items: ItemNode<T>[] | undefined,
     flattenTreeChildren: boolean,
     rowValues: WeakMap<GObject.Object, RowValue<T>>,

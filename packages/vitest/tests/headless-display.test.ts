@@ -42,21 +42,7 @@ const wlrKeys = [
     "WLR_HEADLESS_OUTPUTS",
 ];
 
-const trackedEnvKeys = [
-    ...wlrKeys,
-    "XDG_RUNTIME_DIR",
-    "DBUS_SESSION_BUS_ADDRESS",
-    "WAYLAND_DISPLAY",
-    "GDK_BACKEND",
-    "GDK_DISABLE",
-    "GSK_RENDERER",
-    "GTK_A11Y",
-    "LIBGL_ALWAYS_SOFTWARE",
-    "GST_GL_WINDOW",
-    "GSETTINGS_BACKEND",
-    "ALSOFT_DRIVERS",
-    "ALSOFT_LOGLEVEL",
-];
+const trackedEnvKeys = [...wlrKeys, "XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS", "WAYLAND_DISPLAY"];
 
 describe("startHeadlessDisplay", () => {
     let children: ChildProcess[];
@@ -196,16 +182,16 @@ describe("startHeadlessDisplay", () => {
     });
 
     it("reaps the bus and runtime dir but leaves the compositor for its parent-death signal", async () => {
-        process.env.GDK_BACKEND = "prior-value";
+        process.env.WAYLAND_DISPLAY = "prior-value";
         const { teardown, runtimeDir } = await startFulfilled({ size: DEFAULT_HEADLESS_SIZE, compositor: "weston" });
 
-        expect(process.env.GDK_BACKEND).toBe("wayland");
+        expect(process.env.WAYLAND_DISPLAY).toBe("wayland-0");
         expect(existsSync(runtimeDir)).toBe(true);
 
         teardown();
 
         expect(existsSync(runtimeDir)).toBe(false);
-        expect(process.env.GDK_BACKEND).toBe("prior-value");
+        expect(process.env.WAYLAND_DISPLAY).toBe("prior-value");
         expect(process.env.XDG_RUNTIME_DIR).toBeUndefined();
 
         const [busChild, compositorChild] = children;

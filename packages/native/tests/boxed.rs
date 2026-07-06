@@ -123,7 +123,7 @@ fn drop_does_not_free_transfer_none_memory() {
 
         let boxed = helpers::TestBoxed {
             ptr,
-            descriptor: Some(type_),
+            type_: Some(type_),
             is_owned: false,
         };
         drop(boxed);

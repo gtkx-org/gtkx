@@ -683,9 +683,9 @@ export function App() {
     return (
         <AdwApplication
             actionAccels={[
-                { action: "win.new", accels: ["<Control>n"] },
-                { action: "win.preferences", accels: ["<Control>comma"] },
-                { action: "win.shortcuts", accels: ["<Control>question"] },
+                { detailedActionName: "win.new", accels: ["<Control>n"] },
+                { detailedActionName: "win.preferences", accels: ["<Control>comma"] },
+                { detailedActionName: "win.shortcuts", accels: ["<Control>question"] },
             ]}
         >
             <NotesWindow />

@@ -4,7 +4,7 @@ import { render } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
 
-type ScaleMark = { value: number; position?: Gtk.PositionType; label?: string | null };
+type ScaleMark = { value: number; position: Gtk.PositionType; markup?: string | null };
 
 const ScaleWithMarks = ({ marks, scaleRef }: { marks?: ScaleMark[]; scaleRef: RefObject<Gtk.Scale | null> }) => (
     <GtkScale ref={scaleRef} adjustment={<GtkAdjustment value={0} lower={0} upper={100} />} marks={marks} />
@@ -19,14 +19,14 @@ const expectDefaultRange = (scale: Gtk.Scale | null): void => {
 };
 
 const MIN_MAX_MARKS = [
-    { value: 0, label: "Min" },
-    { value: 100, label: "Max" },
+    { value: 0, position: Gtk.PositionType.BOTTOM, markup: "Min" },
+    { value: 100, position: Gtk.PositionType.BOTTOM, markup: "Max" },
 ];
 
 const MIN_MID_MAX_MARKS = [
-    { value: 0, label: "Min" },
-    { value: 50, label: "Mid" },
-    { value: 100, label: "Max" },
+    { value: 0, position: Gtk.PositionType.BOTTOM, markup: "Min" },
+    { value: 50, position: Gtk.PositionType.BOTTOM, markup: "Mid" },
+    { value: 100, position: Gtk.PositionType.BOTTOM, markup: "Max" },
 ];
 
 const expectMarksTransition = async (initialMarks: ScaleMark[], updatedMarks: ScaleMark[]): Promise<void> => {
@@ -63,8 +63,8 @@ describe("render - Scale marks (1)", () => {
             <ScaleWithMarks
                 scaleRef={ref}
                 marks={[
-                    { value: 0, position: Gtk.PositionType.TOP, label: "Top" },
-                    { value: 100, position: Gtk.PositionType.BOTTOM, label: "Bottom" },
+                    { value: 0, position: Gtk.PositionType.TOP, markup: "Top" },
+                    { value: 100, position: Gtk.PositionType.BOTTOM, markup: "Bottom" },
                 ]}
             />,
         );
@@ -80,7 +80,13 @@ describe("render - Scale marks (2)", () => {
         await render(
             <ScaleWithMarks
                 scaleRef={ref}
-                marks={[{ value: 0 }, { value: 25 }, { value: 50 }, { value: 75 }, { value: 100 }]}
+                marks={[
+                    { value: 0, position: Gtk.PositionType.BOTTOM },
+                    { value: 25, position: Gtk.PositionType.BOTTOM },
+                    { value: 50, position: Gtk.PositionType.BOTTOM },
+                    { value: 75, position: Gtk.PositionType.BOTTOM },
+                    { value: 100, position: Gtk.PositionType.BOTTOM },
+                ]}
             />,
         );
 
@@ -90,12 +96,12 @@ describe("render - Scale marks (2)", () => {
     it("updates marks when props change", async () => {
         await expectMarksTransition(
             [
-                { value: 0, label: "Start" },
-                { value: 100, label: "End" },
+                { value: 0, position: Gtk.PositionType.BOTTOM, markup: "Start" },
+                { value: 100, position: Gtk.PositionType.BOTTOM, markup: "End" },
             ],
             [
-                { value: 0, label: "Begin" },
-                { value: 100, label: "End" },
+                { value: 0, position: Gtk.PositionType.BOTTOM, markup: "Begin" },
+                { value: 100, position: Gtk.PositionType.BOTTOM, markup: "End" },
             ],
         );
     });

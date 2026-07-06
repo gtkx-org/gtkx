@@ -1,4 +1,4 @@
-import { DropDown } from "@gtkx/components";
+import { DropDown, SizeGroup } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
     GtkAdjustment,
@@ -11,12 +11,11 @@ import {
     GtkListBoxRow,
     GtkScale,
     GtkScrolledWindow,
-    GtkSizeGroup,
     GtkSpinButton,
     GtkSwitch,
     GtkViewport,
 } from "@gtkx/jsx/gtk";
-import { type ReactNode, type Ref, useCallback, useRef, useState } from "react";
+import { type ReactNode, type Ref, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listbox-controls.tsx?raw";
 
@@ -166,19 +165,10 @@ const ListBoxControlsDemo = () => {
     const [switchActive, setSwitchActive] = useState(false);
     const [checkActive, setCheckActive] = useState(true);
     const [imageOpacity, setImageOpacity] = useState(0);
-    const [groupedLabels, setGroupedLabels] = useState<Gtk.Label[]>([]);
 
     const switchRef = useRef<Gtk.Switch | null>(null);
     const checkRef = useRef<Gtk.CheckButton | null>(null);
     const imageRef = useRef<Gtk.Image | null>(null);
-
-    const collectLabel = useCallback((label: Gtk.Label | null) => {
-        if (!label) return;
-        setGroupedLabels((current) => [...current, label]);
-        return () => {
-            setGroupedLabels((current) => current.filter((grouped) => grouped !== label));
-        };
-    }, []);
 
     const handleRowActivated = (row: Gtk.ListBoxRow) => {
         const sw = switchRef.current;
@@ -199,23 +189,34 @@ const ListBoxControlsDemo = () => {
                     marginTop={30}
                     marginBottom={30}
                 >
-                    <GtkSizeGroup mode={Gtk.SizeGroupMode.HORIZONTAL} widgets={groupedLabels} />
-                    <GtkLabel label="Group 1" xalign={0} marginBottom={10} cssClasses={["title-2"]} />
-                    <Group1List
-                        labelRef={collectLabel}
-                        switchRef={switchRef}
-                        checkRef={checkRef}
-                        imageRef={imageRef}
-                        switchActive={switchActive}
-                        setSwitchActive={setSwitchActive}
-                        checkActive={checkActive}
-                        setCheckActive={setCheckActive}
-                        imageOpacity={imageOpacity}
-                        onRowActivated={handleRowActivated}
-                    />
+                    <SizeGroup mode={Gtk.SizeGroupMode.HORIZONTAL}>
+                        {(labelRef) => (
+                            <>
+                                <GtkLabel label="Group 1" xalign={0} marginBottom={10} cssClasses={["title-2"]} />
+                                <Group1List
+                                    labelRef={labelRef}
+                                    switchRef={switchRef}
+                                    checkRef={checkRef}
+                                    imageRef={imageRef}
+                                    switchActive={switchActive}
+                                    setSwitchActive={setSwitchActive}
+                                    checkActive={checkActive}
+                                    setCheckActive={setCheckActive}
+                                    imageOpacity={imageOpacity}
+                                    onRowActivated={handleRowActivated}
+                                />
 
-                    <GtkLabel label="Group 2" xalign={0} marginTop={30} marginBottom={10} cssClasses={["title-2"]} />
-                    <Group2List labelRef={collectLabel} />
+                                <GtkLabel
+                                    label="Group 2"
+                                    xalign={0}
+                                    marginTop={30}
+                                    marginBottom={10}
+                                    cssClasses={["title-2"]}
+                                />
+                                <Group2List labelRef={labelRef} />
+                            </>
+                        )}
+                    </SizeGroup>
                 </GtkBox>
             </GtkViewport>
         </GtkScrolledWindow>

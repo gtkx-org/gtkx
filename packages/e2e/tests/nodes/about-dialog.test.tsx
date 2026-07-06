@@ -4,11 +4,11 @@ import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
-type CreditSection = { name: string; people: string[] };
+type CreditSection = { sectionName: string; people: string[] };
 
 const SECTIONS: CreditSection[] = [
-    { name: "Design", people: ["Ada Lovelace"] },
-    { name: "Testing", people: ["Grace Hopper", "Margaret Hamilton"] },
+    { sectionName: "Design", people: ["Ada Lovelace"] },
+    { sectionName: "Testing", people: ["Grace Hopper", "Margaret Hamilton"] },
 ];
 
 describe("render - AboutDialog credit sections", () => {
@@ -28,7 +28,7 @@ describe("render - AboutDialog credit sections", () => {
             <GtkAboutDialog
                 ref={ref}
                 programName="GTKX"
-                creditSections={[{ name: "Translation", people: ["Alan Turing"] }]}
+                creditSections={[{ sectionName: "Translation", people: ["Alan Turing"] }]}
             />,
         );
 

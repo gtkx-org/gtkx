@@ -4,14 +4,14 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { applyProps } from "./apply-props.js";
 import { attachChild, detachChild, getFocusWidget, isDescendantOf, unparentWidget } from "./container-attach.js";
 import {
-    adoptRuleFor,
+    adoptContainerPropFor,
     type CallScope,
     nullSetterCurrentHolder,
-    resolveAttachRule,
+    resolveContainerProp,
     runCall,
     runCallValue,
-} from "./rule-table.js";
-import { type ElementMapping, isWrapperKind, type Node, registeredStateOf, registerState, stateOf } from "./state.js";
+} from "./element-props.js";
+import { type ElementMapping, hasWrapperKind, type Node, registeredStateOf, registerState, stateOf } from "./state.js";
 import type { Props } from "./types.js";
 import { trackedInstance, trackedWidget, wrapperChildInstances } from "./wrapper-content.js";
 
@@ -23,88 +23,88 @@ const scopeFor = (child: GObject.Object, extra?: Partial<CallScope>): CallScope 
     ...extra,
 });
 
-const runRemove = (parent: GObject.Object, child: GObject.Object, rule: ContainerProp): void => {
-    if (rule.remove !== undefined) runCall(parent, rule.remove, [child], scopeFor(child));
+const runRemove = (parent: GObject.Object, child: GObject.Object, cp: ContainerProp): void => {
+    if (cp.remove !== undefined) runCall(parent, cp.remove, [child], scopeFor(child));
 };
 
-const collectRuleSiblings = (parent: GObject.Object, rule: ContainerProp): GObject.Object[] => {
+const collectContainerSiblings = (parent: GObject.Object, cp: ContainerProp): GObject.Object[] => {
     const siblings: GObject.Object[] = [];
     for (const sibling of stateOf(parent).children) {
         if (!(sibling instanceof GObject.Object) || sibling instanceof Gtk.Widget) continue;
-        if (resolveAttachRule(parent.__type__, sibling.__type__, undefined) === rule) siblings.push(sibling);
+        if (resolveContainerProp(parent.__type__, sibling.__type__, undefined) === cp) siblings.push(sibling);
     }
     return siblings;
 };
 
-const insertRuleChildAt = (parent: GObject.Object, child: GObject.Object, rule: ContainerProp, index: number): void => {
-    if (rule.insert !== undefined && runCall(parent, rule.insert, [child, index], scopeFor(child, { index }))) {
+const insertContainerChildAt = (parent: GObject.Object, child: GObject.Object, cp: ContainerProp, index: number): void => {
+    if (cp.insert !== undefined && runCall(parent, cp.insert, [child, index], scopeFor(child, { index }))) {
         attachedParent.set(child, parent);
     }
 };
 
-export const attachRuleChild = (
+export const attachContainerChild = (
     parent: GObject.Object,
     child: GObject.Object,
-    rule: ContainerProp,
+    cp: ContainerProp,
     anchor: GObject.Object | null | undefined,
 ): void => {
     const isMove = attachedParent.get(child) === parent;
-    if (rule.insert !== undefined && (anchor != null || isMove)) {
-        if (isMove) runRemove(parent, child, rule);
-        const siblings = collectRuleSiblings(parent, rule);
+    if (cp.insert !== undefined && (anchor != null || isMove)) {
+        if (isMove) runRemove(parent, child, cp);
+        const siblings = collectContainerSiblings(parent, cp);
         const index = siblings.indexOf(child);
-        insertRuleChildAt(parent, child, rule, index);
+        insertContainerChildAt(parent, child, cp, index);
         if (!isMove) {
             for (const trailing of siblings.slice(index + 1)) {
-                runRemove(parent, trailing, rule);
-                insertRuleChildAt(parent, trailing, rule, siblings.indexOf(trailing));
+                runRemove(parent, trailing, cp);
+                insertContainerChildAt(parent, trailing, cp, siblings.indexOf(trailing));
             }
         }
         return;
     }
     if (isMove) return;
-    if (rule.append !== undefined && runCall(parent, rule.append, [child], scopeFor(child))) {
+    if (cp.append !== undefined && runCall(parent, cp.append, [child], scopeFor(child))) {
         attachedParent.set(child, parent);
     }
 };
 
-export const detachRuleChild = (parent: GObject.Object, child: GObject.Object, rule: ContainerProp): void => {
+export const detachContainerChild = (parent: GObject.Object, child: GObject.Object, cp: ContainerProp): void => {
     if (attachedParent.get(child) !== parent) return;
-    const holder = rule.remove !== undefined ? nullSetterCurrentHolder(parent, rule.remove) : undefined;
-    if (holder === undefined || holder === child) runRemove(parent, child, rule);
+    const holder = cp.remove !== undefined ? nullSetterCurrentHolder(parent, cp.remove) : undefined;
+    if (holder === undefined || holder === child) runRemove(parent, child, cp);
     attachedParent.delete(child);
 };
 
 const resolveFor = (child: Node, parent: Node): ContainerProp | null => {
     if (!(child instanceof GObject.Object) || child instanceof Gtk.Widget) return null;
     if (!(parent instanceof GObject.Object)) return null;
-    return resolveAttachRule(parent.__type__, child.__type__, undefined);
+    return resolveContainerProp(parent.__type__, child.__type__, undefined);
 };
 
-export const ruleChildMapping: ElementMapping = {
+export const containerChildMapping: ElementMapping = {
     matches: (child, parent) => resolveFor(child, parent) !== null,
     attach: (child, parent, anchor) => {
-        const rule = resolveFor(child, parent);
-        if (rule === null || !(parent instanceof GObject.Object) || !(child instanceof GObject.Object)) return;
-        attachRuleChild(parent, child, rule, anchor);
+        const cp = resolveFor(child, parent);
+        if (cp === null || !(parent instanceof GObject.Object) || !(child instanceof GObject.Object)) return;
+        attachContainerChild(parent, child, cp, anchor);
     },
     detach: (child, parent) => {
-        const rule = resolveFor(child, parent);
-        if (rule === null || !(parent instanceof GObject.Object) || !(child instanceof GObject.Object)) return;
-        detachRuleChild(parent, child, rule);
+        const cp = resolveFor(child, parent);
+        if (cp === null || !(parent instanceof GObject.Object) || !(child instanceof GObject.Object)) return;
+        detachContainerChild(parent, child, cp);
     },
 };
 
 export const attachSlotChild = (parent: GObject.Object, child: GObject.Object, slot: string): boolean => {
-    const rule = resolveAttachRule(parent.__type__, child.__type__, slot);
-    if (rule === null) return false;
-    attachRuleChild(parent, child, rule, null);
+    const cp = resolveContainerProp(parent.__type__, child.__type__, slot);
+    if (cp === null) return false;
+    attachContainerChild(parent, child, cp, null);
     return true;
 };
 
 export const detachSlotChild = (parent: GObject.Object, child: GObject.Object, slot: string): void => {
-    const rule = resolveAttachRule(parent.__type__, child.__type__, slot);
-    if (rule !== null) detachRuleChild(parent, child, rule);
+    const cp = resolveContainerProp(parent.__type__, child.__type__, slot);
+    if (cp !== null) detachContainerChild(parent, child, cp);
 };
 
 const isRooted = (instance: GObject.Object): boolean =>
@@ -121,7 +121,7 @@ type WidgetPropState = { prop: string; value: GObject.Object };
 const widgetPropState = new WeakMap<Node, WidgetPropState>();
 
 export const widgetPropMapping: ElementMapping = {
-    matches: (child, parent) => isWrapperKind(child, WIDGET_PROP_KIND) && parent instanceof GObject.Object,
+    matches: (child, parent) => hasWrapperKind(child, WIDGET_PROP_KIND) && parent instanceof GObject.Object,
     attach: (child, parent) => {
         const childState = stateOf(child);
         const prop = childState.props.propName;
@@ -158,7 +158,7 @@ const detachContainerSlotChild = (instance: Node, parent: GObject.Object, slotTa
 };
 
 export const containerSlotMapping: ElementMapping = {
-    matches: (child, parent) => isWrapperKind(child, CONTAINER_SLOT_KIND) && parent instanceof GObject.Object,
+    matches: (child, parent) => hasWrapperKind(child, CONTAINER_SLOT_KIND) && parent instanceof GObject.Object,
     attach: (child, parent) => {
         const slotTag = slotTagOf(child);
         if (slotTag === undefined || !(parent instanceof GObject.Object)) return;
@@ -201,44 +201,44 @@ const lazyOrdinal = (parent: Node, node: Node): number => {
     let ordinal = 0;
     for (const sibling of stateOf(parent).children) {
         if (sibling === node) return ordinal;
-        if (isWrapperKind(sibling, LAZY_ELEMENT_KIND)) ordinal++;
+        if (hasWrapperKind(sibling, LAZY_ELEMENT_KIND)) ordinal++;
     }
     return ordinal;
 };
 
 const appendLazyContent = (
     parent: GObject.Object,
-    rule: ContainerProp,
+    cp: ContainerProp,
     node: Node,
     content: Gtk.Widget,
 ): GObject.Object | undefined => {
-    const ordinal = rule.insert !== undefined ? lazyOrdinal(parent, node) : null;
+    const ordinal = cp.insert !== undefined ? lazyOrdinal(parent, node) : null;
     let appended: unknown;
-    if (rule.insert !== undefined && ordinal !== null) {
-        appended = runCallValue(parent, rule.insert, [content, ordinal], {
+    if (cp.insert !== undefined && ordinal !== null) {
+        appended = runCallValue(parent, cp.insert, [content, ordinal], {
             child: content,
             index: ordinal,
             props: stateOf(node).props,
         }).value;
-    } else if (rule.append !== undefined) {
-        appended = runCallValue(parent, rule.append, [content], { child: content, props: stateOf(node).props }).value;
+    } else if (cp.append !== undefined) {
+        appended = runCallValue(parent, cp.append, [content], { child: content, props: stateOf(node).props }).value;
     } else {
         attachChild(content, parent);
     }
-    const accessor = typeof rule.adopt === "string" ? rule.adopt : undefined;
+    const accessor = typeof cp.adopt === "string" ? cp.adopt : undefined;
     const acquired =
         accessor !== undefined ? runCallValue(parent, accessor, [content], { child: content }).value : appended;
     return acquired instanceof GObject.Object ? acquired : undefined;
 };
 
-const applyLazyProps = (state: LazyState, node: Node): void => {
+const applyAdoptedProps = (state: LazyState, node: Node): void => {
     if (state.instance === null) return;
     const built = lazyPropsOf(stateOf(node).props);
     applyProps(state.instance, state.appliedProps, built, {});
     state.appliedProps = built;
 };
 
-const releaseLazyContent = (node: Node, state: LazyState, parent: GObject.Object, rule: ContainerProp): void => {
+const releaseLazyContent = (node: Node, state: LazyState, parent: GObject.Object, cp: ContainerProp): void => {
     const { content, instance } = state;
     if (instance !== null) {
         registeredStateOf(instance)?.signalStore.clear(instance);
@@ -247,10 +247,10 @@ const releaseLazyContent = (node: Node, state: LazyState, parent: GObject.Object
     state.instance = null;
     state.appliedProps = {};
     if (content !== null) {
-        if (rule.remove !== undefined) {
+        if (cp.remove !== undefined) {
             const stillInside =
                 !(parent instanceof Gtk.Widget) || (content.getParent() !== null && isDescendantOf(content, parent));
-            if (stillInside) runCall(parent, rule.remove, [content], { child: content });
+            if (stillInside) runCall(parent, cp.remove, [content], { child: content });
         } else {
             detachChild(content, parent);
         }
@@ -258,14 +258,14 @@ const releaseLazyContent = (node: Node, state: LazyState, parent: GObject.Object
     state.content = null;
 };
 
-const syncLazyElement = (parent: GObject.Object, rule: ContainerProp, node: Node): void => {
+const syncLazyElement = (parent: GObject.Object, cp: ContainerProp, node: Node): void => {
     const state = lazyState.get(node) ?? freshLazyState();
     lazyState.set(node, state);
     const content = trackedWidget(node);
-    if (state.content !== null && state.content !== content) releaseLazyContent(node, state, parent, rule);
+    if (state.content !== null && state.content !== content) releaseLazyContent(node, state, parent, cp);
     if (content === null) return;
     if (state.instance === null) {
-        const instance = appendLazyContent(parent, rule, node, content);
+        const instance = appendLazyContent(parent, cp, node, content);
         state.content = content;
         if (instance !== undefined) {
             state.instance = instance;
@@ -275,26 +275,26 @@ const syncLazyElement = (parent: GObject.Object, rule: ContainerProp, node: Node
             }
         }
     }
-    applyLazyProps(state, node);
+    applyAdoptedProps(state, node);
 };
 
 export const lazyElementMapping: ElementMapping = {
     matches: (child, parent) =>
-        isWrapperKind(child, LAZY_ELEMENT_KIND) &&
+        hasWrapperKind(child, LAZY_ELEMENT_KIND) &&
         parent instanceof GObject.Object &&
-        adoptRuleFor(parent.__type__) !== null,
+        adoptContainerPropFor(parent.__type__) !== null,
     attach: (child, parent) => {
         if (!(parent instanceof GObject.Object)) return;
-        const rule = adoptRuleFor(parent.__type__);
-        if (rule === null) return;
-        syncLazyElement(parent, rule, child);
+        const cp = adoptContainerPropFor(parent.__type__);
+        if (cp === null) return;
+        syncLazyElement(parent, cp, child);
     },
     detach: (child, parent) => {
         const state = lazyState.get(child);
         lazyState.delete(child);
         if (!state || !(parent instanceof GObject.Object)) return;
-        const rule = adoptRuleFor(parent.__type__);
-        if (rule === null) return;
-        releaseLazyContent(child, state, parent, rule);
+        const cp = adoptContainerPropFor(parent.__type__);
+        if (cp === null) return;
+        releaseLazyContent(child, state, parent, cp);
     },
 };

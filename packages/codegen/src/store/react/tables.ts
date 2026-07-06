@@ -1,4 +1,4 @@
-import type { ContainerProp, SyntheticPropRule } from "@gtkx/config";
+import type { Call, ContainerProp, ElementProp } from "@gtkx/config";
 
 export type AncestryWrapperName =
     | "withWindowPresentation"
@@ -12,8 +12,6 @@ export const BUILT_IN_ANCESTRY_WRAPPERS: AncestryWrapperRule[] = [
     { ancestors: ["GtkApplicationWindow"], wrapper: "withApplicationWindowPresentation" },
     { ancestors: ["GtkWindow"], wrapper: "withWindowPresentation" },
 ];
-
-export const DEFAULT_BLOCKABLE_TYPES: string[] = ["GtkTextBuffer"];
 
 type ManyMethods = Pick<ContainerProp, "append" | "remove">;
 
@@ -31,177 +29,217 @@ const ACTION_GROUP_METHODS = {
     remove: { method: "insertActionGroup", args: [{ prop: "prefix" }, { literal: null }] },
 } satisfies ManyMethods;
 
-const prefixSuffixProps = (): ContainerProp[] => [
-    { prop: "prefix", child: "GtkWidget", append: "addPrefix" },
-    { prop: "suffix", child: "GtkWidget", append: "addSuffix" },
-];
-
-const packProps = (): ContainerProp[] => [
-    { prop: "start", child: "GtkWidget", append: "packStart" },
-    { prop: "end", child: "GtkWidget", append: "packEnd" },
-];
-
-const autowrapProp = (wrapper: string): ContainerProp => ({
-    prop: "children",
-    child: "GtkWidget",
-    append: "append",
-    remove: "remove",
-    insert: { method: "insert", args: ["child", "index"] },
-    autowrap: wrapper,
+const container = (
+    prop: string,
+    child: string,
+    methods: Omit<ContainerProp, "kind" | "prop" | "child">,
+): ElementProp => ({
+    kind: "container",
+    prop,
+    child,
+    ...methods,
 });
 
-export const CONTAINER_PROPS: Record<string, ContainerProp[]> = {
+const nullSetter = (method: string): Call => ({ method, args: [{ literal: null }] });
+
+const singleChild = (): ElementProp =>
+    container("children", "GtkWidget", { append: "setChild", remove: nullSetter("setChild") });
+
+const singleContent = (): ElementProp =>
+    container("children", "GtkWidget", { append: "setContent", remove: nullSetter("setContent") });
+
+const boxChildren = (): ElementProp =>
+    container("children", "GtkWidget", {
+        append: "append",
+        remove: "remove",
+        insert: { method: "insertChildAfter", args: ["child", "sibling"] },
+        reorder: { method: "reorderChildAfter", args: ["child", "sibling"] },
+    });
+
+const indexedChildren = (append: string): ElementProp =>
+    container("children", "GtkWidget", { append, remove: "remove", insert: { method: "insert", args: ["child", "index"] } });
+
+const addRemoveChildren = (): ElementProp => container("children", "GtkWidget", { append: "add", remove: "remove" });
+
+const prefixSuffixProps = (): ElementProp[] => [
+    container("prefix", "GtkWidget", { append: "addPrefix" }),
+    container("suffix", "GtkWidget", { append: "addSuffix" }),
+];
+
+const packProps = (): ElementProp[] => [
+    container("start", "GtkWidget", { append: "packStart" }),
+    container("end", "GtkWidget", { append: "packEnd" }),
+];
+
+const autowrapProp = (wrapper: string): ElementProp =>
+    container("children", "GtkWidget", {
+        append: "append",
+        remove: "remove",
+        insert: { method: "insert", args: ["child", "index"] },
+        autowrap: wrapper,
+    });
+
+const SINGLE_CHILD_TYPES = [
+    "AdwBin",
+    "AdwBreakpointBin",
+    "AdwClamp",
+    "AdwClampScrollable",
+    "AdwDialog",
+    "AdwNavigationPage",
+    "AdwSplitButton",
+    "AdwStatusPage",
+    "AdwTabOverview",
+    "AdwToastOverlay",
+    "AdwToggle",
+    "GtkAspectFrame",
+    "GtkButton",
+    "GtkCheckButton",
+    "GtkComboBox",
+    "GtkDragIcon",
+    "GtkExpander",
+    "GtkFlowBoxChild",
+    "GtkFrame",
+    "GtkGraphicsOffload",
+    "GtkListBoxRow",
+    "GtkListHeader",
+    "GtkListItem",
+    "GtkMenuButton",
+    "GtkOverlay",
+    "GtkPopover",
+    "GtkPopoverBin",
+    "GtkRevealer",
+    "GtkScrolledWindow",
+    "GtkSearchBar",
+    "GtkTreeExpander",
+    "GtkViewport",
+    "GtkWindow",
+    "GtkWindowHandle",
+];
+
+const SINGLE_CONTENT_TYPES = [
+    "AdwApplicationWindow",
+    "AdwBottomSheet",
+    "AdwFlap",
+    "AdwNavigationSplitView",
+    "AdwOverlaySplitView",
+    "AdwWindow",
+];
+
+const BOX_TYPES = ["AdwLeaflet", "AdwWrapBox", "GtkBox"];
+
+const ADD_REMOVE_TYPES = [
+    "AdwNavigationView",
+    "AdwPreferencesDialog",
+    "AdwPreferencesGroup",
+    "AdwPreferencesWindow",
+    "AdwSqueezer",
+];
+
+const forEach = (types: string[], build: () => ElementProp[]): Record<string, ElementProp[]> =>
+    Object.fromEntries(types.map((type) => [type, build()]));
+
+export const CURATED_ELEMENT_PROPS: Record<string, ElementProp[]> = {
+    ...forEach(SINGLE_CHILD_TYPES, () => [singleChild()]),
+    ...forEach(SINGLE_CONTENT_TYPES, () => [singleContent()]),
+    ...forEach(BOX_TYPES, () => [boxChildren()]),
+    ...forEach(ADD_REMOVE_TYPES, () => [addRemoveChildren()]),
     GtkWidget: [
-        { prop: "controllers", child: "GtkEventController", ...CONTROLLER_METHODS },
-        {
-            prop: "layoutManager",
-            child: "GtkLayoutManager",
+        container("controllers", "GtkEventController", CONTROLLER_METHODS),
+        container("layoutManager", "GtkLayoutManager", {
             append: "setLayoutManager",
             remove: { method: "setLayoutManager", args: [{ literal: null }] },
-        },
-        { prop: "actionGroups", child: "GActionGroup", ...ACTION_GROUP_METHODS },
+        }),
+        container("actionGroups", "GActionGroup", ACTION_GROUP_METHODS),
     ],
-    GtkShortcutController: [{ prop: "shortcuts", child: "GtkShortcut", ...SHORTCUT_METHODS }],
+    GtkShortcutController: [container("shortcuts", "GtkShortcut", SHORTCUT_METHODS)],
     GtkTextView: [
-        {
-            prop: "children",
-            child: "GtkTextBuffer",
+        container("children", "GtkTextBuffer", {
             append: "setBuffer",
             remove: { method: "setBuffer", args: [{ literal: null }] },
-        },
+        }),
     ],
-    GActionMap: [{ prop: "children", child: "GAction", ...ACTION_METHODS }],
-    GtkApplicationWindow: [{ prop: "actions", child: "GAction", ...ACTION_METHODS }],
+    GActionMap: [container("children", "GAction", ACTION_METHODS)],
+    GtkApplicationWindow: [container("actions", "GAction", ACTION_METHODS)],
     GtkColumnView: [
-        {
-            prop: "children",
-            child: "GtkColumnViewColumn",
+        container("children", "GtkColumnViewColumn", {
             append: "appendColumn",
             remove: "removeColumn",
             insert: { method: "insertColumn", args: ["index", "child"] },
-        },
+        }),
     ],
-    AdwToggleGroup: [{ prop: "children", child: "AdwToggle", append: "add", remove: "remove" }],
-    AdwShortcutsDialog: [{ prop: "children", child: "AdwShortcutsSection", append: "add" }],
-    AdwShortcutsSection: [{ prop: "children", child: "AdwShortcutsItem", append: "add" }],
+    AdwShortcutsDialog: [container("children", "AdwShortcutsSection", { append: "add" })],
+    AdwShortcutsSection: [container("children", "AdwShortcutsItem", { append: "add" })],
     AdwActionRow: prefixSuffixProps(),
     AdwEntryRow: prefixSuffixProps(),
     AdwExpanderRow: [
         ...prefixSuffixProps(),
-        { prop: "rows", child: "GtkWidget", append: "addRow" },
-        { prop: "actions", child: "GtkWidget", append: "addAction" },
+        container("rows", "GtkWidget", { append: "addRow" }),
+        container("actions", "GtkWidget", { append: "addAction" }),
     ],
     AdwHeaderBar: packProps(),
     GtkHeaderBar: packProps(),
     GtkActionBar: packProps(),
     AdwToolbarView: [
-        { prop: "topBar", child: "GtkWidget", append: "addTopBar" },
-        { prop: "bottomBar", child: "GtkWidget", append: "addBottomBar" },
+        container("topBar", "GtkWidget", { append: "addTopBar" }),
+        container("bottomBar", "GtkWidget", { append: "addBottomBar" }),
+        singleContent(),
     ],
+    AdwCarousel: [indexedChildren("append")],
+    AdwPreferencesPage: [indexedChildren("add")],
+    AdwTabView: [container("children", "GtkWidget", { append: "append", insert: { method: "insert", args: ["child", "index"] } })],
     GtkListBox: [autowrapProp("GtkListBoxRow")],
     GtkFlowBox: [autowrapProp("GtkFlowBoxChild")],
-    GtkStack: [{ prop: "children", child: "GtkWidget", append: "addChild", remove: "remove", adopt: true }],
-    AdwViewStack: [{ prop: "children", child: "GtkWidget", append: "add", remove: "remove", adopt: true }],
+    GtkStack: [
+        container("children", "GtkWidget", { append: "addChild", remove: "remove", adopt: true }),
+        { kind: "lazy", prop: "visibleChildName", lookup: "getChildByName" },
+    ],
+    AdwViewStack: [
+        container("children", "GtkWidget", { append: "add", remove: "remove", adopt: true }),
+        { kind: "lazy", prop: "visibleChildName", lookup: "getChildByName" },
+    ],
     GtkNotebook: [
-        {
-            prop: "children",
-            child: "GtkWidget",
+        container("children", "GtkWidget", {
             append: { method: "appendPage", args: ["child", { literal: null }] },
             insert: { method: "insertPage", args: ["child", { literal: null }, "index"] },
             remove: "detachTab",
             adopt: "getPage",
+        }),
+    ],
+    AdwToggleGroup: [
+        container("children", "AdwToggle", { append: "add", remove: "remove" }),
+        { kind: "lazy", prop: "activeName", lookup: "getToggleByName" },
+        { kind: "lazy", prop: "active" },
+    ],
+    GtkDropTarget: [{ kind: "value", prop: "types", call: "setGtypes" }],
+    GtkDrawingArea: [{ kind: "value", prop: "drawFunc", call: "setDrawFunc", after: "queueDraw" }],
+    GtkDragSource: [
+        {
+            kind: "value",
+            prop: "icon",
+            call: {
+                method: "setIcon",
+                args: [
+                    { field: "paintable", or: null },
+                    { field: "hotX", or: 0 },
+                    { field: "hotY", or: 0 },
+                ],
+            },
         },
     ],
+    GtkEditable: [{ kind: "controlled-text", prop: "text" }],
+    GtkScale: [{ kind: "list", prop: "marks", add: "addMark", clear: "clearMarks" }],
+    GtkCalendar: [{ kind: "list", prop: "markedDays", add: "markDay", clear: "clearMarks" }],
+    GtkLevelBar: [{ kind: "list", prop: "offsets", add: "addOffsetValue", remove: "removeOffsetValue" }],
+    GtkApplication: [
+        {
+            kind: "list",
+            prop: "actionAccels",
+            add: "setAccelsForAction",
+            remove: { method: "setAccelsForAction", args: [{ field: "detailedActionName" }, { literal: [] }] },
+        },
+    ],
+    GtkAboutDialog: [{ kind: "list", prop: "creditSections", add: "addCreditSection" }],
 };
-
-export const SYNTHETIC_PROP_RULES: SyntheticPropRule[] = [
-    {
-        kind: "list",
-        type: "GtkScale",
-        prop: "marks",
-        clear: "clearMarks",
-        add: {
-            method: "addMark",
-            args: [{ field: "value" }, { field: "position", or: 3 }, { field: "label", or: null }],
-        },
-    },
-    { kind: "list", type: "GtkCalendar", prop: "markedDays", clear: "clearMarks", add: "markDay" },
-    {
-        kind: "keyed-list",
-        type: "GtkLevelBar",
-        prop: "offsets",
-        add: { method: "addOffsetValue", args: [{ field: "id" }, { field: "value" }] },
-        remove: { method: "removeOffsetValue", args: [{ field: "id" }] },
-    },
-    {
-        kind: "keyed-list",
-        type: "GtkApplication",
-        prop: "actionAccels",
-        add: { method: "setAccelsForAction", args: [{ field: "action" }, { field: "accels" }] },
-        remove: { method: "setAccelsForAction", args: [{ field: "action" }, { literal: [] }] },
-    },
-    { kind: "keyed-list", type: "GtkSizeGroup", prop: "widgets", add: "addWidget", remove: "removeWidget" },
-    {
-        kind: "keyed-list",
-        type: "AdwAlertDialog",
-        prop: "responses",
-        key: "id",
-        add: { method: "addResponse", args: [{ field: "id" }, { field: "label" }] },
-        remove: { method: "removeResponse", args: [{ field: "id" }] },
-        setters: { appearance: "setResponseAppearance", enabled: "setResponseEnabled" },
-    },
-    { kind: "value", type: "GtkDropTarget", prop: "types", call: "setGtypes", or: [] },
-    { kind: "value", type: "GtkDrawingArea", prop: "drawFunc", call: "setDrawFunc", or: null, after: "queueDraw" },
-    {
-        kind: "value",
-        type: "GtkDragSource",
-        prop: "icon",
-        call: {
-            method: "setIcon",
-            args: [
-                { field: "paintable", or: null },
-                { field: "hotX", or: 0 },
-                { field: "hotY", or: 0 },
-            ],
-        },
-    },
-    {
-        kind: "write-once-list",
-        type: "GtkAboutDialog",
-        prop: "creditSections",
-        add: { method: "addCreditSection", args: [{ field: "name" }, { field: "people" }] },
-    },
-    { kind: "controlled-text", type: "GtkEditable", prop: "text", get: "getText", set: "text" },
-    {
-        kind: "selection",
-        type: "GtkStack",
-        prop: "visibleChildName",
-        get: "getVisibleChildName",
-        set: "setVisibleChildName",
-        lookup: "getChildByName",
-    },
-    {
-        kind: "selection",
-        type: "AdwViewStack",
-        prop: "visibleChildName",
-        get: "getVisibleChildName",
-        set: "setVisibleChildName",
-        lookup: "getChildByName",
-    },
-    {
-        kind: "selection",
-        type: "AdwToggleGroup",
-        prop: "activeName",
-        get: "getActiveName",
-        set: "setActiveName",
-        lookup: "getToggleByName",
-    },
-    { kind: "selection", type: "AdwToggleGroup", prop: "active", get: "getActive", set: "setActive" },
-    { kind: "reassert", type: "GtkTextTag", prop: "priority", set: "setPriority" },
-    { kind: "reassert", type: "GtkTextTag", prop: "foreground", set: "foreground" },
-    { kind: "reassert", type: "GtkTextTag", prop: "background", set: "background" },
-    { kind: "reassert", type: "GtkTextTag", prop: "paragraphBackground", set: "paragraphBackground" },
-];
 
 type AccessibleAttributeKind = "property" | "state" | "relation";
 

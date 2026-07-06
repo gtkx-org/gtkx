@@ -319,7 +319,7 @@ unsafe extern "C" fn closure_entry(
     data: &ClosureData,
 ) {
     *result = 0;
-    let state_ptr = guard_ffi_boundary("callback trampoline", || unsafe {
+    let state_ptr = guard_ffi_boundary("callback entry", || unsafe {
         data.handle_call(args, result as *mut u64 as *mut c_void)
     })
     .flatten();

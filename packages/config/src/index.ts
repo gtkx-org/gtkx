@@ -9,6 +9,7 @@ export {
     type ResolvedGtkxConfig,
     type ResolvedReactCompilerOptions,
     resolveReactCompilerOptions,
+    validateGtkxConfig,
 } from "./config.js";
 export {
     createGtkxConfigLoader,
@@ -17,36 +18,28 @@ export {
     loadResolvedGtkxConfig,
 } from "./loader.js";
 export {
+    type AppliedProp,
+    type Arg,
+    type ArgRef,
+    type Call,
+    type ContainerProp,
+    type ControlledTextProp,
+    type ElementProp,
+    type ElementProps,
+    type JsonValue,
+    type LazyProp,
+    type ListProp,
+    type ValueProp,
+} from "./element-props.js";
+export {
     BUFFER_TEXT_KIND,
     CONTAINER_SLOT_KIND,
     isWrapperKind,
     LABEL_TEXT_KIND,
     LAZY_ELEMENT_KIND,
-    resolveGtkxRules,
     TEXT_ANCHOR_KIND,
     TEXT_PAINTABLE_KIND,
     WIDGET_PROP_KIND,
-    WRAPPER_KINDS,
     WRAPPER_NODE_ELEMENT,
     type WrapperKind,
-} from "./rule-schema.js";
-export {
-    ARG_REFS,
-    type Arg,
-    type ArgRef,
-    type Call,
-    type ContainerProp,
-    type ControlledTextRule,
-    containerPropSchema,
-    type GtkxRules,
-    type JsonValue,
-    type KeyedListRule,
-    type ListRule,
-    type ReassertRule,
-    type ResolvedGtkxRules,
-    type SelectionRule,
-    type SyntheticPropRule,
-    type ValueRule,
-    validateGtkxRules,
-    type WriteOnceListRule,
-} from "./rule-validation.js";
+} from "./wrapper-protocol.js";

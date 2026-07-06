@@ -113,11 +113,20 @@ const renderErrorHandlers = <Q extends QueryMap>(options: RenderOptions<Q> | und
     },
 });
 
+const applyEnableAnimations = (enabled: boolean): void => {
+    const settings = Gtk.Settings.getDefault();
+    if (settings) {
+        settings.gtkEnableAnimations = enabled;
+    }
+};
+
 export const render = async <Q extends QueryMap = Record<never, never>>(
     element: ReactNode,
     options?: RenderOptions<Q>,
 ): Promise<RenderResult<Q>> => {
     installErrorHandler();
+
+    applyEnableAnimations(options?.animations === true);
 
     const baseElement: Container = options?.baseElement ?? TOPLEVELS;
     const Wrapper = options?.wrapper;

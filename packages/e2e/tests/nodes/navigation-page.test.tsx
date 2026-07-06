@@ -6,7 +6,7 @@ import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 import { TwoNavigationPages } from "../helpers/navigation-view-render.js";
 
-describe("render - NavigationPage > NavigationPageNode (1)", () => {
+describe("render - NavigationPage (1)", () => {
     it("adds page with id", async () => {
         const viewRef = createRef<Adw.NavigationView>();
 
@@ -48,7 +48,7 @@ describe("render - NavigationPage > NavigationPageNode (1)", () => {
     });
 });
 
-describe("render - NavigationPage > NavigationPageNode (2)", () => {
+describe("render - NavigationPage (2)", () => {
     it("sets canPop property", async () => {
         const viewRef = createRef<Adw.NavigationView>();
 
@@ -91,7 +91,7 @@ describe("render - NavigationPage > NavigationPageNode (2)", () => {
     });
 });
 
-describe("render - NavigationPage > NavigationPageNode (3)", () => {
+describe("render - NavigationPage (3)", () => {
     it("updates page title when prop changes", async () => {
         const viewRef = createRef<Adw.NavigationView>();
 

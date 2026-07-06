@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { buildPlainNotebook } from "../helpers/notebook-render.js";
 import { renderChildren } from "../helpers/render-children.js";
 
-describe("render - NotebookPage > NotebookPageNode (1)", () => {
+describe("render - NotebookPage (1)", () => {
     it("adds page to Notebook", async () => {
         const notebookRef = createRef<Gtk.Notebook>();
 
@@ -38,7 +38,7 @@ describe("render - NotebookPage > NotebookPageNode (1)", () => {
     });
 });
 
-describe("render - NotebookPage > NotebookPageNode (2)", () => {
+describe("render - NotebookPage (2)", () => {
     it("updates tab label on prop change", async () => {
         const notebookRef = createRef<Gtk.Notebook>();
         const contentRef = createRef<Gtk.Label>();
@@ -93,7 +93,7 @@ describe("render - NotebookPage > NotebookPageNode (2)", () => {
     });
 });
 
-describe("render - NotebookPage > NotebookPageNode (3)", () => {
+describe("render - NotebookPage (3)", () => {
     it("handles page reordering", async () => {
         const notebookRef = createRef<Gtk.Notebook>();
 
@@ -104,8 +104,8 @@ describe("render - NotebookPage > NotebookPageNode (3)", () => {
     });
 });
 
-describe("render - NotebookPage > NotebookPageNode (4)", () => {
-    it("attaches the page when content is inserted before an existing tab marker", async () => {
+describe("render - NotebookPage (4)", () => {
+    it("attaches the page when content is inserted before an existing tab wrapper element", async () => {
         const notebookRef = createRef<Gtk.Notebook>();
         const contentRef = createRef<Gtk.Label>();
 
@@ -129,7 +129,7 @@ describe("render - NotebookPage > NotebookPageNode (4)", () => {
     });
 });
 
-describe("render - NotebookPage > NotebookPageNode (5)", () => {
+describe("render - NotebookPage (5)", () => {
     it("applies tabExpand and tabFill page metadata", async () => {
         const notebookRef = createRef<Gtk.Notebook>();
         const contentRef = createRef<Gtk.Label>();

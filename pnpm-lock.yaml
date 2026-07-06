@@ -51,6 +51,9 @@ importers:
       '@gtkx/react':
         specifier: workspace:*
         version: link:packages/react
+      '@gtkx/vitest':
+        specifier: workspace:*
+        version: link:packages/vitest
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.2
@@ -260,9 +263,6 @@ importers:
       react-refresh:
         specifier: ^0.18.0
         version: 0.18.0
-      typescript:
-        specifier: 'catalog:'
-        version: 6.0.3
       vite:
         specifier: ^8.1.0
         version: 8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)
@@ -310,10 +310,6 @@ importers:
       react:
         specifier: ^19
         version: 19.2.7
-    devDependencies:
-      '@gtkx/vitest':
-        specifier: workspace:*
-        version: link:../vitest
 
   packages/config:
     dependencies:
@@ -329,10 +325,6 @@ importers:
       zod:
         specifier: 'catalog:'
         version: 4.4.3
-    devDependencies:
-      rolldown:
-        specifier: 1.1.3
-        version: 1.1.3
 
   packages/create-gtkx:
     dependencies:

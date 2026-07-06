@@ -211,7 +211,7 @@ pub fn is_valid_boxed_ptr(ptr: *mut std::ffi::c_void, type_: glib::Type) -> bool
 
 pub struct TestBoxed {
     pub ptr: *mut c_void,
-    pub descriptor: Option<glib::Type>,
+    pub type_: Option<glib::Type>,
     pub is_owned: bool,
 }
 
@@ -219,7 +219,7 @@ impl Drop for TestBoxed {
     fn drop(&mut self) {
         if self.is_owned && !self.ptr.is_null() {
             unsafe {
-                match self.descriptor {
+                match self.type_ {
                     Some(type_) => {
                         glib::gobject_ffi::g_boxed_free(type_.into_glib(), self.ptr);
                     }

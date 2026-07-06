@@ -1,5 +1,5 @@
 import type { Descriptor, ExternalObject, Handle } from "@gtkx/native";
-import type { ArrayDescriptor, StructDescriptor } from "./descriptors.js";
+import type { ArrayDescriptor, FundamentalDescriptor, StructDescriptor } from "./descriptors.js";
 import { getWrapperClass, tryGetHandle, wrapHandle } from "./registry.js";
 import { resolveDescriptorType } from "./type.js";
 
@@ -15,10 +15,14 @@ export function fromNative(descriptor: Descriptor, value: unknown): unknown {
         case "struct":
             return wrapHandle(value as ExternalObject<Handle> | null, (descriptor as StructDescriptor).wrapperClass);
         case "boxed":
-        case "fundamental":
             return wrapHandle(
                 value as ExternalObject<Handle> | null,
                 getWrapperClass(resolveDescriptorType(descriptor)),
+            );
+        case "fundamental":
+            return wrapHandle(
+                value as ExternalObject<Handle> | null,
+                (descriptor as FundamentalDescriptor).wrapperClass ?? getWrapperClass(resolveDescriptorType(descriptor)),
             );
         case "array":
             return collectionFromNative(descriptor, value);

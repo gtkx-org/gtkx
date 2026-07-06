@@ -1,5 +1,4 @@
 import type * as Adw from "@gtkx/gi/adw";
-import type { ReactNode } from "react";
 
 /**
  * Animatable visual properties of a widget. Every field is serialized to GTK CSS on each frame:
@@ -138,7 +137,7 @@ export type Transition = {
  * applied before the first frame, after which the widget animates toward `animate`. Inside an
  * {@link AnimatePresence}, `exit` is animated to before the widget is removed.
  */
-export type WidgetAnimationProps = {
+export type AnimationProps = {
     /** Starting values, or `false` to skip the mount animation and render directly at `animate`. */
     initial?: AnimationTarget | false;
     /** Target the widget animates toward while mounted. */
@@ -151,6 +150,4 @@ export type WidgetAnimationProps = {
     onAnimationStart?: () => void;
     /** Called when an animation finishes naturally; not called when an animation is interrupted. */
     onAnimationComplete?: () => void;
-    /** Widget rendered by the animation wrapper. */
-    children?: ReactNode;
 };

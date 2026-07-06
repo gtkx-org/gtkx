@@ -52,7 +52,7 @@ type ColumnViewSortProps = {
 };
 
 type ColumnViewDeclarativeProps<T = unknown, S = unknown> = ColumnViewSortProps &
-    CollectionItemSizeProps &
+    Omit<CollectionItemSizeProps, "estimatedItemWidth"> &
     ControlledSelectionProps & {
         items?: ItemNode<T>[] | undefined;
         sections?: SectionNode<S, T>[] | undefined;
@@ -61,7 +61,7 @@ type ColumnViewDeclarativeProps<T = unknown, S = unknown> = ColumnViewSortProps 
 
 export type ColumnViewProps<T = unknown, S = unknown> = Omit<
     GtkColumnViewProps,
-    "columns" | keyof ColumnViewDeclarativeProps<T, S>
+    "columns" | "model" | "headerFactory" | keyof ColumnViewDeclarativeProps<T, S>
 > &
     ColumnViewDeclarativeProps<T, S>;
 
@@ -146,7 +146,6 @@ const ColumnViewComponent = <T = unknown, S = unknown>(props: ColumnViewProps<T,
         onSortChanged,
         renderHeader,
         estimatedItemHeight,
-        estimatedItemWidth,
         children,
         ...intrinsicProps
     } = props as NormalizedColumnViewProps<T, S>;
@@ -165,7 +164,6 @@ const ColumnViewComponent = <T = unknown, S = unknown>(props: ColumnViewProps<T,
             onSortChanged,
             renderHeader,
             estimatedItemHeight,
-            estimatedItemWidth,
         } as NormalizedColumnViewProps<T, S>,
         registry,
     );

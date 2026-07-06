@@ -19,12 +19,11 @@ export type SignalBinding = {
     instance: GObject.Object;
     signal: string;
     handler?: SignalHandler | null | undefined;
-    blockable?: boolean | undefined;
 };
 
 export class SignalStore {
     private instanceHandlers: Map<GObject.Object, Map<string, number>> = new Map();
-    private blockDepth = 0;
+    private blocked = false;
 
     private getInstanceMap(instance: GObject.Object): Map<string, number> {
         let instanceMap = this.instanceHandlers.get(instance);
@@ -35,22 +34,12 @@ export class SignalStore {
         return instanceMap;
     }
 
-    private gateHandler(
-        handler: SignalHandler,
-        signal: string,
-        instance: GObject.Object,
-        blockable: boolean,
-    ): SignalHandler {
+    private gateHandler(handler: SignalHandler, signal: string, instance: GObject.Object): SignalHandler {
         return (...args: unknown[]) => {
-            if (this.blockDepth > 0 && blockable && !LIFECYCLE_SIGNALS.has(signal)) {
+            if (this.blocked && !LIFECYCLE_SIGNALS.has(signal)) {
                 return;
             }
-            this.blockAll();
-            try {
-                return handler(...args, instance);
-            } finally {
-                this.unblockAll();
-            }
+            return handler(...args, instance);
         };
     }
 
@@ -67,19 +56,19 @@ export class SignalStore {
         }
     }
 
-    private connect(binding: SignalBinding & { handler: SignalHandler; blockable: boolean }): void {
-        const { instance, signal, handler, blockable } = binding;
-        const gatedHandler = this.gateHandler(handler, signal, instance, blockable);
+    private connect(binding: SignalBinding & { handler: SignalHandler }): void {
+        const { instance, signal, handler } = binding;
+        const gatedHandler = this.gateHandler(handler, signal, instance);
         const handlerId = instance.connect(signal, gatedHandler);
         this.getInstanceMap(instance).set(signal, handlerId);
     }
 
     public set(binding: SignalBinding): void {
-        const { instance, signal, handler, blockable = true } = binding;
+        const { instance, signal, handler } = binding;
         this.disconnect(instance, signal);
 
         if (handler) {
-            this.connect({ instance, signal, handler, blockable });
+            this.connect({ instance, signal, handler });
         }
     }
 
@@ -95,18 +84,12 @@ export class SignalStore {
         }
     }
 
-    public blockAll(): void {
-        this.blockDepth++;
+    public block(): void {
+        this.blocked = true;
     }
 
-    public unblockAll(): void {
-        if (this.blockDepth > 0) {
-            this.blockDepth--;
-        }
-    }
-
-    public forceUnblockAll(): void {
-        this.blockDepth = 0;
+    public unblock(): void {
+        this.blocked = false;
     }
 }
 

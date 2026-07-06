@@ -95,7 +95,7 @@ const renderNameAndRoleColumns = async (
 };
 
 describe("render - ColumnViewColumn (1)", () => {
-    describe("ColumnViewColumnNode (1)", () => {
+    describe("ColumnViewColumn (1)", () => {
         it("adds column to ColumnView", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
 
@@ -128,7 +128,7 @@ describe("render - ColumnViewColumn (1)", () => {
 });
 
 describe("render - ColumnViewColumn (2)", () => {
-    describe("ColumnViewColumnNode (2)", () => {
+    describe("ColumnViewColumn (2)", () => {
         it("sets column property", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
 
@@ -174,7 +174,7 @@ describe("render - ColumnViewColumn (2)", () => {
 });
 
 describe("render - ColumnViewColumn (3)", () => {
-    describe("ColumnViewColumnNode (3)", () => {
+    describe("ColumnViewColumn (3)", () => {
         it("updates column title on prop change", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
 
@@ -198,7 +198,7 @@ describe("render - ColumnViewColumn (3)", () => {
 });
 
 describe("render - ColumnViewColumn (4)", () => {
-    describe("ColumnViewColumnNode (4)", () => {
+    describe("ColumnViewColumn (4)", () => {
         it("removes column from ColumnView", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
 

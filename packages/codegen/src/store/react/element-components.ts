@@ -4,7 +4,7 @@ import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
 import type { ImportsBuilder } from "../../writer/imports.js";
 import { ancestorGlibNames, collectIntrinsicElementClasses, type GlibNamedClass } from "./intrinsic-elements.js";
-import type { CompanionExportSpec, RuleTypegen } from "./synthetic-prop-types.js";
+import type { ElementPropTypegen, LazyElementSpec } from "./element-prop-types.js";
 import { type AncestryWrapperName, BUILT_IN_ANCESTRY_WRAPPERS } from "./tables.js";
 
 const WRAPPER_NODE_ELEMENT_CONST = "WrapperNodeElement";
@@ -32,7 +32,7 @@ export const generateElementComponentsSection = (
     library: Library,
     options: {
         imports: ImportsBuilder;
-        typegen: RuleTypegen;
+        typegen: ElementPropTypegen;
     },
 ): { source: string; exportedNames: Set<string> } => {
     const collector: ExportCollector = { imports: options.imports, exportedNames: new Set(), exportLines: [] };
@@ -43,15 +43,15 @@ export const generateElementComponentsSection = (
     const inTargetNamespace = (parentGlibName: string): boolean =>
         namespaceByGlib.get(parentGlibName) === targetNamespace.name;
 
-    const companionElements = options.typegen.companionExports(targetNamespace.name);
+    const lazyElements = options.typegen.lazyElementExports(targetNamespace.name);
     const textNodes = TEXT_NODE_ELEMENTS.filter((node) => inTargetNamespace(node.parent));
     const virtualNames = new Set([
-        ...companionElements.map((entry) => entry.element),
+        ...lazyElements.map((entry) => entry.element),
         ...textNodes.map((node) => node.flatName),
     ]);
 
     collectCandidateExports(collector, targetNamespace, library, virtualNames);
-    collectCompanionExports(collector, companionElements);
+    collectLazyElementExports(collector, lazyElements);
     collectTextNodeExports(collector, textNodes);
 
     const sections = [
@@ -80,11 +80,11 @@ const collectCandidateExports = (
     }
 };
 
-const collectCompanionExports = (collector: ExportCollector, companionElements: CompanionExportSpec[]): void => {
-    for (const spec of companionElements) {
+const collectLazyElementExports = (collector: ExportCollector, lazyElements: LazyElementSpec[]): void => {
+    for (const spec of lazyElements) {
         collector.imports.addNamed("@gtkx/react", "createLazyElementComponent", false);
         collector.imports.addNamed("react", "ReactNode", true);
-        collector.exportLines.push(renderCompanionExport(spec));
+        collector.exportLines.push(renderLazyElementExport(spec));
         collector.exportedNames.add(spec.element);
     }
 };
@@ -98,7 +98,7 @@ const collectTextNodeExports = (collector: ExportCollector, textNodes: TextNodeE
     }
 };
 
-const renderCompanionExport = (spec: CompanionExportSpec): string => {
+const renderLazyElementExport = (spec: LazyElementSpec): string => {
     const factory = `createLazyElementComponent<${spec.typeName}>()`;
     const component = `export const ${spec.element}: (props: ${spec.typeName}) => ReactNode = ${factory};`;
     return `${spec.typeSource}\n\n${component}`;

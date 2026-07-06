@@ -1,10 +1,10 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { click, dblClick, tripleClick } from "./click.js";
 import { drag, dragAndDrop, drop, hover, longPress, rotate, swipe, unhover, zoom } from "./gesture.js";
-import { createInstance } from "./instance.js";
 import { keyboard, tab } from "./keyboard.js";
 import { type PointerInput, pointer } from "./pointer.js";
 import { deselectOptions, selectOptions } from "./selection.js";
+import { createInitialState } from "./state.js";
 import { clear, copy, cut, paste, type } from "./text.js";
 
 export type { DragOptions, DropContent, DropOptions } from "./gesture.js";
@@ -38,7 +38,7 @@ export type UserEvent = {
     pointer: (widget: Gtk.Widget, input: PointerInput) => Promise<void>;
 };
 
-const instance = createInstance();
+const state = createInitialState();
 
 export const userEvent: UserEvent = {
     click,
@@ -61,6 +61,6 @@ export const userEvent: UserEvent = {
     drag,
     drop,
     dragAndDrop,
-    keyboard: (widget: Gtk.Widget, input: string): Promise<void> => keyboard(instance, widget, input),
-    pointer: (widget: Gtk.Widget, input: PointerInput): Promise<void> => pointer(instance, widget, input),
+    keyboard: (widget: Gtk.Widget, input: string): Promise<void> => keyboard(state, widget, input),
+    pointer: (widget: Gtk.Widget, input: PointerInput): Promise<void> => pointer(state, widget, input),
 };

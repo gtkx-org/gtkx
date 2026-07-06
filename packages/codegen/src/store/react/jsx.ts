@@ -14,13 +14,13 @@ import {
     type ResolvedQualifiedInterface,
 } from "./intrinsic-elements.js";
 import { buildElementPropsEntries, buildInterfacePropsEntries } from "./props.js";
-import type { RuleTypegen } from "./synthetic-prop-types.js";
+import type { ElementPropTypegen } from "./element-prop-types.js";
 import { ACCESSIBLE_ATTRIBUTES } from "./tables.js";
 
 export type GenerateJsxOptions = {
     excludeNames: Set<string>;
     imports: ImportsBuilder;
-    typegen: RuleTypegen;
+    typegen: ElementPropTypegen;
 };
 
 const QUALIFIED_TYPE_PATTERN = /^[A-Z][A-Za-z0-9]*\.[A-Z]/;
@@ -177,7 +177,7 @@ type RenderPropBlockContext = {
     intrinsicElementByGlibName: Map<string, GlibNamedClass>;
     targetNamespaceName: string;
     imports: ImportsBuilder;
-    typegen: RuleTypegen;
+    typegen: ElementPropTypegen;
 };
 
 const renderPropBlock = (
@@ -194,14 +194,14 @@ const renderPropBlock = (
     });
     for (const [namespace, alias] of imports) addGiNamespace(context.imports, namespace, alias);
     addGiNamespace(context.imports, entry.namespace.name, entry.namespace.name);
-    const syntheticImports = new Map<string, string>();
-    const syntheticLines = context.typegen.classPropLines(
+    const elementPropImports = new Map<string, string>();
+    const elementPropLines = context.typegen.classPropLines(
         entry.glibName,
         entry.klass,
         entry.namespace,
-        syntheticImports,
+        elementPropImports,
     );
-    for (const [namespace, alias] of syntheticImports) addGiNamespace(context.imports, namespace, alias);
+    for (const [namespace, alias] of elementPropImports) addGiNamespace(context.imports, namespace, alias);
     const widgetTypeRef = `${entry.namespace.name}.${entry.klass.name} | null`;
     const slotPropLines = slotProps.map((propName) => `${propName}?: ReactNode | null | undefined;`);
     const ownerLines = [
@@ -209,7 +209,7 @@ const renderPropBlock = (
         `ref?: Ref<${widgetTypeRef}> | undefined;`,
         ...propLines,
         ...slotPropLines,
-        ...syntheticLines,
+        ...elementPropLines,
     ];
     const extendsList = resolveWidgetExtends(library, entry, context);
     const extendsClause = extendsList.length === 0 ? "" : ` extends ${extendsList.join(", ")}`;

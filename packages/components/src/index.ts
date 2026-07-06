@@ -1,3 +1,4 @@
+export { AlertDialog, type AlertDialogProps, type AlertDialogResponseProps } from "./alert-dialog.js";
 export { ColumnView, type ColumnViewProps } from "./column-view.js";
 export { type ColumnRenderItemInfo, ColumnViewColumn, type ColumnViewColumnProps } from "./column-view-column.js";
 export { ConstraintLayout, type ConstraintLayoutProps } from "./constraint-layout.js";
@@ -9,4 +10,5 @@ export { type GridRenderItemInfo, GridView, type GridViewProps } from "./grid-vi
 export { type ListRenderItemInfo, ListView, type ListViewProps } from "./list-view.js";
 export { Menu, type MenuProps } from "./menu.js";
 export { Overlay, type OverlayChildProps, type OverlayProps } from "./overlay.js";
+export { SizeGroup, type SizeGroupProps } from "./size-group.js";
 export type { ItemNode, MenuEntry, SectionNode } from "./types.js";

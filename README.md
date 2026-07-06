@@ -22,7 +22,6 @@
   <a href="https://gtkx.dev">Homepage</a> &middot;
   <a href="#documentation">Documentation</a> &middot;
   <a href="#examples">Examples</a> &middot;
-  <a href="docs/architecture.md">Architecture</a> &middot;
   <a href="#contributing">Contributing</a>
 </p>
 

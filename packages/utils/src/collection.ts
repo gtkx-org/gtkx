@@ -1,13 +1,3 @@
-export const omit = <T extends Record<string, unknown>, K extends keyof T>(record: T, keys: K[]): Omit<T, K> => {
-    const result: Record<string, unknown> = {};
-    for (const key of Object.keys(record)) {
-        if (!keys.includes(key as K)) {
-            result[key] = record[key];
-        }
-    }
-    return result as Omit<T, K>;
-};
-
 export const uniqBy = <T>(items: T[], key: (item: T) => string): T[] => {
     const seen = new Set<string>();
     const result: T[] = [];

@@ -69,6 +69,7 @@ export type RenderOptions<Q extends QueryMap = Record<never, never>> = {
     baseElement?: Container | undefined;
     wrapper?: WrapperComponent | undefined;
     reactStrictMode?: boolean | undefined;
+    animations?: boolean | undefined;
     onCaughtError?: ((error: unknown, errorInfo: ErrorInfo) => void) | undefined;
     onRecoverableError?: ((error: unknown, errorInfo: ErrorInfo) => void) | undefined;
     queries?: Q | undefined;

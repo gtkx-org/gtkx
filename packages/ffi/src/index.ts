@@ -1,4 +1,3 @@
-export { read as readField, write as writeField } from "@gtkx/native";
 export { installMixins, type Mixin } from "@gtkx/utils";
 export { promisify } from "./async.js";
 export { createErrorDomain, type ErrorDomain } from "./error.js";

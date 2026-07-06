@@ -20,15 +20,17 @@ describe("renderGtkxConfigModule", () => {
         expect(source).toContain('export * from "@gtkx/jsx/metadata";');
     });
 
-    it("does not export any rules binding", () => {
-        const rules = {
-            containerProps: {
-                GtkStack: [{ prop: "children", child: "GtkWidget", append: "addChild", adopt: true }],
-            },
-        };
-        const source = renderGtkxConfigModule(resolveGtkxConfig({ rules }));
-        expect(source).not.toContain("RULES");
-        expect(source).not.toContain("rules");
+    it("does not leak the build-time element props into the runtime module", () => {
+        const source = renderGtkxConfigModule(
+            resolveGtkxConfig({
+                elementProps: {
+                    GtkStack: [
+                        { kind: "container", prop: "children", child: "GtkWidget", append: "addChild", adopt: true },
+                    ],
+                },
+            }),
+        );
+        expect(source).not.toContain("elementProps");
     });
 
     it("serializes each resolved config field as a named constant", () => {

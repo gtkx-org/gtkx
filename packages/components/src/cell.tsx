@@ -85,7 +85,7 @@ export const itemRenderer =
     (value, _treeRow, position) =>
         render({ item: value as T, index: position });
 
-export const headerRenderer =
+const headerRenderer =
     <T, S>(renderHeader: ((info: { section: S }) => ReactNode) | null | undefined): CellRenderer<T, S> =>
     (value) =>
         renderHeader ? renderHeader({ section: value as S }) : null;

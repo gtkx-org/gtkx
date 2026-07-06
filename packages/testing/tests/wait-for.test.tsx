@@ -158,6 +158,27 @@ describe("waitForElementToBeRemoved widget", () => {
         await expect(removalPromise).resolves.toBeUndefined();
     });
 
+    it("resolves when the element's getRoot throws mid-wait", async () => {
+        const DynamicComponent = createDynamicComponent(<GtkButton label="ToDestroy" name="destroyable" />);
+
+        await render(<DynamicComponent />);
+
+        const removeButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Remove" });
+        const element = await screen.findByName("destroyable");
+
+        const originalGetRoot = element.getRoot.bind(element);
+        element.getRoot = () => {
+            const root = originalGetRoot();
+            if (root === null) throw new Error("Widget destroyed");
+            return root;
+        };
+
+        const removalPromise = waitForElementToBeRemoved(element);
+        await userEvent.click(removeButton);
+
+        await expect(removalPromise).resolves.toBeUndefined();
+    });
+
     it("resolves once every widget in an array is removed", async () => {
         const DynamicComponent = createDynamicComponent(
             <>

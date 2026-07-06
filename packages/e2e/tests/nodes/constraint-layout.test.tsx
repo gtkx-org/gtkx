@@ -5,12 +5,12 @@ import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 import {
-    ButtonMarker,
     collectConstraints,
     collectGuides,
     firstConstraint,
-    LabelMarker,
     layoutFrom,
+    NamedButton,
+    NamedLabel,
     onlyConstraint,
     renderConstraintBox,
 } from "../helpers/constraint-layout-cases.js";
@@ -40,7 +40,7 @@ describe("render - GtkConstraintLayout attach", () => {
 });
 
 describe("render - name-based target resolution (a)", () => {
-    it("resolves named children so Constraint markers can reference them", async () => {
+    it("resolves named children so Constraints can reference them", async () => {
         const boxRef = createRef<Gtk.Box>();
         const labelARef = createRef<Gtk.Label>();
         const labelBRef = createRef<Gtk.Label>();
@@ -49,8 +49,8 @@ describe("render - name-based target resolution (a)", () => {
             boxRef,
             <ConstraintLayout.Constraint target="a" targetAttribute={A.WIDTH} source="b" sourceAttribute={A.WIDTH} />,
             <>
-                <LabelMarker id="a" label="A" labelRef={labelARef} />
-                <LabelMarker id="b" label="B" labelRef={labelBRef} />
+                <NamedLabel id="a" label="A" labelRef={labelARef} />
+                <NamedLabel id="b" label="B" labelRef={labelBRef} />
             </>,
         );
 
@@ -69,7 +69,7 @@ describe("render - name-based target resolution (b)", () => {
 
         await render(
             <GtkBox ref={boxRef} layoutManager={<ConstraintLayout />}>
-                <LabelMarker id="a" label="Inside" labelRef={labelRef} />
+                <NamedLabel id="a" label="Inside" labelRef={labelRef} />
             </GtkBox>,
         );
 
@@ -145,7 +145,7 @@ describe("render - name-based target resolution (b)", () => {
         await renderConstraintBox(
             boxRef,
             <ConstraintLayout.Constraint target="a" targetAttribute={A.START} sourceAttribute={A.START} constant={8} />,
-            <LabelMarker id="a" label="A" labelRef={labelRef} />,
+            <NamedLabel id="a" label="A" labelRef={labelRef} />,
         );
 
         const c = onlyConstraint(boxRef);
@@ -167,7 +167,7 @@ describe("render - name-based target resolution (b)", () => {
                 sourceAttribute={A.START}
             />,
             <>
-                <LabelMarker id="a" label="A" />
+                <NamedLabel id="a" label="A" />
                 <GtkLabel ref={superRef} name="super" label="Super" />
             </>,
         );
@@ -229,7 +229,7 @@ describe("render - GtkConstraintLayout.Guide (construction)", () => {
 });
 
 describe("render - GtkConstraintLayout.Guide (references)", () => {
-    it("lets Constraint markers reference a Guide by id", async () => {
+    it("lets a Constraint reference a Guide by id", async () => {
         const boxRef = createRef<Gtk.Box>();
         const labelRef = createRef<Gtk.Label>();
 
@@ -244,7 +244,7 @@ describe("render - GtkConstraintLayout.Guide (references)", () => {
                     sourceAttribute={A.START}
                 />
             </>,
-            <LabelMarker id="a" label="A" labelRef={labelRef} />,
+            <NamedLabel id="a" label="A" labelRef={labelRef} />,
         );
 
         const guide = collectGuides(layoutFrom(boxRef))[0];
@@ -294,7 +294,7 @@ describe("render - GtkConstraintLayout.Constraint updates", () => {
                         </ConstraintLayout>
                     }
                 >
-                    <ButtonMarker id="a" label="A" />
+                    <NamedButton id="a" label="A" />
                 </GtkBox>
             );
         }
@@ -314,7 +314,7 @@ describe("render - GtkConstraintLayout.Constraint updates", () => {
 });
 
 describe("render - GtkConstraintLayout.Constraint removal", () => {
-    it("removes the constraint when the marker is unmounted", async () => {
+    it("removes the constraint when the named widget is unmounted", async () => {
         const boxRef = createRef<Gtk.Box>();
 
         function App({ show }: { show: boolean }) {
@@ -334,7 +334,7 @@ describe("render - GtkConstraintLayout.Constraint removal", () => {
                         </ConstraintLayout>
                     }
                 >
-                    <ButtonMarker id="a" label="A" />
+                    <NamedButton id="a" label="A" />
                 </GtkBox>
             );
         }
@@ -362,7 +362,7 @@ describe("render - GtkConstraintLayout.Constraint props", () => {
                 sourceAttribute={A.NONE}
                 constant={200}
             />,
-            <ButtonMarker id="a" label="A" />,
+            <NamedButton id="a" label="A" />,
         );
 
         const c = firstConstraint(boxRef);
@@ -382,7 +382,7 @@ describe("render - GtkConstraintLayout.Constraint props", () => {
                 constant={4}
                 strength={S.STRONG}
             />,
-            <ButtonMarker id="a" label="A" />,
+            <NamedButton id="a" label="A" />,
         );
 
         const c = firstConstraint(boxRef);
@@ -410,7 +410,7 @@ describe("render - name-based target lifecycle", () => {
                         </ConstraintLayout>
                     }
                 >
-                    <LabelMarker id={id} label="L" labelRef={labelRef} />
+                    <NamedLabel id={id} label="L" labelRef={labelRef} />
                 </GtkBox>
             );
         }
@@ -430,8 +430,8 @@ describe("render - name-based target lifecycle", () => {
         function App({ show }: { show: boolean }) {
             return (
                 <GtkBox ref={boxRef} layoutManager={<ConstraintLayout />}>
-                    <LabelMarker id="persist" label="P" labelRef={persistRef} />
-                    {show && <LabelMarker id="cond" label="C" labelRef={conditionalRef} />}
+                    <NamedLabel id="persist" label="P" labelRef={persistRef} />
+                    {show && <NamedLabel id="cond" label="C" labelRef={conditionalRef} />}
                 </GtkBox>
             );
         }
@@ -470,8 +470,8 @@ describe("render - GtkConstraintLayout.Vfl", () => {
                 vspacing={8}
             />,
             <>
-                <ButtonMarker id="a" label="A" />
-                <ButtonMarker id="b" label="B" />
+                <NamedButton id="a" label="A" />
+                <NamedButton id="b" label="B" />
             </>,
         );
 
@@ -490,8 +490,8 @@ describe("render - GtkConstraintLayout.Vfl", () => {
                 <ConstraintLayout.Vfl lines={["H:|-[a]-[g]-[b]-|", "V:|-[a]-|", "V:|-[b]-|"]} hspacing={8} />
             </>,
             <>
-                <ButtonMarker id="a" label="A" />
-                <ButtonMarker id="b" label="B" />
+                <NamedButton id="a" label="A" />
+                <NamedButton id="b" label="B" />
             </>,
         );
 
@@ -512,7 +512,7 @@ describe("render - GtkConstraintLayout.Vfl", () => {
                         </ConstraintLayout>
                     }
                 >
-                    <ButtonMarker id="a" label="A" />
+                    <NamedButton id="a" label="A" />
                 </GtkBox>
             );
         }
@@ -538,7 +538,7 @@ describe("render - GtkConstraintLayout.Vfl", () => {
                         </ConstraintLayout>
                     }
                 >
-                    <ButtonMarker id="a" label="A" />
+                    <NamedButton id="a" label="A" />
                 </GtkBox>,
             ),
         ).rejects.toThrow();

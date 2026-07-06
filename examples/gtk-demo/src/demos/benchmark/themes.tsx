@@ -1,9 +1,9 @@
+import { AlertDialog } from "@gtkx/components";
 import { Dialog } from "@gtkx/components/adw";
 import * as Adw from "@gtkx/gi/adw";
 import type * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
-import { AdwAlertDialog } from "@gtkx/jsx/adw";
 import { GtkBox, GtkButton, GtkHeaderBar, GtkLabel, GtkToggleButton } from "@gtkx/jsx/gtk";
 import { useTickCallback } from "@gtkx/react";
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -106,18 +106,17 @@ const ThemesWarningDialog = ({
     onResponse: (response: string) => void;
 }) => (
     <Dialog parent={window}>
-        <AdwAlertDialog
+        <AlertDialog
             name="warning-dialog"
             heading="Warning"
             body="This demo involves rapidly flashing changes and may be hazardous to photosensitive viewers."
             defaultResponse="ok"
             closeResponse="cancel"
             onResponse={onResponse}
-            responses={[
-                { id: "cancel", label: "_Cancel" },
-                { id: "ok", label: "_OK" },
-            ]}
-        />
+        >
+            <AlertDialog.Response id="cancel" label="_Cancel" />
+            <AlertDialog.Response id="ok" label="_OK" />
+        </AlertDialog>
     </Dialog>
 );
 

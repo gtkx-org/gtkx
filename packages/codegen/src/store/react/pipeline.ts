@@ -1,15 +1,14 @@
-import { type ResolvedGtkxRules, resolveGtkxRules } from "@gtkx/config";
+import type { ElementProp } from "@gtkx/config";
 import { sortedStringsBy } from "@gtkx/utils";
 import type { Library } from "../../gir/library.js";
 import { type GirNamespace, namespaceDirectory } from "../../gir/namespace.js";
 import { ImportsBuilder } from "../../writer/imports.js";
+import { assembleElementProps } from "./element-props.js";
 import { generateElementComponentsSection } from "./element-components.js";
+import { createElementPropTypegen, type ElementPropTypegen } from "./element-prop-types.js";
 import { collectIntrinsicElementClasses } from "./intrinsic-elements.js";
 import { generateJsxSection } from "./jsx.js";
 import { generateMetadata } from "./metadata.js";
-import { assembleRuleTables } from "./rule-tables.js";
-import { createRuleTypegen, type RuleTypegen } from "./synthetic-prop-types.js";
-import { DEFAULT_BLOCKABLE_TYPES } from "./tables.js";
 
 export type JsxNamespaceFile = {
     directory: string;
@@ -22,14 +21,14 @@ export type JsxFiles = {
     intrinsicElementCount: number;
 };
 
-export const generateJsxFiles = (library: Library, userRules?: ResolvedGtkxRules): JsxFiles => {
+export const generateJsxFiles = (library: Library, userElementProps?: Record<string, ElementProp[]>): JsxFiles => {
     const namespacesWithIntrinsicElements = new Map<string, GirNamespace>();
     for (const entry of collectIntrinsicElementClasses(library)) {
         namespacesWithIntrinsicElements.set(entry.namespace.name, entry.namespace);
     }
 
-    const ruleTables = assembleRuleTables(library, resolveGtkxRules(userRules));
-    const typegen = createRuleTypegen(library, ruleTables);
+    const elementProps = assembleElementProps(library, userElementProps ?? {});
+    const typegen = createElementPropTypegen(library, elementProps);
 
     const namespaces: JsxNamespaceFile[] = [];
     let intrinsicElementCount = 0;
@@ -39,11 +38,7 @@ export const generateJsxFiles = (library: Library, userRules?: ResolvedGtkxRules
         intrinsicElementCount += count;
     }
 
-    const metadata = generateMetadata(library, {
-        defaultBlockableTypes: DEFAULT_BLOCKABLE_TYPES,
-        containerProps: ruleTables.containerProps,
-        syntheticProps: ruleTables.syntheticProps,
-    });
+    const metadata = generateMetadata(library, { elementProps });
 
     return { namespaces, metadata, intrinsicElementCount };
 };
@@ -51,7 +46,7 @@ export const generateJsxFiles = (library: Library, userRules?: ResolvedGtkxRules
 const generateJsxNamespace = (
     targetNamespace: GirNamespace,
     library: Library,
-    typegen: RuleTypegen,
+    typegen: ElementPropTypegen,
 ): { source: string; count: number } => {
     const targetDirectory = namespaceDirectory(targetNamespace);
     const imports = new ImportsBuilder();

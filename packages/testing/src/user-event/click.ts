@@ -36,6 +36,12 @@ export const click = async (widget: Gtk.Widget): Promise<void> => {
         await emitClickSequence(widget, 1);
         return;
     }
+    if (widget instanceof Gtk.Switch) {
+        await wrapEvent(() => {
+            widget.setActive(!widget.getActive());
+        });
+        return;
+    }
     if (widget.getAccessibleRole() !== Gtk.AccessibleRole.LABEL) {
         let activated = false;
         await wrapEvent(() => {

@@ -72,7 +72,7 @@ const { appRouterInstances } = vi.hoisted(() => ({
 
 vi.mock("../src/app-router.js", () => ({
     AppRouter: class extends EventEmitter {
-        constructor(_socketServer: unknown) {
+        constructor(_connections: unknown) {
             super();
             appRouterInstances.push(this);
         }

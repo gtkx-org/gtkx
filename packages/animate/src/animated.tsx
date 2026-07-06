@@ -1,11 +1,8 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { createElementComponent } from "@gtkx/react";
 import { createElement, type JSX, type ReactNode, type Ref } from "react";
-import type { WidgetAnimationProps } from "./types.js";
+import type { AnimationProps } from "./types.js";
 import { useAnimatedWidget } from "./use-animated-widget.js";
-
-/** {@link WidgetAnimationProps} without `children`; the animation props added to every {@link animated} component. */
-export type AnimationProps = Omit<WidgetAnimationProps, "children">;
 
 /** A widget component of props `P` augmented with {@link AnimationProps}. */
 export type AnimatedComponent<P> = (props: P & AnimationProps) => ReactNode;

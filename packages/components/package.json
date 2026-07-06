@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/components",
     "version": "0.21.0",
-    "description": "Hand-written higher-level GTKX components: list, grid, column, drop-down, menu, and constraint-layout abstractions over the generated bindings",
+    "description": "Hand-written higher-level GTKX components: list, grid, column, drop-down, menu, constraint-layout, fixed, overlay, combo-row, and dialog abstractions over the generated bindings",
     "keywords": [
         "gtkx",
         "gtk",
@@ -52,9 +52,6 @@
     },
     "dependencies": {
         "@gtkx/react": "workspace:*"
-    },
-    "devDependencies": {
-        "@gtkx/vitest": "workspace:*"
     },
     "peerDependencies": {
         "react": "^19"

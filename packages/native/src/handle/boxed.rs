@@ -139,14 +139,6 @@ impl Boxed {
     pub fn type_(&self) -> Option<glib::Type> {
         self.type_
     }
-
-    #[inline]
-    pub fn free_fn(&self) -> Option<BoxedFreeFn> {
-        match &self.allocation.as_ref()?.destructor {
-            BoxedDestructor::Custom(free_fn) => Some(*free_fn),
-            _ => None,
-        }
-    }
 }
 
 impl Clone for Boxed {

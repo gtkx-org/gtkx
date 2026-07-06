@@ -8,7 +8,7 @@ export default defineConfig({
             allowExternal: true,
             reporter: ["lcov", "text-summary"],
             reportsDirectory: "coverage",
-            include: ["packages/*/src/**/*.{ts,tsx}", "packages/native/{index,types}.ts"],
+            include: ["packages/*/src/**/*.{ts,tsx}"],
             exclude: [
                 "**/dist/**",
                 "**/out-tsc/**",

@@ -1,5 +1,6 @@
 import type { ExternalObject, Handle } from "@gtkx/native";
-import { getHandle, readField as read, t, wrapHandle } from "@gtkx/ffi";
+import { getHandle, t, wrapHandle } from "@gtkx/ffi";
+import { read } from "@gtkx/native";
 import { alloc } from "@gtkx/native";
 import type { FontOptions, FontType, Status, TextClusterFlags } from "../cairo.js";
 import { FontFace, ScaledFont } from "../cairo.js";

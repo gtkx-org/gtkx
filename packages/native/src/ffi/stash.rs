@@ -185,10 +185,10 @@ impl Stash {
 
     pub fn append_libffi_args<'a>(&'a self, args: &mut Vec<libffi::Arg<'a>>) {
         match self {
-            Self::Callback(tv) => {
-                args.push(libffi::arg(&tv.fn_ptr));
-                args.push(libffi::arg(&tv.state_ptr));
-                if let Some(destroy_ptr) = &tv.destroy_ptr {
+            Self::Callback(callback) => {
+                args.push(libffi::arg(&callback.fn_ptr));
+                args.push(libffi::arg(&callback.state_ptr));
+                if let Some(destroy_ptr) = &callback.destroy_ptr {
                     args.push(libffi::arg(destroy_ptr));
                 }
             }

@@ -4,7 +4,7 @@ import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
-describe("render - LayoutManagerNode wiring", () => {
+describe("render - layoutManager prop wiring", () => {
     it("attaches a GtkBoxLayout to the host widget", async () => {
         const boxRef = createRef<Gtk.Box>();
 
@@ -41,7 +41,7 @@ describe("render - LayoutManagerNode wiring", () => {
     });
 });
 
-describe("render - LayoutManagerNode lifecycle", () => {
+describe("render - layoutManager prop lifecycle", () => {
     it("updates layout manager props through prop diff", async () => {
         const boxRef = createRef<Gtk.Box>();
 
@@ -56,7 +56,7 @@ describe("render - LayoutManagerNode lifecycle", () => {
         expect((boxRef.current?.getLayoutManager() as Gtk.BoxLayout).getSpacing()).toBe(20);
     });
 
-    it("clears the layout manager slot when the marker is unmounted", async () => {
+    it("clears the layout manager slot when the wrapper element is unmounted", async () => {
         const boxRef = createRef<Gtk.Box>();
 
         function App({ show }: { show: boolean }) {

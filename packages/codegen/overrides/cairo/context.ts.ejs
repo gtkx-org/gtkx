@@ -1,5 +1,6 @@
 import type { ExternalObject, Handle } from "@gtkx/native";
-import { getHandle, readField as read, t, wrapHandle, writeField as write } from "@gtkx/ffi";
+import { getHandle, t, wrapHandle } from "@gtkx/ffi";
+import { read, write } from "@gtkx/native";
 import { alloc } from "@gtkx/native";
 import type {
     Antialias,
@@ -1151,7 +1152,7 @@ const cairoCopyPath = bind(
     "libcairo.so.2",
     "cairo_copy_path",
     [CONTEXT_T],
-    t.boxed("cairo_path_t", { ownership: "full", sharedLibrary: "libcairo.so.2", freeFn: "cairo_path_destroy" }),
+    t.boxed("cairo_path_t", { ownership: "full", sharedLibrary: "libcairo.so.2", freeFnName: "cairo_path_destroy" }),
 );
 Context.prototype.copyPath = function (): PathData[] {
     return parsePath(cairoCopyPath(getHandle(this)) as ExternalObject<Handle>);
@@ -1161,7 +1162,7 @@ const cairoCopyPathFlat = bind(
     "libcairo.so.2",
     "cairo_copy_path_flat",
     [CONTEXT_T],
-    t.boxed("cairo_path_t", { ownership: "full", sharedLibrary: "libcairo.so.2", freeFn: "cairo_path_destroy" }),
+    t.boxed("cairo_path_t", { ownership: "full", sharedLibrary: "libcairo.so.2", freeFnName: "cairo_path_destroy" }),
 );
 Context.prototype.copyPathFlat = function (): PathData[] {
     return parsePath(cairoCopyPathFlat(getHandle(this)) as ExternalObject<Handle>);

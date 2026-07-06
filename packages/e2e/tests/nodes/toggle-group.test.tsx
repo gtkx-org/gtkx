@@ -36,7 +36,7 @@ const clickToggleAndExpectActive = async (
 };
 
 describe("render - ToggleGroup (1)", () => {
-    describe("ToggleGroupNode (1)", () => {
+    describe("AdwToggleGroup (1)", () => {
         it("creates ToggleGroup widget without toggles", async () => {
             const ref = createRef<Adw.ToggleGroup>();
 
@@ -86,7 +86,7 @@ describe("render - ToggleGroup (1)", () => {
 });
 
 describe("render - ToggleGroup (2)", () => {
-    describe("ToggleGroupNode (2)", () => {
+    describe("AdwToggleGroup (2)", () => {
         it("updates toggle props", async () => {
             const ref = createRef<Adw.ToggleGroup>();
 
@@ -120,7 +120,7 @@ describe("render - ToggleGroup (2)", () => {
 });
 
 describe("render - ToggleGroup (3)", () => {
-    describe("ToggleGroupNode (3)", () => {
+    describe("AdwToggleGroup (3)", () => {
         it("handles inserting toggles dynamically", async () => {
             const ref = createRef<Adw.ToggleGroup>();
 

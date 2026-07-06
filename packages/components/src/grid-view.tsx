@@ -21,7 +21,10 @@ type GridViewDeclarativeProps<T = unknown> = CollectionItemSizeProps &
         renderItem: (info: RenderItemInfo<T>) => ReactNode;
     };
 
-export type GridViewProps<T = unknown> = Omit<GtkGridViewProps, keyof GridViewDeclarativeProps<T>> &
+export type GridViewProps<T = unknown> = Omit<
+    GtkGridViewProps,
+    "model" | "factory" | keyof GridViewDeclarativeProps<T>
+> &
     GridViewDeclarativeProps<T>;
 
 export const GridView = <T = unknown>(props: GridViewProps<T>): ReactNode => {

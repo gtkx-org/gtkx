@@ -1,12 +1,6 @@
 /// <reference types="@gtkx/config/env" />
 
-import {
-    CONSTRUCT_ONLY_PROPS,
-    CONSTRUCT_PROPS,
-    DEFAULT_BLOCKABLE_TYPES,
-    DEFAULT_PROPS,
-    SIGNALS,
-} from "virtual:gtkx-config";
+import { CONSTRUCT_ONLY_PROPS, CONSTRUCT_PROPS, DEFAULT_PROPS, SIGNALS } from "virtual:gtkx-config";
 import type { TypedClass } from "@gtkx/ffi";
 import { typeInterfaces, typeName, typeParent } from "@gtkx/gi/gobject";
 import { NOTIFY_SIGNAL, propToNotifySignal } from "./notify-name.js";
@@ -106,9 +100,6 @@ export const typeChainIncludes = (gtype: bigint, name: string): boolean => {
     }
     return names.has(name);
 };
-
-export const isDefaultBlockableType = (gtype: bigint): boolean =>
-    DEFAULT_BLOCKABLE_TYPES.some((name) => typeChainIncludes(gtype, name));
 
 const memoize = <T>(
     cache: Map<bigint, Map<string, T>>,

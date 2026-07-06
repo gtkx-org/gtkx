@@ -4,7 +4,6 @@ import { getEditableDelegate } from "../editable.js";
 import { fireEvent } from "../fire-event.js";
 import { dispatchOnOrCreateController } from "./dispatch.js";
 import { wrapEvent } from "./event-wrapper.js";
-import type { UserEventInstance } from "./instance.js";
 import type { UserEventState } from "./state.js";
 
 export type TabOptions = {
@@ -193,9 +192,9 @@ const applyKeyAction = async (
     }
 };
 
-export const keyboard = (instance: UserEventInstance, widget: Gtk.Widget, input: string): Promise<void> =>
+export const keyboard = (state: UserEventState, widget: Gtk.Widget, input: string): Promise<void> =>
     dispatchOnOrCreateController(widget, Gtk.EventControllerKey, async (controller) => {
         for (const action of parseKeyboardInput(input)) {
-            await applyKeyAction(widget, controller, instance.state, action);
+            await applyKeyAction(widget, controller, state, action);
         }
     });

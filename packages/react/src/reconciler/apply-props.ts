@@ -33,7 +33,6 @@ const propsEqual = (a: unknown, b: unknown): boolean => {
 
 export type ApplyPropsOptions = {
     exclude?: (name: string) => boolean;
-    defaultBlockable?: boolean;
 };
 
 export function applyProps(
@@ -43,7 +42,7 @@ export function applyProps(
     options?: ApplyPropsOptions,
 ): void {
     const context: ApplyContext = { container, oldProps, newProps };
-    applyGenericProps(context, options?.exclude, options?.defaultBlockable ?? true);
+    applyGenericProps(context, options?.exclude);
 }
 
 type ApplyContext = {
@@ -108,7 +107,6 @@ const collectGenericChanges = (
 const applyGenericProps = (
     context: ApplyContext,
     exclude: ((name: string) => boolean) | undefined,
-    defaultBlockable: boolean,
 ): void => {
     const { container } = context;
     const { signalStore } = stateOf(container);
@@ -124,7 +122,6 @@ const applyGenericProps = (
             instance: container,
             signal: signalName,
             handler,
-            blockable: defaultBlockable,
         });
     }
 

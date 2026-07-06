@@ -16,7 +16,7 @@ const expectDefaultContentSize = async (drawFunc: Gtk.DrawingAreaDrawFunc | unde
     expect(ref.current?.getContentHeight()).toBe(0);
 };
 
-describe("render - DrawingArea > DrawingAreaNode (1)", () => {
+describe("render - DrawingArea (1)", () => {
     it("creates DrawingArea widget", async () => {
         const ref = createRef<Gtk.DrawingArea>();
 
@@ -44,7 +44,7 @@ describe("render - DrawingArea > DrawingAreaNode (1)", () => {
     });
 });
 
-describe("render - DrawingArea > DrawingAreaNode (2)", () => {
+describe("render - DrawingArea (2)", () => {
     it("updates content size when props change", async () => {
         const ref = createRef<Gtk.DrawingArea>();
 
@@ -80,7 +80,7 @@ describe("render - DrawingArea > DrawingAreaNode (2)", () => {
     });
 });
 
-describe("render - DrawingArea > DrawingAreaNode (3)", () => {
+describe("render - DrawingArea (3)", () => {
     it("sets widget properties alongside drawFunc", async () => {
         const ref = createRef<Gtk.DrawingArea>();
 

@@ -66,7 +66,7 @@ const socketCtx = {} as SocketServerContext;
 function setupSocketServer(): void {
     beforeEach(() => {
         socketCtx.tmpDir = mkdtempSync(join(tmpdir(), "gtkx-socket-server-"));
-        socketCtx.socketPath = join(socketCtx.tmpDir, "ipc.sock");
+        socketCtx.socketPath = join(socketCtx.tmpDir, "test.sock");
         socketCtx.registry = new ConnectionRegistry();
         socketCtx.server = new SocketServer(socketCtx.registry, socketCtx.socketPath);
     });
@@ -290,7 +290,7 @@ describe("SocketServer errors", () => {
     setupSocketServer();
     it("rejects start and routes error to the registry when binding to an unreachable path", async () => {
         const badRegistry = new ConnectionRegistry();
-        const bad = new SocketServer(badRegistry, join(socketCtx.tmpDir, "no-such-dir", "ipc.sock"));
+        const bad = new SocketServer(badRegistry, join(socketCtx.tmpDir, "no-such-dir", "test.sock"));
         const errorReceived = new Promise<Error>((resolve) => {
             badRegistry.once("error", (err) => resolve(err));
         });

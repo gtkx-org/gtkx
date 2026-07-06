@@ -1,7 +1,7 @@
 /// <reference types="@gtkx/config/env" />
 
-import { CONTAINER_PROPS, SYNTHETIC_PROPS } from "virtual:gtkx-config";
-import type { Arg, ArgRef, Call, ContainerProp, SyntheticPropRule } from "@gtkx/config";
+import { ELEMENT_PROPS } from "virtual:gtkx-config";
+import type { AppliedProp, Arg, ArgRef, Call, ContainerProp } from "@gtkx/config";
 import { typeFromName } from "@gtkx/gi/gobject";
 import { callMethod } from "@gtkx/utils";
 import { collectTypeNamesWithInterfaces, foldInheritedTableWithInterfaces } from "../utils/gtype.js";
@@ -76,30 +76,32 @@ export const nullSetterCurrentHolder = (target: object, call: Call): unknown => 
     return callMethod(target, getter, []);
 };
 
-export const writeTarget = (instance: object, name: string, value: unknown): void => {
-    if (typeof Reflect.get(instance, name) === "function") callMethod(instance, name, [value]);
-    else Reflect.set(instance, name, value);
-};
-
 const attachIndex = new Map<string, ContainerProp>();
 const adoptByParent = new Map<string, ContainerProp>();
 const slotsByParent: Record<string, string[]> = {};
+const APPLIED_BY_TYPE: Record<string, AppliedProp[]> = {};
 
-for (const [parent, props] of Object.entries(CONTAINER_PROPS)) {
-    for (const cp of props) {
-        attachIndex.set(`${parent}:${cp.child}:${cp.prop === "children" ? "" : cp.prop}`, cp);
-        if (cp.prop !== "children") {
-            const slots = slotsByParent[parent] ?? [];
-            slots.push(cp.prop);
-            slotsByParent[parent] = slots;
+for (const [parent, props] of Object.entries(ELEMENT_PROPS)) {
+    for (const prop of props) {
+        if (prop.kind === "container") {
+            attachIndex.set(`${parent}:${prop.child}:${prop.prop === "children" ? "" : prop.prop}`, prop);
+            if (prop.prop !== "children") {
+                const slots = slotsByParent[parent] ?? [];
+                slots.push(prop.prop);
+                slotsByParent[parent] = slots;
+            }
+            if (prop.adopt !== undefined) adoptByParent.set(parent, prop);
+        } else {
+            const applied = APPLIED_BY_TYPE[parent] ?? [];
+            applied.push(prop);
+            APPLIED_BY_TYPE[parent] = applied;
         }
-        if (cp.adopt !== undefined) adoptByParent.set(parent, cp);
     }
 }
 
 const attachCache = new Map<string, ContainerProp | null>();
 
-export const resolveAttachRule = (
+export const resolveContainerProp = (
     parentType: bigint,
     childType: bigint,
     slot: string | undefined,
@@ -122,7 +124,7 @@ export const resolveAttachRule = (
 
 const adoptCache = new Map<bigint, ContainerProp | null>();
 
-export const adoptRuleFor = (parentType: bigint): ContainerProp | null => {
+export const adoptContainerPropFor = (parentType: bigint): ContainerProp | null => {
     const cached = adoptCache.get(parentType);
     if (cached !== undefined) return cached;
     let resolved: ContainerProp | null = null;
@@ -155,34 +157,27 @@ export const slotPropsFor = (elementName: string): Set<string> => {
     return names;
 };
 
-const SYNTHETIC_BY_TYPE: Record<string, SyntheticPropRule[]> = {};
-for (const rule of SYNTHETIC_PROPS) {
-    const rules = SYNTHETIC_BY_TYPE[rule.type] ?? [];
-    rules.push(rule);
-    SYNTHETIC_BY_TYPE[rule.type] = rules;
-}
+const appliedCache = new Map<bigint, Map<string, AppliedProp>>();
 
-const syntheticRulesCache = new Map<bigint, Map<string, SyntheticPropRule>>();
-
-export const syntheticRulesFor = (gtype: bigint): Map<string, SyntheticPropRule> => {
-    const cached = syntheticRulesCache.get(gtype);
+export const appliedPropsFor = (gtype: bigint): Map<string, AppliedProp> => {
+    const cached = appliedCache.get(gtype);
     if (cached) return cached;
-    const resolved = foldInheritedTableWithInterfaces<SyntheticPropRule[], Map<string, SyntheticPropRule>>(
+    const resolved = foldInheritedTableWithInterfaces<AppliedProp[], Map<string, AppliedProp>>(
         gtype,
-        SYNTHETIC_BY_TYPE,
-        (collected, rules) => {
-            for (const rule of rules) {
-                if (!collected.has(rule.prop)) collected.set(rule.prop, rule);
+        APPLIED_BY_TYPE,
+        (collected, props) => {
+            for (const prop of props) {
+                if (!collected.has(prop.prop)) collected.set(prop.prop, prop);
             }
             return collected;
         },
         new Map(),
     );
-    syntheticRulesCache.set(gtype, resolved);
+    appliedCache.set(gtype, resolved);
     return resolved;
 };
 
-export const isSyntheticProp = (gtype: bigint, name: string): boolean => syntheticRulesFor(gtype).has(name);
+export const isAppliedProp = (gtype: bigint, name: string): boolean => appliedPropsFor(gtype).has(name);
 
 const constructionSkipCache = new Map<bigint, Set<string>>();
 
@@ -190,8 +185,8 @@ export const constructionSkipProps = (gtype: bigint): Set<string> => {
     const cached = constructionSkipCache.get(gtype);
     if (cached) return cached;
     const skipped = new Set<string>();
-    for (const rule of syntheticRulesFor(gtype).values()) {
-        if (rule.kind === "selection") skipped.add(rule.prop);
+    for (const prop of appliedPropsFor(gtype).values()) {
+        if (prop.kind === "lazy") skipped.add(prop.prop);
     }
     constructionSkipCache.set(gtype, skipped);
     return skipped;

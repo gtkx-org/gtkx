@@ -36,7 +36,6 @@ export class TextBufferController {
         if (!this.managesContent) return;
 
         const state = stateOf(this.owner);
-        state.signalStore.blockAll();
         buffer.beginIrreversibleAction();
         try {
             this.detachAnchoredWidgets();
@@ -44,7 +43,6 @@ export class TextBufferController {
             this.insertChildren(buffer, state.children);
         } finally {
             buffer.endIrreversibleAction();
-            state.signalStore.unblockAll();
         }
     };
 

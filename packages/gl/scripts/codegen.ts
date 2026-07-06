@@ -10,7 +10,7 @@ const log = createLogger("gl");
 const require = createRequire(import.meta.url);
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const registryPath = join(dirname(require.resolve("@gtkx/codegen/package.json")), "registry", "gl.xml");
-const glSrcDir = join(scriptDir, "..", "..", "gl", "src");
+const glSrcDir = join(scriptDir, "..", "src");
 const outputDir = join(glSrcDir, "generated");
 
 const EXPORT_PATTERN = /^export (?:async )?(?:function|const|type|interface|class) ([A-Za-z_$][\w$]*)/gm;

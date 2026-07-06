@@ -6,7 +6,7 @@ import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 import { countChildren } from "../helpers/child-count.js";
 
-describe("render - OverlayChild > OverlayChildNode (1)", () => {
+describe("render - Overlay.Child (1)", () => {
     it("adds child as overlay", async () => {
         const overlayRef = createRef<Gtk.Overlay>();
         const mainRef = createRef<Gtk.Label>();
@@ -41,7 +41,7 @@ describe("render - OverlayChild > OverlayChildNode (1)", () => {
     });
 });
 
-describe("render - OverlayChild > OverlayChildNode (2)", () => {
+describe("render - Overlay.Child (2)", () => {
     it("sets clipOverlay property", async () => {
         const overlayRef = createRef<Gtk.Overlay>();
 
@@ -59,7 +59,7 @@ describe("render - OverlayChild > OverlayChildNode (2)", () => {
     });
 });
 
-describe("render - OverlayChild > OverlayChildNode (3)", () => {
+describe("render - Overlay.Child (3)", () => {
     it("removes overlay child", async () => {
         const overlayRef = createRef<Gtk.Overlay>();
 
@@ -82,7 +82,7 @@ describe("render - OverlayChild > OverlayChildNode (3)", () => {
     });
 });
 
-describe("render - OverlayChild > OverlayChildNode (4)", () => {
+describe("render - Overlay.Child (4)", () => {
     it("adds multiple overlay children with separate wrappers", async () => {
         const overlayRef = createRef<Gtk.Overlay>();
 
@@ -112,7 +112,7 @@ const renderTwoButtonOverlay = async (measure?: boolean): Promise<Gtk.Overlay> =
     return overlayRef.current as Gtk.Overlay;
 };
 
-describe("render - OverlayChild > OverlayChildNode (5)", () => {
+describe("render - Overlay.Child (5)", () => {
     it("places each overlay under the overlay", async () => {
         const overlay = await renderTwoButtonOverlay();
 
@@ -124,7 +124,7 @@ describe("render - OverlayChild > OverlayChildNode (5)", () => {
     });
 });
 
-describe("render - OverlayChild > OverlayChildNode (6)", () => {
+describe("render - Overlay.Child (6)", () => {
     it("applies props to each overlay", async () => {
         const overlay = await renderTwoButtonOverlay(true);
 

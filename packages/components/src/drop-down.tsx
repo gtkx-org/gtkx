@@ -83,7 +83,10 @@ export type DropDownDeclarativeProps<T = unknown, S = unknown> = {
     renderHeader?: ((info: { section: S }) => ReactNode) | null | undefined;
 };
 
-export type DropDownProps<T = unknown, S = unknown> = Omit<GtkDropDownProps, keyof DropDownDeclarativeProps<T, S>> &
+export type DropDownProps<T = unknown, S = unknown> = Omit<
+    GtkDropDownProps,
+    keyof DropDownDeclarativeProps<T, S> | "model" | "factory" | "listFactory" | "headerFactory"
+> &
     DropDownDeclarativeProps<T, S>;
 
 interface DropDownBodyProps<T, S, W extends DropDownWidget> {

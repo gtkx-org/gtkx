@@ -12,12 +12,7 @@ const rebuildLabelText = (owner: Node): void => {
         throw new Error("<GtkLabel> cannot mix a `label` prop with text children; use one or the other");
     }
     const text = runs.map((run) => String(stateOf(run).props.text)).join("");
-    state.signalStore.blockAll();
-    try {
-        owner.setLabel(text);
-    } finally {
-        state.signalStore.unblockAll();
-    }
+    owner.setLabel(text);
 };
 
 export const scheduleLabelTextRebuild = (node: Node): void => {
