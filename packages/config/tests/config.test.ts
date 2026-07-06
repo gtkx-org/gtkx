@@ -101,37 +101,35 @@ describe("validateGtkxConfig (applicationId)", () => {
 });
 
 describe("validateGtkxConfig rules validation", () => {
-    it("accepts inline relationship and synthetic-prop rules", () => {
+    it("accepts inline container-prop and synthetic-prop rules", () => {
         const rules: GtkxRules = {
-            relationships: [
-                {
-                    kind: "attach",
-                    parent: "GtkWidget",
-                    child: "GtkEventController",
-                    add: "addController",
-                    remove: "removeController",
-                },
-                {
-                    kind: "attach",
-                    parent: "GtkWidget",
-                    child: "GActionGroup",
-                    slot: "actionGroups",
-                    add: { method: "insertActionGroup", args: [{ prop: "prefix" }, "child"] },
-                    remove: { method: "insertActionGroup", args: [{ prop: "prefix" }, { literal: null }] },
-                },
-                { kind: "companion", element: "GtkStackPage", parent: "GtkStack", add: "addChild" },
-                {
-                    kind: "companion",
-                    element: "GtkNotebookPage",
-                    parent: "GtkNotebook",
-                    add: { method: "appendPage", args: ["child", { literal: null }] },
-                    insert: { method: "insertPage", args: ["child", { literal: null }, "index"] },
-                    remove: "detachTab",
-                    companion: "getPage",
-                    setters: { label: "setTabLabelText", tabLabel: "setTabLabel" },
-                },
-                { kind: "reject", parent: "GObject", child: "GtkEventController", prop: "controllers" },
-            ],
+            containerProps: {
+                GtkWidget: [
+                    {
+                        prop: "controllers",
+                        child: "GtkEventController",
+                        append: "addController",
+                        remove: "removeController",
+                    },
+                    {
+                        prop: "actionGroups",
+                        child: "GActionGroup",
+                        append: { method: "insertActionGroup", args: [{ prop: "prefix" }, "child"] },
+                        remove: { method: "insertActionGroup", args: [{ prop: "prefix" }, { literal: null }] },
+                    },
+                ],
+                GtkStack: [{ prop: "children", child: "GtkWidget", append: "addChild", remove: "remove", adopt: true }],
+                GtkNotebook: [
+                    {
+                        prop: "children",
+                        child: "GtkWidget",
+                        append: { method: "appendPage", args: ["child", { literal: null }] },
+                        insert: { method: "insertPage", args: ["child", { literal: null }, "index"] },
+                        remove: "detachTab",
+                        adopt: "getPage",
+                    },
+                ],
+            },
             syntheticProps: [
                 {
                     kind: "list",
@@ -182,46 +180,34 @@ describe("validateGtkxConfig rules validation", () => {
         expect(() => validateUnknown({ rules: "./gtkx.rules.ts" })).toThrow(/`rules` is inline data/);
     });
 
-    it("rejects an unknown rule kind", () => {
-        expect(() => validateUnknown({ rules: { relationships: [{ kind: "wrap" }] } })).toThrow(
-            /`rules\.relationships\[0\]\.kind` must be one of attach, companion, reject/,
-        );
+    it("rejects a container prop that defines neither append nor remove", () => {
+        expect(() =>
+            validateUnknown({ rules: { containerProps: { GtkWidget: [{ prop: "children", child: "GtkWidget" }] } } }),
+        ).toThrow(/must define at least one of `append` or `remove`/);
     });
 
-    it("rejects an unrecognized rule key", () => {
-        const rule = {
-            kind: "attach",
-            parent: "GtkWidget",
-            child: "GtkWidget",
-            add: "append",
-            detach: "remove",
-        };
-        expect(() => validateUnknown({ rules: { relationships: [rule] } })).toThrow(
-            /`rules\.relationships\[0\]\.detach` is not a recognized key/,
+    it("rejects an unrecognized container-prop key", () => {
+        const cp = { prop: "children", child: "GtkWidget", append: "append", detach: "remove" };
+        expect(() => validateUnknown({ rules: { containerProps: { GtkWidget: [cp] } } })).toThrow(
+            /`rules\.containerProps\.GtkWidget\[0\]\.detach` is not a recognized key/,
         );
     });
 
     it("rejects an unknown argument reference", () => {
-        const rule = {
-            kind: "attach",
-            parent: "GtkWidget",
-            child: "GtkWidget",
-            add: { method: "append", args: ["kid"] },
-        };
-        expect(() => validateUnknown({ rules: { relationships: [rule] } })).toThrow(
-            /`rules\.relationships\[0\]\.add\.args\[0\]` has unknown reference "kid"/,
+        const cp = { prop: "children", child: "GtkWidget", append: { method: "append", args: ["kid"] } };
+        expect(() => validateUnknown({ rules: { containerProps: { GtkWidget: [cp] } } })).toThrow(
+            /`rules\.containerProps\.GtkWidget\[0\]\.append\.args\[0\]` has unknown reference "kid"/,
         );
     });
 
     it("rejects a non-serializable literal", () => {
-        const rule = {
-            kind: "attach",
-            parent: "GtkWidget",
+        const cp = {
+            prop: "children",
             child: "GtkWidget",
-            add: { method: "append", args: [{ literal: () => null }] },
+            append: { method: "append", args: [{ literal: () => null }] },
         };
-        expect(() => validateUnknown({ rules: { relationships: [rule] } })).toThrow(
-            /`rules\.relationships\[0\]\.add\.args\[0\]\.literal` must be a JSON-serializable value/,
+        expect(() => validateUnknown({ rules: { containerProps: { GtkWidget: [cp] } } })).toThrow(
+            /`rules\.containerProps\.GtkWidget\[0\]\.append\.args\[0\]\.literal` must be a JSON-serializable value/,
         );
     });
 
@@ -321,7 +307,7 @@ describe("resolveGtkxConfig", () => {
             libraries: [],
             girPath: [],
             applicationId: DEFAULT_APPLICATION_ID,
-            rules: { containerProps: {}, relationships: [], syntheticProps: [] },
+            rules: { containerProps: {}, syntheticProps: [] },
             reactCompiler: { target: "19" },
             codegen: true,
         });
@@ -333,19 +319,18 @@ describe("resolveGtkxConfig", () => {
             girPath: ["/opt/gir"],
             applicationId: "org.gtk.Demo4",
             rules: {
-                relationships: [
-                    { kind: "reject", parent: "GObject", child: "GtkEventController", prop: "controllers" },
-                ],
+                containerProps: {
+                    GtkStack: [{ prop: "children", child: "GtkWidget", append: "addChild", adopt: true }],
+                },
             },
             reactCompiler: { compilationMode: "annotation" },
         };
         expect(resolveGtkxConfig(configured)).toEqual({
             ...configured,
             rules: {
-                containerProps: {},
-                relationships: [
-                    { kind: "reject", parent: "GObject", child: "GtkEventController", prop: "controllers" },
-                ],
+                containerProps: {
+                    GtkStack: [{ prop: "children", child: "GtkWidget", append: "addChild", adopt: true }],
+                },
                 syntheticProps: [],
             },
             reactCompiler: { target: "19", compilationMode: "annotation" },

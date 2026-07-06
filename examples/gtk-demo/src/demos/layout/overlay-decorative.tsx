@@ -10,11 +10,21 @@ import {
     GtkTextTag,
     GtkTextView,
 } from "@gtkx/jsx/gtk";
-import { useState } from "react";
+import { type ReactNode, type RefCallback, useState } from "react";
 import { path as decor1Path } from "#data/demos/layout/decor1.png";
 import { path as decor2Path } from "#data/demos/layout/decor2.png";
 import type { Demo } from "../types.js";
 import sourceCode from "./overlay-decorative.tsx?raw";
+
+const decorPicture = (
+    ref: RefCallback<Gtk.Widget>,
+    name: string,
+    paintable: Gdk.Texture,
+    halign: Gtk.Align,
+    valign: Gtk.Align,
+): ReactNode => (
+    <GtkPicture ref={ref} name={name} paintable={paintable} halign={halign} valign={valign} canTarget={false} />
+);
 
 const OverlayDecorativeDemo = () => {
     const [margin, setMargin] = useState(100);
@@ -45,28 +55,10 @@ const OverlayDecorativeDemo = () => {
                 />
             </GtkScrolledWindow>
             <Overlay.Child>
-                {(ref) => (
-                    <GtkPicture
-                        ref={ref}
-                        name="picture-start"
-                        paintable={decor1}
-                        halign={Gtk.Align.START}
-                        valign={Gtk.Align.START}
-                        canTarget={false}
-                    />
-                )}
+                {(ref) => decorPicture(ref, "picture-start", decor1, Gtk.Align.START, Gtk.Align.START)}
             </Overlay.Child>
             <Overlay.Child>
-                {(ref) => (
-                    <GtkPicture
-                        ref={ref}
-                        name="picture-end"
-                        paintable={decor2}
-                        halign={Gtk.Align.END}
-                        valign={Gtk.Align.END}
-                        canTarget={false}
-                    />
-                )}
+                {(ref) => decorPicture(ref, "picture-end", decor2, Gtk.Align.END, Gtk.Align.END)}
             </Overlay.Child>
             <Overlay.Child>
                 {(ref) => (

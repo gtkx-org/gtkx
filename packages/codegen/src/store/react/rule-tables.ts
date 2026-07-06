@@ -1,13 +1,4 @@
-import type {
-    AttachRule,
-    Call,
-    ContainerProp,
-    ManyContainerProp,
-    OneContainerProp,
-    RelationshipRule,
-    ResolvedGtkxRules,
-    SyntheticPropRule,
-} from "@gtkx/config";
+import type { Call, ContainerProp, ResolvedGtkxRules, SyntheticPropRule } from "@gtkx/config";
 import { toCamelIdentifier } from "@gtkx/utils";
 import { ancestorChain } from "../../gir/ancestry.js";
 import type { GirClass } from "../../gir/class.js";
@@ -15,11 +6,10 @@ import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
 import { type AttachShape, collectAttachShapes } from "./attach-shapes.js";
 import { glibNameOf, implementedInterfaces } from "./intrinsic-elements.js";
-import { CONTAINER_PROPS, containerPropsToRelationships, RELATIONSHIP_RULES, SYNTHETIC_PROP_RULES } from "./tables.js";
+import { CONTAINER_PROPS, SYNTHETIC_PROP_RULES } from "./tables.js";
 
 export type RuleTables = {
     containerProps: Record<string, ContainerProp[]>;
-    relationships: RelationshipRule[];
     syntheticProps: SyntheticPropRule[];
 };
 
@@ -79,38 +69,16 @@ const hasProperty = (context: GirContext, typeName: string, camelName: string): 
 
 const callMethodName = (call: Call): string => (typeof call === "string" ? call : call.method);
 
-const relationshipTypeNames = (rule: RelationshipRule): string[] => {
-    switch (rule.kind) {
-        case "attach":
-            return rule.autowrap === undefined ? [rule.parent, rule.child] : [rule.parent, rule.child, rule.autowrap];
-        case "companion":
-            return [rule.parent];
-        case "reject":
-            return [rule.parent, rule.child];
-    }
+const containerPropTypeNames = (parent: string, cp: ContainerProp): string[] => {
+    const names = [parent, cp.child];
+    if (cp.autowrap !== undefined) names.push(cp.autowrap);
+    return names;
 };
 
-const relationshipCalls = (rule: RelationshipRule): Call[] => {
-    switch (rule.kind) {
-        case "attach":
-            return [rule.add, rule.remove, rule.insert, rule.reorder].filter((call) => call !== undefined);
-        case "companion":
-            return [rule.add, rule.insert, rule.remove, rule.companion, ...Object.values(rule.setters ?? {})].filter(
-                (call) => call !== undefined,
-            );
-        default:
-            return [];
-    }
-};
-
-const relationshipCallHost = (rule: RelationshipRule): string | undefined => {
-    switch (rule.kind) {
-        case "attach":
-        case "companion":
-            return rule.parent;
-        default:
-            return undefined;
-    }
+const containerPropCalls = (cp: ContainerProp): Call[] => {
+    const calls = [cp.append, cp.remove, cp.insert, cp.reorder].filter((call): call is Call => call !== undefined);
+    if (typeof cp.adopt === "string") calls.push(cp.adopt);
+    return calls;
 };
 
 const syntheticCalls = (rule: SyntheticPropRule): Call[] => {
@@ -164,10 +132,14 @@ const validateUserCalls = (context: GirContext, path: string, host: string, call
     }
 };
 
-const validateUserRelationship = (context: GirContext, path: string, rule: RelationshipRule): void => {
-    validateUserTypeNames(context, path, relationshipTypeNames(rule));
-    const host = relationshipCallHost(rule);
-    if (host !== undefined) validateUserCalls(context, path, host, relationshipCalls(rule));
+const validateUserContainerProps = (context: GirContext, containerProps: Record<string, ContainerProp[]>): void => {
+    for (const [parent, props] of Object.entries(containerProps)) {
+        props.forEach((cp, index) => {
+            const path = `rules.containerProps.${parent}[${index}]`;
+            validateUserTypeNames(context, path, containerPropTypeNames(parent, cp));
+            validateUserCalls(context, path, parent, containerPropCalls(cp));
+        });
+    }
 };
 
 const validateUserSynthetic = (context: GirContext, path: string, rule: SyntheticPropRule): void => {
@@ -177,17 +149,6 @@ const validateUserSynthetic = (context: GirContext, path: string, rule: Syntheti
         if (!hasMethod(context, rule.type, name) && !hasProperty(context, rule.type, name)) {
             throw userRuleError(path, `references "${name}", which is neither a method nor a property of ${rule.type}`);
         }
-    }
-};
-
-const relationshipKey = (rule: RelationshipRule): string => {
-    switch (rule.kind) {
-        case "attach":
-            return `attach:${rule.parent}:${rule.child}:${rule.slot ?? ""}`;
-        case "companion":
-            return `element:${rule.element}`;
-        case "reject":
-            return `reject:${rule.parent}:${rule.child}`;
     }
 };
 
@@ -250,62 +211,21 @@ const effectiveShapes = (
     return effective;
 };
 
-const generatedRuleFor = (glibName: string, shapes: Set<AttachShape>): AttachRule | undefined => {
-    const add = generatedAdd(shapes);
+const generatedContainerPropFor = (shapes: Set<AttachShape>): ContainerProp | undefined => {
+    const append = generatedAdd(shapes);
     const remove = generatedRemove(shapes);
-    if (add === undefined && remove === undefined) return undefined;
-    const rule: AttachRule = { kind: "attach", parent: glibName, child: "GtkWidget" };
-    if (add !== undefined) rule.add = add;
-    if (remove !== undefined) rule.remove = remove;
+    if (append === undefined && remove === undefined) return undefined;
+    const cp: ContainerProp = { prop: "children", child: "GtkWidget" };
+    if (append !== undefined) cp.append = append;
+    if (remove !== undefined) cp.remove = remove;
     const insert = generatedInsert(shapes);
-    if (insert !== undefined) rule.insert = insert;
+    if (insert !== undefined) cp.insert = insert;
     const reorder = generatedReorder(shapes);
-    if (reorder !== undefined) rule.reorder = reorder;
-    return rule;
+    if (reorder !== undefined) cp.reorder = reorder;
+    return cp;
 };
 
-const collectGeneratedRelationships = (context: GirContext): AttachRule[] => {
-    const shapeTable = collectAttachShapes(context.library);
-    const rules: AttachRule[] = [];
-    for (const [glibName, ownShapes] of Object.entries(shapeTable)) {
-        if (!ownShapes.some((shape) => STRATEGY_SHAPES.has(shape))) continue;
-        const entry = context.index.get(glibName);
-        if (entry === undefined) continue;
-        const rule = generatedRuleFor(glibName, effectiveShapes(context, shapeTable, entry));
-        if (rule !== undefined) rules.push(rule);
-    }
-    return rules;
-};
-
-const SETTER_METHODS: Set<string> = new Set(["setChild", "setContent"]);
-
-const isSetterMethod = (call: Call): boolean => SETTER_METHODS.has(callMethodName(call));
-
-const containerPropFromAttach = (rule: AttachRule): ContainerProp => {
-    const prop = rule.slot ?? "children";
-    if (rule.add !== undefined && isSetterMethod(rule.add)) {
-        const one: OneContainerProp = { arity: "one", prop, child: rule.child, set: rule.add };
-        if (rule.remove !== undefined) one.unset = rule.remove;
-        return one;
-    }
-    const many: ManyContainerProp = { arity: "many", prop, child: rule.child };
-    if (rule.add !== undefined) many.append = rule.add;
-    if (rule.remove !== undefined) many.remove = rule.remove;
-    if (rule.insert !== undefined) many.insert = rule.insert;
-    if (rule.reorder !== undefined) many.reorder = rule.reorder;
-    if (rule.autowrap !== undefined) many.autowrap = rule.autowrap;
-    return many;
-};
-
-const containerPropTypeNames = (parent: string, cp: ContainerProp): string[] => {
-    const names = [parent, cp.child];
-    if (cp.arity === "many" && cp.autowrap !== undefined) names.push(cp.autowrap);
-    if (cp.adopt !== undefined) names.push(cp.adopt.element);
-    return names;
-};
-
-const containerPropKey = (cp: ContainerProp): string =>
-    cp.adopt === undefined ? `${cp.prop}:${cp.child}` : `adopt:${cp.adopt.element}`;
+const containerPropKey = (cp: ContainerProp): string => `${cp.prop}:${cp.child}`;
 
 const mergeContainerProps = (layers: Record<string, ContainerProp[]>[]): Record<string, ContainerProp[]> => {
     const byParent = new Map<string, Map<string, ContainerProp>>();
@@ -326,11 +246,17 @@ const mergeContainerProps = (layers: Record<string, ContainerProp[]>[]): Record<
 };
 
 const collectGeneratedContainerProps = (context: GirContext): Record<string, ContainerProp[]> => {
+    const shapeTable = collectAttachShapes(context.library);
     const result: Record<string, ContainerProp[]> = {};
-    for (const rule of collectGeneratedRelationships(context)) {
-        const props = result[rule.parent] ?? [];
-        props.push(containerPropFromAttach(rule));
-        result[rule.parent] = props;
+    for (const [glibName, ownShapes] of Object.entries(shapeTable)) {
+        if (!ownShapes.some((shape) => STRATEGY_SHAPES.has(shape))) continue;
+        const entry = context.index.get(glibName);
+        if (entry === undefined) continue;
+        const cp = generatedContainerPropFor(effectiveShapes(context, shapeTable, entry));
+        if (cp === undefined) continue;
+        const props = result[glibName] ?? [];
+        props.push(cp);
+        result[glibName] = props;
     }
     return result;
 };
@@ -349,22 +275,12 @@ const filterKnownContainerProps = (
 
 export const assembleRuleTables = (library: Library, userRules: ResolvedGtkxRules): RuleTables => {
     const context = buildGirContext(library);
-    const userContainerRelationships = containerPropsToRelationships(userRules.containerProps);
+    validateUserContainerProps(context, userRules.containerProps);
     let position = 0;
-    for (const rule of userRules.relationships) {
-        validateUserRelationship(context, `rules.relationships[${position}]`, rule);
-        position++;
-    }
-    for (const rule of userContainerRelationships) {
-        validateUserRelationship(context, "rules.containerProps", rule);
-    }
-    position = 0;
     for (const rule of userRules.syntheticProps) {
         validateUserSynthetic(context, `rules.syntheticProps[${position}]`, rule);
         position++;
     }
-    const generated = collectGeneratedRelationships(context);
-    const curatedRelationships = RELATIONSHIP_RULES.filter((rule) => knownTypes(context, relationshipTypeNames(rule)));
     const curatedSynthetics = SYNTHETIC_PROP_RULES.filter((rule) => context.index.has(rule.type));
     const containerProps = mergeContainerProps([
         collectGeneratedContainerProps(context),
@@ -373,10 +289,6 @@ export const assembleRuleTables = (library: Library, userRules: ResolvedGtkxRule
     ]);
     return {
         containerProps,
-        relationships: mergeByKey(
-            [generated, curatedRelationships, userRules.relationships, userContainerRelationships],
-            relationshipKey,
-        ),
         syntheticProps: mergeByKey([curatedSynthetics, userRules.syntheticProps], syntheticKey),
     };
 };

@@ -35,7 +35,16 @@ describe("createDevServerConfig", () => {
     it("externalizes the native, generated, and singleton-ffi leaves", () => {
         const noExternal = createDevServerConfig("/proj", []).ssr?.noExternal as RegExp[];
 
-        for (const id of ["@gtkx/native", "@gtkx/gi", "@gtkx/gi/gtk", "@gtkx/gl", "@gtkx/ffi", "@gtkx/utils", "@gtkx/css", "react"]) {
+        for (const id of [
+            "@gtkx/native",
+            "@gtkx/gi",
+            "@gtkx/gi/gtk",
+            "@gtkx/gl",
+            "@gtkx/ffi",
+            "@gtkx/utils",
+            "@gtkx/css",
+            "react",
+        ]) {
             expect(keptInternal(noExternal, id), `${id} must be external`).toBe(false);
         }
     });

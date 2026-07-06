@@ -1,8 +1,7 @@
 /// <reference types="@gtkx/config/env" />
 
-import { CONTAINER_PROPS, RELATIONSHIPS, SYNTHETIC_PROPS } from "virtual:gtkx-config";
-import type { Arg, ArgRef, AttachRule, Call, CompanionRule, RejectRule, SyntheticPropRule } from "@gtkx/config";
-import { containerPropToAttach, containerPropToCompanion } from "@gtkx/config";
+import { CONTAINER_PROPS, SYNTHETIC_PROPS } from "virtual:gtkx-config";
+import type { Arg, ArgRef, Call, ContainerProp, SyntheticPropRule } from "@gtkx/config";
 import { typeFromName } from "@gtkx/gi/gobject";
 import { callMethod } from "@gtkx/utils";
 import { collectTypeNamesWithInterfaces, foldInheritedTableWithInterfaces } from "../utils/gtype.js";
@@ -82,71 +81,61 @@ export const writeTarget = (instance: object, name: string, value: unknown): voi
     else Reflect.set(instance, name, value);
 };
 
-const attachIndex = new Map<string, AttachRule>();
-const rejectIndex = new Map<string, RejectRule>();
-const elementIndex = new Map<string, CompanionRule>();
+const attachIndex = new Map<string, ContainerProp>();
+const adoptByParent = new Map<string, ContainerProp>();
 const slotsByParent: Record<string, string[]> = {};
 
 for (const [parent, props] of Object.entries(CONTAINER_PROPS)) {
     for (const cp of props) {
-        attachIndex.set(
-            `${parent}:${cp.child}:${cp.prop === "children" ? "" : cp.prop}`,
-            containerPropToAttach(parent, cp),
-        );
+        attachIndex.set(`${parent}:${cp.child}:${cp.prop === "children" ? "" : cp.prop}`, cp);
         if (cp.prop !== "children") {
             const slots = slotsByParent[parent] ?? [];
             slots.push(cp.prop);
             slotsByParent[parent] = slots;
         }
-        const companion = containerPropToCompanion(parent, cp);
-        if (companion !== undefined) elementIndex.set(companion.element, companion);
+        if (cp.adopt !== undefined) adoptByParent.set(parent, cp);
     }
 }
 
-for (const rule of RELATIONSHIPS) {
-    if (rule.kind === "reject") rejectIndex.set(`${rule.parent}:${rule.child}`, rule);
-}
-
-export type ResolvedRelationship = { kind: "attach"; rule: AttachRule } | { kind: "reject"; rule: RejectRule };
-
-const relationshipCache = new Map<string, ResolvedRelationship | null>();
-
-const lookupRelationship = (
-    parentName: string,
-    childName: string,
-    slot: string | undefined,
-): ResolvedRelationship | null => {
-    const attach = attachIndex.get(`${parentName}:${childName}:${slot ?? ""}`);
-    if (attach !== undefined) return { kind: "attach", rule: attach };
-    if (slot === undefined) {
-        const reject = rejectIndex.get(`${parentName}:${childName}`);
-        if (reject !== undefined) return { kind: "reject", rule: reject };
-    }
-    return null;
-};
+const attachCache = new Map<string, ContainerProp | null>();
 
 export const resolveAttachRule = (
     parentType: bigint,
     childType: bigint,
     slot: string | undefined,
-): ResolvedRelationship | null => {
+): ContainerProp | null => {
     const cacheKey = `${parentType}:${childType}:${slot ?? ""}`;
-    const cached = relationshipCache.get(cacheKey);
+    const cached = attachCache.get(cacheKey);
     if (cached !== undefined) return cached;
-    let resolved: ResolvedRelationship | null = null;
+    let resolved: ContainerProp | null = null;
     const parentNames = collectTypeNamesWithInterfaces(parentType);
     for (const childName of collectTypeNamesWithInterfaces(childType)) {
         for (const parentName of parentNames) {
-            resolved = lookupRelationship(parentName, childName, slot);
+            resolved = attachIndex.get(`${parentName}:${childName}:${slot ?? ""}`) ?? null;
             if (resolved !== null) break;
         }
         if (resolved !== null) break;
     }
-    relationshipCache.set(cacheKey, resolved);
+    attachCache.set(cacheKey, resolved);
     return resolved;
 };
 
-export const elementRuleFor = (element: string): CompanionRule | undefined => elementIndex.get(element);
+const adoptCache = new Map<bigint, ContainerProp | null>();
+
+export const adoptRuleFor = (parentType: bigint): ContainerProp | null => {
+    const cached = adoptCache.get(parentType);
+    if (cached !== undefined) return cached;
+    let resolved: ContainerProp | null = null;
+    for (const name of collectTypeNamesWithInterfaces(parentType)) {
+        const cp = adoptByParent.get(name);
+        if (cp !== undefined) {
+            resolved = cp;
+            break;
+        }
+    }
+    adoptCache.set(parentType, resolved);
+    return resolved;
+};
 
 const slotPropsCache = new Map<string, Set<string>>();
 

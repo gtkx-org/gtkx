@@ -1,4 +1,4 @@
-import type { AttachRule } from "@gtkx/config";
+import type { ContainerProp } from "@gtkx/config";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { typeChainIncludes } from "../utils/gtype.js";
@@ -6,17 +6,15 @@ import { callUsesRef, nullSetterCurrentHolder, resolveAttachRule, runCall } from
 import { type ElementMapping, type Node, registeredStateOf, stateOf } from "./state.js";
 import { childWidget } from "./wrapper-content.js";
 
-const containerRuleFor = (container: GObject.Object, child: Gtk.Widget): AttachRule | null => {
-    const resolved = resolveAttachRule(container.__type__, child.__type__, undefined);
-    return resolved?.kind === "attach" ? resolved.rule : null;
-};
+const containerRuleFor = (container: GObject.Object, child: Gtk.Widget): ContainerProp | null =>
+    resolveAttachRule(container.__type__, child.__type__, undefined);
 
 const scopeFor = (child: Gtk.Widget) => ({ child, props: registeredStateOf(child)?.props ?? {} });
 
 export function attachChild(child: Gtk.Widget, container: GObject.Object): void {
     const rule = containerRuleFor(container, child);
-    if (rule?.add !== undefined) {
-        runCall(container, rule.add, [child], scopeFor(child));
+    if (rule?.append !== undefined) {
+        runCall(container, rule.append, [child], scopeFor(child));
         return;
     }
     if (container instanceof Gtk.Widget) child.setParent(container);
@@ -57,7 +55,7 @@ export function isDescendantOf(widget: Gtk.Widget, ancestor: Gtk.Widget): boolea
     return false;
 }
 
-const isAutowrapChild = (rule: AttachRule | null, widget: Gtk.Widget): boolean =>
+const isAutowrapChild = (rule: ContainerProp | null, widget: Gtk.Widget): boolean =>
     rule?.autowrap !== undefined && !typeChainIncludes(widget.__type__, rule.autowrap);
 
 const detachAutowrapped = (widget: Gtk.Widget): void => {
@@ -115,7 +113,7 @@ const insertAtIndex = (
     container: Gtk.Widget,
     widget: Gtk.Widget,
     anchor: Gtk.Widget,
-    rule: AttachRule & { insert: NonNullable<AttachRule["insert"]> },
+    rule: ContainerProp & { insert: NonNullable<ContainerProp["insert"]> },
 ): void => {
     if (rule.autowrap !== undefined) {
         if (widget.getParent() !== null) {
@@ -132,7 +130,7 @@ const insertAtIndex = (
     runCall(container, rule.insert, [widget, position], { child: widget, index: position });
 };
 
-const insertBySibling = (container: Gtk.Widget, widget: Gtk.Widget, anchor: Gtk.Widget, rule: AttachRule): void => {
+const insertBySibling = (container: Gtk.Widget, widget: Gtk.Widget, anchor: Gtk.Widget, rule: ContainerProp): void => {
     const previous = findPrevSibling(container, anchor);
     const scope = { child: widget, sibling: previous ?? null };
     if (widget.getParent() === container && rule.reorder !== undefined) {

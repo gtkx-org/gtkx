@@ -31,9 +31,7 @@ describe("render - Fixed", () => {
 
         await render(
             <Fixed ref={fixedRef}>
-                <Fixed.Child transform={transform}>
-                    {(ref) => <GtkLabel ref={ref} label="transformed" />}
-                </Fixed.Child>
+                <Fixed.Child transform={transform}>{(ref) => <GtkLabel ref={ref} label="transformed" />}</Fixed.Child>
             </Fixed>,
         );
 

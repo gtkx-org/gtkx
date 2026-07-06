@@ -1,11 +1,11 @@
-import type { RelationshipRule, SyntheticPropRule } from "@gtkx/config";
+import type { ContainerProp, SyntheticPropRule } from "@gtkx/config";
 import { validateGtkxRules } from "@gtkx/config";
 import { describe, expect, it } from "vitest";
 import { assembleRuleTables } from "../../src/store/react/rule-tables.js";
-import { RELATIONSHIP_RULES, SYNTHETIC_PROP_RULES } from "../../src/store/react/tables.js";
+import { CONTAINER_PROPS, SYNTHETIC_PROP_RULES } from "../../src/store/react/tables.js";
 import { library } from "../helpers/library.js";
 
-const EMPTY_RULES = { containerProps: {}, relationships: [], syntheticProps: [] };
+const EMPTY_RULES = { containerProps: {}, syntheticProps: [] };
 
 const tables = assembleRuleTables(library, EMPTY_RULES);
 
@@ -19,77 +19,65 @@ const knownTypeNames = (): Set<string> => {
     return names;
 };
 
-const relationshipTypeNames = (rule: RelationshipRule): string[] => {
-    switch (rule.kind) {
-        case "attach":
-            return rule.autowrap === undefined ? [rule.parent, rule.child] : [rule.parent, rule.child, rule.autowrap];
-        case "companion":
-            return [rule.parent];
-        case "reject":
-            return [rule.parent, rule.child];
-    }
+const containerPropTypeNames = (parent: string, cp: ContainerProp): string[] => {
+    const names = [parent, cp.child];
+    if (cp.autowrap !== undefined) names.push(cp.autowrap);
+    return names;
 };
 
-const attachRuleFor = (parent: string, slot?: string) =>
-    tables.relationships.find(
-        (rule) => rule.kind === "attach" && rule.parent === parent && rule.slot === slot && rule.child === "GtkWidget",
-    );
-
-const elementRuleFor = (element: string) =>
-    tables.relationships.find((rule) => rule.kind === "companion" && rule.element === element);
+const containerPropFor = (parent: string, slot?: string) =>
+    (tables.containerProps[parent] ?? []).find((cp) => cp.prop === (slot ?? "children") && cp.child === "GtkWidget");
 
 describe("curated rule tables", () => {
     it("pass schema validation", () => {
         expect(() =>
-            validateGtkxRules({ relationships: RELATIONSHIP_RULES, syntheticProps: SYNTHETIC_PROP_RULES }),
+            validateGtkxRules({ containerProps: CONTAINER_PROPS, syntheticProps: SYNTHETIC_PROP_RULES }),
         ).not.toThrow();
     });
 
     it("reference only methods that exist in the loaded GIR", () => {
         const known = knownTypeNames();
-        const relationships = RELATIONSHIP_RULES.filter((rule) =>
-            relationshipTypeNames(rule).every((name) => known.has(name)),
-        );
+        const containerProps: Record<string, ContainerProp[]> = {};
+        for (const [parent, props] of Object.entries(CONTAINER_PROPS)) {
+            const kept = props.filter((cp) => containerPropTypeNames(parent, cp).every((name) => known.has(name)));
+            if (kept.length > 0) containerProps[parent] = kept;
+        }
         const syntheticProps = SYNTHETIC_PROP_RULES.filter((rule) => known.has(rule.type));
-        expect(() => assembleRuleTables(library, { containerProps: {}, relationships, syntheticProps })).not.toThrow();
+        expect(() => assembleRuleTables(library, { containerProps, syntheticProps })).not.toThrow();
     });
 });
 
-describe("assembled relationship table", () => {
+describe("assembled container-prop table", () => {
     it("derives container rules from GIR attach probing", () => {
-        const box = attachRuleFor("GtkBox");
+        const box = containerPropFor("GtkBox");
         expect(box).toMatchObject({
-            add: "append",
+            append: "append",
             remove: "remove",
             insert: { method: "insertChildAfter", args: ["child", "sibling"] },
             reorder: { method: "reorderChildAfter", args: ["child", "sibling"] },
         });
-        const bin = attachRuleFor("AdwBin");
+        const bin = containerPropFor("AdwBin");
         expect(bin).toMatchObject({
-            add: "setChild",
+            append: "setChild",
             remove: { method: "setChild", args: [{ literal: null }] },
         });
     });
 
     it("derives single-child rules for non-widget hosts", () => {
-        expect(attachRuleFor("GtkListItem")).toMatchObject({ add: "setChild" });
+        expect(containerPropFor("GtkListItem")).toMatchObject({ append: "setChild" });
     });
 
     it("lets the curated autowrap rule override the generated list-box rule", () => {
-        expect(attachRuleFor("GtkListBox")).toMatchObject({
-            add: "append",
+        expect(containerPropFor("GtkListBox")).toMatchObject({
+            append: "append",
             autowrap: "GtkListBoxRow",
             insert: { method: "insert", args: ["child", "index"] },
         });
     });
 
-    it("keeps companion element rules", () => {
-        expect(elementRuleFor("GtkStackPage")).toMatchObject({ kind: "companion", add: "addChild" });
-        expect(elementRuleFor("GtkNotebookPage")).toMatchObject({
-            kind: "companion",
-            companion: "getPage",
-            setters: { tabLabel: "setTabLabel" },
-        });
+    it("keeps adopt rules", () => {
+        expect(containerPropFor("GtkStack")).toMatchObject({ append: "addChild", adopt: true });
+        expect(containerPropFor("GtkNotebook")).toMatchObject({ remove: "detachTab", adopt: "getPage" });
     });
 });
 
@@ -110,22 +98,22 @@ describe("user rules", () => {
             prop: "marks",
             call: "clearMarks",
         };
-        const merged = assembleRuleTables(library, { containerProps: {}, relationships: [], syntheticProps: [override] });
+        const merged = assembleRuleTables(library, { containerProps: {}, syntheticProps: [override] });
         const marks = merged.syntheticProps.filter((rule) => rule.type === "GtkScale" && rule.prop === "marks");
         expect(marks).toEqual([override]);
     });
 
     it("reject unknown types with provenance", () => {
-        const rule: RelationshipRule = { kind: "attach", parent: "ShumateMap", child: "GtkWidget", add: "add" };
-        expect(() => assembleRuleTables(library, { containerProps: {}, relationships: [rule], syntheticProps: [] })).toThrow(
-            /`rules\.relationships\[0\]` references "ShumateMap", which is not a type/,
+        const containerProps = { ShumateMap: [{ prop: "children", child: "GtkWidget", append: "add" }] };
+        expect(() => assembleRuleTables(library, { containerProps, syntheticProps: [] })).toThrow(
+            /`rules\.containerProps\.ShumateMap\[0\]` references "ShumateMap", which is not a type/,
         );
     });
 
     it("reject unknown methods with provenance", () => {
-        const rule: RelationshipRule = { kind: "attach", parent: "GtkBox", child: "GtkWidget", add: "attachWidget" };
-        expect(() => assembleRuleTables(library, { containerProps: {}, relationships: [rule], syntheticProps: [] })).toThrow(
-            /`rules\.relationships\[0\]` references method "attachWidget", which does not exist on GtkBox/,
+        const containerProps = { GtkBox: [{ prop: "children", child: "GtkWidget", append: "attachWidget" }] };
+        expect(() => assembleRuleTables(library, { containerProps, syntheticProps: [] })).toThrow(
+            /`rules\.containerProps\.GtkBox\[0\]` references method "attachWidget", which does not exist on GtkBox/,
         );
     });
 });

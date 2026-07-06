@@ -107,56 +107,6 @@ const settersSchema = z.record(z.string(), nameSchema, {
     error: "must be an object mapping prop names to method names",
 });
 
-const attachSchema = z.strictObject({
-    kind: z.literal("attach"),
-    parent: nameSchema,
-    child: nameSchema,
-    slot: nameSchema.optional(),
-    add: callSchema.optional(),
-    remove: callSchema.optional(),
-    insert: callSchema.optional(),
-    reorder: callSchema.optional(),
-    autowrap: nameSchema.optional(),
-});
-
-const companionSchema = z.strictObject({
-    kind: z.literal("companion"),
-    element: nameSchema,
-    parent: nameSchema,
-    add: callSchema.optional(),
-    insert: callSchema.optional(),
-    remove: callSchema.optional(),
-    companion: callSchema.optional(),
-    setters: settersSchema.optional(),
-    multi: z.boolean({ error: "must be a boolean" }).optional(),
-});
-
-const rejectSchema = z.strictObject({
-    kind: z.literal("reject"),
-    parent: nameSchema,
-    child: nameSchema,
-    prop: nameSchema,
-});
-
-const relationshipSchema = z
-    .discriminatedUnion("kind", [attachSchema, companionSchema, rejectSchema], {
-        error: "must be one of attach, companion, reject",
-    })
-    .check((ctx) => {
-        const rule = ctx.value;
-        if (rule.kind === "attach" && rule.add === undefined && rule.remove === undefined) {
-            ctx.issues.push(rawIssue(rule, [], "must define at least one of `add` or `remove`"));
-        }
-    });
-
-export type AttachRule = z.infer<typeof attachSchema>;
-
-export type CompanionRule = z.infer<typeof companionSchema>;
-
-export type RejectRule = z.infer<typeof rejectSchema>;
-
-export type RelationshipRule = z.infer<typeof relationshipSchema>;
-
 const listSchema = z.strictObject({
     kind: z.literal("list"),
     type: nameSchema,
@@ -252,59 +202,40 @@ export type WriteOnceListRule = z.infer<typeof writeOnceListSchema>;
 
 export type SyntheticPropRule = z.infer<typeof syntheticPropSchema>;
 
-const propertyRefSchema = z.strictObject({ property: nameSchema });
-
-const setTargetSchema = z.union([callSchema, propertyRefSchema]);
-
-const adoptSchema = z.strictObject({
-    element: nameSchema,
-    accessor: callSchema.optional(),
-    setters: settersSchema.optional(),
-});
-
-const manyContainerPropSchema = z.strictObject({
-    arity: z.literal("many"),
-    prop: nameSchema,
-    child: nameSchema,
-    append: callSchema.optional(),
-    remove: callSchema.optional(),
-    insert: callSchema.optional(),
-    reorder: callSchema.optional(),
-    autowrap: nameSchema.optional(),
-    adopt: adoptSchema.optional(),
-});
-
-const oneContainerPropSchema = z.strictObject({
-    arity: z.literal("one"),
-    prop: nameSchema,
-    child: nameSchema,
-    set: setTargetSchema,
-    unset: setTargetSchema.optional(),
-    adopt: adoptSchema.optional(),
+const adoptSchema = z.union([z.literal(true), nameSchema], {
+    error: "must be `true` or the name of a getter method",
 });
 
 export const containerPropSchema = z
-    .discriminatedUnion("arity", [manyContainerPropSchema, oneContainerPropSchema])
+    .strictObject({
+        prop: nameSchema,
+        child: nameSchema,
+        append: callSchema.optional(),
+        remove: callSchema.optional(),
+        insert: callSchema.optional(),
+        reorder: callSchema.optional(),
+        autowrap: nameSchema.optional(),
+        adopt: adoptSchema.optional(),
+    })
     .check((ctx) => {
         const cp = ctx.value;
-        if (cp.arity === "many" && cp.append === undefined && cp.remove === undefined) {
+        if (cp.append === undefined && cp.remove === undefined) {
             ctx.issues.push(rawIssue(cp, [], "must define at least one of `append` or `remove`"));
         }
     });
 
-export type PropertyRef = z.infer<typeof propertyRefSchema>;
-
-export type Adopt = z.infer<typeof adoptSchema>;
-
-export type ManyContainerProp = z.infer<typeof manyContainerPropSchema>;
-
-export type OneContainerProp = z.infer<typeof oneContainerPropSchema>;
-
+/**
+ * A container prop: a JSX prop whose value is one or more child GObjects attached
+ * to a parent through generated methods. `adopt` marks a child that the parent
+ * instantiates on attach — `true` when the append method returns the created
+ * companion (e.g. `GtkStack.addChild`), or the name of a getter that retrieves it
+ * from a freshly appended child (e.g. `GtkNotebook.getPage`). The companion's own
+ * GType is inferred by codegen from that method's return type.
+ */
 export type ContainerProp = z.infer<typeof containerPropSchema>;
 
 export const gtkxRulesSchema = z.strictObject({
     containerProps: z.record(nameSchema, z.array(containerPropSchema)).optional(),
-    relationships: z.array(relationshipSchema).optional(),
     syntheticProps: z.array(syntheticPropSchema).optional(),
 });
 
@@ -312,7 +243,6 @@ export type GtkxRules = z.infer<typeof gtkxRulesSchema>;
 
 export type ResolvedGtkxRules = {
     containerProps: Record<string, ContainerProp[]>;
-    relationships: RelationshipRule[];
     syntheticProps: SyntheticPropRule[];
 };
 

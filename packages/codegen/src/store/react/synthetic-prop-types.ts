@@ -1,4 +1,4 @@
-import type { Call, CompanionRule, SyntheticPropRule } from "@gtkx/config";
+import type { Call, ContainerProp, SyntheticPropRule } from "@gtkx/config";
 import { toCamelIdentifier } from "@gtkx/utils";
 import { renderBaseTypeFor, type TsTypeTarget } from "../../analysis/ts-type.js";
 import { ancestorChain } from "../../gir/ancestry.js";
@@ -37,7 +37,6 @@ export type CompanionExportSpec = {
     element: string;
     typeName: string;
     typeSource: string;
-    imports: TypeImports;
 };
 
 export type RuleTypegen = {
@@ -122,17 +121,6 @@ const renderParamType = (context: TypegenContext, imports: TypeImports, param: G
     return param.nullable || param.optional ? `${base} | null` : base;
 };
 
-const isWidgetParam = (context: TypegenContext, param: GirParameter | undefined): boolean => {
-    if (param?.type === undefined) return false;
-    const resolved = context.library.typeOf(param.type);
-    if (resolved === undefined || resolved.kind !== "class") return false;
-    const glibName = glibNameOf(resolved.value);
-    if (glibName === undefined) return false;
-    const entry = context.typeIndex.get(glibName);
-    if (entry === undefined) return false;
-    return chainOf(context, entry).some((link) => glibNameOf(link.klass) === "GtkWidget");
-};
-
 const optionalLine = (prop: string, type: string): string => {
     const withNull = type.endsWith(" | null") ? type : `${type} | null`;
     return `${prop}?: ${withNull} | undefined;`;
@@ -203,11 +191,12 @@ const syntheticLine = (context: TypegenContext, imports: TypeImports, rule: Synt
 
 const collectPropContributions = (context: TypegenContext, tables: RuleTables): PropContribution[] => {
     const contributions: PropContribution[] = [];
-    for (const rule of tables.relationships) {
-        if (rule.kind !== "attach") continue;
-        for (const call of [rule.add, rule.remove, rule.insert, rule.reorder]) {
-            if (call === undefined || typeof call === "string") continue;
-            collectCallContributions(context, contributions, rule, call);
+    for (const [parent, props] of Object.entries(tables.containerProps)) {
+        for (const cp of props) {
+            for (const call of [cp.append, cp.remove, cp.insert, cp.reorder]) {
+                if (call === undefined || typeof call === "string") continue;
+                collectCallContributions(context, contributions, { parent, child: cp.child }, call);
+            }
         }
     }
     return contributions;
@@ -243,9 +232,6 @@ const directTypeNames = (context: TypegenContext, klass: GirClass, namespace: Gi
     return names;
 };
 
-const companionClassOf = (context: TypegenContext, rule: CompanionRule): TypeEntry | undefined =>
-    context.typeIndex.get(rule.element);
-
 const constructOnlyNames = (context: TypegenContext, entry: TypeEntry): string[] => {
     const names: string[] = [];
     for (const link of chainOf(context, entry)) {
@@ -256,61 +242,61 @@ const constructOnlyNames = (context: TypegenContext, entry: TypeEntry): string[]
     return names;
 };
 
-const companionExtraLines = (context: TypegenContext, imports: TypeImports, rule: CompanionRule): string[] => {
-    const setters = rule.setters ?? {};
-    const extraLines: string[] = [];
-    for (const [prop, method] of Object.entries(setters)) {
-        const resolved = findMethod(context, rule.parent, method);
-        const param = resolved?.params[1];
-        const type = isWidgetParam(context, param) ? "ReactNode" : renderParamType(context, imports, param);
-        extraLines.push(optionalLine(prop, type));
-    }
-    return extraLines;
+const methodReturnGlib = (context: TypegenContext, typeName: string, methodCamel: string): string | undefined => {
+    const method = findMethod(context, typeName, methodCamel);
+    const ref = method?.fn.returnValue.type;
+    if (ref === undefined) return undefined;
+    const resolved = context.library.typeOf(ref);
+    if (resolved === undefined || resolved.kind !== "class") return undefined;
+    return glibNameOf(resolved.value);
 };
 
-const companionExportOf = (context: TypegenContext, rule: CompanionRule): CompanionExportSpec | undefined => {
-    if (!context.typeIndex.has(rule.parent)) return undefined;
-    const imports: TypeImports = new Map();
-    const companionClass = companionClassOf(context, rule);
-    const extraLines = companionExtraLines(context, imports, rule);
-    const typeName = `${rule.element}ElementProps`;
-    const extras = extraLines.length === 0 ? "" : ` & { ${extraLines.join(" ")} }`;
-    let typeSource: string;
+const resolveAdoptElement = (context: TypegenContext, parent: string, cp: ContainerProp): string | undefined => {
+    if (cp.adopt === undefined) return undefined;
+    const source = typeof cp.adopt === "string" ? cp.adopt : cp.append;
+    if (source === undefined) return undefined;
+    return methodReturnGlib(context, parent, callMethodName(source));
+};
+
+const companionExportOf = (context: TypegenContext, element: string): CompanionExportSpec => {
+    const typeName = `${element}ElementProps`;
+    const companionClass = context.typeIndex.get(element);
     if (companionClass === undefined) {
-        typeSource = `export type ${typeName} = { children?: ReactNode }${extras};`;
-    } else {
-        const baseName = glibNameOf(companionClass.klass) ?? rule.element;
-        const setterNames = Object.keys(rule.setters ?? {});
-        const omitted = [...new Set([...constructOnlyNames(context, companionClass), ...setterNames])];
-        const omitUnion = omitted.map((name) => JSON.stringify(name)).join(" | ");
-        const base = omitted.length === 0 ? `${baseName}Props` : `Omit<${baseName}Props, ${omitUnion}>`;
-        typeSource = `export type ${typeName} = ${base}${extras};`;
+        return { element, typeName, typeSource: `export type ${typeName} = { children?: ReactNode };` };
     }
-    return { element: rule.element, typeName, typeSource, imports };
+    const baseName = glibNameOf(companionClass.klass) ?? element;
+    const omitted = constructOnlyNames(context, companionClass);
+    const omitUnion = omitted.map((name) => JSON.stringify(name)).join(" | ");
+    const base = omitted.length === 0 ? `${baseName}Props` : `Omit<${baseName}Props, ${omitUnion}>`;
+    return { element, typeName, typeSource: `export type ${typeName} = ${base};` };
 };
 
 const collectCompanionSpecs = (context: TypegenContext, tables: RuleTables): Map<string, CompanionExportSpec[]> => {
     const companionSpecs = new Map<string, CompanionExportSpec[]>();
-    for (const rule of tables.relationships) {
-        if (rule.kind !== "companion") continue;
-        const parent = context.typeIndex.get(rule.parent);
-        if (parent === undefined) continue;
-        const spec = companionExportOf(context, rule);
-        if (spec === undefined) continue;
-        const specs = companionSpecs.get(parent.namespace.name) ?? [];
-        if (!specs.some((existing) => existing.element === spec.element)) specs.push(spec);
-        companionSpecs.set(parent.namespace.name, specs);
+    for (const [parent, props] of Object.entries(tables.containerProps)) {
+        const parentEntry = context.typeIndex.get(parent);
+        if (parentEntry === undefined) continue;
+        for (const cp of props) {
+            const element = resolveAdoptElement(context, parent, cp);
+            if (element === undefined) continue;
+            const spec = companionExportOf(context, element);
+            const specs = companionSpecs.get(parentEntry.namespace.name) ?? [];
+            if (!specs.some((existing) => existing.element === spec.element)) specs.push(spec);
+            companionSpecs.set(parentEntry.namespace.name, specs);
+        }
     }
     return companionSpecs;
 };
 
 const collectSlotNames = (tables: RuleTables): Map<string, string[]> => {
     const slotNamesByParent = new Map<string, string[]>();
-    for (const rule of tables.relationships) {
-        if (rule.kind !== "attach" || rule.slot === undefined) continue;
-        const names = slotNamesByParent.get(rule.parent) ?? [];
-        if (!names.includes(rule.slot)) names.push(rule.slot);
-        slotNamesByParent.set(rule.parent, names);
+    for (const [parent, props] of Object.entries(tables.containerProps)) {
+        for (const cp of props) {
+            if (cp.prop === "children") continue;
+            const names = slotNamesByParent.get(parent) ?? [];
+            if (!names.includes(cp.prop)) names.push(cp.prop);
+            slotNamesByParent.set(parent, names);
+        }
     }
     return slotNamesByParent;
 };
@@ -330,13 +316,12 @@ export const createRuleTypegen = (library: Library, tables: RuleTables): RuleTyp
     const slotNamesByParent = collectSlotNames(tables);
 
     const childrenContainers = new Set<string>(["GtkLabel", "GtkTextBuffer", "GtkTextTag", "GtkTextView"]);
-    for (const props of Object.values(tables.containerProps)) {
-        for (const cp of props) {
-            if (cp.adopt !== undefined) childrenContainers.add(cp.adopt.element);
-        }
-    }
     for (const [parent, props] of Object.entries(tables.containerProps)) {
         if (props.some((cp) => cp.prop === "children")) childrenContainers.add(parent);
+        for (const cp of props) {
+            const element = resolveAdoptElement(context, parent, cp);
+            if (element !== undefined) childrenContainers.add(element);
+        }
     }
 
     const acceptsChildren = (glibName: string): boolean => {

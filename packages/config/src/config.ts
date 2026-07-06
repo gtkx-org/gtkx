@@ -145,7 +145,7 @@ const gtkxConfigSchema = z.object({
 export type GtkxConfig = z.infer<typeof gtkxConfigSchema>;
 
 const RULES_INLINE_MESSAGE =
-    "gtkx.config.ts: `rules` is inline data ({ relationships, syntheticProps }); module-specifier rule registries were removed";
+    "gtkx.config.ts: `rules` is inline data ({ containerProps, syntheticProps }); module-specifier rule registries were removed";
 
 export const validateGtkxConfig = (config: GtkxConfig): void => {
     const rulesValue: unknown = config.rules;

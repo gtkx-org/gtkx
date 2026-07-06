@@ -72,7 +72,11 @@ describe("render - Grid", () => {
         function App({ show }: { show: boolean }) {
             return (
                 <Grid ref={gridRef}>
-                    {show && <Grid.Child column={0} row={0}>{(ref) => <GtkLabel ref={ref} label="A" />}</Grid.Child>}
+                    {show && (
+                        <Grid.Child column={0} row={0}>
+                            {(ref) => <GtkLabel ref={ref} label="A" />}
+                        </Grid.Child>
+                    )}
                 </Grid>
             );
         }

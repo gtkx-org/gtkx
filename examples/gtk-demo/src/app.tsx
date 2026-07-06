@@ -247,12 +247,12 @@ const AppNotebook = ({ page, onSwitchPage }: AppNotebookProps) => (
         showBorder={false}
         enablePopup
     >
-        <GtkNotebookPage tabLabel={<GtkLabel label="_Info" useUnderline />}>
+        <GtkNotebookPage tabLabel="Info">
             <GtkScrolledWindow vexpand hexpand>
                 <InfoTab />
             </GtkScrolledWindow>
         </GtkNotebookPage>
-        <GtkNotebookPage tabLabel={<GtkLabel label="Source" />}>
+        <GtkNotebookPage tabLabel="Source">
             <SourceViewer />
         </GtkNotebookPage>
     </GtkNotebook>

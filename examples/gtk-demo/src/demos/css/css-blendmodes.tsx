@@ -198,6 +198,16 @@ const CmykPage = () => (
     </Grid>
 );
 
+const selectAndFocusNormalRow = (widget: Gtk.Widget) => {
+    const listbox = widget as Gtk.ListBox;
+    const normalIndex = BLEND_MODES.findIndex((m) => m.id === "normal");
+    const row = listbox.getRowAtIndex(normalIndex);
+    if (row) {
+        listbox.selectRow(row);
+        row.grabFocus();
+    }
+};
+
 const CssBlendmodesDemo = () => {
     const [stack, setStack] = useState<Gtk.Stack | null>(null);
     const [blendMode, setBlendMode] = useState("normal");
@@ -208,16 +218,6 @@ const CssBlendmodesDemo = () => {
         const index = row.getIndex();
         const mode = BLEND_MODES[index];
         if (mode) setBlendMode(mode.id);
-    };
-
-    const selectAndFocusNormalRow = (widget: Gtk.Widget) => {
-        const listbox = widget as Gtk.ListBox;
-        const normalIndex = BLEND_MODES.findIndex((m) => m.id === "normal");
-        const row = listbox.getRowAtIndex(normalIndex);
-        if (row) {
-            listbox.selectRow(row);
-            row.grabFocus();
-        }
     };
 
     return (
@@ -254,7 +254,13 @@ const CssBlendmodesDemo = () => {
 
             <Grid.Child column={1} row={0}>
                 {(ref) => (
-                    <GtkStackSwitcher ref={ref} stack={stack} halign={Gtk.Align.CENTER} hexpand visible={stack !== null} />
+                    <GtkStackSwitcher
+                        ref={ref}
+                        stack={stack}
+                        halign={Gtk.Align.CENTER}
+                        hexpand
+                        visible={stack !== null}
+                    />
                 )}
             </Grid.Child>
 

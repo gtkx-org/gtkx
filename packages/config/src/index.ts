@@ -16,13 +16,12 @@ export {
     loadGtkxConfig,
     loadResolvedGtkxConfig,
 } from "./loader.js";
-export { containerPropToAttach, containerPropToCompanion } from "./rule-conversions.js";
 export {
     BUFFER_TEXT_KIND,
-    COMPANION_KIND,
     CONTAINER_SLOT_KIND,
     isWrapperKind,
     LABEL_TEXT_KIND,
+    LAZY_ELEMENT_KIND,
     resolveGtkxRules,
     TEXT_ANCHOR_KIND,
     TEXT_PAINTABLE_KIND,
@@ -32,13 +31,10 @@ export {
     type WrapperKind,
 } from "./rule-schema.js";
 export {
-    type Adopt,
     ARG_REFS,
     type Arg,
     type ArgRef,
-    type AttachRule,
     type Call,
-    type CompanionRule,
     type ContainerProp,
     type ControlledTextRule,
     containerPropSchema,
@@ -46,12 +42,7 @@ export {
     type JsonValue,
     type KeyedListRule,
     type ListRule,
-    type ManyContainerProp,
-    type OneContainerProp,
-    type PropertyRef,
     type ReassertRule,
-    type RejectRule,
-    type RelationshipRule,
     type ResolvedGtkxRules,
     type SelectionRule,
     type SyntheticPropRule,

@@ -46,7 +46,10 @@ describe("gtkx dev", () => {
             });
 
             const timeout = new Promise<never>((_, reject) => {
-                setTimeout(() => reject(new Error(`dev did not mount within ${BOOT_TIMEOUT_MS}ms\n${transcript}`)), BOOT_TIMEOUT_MS);
+                setTimeout(
+                    () => reject(new Error(`dev did not mount within ${BOOT_TIMEOUT_MS}ms\n${transcript}`)),
+                    BOOT_TIMEOUT_MS,
+                );
             });
 
             try {

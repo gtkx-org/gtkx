@@ -24,6 +24,4 @@ export const trackedInstance = (node: Node): GObject.Object | undefined => {
 const wrapperChildren = <T extends GObject.Object>(node: Node, ctor: AnyClass<T>): T[] =>
     stateOf(node).children.filter((child): child is T => child instanceof ctor);
 
-export const wrapperChildWidgets = (node: Node): Gtk.Widget[] => wrapperChildren(node, Gtk.Widget);
-
 export const wrapperChildInstances = (node: Node): GObject.Object[] => wrapperChildren(node, GObject.Object);

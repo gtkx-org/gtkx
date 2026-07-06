@@ -44,10 +44,10 @@ describe("codegen gi pipeline", () => {
 });
 
 describe("codegen reconciler metadata", () => {
-    it("emits the serializable relationship and synthetic-prop tables", () => {
-        expect(reactPipeline.metadata).toContain("export const RELATIONSHIPS:");
+    it("emits the serializable container-prop and synthetic-prop tables", () => {
+        expect(reactPipeline.metadata).toContain("export const CONTAINER_PROPS:");
         expect(reactPipeline.metadata).toContain("export const SYNTHETIC_PROPS:");
-        expect(reactPipeline.metadata).toContain('"element": "GtkStackPage"');
+        expect(reactPipeline.metadata).toContain('"adopt": true');
         expect(reactPipeline.metadata).toContain('"prop": "marks"');
     });
 });
@@ -151,12 +151,12 @@ describe("codegen React pipeline", () => {
         expect(js.length).toBeGreaterThan(0);
     });
 
-    it("emits companion elements as wrapper components", () => {
+    it("emits page elements as lazy-element components", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
         expect(gtk).toContain(
-            'export const GtkNotebookPage: (props: GtkNotebookPageElementProps) => ReactNode = createWrapperComponent<GtkNotebookPageElementProps>("GtkNotebookPage");',
+            "export const GtkNotebookPage: (props: GtkNotebookPageElementProps) => ReactNode = createLazyElementComponent<GtkNotebookPageElementProps>();",
         );
-        expect(gtk).toContain('createWrapperComponent<GtkStackPageElementProps>("GtkStackPage")');
+        expect(gtk).toContain("createLazyElementComponent<GtkStackPageElementProps>()");
         expect(gtk).not.toContain("GtkNotebookPageTab");
     });
 });
@@ -222,10 +222,11 @@ describe("codegen synthetic props", () => {
         expect(interfaceBody(gio, "GSimpleActionGroup")).toContain("prefix?: string | null | undefined;");
     });
 
-    it("emits companion element props from the companion class interface", () => {
+    it("emits lazy-element props from the page class interface", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
         expect(gtk).toContain('export type GtkStackPageElementProps = Omit<GtkStackPageProps, "child">;');
-        expect(gtk).toMatch(/export type GtkNotebookPageElementProps = [^;]*tabLabel\?: ReactNode[^;]*;/);
+        expect(gtk).toMatch(/export type GtkNotebookPageElementProps = Omit<GtkNotebookPageProps, [^;]*>;/);
+        expect(interfaceBody(gtk, "GtkNotebookPage")).toContain("tabLabel?: string | null | undefined;");
     });
 });
 
@@ -248,7 +249,7 @@ describe("codegen read-only props", () => {
 describe("codegen runtime tables", () => {
     it("bakes only the serializable rule tables into the metadata module", () => {
         expect(reactPipeline.metadata).toContain("export const DEFAULT_BLOCKABLE_TYPES");
-        expect(reactPipeline.metadata).toContain("export const RELATIONSHIPS");
+        expect(reactPipeline.metadata).toContain("export const CONTAINER_PROPS");
         expect(reactPipeline.metadata).toContain("export const SYNTHETIC_PROPS");
         expect(reactPipeline.metadata).not.toContain("SLOT_PROPS");
         expect(reactPipeline.metadata).not.toContain("ATTACH_SHAPES");
@@ -257,13 +258,13 @@ describe("codegen runtime tables", () => {
         expect(reactPipeline.metadata).not.toContain("ORDERED_INSERT");
     });
 
-    it("bakes the ColumnView ordered insert as an attach rule", () => {
+    it("bakes the ColumnView ordered insert as a container prop", () => {
         expect(reactPipeline.metadata).toMatch(/"method": "insertColumn"/);
-        expect(reactPipeline.metadata).toMatch(/"parent": "GtkColumnView"/);
+        expect(reactPipeline.metadata).toMatch(/"GtkColumnView": \[/);
     });
 
-    it("bakes slot attach rules for named slots", () => {
-        expect(reactPipeline.metadata).toMatch(/"parent": "AdwHeaderBar",[\s\S]{0,120}"slot": "start"/);
+    it("bakes named-slot container props", () => {
+        expect(reactPipeline.metadata).toMatch(/"AdwHeaderBar": \[[\s\S]{0,160}"prop": "start"/);
     });
 });
 

@@ -1,8 +1,12 @@
-import { defineConfig } from "vitest/config";
+import { defineConfig, mergeConfig } from "vitest/config";
+import shared from "../../vitest.shared.ts";
 
-export default defineConfig({
-    test: {
-        name: "codegen",
-        testTimeout: 120000,
-    },
-});
+export default mergeConfig(
+    shared,
+    defineConfig({
+        test: {
+            name: "codegen",
+            testTimeout: 120000,
+        },
+    }),
+);

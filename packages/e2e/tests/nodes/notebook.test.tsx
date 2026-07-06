@@ -10,13 +10,9 @@ const getPageLabels = (notebook: Gtk.Notebook): string[] => {
     const labels: string[] = [];
     const nPages = notebook.getNPages();
     for (let i = 0; i < nPages; i++) {
-        const page = notebook.getNthPage(i);
-        if (page) {
-            const tabLabel = notebook.getTabLabel(page);
-            if (tabLabel && "getLabel" in tabLabel && typeof tabLabel.getLabel === "function") {
-                labels.push((tabLabel as Gtk.Label).getLabel() ?? "");
-            }
-        }
+        const child = notebook.getNthPage(i);
+        const tabLabel = child ? notebook.getPage(child).tabLabel : null;
+        if (tabLabel != null) labels.push(tabLabel);
     }
     return labels;
 };
@@ -38,7 +34,7 @@ describe("render - Notebook (1)", () => {
 
             await render(
                 <GtkNotebook ref={notebookRef}>
-                    <GtkNotebookPage tabLabel={<GtkLabel label="Tab 1" />}>
+                    <GtkNotebookPage tabLabel="Tab 1">
                         <GtkLabel label="Page 1 Content" />
                     </GtkNotebookPage>
                 </GtkNotebook>,
@@ -81,7 +77,7 @@ describe("render - Notebook (2)", () => {
             function App({ label }: { label: string }) {
                 return (
                     <GtkNotebook ref={notebookRef}>
-                        <GtkNotebookPage tabLabel={<GtkLabel label={label} />}>
+                        <GtkNotebookPage tabLabel={label}>
                             <GtkLabel label="Content" />
                         </GtkNotebookPage>
                     </GtkNotebook>

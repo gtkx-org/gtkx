@@ -91,7 +91,9 @@ const MessageAvatar = ({ message }: { message: Message }) => (
         {(ref) => (
             <GtkImage
                 ref={ref}
-                {...(message.senderNick === "GTKtoolkit" ? { iconName: "org.gtk.Demo4" } : { paintable: appleRedTexture })}
+                {...(message.senderNick === "GTKtoolkit"
+                    ? { iconName: "org.gtk.Demo4" }
+                    : { paintable: appleRedTexture })}
                 iconSize={Gtk.IconSize.LARGE}
                 widthRequest={32}
                 heightRequest={32}
@@ -148,7 +150,12 @@ const MessageResentBy = ({ message }: { message: Message }) => (
             <GtkBox ref={ref} visible={message.resentBy !== null}>
                 <GtkImage iconName="media-playlist-repeat" />
                 <GtkLabel label="Resent by" />
-                <GtkLinkButton label={message.resentBy ?? ""} receivesDefault hasFrame={false} uri="https://www.gtk.org" />
+                <GtkLinkButton
+                    label={message.resentBy ?? ""}
+                    receivesDefault
+                    hasFrame={false}
+                    uri="https://www.gtk.org"
+                />
             </GtkBox>
         )}
     </Grid.Child>
@@ -183,8 +190,18 @@ const MessageActions = ({
                 />
                 <GtkBox ref={extraButtonsRef} spacing={6} visible={false}>
                     <GtkButton label="Reply" receivesDefault hasFrame={false} />
-                    <GtkButton label="Reshare" receivesDefault hasFrame={false} onClicked={() => onReshare(message.id)} />
-                    <GtkButton label="Favorite" receivesDefault hasFrame={false} onClicked={() => onFavorite(message.id)} />
+                    <GtkButton
+                        label="Reshare"
+                        receivesDefault
+                        hasFrame={false}
+                        onClicked={() => onReshare(message.id)}
+                    />
+                    <GtkButton
+                        label="Favorite"
+                        receivesDefault
+                        hasFrame={false}
+                        onClicked={() => onFavorite(message.id)}
+                    />
                     <GtkMenuButton
                         receivesDefault
                         hasFrame={false}

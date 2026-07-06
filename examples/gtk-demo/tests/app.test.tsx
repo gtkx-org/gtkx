@@ -26,7 +26,8 @@ describe("App", () => {
 
     it("renders the Info notebook tab label", async () => {
         await renderDemo();
-        await screen.findByText("Info");
+        const labels = await screen.findAllByText("Info");
+        expect(labels.length).toBeGreaterThanOrEqual(1);
     });
 
     it("starts with the Run button disabled because the intro demo has no component", async () => {

@@ -82,13 +82,8 @@ const collectCandidateExports = (
 
 const collectCompanionExports = (collector: ExportCollector, companionElements: CompanionExportSpec[]): void => {
     for (const spec of companionElements) {
-        collector.imports.addNamed("@gtkx/react", "createWrapperComponent", false);
+        collector.imports.addNamed("@gtkx/react", "createLazyElementComponent", false);
         collector.imports.addNamed("react", "ReactNode", true);
-        for (const [namespaceName, alias] of spec.imports) {
-            if (namespaceName !== "") {
-                collector.imports.addNamespace(`@gtkx/gi/${namespaceName.toLowerCase()}`, alias, true);
-            }
-        }
         collector.exportLines.push(renderCompanionExport(spec));
         collector.exportedNames.add(spec.element);
     }
@@ -104,7 +99,7 @@ const collectTextNodeExports = (collector: ExportCollector, textNodes: TextNodeE
 };
 
 const renderCompanionExport = (spec: CompanionExportSpec): string => {
-    const factory = `createWrapperComponent<${spec.typeName}>(${sourceStringLiteral(spec.element)})`;
+    const factory = `createLazyElementComponent<${spec.typeName}>()`;
     const component = `export const ${spec.element}: (props: ${spec.typeName}) => ReactNode = ${factory};`;
     return `${spec.typeSource}\n\n${component}`;
 };

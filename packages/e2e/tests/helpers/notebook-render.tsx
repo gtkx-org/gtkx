@@ -10,7 +10,7 @@ const buildNotebookFrom =
     (pages) => (
         <GtkNotebook ref={ref}>
             {pages.map((label) => (
-                <GtkNotebookPage key={label} tabLabel={<GtkLabel label={label} />}>
+                <GtkNotebookPage key={label} tabLabel={label}>
                     {content(label)}
                 </GtkNotebookPage>
             ))}

@@ -1,5 +1,4 @@
-import type { ContainerProp, ManyContainerProp, RejectRule, RelationshipRule, SyntheticPropRule } from "@gtkx/config";
-import { containerPropToAttach, containerPropToCompanion } from "@gtkx/config";
+import type { ContainerProp, SyntheticPropRule } from "@gtkx/config";
 
 export type AncestryWrapperName =
     | "withWindowPresentation"
@@ -16,7 +15,7 @@ export const BUILT_IN_ANCESTRY_WRAPPERS: AncestryWrapperRule[] = [
 
 export const DEFAULT_BLOCKABLE_TYPES: string[] = ["GtkTextBuffer"];
 
-type ManyMethods = Pick<ManyContainerProp, "append" | "remove">;
+type ManyMethods = Pick<ContainerProp, "append" | "remove">;
 
 const CONTROLLER_METHODS = { append: "addController", remove: "removeController" } satisfies ManyMethods;
 
@@ -33,17 +32,16 @@ const ACTION_GROUP_METHODS = {
 } satisfies ManyMethods;
 
 const prefixSuffixProps = (): ContainerProp[] => [
-    { arity: "many", prop: "prefix", child: "GtkWidget", append: "addPrefix" },
-    { arity: "many", prop: "suffix", child: "GtkWidget", append: "addSuffix" },
+    { prop: "prefix", child: "GtkWidget", append: "addPrefix" },
+    { prop: "suffix", child: "GtkWidget", append: "addSuffix" },
 ];
 
 const packProps = (): ContainerProp[] => [
-    { arity: "many", prop: "start", child: "GtkWidget", append: "packStart" },
-    { arity: "many", prop: "end", child: "GtkWidget", append: "packEnd" },
+    { prop: "start", child: "GtkWidget", append: "packStart" },
+    { prop: "end", child: "GtkWidget", append: "packEnd" },
 ];
 
 const autowrapProp = (wrapper: string): ContainerProp => ({
-    arity: "many",
     prop: "children",
     child: "GtkWidget",
     append: "append",
@@ -54,31 +52,28 @@ const autowrapProp = (wrapper: string): ContainerProp => ({
 
 export const CONTAINER_PROPS: Record<string, ContainerProp[]> = {
     GtkWidget: [
-        { arity: "many", prop: "controllers", child: "GtkEventController", ...CONTROLLER_METHODS },
+        { prop: "controllers", child: "GtkEventController", ...CONTROLLER_METHODS },
         {
-            arity: "one",
             prop: "layoutManager",
             child: "GtkLayoutManager",
-            set: "setLayoutManager",
-            unset: { method: "setLayoutManager", args: [{ literal: null }] },
+            append: "setLayoutManager",
+            remove: { method: "setLayoutManager", args: [{ literal: null }] },
         },
-        { arity: "many", prop: "actionGroups", child: "GActionGroup", ...ACTION_GROUP_METHODS },
+        { prop: "actionGroups", child: "GActionGroup", ...ACTION_GROUP_METHODS },
     ],
-    GtkShortcutController: [{ arity: "many", prop: "shortcuts", child: "GtkShortcut", ...SHORTCUT_METHODS }],
+    GtkShortcutController: [{ prop: "shortcuts", child: "GtkShortcut", ...SHORTCUT_METHODS }],
     GtkTextView: [
         {
-            arity: "one",
             prop: "children",
             child: "GtkTextBuffer",
-            set: "setBuffer",
-            unset: { method: "setBuffer", args: [{ literal: null }] },
+            append: "setBuffer",
+            remove: { method: "setBuffer", args: [{ literal: null }] },
         },
     ],
-    GActionMap: [{ arity: "many", prop: "children", child: "GAction", ...ACTION_METHODS }],
-    GtkApplicationWindow: [{ arity: "many", prop: "actions", child: "GAction", ...ACTION_METHODS }],
+    GActionMap: [{ prop: "children", child: "GAction", ...ACTION_METHODS }],
+    GtkApplicationWindow: [{ prop: "actions", child: "GAction", ...ACTION_METHODS }],
     GtkColumnView: [
         {
-            arity: "many",
             prop: "children",
             child: "GtkColumnViewColumn",
             append: "appendColumn",
@@ -86,79 +81,38 @@ export const CONTAINER_PROPS: Record<string, ContainerProp[]> = {
             insert: { method: "insertColumn", args: ["index", "child"] },
         },
     ],
-    AdwToggleGroup: [{ arity: "many", prop: "children", child: "AdwToggle", append: "add", remove: "remove" }],
-    AdwShortcutsDialog: [{ arity: "many", prop: "children", child: "AdwShortcutsSection", append: "add" }],
-    AdwShortcutsSection: [{ arity: "many", prop: "children", child: "AdwShortcutsItem", append: "add" }],
+    AdwToggleGroup: [{ prop: "children", child: "AdwToggle", append: "add", remove: "remove" }],
+    AdwShortcutsDialog: [{ prop: "children", child: "AdwShortcutsSection", append: "add" }],
+    AdwShortcutsSection: [{ prop: "children", child: "AdwShortcutsItem", append: "add" }],
     AdwActionRow: prefixSuffixProps(),
     AdwEntryRow: prefixSuffixProps(),
     AdwExpanderRow: [
         ...prefixSuffixProps(),
-        { arity: "many", prop: "rows", child: "GtkWidget", append: "addRow" },
-        { arity: "many", prop: "actions", child: "GtkWidget", append: "addAction" },
+        { prop: "rows", child: "GtkWidget", append: "addRow" },
+        { prop: "actions", child: "GtkWidget", append: "addAction" },
     ],
     AdwHeaderBar: packProps(),
     GtkHeaderBar: packProps(),
     GtkActionBar: packProps(),
     AdwToolbarView: [
-        { arity: "many", prop: "topBar", child: "GtkWidget", append: "addTopBar" },
-        { arity: "many", prop: "bottomBar", child: "GtkWidget", append: "addBottomBar" },
+        { prop: "topBar", child: "GtkWidget", append: "addTopBar" },
+        { prop: "bottomBar", child: "GtkWidget", append: "addBottomBar" },
     ],
     GtkListBox: [autowrapProp("GtkListBoxRow")],
     GtkFlowBox: [autowrapProp("GtkFlowBoxChild")],
-    GtkStack: [
-        {
-            arity: "many",
-            prop: "children",
-            child: "GtkWidget",
-            append: "addChild",
-            remove: "remove",
-            adopt: { element: "GtkStackPage" },
-        },
-    ],
-    AdwViewStack: [
-        {
-            arity: "many",
-            prop: "children",
-            child: "GtkWidget",
-            append: "add",
-            remove: "remove",
-            adopt: { element: "AdwViewStackPage" },
-        },
-    ],
+    GtkStack: [{ prop: "children", child: "GtkWidget", append: "addChild", remove: "remove", adopt: true }],
+    AdwViewStack: [{ prop: "children", child: "GtkWidget", append: "add", remove: "remove", adopt: true }],
     GtkNotebook: [
         {
-            arity: "many",
             prop: "children",
             child: "GtkWidget",
             append: { method: "appendPage", args: ["child", { literal: null }] },
             insert: { method: "insertPage", args: ["child", { literal: null }, "index"] },
             remove: "detachTab",
-            adopt: { element: "GtkNotebookPage", accessor: "getPage", setters: { tabLabel: "setTabLabel" } },
+            adopt: "getPage",
         },
     ],
 };
-
-const REJECT_RULES: RejectRule[] = [
-    { kind: "reject", parent: "GObject", child: "GtkEventController", prop: "controllers" },
-    { kind: "reject", parent: "GObject", child: "GtkLayoutManager", prop: "layoutManager" },
-    { kind: "reject", parent: "GObject", child: "GtkShortcut", prop: "shortcuts" },
-    { kind: "reject", parent: "GObject", child: "GtkTextBuffer", prop: "buffer" },
-];
-
-export const containerPropsToRelationships = (containerProps: Record<string, ContainerProp[]>): RelationshipRule[] => {
-    const rules: RelationshipRule[] = [];
-    for (const [parent, props] of Object.entries(containerProps)) {
-        for (const cp of props) {
-            rules.push(containerPropToCompanion(parent, cp) ?? containerPropToAttach(parent, cp));
-        }
-    }
-    return rules;
-};
-
-export const RELATIONSHIP_RULES: RelationshipRule[] = [
-    ...containerPropsToRelationships(CONTAINER_PROPS),
-    ...REJECT_RULES,
-];
 
 export const SYNTHETIC_PROP_RULES: SyntheticPropRule[] = [
     {

@@ -1,7 +1,11 @@
-import { defineConfig } from "vitest/config";
+import { defineConfig, mergeConfig } from "vitest/config";
+import shared from "../../vitest.shared.ts";
 
-export default defineConfig({
-    test: {
-        name: "mcp",
-    },
-});
+export default mergeConfig(
+    shared,
+    defineConfig({
+        test: {
+            name: "mcp",
+        },
+    }),
+);

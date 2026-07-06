@@ -1,4 +1,4 @@
-import { COMPANION_KIND, CONTAINER_SLOT_KIND, WIDGET_PROP_KIND, WRAPPER_NODE_ELEMENT } from "@gtkx/config";
+import { CONTAINER_SLOT_KIND, LAZY_ELEMENT_KIND, WIDGET_PROP_KIND, WRAPPER_NODE_ELEMENT } from "@gtkx/config";
 import { createElement, isValidElement, type ReactNode } from "react";
 import { slotPropsFor } from "../reconciler/rule-table.js";
 
@@ -64,9 +64,15 @@ export const createElementComponent = <P extends object>(elementName: string): (
 
 const NO_SLOT_PROPS: Set<string> = new Set();
 
-export const createWrapperComponent = <P extends object>(element: string): ((props: P) => ReactNode) => {
+/**
+ * Builds a component for a lazily-instantiated element (e.g. `GtkStackPage`) whose
+ * GObject is created by its parent on attach rather than in the reconciler. The
+ * component renders a lazy-element wrapper node carrying the props; once the parent
+ * injects the instance, the reconciler applies those props to it.
+ */
+export const createLazyElementComponent = <P extends object>(): ((props: P) => ReactNode) => {
     return (props: P): ReactNode => {
         const { rest, wrappers, children } = splitProps(props, NO_SLOT_PROPS);
-        return createElement(WRAPPER_NODE_ELEMENT, { kind: COMPANION_KIND, element, ...rest }, children, ...wrappers);
+        return createElement(WRAPPER_NODE_ELEMENT, { kind: LAZY_ELEMENT_KIND, ...rest }, children, ...wrappers);
     };
 };

@@ -22,9 +22,9 @@ describe("renderGtkxConfigModule", () => {
 
     it("does not export any rules binding", () => {
         const rules = {
-            relationships: [
-                { kind: "reject" as const, parent: "GObject", child: "GtkEventController", prop: "controllers" },
-            ],
+            containerProps: {
+                GtkStack: [{ prop: "children", child: "GtkWidget", append: "addChild", adopt: true }],
+            },
         };
         const source = renderGtkxConfigModule(resolveGtkxConfig({ rules }));
         expect(source).not.toContain("RULES");

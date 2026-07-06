@@ -686,7 +686,9 @@ const FontRenderingTextRow = ({ state }: { state: FontRenderingState }) => {
                 {(ref) => <GtkLabel ref={ref} label="Text" xalign={1} marginStart={10} cssClasses={["dim-label"]} />}
             </Grid.Child>
             <Grid.Child column={2} row={0}>
-                {(ref) => <GtkEntry ref={ref} name="entry" text={text} onChanged={(entry) => setText(entry.getText())} />}
+                {(ref) => (
+                    <GtkEntry ref={ref} name="entry" text={text} onChanged={(entry) => setText(entry.getText())} />
+                )}
             </Grid.Child>
             <Grid.Child column={1} row={1}>
                 {(ref) => <GtkLabel ref={ref} label="Font" xalign={1} marginStart={10} cssClasses={["dim-label"]} />}

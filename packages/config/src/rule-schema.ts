@@ -3,7 +3,7 @@ import type { GtkxRules, ResolvedGtkxRules } from "./rule-validation.js";
 export const WRAPPER_NODE_ELEMENT = "__GTKX_WRAPPER_NODE__";
 
 export const WRAPPER_KINDS = [
-    "companion",
+    "lazy-element",
     "widget-prop",
     "container-slot",
     "text-anchor",
@@ -19,7 +19,7 @@ const WRAPPER_KIND_SET: ReadonlySet<string> = new Set(WRAPPER_KINDS);
 export const isWrapperKind = (value: unknown): value is WrapperKind =>
     typeof value === "string" && WRAPPER_KIND_SET.has(value);
 
-export const COMPANION_KIND: WrapperKind = "companion";
+export const LAZY_ELEMENT_KIND: WrapperKind = "lazy-element";
 
 export const WIDGET_PROP_KIND: WrapperKind = "widget-prop";
 
@@ -35,6 +35,5 @@ export const LABEL_TEXT_KIND: WrapperKind = "label-text";
 
 export const resolveGtkxRules = (rules: GtkxRules | undefined): ResolvedGtkxRules => ({
     containerProps: rules?.containerProps ?? {},
-    relationships: rules?.relationships ?? [],
     syntheticProps: rules?.syntheticProps ?? [],
 });
