@@ -3,7 +3,7 @@ import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
-import { render } from "@gtkx/testing";
+import { render, waitFor } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
@@ -22,7 +22,9 @@ describe("render - Fixed", () => {
         const fixed = fixedRef.current as Gtk.Fixed;
         const label = fixed.getFirstChild() as Gtk.Label;
         expect(label.getLabel()).toBe("pinned");
-        expect(fixed.getChildPosition(label)).toEqual([10, 20]);
+        await waitFor(() => {
+            expect(fixed.getChildPosition(label)).toEqual([10, 20]);
+        });
     });
 
     it("applies an arbitrary transform", async () => {
@@ -56,10 +58,14 @@ describe("render - Fixed", () => {
 
         const { rerender } = await render(<App x={0} y={0} />);
         const label = fixedRef.current?.getFirstChild() as Gtk.Label;
-        expect(fixedRef.current?.getChildPosition(label)).toEqual([0, 0]);
+        await waitFor(() => {
+            expect(fixedRef.current?.getChildPosition(label)).toEqual([0, 0]);
+        });
 
         await rerender(<App x={30} y={40} />);
-        expect(fixedRef.current?.getChildPosition(label)).toEqual([30, 40]);
+        await waitFor(() => {
+            expect(fixedRef.current?.getChildPosition(label)).toEqual([30, 40]);
+        });
     });
 
     it("removes a child when it unmounts", async () => {

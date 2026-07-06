@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkEntry, GtkLabel, GtkProgressBar } from "@gtkx/jsx/gtk";
+import { GtkAdjustment, GtkBox, GtkButton, GtkEntry, GtkLabel, GtkLevelBar, GtkProgressBar, GtkScale } from "@gtkx/jsx/gtk";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 import { getByLabelText, queryAllByRole, queryByRole, render } from "../src/index.js";
@@ -38,22 +38,42 @@ describe("getByRole description", () => {
 });
 
 describe("getByRole value", () => {
-    it("filters by accessible value now/min/max", async () => {
+    it("filters a slider by its live adjustment value now/min/max", async () => {
         const { container } = await render(
             <VBox>
-                <GtkProgressBar accessibleValueNow={25} accessibleValueMin={0} accessibleValueMax={100} />
-                <GtkProgressBar accessibleValueNow={75} accessibleValueMin={0} accessibleValueMax={100} />
+                <GtkScale adjustment={<GtkAdjustment value={25} lower={0} upper={100} />} />
+                <GtkScale adjustment={<GtkAdjustment value={75} lower={0} upper={100} />} />
             </VBox>,
         );
-        expect(queryByRole(container, Gtk.AccessibleRole.PROGRESS_BAR, { value: { now: 25 } })).not.toBeNull();
-        expect(queryAllByRole(container, Gtk.AccessibleRole.PROGRESS_BAR, { value: { max: 100 } })).toHaveLength(2);
-        expect(queryByRole(container, Gtk.AccessibleRole.PROGRESS_BAR, { value: { now: 999 } })).toBeNull();
+        expect(queryByRole(container, Gtk.AccessibleRole.SLIDER, { value: { now: 25 } })).not.toBeNull();
+        expect(queryAllByRole(container, Gtk.AccessibleRole.SLIDER, { value: { min: 0, max: 100 } })).toHaveLength(2);
+        expect(queryByRole(container, Gtk.AccessibleRole.SLIDER, { value: { now: 999 } })).toBeNull();
     });
 
-    it("filters by accessible value text", async () => {
-        const { container } = await render(<GtkProgressBar accessibleValueText="Loading" accessibleValueNow={10} />);
-        expect(queryByRole(container, Gtk.AccessibleRole.PROGRESS_BAR, { value: { text: "Loading" } })).not.toBeNull();
-        expect(queryByRole(container, Gtk.AccessibleRole.PROGRESS_BAR, { value: { text: "Done" } })).toBeNull();
+    it("filters a progress bar by its live fraction", async () => {
+        const { container } = await render(
+            <VBox>
+                <GtkProgressBar fraction={0.25} />
+                <GtkProgressBar fraction={0.75} />
+            </VBox>,
+        );
+        expect(queryByRole(container, Gtk.AccessibleRole.PROGRESS_BAR, { value: { now: 0.25 } })).not.toBeNull();
+        expect(queryAllByRole(container, Gtk.AccessibleRole.PROGRESS_BAR, { value: { min: 0, max: 1 } })).toHaveLength(2);
+        expect(queryByRole(container, Gtk.AccessibleRole.PROGRESS_BAR, { value: { now: 0.99 } })).toBeNull();
+    });
+
+    it("filters a level bar by its live value/min/max", async () => {
+        const { container } = await render(<GtkLevelBar value={0.3} />);
+        expect(queryByRole(container, Gtk.AccessibleRole.METER, { value: { now: 0.3, min: 0, max: 1 } })).not.toBeNull();
+        expect(queryByRole(container, Gtk.AccessibleRole.METER, { value: { now: 0.9 } })).toBeNull();
+    });
+
+    it("falls back to author-supplied accessibleValueText alongside a live value", async () => {
+        const { container } = await render(
+            <GtkScale adjustment={<GtkAdjustment value={10} lower={0} upper={100} />} accessibleValueText="Loading" />,
+        );
+        expect(queryByRole(container, Gtk.AccessibleRole.SLIDER, { value: { text: "Loading" } })).not.toBeNull();
+        expect(queryByRole(container, Gtk.AccessibleRole.SLIDER, { value: { text: "Done" } })).toBeNull();
     });
 });
 

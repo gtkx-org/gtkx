@@ -154,12 +154,37 @@ export type WidgetValue = {
     text: string | null;
 };
 
-export const getWidgetValue = (widget: Gtk.Widget): WidgetValue => ({
-    now: readAccessibleNumber(widget, "accessibleValueNow"),
-    min: readAccessibleNumber(widget, "accessibleValueMin"),
-    max: readAccessibleNumber(widget, "accessibleValueMax"),
-    text: readAccessibleString(widget, "accessibleValueText"),
+type ValueTriplet = { now: number | null; min: number | null; max: number | null };
+
+const adjustmentValue = (adjustment: Gtk.Adjustment): ValueTriplet => ({
+    now: adjustment.getValue(),
+    min: adjustment.getLower(),
+    max: adjustment.getUpper(),
 });
+
+const getWidgetLiveValue = (widget: Gtk.Widget): ValueTriplet | null => {
+    if (widget instanceof Gtk.Range) return adjustmentValue(widget.getAdjustment());
+    if (widget instanceof Gtk.Scrollbar) return adjustmentValue(widget.getAdjustment());
+    if (widget instanceof Gtk.SpinButton) return adjustmentValue(widget.getAdjustment());
+    if (widget instanceof Gtk.ScaleButton) return adjustmentValue(widget.getAdjustment());
+    if (widget instanceof Gtk.LevelBar) {
+        return { now: widget.getValue(), min: widget.getMinValue(), max: widget.getMaxValue() };
+    }
+    if (widget instanceof Gtk.ProgressBar) return { now: widget.getFraction(), min: 0, max: 1 };
+    return null;
+};
+
+export const getWidgetValue = (widget: Gtk.Widget): WidgetValue => {
+    const text = readAccessibleString(widget, "accessibleValueText");
+    const live = getWidgetLiveValue(widget);
+    if (live) return { ...live, text };
+    return {
+        now: readAccessibleNumber(widget, "accessibleValueNow"),
+        min: readAccessibleNumber(widget, "accessibleValueMin"),
+        max: readAccessibleNumber(widget, "accessibleValueMax"),
+        text,
+    };
+};
 
 export const getWidgetOwnLabel = (widget: Gtk.Widget): string | null => {
     return readAccessibleString(widget, "accessibleLabel");

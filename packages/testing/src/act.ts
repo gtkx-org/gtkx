@@ -1,4 +1,3 @@
-import * as Gtk from "@gtkx/gi/gtk";
 import { act as reactAct } from "react";
 
 declare global {
@@ -58,18 +57,5 @@ const actImplementation: ActImplementation = reactAct as ActImplementation;
 
 export const act: ActImplementation = withGlobalActEnvironment(actImplementation);
 
-const settleFrame = (): Promise<void> => {
-    const toplevel = Gtk.Window.listToplevels().find((widget) => widget.getMapped());
-    if (toplevel === undefined) return Promise.resolve();
-    return new Promise((resolve) => {
-        toplevel.addTickCallback(() => {
-            resolve();
-            return false;
-        });
-    });
-};
-
-export const runInAct = async (callback: () => unknown): Promise<void> => {
-    await act(() => callback());
-    await settleFrame();
-};
+export const runInAct = (callback: () => unknown): Promise<void> =>
+    Promise.resolve(act(() => callback())).then(() => undefined);
