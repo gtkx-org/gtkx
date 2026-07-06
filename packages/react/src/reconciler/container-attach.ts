@@ -4,7 +4,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { typeChainIncludes } from "../utils/gtype.js";
 import { callUsesRef, nullSetterCurrentHolder, resolveAttachRule, runCall } from "./rule-table.js";
 import { type ElementMapping, type Node, registeredStateOf, stateOf } from "./state.js";
-import { childWidget, isToplevel } from "./wrapper-content.js";
+import { childWidget } from "./wrapper-content.js";
 
 const containerRuleFor = (container: GObject.Object, child: Gtk.Widget): AttachRule | null => {
     const resolved = resolveAttachRule(container.__type__, child.__type__, undefined);
@@ -190,12 +190,6 @@ const removeWidget = (container: GObject.Object, widget: Gtk.Widget): void => {
         detachChild(widget, wrapper);
         detachChild(wrapper, container);
     }
-};
-
-export const toplevelSkipMapping: ElementMapping = {
-    matches: (child) => isToplevel(child),
-    attach: () => {},
-    detach: () => {},
 };
 
 export const containerMapping: ElementMapping = {

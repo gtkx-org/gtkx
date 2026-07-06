@@ -1,5 +1,5 @@
 import * as GObject from "@gtkx/gi/gobject";
-import { containerMapping, toplevelSkipMapping } from "./container-attach.js";
+import { containerMapping } from "./container-attach.js";
 import { type ElementMapping, type Node, stateOf } from "./state.js";
 import { companionMapping, containerSlotMapping, ruleChildMapping, widgetPropMapping } from "./wrapper-apply.js";
 import { isWrapperNode } from "./wrapper-node.js";
@@ -9,7 +9,6 @@ const ELEMENT_MAP: ElementMapping[] = [
     containerSlotMapping,
     companionMapping,
     ruleChildMapping,
-    toplevelSkipMapping,
     containerMapping,
 ];
 

@@ -119,9 +119,7 @@ const renderCandidateExport = (candidate: GlibNamedClass, library: Library, impo
     imports.addNamed("@gtkx/react", "createElementComponent", false);
     imports.addNamed("react", "ReactNode", true);
     if (wrapper !== undefined) imports.addNamed("@gtkx/react", wrapper, false);
-    const isDialog = wrapper === "withWindowPresentation" && ancestry.has("AdwDialog");
-    if (isDialog) imports.addNamed("@gtkx/react", "ToplevelParentProps", true);
-    return renderElementComponentExport(glibName, wrapper, isDialog);
+    return renderElementComponentExport(glibName, wrapper);
 };
 
 const resolveAncestryWrapper = (ancestry: Set<string>): AncestryWrapperName | undefined => {
@@ -131,16 +129,11 @@ const resolveAncestryWrapper = (ancestry: Set<string>): AncestryWrapperName | un
     return undefined;
 };
 
-const renderElementComponentExport = (
-    glibName: string,
-    wrapper: AncestryWrapperName | undefined,
-    isDialog: boolean,
-): string => {
+const renderElementComponentExport = (glibName: string, wrapper: AncestryWrapperName | undefined): string => {
     const propsType = `${glibName}Props`;
     if (wrapper === undefined) {
         return `export const ${glibName}: (props: ${propsType}) => ReactNode = createElementComponent<${propsType}>(${sourceStringLiteral(glibName)});`;
     }
-    const componentPropsType = isDialog ? `${propsType} & ToplevelParentProps` : propsType;
-    const annotation = `(props: ${componentPropsType}) => ReactNode`;
-    return `export const ${glibName}: ${annotation} = ${wrapper}<${componentPropsType}>(createElementComponent<${componentPropsType}>(${sourceStringLiteral(glibName)}));`;
+    const annotation = `(props: ${propsType}) => ReactNode`;
+    return `export const ${glibName}: ${annotation} = ${wrapper}<${propsType}>(createElementComponent<${propsType}>(${sourceStringLiteral(glibName)}));`;
 };

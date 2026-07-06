@@ -21,7 +21,11 @@ describe("renderGtkxConfigModule", () => {
     });
 
     it("does not export any rules binding", () => {
-        const rules = { relationships: [{ kind: "skip" as const, child: "GtkWindow" }] };
+        const rules = {
+            relationships: [
+                { kind: "reject" as const, parent: "GObject", child: "GtkEventController", prop: "controllers" },
+            ],
+        };
         const source = renderGtkxConfigModule(resolveGtkxConfig({ rules }));
         expect(source).not.toContain("RULES");
         expect(source).not.toContain("rules");

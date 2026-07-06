@@ -247,7 +247,6 @@ describe("codegen read-only props", () => {
 
 describe("codegen runtime tables", () => {
     it("bakes only the serializable rule tables into the metadata module", () => {
-        expect(reactPipeline.metadata).toContain("export const TOPLEVEL_TYPES");
         expect(reactPipeline.metadata).toContain("export const DEFAULT_BLOCKABLE_TYPES");
         expect(reactPipeline.metadata).toContain("export const RELATIONSHIPS");
         expect(reactPipeline.metadata).toContain("export const SYNTHETIC_PROPS");

@@ -84,7 +84,6 @@ export const writeTarget = (instance: object, name: string, value: unknown): voi
 const attachIndex = new Map<string, AttachRule>();
 const rejectIndex = new Map<string, RejectRule>();
 const elementIndex = new Map<string, CompanionRule>();
-const skippedTypes = new Set<string>();
 const slotsByParent: Record<string, string[]> = {};
 
 for (const rule of RELATIONSHIPS) {
@@ -103,9 +102,6 @@ for (const rule of RELATIONSHIPS) {
             break;
         case "companion":
             elementIndex.set(rule.element, rule);
-            break;
-        case "skip":
-            skippedTypes.add(rule.child);
             break;
     }
 }

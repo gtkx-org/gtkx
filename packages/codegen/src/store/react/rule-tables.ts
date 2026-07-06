@@ -77,8 +77,6 @@ const relationshipTypeNames = (rule: RelationshipRule): string[] => {
             return [rule.parent];
         case "reject":
             return [rule.parent, rule.child];
-        case "skip":
-            return [rule.child];
     }
 };
 
@@ -180,8 +178,6 @@ const relationshipKey = (rule: RelationshipRule): string => {
             return `element:${rule.element}`;
         case "reject":
             return `reject:${rule.parent}:${rule.child}`;
-        case "skip":
-            return `skip:${rule.child}`;
     }
 };
 

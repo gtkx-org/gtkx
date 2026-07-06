@@ -1,4 +1,5 @@
 import { Grid } from "@gtkx/components";
+import { Dialog } from "@gtkx/components/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwDialog, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
 import {
@@ -195,9 +196,7 @@ const LevelScaleRow = ({ levelScale, setLevelScale, onValueChanged }: LevelScale
                     orientation={Gtk.Orientation.HORIZONTAL}
                     valign={Gtk.Align.BASELINE}
                     drawValue={false}
-                    adjustment={
-                        <GtkAdjustment value={50} lower={0} upper={100} stepIncrement={1} pageIncrement={10} />
-                    }
+                    adjustment={<GtkAdjustment value={50} lower={0} upper={100} stepIncrement={1} pageIncrement={10} />}
                     onValueChanged={(scale) => onValueChanged(scale.getValue())}
                 />
             )}
@@ -284,42 +283,38 @@ const ErrorstatesDemo = ({ onClose, window }: DemoProps) => {
     const handlers = useErrorStatesHandlers(state);
 
     return (
-        <AdwDialog
-            parent={window.current}
-            title="Error States"
-            canClose
-            followsContentSize
-            onClosed={() => onClose?.()}
-        >
-            <AdwToolbarView topBar={<AdwHeaderBar />}>
-                <Grid
-                    rowSpacing={10}
-                    columnSpacing={10}
-                    marginStart={20}
-                    marginEnd={20}
-                    marginTop={20}
-                    marginBottom={20}
-                >
-                    <DetailsEntryRow
-                        detailsEntry={state.detailsEntry}
-                        setDetailsEntry={state.setDetailsEntry}
-                        onChange={handlers.handleDetailsChange}
-                    />
-                    <MoreDetailsEntryRow
-                        moreDetailsEntry={state.moreDetailsEntry}
-                        setMoreDetailsEntry={state.setMoreDetailsEntry}
-                        moreDetailsError={state.moreDetailsError}
-                        onChange={handlers.handleMoreDetailsChange}
-                    />
-                    <LevelScaleRow
-                        levelScale={state.levelScale}
-                        setLevelScale={state.setLevelScale}
-                        onValueChanged={handlers.handleLevelChange}
-                    />
-                    <ModeSwitchRow state={state} onStateSet={handlers.handleModeStateSet} />
-                </Grid>
-            </AdwToolbarView>
-        </AdwDialog>
+        <Dialog parent={window.current}>
+            <AdwDialog title="Error States" canClose followsContentSize onClosed={() => onClose?.()}>
+                <AdwToolbarView topBar={<AdwHeaderBar />}>
+                    <Grid
+                        rowSpacing={10}
+                        columnSpacing={10}
+                        marginStart={20}
+                        marginEnd={20}
+                        marginTop={20}
+                        marginBottom={20}
+                    >
+                        <DetailsEntryRow
+                            detailsEntry={state.detailsEntry}
+                            setDetailsEntry={state.setDetailsEntry}
+                            onChange={handlers.handleDetailsChange}
+                        />
+                        <MoreDetailsEntryRow
+                            moreDetailsEntry={state.moreDetailsEntry}
+                            setMoreDetailsEntry={state.setMoreDetailsEntry}
+                            moreDetailsError={state.moreDetailsError}
+                            onChange={handlers.handleMoreDetailsChange}
+                        />
+                        <LevelScaleRow
+                            levelScale={state.levelScale}
+                            setLevelScale={state.setLevelScale}
+                            onValueChanged={handlers.handleLevelChange}
+                        />
+                        <ModeSwitchRow state={state} onStateSet={handlers.handleModeStateSet} />
+                    </Grid>
+                </AdwToolbarView>
+            </AdwDialog>
+        </Dialog>
     );
 };
 

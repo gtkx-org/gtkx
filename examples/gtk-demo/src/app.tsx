@@ -1,5 +1,6 @@
 import * as path from "node:path/posix";
 import { Menu } from "@gtkx/components";
+import { Dialog } from "@gtkx/components/adw";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -131,17 +132,19 @@ interface ShortcutsDialogProps {
 }
 
 const ShortcutsDialog = ({ activeWindow, onClose }: ShortcutsDialogProps) => (
-    <AdwShortcutsDialog parent={activeWindow} onClosed={onClose}>
-        <AdwShortcutsSection title="General">
-            <AdwShortcutsItem title="Search demos" accelerator="<Control>f" />
-            <AdwShortcutsItem title="Open Inspector" accelerator="<Control><Shift>i" />
-            <AdwShortcutsItem title="Keyboard Shortcuts" accelerator="<Control>question" />
-        </AdwShortcutsSection>
-        <AdwShortcutsSection title="Navigation">
-            <AdwShortcutsItem title="Next tab" accelerator="<Control>Page_Down" />
-            <AdwShortcutsItem title="Previous tab" accelerator="<Control>Page_Up" />
-        </AdwShortcutsSection>
-    </AdwShortcutsDialog>
+    <Dialog parent={activeWindow}>
+        <AdwShortcutsDialog onClosed={onClose}>
+            <AdwShortcutsSection title="General">
+                <AdwShortcutsItem title="Search demos" accelerator="<Control>f" />
+                <AdwShortcutsItem title="Open Inspector" accelerator="<Control><Shift>i" />
+                <AdwShortcutsItem title="Keyboard Shortcuts" accelerator="<Control>question" />
+            </AdwShortcutsSection>
+            <AdwShortcutsSection title="Navigation">
+                <AdwShortcutsItem title="Next tab" accelerator="<Control>Page_Down" />
+                <AdwShortcutsItem title="Previous tab" accelerator="<Control>Page_Up" />
+            </AdwShortcutsSection>
+        </AdwShortcutsDialog>
+    </Dialog>
 );
 
 interface AppHeaderBarProps {
@@ -261,19 +264,20 @@ interface AboutDialogProps {
 }
 
 const AboutDialog = ({ activeWindow, onClose }: AboutDialogProps) => (
-    <AdwAboutDialog
-        parent={activeWindow}
-        applicationName="GTK Demo"
-        applicationIcon={applicationIconName}
-        version="0.14.0"
-        copyright="© 2026 The GTKX Team"
-        website="https://gtkx.dev"
-        comments="Program to demonstrate GTKX widgets"
-        developerName="The GTKX Team"
-        developers={["The GTKX Team"]}
-        licenseType={Gtk.License.MPL_2_0}
-        onClosed={onClose}
-    />
+    <Dialog parent={activeWindow}>
+        <AdwAboutDialog
+            applicationName="GTK Demo"
+            applicationIcon={applicationIconName}
+            version="0.14.0"
+            copyright="© 2026 The GTKX Team"
+            website="https://gtkx.dev"
+            comments="Program to demonstrate GTKX widgets"
+            developerName="The GTKX Team"
+            developers={["The GTKX Team"]}
+            licenseType={Gtk.License.MPL_2_0}
+            onClosed={onClose}
+        />
+    </Dialog>
 );
 
 const useDemoWindows = () => {

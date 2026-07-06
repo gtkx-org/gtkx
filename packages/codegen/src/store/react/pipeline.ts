@@ -9,7 +9,7 @@ import { generateJsxSection } from "./jsx.js";
 import { generateMetadata } from "./metadata.js";
 import { assembleRuleTables } from "./rule-tables.js";
 import { createRuleTypegen, type RuleTypegen } from "./synthetic-prop-types.js";
-import { DEFAULT_BLOCKABLE_TYPES, TOPLEVEL_TYPES } from "./tables.js";
+import { DEFAULT_BLOCKABLE_TYPES } from "./tables.js";
 
 export type JsxNamespaceFile = {
     directory: string;
@@ -40,7 +40,6 @@ export const generateJsxFiles = (library: Library, userRules?: ResolvedGtkxRules
     }
 
     const metadata = generateMetadata(library, {
-        toplevelTypes: TOPLEVEL_TYPES,
         defaultBlockableTypes: DEFAULT_BLOCKABLE_TYPES,
         relationships: ruleTables.relationships,
         syntheticProps: ruleTables.syntheticProps,

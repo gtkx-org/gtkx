@@ -27,8 +27,6 @@ const relationshipTypeNames = (rule: RelationshipRule): string[] => {
             return [rule.parent];
         case "reject":
             return [rule.parent, rule.child];
-        case "skip":
-            return [rule.child];
     }
 };
 
@@ -92,11 +90,6 @@ describe("assembled relationship table", () => {
             companion: "getPage",
             setters: { tabLabel: "setTabLabel" },
         });
-    });
-
-    it("keeps skip rules for toplevels", () => {
-        const skipped = tables.relationships.filter((rule) => rule.kind === "skip").map((rule) => rule.child);
-        expect(skipped).toEqual(expect.arrayContaining(["GtkWindow", "AdwDialog"]));
     });
 });
 

@@ -1,3 +1,4 @@
+import { Dialog } from "@gtkx/components/adw";
 import * as Adw from "@gtkx/gi/adw";
 import { AdwAlertDialog } from "@gtkx/jsx/adw";
 import { createRootElement } from "@gtkx/react";
@@ -11,14 +12,21 @@ const options = () => ({ container: createRootElement() });
 type Response = { id: string; label: string };
 
 const buildAlertDialog = (ref: RefObject<Adw.AlertDialog | null>) => (responses: Response[]) => (
-    <AdwAlertDialog ref={ref} heading="Test" responses={responses} />
+    <Dialog>
+        <AdwAlertDialog ref={ref} heading="Test" responses={responses} />
+    </Dialog>
 );
 
 describe("render - AlertDialogResponse > AlertDialogNode (1)", () => {
     it("creates AlertDialog without responses", async () => {
         const ref = createRef<Adw.AlertDialog>();
 
-        await render(<AdwAlertDialog ref={ref} heading="Test" />, options());
+        await render(
+            <Dialog>
+                <AdwAlertDialog ref={ref} heading="Test" />
+            </Dialog>,
+            options(),
+        );
 
         expect(ref.current).not.toBeNull();
         expect(ref.current?.hasResponse("any")).toBe(false);
@@ -28,14 +36,16 @@ describe("render - AlertDialogResponse > AlertDialogNode (1)", () => {
         const ref = createRef<Adw.AlertDialog>();
 
         await render(
-            <AdwAlertDialog
-                ref={ref}
-                heading="Test"
-                responses={[
-                    { id: "cancel", label: "Cancel" },
-                    { id: "confirm", label: "Confirm" },
-                ]}
-            />,
+            <Dialog>
+                <AdwAlertDialog
+                    ref={ref}
+                    heading="Test"
+                    responses={[
+                        { id: "cancel", label: "Cancel" },
+                        { id: "confirm", label: "Confirm" },
+                    ]}
+                />
+            </Dialog>,
             options(),
         );
 
@@ -47,7 +57,9 @@ describe("render - AlertDialogResponse > AlertDialogNode (1)", () => {
         const ref = createRef<Adw.AlertDialog>();
 
         await render(
-            <AdwAlertDialog ref={ref} heading="Test" responses={[{ id: "ok", label: "OK Button" }]} />,
+            <Dialog>
+                <AdwAlertDialog ref={ref} heading="Test" responses={[{ id: "ok", label: "OK Button" }]} />
+            </Dialog>,
             options(),
         );
 
@@ -60,15 +72,17 @@ describe("render - AlertDialogResponse > AlertDialogNode (2)", () => {
         const ref = createRef<Adw.AlertDialog>();
 
         await render(
-            <AdwAlertDialog
-                ref={ref}
-                heading="Test"
-                responses={[
-                    { id: "default", label: "Default" },
-                    { id: "suggested", label: "Suggested", appearance: Adw.ResponseAppearance.SUGGESTED },
-                    { id: "destructive", label: "Delete", appearance: Adw.ResponseAppearance.DESTRUCTIVE },
-                ]}
-            />,
+            <Dialog>
+                <AdwAlertDialog
+                    ref={ref}
+                    heading="Test"
+                    responses={[
+                        { id: "default", label: "Default" },
+                        { id: "suggested", label: "Suggested", appearance: Adw.ResponseAppearance.SUGGESTED },
+                        { id: "destructive", label: "Delete", appearance: Adw.ResponseAppearance.DESTRUCTIVE },
+                    ]}
+                />
+            </Dialog>,
             options(),
         );
 
@@ -81,14 +95,16 @@ describe("render - AlertDialogResponse > AlertDialogNode (2)", () => {
         const ref = createRef<Adw.AlertDialog>();
 
         await render(
-            <AdwAlertDialog
-                ref={ref}
-                heading="Test"
-                responses={[
-                    { id: "enabled", label: "Enabled" },
-                    { id: "disabled", label: "Disabled", enabled: false },
-                ]}
-            />,
+            <Dialog>
+                <AdwAlertDialog
+                    ref={ref}
+                    heading="Test"
+                    responses={[
+                        { id: "enabled", label: "Enabled" },
+                        { id: "disabled", label: "Disabled", enabled: false },
+                    ]}
+                />
+            </Dialog>,
             options(),
         );
 
@@ -102,7 +118,11 @@ describe("render - AlertDialogResponse > AlertDialogNode (3)", () => {
         const ref = createRef<Adw.AlertDialog>();
 
         function App({ label }: { label: string }) {
-            return <AdwAlertDialog ref={ref} heading="Test" responses={[{ id: "test", label }]} />;
+            return (
+                <Dialog>
+                    <AdwAlertDialog ref={ref} heading="Test" responses={[{ id: "test", label }]} />
+                </Dialog>
+            );
         }
 
         await render(<App label="Initial" />, options());
@@ -116,7 +136,11 @@ describe("render - AlertDialogResponse > AlertDialogNode (3)", () => {
         const ref = createRef<Adw.AlertDialog>();
 
         function App({ appearance }: { appearance: Adw.ResponseAppearance }) {
-            return <AdwAlertDialog ref={ref} heading="Test" responses={[{ id: "test", label: "Test", appearance }]} />;
+            return (
+                <Dialog>
+                    <AdwAlertDialog ref={ref} heading="Test" responses={[{ id: "test", label: "Test", appearance }]} />
+                </Dialog>
+            );
         }
 
         await render(<App appearance={Adw.ResponseAppearance.DEFAULT} />, options());
@@ -130,7 +154,11 @@ describe("render - AlertDialogResponse > AlertDialogNode (3)", () => {
         const ref = createRef<Adw.AlertDialog>();
 
         function App({ enabled }: { enabled: boolean }) {
-            return <AdwAlertDialog ref={ref} heading="Test" responses={[{ id: "test", label: "Test", enabled }]} />;
+            return (
+                <Dialog>
+                    <AdwAlertDialog ref={ref} heading="Test" responses={[{ id: "test", label: "Test", enabled }]} />
+                </Dialog>
+            );
         }
 
         await render(<App enabled={true} />, options());

@@ -131,7 +131,6 @@ describe("validateGtkxConfig rules validation", () => {
                     setters: { label: "setTabLabelText", tabLabel: "setTabLabel" },
                 },
                 { kind: "reject", parent: "GObject", child: "GtkEventController", prop: "controllers" },
-                { kind: "skip", child: "GtkWindow" },
             ],
             syntheticProps: [
                 {
@@ -185,7 +184,7 @@ describe("validateGtkxConfig rules validation", () => {
 
     it("rejects an unknown rule kind", () => {
         expect(() => validateUnknown({ rules: { relationships: [{ kind: "wrap" }] } })).toThrow(
-            /`rules\.relationships\[0\]\.kind` must be one of attach, companion, reject, skip/,
+            /`rules\.relationships\[0\]\.kind` must be one of attach, companion, reject/,
         );
     });
 
@@ -333,12 +332,21 @@ describe("resolveGtkxConfig", () => {
             libraries: ["Gtk-4.0", "Adw-1"],
             girPath: ["/opt/gir"],
             applicationId: "org.gtk.Demo4",
-            rules: { relationships: [{ kind: "skip", child: "GtkWindow" }] },
+            rules: {
+                relationships: [
+                    { kind: "reject", parent: "GObject", child: "GtkEventController", prop: "controllers" },
+                ],
+            },
             reactCompiler: { compilationMode: "annotation" },
         };
         expect(resolveGtkxConfig(configured)).toEqual({
             ...configured,
-            rules: { relationships: [{ kind: "skip", child: "GtkWindow" }], syntheticProps: [] },
+            rules: {
+                relationships: [
+                    { kind: "reject", parent: "GObject", child: "GtkEventController", prop: "controllers" },
+                ],
+                syntheticProps: [],
+            },
             reactCompiler: { target: "19", compilationMode: "annotation" },
             codegen: true,
         });

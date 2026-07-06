@@ -10,10 +10,8 @@ export type AncestryWrapperRule = { ancestors: string[]; wrapper: AncestryWrappe
 export const BUILT_IN_ANCESTRY_WRAPPERS: AncestryWrapperRule[] = [
     { ancestors: ["GtkApplication"], wrapper: "withApplicationLifecycle" },
     { ancestors: ["GtkApplicationWindow"], wrapper: "withApplicationWindowPresentation" },
-    { ancestors: ["GtkWindow", "AdwDialog"], wrapper: "withWindowPresentation" },
+    { ancestors: ["GtkWindow"], wrapper: "withWindowPresentation" },
 ];
-
-export const TOPLEVEL_TYPES: string[] = ["GtkWindow", "AdwDialog"];
 
 export const DEFAULT_BLOCKABLE_TYPES: string[] = ["GtkTextBuffer"];
 
@@ -131,8 +129,6 @@ export const RELATIONSHIP_RULES: RelationshipRule[] = [
         companion: "getPage",
         setters: { tabLabel: "setTabLabel" },
     },
-    { kind: "skip", child: "GtkWindow" },
-    { kind: "skip", child: "AdwDialog" },
 ];
 
 export const SYNTHETIC_PROP_RULES: SyntheticPropRule[] = [

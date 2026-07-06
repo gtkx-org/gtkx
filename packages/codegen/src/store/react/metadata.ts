@@ -15,7 +15,6 @@ import {
 import { ACCESSIBLE_ATTRIBUTES } from "./tables.js";
 
 export type RuntimeTables = {
-    toplevelTypes: string[];
     defaultBlockableTypes: string[];
     relationships: RelationshipRule[];
     syntheticProps: SyntheticPropRule[];
@@ -31,7 +30,6 @@ type RuntimeTableSpec = {
 };
 
 const RUNTIME_TABLE_SPECS: Record<keyof RuntimeTables, RuntimeTableSpec> = {
-    toplevelTypes: { name: "TOPLEVEL_TYPES", annotation: "string[]" },
     defaultBlockableTypes: { name: "DEFAULT_BLOCKABLE_TYPES", annotation: "string[]" },
     relationships: { name: "RELATIONSHIPS", annotation: arrayOf("RelationshipRule") },
     syntheticProps: { name: "SYNTHETIC_PROPS", annotation: arrayOf("SyntheticPropRule") },

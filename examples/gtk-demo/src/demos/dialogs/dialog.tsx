@@ -1,4 +1,5 @@
 import { Grid } from "@gtkx/components";
+import { Dialog } from "@gtkx/components/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwAlertDialog } from "@gtkx/jsx/adw";
 import { GtkBox, GtkButton, GtkEntry, GtkLabel, GtkSeparator } from "@gtkx/jsx/gtk";
@@ -77,19 +78,20 @@ const MessageDialog = ({
     clickCount: number;
     onClose: () => void;
 }) => (
-    <AdwAlertDialog
-        parent={target}
-        name="message-dialog"
-        heading="Test message"
-        body={clickCount === 1 ? "Has been shown once" : `Has been shown ${clickCount} times`}
-        defaultResponse="ok"
-        closeResponse="cancel"
-        onResponse={onClose}
-        responses={[
-            { id: "cancel", label: "_Cancel" },
-            { id: "ok", label: "_OK" },
-        ]}
-    />
+    <Dialog parent={target}>
+        <AdwAlertDialog
+            name="message-dialog"
+            heading="Test message"
+            body={clickCount === 1 ? "Has been shown once" : `Has been shown ${clickCount} times`}
+            defaultResponse="ok"
+            closeResponse="cancel"
+            onResponse={onClose}
+            responses={[
+                { id: "cancel", label: "_Cancel" },
+                { id: "ok", label: "_OK" },
+            ]}
+        />
+    </Dialog>
 );
 
 interface InteractiveDialogProps {
@@ -112,61 +114,66 @@ const InteractiveDialog = ({
     const [dialogEntry1Widget, setDialogEntry1Widget] = useState<Gtk.Entry | null>(null);
     const [dialogEntry2Widget, setDialogEntry2Widget] = useState<Gtk.Entry | null>(null);
     return (
-        <AdwAlertDialog
-            parent={target}
-            name="interactive-dialog"
-            heading="Interactive Dialog"
-            defaultResponse="ok"
-            closeResponse="cancel"
-            onResponse={onResponse}
-            extraChild={
-                <Grid
-                    rowSpacing={6}
-                    columnSpacing={6}
-                    hexpand
-                    vexpand
-                    halign={Gtk.Align.CENTER}
-                    valign={Gtk.Align.CENTER}
-                >
-                    <Grid.Child column={0} row={0}>
-                        {(ref) => <GtkLabel ref={ref} label="_Entry 1" useUnderline mnemonicWidget={dialogEntry1Widget} />}
-                    </Grid.Child>
-                    <Grid.Child column={1} row={0}>
-                        {(ref) => (
-                            <GtkEntry
-                                name="dialog-entry-1"
-                                ref={(node) => {
-                                    ref(node);
-                                    setDialogEntry1Widget(node);
-                                }}
-                                text={entry1Text}
-                                onChanged={(e) => setEntry1Text(e.getText())}
-                            />
-                        )}
-                    </Grid.Child>
-                    <Grid.Child column={0} row={1}>
-                        {(ref) => <GtkLabel ref={ref} label="E_ntry 2" useUnderline mnemonicWidget={dialogEntry2Widget} />}
-                    </Grid.Child>
-                    <Grid.Child column={1} row={1}>
-                        {(ref) => (
-                            <GtkEntry
-                                name="dialog-entry-2"
-                                ref={(node) => {
-                                    ref(node);
-                                    setDialogEntry2Widget(node);
-                                }}
-                                text={entry2Text}
-                                onChanged={(e) => setEntry2Text(e.getText())}
-                            />
-                        )}
-                    </Grid.Child>
-                </Grid>
-            }
-            responses={[
-                { id: "cancel", label: "_Cancel" },
-                { id: "ok", label: "_OK" },
-            ]}
-        />
+        <Dialog parent={target}>
+            <AdwAlertDialog
+                name="interactive-dialog"
+                heading="Interactive Dialog"
+                defaultResponse="ok"
+                closeResponse="cancel"
+                onResponse={onResponse}
+                extraChild={
+                    <Grid
+                        rowSpacing={6}
+                        columnSpacing={6}
+                        hexpand
+                        vexpand
+                        halign={Gtk.Align.CENTER}
+                        valign={Gtk.Align.CENTER}
+                    >
+                        <Grid.Child column={0} row={0}>
+                            {(ref) => (
+                                <GtkLabel ref={ref} label="_Entry 1" useUnderline mnemonicWidget={dialogEntry1Widget} />
+                            )}
+                        </Grid.Child>
+                        <Grid.Child column={1} row={0}>
+                            {(ref) => (
+                                <GtkEntry
+                                    name="dialog-entry-1"
+                                    ref={(node) => {
+                                        ref(node);
+                                        setDialogEntry1Widget(node);
+                                    }}
+                                    text={entry1Text}
+                                    onChanged={(e) => setEntry1Text(e.getText())}
+                                />
+                            )}
+                        </Grid.Child>
+                        <Grid.Child column={0} row={1}>
+                            {(ref) => (
+                                <GtkLabel ref={ref} label="E_ntry 2" useUnderline mnemonicWidget={dialogEntry2Widget} />
+                            )}
+                        </Grid.Child>
+                        <Grid.Child column={1} row={1}>
+                            {(ref) => (
+                                <GtkEntry
+                                    name="dialog-entry-2"
+                                    ref={(node) => {
+                                        ref(node);
+                                        setDialogEntry2Widget(node);
+                                    }}
+                                    text={entry2Text}
+                                    onChanged={(e) => setEntry2Text(e.getText())}
+                                />
+                            )}
+                        </Grid.Child>
+                    </Grid>
+                }
+                responses={[
+                    { id: "cancel", label: "_Cancel" },
+                    { id: "ok", label: "_OK" },
+                ]}
+            />
+        </Dialog>
     );
 };
 

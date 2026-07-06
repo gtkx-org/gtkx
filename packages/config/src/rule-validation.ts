@@ -138,14 +138,9 @@ const rejectSchema = z.strictObject({
     prop: nameSchema,
 });
 
-const skipSchema = z.strictObject({
-    kind: z.literal("skip"),
-    child: nameSchema,
-});
-
 const relationshipSchema = z
-    .discriminatedUnion("kind", [attachSchema, companionSchema, rejectSchema, skipSchema], {
-        error: "must be one of attach, companion, reject, skip",
+    .discriminatedUnion("kind", [attachSchema, companionSchema, rejectSchema], {
+        error: "must be one of attach, companion, reject",
     })
     .check((ctx) => {
         const rule = ctx.value;
@@ -159,8 +154,6 @@ export type AttachRule = z.infer<typeof attachSchema>;
 export type CompanionRule = z.infer<typeof companionSchema>;
 
 export type RejectRule = z.infer<typeof rejectSchema>;
-
-export type SkipRule = z.infer<typeof skipSchema>;
 
 export type RelationshipRule = z.infer<typeof relationshipSchema>;
 

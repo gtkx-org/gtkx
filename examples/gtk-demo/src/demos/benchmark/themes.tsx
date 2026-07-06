@@ -1,3 +1,4 @@
+import { Dialog } from "@gtkx/components/adw";
 import * as Adw from "@gtkx/gi/adw";
 import type * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -104,19 +105,20 @@ const ThemesWarningDialog = ({
     window: Gtk.Window;
     onResponse: (response: string) => void;
 }) => (
-    <AdwAlertDialog
-        parent={window}
-        name="warning-dialog"
-        heading="Warning"
-        body="This demo involves rapidly flashing changes and may be hazardous to photosensitive viewers."
-        defaultResponse="ok"
-        closeResponse="cancel"
-        onResponse={onResponse}
-        responses={[
-            { id: "cancel", label: "_Cancel" },
-            { id: "ok", label: "_OK" },
-        ]}
-    />
+    <Dialog parent={window}>
+        <AdwAlertDialog
+            name="warning-dialog"
+            heading="Warning"
+            body="This demo involves rapidly flashing changes and may be hazardous to photosensitive viewers."
+            defaultResponse="ok"
+            closeResponse="cancel"
+            onResponse={onResponse}
+            responses={[
+                { id: "cancel", label: "_Cancel" },
+                { id: "ok", label: "_OK" },
+            ]}
+        />
+    </Dialog>
 );
 
 function useFpsAttrs() {

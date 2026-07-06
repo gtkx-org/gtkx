@@ -47,7 +47,6 @@ export {
     type RelationshipRule,
     type ResolvedGtkxRules,
     type SelectionRule,
-    type SkipRule,
     type SyntheticPropRule,
     type ValueRule,
     validateGtkxRules,
