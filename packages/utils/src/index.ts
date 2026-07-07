@@ -14,6 +14,6 @@ export {
     warn,
 } from "./log.js";
 export { installMixins, type Mixin } from "./mixin.js";
-export { callMethod } from "./reflect.js";
+export { callMethod, packageVersion } from "./reflect.js";
 export { sanitizeIdentifier, sourceStringLiteral, toCamelIdentifier } from "./source.js";
 export { lowerFirst, toCamelCase, toKebabCase, toPascalCase, upperFirst } from "./string.js";

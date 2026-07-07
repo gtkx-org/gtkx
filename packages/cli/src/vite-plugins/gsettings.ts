@@ -8,8 +8,7 @@ import { emitSchemaEnv, prependSchemaDir, SCHEMA_SUFFIX, stageSchema } from "../
 import { parseSchemaXml, SchemaParseError } from "../gsettings/parser.js";
 import { renderRuntimeModule } from "../gsettings/render.js";
 import { resolveDataDir } from "../internal/data-dir.js";
-import { removeTempDir } from "../internal/remove-temp-dir.js";
-import { withStagingDir } from "../internal/staging-dir.js";
+import { removeTempDir, withStagingDir } from "../internal/staging-dir.js";
 import { createVirtualNamespace } from "./virtual-module.js";
 
 const VIRTUAL_PREFIX = "\0gtkx-gsettings:";

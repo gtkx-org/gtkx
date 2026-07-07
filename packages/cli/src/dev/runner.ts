@@ -1,7 +1,7 @@
 import { error } from "@gtkx/utils";
 import type { InlineConfig, Plugin } from "vite";
-import { RESTART_EXIT_CODE } from "./exit-code.js";
 import { createRefreshTracker } from "./refresh-tracker.js";
+import { RESTART_EXIT_CODE } from "./supervisor.js";
 import { createDevServerConfig, type DevServer } from "./vite-dev-server.js";
 
 export type { DevServer } from "./vite-dev-server.js";

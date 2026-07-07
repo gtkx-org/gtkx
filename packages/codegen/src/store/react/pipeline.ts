@@ -3,9 +3,9 @@ import { sortedStringsBy } from "@gtkx/utils";
 import type { Library } from "../../gir/library.js";
 import { type GirNamespace, namespaceDirectory } from "../../gir/namespace.js";
 import { ImportsBuilder } from "../../writer/imports.js";
-import { assembleElementProps } from "./element-props.js";
 import { generateElementComponentsSection } from "./element-components.js";
 import { createElementPropTypegen, type ElementPropTypegen } from "./element-prop-types.js";
+import { assembleElementProps } from "./element-props.js";
 import { collectIntrinsicElementClasses } from "./intrinsic-elements.js";
 import { generateJsxSection } from "./jsx.js";
 import { generateMetadata } from "./metadata.js";
@@ -38,7 +38,7 @@ export const generateJsxFiles = (library: Library, userElementProps?: Record<str
         intrinsicElementCount += count;
     }
 
-    const metadata = generateMetadata(library, { elementProps });
+    const metadata = generateMetadata(library, elementProps);
 
     return { namespaces, metadata, intrinsicElementCount };
 };

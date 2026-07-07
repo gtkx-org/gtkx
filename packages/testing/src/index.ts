@@ -46,10 +46,10 @@ export {
     queryByRole,
     queryByText,
 } from "./queries.js";
+export { callRunnerHook } from "./register-test-hooks.js";
 export { cleanup, render } from "./render.js";
 export { renderHook } from "./render-hook.js";
 export { formatRole, getRoles, logRoles, prettyRoles } from "./role-helpers.js";
-export { callRunnerHook } from "./runner-hooks.js";
 export { screen } from "./screen.js";
 export { captureAndSaveScreenshot, logScreenshotPath, screenshot } from "./screenshot.js";
 export type { Method, Suggestion, Variant } from "./suggestions.js";

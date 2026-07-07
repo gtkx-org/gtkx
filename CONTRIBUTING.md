@@ -137,26 +137,8 @@ Search existing issues before creating new ones to avoid duplicates.
 The documentation site lives in `website/` and uses VitePress:
 
 ```bash
-pnpm docs # Build documentation
+cd website && pnpm build # Build documentation
 cd website && pnpm dev # Local preview
-```
-
-### API Documentation
-
-API docs are generated from TypeScript with TypeDoc. Add JSDoc comments to exported functions and types:
-
-```typescript
-/**
- * Creates a reconciler root bound to a GTKX container.
- * @param container - The root container element to render into
- */
-export const createRoot: (container?: RootElement) => Root;
-```
-
-Usage:
-
-```tsx
-createRoot().render(<App />);
 ```
 
 ### Examples

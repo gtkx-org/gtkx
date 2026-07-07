@@ -7,7 +7,7 @@ import { createServer } from "vite";
 import { startMcpClient, stopMcpClient } from "../mcp/index.js";
 import { setTestingModuleLoader } from "../mcp/testing-loader.js";
 import { isRefreshBoundary, performRefresh } from "../refresh-runtime.js";
-import { gtkxFastRefresh } from "../vite-plugins/fast-refresh/index.js";
+import { gtkxFastRefresh } from "../vite-plugins/fast-refresh/swc-refresh.js";
 import { gtkxVitePlugins } from "../vite-plugins/index.js";
 import { gtkxReactDomPrebundle } from "../vite-plugins/react-dom-prebundle.js";
 import type { DevRunnerDeps } from "./runner.js";

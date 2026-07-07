@@ -73,3 +73,5 @@ const { ${REFRESH_REG}, ${REFRESH_SIG} } = __createModuleRegistration__(${module
         },
     };
 }
+
+export const gtkxFastRefresh = (): Plugin[] => [gtkxSwcRefresh(), gtkxRefreshRuntime()];

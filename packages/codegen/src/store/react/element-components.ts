@@ -3,8 +3,8 @@ import { sourceStringLiteral } from "@gtkx/utils";
 import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
 import type { ImportsBuilder } from "../../writer/imports.js";
-import { ancestorGlibNames, collectIntrinsicElementClasses, type GlibNamedClass } from "./intrinsic-elements.js";
 import type { ElementPropTypegen, LazyElementSpec } from "./element-prop-types.js";
+import { ancestorGlibNames, collectIntrinsicElementClasses, type GlibNamedClass } from "./intrinsic-elements.js";
 import { type AncestryWrapperName, BUILT_IN_ANCESTRY_WRAPPERS } from "./tables.js";
 
 const WRAPPER_NODE_ELEMENT_CONST = "WrapperNodeElement";
@@ -118,8 +118,8 @@ const renderCandidateExport = (candidate: GlibNamedClass, library: Library, impo
 };
 
 const resolveAncestryWrapper = (ancestry: Set<string>): AncestryWrapperName | undefined => {
-    for (const rule of BUILT_IN_ANCESTRY_WRAPPERS) {
-        if (rule.ancestors.some((ancestor) => ancestry.has(ancestor))) return rule.wrapper;
+    for (const entry of BUILT_IN_ANCESTRY_WRAPPERS) {
+        if (entry.ancestors.some((ancestor) => ancestry.has(ancestor))) return entry.wrapper;
     }
     return undefined;
 };

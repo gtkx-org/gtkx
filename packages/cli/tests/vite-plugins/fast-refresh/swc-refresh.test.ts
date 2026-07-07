@@ -1,6 +1,10 @@
 import type { Plugin } from "vite";
 import { describe, expect, it } from "vitest";
-import { gtkxRefreshRuntime, gtkxSwcRefresh } from "../../../src/vite-plugins/fast-refresh/swc-refresh.js";
+import {
+    gtkxFastRefresh,
+    gtkxRefreshRuntime,
+    gtkxSwcRefresh,
+} from "../../../src/vite-plugins/fast-refresh/swc-refresh.js";
 
 type TransformHook = Extract<Plugin["transform"], (...args: never[]) => unknown>;
 type TransformContext = ThisParameterType<TransformHook>;
@@ -181,5 +185,15 @@ describe("gtkxRefreshRuntime transform (file extensions)", () => {
     it("skips files outside the default include pattern", () => {
         const result = runtimeTransform("$RefreshReg$();", "/src/styles.custom", { ssr: true });
         expect(result).toBeUndefined();
+    });
+});
+
+describe("gtkxFastRefresh", () => {
+    it("returns the swc transform and refresh-runtime plugins in enforce order", () => {
+        const plugins = gtkxFastRefresh();
+
+        expect(plugins).toHaveLength(2);
+        expect(plugins.map((plugin) => plugin.name)).toEqual(["gtkx:swc-refresh", "gtkx:refresh-runtime"]);
+        expect(plugins.map((plugin) => plugin.enforce)).toEqual(["pre", "post"]);
     });
 });

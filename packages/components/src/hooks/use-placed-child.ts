@@ -70,8 +70,8 @@ export type PlacedChildOptions<T extends GObject.Object, P> = {
  * Renders a positioned child into an off-tree holder so the reconciler does not
  * parent it, captures the widget through the render prop's ref, and imperatively
  * places it on a parent container — applying `place` on appearance or placement
- * change and `release` on departure or unmount. Shared by the {@link Gtk.Grid},
- * {@link Gtk.Fixed}, and {@link Gtk.Overlay} wrappers.
+ * change and `release` on departure or unmount. Shared by the {@link Gtk.Grid}
+ * and {@link Gtk.Overlay} wrappers.
  */
 export const usePlacedChild = <T extends GObject.Object, P>(options: PlacedChildOptions<T, P>): ReactNode => {
     const { render, placement, samePlacement, place, release } = options;

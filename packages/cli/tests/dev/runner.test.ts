@@ -1,9 +1,9 @@
 import { EventEmitter } from "node:events";
 import type { Plugin } from "vite";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { RESTART_EXIT_CODE } from "../../src/dev/exit-code.js";
 import { createDevRunner, type DevRunnerDeps, type DevServer } from "../../src/dev/runner.js";
 import { main } from "../../src/dev/runner-main.js";
+import { RESTART_EXIT_CODE } from "../../src/dev/supervisor.js";
 
 type FakeServer = DevServer & {
     close: ReturnType<typeof vi.fn<DevServer["close"]>>;

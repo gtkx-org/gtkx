@@ -3,11 +3,12 @@ import { type FSWatcher, watch as watchFs } from "node:fs";
 import { basename, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { error, exitCodeForSignal, info, installGracefulShutdown } from "@gtkx/utils";
-import { RESTART_EXIT_CODE } from "./exit-code.js";
 
 const DEV_RUNNER_URL = new URL("../../bin/gtkx-dev-runner.js", import.meta.url);
 const FORCE_KILL_TIMEOUT_MS = 5000;
 const CONFIG_DEBOUNCE_MS = 150;
+
+export const RESTART_EXIT_CODE = 75;
 
 export type SupervisedChild = {
     killed: boolean;

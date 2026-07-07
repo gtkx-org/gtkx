@@ -1,6 +1,8 @@
+import { packageVersion } from "@gtkx/utils";
 import { defineCommand, runMain } from "citty";
 import { withErrorBoundary } from "./internal/errors.js";
-import { version } from "./version.js";
+
+const version = packageVersion(import.meta.url);
 
 export const main = defineCommand({
     meta: {

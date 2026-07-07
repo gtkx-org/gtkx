@@ -1,8 +1,8 @@
 /// <reference types="@gtkx/config/env" />
 
 import { CONSTRUCT_ONLY_PROPS, CONSTRUCT_PROPS, DEFAULT_PROPS, SIGNALS } from "virtual:gtkx-config";
-import type { TypedClass } from "@gtkx/ffi";
-import { typeInterfaces, typeName, typeParent } from "@gtkx/gi/gobject";
+import { getWrapperClass, type TypedClass } from "@gtkx/ffi";
+import * as GObject from "@gtkx/gi/gobject";
 import { NOTIFY_SIGNAL, propToNotifySignal } from "./notify-name.js";
 
 const NOTIFY_PREFIX = "onNotify";
@@ -30,10 +30,10 @@ export const collectTypeNameChain = (gtype: bigint): string[] => {
     const chain: string[] = [];
     let current = gtype;
     while (current !== 0n) {
-        const name = typeName(current);
+        const name = GObject.typeName(current);
         if (!name) break;
         chain.push(name);
-        current = typeParent(current);
+        current = GObject.typeParent(current);
     }
 
     typeNameChainCache.set(gtype, chain);
@@ -45,8 +45,8 @@ const collectInterfaceNames = (gtype: bigint): string[] => {
     if (cached) return cached;
 
     const names: string[] = [];
-    for (const iface of typeInterfaces(gtype)) {
-        const name = typeName(iface);
+    for (const iface of GObject.typeInterfaces(gtype)) {
+        const name = GObject.typeName(iface);
         if (name) names.push(name);
     }
 
@@ -168,3 +168,14 @@ export const resolveDefaultProp = (instance: TypedClass, key: string): DefaultPr
         }
         return NO_DEFAULT_PROP;
     });
+
+const describeUnregistered = (typeName: string): string =>
+    `${typeName} is not registered. Import its @gtkx/jsx namespace module (e.g. \`import "@gtkx/jsx/adw"\`) before use.`;
+
+export const requireClassByName = (typeName: string): (new (props: Record<string, unknown>) => GObject.Object) => {
+    const gtype = GObject.typeFromName(typeName);
+    if (gtype === GObject.TYPE_INVALID) throw new Error(describeUnregistered(typeName));
+    return getWrapperClass(gtype) as new (
+        props: Record<string, unknown>,
+    ) => GObject.Object;
+};

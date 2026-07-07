@@ -5,9 +5,9 @@ export type AncestryWrapperName =
     | "withApplicationLifecycle"
     | "withApplicationWindowPresentation";
 
-export type AncestryWrapperRule = { ancestors: string[]; wrapper: AncestryWrapperName };
+export type AncestryWrapper = { ancestors: string[]; wrapper: AncestryWrapperName };
 
-export const BUILT_IN_ANCESTRY_WRAPPERS: AncestryWrapperRule[] = [
+export const BUILT_IN_ANCESTRY_WRAPPERS: AncestryWrapper[] = [
     { ancestors: ["GtkApplication"], wrapper: "withApplicationLifecycle" },
     { ancestors: ["GtkApplicationWindow"], wrapper: "withApplicationWindowPresentation" },
     { ancestors: ["GtkWindow"], wrapper: "withWindowPresentation" },
@@ -57,7 +57,11 @@ const boxChildren = (): ElementProp =>
     });
 
 const indexedChildren = (append: string): ElementProp =>
-    container("children", "GtkWidget", { append, remove: "remove", insert: { method: "insert", args: ["child", "index"] } });
+    container("children", "GtkWidget", {
+        append,
+        remove: "remove",
+        insert: { method: "insert", args: ["child", "index"] },
+    });
 
 const addRemoveChildren = (): ElementProp => container("children", "GtkWidget", { append: "add", remove: "remove" });
 
@@ -186,7 +190,12 @@ export const CURATED_ELEMENT_PROPS: Record<string, ElementProp[]> = {
     ],
     AdwCarousel: [indexedChildren("append")],
     AdwPreferencesPage: [indexedChildren("add")],
-    AdwTabView: [container("children", "GtkWidget", { append: "append", insert: { method: "insert", args: ["child", "index"] } })],
+    AdwTabView: [
+        container("children", "GtkWidget", {
+            append: "append",
+            insert: { method: "insert", args: ["child", "index"] },
+        }),
+    ],
     GtkListBox: [autowrapProp("GtkListBoxRow")],
     GtkFlowBox: [autowrapProp("GtkFlowBoxChild")],
     GtkStack: [

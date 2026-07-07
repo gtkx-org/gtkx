@@ -14,31 +14,6 @@ import {
 } from "./intrinsic-elements.js";
 import { ACCESSIBLE_ATTRIBUTES } from "./tables.js";
 
-export type RuntimeTables = {
-    elementProps: Record<string, ElementProp[]>;
-};
-
-const configType = (name: string): string => `import("@gtkx/config").${name}`;
-
-const arrayOf = (rowType: string): string => `Array<${configType(rowType)}>`;
-
-type RuntimeTableSpec = {
-    name: string;
-    annotation: string;
-};
-
-const RUNTIME_TABLE_SPECS: Record<keyof RuntimeTables, RuntimeTableSpec> = {
-    elementProps: { name: "ELEMENT_PROPS", annotation: `Record<string, ${arrayOf("ElementProp")}>` },
-};
-
-const RUNTIME_TABLE_KEYS = Object.keys(RUNTIME_TABLE_SPECS) as Array<keyof RuntimeTables>;
-
-const renderRuntimeTables = (tables: RuntimeTables): string[] =>
-    RUNTIME_TABLE_KEYS.map((key) => {
-        const { name, annotation } = RUNTIME_TABLE_SPECS[key];
-        return `export const ${name}: ${annotation} = ${JSON.stringify(tables[key], null, 4)};`;
-    });
-
 const ACCESSIBLE_ATTRIBUTES_ANNOTATION =
     'Record<string, { kind: "property" | "state" | "relation"; member: string; value: "string" | "boolean" | "int" | "double" | "object" | "ref-list" }>';
 
@@ -51,7 +26,7 @@ const renderAccessibleAttributes = (): string => {
     return `export const ACCESSIBLE_ATTRIBUTES: ${ACCESSIBLE_ATTRIBUTES_ANNOTATION} = {\n${lines.join("\n")}\n};`;
 };
 
-export const generateMetadata = (library: Library, tables: RuntimeTables): string => {
+export const generateMetadata = (library: Library, elementProps: Record<string, ElementProp[]>): string => {
     const intrinsicElements = collectIntrinsicElements(library);
     const signalsEntries = intrinsicElements.map(
         ({ glibName, signals }) => `    "${glibName}": ${renderSignalsObject(signals)},`,
@@ -71,7 +46,7 @@ export const generateMetadata = (library: Library, tables: RuntimeTables): strin
         `export const CONSTRUCT_ONLY_PROPS: Record<string, Set<string>> = {\n${constructOnlyEntries.join("\n")}\n};`,
         `export const CONSTRUCT_PROPS: Record<string, Set<string>> = {\n${constructableEntries.join("\n")}\n};`,
         `export const DEFAULT_PROPS: Record<string, Record<string, unknown>> = {\n${defaultsEntries.join("\n")}\n};`,
-        ...renderRuntimeTables(tables),
+        `export const ELEMENT_PROPS: Record<string, Array<import("@gtkx/config").ElementProp>> = ${JSON.stringify(elementProps, null, 4)};`,
         renderAccessibleAttributes(),
     ].join("\n\n")}\n`;
 };
