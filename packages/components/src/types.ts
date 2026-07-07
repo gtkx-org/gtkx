@@ -15,9 +15,11 @@ export type SectionNode<S = unknown, T = unknown> = {
     data: ItemNode<T>[];
 };
 
-export type RenderItemInfo<T> = {
+export type RenderItemProps<T> = {
     item: T;
     index: number;
+    depth?: number | undefined;
+    isExpanded?: boolean | undefined;
 };
 
 export type CollectionItemSizeProps = {
@@ -29,6 +31,11 @@ export type ControlledSelectionProps = {
     selectedIds?: string[] | null | undefined;
     onSelectionChanged?: ((ids: string[]) => void) | null | undefined;
     selectionMode?: Gtk.SelectionMode | null | undefined;
+};
+
+export type ControlledExpansionProps = {
+    expandedIds?: string[] | null | undefined;
+    onExpandedChange?: ((ids: string[]) => void) | null | undefined;
 };
 
 export type MenuEntry = {

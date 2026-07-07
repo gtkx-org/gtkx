@@ -1,4 +1,4 @@
-import { DropDown, Grid, type GridRenderItemInfo, GridView, Overlay } from "@gtkx/components";
+import { DropDown, Grid, GridView, Overlay, type RenderItemProps } from "@gtkx/components";
 import { css } from "@gtkx/css";
 import { registerClass } from "@gtkx/ffi";
 import type { Context } from "@gtkx/gi/cairo";
@@ -307,7 +307,7 @@ function createColorFactory(showDetails: boolean): Gtk.SignalListItemFactory {
     return showDetails ? createDetailColorFactory() : createSimpleColorFactory();
 }
 
-const renderSelectionItem = ({ item }: GridRenderItemInfo<ColorItem>) => (
+const renderSelectionItem = ({ item }: RenderItemProps<ColorItem>) => (
     <GtkDrawingArea
         contentWidth={8}
         contentHeight={8}

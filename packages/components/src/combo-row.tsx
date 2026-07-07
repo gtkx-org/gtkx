@@ -1,9 +1,7 @@
 import type * as Adw from "@gtkx/gi/adw";
 import { AdwComboRow, type AdwComboRowProps } from "@gtkx/jsx/adw";
 import type { ReactNode } from "react";
-import { DropDownBody, type DropDownDeclarativeProps, type DropDownRenderItemInfo } from "./drop-down.js";
-
-export type { DropDownRenderItemInfo as ComboRowRenderItemInfo };
+import { DropDownBody, type DropDownDeclarativeProps } from "./drop-down.js";
 
 export type ComboRowProps<T = unknown, S = unknown> = Omit<
     AdwComboRowProps,

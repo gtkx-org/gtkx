@@ -1,7 +1,7 @@
 import type * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 
-export type SettingAccessor = {
+type SettingAccessor = {
     read: (settings: Gio.Settings, key: string) => unknown;
     write: (settings: Gio.Settings, key: string, value: unknown) => void;
 };

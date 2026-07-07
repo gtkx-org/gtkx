@@ -1,5 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { type Context, createContext, type RefObject, useContext } from "react";
+import type { TreeRenderContext } from "./cell.js";
 import type { ItemResolver } from "./utils/item-resolver.js";
 
 export type ColumnRegistration = {
@@ -11,6 +12,7 @@ export type ColumnRegistration = {
 export type ColumnViewContextValue = {
     columnView: RefObject<Gtk.ColumnView | null>;
     resolver: ItemResolver<unknown, unknown>;
+    tree: TreeRenderContext;
     register(registration: ColumnRegistration): void;
     unregister(id: string): void;
 };

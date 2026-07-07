@@ -1,4 +1,4 @@
-import { type ListRenderItemInfo, ListView } from "@gtkx/components";
+import { ListView, type RenderItemProps } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkInscription, GtkScrolledWindow, GtkSearchBar, GtkSearchEntry } from "@gtkx/jsx/gtk";
 import { useDemo } from "../context/demo-context.js";
@@ -29,7 +29,17 @@ function treeItemToData(item: TreeItem): SidebarItemData {
 
 const EMPTY_SELECTION: string[] = [];
 
-const renderItem = ({ item }: ListRenderItemInfo<TreeItem>) => {
+const collectExpandableIds = (nodes: SidebarItemData[]): string[] => {
+    const ids: string[] = [];
+    for (const node of nodes) {
+        if (node.children && node.children.length > 0) {
+            ids.push(node.id, ...collectExpandableIds(node.children));
+        }
+    }
+    return ids;
+};
+
+const renderItem = ({ item }: RenderItemProps<TreeItem>) => {
     const text = item.type === "category" ? item.title : item.displayTitle;
     return <GtkInscription text={text} natChars={25} textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END} />;
 };
@@ -38,6 +48,7 @@ export const Sidebar = ({ searchMode, onSearchChanged }: SidebarProps) => {
     const { filteredTreeItems, currentDemo, setCurrentDemo, searchQuery, demos } = useDemo();
 
     const items = filteredTreeItems.map(treeItemToData);
+    const expandedIds = collectExpandableIds(items);
 
     const selected = currentDemo ? [`demo-${currentDemo.id}`] : EMPTY_SELECTION;
 
@@ -66,7 +77,7 @@ export const Sidebar = ({ searchMode, onSearchChanged }: SidebarProps) => {
                 <ListView
                     name="sidebar-list"
                     cssClasses={["navigation-sidebar"]}
-                    autoexpand
+                    expandedIds={expandedIds}
                     selectionMode={Gtk.SelectionMode.SINGLE}
                     selectedIds={selected}
                     onSelectionChanged={handleSelectionChanged}

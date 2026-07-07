@@ -8,7 +8,7 @@ import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-conta
 import { useDropDownSelection } from "./hooks/use-drop-down-selection.js";
 import { useInstalledModel } from "./hooks/use-installed-model.js";
 import { useListModel } from "./hooks/use-list-model.js";
-import type { ItemNode, RenderItemInfo, SectionNode } from "./types.js";
+import type { ItemNode, RenderItemProps, SectionNode } from "./types.js";
 import type { CellContainerStore } from "./utils/cell-container-store.js";
 import type { ItemResolver } from "./utils/item-resolver.js";
 
@@ -21,9 +21,7 @@ interface DropDownWidget extends Gtk.Widget {
     setHeaderFactory(factory: Gtk.ListItemFactory | null): void;
 }
 
-export type DropDownRenderItemInfo<T> = RenderItemInfo<T>;
-
-type DropDownItemRenderer<T> = (info: DropDownRenderItemInfo<T>) => ReactNode;
+type DropDownItemRenderer<T> = (props: RenderItemProps<T>) => ReactNode;
 
 const itemFactoryInstaller: FactoryInstaller<DropDownWidget> = {
     install: (widget, factory) => widget.setFactory(factory),
@@ -61,7 +59,7 @@ const toListRenderer = <T, S>(
 const createSelectionResolver = <T, S>(resolver: ItemResolver<T, S>, selectedPosition: number): ItemResolver<T, S> => ({
     positionOfId: (id) => resolver.positionOfId(id),
     idOf: (position) => resolver.idOf(position),
-    resolve: (_position, treeRow) => resolver.resolve(selectedPosition, treeRow, null),
+    resolve: (_position, treeRow) => resolver.resolve(selectedPosition, treeRow),
 });
 
 export type DropDownDeclarativeProps<T = unknown, S = unknown> = {

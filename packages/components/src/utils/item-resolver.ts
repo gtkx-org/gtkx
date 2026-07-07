@@ -19,12 +19,11 @@ export type Resolved<T = unknown, S = unknown> = {
     value: T | S | undefined;
     present: boolean;
     isHeader: boolean;
-    treeRow: Gtk.TreeListRow | null;
     metadata: TreeItemMetadata;
 };
 
 export type ItemResolver<T = unknown, S = unknown> = {
-    resolve(position: number, treeRow: Gtk.TreeListRow | null, boundItem: GObject.Object | null): Resolved<T, S>;
+    resolve(position: number, treeRow: Gtk.TreeListRow | null): Resolved<T, S>;
     positionOfId(id: string): number;
     idOf(position: number): string | undefined;
 };
@@ -33,6 +32,14 @@ export type RowValue<T = unknown> = {
     id: string;
     value: T;
     metadata: TreeItemMetadata;
+};
+
+export const rowIdOf = <T>(
+    rowValues: WeakMap<GObject.Object, RowValue<T>>,
+    row: Gtk.TreeListRow,
+): string | undefined => {
+    const item = row.getItem();
+    return item === null ? undefined : rowValues.get(item)?.id;
 };
 
 export const createItemResolver = <T, S>(
@@ -49,7 +56,7 @@ export const createItemResolver = <T, S>(
         idOf(position: number): string | undefined {
             return flattened.positionToId.get(position);
         },
-        resolve(position: number, treeRow: Gtk.TreeListRow | null, _boundItem: GObject.Object | null): Resolved<T, S> {
+        resolve(position: number, treeRow: Gtk.TreeListRow | null): Resolved<T, S> {
             if (treeRow !== null && !flattenTreeChildren) {
                 const rowItem = treeRowItem(treeRow);
                 if (rowItem !== null) {
@@ -59,7 +66,6 @@ export const createItemResolver = <T, S>(
                             value: tagged.value,
                             present: true,
                             isHeader: false,
-                            treeRow,
                             metadata: tagged.metadata,
                         };
                     }
@@ -71,7 +77,6 @@ export const createItemResolver = <T, S>(
                     value: undefined,
                     present: false,
                     isHeader: false,
-                    treeRow,
                     metadata: NO_TREE_METADATA,
                 };
             }
@@ -79,7 +84,6 @@ export const createItemResolver = <T, S>(
                 value: record.value,
                 present: true,
                 isHeader: false,
-                treeRow,
                 metadata: record.metadata,
             };
         },
@@ -98,15 +102,42 @@ export const createSectionHeaderResolver = <T, S>(sections: SectionNode<S, T>[] 
         idOf: () => undefined,
         resolve(position: number): Resolved<T, S> {
             if (!valueByStart.has(position)) {
-                return { value: undefined, present: false, isHeader: true, treeRow: null, metadata: NO_TREE_METADATA };
+                return { value: undefined, present: false, isHeader: true, metadata: NO_TREE_METADATA };
             }
             return {
                 value: valueByStart.get(position),
                 present: true,
                 isHeader: true,
-                treeRow: null,
                 metadata: NO_TREE_METADATA,
             };
+        },
+    };
+};
+
+/**
+ * Resolver for {@link Gtk.TreeListModel}-backed lists. Values resolve by row identity, while
+ * `idOf`/`positionOfId` consult the live model so position↔id mapping stays correct under any
+ * partial expansion state.
+ */
+export const createTreeResolver = <T, S>(
+    items: ItemNode<T>[] | undefined,
+    rowValues: WeakMap<GObject.Object, RowValue<T>>,
+    model: Gtk.TreeListModel,
+): ItemResolver<T, S> => {
+    const base = createItemResolver<T, S>(items, false, rowValues);
+    return {
+        resolve: base.resolve,
+        idOf: (position: number): string | undefined => {
+            const row = model.getRow(position);
+            return row === null ? undefined : rowIdOf(rowValues, row);
+        },
+        positionOfId: (id: string): number => {
+            const count = model.getNItems();
+            for (let position = 0; position < count; position++) {
+                const row = model.getRow(position);
+                if (row !== null && rowIdOf(rowValues, row) === id) return position;
+            }
+            return -1;
         },
     };
 };

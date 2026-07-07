@@ -264,20 +264,33 @@ const commitKeyInfoEdit = ({ keyInfo, newText, widget, state }: CommitKeyInfoEdi
     }
 };
 
-const SchemaSidebar = ({ onSelectionChanged }: { onSelectionChanged: (ids: string[]) => void }) => (
-    <GtkScrolledWindow>
-        <ListView
-            name="sidebar"
-            tabBehavior={Gtk.ListTabBehavior.ITEM}
-            selectionMode={Gtk.SelectionMode.BROWSE}
-            onSelectionChanged={onSelectionChanged}
-            cssClasses={["navigation-sidebar"]}
-            autoexpand
-            renderItem={({ item: schemaId }: { item: string }) => <GtkLabel label={schemaId} xalign={0} />}
-            items={getSchemaTree().map(schemaNodeToItem)}
-        />
-    </GtkScrolledWindow>
-);
+const collectSchemaExpandableIds = (nodes: SchemaTreeItemData[]): string[] => {
+    const ids: string[] = [];
+    for (const node of nodes) {
+        if (node.children && node.children.length > 0) {
+            ids.push(node.id, ...collectSchemaExpandableIds(node.children));
+        }
+    }
+    return ids;
+};
+
+const SchemaSidebar = ({ onSelectionChanged }: { onSelectionChanged: (ids: string[]) => void }) => {
+    const items = getSchemaTree().map(schemaNodeToItem);
+    return (
+        <GtkScrolledWindow>
+            <ListView
+                name="sidebar"
+                tabBehavior={Gtk.ListTabBehavior.ITEM}
+                selectionMode={Gtk.SelectionMode.BROWSE}
+                onSelectionChanged={onSelectionChanged}
+                cssClasses={["navigation-sidebar"]}
+                expandedIds={collectSchemaExpandableIds(items)}
+                renderItem={({ item: schemaId }: { item: string }) => <GtkLabel label={schemaId} xalign={0} />}
+                items={items}
+            />
+        </GtkScrolledWindow>
+    );
+};
 
 interface SettingsColumnViewProps {
     keySearchActive: boolean;

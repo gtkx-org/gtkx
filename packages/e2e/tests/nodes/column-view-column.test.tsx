@@ -1,4 +1,4 @@
-import { type ColumnRenderItemInfo, ColumnView, ColumnViewColumn, Menu, type MenuEntry } from "@gtkx/components";
+import { ColumnView, ColumnViewColumn, Menu, type MenuEntry, type RenderItemProps } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
 import { GtkLabel } from "@gtkx/jsx/gtk";
@@ -471,7 +471,7 @@ const ShowcaseColumns = ({ sortActions }: { sortActions: (column: ShowcaseSortCo
             title="Name"
             expand
             sortable
-            renderItem={({ item }: ColumnRenderItemInfo<ShowcasePerson>) => <GtkLabel label={item.name} />}
+            renderItem={({ item }: RenderItemProps<ShowcasePerson>) => <GtkLabel label={item.name} />}
             headerMenu={sectionedMenu("name", [sortActions("name")])}
         />
         <ColumnViewColumn
@@ -479,7 +479,7 @@ const ShowcaseColumns = ({ sortActions }: { sortActions: (column: ShowcaseSortCo
             title="Role"
             fixedWidth={100}
             sortable
-            renderItem={({ item }: ColumnRenderItemInfo<ShowcasePerson>) => <GtkLabel label={item.role} />}
+            renderItem={({ item }: RenderItemProps<ShowcasePerson>) => <GtkLabel label={item.role} />}
             headerMenu={sectionedMenu("role", [sortActions("role"), [{ id: "hide", label: "Hide Column" }]])}
         />
         <ColumnViewColumn
@@ -487,7 +487,7 @@ const ShowcaseColumns = ({ sortActions }: { sortActions: (column: ShowcaseSortCo
             title="Salary"
             fixedWidth={100}
             sortable
-            renderItem={({ item }: ColumnRenderItemInfo<ShowcasePerson>) => <GtkLabel label={item.salary.toString()} />}
+            renderItem={({ item }: RenderItemProps<ShowcasePerson>) => <GtkLabel label={item.salary.toString()} />}
             headerMenu={sectionedMenu("salary", [sortActions("salary"), [{ id: "hide", label: "Hide Column" }]])}
         />
     </>

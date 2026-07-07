@@ -1,4 +1,4 @@
-import { DropDown, type ListRenderItemInfo, ListView } from "@gtkx/components";
+import { DropDown, ListView, type RenderItemProps } from "@gtkx/components";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { render, screen, userEvent } from "@gtkx/testing";
@@ -17,7 +17,7 @@ const buildTextListView = (items: TextItem[]) => (
     <ScrollWrapper>
         <ListView
             items={items.map((item) => ({ id: item.id, value: item }))}
-            renderItem={({ item }: ListRenderItemInfo<{ text: string }>) => <GtkLabel label={item.text} />}
+            renderItem={({ item }: RenderItemProps<{ text: string }>) => <GtkLabel label={item.text} />}
         />
     </ScrollWrapper>
 );

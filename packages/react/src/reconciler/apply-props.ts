@@ -31,7 +31,7 @@ const propsEqual = (a: unknown, b: unknown): boolean => {
     return false;
 };
 
-export type ApplyPropsOptions = {
+type ApplyPropsOptions = {
     exclude?: (name: string) => boolean;
 };
 

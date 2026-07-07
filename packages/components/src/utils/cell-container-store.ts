@@ -2,10 +2,8 @@ import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
 
 export type CellEntry = {
-    container: GObject.Object;
     position: number;
     treeRow: Gtk.TreeListRow | null;
-    item: GObject.Object | null;
 };
 
 let nextKey = 0;
@@ -52,7 +50,7 @@ export class CellContainerStore {
     getPosition = (container: GObject.Object): CellEntry => {
         let entry = this.published.get(container);
         if (entry === undefined) {
-            entry = { container, position: -1, treeRow: null, item: null };
+            entry = { position: -1, treeRow: null };
             this.published.set(container, entry);
         }
         return entry;
@@ -68,28 +66,18 @@ export class CellContainerStore {
 
     addContainer = (container: GObject.Object): void => {
         if (this.entries.has(container)) return;
-        this.entries.set(container, { container, position: -1, treeRow: null, item: null });
+        this.entries.set(container, { position: -1, treeRow: null });
         this.notifySet();
     };
 
-    bind = (
-        container: GObject.Object,
-        position: number,
-        treeRow: Gtk.TreeListRow | null,
-        item: GObject.Object | null,
-    ): void => {
-        if (!this.entries.has(container)) {
-            this.entries.set(container, { container, position, treeRow, item });
-            this.notifySet();
-            return;
-        }
-        this.entries.set(container, { container, position, treeRow, item });
+    bind = (container: GObject.Object, position: number, treeRow: Gtk.TreeListRow | null): void => {
+        this.entries.set(container, { position, treeRow });
         this.notifyPosition(container);
     };
 
     unbind = (container: GObject.Object): void => {
         if (!this.entries.has(container)) return;
-        this.entries.set(container, { container, position: -1, treeRow: null, item: null });
+        this.entries.set(container, { position: -1, treeRow: null });
         this.notifyPosition(container);
     };
 

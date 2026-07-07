@@ -5,14 +5,12 @@ import { type CellRenderer, CellRenderHost, itemRenderer } from "./cell.js";
 import { useColumnViewContext } from "./column-view-context.js";
 import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
 import { useHeaderMenu } from "./hooks/use-header-menu.js";
-import type { RenderItemInfo } from "./types.js";
+import type { RenderItemProps } from "./types.js";
 
 const factoryInstaller: FactoryInstaller<Gtk.ColumnViewColumn> = {
     install: (column, factory) => column.setFactory(factory),
     uninstall: (column) => column.setFactory(null),
 };
-
-export type ColumnRenderItemInfo<T> = RenderItemInfo<T>;
 
 type ColumnViewColumnDeclarativeProps<T = unknown> = {
     title: string;
@@ -22,7 +20,7 @@ type ColumnViewColumnDeclarativeProps<T = unknown> = {
     id: string;
     sortable?: boolean | undefined;
     visible?: boolean | undefined;
-    renderItem: (info: ColumnRenderItemInfo<T>) => ReactNode;
+    renderItem: (props: RenderItemProps<T>) => ReactNode;
     headerMenu?: ReactNode;
 };
 
@@ -58,8 +56,9 @@ export const ColumnViewColumn = <T = unknown>(props: ColumnViewColumnProps<T>): 
 
     const headerMenuPortal = useHeaderMenu(column, headerMenu);
 
-    const cellRenderer: CellRenderer<unknown, unknown> = itemRenderer<unknown, unknown>(({ item, index }) =>
-        renderItem({ item: item as T, index }),
+    const cellRenderer: CellRenderer<unknown, unknown> = itemRenderer<unknown, unknown>(
+        (props) => renderItem({ ...props, item: props.item as T }),
+        context.tree,
     );
 
     return (

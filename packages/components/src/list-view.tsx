@@ -2,15 +2,16 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkListView, type GtkListViewProps } from "@gtkx/jsx/gtk";
 import { useMergeRefs } from "@gtkx/react";
 import { type ReactNode, type Ref, useRef } from "react";
-import { type CellRenderer, CellRenderHost, HeaderRenderHost } from "./cell.js";
+import { type CellRenderer, CellRenderHost, HeaderRenderHost, itemRenderer, type TreeRenderContext } from "./cell.js";
 import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
 import { useCollectionModel } from "./hooks/use-collection-model.js";
 import { useInstalledModel } from "./hooks/use-installed-model.js";
 import type {
     CollectionItemSizeProps,
+    ControlledExpansionProps,
     ControlledSelectionProps,
     ItemNode,
-    RenderItemInfo,
+    RenderItemProps,
     SectionNode,
 } from "./types.js";
 import type { CellContainerStore } from "./utils/cell-container-store.js";
@@ -26,17 +27,12 @@ const headerFactoryInstaller: FactoryInstaller<Gtk.ListView> = {
     uninstall: (widget: Gtk.ListView) => widget.setHeaderFactory(null),
 };
 
-export interface ListRenderItemInfo<T> extends RenderItemInfo<T> {
-    depth: number;
-    isExpanded: boolean;
-}
-
 type ListViewDeclarativeProps<T = unknown, S = unknown> = CollectionItemSizeProps &
-    ControlledSelectionProps & {
+    ControlledSelectionProps &
+    ControlledExpansionProps & {
         items?: ItemNode<T>[] | undefined;
         sections?: SectionNode<S, T>[] | undefined;
-        renderItem: (info: ListRenderItemInfo<T>) => ReactNode;
-        autoexpand?: boolean | undefined;
+        renderItem: (props: RenderItemProps<T>) => ReactNode;
         renderHeader?: ((info: { section: S }) => ReactNode) | null | undefined;
     };
 
@@ -53,6 +49,7 @@ interface ListViewWiring<T, S> {
     itemStore: CellContainerStore;
     headerStore: CellContainerStore;
     useHeader: boolean;
+    rowId: (row: Gtk.TreeListRow) => string | undefined;
 }
 
 const useListViewWiring = <T, S>(props: NormalizedListViewProps<T, S>): ListViewWiring<T, S> => {
@@ -62,10 +59,11 @@ const useListViewWiring = <T, S>(props: NormalizedListViewProps<T, S>): ListView
     const collection = useCollectionModel<T, S>({
         items: props.items,
         sections: props.sections,
-        autoexpand: props.autoexpand,
         selectionMode: props.selectionMode,
         selectedIds: props.selectedIds,
         onSelectionChanged: props.onSelectionChanged,
+        expandedIds: props.expandedIds,
+        onExpandedChange: props.onExpandedChange,
         renderHeader: props.renderHeader,
     });
 
@@ -93,6 +91,7 @@ const useListViewWiring = <T, S>(props: NormalizedListViewProps<T, S>): ListView
         itemStore,
         headerStore,
         useHeader,
+        rowId: collection.rowId,
     };
 };
 
@@ -109,36 +108,37 @@ export const ListView = <T = unknown, S = unknown>(props: ListViewProps<T, S>): 
         items,
         sections,
         renderItem,
-        autoexpand,
         renderHeader,
         selectedIds,
         selectionMode,
         onSelectionChanged,
+        expandedIds,
+        onExpandedChange,
         estimatedItemHeight,
         estimatedItemWidth,
         ...intrinsicProps
     } = props as NormalizedListViewProps<T, S>;
 
-    const cellRenderer: CellRenderer<T, S> = (value, treeRow, position) =>
-        renderItem({
-            item: value as T,
-            index: position,
-            depth: treeRow === null ? 0 : treeRow.getDepth(),
-            isExpanded: treeRow === null ? false : treeRow.getExpanded(),
-        });
-
     const wiring = useListViewWiring<T, S>({
         ref,
         items,
         sections,
-        autoexpand,
         renderHeader,
         selectedIds,
         selectionMode,
         onSelectionChanged,
+        expandedIds,
+        onExpandedChange,
         estimatedItemHeight,
         estimatedItemWidth,
     } as NormalizedListViewProps<T, S>);
+
+    const treeContext: TreeRenderContext = {
+        controlled: expandedIds !== undefined && expandedIds !== null,
+        expandedIds: new Set(expandedIds ?? []),
+        rowId: wiring.rowId,
+    };
+    const cellRenderer: CellRenderer<T, S> = itemRenderer<T, S>(renderItem, treeContext);
 
     return (
         <>

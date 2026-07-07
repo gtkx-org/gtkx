@@ -5,7 +5,7 @@ import { GtkBox, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { createRef, type RefObject, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { renderListView } from "../helpers/list-fixtures.js";
+import { allExpandableIds, renderListView } from "../helpers/list-fixtures.js";
 
 const TWO_ITEMS = [
     { id: "1", value: { name: "First" } },
@@ -155,7 +155,7 @@ describe("render - ListView - selection (5)", () => {
                         hideExpander: true,
                     })),
                 })),
-                { autoexpand: true, onSelectionChanged },
+                { expandAll: true, onSelectionChanged },
             );
 
             const listView = ref.current;
@@ -216,7 +216,7 @@ function SidebarTree({
             <ListView
                 ref={listRef}
                 cssClasses={["navigation-sidebar"]}
-                autoexpand
+                expandedIds={allExpandableIds(toSidebarListItems(sidebarData))}
                 selectionMode={Gtk.SelectionMode.SINGLE}
                 items={toSidebarListItems(sidebarData)}
                 selectedIds={selectedId ? [selectedId] : []}

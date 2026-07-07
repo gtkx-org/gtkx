@@ -3,13 +3,19 @@ import { GtkColumnView, type GtkColumnViewProps } from "@gtkx/jsx/gtk";
 import { useMergeRefs } from "@gtkx/react";
 import { type ReactNode, type Ref, useCallback, useMemo, useRef, useState } from "react";
 import { HeaderRenderHost } from "./cell.js";
-import { ColumnViewColumn } from "./column-view-column.js";
+import { ColumnViewColumn, type ColumnViewColumnProps } from "./column-view-column.js";
 import { type ColumnRegistration, ColumnViewContext, type ColumnViewContextValue } from "./column-view-context.js";
 import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
 import { useCollectionModel } from "./hooks/use-collection-model.js";
 import { useInstalledModel } from "./hooks/use-installed-model.js";
 import { useSortHandler } from "./hooks/use-sort-handler.js";
-import type { CollectionItemSizeProps, ControlledSelectionProps, ItemNode, SectionNode } from "./types.js";
+import type {
+    CollectionItemSizeProps,
+    ControlledExpansionProps,
+    ControlledSelectionProps,
+    ItemNode,
+    SectionNode,
+} from "./types.js";
 import type { CellContainerStore } from "./utils/cell-container-store.js";
 import type { ItemResolver } from "./utils/item-resolver.js";
 
@@ -51,12 +57,20 @@ type ColumnViewSortProps = {
     onSortChanged?: ((column: string | null, order: Gtk.SortType) => void) | null | undefined;
 };
 
+export type ColumnViewApi<T = unknown> = {
+    Column: (props: ColumnViewColumnProps<T>) => ReactNode;
+};
+
+type ColumnViewChildren<T> = ReactNode | ((api: ColumnViewApi<T>) => ReactNode);
+
 type ColumnViewDeclarativeProps<T = unknown, S = unknown> = ColumnViewSortProps &
     Omit<CollectionItemSizeProps, "estimatedItemWidth"> &
-    ControlledSelectionProps & {
+    ControlledSelectionProps &
+    ControlledExpansionProps & {
         items?: ItemNode<T>[] | undefined;
         sections?: SectionNode<S, T>[] | undefined;
         renderHeader?: ((info: { section: S }) => ReactNode) | null | undefined;
+        children?: ColumnViewChildren<T>;
     };
 
 export type ColumnViewProps<T = unknown, S = unknown> = Omit<
@@ -68,13 +82,11 @@ export type ColumnViewProps<T = unknown, S = unknown> = Omit<
 type NormalizedColumnViewProps<T, S> = ColumnViewDeclarativeProps<T, S> & {
     ref?: Ref<Gtk.ColumnView | null>;
     renderHeader?: ((info: { section: S }) => ReactNode) | null;
-    children?: ReactNode;
     [key: string]: unknown;
 };
 
 interface ColumnViewWiring<T, S> {
     setRef: (value: Gtk.ColumnView | null) => void;
-    resolver: ItemResolver<T, S>;
     headerResolver: ItemResolver<T, S>;
     headerStore: CellContainerStore;
     useHeader: boolean;
@@ -94,6 +106,8 @@ const useColumnViewWiring = <T, S>(
         selectionMode: props.selectionMode,
         selectedIds: props.selectedIds,
         onSelectionChanged: props.onSelectionChanged,
+        expandedIds: props.expandedIds,
+        onExpandedChange: props.onExpandedChange,
         renderHeader: props.renderHeader,
     });
     useInstalledModel(widgetRef, collection.installedModel, (widget, model) => widget.setModel(model));
@@ -117,15 +131,19 @@ const useColumnViewWiring = <T, S>(
         () => ({
             columnView: widgetRef,
             resolver: collection.resolver as ItemResolver<unknown, unknown>,
+            tree: {
+                controlled: props.expandedIds !== undefined && props.expandedIds !== null,
+                expandedIds: new Set(props.expandedIds ?? []),
+                rowId: collection.rowId,
+            },
             register: registry.register,
             unregister: registry.unregister,
         }),
-        [collection.resolver, registry.register, registry.unregister],
+        [collection.resolver, collection.rowId, props.expandedIds, registry.register, registry.unregister],
     );
 
     return {
         setRef,
-        resolver: collection.resolver,
         headerResolver: collection.headerResolver,
         headerStore,
         useHeader,
@@ -141,6 +159,8 @@ const ColumnViewComponent = <T = unknown, S = unknown>(props: ColumnViewProps<T,
         selectedIds,
         selectionMode,
         onSelectionChanged,
+        expandedIds,
+        onExpandedChange,
         sortColumn,
         sortOrder,
         onSortChanged,
@@ -159,6 +179,8 @@ const ColumnViewComponent = <T = unknown, S = unknown>(props: ColumnViewProps<T,
             selectedIds,
             selectionMode,
             onSelectionChanged,
+            expandedIds,
+            onExpandedChange,
             sortColumn,
             sortOrder,
             onSortChanged,
@@ -168,10 +190,12 @@ const ColumnViewComponent = <T = unknown, S = unknown>(props: ColumnViewProps<T,
         registry,
     );
 
+    const resolvedChildren = typeof children === "function" ? children({ Column: ColumnViewColumn }) : children;
+
     return (
         <>
             <GtkColumnView {...intrinsicProps} ref={wiring.setRef}>
-                <ColumnViewContext.Provider value={wiring.contextValue}>{children}</ColumnViewContext.Provider>
+                <ColumnViewContext.Provider value={wiring.contextValue}>{resolvedChildren}</ColumnViewContext.Provider>
             </GtkColumnView>
             <HeaderRenderHost
                 useHeader={wiring.useHeader}

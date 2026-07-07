@@ -72,7 +72,6 @@ const childModelOf = <T>(
 
 export const createTreeModel = <T>(
     items: ItemNode<T>[],
-    autoexpand: boolean,
     rowValues: WeakMap<GObject.Object, RowValue<T>>,
     placeholdersById: Map<string, GObject.Object>,
 ): Gtk.TreeListModel => {
@@ -102,7 +101,7 @@ export const createTreeModel = <T>(
         }
         return store;
     };
-    return Gtk.TreeListModel.new(root, false, autoexpand, createFunc);
+    return Gtk.TreeListModel.new(root, false, false, createFunc);
 };
 
 export const createSectionModel = <S, T>(sections: SectionNode<S, T>[]): Gtk.FlattenListModel => {

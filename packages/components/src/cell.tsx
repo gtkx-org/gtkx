@@ -3,6 +3,7 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkTreeExpander } from "@gtkx/jsx/gtk";
 import { createPortal } from "@gtkx/react";
 import { Fragment, memo, type ReactNode, useCallback, useSyncExternalStore } from "react";
+import type { RenderItemProps } from "./types.js";
 import type { CellContainerStore, CellEntry } from "./utils/cell-container-store.js";
 import type { ItemResolver } from "./utils/item-resolver.js";
 import type { TreeItemMetadata } from "./utils/list-item-flatten.js";
@@ -54,12 +55,12 @@ const Cell = memo(<T, S>({ container, store, resolver, render }: CellProps<T, S>
     const entry = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
     if (entry.position < 0) return null;
-    const resolved = resolver.resolve(entry.position, entry.treeRow, entry.item);
+    const resolved = resolver.resolve(entry.position, entry.treeRow);
     if (!resolved.present) return null;
-    const content = render(resolved.value, resolved.treeRow, entry.position);
+    const content = render(resolved.value, entry.treeRow, entry.position);
     const portalled =
-        resolved.treeRow !== null && !resolved.isHeader ? (
-            <TreeExpanderCell treeRow={resolved.treeRow} metadata={resolved.metadata}>
+        entry.treeRow !== null && !resolved.isHeader ? (
+            <TreeExpanderCell treeRow={entry.treeRow} metadata={resolved.metadata}>
                 {content}
             </TreeExpanderCell>
         ) : (
@@ -89,10 +90,29 @@ export const CellRenderHost = <T, S>({ store, resolver, render }: CellRenderHost
     );
 };
 
+export type TreeRenderContext = {
+    controlled: boolean;
+    expandedIds: Set<string>;
+    rowId: (row: Gtk.TreeListRow) => string | undefined;
+};
+
+const treeFields = (
+    treeRow: Gtk.TreeListRow | null,
+    context: TreeRenderContext | undefined,
+): { depth?: number; isExpanded?: boolean } => {
+    if (treeRow === null) return {};
+    const depth = treeRow.getDepth();
+    if (context === undefined || !treeRow.isExpandable()) return { depth };
+    const isExpanded = context.controlled
+        ? context.expandedIds.has(context.rowId(treeRow) ?? "")
+        : treeRow.getExpanded();
+    return { depth, isExpanded };
+};
+
 export const itemRenderer =
-    <T, S>(render: (info: { item: T; index: number }) => ReactNode): CellRenderer<T, S> =>
-    (value, _treeRow, position) =>
-        render({ item: value as T, index: position });
+    <T, S>(render: (props: RenderItemProps<T>) => ReactNode, context?: TreeRenderContext): CellRenderer<T, S> =>
+    (value, treeRow, position) =>
+        render({ item: value as T, index: position, ...treeFields(treeRow, context) });
 
 const headerRenderer =
     <T, S>(renderHeader: ((info: { section: S }) => ReactNode) | null | undefined): CellRenderer<T, S> =>

@@ -1,7 +1,7 @@
-import { type ColumnRenderItemInfo, ColumnView, ColumnViewColumn } from "@gtkx/components";
+import { ColumnView, ColumnViewColumn, type RenderItemProps } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
-import { act, render } from "@gtkx/testing";
+import { act, render, screen } from "@gtkx/testing";
 import { createRef, useCallback, useMemo, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -41,7 +41,7 @@ const columnViewView = async (items: Parameters<typeof renderColumnView>[0]): Pr
     return { texts: () => getColumnViewItemTexts(ref.current), rerender };
 };
 
-const labelCell = ({ item }: ColumnRenderItemInfo<{ name: string }>) => <GtkLabel label={item.name} />;
+const labelCell = ({ item }: RenderItemProps<{ name: string }>) => <GtkLabel label={item.name} />;
 
 const titleColumns = (titles: string[]): ColumnDef<{ name: string }>[] =>
     titles.map((title) => ({ id: title, title, renderItem: labelCell }));
@@ -50,7 +50,7 @@ const orderedColumns = (ids: string[]): ColumnDef<{ name: string }>[] =>
     ids.map((id) => ({
         id,
         title: id,
-        renderItem: ({ item }: ColumnRenderItemInfo<{ name: string }>) => <GtkLabel label={`${id}:${item.name}`} />,
+        renderItem: ({ item }: RenderItemProps<{ name: string }>) => <GtkLabel label={`${id}:${item.name}`} />,
     }));
 
 interface Employee {
@@ -145,14 +145,14 @@ function SortableColumnView({
                     title="Name"
                     expand
                     sortable
-                    renderItem={({ item }: ColumnRenderItemInfo<Employee>) => <GtkLabel label={item.name} />}
+                    renderItem={({ item }: RenderItemProps<Employee>) => <GtkLabel label={item.name} />}
                 />
                 <ColumnViewColumn
                     id="salary"
                     title="Salary"
                     expand
                     sortable
-                    renderItem={({ item }: ColumnRenderItemInfo<Employee>) => <GtkLabel label={`$${item.salary}`} />}
+                    renderItem={({ item }: RenderItemProps<Employee>) => <GtkLabel label={`$${item.salary}`} />}
                 />
             </ColumnView>
         </ScrollWrapper>
@@ -324,9 +324,7 @@ describe("render - ColumnView (3)", () => {
 describe("render - ColumnView (4)", () => {
     describe("renderItem", () => {
         it("receives item data in renderItem", async () => {
-            const renderItem = vi.fn(({ item }: ColumnRenderItemInfo<{ name: string }>) => (
-                <GtkLabel label={item.name} />
-            ));
+            const renderItem = vi.fn(({ item }: RenderItemProps<{ name: string }>) => <GtkLabel label={item.name} />);
 
             await renderColumnView([{ id: "1", value: { name: "Test" } }], {
                 columns: [{ id: "name", title: "Name", renderItem }],
@@ -719,5 +717,37 @@ describe("render - ColumnView (16)", () => {
 
             expect(getColumnTitles(ref.current)).toEqual(["A", "B", "C"]);
         });
+    });
+});
+
+describe("render - ColumnView (render-prop children)", () => {
+    interface Person {
+        id: string;
+        name: string;
+        role: string;
+    }
+
+    it("renders columns from a function child with an inferred item type", async () => {
+        const people: Person[] = [
+            { id: "1", name: "Ada", role: "Engineer" },
+            { id: "2", name: "Alan", role: "Mathematician" },
+        ];
+
+        await render(
+            <ScrollWrapper minContentHeight={200}>
+                <ColumnView<Person> items={people.map((p) => ({ id: p.id, value: p }))}>
+                    {({ Column }) => (
+                        <>
+                            <Column id="name" title="Name" renderItem={({ item }) => <GtkLabel label={item.name} />} />
+                            <Column id="role" title="Role" renderItem={({ item }) => <GtkLabel label={item.role} />} />
+                        </>
+                    )}
+                </ColumnView>
+            </ScrollWrapper>,
+        );
+
+        expect(screen.queryAllByText("Ada")).toHaveLength(1);
+        expect(screen.queryAllByText("Engineer")).toHaveLength(1);
+        expect(screen.queryAllByText("Mathematician")).toHaveLength(1);
     });
 });

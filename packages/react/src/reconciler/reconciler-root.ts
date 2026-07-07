@@ -50,8 +50,8 @@ export const createReconcilerRoot = (options: ReconcilerRootOptions): Reconciler
     return root;
 };
 
-export const unmountAllReconcilerRoots = <R>(free: (root: ReconcilerRoot) => R): R[] => {
+export const unmountAllReconcilerRoots = (free: (root: ReconcilerRoot) => void): void => {
     const roots = [...activeRoots];
     activeRoots.clear();
-    return roots.map(free);
+    roots.forEach(free);
 };

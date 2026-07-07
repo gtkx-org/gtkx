@@ -6,19 +6,17 @@ import { type CellRenderer, CellRenderHost, itemRenderer } from "./cell.js";
 import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
 import { useCollectionModel } from "./hooks/use-collection-model.js";
 import { useInstalledModel } from "./hooks/use-installed-model.js";
-import type { CollectionItemSizeProps, ControlledSelectionProps, ItemNode, RenderItemInfo } from "./types.js";
+import type { CollectionItemSizeProps, ControlledSelectionProps, ItemNode, RenderItemProps } from "./types.js";
 
 const factoryInstaller: FactoryInstaller<Gtk.GridView> = {
     install: (widget: Gtk.GridView, factory: Gtk.SignalListItemFactory) => widget.setFactory(factory),
     uninstall: (widget: Gtk.GridView) => widget.setFactory(null),
 };
 
-export type GridRenderItemInfo<T> = RenderItemInfo<T>;
-
 type GridViewDeclarativeProps<T = unknown> = CollectionItemSizeProps &
     ControlledSelectionProps & {
         items?: ItemNode<T>[] | undefined;
-        renderItem: (info: RenderItemInfo<T>) => ReactNode;
+        renderItem: (props: RenderItemProps<T>) => ReactNode;
     };
 
 export type GridViewProps<T = unknown> = Omit<

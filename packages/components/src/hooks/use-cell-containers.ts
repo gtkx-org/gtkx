@@ -60,9 +60,7 @@ export const useCellContainers = <W extends GObject.Object>(options: CellContain
             if (isChildContainer(container)) {
                 const item = container.getItem();
                 const treeRow = item instanceof Gtk.TreeListRow ? item : null;
-                store.bind(container, positionOf(container), treeRow, item);
-            } else {
-                store.bind(container, -1, null, null);
+                store.bind(container, positionOf(container), treeRow);
             }
         });
         factory.on("unbind", (container) => {
