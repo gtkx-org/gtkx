@@ -45,6 +45,11 @@
             "inputs": [],
             "outputs": ["dist/**", "tsconfig.lib.tsbuildinfo"]
         },
+        "dev": {
+            "dependsOn": ["^build"],
+            "cache": false,
+            "persistent": true
+        },
         "@gtkx/website#build": {
             "dependsOn": ["production", "^build"],
             "inputs": [],
