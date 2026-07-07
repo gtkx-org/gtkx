@@ -14,7 +14,7 @@ napi-derive = "3"
 glib = { version = "0.22", features = ["v2_68"] }
 libloading = "0.9.0"
 libffi = "5.1.1"
-anyhow = "1.0.102"
+anyhow = "1.0.103"
 enum_dispatch = "0.3"
 
 [build-dependencies]
@@ -24,5 +24,5 @@ napi-build = "2"
 missing_safety_doc = "allow"
 
 [dev-dependencies]
-gtk4 = "0.11.3"
+gtk4 = "0.11.4"
 test-support = { path = "test-support" }

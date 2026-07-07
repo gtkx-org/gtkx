@@ -2,7 +2,7 @@ import { sourceResolveConfig } from "../../vitest.source.js";
 import { defineConfig, mergeConfig } from "vitest/config";
 
 export default mergeConfig(
-    defineConfig({ ...sourceResolveConfig }),
+    sourceResolveConfig,
     defineConfig({
         test: {
             name: "utils",

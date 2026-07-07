@@ -1,4 +1,4 @@
-import type { UserConfig } from "vitest/config";
+import { defineConfig } from "vitest/config";
 
 /**
  * Source-first module resolution for this monorepo's test suites: workspace
@@ -6,7 +6,7 @@ import type { UserConfig } from "vitest/config";
  * condition, and every GTKX package plus the generated binding stores are
  * inlined into the Vite module graph so those sources get transformed.
  */
-export const sourceResolveConfig: UserConfig = {
+export const sourceResolveConfig = defineConfig({
     ssr: {
         resolve: {
             conditions: ["source", "module", "node", "development|production"],
@@ -19,4 +19,4 @@ export const sourceResolveConfig: UserConfig = {
             },
         },
     },
-};
+});

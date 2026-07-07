@@ -8,7 +8,7 @@
         "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "devDependencies": {
-        "@codspeed/vitest-plugin": "^5.7.0",
+        "@codspeed/vitest-plugin": "^5.7.1",
         "@gtkx/animate": "workspace:*",
         "@gtkx/components": "workspace:*",
         "@gtkx/config": "workspace:*",

@@ -52,18 +52,18 @@
         "node": ">=24"
     },
     "dependencies": {
-        "@clack/prompts": "^1.6.0",
+        "@clack/prompts": "^1.7.0",
         "@gtkx/config": "workspace:*",
         "@gtkx/utils": "workspace:*",
         "ejs": "catalog:",
         "citty": "^0.2.2",
-        "nypm": "^0.6.7",
+        "nypm": "^0.6.8",
         "tinyexec": "^1.2.4"
     },
     "devDependencies": {
         "@types/ejs": "catalog:",
         "@types/node": "catalog:",
-        "memfs": "^4.57.8",
+        "memfs": "^4.58.0",
         "typescript": "catalog:",
         "vitest": "catalog:"
     }
