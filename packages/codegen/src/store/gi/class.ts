@@ -5,23 +5,20 @@ import type { GirClass } from "../../gir/class.js";
 import type { GirFunction } from "../../gir/function.js";
 import { splitOptionalNamespace } from "../../gir/type-ref.js";
 import type { ModuleContext } from "../../writer/context.js";
-import { indentMembers, renderBlock } from "../../writer/emit.js";
-import { bindingIdentifier } from "../../writer/identifier.js";
-import { matchAsyncFinishName } from "./async.js";
+import { indentMembers } from "../../writer/emit.js";
 import {
     type Callables,
     dedupeCallables,
     generateBindings,
     indexMethodsByName,
-    renderInstanceMethod,
+    renderClassInstanceMember,
     renderStaticHead,
 } from "./callables.js";
 import { renderClassConstructor, renderConstructorPropsInterface } from "./constructor-props.js";
 import { gtypeExprFor, gtypeMemberDeclaration } from "./gtype-binding.js";
-import { methodExportName, renderPromisifiedBody, renderPromisifiedSignature } from "./method.js";
+import { methodExportName } from "./method.js";
 import { renderPropertyAccessor } from "./property-accessor.js";
 import { appendWrapperClassRegistration } from "./registration.js";
-import { renderRuntimeOverride } from "./runtime-override.js";
 import { renderSignalDeclarations, renderSignalMembers } from "./signal.js";
 import { renderVfuncMetadata } from "./vtable.js";
 
@@ -127,42 +124,6 @@ const appendClassRegistrations = (context: ModuleContext, klass: GirClass, class
         gtypeExpr,
         vfuncs: renderVfuncMetadata(context, klass),
     });
-};
-
-const renderClassInstanceMember = (
-    context: ModuleContext,
-    callable: GirFunction,
-    siblings: Map<string, GirFunction>,
-    nameOverride?: string,
-): string | undefined => {
-    if (!callable.introspectable || callable.shadowedBy !== undefined || callable.cIdentifier === undefined) {
-        return undefined;
-    }
-    const name = nameOverride ?? methodExportName(callable);
-    if (name === "constructor") return undefined;
-    const override = renderRuntimeOverride(callable, name);
-    if (override !== undefined) return override;
-    const promisified = renderPromisifiedMember(context, callable, siblings, name);
-    if (promisified !== undefined) return promisified;
-    return renderInstanceMethod(context, callable, nameOverride);
-};
-
-const renderPromisifiedMember = (
-    context: ModuleContext,
-    callable: GirFunction,
-    siblings: Map<string, GirFunction>,
-    name: string,
-): string | undefined => {
-    const finishName = matchAsyncFinishName(context.library, callable, [...siblings.values()]);
-    if (finishName === undefined) return undefined;
-    const finishFn = siblings.get(finishName);
-    if (finishFn === undefined) return undefined;
-    const cIdentifier = callable.cIdentifier;
-    if (cIdentifier === undefined) return undefined;
-    const { signature, returnType } = renderPromisifiedSignature(context, callable, finishFn);
-    const finishMember = methodExportName(finishFn);
-    const body = renderPromisifiedBody(context, callable, finishMember, bindingIdentifier(cIdentifier));
-    return renderBlock(`${name}(${signature}): ${returnType}`, body);
 };
 
 const inheritedInterfaceKeys = (context: ModuleContext, klass: GirClass): Set<string> => {

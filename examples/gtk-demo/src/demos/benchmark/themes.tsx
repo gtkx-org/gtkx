@@ -1,5 +1,4 @@
-import { AlertDialog } from "@gtkx/components";
-import { Dialog } from "@gtkx/components/adw";
+import { AlertDialog, Dialog } from "@gtkx/components/adw";
 import * as Adw from "@gtkx/gi/adw";
 import type * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";

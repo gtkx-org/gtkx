@@ -1,6 +1,4 @@
-import { functionFromNode, type GirFunction } from "./function.js";
 import { attr, attrBool, childrenOf, nameAttr, type RawNode } from "./parse.js";
-import type { ParseContext } from "./type-id.js";
 
 type EnumMember = {
     name: string;
@@ -18,10 +16,9 @@ export type GirEnum = {
     errorDomain: string | undefined;
     introspectable: boolean;
     members: EnumMember[];
-    functions: GirFunction[];
 };
 
-export const enumFromNode = (node: RawNode, kind: EnumKind, context: ParseContext): GirEnum => ({
+export const enumFromNode = (node: RawNode, kind: EnumKind): GirEnum => ({
     kind,
     name: nameAttr(node),
     glibTypeName: attr(node, "glib:type-name"),
@@ -33,5 +30,4 @@ export const enumFromNode = (node: RawNode, kind: EnumKind, context: ParseContex
         value: attr(member, "value") ?? "0",
         cIdentifier: attr(member, "c:identifier"),
     })),
-    functions: childrenOf(node, "function").map((function_) => functionFromNode(function_, "function", context)),
 });

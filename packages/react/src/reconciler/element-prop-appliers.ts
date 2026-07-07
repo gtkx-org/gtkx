@@ -25,7 +25,7 @@ const applyList = (instance: object, prop: ListProp, oldValue: unknown, newValue
 
 const applyValue = (instance: object, prop: ValueProp, oldValue: unknown, newValue: unknown): void => {
     if (oldValue === newValue) return;
-    runCall(instance, prop.call, [newValue], { value: newValue, item: newValue });
+    runCall(instance, prop.call, [newValue], { item: newValue });
     if (prop.after !== undefined) callMethod(instance, prop.after, []);
 };
 
@@ -77,11 +77,4 @@ export const reapplyLazyProps = (instance: TypedClass & object, props: Props): v
     for (const prop of appliedPropsFor(instance.__type__).values()) {
         if (prop.kind === "lazy") applyLazy(instance, prop, props);
     }
-};
-
-export const hasLazyProps = (instance: TypedClass & object): boolean => {
-    for (const prop of appliedPropsFor(instance.__type__).values()) {
-        if (prop.kind === "lazy") return true;
-    }
-    return false;
 };

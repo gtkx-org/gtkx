@@ -7,15 +7,10 @@ import { isAnchorNode, isBufferContentNode, isBufferTextNode, isPaintableNode } 
 
 export class TextBufferController {
     private managesContent = false;
-    private anchoredWidgets = new Set<Gtk.Widget>();
-    private owner: Node;
+    private owner: Gtk.TextBuffer;
 
-    constructor(owner: Node) {
+    constructor(owner: Gtk.TextBuffer) {
         this.owner = owner;
-    }
-
-    private resolveBuffer(): Gtk.TextBuffer | null {
-        return this.owner instanceof Gtk.TextBuffer ? this.owner : null;
     }
 
     private resolveView(): Gtk.TextView | null {
@@ -29,8 +24,7 @@ export class TextBufferController {
     }
 
     public rebuild = (): void => {
-        const buffer = this.resolveBuffer();
-        if (!buffer) return;
+        const buffer = this.owner;
 
         if (this.hasManagedChildren()) this.managesContent = true;
         if (!this.managesContent) return;
@@ -38,18 +32,12 @@ export class TextBufferController {
         const state = stateOf(this.owner);
         buffer.beginIrreversibleAction();
         try {
-            this.detachAnchoredWidgets();
             this.clearBuffer(buffer);
             this.insertChildren(buffer, state.children);
         } finally {
             buffer.endIrreversibleAction();
         }
     };
-
-    private detachAnchoredWidgets(): void {
-        for (const widget of this.anchoredWidgets) unparentWidget(widget);
-        this.anchoredWidgets.clear();
-    }
 
     private clearBuffer(buffer: Gtk.TextBuffer): void {
         const start = buffer.getStartIter();
@@ -104,7 +92,6 @@ export class TextBufferController {
         if (view && child instanceof Gtk.Widget) {
             unparentWidget(child);
             view.addChildAtAnchor(child, anchor);
-            this.anchoredWidgets.add(child);
         }
     }
 

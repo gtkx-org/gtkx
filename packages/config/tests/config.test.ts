@@ -120,7 +120,14 @@ describe("validateGtkxConfig elementProps validation", () => {
                 },
             ],
             GtkStack: [
-                { kind: "container", prop: "children", child: "GtkWidget", append: "addChild", remove: "remove", adopt: true },
+                {
+                    kind: "container",
+                    prop: "children",
+                    child: "GtkWidget",
+                    append: "addChild",
+                    remove: "remove",
+                    adopt: true,
+                },
                 { kind: "lazy", prop: "visibleChildName", lookup: "getChildByName" },
             ],
             GtkNotebook: [
@@ -166,9 +173,33 @@ describe("validateGtkxConfig elementProps validation", () => {
     });
 
     it("rejects an unknown argument reference", () => {
-        const cp = { kind: "container", prop: "children", child: "GtkWidget", append: { method: "append", args: ["kid"] } };
+        const cp = {
+            kind: "container",
+            prop: "children",
+            child: "GtkWidget",
+            append: { method: "append", args: ["kid"] },
+        };
         expect(() => validateUnknown({ elementProps: { GtkWidget: [cp] } })).toThrow(
             /`elementProps\.GtkWidget\[0\]\.append\.args\[0\]` has unknown reference "kid"/,
+        );
+    });
+
+    it('rejects the "value" argument reference', () => {
+        const cp = { kind: "value", prop: "drawFunc", call: { method: "setDrawFunc", args: ["value"] } };
+        expect(() => validateUnknown({ elementProps: { GtkDrawingArea: [cp] } })).toThrow(
+            /`elementProps\.GtkDrawingArea\[0\]\.call\.args\[0\]` has unknown reference "value"/,
+        );
+    });
+
+    it("rejects `or` on a prop argument", () => {
+        const cp = {
+            kind: "container",
+            prop: "children",
+            child: "GtkWidget",
+            append: { method: "append", args: [{ prop: "name", or: null }] },
+        };
+        expect(() => validateUnknown({ elementProps: { GtkWidget: [cp] } })).toThrow(
+            /`elementProps\.GtkWidget\[0\]\.append\.args\[0\]\.or` is not a recognized key/,
         );
     });
 
@@ -260,9 +291,7 @@ describe("resolveGtkxConfig", () => {
             libraries: [],
             girPath: [],
             applicationId: DEFAULT_APPLICATION_ID,
-            elementProps: {},
             reactCompiler: { target: "19" },
-            codegen: true,
         });
     });
 
@@ -271,15 +300,11 @@ describe("resolveGtkxConfig", () => {
             libraries: ["Gtk-4.0", "Adw-1"],
             girPath: ["/opt/gir"],
             applicationId: "org.gtk.Demo4",
-            elementProps: {
-                GtkStack: [{ kind: "container", prop: "children", child: "GtkWidget", append: "addChild", adopt: true }],
-            },
             reactCompiler: { compilationMode: "annotation" },
         };
         expect(resolveGtkxConfig(configured)).toEqual({
             ...configured,
             reactCompiler: { target: "19", compilationMode: "annotation" },
-            codegen: true,
         });
     });
 
@@ -289,10 +314,5 @@ describe("resolveGtkxConfig", () => {
 
     it("collapses a disabled reactCompiler to null", () => {
         expect(resolveGtkxConfig({ reactCompiler: false }).reactCompiler).toBeNull();
-    });
-
-    it("defaults codegen to true and carries an explicit false", () => {
-        expect(resolveGtkxConfig({}).codegen).toBe(true);
-        expect(resolveGtkxConfig({ codegen: false }).codegen).toBe(false);
     });
 });

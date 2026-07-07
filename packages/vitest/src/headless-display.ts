@@ -3,6 +3,7 @@ import { chmodSync, existsSync, mkdtempSync, rmSync, writeFileSync } from "node:
 import { Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { installGracefulShutdown } from "@gtkx/utils";
 
 type CompositorId = "sway" | "weston";
 
@@ -293,7 +294,5 @@ export const installTeardownHandlers = (teardown: () => void): void => {
     };
 
     process.on("exit", runTeardown);
-    for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"] as const satisfies NodeJS.Signals[]) {
-        process.on(signal, runTeardown);
-    }
+    installGracefulShutdown({ onSignal: runTeardown });
 };

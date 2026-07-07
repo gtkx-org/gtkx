@@ -36,23 +36,19 @@ export const loadGtkxConfig = async (cwd: string, options: LoadGtkxConfigOptions
     };
 };
 
-export const loadResolvedGtkxConfig = async (
-    cwd: string,
-    options: LoadGtkxConfigOptions = {},
-): Promise<ResolvedGtkxConfig> => {
-    const { config } = await loadGtkxConfig(cwd, options);
-    return resolveGtkxConfig(config);
-};
-
 export type GtkxConfigLoader = (cwd: string) => Promise<ResolvedGtkxConfig>;
 
 export const createGtkxConfigLoader = (options: LoadGtkxConfigOptions = {}): GtkxConfigLoader => {
     const cache = new Map<string, Promise<ResolvedGtkxConfig>>();
+    const loadResolved = async (root: string): Promise<ResolvedGtkxConfig> => {
+        const { config } = await loadGtkxConfig(root, options);
+        return resolveGtkxConfig(config);
+    };
     return (cwd: string): Promise<ResolvedGtkxConfig> => {
         const root = resolve(cwd);
         let pending = cache.get(root);
         if (!pending) {
-            pending = loadResolvedGtkxConfig(root, options);
+            pending = loadResolved(root);
             cache.set(root, pending);
         }
         return pending;

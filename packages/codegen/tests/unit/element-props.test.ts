@@ -1,11 +1,15 @@
-import type { ContainerProp, ElementProp } from "@gtkx/config";
-import { validateGtkxConfig } from "@gtkx/config";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { type ContainerProp, type ElementProp, loadGtkxConfig } from "@gtkx/config";
 import { describe, expect, it } from "vitest";
 import { assembleElementProps } from "../../src/store/react/element-props.js";
+import { buildGirIndex } from "../../src/store/react/gir-index.js";
 import { CURATED_ELEMENT_PROPS } from "../../src/store/react/tables.js";
 import { library } from "../helpers/library.js";
 
-const elementProps = assembleElementProps(library, {});
+const girIndex = buildGirIndex(library);
+const elementProps = assembleElementProps(girIndex, {});
 
 const knownTypeNames = (): Set<string> => {
     const names = new Set<string>();
@@ -30,8 +34,15 @@ const containerPropFor = (parent: string, slot?: string): ContainerProp | undefi
     );
 
 describe("curated element props", () => {
-    it("pass schema validation", () => {
-        expect(() => validateGtkxConfig({ elementProps: CURATED_ELEMENT_PROPS })).not.toThrow();
+    it("pass schema validation", async () => {
+        const root = await mkdtemp(join(tmpdir(), "gtkx-curated-"));
+        try {
+            const source = `export default { elementProps: ${JSON.stringify(CURATED_ELEMENT_PROPS)} };\n`;
+            await writeFile(join(root, "gtkx.config.ts"), source);
+            await expect(loadGtkxConfig(root)).resolves.toMatchObject({ root });
+        } finally {
+            await rm(root, { recursive: true, force: true });
+        }
     });
 
     it("reference only types and methods that exist in the loaded GIR", () => {
@@ -39,10 +50,13 @@ describe("curated element props", () => {
         const filtered: Record<string, ElementProp[]> = {};
         for (const [parent, props] of Object.entries(CURATED_ELEMENT_PROPS)) {
             if (!known.has(parent)) continue;
-            const kept = props.filter((prop) => prop.kind !== "container" || containerTypeNames(parent, prop).every((name) => known.has(name)));
+            const kept = props.filter(
+                (prop) =>
+                    prop.kind !== "container" || containerTypeNames(parent, prop).every((name) => known.has(name)),
+            );
             if (kept.length > 0) filtered[parent] = kept;
         }
-        expect(() => assembleElementProps(library, filtered)).not.toThrow();
+        expect(() => assembleElementProps(girIndex, filtered)).not.toThrow();
     });
 });
 
@@ -56,7 +70,7 @@ describe("assembled container props", () => {
         });
     });
 
-    it("curates single-child rules for set_child hosts", () => {
+    it("curates single-child container props for set_child hosts", () => {
         expect(containerPropFor("GtkButton")).toMatchObject({
             append: "setChild",
             remove: { method: "setChild", args: [{ literal: null }] },
@@ -64,7 +78,7 @@ describe("assembled container props", () => {
         expect(containerPropFor("GtkListItem")).toMatchObject({ append: "setChild" });
     });
 
-    it("curates the autowrap list-box rule", () => {
+    it("curates the autowrap list-box container prop", () => {
         expect(containerPropFor("GtkListBox")).toMatchObject({
             append: "append",
             autowrap: "GtkListBoxRow",
@@ -72,7 +86,7 @@ describe("assembled container props", () => {
         });
     });
 
-    it("keeps adopt rules", () => {
+    it("keeps adopt container props", () => {
         expect(containerPropFor("GtkStack")).toMatchObject({ append: "addChild", adopt: true });
         expect(containerPropFor("GtkNotebook")).toMatchObject({ remove: "detachTab", adopt: "getPage" });
     });
@@ -90,7 +104,7 @@ describe("assembled applied props", () => {
 describe("user element props", () => {
     it("override curated props with the same key", () => {
         const override: ElementProp = { kind: "value", prop: "drawFunc", call: "setDrawFunc" };
-        const merged = assembleElementProps(library, { GtkDrawingArea: [override] });
+        const merged = assembleElementProps(girIndex, { GtkDrawingArea: [override] });
         const applied = (merged.GtkDrawingArea ?? []).filter((prop) => prop.kind !== "container");
         expect(applied).toEqual([override]);
     });
@@ -99,7 +113,7 @@ describe("user element props", () => {
         const props: Record<string, ElementProp[]> = {
             ShumateMap: [{ kind: "container", prop: "children", child: "GtkWidget", append: "add" }],
         };
-        expect(() => assembleElementProps(library, props)).toThrow(
+        expect(() => assembleElementProps(girIndex, props)).toThrow(
             /`elementProps\.ShumateMap\[0\]` references "ShumateMap", which is not a type/,
         );
     });
@@ -108,7 +122,7 @@ describe("user element props", () => {
         const props: Record<string, ElementProp[]> = {
             GtkBox: [{ kind: "container", prop: "children", child: "GtkWidget", append: "attachWidget" }],
         };
-        expect(() => assembleElementProps(library, props)).toThrow(
+        expect(() => assembleElementProps(girIndex, props)).toThrow(
             /`elementProps\.GtkBox\[0\]` references method "attachWidget", which does not exist on GtkBox/,
         );
     });

@@ -23,7 +23,7 @@ const constructWrapperInstance = (type: string, props: Props): GObject.Object =>
 
 export const createElementInstance = (type: string, props: Props, rootContainer: Container): Node => {
     const node = constructWrapperInstance(type, props);
-    registerState(node, { name: type, props, rootContainer });
+    registerState(node, { props, rootContainer });
     return node;
 };
 

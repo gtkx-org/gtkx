@@ -1,20 +1,25 @@
 import { toPascalCase } from "@gtkx/utils";
 import { resolvePrerequisiteReference } from "../../analysis/inheritance.js";
 import type { GirClass } from "../../gir/class.js";
+import type { GirFunction } from "../../gir/function.js";
 import type { ModuleContext } from "../../writer/context.js";
-import { indentMembers, renderBlock, renderBracedOrEmpty } from "../../writer/emit.js";
+import { renderBlock, renderBracedOrEmpty } from "../../writer/emit.js";
 import {
     type Callables,
     dedupeCallables,
     generateBindings,
     indexMethodsByName,
-    renderInstanceMethod,
+    renderClassInstanceMember,
     renderInstanceMethodSignature,
     renderStaticHead,
 } from "./callables.js";
 import { gtypeExprFor } from "./gtype-binding.js";
 import { methodExportName } from "./method.js";
-import { renderPropertyAccessor, renderPropertyAccessorSignature } from "./property-accessor.js";
+import {
+    type PropertyAccessorArgs,
+    renderPropertyAccessor,
+    renderPropertyAccessorSignature,
+} from "./property-accessor.js";
 import { appendInterfaceRegistration } from "./registration.js";
 import { renderSignalDeclarations, renderSignalMembers } from "./signal.js";
 import { renderVfuncMetadata } from "./vtable.js";
@@ -70,22 +75,42 @@ const renderInterfaceType = (
     );
 };
 
-const renderInterfaceTypeMembers = (context: ModuleContext, iface: GirClass, callables: Callables): string[] => {
+type InterfaceMemberRenderers = {
+    renderMethod: (
+        context: ModuleContext,
+        callable: GirFunction,
+        methodByName: Map<string, GirFunction>,
+    ) => string | undefined;
+    renderProperty: (args: PropertyAccessorArgs) => string | undefined;
+};
+
+const renderInterfaceMembers = (
+    context: ModuleContext,
+    iface: GirClass,
+    callables: Callables,
+    renderers: InterfaceMemberRenderers,
+): string[] => {
     const members: string[] = [];
     const claimedNames = new Set<string>();
+    const methodByName = indexMethodsByName(callables.methods);
     for (const callable of callables.methods) {
-        const signature = renderInstanceMethodSignature(context, callable);
-        if (signature === undefined) continue;
-        members.push(signature);
+        const block = renderers.renderMethod(context, callable, methodByName);
+        if (block === undefined) continue;
+        members.push(block);
         claimedNames.add(methodExportName(callable));
     }
-    const methodByName = indexMethodsByName(callables.methods);
     for (const property of iface.properties) {
-        const signature = renderPropertyAccessorSignature({ context, property, claimedNames, methodByName });
-        if (signature !== undefined) members.push(signature);
+        const block = renderers.renderProperty({ context, property, claimedNames, methodByName });
+        if (block !== undefined) members.push(block);
     }
     return members;
 };
+
+const renderInterfaceTypeMembers = (context: ModuleContext, iface: GirClass, callables: Callables): string[] =>
+    renderInterfaceMembers(context, iface, callables, {
+        renderMethod: renderInstanceMethodSignature,
+        renderProperty: renderPropertyAccessorSignature,
+    });
 
 const renderInterfaceClass = (
     context: ModuleContext,
@@ -96,10 +121,7 @@ const renderInterfaceClass = (
     const members: string[] = [];
     if (gtypeExpr !== undefined) members.push(renderInterfaceHasInstance(context, className, gtypeExpr));
     members.push(...renderStaticHead(context, callables, className));
-    const body = indentMembers(members);
-    return body.length === 0
-        ? `export abstract class ${className} {}`
-        : `export abstract class ${className} {\n${body}\n}`;
+    return renderBracedOrEmpty(`export abstract class ${className}`, members.join("\n\n"));
 };
 
 const renderInterfaceHasInstance = (context: ModuleContext, className: string, gtypeExpr: string): string => {
@@ -118,25 +140,14 @@ const renderInterfaceMaker = (
 ): string => {
     context.addRuntimeTypeImport("Mixin");
     const members = renderInterfaceInstanceMembers(context, iface, callables);
-    const body = indentMembers(members);
-    const classExpression = body.length === 0 ? "class extends Base {}" : `class extends Base {\n${body}\n}`;
+    const classExpression = renderBracedOrEmpty("class extends Base", members.join("\n\n"));
     return `export const ${makerName(className)}: Mixin = (Base) =>\n${classExpression};`;
 };
 
-const renderInterfaceInstanceMembers = (context: ModuleContext, iface: GirClass, callables: Callables): string[] => {
-    const members: string[] = [];
-    const claimedNames = new Set<string>();
-    for (const callable of callables.methods) {
-        const block = renderInstanceMethod(context, callable);
-        if (block === undefined) continue;
-        members.push(block);
-        claimedNames.add(methodExportName(callable));
-    }
-    const methodByName = indexMethodsByName(callables.methods);
-    for (const property of iface.properties) {
-        const block = renderPropertyAccessor({ context, property, claimedNames, methodByName });
-        if (block !== undefined) members.push(block);
-    }
-    members.push(...renderSignalMembers(context, iface));
-    return members;
-};
+const renderInterfaceInstanceMembers = (context: ModuleContext, iface: GirClass, callables: Callables): string[] => [
+    ...renderInterfaceMembers(context, iface, callables, {
+        renderMethod: renderClassInstanceMember,
+        renderProperty: renderPropertyAccessor,
+    }),
+    ...renderSignalMembers(context, iface),
+];

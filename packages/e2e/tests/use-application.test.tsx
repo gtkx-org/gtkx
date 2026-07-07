@@ -1,7 +1,6 @@
 import * as Gio from "@gtkx/gi/gio";
 import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
 import { createRootElement, useApplication } from "@gtkx/react";
-import { ApplicationContext } from "@gtkx/react/internal";
 import { render } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 
@@ -34,13 +33,8 @@ describe("useApplication", () => {
             return null;
         };
 
-        await expect(
-            render(
-                <ApplicationContext.Provider value={null}>
-                    <Probe />
-                </ApplicationContext.Provider>,
-                { container: createRootElement() },
-            ),
-        ).rejects.toThrow(/useApplication must be called within Application/);
+        await expect(render(<Probe />, { container: createRootElement() })).rejects.toThrow(
+            /useApplication must be called within Application/,
+        );
     });
 });

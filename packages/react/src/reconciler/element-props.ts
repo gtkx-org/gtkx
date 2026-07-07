@@ -9,7 +9,6 @@ import { collectTypeNamesWithInterfaces, foldInheritedTableWithInterfaces } from
 export type CallScope = {
     child?: unknown;
     item?: unknown;
-    value?: unknown;
     index?: number;
     sibling?: unknown;
     props?: Record<string, unknown>;
@@ -27,8 +26,6 @@ const evalArg = (arg: Arg, scope: CallScope): unknown => {
                 return scope.child;
             case "item":
                 return scope.item;
-            case "value":
-                return scope.value;
             case "index":
                 return scope.index;
             case "sibling":
@@ -38,8 +35,7 @@ const evalArg = (arg: Arg, scope: CallScope): unknown => {
     if ("literal" in arg) return arg.literal;
     if ("prop" in arg) {
         const value = scope.props?.[arg.prop];
-        if (value == null) return "or" in arg ? arg.or : MISSING_ARG;
-        return value;
+        return value == null ? MISSING_ARG : value;
     }
     const value = fieldOf(scope.item, arg.field);
     if (value == null && "or" in arg) return arg.or;

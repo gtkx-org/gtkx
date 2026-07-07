@@ -8,13 +8,13 @@ import { DiscreteEventPriority } from "react-reconciler/constants.js";
 import { typeChainIncludes } from "../utils/gtype.js";
 import { applyAccessibleProps, isAccessibleProp } from "./accessible.js";
 import { applyProps } from "./apply-props.js";
-import { beginCommit, endCommit, runCommitFlush } from "./commit-flush.js";
+import { runCommitFlush } from "./commit-flush.js";
 import { attachNode, detachFromParent, detachNode, resyncWrapperNode } from "./dispatch.js";
+import { applyElementProps, reapplyLazyProps } from "./element-prop-appliers.js";
+import { isAppliedProp } from "./element-props.js";
 import { createElementInstance, createWrapperInstance } from "./instance.js";
 import { scheduleLabelTextRebuild } from "./label-text-rebuild.js";
 import { reportReconcilerError } from "./reconciler-error-handler.js";
-import { isAppliedProp } from "./element-props.js";
-import { applyElementProps, hasLazyProps, reapplyLazyProps } from "./element-prop-appliers.js";
 import { getSignalStore } from "./signal-store.js";
 import { ensureState, type Node, stateOf } from "./state.js";
 import { scheduleBufferRebuild } from "./text-buffer-rebuild.js";
@@ -91,8 +91,7 @@ const scheduleTextRebuilds = (parent: Node, child: Node): void => {
 };
 
 const reapplyParentLazy = (parent: Node): void => {
-    if (!(parent instanceof GObject.Object) || !hasLazyProps(parent)) return;
-    reapplyLazyProps(parent, stateOf(parent).props);
+    if (parent instanceof GObject.Object) reapplyLazyProps(parent, stateOf(parent).props);
 };
 
 const appendChild = (parent: Node, child: Node): void => {
@@ -326,7 +325,6 @@ const drainCommitQueue = (): void => catchErrors(runCommitFlush);
 
 const finalizeCommitAfterLayoutEffects = (container: Container): void => {
     drainCommitQueue();
-    endCommit();
     getSignalStore(container).unblock();
     catchErrors(unfreeze);
 };
@@ -341,7 +339,6 @@ const createCommitConfig = (): CommitConfig => ({
     prepareForCommit: (container) => {
         catchErrors(freeze);
         getSignalStore(container).block();
-        beginCommit();
         return null;
     },
     resetAfterCommit: (container) => {

@@ -1,11 +1,8 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
-import { isInCommit, scheduleCommitWork } from "@gtkx/react/internal";
 import { render, screen, userEvent } from "@gtkx/testing";
 import { createRef, useLayoutEffect, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-
-const flushTasks = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe("layout effects during commit", () => {
     it("reads and writes a widget imperatively from a layout effect", async () => {
@@ -44,58 +41,5 @@ describe("layout effects during commit", () => {
         await userEvent.click(await screen.findByText("armed"));
 
         expect(onClicked).toHaveBeenCalledTimes(1);
-    });
-});
-
-describe("scheduleCommitWork", () => {
-    it("runs scheduled work in the freeze window, before a layout-effect microtask", async () => {
-        const order: string[] = [];
-
-        const Probe = () => {
-            useLayoutEffect(() => {
-                expect(isInCommit()).toBe(true);
-                scheduleCommitWork(() => order.push("commit-work"));
-                queueMicrotask(() => order.push("microtask"));
-            }, []);
-            return <GtkLabel label="probe" />;
-        };
-
-        await render(<Probe />);
-        await flushTasks();
-
-        expect(order).toEqual(["commit-work", "microtask"]);
-    });
-
-    it("coalesces repeated schedules of the same callback within one commit", async () => {
-        let runs = 0;
-        const work = (): void => {
-            runs += 1;
-        };
-
-        const Probe = () => {
-            useLayoutEffect(() => {
-                scheduleCommitWork(work);
-                scheduleCommitWork(work);
-                scheduleCommitWork(work);
-            }, []);
-            return <GtkLabel label="probe" />;
-        };
-
-        await render(<Probe />);
-        await flushTasks();
-
-        expect(runs).toBe(1);
-    });
-
-    it("defers to a microtask and reports no commit outside the reconciler", async () => {
-        const calls: string[] = [];
-
-        expect(isInCommit()).toBe(false);
-        scheduleCommitWork(() => calls.push("deferred"));
-        expect(calls).toEqual([]);
-
-        await flushTasks();
-
-        expect(calls).toEqual(["deferred"]);
     });
 });

@@ -14,7 +14,6 @@ export type ElementMapping = {
 };
 
 export type State = {
-    name?: string | undefined;
     kind?: WrapperKind | undefined;
     props: Props;
     parent: Node | null;
@@ -27,15 +26,13 @@ export type State = {
 const stateMap = new WeakMap<Node, State>();
 
 export type StateSeed = {
-    name?: string;
     kind?: WrapperKind;
     props: Props;
     rootContainer: Container;
 };
 
-export const registerState = (node: Node, { name, kind, props, rootContainer }: StateSeed): State => {
+export const registerState = (node: Node, { kind, props, rootContainer }: StateSeed): State => {
     const state: State = {
-        name,
         kind,
         props,
         parent: null,
@@ -62,10 +59,11 @@ export const stateOf = (node: Node): State => {
 export const hasWrapperKind = (node: Node, kind: WrapperKind): boolean =>
     isWrapperNode(node) && stateOf(node).kind === kind;
 
-export const closestInstance = (node: Node, matches: (node: Node) => boolean): Node | null => {
+export const closestInstance = <T extends Node>(node: Node, matches: (node: Node) => node is T): T | null => {
     let current: Node | null = node;
-    while (current !== null && !matches(current)) {
+    while (current !== null) {
+        if (matches(current)) return current;
         current = stateOf(current).parent;
     }
-    return current;
+    return null;
 };

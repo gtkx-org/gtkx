@@ -4,7 +4,7 @@ import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
 import type { ImportsBuilder } from "../../writer/imports.js";
 import type { ElementPropTypegen, LazyElementSpec } from "./element-prop-types.js";
-import { ancestorGlibNames, collectIntrinsicElementClasses, type GlibNamedClass } from "./intrinsic-elements.js";
+import { ancestorGlibNames, type GlibNamedClass } from "./intrinsic-elements.js";
 import { type AncestryWrapperName, BUILT_IN_ANCESTRY_WRAPPERS } from "./tables.js";
 
 const WRAPPER_NODE_ELEMENT_CONST = "WrapperNodeElement";
@@ -33,15 +33,14 @@ export const generateElementComponentsSection = (
     options: {
         imports: ImportsBuilder;
         typegen: ElementPropTypegen;
+        intrinsicElements: GlibNamedClass[];
+        intrinsicElementByGlibName: Map<string, GlibNamedClass>;
     },
 ): { source: string; exportedNames: Set<string> } => {
     const collector: ExportCollector = { imports: options.imports, exportedNames: new Set(), exportLines: [] };
 
-    const namespaceByGlib = new Map(
-        collectIntrinsicElementClasses(library).map((entry) => [entry.glibName, entry.namespace.name]),
-    );
     const inTargetNamespace = (parentGlibName: string): boolean =>
-        namespaceByGlib.get(parentGlibName) === targetNamespace.name;
+        options.intrinsicElementByGlibName.get(parentGlibName)?.namespace.name === targetNamespace.name;
 
     const lazyElements = options.typegen.lazyElementExports(targetNamespace.name);
     const textNodes = TEXT_NODE_ELEMENTS.filter((node) => inTargetNamespace(node.parent));
@@ -50,7 +49,12 @@ export const generateElementComponentsSection = (
         ...textNodes.map((node) => node.flatName),
     ]);
 
-    collectCandidateExports(collector, targetNamespace, library, virtualNames);
+    collectCandidateExports(collector, {
+        targetNamespace,
+        library,
+        virtualNames,
+        intrinsicElements: options.intrinsicElements,
+    });
     collectLazyElementExports(collector, lazyElements);
     collectTextNodeExports(collector, textNodes);
 
@@ -64,13 +68,18 @@ export const generateElementComponentsSection = (
     return { source, exportedNames: collector.exportedNames };
 };
 
+type CandidateExportOptions = {
+    targetNamespace: GirNamespace;
+    library: Library;
+    virtualNames: Set<string>;
+    intrinsicElements: GlibNamedClass[];
+};
+
 const collectCandidateExports = (
     collector: ExportCollector,
-    targetNamespace: GirNamespace,
-    library: Library,
-    virtualNames: Set<string>,
+    { targetNamespace, library, virtualNames, intrinsicElements }: CandidateExportOptions,
 ): void => {
-    for (const candidate of collectIntrinsicElementClasses(library)) {
+    for (const candidate of intrinsicElements) {
         if (candidate.namespace.name !== targetNamespace.name) continue;
         if (virtualNames.has(candidate.glibName)) continue;
         const line = renderCandidateExport(candidate, library, collector.imports);

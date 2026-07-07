@@ -12,7 +12,7 @@ const { Context: GridContext, useParentRef: useGridRef } = createParentContext<G
  * Props for {@link Grid}. Forwards every {@link Gtk.Grid} widget prop; children
  * must be {@link Grid.Child} elements, each placing its content at a grid cell.
  */
-export type GridProps = GtkGridProps & { ref?: Ref<Gtk.Grid | null> };
+export type GridProps = GtkGridProps & { ref?: Ref<Gtk.Grid | null>; children?: ReactNode };
 
 /**
  * Props for {@link Grid.Child}. Its content, rendered through the child function

@@ -79,11 +79,12 @@ export const newlyImplementedInterfaces = (
 
 export const collectInterfacePropsClasses = (
     library: Library,
+    intrinsicElements: GlibNamedClass[],
     targetNamespaceName: string,
 ): ResolvedQualifiedInterface[] => {
     const seen = new Set<string>();
     const result: ResolvedQualifiedInterface[] = [];
-    for (const widget of collectIntrinsicElementClasses(library)) {
+    for (const widget of intrinsicElements) {
         for (const iface of implementedInterfaces(widget.klass, widget.namespace, library)) {
             const key = qualifiedInterfaceKey(iface);
             if (seen.has(key)) continue;

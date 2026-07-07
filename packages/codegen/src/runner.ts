@@ -39,8 +39,10 @@ const loadLibrary = (options: CodegenRunnerOptions): Library => Library.load(opt
 const emitGiStore = (options: CodegenRunnerOptions, library: Library): void => {
     const namespaces: GiNamespaceInput[] = [];
     for (const namespace of library.namespaces.values()) {
-        const { source } = generateNamespaceModule(namespace, library);
-        namespaces.push({ directory: namespaceDirectory(namespace), rawSource: source });
+        namespaces.push({
+            directory: namespaceDirectory(namespace),
+            rawSource: generateNamespaceModule(namespace, library),
+        });
     }
     const libraries = [...options.libraries];
     writeGiStore(options.gi, namespaces, {

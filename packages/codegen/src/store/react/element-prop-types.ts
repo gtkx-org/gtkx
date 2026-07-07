@@ -1,11 +1,11 @@
-import type { AppliedProp, ContainerProp, ElementProp, ListProp, ValueProp } from "@gtkx/config";
+import type { AppliedProp, Call, ContainerProp, ElementProp } from "@gtkx/config";
 import { toCamelIdentifier } from "@gtkx/utils";
 import { renderBaseTypeFor, type TsTypeTarget } from "../../analysis/ts-type.js";
 import type { GirClass } from "../../gir/class.js";
 import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
 import type { GirParameter } from "../../gir/parameter.js";
-import { buildGirIndex, chainOf, findMethod, type GirIndex, type GirTypeEntry, hasProperty } from "./gir-index.js";
+import { chainOf, findMethod, type GirIndex, type GirTypeEntry, hasProperty } from "./gir-index.js";
 import { glibNameOf } from "./intrinsic-elements.js";
 
 type TypeImports = Map<string, string>;
@@ -70,34 +70,17 @@ const optionalLine = (prop: string, type: string): string => {
     return `${prop}?: ${withNull} | undefined;`;
 };
 
-const valueType = (context: GirIndex, imports: TypeImports, type: string, prop: ValueProp): string => {
-    if (typeof prop.call !== "string") {
-        const fieldLines: string[] = [];
-        const method = findMethod(context, type, prop.call.method);
-        prop.call.args.forEach((arg, positionIndex) => {
-            if (typeof arg !== "object" || !("field" in arg)) return;
-            const param = method?.params[positionIndex];
-            const optional = "or" in arg || param?.nullable === true;
-            fieldLines.push(`${arg.field}${optional ? "?" : ""}: ${renderParamType(context, imports, param)};`);
-        });
-        if (fieldLines.length > 0) return `{ ${fieldLines.join(" ")} }`;
+const callFieldsType = (context: GirIndex, imports: TypeImports, type: string, call: Call): string => {
+    if (typeof call === "string") {
+        const method = findMethod(context, type, call);
         return renderParamType(context, imports, method?.params[0]);
     }
-    const method = findMethod(context, type, prop.call);
-    return renderParamType(context, imports, method?.params[0]);
-};
-
-const listItemType = (context: GirIndex, imports: TypeImports, type: string, prop: ListProp): string => {
-    if (typeof prop.add === "string") {
-        const method = findMethod(context, type, prop.add);
-        return renderParamType(context, imports, method?.params[0]);
-    }
-    const method = findMethod(context, type, prop.add.method);
+    const method = findMethod(context, type, call.method);
     const fieldLines: string[] = [];
-    prop.add.args.forEach((arg, index) => {
+    call.args.forEach((arg, positionIndex) => {
         if (typeof arg !== "object" || !("field" in arg)) return;
-        const param = method?.params[index];
-        const optional = param?.nullable === true || param?.optional === true;
+        const param = method?.params[positionIndex];
+        const optional = "or" in arg || param?.nullable === true || param?.optional === true;
         fieldLines.push(`${arg.field}${optional ? "?" : ""}: ${renderParamType(context, imports, param)};`);
     });
     if (fieldLines.length > 0) return `{ ${fieldLines.join(" ")} }`;
@@ -106,8 +89,8 @@ const listItemType = (context: GirIndex, imports: TypeImports, type: string, pro
 
 const appliedPropLine = (context: GirIndex, imports: TypeImports, type: string, prop: AppliedProp): string | null => {
     if (hasProperty(context, type, prop.prop)) return null;
-    if (prop.kind === "value") return optionalLine(prop.prop, valueType(context, imports, type, prop));
-    if (prop.kind === "list") return optionalLine(prop.prop, `${listItemType(context, imports, type, prop)}[]`);
+    if (prop.kind === "value") return optionalLine(prop.prop, callFieldsType(context, imports, type, prop.call));
+    if (prop.kind === "list") return optionalLine(prop.prop, `${callFieldsType(context, imports, type, prop.add)}[]`);
     return null;
 };
 
@@ -224,12 +207,12 @@ const collectSlotNames = (elementProps: Record<string, ElementProp[]>): Map<stri
     return slotNamesByParent;
 };
 
+const TEXT_CONTAINERS = ["GtkLabel", "GtkTextBuffer", "GtkTextTag", "GtkTextView"];
+
 export const createElementPropTypegen = (
-    library: Library,
+    context: GirIndex,
     elementProps: Record<string, ElementProp[]>,
 ): ElementPropTypegen => {
-    const context = buildGirIndex(library);
-
     const appliedByType = new Map<string, AppliedProp[]>();
     for (const [type, props] of Object.entries(elementProps)) {
         for (const prop of props) {
@@ -244,7 +227,7 @@ export const createElementPropTypegen = (
     const lazyElementSpecs = collectLazyElementSpecs(context, elementProps);
     const slotNamesByParent = collectSlotNames(elementProps);
 
-    const childrenContainers = new Set<string>(["GtkLabel", "GtkTextBuffer", "GtkTextTag", "GtkTextView"]);
+    const childrenContainers = new Set<string>(TEXT_CONTAINERS);
     forEachContainer(elementProps, (parent, cp) => {
         if (cp.prop === "children") childrenContainers.add(parent);
         const element = resolveAdoptElement(context, parent, cp);

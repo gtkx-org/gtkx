@@ -1,5 +1,5 @@
-import { AlertDialog, Grid } from "@gtkx/components";
-import { Dialog } from "@gtkx/components/adw";
+import { Grid } from "@gtkx/components";
+import { AlertDialog, Dialog } from "@gtkx/components/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkEntry, GtkLabel, GtkSeparator } from "@gtkx/jsx/gtk";
 import { useState } from "react";

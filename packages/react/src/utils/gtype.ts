@@ -23,7 +23,7 @@ const constructOnlyCache = new Map<bigint, Map<string, boolean>>();
 const defaultPropCache = new Map<bigint, Map<string, DefaultPropLookup>>();
 const constructablePropsCache = new Map<bigint, Set<string>>();
 
-export const collectTypeNameChain = (gtype: bigint): string[] => {
+const collectTypeNameChain = (gtype: bigint): string[] => {
     const cached = typeNameChainCache.get(gtype);
     if (cached) return cached;
 
@@ -64,7 +64,7 @@ export const collectTypeNamesWithInterfaces = (gtype: bigint): string[] => {
     return names;
 };
 
-export const foldInheritedTable = <R, T>(
+const foldInheritedTable = <R, T>(
     gtype: bigint,
     table: Record<string, R>,
     fold: (accumulator: T, row: R) => T,

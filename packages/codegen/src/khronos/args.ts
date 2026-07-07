@@ -189,7 +189,7 @@ export const scalarPrefixArgs = (plan: CommandPlan & { ok: true }, usedTypes: Se
         const paramPlan = plan.params[index];
         const param = plan.command.params[index];
         if (param === undefined) return undefined;
-        if (paramPlan === undefined || (paramPlan.kind !== "scalar" && paramPlan.kind !== "boolean")) return undefined;
+        if (paramPlan === undefined || paramPlan.kind !== "scalar") return undefined;
         prefix.push(
             buildInArg(
                 { command: plan.command, index, plan: paramPlan, outIndex: 0 },

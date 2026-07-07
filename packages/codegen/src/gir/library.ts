@@ -191,17 +191,6 @@ export class Library {
         return this.typeTableOf(targetNsId).types[id];
     }
 
-    collectUnresolved(): string[] {
-        const unresolved: string[] = [];
-        for (const [name, nsId] of this.nsIdByName) {
-            const typeTable = this.typeTableOf(nsId);
-            for (const [local, id] of typeTable.index) {
-                if (typeTable.types[id] === undefined) unresolved.push(`${name}.${local}`);
-            }
-        }
-        return unresolved;
-    }
-
     private static drive(library: Library, libraries: string[], girPath: string[]): void {
         const queue: string[] = [...libraries];
         const seen = new Set<string>();

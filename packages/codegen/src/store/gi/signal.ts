@@ -12,14 +12,12 @@ import {
     resolveImplementedInterface,
     resolvePrerequisiteReference,
 } from "../../analysis/inheritance.js";
-import { renderHandlerParameters } from "../../analysis/param-structure.js";
-import { foldOutParamShape } from "../../analysis/return-shape.js";
+import { renderHandlerParameters, renderHandlerResultType } from "../../analysis/param-structure.js";
 import { renderTsType } from "../../analysis/ts-type.js";
 import type { GirClass } from "../../gir/class.js";
-import type { GirParameter } from "../../gir/parameter.js";
+import type { GirParameter, GirSignal } from "../../gir/parameter.js";
 import { isCallerAllocatedOut, isOutParameter } from "../../gir/parameter.js";
 import type { GirProperty } from "../../gir/property.js";
-import type { GirSignal } from "../../gir/signal.js";
 import { splitOptionalNamespace } from "../../gir/type-ref.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { indent, renderBlock, renderBracedOrEmpty } from "../../writer/emit.js";
@@ -96,8 +94,7 @@ const renderSignalMap = (spec: SignalMapSpec): string => {
         (signal) => `${sourceStringLiteral(signal.name)}: ${renderEntry(context, signal)};`,
     );
     const entries = [...signalEntries, ...renderNotifyDetailEntries(context, klass, suffix)];
-    const body = entries.length === 0 ? "" : `\n${indent(entries.join("\n"), 1)}\n`;
-    return `export interface ${className}${suffix}${extendsClause} {${body}}`;
+    return renderBracedOrEmpty(`export interface ${className}${suffix}${extendsClause}`, entries.join("\n"));
 };
 
 const renderNotifyDetailEntries = (context: ModuleContext, klass: GirClass, suffix: string): string[] => {
@@ -166,34 +163,19 @@ const renderSignalHandlerType = (context: ModuleContext, signal: GirSignal): str
     return `(${params.join(", ")}) => ${renderResultType(context, signal, false, true)}`;
 };
 
-const assembleSignalResult = (primary: string | undefined, outTypes: string[], optOut: boolean): string => {
-    if (outTypes.length === 0) {
-        if (primary === undefined) return "void";
-        return optOut ? `${primary} | undefined` : primary;
-    }
-    return foldOutParamShape({ primary, outTypes, hasPrimary: primary !== undefined });
-};
-
 const renderResultType = (
     context: ModuleContext,
     signal: GirSignal,
     includeCallerAllocated: boolean,
     optOut: boolean,
-): string => {
-    const primary = omitsPrimaryReturn(context.library, signal.returnValue)
-        ? undefined
-        : renderTsType(context, signal.returnValue.type, signal.returnValue.nullable);
-    const outTypes = signal.parameters
-        .filter(
-            (parameter) =>
-                !parameter.isVarargs &&
-                (isOutParameter(parameter) ||
-                    isCellInout(context, parameter) ||
-                    (includeCallerAllocated && isCallerAllocatedOut(parameter))),
-        )
-        .map((parameter) => renderTsType(context, parameter.type, false));
-    return assembleSignalResult(primary, outTypes, optOut);
-};
+): string =>
+    renderHandlerResultType({
+        library: context.library,
+        signal,
+        renderType: (ref, nullable) => renderTsType(context, ref, nullable),
+        includeCallerAllocated,
+        optOut,
+    });
 
 const renderSignalEmitEntry = (context: ModuleContext, signal: GirSignal): string => {
     const args = renderHandlerParameters(
@@ -224,7 +206,7 @@ const renderEmitCase = (context: ModuleContext, signal: GirSignal): string => {
         if (isOutParameter(parameter)) {
             return `{ type: ${descriptor}, direction: "out" }`;
         }
-        if (isCellInout(context, parameter)) {
+        if (isCellInout(context.library, parameter)) {
             return `{ type: ${descriptor}, direction: "inout", value: args[${argIndex++}] }`;
         }
         if (isCallerAllocatedOut(parameter)) {

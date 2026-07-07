@@ -12,8 +12,5 @@ declare module "virtual:gtkx-config" {
             value: "string" | "boolean" | "int" | "double" | "object" | "ref-list";
         }
     >;
-    export const libraries: import("@gtkx/config").ResolvedGtkxConfig["libraries"];
-    export const girPath: import("@gtkx/config").ResolvedGtkxConfig["girPath"];
     export const applicationId: import("@gtkx/config").ResolvedGtkxConfig["applicationId"];
-    export const reactCompiler: import("@gtkx/config").ResolvedGtkxConfig["reactCompiler"];
 }

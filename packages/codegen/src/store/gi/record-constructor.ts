@@ -1,23 +1,18 @@
 import { sourceStringLiteral, toCamelIdentifier } from "@gtkx/utils";
-import { isInlineCallbackRef, renderDescriptor } from "../../analysis/descriptor-render.js";
+import { renderDescriptor } from "../../analysis/descriptor-render.js";
 import { renderTsType } from "../../analysis/ts-type.js";
 import type { GirField } from "../../gir/field.js";
 import type { GirRecord } from "../../gir/record.js";
 import type { TypeId } from "../../gir/type-id.js";
 import type { ModuleContext } from "../../writer/context.js";
-import { indent, renderBlock } from "../../writer/emit.js";
-import { bitMask, mergeBitfield } from "./bitfield.js";
-import { refIsClassStruct } from "./class-struct-record.js";
+import { renderBlock, renderBracedOrEmpty } from "../../writer/emit.js";
+import { emitFieldWrite, isEmittableField } from "./record-field-accessor.js";
 import { computeRecordFieldSlots, type RecordFieldSlot } from "./record-layout.js";
 
 type WritableFieldSlot = RecordFieldSlot & { field: GirField & { type: TypeId } };
 
 const isWritableFieldSlot = (context: ModuleContext, entry: RecordFieldSlot): entry is WritableFieldSlot =>
-    !entry.field.private &&
-    entry.field.writable &&
-    entry.field.type !== undefined &&
-    !isInlineCallbackRef(context.library, entry.field.type) &&
-    !refIsClassStruct(context, entry.field.type);
+    entry.field.writable && isEmittableField(context, entry.field);
 
 const isOpaque = (record: GirRecord): boolean => record.glibGetType === undefined && record.disguised;
 
@@ -26,13 +21,13 @@ export const renderRecordConstructorPropsInterface = (
     record: GirRecord,
     className: string,
 ): string => {
-    if (isOpaque(record)) return `export interface ${className}ConstructorProps {}`;
+    const head = `export interface ${className}ConstructorProps`;
+    if (isOpaque(record)) return renderBracedOrEmpty(head, "");
     const { slots } = computeRecordFieldSlots(context, record.fields, record.isUnion);
     const lines = slots
         .filter((entry): entry is WritableFieldSlot => isWritableFieldSlot(context, entry))
         .map((entry) => `${toCamelIdentifier(entry.field.name)}?: ${renderTsType(context, entry.field.type, true)};`);
-    const body = lines.length === 0 ? "" : `\n${indent(lines.join("\n"), 1)}\n`;
-    return `export interface ${className}ConstructorProps {${body}}`;
+    return renderBracedOrEmpty(head, lines.join("\n"));
 };
 
 export const renderRecordConstructor = (context: ModuleContext, record: GirRecord, className: string): string => {
@@ -69,21 +64,13 @@ const allocArgs = (record: GirRecord, size: number): string[] => {
 
 const renderFieldWrite = (context: ModuleContext, entry: WritableFieldSlot): string => {
     context.addRuntimeImport("t");
-    context.addNativeImport("write");
     const descriptor = context.hoistDescriptor(renderDescriptor(context, entry.field.type, "none"));
     const name = toCamelIdentifier(entry.field.name);
-    const offset = entry.slot.byteOffset;
-    if (entry.slot.bitWidth === undefined) {
-        return `if (props.${name} !== undefined) write(handle, ${descriptor}, ${offset}, props.${name});`;
-    }
-    context.addNativeImport("read");
-    const mask = bitMask(entry.slot.bitWidth);
-    const bitOffset = entry.slot.bitOffset ?? 0;
-    const merged = mergeBitfield(
-        `(read(handle, ${descriptor}, ${offset}) as number)`,
-        `props.${name}`,
-        mask,
-        bitOffset,
-    );
-    return `if (props.${name} !== undefined) write(handle, ${descriptor}, ${offset}, ${merged});`;
+    const write = emitFieldWrite(context, {
+        descriptor,
+        slot: entry.slot,
+        targetExpr: "handle",
+        valueExpr: `props.${name}`,
+    });
+    return `if (props.${name} !== undefined) ${write}`;
 };

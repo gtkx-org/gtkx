@@ -14,10 +14,8 @@ const glBind = (name: string, argList: string, returnType: string): string =>
         returnType,
     });
 
-const commandExportName = (name: string): string => {
-    const stripped = name.startsWith("gl") ? lowerFirst(name.slice(2)) : name;
-    return /^[0-9]/.test(stripped) ? name : toCamelIdentifier(stripped);
-};
+const commandExportName = (name: string): string =>
+    toCamelIdentifier(name.startsWith("gl") ? lowerFirst(name.slice(2)) : name);
 
 const singularize = (plural: string): string =>
     plural.endsWith("ies") ? `${plural.slice(0, -3)}y` : plural.replace(/s$/, "");
@@ -102,28 +100,18 @@ export const renderCommand = (
     const jsDoc = commandJsDoc({ command, feature, ins, outs, returnPlan: plan.returnPlan });
     const seeds = outs.map((out) => out.seed);
     const bindExpression = glBind(command.name, descriptors, returned.descriptor);
-    const hasStringOut = plan.params.some((paramPlan) => paramPlan.kind === "string-out");
-    if (hasStringOut) {
-        const body = [
-            ...seeds,
-            `const binding = ${bindExpression};`,
-            ...returnStatements(`binding(${argNames})`, returned, outs),
-        ]
-            .map((line) => `    ${line}`)
-            .join("\n");
-        return {
-            exportName,
-            declaration: `${jsDoc}\nexport function ${exportName}(${signature}): ${tsReturn} {\n${body}\n}`,
-        };
-    }
-    const bindingName = toCamelIdentifier(command.name);
-    const binding = `const ${bindingName} = ${bindExpression};`;
-    const body = [...seeds, ...returnStatements(`${bindingName}(${argNames})`, returned, outs)]
+    const inline = plan.params.some((paramPlan) => paramPlan.kind === "string-out");
+    const bindingName = inline ? "binding" : toCamelIdentifier(command.name);
+    const body = [
+        ...seeds,
+        ...(inline ? [`const ${bindingName} = ${bindExpression};`] : []),
+        ...returnStatements(`${bindingName}(${argNames})`, returned, outs),
+    ]
         .map((line) => `    ${line}`)
         .join("\n");
     return {
         exportName,
-        binding,
+        ...(inline ? {} : { binding: `const ${bindingName} = ${bindExpression};` }),
         declaration: `${jsDoc}\nexport function ${exportName}(${signature}): ${tsReturn} {\n${body}\n}`,
     };
 };

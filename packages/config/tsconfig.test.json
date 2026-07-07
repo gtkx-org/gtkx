@@ -5,7 +5,7 @@
             "path": "./tsconfig.lib.json"
         },
         {
-            "path": "../utils/tsconfig.lib.json"
+            "path": "../vitest/tsconfig.lib.json"
         }
     ]
 }

@@ -25,7 +25,6 @@ export type GirNamespace = {
     name: string;
     sharedLibrary: string | undefined;
     cSymbolPrefixes: string[];
-    includes: NamespaceInclude[];
     classes: GirClass[];
     interfaces: GirClass[];
     records: GirRecord[];
@@ -74,7 +73,6 @@ export const createNamespaceShell = (header: NamespaceHeader, id: number): GirNa
     name: header.name,
     sharedLibrary: header.sharedLibrary,
     cSymbolPrefixes: header.cSymbolPrefixes,
-    includes: header.includes,
     classes: [],
     interfaces: [],
     records: [],
@@ -89,9 +87,9 @@ export const populateNamespaceBody = (shell: GirNamespace, namespaceNode: RawNod
     shell.classes = childrenOf(namespaceNode, "class").map((klass) => classFromNode(klass, false, context));
     shell.interfaces = childrenOf(namespaceNode, "interface").map((iface) => classFromNode(iface, true, context));
     shell.records = collectRecords(namespaceNode, context);
-    shell.enums = collectEnums(namespaceNode, context);
+    shell.enums = collectEnums(namespaceNode);
     shell.callbacks = childrenOf(namespaceNode, "callback").map((callback) => callbackFromNode(callback, context));
-    shell.functions = childrenOf(namespaceNode, "function").map((fn) => functionFromNode(fn, "function", context));
+    shell.functions = childrenOf(namespaceNode, "function").map((fn) => functionFromNode(fn, context));
     shell.constants = childrenOf(namespaceNode, "constant").map((constant) => ({
         name: nameAttr(constant),
         value: attr(constant, "value") ?? "",
@@ -115,7 +113,7 @@ const collectRecords = (namespaceNode: RawNode, context: ParseContext): GirRecor
     ...childrenOf(namespaceNode, "union").map((union) => recordFromNode(union, isVtableRecord(union), true, context)),
 ];
 
-const collectEnums = (namespaceNode: RawNode, context: ParseContext): GirEnum[] => [
-    ...childrenOf(namespaceNode, "enumeration").map((enumeration) => enumFromNode(enumeration, "enumeration", context)),
-    ...childrenOf(namespaceNode, "bitfield").map((bitfield) => enumFromNode(bitfield, "bitfield", context)),
+const collectEnums = (namespaceNode: RawNode): GirEnum[] => [
+    ...childrenOf(namespaceNode, "enumeration").map((enumeration) => enumFromNode(enumeration, "enumeration")),
+    ...childrenOf(namespaceNode, "bitfield").map((bitfield) => enumFromNode(bitfield, "bitfield")),
 ];

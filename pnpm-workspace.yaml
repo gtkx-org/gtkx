@@ -28,3 +28,4 @@ allowBuilds:
 overrides:
   vite: ^8.1.0
   uuid: ^14.0.1
+  '@docsearch/react': ^3.9.0

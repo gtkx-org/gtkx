@@ -161,6 +161,7 @@ export const CURATED_ELEMENT_PROPS: Record<string, ElementProp[]> = {
             append: "setBuffer",
             remove: { method: "setBuffer", args: [{ literal: null }] },
         }),
+        container("children", "GtkWidget", { remove: "remove" }),
     ],
     GActionMap: [container("children", "GAction", ACTION_METHODS)],
     GtkApplicationWindow: [container("actions", "GAction", ACTION_METHODS)],

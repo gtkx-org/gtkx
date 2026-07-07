@@ -54,9 +54,8 @@ export const withApplicationLifecycle = <P extends ApplicationComponentProps<App
         const { applicationId = defaultApplicationId, children, menubar, ref, ...rest } = props;
         const [app, captureApp] = useApplicationInstance<ApplicationOf<P>>(ref);
         const menubarProps = app ? { menubar } : {};
-        const applicationIdProps = applicationId === undefined ? {} : { applicationId };
         return (
-            <Element ref={captureApp} {...rest} {...applicationIdProps} {...menubarProps}>
+            <Element ref={captureApp} {...rest} applicationId={applicationId} {...menubarProps}>
                 <ApplicationChildren app={app}>{children}</ApplicationChildren>
             </Element>
         );

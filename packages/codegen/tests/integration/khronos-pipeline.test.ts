@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
 import { loadGlRegistry } from "../../src/khronos/model.js";
 import { type GlGenerationResult, generateGlModules } from "../../src/khronos/pipeline.js";
-import { resolveEnum, selectSubset } from "../../src/khronos/select.js";
+import { selectSubset } from "../../src/khronos/select.js";
 
 const REGISTRY_PATH = fileURLToPath(new URL("../../registry/gl.xml", import.meta.url));
 
@@ -28,13 +28,6 @@ describe("khronos selection over the vendored registry", () => {
         const numbers = registry.features.filter((feature) => feature.api === "gl").map((feature) => feature.number);
         expect(Math.min(...numbers)).toBe(1.0);
         expect(Math.max(...numbers)).toBe(4.6);
-    });
-
-    it("keys API-overloaded enum tokens by API", () => {
-        const registry = loadGlRegistry(REGISTRY_PATH);
-        const forGl = resolveEnum(registry, "GL_ACTIVE_PROGRAM_EXT", "gl");
-        const forGles = resolveEnum(registry, "GL_ACTIVE_PROGRAM_EXT", "gles2");
-        expect(forGl.value).not.toBe(forGles.value);
     });
 });
 

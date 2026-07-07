@@ -4,7 +4,6 @@ import type { ModuleContext } from "../../writer/context.js";
 import { renderMethodReturnType, renderMethodSignature } from "./method.js";
 
 const callbackAsFunction = (callback: GirCallback): GirFunction => ({
-    kind: "function",
     name: callback.name,
     cIdentifier: undefined,
     throws: false,

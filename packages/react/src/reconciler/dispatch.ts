@@ -1,7 +1,7 @@
 import * as GObject from "@gtkx/gi/gobject";
 import { containerMapping } from "./container-attach.js";
 import { type ElementMapping, type Node, stateOf } from "./state.js";
-import { containerSlotMapping, lazyElementMapping, containerChildMapping, widgetPropMapping } from "./wrapper-apply.js";
+import { containerChildMapping, containerSlotMapping, lazyElementMapping, widgetPropMapping } from "./wrapper-apply.js";
 import { isWrapperNode } from "./wrapper-node.js";
 
 const ELEMENT_MAP: ElementMapping[] = [
@@ -15,7 +15,7 @@ const ELEMENT_MAP: ElementMapping[] = [
 const resolveMapping = (child: Node, parent: Node): ElementMapping | undefined =>
     ELEMENT_MAP.find((mapping) => mapping.matches(child, parent));
 
-export const attachToParent = (child: Node, parent: Node, anchor?: GObject.Object | null, fresh?: boolean): void => {
+const attachToParent = (child: Node, parent: Node, anchor?: GObject.Object | null, fresh?: boolean): void => {
     resolveMapping(child, parent)?.attach(child, parent, anchor, fresh);
 };
 

@@ -166,10 +166,20 @@ describe("SizeGroup across subtrees", () => {
                     {(ref) => (
                         <>
                             <GtkFrame label="Frame A">
-                                <MeasuredLabel groupRef={ref} captureRef={labelARef} label="A" widthRequest={NARROW_WIDTH} />
+                                <MeasuredLabel
+                                    groupRef={ref}
+                                    captureRef={labelARef}
+                                    label="A"
+                                    widthRequest={NARROW_WIDTH}
+                                />
                             </GtkFrame>
                             <GtkFrame label="Frame B">
-                                <MeasuredLabel groupRef={ref} captureRef={labelBRef} label="B" widthRequest={WIDE_WIDTH} />
+                                <MeasuredLabel
+                                    groupRef={ref}
+                                    captureRef={labelBRef}
+                                    label="B"
+                                    widthRequest={WIDE_WIDTH}
+                                />
                             </GtkFrame>
                         </>
                     )}

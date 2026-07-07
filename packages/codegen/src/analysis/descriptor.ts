@@ -207,10 +207,10 @@ export type ListDescriptorName = "list" | "slist" | "ptrArray" | "gArray";
 export const tList = (name: ListDescriptorName, element: string, ownership: Ownership): string =>
     call(name, [element, sourceStringLiteral(ownership)]);
 
-export const tArray = (element: string, kind?: string, ownership?: Ownership, elementSize?: number): string =>
+export const tArray = (element: string, ownership?: Ownership, elementSize?: number): string =>
     call("array", [
         element,
-        kind === undefined ? undefined : sourceStringLiteral(kind),
+        ownership === undefined ? undefined : sourceStringLiteral("array"),
         ownership === undefined ? undefined : sourceStringLiteral(ownership),
         elementSize === undefined ? undefined : `{ elementSize: ${elementSize} }`,
     ]);

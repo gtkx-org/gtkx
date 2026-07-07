@@ -14,11 +14,6 @@ type StoreFile = {
     source: string;
 };
 
-type StoreSymlink = {
-    segments: string[];
-    target: string | "self";
-};
-
 export const subpathExport = (stem: string): { types: string; default: string } => ({
     types: `./${stem}.d.ts`,
     default: `./${stem}.js`,
@@ -54,8 +49,6 @@ export const buildManifest = (input: ManifestInput): Manifest => {
     return manifest;
 };
 
-export const selfLink = (...segments: string[]): StoreSymlink => ({ segments, target: "self" });
-
 export const writeStore = (params: WriteStoreParams): void => {
     const tmp = tempStoreFor(params.storeDir);
     for (const file of params.files) {
@@ -65,9 +58,7 @@ export const writeStore = (params: WriteStoreParams): void => {
     for (const raw of params.rawFiles ?? []) {
         writeFileSync(join(tmp, raw.relativePath), raw.content);
     }
-    for (const { segments, target } of params.symlinks) {
-        symlinkRelative(join(tmp, ...segments), target === "self" ? tmp : target);
-    }
+    symlinkRelative(join(tmp, "node_modules", ...params.manifest.name.split("/")), tmp);
     swapStore(tmp, params.storeDir, params.linkDir);
 };
 
@@ -76,7 +67,6 @@ export type WriteStoreParams = {
     linkDir: string;
     files: StoreFile[];
     manifest: Manifest;
-    symlinks: StoreSymlink[];
     rawFiles?: { relativePath: string; content: string }[];
 };
 

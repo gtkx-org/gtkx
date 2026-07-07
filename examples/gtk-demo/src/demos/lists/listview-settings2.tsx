@@ -119,9 +119,16 @@ const filterSchemaKeys = (searchText: string): SchemaKeys[] => {
         .filter((s): s is SchemaKeys => s !== null);
 };
 
+const revertingEntries = new WeakSet<Gtk.Entry>();
+
 const revertEntry = (entry: Gtk.Entry, key: KeyItem, keysState: React.RefObject<Map<string, string>>) => {
     entry.errorBell();
-    entry.setText(keysState.current.get(key.id) ?? key.value);
+    revertingEntries.add(entry);
+    try {
+        entry.setText(keysState.current.get(key.id) ?? key.value);
+    } finally {
+        revertingEntries.delete(entry);
+    }
 };
 
 const validateAgainstSchema = (variant: GLib.Variant, key: KeyItem): boolean => {
@@ -134,6 +141,7 @@ const validateAgainstSchema = (variant: GLib.Variant, key: KeyItem): boolean => 
 };
 
 const commitSettingValue = (key: KeyItem, entry: Gtk.Entry, keysState: React.RefObject<Map<string, string>>) => {
+    if (revertingEntries.has(entry)) return;
     const text = entry.getText();
     if (!key.valueType) return;
     try {

@@ -53,7 +53,6 @@ export const generateMetadata = (library: Library, elementProps: Record<string, 
 
 type IntrinsicElementEntry = {
     glibName: string;
-    namespace: string;
     signals: [string, string][];
     constructOnly: string[];
     constructable: string[];
@@ -70,7 +69,6 @@ const collectIntrinsicElements = (library: Library): IntrinsicElementEntry[] => 
         ];
         entries.push({
             glibName,
-            namespace: namespace.name,
             signals: collectSignals(sources),
             constructOnly: collectConstructOnly(sources),
             constructable: collectConstructable(sources),

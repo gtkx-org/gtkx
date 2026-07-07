@@ -1,8 +1,7 @@
-import { fieldFromNode, type GirField } from "./field.js";
 import { functionFromNode, type GirFunction } from "./function.js";
+import { type GirSignal, parseCallable } from "./parameter.js";
 import { attr, attrBool, childrenOf, GIR_CONSTRUCTOR_TAG, nameAttr, type RawNode } from "./parse.js";
 import { type GirProperty, propertyFromNode } from "./property.js";
-import { type GirSignal, signalFromNode } from "./signal.js";
 import type { ParseContext } from "./type-id.js";
 
 export type GirClass = {
@@ -24,7 +23,6 @@ export type GirClass = {
     functions: GirFunction[];
     properties: GirProperty[];
     signals: GirSignal[];
-    fields: GirField[];
 };
 
 export const classFromNode = (node: RawNode, isInterface: boolean, context: ParseContext): GirClass => ({
@@ -45,10 +43,9 @@ export const classFromNode = (node: RawNode, isInterface: boolean, context: Pars
     prerequisites: childrenOf(node, "prerequisite")
         .map((prerequisite) => attr(prerequisite, "name"))
         .filter((name): name is string => name !== undefined),
-    methods: childrenOf(node, "method").map((method) => functionFromNode(method, "method", context)),
-    constructors: childrenOf(node, GIR_CONSTRUCTOR_TAG).map((ctor) => functionFromNode(ctor, "constructor", context)),
-    functions: childrenOf(node, "function").map((function_) => functionFromNode(function_, "function", context)),
+    methods: childrenOf(node, "method").map((method) => functionFromNode(method, context)),
+    constructors: childrenOf(node, GIR_CONSTRUCTOR_TAG).map((ctor) => functionFromNode(ctor, context)),
+    functions: childrenOf(node, "function").map((function_) => functionFromNode(function_, context)),
     properties: childrenOf(node, "property").map((property) => propertyFromNode(property, context)),
-    signals: childrenOf(node, "glib:signal").map((signal) => signalFromNode(signal, context)),
-    fields: childrenOf(node, "field").map((field) => fieldFromNode(field, context)),
+    signals: childrenOf(node, "glib:signal").map((signal) => parseCallable(signal, context)),
 });

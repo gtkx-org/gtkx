@@ -77,27 +77,21 @@ export type GlGenerationResult = {
     report: GlGenerationReport;
 };
 
-const enumExportName = (name: string): string => {
-    const stripped = name.startsWith("GL_") ? name.slice(3) : name;
-    return /^[0-9]/.test(stripped) ? name : sanitizeIdentifier(stripped.toUpperCase());
-};
+const enumExportName = (name: string): string =>
+    sanitizeIdentifier((name.startsWith("GL_") ? name.slice(3) : name).toUpperCase());
 
 const MAX_SAFE = BigInt(Number.MAX_SAFE_INTEGER);
 
 const enumLiteral = (token: GlEnum): string | undefined => {
     const text = token.value.trim();
-    const negative = text.startsWith("-");
-    const magnitudeText = negative ? text.slice(1) : text;
-    let magnitude: bigint;
+    let value: bigint;
     try {
-        magnitude = BigInt(magnitudeText);
+        value = BigInt(text);
     } catch {
         return undefined;
     }
-    if (magnitude > MAX_SAFE) return undefined;
-    if (/^0[xX]/.test(magnitudeText)) {
-        return `${negative ? "-" : ""}0x${magnitudeText.slice(2).toLowerCase()}`;
-    }
+    if (value > MAX_SAFE) return undefined;
+    if (/^0[xX]/.test(text)) return `0x${text.slice(2).toLowerCase()}`;
     return text;
 };
 
@@ -175,15 +169,11 @@ type EnumRows = {
     skippedEnums: { name: string; reason: string }[];
 };
 
-const buildEnumRows = (
-    registry: ReturnType<typeof loadGlRegistry>,
-    enumNames: Map<string, string>,
-    api: string,
-): EnumRows => {
+const buildEnumRows = (registry: ReturnType<typeof loadGlRegistry>, enumNames: Map<string, string>): EnumRows => {
     const skippedEnums: { name: string; reason: string }[] = [];
     const enumRows: EnumRow[] = [];
     for (const [name, feature] of sortedStringsBy(enumNames.entries(), ([key]) => key)) {
-        const token = resolveEnum(registry, name, api);
+        const token = resolveEnum(registry, name);
         const literal = enumLiteral(token);
         if (literal === undefined) {
             skippedEnums.push({ name, reason: `value ${token.value} is outside the safe integer range` });
@@ -236,7 +226,7 @@ export const generateGlModules = (options: GlGenerationOptions): GlGenerationRes
         if (singular !== undefined) singulars.push(singular);
     }
 
-    const { enumRows, skippedEnums } = buildEnumRows(registry, subset.enums, selection.api);
+    const { enumRows, skippedEnums } = buildEnumRows(registry, subset.enums);
     assertExportNamesDisjoint(rendered, singulars, enumRows, options.companionExports);
 
     const files = new Map<string, string>([

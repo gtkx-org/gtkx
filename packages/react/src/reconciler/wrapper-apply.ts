@@ -36,13 +36,18 @@ const collectContainerSiblings = (parent: GObject.Object, cp: ContainerProp): GO
     return siblings;
 };
 
-const insertContainerChildAt = (parent: GObject.Object, child: GObject.Object, cp: ContainerProp, index: number): void => {
+const insertContainerChildAt = (
+    parent: GObject.Object,
+    child: GObject.Object,
+    cp: ContainerProp,
+    index: number,
+): void => {
     if (cp.insert !== undefined && runCall(parent, cp.insert, [child, index], scopeFor(child, { index }))) {
         attachedParent.set(child, parent);
     }
 };
 
-export const attachContainerChild = (
+const attachContainerChild = (
     parent: GObject.Object,
     child: GObject.Object,
     cp: ContainerProp,
@@ -68,7 +73,7 @@ export const attachContainerChild = (
     }
 };
 
-export const detachContainerChild = (parent: GObject.Object, child: GObject.Object, cp: ContainerProp): void => {
+const detachContainerChild = (parent: GObject.Object, child: GObject.Object, cp: ContainerProp): void => {
     if (attachedParent.get(child) !== parent) return;
     const holder = cp.remove !== undefined ? nullSetterCurrentHolder(parent, cp.remove) : undefined;
     if (holder === undefined || holder === child) runRemove(parent, child, cp);
@@ -95,14 +100,12 @@ export const containerChildMapping: ElementMapping = {
     },
 };
 
-export const attachSlotChild = (parent: GObject.Object, child: GObject.Object, slot: string): boolean => {
+const attachSlotChild = (parent: GObject.Object, child: GObject.Object, slot: string): void => {
     const cp = resolveContainerProp(parent.__type__, child.__type__, slot);
-    if (cp === null) return false;
-    attachContainerChild(parent, child, cp, null);
-    return true;
+    if (cp !== null) attachContainerChild(parent, child, cp, null);
 };
 
-export const detachSlotChild = (parent: GObject.Object, child: GObject.Object, slot: string): void => {
+const detachSlotChild = (parent: GObject.Object, child: GObject.Object, slot: string): void => {
     const cp = resolveContainerProp(parent.__type__, child.__type__, slot);
     if (cp !== null) detachContainerChild(parent, child, cp);
 };

@@ -1,8 +1,9 @@
 import { toCamelIdentifier } from "@gtkx/utils";
 import type { GirFunction } from "../gir/function.js";
 import type { Library } from "../gir/library.js";
-import { type GirParameter, isCallerAllocatedOut, isOutParameter } from "../gir/parameter.js";
+import { type GirParameter, type GirSignal, isCallerAllocatedOut, isOutParameter } from "../gir/parameter.js";
 import type { TypeId } from "../gir/type-id.js";
+import { isCellInout, omitsPrimaryReturn } from "./descriptor-render.js";
 
 export type InputParameter = {
     parameter: GirParameter;
@@ -80,3 +81,39 @@ export const renderHandlerParameters = (
             (parameter, index) =>
                 `${parameterIdentifier(parameter, index)}: ${renderType(parameter.type, parameter.nullable)}`,
         );
+
+export const foldOutParamShape = (primary: string | undefined, outTypes: string[]): string => {
+    if (primary !== undefined) return `[${primary}, ${outTypes.join(", ")}]`;
+    const [single, ...rest] = outTypes;
+    if (rest.length === 0 && single !== undefined) return single;
+    return `[${outTypes.join(", ")}]`;
+};
+
+export type HandlerResultOptions = {
+    library: Library;
+    signal: GirSignal;
+    renderType: (ref: TypeId | undefined, nullable: boolean) => string;
+    includeCallerAllocated: boolean;
+    optOut: boolean;
+};
+
+export const renderHandlerResultType = (options: HandlerResultOptions): string => {
+    const { library, signal, renderType, includeCallerAllocated, optOut } = options;
+    const primary = omitsPrimaryReturn(library, signal.returnValue)
+        ? undefined
+        : renderType(signal.returnValue.type, signal.returnValue.nullable);
+    const outTypes = signal.parameters
+        .filter(
+            (parameter) =>
+                !parameter.isVarargs &&
+                (isOutParameter(parameter) ||
+                    isCellInout(library, parameter) ||
+                    (includeCallerAllocated && isCallerAllocatedOut(parameter))),
+        )
+        .map((parameter) => renderType(parameter.type, false));
+    if (outTypes.length === 0) {
+        if (primary === undefined) return "void";
+        return optOut ? `${primary} | undefined` : primary;
+    }
+    return foldOutParamShape(primary, outTypes);
+};

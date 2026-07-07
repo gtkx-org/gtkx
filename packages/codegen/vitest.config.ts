@@ -1,8 +1,8 @@
+import { sourceResolveConfig } from "@gtkx/vitest";
 import { defineConfig, mergeConfig } from "vitest/config";
-import shared from "../../vitest.shared.ts";
 
 export default mergeConfig(
-    shared,
+    defineConfig({ ...sourceResolveConfig }),
     defineConfig({
         test: {
             name: "codegen",

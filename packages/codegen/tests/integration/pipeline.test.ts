@@ -1,7 +1,78 @@
 import { describe, expect, it } from "vitest";
+import type { GirClass } from "../../src/gir/class.js";
+import type { GirFunction } from "../../src/gir/function.js";
+import type { Library } from "../../src/gir/library.js";
+import type { GirNamespace } from "../../src/gir/namespace.js";
+import type { GirParameter, GirReturnValue } from "../../src/gir/parameter.js";
+import type { GirRecord } from "../../src/gir/record.js";
+import type { GirType } from "../../src/gir/type.js";
+import type { TypeId } from "../../src/gir/type-id.js";
 import { generateJsxFiles } from "../../src/store/react/pipeline.js";
 import { transpileSource } from "../../src/transpile.js";
 import { giModules, library } from "../helpers/library.js";
+
+type WalkedCallable = { parameters: GirParameter[]; returnValue: GirReturnValue };
+
+const createUnresolvedWalker = (target: Library) => {
+    const seen = new Set<string>();
+    const unresolved = new Set<string>();
+    const visit = (ref: TypeId | undefined): void => {
+        if (ref === undefined) return;
+        const key = `${ref.nsId}:${ref.id}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        const type = target.typeOf(ref);
+        if (type === undefined) {
+            recordUnresolved(ref);
+            return;
+        }
+        visitContainedRefs(type);
+    };
+    const recordUnresolved = (ref: TypeId): void => {
+        const name = target.nameOf(ref);
+        if (name !== undefined) unresolved.add(`${name.namespaceName}.${name.typeName}`);
+    };
+    const visitContainedRefs = (type: GirType): void => {
+        if (type.kind === "carray" || type.kind === "list") visit(type.element);
+        if (type.kind === "hashtable") {
+            visit(type.key);
+            visit(type.value);
+        }
+        if (type.kind === "callback") visitCallable(type.value);
+    };
+    const visitCallable = (callable: WalkedCallable): void => {
+        for (const parameter of callable.parameters) visit(parameter.type);
+        visit(callable.returnValue.type);
+    };
+    const visitFunction = (fn: GirFunction): void => {
+        if (fn.instance !== undefined) visit(fn.instance.type);
+        visitCallable(fn);
+    };
+    const visitClass = (klass: GirClass): void => {
+        for (const fn of [...klass.methods, ...klass.constructors, ...klass.functions]) visitFunction(fn);
+        for (const property of klass.properties) visit(property.type);
+        for (const signal of klass.signals) visitCallable(signal);
+    };
+    const visitRecord = (record: GirRecord): void => {
+        for (const fn of [...record.methods, ...record.constructors, ...record.functions]) visitFunction(fn);
+        for (const field of record.fields) visit(field.type);
+    };
+    const visitNamespace = (namespace: GirNamespace): void => {
+        for (const klass of [...namespace.classes, ...namespace.interfaces]) visitClass(klass);
+        for (const record of namespace.records) visitRecord(record);
+        for (const callback of namespace.callbacks) visitCallable(callback);
+        for (const fn of namespace.functions) visitFunction(fn);
+        for (const constant of namespace.constants) visit(constant.type);
+        for (const alias of namespace.aliases) visit(alias.target);
+    };
+    return { visitNamespace, unresolved };
+};
+
+const collectUnresolvedTypeNames = (target: Library): string[] => {
+    const walker = createUnresolvedWalker(target);
+    for (const namespace of target.namespaces.values()) walker.visitNamespace(namespace);
+    return [...walker.unresolved];
+};
 
 const reactPipeline = generateJsxFiles(library);
 const sourceFor = (files: typeof reactPipeline, directory: string): string =>
@@ -260,7 +331,7 @@ describe("repository lookups", () => {
     });
 
     it("leaves only non-introspectable C types unresolved across the closure", () => {
-        const unresolved = library.collectUnresolved();
+        const unresolved = collectUnresolvedTypeNames(library);
         const unexpected = unresolved.filter((name) => {
             const local = name.slice(name.indexOf(".") + 1);
             return local !== "va_list" && local !== "";

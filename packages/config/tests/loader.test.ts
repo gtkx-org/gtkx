@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { resolveGtkxConfig } from "../src/config.js";
-import { createGtkxConfigLoader, loadGtkxConfig, loadResolvedGtkxConfig } from "../src/index.js";
+import { createGtkxConfigLoader, loadGtkxConfig } from "../src/index.js";
 
 let cwd: string;
 
@@ -86,9 +86,9 @@ describe("loadGtkxConfig", () => {
     });
 });
 
-describe("loadResolvedGtkxConfig", () => {
+describe("createGtkxConfigLoader", () => {
     beforeEach(() => {
-        cwd = mkdtempSync(join(tmpdir(), "gtkx-resolved-config-"));
+        cwd = mkdtempSync(join(tmpdir(), "gtkx-config-loader-"));
     });
 
     afterEach(() => {
@@ -97,29 +97,19 @@ describe("loadResolvedGtkxConfig", () => {
 
     it("resolves a declared config", async () => {
         writeConfig(`export default { libraries: ["Gtk-4.0"], applicationId: "org.gtk.Demo4" };\n`);
-        const resolved = await loadResolvedGtkxConfig(cwd);
+        const resolved = await createGtkxConfigLoader()(cwd);
         expect(resolved.libraries).toEqual(["Gtk-4.0"]);
         expect(resolved.applicationId).toBe("org.gtk.Demo4");
         expect(resolved.reactCompiler).toEqual({ target: "19" });
     });
 
     it("returns defaults when no config file exists", async () => {
-        await expect(loadResolvedGtkxConfig(cwd)).resolves.toEqual(resolveGtkxConfig({}));
+        await expect(createGtkxConfigLoader()(cwd)).resolves.toEqual(resolveGtkxConfig({}));
     });
 
     it("propagates validation errors from the loader", async () => {
         writeConfig(`export default { applicationId: "not valid" };\n`);
-        await expect(loadResolvedGtkxConfig(cwd)).rejects.toThrow(/invalid `applicationId`/);
-    });
-});
-
-describe("createGtkxConfigLoader", () => {
-    beforeEach(() => {
-        cwd = mkdtempSync(join(tmpdir(), "gtkx-config-loader-"));
-    });
-
-    afterEach(() => {
-        rmSync(cwd, { recursive: true, force: true });
+        await expect(createGtkxConfigLoader()(cwd)).rejects.toThrow(/invalid `applicationId`/);
     });
 
     it("loads the config once per root", async () => {

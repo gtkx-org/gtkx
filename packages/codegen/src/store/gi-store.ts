@@ -1,13 +1,10 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import ejs from "ejs";
 import { type CodegenFingerprint, FINGERPRINT_FILENAME } from "../fingerprint.js";
-import { buildManifest, type StoreOptions, selfLink, subpathExport, writeStore } from "./store-fs.js";
+import { buildManifest, type StoreOptions, subpathExport, writeStore } from "./store-fs.js";
 
 const OVERRIDES_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "overrides");
-
-const renderTemplate = (path: string): string => ejs.render(readFileSync(path, "utf8"), {});
 
 export type GiStoreOptions = StoreOptions;
 
@@ -27,7 +24,7 @@ const barrelSource = (directory: string): string => {
     if (!existsSync(overrideIndex)) {
         return `export * from "./${directory}.js";\n`;
     }
-    return renderTemplate(overrideIndex);
+    return readFileSync(overrideIndex, "utf8");
 };
 
 type CollectedFile = {
@@ -51,7 +48,7 @@ const collectStoreSources = (
             collected.push({
                 stem: `${directory}/overrides/${file.replace(/\.ts\.ejs$/, "")}`,
                 fileName: `${directory}/overrides/${file.replace(/\.ejs$/, "")}`,
-                source: renderTemplate(join(OVERRIDES_ROOT, directory, file)),
+                source: readFileSync(join(OVERRIDES_ROOT, directory, file), "utf8"),
             });
         }
         collected.push({
@@ -82,6 +79,5 @@ export const writeGiStore = (
             peerDependencies: { "@gtkx/ffi": "*", "@gtkx/native": "*" },
         }),
         rawFiles: [{ relativePath: FINGERPRINT_FILENAME, content: `${JSON.stringify(fingerprint, null, 2)}\n` }],
-        symlinks: [selfLink("node_modules", "@gtkx", "gi")],
     });
 };

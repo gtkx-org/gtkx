@@ -1,15 +1,12 @@
 import { toCamelIdentifier, upperFirst } from "@gtkx/utils";
-import { isScalarRef } from "../../analysis/descriptor-render.js";
 import { forEachAncestor } from "../../analysis/inheritance.js";
-import { renderHandlerParameters } from "../../analysis/param-structure.js";
-import { foldOutParamShape } from "../../analysis/return-shape.js";
+import { renderHandlerParameters, renderHandlerResultType } from "../../analysis/param-structure.js";
 import { renderBaseTypeFor, type TsTypeTarget } from "../../analysis/ts-type.js";
 import type { GirClass } from "../../gir/class.js";
 import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
-import { type GirParameter, isInoutParameter, isOutParameter } from "../../gir/parameter.js";
+import type { GirSignal } from "../../gir/parameter.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
-import type { GirSignal } from "../../gir/signal.js";
 import type { TypeId } from "../../gir/type-id.js";
 import { classExposesMethod, isIntrinsicElementClass, signalHandlerName } from "./intrinsic-elements.js";
 
@@ -153,29 +150,18 @@ const isSlotProperty = (owner: SlotOwner, property: GirProperty, jsName: string)
 
 const renderSignalHandler = (options: SignalRenderOptions): string => {
     const { types, signal, selfType } = options;
-    const visible = signal.parameters.filter((parameter) => !parameter.isVarargs);
     const params = [
         ...renderHandlerParameters(signal.parameters, (ref, nullable) => renderReactPropType(types, ref, nullable)),
         `self: ${selfType}`,
     ];
-    return `(${params.join(", ")}) => ${renderSignalReturnType(options, visible)}`;
-};
-
-const renderSignalReturnType = (options: SignalRenderOptions, visible: GirParameter[]): string => {
-    const { types, signal } = options;
-    const baseReturn = renderReactPropType(types, signal.returnValue.type, signal.returnValue.nullable);
-    const outTypes = visible
-        .filter(
-            (parameter) =>
-                isOutParameter(parameter) ||
-                (isInoutParameter(parameter) && isScalarRef(types.library, parameter.type)),
-        )
-        .map((parameter) => renderReactPropType(types, parameter.type, false));
-    if (outTypes.length === 0) {
-        return baseReturn === "void" ? "void" : `${baseReturn} | undefined`;
-    }
-    const hasPrimary = baseReturn !== "void";
-    return foldOutParamShape({ primary: hasPrimary ? baseReturn : undefined, outTypes, hasPrimary });
+    const result = renderHandlerResultType({
+        library: types.library,
+        signal,
+        renderType: (ref, nullable) => renderReactPropType(types, ref, nullable),
+        includeCallerAllocated: false,
+        optOut: true,
+    });
+    return `(${params.join(", ")}) => ${result}`;
 };
 
 const reactTarget = (context: PropTypeRenderContext): TsTypeTarget => ({

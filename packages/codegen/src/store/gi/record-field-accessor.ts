@@ -8,10 +8,38 @@ import type { GirType } from "../../gir/type.js";
 import type { TypeId } from "../../gir/type-id.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { indent, renderBlock } from "../../writer/emit.js";
-import { bitMask, mergeBitfield } from "./bitfield.js";
 import { refIsClassStruct } from "./class-struct-record.js";
-import { computeRecordFieldSlots, type RecordFieldSlot } from "./record-layout.js";
+import { bitMask, computeRecordFieldSlots, mergeBitfield, type RecordFieldSlot } from "./record-layout.js";
 import { wrapReturnValue } from "./return-wrap.js";
+
+export const isEmittableField = (context: ModuleContext, field: GirField): field is GirField & { type: TypeId } =>
+    !field.private &&
+    field.type !== undefined &&
+    !isInlineCallbackRef(context.library, field.type) &&
+    !refIsClassStruct(context, field.type);
+
+export type FieldWriteSpec = {
+    descriptor: string;
+    slot: FieldSlot;
+    targetExpr: string;
+    valueExpr: string;
+};
+
+export const emitFieldWrite = (context: ModuleContext, spec: FieldWriteSpec): string => {
+    const { descriptor, slot, targetExpr, valueExpr } = spec;
+    context.addNativeImport("write");
+    if (slot.bitWidth === undefined) {
+        return `write(${targetExpr}, ${descriptor}, ${slot.byteOffset}, ${valueExpr});`;
+    }
+    context.addNativeImport("read");
+    const merged = mergeBitfield(
+        `(read(${targetExpr}, ${descriptor}, ${slot.byteOffset}) as number)`,
+        valueExpr,
+        bitMask(slot.bitWidth),
+        slot.bitOffset ?? 0,
+    );
+    return `write(${targetExpr}, ${descriptor}, ${slot.byteOffset}, ${merged});`;
+};
 
 export const renderRecordFieldAccessor = (
     context: ModuleContext,
@@ -20,11 +48,8 @@ export const renderRecordFieldAccessor = (
     siblingFields: GirField[],
 ): string | undefined => {
     const { field } = slot;
-    if (field.private) return undefined;
     if (!field.readable && !field.writable) return undefined;
-    if (field.type === undefined) return undefined;
-    if (isInlineCallbackRef(context.library, field.type)) return undefined;
-    if (refIsClassStruct(context, field.type)) return undefined;
+    if (!isEmittableField(context, field)) return undefined;
     const jsName = toCamelIdentifier(field.name);
     if (claimedNames.has(jsName)) return undefined;
     if (jsName === "constructor") return undefined;
@@ -318,16 +343,7 @@ const getterBlock = (options: AccessorOptions): string => {
 
 const setterBlock = (options: AccessorOptions): string => {
     const { context, jsName, tsType, descriptor, slot } = options;
-    context.addNativeImport("write");
     context.addRuntimeImport("getHandle");
-    if (slot.bitWidth === undefined) {
-        const body = `write(getHandle(this), ${descriptor}, ${slot.byteOffset}, value);`;
-        return renderBlock(`set ${jsName}(value: ${tsType})`, body);
-    }
-    context.addNativeImport("read");
-    const mask = bitMask(slot.bitWidth);
-    const shift = slot.bitOffset ?? 0;
-    const merged = mergeBitfield("__unit", "value", mask, shift);
-    const body = `const __unit = read(getHandle(this), ${descriptor}, ${slot.byteOffset}) as number;\nconst __next = ${merged};\nwrite(getHandle(this), ${descriptor}, ${slot.byteOffset}, __next);`;
+    const body = emitFieldWrite(context, { descriptor, slot, targetExpr: "getHandle(this)", valueExpr: "value" });
     return renderBlock(`set ${jsName}(value: ${tsType})`, body);
 };

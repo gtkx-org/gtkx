@@ -1,12 +1,19 @@
-import { toCamelCase, uniqBy } from "@gtkx/utils";
+import { toCamelCase, toCamelIdentifier, uniqBy } from "@gtkx/utils";
 import type { GirFunction } from "../../gir/function.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { renderBlock } from "../../writer/emit.js";
-import { bindingIdentifier } from "../../writer/identifier.js";
+import { matchAsyncFinishName } from "./async.js";
 import { callableReferencesClassStruct } from "./class-struct-record.js";
 import { renderFnExpression } from "./function.js";
 import { gtypeMemberDeclaration } from "./gtype-binding.js";
-import { methodExportName, renderMethodBody, renderMethodReturnType, renderMethodSignature } from "./method.js";
+import {
+    methodExportName,
+    renderMethodBody,
+    renderMethodReturnType,
+    renderMethodSignature,
+    renderPromisifiedBody,
+    renderPromisifiedSignature,
+} from "./method.js";
 import { renderRuntimeOverride } from "./runtime-override.js";
 
 export type Callables = {
@@ -33,7 +40,7 @@ export const generateBindings = (context: ModuleContext, callables: Callables): 
         const expression = renderFnExpression(context, callable);
         if (expression === undefined) continue;
         context.module.appendBinding(
-            `const ${bindingIdentifier(callable.cIdentifier)} = ${expression};`,
+            `const ${toCamelIdentifier(callable.cIdentifier)} = ${expression};`,
             callable.cIdentifier,
         );
     }
@@ -62,14 +69,11 @@ const renderCallableMember = (
     }
     const signature = renderMethodSignature(context, callable);
     const returnType = options.returnTypeOverride ?? renderMethodReturnType(context, callable);
-    const bindingExpression = bindingIdentifier(cIdentifier);
-    const body =
-        options.returnTypeOverride === undefined
-            ? renderMethodBody(context, callable, { bindingExpression })
-            : renderMethodBody(context, callable, {
-                  bindingExpression,
-                  returnTypeOverride: options.returnTypeOverride,
-              });
+    const bindingExpression = toCamelIdentifier(cIdentifier);
+    const body = renderMethodBody(context, callable, {
+        bindingExpression,
+        returnTypeOverride: options.returnTypeOverride,
+    });
     return renderBlock(`${options.isStatic ? "static " : ""}${name}(${signature}): ${returnType}`, body);
 };
 
@@ -101,14 +105,59 @@ export const renderInstanceMethod = (
 export const renderInstanceMethodSignature = (
     context: ModuleContext,
     callable: GirFunction,
+    siblings: Map<string, GirFunction>,
+): string | undefined => {
+    if (!isEmittableCallable(context, callable)) return undefined;
+    const name = methodExportName(callable);
+    if (name === "constructor") return undefined;
+    const finishFn = matchFinishFunction(context, callable, siblings);
+    if (finishFn !== undefined) {
+        const { signature, returnType } = renderPromisifiedSignature(context, callable, finishFn);
+        return `${name}(${signature}): ${returnType};`;
+    }
+    const signature = renderMethodSignature(context, callable);
+    const returnType = renderMethodReturnType(context, callable);
+    return `${name}(${signature}): ${returnType};`;
+};
+
+export const renderClassInstanceMember = (
+    context: ModuleContext,
+    callable: GirFunction,
+    siblings: Map<string, GirFunction>,
     nameOverride?: string,
 ): string | undefined => {
     if (!isEmittableCallable(context, callable)) return undefined;
     const name = nameOverride ?? methodExportName(callable);
     if (name === "constructor") return undefined;
-    const signature = renderMethodSignature(context, callable);
-    const returnType = renderMethodReturnType(context, callable);
-    return `${name}(${signature}): ${returnType};`;
+    const promisified = renderPromisifiedMember(context, callable, siblings, name);
+    if (promisified !== undefined) return promisified;
+    return renderInstanceMethod(context, callable, nameOverride);
+};
+
+const matchFinishFunction = (
+    context: ModuleContext,
+    callable: GirFunction,
+    siblings: Map<string, GirFunction>,
+): GirFunction | undefined => {
+    const finishName = matchAsyncFinishName(context.library, callable, [...siblings.values()]);
+    if (finishName === undefined) return undefined;
+    return siblings.get(finishName);
+};
+
+const renderPromisifiedMember = (
+    context: ModuleContext,
+    callable: GirFunction,
+    siblings: Map<string, GirFunction>,
+    name: string,
+): string | undefined => {
+    const finishFn = matchFinishFunction(context, callable, siblings);
+    if (finishFn === undefined) return undefined;
+    const cIdentifier = callable.cIdentifier;
+    if (cIdentifier === undefined) return undefined;
+    const { signature, returnType } = renderPromisifiedSignature(context, callable, finishFn);
+    const finishMember = methodExportName(finishFn);
+    const body = renderPromisifiedBody(context, callable, finishMember, toCamelIdentifier(cIdentifier));
+    return renderBlock(`${name}(${signature}): ${returnType}`, body);
 };
 
 export const indexMethodsByName = (methods: GirFunction[]): Map<string, GirFunction> => {

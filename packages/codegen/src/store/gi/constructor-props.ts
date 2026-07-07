@@ -7,7 +7,7 @@ import type { GirClass } from "../../gir/class.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
 import { splitOptionalNamespace } from "../../gir/type-ref.js";
 import type { ModuleContext } from "../../writer/context.js";
-import { indent, renderBlock, renderBraced } from "../../writer/emit.js";
+import { renderBlock, renderBraced, renderBracedOrEmpty } from "../../writer/emit.js";
 
 const ancestorConstructablePropNames = (context: ModuleContext, klass: GirClass): Set<string> => {
     const names = new Set<string>();
@@ -37,8 +37,7 @@ export const renderConstructorPropsInterface = (context: ModuleContext, klass: G
         (property) =>
             `${toCamelIdentifier(property.name)}?: ${renderTsType(context, property.type, true)} | undefined;`,
     );
-    const body = lines.length === 0 ? "" : `\n${indent(lines.join("\n"), 1)}\n`;
-    return `export interface ${className}ConstructorProps${extendsClause} {${body}}`;
+    return renderBracedOrEmpty(`export interface ${className}ConstructorProps${extendsClause}`, lines.join("\n"));
 };
 
 export const renderClassConstructor = (

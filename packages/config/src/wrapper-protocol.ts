@@ -1,6 +1,6 @@
 export const WRAPPER_NODE_ELEMENT = "__GTKX_WRAPPER_NODE__";
 
-export const WRAPPER_KINDS = [
+const WRAPPER_KINDS = [
     "lazy-element",
     "widget-prop",
     "container-slot",

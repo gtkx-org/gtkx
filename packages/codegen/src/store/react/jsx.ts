@@ -4,9 +4,9 @@ import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
 import { renderBlock } from "../../writer/emit.js";
 import type { ImportsBuilder } from "../../writer/imports.js";
+import type { ElementPropTypegen } from "./element-prop-types.js";
 import {
     collectInterfacePropsClasses,
-    collectIntrinsicElementClasses,
     type GlibNamedClass,
     glibNameOf,
     interfaceHasPropsBody,
@@ -14,13 +14,14 @@ import {
     type ResolvedQualifiedInterface,
 } from "./intrinsic-elements.js";
 import { buildElementPropsEntries, buildInterfacePropsEntries } from "./props.js";
-import type { ElementPropTypegen } from "./element-prop-types.js";
 import { ACCESSIBLE_ATTRIBUTES } from "./tables.js";
 
 export type GenerateJsxOptions = {
     excludeNames: Set<string>;
     imports: ImportsBuilder;
     typegen: ElementPropTypegen;
+    intrinsicElements: GlibNamedClass[];
+    intrinsicElementByGlibName: Map<string, GlibNamedClass>;
 };
 
 const QUALIFIED_TYPE_PATTERN = /^[A-Z][A-Za-z0-9]*\.[A-Z]/;
@@ -41,15 +42,13 @@ export const generateJsxSection = (
     library: Library,
     options: GenerateJsxOptions,
 ): { source: string; intrinsicCount: number } => {
-    const { excludeNames, imports, typegen } = options;
-    const allWidgets = collectIntrinsicElementClasses(library);
-    const widgets = allWidgets.filter((entry) => entry.namespace.name === targetNamespace.name);
+    const { excludeNames, imports, typegen, intrinsicElements, intrinsicElementByGlibName } = options;
+    const widgets = intrinsicElements.filter((entry) => entry.namespace.name === targetNamespace.name);
     const intrinsicWidgets = widgets.filter((entry) => !excludeNames.has(entry.glibName));
     const constLines = intrinsicWidgets.map(
         (entry) => `export const ${entry.glibName} = ${sourceStringLiteral(entry.glibName)} as const;`,
     );
 
-    const intrinsicElementByGlibName = new Map(allWidgets.map((entry) => [entry.glibName, entry]));
     const isIntrinsicElementAncestor = (candidate: GirClass): boolean => {
         const candidateGlib = glibNameOf(candidate);
         return candidateGlib !== undefined && intrinsicElementByGlibName.has(candidateGlib);
@@ -60,7 +59,7 @@ export const generateJsxSection = (
     let needsReactElement = false;
     const propBlocks: string[] = [];
 
-    for (const iface of collectInterfacePropsClasses(library, targetNamespace.name)) {
+    for (const iface of collectInterfacePropsClasses(library, intrinsicElements, targetNamespace.name)) {
         if (glibNameOf(iface.klass) === undefined) continue;
         const { block, slotPropNames } = renderInterfacePropsBlock(library, iface, targetNamespace.name, imports);
         if (slotPropNames.length > 0) needsReactElement = true;

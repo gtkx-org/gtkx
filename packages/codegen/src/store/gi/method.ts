@@ -9,10 +9,10 @@ import {
     arrayLengthSources,
     closureAndDestroyIndices,
     foldedLengthIndices,
+    foldOutParamShape,
     inputParameters,
     parameterIdentifier,
 } from "../../analysis/param-structure.js";
-import { foldOutParamShape } from "../../analysis/return-shape.js";
 import { renderTsType } from "../../analysis/ts-type.js";
 import type { GirFunction } from "../../gir/function.js";
 import { type GirParameter, isCallerAllocatedOut, isInoutParameter, isOutParameter } from "../../gir/parameter.js";
@@ -66,7 +66,7 @@ export const renderMethodReturnType = (context: ModuleContext, fn: GirFunction):
     const primary = primaryReturnsValue
         ? renderTsType(context, fn.returnValue.type, fn.returnValue.nullable)
         : undefined;
-    return foldOutParamShape({ primary, outTypes, hasPrimary: primaryReturnsValue });
+    return foldOutParamShape(primary, outTypes);
 };
 
 export const renderPromisifiedBody = (
@@ -142,7 +142,7 @@ const isCallbackParameter = (context: ModuleContext, parameter: GirParameter): b
 
 export type WriteMethodBodyOptions = {
     bindingExpression: string;
-    returnTypeOverride?: string;
+    returnTypeOverride?: string | undefined;
 };
 
 export const renderMethodBody = (context: ModuleContext, fn: GirFunction, options: WriteMethodBodyOptions): string => {

@@ -63,14 +63,14 @@ export const singularJsDoc = ({ commandName, feature, summary, body }: SingularJ
     ].join("\n");
 
 export const commandJsDoc = ({ command, feature, ins, outs, returnPlan }: CommandJsDocOptions): string => {
-    const lines = ["/**", ` * \`${formatPrototype(command)}\``, " *", ` * Provided by \`${feature}\`.`];
-    if (ins.length > 0) {
-        lines.push(" *");
-        for (const arg of ins) lines.push(inParamDocLine(command, arg));
-    }
     const returnsLine = returnsDocLine(command, returnPlan, outs);
-    if (returnsLine !== undefined) lines.push(returnsLine);
-    lines.push(` * @see ${REFPAGES_BASE}/${command.name}.xhtml`);
-    lines.push(" */");
-    return lines.join("\n");
+    return singularJsDoc({
+        commandName: command.name,
+        feature,
+        summary: `\`${formatPrototype(command)}\``,
+        body: [
+            ...(ins.length > 0 ? [" *", ...ins.map((arg) => inParamDocLine(command, arg))] : []),
+            ...(returnsLine !== undefined ? [returnsLine] : []),
+        ],
+    });
 };

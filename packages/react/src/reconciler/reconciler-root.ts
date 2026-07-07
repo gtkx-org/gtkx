@@ -16,7 +16,6 @@ export type ReconcilerRootOptions = {
 };
 
 export type ReconcilerRoot = {
-    fiberRoot: FiberRoot;
     update(element: ReactNode): void;
     unmount<R>(free: (root: ReconcilerRoot) => R): R | undefined;
 };
@@ -38,7 +37,6 @@ export const createReconcilerRoot = (options: ReconcilerRootOptions): Reconciler
     );
 
     const root: ReconcilerRoot = {
-        fiberRoot,
         update: (element: ReactNode): void => {
             reconciler.updateContainer(element, fiberRoot, null, noop);
         },

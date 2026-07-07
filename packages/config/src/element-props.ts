@@ -1,16 +1,12 @@
 import { z } from "zod";
 
-export const ARG_REFS = ["child", "item", "value", "index", "sibling"] as const;
+const ARG_REFS = ["child", "item", "index", "sibling"] as const;
 
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 
 export type ArgRef = (typeof ARG_REFS)[number];
 
-export type Arg =
-    | ArgRef
-    | { prop: string; or?: JsonValue }
-    | { field: string; or?: JsonValue }
-    | { literal: JsonValue };
+export type Arg = ArgRef | { prop: string } | { field: string; or?: JsonValue } | { literal: JsonValue };
 
 export type Call = string | { method: string; args: Arg[] };
 
@@ -34,9 +30,9 @@ const isJsonValue = (value: unknown): boolean => {
     return false;
 };
 
-export type IssuePath = Array<string | number>;
+type IssuePath = Array<string | number>;
 
-export type CollectedIssue = { path: IssuePath; message: string };
+type CollectedIssue = { path: IssuePath; message: string };
 
 export const rawIssue = (input: unknown, path: IssuePath, message: string, standalone = false) => ({
     code: "custom" as const,
@@ -54,9 +50,15 @@ const unknownKeyIssues = (value: Record<string, unknown>, allowed: string[]): Co
 
 const requireName = (value: unknown): boolean => typeof value === "string" && value.length > 0;
 
-const collectReferenceArgIssues = (value: Record<string, unknown>, key: "prop" | "field"): CollectedIssue[] => {
-    const issues = unknownKeyIssues(value, [key, "or"]);
-    if (!requireName(value[key])) issues.push({ path: [key], message: NAME_MESSAGE });
+const collectPropArgIssues = (value: Record<string, unknown>): CollectedIssue[] => {
+    const issues = unknownKeyIssues(value, ["prop"]);
+    if (!requireName(value.prop)) issues.push({ path: ["prop"], message: NAME_MESSAGE });
+    return issues;
+};
+
+const collectFieldArgIssues = (value: Record<string, unknown>): CollectedIssue[] => {
+    const issues = unknownKeyIssues(value, ["field", "or"]);
+    if (!requireName(value.field)) issues.push({ path: ["field"], message: NAME_MESSAGE });
     if ("or" in value && !isJsonValue(value.or)) issues.push({ path: ["or"], message: JSON_MESSAGE });
     return issues;
 };
@@ -72,8 +74,8 @@ const collectArgIssues = (value: unknown): CollectedIssue[] => {
         return ARG_REF_SET.has(value) ? [] : [{ path: [], message: `has unknown reference "${value}"` }];
     }
     if (!isRecord(value)) return [{ path: [], message: ARG_MESSAGE }];
-    if ("prop" in value) return collectReferenceArgIssues(value, "prop");
-    if ("field" in value) return collectReferenceArgIssues(value, "field");
+    if ("prop" in value) return collectPropArgIssues(value);
+    if ("field" in value) return collectFieldArgIssues(value);
     if ("literal" in value) return collectLiteralArgIssues(value);
     return [{ path: [], message: ARG_MESSAGE }];
 };
@@ -141,7 +143,7 @@ const listSchema = z.strictObject({
     clear: callSchema.optional(),
 });
 
-export const elementPropSchema = z
+const elementPropSchema = z
     .discriminatedUnion("kind", [containerSchema, valueSchema, controlledTextSchema, lazySchema, listSchema], {
         error: "must be one of container, value, controlled-text, lazy, list",
     })

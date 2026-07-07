@@ -1,9 +1,10 @@
+import { renderTsType } from "../../analysis/ts-type.js";
 import type { GirClass } from "../../gir/class.js";
 import type { Library } from "../../gir/library.js";
-import type { GirNamespace } from "../../gir/namespace.js";
+import type { GirAlias, GirNamespace } from "../../gir/namespace.js";
+import { PRIMITIVE_TS_TYPE, primitiveCategory } from "../../gir/primitives.js";
 import { splitOptionalNamespace } from "../../gir/type-ref.js";
 import { ModuleContext } from "../../writer/context.js";
-import { generateAlias } from "./alias.js";
 import { generateCallback } from "./callback.js";
 import { generateClass } from "./class.js";
 import { generateConstant } from "./constant.js";
@@ -12,7 +13,7 @@ import { generateNamespaceBootstrap, generateNamespaceFunction } from "./functio
 import { generateInterface } from "./interface.js";
 import { generateRecord } from "./record.js";
 
-export const generateNamespaceModule = (namespace: GirNamespace, library: Library): { source: string } => {
+export const generateNamespaceModule = (namespace: GirNamespace, library: Library): string => {
     const context = new ModuleContext(namespace, library);
     context.addGObjectBootstrapImports();
 
@@ -42,7 +43,13 @@ export const generateNamespaceModule = (namespace: GirNamespace, library: Librar
         generateAlias(context, alias);
     }
 
-    return { source: context.module.toSource() };
+    return context.module.toSource();
+};
+
+const generateAlias = (context: ModuleContext, alias: GirAlias): void => {
+    const category = alias.cType === undefined ? undefined : primitiveCategory(alias.cType);
+    const targetType = category === "gtype" ? PRIMITIVE_TS_TYPE.gtype : renderTsType(context, alias.target);
+    context.module.appendDeclaration(`export type ${alias.name} = ${targetType};`);
 };
 
 const topologicalClassOrder = (classes: GirClass[], namespaceName: string): GirClass[] => {

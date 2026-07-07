@@ -1,7 +1,6 @@
 import type { Call, ContainerProp, ElementProp, ListProp } from "@gtkx/config";
 import { toCamelIdentifier } from "@gtkx/utils";
-import type { Library } from "../../gir/library.js";
-import { buildGirIndex, findMethod, type GirIndex, hasMethod, hasProperty } from "./gir-index.js";
+import { findMethod, type GirIndex, hasMethod, hasProperty } from "./gir-index.js";
 import { CURATED_ELEMENT_PROPS } from "./tables.js";
 
 const callMethodName = (call: Call): string => (typeof call === "string" ? call : call.method);
@@ -13,7 +12,9 @@ const containerTypeNames = (parent: string, prop: ContainerProp): string[] => {
 };
 
 const containerCalls = (prop: ContainerProp): Call[] => {
-    const calls = [prop.append, prop.remove, prop.insert, prop.reorder].filter((call): call is Call => call !== undefined);
+    const calls = [prop.append, prop.remove, prop.insert, prop.reorder].filter(
+        (call): call is Call => call !== undefined,
+    );
     if (typeof prop.adopt === "string") calls.push(prop.adopt);
     return calls;
 };
@@ -40,8 +41,8 @@ const validateCalls = (context: GirIndex, path: string, host: string, calls: Cal
 };
 
 const validateMember = (context: GirIndex, path: string, host: string, name: string): void => {
-    if (!hasMethod(context, host, name) && !hasProperty(context, host, name)) {
-        throw elementPropError(path, `references "${name}", which is neither a method nor a property of ${host}`);
+    if (!hasProperty(context, host, name)) {
+        throw elementPropError(path, `references "${name}", which is not a property of ${host}`);
     }
 };
 
@@ -147,17 +148,18 @@ const filterKnownElementProps = (
     const result: Record<string, ElementProp[]> = {};
     for (const [type, props] of Object.entries(map)) {
         if (!context.index.has(type)) continue;
-        const kept = props.filter((prop) => prop.kind !== "container" || knownTypes(context, containerTypeNames(type, prop)));
+        const kept = props.filter(
+            (prop) => prop.kind !== "container" || knownTypes(context, containerTypeNames(type, prop)),
+        );
         if (kept.length > 0) result[type] = kept;
     }
     return result;
 };
 
 export const assembleElementProps = (
-    library: Library,
+    context: GirIndex,
     userElementProps: Record<string, ElementProp[]>,
 ): Record<string, ElementProp[]> => {
-    const context = buildGirIndex(library);
     validateUserElementProps(context, userElementProps);
     const merged = mergeElementProps([
         filterKnownElementProps(context, CURATED_ELEMENT_PROPS),

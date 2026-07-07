@@ -6,7 +6,7 @@ import { TextBufferController } from "./text-buffer-controller.js";
 export const scheduleBufferRebuild = (node: Node): void => {
     scheduleContentRebuild(
         node,
-        (candidate) => candidate instanceof Gtk.TextBuffer,
+        (candidate): candidate is Gtk.TextBuffer => candidate instanceof Gtk.TextBuffer,
         (owner) => new TextBufferController(owner).rebuild,
     );
 };

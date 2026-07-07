@@ -1,7 +1,7 @@
+import type { SignalHandler } from "@gtkx/ffi";
 import type * as GObject from "@gtkx/gi/gobject";
 import { isConstructOnlyProp, resolveDefaultProp, resolveSignal } from "../utils/gtype.js";
 import { NOTIFY_DETAIL_PREFIX, notifyDetailToProp } from "../utils/notify-name.js";
-import type { SignalHandler } from "./signal-store.js";
 import { stateOf } from "./state.js";
 import type { Props } from "./types.js";
 
@@ -35,22 +35,6 @@ export type ApplyPropsOptions = {
     exclude?: (name: string) => boolean;
 };
 
-export function applyProps(
-    container: GObject.Object,
-    oldProps: Props | null,
-    newProps: Props,
-    options?: ApplyPropsOptions,
-): void {
-    const context: ApplyContext = { container, oldProps, newProps };
-    applyGenericProps(context, options?.exclude);
-}
-
-type ApplyContext = {
-    container: GObject.Object;
-    oldProps: Props | null;
-    newProps: Props;
-};
-
 type PendingSignal = { signalName: string; newValue: unknown };
 
 type PendingProperty = { name: string; newValue: unknown };
@@ -66,10 +50,11 @@ const resolvePendingProperty = (
 };
 
 const collectGenericChanges = (
-    context: ApplyContext,
+    container: GObject.Object,
+    oldProps: Props | null,
+    newProps: Props,
     exclude: ((name: string) => boolean) | undefined,
 ): { pendingSignals: PendingSignal[]; pendingProperties: PendingProperty[] } => {
-    const { container, oldProps, newProps } = context;
     const constructionApplied = oldProps === null;
     const pendingSignals: PendingSignal[] = [];
     const pendingProperties: PendingProperty[] = [];
@@ -104,13 +89,19 @@ const collectGenericChanges = (
     return { pendingSignals, pendingProperties };
 };
 
-const applyGenericProps = (
-    context: ApplyContext,
-    exclude: ((name: string) => boolean) | undefined,
-): void => {
-    const { container } = context;
+export function applyProps(
+    container: GObject.Object,
+    oldProps: Props | null,
+    newProps: Props,
+    options?: ApplyPropsOptions,
+): void {
     const { signalStore } = stateOf(container);
-    const { pendingSignals, pendingProperties } = collectGenericChanges(context, exclude);
+    const { pendingSignals, pendingProperties } = collectGenericChanges(
+        container,
+        oldProps,
+        newProps,
+        options?.exclude,
+    );
 
     for (const { signalName, newValue } of pendingSignals) {
         const nextHandler = typeof newValue === "function" ? (newValue as SignalHandler) : undefined;
@@ -129,4 +120,4 @@ const applyGenericProps = (
         if (typeof newValue === "string" && Reflect.get(container, name) === newValue) continue;
         Reflect.set(container, name, newValue);
     }
-};
+}

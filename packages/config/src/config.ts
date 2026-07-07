@@ -1,7 +1,7 @@
 import { createDefineConfig, type DefineConfig } from "c12";
 import { defu } from "defu";
 import { z } from "zod";
-import { configError, type ElementProps, elementPropsSchema, isRecord, rawIssue } from "./element-props.js";
+import { configError, elementPropsSchema, isRecord, rawIssue } from "./element-props.js";
 
 export const LIBRARIES_WILDCARD = "*";
 
@@ -156,16 +156,12 @@ export type ResolvedGtkxConfig = {
     libraries: typeof LIBRARIES_WILDCARD | string[];
     girPath: string[];
     applicationId: string;
-    elementProps: ElementProps;
     reactCompiler: ResolvedReactCompilerOptions | null;
-    codegen: boolean;
 };
 
 export const resolveGtkxConfig = (config: GtkxConfig): ResolvedGtkxConfig => ({
     libraries: config.libraries ?? [],
     girPath: config.girPath ?? [],
     applicationId: config.applicationId ?? DEFAULT_APPLICATION_ID,
-    elementProps: config.elementProps ?? {},
     reactCompiler: resolveReactCompilerOptions(config.reactCompiler),
-    codegen: config.codegen ?? true,
 });

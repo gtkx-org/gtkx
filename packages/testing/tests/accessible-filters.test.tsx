@@ -1,5 +1,14 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkAdjustment, GtkBox, GtkButton, GtkEntry, GtkLabel, GtkLevelBar, GtkProgressBar, GtkScale } from "@gtkx/jsx/gtk";
+import {
+    GtkAdjustment,
+    GtkBox,
+    GtkButton,
+    GtkEntry,
+    GtkLabel,
+    GtkLevelBar,
+    GtkProgressBar,
+    GtkScale,
+} from "@gtkx/jsx/gtk";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 import { getByLabelText, queryAllByRole, queryByRole, render } from "../src/index.js";
@@ -58,13 +67,17 @@ describe("getByRole value", () => {
             </VBox>,
         );
         expect(queryByRole(container, Gtk.AccessibleRole.PROGRESS_BAR, { value: { now: 0.25 } })).not.toBeNull();
-        expect(queryAllByRole(container, Gtk.AccessibleRole.PROGRESS_BAR, { value: { min: 0, max: 1 } })).toHaveLength(2);
+        expect(queryAllByRole(container, Gtk.AccessibleRole.PROGRESS_BAR, { value: { min: 0, max: 1 } })).toHaveLength(
+            2,
+        );
         expect(queryByRole(container, Gtk.AccessibleRole.PROGRESS_BAR, { value: { now: 0.99 } })).toBeNull();
     });
 
     it("filters a level bar by its live value/min/max", async () => {
         const { container } = await render(<GtkLevelBar value={0.3} />);
-        expect(queryByRole(container, Gtk.AccessibleRole.METER, { value: { now: 0.3, min: 0, max: 1 } })).not.toBeNull();
+        expect(
+            queryByRole(container, Gtk.AccessibleRole.METER, { value: { now: 0.3, min: 0, max: 1 } }),
+        ).not.toBeNull();
         expect(queryByRole(container, Gtk.AccessibleRole.METER, { value: { now: 0.9 } })).toBeNull();
     });
 

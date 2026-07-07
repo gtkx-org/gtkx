@@ -1,11 +1,11 @@
-import type { ConfigEnv, Plugin, UserConfig } from "vite";
+import type { Plugin, UserConfig } from "vite";
 import { createGtkxConfigLoader, type GtkxConfigLoader } from "./loader.js";
 import { GTKX_CONFIG_VIRTUAL_ID, RESOLVED_GTKX_CONFIG_VIRTUAL_ID, renderGtkxConfigModule } from "./virtual.js";
 
 export type GtkxConfigPluginOptions = {
     name: string;
     loadConfig?: GtkxConfigLoader;
-    config?: (config: UserConfig, env: ConfigEnv) => Omit<UserConfig, "plugins"> | null | undefined;
+    config?: () => Omit<UserConfig, "plugins">;
 };
 
 export const createGtkxConfigPlugin = (options: GtkxConfigPluginOptions): Plugin => {
@@ -14,9 +14,9 @@ export const createGtkxConfigPlugin = (options: GtkxConfigPluginOptions): Plugin
 
     return {
         name: options.name,
-        config(config: UserConfig, env: ConfigEnv) {
+        config(config: UserConfig) {
             root = config.root ?? root;
-            return options.config?.(config, env) ?? undefined;
+            return options.config?.();
         },
         resolveId(id: string) {
             if (id === GTKX_CONFIG_VIRTUAL_ID) return RESOLVED_GTKX_CONFIG_VIRTUAL_ID;

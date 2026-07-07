@@ -1,5 +1,4 @@
-import { AlertDialog } from "@gtkx/components";
-import { Dialog } from "@gtkx/components/adw";
+import { AlertDialog, Dialog } from "@gtkx/components/adw";
 import * as Adw from "@gtkx/gi/adw";
 import { createRootElement } from "@gtkx/react";
 import { render } from "@gtkx/testing";
@@ -77,7 +76,11 @@ describe("render - AlertDialogResponse (2)", () => {
             <Dialog>
                 <AlertDialog ref={ref} heading="Test">
                     <AlertDialog.Response id="default" label="Default" />
-                    <AlertDialog.Response id="suggested" label="Suggested" appearance={Adw.ResponseAppearance.SUGGESTED} />
+                    <AlertDialog.Response
+                        id="suggested"
+                        label="Suggested"
+                        appearance={Adw.ResponseAppearance.SUGGESTED}
+                    />
                     <AlertDialog.Response
                         id="destructive"
                         label="Delete"

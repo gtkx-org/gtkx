@@ -22,7 +22,8 @@ export function fromNative(descriptor: Descriptor, value: unknown): unknown {
         case "fundamental":
             return wrapHandle(
                 value as ExternalObject<Handle> | null,
-                (descriptor as FundamentalDescriptor).wrapperClass ?? getWrapperClass(resolveDescriptorType(descriptor)),
+                (descriptor as FundamentalDescriptor).wrapperClass ??
+                    getWrapperClass(resolveDescriptorType(descriptor)),
             );
         case "array":
             return collectionFromNative(descriptor, value);

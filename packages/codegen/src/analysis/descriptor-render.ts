@@ -126,15 +126,15 @@ export const isScalarRef = (library: Library, ref: TypeId | undefined): boolean 
     return false;
 };
 
-export const isCellInout = (context: ModuleContext, parameter: GirParameter): boolean =>
-    isInoutParameter(parameter) && isScalarRef(context.library, parameter.type);
+export const isCellInout = (library: Library, parameter: GirParameter): boolean =>
+    isInoutParameter(parameter) && isScalarRef(library, parameter.type);
 
 export const renderParamDescriptor = (
     context: ModuleContext,
     parameter: GirParameter,
     ref: TypeId | undefined,
 ): string => {
-    if (isCellInout(context, parameter)) {
+    if (isCellInout(context.library, parameter)) {
         return tRef(renderDescriptor(context, ref, parameter.transferOwnership), true);
     }
     if (isOutParameter(parameter)) {
@@ -373,7 +373,7 @@ const arrayExpression = (
     if (ref.fixedSize !== undefined) {
         return tFixedArray(element, ref.fixedSize, ownership, size);
     }
-    return tArray(element, "array", ownership, size);
+    return tArray(element, ownership, size);
 };
 
 const inlineElementSize = (

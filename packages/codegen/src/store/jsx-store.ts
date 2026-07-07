@@ -1,5 +1,5 @@
 import type { JsxNamespaceFile } from "./react/pipeline.js";
-import { buildManifest, type StoreOptions, selfLink, subpathExport, writeStore } from "./store-fs.js";
+import { buildManifest, type StoreOptions, subpathExport, writeStore } from "./store-fs.js";
 
 export type JsxStoreOptions = StoreOptions;
 
@@ -23,6 +23,5 @@ export const writeJsxStore = (options: JsxStoreOptions, namespaces: JsxNamespace
             exports: exportsMap,
             peerDependencies: { "@gtkx/gi": "*", "@gtkx/react": "*", react: "*" },
         }),
-        symlinks: [selfLink("node_modules", "@gtkx", "jsx")],
     });
 };

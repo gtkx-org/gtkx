@@ -1,5 +1,5 @@
 import { lowerFirst, toCamelCase, toCamelIdentifier, toPascalCase } from "@gtkx/utils";
-import { ancestorChain, type ResolvedAncestor, resolveNamedType } from "../gir/ancestry.js";
+import { ancestorChain, type ResolvedAncestor, resolveInterface } from "../gir/ancestry.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
 import type { Library } from "../gir/library.js";
@@ -19,7 +19,7 @@ export const resolveImplementedInterface = (
     context: AncestryContext,
     name: string,
     defaultNamespace: string = context.namespace.name,
-): ResolvedAncestor | undefined => resolveNamedType(context.library, defaultNamespace, name, ["interface"]);
+): ResolvedAncestor | undefined => resolveInterface(context.library, defaultNamespace, name);
 
 const resolveDirectInterfaces = (
     context: AncestryContext,

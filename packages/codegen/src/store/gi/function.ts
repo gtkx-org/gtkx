@@ -1,9 +1,9 @@
+import { toCamelIdentifier } from "@gtkx/utils";
 import { tFn } from "../../analysis/descriptor.js";
 import type { GirFunction } from "../../gir/function.js";
 import type { GirNamespace } from "../../gir/namespace.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { arrayLiteral, renderBlock } from "../../writer/emit.js";
-import { bindingIdentifier, namespaceFunctionExportName } from "../../writer/identifier.js";
 import { callableReferencesClassStruct } from "./class-struct-record.js";
 import {
     planCallArgs,
@@ -31,7 +31,7 @@ export const generateNamespaceFunction = (context: ModuleContext, fn: GirFunctio
     if (expression === undefined) return;
     const cIdentifier = fn.cIdentifier;
     if (cIdentifier === undefined) return;
-    const bindingName = bindingIdentifier(cIdentifier);
+    const bindingName = toCamelIdentifier(cIdentifier);
     context.module.appendBinding(`const ${bindingName} = ${expression};`, cIdentifier);
 
     const exportName = namespaceFunctionExportName(cIdentifier, fn.name, context.namespace.cSymbolPrefixes);
@@ -39,6 +39,25 @@ export const generateNamespaceFunction = (context: ModuleContext, fn: GirFunctio
     const returnType = renderMethodReturnType(context, fn);
     const body = renderMethodBody(context, fn, { bindingExpression: bindingName });
     context.module.appendDeclaration(renderBlock(`export function ${exportName}(${signature}): ${returnType}`, body));
+};
+
+export const namespaceFunctionExportName = (cIdentifier: string, girName: string, symbolPrefixes: string[]): string => {
+    if (girName.length > 0) {
+        return toCamelIdentifier(girName);
+    }
+    const stripped = stripLongestPrefix(cIdentifier, symbolPrefixes);
+    return toCamelIdentifier(stripped);
+};
+
+const stripLongestPrefix = (input: string, prefixes: string[]): string => {
+    let best = "";
+    for (const prefix of prefixes) {
+        const candidate = `${prefix}_`;
+        if (input.startsWith(candidate) && candidate.length > best.length) {
+            best = candidate;
+        }
+    }
+    return best.length === 0 ? input : input.slice(best.length);
 };
 
 export const generateNamespaceBootstrap = (context: ModuleContext, namespace: GirNamespace): void => {

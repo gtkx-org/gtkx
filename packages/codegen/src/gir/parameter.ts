@@ -72,13 +72,13 @@ const returnValueFromNode = (node: RawNode | undefined, context: ParseContext): 
     };
 };
 
-type GirCallable = {
+export type GirSignal = {
     name: string;
     parameters: GirParameter[];
     returnValue: GirReturnValue;
 };
 
-export const parseCallable = (node: RawNode, context: ParseContext): GirCallable => {
+export const parseCallable = (node: RawNode, context: ParseContext): GirSignal => {
     const parametersNode = childOf(node, "parameters");
     const parameterNodes = childrenOf(parametersNode, "parameter");
     return {

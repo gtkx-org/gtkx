@@ -18,13 +18,11 @@ export type GlCommand = {
 export type GlEnum = {
     name: string;
     value: string;
-    api?: string;
     groups: string[];
 };
 
 export type GlInterfaceBlock = {
     profile?: string;
-    api?: string;
     commands: string[];
     enums: string[];
 };
@@ -99,12 +97,10 @@ const parseEnums = (node: OrderedNode, into: GlEnum[]): void => {
         const name = nodeAttr(child, "name");
         const value = nodeAttr(child, "value");
         if (name === undefined || value === undefined) continue;
-        const api = nodeAttr(child, "api");
         const group = nodeAttr(child, "group");
         into.push({
             name,
             value,
-            ...(api !== undefined ? { api } : {}),
             groups: group === undefined ? [] : group.split(",").map((part) => part.trim()),
         });
     }
@@ -121,10 +117,8 @@ const parseInterfaceBlock = (node: OrderedNode): GlInterfaceBlock => {
         else if (tag === "enum") enums.push(name);
     }
     const profile = nodeAttr(node, "profile");
-    const api = nodeAttr(node, "api");
     return {
         ...(profile !== undefined ? { profile } : {}),
-        ...(api !== undefined ? { api } : {}),
         commands,
         enums,
     };

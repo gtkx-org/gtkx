@@ -253,11 +253,32 @@ describe("installTeardownHandlers", () => {
         expect(registered.map(([event]) => event).sort()).toEqual([...lifecycleEvents].sort());
     });
 
-    it("runs teardown only once no matter how many handlers fire", () => {
-        const teardown = vi.fn();
-        install(teardown);
-        for (const [, listener] of registered) listener();
-        for (const [, listener] of registered) listener();
-        expect(teardown).toHaveBeenCalledTimes(1);
+    it("runs teardown only once no matter how many handlers fire", async () => {
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
+        try {
+            const teardown = vi.fn();
+            install(teardown);
+            for (const [, listener] of registered) listener();
+            for (const [, listener] of registered) listener();
+            await new Promise((resolve) => setImmediate(resolve));
+            expect(teardown).toHaveBeenCalledTimes(1);
+        } finally {
+            exitSpy.mockRestore();
+        }
+    });
+
+    it("exits with the conventional code after teardown on a termination signal", async () => {
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
+        try {
+            const teardown = vi.fn();
+            install(teardown);
+            const sigterm = registered.find(([event]) => event === "SIGTERM");
+            sigterm?.[1]();
+            await new Promise((resolve) => setImmediate(resolve));
+            expect(teardown).toHaveBeenCalledTimes(1);
+            expect(exitSpy).toHaveBeenCalledWith(143);
+        } finally {
+            exitSpy.mockRestore();
+        }
     });
 });

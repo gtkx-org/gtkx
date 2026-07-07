@@ -9,28 +9,22 @@ export {
     type ResolvedGtkxConfig,
     type ResolvedReactCompilerOptions,
     resolveReactCompilerOptions,
-    validateGtkxConfig,
 } from "./config.js";
-export {
-    createGtkxConfigLoader,
-    type GtkxConfigLoader,
-    loadGtkxConfig,
-    loadResolvedGtkxConfig,
-} from "./loader.js";
-export {
-    type AppliedProp,
-    type Arg,
-    type ArgRef,
-    type Call,
-    type ContainerProp,
-    type ControlledTextProp,
-    type ElementProp,
-    type ElementProps,
-    type JsonValue,
-    type LazyProp,
-    type ListProp,
-    type ValueProp,
+export type {
+    AppliedProp,
+    Arg,
+    ArgRef,
+    Call,
+    ContainerProp,
+    ControlledTextProp,
+    ElementProp,
+    ElementProps,
+    JsonValue,
+    LazyProp,
+    ListProp,
+    ValueProp,
 } from "./element-props.js";
+export { createGtkxConfigLoader, type GtkxConfigLoader, loadGtkxConfig } from "./loader.js";
 export {
     BUFFER_TEXT_KIND,
     CONTAINER_SLOT_KIND,

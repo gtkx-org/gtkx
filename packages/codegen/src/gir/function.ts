@@ -2,10 +2,7 @@ import { type GirParameter, type GirReturnValue, parameterFromNode, parseCallabl
 import { attr, attrBool, childOf, type RawNode } from "./parse.js";
 import type { ParseContext } from "./type-id.js";
 
-export type FunctionKind = "function" | "method" | "constructor";
-
 export type GirFunction = {
-    kind: FunctionKind;
     name: string;
     cIdentifier: string | undefined;
     throws: boolean;
@@ -16,11 +13,10 @@ export type GirFunction = {
     returnValue: GirReturnValue;
 };
 
-export const functionFromNode = (node: RawNode, kind: FunctionKind, context: ParseContext): GirFunction => {
+export const functionFromNode = (node: RawNode, context: ParseContext): GirFunction => {
     const instanceNode = childOf(childOf(node, "parameters"), "instance-parameter");
     return {
         ...parseCallable(node, context),
-        kind,
         name: attr(node, "shadows") ?? attr(node, "name") ?? "",
         cIdentifier: attr(node, "c:identifier"),
         throws: attrBool(node, "throws"),

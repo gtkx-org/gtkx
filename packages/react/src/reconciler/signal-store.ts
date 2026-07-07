@@ -1,9 +1,7 @@
 import type { SignalHandler } from "@gtkx/ffi";
 import type * as GObject from "@gtkx/gi/gobject";
 
-export type { SignalHandler };
-
-const LIFECYCLE_SIGNALS = new Set([
+const UNBLOCKED_SIGNALS = new Set([
     "realize",
     "unrealize",
     "map",
@@ -13,9 +11,13 @@ const LIFECYCLE_SIGNALS = new Set([
     "destroy",
     "resize",
     "render",
+    "input",
+    "output",
 ]);
 
-export type SignalBinding = {
+let blockDepth = 0;
+
+type SignalBinding = {
     instance: GObject.Object;
     signal: string;
     handler?: SignalHandler | null | undefined;
@@ -23,7 +25,6 @@ export type SignalBinding = {
 
 export class SignalStore {
     private instanceHandlers: Map<GObject.Object, Map<string, number>> = new Map();
-    private blocked = false;
 
     private getInstanceMap(instance: GObject.Object): Map<string, number> {
         let instanceMap = this.instanceHandlers.get(instance);
@@ -36,7 +37,7 @@ export class SignalStore {
 
     private gateHandler(handler: SignalHandler, signal: string, instance: GObject.Object): SignalHandler {
         return (...args: unknown[]) => {
-            if (this.blocked && !LIFECYCLE_SIGNALS.has(signal)) {
+            if (blockDepth > 0 && !UNBLOCKED_SIGNALS.has(signal)) {
                 return;
             }
             return handler(...args, instance);
@@ -85,11 +86,11 @@ export class SignalStore {
     }
 
     public block(): void {
-        this.blocked = true;
+        blockDepth += 1;
     }
 
     public unblock(): void {
-        this.blocked = false;
+        if (blockDepth > 0) blockDepth -= 1;
     }
 }
 

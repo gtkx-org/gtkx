@@ -1,15 +1,35 @@
 import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
-import * as Gtk from "@gtkx/gi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkFixed, type GtkFixedProps } from "@gtkx/jsx/gtk";
-import { type ReactNode, type Ref, type RefCallback, useCallback, useLayoutEffect, useRef } from "react";
+import { useMergeRefs } from "@gtkx/react";
+import {
+    createContext,
+    createElement,
+    type ReactNode,
+    type Ref,
+    type RefCallback,
+    useCallback,
+    useContext,
+    useLayoutEffect,
+    useRef,
+    useState,
+} from "react";
+
+const FixedContext = createContext<Gtk.Fixed | null | undefined>(undefined);
+
+const useFixedInstance = (): Gtk.Fixed | null => {
+    const fixed = useContext(FixedContext);
+    if (fixed === undefined) throw new Error("<Fixed.Child> must be a child of <Fixed>");
+    return fixed;
+};
 
 /**
  * Props for {@link Fixed}. Forwards every {@link Gtk.Fixed} widget prop. Wrap
  * positioned children in {@link Fixed.Child}; any other child (such as a
  * floating {@link Gtk.Popover}) is parented to the fixed without a position.
  */
-export type FixedProps = GtkFixedProps & { ref?: Ref<Gtk.Fixed | null> };
+export type FixedProps = GtkFixedProps & { ref?: Ref<Gtk.Fixed | null>; children?: ReactNode };
 
 /**
  * Props for {@link Fixed.Child}. Its content, rendered through the child
@@ -30,6 +50,7 @@ const transformOf = (props: FixedChildProps): Gsk.Transform | null =>
         : Gsk.Transform.new().translate(Graphene.Point.create(props.x ?? 0, props.y ?? 0));
 
 const FixedChild = (props: FixedChildProps): ReactNode => {
+    const fixed = useFixedInstance();
     const widgetRef = useRef<Gtk.Widget | null>(null);
     const setWidget = useCallback<RefCallback<Gtk.Widget>>((node) => {
         widgetRef.current = node;
@@ -37,9 +58,8 @@ const FixedChild = (props: FixedChildProps): ReactNode => {
 
     useLayoutEffect(() => {
         const widget = widgetRef.current;
-        const fixed = widget?.getParent();
-        if (widget && fixed instanceof Gtk.Fixed) fixed.setChildTransform(widget, transformOf(props));
-    }, [props.x, props.y, props.transform]);
+        if (widget && fixed) fixed.setChildTransform(widget, transformOf(props));
+    }, [fixed, props.x, props.y, props.transform]);
 
     return props.children(setWidget);
 };
@@ -52,10 +72,14 @@ const FixedChild = (props: FixedChildProps): ReactNode => {
  */
 export const Fixed: ((props: FixedProps) => ReactNode) & { Child: (props: FixedChildProps) => ReactNode } =
     Object.assign(
-        ({ children, ref, ...rest }: FixedProps): ReactNode => (
-            <GtkFixed {...rest} ref={ref}>
-                {children}
-            </GtkFixed>
-        ),
+        ({ children, ref, ...rest }: FixedProps): ReactNode => {
+            const [fixed, setFixed] = useState<Gtk.Fixed | null>(null);
+            const mergedRef = useMergeRefs<Gtk.Fixed>(ref, setFixed);
+            return createElement(
+                GtkFixed,
+                { ...rest, ref: mergedRef },
+                createElement(FixedContext.Provider, { value: fixed }, children),
+            );
+        },
         { Child: FixedChild },
     );

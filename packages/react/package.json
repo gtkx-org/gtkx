@@ -45,7 +45,7 @@
         "!**/*.tsbuildinfo"
     ],
     "scripts": {
-        "build": "rm -rf dist && tsc -b tsconfig.lib.json",
+        "build": "tsc -b tsconfig.lib.json",
         "typecheck": "tsc -b --emitDeclarationOnly",
         "release": "cp ../../README.md README.md && pnpm publish --access public --no-git-checks"
     },
@@ -57,8 +57,7 @@
         "@gtkx/ffi": "workspace:*",
         "@gtkx/native": "workspace:*",
         "@gtkx/utils": "workspace:*",
-        "react-reconciler": "^0.33.0",
-        "scheduler": "^0.27.0"
+        "react-reconciler": "^0.33.0"
     },
     "devDependencies": {
         "@types/react-reconciler": "^0.33.0"

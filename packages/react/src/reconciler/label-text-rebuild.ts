@@ -3,8 +3,7 @@ import { scheduleContentRebuild } from "./content-rebuild.js";
 import { type Node, stateOf } from "./state.js";
 import { isLabelTextNode } from "./text-node.js";
 
-const rebuildLabelText = (owner: Node): void => {
-    if (!(owner instanceof Gtk.Label)) return;
+const rebuildLabelText = (owner: Gtk.Label): void => {
     const state = stateOf(owner);
     const runs = state.children.filter(isLabelTextNode);
     if (state.props.label !== undefined) {
@@ -18,7 +17,7 @@ const rebuildLabelText = (owner: Node): void => {
 export const scheduleLabelTextRebuild = (node: Node): void => {
     scheduleContentRebuild(
         node,
-        (candidate) => candidate instanceof Gtk.Label,
+        (candidate): candidate is Gtk.Label => candidate instanceof Gtk.Label,
         (owner) => () => rebuildLabelText(owner),
     );
 };

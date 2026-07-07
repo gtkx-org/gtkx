@@ -28,6 +28,4 @@ const applyPointerInput = (controller: Gtk.GestureClick, state: UserEventState, 
 };
 
 export const pointer = (state: UserEventState, widget: Gtk.Widget, input: PointerInput): Promise<void> =>
-    dispatchOnOrCreateController(widget, Gtk.GestureClick, (controller) =>
-        applyPointerInput(controller, state, input),
-    );
+    dispatchOnOrCreateController(widget, Gtk.GestureClick, (controller) => applyPointerInput(controller, state, input));
