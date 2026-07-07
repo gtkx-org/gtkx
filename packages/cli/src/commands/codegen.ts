@@ -22,6 +22,7 @@ export const codegen = defineCommand({
 
         if (await isCodegenDisabled(cwd)) {
             await runCodegen({ cwd });
+            syncSchemaEnv(cwd);
             info("codegen: disabled for this project; reusing an installed binding store");
             return;
         }

@@ -199,5 +199,5 @@ jobs:
       - name: Run the TypeScript benchmarks under CodSpeed
         uses: CodSpeedHQ/action@4e969336ab9acd4f6f8d025fdd793292b0835df0 # v4.18.2
         with:
-          mode: instrumentation
+          mode: simulation
           run: pnpm --filter @gtkx/e2e bench
