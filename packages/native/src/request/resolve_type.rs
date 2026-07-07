@@ -43,3 +43,31 @@ pub mod napi_export {
         Ok(BigInt::from(type_))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::request::Request;
+
+    #[test]
+    fn execute_resolves_a_registered_gtype() {
+        test_support::run(|| {
+            let request = ResolveTypeRequest {
+                shared_library: "libgtk-4.so.1".to_owned(),
+                get_type_fn_name: "gtk_orientation_get_type".to_owned(),
+            };
+            assert_ne!(request.execute().expect("resolve_type should succeed"), 0);
+        });
+    }
+
+    #[test]
+    fn execute_yields_zero_for_unknown_symbol() {
+        test_support::run(|| {
+            let request = ResolveTypeRequest {
+                shared_library: "libgtk-4.so.1".to_owned(),
+                get_type_fn_name: "gtkx_missing_get_type".to_owned(),
+            };
+            assert_eq!(request.execute().expect("resolve_type should succeed"), 0);
+        });
+    }
+}

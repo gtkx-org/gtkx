@@ -45,3 +45,32 @@ pub mod napi_export {
         Ok(External::new_with_size_hint(handle, size_hint))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::request::Request;
+
+    #[test]
+    fn execute_allocates_untyped_boxed_handle() {
+        test_support::run(|| {
+            let request = AllocRequest {
+                size: 32,
+                type_name: None,
+            };
+            let handle = request.execute().expect("alloc should succeed");
+            assert!(!handle.as_ptr().is_null());
+        });
+    }
+
+    #[test]
+    fn execute_rejects_type_name_with_interior_nul() {
+        test_support::run(|| {
+            let request = AllocRequest {
+                size: 16,
+                type_name: Some("bad\0type".to_owned()),
+            };
+            assert!(request.execute().is_err());
+        });
+    }
+}

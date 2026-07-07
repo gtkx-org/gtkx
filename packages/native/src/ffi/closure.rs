@@ -331,3 +331,57 @@ unsafe extern "C" fn closure_entry(
         });
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ffi::codec::{IntegerCodec, VoidCodec};
+
+    #[test]
+    fn seed_ref_of_null_is_null() {
+        test_support::run(|| {
+            let codec = Codec::Integer(IntegerCodec::I32);
+            assert!(matches!(
+                seed_ref(std::ptr::null_mut(), &codec),
+                Value::Null
+            ));
+        });
+    }
+
+    #[test]
+    fn seed_ref_reads_a_scalar_inner_value() {
+        test_support::run(|| {
+            let mut raw: i32 = 77;
+            let codec = Codec::Integer(IntegerCodec::I32);
+            let value = seed_ref(&mut raw as *mut i32 as *mut c_void, &codec);
+            assert!(matches!(value, Value::Number(n) if n == 77.0));
+        });
+    }
+
+    #[test]
+    fn seed_ref_of_unsupported_inner_is_null() {
+        test_support::run(|| {
+            let codec = Codec::Void(VoidCodec);
+            let mut raw: usize = 1;
+            assert!(matches!(
+                seed_ref(&mut raw as *mut usize as *mut c_void, &codec),
+                Value::Null
+            ));
+        });
+    }
+
+    #[test]
+    fn flush_refs_writes_new_values_into_targets_and_skips_null() {
+        test_support::run(|| {
+            let mut raw: i32 = 0;
+            let codec = Codec::Integer(IntegerCodec::I32);
+            let refs = vec![(0usize, Value::Number(123.0)), (1usize, Value::Number(9.0))];
+            let targets: Vec<(*mut c_void, &Codec)> = vec![
+                (&mut raw as *mut i32 as *mut c_void, &codec),
+                (std::ptr::null_mut(), &codec),
+            ];
+            flush_refs(&refs, &targets);
+            assert_eq!(raw, 123);
+        });
+    }
+}

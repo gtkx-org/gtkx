@@ -87,3 +87,28 @@ impl UnhandledRejection {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn report_str_without_a_callback_falls_back_to_stderr() {
+        ErrorReporter::global().report_str("a diagnostic without an installed reporter");
+    }
+
+    #[test]
+    fn report_formats_an_anyhow_error() {
+        let error = anyhow::anyhow!("boom").context("while doing work");
+        ErrorReporter::global().report(&error);
+    }
+
+    #[test]
+    fn report_err_passes_ok_through_and_reports_err() {
+        let ok: anyhow::Result<u32> = Ok(5);
+        assert_eq!(ok.report_err("context"), Some(5));
+
+        let failed: anyhow::Result<u32> = Err(anyhow::anyhow!("nope"));
+        assert_eq!(failed.report_err("adding context"), None);
+    }
+}

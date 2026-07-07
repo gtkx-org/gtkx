@@ -344,3 +344,79 @@ pub mod napi_export {
         Ok(BigInt::from(type_))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use glib::prelude::StaticType as _;
+    use napi::bindgen_prelude::BigInt;
+
+    fn gstring(name: &str) -> glib::GString {
+        glib::GString::from_string_checked(name.to_owned()).expect("valid type name")
+    }
+
+    #[test]
+    fn execute_registers_a_new_subtype_of_gobject() {
+        test_support::run(|| {
+            let request = RegisterClassRequest {
+                name: gstring("GtkxRegisterClassSmokeType"),
+                parent_type: glib::Object::static_type(),
+                vfuncs: Vec::new(),
+                interfaces: Vec::new(),
+            };
+            let type_ = request.execute().expect("registration should succeed");
+            assert_ne!(type_, 0);
+            assert_eq!(
+                glib::Type::from_name("GtkxRegisterClassSmokeType").map(|t| t.into_glib() as u64),
+                Some(type_)
+            );
+        });
+    }
+
+    #[test]
+    fn execute_rejects_an_already_registered_name() {
+        test_support::run(|| {
+            let request = RegisterClassRequest {
+                name: gstring("GObject"),
+                parent_type: glib::Object::static_type(),
+                vfuncs: Vec::new(),
+                interfaces: Vec::new(),
+            };
+            assert!(request.execute().is_err());
+        });
+    }
+
+    #[test]
+    fn validate_vfunc_offset_accepts_aligned_offset_within_bounds() {
+        RegisterClassRequest::validate_vfunc_offset(8, 8, 8, Some(64), "vfunc")
+            .expect("aligned in-bounds offset should validate");
+    }
+
+    #[test]
+    fn validate_vfunc_offset_rejects_unaligned_offset() {
+        assert!(RegisterClassRequest::validate_vfunc_offset(4, 8, 8, Some(64), "vfunc").is_err());
+    }
+
+    #[test]
+    fn validate_vfunc_offset_rejects_offset_beyond_class_size() {
+        assert!(RegisterClassRequest::validate_vfunc_offset(64, 8, 8, Some(64), "vfunc").is_err());
+    }
+
+    #[test]
+    fn validate_vfunc_offset_rejects_end_overflow() {
+        assert!(
+            RegisterClassRequest::validate_vfunc_offset(usize::MAX, 8, 8, None, "vfunc").is_err()
+        );
+    }
+
+    #[test]
+    fn type_from_bigint_accepts_a_valid_type() {
+        let value = BigInt::from(glib::Object::static_type().into_glib() as u64);
+        assert!(type_from_bigint(value, "parent").is_ok());
+    }
+
+    #[test]
+    fn type_from_bigint_rejects_zero() {
+        assert!(type_from_bigint(BigInt::from(0u64), "parent").is_err());
+    }
+}

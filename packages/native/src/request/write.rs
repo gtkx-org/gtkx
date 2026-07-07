@@ -50,3 +50,33 @@ pub mod napi_export {
         request.dispatch(env)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ffi::codec::IntegerCodec;
+    use crate::request::Request;
+
+    #[test]
+    fn execute_writes_an_integer_field() {
+        let mut raw: i32 = 0;
+        let request = WriteRequest {
+            field_ptr: &mut raw as *mut i32 as usize,
+            field_codec: Codec::Integer(IntegerCodec::I32),
+            value: Value::Number(99.0),
+        };
+        request.execute().expect("write should succeed");
+        assert_eq!(raw, 99);
+    }
+
+    #[test]
+    fn execute_rejects_a_non_number_value() {
+        let mut raw: i32 = 0;
+        let request = WriteRequest {
+            field_ptr: &mut raw as *mut i32 as usize,
+            field_codec: Codec::Integer(IntegerCodec::I32),
+            value: Value::Boolean(true),
+        };
+        assert!(request.execute().is_err());
+    }
+}

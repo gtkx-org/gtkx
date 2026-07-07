@@ -40,3 +40,32 @@ pub mod napi_export {
         Ok(BigInt::from(type_))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::request::Request;
+    use glib::prelude::StaticType as _;
+    use glib::translate::IntoGlib as _;
+
+    #[test]
+    fn execute_returns_zero_for_null_pointer() {
+        test_support::run(|| {
+            let request = GetTypeRequest { gobject_ptr: 0 };
+            assert_eq!(request.execute().expect("get_type should succeed"), 0);
+        });
+    }
+
+    #[test]
+    fn execute_reads_gtype_from_instance() {
+        test_support::run(|| {
+            let (obj, obj_ptr, _) = test_support::fresh_gobject();
+            let request = GetTypeRequest {
+                gobject_ptr: obj_ptr as usize,
+            };
+            let type_ = request.execute().expect("get_type should succeed");
+            assert_eq!(type_, glib::Object::static_type().into_glib() as u64);
+            drop(obj);
+        });
+    }
+}

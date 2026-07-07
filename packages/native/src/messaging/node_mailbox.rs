@@ -335,3 +335,33 @@ impl Mailbox {
         Ok((value, refs))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn poll_result_yields_the_pending_value() {
+        let (tx, rx) = mpsc::channel();
+        tx.send(7u32).expect("send should succeed");
+        assert_eq!(poll_result(&rx).expect("poll should succeed"), Some(7));
+    }
+
+    #[test]
+    fn poll_result_is_none_while_empty() {
+        let (_tx, rx) = mpsc::channel::<u32>();
+        assert_eq!(poll_result(&rx).expect("poll should succeed"), None);
+    }
+
+    #[test]
+    fn poll_result_errors_once_the_sender_is_dropped() {
+        let (tx, rx) = mpsc::channel::<u32>();
+        drop(tx);
+        assert!(poll_result(&rx).is_err());
+    }
+
+    #[test]
+    fn node_channel_disconnected_is_always_an_error() {
+        assert!(node_channel_disconnected::<()>().is_err());
+    }
+}

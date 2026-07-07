@@ -192,3 +192,79 @@ unsafe extern "C" fn on_toggle_notify(
         }));
     });
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sentinel(value: usize) -> *mut c_void {
+        value as *mut c_void
+    }
+
+    #[test]
+    fn wrapper_ref_and_has_wrapper_are_empty_without_a_binding() {
+        test_support::run(|| {
+            let (obj, obj_ptr, _) = test_support::fresh_gobject();
+            assert!(unsafe { wrapper_ref(obj_ptr).is_null() });
+            assert!(!unsafe { has_wrapper(obj_ptr) });
+            drop(obj);
+        });
+    }
+
+    #[test]
+    fn install_records_the_reference_and_marks_the_object_wrapped() {
+        test_support::run(|| {
+            let (obj, obj_ptr, _) = test_support::fresh_gobject();
+            let (_binding, generation) = unsafe { install(obj_ptr, sentinel(0x1234), false) };
+            assert_eq!(generation, 1);
+            assert_eq!(unsafe { wrapper_ref(obj_ptr) }, sentinel(0x1234));
+            assert!(unsafe { has_wrapper(obj_ptr) });
+            drop(obj);
+        });
+    }
+
+    #[test]
+    fn reinstalling_bumps_the_generation_and_updates_the_reference() {
+        test_support::run(|| {
+            let (obj, obj_ptr, _) = test_support::fresh_gobject();
+            let (_first, first_generation) = unsafe { install(obj_ptr, sentinel(0x11), false) };
+            let (_second, second_generation) = unsafe { install(obj_ptr, sentinel(0x22), false) };
+            assert_eq!(first_generation, 1);
+            assert_eq!(second_generation, 2);
+            assert_eq!(unsafe { wrapper_ref(obj_ptr) }, sentinel(0x22));
+            drop(obj);
+        });
+    }
+
+    #[test]
+    fn schedule_cleanup_with_a_stale_generation_keeps_the_binding() {
+        test_support::run(|| {
+            let (obj, obj_ptr, _) = test_support::fresh_gobject();
+            let (binding, _) = unsafe { install(obj_ptr, sentinel(0x1), false) };
+            schedule_cleanup(Some(binding), 999, obj_ptr as usize, 0x1);
+            test_support::pump_default_context_until(|| false);
+            assert!(unsafe { has_wrapper(obj_ptr) });
+            drop(obj);
+        });
+    }
+
+    #[test]
+    fn schedule_cleanup_with_a_matching_generation_removes_the_binding() {
+        test_support::run(|| {
+            let (obj, obj_ptr, _) = test_support::fresh_gobject();
+            let (binding, generation) = unsafe { install(obj_ptr, sentinel(0x1), false) };
+            schedule_cleanup(Some(binding), generation, obj_ptr as usize, 0x1);
+            test_support::pump_default_context_until(|| !unsafe { has_wrapper(obj_ptr) });
+            assert!(!unsafe { has_wrapper(obj_ptr) });
+            drop(obj);
+        });
+    }
+
+    #[test]
+    fn schedule_cleanup_without_a_binding_is_a_noop() {
+        test_support::run(|| {
+            schedule_cleanup(None, 0, 0, 0x5);
+            test_support::pump_default_context_until(|| false);
+        });
+    }
+}

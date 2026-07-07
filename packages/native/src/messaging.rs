@@ -203,3 +203,71 @@ pub(crate) fn native_debug_enabled() -> bool {
         Err(_) => false,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn lock_unpoison_returns_the_guard_and_recovers_from_poison() {
+        let lock = Mutex::new(7u32);
+        assert_eq!(*lock.lock_unpoison(), 7);
+
+        let poisoned = Mutex::new(9u32);
+        let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _guard = poisoned.lock().expect("first lock should succeed");
+            panic!("poison the mutex");
+        }));
+        assert_eq!(*poisoned.lock_unpoison(), 9);
+    }
+
+    #[test]
+    fn send_or_report_delivers_to_an_open_channel() {
+        let (tx, rx) = mpsc::channel();
+        send_or_report(&tx, 42u32, "unused");
+        assert_eq!(rx.recv().expect("value should arrive"), 42);
+    }
+
+    #[test]
+    fn send_or_report_reports_when_the_receiver_is_gone() {
+        let (tx, rx) = mpsc::channel::<u32>();
+        drop(rx);
+        send_or_report(&tx, 1, "receiver dropped");
+    }
+
+    #[test]
+    fn wrapper_ref_op_is_copyable_and_comparable() {
+        let op = WrapperRefOp::Ref;
+        assert_eq!(op, WrapperRefOp::Ref);
+        assert_ne!(op, WrapperRefOp::Unref);
+        assert_eq!(format!("{op:?}"), "Ref");
+    }
+
+    #[test]
+    fn mailbox_running_state_transitions() {
+        let mailbox = Mailbox::new();
+        assert!(!mailbox.is_not_running());
+        mailbox.mark_not_running();
+        assert!(mailbox.is_not_running());
+        mailbox.reset_for_test();
+        assert!(!mailbox.is_not_running());
+    }
+
+    #[test]
+    fn mailbox_freeze_reports_only_the_outermost_entry() {
+        let mailbox = Mailbox::new();
+        assert!(mailbox.freeze());
+        assert!(!mailbox.freeze());
+        mailbox.unfreeze();
+        mailbox.unfreeze();
+        assert!(mailbox.freeze());
+        mailbox.unfreeze();
+    }
+
+    #[test]
+    fn mailbox_callback_depth_can_be_entered_and_left() {
+        let mailbox = Mailbox::new();
+        mailbox.enter_glib_callback();
+        mailbox.leave_glib_callback();
+    }
+}

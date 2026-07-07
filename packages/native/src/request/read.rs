@@ -48,3 +48,32 @@ pub mod napi_export {
         request.dispatch(env)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ffi::codec::{FloatCodec, IntegerCodec};
+    use crate::request::Request;
+
+    #[test]
+    fn execute_reads_an_integer_field() {
+        let raw: i32 = 42;
+        let request = ReadRequest {
+            field_ptr: &raw as *const i32 as usize,
+            field_codec: Codec::Integer(IntegerCodec::I32),
+        };
+        let value = request.execute().expect("read should succeed");
+        assert!(matches!(value, Value::Number(n) if n == 42.0));
+    }
+
+    #[test]
+    fn execute_reads_a_float_field() {
+        let raw: f64 = 2.5;
+        let request = ReadRequest {
+            field_ptr: &raw as *const f64 as usize,
+            field_codec: Codec::Float(FloatCodec::F64),
+        };
+        let value = request.execute().expect("read should succeed");
+        assert!(matches!(value, Value::Number(n) if n == 2.5));
+    }
+}

@@ -123,6 +123,79 @@ impl CallRequest {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ffi::codec::IntegerCodec;
+    use crate::request::bind::CallDescriptor;
+
+    fn descriptor(
+        id: u64,
+        symbol: &str,
+        arg_codecs: Vec<Codec>,
+        return_codec: Codec,
+    ) -> Arc<CallDescriptor> {
+        Arc::new(CallDescriptor {
+            id,
+            library_name: "libgtk-4.so.1".to_owned(),
+            symbol_name: symbol.to_owned(),
+            arg_codecs,
+            return_codec,
+        })
+    }
+
+    #[test]
+    fn execute_invokes_a_zero_argument_function() {
+        test_support::run(|| {
+            let request = CallRequest {
+                descriptor: descriptor(
+                    1,
+                    "gtk_get_major_version",
+                    Vec::new(),
+                    Codec::Integer(IntegerCodec::U32),
+                ),
+                values: Vec::new(),
+            };
+            let (value, ref_updates) = request.execute().expect("call should succeed");
+            assert!(ref_updates.is_empty());
+            assert!(matches!(value, Value::Number(major) if major == 4.0));
+        });
+    }
+
+    #[test]
+    fn execute_encodes_arguments_and_decodes_the_return_value() {
+        test_support::run(|| {
+            let request = CallRequest {
+                descriptor: descriptor(
+                    2,
+                    "g_bit_storage",
+                    vec![Codec::Integer(IntegerCodec::U64)],
+                    Codec::Integer(IntegerCodec::U32),
+                ),
+                values: vec![Value::Number(255.0)],
+            };
+            let (value, _) = request.execute().expect("call should succeed");
+            assert!(matches!(value, Value::Number(bits) if bits == 8.0));
+        });
+    }
+
+    #[test]
+    fn execute_reports_a_missing_symbol() {
+        test_support::run(|| {
+            let request = CallRequest {
+                descriptor: descriptor(
+                    3,
+                    "gtkx_no_such_symbol",
+                    Vec::new(),
+                    Codec::Integer(IntegerCodec::U32),
+                ),
+                values: Vec::new(),
+            };
+            assert!(request.execute().is_err());
+        });
+    }
+}
+
 pub mod napi_export {
     use super::*;
 
