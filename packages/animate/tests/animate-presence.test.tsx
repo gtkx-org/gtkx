@@ -1,10 +1,14 @@
-import { createElement } from "react";
+import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const loadModule = async () => {
     vi.resetModules();
     return import("../src/animate-presence.js");
 };
+
+const Fixture = (): null => null;
+
+const fixture = (key?: string): ReactElement => <Fixture key={key} />;
 
 describe("onlyElements", () => {
     let warnSpy: ReturnType<typeof vi.spyOn>;
@@ -20,8 +24,8 @@ describe("onlyElements", () => {
 
     it("extracts keyed element children in order", async () => {
         const { onlyElements, getChildKey } = await loadModule();
-        const a = createElement("box", { key: "a" });
-        const b = createElement("box", { key: "b" });
+        const a = fixture("a");
+        const b = fixture("b");
 
         const result = onlyElements([a, b]);
 
@@ -31,7 +35,7 @@ describe("onlyElements", () => {
 
     it("accepts a single (non-array) child", async () => {
         const { onlyElements, getChildKey } = await loadModule();
-        const only = createElement("box", { key: "only" });
+        const only = fixture("only");
 
         const result = onlyElements(only);
 
@@ -41,7 +45,7 @@ describe("onlyElements", () => {
 
     it("skips null, undefined, and primitive children", async () => {
         const { onlyElements, getChildKey } = await loadModule();
-        const keyed = createElement("box", { key: "keep" });
+        const keyed = fixture("keep");
 
         const result = onlyElements([null, undefined, "text", 42, false, keyed]);
 
@@ -52,7 +56,7 @@ describe("onlyElements", () => {
     it("warns once in development for an element child without a key", async () => {
         vi.stubEnv("NODE_ENV", "development");
         const { onlyElements } = await loadModule();
-        const unkeyed = createElement("box", {});
+        const unkeyed = fixture();
 
         onlyElements([unkeyed]);
         onlyElements([unkeyed]);
@@ -64,7 +68,7 @@ describe("onlyElements", () => {
     it("does not warn in production for an element child without a key", async () => {
         vi.stubEnv("NODE_ENV", "production");
         const { onlyElements } = await loadModule();
-        const unkeyed = createElement("box", {});
+        const unkeyed = fixture();
 
         onlyElements([unkeyed]);
 

@@ -1,7 +1,7 @@
 import type * as Gio from "@gtkx/gi/gio";
 import { GMenu, type GMenuProps } from "@gtkx/jsx/gio";
 import { useMergeRefs } from "@gtkx/react";
-import { createElement, type ReactNode, type Ref, useLayoutEffect, useRef } from "react";
+import { type ReactNode, type Ref, useLayoutEffect, useRef } from "react";
 import { applyMenuItems, menuItemsEqual } from "./menu-items.js";
 import type { MenuEntry } from "./types.js";
 
@@ -26,5 +26,5 @@ export const Menu = (props: MenuProps): ReactNode => {
         applyMenuItems(menu, entries);
     });
 
-    return createElement(GMenu, { ...rest, ref: mergedRef });
+    return <GMenu {...rest} ref={mergedRef} />;
 };

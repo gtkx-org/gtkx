@@ -1,7 +1,7 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkGridView, type GtkGridViewProps } from "@gtkx/jsx/gtk";
 import { useMergeRefs } from "@gtkx/react";
-import { createElement, type ReactElement, type ReactNode, type Ref, useRef } from "react";
+import { type ReactNode, type Ref, useRef } from "react";
 import { type CellRenderer, CellRenderHost, itemRenderer } from "./cell.js";
 import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
 import { useCollectionModel } from "./hooks/use-collection-model.js";
@@ -68,11 +68,9 @@ export const GridView = <T = unknown>(props: GridViewProps<T>): ReactNode => {
 
     useInstalledModel(widgetRef, collection.installedModel, (widget, value) => widget.setModel(value));
 
-    const intrinsic: ReactElement = createElement(GtkGridView, { ...intrinsicProps, ref: setRef });
-
     return (
         <>
-            {intrinsic}
+            <GtkGridView {...intrinsicProps} ref={setRef} />
             <CellRenderHost store={itemStore} resolver={collection.resolver} render={cellRenderer} />
         </>
     );

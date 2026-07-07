@@ -4,7 +4,6 @@ import { useMergeRefs } from "@gtkx/react";
 import {
     type Context,
     createContext,
-    createElement,
     type ReactNode,
     type Ref,
     type RefObject,
@@ -83,7 +82,7 @@ export const ConstraintLayout: ((props: ConstraintLayoutProps) => ReactNode) & {
         const mergedRef = useMergeRefs<Gtk.ConstraintLayout>(ref, layoutRef);
         return (
             <>
-                {createElement(GtkConstraintLayout, { ref: mergedRef })}
+                <GtkConstraintLayout ref={mergedRef} />
                 <ConstraintLayoutContext.Provider value={layoutRef}>{children}</ConstraintLayoutContext.Provider>
             </>
         );

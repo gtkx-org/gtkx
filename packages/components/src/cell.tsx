@@ -2,7 +2,7 @@ import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkTreeExpander } from "@gtkx/jsx/gtk";
 import { createPortal } from "@gtkx/react";
-import { createElement, Fragment, memo, type ReactNode, useCallback, useSyncExternalStore } from "react";
+import { Fragment, memo, type ReactNode, useCallback, useSyncExternalStore } from "react";
 import type { CellContainerStore, CellEntry } from "./utils/cell-container-store.js";
 import type { ItemResolver } from "./utils/item-resolver.js";
 import type { TreeItemMetadata } from "./utils/list-item-flatten.js";
@@ -26,19 +26,24 @@ interface CellRenderHostProps<T, S> {
     render: CellRenderer<T, S>;
 }
 
-const wrapInTreeExpander = (content: ReactNode, treeRow: Gtk.TreeListRow, metadata: TreeItemMetadata): ReactNode =>
-    createElement(
-        GtkTreeExpander,
-        {
-            ref: (expander: Gtk.TreeExpander | null) => {
-                if (expander !== null) expander.setListRow(treeRow);
-            },
-            hideExpander: metadata.hideExpander,
-            indentForDepth: metadata.indentForDepth,
-            indentForIcon: metadata.indentForIcon,
-        },
-        content,
-    );
+interface TreeExpanderCellProps {
+    treeRow: Gtk.TreeListRow;
+    metadata: TreeItemMetadata;
+    children: ReactNode;
+}
+
+const TreeExpanderCell = ({ treeRow, metadata, children }: TreeExpanderCellProps): ReactNode => (
+    <GtkTreeExpander
+        ref={(expander: Gtk.TreeExpander | null) => {
+            if (expander !== null) expander.setListRow(treeRow);
+        }}
+        hideExpander={metadata.hideExpander}
+        indentForDepth={metadata.indentForDepth}
+        indentForIcon={metadata.indentForIcon}
+    >
+        {children}
+    </GtkTreeExpander>
+);
 
 const Cell = memo(<T, S>({ container, store, resolver, render }: CellProps<T, S>): ReactNode => {
     const subscribe = useCallback(
@@ -53,9 +58,13 @@ const Cell = memo(<T, S>({ container, store, resolver, render }: CellProps<T, S>
     if (!resolved.present) return null;
     const content = render(resolved.value, resolved.treeRow, entry.position);
     const portalled =
-        resolved.treeRow !== null && !resolved.isHeader
-            ? wrapInTreeExpander(content, resolved.treeRow, resolved.metadata)
-            : content;
+        resolved.treeRow !== null && !resolved.isHeader ? (
+            <TreeExpanderCell treeRow={resolved.treeRow} metadata={resolved.metadata}>
+                {content}
+            </TreeExpanderCell>
+        ) : (
+            content
+        );
     return createPortal(portalled, container, store.keyFor(container));
 }) as <T, S>(props: CellProps<T, S>) => ReactNode;
 

@@ -2,16 +2,7 @@ import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkDropDown, type GtkDropDownProps, GtkLabel } from "@gtkx/jsx/gtk";
 import { useMergeRefs } from "@gtkx/react";
-import {
-    createElement,
-    type ElementType,
-    type ReactElement,
-    type ReactNode,
-    type Ref,
-    useCallback,
-    useRef,
-    useState,
-} from "react";
+import { type ElementType, type ReactNode, type Ref, useCallback, useRef, useState } from "react";
 import { type CellRenderer, CellRenderHost, HeaderRenderHost, itemRenderer } from "./cell.js";
 import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
 import { useDropDownSelection } from "./hooks/use-drop-down-selection.js";
@@ -51,7 +42,7 @@ const headerFactoryInstaller: FactoryInstaller<DropDownWidget> = {
 
 const defaultRenderer: CellRenderer<unknown, unknown> = (value) => {
     if (value === undefined || value === null) return null;
-    return createElement(GtkLabel, { label: String(value) });
+    return <GtkLabel label={String(value)} />;
 };
 
 const toItemRenderer = <T, S>(renderItem: DropDownItemRenderer<T> | null | undefined): CellRenderer<T, S> => {
@@ -196,11 +187,11 @@ export const DropDownBody = <T, S, W extends DropDownWidget>({
         renderHeader: renderHeaderFn,
     });
 
-    const intrinsic: ReactElement = createElement(element, { ...intrinsicProps, ref: wiring.setRef });
+    const Element = element;
 
     return (
         <>
-            {intrinsic}
+            <Element {...intrinsicProps} ref={wiring.setRef} />
             <CellRenderHost
                 store={wiring.selectionStore}
                 resolver={wiring.selectionResolver}

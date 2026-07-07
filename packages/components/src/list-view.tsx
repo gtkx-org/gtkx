@@ -1,7 +1,7 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkListView, type GtkListViewProps } from "@gtkx/jsx/gtk";
 import { useMergeRefs } from "@gtkx/react";
-import { createElement, type ReactElement, type ReactNode, type Ref, useRef } from "react";
+import { type ReactNode, type Ref, useRef } from "react";
 import { type CellRenderer, CellRenderHost, HeaderRenderHost } from "./cell.js";
 import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
 import { useCollectionModel } from "./hooks/use-collection-model.js";
@@ -140,11 +140,9 @@ export const ListView = <T = unknown, S = unknown>(props: ListViewProps<T, S>): 
         estimatedItemWidth,
     } as NormalizedListViewProps<T, S>);
 
-    const intrinsic: ReactElement = createElement(GtkListView, { ...intrinsicProps, ref: wiring.setRef });
-
     return (
         <>
-            {intrinsic}
+            <GtkListView {...intrinsicProps} ref={wiring.setRef} />
             <CellRenderHost store={wiring.itemStore} resolver={wiring.resolver} render={cellRenderer} />
             <HeaderRenderHost
                 useHeader={wiring.useHeader}

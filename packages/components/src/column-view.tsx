@@ -1,7 +1,7 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkColumnView, type GtkColumnViewProps } from "@gtkx/jsx/gtk";
 import { useMergeRefs } from "@gtkx/react";
-import { createElement, type ReactNode, type Ref, useCallback, useMemo, useRef, useState } from "react";
+import { type ReactNode, type Ref, useCallback, useMemo, useRef, useState } from "react";
 import { HeaderRenderHost } from "./cell.js";
 import { ColumnViewColumn } from "./column-view-column.js";
 import { type ColumnRegistration, ColumnViewContext, type ColumnViewContextValue } from "./column-view-context.js";
@@ -168,15 +168,11 @@ const ColumnViewComponent = <T = unknown, S = unknown>(props: ColumnViewProps<T,
         registry,
     );
 
-    const intrinsic = createElement(
-        GtkColumnView,
-        { ...intrinsicProps, ref: wiring.setRef },
-        <ColumnViewContext.Provider value={wiring.contextValue}>{children}</ColumnViewContext.Provider>,
-    );
-
     return (
         <>
-            {intrinsic}
+            <GtkColumnView {...intrinsicProps} ref={wiring.setRef}>
+                <ColumnViewContext.Provider value={wiring.contextValue}>{children}</ColumnViewContext.Provider>
+            </GtkColumnView>
             <HeaderRenderHost
                 useHeader={wiring.useHeader}
                 store={wiring.headerStore}

@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkColumnViewColumn, type GtkColumnViewColumnProps } from "@gtkx/jsx/gtk";
-import { createElement, type ReactNode, useLayoutEffect, useRef, useState } from "react";
+import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { type CellRenderer, CellRenderHost, itemRenderer } from "./cell.js";
 import { useColumnViewContext } from "./column-view-context.js";
 import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
@@ -64,7 +64,7 @@ export const ColumnViewColumn = <T = unknown>(props: ColumnViewColumnProps<T>): 
 
     return (
         <>
-            {createElement(GtkColumnViewColumn, { ...intrinsicProps, id, title, ref: captureColumn })}
+            <GtkColumnViewColumn {...intrinsicProps} id={id} title={title} ref={captureColumn} />
             <CellRenderHost store={store} resolver={context.resolver} render={cellRenderer} />
             {headerMenuPortal}
         </>
