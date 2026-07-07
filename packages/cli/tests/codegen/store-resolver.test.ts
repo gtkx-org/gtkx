@@ -9,6 +9,7 @@ describe("resolveCodegenStore", () => {
 
     beforeEach(() => {
         projectRoot = mkdtempSync(join(tmpdir(), "gtkx-store-"));
+        installPackage("@gtkx/native");
     });
 
     afterEach(() => {

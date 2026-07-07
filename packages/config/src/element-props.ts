@@ -156,14 +156,6 @@ const elementPropSchema = z
 
 export const elementPropsSchema = z.record(nameSchema, z.array(elementPropSchema));
 
-/**
- * A container prop: a JSX prop whose value is one or more child GObjects attached
- * to a parent through generated methods. `adopt` marks a child that the parent
- * instantiates on attach — `true` when the append method returns the created
- * child (e.g. `GtkStack.addChild`), or the name of a getter that retrieves it
- * from a freshly appended child (e.g. `GtkNotebook.getPage`). The adopted child's own
- * GType is inferred by codegen from that method's return type.
- */
 export type ContainerProp = z.infer<typeof containerSchema>;
 
 export type ValueProp = z.infer<typeof valueSchema>;
@@ -172,14 +164,6 @@ export type ControlledTextProp = z.infer<typeof controlledTextSchema>;
 
 export type LazyProp = z.infer<typeof lazySchema>;
 
-/**
- * A method slot: a JSX prop whose value is an array of method-call arguments.
- * The item type is derived from `add`'s parameter signature — a single parameter
- * yields an array of that parameter's type, two or more yield an array of objects
- * keyed by the parameter names. `clear` present drives a full rebuild on every
- * change; `remove` present drives a keyed diff (the key being the fields `remove`
- * references); neither makes it add-only.
- */
 export type ListProp = z.infer<typeof listSchema>;
 
 export type AppliedProp = ValueProp | ControlledTextProp | LazyProp | ListProp;

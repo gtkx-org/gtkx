@@ -8,19 +8,8 @@ const { Context: OverlayContext, useParentRef: useOverlayRef } = createParentCon
     "<Overlay.Child> must be a child of <Overlay>",
 );
 
-/**
- * Props for {@link Overlay}. Forwards every {@link Gtk.Overlay} widget prop; the
- * single non-`Overlay.Child` child becomes the overlay's main child, while each
- * {@link Overlay.Child} is stacked on top.
- */
 export type OverlayProps = GtkOverlayProps & { ref?: Ref<Gtk.Overlay | null> };
 
-/**
- * Props for {@link Overlay.Child}. Its content, rendered through the child
- * function and wired to the passed ref, is placed over the overlay's main
- * child; `measure` includes it in size negotiation and `clipOverlay` clips it
- * to the main child's allocation.
- */
 export type OverlayChildProps = {
     children: PlacedChildRender<Gtk.Widget>;
     measure?: boolean | null | undefined;
@@ -59,11 +48,6 @@ const OverlayChild = (props: OverlayChildProps): ReactNode => {
 
 const isOverlayChild = (node: ReactNode): boolean => isValidElement(node) && node.type === OverlayChild;
 
-/**
- * Declarative wrapper over {@link Gtk.Overlay}. The main child is a plain widget
- * child; overlays are declared with `<Overlay.Child>` and attached imperatively
- * through `gtk_overlay_add_overlay`.
- */
 export const Overlay: ((props: OverlayProps) => ReactNode) & { Child: (props: OverlayChildProps) => ReactNode } =
     Object.assign(
         ({ children, ref, ...rest }: OverlayProps): ReactNode => {

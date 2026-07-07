@@ -1,5 +1,5 @@
-import { sourceResolveConfig } from "../../vitest.source.js";
 import { defineConfig, mergeConfig } from "vitest/config";
+import { sourceResolveConfig } from "../../vitest.config.base.js";
 
 export default mergeConfig(
     sourceResolveConfig,

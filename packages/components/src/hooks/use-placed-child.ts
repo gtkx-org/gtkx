@@ -11,29 +11,13 @@ import {
     useRef,
 } from "react";
 
-/**
- * A shared off-tree root the positioned-child wrappers render their content
- * into. The reconciler never attaches its children to a live widget, so each
- * wrapper reads its widget back through the render prop's ref and places it
- * imperatively.
- */
 export const portalRoot: RootElement = createRootElement();
 
-/**
- * A React context carrying the live parent widget for a family of positioned
- * children, together with the hook that resolves it (throwing when a child is
- * rendered outside its parent).
- */
 export type ParentContext<T> = {
     Context: Context<RefObject<T | null> | null>;
     useParentRef: () => RefObject<T | null>;
 };
 
-/**
- * Creates a {@link ParentContext} for a container component whose children are
- * declared as a compound subcomponent. `orphanMessage` is thrown when the
- * subcomponent is used without an enclosing provider.
- */
 export const createParentContext = <T>(orphanMessage: string): ParentContext<T> => {
     const context = createContext<RefObject<T | null> | null>(null);
     return {
@@ -46,18 +30,8 @@ export const createParentContext = <T>(orphanMessage: string): ParentContext<T> 
     };
 };
 
-/**
- * Render prop for a positioned child. Receives a ref the caller wires onto the
- * widget it wants placed, so the ref can be routed through the caller's own
- * components rather than assumed to sit on an immediate child.
- */
 export type PlacedChildRender<T> = (ref: RefCallback<T>) => ReactNode;
 
-/**
- * Options for {@link usePlacedChild}. `place` runs when the widget first
- * appears or its `placement` changes; `release` detaches it when it leaves or
- * the child unmounts.
- */
 export type PlacedChildOptions<T extends GObject.Object, P> = {
     render: PlacedChildRender<T>;
     placement: P;
@@ -66,13 +40,6 @@ export type PlacedChildOptions<T extends GObject.Object, P> = {
     release: (object: T) => void;
 };
 
-/**
- * Renders a positioned child into an off-tree holder so the reconciler does not
- * parent it, captures the widget through the render prop's ref, and imperatively
- * places it on a parent container — applying `place` on appearance or placement
- * change and `release` on departure or unmount. Shared by the {@link Gtk.Grid}
- * and {@link Gtk.Overlay} wrappers.
- */
 export const usePlacedChild = <T extends GObject.Object, P>(options: PlacedChildOptions<T, P>): ReactNode => {
     const { render, placement, samePlacement, place, release } = options;
     const objectRef = useRef<T | null>(null);

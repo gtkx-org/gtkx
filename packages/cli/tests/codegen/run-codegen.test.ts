@@ -27,7 +27,10 @@ const installPackage = (cwd: string, name: string) => {
     writeFileSync(join(dir, "index.js"), "");
 };
 
-const installFfiPackage = (cwd: string) => installPackage(cwd, "ffi");
+const installFfiPackage = (cwd: string) => {
+    installPackage(cwd, "ffi");
+    installPackage(cwd, "native");
+};
 
 const installReactStack = (cwd: string) => {
     installPackage(cwd, "react");

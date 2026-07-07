@@ -1,6 +1,6 @@
 {
     "extends": "../../tsconfig.test.json",
-    "include": ["tests/**/*.ts", "tests/**/*.tsx", "src/gtkx-env.d.ts", "vitest.config.ts"],
+    "include": ["tests/**/*.ts", "tests/**/*.tsx", "src/gtkx-env.d.ts"],
     "references": [
         {
             "path": "./tsconfig.app.json"

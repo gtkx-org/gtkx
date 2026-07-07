@@ -214,20 +214,6 @@ export const STATIC_HEADLESS_ENV = {
     ALSOFT_LOGLEVEL: "0",
 };
 
-/**
- * Starts an isolated headless Wayland compositor and D-Bus session for one test
- * worker, applies the process environment GTK needs to render against them, and
- * resolves once both sockets are live.
- *
- * The returned teardown reaps the session bus, restores the environment it
- * mutated, and removes the runtime directory. It deliberately does not kill the
- * compositor: the compositor carries a parent-death signal and is reaped by the
- * kernel only once the worker process terminates — after the native GLib main
- * loop has already quit — so GTK never observes its compositor vanish while it is
- * still iterating and aborts the worker on "Lost connection to Wayland
- * compositor". A startup failure instead kills every spawned child eagerly,
- * because the worker keeps running.
- */
 export const startHeadlessDisplay = async (options: HeadlessOptions): Promise<() => void> => {
     const env: EnvSnapshot = {};
     const runtimeDir = mkdtempSync(join(tmpdir(), "gtkx-xdg-"));
@@ -286,13 +272,6 @@ export const startHeadlessDisplay = async (options: HeadlessOptions): Promise<()
 
 const TEARDOWN_SIGNALS = ["SIGINT", "SIGTERM", "SIGHUP"] as const satisfies NodeJS.Signals[];
 
-/**
- * Runs the display teardown exactly once on worker exit or termination signals.
- *
- * This module is loaded through a node `--import` preload, before any package
- * outside the node standard library is resolvable, so it installs plain signal
- * handlers instead of depending on a shared shutdown helper.
- */
 export const installTeardownHandlers = (teardown: () => void): void => {
     let torndown = false;
     const runTeardown = (): void => {

@@ -5,5 +5,5 @@
         "tsBuildInfoFile": "${configDir}/tsconfig.test.tsbuildinfo",
         "emitDeclarationOnly": true
     },
-    "include": ["${configDir}/tests/**/*.ts", "${configDir}/tests/**/*.tsx", "${configDir}/vitest.config.ts"]
+    "include": ["${configDir}/tests/**/*.ts", "${configDir}/tests/**/*.tsx"]
 }

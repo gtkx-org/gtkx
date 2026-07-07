@@ -8,17 +8,8 @@ const { Context: GridContext, useParentRef: useGridRef } = createParentContext<G
     "<Grid.Child> must be a child of <Grid>",
 );
 
-/**
- * Props for {@link Grid}. Forwards every {@link Gtk.Grid} widget prop; children
- * must be {@link Grid.Child} elements, each placing its content at a grid cell.
- */
 export type GridProps = GtkGridProps & { ref?: Ref<Gtk.Grid | null>; children?: ReactNode };
 
-/**
- * Props for {@link Grid.Child}. Its content, rendered through the child function
- * and wired to the passed ref, occupies the cell at (`column`, `row`), spanning
- * `columnSpan` columns and `rowSpan` rows.
- */
 export type GridChildProps = {
     children: PlacedChildRender<Gtk.Widget>;
     column?: number | null | undefined;
@@ -60,10 +51,6 @@ const GridChild = (props: GridChildProps): ReactNode => {
     });
 };
 
-/**
- * Declarative wrapper over {@link Gtk.Grid}. Each child is a `<Grid.Child>`
- * whose content is attached at its cell through `gtk_grid_attach`.
- */
 export const Grid: ((props: GridProps) => ReactNode) & { Child: (props: GridChildProps) => ReactNode } = Object.assign(
     ({ children, ref, ...rest }: GridProps): ReactNode => {
         const gridRef = useRef<Gtk.Grid | null>(null);

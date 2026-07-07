@@ -1,10 +1,5 @@
 import { type Ref, type RefCallback, useCallback } from "react";
 
-/**
- * Combines several refs into a single memoized {@link RefCallback} that assigns
- * the same value to each and forwards their cleanups, recomputed only when the
- * supplied refs change.
- */
 export const useMergeRefs = <T>(...refs: Array<Ref<T | null> | undefined>): RefCallback<T> => {
     return useCallback<RefCallback<T>>((value) => {
         const cleanups = refs.map((ref) => {

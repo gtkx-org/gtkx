@@ -13,11 +13,6 @@ import {
 } from "react";
 import { portalRoot } from "./hooks/use-placed-child.js";
 
-/**
- * A libadwaita dialog instance: a widget shown over a parent window through
- * `present` rather than parented into the widget tree, and dismissed through
- * `forceClose`.
- */
 export type DialogInstance = Gtk.Widget & {
     present(parent: Gtk.Widget | null): void;
     forceClose(): void;
@@ -25,21 +20,11 @@ export type DialogInstance = Gtk.Widget & {
 
 type DialogElement = ReactElement<{ ref?: Ref<DialogInstance | null> }>;
 
-/**
- * Props for {@link Dialog}. Its single Adw dialog child (`children`) is
- * presented over `parent`; omit `parent` to present it unattached.
- */
 export type DialogProps = {
     parent?: Gtk.Window | null | undefined;
     children: DialogElement;
 };
 
-/**
- * Presents its Adw dialog child over the given `parent` window. The dialog is
- * rendered off the widget tree and shown through `present`, so it can be placed
- * anywhere in the React tree without becoming a widget-tree child, and it is
- * closed when {@link Dialog} unmounts.
- */
 export const Dialog = ({ parent = null, children }: DialogProps): ReactNode => {
     const [dialog, setDialogState] = useState<DialogInstance | null>(null);
     const setDialog = useCallback<RefCallback<DialogInstance>>((instance) => {

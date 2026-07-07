@@ -19,10 +19,6 @@ const shouldAnimateOnMount = (props: AnimationProps): boolean => {
     return !shallowEqual(initial, animate);
 };
 
-/**
- * Drives a widget's animation lifecycle: writes CSS for the current values, plays libadwaita
- * tween or spring animations toward a target, and cleans up on disposal.
- */
 export class WidgetAnimator {
     private cssProvider: AnimationCssProvider;
     private propsRef: RefObject<AnimationProps>;
@@ -38,10 +34,6 @@ export class WidgetAnimator {
         this.propsRef = propsRef;
     }
 
-    /**
-     * Attach the CSS provider and apply the resolved values. When `animateOnMount` is set and
-     * `initial` differs from `animate`, the widget animates from `initial` toward `animate`.
-     */
     public applyMount(animateOnMount: boolean): void {
         const widget = this.ref.current;
         if (!widget) return;
@@ -59,10 +51,6 @@ export class WidgetAnimator {
         }
     }
 
-    /**
-     * Animate from the current values to `target`, interrupting any running animation without
-     * snapping to its target. `onComplete` runs only when this animation finishes naturally.
-     */
     public startAnimation(target: AnimationTarget, onComplete?: () => void): void {
         const widget = this.ref.current;
         if (!widget) return;
@@ -99,7 +87,6 @@ export class WidgetAnimator {
         this.play(animation, secondsToMilliseconds(transition.delay ?? 0));
     }
 
-    /** Cancel any running animation and detach the CSS provider. */
     public dispose(): void {
         this.cancelAnimation();
         this.cssProvider.dispose();

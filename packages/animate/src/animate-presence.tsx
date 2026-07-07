@@ -228,30 +228,15 @@ const renderPresenceChildren = (params: RenderPresenceParams): ReactNode =>
         );
     });
 
-/**
- * How {@link AnimatePresence} schedules entering and exiting children. `sync` animates them
- * concurrently; `wait` holds an incoming child until the outgoing exit animations finish.
- */
 export type AnimatePresenceMode = "sync" | "wait";
 
-/** Props for {@link AnimatePresence}. */
 export type AnimatePresenceProps = {
-    /** Keyed children to track across mounts and unmounts. */
     children: ReactNode;
-    /** Whether children animate from their `initial` values on the first render. Defaults to `true`. */
     initial?: boolean;
-    /** Enter and exit scheduling. See {@link AnimatePresenceMode}. Defaults to `sync`. */
     mode?: AnimatePresenceMode;
-    /** Called once after every exiting child has finished animating out. */
     onExitComplete?: () => void;
 };
 
-/**
- * Animates keyed children as they mount and unmount. A child removed from `children` stays
- * rendered until its `exit` animation completes and then unmounts; a child re-added before its
- * exit finishes animates back in. Every child must carry a unique `key`. Motion's `custom` and
- * `propagate` options are not supported.
- */
 export const AnimatePresence = ({
     children,
     initial = true,

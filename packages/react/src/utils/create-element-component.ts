@@ -64,12 +64,6 @@ export const createElementComponent = <P extends object>(elementName: string): (
 
 const NO_SLOT_PROPS: Set<string> = new Set();
 
-/**
- * Builds a component for a lazily-instantiated element (e.g. `GtkStackPage`) whose
- * GObject is created by its parent on attach rather than in the reconciler. The
- * component renders a lazy-element wrapper node carrying the props; once the parent
- * injects the instance, the reconciler applies those props to it.
- */
 export const createLazyElementComponent = <P extends object>(): ((props: P) => ReactNode) => {
     return (props: P): ReactNode => {
         const { rest, wrappers, children } = splitProps(props, NO_SLOT_PROPS);

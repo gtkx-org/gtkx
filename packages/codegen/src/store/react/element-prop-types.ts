@@ -238,7 +238,9 @@ export const createElementPropTypegen = (
         if (childrenContainers.has(glibName)) return true;
         const entry = context.index.get(glibName);
         if (entry === undefined) return false;
-        return chainOf(context, entry).some((klass) => {
+        const chain = chainOf(context, entry);
+        if (chain.some((klass) => glibNameOf(klass) === "GtkWidget")) return true;
+        return chain.some((klass) => {
             const name = glibNameOf(klass);
             return name !== undefined && childrenContainers.has(name);
         });

@@ -8,18 +8,8 @@ const { Context: AlertDialogContext, useParentRef: useAlertDialogRef } = createP
     "<AlertDialog.Response> must be a child of <AlertDialog>",
 );
 
-/**
- * Props for {@link AlertDialog}. Forwards every {@link Adw.AlertDialog} prop
- * (`heading`, `body`, …); declare the dialog's buttons as {@link AlertDialog.Response}
- * children, and present the dialog through its `ref`.
- */
 export type AlertDialogProps = AdwAlertDialogProps & { ref?: Ref<Adw.AlertDialog | null> };
 
-/**
- * Props for {@link AlertDialog.Response}. A dialog button identified by `id`
- * with a display `label`; `appearance` styles it (e.g. suggested/destructive)
- * and `enabled` toggles its sensitivity.
- */
 export type AlertDialogResponseProps = {
     id: string;
     label: string;
@@ -42,12 +32,6 @@ const AlertDialogResponse = ({ id, label, appearance, enabled }: AlertDialogResp
 
 const isResponse = (node: ReactNode): boolean => isValidElement(node) && node.type === AlertDialogResponse;
 
-/**
- * Declarative wrapper over {@link Adw.AlertDialog}. Renders the dialog and
- * registers each {@link AlertDialog.Response} child through `adw_alert_dialog_add_response`,
- * applying its `appearance`/`enabled` on top; any non-response child becomes the
- * dialog's extra content. Present the dialog imperatively through its `ref`.
- */
 export const AlertDialog: ((props: AlertDialogProps) => ReactNode) & {
     Response: (props: AlertDialogResponseProps) => ReactNode;
 } = Object.assign(

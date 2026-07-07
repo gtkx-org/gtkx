@@ -24,19 +24,8 @@ const useFixedInstance = (): Gtk.Fixed | null => {
     return fixed;
 };
 
-/**
- * Props for {@link Fixed}. Forwards every {@link Gtk.Fixed} widget prop. Wrap
- * positioned children in {@link Fixed.Child}; any other child (such as a
- * floating {@link Gtk.Popover}) is parented to the fixed without a position.
- */
 export type FixedProps = GtkFixedProps & { ref?: Ref<Gtk.Fixed | null>; children?: ReactNode };
 
-/**
- * Props for {@link Fixed.Child}. Its content, rendered through the child
- * function and wired to the passed ref, is pinned at pixel coordinates
- * (`x`, `y`); passing `transform` instead applies an arbitrary
- * {@link Gsk.Transform}.
- */
 export type FixedChildProps = {
     children: (ref: RefCallback<Gtk.Widget>) => ReactNode;
     x?: number | null | undefined;
@@ -64,12 +53,6 @@ const FixedChild = (props: FixedChildProps): ReactNode => {
     return props.children(setWidget);
 };
 
-/**
- * Declarative wrapper over {@link Gtk.Fixed}. Children are parented to the fixed
- * by the reconciler; each {@link Fixed.Child} then positions its widget through
- * its `GtkFixedLayoutChild` transform, while any other child (e.g. a
- * `GtkPopover`) is left floating at the origin.
- */
 export const Fixed: ((props: FixedProps) => ReactNode) & { Child: (props: FixedChildProps) => ReactNode } =
     Object.assign(
         ({ children, ref, ...rest }: FixedProps): ReactNode => {

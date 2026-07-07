@@ -4,7 +4,6 @@ import { createElement, type JSX, type ReactNode, type Ref } from "react";
 import type { AnimationProps } from "./types.js";
 import { useAnimatedWidget } from "./use-animated-widget.js";
 
-/** A widget component of props `P` augmented with {@link AnimationProps}. */
 export type AnimatedComponent<P> = (props: P & AnimationProps) => ReactNode;
 
 type ElementInstance<P> = P extends { ref?: Ref<infer T | null> | undefined } ? T : never;
@@ -38,12 +37,6 @@ const animatedFactory = <P extends object>(Component: (props: P) => ReactNode): 
 
 type Animated = typeof animatedFactory & { create: typeof animatedFactory } & AnimatedIntrinsics;
 
-/**
- * Factory for animation-aware widgets. Access a built-in widget by name (for example
- * `animated.GtkBox`) to obtain a component that accepts {@link AnimationProps} alongside the
- * widget's own props, or wrap a custom widget component with `animated.create(Component)`. Each
- * widget name and component resolves to a single memoized wrapper.
- */
 export const animated: Animated = new Proxy(animatedFactory, {
     get(target, key) {
         if (key === "create") return target;

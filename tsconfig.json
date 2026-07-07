@@ -1,6 +1,12 @@
 {
     "extends": "./tsconfig.base.json",
-    "include": ["**/scripts", "vitest.config.ts", "vitest.config.base.ts", "gtkx.config.ts", ".dependency-cruiser.js"],
+    "include": [
+        "**/scripts",
+        "**/vitest.config.ts",
+        "vitest.config.base.ts",
+        "gtkx.config.ts",
+        ".dependency-cruiser.js"
+    ],
     "compilerOptions": {
         "outDir": "dist"
     }

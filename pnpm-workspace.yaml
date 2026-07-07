@@ -4,7 +4,7 @@ packages:
   - examples/*
   - website
 
-minimumReleaseAge: 1440
+minimumReleaseAge: 0
 trustPolicy: no-downgrade
 
 trustPolicyExclude:
