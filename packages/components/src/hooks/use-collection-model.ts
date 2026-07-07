@@ -17,7 +17,7 @@ type CollectionModelInput<T, S> = {
     renderHeader: ((info: { section: S }) => ReactNode) | null | undefined;
 };
 
-type CollectionModelResult<T, S> = {
+export type CollectionModelResult<T, S> = {
     resolver: ItemResolver<T, S>;
     headerResolver: ItemResolver<T, S>;
     installedModel: Gtk.SelectionModel;

@@ -41,6 +41,7 @@ export const ColumnViewColumn = <T = unknown>(props: ColumnViewColumnProps<T>): 
     const store = useCellContainers<Gtk.ColumnViewColumn>({
         target: column,
         installer: factoryInstaller,
+        estimatedHeight: context.estimatedItemHeight,
     });
 
     const registerRef = useRef(context.register);

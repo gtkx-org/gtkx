@@ -13,6 +13,7 @@ export type ColumnViewContextValue = {
     columnView: RefObject<Gtk.ColumnView | null>;
     resolver: ItemResolver<unknown, unknown>;
     tree: TreeRenderContext;
+    estimatedItemHeight?: number | undefined;
     register(registration: ColumnRegistration): void;
     unregister(id: string): void;
 };

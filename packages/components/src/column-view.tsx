@@ -1,12 +1,12 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkColumnView, type GtkColumnViewProps } from "@gtkx/jsx/gtk";
 import { useMergeRefs } from "@gtkx/react";
-import { type ReactNode, type Ref, useCallback, useMemo, useRef, useState } from "react";
+import { type ReactNode, type Ref, type RefObject, useCallback, useMemo, useRef, useState } from "react";
 import { HeaderRenderHost } from "./cell.js";
 import { ColumnViewColumn, type ColumnViewColumnProps } from "./column-view-column.js";
 import { type ColumnRegistration, ColumnViewContext, type ColumnViewContextValue } from "./column-view-context.js";
 import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
-import { useCollectionModel } from "./hooks/use-collection-model.js";
+import { type CollectionModelResult, useCollectionModel } from "./hooks/use-collection-model.js";
 import { useInstalledModel } from "./hooks/use-installed-model.js";
 import { useSortHandler } from "./hooks/use-sort-handler.js";
 import type {
@@ -93,6 +93,45 @@ interface ColumnViewWiring<T, S> {
     contextValue: ColumnViewContextValue;
 }
 
+type ColumnViewContextInput<T, S> = {
+    columnView: RefObject<Gtk.ColumnView | null>;
+    collection: CollectionModelResult<T, S>;
+    expandedIds: string[] | null | undefined;
+    estimatedItemHeight: number | undefined;
+    registry: ColumnRegistry;
+};
+
+const useColumnViewContextValue = <T, S>({
+    columnView,
+    collection,
+    expandedIds,
+    estimatedItemHeight,
+    registry,
+}: ColumnViewContextInput<T, S>): ColumnViewContextValue =>
+    useMemo(
+        () => ({
+            columnView,
+            resolver: collection.resolver as ItemResolver<unknown, unknown>,
+            tree: {
+                controlled: expandedIds !== undefined && expandedIds !== null,
+                expandedIds: new Set(expandedIds ?? []),
+                rowId: collection.rowId,
+            },
+            estimatedItemHeight,
+            register: registry.register,
+            unregister: registry.unregister,
+        }),
+        [
+            columnView,
+            collection.resolver,
+            collection.rowId,
+            expandedIds,
+            estimatedItemHeight,
+            registry.register,
+            registry.unregister,
+        ],
+    );
+
 const useColumnViewWiring = <T, S>(
     props: NormalizedColumnViewProps<T, S>,
     registry: ColumnRegistry,
@@ -127,20 +166,13 @@ const useColumnViewWiring = <T, S>(
         columns: registry.columns,
     });
 
-    const contextValue = useMemo<ColumnViewContextValue>(
-        () => ({
-            columnView: widgetRef,
-            resolver: collection.resolver as ItemResolver<unknown, unknown>,
-            tree: {
-                controlled: props.expandedIds !== undefined && props.expandedIds !== null,
-                expandedIds: new Set(props.expandedIds ?? []),
-                rowId: collection.rowId,
-            },
-            register: registry.register,
-            unregister: registry.unregister,
-        }),
-        [collection.resolver, collection.rowId, props.expandedIds, registry.register, registry.unregister],
-    );
+    const contextValue = useColumnViewContextValue<T, S>({
+        columnView: widgetRef,
+        collection,
+        expandedIds: props.expandedIds,
+        estimatedItemHeight: props.estimatedItemHeight,
+        registry,
+    });
 
     return {
         setRef,

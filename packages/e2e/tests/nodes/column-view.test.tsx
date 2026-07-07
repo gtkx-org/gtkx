@@ -36,6 +36,20 @@ const getFirstRowCellTexts = (columnView: Gtk.ColumnView): string[] => {
     return firstRow ? getChildTexts(firstRow) : [];
 };
 
+const collectBoxSizeRequests = (root: Gtk.Widget | null): [number, number][] => {
+    const requests: [number, number][] = [];
+    const visit = (widget: Gtk.Widget | null): void => {
+        let child = widget?.getFirstChild() ?? null;
+        while (child) {
+            if (child instanceof Gtk.Box) requests.push(child.getSizeRequest());
+            visit(child);
+            child = child.getNextSibling();
+        }
+    };
+    visit(root);
+    return requests;
+};
+
 const columnViewView = async (items: Parameters<typeof renderColumnView>[0]): Promise<CollectionView> => {
     const { ref, rerender } = await renderColumnView(items);
     return { texts: () => getColumnViewItemTexts(ref.current), rerender };
@@ -749,5 +763,44 @@ describe("render - ColumnView (render-prop children)", () => {
         expect(screen.queryAllByText("Ada")).toHaveLength(1);
         expect(screen.queryAllByText("Engineer")).toHaveLength(1);
         expect(screen.queryAllByText("Mathematician")).toHaveLength(1);
+    });
+});
+
+describe("render - ColumnView (estimated item size)", () => {
+    const items = Array.from({ length: 20 }, (_, index) => ({
+        id: String(index),
+        value: { name: `Item ${index}` },
+    }));
+
+    const renderEmptyCells = async (estimatedItemHeight?: number): Promise<Gtk.ColumnView> => {
+        const ref = createRef<Gtk.ColumnView>();
+        await render(
+            <ScrollWrapper minContentHeight={200}>
+                <ColumnView ref={ref} items={items} estimatedItemHeight={estimatedItemHeight}>
+                    <ColumnViewColumn id="name" title="Name" renderItem={() => null} />
+                </ColumnView>
+            </ScrollWrapper>,
+        );
+        const columnView = ref.current;
+        if (columnView === null) throw new Error("Expected ColumnView to render");
+        return columnView;
+    };
+
+    it("applies estimatedItemHeight to data-row cells and leaves width unconstrained", async () => {
+        const columnView = await renderEmptyCells(48);
+
+        const sized = collectBoxSizeRequests(columnView).filter(([, height]) => height === 48);
+
+        expect(sized).toHaveLength(items.length);
+        for (const [width] of sized) expect(width).toBe(-1);
+    });
+
+    it("leaves data-row cells unsized when estimatedItemHeight is absent", async () => {
+        const columnView = await renderEmptyCells();
+
+        for (const [width, height] of collectBoxSizeRequests(columnView)) {
+            expect(width).toBe(-1);
+            expect(height).toBe(-1);
+        }
     });
 });
