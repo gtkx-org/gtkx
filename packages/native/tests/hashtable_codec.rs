@@ -128,8 +128,8 @@ fn assert_encoded_float(encoder: &HashTableEntryCodec, value: &Value, expected: 
 fn assert_boolean_ptr_reads_true(ptr: *mut c_void) {
     let codec = Codec::Boolean(BooleanCodec);
 
-    let value = unsafe { codec.read(ReadSource::Value(ptr, "test")) }
-        .expect("decoding should succeed");
+    let value =
+        unsafe { codec.read(ReadSource::Value(ptr, "test")) }.expect("decoding should succeed");
 
     match value {
         Value::Boolean(true) => (),
@@ -248,8 +248,8 @@ fn ptr_to_value_boolean_false() {
     let codec = Codec::Boolean(BooleanCodec);
     let ptr = std::ptr::null_mut::<c_void>();
 
-    let value = unsafe { codec.read(ReadSource::Value(ptr, "test")) }
-        .expect("decoding should succeed");
+    let value =
+        unsafe { codec.read(ReadSource::Value(ptr, "test")) }.expect("decoding should succeed");
 
     match value {
         Value::Boolean(false) => (),
@@ -272,8 +272,8 @@ fn ptr_to_value_float() {
         mem as *mut c_void
     };
 
-    let value = unsafe { codec.read(ReadSource::Value(ptr, "test")) }
-        .expect("decoding should succeed");
+    let value =
+        unsafe { codec.read(ReadSource::Value(ptr, "test")) }.expect("decoding should succeed");
 
     match value {
         Value::Number(n) => assert!((n - std::f64::consts::E).abs() < f64::EPSILON),
@@ -311,8 +311,8 @@ fn ptr_to_value_struct_non_null() {
 
         let ptr = unsafe { glib::ffi::g_malloc0(16) };
 
-        let value = unsafe { codec.read(ReadSource::Value(ptr, "test")) }
-            .expect("decoding should succeed");
+        let value =
+            unsafe { codec.read(ReadSource::Value(ptr, "test")) }.expect("decoding should succeed");
 
         match value {
             Value::Object(_) => (),
@@ -917,11 +917,7 @@ fn write_return_to_pointer_null_err_and_non_array_write_null() {
     assert!(slot.is_null());
 
     slot = 7 as *mut c_void;
-    PtrWriter::write_return_to_ptr(
-        &codec,
-        unsafe { Slot::new(ret) },
-        &Ok(Value::Number(1.0)),
-    );
+    PtrWriter::write_return_to_ptr(&codec, unsafe { Slot::new(ret) }, &Ok(Value::Number(1.0)));
     assert!(slot.is_null());
 }
 

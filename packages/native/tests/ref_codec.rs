@@ -7,7 +7,8 @@ use gtk4::prelude::ObjectType as _;
 
 use native::ffi::codec::{
     ArrayCodec, ArrayKind, BooleanCodec, Codec, Decoder, EnumFlagsCodec, EnumFlagsKind, FloatCodec,
-    IntegerCodec, ObjectCodec, Ownership, ReadSource, RefCodec, StringCodec, UnicharCodec,
+    HashTableCodec, IntegerCodec, ObjectCodec, Ownership, ReadSource, RefCodec, StringCodec,
+    UnicharCodec,
 };
 use native::ffi::value::Value;
 use native::ffi::{self, StashData, StashStorage};
@@ -172,6 +173,64 @@ fn decode_array_inner_bails_without_context() {
 
         let ref_codec = u8_array_ref_codec();
         assert!(ref_codec.decode(&stash).is_err());
+    });
+}
+
+fn string_string_hashtable_ref_codec(ownership: Ownership) -> RefCodec {
+    RefCodec::new(Codec::HashTable(HashTableCodec {
+        key_codec: Box::new(Codec::String(string_codec())),
+        value_codec: Box::new(Codec::String(string_codec())),
+        ownership,
+    }))
+    .expect("HashTable is a valid Ref inner")
+}
+
+#[test]
+fn decode_hashtable_reads_pairs() {
+    helpers::run(|| {
+        let table = unsafe {
+            glib::ffi::g_hash_table_new_full(
+                Some(glib::ffi::g_str_hash),
+                Some(glib::ffi::g_str_equal),
+                Some(glib::ffi::g_free),
+                Some(glib::ffi::g_free),
+            )
+        };
+        unsafe {
+            glib::ffi::g_hash_table_insert(
+                table,
+                glib::ffi::g_strdup(c"filename".as_ptr()) as *mut c_void,
+                glib::ffi::g_strdup(c"index.html".as_ptr()) as *mut c_void,
+            );
+        }
+        let stash = ptr_slot_stash(table as *mut c_void);
+
+        let ref_codec = string_string_hashtable_ref_codec(Ownership::Full);
+        let decoded = ref_codec
+            .decode(&stash)
+            .expect("hashtable ref decode should succeed");
+        let Value::Array(pairs) = decoded else {
+            panic!("expected Value::Array of pairs");
+        };
+        assert_eq!(pairs.len(), 1);
+        let Value::Array(pair) = &pairs[0] else {
+            panic!("expected [key, value] tuple");
+        };
+        assert!(matches!(&pair[0], Value::String(s) if s == "filename"));
+        assert!(matches!(&pair[1], Value::String(s) if s == "index.html"));
+    });
+}
+
+#[test]
+fn decode_hashtable_null_inner_yields_empty_array() {
+    helpers::run(|| {
+        let stash = ptr_slot_stash(std::ptr::null_mut());
+
+        let ref_codec = string_string_hashtable_ref_codec(Ownership::Full);
+        let decoded = ref_codec
+            .decode(&stash)
+            .expect("null hashtable ref decode should succeed");
+        assert!(matches!(decoded, Value::Array(arr) if arr.is_empty()));
     });
 }
 

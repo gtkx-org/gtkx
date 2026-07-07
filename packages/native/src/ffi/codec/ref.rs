@@ -27,11 +27,7 @@ impl RefCodec {
 
     pub fn supports_inner(inner: &Codec) -> bool {
         match inner {
-            Codec::HashTable(_)
-            | Codec::Callback(_)
-            | Codec::Void(_)
-            | Codec::Buffer(_)
-            | Codec::Ref(_) => false,
+            Codec::Callback(_) | Codec::Void(_) | Codec::Buffer(_) | Codec::Ref(_) => false,
             Codec::Integer(_)
             | Codec::BigInt(_)
             | Codec::Float(_)
@@ -43,6 +39,7 @@ impl RefCodec {
             | Codec::Struct(_)
             | Codec::Fundamental(_)
             | Codec::Array(_)
+            | Codec::HashTable(_)
             | Codec::Unichar(_) => true,
         }
     }
@@ -170,6 +167,10 @@ impl Decoder for RefCodec {
                     .read(ReadSource::Slot(storage.ptr(), "Ref inner"))
             },
             Codec::String(string_codec) => Ok(Self::decode_ref_string(storage, string_codec)),
+            Codec::HashTable(_) => {
+                let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
+                self.inner_codec.decode(&ffi::Stash::Ptr(actual_ptr))
+            }
             Codec::Array(_) => {
                 bail!("Ref<Array> requires decode_with_context to get size from another parameter")
             }
