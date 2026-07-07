@@ -181,6 +181,7 @@ jobs:
       id-token: write
     container:
       image: ${{ needs.image.outputs.ref }}
+      options: --security-opt seccomp=unconfined
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -198,5 +199,5 @@ jobs:
       - name: Run the TypeScript benchmarks under CodSpeed
         uses: CodSpeedHQ/action@4e969336ab9acd4f6f8d025fdd793292b0835df0 # v4.18.2
         with:
-          mode: walltime
+          mode: instrumentation
           run: pnpm --filter @gtkx/e2e bench
