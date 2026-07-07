@@ -1,11 +1,7 @@
-import {
-    type HeadlessOptions,
-    installTeardownHandlers,
-    resolveHeadlessOptions,
-    startHeadlessDisplay,
-} from "./headless-display.js";
+import { readHeadlessOptions, resolveHeadlessOptions, startHeadlessDisplay } from "./headless-display.js";
 
-export const bootstrapHeadlessDisplay = async (options: Partial<HeadlessOptions>): Promise<void> => {
-    const teardown = await startHeadlessDisplay(resolveHeadlessOptions(options));
-    installTeardownHandlers(teardown);
-};
+const options = readHeadlessOptions(new URL(import.meta.url).searchParams);
+const teardown = await startHeadlessDisplay(resolveHeadlessOptions(options));
+
+process.on("exit", teardown);
+globalThis.gtkxHeadlessTeardown = teardown;

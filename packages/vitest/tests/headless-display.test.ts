@@ -9,7 +9,7 @@ vi.mock("node:child_process", async (importOriginal) => {
 });
 
 const { spawn: realSpawn } = await vi.importActual<typeof import("node:child_process")>("node:child_process");
-const { DEFAULT_HEADLESS_SIZE, installTeardownHandlers, resolveHeadlessOptions, startHeadlessDisplay } = await import(
+const { DEFAULT_HEADLESS_SIZE, readHeadlessOptions, resolveHeadlessOptions, startHeadlessDisplay } = await import(
     "../src/headless-display.js"
 );
 
@@ -199,6 +199,19 @@ describe("startHeadlessDisplay", () => {
         expect(compositorChild?.killed).toBe(false);
     });
 
+    it("reaps only once when the teardown runs repeatedly", async () => {
+        const { teardown } = await startFulfilled({ size: DEFAULT_HEADLESS_SIZE, compositor: "weston" });
+
+        const busChild = children[0];
+        if (busChild === undefined) throw new Error("expected a spawned bus child");
+        const killSpy = vi.spyOn(busChild, "kill");
+
+        teardown();
+        teardown();
+
+        expect(killSpy).toHaveBeenCalledTimes(1);
+    });
+
     it("rejects and cleans up when a spawned child exits before its socket appears", async () => {
         await expectStartupFailure(
             () => realSpawn(process.execPath, ["-e", "process.stderr.write('boom on startup\\n'); process.exit(1);"]),
@@ -224,61 +237,19 @@ describe("resolveHeadlessOptions", () => {
     });
 });
 
-describe("installTeardownHandlers", () => {
-    let registered: [string, (...args: unknown[]) => void][];
-
-    const lifecycleEvents = ["exit", "SIGINT", "SIGTERM", "SIGHUP"];
-
-    beforeEach(() => {
-        registered = [];
+describe("readHeadlessOptions", () => {
+    it("returns an empty object when no parameters are present", () => {
+        expect(readHeadlessOptions(new URLSearchParams())).toEqual({});
     });
 
-    afterEach(() => {
-        for (const [event, listener] of registered) process.removeListener(event, listener);
+    it("reads the size and a recognized compositor from the query", () => {
+        expect(readHeadlessOptions(new URLSearchParams("size=640x480&compositor=sway"))).toEqual({
+            size: "640x480",
+            compositor: "sway",
+        });
     });
 
-    const install = (teardown: () => void): void => {
-        const onSpy = vi.spyOn(process, "on");
-        installTeardownHandlers(teardown);
-        for (const [event, listener] of onSpy.mock.calls) {
-            if (typeof event === "string" && lifecycleEvents.includes(event)) {
-                registered.push([event, listener]);
-            }
-        }
-        onSpy.mockRestore();
-    };
-
-    it("registers teardown on process exit and each termination signal", () => {
-        install(vi.fn());
-        expect(registered.map(([event]) => event).sort()).toEqual([...lifecycleEvents].sort());
-    });
-
-    it("runs teardown only once no matter how many handlers fire", async () => {
-        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
-        try {
-            const teardown = vi.fn();
-            install(teardown);
-            for (const [, listener] of registered) listener();
-            for (const [, listener] of registered) listener();
-            await new Promise((resolve) => setImmediate(resolve));
-            expect(teardown).toHaveBeenCalledTimes(1);
-        } finally {
-            exitSpy.mockRestore();
-        }
-    });
-
-    it("exits with the conventional code after teardown on a termination signal", async () => {
-        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
-        try {
-            const teardown = vi.fn();
-            install(teardown);
-            const sigterm = registered.find(([event]) => event === "SIGTERM");
-            sigterm?.[1]();
-            await new Promise((resolve) => setImmediate(resolve));
-            expect(teardown).toHaveBeenCalledTimes(1);
-            expect(exitSpy).toHaveBeenCalledWith(143);
-        } finally {
-            exitSpy.mockRestore();
-        }
+    it("ignores an unrecognized compositor", () => {
+        expect(readHeadlessOptions(new URLSearchParams("compositor=mutter"))).toEqual({});
     });
 });

@@ -206,6 +206,17 @@ describe("runDevSupervisor (signal forwarding — per-signal)", () => {
 describe("runDevSupervisor (signal forwarding — exit propagation)", () => {
     const ctx = setupSupervisorCtx();
 
+    it("exits 0 when the child shuts down cleanly on SIGINT", async () => {
+        const child = await startSupervisor();
+
+        process.emit("SIGINT", "SIGINT");
+        await flushMicrotasks();
+        child.emit("exit", 0, null);
+        await flushMicrotasks();
+
+        expect(ctx.exitSpy).toHaveBeenCalledWith(0);
+    });
+
     it("propagates the child's exit code through the shutdown helper", async () => {
         const child = await startSupervisor();
 
@@ -227,7 +238,7 @@ describe("runDevSupervisor (signal forwarding — exit propagation)", () => {
         expect(child.kill).not.toHaveBeenCalled();
     });
 
-    it("exits with the canonical signal code when no child is alive", async () => {
+    it("exits 0 on a clean shutdown when no child is alive", async () => {
         const child = await startSupervisor();
         child.emit("exit", 0, null);
         ctx.exitSpy.mockClear();
@@ -235,7 +246,7 @@ describe("runDevSupervisor (signal forwarding — exit propagation)", () => {
         process.emit("SIGINT", "SIGINT");
         await flushMicrotasks();
 
-        expect(ctx.exitSpy).toHaveBeenCalledWith(130);
+        expect(ctx.exitSpy).toHaveBeenCalledWith(0);
     });
 
     it("falls back to exitCodeForSignal when the child exits via signal during shutdown", async () => {

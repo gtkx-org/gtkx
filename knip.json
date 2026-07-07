@@ -30,7 +30,7 @@
             "entry": ["src/global.d.ts!"]
         },
         "packages/vitest": {
-            "entry": ["src/worker-preload.ts!"]
+            "entry": ["src/worker-preload.ts!", "src/worker-setup.ts!"]
         },
         "examples/*": {
             "entry": ["gtkx.config.ts!", "src/gtkx-env.d.ts!", "src/app.tsx!", "src/index.tsx!"]

@@ -459,7 +459,7 @@ describe("main — shutdown", () => {
 
         expect(socketStopMock).toHaveBeenCalledOnce();
         expect(mcpCloseMock).toHaveBeenCalledOnce();
-        expect(setup.exitSpy).toHaveBeenCalledWith(130);
+        expect(setup.exitSpy).toHaveBeenCalledWith(0);
 
         process.emit("SIGTERM", "SIGTERM");
         await new Promise((r) => setImmediate(r));

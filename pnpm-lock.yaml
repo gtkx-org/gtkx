@@ -518,6 +518,9 @@ importers:
       '@gtkx/config':
         specifier: workspace:*
         version: link:../config
+      '@gtkx/utils':
+        specifier: workspace:*
+        version: link:../utils
     devDependencies:
       vitest:
         specifier: 'catalog:'

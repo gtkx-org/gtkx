@@ -1,10 +1,13 @@
 import { spawn } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import type { Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
+import { fileURLToPath } from "node:url";
 import { runServer } from "verdaccio";
+
+const NATIVE_DIR = fileURLToPath(new URL("../packages/native", import.meta.url));
 
 const PORT = 4873;
 const HOST = `localhost:${PORT}`;
@@ -125,6 +128,17 @@ function registryEnv(userConfig: string): NodeJS.ProcessEnv {
     return env;
 }
 
+async function stageNativeArtifacts(): Promise<void> {
+    await runAsync("turbo", ["run", "build", "--filter", "@gtkx/native"], { env: process.env });
+    const artifactsDir = join(NATIVE_DIR, "artifacts");
+    mkdirSync(artifactsDir, { recursive: true });
+    for (const entry of readdirSync(NATIVE_DIR)) {
+        if (entry.startsWith("native.") && entry.endsWith(".node")) {
+            copyFileSync(join(NATIVE_DIR, entry), join(artifactsDir, entry));
+        }
+    }
+}
+
 async function publishPackages(env: NodeJS.ProcessEnv): Promise<void> {
     await runAsync("turbo", ["run", "release", "--filter", "!gtkx"], { env });
 }
@@ -177,6 +191,7 @@ async function main(): Promise<void> {
         writeFileSync(npmrcPath, `registry=${REGISTRY}\n//${HOST}/:_authToken=${token}\n`);
 
         const env = registryEnv(npmrcPath);
+        await stageNativeArtifacts();
         await publishPackages(env);
 
         const appDir = await scaffoldConsumer(consumerRoot, env);

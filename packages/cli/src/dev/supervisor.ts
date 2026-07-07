@@ -147,7 +147,7 @@ const installShutdown = (state: SupervisorState): void => {
             }),
         onForce: () => forceKillChild(state.child),
         forceKillAfterMs: FORCE_KILL_TIMEOUT_MS,
-        exitCode: (signal) => state.capturedChildExit ?? exitCodeForSignal(signal),
+        exitCode: (signal, graceful) => state.capturedChildExit ?? (graceful ? 0 : exitCodeForSignal(signal)),
     });
 };
 

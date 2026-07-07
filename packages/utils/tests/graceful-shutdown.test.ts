@@ -60,10 +60,10 @@ const installFixture = (): ShutdownFixture => {
     return fixture;
 };
 
-describe("installGracefulShutdown — basic exit codes", () => {
+describe("installGracefulShutdown — clean shutdown exits 0", () => {
     const fixture = installFixture();
 
-    it("calls onSignal then exits with the canonical code on SIGINT", async () => {
+    it("calls onSignal then exits 0 after a clean shutdown on SIGINT", async () => {
         const onSignal = vi.fn();
         installGracefulShutdown({ onSignal });
 
@@ -71,10 +71,10 @@ describe("installGracefulShutdown — basic exit codes", () => {
         await flush();
 
         expect(onSignal).toHaveBeenCalledWith("SIGINT");
-        expect(fixture.exitSpy).toHaveBeenCalledWith(130);
+        expect(fixture.exitSpy).toHaveBeenCalledWith(0);
     });
 
-    it("handles SIGHUP", async () => {
+    it("exits 0 after a clean shutdown on SIGHUP", async () => {
         const onSignal = vi.fn();
         installGracefulShutdown({ onSignal });
 
@@ -82,7 +82,7 @@ describe("installGracefulShutdown — basic exit codes", () => {
         await flush();
 
         expect(onSignal).toHaveBeenCalledWith("SIGHUP");
-        expect(fixture.exitSpy).toHaveBeenCalledWith(143);
+        expect(fixture.exitSpy).toHaveBeenCalledWith(0);
     });
 });
 
@@ -103,7 +103,7 @@ describe("installGracefulShutdown — async + force-kill behavior", () => {
         resolveSignal();
         await flush();
 
-        expect(fixture.exitSpy).toHaveBeenCalledWith(143);
+        expect(fixture.exitSpy).toHaveBeenCalledWith(0);
     });
 
     it.each([
@@ -170,5 +170,31 @@ describe("installGracefulShutdown — overrides", () => {
         await flush();
 
         expect(fixture.exitSpy).toHaveBeenCalledWith(7);
+    });
+
+    it("reports graceful=true to the override after a clean shutdown", async () => {
+        const exitCode = vi.fn(() => 0);
+        installGracefulShutdown({ onSignal: () => undefined, exitCode });
+
+        process.emit("SIGINT", "SIGINT");
+        await flush();
+
+        expect(exitCode).toHaveBeenCalledWith("SIGINT", true);
+    });
+
+    it("reports graceful=false to the override when a second signal forces exit", async () => {
+        const exitCode = vi.fn(() => 0);
+        installGracefulShutdown({
+            onSignal: () => new Promise<void>(() => {}),
+            onForce: () => undefined,
+            forceKillAfterMs: 0,
+            exitCode,
+        });
+
+        process.emit("SIGINT", "SIGINT");
+        process.emit("SIGINT", "SIGINT");
+        await flush();
+
+        expect(exitCode).toHaveBeenCalledWith("SIGINT", false);
     });
 });

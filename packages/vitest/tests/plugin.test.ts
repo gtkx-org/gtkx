@@ -8,6 +8,7 @@ type WorkerConfig = {
     test?: {
         globals?: boolean;
         execArgv?: string[];
+        setupFiles?: string[];
         pool?: string;
         testTimeout?: number;
         hookTimeout?: number;
@@ -26,12 +27,12 @@ const unwrap = <Fn extends (...args: never[]) => unknown>(hook: Fn | { handler: 
 const callConfig = (plugin: Plugin, config: InputConfig): WorkerConfig =>
     unwrap(plugin.config as ConfigHook | { handler: ConfigHook } | undefined)(config);
 
-const decodeBootstrapModule = (config: WorkerConfig): string => {
+const preloadSpecifier = (config: WorkerConfig): URL => {
     const execArgv = config.test?.execArgv ?? [];
     expect(execArgv[0]).toBe("--import");
     const specifier = execArgv[1] ?? "";
-    expect(specifier.startsWith("data:text/javascript,")).toBe(true);
-    return decodeURIComponent(specifier.slice("data:text/javascript,".length));
+    expect(specifier.startsWith("file://")).toBe(true);
+    return new URL(specifier);
 };
 
 describe("gtkx vitest plugin", () => {
@@ -58,15 +59,22 @@ describe("gtkx vitest plugin", () => {
         expect(inline.map((pattern) => pattern.flags)).toEqual(["", ""]);
     });
 
-    it("preloads the headless display bootstrap ahead of all worker modules", () => {
-        const module = decodeBootstrapModule(callConfig(gtkx(), {}));
-        expect(module).toContain("worker-preload.js");
-        expect(module).toContain("await bootstrapHeadlessDisplay({})");
+    it("preloads the headless display worker module ahead of all worker modules", () => {
+        const specifier = preloadSpecifier(callConfig(gtkx(), {}));
+        expect(specifier.pathname.endsWith("worker-preload.js")).toBe(true);
+        expect([...specifier.searchParams]).toEqual([]);
     });
 
-    it("embeds the headless options in the bootstrap module", () => {
-        const module = decodeBootstrapModule(callConfig(gtkx({ size: "640x480", compositor: "sway" }), {}));
-        expect(module).toContain('await bootstrapHeadlessDisplay({"size":"640x480","compositor":"sway"})');
+    it("encodes the headless options in the preload specifier query", () => {
+        const specifier = preloadSpecifier(callConfig(gtkx({ size: "640x480", compositor: "sway" }), {}));
+        expect(specifier.searchParams.get("size")).toBe("640x480");
+        expect(specifier.searchParams.get("compositor")).toBe("sway");
+    });
+
+    it("registers the headless shutdown setup file for every worker", () => {
+        const setupFiles = callConfig(gtkx(), {}).test?.setupFiles ?? [];
+        expect(setupFiles).toHaveLength(1);
+        expect(setupFiles[0]?.endsWith("worker-setup.js")).toBe(true);
     });
 
     it("leaves module resolution conditions untouched", () => {

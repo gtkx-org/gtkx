@@ -8,19 +8,23 @@ import { type HeadlessOptions, STATIC_HEADLESS_ENV } from "./headless-display.js
 
 export type GtkxPluginOptions = Partial<HeadlessOptions>;
 
-const workerPreloadUrl = (): string => {
+const workerPreloadUrl = (): URL => {
     const sibling = join(import.meta.dirname, "worker-preload.js");
-    if (existsSync(sibling)) return pathToFileURL(sibling).href;
-    return pathToFileURL(join(import.meta.dirname, "..", "dist", "worker-preload.js")).href;
+    const path = existsSync(sibling) ? sibling : join(import.meta.dirname, "..", "dist", "worker-preload.js");
+    return pathToFileURL(path);
 };
 
-const headlessBootstrapModule = (options: GtkxPluginOptions): string => {
-    const source = [
-        `import { bootstrapHeadlessDisplay } from ${JSON.stringify(workerPreloadUrl())};`,
-        `await bootstrapHeadlessDisplay(${JSON.stringify(options)});`,
-        "",
-    ].join("\n");
-    return `data:text/javascript,${encodeURIComponent(source)}`;
+const headlessPreloadSpecifier = (options: GtkxPluginOptions): string => {
+    const url = workerPreloadUrl();
+    for (const [key, value] of Object.entries(options)) {
+        if (value !== undefined) url.searchParams.set(key, value);
+    }
+    return url.href;
+};
+
+const workerSetupPath = (): string => {
+    const sibling = join(import.meta.dirname, "worker-setup.js");
+    return existsSync(sibling) ? sibling : join(import.meta.dirname, "..", "dist", "worker-setup.js");
 };
 
 const gtkx = (options: GtkxPluginOptions = {}): Plugin =>
@@ -30,7 +34,8 @@ const gtkx = (options: GtkxPluginOptions = {}): Plugin =>
             return {
                 test: {
                     globals: true,
-                    execArgv: ["--import", headlessBootstrapModule(options)],
+                    execArgv: ["--import", headlessPreloadSpecifier(options)],
+                    setupFiles: [workerSetupPath()],
                     testTimeout: 20000,
                     hookTimeout: 20000,
                     pool: "forks",

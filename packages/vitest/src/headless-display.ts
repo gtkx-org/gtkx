@@ -105,6 +105,17 @@ const compositorRegistry: { [K in CompositorId]: CompositorDescriptor } = {
     },
 };
 
+const isCompositorId = (value: string): value is CompositorId => Object.hasOwn(compositorRegistry, value);
+
+export const readHeadlessOptions = (params: URLSearchParams): Partial<HeadlessOptions> => {
+    const options: Partial<HeadlessOptions> = {};
+    const size = params.get("size");
+    if (size !== null) options.size = size;
+    const compositor = params.get("compositor");
+    if (compositor !== null && isCompositorId(compositor)) options.compositor = compositor;
+    return options;
+};
+
 type SpawnedCompositor = {
     child: ChildProcess;
     socket: string;
@@ -259,7 +270,10 @@ export const startHeadlessDisplay = async (options: HeadlessOptions): Promise<()
             abort.abort();
         }
 
+        let torndown = false;
         return (): void => {
+            if (torndown) return;
+            torndown = true;
             busChild.kill("SIGKILL");
             removeRuntime();
         };
@@ -267,24 +281,5 @@ export const startHeadlessDisplay = async (options: HeadlessOptions): Promise<()
         for (const child of spawned) child.kill("SIGKILL");
         removeRuntime();
         throw cause;
-    }
-};
-
-const TEARDOWN_SIGNALS = ["SIGINT", "SIGTERM", "SIGHUP"] as const satisfies NodeJS.Signals[];
-
-export const installTeardownHandlers = (teardown: () => void): void => {
-    let torndown = false;
-    const runTeardown = (): void => {
-        if (torndown) return;
-        torndown = true;
-        teardown();
-    };
-
-    process.on("exit", runTeardown);
-    for (const signal of TEARDOWN_SIGNALS) {
-        process.on(signal, () => {
-            runTeardown();
-            process.exit(signal === "SIGINT" ? 130 : 143);
-        });
     }
 };
