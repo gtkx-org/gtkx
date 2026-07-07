@@ -18,8 +18,6 @@ export type {
     ContainerProp,
     ControlledTextProp,
     ElementProp,
-    ElementProps,
-    JsonValue,
     LazyProp,
     ListProp,
     ValueProp,

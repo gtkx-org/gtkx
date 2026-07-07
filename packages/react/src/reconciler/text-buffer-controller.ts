@@ -64,16 +64,16 @@ export class TextBufferController {
         } else if (isAnchorNode(child)) {
             this.insertAnchor(buffer, child);
         } else if (child instanceof Gtk.TextTag) {
-            this.insertTag(buffer, child, child);
+            this.insertTag(buffer, child);
         }
     }
 
-    private insertTag(buffer: Gtk.TextBuffer, element: Node, tag: Gtk.TextTag): void {
+    private insertTag(buffer: Gtk.TextBuffer, tag: Gtk.TextTag): void {
         const tagTable = buffer.getTagTable();
         if (tag.name && !tagTable.lookup(tag.name)) tagTable.add(tag);
 
         const start = buffer.getCharCount();
-        this.insertChildren(buffer, stateOf(element).children);
+        this.insertChildren(buffer, stateOf(tag).children);
         const end = buffer.getCharCount();
         if (end > start) {
             buffer.applyTag(tag, buffer.getIterAtOffset(start), buffer.getIterAtOffset(end));

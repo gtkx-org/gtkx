@@ -5,7 +5,7 @@ export type AncestryWrapperName =
     | "withApplicationLifecycle"
     | "withApplicationWindowPresentation";
 
-export type AncestryWrapper = { ancestors: string[]; wrapper: AncestryWrapperName };
+type AncestryWrapper = { ancestors: string[]; wrapper: AncestryWrapperName };
 
 export const BUILT_IN_ANCESTRY_WRAPPERS: AncestryWrapper[] = [
     { ancestors: ["GtkApplication"], wrapper: "withApplicationLifecycle" },
@@ -255,7 +255,7 @@ type AccessibleAttributeKind = "property" | "state" | "relation";
 
 type AccessibleAttributeValue = "string" | "boolean" | "int" | "double" | "object" | "ref-list";
 
-export type AccessibleAttribute = {
+type AccessibleAttribute = {
     kind: AccessibleAttributeKind;
     member: string;
     value: AccessibleAttributeValue;

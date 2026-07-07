@@ -1,6 +1,6 @@
 import ts from "typescript";
 
-export type TranspiledFile = {
+type TranspiledFile = {
     js: string;
     dts: string;
 };

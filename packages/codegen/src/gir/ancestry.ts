@@ -6,7 +6,7 @@ export type ResolvedAncestor = {
     namespaceName: string;
 };
 
-export const resolveClassOrInterface = (
+const resolveClassOrInterface = (
     library: Library,
     defaultNamespace: string,
     name: string,

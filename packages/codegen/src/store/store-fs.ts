@@ -19,7 +19,7 @@ export const subpathExport = (stem: string): { types: string; default: string } 
     default: `./${stem}.js`,
 });
 
-export type Manifest = {
+type Manifest = {
     name: string;
     type: "module";
     version: string;
@@ -28,7 +28,7 @@ export type Manifest = {
     peerDependencies?: Record<string, string>;
 };
 
-export type ManifestInput = {
+type ManifestInput = {
     name: string;
     version: string;
     exports: Record<string, unknown>;
@@ -62,7 +62,7 @@ export const writeStore = (params: WriteStoreParams): void => {
     swapStore(tmp, params.storeDir, params.linkDir);
 };
 
-export type WriteStoreParams = {
+type WriteStoreParams = {
     storeDir: string;
     linkDir: string;
     files: StoreFile[];

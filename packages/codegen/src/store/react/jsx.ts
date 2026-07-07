@@ -16,7 +16,7 @@ import {
 import { buildElementPropsEntries, buildInterfacePropsEntries } from "./props.js";
 import { ACCESSIBLE_ATTRIBUTES } from "./tables.js";
 
-export type GenerateJsxOptions = {
+type GenerateJsxOptions = {
     excludeNames: Set<string>;
     imports: ImportsBuilder;
     typegen: ElementPropTypegen;

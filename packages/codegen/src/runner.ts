@@ -15,7 +15,7 @@ type CodegenRunnerOptions = {
     jsx?: JsxStoreOptions | undefined;
 };
 
-export type CodegenRunnerResult = {
+type CodegenRunnerResult = {
     namespaces: number;
     intrinsicElements: number;
     duration: number;

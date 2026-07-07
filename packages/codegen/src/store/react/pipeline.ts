@@ -16,7 +16,7 @@ export type JsxNamespaceFile = {
     source: string;
 };
 
-export type JsxFiles = {
+type JsxFiles = {
     namespaces: JsxNamespaceFile[];
     metadata: string;
     intrinsicElementCount: number;

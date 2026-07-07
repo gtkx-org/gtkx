@@ -2,7 +2,7 @@ import { z } from "zod";
 
 const ARG_REFS = ["child", "item", "index", "sibling"] as const;
 
-export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 
 export type ArgRef = (typeof ARG_REFS)[number];
 
@@ -169,8 +169,6 @@ export type ListProp = z.infer<typeof listSchema>;
 export type AppliedProp = ValueProp | ControlledTextProp | LazyProp | ListProp;
 
 export type ElementProp = z.infer<typeof elementPropSchema>;
-
-export type ElementProps = Record<string, ElementProp[]>;
 
 const CONFIG_PREFIX = "gtkx.config.ts:";
 

@@ -93,39 +93,30 @@ export type CommandPlan =
           params: ParamPlan[];
           returnPlan: ReturnPlan;
       }
-    | { ok: false; command: GlCommand; reason: GlExclusionReason; detail: string };
+    | { ok: false; command: GlCommand; reason: GlExclusionReason };
 
 const isCompsize = (len: string): boolean => len.includes("COMPSIZE(");
 
-const paramExclusion = (
-    param: GlParam,
-    reason: GlExclusionReason,
-    why: string,
-): { reason: GlExclusionReason; detail: string } => ({
-    reason,
-    detail: `${param.name} (${param.cType}): ${why}`,
-});
-
-type ParamOutcome = { plan: ParamPlan } | { reason: GlExclusionReason; detail: string };
+type ParamOutcome = { plan: ParamPlan } | { reason: GlExclusionReason };
 
 const planPointerOut = (command: GlCommand, param: GlParam, scalar: GlScalar, policy: GlPlanPolicy): ParamOutcome => {
     const len = param.len;
     if (len === undefined || len === "1") return { plan: { kind: "ref-out", scalar } };
     if (isCompsize(len)) {
         if (policy.singleValuedQueries.has(command.name)) return { plan: { kind: "ref-out", scalar } };
-        return paramExclusion(param, "compsize-output", `output sized by ${len}`);
+        return { reason: "compsize-output" };
     }
     if (/^\d+$/.test(len)) return { plan: { kind: "ref-fixed-out", scalar, length: Number.parseInt(len, 10) } };
     if (command.params.some((other) => other.name === len)) {
         return { plan: { kind: "ref-array-out", scalar, lenParamName: len } };
     }
-    return paramExclusion(param, "computed-output-length", `output sized by expression "${len}"`);
+    return { reason: "computed-output-length" };
 };
 
-const planByteOffsetParam = (param: GlParam, parsed: ParsedCType): ParamOutcome => {
+const planByteOffsetParam = (parsed: ParsedCType): ParamOutcome => {
     if (parsed.pointers === 1) return { plan: { kind: "byte-offset" } };
     if (parsed.pointers === 2) return { plan: { kind: "byte-offset-array" } };
-    return paramExclusion(param, "unsupported-shape", "byte-offset entry with unexpected indirection");
+    return { reason: "unsupported-shape" };
 };
 
 const planCharParam = (command: GlCommand, param: GlParam, parsed: ParsedCType): ParamOutcome => {
@@ -134,7 +125,7 @@ const planCharParam = (command: GlCommand, param: GlParam, parsed: ParsedCType):
     if (parsed.pointers === 1 && param.len !== undefined && command.params.some((other) => other.name === param.len)) {
         return { plan: { kind: "string-out", lenParamName: param.len } };
     }
-    return paramExclusion(param, "unsupported-shape", "character output without a sizing parameter");
+    return { reason: "unsupported-shape" };
 };
 
 const planScalarParam = (
@@ -150,27 +141,27 @@ const planScalarParam = (
     if (parsed.pointers === 0) return { plan: { kind: "scalar", scalar } };
     if (parsed.pointers === 1 && parsed.constData) return { plan: { kind: "array-in", scalar } };
     if (parsed.pointers === 1) return planPointerOut(command, param, scalar, policy);
-    return paramExclusion(param, "unsupported-shape", "multi-level scalar pointer");
+    return { reason: "unsupported-shape" };
 };
 
 const planParam = (command: GlCommand, param: GlParam, policy: GlPlanPolicy): ParamOutcome => {
     const parsed = parseCType(param.cType);
     const { base, pointers } = parsed;
     if (CALLBACK_BASES.has(base) || base.startsWith("_cl_")) {
-        return paramExclusion(param, "callback-parameter", "callback or foreign handle parameter");
+        return { reason: "callback-parameter" };
     }
     if (policy.byteOffsetParams.has(`${command.name}:${param.name}`)) {
-        return planByteOffsetParam(param, parsed);
+        return planByteOffsetParam(parsed);
     }
     if (base === GL_SYNC && pointers === 0) return { plan: { kind: "sync" } };
     if (base === "void") {
         if (pointers === 1) return { plan: { kind: "buffer" } };
-        return paramExclusion(param, "unsupported-shape", "multi-level void pointer");
+        return { reason: "unsupported-shape" };
     }
     if (base === GL_CHAR || base === "GLcharARB") return planCharParam(command, param, parsed);
     if (base === GL_BOOLEAN) {
         if (pointers === 0) return { plan: { kind: "boolean" } };
-        return paramExclusion(param, "unsupported-shape", "GLboolean pointer parameter");
+        return { reason: "unsupported-shape" };
     }
     return planScalarParam(command, param, parsed, policy);
 };
@@ -192,7 +183,7 @@ export const planCommand = (command: GlCommand, policy: GlPlanPolicy): CommandPl
     for (const param of command.params) {
         const outcome = planParam(command, param, policy);
         if ("reason" in outcome) {
-            return { ok: false, command, reason: outcome.reason, detail: outcome.detail };
+            return { ok: false, command, reason: outcome.reason };
         }
         params.push(outcome.plan);
     }

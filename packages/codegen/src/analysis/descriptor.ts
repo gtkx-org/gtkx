@@ -239,7 +239,7 @@ export const tFixedArray = (element: string, length: number, ownership?: Ownersh
 export const tCallback = (argTypes: string[], returnType: string, options?: string): string =>
     call("callback", [`[${argTypes.join(", ")}]`, returnType, options]);
 
-export type BindArgs = {
+type BindArgs = {
     libExpr: string;
     symbolExpr: string;
     argList: string;

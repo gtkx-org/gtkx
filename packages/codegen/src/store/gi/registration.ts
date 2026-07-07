@@ -1,6 +1,6 @@
 import type { ModuleContext } from "../../writer/context.js";
 
-export type WrapperClassRegistration = {
+type WrapperClassRegistration = {
     className: string;
     gtypeExpr?: string | undefined;
     vfuncs?: string | undefined;
@@ -19,7 +19,7 @@ export const appendWrapperClassRegistration = (
     context.module.appendRegistration(`registerWrapperClass(${className}, ${args});`);
 };
 
-export type InterfaceRegistration = {
+type InterfaceRegistration = {
     className: string;
     makerName: string;
     gtypeExpr?: string | undefined;

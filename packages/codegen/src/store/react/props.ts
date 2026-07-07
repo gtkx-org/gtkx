@@ -10,13 +10,13 @@ import { type GirProperty, isConstructableProperty } from "../../gir/property.js
 import type { TypeId } from "../../gir/type-id.js";
 import { classExposesMethod, isIntrinsicElementClass, signalHandlerName } from "./intrinsic-elements.js";
 
-export type IntrinsicElementPropsEntries = {
+type IntrinsicElementPropsEntries = {
     propLines: string[];
     imports: Map<string, string>;
     slotPropNames: string[];
 };
 
-export type IntrinsicElementPropsOptions = {
+type IntrinsicElementPropsOptions = {
     library: Library;
     klass: GirClass;
     namespace: GirNamespace;
@@ -92,7 +92,7 @@ export const buildElementPropsEntries = (options: IntrinsicElementPropsOptions):
     return { propLines: collector.propLines, imports: collector.imports, slotPropNames: collector.slotPropNames };
 };
 
-export type InterfacePropsOptions = {
+type InterfacePropsOptions = {
     library: Library;
     iface: GirClass;
     namespace: GirNamespace;
@@ -164,7 +164,7 @@ const renderSignalHandler = (options: SignalRenderOptions): string => {
     return `(${params.join(", ")}) => ${result}`;
 };
 
-const reactTarget = (context: PropTypeRenderContext): TsTypeTarget => ({
+export const reactTarget = (context: PropTypeRenderContext): TsTypeTarget => ({
     containerStyle: "record",
     callbackType: "(...args: unknown[]) => unknown",
     byteArrayAsNumber: false,

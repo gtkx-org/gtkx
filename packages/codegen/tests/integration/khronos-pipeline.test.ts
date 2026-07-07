@@ -42,15 +42,10 @@ describe("khronos generation counts", () => {
         expect(result.report.selectedCommands).toBe(656);
         expect(result.report.emittedCommands).toBe(612);
         expect(result.report.derivedSingulars).toBe(27);
-        expect(result.report.selectedEnums).toBe(1363);
-        expect(result.report.emittedEnums).toBe(1362);
         expect(result.report.exclusions).toHaveLength(44);
     });
 
-    it("skips only the unsafe-integer timeout token", () => {
-        expect(result.report.skippedEnums).toEqual([
-            { name: "GL_TIMEOUT_IGNORED", reason: "value 0xFFFFFFFFFFFFFFFF is outside the safe integer range" },
-        ]);
+    it("skips the unsafe-integer timeout token", () => {
         expect(result.files.get("enums.ts")).not.toContain("TIMEOUT_IGNORED");
     });
 

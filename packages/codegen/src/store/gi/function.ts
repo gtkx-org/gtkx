@@ -41,7 +41,7 @@ export const generateNamespaceFunction = (context: ModuleContext, fn: GirFunctio
     context.module.appendDeclaration(renderBlock(`export function ${exportName}(${signature}): ${returnType}`, body));
 };
 
-export const namespaceFunctionExportName = (cIdentifier: string, girName: string, symbolPrefixes: string[]): string => {
+const namespaceFunctionExportName = (cIdentifier: string, girName: string, symbolPrefixes: string[]): string => {
     if (girName.length > 0) {
         return toCamelIdentifier(girName);
     }

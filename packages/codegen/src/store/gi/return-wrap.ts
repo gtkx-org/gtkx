@@ -3,7 +3,7 @@ import type { PrimitiveCategory } from "../../gir/primitives.js";
 import type { TypeId } from "../../gir/type-id.js";
 import type { ModuleContext } from "../../writer/context.js";
 
-export type WrapReturnOptions = {
+type WrapReturnOptions = {
     ref: TypeId | undefined;
     nullable: boolean;
     valueExpression: string;

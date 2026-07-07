@@ -45,7 +45,7 @@ export const chainOf = (context: GirIndex, entry: GirTypeEntry): GirClass[] => {
     return chain;
 };
 
-export type ResolvedMethod = {
+type ResolvedMethod = {
     fn: GirFunction;
     params: GirParameter[];
 };

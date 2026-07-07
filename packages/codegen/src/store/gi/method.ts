@@ -140,7 +140,7 @@ const isCallbackParameter = (context: ModuleContext, parameter: GirParameter): b
     return context.library.typeOf(ref)?.kind === "callback";
 };
 
-export type WriteMethodBodyOptions = {
+type WriteMethodBodyOptions = {
     bindingExpression: string;
     returnTypeOverride?: string | undefined;
 };

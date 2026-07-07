@@ -5,7 +5,7 @@ import { type GirParameter, type GirSignal, isCallerAllocatedOut, isOutParameter
 import type { TypeId } from "../gir/type-id.js";
 import { isCellInout, omitsPrimaryReturn } from "./descriptor-render.js";
 
-export type InputParameter = {
+type InputParameter = {
     parameter: GirParameter;
     index: number;
 };
@@ -89,7 +89,7 @@ export const foldOutParamShape = (primary: string | undefined, outTypes: string[
     return `[${outTypes.join(", ")}]`;
 };
 
-export type HandlerResultOptions = {
+type HandlerResultOptions = {
     library: Library;
     signal: GirSignal;
     renderType: (ref: TypeId | undefined, nullable: boolean) => string;

@@ -2,7 +2,7 @@ import type * as GObject from "@gtkx/gi/gobject";
 import { useLayoutEffect, useRef } from "react";
 import { type GObjectTarget, resolveGObjectTarget } from "../utils/gobject-target.js";
 
-export type TargetRegistrationOps<T extends GObject.Object, R> = {
+type TargetRegistrationOps<T extends GObject.Object, R> = {
     attach(target: T, clearIfCurrent: (registration: R) => void): R;
     detach(registration: R): void;
     isSame(registration: R, target: T): boolean;

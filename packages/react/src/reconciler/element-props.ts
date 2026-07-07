@@ -42,7 +42,7 @@ const evalArg = (arg: Arg, scope: CallScope): unknown => {
     return value;
 };
 
-export type CallResult = {
+type CallResult = {
     called: boolean;
     value: unknown;
 };

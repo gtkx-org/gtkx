@@ -1,12 +1,12 @@
 import type { AppliedProp, Call, ContainerProp, ElementProp } from "@gtkx/config";
 import { toCamelIdentifier } from "@gtkx/utils";
-import { renderBaseTypeFor, type TsTypeTarget } from "../../analysis/ts-type.js";
+import { renderBaseTypeFor } from "../../analysis/ts-type.js";
 import type { GirClass } from "../../gir/class.js";
-import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
 import type { GirParameter } from "../../gir/parameter.js";
 import { chainOf, findMethod, type GirIndex, type GirTypeEntry, hasProperty } from "./gir-index.js";
 import { glibNameOf } from "./intrinsic-elements.js";
+import { reactTarget } from "./props.js";
 
 type TypeImports = Map<string, string>;
 
@@ -29,25 +29,6 @@ export type ElementPropTypegen = {
     acceptsChildren: (glibName: string) => boolean;
 };
 
-const elementPropTarget = (library: Library, imports: TypeImports): TsTypeTarget => ({
-    containerStyle: "record",
-    callbackType: "(...args: unknown[]) => unknown",
-    byteArrayAsNumber: false,
-    renderNamed: (resolved, name) => {
-        if (resolved?.kind === "alias") {
-            return resolved.value.target === undefined
-                ? "number"
-                : renderBaseTypeFor(library, elementPropTarget(library, imports), resolved.value.target);
-        }
-        imports.set(name.namespaceName, name.namespaceName);
-        return `${name.namespaceName}.${name.typeName}`;
-    },
-    renderGtype: () => {
-        imports.set("GObject", "GObject");
-        return "GObject.Type";
-    },
-});
-
 const forEachContainer = (
     elementProps: Record<string, ElementProp[]>,
     visit: (type: string, prop: ContainerProp) => void,
@@ -61,7 +42,7 @@ const forEachContainer = (
 
 const renderParamType = (context: GirIndex, imports: TypeImports, param: GirParameter | undefined): string => {
     if (param === undefined) return "unknown";
-    const base = renderBaseTypeFor(context.library, elementPropTarget(context.library, imports), param.type);
+    const base = renderBaseTypeFor(context.library, reactTarget({ library: context.library, imports }), param.type);
     return param.nullable || param.optional ? `${base} | null` : base;
 };
 

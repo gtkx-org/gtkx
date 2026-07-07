@@ -58,7 +58,6 @@ const PLAN_POLICY: GlPlanPolicy = {
 type GlExclusion = {
     command: string;
     reason: GlExclusionReason;
-    detail: string;
 };
 
 type GlGenerationReport = {
@@ -66,10 +65,7 @@ type GlGenerationReport = {
     selectedCommands: number;
     emittedCommands: number;
     derivedSingulars: number;
-    selectedEnums: number;
-    emittedEnums: number;
     exclusions: GlExclusion[];
-    skippedEnums: { name: string; reason: string }[];
 };
 
 export type GlGenerationResult = {
@@ -117,7 +113,7 @@ const collectGroupAliases = (plans: (CommandPlan & { ok: true })[]): Map<string,
     return aliases;
 };
 
-export type GlGenerationOptions = {
+type GlGenerationOptions = {
     registryPath: string;
     companionExports: Set<string>;
 };
@@ -143,12 +139,12 @@ const planSelectedCommands = (
         const command = registry.commands.get(name);
         if (command === undefined) throw new Error(`Selected command ${name} is not defined in the registry`);
         if (COMPANION_OWNED.has(name)) {
-            exclusions.push({ command: name, reason: "companion-owned", detail: "owned by the companion module" });
+            exclusions.push({ command: name, reason: "companion-owned" });
             continue;
         }
         const plan = planCommand(command, PLAN_POLICY);
         if (!plan.ok) {
-            exclusions.push({ command: name, reason: plan.reason, detail: plan.detail });
+            exclusions.push({ command: name, reason: plan.reason });
             continue;
         }
         okPlans.push(plan);
@@ -164,24 +160,15 @@ type EnumRow = {
     feature: string;
 };
 
-type EnumRows = {
-    enumRows: EnumRow[];
-    skippedEnums: { name: string; reason: string }[];
-};
-
-const buildEnumRows = (registry: ReturnType<typeof loadGlRegistry>, enumNames: Map<string, string>): EnumRows => {
-    const skippedEnums: { name: string; reason: string }[] = [];
+const buildEnumRows = (registry: ReturnType<typeof loadGlRegistry>, enumNames: Map<string, string>): EnumRow[] => {
     const enumRows: EnumRow[] = [];
     for (const [name, feature] of sortedStringsBy(enumNames.entries(), ([key]) => key)) {
         const token = resolveEnum(registry, name);
         const literal = enumLiteral(token);
-        if (literal === undefined) {
-            skippedEnums.push({ name, reason: `value ${token.value} is outside the safe integer range` });
-            continue;
-        }
+        if (literal === undefined) continue;
         enumRows.push({ token, exportName: enumExportName(name), literal, feature });
     }
-    return { enumRows, skippedEnums };
+    return enumRows;
 };
 
 const assertExportNamesDisjoint = (
@@ -226,7 +213,7 @@ export const generateGlModules = (options: GlGenerationOptions): GlGenerationRes
         if (singular !== undefined) singulars.push(singular);
     }
 
-    const { enumRows, skippedEnums } = buildEnumRows(registry, subset.enums);
+    const enumRows = buildEnumRows(registry, subset.enums);
     assertExportNamesDisjoint(rendered, singulars, enumRows, options.companionExports);
 
     const files = new Map<string, string>([
@@ -245,10 +232,7 @@ export const generateGlModules = (options: GlGenerationOptions): GlGenerationRes
             selectedCommands: subset.commands.size,
             emittedCommands: rendered.length,
             derivedSingulars: singulars.length,
-            selectedEnums: subset.enums.size,
-            emittedEnums: enumRows.length,
             exclusions,
-            skippedEnums,
         },
     };
 };

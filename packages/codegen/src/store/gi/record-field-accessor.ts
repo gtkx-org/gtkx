@@ -18,7 +18,7 @@ export const isEmittableField = (context: ModuleContext, field: GirField): field
     !isInlineCallbackRef(context.library, field.type) &&
     !refIsClassStruct(context, field.type);
 
-export type FieldWriteSpec = {
+type FieldWriteSpec = {
     descriptor: string;
     slot: FieldSlot;
     targetExpr: string;

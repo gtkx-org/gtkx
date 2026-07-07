@@ -7,7 +7,7 @@ import {
     resolveReactCompilerOptions,
     validateGtkxConfig,
 } from "../src/config.js";
-import type { ElementProps } from "../src/index.js";
+import type { ElementProp } from "../src/index.js";
 
 const validateUnknown = (config: unknown): void => validateGtkxConfig(config as GtkxConfig);
 
@@ -102,7 +102,7 @@ describe("validateGtkxConfig (applicationId)", () => {
 
 describe("validateGtkxConfig elementProps validation", () => {
     it("accepts inline element props of every kind", () => {
-        const elementProps: ElementProps = {
+        const elementProps: Record<string, ElementProp[]> = {
             GtkWidget: [
                 {
                     kind: "container",
@@ -288,8 +288,6 @@ describe("resolveReactCompilerOptions", () => {
 describe("resolveGtkxConfig", () => {
     it("defaults every optional field on an empty config", () => {
         expect(resolveGtkxConfig({})).toEqual({
-            libraries: [],
-            girPath: [],
             applicationId: DEFAULT_APPLICATION_ID,
             reactCompiler: { target: "19" },
         });
@@ -297,19 +295,13 @@ describe("resolveGtkxConfig", () => {
 
     it("carries configured values through unchanged", () => {
         const configured: GtkxConfig = {
-            libraries: ["Gtk-4.0", "Adw-1"],
-            girPath: ["/opt/gir"],
             applicationId: "org.gtk.Demo4",
             reactCompiler: { compilationMode: "annotation" },
         };
         expect(resolveGtkxConfig(configured)).toEqual({
-            ...configured,
+            applicationId: "org.gtk.Demo4",
             reactCompiler: { target: "19", compilationMode: "annotation" },
         });
-    });
-
-    it("preserves the libraries wildcard", () => {
-        expect(resolveGtkxConfig({ libraries: "*" }).libraries).toBe("*");
     });
 
     it("collapses a disabled reactCompiler to null", () => {

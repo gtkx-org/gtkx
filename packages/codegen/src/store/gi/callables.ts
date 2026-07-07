@@ -91,7 +91,7 @@ const renderConstructorStatic = (
 const renderStaticMember = (context: ModuleContext, callable: GirFunction): string | undefined =>
     renderCallableMember(context, callable, { resolveName: (member) => toCamelCase(member.name), isStatic: true });
 
-export const renderInstanceMethod = (
+const renderInstanceMethod = (
     context: ModuleContext,
     callable: GirFunction,
     nameOverride?: string,
@@ -206,7 +206,7 @@ const renderPlainInstanceMethods = (
     return blocks;
 };
 
-export type PlainTypeMembersOptions = {
+type PlainTypeMembersOptions = {
     context: ModuleContext;
     className: string;
     callables: Callables;

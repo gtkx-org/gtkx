@@ -156,7 +156,7 @@ export const resolveSignal = (instance: TypedClass, propName: string): string | 
     });
 };
 
-export type DefaultPropLookup = { has: boolean; value: unknown };
+type DefaultPropLookup = { has: boolean; value: unknown };
 
 const NO_DEFAULT_PROP: DefaultPropLookup = { has: false, value: undefined };
 

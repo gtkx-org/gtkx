@@ -8,7 +8,7 @@ export type GlSelection = {
     profile: GlProfile;
 };
 
-export type GlSubset = {
+type GlSubset = {
     commands: Map<string, string>;
     enums: Map<string, string>;
 };

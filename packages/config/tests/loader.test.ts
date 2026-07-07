@@ -98,7 +98,6 @@ describe("createGtkxConfigLoader", () => {
     it("resolves a declared config", async () => {
         writeConfig(`export default { libraries: ["Gtk-4.0"], applicationId: "org.gtk.Demo4" };\n`);
         const resolved = await createGtkxConfigLoader()(cwd);
-        expect(resolved.libraries).toEqual(["Gtk-4.0"]);
         expect(resolved.applicationId).toBe("org.gtk.Demo4");
         expect(resolved.reactCompiler).toEqual({ target: "19" });
     });

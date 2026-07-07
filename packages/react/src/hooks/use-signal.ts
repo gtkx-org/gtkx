@@ -26,7 +26,7 @@ export type SignalHandlerFor<T extends GObject.Object, S extends string> = S ext
           : AnySignalHandler
       : AnySignalHandler;
 
-export type UseSignalOptions = {
+type UseSignalOptions = {
     after?: boolean;
     immediate?: boolean;
 };

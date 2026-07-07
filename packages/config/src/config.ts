@@ -153,15 +153,11 @@ export const defineConfig: DefineConfig<GtkxConfig> = createDefineConfig<GtkxCon
 export const mergeConfig = (base: GtkxConfig, override: GtkxConfig): GtkxConfig => defu(override, base);
 
 export type ResolvedGtkxConfig = {
-    libraries: typeof LIBRARIES_WILDCARD | string[];
-    girPath: string[];
     applicationId: string;
     reactCompiler: ResolvedReactCompilerOptions | null;
 };
 
 export const resolveGtkxConfig = (config: GtkxConfig): ResolvedGtkxConfig => ({
-    libraries: config.libraries ?? [],
-    girPath: config.girPath ?? [],
     applicationId: config.applicationId ?? DEFAULT_APPLICATION_ID,
     reactCompiler: resolveReactCompilerOptions(config.reactCompiler),
 });

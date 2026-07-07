@@ -25,7 +25,7 @@ export type State = {
 
 const stateMap = new WeakMap<Node, State>();
 
-export type StateSeed = {
+type StateSeed = {
     kind?: WrapperKind;
     props: Props;
     rootContainer: Container;
