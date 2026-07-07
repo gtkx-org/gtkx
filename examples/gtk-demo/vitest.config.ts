@@ -1,21 +1,25 @@
 import gtkx from "@gtkx/cli/vitest";
-import { defineConfig } from "vitest/config";
+import { defineConfig, mergeConfig } from "vitest/config";
+import { sourceResolveConfig } from "../../vitest.source.js";
 
-export default defineConfig({
-    plugins: [gtkx()],
-    test: {
-        bail: 1,
-        name: "gtk-demo",
-        include: ["tests/**/*.test.{ts,tsx}"],
-        setupFiles: ["./tests/setup.ts"],
-        coverage: {
-            provider: "v8",
-            include: ["src/**/*.{ts,tsx}"],
-            exclude: ["src/**/*.d.ts", "src/demos/types.ts"],
-            reporter: ["text", "html", "lcov"],
-            thresholds: {
-                lines: 80,
+export default mergeConfig(
+    defineConfig({ ...sourceResolveConfig }),
+    defineConfig({
+        plugins: [gtkx()],
+        test: {
+            bail: 1,
+            name: "gtk-demo",
+            include: ["tests/**/*.test.{ts,tsx}"],
+            setupFiles: ["./tests/setup.ts"],
+            coverage: {
+                provider: "v8",
+                include: ["src/**/*.{ts,tsx}"],
+                exclude: ["src/**/*.d.ts", "src/demos/types.ts"],
+                reporter: ["text", "html", "lcov"],
+                thresholds: {
+                    lines: 80,
+                },
             },
         },
-    },
-});
+    }),
+);

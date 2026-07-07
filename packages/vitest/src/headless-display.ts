@@ -3,7 +3,6 @@ import { chmodSync, existsSync, mkdtempSync, rmSync, writeFileSync } from "node:
 import { Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { installGracefulShutdown } from "@gtkx/utils";
 
 type CompositorId = "sway" | "weston";
 
@@ -285,6 +284,15 @@ export const startHeadlessDisplay = async (options: HeadlessOptions): Promise<()
     }
 };
 
+const TEARDOWN_SIGNALS = ["SIGINT", "SIGTERM", "SIGHUP"] as const satisfies NodeJS.Signals[];
+
+/**
+ * Runs the display teardown exactly once on worker exit or termination signals.
+ *
+ * This module is loaded through a node `--import` preload, before any package
+ * outside the node standard library is resolvable, so it installs plain signal
+ * handlers instead of depending on a shared shutdown helper.
+ */
 export const installTeardownHandlers = (teardown: () => void): void => {
     let torndown = false;
     const runTeardown = (): void => {
@@ -294,5 +302,10 @@ export const installTeardownHandlers = (teardown: () => void): void => {
     };
 
     process.on("exit", runTeardown);
-    installGracefulShutdown({ onSignal: runTeardown });
+    for (const signal of TEARDOWN_SIGNALS) {
+        process.on(signal, () => {
+            runTeardown();
+            process.exit(signal === "SIGINT" ? 130 : 143);
+        });
+    }
 };

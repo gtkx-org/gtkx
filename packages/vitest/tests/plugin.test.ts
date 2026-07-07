@@ -1,4 +1,3 @@
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { Plugin } from "vitest/config";
 import gtkx from "../src/index.js";
@@ -8,8 +7,7 @@ type InputConfig = { root?: string; test?: { setupFiles?: string | string[] } };
 type WorkerConfig = {
     test?: {
         globals?: boolean;
-        setupFiles?: string[];
-        provide?: { gtkxHeadless?: { size?: string; compositor?: string } };
+        execArgv?: string[];
         pool?: string;
         testTimeout?: number;
         hookTimeout?: number;
@@ -25,10 +23,16 @@ const unwrap = <Fn extends (...args: never[]) => unknown>(hook: Fn | { handler: 
     return typeof hook === "function" ? hook : hook.handler;
 };
 
-const workerSetupPath = join(import.meta.dirname, "..", "src", "worker-setup.js");
-
 const callConfig = (plugin: Plugin, config: InputConfig): WorkerConfig =>
     unwrap(plugin.config as ConfigHook | { handler: ConfigHook } | undefined)(config);
+
+const decodeBootstrapModule = (config: WorkerConfig): string => {
+    const execArgv = config.test?.execArgv ?? [];
+    expect(execArgv[0]).toBe("--import");
+    const specifier = execArgv[1] ?? "";
+    expect(specifier.startsWith("data:text/javascript,")).toBe(true);
+    return decodeURIComponent(specifier.slice("data:text/javascript,".length));
+};
 
 describe("gtkx vitest plugin", () => {
     it("names the plugin and exposes config/resolveId/load hooks", () => {
@@ -54,23 +58,19 @@ describe("gtkx vitest plugin", () => {
         expect(inline.map((pattern) => pattern.flags)).toEqual(["", ""]);
     });
 
-    it("registers the headless display setup file", () => {
-        const result = callConfig(gtkx(), {});
-        expect(result.test?.setupFiles).toEqual([workerSetupPath]);
+    it("preloads the headless display bootstrap ahead of all worker modules", () => {
+        const module = decodeBootstrapModule(callConfig(gtkx(), {}));
+        expect(module).toContain("worker-preload.js");
+        expect(module).toContain("await bootstrapHeadlessDisplay({})");
     });
 
-    it("provides the headless options to the worker", () => {
-        const result = callConfig(gtkx({ size: "640x480", compositor: "sway" }), {});
-        expect(result.test?.provide?.gtkxHeadless).toEqual({ size: "640x480", compositor: "sway" });
+    it("embeds the headless options in the bootstrap module", () => {
+        const module = decodeBootstrapModule(callConfig(gtkx({ size: "640x480", compositor: "sway" }), {}));
+        expect(module).toContain('await bootstrapHeadlessDisplay({"size":"640x480","compositor":"sway"})');
     });
 
-    it("provides empty headless options when none are configured", () => {
+    it("leaves module resolution conditions untouched", () => {
         const result = callConfig(gtkx(), {});
-        expect(result.test?.provide?.gtkxHeadless).toEqual({});
-    });
-
-    it("orders the ssr resolve conditions source-first", () => {
-        const result = callConfig(gtkx(), {});
-        expect(result.ssr?.resolve?.conditions).toEqual(["source", "module", "node", "development|production"]);
+        expect(result.ssr).toBeUndefined();
     });
 });

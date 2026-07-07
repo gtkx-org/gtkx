@@ -1,4 +1,6 @@
+import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { createGtkxConfigPlugin } from "@gtkx/config/plugin";
 import type { Plugin } from "vitest/config";
@@ -6,47 +8,41 @@ import { type HeadlessOptions, STATIC_HEADLESS_ENV } from "./headless-display.js
 
 export type GtkxPluginOptions = Partial<HeadlessOptions>;
 
-type SourceResolveConfig = {
-    ssr: { resolve: { conditions: string[] } };
-    test: { server: { deps: { inline: (string | RegExp)[] } } };
+const workerPreloadUrl = (): string => {
+    const sibling = join(import.meta.dirname, "worker-preload.js");
+    if (existsSync(sibling)) return pathToFileURL(sibling).href;
+    return pathToFileURL(join(import.meta.dirname, "..", "dist", "worker-preload.js")).href;
 };
 
-export const sourceResolveConfig: SourceResolveConfig = {
-    ssr: {
-        resolve: {
-            conditions: ["source", "module", "node", "development|production"],
-        },
-    },
-    test: {
-        server: {
-            deps: {
-                inline: [/@gtkx\/(?!native)/, /[/\\]\.gtkx[/\\]/],
-            },
-        },
-    },
+const headlessBootstrapModule = (options: GtkxPluginOptions): string => {
+    const source = [
+        `import { bootstrapHeadlessDisplay } from ${JSON.stringify(workerPreloadUrl())};`,
+        `await bootstrapHeadlessDisplay(${JSON.stringify(options)});`,
+        "",
+    ].join("\n");
+    return `data:text/javascript,${encodeURIComponent(source)}`;
 };
 
-const gtkx = (options: GtkxPluginOptions = {}): Plugin => {
-    const workerSetupPath = join(import.meta.dirname, "worker-setup.js");
-
-    return createGtkxConfigPlugin({
+const gtkx = (options: GtkxPluginOptions = {}): Plugin =>
+    createGtkxConfigPlugin({
         name: "gtkx:vitest",
         config() {
             return {
                 test: {
                     globals: true,
-                    setupFiles: [workerSetupPath],
-                    provide: { gtkxHeadless: options },
+                    execArgv: ["--import", headlessBootstrapModule(options)],
                     testTimeout: 20000,
                     hookTimeout: 20000,
                     pool: "forks",
                     env: STATIC_HEADLESS_ENV,
-                    server: sourceResolveConfig.test.server,
+                    server: {
+                        deps: {
+                            inline: [/@gtkx\/(?!native)/, /[/\\]\.gtkx[/\\]/],
+                        },
+                    },
                 },
-                ssr: sourceResolveConfig.ssr,
             };
         },
     });
-};
 
 export default gtkx;
