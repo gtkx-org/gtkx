@@ -208,6 +208,22 @@ jobs:
             util-linux libglib2.0-bin
           pkg-config --modversion gtk4
 
+      - name: Fetch a newer GTK GIR set for codegen
+        shell: bash
+        run: |
+          # The macro runner's apt GTK predates loadFromString (GTK 4.12+), so the
+          # bindings the build type-checks against are generated from a newer GIR
+          # closure. Fedora ships a >=4.12 GTK stack; its GIR is arch-independent
+          # XML. A runtime polyfill (tests/bench-setup.ts) bridges the newer API
+          # surface back to the older runtime the benches actually execute on.
+          mkdir -p "$RUNNER_TEMP/gir"
+          docker run --rm -v "$RUNNER_TEMP/gir:/gir" fedora:41 bash -c '
+            dnf install -y --setopt=install_weak_deps=False gtk4-devel libadwaita-devel gtksourceview5-devel >/dev/null
+            cp /usr/share/gir-1.0/*.gir /gir/
+          '
+          echo "GIR files: $(ls "$RUNNER_TEMP/gir" | wc -l); load_from_string present: $(grep -c load_from_string "$RUNNER_TEMP/gir/Gtk-4.0.gir")"
+          echo "GTKX_GIR_PATH=$RUNNER_TEMP/gir" >> "$GITHUB_ENV"
+
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:

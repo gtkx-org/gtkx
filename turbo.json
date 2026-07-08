@@ -9,7 +9,7 @@
         "tsconfig.*.json",
         "vitest.config.ts"
     ],
-    "globalEnv": ["NODE_VERSION", "GTK4_VERSION"],
+    "globalEnv": ["NODE_VERSION", "GTK4_VERSION", "GTKX_GIR_PATH"],
     "globalPassThroughEnv": [
         "TURBO_TOKEN",
         "TURBO_TEAM",
