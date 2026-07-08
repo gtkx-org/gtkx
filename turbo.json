@@ -135,7 +135,10 @@
                 "@gtkx/gl#codegen",
                 "@gtkx/native#build",
                 "@gtkx/vitest#build",
-                "@gtkx/cli#build"
+                "@gtkx/cli#build",
+                "@gtkx/css#build",
+                "@gtkx/utils#build",
+                "@gtkx/ffi#build"
             ],
             "inputs": [
                 "$TURBO_DEFAULT$",
@@ -198,7 +201,10 @@
                 "@gtkx/gl#codegen",
                 "@gtkx/native#build",
                 "@gtkx/vitest#build",
-                "@gtkx/cli#build"
+                "@gtkx/cli#build",
+                "@gtkx/css#build",
+                "@gtkx/utils#build",
+                "@gtkx/ffi#build"
             ],
             "inputs": [
                 "$TURBO_DEFAULT$",
