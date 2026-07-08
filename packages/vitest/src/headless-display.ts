@@ -274,7 +274,7 @@ export const startHeadlessDisplay = async (options: HeadlessOptions): Promise<()
         return (): void => {
             if (torndown) return;
             torndown = true;
-            busChild.kill("SIGKILL");
+            for (const child of spawned) child.kill("SIGKILL");
             removeRuntime();
         };
     } catch (cause) {
