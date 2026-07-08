@@ -171,33 +171,68 @@ jobs:
           mount-pnpm-store: "true"
 
   bench:
-    needs: [changes, image]
+    needs: [changes]
     if: needs.changes.outputs.code == 'true' && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    runs-on: codspeed-macro
+    timeout-minutes: 45
     permissions:
       contents: read
-      packages: read
       id-token: write
-    container:
-      image: ${{ needs.image.outputs.ref }}
-      options: --security-opt seccomp=unconfined
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+    env:
+      # The macro runner is ARM64; a fresh build is forced so the x86_64 remote
+      # cache can never satisfy the native addon or platform-specific outputs.
+      TURBO_TOKEN: ""
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
+      - name: Probe runner
+        shell: bash
+        run: |
+          uname -m
+          . /etc/os-release && echo "$PRETTY_NAME"
+
+      - name: Install the GTK4 runtime and headless compositor
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential pkg-config \
+            libgtk-4-dev libadwaita-1-dev libgtksourceview-5-dev libwebkitgtk-6.0-dev \
+            libgirepository1.0-dev gobject-introspection \
+            gvfs libgles2 libgl1-mesa-dri \
+            weston xwayland-run dbus \
+            adwaita-icon-theme gsettings-desktop-schemas shared-mime-info \
+            hicolor-icon-theme librsvg2-common \
+            fontconfig fonts-noto-core fonts-dejavu-core \
+            util-linux libglib2.0-bin
+          pkg-config --modversion gtk4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+
+      - name: Enable pnpm
+        shell: bash
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.10.0 --activate
+
+      - name: Set up Rust
+        shell: bash
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
       - name: Install dependencies and build the benchmark prerequisites
         shell: bash
         run: |
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           pnpm install --frozen-lockfile
-          pnpm turbo run build --filter=@gtkx/vitest
+          pnpm build
 
       - name: Run the TypeScript benchmarks under CodSpeed
         uses: CodSpeedHQ/action@4e969336ab9acd4f6f8d025fdd793292b0835df0 # v4.18.2
         with:
-          mode: simulation
+          mode: walltime
           run: pnpm --filter @gtkx/e2e bench
