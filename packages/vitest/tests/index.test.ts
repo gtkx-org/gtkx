@@ -48,8 +48,8 @@ describe("gtkx vitest plugin", () => {
         const result = callConfig(gtkx(), {});
         expect(result.test?.pool).toBe("forks");
         expect(result.test?.globals).toBe(true);
-        expect(result.test?.testTimeout).toBe(20000);
-        expect(result.test?.hookTimeout).toBe(20000);
+        expect(result.test?.testTimeout).toBe(30000);
+        expect(result.test?.hookTimeout).toBe(30000);
     });
 
     it("inlines the gtkx source packages except the native addon", () => {

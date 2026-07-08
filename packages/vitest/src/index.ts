@@ -36,8 +36,8 @@ const gtkx = (options: GtkxPluginOptions = {}): Plugin =>
                     globals: true,
                     execArgv: ["--import", headlessPreloadSpecifier(options)],
                     setupFiles: [workerSetupPath()],
-                    testTimeout: 20000,
-                    hookTimeout: 20000,
+                    testTimeout: 30000,
+                    hookTimeout: 30000,
                     pool: "forks",
                     env: STATIC_HEADLESS_ENV,
                     server: {
