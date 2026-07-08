@@ -170,8 +170,41 @@ jobs:
           mount-cargo-cache: "true"
           mount-pnpm-store: "true"
 
-  bench:
+  gir:
     needs: [changes]
+    if: needs.changes.outputs.code == 'true' && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Extract the project's GTK 4.22 GIR closure
+        shell: bash
+        run: |
+          # Replay the CI image's GTK-from-proposed install in a throwaway
+          # ubuntu:26.04 container (GIR is arch-independent XML) on a cheap runner,
+          # so the codspeed-macro bench can consume it as an artifact instead of
+          # paying an apt/Docker cost on the metered macro minutes.
+          mkdir -p gir
+          docker run --rm -v "$PWD/gir:/gir" ubuntu:26.04 bash -c '
+            set -e
+            export DEBIAN_FRONTEND=noninteractive
+            codename=$(. /etc/os-release; echo "$VERSION_CODENAME")
+            printf "deb http://archive.ubuntu.com/ubuntu %s-proposed main\n" "$codename" > /etc/apt/sources.list.d/proposed.list
+            printf "Package: *\nPin: release a=%s-proposed\nPin-Priority: 100\n\nPackage: src:gtk4\nPin: release a=%s-proposed\nPin-Priority: 600\n" "$codename" "$codename" > /etc/apt/preferences.d/gtk4-proposed
+            apt-get update -qq
+            apt-get install -y --no-install-recommends libgtk-4-dev libadwaita-1-dev libgtksourceview-5-dev gobject-introspection libgirepository1.0-dev >/dev/null
+            cp /usr/share/gir-1.0/*.gir /gir/
+          '
+          echo "GIR files: $(ls gir | wc -l)"
+
+      - name: Upload the GIR artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.4.3
+        with:
+          name: gtk-gir
+          path: gir/
+          retention-days: 1
+
+  bench:
+    needs: [changes, gir]
     if: needs.changes.outputs.code == 'true' && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: codspeed-macro
     timeout-minutes: 45
@@ -208,28 +241,20 @@ jobs:
             util-linux libglib2.0-bin
           pkg-config --modversion gtk4
 
-      - name: Fetch matching GTK 4.22 GIR for codegen
+      # The macro runner's apt GTK is too old to type-check the project's newer API
+      # surface (loadFromString, newer Adw easings, ...). The `gir` job extracted
+      # the exact GIR the project targets on a cheap runner; download it here so the
+      # macro job stays fast and Docker-free. A runtime polyfill
+      # (tests/bench-setup.ts) bridges the newer surface back to the older runtime.
+      - name: Download the matching GTK 4.22 GIR
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v5.0.0
+        with:
+          name: gtk-gir
+          path: ${{ runner.temp }}/gir
+
+      - name: Point codegen at the downloaded GIR
         shell: bash
-        run: |
-          # The macro runner's apt GTK is too old to type-check the project's
-          # newer API surface (loadFromString, newer Adw easings, ...). Extract the
-          # exact GIR the project targets by replaying the CI image's
-          # GTK-from-proposed install in a throwaway ubuntu:26.04 container (GIR is
-          # arch-independent XML). A runtime polyfill (tests/bench-setup.ts) bridges
-          # the newer surface back to the older runtime the benches execute against.
-          mkdir -p "$RUNNER_TEMP/gir"
-          docker run --rm -v "$RUNNER_TEMP/gir:/gir" ubuntu:26.04 bash -c '
-            set -e
-            export DEBIAN_FRONTEND=noninteractive
-            codename=$(. /etc/os-release; echo "$VERSION_CODENAME")
-            printf "deb http://archive.ubuntu.com/ubuntu %s-proposed main\n" "$codename" > /etc/apt/sources.list.d/proposed.list
-            printf "Package: *\nPin: release a=%s-proposed\nPin-Priority: 100\n\nPackage: src:gtk4\nPin: release a=%s-proposed\nPin-Priority: 600\n" "$codename" "$codename" > /etc/apt/preferences.d/gtk4-proposed
-            apt-get update -qq
-            apt-get install -y --no-install-recommends libgtk-4-dev libadwaita-1-dev libgtksourceview-5-dev gobject-introspection libgirepository1.0-dev >/dev/null
-            cp /usr/share/gir-1.0/*.gir /gir/
-          '
-          echo "GIR files: $(ls "$RUNNER_TEMP/gir" | wc -l)"
-          echo "GTKX_GIR_PATH=$RUNNER_TEMP/gir" >> "$GITHUB_ENV"
+        run: echo "GTKX_GIR_PATH=$RUNNER_TEMP/gir" >> "$GITHUB_ENV"
 
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
