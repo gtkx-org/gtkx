@@ -1,29 +1,18 @@
 import type { Call, ContainerProp, ElementProp } from "@gtkx/config";
 
-export type AncestryWrapperName = "withWindowPresentation" | "withApplicationLifecycle";
+export type ElementComponentName = "withWindowPresentation" | "withApplicationLifecycle";
 
-type AncestryWrapper = { ancestors: string[]; wrapper: AncestryWrapperName };
-
-export const BUILT_IN_ANCESTRY_WRAPPERS: AncestryWrapper[] = [
-    { ancestors: ["GtkApplication"], wrapper: "withApplicationLifecycle" },
-    { ancestors: ["GtkWindow"], wrapper: "withWindowPresentation" },
-];
-
+type ElementComponent = { types: string[]; componentName: ElementComponentName };
 type ManyMethods = Pick<ContainerProp, "append" | "remove">;
+type AccessibleAttributeKind = "property" | "state" | "relation";
+type AccessibleAttributeValue = "string" | "boolean" | "int" | "double" | "object" | "ref-list";
 
-const CONTROLLER_METHODS = { append: "addController", remove: "removeController" } satisfies ManyMethods;
-
-const SHORTCUT_METHODS = { append: "addShortcut", remove: "removeShortcut" } satisfies ManyMethods;
-
-const ACTION_METHODS = {
-    append: "addAction",
-    remove: { method: "removeAction", args: [{ prop: "name" }] },
-} satisfies ManyMethods;
-
-const ACTION_GROUP_METHODS = {
-    append: { method: "insertActionGroup", args: [{ prop: "prefix" }, "child"] },
-    remove: { method: "insertActionGroup", args: [{ prop: "prefix" }, { literal: null }] },
-} satisfies ManyMethods;
+type AccessibleAttribute = {
+    kind: AccessibleAttributeKind;
+    member: string;
+    value: AccessibleAttributeValue;
+    type: string;
+};
 
 const container = (
     prop: string,
@@ -78,6 +67,28 @@ const autowrapProp = (wrapper: string): ElementProp =>
         insert: { method: "insert", args: ["child", "index"] },
         autowrap: wrapper,
     });
+
+const forEach = (types: string[], build: () => ElementProp[]): Record<string, ElementProp[]> =>
+    Object.fromEntries(types.map((type) => [type, build()]));
+
+
+export const BUILT_IN_ELEMENT_COMPONENTS: ElementComponent[] = [
+    { types: ["GtkApplication"], componentName: "withApplicationLifecycle" },
+    { types: ["GtkWindow"], componentName: "withWindowPresentation" },
+];
+
+const CONTROLLER_METHODS = { append: "addController", remove: "removeController" } satisfies ManyMethods;
+const SHORTCUT_METHODS = { append: "addShortcut", remove: "removeShortcut" } satisfies ManyMethods;
+
+const ACTION_METHODS = {
+    append: "addAction",
+    remove: { method: "removeAction", args: [{ prop: "name" }] },
+} satisfies ManyMethods;
+
+const ACTION_GROUP_METHODS = {
+    append: { method: "insertActionGroup", args: [{ prop: "prefix" }, "child"] },
+    remove: { method: "insertActionGroup", args: [{ prop: "prefix" }, { literal: null }] },
+} satisfies ManyMethods;
 
 const SINGLE_CHILD_TYPES = [
     "AdwBin",
@@ -135,10 +146,7 @@ const ADD_REMOVE_TYPES = [
     "AdwSqueezer",
 ];
 
-const forEach = (types: string[], build: () => ElementProp[]): Record<string, ElementProp[]> =>
-    Object.fromEntries(types.map((type) => [type, build()]));
-
-export const CURATED_ELEMENT_PROPS: Record<string, ElementProp[]> = {
+export const BUILT_IN_ELEMENT_PROPS: Record<string, ElementProp[]> = {
     ...forEach(SINGLE_CHILD_TYPES, () => [singleChild()]),
     ...forEach(SINGLE_CONTENT_TYPES, () => [singleContent()]),
     ...forEach(BOX_TYPES, () => [boxChildren()]),
@@ -246,17 +254,6 @@ export const CURATED_ELEMENT_PROPS: Record<string, ElementProp[]> = {
         },
     ],
     GtkAboutDialog: [{ kind: "list", prop: "creditSections", add: "addCreditSection" }],
-};
-
-type AccessibleAttributeKind = "property" | "state" | "relation";
-
-type AccessibleAttributeValue = "string" | "boolean" | "int" | "double" | "object" | "ref-list";
-
-type AccessibleAttribute = {
-    kind: AccessibleAttributeKind;
-    member: string;
-    value: AccessibleAttributeValue;
-    type: string;
 };
 
 export const ACCESSIBLE_ATTRIBUTES: Record<string, AccessibleAttribute> = {

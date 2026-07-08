@@ -9,5 +9,5 @@ doctest = false
 
 [dependencies]
 native = { path = ".." }
-gtk4 = "0.11.3"
-anyhow = "1.0.102"
+gtk4 = "0.11.4"
+anyhow = "1.0.103"

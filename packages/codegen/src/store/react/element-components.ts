@@ -5,7 +5,7 @@ import { renderJsDoc } from "../../writer/doc.js";
 import type { ImportsBuilder } from "../../writer/imports.js";
 import type { ElementPropTypegen, LazyElementSpec } from "./element-prop-types.js";
 import { ancestorGlibNames, type GlibNamedClass } from "./intrinsic-elements.js";
-import { type AncestryWrapperName, BUILT_IN_ANCESTRY_WRAPPERS } from "./tables.js";
+import { type ElementComponentName, BUILT_IN_ELEMENT_COMPONENTS } from "./built-ins.js";
 
 type TextNodeElement = {
     flatName: string;
@@ -114,21 +114,21 @@ const renderTextNodeExport = (node: TextNodeElement): string =>
 const renderCandidateExport = (candidate: GlibNamedClass, library: Library, imports: ImportsBuilder): string | null => {
     const { glibName, klass, namespace } = candidate;
     const ancestry = new Set(ancestorGlibNames(klass, namespace, library));
-    const wrapper = resolveAncestryWrapper(ancestry);
+    const wrapper = resolveElementComponent(ancestry);
     imports.addNamed("@gtkx/react/internal", "createElementComponent", false);
     imports.addNamed("react", "ReactNode", true);
     if (wrapper !== undefined) imports.addNamed("@gtkx/react/internal", wrapper, false);
     return `${renderJsDoc(klass.doc)}${renderElementComponentExport(glibName, wrapper)}`;
 };
 
-const resolveAncestryWrapper = (ancestry: Set<string>): AncestryWrapperName | undefined => {
-    for (const entry of BUILT_IN_ANCESTRY_WRAPPERS) {
-        if (entry.ancestors.some((ancestor) => ancestry.has(ancestor))) return entry.wrapper;
+const resolveElementComponent = (types: Set<string>): ElementComponentName | undefined => {
+    for (const entry of BUILT_IN_ELEMENT_COMPONENTS) {
+        if (entry.types.some((type) => types.has(type))) return entry.componentName;
     }
     return undefined;
 };
 
-const renderElementComponentExport = (glibName: string, wrapper: AncestryWrapperName | undefined): string => {
+const renderElementComponentExport = (glibName: string, wrapper: ElementComponentName | undefined): string => {
     const propsType = `${glibName}Props`;
     if (wrapper === undefined) {
         return `export const ${glibName}: (props: ${propsType}) => ReactNode = createElementComponent<${propsType}>(${sourceStringLiteral(glibName)});`;

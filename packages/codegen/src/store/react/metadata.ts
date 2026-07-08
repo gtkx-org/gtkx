@@ -12,7 +12,7 @@ import {
     iterateClassesWithGlibName,
     signalHandlerName,
 } from "./intrinsic-elements.js";
-import { ACCESSIBLE_ATTRIBUTES } from "./tables.js";
+import { ACCESSIBLE_ATTRIBUTES } from "./built-ins.js";
 
 const ACCESSIBLE_ATTRIBUTES_ANNOTATION =
     'Record<string, { kind: "property" | "state" | "relation"; member: string; value: "string" | "boolean" | "int" | "double" | "object" | "ref-list" }>';

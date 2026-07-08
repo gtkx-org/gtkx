@@ -248,11 +248,7 @@ const reportUnexpectedCompositorExit = (child: ChildProcess, capturedStderr: str
     );
 };
 
-const makeTeardown = (
-    compositor: ChildProcess,
-    capturedStderr: string[],
-    removeRuntime: () => void,
-): (() => void) => {
+const makeTeardown = (compositor: ChildProcess, capturedStderr: string[], removeRuntime: () => void): (() => void) => {
     let torndown = false;
     return (): void => {
         if (torndown) return;

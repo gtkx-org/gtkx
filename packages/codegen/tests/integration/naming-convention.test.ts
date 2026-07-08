@@ -6,7 +6,7 @@ import {
     interfaceHasPropsBody,
 } from "../../src/store/react/intrinsic-elements.js";
 import { generateJsxFiles } from "../../src/store/react/pipeline.js";
-import { ACCESSIBLE_ATTRIBUTES } from "../../src/store/react/tables.js";
+import { ACCESSIBLE_ATTRIBUTES } from "../../src/store/react/built-ins.js";
 import { giModules, library } from "../helpers/library.js";
 
 const jsxSources = (): string[] => generateJsxFiles(library).namespaces.map((entry) => entry.source);

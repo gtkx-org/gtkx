@@ -16,7 +16,7 @@ import {
     type ResolvedQualifiedInterface,
 } from "./intrinsic-elements.js";
 import { buildElementPropsEntries, buildInterfacePropsEntries } from "./props.js";
-import { ACCESSIBLE_ATTRIBUTES } from "./tables.js";
+import { ACCESSIBLE_ATTRIBUTES } from "./built-ins.js";
 
 type GenerateJsxOptions = {
     excludeNames: Set<string>;

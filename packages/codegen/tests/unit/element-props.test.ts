@@ -5,7 +5,7 @@ import { type ContainerProp, type ElementProp, loadConfig } from "@gtkx/config";
 import { describe, expect, it } from "vitest";
 import { assembleElementProps } from "../../src/store/react/element-props.js";
 import { buildGirIndex } from "../../src/store/react/gir-index.js";
-import { CURATED_ELEMENT_PROPS } from "../../src/store/react/tables.js";
+import { BUILT_IN_ELEMENT_PROPS } from "../../src/store/react/built-ins.js";
 import { library } from "../helpers/library.js";
 
 const girIndex = buildGirIndex(library);
@@ -37,7 +37,7 @@ describe("curated element props", () => {
     it("pass schema validation", async () => {
         const root = await mkdtemp(join(tmpdir(), "gtkx-curated-"));
         try {
-            const source = `export default { applicationId: "org.gtk.Test", elementProps: ${JSON.stringify(CURATED_ELEMENT_PROPS)} };\n`;
+            const source = `export default { applicationId: "org.gtk.Test", elementProps: ${JSON.stringify(BUILT_IN_ELEMENT_PROPS)} };\n`;
             await writeFile(join(root, "gtkx.config.ts"), source);
             await expect(loadConfig(root)).resolves.toMatchObject({ root });
         } finally {
@@ -48,7 +48,7 @@ describe("curated element props", () => {
     it("reference only types and methods that exist in the loaded GIR", () => {
         const known = knownTypeNames();
         const filtered: Record<string, ElementProp[]> = {};
-        for (const [parent, props] of Object.entries(CURATED_ELEMENT_PROPS)) {
+        for (const [parent, props] of Object.entries(BUILT_IN_ELEMENT_PROPS)) {
             if (!known.has(parent)) continue;
             const kept = props.filter(
                 (prop) =>

@@ -81,6 +81,12 @@ const waitFor = async (predicate: () => boolean, timeoutMs = 1000): Promise<void
 const parseLines = (lines: string[]): Record<string, unknown>[] =>
     lines.map((line) => JSON.parse(line) as Record<string, unknown>);
 
+function assertLine(line: Record<string, unknown> | undefined): asserts line is Record<string, unknown> {
+    if (!line) {
+        throw new Error("expected a protocol line to be present");
+    }
+}
+
 type PendingRegistration = {
     client: McpClient;
     connectPromise: Promise<void>;
@@ -102,6 +108,15 @@ const connectAndRegister = async (ctx: ServerContext): Promise<McpClient> => {
     return client;
 };
 
+const sendRequest = async (ctx: ServerContext, request: Record<string, unknown>): Promise<Record<string, unknown>> => {
+    ctx.sockets[0]?.write(`${JSON.stringify(request)}\n`);
+    await waitFor(() => ctx.received[0]?.length === 2);
+    const [, responseLine] = parseLines(ctx.received[0] ?? []);
+    assertLine(responseLine);
+    expect(responseLine.id).toBe(request.id);
+    return responseLine;
+};
+
 let ctx: ServerContext;
 
 beforeEach(() => {
@@ -116,11 +131,12 @@ afterEach(async () => {
 describe("McpClient.connect", () => {
     it("connects and sends an app.register request as its first message", async () => {
         const { client, connectPromise, registerLine } = await beginRegistration(ctx);
+        assertLine(registerLine);
 
-        expect(registerLine?.method).toBe("app.register");
-        expect((registerLine?.params as { applicationId: string }).applicationId).toBe("com.test.app");
+        expect(registerLine.method).toBe("app.register");
+        expect((registerLine.params as { applicationId: string }).applicationId).toBe("com.test.app");
 
-        ctx.sockets[0]?.write(`${JSON.stringify({ id: registerLine?.id, result: {} })}\n`);
+        ctx.sockets[0]?.write(`${JSON.stringify({ id: registerLine.id, result: {} })}\n`);
         await connectPromise;
 
         client.disconnect();
@@ -145,14 +161,12 @@ describe("McpClient incoming requests", () => {
         hoisted.getDefault.mockReturnValue(null);
         const client = await connectAndRegister(ctx);
 
-        ctx.sockets[0]?.write(
-            `${JSON.stringify({ id: "req-1", method: "widget.click", params: { widgetId: "x" } })}\n`,
-        );
-
-        await waitFor(() => ctx.received[0]?.length === 2);
-        const [, responseLine] = parseLines(ctx.received[0] ?? []);
-        expect(responseLine?.id).toBe("req-1");
-        expect((responseLine?.error as { message: string }).message).toMatch(/not initialized/);
+        const responseLine = await sendRequest(ctx, {
+            id: "req-1",
+            method: "widget.click",
+            params: { widgetId: "x" },
+        });
+        expect((responseLine.error as { message: string }).message).toMatch(/not initialized/);
 
         client.disconnect();
     });
@@ -175,12 +189,8 @@ describe("McpClient incoming requests", () => {
         hoisted.getDefault.mockReturnValue(new hoisted.FakeApplication());
         const client = await connectAndRegister(ctx);
 
-        ctx.sockets[0]?.write(`${JSON.stringify({ id: "req-ok", method: "app.getWindows" })}\n`);
-
-        await waitFor(() => ctx.received[0]?.length === 2);
-        const [, responseLine] = parseLines(ctx.received[0] ?? []);
-        expect(responseLine?.id).toBe("req-ok");
-        expect((responseLine?.result as { windows: unknown[] }).windows).toEqual([]);
+        const responseLine = await sendRequest(ctx, { id: "req-ok", method: "app.getWindows" });
+        expect((responseLine.result as { windows: unknown[] }).windows).toEqual([]);
 
         client.disconnect();
     });
@@ -189,13 +199,9 @@ describe("McpClient incoming requests", () => {
         hoisted.getDefault.mockReturnValue(new hoisted.FakeApplication());
         const client = await connectAndRegister(ctx);
 
-        ctx.sockets[0]?.write(`${JSON.stringify({ id: "req-bad", method: "does.not.exist" })}\n`);
-
-        await waitFor(() => ctx.received[0]?.length === 2);
-        const [, responseLine] = parseLines(ctx.received[0] ?? []);
-        expect(responseLine?.id).toBe("req-bad");
-        expect(typeof (responseLine?.error as { code: number }).code).toBe("number");
-        expect((responseLine?.error as { message: string }).message).toMatch(/does\.not\.exist/);
+        const responseLine = await sendRequest(ctx, { id: "req-bad", method: "does.not.exist" });
+        expect(typeof (responseLine.error as { code: number }).code).toBe("number");
+        expect((responseLine.error as { message: string }).message).toMatch(/does\.not\.exist/);
 
         client.disconnect();
     });

@@ -50,10 +50,12 @@ describe("render - layoutManager prop lifecycle", () => {
         }
 
         const { rerender } = await render(<App spacing={4} />);
-        expect((boxRef.current?.getLayoutManager() as Gtk.BoxLayout).getSpacing()).toBe(4);
+        const box = boxRef.current;
+        if (box === null) throw new Error("expected the box ref to be assigned");
+        expect((box.getLayoutManager() as Gtk.BoxLayout).getSpacing()).toBe(4);
 
         await rerender(<App spacing={20} />);
-        expect((boxRef.current?.getLayoutManager() as Gtk.BoxLayout).getSpacing()).toBe(20);
+        expect((box.getLayoutManager() as Gtk.BoxLayout).getSpacing()).toBe(20);
     });
 
     it("clears the layout manager slot when the wrapper element is unmounted", async () => {
