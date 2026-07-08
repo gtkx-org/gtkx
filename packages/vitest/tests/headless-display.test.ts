@@ -181,7 +181,7 @@ describe("startHeadlessDisplay", () => {
         expect(xml).toContain('<policy context="default">');
     });
 
-    it("reaps the bus and runtime dir but leaves the compositor for its parent-death signal", async () => {
+    it("reaps the bus, the compositor, and the runtime dir on teardown", async () => {
         process.env.WAYLAND_DISPLAY = "prior-value";
         const { teardown, runtimeDir } = await startFulfilled({ size: DEFAULT_HEADLESS_SIZE, compositor: "weston" });
 
@@ -196,7 +196,7 @@ describe("startHeadlessDisplay", () => {
 
         const [busChild, compositorChild] = children;
         expect(busChild?.killed).toBe(true);
-        expect(compositorChild?.killed).toBe(false);
+        expect(compositorChild?.killed).toBe(true);
     });
 
     it("reaps only once when the teardown runs repeatedly", async () => {
