@@ -205,6 +205,7 @@ describe("dndDemo context menu", () => {
         await triggerContextMenu(canvas, 50, 50);
         const newButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "New" })) as Gtk.Button;
         expect(newButton).toBeInstanceOf(Gtk.Button);
+        await waitFor(() => expect(newButton.getMapped()).toBe(true));
         await userEvent.click(newButton);
         await waitFor(() => {
             expect(canvas.observeChildren().getNItems()).toBeGreaterThan(initialItemCount);
