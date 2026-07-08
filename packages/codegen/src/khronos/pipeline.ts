@@ -1,4 +1,4 @@
-import { sanitizeIdentifier, sortedStrings, sortedStringsBy } from "@gtkx/utils";
+import { sanitizeIdentifier, sortStrings, sortStringsBy } from "@gtkx/utils";
 import { transpileSource } from "../transpile.js";
 import { type GlEnum, loadGlRegistry } from "./model.js";
 import { renderCommandsModule, renderEnumsModule, renderTypesModule } from "./modules.js";
@@ -135,7 +135,7 @@ const planSelectedCommands = (
     const exclusions: GlExclusion[] = [];
     const okPlans: OkPlan[] = [];
     const planFeatures = new Map<string, string>();
-    for (const [name, feature] of sortedStringsBy(commandNames.entries(), ([key]) => key)) {
+    for (const [name, feature] of sortStringsBy(commandNames.entries(), ([key]) => key)) {
         const command = registry.commands.get(name);
         if (command === undefined) throw new Error(`Selected command ${name} is not defined in the registry`);
         if (COMPANION_OWNED.has(name)) {
@@ -162,7 +162,7 @@ type EnumRow = {
 
 const buildEnumRows = (registry: ReturnType<typeof loadGlRegistry>, enumNames: Map<string, string>): EnumRow[] => {
     const enumRows: EnumRow[] = [];
-    for (const [name, feature] of sortedStringsBy(enumNames.entries(), ([key]) => key)) {
+    for (const [name, feature] of sortStringsBy(enumNames.entries(), ([key]) => key)) {
         const token = resolveEnum(registry, name);
         const literal = enumLiteral(token);
         if (literal === undefined) continue;
@@ -192,7 +192,7 @@ const assertExportNamesDisjoint = (
     const companionCollisions = [...exportNames.keys()].filter((name) => companionExports.has(name));
     if (companionCollisions.length > 0) {
         throw new Error(
-            `Companion module exports collide with generated exports: ${sortedStrings(companionCollisions).join(", ")}`,
+            `Companion module exports collide with generated exports: ${sortStrings(companionCollisions).join(", ")}`,
         );
     }
 };

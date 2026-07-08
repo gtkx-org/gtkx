@@ -1,4 +1,4 @@
-import { sortedStrings, sortedStringsBy } from "@gtkx/utils";
+import { sortStrings, sortStringsBy } from "@gtkx/utils";
 import { ModuleBuilder } from "../writer/module.js";
 import type { GlEnum } from "./model.js";
 import { GL_SCALARS } from "./plan.js";
@@ -41,7 +41,7 @@ export const renderTypesModule = (groupAliases: Map<string, string>): string => 
             `/** The C \`${scalar.tsAlias}\` scalar. */\nexport type ${scalar.tsAlias} = number;`,
         );
     }
-    for (const [group, base] of sortedStringsBy(groupAliases.entries(), ([key]) => key)) {
+    for (const [group, base] of sortStringsBy(groupAliases.entries(), ([key]) => key)) {
         builder.appendDeclaration(
             `/** Registry enum group \`${group}\`; open and documentation-only, any \`${base}\` value is accepted. */\nexport type ${group} = ${base};`,
         );
@@ -58,7 +58,7 @@ export const renderCommandsModule = (
 ): string => {
     const builder = new ModuleBuilder();
     builder.imports.addNamed("@gtkx/ffi", "t");
-    for (const alias of sortedStrings(usedTypes)) {
+    for (const alias of sortStrings(usedTypes)) {
         if (TS_PRIMITIVES.has(alias)) continue;
         builder.imports.addNamed("./types.js", alias, true);
     }

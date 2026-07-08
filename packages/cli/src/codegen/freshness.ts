@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { type CodegenFingerprint, computeFingerprint, FINGERPRINT_FILENAME } from "@gtkx/codegen";
 import type { Config, ElementProp } from "@gtkx/config";
-import { sortedStrings } from "@gtkx/utils";
+import { sortStrings } from "@gtkx/utils";
 import { resolveGirPath } from "./gir-resolver.js";
 import { resolveLibraries } from "./library-resolver.js";
 import { type CodegenStore, resolveCodegenStore } from "./store-resolver.js";
@@ -45,7 +45,7 @@ const fingerprintStale = (
     } catch {
         return true;
     }
-    const sortAlpha = (values: string[]): string => sortedStrings(values).join(",");
+    const sortAlpha = (values: string[]): string => sortStrings(values).join(",");
     if (sortAlpha(sentinel.libraries) !== sortAlpha(libraries)) return true;
     try {
         return computeFingerprint(sentinel.girFiles, sentinel.libraries, elementProps) !== sentinel.value;

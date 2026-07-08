@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import type { ElementProp } from "@gtkx/config";
-import { sortedStrings } from "@gtkx/utils";
+import { sortStrings } from "@gtkx/utils";
 
 const require = createRequire(import.meta.url);
 
@@ -26,8 +26,8 @@ export const computeFingerprint = (
     hash.update("\n");
     hash.update(JSON.stringify(elementProps));
     hash.update("\n");
-    hash.update(sortedStrings(libraries).join(","));
-    for (const file of sortedStrings(girFiles)) {
+    hash.update(sortStrings(libraries).join(","));
+    for (const file of sortStrings(girFiles)) {
         hash.update("\n");
         hash.update(file);
         hash.update("\0");

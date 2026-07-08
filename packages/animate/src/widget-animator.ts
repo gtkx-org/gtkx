@@ -1,6 +1,6 @@
 import * as Adw from "@gtkx/gi/adw";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { shallowEqual } from "@gtkx/utils";
+import { isShallowEqual } from "@gtkx/utils";
 import type { RefObject } from "react";
 import { AnimationCssProvider } from "./animation-css-provider.js";
 import { interpolate } from "./interpolation.js";
@@ -16,7 +16,7 @@ const restValuesOf = (props: AnimationProps): AnimationTarget => {
 const shouldAnimateOnMount = (props: AnimationProps): boolean => {
     const { initial, animate } = props;
     if (initial === undefined || initial === false || animate === undefined) return false;
-    return !shallowEqual(initial, animate);
+    return !isShallowEqual(initial, animate);
 };
 
 export class WidgetAnimator {
