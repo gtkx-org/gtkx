@@ -2,7 +2,7 @@ import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import * as GtkEnums from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
-import { createPortal, createRootElement, useApplication } from "@gtkx/react";
+import { createPortal, rootElement, useApplication } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef, type ReactNode } from "react";
 import { describe, expect, it } from "vitest";
@@ -27,7 +27,7 @@ describe("createPortal (1)", () => {
                     <GtkApplicationWindow ref={windowRef} title="Portal Window" />
                 </Portal>
             </GtkApplication>,
-            { container: createRootElement() },
+            { container: rootElement },
         );
 
         expect(windowRef.current).not.toBeNull();
@@ -64,7 +64,7 @@ describe("createPortal (1)", () => {
                     <GtkApplicationWindow ref={windowRef} title="Keyed Window" />
                 </Portal>
             </GtkApplication>,
-            { container: createRootElement() },
+            { container: rootElement },
         );
 
         expect(windowRef.current).not.toBeNull();
@@ -86,7 +86,7 @@ describe("createPortal (2)", () => {
             <GtkApplication applicationId={appId} flags={APP_FLAGS}>
                 <App showPortal={true} />
             </GtkApplication>,
-            { container: createRootElement() },
+            { container: rootElement },
         );
 
         const windowId = windowRef.current;
@@ -112,7 +112,7 @@ describe("createPortal (2)", () => {
             <GtkApplication applicationId={appId} flags={APP_FLAGS}>
                 <App title="First" />
             </GtkApplication>,
-            { container: createRootElement() },
+            { container: rootElement },
         );
         expect(windowRef.current?.getTitle()).toBe("First");
 

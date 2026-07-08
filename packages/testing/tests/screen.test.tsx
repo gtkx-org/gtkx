@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkLabel, GtkWindow } from "@gtkx/jsx/gtk";
-import { createRootElement } from "@gtkx/react";
+import { rootElement } from "@gtkx/react";
 import { describe, expect, it } from "vitest";
 import { captureAndSaveScreenshot, cleanup, render, screen } from "../src/index.js";
 
@@ -87,7 +87,7 @@ describe("screen screenshot selectors", () => {
             <GtkWindow title="Settings Window" defaultWidth={120} defaultHeight={80}>
                 <GtkLabel label="Titled" />
             </GtkWindow>,
-            { container: createRootElement() },
+            { container: rootElement },
         );
 
         const result = await screen.screenshot("Settings");
@@ -100,7 +100,7 @@ describe("screen screenshot selectors", () => {
             <GtkWindow title="Demo Pattern App" defaultWidth={120} defaultHeight={80}>
                 <GtkLabel label="Pattern" />
             </GtkWindow>,
-            { container: createRootElement() },
+            { container: rootElement },
         );
 
         const result = await screen.screenshot(/^Demo/);
@@ -118,7 +118,7 @@ describe("screen screenshot errors", () => {
             <GtkWindow title="Real Title" defaultWidth={120} defaultHeight={80}>
                 <GtkLabel label="Unmatched" />
             </GtkWindow>,
-            { container: createRootElement() },
+            { container: rootElement },
         );
 
         await expect(screen.screenshot(selector)).rejects.toThrow(/No window found with title matching/);

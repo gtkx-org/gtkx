@@ -1,6 +1,6 @@
 import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { createPortal } from "@gtkx/react";
+import { createPortal, rootElement } from "@gtkx/react";
 import { useMergeRefs } from "@gtkx/react/internal";
 import {
     cloneElement,
@@ -13,7 +13,6 @@ import {
     useLayoutEffect,
     useRef,
 } from "react";
-import { portalRoot } from "./use-placed-child.js";
 
 type MenuElement = ReactElement<{ ref?: Ref<Gio.MenuModel | null> }>;
 
@@ -31,5 +30,5 @@ export const useHeaderMenu = (column: Gtk.ColumnViewColumn | null, headerMenu: R
     });
 
     if (element === null) return null;
-    return createPortal(cloneElement(element, { ref: mergedRef }), portalRoot);
+    return createPortal(cloneElement(element, { ref: mergedRef }), rootElement);
 };

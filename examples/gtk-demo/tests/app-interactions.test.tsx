@@ -2,7 +2,7 @@ import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication } from "@gtkx/jsx/gtk";
-import { createRootElement } from "@gtkx/react";
+import { rootElement } from "@gtkx/react";
 import { act, render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { path as logoResourcePath } from "#data/icons/org.gtk.Demo4.svg";
@@ -15,7 +15,7 @@ const renderDemo = () =>
         <GtkApplication applicationId={`org.gtkx.gtkdemoint${nextAppId++}`} flags={Gio.ApplicationFlags.NON_UNIQUE}>
             <Demo />
         </GtkApplication>,
-        { container: createRootElement() },
+        { container: rootElement },
     );
 
 const selectFirstDemoWithComponent = async (): Promise<void> => {

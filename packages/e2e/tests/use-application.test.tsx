@@ -1,6 +1,6 @@
 import * as Gio from "@gtkx/gi/gio";
 import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
-import { createRootElement, useApplication } from "@gtkx/react";
+import { rootElement, useApplication } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 
@@ -20,7 +20,7 @@ describe("useApplication", () => {
             <GtkApplication applicationId={uniqueAppId()} flags={Gio.ApplicationFlags.NON_UNIQUE}>
                 <Probe />
             </GtkApplication>,
-            { container: createRootElement() },
+            { container: rootElement },
         );
 
         expect(captured).not.toBeNull();
@@ -33,7 +33,7 @@ describe("useApplication", () => {
             return null;
         };
 
-        await expect(render(<Probe />, { container: createRootElement() })).rejects.toThrow(
+        await expect(render(<Probe />, { container: rootElement })).rejects.toThrow(
             /useApplication must be called within Application/,
         );
     });

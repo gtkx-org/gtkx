@@ -2,7 +2,7 @@ import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GSimpleAction } from "@gtkx/jsx/gio";
 import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
-import { createRootElement } from "@gtkx/react";
+import { rootElement } from "@gtkx/react";
 
 type ActionAccel = { detailedActionName: string; accels: string[] };
 
@@ -47,7 +47,7 @@ describe("GtkApplication actionAccels", () => {
                 actionAccels={[{ detailedActionName: "win.new", accels: ["<Control>n"] }]}
                 windowActions={<GSimpleAction name="new" onActivate={noop} />}
             />,
-            { container: createRootElement() },
+            { container: rootElement },
         );
 
         expect(ref.current?.getAccelsForAction("win.new")).toEqual(["<Control>n"]);
@@ -63,7 +63,7 @@ describe("GtkApplication actionAccels", () => {
                 actionAccels={[{ detailedActionName: "app.quit", accels: ["<Control>q", "<Control>w"] }]}
                 appActions={<GSimpleAction name="quit" onActivate={noop} />}
             />,
-            { container: createRootElement() },
+            { container: rootElement },
         );
 
         expect(ref.current?.getAccelsForAction("app.quit")).toEqual(["<Control>q", "<Control>w"]);
@@ -80,7 +80,7 @@ describe("GtkApplication actionAccels", () => {
                 actionAccels={[{ detailedActionName: "win.new", accels: ["<Control>n"] }]}
                 windowActions={<GSimpleAction name="new" onActivate={noop} />}
             />,
-            { container: createRootElement() },
+            { container: rootElement },
         );
         expect(ref.current?.getAccelsForAction("win.new")).toEqual(["<Control>n"]);
 

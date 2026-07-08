@@ -3,7 +3,7 @@ import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
-import { createRootElement } from "@gtkx/react";
+import { rootElement } from "@gtkx/react";
 import { type RenderResult, render, screen } from "@gtkx/testing";
 import { type ComponentType, createRef, type ReactNode, type RefObject, useCallback, useState } from "react";
 import { expect } from "vitest";
@@ -122,7 +122,7 @@ export const renderDemo = async (
         options.provider ?? (isDemo(componentOrDemo) ? componentOrDemo.provider : undefined) ?? PassthroughProvider;
     const demo = isDemo(componentOrDemo) ? componentOrDemo : undefined;
     return await render(<ResolvedComponent window={windowRef} onClose={onClose} />, {
-        container: createRootElement(),
+        container: rootElement,
         wrapper: buildWrapper({ windowRef, onClose, Provider, Titlebar, demo }),
     });
 };

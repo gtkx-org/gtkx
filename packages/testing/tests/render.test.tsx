@@ -1,7 +1,7 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
-import { createRootElement } from "@gtkx/react";
+import { rootElement } from "@gtkx/react";
 import { Component, createContext, type ReactNode, useContext } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { type Container, cleanup, queryAllByRole, render, type WrapperComponent } from "../src/index.js";
@@ -62,7 +62,7 @@ describe("render container", () => {
                     <GtkButton label="Inside" />
                 </GtkApplicationWindow>
             </GtkApplication>,
-            { container: createRootElement() },
+            { container: rootElement },
         );
 
         expect(await findByRole(Gtk.AccessibleRole.WINDOW, { name: "Own Window" })).toBeDefined();

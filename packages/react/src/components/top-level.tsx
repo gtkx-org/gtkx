@@ -2,9 +2,7 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import { type ElementType, type ReactNode, type Ref, useLayoutEffect, useState } from "react";
 import { useMergeRefs } from "../hooks/use-merge-refs.js";
 import { createPortal } from "../reconciler/portal.js";
-import { createRootElement } from "../reconciler/root-element.js";
-
-const toplevelRoot = createRootElement();
+import { rootElement } from "../reconciler/root-element.js";
 
 const useWindowPresentation = (): ((window: Gtk.Window | null) => void) => {
     const [toplevel, setToplevel] = useState<Gtk.Window | null>(null);
@@ -33,7 +31,7 @@ export const withWindowPresentation = <P extends { children?: ReactNode }>(
             <Underlying {...rest} ref={ref}>
                 {children}
             </Underlying>,
-            toplevelRoot,
+            rootElement,
         );
     };
 };

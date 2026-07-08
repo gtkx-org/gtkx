@@ -3,7 +3,7 @@ import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GSimpleAction } from "@gtkx/jsx/gio";
 import { GtkApplication, GtkApplicationWindow, GtkMenuButton, GtkPopoverMenu } from "@gtkx/jsx/gtk";
-import { createRootElement } from "@gtkx/react";
+import { rootElement } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -68,7 +68,7 @@ describe("render - PopoverMenu actions", () => {
                     <GtkPopoverMenu menuModel={<Menu items={[{ label: "Click Me", action: "win.click" }]} />} />
                 </GtkApplicationWindow>
             </GtkApplication>,
-            { container: createRootElement() },
+            { container: rootElement },
         );
 
         expect(windowRef.current?.activateAction("win.click", null)).toBe(true);
@@ -91,7 +91,7 @@ describe("render - PopoverMenu actions", () => {
             );
         }
 
-        const { rerender } = await render(<App enabled={true} />, { container: createRootElement() });
+        const { rerender } = await render(<App enabled={true} />, { container: rootElement });
         expect(windowRef.current?.hasAction("toggle")).toBe(true);
 
         await rerender(<App enabled={false} />);

@@ -3,7 +3,7 @@ import type * as Adw from "@gtkx/gi/adw";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow, GtkWindow } from "@gtkx/jsx/gtk";
-import { createRootElement } from "@gtkx/react";
+import { rootElement } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject, useState } from "react";
 import { describe, expect, it } from "vitest";
@@ -42,7 +42,7 @@ describe("explicit top-level parenting", () => {
             <ParentedTree parentRef={parentRef}>
                 {(parent) => <GtkWindow ref={childRef} transientFor={parent} defaultWidth={50} defaultHeight={50} />}
             </ParentedTree>,
-            { container: createRootElement() },
+            { container: rootElement },
         );
 
         expect(parentRef.current).not.toBeNull();
@@ -66,7 +66,7 @@ describe("explicit top-level parenting", () => {
             </ParentedTree>
         );
 
-        const { rerender } = await render(<App parented={true} />, { container: createRootElement() });
+        const { rerender } = await render(<App parented={true} />, { container: rootElement });
         expect(childRef.current?.getTransientFor()).toBe(parentRef.current);
 
         await rerender(<App parented={false} />);
@@ -85,7 +85,7 @@ describe("explicit top-level parenting", () => {
                     </Dialog>
                 )}
             </ParentedTree>,
-            { container: createRootElement() },
+            { container: rootElement },
         );
 
         expect(dialogRef.current).not.toBeNull();

@@ -1,7 +1,7 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkFrame, GtkLabel } from "@gtkx/jsx/gtk";
-import { createRootElement } from "@gtkx/react";
+import { rootElement } from "@gtkx/react";
 import { render, screen, within } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
@@ -128,7 +128,7 @@ describe("host-config - children (4)", () => {
                 <GtkApplication applicationId={uniqueAppId()} flags={Gio.ApplicationFlags.NON_UNIQUE}>
                     <GtkApplicationWindow ref={windowRef} title="Root Container" />
                 </GtkApplication>,
-                { container: createRootElement() },
+                { container: rootElement },
             );
 
             expect(windowRef.current).not.toBeNull();
@@ -146,7 +146,7 @@ describe("host-config - children (4)", () => {
                 );
             }
 
-            const { rerender } = await render(<App showWindow={true} />, { container: createRootElement() });
+            const { rerender } = await render(<App showWindow={true} />, { container: rootElement });
 
             expect(windowRef.current).not.toBeNull();
 
@@ -168,7 +168,7 @@ describe("host-config - children (4)", () => {
                 );
             }
 
-            const { rerender } = await render(<App windows={["First"]} />, { container: createRootElement() });
+            const { rerender } = await render(<App windows={["First"]} />, { container: rootElement });
 
             await rerender(<App windows={["Second", "First"]} />);
 

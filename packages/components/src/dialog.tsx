@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { createPortal } from "@gtkx/react";
+import { createPortal, rootElement } from "@gtkx/react";
 import { useMergeRefs } from "@gtkx/react/internal";
 import {
     cloneElement,
@@ -12,7 +12,6 @@ import {
     useLayoutEffect,
     useState,
 } from "react";
-import { portalRoot } from "./hooks/use-placed-child.js";
 
 export type DialogInstance = Gtk.Widget & {
     present(parent: Gtk.Widget | null): void;
@@ -41,5 +40,5 @@ export const Dialog = ({ parent = null, children }: DialogProps): ReactNode => {
     }, [dialog, parent]);
 
     if (element === null) return null;
-    return createPortal(cloneElement(element, { ref: mergedRef }), portalRoot);
+    return createPortal(cloneElement(element, { ref: mergedRef }), rootElement);
 };

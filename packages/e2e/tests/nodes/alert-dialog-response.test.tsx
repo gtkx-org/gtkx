@@ -1,12 +1,12 @@
 import { AlertDialog, Dialog } from "@gtkx/components/adw";
 import * as Adw from "@gtkx/gi/adw";
-import { createRootElement } from "@gtkx/react";
+import { rootElement } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
 import { renderChildren } from "../helpers/render-children.js";
 
-const options = () => ({ container: createRootElement() });
+const options = () => ({ container: rootElement });
 
 type Response = { id: string; label: string };
 

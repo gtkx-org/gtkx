@@ -2,7 +2,7 @@ import { applicationId } from "virtual:gtkx-config";
 import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
-import { createRootElement } from "@gtkx/react";
+import { rootElement } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { expect, it } from "vitest";
@@ -20,7 +20,7 @@ it("applies the applicationId passed explicitly", async () => {
         <GtkApplication ref={ref} applicationId="org.gtkx.explicit" flags={APP_FLAGS}>
             <GtkApplicationWindow defaultWidth={400} defaultHeight={300} />
         </GtkApplication>,
-        { container: createRootElement() },
+        { container: rootElement },
     );
 
     expect(ref.current?.applicationId).toBe("org.gtkx.explicit");
@@ -33,7 +33,7 @@ it("defaults the applicationId to the config one when none is passed", async () 
         <GtkApplication ref={ref} flags={APP_FLAGS}>
             <GtkApplicationWindow defaultWidth={400} defaultHeight={300} />
         </GtkApplication>,
-        { container: createRootElement() },
+        { container: rootElement },
     );
 
     expect(ref.current?.applicationId).toBe("org.gtkx.gtk-demo");

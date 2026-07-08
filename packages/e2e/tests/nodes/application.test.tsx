@@ -3,7 +3,7 @@ import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 
 import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
-import { createRootElement } from "@gtkx/react";
+import { rootElement } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef, type ReactElement, type ReactNode, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
@@ -30,7 +30,7 @@ const MenubarApp = ({
 const renderApp = async (menubar: ReactElement | null): Promise<Gtk.Application> => {
     const ref = createRef<Gtk.Application>();
     await render(<MenubarApp appRef={ref} appId={uniqueAppId()} menubar={menubar} />, {
-        container: createRootElement(),
+        container: rootElement,
     });
     if (!ref.current) throw new Error("Expected application instance");
     return ref.current;
@@ -65,7 +65,7 @@ describe("render - Application", () => {
             const fileMenu = <Menu items={[{ label: "File", submenu: [{ label: "New", action: "win.new" }] }]} />;
 
             const { rerender } = await render(<MenubarApp appRef={ref} appId={appId} menubar={fileMenu} />, {
-                container: createRootElement(),
+                container: rootElement,
             });
             expect(ref.current?.getMenubar()).not.toBeNull();
 
@@ -83,7 +83,7 @@ describe("render - Application", () => {
 
             const { rerender } = await render(
                 <MenubarApp appRef={ref} appId={appId} menubar={fileMenu(["New", "Open"])} />,
-                { container: createRootElement() },
+                { container: rootElement },
             );
             expect(ref.current?.getMenubar()?.getItemLink(0, "submenu")?.getNItems()).toBe(2);
 

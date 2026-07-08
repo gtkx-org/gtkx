@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { log, type ReconcilerErrorHandler, setReconcilerErrorHandler } from "./reconciler-error-handler.js";
 import { createReconcilerRoot, type ReconcilerRoot, unmountAllReconcilerRoots } from "./reconciler-root.js";
-import { createRootElement, type RootElement } from "./root-element.js";
+import { type RootElement, rootElement } from "./root-element.js";
 import { getSignalStore } from "./signal-store.js";
 
 const priorHandlers = new WeakMap<ReconcilerRoot, ReconcilerErrorHandler | null>();
@@ -16,7 +16,7 @@ export type Root = {
     unmount(): void;
 };
 
-export const createRoot = (container: RootElement = createRootElement()): Root => {
+export const createRoot = (container: RootElement = rootElement): Root => {
     const onUncaughtError = (error: unknown): void => {
         getSignalStore(container).unblock();
         throw error;

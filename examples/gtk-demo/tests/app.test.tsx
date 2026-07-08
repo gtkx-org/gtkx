@@ -1,7 +1,7 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication } from "@gtkx/jsx/gtk";
-import { createRootElement } from "@gtkx/react";
+import { rootElement } from "@gtkx/react";
 import { render, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { Demo } from "../src/app.js";
@@ -14,7 +14,7 @@ const renderDemo = () =>
         <GtkApplication applicationId={`org.gtkx.gtkdemoapp${nextAppId++}`} flags={Gio.ApplicationFlags.NON_UNIQUE}>
             <Demo />
         </GtkApplication>,
-        { container: createRootElement() },
+        { container: rootElement },
     );
 
 describe("App", () => {

@@ -3,7 +3,7 @@ import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
 import { GtkApplication, GtkApplicationWindow, GtkLabel } from "@gtkx/jsx/gtk";
-import { createRootElement } from "@gtkx/react";
+import { rootElement } from "@gtkx/react";
 import { render as baseRender } from "@gtkx/testing";
 import type { ReactNode } from "react";
 import { createRef } from "react";
@@ -19,7 +19,7 @@ const render = (element: ReactNode, appId: string = uniqueAppId()) =>
         <GtkApplication applicationId={appId} flags={APP_FLAGS}>
             {element}
         </GtkApplication>,
-        { container: createRootElement() },
+        { container: rootElement },
     );
 
 const renderAdw = (element: ReactNode, appId: string = uniqueAppId()) =>
@@ -27,7 +27,7 @@ const renderAdw = (element: ReactNode, appId: string = uniqueAppId()) =>
         <AdwApplication applicationId={appId} flags={APP_FLAGS}>
             {element}
         </AdwApplication>,
-        { container: createRootElement() },
+        { container: rootElement },
     );
 
 describe("render - Window (1)", () => {

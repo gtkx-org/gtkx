@@ -18,7 +18,7 @@ import {
     GtkListBox,
     GtkSwitch,
 } from "@gtkx/jsx/gtk";
-import { createRootElement } from "@gtkx/react";
+import { rootElement } from "@gtkx/react";
 import { render as baseRender, screen, userEvent, waitFor } from "@gtkx/testing";
 import type { ReactNode } from "react";
 import { createRef, useState } from "react";
@@ -970,7 +970,7 @@ const renderInApp = (window: ReactNode) =>
         <GtkApplication applicationId={uniqueAppId()} flags={Gio.ApplicationFlags.NON_UNIQUE}>
             {window}
         </GtkApplication>,
-        { container: createRootElement() },
+        { container: rootElement },
     );
 
 describe("widget - AboutDialog (1)", () => {
@@ -1048,7 +1048,7 @@ describe("widget - AboutDialog (2)", () => {
                 );
             }
 
-            const { rerender } = await baseRender(<App show={true} />, { container: createRootElement() });
+            const { rerender } = await baseRender(<App show={true} />, { container: rootElement });
 
             const handle = ref.current;
             expect(handle).toBeDefined();

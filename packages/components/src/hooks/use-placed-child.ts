@@ -1,5 +1,5 @@
 import type * as GObject from "@gtkx/gi/gobject";
-import { createPortal, createRootElement, type RootElement } from "@gtkx/react";
+import { createPortal, rootElement } from "@gtkx/react";
 import {
     type Context,
     createContext,
@@ -10,8 +10,6 @@ import {
     useLayoutEffect,
     useRef,
 } from "react";
-
-export const portalRoot: RootElement = createRootElement();
 
 export type ParentContext<T> = {
     Context: Context<RefObject<T | null> | null>;
@@ -75,5 +73,5 @@ export const usePlacedChild = <T extends GObject.Object, P>(options: PlacedChild
         [],
     );
 
-    return createPortal(render(setObjectRef.current), portalRoot);
+    return createPortal(render(setObjectRef.current), rootElement);
 };
