@@ -1,4 +1,4 @@
-import { ErrorCode, ProtocolError } from "@gtkx/mcp";
+import { ErrorCode, ProtocolError } from "@gtkx/mcp/internal";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const hoisted = vi.hoisted(() => ({
