@@ -8,6 +8,7 @@ import type { GirNamespace } from "../../gir/namespace.js";
 import type { GirSignal } from "../../gir/parameter.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
 import type { TypeId } from "../../gir/type-id.js";
+import { renderJsDoc } from "../../writer/doc.js";
 import { classExposesMethod, isIntrinsicElementClass, signalHandlerName } from "./intrinsic-elements.js";
 
 type IntrinsicElementPropsEntries = {
@@ -56,14 +57,16 @@ const createPropEntryCollector = (owner: SlotOwner): PropEntryCollector => {
         if (seen.has(jsName)) return;
         seen.add(jsName);
         const tsType = renderReactPropType(types, property.type, false);
+        const doc = renderJsDoc(property.doc);
         if (isSlotProperty(owner, property, jsName)) {
-            propLines.push(`${jsName}?: ${tsType} | ReactElement | null | undefined;`);
+            propLines.push(`${doc}${jsName}?: ${tsType} | ReactElement | null | undefined;`);
             slotPropNames.push(jsName);
             return;
         }
-        if (isConstructableProperty(property)) propLines.push(`${jsName}?: ${tsType} | null | undefined;`);
+        const settable = isConstructableProperty(property);
+        if (settable) propLines.push(`${doc}${jsName}?: ${tsType} | null | undefined;`);
         propLines.push(
-            `onNotify${upperFirst(jsName)}?: ((value: ${tsType} | null, self: Self) => void) | null | undefined;`,
+            `${settable ? "" : doc}onNotify${upperFirst(jsName)}?: ((value: ${tsType} | null, self: Self) => void) | null | undefined;`,
         );
     };
 
@@ -72,7 +75,7 @@ const createPropEntryCollector = (owner: SlotOwner): PropEntryCollector => {
         if (seen.has(handlerName)) return;
         seen.add(handlerName);
         const signature = renderSignalHandler({ types, signal, selfType: "Self" });
-        propLines.push(`${handlerName}?: (${signature}) | undefined;`);
+        propLines.push(`${renderJsDoc(signal.doc)}${handlerName}?: (${signature}) | undefined;`);
     };
 
     return { propLines, imports, slotPropNames, acceptProperty, acceptSignal };

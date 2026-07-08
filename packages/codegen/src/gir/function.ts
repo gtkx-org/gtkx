@@ -4,6 +4,7 @@ import type { ParseContext } from "./type-id.js";
 
 export type GirFunction = {
     name: string;
+    doc: string | undefined;
     cIdentifier: string | undefined;
     throws: boolean;
     introspectable: boolean;

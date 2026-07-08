@@ -2,6 +2,7 @@ import { WRAPPER_NODE_ELEMENT } from "@gtkx/config";
 import { sourceStringLiteral } from "@gtkx/utils";
 import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
+import { renderJsDoc } from "../../writer/doc.js";
 import type { ImportsBuilder } from "../../writer/imports.js";
 import type { ElementPropTypegen, LazyElementSpec } from "./element-prop-types.js";
 import { ancestorGlibNames, type GlibNamedClass } from "./intrinsic-elements.js";
@@ -123,7 +124,7 @@ const renderCandidateExport = (candidate: GlibNamedClass, library: Library, impo
     imports.addNamed("@gtkx/react", "createElementComponent", false);
     imports.addNamed("react", "ReactNode", true);
     if (wrapper !== undefined) imports.addNamed("@gtkx/react", wrapper, false);
-    return renderElementComponentExport(glibName, wrapper);
+    return `${renderJsDoc(klass.doc)}${renderElementComponentExport(glibName, wrapper)}`;
 };
 
 const resolveAncestryWrapper = (ancestry: Set<string>): AncestryWrapperName | undefined => {

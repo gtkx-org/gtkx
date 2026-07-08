@@ -1,6 +1,8 @@
 import { sourceStringLiteral } from "@gtkx/utils";
 import type { GirEnum } from "../../gir/enum.js";
 import type { ModuleContext } from "../../writer/context.js";
+import { renderJsDoc } from "../../writer/doc.js";
+import { indent } from "../../writer/emit.js";
 
 export const generateEnum = (context: ModuleContext, enumeration: GirEnum): void => {
     if (!enumeration.introspectable) return;
@@ -12,14 +14,25 @@ export const generateEnum = (context: ModuleContext, enumeration: GirEnum): void
         context.addRuntimeImport("createErrorDomain");
         context.addRuntimeImport("ErrorDomain");
         const quarkExpression = renderQuarkExpression(context, enumeration.errorDomain);
-        context.module.appendDeclaration(`export type ${name} = number;`);
+        context.module.appendDeclaration(`${renderJsDoc(enumeration.doc)}export type ${name} = number;`);
         context.module.appendDeclaration(
             `export const ${name}: ErrorDomain<{ ${typeFields} }> = createErrorDomain(${quarkExpression}, { ${memberEntries.join(", ")} });`,
         );
         return;
     }
+    if (enumeration.members.some((member) => member.doc !== undefined)) {
+        const memberBlocks = enumeration.members.map(
+            (member, index) => `${renderJsDoc(member.doc)}${memberKeys[index]} = ${member.value},`,
+        );
+        context.module.appendDeclaration(
+            `${renderJsDoc(enumeration.doc)}export enum ${name} {\n${indent(memberBlocks.join("\n"), 1)}\n}`,
+        );
+        return;
+    }
     const memberDeclarations = enumeration.members.map((member, index) => `${memberKeys[index]} = ${member.value}`);
-    context.module.appendDeclaration(`export enum ${name} { ${memberDeclarations.join(", ")} }`);
+    context.module.appendDeclaration(
+        `${renderJsDoc(enumeration.doc)}export enum ${name} { ${memberDeclarations.join(", ")} }`,
+    );
 };
 
 const memberKey = (name: string): string => {

@@ -2,6 +2,7 @@ import { sourceStringLiteral } from "@gtkx/utils";
 import type { GirClass } from "../../gir/class.js";
 import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
+import { renderJsDoc } from "../../writer/doc.js";
 import { renderBlock } from "../../writer/emit.js";
 import type { ImportsBuilder } from "../../writer/imports.js";
 import type { ElementPropTypegen } from "./element-prop-types.js";
@@ -157,10 +158,10 @@ const renderInterfacePropsBlock = (
     const prerequisiteExtends = interfacePrerequisiteExtends(library, iface, targetNamespaceName, imports);
     const extendsClause = prerequisiteExtends.length === 0 ? "" : ` extends ${prerequisiteExtends.join(", ")}`;
     const selfDefault = `${iface.namespace.name}.${iface.klass.name}`;
-    const block = renderBlock(
+    const block = `${renderJsDoc(iface.klass.doc)}${renderBlock(
         `export interface ${glib}Props<Self = ${selfDefault}>${extendsClause}`,
         ownerLines.join("\n"),
-    );
+    )}`;
     return { block, slotPropNames };
 };
 
@@ -213,10 +214,10 @@ const renderPropBlock = (
     const extendsList = resolveWidgetExtends(library, entry, context);
     const extendsClause = extendsList.length === 0 ? "" : ` extends ${extendsList.join(", ")}`;
     const selfDefault = `${entry.namespace.name}.${entry.klass.name}`;
-    const block = renderBlock(
+    const block = `${renderJsDoc(entry.klass.doc)}${renderBlock(
         `export interface ${entry.glibName}Props<Self = ${selfDefault}>${extendsClause}`,
         ownerLines.join("\n"),
-    );
+    )}`;
     return { block, slotPropNames };
 };
 

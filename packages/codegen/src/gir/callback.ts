@@ -4,6 +4,7 @@ import type { ParseContext } from "./type-id.js";
 
 export type GirCallback = {
     name: string;
+    doc: string | undefined;
     parameters: GirParameter[];
     returnValue: GirReturnValue;
     introspectable: boolean;

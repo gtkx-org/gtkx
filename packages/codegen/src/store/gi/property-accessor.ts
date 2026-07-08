@@ -5,6 +5,7 @@ import type { GirFunction } from "../../gir/function.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
 import type { TypeId } from "../../gir/type-id.js";
 import type { ModuleContext } from "../../writer/context.js";
+import { renderJsDoc } from "../../writer/doc.js";
 import { renderBlock } from "../../writer/emit.js";
 import { renderMethodReturnType } from "./method.js";
 
@@ -88,14 +89,15 @@ export const renderPropertyAccessor = (args: PropertyAccessorArgs): string | und
                 setterMember !== undefined ? `this.${setterMember}(value);` : renderGenericSetBody(context, property);
             blocks.push(renderBlock(`set ${jsName}(value: ${tsType})`, setBody));
         }
-        return blocks.join("\n\n");
+        return `${renderJsDoc(property.doc)}${blocks.join("\n\n")}`;
     });
 
 export const renderPropertyAccessorSignature = (args: PropertyAccessorArgs): string | undefined =>
     withAccessor(args, ({ jsName, tsType, hasGetter, writable }) => {
-        if (hasGetter && writable) return `${jsName}: ${tsType};`;
-        if (hasGetter) return `get ${jsName}(): ${tsType};`;
-        return `set ${jsName}(value: ${tsType});`;
+        const doc = renderJsDoc(args.property.doc);
+        if (hasGetter && writable) return `${doc}${jsName}: ${tsType};`;
+        if (hasGetter) return `${doc}get ${jsName}(): ${tsType};`;
+        return `${doc}set ${jsName}(value: ${tsType});`;
     });
 
 const renderPropertyDescriptor = (context: ModuleContext, property: GirProperty): string =>

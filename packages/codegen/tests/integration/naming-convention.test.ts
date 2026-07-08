@@ -41,10 +41,12 @@ const screamingEnumMembers = (enumName: string): Set<string> => {
 const matchAll = (sources: string[], pattern: RegExp): string[] =>
     sources.flatMap((source) => [...source.matchAll(pattern)].map((match) => match[1] ?? ""));
 
+const stripDocComments = (source: string): string => source.replace(/\/\*\*[\s\S]*?\*\//g, "");
+
 const moduleSource = (directory: string): string => {
     const found = giModules.find((entry) => entry.directory === directory);
     expect(found, `expected generated module for ${directory}`).toBeDefined();
-    return found?.source ?? "";
+    return stripDocComments(found?.source ?? "");
 };
 
 describe("identifier naming convention", () => {

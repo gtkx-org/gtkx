@@ -7,6 +7,7 @@ import type { FieldSlot } from "../../gir/size.js";
 import type { GirType } from "../../gir/type.js";
 import type { TypeId } from "../../gir/type-id.js";
 import type { ModuleContext } from "../../writer/context.js";
+import { renderJsDoc } from "../../writer/doc.js";
 import { indent, renderBlock } from "../../writer/emit.js";
 import { refIsClassStruct } from "./class-struct-record.js";
 import { bitMask, computeRecordFieldSlots, mergeBitfield, type RecordFieldSlot } from "./record-layout.js";
@@ -53,13 +54,14 @@ export const renderRecordFieldAccessor = (
     const jsName = toCamelIdentifier(field.name);
     if (claimedNames.has(jsName)) return undefined;
     if (jsName === "constructor") return undefined;
+    const doc = renderJsDoc(field.doc);
 
     const structArray = renderStructArrayAccessor(context, { field, jsName, slot: slot.slot, siblingFields });
-    if (structArray !== undefined) return structArray;
+    if (structArray !== undefined) return `${doc}${structArray}`;
 
     if (!isAccessorEligibleType(context, field.type)) {
         const tsType = renderTsType(context, field.type, false);
-        return `declare ${jsName}: ${tsType};`;
+        return `${doc}declare ${jsName}: ${tsType};`;
     }
 
     const descriptor = context.hoistDescriptor(renderDescriptor(context, field.type, "none"));
@@ -76,7 +78,7 @@ export const renderRecordFieldAccessor = (
     if (field.writable) {
         blocks.push(setterBlock(accessorOptions));
     }
-    return blocks.join("\n\n");
+    return `${doc}${blocks.join("\n\n")}`;
 };
 
 const isAccessorEligibleType = (context: ModuleContext, ref: TypeId): boolean => {

@@ -1,5 +1,6 @@
 import type { GirRecord } from "../../gir/record.js";
 import type { ModuleContext } from "../../writer/context.js";
+import { renderJsDoc } from "../../writer/doc.js";
 import { indentMembers } from "../../writer/emit.js";
 import { type Callables, dedupeCallables, generateBindings, renderPlainTypeMembers } from "./callables.js";
 import { isClassStructRecord } from "./class-struct-record.js";
@@ -24,7 +25,7 @@ export const generateRecord = (context: ModuleContext, record: GirRecord): void 
 
     const members = renderRecordMembers(context, record, className, callables);
     const body = indentMembers(members);
-    context.module.appendDeclaration(`export class ${className} {\n${body}\n}`);
+    context.module.appendDeclaration(`${renderJsDoc(record.doc)}export class ${className} {\n${body}\n}`);
     context.module.appendDeclaration(renderRecordConstructorPropsInterface(context, record, className));
 
     const gtypeExpr = gtypeExprFor(context, record);

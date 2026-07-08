@@ -5,6 +5,7 @@ import type { GirAlias, GirNamespace } from "../../gir/namespace.js";
 import { PRIMITIVE_TS_TYPE, primitiveCategory } from "../../gir/primitives.js";
 import { splitOptionalNamespace } from "../../gir/type-ref.js";
 import { ModuleContext } from "../../writer/context.js";
+import { renderJsDoc } from "../../writer/doc.js";
 import { generateCallback } from "./callback.js";
 import { generateClass } from "./class.js";
 import { generateConstant } from "./constant.js";
@@ -49,7 +50,7 @@ export const generateNamespaceModule = (namespace: GirNamespace, library: Librar
 const generateAlias = (context: ModuleContext, alias: GirAlias): void => {
     const category = alias.cType === undefined ? undefined : primitiveCategory(alias.cType);
     const targetType = category === "gtype" ? PRIMITIVE_TS_TYPE.gtype : renderTsType(context, alias.target);
-    context.module.appendDeclaration(`export type ${alias.name} = ${targetType};`);
+    context.module.appendDeclaration(`${renderJsDoc(alias.doc)}export type ${alias.name} = ${targetType};`);
 };
 
 const topologicalClassOrder = (classes: GirClass[], namespaceName: string): GirClass[] => {

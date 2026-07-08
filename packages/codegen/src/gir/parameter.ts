@@ -1,4 +1,4 @@
-import { attr, attrBool, childOf, childrenOf, intAttr, nameAttr, parseEnumAttr, type RawNode } from "./parse.js";
+import { attr, attrBool, childOf, childrenOf, docOf, intAttr, nameAttr, parseEnumAttr, type RawNode } from "./parse.js";
 import type { ParseContext, TypeId } from "./type-id.js";
 import { typeRefFromNode } from "./type-ref.js";
 
@@ -74,6 +74,7 @@ const returnValueFromNode = (node: RawNode | undefined, context: ParseContext): 
 
 export type GirSignal = {
     name: string;
+    doc: string | undefined;
     parameters: GirParameter[];
     returnValue: GirReturnValue;
 };
@@ -83,6 +84,7 @@ export const parseCallable = (node: RawNode, context: ParseContext): GirSignal =
     const parameterNodes = childrenOf(parametersNode, "parameter");
     return {
         name: nameAttr(node),
+        doc: docOf(node),
         parameters: parameterNodes.map((parameter) => parameterFromNode(parameter, context)),
         returnValue: returnValueFromNode(childOf(node, "return-value"), context),
     };

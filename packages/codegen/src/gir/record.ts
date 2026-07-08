@@ -1,11 +1,12 @@
 import { fieldFromNode, type GirField } from "./field.js";
 import { functionFromNode, type GirFunction } from "./function.js";
-import { attr, attrBool, childrenOf, GIR_CONSTRUCTOR_TAG, type RawNode } from "./parse.js";
+import { attr, attrBool, childrenOf, docOf, GIR_CONSTRUCTOR_TAG, type RawNode } from "./parse.js";
 import type { ParseContext } from "./type-id.js";
 
 export type GirRecord = {
     isVtable: boolean;
     name: string;
+    doc: string | undefined;
     cType: string | undefined;
     glibTypeName: string | undefined;
     glibGetType: string | undefined;
@@ -31,6 +32,7 @@ export const recordFromNode = (
 ): GirRecord => ({
     isVtable,
     name: attr(node, "name") ?? attr(node, "glib:name") ?? "",
+    doc: docOf(node),
     cType: attr(node, "c:type"),
     glibTypeName: attr(node, "glib:type-name"),
     glibGetType: attr(node, "glib:get-type"),

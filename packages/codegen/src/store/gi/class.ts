@@ -5,6 +5,7 @@ import type { GirClass } from "../../gir/class.js";
 import type { GirFunction } from "../../gir/function.js";
 import { splitOptionalNamespace } from "../../gir/type-ref.js";
 import type { ModuleContext } from "../../writer/context.js";
+import { renderJsDoc } from "../../writer/doc.js";
 import { indentMembers } from "../../writer/emit.js";
 import {
     type Callables,
@@ -45,7 +46,9 @@ export const generateClass = (context: ModuleContext, klass: GirClass): void => 
     const implementsClause = typeRefs.length === 0 ? "" : ` implements ${typeRefs.join(", ")}`;
     const members = renderClassMembers(context, klass, callables, parentExpression !== undefined);
     const body = indentMembers(members);
-    context.module.appendDeclaration(`export class ${className}${extendsClause}${implementsClause} {\n${body}\n}`);
+    context.module.appendDeclaration(
+        `${renderJsDoc(klass.doc)}export class ${className}${extendsClause}${implementsClause} {\n${body}\n}`,
+    );
     context.module.appendDeclaration(renderConstructorPropsInterface(context, klass, className));
     for (const declaration of renderSignalDeclarations(context, klass, className, false)) {
         context.module.appendDeclaration(declaration);

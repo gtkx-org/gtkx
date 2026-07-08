@@ -2,19 +2,21 @@ import { callbackFromNode, type GirCallback } from "./callback.js";
 import { classFromNode, type GirClass } from "./class.js";
 import { enumFromNode, type GirEnum } from "./enum.js";
 import { functionFromNode, type GirFunction } from "./function.js";
-import { attr, childOf, childrenOf, nameAttr, type RawNode } from "./parse.js";
+import { attr, childOf, childrenOf, docOf, nameAttr, type RawNode } from "./parse.js";
 import { type GirRecord, isVtableRecord, recordFromNode } from "./record.js";
 import type { ParseContext, TypeId } from "./type-id.js";
 import { typeRefFromNode } from "./type-ref.js";
 
 export type GirConstant = {
     name: string;
+    doc: string | undefined;
     value: string;
     type: TypeId | undefined;
 };
 
 export type GirAlias = {
     name: string;
+    doc: string | undefined;
     cType: string | undefined;
     target: TypeId | undefined;
     targetCType: string | undefined;
@@ -92,11 +94,13 @@ export const populateNamespaceBody = (shell: GirNamespace, namespaceNode: RawNod
     shell.functions = childrenOf(namespaceNode, "function").map((fn) => functionFromNode(fn, context));
     shell.constants = childrenOf(namespaceNode, "constant").map((constant) => ({
         name: nameAttr(constant),
+        doc: docOf(constant),
         value: attr(constant, "value") ?? "",
         type: typeRefFromNode(constant, context),
     }));
     shell.aliases = childrenOf(namespaceNode, "alias").map((alias) => ({
         name: nameAttr(alias),
+        doc: docOf(alias),
         cType: attr(alias, "c:type"),
         target: typeRefFromNode(alias, context),
         targetCType: attr(childOf(alias, "type"), "c:type"),

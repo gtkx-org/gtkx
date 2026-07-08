@@ -3,6 +3,7 @@ import { resolvePrerequisiteReference } from "../../analysis/inheritance.js";
 import type { GirClass } from "../../gir/class.js";
 import type { GirFunction } from "../../gir/function.js";
 import type { ModuleContext } from "../../writer/context.js";
+import { renderJsDoc } from "../../writer/doc.js";
 import { renderBlock, renderBracedOrEmpty } from "../../writer/emit.js";
 import {
     type Callables,
@@ -69,10 +70,10 @@ const renderInterfaceType = (
     callables: Callables,
 ): string => {
     const members = renderInterfaceTypeMembers(context, iface, callables);
-    return renderBracedOrEmpty(
+    return `${renderJsDoc(iface.doc)}${renderBracedOrEmpty(
         `export interface ${className} extends ${interfaceTypeExtends(context, iface)}`,
         members.join("\n"),
-    );
+    )}`;
 };
 
 type InterfaceMemberRenderers = {

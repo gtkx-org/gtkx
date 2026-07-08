@@ -3,6 +3,7 @@ import { tFn } from "../../analysis/descriptor.js";
 import type { GirFunction } from "../../gir/function.js";
 import type { GirNamespace } from "../../gir/namespace.js";
 import type { ModuleContext } from "../../writer/context.js";
+import { renderJsDoc } from "../../writer/doc.js";
 import { arrayLiteral, renderBlock } from "../../writer/emit.js";
 import { callableReferencesClassStruct } from "./class-struct-record.js";
 import {
@@ -38,7 +39,9 @@ export const generateNamespaceFunction = (context: ModuleContext, fn: GirFunctio
     const signature = renderMethodSignature(context, fn);
     const returnType = renderMethodReturnType(context, fn);
     const body = renderMethodBody(context, fn, { bindingExpression: bindingName });
-    context.module.appendDeclaration(renderBlock(`export function ${exportName}(${signature}): ${returnType}`, body));
+    context.module.appendDeclaration(
+        `${renderJsDoc(fn.doc)}${renderBlock(`export function ${exportName}(${signature}): ${returnType}`, body)}`,
+    );
 };
 
 const namespaceFunctionExportName = (cIdentifier: string, girName: string, symbolPrefixes: string[]): string => {
