@@ -1,4 +1,3 @@
-export { installMixins, type Mixin } from "@gtkx/utils";
 export { promisify } from "./async.js";
 export { createErrorDomain, type ErrorDomain } from "./error.js";
 export { type ApplicationLike, onExit, quit, quitApplication, runApplication } from "./lifecycle.js";

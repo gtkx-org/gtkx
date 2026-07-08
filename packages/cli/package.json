@@ -35,10 +35,10 @@
             "types": "./dist/refresh-runtime.d.ts",
             "default": "./dist/refresh-runtime.js"
         },
-        "./vitest": {
-            "source": "./src/vitest.ts",
-            "types": "./dist/vitest.d.ts",
-            "default": "./dist/vitest.js"
+        "./vitest-plugin": {
+            "source": "./src/vitest-plugin.ts",
+            "types": "./dist/vitest-plugin.d.ts",
+            "default": "./dist/vitest-plugin.js"
         },
         "./env": "./env.d.ts"
     },

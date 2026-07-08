@@ -115,7 +115,7 @@ const appendInstanceMethods = (options: AppendInstanceMethodsOptions): void => {
 
 const appendInstallMixins = (context: ModuleContext, className: string, implemented: ImplementedRef[]): void => {
     if (implemented.length === 0) return;
-    context.addRuntimeImport("installMixins");
+    context.addUtilsImport("installMixins");
     const makers = implemented.map((ref) => ref.makerRef).join(", ");
     context.module.appendRegistration(`installMixins(${className}, [${makers}]);`);
 };

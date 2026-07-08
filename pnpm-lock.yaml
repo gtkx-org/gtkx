@@ -52,6 +52,9 @@ importers:
       '@gtkx/react':
         specifier: workspace:*
         version: link:packages/react
+      '@gtkx/utils':
+        specifier: workspace:*
+        version: link:packages/utils
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.2
@@ -122,6 +125,9 @@ importers:
       '@gtkx/react':
         specifier: workspace:*
         version: link:../../packages/react
+      '@gtkx/utils':
+        specifier: workspace:*
+        version: link:../../packages/utils
       react:
         specifier: 'catalog:'
         version: 19.2.7
@@ -406,6 +412,9 @@ importers:
       '@gtkx/testing':
         specifier: workspace:*
         version: link:../testing
+      '@gtkx/utils':
+        specifier: workspace:*
+        version: link:../utils
       '@gtkx/vitest':
         specifier: workspace:*
         version: link:../vitest
