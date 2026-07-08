@@ -45,6 +45,32 @@ RUN apt-get update \
         libglib2.0-0t64-dbgsym \
     && rm -rf /var/lib/apt/lists/*
 
+# ubuntu:26.04 packages weston 14, whose headless backend provides no input seat,
+# so a GTK popover's autohide grab fails and the popover never maps under the
+# vitest headless compositor. weston 15 adds --fake-seat (which the headless
+# display setup passes), so build it from source over the packaged runtime.
+ARG WESTON_VERSION=15.0.1
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        meson ninja-build hwdata wayland-protocols libwayland-bin \
+        libwayland-dev libpixman-1-dev libinput-dev libxkbcommon-dev \
+        libcairo2-dev libdrm-dev libudev-dev libseat-dev libdbus-1-dev \
+    && curl -fsSL "https://gitlab.freedesktop.org/wayland/weston/-/releases/${WESTON_VERSION}/downloads/weston-${WESTON_VERSION}.tar.xz" \
+        | tar -xJ -C /tmp \
+    && meson setup /tmp/weston-${WESTON_VERSION}/build /tmp/weston-${WESTON_VERSION} \
+        --prefix=/usr --buildtype=release \
+        -Dbackend-default=headless -Dbackend-drm=false -Dbackend-rdp=false \
+        -Dbackend-vnc=false -Dbackend-pipewire=false -Dbackend-x11=false \
+        -Drenderer-gl=false -Drenderer-vulkan=false -Dxwayland=false \
+        -Dremoting=false -Dpipewire=false -Dimage-jpeg=false -Dimage-webp=false \
+        -Dshell-lua=false -Dshell-ivi=false -Dshell-kiosk=false \
+        -Dcolor-management-lcms=false -Ddemo-clients=false \
+        -Dsimple-clients=[] -Dtools=[] -Dtests=false \
+    && ninja -C /tmp/weston-${WESTON_VERSION}/build install \
+    && weston --version \
+    && weston --help 2>&1 | grep -q -- '--fake-seat' \
+    && rm -rf /tmp/weston-${WESTON_VERSION} /var/lib/apt/lists/*
+
 COPY 60-gtkx-noto-sans.conf /etc/fonts/conf.d/60-gtkx-noto-sans.conf
 RUN fc-cache -f
 

@@ -205,24 +205,10 @@ describe("dndDemo context menu", () => {
         await triggerContextMenu(canvas, 50, 50);
         const newButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "New" })) as Gtk.Button;
         expect(newButton).toBeInstanceOf(Gtk.Button);
-        let clicked = 0;
-        newButton.connect("clicked", () => {
-            clicked += 1;
-        });
         await userEvent.click(newButton);
-        const afterClick = canvas.observeChildren().getNItems();
-        let activateRes: boolean | null = null;
-        await act(() => {
-            activateRes = newButton.activate();
+        await waitFor(() => {
+            expect(canvas.observeChildren().getNItems()).toBeGreaterThan(initialItemCount);
         });
-        const afterActivate = canvas.observeChildren().getNItems();
-        await act(() => {
-            newButton.emit("clicked");
-        });
-        const afterEmit = canvas.observeChildren().getNItems();
-        throw new Error(
-            `[DIAG] realized=${newButton.getRealized()} clicked=${clicked} init=${initialItemCount} afterClick=${afterClick} activateRes=${activateRes} afterActivate=${afterActivate} afterEmit=${afterEmit}`,
-        );
     });
 
     it("opens an inline edit entry via the context menu's Edit button when right-clicking on an item", async () => {
