@@ -56,13 +56,6 @@ const applyExpanded = <T>(
     }
 };
 
-/**
- * Binds a {@link Gtk.TreeListModel}'s per-row expansion state to controlled React state.
- *
- * When `expandedIds` is provided, every visible row is reconciled to it (state drives the
- * UI); user-driven toggles are reported through `onExpandedChange` (the UI drives state).
- * A no-op for flat and section models, where `treeModel` is `null`.
- */
 export const useExpansionModel = <T>(options: ExpansionModelOptions<T>): void => {
     const { treeModel, rowValues, expandedIds, onExpandedChange } = options;
     const onChangeRef = useRef(onExpandedChange);

@@ -114,11 +114,6 @@ export const createSectionHeaderResolver = <T, S>(sections: SectionNode<S, T>[] 
     };
 };
 
-/**
- * Resolver for {@link Gtk.TreeListModel}-backed lists. Values resolve by row identity, while
- * `idOf`/`positionOfId` consult the live model so position↔id mapping stays correct under any
- * partial expansion state.
- */
 export const createTreeResolver = <T, S>(
     items: ItemNode<T>[] | undefined,
     rowValues: WeakMap<GObject.Object, RowValue<T>>,
