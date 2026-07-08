@@ -1,5 +1,4 @@
 import { quit } from "@gtkx/ffi";
-import { quit as unmountAllReconcilerRoots } from "@gtkx/react";
 import { cleanup } from "./render.js";
 
 const callRunnerHook = (name: "afterEach" | "afterAll", callback: () => unknown): void => {
@@ -10,7 +9,6 @@ const callRunnerHook = (name: "afterEach" | "afterAll", callback: () => unknown)
 const flushPendingWork = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
 const teardownRuntime = async (): Promise<void> => {
-    unmountAllReconcilerRoots();
     await flushPendingWork();
     quit();
 };

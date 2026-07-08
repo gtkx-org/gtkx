@@ -44,7 +44,7 @@ const SINGLE_VALUED_QUERIES: Set<string> = new Set([
     "glGetVertexArrayiv",
 ]);
 
-const COMPANION_OWNED: Set<string> = new Set([
+const OVERRIDE_OWNED: Set<string> = new Set([
     "glGetShaderInfoLog",
     "glGetProgramInfoLog",
     "glGetProgramPipelineInfoLog",
@@ -60,7 +60,7 @@ type GlExclusion = {
     reason: GlExclusionReason;
 };
 
-type GlGenerationReport = {
+export type GlGenerationReport = {
     selection: GlSelection;
     selectedCommands: number;
     emittedCommands: number;
@@ -115,7 +115,7 @@ const collectGroupAliases = (plans: (CommandPlan & { ok: true })[]): Map<string,
 
 type GlGenerationOptions = {
     registryPath: string;
-    companionExports: Set<string>;
+    overrideExports: Set<string>;
 };
 
 const GL_SELECTION: GlSelection = { api: "gl", version: 4.6, profile: "core" };
@@ -138,8 +138,8 @@ const planSelectedCommands = (
     for (const [name, feature] of sortStringsBy(commandNames.entries(), ([key]) => key)) {
         const command = registry.commands.get(name);
         if (command === undefined) throw new Error(`Selected command ${name} is not defined in the registry`);
-        if (COMPANION_OWNED.has(name)) {
-            exclusions.push({ command: name, reason: "companion-owned" });
+        if (OVERRIDE_OWNED.has(name)) {
+            exclusions.push({ command: name, reason: "override-owned" });
             continue;
         }
         const plan = planCommand(command, PLAN_POLICY);
@@ -175,7 +175,7 @@ const assertExportNamesDisjoint = (
     rendered: RenderedCommand[],
     singulars: RenderedCommand[],
     enumRows: EnumRow[],
-    companionExports: Set<string>,
+    overrideExports: Set<string>,
 ): void => {
     const exportNames = new Map<string, string>();
     const claim = (name: string, owner: string): void => {
@@ -189,10 +189,10 @@ const assertExportNamesDisjoint = (
     for (const singular of singulars) claim(singular.exportName, "derived singular");
     for (const row of enumRows) claim(row.exportName, "enum constant");
 
-    const companionCollisions = [...exportNames.keys()].filter((name) => companionExports.has(name));
-    if (companionCollisions.length > 0) {
+    const overrideCollisions = [...exportNames.keys()].filter((name) => overrideExports.has(name));
+    if (overrideCollisions.length > 0) {
         throw new Error(
-            `Companion module exports collide with generated exports: ${sortStrings(companionCollisions).join(", ")}`,
+            `Override module exports collide with generated exports: ${sortStrings(overrideCollisions).join(", ")}`,
         );
     }
 };
@@ -214,7 +214,7 @@ export const generateGlModules = (options: GlGenerationOptions): GlGenerationRes
     }
 
     const enumRows = buildEnumRows(registry, subset.enums);
-    assertExportNamesDisjoint(rendered, singulars, enumRows, options.companionExports);
+    assertExportNamesDisjoint(rendered, singulars, enumRows, options.overrideExports);
 
     const files = new Map<string, string>([
         ["types.ts", renderTypesModule(collectGroupAliases(okPlans))],

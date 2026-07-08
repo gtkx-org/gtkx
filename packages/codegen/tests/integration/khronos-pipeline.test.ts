@@ -6,7 +6,7 @@ import { selectSubset } from "../../src/khronos/select.js";
 
 const REGISTRY_PATH = fileURLToPath(new URL("../../registry/gl.xml", import.meta.url));
 
-const COMPANION_EXPORTS: Set<string> = new Set([
+const OVERRIDE_EXPORTS: Set<string> = new Set([
     "getShaderInfoLog",
     "getProgramInfoLog",
     "getProgramPipelineInfoLog",
@@ -34,7 +34,7 @@ describe("khronos selection over the vendored registry", () => {
 let result: GlGenerationResult;
 
 beforeAll(() => {
-    result = generateGlModules({ registryPath: REGISTRY_PATH, companionExports: COMPANION_EXPORTS });
+    result = generateGlModules({ registryPath: REGISTRY_PATH, overrideExports: OVERRIDE_EXPORTS });
 });
 
 describe("khronos generation counts", () => {
@@ -49,10 +49,10 @@ describe("khronos generation counts", () => {
         expect(result.files.get("enums.ts")).not.toContain("TIMEOUT_IGNORED");
     });
 
-    it("excludes the debug callback and companion-owned commands", () => {
+    it("excludes the debug callback and override-owned commands", () => {
         const byName = new Map(result.report.exclusions.map((exclusion) => [exclusion.command, exclusion.reason]));
         expect(byName.get("glDebugMessageCallback")).toBe("callback-parameter");
-        expect(byName.get("glGetShaderInfoLog")).toBe("companion-owned");
+        expect(byName.get("glGetShaderInfoLog")).toBe("override-owned");
         expect(byName.get("glGetIntegerv")).toBe("compsize-output");
     });
 });
@@ -108,9 +108,9 @@ describe("khronos generation guarantees", () => {
         expect(enums).toContain("export const VERTEX_SHADER = 0x8b31;");
     });
 
-    it("rejects companion exports that collide with generated names", () => {
+    it("rejects override exports that collide with generated names", () => {
         expect(() =>
-            generateGlModules({ registryPath: REGISTRY_PATH, companionExports: new Set(["clearColor"]) }),
-        ).toThrow(/Companion module exports collide/);
+            generateGlModules({ registryPath: REGISTRY_PATH, overrideExports: new Set(["clearColor"]) }),
+        ).toThrow(/Override module exports collide/);
     });
 });

@@ -23,6 +23,7 @@ type LoadedConfig = {
 };
 
 export type RunCodegenResult = {
+    regenerated: boolean;
     namespaces: number;
     intrinsicElements: number;
     duration: number;
@@ -73,7 +74,15 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
 
     if (config.codegen === false) {
         removeSharedStoreShadow(cwd);
-        return { namespaces: 0, intrinsicElements: 0, duration: 0, girPath: [], configFile, libraries: [] };
+        return {
+            regenerated: false,
+            namespaces: 0,
+            intrinsicElements: 0,
+            duration: 0,
+            girPath: [],
+            configFile,
+            libraries: [],
+        };
     }
 
     const { girPath, libraries, elementProps, store } = options.inputs ?? resolveCodegenInputs(cwd, config);
@@ -84,15 +93,17 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
         );
     }
 
+    const force = options.force === true || isCodegenStale({ girPath, libraries, elementProps, store });
     if (options.force) {
         for (const path of [store.giStoreDir, store.giLinkDir, store.jsxStoreDir, store.jsxLinkDir]) {
             rmSync(path, { recursive: true, force: true });
         }
     }
 
-    const result = await runCodegenCore(codegenOptions(store, libraries, girPath, elementProps));
+    const result = await runCodegenCore({ ...codegenOptions(store, libraries, girPath, elementProps), force });
 
     return {
+        regenerated: result.regenerated,
         namespaces: result.namespaces,
         intrinsicElements: result.intrinsicElements,
         duration: result.duration,
@@ -143,19 +154,16 @@ export const ensureGenerated = async (
         return false;
     }
     const inputs = resolveInputsOrNull(context.root, context.config);
-    if (inputs !== null && !isCodegenStale(inputs)) {
-        return false;
-    }
-    if (options.announce) {
+    if (options.announce && (inputs === null || isCodegenStale(inputs))) {
         info("generated bindings missing; running codegen...");
     }
     const resolved = { config: context.config, configFile: context.configFile };
-    await runCodegen(
+    const result = await runCodegen(
         inputs === null
             ? { cwd: context.root, mode: options.mode, resolved }
             : { cwd: context.root, mode: options.mode, inputs, resolved },
     );
-    return true;
+    return result.regenerated;
 };
 
 export const resolveConfigWatch = async (
