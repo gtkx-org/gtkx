@@ -276,7 +276,7 @@ jobs:
             libwayland-dev libwayland-bin libpixman-1-dev \
             libinput-dev libevdev-dev libxkbcommon-dev libdrm-dev libudev-dev \
             libdbus-1-dev libcairo2-dev libpango1.0-dev libglib2.0-dev \
-            libpng-dev libfontconfig1-dev libseat-dev libpam0g-dev
+            libpng-dev libfontconfig1-dev libseat-dev libsystemd-dev libpam0g-dev
           sudo pip3 install --quiet meson
           # jammy's wayland-protocols (1.25) predates weston 12's >= 1.31 floor; the
           # package is data-only (XML + pkg-config), so build the newer release into
