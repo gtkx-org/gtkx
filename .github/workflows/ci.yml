@@ -256,6 +256,43 @@ jobs:
         shell: bash
         run: echo "GTKX_GIR_PATH=$RUNNER_TEMP/gir" >> "$GITHUB_ENV"
 
+      - name: Cache the headless weston build
+        id: weston
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /opt/weston
+          key: weston-12.0.4-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Build weston with the headless backend
+        if: steps.weston.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          # The runner's apt weston (jammy) ships no headless backend, so the vitest
+          # per-worker compositor can't start. Build a headless-capable weston from
+          # source; 12.x is the newest that builds against the runner's stock
+          # libwayland. The benches are non-interactive, so no --fake-seat is needed.
+          sudo apt-get install -y --no-install-recommends \
+            ninja-build python3-pip pkg-config \
+            libwayland-dev wayland-protocols libwayland-bin libpixman-1-dev \
+            libinput-dev libxkbcommon-dev libdrm-dev libudev-dev libdbus-1-dev \
+            libcairo2-dev libseat-dev libpam0g-dev
+          sudo pip3 install --quiet meson
+          WESTON=12.0.4
+          curl -fsSL "https://gitlab.freedesktop.org/wayland/weston/-/releases/${WESTON}/downloads/weston-${WESTON}.tar.xz" | tar -xJ -C "$RUNNER_TEMP"
+          meson setup "$RUNNER_TEMP/weston-${WESTON}/build" "$RUNNER_TEMP/weston-${WESTON}" \
+            --prefix=/opt/weston --libdir=lib --buildtype=release \
+            -Dbackend-drm=false -Dbackend-x11=false -Dbackend-rdp=false \
+            -Drenderer-gl=false -Dxwayland=false -Dremoting=false -Dpipewire=false \
+            -Ddemo-clients=false -Dsimple-clients=[] -Dtools=[] -Dtests=false
+          sudo ninja -C "$RUNNER_TEMP/weston-${WESTON}/build" install
+
+      - name: Put the headless weston on PATH
+        shell: bash
+        run: |
+          echo "/opt/weston/bin" >> "$GITHUB_PATH"
+          echo "LD_LIBRARY_PATH=/opt/weston/lib:$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
+          /opt/weston/bin/weston --version
+
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
