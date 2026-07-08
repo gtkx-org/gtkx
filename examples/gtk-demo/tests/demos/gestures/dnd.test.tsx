@@ -205,11 +205,27 @@ describe("dndDemo context menu", () => {
         await triggerContextMenu(canvas, 50, 50);
         const newButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "New" })) as Gtk.Button;
         expect(newButton).toBeInstanceOf(Gtk.Button);
-        await waitFor(() => expect(newButton.getMapped()).toBe(true));
-        await userEvent.click(newButton);
-        await waitFor(() => {
-            expect(canvas.observeChildren().getNItems()).toBeGreaterThan(initialItemCount);
+        const popover = (await screen.findByName("context-menu")) as Gtk.Popover;
+        let clicked = 0;
+        newButton.connect("clicked", () => {
+            clicked += 1;
         });
+        const preClick = `mapped=${newButton.getMapped()} realized=${newButton.getRealized()} sensitive=${newButton.getSensitive()} popoverVisible=${popover.isVisible()} popoverMapped=${popover.getMapped()}`;
+        await userEvent.click(newButton);
+        const counts: number[] = [];
+        for (let i = 0; i < 24; i += 1) {
+            const current = canvas.observeChildren().getNItems();
+            counts.push(current);
+            if (current > initialItemCount) break;
+            await new Promise((resolve) => setTimeout(resolve, 250));
+        }
+        const finalCount = canvas.observeChildren().getNItems();
+        if (finalCount <= initialItemCount) {
+            throw new Error(
+                `[DIAG] no new item. preClick[${preClick}] clicked=${clicked} initial=${initialItemCount} popoverVisibleNow=${popover.isVisible()} popoverMappedNow=${popover.getMapped()} counts=${counts.join(",")}`,
+            );
+        }
+        expect(finalCount).toBeGreaterThan(initialItemCount);
     });
 
     it("opens an inline edit entry via the context menu's Edit button when right-clicking on an item", async () => {
