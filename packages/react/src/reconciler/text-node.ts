@@ -1,5 +1,5 @@
-import { BUFFER_TEXT_KIND, LABEL_TEXT_KIND, TEXT_ANCHOR_KIND, TEXT_PAINTABLE_KIND } from "@gtkx/config";
 import { hasWrapperKind, type Node } from "./state.js";
+import { BUFFER_TEXT_KIND, LABEL_TEXT_KIND, TEXT_ANCHOR_KIND, TEXT_PAINTABLE_KIND } from "./wrapper-protocol.js";
 
 export const isBufferTextNode = (node: Node): boolean => hasWrapperKind(node, BUFFER_TEXT_KIND);
 

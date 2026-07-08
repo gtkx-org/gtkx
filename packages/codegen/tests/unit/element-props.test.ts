@@ -1,7 +1,7 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type ContainerProp, type ElementProp, loadGtkxConfig } from "@gtkx/config";
+import { type ContainerProp, type ElementProp, loadConfig } from "@gtkx/config";
 import { describe, expect, it } from "vitest";
 import { assembleElementProps } from "../../src/store/react/element-props.js";
 import { buildGirIndex } from "../../src/store/react/gir-index.js";
@@ -37,9 +37,9 @@ describe("curated element props", () => {
     it("pass schema validation", async () => {
         const root = await mkdtemp(join(tmpdir(), "gtkx-curated-"));
         try {
-            const source = `export default { elementProps: ${JSON.stringify(CURATED_ELEMENT_PROPS)} };\n`;
+            const source = `export default { applicationId: "org.gtk.Test", elementProps: ${JSON.stringify(CURATED_ELEMENT_PROPS)} };\n`;
             await writeFile(join(root, "gtkx.config.ts"), source);
-            await expect(loadGtkxConfig(root)).resolves.toMatchObject({ root });
+            await expect(loadConfig(root)).resolves.toMatchObject({ root });
         } finally {
             await rm(root, { recursive: true, force: true });
         }

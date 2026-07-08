@@ -1,4 +1,4 @@
-import { loadGtkxConfig } from "@gtkx/config";
+import { loadConfig } from "@gtkx/config";
 import { quitApplication } from "@gtkx/ffi";
 import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
@@ -18,7 +18,7 @@ export const defaultDevRunnerDeps = (): DevRunnerDeps => ({
     createServer,
     getApplicationId: () => Gio.Application.getDefault()?.applicationId ?? null,
     getConfiguredApplicationId: async (root: string) =>
-        (await loadGtkxConfig(root, { mode: DEV_MODE })).config.applicationId,
+        (await loadConfig(root, { mode: DEV_MODE })).config.applicationId,
     startMcpClient: (applicationId, loadAppModule) => {
         setTestingModuleLoader(() => loadAppModule("@gtkx/testing") as Promise<typeof import("@gtkx/testing")>);
         return startMcpClient(applicationId);

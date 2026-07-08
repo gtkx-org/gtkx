@@ -1,4 +1,3 @@
-import { BUFFER_TEXT_KIND, isWrapperKind, LABEL_TEXT_KIND, WRAPPER_NODE_ELEMENT } from "@gtkx/config";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { freeze, unfreeze } from "@gtkx/native";
@@ -21,6 +20,7 @@ import { scheduleBufferRebuild } from "./text-buffer-rebuild.js";
 import { isBufferContentNode, isLabelTextNode } from "./text-node.js";
 import type { Container, Props } from "./types.js";
 import { isWrapperNode } from "./wrapper-node.js";
+import { BUFFER_TEXT_KIND, isWrapperKind, LABEL_TEXT_KIND, WRAPPER_NODE_ELEMENT } from "./wrapper-protocol.js";
 
 const FIXED_UPDATE_PRIORITY = DiscreteEventPriority;
 

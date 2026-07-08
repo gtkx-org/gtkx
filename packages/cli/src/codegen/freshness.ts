@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { type CodegenFingerprint, computeFingerprint, FINGERPRINT_FILENAME } from "@gtkx/codegen";
-import type { ElementProp, GtkxConfig } from "@gtkx/config";
+import type { Config, ElementProp } from "@gtkx/config";
 import { sortedStrings } from "@gtkx/utils";
 import { resolveGirPath } from "./gir-resolver.js";
 import { resolveLibraries } from "./library-resolver.js";
@@ -14,7 +14,7 @@ export type CodegenInputs = {
     store: CodegenStore;
 };
 
-export const resolveCodegenInputs = (cwd: string, config: GtkxConfig): CodegenInputs => {
+export const resolveCodegenInputs = (cwd: string, config: Config): CodegenInputs => {
     const girPath = resolveGirPath(config.girPath);
     const libraries = resolveLibraries(config.libraries, girPath);
     const store = resolveCodegenStore(cwd);

@@ -1,10 +1,10 @@
-import type { WrapperKind } from "@gtkx/config";
 import * as GObject from "@gtkx/gi/gobject";
 import { collectConstructableProps, requireClassByName } from "../utils/gtype.js";
 import { constructionSkipProps } from "./element-props.js";
 import { type Node, registerState } from "./state.js";
 import type { Container, Props } from "./types.js";
 import { createWrapperNode } from "./wrapper-node.js";
+import type { WrapperKind } from "./wrapper-protocol.js";
 
 const pickConstructProps = (gtype: bigint, props: Props): Props => {
     const constructable = collectConstructableProps(gtype);

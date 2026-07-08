@@ -1,7 +1,7 @@
 import { rmSync } from "node:fs";
 import { resolve } from "node:path";
 import { runCodegen as runCodegenCore } from "@gtkx/codegen";
-import { type ElementProp, type GtkxConfig, loadGtkxConfig } from "@gtkx/config";
+import { type Config, type ElementProp, loadConfig } from "@gtkx/config";
 import { info } from "@gtkx/utils";
 import { emitSchemaEnv } from "../gsettings/env.js";
 import { resolveDataDir } from "../internal/data-dir.js";
@@ -18,7 +18,7 @@ export type RunCodegenOptions = {
 };
 
 type LoadedConfig = {
-    config: GtkxConfig;
+    config: Config;
     configFile: string | undefined;
 };
 
@@ -69,7 +69,7 @@ const codegenOptions = (
 export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenResult> => {
     const cwd = options.cwd ?? process.cwd();
 
-    const { config, configFile } = options.resolved ?? (await loadGtkxConfig(cwd, { mode: options.mode }));
+    const { config, configFile } = options.resolved ?? (await loadConfig(cwd, { mode: options.mode }));
 
     if (config.codegen === false) {
         removeSharedStoreShadow(cwd);
@@ -104,7 +104,7 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
 
 export const isCodegenDisabled = async (cwd: string, mode?: string): Promise<boolean> => {
     try {
-        const { config } = await loadGtkxConfig(cwd, { mode });
+        const { config } = await loadConfig(cwd, { mode });
         return config.codegen === false;
     } catch {
         return false;
@@ -117,7 +117,7 @@ export const syncSchemaEnv = (cwd: string): void => {
     emitSchemaEnv(cwd, dataDir);
 };
 
-const resolveInputsOrNull = (cwd: string, config: GtkxConfig): CodegenInputs | null => {
+const resolveInputsOrNull = (cwd: string, config: Config): CodegenInputs | null => {
     try {
         return resolveCodegenInputs(cwd, config);
     } catch {
@@ -162,7 +162,7 @@ export const resolveConfigWatch = async (
     cwd: string,
     mode?: string,
 ): Promise<{ paths: string[]; regenerate: () => Promise<void> } | undefined> => {
-    const { configFile, root } = await loadGtkxConfig(cwd, { mode });
+    const { configFile, root } = await loadConfig(cwd, { mode });
     if (configFile === undefined) return undefined;
     return {
         paths: [resolve(root, configFile)],
