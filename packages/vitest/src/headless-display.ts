@@ -231,6 +231,9 @@ const captureCompositorStderr = (child: ChildProcess, logPath: string): string[]
     if (stderr !== null) {
         stderr.setEncoding("utf8");
         const logStream = createWriteStream(logPath);
+        // A fast-exiting worker can remove the runtime dir before this stream's
+        // async open resolves; the log is best-effort, so ignore write failures.
+        logStream.on("error", () => {});
         stderr.on("data", (chunk: string) => {
             captured.push(chunk);
             logStream.write(chunk);
