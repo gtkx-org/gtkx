@@ -3,7 +3,7 @@ import type * as Adw from "@gtkx/gi/adw";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow, GtkWindow } from "@gtkx/jsx/gtk";
-import { rootElement } from "@gtkx/react";
+import { createPortal, rootElement } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject, useState } from "react";
 import { describe, expect, it } from "vitest";
@@ -40,13 +40,19 @@ describe("explicit top-level parenting", () => {
 
         await render(
             <ParentedTree parentRef={parentRef}>
-                {(parent) => <GtkWindow ref={childRef} transientFor={parent} defaultWidth={50} defaultHeight={50} />}
+                {(parent) =>
+                    createPortal(
+                        <GtkWindow ref={childRef} transientFor={parent} defaultWidth={50} defaultHeight={50} />,
+                        rootElement,
+                    )
+                }
             </ParentedTree>,
             { container: rootElement },
         );
 
         expect(parentRef.current).not.toBeNull();
         expect(childRef.current?.getTransientFor()).toBe(parentRef.current);
+        expect(childRef.current?.getParent()).toBeNull();
     });
 
     it("clears transientFor when the prop becomes null", async () => {
@@ -55,14 +61,17 @@ describe("explicit top-level parenting", () => {
 
         const App = ({ parented }: { parented: boolean }) => (
             <ParentedTree parentRef={parentRef}>
-                {(parent) => (
-                    <GtkWindow
-                        ref={childRef}
-                        transientFor={parented ? parent : null}
-                        defaultWidth={50}
-                        defaultHeight={50}
-                    />
-                )}
+                {(parent) =>
+                    createPortal(
+                        <GtkWindow
+                            ref={childRef}
+                            transientFor={parented ? parent : null}
+                            defaultWidth={50}
+                            defaultHeight={50}
+                        />,
+                        rootElement,
+                    )
+                }
             </ParentedTree>
         );
 

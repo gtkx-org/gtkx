@@ -18,7 +18,7 @@ import {
     GtkListBox,
     GtkSwitch,
 } from "@gtkx/jsx/gtk";
-import { rootElement } from "@gtkx/react";
+import { createPortal, rootElement } from "@gtkx/react";
 import { render as baseRender, screen, userEvent, waitFor } from "@gtkx/testing";
 import type { ReactNode } from "react";
 import { createRef, useState } from "react";
@@ -980,14 +980,17 @@ describe("widget - AboutDialog (1)", () => {
 
             await renderInApp(
                 <GtkApplicationWindow>
-                    <GtkAboutDialog
-                        ref={ref}
-                        programName="Test App"
-                        creditSections={[
-                            { sectionName: "Contributors", people: ["Alice", "Bob"] },
-                            { sectionName: "Testers", people: ["Charlie"] },
-                        ]}
-                    />
+                    {createPortal(
+                        <GtkAboutDialog
+                            ref={ref}
+                            programName="Test App"
+                            creditSections={[
+                                { sectionName: "Contributors", people: ["Alice", "Bob"] },
+                                { sectionName: "Testers", people: ["Charlie"] },
+                            ]}
+                        />,
+                        rootElement,
+                    )}
                 </GtkApplicationWindow>,
             );
 
@@ -999,7 +1002,7 @@ describe("widget - AboutDialog (1)", () => {
 
             await renderInApp(
                 <GtkApplicationWindow>
-                    <GtkAboutDialog ref={ref} programName="Test App" creditSections={[]} />
+                    {createPortal(<GtkAboutDialog ref={ref} programName="Test App" creditSections={[]} />, rootElement)}
                 </GtkApplicationWindow>,
             );
 
@@ -1011,7 +1014,7 @@ describe("widget - AboutDialog (1)", () => {
 
             await renderInApp(
                 <GtkApplicationWindow>
-                    <GtkAboutDialog ref={ref} programName="Test App" />
+                    {createPortal(<GtkAboutDialog ref={ref} programName="Test App" />, rootElement)}
                 </GtkApplicationWindow>,
             );
 
@@ -1027,7 +1030,7 @@ describe("widget - AboutDialog (2)", () => {
 
             await renderInApp(
                 <GtkApplicationWindow>
-                    <GtkAboutDialog ref={ref} programName="Lifecycle Test" />
+                    {createPortal(<GtkAboutDialog ref={ref} programName="Lifecycle Test" />, rootElement)}
                 </GtkApplicationWindow>,
             );
 
@@ -1042,7 +1045,9 @@ describe("widget - AboutDialog (2)", () => {
                 return (
                     <GtkApplication applicationId={appId} flags={Gio.ApplicationFlags.NON_UNIQUE}>
                         <GtkApplicationWindow>
-                            {show ? <GtkAboutDialog ref={ref} programName="Unmount Test" /> : null}
+                            {show
+                                ? createPortal(<GtkAboutDialog ref={ref} programName="Unmount Test" />, rootElement)
+                                : null}
                         </GtkApplicationWindow>
                     </GtkApplication>
                 );

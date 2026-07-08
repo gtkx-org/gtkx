@@ -1,15 +1,11 @@
 import type { Call, ContainerProp, ElementProp } from "@gtkx/config";
 
-export type AncestryWrapperName =
-    | "withWindowPresentation"
-    | "withApplicationLifecycle"
-    | "withApplicationWindowPresentation";
+export type AncestryWrapperName = "withWindowPresentation" | "withApplicationLifecycle";
 
 type AncestryWrapper = { ancestors: string[]; wrapper: AncestryWrapperName };
 
 export const BUILT_IN_ANCESTRY_WRAPPERS: AncestryWrapper[] = [
     { ancestors: ["GtkApplication"], wrapper: "withApplicationLifecycle" },
-    { ancestors: ["GtkApplicationWindow"], wrapper: "withApplicationWindowPresentation" },
     { ancestors: ["GtkWindow"], wrapper: "withWindowPresentation" },
 ];
 
@@ -241,6 +237,7 @@ export const CURATED_ELEMENT_PROPS: Record<string, ElementProp[]> = {
     GtkCalendar: [{ kind: "list", prop: "markedDays", add: "markDay", clear: "clearMarks" }],
     GtkLevelBar: [{ kind: "list", prop: "offsets", add: "addOffsetValue", remove: "removeOffsetValue" }],
     GtkApplication: [
+        container("children", "GtkWindow", { append: "addWindow", remove: "removeWindow" }),
         {
             kind: "list",
             prop: "actionAccels",

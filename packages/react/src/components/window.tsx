@@ -1,8 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { type ElementType, type ReactNode, type Ref, useLayoutEffect, useState } from "react";
 import { useMergeRefs } from "../hooks/use-merge-refs.js";
-import { createPortal } from "../reconciler/portal.js";
-import { rootElement } from "../reconciler/root-element.js";
 
 const useWindowPresentation = (): ((window: Gtk.Window | null) => void) => {
     const [toplevel, setToplevel] = useState<Gtk.Window | null>(null);
@@ -27,11 +25,10 @@ export const withWindowPresentation = <P extends { children?: ReactNode }>(
         const { children, ...rest } = props;
         const capture = useWindowPresentation();
         const ref = useMergeRefs(externalRef, capture);
-        return createPortal(
+        return (
             <Underlying {...rest} ref={ref}>
                 {children}
-            </Underlying>,
-            rootElement,
+            </Underlying>
         );
     };
 };
