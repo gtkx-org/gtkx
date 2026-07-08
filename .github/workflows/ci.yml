@@ -282,8 +282,10 @@ jobs:
           meson setup "$RUNNER_TEMP/weston-${WESTON}/build" "$RUNNER_TEMP/weston-${WESTON}" \
             --prefix=/opt/weston --libdir=lib --buildtype=release \
             -Dbackend-drm=false -Dbackend-x11=false -Dbackend-rdp=false \
+            -Dbackend-vnc=false -Dbackend-wayland=false -Dbackend-pipewire=false \
             -Drenderer-gl=false -Dxwayland=false -Dremoting=false -Dpipewire=false \
-            -Ddemo-clients=false -Dsimple-clients=[] -Dtools=[] -Dtests=false
+            -Dcolor-management-lcms=false -Dimage-jpeg=false -Dimage-webp=false \
+            -Ddemo-clients=false -Dsimple-clients=[] -Dtools=[]
           sudo ninja -C "$RUNNER_TEMP/weston-${WESTON}/build" install
 
       - name: Put the headless weston on PATH
