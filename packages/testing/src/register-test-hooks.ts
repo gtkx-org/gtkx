@@ -6,16 +6,9 @@ const callRunnerHook = (name: "afterEach" | "afterAll", callback: () => unknown)
     if (typeof hook === "function") (hook as (callback: () => unknown) => void)(callback);
 };
 
-const flushPendingWork = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
-
-const teardownRuntime = async (): Promise<void> => {
-    await flushPendingWork();
-    quit();
-};
-
 const registerTestRuntimeHooks = (): void => {
     callRunnerHook("afterEach", cleanup);
-    callRunnerHook("afterAll", teardownRuntime);
+    callRunnerHook("afterAll", quit);
 };
 
 registerTestRuntimeHooks();
