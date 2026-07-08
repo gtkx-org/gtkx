@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkGrid, type GtkGridProps } from "@gtkx/jsx/gtk";
-import { useMergeRefs } from "@gtkx/react";
+import { useMergeRefs } from "@gtkx/react/internal";
 import { Children, type ReactNode, type Ref, useRef } from "react";
 import { createParentContext, type PlacedChildRender, usePlacedChild } from "./hooks/use-placed-child.js";
 

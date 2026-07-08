@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkColumnView, type GtkColumnViewProps } from "@gtkx/jsx/gtk";
-import { useMergeRefs } from "@gtkx/react";
+import { useMergeRefs } from "@gtkx/react/internal";
 import { type ReactNode, type Ref, type RefObject, useCallback, useMemo, useRef, useState } from "react";
 import { HeaderRenderHost } from "./cell.js";
 import { ColumnViewColumn, type ColumnViewColumnProps } from "./column-view-column.js";

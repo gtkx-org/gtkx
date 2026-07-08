@@ -86,7 +86,7 @@ const collectCandidateExports = (
 
 const collectLazyElementExports = (collector: ExportCollector, lazyElements: LazyElementSpec[]): void => {
     for (const spec of lazyElements) {
-        collector.imports.addNamed("@gtkx/react", "createLazyElementComponent", false);
+        collector.imports.addNamed("@gtkx/react/internal", "createLazyElementComponent", false);
         collector.imports.addNamed("react", "ReactNode", true);
         collector.exportLines.push(renderLazyElementExport(spec));
         collector.exportedNames.add(spec.element);
@@ -115,9 +115,9 @@ const renderCandidateExport = (candidate: GlibNamedClass, library: Library, impo
     const { glibName, klass, namespace } = candidate;
     const ancestry = new Set(ancestorGlibNames(klass, namespace, library));
     const wrapper = resolveAncestryWrapper(ancestry);
-    imports.addNamed("@gtkx/react", "createElementComponent", false);
+    imports.addNamed("@gtkx/react/internal", "createElementComponent", false);
     imports.addNamed("react", "ReactNode", true);
-    if (wrapper !== undefined) imports.addNamed("@gtkx/react", wrapper, false);
+    if (wrapper !== undefined) imports.addNamed("@gtkx/react/internal", wrapper, false);
     return `${renderJsDoc(klass.doc)}${renderElementComponentExport(glibName, wrapper)}`;
 };
 

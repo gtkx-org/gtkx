@@ -1,6 +1,6 @@
 import type * as Gio from "@gtkx/gi/gio";
 import { GMenu, type GMenuProps } from "@gtkx/jsx/gio";
-import { useMergeRefs } from "@gtkx/react";
+import { useMergeRefs } from "@gtkx/react/internal";
 import { type ReactNode, type Ref, useLayoutEffect, useRef } from "react";
 import { applyMenuItems, menuItemsEqual } from "./menu-items.js";
 import type { MenuEntry } from "./types.js";

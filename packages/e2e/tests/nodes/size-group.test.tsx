@@ -1,7 +1,7 @@
 import { SizeGroup } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkFrame, GtkLabel } from "@gtkx/jsx/gtk";
-import { useMergeRefs } from "@gtkx/react";
+import { useMergeRefs } from "@gtkx/react/internal";
 import { render } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefCallback, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
