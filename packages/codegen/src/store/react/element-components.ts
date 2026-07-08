@@ -1,13 +1,11 @@
-import { WRAPPER_NODE_ELEMENT } from "@gtkx/config";
 import { sourceStringLiteral } from "@gtkx/utils";
 import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
+import { renderJsDoc } from "../../writer/doc.js";
 import type { ImportsBuilder } from "../../writer/imports.js";
 import type { ElementPropTypegen, LazyElementSpec } from "./element-prop-types.js";
 import { ancestorGlibNames, type GlibNamedClass } from "./intrinsic-elements.js";
 import { type AncestryWrapperName, BUILT_IN_ANCESTRY_WRAPPERS } from "./tables.js";
-
-const WRAPPER_NODE_ELEMENT_CONST = "WrapperNodeElement";
 
 type TextNodeElement = {
     flatName: string;
@@ -58,13 +56,10 @@ export const generateElementComponentsSection = (
     collectLazyElementExports(collector, lazyElements);
     collectTextNodeExports(collector, textNodes);
 
-    const sections = [
-        textNodes.length > 0
-            ? `const ${WRAPPER_NODE_ELEMENT_CONST} = ${sourceStringLiteral(WRAPPER_NODE_ELEMENT)} as const;`
-            : "",
-        collector.exportLines.join("\n\n"),
-    ];
-    const source = sections.filter((section) => section.length > 0).join("\n\n");
+    if (textNodes.length > 0) {
+        collector.imports.addNamed("@gtkx/react/internal", "WRAPPER_NODE_ELEMENT", false);
+    }
+    const source = collector.exportLines.join("\n\n");
     return { source, exportedNames: collector.exportedNames };
 };
 
@@ -91,7 +86,7 @@ const collectCandidateExports = (
 
 const collectLazyElementExports = (collector: ExportCollector, lazyElements: LazyElementSpec[]): void => {
     for (const spec of lazyElements) {
-        collector.imports.addNamed("@gtkx/react", "createLazyElementComponent", false);
+        collector.imports.addNamed("@gtkx/react/internal", "createLazyElementComponent", false);
         collector.imports.addNamed("react", "ReactNode", true);
         collector.exportLines.push(renderLazyElementExport(spec));
         collector.exportedNames.add(spec.element);
@@ -114,16 +109,16 @@ const renderLazyElementExport = (spec: LazyElementSpec): string => {
 };
 
 const renderTextNodeExport = (node: TextNodeElement): string =>
-    `export const ${node.flatName} = (props: ${node.propsType}): ReactNode => (\n    <${WRAPPER_NODE_ELEMENT_CONST} kind=${sourceStringLiteral(node.kind)} {...props} />\n);`;
+    `export const ${node.flatName} = (props: ${node.propsType}): ReactNode => (\n    <WRAPPER_NODE_ELEMENT kind=${sourceStringLiteral(node.kind)} {...props} />\n);`;
 
 const renderCandidateExport = (candidate: GlibNamedClass, library: Library, imports: ImportsBuilder): string | null => {
     const { glibName, klass, namespace } = candidate;
     const ancestry = new Set(ancestorGlibNames(klass, namespace, library));
     const wrapper = resolveAncestryWrapper(ancestry);
-    imports.addNamed("@gtkx/react", "createElementComponent", false);
+    imports.addNamed("@gtkx/react/internal", "createElementComponent", false);
     imports.addNamed("react", "ReactNode", true);
-    if (wrapper !== undefined) imports.addNamed("@gtkx/react", wrapper, false);
-    return renderElementComponentExport(glibName, wrapper);
+    if (wrapper !== undefined) imports.addNamed("@gtkx/react/internal", wrapper, false);
+    return `${renderJsDoc(klass.doc)}${renderElementComponentExport(glibName, wrapper)}`;
 };
 
 const resolveAncestryWrapper = (ancestry: Set<string>): AncestryWrapperName | undefined => {

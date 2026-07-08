@@ -7,8 +7,6 @@ export const LIBRARIES_WILDCARD = "*";
 
 export const GIR_LIBRARY_PATTERN: RegExp = /^[A-Za-z][A-Za-z0-9]*-\d+(?:\.\d+)*$/;
 
-export const DEFAULT_APPLICATION_ID = "org.gtkx.app";
-
 const APPLICATION_ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]*(\.[A-Za-z_][A-Za-z0-9_-]*)+$/;
 const APPLICATION_ID_MAX_LENGTH = 255;
 
@@ -38,9 +36,7 @@ export type ResolvedReactCompilerOptions = ReactCompilerOptions & {
 
 const REACT_COMPILER_TARGET = "19";
 
-export const resolveReactCompilerOptions = (
-    setting: GtkxConfig["reactCompiler"],
-): ResolvedReactCompilerOptions | null => {
+export const resolveReactCompilerOptions = (setting: Config["reactCompiler"]): ResolvedReactCompilerOptions | null => {
     if (setting === false) return null;
     const overrides = setting === undefined || setting === true ? {} : setting;
     return { ...overrides, target: REACT_COMPILER_TARGET };
@@ -132,32 +128,32 @@ const reactCompilerSchema = z.custom<boolean | ReactCompilerOptions>().check((ct
     }
 });
 
-const gtkxConfigSchema = z.object({
+const configSchema = z.object({
     libraries: librariesSchema.optional(),
     girPath: z.array(z.string(), { error: "must be an array of strings if provided" }).optional(),
-    applicationId: applicationIdSchema.optional(),
+    applicationId: applicationIdSchema,
     elementProps: elementPropsSchema.optional(),
     reactCompiler: reactCompilerSchema.optional(),
     codegen: z.boolean({ error: "must be a boolean" }).optional(),
 });
 
-export type GtkxConfig = z.infer<typeof gtkxConfigSchema>;
+export type Config = z.infer<typeof configSchema>;
 
-export const validateGtkxConfig = (config: GtkxConfig): void => {
-    const result = gtkxConfigSchema.safeParse(config);
+export const validateConfig = (config: Config): void => {
+    const result = configSchema.safeParse(config);
     if (!result.success) throw configError(result.error);
 };
 
-export const defineConfig: DefineConfig<GtkxConfig> = createDefineConfig<GtkxConfig>();
+export const defineConfig: DefineConfig<Config> = createDefineConfig<Config>();
 
-export const mergeConfig = (base: GtkxConfig, override: GtkxConfig): GtkxConfig => defu(override, base);
+export const mergeConfig = (base: Config, override: Config): Config => defu(override, base);
 
-export type ResolvedGtkxConfig = {
+export type ResolvedConfig = {
     applicationId: string;
     reactCompiler: ResolvedReactCompilerOptions | null;
 };
 
-export const resolveGtkxConfig = (config: GtkxConfig): ResolvedGtkxConfig => ({
-    applicationId: config.applicationId ?? DEFAULT_APPLICATION_ID,
+export const resolveConfig = (config: Config): ResolvedConfig => ({
+    applicationId: config.applicationId,
     reactCompiler: resolveReactCompilerOptions(config.reactCompiler),
 });

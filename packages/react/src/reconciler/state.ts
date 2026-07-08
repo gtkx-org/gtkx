@@ -1,9 +1,9 @@
-import type { WrapperKind } from "@gtkx/config";
 import * as GObject from "@gtkx/gi/gobject";
 import { isRootElement, type RootElement } from "./root-element.js";
 import { getSignalStore, type SignalStore } from "./signal-store.js";
 import type { Container, Props } from "./types.js";
 import { isWrapperNode, type WrapperNode } from "./wrapper-node.js";
+import type { WrapperKind } from "./wrapper-protocol.js";
 
 export type Node = GObject.Object | WrapperNode | RootElement;
 

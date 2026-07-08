@@ -14,19 +14,18 @@ const COMPILER_OPTIONS: ts.CompilerOptions = {
     jsxImportSource: "react",
     declaration: true,
     skipDefaultLibCheck: true,
-    removeComments: false,
     sourceMap: false,
     declarationMap: false,
 };
 
 export const transpileSource = (fileName: string, source: string): TranspiledFile => {
     const jsResult = ts.transpileModule(source, {
-        compilerOptions: COMPILER_OPTIONS,
+        compilerOptions: { ...COMPILER_OPTIONS, removeComments: true },
         fileName,
         reportDiagnostics: false,
     });
     const dtsResult = ts.transpileDeclaration(source, {
-        compilerOptions: COMPILER_OPTIONS,
+        compilerOptions: { ...COMPILER_OPTIONS, removeComments: false },
         fileName,
     });
     const errorDiagnostics = (dtsResult.diagnostics ?? []).filter(

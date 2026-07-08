@@ -2,6 +2,7 @@ import { toCamelCase, toCamelIdentifier, uniqBy } from "@gtkx/utils";
 import { hasCallerAllocatedArrayLength } from "../../analysis/param-structure.js";
 import type { GirFunction } from "../../gir/function.js";
 import type { ModuleContext } from "../../writer/context.js";
+import { renderJsDoc } from "../../writer/doc.js";
 import { renderBlock } from "../../writer/emit.js";
 import { matchAsyncFinishName } from "./async.js";
 import { callableReferencesClassStruct } from "./class-struct-record.js";
@@ -64,9 +65,10 @@ const renderCallableMember = (
     if (cIdentifier === undefined) return undefined;
     const name = options.resolveName(callable);
     if (name === undefined || name === "constructor") return undefined;
+    const doc = renderJsDoc(callable.doc);
     if (options.allowRuntimeOverride === true) {
         const override = renderRuntimeOverride(callable, name);
-        if (override !== undefined) return override;
+        if (override !== undefined) return `${doc}${override}`;
     }
     const signature = renderMethodSignature(context, callable);
     const returnType = options.returnTypeOverride ?? renderMethodReturnType(context, callable);
@@ -75,7 +77,7 @@ const renderCallableMember = (
         bindingExpression,
         returnTypeOverride: options.returnTypeOverride,
     });
-    return renderBlock(`${options.isStatic ? "static " : ""}${name}(${signature}): ${returnType}`, body);
+    return `${doc}${renderBlock(`${options.isStatic ? "static " : ""}${name}(${signature}): ${returnType}`, body)}`;
 };
 
 const renderConstructorStatic = (
@@ -112,15 +114,16 @@ export const renderInstanceMethodSignature = (
     if (!isEmittableCallable(context, callable)) return undefined;
     const name = nameOverride ?? methodExportName(callable);
     if (name === "constructor") return undefined;
+    const doc = renderJsDoc(callable.doc);
     const finishFn = matchFinishFunction(context, callable, siblings);
     if (finishFn !== undefined) {
         if (!isEmittableCallable(context, finishFn)) return undefined;
         const { signature, returnType } = renderPromisifiedSignature(context, callable, finishFn);
-        return `${name}(${signature}): ${returnType};`;
+        return `${doc}${name}(${signature}): ${returnType};`;
     }
     const signature = renderMethodSignature(context, callable);
     const returnType = renderMethodReturnType(context, callable);
-    return `${name}(${signature}): ${returnType};`;
+    return `${doc}${name}(${signature}): ${returnType};`;
 };
 
 export const renderClassInstanceMember = (
@@ -161,7 +164,7 @@ const renderPromisifiedMember = (
     const { signature, returnType } = renderPromisifiedSignature(context, callable, finishFn);
     const finishMember = methodExportName(finishFn);
     const body = renderPromisifiedBody(context, callable, finishMember, toCamelIdentifier(cIdentifier));
-    return renderBlock(`${name}(${signature}): ${returnType}`, body);
+    return `${renderJsDoc(callable.doc)}${renderBlock(`${name}(${signature}): ${returnType}`, body)}`;
 };
 
 export const indexMethodsByName = (methods: GirFunction[]): Map<string, GirFunction> => {

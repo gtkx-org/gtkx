@@ -34,10 +34,15 @@
         "./env": {
             "types": "./env.d.ts"
         },
-        "./plugin": {
-            "source": "./src/plugin.ts",
-            "types": "./dist/plugin.d.ts",
-            "default": "./dist/plugin.js"
+        "./internal": {
+            "source": "./src/internal.ts",
+            "types": "./dist/internal.d.ts",
+            "default": "./dist/internal.js"
+        },
+        "./vite-plugin": {
+            "source": "./src/vite-plugin.ts",
+            "types": "./dist/vite-plugin.d.ts",
+            "default": "./dist/vite-plugin.js"
         }
     },
     "sideEffects": false,

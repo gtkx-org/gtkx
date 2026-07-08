@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkConstraintLayout } from "@gtkx/jsx/gtk";
-import { useMergeRefs } from "@gtkx/react";
+import { useMergeRefs } from "@gtkx/react/internal";
 import {
     type Context,
     createContext,

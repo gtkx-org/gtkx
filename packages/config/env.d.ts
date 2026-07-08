@@ -12,5 +12,5 @@ declare module "virtual:gtkx-config" {
             value: "string" | "boolean" | "int" | "double" | "object" | "ref-list";
         }
     >;
-    export const applicationId: import("@gtkx/config").ResolvedGtkxConfig["applicationId"];
+    export const applicationId: import("@gtkx/config").ResolvedConfig["applicationId"];
 }

@@ -1,4 +1,4 @@
-import gtkx from "@gtkx/cli/vitest";
+import gtkx from "@gtkx/cli/vitest-plugin";
 import { defineConfig, mergeConfig } from "vitest/config";
 import { sourceResolveConfig } from "../../vitest.config.base.js";
 

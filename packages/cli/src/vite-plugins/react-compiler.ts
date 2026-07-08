@@ -1,12 +1,8 @@
 /// <reference path="../babel-modules.d.ts" />
 import { transformAsync } from "@babel/core";
 import babelPresetTypescriptNs from "@babel/preset-typescript";
-import {
-    createGtkxConfigLoader,
-    type GtkxConfigLoader,
-    type ResolvedReactCompilerOptions,
-    resolveReactCompilerOptions,
-} from "@gtkx/config";
+import type { ResolvedReactCompilerOptions } from "@gtkx/config";
+import { type ConfigLoader, createConfigLoader } from "@gtkx/config/internal";
 import babelPluginReactCompilerNs from "babel-plugin-react-compiler";
 import type { Plugin, ResolvedConfig, UserConfig } from "vite";
 
@@ -29,10 +25,10 @@ const isProjectSource = (root: string, id: string): boolean => {
     return true;
 };
 
-export function gtkxReactCompiler(loadConfig: GtkxConfigLoader = createGtkxConfigLoader()): Plugin {
+export function gtkxReactCompiler(loadConfig: ConfigLoader = createConfigLoader()): Plugin {
     const state: ReactCompilerState = {
         root: "",
-        options: resolveReactCompilerOptions(true),
+        options: null,
     };
 
     return {

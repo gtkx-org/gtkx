@@ -1,8 +1,8 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { generateGlModules } from "@gtkx/codegen";
+import { runCodegen } from "@gtkx/codegen";
 import { createLogger } from "@gtkx/utils";
 
 const log = createLogger("gl");
@@ -15,7 +15,7 @@ const outputDir = join(glSrcDir, "generated");
 
 const EXPORT_PATTERN = /^export (?:async )?(?:function|const|type|interface|class) ([A-Za-z_$][\w$]*)/gm;
 
-const companionExportNames = (path: string): Set<string> => {
+const overrideExportNames = (path: string): Set<string> => {
     const source = readFileSync(path, "utf-8");
     const names = new Set<string>();
     for (const match of source.matchAll(EXPORT_PATTERN)) {
@@ -25,12 +25,11 @@ const companionExportNames = (path: string): Set<string> => {
     return names;
 };
 
-const companionExports = companionExportNames(join(glSrcDir, "companion.ts"));
-const { files, report } = generateGlModules({ registryPath, companionExports });
-mkdirSync(outputDir, { recursive: true });
-
-for (const [fileName, source] of files) {
-    writeFileSync(join(outputDir, fileName), source);
+const overrideExports = overrideExportNames(join(glSrcDir, "overrides.ts"));
+const result = await runCodegen({ gl: { registryPath, overrideExports, outputDir } });
+const report = result.gl;
+if (report === undefined) {
+    throw new Error("gl codegen produced no report");
 }
 
 const exclusionCounts = new Map<string, number>();

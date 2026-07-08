@@ -231,8 +231,6 @@ const captureCompositorStderr = (child: ChildProcess, logPath: string): string[]
     if (stderr !== null) {
         stderr.setEncoding("utf8");
         const logStream = createWriteStream(logPath);
-        // A fast-exiting worker can remove the runtime dir before this stream's
-        // async open resolves; the log is best-effort, so ignore write failures.
         logStream.on("error", () => {});
         stderr.on("data", (chunk: string) => {
             captured.push(chunk);
@@ -242,13 +240,6 @@ const captureCompositorStderr = (child: ChildProcess, logPath: string): string[]
     return captured;
 };
 
-/**
- * When the compositor dies on its own (e.g. an OOM-killer SIGKILL) the worker's
- * in-process GDK client loses its Wayland socket and aborts, surfacing only as
- * an opaque "Worker exited unexpectedly". Teardown always runs, so if the
- * compositor has already exited by then it was not us that killed it — surface
- * its exit code/signal and captured stderr to make the cause observable.
- */
 const reportUnexpectedCompositorExit = (child: ChildProcess, capturedStderr: string[]): void => {
     if (child.exitCode === null && child.signalCode === null) return;
     process.stderr.write(

@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { createGtkxConfigPlugin } from "@gtkx/config/plugin";
+import createConfigPlugin from "@gtkx/config/vite-plugin";
 import type { Plugin } from "vitest/config";
 import { type HeadlessOptions, STATIC_HEADLESS_ENV } from "./headless-display.js";
 
@@ -28,7 +28,7 @@ const workerSetupPath = (): string => {
 };
 
 const gtkx = (options: GtkxPluginOptions = {}): Plugin =>
-    createGtkxConfigPlugin({
+    createConfigPlugin({
         name: "gtkx:vitest",
         config() {
             return {

@@ -1,6 +1,6 @@
 import type * as Adw from "@gtkx/gi/adw";
 import { AdwAlertDialog, type AdwAlertDialogProps } from "@gtkx/jsx/adw";
-import { useMergeRefs } from "@gtkx/react";
+import { useMergeRefs } from "@gtkx/react/internal";
 import { Children, isValidElement, type ReactNode, type Ref, useLayoutEffect, useRef } from "react";
 import { createParentContext } from "./hooks/use-placed-child.js";
 

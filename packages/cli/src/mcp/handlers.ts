@@ -7,7 +7,7 @@ import {
     type ServerRequestParams,
     ServerRequestParamsSchemas,
     widgetNotFoundError,
-} from "@gtkx/mcp";
+} from "@gtkx/mcp/internal";
 import { serializeWidget } from "./serialize-widget.js";
 import { loadTestingModule } from "./testing-loader.js";
 import type { WidgetRegistry } from "./widget-registry.js";

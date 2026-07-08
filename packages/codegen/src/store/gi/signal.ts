@@ -20,6 +20,7 @@ import { isCallerAllocatedOut, isOutParameter } from "../../gir/parameter.js";
 import type { GirProperty } from "../../gir/property.js";
 import { splitOptionalNamespace } from "../../gir/type-ref.js";
 import type { ModuleContext } from "../../writer/context.js";
+import { renderJsDoc } from "../../writer/doc.js";
 import { indent, renderBlock, renderBracedOrEmpty } from "../../writer/emit.js";
 import { isRecordCallerOut, isRecordInout } from "./param-marshal.js";
 
@@ -92,9 +93,10 @@ const renderSignalMap = (spec: SignalMapSpec): string => {
     const { context, klass, className, parentlessExtendsObject, suffix, renderEntry } = spec;
     const extendsRefs = signalMapParentRefs(context, klass, parentlessExtendsObject, suffix);
     const extendsClause = extendsRefs.length === 0 ? "" : ` extends ${extendsRefs.join(", ")}`;
-    const signalEntries = collectClassSignals(context, klass).map(
-        (signal) => `${sourceStringLiteral(signal.name)}: ${renderEntry(context, signal)};`,
-    );
+    const signalEntries = collectClassSignals(context, klass).map((signal) => {
+        const entry = `${sourceStringLiteral(signal.name)}: ${renderEntry(context, signal)};`;
+        return suffix === SIGNAL_HANDLERS_SUFFIX ? `${renderJsDoc(signal.doc)}${entry}` : entry;
+    });
     const entries = [...signalEntries, ...renderNotifyDetailEntries(context, klass, suffix)];
     return renderBracedOrEmpty(`export interface ${className}${suffix}${extendsClause}`, entries.join("\n"));
 };

@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import type { SerializedWidget } from "@gtkx/mcp";
+import type { SerializedWidget } from "@gtkx/mcp/internal";
 
 type WidgetIdResolver = (widget: Gtk.Widget) => string;
 

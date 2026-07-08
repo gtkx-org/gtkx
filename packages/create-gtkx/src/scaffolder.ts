@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import * as p from "@clack/prompts";
-import { isValidApplicationId } from "@gtkx/config";
+import { isValidApplicationId } from "@gtkx/config/internal";
 import { errorMessage, packageVersion, upperFirst } from "@gtkx/utils";
 import { addDependency, detectPackageManager as nypmDetectPackageManager } from "nypm";
 import { x } from "tinyexec";
@@ -31,7 +31,7 @@ type ResolvedOptions = {
     includeTesting: boolean;
 };
 
-const DEPENDENCIES = ["@gtkx/css", "@gtkx/ffi", "@gtkx/native", "@gtkx/react", "react"];
+const DEPENDENCIES = ["@gtkx/css", "@gtkx/ffi", "@gtkx/native", "@gtkx/react", "@gtkx/utils", "react"];
 
 const DEV_DEPENDENCIES = ["@gtkx/cli", "@gtkx/config", "@types/react", "typescript", "vite"];
 

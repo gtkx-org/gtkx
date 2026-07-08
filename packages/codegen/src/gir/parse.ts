@@ -100,3 +100,20 @@ export const childOf = (node: RawNode | undefined, tag: string): RawNode | undef
     }
     return value as RawNode;
 };
+
+const normalizeDoc = (text: string): string | undefined => {
+    const trimmed = text.trim();
+    return trimmed.length === 0 ? undefined : trimmed;
+};
+
+export const docOf = (node: RawNode | undefined): string | undefined => {
+    if (node === undefined) return undefined;
+    const raw = node.doc;
+    const value = Array.isArray(raw) ? raw[0] : raw;
+    if (typeof value === "string") return normalizeDoc(value);
+    if (value !== null && typeof value === "object") {
+        const text = (value as RawNode)["#text"];
+        if (typeof text === "string") return normalizeDoc(text);
+    }
+    return undefined;
+};

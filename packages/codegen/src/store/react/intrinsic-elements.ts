@@ -1,4 +1,4 @@
-import { sortedStringsBy, toCamelIdentifier, upperFirst } from "@gtkx/utils";
+import { sortStringsBy, toCamelIdentifier, upperFirst } from "@gtkx/utils";
 import { ancestorChain } from "../../gir/ancestry.js";
 import type { GirClass } from "../../gir/class.js";
 import type { Library } from "../../gir/library.js";
@@ -80,7 +80,7 @@ export const newlyImplementedInterfaces = (
     const own = implementedInterfaces(klass, namespace, library).filter(
         (iface) => interfaceHasPropsBody(iface.klass) && !inherited.has(qualifiedInterfaceKey(iface)),
     );
-    return sortedStringsBy(own, qualifiedInterfaceKey);
+    return sortStringsBy(own, qualifiedInterfaceKey);
 };
 
 export const collectInterfacePropsClasses = (
@@ -100,7 +100,7 @@ export const collectInterfacePropsClasses = (
             result.push(iface);
         }
     }
-    return sortedStringsBy(result, qualifiedInterfaceKey);
+    return sortStringsBy(result, qualifiedInterfaceKey);
 };
 
 export const ancestorGlibNames = (klass: GirClass, namespace: GirNamespace, library: Library): string[] => {
@@ -152,5 +152,5 @@ export const collectIntrinsicElementClasses = (library: Library): GlibNamedClass
         seen.add(glibName);
         entries.push(candidate);
     }
-    return sortedStringsBy(entries, (entry) => entry.glibName);
+    return sortStringsBy(entries, (entry) => entry.glibName);
 };

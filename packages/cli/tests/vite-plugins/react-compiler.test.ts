@@ -36,6 +36,12 @@ const COMPONENT = `export function Counter({ label }: { label: string }) {
 }
 `;
 
+const enabledPlugin = async (): Promise<ReturnType<typeof gtkxReactCompiler>> => {
+    const plugin = gtkxReactCompiler(async () => ({ applicationId: "org.gtk.Test", reactCompiler: { target: "19" } }));
+    await configOf(plugin)({});
+    return plugin;
+};
+
 describe("gtkxReactCompiler", () => {
     it("returns a plugin with the expected name and pre-enforce", () => {
         const plugin = gtkxReactCompiler();
@@ -44,7 +50,7 @@ describe("gtkxReactCompiler", () => {
     });
 
     it("compiles a project source file, injecting the memo cache and compiler runtime", async () => {
-        const transform = transformOf(gtkxReactCompiler());
+        const transform = transformOf(await enabledPlugin());
         const result = await transform(COMPONENT, "/proj/src/counter.tsx");
 
         expect(result).toBeDefined();
@@ -54,7 +60,7 @@ describe("gtkxReactCompiler", () => {
     });
 
     it("strips TypeScript while leaving JSX for the downstream transform", async () => {
-        const transform = transformOf(gtkxReactCompiler());
+        const transform = transformOf(await enabledPlugin());
         const result = await transform(COMPONENT, "/proj/src/counter.tsx");
 
         expect(result?.code).not.toContain(": { label: string }");
@@ -72,7 +78,7 @@ describe("gtkxReactCompiler", () => {
     });
 
     it("skips files outside the resolved project root", async () => {
-        const plugin = gtkxReactCompiler();
+        const plugin = await enabledPlugin();
         configResolvedOf(plugin)({ root: "/proj" });
         const transform = transformOf(plugin);
 
@@ -81,7 +87,7 @@ describe("gtkxReactCompiler", () => {
     });
 
     it("compiles .ts source files, not only .tsx", async () => {
-        const transform = transformOf(gtkxReactCompiler());
+        const transform = transformOf(await enabledPlugin());
         const result = await transform(HOOK, "/proj/src/use-counter.ts");
 
         expect(result).toBeDefined();
@@ -107,7 +113,10 @@ describe("gtkxReactCompiler (config-driven enable/disable)", () => {
     });
 
     it("does not transform when the project disables the compiler", async () => {
-        writeFileSync(join(cwd, "gtkx.config.ts"), `export default { reactCompiler: false };\n`);
+        writeFileSync(
+            join(cwd, "gtkx.config.ts"),
+            `export default { applicationId: "org.gtk.Test", reactCompiler: false };\n`,
+        );
 
         const plugin = gtkxReactCompiler();
         await configOf(plugin)({ root: cwd });
@@ -118,7 +127,10 @@ describe("gtkxReactCompiler (config-driven enable/disable)", () => {
     });
 
     it("transforms when the project enables the compiler explicitly", async () => {
-        writeFileSync(join(cwd, "gtkx.config.ts"), `export default { reactCompiler: true };\n`);
+        writeFileSync(
+            join(cwd, "gtkx.config.ts"),
+            `export default { applicationId: "org.gtk.Test", reactCompiler: true };\n`,
+        );
 
         const plugin = gtkxReactCompiler();
         await configOf(plugin)({ root: cwd });

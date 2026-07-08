@@ -1,6 +1,7 @@
 import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { createPortal, useMergeRefs } from "@gtkx/react";
+import { createPortal } from "@gtkx/react";
+import { useMergeRefs } from "@gtkx/react/internal";
 import {
     cloneElement,
     isValidElement,

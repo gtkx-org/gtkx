@@ -1,4 +1,4 @@
-import { sortedStrings, sortedStringsBy, sourceStringLiteral } from "@gtkx/utils";
+import { sortStrings, sortStringsBy, sourceStringLiteral } from "@gtkx/utils";
 
 type NamespaceImport = {
     alias: string;
@@ -35,7 +35,7 @@ export class ImportsBuilder {
             lines.push(`import ${sourceStringLiteral(specifier)};`);
         }
         const specifiers = new Set<string>([...this.named.keys(), ...this.namespaces.keys()]);
-        const sortedSpecifiers = sortedStrings(specifiers);
+        const sortedSpecifiers = sortStrings(specifiers);
         for (const specifier of sortedSpecifiers) {
             const namespaceImport = this.namespaces.get(specifier);
             const namedNames = this.named.get(specifier);
@@ -46,7 +46,7 @@ export class ImportsBuilder {
             const parts: string[] = [];
             if (namespaceImport !== undefined) parts.push(`* as ${namespaceImport.alias}`);
             if (namedNames !== undefined && namedNames.size > 0) {
-                const sortedNames = sortedStringsBy(namedNames.entries(), ([name]) => name).map(([name, isType]) =>
+                const sortedNames = sortStringsBy(namedNames.entries(), ([name]) => name).map(([name, isType]) =>
                     isType ? `type ${name}` : name,
                 );
                 parts.push(`{ ${sortedNames.join(", ")} }`);

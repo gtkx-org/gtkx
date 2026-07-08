@@ -1,4 +1,4 @@
-import { CONTAINER_SLOT_KIND, type ContainerProp, LAZY_ELEMENT_KIND, WIDGET_PROP_KIND } from "@gtkx/config";
+import type { ContainerProp } from "@gtkx/config";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { applyProps } from "./apply-props.js";
@@ -14,6 +14,7 @@ import {
 import { type ElementMapping, hasWrapperKind, type Node, registeredStateOf, registerState, stateOf } from "./state.js";
 import type { Props } from "./types.js";
 import { trackedInstance, trackedWidget, wrapperChildInstances } from "./wrapper-content.js";
+import { CONTAINER_SLOT_KIND, LAZY_ELEMENT_KIND, WIDGET_PROP_KIND } from "./wrapper-protocol.js";
 
 const attachedParent = new WeakMap<GObject.Object, GObject.Object>();
 

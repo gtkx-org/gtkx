@@ -1,7 +1,7 @@
 import { DropDown, SizeGroup } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkCheckButton, GtkFrame, GtkLabel } from "@gtkx/jsx/gtk";
-import { useMergeRefs } from "@gtkx/react";
+import { useMergeRefs } from "@gtkx/react/internal";
 import { type RefCallback, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./sizegroup.tsx?raw";

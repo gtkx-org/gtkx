@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { createGtkxConfigLoader, DEFAULT_APPLICATION_ID, type GtkxConfigLoader } from "@gtkx/config";
+import { type ConfigLoader, createConfigLoader } from "@gtkx/config/internal";
 import { error, formatChildProcessError, info } from "@gtkx/utils";
 import type { Plugin, ResolvedConfig, UserConfig, ViteDevServer } from "vite";
 import { DATA_IMPORT_PREFIX } from "../internal/data-dir.js";
@@ -155,7 +155,7 @@ const refreshDevRegistration = async (server: ViteDevServer, state: PluginState)
     }
 };
 
-const resolveResourceConfig = async (state: PluginState, config: UserConfig, loadConfig: GtkxConfigLoader) => {
+const resolveResourceConfig = async (state: PluginState, config: UserConfig, loadConfig: ConfigLoader) => {
     const { applicationId } = await loadConfig(config.root ?? process.cwd());
     state.prefix = deriveResourcePrefix(applicationId);
     return {
@@ -174,9 +174,9 @@ const attachResourceWatcher = (state: PluginState, server: ViteDevServer): void 
     server.watcher.on("add", onFileEvent);
 };
 
-export function gtkxGResources(loadConfig: GtkxConfigLoader = createGtkxConfigLoader()): Plugin {
+export function gtkxGResources(loadConfig: ConfigLoader = createConfigLoader()): Plugin {
     const state: PluginState = {
-        prefix: deriveResourcePrefix(DEFAULT_APPLICATION_ID),
+        prefix: "",
         isBuild: false,
         entries: new Map(),
         sourcePaths: new Set(),

@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { sortedStringsBy } from "@gtkx/utils";
+import { sortStringsBy } from "@gtkx/utils";
 import { type Container, traverse } from "./traversal.js";
 import { getWidgetAccessibleName } from "./widget-text.js";
 
@@ -64,7 +64,7 @@ export const prettyRoles = (container: Container): string => {
 
     const lines: string[] = [];
 
-    const sortedRoles = sortedStringsBy([...roles.entries()], ([roleName]) => roleName);
+    const sortedRoles = sortStringsBy([...roles.entries()], ([roleName]) => roleName);
 
     for (const [roleName, widgets] of sortedRoles) {
         lines.push(`${roleName}:`);

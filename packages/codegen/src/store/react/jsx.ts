@@ -2,6 +2,7 @@ import { sourceStringLiteral } from "@gtkx/utils";
 import type { GirClass } from "../../gir/class.js";
 import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
+import { renderJsDoc } from "../../writer/doc.js";
 import { renderBlock } from "../../writer/emit.js";
 import type { ImportsBuilder } from "../../writer/imports.js";
 import type { ElementPropTypegen } from "./element-prop-types.js";
@@ -38,7 +39,10 @@ const addReactBuiltin = (imports: ImportsBuilder, name: string): void => {
     imports.addNamed("react", name, true);
 };
 
-const propLineName = (line: string): string | undefined => line.split(/[?:]/, 1)[0]?.trim() || undefined;
+const propLineName = (line: string): string | undefined => {
+    const declaration = line.slice(line.lastIndexOf("\n") + 1);
+    return declaration.split(/[?:]/, 1)[0]?.trim() || undefined;
+};
 
 const dedupePropLines = (lines: string[]): string[] => {
     const seen = new Set<string>();
@@ -175,10 +179,10 @@ const renderInterfacePropsBlock = (
     const extendsClause = prerequisiteExtends.length === 0 ? "" : ` extends ${prerequisiteExtends.join(", ")}`;
     addGiNamespace(imports, iface.namespace.name, giNamespaceAlias(iface.namespace.name));
     const selfDefault = `${giNamespaceAlias(iface.namespace.name)}.${iface.klass.name}`;
-    const block = renderBlock(
+    const block = `${renderJsDoc(iface.klass.doc)}${renderBlock(
         `export interface ${glib}Props<Self = ${selfDefault}>${extendsClause}`,
         ownerLines.join("\n"),
-    );
+    )}`;
     return { block, slotPropNames };
 };
 
@@ -230,10 +234,10 @@ const renderPropBlock = (
     const extendsList = resolveWidgetExtends(library, entry, context);
     const extendsClause = extendsList.length === 0 ? "" : ` extends ${extendsList.join(", ")}`;
     const selfDefault = `${giNamespaceAlias(entry.namespace.name)}.${entry.klass.name}`;
-    const block = renderBlock(
+    const block = `${renderJsDoc(entry.klass.doc)}${renderBlock(
         `export interface ${entry.glibName}Props<Self = ${selfDefault}>${extendsClause}`,
         ownerLines.join("\n"),
-    );
+    )}`;
     return { block, slotPropNames };
 };
 

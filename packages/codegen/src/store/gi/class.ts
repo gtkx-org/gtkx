@@ -1,7 +1,7 @@
 import { toCamelIdentifier, toPascalCase } from "@gtkx/utils";
 import {
     collectInheritedMethods,
-    collectInheritedPropertyNames,
+    collectInheritedPropertyTypes,
     collectInterfaceMergeOmissions,
     conflictRename,
     type InheritedMethods,
@@ -11,6 +11,7 @@ import type { GirClass } from "../../gir/class.js";
 import type { GirFunction } from "../../gir/function.js";
 import { splitOptionalNamespace } from "../../gir/type-ref.js";
 import type { ModuleContext } from "../../writer/context.js";
+import { renderJsDoc } from "../../writer/doc.js";
 import { indentMembers } from "../../writer/emit.js";
 import {
     type Callables,
@@ -54,7 +55,9 @@ export const generateClass = (context: ModuleContext, klass: GirClass): void => 
     const implementsClause = typeRefs.length === 0 ? "" : ` implements ${typeRefs.join(", ")}`;
     const members = renderClassMembers(context, klass, callables, parentExpression !== undefined);
     const body = indentMembers(members);
-    context.module.appendDeclaration(`export class ${className}${extendsClause}${implementsClause} {\n${body}\n}`);
+    context.module.appendDeclaration(
+        `${renderJsDoc(klass.doc)}export class ${className}${extendsClause}${implementsClause} {\n${body}\n}`,
+    );
     context.module.appendDeclaration(renderConstructorPropsInterface(context, klass, className));
     for (const declaration of renderSignalDeclarations(context, klass, className, false)) {
         context.module.appendDeclaration(declaration);
@@ -91,10 +94,10 @@ const renderClassMembers = (
         claimedNames,
         className,
     });
-    const inheritedProperties = collectInheritedPropertyNames(context, klass);
+    const inheritedPropertyTypes = collectInheritedPropertyTypes(context, klass);
     for (const property of klass.properties) {
-        if (inheritedProperties.has(toCamelIdentifier(property.name))) continue;
-        const block = renderPropertyAccessor({ context, property, claimedNames, methodByName });
+        const inheritedType = inheritedPropertyTypes.get(toCamelIdentifier(property.name));
+        const block = renderPropertyAccessor({ context, property, claimedNames, methodByName, inheritedType });
         if (block !== undefined) members.push(block);
     }
     members.push(...renderSignalMembers(context, klass));
@@ -124,7 +127,7 @@ const appendInstanceMethods = (options: AppendInstanceMethodsOptions): void => {
 
 const appendInstallMixins = (context: ModuleContext, className: string, implemented: ImplementedRef[]): void => {
     if (implemented.length === 0) return;
-    context.addRuntimeImport("installMixins");
+    context.addUtilsImport("installMixins");
     const makers = implemented.map((ref) => ref.makerRef).join(", ");
     context.module.appendRegistration(`installMixins(${className}, [${makers}]);`);
 };

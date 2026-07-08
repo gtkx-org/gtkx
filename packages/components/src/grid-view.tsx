@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkGridView, type GtkGridViewProps } from "@gtkx/jsx/gtk";
-import { useMergeRefs } from "@gtkx/react";
+import { useMergeRefs } from "@gtkx/react/internal";
 import { type ReactNode, type Ref, useRef } from "react";
 import { type CellRenderer, CellRenderHost, itemRenderer } from "./cell.js";
 import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";

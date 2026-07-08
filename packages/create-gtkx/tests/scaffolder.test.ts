@@ -194,6 +194,7 @@ describe("scaffold (dependency installation)", () => {
             pin("@gtkx/ffi"),
             pin("@gtkx/native"),
             pin("@gtkx/react"),
+            pin("@gtkx/utils"),
             "react",
         ]);
         expect(prodCall?.[1]).toEqual({

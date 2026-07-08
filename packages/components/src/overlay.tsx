@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkOverlay, type GtkOverlayProps } from "@gtkx/jsx/gtk";
-import { useMergeRefs } from "@gtkx/react";
+import { useMergeRefs } from "@gtkx/react/internal";
 import { Children, isValidElement, type ReactNode, type Ref, useRef } from "react";
 import { createParentContext, type PlacedChildRender, usePlacedChild } from "./hooks/use-placed-child.js";
 

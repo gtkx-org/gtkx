@@ -49,13 +49,11 @@ const initPlugin = async (
     plugin: GresourcesPlugin,
     command: "build" | "serve",
     root: string,
-    applicationId?: string,
+    applicationId = "org.gtkx.app",
 ): Promise<void> => {
     writeFileSync(
         join(root, "gtkx.config.ts"),
-        applicationId === undefined
-            ? "export default {};\n"
-            : `export default { applicationId: ${JSON.stringify(applicationId)} };\n`,
+        `export default { applicationId: ${JSON.stringify(applicationId)} };\n`,
     );
     await (plugin.config as ConfigHook).call(plugin, { root });
     (plugin.configResolved as ConfigResolvedHook).call(plugin, { command, root });
@@ -177,10 +175,10 @@ describe("gtkxGResources (init module)", () => {
     });
 });
 
-describe("gtkxGResources (default prefix)", () => {
+describe("gtkxGResources (resource prefix)", () => {
     setupTmpDir();
 
-    it("uses the default org.gtkx.app prefix when no applicationId is configured", async () => {
+    it("derives the resource prefix from the configured applicationId", async () => {
         const plugin = gtkxGResources();
         await initPlugin(plugin, "build", tmpDir);
 

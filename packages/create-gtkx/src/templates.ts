@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { sortedStrings } from "@gtkx/utils";
+import { sortStrings } from "@gtkx/utils";
 import ejs from "ejs";
 
 export type TemplateContext = {
@@ -15,7 +15,7 @@ const getTemplatesDir = (): string => {
 };
 
 export const listTemplates = (): string[] =>
-    sortedStrings(
+    sortStrings(
         readdirSync(getTemplatesDir(), { recursive: true, withFileTypes: true })
             .filter((entry) => entry.isFile())
             .map((entry) => join(entry.parentPath, entry.name))

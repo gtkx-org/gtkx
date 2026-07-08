@@ -6,6 +6,7 @@ import type { Library } from "../gir/library.js";
 import type { GirProperty } from "../gir/property.js";
 import type { TypeId } from "../gir/type-id.js";
 import { methodExportName } from "../store/gi/method.js";
+import { resolveAccessorType } from "../store/gi/property-accessor.js";
 import type { ModuleContext } from "../writer/context.js";
 import { inputParameters } from "./param-structure.js";
 import { renderTsType } from "./ts-type.js";
@@ -122,15 +123,21 @@ export const collectInterfaceMergeOmissions = (
     return omissions;
 };
 
-export const collectInheritedPropertyNames = (context: ModuleContext, klass: GirClass): Set<string> => {
-    const names = new Set<string>();
+export const collectInheritedPropertyTypes = (context: ModuleContext, klass: GirClass): Map<string, string> => {
+    const types = new Map<string, string>();
+    const record = (owner: GirClass, property: GirProperty): void => {
+        const jsName = toCamelIdentifier(property.name);
+        if (types.has(jsName)) return;
+        const tsType = resolveAccessorType(context, property, owner.methods);
+        if (tsType !== undefined) types.set(jsName, tsType);
+    };
     forEachAncestor(context, klass, (ancestor, interfaces) => {
-        for (const property of ancestor.klass.properties) names.add(toCamelIdentifier(property.name));
+        for (const property of ancestor.klass.properties) record(ancestor.klass, property);
         for (const iface of interfaces) {
-            for (const property of iface.klass.properties) names.add(toCamelIdentifier(property.name));
+            for (const property of iface.klass.properties) record(iface.klass, property);
         }
     });
-    return names;
+    return types;
 };
 
 type InheritedMethod = {

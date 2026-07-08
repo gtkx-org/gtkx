@@ -1,5 +1,5 @@
 import type { ElementProp } from "@gtkx/config";
-import { sortedStringsBy } from "@gtkx/utils";
+import { sortStringsBy } from "@gtkx/utils";
 import type { Library } from "../../gir/library.js";
 import { type GirNamespace, namespaceDirectory } from "../../gir/namespace.js";
 import { ImportsBuilder } from "../../writer/imports.js";
@@ -36,7 +36,7 @@ export const generateJsxFiles = (library: Library, userElementProps?: Record<str
 
     const namespaces: JsxNamespaceFile[] = [];
     let intrinsicElementCount = 0;
-    for (const namespace of sortedStringsBy(namespacesWithIntrinsicElements.values(), (entry) => entry.name)) {
+    for (const namespace of sortStringsBy(namespacesWithIntrinsicElements.values(), (entry) => entry.name)) {
         const { source, count } = generateJsxNamespace(namespace, library, {
             typegen,
             intrinsicElements,

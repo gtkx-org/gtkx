@@ -79,7 +79,7 @@ export type GlExclusionReason =
     | "compsize-output"
     | "computed-output-length"
     | "unsupported-shape"
-    | "companion-owned";
+    | "override-owned";
 
 export type GlPlanPolicy = {
     byteOffsetParams: Set<string>;

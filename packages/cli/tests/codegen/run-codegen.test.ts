@@ -5,9 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ensureGenerated, runCodegen } from "../../src/codegen/run-codegen.js";
 
 vi.mock("@gtkx/codegen", () => ({
-    runCodegen: () => Promise.resolve({ namespaces: 1, intrinsicElements: 0, duration: 1 }),
-    computeFingerprint: () => "test-fingerprint",
-    FINGERPRINT_FILENAME: ".codegen-fingerprint.json",
+    runCodegen: (options: { force?: boolean }) =>
+        Promise.resolve({ regenerated: options.force === true, namespaces: 1, intrinsicElements: 0, duration: 1 }),
 }));
 
 const writeFingerprint = (cwd: string, libraries: string[] = ["Gtk-4.0"]) => {
@@ -40,7 +39,10 @@ const installReactStack = (cwd: string) => {
     writeFileSync(join(dir, "index.js"), "");
 };
 
-const writeConfig = (cwd: string, body = `export default { libraries: ["Gtk-4.0"], girPath: ["${cwd}"] };`) => {
+const writeConfig = (
+    cwd: string,
+    body = `export default { applicationId: "org.gtk.Test", libraries: ["Gtk-4.0"], girPath: ["${cwd}"] };`,
+) => {
     writeFileSync(join(cwd, "gtkx.config.ts"), `${body}\n`);
 };
 
@@ -257,59 +259,5 @@ describe("ensureGenerated — store links", () => {
         });
 
         expect(await ensureGenerated(cwd)).toBe(true);
-    });
-});
-
-describe("ensureGenerated — fingerprint", () => {
-    let cwd: string;
-
-    beforeEach(() => {
-        cwd = mkdtempSync(join(tmpdir(), "gtkx-ensure-fp-"));
-    });
-
-    afterEach(() => {
-        rmSync(cwd, { recursive: true, force: true });
-    });
-
-    const installPresentStore = () => {
-        installFfiPackage(cwd);
-        installReactStack(cwd);
-        writeConfig(cwd);
-        writeDefaultGiBarrels(cwd);
-        writeJsxStore(cwd);
-    };
-
-    it("regenerates when the fingerprint sentinel is absent", async () => {
-        installPresentStore();
-
-        expect(await ensureGenerated(cwd)).toBe(true);
-    });
-
-    it("regenerates when the fingerprint value no longer matches", async () => {
-        installPresentStore();
-        writeFileSync(
-            join(cwd, "node_modules", ".gtkx", "gi", ".codegen-fingerprint.json"),
-            JSON.stringify({
-                value: "stale",
-                girFiles: [],
-                libraries: ["Gtk-4.0", "Adw-1", "GtkSource-5", "WebKit-6.0"],
-            }),
-        );
-
-        expect(await ensureGenerated(cwd)).toBe(true);
-    });
-
-    it("regenerates when the resolved library set changed", async () => {
-        installPresentStore();
-        writeFingerprint(cwd, ["Gtk-4.0", "Adw-1"]);
-
-        expect(await ensureGenerated(cwd)).toBe(true);
-    });
-
-    it("skips when the fingerprint matches", async () => {
-        installPresentStore();
-        writeFingerprint(cwd);
-
-        expect(await ensureGenerated(cwd)).toBe(false);
     });
 });

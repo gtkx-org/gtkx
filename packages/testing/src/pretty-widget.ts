@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { sortedStringsBy } from "@gtkx/utils";
+import { sortStringsBy } from "@gtkx/utils";
 import { formatRole } from "./role-helpers.js";
 import { type Container, roots } from "./traversal.js";
 import { getWidgetNodeText } from "./widget-text.js";
@@ -38,7 +38,7 @@ const buildAttrs = (widget: Gtk.Widget, getId: WidgetIdResolver | undefined): [s
     }
 
     const idAttrs = attrs.filter(([key]) => key === "id");
-    const otherAttrs = sortedStringsBy(
+    const otherAttrs = sortStringsBy(
         attrs.filter(([key]) => key !== "id"),
         ([key]) => key,
     );

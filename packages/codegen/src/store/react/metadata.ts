@@ -1,5 +1,5 @@
 import type { ElementProp } from "@gtkx/config";
-import { sortedStringsBy, sourceStringLiteral, toCamelIdentifier } from "@gtkx/utils";
+import { sortStringsBy, sourceStringLiteral, toCamelIdentifier } from "@gtkx/utils";
 import type { GirClass } from "../../gir/class.js";
 import type { GirEnum } from "../../gir/enum.js";
 import type { Library } from "../../gir/library.js";
@@ -18,7 +18,7 @@ const ACCESSIBLE_ATTRIBUTES_ANNOTATION =
     'Record<string, { kind: "property" | "state" | "relation"; member: string; value: "string" | "boolean" | "int" | "double" | "object" | "ref-list" }>';
 
 const renderAccessibleAttributes = (): string => {
-    const entries = sortedStringsBy(Object.entries(ACCESSIBLE_ATTRIBUTES), ([name]) => name);
+    const entries = sortStringsBy(Object.entries(ACCESSIBLE_ATTRIBUTES), ([name]) => name);
     const lines = entries.map(([name, { kind, member, value }]) => {
         const fields = `kind: ${sourceStringLiteral(kind)}, member: ${sourceStringLiteral(member)}, value: ${sourceStringLiteral(value)}`;
         return `    ${sourceStringLiteral(name)}: { ${fields} },`;
@@ -75,7 +75,7 @@ const collectIntrinsicElements = (library: Library): IntrinsicElementEntry[] => 
             defaults: collectDefaultProps(library, sources),
         });
     }
-    return sortedStringsBy(entries, (entry) => entry.glibName);
+    return sortStringsBy(entries, (entry) => entry.glibName);
 };
 
 const collectSignals = (sources: GirClass[]): [string, string][] => {
