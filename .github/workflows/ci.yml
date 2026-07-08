@@ -304,7 +304,9 @@ jobs:
         run: |
           echo "/opt/weston/bin" >> "$GITHUB_PATH"
           echo "LD_LIBRARY_PATH=/opt/weston/lib:$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
-          /opt/weston/bin/weston --version
+          # GITHUB_ENV only affects later steps, so set the runtime path inline for
+          # this in-step sanity check against the freshly installed libweston.
+          LD_LIBRARY_PATH="/opt/weston/lib:$LD_LIBRARY_PATH" /opt/weston/bin/weston --version
 
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
