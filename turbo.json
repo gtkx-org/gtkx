@@ -132,7 +132,7 @@
         "//#coverage:all": {
             "dependsOn": [
                 "//#codegen:all",
-                "@gtkx/gl#codegen",
+                "@gtkx/gl#build",
                 "@gtkx/native#build",
                 "@gtkx/vitest#build",
                 "@gtkx/cli#build",
@@ -198,7 +198,7 @@
         "//#test:all": {
             "dependsOn": [
                 "//#codegen:all",
-                "@gtkx/gl#codegen",
+                "@gtkx/gl#build",
                 "@gtkx/native#build",
                 "@gtkx/vitest#build",
                 "@gtkx/cli#build",

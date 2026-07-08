@@ -208,20 +208,27 @@ jobs:
             util-linux libglib2.0-bin
           pkg-config --modversion gtk4
 
-      - name: Fetch a newer GTK GIR set for codegen
+      - name: Fetch matching GTK 4.22 GIR for codegen
         shell: bash
         run: |
-          # The macro runner's apt GTK predates loadFromString (GTK 4.12+), so the
-          # bindings the build type-checks against are generated from a newer GIR
-          # closure. Fedora ships a >=4.12 GTK stack; its GIR is arch-independent
-          # XML. A runtime polyfill (tests/bench-setup.ts) bridges the newer API
-          # surface back to the older runtime the benches actually execute on.
+          # The macro runner's apt GTK is too old to type-check the project's
+          # newer API surface (loadFromString, newer Adw easings, ...). Extract the
+          # exact GIR the project targets by replaying the CI image's
+          # GTK-from-proposed install in a throwaway ubuntu:26.04 container (GIR is
+          # arch-independent XML). A runtime polyfill (tests/bench-setup.ts) bridges
+          # the newer surface back to the older runtime the benches execute against.
           mkdir -p "$RUNNER_TEMP/gir"
-          docker run --rm -v "$RUNNER_TEMP/gir:/gir" fedora:41 bash -c '
-            dnf install -y --setopt=install_weak_deps=False gtk4-devel libadwaita-devel gtksourceview5-devel >/dev/null
+          docker run --rm -v "$RUNNER_TEMP/gir:/gir" ubuntu:26.04 bash -c '
+            set -e
+            export DEBIAN_FRONTEND=noninteractive
+            codename=$(. /etc/os-release; echo "$VERSION_CODENAME")
+            printf "deb http://archive.ubuntu.com/ubuntu %s-proposed main\n" "$codename" > /etc/apt/sources.list.d/proposed.list
+            printf "Package: *\nPin: release a=%s-proposed\nPin-Priority: 100\n\nPackage: src:gtk4\nPin: release a=%s-proposed\nPin-Priority: 600\n" "$codename" "$codename" > /etc/apt/preferences.d/gtk4-proposed
+            apt-get update -qq
+            apt-get install -y --no-install-recommends libgtk-4-dev libadwaita-1-dev libgtksourceview-5-dev gobject-introspection libgirepository1.0-dev >/dev/null
             cp /usr/share/gir-1.0/*.gir /gir/
           '
-          echo "GIR files: $(ls "$RUNNER_TEMP/gir" | wc -l); load_from_string present: $(grep -c load_from_string "$RUNNER_TEMP/gir/Gtk-4.0.gir")"
+          echo "GIR files: $(ls "$RUNNER_TEMP/gir" | wc -l)"
           echo "GTKX_GIR_PATH=$RUNNER_TEMP/gir" >> "$GITHUB_ENV"
 
       - name: Set up Node.js
