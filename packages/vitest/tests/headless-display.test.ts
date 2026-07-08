@@ -181,7 +181,7 @@ describe("startHeadlessDisplay", () => {
         expect(xml).toContain('<policy context="default">');
     });
 
-    it("reaps the bus, the compositor, and the runtime dir on teardown", async () => {
+    it("restores env and removes the runtime dir on teardown without killing the compositor", async () => {
         process.env.WAYLAND_DISPLAY = "prior-value";
         const { teardown, runtimeDir } = await startFulfilled({ size: DEFAULT_HEADLESS_SIZE, compositor: "weston" });
 
@@ -195,21 +195,18 @@ describe("startHeadlessDisplay", () => {
         expect(process.env.XDG_RUNTIME_DIR).toBeUndefined();
 
         const [busChild, compositorChild] = children;
-        expect(busChild?.killed).toBe(true);
-        expect(compositorChild?.killed).toBe(true);
+        expect(busChild?.killed).toBe(false);
+        expect(compositorChild?.killed).toBe(false);
     });
 
-    it("reaps only once when the teardown runs repeatedly", async () => {
+    it("runs teardown only once when invoked repeatedly", async () => {
         const { teardown } = await startFulfilled({ size: DEFAULT_HEADLESS_SIZE, compositor: "weston" });
 
-        const busChild = children[0];
-        if (busChild === undefined) throw new Error("expected a spawned bus child");
-        const killSpy = vi.spyOn(busChild, "kill");
-
         teardown();
+        process.env.WAYLAND_DISPLAY = "set-after-teardown";
         teardown();
 
-        expect(killSpy).toHaveBeenCalledTimes(1);
+        expect(process.env.WAYLAND_DISPLAY).toBe("set-after-teardown");
     });
 
     it("rejects and cleans up when a spawned child exits before its socket appears", async () => {

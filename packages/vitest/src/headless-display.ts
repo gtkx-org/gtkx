@@ -249,7 +249,6 @@ const reportUnexpectedCompositorExit = (child: ChildProcess, capturedStderr: str
 };
 
 const makeTeardown = (
-    spawned: ChildProcess[],
     compositor: ChildProcess,
     capturedStderr: string[],
     removeRuntime: () => void,
@@ -259,7 +258,6 @@ const makeTeardown = (
         if (torndown) return;
         torndown = true;
         reportUnexpectedCompositorExit(compositor, capturedStderr);
-        for (const child of spawned) child.kill("SIGKILL");
         removeRuntime();
     };
 };
@@ -310,7 +308,7 @@ export const startHeadlessDisplay = async (options: HeadlessOptions): Promise<()
         }
 
         const capturedStderr = captureCompositorStderr(compositor.child, join(runtimeDir, "weston.stderr.log"));
-        return makeTeardown(spawned, compositor.child, capturedStderr, removeRuntime);
+        return makeTeardown(compositor.child, capturedStderr, removeRuntime);
     } catch (cause) {
         for (const child of spawned) child.kill("SIGKILL");
         removeRuntime();
