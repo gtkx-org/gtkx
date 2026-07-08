@@ -166,10 +166,9 @@ const renderSignalHandler = (options: SignalRenderOptions): string => {
 
 export const reactTarget = (context: PropTypeRenderContext): TsTypeTarget => ({
     containerStyle: "record",
-    callbackType: "(...args: unknown[]) => unknown",
+    callbackType: "((...args: unknown[]) => unknown)",
     byteArrayAsNumber: false,
     renderNamed: (resolved, name) => {
-        if (resolved?.kind === "callback") return "(...args: unknown[]) => unknown";
         if (resolved?.kind === "alias") {
             return resolved.value.target === undefined
                 ? "number"
