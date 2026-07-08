@@ -1,5 +1,5 @@
 import { type ChildProcess, type StdioOptions, spawn, spawnSync } from "node:child_process";
-import { chmodSync, existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, createWriteStream, existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -225,6 +225,51 @@ export const STATIC_HEADLESS_ENV = {
     ALSOFT_LOGLEVEL: "0",
 };
 
+const captureCompositorStderr = (child: ChildProcess, logPath: string): string[] => {
+    const captured: string[] = [];
+    const stderr = child.stderr;
+    if (stderr !== null) {
+        stderr.setEncoding("utf8");
+        const logStream = createWriteStream(logPath);
+        stderr.on("data", (chunk: string) => {
+            captured.push(chunk);
+            logStream.write(chunk);
+        });
+    }
+    return captured;
+};
+
+/**
+ * When the compositor dies on its own (e.g. an OOM-killer SIGKILL) the worker's
+ * in-process GDK client loses its Wayland socket and aborts, surfacing only as
+ * an opaque "Worker exited unexpectedly". Teardown always runs, so if the
+ * compositor has already exited by then it was not us that killed it — surface
+ * its exit code/signal and captured stderr to make the cause observable.
+ */
+const reportUnexpectedCompositorExit = (child: ChildProcess, capturedStderr: string[]): void => {
+    if (child.exitCode === null && child.signalCode === null) return;
+    process.stderr.write(
+        `[gtkx] headless compositor died before teardown (code ${child.exitCode ?? "null"}, ` +
+            `signal ${child.signalCode ?? "null"}); the worker's Wayland client was severed.\n${capturedStderr.join("")}`,
+    );
+};
+
+const makeTeardown = (
+    spawned: ChildProcess[],
+    compositor: ChildProcess,
+    capturedStderr: string[],
+    removeRuntime: () => void,
+): (() => void) => {
+    let torndown = false;
+    return (): void => {
+        if (torndown) return;
+        torndown = true;
+        reportUnexpectedCompositorExit(compositor, capturedStderr);
+        for (const child of spawned) child.kill("SIGKILL");
+        removeRuntime();
+    };
+};
+
 export const startHeadlessDisplay = async (options: HeadlessOptions): Promise<() => void> => {
     const env: EnvSnapshot = {};
     const runtimeDir = mkdtempSync(join(tmpdir(), "gtkx-xdg-"));
@@ -270,13 +315,8 @@ export const startHeadlessDisplay = async (options: HeadlessOptions): Promise<()
             abort.abort();
         }
 
-        let torndown = false;
-        return (): void => {
-            if (torndown) return;
-            torndown = true;
-            for (const child of spawned) child.kill("SIGKILL");
-            removeRuntime();
-        };
+        const capturedStderr = captureCompositorStderr(compositor.child, join(runtimeDir, "weston.stderr.log"));
+        return makeTeardown(spawned, compositor.child, capturedStderr, removeRuntime);
     } catch (cause) {
         for (const child of spawned) child.kill("SIGKILL");
         removeRuntime();
