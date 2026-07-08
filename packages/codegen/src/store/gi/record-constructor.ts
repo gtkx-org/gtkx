@@ -34,7 +34,7 @@ export const renderRecordConstructor = (context: ModuleContext, record: GirRecor
     if (isOpaque(record)) {
         return renderBlock(
             `constructor()`,
-            `throw new Error(${sourceStringLiteral(`Cannot construct ${className}: opaque boxed type with no known layout`)});`,
+            `throw new globalThis.Error(${sourceStringLiteral(`Cannot construct ${className}: opaque boxed type with no known layout`)});`,
         );
     }
     const { slots, size } = computeRecordFieldSlots(context, record.fields, record.isUnion);

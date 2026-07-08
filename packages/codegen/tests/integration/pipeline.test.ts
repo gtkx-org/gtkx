@@ -233,20 +233,20 @@ describe("codegen React pipeline", () => {
 describe("codegen widget-slot props", () => {
     it("widens a settable GObject-class property into a ReactElement slot", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
-        expect(interfaceBody(gtk, "GtkWindow")).toContain("titlebar?: Gtk.Widget | ReactElement | null | undefined;");
+        expect(interfaceBody(gtk, "GtkWindow")).toContain("titlebar?: Gtk$.Widget | ReactElement | null | undefined;");
     });
 
     it("widens a text view's buffer into a ReactElement slot", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
         expect(interfaceBody(gtk, "GtkTextView")).toContain(
-            "buffer?: Gtk.TextBuffer | ReactElement | null | undefined;",
+            "buffer?: Gtk$.TextBuffer | ReactElement | null | undefined;",
         );
     });
 
     it("keeps the single-child `child` property a plain widget reference, not a slot", () => {
         const body = interfaceBody(sourceFor(reactPipeline, "gtk"), "GtkButton");
-        expect(body).toContain("child?: Gtk.Widget | null | undefined;");
-        expect(body).not.toContain("child?: Gtk.Widget | ReactElement");
+        expect(body).toContain("child?: Gtk$.Widget | null | undefined;");
+        expect(body).not.toContain("child?: Gtk$.Widget | ReactElement");
     });
 
     it("types the built-in container-slot props as ReactNode on their host", () => {
@@ -271,7 +271,7 @@ const interfaceBody = (jsxSource: string, glibName: string): string => {
 describe("codegen applied element props", () => {
     it("types a value prop from its setter signature", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
-        expect(interfaceBody(gtk, "GtkDropTarget")).toContain("types?: GObject.Type[] | null | undefined;");
+        expect(interfaceBody(gtk, "GtkDropTarget")).toContain("types?: GObject$.Type[] | null | undefined;");
         const { dts } = transpileSource("gtk/gtk.tsx", gtk);
         expect(dts).not.toContain("TS2717");
     });
@@ -293,7 +293,7 @@ describe("codegen read-only props", () => {
     it("omits the settable line for a read-only property but keeps its notify handler", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
         const widgetBody = interfaceBody(gtk, "GtkWidget");
-        expect(widgetBody).not.toContain("parent?: Gtk.Widget | null;");
+        expect(widgetBody).not.toContain("parent?: Gtk$.Widget | null;");
         expect(widgetBody).toContain("onNotifyParent?:");
     });
 

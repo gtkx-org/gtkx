@@ -21,6 +21,11 @@ import { isCollectibleCallerOut, isHandlePassing, passesHandleInPlace } from "./
 
 export const methodExportName = (fn: GirFunction): string => toCamelCase(fn.name);
 
+const arrayLengthArgument = (source: GirParameter, sourceIndex: number): string => {
+    const identifier = parameterIdentifier(source, sourceIndex);
+    return source.nullable || source.optional ? `(${identifier}?.length ?? 0)` : `${identifier}.length`;
+};
+
 export const renderMethodSignature = (context: ModuleContext, fn: GirFunction): string =>
     renderInputParameters(
         context,
@@ -85,23 +90,27 @@ export const renderPromisifiedBody = (
         leadingExpressions.push("getHandle(this)");
     }
     let cancellableExpression = "null";
+    let sawOptional = false;
     asyncFn.parameters.forEach((parameter, index) => {
         if (parameter.isVarargs) return;
         if (index === cancellableIndex) {
             cancellableExpression = parameterIdentifier(parameter, index);
+            sawOptional = true;
             return;
         }
         if (isCallbackParameter(context, parameter)) return;
         if (closureIndices.has(index)) return;
+        if (isOutParameter(parameter) && !isCallerAllocatedOut(parameter)) return;
+        if (parameter.optional) sawOptional = true;
         const sourceIndex = lengthFor.get(index);
         if (sourceIndex !== undefined) {
             const source = asyncFn.parameters[sourceIndex];
             if (source !== undefined) {
-                leadingExpressions.push(`${parameterIdentifier(source, sourceIndex)}.length`);
+                leadingExpressions.push(arrayLengthArgument(source, sourceIndex));
                 return;
             }
         }
-        leadingExpressions.push(parameterCallExpression(context, parameter, index));
+        leadingExpressions.push(parameterCallExpression(context, parameter, index, sawOptional));
     });
     const leadingArguments = leadingExpressions.length > 0 ? `, ${leadingExpressions.join(", ")}` : "";
     return `return promisify(${bindingExpression}, this.${finishMember}.bind(this), ${cancellableExpression}${leadingArguments});`;
@@ -206,7 +215,16 @@ export const planCallArgs = (context: ModuleContext, fn: GirFunction): CallArgPl
             return;
         }
         if (isInoutParameter(parameter)) {
-            plan.push(planInoutParam(context, parameter, { index, instanceOffset, consumed: folded.has(index) }));
+            const lengthSourceIndex = lengthFor.get(index);
+            const lengthSourceParam =
+                lengthSourceIndex === undefined ? undefined : fn.parameters[lengthSourceIndex];
+            const lengthSource =
+                lengthSourceIndex !== undefined && lengthSourceParam !== undefined
+                    ? { source: lengthSourceParam, index: lengthSourceIndex }
+                    : undefined;
+            plan.push(
+                planInoutParam(context, parameter, { index, instanceOffset, consumed: folded.has(index), lengthSource }),
+            );
             return;
         }
         const sourceIndex = lengthFor.get(index);
@@ -217,7 +235,7 @@ export const planCallArgs = (context: ModuleContext, fn: GirFunction): CallArgPl
             });
             plan.push({
                 paramLiteral: paramDescriptorLiteral(descriptor, {}),
-                inputExpr: source === undefined ? "0" : `${parameterIdentifier(source, sourceIndex)}.length`,
+                inputExpr: source === undefined ? "0" : arrayLengthArgument(source, sourceIndex),
             });
             return;
         }
@@ -238,9 +256,22 @@ const planOutParam = (
     return { paramLiteral: paramDescriptorLiteral(descriptor, { direction: "out", consumed }), inputExpr: undefined };
 };
 
+const constructibleName = (context: ModuleContext, ref: GirParameter["type"]): { namespaceName: string; typeName: string } | undefined => {
+    let current = ref;
+    while (current !== undefined) {
+        const resolved = context.library.typeOf(current);
+        if (resolved?.kind === "alias" && resolved.value.target !== undefined) {
+            current = resolved.value.target;
+            continue;
+        }
+        return context.library.nameOf(current);
+    }
+    return undefined;
+};
+
 const planCallerOut = (context: ModuleContext, parameter: GirParameter, instanceOffset: number): CallArgPlan => {
     const descriptor = renderDescriptor(context, parameter.type, "none", { argIndexOffset: instanceOffset });
-    const name = parameter.type === undefined ? undefined : context.library.nameOf(parameter.type);
+    const name = constructibleName(context, parameter.type);
     if (name !== undefined && isCollectibleCallerOut(context, parameter)) {
         context.addRuntimeImport("getHandle");
         const classExpression = context.qualify(name.namespaceName, name.typeName);
@@ -255,9 +286,14 @@ const planCallerOut = (context: ModuleContext, parameter: GirParameter, instance
 const planInoutParam = (
     context: ModuleContext,
     parameter: GirParameter,
-    options: { index: number; instanceOffset: number; consumed: boolean },
+    options: {
+        index: number;
+        instanceOffset: number;
+        consumed: boolean;
+        lengthSource?: { source: GirParameter; index: number } | undefined;
+    },
 ): CallArgPlan => {
-    const { index, instanceOffset, consumed } = options;
+    const { index, instanceOffset, consumed, lengthSource } = options;
     if (passesHandleInPlace(context, parameter)) {
         const descriptor = renderDescriptor(context, parameter.type, "none", { argIndexOffset: instanceOffset });
         return {
@@ -270,7 +306,10 @@ const planInoutParam = (
     });
     return {
         paramLiteral: paramDescriptorLiteral(descriptor, { direction: "inout", consumed }),
-        inputExpr: parameterCallExpression(context, parameter, index),
+        inputExpr:
+            lengthSource !== undefined
+                ? arrayLengthArgument(lengthSource.source, lengthSource.index)
+                : parameterCallExpression(context, parameter, index),
     };
 };
 
@@ -290,11 +329,16 @@ const planInParam = (
     };
 };
 
-const parameterCallExpression = (context: ModuleContext, parameter: GirParameter, index: number): string => {
+const parameterCallExpression = (
+    context: ModuleContext,
+    parameter: GirParameter,
+    index: number,
+    forceNullable = false,
+): string => {
     const name = parameterIdentifier(parameter, index);
     const ref = parameter.type;
     if (ref === undefined) return name;
-    const nullable = parameter.nullable || parameter.optional;
+    const nullable = parameter.nullable || parameter.optional || forceNullable;
     if (isHandlePassing(context, ref)) {
         if (nullable) {
             context.addRuntimeImport("tryGetHandle");

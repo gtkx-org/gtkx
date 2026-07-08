@@ -13,6 +13,7 @@ export {
     registerInterface,
     registerWrapperClass,
     setHandle,
+    type StaticBase,
     tryGetHandle,
     wrapHandle,
 } from "./registry.js";

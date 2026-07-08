@@ -26,7 +26,7 @@ type GObjectWithConnect = GObject & {
 };
 
 GObject.prototype.disconnect = function disconnect(handlerId: number): void {
-    signalHandlerDisconnect(this, handlerId);
+    signalHandlerDisconnect(this, BigInt(handlerId));
 };
 
 function onImpl(this: GObjectWithConnect, sigName: string, callback: Listener, after?: boolean): GObject {

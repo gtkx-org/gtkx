@@ -20,7 +20,7 @@ const { bind } = t;
 const SCALED_FONT_T = t.boxed("CairoScaledFont", {
     ownership: "borrowed",
     sharedLibrary: "libcairo-gobject.so.2",
-    getTypeFn: "cairo_gobject_scaled_font_get_type",
+    getTypeFnName: "cairo_gobject_scaled_font_get_type",
 });
 const GLYPH_BUF_REF = t.ref(t.boxed("cairo_glyph_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" }));
 const CLUSTER_BUF_REF = t.ref(
@@ -65,20 +65,20 @@ const cairoScaledFontCreate = bind(
         t.boxed("CairoFontFace", {
             ownership: "borrowed",
             sharedLibrary: "libcairo-gobject.so.2",
-            getTypeFn: "cairo_gobject_font_face_get_type",
+            getTypeFnName: "cairo_gobject_font_face_get_type",
         }),
         t.boxed("cairo_matrix_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" }),
         t.boxed("cairo_matrix_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" }),
         t.boxed("CairoFontOptions", {
             ownership: "borrowed",
             sharedLibrary: "libcairo-gobject.so.2",
-            getTypeFn: "cairo_gobject_font_options_get_type",
+            getTypeFnName: "cairo_gobject_font_options_get_type",
         }),
     ],
     t.boxed("CairoScaledFont", {
         ownership: "full",
         sharedLibrary: "libcairo-gobject.so.2",
-        getTypeFn: "cairo_gobject_scaled_font_get_type",
+        getTypeFnName: "cairo_gobject_scaled_font_get_type",
     }),
 );
 
@@ -155,7 +155,7 @@ const cairoScaledFontGetFontFace = bind(
     t.boxed("CairoFontFace", {
         ownership: "borrowed",
         sharedLibrary: "libcairo-gobject.so.2",
-        getTypeFn: "cairo_gobject_font_face_get_type",
+        getTypeFnName: "cairo_gobject_font_face_get_type",
     }),
 );
 ScaledFont.prototype.getFontFace = function (): FontFace {
@@ -170,7 +170,7 @@ const cairoScaledFontGetFontOptions = bind(
         t.boxed("CairoFontOptions", {
             ownership: "borrowed",
             sharedLibrary: "libcairo-gobject.so.2",
-            getTypeFn: "cairo_gobject_font_options_get_type",
+            getTypeFnName: "cairo_gobject_font_options_get_type",
         }),
     ],
     t.void,

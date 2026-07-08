@@ -15,7 +15,7 @@ const cairoRecordingSurfaceCreateExtents = bind(
     t.boxed("CairoSurface", {
         ownership: "full",
         sharedLibrary: "libcairo-gobject.so.2",
-        getTypeFn: "cairo_gobject_surface_get_type",
+        getTypeFnName: "cairo_gobject_surface_get_type",
     }),
 );
 const cairoRecordingSurfaceCreateUnbounded = bind(
@@ -25,7 +25,7 @@ const cairoRecordingSurfaceCreateUnbounded = bind(
     t.boxed("CairoSurface", {
         ownership: "full",
         sharedLibrary: "libcairo-gobject.so.2",
-        getTypeFn: "cairo_gobject_surface_get_type",
+        getTypeFnName: "cairo_gobject_surface_get_type",
     }),
 );
 const cairoRecordingSurfaceInkExtents = bind(
@@ -35,7 +35,7 @@ const cairoRecordingSurfaceInkExtents = bind(
         t.boxed("CairoSurface", {
             ownership: "borrowed",
             sharedLibrary: "libcairo-gobject.so.2",
-            getTypeFn: "cairo_gobject_surface_get_type",
+            getTypeFnName: "cairo_gobject_surface_get_type",
         }),
         t.ref(t.float64),
         t.ref(t.float64),
@@ -51,7 +51,7 @@ const cairoRecordingSurfaceGetExtents = bind(
         t.boxed("CairoSurface", {
             ownership: "borrowed",
             sharedLibrary: "libcairo-gobject.so.2",
-            getTypeFn: "cairo_gobject_surface_get_type",
+            getTypeFnName: "cairo_gobject_surface_get_type",
         }),
         RECT_T,
     ],

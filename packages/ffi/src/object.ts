@@ -5,7 +5,6 @@ import { LIB, VALUE_SIZE, VALUE_T } from "./library.js";
 import { getHandle } from "./registry.js";
 import { fromValue, newValueForDescriptor, toValue } from "./value.js";
 
-type Property = [Descriptor, unknown];
 
 const gObjectNewWithProperties = bind(
     LIB,
@@ -32,13 +31,13 @@ const gObjectSetProperty = bind(
     voidT,
 );
 
-export function newObjectWithProperties(gtype: bigint, props: Record<string, Property>): ExternalObject<Handle> {
+export function newObjectWithProperties(gtype: bigint, props: Record<string, unknown>): ExternalObject<Handle> {
     const names: string[] = [];
     const values: ExternalObject<Handle>[] = [];
 
     for (const name in props) {
         const entry = props[name];
-        if (entry === undefined) continue;
+        if (!Array.isArray(entry)) continue;
         const [descriptor, value] = entry;
         if (value === undefined) continue;
         names.push(name);

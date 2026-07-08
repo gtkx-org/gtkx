@@ -204,7 +204,12 @@ const appendElementWriteStatements = (context: ModuleContext, options: ElementWr
             }
             const mask = bitMask(slot.bitWidth);
             const shift = slot.bitOffset ?? 0;
-            const merged = mergeBitfield(`read(__array, ${descriptor}, __base + ${offset})`, valueExpr, mask, shift);
+            const merged = mergeBitfield(
+                `(read(__array, ${descriptor}, __base + ${offset}) as number)`,
+                valueExpr,
+                mask,
+                shift,
+            );
             out.push(`write(__array, ${descriptor}, __base + ${offset}, ${merged});`);
         },
         nested: (jsName, nested, offset) => {
@@ -241,7 +246,7 @@ const structArrayGetterBlock = (options: StructArrayAccessorOptions): string => 
     const element = renderElementReadObject(context, elementFields, 0);
     const loop = [`const __base = __index * ${elementSize};`, `__result.push(${element});`].join("\n");
     const body = [
-        `const __array = read(getHandle(this), ${elementDescriptor}, ${offset});`,
+        `const __array = read(getHandle(this), ${elementDescriptor}, ${offset}) as ReturnType<typeof getHandle>;`,
         `const __result: ${tsType} = [];`,
         `for (let __index = 0; __index < ${lengthExpr}; __index++) {`,
         indent(loop, 1),
@@ -260,13 +265,11 @@ const structArraySetterBlock = (options: StructArrayAccessorOptions): string => 
         valuePath: "__element",
         out: writes,
     });
-    const loop = [`const __element = __value[__index];`, `const __base = __index * ${elementSize};`, ...writes].join(
-        "\n",
-    );
+    const loop = [`const __base = __index * ${elementSize};`, ...writes].join("\n");
     const body = [
         `const __descriptor = ${elementDescriptor};`,
-        `const __array = read(getHandle(this), __descriptor, ${offset});`,
-        `for (let __index = 0; __index < __value.length; __index++) {`,
+        `const __array = read(getHandle(this), __descriptor, ${offset}) as ReturnType<typeof getHandle>;`,
+        `for (const [__index, __element] of __value.entries()) {`,
         indent(loop, 1),
         "}",
         `write(getHandle(this), __descriptor, ${offset}, __array);`,
@@ -279,6 +282,8 @@ const renderStructArrayAccessor = (context: ModuleContext, target: StructArrayTa
     if (field.type === undefined || slot.bitWidth !== undefined) return undefined;
     const arrayType = context.library.typeOf(field.type);
     if (arrayType?.kind !== "carray") return undefined;
+    const elementType = arrayType.element === undefined ? undefined : context.library.typeOf(arrayType.element);
+    if (elementType?.kind === "record" && elementType.value.glibGetType !== undefined) return undefined;
     const elementFields = resolveInlineStructFields(context, arrayType.element, arrayType.elementCType);
     if (elementFields === undefined) return undefined;
     const lengthExpr = arrayLengthExpression(arrayType, siblingFields);

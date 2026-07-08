@@ -88,7 +88,7 @@ const renderVtableSlotDescriptor = (context: ModuleContext, options: RenderVtabl
         callback.returnValue.transferOwnership,
     );
     const lines = [
-        `kind: ${sourceStringLiteral(kind)},`,
+        `kind: ${sourceStringLiteral(kind)} as const,`,
         `className: ${sourceStringLiteral(structName)},`,
         `vfuncName: ${sourceStringLiteral(field.name)},`,
         `byteOffset: ${byteOffset},`,

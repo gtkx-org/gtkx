@@ -1,5 +1,6 @@
 import { sourceStringLiteral, toCamelCase, toCamelIdentifier } from "@gtkx/utils";
 import { renderDescriptor } from "../../analysis/descriptor-render.js";
+import { inputParameters } from "../../analysis/param-structure.js";
 import { renderTsType } from "../../analysis/ts-type.js";
 import type { GirFunction } from "../../gir/function.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
@@ -42,12 +43,22 @@ const resolveAccessor = (args: PropertyAccessorArgs): ResolvedAccessor | undefin
     if (jsName === "constructor") return undefined;
 
     const writable = isConstructableProperty(property);
-    const getterMember = delegateMember(property.getter, jsName, claimedNames);
-    const getMethod =
-        getterMember !== undefined && property.getter !== undefined ? methodByName.get(property.getter) : undefined;
-    const setterMember = writable ? delegateMember(property.setter, jsName, claimedNames) : undefined;
-    const setMethod =
-        setterMember !== undefined && property.setter !== undefined ? methodByName.get(property.setter) : undefined;
+    const rawGetterMember = delegateMember(property.getter, jsName, claimedNames);
+    const rawGetMethod =
+        rawGetterMember !== undefined && property.getter !== undefined ? methodByName.get(property.getter) : undefined;
+    const getterDelegatable =
+        rawGetMethod === undefined ||
+        (inputParameters(context.library, rawGetMethod).length === 0 &&
+            !renderMethodReturnType(context, rawGetMethod).startsWith("["));
+    const getterMember = getterDelegatable ? rawGetterMember : undefined;
+    const getMethod = getterDelegatable ? rawGetMethod : undefined;
+
+    const rawSetterMember = writable ? delegateMember(property.setter, jsName, claimedNames) : undefined;
+    const rawSetMethod =
+        rawSetterMember !== undefined && property.setter !== undefined ? methodByName.get(property.setter) : undefined;
+    const setterDelegatable = rawSetMethod === undefined || inputParameters(context.library, rawSetMethod).length === 1;
+    const setterMember = setterDelegatable ? rawSetterMember : undefined;
+    const setMethod = setterDelegatable ? rawSetMethod : undefined;
     const setParam = setMethod?.parameters[0];
 
     const hasGetter = property.readable || getterMember !== undefined;

@@ -1,7 +1,8 @@
 import type { Library } from "../gir/library.js";
 import { PRIMITIVE_TS_TYPE } from "../gir/primitives.js";
-import type { GirType } from "../gir/type.js";
+import type { EntityType, GirType } from "../gir/type.js";
 import type { TypeId } from "../gir/type-id.js";
+import { isClassStructRecord } from "../store/gi/class-struct-record.js";
 import { gtypeTsType } from "../store/gi/gtype-binding.js";
 import type { ModuleContext } from "../writer/context.js";
 
@@ -16,6 +17,22 @@ export type TsTypeTarget = {
     byteArrayAsNumber: boolean;
     renderNamed: (resolved: GirType | undefined, name: ReferenceName) => string;
     renderGtype: () => string;
+};
+
+const willEmitEntity = (library: Library, type: EntityType): boolean => {
+    switch (type.kind) {
+        case "callback":
+            return type.value.introspectable && type.value.name.length > 0;
+        case "record":
+            return (
+                type.value.introspectable &&
+                !type.value.isVtable &&
+                type.value.name.length > 0 &&
+                !isClassStructRecord(library, type.namespace.name, type.value)
+            );
+        default:
+            return true;
+    }
 };
 
 export const renderBaseTypeFor = (library: Library, target: TsTypeTarget, ref: TypeId | undefined): string => {
@@ -34,7 +51,7 @@ export const renderBaseTypeFor = (library: Library, target: TsTypeTarget, ref: T
         case "record":
         case "enum":
         case "alias":
-            return renderNamedType(target, type, name);
+            return renderNamedType(target, type, willEmitEntity(library, type) ? name : undefined);
         case "carray":
             return `${renderBaseTypeFor(library, target, type.element)}[]`;
         case "list":

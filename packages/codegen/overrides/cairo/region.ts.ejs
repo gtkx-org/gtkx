@@ -9,7 +9,7 @@ const { bind } = t;
 const REGION_T = t.boxed("CairoRegion", {
     ownership: "borrowed",
     sharedLibrary: "libcairo-gobject.so.2",
-    getTypeFn: "cairo_gobject_region_get_type",
+    getTypeFnName: "cairo_gobject_region_get_type",
 });
 const RECT_INT_ARRAY_T = t.boxed("cairo_rectangle_int_t[]", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" });
 
@@ -43,7 +43,7 @@ const cairoRegionCreate = bind(
     t.boxed("CairoRegion", {
         ownership: "full",
         sharedLibrary: "libcairo-gobject.so.2",
-        getTypeFn: "cairo_gobject_region_get_type",
+        getTypeFnName: "cairo_gobject_region_get_type",
     }),
 );
 const cairoRegionCreateRectangle = bind(
@@ -53,7 +53,7 @@ const cairoRegionCreateRectangle = bind(
     t.boxed("CairoRegion", {
         ownership: "full",
         sharedLibrary: "libcairo-gobject.so.2",
-        getTypeFn: "cairo_gobject_region_get_type",
+        getTypeFnName: "cairo_gobject_region_get_type",
     }),
 );
 const cairoRegionCreateRectangles = bind(
@@ -63,7 +63,7 @@ const cairoRegionCreateRectangles = bind(
     t.boxed("CairoRegion", {
         ownership: "full",
         sharedLibrary: "libcairo-gobject.so.2",
-        getTypeFn: "cairo_gobject_region_get_type",
+        getTypeFnName: "cairo_gobject_region_get_type",
     }),
 );
 
@@ -112,7 +112,7 @@ const cairoRegionCopy = bind(
     t.boxed("CairoRegion", {
         ownership: "full",
         sharedLibrary: "libcairo-gobject.so.2",
-        getTypeFn: "cairo_gobject_region_get_type",
+        getTypeFnName: "cairo_gobject_region_get_type",
     }),
 );
 Region.prototype.copy = function (): Region {
@@ -188,7 +188,7 @@ Region.prototype.translate = function (dx: number, dy: number): void {
     cairoRegionTranslate(getHandle(this), dx, dy);
 };
 
-const BINARY_OP_ARGS = [REGION_T, REGION_T] as const;
+const BINARY_OP_ARGS = [REGION_T, REGION_T];
 const cairoRegionIntersect = bind("libcairo.so.2", "cairo_region_intersect", BINARY_OP_ARGS, t.int32);
 const cairoRegionSubtract = bind("libcairo.so.2", "cairo_region_subtract", BINARY_OP_ARGS, t.int32);
 const cairoRegionUnion = bind("libcairo.so.2", "cairo_region_union", BINARY_OP_ARGS, t.int32);
@@ -197,7 +197,7 @@ const cairoRegionXor = bind("libcairo.so.2", "cairo_region_xor", BINARY_OP_ARGS,
 const RECT_OP_ARGS = [
     REGION_T,
     t.boxed("cairo_rectangle_int_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" }),
-] as const;
+];
 const cairoRegionIntersectRectangle = bind("libcairo.so.2", "cairo_region_intersect_rectangle", RECT_OP_ARGS, t.int32);
 const cairoRegionSubtractRectangle = bind("libcairo.so.2", "cairo_region_subtract_rectangle", RECT_OP_ARGS, t.int32);
 const cairoRegionUnionRectangle = bind("libcairo.so.2", "cairo_region_union_rectangle", RECT_OP_ARGS, t.int32);

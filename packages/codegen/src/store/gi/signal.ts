@@ -69,7 +69,9 @@ export const renderSignalDeclarations = (
     ];
     if (
         klass.glibGetType !== undefined &&
-        (collectClassSignals(context, klass).length > 0 || collectNotifyDetails(context, klass).length > 0)
+        (collectClassSignals(context, klass).length > 0 ||
+            collectNotifyDetails(context, klass).length > 0 ||
+            klass.implements.length > 0)
     ) {
         const isRootObject = context.namespace.name === "GObject" && klass.name === "Object";
         declarations.push(renderSignalConnectInterface(className, isRootObject));

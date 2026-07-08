@@ -1,11 +1,13 @@
 import { existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { transpileSource } from "../transpile.js";
+import { typecheckStore } from "./typecheck.js";
 
 export type StoreOptions = {
     storeDir: string;
     linkDir: string;
     version: string;
+    resolveFrom: string;
 };
 
 type StoreFile = {
@@ -52,7 +54,17 @@ export const buildManifest = (input: ManifestInput): Manifest => {
 export const writeStore = (params: WriteStoreParams): void => {
     const tmp = tempStoreFor(params.storeDir);
     for (const file of params.files) {
-        writeFilePair(tmp, file.stem, file.fileName, file.source);
+        writeSourceFile(tmp, file.fileName, file.source);
+    }
+    typecheckStore({
+        storeDir: tmp,
+        files: params.files.map((file) => ({ fileName: file.fileName, source: file.source })),
+        packageName: params.manifest.name,
+        exports: params.manifest.exports,
+        resolveFrom: params.resolveFrom,
+    });
+    for (const file of params.files) {
+        emitFilePair(tmp, file.stem, file.fileName, file.source);
     }
     writePackageJson(tmp, params.manifest);
     for (const raw of params.rawFiles ?? []) {
@@ -67,15 +79,21 @@ type WriteStoreParams = {
     linkDir: string;
     files: StoreFile[];
     manifest: Manifest;
+    resolveFrom: string;
     rawFiles?: { relativePath: string; content: string }[];
 };
 
-const writeFilePair = (storeDir: string, stem: string, fileName: string, source: string): void => {
+const writeSourceFile = (storeDir: string, fileName: string, source: string): void => {
+    const filePath = join(storeDir, fileName);
+    mkdirSync(dirname(filePath), { recursive: true });
+    writeFileSync(filePath, source);
+};
+
+const emitFilePair = (storeDir: string, stem: string, fileName: string, source: string): void => {
     const { js, dts } = transpileSource(fileName, source);
-    const jsPath = join(storeDir, `${stem}.js`);
-    mkdirSync(dirname(jsPath), { recursive: true });
-    writeFileSync(jsPath, js);
+    writeFileSync(join(storeDir, `${stem}.js`), js);
     writeFileSync(join(storeDir, `${stem}.d.ts`), dts);
+    rmSync(join(storeDir, fileName));
 };
 
 const symlinkRelative = (linkPath: string, realTarget: string): void => {

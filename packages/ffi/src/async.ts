@@ -6,13 +6,13 @@ const attachCreationStack = (error: unknown, creationStack: Error | undefined): 
     error.cause = creationStack;
 };
 
-export const promisify = (
+export const promisify = <R extends object, T>(
     asyncFn: (...args: unknown[]) => void,
-    finish: (result: object) => unknown,
+    finish: (result: R) => T,
     cancellable: object | null | undefined,
     ...leading: unknown[]
-): Promise<unknown> =>
-    new Promise((resolve, reject) => {
+): Promise<T> =>
+    new Promise<T>((resolve, reject) => {
         let creationStack: Error | undefined;
         if (process.env.NODE_ENV !== "production") {
             creationStack = new Error("gtkx async operation started here");
@@ -20,7 +20,7 @@ export const promisify = (
         }
         asyncFn(...leading, tryGetHandle(cancellable), (_source: object | null, asyncResult: object) => {
             try {
-                resolve(finish(asyncResult));
+                resolve(finish(asyncResult as R));
             } catch (error) {
                 attachCreationStack(error, creationStack);
                 reject(error);

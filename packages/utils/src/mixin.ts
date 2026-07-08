@@ -1,6 +1,15 @@
 import type { AnyClass } from "./class.js";
 
-export type Mixin = (base: AnyClass) => AnyClass;
+/**
+ * Instance surface a {@link Mixin} base exposes: the signal plumbing (`connect`/`emit`) that a
+ * generated interface mixin delegates to through `super` for signals it does not itself handle.
+ */
+export type MixinReceiver = {
+    connect(signal: string, handler: (...args: unknown[]) => unknown, after?: boolean): number;
+    emit(signal: string, ...args: unknown[]): unknown;
+};
+
+export type Mixin = (base: AnyClass<MixinReceiver>) => AnyClass;
 
 function definedInClassChain(prototype: object, key: string): boolean {
     let current: object | null = prototype;
@@ -12,7 +21,14 @@ function definedInClassChain(prototype: object, key: string): boolean {
 }
 
 export function installMixins(target: AnyClass, mixins: Mixin[]): void {
-    const empty: AnyClass = class {};
+    const empty: AnyClass<MixinReceiver> = class {
+        connect(): number {
+            return 0;
+        }
+        emit(): unknown {
+            return undefined;
+        }
+    };
     for (const mixin of mixins) {
         const layer: object = mixin(empty).prototype;
         for (const key of Object.getOwnPropertyNames(layer)) {

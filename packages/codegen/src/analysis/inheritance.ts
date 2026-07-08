@@ -79,6 +79,60 @@ export const collectInterfaceProperties = (context: ModuleContext, klass: GirCla
     return result;
 };
 
+type MethodSignature = { returnType: string; arity: number };
+
+const ancestorClassMethodSignatures = (context: ModuleContext, klass: GirClass): Map<string, MethodSignature> => {
+    const signatures = new Map<string, MethodSignature>();
+    forEachAncestor(context, klass, (ancestor) => {
+        for (const method of ancestor.klass.methods) {
+            if (!method.introspectable) continue;
+            const name = toCamelCase(method.name);
+            if (signatures.has(name)) continue;
+            signatures.set(name, {
+                returnType: renderTsType(context, method.returnValue.type, method.returnValue.nullable),
+                arity: inputParameters(context.library, method).length,
+            });
+        }
+    });
+    return signatures;
+};
+
+/**
+ * Names of an implemented interface's methods that collide with a parent-class method of a
+ * non-identical signature. Such a member cannot be declaration-merged onto the class type (the
+ * merged bases would disagree), so it is omitted from the interface-extends clause; the class's own
+ * inherited member governs.
+ */
+export const collectInterfaceMergeOmissions = (
+    context: ModuleContext,
+    klass: GirClass,
+    iface: { klass: GirClass; namespaceName: string },
+): string[] => {
+    const ancestors = ancestorClassMethodSignatures(context, klass);
+    const omissions: string[] = [];
+    for (const method of iface.klass.methods) {
+        if (!method.introspectable) continue;
+        const name = toCamelCase(method.name);
+        const ancestor = ancestors.get(name);
+        if (ancestor === undefined) continue;
+        const returnType = renderTsType(context, method.returnValue.type, method.returnValue.nullable);
+        const arity = inputParameters(context.library, method).length;
+        if (ancestor.returnType !== returnType || ancestor.arity !== arity) omissions.push(name);
+    }
+    return omissions;
+};
+
+export const collectInheritedPropertyNames = (context: ModuleContext, klass: GirClass): Set<string> => {
+    const names = new Set<string>();
+    forEachAncestor(context, klass, (ancestor, interfaces) => {
+        for (const property of ancestor.klass.properties) names.add(toCamelIdentifier(property.name));
+        for (const iface of interfaces) {
+            for (const property of iface.klass.properties) names.add(toCamelIdentifier(property.name));
+        }
+    });
+    return names;
+};
+
 type InheritedMethod = {
     method: GirFunction;
     namespaceName: string;
@@ -94,8 +148,12 @@ export const collectInheritedMethods = (context: ModuleContext, klass: GirClass)
         returnTypes: new Map<string, string>(),
         definitions: new Map<string, InheritedMethod>(),
     };
-    forEachAncestor(context, klass, (ancestor) => {
+    for (const iface of resolveDirectInterfaces(context, klass, context.namespace.name)) {
+        absorbInheritedMethods(context, iface, accumulator);
+    }
+    forEachAncestor(context, klass, (ancestor, interfaces) => {
         absorbInheritedMethods(context, ancestor, accumulator);
+        for (const iface of interfaces) absorbInheritedMethods(context, iface, accumulator);
     });
     return accumulator;
 };
@@ -115,6 +173,17 @@ const absorbInheritedMethods = (
     }
 };
 
+const RESERVED_SIGNAL_MEMBERS = new Set([
+    "connect",
+    "disconnect",
+    "emit",
+    "on",
+    "once",
+    "off",
+    "addEventListener",
+    "removeEventListener",
+]);
+
 export const conflictRename = (
     context: ModuleContext,
     callable: GirFunction,
@@ -123,6 +192,7 @@ export const conflictRename = (
 ): string | undefined => {
     if (!callable.introspectable) return undefined;
     const name = methodExportName(callable);
+    if (RESERVED_SIGNAL_MEMBERS.has(name)) return conflictingMethodName(className, callable.name);
     const inheritedReturn = inherited.returnTypes.get(name);
     const inheritedMethod = inherited.definitions.get(name);
     if (inheritedReturn === undefined || inheritedMethod === undefined) return undefined;
@@ -137,6 +207,9 @@ export const conflictRename = (
 
 const conflictingMethodName = (className: string, methodName: string): string =>
     `${lowerFirst(className)}${toPascalCase(methodName)}`;
+
+export const reservedSignalMemberRename = (className: string, callable: GirFunction): string | undefined =>
+    RESERVED_SIGNAL_MEMBERS.has(methodExportName(callable)) ? conflictingMethodName(className, callable.name) : undefined;
 
 const hasParameterEnumConflict = (context: ModuleContext, own: GirFunction, inherited: InheritedMethod): boolean => {
     const ownParams = inputParameters(context.library, own);

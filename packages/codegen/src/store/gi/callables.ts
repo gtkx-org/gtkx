@@ -1,4 +1,5 @@
 import { toCamelCase, toCamelIdentifier, uniqBy } from "@gtkx/utils";
+import { hasCallerAllocatedArrayLength } from "../../analysis/param-structure.js";
 import type { GirFunction } from "../../gir/function.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { renderBlock } from "../../writer/emit.js";
@@ -106,12 +107,14 @@ export const renderInstanceMethodSignature = (
     context: ModuleContext,
     callable: GirFunction,
     siblings: Map<string, GirFunction>,
+    nameOverride?: string,
 ): string | undefined => {
     if (!isEmittableCallable(context, callable)) return undefined;
-    const name = methodExportName(callable);
+    const name = nameOverride ?? methodExportName(callable);
     if (name === "constructor") return undefined;
     const finishFn = matchFinishFunction(context, callable, siblings);
     if (finishFn !== undefined) {
+        if (!isEmittableCallable(context, finishFn)) return undefined;
         const { signature, returnType } = renderPromisifiedSignature(context, callable, finishFn);
         return `${name}(${signature}): ${returnType};`;
     }
@@ -129,8 +132,11 @@ export const renderClassInstanceMember = (
     if (!isEmittableCallable(context, callable)) return undefined;
     const name = nameOverride ?? methodExportName(callable);
     if (name === "constructor") return undefined;
-    const promisified = renderPromisifiedMember(context, callable, siblings, name);
-    if (promisified !== undefined) return promisified;
+    const finishFn = matchFinishFunction(context, callable, siblings);
+    if (finishFn !== undefined) {
+        if (!isEmittableCallable(context, finishFn)) return undefined;
+        return renderPromisifiedMember(context, callable, finishFn, name);
+    }
     return renderInstanceMethod(context, callable, nameOverride);
 };
 
@@ -147,11 +153,9 @@ const matchFinishFunction = (
 const renderPromisifiedMember = (
     context: ModuleContext,
     callable: GirFunction,
-    siblings: Map<string, GirFunction>,
+    finishFn: GirFunction,
     name: string,
 ): string | undefined => {
-    const finishFn = matchFinishFunction(context, callable, siblings);
-    if (finishFn === undefined) return undefined;
     const cIdentifier = callable.cIdentifier;
     if (cIdentifier === undefined) return undefined;
     const { signature, returnType } = renderPromisifiedSignature(context, callable, finishFn);
@@ -170,12 +174,23 @@ const isEmittableCallable = (context: ModuleContext, callable: GirFunction): boo
     callable.introspectable &&
     callable.shadowedBy === undefined &&
     callable.cIdentifier !== undefined &&
-    !callableReferencesClassStruct(context, callable);
+    !callableReferencesClassStruct(context, callable) &&
+    !hasCallerAllocatedArrayLength(context.library, callable);
 
 const constructorMemberName = (girName: string): string | undefined => {
     const camel = toCamelCase(girName);
     if (camel === "constructor") return undefined;
     return camel;
+};
+
+export const classConstructorMemberNames = (context: ModuleContext, callables: Callables): string[] => {
+    const names: string[] = [];
+    for (const callable of callables.constructors) {
+        if (!isEmittableCallable(context, callable)) continue;
+        const member = constructorMemberName(callable.name);
+        if (member !== undefined) names.push(member);
+    }
+    return names;
 };
 
 export const renderStaticHead = (context: ModuleContext, callables: Callables, ownerClassName: string): string[] => {

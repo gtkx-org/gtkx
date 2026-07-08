@@ -1,5 +1,6 @@
 import { toCamelIdentifier } from "@gtkx/utils";
 import { tFn } from "../../analysis/descriptor.js";
+import { hasCallerAllocatedArrayLength } from "../../analysis/param-structure.js";
 import type { GirFunction } from "../../gir/function.js";
 import type { GirNamespace } from "../../gir/namespace.js";
 import type { ModuleContext } from "../../writer/context.js";
@@ -27,6 +28,7 @@ export const generateNamespaceFunction = (context: ModuleContext, fn: GirFunctio
     if (!fn.introspectable) return;
     if (fn.shadowedBy !== undefined) return;
     if (callableReferencesClassStruct(context, fn)) return;
+    if (hasCallerAllocatedArrayLength(context.library, fn)) return;
     const expression = renderFnExpression(context, fn);
     if (expression === undefined) return;
     const cIdentifier = fn.cIdentifier;

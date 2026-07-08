@@ -1,5 +1,5 @@
 import { toPascalCase } from "@gtkx/utils";
-import { resolvePrerequisiteReference } from "../../analysis/inheritance.js";
+import { resolvePrerequisiteReference, reservedSignalMemberRename } from "../../analysis/inheritance.js";
 import type { GirClass } from "../../gir/class.js";
 import type { GirFunction } from "../../gir/function.js";
 import type { ModuleContext } from "../../writer/context.js";
@@ -80,6 +80,7 @@ type InterfaceMemberRenderers = {
         context: ModuleContext,
         callable: GirFunction,
         methodByName: Map<string, GirFunction>,
+        nameOverride?: string,
     ) => string | undefined;
     renderProperty: (args: PropertyAccessorArgs) => string | undefined;
 };
@@ -90,14 +91,16 @@ const renderInterfaceMembers = (
     callables: Callables,
     renderers: InterfaceMemberRenderers,
 ): string[] => {
+    const className = toPascalCase(iface.name);
     const members: string[] = [];
     const claimedNames = new Set<string>();
     const methodByName = indexMethodsByName(callables.methods);
     for (const callable of callables.methods) {
-        const block = renderers.renderMethod(context, callable, methodByName);
+        const rename = reservedSignalMemberRename(className, callable);
+        const block = renderers.renderMethod(context, callable, methodByName, rename);
         if (block === undefined) continue;
         members.push(block);
-        claimedNames.add(methodExportName(callable));
+        claimedNames.add(rename ?? methodExportName(callable));
     }
     for (const property of iface.properties) {
         const block = renderers.renderProperty({ context, property, claimedNames, methodByName });

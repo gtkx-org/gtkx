@@ -51,6 +51,21 @@ export const arrayLengthSources = (library: Library, fn: GirFunction): Map<numbe
     return map;
 };
 
+/**
+ * Whether a function takes a caller-allocated output array sized by an input length parameter but
+ * exposes neither the array nor its size as a JS input, so the emitted length reference would be
+ * undefined. Such a raw output-buffer method cannot be faithfully bound (GObject exposes a
+ * `*_bytes` variant for these) and is excluded from emission. Callee-allocated out arrays fold
+ * their length into the return tuple and are unaffected.
+ */
+export const hasCallerAllocatedArrayLength = (library: Library, fn: GirFunction): boolean => {
+    for (const arrayIndex of arrayLengthSources(library, fn).values()) {
+        const array = fn.parameters[arrayIndex];
+        if (array !== undefined && isCallerAllocatedOut(array)) return true;
+    }
+    return false;
+};
+
 const returnArrayLengthIndices = (library: Library, fn: GirFunction): Set<number> => {
     const returnType = fn.returnValue.type === undefined ? undefined : library.typeOf(fn.returnValue.type);
     if (returnType?.kind !== "carray") return new Set();

@@ -7,6 +7,7 @@ import type { ImportsBuilder } from "../../writer/imports.js";
 import type { ElementPropTypegen } from "./element-prop-types.js";
 import {
     collectInterfacePropsClasses,
+    giNamespaceAlias,
     type GlibNamedClass,
     glibNameOf,
     interfaceHasPropsBody,
@@ -35,6 +36,20 @@ const addGiNamespace = (imports: ImportsBuilder, namespaceName: string, alias: s
 
 const addReactBuiltin = (imports: ImportsBuilder, name: string): void => {
     imports.addNamed("react", name, true);
+};
+
+const propLineName = (line: string): string | undefined => line.split(/[?:]/, 1)[0]?.trim() || undefined;
+
+const dedupePropLines = (lines: string[]): string[] => {
+    const seen = new Set<string>();
+    const result: string[] = [];
+    for (const line of lines) {
+        const name = propLineName(line);
+        if (name !== undefined && seen.has(name)) continue;
+        if (name !== undefined) seen.add(name);
+        result.push(line);
+    }
+    return result;
 };
 
 export const generateJsxSection = (
@@ -88,7 +103,9 @@ const accessiblePropLines = (imports: ImportsBuilder): string[] =>
     Object.entries(ACCESSIBLE_ATTRIBUTES).map(([name, { type }]) => {
         const namespace = type.split(".")[0];
         if (QUALIFIED_TYPE_PATTERN.test(type) && namespace !== undefined) {
-            addGiNamespace(imports, namespace, namespace);
+            const alias = giNamespaceAlias(namespace);
+            addGiNamespace(imports, namespace, alias);
+            return `${name}?: ${alias}${type.slice(namespace.length)} | null | undefined;`;
         }
         return `${name}?: ${type} | null | undefined;`;
     });
@@ -156,7 +173,8 @@ const renderInterfacePropsBlock = (
     if (glib === ACCESSIBLE_INTERFACE_GLIB_NAME) ownerLines.push(...accessiblePropLines(imports));
     const prerequisiteExtends = interfacePrerequisiteExtends(library, iface, targetNamespaceName, imports);
     const extendsClause = prerequisiteExtends.length === 0 ? "" : ` extends ${prerequisiteExtends.join(", ")}`;
-    const selfDefault = `${iface.namespace.name}.${iface.klass.name}`;
+    addGiNamespace(imports, iface.namespace.name, giNamespaceAlias(iface.namespace.name));
+    const selfDefault = `${giNamespaceAlias(iface.namespace.name)}.${iface.klass.name}`;
     const block = renderBlock(
         `export interface ${glib}Props<Self = ${selfDefault}>${extendsClause}`,
         ownerLines.join("\n"),
@@ -192,7 +210,7 @@ const renderPropBlock = (
         isIntrinsicElementAncestor: context.isIntrinsicElementAncestor,
     });
     for (const [namespace, alias] of imports) addGiNamespace(context.imports, namespace, alias);
-    addGiNamespace(context.imports, entry.namespace.name, entry.namespace.name);
+    addGiNamespace(context.imports, entry.namespace.name, giNamespaceAlias(entry.namespace.name));
     const elementPropImports = new Map<string, string>();
     const elementPropLines = context.typegen.classPropLines(
         entry.glibName,
@@ -201,18 +219,17 @@ const renderPropBlock = (
         elementPropImports,
     );
     for (const [namespace, alias] of elementPropImports) addGiNamespace(context.imports, namespace, alias);
-    const widgetTypeRef = `${entry.namespace.name}.${entry.klass.name} | null`;
     const slotPropLines = slotProps.map((propName) => `${propName}?: ReactNode | null | undefined;`);
-    const ownerLines = [
+    const ownerLines = dedupePropLines([
         ...(context.typegen.acceptsChildren(entry.glibName) ? ["children?: ReactNode;"] : []),
-        `ref?: Ref<${widgetTypeRef}> | undefined;`,
+        "ref?: Ref<Self | null> | undefined;",
         ...propLines,
         ...slotPropLines,
         ...elementPropLines,
-    ];
+    ]);
     const extendsList = resolveWidgetExtends(library, entry, context);
     const extendsClause = extendsList.length === 0 ? "" : ` extends ${extendsList.join(", ")}`;
-    const selfDefault = `${entry.namespace.name}.${entry.klass.name}`;
+    const selfDefault = `${giNamespaceAlias(entry.namespace.name)}.${entry.klass.name}`;
     const block = renderBlock(
         `export interface ${entry.glibName}Props<Self = ${selfDefault}>${extendsClause}`,
         ownerLines.join("\n"),

@@ -46,7 +46,7 @@ export const generateMetadata = (library: Library, elementProps: Record<string, 
         `export const CONSTRUCT_ONLY_PROPS: Record<string, Set<string>> = {\n${constructOnlyEntries.join("\n")}\n};`,
         `export const CONSTRUCT_PROPS: Record<string, Set<string>> = {\n${constructableEntries.join("\n")}\n};`,
         `export const DEFAULT_PROPS: Record<string, Record<string, unknown>> = {\n${defaultsEntries.join("\n")}\n};`,
-        `export const ELEMENT_PROPS: Record<string, Array<import("@gtkx/config").ElementProp>> = ${JSON.stringify(elementProps, null, 4)};`,
+        `export const ELEMENT_PROPS: Record<string, Array<import("@gtkx/react").ElementProp>> = ${JSON.stringify(elementProps, null, 4)};`,
         renderAccessibleAttributes(),
     ].join("\n\n")}\n`;
 };

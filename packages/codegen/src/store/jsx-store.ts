@@ -16,6 +16,7 @@ export const writeJsxStore = (options: JsxStoreOptions, namespaces: JsxNamespace
     writeStore({
         storeDir: options.storeDir,
         linkDir: options.linkDir,
+        resolveFrom: options.resolveFrom,
         files,
         manifest: buildManifest({
             name: "@gtkx/jsx",

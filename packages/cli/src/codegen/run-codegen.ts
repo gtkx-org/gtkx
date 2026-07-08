@@ -47,6 +47,7 @@ const codegenOptions = (
     libraries: string[],
     girPath: string[],
     elementProps: Record<string, ElementProp[]>,
+    resolveFrom: string,
 ) => ({
     libraries,
     girPath,
@@ -55,6 +56,7 @@ const codegenOptions = (
         storeDir: store.giStoreDir,
         linkDir: store.giLinkDir,
         version: store.ffiVersion,
+        resolveFrom,
     },
     jsx:
         store.react !== null
@@ -62,6 +64,7 @@ const codegenOptions = (
                   storeDir: store.jsxStoreDir,
                   linkDir: store.jsxLinkDir,
                   version: store.react.version,
+                  resolveFrom,
               }
             : undefined,
 });
@@ -90,7 +93,7 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
         }
     }
 
-    const result = await runCodegenCore(codegenOptions(store, libraries, girPath, elementProps));
+    const result = await runCodegenCore(codegenOptions(store, libraries, girPath, elementProps, cwd));
 
     return {
         namespaces: result.namespaces,

@@ -41,10 +41,10 @@ const ApplicationChildren = ({ app, children }: { app: Gtk.Application | null; c
     app && <ApplicationContext.Provider value={app}>{children}</ApplicationContext.Provider>;
 
 type ApplicationComponentProps<T extends Gtk.Application> = {
-    applicationId?: string | null;
-    children?: ReactNode;
-    menubar?: Gio.MenuModel | ReactNode;
-    ref?: Ref<T | null>;
+    applicationId?: string | null | undefined;
+    children?: ReactNode | undefined;
+    menubar?: Gio.MenuModel | ReactNode | undefined;
+    ref?: Ref<T | null> | undefined;
 };
 
 export const withApplicationLifecycle = <P extends ApplicationComponentProps<ApplicationOf<P>>>(
@@ -62,7 +62,7 @@ export const withApplicationLifecycle = <P extends ApplicationComponentProps<App
     };
 };
 
-export const withApplicationWindowPresentation = <P extends { children?: ReactNode; ref?: Ref<Gtk.Window | null> }>(
+export const withApplicationWindowPresentation = <P extends { children?: ReactNode }>(
     Underlying: ElementType,
 ): ((props: P) => ReactNode) => {
     type SurfaceProps = Omit<P, "children"> & {

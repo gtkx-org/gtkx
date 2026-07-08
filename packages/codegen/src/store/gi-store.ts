@@ -71,6 +71,7 @@ export const writeGiStore = (
     writeStore({
         storeDir: options.storeDir,
         linkDir: options.linkDir,
+        resolveFrom: options.resolveFrom,
         files: collected,
         manifest: buildManifest({
             name: "@gtkx/gi",

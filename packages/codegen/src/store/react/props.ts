@@ -8,6 +8,7 @@ import type { GirNamespace } from "../../gir/namespace.js";
 import type { GirSignal } from "../../gir/parameter.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
 import type { TypeId } from "../../gir/type-id.js";
+import { giNamespaceAlias } from "./intrinsic-elements.js";
 import { classExposesMethod, isIntrinsicElementClass, signalHandlerName } from "./intrinsic-elements.js";
 
 type IntrinsicElementPropsEntries = {
@@ -174,12 +175,12 @@ export const reactTarget = (context: PropTypeRenderContext): TsTypeTarget => ({
                 ? "number"
                 : renderBaseTypeFor(context.library, reactTarget(context), resolved.value.target);
         }
-        context.imports.set(name.namespaceName, name.namespaceName);
-        return `${name.namespaceName}.${name.typeName}`;
+        context.imports.set(name.namespaceName, giNamespaceAlias(name.namespaceName));
+        return `${giNamespaceAlias(name.namespaceName)}.${name.typeName}`;
     },
     renderGtype: () => {
-        context.imports.set("GObject", "GObject");
-        return "GObject.Type";
+        context.imports.set("GObject", giNamespaceAlias("GObject"));
+        return `${giNamespaceAlias("GObject")}.Type`;
     },
 });
 

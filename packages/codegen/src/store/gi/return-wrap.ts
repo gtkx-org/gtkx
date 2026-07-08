@@ -1,4 +1,5 @@
 import { renderDescriptor } from "../../analysis/descriptor-render.js";
+import { renderTsType } from "../../analysis/ts-type.js";
 import type { PrimitiveCategory } from "../../gir/primitives.js";
 import type { TypeId } from "../../gir/type-id.js";
 import type { ModuleContext } from "../../writer/context.js";
@@ -20,7 +21,9 @@ export const wrapReturnValue = (context: ModuleContext, options: WrapReturnOptio
         case "varargs":
             return `(${valueExpression} as unknown[])`;
         case "callback":
-            return context.library.nameOf(ref) === undefined ? `(${valueExpression} as unknown[])` : valueExpression;
+            return context.library.nameOf(ref) === undefined
+                ? `(${valueExpression} as unknown[])`
+                : `(${valueExpression} as ${renderTsType(context, ref, false)})`;
         case "enum":
             return `(${valueExpression} as number)`;
         case "alias":
@@ -35,7 +38,7 @@ export const wrapReturnValue = (context: ModuleContext, options: WrapReturnOptio
 const wrapValue = (context: ModuleContext, ref: TypeId, valueExpression: string): string => {
     context.addRuntimeImport("fromNative");
     const descriptor = context.hoistDescriptor(renderDescriptor(context, ref, "none"));
-    return `fromNative(${descriptor}, ${valueExpression})`;
+    return `(fromNative(${descriptor}, ${valueExpression}) as ${renderTsType(context, ref, false)})`;
 };
 
 const wrapPrimitive = (category: PrimitiveCategory, nullable: boolean, valueExpression: string): string => {

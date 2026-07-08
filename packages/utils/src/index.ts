@@ -13,7 +13,7 @@ export {
     type OutputStream,
     warn,
 } from "./log.js";
-export { installMixins, type Mixin } from "./mixin.js";
+export { installMixins, type Mixin, type MixinReceiver } from "./mixin.js";
 export { callMethod, packageVersion } from "./reflect.js";
 export { sanitizeIdentifier, sourceStringLiteral, toCamelIdentifier } from "./source.js";
 export { lowerFirst, toCamelCase, toKebabCase, toPascalCase, upperFirst } from "./string.js";

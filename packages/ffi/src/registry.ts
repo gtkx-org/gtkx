@@ -6,8 +6,24 @@ import {
     type RegisterClassVfunc as NativeRegisterClassVfunc,
     setWrapper,
 } from "@gtkx/native";
-import type { AnyClass, Mixin } from "@gtkx/utils";
+import type { AnyClass, Mixin, MixinReceiver } from "@gtkx/utils";
 import { TYPE_INVALID, type TypedClass, typeInterfaces, typeIsA, typeName, typeParent } from "./type.js";
+
+/**
+ * Base-class view that drops the named static constructor factories `K` from a constructor type
+ * while keeping its construct signature and remaining static members.
+ *
+ * GObject constructors are emitted as `static new(...)`-style factories and a subclass's factory
+ * takes different parameters than the base's of the same name; casting the `extends` target to
+ * `StaticBase<typeof Base, "new" | ...>` removes those factories from TypeScript's static-side
+ * compatibility check so each class declares its own precisely typed constructors. Type-level
+ * only; runtime behaviour is unchanged.
+ *
+ * @typeParam C - The base class constructor type, i.e. `typeof Base`.
+ * @typeParam K - The static factory member names the subclass redeclares.
+ */
+export type StaticBase<C, K extends PropertyKey = "new"> = Omit<C, K> &
+    (C extends new (...args: infer A) => infer R ? new (...args: A) => R : never);
 
 export type VfuncDescriptor<K extends "class" | "interface"> = {
     kind: K;
@@ -107,7 +123,7 @@ function createComposedClass(base: AnyClass, runtimeType: bigint): AnyClass {
         const mixin = interfaceMixinRegistry.get(type);
         if (mixin === undefined) continue;
         applied.add(type);
-        cls = mixin(cls);
+        cls = mixin(cls as AnyClass<MixinReceiver>);
     }
     return applied.size === 0 ? base : cls;
 }
