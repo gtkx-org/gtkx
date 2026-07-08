@@ -1,10 +1,66 @@
-import { ACCESSIBLE_ATTRIBUTES } from "virtual:gtkx-config";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { deleteAccessibleMetadata, setAccessibleMetadata } from "../utils/accessible-metadata.js";
 import type { Props } from "./types.js";
 
-type AccessibleAttributeValue = "string" | "boolean" | "int" | "double" | "object" | "ref-list";
+/**
+ * Accessibility props available on every widget.
+ *
+ * Each member maps to a GTK accessible attribute — a `Gtk.AccessibleProperty`,
+ * `Gtk.AccessibleState`, or `Gtk.AccessibleRelation` — and is applied through
+ * `Gtk.Accessible.updateProperty`, `updateState`, or `updateRelation`. Setting a
+ * prop to `undefined` resets the corresponding attribute to its default. These
+ * props are built in to the reconciler and shared by the generated widget props.
+ */
+export interface AccessibleProps {
+    accessibleAutocomplete?: Gtk.AccessibleAutocomplete | null | undefined;
+    accessibleDescription?: string | null | undefined;
+    accessibleHasPopup?: boolean | null | undefined;
+    accessibleKeyShortcuts?: string | null | undefined;
+    accessibleLabel?: string | null | undefined;
+    accessibleLevel?: number | null | undefined;
+    accessibleModal?: boolean | null | undefined;
+    accessibleMultiLine?: boolean | null | undefined;
+    accessibleMultiSelectable?: boolean | null | undefined;
+    accessibleOrientation?: Gtk.Orientation | null | undefined;
+    accessiblePlaceholder?: string | null | undefined;
+    accessibleReadOnly?: boolean | null | undefined;
+    accessibleRequired?: boolean | null | undefined;
+    accessibleRoleDescription?: string | null | undefined;
+    accessibleSort?: Gtk.AccessibleSort | null | undefined;
+    accessibleValueMax?: number | null | undefined;
+    accessibleValueMin?: number | null | undefined;
+    accessibleValueNow?: number | null | undefined;
+    accessibleValueText?: string | null | undefined;
+    accessibleHelpText?: string | null | undefined;
+    accessibleBusy?: boolean | null | undefined;
+    accessibleChecked?: Gtk.AccessibleTristate | null | undefined;
+    accessibleDisabled?: boolean | null | undefined;
+    accessibleExpanded?: boolean | null | undefined;
+    accessibleHidden?: boolean | null | undefined;
+    accessibleInvalid?: Gtk.AccessibleInvalidState | null | undefined;
+    accessiblePressed?: Gtk.AccessibleTristate | null | undefined;
+    accessibleSelected?: boolean | null | undefined;
+    accessibleVisited?: boolean | null | undefined;
+    accessibleActiveDescendant?: Gtk.Widget | null | undefined;
+    accessibleColCount?: number | null | undefined;
+    accessibleColIndex?: number | null | undefined;
+    accessibleColIndexText?: string | null | undefined;
+    accessibleColSpan?: number | null | undefined;
+    accessibleControls?: Gtk.Widget[] | null | undefined;
+    accessibleDescribedBy?: Gtk.Widget[] | null | undefined;
+    accessibleDetails?: Gtk.Widget[] | null | undefined;
+    accessibleErrorMessage?: Gtk.Widget[] | null | undefined;
+    accessibleFlowTo?: Gtk.Widget[] | null | undefined;
+    accessibleLabelledBy?: Gtk.Widget[] | null | undefined;
+    accessibleOwns?: Gtk.Widget[] | null | undefined;
+    accessiblePosInSet?: number | null | undefined;
+    accessibleRowCount?: number | null | undefined;
+    accessibleRowIndex?: number | null | undefined;
+    accessibleRowIndexText?: string | null | undefined;
+    accessibleRowSpan?: number | null | undefined;
+    accessibleSetSize?: number | null | undefined;
+}
 
 type CreateValue = (jsValue: unknown) => GObject.Value;
 
@@ -59,44 +115,60 @@ const relation = (enumValue: Gtk.AccessibleRelation, createValue: CreateValue): 
     createValue,
 });
 
-const COERCION_BY_VALUE: Record<AccessibleAttributeValue, CreateValue> = {
-    string: fromString,
-    boolean: fromBoolean,
-    int: fromInt,
-    double: fromDouble,
-    object: fromObject,
-    "ref-list": fromRefList,
+const ACCESSIBLE_PROP_MAP: Record<keyof AccessibleProps, AccessibleDescriptor> = {
+    accessibleAutocomplete: property(Gtk.AccessibleProperty.AUTOCOMPLETE, fromInt),
+    accessibleDescription: property(Gtk.AccessibleProperty.DESCRIPTION, fromString),
+    accessibleHasPopup: property(Gtk.AccessibleProperty.HAS_POPUP, fromBoolean),
+    accessibleKeyShortcuts: property(Gtk.AccessibleProperty.KEY_SHORTCUTS, fromString),
+    accessibleLabel: property(Gtk.AccessibleProperty.LABEL, fromString),
+    accessibleLevel: property(Gtk.AccessibleProperty.LEVEL, fromInt),
+    accessibleModal: property(Gtk.AccessibleProperty.MODAL, fromBoolean),
+    accessibleMultiLine: property(Gtk.AccessibleProperty.MULTI_LINE, fromBoolean),
+    accessibleMultiSelectable: property(Gtk.AccessibleProperty.MULTI_SELECTABLE, fromBoolean),
+    accessibleOrientation: property(Gtk.AccessibleProperty.ORIENTATION, fromInt),
+    accessiblePlaceholder: property(Gtk.AccessibleProperty.PLACEHOLDER, fromString),
+    accessibleReadOnly: property(Gtk.AccessibleProperty.READ_ONLY, fromBoolean),
+    accessibleRequired: property(Gtk.AccessibleProperty.REQUIRED, fromBoolean),
+    accessibleRoleDescription: property(Gtk.AccessibleProperty.ROLE_DESCRIPTION, fromString),
+    accessibleSort: property(Gtk.AccessibleProperty.SORT, fromInt),
+    accessibleValueMax: property(Gtk.AccessibleProperty.VALUE_MAX, fromDouble),
+    accessibleValueMin: property(Gtk.AccessibleProperty.VALUE_MIN, fromDouble),
+    accessibleValueNow: property(Gtk.AccessibleProperty.VALUE_NOW, fromDouble),
+    accessibleValueText: property(Gtk.AccessibleProperty.VALUE_TEXT, fromString),
+    accessibleHelpText: property(Gtk.AccessibleProperty.HELP_TEXT, fromString),
+    accessibleBusy: state(Gtk.AccessibleState.BUSY, fromBoolean),
+    accessibleChecked: state(Gtk.AccessibleState.CHECKED, fromInt),
+    accessibleDisabled: state(Gtk.AccessibleState.DISABLED, fromBoolean),
+    accessibleExpanded: state(Gtk.AccessibleState.EXPANDED, fromInt),
+    accessibleHidden: state(Gtk.AccessibleState.HIDDEN, fromBoolean),
+    accessibleInvalid: state(Gtk.AccessibleState.INVALID, fromInt),
+    accessiblePressed: state(Gtk.AccessibleState.PRESSED, fromInt),
+    accessibleSelected: state(Gtk.AccessibleState.SELECTED, fromInt),
+    accessibleVisited: state(Gtk.AccessibleState.VISITED, fromInt),
+    accessibleActiveDescendant: relation(Gtk.AccessibleRelation.ACTIVE_DESCENDANT, fromObject),
+    accessibleColCount: relation(Gtk.AccessibleRelation.COL_COUNT, fromInt),
+    accessibleColIndex: relation(Gtk.AccessibleRelation.COL_INDEX, fromInt),
+    accessibleColIndexText: relation(Gtk.AccessibleRelation.COL_INDEX_TEXT, fromString),
+    accessibleColSpan: relation(Gtk.AccessibleRelation.COL_SPAN, fromInt),
+    accessibleControls: relation(Gtk.AccessibleRelation.CONTROLS, fromRefList),
+    accessibleDescribedBy: relation(Gtk.AccessibleRelation.DESCRIBED_BY, fromRefList),
+    accessibleDetails: relation(Gtk.AccessibleRelation.DETAILS, fromRefList),
+    accessibleErrorMessage: relation(Gtk.AccessibleRelation.ERROR_MESSAGE, fromRefList),
+    accessibleFlowTo: relation(Gtk.AccessibleRelation.FLOW_TO, fromRefList),
+    accessibleLabelledBy: relation(Gtk.AccessibleRelation.LABELLED_BY, fromRefList),
+    accessibleOwns: relation(Gtk.AccessibleRelation.OWNS, fromRefList),
+    accessiblePosInSet: relation(Gtk.AccessibleRelation.POS_IN_SET, fromInt),
+    accessibleRowCount: relation(Gtk.AccessibleRelation.ROW_COUNT, fromInt),
+    accessibleRowIndex: relation(Gtk.AccessibleRelation.ROW_INDEX, fromInt),
+    accessibleRowIndexText: relation(Gtk.AccessibleRelation.ROW_INDEX_TEXT, fromString),
+    accessibleRowSpan: relation(Gtk.AccessibleRelation.ROW_SPAN, fromInt),
+    accessibleSetSize: relation(Gtk.AccessibleRelation.SET_SIZE, fromInt),
 };
 
-const ENUM_BY_KIND = {
-    property: Gtk.AccessibleProperty,
-    state: Gtk.AccessibleState,
-    relation: Gtk.AccessibleRelation,
-};
+const lookupDescriptor = (name: string): AccessibleDescriptor | undefined =>
+    Object.hasOwn(ACCESSIBLE_PROP_MAP, name) ? ACCESSIBLE_PROP_MAP[name as keyof AccessibleProps] : undefined;
 
-const toDescriptor = (attribute: {
-    kind: "property" | "state" | "relation";
-    member: string;
-    value: AccessibleAttributeValue;
-}): AccessibleDescriptor => {
-    const createValue = COERCION_BY_VALUE[attribute.value];
-    const { kind, member } = attribute;
-    switch (kind) {
-        case "property":
-            return property(ENUM_BY_KIND[kind][member as keyof typeof Gtk.AccessibleProperty], createValue);
-        case "state":
-            return state(ENUM_BY_KIND[kind][member as keyof typeof Gtk.AccessibleState], createValue);
-        case "relation":
-            return relation(ENUM_BY_KIND[kind][member as keyof typeof Gtk.AccessibleRelation], createValue);
-    }
-};
-
-const ACCESSIBLE_PROP_MAP: Record<string, AccessibleDescriptor> = {};
-for (const [name, attribute] of Object.entries(ACCESSIBLE_ATTRIBUTES)) {
-    ACCESSIBLE_PROP_MAP[name] = toDescriptor(attribute);
-}
-
-export const isAccessibleProp = (name: string): boolean => name in ACCESSIBLE_PROP_MAP;
+export const isAccessibleProp = (name: string): boolean => Object.hasOwn(ACCESSIBLE_PROP_MAP, name);
 
 function applyDescriptor(widget: Gtk.Accessible, descriptor: AccessibleDescriptor, newValue: unknown): void {
     const gvalue = descriptor.createValue(newValue);
@@ -135,7 +207,7 @@ const applyChangedAccessibleProps = (
     seen: Set<string>,
 ): void => {
     for (const name in newProps) {
-        const descriptor = ACCESSIBLE_PROP_MAP[name];
+        const descriptor = lookupDescriptor(name);
         if (!descriptor) continue;
         seen.add(name);
 
@@ -155,7 +227,7 @@ const applyChangedAccessibleProps = (
 const resetRemovedAccessibleProps = (widget: Gtk.Accessible, oldProps: Props, seen: Set<string>): void => {
     for (const name in oldProps) {
         if (seen.has(name)) continue;
-        const descriptor = ACCESSIBLE_PROP_MAP[name];
+        const descriptor = lookupDescriptor(name);
         if (!descriptor) continue;
         if (oldProps[name] !== undefined) {
             resetDescriptor(widget, descriptor);

@@ -1,7 +1,7 @@
 import type { Call, ContainerProp, ElementProp, ListProp } from "@gtkx/config";
 import { toCamelIdentifier } from "@gtkx/utils";
-import { findMethod, type GirIndex, hasMethod, hasProperty } from "./gir-index.js";
 import { BUILT_IN_ELEMENT_PROPS } from "./built-ins.js";
+import { findMethod, type GirIndex, hasMethod, hasProperty } from "./gir-index.js";
 
 const callMethodName = (call: Call): string => (typeof call === "string" ? call : call.method);
 

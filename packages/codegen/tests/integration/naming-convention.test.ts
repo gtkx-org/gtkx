@@ -6,7 +6,6 @@ import {
     interfaceHasPropsBody,
 } from "../../src/store/react/intrinsic-elements.js";
 import { generateJsxFiles } from "../../src/store/react/pipeline.js";
-import { ACCESSIBLE_ATTRIBUTES } from "../../src/store/react/built-ins.js";
 import { giModules, library } from "../helpers/library.js";
 
 const jsxSources = (): string[] => generateJsxFiles(library).namespaces.map((entry) => entry.source);
@@ -20,21 +19,6 @@ const interfacePropsNames = (): Set<string> => {
             if (glib !== undefined) names.add(`${glib}Props`);
         }
     }
-    return names;
-};
-
-const ENUM_NAME_BY_KIND: Record<"property" | "state" | "relation", string> = {
-    property: "AccessibleProperty",
-    state: "AccessibleState",
-    relation: "AccessibleRelation",
-};
-
-const screamingEnumMembers = (enumName: string): Set<string> => {
-    const resolved = library.resolveType("Gtk", enumName);
-    expect(resolved?.kind, `expected Gtk.${enumName} enum`).toBe("enum");
-    const names = new Set<string>();
-    if (resolved?.kind !== "enum") return names;
-    for (const member of resolved.value.members) names.add(member.name.toUpperCase().replaceAll("-", "_"));
     return names;
 };
 
@@ -94,19 +78,5 @@ describe("jsx prop-interface naming convention", () => {
 
         const offenders = declaredProps.filter((name) => !allowed.has(name));
         expect(offenders, `unexpected props interface names: ${offenders.join(", ")}`).toEqual([]);
-    });
-});
-
-describe("accessible attribute table", () => {
-    it("maps every accessible attribute to a GTK accessible enum member matching its kind", () => {
-        const membersByEnum = new Map<string, Set<string>>();
-        const offenders: string[] = [];
-        for (const [name, attribute] of Object.entries(ACCESSIBLE_ATTRIBUTES)) {
-            const enumName = ENUM_NAME_BY_KIND[attribute.kind];
-            const members = membersByEnum.get(enumName) ?? screamingEnumMembers(enumName);
-            membersByEnum.set(enumName, members);
-            if (!members.has(attribute.member)) offenders.push(`${name} (${attribute.kind}.${attribute.member})`);
-        }
-        expect(offenders, `accessible attributes without a matching enum member: ${offenders.join(", ")}`).toEqual([]);
     });
 });

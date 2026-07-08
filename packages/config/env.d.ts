@@ -4,13 +4,5 @@ declare module "virtual:gtkx-config" {
     export const CONSTRUCT_PROPS: Record<string, Set<string>>;
     export const DEFAULT_PROPS: Record<string, Record<string, unknown>>;
     export const ELEMENT_PROPS: Record<string, import("@gtkx/config").ElementProp[]>;
-    export const ACCESSIBLE_ATTRIBUTES: Record<
-        string,
-        {
-            kind: "property" | "state" | "relation";
-            member: string;
-            value: "string" | "boolean" | "int" | "double" | "object" | "ref-list";
-        }
-    >;
     export const applicationId: import("@gtkx/config").ResolvedConfig["applicationId"];
 }

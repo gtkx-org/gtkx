@@ -12,19 +12,6 @@ import {
     iterateClassesWithGlibName,
     signalHandlerName,
 } from "./intrinsic-elements.js";
-import { ACCESSIBLE_ATTRIBUTES } from "./built-ins.js";
-
-const ACCESSIBLE_ATTRIBUTES_ANNOTATION =
-    'Record<string, { kind: "property" | "state" | "relation"; member: string; value: "string" | "boolean" | "int" | "double" | "object" | "ref-list" }>';
-
-const renderAccessibleAttributes = (): string => {
-    const entries = sortStringsBy(Object.entries(ACCESSIBLE_ATTRIBUTES), ([name]) => name);
-    const lines = entries.map(([name, { kind, member, value }]) => {
-        const fields = `kind: ${sourceStringLiteral(kind)}, member: ${sourceStringLiteral(member)}, value: ${sourceStringLiteral(value)}`;
-        return `    ${sourceStringLiteral(name)}: { ${fields} },`;
-    });
-    return `export const ACCESSIBLE_ATTRIBUTES: ${ACCESSIBLE_ATTRIBUTES_ANNOTATION} = {\n${lines.join("\n")}\n};`;
-};
 
 export const generateMetadata = (library: Library, elementProps: Record<string, ElementProp[]>): string => {
     const intrinsicElements = collectIntrinsicElements(library);
@@ -47,7 +34,6 @@ export const generateMetadata = (library: Library, elementProps: Record<string, 
         `export const CONSTRUCT_PROPS: Record<string, Set<string>> = {\n${constructableEntries.join("\n")}\n};`,
         `export const DEFAULT_PROPS: Record<string, Record<string, unknown>> = {\n${defaultsEntries.join("\n")}\n};`,
         `export const ELEMENT_PROPS: Record<string, Array<import("@gtkx/react").ElementProp>> = ${JSON.stringify(elementProps, null, 4)};`,
-        renderAccessibleAttributes(),
     ].join("\n\n")}\n`;
 };
 

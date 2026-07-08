@@ -3,9 +3,9 @@ import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import type { ImportsBuilder } from "../../writer/imports.js";
+import { BUILT_IN_ELEMENT_COMPONENTS, type ElementComponentName } from "./built-ins.js";
 import type { ElementPropTypegen, LazyElementSpec } from "./element-prop-types.js";
 import { ancestorGlibNames, type GlibNamedClass } from "./intrinsic-elements.js";
-import { type ElementComponentName, BUILT_IN_ELEMENT_COMPONENTS } from "./built-ins.js";
 
 type TextNodeElement = {
     flatName: string;

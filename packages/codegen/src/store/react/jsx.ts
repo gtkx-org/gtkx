@@ -16,7 +16,6 @@ import {
     type ResolvedQualifiedInterface,
 } from "./intrinsic-elements.js";
 import { buildElementPropsEntries, buildInterfacePropsEntries } from "./props.js";
-import { ACCESSIBLE_ATTRIBUTES } from "./built-ins.js";
 
 type GenerateJsxOptions = {
     excludeNames: Set<string>;
@@ -26,9 +25,9 @@ type GenerateJsxOptions = {
     intrinsicElementByGlibName: Map<string, GlibNamedClass>;
 };
 
-const QUALIFIED_TYPE_PATTERN = /^[A-Z][A-Za-z0-9]*\.[A-Z]/;
-
 const ACCESSIBLE_INTERFACE_GLIB_NAME = "GtkAccessible";
+
+const ACCESSIBLE_PROPS_NAME = "AccessibleProps";
 
 const addGiNamespace = (imports: ImportsBuilder, namespaceName: string, alias: string): void => {
     if (namespaceName === "") return;
@@ -103,17 +102,6 @@ export const generateJsxSection = (
     return { source, intrinsicCount: intrinsicWidgets.length };
 };
 
-const accessiblePropLines = (imports: ImportsBuilder): string[] =>
-    Object.entries(ACCESSIBLE_ATTRIBUTES).map(([name, { type }]) => {
-        const namespace = type.split(".")[0];
-        if (QUALIFIED_TYPE_PATTERN.test(type) && namespace !== undefined) {
-            const alias = giNamespaceAlias(namespace);
-            addGiNamespace(imports, namespace, alias);
-            return `${name}?: ${alias}${type.slice(namespace.length)} | null | undefined;`;
-        }
-        return `${name}?: ${type} | null | undefined;`;
-    });
-
 const registerCrossNsProps = (
     imports: ImportsBuilder,
     targetNamespaceName: string,
@@ -174,8 +162,11 @@ const renderInterfacePropsBlock = (
     });
     for (const [namespace, alias] of propImports) addGiNamespace(imports, namespace, alias);
     const ownerLines = [...propLines];
-    if (glib === ACCESSIBLE_INTERFACE_GLIB_NAME) ownerLines.push(...accessiblePropLines(imports));
     const prerequisiteExtends = interfacePrerequisiteExtends(library, iface, targetNamespaceName, imports);
+    if (glib === ACCESSIBLE_INTERFACE_GLIB_NAME) {
+        imports.addNamed("@gtkx/react", ACCESSIBLE_PROPS_NAME, true);
+        prerequisiteExtends.push(ACCESSIBLE_PROPS_NAME);
+    }
     const extendsClause = prerequisiteExtends.length === 0 ? "" : ` extends ${prerequisiteExtends.join(", ")}`;
     addGiNamespace(imports, iface.namespace.name, giNamespaceAlias(iface.namespace.name));
     const selfDefault = `${giNamespaceAlias(iface.namespace.name)}.${iface.klass.name}`;

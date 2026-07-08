@@ -3,9 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type ContainerProp, type ElementProp, loadConfig } from "@gtkx/config";
 import { describe, expect, it } from "vitest";
+import { BUILT_IN_ELEMENT_PROPS } from "../../src/store/react/built-ins.js";
 import { assembleElementProps } from "../../src/store/react/element-props.js";
 import { buildGirIndex } from "../../src/store/react/gir-index.js";
-import { BUILT_IN_ELEMENT_PROPS } from "../../src/store/react/built-ins.js";
 import { library } from "../helpers/library.js";
 
 const girIndex = buildGirIndex(library);

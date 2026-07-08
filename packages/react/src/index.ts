@@ -6,6 +6,7 @@ export { useProperty } from "./hooks/use-property.js";
 export { type SchemaRef, useSetting } from "./hooks/use-setting.js";
 export { useSignal } from "./hooks/use-signal.js";
 export { useTickCallback } from "./hooks/use-tick-callback.js";
+export type { AccessibleProps } from "./reconciler/accessible.js";
 export { createPortal } from "./reconciler/portal.js";
 export { setReconcilerErrorHandler } from "./reconciler/reconciler-error-handler.js";
 export { createReconcilerRoot, type ReconcilerRoot } from "./reconciler/reconciler-root.js";
