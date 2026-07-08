@@ -13,6 +13,7 @@ const result = spawnSync("wlheadless-run", ["-c", "weston", "--", command, ...ar
         ...process.env,
         GDK_BACKEND: "wayland",
         GSK_RENDERER: "cairo",
+        GDK_DEBUG: "no-vsync",
         LIBGL_ALWAYS_SOFTWARE: "1",
         GDK_DISABLE: "vulkan",
         ALSOFT_DRIVERS: "null",
