@@ -282,12 +282,13 @@ const createInitialItems = (): CanvasItem[] => {
 
 function useDndRefs() {
     const contextMenuRef = useRef<Gtk.Popover | null>(null);
+    const contextMenuSelectionRef = useRef<ContextMenuState | null>(null);
     const entryRef = useRef<Gtk.Entry | null>(null);
     const buttonRefs = useRef<Map<string, Gtk.Widget>>(new Map());
     const itemHalves = useRef<Map<string, { halfW: number; halfH: number }>>(new Map());
     const itemRadii = useRef<Map<string, number>>(new Map());
     const dragHotspotRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-    return { contextMenuRef, entryRef, buttonRefs, itemHalves, itemRadii, dragHotspotRef };
+    return { contextMenuRef, contextMenuSelectionRef, entryRef, buttonRefs, itemHalves, itemRadii, dragHotspotRef };
 }
 
 type DndRefs = ReturnType<typeof useDndRefs>;
@@ -402,7 +403,14 @@ function useItemDragHandlers(args: DndHandlerArgs) {
 }
 
 function useContextMenuHandlers(args: DndHandlerArgs) {
-    const { items, setItems, contextMenu, setContextMenu, setEditState, refs } = args;
+    const { items, setItems, setContextMenu, setEditState, refs } = args;
+    const selectionRef = refs.contextMenuSelectionRef;
+
+    const closeContextMenu = () => {
+        refs.contextMenuRef.current?.popdown();
+        selectionRef.current = null;
+        setContextMenu(null);
+    };
 
     const handleContextMenu = (clickX: number, clickY: number) => {
         const hitItem = items.find((item) => {
@@ -410,34 +418,37 @@ function useContextMenuHandlers(args: DndHandlerArgs) {
             const size = 2 * r;
             return clickX >= item.x && clickX <= item.x + size && clickY >= item.y && clickY <= item.y + size;
         });
-        setContextMenu({ x: clickX, y: clickY, itemId: hitItem?.id ?? null });
+        const selection: ContextMenuState = { x: clickX, y: clickY, itemId: hitItem?.id ?? null };
+        selectionRef.current = selection;
+        setContextMenu(selection);
         setTimeout(() => refs.contextMenuRef.current?.popup(), 0);
     };
 
     const handleAddItem = () => {
-        if (!contextMenu) return;
+        const selection = selectionRef.current;
+        if (!selection) return;
         const id = String(nextItemNumber);
         const label = `Item ${nextItemNumber}`;
         nextItemNumber++;
         setItems((prev) => [
             ...prev,
-            { id, label, style: initialItemStyle(), x: contextMenu.x, y: contextMenu.y, angle: 0, angleDelta: 0 },
+            { id, label, style: initialItemStyle(), x: selection.x, y: selection.y, angle: 0, angleDelta: 0 },
         ]);
-        refs.contextMenuRef.current?.popdown();
-        setContextMenu(null);
+        closeContextMenu();
     };
 
     const handleEditItem = () => {
-        if (!contextMenu?.itemId) return;
-        setEditState({ itemId: contextMenu.itemId });
+        const itemId = selectionRef.current?.itemId;
+        if (!itemId) return;
+        setEditState({ itemId });
         refs.contextMenuRef.current?.popdown();
     };
 
     const handleDeleteItem = () => {
-        if (!contextMenu?.itemId) return;
-        setItems((prev) => prev.filter((item) => item.id !== contextMenu.itemId));
-        refs.contextMenuRef.current?.popdown();
-        setContextMenu(null);
+        const itemId = selectionRef.current?.itemId;
+        if (!itemId) return;
+        setItems((prev) => prev.filter((item) => item.id !== itemId));
+        closeContextMenu();
     };
 
     return { handleContextMenu, handleAddItem, handleEditItem, handleDeleteItem };
