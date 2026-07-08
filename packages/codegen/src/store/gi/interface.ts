@@ -1,5 +1,5 @@
 import { toPascalCase } from "@gtkx/utils";
-import { resolvePrerequisiteReference, reservedSignalMemberRename } from "../../analysis/inheritance.js";
+import { reservedSignalMemberRename, resolvePrerequisiteReference } from "../../analysis/inheritance.js";
 import type { GirClass } from "../../gir/class.js";
 import type { GirFunction } from "../../gir/function.js";
 import type { ModuleContext } from "../../writer/context.js";

@@ -11,8 +11,8 @@ export {
     getWrapperClass,
     registerInterface,
     registerWrapperClass,
-    setHandle,
     type StaticBase,
+    setHandle,
     tryGetHandle,
     wrapHandle,
 } from "./registry.js";

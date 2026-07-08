@@ -98,12 +98,6 @@ const ancestorClassMethodSignatures = (context: ModuleContext, klass: GirClass):
     return signatures;
 };
 
-/**
- * Names of an implemented interface's methods that collide with a parent-class method of a
- * non-identical signature. Such a member cannot be declaration-merged onto the class type (the
- * merged bases would disagree), so it is omitted from the interface-extends clause; the class's own
- * inherited member governs.
- */
 export const collectInterfaceMergeOmissions = (
     context: ModuleContext,
     klass: GirClass,
@@ -216,7 +210,9 @@ const conflictingMethodName = (className: string, methodName: string): string =>
     `${lowerFirst(className)}${toPascalCase(methodName)}`;
 
 export const reservedSignalMemberRename = (className: string, callable: GirFunction): string | undefined =>
-    RESERVED_SIGNAL_MEMBERS.has(methodExportName(callable)) ? conflictingMethodName(className, callable.name) : undefined;
+    RESERVED_SIGNAL_MEMBERS.has(methodExportName(callable))
+        ? conflictingMethodName(className, callable.name)
+        : undefined;
 
 const hasParameterEnumConflict = (context: ModuleContext, own: GirFunction, inherited: InheritedMethod): boolean => {
     const ownParams = inputParameters(context.library, own);

@@ -1,27 +1,16 @@
 import { join, relative, resolve } from "node:path";
 import ts from "typescript";
 
-/**
- * A generated store module: its store-relative path and TypeScript source text.
- */
 export type StoreSourceFile = {
     fileName: string;
     source: string;
 };
 
-/**
- * Inputs for {@link typecheckStore}.
- */
 export type TypecheckStoreParams = {
-    /** Directory holding the generated `.ts`/`.tsx` sources to check. */
     storeDir: string;
-    /** The generated modules that make up the store. */
     files: StoreSourceFile[];
-    /** Package name of the store, e.g. `@gtkx/gi`. */
     packageName: string;
-    /** The store manifest `exports` map, used to resolve the store's own subpaths. */
     exports: Record<string, unknown>;
-    /** Directory whose `node_modules` provides the store's runtime dependencies. */
     resolveFrom: string;
 };
 
@@ -49,13 +38,13 @@ const COMPILER_FLAGS = {
     noEmit: true,
 };
 
-const isGenerated = (specifier: string, pkg: string): boolean =>
-    specifier === pkg || specifier.startsWith(`${pkg}/`);
+const isGenerated = (specifier: string, pkg: string): boolean => specifier === pkg || specifier.startsWith(`${pkg}/`);
 
 const isGeneratedSpecifier = (specifier: string): boolean =>
     GENERATED_PACKAGES.some((pkg) => isGenerated(specifier, pkg));
 
-const isExternalSpecifier = (specifier: string): boolean => !specifier.startsWith(".") && !isGeneratedSpecifier(specifier);
+const isExternalSpecifier = (specifier: string): boolean =>
+    !specifier.startsWith(".") && !isGeneratedSpecifier(specifier);
 
 const selfPaths = (
     packageName: string,
@@ -86,12 +75,27 @@ const buildOptions = (params: TypecheckStoreParams): ts.CompilerOptions => {
 
 const createHost = (options: ts.CompilerOptions, resolveFrom: string, storeDir: string): ts.CompilerHost => {
     const host = ts.createCompilerHost(options, true);
-    const cache = ts.createModuleResolutionCache(host.getCurrentDirectory(), (name) => host.getCanonicalFileName(name), options);
+    const cache = ts.createModuleResolutionCache(
+        host.getCurrentDirectory(),
+        (name) => host.getCanonicalFileName(name),
+        options,
+    );
     const externalOrigin = join(resolveFrom, "__gtkx_codegen_typecheck__.ts");
     const generatedOrigin = join(storeDir, "__gtkx_codegen_generated__.ts");
-    const resolve = (name: string, origin: string, redirected: ts.ResolvedProjectReference | undefined, mode: ts.ResolutionMode) =>
-        ts.resolveModuleName(name, origin, options, host, cache, redirected, mode);
-    host.resolveModuleNameLiterals = (moduleLiterals, containingFile, redirectedReference, _compilerOptions, containingSourceFile) =>
+    const resolve = (
+        name: string,
+        origin: string,
+        redirected: ts.ResolvedProjectReference | undefined,
+        mode: ts.ResolutionMode,
+    ) => ts.resolveModuleName(name, origin, options, host, cache, redirected, mode);
+    // biome-ignore lint/complexity/useMaxParams: TypeScript's CompilerHost.resolveModuleNameLiterals dictates this arity.
+    host.resolveModuleNameLiterals = (
+        moduleLiterals,
+        containingFile,
+        redirectedReference,
+        _compilerOptions,
+        containingSourceFile,
+    ) =>
         moduleLiterals.map((literal) => {
             const name = literal.text;
             const mode = ts.getModeForUsageLocation(containingSourceFile, literal, options);
@@ -115,14 +119,6 @@ const formatDiagnostics = (packageName: string, storeDir: string, diagnostics: t
     return `Type checking the generated ${packageName} store found ${diagnostics.length} error(s):\n${messages.join("\n")}`;
 };
 
-/**
- * Type check the generated store as a real TypeScript program.
- *
- * Builds a `ts.Program` over the generated sources in {@link TypecheckStoreParams.storeDir},
- * resolving the store's own subpaths against those sources, its sibling generated package against
- * the already-written store, and every other dependency from
- * {@link TypecheckStoreParams.resolveFrom}. Throws when any generated module has a type error.
- */
 export const typecheckStore = (params: TypecheckStoreParams): void => {
     const options = buildOptions(params);
     const host = createHost(options, params.resolveFrom, params.storeDir);

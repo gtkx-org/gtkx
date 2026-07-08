@@ -38,29 +38,38 @@ export type PropertyAccessorArgs = {
     inheritedType?: string | undefined;
 };
 
-const resolveAccessor = (args: PropertyAccessorArgs): ResolvedAccessor | undefined => {
+type AccessorDelegate = { member: string | undefined; method: GirFunction | undefined };
+
+const resolveGetterDelegate = (args: PropertyAccessorArgs, jsName: string): AccessorDelegate => {
     const { context, property, claimedNames, methodByName } = args;
+    const member = delegateMember(property.getter, jsName, claimedNames);
+    const method =
+        member !== undefined && property.getter !== undefined ? methodByName.get(property.getter) : undefined;
+    const delegatable =
+        method === undefined ||
+        (inputParameters(context.library, method).length === 0 &&
+            !renderMethodReturnType(context, method).startsWith("["));
+    return delegatable ? { member, method } : { member: undefined, method: undefined };
+};
+
+const resolveSetterDelegate = (args: PropertyAccessorArgs, jsName: string, writable: boolean): AccessorDelegate => {
+    const { context, property, claimedNames, methodByName } = args;
+    const member = writable ? delegateMember(property.setter, jsName, claimedNames) : undefined;
+    const method =
+        member !== undefined && property.setter !== undefined ? methodByName.get(property.setter) : undefined;
+    const delegatable = method === undefined || inputParameters(context.library, method).length === 1;
+    return delegatable ? { member, method } : { member: undefined, method: undefined };
+};
+
+const resolveAccessor = (args: PropertyAccessorArgs): ResolvedAccessor | undefined => {
+    const { context, property, claimedNames } = args;
     const jsName = toCamelIdentifier(property.name);
     if (claimedNames.has(jsName)) return undefined;
     if (jsName === "constructor") return undefined;
 
     const writable = isConstructableProperty(property);
-    const rawGetterMember = delegateMember(property.getter, jsName, claimedNames);
-    const rawGetMethod =
-        rawGetterMember !== undefined && property.getter !== undefined ? methodByName.get(property.getter) : undefined;
-    const getterDelegatable =
-        rawGetMethod === undefined ||
-        (inputParameters(context.library, rawGetMethod).length === 0 &&
-            !renderMethodReturnType(context, rawGetMethod).startsWith("["));
-    const getterMember = getterDelegatable ? rawGetterMember : undefined;
-    const getMethod = getterDelegatable ? rawGetMethod : undefined;
-
-    const rawSetterMember = writable ? delegateMember(property.setter, jsName, claimedNames) : undefined;
-    const rawSetMethod =
-        rawSetterMember !== undefined && property.setter !== undefined ? methodByName.get(property.setter) : undefined;
-    const setterDelegatable = rawSetMethod === undefined || inputParameters(context.library, rawSetMethod).length === 1;
-    const setterMember = setterDelegatable ? rawSetterMember : undefined;
-    const setMethod = setterDelegatable ? rawSetMethod : undefined;
+    const { member: getterMember, method: getMethod } = resolveGetterDelegate(args, jsName);
+    const { member: setterMember, method: setMethod } = resolveSetterDelegate(args, jsName, writable);
     const setParam = setMethod?.parameters[0];
 
     const hasGetter = property.readable || getterMember !== undefined;
@@ -78,12 +87,6 @@ const resolveAccessor = (args: PropertyAccessorArgs): ResolvedAccessor | undefin
     return { jsName, tsType, hasGetter, writable, getterMember, getMethod, setterMember };
 };
 
-/**
- * The TypeScript type a class property's generated accessor would declare, resolved as if all of the
- * owning class's methods were emitted. Used to reconcile a subclass that redeclares an inherited
- * property with an incompatible type: the subclass accessor adopts this inherited type so the
- * override stays sound while its runtime body still calls the subclass's own getter/setter.
- */
 export const resolveAccessorType = (
     context: ModuleContext,
     property: GirProperty,

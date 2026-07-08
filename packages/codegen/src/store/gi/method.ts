@@ -89,6 +89,7 @@ export const renderPromisifiedBody = (
         context.addRuntimeImport("getHandle");
         leadingExpressions.push("getHandle(this)");
     }
+    const promisifyContext: PromisifyContext = { context, asyncFn, closureIndices, lengthFor };
     let cancellableExpression = "null";
     let sawOptional = false;
     asyncFn.parameters.forEach((parameter, index) => {
@@ -98,22 +99,37 @@ export const renderPromisifiedBody = (
             sawOptional = true;
             return;
         }
-        if (isCallbackParameter(context, parameter)) return;
-        if (closureIndices.has(index)) return;
-        if (isOutParameter(parameter) && !isCallerAllocatedOut(parameter)) return;
+        if (skipPromisifiedParameter(promisifyContext, parameter, index)) return;
         if (parameter.optional) sawOptional = true;
-        const sourceIndex = lengthFor.get(index);
-        if (sourceIndex !== undefined) {
-            const source = asyncFn.parameters[sourceIndex];
-            if (source !== undefined) {
-                leadingExpressions.push(arrayLengthArgument(source, sourceIndex));
-                return;
-            }
-        }
-        leadingExpressions.push(parameterCallExpression(context, parameter, index, sawOptional));
+        leadingExpressions.push(promisifiedArgument(promisifyContext, parameter, index, sawOptional));
     });
     const leadingArguments = leadingExpressions.length > 0 ? `, ${leadingExpressions.join(", ")}` : "";
     return `return promisify(${bindingExpression}, this.${finishMember}.bind(this), ${cancellableExpression}${leadingArguments});`;
+};
+
+type PromisifyContext = {
+    context: ModuleContext;
+    asyncFn: GirFunction;
+    closureIndices: Set<number>;
+    lengthFor: Map<number, number>;
+};
+
+const skipPromisifiedParameter = (promisify: PromisifyContext, parameter: GirParameter, index: number): boolean =>
+    isCallbackParameter(promisify.context, parameter) ||
+    promisify.closureIndices.has(index) ||
+    (isOutParameter(parameter) && !isCallerAllocatedOut(parameter));
+
+const promisifiedArgument = (
+    promisify: PromisifyContext,
+    parameter: GirParameter,
+    index: number,
+    sawOptional: boolean,
+): string => {
+    const { context, asyncFn, lengthFor } = promisify;
+    const sourceIndex = lengthFor.get(index);
+    const source = sourceIndex === undefined ? undefined : asyncFn.parameters[sourceIndex];
+    if (sourceIndex !== undefined && source !== undefined) return arrayLengthArgument(source, sourceIndex);
+    return parameterCallExpression(context, parameter, index, sawOptional);
 };
 
 const findCancellableIndex = (context: ModuleContext, parameters: GirParameter[]): number => {
@@ -199,49 +215,74 @@ export const planCallArgs = (context: ModuleContext, fn: GirFunction): CallArgPl
             inputExpr: "getHandle(this)",
         });
     }
-    const instanceOffset = fn.instance === undefined ? 0 : 1;
-    const lengthFor = arrayLengthSources(context.library, fn);
-    const closureIndices = closureAndDestroyIndices(fn);
-    const folded = foldedLengthIndices(context.library, fn);
-    fn.parameters.forEach((parameter, index) => {
-        if (parameter.isVarargs) return;
-        if (closureIndices.has(index)) return;
-        if (isOutParameter(parameter)) {
-            plan.push(planOutParam(context, parameter, instanceOffset, folded.has(index)));
-            return;
-        }
-        if (isCallerAllocatedOut(parameter)) {
-            plan.push(planCallerOut(context, parameter, instanceOffset));
-            return;
-        }
-        if (isInoutParameter(parameter)) {
-            const lengthSourceIndex = lengthFor.get(index);
-            const lengthSourceParam =
-                lengthSourceIndex === undefined ? undefined : fn.parameters[lengthSourceIndex];
-            const lengthSource =
-                lengthSourceIndex !== undefined && lengthSourceParam !== undefined
-                    ? { source: lengthSourceParam, index: lengthSourceIndex }
-                    : undefined;
-            plan.push(
-                planInoutParam(context, parameter, { index, instanceOffset, consumed: folded.has(index), lengthSource }),
-            );
-            return;
-        }
-        const sourceIndex = lengthFor.get(index);
-        if (sourceIndex !== undefined) {
-            const source = fn.parameters[sourceIndex];
-            const descriptor = renderDescriptor(context, parameter.type, parameter.transferOwnership, {
-                argIndexOffset: instanceOffset,
-            });
-            plan.push({
-                paramLiteral: paramDescriptorLiteral(descriptor, {}),
-                inputExpr: source === undefined ? "0" : arrayLengthArgument(source, sourceIndex),
-            });
-            return;
-        }
-        plan.push(planInParam(context, parameter, index, instanceOffset));
-    });
+    const planContext: PlanArgsContext = {
+        fn,
+        instanceOffset: fn.instance === undefined ? 0 : 1,
+        lengthFor: arrayLengthSources(context.library, fn),
+        closureIndices: closureAndDestroyIndices(fn),
+        folded: foldedLengthIndices(context.library, fn),
+    };
+    for (const [index, parameter] of fn.parameters.entries()) {
+        const entry = planParameter(context, parameter, index, planContext);
+        if (entry !== undefined) plan.push(entry);
+    }
     return plan;
+};
+
+type PlanArgsContext = {
+    fn: GirFunction;
+    instanceOffset: number;
+    lengthFor: Map<number, number>;
+    closureIndices: Set<number>;
+    folded: Set<number>;
+};
+
+const planParameter = (
+    context: ModuleContext,
+    parameter: GirParameter,
+    index: number,
+    planContext: PlanArgsContext,
+): CallArgPlan | undefined => {
+    const { instanceOffset, folded, closureIndices, lengthFor } = planContext;
+    if (parameter.isVarargs || closureIndices.has(index)) return undefined;
+    if (isOutParameter(parameter)) return planOutParam(context, parameter, instanceOffset, folded.has(index));
+    if (isCallerAllocatedOut(parameter)) return planCallerOut(context, parameter, instanceOffset);
+    if (isInoutParameter(parameter)) return planInoutArgument(context, parameter, index, planContext);
+    const sourceIndex = lengthFor.get(index);
+    if (sourceIndex !== undefined) return planLengthArgument(context, parameter, sourceIndex, planContext);
+    return planInParam(context, parameter, index, instanceOffset);
+};
+
+const planInoutArgument = (
+    context: ModuleContext,
+    parameter: GirParameter,
+    index: number,
+    planContext: PlanArgsContext,
+): CallArgPlan => {
+    const { fn, instanceOffset, folded, lengthFor } = planContext;
+    const lengthSourceIndex = lengthFor.get(index);
+    const lengthSourceParam = lengthSourceIndex === undefined ? undefined : fn.parameters[lengthSourceIndex];
+    const lengthSource =
+        lengthSourceIndex !== undefined && lengthSourceParam !== undefined
+            ? { source: lengthSourceParam, index: lengthSourceIndex }
+            : undefined;
+    return planInoutParam(context, parameter, { index, instanceOffset, consumed: folded.has(index), lengthSource });
+};
+
+const planLengthArgument = (
+    context: ModuleContext,
+    parameter: GirParameter,
+    sourceIndex: number,
+    planContext: PlanArgsContext,
+): CallArgPlan => {
+    const source = planContext.fn.parameters[sourceIndex];
+    const descriptor = renderDescriptor(context, parameter.type, parameter.transferOwnership, {
+        argIndexOffset: planContext.instanceOffset,
+    });
+    return {
+        paramLiteral: paramDescriptorLiteral(descriptor, {}),
+        inputExpr: source === undefined ? "0" : arrayLengthArgument(source, sourceIndex),
+    };
 };
 
 const planOutParam = (
@@ -256,7 +297,10 @@ const planOutParam = (
     return { paramLiteral: paramDescriptorLiteral(descriptor, { direction: "out", consumed }), inputExpr: undefined };
 };
 
-const constructibleName = (context: ModuleContext, ref: GirParameter["type"]): { namespaceName: string; typeName: string } | undefined => {
+const constructibleName = (
+    context: ModuleContext,
+    ref: GirParameter["type"],
+): { namespaceName: string; typeName: string } | undefined => {
     let current = ref;
     while (current !== undefined) {
         const resolved = context.library.typeOf(current);

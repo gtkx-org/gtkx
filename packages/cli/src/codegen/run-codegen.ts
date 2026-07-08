@@ -43,13 +43,15 @@ const removeSharedStoreShadow = (cwd: string): void => {
     }
 };
 
-const codegenOptions = (
-    store: CodegenStore,
-    libraries: string[],
-    girPath: string[],
-    elementProps: Record<string, ElementProp[]>,
-    resolveFrom: string,
-) => ({
+type CodegenOptionsInput = {
+    store: CodegenStore;
+    libraries: string[];
+    girPath: string[];
+    elementProps: Record<string, ElementProp[]>;
+    resolveFrom: string;
+};
+
+const codegenOptions = ({ store, libraries, girPath, elementProps, resolveFrom }: CodegenOptionsInput) => ({
     libraries,
     girPath,
     elementProps,
@@ -103,7 +105,10 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
         }
     }
 
-    const result = await runCodegenCore({ ...codegenOptions(store, libraries, girPath, elementProps, cwd), force });
+    const result = await runCodegenCore({
+        ...codegenOptions({ store, libraries, girPath, elementProps, resolveFrom: cwd }),
+        force,
+    });
 
     return {
         regenerated: result.regenerated,

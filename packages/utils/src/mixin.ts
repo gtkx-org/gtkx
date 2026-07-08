@@ -1,9 +1,5 @@
 import type { AnyClass } from "./class.js";
 
-/**
- * Instance surface a {@link Mixin} base exposes: the signal plumbing (`connect`/`emit`) that a
- * generated interface mixin delegates to through `super` for signals it does not itself handle.
- */
 export type MixinReceiver = {
     connect(signal: string, handler: (...args: unknown[]) => unknown, after?: boolean): number;
     emit(signal: string, ...args: unknown[]): unknown;

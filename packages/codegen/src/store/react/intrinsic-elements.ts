@@ -48,10 +48,6 @@ export const implementedInterfaces = (
 
 export const glibNameOf = (klass: GirClass): string | undefined => klass.glibTypeName ?? klass.cType;
 
-/**
- * Import alias for a GI namespace inside a JSX module. Suffixed with `$` so it never collides with
- * an element component export, whose name is a GObject type name (which cannot contain `$`).
- */
 export const giNamespaceAlias = (namespaceName: string): string => `${namespaceName}$`;
 
 export const interfaceHasPropsBody = (klass: GirClass): boolean =>

@@ -8,8 +8,8 @@ import type { ImportsBuilder } from "../../writer/imports.js";
 import type { ElementPropTypegen } from "./element-prop-types.js";
 import {
     collectInterfacePropsClasses,
-    giNamespaceAlias,
     type GlibNamedClass,
+    giNamespaceAlias,
     glibNameOf,
     interfaceHasPropsBody,
     newlyImplementedInterfaces,

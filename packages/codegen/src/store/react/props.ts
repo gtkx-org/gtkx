@@ -9,7 +9,12 @@ import type { GirSignal } from "../../gir/parameter.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
 import type { TypeId } from "../../gir/type-id.js";
 import { renderJsDoc } from "../../writer/doc.js";
-import { classExposesMethod, giNamespaceAlias, isIntrinsicElementClass, signalHandlerName } from "./intrinsic-elements.js";
+import {
+    classExposesMethod,
+    giNamespaceAlias,
+    isIntrinsicElementClass,
+    signalHandlerName,
+} from "./intrinsic-elements.js";
 
 type IntrinsicElementPropsEntries = {
     propLines: string[];

@@ -5,7 +5,6 @@ import { LIB, VALUE_SIZE, VALUE_T } from "./library.js";
 import { getHandle } from "./registry.js";
 import { fromValue, newValueForDescriptor, toValue } from "./value.js";
 
-
 const gObjectNewWithProperties = bind(
     LIB,
     "g_object_new_with_properties",
