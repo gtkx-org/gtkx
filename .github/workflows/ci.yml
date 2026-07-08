@@ -295,7 +295,7 @@ jobs:
             -Dbackend-vnc=false -Dbackend-wayland=false -Dbackend-pipewire=false \
             -Drenderer-gl=false -Dxwayland=false -Dremoting=false -Dpipewire=false \
             -Dsystemd=false -Dcolor-management-lcms=false \
-            -Dimage-jpeg=false -Dimage-webp=false \
+            -Dimage-jpeg=false -Dimage-webp=false -Dtest-junit-xml=false \
             -Ddemo-clients=false -Dsimple-clients=[] -Dtools=[]
           sudo ninja -C "$RUNNER_TEMP/weston-${WESTON}/build" install
 
