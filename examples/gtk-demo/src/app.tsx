@@ -119,7 +119,10 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
                     cssClasses={currentDemo.windowCssClasses}
                     defaultWidget={defaultWidget}
                     titlebar={titlebar}
-                    onCloseRequest={quit}
+                    onCloseRequest={() => {
+                        onClose();
+                        return true;
+                    }}
                 >
                     <DemoComponent onClose={onClose} window={windowRef} />
                 </GtkWindow>,
