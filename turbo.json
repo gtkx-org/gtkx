@@ -121,6 +121,7 @@
                 "gtkx.config.ts",
                 "packages/cli/src/**",
                 "packages/codegen/src/**",
+                "packages/codegen/overrides/**",
                 "packages/config/src/**",
                 "packages/utils/src/**",
                 "packages/ffi/src/**",

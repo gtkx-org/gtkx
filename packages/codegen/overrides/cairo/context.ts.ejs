@@ -1259,11 +1259,10 @@ Context.prototype.showTextGlyphs = function (
 ): void {
     const glyphBuf = allocGlyphBuffer(glyphs);
     const clusterBuf = allocClusterBuffer(clusters);
-    const utf8 = new TextEncoder().encode(text);
     cairoShowTextGlyphs(
         getHandle(this),
         text,
-        utf8.length,
+        -1,
         glyphBuf,
         glyphs.length,
         clusterBuf,

@@ -274,8 +274,6 @@ ScaledFont.prototype.textToGlyphs = function (
     y: number,
     text: string,
 ): [CairoGlyph[], CairoTextCluster[], TextClusterFlags] {
-    const utf8 = new TextEncoder().encode(text);
-
     const glyphsRef: { value: ExternalObject<Handle> | null } = { value: null };
     const numGlyphsRef = { value: 0 };
     const clustersRef: { value: ExternalObject<Handle> | null } = { value: null };
@@ -287,7 +285,7 @@ ScaledFont.prototype.textToGlyphs = function (
         x,
         y,
         text,
-        utf8.length,
+        -1,
         glyphsRef,
         numGlyphsRef,
         clustersRef,
