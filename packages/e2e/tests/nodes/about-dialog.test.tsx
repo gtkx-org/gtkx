@@ -1,5 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkAboutDialog } from "@gtkx/jsx/gtk";
+import { rootElement } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -15,7 +16,9 @@ describe("render - AboutDialog credit sections", () => {
     it("creates AboutDialog with credit sections", async () => {
         const ref = createRef<Gtk.AboutDialog>();
 
-        await render(<GtkAboutDialog ref={ref} programName="GTKX" creditSections={SECTIONS} />);
+        await render(<GtkAboutDialog ref={ref} programName="GTKX" creditSections={SECTIONS} />, {
+            container: rootElement,
+        });
 
         expect(ref.current?.getProgramName()).toBe("GTKX");
     });
@@ -23,7 +26,9 @@ describe("render - AboutDialog credit sections", () => {
     it("keeps the initial sections when the prop changes", async () => {
         const ref = createRef<Gtk.AboutDialog>();
 
-        const { rerender } = await render(<GtkAboutDialog ref={ref} programName="GTKX" creditSections={SECTIONS} />);
+        const { rerender } = await render(<GtkAboutDialog ref={ref} programName="GTKX" creditSections={SECTIONS} />, {
+            container: rootElement,
+        });
         await rerender(
             <GtkAboutDialog
                 ref={ref}
@@ -38,7 +43,9 @@ describe("render - AboutDialog credit sections", () => {
     it("applies sections provided after mount only once", async () => {
         const ref = createRef<Gtk.AboutDialog>();
 
-        const { rerender } = await render(<GtkAboutDialog ref={ref} programName="GTKX" />);
+        const { rerender } = await render(<GtkAboutDialog ref={ref} programName="GTKX" />, {
+            container: rootElement,
+        });
         await rerender(<GtkAboutDialog ref={ref} programName="GTKX" creditSections={SECTIONS} />);
 
         expect(ref.current?.getProgramName()).toBe("GTKX");
