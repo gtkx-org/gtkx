@@ -7,6 +7,12 @@ import type { GirParameter, GirReturnValue } from "../../src/gir/parameter.js";
 import type { GirRecord } from "../../src/gir/record.js";
 import type { GirType } from "../../src/gir/type.js";
 import type { TypeId } from "../../src/gir/type-id.js";
+import {
+    collectIntrinsicElementClasses,
+    glibNameOf,
+    implementedInterfaces,
+    interfaceHasPropsBody,
+} from "../../src/store/react/intrinsic-elements.js";
 import { generateJsxFiles } from "../../src/store/react/pipeline.js";
 import { transpileSource } from "../../src/transpile.js";
 import { giModules, library } from "../helpers/library.js";
@@ -114,7 +120,7 @@ describe("codegen gi pipeline", () => {
     }, 60000);
 });
 
-describe("codegen reconciler metadata", () => {
+describe("codegen element-prop metadata", () => {
     it("emits the serializable element-prop table", () => {
         expect(reactPipeline.metadata).toContain("export const ELEMENT_PROPS:");
         expect(reactPipeline.metadata).toContain('"adopt": true');
@@ -320,7 +326,7 @@ describe("codegen runtime tables", () => {
     });
 });
 
-describe("repository lookups", () => {
+describe("Library.resolveType", () => {
     it("resolves a known cross-namespace type", () => {
         expect(library.resolveType("GLib", "Variant")).toBeDefined();
     });
@@ -337,5 +343,78 @@ describe("repository lookups", () => {
             return local !== "va_list" && local !== "";
         });
         expect(unexpected).toEqual([]);
+    });
+});
+
+const jsxSources = (): string[] => generateJsxFiles(library).namespaces.map((entry) => entry.source);
+
+const interfacePropsNames = (): Set<string> => {
+    const names = new Set<string>();
+    for (const widget of collectIntrinsicElementClasses(library)) {
+        for (const iface of implementedInterfaces(widget.klass, widget.namespace, library)) {
+            if (!interfaceHasPropsBody(iface.klass)) continue;
+            const glib = glibNameOf(iface.klass);
+            if (glib !== undefined) names.add(`${glib}Props`);
+        }
+    }
+    return names;
+};
+
+const matchAll = (sources: string[], pattern: RegExp): string[] =>
+    sources.flatMap((source) => [...source.matchAll(pattern)].map((match) => match[1] ?? ""));
+
+const stripDocComments = (source: string): string => source.replace(/\/\*\*[\s\S]*?\*\//g, "");
+
+const moduleSource = (directory: string): string => {
+    const found = giModules.find((entry) => entry.directory === directory);
+    expect(found, `expected generated module for ${directory}`).toBeDefined();
+    return stripDocComments(found?.source ?? "");
+};
+
+describe("identifier naming convention", () => {
+    it("exports aliases under their GIR name, never the C-prefixed c:type", () => {
+        const glib = moduleSource("glib");
+        expect(glib).toMatch(/export type Quark\b/);
+        expect(glib).toMatch(/export type Pid\b/);
+        expect(glib).not.toMatch(/\bGQuark\b/);
+        expect(glib).not.toMatch(/\bGPid\b/);
+    });
+
+    it("publishes the GObject Type alias under its GIR name", () => {
+        const gobject = moduleSource("gobject");
+        expect(gobject).toMatch(/export type Type\b/);
+        expect(gobject).not.toMatch(/export type GType\b/);
+    });
+
+    it("emits a named type for every top-level callback, under its GIR name", () => {
+        const glib = moduleSource("glib");
+        expect(glib).toContain("export type SourceFunc =");
+        expect(glib).toContain("export type CompareFunc =");
+    });
+
+    it("exports the shadowed short name for a shadowing namespace function", () => {
+        const glib = moduleSource("glib");
+        expect(glib).toMatch(/\bidleAdd\b/);
+        expect(glib).not.toMatch(/\bidleAddFull\b/);
+    });
+
+    it("emits record, union, and enum identifiers verbatim from the GIR name", () => {
+        const harfbuzz = moduleSource("harfbuzz");
+        expect(harfbuzz).toMatch(/export class font_t\b/);
+        expect(harfbuzz).toMatch(/export enum memory_mode_t\b/);
+        expect(harfbuzz).not.toMatch(/export class FontT\b/);
+        expect(harfbuzz).not.toMatch(/export enum MemoryModeT\b/);
+    });
+});
+
+describe("jsx prop-interface naming convention", () => {
+    it("names every exported props interface after an element or implemented interface glib name", () => {
+        const sources = jsxSources();
+        const declaredProps = matchAll(sources, /export interface (\w+Props)\b/g);
+        const elementGlibNames = matchAll(sources, /^\s*(\w+): \w+Props;$/gm);
+        const allowed = new Set([...elementGlibNames.map((name) => `${name}Props`), ...interfacePropsNames()]);
+
+        const offenders = declaredProps.filter((name) => !allowed.has(name));
+        expect(offenders, `unexpected props interface names: ${offenders.join(", ")}`).toEqual([]);
     });
 });

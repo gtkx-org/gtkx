@@ -3,7 +3,7 @@ import { Duplex } from "node:stream";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppRouter } from "../src/app-router.js";
 import { ErrorCode, ProtocolError } from "../src/protocol/errors.js";
-import type { Message, Request, Response } from "../src/protocol/types.js";
+import type { Message, Request, Response } from "../src/protocol/schemas.js";
 import { type AppConnectionEvents, type AppConnections, ProtocolConnection } from "../src/transport.js";
 
 class FakeSocket extends Duplex {

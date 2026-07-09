@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { resolveConfig } from "../src/config.js";
 import { GTKX_CONFIG_VIRTUAL_ID, RESOLVED_GTKX_CONFIG_VIRTUAL_ID, renderConfigModule } from "../src/virtual.js";
 
-describe("virtual module ids", () => {
+describe("GTKX_CONFIG_VIRTUAL_ID / RESOLVED_GTKX_CONFIG_VIRTUAL_ID", () => {
     it("marks the resolved id with the rollup virtual prefix", () => {
         expect(GTKX_CONFIG_VIRTUAL_ID).toBe("virtual:gtkx-config");
         expect(RESOLVED_GTKX_CONFIG_VIRTUAL_ID).toBe("\0virtual:gtkx-config");

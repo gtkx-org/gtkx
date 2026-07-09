@@ -2,7 +2,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { compileSchemas } from "../gsettings/compile.js";
-import { findSchemaFiles, prependSchemaDir, stageSchema } from "../gsettings/env.js";
+import { findSchemaFiles, prependSchemaDir, stageSchema } from "../gsettings/schema.js";
 import { removeTempDir } from "../internal/staging-dir.js";
 
 export const prepareDevSchemaDir = (root: string, dataDir: string | null): string | null => {

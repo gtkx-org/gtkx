@@ -3,7 +3,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import type { RefObject } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AnimationCssProvider } from "../src/animation-css-provider.js";
-import type { AnimationProps } from "../src/types.js";
+import type { AnimationProps } from "../src/animation-types.js";
 import { WidgetAnimator } from "../src/widget-animator.js";
 
 const widgetRef = (widget: Gtk.Widget): RefObject<Gtk.Widget | null> => ({ current: widget });

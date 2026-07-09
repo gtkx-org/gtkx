@@ -5,7 +5,8 @@ import { isValidApplicationId } from "@gtkx/config/internal";
 import { errorMessage, packageVersion, upperFirst } from "@gtkx/utils";
 import { addDependency, detectPackageManager as nypmDetectPackageManager } from "nypm";
 import { x } from "tinyexec";
-import { isKnownPackageManager, isValidProjectName, PACKAGE_MANAGERS, type PackageManager } from "./options.js";
+import { isKnownPackageManager, PACKAGE_MANAGERS, type PackageManager } from "./package-managers.js";
+import { isValidProjectName } from "./project-name.js";
 import { listTemplates, renderFile, type TemplateContext } from "./templates.js";
 
 const selfVersion = packageVersion(import.meta.url);

@@ -4,7 +4,7 @@
         "**/scripts",
         "**/vitest.config.ts",
         "vitest.config.base.ts",
-        "gtkx.config.ts",
+        "gtkx.config.base.ts",
         ".dependency-cruiser.js"
     ],
     "compilerOptions": {

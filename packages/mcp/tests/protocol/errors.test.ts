@@ -49,14 +49,16 @@ describe("ProtocolError", () => {
     });
 });
 
-describe("error factory functions", () => {
+describe("noAppConnectedError", () => {
     it("noAppConnectedError creates correct error", () => {
         const error = noAppConnectedError();
 
         expect(error.code).toBe(ErrorCode.NO_APP_CONNECTED);
         expect(error.message).toContain("No GTKX application connected");
     });
+});
 
+describe("appNotFoundError", () => {
     it("appNotFoundError creates correct error", () => {
         const error = appNotFoundError("my-app");
 
@@ -64,7 +66,9 @@ describe("error factory functions", () => {
         expect(error.message).toContain("my-app");
         expect(error.data).toEqual({ applicationId: "my-app" });
     });
+});
 
+describe("widgetNotFoundError", () => {
     it("widgetNotFoundError creates correct error", () => {
         const error = widgetNotFoundError("widget-123");
 
@@ -72,7 +76,9 @@ describe("error factory functions", () => {
         expect(error.message).toContain("widget-123");
         expect(error.data).toEqual({ widgetId: "widget-123" });
     });
+});
 
+describe("requestTimeoutError", () => {
     it("requestTimeoutError creates correct error", () => {
         const error = requestTimeoutError(5000);
 
@@ -80,7 +86,9 @@ describe("error factory functions", () => {
         expect(error.message).toContain("5000");
         expect(error.data).toEqual({ timeout: 5000 });
     });
+});
 
+describe("invalidRequestError", () => {
     it("invalidRequestError creates correct error", () => {
         const error = invalidRequestError("missing field");
 
@@ -88,7 +96,9 @@ describe("error factory functions", () => {
         expect(error.message).toContain("missing field");
         expect(error.data).toEqual({ reason: "missing field" });
     });
+});
 
+describe("methodNotFoundError", () => {
     it("methodNotFoundError creates correct error", () => {
         const error = methodNotFoundError("unknown.method");
 

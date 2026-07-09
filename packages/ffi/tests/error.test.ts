@@ -1,13 +1,7 @@
 import { getHandle } from "@gtkx/ffi";
 import { FileError, Error as GError, quarkFromString } from "@gtkx/gi/glib";
-import type { Type } from "@gtkx/gi/gobject";
-import { typeFromName } from "@gtkx/gi/gobject";
-import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
 import { checkError, createErrorDomain } from "../src/error.js";
-import { instanceIsA } from "./helpers.js";
-
-const orientableGtype = (): Type => typeFromName("GtkOrientable");
 
 const FILE_ERROR_DOMAIN = 0xbe1;
 const FILE_ERROR_NOENT = 5;
@@ -93,26 +87,5 @@ describe("createErrorDomain", () => {
         const gerror = GError.newLiteral(quarkFromString("g-file-error-quark"), FileError.NOENT, "missing file");
 
         expect(gerror instanceof FileError).toBe(true);
-    });
-});
-
-describe("instanceIsA", () => {
-    it("returns true when the instance derives from the requested GType", () => {
-        const box = new Gtk.Box();
-        const widgetGtype = typeFromName("GtkWidget");
-
-        expect(instanceIsA(getHandle(box), widgetGtype)).toBe(true);
-    });
-
-    it("returns true when the instance implements an interface GType", () => {
-        const box = new Gtk.Box();
-
-        expect(instanceIsA(getHandle(box), orientableGtype())).toBe(true);
-    });
-
-    it("returns false when the instance does not derive from the requested GType", () => {
-        const label = new Gtk.Label({ label: "Test" });
-
-        expect(instanceIsA(getHandle(label), orientableGtype())).toBe(false);
     });
 });

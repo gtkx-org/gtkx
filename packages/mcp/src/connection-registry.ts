@@ -1,6 +1,6 @@
 import EventEmitter from "node:events";
 import type { Socket } from "node:net";
-import type { Message } from "./protocol/types.js";
+import type { Message } from "./protocol/schemas.js";
 import { type AppConnectionEvents, type AppConnections, ProtocolConnection } from "./transport.js";
 
 export class ConnectionRegistry extends EventEmitter<AppConnectionEvents> implements AppConnections {

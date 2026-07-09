@@ -1,5 +1,5 @@
 import * as Adw from "@gtkx/gi/adw";
-import type { Transition } from "./types.js";
+import type { Transition } from "./animation-types.js";
 
 const DEFAULT_STIFFNESS = 100;
 const DEFAULT_DAMPING = 10;

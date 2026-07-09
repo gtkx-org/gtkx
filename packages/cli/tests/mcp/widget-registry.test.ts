@@ -10,7 +10,7 @@ vi.mock("@gtkx/gi/gtk", () => ({
 }));
 
 import { WidgetRegistry } from "../../src/mcp/widget-registry.js";
-import { type FakeWidgetOverrides, makeFakeWidget } from "./_widget-helpers.js";
+import { type FakeWidgetOverrides, makeFakeWidget } from "./fake-widget.js";
 
 const makeWidget = (overrides: FakeWidgetOverrides = {}): never => makeFakeWidget({ type: "GtkLabel", ...overrides });
 

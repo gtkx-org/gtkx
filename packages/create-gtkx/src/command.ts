@@ -1,5 +1,5 @@
 import { defineCommand } from "citty";
-import { isKnownPackageManager, PACKAGE_MANAGER_FLAG_DESCRIPTION, type PackageManager } from "./options.js";
+import { isKnownPackageManager, PACKAGE_MANAGER_FLAG_DESCRIPTION, type PackageManager } from "./package-managers.js";
 import { scaffold } from "./scaffolder.js";
 
 export type CreateCommandArgs = {

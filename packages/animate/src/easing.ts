@@ -1,5 +1,5 @@
 import * as Adw from "@gtkx/gi/adw";
-import type { Easing } from "./types.js";
+import type { Easing } from "./animation-types.js";
 
 const easingByName: { [K in Easing]: Adw.Easing } = {
     linear: Adw.Easing.LINEAR,

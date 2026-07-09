@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { sortStringsBy } from "@gtkx/utils";
 import { type Container, traverse } from "./traversal.js";
-import { getWidgetAccessibleName } from "./widget-text.js";
+import { getWidgetAccessibleName } from "./widget-accessible-properties.js";
 
 const enumNamesByValue = (enumObject: Record<string, string | number>): Map<number, string> =>
     new Map<number, string>(

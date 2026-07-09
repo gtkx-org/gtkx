@@ -44,7 +44,7 @@ describe("gtkx vitest plugin", () => {
         expect(plugin.load).toBeDefined();
     });
 
-    it("forces the forks pool, enables globals, and sets 20s timeouts", () => {
+    it("forces the forks pool, enables globals, and sets 30s testTimeout/hookTimeout", () => {
         const result = callConfig(gtkx(), {});
         expect(result.test?.pool).toBe("forks");
         expect(result.test?.globals).toBe(true);

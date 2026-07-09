@@ -9,7 +9,13 @@ const log = createLogger("gl");
 
 const require = createRequire(import.meta.url);
 const scriptDir = dirname(fileURLToPath(import.meta.url));
-const registryPath = join(dirname(require.resolve("@gtkx/codegen/package.json")), "registry", "gl.xml");
+const registryPath = join(
+    dirname(require.resolve("@gtkx/codegen/package.json")),
+    "src",
+    "khronos",
+    "registry",
+    "gl.xml",
+);
 const glSrcDir = join(scriptDir, "..", "src");
 const outputDir = join(glSrcDir, "generated");
 

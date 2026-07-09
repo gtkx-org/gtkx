@@ -8,7 +8,7 @@ import {
     getWidgetName,
     getWidgetOwnLabel,
     getWidgetPlaceholderText,
-} from "./widget-text.js";
+} from "./widget-accessible-properties.js";
 
 export type Variant = "get" | "getAll" | "query" | "queryAll" | "find" | "findAll";
 

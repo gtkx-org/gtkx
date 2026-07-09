@@ -1,4 +1,4 @@
-import type { AnimationTarget } from "./types.js";
+import type { AnimationTarget } from "./animation-types.js";
 
 type CssTarget = "style" | "transform";
 

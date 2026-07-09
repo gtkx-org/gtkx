@@ -4,15 +4,9 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-    BUNDLE_FILENAME,
-    escapeXml,
-    REL_SEPARATOR,
-    toVirtualId,
-    VIRTUAL_INIT,
-} from "../../src/vite-plugins/gresource-shared.js";
+import { BUNDLE_FILENAME, REL_SEPARATOR, toVirtualId, VIRTUAL_INIT } from "../../src/vite-plugins/gresource-shared.js";
 import { gtkxGResources } from "../../src/vite-plugins/gresources.js";
-import { expectBuildEndEmitsAsset, expectBuildEndIsNoop } from "./_vite-plugin-fixture.js";
+import { expectBuildEndEmitsAsset, expectBuildEndIsNoop } from "./build-end-assertions.js";
 
 import type { BuildEndHook, LoadHook, ResolveIdHook } from "./plugin-hook-types.js";
 
@@ -77,14 +71,20 @@ describe("gtkxGResources (plugin shape)", () => {
 
     it("config declares an assetsInclude regex covering known asset extensions", async () => {
         const plugin = gtkxGResources();
-        const result = await (plugin.config as ConfigHook).call(plugin, {});
-        expect(result.assetsInclude).toHaveLength(1);
-        const [regex] = result.assetsInclude;
-        if (!regex) throw new Error("assetsInclude regex missing");
-        expect(regex.test("logo.png")).toBe(true);
-        expect(regex.test("song.mp3")).toBe(true);
-        expect(regex.test("font.woff2")).toBe(true);
-        expect(regex.test("data.json")).toBe(false);
+        const root = mkdtempSync(join(tmpdir(), "gtkx-gresources-test-"));
+        writeFileSync(join(root, "gtkx.config.ts"), `export default { applicationId: "org.gtkx.app" };\n`);
+        try {
+            const result = await (plugin.config as ConfigHook).call(plugin, { root });
+            expect(result.assetsInclude).toHaveLength(1);
+            const [regex] = result.assetsInclude;
+            if (!regex) throw new Error("assetsInclude regex missing");
+            expect(regex.test("logo.png")).toBe(true);
+            expect(regex.test("song.mp3")).toBe(true);
+            expect(regex.test("font.woff2")).toBe(true);
+            expect(regex.test("data.json")).toBe(false);
+        } finally {
+            rmSync(root, { recursive: true, force: true });
+        }
     });
 });
 
@@ -366,31 +366,5 @@ describe("gtkxGResources (watcher: refresh failure)", () => {
         } finally {
             errSpy.mockRestore();
         }
-    });
-});
-
-describe("escapeXml (internal)", () => {
-    it("escapes < to &lt;", () => {
-        expect(escapeXml("<root>")).toBe("&lt;root&gt;");
-    });
-
-    it("escapes & to &amp;", () => {
-        expect(escapeXml("a & b")).toBe("a &amp; b");
-    });
-
-    it("escapes the double quote to &quot;", () => {
-        expect(escapeXml('say "hi"')).toBe("say &quot;hi&quot;");
-    });
-
-    it("escapes the apostrophe to &apos;", () => {
-        expect(escapeXml("it's")).toBe("it&apos;s");
-    });
-
-    it("leaves a plain alphanumeric string untouched", () => {
-        expect(escapeXml("plain text 123")).toBe("plain text 123");
-    });
-
-    it("escapes a string containing every reserved character", () => {
-        expect(escapeXml(`<a & b="c">'`)).toBe("&lt;a &amp; b=&quot;c&quot;&gt;&apos;");
     });
 });

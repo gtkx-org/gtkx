@@ -1,7 +1,7 @@
 import { createConfigLoader } from "@gtkx/config/internal";
 import createConfigPlugin from "@gtkx/config/vite-plugin";
 import type { Plugin } from "vite";
-import { gtkxAssets } from "./assets.js";
+import { gtkxAssets } from "./css.js";
 import { gtkxGResources } from "./gresources.js";
 import { gtkxGSettings } from "./gsettings.js";
 import { gtkxReactCompiler } from "./react-compiler.js";

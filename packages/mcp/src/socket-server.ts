@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as net from "node:net";
 import type { ConnectionRegistry } from "./connection-registry.js";
-import { DEFAULT_SOCKET_PATH } from "./protocol/types.js";
+import { DEFAULT_SOCKET_PATH } from "./protocol/schemas.js";
 
 const isSocketLive = (socketPath: string): Promise<boolean> =>
     new Promise((resolve) => {

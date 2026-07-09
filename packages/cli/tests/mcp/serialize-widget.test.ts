@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { serializeWidget, type WidgetFormatting } from "../../src/mcp/serialize-widget.js";
-import { type FakeWidgetOverrides, makeFakeWidget } from "./_widget-helpers.js";
+import { type FakeWidgetOverrides, makeFakeWidget } from "./fake-widget.js";
 
 const ROLE_NAMES: Record<number, string> = { 1: "button", 2: "label" };
 

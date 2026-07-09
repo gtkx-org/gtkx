@@ -2,8 +2,8 @@ import { registerProviderForDefaultDisplay } from "@gtkx/css";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { STYLE_PROVIDER_PRIORITY_APPLICATION } from "@gtkx/gi/gtk";
 import { createLogger } from "@gtkx/utils";
+import type { AnimationTarget } from "./animation-types.js";
 import { buildCss } from "./build-css.js";
-import type { AnimationTarget } from "./types.js";
 
 const ANIMATION_PROVIDER_PRIORITY = STYLE_PROVIDER_PRIORITY_APPLICATION + 1;
 

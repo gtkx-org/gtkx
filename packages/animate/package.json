@@ -51,6 +51,7 @@
         "@gtkx/utils": "workspace:*"
     },
     "devDependencies": {
+        "@gtkx/config": "workspace:*",
         "@gtkx/vitest": "workspace:*"
     },
     "peerDependencies": {

@@ -76,7 +76,7 @@ describe("promisify", () => {
                 const cause = (error as Error).cause;
                 expect(cause).toBeInstanceOf(Error);
                 expect((cause as Error).message).toBe("gtkx async operation started here");
-                expect((cause as Error).stack).toContain("async.test.ts");
+                expect((cause as Error).stack).toContain("promisify.test.ts");
             },
         );
     });

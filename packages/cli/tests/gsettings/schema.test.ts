@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, wri
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { emitSchemaEnv, findSchemaFiles, prependSchemaDir, schemaEnvPath } from "../../src/gsettings/env.js";
+import { emitSchemaEnv, findSchemaFiles, prependSchemaDir, schemaEnvPath } from "../../src/gsettings/schema.js";
 
 const schemaXmlWithId = (id: string): string => `<schemalist>
     <schema id="${id}" path="/${id.replaceAll(".", "/")}/">

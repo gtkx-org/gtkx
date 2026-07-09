@@ -6,7 +6,7 @@ import {
     methodNotFoundError,
     noAppConnectedError,
 } from "./protocol/errors.js";
-import { type AppInfo, RegisterParamsSchema, type Request, type Response } from "./protocol/types.js";
+import { type AppInfo, RegisterParamsSchema, type Request, type Response } from "./protocol/schemas.js";
 import { type AppConnections, ConnectionClosedError, type ProtocolConnection } from "./transport.js";
 
 type AppRouterEventMap = {

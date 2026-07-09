@@ -2,7 +2,7 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import { sortStringsBy } from "@gtkx/utils";
 import { formatRole } from "./role-helpers.js";
 import { type Container, roots } from "./traversal.js";
-import { getWidgetNodeText } from "./widget-text.js";
+import { getWidgetNodeText } from "./widget-accessible-properties.js";
 
 const DEFAULT_MAX_LENGTH = 7000;
 const INDENT = "  ";

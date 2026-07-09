@@ -216,6 +216,9 @@ importers:
         specifier: ^19
         version: 19.2.7
     devDependencies:
+      '@gtkx/config':
+        specifier: workspace:*
+        version: link:../config
       '@gtkx/vitest':
         specifier: workspace:*
         version: link:../vitest

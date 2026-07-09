@@ -14,7 +14,7 @@ import {
     screenshotParams,
     typeParams,
     widgetIdParams,
-} from "./protocol/types.js";
+} from "./protocol/schemas.js";
 import { SocketServer } from "./socket-server.js";
 
 const require = createRequire(import.meta.url);

@@ -21,7 +21,15 @@ import { describe, expect, it } from "vitest";
 import "@gtkx/gi/gobject";
 import { getHandle, t } from "@gtkx/ffi";
 import { resolveType } from "../../src/type.js";
-import { fromValue, getValueType, newValueForDescriptor, toValue } from "../../src/value.js";
+import {
+    fromValue,
+    getBoxedValue,
+    getValueType,
+    inoutValueForBoxedDescriptor,
+    newValueForDescriptor,
+    outValueForBoxedDescriptor,
+    toValue,
+} from "../../src/value.js";
 
 const callGetType = (lib: string, fn: string): Type => {
     const result = resolveType(lib, fn);
@@ -35,7 +43,7 @@ const gdkRgbaGtype = (): Type => callGetType("libgtk-4.so.1", "gdk_rgba_get_type
 const makeRgba = (red: number, green: number, blue: number, alpha: number): Gdk.RGBA =>
     new (Gdk.RGBA as new (props: object) => Gdk.RGBA)({ red, green, blue, alpha });
 
-describe("Value boxed accessors", () => {
+describe("generated GObject.Value boxed accessors", () => {
     it("round-trips a boxed instance through setBoxed and getBoxed", () => {
         const value = new Value();
         value.init(gdkRgbaGtype());
@@ -357,5 +365,161 @@ describe("newValueForDescriptor — GType resolution from an FFI descriptor", ()
     it("throws for unsupported descriptors", () => {
         expect(() => newValueForDescriptor({ ...strvFfi, arrayKind: "glist" })).toThrow(/unsupported array type/i);
         expect(() => newValueForDescriptor({ kind: "unichar" })).toThrow(/unsupported type descriptor/i);
+    });
+});
+
+describe("fromValue / toValue round-trips", () => {
+    const alignDescriptor = {
+        kind: "enum",
+        sharedLibrary: "libgtk-4.so.1",
+        getTypeFnName: "gtk_align_get_type",
+        signed: false,
+    } as const;
+
+    const bindingFlagsDescriptor = {
+        kind: "flags",
+        sharedLibrary: "libgobject-2.0.so.0",
+        getTypeFnName: "g_binding_flags_get_type",
+        signed: false,
+    } as const;
+
+    const paramDescriptor = t.fundamental("libgobject-2.0.so.0", "g_param_spec_ref", "g_param_spec_unref", {
+        ownership: "borrowed",
+        typeName: "GParam",
+    });
+
+    const variantDescriptor = t.fundamental(
+        "libgobject-2.0.so.0,libglib-2.0.so.0",
+        "g_variant_ref",
+        "g_variant_unref",
+        {
+            ownership: "borrowed",
+            typeName: "GVariant",
+        },
+    );
+
+    describe("GValue boolean", () => {
+        it("round-trips true and false", () => {
+            expect(fromValue(toValue({ kind: "boolean" }, true))).toBe(true);
+            expect(fromValue(toValue({ kind: "boolean" }, false))).toBe(false);
+        });
+    });
+
+    describe("GValue signed and unsigned integers", () => {
+        it("round-trips an int", () => {
+            expect(fromValue(toValue({ kind: "int32" }, -42))).toBe(-42);
+        });
+
+        it("round-trips a uint", () => {
+            expect(fromValue(toValue({ kind: "uint32" }, 4_000_000_000))).toBe(4_000_000_000);
+        });
+
+        it("round-trips an int64 beyond the safe-integer range", () => {
+            expect(fromValue(toValue({ kind: "bigint64" }, -9_223_372_036_854_775_808n))).toBe(
+                -9_223_372_036_854_775_808n,
+            );
+        });
+
+        it("round-trips a uint64 beyond the safe-integer range", () => {
+            expect(fromValue(toValue({ kind: "biguint64" }, 18_446_744_073_709_551_615n))).toBe(
+                18_446_744_073_709_551_615n,
+            );
+        });
+    });
+
+    describe("GValue floating point", () => {
+        it("round-trips a float within tolerance", () => {
+            expect(fromValue(toValue({ kind: "float32" }, 1.5))).toBeCloseTo(1.5, 3);
+        });
+
+        it("round-trips a double", () => {
+            expect(fromValue(toValue({ kind: "float64" }, Math.PI))).toBeCloseTo(Math.PI);
+        });
+    });
+
+    describe("GValue string", () => {
+        it("round-trips a non-empty string", () => {
+            expect(fromValue(toValue({ kind: "string", ownership: "borrowed" }, "hello"))).toBe("hello");
+        });
+
+        it("round-trips an empty string", () => {
+            expect(fromValue(toValue({ kind: "string", ownership: "borrowed" }, ""))).toBe("");
+        });
+
+        it("round-trips a null string as null", () => {
+            expect(fromValue(toValue({ kind: "string", ownership: "borrowed" }, null))).toBeNull();
+        });
+    });
+
+    describe("GValue enum and flags", () => {
+        it("round-trips an enum payload", () => {
+            expect(fromValue(toValue(alignDescriptor, Gtk.Align.CENTER))).toBe(Gtk.Align.CENTER);
+        });
+
+        it("round-trips a flags bitmask", () => {
+            expect(fromValue(toValue(bindingFlagsDescriptor, 3))).toBe(3);
+        });
+    });
+
+    describe("GValue object", () => {
+        it("round-trips a live GObject returning the same wrapper", () => {
+            const label = new Gtk.Label({ label: "hello" });
+            expect(fromValue(toValue({ kind: "object", ownership: "borrowed" }, label))).toBe(label);
+        });
+
+        it("round-trips a null object", () => {
+            expect(fromValue(toValue({ kind: "object", ownership: "borrowed" }, null))).toBeNull();
+        });
+    });
+
+    describe("GValue param", () => {
+        it("round-trips a ParamSpec to an equivalent wrapper", () => {
+            const spec = paramSpecBoolean("flag", "Flag", "A flag", false, ParamFlags.READABLE);
+            const roundTripped = fromValue(toValue(paramDescriptor, spec)) as typeof spec | null;
+            expect(roundTripped).not.toBeNull();
+            expect(roundTripped?.getName()).toBe(spec.getName());
+        });
+
+        it("round-trips a null param", () => {
+            expect(fromValue(toValue(paramDescriptor, null))).toBeNull();
+        });
+    });
+
+    describe("GValue variant", () => {
+        it("round-trips a GLib.Variant preserving its payload", () => {
+            const variant = GLib.Variant.newString("payload");
+            const extracted = fromValue(toValue(variantDescriptor, variant));
+            expect(extracted).toBeInstanceOf(GLib.Variant);
+            const [text] = (extracted as GLib.Variant).getString();
+            expect(text).toBe("payload");
+        });
+
+        it("returns null for an unset variant", () => {
+            expect(fromValue(toValue(variantDescriptor, null))).toBeNull();
+        });
+    });
+});
+
+describe("getBoxedValue / out & inout boxed descriptors", () => {
+    const rectangleFfi = t.boxed("GdkRectangle", {
+        ownership: "borrowed",
+        sharedLibrary: "libgtk-4.so.1",
+        getTypeFnName: "gdk_rectangle_get_type",
+    });
+
+    it("inoutValueForBoxedDescriptor shares the caller's wrapper so an in-place mutation is visible", () => {
+        const rect = new Gdk.Rectangle({ width: 1 });
+        const value = inoutValueForBoxedDescriptor(rectangleFfi, rect);
+        rect.width = 42;
+        const seen = getBoxedValue(value) as Gdk.Rectangle;
+        expect(seen.width).toBe(42);
+    });
+
+    it("outValueForBoxedDescriptor copies the wrapper so a later mutation is not visible", () => {
+        const rect = new Gdk.Rectangle({ width: 1 });
+        const value = outValueForBoxedDescriptor(rectangleFfi, rect);
+        rect.width = 42;
+        const seen = getBoxedValue(value) as Gdk.Rectangle;
+        expect(seen.width).toBe(1);
     });
 });

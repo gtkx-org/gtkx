@@ -1,4 +1,4 @@
-import type { AnimationTarget } from "./types.js";
+import type { AnimationTarget } from "./animation-types.js";
 
 const propertyDefaults: { [K in keyof Required<AnimationTarget>]: number } = {
     opacity: 1,

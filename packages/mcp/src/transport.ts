@@ -2,7 +2,7 @@ import EventEmitter from "node:events";
 import type { Socket } from "node:net";
 import type { Duplex } from "node:stream";
 import { ErrorCode, invalidRequestError, isErrorCode, ProtocolError, requestTimeoutError } from "./protocol/errors.js";
-import { type Message, type Request, RequestSchema, type Response, ResponseSchema } from "./protocol/types.js";
+import { type Message, type Request, RequestSchema, type Response, ResponseSchema } from "./protocol/schemas.js";
 
 export type ProtocolConnectionEvents = {
     request: [Request];

@@ -3,9 +3,9 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import { isShallowEqual } from "@gtkx/utils";
 import type { RefObject } from "react";
 import { AnimationCssProvider } from "./animation-css-provider.js";
+import type { AnimationProps, AnimationTarget } from "./animation-types.js";
 import { interpolate } from "./interpolation.js";
 import { buildAnimation, secondsToMilliseconds } from "./transition.js";
-import type { AnimationProps, AnimationTarget } from "./types.js";
 
 const restValuesOf = (props: AnimationProps): AnimationTarget => {
     if (props.animate) return { ...props.animate };

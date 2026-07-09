@@ -2,7 +2,7 @@ import { EventEmitter } from "node:events";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AppRouter } from "../src/app-router.js";
-import type { AppInfo } from "../src/protocol/types.js";
+import type { AppInfo } from "../src/protocol/schemas.js";
 
 const { mcpServerInstances, registerToolMock, mcpConnectMock, mcpCloseMock } = vi.hoisted(() => {
     const instances: Array<{ name: string; version: string }> = [];

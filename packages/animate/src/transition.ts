@@ -1,8 +1,8 @@
 import * as Adw from "@gtkx/gi/adw";
 import type * as Gtk from "@gtkx/gi/gtk";
+import type { Easing, Transition } from "./animation-types.js";
 import { resolveEasing } from "./easing.js";
 import { resolveSpringParams } from "./spring-params.js";
-import type { Easing, Transition } from "./types.js";
 
 const DEFAULT_TWEEN_DURATION = 0.3;
 const DEFAULT_EASE: Easing = "easeOut";

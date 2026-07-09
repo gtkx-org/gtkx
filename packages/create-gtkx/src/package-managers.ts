@@ -12,5 +12,3 @@ export const isKnownPackageManager = (name: string): name is PackageManager =>
     (PACKAGE_MANAGER_VALUES as string[]).includes(name);
 
 export const PACKAGE_MANAGER_FLAG_DESCRIPTION = `Package manager (${PACKAGE_MANAGER_VALUES.join(", ")})`;
-
-export const isValidProjectName = (name: string): boolean => /^[a-z0-9-]+$/.test(name);

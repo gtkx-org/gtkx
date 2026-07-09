@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
+import { type BuiltQueries, buildQueries, type QueryAllBy } from "./build-queries.js";
 import { multipleFoundError, notFoundError } from "./errors.js";
-import { type BuiltQueries, buildQueries, type QueryAllBy } from "./query-helpers.js";
 import { type Container, findAll, traverse } from "./traversal.js";
 import type { ByRoleOptions, ByRoleValue, Matcher, MatcherOptions, NormalizerFn, NormalizerOptions } from "./types.js";
 import {
@@ -20,7 +20,7 @@ import {
     getWidgetSelectedState,
     getWidgetValue,
     isInaccessible,
-} from "./widget-text.js";
+} from "./widget-accessible-properties.js";
 
 export const getDefaultNormalizer = ({
     trim = true,

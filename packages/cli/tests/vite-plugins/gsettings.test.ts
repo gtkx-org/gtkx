@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { gtkxGSettings } from "../../src/vite-plugins/gsettings.js";
-import { expectBuildEndEmitsAsset, expectBuildEndIsNoop } from "./_vite-plugin-fixture.js";
+import { expectBuildEndEmitsAsset, expectBuildEndIsNoop } from "./build-end-assertions.js";
 import type { BuildEndHook, ResolveIdHook } from "./plugin-hook-types.js";
 
 type HandleHotUpdateHook = (this: unknown, ctx: { file: string; server: unknown }) => unknown;

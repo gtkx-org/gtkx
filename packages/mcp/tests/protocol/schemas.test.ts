@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ServerRequestParamsSchemas } from "../../src/protocol/types.js";
+import { ServerRequestParamsSchemas } from "../../src/protocol/schemas.js";
 
 describe("ServerRequestParamsSchemas", () => {
     it("validates a widget.query payload with a by enum and no applicationId", () => {

@@ -3,7 +3,7 @@ import { useMergeRefs } from "@gtkx/react/internal";
 import { isShallowEqual } from "@gtkx/utils";
 import { type Ref, type RefCallback, useId, useLayoutEffect, useRef } from "react";
 import { useIsInitialPresence, usePresence } from "./animate-presence.js";
-import type { AnimationProps, AnimationTarget } from "./types.js";
+import type { AnimationProps, AnimationTarget } from "./animation-types.js";
 import { WidgetAnimator } from "./widget-animator.js";
 
 const sanitizeId = (id: string): string => `gtkx-anim-${id.replace(/[^a-zA-Z0-9]/g, "")}`;

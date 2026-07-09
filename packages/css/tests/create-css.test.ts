@@ -99,7 +99,7 @@ describe("css", () => {
         expect(className).toMatch(/^gtkx-/);
     });
 
-    it("handles GTK CSS variables", () => {
+    it("preserves GTK named colors", () => {
         const className = instance.css`
             background: @theme_bg_color;
             color: @theme_fg_color;
@@ -173,72 +173,60 @@ describe("cx", () => {
 
         expect(result).toEqual(["base-class", "active-class"]);
     });
-});
 
-describe("cx falsy filtering", () => {
-    let instance: Css;
+    describe("falsy filtering", () => {
+        it("filters out false values", () => {
+            const isActive = false;
+            const result = instance.cx("base", isActive && "active");
 
-    beforeEach(() => {
-        instance = createCss();
+            expect(result).toEqual(["base"]);
+        });
+
+        it("filters out undefined values", () => {
+            const conditionalClass: string | undefined = undefined;
+            const result = instance.cx("base", conditionalClass);
+
+            expect(result).toEqual(["base"]);
+        });
+
+        it("filters out null values", () => {
+            const conditionalClass: string | null = null;
+            const result = instance.cx("base", conditionalClass);
+
+            expect(result).toEqual(["base"]);
+        });
+
+        it("filters out empty strings", () => {
+            const result = instance.cx("base", "", "other");
+
+            expect(result).toEqual(["base", "other"]);
+        });
     });
 
-    it("filters out false values", () => {
-        const isActive = false;
-        const result = instance.cx("base", isActive && "active");
+    describe("edge cases", () => {
+        it("returns empty array when given no arguments", () => {
+            const result = instance.cx();
 
-        expect(result).toEqual(["base"]);
-    });
+            expect(result).toEqual([]);
+        });
 
-    it("filters out undefined values", () => {
-        const conditionalClass: string | undefined = undefined;
-        const result = instance.cx("base", conditionalClass);
+        it("returns empty array when all values are falsy", () => {
+            const result = instance.cx(false, undefined, null, "");
 
-        expect(result).toEqual(["base"]);
-    });
+            expect(result).toEqual([]);
+        });
 
-    it("filters out null values", () => {
-        const conditionalClass: string | null = null;
-        const result = instance.cx("base", conditionalClass);
+        it("handles single class name", () => {
+            const result = instance.cx("single");
 
-        expect(result).toEqual(["base"]);
-    });
+            expect(result).toEqual(["single"]);
+        });
 
-    it("filters out empty strings", () => {
-        const result = instance.cx("base", "", "other");
+        it("handles many class names", () => {
+            const result = instance.cx("a", "b", "c", "d", "e", "f", "g");
 
-        expect(result).toEqual(["base", "other"]);
-    });
-});
-
-describe("cx edge cases", () => {
-    let instance: Css;
-
-    beforeEach(() => {
-        instance = createCss();
-    });
-
-    it("returns empty array when given no arguments", () => {
-        const result = instance.cx();
-
-        expect(result).toEqual([]);
-    });
-
-    it("returns empty array when all values are falsy", () => {
-        const result = instance.cx(false, undefined, null, "");
-
-        expect(result).toEqual([]);
-    });
-
-    it("handles single class name", () => {
-        const result = instance.cx("single");
-
-        expect(result).toEqual(["single"]);
-    });
-
-    it("handles many class names", () => {
-        const result = instance.cx("a", "b", "c", "d", "e", "f", "g");
-
-        expect(result).toEqual(["a", "b", "c", "d", "e", "f", "g"]);
+            expect(result).toEqual(["a", "b", "c", "d", "e", "f", "g"]);
+        });
     });
 });
 
@@ -298,7 +286,7 @@ describe("injectGlobal", () => {
     });
 });
 
-describe("stylis pipeline correctness", () => {
+describe("css — named colors and at-rule scoping", () => {
     let instance: Css;
     let insertSpy: MockInstance<StyleSheet["insert"]>;
 

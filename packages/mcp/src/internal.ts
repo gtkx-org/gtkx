@@ -13,5 +13,5 @@ export {
     type ServerInitiatedMethod,
     type ServerRequestParams,
     ServerRequestParamsSchemas,
-} from "./protocol/types.js";
+} from "./protocol/schemas.js";
 export { ProtocolConnection } from "./transport.js";

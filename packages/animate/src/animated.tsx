@@ -1,7 +1,7 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { createElementComponent } from "@gtkx/react/internal";
 import { createElement, type JSX, type ReactNode, type Ref } from "react";
-import type { AnimationProps } from "./types.js";
+import type { AnimationProps } from "./animation-types.js";
 import { useAnimatedWidget } from "./use-animated-widget.js";
 
 export type AnimatedComponent<P> = (props: P & AnimationProps) => ReactNode;

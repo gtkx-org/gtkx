@@ -1,25 +1,50 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import {
+    GtkAdjustment,
     GtkBox,
     GtkButton,
     GtkCheckButton,
     GtkEntry,
     GtkExpander,
     GtkLabel,
+    GtkLevelBar,
+    GtkProgressBar,
+    GtkScale,
+    GtkSearchEntry,
     GtkSwitch,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 import {
+    findAllByDisplayValue,
     findAllByLabelText,
     findAllByName,
+    findAllByPlaceholderText,
     findAllByRole,
     findAllByText,
+    findByDisplayValue,
     findByLabelText,
     findByName,
+    findByPlaceholderText,
     findByRole,
     findByText,
+    getAllByDisplayValue,
+    getAllByPlaceholderText,
+    getByDisplayValue,
+    getByLabelText,
+    getByPlaceholderText,
+    getByText,
+    getDefaultNormalizer,
+    queryAllByDisplayValue,
+    queryAllByName,
+    queryAllByPlaceholderText,
+    queryAllByRole,
+    queryAllByText,
+    queryByDisplayValue,
+    queryByName,
+    queryByPlaceholderText,
+    queryByRole,
     queryByText,
     render,
 } from "../src/index.js";
@@ -402,5 +427,381 @@ describe("findByRole level", () => {
             name: "Second section",
         });
         expect((second as Gtk.Label).getLabel()).toBe("Second section");
+    });
+});
+
+describe("queryByRole", () => {
+    it("returns element when found", async () => {
+        const { container } = await render(<GtkButton label="Test" />);
+        const button = queryByRole(container, Gtk.AccessibleRole.BUTTON, { name: "Test" });
+        expect(button).not.toBeNull();
+    });
+
+    it("returns null when not found", async () => {
+        const { container } = await render(<GtkLabel label="Test" />);
+        const button = queryByRole(container, Gtk.AccessibleRole.BUTTON);
+        expect(button).toBeNull();
+    });
+
+    it("throws when multiple elements found", async () => {
+        const { container } = await render(
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                <GtkButton label="First" />
+                <GtkButton label="Second" />
+            </GtkBox>,
+        );
+        expect(() => queryByRole(container, Gtk.AccessibleRole.BUTTON)).toThrow(/Found 2 elements/);
+    });
+});
+
+describe("queryAllByRole", () => {
+    it("returns all matching elements", async () => {
+        const { container } = await render(
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                <GtkButton label="First" />
+                <GtkButton label="Second" />
+            </GtkBox>,
+        );
+        const buttons = queryAllByRole(container, Gtk.AccessibleRole.BUTTON);
+        expect(buttons.length).toBe(2);
+    });
+
+    it("returns empty array when none found", async () => {
+        const { container } = await render(<GtkLabel label="Test" />);
+        const buttons = queryAllByRole(container, Gtk.AccessibleRole.BUTTON);
+        expect(buttons).toEqual([]);
+    });
+});
+
+describe("queryByText", () => {
+    it("returns element when found", async () => {
+        const { container } = await render(<GtkLabel label="Hello" />);
+        const label = queryByText(container, "Hello");
+        expect(label).not.toBeNull();
+    });
+
+    it("returns null when not found", async () => {
+        const { container } = await render(<GtkLabel label="Hello" />);
+        const label = queryByText(container, "Goodbye");
+        expect(label).toBeNull();
+    });
+});
+
+describe("queryAllByText", () => {
+    it("returns all matching elements", async () => {
+        const { container } = await render(
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                <GtkButton label="Same" />
+                <GtkButton label="Same" />
+            </GtkBox>,
+        );
+        const buttons = queryAllByText(container, "Same");
+        expect(buttons.length).toBe(2);
+    });
+
+    it("returns empty array when none found", async () => {
+        const { container } = await render(<GtkLabel label="Hello" />);
+        const labels = queryAllByText(container, "Nonexistent");
+        expect(labels).toEqual([]);
+    });
+});
+
+describe("queryByName", () => {
+    it("returns element when found", async () => {
+        const { container } = await render(<GtkEntry name="email-input" />);
+        const entry = queryByName(container, "email-input");
+        expect(entry).not.toBeNull();
+    });
+
+    it("returns null when not found", async () => {
+        const { container } = await render(<GtkEntry name="email-input" />);
+        const entry = queryByName(container, "password-input");
+        expect(entry).toBeNull();
+    });
+});
+
+describe("queryAllByName", () => {
+    it("returns all matching elements", async () => {
+        const { container } = await render(
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                <GtkEntry name="field" />
+                <GtkEntry name="field" />
+            </GtkBox>,
+        );
+        const entries = queryAllByName(container, "field");
+        expect(entries.length).toBe(2);
+    });
+
+    it("returns empty array when none found", async () => {
+        const { container } = await render(<GtkEntry name="email" />);
+        const entries = queryAllByName(container, "nonexistent");
+        expect(entries).toEqual([]);
+    });
+});
+
+describe("ByPlaceholderText", () => {
+    it("queries an entry by its placeholder text", async () => {
+        const { container } = await render(<GtkEntry placeholderText="Email address" />);
+        const entry = queryByPlaceholderText(container, "Email address");
+        expect(entry).toBeInstanceOf(Gtk.Entry);
+    });
+
+    it("returns null when no placeholder matches", async () => {
+        const { container } = await render(<GtkEntry placeholderText="Email address" />);
+        expect(queryByPlaceholderText(container, "Phone number")).toBeNull();
+    });
+
+    it("matches a search entry placeholder", async () => {
+        const { container } = await render(<GtkSearchEntry placeholderText="Search notes" />);
+        expect(getByPlaceholderText(container, "Search notes")).toBeInstanceOf(Gtk.SearchEntry);
+    });
+
+    it("supports substring matching with exact false", async () => {
+        const { container } = await render(<GtkEntry placeholderText="Enter your email" />);
+        expect(getByPlaceholderText(container, "your email", { exact: false })).toBeInstanceOf(Gtk.Entry);
+    });
+
+    it("supports regex matching", async () => {
+        const { container } = await render(<GtkEntry placeholderText="Enter your email" />);
+        expect(getByPlaceholderText(container, /email$/)).toBeInstanceOf(Gtk.Entry);
+    });
+
+    it("returns every matching entry", async () => {
+        const { container } = await render(
+            <VBox>
+                <GtkEntry placeholderText="Field" />
+                <GtkEntry placeholderText="Field" />
+            </VBox>,
+        );
+        expect(getAllByPlaceholderText(container, "Field")).toHaveLength(2);
+        expect(queryAllByPlaceholderText(container, "Missing")).toEqual([]);
+    });
+
+    it("finds an entry asynchronously", async () => {
+        const { container } = await render(<GtkEntry placeholderText="Username" />);
+        await expect(findByPlaceholderText(container, "Username")).resolves.toBeInstanceOf(Gtk.Entry);
+        await expect(findAllByPlaceholderText(container, "Username")).resolves.toHaveLength(1);
+    });
+
+    it("throws a placeholder-formatted error when none match", async () => {
+        const { container } = await render(<GtkEntry placeholderText="Present" />);
+        expect(() => getByPlaceholderText(container, "Absent")).toThrow(
+            /Unable to find an element with placeholder text 'Absent'/,
+        );
+    });
+});
+
+describe("ByDisplayValue", () => {
+    it("queries an entry by its current text", async () => {
+        const { container } = await render(<GtkEntry text="hello world" />);
+        expect(queryByDisplayValue(container, "hello world")).toBeInstanceOf(Gtk.Entry);
+    });
+
+    it("returns null when no value matches", async () => {
+        const { container } = await render(<GtkEntry text="hello world" />);
+        expect(queryByDisplayValue(container, "goodbye")).toBeNull();
+    });
+
+    it("does not confuse placeholder text with display value", async () => {
+        const { container } = await render(<GtkEntry placeholderText="Type here" text="actual" />);
+        expect(queryByDisplayValue(container, "Type here")).toBeNull();
+        expect(queryByDisplayValue(container, "actual")).toBeInstanceOf(Gtk.Entry);
+    });
+
+    it("matches a search entry value", async () => {
+        const { container } = await render(<GtkSearchEntry text="query" />);
+        expect(getByDisplayValue(container, "query")).toBeInstanceOf(Gtk.SearchEntry);
+    });
+
+    it("supports regex matching", async () => {
+        const { container } = await render(<GtkEntry text="order-1234" />);
+        expect(getByDisplayValue(container, /^order-\d+$/)).toBeInstanceOf(Gtk.Entry);
+    });
+
+    it("returns every matching widget", async () => {
+        const { container } = await render(
+            <VBox>
+                <GtkEntry text="same" />
+                <GtkEntry text="same" />
+            </VBox>,
+        );
+        expect(getAllByDisplayValue(container, "same")).toHaveLength(2);
+        expect(queryAllByDisplayValue(container, "missing")).toEqual([]);
+    });
+
+    it("finds a widget asynchronously", async () => {
+        const { container } = await render(<GtkEntry text="async" />);
+        await expect(findByDisplayValue(container, "async")).resolves.toBeInstanceOf(Gtk.Entry);
+        await expect(findAllByDisplayValue(container, "async")).resolves.toHaveLength(1);
+    });
+
+    it("throws a display-value-formatted error when none match", async () => {
+        const { container } = await render(<GtkEntry text="present" />);
+        expect(() => getByDisplayValue(container, "absent")).toThrow(
+            /Unable to find an element with display value 'absent'/,
+        );
+    });
+});
+
+describe("getByRole busy", () => {
+    it("filters by busy state", async () => {
+        const { container } = await render(
+            <VBox>
+                <GtkButton label="Idle" />
+                <GtkButton label="Working" accessibleBusy />
+            </VBox>,
+        );
+        const busy = queryByRole(container, Gtk.AccessibleRole.BUTTON, { busy: true });
+        expect((busy as Gtk.Button).getLabel()).toBe("Working");
+        expect(queryAllByRole(container, Gtk.AccessibleRole.BUTTON, { busy: false })).toHaveLength(1);
+    });
+});
+
+describe("getByRole description", () => {
+    it("filters by accessible description", async () => {
+        const { container } = await render(
+            <VBox>
+                <GtkButton label="Save" accessibleDescription="Persist changes" />
+                <GtkButton label="Cancel" accessibleDescription="Discard changes" />
+            </VBox>,
+        );
+        const save = queryByRole(container, Gtk.AccessibleRole.BUTTON, { description: "Persist changes" });
+        expect((save as Gtk.Button).getLabel()).toBe("Save");
+        const discard = queryByRole(container, Gtk.AccessibleRole.BUTTON, { description: /discard/i });
+        expect((discard as Gtk.Button).getLabel()).toBe("Cancel");
+    });
+});
+
+describe("getByRole value", () => {
+    it("filters a slider by its live adjustment value now/min/max", async () => {
+        const { container } = await render(
+            <VBox>
+                <GtkScale adjustment={<GtkAdjustment value={25} lower={0} upper={100} />} />
+                <GtkScale adjustment={<GtkAdjustment value={75} lower={0} upper={100} />} />
+            </VBox>,
+        );
+        expect(queryByRole(container, Gtk.AccessibleRole.SLIDER, { value: { now: 25 } })).not.toBeNull();
+        expect(queryAllByRole(container, Gtk.AccessibleRole.SLIDER, { value: { min: 0, max: 100 } })).toHaveLength(2);
+        expect(queryByRole(container, Gtk.AccessibleRole.SLIDER, { value: { now: 999 } })).toBeNull();
+    });
+
+    it("filters a progress bar by its live fraction", async () => {
+        const { container } = await render(
+            <VBox>
+                <GtkProgressBar fraction={0.25} />
+                <GtkProgressBar fraction={0.75} />
+            </VBox>,
+        );
+        expect(queryByRole(container, Gtk.AccessibleRole.PROGRESS_BAR, { value: { now: 0.25 } })).not.toBeNull();
+        expect(queryAllByRole(container, Gtk.AccessibleRole.PROGRESS_BAR, { value: { min: 0, max: 1 } })).toHaveLength(
+            2,
+        );
+        expect(queryByRole(container, Gtk.AccessibleRole.PROGRESS_BAR, { value: { now: 0.99 } })).toBeNull();
+    });
+
+    it("filters a level bar by its live value/min/max", async () => {
+        const { container } = await render(<GtkLevelBar value={0.3} />);
+        expect(
+            queryByRole(container, Gtk.AccessibleRole.METER, { value: { now: 0.3, min: 0, max: 1 } }),
+        ).not.toBeNull();
+        expect(queryByRole(container, Gtk.AccessibleRole.METER, { value: { now: 0.9 } })).toBeNull();
+    });
+
+    it("falls back to author-supplied accessibleValueText alongside a live value", async () => {
+        const { container } = await render(
+            <GtkScale adjustment={<GtkAdjustment value={10} lower={0} upper={100} />} accessibleValueText="Loading" />,
+        );
+        expect(queryByRole(container, Gtk.AccessibleRole.SLIDER, { value: { text: "Loading" } })).not.toBeNull();
+        expect(queryByRole(container, Gtk.AccessibleRole.SLIDER, { value: { text: "Done" } })).toBeNull();
+    });
+});
+
+describe("getByRole hidden", () => {
+    const expectHiddenButtonExcludedByDefault = async (hiddenButton: ReactNode) => {
+        const { container } = await render(
+            <VBox>
+                <GtkButton label="Shown" />
+                {hiddenButton}
+            </VBox>,
+        );
+        expect(queryAllByRole(container, Gtk.AccessibleRole.BUTTON)).toHaveLength(1);
+        expect(queryAllByRole(container, Gtk.AccessibleRole.BUTTON, { hidden: true })).toHaveLength(2);
+    };
+
+    it("excludes accessibility-hidden widgets by default", async () => {
+        await expectHiddenButtonExcludedByDefault(<GtkButton label="Hidden" accessibleHidden />);
+    });
+
+    it("excludes not-visible widgets by default", async () => {
+        await expectHiddenButtonExcludedByDefault(<GtkButton label="Gone" visible={false} />);
+    });
+});
+
+describe("getByLabelText accessible-label and accessible-labelledby", () => {
+    it("matches a widget by its own accessibleLabel", async () => {
+        const { container } = await render(<GtkEntry accessibleLabel="Email address" />);
+        expect(getByLabelText(container, "Email address")).toBeInstanceOf(Gtk.Entry);
+    });
+
+    it("matches a widget labeled by accessibleLabelledBy", async () => {
+        const labelRef = { current: null as Gtk.Label | null };
+        const Form = () => (
+            <VBox>
+                <GtkLabel
+                    label="Full name"
+                    ref={(el) => {
+                        labelRef.current = el;
+                    }}
+                />
+                <GtkEntry accessibleLabelledBy={labelRef.current ? [labelRef.current] : []} />
+            </VBox>
+        );
+
+        const { container, rerender } = await render(<Form />);
+        await rerender(<Form />);
+
+        expect(getByLabelText(container, "Full name")).toBeInstanceOf(Gtk.Entry);
+    });
+});
+
+describe("getDefaultNormalizer", () => {
+    it("trims and collapses whitespace by default", () => {
+        const normalize = getDefaultNormalizer();
+        expect(normalize("  hello   world  ")).toBe("hello world");
+    });
+
+    it("can leave leading and trailing whitespace intact", () => {
+        const normalize = getDefaultNormalizer({ trim: false });
+        expect(normalize("  hello  ")).toBe(" hello ");
+    });
+
+    it("can preserve internal whitespace runs", () => {
+        const normalize = getDefaultNormalizer({ collapseWhitespace: false });
+        expect(normalize("  hello   world  ")).toBe("hello   world");
+    });
+
+    it("composes inside a custom normalizer", async () => {
+        const { container } = await render(<GtkLabel label="HELLO   WORLD" />);
+        const normalizer = (text: string) => getDefaultNormalizer()(text).toLowerCase();
+        expect(getByText(container, "hello world", { normalizer })).toBeDefined();
+    });
+
+    it("rejects combining a custom normalizer with trim", async () => {
+        const { container } = await render(<GtkLabel label="hello" />);
+        expect(() => queryByText(container, "hello", { normalizer: (text) => text, trim: true })).toThrow(
+            /trim and collapseWhitespace are not supported with a normalizer/,
+        );
+    });
+
+    it("rejects combining a custom normalizer with collapseWhitespace", async () => {
+        const { container } = await render(<GtkLabel label="hello" />);
+        expect(() =>
+            queryByText(container, "hello", { normalizer: (text) => text, collapseWhitespace: false }),
+        ).toThrow(/trim and collapseWhitespace are not supported with a normalizer/);
+    });
+
+    it("accepts a custom normalizer on its own", async () => {
+        const { container } = await render(<GtkLabel label="hello" />);
+        expect(queryByText(container, "HELLO", { normalizer: (text) => text.toUpperCase() })).not.toBeNull();
     });
 });

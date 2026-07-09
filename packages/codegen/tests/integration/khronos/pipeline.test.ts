@@ -1,10 +1,10 @@
 import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
-import { loadGlRegistry } from "../../src/khronos/model.js";
-import { type GlGenerationResult, generateGlModules } from "../../src/khronos/pipeline.js";
-import { selectSubset } from "../../src/khronos/select.js";
+import { loadGlRegistry } from "../../../src/khronos/model.js";
+import { type GlGenerationResult, generateGlModules } from "../../../src/khronos/pipeline.js";
+import { selectSubset } from "../../../src/khronos/select.js";
 
-const REGISTRY_PATH = fileURLToPath(new URL("../../registry/gl.xml", import.meta.url));
+const REGISTRY_PATH = fileURLToPath(new URL("../../../src/khronos/registry/gl.xml", import.meta.url));
 
 const OVERRIDE_EXPORTS: Set<string> = new Set([
     "getShaderInfoLog",
