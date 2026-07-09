@@ -45,7 +45,6 @@ const AutoScrollTextView = ({ scrollToEnd }: { scrollToEnd: boolean }) => {
         const textView = textViewRef.current;
         if (!textView) return;
         const buffer = textView.getBuffer();
-        if (!buffer) return;
 
         const markName = scrollToEnd ? "end" : "scroll";
         buffer.createMark(markName, buffer.getEndIter(), scrollToEnd);

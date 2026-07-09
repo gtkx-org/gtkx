@@ -34,9 +34,6 @@ const captureSnapshot = (widget: Gtk.Widget, scale: number): ScreenshotResult =>
     }
 
     const display = widget.getDisplay();
-    if (!display) {
-        throw new Error("Widget has no display: ensure it is realized");
-    }
 
     const renderer = new Gsk.CairoRenderer();
     renderer.realizeForDisplay(display);

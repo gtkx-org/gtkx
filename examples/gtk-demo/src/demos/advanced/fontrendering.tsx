@@ -102,7 +102,6 @@ const setupGridLayout = (
 
     let [, logicalRect] = layout.getPixelExtents();
     const iter = layout.getIter();
-    if (!iter) return null;
     const glyphItem = iter.getRun();
     if (!glyphItem?.glyphs) return null;
 
@@ -193,7 +192,6 @@ const renderSmallSurface = ({
 
     let [, smallLogical] = smallLayout.getPixelExtents();
     const smallIter = smallLayout.getIter();
-    if (!smallIter) return null;
     const smallGlyphItem = smallIter.getRun();
     if (!smallGlyphItem?.glyphs) return null;
 

@@ -71,7 +71,7 @@ function createFakeWatcher(): FSWatcher {
 function captureConfigWatcher(): { fireConfigChange: () => void } {
     let fire: () => void = () => {};
     watchMock.mockImplementationOnce((_path, listener) => {
-        fire = () => listener?.("change", "gtkx.config.ts");
+        fire = () => listener("change", "gtkx.config.ts");
         return createFakeWatcher();
     });
     return { fireConfigChange: () => fire() };

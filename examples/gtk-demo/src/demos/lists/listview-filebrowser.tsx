@@ -1,4 +1,3 @@
-import { homedir } from "node:os";
 import { GridView, ListView } from "@gtkx/components";
 import { css } from "@gtkx/css";
 import * as Gio from "@gtkx/gi/gio";
@@ -153,7 +152,7 @@ const useFilebrowserContext = (): FilebrowserContextValue => {
 };
 
 const FilebrowserProvider = ({ children }: DemoProviderProps) => {
-    const [currentPath, setCurrentPath] = useState(() => process.cwd() ?? homedir() ?? "/");
+    const [currentPath, setCurrentPath] = useState(() => process.cwd());
     const [viewMode, setViewMode] = useState<ViewMode>("list");
     const files = useDirectoryFiles(currentPath);
 

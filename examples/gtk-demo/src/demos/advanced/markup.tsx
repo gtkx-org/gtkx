@@ -18,7 +18,6 @@ const SAMPLE_MARKUP = markupContent;
 const applyMarkupToView = (formattedView: Gtk.TextView | null, markup: string) => {
     if (!formattedView) return;
     const buffer = formattedView.getBuffer();
-    if (!buffer) return;
 
     buffer.beginIrreversibleAction();
     const startIter = buffer.getStartIter();
@@ -32,10 +31,9 @@ const applyMarkupToView = (formattedView: Gtk.TextView | null, markup: string) =
 const syncMarkupFromSource = (sourceView: Gtk.TextView | null, markupRef: React.RefObject<string>) => {
     if (!sourceView) return;
     const buffer = sourceView.getBuffer();
-    if (!buffer) return;
     const startIter = buffer.getStartIter();
     const endIter = buffer.getEndIter();
-    markupRef.current = buffer.getText(startIter, endIter, false) ?? "";
+    markupRef.current = buffer.getText(startIter, endIter, false);
 };
 
 interface MarkupStackProps {

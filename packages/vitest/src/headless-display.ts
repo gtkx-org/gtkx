@@ -47,7 +47,7 @@ let westonFakeSeatSupport: boolean | undefined;
 const westonSupportsFakeSeat = (): boolean => {
     if (westonFakeSeatSupport === undefined) {
         const help = spawnSync("weston", ["--help"], { encoding: "utf8" });
-        westonFakeSeatSupport = `${help.stdout ?? ""}${help.stderr ?? ""}`.includes("--fake-seat");
+        westonFakeSeatSupport = `${help.stdout}${help.stderr}`.includes("--fake-seat");
     }
     return westonFakeSeatSupport;
 };

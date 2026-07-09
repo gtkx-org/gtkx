@@ -101,7 +101,7 @@ describe("render - ColumnViewColumn (1)", () => {
 
             await renderColumns(columnViewRef, <DefaultColumn id="name" title="Name" />);
 
-            expect(columnViewRef.current?.getColumns()?.getNItems()).toBe(1);
+            expect(columnViewRef.current?.getColumns().getNItems()).toBe(1);
         });
 
         it("sets column title", async () => {
@@ -110,7 +110,7 @@ describe("render - ColumnViewColumn (1)", () => {
             await renderColumns(columnViewRef, <DefaultColumn id="col" title="My Column" />);
 
             const column = getColumn(columnViewRef.current as Gtk.ColumnView, 0);
-            expect(column?.getTitle()).toBe("My Column");
+            expect(column.getTitle()).toBe("My Column");
         });
 
         it("sets column expand property", async () => {
@@ -122,7 +122,7 @@ describe("render - ColumnViewColumn (1)", () => {
             );
 
             const column = getColumn(columnViewRef.current as Gtk.ColumnView, 0);
-            expect(column?.getExpand()).toBe(true);
+            expect(column.getExpand()).toBe(true);
         });
     });
 });
@@ -138,7 +138,7 @@ describe("render - ColumnViewColumn (2)", () => {
             );
 
             const column = getColumn(columnViewRef.current as Gtk.ColumnView, 0);
-            expect(column?.getResizable()).toBe(true);
+            expect(column.getResizable()).toBe(true);
         });
 
         it("adds multiple columns", async () => {
@@ -168,7 +168,7 @@ describe("render - ColumnViewColumn (2)", () => {
                 </>,
             );
 
-            expect(columnViewRef.current?.getColumns()?.getNItems()).toBe(3);
+            expect(columnViewRef.current?.getColumns().getNItems()).toBe(3);
         });
     });
 });
@@ -189,10 +189,10 @@ describe("render - ColumnViewColumn (3)", () => {
             }
 
             await render(<App title="Initial" />);
-            expect(getColumn(columnViewRef.current as Gtk.ColumnView, 0)?.getTitle()).toBe("Initial");
+            expect(getColumn(columnViewRef.current as Gtk.ColumnView, 0).getTitle()).toBe("Initial");
 
             await render(<App title="Updated" />);
-            expect(getColumn(columnViewRef.current as Gtk.ColumnView, 0)?.getTitle()).toBe("Updated");
+            expect(getColumn(columnViewRef.current as Gtk.ColumnView, 0).getTitle()).toBe("Updated");
         });
     });
 });
@@ -221,10 +221,10 @@ describe("render - ColumnViewColumn (4)", () => {
             }
 
             await render(<App columns={["A", "B", "C"]} />);
-            expect(columnViewRef.current?.getColumns()?.getNItems()).toBe(3);
+            expect(columnViewRef.current?.getColumns().getNItems()).toBe(3);
 
             await render(<App columns={["A", "C"]} />);
-            expect(columnViewRef.current?.getColumns()?.getNItems()).toBe(2);
+            expect(columnViewRef.current?.getColumns().getNItems()).toBe(2);
         });
     });
 });
@@ -420,10 +420,10 @@ describe("render - ColumnViewColumn (9)", () => {
             }
 
             await render(<App showColumn={true} />);
-            expect(columnViewRef.current?.getColumns()?.getNItems()).toBe(2);
+            expect(columnViewRef.current?.getColumns().getNItems()).toBe(2);
 
             await render(<App showColumn={false} />);
-            expect(columnViewRef.current?.getColumns()?.getNItems()).toBe(1);
+            expect(columnViewRef.current?.getColumns().getNItems()).toBe(1);
         });
     });
 });

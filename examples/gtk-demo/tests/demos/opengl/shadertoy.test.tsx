@@ -13,7 +13,7 @@ const readBufferText = (textView: Gtk.TextView): string => {
     try {
         const start = buffer.getStartIter();
         const end = buffer.getEndIter();
-        return buffer.getText(start, end, false) ?? "";
+        return buffer.getText(start, end, false);
     } finally {
         unfreeze();
     }

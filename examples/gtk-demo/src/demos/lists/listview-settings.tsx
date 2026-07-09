@@ -107,9 +107,9 @@ function loadKeysForNode(nodeId: string): KeyInfo[] {
 
             result.push({
                 name: keyName,
-                value: value.print(false) ?? "",
-                defaultValue: defaultValue.print(false) ?? "",
-                type: valueType.dupString() ?? "",
+                value: value.print(false),
+                defaultValue: defaultValue.print(false),
+                type: valueType.dupString(),
                 summary: schemaKey.getSummary() ?? "",
                 description: schemaKey.getDescription() ?? "",
             });
@@ -247,7 +247,6 @@ const commitKeyInfoEdit = ({ keyInfo, newText, widget, state }: CommitKeyInfoEdi
 
         const variantType = GLib.VariantType.new(keyInfo.type);
         const variant = GLib.variantParse(variantType, newText, null, null);
-        if (!variant) return;
 
         const schemaKey = schema.getKey(keyInfo.name);
         if (!schemaKey.rangeCheck(variant)) {
@@ -255,9 +254,7 @@ const commitKeyInfoEdit = ({ keyInfo, newText, widget, state }: CommitKeyInfoEdi
             return;
         }
         settings.setValue(keyInfo.name, variant);
-        setKeyInfos((prev) =>
-            prev.map((k) => (k.name === keyInfo.name ? { ...k, value: variant.print(false) ?? "" } : k)),
-        );
+        setKeyInfos((prev) => prev.map((k) => (k.name === keyInfo.name ? { ...k, value: variant.print(false) } : k)));
     } catch (e) {
         if (e instanceof Error) console.error(e.message);
         widget.errorBell();

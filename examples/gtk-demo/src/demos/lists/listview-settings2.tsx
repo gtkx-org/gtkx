@@ -36,17 +36,17 @@ interface SchemaKeys {
 const loadKeyItem = (schemaId: string, schema: Gio.SettingsSchema, settings: Gio.Settings, name: string): KeyItem => {
     try {
         const variant = settings.getValue(name);
-        const valueStr = variant.print(false) ?? "";
+        const valueStr = variant.print(false);
         const schemaKey = schema.getKey(name);
         return {
             id: `${schemaId}/${name}`,
             name,
             value: valueStr,
-            defaultValue: schemaKey.getDefaultValue().print(false) ?? "",
+            defaultValue: schemaKey.getDefaultValue().print(false),
             description: schemaKey.getDescription() ?? "",
             schemaId,
             summary: schemaKey.getSummary() ?? "",
-            valueType: schemaKey.getValueType().dupString() ?? "",
+            valueType: schemaKey.getValueType().dupString(),
         };
     } catch (e) {
         if (e instanceof Error) console.error(e.message);
@@ -147,13 +147,13 @@ const commitSettingValue = (key: KeyItem, entry: Gtk.Entry, keysState: React.Ref
     try {
         const variantType = GLib.VariantType.new(key.valueType);
         const variant = GLib.variantParse(variantType, text, null, null);
-        if (!variant || !validateAgainstSchema(variant, key)) {
+        if (!validateAgainstSchema(variant, key)) {
             revertEntry(entry, key, keysState);
             return;
         }
         const settings = Gio.Settings.new(key.schemaId);
         settings.setValue(key.name, variant);
-        keysState.current.set(key.id, variant.print(false) ?? "");
+        keysState.current.set(key.id, variant.print(false));
     } catch (e) {
         if (e instanceof Error) console.error(e.message);
         revertEntry(entry, key, keysState);

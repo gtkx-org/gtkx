@@ -284,7 +284,7 @@ const renderStructArrayAccessor = (context: ModuleContext, target: StructArrayTa
     if (field.type === undefined || slot.bitWidth !== undefined) return undefined;
     const arrayType = context.library.typeOf(field.type);
     if (arrayType?.kind !== "carray") return undefined;
-    const elementType = arrayType.element === undefined ? undefined : context.library.typeOf(arrayType.element);
+    const elementType = context.library.typeOf(arrayType.element);
     if (elementType?.kind === "record" && elementType.value.glibGetType !== undefined) return undefined;
     const elementFields = resolveInlineStructFields(context, arrayType.element, arrayType.elementCType);
     if (elementFields === undefined) return undefined;

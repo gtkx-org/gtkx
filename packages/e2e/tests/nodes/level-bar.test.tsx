@@ -46,11 +46,11 @@ describe("render - LevelBar (1)", () => {
 
         await render(<App value={0.5} />);
 
-        expect(ref.current?.getOffsetValue("threshold")?.[1]).toBe(0.5);
+        expect(ref.current?.getOffsetValue("threshold")[1]).toBe(0.5);
 
         await render(<App value={0.75} />);
 
-        expect(ref.current?.getOffsetValue("threshold")?.[1]).toBe(0.75);
+        expect(ref.current?.getOffsetValue("threshold")[1]).toBe(0.75);
     });
 });
 
@@ -64,13 +64,13 @@ describe("render - LevelBar (2)", () => {
 
         await render(<App name="old-name" />);
 
-        expect(ref.current?.getOffsetValue("old-name")?.[0]).toBe(true);
-        expect(ref.current?.getOffsetValue("new-name")?.[0]).toBe(false);
+        expect(ref.current?.getOffsetValue("old-name")[0]).toBe(true);
+        expect(ref.current?.getOffsetValue("new-name")[0]).toBe(false);
 
         await render(<App name="new-name" />);
 
-        expect(ref.current?.getOffsetValue("old-name")?.[0]).toBe(false);
-        expect(ref.current?.getOffsetValue("new-name")?.[0]).toBe(true);
+        expect(ref.current?.getOffsetValue("old-name")[0]).toBe(false);
+        expect(ref.current?.getOffsetValue("new-name")[0]).toBe(true);
     });
 
     it("removes offsets when array changes", async () => {
@@ -88,12 +88,12 @@ describe("render - LevelBar (2)", () => {
 
         await render(<App showExtra={true} />);
 
-        expect(ref.current?.getOffsetValue("always")?.[0]).toBe(true);
-        expect(ref.current?.getOffsetValue("extra")?.[0]).toBe(true);
+        expect(ref.current?.getOffsetValue("always")[0]).toBe(true);
+        expect(ref.current?.getOffsetValue("extra")[0]).toBe(true);
 
         await render(<App showExtra={false} />);
 
-        expect(ref.current?.getOffsetValue("always")?.[0]).toBe(true);
-        expect(ref.current?.getOffsetValue("extra")?.[0]).toBe(false);
+        expect(ref.current?.getOffsetValue("always")[0]).toBe(true);
+        expect(ref.current?.getOffsetValue("extra")[0]).toBe(false);
     });
 });

@@ -27,7 +27,7 @@ const restoreOriginalSettings = (originalSettingsRef: OriginalSettingsRef) => {
     const original = originalSettingsRef.current;
     const settings = Gtk.Settings.getDefault();
     const styleManager = Adw.StyleManager.getDefault();
-    if (original && settings && styleManager) {
+    if (original && settings) {
         settings.gtkThemeName = original.themeName;
         styleManager.setColorScheme(original.colorScheme);
     }
@@ -41,7 +41,7 @@ const applyNextTheme = (
 ): boolean => {
     const settings = Gtk.Settings.getDefault();
     const styleManager = Adw.StyleManager.getDefault();
-    if (!settings || !styleManager) return true;
+    if (!settings) return true;
 
     const theme = THEMES[themeIndexRef.current % THEMES.length];
     if (theme) {
@@ -64,9 +64,9 @@ function useThemesLifecycle(originalSettingsRef: OriginalSettingsRef) {
     useLayoutEffect(() => {
         const settings = Gtk.Settings.getDefault();
         const styleManager = Adw.StyleManager.getDefault();
-        if (settings && styleManager) {
+        if (settings) {
             originalSettingsRef.current = {
-                themeName: settings.gtkThemeName ?? "",
+                themeName: settings.gtkThemeName,
                 colorScheme: styleManager.getColorScheme(),
             };
         }

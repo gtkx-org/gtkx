@@ -82,10 +82,10 @@ describe("wrapHandle — boxed types", () => {
         rgba.alpha = 1.0;
         const wrapped = wrapHandle(getHandle(rgba), Gdk.RGBA);
         expect(wrapped).not.toBeNull();
-        expect(wrapped?.red).toBeCloseTo(1.0);
-        expect(wrapped?.green).toBeCloseTo(0.5);
-        expect(wrapped?.blue).toBeCloseTo(0.0);
-        expect(wrapped?.alpha).toBeCloseTo(1.0);
+        expect(wrapped.red).toBeCloseTo(1.0);
+        expect(wrapped.green).toBeCloseTo(0.5);
+        expect(wrapped.blue).toBeCloseTo(0.0);
+        expect(wrapped.alpha).toBeCloseTo(1.0);
     });
 
     it("sets the correct prototype chain", () => {
@@ -93,8 +93,8 @@ describe("wrapHandle — boxed types", () => {
         rgba.red = 0.5;
         const wrapped = wrapHandle(getHandle(rgba), Gdk.RGBA);
         expect(wrapped).not.toBeNull();
-        expect(typeof wrapped?.toString).toBe("function");
-        expect(typeof wrapped?.copy).toBe("function");
+        expect(typeof wrapped.toString).toBe("function");
+        expect(typeof wrapped.copy).toBe("function");
     });
 
     it("returns null when id is null for boxed types", () => {

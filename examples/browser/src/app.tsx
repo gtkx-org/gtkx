@@ -55,7 +55,7 @@ const useBrowserController = (webViewRef: RefObject<WebKit.WebView | null>) => {
             canGoBack: webView.canGoBack(),
             canGoForward: webView.canGoForward(),
             ...(loadEvent === WebKit.LoadEvent.STARTED && { isLoading: true, progress: 0 }),
-            ...(loadEvent === WebKit.LoadEvent.COMMITTED && { url: webView.getUri() ?? s.url }),
+            ...(loadEvent === WebKit.LoadEvent.COMMITTED && { url: webView.getUri() }),
             ...(loadEvent === WebKit.LoadEvent.FINISHED && { isLoading: false, progress: 1 }),
         }));
     };

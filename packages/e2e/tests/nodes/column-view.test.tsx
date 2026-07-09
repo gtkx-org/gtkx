@@ -226,7 +226,7 @@ describe("render - ColumnView (2)", () => {
                 columns: titleColumns(["Column Title"]),
             });
 
-            expect(ref.current?.getColumns()).not.toBeNull();
+            expect(ref.current.getColumns()).not.toBeNull();
         });
 
         it("inserts column before existing column", async () => {
@@ -238,7 +238,7 @@ describe("render - ColumnView (2)", () => {
                 columns: titleColumns(["First", "Middle", "Last"]),
             });
 
-            expect(ref.current?.getColumns()).not.toBeNull();
+            expect(ref.current.getColumns()).not.toBeNull();
         });
 
         it("keeps cells in column order after inserting a column mid-list", async () => {
@@ -259,7 +259,7 @@ describe("render - ColumnView (2)", () => {
 
             await rerender([{ id: "1", value: { name: "First" } }], { columns: titleColumns(["A", "C"]) });
 
-            expect(ref.current?.getColumns()).not.toBeNull();
+            expect(ref.current.getColumns()).not.toBeNull();
         });
 
         it("sets column properties (expand, fixedWidth)", async () => {
@@ -267,7 +267,7 @@ describe("render - ColumnView (2)", () => {
                 columns: [{ id: "props", title: "Props", expand: true, fixedWidth: 100, renderItem: labelCell }],
             });
 
-            expect(ref.current?.getColumns()).not.toBeNull();
+            expect(ref.current.getColumns()).not.toBeNull();
         });
 
         it("updates column properties when props change", async () => {
@@ -277,7 +277,7 @@ describe("render - ColumnView (2)", () => {
 
             await rerender([{ id: "1", value: { name: "First" } }], { columns: titleColumns(["Updated"]) });
 
-            expect(ref.current?.getColumns()).not.toBeNull();
+            expect(ref.current.getColumns()).not.toBeNull();
         });
     });
 });
@@ -292,7 +292,7 @@ describe("render - ColumnView (3)", () => {
                 ]),
             );
 
-            expect(ref.current?.getModel()).not.toBeNull();
+            expect(ref.current.getModel()).not.toBeNull();
         });
 
         it("inserts item before existing item", async () => {
@@ -311,7 +311,7 @@ describe("render - ColumnView (3)", () => {
                 ]),
             );
 
-            expect(ref.current?.getModel()).not.toBeNull();
+            expect(ref.current.getModel()).not.toBeNull();
         });
 
         it("removes item", async () => {
@@ -330,7 +330,7 @@ describe("render - ColumnView (3)", () => {
                 ]),
             );
 
-            expect(ref.current?.getModel()).not.toBeNull();
+            expect(ref.current.getModel()).not.toBeNull();
         });
     });
 });
@@ -354,7 +354,7 @@ describe("render - ColumnView (5)", () => {
         it("sets sort column via sortColumn prop", async () => {
             const { ref } = await renderColumnView([{ id: "1", value: { name: "First" } }], { sortColumn: "name" });
 
-            expect(ref.current?.getSorter()).not.toBeNull();
+            expect(ref.current.getSorter()).not.toBeNull();
         });
 
         it("sets sort order via sortOrder prop", async () => {
@@ -363,7 +363,7 @@ describe("render - ColumnView (5)", () => {
                 sortOrder: Gtk.SortType.DESCENDING,
             });
 
-            expect(ref.current?.getSorter()).not.toBeNull();
+            expect(ref.current.getSorter()).not.toBeNull();
         });
 
         it("calls onSortChanged when sort changes", async () => {
@@ -387,7 +387,7 @@ describe("render - ColumnView (5)", () => {
 
             await rerender([{ id: "1", value: { name: "First" } }], { columns, sortColumn: "age" });
 
-            expect(ref.current?.getSorter()).not.toBeNull();
+            expect(ref.current.getSorter()).not.toBeNull();
         });
     });
 });
@@ -403,7 +403,7 @@ describe("render - ColumnView (6)", () => {
                 { selected: ["1"] },
             );
 
-            expect(ref.current?.getModel()).not.toBeNull();
+            expect(ref.current.getModel()).not.toBeNull();
         });
 
         it("supports multiple selection", async () => {
@@ -416,7 +416,7 @@ describe("render - ColumnView (6)", () => {
                 { selectionMode: Gtk.SelectionMode.MULTIPLE, selected: ["1", "2"] },
             );
 
-            expect(ref.current?.getModel()).not.toBeNull();
+            expect(ref.current.getModel()).not.toBeNull();
         });
     });
 });

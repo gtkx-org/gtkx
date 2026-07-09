@@ -65,7 +65,7 @@ export const onlyElements = (children: ReactNode): ReactElement[] => {
 
     Children.forEach(children, (child) => {
         if (!isValidElement(child)) return;
-        if (child.key === null || child.key === undefined) {
+        if (child.key === null) {
             warnOnceUnkeyedChild();
             return;
         }

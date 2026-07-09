@@ -103,8 +103,7 @@ const buildWrapper = ({
     );
 };
 
-const isDemo = (value: ComponentType<DemoProps> | Demo): value is Demo =>
-    typeof value === "object" && value !== null && "id" in value;
+const isDemo = (value: ComponentType<DemoProps> | Demo): value is Demo => typeof value === "object" && "id" in value;
 
 const PassthroughProvider: ComponentType<DemoProviderProps> = ({ children }) => children;
 
@@ -146,5 +145,5 @@ export const renderDemoAndExpectOpenButton = async (demo: Demo): Promise<void> =
 
 export const readBufferText = (view: Gtk.TextView): string => {
     const buffer = view.getBuffer();
-    return buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false) ?? "";
+    return buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false);
 };

@@ -70,7 +70,7 @@ function createFaceTransform(face: CubeFace): Gsk.Transform {
 
     let t = Gsk.Transform.new();
     t = t.translate(centerPoint) ?? t;
-    t = t.perspective(p) ?? t;
+    t = t.perspective(p);
     t = t.rotate3d(-30, getAxisX()) ?? t;
     t = t.rotate3d(135, getAxisY()) ?? t;
     t = t.translate3d(depthAdjust) ?? t;

@@ -45,7 +45,7 @@ describe("textscrollDemo", () => {
         await waitFor(() => {
             for (const view of [end, scroll]) {
                 const buffer = view.getBuffer();
-                const text = buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false) ?? "";
+                const text = buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false);
                 const expected = text.includes("Scroll to end") || text.includes("Scroll to bottom");
                 expect(expected).toBe(true);
             }

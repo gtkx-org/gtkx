@@ -5,7 +5,7 @@ import type { RefObject } from "react";
 export const getBufferText = (buffer: Gtk.TextBuffer): string => {
     const startIter = buffer.getStartIter();
     const endIter = buffer.getEndIter();
-    return buffer.getText(startIter, endIter, true) ?? "";
+    return buffer.getText(startIter, endIter, true);
 };
 
 export const getSourceBuffer = (ref: RefObject<GtkSource.View | null>): GtkSource.Buffer =>

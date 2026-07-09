@@ -1482,7 +1482,7 @@ function useShadertoyEditor(
         const buffer = view.getBuffer();
         const start = buffer.getStartIter();
         const end = buffer.getEndIter();
-        setCompiledCode(buffer.getText(start, end, false) ?? "");
+        setCompiledCode(buffer.getText(start, end, false));
     };
 
     const handleClear = () => {

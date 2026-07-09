@@ -100,10 +100,10 @@ function runCapture(command: string, args: string[]): Promise<string> {
         const child = spawn(command, args);
         let stdout = "";
         let stderr = "";
-        child.stdout?.on("data", (chunk: Buffer) => {
+        child.stdout.on("data", (chunk: Buffer) => {
             stdout += chunk.toString("utf8");
         });
-        child.stderr?.on("data", (chunk: Buffer) => {
+        child.stderr.on("data", (chunk: Buffer) => {
             stderr += chunk.toString("utf8");
         });
         child.on("error", reject);

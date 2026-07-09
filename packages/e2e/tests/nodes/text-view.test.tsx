@@ -146,7 +146,7 @@ describe("render - TextView - tag colors", () => {
             </GtkTextTag>
         ));
 
-        const tag = buffer?.getTagTable().lookup("colored") ?? null;
+        const tag = buffer.getTagTable().lookup("colored") ?? null;
         expect(tag).not.toBeNull();
         expect(tag?.foregroundSet).toBe(true);
         expect(tag?.backgroundSet).toBe(true);
@@ -176,8 +176,8 @@ describe("render - TextView (3)", () => {
 
             expect(getBufferText(buffer)).toBe("Bold Text");
 
-            const tagTable = buffer?.getTagTable();
-            const boldTag = tagTable?.lookup("bold");
+            const tagTable = buffer.getTagTable();
+            const boldTag = tagTable.lookup("bold");
             expect(boldTag).not.toBeNull();
         });
 
@@ -190,8 +190,8 @@ describe("render - TextView (3)", () => {
 
             expect(getBufferText(buffer)).toBe("Underlined");
 
-            const tagTable = buffer?.getTagTable();
-            const tag = tagTable?.lookup("underlined");
+            const tagTable = buffer.getTagTable();
+            const tag = tagTable.lookup("underlined");
             expect(tag).not.toBeNull();
         });
     });
@@ -333,7 +333,7 @@ describe("render - TextView (8)", () => {
             );
 
             const buffer = getTextBuffer(ref);
-            expect(buffer?.getEnableUndo()).toBe(enableUndo);
+            expect(buffer.getEnableUndo()).toBe(enableUndo);
         });
     });
 });

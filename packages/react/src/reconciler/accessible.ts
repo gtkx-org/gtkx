@@ -89,7 +89,7 @@ const fromBoolean: CreateValue = (val) => GObject.buildValue(GObject.TYPE_BOOLEA
 const fromInt: CreateValue = (val) => GObject.buildValue(GObject.TYPE_INT, (v) => v.setInt(val as number));
 const fromDouble: CreateValue = (val) => GObject.buildValue(GObject.TYPE_DOUBLE, (v) => v.setDouble(val as number));
 const fromObject: CreateValue = (val) =>
-    GObject.buildValue(GObject.TYPE_OBJECT, (v) => v.setObject((val as GObject.Object) ?? null));
+    GObject.buildValue(GObject.TYPE_OBJECT, (v) => v.setObject(val as GObject.Object));
 
 const fromRefList: CreateValue = (val) => {
     const widgets = val as Gtk.Accessible[];

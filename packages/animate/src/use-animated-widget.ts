@@ -57,7 +57,7 @@ export const useAnimatedWidget = (
         if (!isPresent) {
             if (exitStartedRef.current) return;
             exitStartedRef.current = true;
-            animator.startAnimation(props.exit ?? {}, () => safeToRemove?.());
+            animator.startAnimation(props.exit ?? {}, () => safeToRemove());
             return;
         }
 

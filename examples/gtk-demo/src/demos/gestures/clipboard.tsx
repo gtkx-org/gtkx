@@ -68,7 +68,6 @@ const buildRgba = (red: number, green: number, blue: number, alpha: number): Gdk
 
 const applyColorFromValue = (value: GObject.Value, setPastedContent: SetPastedContent): boolean => {
     const rgba = value.getBoxed<Gdk.RGBA>();
-    if (!rgba) return false;
     setPastedContent({ type: "Color", color: buildRgba(rgba.red, rgba.green, rgba.blue, rgba.alpha) });
     return true;
 };
@@ -196,8 +195,7 @@ function useClipboardHandlers(state: ClipboardState, window: React.RefObject<Gtk
         if (sourceType === "Text") copyTextToClipboard(clipboard, sourceText);
         else if (sourceType === "Color") copyColorToClipboard(clipboard, sourceColor);
         else if (sourceType === "Image") copyImageToClipboard(clipboard, selectedImage);
-        else if ((sourceType === "File" || sourceType === "Folder") && sourceFile)
-            copyFileToClipboard(clipboard, sourceFile);
+        else if (sourceFile) copyFileToClipboard(clipboard, sourceFile);
     };
 
     const handlePaste = async () => {

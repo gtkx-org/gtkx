@@ -27,11 +27,11 @@ const PasswordEntryProvider = ({ children }: DemoProviderProps) => {
     const passwordsMatch = password.length > 0 && password === confirm;
 
     const handlePasswordNotify = (pspec: GObject.ParamSpec, self: Gtk.PasswordEntry) => {
-        if (pspec.getName() === "text") setPassword(self.getText() ?? "");
+        if (pspec.getName() === "text") setPassword(self.getText());
     };
 
     const handleConfirmNotify = (pspec: GObject.ParamSpec, self: Gtk.PasswordEntry) => {
-        if (pspec.getName() === "text") setConfirm(self.getText() ?? "");
+        if (pspec.getName() === "text") setConfirm(self.getText());
     };
 
     const value = {

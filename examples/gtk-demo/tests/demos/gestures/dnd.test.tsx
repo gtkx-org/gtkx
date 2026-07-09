@@ -57,7 +57,7 @@ describe("dndDemo metadata", () => {
     it("applies the default 640x480 size to the host window", async () => {
         await renderDemo(dndDemo);
         const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
-        const [width, height] = window.getDefaultSize() ?? [];
+        const [width, height] = window.getDefaultSize();
         expect(width).toBe(640);
         expect(height).toBe(480);
     });

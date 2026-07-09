@@ -45,7 +45,7 @@ export const installGracefulShutdown = (options: GracefulShutdownOptions): void 
                     options.onForce?.();
                     finish(signal, false);
                 }, forceKillMs);
-                forceTimer.unref?.();
+                forceTimer.unref();
             }
             Promise.resolve()
                 .then(() => options.onSignal(signal))

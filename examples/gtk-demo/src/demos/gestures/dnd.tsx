@@ -218,7 +218,7 @@ function themeIsDark(): boolean {
     }
     const settings = Gtk.Settings.getDefault();
     if (!settings) return false;
-    const themeName = settings.gtkThemeName ?? "";
+    const themeName = settings.gtkThemeName;
     return themeName.endsWith("-dark") || themeName.endsWith(":dark");
 }
 
@@ -465,7 +465,7 @@ function useDropHandlers(args: DndHandlerArgs) {
     const handleItemColorDrop = (itemId: string, value: GObject.Value) => {
         const rgba = value.getBoxed<Gdk.RGBA>();
         if (rgba instanceof Gdk.RGBA) {
-            const cssColor = rgba.toString() ?? "transparent";
+            const cssColor = rgba.toString();
             setItems((prev) =>
                 prev.map((item) => (item.id === itemId ? { ...item, style: { type: "rgba", cssColor } } : item)),
             );

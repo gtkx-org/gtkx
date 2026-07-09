@@ -349,7 +349,7 @@ const ContentBody = ({
                         <GtkSearchEntry
                             ref={searchEntryRef}
                             placeholderText="Search notes…"
-                            onSearchChanged={(self) => setSearchQuery(self.text ?? "")}
+                            onSearchChanged={(self) => setSearchQuery(self.text)}
                         />
                     </GtkSearchBar>
 

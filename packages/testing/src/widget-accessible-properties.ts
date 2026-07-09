@@ -26,7 +26,7 @@ const readAccessibleBoolean = (widget: Gtk.Widget, key: string): boolean | null 
 };
 
 const getLabelText = (widget: Gtk.Widget): string | null => {
-    if (widget instanceof Gtk.Label) return widget.getLabel() ?? null;
+    if (widget instanceof Gtk.Label) return widget.getLabel();
     if (widget instanceof Gtk.Inscription) return widget.getText() ?? null;
     return null;
 };
@@ -63,9 +63,7 @@ export const getWidgetAccessibleName = (widget: Gtk.Widget): string | null => {
         const parent = widget.getParent();
         if (parent instanceof Gtk.Stack) {
             const page = parent.getPage(widget);
-            if (page) {
-                return page.getTitle() ?? null;
-            }
+            return page.getTitle() ?? null;
         }
         return null;
     }

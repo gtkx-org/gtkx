@@ -24,7 +24,6 @@ type MarkParsingErrorArgs = {
 const markParsingError = ({ textView, section, error, warningTag, errorTag }: MarkParsingErrorArgs) => {
     if (!textView) return;
     const buffer = textView.getBuffer();
-    if (!buffer) return;
 
     const startLocation = section.getStartLocation();
     const endLocation = section.getEndLocation();
@@ -77,7 +76,7 @@ export function useCssEditor(defaultCss: string) {
         clearTags(buffer);
         const startIter = buffer.getStartIter();
         const endIter = buffer.getEndIter();
-        const text = buffer.getText(startIter, endIter, false) ?? "";
+        const text = buffer.getText(startIter, endIter, false);
         provider.loadFromString(text);
     };
 
@@ -85,7 +84,6 @@ export function useCssEditor(defaultCss: string) {
         const textView = textViewRef.current;
         if (!textView) return;
         const buffer = textView.getBuffer();
-        if (!buffer) return;
 
         setupTags({ buffer, errorTagRef, warningTagRef });
 

@@ -135,7 +135,7 @@ describe("startHeadlessDisplay", () => {
     it("passes the requested size through to the weston spawn arguments", async () => {
         await startFulfilled({ size: "640x480", compositor: "weston" });
 
-        const westonCall = spawnMock.mock.calls.find((call) => call[1]?.includes("weston"));
+        const westonCall = spawnMock.mock.calls.find((call) => call[1].includes("weston"));
         const args = westonCall?.[1] ?? [];
         expect(args).toContain("--width=640");
         expect(args).toContain("--height=480");
@@ -144,7 +144,7 @@ describe("startHeadlessDisplay", () => {
     it("includes --fake-seat when weston advertises the flag", async () => {
         await startFulfilled({ size: "800x600", compositor: "weston" });
 
-        const westonCall = spawnMock.mock.calls.find((call) => call[1]?.includes("weston"));
+        const westonCall = spawnMock.mock.calls.find((call) => call[1].includes("weston"));
         expect(westonCall?.[1]).toContain("--fake-seat");
     });
 
@@ -157,7 +157,7 @@ describe("startHeadlessDisplay", () => {
         fulfillSockets("weston");
         teardowns.push(await pending);
 
-        const westonCall = spawnMock.mock.calls.find((call) => call[1]?.includes("weston"));
+        const westonCall = spawnMock.mock.calls.find((call) => call[1].includes("weston"));
         expect(westonCall?.[1]).not.toContain("--fake-seat");
     });
 

@@ -137,7 +137,7 @@ describe("render - adjustment element (4)", () => {
             />,
         );
 
-        ref.current?.getAdjustment()?.setValue(75);
+        ref.current?.getAdjustment().setValue(75);
 
         await waitFor(() => {
             expect(onValueChanged).toHaveBeenCalledWith(75);
@@ -155,7 +155,7 @@ describe("render - adjustment element (4)", () => {
                 onValueChanged={onValueChanged}
             />,
         );
-        ref.current?.getAdjustment()?.setValue(60);
+        ref.current?.getAdjustment().setValue(60);
 
         await waitFor(() => {
             expect(onValueChanged).toHaveBeenCalledWith(60);
@@ -163,7 +163,7 @@ describe("render - adjustment element (4)", () => {
         const callCount = onValueChanged.mock.calls.length;
 
         await rerender(<ScaleWithAdjustment config={{ value: 60, lower: 0, upper: 100 }} scaleRef={ref} />);
-        ref.current?.getAdjustment()?.setValue(70);
+        ref.current?.getAdjustment().setValue(70);
 
         await new Promise((resolve) => setTimeout(resolve, 50));
         expect(onValueChanged.mock.calls.length).toBe(callCount);

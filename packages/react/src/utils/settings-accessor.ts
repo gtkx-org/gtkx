@@ -36,7 +36,7 @@ const expectBigInt = (value: unknown): bigint => {
 };
 
 const STRING_ACCESSOR: SettingAccessor = {
-    read: (settings, key) => settings.getString(key) ?? "",
+    read: (settings, key) => settings.getString(key),
     write: (settings, key, value) => settings.setString(key, expectString(value)),
 };
 

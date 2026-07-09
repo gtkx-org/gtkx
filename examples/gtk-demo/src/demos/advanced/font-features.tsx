@@ -1186,7 +1186,7 @@ const FontFeaturesDemo = () => {
         if (state.viewMode !== "edit") return;
         const tv = state.editTextViewRef.current;
         if (!tv) return;
-        state.editScrolledWindowRef.current?.getVadjustment()?.setValue(0);
+        state.editScrolledWindowRef.current?.getVadjustment().setValue(0);
         tv.grabFocus();
     }, [state.viewMode, state.editTextViewRef, state.editScrolledWindowRef]);
 

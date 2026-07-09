@@ -25,7 +25,7 @@ export const NoteEditor = ({
             text={note.title}
             placeholderText="Note title"
             cssClasses={[titleEntry]}
-            onChanged={(self) => onUpdate({ title: self.text ?? "" })}
+            onChanged={(self) => onUpdate({ title: self.text })}
         />
         <GtkScrolledWindow vexpand>
             <GtkTextView
@@ -37,7 +37,7 @@ export const NoteEditor = ({
                         onChanged={(buffer) => {
                             const start = buffer.getStartIter();
                             const end = buffer.getEndIter();
-                            onUpdate({ body: buffer.getText(start, end, false) ?? "" });
+                            onUpdate({ body: buffer.getText(start, end, false) });
                         }}
                     >
                         {note.body}

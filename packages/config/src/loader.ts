@@ -24,7 +24,7 @@ export const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): 
         ...(options.mode !== undefined ? { envName: options.mode } : {}),
     });
 
-    const config = result.config ?? {};
+    const config = result.config;
     const found = result.configFile !== undefined && existsSync(resolve(cwd, result.configFile));
 
     if (found) validateConfig(config);

@@ -28,7 +28,7 @@ export const serializeWidget = (
         text: testing.getWidgetNodeText(widget),
         sensitive: widget.getSensitive(),
         visible: widget.getVisible(),
-        cssClasses: widget.getCssClasses() ?? [],
+        cssClasses: widget.getCssClasses(),
         children,
     };
 };
