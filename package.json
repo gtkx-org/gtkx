@@ -29,7 +29,6 @@
         "@gtkx/ffi": "workspace:*",
         "@gtkx/native": "workspace:*",
         "@gtkx/react": "workspace:*",
-        "@gtkx/utils": "workspace:*",
         "@types/node": "catalog:",
         "@types/react": "^19.2.17",
         "@vitest/coverage-v8": "catalog:",

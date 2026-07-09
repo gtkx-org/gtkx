@@ -21,8 +21,8 @@ export type SupervisedChild = {
 
 export type ForkRunner = (modulePath: string, args: string[], cwd: string) => SupervisedChild;
 
-const defaultForkRunner: ForkRunner = (modulePath, args, cwd) =>
-    nodeFork(modulePath, [...args], { cwd, stdio: "inherit" });
+export const defaultForkRunner: ForkRunner = (modulePath, args, cwd) =>
+    nodeFork(modulePath, [...args], { cwd, stdio: "inherit", detached: true });
 
 export type DevWatch = {
     paths: string[];

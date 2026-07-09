@@ -21,7 +21,6 @@
         "@gtkx/ffi": "workspace:*",
         "@gtkx/gl": "workspace:*",
         "@gtkx/react": "workspace:*",
-        "@gtkx/utils": "workspace:*",
         "react": "catalog:"
     },
     "devDependencies": {
