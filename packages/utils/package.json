@@ -30,7 +30,7 @@
     "scripts": {
         "build": "tsc -b tsconfig.lib.json",
         "typecheck": "tsc -b --emitDeclarationOnly",
-        "release": "cp ../../README.md README.md && pnpm publish --access public --no-git-checks"
+        "release": "tsx ../../scripts/release-package.ts"
     },
     "dependencies": {
         "picocolors": "^1.1.1"

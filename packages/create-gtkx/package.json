@@ -46,7 +46,7 @@
     "scripts": {
         "build": "tsc -b tsconfig.lib.json && rm -rf dist/templates && cp -r src/templates dist/templates",
         "typecheck": "tsc -b --emitDeclarationOnly",
-        "release": "cp ../../README.md README.md && pnpm publish --access public --no-git-checks"
+        "release": "tsx ../../scripts/release-package.ts"
     },
     "engines": {
         "node": ">=24"

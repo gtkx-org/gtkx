@@ -41,7 +41,7 @@
         "build": "tsc -b tsconfig.lib.json",
         "typecheck": "tsc -b --emitDeclarationOnly",
         "codegen": "NODE_OPTIONS=--conditions=source tsx ./scripts/codegen.ts",
-        "release": "cp ../../README.md README.md && pnpm publish --access public --no-git-checks"
+        "release": "tsx ../../scripts/release-package.ts"
     },
     "engines": {
         "node": ">=24"

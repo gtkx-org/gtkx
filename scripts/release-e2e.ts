@@ -16,7 +16,10 @@ import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { runServer } from "verdaccio";
 
+import { assertPublishedShape, type PackageManifest } from "./publish-manifest.js";
+
 const ROOT_DIR = fileURLToPath(new URL("..", import.meta.url));
+const PACKAGES_DIR = join(ROOT_DIR, "packages");
 const NATIVE_DIR = join(ROOT_DIR, "packages", "native");
 
 type HostNativeTarget = { triple: string; platformPackage: string };
@@ -87,6 +90,32 @@ export function runAsync(command: string, args: string[], options: RunOptions): 
                 resolve();
             } else {
                 reject(new Error(`Command failed with exit code ${code ?? "unknown"}: ${command} ${args.join(" ")}`));
+            }
+        });
+    });
+}
+
+function runCapture(command: string, args: string[]): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const child = spawn(command, args);
+        let stdout = "";
+        let stderr = "";
+        child.stdout?.on("data", (chunk: Buffer) => {
+            stdout += chunk.toString("utf8");
+        });
+        child.stderr?.on("data", (chunk: Buffer) => {
+            stderr += chunk.toString("utf8");
+        });
+        child.on("error", reject);
+        child.on("close", (code) => {
+            if (code === 0) {
+                resolve(stdout);
+            } else {
+                reject(
+                    new Error(
+                        `Command failed with exit code ${code ?? "unknown"}: ${command} ${args.join(" ")}\n${stderr}`,
+                    ),
+                );
             }
         });
     });
@@ -212,6 +241,70 @@ async function publishPackages(env: NodeJS.ProcessEnv): Promise<void> {
     );
 }
 
+function publishablePackageNames(): string[] {
+    const names: string[] = [];
+    for (const entry of readdirSync(PACKAGES_DIR)) {
+        const manifestPath = join(PACKAGES_DIR, entry, "package.json");
+        if (!existsSync(manifestPath)) continue;
+        const manifest: PackageManifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+        if (manifest.private === true) continue;
+        if (typeof manifest.name === "string") names.push(manifest.name);
+    }
+    return names;
+}
+
+type Packument = {
+    "dist-tags": { latest?: string };
+    versions: { [version: string]: { dist: { tarball: string } } };
+};
+
+async function tarballUrl(name: string): Promise<string> {
+    const response = await fetch(`${REGISTRY}${name}`);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch packument for ${name}: HTTP ${response.status}`);
+    }
+    const packument = (await response.json()) as Packument;
+    const latest = packument["dist-tags"].latest;
+    if (latest === undefined) {
+        throw new Error(`Registry reports no latest version for ${name}`);
+    }
+    const version = packument.versions[latest];
+    if (version === undefined) {
+        throw new Error(`Registry is missing the manifest for ${name}@${latest}`);
+    }
+    return version.dist.tarball;
+}
+
+async function inspectTarball(
+    name: string,
+    inspectDir: string,
+): Promise<{ entries: string[]; manifest: PackageManifest }> {
+    const response = await fetch(await tarballUrl(name));
+    if (!response.ok) {
+        throw new Error(`Failed to download the tarball for ${name}: HTTP ${response.status}`);
+    }
+    const tarballPath = join(inspectDir, "package.tgz");
+    writeFileSync(tarballPath, Buffer.from(await response.arrayBuffer()));
+    const listing = await runCapture("tar", ["-tzf", tarballPath]);
+    const entries = listing
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
+    const manifest: PackageManifest = JSON.parse(
+        await runCapture("tar", ["-xzOf", tarballPath, "package/package.json"]),
+    );
+    return { entries, manifest };
+}
+
+async function verifyPublishedShapes(inspectDir: string): Promise<void> {
+    const names = publishablePackageNames();
+    for (const name of names) {
+        const { entries, manifest } = await inspectTarball(name, inspectDir);
+        assertPublishedShape({ name, entries, manifest });
+    }
+    console.log(`release-e2e: verified the published shape of ${names.length} packages`);
+}
+
 async function scaffoldConsumer(consumerRoot: string, env: NodeJS.ProcessEnv): Promise<string> {
     await runAsync(
         "npm",
@@ -264,6 +357,8 @@ async function main(): Promise<void> {
         restorePublishedTree = prepareHostOnlyPublish();
         await stageNativeArtifacts();
         await publishPackages(env);
+
+        await verifyPublishedShapes(registryDir);
 
         const appDir = await scaffoldConsumer(consumerRoot, env);
         await buildConsumer(appDir, env);

@@ -14,7 +14,7 @@
     ],
     "workspaces": {
         ".": {
-            "entry": ["gtkx.config.ts", "scripts/**/*.ts"],
+            "entry": ["gtkx.config.base.ts", "scripts/**/*.ts"],
             "ignoreDependencies": ["@gtkx/ffi", "@gtkx/native", "@gtkx/react", "@gtkx/utils"]
         },
         "website": {
