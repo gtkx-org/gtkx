@@ -104,11 +104,8 @@ describe("createConfigLoader", () => {
         expect(resolved.reactCompiler).toEqual({ target: "19" });
     });
 
-    it("returns defaults when no config file exists", async () => {
-        await expect(createConfigLoader()(cwd)).resolves.toEqual({
-            applicationId: undefined,
-            reactCompiler: { target: "19" },
-        });
+    it("rejects when no config file exists because applicationId is required", async () => {
+        await expect(createConfigLoader()(cwd)).rejects.toThrow(/invalid `applicationId`/);
     });
 
     it("propagates validation errors from the loader", async () => {

@@ -42,6 +42,7 @@ export const createConfigLoader = (options: LoadConfigOptions = {}): ConfigLoade
     const cache = new Map<string, Promise<ResolvedConfig>>();
     const loadResolved = async (root: string): Promise<ResolvedConfig> => {
         const { config } = await loadConfig(root, options);
+        validateConfig(config);
         return resolveConfig(config);
     };
     return (cwd: string): Promise<ResolvedConfig> => {
