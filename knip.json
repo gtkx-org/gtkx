@@ -36,6 +36,9 @@
                 "tests/dev/fixtures/graceful-child.mjs"
             ]
         },
+        "packages/codegen": {
+            "ignoreDependencies": ["@types/react"]
+        },
         "packages/vitest": {
             "entry": ["src/worker-preload.ts!", "src/worker-setup.ts!"]
         },
