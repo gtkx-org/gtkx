@@ -183,6 +183,49 @@ describe("scaffold (src/* generated files)", () => {
     });
 });
 
+describe("scaffold (JavaScript variant)", () => {
+    it("emits .jsx sources and a .js config instead of the TypeScript files", async () => {
+        await run({ typescript: false, includeTesting: true });
+
+        expect(vol.existsSync(`${TEST_DIR}/test-app/src/app.jsx`)).toBe(true);
+        expect(vol.existsSync(`${TEST_DIR}/test-app/src/index.jsx`)).toBe(true);
+        expect(vol.existsSync(`${TEST_DIR}/test-app/gtkx.config.js`)).toBe(true);
+        expect(vol.existsSync(`${TEST_DIR}/test-app/vitest.config.js`)).toBe(true);
+        expect(vol.existsSync(`${TEST_DIR}/test-app/tests/app.test.jsx`)).toBe(true);
+
+        expect(vol.existsSync(`${TEST_DIR}/test-app/src/app.tsx`)).toBe(false);
+        expect(vol.existsSync(`${TEST_DIR}/test-app/gtkx.config.ts`)).toBe(false);
+    });
+
+    it("omits the TypeScript-only files", async () => {
+        await run({ typescript: false });
+
+        expect(vol.existsSync(`${TEST_DIR}/test-app/tsconfig.json`)).toBe(false);
+        expect(vol.existsSync(`${TEST_DIR}/test-app/src/gtkx-env.d.ts`)).toBe(false);
+        expect(vol.existsSync(`${TEST_DIR}/test-app/node_modules/.gtkx/env.d.ts`)).toBe(false);
+    });
+
+    it("wires the entry import to the .jsx source", async () => {
+        await run({ typescript: false });
+
+        expect(read(`${TEST_DIR}/test-app/src/index.jsx`)).toContain('from "./app.jsx"');
+    });
+
+    it("omits the typecheck script from package.json", async () => {
+        await run({ typescript: false });
+
+        const content = JSON.parse(read(`${TEST_DIR}/test-app/package.json`));
+        expect(content.scripts.typecheck).toBeUndefined();
+    });
+
+    it("drops typescript and @types/react from the installed dev dependencies", async () => {
+        await run({ typescript: false, includeTesting: true });
+
+        const devCall = addDependencyMock.mock.calls[1];
+        expect(devCall?.[0]).toEqual([pin("@gtkx/cli"), pin("@gtkx/config"), "vite", pin("@gtkx/testing"), "vitest"]);
+    });
+});
+
 describe("scaffold (dependency installation)", () => {
     it("invokes install twice: pinned production deps then dev deps with silent flag", async () => {
         await run({ includeTesting: true });
@@ -197,7 +240,15 @@ describe("scaffold (dependency installation)", () => {
             silent: true,
         });
         expect(devCall?.[1]).toMatchObject({ dev: true, silent: true });
-        expect(devCall?.[0]).toEqual(expect.arrayContaining([pin("@gtkx/cli"), "vitest", pin("@gtkx/testing")]));
+        expect(devCall?.[0]).toEqual([
+            pin("@gtkx/cli"),
+            pin("@gtkx/config"),
+            "vite",
+            "@types/react",
+            "typescript",
+            pin("@gtkx/testing"),
+            "vitest",
+        ]);
     });
 
     it("pins @gtkx packages to the current create-gtkx version", () => {
@@ -388,14 +439,7 @@ describe("scaffold (non-interactive and overwrite)", () => {
         vol.writeFileSync(`${TEST_DIR}/test-app/.git/config`, "[core]");
         vol.writeFileSync(`${TEST_DIR}/test-app/stale.txt`, "stale");
 
-        await scaffold({
-            name: "test-app",
-            applicationId: "org.test.app",
-            packageManager: "pnpm",
-            includeTesting: false,
-            interactive: false,
-            overwrite: true,
-        });
+        await run({ overwrite: true });
 
         expect(vol.existsSync(`${TEST_DIR}/test-app/stale.txt`)).toBe(false);
         expect(vol.existsSync(`${TEST_DIR}/test-app/.git/config`)).toBe(true);
@@ -422,14 +466,7 @@ describe("scaffold (non-interactive and overwrite)", () => {
         vol.mkdirSync(`${TEST_DIR}/test-app`, { recursive: true });
         vol.writeFileSync(`${TEST_DIR}/test-app/stale.txt`, "stale");
 
-        await scaffold({
-            name: "test-app",
-            applicationId: "org.test.app",
-            packageManager: "pnpm",
-            includeTesting: false,
-            interactive: false,
-            overwrite: true,
-        });
+        await run({ overwrite: true });
 
         expect(vol.existsSync(`${TEST_DIR}/test-app/stale.txt`)).toBe(false);
         expect(vol.existsSync(`${TEST_DIR}/test-app/package.json`)).toBe(true);

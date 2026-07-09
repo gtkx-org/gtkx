@@ -36,6 +36,19 @@ const COMPONENT = `export function Counter({ label }: { label: string }) {
 }
 `;
 
+const JS_COMPONENT = `export function Counter({ label }) {
+    const [n, setN] = React.useState(0);
+    return <button onClicked={() => setN(n + 1)}>{label}: {n}</button>;
+}
+`;
+
+const JS_HOOK = `import { useState } from "react";
+export function useCounter(initial) {
+    const [count, setCount] = useState(initial);
+    return { count, increment: () => setCount((c) => c + 1) };
+}
+`;
+
 const enabledPlugin = async (): Promise<ReturnType<typeof gtkxReactCompiler>> => {
     const plugin = gtkxReactCompiler(async () => ({ applicationId: "org.gtk.Test", reactCompiler: { target: "19" } }));
     await configOf(plugin)({});
@@ -67,9 +80,36 @@ describe("gtkxReactCompiler", () => {
         expect(result?.code).toContain("<button");
     });
 
-    it("skips files that are not .ts or .tsx", async () => {
+    it("skips files without a script extension", async () => {
         const transform = transformOf(gtkxReactCompiler());
         await expect(transform("body { color: red; }", "/proj/src/styles.css")).resolves.toBeUndefined();
+    });
+
+    it("compiles a .jsx source file, injecting the memo cache and compiler runtime", async () => {
+        const transform = transformOf(await enabledPlugin());
+        const result = await transform(JS_COMPONENT, "/proj/src/counter.jsx");
+
+        expect(result).toBeDefined();
+        expect(result?.code).toContain('from "react/compiler-runtime"');
+        expect(result?.code).toContain("_c(");
+        expect(result?.code).toContain("<button");
+    });
+
+    it("compiles a plain .js hook module", async () => {
+        const transform = transformOf(await enabledPlugin());
+        const result = await transform(JS_HOOK, "/proj/src/use-counter.js");
+
+        expect(result).toBeDefined();
+        expect(result?.code).toContain('from "react/compiler-runtime"');
+    });
+
+    it("compiles JSX authored in a plain .js file", async () => {
+        const transform = transformOf(await enabledPlugin());
+        const result = await transform(JS_COMPONENT, "/proj/src/widget.js");
+
+        expect(result).toBeDefined();
+        expect(result?.code).toContain('from "react/compiler-runtime"');
+        expect(result?.code).toContain("<button");
     });
 
     it("skips files in node_modules", async () => {

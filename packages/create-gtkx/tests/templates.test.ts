@@ -1,12 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { listTemplates, renderFile, type TemplateContext } from "../src/templates.js";
 
-const baseContext: TemplateContext = {
+const context = (overrides: Partial<TemplateContext> = {}): TemplateContext => ({
     name: "my-app",
     applicationId: "com.example.MyApp",
     title: "My App",
     includeTesting: false,
-};
+    typescript: true,
+    importExtension: ".js",
+    ...overrides,
+});
+
+const baseContext: TemplateContext = context();
 
 describe("renderFile", () => {
     it("renders the package.json template with the project name", () => {
@@ -34,6 +39,24 @@ describe("renderFile", () => {
     it("propagates the applicationId and title to templates that use them", () => {
         const output = renderFile(".gitignore", baseContext);
         expect(typeof output).toBe("string");
+    });
+
+    it("includes the typecheck script only for the TypeScript variant", () => {
+        expect(renderFile("package.json", context({ typescript: true }))).toContain('"typecheck"');
+        expect(renderFile("package.json", context({ typescript: false }))).not.toContain('"typecheck"');
+    });
+
+    it("targets the language-specific test glob in vitest.config", () => {
+        expect(renderFile("vitest.config.ts", context({ typescript: true }))).toContain("{ts,tsx}");
+        expect(renderFile("vitest.config.ts", context({ typescript: false }))).toContain("{js,jsx}");
+    });
+
+    it("uses the import extension for the entry and test imports", () => {
+        expect(renderFile("src/index.tsx", context({ importExtension: ".js" }))).toContain('from "./app.js"');
+        expect(renderFile("src/index.tsx", context({ importExtension: ".jsx" }))).toContain('from "./app.jsx"');
+        expect(renderFile("tests/app.test.tsx", context({ importExtension: ".jsx" }))).toContain(
+            'from "../src/app.jsx"',
+        );
     });
 });
 

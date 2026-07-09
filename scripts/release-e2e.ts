@@ -69,8 +69,14 @@ const prepareHostOnlyPublish = (): (() => void) => {
 const PORT = 4873;
 const HOST = `localhost:${PORT}`;
 const REGISTRY = `http://${HOST}/`;
-const APP_NAME = "release-e2e";
-const APPLICATION_ID = "com.gtkx.release-e2e";
+const REGISTRAR_USER = "release-e2e";
+
+type ConsumerVariant = { appName: string; applicationId: string; typescript: boolean };
+
+const CONSUMER_VARIANTS: ConsumerVariant[] = [
+    { appName: "release-e2e-ts", applicationId: "com.gtkx.release-e2e-ts", typescript: true },
+    { appName: "release-e2e-js", applicationId: "com.gtkx.release-e2e-js", typescript: false },
+];
 
 type UserResponse = {
     token?: string;
@@ -186,10 +192,10 @@ async function waitForRegistry(): Promise<void> {
 }
 
 async function createUserToken(): Promise<string> {
-    const response = await fetch(`${REGISTRY}-/user/org.couchdb.user:${APP_NAME}`, {
+    const response = await fetch(`${REGISTRY}-/user/org.couchdb.user:${REGISTRAR_USER}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: APP_NAME, password: APP_NAME, email: "e2e@gtkx.dev" }),
+        body: JSON.stringify({ name: REGISTRAR_USER, password: REGISTRAR_USER, email: "e2e@gtkx.dev" }),
     });
     if (!response.ok) {
         throw new Error(`Failed to register Verdaccio user: HTTP ${response.status}`);
@@ -313,28 +319,31 @@ async function verifyPublishedShapes(inspectDir: string): Promise<void> {
     console.log(`release-e2e: verified the published shape of ${names.length} packages`);
 }
 
-async function scaffoldConsumer(consumerRoot: string, env: NodeJS.ProcessEnv): Promise<string> {
-    await runAsync(
+async function verifyConsumer(consumerRoot: string, env: NodeJS.ProcessEnv, variant: ConsumerVariant): Promise<void> {
+    const language = variant.typescript ? "TypeScript" : "JavaScript";
+    const scaffoldArgs = [
+        "create",
+        "gtkx",
+        variant.appName,
+        "--",
+        "--application-id",
+        variant.applicationId,
+        "--pm",
         "npm",
-        ["create", "gtkx", APP_NAME, "--", "--application-id", APPLICATION_ID, "--pm", "npm", "--vitest"],
-        {
-            cwd: consumerRoot,
-            env,
-        },
-    );
-    return join(consumerRoot, APP_NAME);
-}
+        "--vitest",
+    ];
+    if (!variant.typescript) scaffoldArgs.push("--no-typescript");
 
-async function buildConsumer(appDir: string, env: NodeJS.ProcessEnv): Promise<void> {
+    await runAsync("npm", scaffoldArgs, { cwd: consumerRoot, env });
+
+    const appDir = join(consumerRoot, variant.appName);
     await runAsync("npm", ["run", "build"], { cwd: appDir, env });
-}
-
-async function typecheckConsumer(appDir: string, env: NodeJS.ProcessEnv): Promise<void> {
-    await runAsync("npm", ["run", "typecheck"], { cwd: appDir, env });
-}
-
-async function testConsumer(appDir: string, env: NodeJS.ProcessEnv): Promise<void> {
+    if (variant.typescript) {
+        await runAsync("npm", ["run", "typecheck"], { cwd: appDir, env });
+    }
     await runAsync("npm", ["test"], { cwd: appDir, env });
+
+    console.log(`release-e2e: ${language} consumer scaffold, build, and test succeeded`);
 }
 
 async function main(): Promise<void> {
@@ -368,12 +377,9 @@ async function main(): Promise<void> {
 
         await verifyPublishedShapes(registryDir);
 
-        const appDir = await scaffoldConsumer(consumerRoot, env);
-        await buildConsumer(appDir, env);
-        await typecheckConsumer(appDir, env);
-        await testConsumer(appDir, env);
-
-        console.log("release-e2e: consumer scaffold, build, typecheck, and test succeeded");
+        for (const variant of CONSUMER_VARIANTS) {
+            await verifyConsumer(consumerRoot, env, variant);
+        }
     } finally {
         restorePublishedTree?.();
 

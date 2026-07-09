@@ -8,6 +8,8 @@ export type TemplateContext = {
     applicationId: string;
     title: string;
     includeTesting: boolean;
+    typescript: boolean;
+    importExtension: string;
 };
 
 const getTemplatesDir = (): string => {

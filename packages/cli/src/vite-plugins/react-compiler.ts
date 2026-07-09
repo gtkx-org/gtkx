@@ -9,8 +9,9 @@ import type { Plugin, ResolvedConfig, UserConfig } from "vite";
 const babelPresetTypescript = babelPresetTypescriptNs.default ?? babelPresetTypescriptNs;
 const babelPluginReactCompiler = babelPluginReactCompilerNs.default ?? babelPluginReactCompilerNs;
 
-const SOURCE_EXTENSION = /\.tsx?$/;
-const JSX_EXTENSION = /\.tsx$/;
+const SOURCE_EXTENSION = /\.[jt]sx?$/;
+const TYPESCRIPT_EXTENSION = /\.tsx?$/;
+const TYPE_ONLY_EXTENSION = /\.ts$/;
 const NODE_MODULES = /(?:^|\/)node_modules\//;
 
 type ReactCompilerState = {
@@ -54,8 +55,8 @@ export function gtkxReactCompiler(loadConfig: ConfigLoader = createConfigLoader(
                 babelrc: false,
                 configFile: false,
                 sourceMaps: true,
-                parserOpts: { plugins: JSX_EXTENSION.test(id) ? ["jsx"] : [] },
-                presets: [babelPresetTypescript],
+                parserOpts: { plugins: TYPE_ONLY_EXTENSION.test(id) ? [] : ["jsx"] },
+                presets: TYPESCRIPT_EXTENSION.test(id) ? [babelPresetTypescript] : [],
                 plugins: [[babelPluginReactCompiler, options]],
             });
 

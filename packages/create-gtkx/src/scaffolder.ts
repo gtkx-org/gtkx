@@ -19,6 +19,7 @@ export type CreateOptions = {
     name?: string | undefined;
     applicationId?: string | undefined;
     packageManager?: PackageManager | undefined;
+    typescript?: boolean | undefined;
     includeTesting?: boolean | undefined;
     interactive?: boolean | undefined;
     overwrite?: boolean | undefined;
@@ -29,12 +30,15 @@ type ResolvedOptions = {
     name: string;
     applicationId: string;
     packageManager: PackageManager;
+    typescript: boolean;
     includeTesting: boolean;
 };
 
 const DEPENDENCIES = ["@gtkx/css", "@gtkx/ffi", "@gtkx/react", "react"];
 
-const DEV_DEPENDENCIES = ["@gtkx/cli", "@gtkx/config", "@types/react", "vite"];
+const DEV_DEPENDENCIES = ["@gtkx/cli", "@gtkx/config", "vite"];
+
+const TYPESCRIPT_DEV_DEPENDENCIES = ["@types/react", "typescript"];
 
 const TESTING_DEV_DEPENDENCIES = ["@gtkx/testing", "vitest"];
 
@@ -70,8 +74,14 @@ const isDirEmpty = (dir: string): boolean => {
     return entries.length === 0 || (entries.length === 1 && entries[0] === ".git");
 };
 
-const getDevDependencies = (includeTesting: boolean): string[] => {
+const getDevDependencies = ({
+    typescript,
+    includeTesting,
+}: Pick<ResolvedOptions, "typescript" | "includeTesting">): string[] => {
     const devDeps = [...DEV_DEPENDENCIES];
+    if (typescript) {
+        devDeps.push(...TYPESCRIPT_DEV_DEPENDENCIES);
+    }
     if (includeTesting) {
         devDeps.push(...TESTING_DEV_DEPENDENCIES);
     }
@@ -154,6 +164,14 @@ const promptPackageManager = async (): Promise<PackageManager> => {
     );
 };
 
+const promptTypeScript = async (): Promise<boolean> =>
+    guardCancellation(
+        await p.confirm({
+            message: "Use TypeScript?",
+            initialValue: true,
+        }),
+    );
+
 const promptTesting = async (): Promise<boolean> =>
     guardCancellation(
         await p.confirm({
@@ -219,16 +237,25 @@ const resolveOptions = async (options: CreateOptions): Promise<ResolvedOptions> 
             ? await promptPackageManager()
             : ((await detectPackageManager(process.cwd()).catch(() => undefined)) ?? "pnpm"));
 
+    const typescript = options.typescript ?? (options.interactive ? await promptTypeScript() : true);
+
     const includeTesting = options.includeTesting ?? (options.interactive ? await promptTesting() : true);
 
-    return { target, name, applicationId, packageManager, includeTesting };
+    return { target, name, applicationId, packageManager, typescript, includeTesting };
 };
 
 const TESTING_TEMPLATES = new Set(["vitest.config.ts", "tests/app.test.tsx"]);
+const TYPESCRIPT_TEMPLATES = new Set(["tsconfig.json", "src/gtkx-env.d.ts"]);
 const PACKAGE_JSON_TEMPLATE = "package.json";
 
-const isTemplateIncluded = (templateRelativePath: string, resolved: ResolvedOptions): boolean =>
-    TESTING_TEMPLATES.has(templateRelativePath) ? resolved.includeTesting : true;
+const isTemplateIncluded = (templateRelativePath: string, resolved: ResolvedOptions): boolean => {
+    if (TESTING_TEMPLATES.has(templateRelativePath)) return resolved.includeTesting;
+    if (TYPESCRIPT_TEMPLATES.has(templateRelativePath)) return resolved.typescript;
+    return true;
+};
+
+const toDestinationPath = (templateRelativePath: string, typescript: boolean): string =>
+    typescript ? templateRelativePath : templateRelativePath.replace(/\.tsx$/, ".jsx").replace(/\.ts$/, ".js");
 
 const addTestScript = (root: string): void => {
     const packageJsonPath = join(root, PACKAGE_JSON_TEMPLATE);
@@ -240,15 +267,22 @@ const addTestScript = (root: string): void => {
 };
 
 const scaffoldProject = (root: string, resolved: ResolvedOptions): void => {
-    const { name, applicationId, includeTesting } = resolved;
-    const context: TemplateContext = { name, applicationId, title: titleFromName(name), includeTesting };
+    const { name, applicationId, typescript, includeTesting } = resolved;
+    const context: TemplateContext = {
+        name,
+        applicationId,
+        title: titleFromName(name),
+        includeTesting,
+        typescript,
+        importExtension: typescript ? ".js" : ".jsx",
+    };
 
     mkdirSync(root, { recursive: true });
 
     for (const template of listTemplates()) {
         if (!isTemplateIncluded(template, resolved)) continue;
 
-        const destination = join(root, template);
+        const destination = join(root, toDestinationPath(template, typescript));
         mkdirSync(dirname(destination), { recursive: true });
         writeFileSync(destination, renderFile(template, context));
     }
@@ -334,7 +368,7 @@ export const scaffold = async (options: CreateOptions = {}): Promise<void> => {
 
     const resolved = await resolveOptions(options);
     const root = resolve(process.cwd(), resolved.target);
-    const devDeps = getDevDependencies(resolved.includeTesting);
+    const devDeps = getDevDependencies(resolved);
 
     const projectSpinner = p.spinner();
     projectSpinner.start("Creating project structure...");
@@ -347,7 +381,9 @@ export const scaffold = async (options: CreateOptions = {}): Promise<void> => {
         packageManager: resolved.packageManager,
         devDependencies: devDeps,
     });
-    writeInitialEnvModule(root);
+    if (resolved.typescript) {
+        writeInitialEnvModule(root);
+    }
     await initializeGitRepo(root);
 
     printNextSteps(resolved);

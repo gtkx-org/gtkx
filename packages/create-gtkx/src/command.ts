@@ -6,6 +6,7 @@ export type CreateCommandArgs = {
     name?: string | undefined;
     "application-id"?: string | undefined;
     "package-manager"?: string | undefined;
+    typescript?: boolean | undefined;
     vitest?: boolean | undefined;
     yes?: boolean | undefined;
     "no-interactive"?: boolean | undefined;
@@ -26,6 +27,7 @@ export const runCreate = async (args: CreateCommandArgs): Promise<void> => {
         name: args.name,
         applicationId: args["application-id"],
         packageManager: parsePackageManager(args["package-manager"]),
+        typescript: args.typescript,
         includeTesting: args.vitest,
         interactive,
         overwrite: args.overwrite,
@@ -51,6 +53,11 @@ export const createCommand = defineCommand({
             type: "string",
             alias: "pm",
             description: PACKAGE_MANAGER_FLAG_DESCRIPTION,
+        },
+        typescript: {
+            type: "boolean",
+            negativeDescription: "Scaffold the application in JavaScript instead of TypeScript",
+            description: "Scaffold the application in TypeScript",
         },
         vitest: {
             type: "boolean",

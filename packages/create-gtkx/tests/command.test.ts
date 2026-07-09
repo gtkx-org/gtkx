@@ -1,3 +1,4 @@
+import { runCommand } from "citty";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../src/scaffolder.js", () => ({
@@ -40,10 +41,21 @@ describe("runCreate", () => {
                 name: undefined,
                 applicationId: undefined,
                 packageManager: undefined,
+                typescript: undefined,
                 includeTesting: undefined,
                 overwrite: undefined,
             }),
         );
+    });
+
+    it("maps --no-typescript to typescript: false", async () => {
+        await runCreate({ name: "my-app", typescript: false });
+        expect(scaffoldMock).toHaveBeenCalledWith(expect.objectContaining({ typescript: false }));
+    });
+
+    it("forwards typescript: true when explicitly requested", async () => {
+        await runCreate({ name: "my-app", typescript: true });
+        expect(scaffoldMock).toHaveBeenCalledWith(expect.objectContaining({ typescript: true }));
     });
 
     it("disables interactive mode when --no-interactive is set", async () => {
@@ -75,5 +87,13 @@ describe("createCommand", () => {
     it("exposes the create metadata and the shared scaffold arguments", () => {
         expect(createCommand.meta).toMatchObject({ name: "create" });
         expect(createCommand.args).toHaveProperty("application-id");
+        expect(createCommand.args).toHaveProperty("typescript");
+    });
+
+    it("parses --no-typescript into typescript: false through citty", async () => {
+        scaffoldMock.mockClear();
+        await runCommand(createCommand, { rawArgs: ["my-app", "--no-typescript", "--no-interactive"] });
+        expect(scaffoldMock).toHaveBeenCalledTimes(1);
+        expect(scaffoldMock).toHaveBeenCalledWith(expect.objectContaining({ typescript: false }));
     });
 });
