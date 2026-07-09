@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
-import { checkModules, type SourceModule } from "../../src/compile.js";
+import { checkModules, compileProject, type SourceModule } from "../../src/compile.js";
 import { compileStore } from "../../src/store/compile-store.js";
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
@@ -75,5 +75,29 @@ describe("checkModules", () => {
                 label: "the test modules",
             }),
         ).toThrow(/bad\.ts:1:\d+ - Type 'number' is not assignable to type 'string'/);
+    });
+});
+
+describe("compileProject", () => {
+    let dir: string | undefined;
+
+    afterEach(() => {
+        if (dir !== undefined) rmSync(dir, { recursive: true, force: true });
+        dir = undefined;
+    });
+
+    it("throws when tsc fails without a file-positioned diagnostic", () => {
+        const projectDir = mkdtempSync(join(tmpdir(), "gtkx-compile-"));
+        dir = projectDir;
+        writeFileSync(join(projectDir, "ok.ts"), "export const answer: number = 42;\n");
+        expect(() =>
+            compileProject({
+                projectDir,
+                fileNames: ["ok.ts"],
+                compilerOptions: { noEmit: true, types: ["gtkx-missing-types-package"] },
+                resolveFrom: REPO_ROOT,
+                label: "the test modules",
+            }),
+        ).toThrow(/failed/);
     });
 });

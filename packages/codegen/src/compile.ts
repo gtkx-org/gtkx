@@ -50,7 +50,7 @@ const linkResolveModules = (projectDir: string, resolveFrom: string): (() => voi
 
 const tscBin = (): string => join(dirname(require.resolve("typescript/package.json")), "bin", "tsc");
 
-const runTsc = (tsconfigPath: string, cwd: string): string => {
+const runTsc = (tsconfigPath: string, cwd: string): { code: number; output: string } => {
     try {
         execFileSync(process.execPath, [tscBin(), "--pretty", "false", "-p", tsconfigPath], {
             cwd,
@@ -58,10 +58,14 @@ const runTsc = (tsconfigPath: string, cwd: string): string => {
             stdio: ["ignore", "pipe", "pipe"],
             maxBuffer: 64 * 1024 * 1024,
         });
-        return "";
+        return { code: 0, output: "" };
     } catch (error) {
-        const { stdout = "", stderr = "" } = error as { stdout?: string; stderr?: string };
-        return `${stdout}\n${stderr}`;
+        const {
+            status,
+            stdout = "",
+            stderr = "",
+        } = error as { status?: number | null; stdout?: string; stderr?: string };
+        return { code: typeof status === "number" ? status : 1, output: `${stdout}\n${stderr}` };
     }
 };
 
@@ -107,9 +111,13 @@ export const compileProject = (params: CompileProjectParams): void => {
                 files: params.fileNames.map((name) => `./${name}`),
             }),
         );
-        const diagnostics = parseDiagnostics(runTsc(tsconfigPath, params.projectDir), params.projectDir);
+        const { code, output } = runTsc(tsconfigPath, params.projectDir);
+        const diagnostics = parseDiagnostics(output, params.projectDir);
         if (diagnostics.length > 0) {
             throw new Error(formatDiagnostics(params.label, params.projectDir, diagnostics));
+        }
+        if (code !== 0) {
+            throw new Error(`Type checking ${params.label} failed:\n${output.trim()}`);
         }
     } finally {
         unlinkResolveModules();
