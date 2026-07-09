@@ -1,3 +1,5 @@
+import { posix } from "node:path";
+
 export type ExportsField = string | { [key: string]: ExportsField };
 
 export type PackageManifest = {
@@ -23,9 +25,6 @@ const stripExportsSource = (entry: ExportsField): ExportsField => {
 
 export const stripDevArtifacts = (manifest: PackageManifest): PackageManifest => {
     const stripped: PackageManifest = { ...manifest };
-    if (manifest.files !== undefined) {
-        stripped.files = manifest.files.filter((entry) => !isDevSource(entry));
-    }
     if (manifest.exports !== undefined) {
         stripped.exports = stripExportsSource(manifest.exports);
     }
@@ -54,6 +53,7 @@ export type PublishedPackage = {
     name: string;
     entries: string[];
     manifest: PackageManifest;
+    maps?: { [path: string]: string };
 };
 
 const requiredFileViolations = (files: Set<string>): string[] => {
@@ -64,21 +64,18 @@ const requiredFileViolations = (files: Set<string>): string[] => {
 };
 
 const shippedEntryViolation = (entry: string): string | undefined => {
-    if (isDevSource(entry)) return `ships development source ${entry}`;
     if (entry.endsWith(".tsbuildinfo")) return `ships build artifact ${entry}`;
-    if (entry.endsWith(".ts") && !entry.endsWith(".d.ts") && !entry.includes("templates/")) {
+    if (entry.endsWith(".ts") && !entry.endsWith(".d.ts") && !isDevSource(entry) && !entry.includes("templates/")) {
         return `ships TypeScript source ${entry}`;
     }
     return undefined;
 };
 
 const manifestViolations = (manifest: PackageManifest): string[] => {
-    const violations: string[] = [];
-    if (manifest.files?.some(isDevSource)) violations.push('package.json "files" still lists a "src" entry');
     if (manifest.exports !== undefined && exportsContainSource(manifest.exports)) {
-        violations.push('package.json "exports" still declares a "source" condition');
+        return ['package.json "exports" still declares a "source" condition'];
     }
-    return violations;
+    return [];
 };
 
 const unresolvedTargetViolations = (files: Set<string>, manifest: PackageManifest): string[] => {
@@ -92,13 +89,46 @@ const unresolvedTargetViolations = (files: Set<string>, manifest: PackageManifes
     return [...missingExports, ...missingBins];
 };
 
-export const assertPublishedShape = ({ name, entries, manifest }: PublishedPackage): void => {
+type SourceMap = {
+    sources?: string[];
+    sourcesContent?: (string | null)[];
+    sourceRoot?: string;
+};
+
+const mapSourceViolations = (mapPath: string, content: string, files: Set<string>): string[] => {
+    let parsed: SourceMap;
+    try {
+        parsed = JSON.parse(content) as SourceMap;
+    } catch {
+        return [`source map ${mapPath} is not valid JSON`];
+    }
+    const sources = parsed.sources ?? [];
+    const sourceRoot = parsed.sourceRoot ?? "";
+    const mapDir = posix.dirname(mapPath);
+    const violations: string[] = [];
+    for (let index = 0; index < sources.length; index += 1) {
+        const source = sources[index];
+        if (source === undefined) continue;
+        if (typeof parsed.sourcesContent?.[index] === "string") continue;
+        const resolved = posix.normalize(posix.join(mapDir, sourceRoot, source));
+        if (!files.has(resolved)) {
+            violations.push(`source map ${mapPath} references missing source ${source}`);
+        }
+    }
+    return violations;
+};
+
+const mapViolations = (files: Set<string>, maps: { [path: string]: string }): string[] =>
+    Object.entries(maps).flatMap(([path, content]) => mapSourceViolations(normalizePath(path), content, files));
+
+export const assertPublishedShape = ({ name, entries, manifest, maps }: PublishedPackage): void => {
     const files = new Set(entries.map(normalizePath));
     const violations = [
         ...requiredFileViolations(files),
         ...[...files].map(shippedEntryViolation).filter((violation) => violation !== undefined),
         ...manifestViolations(manifest),
         ...unresolvedTargetViolations(files, manifest),
+        ...mapViolations(files, maps ?? {}),
     ];
     if (violations.length > 0) {
         throw new Error(`Published package ${name} has an unexpected shape:\n  - ${violations.join("\n  - ")}`);

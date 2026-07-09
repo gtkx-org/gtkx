@@ -278,7 +278,7 @@ async function tarballUrl(name: string): Promise<string> {
 async function inspectTarball(
     name: string,
     inspectDir: string,
-): Promise<{ entries: string[]; manifest: PackageManifest }> {
+): Promise<{ entries: string[]; manifest: PackageManifest; maps: { [path: string]: string } }> {
     const response = await fetch(await tarballUrl(name));
     if (!response.ok) {
         throw new Error(`Failed to download the tarball for ${name}: HTTP ${response.status}`);
@@ -293,14 +293,22 @@ async function inspectTarball(
     const manifest: PackageManifest = JSON.parse(
         await runCapture("tar", ["-xzOf", tarballPath, "package/package.json"]),
     );
-    return { entries, manifest };
+    const maps: { [path: string]: string } = {};
+    const mapEntries = entries.filter((entry) => entry.endsWith(".map"));
+    if (mapEntries.length > 0) {
+        await runAsync("tar", ["-xzf", tarballPath, "-C", inspectDir, ...mapEntries], {});
+        for (const entry of mapEntries) {
+            maps[entry] = readFileSync(join(inspectDir, entry), "utf8");
+        }
+    }
+    return { entries, manifest, maps };
 }
 
 async function verifyPublishedShapes(inspectDir: string): Promise<void> {
     const names = publishablePackageNames();
     for (const name of names) {
-        const { entries, manifest } = await inspectTarball(name, inspectDir);
-        assertPublishedShape({ name, entries, manifest });
+        const { entries, manifest, maps } = await inspectTarball(name, inspectDir);
+        assertPublishedShape({ name, entries, manifest, maps });
     }
     console.log(`release-e2e: verified the published shape of ${names.length} packages`);
 }

@@ -36,8 +36,8 @@ describe("stripDevArtifacts", () => {
         });
     });
 
-    it("removes src from files while keeping other entries", () => {
-        expect(stripDevArtifacts(reactManifest).files).toEqual(["dist", "!**/*.tsbuildinfo"]);
+    it("keeps src in files so the shipped maps can resolve their sources", () => {
+        expect(stripDevArtifacts(reactManifest).files).toEqual(["dist", "src", "!**/*.tsbuildinfo"]);
     });
 
     it("leaves condition objects that never declared source untouched", () => {
@@ -117,14 +117,14 @@ describe("assertPublishedShape", () => {
         ).not.toThrow();
     });
 
-    it("rejects a tarball that ships src", () => {
+    it("accepts a tarball that ships src", () => {
         expect(() =>
             assertPublishedShape({
                 name: "@gtkx/react",
                 entries: [...strippedReactEntries, "package/src/index.ts"],
                 manifest: strippedReactManifest,
             }),
-        ).toThrow(/development source src\/index\.ts/);
+        ).not.toThrow();
     });
 
     it("rejects a build artifact", () => {
@@ -190,5 +190,69 @@ describe("assertPublishedShape", () => {
                 manifest: { exports: {} },
             }),
         ).not.toThrow();
+    });
+});
+
+const sourceMap = (sources: string[], sourcesContent?: (string | null)[]): string =>
+    JSON.stringify({ version: 3, sources, ...(sourcesContent === undefined ? {} : { sourcesContent }) });
+
+describe("assertPublishedShape source maps", () => {
+    it("accepts a declaration map whose source is shipped alongside it", () => {
+        expect(() =>
+            assertPublishedShape({
+                name: "@gtkx/react",
+                entries: [...strippedReactEntries, "package/src/index.ts", "package/dist/index.d.ts.map"],
+                manifest: strippedReactManifest,
+                maps: { "package/dist/index.d.ts.map": sourceMap(["../src/index.ts"]) },
+            }),
+        ).not.toThrow();
+    });
+
+    it("resolves nested sources relative to the map location", () => {
+        expect(() =>
+            assertPublishedShape({
+                name: "@gtkx/react",
+                entries: [
+                    ...strippedReactEntries,
+                    "package/src/hooks/use-app.ts",
+                    "package/dist/hooks/use-app.d.ts.map",
+                ],
+                manifest: strippedReactManifest,
+                maps: { "package/dist/hooks/use-app.d.ts.map": sourceMap(["../../src/hooks/use-app.ts"]) },
+            }),
+        ).not.toThrow();
+    });
+
+    it("rejects a map whose source is missing from the tarball", () => {
+        expect(() =>
+            assertPublishedShape({
+                name: "@gtkx/react",
+                entries: [...strippedReactEntries, "package/dist/index.d.ts.map"],
+                manifest: strippedReactManifest,
+                maps: { "package/dist/index.d.ts.map": sourceMap(["../src/index.ts"]) },
+            }),
+        ).toThrow(/source map dist\/index\.d\.ts\.map references missing source \.\.\/src\/index\.ts/);
+    });
+
+    it("accepts a source map that inlines its sourcesContent", () => {
+        expect(() =>
+            assertPublishedShape({
+                name: "@gtkx/react",
+                entries: [...strippedReactEntries, "package/dist/index.js.map"],
+                manifest: strippedReactManifest,
+                maps: { "package/dist/index.js.map": sourceMap(["../src/index.ts"], ["export {};\n"]) },
+            }),
+        ).not.toThrow();
+    });
+
+    it("rejects a malformed source map", () => {
+        expect(() =>
+            assertPublishedShape({
+                name: "@gtkx/react",
+                entries: [...strippedReactEntries, "package/dist/index.js.map"],
+                manifest: strippedReactManifest,
+                maps: { "package/dist/index.js.map": "not json" },
+            }),
+        ).toThrow(/source map dist\/index\.js\.map is not valid JSON/);
     });
 });
