@@ -28,7 +28,6 @@ const barrelSource = (directory: string): string => {
 };
 
 type CollectedFile = {
-    stem: string;
     fileName: string;
     source: string;
 };
@@ -40,19 +39,16 @@ const collectStoreSources = (
     const collected: CollectedFile[] = [];
     for (const { directory, rawSource } of namespaces) {
         collected.push({
-            stem: `${directory}/${directory}`,
             fileName: `${directory}/${directory}.ts`,
             source: rawSource,
         });
         for (const file of overrideFiles(directory)) {
             collected.push({
-                stem: `${directory}/overrides/${file.replace(/\.ts\.ejs$/, "")}`,
                 fileName: `${directory}/overrides/${file.replace(/\.ejs$/, "")}`,
                 source: readFileSync(join(OVERRIDES_ROOT, directory, file), "utf8"),
             });
         }
         collected.push({
-            stem: `${directory}/index`,
             fileName: `${directory}/index.ts`,
             source: barrelSource(directory),
         });

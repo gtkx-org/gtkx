@@ -32,7 +32,9 @@ const overrideExportNames = (path: string): Set<string> => {
 };
 
 const overrideExports = overrideExportNames(join(glSrcDir, "overrides.ts"));
-const result = await runCodegen({ gl: { registryPath, overrideExports, outputDir } });
+const result = await runCodegen({
+    gl: { registryPath, overrideExports, outputDir, resolveFrom: join(scriptDir, "..") },
+});
 const report = result.gl;
 if (report === undefined) {
     throw new Error("gl codegen produced no report");

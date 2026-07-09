@@ -1,5 +1,4 @@
 import { sanitizeIdentifier, sortStrings, sortStringsBy } from "@gtkx/utils";
-import { transpileSource } from "../transpile.js";
 import { type GlEnum, loadGlRegistry } from "./model.js";
 import { renderCommandsModule, renderEnumsModule, renderTypesModule } from "./modules.js";
 import { type CommandPlan, type GlExclusionReason, type GlPlanPolicy, type GlScalar, planCommand } from "./plan.js";
@@ -221,9 +220,6 @@ export const generateGlModules = (options: GlGenerationOptions): GlGenerationRes
         ["enums.ts", renderEnumsModule(enumRows)],
         ["commands.ts", renderCommandsModule(rendered, singulars, usedTypes)],
     ]);
-    for (const [fileName, source] of files) {
-        transpileSource(fileName, source);
-    }
 
     return {
         files,

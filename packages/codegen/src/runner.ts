@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ElementProp } from "@gtkx/config";
+import { checkModules } from "./compile.js";
 import { computeFingerprint, isStoreFresh } from "./fingerprint.js";
 import { Library } from "./gir/library.js";
 import { namespaceDirectory } from "./gir/namespace.js";
@@ -14,6 +15,7 @@ export type GlCodegenOptions = {
     registryPath: string;
     overrideExports: Set<string>;
     outputDir: string;
+    resolveFrom: string;
 };
 
 export type CodegenRunnerOptions = {
@@ -56,6 +58,11 @@ const emitGlModules = (options: GlCodegenOptions): GlGenerationReport => {
     const { files, report } = generateGlModules({
         registryPath: options.registryPath,
         overrideExports: options.overrideExports,
+    });
+    checkModules({
+        modules: [...files].map(([fileName, source]) => ({ fileName, source })),
+        resolveFrom: options.resolveFrom,
+        label: "the generated gl modules",
     });
     mkdirSync(options.outputDir, { recursive: true });
     for (const [fileName, source] of files) {

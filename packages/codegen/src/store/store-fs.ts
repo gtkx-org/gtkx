@@ -1,7 +1,6 @@
 import { existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
-import { transpileSource } from "../transpile.js";
-import { typecheckStore } from "./typecheck.js";
+import { compileStore } from "./compile-store.js";
 
 export type StoreOptions = {
     storeDir: string;
@@ -11,7 +10,6 @@ export type StoreOptions = {
 };
 
 type StoreFile = {
-    stem: string;
     fileName: string;
     source: string;
 };
@@ -56,16 +54,13 @@ export const writeStore = (params: WriteStoreParams): void => {
     for (const file of params.files) {
         writeSourceFile(tmp, file.fileName, file.source);
     }
-    typecheckStore({
+    compileStore({
         storeDir: tmp,
-        files: params.files.map((file) => ({ fileName: file.fileName, source: file.source })),
+        files: params.files,
         packageName: params.manifest.name,
         exports: params.manifest.exports,
         resolveFrom: params.resolveFrom,
     });
-    for (const file of params.files) {
-        emitFilePair(tmp, file.stem, file.fileName, file.source);
-    }
     writePackageJson(tmp, params.manifest);
     for (const raw of params.rawFiles ?? []) {
         writeFileSync(join(tmp, raw.relativePath), raw.content);
@@ -87,13 +82,6 @@ const writeSourceFile = (storeDir: string, fileName: string, source: string): vo
     const filePath = join(storeDir, fileName);
     mkdirSync(dirname(filePath), { recursive: true });
     writeFileSync(filePath, source);
-};
-
-const emitFilePair = (storeDir: string, stem: string, fileName: string, source: string): void => {
-    const { js, dts } = transpileSource(fileName, source);
-    writeFileSync(join(storeDir, `${stem}.js`), js);
-    writeFileSync(join(storeDir, `${stem}.d.ts`), dts);
-    rmSync(join(storeDir, fileName));
 };
 
 const symlinkRelative = (linkPath: string, realTarget: string): void => {

@@ -7,9 +7,9 @@ export const writeJsxStore = (options: JsxStoreOptions, namespaces: JsxNamespace
     const exportsMap: Record<string, unknown> = {
         "./metadata": subpathExport("metadata"),
     };
-    const files = [{ stem: "metadata", fileName: "metadata.ts", source: metadata }];
+    const files = [{ fileName: "metadata.ts", source: metadata }];
     for (const { directory, source } of namespaces) {
-        files.push({ stem: `${directory}/${directory}`, fileName: `${directory}/${directory}.tsx`, source });
+        files.push({ fileName: `${directory}/${directory}.tsx`, source });
         exportsMap[`./${directory}`] = subpathExport(`${directory}/${directory}`);
     }
 

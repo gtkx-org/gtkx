@@ -14,7 +14,6 @@ import {
     interfaceHasPropsBody,
 } from "../../src/store/react/intrinsic-elements.js";
 import { generateJsxFiles } from "../../src/store/react/pipeline.js";
-import { transpileSource } from "../../src/transpile.js";
 import { giModules, library } from "../helpers/library.js";
 
 type WalkedCallable = { parameters: GirParameter[]; returnValue: GirReturnValue };
@@ -109,15 +108,6 @@ describe("codegen gi pipeline", () => {
         expect(gtk).toBeDefined();
         expect(gtk?.source).toContain("Button");
     });
-
-    it("transpiles a generated gi module to valid JS and declarations", () => {
-        const gtk = giModules.find(({ directory }) => directory === "gtk");
-        expect(gtk).toBeDefined();
-        const { js, dts } = transpileSource(`${gtk?.directory ?? ""}.ts`, gtk?.source ?? "");
-        expect(js.length).toBeGreaterThan(0);
-        expect(dts.length).toBeGreaterThan(0);
-        expect(js).not.toContain("interface ");
-    }, 60000);
 });
 
 describe("codegen element-prop metadata", () => {
@@ -217,16 +207,6 @@ describe("codegen React pipeline", () => {
         expect(reactPipeline.intrinsicElementCount).toBeGreaterThan(0);
     });
 
-    it("transpiles every generated React module and the metadata", () => {
-        for (const { directory, source } of reactPipeline.namespaces) {
-            const { js, dts } = transpileSource(`${directory}/${directory}.tsx`, source);
-            expect(js.length).toBeGreaterThan(0);
-            expect(dts.length).toBeGreaterThan(0);
-        }
-        const { js } = transpileSource("metadata.ts", reactPipeline.metadata);
-        expect(js.length).toBeGreaterThan(0);
-    });
-
     it("emits page elements as lazy-element components", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
         expect(gtk).toContain(
@@ -278,8 +258,6 @@ describe("codegen applied element props", () => {
     it("types a value prop from its setter signature", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
         expect(interfaceBody(gtk, "GtkDropTarget")).toContain("types?: GObject$.Type[] | null | undefined;");
-        const { dts } = transpileSource("gtk/gtk.tsx", gtk);
-        expect(dts).not.toContain("TS2717");
     });
 
     it("contributes container-prop arguments to the child element's props", () => {
