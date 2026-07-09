@@ -110,6 +110,7 @@ const setupSupervisorCtx = (): SupervisorContext => {
         ctx.prevSigHup = process.listeners("SIGHUP");
     });
     afterEach(() => {
+        vi.useRealTimers();
         ctx.stderrSpy.mockRestore();
         ctx.exitSpy.mockRestore();
         cleanupSignalListeners("SIGINT", ctx.prevSigInt);
@@ -280,7 +281,26 @@ describe("runDevSupervisor (signal forwarding — shutdown ordering)", () => {
 describe("runDevSupervisor (signal forwarding — force kill)", () => {
     setupSupervisorCtx();
 
-    it("force-kills the child via SIGKILL on a second SIGINT", async () => {
+    it("force-kills the child via SIGKILL on a deliberate second SIGINT after the coalesce window", async () => {
+        const processKillSpy = vi.spyOn(process, "kill").mockImplementation((() => true) as never);
+        const child = await startSupervisor();
+        child.pid = 12345;
+        child.exitCode = null;
+
+        vi.useFakeTimers();
+        process.emit("SIGINT", "SIGINT");
+        await vi.advanceTimersByTimeAsync(600);
+        child.killed = false;
+        process.emit("SIGINT", "SIGINT");
+        vi.useRealTimers();
+        await flushMicrotasks();
+
+        const kills = processKillSpy.mock.calls.filter((args) => args[1] === "SIGKILL");
+        expect(kills.length).toBeGreaterThanOrEqual(1);
+        processKillSpy.mockRestore();
+    });
+
+    it("coalesces a duplicate SIGINT and shuts down without a SIGKILL", async () => {
         const processKillSpy = vi.spyOn(process, "kill").mockImplementation((() => true) as never);
         const child = await startSupervisor();
         child.pid = 12345;
@@ -293,7 +313,7 @@ describe("runDevSupervisor (signal forwarding — force kill)", () => {
         await flushMicrotasks();
 
         const kills = processKillSpy.mock.calls.filter((args) => args[1] === "SIGKILL");
-        expect(kills.length).toBeGreaterThanOrEqual(1);
+        expect(kills.length).toBe(0);
         processKillSpy.mockRestore();
     });
 });

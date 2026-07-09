@@ -102,7 +102,7 @@ describe.skipIf(process.platform === "win32")("dev supervisor Ctrl+C", () => {
         harness = undefined;
     });
 
-    it("shuts the child down cleanly on a single group SIGINT", async () => {
+    const runCleanShutdown = async (deliverSignals: (groupPid: number) => void): Promise<void> => {
         harness = startHarness();
         await harness.waitForReady();
 
@@ -110,7 +110,7 @@ describe.skipIf(process.platform === "win32")("dev supervisor Ctrl+C", () => {
         expect(groupPid).toBeGreaterThan(0);
         if (groupPid === undefined) throw new Error("harness has no pid");
 
-        process.kill(-groupPid, "SIGINT");
+        deliverSignals(groupPid);
 
         const code = await harness.waitForExit();
         const output = harness.output();
@@ -118,5 +118,18 @@ describe.skipIf(process.platform === "win32")("dev supervisor Ctrl+C", () => {
 
         expect(signalsReceived, `child should receive exactly one signal:\n${output}`).toBe(1);
         expect(code, `harness should exit 0:\n${output}`).toBe(0);
+    };
+
+    it("shuts the child down cleanly on a single group SIGINT", async () => {
+        await runCleanShutdown((groupPid) => {
+            process.kill(-groupPid, "SIGINT");
+        });
+    });
+
+    it("shuts down cleanly when one Ctrl+C arrives as duplicate signals", async () => {
+        await runCleanShutdown((groupPid) => {
+            process.kill(-groupPid, "SIGINT");
+            process.kill(groupPid, "SIGINT");
+        });
     });
 });

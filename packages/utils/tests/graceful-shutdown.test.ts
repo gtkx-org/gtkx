@@ -54,6 +54,7 @@ const installFixture = (): ShutdownFixture => {
         snap = snapshotListeners();
     });
     afterEach(() => {
+        vi.useRealTimers();
         fixture.exitSpy.mockRestore();
         restoreListeners(snap);
     });
@@ -106,17 +107,37 @@ describe("installGracefulShutdown — async + force-kill behavior", () => {
         expect(fixture.exitSpy).toHaveBeenCalledWith(0);
     });
 
+    it("coalesces a duplicate delivery of the same signal within the window", async () => {
+        const onSignal = vi.fn().mockReturnValue(new Promise<void>(() => {}));
+        const onForce = vi.fn();
+        installGracefulShutdown({ onSignal, onForce, forceKillAfterMs: 0, coalesceWindowMs: 500 });
+
+        process.emit("SIGINT", "SIGINT");
+        process.emit("SIGINT", "SIGINT");
+        await flush();
+
+        expect(onSignal).toHaveBeenCalledOnce();
+        expect(onForce).not.toHaveBeenCalled();
+        expect(fixture.exitSpy).not.toHaveBeenCalled();
+    });
+
     it.each([
         { signal: "SIGINT", exitCode: 130 },
         { signal: "SIGTERM", exitCode: 143 },
         { signal: "SIGHUP", exitCode: 143 },
-    ] as const)("invokes onForce immediately on a second $signal", async ({ signal, exitCode }) => {
+    ] as const)("invokes onForce on a deliberate second $signal after the coalesce window", async ({
+        signal,
+        exitCode,
+    }) => {
+        vi.useFakeTimers();
         const onSignal = vi.fn().mockReturnValue(new Promise<void>(() => {}));
         const onForce = vi.fn();
-        installGracefulShutdown({ onSignal, onForce, forceKillAfterMs: 0 });
+        installGracefulShutdown({ onSignal, onForce, forceKillAfterMs: 0, coalesceWindowMs: 500 });
 
         process.emit(signal, signal);
+        await vi.advanceTimersByTimeAsync(600);
         process.emit(signal, signal);
+        vi.useRealTimers();
         await flush();
 
         expect(onForce).toHaveBeenCalledOnce();
@@ -182,17 +203,21 @@ describe("installGracefulShutdown — overrides", () => {
         expect(exitCode).toHaveBeenCalledWith("SIGINT", true);
     });
 
-    it("reports graceful=false to the override when a second signal forces exit", async () => {
+    it("reports graceful=false to the override when a deliberate second signal forces exit", async () => {
+        vi.useFakeTimers();
         const exitCode = vi.fn(() => 0);
         installGracefulShutdown({
             onSignal: () => new Promise<void>(() => {}),
             onForce: () => undefined,
             forceKillAfterMs: 0,
+            coalesceWindowMs: 500,
             exitCode,
         });
 
         process.emit("SIGINT", "SIGINT");
+        await vi.advanceTimersByTimeAsync(600);
         process.emit("SIGINT", "SIGINT");
+        vi.useRealTimers();
         await flush();
 
         expect(exitCode).toHaveBeenCalledWith("SIGINT", false);

@@ -2,6 +2,7 @@ import { error } from "./log.js";
 
 const HANDLED_SIGNALS = ["SIGINT", "SIGTERM", "SIGHUP"] as const satisfies NodeJS.Signals[];
 const DEFAULT_FORCE_KILL_TIMEOUT_MS = 5000;
+const DEFAULT_COALESCE_WINDOW_MS = 500;
 
 export const exitCodeForSignal = (signal: NodeJS.Signals | null): number => {
     if (!signal) return 0;
@@ -12,57 +13,90 @@ export type GracefulShutdownOptions = {
     onSignal: (signal: NodeJS.Signals) => void | Promise<void>;
     onForce?: () => void;
     forceKillAfterMs?: number;
+    coalesceWindowMs?: number;
     exitCode?: (signal: NodeJS.Signals, graceful: boolean) => number;
 };
 
+type ShutdownState = {
+    options: GracefulShutdownOptions;
+    forceKillMs: number;
+    coalesceWindowMs: number;
+    firstSignal: NodeJS.Signals | null;
+    exited: boolean;
+    coalescing: boolean;
+    forceTimer: NodeJS.Timeout | null;
+    coalesceTimer: NodeJS.Timeout | null;
+};
+
+const clearTimers = (state: ShutdownState): void => {
+    if (state.forceTimer) {
+        clearTimeout(state.forceTimer);
+        state.forceTimer = null;
+    }
+    if (state.coalesceTimer) {
+        clearTimeout(state.coalesceTimer);
+        state.coalesceTimer = null;
+    }
+};
+
+const finish = (state: ShutdownState, signal: NodeJS.Signals, graceful: boolean): void => {
+    if (state.exited) return;
+    state.exited = true;
+    clearTimers(state);
+    const { exitCode } = state.options;
+    const code = exitCode ? exitCode(signal, graceful) : graceful ? 0 : exitCodeForSignal(signal);
+    process.exit(code);
+};
+
+const beginShutdown = (state: ShutdownState, signal: NodeJS.Signals): void => {
+    state.firstSignal = signal;
+    if (state.coalesceWindowMs > 0) {
+        state.coalescing = true;
+        state.coalesceTimer = setTimeout(() => {
+            state.coalescing = false;
+        }, state.coalesceWindowMs);
+        state.coalesceTimer.unref();
+    }
+    if (state.options.onForce && state.forceKillMs > 0) {
+        state.forceTimer = setTimeout(() => {
+            state.options.onForce?.();
+            finish(state, signal, false);
+        }, state.forceKillMs);
+        state.forceTimer.unref();
+    }
+    Promise.resolve()
+        .then(() => state.options.onSignal(signal))
+        .then(
+            () => finish(state, signal, true),
+            (reason: unknown) => {
+                error("graceful shutdown failed", reason);
+                finish(state, signal, false);
+            },
+        );
+};
+
+const handle = (state: ShutdownState, signal: NodeJS.Signals): void => {
+    if (state.firstSignal === null) {
+        beginShutdown(state, signal);
+        return;
+    }
+    if (state.coalescing) return;
+    state.options.onForce?.();
+    finish(state, signal, false);
+};
+
 export const installGracefulShutdown = (options: GracefulShutdownOptions): void => {
-    const forceKillMs = options.forceKillAfterMs ?? DEFAULT_FORCE_KILL_TIMEOUT_MS;
-
-    let firstSignal: NodeJS.Signals | null = null;
-    let exited = false;
-    let forceTimer: NodeJS.Timeout | null = null;
-
-    const clearTimer = (): void => {
-        if (forceTimer) {
-            clearTimeout(forceTimer);
-            forceTimer = null;
-        }
+    const state: ShutdownState = {
+        options,
+        forceKillMs: options.forceKillAfterMs ?? DEFAULT_FORCE_KILL_TIMEOUT_MS,
+        coalesceWindowMs: options.coalesceWindowMs ?? DEFAULT_COALESCE_WINDOW_MS,
+        firstSignal: null,
+        exited: false,
+        coalescing: false,
+        forceTimer: null,
+        coalesceTimer: null,
     };
-
-    const finish = (signal: NodeJS.Signals, graceful: boolean): void => {
-        if (exited) return;
-        exited = true;
-        clearTimer();
-        const code = options.exitCode ? options.exitCode(signal, graceful) : graceful ? 0 : exitCodeForSignal(signal);
-        process.exit(code);
-    };
-
-    const handle = (signal: NodeJS.Signals): void => {
-        if (firstSignal === null) {
-            firstSignal = signal;
-            if (options.onForce && forceKillMs > 0) {
-                forceTimer = setTimeout(() => {
-                    options.onForce?.();
-                    finish(signal, false);
-                }, forceKillMs);
-                forceTimer.unref();
-            }
-            Promise.resolve()
-                .then(() => options.onSignal(signal))
-                .then(
-                    () => finish(signal, true),
-                    (reason: unknown) => {
-                        error("graceful shutdown failed", reason);
-                        finish(signal, false);
-                    },
-                );
-            return;
-        }
-        options.onForce?.();
-        finish(signal, false);
-    };
-
     for (const sig of HANDLED_SIGNALS) {
-        process.on(sig, () => handle(sig));
+        process.on(sig, () => handle(state, sig));
     }
 };
