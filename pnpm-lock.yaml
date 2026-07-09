@@ -286,16 +286,15 @@ importers:
       '@gtkx/utils':
         specifier: workspace:*
         version: link:../utils
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.13.3
       fast-xml-parser:
         specifier: ^5.9.3
         version: 5.9.3
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
-    devDependencies:
-      '@types/node':
-        specifier: 'catalog:'
-        version: 24.13.3
 
   packages/components:
     dependencies:
@@ -409,6 +408,9 @@ importers:
       '@gtkx/testing':
         specifier: workspace:*
         version: link:../testing
+      '@gtkx/utils':
+        specifier: workspace:*
+        version: link:../utils
       '@gtkx/vitest':
         specifier: workspace:*
         version: link:../vitest
@@ -474,9 +476,6 @@ importers:
       '@gtkx/ffi':
         specifier: workspace:*
         version: link:../ffi
-      '@gtkx/native':
-        specifier: workspace:*
-        version: link:../native
       '@gtkx/utils':
         specifier: workspace:*
         version: link:../utils

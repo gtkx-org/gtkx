@@ -1,11 +1,11 @@
 import { getHandle } from "@gtkx/ffi";
+import { registerClassType, resolveWrapperClass, wrapHandle } from "@gtkx/ffi/internal";
 import * as Gdk from "@gtkx/gi/gdk";
 import type { Type } from "@gtkx/gi/gobject";
 import { typeFromName } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import type { AnyClass } from "@gtkx/utils";
 import { describe, expect, it } from "vitest";
-import { registerClassType, resolveWrapperClass, wrapHandle } from "../src/registry.js";
 
 const INVALID_GTYPE: Type = 0n;
 

@@ -20,7 +20,6 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
 import "@gtkx/gi/gobject";
 import { getHandle, t } from "@gtkx/ffi";
-import { resolveType } from "../../src/type.js";
 import {
     fromValue,
     getBoxedValue,
@@ -28,8 +27,9 @@ import {
     inoutValueForBoxedDescriptor,
     newValueForDescriptor,
     outValueForBoxedDescriptor,
+    resolveType,
     toValue,
-} from "../../src/value.js";
+} from "@gtkx/ffi/internal";
 
 const callGetType = (lib: string, fn: string): Type => {
     const result = resolveType(lib, fn);

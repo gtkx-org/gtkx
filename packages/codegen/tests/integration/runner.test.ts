@@ -1,5 +1,4 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
@@ -7,7 +6,7 @@ import { runCodegen } from "../../src/index.js";
 
 const GIR_PATH = ["/usr/share/gir-1.0"];
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
-const workDir = mkdtempSync(join(tmpdir(), "gtkx-codegen-"));
+const workDir = mkdtempSync(join(REPO_ROOT, "node_modules", ".gtkx-test-"));
 
 afterAll(() => {
     rmSync(workDir, { recursive: true, force: true });
@@ -21,7 +20,6 @@ const giOptions = (name: string) => {
             storeDir: join(root, "node_modules", ".gtkx", "gi"),
             linkDir: join(root, "node_modules", "@gtkx", "gi"),
             version: "0.0.0",
-            resolveFrom: REPO_ROOT,
         },
     };
 };
@@ -52,7 +50,6 @@ describe("runCodegen", () => {
             storeDir: join(root, "node_modules", ".gtkx", "jsx"),
             linkDir: join(root, "node_modules", "@gtkx", "jsx"),
             version: "0.0.0",
-            resolveFrom: REPO_ROOT,
         };
 
         const result = await runCodegen({

@@ -142,7 +142,7 @@ const renderInterfaceMaker = (
     className: string,
     callables: Callables,
 ): string => {
-    context.addUtilsTypeImport("Mixin");
+    context.addRuntimeTypeImport("Mixin");
     const members = renderInterfaceInstanceMembers(context, iface, callables);
     const classExpression = renderBracedOrEmpty("class extends Base", members.join("\n\n"));
     return `export const ${makerName(className)}: Mixin = (Base) =>\n${classExpression};`;

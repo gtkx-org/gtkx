@@ -25,7 +25,7 @@ describe("compileStore", () => {
             mkdirSync(dirname(filePath), { recursive: true });
             writeFileSync(filePath, file.source);
         }
-        compileStore({ storeDir, files, packageName: "@gtkx/gi", exports: FOO_EXPORTS, resolveFrom: REPO_ROOT });
+        compileStore({ storeDir, files, packageName: "@gtkx/gi", exports: FOO_EXPORTS });
         return storeDir;
     };
 
@@ -95,7 +95,6 @@ describe("compileProject", () => {
                 projectDir,
                 fileNames: ["ok.ts"],
                 compilerOptions: { noEmit: true, types: ["gtkx-missing-types-package"] },
-                resolveFrom: REPO_ROOT,
                 label: "the test modules",
             }),
         ).toThrow(/failed/);

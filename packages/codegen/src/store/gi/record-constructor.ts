@@ -41,7 +41,7 @@ export const renderRecordConstructor = (context: ModuleContext, record: GirRecor
     if (size === 0) {
         return `constructor(props: ${className}ConstructorProps = {}) {}`;
     }
-    context.addNativeImport("alloc");
+    context.addRuntimeImport("alloc");
     context.addRuntimeImport("setHandle");
     const statements = [`const handle = alloc(${allocArgs(record, size).join(", ")});`];
     for (const entry of slots) {

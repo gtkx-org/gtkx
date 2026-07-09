@@ -1,4 +1,4 @@
-import type { AnyClass } from "./class.js";
+import type { AnyClass } from "@gtkx/utils";
 
 export type MixinReceiver = {
     connect(signal: string, handler: (...args: unknown[]) => unknown, after?: boolean): number;

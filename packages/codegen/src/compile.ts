@@ -1,7 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 
 const require = createRequire(import.meta.url);
@@ -15,7 +14,6 @@ export type CompileProjectParams = {
     projectDir: string;
     fileNames: string[];
     compilerOptions: Record<string, unknown>;
-    resolveFrom: string;
     label: string;
     paths?: Record<string, string[]>;
 };
@@ -40,11 +38,12 @@ const BASE_COMPILER_OPTIONS = {
     types: ["node"],
 };
 
-const linkResolveModules = (projectDir: string, resolveFrom: string): (() => void) => {
-    const target = join(resolveFrom, "node_modules");
+const codegenModules = (): string => dirname(dirname(dirname(require.resolve("@types/node/package.json"))));
+
+const linkToolingModules = (projectDir: string): (() => void) => {
     const link = join(projectDir, "node_modules");
-    if (resolve(projectDir) === resolve(resolveFrom) || existsSync(link) || !existsSync(target)) return () => {};
-    symlinkSync(target, link, "junction");
+    if (existsSync(link)) return () => {};
+    symlinkSync(codegenModules(), link, "junction");
     return () => rmSync(link, { force: true });
 };
 
@@ -98,7 +97,7 @@ const formatDiagnostics = (label: string, projectDir: string, diagnostics: Proje
 
 export const compileProject = (params: CompileProjectParams): void => {
     const tsconfigPath = join(params.projectDir, "tsconfig.json");
-    const unlinkResolveModules = linkResolveModules(params.projectDir, params.resolveFrom);
+    const unlinkToolingModules = linkToolingModules(params.projectDir);
     try {
         writeFileSync(
             tsconfigPath,
@@ -120,7 +119,7 @@ export const compileProject = (params: CompileProjectParams): void => {
             throw new Error(`Type checking ${params.label} failed:\n${output.trim()}`);
         }
     } finally {
-        unlinkResolveModules();
+        unlinkToolingModules();
         rmSync(tsconfigPath, { force: true });
     }
 };
@@ -132,7 +131,9 @@ const CHECK_OPTIONS = {
 };
 
 export const checkModules = (params: { modules: SourceModule[]; resolveFrom: string; label: string }): void => {
-    const projectDir = mkdtempSync(join(tmpdir(), "gtkx-check-"));
+    const checkRoot = join(params.resolveFrom, "node_modules");
+    mkdirSync(checkRoot, { recursive: true });
+    const projectDir = mkdtempSync(join(checkRoot, ".gtkx-check-"));
     try {
         for (const module of params.modules) {
             const filePath = join(projectDir, module.fileName);
@@ -143,7 +144,6 @@ export const checkModules = (params: { modules: SourceModule[]; resolveFrom: str
             projectDir,
             fileNames: params.modules.map((module) => module.fileName),
             compilerOptions: CHECK_OPTIONS,
-            resolveFrom: params.resolveFrom,
             label: params.label,
         });
     } finally {

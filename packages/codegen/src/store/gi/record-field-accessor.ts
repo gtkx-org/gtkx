@@ -28,11 +28,11 @@ type FieldWriteSpec = {
 
 export const emitFieldWrite = (context: ModuleContext, spec: FieldWriteSpec): string => {
     const { descriptor, slot, targetExpr, valueExpr } = spec;
-    context.addNativeImport("write");
+    context.addRuntimeImport("write");
     if (slot.bitWidth === undefined) {
         return `write(${targetExpr}, ${descriptor}, ${slot.byteOffset}, ${valueExpr});`;
     }
-    context.addNativeImport("read");
+    context.addRuntimeImport("read");
     const merged = mergeBitfield(
         `(read(${targetExpr}, ${descriptor}, ${slot.byteOffset}) as number)`,
         valueExpr,
@@ -293,7 +293,7 @@ const renderStructArrayAccessor = (context: ModuleContext, target: StructArrayTa
     const elementSize = computeRecordFieldSlots(context, elementFields).size;
     if (elementSize === 0) return undefined;
 
-    context.addNativeImport("read");
+    context.addRuntimeImport("read");
     context.addRuntimeImport("getHandle");
     context.addRuntimeImport("t");
     const options: StructArrayAccessorOptions = {
@@ -313,7 +313,7 @@ const renderStructArrayAccessor = (context: ModuleContext, target: StructArrayTa
     const blocks: string[] = [];
     if (field.readable) blocks.push(structArrayGetterBlock(options));
     if (field.writable) {
-        context.addNativeImport("write");
+        context.addRuntimeImport("write");
         blocks.push(structArraySetterBlock(options));
     }
     return blocks.length === 0 ? undefined : blocks.join("\n\n");
@@ -330,7 +330,7 @@ type AccessorOptions = {
 
 const getterBlock = (options: AccessorOptions): string => {
     const { context, jsName, tsType, descriptor, slot, fieldType } = options;
-    context.addNativeImport("read");
+    context.addRuntimeImport("read");
     context.addRuntimeImport("getHandle");
     if (slot.bitWidth === undefined) {
         const valueExpression = `read(getHandle(this), ${descriptor}, ${slot.byteOffset})`;

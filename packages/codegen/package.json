@@ -48,10 +48,8 @@
     "dependencies": {
         "@gtkx/config": "workspace:*",
         "@gtkx/utils": "workspace:*",
+        "@types/node": "catalog:",
         "fast-xml-parser": "^5.9.3",
         "typescript": "catalog:"
-    },
-    "devDependencies": {
-        "@types/node": "catalog:"
     }
 }

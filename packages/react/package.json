@@ -55,7 +55,6 @@
     "dependencies": {
         "@gtkx/config": "workspace:*",
         "@gtkx/ffi": "workspace:*",
-        "@gtkx/native": "workspace:*",
         "@gtkx/utils": "workspace:*",
         "react-reconciler": "^0.33.0"
     },

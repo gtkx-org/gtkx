@@ -6,7 +6,6 @@ export type StoreOptions = {
     storeDir: string;
     linkDir: string;
     version: string;
-    resolveFrom: string;
 };
 
 type StoreFile = {
@@ -59,7 +58,6 @@ export const writeStore = (params: WriteStoreParams): void => {
         files: params.files,
         packageName: params.manifest.name,
         exports: params.manifest.exports,
-        resolveFrom: params.resolveFrom,
     });
     writePackageJson(tmp, params.manifest);
     for (const raw of params.rawFiles ?? []) {
@@ -74,7 +72,6 @@ type WriteStoreParams = {
     linkDir: string;
     files: StoreFile[];
     manifest: Manifest;
-    resolveFrom: string;
     rawFiles?: { relativePath: string; content: string }[];
 };
 

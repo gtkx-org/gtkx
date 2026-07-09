@@ -58,7 +58,7 @@ const renderRootConstructor = (context: ModuleContext): string => {
     context.addRuntimeImport("getInstanceType");
     context.addRuntimeImport("newObjectWithProperties");
     context.addRuntimeImport("setHandle");
-    context.addNativeImport("setWrapper");
+    context.addRuntimeImport("setWrapper");
     const body = [
         "const handle = newObjectWithProperties(getInstanceType(this), props);",
         "setHandle(this, handle);",

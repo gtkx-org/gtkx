@@ -6,7 +6,8 @@ import {
     type RegisterClassVfunc as NativeRegisterClassVfunc,
     setWrapper,
 } from "@gtkx/native";
-import type { AnyClass, Mixin, MixinReceiver } from "@gtkx/utils";
+import type { AnyClass } from "@gtkx/utils";
+import type { Mixin, MixinReceiver } from "./mixin.js";
 import { TYPE_INVALID, type TypedClass, typeInterfaces, typeIsA, typeName, typeParent } from "./type.js";
 
 export type StaticBase<C, K extends PropertyKey = "new"> = Omit<C, K> &

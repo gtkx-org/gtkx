@@ -1,7 +1,7 @@
 import { getHandle } from "@gtkx/ffi";
+import { checkError, createErrorDomain } from "@gtkx/ffi/internal";
 import { FileError, Error as GError, quarkFromString } from "@gtkx/gi/glib";
 import { describe, expect, it } from "vitest";
-import { checkError, createErrorDomain } from "../src/error.js";
 
 const FILE_ERROR_DOMAIN = 0xbe1;
 const FILE_ERROR_NOENT = 5;

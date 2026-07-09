@@ -32,9 +32,9 @@ type ResolvedOptions = {
     includeTesting: boolean;
 };
 
-const DEPENDENCIES = ["@gtkx/css", "@gtkx/ffi", "@gtkx/native", "@gtkx/react", "@gtkx/utils", "react"];
+const DEPENDENCIES = ["@gtkx/css", "@gtkx/ffi", "@gtkx/react", "react"];
 
-const DEV_DEPENDENCIES = ["@gtkx/cli", "@gtkx/config", "@types/node", "@types/react", "typescript", "vite"];
+const DEV_DEPENDENCIES = ["@gtkx/cli", "@gtkx/config", "@types/react", "vite"];
 
 const TESTING_DEV_DEPENDENCIES = ["@gtkx/testing", "vitest"];
 

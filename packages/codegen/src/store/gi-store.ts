@@ -67,13 +67,12 @@ export const writeGiStore = (
     writeStore({
         storeDir: options.storeDir,
         linkDir: options.linkDir,
-        resolveFrom: options.resolveFrom,
         files: collected,
         manifest: buildManifest({
             name: "@gtkx/gi",
             version: options.version,
             exports: exportsMap,
-            peerDependencies: { "@gtkx/ffi": "*", "@gtkx/native": "*", "@gtkx/utils": "*" },
+            peerDependencies: { "@gtkx/ffi": "*" },
         }),
         rawFiles: [{ relativePath: FINGERPRINT_FILENAME, content: `${JSON.stringify(fingerprint, null, 2)}\n` }],
     });

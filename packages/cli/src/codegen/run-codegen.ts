@@ -48,10 +48,9 @@ type CodegenOptionsInput = {
     libraries: string[];
     girPath: string[];
     elementProps: Record<string, ElementProp[]>;
-    resolveFrom: string;
 };
 
-const codegenOptions = ({ store, libraries, girPath, elementProps, resolveFrom }: CodegenOptionsInput) => ({
+const codegenOptions = ({ store, libraries, girPath, elementProps }: CodegenOptionsInput) => ({
     libraries,
     girPath,
     elementProps,
@@ -59,7 +58,6 @@ const codegenOptions = ({ store, libraries, girPath, elementProps, resolveFrom }
         storeDir: store.giStoreDir,
         linkDir: store.giLinkDir,
         version: store.ffiVersion,
-        resolveFrom,
     },
     jsx:
         store.react !== null
@@ -67,7 +65,6 @@ const codegenOptions = ({ store, libraries, girPath, elementProps, resolveFrom }
                   storeDir: store.jsxStoreDir,
                   linkDir: store.jsxLinkDir,
                   version: store.react.version,
-                  resolveFrom,
               }
             : undefined,
 });
@@ -106,7 +103,7 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
     }
 
     const result = await runCodegenCore({
-        ...codegenOptions({ store, libraries, girPath, elementProps, resolveFrom: cwd }),
+        ...codegenOptions({ store, libraries, girPath, elementProps }),
         force,
     });
 

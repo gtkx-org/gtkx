@@ -7,7 +7,6 @@ export type CompileStoreParams = {
     files: SourceModule[];
     packageName: string;
     exports: Record<string, unknown>;
-    resolveFrom: string;
 };
 
 const EMIT_OPTIONS = {
@@ -41,7 +40,6 @@ export const compileStore = (params: CompileStoreParams): void => {
         projectDir: params.storeDir,
         fileNames: params.files.map((file) => file.fileName),
         compilerOptions: EMIT_OPTIONS,
-        resolveFrom: params.resolveFrom,
         paths: selfPaths(params.packageName, params.exports, params.storeDir),
         label: `the generated ${params.packageName} store`,
     });

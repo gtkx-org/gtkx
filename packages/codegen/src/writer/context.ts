@@ -20,18 +20,6 @@ export class ModuleContext {
         this.module.imports.addNamed("@gtkx/ffi", name, true);
     }
 
-    addNativeImport(name: string): void {
-        this.module.imports.addNamed("@gtkx/native", name);
-    }
-
-    addUtilsImport(name: string): void {
-        this.module.imports.addNamed("@gtkx/utils", name);
-    }
-
-    addUtilsTypeImport(name: string): void {
-        this.module.imports.addNamed("@gtkx/utils", name, true);
-    }
-
     hoistDescriptor(expression: string): string {
         return this.module.hoistDescriptor(expression);
     }

@@ -1,6 +1,8 @@
+export { alloc, type ExternalObject, freeze, type Handle, read, setWrapper, unfreeze, write } from "@gtkx/native";
 export { createErrorDomain, type ErrorDomain } from "./error.js";
 export { type ApplicationLike, onExit, quit, quitApplication, runApplication } from "./lifecycle.js";
 export { offSignal, onceSignal, onSignal } from "./listeners.js";
+export { installMixins, type Mixin } from "./mixin.js";
 export { fromNative } from "./native-value.js";
 export { getObjectProperty, newObjectWithProperties, setObjectProperty } from "./object.js";
 export { promisify } from "./promisify.js";

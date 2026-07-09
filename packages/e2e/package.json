@@ -17,6 +17,7 @@
         "@gtkx/native": "workspace:*",
         "@gtkx/react": "workspace:*",
         "@gtkx/testing": "workspace:*",
+        "@gtkx/utils": "workspace:*",
         "@gtkx/vitest": "workspace:*",
         "react": "catalog:"
     }
