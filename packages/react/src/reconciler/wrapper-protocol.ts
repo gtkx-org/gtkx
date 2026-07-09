@@ -2,8 +2,8 @@ export const WRAPPER_NODE_ELEMENT = "__GTKX_WRAPPER_NODE__";
 
 const WRAPPER_KINDS = [
     "lazy-element",
-    "widget-prop",
-    "container-slot",
+    "object-prop",
+    "container-prop",
     "text-anchor",
     "text-paintable",
     "buffer-text",
@@ -19,9 +19,9 @@ export const isWrapperKind = (value: unknown): value is WrapperKind =>
 
 export const LAZY_ELEMENT_KIND: WrapperKind = "lazy-element";
 
-export const WIDGET_PROP_KIND: WrapperKind = "widget-prop";
+export const OBJECT_PROP_KIND: WrapperKind = "object-prop";
 
-export const CONTAINER_SLOT_KIND: WrapperKind = "container-slot";
+export const CONTAINER_PROP_KIND: WrapperKind = "container-prop";
 
 export const TEXT_ANCHOR_KIND: WrapperKind = "text-anchor";
 

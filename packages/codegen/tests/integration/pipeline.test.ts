@@ -249,14 +249,14 @@ describe("codegen widget-slot props", () => {
         expect(body).not.toContain("child?: Gtk$.Widget | ReactElement");
     });
 
-    it("types the built-in container-slot props as ReactNode on their host", () => {
+    it("types the built-in container-prop props as ReactNode on their host", () => {
         const adw = sourceFor(reactPipeline, "adw");
         const headerBar = interfaceBody(adw, "AdwHeaderBar");
         expect(headerBar).toContain("start?: ReactNode | null | undefined;");
         expect(headerBar).toContain("end?: ReactNode | null | undefined;");
     });
 
-    it("types the base GtkWidget controller and action-group slots as ReactNode", () => {
+    it("types the base GtkWidget controller and action-group props as ReactNode", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
         expect(gtk).toContain("controllers?: ReactNode | null | undefined;");
         expect(gtk).toContain("actionGroups?: ReactNode | null | undefined;");

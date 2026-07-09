@@ -74,7 +74,7 @@ export const nullSetterCurrentHolder = (target: object, call: Call): unknown => 
 
 const attachIndex = new Map<string, ContainerProp>();
 const adoptByParent = new Map<string, ContainerProp>();
-const slotsByParent: Record<string, string[]> = {};
+const namedContainerPropsByParent: Record<string, string[]> = {};
 const APPLIED_BY_TYPE: Record<string, AppliedProp[]> = {};
 
 for (const [parent, props] of Object.entries(ELEMENT_PROPS)) {
@@ -82,9 +82,9 @@ for (const [parent, props] of Object.entries(ELEMENT_PROPS)) {
         if (prop.kind === "container") {
             attachIndex.set(`${parent}:${prop.child}:${prop.prop === "children" ? "" : prop.prop}`, prop);
             if (prop.prop !== "children") {
-                const slots = slotsByParent[parent] ?? [];
-                slots.push(prop.prop);
-                slotsByParent[parent] = slots;
+                const propNames = namedContainerPropsByParent[parent] ?? [];
+                propNames.push(prop.prop);
+                namedContainerPropsByParent[parent] = propNames;
             }
             if (prop.adopt !== undefined) adoptByParent.set(parent, prop);
         } else {
@@ -100,16 +100,16 @@ const attachCache = new Map<string, ContainerProp | null>();
 export const resolveContainerProp = (
     parentType: bigint,
     childType: bigint,
-    slot: string | undefined,
+    propName: string | undefined,
 ): ContainerProp | null => {
-    const cacheKey = `${parentType}:${childType}:${slot ?? ""}`;
+    const cacheKey = `${parentType}:${childType}:${propName ?? ""}`;
     const cached = attachCache.get(cacheKey);
     if (cached !== undefined) return cached;
     let resolved: ContainerProp | null = null;
     const parentNames = collectTypeNamesWithInterfaces(parentType);
     for (const childName of collectTypeNamesWithInterfaces(childType)) {
         for (const parentName of parentNames) {
-            resolved = attachIndex.get(`${parentName}:${childName}:${slot ?? ""}`) ?? null;
+            resolved = attachIndex.get(`${parentName}:${childName}:${propName ?? ""}`) ?? null;
             if (resolved !== null) break;
         }
         if (resolved !== null) break;
@@ -135,21 +135,21 @@ export const adoptContainerPropFor = (parentType: bigint): ContainerProp | null 
     return resolved;
 };
 
-const slotPropsCache = new Map<string, Set<string>>();
+const containerPropNamesCache = new Map<string, Set<string>>();
 
-export const slotPropsFor = (elementName: string): Set<string> => {
-    const cached = slotPropsCache.get(elementName);
+export const containerPropNamesFor = (elementName: string): Set<string> => {
+    const cached = containerPropNamesCache.get(elementName);
     if (cached) return cached;
     const names = foldInheritedTableWithInterfaces(
         typeFromName(elementName),
-        slotsByParent,
-        (collected: Set<string>, slotNames) => {
-            for (const name of slotNames) collected.add(name);
+        namedContainerPropsByParent,
+        (collected: Set<string>, propNames) => {
+            for (const name of propNames) collected.add(name);
             return collected;
         },
         new Set<string>(),
     );
-    slotPropsCache.set(elementName, names);
+    containerPropNamesCache.set(elementName, names);
     return names;
 };
 

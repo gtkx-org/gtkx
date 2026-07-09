@@ -25,7 +25,7 @@ export type LazyElementSpec = {
 export type ElementPropTypegen = {
     classPropLines: (glibName: string, klass: GirClass, namespace: GirNamespace, imports: TypeImports) => string[];
     lazyElementExports: (namespaceName: string) => LazyElementSpec[];
-    slotNamesFor: (glibName: string) => string[];
+    containerPropNamesFor: (glibName: string) => string[];
     acceptsChildren: (glibName: string) => boolean;
 };
 
@@ -78,17 +78,17 @@ const appliedPropLine = (context: GirIndex, imports: TypeImports, type: string, 
 const collectCallContributions = (
     context: GirIndex,
     contributions: PropContribution[],
-    slot: { parent: string; child: string },
+    container: { parent: string; child: string },
     call: Exclude<ContainerProp["append"], string | undefined>,
 ): void => {
-    const method = findMethod(context, slot.parent, call.method);
+    const method = findMethod(context, container.parent, call.method);
     call.args.forEach((arg, positionIndex) => {
         if (typeof arg !== "object" || !("prop" in arg)) return;
         const param = method?.params[positionIndex];
         if (param === undefined) return;
-        if (hasProperty(context, slot.child, arg.prop)) return;
-        if (contributions.some((entry) => entry.child === slot.child && entry.prop === arg.prop)) return;
-        contributions.push({ child: slot.child, prop: arg.prop, param });
+        if (hasProperty(context, container.child, arg.prop)) return;
+        if (contributions.some((entry) => entry.child === container.child && entry.prop === arg.prop)) return;
+        contributions.push({ child: container.child, prop: arg.prop, param });
     });
 };
 
@@ -177,15 +177,15 @@ const collectLazyElementSpecs = (
     return specs;
 };
 
-const collectSlotNames = (elementProps: Record<string, ElementProp[]>): Map<string, string[]> => {
-    const slotNamesByParent = new Map<string, string[]>();
+const collectContainerPropNames = (elementProps: Record<string, ElementProp[]>): Map<string, string[]> => {
+    const containerPropNamesByParent = new Map<string, string[]>();
     forEachContainer(elementProps, (parent, cp) => {
         if (cp.prop === "children") return;
-        const names = slotNamesByParent.get(parent) ?? [];
+        const names = containerPropNamesByParent.get(parent) ?? [];
         if (!names.includes(cp.prop)) names.push(cp.prop);
-        slotNamesByParent.set(parent, names);
+        containerPropNamesByParent.set(parent, names);
     });
-    return slotNamesByParent;
+    return containerPropNamesByParent;
 };
 
 const TEXT_CONTAINERS = ["GtkLabel", "GtkTextBuffer", "GtkTextTag", "GtkTextView"];
@@ -206,7 +206,7 @@ export const createElementPropTypegen = (
 
     const propContributions = collectPropContributions(context, elementProps);
     const lazyElementSpecs = collectLazyElementSpecs(context, elementProps);
-    const slotNamesByParent = collectSlotNames(elementProps);
+    const containerPropNamesByParent = collectContainerPropNames(elementProps);
 
     const childrenContainers = new Set<string>(TEXT_CONTAINERS);
     forEachContainer(elementProps, (parent, cp) => {
@@ -249,7 +249,7 @@ export const createElementPropTypegen = (
     return {
         classPropLines,
         lazyElementExports: (namespaceName) => lazyElementSpecs.get(namespaceName) ?? [],
-        slotNamesFor: (glibName) => slotNamesByParent.get(glibName) ?? [],
+        containerPropNamesFor: (glibName) => containerPropNamesByParent.get(glibName) ?? [],
         acceptsChildren,
     };
 };

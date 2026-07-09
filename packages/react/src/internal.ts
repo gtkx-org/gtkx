@@ -6,13 +6,13 @@ export { useTargetRegistration } from "./hooks/use-target-registration.js";
 export { isRootElement } from "./reconciler/root-element.js";
 export {
     BUFFER_TEXT_KIND,
-    CONTAINER_SLOT_KIND,
+    CONTAINER_PROP_KIND,
     isWrapperKind,
     LABEL_TEXT_KIND,
     LAZY_ELEMENT_KIND,
+    OBJECT_PROP_KIND,
     TEXT_ANCHOR_KIND,
     TEXT_PAINTABLE_KIND,
-    WIDGET_PROP_KIND,
     WRAPPER_NODE_ELEMENT,
     type WrapperKind,
 } from "./reconciler/wrapper-protocol.js";

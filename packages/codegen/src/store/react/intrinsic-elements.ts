@@ -86,8 +86,8 @@ export const collectInterfacePropsClasses = (
 ): ResolvedQualifiedInterface[] => {
     const seen = new Set<string>();
     const result: ResolvedQualifiedInterface[] = [];
-    for (const widget of intrinsicElements) {
-        for (const iface of implementedInterfaces(widget.klass, widget.namespace, library)) {
+    for (const intrinsicElement of intrinsicElements) {
+        for (const iface of implementedInterfaces(intrinsicElement.klass, intrinsicElement.namespace, library)) {
             const key = qualifiedInterfaceKey(iface);
             if (seen.has(key)) continue;
             seen.add(key);

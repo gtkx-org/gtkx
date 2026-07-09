@@ -14,7 +14,7 @@ import {
 import { type ElementMapping, hasWrapperKind, type Node, registeredStateOf, registerState, stateOf } from "./state.js";
 import type { Props } from "./types.js";
 import { trackedInstance, trackedWidget, wrapperChildInstances } from "./wrapper-content.js";
-import { CONTAINER_SLOT_KIND, LAZY_ELEMENT_KIND, WIDGET_PROP_KIND } from "./wrapper-protocol.js";
+import { CONTAINER_PROP_KIND, LAZY_ELEMENT_KIND, OBJECT_PROP_KIND } from "./wrapper-protocol.js";
 
 const attachedParent = new WeakMap<GObject.Object, GObject.Object>();
 
@@ -101,13 +101,13 @@ export const containerChildMapping: ElementMapping = {
     },
 };
 
-const attachSlotChild = (parent: GObject.Object, child: GObject.Object, slot: string): void => {
-    const cp = resolveContainerProp(parent.__type__, child.__type__, slot);
+const attachPropChild = (parent: GObject.Object, child: GObject.Object, propName: string): void => {
+    const cp = resolveContainerProp(parent.__type__, child.__type__, propName);
     if (cp !== null) attachContainerChild(parent, child, cp, null);
 };
 
-const detachSlotChild = (parent: GObject.Object, child: GObject.Object, slot: string): void => {
-    const cp = resolveContainerProp(parent.__type__, child.__type__, slot);
+const detachPropChild = (parent: GObject.Object, child: GObject.Object, propName: string): void => {
+    const cp = resolveContainerProp(parent.__type__, child.__type__, propName);
     if (cp !== null) detachContainerChild(parent, child, cp);
 };
 
@@ -120,26 +120,26 @@ const rescueFocus = (parent: GObject.Object, child: GObject.Object | undefined):
     if (focus && isDescendantOf(focus, child)) parent.grabFocus();
 };
 
-type WidgetPropState = { prop: string; value: GObject.Object };
+type ObjectPropState = { prop: string; value: GObject.Object };
 
-const widgetPropState = new WeakMap<Node, WidgetPropState>();
+const objectPropState = new WeakMap<Node, ObjectPropState>();
 
-export const widgetPropMapping: ElementMapping = {
-    matches: (child, parent) => hasWrapperKind(child, WIDGET_PROP_KIND) && parent instanceof GObject.Object,
+export const objectPropMapping: ElementMapping = {
+    matches: (child, parent) => hasWrapperKind(child, OBJECT_PROP_KIND) && parent instanceof GObject.Object,
     attach: (child, parent) => {
         const childState = stateOf(child);
         const prop = childState.props.propName;
         if (typeof prop !== "string" || !(parent instanceof GObject.Object)) return;
         const value = trackedInstance(child);
-        const state = widgetPropState.get(child);
+        const state = objectPropState.get(child);
         if (state && state.value === value) return;
         Reflect.set(parent, prop, value ?? null);
-        if (value) widgetPropState.set(child, { prop, value });
-        else widgetPropState.delete(child);
+        if (value) objectPropState.set(child, { prop, value });
+        else objectPropState.delete(child);
     },
     detach: (child, parent) => {
-        const state = widgetPropState.get(child);
-        widgetPropState.delete(child);
+        const state = objectPropState.get(child);
+        objectPropState.delete(child);
         if (!state || !(parent instanceof GObject.Object) || !isRooted(parent)) return;
         rescueFocus(parent, state.value);
         Reflect.set(parent, state.prop, null);
@@ -149,38 +149,38 @@ export const widgetPropMapping: ElementMapping = {
 const sameInstances = (a: Node[], b: Node[]): boolean =>
     a.length === b.length && a.every((instance, index) => instance === b[index]);
 
-const slotTagOf = (node: Node): string | undefined => {
-    const slotTag = stateOf(node).props.slotTag;
-    return typeof slotTag === "string" ? slotTag : undefined;
+const propNameOf = (node: Node): string | undefined => {
+    const propName = stateOf(node).props.propName;
+    return typeof propName === "string" ? propName : undefined;
 };
 
-const containerSlotState = new WeakMap<Node, Node[]>();
+const containerPropState = new WeakMap<Node, Node[]>();
 
-const detachContainerSlotChild = (instance: Node, parent: GObject.Object, slotTag: string): void => {
-    if (instance instanceof GObject.Object) detachSlotChild(parent, instance, slotTag);
+const detachContainerPropChild = (instance: Node, parent: GObject.Object, propName: string): void => {
+    if (instance instanceof GObject.Object) detachPropChild(parent, instance, propName);
     if (instance instanceof Gtk.Widget && instance.getParent() !== null) unparentWidget(instance);
 };
 
-export const containerSlotMapping: ElementMapping = {
-    matches: (child, parent) => hasWrapperKind(child, CONTAINER_SLOT_KIND) && parent instanceof GObject.Object,
+export const containerPropMapping: ElementMapping = {
+    matches: (child, parent) => hasWrapperKind(child, CONTAINER_PROP_KIND) && parent instanceof GObject.Object,
     attach: (child, parent) => {
-        const slotTag = slotTagOf(child);
-        if (slotTag === undefined || !(parent instanceof GObject.Object)) return;
+        const propName = propNameOf(child);
+        if (propName === undefined || !(parent instanceof GObject.Object)) return;
         const desired = wrapperChildInstances(child);
-        const prev = containerSlotState.get(child) ?? [];
+        const prev = containerPropState.get(child) ?? [];
         if (sameInstances(prev, desired)) return;
-        for (const instance of prev) detachContainerSlotChild(instance, parent, slotTag);
+        for (const instance of prev) detachContainerPropChild(instance, parent, propName);
         for (const instance of desired) {
-            if (instance instanceof GObject.Object) attachSlotChild(parent, instance, slotTag);
+            if (instance instanceof GObject.Object) attachPropChild(parent, instance, propName);
         }
-        containerSlotState.set(child, desired);
+        containerPropState.set(child, desired);
     },
     detach: (child, parent) => {
-        const slotTag = slotTagOf(child);
-        const instances = containerSlotState.get(child) ?? [];
-        containerSlotState.delete(child);
-        if (slotTag === undefined || !(parent instanceof GObject.Object)) return;
-        for (const instance of instances) detachContainerSlotChild(instance, parent, slotTag);
+        const propName = propNameOf(child);
+        const instances = containerPropState.get(child) ?? [];
+        containerPropState.delete(child);
+        if (propName === undefined || !(parent instanceof GObject.Object)) return;
+        for (const instance of instances) detachContainerPropChild(instance, parent, propName);
     },
 };
 

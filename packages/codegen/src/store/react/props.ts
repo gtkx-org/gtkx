@@ -19,7 +19,7 @@ import {
 type IntrinsicElementPropsEntries = {
     propLines: string[];
     imports: Map<string, string>;
-    slotPropNames: string[];
+    objectPropNames: string[];
 };
 
 type IntrinsicElementPropsOptions = {
@@ -43,17 +43,17 @@ type SignalRenderOptions = {
 type PropEntryCollector = {
     propLines: string[];
     imports: Map<string, string>;
-    slotPropNames: string[];
+    objectPropNames: string[];
     acceptProperty: (property: GirProperty) => void;
     acceptSignal: (signal: GirSignal) => void;
 };
 
-const createPropEntryCollector = (owner: SlotOwner): PropEntryCollector => {
+const createPropEntryCollector = (owner: PropOwner): PropEntryCollector => {
     const { library } = owner;
     const imports = new Map<string, string>();
     const types: PropTypeRenderContext = { library, imports };
     const propLines: string[] = [];
-    const slotPropNames: string[] = [];
+    const objectPropNames: string[] = [];
     const seen = new Set<string>();
 
     const acceptProperty = (property: GirProperty): void => {
@@ -63,9 +63,9 @@ const createPropEntryCollector = (owner: SlotOwner): PropEntryCollector => {
         seen.add(jsName);
         const tsType = renderReactPropType(types, property.type, false);
         const doc = renderJsDoc(property.doc);
-        if (isSlotProperty(owner, property, jsName)) {
+        if (isObjectProp(owner, property, jsName)) {
             propLines.push(`${doc}${jsName}?: ${tsType} | ReactElement | null | undefined;`);
-            slotPropNames.push(jsName);
+            objectPropNames.push(jsName);
             return;
         }
         const settable = isConstructableProperty(property);
@@ -83,7 +83,7 @@ const createPropEntryCollector = (owner: SlotOwner): PropEntryCollector => {
         propLines.push(`${renderJsDoc(signal.doc)}${handlerName}?: (${signature}) | undefined;`);
     };
 
-    return { propLines, imports, slotPropNames, acceptProperty, acceptSignal };
+    return { propLines, imports, objectPropNames, acceptProperty, acceptSignal };
 };
 
 export const buildElementPropsEntries = (options: IntrinsicElementPropsOptions): IntrinsicElementPropsEntries => {
@@ -97,7 +97,7 @@ export const buildElementPropsEntries = (options: IntrinsicElementPropsOptions):
         acceptProperty: collector.acceptProperty,
         acceptSignal: collector.acceptSignal,
     });
-    return { propLines: collector.propLines, imports: collector.imports, slotPropNames: collector.slotPropNames };
+    return { propLines: collector.propLines, imports: collector.imports, objectPropNames: collector.objectPropNames };
 };
 
 type InterfacePropsOptions = {
@@ -111,7 +111,7 @@ export const buildInterfacePropsEntries = (options: InterfacePropsOptions): Intr
     const collector = createPropEntryCollector({ library, klass: iface, namespace });
     for (const property of iface.properties) collector.acceptProperty(property);
     for (const signal of iface.signals) collector.acceptSignal(signal);
-    return { propLines: collector.propLines, imports: collector.imports, slotPropNames: collector.slotPropNames };
+    return { propLines: collector.propLines, imports: collector.imports, objectPropNames: collector.objectPropNames };
 };
 
 type IntrinsicElementMemberWalk = {
@@ -141,13 +141,13 @@ const resolvesToGObjectClass = (library: Library, ref: TypeId | undefined): bool
     return isIntrinsicElementClass(resolved.value, resolved.namespace, library);
 };
 
-type SlotOwner = {
+type PropOwner = {
     library: Library;
     klass: GirClass;
     namespace: GirNamespace;
 };
 
-const isSlotProperty = (owner: SlotOwner, property: GirProperty, jsName: string): boolean => {
+const isObjectProp = (owner: PropOwner, property: GirProperty, jsName: string): boolean => {
     if (!property.writable || property.constructOnly) return false;
     if (!resolvesToGObjectClass(owner.library, property.type)) return false;
     if (jsName === "child" && classExposesMethod(owner.klass, owner.namespace, owner.library, "set_child")) {
