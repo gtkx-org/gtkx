@@ -49,6 +49,7 @@
         "@gtkx/config": "workspace:*",
         "@gtkx/utils": "workspace:*",
         "@types/node": "catalog:",
+        "@types/react": "catalog:",
         "fast-xml-parser": "^5.9.3",
         "typescript": "catalog:"
     }
