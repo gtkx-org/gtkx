@@ -3,8 +3,12 @@ set -e
 
 cd "$(dirname "$0")/.."
 
+echo "Validating desktop entry and metainfo..."
+pnpm flatpak:lint
+
 echo "Building GTKX Tutorial Flatpak..."
 
+pnpm bundle:postject
 pnpm bundle
 
 flatpak-builder \

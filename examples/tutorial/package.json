@@ -16,7 +16,9 @@
         "bundle": "gtkx build && node scripts/bundle.ts",
         "bundle:postject": "node scripts/bundle-postject.ts",
         "build:sea": "bash scripts/build-sea.sh",
-        "build:flatpak": "pnpm bundle:postject && bash flatpak/build.sh"
+        "flatpak:lint": "desktop-file-validate flatpak/com.gtkx.tutorial.desktop && appstreamcli validate --no-net flatpak/com.gtkx.tutorial.metainfo.xml",
+        "build:flatpak": "bash flatpak/build.sh",
+        "build:flatpak:hub": "bash flatpak/flathub/build.sh"
     },
     "dependencies": {
         "@gtkx/animate": "workspace:*",

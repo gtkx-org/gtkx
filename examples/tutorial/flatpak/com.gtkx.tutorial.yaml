@@ -16,6 +16,8 @@ build-options:
   env:
     npm_config_nodedir: /usr/lib/sdk/node24
   no-debuginfo: true
+  # The SEA blob is appended to the node binary as an ELF section; stripping
+  # it would corrupt the embedded application, so leave the binary unstripped.
   strip: false
 
 modules:
@@ -27,7 +29,8 @@ modules:
       - node vendor/postject.cjs app NODE_SEA_BLOB dist/sea-prep.blob --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2
       - install -Dm755 app /app/bin/gtkx-tutorial
       - install -Dm755 dist/gtkx.node /app/bin/gtkx.node
-      - install -Dm644 dist/gschemas.compiled /app/bin/gschemas.compiled
+      - install -Dm644 data/com.gtkx.tutorial.gschema.xml /app/share/glib-2.0/schemas/com.gtkx.tutorial.gschema.xml
+      - glib-compile-schemas /app/share/glib-2.0/schemas
       - install -Dm644 flatpak/com.gtkx.tutorial.desktop /app/share/applications/com.gtkx.tutorial.desktop
       - install -Dm644 flatpak/com.gtkx.tutorial.metainfo.xml /app/share/metainfo/com.gtkx.tutorial.metainfo.xml
       - install -Dm644 assets/icon.png /app/share/icons/hicolor/256x256/apps/com.gtkx.tutorial.png
