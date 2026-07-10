@@ -7,6 +7,7 @@
         "gtkx.config.base.ts",
         ".dependency-cruiser.js"
     ],
+    "exclude": ["examples/tutorial"],
     "compilerOptions": {
         "outDir": "dist"
     }

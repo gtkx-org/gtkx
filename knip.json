@@ -10,9 +10,7 @@
         "glib-compile-schemas",
         "setpriv",
         "weston",
-        "wlheadless-run",
-        "desktop-file-validate",
-        "appstreamcli"
+        "wlheadless-run"
     ],
     "workspaces": {
         ".": {
@@ -46,15 +44,6 @@
         },
         "examples/*": {
             "entry": ["gtkx.config.ts!", "src/gtkx-env.d.ts!", "src/app.tsx!", "src/index.tsx!"]
-        },
-        "examples/tutorial": {
-            "entry": [
-                "gtkx.config.ts!",
-                "flatpak/flathub/gtkx.config.ts!",
-                "src/gtkx-env.d.ts!",
-                "src/app.tsx!",
-                "src/index.tsx!"
-            ]
         }
     }
 }

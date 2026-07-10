@@ -170,6 +170,13 @@ jobs:
           mount-cargo-cache: "true"
           mount-pnpm-store: "true"
 
+      - name: Publish to Verdaccio, then install, build, and run the tutorial app
+        uses: ./.github/actions/run-in-container
+        with:
+          command: pnpm tutorial
+          mount-cargo-cache: "true"
+          mount-pnpm-store: "true"
+
   gir:
     needs: [changes]
     if: needs.changes.outputs.code == 'true' && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)

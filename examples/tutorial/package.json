@@ -1,5 +1,5 @@
 {
-    "name": "tutorial",
+    "name": "gtkx-tutorial",
     "version": "0.1.0",
     "private": true,
     "license": "MPL-2.0",
@@ -9,27 +9,28 @@
         "#data/*": "./data/*"
     },
     "scripts": {
-        "build": "gtkx build",
-        "typecheck": "gtkx codegen && tsc -b --emitDeclarationOnly",
         "dev": "gtkx dev",
+        "build": "gtkx build",
+        "codegen": "gtkx codegen",
+        "typecheck": "gtkx codegen && tsc --noEmit",
         "start": "node dist/bundle.js",
         "bundle": "gtkx build && node scripts/bundle.ts",
         "bundle:postject": "node scripts/bundle-postject.ts",
         "build:sea": "bash scripts/build-sea.sh",
         "flatpak:lint": "desktop-file-validate flatpak/com.gtkx.tutorial.desktop && appstreamcli validate --no-net flatpak/com.gtkx.tutorial.metainfo.xml",
-        "build:flatpak": "bash flatpak/build.sh",
-        "build:flatpak:hub": "bash flatpak/flathub/build.sh"
+        "flatpak:sources": "bash flatpak/generate-sources.sh",
+        "flatpak:build": "bash flatpak/build.sh"
     },
     "dependencies": {
-        "@gtkx/animate": "workspace:*",
-        "@gtkx/components": "workspace:*",
-        "@gtkx/css": "workspace:*",
-        "@gtkx/react": "workspace:*",
-        "react": "catalog:"
+        "@gtkx/animate": "^0.21.0",
+        "@gtkx/components": "^0.21.0",
+        "@gtkx/css": "^0.21.0",
+        "@gtkx/react": "^0.21.0",
+        "react": "^19.2.7"
     },
     "devDependencies": {
-        "@gtkx/cli": "workspace:*",
-        "@gtkx/config": "workspace:*",
+        "@gtkx/cli": "^0.21.0",
+        "@gtkx/config": "^0.21.0",
         "esbuild": "^0.28.1",
         "postject": "1.0.0-alpha.6"
     }

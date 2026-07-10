@@ -1,4 +1,5 @@
 node_modules/
+package-lock.json
 
 dist/
 build-dir/
@@ -7,6 +8,5 @@ build-dir/
 .flatpak-builder/
 flatpak-repo/
 
-.turbo/
-
 vendor/
+flatpak/generated-sources.json
