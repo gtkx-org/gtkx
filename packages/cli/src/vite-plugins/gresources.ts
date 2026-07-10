@@ -1,11 +1,11 @@
 import { execFileSync } from "node:child_process";
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { type ConfigLoader, createConfigLoader } from "@gtkx/config/internal";
 import { error, formatChildProcessError, info } from "@gtkx/utils";
 import type { Plugin, ResolvedConfig, UserConfig, ViteDevServer } from "vite";
-import { DATA_IMPORT_PREFIX } from "../internal/data-dir.js";
+import { DATA_IMPORT_PREFIX, resolveDataDir } from "../internal/data-dir.js";
 import { resolveCliTool } from "../internal/resolve-cli-tool.js";
 import { withStagingDir } from "../internal/staging-dir.js";
 import { ASSET_PATH_RE, ASSET_RE } from "./asset-extensions.js";
@@ -45,6 +45,9 @@ type PluginState = {
     sourcePaths: Set<string>;
     devStagingDir: string | null;
     devBundlePath: string;
+    server: ViteDevServer | null;
+    compiledSignature: string;
+    dataDir: string | null;
 };
 
 const compileBundle = (state: PluginState, outputPath: string): Buffer =>
@@ -90,12 +93,51 @@ const runCompiler = (sourceDir: string, manifest: string, outputPath: string): B
     return readFileSync(outputPath);
 };
 
-const ensureDevBundle = (state: PluginState): void => {
+const ensureStagingDir = (state: PluginState): void => {
     if (!state.devStagingDir) {
         state.devStagingDir = mkdtempSync(join(tmpdir(), "gtkx-gresources-dev-"));
         state.devBundlePath = join(state.devStagingDir, BUNDLE_FILENAME);
     }
+};
+
+const entriesSignature = (state: PluginState): string => [...state.entries.keys()].sort().join("\0");
+
+const compileDevBundle = (state: PluginState): void => {
+    ensureStagingDir(state);
+    if (state.entries.size === 0) return;
     compileBundle(state, state.devBundlePath);
+    state.compiledSignature = entriesSignature(state);
+};
+
+const reregisterDevBundle = async (state: PluginState): Promise<void> => {
+    const server = state.server;
+    if (!server) return;
+    const mod = (await server.ssrLoadModule(VIRTUAL_INIT)) as { __refresh?: () => void };
+    mod.__refresh?.();
+};
+
+const scanDataAssets = (dataDir: string): { absPath: string; rel: string }[] => {
+    if (!existsSync(dataDir)) return [];
+    return readdirSync(dataDir, { recursive: true, withFileTypes: true })
+        .filter((entry) => entry.isFile() && ASSET_RE.test(entry.name))
+        .map((entry) => {
+            const absPath = join(entry.parentPath, entry.name);
+            return { absPath, rel: relative(dataDir, absPath) };
+        });
+};
+
+const primeDevBundle = (state: PluginState): void => {
+    if (state.dataDir === null) return;
+    for (const { absPath, rel } of scanDataAssets(state.dataDir)) {
+        registerEntry(state, absPath, rel);
+    }
+    compileDevBundle(state);
+};
+
+const registerDevAsset = (state: PluginState): void => {
+    if (entriesSignature(state) !== state.compiledSignature) {
+        compileDevBundle(state);
+    }
 };
 
 const registerEntry = (state: PluginState, absPath: string, rel: string): ResourceEntry => {
@@ -124,7 +166,7 @@ const loadAssetModule = (state: PluginState, virtualId: string): string => {
     const uri = `resource://${entry.resourcePath}`;
 
     if (!state.isBuild) {
-        ensureDevBundle(state);
+        registerDevAsset(state);
     }
 
     return [
@@ -145,11 +187,10 @@ const emitBuildBundle = (
     info(`Compiled ${state.entries.size} resource(s) into ${BUNDLE_FILENAME}`);
 };
 
-const refreshDevRegistration = async (server: ViteDevServer, state: PluginState): Promise<void> => {
-    ensureDevBundle(state);
+const refreshDevRegistration = async (state: PluginState): Promise<void> => {
+    compileDevBundle(state);
     try {
-        const mod = (await server.ssrLoadModule(VIRTUAL_INIT)) as { __refresh?: () => void };
-        mod.__refresh?.();
+        await reregisterDevBundle(state);
     } catch (cause) {
         error("Failed to refresh GResource bundle:", cause);
     }
@@ -164,9 +205,10 @@ const resolveResourceConfig = async (state: PluginState, config: UserConfig, loa
 };
 
 const attachResourceWatcher = (state: PluginState, server: ViteDevServer): void => {
+    state.server = server;
     const onFileEvent = (file: string): void => {
         if (!isTrackedSource(state, file)) return;
-        refreshDevRegistration(server, state).catch((cause) => {
+        refreshDevRegistration(state).catch((cause) => {
             error("GResource refresh failed:", cause);
         });
     };
@@ -182,6 +224,9 @@ export function gtkxGResources(loadConfig: ConfigLoader = createConfigLoader()):
         sourcePaths: new Set(),
         devStagingDir: null,
         devBundlePath: "",
+        server: null,
+        compiledSignature: "",
+        dataDir: null,
     };
 
     return {
@@ -194,10 +239,15 @@ export function gtkxGResources(loadConfig: ConfigLoader = createConfigLoader()):
 
         configResolved(config: ResolvedConfig) {
             state.isBuild = config.command === "build";
+            if (!state.isBuild) {
+                const relativeDataDir = resolveDataDir(config.root);
+                state.dataDir = relativeDataDir === null ? null : join(config.root, relativeDataDir);
+            }
         },
 
         configureServer(server) {
             attachResourceWatcher(state, server);
+            primeDevBundle(state);
         },
 
         async resolveId(source, importer, opts) {
@@ -214,6 +264,7 @@ export function gtkxGResources(loadConfig: ConfigLoader = createConfigLoader()):
 
         load(id) {
             if (id === VIRTUAL_INIT) {
+                if (!state.isBuild) ensureStagingDir(state);
                 return renderInitModule({ isBuild: state.isBuild, devBundlePath: state.devBundlePath });
             }
             if (!isVirtual(id)) return;

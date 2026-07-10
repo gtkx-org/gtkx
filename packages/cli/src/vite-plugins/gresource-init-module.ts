@@ -17,7 +17,7 @@ const buildInitModuleSource = (): string =>
 const devInitModuleSource = (bundlePath: string): string => {
     const bundlePathLiteral = JSON.stringify(bundlePath);
     return [
-        `import { statSync } from "node:fs";`,
+        `import { existsSync, statSync } from "node:fs";`,
         `import { resourceLoad, resourcesRegister, resourcesUnregister } from "@gtkx/gi/gio";`,
         ``,
         `let current = null;`,
@@ -31,6 +31,7 @@ const devInitModuleSource = (bundlePath: string): string => {
         `}`,
         ``,
         `export function ensureRegistered() {`,
+        `    if (!existsSync(${bundlePathLiteral})) return;`,
         `    const { size, mtimeMs } = statSync(${bundlePathLiteral});`,
         `    const sig = size + ":" + mtimeMs;`,
         `    if (sig === lastSig) return;`,
@@ -41,6 +42,7 @@ const devInitModuleSource = (bundlePath: string): string => {
         `ensureRegistered();`,
         ``,
         `export function __refresh() {`,
+        `    if (!existsSync(${bundlePathLiteral})) return;`,
         `    register();`,
         `    const { size, mtimeMs } = statSync(${bundlePathLiteral});`,
         `    lastSig = size + ":" + mtimeMs;`,
