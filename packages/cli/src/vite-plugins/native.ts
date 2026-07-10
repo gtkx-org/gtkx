@@ -38,7 +38,8 @@ function rewriteLoader(code: string): string {
     const bindings = idents.join(", ");
 
     return [
-        `import __gtkxNative from "${EMITTED_BINDING_SPECIFIER}";`,
+        `import { createRequire as __gtkxCreateRequire } from "node:module";`,
+        `const __gtkxNative = __gtkxCreateRequire(import.meta.url)(${JSON.stringify(EMITTED_BINDING_SPECIFIER)});`,
         `const { ${bindings} } = __gtkxNative;`,
         `export { ${bindings} };`,
     ].join("\n");

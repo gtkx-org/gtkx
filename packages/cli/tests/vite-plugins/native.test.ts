@@ -72,7 +72,8 @@ describe("gtkxNative (transform)", () => {
         const result = (plugin.transform as TransformHook)(loaderSource, LOADER_PATH);
         expect(result).toBe(
             [
-                'import __gtkxNative from "./gtkx.node";',
+                'import { createRequire as __gtkxCreateRequire } from "node:module";',
+                'const __gtkxNative = __gtkxCreateRequire(import.meta.url)("./gtkx.node");',
                 "const { init, bind, call } = __gtkxNative;",
                 "export { init, bind, call };",
             ].join("\n"),
