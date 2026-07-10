@@ -100,7 +100,8 @@ const ensureStagingDir = (state: PluginState): void => {
     }
 };
 
-const entriesSignature = (state: PluginState): string => [...state.entries.keys()].sort().join("\0");
+const entriesSignature = (state: PluginState): string =>
+    [...state.entries.keys()].sort((a, b) => a.localeCompare(b)).join("\0");
 
 const compileDevBundle = (state: PluginState): void => {
     ensureStagingDir(state);

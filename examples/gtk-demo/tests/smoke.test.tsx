@@ -2,8 +2,8 @@ import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
-import { configure, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { render, screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { Demo } from "../src/app.js";
 import { parseTitle } from "../src/context/demo-context.js";
 import { demos } from "../src/demos/index.js";
@@ -117,10 +117,6 @@ const openMenuItem = async (menuButton: Gtk.MenuButton, name: string): Promise<v
 };
 
 describe("gtk-demo end-to-end", () => {
-    beforeAll(() => {
-        configure({ asyncUtilTimeout: 20000 });
-    });
-
     afterEach(() => {
         vi.restoreAllMocks();
     });
