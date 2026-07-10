@@ -58,32 +58,50 @@ child.on("exit", () => {
     process.exit(0);
 });
 
+const CLASSIFY_RULES = [
+    { test: ({ fn }) => fn === "(idle)" || fn === "(program)" || fn === "(root)", category: "idle/wait" },
+    { test: ({ fn }) => fn === "(garbage collector)", category: "gc" },
+    { test: ({ url }) => url.includes("/.gtkx/gi/"), category: "gi-bindings eval" },
+    {
+        test: ({ url }) => url.includes("/packages/ffi/") || url.includes("@gtkx/ffi"),
+        category: "ffi (native GTK calls)",
+    },
+    {
+        test: ({ url }) => url.includes("/packages/native/") || url.endsWith(".node"),
+        category: "ffi (native GTK calls)",
+    },
+    {
+        test: ({ url }) =>
+            url.includes("react-reconciler") || url.includes("/packages/react/") || url.includes("scheduler/"),
+        category: "react render/reconciler",
+    },
+    {
+        test: ({ url }) => url.includes("babel-plugin-react-compiler") || url.includes("/@babel/"),
+        category: "React Compiler (babel)",
+    },
+    {
+        test: ({ url }) => url.includes("browserslist") || url.includes("caniuse") || url.includes("/semver/"),
+        category: "React Compiler (babel)",
+    },
+    {
+        test: ({ fn, url }) => fn === "spawnSync" || url.includes("gresources") || url.includes("child_process"),
+        category: "glib-compile-resources (subprocess)",
+    },
+    { test: ({ url }) => url.includes("esbuild"), category: "esbuild TS transform" },
+    {
+        test: ({ url }) => url.includes("/vite/") || url.includes("rolldown") || url.includes("magic-string"),
+        category: "vite core (bundler/sourcemap)",
+    },
+    { test: ({ url }) => url.startsWith("node:"), category: "node module load/compile" },
+    { test: ({ url }) => url.includes("/examples/"), category: "app code (user)" },
+    { test: ({ url }) => url === "", category: "vm-internal" },
+];
+
 const classify = (frame) => {
     const fn = frame.functionName || "(anonymous)";
     const url = frame.url || "";
-    if (fn === "(idle)" || fn === "(program)" || fn === "(root)") return "idle/wait";
-    if (fn === "(garbage collector)") return "gc";
-    if (url.includes("/.gtkx/gi/")) return "gi-bindings eval";
-    if (url.includes("/packages/ffi/") || url.includes("@gtkx/ffi")) return "ffi (native GTK calls)";
-    if (url.includes("/packages/native/") || url.endsWith(".node")) return "ffi (native GTK calls)";
-    if (url.includes("react-reconciler") || url.includes("/packages/react/") || url.includes("scheduler/")) {
-        return "react render/reconciler";
-    }
-    if (url.includes("babel-plugin-react-compiler") || url.includes("/@babel/")) return "React Compiler (babel)";
-    if (url.includes("browserslist") || url.includes("caniuse") || url.includes("/semver/")) {
-        return "React Compiler (babel)";
-    }
-    if (fn === "spawnSync" || url.includes("gresources") || url.includes("child_process")) {
-        return "glib-compile-resources (subprocess)";
-    }
-    if (url.includes("esbuild")) return "esbuild TS transform";
-    if (url.includes("/vite/") || url.includes("rolldown") || url.includes("magic-string")) {
-        return "vite core (bundler/sourcemap)";
-    }
-    if (url.startsWith("node:")) return "node module load/compile";
-    if (url.includes("/examples/")) return "app code (user)";
-    if (url === "") return "vm-internal";
-    return "other";
+    const rule = CLASSIFY_RULES.find(({ test }) => test({ fn, url }));
+    return rule ? rule.category : "other";
 };
 
 function report(file) {

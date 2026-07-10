@@ -1,7 +1,8 @@
-import { basename } from "node:path";
+import { basename, dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import * as Gtk from "@gtkx/gi/gtk";
 import { fireEvent, screen, userEvent, waitFor, within } from "@gtkx/testing";
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { listviewFilebrowserDemo } from "../../../src/demos/lists/listview-filebrowser.js";
 import { renderDemo } from "../../test-utils.js";
 
@@ -17,7 +18,13 @@ const orderedNames = (grid: Gtk.GridView): string[] =>
         .getAllByRole(Gtk.AccessibleRole.LABEL)
         .map((label) => (label as Gtk.Label).getText());
 
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../../..");
+
 describe("listviewFilebrowserDemo", () => {
+    const originalCwd = process.cwd();
+    beforeAll(() => process.chdir(repoRoot));
+    afterAll(() => process.chdir(originalCwd));
+
     it("exposes the expected metadata", () => {
         expect(listviewFilebrowserDemo.id).toBe("listview-filebrowser");
         expect(listviewFilebrowserDemo.title).toBe("Lists/File browser");
