@@ -46,17 +46,17 @@ type ApplicationComponentProps<T extends Gtk.Application> = {
     ref?: Ref<T | null> | undefined;
 };
 
-export const withApplicationLifecycle = <P extends ApplicationComponentProps<ApplicationOf<P>>>(
-    Element: ElementType,
+export const createApplicationComponent = <P extends ApplicationComponentProps<ApplicationOf<P>>>(
+    Component: ElementType,
 ): ((props: P) => ReactNode) => {
     return (props: P): ReactNode => {
         const { applicationId = defaultApplicationId, children, menubar, ref, ...rest } = props;
         const [app, captureApp] = useApplicationInstance<ApplicationOf<P>>(ref);
         const menubarProps = app ? { menubar } : {};
         return (
-            <Element ref={captureApp} {...rest} applicationId={applicationId} {...menubarProps}>
+            <Component ref={captureApp} {...rest} applicationId={applicationId} {...menubarProps}>
                 <ApplicationChildren app={app}>{children}</ApplicationChildren>
-            </Element>
+            </Component>
         );
     };
 };

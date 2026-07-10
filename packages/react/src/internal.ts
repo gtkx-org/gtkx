@@ -1,5 +1,5 @@
-export { withApplicationLifecycle } from "./components/application.js";
-export { withWindowPresentation } from "./components/window.js";
+export { createApplicationComponent } from "./components/application.js";
+export { createWindowComponent } from "./components/window.js";
 export { useGObjectValue } from "./hooks/use-gobject-value.js";
 export { useMergeRefs } from "./hooks/use-merge-refs.js";
 export { useTargetRegistration } from "./hooks/use-target-registration.js";

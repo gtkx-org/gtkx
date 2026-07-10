@@ -3,33 +3,27 @@ import { type ElementType, type ReactNode, type Ref, useLayoutEffect, useState }
 import { useMergeRefs } from "../hooks/use-merge-refs.js";
 import { ParentWindowContext } from "../hooks/use-parent-window.js";
 
-const useWindowPresentation = (): [Gtk.Window | null, (window: Gtk.Window | null) => void] => {
-    const [toplevel, setToplevel] = useState<Gtk.Window | null>(null);
-
-    useLayoutEffect(() => {
-        if (!toplevel) return;
-        toplevel.present();
-        return () => {
-            toplevel.setDefaultWidget(null);
-            toplevel.destroy();
-        };
-    }, [toplevel]);
-
-    return [toplevel, setToplevel];
-};
-
-export const withWindowPresentation = <P extends { children?: ReactNode }>(
-    Underlying: ElementType,
+export const createWindowComponent = <P extends { children?: ReactNode }>(
+    Component: ElementType,
 ): ((props: P) => ReactNode) => {
     return (props: P): ReactNode => {
         const externalRef = (props as { ref?: Ref<Gtk.Window | null> }).ref;
-        const { children, ...rest } = props;
-        const [toplevel, capture] = useWindowPresentation();
-        const ref = useMergeRefs(externalRef, capture);
+        const [window, setWindow] = useState<Gtk.Window | null>(null);
+        const ref = useMergeRefs(externalRef, setWindow);
+
+        useLayoutEffect(() => {
+            if (!window) return;
+            window.present();
+            return () => {
+                window.setDefaultWidget(null);
+                window.destroy();
+            };
+        }, [window]);
+
         return (
-            <Underlying {...rest} ref={ref}>
-                <ParentWindowContext.Provider value={toplevel}>{children}</ParentWindowContext.Provider>
-            </Underlying>
+            <ParentWindowContext.Provider value={window}>
+                <Component {...props} ref={ref} />
+            </ParentWindowContext.Provider>
         );
     };
 };

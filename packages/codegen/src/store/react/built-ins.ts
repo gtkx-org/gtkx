@@ -1,6 +1,6 @@
 import type { Call, ContainerProp, ElementProp } from "@gtkx/config";
 
-export type ElementComponentName = "withWindowPresentation" | "withApplicationLifecycle";
+export type ElementComponentName = "createWindowComponent" | "createApplicationComponent";
 
 type ElementComponent = { types: string[]; componentName: ElementComponentName };
 type ManyMethods = Pick<ContainerProp, "append" | "remove">;
@@ -63,8 +63,8 @@ const forEach = (types: string[], build: () => ElementProp[]): Record<string, El
     Object.fromEntries(types.map((type) => [type, build()]));
 
 export const BUILT_IN_ELEMENT_COMPONENTS: ElementComponent[] = [
-    { types: ["GtkApplication"], componentName: "withApplicationLifecycle" },
-    { types: ["GtkWindow"], componentName: "withWindowPresentation" },
+    { types: ["GtkApplication"], componentName: "createApplicationComponent" },
+    { types: ["GtkWindow"], componentName: "createWindowComponent" },
 ];
 
 const CONTROLLER_METHODS = { append: "addController", remove: "removeController" } satisfies ManyMethods;
