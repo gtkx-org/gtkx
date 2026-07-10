@@ -13,7 +13,7 @@ import type { Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { runServer } from "verdaccio";
 
 import { assertPublishedShape, type PackageManifest } from "./publish-manifest.js";
@@ -319,6 +319,58 @@ async function verifyPublishedShapes(inspectDir: string): Promise<void> {
     console.log(`release-e2e: verified the published shape of ${names.length} packages`);
 }
 
+const BUILT_APP_STABLE_MS = 8000;
+
+type HeadlessDisplay = {
+    startHeadlessDisplay: (options: { size: string; compositor: "sway" | "weston" }) => Promise<() => void>;
+    resolveHeadlessOptions: (provided: object) => { size: string; compositor: "sway" | "weston" };
+    STATIC_HEADLESS_ENV: { [name: string]: string };
+};
+
+async function loadHeadlessDisplay(): Promise<HeadlessDisplay> {
+    const modulePath = join(ROOT_DIR, "packages", "vitest", "dist", "headless-display.js");
+    return (await import(pathToFileURL(modulePath).href)) as HeadlessDisplay;
+}
+
+function runBuiltAppUntilStable(appDir: string, env: NodeJS.ProcessEnv): Promise<void> {
+    return new Promise((resolve, reject) => {
+        const child = spawn("node", ["dist/bundle.js"], { cwd: appDir, env, stdio: ["ignore", "pipe", "pipe"] });
+        let output = "";
+        const capture = (chunk: Buffer): void => {
+            output += chunk.toString("utf8");
+        };
+        child.stdout.on("data", capture);
+        child.stderr.on("data", capture);
+        const timer = setTimeout(() => {
+            child.removeAllListeners("exit");
+            child.kill("SIGKILL");
+            resolve();
+        }, BUILT_APP_STABLE_MS);
+        child.on("error", (cause) => {
+            clearTimeout(timer);
+            reject(cause);
+        });
+        child.on("exit", (code, signal) => {
+            clearTimeout(timer);
+            reject(
+                new Error(
+                    `Built app "node dist/bundle.js" exited early (code ${code ?? "null"}, signal ${signal ?? "null"}) before it was confirmed running:\n${output}`,
+                ),
+            );
+        });
+    });
+}
+
+async function verifyBuiltAppStarts(appDir: string): Promise<void> {
+    const { startHeadlessDisplay, resolveHeadlessOptions, STATIC_HEADLESS_ENV } = await loadHeadlessDisplay();
+    const teardown = await startHeadlessDisplay(resolveHeadlessOptions({}));
+    try {
+        await runBuiltAppUntilStable(appDir, { ...process.env, ...STATIC_HEADLESS_ENV });
+    } finally {
+        teardown();
+    }
+}
+
 async function verifyConsumer(consumerRoot: string, env: NodeJS.ProcessEnv, variant: ConsumerVariant): Promise<void> {
     const language = variant.typescript ? "TypeScript" : "JavaScript";
     const scaffoldArgs = [
@@ -338,12 +390,13 @@ async function verifyConsumer(consumerRoot: string, env: NodeJS.ProcessEnv, vari
 
     const appDir = join(consumerRoot, variant.appName);
     await runAsync("npm", ["run", "build"], { cwd: appDir, env });
+    await verifyBuiltAppStarts(appDir);
     if (variant.typescript) {
         await runAsync("npm", ["run", "typecheck"], { cwd: appDir, env });
     }
     await runAsync("npm", ["test"], { cwd: appDir, env });
 
-    console.log(`release-e2e: ${language} consumer scaffold, build, and test succeeded`);
+    console.log(`release-e2e: ${language} consumer scaffold, build, run, and test succeeded`);
 }
 
 async function main(): Promise<void> {
