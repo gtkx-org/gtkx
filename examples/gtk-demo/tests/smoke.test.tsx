@@ -75,7 +75,7 @@ const dismissDialog = async (dialog: Gtk.Widget): Promise<void> => {
 const exerciseWindowDemo = async (title: string, run: Gtk.Button, mainWindow: Gtk.ApplicationWindow): Promise<void> => {
     await userEvent.click(run);
 
-    await waitFor(() => expect(demoWindows().length).toBe(1));
+    await waitFor(() => expect(demoWindows().length, `demo "${title}" did not open a window`).toBe(1));
     const win = requireOnlyDemoWindow(demoWindows(), title);
 
     await waitFor(() => expect(win.getVisible(), `demo "${title}" window is not visible`).toBe(true));
