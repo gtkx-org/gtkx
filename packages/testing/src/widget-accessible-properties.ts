@@ -41,11 +41,23 @@ export const getWidgetNodeText = (widget: Gtk.Widget): string | null => {
     return null;
 };
 
+const stripMnemonic = (text: string): string => text.replace(/_(.)/g, "$1");
+
+const namingLabelText = (widget: Gtk.Widget): string | null => {
+    const text = getLabelText(widget);
+    if (text === null) return null;
+    return widget instanceof Gtk.Label && widget.getUseUnderline() ? stripMnemonic(text) : text;
+};
+
+const isNamingLabelRole = (role: Gtk.AccessibleRole, includePresentation: boolean): boolean =>
+    role === Gtk.AccessibleRole.LABEL || (includePresentation && role === Gtk.AccessibleRole.PRESENTATION);
+
 const collectLabels = (widget: Gtk.Widget): string[] => {
+    const includePresentation = widget.getAccessibleRole() === Gtk.AccessibleRole.MENU_ITEM;
     const labels: string[] = [];
     for (const descendant of descendants(widget)) {
-        if (descendant.getAccessibleRole() !== Gtk.AccessibleRole.LABEL) continue;
-        const labelText = getLabelText(descendant);
+        if (!isNamingLabelRole(descendant.getAccessibleRole(), includePresentation)) continue;
+        const labelText = namingLabelText(descendant);
         if (labelText) labels.push(labelText);
     }
     return labels;

@@ -15,16 +15,17 @@ export function fromNative(descriptor: Descriptor, value: unknown): unknown {
         case "struct":
             return wrapHandle(value as ExternalObject<Handle> | null, (descriptor as StructDescriptor).wrapperClass);
         case "boxed":
-            return wrapHandle(
-                value as ExternalObject<Handle> | null,
-                getWrapperClass(resolveDescriptorType(descriptor)),
-            );
+            return value == null
+                ? null
+                : wrapHandle(value as ExternalObject<Handle>, getWrapperClass(resolveDescriptorType(descriptor)));
         case "fundamental":
-            return wrapHandle(
-                value as ExternalObject<Handle> | null,
-                (descriptor as FundamentalDescriptor).wrapperClass ??
-                    getWrapperClass(resolveDescriptorType(descriptor)),
-            );
+            return value == null
+                ? null
+                : wrapHandle(
+                      value as ExternalObject<Handle>,
+                      (descriptor as FundamentalDescriptor).wrapperClass ??
+                          getWrapperClass(resolveDescriptorType(descriptor)),
+                  );
         case "array":
             return collectionFromNative(descriptor, value);
         case "hashtable": {

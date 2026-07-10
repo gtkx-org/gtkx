@@ -1,9 +1,8 @@
-import * as Adw from "@gtkx/gi/adw";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
-import { act, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { render, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Demo } from "../src/app.js";
 import { parseTitle } from "../src/context/demo-context.js";
@@ -41,11 +40,44 @@ const requireOnlyDemoWindow = (windows: Gtk.Window[], title: string): Gtk.Window
     return win;
 };
 
-const adwDialogAncestor = (widget: Gtk.Widget): Adw.Dialog => {
-    let current: Gtk.Widget | null = widget;
-    while (current && !(current instanceof Adw.Dialog)) current = current.getParent();
-    if (!(current instanceof Adw.Dialog)) throw new Error("no AdwDialog ancestor found");
-    return current;
+const firstMatching = (root: Gtk.Widget, predicate: (w: Gtk.Widget) => boolean): Gtk.Widget | null => {
+    if (predicate(root)) return root;
+    let child = root.getFirstChild();
+    while (child) {
+        const found = firstMatching(child, predicate);
+        if (found) return found;
+        child = child.getNextSibling();
+    }
+    return null;
+};
+
+const actionNameOf = (widget: Gtk.Widget): string | null => {
+    const getter = Reflect.get(widget, "getActionName");
+    return typeof getter === "function" ? ((getter as () => string | null).call(widget) ?? null) : null;
+};
+
+// Close a window the way a user would: the title-bar close button. A
+// non-deletable window has none, so the user completes its form and clicks the
+// default button instead (the password demo enables Done once the fields match).
+const clickWindowClose = async (window: Gtk.Window): Promise<void> => {
+    const closeButton = firstMatching(window, (w) => actionNameOf(w) === "window.close");
+    if (closeButton) {
+        await userEvent.click(closeButton);
+        return;
+    }
+    const bound = within(window);
+    await userEvent.type((await bound.findByName("password-entry")) as Gtk.Editable, "hunter2");
+    await userEvent.type((await bound.findByName("confirm-entry")) as Gtk.Editable, "hunter2");
+    const done = firstMatching(window, (w) => w.getCssClasses().includes("default"));
+    if (!done) throw new Error(`found no close control in demo window "${window.getTitle()}"`);
+    await userEvent.click(done);
+};
+
+const dismissDialog = async (dialog: Gtk.Widget): Promise<void> => {
+    const close = firstMatching(dialog, (w) => w.getCssClasses().includes("close"));
+    if (!close) throw new Error("dialog has no close button");
+    await userEvent.click(close);
+    await waitFor(() => expect(screen.queryByRole(Gtk.AccessibleRole.DIALOG)).toBeNull());
 };
 
 const exerciseWindowDemo = async (title: string, run: Gtk.Button, mainWindow: Gtk.ApplicationWindow): Promise<void> => {
@@ -58,9 +90,7 @@ const exerciseWindowDemo = async (title: string, run: Gtk.Button, mainWindow: Gt
     await waitFor(() => expect(win.isActive(), `demo "${title}" window is not in the foreground`).toBe(true));
     expect(win.getChild(), `demo "${title}" opened an empty window with no content`).not.toBeNull();
 
-    await act(() => {
-        win.close();
-    });
+    await clickWindowClose(win);
     await waitFor(async () => expect((await demoWindows()).length, `demo "${title}" window did not close`).toBe(0));
     expect(mainWindow.getVisible(), `closing demo "${title}" tore down the main window`).toBe(true);
 };
@@ -75,15 +105,11 @@ const exerciseDialogDemo = async (title: string, run: Gtk.Button, hooks: DialogH
     await userEvent.click(run);
 
     if (title === "Error States") {
-        const modeSwitch = (await screen.findByRole(Gtk.AccessibleRole.SWITCH)) as Gtk.Switch;
-        expect(modeSwitch).toBeInstanceOf(Gtk.Switch);
-        const entries = await screen.findAllByRole(Gtk.AccessibleRole.TEXT_BOX);
-        expect(entries.length, "Error States dialog is missing its input fields").toBeGreaterThanOrEqual(2);
-        const dialog = adwDialogAncestor(modeSwitch);
-        await act(() => {
-            dialog.close();
-        });
-        await waitFor(() => expect(screen.queryByRole(Gtk.AccessibleRole.SWITCH)).toBeNull());
+        const dialog = await screen.findByRole(Gtk.AccessibleRole.DIALOG);
+        const bound = within(dialog);
+        expect(await bound.findByRole(Gtk.AccessibleRole.SWITCH)).toBeInstanceOf(Gtk.Switch);
+        expect((await bound.findAllByRole(Gtk.AccessibleRole.TEXT_BOX)).length).toBeGreaterThanOrEqual(2);
+        await dismissDialog(dialog);
         return;
     }
 
@@ -92,13 +118,10 @@ const exerciseDialogDemo = async (title: string, run: Gtk.Button, hooks: DialogH
     expect((await toplevelWindows()).length, `"${title}" leaked a top-level window`).toBe(baseline);
 };
 
-const closeVisibleDialog = async (): Promise<void> => {
-    const dialog = (await screen.findByRole(Gtk.AccessibleRole.DIALOG)) as Gtk.Widget;
-    if (!(dialog instanceof Adw.Dialog)) throw new Error("expected an AdwDialog");
-    await act(() => {
-        dialog.close();
-    });
-    await waitFor(() => expect(screen.queryByRole(Gtk.AccessibleRole.DIALOG)).toBeNull());
+const openMenuItem = async (menuButton: Gtk.MenuButton, name: string): Promise<void> => {
+    await userEvent.click(menuButton);
+    const item = await screen.findByRole(Gtk.AccessibleRole.MENU_ITEM, { name });
+    await userEvent.click(item);
 };
 
 describe("gtk-demo end-to-end", () => {
@@ -174,18 +197,15 @@ describe("gtk-demo end-to-end", () => {
         // --- Main menu actions ----------------------------------------------
         const menuButton = (await screen.findByName("menu-button")) as Gtk.MenuButton;
 
-        await act(() => menuButton.activateAction("win.about", null));
-        await waitFor(async () =>
-            expect((await screen.findAllByRole(Gtk.AccessibleRole.DIALOG)).length).toBeGreaterThan(0),
-        );
-        await closeVisibleDialog();
+        await openMenuItem(menuButton, "About GTK Demo");
+        await dismissDialog(await screen.findByRole(Gtk.AccessibleRole.DIALOG));
 
-        await act(() => menuButton.activateAction("win.shortcuts", null));
-        await waitFor(async () => expect((await screen.findAllByText("Search demos")).length).toBeGreaterThan(0));
-        await closeVisibleDialog();
+        await openMenuItem(menuButton, "Keyboard Shortcuts");
+        expect((await screen.findAllByText("Search demos")).length).toBeGreaterThan(0);
+        await dismissDialog(await screen.findByRole(Gtk.AccessibleRole.DIALOG));
 
         const inspector = vi.spyOn(Gtk.Window, "setInteractiveDebugging").mockImplementation(() => {});
-        await act(() => menuButton.activateAction("win.inspector", null));
+        await openMenuItem(menuButton, "Inspector");
         await waitFor(() => expect(inspector).toHaveBeenCalledWith(true));
     }, 180000);
 });
