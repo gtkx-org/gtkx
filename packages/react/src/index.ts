@@ -2,6 +2,7 @@ import "./utils/wrapper-node-jsx.js";
 
 export type { ElementProp } from "@gtkx/config";
 export { useApplication } from "./hooks/use-application.js";
+export { useParentWindow } from "./hooks/use-parent-window.js";
 export { useProperty } from "./hooks/use-property.js";
 export { type SchemaRef, useSetting } from "./hooks/use-setting.js";
 export { useSignal } from "./hooks/use-signal.js";
