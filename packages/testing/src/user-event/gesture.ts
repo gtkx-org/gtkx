@@ -82,6 +82,12 @@ const withGestureDragState = <T>(
 };
 
 export const drag = async (widget: Gtk.Widget, dx: number, dy: number, options: DragOptions = {}): Promise<void> => {
+    if (widget instanceof Gtk.Range) {
+        throw new Error(
+            "userEvent.drag cannot drive a Gtk.Range's built-in slider (its drag reads real pointer coordinates); " +
+                "use userEvent.slide(range, value) or userEvent.keyboard for sliders",
+        );
+    }
     const startX = options.startX ?? 0;
     const startY = options.startY ?? 0;
     await wrapEvent(() => {
