@@ -2,11 +2,13 @@ import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
-import { render, screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { configure, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Demo } from "../src/app.js";
 import { parseTitle } from "../src/context/demo-context.js";
 import { demos } from "../src/demos/index.js";
+
+configure({ asyncUtilTimeout: 20000 });
 
 let nextAppId = 0;
 

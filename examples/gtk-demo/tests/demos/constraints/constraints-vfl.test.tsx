@@ -35,7 +35,6 @@ describe("constraintsVflDemo", () => {
     it("attaches a GtkConstraintLayout manager to the container box", async () => {
         await renderDemo(constraintsVflDemo);
         const box = (await screen.findByName("container")) as Gtk.Box;
-        expect(box).toBeInstanceOf(Gtk.Box);
         expect(box.getLayoutManager()).toBeInstanceOf(Gtk.ConstraintLayout);
     });
 
@@ -44,9 +43,9 @@ describe("constraintsVflDemo", () => {
         await expectChildButtonLabels();
     });
 
-    it("emits one constraint per non-trivial VFL clause", async () => {
+    it("emits exactly the constraints the four VFL lines expand to", async () => {
         const { constraints } = await renderVflDemo();
-        expect(constraints.length).toBeGreaterThanOrEqual(10);
+        expect(constraints.length).toBe(14);
     });
 
     it("includes a width-equality constraint between button1 and button2", async () => {
@@ -89,5 +88,56 @@ describe("constraintsVflDemo", () => {
             return Math.abs(c.getConstant()) === 12;
         });
         expect(spacing, "expected a 12-unit gap constraint between button1 and button2").toBeDefined();
+    });
+
+    it("materializes the default hspacing/vspacing of 8 as leading superview gaps", async () => {
+        const { button1, constraints } = await renderVflDemo();
+
+        const bindsSuperviewToButton1 = (attribute: Gtk.ConstraintAttribute) =>
+            constraints.find((c) => {
+                const target = c.getTarget();
+                const source = c.getSource();
+                const involvesSuperview = target === null || source === null;
+                const involvesButton1 = target === button1 || source === button1;
+                if (!involvesSuperview || !involvesButton1) return false;
+                return (
+                    c.getTargetAttribute() === attribute &&
+                    c.getSourceAttribute() === attribute &&
+                    Math.abs(c.getConstant()) === 8
+                );
+            });
+
+        expect(
+            bindsSuperviewToButton1(Gtk.ConstraintAttribute.START),
+            "expected an 8-unit horizontal gap (hspacing) between the superview and button1",
+        ).toBeDefined();
+        expect(
+            bindsSuperviewToButton1(Gtk.ConstraintAttribute.TOP),
+            "expected an 8-unit vertical gap (vspacing) between the superview and button1",
+        ).toBeDefined();
+    });
+
+    it("binds button3 to the superview edges for the H:|-[button3]-| line", async () => {
+        const { button3, constraints } = await renderVflDemo();
+
+        const edgeConstraint = (buttonAttribute: Gtk.ConstraintAttribute) =>
+            constraints.find((c) => {
+                const target = c.getTarget();
+                const source = c.getSource();
+                const involvesSuperview = target === null || source === null;
+                if (!involvesSuperview) return false;
+                if (target === button3) return c.getTargetAttribute() === buttonAttribute;
+                if (source === button3) return c.getSourceAttribute() === buttonAttribute;
+                return false;
+            });
+
+        expect(
+            edgeConstraint(Gtk.ConstraintAttribute.START),
+            "expected button3.start bound to the superview leading edge",
+        ).toBeDefined();
+        expect(
+            edgeConstraint(Gtk.ConstraintAttribute.END),
+            "expected button3.end bound to the superview trailing edge",
+        ).toBeDefined();
     });
 });

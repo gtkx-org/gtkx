@@ -13,14 +13,21 @@ describe("expanderDemo", () => {
 
     it("renders the headline label, the details summary, and the collapsed Details expander", async () => {
         await renderDemo(expanderDemo);
-        expect(
-            await screen.findByRole(Gtk.AccessibleRole.LABEL, {
-                name: "Here are some more details but not the full story",
-            }),
-        ).toBeInstanceOf(Gtk.Label);
+        await screen.findByRole(Gtk.AccessibleRole.LABEL, {
+            name: "Here are some more details but not the full story",
+        });
         const expander = (await screen.findByName("expander")) as Gtk.Expander;
-        expect(expander).toBeInstanceOf(Gtk.Expander);
         expect(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Details:", expanded: false })).toBe(expander);
+        expect(expander.getExpanded()).toBe(false);
+    });
+
+    it("flips its own expanded state to true when clicked", async () => {
+        await renderDemo(expanderDemo);
+        const expander = (await screen.findByName("expander")) as Gtk.Expander;
+        expect(expander.getExpanded()).toBe(false);
+        await userEvent.click(expander);
+        await waitFor(() => expect(expander.getExpanded()).toBe(true));
+        expect(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Details:", expanded: true })).toBe(expander);
     });
 
     it("encloses a non-editable, word-wrapped TextView seeded with the details paragraph", async () => {

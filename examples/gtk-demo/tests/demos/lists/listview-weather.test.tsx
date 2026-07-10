@@ -1,8 +1,21 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { screen, within } from "@gtkx/testing";
+import { screen, userEvent, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { listviewWeatherDemo } from "../../../src/demos/lists/listview-weather.js";
 import { renderDemo } from "../../test-utils.js";
+
+const EXPECTED_ITEM_COUNT = 70128;
+
+const WEATHER_ICON_NAMES = new Set([
+    "weather-clear-symbolic",
+    "weather-few-clouds-symbolic",
+    "weather-fog-symbolic",
+    "weather-overcast-symbolic",
+    "weather-showers-scattered-symbolic",
+    "weather-showers-symbolic",
+    "weather-snow-symbolic",
+    "weather-storm-symbolic",
+]);
 
 describe("listviewWeatherDemo", () => {
     it("exposes the expected metadata", () => {
@@ -19,7 +32,6 @@ describe("listviewWeatherDemo", () => {
     it("renders a horizontal GtkListView with separators and no selection", async () => {
         await renderDemo(listviewWeatherDemo);
         const lv = (await screen.findByName("list-view")) as Gtk.ListView;
-        expect(lv).toBeInstanceOf(Gtk.ListView);
         expect(lv.getOrientation()).toBe(Gtk.Orientation.HORIZONTAL);
         expect(lv.getShowSeparators()).toBe(true);
     });
@@ -30,38 +42,47 @@ describe("listviewWeatherDemo", () => {
         expect(lv.getModel()).toBeInstanceOf(Gtk.NoSelection);
     });
 
-    it("populates the list view with at least one full day of hourly weather entries", async () => {
+    it("keeps the selection empty when a cell is clicked", async () => {
         await renderDemo(listviewWeatherDemo);
         const lv = (await screen.findByName("list-view")) as Gtk.ListView;
         const model = lv.getModel() as Gtk.SelectionModel;
-        expect(model.getNItems()).toBeGreaterThanOrEqual(24);
+        expect(Number(model.getSelection().getSize())).toBe(0);
+        const cell = within(lv).getAllByRole(Gtk.AccessibleRole.LIST_ITEM)[0] as Gtk.Widget;
+        await userEvent.click(cell);
+        expect(Number(model.getSelection().getSize())).toBe(0);
     });
 
-    it("wraps the list view inside a scrolled window with vexpand and hexpand", async () => {
+    it("populates the list view with the full deterministic hourly dataset", async () => {
+        await renderDemo(listviewWeatherDemo);
+        const lv = (await screen.findByName("list-view")) as Gtk.ListView;
+        const model = lv.getModel() as Gtk.SelectionModel;
+        expect(model.getNItems()).toBe(EXPECTED_ITEM_COUNT);
+    });
+
+    it("wraps the list view inside the named scrolled window", async () => {
         await renderDemo(listviewWeatherDemo);
         const sw = (await screen.findByName("scrolled")) as Gtk.ScrolledWindow;
         expect(sw).toBeInstanceOf(Gtk.ScrolledWindow);
-        expect(sw.getVexpand()).toBe(true);
-        expect(sw.getHexpand()).toBe(true);
+        expect(within(sw).getByName("list-view")).toBeInstanceOf(Gtk.ListView);
     });
 
-    it("renders weather icon images from the symbolic icon set", async () => {
+    it("maps each weather type to a known symbolic weather icon", async () => {
         await renderDemo(listviewWeatherDemo);
         const lv = (await screen.findByName("list-view")) as Gtk.ListView;
         const images = within(lv).getAllByRole(Gtk.AccessibleRole.IMG) as Gtk.Image[];
         expect(images.length).toBeGreaterThan(0);
         for (const image of images) {
             expect(image.getIconSize()).toBe(Gtk.IconSize.LARGE);
-            expect(image.getIconName() ?? "").toMatch(/^weather-/);
+            expect(WEATHER_ICON_NAMES.has(image.getIconName() ?? "")).toBe(true);
         }
     });
 
-    it("renders hour and temperature labels in the materialized cells", async () => {
+    it("renders the first hour cell at midnight and temperature labels in materialized cells", async () => {
         await renderDemo(listviewWeatherDemo);
         const lv = (await screen.findByName("list-view")) as Gtk.ListView;
-        const hourLabels = within(lv).getAllByText(/^\d{2}:\d{2}$/);
+        const hourLabels = within(lv).getAllByText(/^\d{2}:\d{2}$/) as Gtk.Label[];
         const tempLabels = within(lv).getAllByText(/^-?\d+°$/);
-        expect(hourLabels.length, "expected at least one HH:MM label").toBeGreaterThan(0);
-        expect(tempLabels.length, "expected at least one temperature label").toBeGreaterThan(0);
+        expect(hourLabels.map((label) => label.getText())).toContain("00:00");
+        expect(tempLabels.length).toBeGreaterThan(0);
     });
 });

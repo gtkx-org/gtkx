@@ -16,10 +16,11 @@ describe("drawingAreaDemo metadata", () => {
         expect(drawingAreaDemo.component).toBeTypeOf("function");
     });
 
-    it("populates the host window reference on mount", async () => {
+    it("mounts the demo inside the host window with both framed drawing areas reachable", async () => {
         await renderDemo(drawingAreaDemo);
         const window = await screen.findByRole(Gtk.AccessibleRole.WINDOW);
-        expect(window).toBeInstanceOf(Gtk.Window);
+        expect(within(window).getByName("knockout-frame")).toBeInstanceOf(Gtk.Frame);
+        expect(within(window).getByName("scribble-frame")).toBeInstanceOf(Gtk.Frame);
     });
 });
 
@@ -28,8 +29,6 @@ describe("drawingAreaDemo rendering", () => {
         await renderDemo(drawingAreaDemo);
         const knockout = (await screen.findByRole(Gtk.AccessibleRole.LABEL, { name: "Knockout groups" })) as Gtk.Label;
         const scribble = (await screen.findByRole(Gtk.AccessibleRole.LABEL, { name: "Scribble area" })) as Gtk.Label;
-        expect(knockout).toBeInstanceOf(Gtk.Label);
-        expect(scribble).toBeInstanceOf(Gtk.Label);
         expect(knockout.hasCssClass("heading")).toBe(true);
         expect(scribble.hasCssClass("heading")).toBe(true);
     });
@@ -50,7 +49,6 @@ describe("drawingAreaDemo rendering", () => {
         const knockoutFrame = (await screen.findByName("knockout-frame")) as Gtk.Frame;
         const scribbleFrame = (await screen.findByName("scribble-frame")) as Gtk.Frame;
         for (const frame of [knockoutFrame, scribbleFrame]) {
-            expect(frame).toBeInstanceOf(Gtk.Frame);
             expect(frame.getVexpand()).toBe(true);
         }
         expect(within(knockoutFrame).getByName("knockout-area")).toBeInstanceOf(Gtk.DrawingArea);
@@ -59,13 +57,12 @@ describe("drawingAreaDemo rendering", () => {
 });
 
 describe("drawingAreaDemo gestures", () => {
-    it("queues a redraw on the scribble area after a drag gesture initialises the scribble surface", async () => {
+    it("paints the brush once per drag phase (begin, update, end) after the scribble surface is initialised", async () => {
         await renderDemo(drawingAreaDemo);
         const scribble = (await screen.findByName("scribble-area")) as Gtk.DrawingArea;
         await fireEvent(scribble, "resize", 100, 100);
         const queueDraw = vi.spyOn(scribble, "queueDraw");
         await userEvent.drag(scribble, 5, 5, { startX: 10, startY: 10 });
-        expect(queueDraw).toHaveBeenCalled();
-        expect(scribble.getContentWidth()).toBe(100);
+        expect(queueDraw).toHaveBeenCalledTimes(3);
     });
 });

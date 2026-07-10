@@ -24,6 +24,12 @@ async function renderDemoAndClickOpen() {
     await userEvent.click(openButton);
 }
 
+const wordsFile = (words: string[]): string => {
+    const wordsPath = join(tempDir, "words.txt");
+    writeFileSync(wordsPath, words.join("\n"));
+    return wordsPath;
+};
+
 describe("listviewWordsDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(listviewWordsDemo.id).toBe("listview-words");
@@ -46,7 +52,7 @@ describe("listviewWordsDemo layout", () => {
 
     it("renders a GtkSearchEntry with the configured placeholder", async () => {
         await renderDemo(listviewWordsDemo);
-        expect(await screen.findByPlaceholderText("Search words...")).toBeTruthy();
+        await screen.findByPlaceholderText("Search words...");
     });
 
     it("renders a GtkListView with NONE selection", async () => {
@@ -58,9 +64,7 @@ describe("listviewWordsDemo layout", () => {
     it("populates the list view from the loaded word list", async () => {
         await renderDemo(listviewWordsDemo);
         const lv = (await screen.findByName("list-view")) as Gtk.ListView;
-        const model = lv.getModel();
-        expect(model).not.toBeNull();
-        expect((model as Gtk.SelectionModel).getNItems()).toBeGreaterThan(0);
+        expect((lv.getModel() as Gtk.SelectionModel).getNItems()).toBeGreaterThan(0);
     });
 
     it("updates the host window title to reflect the line count", async () => {
@@ -77,20 +81,22 @@ describe("listviewWordsDemo search interactions", () => {
         expect(await screen.findByDisplayValue("lorem")).toBe(entry);
     });
 
-    it("filters the list view to a single matching word as the search entry text changes", async () => {
-        const wordsPath = join(tempDir, "words.txt");
-        writeFileSync(wordsPath, ["alpha", "beta", "gamma", "delta"].join("\n"));
-        const dialogSpy = vi.spyOn(Gtk.FileDialog.prototype, "open").mockResolvedValue(Gio.fileNewForPath(wordsPath));
+    it("renders each loaded word as list-item content and filters it down to the match", async () => {
+        const dialogSpy = vi
+            .spyOn(Gtk.FileDialog.prototype, "open")
+            .mockResolvedValue(Gio.fileNewForPath(wordsFile(["alpha", "beta", "gamma", "delta"])));
         try {
             await renderDemoAndClickOpen();
             const lv = (await screen.findByName("list-view")) as Gtk.ListView;
-            const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
             await waitFor(() => expect((lv.getModel() as Gtk.SelectionModel).getNItems()).toBe(4));
+            for (const word of ["alpha", "beta", "gamma", "delta"]) {
+                await screen.findByText(word);
+            }
+            const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
             await userEvent.type(entry, "gamma");
-            await waitFor(() => {
-                const filteredCount = (lv.getModel() as Gtk.SelectionModel).getNItems();
-                expect(filteredCount).toBe(1);
-            });
+            await waitFor(() => expect((lv.getModel() as Gtk.SelectionModel).getNItems()).toBe(1));
+            await screen.findByText("gamma");
+            expect(screen.queryByText("alpha")).toBeNull();
         } finally {
             dialogSpy.mockRestore();
         }
@@ -101,10 +107,7 @@ describe("listviewWordsDemo search interactions", () => {
         const lv = (await screen.findByName("list-view")) as Gtk.ListView;
         const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
         await userEvent.type(entry, "qqqzzz");
-        await waitFor(() => {
-            const filteredCount = (lv.getModel() as Gtk.SelectionModel).getNItems();
-            expect(filteredCount).toBe(0);
-        });
+        await waitFor(() => expect((lv.getModel() as Gtk.SelectionModel).getNItems()).toBe(0));
     });
 
     it("clears the search entry when cleared", async () => {
@@ -134,19 +137,19 @@ describe("listviewWordsDemo search interactions", () => {
 });
 
 describe("listviewWordsDemo Open button", () => {
-    it("loads words from the selected file when the dialog returns a valid path", async () => {
-        const wordsPath = join(tempDir, "words.txt");
-        writeFileSync(wordsPath, ["alpha", "beta", "gamma", "delta"].join("\n"));
-        const file = Gio.fileNewForPath(wordsPath);
+    it("loads words and re-titles the window to the new line count", async () => {
+        const file = Gio.fileNewForPath(wordsFile(["alpha", "beta", "gamma", "delta"]));
         const dialogSpy = vi.spyOn(Gtk.FileDialog.prototype, "open").mockResolvedValue(file);
         try {
             await renderDemoAndClickOpen();
             await waitFor(() => expect(dialogSpy).toHaveBeenCalled());
             const lv = (await screen.findByName("list-view")) as Gtk.ListView;
-            await waitFor(() => {
-                const count = (lv.getModel() as Gtk.SelectionModel).getNItems();
-                expect(count).toBe(4);
-            });
+            await waitFor(() => expect((lv.getModel() as Gtk.SelectionModel).getNItems()).toBe(4));
+            await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "4 lines" });
+            const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
+            await userEvent.type(entry, "gamma");
+            await waitFor(() => expect((lv.getModel() as Gtk.SelectionModel).getNItems()).toBe(1));
+            await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "1 lines" });
         } finally {
             dialogSpy.mockRestore();
         }

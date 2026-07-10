@@ -29,12 +29,30 @@ describe("spinnerDemo rendering", () => {
         expect(entries).toHaveLength(2);
     });
 
+    it("renders the second row insensitive so its spinner and entry are effectively disabled", async () => {
+        await renderDemo(spinnerDemo);
+        const spinners = (await screen.findAllByRole(Gtk.AccessibleRole.PROGRESS_BAR)) as Gtk.Spinner[];
+        const entries = (await screen.findAllByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry[];
+        expect(spinners[0]?.isSensitive()).toBe(true);
+        expect(entries[0]?.isSensitive()).toBe(true);
+        expect(spinners[1]?.isSensitive()).toBe(false);
+        expect(entries[1]?.isSensitive()).toBe(false);
+    });
+
+    it("accepts typed text in the sensitive-row entry", async () => {
+        await renderDemo(spinnerDemo);
+        const entries = (await screen.findAllByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry[];
+        const sensitiveEntry = entries[0] as Gtk.Entry;
+        await userEvent.type(sensitiveEntry, "hello");
+        expect(sensitiveEntry).toHaveDisplayValue("hello");
+    });
+
     it("renders Play and Stop buttons accessible by their labels", async () => {
         await renderDemo(spinnerDemo);
         const play = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Play" });
         const stop = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Stop" });
-        expect(play).toBeInstanceOf(Gtk.Button);
-        expect(stop).toBeInstanceOf(Gtk.Button);
+        expect(play).toHaveAccessibleName("Play");
+        expect(stop).toHaveAccessibleName("Stop");
     });
 });
 
@@ -65,10 +83,15 @@ describe("spinnerDemo Stop / Play toggling", () => {
         });
     });
 
-    it("keeps spinning state consistent across both spinner instances", async () => {
+    it("keeps both spinner instances flipping together across Stop and Play", async () => {
         await renderDemo(spinnerDemo);
-        const spinnersInitial = await screen.findAllByRole(Gtk.AccessibleRole.PROGRESS_BAR);
-        const initialStates = (spinnersInitial as Gtk.Spinner[]).map((s) => s.getSpinning());
-        expect(new Set(initialStates).size).toBe(1);
+        const spinners = (await screen.findAllByRole(Gtk.AccessibleRole.PROGRESS_BAR)) as Gtk.Spinner[];
+        expect(spinners.every((s) => s.getSpinning())).toBe(true);
+        const stop = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Stop" })) as Gtk.Button;
+        const play = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Play" })) as Gtk.Button;
+        await userEvent.click(stop);
+        await waitFor(() => expect(spinners.every((s) => !s.getSpinning())).toBe(true));
+        await userEvent.click(play);
+        await waitFor(() => expect(spinners.every((s) => s.getSpinning())).toBe(true));
     });
 });

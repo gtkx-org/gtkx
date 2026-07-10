@@ -61,8 +61,8 @@ const CssShadowsDemo = () => {
             resizeStartChild={false}
             startChild={
                 <GtkBox spacing={6} valign={Gtk.Align.CENTER}>
-                    <GtkButton iconName="go-next" />
-                    <GtkButton iconName="go-previous" />
+                    <GtkButton iconName="go-next" accessibleLabel="Go Next" />
+                    <GtkButton iconName="go-previous" accessibleLabel="Go Previous" />
                     <GtkButton label="Hello World" />
                 </GtkBox>
             }

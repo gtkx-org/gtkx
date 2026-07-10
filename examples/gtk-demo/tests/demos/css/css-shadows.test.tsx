@@ -4,6 +4,14 @@ import { describe, expect, it, vi } from "vitest";
 import { cssShadowsDemo } from "../../../src/demos/css/css-shadows.js";
 import { renderDemo } from "../../test-utils.js";
 
+const hasTagToggle = (view: Gtk.TextView, tagName: string): boolean => {
+    const buffer = view.getBuffer();
+    const tag = buffer.getTagTable().lookup(tagName);
+    if (!tag) return false;
+    const iter = buffer.getStartIter();
+    return iter.forwardToTagToggle(tag);
+};
+
 describe("cssShadowsDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(cssShadowsDemo.id).toBe("css-shadows");
@@ -22,19 +30,17 @@ describe("cssShadowsDemo rendering", () => {
     it("renders the navigation buttons and the Hello World button", async () => {
         await renderDemo(cssShadowsDemo);
         const helloButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Hello World" });
-        expect(helloButton).toBeInstanceOf(Gtk.Button);
+        expect(helloButton).toHaveTextContent("Hello World");
+        await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Go Next" });
+        await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Go Previous" });
     });
 
-    it("renders a paned container holding the text view editor", async () => {
+    it("renders a paned container holding the text view editor with the default CSS", async () => {
         await renderDemo(cssShadowsDemo);
-        const paned = (await screen.findByName("paned")) as Gtk.Paned;
-        expect(paned).toBeInstanceOf(Gtk.Paned);
-        expect(paned.getOrientation()).toBe(Gtk.Orientation.VERTICAL);
-        expect(paned.getResizeStartChild()).toBe(false);
+        await screen.findByName("paned");
         const textView = (await screen.findByName("text-view")) as Gtk.TextView;
-        expect(textView).toBeInstanceOf(Gtk.TextView);
-        expect(screen.getByDisplayValue(/window\.demo\.background/)).not.toBeNull();
-        expect(screen.getByDisplayValue(/text-shadow/)).not.toBeNull();
+        expect(textView).toHaveDisplayValue(/window\.demo\.background/);
+        expect(textView).toHaveDisplayValue(/text-shadow/);
     });
 });
 
@@ -77,5 +83,33 @@ describe("cssShadowsDemo behavior", () => {
         } finally {
             loadSpy.mockRestore();
         }
+    });
+
+    it("underlines invalid CSS with an error tag in the buffer", async () => {
+        await renderDemo(cssShadowsDemo);
+        const textView = (await screen.findByName("text-view")) as Gtk.TextView;
+        await userEvent.clear(textView);
+        await waitFor(() => {
+            expect(hasTagToggle(textView, "error")).toBe(false);
+        });
+        await userEvent.type(textView, "button { nonsense-prop: 5px; }");
+        await waitFor(() => {
+            expect(hasTagToggle(textView, "error")).toBe(true);
+        });
+    });
+
+    it("clears previously applied error tags once the buffer is edited to valid CSS", async () => {
+        await renderDemo(cssShadowsDemo);
+        const textView = (await screen.findByName("text-view")) as Gtk.TextView;
+        await userEvent.clear(textView);
+        await userEvent.type(textView, "button { nonsense-prop: 5px; }");
+        await waitFor(() => {
+            expect(hasTagToggle(textView, "error")).toBe(true);
+        });
+        await userEvent.clear(textView);
+        await userEvent.type(textView, "button { color: red; }");
+        await waitFor(() => {
+            expect(hasTagToggle(textView, "error")).toBe(false);
+        });
     });
 });

@@ -1,8 +1,17 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { fireEvent, screen, userEvent, waitFor } from "@gtkx/testing";
+import { screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { listviewSettings2Demo } from "../../../src/demos/lists/listview-settings2.js";
 import { renderDemo } from "../../test-utils.js";
+
+const listModel = async (): Promise<Gtk.SelectionModel> =>
+    ((await screen.findByName("list-view")) as Gtk.ListView).getModel() as Gtk.SelectionModel;
+
+const schemaHeaderLabels = (): string[] =>
+    screen
+        .queryAllByText(/^\S+\.\S+$/)
+        .map((l) => (l as Gtk.Label).getLabel())
+        .filter((text) => !text.includes(" "));
 
 describe("listviewSettings2Demo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -36,16 +45,26 @@ describe("listviewSettings2Demo layout", () => {
         expect(listView.getCssClasses()).toContain("rich-list");
     });
 
-    it("wraps the list view in a scrolled window", async () => {
+    it("wraps the list view directly inside the scrolled window", async () => {
         await renderDemo(listviewSettings2Demo);
         const sw = (await screen.findByName("scrolled")) as Gtk.ScrolledWindow;
-        expect(sw).toBeInstanceOf(Gtk.ScrolledWindow);
+        const listView = (await screen.findByName("list-view")) as Gtk.ListView;
+        expect(sw.getChild()).toBe(listView);
     });
 
-    it("renders a search entry inside the search bar", async () => {
+    it("places the search entry inside the search bar", async () => {
         await renderDemo(listviewSettings2Demo);
-        const entry = await screen.findByName("search-entry");
+        const bar = (await screen.findByName("search-bar")) as Gtk.SearchBar;
+        const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
+        await within(bar).findByName("search-entry");
         expect(entry).toBeInstanceOf(Gtk.SearchEntry);
+    });
+
+    it("groups the keys into per-schema sections with schema-id headings", async () => {
+        await renderDemo(listviewSettings2Demo);
+        await screen.findByName("list-view");
+        const headers = schemaHeaderLabels();
+        expect(headers.length).toBeGreaterThan(0);
     });
 });
 
@@ -63,32 +82,39 @@ describe("listviewSettings2Demo search and editing", () => {
         await activateSearch();
     });
 
-    it("updates the filter when the search entry text changes", async () => {
+    it("narrows the list model to the matching schema when the search term matches a subset", async () => {
         await renderDemo(listviewSettings2Demo);
+        const model = await listModel();
+        const initial = model.getNItems();
+        const headers = schemaHeaderLabels();
+        expect(headers.length).toBeGreaterThan(0);
+        const token = (headers[0]?.split(".").pop() ?? "").toLowerCase();
+        expect(token.length).toBeGreaterThan(0);
         const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
-        await userEvent.type(entry, "display");
-        expect(entry).toHaveDisplayValue("display");
+        await userEvent.type(entry, token);
+        expect(entry).toHaveDisplayValue(token);
+        await waitFor(() => expect(model.getNItems()).toBeLessThan(initial));
+        expect(model.getNItems()).toBeGreaterThan(0);
+        expect(schemaHeaderLabels().every((header) => header.toLowerCase().includes(token))).toBe(true);
     });
 
-    it("filters the schema-keys items model via the search-changed signal when text matches no key", async () => {
+    it("clears the list model to zero when the search text matches no key", async () => {
         await renderDemo(listviewSettings2Demo);
-        const toggle = (await screen.findByName("search-toggle")) as Gtk.ToggleButton;
-        await userEvent.click(toggle);
-        const listView = (await screen.findByName("list-view")) as Gtk.ListView;
-        const initial = (listView.getModel() as Gtk.SelectionModel).getNItems();
+        const model = await listModel();
         const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
         await userEvent.type(entry, "zzqxnomatchforanyschemaorkey");
-        await waitFor(() => {
-            const filtered = (listView.getModel() as Gtk.SelectionModel).getNItems();
-            expect(filtered).toBeLessThanOrEqual(initial);
-        });
+        await waitFor(() => expect(model.getNItems()).toBe(0));
     });
 
-    it("clears the search text when stop-search is emitted", async () => {
+    it("restores the full list model when stop-search is emitted", async () => {
         await renderDemo(listviewSettings2Demo);
+        const model = await listModel();
+        const initial = model.getNItems();
         const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
-        await userEvent.type(entry, "anything");
-        await fireEvent(entry, "stop-search");
+        await userEvent.type(entry, "zzqxnomatchforanyschemaorkey");
+        await waitFor(() => expect(model.getNItems()).toBe(0));
+        await userEvent.keyboard(entry, "{Escape}");
+        await waitFor(() => expect(model.getNItems()).toBe(initial));
     });
 
     it("turns the search bar off when the search toggle is deactivated", async () => {

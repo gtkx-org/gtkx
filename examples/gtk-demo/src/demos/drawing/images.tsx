@@ -59,7 +59,7 @@ const StatefulIconPanel = () => {
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
             <ImagesPanel title="Stateful icon">
-                <GtkImage paintable={svg} pixelSize={128} />
+                <GtkImage name="stateful-icon-image" paintable={svg} pixelSize={128} />
             </ImagesPanel>
             <GtkSwitch
                 halign={Gtk.Align.START}

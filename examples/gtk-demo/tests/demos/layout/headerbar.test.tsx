@@ -23,7 +23,7 @@ describe("headerbarDemo metadata", () => {
         expect(headerbar).toBeInstanceOf(Gtk.HeaderBar);
         expect(within(headerbar).getByName("nav-box")).toBeInstanceOf(Gtk.Box);
         expect(within(headerbar).getByName("check-out-button")).toBeInstanceOf(Gtk.Button);
-        expect(within(headerbar).getByRole(Gtk.AccessibleRole.SWITCH)).toBeInstanceOf(Gtk.Switch);
+        within(headerbar).getByRole(Gtk.AccessibleRole.SWITCH, { name: "Change something" });
     });
 });
 
@@ -50,13 +50,13 @@ describe("headerbarDemo header content", () => {
 
     it("renders a GtkSwitch in the header bar with the 'Change something' accessible label", async () => {
         await renderDemo(headerbarDemo);
-        const widget = await screen.findByRole(Gtk.AccessibleRole.SWITCH);
-        expect(widget).toBeInstanceOf(Gtk.Switch);
+        await screen.findByRole(Gtk.AccessibleRole.SWITCH, { name: "Change something" });
     });
 
-    it("renders a GtkTextView in the window body", async () => {
+    it("renders the body GtkTextView with its 'Content' accessible label", async () => {
         await renderDemo(headerbarDemo);
-        expect(await screen.findByName("text-view")).toBeInstanceOf(Gtk.TextView);
+        const textView = (await screen.findByName("text-view")) as Gtk.TextView;
+        expect(textView).toBe(await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { name: "Content" }));
     });
 });
 
@@ -69,7 +69,9 @@ describe("headerbarDemo interactions", () => {
         })) as Gtk.Switch;
 
         await userEvent.click(switchEl);
-
         await screen.findByRole(Gtk.AccessibleRole.SWITCH, { name: "Change something", checked: true });
+
+        await userEvent.click(switchEl);
+        await screen.findByRole(Gtk.AccessibleRole.SWITCH, { name: "Change something", checked: false });
     });
 });

@@ -1,8 +1,27 @@
+import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { screen } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { cursorsDemo } from "../../../src/demos/gestures/cursors.js";
 import { renderDemo } from "../../test-utils.js";
+
+const rowFramesFor = async (name: string): Promise<Gtk.Frame[]> => {
+    const label = (await screen.findByText(name)) as Gtk.Widget;
+    let row: Gtk.Widget | null = label;
+    while (row && !(row instanceof Gtk.ListBoxRow)) row = row.getParent();
+    const frames: Gtk.Frame[] = [];
+    const walk = (widget: Gtk.Widget | null): void => {
+        if (!widget) return;
+        if (widget instanceof Gtk.Frame) frames.push(widget);
+        let child = widget.getFirstChild();
+        while (child) {
+            walk(child);
+            child = child.getNextSibling();
+        }
+    };
+    walk(row);
+    return frames;
+};
 
 describe("cursorsDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -49,37 +68,86 @@ describe("cursorsDemo list structure", () => {
     });
 });
 
-describe("cursorsDemo previews", () => {
-    it("labels rows with the cursor names including default, pointer, grab and gtk-logo", async () => {
+describe("cursorsDemo cursor assignments and tooltips", () => {
+    it("attaches the four named/image/fallback cursor variants to a named row's frames", async () => {
         await renderDemo(cursorsDemo);
-        expect(await screen.findByText("default")).toBeInstanceOf(Gtk.Widget);
-        expect(await screen.findByText("pointer")).toBeInstanceOf(Gtk.Widget);
-        expect(await screen.findByText("grab")).toBeInstanceOf(Gtk.Widget);
-        expect(await screen.findByText("gtk-logo")).toBeInstanceOf(Gtk.Widget);
-        expect(await screen.findByText("zoom-in")).toBeInstanceOf(Gtk.Widget);
-        expect(await screen.findByText("zoom-out")).toBeInstanceOf(Gtk.Widget);
+        const frames = await rowFramesFor("pointer");
+        expect(frames).toHaveLength(4);
+
+        const cursors = frames.map((f) => f.getCursor());
+        for (const cursor of cursors) {
+            expect(cursor).toBeInstanceOf(Gdk.Cursor);
+        }
+
+        // named cursor
+        expect(cursors[0]?.getName()).toBe("pointer");
+        expect(cursors[0]?.getFallback()).toBeNull();
+        // image cursor (no name)
+        expect(cursors[1]?.getName()).toBeNull();
+        // named cursor with an image fallback
+        expect(cursors[2]?.getName()).toBe("pointer");
+        expect(cursors[2]?.getFallback()?.getName()).toBeNull();
+        // image cursor falling back to the named cursor
+        expect(cursors[3]?.getName()).toBeNull();
+        expect(cursors[3]?.getFallback()?.getName()).toBe("pointer");
+
+        expect(frames.map((f) => f.getTooltipText())).toEqual([
+            'The "pointer" named cursor',
+            "An image cursor",
+            'The "pointer" named cursor falling back to an image cursor',
+            'An image cursor falling back to the "pointer" cursor',
+        ]);
+
+        for (const frame of frames) {
+            expect(frame.getCssClasses()).toContain("cursorbg");
+            expect(frame.getSizeRequest()).toEqual([32, 32]);
+        }
     });
 
-    it("renders 38 preview images, one per cursor name", async () => {
+    it("uses the gtk-logo special-case variants and tooltips with a default fallback", async () => {
+        await renderDemo(cursorsDemo);
+        const frames = await rowFramesFor("gtk-logo");
+        expect(frames).toHaveLength(4);
+
+        const cursors = frames.map((f) => f.getCursor());
+        expect(cursors[0]?.getName()).toBe("gtk-logo");
+        expect(cursors[1]?.getName()).toBeNull();
+        // both trailing variants are image cursors falling back to the "default" cursor
+        expect(cursors[2]?.getName()).toBeNull();
+        expect(cursors[2]?.getFallback()?.getName()).toBe("default");
+        expect(cursors[3]?.getName()).toBeNull();
+        expect(cursors[3]?.getFallback()?.getName()).toBe("default");
+
+        expect(frames.map((f) => f.getTooltipText())).toEqual([
+            'The "gtk-logo" named cursor',
+            "An image cursor for the GTK logo",
+            'An image cursor falling back to the "default" cursor',
+            'An image cursor falling back to the "default" cursor',
+        ]);
+    });
+});
+
+describe("cursorsDemo previews", () => {
+    it("renders 38 preview images backed by a Gdk.Texture paintable", async () => {
         await renderDemo(cursorsDemo);
         const images = await screen.findAllByRole(Gtk.AccessibleRole.IMG);
         expect(images).toHaveLength(38);
         for (const preview of images) {
-            expect((preview as Gtk.Image).getPaintable()).not.toBeNull();
+            expect((preview as Gtk.Image).getPaintable()).toBeInstanceOf(Gdk.Texture);
         }
     });
 });
 
 describe("cursorsDemo css registration", () => {
-    it("adds the cursors CssProvider for the default display when mounted", async () => {
+    it("adds exactly one cursors CssProvider at user priority for the default display", async () => {
         const addSpy = vi.spyOn(Gtk.StyleContext, "addProviderForDisplay");
         try {
             await renderDemo(cursorsDemo);
             const userPriorityCalls = addSpy.mock.calls.filter(
                 ([, , priority]) => priority === Gtk.STYLE_PROVIDER_PRIORITY_USER,
             );
-            expect(userPriorityCalls.length).toBeGreaterThan(0);
-            expect(userPriorityCalls.every(([, provider]) => provider instanceof Gtk.CssProvider)).toBe(true);
+            expect(userPriorityCalls).toHaveLength(1);
+            expect(userPriorityCalls[0]?.[1]).toBeInstanceOf(Gtk.CssProvider);
         } finally {
             addSpy.mockRestore();
         }

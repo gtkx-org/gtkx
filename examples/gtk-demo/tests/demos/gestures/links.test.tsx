@@ -1,7 +1,8 @@
+import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
-import { fireEvent, screen } from "@gtkx/testing";
-import { describe, expect, it } from "vitest";
+import { screen } from "@gtkx/testing";
+import { describe, expect, it, vi } from "vitest";
 import { linksDemo } from "../../../src/demos/gestures/links.js";
 import { renderDemo } from "../../test-utils.js";
 
@@ -26,37 +27,56 @@ describe("linksDemo", () => {
         expect(label.getMaxWidthChars()).toBe(40);
     });
 
-    it("includes the embedded http://en.wikipedia.org/wiki/Text anchor in the markup", async () => {
-        await renderDemo(linksDemo);
-        const label = (await screen.findByName("links-label")) as Gtk.Label;
-        const text = label.getLabel();
-        expect(text).toContain("http://en.wikipedia.org/wiki/Text");
-        expect(text).toContain("Flathub");
-        expect(text).toContain("keynav");
-    });
-
-    it("applies the configured 20px margins to the label", async () => {
-        await renderDemo(linksDemo);
-        const label = (await screen.findByName("links-label")) as Gtk.Label;
-        expect(label.getMarginStart()).toBe(20);
-        expect(label.getMarginEnd()).toBe(20);
-        expect(label.getMarginTop()).toBe(20);
-        expect(label.getMarginBottom()).toBe(20);
-    });
-
-    it("exposes the keynav handler URI as a clickable hyperlink in the markup", async () => {
+    it("exposes the keynav and external anchors as clickable hyperlinks in the markup", async () => {
         await renderDemo(linksDemo);
         const label = (await screen.findByName("links-label")) as Gtk.Label;
         const markup = label.getLabel();
         expect(markup).toMatch(/href="keynav"/);
+        expect(markup).toMatch(/href="http:\/\/en\.wikipedia\.org\/wiki\/Text"/);
         expect(markup).toMatch(/href="http:\/\/www\.flathub\.org\/"/);
     });
 });
 
 describe("linksDemo activate-link handler", () => {
-    it("returns true and presents the keynav alert when the 'keynav' link is activated", async () => {
+    it("returns true and presents the keynav alert dialog when the 'keynav' link is activated", async () => {
         await renderDemo(linksDemo);
         const label = (await screen.findByName("links-label")) as Gtk.Label;
-        await fireEvent(label, "activate-link", "keynav");
+        const choose = vi.spyOn(Adw.AlertDialog.prototype, "choose").mockResolvedValue("ok");
+        const setHeading = vi.spyOn(Adw.AlertDialog.prototype, "setHeading");
+        const setBody = vi.spyOn(Adw.AlertDialog.prototype, "setBody");
+        try {
+            const handled = label.emit("activate-link", "keynav");
+            expect(handled).toBe(true);
+            expect(choose).toHaveBeenCalledTimes(1);
+            expect(choose.mock.calls[0]?.[0]).toBeInstanceOf(Gtk.Window);
+            expect(setHeading).toHaveBeenCalledWith("Keyboard navigation");
+            expect(String(setBody.mock.calls[0]?.[0])).toContain("keyboard navigation");
+        } finally {
+            choose.mockRestore();
+            setHeading.mockRestore();
+            setBody.mockRestore();
+        }
+    });
+
+    it("defers to default handling for a non-keynav link without presenting an alert dialog", async () => {
+        await renderDemo(linksDemo);
+        const label = (await screen.findByName("links-label")) as Gtk.Label;
+        const choose = vi.spyOn(Adw.AlertDialog.prototype, "choose").mockResolvedValue("ok");
+        // The demo handler returns false for non-keynav URIs, so emission would otherwise
+        // reach the built-in gtk_show_uri default handler; intercept it after the demo's
+        // handler ran to observe that no custom dialog was built.
+        let reachedDefault = false;
+        const stop = label.connect("activate-link", () => {
+            reachedDefault = true;
+            return true;
+        });
+        try {
+            label.emit("activate-link", "http://www.flathub.org/");
+            expect(reachedDefault).toBe(true);
+            expect(choose).not.toHaveBeenCalled();
+        } finally {
+            label.disconnect(stop);
+            choose.mockRestore();
+        }
     });
 });

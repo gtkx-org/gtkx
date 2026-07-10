@@ -183,6 +183,7 @@ const renderSuggestionEntry = ({
     >
         <GtkPopover
             ref={popoverRef}
+            name={name ? `${name}-popover` : undefined}
             hasArrow={false}
             position={Gtk.PositionType.BOTTOM}
             autohide={false}
@@ -454,8 +455,9 @@ const DirectorySuggestionEntry = () => {
 
     return (
         <GtkBox cssClasses={["linked"]}>
-            <GtkEntry text={text} hexpand onChanged={(entry) => setText(entry.getText())} />
+            <GtkEntry name="directory-entry" text={text} hexpand onChanged={(entry) => setText(entry.getText())} />
             <GtkMenuButton
+                name="directory-menu-button"
                 iconName="pan-down-symbolic"
                 tooltipText="Show suggestions"
                 popover={

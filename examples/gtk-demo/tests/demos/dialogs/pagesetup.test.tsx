@@ -26,8 +26,15 @@ describe("pageSetupDemo component lifecycle", () => {
         const onClose = vi.fn();
         try {
             await renderDemo(pageSetupDemo, { onClose });
-            await waitFor(() => expect(dialogSpy).toHaveBeenCalled());
-            await waitFor(() => expect(onClose).toHaveBeenCalled());
+            await waitFor(() =>
+                expect(dialogSpy).toHaveBeenCalledWith(
+                    expect.anything(),
+                    null,
+                    expect.any(Gtk.PrintSettings),
+                    expect.any(Function),
+                ),
+            );
+            await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
         } finally {
             dialogSpy.mockRestore();
         }

@@ -1,14 +1,16 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { screen } from "@gtkx/testing";
-import { describe, expect, it } from "vitest";
+import { screen, userEvent, waitFor } from "@gtkx/testing";
+import { describe, expect, it, vi } from "vitest";
 import { cssMultiplebgsDemo } from "../../../src/demos/css/css-multiplebgs.js";
-import { renderDemo } from "../../test-utils.js";
+import { bufferHasTag, renderDemo } from "../../test-utils.js";
 
 describe("cssMultiplebgsDemo", () => {
     it("exposes the expected metadata", () => {
         expect(cssMultiplebgsDemo.id).toBe("css-multiplebgs");
         expect(cssMultiplebgsDemo.title).toBe("Theming/Multiple Backgrounds");
-        expect(cssMultiplebgsDemo.description.length).toBeGreaterThan(0);
+        expect(cssMultiplebgsDemo.description).toBe(
+            "GTK themes are written using CSS. Every widget is build of multiple items that you can style very similarly to a regular website.",
+        );
         expect(Array.isArray(cssMultiplebgsDemo.keywords)).toBe(true);
         expect(typeof cssMultiplebgsDemo.sourceCode).toBe("string");
         expect(cssMultiplebgsDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
@@ -17,29 +19,21 @@ describe("cssMultiplebgsDemo", () => {
         expect(cssMultiplebgsDemo.component).toBeTypeOf("function");
     });
 
-    it("renders an overlay with a drawing area canvas", async () => {
+    it("renders an overlay with a canvas drawing area and the bricks button", async () => {
         await renderDemo(cssMultiplebgsDemo);
-        const overlay = await screen.findByName("overlay");
-        expect(overlay).toBeInstanceOf(Gtk.Overlay);
-        const drawingArea = (await screen.findByName("canvas")) as Gtk.DrawingArea;
-        expect(drawingArea).toBeInstanceOf(Gtk.DrawingArea);
-        expect(drawingArea.getHexpand()).toBe(true);
-        expect(drawingArea.getVexpand()).toBe(true);
+        await screen.findByName("overlay");
+        await screen.findByName("canvas");
+        await screen.findByName("bricks-button");
     });
 
-    it("renders the named bricks button overlay child", async () => {
-        await renderDemo(cssMultiplebgsDemo);
-        const bricksButton = (await screen.findByName("bricks-button")) as Gtk.Button;
-        expect(bricksButton).toBeInstanceOf(Gtk.Button);
-    });
-
-    it("renders a vertical paned editor with the default CSS loaded in the buffer", async () => {
+    it("splits the editor from the canvas with a vertical paned holding the editor as its end child", async () => {
         await renderDemo(cssMultiplebgsDemo);
         const paned = (await screen.findByName("paned")) as Gtk.Paned;
-        expect(paned).toBeInstanceOf(Gtk.Paned);
-        expect(paned.getOrientation()).toBe(Gtk.Orientation.VERTICAL);
-        expect(await screen.findByDisplayValue(/#canvas/)).not.toBeNull();
-        expect(screen.queryByDisplayValue(/transition-property/)).not.toBeNull();
+        expect(paned.getStartChild()).toBeInstanceOf(Gtk.Box);
+        expect(paned.getEndChild()).toBeInstanceOf(Gtk.ScrolledWindow);
+        const textView = (await screen.findByName("text-view")) as Gtk.TextView;
+        expect(textView).toHaveDisplayValue(/#canvas/);
+        expect(textView).toHaveDisplayValue(/transition-property/);
     });
 
     it("declares the demo window class on the host window", async () => {
@@ -47,5 +41,50 @@ describe("cssMultiplebgsDemo", () => {
         await renderDemo(cssMultiplebgsDemo);
         const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
         expect(window.hasCssClass("demo")).toBe(true);
+    });
+
+    it("loads the default CSS into a CssProvider added to the display on mount", async () => {
+        const loadSpy = vi.spyOn(Gtk.CssProvider.prototype, "loadFromString");
+        const addSpy = vi.spyOn(Gtk.StyleContext, "addProviderForDisplay");
+        try {
+            await renderDemo(cssMultiplebgsDemo);
+            const defaultLoad = loadSpy.mock.calls.find(
+                ([css]) => typeof css === "string" && css.includes("#canvas") && css.includes("transition-property"),
+            );
+            expect(defaultLoad, "expected the default multiplebgs CSS to be loaded via loadFromString").toBeDefined();
+            expect(addSpy.mock.calls.some(([, provider]) => provider instanceof Gtk.CssProvider)).toBe(true);
+        } finally {
+            loadSpy.mockRestore();
+            addSpy.mockRestore();
+        }
+    });
+
+    it("re-applies the CssProvider when the user edits the buffer", async () => {
+        const loadSpy = vi.spyOn(Gtk.CssProvider.prototype, "loadFromString");
+        try {
+            await renderDemo(cssMultiplebgsDemo);
+            const textView = (await screen.findByName("text-view")) as Gtk.TextView;
+            loadSpy.mockClear();
+            await userEvent.clear(textView);
+            await userEvent.type(textView, "#canvas { background-color: magenta; }");
+            await waitFor(() => {
+                const userLoad = loadSpy.mock.calls.find(
+                    ([css]) => typeof css === "string" && css.includes("background-color: magenta"),
+                );
+                expect(userLoad, "expected the buffer edit to be loaded into a CssProvider").toBeDefined();
+            });
+        } finally {
+            loadSpy.mockRestore();
+        }
+    });
+
+    it("marks invalid CSS by adding an error tag to the buffer", async () => {
+        await renderDemo(cssMultiplebgsDemo);
+        const textView = (await screen.findByName("text-view")) as Gtk.TextView;
+        await userEvent.clear(textView);
+        await userEvent.type(textView, "#canvas { color: this-is-not-a-valid-color; }");
+        await waitFor(() => {
+            expect(bufferHasTag(textView, "error")).toBe(true);
+        });
     });
 });

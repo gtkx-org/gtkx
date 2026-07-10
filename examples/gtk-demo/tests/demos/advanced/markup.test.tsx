@@ -2,7 +2,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { markupDemo } from "../../../src/demos/advanced/markup.js";
-import { renderDemo } from "../../test-utils.js";
+import { readBufferText, renderDemo } from "../../test-utils.js";
 
 describe("markupDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -29,16 +29,20 @@ describe("markupDemo initial state", () => {
         expect(stack.getVisibleChildName()).toBe("formatted");
     });
 
-    it("populates the source text view buffer with the markup content", async () => {
+    it("populates the source text view buffer with the raw markup content", async () => {
         await renderDemo(markupDemo);
         const source = (await screen.findByName("source-view")) as Gtk.TextView;
-        expect(source).toHaveDisplayValue();
+        expect(source).toHaveDisplayValue(/Text sizes:/);
+        expect(source).toHaveDisplayValue(/<span size="xx-small">/);
     });
 
-    it("populates the formatted view by inserting markup into its buffer", async () => {
+    it("populates the formatted view with parsed markup, stripping the raw span tags", async () => {
         await renderDemo(markupDemo);
         const formatted = (await screen.findByName("formatted-view")) as Gtk.TextView;
-        expect(formatted).toHaveDisplayValue();
+        expect(formatted).toHaveDisplayValue(/Text sizes:/);
+        const formattedText = readBufferText(formatted);
+        expect(formattedText).not.toContain("<span");
+        expect(formattedText).toContain("Letterspacing");
     });
 });
 

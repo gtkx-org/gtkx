@@ -29,12 +29,15 @@ describe("overlayDemo grid and labels", () => {
         }
     });
 
-    it("renders the decorative 'Numbers' label as non-interactive markup", async () => {
+    it("renders the decorative 'Numbers' label as non-interactive markup inside a click-through box", async () => {
         await renderDemo(overlayDemo);
         const numbersLabel = (await screen.findByName("numbers-label")) as Gtk.Label;
         expect(numbersLabel.getUseMarkup()).toBe(true);
-        expect(screen.getByText(/Numbers/)).toBeTruthy();
+        expect(numbersLabel).toHaveTextContent("Numbers");
         expect(numbersLabel.getCanTarget()).toBe(false);
+        const box = numbersLabel.getParent();
+        expect(box).toBeInstanceOf(Gtk.Box);
+        expect(box?.getCanTarget()).toBe(false);
     });
 });
 

@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { screen, userEvent } from "@gtkx/testing";
+import { screen, userEvent, within } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { shortcutTriggersDemo } from "../../../src/demos/gestures/shortcut-triggers.js";
 import { renderDemo } from "../../test-utils.js";
@@ -21,9 +21,10 @@ describe("shortcutTriggersDemo metadata", () => {
 describe("shortcutTriggersDemo rendering", () => {
     it("renders the two instruction labels in the listbox", async () => {
         await renderDemo(shortcutTriggersDemo);
-        expect(await screen.findByName("list-box")).toBeInstanceOf(Gtk.ListBox);
-        expect(await screen.findByName("label-ctrl-g")).toBeInstanceOf(Gtk.Label);
-        expect(await screen.findByName("label-x")).toBeInstanceOf(Gtk.Label);
+        const listBox = (await screen.findByName("list-box")) as Gtk.ListBox;
+        expect(within(listBox).getAllByRole(Gtk.AccessibleRole.LIST_ITEM)).toHaveLength(2);
+        expect(await screen.findByName("label-ctrl-g")).toHaveTextContent("Press Ctrl-G");
+        expect(await screen.findByName("label-x")).toHaveTextContent("Press X");
     });
 
     it("wraps each instruction label in a list box row", async () => {

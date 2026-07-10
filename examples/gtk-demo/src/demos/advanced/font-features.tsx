@@ -654,6 +654,7 @@ const FontFeaturesFontButton = ({ state }: { state: FontFeaturesState }) => {
     const { fontDesc, setFontDesc, setSize } = state;
     return (
         <GtkFontDialogButton
+            name="font-button"
             fontDesc={fontDesc ?? undefined}
             dialog={<GtkFontDialog />}
             onNotifyFontDesc={(desc) => {
@@ -1119,6 +1120,7 @@ const FontFeaturesPreview = ({ state, styles, handlers, stackPage, previewAttrib
                 </GtkStackPage>
                 <GtkStackPage name="entry">
                     <GtkTextView
+                        name="edit_textview"
                         ref={state.editTextViewRef}
                         cssClasses={[styles.editStyle]}
                         wrapMode={Gtk.WrapMode.WORD}

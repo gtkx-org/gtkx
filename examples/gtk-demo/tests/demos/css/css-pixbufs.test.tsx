@@ -2,7 +2,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { cssPixbufsDemo } from "../../../src/demos/css/css-pixbufs.js";
-import { renderDemo } from "../../test-utils.js";
+import { bufferHasTag, renderDemo } from "../../test-utils.js";
 
 describe("cssPixbufsDemo", () => {
     it("exposes the expected metadata", () => {
@@ -17,20 +17,21 @@ describe("cssPixbufsDemo", () => {
         expect(cssPixbufsDemo.component).toBeTypeOf("function");
     });
 
-    it("renders a vertical paned wrapping the text view editor", async () => {
+    it("renders a vertical paned holding the scrolled text view editor as its end child", async () => {
         await renderDemo(cssPixbufsDemo);
         const paned = (await screen.findByName("paned")) as Gtk.Paned;
-        expect(paned).toBeInstanceOf(Gtk.Paned);
         expect(paned.getOrientation()).toBe(Gtk.Orientation.VERTICAL);
-        const sw = await screen.findByName("scrolled");
-        expect(sw).toBeInstanceOf(Gtk.ScrolledWindow);
+        expect(paned.getStartChild()).toBeInstanceOf(Gtk.Box);
+        expect(paned.getEndChild()).toBeInstanceOf(Gtk.ScrolledWindow);
+        await screen.findByName("scrolled");
     });
 
     it("preloads the default CSS containing the keyframe animations", async () => {
         await renderDemo(cssPixbufsDemo);
-        expect(await screen.findByDisplayValue(/@keyframes move-the-image/)).not.toBeNull();
-        expect(screen.getByDisplayValue(/@keyframes size-the-image/)).not.toBeNull();
-        expect(screen.getByDisplayValue(/animation: move-the-image/)).not.toBeNull();
+        const textView = (await screen.findByName("text-view")) as Gtk.TextView;
+        expect(textView).toHaveDisplayValue(/@keyframes move-the-image/);
+        expect(textView).toHaveDisplayValue(/@keyframes size-the-image/);
+        expect(textView).toHaveDisplayValue(/animation: move-the-image/);
     });
 
     it("declares the demo window class on the host window", async () => {
@@ -70,5 +71,20 @@ describe("cssPixbufsDemo", () => {
         } finally {
             loadSpy.mockRestore();
         }
+    });
+
+    it("marks invalid CSS with an error tag and clears it once the CSS is valid again", async () => {
+        await renderDemo(cssPixbufsDemo);
+        const textView = (await screen.findByName("text-view")) as Gtk.TextView;
+        await userEvent.clear(textView);
+        await userEvent.type(textView, "window { color: this-is-not-a-valid-color; }");
+        await waitFor(() => {
+            expect(bufferHasTag(textView, "error")).toBe(true);
+        });
+        await userEvent.clear(textView);
+        await userEvent.type(textView, "window { color: red; }");
+        await waitFor(() => {
+            expect(bufferHasTag(textView, "error")).toBe(false);
+        });
     });
 });

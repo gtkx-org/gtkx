@@ -26,7 +26,7 @@ describe("imagesDemo metadata", () => {
             "GtkWidgetPaintable",
         ];
         for (const heading of headings) {
-            expect(await screen.findByText(heading)).toBeInstanceOf(Gtk.Widget);
+            expect(await screen.findByText(heading)).toHaveTextContent(heading);
         }
     });
 });
@@ -38,7 +38,6 @@ describe("imagesDemo toggle", () => {
             name: "_Insensitive",
         })) as Gtk.ToggleButton;
         expect(toggle).not.toBePressed();
-        expect(toggle.getUseUnderline()).toBe(true);
     });
 
     it("toggles the sensitivity of the image strip when the toggle is activated", async () => {
@@ -55,17 +54,37 @@ describe("imagesDemo toggle", () => {
     });
 });
 
-describe("imagesDemo media widgets", () => {
-    it("renders the animation GtkPicture and the widget-paintable GtkPicture", async () => {
+describe("imagesDemo stateful icon switch", () => {
+    it("drives the SVG paintable between its two states as the switch is flipped", async () => {
         await renderDemo(imagesDemo);
-        expect(await screen.findByName("gif-picture")).toBeInstanceOf(Gtk.Picture);
-        expect(await screen.findByName("widget-paintable-picture")).toBeInstanceOf(Gtk.Picture);
+        const image = (await screen.findByName("stateful-icon-image")) as Gtk.Image;
+        const svg = image.getPaintable() as Gtk.Svg;
+        expect(svg).toBeInstanceOf(Gtk.Svg);
+        expect(svg.getState()).toBe(0);
+
+        const toggle = (await screen.findByRole(Gtk.AccessibleRole.SWITCH)) as Gtk.Switch;
+        expect(toggle).not.toBeChecked();
+
+        await userEvent.click(toggle);
+        await waitFor(() => expect(toggle).toBeChecked());
+        expect(svg.getState()).toBe(1);
+
+        await userEvent.click(toggle);
+        await waitFor(() => expect(toggle).not.toBeChecked());
+        expect(svg.getState()).toBe(0);
+    });
+});
+
+describe("imagesDemo media widgets", () => {
+    it("loads the animated GIF as the gif picture's paintable after mount", async () => {
+        await renderDemo(imagesDemo);
+        const gif = (await screen.findByName("gif-picture")) as Gtk.Picture;
+        await waitFor(() => expect(gif.getPaintable()).not.toBeNull());
     });
 
-    it("renders a GtkVideo widget that autoplays and loops", async () => {
+    it("renders a GtkVideo widget configured to autoplay and loop", async () => {
         await renderDemo(imagesDemo);
         const video = (await screen.findByName("logo-video")) as Gtk.Video;
-        expect(video).toBeInstanceOf(Gtk.Video);
         expect(video.getAutoplay()).toBe(true);
         expect(video.getLoop()).toBe(true);
     });

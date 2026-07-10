@@ -353,7 +353,7 @@ const SelectionInfoPanel = ({
                 {(ref) => <GtkLabel ref={ref} label="Size:" />}
             </Grid.Child>
             <Grid.Child column={1} row={2}>
-                {(ref) => <GtkLabel ref={ref} label={String(selectedColors.length)} />}
+                {(ref) => <GtkLabel ref={ref} name="selection-size" label={String(selectedColors.length)} />}
             </Grid.Child>
             <Grid.Child column={2} row={2}>
                 {(ref) => <GtkLabel ref={ref} label="Average:" />}

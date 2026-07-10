@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { screen, within } from "@gtkx/testing";
+import { screen, userEvent, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { flowboxDemo } from "../../../src/demos/layout/flowbox.js";
 import { renderDemo } from "../../test-utils.js";
@@ -20,47 +20,56 @@ describe("flowboxDemo metadata", () => {
         expect(flowboxDemo.keywords).toEqual([]);
     });
 
-    it("ships a non-empty source-code string", () => {
+    it("ships source code containing the flow box and swatch-drawing markers", () => {
         expect(typeof flowboxDemo.sourceCode).toBe("string");
-        expect(flowboxDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+        expect(flowboxDemo.sourceCode).toContain("GtkFlowBox");
+        expect(flowboxDemo.sourceCode).toContain("drawColor");
     });
 });
 
 describe("flowboxDemo container", () => {
-    it("renders a GtkScrolledWindow with horizontal scrollbar disabled", async () => {
+    it("disables only the horizontal scrollbar on the GtkScrolledWindow", async () => {
         await renderDemo(flowboxDemo);
         const sw = (await screen.findByName("scrolled")) as Gtk.ScrolledWindow;
-        const [hpolicy] = sw.getPolicy();
+        const [hpolicy, vpolicy] = sw.getPolicy();
         expect(hpolicy).toBe(Gtk.PolicyType.NEVER);
+        expect(vpolicy).not.toBe(Gtk.PolicyType.NEVER);
     });
 
-    it("renders a single GtkFlowBox configured with NONE selection and START valign", async () => {
+    it("keeps the NONE-selection flow box unselectable when a swatch is clicked", async () => {
         await renderDemo(flowboxDemo);
         const flowBox = (await screen.findByName("flow-box")) as Gtk.FlowBox;
         expect(flowBox.getSelectionMode()).toBe(Gtk.SelectionMode.NONE);
         expect(flowBox.getValign()).toBe(Gtk.Align.START);
         expect(flowBox.getMaxChildrenPerLine()).toBe(30);
+        const [firstButton] = within(flowBox).getAllByRole(Gtk.AccessibleRole.BUTTON);
+        if (!firstButton) throw new Error("expected at least one flowbox button");
+        await userEvent.click(firstButton);
+        expect(flowBox.getSelectedChildren()).toHaveLength(0);
     });
 });
 
 describe("flowboxDemo children", () => {
-    it("renders one GtkButton per color in the dataset", async () => {
+    it("gives each color button a 24x24 GtkDrawingArea swatch", async () => {
         await renderDemo(flowboxDemo);
         const flowBox = await screen.findByName("flow-box");
         const buttons = within(flowBox).getAllByRole(Gtk.AccessibleRole.BUTTON);
         expect(buttons).toHaveLength(EXPECTED_COLOR_COUNT);
         for (const button of buttons) {
-            expect(button).toBeInstanceOf(Gtk.Button);
+            const swatch = (button as Gtk.Button).getChild();
+            expect(swatch).toBeInstanceOf(Gtk.DrawingArea);
+            expect((swatch as Gtk.DrawingArea).getContentWidth()).toBe(24);
+            expect((swatch as Gtk.DrawingArea).getContentHeight()).toBe(24);
         }
     });
 
-    it("creates a unique GtkFlowBoxChild for every color button", async () => {
+    it("wraps every color button in its own GtkFlowBoxChild grid cell", async () => {
         await renderDemo(flowboxDemo);
         const flowBox = await screen.findByName("flow-box");
         const cells = within(flowBox).getAllByRole(Gtk.AccessibleRole.GRID_CELL);
         expect(cells).toHaveLength(EXPECTED_COLOR_COUNT);
         for (const cell of cells) {
-            expect(cell).toBeInstanceOf(Gtk.FlowBoxChild);
+            expect(within(cell).getByRole(Gtk.AccessibleRole.BUTTON)).toBeInstanceOf(Gtk.Button);
         }
     });
 });

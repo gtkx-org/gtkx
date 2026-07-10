@@ -6,6 +6,18 @@ import { renderDemo } from "../../test-utils.js";
 
 const REVEALER_COUNT = 9;
 
+const REVEALER_CELLS: Array<{ column: number; row: number }> = [
+    { column: 2, row: 2 },
+    { column: 2, row: 1 },
+    { column: 3, row: 2 },
+    { column: 2, row: 3 },
+    { column: 1, row: 2 },
+    { column: 2, row: 0 },
+    { column: 4, row: 2 },
+    { column: 2, row: 4 },
+    { column: 0, row: 2 },
+];
+
 const findAllRevealers = async (): Promise<Gtk.Revealer[]> => {
     const revealers: Gtk.Revealer[] = [];
     for (let i = 0; i < REVEALER_COUNT; i++) {
@@ -14,11 +26,19 @@ const findAllRevealers = async (): Promise<Gtk.Revealer[]> => {
     return revealers;
 };
 
+const collectGridRevealers = (grid: Gtk.Grid): Gtk.Revealer[] => {
+    const revealers: Gtk.Revealer[] = [];
+    for (let child = grid.getFirstChild(); child; child = child.getNextSibling()) {
+        if (child instanceof Gtk.Revealer) revealers.push(child);
+    }
+    return revealers;
+};
+
 describe("revealerDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(revealerDemo.id).toBe("revealer");
         expect(revealerDemo.title).toBe("Revealer");
-        expect(revealerDemo.description.length).toBeGreaterThan(0);
+        expect(revealerDemo.description).toContain("GtkRevealer");
         expect(typeof revealerDemo.sourceCode).toBe("string");
         expect(revealerDemo.defaultWidth).toBe(300);
         expect(revealerDemo.defaultHeight).toBe(300);
@@ -27,9 +47,10 @@ describe("revealerDemo metadata", () => {
 });
 
 describe("revealerDemo structure", () => {
-    it("renders nine GtkRevealer widgets initially hidden", async () => {
+    it("renders exactly nine GtkRevealer widgets initially hidden", async () => {
         await renderDemo(revealerDemo);
-        const revealers = await findAllRevealers();
+        const grid = (await screen.findByName("revealer-grid")) as Gtk.Grid;
+        const revealers = collectGridRevealers(grid);
         expect(revealers).toHaveLength(REVEALER_COUNT);
         for (const r of revealers) {
             expect(r.getRevealChild()).toBe(false);
@@ -66,12 +87,13 @@ describe("revealerDemo structure", () => {
         }
     });
 
-    it("renders the GtkGrid container with center alignment", async () => {
+    it("places each revealer at its configured grid cell forming the cross layout", async () => {
         await renderDemo(revealerDemo);
         const grid = (await screen.findByName("revealer-grid")) as Gtk.Grid;
-        expect(grid).toBeInstanceOf(Gtk.Grid);
-        expect(grid.getHalign()).toBe(Gtk.Align.CENTER);
-        expect(grid.getValign()).toBe(Gtk.Align.CENTER);
+        const revealers = await findAllRevealers();
+        REVEALER_CELLS.forEach((cell, index) => {
+            expect(grid.getChildAt(cell.column, cell.row)).toBe(revealers[index]);
+        });
     });
 });
 

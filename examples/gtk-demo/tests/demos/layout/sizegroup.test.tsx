@@ -6,6 +6,11 @@ import { renderDemo } from "../../test-utils.js";
 
 const MNEMONIC_LABELS = ["_Foreground", "_Background", "_Dashing", "_Line ends"] as const;
 
+const naturalWidths = (dropdowns: Gtk.Widget[]): number[] =>
+    dropdowns.map((d) => d.measure(Gtk.Orientation.HORIZONTAL, -1)[1]);
+
+const allEqual = (values: number[]): boolean => values.every((v) => v === values[0]);
+
 describe("sizegroupDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(sizegroupDemo.id).toBe("sizegroup");
@@ -19,10 +24,12 @@ describe("sizegroupDemo metadata", () => {
 });
 
 describe("sizegroupDemo frames and labels", () => {
-    it("renders the Color Options and Line Options frames", async () => {
+    it("renders the Color Options and Line Options frames with their labels", async () => {
         await renderDemo(sizegroupDemo);
-        expect(await screen.findByText("Color Options")).toBeDefined();
-        expect(await screen.findByText("Line Options")).toBeDefined();
+        const colorFrame = (await screen.findByName("color-options-frame")) as Gtk.Frame;
+        const lineFrame = (await screen.findByName("line-options-frame")) as Gtk.Frame;
+        expect(colorFrame.getLabel()).toBe("Color Options");
+        expect(lineFrame.getLabel()).toBe("Line Options");
     });
 
     it("renders four GtkDropDowns - one per option row", async () => {
@@ -41,30 +48,41 @@ describe("sizegroupDemo frames and labels", () => {
 });
 
 describe("sizegroupDemo check button", () => {
-    it("starts with grouping enabled and the size group in HORIZONTAL mode", async () => {
+    it("starts with grouping enabled so every dropdown shares one requested width", async () => {
         await renderDemo(sizegroupDemo);
-        expect(
-            await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "_Enable grouping", checked: true }),
-        ).toBeDefined();
+        await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "_Enable grouping", checked: true });
+        const dropdowns = await screen.findAllByRole(Gtk.AccessibleRole.COMBO_BOX);
+        const widths = naturalWidths(dropdowns);
+        expect(widths.every((w) => w > 0)).toBe(true);
+        expect(allEqual(widths)).toBe(true);
     });
 
-    it("renders the '_Enable grouping' check button with underline-mnemonic enabled", async () => {
+    it("labels the check button '_Enable grouping'", async () => {
         await renderDemo(sizegroupDemo);
         const check = (await screen.findByName("enable-grouping-check")) as Gtk.CheckButton;
-        expect(await screen.findByText("_Enable grouping")).toBeDefined();
-        expect(check.getUseUnderline()).toBe(true);
+        expect(check.getLabel()).toBe("_Enable grouping");
     });
 
-    it("toggles the check button active state when clicked", async () => {
+    it("toggling the check button off switches the size group to NONE, unequalising widths", async () => {
         await renderDemo(sizegroupDemo);
+        const dropdowns = await screen.findAllByRole(Gtk.AccessibleRole.COMBO_BOX);
+        const groupedWidths = naturalWidths(dropdowns);
+        expect(allEqual(groupedWidths)).toBe(true);
+
         const check = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
             name: "_Enable grouping",
             checked: true,
         });
         await userEvent.click(check);
-        expect(
-            await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "_Enable grouping", checked: false }),
-        ).toBeDefined();
+        await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "_Enable grouping", checked: false });
+
+        const ungroupedWidths = naturalWidths(dropdowns);
+        expect(allEqual(ungroupedWidths)).toBe(false);
+        expect(Math.max(...ungroupedWidths)).toBe(groupedWidths[0]);
+
+        await userEvent.click(check);
+        await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "_Enable grouping", checked: true });
+        expect(allEqual(naturalWidths(dropdowns))).toBe(true);
     });
 });
 
@@ -78,11 +96,13 @@ describe("sizegroupDemo dropdowns", () => {
         }
     });
 
-    it("changing the foreground dropdown selection persists in the widget", async () => {
+    it.each(MNEMONIC_LABELS)("changing the %s dropdown selection persists in the widget", async (label) => {
         await renderDemo(sizegroupDemo);
-        const foreground = (await screen.findByLabelText("_Foreground")) as Gtk.DropDown;
-        expect(foreground).toBeInstanceOf(Gtk.DropDown);
-        await userEvent.selectOptions(foreground, 2);
-        expect(foreground.getSelected()).toBe(2);
+        const dropdown = (await screen.findByLabelText(label)) as Gtk.DropDown;
+        expect(dropdown.getSelected()).toBe(0);
+        await userEvent.selectOptions(dropdown, 2);
+        expect(dropdown.getSelected()).toBe(2);
+        await userEvent.selectOptions(dropdown, 1);
+        expect(dropdown.getSelected()).toBe(1);
     });
 });

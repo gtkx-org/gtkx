@@ -31,15 +31,21 @@ describe("fixedDemo metadata", () => {
 });
 
 describe("fixedDemo containers", () => {
-    it("renders a scrolled window wrapping the fixed containers", async () => {
+    it("wraps the outer fixed inside the scrolled window's viewport", async () => {
         await renderDemo(fixedDemo);
-        expect(await screen.findByName("scrolled")).toBeInstanceOf(Gtk.ScrolledWindow);
+        const scrolled = (await screen.findByName("scrolled")) as Gtk.ScrolledWindow;
+        const outer = (await screen.findByName("outer-fixed")) as Gtk.Fixed;
+        const viewport = scrolled.getChild();
+        expect(viewport).toBeInstanceOf(Gtk.Viewport);
+        expect((viewport as Gtk.Viewport).getChild()).toBe(outer);
     });
 
-    it("renders the outer and inner GtkFixed containers", async () => {
+    it("nests the inner GtkFixed as a child of the outer GtkFixed", async () => {
         await renderDemo(fixedDemo);
-        expect(await screen.findByName("outer-fixed")).toBeInstanceOf(Gtk.Fixed);
-        expect(await screen.findByName("inner-fixed")).toBeInstanceOf(Gtk.Fixed);
+        const outer = (await screen.findByName("outer-fixed")) as Gtk.Fixed;
+        const inner = (await screen.findByName("inner-fixed")) as Gtk.Fixed;
+        expect(inner.getParent()).toBe(outer);
+        expect(outer.getChildTransform(inner)).not.toBeNull();
     });
 
     it("aligns the outer fixed container centrally and enables visible overflow", async () => {
@@ -52,13 +58,13 @@ describe("fixedDemo containers", () => {
 });
 
 describe("fixedDemo cube faces", () => {
-    it("renders the six named cube-face frames", async () => {
+    it("renders the six named cube-face frames each carrying its face-name CSS class", async () => {
         await renderDemo(fixedDemo);
         const faces = await findCubeFaces();
         expect(faces).toHaveLength(FACE_NAMES.length);
-        for (const face of faces) {
-            expect(face).toBeInstanceOf(Gtk.Frame);
-        }
+        faces.forEach((face, i) => {
+            expect(face.getCssClasses()).toContain(FACE_NAMES[i]);
+        });
     });
 
     it("sizes each cube-face frame to the FACE_SIZE constant of 200 pixels", async () => {
@@ -71,13 +77,15 @@ describe("fixedDemo cube faces", () => {
         }
     });
 
-    it("applies a non-null GskTransform to each cube face child of the inner fixed", async () => {
+    it("gives every cube face a distinct 3D GskTransform on the inner fixed", async () => {
         await renderDemo(fixedDemo);
         const inner = (await screen.findByName("inner-fixed")) as Gtk.Fixed;
         const faces = await findCubeFaces();
-        for (const face of faces) {
+        const transformStrings = faces.map((face) => {
             const transform = inner.getChildTransform(face);
             expect(transform).not.toBeNull();
-        }
+            return transform?.toString();
+        });
+        expect(new Set(transformStrings).size).toBe(FACE_NAMES.length);
     });
 });

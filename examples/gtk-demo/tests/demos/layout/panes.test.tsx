@@ -21,9 +21,9 @@ describe("panesDemo metadata", () => {
 describe("panesDemo content", () => {
     it("renders the 'Hi there', 'Hello' and 'Goodbye' labels", async () => {
         await renderDemo(panesDemo);
-        expect(await screen.findByRole(Gtk.AccessibleRole.LABEL, { name: "Hi there" })).toBeInstanceOf(Gtk.Label);
-        expect(await screen.findByRole(Gtk.AccessibleRole.LABEL, { name: "Hello" })).toBeInstanceOf(Gtk.Label);
-        expect(await screen.findByRole(Gtk.AccessibleRole.LABEL, { name: "Goodbye" })).toBeInstanceOf(Gtk.Label);
+        await screen.findByRole(Gtk.AccessibleRole.LABEL, { name: "Hi there" });
+        await screen.findByRole(Gtk.AccessibleRole.LABEL, { name: "Hello" });
+        await screen.findByRole(Gtk.AccessibleRole.LABEL, { name: "Goodbye" });
     });
 });
 
@@ -33,8 +33,8 @@ describe("panesDemo structure", () => {
         const innerPaned = (await screen.findByName("panes-inner")) as Gtk.Paned;
         expect(innerPaned).toBeInstanceOf(Gtk.Paned);
         expect(innerPaned.getOrientation()).toBe(Gtk.Orientation.HORIZONTAL);
-        expect(within(innerPaned).getByRole(Gtk.AccessibleRole.LABEL, { name: "Hi there" })).toBeInstanceOf(Gtk.Label);
-        expect(within(innerPaned).getByRole(Gtk.AccessibleRole.LABEL, { name: "Hello" })).toBeInstanceOf(Gtk.Label);
+        within(innerPaned).getByRole(Gtk.AccessibleRole.LABEL, { name: "Hi there" });
+        within(innerPaned).getByRole(Gtk.AccessibleRole.LABEL, { name: "Hello" });
     });
 
     it("places the inner paned and 'Goodbye' inside a vertical outer paned", async () => {
@@ -43,7 +43,7 @@ describe("panesDemo structure", () => {
         expect(outerPaned).toBeInstanceOf(Gtk.Paned);
         expect(outerPaned.getOrientation()).toBe(Gtk.Orientation.VERTICAL);
         expect(within(outerPaned).getByName("panes-inner")).toBeInstanceOf(Gtk.Paned);
-        expect(within(outerPaned).getByRole(Gtk.AccessibleRole.LABEL, { name: "Goodbye" })).toBeInstanceOf(Gtk.Label);
+        within(outerPaned).getByRole(Gtk.AccessibleRole.LABEL, { name: "Goodbye" });
     });
 
     it("disables shrink on both children of both panes", async () => {

@@ -38,20 +38,16 @@ describe("paintableSvgDemo rendering", () => {
     });
 
     it("renders a GtkPicture displaying the SVG paintable", async () => {
-        const picture = await renderAndFindPicture();
-        expect(picture).toBeInstanceOf(Gtk.Picture);
-        const [width, height] = picture.getSizeRequest();
-        expect(width).toBe(16);
-        expect(height).toBe(16);
+        const { picture, svg } = await renderAndFindSvgPicture();
+        expect(picture.getPaintable()).toBe(svg);
+        expect(svg).toBeInstanceOf(Gtk.Svg);
     });
 
     it("packs the open button into a HeaderBar titlebar", async () => {
         await renderDemo(paintableSvgDemo);
         const headerBar = (await screen.findByName("paintable-svg-header")) as Gtk.HeaderBar;
-        expect(headerBar).toBeInstanceOf(Gtk.HeaderBar);
         const openButton = within(headerBar).getByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open" }) as Gtk.Button;
         expect(openButton).toBeInstanceOf(Gtk.Button);
-        expect(openButton.getUseUnderline()).toBe(true);
     });
 
     it("loads the bundled SVG and attaches it to the picture", async () => {

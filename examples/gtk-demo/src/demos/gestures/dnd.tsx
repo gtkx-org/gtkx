@@ -628,6 +628,7 @@ const DndTrashZone = ({ boxRef, trashHovering, setTrashHovering, handleTrashDrop
         <Fixed.Child transform={at(20, 20)}>
             {(ref) => (
                 <GtkBox
+                    name="trash-zone"
                     ref={(node) => {
                         ref(node);
                         boxRef.current = node;

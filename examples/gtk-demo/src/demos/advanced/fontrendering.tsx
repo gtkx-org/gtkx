@@ -695,6 +695,7 @@ const FontRenderingTextRow = ({ state }: { state: FontRenderingState }) => {
                 {(ref) => (
                     <GtkFontDialogButton
                         ref={ref}
+                        name="font-button"
                         fontDesc={fontDesc}
                         dialog={<GtkFontDialog />}
                         onNotifyFontDesc={(value) => value && setFontDesc(value)}

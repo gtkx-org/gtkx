@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { act, screen, waitFor } from "@gtkx/testing";
+import { act, screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { scaleDemo } from "../../../src/demos/buttons/scale.js";
 import { renderDemo } from "../../test-utils.js";
@@ -27,12 +27,20 @@ describe("scaleDemo", () => {
         }
     });
 
-    it("applies integer-only rounding to the Discrete row", async () => {
+    it("snaps a fractional interactive change to the nearest integer on the Discrete row", async () => {
         await renderDemo(scaleDemo);
         const scales = (await screen.findAllByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale[];
-        expect(scales).toHaveLength(3);
-        const discrete = scales[2];
-        expect(discrete?.getRoundDigits()).toBe(0);
+        const discrete = scales[2] as Gtk.Scale;
+        await userEvent.slide(discrete, 3.4);
+        await waitFor(() => expect(discrete.getValue()).toBe(3));
+    });
+
+    it("leaves a fractional interactive change unrounded on the continuous Plain row", async () => {
+        await renderDemo(scaleDemo);
+        const scales = (await screen.findAllByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale[];
+        const plain = scales[0] as Gtk.Scale;
+        await userEvent.slide(plain, 3.4);
+        await waitFor(() => expect(plain.getValue()).toBeCloseTo(3.4));
     });
 
     it("updates the plain scale's value when the adjustment changes", async () => {
@@ -40,14 +48,14 @@ describe("scaleDemo", () => {
         const scales = (await screen.findAllByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale[];
         const plain = scales[0] as Gtk.Scale;
         await act(() => plain.getAdjustment().setValue(3.5));
-        await waitFor(() => expect(screen.getByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 3.5 } })).toBeTruthy());
+        await waitFor(() => expect(screen.getByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 3.5 } })).toBe(plain));
     });
 
-    it("publishes integer-spaced marks on the Marks and Discrete rows", async () => {
+    it("updates the Marks scale value when it is moved interactively", async () => {
         await renderDemo(scaleDemo);
         const scales = (await screen.findAllByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale[];
-        const [, , discrete] = scales;
-        expect(screen.getAllByRole(Gtk.AccessibleRole.SLIDER, { value: { min: 0, max: 4 } })).toHaveLength(3);
-        expect(discrete?.getRoundDigits()).toBe(0);
+        const marks = scales[1] as Gtk.Scale;
+        await userEvent.slide(marks, 1.5);
+        await waitFor(() => expect(marks.getValue()).toBeCloseTo(1.5));
     });
 });

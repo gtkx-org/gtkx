@@ -147,3 +147,22 @@ export const readBufferText = (view: Gtk.TextView): string => {
     const buffer = view.getBuffer();
     return buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false);
 };
+
+export const bufferHasTag = (view: Gtk.TextView, tagName: string): boolean => {
+    const buffer = view.getBuffer();
+    const tag = buffer.getTagTable().lookup(tagName);
+    if (!tag) return false;
+    const iter = buffer.getStartIter();
+    do {
+        if (iter.hasTag(tag)) return true;
+    } while (iter.forwardChar());
+    return false;
+};
+
+export const getChildren = (widget: Gtk.Widget): Gtk.Widget[] => {
+    const children: Gtk.Widget[] = [];
+    for (let child = widget.getFirstChild(); child; child = child.getNextSibling()) {
+        children.push(child);
+    }
+    return children;
+};

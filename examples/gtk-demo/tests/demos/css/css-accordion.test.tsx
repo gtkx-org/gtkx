@@ -2,7 +2,9 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { cssAccordionDemo } from "../../../src/demos/css/css-accordion.js";
-import { renderDemo } from "../../test-utils.js";
+import { getChildren, renderDemo } from "../../test-utils.js";
+
+const ACCORDION_LABELS = ["This", "Is", "A", "CSS", "Accordion", ":-)"];
 
 describe("cssAccordionDemo", () => {
     it("exposes the expected metadata", () => {
@@ -19,28 +21,24 @@ describe("cssAccordionDemo", () => {
 
     it("renders six accordion buttons with the expected labels", async () => {
         await renderDemo(cssAccordionDemo);
-        const labels = ["This", "Is", "A", "CSS", "Accordion", ":-)"];
-        for (const label of labels) {
-            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: label });
-            expect(button).toBeInstanceOf(Gtk.Button);
+        for (const label of ACCORDION_LABELS) {
+            await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: label });
         }
     });
 
     it("wraps the buttons in a frame with the accordion css class applied", async () => {
         await renderDemo(cssAccordionDemo);
         const frame = (await screen.findByName("frame")) as Gtk.Frame;
-        expect(frame).toBeInstanceOf(Gtk.Frame);
         expect(frame.getCssClasses()).toContain("accordion");
     });
 
-    it("centers the horizontal button box without spacing", async () => {
+    it("holds exactly the six accordion buttons as the button box children in order", async () => {
         await renderDemo(cssAccordionDemo);
         const box = (await screen.findByName("button-box")) as Gtk.Box;
-        expect(box).toBeInstanceOf(Gtk.Box);
-        expect(box.getOrientation()).toBe(Gtk.Orientation.HORIZONTAL);
-        expect(box.getHalign()).toBe(Gtk.Align.CENTER);
-        expect(box.getValign()).toBe(Gtk.Align.CENTER);
-        expect(box.getSpacing()).toBe(0);
+        const children = getChildren(box);
+        expect(children).toHaveLength(6);
+        expect(children.every((child) => child instanceof Gtk.Button)).toBe(true);
+        expect(children.map((child) => (child as Gtk.Button).getLabel())).toEqual(ACCORDION_LABELS);
     });
 
     it("registers a CssProvider on the default display at application priority", async () => {

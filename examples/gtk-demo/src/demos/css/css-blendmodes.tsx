@@ -222,6 +222,7 @@ const CssBlendmodesDemo = () => {
 
     return (
         <Grid
+            name="blend-root"
             cssClasses={[blendCss]}
             marginStart={12}
             marginEnd={12}
