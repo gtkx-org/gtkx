@@ -20,7 +20,7 @@
     ],
     "tasks": {
         "production": {
-            "dependsOn": ["//#codegen:all", "codegen", "@gtkx/native#build", "^production"],
+            "dependsOn": ["codegen", "^production"],
             "inputs": [
                 "$TURBO_DEFAULT$",
                 "src/**",
@@ -101,7 +101,7 @@
             "outputs": ["index.d.ts", "index.js", "native.*.node"]
         },
         "@gtkx/native#test": {
-            "dependsOn": ["build", "test:asan", "test:miri"],
+            "dependsOn": ["test:asan", "test:miri"],
             "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/scripts/run-headless.ts"],
             "outputs": []
         },
@@ -131,16 +131,7 @@
             "outputs": ["node_modules/.gtkx/**", "node_modules/@gtkx/gi", "node_modules/@gtkx/jsx"]
         },
         "//#coverage:all": {
-            "dependsOn": [
-                "//#codegen:all",
-                "@gtkx/gl#build",
-                "@gtkx/native#build",
-                "@gtkx/vitest#build",
-                "@gtkx/cli#build",
-                "@gtkx/css#build",
-                "@gtkx/utils#build",
-                "@gtkx/ffi#build"
-            ],
+            "dependsOn": ["@gtkx/gl#build", "@gtkx/cli#build", "@gtkx/css#build"],
             "inputs": [
                 "$TURBO_DEFAULT$",
                 "packages/**/src/**",
@@ -182,7 +173,7 @@
             "outputs": []
         },
         "//#lint:knip": {
-            "dependsOn": ["//#codegen:all", "@gtkx/vitest#build", "@gtkx/cli#build"],
+            "dependsOn": ["@gtkx/cli#build"],
             "inputs": [
                 "packages/**/src/**",
                 "packages/**/tests/**",
@@ -197,16 +188,7 @@
             "outputs": []
         },
         "//#test:all": {
-            "dependsOn": [
-                "//#codegen:all",
-                "@gtkx/gl#build",
-                "@gtkx/native#build",
-                "@gtkx/vitest#build",
-                "@gtkx/cli#build",
-                "@gtkx/css#build",
-                "@gtkx/utils#build",
-                "@gtkx/ffi#build"
-            ],
+            "dependsOn": ["@gtkx/gl#build", "@gtkx/cli#build", "@gtkx/css#build"],
             "inputs": [
                 "$TURBO_DEFAULT$",
                 "packages/**/src/**",
@@ -222,7 +204,7 @@
             "outputs": []
         },
         "//#typecheck:all": {
-            "dependsOn": ["//#codegen:all", "@gtkx/native#build"],
+            "dependsOn": ["//#codegen:all"],
             "inputs": [
                 "$TURBO_DEFAULT$",
                 "**/scripts/**",

@@ -17,7 +17,6 @@
         "lint:all": "biome check .",
         "lint:deps": "depcruise packages",
         "lint:knip": "knip",
-        "profile:startup": "node scripts/profile-startup.mjs",
         "release-e2e": "tsx ./scripts/release-e2e.ts",
         "release": "turbo run release --filter=!gtkx --filter='!./examples/*' --filter=!./website --filter=!@gtkx/e2e",
         "test": "turbo run test:all && turbo run test --filter=!gtkx",
