@@ -1,3 +1,4 @@
+import { basename } from "node:path";
 import * as Gtk from "@gtkx/gi/gtk";
 import { fireEvent, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
@@ -109,10 +110,11 @@ describe("listviewFilebrowserDemo", () => {
         await renderDemo(listviewFilebrowserDemo);
         const grid = (await screen.findByName("files-grid")) as Gtk.GridView;
         await waitForPopulatedModel(grid);
-        expect(within(grid).queryByText("gtkx")).toBeNull();
+        const currentDirName = basename(process.cwd());
+        expect(within(grid).queryByText(currentDirName)).toBeNull();
         const upButton = (await screen.findByName("up-button")) as Gtk.Button;
         await userEvent.click(upButton);
-        await within(grid).findByText("gtkx");
+        await within(grid).findByText(currentDirName);
     });
 
     it("navigates into a directory when a directory entry is activated", async () => {
