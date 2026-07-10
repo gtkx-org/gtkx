@@ -37,22 +37,22 @@ describe("entryUndoDemo", () => {
         await renderDemo(entryUndoDemo);
         const entry = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
         await userEvent.type(entry, "hello");
-        expect(entry.getText()).toBe("hello");
+        expect(screen.getByDisplayValue("hello")).toBe(entry);
 
         await userEvent.keyboard(entry, "{Control>}z{/Control}");
-        expect(entry.getText()).toBe("");
+        expect(screen.queryByDisplayValue("hello")).toBeNull();
     });
 
     it("redoes the typed text when Control+Shift+z is dispatched after an undo", async () => {
         await renderDemo(entryUndoDemo);
         const entry = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
         await userEvent.type(entry, "redo me");
-        expect(entry.getText()).toBe("redo me");
+        expect(screen.getByDisplayValue("redo me")).toBe(entry);
 
         await userEvent.keyboard(entry, "{Control>}z{/Control}");
-        expect(entry.getText()).toBe("");
+        expect(screen.queryByDisplayValue("redo me")).toBeNull();
 
         await userEvent.keyboard(entry, "{Control>}{Shift>}z{/Shift}{/Control}");
-        expect(entry.getText()).toBe("redo me");
+        expect(screen.getByDisplayValue("redo me")).toBe(entry);
     });
 });

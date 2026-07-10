@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { act, screen, waitFor } from "@gtkx/testing";
+import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { cssShadowsDemo } from "../../../src/demos/css/css-shadows.js";
 import { renderDemo } from "../../test-utils.js";
@@ -33,10 +33,8 @@ describe("cssShadowsDemo rendering", () => {
         expect(paned.getResizeStartChild()).toBe(false);
         const textView = (await screen.findByName("text-view")) as Gtk.TextView;
         expect(textView).toBeInstanceOf(Gtk.TextView);
-        const buffer = textView.getBuffer();
-        const text = buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false);
-        expect(text).toContain("window.demo.background");
-        expect(text).toContain("text-shadow");
+        expect(screen.getByDisplayValue(/window\.demo\.background/)).not.toBeNull();
+        expect(screen.getByDisplayValue(/text-shadow/)).not.toBeNull();
     });
 });
 
@@ -67,9 +65,9 @@ describe("cssShadowsDemo behavior", () => {
         try {
             await renderDemo(cssShadowsDemo);
             const textView = (await screen.findByName("text-view")) as Gtk.TextView;
-            const buffer = textView.getBuffer();
             loadSpy.mockClear();
-            await act(() => buffer.setText("button { box-shadow: 0 0 10px red; }", -1));
+            await userEvent.clear(textView);
+            await userEvent.type(textView, "button { box-shadow: 0 0 10px red; }");
             await waitFor(() => {
                 const userLoad = loadSpy.mock.calls.find(
                     ([css]) => typeof css === "string" && css.includes("box-shadow: 0 0 10px red"),

@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { act, screen, waitFor } from "@gtkx/testing";
+import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { cssBasicsDemo } from "../../../src/demos/css/css-basics.js";
 import { renderDemo } from "../../test-utils.js";
@@ -25,11 +25,9 @@ describe("cssBasicsDemo rendering", () => {
         expect(textView).toBeInstanceOf(Gtk.TextView);
         const sw = await screen.findByName("scrolled");
         expect(sw).toBeInstanceOf(Gtk.ScrolledWindow);
-        const buffer = textView.getBuffer();
-        const text = buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false);
-        expect(text).toContain("Set a very futuristic style by default");
-        expect(text).toContain("window.demo");
-        expect(text).toContain("color: green");
+        expect(screen.getByDisplayValue(/Set a very futuristic style by default/)).not.toBeNull();
+        expect(screen.getByDisplayValue(/window\.demo/)).not.toBeNull();
+        expect(screen.getByDisplayValue(/color: green/)).not.toBeNull();
     });
 
     it("declares the demo css class on the host window", async () => {
@@ -44,17 +42,17 @@ describe("cssBasicsDemo behavior", () => {
     it("propagates edited buffer text back into the text view", async () => {
         await renderDemo(cssBasicsDemo);
         const textView = (await screen.findByName("text-view")) as Gtk.TextView;
-        const buffer = textView.getBuffer();
-        await act(() => buffer.setText("/* edited */\nwindow { color: red; }\n", -1));
-        const text = buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false);
-        expect(text).toBe("/* edited */\nwindow { color: red; }\n");
+        await userEvent.clear(textView);
+        await userEvent.type(textView, "/* edited */\nwindow { color: red; }\n");
+        expect(screen.getByDisplayValue("/* edited */\nwindow { color: red; }\n")).not.toBeNull();
     });
 
     it("marks invalid CSS by adding an error tag to the buffer", async () => {
         await renderDemo(cssBasicsDemo);
         const textView = (await screen.findByName("text-view")) as Gtk.TextView;
         const buffer = textView.getBuffer();
-        await act(() => buffer.setText("window { color: this-is-not-a-valid-color; }", -1));
+        await userEvent.clear(textView);
+        await userEvent.type(textView, "window { color: this-is-not-a-valid-color; }");
         const errorTag = buffer.getTagTable().lookup("error");
         expect(errorTag).toBeInstanceOf(Gtk.TextTag);
         await waitFor(() => {

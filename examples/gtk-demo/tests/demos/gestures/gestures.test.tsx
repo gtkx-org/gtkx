@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { act, screen, screenshot, userEvent } from "@gtkx/testing";
+import { act, fireEvent, screen, screenshot, userEvent } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { gesturesDemo } from "../../../src/demos/gestures/gestures.js";
 import { renderDemo } from "../../test-utils.js";
@@ -88,9 +88,7 @@ describe("gesturesDemo redraw on gesture", () => {
         await userEvent.longPress(drawingArea, 100, 100);
         const queueDraw = vi.spyOn(drawingArea, "queueDraw");
         if (longPress) {
-            await act(() => {
-                longPress.emit("end", null);
-            });
+            await fireEvent(longPress, "end", null);
         }
         expect(queueDraw).toHaveBeenCalled();
     });
@@ -104,9 +102,7 @@ describe("gesturesDemo redraw on gesture", () => {
         expect(threeFingerSwipe).toBeInstanceOf(Gtk.GestureSwipe);
         if (!threeFingerSwipe) return;
         const setState = vi.spyOn(threeFingerSwipe, "setState");
-        await act(() => {
-            threeFingerSwipe.emit("begin", null);
-        });
+        await fireEvent(threeFingerSwipe, "begin", null);
         expect(setState).not.toHaveBeenCalled();
     });
 });
@@ -139,7 +135,7 @@ describe("gesturesDemo render output", () => {
         vi.spyOn(rotate, "getAngleDelta").mockReturnValue(Math.PI / 6);
         vi.spyOn(zoom, "getScaleDelta").mockReturnValue(1.25);
         vi.spyOn(zoom, "getBoundingBoxCenter").mockReturnValue([true, 120, 130]);
-        await act(() => drawingArea.queueDraw());
+        await userEvent.rotate(drawingArea, Math.PI / 6);
         await paintWindow();
         expect(drawingArea).toBeInstanceOf(Gtk.DrawingArea);
     });
@@ -153,7 +149,7 @@ describe("gesturesDemo render output", () => {
         vi.spyOn(zoom, "isRecognized").mockReturnValue(true);
         vi.spyOn(zoom, "getScaleDelta").mockReturnValue(1.5);
         vi.spyOn(zoom, "getBoundingBoxCenter").mockReturnValue([false, 0, 0]);
-        await act(() => drawingArea.queueDraw());
+        await userEvent.zoom(drawingArea, 1.5);
         await paintWindow();
         expect(drawingArea).toBeInstanceOf(Gtk.DrawingArea);
     });

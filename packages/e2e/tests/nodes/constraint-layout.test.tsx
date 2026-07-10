@@ -1,8 +1,8 @@
 import { ConstraintLayout } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
-import { render } from "@gtkx/testing";
-import { createRef } from "react";
+import { render, screen, within } from "@gtkx/testing";
+import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
 import {
     collectConstraints,
@@ -18,6 +18,12 @@ import {
 const A = Gtk.ConstraintAttribute;
 const R = Gtk.ConstraintRelation;
 const S = Gtk.ConstraintStrength;
+
+const requireWidget = <T,>(ref: RefObject<T | null>): T => {
+    const widget = ref.current;
+    if (!widget) throw new Error("expected widget");
+    return widget;
+};
 
 describe("render - GtkConstraintLayout attach", () => {
     it("attaches a ConstraintLayout to the host widget", async () => {
@@ -42,21 +48,19 @@ describe("render - GtkConstraintLayout attach", () => {
 describe("render - name-based target resolution (a)", () => {
     it("resolves named children so Constraints can reference them", async () => {
         const boxRef = createRef<Gtk.Box>();
-        const labelARef = createRef<Gtk.Label>();
-        const labelBRef = createRef<Gtk.Label>();
 
         await renderConstraintBox(
             boxRef,
             <ConstraintLayout.Constraint target="a" targetAttribute={A.WIDTH} source="b" sourceAttribute={A.WIDTH} />,
             <>
-                <NamedLabel id="a" label="A" labelRef={labelARef} />
-                <NamedLabel id="b" label="B" labelRef={labelBRef} />
+                <NamedLabel id="a" label="A" />
+                <NamedLabel id="b" label="B" />
             </>,
         );
 
         const c = onlyConstraint(boxRef);
-        expect(c.getTarget()).toBe(labelARef.current);
-        expect(c.getSource()).toBe(labelBRef.current);
+        expect(c.getTarget()).toBe(screen.getByName("a"));
+        expect(c.getSource()).toBe(screen.getByName("b"));
         expect(c.getTargetAttribute()).toBe(A.WIDTH);
         expect(c.getSourceAttribute()).toBe(A.WIDTH);
     });
@@ -65,15 +69,14 @@ describe("render - name-based target resolution (a)", () => {
 describe("render - name-based target resolution (b)", () => {
     it("renders a named child as a direct child of the host widget", async () => {
         const boxRef = createRef<Gtk.Box>();
-        const labelRef = createRef<Gtk.Label>();
 
         await render(
             <GtkBox ref={boxRef} layoutManager={<ConstraintLayout />}>
-                <NamedLabel id="a" label="Inside" labelRef={labelRef} />
+                <NamedLabel id="a" label="Inside" />
             </GtkBox>,
         );
 
-        expect(labelRef.current?.getParent()).toBe(boxRef.current);
+        expect(within(requireWidget(boxRef)).getByName("a")).toBeTruthy();
     });
 
     it("ignores an unnamed child rather than matching its widget type name", async () => {
@@ -96,8 +99,6 @@ describe("render - name-based target resolution (b)", () => {
     it("scopes resolution to each layout's own children", async () => {
         const firstRef = createRef<Gtk.Box>();
         const secondRef = createRef<Gtk.Box>();
-        const firstChildRef = createRef<Gtk.Label>();
-        const secondChildRef = createRef<Gtk.Label>();
 
         await render(
             <GtkBox>
@@ -114,7 +115,7 @@ describe("render - name-based target resolution (b)", () => {
                         </ConstraintLayout>
                     }
                 >
-                    <GtkLabel ref={firstChildRef} name="a" label="first" />
+                    <GtkLabel name="a" label="first" />
                 </GtkBox>
                 <GtkBox
                     ref={secondRef}
@@ -129,34 +130,32 @@ describe("render - name-based target resolution (b)", () => {
                         </ConstraintLayout>
                     }
                 >
-                    <GtkLabel ref={secondChildRef} name="a" label="second" />
+                    <GtkLabel name="a" label="second" />
                 </GtkBox>
             </GtkBox>,
         );
 
-        expect(firstConstraint(firstRef).getTarget()).toBe(firstChildRef.current);
-        expect(firstConstraint(secondRef).getTarget()).toBe(secondChildRef.current);
+        expect(firstConstraint(firstRef).getTarget()).toBe(within(requireWidget(firstRef)).getByName("a"));
+        expect(firstConstraint(secondRef).getTarget()).toBe(within(requireWidget(secondRef)).getByName("a"));
     });
 
     it("treats `super` (or omitted source) as the layout-owning widget", async () => {
         const boxRef = createRef<Gtk.Box>();
-        const labelRef = createRef<Gtk.Label>();
 
         await renderConstraintBox(
             boxRef,
             <ConstraintLayout.Constraint target="a" targetAttribute={A.START} sourceAttribute={A.START} constant={8} />,
-            <NamedLabel id="a" label="A" labelRef={labelRef} />,
+            <NamedLabel id="a" label="A" />,
         );
 
         const c = onlyConstraint(boxRef);
-        expect(c.getTarget()).toBe(labelRef.current);
+        expect(c.getTarget()).toBe(screen.getByName("a"));
         expect(c.getSource()).toBeNull();
         expect(c.getConstant()).toBe(8);
     });
 
     it("treats `super` as the host even when a child is named `super`", async () => {
         const boxRef = createRef<Gtk.Box>();
-        const superRef = createRef<Gtk.Label>();
 
         await renderConstraintBox(
             boxRef,
@@ -168,13 +167,13 @@ describe("render - name-based target resolution (b)", () => {
             />,
             <>
                 <NamedLabel id="a" label="A" />
-                <GtkLabel ref={superRef} name="super" label="Super" />
+                <GtkLabel name="super" label="Super" />
             </>,
         );
 
         const c = onlyConstraint(boxRef);
         expect(c.getSource()).toBeNull();
-        expect(c.getSource()).not.toBe(superRef.current);
+        expect(c.getSource()).not.toBe(screen.getByName("super"));
     });
 
     it("throws a clear error when a Constraint references an unknown id", async () => {
@@ -231,7 +230,6 @@ describe("render - GtkConstraintLayout.Guide (construction)", () => {
 describe("render - GtkConstraintLayout.Guide (references)", () => {
     it("lets a Constraint reference a Guide by id", async () => {
         const boxRef = createRef<Gtk.Box>();
-        const labelRef = createRef<Gtk.Label>();
 
         await renderConstraintBox(
             boxRef,
@@ -244,13 +242,13 @@ describe("render - GtkConstraintLayout.Guide (references)", () => {
                     sourceAttribute={A.START}
                 />
             </>,
-            <NamedLabel id="a" label="A" labelRef={labelRef} />,
+            <NamedLabel id="a" label="A" />,
         );
 
         const guide = collectGuides(layoutFrom(boxRef))[0];
         const c = firstConstraint(boxRef);
         expect(c.getSource()).toBe(guide);
-        expect(c.getTarget()).toBe(labelRef.current);
+        expect(c.getTarget()).toBe(screen.getByName("a"));
     });
 
     it("removes the guide from the layout when unmounted", async () => {
@@ -393,7 +391,6 @@ describe("render - GtkConstraintLayout.Constraint props", () => {
 describe("render - name-based target lifecycle", () => {
     it("follows the widget when its name changes", async () => {
         const boxRef = createRef<Gtk.Box>();
-        const labelRef = createRef<Gtk.Label>();
 
         function App({ id }: { id: string }) {
             return (
@@ -410,51 +407,47 @@ describe("render - name-based target lifecycle", () => {
                         </ConstraintLayout>
                     }
                 >
-                    <NamedLabel id={id} label="L" labelRef={labelRef} />
+                    <NamedLabel id={id} label="L" />
                 </GtkBox>
             );
         }
 
         const { rerender } = await render(<App id="first" />);
-        expect(firstConstraint(boxRef).getTarget()).toBe(labelRef.current);
+        expect(firstConstraint(boxRef).getTarget()).toBe(screen.getByName("first"));
 
         await rerender(<App id="second" />);
-        expect(firstConstraint(boxRef).getTarget()).toBe(labelRef.current);
+        expect(firstConstraint(boxRef).getTarget()).toBe(screen.getByName("second"));
     });
 
     it("unmounts the wrapper cleanly when conditionally removed", async () => {
         const boxRef = createRef<Gtk.Box>();
-        const persistRef = createRef<Gtk.Label>();
-        const conditionalRef = createRef<Gtk.Label>();
 
         function App({ show }: { show: boolean }) {
             return (
                 <GtkBox ref={boxRef} layoutManager={<ConstraintLayout />}>
-                    <NamedLabel id="persist" label="P" labelRef={persistRef} />
-                    {show && <NamedLabel id="cond" label="C" labelRef={conditionalRef} />}
+                    <NamedLabel id="persist" label="P" />
+                    {show && <NamedLabel id="cond" label="C" />}
                 </GtkBox>
             );
         }
 
         const { rerender } = await render(<App show={true} />);
-        expect(persistRef.current?.getParent()).toBe(boxRef.current);
-        expect(conditionalRef.current?.getParent()).toBe(boxRef.current);
+        expect(within(requireWidget(boxRef)).getByName("persist")).toBeTruthy();
+        expect(within(requireWidget(boxRef)).getByName("cond")).toBeTruthy();
 
         await rerender(<App show={false} />);
-        expect(persistRef.current?.getParent()).toBe(boxRef.current);
-        expect(conditionalRef.current).toBeNull();
+        expect(within(requireWidget(boxRef)).getByName("persist")).toBeTruthy();
+        expect(within(requireWidget(boxRef)).queryByName("cond")).toBeNull();
     });
 
     it("renders a named child without error when its host has no ConstraintLayout", async () => {
-        const labelRef = createRef<Gtk.Label>();
-
         await render(
             <GtkBox>
-                <GtkLabel ref={labelRef} name="orphan" label="Orphan" />
+                <GtkLabel name="orphan" label="Orphan" />
             </GtkBox>,
         );
 
-        expect(labelRef.current?.name).toBe("orphan");
+        expect(screen.getByName("orphan")).toBeTruthy();
     });
 });
 

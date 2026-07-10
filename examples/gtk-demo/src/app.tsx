@@ -110,6 +110,7 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
             {createPortal(
                 <GtkWindow
                     ref={windowRef}
+                    name="demo-window"
                     transientFor={activeWindow}
                     title={windowTitle ?? currentDemo.windowTitle ?? displayTitle}
                     defaultWidth={currentDemo.defaultWidth ?? -1}
@@ -173,6 +174,7 @@ const AppHeaderBar = ({ hasDemo, searchMode, onRun, onSearchToggle }: AppHeaderB
                 />
                 <GtkToggleButton
                     name="search-toggle"
+                    tooltipText="Search"
                     iconName="edit-find-symbolic"
                     active={searchMode}
                     onToggled={(btn: Gtk.ToggleButton) => onSearchToggle(btn.getActive())}
@@ -384,6 +386,7 @@ const MainWindow = () => {
 
     return (
         <GtkApplicationWindow
+            name="main-window"
             title={windowTitle}
             defaultWidth={800}
             defaultHeight={600}

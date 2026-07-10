@@ -1,7 +1,7 @@
 import { Grid } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkAdjustment, GtkLabel, GtkSpinButton } from "@gtkx/jsx/gtk";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./spinbutton.tsx?raw";
 
@@ -82,7 +82,6 @@ function useMonthSpinHandlers() {
 interface SpinRowProps {
     value: number;
     setValue: (v: number) => void;
-    spinRef: React.RefObject<Gtk.SpinButton | null>;
 }
 
 interface SpinRowConfig extends SpinRowProps {
@@ -93,31 +92,35 @@ interface SpinRowConfig extends SpinRowProps {
     spin: React.ComponentProps<typeof GtkSpinButton>;
 }
 
-const SpinRow = ({ row, label, spinName, value, setValue, spinRef, adjustment, spin }: SpinRowConfig) => (
-    <>
-        <Grid.Child column={0} row={row}>
-            {(ref) => <GtkLabel ref={ref} label={label} useUnderline xalign={1} mnemonicWidget={spinRef.current} />}
-        </Grid.Child>
-        <Grid.Child column={1} row={row}>
-            {(ref) => (
-                <GtkSpinButton
-                    ref={(node) => {
-                        ref(node);
-                        spinRef.current = node;
-                    }}
-                    name={spinName}
-                    halign={Gtk.Align.START}
-                    adjustment={<GtkAdjustment {...adjustment} value={value} />}
-                    onValueChanged={(widget) => setValue(widget.getValue())}
-                    {...spin}
-                />
-            )}
-        </Grid.Child>
-        <Grid.Child column={2} row={row}>
-            {(ref) => <GtkLabel ref={ref} label={String(value)} widthChars={10} xalign={1} />}
-        </Grid.Child>
-    </>
-);
+const SpinRow = ({ row, label, spinName, value, setValue, adjustment, spin }: SpinRowConfig) => {
+    const [spinWidget, setSpinWidget] = useState<Gtk.SpinButton | null>(null);
+
+    return (
+        <>
+            <Grid.Child column={0} row={row}>
+                {(ref) => <GtkLabel ref={ref} label={label} useUnderline xalign={1} mnemonicWidget={spinWidget} />}
+            </Grid.Child>
+            <Grid.Child column={1} row={row}>
+                {(ref) => (
+                    <GtkSpinButton
+                        ref={(node) => {
+                            ref(node);
+                            setSpinWidget(node);
+                        }}
+                        name={spinName}
+                        halign={Gtk.Align.START}
+                        adjustment={<GtkAdjustment {...adjustment} value={value} />}
+                        onValueChanged={(widget) => setValue(widget.getValue())}
+                        {...spin}
+                    />
+                )}
+            </Grid.Child>
+            <Grid.Child column={2} row={row}>
+                {(ref) => <GtkLabel ref={ref} label={String(value)} widthChars={10} xalign={1} />}
+            </Grid.Child>
+        </>
+    );
+};
 
 const NumericSpinRow = (props: SpinRowProps) => (
     <SpinRow
@@ -172,11 +175,10 @@ interface MonthSpinRowProps extends SpinRowProps {
     onOutput: (spin: Gtk.SpinButton) => boolean;
 }
 
-const MonthSpinRow = ({ value, setValue, spinRef, onInput, onOutput }: MonthSpinRowProps) => (
+const MonthSpinRow = ({ value, setValue, onInput, onOutput }: MonthSpinRowProps) => (
     <SpinRow
         value={value}
         setValue={setValue}
-        spinRef={spinRef}
         row={3}
         label="_Month"
         spinName="month_spin"
@@ -197,22 +199,16 @@ const SpinButtonDemo = () => {
     const [timeValue, setTimeValue] = useState(0);
     const [monthValue, setMonthValue] = useState(1);
 
-    const numericSpinRef = useRef<Gtk.SpinButton | null>(null);
-    const hexSpinRef = useRef<Gtk.SpinButton | null>(null);
-    const timeSpinRef = useRef<Gtk.SpinButton | null>(null);
-    const monthSpinRef = useRef<Gtk.SpinButton | null>(null);
-
     const monthHandlers = useMonthSpinHandlers();
 
     return (
         <Grid rowSpacing={10} columnSpacing={10} marginStart={20} marginEnd={20} marginTop={20} marginBottom={20}>
-            <NumericSpinRow value={numericValue} setValue={setNumericValue} spinRef={numericSpinRef} />
-            <HexSpinRow value={hexValue} setValue={setHexValue} spinRef={hexSpinRef} />
-            <TimeSpinRow value={timeValue} setValue={setTimeValue} spinRef={timeSpinRef} />
+            <NumericSpinRow value={numericValue} setValue={setNumericValue} />
+            <HexSpinRow value={hexValue} setValue={setHexValue} />
+            <TimeSpinRow value={timeValue} setValue={setTimeValue} />
             <MonthSpinRow
                 value={monthValue}
                 setValue={setMonthValue}
-                spinRef={monthSpinRef}
                 onInput={monthHandlers.handleMonthInput}
                 onOutput={monthHandlers.handleMonthOutput}
             />

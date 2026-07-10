@@ -1,9 +1,10 @@
+import * as Gtk from "@gtkx/gi/gtk";
 import * as GtkSource from "@gtkx/gi/gtksource";
 import { GtkSourceBuffer, type GtkSourceBufferProps, GtkSourceView } from "@gtkx/jsx/gtksource";
-import { render, waitFor } from "@gtkx/testing";
+import { render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { getBufferText, getSourceBuffer } from "../helpers/buffer-text.js";
+import { getSourceBuffer } from "../helpers/buffer-text.js";
 import { expectNoBufferChangedOnReconcile } from "../helpers/text-buffer-view-render.js";
 
 const getLanguage = (id: string): GtkSource.Language | null => GtkSource.LanguageManager.getDefault().getLanguage(id);
@@ -30,9 +31,7 @@ const renderUndoableSourceViewAfterUserAction = async (
 
     const buffer = getSourceBuffer(ref);
 
-    buffer.beginUserAction();
-    buffer.insertAtCursor("text", -1);
-    buffer.endUserAction();
+    await userEvent.type(screen.getByRole(Gtk.AccessibleRole.TEXT_BOX), "text");
 
     return buffer;
 };
@@ -55,7 +54,7 @@ describe("render - SourceView (1)", () => {
 
             const buffer = getSourceBuffer(ref);
             expect(buffer).not.toBeNull();
-            expect(getBufferText(buffer)).toBe("Hello World");
+            expect(screen.getByDisplayValue("Hello World")).toBeDefined();
         });
     });
 
@@ -75,11 +74,10 @@ describe("render - SourceView (1)", () => {
 
             const { rerender } = await render(<App text="Initial" />);
 
-            const buffer = getSourceBuffer(ref);
-            expect(getBufferText(buffer)).toBe("Initial");
+            expect(screen.getByDisplayValue("Initial")).toBeDefined();
 
             await rerender(<App text="Updated" />);
-            expect(getBufferText(buffer)).toBe("Updated");
+            expect(screen.getByDisplayValue("Updated")).toBeDefined();
         });
     });
 });

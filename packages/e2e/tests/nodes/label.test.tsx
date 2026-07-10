@@ -1,105 +1,93 @@
-import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
-import { act, render } from "@gtkx/testing";
-import { createRef, useState } from "react";
+import { act, render, screen } from "@gtkx/testing";
+import { useState } from "react";
 import { describe, expect, it } from "vitest";
 
 describe("render - Label text children (1)", () => {
     it("sets the label property from a single text child", async () => {
-        const ref = createRef<Gtk.Label>();
+        await render(<GtkLabel>Hello</GtkLabel>);
 
-        await render(<GtkLabel ref={ref}>Hello</GtkLabel>);
-
-        expect(ref.current?.getLabel()).toBe("Hello");
+        expect(screen.getByText("Hello")).toBeDefined();
     });
 
     it("concatenates interpolated segments in order", async () => {
-        const ref = createRef<Gtk.Label>();
-
         function App({ count }: { count: number }) {
-            return <GtkLabel ref={ref}>Count: {count}</GtkLabel>;
+            return <GtkLabel>Count: {count}</GtkLabel>;
         }
 
         const { rerender } = await render(<App count={1} />);
 
-        expect(ref.current?.getLabel()).toBe("Count: 1");
+        expect(screen.getByText("Count: 1")).toBeDefined();
 
         await rerender(<App count={2} />);
 
-        expect(ref.current?.getLabel()).toBe("Count: 2");
+        expect(screen.getByText("Count: 2")).toBeDefined();
     });
 
     it("keeps order when a middle segment toggles", async () => {
-        const ref = createRef<Gtk.Label>();
-
         function App({ showMiddle }: { showMiddle: boolean }) {
-            return <GtkLabel ref={ref}>Start{showMiddle && " Middle"} End</GtkLabel>;
+            return <GtkLabel>Start{showMiddle && " Middle"} End</GtkLabel>;
         }
 
         const { rerender } = await render(<App showMiddle={false} />);
 
-        expect(ref.current?.getLabel()).toBe("Start End");
+        expect(screen.getByText("Start End")).toBeDefined();
 
         await rerender(<App showMiddle={true} />);
 
-        expect(ref.current?.getLabel()).toBe("Start Middle End");
+        expect(screen.getByText("Start Middle End")).toBeDefined();
 
         await rerender(<App showMiddle={false} />);
 
-        expect(ref.current?.getLabel()).toBe("Start End");
+        expect(screen.getByText("Start End")).toBeDefined();
     });
 });
 
 describe("render - Label text children (2)", () => {
     it("clears the label when the last text child is removed", async () => {
-        const ref = createRef<Gtk.Label>();
-
         function App({ showText }: { showText: boolean }) {
-            return <GtkLabel ref={ref}>{showText && "Gone soon"}</GtkLabel>;
+            return <GtkLabel>{showText && "Gone soon"}</GtkLabel>;
         }
 
         const { rerender } = await render(<App showText={true} />);
 
-        expect(ref.current?.getLabel()).toBe("Gone soon");
+        expect(screen.getByText("Gone soon")).toBeDefined();
 
         await rerender(<App showText={false} />);
 
-        expect(ref.current?.getLabel()).toBe("");
+        expect(screen.queryByText("Gone soon")).toBeNull();
     });
 
     it("keeps the label prop when text children are replaced by it", async () => {
-        const ref = createRef<Gtk.Label>();
-
         function App({ useProp }: { useProp: boolean }) {
-            return useProp ? <GtkLabel ref={ref} label="From prop" /> : <GtkLabel ref={ref}>From children</GtkLabel>;
+            return useProp ? <GtkLabel label="From prop" /> : <GtkLabel>From children</GtkLabel>;
         }
 
         const { rerender } = await render(<App useProp={false} />);
 
-        expect(ref.current?.getLabel()).toBe("From children");
+        expect(screen.getByText("From children")).toBeDefined();
 
         await rerender(<App useProp={true} />);
 
-        expect(ref.current?.getLabel()).toBe("From prop");
+        expect(screen.getByText("From prop")).toBeDefined();
     });
 
     it("updates through state-driven rerenders", async () => {
-        const ref = createRef<Gtk.Label>();
         let increment = () => {};
 
         function App() {
             const [count, setCount] = useState(0);
             increment = () => setCount((value) => value + 1);
-            return <GtkLabel ref={ref}>Clicked {count} times</GtkLabel>;
+            return <GtkLabel>Clicked {count} times</GtkLabel>;
         }
 
         await render(<App />);
 
-        expect(ref.current?.getLabel()).toBe("Clicked 0 times");
+        expect(screen.getByText("Clicked 0 times")).toBeDefined();
 
         await act(() => increment());
 
-        expect(ref.current?.getLabel()).toBe("Clicked 1 times");
+        expect(screen.getByText("Clicked 1 times")).toBeDefined();
     });
 
     it("throws when a label mixes a label prop with text children", async () => {

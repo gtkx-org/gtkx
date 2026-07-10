@@ -1,10 +1,9 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkTextBuffer, GtkTextPaintable, GtkTextView } from "@gtkx/jsx/gtk";
-import { render } from "@gtkx/testing";
-import { createRef, useMemo } from "react";
+import { render, screen } from "@gtkx/testing";
+import { useMemo } from "react";
 import { describe, expect, it } from "vitest";
-import { getBufferText } from "../helpers/buffer-text.js";
 
 const usePaintable = (): Gtk.IconPaintable | null => {
     return useMemo(() => {
@@ -24,13 +23,10 @@ const usePaintable = (): Gtk.IconPaintable | null => {
 
 describe("render - TextPaintable", () => {
     it("inserts the inline paintable into the TextBuffer", async () => {
-        const ref = createRef<Gtk.TextView>();
-
         const Harness = () => {
             const paintable = usePaintable();
             return (
                 <GtkTextView
-                    ref={ref}
                     buffer={
                         <GtkTextBuffer>
                             Inline icon: {paintable ? <GtkTextPaintable paintable={paintable} /> : null}
@@ -43,19 +39,13 @@ describe("render - TextPaintable", () => {
 
         await render(<Harness />);
 
-        const buffer = ref.current?.getBuffer();
-        expect(buffer).toBeDefined();
-        const text = getBufferText(buffer as Gtk.TextBuffer);
-        expect(text).toContain("Inline icon:");
-        expect(text).toContain("end");
+        expect(screen.getByDisplayValue(/Inline icon:/)).toBeTruthy();
+        expect(screen.getByDisplayValue(/end/)).toBeTruthy();
     });
 
     it("renders surrounding text without the paintable child", async () => {
-        const ref = createRef<Gtk.TextView>();
+        await render(<GtkTextView buffer={<GtkTextBuffer>Plain text without paintable</GtkTextBuffer>} />);
 
-        await render(<GtkTextView ref={ref} buffer={<GtkTextBuffer>Plain text without paintable</GtkTextBuffer>} />);
-
-        const buffer = ref.current?.getBuffer();
-        expect(getBufferText(buffer as Gtk.TextBuffer)).toContain("Plain text without paintable");
+        expect(screen.getByDisplayValue(/Plain text without paintable/)).toBeTruthy();
     });
 });

@@ -1,6 +1,6 @@
 import type * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
-import { fireEvent, screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { themesDemo } from "../../../src/demos/benchmark/themes.js";
 import { renderDemo } from "../../test-utils.js";
@@ -31,7 +31,7 @@ describe("themesDemo", () => {
         const cycle = within(header).getByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
             name: "Cycle",
         }) as Gtk.ToggleButton;
-        expect(cycle.getActive()).toBe(false);
+        expect(cycle).not.toBePressed();
         expect(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Hi, I am a button" })).toBeInstanceOf(
             Gtk.Button,
         );
@@ -44,31 +44,31 @@ describe("themesDemo", () => {
     it("opens the warning dialog and exposes the photosensitive warning text", async () => {
         const { cycle, alert } = await activateCycleAndAwaitAlert();
         expect(alert.getHeading()).toBe("Warning");
-        expect(alert.getBody()).toMatch(/photosensitive/i);
-        expect(cycle.getActive()).toBe(true);
+        expect(within(alert).getByText(/photosensitive/i)).not.toBeNull();
+        expect(cycle).toBePressed();
     });
 });
 
 describe("themesDemo cycling lifecycle", () => {
     it("dismisses the warning dialog when accepted and keeps the cycle toggle active", async () => {
         const { cycle, alert } = await activateCycleAndAwaitAlert();
-        await fireEvent(alert, "response", "ok");
+        await userEvent.click(within(alert).getByRole(Gtk.AccessibleRole.BUTTON, { name: "_OK" }));
         await waitFor(() => expect(screen.queryByName("warning-dialog")).toBeNull());
-        expect(cycle.getActive()).toBe(true);
+        expect(cycle).toBePressed();
     });
 
     it("dismisses the warning dialog when cancelled", async () => {
         const { alert } = await activateCycleAndAwaitAlert();
-        await fireEvent(alert, "response", "cancel");
+        await userEvent.click(within(alert).getByRole(Gtk.AccessibleRole.BUTTON, { name: "_Cancel" }));
         await waitFor(() => expect(screen.queryByName("warning-dialog")).toBeNull());
     });
 
     it("stops cycling and clears the cycle toggle when unchecked after acceptance", async () => {
         const { cycle, alert } = await activateCycleAndAwaitAlert();
-        await fireEvent(alert, "response", "ok");
-        await waitFor(() => expect(cycle.getActive()).toBe(true));
+        await userEvent.click(within(alert).getByRole(Gtk.AccessibleRole.BUTTON, { name: "_OK" }));
+        await waitFor(() => expect(cycle).toBePressed());
         await userEvent.click(cycle);
-        await waitFor(() => expect(cycle.getActive()).toBe(false));
+        await waitFor(() => expect(cycle).not.toBePressed());
         expect(screen.queryByName("warning-dialog")).toBeNull();
     });
 });

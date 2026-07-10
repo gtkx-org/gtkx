@@ -38,11 +38,8 @@ describe("cssMultiplebgsDemo", () => {
         const paned = (await screen.findByName("paned")) as Gtk.Paned;
         expect(paned).toBeInstanceOf(Gtk.Paned);
         expect(paned.getOrientation()).toBe(Gtk.Orientation.VERTICAL);
-        const textView = (await screen.findByName("text-view")) as Gtk.TextView;
-        const buffer = textView.getBuffer();
-        const text = buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false);
-        expect(text).toContain("#canvas");
-        expect(text).toContain("transition-property");
+        expect(await screen.findByDisplayValue(/#canvas/)).not.toBeNull();
+        expect(screen.queryByDisplayValue(/transition-property/)).not.toBeNull();
     });
 
     it("declares the demo window class on the host window", async () => {

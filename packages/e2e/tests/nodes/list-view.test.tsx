@@ -1,6 +1,7 @@
 import type { RenderItemProps } from "@gtkx/components";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
-import { screen } from "@gtkx/testing";
+import { screen, within } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import {
     COUNTER_BASELINE_TEXTS,
@@ -19,16 +20,21 @@ import {
     renderCounterCell,
 } from "../helpers/list-collection-render.js";
 import { renderGridView, renderListView } from "../helpers/list-fixtures.js";
-import { getChildTexts } from "../helpers/widget-text.js";
+
+const collectLabelTexts = (container: Gtk.Widget): string[] =>
+    within(container)
+        .getAllByRole(Gtk.AccessibleRole.LABEL)
+        .map((widget) => (widget instanceof Gtk.Label ? (widget.getLabel() ?? "") : ""))
+        .filter((text) => text.length > 0);
 
 const listViewView = async (items: Parameters<typeof renderListView>[0]): Promise<CollectionView> => {
     const { ref, rerender } = await renderListView(items);
-    return { texts: () => getChildTexts(ref.current), rerender };
+    return { texts: () => collectLabelTexts(ref.current), rerender };
 };
 
 const gridViewView = async (items: Parameters<typeof renderGridView>[0]): Promise<CollectionView> => {
     const { ref, rerender } = await renderGridView(items);
-    return { texts: () => getChildTexts(ref.current), rerender };
+    return { texts: () => collectLabelTexts(ref.current), rerender };
 };
 
 const expectSingleItemValueUpdate = async (): Promise<void> => {
@@ -45,9 +51,9 @@ const expectSingleItemValueUpdate = async (): Promise<void> => {
 describe("render - ListView (1)", () => {
     describe("GtkListView", () => {
         it("creates ListView widget", async () => {
-            const { ref } = await renderListView([{ id: "1", value: { name: "First" } }]);
+            await renderListView([{ id: "1", value: { name: "First" } }]);
 
-            expect(ref.current).not.toBeNull();
+            expect(screen.getByRole(Gtk.AccessibleRole.LIST)).toBeTruthy();
         });
     });
 
@@ -146,9 +152,9 @@ describe("render - ListView (3)", () => {
 
     describe("GtkGridView", () => {
         it("creates GridView widget", async () => {
-            const { ref } = await renderGridView([{ id: "1", value: { name: "First" } }]);
+            await renderGridView([{ id: "1", value: { name: "First" } }]);
 
-            expect(ref.current).not.toBeNull();
+            expect(screen.getByRole(Gtk.AccessibleRole.GRID)).toBeTruthy();
         });
 
         it("sets singleClickActivate property correctly", async () => {
@@ -227,7 +233,7 @@ describe("render - ListView (6)", () => {
                     ["3", "Charlie"],
                 ]),
             );
-            expect(getChildTexts(ref.current)).toEqual(["Alice", "Bob", "Charlie"]);
+            expect(collectLabelTexts(ref.current)).toEqual(["Alice", "Bob", "Charlie"]);
 
             await rerender(
                 namedRows([
@@ -236,7 +242,7 @@ describe("render - ListView (6)", () => {
                     ["3", "Charlie Updated"],
                 ]),
             );
-            expect(getChildTexts(ref.current)).toEqual(["Alice Updated", "Bob Updated", "Charlie Updated"]);
+            expect(collectLabelTexts(ref.current)).toEqual(["Alice Updated", "Bob Updated", "Charlie Updated"]);
         });
     });
 });
@@ -245,10 +251,10 @@ describe("render - ListView (7)", () => {
     describe("item reordering (4)", () => {
         it("preserves order when updating a single item value", async () => {
             const { ref, rerender } = await renderListView(counterBaselineRows(), { renderItem: renderCounterCell });
-            expect(getChildTexts(ref.current)).toEqual(COUNTER_BASELINE_TEXTS);
+            expect(collectLabelTexts(ref.current)).toEqual(COUNTER_BASELINE_TEXTS);
 
             await rerender(counterSingleUpdateRows(), { renderItem: renderCounterCell });
-            expect(getChildTexts(ref.current)).toEqual(COUNTER_SINGLE_UPDATE_TEXTS);
+            expect(collectLabelTexts(ref.current)).toEqual(COUNTER_SINGLE_UPDATE_TEXTS);
         });
 
         it("preserves order with frequent value updates", async () => {
@@ -261,11 +267,11 @@ describe("render - ListView (7)", () => {
             ];
 
             const { ref, rerender } = await renderListView(itemsFor(0, 0, 0), { renderItem });
-            expect(getChildTexts(ref.current)).toEqual(["0", "0", "0"]);
+            expect(collectLabelTexts(ref.current)).toEqual(["0", "0", "0"]);
 
             for (let i = 1; i <= 10; i++) {
                 await rerender(itemsFor(i, i * 2, i * 3), { renderItem });
-                expect(getChildTexts(ref.current)).toEqual([String(i), String(i * 2), String(i * 3)]);
+                expect(collectLabelTexts(ref.current)).toEqual([String(i), String(i * 2), String(i * 3)]);
             }
         });
     });

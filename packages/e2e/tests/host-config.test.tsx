@@ -10,9 +10,11 @@ let nextAppId = 0;
 const uniqueAppId = (): string => `org.gtkx.hostconfigtest${nextAppId++}`;
 
 import { renderChildren } from "./helpers/render-children.js";
-import { getChildTexts } from "./helpers/widget-text.js";
 
-const getLabelTexts = (parent: Gtk.Widget): string[] => getChildTexts(parent, { recursive: false });
+const labelTexts = (box: Gtk.Box): string[] =>
+    within(box)
+        .getAllByRole(Gtk.AccessibleRole.LABEL)
+        .map((widget) => (widget as Gtk.Label).getLabel());
 
 const buildLabelBox = (boxRef: RefObject<Gtk.Box | null>) => (items: string[]) => (
     <GtkBox ref={boxRef} orientation={Gtk.Orientation.VERTICAL}>
@@ -26,7 +28,7 @@ const renderOrderedLabelBox = async () => {
     const boxRef = createRef<Gtk.Box>();
 
     const { rerender } = await renderChildren(["A", "B", "C"], buildLabelBox(boxRef));
-    expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
+    expect(labelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
 
     return { boxRef, rerender };
 };
@@ -100,11 +102,11 @@ describe("host-config - children (3)", () => {
 
             const { rerender } = await renderChildren(["A", "C"], buildLabelBox(boxRef));
 
-            expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "C"]);
+            expect(labelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "C"]);
 
             await rerender(["A", "B", "C"]);
 
-            expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
+            expect(labelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
         });
 
         it("falls back to append when before not found", async () => {
@@ -114,7 +116,7 @@ describe("host-config - children (3)", () => {
 
             await rerender(["A", "B", "C"]);
 
-            expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
+            expect(labelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
         });
     });
 });
@@ -122,47 +124,42 @@ describe("host-config - children (3)", () => {
 describe("host-config - children (4)", () => {
     describe("root level widgets", () => {
         it("renders root level window", async () => {
-            const windowRef = createRef<Gtk.ApplicationWindow>();
-
             await render(
                 <GtkApplication applicationId={uniqueAppId()} flags={Gio.ApplicationFlags.NON_UNIQUE}>
-                    <GtkApplicationWindow ref={windowRef} title="Root Container" />
+                    <GtkApplicationWindow title="Root Container" />
                 </GtkApplication>,
                 { container: rootElement },
             );
 
-            expect(windowRef.current).not.toBeNull();
+            await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "Root Container" });
         });
 
         it("removes root level window", async () => {
-            const windowRef = createRef<Gtk.ApplicationWindow>();
             const appId = uniqueAppId();
 
             function App({ showWindow }: { showWindow: boolean }): ReactNode {
                 return (
                     <GtkApplication applicationId={appId} flags={Gio.ApplicationFlags.NON_UNIQUE}>
-                        {showWindow ? <GtkApplicationWindow ref={windowRef} title="Window" /> : null}
+                        {showWindow ? <GtkApplicationWindow title="Window" /> : null}
                     </GtkApplication>
                 );
             }
 
             const { rerender } = await render(<App showWindow={true} />, { container: rootElement });
 
-            expect(windowRef.current).not.toBeNull();
+            await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "Window" });
 
             await rerender(<App showWindow={false} />);
         });
 
         it("inserts root level window before sibling", async () => {
-            const window1Ref = createRef<Gtk.ApplicationWindow>();
-            const window2Ref = createRef<Gtk.ApplicationWindow>();
             const appId = uniqueAppId();
 
             function App({ windows }: { windows: string[] }): ReactNode {
                 return (
                     <GtkApplication applicationId={appId} flags={Gio.ApplicationFlags.NON_UNIQUE}>
-                        {windows.map((title, i) => (
-                            <GtkApplicationWindow key={title} ref={i === 0 ? window1Ref : window2Ref} title={title} />
+                        {windows.map((title) => (
+                            <GtkApplicationWindow key={title} title={title} />
                         ))}
                     </GtkApplication>
                 );
@@ -172,8 +169,7 @@ describe("host-config - children (4)", () => {
 
             await rerender(<App windows={["Second", "First"]} />);
 
-            expect(window1Ref.current).not.toBeNull();
-            expect(window2Ref.current).not.toBeNull();
+            expect(await screen.findAllByRole(Gtk.AccessibleRole.WINDOW)).toHaveLength(2);
         });
     });
 });
@@ -184,17 +180,17 @@ describe("host-config - children (5)", () => {
             const { boxRef, rerender } = await renderOrderedLabelBox();
 
             await rerender(["A", "D", "B", "C"]);
-            expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "D", "B", "C"]);
+            expect(labelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "D", "B", "C"]);
 
             await rerender(["D", "C"]);
-            expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["D", "C"]);
+            expect(labelTexts(boxRef.current as Gtk.Box)).toEqual(["D", "C"]);
         });
 
         it("handles reordering via key changes", async () => {
             const { boxRef, rerender } = await renderOrderedLabelBox();
 
             await rerender(["C", "B", "A"]);
-            expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["C", "B", "A"]);
+            expect(labelTexts(boxRef.current as Gtk.Box)).toEqual(["C", "B", "A"]);
         });
     });
 });
@@ -302,7 +298,7 @@ describe("host-config - text instances (1)", () => {
             </GtkBox>,
         );
 
-        expect(ref.current?.getFirstChild()).toBeNull();
+        expect(within(ref.current as Gtk.Box).queryByRole(Gtk.AccessibleRole.LABEL)).toBeNull();
     });
 
     it("handles unicode text", async () => {
@@ -337,17 +333,15 @@ describe("host-config - text instances (2)", () => {
     });
 
     it("concatenates multiple text children in order", async () => {
-        const labelRef = createRef<Gtk.Label>();
-
         await render(
-            <GtkLabel ref={labelRef}>
+            <GtkLabel>
                 {"First"}
                 {"Second"}
                 {"Third"}
             </GtkLabel>,
         );
 
-        expect(labelRef.current?.getLabel()).toBe("FirstSecondThird");
+        expect(await screen.findByText("FirstSecondThird")).toBeDefined();
     });
 
     it("finds text with regex patterns", async () => {

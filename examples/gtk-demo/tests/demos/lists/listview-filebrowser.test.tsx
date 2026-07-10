@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { act, screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { fireEvent, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { listviewFilebrowserDemo } from "../../../src/demos/lists/listview-filebrowser.js";
 import { renderDemo } from "../../test-utils.js";
@@ -41,8 +41,7 @@ describe("listviewFilebrowserDemo", () => {
     it("renders a view-mode list view with three entries", async () => {
         await renderDemo(listviewFilebrowserDemo);
         const switcher = (await screen.findByName("view-switcher")) as Gtk.ListView;
-        const model = switcher.getModel();
-        expect(model?.getNItems()).toBe(3);
+        expect(within(switcher).getAllByRole(Gtk.AccessibleRole.IMG)).toHaveLength(3);
     });
 
     it("renders the file grid view inside a scrolled window", async () => {
@@ -97,10 +96,7 @@ describe("listviewFilebrowserDemo", () => {
         const beforeCount = await waitForPopulatedModel(grid);
         for (let i = 0; i < beforeCount; i++) {
             await userEvent.selectOptions(grid, i);
-            await act(() => {
-                grid.emit("activate", i);
-            });
-            await Promise.resolve();
+            await fireEvent(grid, "activate", i);
             const after = (grid.getModel() as Gtk.SelectionModel).getNItems();
             if (after !== beforeCount) {
                 expect(after).toBeGreaterThanOrEqual(0);

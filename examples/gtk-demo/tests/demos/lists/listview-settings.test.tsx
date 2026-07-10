@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { fireEvent, screen, userEvent, waitFor } from "@gtkx/testing";
+import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { listviewSettingsDemo } from "../../../src/demos/lists/listview-settings.js";
 import { findInactiveSearchToggle, renderDemo } from "../../test-utils.js";
@@ -144,14 +144,14 @@ describe("listviewSettingsDemo schema interactions", () => {
         await renderDemo(listviewSettingsDemo);
         const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
         await userEvent.type(entry, "foo");
-        expect(entry.getText()).toBe("foo");
+        expect(entry).toHaveDisplayValue("foo");
     });
 
     it("clears the key search text when the search entry stops searching", async () => {
         await renderDemo(listviewSettingsDemo);
         const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
         await userEvent.type(entry, "foo");
-        await fireEvent(entry, "stop-search");
+        await userEvent.keyboard(entry, "{Escape}");
         const searchBar = (await screen.findByName("search-bar")) as Gtk.SearchBar;
         await waitFor(() => expect(searchBar.getSearchMode()).toBe(false));
     });

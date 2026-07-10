@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { act, screen, userEvent } from "@gtkx/testing";
+import { screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { textundoDemo } from "../../../src/demos/input/textundo.js";
 import { readBufferText, renderDemo } from "../../test-utils.js";
@@ -16,11 +16,7 @@ const renderAndInsert = async (insertedText: string): Promise<EditedTextView> =>
     const buffer = textView.getBuffer();
     const before = readBufferText(textView);
 
-    await act(() => {
-        buffer.beginUserAction();
-        buffer.insertAtCursor(insertedText, -1);
-        buffer.endUserAction();
-    });
+    await userEvent.type(textView, insertedText);
 
     return { textView, buffer, before };
 };
@@ -59,12 +55,12 @@ describe("textundoDemo", () => {
 
     it("undoes a buffer edit when Control+z is dispatched to the text view", async () => {
         const { textView, buffer, before } = await renderAndInsert(" — appended");
-        expect(readBufferText(textView)).toBe(`${before} — appended`);
+        expect(screen.getByDisplayValue(`${before} — appended`)).toBe(textView);
         expect(buffer.getCanUndo()).toBe(true);
 
         await userEvent.keyboard(textView, "{Control>}z{/Control}");
 
-        expect(readBufferText(textView)).toBe(before);
+        expect(screen.getByDisplayValue(before)).toBe(textView);
         expect(buffer.getCanRedo()).toBe(true);
     });
 
@@ -72,10 +68,10 @@ describe("textundoDemo", () => {
         const { textView, before } = await renderAndInsert(" REDO");
         const afterInsert = readBufferText(textView);
         await userEvent.keyboard(textView, "{Control>}z{/Control}");
-        expect(readBufferText(textView)).toBe(before);
+        expect(screen.getByDisplayValue(before)).toBe(textView);
 
         await userEvent.keyboard(textView, "{Control>}{Shift>}z{/Shift}{/Control}");
 
-        expect(readBufferText(textView)).toBe(afterInsert);
+        expect(screen.getByDisplayValue(afterInsert)).toBe(textView);
     });
 });

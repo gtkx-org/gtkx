@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { act, fireEvent, screen, userEvent, within } from "@gtkx/testing";
+import { act, screen, userEvent, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { fontRenderingDemo } from "../../../src/demos/advanced/fontrendering.js";
 import { renderDemo } from "../../test-utils.js";
@@ -8,8 +8,7 @@ async function activateGridMode(): Promise<Gtk.ToggleButton> {
     const gridToggle = (await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
         name: "Grid",
     })) as Gtk.ToggleButton;
-    await act(() => gridToggle.setActive(true));
-    await fireEvent(gridToggle, "toggled");
+    await userEvent.click(gridToggle);
     return gridToggle;
 }
 
@@ -65,14 +64,14 @@ describe("fontRenderingDemo header toggles", () => {
         const gridToggle = (await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
             name: "Grid",
         })) as Gtk.ToggleButton;
-        expect(textToggle.getActive()).toBe(true);
-        expect(gridToggle.getActive()).toBe(false);
+        expect(textToggle).toBePressed();
+        expect(gridToggle).not.toBePressed();
     });
 
     it("switches to grid mode when the Grid toggle is activated", async () => {
         await renderDemo(fontRenderingDemo);
         const gridToggle = await activateGridMode();
-        expect(gridToggle.getActive()).toBe(true);
+        expect(gridToggle).toBePressed();
     });
 });
 
@@ -85,8 +84,8 @@ describe("fontRenderingDemo overlay checks", () => {
         const showOutline = (await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
             name: "Show _Outline",
         })) as Gtk.CheckButton;
-        expect(showPixels.getActive()).toBe(true);
-        expect(showOutline.getActive()).toBe(false);
+        expect(showPixels).toBeChecked();
+        expect(showOutline).not.toBeChecked();
     });
 
     it("toggles the show-pixels overlay state", async () => {
@@ -95,7 +94,7 @@ describe("fontRenderingDemo overlay checks", () => {
             name: "Show _Pixels",
         })) as Gtk.CheckButton;
         await userEvent.click(showPixels);
-        expect(showPixels.getActive()).toBe(false);
+        expect(showPixels).not.toBeChecked();
     });
 
     it("toggles antialias and hint-metrics checks", async () => {
@@ -106,21 +105,21 @@ describe("fontRenderingDemo overlay checks", () => {
         const hintMetrics = (await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
             name: "Hint _Metrics",
         })) as Gtk.CheckButton;
-        expect(antialias.getActive()).toBe(true);
-        expect(hintMetrics.getActive()).toBe(false);
+        expect(antialias).toBeChecked();
+        expect(hintMetrics).not.toBeChecked();
 
         await userEvent.click(antialias);
         await userEvent.click(hintMetrics);
 
-        expect(antialias.getActive()).toBe(false);
-        expect(hintMetrics.getActive()).toBe(true);
+        expect(antialias).not.toBeChecked();
+        expect(hintMetrics).toBeChecked();
     });
 
     it("toggles extents and grid overlays", async () => {
         await renderDemo(fontRenderingDemo);
         const { extents, grid } = await toggleExtentsAndGridOverlays();
-        expect(extents.getActive()).toBe(true);
-        expect(grid.getActive()).toBe(true);
+        expect(extents).toBeChecked();
+        expect(grid).toBeChecked();
     });
 });
 
@@ -155,7 +154,7 @@ describe("fontRenderingDemo text input", () => {
         await renderDemo(fontRenderingDemo);
         const entry = (await screen.findByName("entry")) as Gtk.Entry;
         expect(entry).toBeInstanceOf(Gtk.Entry);
-        expect(entry.getText()).toBe("Fonts render");
+        expect(entry).toHaveDisplayValue("Fonts render");
     });
 
     it("updates the text state when the entry changes", async () => {
@@ -163,7 +162,7 @@ describe("fontRenderingDemo text input", () => {
         const entry = (await screen.findByName("entry")) as Gtk.Entry;
         await userEvent.clear(entry);
         await userEvent.type(entry, "Hello");
-        expect(entry.getText()).toBe("Hello");
+        expect(entry).toHaveDisplayValue("Hello");
     });
 });
 
@@ -255,8 +254,8 @@ describe("fontRenderingDemo paint callback", () => {
         const { extents, grid } = await toggleExtentsAndGridOverlays();
         const drawingArea = (await screen.findByName("image")) as Gtk.DrawingArea;
         await act(() => drawingArea.queueDraw());
-        expect(extents.getActive()).toBe(true);
-        expect(grid.getActive()).toBe(true);
+        expect(extents).toBeChecked();
+        expect(grid).toBeChecked();
     });
 });
 
@@ -265,6 +264,6 @@ describe("fontRenderingDemo text entry", () => {
         await renderDemo(fontRenderingDemo);
         const entry = (await screen.findByName("entry")) as Gtk.Entry;
         await userEvent.clear(entry);
-        expect(entry.getText()).toBe("");
+        expect(entry).toHaveDisplayValue("");
     });
 });

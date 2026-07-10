@@ -1,11 +1,10 @@
 import type * as Adw from "@gtkx/gi/adw";
-import type * as Gtk from "@gtkx/gi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { AdwActionRow, AdwExpanderRow, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
 import { GtkButton, GtkHeaderBar, GtkLabel, GtkListBox } from "@gtkx/jsx/gtk";
-import { render } from "@gtkx/testing";
+import { render, screen, within } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
-import { countChildren } from "../helpers/child-count.js";
 
 const twoLabelFragment = (firstRef: RefObject<Gtk.Label | null>, secondRef: RefObject<Gtk.Label | null>): ReactNode => (
     <>
@@ -256,7 +255,7 @@ describe("render - ContainerProp (7)", () => {
             await render(<AdwExpanderRow ref={ref} title="Test" />);
 
             expect(ref.current).not.toBeNull();
-            expect(ref.current?.getTitle()).toBe("Test");
+            expect(screen.getByText("Test")).toBeDefined();
         });
 
         it("updates title when prop changes", async () => {
@@ -274,19 +273,16 @@ describe("render - ContainerProp (7)", () => {
         });
 
         it("adds prefix and suffix widgets via compound components", async () => {
-            const prefixRef = createRef<Gtk.Button>();
-            const suffixRef = createRef<Gtk.Button>();
-
             await render(
                 <AdwExpanderRow
                     title="Row"
-                    prefix={<GtkButton ref={prefixRef} label="Prefix" />}
-                    suffix={<GtkButton ref={suffixRef} label="Suffix" />}
+                    prefix={<GtkButton label="Prefix" />}
+                    suffix={<GtkButton label="Suffix" />}
                 />,
             );
 
-            expect(prefixRef.current?.getLabel()).toBe("Prefix");
-            expect(suffixRef.current?.getLabel()).toBe("Suffix");
+            expect(screen.getByText("Prefix")).toBeDefined();
+            expect(screen.getByText("Suffix")).toBeDefined();
         });
     });
 });
@@ -299,27 +295,24 @@ describe("render - ContainerProp (8)", () => {
             await render(<AdwExpanderRow title="Settings" rows={<AdwActionRow ref={rowRef} title="Option 1" />} />);
 
             expect(rowRef.current).not.toBeNull();
-            expect(rowRef.current?.getTitle()).toBe("Option 1");
+            expect(screen.getByText("Option 1")).toBeDefined();
         });
 
         it("adds multiple rows", async () => {
-            const row1Ref = createRef<Adw.ActionRow>();
-            const row2Ref = createRef<Adw.ActionRow>();
-
             await render(
                 <AdwExpanderRow
                     title="Settings"
                     rows={
                         <>
-                            <AdwActionRow ref={row1Ref} title="Option 1" />
-                            <AdwActionRow ref={row2Ref} title="Option 2" />
+                            <AdwActionRow title="Option 1" />
+                            <AdwActionRow title="Option 2" />
                         </>
                     }
                 />,
             );
 
-            expect(row1Ref.current?.getTitle()).toBe("Option 1");
-            expect(row2Ref.current?.getTitle()).toBe("Option 2");
+            expect(screen.getByText("Option 1")).toBeDefined();
+            expect(screen.getByText("Option 2")).toBeDefined();
         });
     });
 });
@@ -352,11 +345,9 @@ describe("render - ContainerProp (9)", () => {
         });
 
         it("adds action widgets to ExpanderRow", async () => {
-            const actionRef = createRef<Gtk.Button>();
+            await render(<AdwExpanderRow title="Group" actions={<GtkButton label="Action" />} />);
 
-            await render(<AdwExpanderRow title="Group" actions={<GtkButton ref={actionRef} label="Action" />} />);
-
-            expect(actionRef.current?.getLabel()).toBe("Action");
+            expect(screen.getByText("Action")).toBeDefined();
         });
     });
 });
@@ -364,23 +355,20 @@ describe("render - ContainerProp (9)", () => {
 describe("render - ContainerProp (10)", () => {
     describe("AdwExpanderRow (rows/actions) (4)", () => {
         it("adds multiple action widgets", async () => {
-            const action1Ref = createRef<Gtk.Button>();
-            const action2Ref = createRef<Gtk.Button>();
-
             await render(
                 <AdwExpanderRow
                     title="Group"
                     actions={
                         <>
-                            <GtkButton ref={action1Ref} label="Action 1" />
-                            <GtkButton ref={action2Ref} label="Action 2" />
+                            <GtkButton label="Action 1" />
+                            <GtkButton label="Action 2" />
                         </>
                     }
                 />,
             );
 
-            expect(action1Ref.current?.getLabel()).toBe("Action 1");
-            expect(action2Ref.current?.getLabel()).toBe("Action 2");
+            expect(screen.getByText("Action 1")).toBeDefined();
+            expect(screen.getByText("Action 2")).toBeDefined();
         });
 
         it("handles multiple rows and actions together", async () => {
@@ -420,7 +408,7 @@ describe("render - ContainerProp (11)", () => {
             await render(headerBarWithPack(headerBarRef, { start: <GtkLabel ref={startRef} label="Start" /> }));
 
             expect(startRef.current).not.toBeNull();
-            expect(startRef.current?.getLabel()).toBe("Start");
+            expect(screen.getByText("Start")).toBeDefined();
         });
 
         it("packs child at end via end", async () => {
@@ -430,7 +418,7 @@ describe("render - ContainerProp (11)", () => {
             await render(headerBarWithPack(headerBarRef, { end: <GtkLabel ref={endRef} label="End" /> }));
 
             expect(endRef.current).not.toBeNull();
-            expect(endRef.current?.getLabel()).toBe("End");
+            expect(screen.getByText("End")).toBeDefined();
         });
     });
 });
@@ -532,15 +520,19 @@ describe("render - ContainerProp (14)", () => {
 
             const { rerender } = await render(<App showBack={false} />);
 
-            const initialCount = countChildren(headerBarRef.current);
+            const headerBar = headerBarRef.current;
+            if (headerBar === null) throw new Error("expected the header bar to be mounted");
+            const buttonCount = (): number => within(headerBar).getAllByRole(Gtk.AccessibleRole.BUTTON).length;
+
+            const initialCount = buttonCount();
 
             await rerender(<App showBack={true} />);
 
-            expect(countChildren(headerBarRef.current)).toBe(initialCount);
+            expect(buttonCount()).toBe(initialCount);
 
             await rerender(<App showBack={false} />);
 
-            expect(countChildren(headerBarRef.current)).toBe(initialCount);
+            expect(buttonCount()).toBe(initialCount);
         });
     });
 });
@@ -548,24 +540,19 @@ describe("render - ContainerProp (14)", () => {
 describe("render - ContainerProp (15)", () => {
     describe("GtkHeaderBar (start/end) (5)", () => {
         it("reorders children in start via insertBefore", async () => {
-            const headerBarRef = createRef<Gtk.HeaderBar>();
-            const firstRef = createRef<Gtk.Button>();
-            const secondRef = createRef<Gtk.Button>();
-
             function App({ order }: { order: "ab" | "ba" }) {
                 return (
                     <GtkHeaderBar
-                        ref={headerBarRef}
                         start={
                             order === "ab" ? (
                                 <>
-                                    <GtkButton key="a" ref={firstRef} label="A" />
-                                    <GtkButton key="b" ref={secondRef} label="B" />
+                                    <GtkButton key="a" label="A" />
+                                    <GtkButton key="b" label="B" />
                                 </>
                             ) : (
                                 <>
-                                    <GtkButton key="b" ref={secondRef} label="B" />
-                                    <GtkButton key="a" ref={firstRef} label="A" />
+                                    <GtkButton key="b" label="B" />
+                                    <GtkButton key="a" label="A" />
                                 </>
                             )
                         }
@@ -575,13 +562,13 @@ describe("render - ContainerProp (15)", () => {
 
             const { rerender } = await render(<App order="ab" />);
 
-            expect(firstRef.current?.getLabel()).toBe("A");
-            expect(secondRef.current?.getLabel()).toBe("B");
+            expect(screen.getByText("A")).toBeDefined();
+            expect(screen.getByText("B")).toBeDefined();
 
             await rerender(<App order="ba" />);
 
-            expect(firstRef.current?.getLabel()).toBe("A");
-            expect(secondRef.current?.getLabel()).toBe("B");
+            expect(screen.getByText("A")).toBeDefined();
+            expect(screen.getByText("B")).toBeDefined();
         });
     });
 });

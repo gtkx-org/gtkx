@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
-import { render } from "@gtkx/testing";
+import { render, screen } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
@@ -107,28 +107,21 @@ describe("render - ScrolledWindow (3)", () => {
     });
 
     it("contains child widget", async () => {
-        const scrollRef = createRef<Gtk.ScrolledWindow>();
-        const labelRef = createRef<Gtk.Label>();
-
         await render(
-            <GtkScrolledWindow ref={scrollRef}>
-                <GtkLabel ref={labelRef} label="Scrollable Content" />
+            <GtkScrolledWindow>
+                <GtkLabel label="Scrollable Content" />
             </GtkScrolledWindow>,
         );
 
-        expect(labelRef.current).not.toBeNull();
-        expect(labelRef.current?.getLabel()).toBe("Scrollable Content");
+        expect(screen.getByText("Scrollable Content")).toBeDefined();
     });
 });
 
 describe("render - ScrolledWindow (4)", () => {
     it("works with Box as child", async () => {
-        const scrollRef = createRef<Gtk.ScrolledWindow>();
-        const boxRef = createRef<Gtk.Box>();
-
         await render(
-            <GtkScrolledWindow ref={scrollRef}>
-                <GtkBox ref={boxRef} orientation={Gtk.Orientation.VERTICAL}>
+            <GtkScrolledWindow>
+                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                     <GtkLabel label="Item 1" />
                     <GtkLabel label="Item 2" />
                     <GtkLabel label="Item 3" />
@@ -136,25 +129,22 @@ describe("render - ScrolledWindow (4)", () => {
             </GtkScrolledWindow>,
         );
 
-        expect(boxRef.current).not.toBeNull();
+        expect(screen.getByText("Item 1")).toBeDefined();
     });
 
     it("updates child when changed", async () => {
-        const scrollRef = createRef<Gtk.ScrolledWindow>();
-        const labelRef = createRef<Gtk.Label>();
-
         function App({ text }: { text: string }) {
             return (
-                <GtkScrolledWindow ref={scrollRef}>
-                    <GtkLabel ref={labelRef} label={text} />
+                <GtkScrolledWindow>
+                    <GtkLabel label={text} />
                 </GtkScrolledWindow>
             );
         }
 
         await render(<App text="Initial" />);
-        expect(labelRef.current?.getLabel()).toBe("Initial");
+        expect(screen.getByText("Initial")).toBeDefined();
 
         await render(<App text="Updated" />);
-        expect(labelRef.current?.getLabel()).toBe("Updated");
+        expect(screen.getByText("Updated")).toBeDefined();
     });
 });

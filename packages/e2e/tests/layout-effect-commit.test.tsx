@@ -23,7 +23,7 @@ describe("layout effects during commit", () => {
             </GtkBox>,
         );
 
-        expect(labelRef.current?.getLabel()).toBe("committed-adjusted");
+        expect(await screen.findByText("committed-adjusted")).toBeDefined();
     });
 
     it("keeps signals flowing after a layout effect spawns a synchronous re-render", async () => {

@@ -730,6 +730,7 @@ const FontFeaturesColorRows = ({ state, handlers }: { state: FontFeaturesState; 
                 {(ref) => (
                     <GtkColorDialogButton
                         ref={ref}
+                        name="foreground-color"
                         rgba={fgColor}
                         dialog={<GtkColorDialog />}
                         onNotifyRgba={(value) => value && setFgColor(value)}
@@ -745,6 +746,7 @@ const FontFeaturesColorRows = ({ state, handlers }: { state: FontFeaturesState; 
                 {(ref) => (
                     <GtkColorDialogButton
                         ref={ref}
+                        name="background-color"
                         rgba={bgColor}
                         dialog={<GtkColorDialog />}
                         onNotifyRgba={(value) => value && setBgColor(value)}

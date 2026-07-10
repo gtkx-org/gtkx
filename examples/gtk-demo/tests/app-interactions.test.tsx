@@ -34,6 +34,12 @@ const selectFirstDemoWithComponent = async (): Promise<void> => {
     expect(selectedIndex, "no demo with a runnable component found in the sidebar").not.toBeNull();
 };
 
+const openMenuItem = async (name: string): Promise<void> => {
+    const menuButton = (await screen.findByName("menu-button")) as Gtk.MenuButton;
+    await userEvent.click(menuButton);
+    await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.MENU_ITEM, { name }));
+};
+
 describe("App search toggle", () => {
     it("turns the sidebar's search bar on when the header bar toggle is activated", async () => {
         await renderDemo();
@@ -69,8 +75,7 @@ describe("App run button", () => {
 describe("App about menu", () => {
     it("renders the about dialog after the About menu entry is activated", async () => {
         await renderDemo();
-        const menuButton = (await screen.findByName("menu-button")) as Gtk.MenuButton;
-        await act(() => menuButton.activateAction("win.about", null));
+        await openMenuItem("About GTK Demo");
         await waitFor(async () => {
             const dialogs = await screen.findAllByRole(Gtk.AccessibleRole.DIALOG);
             expect(dialogs.length).toBeGreaterThan(0);
@@ -88,8 +93,8 @@ describe("App about menu", () => {
 describe("App notebook", () => {
     it("renders the Info and Source tabs", async () => {
         await renderDemo();
-        const notebook = (await screen.findByName("notebook")) as Gtk.Notebook;
-        expect(notebook.getNPages()).toBe(2);
+        await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Info" });
+        await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Source" });
     });
 
     it("advances the page when the notebook page is set", async () => {
@@ -104,8 +109,7 @@ describe("App notebook", () => {
 describe("App keyboard shortcuts dialog", () => {
     it("opens the keyboard shortcuts dialog when the menu entry is activated", async () => {
         await renderDemo();
-        const menuButton = (await screen.findByName("menu-button")) as Gtk.MenuButton;
-        await act(() => menuButton.activateAction("win.shortcuts", null));
+        await openMenuItem("Keyboard Shortcuts");
         await waitFor(async () => {
             const dialogs = await screen.findAllByRole(Gtk.AccessibleRole.DIALOG);
             expect(dialogs.length).toBeGreaterThan(0);
@@ -119,8 +123,7 @@ describe("App inspector activation", () => {
         const debugSpy = vi.spyOn(Gtk.Window, "setInteractiveDebugging").mockImplementation(() => {});
         try {
             await renderDemo();
-            const menuButton = (await screen.findByName("menu-button")) as Gtk.MenuButton;
-            await act(() => menuButton.activateAction("win.inspector", null));
+            await openMenuItem("Inspector");
             await waitFor(() => expect(debugSpy).toHaveBeenCalled());
         } finally {
             debugSpy.mockRestore();
@@ -163,7 +166,7 @@ describe("App global shortcuts", () => {
         await renderDemo();
         const body = await screen.findByName("main-window-body");
         const notebook = (await screen.findByName("notebook")) as Gtk.Notebook;
-        await act(() => notebook.setCurrentPage(1));
+        await userEvent.keyboard(body, "{Control>}{PageDown}{/Control}");
         await waitFor(() => expect(notebook.getCurrentPage()).toBe(1));
         await userEvent.keyboard(body, "{Control>}{PageUp}{/Control}");
         await waitFor(() => expect(notebook.getCurrentPage()).toBe(0));

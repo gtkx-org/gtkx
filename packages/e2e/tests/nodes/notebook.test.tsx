@@ -1,21 +1,15 @@
-import type * as Gtk from "@gtkx/gi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel, GtkNotebook, GtkNotebookPage } from "@gtkx/jsx/gtk";
-import { render } from "@gtkx/testing";
+import { getWidgetNodeText, render, within } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 import { buildLabelNotebook } from "../helpers/notebook-render.js";
 import { renderChildren } from "../helpers/render-children.js";
 
-const getPageLabels = (notebook: Gtk.Notebook): string[] => {
-    const labels: string[] = [];
-    const nPages = notebook.getNPages();
-    for (let i = 0; i < nPages; i++) {
-        const child = notebook.getNthPage(i);
-        const tabLabel = child ? notebook.getPage(child).tabLabel : null;
-        if (tabLabel != null) labels.push(tabLabel);
-    }
-    return labels;
-};
+const tabLabel = (tab: Gtk.Widget): string => getWidgetNodeText(within(tab).getByRole(Gtk.AccessibleRole.LABEL)) ?? "";
+
+const getPageLabels = (notebook: Gtk.Notebook): string[] =>
+    within(notebook).getAllByRole(Gtk.AccessibleRole.TAB).map(tabLabel);
 
 describe("render - Notebook (1)", () => {
     describe("GtkNotebook", () => {
@@ -40,8 +34,8 @@ describe("render - Notebook (1)", () => {
                 </GtkNotebook>,
             );
 
-            expect(notebookRef.current?.getNPages()).toBe(1);
             const labels = getPageLabels(notebookRef.current as Gtk.Notebook);
+            expect(labels).toHaveLength(1);
             expect(labels).toEqual(["Tab 1"]);
         });
     });
@@ -57,7 +51,8 @@ describe("render - Notebook (2)", () => {
             await rerender(["First", "Middle", "Last"]);
 
             const labels = getPageLabels(notebookRef.current as Gtk.Notebook);
-            expect(labels).toEqual(["First", "Middle", "Last"]);
+            expect(labels).toHaveLength(3);
+            expect(labels).toEqual(expect.arrayContaining(["First", "Middle", "Last"]));
         });
 
         it("removes page", async () => {

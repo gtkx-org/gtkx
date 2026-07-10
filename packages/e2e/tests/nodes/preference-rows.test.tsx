@@ -1,7 +1,7 @@
 import type * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwPreferencesGroup, AdwSpinRow, AdwSwitchRow } from "@gtkx/jsx/adw";
-import { act, render } from "@gtkx/testing";
+import { act, render, screen, userEvent } from "@gtkx/testing";
 import { createRef, type ReactElement, type RefObject, useState } from "react";
 import { describe, expect, it, type Mock, vi } from "vitest";
 
@@ -52,16 +52,15 @@ const expectListenerClearedWhenHandlerNull = async <Widget,>({
 
 describe("render - SpinRow (1)", () => {
     it("creates a SpinRow with a value", async () => {
-        const ref = createRef<Adw.SpinRow>();
         const adjustment = Gtk.Adjustment.new(5, 0, 100, 1, 10, 0);
 
         await render(
             <AdwPreferencesGroup>
-                <AdwSpinRow ref={ref} title="Quantity" adjustment={adjustment} />
+                <AdwSpinRow title="Quantity" adjustment={adjustment} />
             </AdwPreferencesGroup>,
         );
 
-        expect(ref.current?.getValue()).toBe(5);
+        expect(screen.getByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 5 } })).toBeDefined();
     });
 
     it("invokes onValueChanged when the value is updated programmatically", async () => {
@@ -103,28 +102,25 @@ describe("render - SpinRow (2)", () => {
 
 describe("render - SwitchRow (1)", () => {
     it("creates a SwitchRow", async () => {
-        const ref = createRef<Adw.SwitchRow>();
-
         await render(
             <AdwPreferencesGroup>
-                <AdwSwitchRow ref={ref} title="Enabled" active={true} />
+                <AdwSwitchRow title="Enabled" active={true} />
             </AdwPreferencesGroup>,
         );
 
-        expect(ref.current?.getActive()).toBe(true);
+        expect(screen.getByRole(Gtk.AccessibleRole.SWITCH, { checked: true })).toBeDefined();
     });
 
     it("invokes onActiveChanged when toggled", async () => {
         const onActiveChanged = vi.fn();
-        const ref = createRef<Adw.SwitchRow>();
 
         await render(
             <AdwPreferencesGroup>
-                <AdwSwitchRow ref={ref} title="Enabled" active={false} onNotifyActive={onActiveChanged} />
+                <AdwSwitchRow title="Enabled" active={false} onNotifyActive={onActiveChanged} />
             </AdwPreferencesGroup>,
         );
 
-        await act(() => ref.current?.setActive(true));
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.SWITCH, { checked: false }));
 
         expect(onActiveChanged).toHaveBeenCalled();
         const lastCall = onActiveChanged.mock.calls.at(-1);
@@ -140,8 +136,8 @@ describe("render - SwitchRow (2)", () => {
                     <AdwSwitchRow ref={ref} title="Enabled" active={false} onNotifyActive={handler} />
                 </AdwPreferencesGroup>
             ),
-            fireFirst: (row) => row.setActive(true),
-            fireSecond: (row) => row.setActive(false),
+            fireFirst: () => userEvent.click(screen.getByRole(Gtk.AccessibleRole.SWITCH, { checked: false })),
+            fireSecond: () => userEvent.click(screen.getByRole(Gtk.AccessibleRole.SWITCH, { checked: true })),
         });
     });
 });

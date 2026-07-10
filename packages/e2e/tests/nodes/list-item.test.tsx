@@ -1,8 +1,7 @@
 import { DropDown, ListView, type RenderItemProps } from "@gtkx/components";
-import type * as Gtk from "@gtkx/gi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { render, screen, userEvent } from "@gtkx/testing";
-import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
 import { expectAllVisibleOnce } from "../helpers/list-collection-render.js";
 import { renderChildren } from "../helpers/render-children.js";
@@ -22,9 +21,9 @@ const buildTextListView = (items: TextItem[]) => (
     </ScrollWrapper>
 );
 
-const buildValueDropDown = (dropDownRef: RefObject<Gtk.DropDown | null>) => (items: string[]) => (
-    <DropDown ref={dropDownRef} items={items.map((item) => ({ id: item, value: item }))} />
-);
+const buildValueDropDown = (items: string[]) => <DropDown items={items.map((item) => ({ id: item, value: item }))} />;
+
+const comboBox = () => screen.getByRole(Gtk.AccessibleRole.COMBO_BOX);
 
 describe("render - ListItem (1)", () => {
     describe("ListItem (1)", () => {
@@ -143,11 +142,8 @@ describe("render - ListItem (4)", () => {
 describe("render - ListItem (5)", () => {
     describe("ListItem in DropDown (2)", () => {
         it("maintains order with multiple items", async () => {
-            const dropDownRef = createRef<Gtk.DropDown>();
-
             await render(
                 <DropDown
-                    ref={dropDownRef}
                     items={[
                         { id: "a", value: "First" },
                         { id: "b", value: "Second" },
@@ -158,30 +154,28 @@ describe("render - ListItem (5)", () => {
 
             await screen.findAllByText("First");
 
-            if (dropDownRef.current) await userEvent.selectOptions(dropDownRef.current, 1);
+            await userEvent.selectOptions(comboBox(), 1);
             await screen.findAllByText("Second");
 
-            if (dropDownRef.current) await userEvent.selectOptions(dropDownRef.current, 2);
+            await userEvent.selectOptions(comboBox(), 2);
             await screen.findAllByText("Third");
         });
 
         it("inserts item before existing item", async () => {
-            const dropDownRef = createRef<Gtk.DropDown>();
-
-            const { rerender } = await renderChildren(["first", "last"], buildValueDropDown(dropDownRef));
+            const { rerender } = await renderChildren(["first", "last"], buildValueDropDown);
             await screen.findAllByText("first");
 
-            if (dropDownRef.current) await userEvent.selectOptions(dropDownRef.current, 1);
+            await userEvent.selectOptions(comboBox(), 1);
             await screen.findAllByText("last");
 
             await rerender(["first", "middle", "last"]);
-            if (dropDownRef.current) await userEvent.selectOptions(dropDownRef.current, 0);
+            await userEvent.selectOptions(comboBox(), 0);
             await screen.findAllByText("first");
 
-            if (dropDownRef.current) await userEvent.selectOptions(dropDownRef.current, 1);
+            await userEvent.selectOptions(comboBox(), 1);
             await screen.findAllByText("middle");
 
-            if (dropDownRef.current) await userEvent.selectOptions(dropDownRef.current, 2);
+            await userEvent.selectOptions(comboBox(), 2);
             await screen.findAllByText("last");
         });
     });

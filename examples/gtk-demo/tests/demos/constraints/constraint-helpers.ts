@@ -1,6 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { screen } from "@gtkx/testing";
-import { expect } from "vitest";
 
 export type ChildButtons = {
     button1: Gtk.Button;
@@ -15,10 +14,9 @@ export const findChildButtons = async (): Promise<ChildButtons> => ({
 });
 
 export const expectChildButtonLabels = async (): Promise<void> => {
-    const { button1, button2, button3 } = await findChildButtons();
-    expect(button1.getLabel()).toBe("Child 1");
-    expect(button2.getLabel()).toBe("Child 2");
-    expect(button3.getLabel()).toBe("Child 3");
+    await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Child 1" });
+    await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Child 2" });
+    await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Child 3" });
 };
 
 export const findContainerLayout = async (): Promise<{ box: Gtk.Box; layout: Gtk.ConstraintLayout }> => {

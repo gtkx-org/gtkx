@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { act, screen, userEvent, waitFor } from "@gtkx/testing";
+import { act, screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { hypertextDemo } from "../../../src/demos/input/hypertext.js";
 import { readBufferText, renderDemo } from "../../test-utils.js";
@@ -28,11 +28,10 @@ describe("hypertextDemo rendering", () => {
         expect(textView).toBeInstanceOf(Gtk.TextView);
         expect(textView.getWrapMode()).toBe(Gtk.WrapMode.WORD);
         expect(textView.getBuffer().getEnableUndo()).toBe(true);
-        const text = readBufferText(textView);
-        expect(text).toContain("simple ");
-        expect(text).toContain("hypertext");
-        expect(text).toContain("can easily be realized with ");
-        expect(text).toContain("tags");
+        expect(screen.getByDisplayValue(/simple /)).toBe(textView);
+        expect(screen.getByDisplayValue(/hypertext/)).toBe(textView);
+        expect(screen.getByDisplayValue(/can easily be realized with /)).toBe(textView);
+        expect(screen.getByDisplayValue(/tags/)).toBe(textView);
     });
 });
 
@@ -45,9 +44,7 @@ describe("hypertextDemo link navigation", () => {
         expect(tagsOffset).toBeGreaterThan(0);
         await act(() => buffer.placeCursor(buffer.getIterAtOffset(tagsOffset)));
         await userEvent.keyboard(textView, "{Enter}");
-        await waitFor(() => {
-            expect(readBufferText(textView)).toContain("attribute that can be applied to some range of text");
-        });
+        await screen.findByDisplayValue(/attribute that can be applied to some range of text/);
     });
 
     it("navigates to the hypertext definition page when Enter is pressed at the hypertext link", async () => {
@@ -58,9 +55,7 @@ describe("hypertextDemo link navigation", () => {
         expect(linkOffset).toBeGreaterThan(0);
         await act(() => buffer.placeCursor(buffer.getIterAtOffset(linkOffset)));
         await userEvent.keyboard(textView, "{Enter}");
-        await waitFor(() => {
-            expect(readBufferText(textView)).toContain("Machine-readable text that is not sequential");
-        });
+        await screen.findByDisplayValue(/Machine-readable text that is not sequential/);
     });
 });
 
@@ -72,22 +67,14 @@ describe("hypertextDemo round trip", () => {
         const tagsOffset = readBufferText(textView).indexOf("tags");
         await act(() => buffer.placeCursor(buffer.getIterAtOffset(tagsOffset)));
         await userEvent.keyboard(textView, "{Enter}");
-        const pageTwo = await waitFor(() => {
-            const text = readBufferText(textView);
-            expect(text).toContain("attribute that can be applied");
-            return text;
-        });
+        await screen.findByDisplayValue(/attribute that can be applied/);
+        const pageTwo = readBufferText(textView);
         const backOffset = pageTwo.indexOf("Go back");
         expect(backOffset).toBeGreaterThanOrEqual(0);
         const bufferAfter = textView.getBuffer();
         await act(() => bufferAfter.placeCursor(bufferAfter.getIterAtOffset(backOffset + 1)));
         await userEvent.keyboard(textView, "{Enter}");
-        await waitFor(() => {
-            const finalText = readBufferText(textView);
-            const isBackOnPageOne =
-                finalText.includes("can easily be realized with ") || finalText.includes("Some text to show");
-            expect(isBackOnPageOne).toBe(true);
-        });
+        await screen.findByDisplayValue(/can easily be realized with |Some text to show/);
     });
 });
 
@@ -95,9 +82,9 @@ describe("hypertextDemo input edge cases", () => {
     it("ignores non-Enter key presses without changing the page", async () => {
         await renderDemo(hypertextDemo);
         const textView = await findTextView();
-        const beforeText = readBufferText(textView);
         await userEvent.keyboard(textView, "a");
-        expect(readBufferText(textView)).toBe(beforeText);
+        expect(screen.getByDisplayValue(/Some text to show/)).toBe(textView);
+        expect(screen.queryByDisplayValue(/attribute that can be applied/)).toBeNull();
     });
 
     it("does not navigate via Enter when the cursor is not on a link", async () => {
@@ -105,9 +92,9 @@ describe("hypertextDemo input edge cases", () => {
         const textView = await findTextView();
         const buffer = textView.getBuffer();
         await act(() => buffer.placeCursor(buffer.getStartIter()));
-        const beforeText = readBufferText(textView);
         await userEvent.keyboard(textView, "{Enter}");
-        expect(readBufferText(textView)).toBe(beforeText);
+        expect(screen.getByDisplayValue(/Some text to show/)).toBe(textView);
+        expect(screen.queryByDisplayValue(/attribute that can be applied/)).toBeNull();
     });
 
     it("invokes the hover handler on the text view without throwing", async () => {
@@ -115,14 +102,14 @@ describe("hypertextDemo input edge cases", () => {
         const textView = await findTextView();
         await userEvent.hover(textView);
         await userEvent.unhover(textView);
-        expect(readBufferText(textView)).toContain("hypertext");
+        expect(screen.getByDisplayValue(/hypertext/)).toBe(textView);
     });
 
     it("invokes the click handler without changing the current page", async () => {
         await renderDemo(hypertextDemo);
         const textView = await findTextView();
-        const before = readBufferText(textView);
         await userEvent.pointer(textView, "click");
-        expect(readBufferText(textView)).toBe(before);
+        expect(screen.getByDisplayValue(/hypertext/)).toBe(textView);
+        expect(screen.queryByDisplayValue(/attribute that can be applied/)).toBeNull();
     });
 });

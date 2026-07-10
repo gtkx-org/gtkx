@@ -17,12 +17,9 @@ describe("themingStyleClassesDemo", () => {
 
     it("renders the linked button group with three buttons", async () => {
         await renderDemo(themingStyleClassesDemo);
-        const first = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Hi, I am a button" });
-        const second = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "And I'm another button" });
-        const third = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "This is a button party!" });
-        expect(first).toBeInstanceOf(Gtk.Button);
-        expect(second).toBeInstanceOf(Gtk.Button);
-        expect(third).toBeInstanceOf(Gtk.Button);
+        await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Hi, I am a button" });
+        await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "And I'm another button" });
+        await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "This is a button party!" });
         const linkedBox = (await screen.findByName("linked-buttons")) as Gtk.Box;
         expect(linkedBox).toBeInstanceOf(Gtk.Box);
         expect(linkedBox.hasCssClass("linked")).toBe(true);

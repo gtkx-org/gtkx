@@ -2,7 +2,6 @@ import { DropDown } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 
 import { act, render, screen, userEvent } from "@gtkx/testing";
-import { createRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderListView, valueItems } from "./helpers/list-fixtures.js";
 
@@ -78,19 +77,17 @@ describe("act safety", () => {
     });
 
     it("changes a dropdown selection without an act warning", async () => {
-        const dropDownRef = createRef<Gtk.DropDown>();
         const onSelectionChanged = vi.fn();
 
         await render(
             <DropDown
-                ref={dropDownRef}
                 onSelectionChanged={onSelectionChanged}
                 items={valueItems(["Option 1", "Option 2", "Option 3"])}
             />,
         );
         await screen.findAllByText("Option 1");
 
-        await act(() => dropDownRef.current?.setSelected(2));
+        await userEvent.selectOptions(screen.getByRole(Gtk.AccessibleRole.COMBO_BOX), [2]);
         await screen.findAllByText("Option 3");
 
         expect(onSelectionChanged).toHaveBeenCalledWith("3");

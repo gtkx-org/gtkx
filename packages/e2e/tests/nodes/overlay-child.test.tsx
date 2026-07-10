@@ -1,7 +1,7 @@
 import { Overlay } from "@gtkx/components";
-import type * as Gtk from "@gtkx/gi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
-import { render } from "@gtkx/testing";
+import { render, screen } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 import { countChildren } from "../helpers/child-count.js";
@@ -20,7 +20,7 @@ describe("render - Overlay.Child (1)", () => {
 
         const overlay = overlayRef.current as Gtk.Overlay;
         expect(overlay.getChild()).toBe(mainRef.current);
-        expect(overlay.getLastChild()).not.toBe(mainRef.current);
+        expect(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Overlay Button" })).not.toBe(mainRef.current);
         expect(countChildren(overlay)).toBe(2);
     });
 
@@ -37,7 +37,8 @@ describe("render - Overlay.Child (1)", () => {
         );
 
         const overlay = overlayRef.current as Gtk.Overlay;
-        expect(overlay.getMeasureOverlay(overlay.getLastChild() as Gtk.Widget)).toBe(true);
+        const button = screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Measured Overlay" });
+        expect(overlay.getMeasureOverlay(button)).toBe(true);
     });
 });
 
@@ -55,7 +56,8 @@ describe("render - Overlay.Child (2)", () => {
         );
 
         const overlay = overlayRef.current as Gtk.Overlay;
-        expect(overlay.getClipOverlay(overlay.getLastChild() as Gtk.Widget)).toBe(true);
+        const button = screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Clipped Overlay" });
+        expect(overlay.getClipOverlay(button)).toBe(true);
     });
 });
 
@@ -117,8 +119,8 @@ describe("render - Overlay.Child (5)", () => {
         const overlay = await renderTwoButtonOverlay();
 
         expect(countChildren(overlay)).toBe(3);
-        const second = overlay.getLastChild() as Gtk.Widget;
-        const first = second.getPrevSibling() as Gtk.Widget;
+        const first = screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "First" });
+        const second = screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Second" });
         expect(first.getParent()).toBe(overlay);
         expect(second.getParent()).toBe(overlay);
     });
@@ -128,8 +130,8 @@ describe("render - Overlay.Child (6)", () => {
     it("applies props to each overlay", async () => {
         const overlay = await renderTwoButtonOverlay(true);
 
-        const second = overlay.getLastChild() as Gtk.Widget;
-        const first = second.getPrevSibling() as Gtk.Widget;
+        const first = screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "First" });
+        const second = screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Second" });
         expect(overlay.getMeasureOverlay(first)).toBe(true);
         expect(overlay.getMeasureOverlay(second)).toBe(true);
     });

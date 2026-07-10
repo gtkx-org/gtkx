@@ -1,4 +1,5 @@
 import { quit } from "@gtkx/ffi";
+import { registerMatchers } from "./matchers.js";
 import { cleanup } from "./render.js";
 
 const callRunnerHook = (name: "afterEach" | "afterAll", callback: () => unknown): void => {
@@ -9,6 +10,7 @@ const callRunnerHook = (name: "afterEach" | "afterAll", callback: () => unknown)
 const registerTestRuntimeHooks = (): void => {
     callRunnerHook("afterEach", cleanup);
     callRunnerHook("afterAll", quit);
+    registerMatchers();
 };
 
 registerTestRuntimeHooks();

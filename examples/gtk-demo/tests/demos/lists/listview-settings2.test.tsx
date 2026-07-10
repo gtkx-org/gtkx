@@ -21,7 +21,7 @@ describe("listviewSettings2Demo layout", () => {
     it("installs a search toggle in the header bar starting inactive", async () => {
         await renderDemo(listviewSettings2Demo);
         const toggle = (await screen.findByName("search-toggle")) as Gtk.ToggleButton;
-        expect(toggle.getActive()).toBe(false);
+        expect(toggle).not.toBePressed();
     });
 
     it("renders a search bar in disabled mode by default", async () => {
@@ -67,7 +67,7 @@ describe("listviewSettings2Demo search and editing", () => {
         await renderDemo(listviewSettings2Demo);
         const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
         await userEvent.type(entry, "display");
-        expect(entry.getText()).toBe("display");
+        expect(entry).toHaveDisplayValue("display");
     });
 
     it("filters the schema-keys items model via the search-changed signal when text matches no key", async () => {
@@ -78,7 +78,6 @@ describe("listviewSettings2Demo search and editing", () => {
         const initial = (listView.getModel() as Gtk.SelectionModel).getNItems();
         const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
         await userEvent.type(entry, "zzqxnomatchforanyschemaorkey");
-        await fireEvent(entry, "search-changed");
         await waitFor(() => {
             const filtered = (listView.getModel() as Gtk.SelectionModel).getNItems();
             expect(filtered).toBeLessThanOrEqual(initial);
@@ -106,6 +105,6 @@ describe("listviewSettings2Demo search and editing", () => {
         const initial = entry.getText();
         await userEvent.clear(entry);
         await userEvent.type(entry, "x");
-        expect(entry.getText()).toBe(initial);
+        expect(entry).toHaveDisplayValue(initial);
     });
 });

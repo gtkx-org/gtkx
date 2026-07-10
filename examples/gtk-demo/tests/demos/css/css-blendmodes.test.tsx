@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { fireEvent, screen, userEvent } from "@gtkx/testing";
+import { screen, userEvent, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { cssBlendmodesDemo } from "../../../src/demos/css/css-blendmodes.js";
 import { renderDemo } from "../../test-utils.js";
@@ -33,21 +33,26 @@ describe("cssBlendmodesDemo rendering", () => {
         expect(rows).toHaveLength(16);
     });
 
-    it("renders the stack with the expected page identifiers", async () => {
+    it("switches between the three stack pages and shows each page's content", async () => {
         await renderDemo(cssBlendmodesDemo);
         const stack = (await screen.findByName("blend-stack")) as Gtk.Stack;
-        expect(stack).toBeInstanceOf(Gtk.Stack);
-        expect(stack.getChildByName("page0")).toBeInstanceOf(Gtk.Widget);
-        expect(stack.getChildByName("page1")).toBeInstanceOf(Gtk.Widget);
-        expect(stack.getChildByName("page2")).toBeInstanceOf(Gtk.Widget);
+
+        expect(within(stack).getByText("Duck")).not.toBeNull();
+
+        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Blends" }));
+        await screen.findByText("Red");
+        expect(within(stack).getByText("Blue")).not.toBeNull();
+
+        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "CMYK" }));
+        await screen.findByText("Cyan");
+        expect(within(stack).getByText("Yellow")).not.toBeNull();
     });
 });
 
 describe("cssBlendmodesDemo behavior", () => {
     it("selects the Normal row by default once the listbox is mounted", async () => {
         await renderDemo(cssBlendmodesDemo);
-        const normalRow = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Normal" });
-        expect((normalRow as Gtk.ListBoxRow).isSelected()).toBe(true);
+        await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Normal", selected: true });
     });
 
     it("activates a different blend row and switches the active blend mode", async () => {
@@ -57,18 +62,15 @@ describe("cssBlendmodesDemo behavior", () => {
         })) as Gtk.ListBoxRow;
         const listbox = (await screen.findByName("blend-list")) as Gtk.ListBox;
         await userEvent.selectOptions(listbox, multiplyRow.getIndex());
-        await fireEvent(listbox, "row-activated", multiplyRow);
-        expect(multiplyRow.isSelected()).toBe(true);
+        await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Multiply", selected: true });
     });
 
     it("ignores activation when no matching blend mode exists at the row index", async () => {
         await renderDemo(cssBlendmodesDemo);
-        const listbox = (await screen.findByName("blend-list")) as Gtk.ListBox;
         const stack = (await screen.findByName("blend-stack")) as Gtk.Stack;
         const initialPage = stack.getVisibleChildName();
-        const firstRow = listbox.getRowAtIndex(0);
-        expect(firstRow).toBeInstanceOf(Gtk.ListBoxRow);
-        await fireEvent(listbox, "row-activated", firstRow);
+        const firstRow = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Color" });
+        await userEvent.click(firstRow);
         expect(stack.getVisibleChildName()).toBe(initialPage);
     });
 });

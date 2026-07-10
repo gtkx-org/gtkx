@@ -5,7 +5,6 @@ import { rootElement } from "@gtkx/react";
 import { render, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { Demo } from "../src/app.js";
-import { findInactiveSearchToggle } from "./test-utils.js";
 
 let nextAppId = 0;
 
@@ -38,7 +37,8 @@ describe("App", () => {
 
     it("renders a search toggle in the header bar", async () => {
         await renderDemo();
-        await findInactiveSearchToggle();
+        const toggle = await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { name: "Search" });
+        expect(toggle).not.toBePressed();
     });
 
     it("renders the sidebar with the intro demo entry", async () => {
@@ -55,8 +55,6 @@ describe("App", () => {
 
     it("renders the notebook with two pages", async () => {
         await renderDemo();
-        const notebook = (await screen.findByName("notebook")) as Gtk.Notebook;
-        expect(notebook).toBeInstanceOf(Gtk.Notebook);
-        expect(notebook.getNPages()).toBe(2);
+        expect(await screen.findAllByRole(Gtk.AccessibleRole.TAB)).toHaveLength(2);
     });
 });

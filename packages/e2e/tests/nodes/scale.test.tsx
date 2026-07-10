@@ -1,21 +1,16 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkAdjustment, GtkScale } from "@gtkx/jsx/gtk";
-import { render } from "@gtkx/testing";
-import { createRef, type RefObject } from "react";
+import { render, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 
 type ScaleMark = { value: number; position: Gtk.PositionType; markup?: string | null };
 
-const ScaleWithMarks = ({ marks, scaleRef }: { marks?: ScaleMark[]; scaleRef: RefObject<Gtk.Scale | null> }) => (
-    <GtkScale ref={scaleRef} adjustment={<GtkAdjustment value={0} lower={0} upper={100} />} marks={marks} />
+const ScaleWithMarks = ({ marks }: { marks?: ScaleMark[] }) => (
+    <GtkScale adjustment={<GtkAdjustment value={0} lower={0} upper={100} />} marks={marks} />
 );
 
-const expectDefaultRange = (scale: Gtk.Scale | null): void => {
-    expect(scale).toBeInstanceOf(Gtk.Scale);
-    const adjustment = scale?.getAdjustment();
-    expect(adjustment?.getLower()).toBe(0);
-    expect(adjustment?.getUpper()).toBe(100);
-    expect(adjustment?.getValue()).toBe(0);
+const expectDefaultRange = (): void => {
+    expect(screen.getByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 0, min: 0, max: 100 } })).toBeTruthy();
 };
 
 const MIN_MAX_MARKS = [
@@ -30,38 +25,29 @@ const MIN_MID_MAX_MARKS = [
 ];
 
 const expectMarksTransition = async (initialMarks: ScaleMark[], updatedMarks: ScaleMark[]): Promise<void> => {
-    const ref = createRef<Gtk.Scale>();
+    const { rerender } = await render(<ScaleWithMarks marks={initialMarks} />);
+    expectDefaultRange();
 
-    const { rerender } = await render(<ScaleWithMarks scaleRef={ref} marks={initialMarks} />);
-    expectDefaultRange(ref.current);
-
-    await rerender(<ScaleWithMarks scaleRef={ref} marks={updatedMarks} />);
-    expectDefaultRange(ref.current);
+    await rerender(<ScaleWithMarks marks={updatedMarks} />);
+    expectDefaultRange();
 };
 
 describe("render - Scale marks (1)", () => {
     it("creates Scale widget without marks", async () => {
-        const ref = createRef<Gtk.Scale>();
+        await render(<ScaleWithMarks />);
 
-        await render(<ScaleWithMarks scaleRef={ref} />);
-
-        expectDefaultRange(ref.current);
+        expectDefaultRange();
     });
 
     it("creates Scale widget with marks", async () => {
-        const ref = createRef<Gtk.Scale>();
+        await render(<ScaleWithMarks marks={MIN_MID_MAX_MARKS} />);
 
-        await render(<ScaleWithMarks scaleRef={ref} marks={MIN_MID_MAX_MARKS} />);
-
-        expectDefaultRange(ref.current);
+        expectDefaultRange();
     });
 
     it("sets mark position", async () => {
-        const ref = createRef<Gtk.Scale>();
-
         await render(
             <ScaleWithMarks
-                scaleRef={ref}
                 marks={[
                     { value: 0, position: Gtk.PositionType.TOP, markup: "Top" },
                     { value: 100, position: Gtk.PositionType.BOTTOM, markup: "Bottom" },
@@ -69,17 +55,14 @@ describe("render - Scale marks (1)", () => {
             />,
         );
 
-        expectDefaultRange(ref.current);
+        expectDefaultRange();
     });
 });
 
 describe("render - Scale marks (2)", () => {
     it("sets marks without labels", async () => {
-        const ref = createRef<Gtk.Scale>();
-
         await render(
             <ScaleWithMarks
-                scaleRef={ref}
                 marks={[
                     { value: 0, position: Gtk.PositionType.BOTTOM },
                     { value: 25, position: Gtk.PositionType.BOTTOM },
@@ -90,7 +73,7 @@ describe("render - Scale marks (2)", () => {
             />,
         );
 
-        expectDefaultRange(ref.current);
+        expectDefaultRange();
     });
 
     it("updates marks when props change", async () => {

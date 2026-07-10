@@ -1,8 +1,7 @@
 import { AnimatePresence, animated } from "@gtkx/animate";
-import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
 import { render as baseRender, screen, userEvent, waitFor } from "@gtkx/testing";
-import React, { createRef, type ReactElement, type ReactNode } from "react";
+import React, { type ReactElement, type ReactNode } from "react";
 import { describe, expect, it, type Mock, vi } from "vitest";
 
 const render = (element: ReactNode) => baseRender(element, { animations: true });
@@ -41,23 +40,15 @@ const expectSpringXCompletes = async ({ from, to, damping, stiffness, timeout }:
 describe("animated (1)", () => {
     describe("mount animation (1)", () => {
         it("applies initial values when no animate target is set", async () => {
-            const buttonRef = createRef<Gtk.Button>();
-
-            await render(<animated.GtkButton ref={buttonRef} label="Test" initial={{ opacity: 0.5 }} />);
+            await render(<animated.GtkButton label="Test" initial={{ opacity: 0.5 }} />);
 
             await screen.findByText("Test");
-            expect(buttonRef.current).toBeDefined();
         });
 
         it("applies animate values directly when initial is false", async () => {
-            const buttonRef = createRef<Gtk.Button>();
-
-            await render(
-                <animated.GtkButton ref={buttonRef} label="Test" initial={false} animate={{ opacity: 1, scale: 1 }} />,
-            );
+            await render(<animated.GtkButton label="Test" initial={false} animate={{ opacity: 1, scale: 1 }} />);
 
             await screen.findByText("Test");
-            expect(buttonRef.current).toBeDefined();
         });
     });
 });
@@ -67,11 +58,9 @@ describe("animated (2)", () => {
         it("animates from initial to animate on mount", async () => {
             const onStart = vi.fn();
             const onComplete = vi.fn();
-            const buttonRef = createRef<Gtk.Button>();
 
             await render(
                 <animated.GtkButton
-                    ref={buttonRef}
                     label="Test"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -158,11 +147,9 @@ describe("animated (5)", () => {
     describe("spring animation", () => {
         it("creates spring animation with default parameters", async () => {
             const onComplete = vi.fn();
-            const buttonRef = createRef<Gtk.Button>();
 
             await expectCompletes(
                 <animated.GtkButton
-                    ref={buttonRef}
                     label="Spring"
                     initial={{ scale: 0.5 }}
                     animate={{ scale: 1 }}

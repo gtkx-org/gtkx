@@ -3,7 +3,7 @@ import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
-import { render, waitFor } from "@gtkx/testing";
+import { render, screen, waitFor } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
@@ -20,8 +20,7 @@ describe("render - Fixed", () => {
         );
 
         const fixed = fixedRef.current as Gtk.Fixed;
-        const label = fixed.getFirstChild() as Gtk.Label;
-        expect(label.getLabel()).toBe("pinned");
+        const label = screen.getByText("pinned");
         await waitFor(() => {
             expect(fixed.getChildPosition(label)).toEqual([10, 20]);
         });
@@ -38,8 +37,7 @@ describe("render - Fixed", () => {
         );
 
         const fixed = fixedRef.current as Gtk.Fixed;
-        const label = fixed.getFirstChild() as Gtk.Label;
-        expect(label.getLabel()).toBe("transformed");
+        const label = screen.getByText("transformed");
         expect(fixed.getChildTransform(label)).not.toBeNull();
     });
 
@@ -57,7 +55,7 @@ describe("render - Fixed", () => {
         }
 
         const { rerender } = await render(<App x={0} y={0} />);
-        const label = fixedRef.current?.getFirstChild() as Gtk.Label;
+        const label = screen.getByText("movable");
         await waitFor(() => {
             expect(fixedRef.current?.getChildPosition(label)).toEqual([0, 0]);
         });
@@ -84,9 +82,9 @@ describe("render - Fixed", () => {
         }
 
         const { rerender } = await render(<App show={true} />);
-        expect(fixedRef.current?.getFirstChild()).not.toBeNull();
+        expect(screen.queryByText("A")).not.toBeNull();
 
         await rerender(<App show={false} />);
-        expect(fixedRef.current?.getFirstChild()).toBeNull();
+        expect(screen.queryByText("A")).toBeNull();
     });
 });

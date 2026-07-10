@@ -2,10 +2,9 @@ import type { ItemNode, RenderItemProps } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 
-import { act, screen, waitFor, within } from "@gtkx/testing";
+import { act, getWidgetNodeText, screen, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { type FixtureInput, renderListView } from "../helpers/list-fixtures.js";
-import { getChildTexts } from "../helpers/widget-text.js";
 
 interface Category {
     type: "category";
@@ -32,11 +31,11 @@ const toTreeItems = (categories: Array<Category & { children: Setting[] }>): Fix
         })),
     }));
 
-const expandableExpanders = (): Gtk.TreeExpander[] =>
-    screen
-        .queryAllByRole(Gtk.AccessibleRole.BUTTON)
-        .filter((w): w is Gtk.TreeExpander => w instanceof Gtk.TreeExpander)
-        .filter((w) => w.getListRow()?.isExpandable() ?? false);
+const expanderByName = (name: string): Gtk.TreeExpander =>
+    screen.getByRole(Gtk.AccessibleRole.BUTTON, { name }) as Gtk.TreeExpander;
+
+const rowTexts = (container: Gtk.ListView | null): Array<string | null> =>
+    container ? within(container).queryAllByRole(Gtk.AccessibleRole.LABEL).map(getWidgetNodeText) : [];
 
 type DemoItem = { name: string };
 const demoLeaf = (id: string, name: string) => ({ id, value: { name } });
@@ -400,7 +399,7 @@ describe("render - ListView (tree) (5)", () => {
                 { expandAll: true },
             );
 
-            await waitFor(() => expect(getChildTexts(ref.current)).toEqual(["Parent", "Child 1", "Child 2"]));
+            await waitFor(() => expect(rowTexts(ref.current)).toEqual(["Parent", "Child 1", "Child 2"]));
         });
     });
 });
@@ -416,10 +415,7 @@ describe("render - ListView (tree) (6)", () => {
                 },
             ]);
 
-            const expanders = expandableExpanders();
-            expect(expanders.length).toBeGreaterThan(0);
-
-            const row = expanders[0]?.getListRow();
+            const row = expanderByName("Parent").getListRow();
             expect(row).not.toBeNull();
             expect(row?.isExpandable()).toBe(true);
         });
@@ -436,13 +432,13 @@ describe("render - ListView (tree) (6)", () => {
                 },
             ]);
 
-            await waitFor(() => expect(getChildTexts(ref.current)).toEqual(["Parent"]));
+            await waitFor(() => expect(rowTexts(ref.current)).toEqual(["Parent"]));
 
-            const row = expandableExpanders()[0]?.getListRow();
+            const row = expanderByName("Parent").getListRow();
             if (!row) throw new Error("Expected row to exist");
             await act(() => row.setExpanded(true));
 
-            await waitFor(() => expect(getChildTexts(ref.current)).toEqual(["Parent", "Child 1", "Child 2"]));
+            await waitFor(() => expect(rowTexts(ref.current)).toEqual(["Parent", "Child 1", "Child 2"]));
         });
     });
 });
@@ -459,13 +455,13 @@ describe("render - ListView (tree) (7)", () => {
             ];
 
             const { ref, rerender } = await renderListView(items, { expandedIds: [] });
-            expect(getChildTexts(ref.current)).toEqual(["Parent"]);
+            expect(rowTexts(ref.current)).toEqual(["Parent"]);
 
             await rerender(items, { expandedIds: ["parent"] });
-            await waitFor(() => expect(getChildTexts(ref.current)).toEqual(["Parent", "Child"]));
+            await waitFor(() => expect(rowTexts(ref.current)).toEqual(["Parent", "Child"]));
 
             await rerender(items, { expandedIds: [] });
-            await waitFor(() => expect(getChildTexts(ref.current)).toEqual(["Parent"]));
+            await waitFor(() => expect(rowTexts(ref.current)).toEqual(["Parent"]));
         });
     });
 });
@@ -475,31 +471,31 @@ describe("render - ListView (tree) (8)", () => {
         it("respects React declaration order on initial render", async () => {
             const { ref } = await renderListView(["C", "A", "B"]);
 
-            expect(getChildTexts(ref.current)).toEqual(["C", "A", "B"]);
+            expect(rowTexts(ref.current)).toEqual(["C", "A", "B"]);
         });
 
         it("handles complete reversal of items", async () => {
             const { ref, rerender } = await renderListView(["A", "B", "C", "D", "E"]);
-            expect(getChildTexts(ref.current)).toEqual(["A", "B", "C", "D", "E"]);
+            expect(rowTexts(ref.current)).toEqual(["A", "B", "C", "D", "E"]);
 
             await rerender(["E", "D", "C", "B", "A"]);
-            expect(getChildTexts(ref.current)).toEqual(["E", "D", "C", "B", "A"]);
+            expect(rowTexts(ref.current)).toEqual(["E", "D", "C", "B", "A"]);
         });
 
         it("handles interleaved reordering", async () => {
             const { ref, rerender } = await renderListView(["A", "B", "C", "D"]);
-            expect(getChildTexts(ref.current)).toEqual(["A", "B", "C", "D"]);
+            expect(rowTexts(ref.current)).toEqual(["A", "B", "C", "D"]);
 
             await rerender(["B", "D", "A", "C"]);
-            expect(getChildTexts(ref.current)).toEqual(["B", "D", "A", "C"]);
+            expect(rowTexts(ref.current)).toEqual(["B", "D", "A", "C"]);
         });
 
         it("handles removing and adding while reordering", async () => {
             const { ref, rerender } = await renderListView(["A", "B", "C"]);
-            expect(getChildTexts(ref.current)).toEqual(["A", "B", "C"]);
+            expect(rowTexts(ref.current)).toEqual(["A", "B", "C"]);
 
             await rerender(["D", "B", "E"]);
-            expect(getChildTexts(ref.current)).toEqual(["D", "B", "E"]);
+            expect(rowTexts(ref.current)).toEqual(["D", "B", "E"]);
         });
 
         it("handles rapid reordering", async () => {
@@ -508,7 +504,7 @@ describe("render - ListView (tree) (8)", () => {
             await rerender(["B", "C", "A"]);
             await rerender(["A", "B", "C"]);
 
-            expect(getChildTexts(ref.current)).toEqual(["A", "B", "C"]);
+            expect(rowTexts(ref.current)).toEqual(["A", "B", "C"]);
         });
     });
 });
@@ -554,16 +550,16 @@ describe("render - ListView (tree) (9)", () => {
 
             const { ref } = await renderListView(toTreeItems(categories));
 
-            expect(getChildTexts(ref.current)).toEqual(["Appearance", "Notifications", "Privacy"]);
+            expect(rowTexts(ref.current)).toEqual(["Appearance", "Notifications", "Privacy"]);
 
-            const row = expandableExpanders()[1]?.getListRow();
+            const row = expanderByName("Notifications").getListRow();
             if (!row) throw new Error("Expected row to exist");
 
             await act(() => row.setExpanded(true));
 
             await waitFor(() => {
                 expect(screen.queryAllByText("Loading...")).toHaveLength(0);
-                expect(getChildTexts(ref.current)).toEqual([
+                expect(rowTexts(ref.current)).toEqual([
                     "Appearance",
                     "Notifications",
                     "Alerts",
@@ -598,7 +594,7 @@ describe("render - ListView (tree) (10)", () => {
 
             await waitFor(() => {
                 expect(screen.queryAllByText("Loading...")).toHaveLength(0);
-                expect(getChildTexts(ref.current)).toEqual([
+                expect(rowTexts(ref.current)).toEqual([
                     "Notifications",
                     "Alerts",
                     "Notification Sounds",
@@ -681,14 +677,14 @@ describe("render - ListView (tree) (12)", () => {
 
             const { ref } = await renderListView(toTreeItems(categories));
 
-            const row = expandableExpanders()[0]?.getListRow();
+            const row = expanderByName("Appearance").getListRow();
             if (!row) throw new Error("Expected row to exist");
 
             await act(() => row.setExpanded(true));
 
             await waitFor(() => {
                 expect(screen.queryAllByText("Loading...")).toHaveLength(0);
-                expect(getChildTexts(ref.current)).toEqual([
+                expect(rowTexts(ref.current)).toEqual([
                     "Appearance",
                     "Dark Mode",
                     "Large Text",
@@ -719,16 +715,13 @@ describe("render - ListView (tree) (13)", () => {
 
             const { ref } = await renderListView(toTreeItems(categories));
 
-            const expanders = expandableExpanders();
-            expect(expanders.length).toBeGreaterThan(0);
-
-            const row = expanders[0]?.getListRow();
+            const row = expanderByName("Appearance").getListRow();
             if (!row) throw new Error("Expected row to exist");
 
             await act(() => row.setExpanded(true));
 
             await waitFor(() =>
-                expect(getChildTexts(ref.current)).toEqual([
+                expect(rowTexts(ref.current)).toEqual([
                     "Appearance",
                     "Dark Mode",
                     "Large Text",
@@ -744,10 +737,10 @@ describe("render - ListView (tree) (14) > settings tree regression (3)", () => {
     it("renders all children correctly after multiple expand/collapse cycles", async () => {
         const { ref } = await renderListView(toTreeItems(allSettingCategories));
 
-        expect(getChildTexts(ref.current)).toEqual(["Appearance", "Notifications", "Privacy", "Power", "Network"]);
+        expect(rowTexts(ref.current)).toEqual(["Appearance", "Notifications", "Privacy", "Power", "Network"]);
 
-        const expandAndVerify = async (categoryIndex: number, expectedChildren: string[]) => {
-            const row = expandableExpanders()[categoryIndex]?.getListRow();
+        const expandAndVerify = async (categoryName: string, expectedChildren: string[]) => {
+            const row = expanderByName(categoryName).getListRow();
             if (!row) throw new Error("Expected row to exist");
             await act(() => row.setExpanded(true));
 
@@ -759,28 +752,28 @@ describe("render - ListView (tree) (14) > settings tree regression (3)", () => {
             });
         };
 
-        const collapseRow = async (categoryIndex: number) => {
-            const row = expandableExpanders()[categoryIndex]?.getListRow();
+        const collapseRow = async (categoryName: string) => {
+            const row = expanderByName(categoryName).getListRow();
             if (!row) throw new Error("Expected row to exist");
             await act(() => row.setExpanded(false));
         };
 
-        await expandAndVerify(0, ["Dark Mode", "Large Text", "Enable Animations", "Transparency Effects"]);
+        await expandAndVerify("Appearance", ["Dark Mode", "Large Text", "Enable Animations", "Transparency Effects"]);
 
-        await collapseRow(0);
+        await collapseRow("Appearance");
         await waitFor(() =>
-            expect(getChildTexts(ref.current)).toEqual(["Appearance", "Notifications", "Privacy", "Power", "Network"]),
+            expect(rowTexts(ref.current)).toEqual(["Appearance", "Notifications", "Privacy", "Power", "Network"]),
         );
 
-        await expandAndVerify(0, ["Dark Mode", "Large Text", "Enable Animations", "Transparency Effects"]);
+        await expandAndVerify("Appearance", ["Dark Mode", "Large Text", "Enable Animations", "Transparency Effects"]);
 
-        await collapseRow(0);
+        await collapseRow("Appearance");
 
-        await expandAndVerify(1, ["Alerts", "Notification Sounds", "Do Not Disturb", "Show Badge Count"]);
+        await expandAndVerify("Notifications", ["Alerts", "Notification Sounds", "Do Not Disturb", "Show Badge Count"]);
 
-        await collapseRow(1);
+        await collapseRow("Notifications");
 
-        await expandAndVerify(0, ["Dark Mode", "Large Text", "Enable Animations", "Transparency Effects"]);
+        await expandAndVerify("Appearance", ["Dark Mode", "Large Text", "Enable Animations", "Transparency Effects"]);
 
         await waitFor(() => expect(screen.queryAllByText("Loading...")).toHaveLength(0));
     });
@@ -812,7 +805,7 @@ describe("render - ListView (tree) (15) > settings tree regression (4)", () => {
     it("third child does not remain stuck on Loading after expansion", async () => {
         const { ref } = await renderListView(toTreeItems(twoCategories), { estimatedItemHeight: 48 });
 
-        const row = expandableExpanders()[0]?.getListRow();
+        const row = expanderByName("Appearance").getListRow();
         if (!row) throw new Error("Expected row to exist");
 
         for (let i = 0; i < 3; i++) {
@@ -835,7 +828,7 @@ describe("render - ListView (tree) (16)", () => {
             const { ref, rerender } = await renderListView(fullItems, { expandAll: true });
 
             await waitFor(() =>
-                expect(getChildTexts(ref.current)).toEqual([
+                expect(rowTexts(ref.current)).toEqual([
                     "Alpha",
                     "Bravo",
                     "B-One",
@@ -860,7 +853,7 @@ describe("render - ListView (tree) (16)", () => {
                 { expandAll: true },
             );
 
-            await waitFor(() => expect(getChildTexts(ref.current)).toEqual(["Delta", "D-Two"]));
+            await waitFor(() => expect(rowTexts(ref.current)).toEqual(["Delta", "D-Two"]));
         });
     });
 });
@@ -882,7 +875,7 @@ describe("render - ListView (tree) (17)", () => {
                 { expandAll: true },
             );
 
-            await waitFor(() => expect(getChildTexts(ref.current)).toEqual(["Alpha", "Bravo", "B-One"]));
+            await waitFor(() => expect(rowTexts(ref.current)).toEqual(["Alpha", "Bravo", "B-One"]));
 
             await rerender(fullItems, { expandAll: true });
 
@@ -897,7 +890,7 @@ describe("render - ListView (tree) (17)", () => {
                 { expandAll: true },
             );
 
-            await waitFor(() => expect(getChildTexts(ref.current)).toEqual(["Delta", "D-Two"]));
+            await waitFor(() => expect(rowTexts(ref.current)).toEqual(["Delta", "D-Two"]));
         });
     });
 });
@@ -936,7 +929,7 @@ describe("render - ListView (tree) (18)", () => {
                 { expandAll: true, minContentHeight: 400 },
             );
 
-            await waitFor(() => expect(getChildTexts(ref.current)).toEqual(["Category 21", "Child 21-1"]));
+            await waitFor(() => expect(rowTexts(ref.current)).toEqual(["Category 21", "Child 21-1"]));
         });
     });
 });
@@ -953,7 +946,7 @@ describe("render - ListView (tree) (19) > tree filtering (4)", () => {
             minContentHeight: 600,
         });
 
-        await waitFor(() => expect(getChildTexts(ref.current)).toEqual(["Lists", "Weather"]));
+        await waitFor(() => expect(rowTexts(ref.current)).toEqual(["Lists", "Weather"]));
     });
 });
 
@@ -988,7 +981,7 @@ describe("render - ListView (tree) (20)", () => {
 
             await rerender([cat("cat-36", "Category 36", [ch("ch-36-0", "Child 36-0")])], viewport);
 
-            await waitFor(() => expect(getChildTexts(ref.current)).toEqual(["Category 36", "Child 36-0"]));
+            await waitFor(() => expect(rowTexts(ref.current)).toEqual(["Category 36", "Child 36-0"]));
         });
     });
 });
@@ -1015,9 +1008,7 @@ describe("render - ListView (tree) (21)", () => {
                 { expandAll: true },
             );
 
-            await waitFor(() =>
-                expect(getChildTexts(ref.current)).toEqual(["Alpha", "Bravo", "B-One", "Delta", "D-One"]),
-            );
+            await waitFor(() => expect(rowTexts(ref.current)).toEqual(["Alpha", "Bravo", "B-One", "Delta", "D-One"]));
 
             await rerender(
                 [
@@ -1030,7 +1021,7 @@ describe("render - ListView (tree) (21)", () => {
                 { expandAll: true },
             );
 
-            await waitFor(() => expect(getChildTexts(ref.current)).toEqual(["Delta", "D-Two"]));
+            await waitFor(() => expect(rowTexts(ref.current)).toEqual(["Delta", "D-Two"]));
         });
     });
 });
@@ -1049,7 +1040,7 @@ describe("render - ListView (tree) (22)", () => {
             const onExpandedChange = vi.fn();
             const { ref } = await renderListView(parentTree, { expandedIds: [], onExpandedChange });
 
-            const row = expandableExpanders()[0]?.getListRow();
+            const row = expanderByName("Parent").getListRow();
             if (!row) throw new Error("Expected row to exist");
             await act(() => row.setExpanded(true));
 

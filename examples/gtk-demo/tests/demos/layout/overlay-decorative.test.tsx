@@ -54,10 +54,10 @@ describe("overlayDecorativeDemo scale behavior", () => {
     it("initialises the scale at 100 with a 0..100 range and step of 1", async () => {
         await renderDemo(overlayDecorativeDemo);
         const scale = (await screen.findByName("margin-scale")) as Gtk.Scale;
+        expect(
+            await screen.findByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 100, min: 0, max: 100 } }),
+        ).toBeDefined();
         const adjustment = scale.getAdjustment();
-        expect(adjustment.getValue()).toBe(100);
-        expect(adjustment.getLower()).toBe(0);
-        expect(adjustment.getUpper()).toBe(100);
         expect(adjustment.getStepIncrement()).toBe(1);
         expect(scale.getDrawValue()).toBe(false);
         const [width] = scale.getSizeRequest();
@@ -90,12 +90,7 @@ describe("overlayDecorativeDemo scale behavior", () => {
 describe("overlayDecorativeDemo text content", () => {
     it("renders the 'Dear diary...' text inside the text view buffer", async () => {
         await renderDemo(overlayDecorativeDemo);
-        const textView = (await screen.findByName("text-view")) as Gtk.TextView;
-        const buffer = textView.getBuffer();
-        const start = buffer.getStartIter();
-        const end = buffer.getEndIter();
-        const text = buffer.getText(start, end, false);
-        expect(text).toContain("Dear");
-        expect(text).toContain("diary");
+        expect(await screen.findByDisplayValue(/Dear/)).toBeDefined();
+        expect(await screen.findByDisplayValue(/diary/)).toBeDefined();
     });
 });

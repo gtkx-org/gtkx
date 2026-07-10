@@ -1,13 +1,12 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { act, fireEvent, screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { fontFeaturesDemo } from "../../../src/demos/advanced/font-features.js";
 import { renderDemo } from "../../test-utils.js";
 
 const expandFeatures = async (): Promise<void> => {
-    const expander = (await screen.findByName("features-expander")) as Gtk.Expander;
-    await act(() => expander.setExpanded(true));
-    await fireEvent(expander, "notify::expanded");
+    const expander = await screen.findByName("features-expander");
+    await userEvent.click(expander);
 };
 
 const activateKerningFeature = async (): Promise<Gtk.Label> => {
@@ -16,7 +15,7 @@ const activateKerningFeature = async (): Promise<Gtk.Label> => {
     const kerning = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Kerning" });
     await userEvent.click(kerning);
     const settings = (await screen.findByName("settings")) as Gtk.Label;
-    await waitFor(() => expect(settings.getLabel()).toContain("kern=1"));
+    await waitFor(() => expect(settings).toHaveTextContent("kern=1"));
     return settings;
 };
 
@@ -42,7 +41,7 @@ describe("fontFeaturesDemo rendering", () => {
     it("renders the preview label with default paragraph sample", async () => {
         await renderDemo(fontFeaturesDemo);
         const label = (await screen.findByName("preview-label")) as Gtk.Label;
-        expect(label.getLabel()).toContain("Grumpy wizards");
+        expect(label).toHaveTextContent("Grumpy wizards");
     });
 
     it("renders three Slider/Entry rows for Size, Letterspacing, Line Height", async () => {
@@ -54,16 +53,14 @@ describe("fontFeaturesDemo rendering", () => {
 
     it("renders Foreground and Background color dialog buttons", async () => {
         await renderDemo(fontFeaturesDemo);
-        const colorButtons = (await screen.findAllByRole(Gtk.AccessibleRole.GROUP)).filter(
-            (w): w is Gtk.ColorDialogButton => w instanceof Gtk.ColorDialogButton,
-        );
-        expect(colorButtons).toHaveLength(2);
+        expect(await screen.findByName("foreground-color")).toBeInstanceOf(Gtk.ColorDialogButton);
+        expect(await screen.findByName("background-color")).toBeInstanceOf(Gtk.ColorDialogButton);
     });
 
     it("renders the settings label empty initially", async () => {
         await renderDemo(fontFeaturesDemo);
         const settings = (await screen.findByName("settings")) as Gtk.Label;
-        expect(settings.getLabel()).toBe("");
+        expect(settings).not.toHaveTextContent();
     });
 });
 
@@ -72,15 +69,14 @@ describe("fontFeaturesDemo view mode buttons", () => {
         await renderDemo(fontFeaturesDemo);
         const plain = (await screen.findByName("plain_toggle")) as Gtk.ToggleButton;
         const waterfall = (await screen.findByName("waterfall_toggle")) as Gtk.ToggleButton;
-        expect(plain.getActive()).toBe(true);
-        expect(waterfall.getActive()).toBe(false);
+        expect(plain).toBePressed();
+        expect(waterfall).not.toBePressed();
     });
 
     it("switches to waterfall mode and renders multiple sized labels", async () => {
         await renderDemo(fontFeaturesDemo);
         const waterfall = (await screen.findByName("waterfall_toggle")) as Gtk.ToggleButton;
-        await act(() => waterfall.setActive(true));
-        await fireEvent(waterfall, "toggled");
+        await userEvent.click(waterfall);
         const waterfallLabels = await screen.findAllByName("waterfall-label");
         expect(waterfallLabels.length).toBeGreaterThanOrEqual(15);
     });
@@ -89,18 +85,15 @@ describe("fontFeaturesDemo view mode buttons", () => {
         await renderDemo(fontFeaturesDemo);
         const plain = (await screen.findByName("plain_toggle")) as Gtk.ToggleButton;
         const waterfall = (await screen.findByName("waterfall_toggle")) as Gtk.ToggleButton;
-        await act(() => waterfall.setActive(true));
-        await fireEvent(waterfall, "toggled");
-        await act(() => plain.setActive(true));
-        await fireEvent(plain, "toggled");
-        expect(plain.getActive()).toBe(true);
+        await userEvent.click(waterfall);
+        await userEvent.click(plain);
+        expect(plain).toBePressed();
     });
 
     it("switches to edit mode and shows the TextView in the stack", async () => {
         await renderDemo(fontFeaturesDemo);
         const editBtn = (await screen.findByName("edit_toggle")) as Gtk.ToggleButton;
-        await act(() => editBtn.setActive(true));
-        await fireEvent(editBtn, "toggled");
+        await userEvent.click(editBtn);
         const stack = (await screen.findByName("stack")) as Gtk.Stack;
         expect(stack.getVisibleChildName()).toBe("entry");
     });
@@ -112,18 +105,15 @@ describe("fontFeaturesDemo sample buttons", () => {
         const alphabetBtn = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Alphabet" })) as Gtk.Button;
         await userEvent.click(alphabetBtn);
         const label = (await screen.findByName("preview-label")) as Gtk.Label;
-        expect(label.getLabel()).toMatch(/[A-Z]/);
+        expect(label).toHaveTextContent(/[A-Z]/);
     });
 
     it("cycles through paragraph samples on click", async () => {
         await renderDemo(fontFeaturesDemo);
         const paragraphBtn = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Paragraph" })) as Gtk.Button;
-        const before = ((await screen.findByName("preview-label")) as Gtk.Label).getLabel();
+        await screen.findByText(/Grumpy wizards/);
         await userEvent.click(paragraphBtn);
-        await waitFor(() => {
-            const after = ((screen.queryByName("preview-label") as Gtk.Label | null) ?? null)?.getLabel() ?? "";
-            expect(after).not.toBe(before);
-        });
+        expect(screen.queryByText(/Grumpy wizards/)).toBeNull();
     });
 });
 
@@ -138,7 +128,7 @@ describe("fontFeaturesDemo feature toggling", () => {
         const liningFigures = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Lining Figures" });
         await userEvent.click(liningFigures);
         const settings = (await screen.findByName("settings")) as Gtk.Label;
-        await waitFor(() => expect(settings.getLabel()).toContain("lnum=1"));
+        await waitFor(() => expect(settings).toHaveTextContent("lnum=1"));
     });
 });
 
@@ -158,7 +148,7 @@ describe("fontFeaturesDemo titlebar", () => {
         const resetButton = (await screen.findByName("reset")) as Gtk.Button;
         await userEvent.click(resetButton);
 
-        await waitFor(() => expect(settings.getLabel()).toBe(""));
+        await waitFor(() => expect(settings).not.toHaveTextContent());
     });
 });
 
@@ -168,20 +158,19 @@ describe("fontFeaturesDemo size entry", () => {
         const sizeEntry = (await screen.findByName("size_entry")) as Gtk.Entry;
         await userEvent.clear(sizeEntry);
         await userEvent.type(sizeEntry, "24");
-        await fireEvent(sizeEntry, "activate");
-        expect(sizeEntry.getText()).toBe("24");
+        await userEvent.keyboard(sizeEntry, "{Enter}");
+        expect(sizeEntry).toHaveDisplayValue("24");
     });
 
     it("ignores out-of-range size values without crashing the preview", async () => {
         await renderDemo(fontFeaturesDemo);
         const sizeEntry = (await screen.findByName("size_entry")) as Gtk.Entry;
-        const previousText = sizeEntry.getText();
         await userEvent.clear(sizeEntry);
         await userEvent.type(sizeEntry, "9999");
-        await fireEvent(sizeEntry, "activate");
+        await userEvent.keyboard(sizeEntry, "{Enter}");
         const preview = (await screen.findByName("preview-label")) as Gtk.Label;
-        expect(preview.getLabel().length).toBeGreaterThan(0);
-        expect(sizeEntry.getText()).not.toBe(previousText);
+        expect(preview).toHaveTextContent();
+        expect(sizeEntry).toHaveDisplayValue("9999");
     });
 });
 
@@ -191,8 +180,8 @@ describe("fontFeaturesDemo letterspacing entry", () => {
         const letterspacingEntry = (await screen.findByName("letterspacing_entry")) as Gtk.Entry;
         await userEvent.clear(letterspacingEntry);
         await userEvent.type(letterspacingEntry, "512");
-        await fireEvent(letterspacingEntry, "activate");
-        expect(letterspacingEntry.getText()).toBe("512");
+        await userEvent.keyboard(letterspacingEntry, "{Enter}");
+        expect(letterspacingEntry).toHaveDisplayValue("512");
     });
 });
 
@@ -202,8 +191,8 @@ describe("fontFeaturesDemo line-height entry", () => {
         const lineHeightEntry = (await screen.findByName("line_height_entry")) as Gtk.Entry;
         await userEvent.clear(lineHeightEntry);
         await userEvent.type(lineHeightEntry, "1.5");
-        await fireEvent(lineHeightEntry, "activate");
-        expect(lineHeightEntry.getText()).toBe("1.5");
+        await userEvent.keyboard(lineHeightEntry, "{Enter}");
+        expect(lineHeightEntry).toHaveDisplayValue("1.5");
     });
 
     it("ignores invalid line-height values", async () => {
@@ -211,8 +200,8 @@ describe("fontFeaturesDemo line-height entry", () => {
         const lineHeightEntry = (await screen.findByName("line_height_entry")) as Gtk.Entry;
         await userEvent.clear(lineHeightEntry);
         await userEvent.type(lineHeightEntry, "0.1");
-        await fireEvent(lineHeightEntry, "activate");
-        expect(lineHeightEntry.getText()).toBe("0.1");
+        await userEvent.keyboard(lineHeightEntry, "{Enter}");
+        expect(lineHeightEntry).toHaveDisplayValue("0.1");
     });
 });
 

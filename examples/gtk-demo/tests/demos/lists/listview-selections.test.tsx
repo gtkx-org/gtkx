@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { act, screen, userEvent, waitFor } from "@gtkx/testing";
+import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { listviewSelectionsDemo } from "../../../src/demos/lists/listview-selections.js";
 import { renderDemo } from "../../test-utils.js";
@@ -45,17 +45,12 @@ describe("listviewSelectionsDemo layout", () => {
 describe("listviewSelectionsDemo controls", () => {
     it("renders the Enable Search check button initially inactive", async () => {
         await renderDemo(listviewSelectionsDemo);
-        const check = (await screen.findByName("enable-search-check")) as Gtk.CheckButton;
-        expect(check).toBeInstanceOf(Gtk.CheckButton);
-        expect(check.getLabel()).toBe("Enable search");
-        expect(check.getActive()).toBe(false);
+        await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Enable search", checked: false });
     });
 
     it("renders a GtkSpinButton synced with the font index", async () => {
         await renderDemo(listviewSelectionsDemo);
-        const spin = (await screen.findByName("font-spin")) as Gtk.SpinButton;
-        expect(spin).toBeInstanceOf(Gtk.SpinButton);
-        expect(spin.getValue()).toBe(0);
+        await screen.findByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 0 } });
     });
 
     it("toggles enable-search on the fonts dropdown when the check button is toggled", async () => {
@@ -70,7 +65,7 @@ describe("listviewSelectionsDemo controls", () => {
         await renderDemo(listviewSelectionsDemo);
         const entry = (await screen.findByName("words-entry")) as Gtk.Entry;
         await userEvent.type(entry, "GNOME");
-        expect(entry.getText()).toBe("GNOME");
+        expect(entry).toHaveDisplayValue("GNOME");
     });
 
     it("clears the suggestion entry when cleared", async () => {
@@ -78,14 +73,15 @@ describe("listviewSelectionsDemo controls", () => {
         const entry = (await screen.findByName("words-entry")) as Gtk.Entry;
         await userEvent.type(entry, "TEXT");
         await userEvent.clear(entry);
-        expect(entry.getText()).toBe("");
+        expect(entry).toHaveDisplayValue("");
     });
 
     it("toggles the font-spin value when the value changes (rounds and clamps)", async () => {
         await renderDemo(listviewSelectionsDemo);
         const spin = (await screen.findByName("font-spin")) as Gtk.SpinButton;
-        await act(() => spin.setValue(2));
-        await waitFor(() => expect(spin.getValue()).toBe(2));
+        spin.grabFocus();
+        await userEvent.keyboard(spin, "{ArrowUp}{ArrowUp}");
+        await screen.findByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 2 } });
     });
 });
 
@@ -128,14 +124,14 @@ describe("listviewSelectionsDemo suggestion popover", () => {
         const entry = (await screen.findByName("words-entry")) as Gtk.Entry;
         await userEvent.type(entry, "ttt");
         await userEvent.clear(entry);
-        expect(entry.getText()).toBe("");
+        expect(entry).toHaveDisplayValue("");
     });
 
     it("ignores Down arrow keypress when there are no current suggestions", async () => {
         await renderDemo(listviewSelectionsDemo);
         const entry = (await screen.findByName("words-entry")) as Gtk.Entry;
         await userEvent.keyboard(entry, "{ArrowDown}");
-        expect(entry.getText()).toBe("");
+        expect(entry).toHaveDisplayValue("");
     });
 });
 
@@ -145,14 +141,16 @@ describe("listviewSelectionsDemo font spin button", () => {
         const spin = (await screen.findByName("font-spin")) as Gtk.SpinButton;
         const fonts = (await screen.findByName("fonts-dropdown")) as Gtk.DropDown;
         const initialSelected = fonts.getSelected();
-        await act(() => spin.setValue(initialSelected + 1));
-        await waitFor(() => expect(spin.getValue()).toBe(initialSelected + 1));
+        spin.grabFocus();
+        await userEvent.keyboard(spin, "{ArrowUp}");
+        await screen.findByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: initialSelected + 1 } });
     });
 
     it("ignores spin button values out of range", async () => {
         await renderDemo(listviewSelectionsDemo);
         const spin = (await screen.findByName("font-spin")) as Gtk.SpinButton;
-        await act(() => spin.setValue(-1));
-        expect(spin.getValue()).toBe(-1);
+        spin.grabFocus();
+        await userEvent.keyboard(spin, "{ArrowDown}");
+        await screen.findByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: -1 } });
     });
 });

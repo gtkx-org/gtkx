@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { act, screen, userEvent, waitFor } from "@gtkx/testing";
+import { act, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { dndDemo } from "../../../src/demos/gestures/dnd.js";
 import { makeRgbaValue, makeStringValue, renderDemo } from "../../test-utils.js";
@@ -68,9 +68,9 @@ describe("dndDemo initial canvas", () => {
         await renderDemo(dndDemo);
         const canvas = await findCanvas();
         expect(canvas).toBeInstanceOf(Gtk.Fixed);
-        expect((await findItemLabel("1")).getLabel()).toBe("Item 1");
-        expect((await findItemLabel("2")).getLabel()).toBe("Item 2");
-        expect((await findItemLabel("3")).getLabel()).toBe("Item 3");
+        expect(await screen.findByText("Item 1")).toBeInstanceOf(Gtk.Widget);
+        expect(await screen.findByText("Item 2")).toBeInstanceOf(Gtk.Widget);
+        expect(await screen.findByText("Item 3")).toBeInstanceOf(Gtk.Widget);
     });
 
     it("attaches a hidden context-menu popover at startup", async () => {
@@ -87,12 +87,7 @@ describe("dndDemo canvas drop", () => {
         const canvas = await findCanvas();
         const item1 = await findItemLabel("1");
         const [beforeX, beforeY] = canvas.getChildPosition(item1) as [number, number];
-        const dropTarget = findController(canvas, Gtk.DropTarget);
-        expect(dropTarget).toBeInstanceOf(Gtk.DropTarget);
-        if (!dropTarget) return;
-        await act(() => {
-            dropTarget.emit("drop", makeStringValue("1"), 250, 250);
-        });
+        await userEvent.drop(canvas, makeStringValue("1"), { x: 250, y: 250 });
         await waitFor(() => {
             const [afterX, afterY] = canvas.getChildPosition(item1) as [number, number];
             expect([afterX, afterY]).not.toEqual([beforeX, beforeY]);
@@ -104,12 +99,7 @@ describe("dndDemo item styling", () => {
     it("applies a CSS class to an item when a class name is dropped on it", async () => {
         await renderDemo(dndDemo);
         const item1 = await findItemLabel("1");
-        const dropTarget = findController(item1, Gtk.DropTarget);
-        expect(dropTarget).toBeInstanceOf(Gtk.DropTarget);
-        if (!dropTarget) return;
-        await act(() => {
-            dropTarget.emit("drop", makeStringValue("my-custom-class"), 0, 0);
-        });
+        await userEvent.drop(item1, makeStringValue("my-custom-class"));
         await waitFor(() => {
             expect(item1.getCssClasses()).toEqual(expect.arrayContaining(["my-custom-class"]));
         });
@@ -119,12 +109,7 @@ describe("dndDemo item styling", () => {
         await renderDemo(dndDemo);
         const item1 = await findItemLabel("1");
         const beforeClasses = new Set(item1.getCssClasses());
-        const dropTarget = findController(item1, Gtk.DropTarget);
-        expect(dropTarget).toBeInstanceOf(Gtk.DropTarget);
-        if (!dropTarget) return;
-        await act(() => {
-            dropTarget.emit("drop", makeRgbaValue(0.1, 0.2, 0.3, 1), 0, 0);
-        });
+        await userEvent.drop(item1, makeRgbaValue(0.1, 0.2, 0.3, 1));
         await waitFor(() => {
             const afterClasses = new Set(item1.getCssClasses());
             const added = [...afterClasses].filter((c) => !beforeClasses.has(c));
@@ -136,18 +121,15 @@ describe("dndDemo item styling", () => {
 describe("dndDemo inline editing", () => {
     it("opens an inline entry for the item when the item is clicked", async () => {
         const entry = await openInlineEntryForItem1();
-        expect(entry.getText()).toBe("Item 1");
+        expect(entry).toHaveDisplayValue("Item 1");
     });
 
     it("updates the item label as the user types into the inline entry", async () => {
         const entry = await openInlineEntryForItem1();
-        const item1 = await findItemLabel("1");
         await userEvent.clear(entry);
         await userEvent.type(entry, "Renamed");
 
-        await waitFor(() => {
-            expect(item1.getLabel()).toBe("Renamed");
-        });
+        expect(await screen.findByText("Renamed")).toBeInstanceOf(Gtk.Widget);
     });
 
     it("closes the inline entry when Enter is pressed", async () => {
@@ -164,7 +146,7 @@ describe("dndDemo item rotation", () => {
         await renderDemo(dndDemo);
         const item1 = await findItemLabel("1");
         await userEvent.rotate(item1, 0.5, 0.5);
-        expect(item1.getLabel()).toBe("Item 1");
+        expect(screen.getByText("Item 1")).toBeInstanceOf(Gtk.Widget);
     });
 
     it("commits the rotation when the rotate gesture ends", async () => {
@@ -177,7 +159,7 @@ describe("dndDemo item rotation", () => {
             rotate.emit("angle-changed", 0.5, 0.5);
             rotate.emit("end", null);
         });
-        expect(item1.getLabel()).toBe("Item 1");
+        expect(screen.getByText("Item 1")).toBeInstanceOf(Gtk.Widget);
     });
 });
 
@@ -201,13 +183,13 @@ describe("dndDemo context menu", () => {
     it("adds a new item via the context menu's New button", async () => {
         await renderDemo(dndDemo);
         const canvas = await findCanvas();
-        const initialItemCount = canvas.observeChildren().getNItems();
+        const initialItemCount = within(canvas).getAllByText(/^Item /).length;
         await triggerContextMenu(canvas, 50, 50);
         const newButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "New" })) as Gtk.Button;
         expect(newButton).toBeInstanceOf(Gtk.Button);
         await userEvent.click(newButton);
         await waitFor(() => {
-            expect(canvas.observeChildren().getNItems()).toBeGreaterThan(initialItemCount);
+            expect(within(canvas).getAllByText(/^Item /).length).toBeGreaterThan(initialItemCount);
         });
     });
 
@@ -279,6 +261,6 @@ describe("dndDemo item drag-source side effects", () => {
             dragSource.emit("drag-begin", null);
             dragSource.emit("drag-end", null, false);
         });
-        expect(item1.getLabel()).toBe("Item 1");
+        expect(screen.getByText("Item 1")).toBeInstanceOf(Gtk.Widget);
     });
 });

@@ -30,10 +30,12 @@ describe("cursorsDemo list structure", () => {
     it("groups the cursor rows into six non-selectable list boxes", async () => {
         await renderDemo(cursorsDemo);
         const listBoxes = await screen.findAllByRole(Gtk.AccessibleRole.LIST);
-        const cursorListBoxes = listBoxes.filter((widget) => widget instanceof Gtk.ListBox);
-        expect(cursorListBoxes).toHaveLength(6);
-        for (const lb of cursorListBoxes) {
-            expect(lb.getSelectionMode()).toBe(Gtk.SelectionMode.NONE);
+        expect(listBoxes).toHaveLength(6);
+        for (const lb of listBoxes) {
+            expect(lb).toBeInstanceOf(Gtk.ListBox);
+            if (lb instanceof Gtk.ListBox) {
+                expect(lb.getSelectionMode()).toBe(Gtk.SelectionMode.NONE);
+            }
         }
     });
 
@@ -61,9 +63,8 @@ describe("cursorsDemo previews", () => {
     it("renders 38 preview images, one per cursor name", async () => {
         await renderDemo(cursorsDemo);
         const images = await screen.findAllByRole(Gtk.AccessibleRole.IMG);
-        const previews = images.filter((widget) => widget instanceof Gtk.Image);
-        expect(previews).toHaveLength(38);
-        for (const preview of previews) {
+        expect(images).toHaveLength(38);
+        for (const preview of images) {
             expect((preview as Gtk.Image).getPaintable()).not.toBeNull();
         }
     });

@@ -59,9 +59,8 @@ describe("listviewWeatherDemo", () => {
     it("renders hour and temperature labels in the materialized cells", async () => {
         await renderDemo(listviewWeatherDemo);
         const lv = (await screen.findByName("list-view")) as Gtk.ListView;
-        const labels = within(lv).getAllByRole(Gtk.AccessibleRole.LABEL) as Gtk.Label[];
-        const hourLabels = labels.filter((label) => /^\d{2}:\d{2}$/.test(label.getLabel()));
-        const tempLabels = labels.filter((label) => /^-?\d+°$/.test(label.getLabel()));
+        const hourLabels = within(lv).getAllByText(/^\d{2}:\d{2}$/);
+        const tempLabels = within(lv).getAllByText(/^-?\d+°$/);
         expect(hourLabels.length, "expected at least one HH:MM label").toBeGreaterThan(0);
         expect(tempLabels.length, "expected at least one temperature label").toBeGreaterThan(0);
     });

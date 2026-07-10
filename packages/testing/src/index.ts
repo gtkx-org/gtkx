@@ -5,6 +5,8 @@ export type { BoundQueries, RenderResult, Screen } from "./bound-queries.js";
 export type { Config, ConfigFn } from "./config.js";
 export { configure, getConfig } from "./config.js";
 export { fireEvent } from "./fire-event.js";
+export type { TextExpectation } from "./matchers.js";
+export { matchers, registerMatchers } from "./matchers.js";
 export type { PrettyWidgetOptions } from "./pretty-widget.js";
 export { logWidget, prettyWidget } from "./pretty-widget.js";
 export {

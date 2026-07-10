@@ -17,10 +17,9 @@ describe("framesDemo", () => {
         await renderDemo(framesDemo);
         const header = (await screen.findByName("frames-header")) as Gtk.HeaderBar;
         expect(header).toBeInstanceOf(Gtk.HeaderBar);
-        const fpsLabel = (await within(header).findByRole(Gtk.AccessibleRole.LABEL, {
+        await within(header).findByRole(Gtk.AccessibleRole.LABEL, {
             name: /^[0-9]+\.[0-9]{2} fps$/,
-        })) as Gtk.Label;
-        expect(fpsLabel.getLabel()).toMatch(/^[0-9]+\.[0-9]{2} fps$/);
+        });
     });
 
     it("uses tabular-numbers Pango attributes on the fps label", async () => {

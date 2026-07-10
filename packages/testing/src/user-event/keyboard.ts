@@ -147,7 +147,7 @@ const activateMatchingShortcut = (
         if (!matchesTrigger(shortcut.getTrigger(), keyval, modifiers)) continue;
         const action = shortcut.getAction();
         if (action instanceof Gtk.SignalAction && action.getSignalName() === "move-focus") continue;
-        if (action?.activate(0 as Gtk.ShortcutActionFlags, widget, null)) return true;
+        if (action?.activate(0 as Gtk.ShortcutActionFlags, widget, shortcut.getArguments())) return true;
     }
     return false;
 };

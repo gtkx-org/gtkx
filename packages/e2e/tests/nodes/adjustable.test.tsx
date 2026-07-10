@@ -1,6 +1,6 @@
-import type * as Gtk from "@gtkx/gi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkAdjustment, GtkScale } from "@gtkx/jsx/gtk";
-import { render, waitFor } from "@gtkx/testing";
+import { render, screen, waitFor } from "@gtkx/testing";
 import { type ComponentProps, createRef, type RefObject } from "react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -12,7 +12,7 @@ const ScaleWithAdjustment = ({
     onValueChanged,
 }: {
     config: AdjustmentConfig;
-    scaleRef: RefObject<Gtk.Scale | null>;
+    scaleRef?: RefObject<Gtk.Scale | null>;
     onValueChanged?: (value: number) => void;
 }) => (
     <GtkScale
@@ -43,15 +43,18 @@ describe("render - adjustment element (1)", () => {
     });
 
     it("sets initial value", async () => {
-        await expectScaleAdjustment({ value: 75, lower: 0, upper: 100 }, (adjustment) => adjustment?.getValue(), 75);
+        await render(<ScaleWithAdjustment config={{ value: 75, lower: 0, upper: 100 }} />);
+        expect(screen.getByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 75, min: 0, max: 100 } })).toBeTruthy();
     });
 
     it("sets lower bound", async () => {
-        await expectScaleAdjustment({ value: 50, lower: 10, upper: 100 }, (adjustment) => adjustment?.getLower(), 10);
+        await render(<ScaleWithAdjustment config={{ value: 50, lower: 10, upper: 100 }} />);
+        expect(screen.getByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 50, min: 10, max: 100 } })).toBeTruthy();
     });
 
     it("sets upper bound", async () => {
-        await expectScaleAdjustment({ value: 50, lower: 0, upper: 200 }, (adjustment) => adjustment?.getUpper(), 200);
+        await render(<ScaleWithAdjustment config={{ value: 50, lower: 0, upper: 200 }} />);
+        expect(screen.getByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 50, min: 0, max: 200 } })).toBeTruthy();
     });
 
     it("sets step increment", async () => {
@@ -85,10 +88,8 @@ describe("render - adjustment element (2)", () => {
 
         await render(<ScaleWithAdjustment config={{}} scaleRef={ref} />);
 
+        expect(screen.getByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 0, min: 0, max: 0 } })).toBeTruthy();
         const adjustment = ref.current?.getAdjustment();
-        expect(adjustment?.getValue()).toBe(0);
-        expect(adjustment?.getLower()).toBe(0);
-        expect(adjustment?.getUpper()).toBe(0);
         expect(adjustment?.getStepIncrement()).toBe(0);
         expect(adjustment?.getPageIncrement()).toBe(0);
         expect(adjustment?.getPageSize()).toBe(0);
@@ -103,12 +104,11 @@ describe("render - adjustment element (3)", () => {
             <ScaleWithAdjustment config={{ value: 25, lower: 0, upper: 100 }} scaleRef={ref} />,
         );
         const adjustment = ref.current?.getAdjustment();
-        expect(adjustment?.getValue()).toBe(25);
+        expect(screen.getByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 25 } })).toBeTruthy();
 
         await rerender(<ScaleWithAdjustment config={{ value: 75, lower: 0, upper: 200 }} scaleRef={ref} />);
         expect(ref.current?.getAdjustment()).toBe(adjustment);
-        expect(adjustment?.getValue()).toBe(75);
-        expect(adjustment?.getUpper()).toBe(200);
+        expect(screen.getByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 75, max: 200 } })).toBeTruthy();
     });
 
     it("reflects values driven through the returned adjustment", async () => {
@@ -119,8 +119,7 @@ describe("render - adjustment element (3)", () => {
         adjustment?.setUpper(200);
         adjustment?.setValue(80);
 
-        expect(adjustment?.getUpper()).toBe(200);
-        expect(adjustment?.getValue()).toBe(80);
+        expect(screen.getByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 80, max: 200 } })).toBeTruthy();
     });
 });
 

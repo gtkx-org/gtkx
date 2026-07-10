@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { fireEvent, screen, waitFor } from "@gtkx/testing";
+import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { listviewUcdDemo } from "../../../src/demos/lists/listview-ucd.js";
 import { renderDemo } from "../../test-utils.js";
@@ -29,25 +29,18 @@ describe("listviewUcdDemo column view", () => {
 
     it("declares the six expected columns", async () => {
         await renderDemo(listviewUcdDemo);
-        const cv = (await screen.findByName("column-view")) as Gtk.ColumnView;
-        const cols = cv.getColumns();
-        const titles: string[] = [];
-        for (let i = 0; i < cols.getNItems(); i++) {
-            const c = cols.getItem(i);
-            if (c instanceof Gtk.ColumnViewColumn) {
-                const t = c.getTitle();
-                if (t) titles.push(t);
-            }
-        }
-        expect(titles).toEqual(["Codepoint", "Char", "Name", "Type", "Break Type", "Combining Class"]);
+        const headers = await screen.findAllByRole(Gtk.AccessibleRole.COLUMN_HEADER);
+        const expectedTitles = ["Codepoint", "Char", "Name", "Type", "Break Type", "Combining Class"];
+        expect(headers).toHaveLength(expectedTitles.length);
+        expectedTitles.forEach((title, i) => {
+            expect(headers[i]).toHaveAccessibleName(title);
+        });
     });
 
     it("populates the column view with the parsed unicode data", async () => {
         await renderDemo(listviewUcdDemo);
-        const cv = (await screen.findByName("column-view")) as Gtk.ColumnView;
-        const model = cv.getModel();
-        expect(model).not.toBeNull();
-        expect((model as Gtk.SelectionModel).getNItems()).toBeGreaterThan(0);
+        const rows = await screen.findAllByRole(Gtk.AccessibleRole.ROW);
+        expect(rows.length).toBeGreaterThan(0);
     });
 });
 
@@ -56,8 +49,9 @@ describe("listviewUcdDemo selection", () => {
         await renderDemo(listviewUcdDemo);
         const cv = (await screen.findByName("column-view")) as Gtk.ColumnView;
         const preview = (await screen.findByName("selected-char")) as Gtk.Label;
-        expect(preview.getLabel()).toBe("");
-        await fireEvent(cv, "activate", 0);
-        await waitFor(() => expect(preview.getLabel().length).toBeGreaterThan(0));
+        expect(preview).not.toHaveTextContent();
+        cv.grabFocus();
+        await userEvent.keyboard(cv, "{ArrowDown}{Enter}");
+        await waitFor(() => expect(preview).toHaveTextContent());
     });
 });

@@ -19,10 +19,8 @@ describe("listviewMinesweeperDemo metadata", () => {
 describe("listviewMinesweeperDemo rendering", () => {
     it("renders the New Game button and the grid view", async () => {
         await renderDemo(listviewMinesweeperDemo);
-        const newGameButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "New Game" })) as Gtk.Button;
-        expect(newGameButton).toBeInstanceOf(Gtk.Button);
+        await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "New Game" });
         const gridView = (await screen.findByName("grid-view")) as Gtk.GridView;
-        expect(gridView).toBeInstanceOf(Gtk.GridView);
         expect(gridView.getMinColumns()).toBe(8);
         expect(gridView.getMaxColumns()).toBe(8);
         expect(gridView.getSingleClickActivate()).toBe(true);
@@ -60,9 +58,8 @@ describe("listviewMinesweeperDemo gameplay", () => {
             await fireEvent(gridView, "activate", i);
         }
         expect(gridView.getModel()?.getNItems()).toBe(64);
-        const header = (await screen.findByName("minesweeper-header")) as Gtk.HeaderBar;
+        await screen.findByName("minesweeper-header");
         const newGame = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "New Game" })) as Gtk.Button;
-        expect(header).toBeInstanceOf(Gtk.HeaderBar);
         expect(newGame.getSensitive()).toBe(true);
     });
 });

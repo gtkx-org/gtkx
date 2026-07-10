@@ -5,7 +5,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import * as GtkSource from "@gtkx/gi/gtksource";
 import { GtkBox, GtkLabel, GtkSpinButton, GtkText } from "@gtkx/jsx/gtk";
 import { GtkSourceView } from "@gtkx/jsx/gtksource";
-import { act, render, waitFor } from "@gtkx/testing";
+import { act, render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { type ComponentProps, createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -21,7 +21,8 @@ const renderSpinButton = async (onInput?: ComponentProps<typeof GtkSpinButton>["
 };
 
 const setTextAndUpdate = async (spin: Gtk.SpinButton, text: string): Promise<void> => {
-    await act(() => spin.setText(text));
+    await userEvent.clear(spin);
+    await userEvent.type(spin, text);
     await act(() => spin.update());
 };
 
@@ -61,7 +62,7 @@ describe("signal out-parameters - GtkSpinButton::input (pure out)", () => {
 
         await setTextAndUpdate(spin, "value: 042");
 
-        expect(spin.getValue()).toBe(42);
+        await screen.findByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 42 } });
     });
 
     it("falls back to GTK's default parsing when the handler returns the not-handled primary", async () => {
@@ -69,7 +70,7 @@ describe("signal out-parameters - GtkSpinButton::input (pure out)", () => {
 
         await setTextAndUpdate(spin, "55");
 
-        expect(spin.getValue()).toBe(55);
+        await screen.findByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 55 } });
     });
 
     it("round-trips the tuple out-value through a direct FFI connect", async () => {
@@ -78,7 +79,7 @@ describe("signal out-parameters - GtkSpinButton::input (pure out)", () => {
 
         await setTextAndUpdate(spin, "anything");
 
-        expect(spin.getValue()).toBe(256);
+        await screen.findByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 256 } });
     });
 });
 
@@ -86,7 +87,7 @@ describe("signal inout-parameters - GtkEditable::insert-text", () => {
     it("seeds the handler with the incoming position read from the inout pointer", async () => {
         const textRef = createRef<Gtk.Text>();
 
-        await render(<GtkText ref={textRef} />);
+        await render(<GtkText ref={textRef} accessibleRole={Gtk.AccessibleRole.TEXT_BOX} />);
 
         const text = textRef.current as Gtk.Text;
         const seenPositions: number[] = [];
@@ -98,13 +99,13 @@ describe("signal inout-parameters - GtkEditable::insert-text", () => {
         await act(() => text.insertText("abc", 3, 0));
 
         expect(seenPositions[0]).toBe(0);
-        expect(text.getText()).toBe("abc");
+        expect(screen.getByDisplayValue("abc")).toBeTruthy();
     });
 
     it("writes the handler's returned position back so the default insertion honors it", async () => {
         const textRef = createRef<Gtk.Text>();
 
-        await render(<GtkText ref={textRef} />);
+        await render(<GtkText ref={textRef} accessibleRole={Gtk.AccessibleRole.TEXT_BOX} />);
 
         const text = textRef.current as Gtk.Text;
         await act(() => text.insertText("XXXX", 4, 0));
@@ -112,7 +113,7 @@ describe("signal inout-parameters - GtkEditable::insert-text", () => {
 
         await act(() => text.insertText("Y", 1, 4));
 
-        expect(text.getText()).toBe("XYXXX");
+        expect(screen.getByDisplayValue("XYXXX")).toBeTruthy();
     });
 });
 
@@ -123,12 +124,14 @@ describe("signal out-parameters - GtkOverlay::get-child-position (caller-allocat
         await render(
             <Overlay ref={overlayRef} widthRequest={200} heightRequest={200}>
                 <GtkLabel label="Main Content" />
-                <Overlay.Child>{(ref) => <GtkBox ref={ref} widthRequest={40} heightRequest={20} />}</Overlay.Child>
+                <Overlay.Child>
+                    {(ref) => <GtkBox ref={ref} name="overlay-child" widthRequest={40} heightRequest={20} />}
+                </Overlay.Child>
             </Overlay>,
         );
 
         const overlay = overlayRef.current as Gtk.Overlay;
-        const child = overlay.getLastChild() as Gtk.Widget;
+        const child = screen.getByName("overlay-child");
 
         const handleGetChildPosition = vi.fn((_widget: Gtk.Widget, allocation: Gdk.Rectangle) => {
             expect(allocation).toBeInstanceOf(Gdk.Rectangle);
@@ -167,7 +170,9 @@ describe("signal emit() - caller-allocated out-parameter", () => {
         await render(
             <Overlay ref={overlayRef} widthRequest={200} heightRequest={200}>
                 <GtkLabel label="Main" />
-                <Overlay.Child>{(ref) => <GtkBox ref={ref} widthRequest={40} heightRequest={20} />}</Overlay.Child>
+                <Overlay.Child>
+                    {(ref) => <GtkBox ref={ref} name="overlay-child" widthRequest={40} heightRequest={20} />}
+                </Overlay.Child>
             </Overlay>,
         );
 
@@ -177,7 +182,7 @@ describe("signal emit() - caller-allocated out-parameter", () => {
             expect(overlay.getWidth()).toBeGreaterThan(0);
         });
 
-        const child = overlay.getLastChild() as Gtk.Widget;
+        const child = screen.getByName("overlay-child");
         const [handled, allocation] = overlay.emit("get-child-position", child);
 
         expect(handled).toBe(true);

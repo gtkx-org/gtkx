@@ -20,10 +20,9 @@ describe("scaleDemo", () => {
         await screen.findByText("Discrete", { exact: false });
         const scales = await screen.findAllByRole(Gtk.AccessibleRole.SLIDER);
         expect(scales).toHaveLength(3);
+        expect(screen.getAllByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 2, max: 4 } })).toHaveLength(3);
         for (const scale of scales as Gtk.Scale[]) {
             expect(scale.getDrawValue()).toBe(false);
-            expect(scale.getValue()).toBe(2);
-            expect(scale.getAdjustment().getUpper()).toBe(4);
             expect(scale.getAdjustment().getStepIncrement()).toBeCloseTo(0.1);
         }
     });
@@ -41,17 +40,14 @@ describe("scaleDemo", () => {
         const scales = (await screen.findAllByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale[];
         const plain = scales[0] as Gtk.Scale;
         await act(() => plain.getAdjustment().setValue(3.5));
-        await waitFor(() => expect(plain.getValue()).toBeCloseTo(3.5));
+        await waitFor(() => expect(screen.getByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 3.5 } })).toBeTruthy());
     });
 
     it("publishes integer-spaced marks on the Marks and Discrete rows", async () => {
         await renderDemo(scaleDemo);
         const scales = (await screen.findAllByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale[];
-        const [, marks, discrete] = scales;
-        for (const scale of [marks, discrete]) {
-            expect(scale?.getAdjustment().getLower()).toBe(0);
-            expect(scale?.getAdjustment().getUpper()).toBe(4);
-        }
+        const [, , discrete] = scales;
+        expect(screen.getAllByRole(Gtk.AccessibleRole.SLIDER, { value: { min: 0, max: 4 } })).toHaveLength(3);
         expect(discrete?.getRoundDigits()).toBe(0);
     });
 });

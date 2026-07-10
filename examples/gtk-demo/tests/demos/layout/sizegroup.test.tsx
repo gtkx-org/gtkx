@@ -21,10 +21,8 @@ describe("sizegroupDemo metadata", () => {
 describe("sizegroupDemo frames and labels", () => {
     it("renders the Color Options and Line Options frames", async () => {
         await renderDemo(sizegroupDemo);
-        const colorFrame = (await screen.findByName("color-options-frame")) as Gtk.Frame;
-        const lineFrame = (await screen.findByName("line-options-frame")) as Gtk.Frame;
-        expect(colorFrame.getLabel()).toBe("Color Options");
-        expect(lineFrame.getLabel()).toBe("Line Options");
+        expect(await screen.findByText("Color Options")).toBeDefined();
+        expect(await screen.findByText("Line Options")).toBeDefined();
     });
 
     it("renders four GtkDropDowns - one per option row", async () => {
@@ -45,24 +43,28 @@ describe("sizegroupDemo frames and labels", () => {
 describe("sizegroupDemo check button", () => {
     it("starts with grouping enabled and the size group in HORIZONTAL mode", async () => {
         await renderDemo(sizegroupDemo);
-        const toggle = (await screen.findByName("enable-grouping-check")) as Gtk.CheckButton;
-        expect(toggle).toBeInstanceOf(Gtk.CheckButton);
-        expect(toggle.getActive()).toBe(true);
+        expect(
+            await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "_Enable grouping", checked: true }),
+        ).toBeDefined();
     });
 
     it("renders the '_Enable grouping' check button with underline-mnemonic enabled", async () => {
         await renderDemo(sizegroupDemo);
         const check = (await screen.findByName("enable-grouping-check")) as Gtk.CheckButton;
-        expect(check.getLabel()).toBe("_Enable grouping");
+        expect(await screen.findByText("_Enable grouping")).toBeDefined();
         expect(check.getUseUnderline()).toBe(true);
     });
 
     it("toggles the check button active state when clicked", async () => {
         await renderDemo(sizegroupDemo);
-        const check = (await screen.findByName("enable-grouping-check")) as Gtk.CheckButton;
-        expect(check.getActive()).toBe(true);
+        const check = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
+            name: "_Enable grouping",
+            checked: true,
+        });
         await userEvent.click(check);
-        expect(check.getActive()).toBe(false);
+        expect(
+            await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "_Enable grouping", checked: false }),
+        ).toBeDefined();
     });
 });
 

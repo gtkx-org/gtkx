@@ -21,17 +21,10 @@ const renderApp = () =>
 const toplevelWindows = async (): Promise<Gtk.Window[]> =>
     (await screen.findAllByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window[];
 
-const demoWindows = async (): Promise<Gtk.Window[]> =>
-    (await toplevelWindows()).filter((w) => !(w instanceof Gtk.ApplicationWindow));
+const demoWindows = (): Gtk.Window[] => screen.queryAllByName("demo-window") as Gtk.Window[];
 
 const findRun = async (): Promise<Gtk.Button> =>
     (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run" })) as Gtk.Button;
-
-const requireMainWindow = (windows: Gtk.Window[]): Gtk.ApplicationWindow => {
-    const main = windows.find((w): w is Gtk.ApplicationWindow => w instanceof Gtk.ApplicationWindow);
-    if (!main) throw new Error("main application window not found");
-    return main;
-};
 
 const requireOnlyDemoWindow = (windows: Gtk.Window[], title: string): Gtk.Window => {
     const [win, ...rest] = windows;
@@ -68,8 +61,7 @@ const clickWindowClose = async (window: Gtk.Window): Promise<void> => {
     const bound = within(window);
     await userEvent.type((await bound.findByName("password-entry")) as Gtk.Editable, "hunter2");
     await userEvent.type((await bound.findByName("confirm-entry")) as Gtk.Editable, "hunter2");
-    const done = firstMatching(window, (w) => w.getCssClasses().includes("default"));
-    if (!done) throw new Error(`found no close control in demo window "${window.getTitle()}"`);
+    const done = await bound.findByRole(Gtk.AccessibleRole.BUTTON, { name: /Done/ });
     await userEvent.click(done);
 };
 
@@ -83,15 +75,15 @@ const dismissDialog = async (dialog: Gtk.Widget): Promise<void> => {
 const exerciseWindowDemo = async (title: string, run: Gtk.Button, mainWindow: Gtk.ApplicationWindow): Promise<void> => {
     await userEvent.click(run);
 
-    await waitFor(async () => expect((await demoWindows()).length).toBe(1));
-    const win = requireOnlyDemoWindow(await demoWindows(), title);
+    await waitFor(() => expect(demoWindows().length).toBe(1));
+    const win = requireOnlyDemoWindow(demoWindows(), title);
 
     await waitFor(() => expect(win.getVisible(), `demo "${title}" window is not visible`).toBe(true));
     await waitFor(() => expect(win.isActive(), `demo "${title}" window is not in the foreground`).toBe(true));
     expect(win.getChild(), `demo "${title}" opened an empty window with no content`).not.toBeNull();
 
     await clickWindowClose(win);
-    await waitFor(async () => expect((await demoWindows()).length, `demo "${title}" window did not close`).toBe(0));
+    await waitFor(() => expect(demoWindows().length, `demo "${title}" window did not close`).toBe(0));
     expect(mainWindow.getVisible(), `closing demo "${title}" tore down the main window`).toBe(true);
 };
 
@@ -141,7 +133,7 @@ describe("gtk-demo end-to-end", () => {
             .mockImplementation((_parent, _pageSetup, _settings, done) => done(new Gtk.PageSetup()));
 
         await renderApp();
-        const mainWindow = requireMainWindow(await toplevelWindows());
+        const mainWindow = (await screen.findByName("main-window")) as Gtk.ApplicationWindow;
         const sidebar = (await screen.findByName("sidebar-list")) as Gtk.ListView;
         const model = sidebar.getModel() as Gtk.SelectionModel;
 

@@ -22,9 +22,7 @@ describe("fixed2Demo structure", () => {
     it("renders the 'All fixed?' label inside the GtkFixed container", async () => {
         await renderDemo(fixed2Demo);
         const fixed = (await screen.findByName("fixed")) as Gtk.Fixed;
-        const label = within(fixed).getByName("fixed-label") as Gtk.Label;
-        expect(label).toBeInstanceOf(Gtk.Label);
-        expect(label.getLabel()).toBe("All fixed?");
+        expect(within(fixed).getByRole(Gtk.AccessibleRole.LABEL, { name: "All fixed?" })).toBeDefined();
     });
 
     it("nests the GtkFixed inside a hexpand+vexpand GtkScrolledWindow", async () => {

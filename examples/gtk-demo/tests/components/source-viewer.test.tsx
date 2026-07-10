@@ -1,4 +1,3 @@
-import type * as Gtk from "@gtkx/gi/gtk";
 import { act, render, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { SourceViewer } from "../../src/components/source-viewer.js";
@@ -61,10 +60,6 @@ describe("SourceViewer", () => {
             sourceCode,
         };
         await renderWithSelectedDemo([intro, withSource], withSource);
-        const view = (await screen.findByName("source-view")) as Gtk.TextView;
-        const buffer = view.getBuffer();
-        const start = buffer.getStartIter();
-        const end = buffer.getEndIter();
-        expect(buffer.getText(start, end, false)).toBe(sourceCode);
+        await screen.findByDisplayValue(sourceCode);
     });
 });

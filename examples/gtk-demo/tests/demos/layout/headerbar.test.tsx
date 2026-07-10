@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { screen, userEvent, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { headerbarDemo } from "../../../src/demos/layout/headerbar.js";
 import { renderDemo } from "../../test-utils.js";
@@ -70,7 +70,6 @@ describe("headerbarDemo interactions", () => {
 
         await userEvent.click(switchEl);
 
-        await waitFor(() => expect(switchEl.getActive()).toBe(true));
         await screen.findByRole(Gtk.AccessibleRole.SWITCH, { name: "Change something", checked: true });
     });
 });

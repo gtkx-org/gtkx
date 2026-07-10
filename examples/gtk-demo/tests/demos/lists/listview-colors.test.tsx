@@ -44,7 +44,7 @@ describe("listviewColorsDemo header bar", () => {
         const selectionToggle = (await screen.findByName("selection-toggle")) as Gtk.ToggleButton;
         expect(selectionToggle).toBeInstanceOf(Gtk.ToggleButton);
         expect(selectionToggle.getIconName()).toBe("emblem-important-symbolic");
-        expect(selectionToggle.getActive()).toBe(false);
+        expect(selectionToggle).not.toBePressed();
     });
 });
 

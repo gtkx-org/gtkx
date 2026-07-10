@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { fireEvent, screen, userEvent } from "@gtkx/testing";
+import { screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { listboxControlsDemo } from "../../../src/demos/lists/listbox-controls.js";
 import { renderDemo } from "../../test-utils.js";
@@ -33,16 +33,12 @@ describe("listboxControlsDemo Group 1 structure", () => {
 
     it("renders the switch initially inactive", async () => {
         await renderDemo(listboxControlsDemo);
-        const sw = (await screen.findByName("switch")) as Gtk.Switch;
-        expect(sw).toBeInstanceOf(Gtk.Switch);
-        expect(sw.getActive()).toBe(false);
+        await screen.findByRole(Gtk.AccessibleRole.SWITCH, { checked: false });
     });
 
     it("renders the check button initially active", async () => {
         await renderDemo(listboxControlsDemo);
-        const check = (await screen.findByName("check")) as Gtk.CheckButton;
-        expect(check).toBeInstanceOf(Gtk.CheckButton);
-        expect(check.getActive()).toBe(true);
+        await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { checked: true });
     });
 
     it("renders the click-here icon initially hidden via opacity", async () => {
@@ -54,43 +50,35 @@ describe("listboxControlsDemo Group 1 structure", () => {
 });
 
 describe("listboxControlsDemo direct toggles", () => {
-    it("toggles the switch when its state-set signal fires", async () => {
+    it("toggles the switch when clicked", async () => {
         await renderDemo(listboxControlsDemo);
-        const sw = (await screen.findByName("switch")) as Gtk.Switch;
-        const before = sw.getActive();
-        await fireEvent(sw, "state-set", !before);
-        expect(sw.getActive()).toBe(!before);
+        const sw = await screen.findByRole(Gtk.AccessibleRole.SWITCH, { checked: false });
+        await userEvent.click(sw);
+        await screen.findByRole(Gtk.AccessibleRole.SWITCH, { checked: true });
     });
 
     it("toggles the check button when clicked", async () => {
         await renderDemo(listboxControlsDemo);
-        const check = (await screen.findByName("check")) as Gtk.CheckButton;
-        const before = check.getActive();
+        const check = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { checked: true });
         await userEvent.click(check);
-        expect(check.getActive()).toBe(!before);
+        await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { checked: false });
     });
 });
 
 describe("listboxControlsDemo row activation", () => {
     it("activating the click-here row toggles the image opacity", async () => {
         await renderDemo(listboxControlsDemo);
-        const list = (await screen.findByName("group-1-list")) as Gtk.ListBox;
         const clickHereImage = (await screen.findByName("click-here-image")) as Gtk.Image;
-        const clickRow = list.getRowAtIndex(2);
-        expect(clickRow).toBeInstanceOf(Gtk.ListBoxRow);
-        await fireEvent(list, "row-activated", clickRow);
+        const clickRow = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Click here!/ });
+        await userEvent.click(clickRow);
         expect(clickHereImage.getOpacity()).toBe(1);
     });
 
     it("activating the switch row toggles the switch", async () => {
         await renderDemo(listboxControlsDemo);
-        const list = (await screen.findByName("group-1-list")) as Gtk.ListBox;
-        const sw = (await screen.findByName("switch")) as Gtk.Switch;
-        const before = sw.getActive();
-        const switchRow = list.getRowAtIndex(0);
-        expect(switchRow).toBeInstanceOf(Gtk.ListBoxRow);
-        await fireEvent(list, "row-activated", switchRow);
-        expect(sw.getActive()).toBe(!before);
+        const switchRow = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Switch/ });
+        await userEvent.click(switchRow);
+        await screen.findByRole(Gtk.AccessibleRole.SWITCH, { checked: true });
     });
 });
 
@@ -105,9 +93,7 @@ describe("listboxControlsDemo Group 2 controls", () => {
 
     it("seeds the scale and spin button with the expected starting value", async () => {
         await renderDemo(listboxControlsDemo);
-        const scale = (await screen.findByName("scale")) as Gtk.Scale;
-        const spin = (await screen.findByName("spin")) as Gtk.SpinButton;
-        expect(scale.getValue()).toBe(50);
-        expect(spin.getValue()).toBe(50);
+        await screen.findByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 50 } });
+        screen.getByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 50 } });
     });
 });

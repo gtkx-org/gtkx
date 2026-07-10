@@ -22,11 +22,9 @@ describe("tabsDemo", () => {
         await renderDemo(tabsDemo);
         const textView = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.TextView;
         expect(textView).toBeInstanceOf(Gtk.TextView);
-        const buffer = textView.getBuffer();
-        const text = buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false);
-        expect(text).toContain("one\t2.0\tthree");
-        expect(text).toContain("four\t5.555\tsix");
-        expect(text).toContain("seven\t88.88\tnine");
+        expect(await screen.findByDisplayValue(/one\t2\.0\tthree/, { collapseWhitespace: false })).toBe(textView);
+        expect(await screen.findByDisplayValue(/four\t5\.555\tsix/, { collapseWhitespace: false })).toBe(textView);
+        expect(await screen.findByDisplayValue(/seven\t88\.88\tnine/, { collapseWhitespace: false })).toBe(textView);
     });
 
     it("configures three tabs with LEFT, DECIMAL, RIGHT alignments", async () => {

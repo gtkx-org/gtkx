@@ -37,9 +37,8 @@ describe("imagesDemo toggle", () => {
         const toggle = (await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
             name: "_Insensitive",
         })) as Gtk.ToggleButton;
-        expect(toggle.getActive()).toBe(false);
+        expect(toggle).not.toBePressed();
         expect(toggle.getUseUnderline()).toBe(true);
-        expect(toggle.getLabel()).toBe("_Insensitive");
     });
 
     it("toggles the sensitivity of the image strip when the toggle is activated", async () => {

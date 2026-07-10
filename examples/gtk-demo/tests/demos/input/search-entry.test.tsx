@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { act, fireEvent, screen, userEvent, waitFor } from "@gtkx/testing";
+import { act, screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { searchEntryDemo } from "../../../src/demos/input/search-entry.js";
 import { renderDemo } from "../../test-utils.js";
@@ -22,7 +22,7 @@ describe("searchEntryDemo rendering", () => {
         const toggle = (await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON)) as Gtk.ToggleButton;
         expect(toggle).toBeInstanceOf(Gtk.ToggleButton);
         expect(toggle.getIconName()).toBe("system-search-symbolic");
-        expect(toggle.getActive()).toBe(false);
+        expect(screen.getByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { pressed: false })).toBe(toggle);
         const searchBar = (await screen.findByRole(Gtk.AccessibleRole.SEARCH)) as Gtk.SearchBar;
         expect(searchBar).toBeInstanceOf(Gtk.SearchBar);
         expect(searchBar.getSearchMode()).toBe(false);
@@ -38,8 +38,8 @@ describe("searchEntryDemo interactions", () => {
         const toggle = (await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON)) as Gtk.ToggleButton;
         const searchBar = (await screen.findByRole(Gtk.AccessibleRole.SEARCH)) as Gtk.SearchBar;
         await userEvent.click(toggle);
+        await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { pressed: true });
         await waitFor(() => {
-            expect(toggle.getActive()).toBe(true);
             expect(searchBar.getSearchMode()).toBe(true);
         });
     });
@@ -48,7 +48,6 @@ describe("searchEntryDemo interactions", () => {
         await renderDemo(searchEntryDemo);
         const entry = (await screen.findByRole(Gtk.AccessibleRole.SEARCH_BOX)) as Gtk.SearchEntry;
         await userEvent.type(entry, "rocket");
-        await fireEvent(entry, "search-changed");
         const match = await screen.findByText("Searching for: rocket");
         expect(match).toBeInstanceOf(Gtk.Widget);
     });
@@ -58,8 +57,7 @@ describe("searchEntryDemo interactions", () => {
         const toggle = (await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON)) as Gtk.ToggleButton;
         const searchBar = (await screen.findByRole(Gtk.AccessibleRole.SEARCH)) as Gtk.SearchBar;
         await act(() => searchBar.setSearchMode(true));
-        await fireEvent(searchBar, "notify::search-mode-enabled");
         expect(searchBar.getSearchMode()).toBe(true);
-        expect(toggle.getActive()).toBe(true);
+        expect(screen.getByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { pressed: true })).toBe(toggle);
     });
 });

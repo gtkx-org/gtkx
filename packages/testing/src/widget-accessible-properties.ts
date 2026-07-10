@@ -87,7 +87,9 @@ export const getWidgetAccessibleName = (widget: Gtk.Widget): string | null => {
     if (ownText) return ownText;
 
     const childLabels = collectLabels(widget);
-    return childLabels.length > 0 ? childLabels.join(" ") : null;
+    if (childLabels.length > 0) return childLabels.join(" ");
+
+    return callStringGetter(widget, "getTooltipText");
 };
 
 export const getWidgetName = (widget: Gtk.Widget): string | null => {
@@ -113,6 +115,9 @@ export const getWidgetDisplayValue = (widget: Gtk.Widget): string | null => {
 export const getWidgetCheckedState = (widget: Gtk.Widget): boolean | null => {
     if (widget instanceof Gtk.CheckButton) return widget.getActive();
     if (widget instanceof Gtk.Switch) return widget.getActive();
+    if (widget instanceof Gtk.ToggleButton && widget.getAccessibleRole() === Gtk.AccessibleRole.RADIO) {
+        return widget.getActive();
+    }
     return null;
 };
 

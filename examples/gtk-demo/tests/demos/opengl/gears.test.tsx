@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { act, screen, waitFor } from "@gtkx/testing";
+import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { gearsDemo } from "../../../src/demos/opengl/gears.js";
 import { renderDemo } from "../../test-utils.js";
@@ -46,8 +46,9 @@ describe("gearsDemo", () => {
         await renderDemo(gearsDemo);
         const sliders = (await screen.findAllByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale[];
         const xSlider = sliders[0] as Gtk.Scale;
-        expect(xSlider.getValue()).toBe(20);
-        await act(() => xSlider.getAdjustment().setValue(180));
-        await waitFor(() => expect(xSlider.getValue()).toBe(180));
+        expect(xSlider).toHaveValue(20);
+        xSlider.grabFocus();
+        await userEvent.keyboard(xSlider, "{PageUp}");
+        await waitFor(() => screen.getByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 32 } }));
     });
 });

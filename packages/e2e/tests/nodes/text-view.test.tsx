@@ -71,35 +71,31 @@ const buildToggleContent =
 describe("render - TextView (1)", () => {
     describe("basic text content", () => {
         it("renders plain text inside the buffer", async () => {
-            const { buffer } = await renderTextBuffer(undefined, () => "Hello World");
+            await renderTextBuffer(undefined, () => "Hello World");
 
-            expect(buffer).not.toBeNull();
-            expect(getBufferText(buffer)).toBe("Hello World");
+            expect(screen.getByDisplayValue("Hello World")).toBeDefined();
         });
 
         it("renders multiple text segments", async () => {
-            const { buffer } = await renderTextBuffer(undefined, () => (
+            await renderTextBuffer(undefined, () => (
                 <>
                     {"Hello"} {"World"}
                 </>
             ));
 
-            expect(getBufferText(buffer)).toBe("Hello World");
+            expect(screen.getByDisplayValue("Hello World")).toBeDefined();
         });
 
         it("handles empty TextView", async () => {
-            const ref = createRef<Gtk.TextView>();
+            await render(<GtkTextView />);
 
-            await render(<GtkTextView ref={ref} />);
-
-            const buffer = getTextBuffer(ref);
-            expect(getBufferText(buffer)).toBe("");
+            expect(screen.getByDisplayValue("")).toBeDefined();
         });
 
         it("handles special characters", async () => {
-            const { buffer } = await renderTextBuffer(undefined, () => 'Special: & < > "');
+            await renderTextBuffer(undefined, () => 'Special: & < > "');
 
-            expect(getBufferText(buffer)).toBe('Special: & < > "');
+            expect(screen.getByDisplayValue('Special: & < > "')).toBeDefined();
         });
 
         it("throws for text directly under the view", async () => {
@@ -261,12 +257,12 @@ describe("render - TextView (5)", () => {
 describe("render - TextView (6)", () => {
     describe("dynamic updates (1)", () => {
         it("updates text content on rerender", async () => {
-            const { buffer, rerender } = await renderTextBuffer("Initial", (text: string) => text);
+            const { rerender } = await renderTextBuffer("Initial", (text: string) => text);
 
-            expect(getBufferText(buffer)).toBe("Initial");
+            expect(screen.getByDisplayValue("Initial")).toBeDefined();
 
             await rerender("Updated");
-            expect(getBufferText(buffer)).toBe("Updated");
+            expect(screen.getByDisplayValue("Updated")).toBeDefined();
         });
 
         it("creates tagged text correctly", async () => {
@@ -288,11 +284,9 @@ describe("render - TextView (6)", () => {
 describe("render - TextView (7)", () => {
     describe("dynamic updates (2)", () => {
         it("renders conditional text segments", async () => {
-            const { buffer } = await renderTextBuffer(true, (showMiddle: boolean) => (
-                <>Start{showMiddle && " Middle"} End</>
-            ));
+            await renderTextBuffer(true, (showMiddle: boolean) => <>Start{showMiddle && " Middle"} End</>);
 
-            expect(getBufferText(buffer)).toBe("Start Middle End");
+            expect(screen.getByDisplayValue("Start Middle End")).toBeDefined();
         });
 
         it("renders with conditional TextTag", async () => {

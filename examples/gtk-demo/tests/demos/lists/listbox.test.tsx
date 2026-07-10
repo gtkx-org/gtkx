@@ -10,9 +10,7 @@ const findListBox = async (): Promise<Gtk.ListBox> => (await screen.findByName("
 
 const findFirstRow = async (): Promise<Gtk.ListBoxRow> => {
     const listBox = await findListBox();
-    const firstRow = listBox.getRowAtIndex(0);
-    expect(firstRow).toBeInstanceOf(Gtk.ListBoxRow);
-    return firstRow as Gtk.ListBoxRow;
+    return within(listBox).getAllByRole(Gtk.AccessibleRole.LIST_ITEM)[0] as Gtk.ListBoxRow;
 };
 
 describe("listboxDemo metadata", () => {
@@ -62,21 +60,19 @@ describe("listboxDemo row interaction", () => {
     it("toggles the message details revealer when a row is activated", async () => {
         await renderDemo(listboxDemo);
         const firstRow = await findFirstRow();
-        const listBox = await findListBox();
         const revealer = within(firstRow).getByName("details-revealer") as Gtk.Revealer;
         const before = revealer.getRevealChild();
-        await fireEvent(listBox, "row-activated", firstRow);
+        await userEvent.click(firstRow);
         await waitFor(() => expect(revealer.getRevealChild()).toBe(!before));
     });
 
     it("returns to the initial revealer state after a second activation", async () => {
         await renderDemo(listboxDemo);
         const firstRow = await findFirstRow();
-        const listBox = await findListBox();
         const revealer = within(firstRow).getByName("details-revealer") as Gtk.Revealer;
         const initial = revealer.getRevealChild();
-        await fireEvent(listBox, "row-activated", firstRow);
-        await fireEvent(listBox, "row-activated", firstRow);
+        await userEvent.click(firstRow);
+        await userEvent.click(firstRow);
         await waitFor(() => expect(revealer.getRevealChild()).toBe(initial));
     });
 });
@@ -98,10 +94,8 @@ describe("listboxDemo row state flags", () => {
         await renderDemo(listboxDemo);
         const firstRow = await findFirstRow();
         await fireEvent(firstRow, "state-flags-changed", 0);
-        const buttons = within(firstRow).getAllByRole(Gtk.AccessibleRole.BUTTON);
-        const labels = buttons.map((b) => (b as Gtk.Button).getLabel());
-        expect(labels).toContain("Reply");
-        expect(labels).toContain("Reshare");
-        expect(labels).toContain("Favorite");
+        within(firstRow).getByRole(Gtk.AccessibleRole.BUTTON, { name: "Reply" });
+        within(firstRow).getByRole(Gtk.AccessibleRole.BUTTON, { name: "Reshare" });
+        within(firstRow).getByRole(Gtk.AccessibleRole.BUTTON, { name: "Favorite" });
     });
 });

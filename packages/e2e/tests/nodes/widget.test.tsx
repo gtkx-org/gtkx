@@ -19,13 +19,17 @@ import {
     GtkSwitch,
 } from "@gtkx/jsx/gtk";
 import { createPortal, rootElement } from "@gtkx/react";
-import { render as baseRender, screen, userEvent, waitFor } from "@gtkx/testing";
+import { render as baseRender, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import type { ReactNode } from "react";
 import { createRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { countChildren } from "../helpers/child-count.js";
 
 const render = (element: ReactNode) => baseRender(element);
+
+const labelCount = (container: Gtk.Widget | null): number => {
+    if (container === null) throw new Error("expected a mounted container");
+    return within(container).getAllByRole(Gtk.AccessibleRole.LABEL).length;
+};
 
 let nextAppId = 0;
 const uniqueAppId = (): string => `org.gtkx.widgettest${nextAppId++}`;
@@ -270,10 +274,8 @@ describe("widget - props (2)", () => {
 describe("widget - props (3)", () => {
     describe("change detection (2)", () => {
         it("preserves the last-set value when a prop transitions to undefined", async () => {
-            const ref = createRef<Gtk.Label>();
-
             function App({ label }: { label?: string | undefined }) {
-                return <GtkLabel ref={ref} label={label} />;
+                return <GtkLabel label={label} />;
             }
 
             const { rerender } = await render(<App label="Has Value" />);
@@ -281,7 +283,7 @@ describe("widget - props (3)", () => {
 
             await rerender(<App label={undefined} />);
 
-            expect(ref.current?.getLabel()).toBe("Has Value");
+            expect(screen.getByText("Has Value")).toBeDefined();
         });
     });
 
@@ -343,7 +345,7 @@ describe("widget - props (4)", () => {
             await userEvent.click(switchWidget);
 
             await waitFor(() => {
-                expect((switchWidget as Gtk.Switch).getActive()).toBe(true);
+                expect(screen.queryByRole(Gtk.AccessibleRole.SWITCH, { checked: true })).not.toBeNull();
             });
         });
     });
@@ -780,25 +782,21 @@ describe("widget - child management > GtkBox", () => {
     });
 
     it("appends children", async () => {
-        const boxRef = createRef<Gtk.Box>();
-
         await render(
-            <GtkBox ref={boxRef}>
+            <GtkBox>
                 <GtkLabel label="First" />
                 <GtkLabel label="Second" />
             </GtkBox>,
         );
 
-        expect(boxRef.current?.getFirstChild()).not.toBeNull();
-        expect(boxRef.current?.getLastChild()).not.toBeNull();
+        expect(screen.getByText("First")).toBeDefined();
+        expect(screen.getByText("Second")).toBeDefined();
     });
 
     it("removes children", async () => {
-        const boxRef = createRef<Gtk.Box>();
-
         function App({ count }: { count: number }) {
             return (
-                <GtkBox ref={boxRef}>
+                <GtkBox>
                     {Array.from({ length: count }, (_, i) => (
                         <GtkLabel key={`label-${i}`} label={`Label ${i}`} />
                     ))}
@@ -809,10 +807,7 @@ describe("widget - child management > GtkBox", () => {
         const { rerender } = await render(<App count={3} />);
         await rerender(<App count={1} />);
 
-        expect(boxRef.current?.getFirstChild()).not.toBeNull();
-        const first = boxRef.current?.getFirstChild();
-        const last = boxRef.current?.getLastChild();
-        expect(first && last && first === last).toBe(true);
+        expect(screen.getAllByText(/Label/)).toHaveLength(1);
     });
 });
 
@@ -836,8 +831,7 @@ describe("widget - auto-wrapping (1)", () => {
                 </GtkListBox>,
             );
 
-            const firstChild = listBoxRef.current?.getFirstChild();
-            expect(firstChild).not.toBeNull();
+            expect(screen.getByText("Item 1")).toBeDefined();
             expect(labelRef.current?.getParent()).not.toBe(listBoxRef.current);
         });
 
@@ -852,7 +846,7 @@ describe("widget - auto-wrapping (1)", () => {
                 </GtkListBox>,
             );
 
-            expect(countChildren(listBoxRef.current)).toBe(3);
+            expect(labelCount(listBoxRef.current)).toBe(3);
         });
     });
 });
@@ -873,18 +867,16 @@ describe("widget - auto-wrapping (2)", () => {
             }
 
             const { rerender } = await render(<App items={["a", "b", "c"]} />);
-            expect(countChildren(listBoxRef.current)).toBe(3);
+            expect(labelCount(listBoxRef.current)).toBe(3);
 
             await rerender(<App items={["a", "c"]} />);
-            expect(countChildren(listBoxRef.current)).toBe(2);
+            expect(labelCount(listBoxRef.current)).toBe(2);
         });
 
         it("reorders children", async () => {
-            const listBoxRef = createRef<Gtk.ListBox>();
-
             function App({ items }: { items: string[] }) {
                 return (
-                    <GtkListBox ref={listBoxRef}>
+                    <GtkListBox>
                         {items.map((item) => (
                             <GtkLabel key={item} label={item} />
                         ))}
@@ -895,7 +887,8 @@ describe("widget - auto-wrapping (2)", () => {
             const { rerender } = await render(<App items={["first", "second"]} />);
             await rerender(<App items={["second", "first"]} />);
 
-            expect(listBoxRef.current?.getFirstChild()).not.toBeNull();
+            expect(screen.getByText("first")).toBeDefined();
+            expect(screen.getByText("second")).toBeDefined();
         });
     });
 });
@@ -920,8 +913,7 @@ describe("widget - auto-wrapping (3)", () => {
                 </GtkFlowBox>,
             );
 
-            const firstChild = flowBoxRef.current?.getFirstChild();
-            expect(firstChild).not.toBeNull();
+            expect(screen.getByText("Item 1")).toBeDefined();
             expect(labelRef.current?.getParent()).not.toBe(flowBoxRef.current);
         });
 
@@ -936,7 +928,7 @@ describe("widget - auto-wrapping (3)", () => {
                 </GtkFlowBox>,
             );
 
-            expect(countChildren(flowBoxRef.current)).toBe(3);
+            expect(labelCount(flowBoxRef.current)).toBe(3);
         });
     });
 });
@@ -957,10 +949,10 @@ describe("widget - auto-wrapping (4)", () => {
             }
 
             const { rerender } = await render(<App items={["a", "b", "c"]} />);
-            expect(countChildren(flowBoxRef.current)).toBe(3);
+            expect(labelCount(flowBoxRef.current)).toBe(3);
 
             await rerender(<App items={["a"]} />);
-            expect(countChildren(flowBoxRef.current)).toBe(1);
+            expect(labelCount(flowBoxRef.current)).toBe(1);
         });
     });
 });
@@ -1026,15 +1018,13 @@ describe("widget - AboutDialog (1)", () => {
 describe("widget - AboutDialog (2)", () => {
     describe("lifecycle", () => {
         it("presents dialog on mount", async () => {
-            const ref = createRef<Gtk.AboutDialog>();
-
             await renderInApp(
                 <GtkApplicationWindow>
-                    {createPortal(<GtkAboutDialog ref={ref} programName="Lifecycle Test" />, rootElement)}
+                    {createPortal(<GtkAboutDialog programName="Lifecycle Test" />, rootElement)}
                 </GtkApplicationWindow>,
             );
 
-            expect(ref.current?.getVisible()).toBe(true);
+            expect(await screen.findByText(/Lifecycle Test/)).toBeDefined();
         });
 
         it("destroys dialog on unmount", async () => {

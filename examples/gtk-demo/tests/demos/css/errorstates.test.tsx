@@ -17,14 +17,12 @@ describe("errorstatesDemo metadata", () => {
 
     it("renders both entries, the scale and the switch in initial state", async () => {
         await renderDemo(errorstatesDemo);
-        const entries = (await screen.findAllByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry[];
+        const entries = await screen.findAllByRole(Gtk.AccessibleRole.TEXT_BOX);
         expect(entries).toHaveLength(2);
-        const scale = (await screen.findByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale;
+        const scale = (await screen.findByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 50 } })) as Gtk.Scale;
         expect(scale).toBeInstanceOf(Gtk.Scale);
-        expect(scale.getValue()).toBe(50);
-        const sw = (await screen.findByRole(Gtk.AccessibleRole.SWITCH)) as Gtk.Switch;
+        const sw = (await screen.findByRole(Gtk.AccessibleRole.SWITCH, { checked: false })) as Gtk.Switch;
         expect(sw).toBeInstanceOf(Gtk.Switch);
-        expect(sw.getActive()).toBe(false);
         expect(sw.getState()).toBe(false);
     });
 });
@@ -32,12 +30,10 @@ describe("errorstatesDemo metadata", () => {
 describe("errorstatesDemo entries", () => {
     const renderAndFlagMoreDetails = async (): Promise<{ detailsEntry: Gtk.Entry; moreDetailsEntry: Gtk.Entry }> => {
         await renderDemo(errorstatesDemo);
-        const entries = (await screen.findAllByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry[];
-        const [detailsEntry, moreDetailsEntry] = entries;
-        expect(detailsEntry).toBeInstanceOf(Gtk.Entry);
-        expect(moreDetailsEntry).toBeInstanceOf(Gtk.Entry);
-        await userEvent.type(moreDetailsEntry as Gtk.Entry, "filled in");
-        return { detailsEntry: detailsEntry as Gtk.Entry, moreDetailsEntry: moreDetailsEntry as Gtk.Entry };
+        const detailsEntry = (await screen.findByLabelText("_Details")) as Gtk.Entry;
+        const moreDetailsEntry = screen.getByLabelText("More D_etails") as Gtk.Entry;
+        await userEvent.type(moreDetailsEntry, "filled in");
+        return { detailsEntry, moreDetailsEntry };
     };
 
     it("flags the more-details entry as invalid when filled while details is empty", async () => {
@@ -58,8 +54,7 @@ describe("errorstatesDemo switch and scale", () => {
     it("shows the level-too-low error label when the switch is activated with the level low", async () => {
         await renderDemo(errorstatesDemo);
         const sw = (await screen.findByRole(Gtk.AccessibleRole.SWITCH)) as Gtk.Switch;
-        await act(() => sw.setActive(true));
-        await fireEvent(sw, "state-set", true);
+        await userEvent.click(sw);
         const errorLabel = (await screen.findByRole(Gtk.AccessibleRole.LABEL, {
             name: "Level too low",
         })) as Gtk.Label;
@@ -73,8 +68,7 @@ describe("errorstatesDemo switch and scale", () => {
         const sw = (await screen.findByRole(Gtk.AccessibleRole.SWITCH)) as Gtk.Switch;
         await act(() => scale.setValue(80));
         await fireEvent(scale, "value-changed");
-        await act(() => sw.setActive(true));
-        await fireEvent(sw, "state-set", true);
+        await userEvent.click(sw);
         expect(sw.getState()).toBe(true);
         expect(screen.queryByRole(Gtk.AccessibleRole.LABEL, { name: "Level too low" })).toBeNull();
     });
@@ -83,8 +77,7 @@ describe("errorstatesDemo switch and scale", () => {
         await renderDemo(errorstatesDemo);
         const scale = (await screen.findByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale;
         const sw = (await screen.findByRole(Gtk.AccessibleRole.SWITCH)) as Gtk.Switch;
-        await act(() => sw.setActive(true));
-        await fireEvent(sw, "state-set", true);
+        await userEvent.click(sw);
         await act(() => scale.setValue(80));
         await fireEvent(scale, "value-changed");
         expect(sw.getState()).toBe(true);

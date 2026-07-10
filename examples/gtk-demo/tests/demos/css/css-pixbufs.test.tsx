@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { act, screen, waitFor } from "@gtkx/testing";
+import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { cssPixbufsDemo } from "../../../src/demos/css/css-pixbufs.js";
 import { renderDemo } from "../../test-utils.js";
@@ -28,12 +28,9 @@ describe("cssPixbufsDemo", () => {
 
     it("preloads the default CSS containing the keyframe animations", async () => {
         await renderDemo(cssPixbufsDemo);
-        const textView = (await screen.findByName("text-view")) as Gtk.TextView;
-        const buffer = textView.getBuffer();
-        const text = buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false);
-        expect(text).toContain("@keyframes move-the-image");
-        expect(text).toContain("@keyframes size-the-image");
-        expect(text).toContain("animation: move-the-image");
+        expect(await screen.findByDisplayValue(/@keyframes move-the-image/)).not.toBeNull();
+        expect(screen.getByDisplayValue(/@keyframes size-the-image/)).not.toBeNull();
+        expect(screen.getByDisplayValue(/animation: move-the-image/)).not.toBeNull();
     });
 
     it("declares the demo window class on the host window", async () => {
@@ -61,9 +58,9 @@ describe("cssPixbufsDemo", () => {
         try {
             await renderDemo(cssPixbufsDemo);
             const textView = (await screen.findByName("text-view")) as Gtk.TextView;
-            const buffer = textView.getBuffer();
             loadSpy.mockClear();
-            await act(() => buffer.setText("window { background-color: cyan; }", -1));
+            await userEvent.clear(textView);
+            await userEvent.type(textView, "window { background-color: cyan; }");
             await waitFor(() => {
                 const userLoad = loadSpy.mock.calls.find(
                     ([css]) => typeof css === "string" && css.includes("background-color: cyan"),

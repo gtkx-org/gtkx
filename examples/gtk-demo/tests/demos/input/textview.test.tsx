@@ -20,7 +20,7 @@ const clickClonedClickMeButton = async (): Promise<{ cloned: Gtk.Button | undefi
     const buttons = await findClickMeButtons();
     const cloned = buttons[buttons.length - 1];
     expect(cloned).toBeInstanceOf(Gtk.Button);
-    const beforeWindows = Gtk.Window.listToplevels().length;
+    const beforeWindows = screen.queryAllByRole(Gtk.AccessibleRole.WINDOW).length;
     if (cloned) await userEvent.click(cloned);
     return { cloned, beforeWindows };
 };
@@ -86,7 +86,7 @@ describe("textviewDemo easter egg", () => {
         const { cloned, beforeWindows } = await clickClonedClickMeButton();
         if (!cloned) return;
         await waitFor(() => {
-            expect(Gtk.Window.listToplevels().length).toBeGreaterThan(beforeWindows);
+            expect(screen.queryAllByRole(Gtk.AccessibleRole.WINDOW).length).toBeGreaterThan(beforeWindows);
         });
     });
 
@@ -95,11 +95,11 @@ describe("textviewDemo easter egg", () => {
         const buttons = await findClickMeButtons();
         const source = buttons[0];
         expect(source).toBeInstanceOf(Gtk.Button);
-        const beforeWindows = Gtk.Window.listToplevels().length;
+        const beforeWindows = screen.queryAllByRole(Gtk.AccessibleRole.WINDOW).length;
         if (!source) return;
         await userEvent.click(source);
         await waitFor(() => {
-            expect(Gtk.Window.listToplevels().length).toBeGreaterThanOrEqual(beforeWindows);
+            expect(screen.queryAllByRole(Gtk.AccessibleRole.WINDOW).length).toBeGreaterThanOrEqual(beforeWindows);
         });
     });
 
@@ -107,13 +107,13 @@ describe("textviewDemo easter egg", () => {
         const { cloned, beforeWindows } = await clickClonedClickMeButton();
         if (!cloned) return;
         const windowCountAfterFirst = await waitFor(() => {
-            const count = Gtk.Window.listToplevels().length;
+            const count = screen.queryAllByRole(Gtk.AccessibleRole.WINDOW).length;
             expect(count).toBeGreaterThan(beforeWindows);
             return count;
         });
         await userEvent.click(cloned);
         await waitFor(() => {
-            expect(Gtk.Window.listToplevels().length).toBe(windowCountAfterFirst);
+            expect(screen.queryAllByRole(Gtk.AccessibleRole.WINDOW).length).toBe(windowCountAfterFirst);
         });
     });
 });
