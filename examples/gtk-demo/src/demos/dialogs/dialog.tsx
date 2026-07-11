@@ -3,7 +3,7 @@ import { AlertDialog, Dialog } from "@gtkx/components/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkEntry, GtkLabel, GtkSeparator } from "@gtkx/jsx/gtk";
 import { useState } from "react";
-import type { Demo, DemoProps } from "../types.js";
+import type { Demo } from "../types.js";
 import sourceCode from "./dialog.tsx?raw";
 
 interface DialogEntryRowProps {
@@ -68,16 +68,8 @@ const DialogEntryRow = ({
     </GtkBox>
 );
 
-const MessageDialog = ({
-    target,
-    clickCount,
-    onClose,
-}: {
-    target: Gtk.Window;
-    clickCount: number;
-    onClose: () => void;
-}) => (
-    <Dialog parent={target}>
+const MessageDialog = ({ clickCount, onClose }: { clickCount: number; onClose: () => void }) => (
+    <Dialog>
         <AlertDialog
             name="message-dialog"
             heading="Test message"
@@ -93,7 +85,6 @@ const MessageDialog = ({
 );
 
 interface InteractiveDialogProps {
-    target: Gtk.Window;
     entry1Text: string;
     setEntry1Text: (v: string) => void;
     entry2Text: string;
@@ -102,7 +93,6 @@ interface InteractiveDialogProps {
 }
 
 const InteractiveDialog = ({
-    target,
     entry1Text,
     setEntry1Text,
     entry2Text,
@@ -112,7 +102,7 @@ const InteractiveDialog = ({
     const [dialogEntry1Widget, setDialogEntry1Widget] = useState<Gtk.Entry | null>(null);
     const [dialogEntry2Widget, setDialogEntry2Widget] = useState<Gtk.Entry | null>(null);
     return (
-        <Dialog parent={target}>
+        <Dialog>
             <AlertDialog
                 name="interactive-dialog"
                 heading="Interactive Dialog"
@@ -227,7 +217,7 @@ function useDialogDemoState() {
     };
 }
 
-const DialogDemo = ({ window }: DemoProps) => {
+const DialogDemo = () => {
     const state = useDialogDemoState();
     return (
         <GtkBox
@@ -253,16 +243,11 @@ const DialogDemo = ({ window }: DemoProps) => {
                 setEntry2Widget={state.setEntry2Widget}
                 onOpenInteractive={state.handleOpenInteractiveDialog}
             />
-            {state.showMessageDialog && window.current && (
-                <MessageDialog
-                    target={window.current}
-                    clickCount={state.clickCount}
-                    onClose={() => state.setShowMessageDialog(false)}
-                />
+            {state.showMessageDialog && (
+                <MessageDialog clickCount={state.clickCount} onClose={() => state.setShowMessageDialog(false)} />
             )}
-            {state.showInteractiveDialog && window.current && (
+            {state.showInteractiveDialog && (
                 <InteractiveDialog
-                    target={window.current}
                     entry1Text={state.dialogEntry1Text}
                     setEntry1Text={state.setDialogEntry1Text}
                     entry2Text={state.dialogEntry2Text}

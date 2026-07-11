@@ -17,6 +17,7 @@ import {
     GtkTextTag,
     GtkTextView,
 } from "@gtkx/jsx/gtk";
+import { useParentWindow } from "@gtkx/react";
 import { type RefObject, useLayoutEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./textview.tsx?raw";
@@ -117,7 +118,7 @@ function recursiveAttachView(depth: number, view: Gtk.TextView, anchor: Gtk.Text
     recursiveAttachView(depth + 1, childView, anchor);
 }
 
-function handleEasterEgg(sourceView: Gtk.TextView, windowRef: RefObject<Gtk.Window | null>) {
+function handleEasterEgg(parentWindow: Gtk.Window | null, windowRef: RefObject<Gtk.Window | null>) {
     if (windowRef.current) {
         windowRef.current.present();
         return;
@@ -138,9 +139,8 @@ function handleEasterEgg(sourceView: Gtk.TextView, windowRef: RefObject<Gtk.Wind
     const win = new Gtk.Window();
     windowRef.current = win;
 
-    const root = sourceView.getRoot();
-    if (root instanceof Gtk.Window) {
-        win.setTransientFor(root);
+    if (parentWindow) {
+        win.setTransientFor(parentWindow);
         win.setModal(true);
     }
 
@@ -470,14 +470,14 @@ const renderSecondaryTextView = (textView2Ref: RefObject<Gtk.TextView | null>, s
 );
 
 const TextViewDemo = () => {
+    const parentWindow = useParentWindow();
     const textView1Ref = useRef<Gtk.TextView | null>(null);
     const textView2Ref = useRef<Gtk.TextView | null>(null);
     const easterEggWindowRef = useRef<Gtk.Window | null>(null);
     const [sharedBuffer, setSharedBuffer] = useState<Gtk.TextBuffer | null>(null);
 
     const handleClickMe = () => {
-        const tv = textView1Ref.current;
-        if (tv) handleEasterEgg(tv, easterEggWindowRef);
+        handleEasterEgg(parentWindow, easterEggWindowRef);
     };
 
     const iconPaintable = lookupIconPaintable();
@@ -489,7 +489,7 @@ const TextViewDemo = () => {
 
         const anchors = findChildAnchors(sharedBuffer);
         attachWidgetClones(tv2, anchors, () => {
-            if (textView2Ref.current) handleEasterEgg(textView2Ref.current, easterEggWindowRef);
+            handleEasterEgg(parentWindow, easterEggWindowRef);
         });
 
         return () => {
@@ -498,7 +498,7 @@ const TextViewDemo = () => {
                 easterEggWindowRef.current = null;
             }
         };
-    }, [sharedBuffer]);
+    }, [sharedBuffer, parentWindow]);
 
     return (
         <GtkPaned

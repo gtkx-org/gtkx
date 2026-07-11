@@ -1,10 +1,12 @@
 import * as Adw from "@gtkx/gi/adw";
 import * as Pango from "@gtkx/gi/pango";
 import { GtkLabel } from "@gtkx/jsx/gtk";
-import type { Demo, DemoProps } from "../types.js";
+import { useParentWindow } from "@gtkx/react";
+import type { Demo } from "../types.js";
 import sourceCode from "./links.tsx?raw";
 
-const LinksDemo = ({ window }: DemoProps) => {
+const LinksDemo = () => {
+    const parentWindow = useParentWindow();
     const handleActivateLink = (uri: string) => {
         if (uri === "keynav") {
             const dialog = new Adw.AlertDialog();
@@ -15,7 +17,7 @@ const LinksDemo = ({ window }: DemoProps) => {
             dialog.addResponse("ok", "_OK");
             dialog.setDefaultResponse("ok");
             dialog.setCloseResponse("ok");
-            void dialog.choose(window.current, null);
+            void dialog.choose(parentWindow, null);
             return true;
         }
         return false;

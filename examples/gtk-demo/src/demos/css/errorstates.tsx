@@ -278,12 +278,12 @@ const ModeSwitchRow = ({ state, onStateSet }: ModeSwitchRowProps) => {
     );
 };
 
-const ErrorstatesDemo = ({ onClose, window }: DemoProps) => {
+const ErrorstatesDemo = ({ onClose }: DemoProps) => {
     const state = useErrorStatesState();
     const handlers = useErrorStatesHandlers(state);
 
     return (
-        <Dialog parent={window.current}>
+        <Dialog>
             <AdwDialog title="Error States" canClose followsContentSize onClosed={() => onClose?.()}>
                 <AdwToolbarView topBar={<AdwHeaderBar />}>
                     <Grid

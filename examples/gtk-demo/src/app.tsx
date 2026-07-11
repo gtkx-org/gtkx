@@ -22,7 +22,7 @@ import {
     GtkToggleButton,
     GtkWindow,
 } from "@gtkx/jsx/gtk";
-import { createPortal, quit, rootElement, useApplication, useProperty } from "@gtkx/react";
+import { createPortal, quit, rootElement, useParentWindow } from "@gtkx/react";
 import { useEffect, useRef, useState } from "react";
 import { path as logoResourcePath } from "#data/icons/org.gtk.Demo4.svg";
 import { Sidebar } from "./components/sidebar.js";
@@ -83,12 +83,11 @@ interface DemoWindowProps {
 
 const DemoWindow = ({ onClose }: DemoWindowProps) => {
     const { currentDemo, windowTitle, defaultWidget } = useDemo();
-    const app = useApplication();
-    const activeWindow = useProperty(app, "activeWindow");
+    const hostWindow = useParentWindow();
     const windowRef = useRef<Gtk.Window>(null);
-    const activeWindowRef = useLatest<Gtk.Window | null>(activeWindow ?? null);
+    const hostWindowRef = useLatest<Gtk.Window | null>(hostWindow);
 
-    if (!currentDemo?.component || !activeWindow) return null;
+    if (!currentDemo?.component || !hostWindow) return null;
 
     const DemoComponent = currentDemo.component;
     const DemoTitlebar = currentDemo.titlebar;
@@ -97,8 +96,8 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
 
     if (currentDemo.dialogOnly) {
         return (
-            <DemoStateProvider window={activeWindowRef} onClose={onClose}>
-                <DemoComponent onClose={onClose} window={activeWindowRef} />
+            <DemoStateProvider window={hostWindowRef} onClose={onClose}>
+                <DemoComponent onClose={onClose} window={hostWindowRef} />
             </DemoStateProvider>
         );
     }
@@ -111,7 +110,7 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
                 <GtkWindow
                     ref={windowRef}
                     name="demo-window"
-                    transientFor={activeWindow}
+                    transientFor={hostWindow}
                     title={windowTitle ?? currentDemo.windowTitle ?? displayTitle}
                     defaultWidth={currentDemo.defaultWidth ?? -1}
                     defaultHeight={currentDemo.defaultHeight ?? -1}
@@ -134,12 +133,11 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
 };
 
 interface ShortcutsDialogProps {
-    activeWindow: Gtk.Window;
     onClose: () => void;
 }
 
-const ShortcutsDialog = ({ activeWindow, onClose }: ShortcutsDialogProps) => (
-    <Dialog parent={activeWindow}>
+const ShortcutsDialog = ({ onClose }: ShortcutsDialogProps) => (
+    <Dialog>
         <AdwShortcutsDialog onClosed={onClose}>
             <AdwShortcutsSection title="General">
                 <AdwShortcutsItem title="Search demos" accelerator="<Control>f" />
@@ -267,12 +265,11 @@ const AppNotebook = ({ page, onSwitchPage }: AppNotebookProps) => (
 );
 
 interface AboutDialogProps {
-    activeWindow: Gtk.Window;
     onClose: () => void;
 }
 
-const AboutDialog = ({ activeWindow, onClose }: AboutDialogProps) => (
-    <Dialog parent={activeWindow}>
+const AboutDialog = ({ onClose }: AboutDialogProps) => (
+    <Dialog>
         <AdwAboutDialog
             applicationName="GTK Demo"
             applicationIcon={applicationIconName}
@@ -370,8 +367,6 @@ const MainWindow = () => {
     const [showShortcuts, setShowShortcuts] = useState(false);
     const [notebookPage, setNotebookPage] = useState(0);
     const { demoWindows, openWindow, closeWindow } = useDemoWindows();
-    const app = useApplication();
-    const activeWindow = useProperty(app, "activeWindow");
 
     const windowTitle = currentDemo ? parseTitle(currentDemo.title).displayTitle : "GTK Demo";
 
@@ -413,12 +408,8 @@ const MainWindow = () => {
             {demoWindows.map((id) => (
                 <DemoWindow key={id} onClose={() => closeWindow(id)} />
             ))}
-            {showAbout && activeWindow && (
-                <AboutDialog activeWindow={activeWindow} onClose={() => setShowAbout(false)} />
-            )}
-            {showShortcuts && activeWindow && (
-                <ShortcutsDialog activeWindow={activeWindow} onClose={() => setShowShortcuts(false)} />
-            )}
+            {showAbout && <AboutDialog onClose={() => setShowAbout(false)} />}
+            {showShortcuts && <ShortcutsDialog onClose={() => setShowShortcuts(false)} />}
         </GtkApplicationWindow>
     );
 };

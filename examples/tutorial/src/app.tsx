@@ -24,7 +24,7 @@ import {
     GtkShortcut,
     GtkShortcutController,
 } from "@gtkx/jsx/gtk";
-import { quit, useApplication, useSetting } from "@gtkx/react";
+import { quit, useParentWindow, useSetting } from "@gtkx/react";
 import { useRef, useState } from "react";
 import schema from "#data/com.gtkx.tutorial.gschema.xml";
 import { About } from "./components/about.js";
@@ -597,32 +597,25 @@ const AppBody = ({
     />
 );
 
-const useNotesWindowHandlers = (notes: ReturnType<typeof useNotesState>) => {
-    const app = useApplication();
-    const deleteSelected = () => {
-        if (notes.selectedNote) notes.setNoteToDelete(notes.selectedNote);
-    };
-    const onShortcuts = () => {
-        const window = app.getActiveWindow();
-        if (window) showShortcutsDialog(window);
-    };
-    return { deleteSelected, onShortcuts };
-};
-
 interface NotesWindowActionsProps {
     notes: ReturnType<typeof useNotesState>;
     dialogs: ReturnType<typeof useDialogState>;
-    onShortcuts: () => void;
 }
 
-const NotesWindowActions = ({ notes, dialogs, onShortcuts }: NotesWindowActionsProps) => (
-    <>
-        <GSimpleAction name="new" onActivate={notes.addNote} />
-        <GSimpleAction name="preferences" onActivate={() => dialogs.setShowPreferences(true)} />
-        <GSimpleAction name="shortcuts" onActivate={onShortcuts} />
-        <GSimpleAction name="about" onActivate={() => dialogs.setShowAbout(true)} />
-    </>
-);
+const NotesWindowActions = ({ notes, dialogs }: NotesWindowActionsProps) => {
+    const parentWindow = useParentWindow();
+    const onShortcuts = () => {
+        if (parentWindow) showShortcutsDialog(parentWindow);
+    };
+    return (
+        <>
+            <GSimpleAction name="new" onActivate={notes.addNote} />
+            <GSimpleAction name="preferences" onActivate={() => dialogs.setShowPreferences(true)} />
+            <GSimpleAction name="shortcuts" onActivate={onShortcuts} />
+            <GSimpleAction name="about" onActivate={() => dialogs.setShowAbout(true)} />
+        </>
+    );
+};
 
 function NotesWindow() {
     const [compactMode] = useSetting(schema, "compact-mode");
@@ -638,7 +631,9 @@ function NotesWindow() {
         trashedNotes: notes.trashedNotes,
         favoriteNotes: notes.favoriteNotes,
     });
-    const { deleteSelected, onShortcuts } = useNotesWindowHandlers(notes);
+    const deleteSelected = () => {
+        if (notes.selectedNote) notes.setNoteToDelete(notes.selectedNote);
+    };
 
     return (
         <AdwApplicationWindow
@@ -646,7 +641,7 @@ function NotesWindow() {
             defaultWidth={900}
             defaultHeight={600}
             onCloseRequest={quit}
-            actions={<NotesWindowActions notes={notes} dialogs={dialogs} onShortcuts={onShortcuts} />}
+            actions={<NotesWindowActions notes={notes} dialogs={dialogs} />}
             controllers={
                 <AppShortcuts
                     selectedId={notes.selectedId}

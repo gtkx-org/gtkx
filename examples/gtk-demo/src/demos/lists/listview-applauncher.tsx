@@ -4,7 +4,8 @@ import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkImage, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
-import type { Demo, DemoProps } from "../types.js";
+import { useParentWindow } from "@gtkx/react";
+import type { Demo } from "../types.js";
 import sourceCode from "./listview-applauncher.tsx?raw";
 
 interface AppItem {
@@ -14,7 +15,8 @@ interface AppItem {
     icon: Gio.Icon | null;
 }
 
-const ListViewApplauncherDemo = ({ window }: DemoProps) => {
+const ListViewApplauncherDemo = () => {
+    const parentWindow = useParentWindow();
     const apps = Gio.appInfoGetAll().map((app) => ({
         appInfo: app,
         id: app.getId() ?? crypto.randomUUID(),
@@ -39,7 +41,7 @@ const ListViewApplauncherDemo = ({ window }: DemoProps) => {
             dialog.addResponse("ok", "_OK");
             dialog.setDefaultResponse("ok");
             dialog.setCloseResponse("ok");
-            dialog.present(window.current);
+            dialog.present(parentWindow);
         }
     };
 

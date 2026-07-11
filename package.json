@@ -12,7 +12,7 @@
         "codegen": "turbo run codegen:all && turbo run codegen --filter=!gtkx",
         "codegen:all": "NODE_OPTIONS=--conditions=source pnpm exec tsx packages/cli/src/cli.ts codegen",
         "coverage": "turbo run coverage:all && turbo run coverage --filter=!gtkx",
-        "coverage:all": "vitest run --coverage",
+        "coverage:all": "vitest run --coverage --maxWorkers=50%",
         "lint": "turbo run lint:all && turbo run lint --filter=!gtkx",
         "lint:all": "biome check .",
         "lint:deps": "depcruise packages",

@@ -11,6 +11,8 @@ import {
     GtkTextTag,
     GtkTextView,
 } from "@gtkx/jsx/gtk";
+import { useParentWindow } from "@gtkx/react";
+
 import { path as gtkLogoCursorPath } from "#data/demos/buttons/gtk_logo_cursor.png";
 import type { Demo } from "../types.js";
 import sourceCode from "./expander.tsx?raw";
@@ -22,13 +24,11 @@ Do it already!
 
 const ExpanderDemo = () => {
     const texture = Gdk.Texture.newFromResource(gtkLogoCursorPath);
+    const parentWindow = useParentWindow();
 
     const handleExpandedNotify = (pspec: GObject.ParamSpec, self: Gtk.Expander) => {
         if (pspec.getName() !== "expanded") return;
-        const root = self.getRoot();
-        if (!root) return;
-        const win = root instanceof Gtk.Window ? root : null;
-        if (win) win.setResizable(self.getExpanded());
+        if (parentWindow) parentWindow.setResizable(self.getExpanded());
     };
 
     return (

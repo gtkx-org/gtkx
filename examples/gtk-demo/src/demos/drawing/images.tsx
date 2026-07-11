@@ -1,13 +1,14 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkFrame, GtkImage, GtkLabel, GtkPicture, GtkSwitch, GtkToggleButton, GtkVideo } from "@gtkx/jsx/gtk";
+import { useParentWindow } from "@gtkx/react";
 import { useEffect, useState } from "react";
 import { path as animatedSvgPath } from "#data/demos/drawing/animated.gpa";
 import { path as gtkLogoSvgPath } from "#data/demos/drawing/gtk-logo.svg";
 import { path as statefulSvgPath } from "#data/demos/drawing/stateful.gpa";
 import { path as floppybuddyGifPath } from "#data/demos/gestures/floppybuddy.gif";
 import gtkLogoWebmUri from "#data/demos/media/gtk-logo.webm";
-import type { Demo, DemoProps } from "../types.js";
+import type { Demo } from "../types.js";
 import sourceCode from "./images.tsx?raw";
 
 let symbolicIcon: Gio.ThemedIcon | undefined;
@@ -84,19 +85,19 @@ const PathAnimationPanel = () => {
     );
 };
 
-const ImagesDemo = ({ window }: DemoProps) => {
+const ImagesDemo = () => {
+    const parentWindow = useParentWindow();
     const [widgetPaintable, setWidgetPaintable] = useState<Gtk.WidgetPaintable | null>(null);
     const gifPaintable = useGifPaintable();
     const [insensitive, setInsensitive] = useState(false);
     const videoFile = Gio.fileNewForUri(gtkLogoWebmUri);
 
     useEffect(() => {
-        const win = window.current;
-        if (win) {
-            const paintable = Gtk.WidgetPaintable.new(win);
+        if (parentWindow) {
+            const paintable = Gtk.WidgetPaintable.new(parentWindow);
             setWidgetPaintable(paintable);
         }
-    }, [window]);
+    }, [parentWindow]);
 
     return (
         <GtkBox

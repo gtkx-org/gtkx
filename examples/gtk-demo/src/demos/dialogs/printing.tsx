@@ -1,30 +1,33 @@
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
+import { useParentWindow } from "@gtkx/react";
 import { useEffect } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import { configurePrintOperation } from "./print-operation.js";
 import sourceCode from "./print-operation.ts?raw";
 
-const runPrintOperation = (window: Gtk.Window | null, source: string, onDone: () => void) => {
+const runPrintOperation = (parentWindow: Gtk.Window | null, source: string, onDone: () => void) => {
     const printOp = configurePrintOperation(source);
     printOp.on("done", () => onDone());
     try {
-        printOp.run(Gtk.PrintOperationAction.PRINT_DIALOG, window);
+        printOp.run(Gtk.PrintOperationAction.PRINT_DIALOG, parentWindow);
     } catch (error) {
         const dialog = new Adw.AlertDialog();
         dialog.setHeading(`${error}`);
         dialog.addResponse("ok", "_OK");
         dialog.setDefaultResponse("ok");
         dialog.setCloseResponse("ok");
-        dialog.present(window);
+        dialog.present(parentWindow);
         onDone();
     }
 };
 
-const PrintingDemo = ({ window, onClose }: DemoProps) => {
+const PrintingDemo = ({ onClose }: DemoProps) => {
+    const parentWindow = useParentWindow();
+
     useEffect(() => {
-        runPrintOperation(window.current, sourceCode, () => onClose?.());
-    }, [window, onClose]);
+        runPrintOperation(parentWindow, sourceCode, () => onClose?.());
+    }, [parentWindow, onClose]);
 
     return null;
 };

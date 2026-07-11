@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { createPortal, rootElement } from "@gtkx/react";
+import { createPortal, rootElement, useParentWindow } from "@gtkx/react";
 import { useMergeRefs } from "@gtkx/react/internal";
 import {
     cloneElement,
@@ -25,7 +25,9 @@ export type DialogProps = {
     children: DialogElement;
 };
 
-export const Dialog = ({ parent = null, children }: DialogProps): ReactNode => {
+export const Dialog = ({ parent, children }: DialogProps): ReactNode => {
+    const parentWindow = useParentWindow();
+    const resolvedParent = parent === undefined ? parentWindow : parent;
     const [dialog, setDialogState] = useState<DialogInstance | null>(null);
     const setDialog = useCallback<RefCallback<DialogInstance>>((instance) => {
         setDialogState(instance);
@@ -35,9 +37,9 @@ export const Dialog = ({ parent = null, children }: DialogProps): ReactNode => {
 
     useLayoutEffect(() => {
         if (!dialog) return;
-        dialog.present(parent);
+        dialog.present(resolvedParent);
         return () => dialog.forceClose();
-    }, [dialog, parent]);
+    }, [dialog, resolvedParent]);
 
     if (element === null) return null;
     return createPortal(cloneElement(element, { ref: mergedRef }), rootElement);

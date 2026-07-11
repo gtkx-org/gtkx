@@ -1,22 +1,21 @@
 import { AdwPreferencesGroup, AdwPreferencesPage, AdwPreferencesWindow, AdwSpinRow, AdwSwitchRow } from "@gtkx/jsx/adw";
 import { GtkAdjustment } from "@gtkx/jsx/gtk";
-import { createPortal, rootElement, useApplication, useProperty, useSetting } from "@gtkx/react";
+import { createPortal, rootElement, useParentWindow, useSetting } from "@gtkx/react";
 import schema from "#data/com.gtkx.tutorial.gschema.xml";
 
 export const Preferences = ({ onClose }: { onClose: () => void }) => {
-    const app = useApplication();
-    const activeWindow = useProperty(app, "activeWindow");
+    const parentWindow = useParentWindow();
 
     const [compactMode, setCompactMode] = useSetting(schema, "compact-mode");
     const [spellCheck, setSpellCheck] = useSetting(schema, "spell-check");
     const [fontSize, setFontSize] = useSetting(schema, "font-size");
 
-    if (!activeWindow) return null;
+    if (!parentWindow) return null;
 
     return createPortal(
         <AdwPreferencesWindow
             title="Preferences"
-            transientFor={activeWindow}
+            transientFor={parentWindow}
             modal
             defaultWidth={500}
             defaultHeight={400}

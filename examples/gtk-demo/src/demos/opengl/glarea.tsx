@@ -2,8 +2,9 @@ import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as gl from "@gtkx/gl";
 import { GtkAdjustment, GtkBox, GtkButton, GtkGLArea, GtkLabel, GtkScale } from "@gtkx/jsx/gtk";
+import { useParentWindow } from "@gtkx/react";
 import { useRef, useState } from "react";
-import type { Demo, DemoProps } from "../types.js";
+import type { Demo } from "../types.js";
 import { bufferFloatData, setShaderSource } from "./gl-helpers.js";
 import sourceCode from "./glarea.tsx?raw";
 
@@ -245,7 +246,8 @@ const useGLAreaHandlers = (args: UseGLAreaHandlersArgs) => {
     return { handleRealize, handleUnrealize, handleRender, handleResize, createAxisHandler };
 };
 
-const GLAreaDemo = ({ window }: DemoProps) => {
+const GLAreaDemo = () => {
+    const parentWindow = useParentWindow();
     const glAreaRef = useRef<Gtk.GLArea | null>(null);
     const glStateRef = useRef<GLState | null>(null);
     const [rotationX, setRotationX] = useState(0);
@@ -290,7 +292,7 @@ const GLAreaDemo = ({ window }: DemoProps) => {
                 <AxisScale label="X axis" onValueChanged={handlers.createAxisHandler(setRotationX)} />
                 <AxisScale label="Y axis" onValueChanged={handlers.createAxisHandler(setRotationY)} />
                 <AxisScale label="Z axis" onValueChanged={handlers.createAxisHandler(setRotationZ)} />
-                <GtkButton label="Quit" hexpand onClicked={() => window.current?.destroy()} />
+                <GtkButton label="Quit" hexpand onClicked={() => parentWindow?.destroy()} />
             </GtkBox>
         </GtkBox>
     );

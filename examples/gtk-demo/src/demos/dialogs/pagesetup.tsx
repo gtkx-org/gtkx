@@ -1,18 +1,20 @@
 import * as Gtk from "@gtkx/gi/gtk";
+import { useParentWindow } from "@gtkx/react";
 import { useEffect } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./pagesetup.tsx?raw";
 
-const PageSetupDemo = ({ window, onClose }: DemoProps) => {
+const PageSetupDemo = ({ onClose }: DemoProps) => {
+    const parentWindow = useParentWindow();
+
     useEffect(() => {
-        const parent = window.current;
-        if (!parent) return;
+        if (!parentWindow) return;
 
         const settings = new Gtk.PrintSettings();
-        Gtk.printRunPageSetupDialogAsync(parent, null, settings, () => {
+        Gtk.printRunPageSetupDialogAsync(parentWindow, null, settings, () => {
             onClose?.();
         });
-    }, [window, onClose]);
+    }, [parentWindow, onClose]);
 
     return null;
 };

@@ -1,16 +1,10 @@
 import { Dialog } from "@gtkx/components/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwAboutDialog } from "@gtkx/jsx/adw";
-import { useApplication, useProperty } from "@gtkx/react";
 
 export const About = ({ onClose }: { onClose: () => void }) => {
-    const app = useApplication();
-    const activeWindow = useProperty(app, "activeWindow");
-
-    if (!activeWindow) return null;
-
     return (
-        <Dialog parent={activeWindow}>
+        <Dialog>
             <AdwAboutDialog
                 applicationName="Notes"
                 applicationIcon="document-edit-symbolic"

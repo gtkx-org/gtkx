@@ -6,7 +6,7 @@ import * as Pango from "@gtkx/gi/pango";
 import { GtkBox, GtkButton, GtkHeaderBar, GtkLabel, GtkToggleButton } from "@gtkx/jsx/gtk";
 import { useTickCallback } from "@gtkx/react";
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { Demo, DemoProps, DemoProviderProps } from "../types.js";
+import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./themes.tsx?raw";
 
 interface Theme {
@@ -97,14 +97,8 @@ const ThemesBody = ({ boxRef }: { boxRef: React.RefObject<Gtk.Box | null> }) => 
     </GtkBox>
 );
 
-const ThemesWarningDialog = ({
-    window,
-    onResponse,
-}: {
-    window: Gtk.Window;
-    onResponse: (response: string) => void;
-}) => (
-    <Dialog parent={window}>
+const ThemesWarningDialog = ({ onResponse }: { onResponse: (response: string) => void }) => (
+    <Dialog>
         <AlertDialog
             name="warning-dialog"
             heading="Warning"
@@ -207,14 +201,12 @@ const ThemesTitlebar = () => {
     );
 };
 
-const ThemesDemo = ({ window }: DemoProps) => {
+const ThemesDemo = () => {
     const cycling = useThemes();
     return (
         <>
             <ThemesBody boxRef={cycling.boxRef} />
-            {cycling.showWarning && window.current && (
-                <ThemesWarningDialog window={window.current} onResponse={cycling.handleWarningResponse} />
-            )}
+            {cycling.showWarning && <ThemesWarningDialog onResponse={cycling.handleWarningResponse} />}
         </>
     );
 };

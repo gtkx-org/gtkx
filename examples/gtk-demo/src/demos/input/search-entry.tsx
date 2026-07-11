@@ -1,7 +1,8 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkHeaderBar, GtkLabel, GtkSearchBar, GtkSearchEntry, GtkToggleButton } from "@gtkx/jsx/gtk";
+import { useParentWindow } from "@gtkx/react";
 import { createContext, useContext, useState } from "react";
-import type { Demo, DemoProps, DemoProviderProps } from "../types.js";
+import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./search-entry.tsx?raw";
 
 interface SearchEntryContextValue {
@@ -54,14 +55,15 @@ const SearchEntryTitlebar = () => {
     );
 };
 
-const SearchEntryDemo = ({ window }: DemoProps) => {
+const SearchEntryDemo = () => {
     const { searchText, setSearchText, searchMode, setSearchMode } = useSearchEntryContext();
+    const parentWindow = useParentWindow();
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
             <GtkSearchBar
                 searchModeEnabled={searchMode}
                 showCloseButton={false}
-                keyCaptureWidget={window.current}
+                keyCaptureWidget={parentWindow}
                 onNotifySearchModeEnabled={(enabled) => setSearchMode(enabled ?? false)}
             >
                 <GtkSearchEntry halign={Gtk.Align.CENTER} onSearchChanged={(entry) => setSearchText(entry.getText())} />
