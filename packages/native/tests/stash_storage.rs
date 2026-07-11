@@ -6,7 +6,6 @@ use gtk4::glib;
 use native::ffi::codec::{
     ArrayCodec, ArrayKind, Codec, Encoder as _, IntegerCodec, Ownership, StringCodec,
 };
-use native::ffi::value::Value;
 use native::ffi::{GArrayData, ListData, ListPayload, Stash, StashData, StashStorage};
 
 fn make_glist_one() -> *mut glib::ffi::GList {
@@ -493,42 +492,52 @@ fn string_full_item_array_type(kind: ArrayKind, container_ownership: Ownership) 
 
 #[test]
 fn encode_empty_string_glist_full_container_arms_null_transfer_safe_on_drop() {
-    let codec = string_full_item_array_type(ArrayKind::GList, Ownership::Full);
-    let encoded = codec.encode(&Value::Array(Vec::new())).unwrap();
-    let Stash::Storage(storage) = &encoded else {
-        panic!("expected storage")
-    };
-    assert!(storage.ptr().is_null());
-    let StashData::List(data) = storage.data() else {
-        panic!("expected string GList storage")
-    };
-    let ListPayload::Strings { items_duped, .. } = &data.payload else {
-        panic!("expected string payload")
-    };
-    assert!(data.ptr.is_null());
-    assert!(!data.should_free);
-    assert!(*items_duped);
-    drop(encoded);
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let codec = string_full_item_array_type(ArrayKind::GList, Ownership::Full);
+        let empty = helpers::napi_mock::to_unknown(&env, helpers::napi_mock::fake_array(&[]));
+        let encoded = codec.encode(&env, empty).unwrap();
+        let Stash::Storage(storage) = &encoded else {
+            panic!("expected storage")
+        };
+        assert!(storage.ptr().is_null());
+        let StashData::List(data) = storage.data() else {
+            panic!("expected string GList storage")
+        };
+        let ListPayload::Strings { items_duped, .. } = &data.payload else {
+            panic!("expected string payload")
+        };
+        assert!(data.ptr.is_null());
+        assert!(!data.should_free);
+        assert!(*items_duped);
+        drop(encoded);
+    });
 }
 
 #[test]
 fn encode_string_array_element_transfer_frees_duplicates_when_call_never_happens() {
-    let codec = string_full_item_array_type(ArrayKind::Array, Ownership::Borrowed);
-    let val = Value::Array(vec![
-        Value::String("foo".to_string()),
-        Value::String("bar".to_string()),
-    ]);
-    let encoded = codec.encode(&val).unwrap();
-    let Stash::Storage(storage) = &encoded else {
-        panic!("expected storage")
-    };
-    let block = storage.ptr() as *mut *mut c_char;
-    let first = unsafe { CStr::from_ptr(*block) };
-    let second = unsafe { CStr::from_ptr(*block.add(1)) };
-    assert_eq!(first.to_str().unwrap(), "foo");
-    assert_eq!(second.to_str().unwrap(), "bar");
-    assert!(unsafe { (*block.add(2)).is_null() });
-    drop(encoded);
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let codec = string_full_item_array_type(ArrayKind::Array, Ownership::Borrowed);
+        let val = helpers::napi_mock::to_unknown(
+            &env,
+            helpers::napi_mock::fake_array(&[
+                helpers::napi_mock::fake_string("foo"),
+                helpers::napi_mock::fake_string("bar"),
+            ]),
+        );
+        let encoded = codec.encode(&env, val).unwrap();
+        let Stash::Storage(storage) = &encoded else {
+            panic!("expected storage")
+        };
+        let block = storage.ptr() as *mut *mut c_char;
+        let first = unsafe { CStr::from_ptr(*block) };
+        let second = unsafe { CStr::from_ptr(*block.add(1)) };
+        assert_eq!(first.to_str().unwrap(), "foo");
+        assert_eq!(second.to_str().unwrap(), "bar");
+        assert!(unsafe { (*block.add(2)).is_null() });
+        drop(encoded);
+    });
 }
 
 #[test]
@@ -543,8 +552,15 @@ fn encode_gbytearray_full_ownership_unrefs_when_call_never_happens() {
             None,
         )
         .expect("valid gbytearray codec");
-        let val = Value::Array(vec![Value::Number(7.0), Value::Number(8.0)]);
-        let encoded = codec.encode(&val).unwrap();
+        let env = helpers::fake_env();
+        let val = helpers::napi_mock::to_unknown(
+            &env,
+            helpers::napi_mock::fake_array(&[
+                helpers::napi_mock::fake_double(7.0),
+                helpers::napi_mock::fake_double(8.0),
+            ]),
+        );
+        let encoded = codec.encode(&env, val).unwrap();
         let Stash::Storage(storage) = &encoded else {
             panic!("expected storage")
         };

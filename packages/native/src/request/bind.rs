@@ -17,27 +17,23 @@ pub struct CallDescriptor {
     pub(crate) return_codec: Codec,
 }
 
-pub mod napi_export {
-    use super::*;
-
-    #[napi(catch_unwind)]
-    pub fn bind(
-        shared_library: String,
-        symbol_name: String,
-        arg_descriptors: Vec<Descriptor>,
-        return_descriptor: Descriptor,
-    ) -> napi::Result<External<Arc<CallDescriptor>>> {
-        let arg_codecs = arg_descriptors
-            .into_iter()
-            .map(Descriptor::into_codec)
-            .collect::<napi::Result<Vec<_>>>()?;
-        let return_codec = return_descriptor.into_codec()?;
-        Ok(External::new(Arc::new(CallDescriptor {
-            id: NEXT_DESCRIPTOR_ID.fetch_add(1, Ordering::Relaxed),
-            library_name: shared_library,
-            symbol_name,
-            arg_codecs,
-            return_codec,
-        })))
-    }
+#[napi(catch_unwind)]
+pub fn bind(
+    shared_library: String,
+    symbol_name: String,
+    arg_descriptors: Vec<Descriptor>,
+    return_descriptor: Descriptor,
+) -> napi::Result<External<Arc<CallDescriptor>>> {
+    let arg_codecs = arg_descriptors
+        .into_iter()
+        .map(Descriptor::into_codec)
+        .collect::<napi::Result<Vec<_>>>()?;
+    let return_codec = return_descriptor.into_codec()?;
+    Ok(External::new(Arc::new(CallDescriptor {
+        id: NEXT_DESCRIPTOR_ID.fetch_add(1, Ordering::Relaxed),
+        library_name: shared_library,
+        symbol_name,
+        arg_codecs,
+        return_codec,
+    })))
 }

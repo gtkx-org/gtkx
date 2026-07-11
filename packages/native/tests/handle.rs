@@ -3,13 +3,12 @@ use test_support as helpers;
 use std::ffi::c_void;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::thread;
 
 use gtk4::glib;
+use gtk4::glib::translate::from_glib_full;
 use gtk4::prelude::ObjectType as _;
 
-use native::handle::{Fundamental, Handle, Value};
-use native::messaging::Mailbox;
+use native::handle::{Fundamental, Handle};
 
 use helpers::{
     get_gobject_refcount, make_bool_param_spec as param_spec_ptr, param_spec_ref,
@@ -17,18 +16,17 @@ use helpers::{
 };
 
 fn owned_fundamental(ptr: *mut c_void) -> Handle {
-    Value::Fundamental(Fundamental::from_glib_full(
+    Handle::Fundamental(Fundamental::from_glib_full(
         ptr,
         Some(param_spec_ref),
         Some(param_spec_unref),
     ))
-    .into()
 }
 
 fn borrowed_fundamental(ptr: *mut c_void) -> Handle {
     let fundamental =
         unsafe { Fundamental::from_glib_none(ptr, Some(param_spec_ref), Some(param_spec_unref)) };
-    Value::Fundamental(fundamental).into()
+    Handle::Fundamental(fundamental)
 }
 
 fn extra_referenced_decoded_gobject() -> (glib::Object, *mut glib::gobject_ffi::GObject, u32, Handle)
@@ -38,23 +36,24 @@ fn extra_referenced_decoded_gobject() -> (glib::Object, *mut glib::gobject_ffi::
     unsafe { glib::gobject_ffi::g_object_ref(obj_ptr) };
     let initial_ref = get_gobject_refcount(obj_ptr);
 
-    let handle = Handle::decoded_gobject(obj_ptr as *mut c_void);
+    let owned: glib::Object = unsafe { from_glib_full(obj_ptr) };
+    let handle = Handle::decoded_gobject(owned);
     (obj, obj_ptr, initial_ref, handle)
 }
 
 #[test]
-fn from_native_value_boxed_records_pointer() {
+fn boxed_handle_records_pointer() {
     helpers::run(|| {
         let (boxed, ptr) = helpers::owned_rgba_boxed();
 
-        let handle: Handle = Value::Boxed(boxed).into();
+        let handle = Handle::Boxed(boxed);
 
         assert_eq!(handle.as_ptr(), ptr);
     });
 }
 
 #[test]
-fn from_native_value_fundamental_records_pointer() {
+fn fundamental_handle_records_pointer() {
     let ptr = param_spec_ptr();
 
     let handle = owned_fundamental(ptr);
@@ -72,7 +71,7 @@ fn borrowed_handle_has_no_owned_value() {
 
     let debug_str = format!("{handle:?}");
     assert!(debug_str.contains("Handle"));
-    assert!(debug_str.contains("owned: false"));
+    assert!(debug_str.contains("Borrowed"));
 
     let moved = handle;
     assert_eq!(moved.as_ptr(), raw);
@@ -116,7 +115,7 @@ fn clone_borrowed_handle_preserves_pointer() {
 }
 
 #[test]
-fn drop_owned_handle_on_creating_thread_releases_value() {
+fn drop_owned_handle_releases_value() {
     helpers::run(|| {
         let ptr = param_spec_ptr();
         let handle = borrowed_fundamental(ptr);
@@ -139,7 +138,8 @@ fn drop_borrowed_handle_is_noop() {
 fn a_consumed_decoded_handle_drop_releases_nothing() {
     helpers::run(|| {
         let (_obj, obj_ptr, initial_ref, handle) = extra_referenced_decoded_gobject();
-        assert!(handle.take_pending_gobject_ref());
+        let taken = handle.take_owned();
+        assert!(taken.is_some());
         drop(handle);
 
         let sentinel = Arc::new(AtomicBool::new(false));
@@ -150,13 +150,13 @@ fn a_consumed_decoded_handle_drop_releases_nothing() {
         assert!(sentinel.load(Ordering::SeqCst));
         assert_eq!(get_gobject_refcount(obj_ptr), initial_ref);
 
-        unsafe { glib::gobject_ffi::g_object_unref(obj_ptr) };
+        drop(taken);
         assert_eq!(get_gobject_refcount(obj_ptr), initial_ref - 1);
     });
 }
 
 #[test]
-fn a_decoded_handle_drop_releases_unconsumed_pending_ref() {
+fn a_decoded_handle_drop_releases_unconsumed_ref() {
     helpers::run(|| {
         let (_obj, obj_ptr, initial_ref, handle) = extra_referenced_decoded_gobject();
         drop(handle);
@@ -168,86 +168,46 @@ fn a_decoded_handle_drop_releases_unconsumed_pending_ref() {
 }
 
 #[test]
-fn a_drop_owned_handle_off_thread_routes_through_glib_idle() {
-    helpers::run(|| {
-        let ptr = param_spec_ptr();
-        let handle = borrowed_fundamental(ptr);
-        let initial_ref = param_spec_refcount(ptr);
-
-        thread::spawn(move || {
-            drop(handle);
-        })
-        .join()
-        .expect("dropping handle off-thread should not panic");
-
-        pump_default_context_until(|| param_spec_refcount(ptr) == initial_ref - 1);
-
-        assert_eq!(param_spec_refcount(ptr), initial_ref - 1);
-        unsafe { param_spec_unref(ptr) };
-    });
-}
-
-#[test]
-fn drop_owned_handle_off_thread_while_not_running_leaks_value() {
-    helpers::run(|| {
-        let ptr = param_spec_ptr();
-        let handle = owned_fundamental(ptr);
-
-        let mailbox = Mailbox::global();
-        mailbox.mark_not_running();
-
-        thread::spawn(move || {
-            drop(handle);
-        })
-        .join()
-        .expect("dropping handle while stopped should not panic");
-
-        mailbox.reset_for_test();
-        unsafe { param_spec_unref(ptr) };
-    });
-}
-
-#[test]
-fn take_pending_gobject_ref_consumes_marker_once() {
+fn take_owned_consumes_the_object_once() {
     helpers::run(|| {
         let obj = glib::Object::new::<glib::Object>();
-        let handle = Handle::decoded_gobject(obj.as_ptr() as *mut c_void);
+        let handle = Handle::decoded_gobject(obj.clone());
 
-        assert!(handle.take_pending_gobject_ref());
-        assert!(!handle.take_pending_gobject_ref());
+        assert!(handle.take_owned().is_some());
+        assert!(handle.take_owned().is_none());
     });
 }
 
 #[test]
-fn take_pending_gobject_ref_without_marker_returns_false() {
+fn take_owned_on_a_borrowed_handle_returns_none() {
     helpers::run(|| {
         let obj = glib::Object::new::<glib::Object>();
         let handle = Handle::from_glib_borrow(obj.as_ptr() as *mut c_void);
 
-        assert!(!handle.take_pending_gobject_ref());
+        assert!(handle.take_owned().is_none());
     });
 }
 
 #[test]
-fn clones_share_pending_gobject_ref_marker() {
+fn clones_share_the_owned_object() {
     helpers::run(|| {
         let obj = glib::Object::new::<glib::Object>();
-        let handle = Handle::decoded_gobject(obj.as_ptr() as *mut c_void);
+        let handle = Handle::decoded_gobject(obj.clone());
         let cloned = handle.clone();
 
-        assert!(cloned.take_pending_gobject_ref());
-        assert!(!handle.take_pending_gobject_ref());
+        assert!(cloned.take_owned().is_some());
+        assert!(handle.take_owned().is_none());
     });
 }
 
 #[test]
-fn size_hint_distinguishes_native_value_variants() {
+fn size_hint_distinguishes_handle_variants() {
     helpers::run(|| {
         let (boxed, _boxed_ptr) = helpers::owned_rgba_boxed();
-        let boxed_hint = Value::Boxed(boxed).size_hint();
+        let boxed_hint = Handle::Boxed(boxed).size_hint();
 
         let pspec = param_spec_ptr();
-        let fundamental_hint = Value::Fundamental(Fundamental::from_glib_full(
+        let fundamental_hint = Handle::Fundamental(Fundamental::from_glib_full(
             pspec,
             Some(param_spec_ref),
             Some(param_spec_unref),
@@ -261,21 +221,7 @@ fn size_hint_distinguishes_native_value_variants() {
 }
 
 #[test]
-fn native_handle_caches_size_hint_at_construction() {
-    let ptr = param_spec_ptr();
-    let value = Value::Fundamental(Fundamental::from_glib_full(
-        ptr,
-        Some(param_spec_ref),
-        Some(param_spec_unref),
-    ));
-    let expected = value.size_hint();
-    let handle: Handle = value.into();
-
-    assert_eq!(handle.size_hint(), expected);
-}
-
-#[test]
-fn borrowed_native_handle_reports_zero_size_hint() {
+fn borrowed_handle_reports_zero_size_hint() {
     let handle = Handle::from_glib_borrow(0xDEAD_BEEFusize as *mut c_void);
     assert_eq!(handle.size_hint(), 0);
 }
@@ -284,8 +230,8 @@ fn borrowed_native_handle_reports_zero_size_hint() {
 fn decoded_gobject_handle_reports_nonzero_size_hint() {
     helpers::run(|| {
         let obj = glib::Object::new::<glib::Object>();
-        let handle = Handle::decoded_gobject(obj.as_ptr() as *mut c_void);
+        let handle = Handle::decoded_gobject(obj.clone());
         assert!(handle.size_hint() > 0);
-        assert!(handle.take_pending_gobject_ref());
+        assert!(handle.take_owned().is_some());
     });
 }

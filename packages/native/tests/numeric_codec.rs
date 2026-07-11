@@ -1,12 +1,20 @@
 use test_support as helpers;
+use test_support::napi_mock;
 
 use std::ffi::c_void;
 
 use libffi::middle;
 use native::ffi::Slot;
 use native::ffi::codec::{Decoder, Encoder, FloatCodec, IntegerCodec, PtrWriter, ReadSource};
-use native::ffi::value::Value;
-use native::ffi::{self, value};
+use native::ffi::{self};
+
+use napi::Env;
+use napi::JsValue as _;
+use napi::bindgen_prelude::{External, Unknown};
+
+fn double<'e>(env: &'e Env, value: f64) -> Unknown<'e> {
+    napi_mock::to_unknown(env, napi_mock::fake_double(value))
+}
 
 #[test]
 fn integer_dispatch_ffi_type_u8() {
@@ -146,25 +154,41 @@ fn integer_checked_to_stash_accepts_and_rejects() {
 fn integer_ptr_to_value_raw_round_trips() {
     for kind in INTEGER_KINDS {
         let value = kind
-            .ptr_to_value_raw(8 as *mut c_void, "test")
+            .number_from_ptr_raw(8 as *mut c_void, "test")
             .expect("a small pointer payload converts losslessly");
-        assert!(matches!(value, value::Value::Number(n) if n == 8.0));
+        assert_eq!(value, 8.0);
     }
 }
 
 #[test]
 fn integer_encode_accepts_number_object_and_optional_null() {
-    let encoded = Encoder::encode(&IntegerCodec::I32, &Value::Number(7.0)).unwrap();
-    assert!(matches!(encoded, ffi::Stash::I32(7)));
+    helpers::run(|| {
+        let env = helpers::fake_env();
 
-    let handle = native::Handle::from_glib_borrow(16 as *mut c_void);
-    let from_object = Encoder::encode(&IntegerCodec::I64, &Value::Object(handle)).unwrap();
-    assert!(matches!(from_object, ffi::Stash::I64(16)));
+        let encoded = Encoder::encode(&IntegerCodec::I32, &env, double(&env, 7.0)).unwrap();
+        assert!(matches!(encoded, ffi::Stash::I32(7)));
 
-    let optional = Encoder::encode(&IntegerCodec::I32, &Value::Null).unwrap();
-    assert!(matches!(optional, ffi::Stash::I32(0)));
-    let optional_undef = Encoder::encode(&IntegerCodec::U32, &Value::Undefined).unwrap();
-    assert!(matches!(optional_undef, ffi::Stash::U32(0)));
+        let handle = native::Handle::from_glib_borrow(16 as *mut c_void);
+        let external = External::new(handle).into_unknown(&env).unwrap();
+        let from_object = Encoder::encode(&IntegerCodec::I64, &env, external).unwrap();
+        assert!(matches!(from_object, ffi::Stash::I64(16)));
+
+        let optional = Encoder::encode(
+            &IntegerCodec::I32,
+            &env,
+            napi_mock::to_unknown(&env, napi_mock::fake_null()),
+        )
+        .unwrap();
+        assert!(matches!(optional, ffi::Stash::I32(0)));
+
+        let optional_undef = Encoder::encode(
+            &IntegerCodec::U32,
+            &env,
+            napi_mock::to_unknown(&env, napi_mock::fake_undefined()),
+        )
+        .unwrap();
+        assert!(matches!(optional_undef, ffi::Stash::U32(0)));
+    });
 }
 
 #[test]
@@ -176,42 +200,64 @@ fn integer_libffi_type_matches_ffi_type() {
 
 #[test]
 fn integer_decode_reads_number_and_rejects_non_numeric() {
-    let decoded = Decoder::decode(&IntegerCodec::I32, &ffi::Stash::I32(42)).unwrap();
-    assert!(matches!(decoded, Value::Number(n) if n == 42.0));
-    assert!(Decoder::decode(&IntegerCodec::I32, &ffi::Stash::Void).is_err());
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let decoded = Decoder::decode(&IntegerCodec::I32, &env, &ffi::Stash::I32(42)).unwrap();
+        assert_eq!(napi_mock::read_double(decoded.raw()), Some(42.0));
+        assert!(Decoder::decode(&IntegerCodec::I32, &env, &ffi::Stash::Void).is_err());
+    });
 }
 
 #[test]
 fn integer_pointer_codec_round_trips() {
-    for kind in INTEGER_KINDS {
-        let mut slot: i64 = 0;
-        let ret = &mut slot as *mut i64 as *mut c_void;
-        PtrWriter::write_return_to_ptr(&kind, unsafe { Slot::new(ret) }, &Ok(Value::Number(5.0)));
-        let read =
-            unsafe { Decoder::read(&kind, ReadSource::Slot(ret as *const c_void, "ctx")) }.unwrap();
-        assert!(matches!(read, Value::Number(n) if n == 5.0));
-
-        PtrWriter::write_return_to_ptr(&kind, unsafe { Slot::new(ret) }, &Err(()));
-        let zero =
-            unsafe { Decoder::read(&kind, ReadSource::Slot(ret as *const c_void, "ctx")) }.unwrap();
-        assert!(matches!(zero, Value::Number(n) if n == 0.0));
-
-        let mut field: i64 = 0;
-        let field_ptr = &mut field as *mut i64 as *mut c_void;
-        PtrWriter::write_value_to_ptr(&kind, unsafe { Slot::new(field_ptr) }, &Value::Number(9.0))
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        for kind in INTEGER_KINDS {
+            let mut slot: i64 = 0;
+            let ret = &mut slot as *mut i64 as *mut c_void;
+            PtrWriter::write_return_to_ptr(
+                &kind,
+                &env,
+                unsafe { Slot::new(ret) },
+                &Ok(double(&env, 5.0)),
+            );
+            let read = unsafe {
+                Decoder::read(&kind, &env, ReadSource::Slot(ret as *const c_void, "ctx"))
+            }
             .unwrap();
-        let from_field =
-            unsafe { Decoder::read(&kind, ReadSource::Value(12 as *mut c_void, "ctx")) }.unwrap();
-        assert!(matches!(from_field, Value::Number(n) if n == 12.0));
-        assert!(
+            assert_eq!(napi_mock::read_double(read.raw()), Some(5.0));
+
+            PtrWriter::write_return_to_ptr(&kind, &env, unsafe { Slot::new(ret) }, &Err(()));
+            let zero = unsafe {
+                Decoder::read(&kind, &env, ReadSource::Slot(ret as *const c_void, "ctx"))
+            }
+            .unwrap();
+            assert_eq!(napi_mock::read_double(zero.raw()), Some(0.0));
+
+            let mut field: i64 = 0;
+            let field_ptr = &mut field as *mut i64 as *mut c_void;
             PtrWriter::write_value_to_ptr(
                 &kind,
+                &env,
                 unsafe { Slot::new(field_ptr) },
-                &Value::Boolean(true)
+                double(&env, 9.0),
             )
-            .is_err()
-        );
-    }
+            .unwrap();
+            let from_field =
+                unsafe { Decoder::read(&kind, &env, ReadSource::Value(12 as *mut c_void, "ctx")) }
+                    .unwrap();
+            assert_eq!(napi_mock::read_double(from_field.raw()), Some(12.0));
+            assert!(
+                PtrWriter::write_value_to_ptr(
+                    &kind,
+                    &env,
+                    unsafe { Slot::new(field_ptr) },
+                    napi_mock::to_unknown(&env, napi_mock::fake_bool(true)),
+                )
+                .is_err()
+            );
+        }
+    });
 }
 
 extern "C" fn ret_u8() -> u8 {
@@ -275,15 +321,19 @@ where
     assert_eq!(Encoder::libffi_type(&kind).as_raw_ptr(), expected);
 }
 
-unsafe fn assert_pointer_codec_round_trip<K>(kind: &K, slot: &mut [u8; 8], value_ptr: *mut c_void)
-where
+unsafe fn assert_pointer_codec_round_trip<K>(
+    env: &Env,
+    kind: &K,
+    slot: &mut [u8; 8],
+    value_ptr: *mut c_void,
+) where
     K: PtrWriter + Decoder,
 {
     let ptr = slot.as_mut_ptr().cast::<c_void>();
-    PtrWriter::write_value_to_ptr(kind, unsafe { Slot::new(ptr) }, &Value::Number(2.0)).unwrap();
-    unsafe { Decoder::read(kind, ReadSource::Slot(ptr.cast_const(), "c")) }.unwrap();
-    PtrWriter::write_return_to_ptr(kind, unsafe { Slot::new(ptr) }, &Ok(Value::Number(1.0)));
-    unsafe { Decoder::read(kind, ReadSource::Value(value_ptr, "c")) }.unwrap();
+    PtrWriter::write_value_to_ptr(kind, env, unsafe { Slot::new(ptr) }, double(env, 2.0)).unwrap();
+    unsafe { Decoder::read(kind, env, ReadSource::Slot(ptr.cast_const(), "c")) }.unwrap();
+    PtrWriter::write_return_to_ptr(kind, env, unsafe { Slot::new(ptr) }, &Ok(double(env, 1.0)));
+    unsafe { Decoder::read(kind, env, ReadSource::Value(value_ptr, "c")) }.unwrap();
 }
 
 #[test]
@@ -356,47 +406,76 @@ fn float_checked_to_stash_handles_range() {
 fn float_ptr_to_value_raw_handles_null_and_value() {
     let value: f64 = 4.25;
     let ptr = &value as *const f64 as *mut c_void;
-    assert!(matches!(
-        unsafe { FloatCodec::F64.ptr_to_value_raw(ptr) },
-        Value::Number(n) if (n - 4.25).abs() < 1e-9
-    ));
-    assert!(matches!(
-        unsafe { FloatCodec::F64.ptr_to_value_raw(std::ptr::null_mut()) },
-        Value::Number(n) if n == 0.0
-    ));
+    assert!((unsafe { FloatCodec::F64.number_from_ptr_raw(ptr) } - 4.25).abs() < 1e-9);
+    assert_eq!(
+        unsafe { FloatCodec::F64.number_from_ptr_raw(std::ptr::null_mut()) },
+        0.0
+    );
     let f: f32 = 1.25;
     let fptr = &f as *const f32 as *mut c_void;
-    assert!(matches!(
-        unsafe { FloatCodec::F32.ptr_to_value_raw(fptr) },
-        Value::Number(n) if (n - 1.25).abs() < 1e-6
-    ));
+    assert!((unsafe { FloatCodec::F32.number_from_ptr_raw(fptr) } - 1.25).abs() < 1e-6);
 }
 
 #[test]
 fn float_codec_encode_decode_and_raw_ptr() {
-    for kind in [FloatCodec::F32, FloatCodec::F64] {
-        let encoded = Encoder::encode(&kind, &Value::Number(2.5)).unwrap();
-        assert!(Decoder::decode(&kind, &encoded).is_ok());
-        assert!(Encoder::encode(&kind, &Value::Null).is_ok());
-        assert!(Encoder::encode(&kind, &Value::Boolean(true)).is_err());
-        assert_libffi_type_matches(kind);
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        for kind in [FloatCodec::F32, FloatCodec::F64] {
+            let encoded = Encoder::encode(&kind, &env, double(&env, 2.5)).unwrap();
+            assert!(Decoder::decode(&kind, &env, &encoded).is_ok());
+            assert!(
+                Encoder::encode(
+                    &kind,
+                    &env,
+                    napi_mock::to_unknown(&env, napi_mock::fake_null())
+                )
+                .is_ok()
+            );
+            assert!(
+                Encoder::encode(
+                    &kind,
+                    &env,
+                    napi_mock::to_unknown(&env, napi_mock::fake_bool(true))
+                )
+                .is_err()
+            );
+            assert_libffi_type_matches(kind);
 
-        let mut slot: f64 = 0.0;
-        let ret = &mut slot as *mut f64 as *mut c_void;
-        PtrWriter::write_return_to_ptr(&kind, unsafe { Slot::new(ret) }, &Ok(Value::Number(1.0)));
-        assert!(
-            unsafe { Decoder::read(&kind, ReadSource::Slot(ret as *const c_void, "c")) }.is_ok()
-        );
-        PtrWriter::write_return_to_ptr(&kind, unsafe { Slot::new(ret) }, &Err(()));
-        PtrWriter::write_value_to_ptr(&kind, unsafe { Slot::new(ret) }, &Value::Number(3.0))
+            let mut slot: f64 = 0.0;
+            let ret = &mut slot as *mut f64 as *mut c_void;
+            PtrWriter::write_return_to_ptr(
+                &kind,
+                &env,
+                unsafe { Slot::new(ret) },
+                &Ok(double(&env, 1.0)),
+            );
+            assert!(
+                unsafe { Decoder::read(&kind, &env, ReadSource::Slot(ret as *const c_void, "c")) }
+                    .is_ok()
+            );
+            PtrWriter::write_return_to_ptr(&kind, &env, unsafe { Slot::new(ret) }, &Err(()));
+            PtrWriter::write_value_to_ptr(
+                &kind,
+                &env,
+                unsafe { Slot::new(ret) },
+                double(&env, 3.0),
+            )
             .unwrap();
-        assert!(
-            unsafe { Decoder::read(&kind, ReadSource::Value(std::ptr::null_mut(), "c")) }.is_ok()
-        );
-        assert!(
-            PtrWriter::write_value_to_ptr(&kind, unsafe { Slot::new(ret) }, &Value::Null).is_err()
-        );
-    }
+            assert!(
+                unsafe { Decoder::read(&kind, &env, ReadSource::Value(std::ptr::null_mut(), "c")) }
+                    .is_ok()
+            );
+            assert!(
+                PtrWriter::write_value_to_ptr(
+                    &kind,
+                    &env,
+                    unsafe { Slot::new(ret) },
+                    napi_mock::to_unknown(&env, napi_mock::fake_null()),
+                )
+                .is_ok()
+            );
+        }
+    });
 }
 
 #[test]
@@ -419,11 +498,12 @@ fn float_call_cif_invokes_native_functions() {
 #[test]
 fn enum_flags_encode_decode_and_libffi_type() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let enum_flags = helpers::enum_codec();
-        let encoded = Encoder::encode(&enum_flags, &Value::Number(1.0)).unwrap();
+        let encoded = Encoder::encode(&enum_flags, &env, double(&env, 1.0)).unwrap();
         assert!(matches!(encoded, ffi::Stash::I32(1)));
-        let decoded = Decoder::decode(&enum_flags, &ffi::Stash::I32(1)).unwrap();
-        assert!(matches!(decoded, Value::Number(n) if n == 1.0));
+        let decoded = Decoder::decode(&enum_flags, &env, &ffi::Stash::I32(1)).unwrap();
+        assert_eq!(napi_mock::read_double(decoded.raw()), Some(1.0));
         assert_eq!(
             Encoder::libffi_type(&enum_flags).as_raw_ptr(),
             IntegerCodec::I32.ffi_type().as_raw_ptr()
@@ -450,24 +530,36 @@ fn enum_flags_call_cif_invokes_native_function() {
 #[test]
 fn enum_flags_pointer_codec() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let enum_flags = helpers::enum_codec();
         let mut slot: i64 = 0;
         let ptr = &mut slot as *mut i64 as *mut c_void;
-        PtrWriter::write_value_to_ptr(&enum_flags, unsafe { Slot::new(ptr) }, &Value::Number(2.0))
-            .unwrap();
-        let read =
-            unsafe { Decoder::read(&enum_flags, ReadSource::Slot(ptr as *const c_void, "c")) }
-                .unwrap();
-        assert!(matches!(read, Value::Number(n) if n == 2.0));
+        PtrWriter::write_value_to_ptr(
+            &enum_flags,
+            &env,
+            unsafe { Slot::new(ptr) },
+            double(&env, 2.0),
+        )
+        .unwrap();
+        let read = unsafe {
+            Decoder::read(
+                &enum_flags,
+                &env,
+                ReadSource::Slot(ptr as *const c_void, "c"),
+            )
+        }
+        .unwrap();
+        assert_eq!(napi_mock::read_double(read.raw()), Some(2.0));
         PtrWriter::write_return_to_ptr(
             &enum_flags,
+            &env,
             unsafe { Slot::new(ptr) },
-            &Ok(Value::Number(4.0)),
+            &Ok(double(&env, 4.0)),
         );
         let from_ptr =
-            unsafe { Decoder::read(&enum_flags, ReadSource::Value(3 as *mut c_void, "c")) }
+            unsafe { Decoder::read(&enum_flags, &env, ReadSource::Value(3 as *mut c_void, "c")) }
                 .unwrap();
-        assert!(matches!(from_ptr, Value::Number(n) if n == 3.0));
+        assert_eq!(napi_mock::read_double(from_ptr.raw()), Some(3.0));
     });
 }
 
@@ -491,19 +583,18 @@ fn integer_dispatch_methods_cover_every_kind() {
 #[test]
 fn integer_codec_covers_every_kind() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         for kind in INTEGER_KINDS {
             kind.checked_to_stash(1.0).unwrap();
-            assert!(matches!(
-                kind.ptr_to_value_raw(4 as *mut c_void, "test"),
-                Ok(Value::Number(_))
-            ));
+            assert!(kind.number_from_ptr_raw(4 as *mut c_void, "test").is_ok());
 
-            let encoded = Encoder::encode(&kind, &Value::Number(1.0)).unwrap();
-            Decoder::decode(&kind, &encoded).unwrap();
+            let encoded = Encoder::encode(&kind, &env, double(&env, 1.0)).unwrap();
+            Decoder::decode(&kind, &env, &encoded).unwrap();
 
             let mut slot = [0u8; 8];
             unsafe {
                 assert_pointer_codec_round_trip(
+                    &env,
                     &kind,
                     &mut slot,
                     std::ptr::dangling_mut::<c_void>(),
@@ -516,22 +607,23 @@ fn integer_codec_covers_every_kind() {
 #[test]
 fn float_codec_covers_every_kind() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         for kind in [FloatCodec::F32, FloatCodec::F64] {
             let _ = kind.ffi_type();
             let mut slot = [0u8; 8];
             unsafe { kind.write_ptr(slot.as_mut_ptr(), 1.5) };
             let _ = unsafe { kind.read_ptr(slot.as_ptr()) };
             kind.checked_to_stash(1.5).unwrap();
-            assert!(matches!(
-                unsafe { kind.ptr_to_value_raw(std::ptr::null_mut()) },
-                Value::Number(_)
-            ));
+            assert_eq!(
+                unsafe { kind.number_from_ptr_raw(std::ptr::null_mut()) },
+                0.0
+            );
 
-            let encoded = Encoder::encode(&kind, &Value::Number(1.0)).unwrap();
-            Decoder::decode(&kind, &encoded).unwrap();
+            let encoded = Encoder::encode(&kind, &env, double(&env, 1.0)).unwrap();
+            Decoder::decode(&kind, &env, &encoded).unwrap();
 
             unsafe {
-                assert_pointer_codec_round_trip(&kind, &mut slot, std::ptr::null_mut());
+                assert_pointer_codec_round_trip(&env, &kind, &mut slot, std::ptr::null_mut());
             }
         }
     });
@@ -539,36 +631,49 @@ fn float_codec_covers_every_kind() {
 
 #[test]
 fn u64_read_beyond_2_53_errors_instead_of_rounding() {
+    let env = helpers::fake_env();
     let stored: u64 = 9_007_199_254_740_993;
     let ptr = std::ptr::from_ref(&stored).cast::<c_void>();
-    let err = unsafe { Decoder::read(&IntegerCodec::U64, ReadSource::Slot(ptr, "test read")) }
-        .expect_err("a u64 beyond 2^53 must not round silently");
+    let err =
+        unsafe { Decoder::read(&IntegerCodec::U64, &env, ReadSource::Slot(ptr, "test read")) }
+            .map(|_| ())
+            .expect_err("a u64 beyond 2^53 must not round silently");
     assert!(err.to_string().contains("2^53"));
     assert!(err.to_string().contains("test read"));
 }
 
 #[test]
 fn i64_read_beyond_negative_2_53_errors_instead_of_rounding() {
+    let env = helpers::fake_env();
     let stored: i64 = -9_007_199_254_740_993;
     let ptr = std::ptr::from_ref(&stored).cast::<c_void>();
-    let err = unsafe { Decoder::read(&IntegerCodec::I64, ReadSource::Slot(ptr, "test read")) }
-        .expect_err("an i64 beyond -2^53 must not round silently");
+    let err =
+        unsafe { Decoder::read(&IntegerCodec::I64, &env, ReadSource::Slot(ptr, "test read")) }
+            .map(|_| ())
+            .expect_err("an i64 beyond -2^53 must not round silently");
     assert!(err.to_string().contains("2^53"));
 }
 
 #[test]
 fn u64_read_at_2_53_still_converts() {
-    let stored: u64 = 9_007_199_254_740_992;
-    let ptr = std::ptr::from_ref(&stored).cast::<c_void>();
-    let value = unsafe { Decoder::read(&IntegerCodec::U64, ReadSource::Slot(ptr, "test read")) }
-        .expect("2^53 itself is exactly representable");
-    assert!(matches!(value, Value::Number(n) if n == 9_007_199_254_740_992.0));
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let stored: u64 = 9_007_199_254_740_992;
+        let ptr = std::ptr::from_ref(&stored).cast::<c_void>();
+        let value =
+            unsafe { Decoder::read(&IntegerCodec::U64, &env, ReadSource::Slot(ptr, "test read")) }
+                .expect("2^53 itself is exactly representable");
+        assert_eq!(
+            napi_mock::read_double(value.raw()),
+            Some(9_007_199_254_740_992.0)
+        );
+    });
 }
 
 #[test]
 fn u64_pointer_payload_beyond_2_53_errors() {
     let err = IntegerCodec::U64
-        .ptr_to_value_raw(usize::MAX as *mut c_void, "test pointer")
+        .number_from_ptr_raw(usize::MAX as *mut c_void, "test pointer")
         .expect_err("a u64 pointer payload beyond 2^53 must not round silently");
     assert!(err.to_string().contains("2^53"));
 }
@@ -576,9 +681,9 @@ fn u64_pointer_payload_beyond_2_53_errors() {
 #[test]
 fn i64_pointer_payload_of_all_bits_set_is_minus_one() {
     let value = IntegerCodec::I64
-        .ptr_to_value_raw(usize::MAX as *mut c_void, "test pointer")
+        .number_from_ptr_raw(usize::MAX as *mut c_void, "test pointer")
         .expect("-1 is exactly representable");
-    assert!(matches!(value, Value::Number(n) if n == -1.0));
+    assert_eq!(value, -1.0);
 }
 
 #[test]

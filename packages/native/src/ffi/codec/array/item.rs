@@ -1,7 +1,7 @@
 use std::ffi::c_void;
 
 use crate::ffi::codec::{BigIntCodec, Codec, FloatCodec, IntegerCodec};
-use crate::ffi::value::BufferViewKind;
+use crate::ffi::value::ViewKind;
 
 #[derive(Debug, Clone, Copy)]
 pub(super) enum ItemCodec {
@@ -39,28 +39,24 @@ impl ItemCodec {
         })
     }
 
-    pub(super) fn accepts_buffer_view(self, view_kind: BufferViewKind) -> bool {
+    pub(super) fn accepts_buffer_view(self, view_kind: ViewKind) -> bool {
         match self {
             Self::Integer(kind) | Self::EnumFlags(kind) => matches!(
                 (kind, view_kind),
-                (IntegerCodec::I8, BufferViewKind::Int8)
-                    | (
-                        IntegerCodec::U8,
-                        BufferViewKind::Uint8 | BufferViewKind::Uint8Clamped
-                    )
-                    | (IntegerCodec::I16, BufferViewKind::Int16)
-                    | (IntegerCodec::U16, BufferViewKind::Uint16)
-                    | (IntegerCodec::I32, BufferViewKind::Int32)
-                    | (IntegerCodec::U32, BufferViewKind::Uint32)
-                    | (IntegerCodec::I64, BufferViewKind::BigInt64)
-                    | (IntegerCodec::U64, BufferViewKind::BigUint64)
+                (IntegerCodec::I8, ViewKind::Int8)
+                    | (IntegerCodec::U8, ViewKind::Uint8 | ViewKind::Uint8Clamped)
+                    | (IntegerCodec::I16, ViewKind::Int16)
+                    | (IntegerCodec::U16, ViewKind::Uint16)
+                    | (IntegerCodec::I32, ViewKind::Int32)
+                    | (IntegerCodec::U32, ViewKind::Uint32)
+                    | (IntegerCodec::I64, ViewKind::BigInt64)
+                    | (IntegerCodec::U64, ViewKind::BigUint64)
             ),
-            Self::Float(FloatCodec::F32) => view_kind == BufferViewKind::Float32,
-            Self::Float(FloatCodec::F64) => view_kind == BufferViewKind::Float64,
+            Self::Float(FloatCodec::F32) => view_kind == ViewKind::Float32,
+            Self::Float(FloatCodec::F64) => view_kind == ViewKind::Float64,
             Self::BigInt(kind) => matches!(
                 (kind, view_kind),
-                (BigIntCodec::I64, BufferViewKind::BigInt64)
-                    | (BigIntCodec::U64, BufferViewKind::BigUint64)
+                (BigIntCodec::I64, ViewKind::BigInt64) | (BigIntCodec::U64, ViewKind::BigUint64)
             ),
             Self::Boolean | Self::Pointer | Self::String => false,
         }

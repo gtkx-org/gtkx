@@ -1,5 +1,5 @@
 use std::ffi::c_void;
-use std::sync::Arc;
+use std::rc::Rc;
 
 use napi::bindgen_prelude::*;
 use napi::{Env, sys};
@@ -7,12 +7,11 @@ use napi_derive::napi;
 
 use crate::handle::Handle;
 use crate::handle::wrapper;
-use crate::messaging::{Mailbox, WrapperRefOp};
 
 struct FinalizeData {
     gobject_ptr: usize,
     napi_ref: usize,
-    binding: Option<Arc<wrapper::WrapperBinding>>,
+    binding: Option<Rc<wrapper::WrapperBinding>>,
     generation: u64,
 }
 
@@ -62,16 +61,12 @@ pub fn set_wrapper(env: Env, handle: &External<Handle>, wrapper: Object<'_>) -> 
     unsafe { (*data).napi_ref = raw_ref as usize };
 
     let napi_ref = raw_ref as usize;
-    WrapperRefOp::Ref.apply(&env, napi_ref);
-    let consume_pending = handle.take_pending_gobject_ref();
+    let mut ref_count: u32 = 0;
+    unsafe { sys::napi_reference_ref(env.raw(), raw_ref, &mut ref_count) };
+    let owned = handle.take_owned();
     let (binding, generation) =
-        Mailbox::global().invoke_glib_and_wait_napi(env, move || unsafe {
-            wrapper::install(
-                gobject_ptr as *mut _,
-                napi_ref as *mut c_void,
-                consume_pending,
-            )
-        })?;
+        unsafe { wrapper::install(gobject_ptr as *mut _, napi_ref as *mut c_void) };
+    drop(owned);
     unsafe {
         (*data).binding = Some(binding);
         (*data).generation = generation;

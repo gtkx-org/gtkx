@@ -4,9 +4,11 @@ use std::ffi::c_void;
 
 use libffi::middle as libffi;
 
+use napi::Env;
+use napi::bindgen_prelude::Unknown;
+
 use native::ffi;
 use native::ffi::codec::{CallbackCodec, CallbackScope, Codec, Encoder, VoidCodec};
-use native::ffi::value::Value;
 
 fn callback_type(has_destroy: bool) -> CallbackCodec {
     CallbackCodec {
@@ -19,12 +21,13 @@ fn callback_type(has_destroy: bool) -> CallbackCodec {
 }
 
 fn assert_null_callback(
+    env: &Env,
     codec: &CallbackCodec,
-    value: &Value,
+    value: Unknown<'_>,
     expected_destroy: Option<*mut c_void>,
 ) {
     let encoded = codec
-        .encode(value)
+        .encode(env, value)
         .expect("encode should build the null callback");
     let ffi::Stash::Callback(callback) = encoded else {
         panic!("expected Callback ffi value");
@@ -60,16 +63,24 @@ fn append_ffi_arg_types_with_destroy_pushes_three_pointers() {
 #[test]
 fn encode_null_without_destroy_builds_callback() {
     helpers::run(|| {
-        assert_null_callback(&callback_type(false), &Value::Null, None);
+        let env = helpers::fake_env();
+        assert_null_callback(
+            &env,
+            &callback_type(false),
+            helpers::napi_mock::to_unknown(&env, helpers::napi_mock::fake_null()),
+            None,
+        );
     });
 }
 
 #[test]
 fn encode_null_with_destroy_builds_callback_with_destroy_slot() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         assert_null_callback(
+            &env,
             &callback_type(true),
-            &Value::Undefined,
+            helpers::napi_mock::to_unknown(&env, helpers::napi_mock::fake_undefined()),
             Some(std::ptr::null_mut()),
         );
     });

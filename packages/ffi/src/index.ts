@@ -1,4 +1,4 @@
-export { alloc, type ExternalObject, freeze, type Handle, read, setWrapper, unfreeze, write } from "@gtkx/native";
+export { alloc, type ExternalObject, type Handle, read, setWrapper, write } from "@gtkx/native";
 export { createErrorDomain, type ErrorDomain } from "./error.js";
 export { type ApplicationLike, onExit, quit, quitApplication, runApplication } from "./lifecycle.js";
 export { offSignal, onceSignal, onSignal } from "./listeners.js";

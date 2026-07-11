@@ -774,6 +774,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "gtk4",
+ "napi",
  "native",
 ]
 

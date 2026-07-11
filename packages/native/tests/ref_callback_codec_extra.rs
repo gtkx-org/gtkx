@@ -1,4 +1,5 @@
 use test_support as helpers;
+use test_support::napi_mock;
 
 use std::ffi::c_void;
 
@@ -8,7 +9,6 @@ use native::ffi::codec::{
     BigIntCodec, BoxedCodec, BufferCodec, CallbackCodec, CallbackScope, Codec, Decoder, Encoder,
     FundamentalCodec, IntegerCodec, Ownership, ReadSource, RefCodec, StructCodec, VoidCodec,
 };
-use native::ffi::value::Value;
 use native::ffi::{self, StashData, StashStorage};
 
 fn callback_codec() -> CallbackCodec {
@@ -117,8 +117,9 @@ fn supports_inner_maps_each_variant() {
 #[test]
 fn ref_encode_null_yields_null_ptr() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let encoded = i32_ref_codec()
-            .encode(&Value::Null)
+            .encode(&env, napi_mock::to_unknown(&env, napi_mock::fake_null()))
             .expect("null ref encode should succeed");
         assert!(matches!(encoded, ffi::Stash::Ptr(p) if p.is_null()));
     });
@@ -127,8 +128,12 @@ fn ref_encode_null_yields_null_ptr() {
 #[test]
 fn ref_encode_undefined_yields_null_ptr() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let encoded = i32_ref_codec()
-            .encode(&Value::Undefined)
+            .encode(
+                &env,
+                napi_mock::to_unknown(&env, napi_mock::fake_undefined()),
+            )
             .expect("undefined ref encode should succeed");
         assert!(matches!(encoded, ffi::Stash::Ptr(p) if p.is_null()));
     });
@@ -137,7 +142,15 @@ fn ref_encode_undefined_yields_null_ptr() {
 #[test]
 fn ref_encode_non_ref_value_errors() {
     helpers::run(|| {
-        assert!(i32_ref_codec().encode(&Value::Number(1.0)).is_err());
+        let env = helpers::fake_env();
+        assert!(
+            i32_ref_codec()
+                .encode(
+                    &env,
+                    napi_mock::to_unknown(&env, napi_mock::fake_double(1.0))
+                )
+                .is_err()
+        );
     });
 }
 
@@ -151,8 +164,9 @@ fn ref_call_cif_rejects_return_usage() {
 #[test]
 fn ref_read_from_value_source_errors() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let result =
-            unsafe { i32_ref_codec().read(ReadSource::Value(std::ptr::null_mut(), "ctx")) };
+            unsafe { i32_ref_codec().read(&env, ReadSource::Value(std::ptr::null_mut(), "ctx")) };
         assert!(result.is_err());
     });
 }
@@ -160,12 +174,13 @@ fn ref_read_from_value_source_errors() {
 #[test]
 fn ref_decode_unsupported_inner_errors() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let ref_codec =
             RefCodec::new(Codec::BigInt(BigIntCodec::I64)).expect("BigInt is a valid Ref inner");
         let mut backing: u64 = 0;
         let ptr = &mut backing as *mut u64 as *mut c_void;
         let stash = ffi::Stash::Storage(StashStorage::new(ptr, StashData::Unit));
-        assert!(ref_codec.decode(&stash).is_err());
+        assert!(ref_codec.decode(&env, &stash).is_err());
     });
 }
 
@@ -179,6 +194,14 @@ fn callback_call_cif_rejects_return_usage() {
 #[test]
 fn callback_encode_non_callback_value_errors() {
     helpers::run(|| {
-        assert!(callback_codec().encode(&Value::Number(1.0)).is_err());
+        let env = helpers::fake_env();
+        assert!(
+            callback_codec()
+                .encode(
+                    &env,
+                    napi_mock::to_unknown(&env, napi_mock::fake_double(1.0))
+                )
+                .is_err()
+        );
     });
 }

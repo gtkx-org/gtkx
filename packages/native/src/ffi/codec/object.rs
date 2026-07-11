@@ -8,10 +8,11 @@ use glib::{
     },
 };
 
-unsafe fn tracked_gobject_value(
+unsafe fn tracked_gobject_value<'e>(
+    env: &'e Env,
     gobject_ptr: *mut glib::gobject_ffi::GObject,
     ownership: Ownership,
-) -> value::Value {
+) -> anyhow::Result<Unknown<'e>> {
     if ownership.is_full() {
         let is_initially_unowned =
             unsafe { glib::types::instance_of::<glib::InitiallyUnowned>(gobject_ptr.cast()) };
@@ -24,7 +25,11 @@ unsafe fn tracked_gobject_value(
         unsafe { glib::gobject_ffi::g_object_ref(gobject_ptr) };
     }
 
-    value::Value::Object(Handle::decoded_gobject(gobject_ptr.cast()))
+    let object: glib::Object = unsafe { from_glib_full(gobject_ptr) };
+    Ok(value::handle_to_unknown(
+        env,
+        Handle::decoded_gobject(object),
+    )?)
 }
 
 unsafe fn object_ref_full(ptr: *mut c_void) -> *mut c_void {
@@ -58,35 +63,52 @@ impl Encoder for ObjectCodec {
 }
 
 impl Decoder for ObjectCodec {
-    fn decode_call(&self, stash: &ffi::Stash) -> anyhow::Result<value::Value> {
-        self.decode_call_non_null(stash, "Object", |object_ptr| {
-            Ok(unsafe {
-                tracked_gobject_value(
-                    object_ptr as *mut glib::gobject_ffi::GObject,
-                    self.ownership,
-                )
-            })
+    fn decode_call<'e>(&self, env: &'e Env, stash: &ffi::Stash) -> anyhow::Result<Unknown<'e>> {
+        self.decode_call_non_null(env, stash, "Object", |object_ptr| unsafe {
+            tracked_gobject_value(
+                env,
+                object_ptr as *mut glib::gobject_ffi::GObject,
+                self.ownership,
+            )
         })
     }
 
-    unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
-        self.decode_non_null(ptr, |ptr| {
-            Ok(unsafe {
-                tracked_gobject_value(ptr as *mut glib::gobject_ffi::GObject, Ownership::Borrowed)
-            })
+    unsafe fn read_value<'e>(
+        &self,
+        env: &'e Env,
+        ptr: *mut c_void,
+        _context: &str,
+    ) -> anyhow::Result<Unknown<'e>> {
+        self.decode_non_null(env, ptr, |ptr| unsafe {
+            tracked_gobject_value(
+                env,
+                ptr as *mut glib::gobject_ffi::GObject,
+                Ownership::Borrowed,
+            )
         })
     }
 }
 
 impl PtrWriter for ObjectCodec {
-    fn write_return_to_ptr(&self, ret: ffi::Slot, value: &Result<value::Value, ()>) {
-        self.write_return_with_ownership(ret, value, self.ownership, |ptr| unsafe {
+    fn write_return_to_ptr(
+        &self,
+        env: &Env,
+        ret: ffi::Slot,
+        value: &std::result::Result<Unknown<'_>, ()>,
+    ) {
+        self.write_return_with_ownership(env, ret, value, self.ownership, |ptr| unsafe {
             object_ref_full(ptr)
         });
     }
 
-    fn write_value_to_ptr(&self, slot: ffi::Slot, value: &value::Value) -> anyhow::Result<()> {
+    fn write_value_to_ptr(
+        &self,
+        env: &Env,
+        slot: ffi::Slot,
+        value: Unknown<'_>,
+    ) -> anyhow::Result<()> {
         swap_owned_slot(
+            env,
             slot,
             value,
             "Object field write",

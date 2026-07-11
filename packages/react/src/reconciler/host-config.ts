@@ -1,4 +1,3 @@
-import { freeze, unfreeze } from "@gtkx/ffi";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { type Context, createContext } from "react";
@@ -318,7 +317,6 @@ const drainCommitQueue = (): void => catchReconcilerError(runCommitFlush);
 const finalizeCommitAfterLayoutEffects = (container: Container): void => {
     drainCommitQueue();
     getSignalStore(container).unblock();
-    catchReconcilerError(unfreeze);
 };
 
 const createCommitConfig = (): CommitConfig => ({
@@ -329,7 +327,6 @@ const createCommitConfig = (): CommitConfig => ({
         else scheduleLabelTextRebuild(textInstance);
     },
     prepareForCommit: (container) => {
-        catchReconcilerError(freeze);
         getSignalStore(container).block();
         return null;
     },

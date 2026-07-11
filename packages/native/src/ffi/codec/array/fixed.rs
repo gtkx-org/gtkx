@@ -15,14 +15,15 @@ impl FixedArrayCodec {
 }
 
 impl ArrayContainer for FixedArrayCodec {
-    fn decode_with_context(
+    fn decode_with_context<'e>(
         &self,
         codec: &ArrayCodec,
+        env: &'e Env,
         stash: &ffi::Stash,
         _ffi_args: &[ffi::Stash],
         _arg_codecs: &[Codec],
-    ) -> anyhow::Result<value::Value> {
-        codec.decode_length_bounded(self.name(), stash, self.fixed_size as usize)
+    ) -> anyhow::Result<Unknown<'e>> {
+        codec.decode_length_bounded(env, self.name(), stash, self.fixed_size as usize)
     }
 
     fn buffer_view_support(&self) -> BufferViewSupport {

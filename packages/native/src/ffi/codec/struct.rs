@@ -1,7 +1,7 @@
 use anyhow::bail;
 
 use super::prelude::*;
-use crate::handle::Boxed;
+use crate::handle::{Boxed, Handle};
 
 #[derive(Debug, Clone)]
 pub struct StructCodec {
@@ -26,35 +26,53 @@ impl StructCodec {
 }
 
 impl Decoder for StructCodec {
-    fn decode_call(&self, stash: &ffi::Stash) -> anyhow::Result<value::Value> {
-        self.decode_call_non_null(stash, "Struct", |struct_ptr| {
+    fn decode_call<'e>(&self, env: &'e Env, stash: &ffi::Stash) -> anyhow::Result<Unknown<'e>> {
+        self.decode_call_non_null(env, stash, "Struct", |struct_ptr| {
             let boxed = match self.ownership {
                 Ownership::Full => Boxed::from_glib_full(None, struct_ptr),
                 Ownership::Borrowed => self.borrow_or_copy(struct_ptr),
             };
 
-            Ok(boxed.into())
+            Ok(value::handle_to_unknown(env, Handle::from(boxed))?)
         })
     }
 
-    unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
-        self.decode_non_null(ptr, |ptr| {
-            if self.caller_allocated {
-                return Ok(Boxed::from_glib_borrow(ptr).into());
-            }
-            Ok(self.borrow_or_copy(ptr).into())
+    unsafe fn read_value<'e>(
+        &self,
+        env: &'e Env,
+        ptr: *mut c_void,
+        _context: &str,
+    ) -> anyhow::Result<Unknown<'e>> {
+        self.decode_non_null(env, ptr, |ptr| {
+            let boxed = if self.caller_allocated {
+                Boxed::from_glib_borrow(ptr)
+            } else {
+                self.borrow_or_copy(ptr)
+            };
+
+            Ok(value::handle_to_unknown(env, Handle::from(boxed))?)
         })
     }
 }
 
 impl PtrWriter for StructCodec {
-    fn write_return_to_ptr(&self, ret: ffi::Slot, value: &Result<value::Value, ()>) {
-        write_return_object_ptr(ret, value, std::convert::identity);
+    fn write_return_to_ptr(
+        &self,
+        env: &Env,
+        ret: ffi::Slot,
+        value: &std::result::Result<Unknown<'_>, ()>,
+    ) {
+        write_return_object_ptr(env, ret, value, std::convert::identity);
     }
 
-    fn write_value_to_ptr(&self, slot: ffi::Slot, value: &value::Value) -> anyhow::Result<()> {
+    fn write_value_to_ptr(
+        &self,
+        env: &Env,
+        slot: ffi::Slot,
+        value: Unknown<'_>,
+    ) -> anyhow::Result<()> {
         if let Some(size) = self.size {
-            let src_ptr = value.object_ptr("Struct field write")?;
+            let src_ptr = value::handle_ptr(env, value, "Struct field write")?;
             if src_ptr.is_null() {
                 unsafe { slot.store(std::ptr::null_mut()) };
                 return Ok(());
@@ -68,6 +86,6 @@ impl PtrWriter for StructCodec {
             }
             return Ok(());
         }
-        write_object_ptr(slot, value, "Struct field write")
+        write_object_ptr(env, slot, value, "Struct field write")
     }
 }

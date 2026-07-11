@@ -11,7 +11,7 @@ use crate::handle::{RefFn, UnrefFn};
 type GetTypeFn = unsafe extern "C" fn() -> glib::ffi::GType;
 
 thread_local! {
-    static GLIB_THREAD_STATE: RefCell<GlibThreadState> = RefCell::new(GlibThreadState::default());
+    static FFI_CACHE: RefCell<FfiCache> = RefCell::new(FfiCache::default());
 }
 
 pub struct LibraryCache {
@@ -194,13 +194,13 @@ impl FundamentalFnCache {
     }
 }
 
-pub struct GlibThreadState {
+pub struct FfiCache {
     pub libs: LibraryCache,
     pub fundamental_fns: FundamentalFnCache,
     cifs: HashMap<u64, Rc<Cif>>,
 }
 
-impl Default for GlibThreadState {
+impl Default for FfiCache {
     fn default() -> Self {
         Self {
             libs: LibraryCache::new(),
@@ -210,20 +210,20 @@ impl Default for GlibThreadState {
     }
 }
 
-impl std::fmt::Debug for GlibThreadState {
+impl std::fmt::Debug for FfiCache {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("GlibThreadState")
+        f.debug_struct("FfiCache")
             .field("libraries_len", &self.libs.len())
             .finish_non_exhaustive()
     }
 }
 
-impl GlibThreadState {
+impl FfiCache {
     pub fn with<F, R>(f: F) -> R
     where
         F: FnOnce(&mut Self) -> R,
     {
-        GLIB_THREAD_STATE.with_borrow_mut(f)
+        FFI_CACHE.with_borrow_mut(f)
     }
 
     pub fn lookup_fundamental_fns(
