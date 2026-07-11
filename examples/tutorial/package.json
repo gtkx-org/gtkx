@@ -33,5 +33,9 @@
         "@gtkx/config": "^0.21.0",
         "esbuild": "^0.28.1",
         "postject": "1.0.0-alpha.6"
+    },
+    "allowScripts": {
+        "esbuild": true,
+        "@swc/core": true
     }
 }

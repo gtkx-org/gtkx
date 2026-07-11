@@ -1,5 +1,7 @@
+import { freeze, unfreeze } from "@gtkx/ffi";
 import type { ReactNode } from "react";
 import { reconciler } from "./reconciler.js";
+import { catchReconcilerError } from "./reconciler-error-handler.js";
 import type { Container } from "./types.js";
 
 const noop = (): void => {};
@@ -38,7 +40,16 @@ export const createReconcilerRoot = (options: ReconcilerRootOptions): Reconciler
 
     const root: ReconcilerRoot = {
         update: (element: ReactNode): void => {
-            reconciler.updateContainer(element, fiberRoot, null, noop);
+            let frozen = false;
+            catchReconcilerError(() => {
+                freeze();
+                frozen = true;
+            });
+            try {
+                reconciler.updateContainer(element, fiberRoot, null, noop);
+            } finally {
+                if (frozen) catchReconcilerError(unfreeze);
+            }
         },
         unmount: <R>(free: (root: ReconcilerRoot) => R): R | undefined => {
             if (!activeRoots.delete(root)) return undefined;

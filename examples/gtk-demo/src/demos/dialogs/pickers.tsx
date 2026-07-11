@@ -22,6 +22,15 @@ const gfileType = Gio.File.prototype.__type__;
 
 const DIALOG_TIMEOUT_SECONDS = 20;
 
+const isCancellation = (error: unknown): boolean =>
+    (error instanceof Gtk.DialogError && error.code === Gtk.DialogError.DISMISSED) ||
+    (error instanceof Gio.IOErrorEnum && error.code === Gio.IOErrorEnum.CANCELLED);
+
+const reportPickerError = (error: unknown): void => {
+    if (isCancellation(error)) return;
+    if (error instanceof Error) console.error(error.message);
+};
+
 function useFilePickerState() {
     const [selectedFile, setSelectedFile] = useState<Gio.File | null>(null);
     const [fileName, setFileName] = useState("None");
@@ -55,7 +64,7 @@ const launchFile = async (selectedFile: Gio.File | null, action: (launcher: Gtk.
         const launcher = Gtk.FileLauncher.new(selectedFile);
         await action(launcher);
     } catch (e) {
-        if (e instanceof Error) console.error(e.message);
+        reportPickerError(e);
     }
 };
 
@@ -79,7 +88,8 @@ function useDropAndOpenHandlers(parentWindow: Gtk.Window | null, state: FilePick
                 const file = await fileDialog.open(parentWindow, cancellable);
                 setFile(file);
             } catch (e) {
-                if (e instanceof Error) console.error(e.message);
+                if (isCancellation(e)) return;
+                reportPickerError(e);
                 setSelectedFile(null);
                 setFileName("None");
                 setIsPdf(false);
@@ -110,7 +120,7 @@ function useFileLaunchHandlers(parentWindow: Gtk.Window | null, state: FilePicke
                 const printDialog = new Gtk.PrintDialog();
                 await printDialog.printFile(parentWindow, null, selectedFile, cancellable);
             } catch (e) {
-                if (e instanceof Error) console.error(e.message);
+                reportPickerError(e);
             }
         });
     };
@@ -120,7 +130,7 @@ function useFileLaunchHandlers(parentWindow: Gtk.Window | null, state: FilePicke
             const launcher = Gtk.UriLauncher.new("http://www.gtk.org");
             await launcher.launch(parentWindow, null);
         } catch (e) {
-            if (e instanceof Error) console.error(e.message);
+            reportPickerError(e);
         }
     };
 

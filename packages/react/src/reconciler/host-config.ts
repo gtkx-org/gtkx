@@ -13,7 +13,7 @@ import { applyElementProps, reapplyLazyProps } from "./element-prop-appliers.js"
 import { isAppliedProp } from "./element-props.js";
 import { createElementInstance, createWrapperInstance } from "./instance.js";
 import { scheduleLabelTextRebuild } from "./label-text-rebuild.js";
-import { reportReconcilerError } from "./reconciler-error-handler.js";
+import { catchReconcilerError } from "./reconciler-error-handler.js";
 import { getSignalStore } from "./signal-store.js";
 import { ensureState, type Node, stateOf } from "./state.js";
 import { scheduleBufferRebuild } from "./text-buffer-rebuild.js";
@@ -313,20 +313,12 @@ const createMutationConfig = (): MutationConfig => ({
 
 type CommitConfig = Pick<HostConfig, "commitUpdate" | "commitTextUpdate" | "prepareForCommit" | "resetAfterCommit">;
 
-const catchErrors = (fn: () => void): void => {
-    try {
-        fn();
-    } catch (error) {
-        reportReconcilerError(error);
-    }
-};
-
-const drainCommitQueue = (): void => catchErrors(runCommitFlush);
+const drainCommitQueue = (): void => catchReconcilerError(runCommitFlush);
 
 const finalizeCommitAfterLayoutEffects = (container: Container): void => {
     drainCommitQueue();
     getSignalStore(container).unblock();
-    catchErrors(unfreeze);
+    catchReconcilerError(unfreeze);
 };
 
 const createCommitConfig = (): CommitConfig => ({
@@ -337,7 +329,7 @@ const createCommitConfig = (): CommitConfig => ({
         else scheduleLabelTextRebuild(textInstance);
     },
     prepareForCommit: (container) => {
-        catchErrors(freeze);
+        catchReconcilerError(freeze);
         getSignalStore(container).block();
         return null;
     },

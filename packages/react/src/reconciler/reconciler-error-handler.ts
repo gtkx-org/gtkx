@@ -19,3 +19,11 @@ export function reportReconcilerError(error: unknown): void {
     }
     log.error("unhandled reconciler error", error);
 }
+
+export function catchReconcilerError(fn: () => void): void {
+    try {
+        fn();
+    } catch (error) {
+        reportReconcilerError(error);
+    }
+}
