@@ -15,6 +15,10 @@ const defaultScreen: RenderResult = new Proxy({} as RenderResult, {
 
 let activeScreen: RenderResult = defaultScreen;
 
+/**
+ * Queries and debug utilities bound to the most recent render, scoped to the
+ * current toplevel windows. Accessing it before any render throws.
+ */
 export const screen: Screen = new Proxy({} as Screen, {
     get: (_target, property) => Reflect.get(activeScreen, property),
 });

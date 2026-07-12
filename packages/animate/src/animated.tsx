@@ -4,6 +4,7 @@ import { createElement, type JSX, type ReactNode, type Ref } from "react";
 import type { AnimationProps } from "./animation-types.js";
 import { useAnimatedWidget } from "./use-animated-widget.js";
 
+/** A component that accepts the props `P` of the wrapped widget plus {@link AnimationProps}. */
 export type AnimatedComponent<P> = (props: P & AnimationProps) => ReactNode;
 
 type ElementInstance<P> = P extends { ref?: Ref<infer T | null> | undefined } ? T : never;
@@ -37,6 +38,12 @@ const animatedFactory = <P extends object>(Component: (props: P) => ReactNode): 
 
 type Animated = typeof animatedFactory & { create: typeof animatedFactory } & AnimatedIntrinsics;
 
+/**
+ * Wraps GTK widgets so they accept {@link AnimationProps} and drive their own enter, update, and
+ * exit animations. Access an intrinsic element by name (`animated.Box`) to get an animated version
+ * of it, or call `animated(Component)` (also `animated.create(Component)`) to wrap a custom
+ * widget component. Results are cached per component.
+ */
 export const animated: Animated = new Proxy(animatedFactory, {
     get(target, key) {
         if (key === "create") return target;

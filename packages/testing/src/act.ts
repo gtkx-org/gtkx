@@ -55,6 +55,13 @@ const withGlobalActEnvironment =
 
 const actImplementation: ActImplementation = reactAct as ActImplementation;
 
+/**
+ * Runs a callback inside React's act environment, flushing pending state
+ * updates and effects, and resolves once the work has settled.
+ *
+ * @param callback Work to run within the act environment.
+ * @returns A promise that resolves with the callback's result after updates flush.
+ */
 export const act: ActImplementation = withGlobalActEnvironment(actImplementation);
 
 export const runInAct = (callback: () => unknown): Promise<void> =>

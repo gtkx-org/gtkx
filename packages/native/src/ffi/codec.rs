@@ -64,6 +64,8 @@ macro_rules! forward_ffi_encoder {
 }
 pub(crate) use forward_ffi_encoder;
 
+/// Ownership transfer mode for a marshalled value: `borrowed` leaves the native side owning it,
+/// `full` transfers ownership (and the responsibility to free it) across the FFI boundary.
 #[napi(string_enum = "lowercase")]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Ownership {

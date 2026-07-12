@@ -5,9 +5,13 @@ import { EDITABLE_ROLES, type EditableTarget, getEditableDelegate, isEditable } 
 import { formatRoleList } from "../role-helpers.js";
 import { wrapEvent } from "./event-wrapper.js";
 
+/** Options for {@link type}. */
 export type TypeOptions = {
+    /** Do not focus the widget before typing. */
     skipClick?: boolean | undefined;
+    /** Select from this offset before typing, replacing the selected range with the typed text. */
     initialSelectionStart?: number | undefined;
+    /** End offset of the initial selection (defaults to the start offset). */
     initialSelectionEnd?: number | undefined;
 };
 
@@ -79,6 +83,12 @@ export const resetClipboard = (): void => {
     Gdk.Display.getDefault()?.getClipboard().setContent(null);
 };
 
+/**
+ * Focuses the editable widget (unless `options.skipClick`) and inserts `text` at the cursor, optionally after selecting an initial range to replace.
+ * @param widget Editable widget to type into.
+ * @param text Text to insert.
+ * @param options Focus and initial selection options.
+ */
 export const type = (widget: Gtk.Widget, text: string, options?: TypeOptions): Promise<void> =>
     wrapEvent(widget, () => {
         if (!isEditable(widget)) {
@@ -93,6 +103,10 @@ export const type = (widget: Gtk.Widget, text: string, options?: TypeOptions): P
         insertEditableText(widget, text);
     });
 
+/**
+ * Clears all text from the editable widget.
+ * @param widget Editable widget to clear.
+ */
 export const clear = (widget: Gtk.Widget): Promise<void> =>
     wrapEvent(widget, () => {
         if (!isEditable(widget)) {
@@ -102,6 +116,10 @@ export const clear = (widget: Gtk.Widget): Promise<void> =>
         setEditableText(widget, "");
     });
 
+/**
+ * Copies the editable widget's current selection to the clipboard.
+ * @param widget Editable widget to copy from.
+ */
 export const copy = (widget: Gtk.Widget): Promise<void> =>
     wrapEvent(widget, () => {
         if (!isEditable(widget)) {
@@ -111,6 +129,10 @@ export const copy = (widget: Gtk.Widget): Promise<void> =>
         writeClipboardText(widget, readSelection(widget));
     });
 
+/**
+ * Copies the editable widget's current selection to the clipboard and deletes it.
+ * @param widget Editable widget to cut from.
+ */
 export const cut = (widget: Gtk.Widget): Promise<void> =>
     wrapEvent(widget, () => {
         if (!isEditable(widget)) {
@@ -121,6 +143,11 @@ export const cut = (widget: Gtk.Widget): Promise<void> =>
         deleteSelection(widget);
     });
 
+/**
+ * Inserts text at the editable widget's cursor, using the given `text` or the current clipboard contents when omitted.
+ * @param widget Editable widget to paste into.
+ * @param text Text to paste; falls back to the clipboard when not provided.
+ */
 export const paste = async (widget: Gtk.Widget, text?: string): Promise<void> => {
     if (!isEditable(widget)) {
         throw new Error(`Cannot paste: ${EDITABLE_REQUIRED}`);

@@ -14,6 +14,8 @@ use super::sized::SizedArrayCodec;
 use crate::ffi::codec::Codec;
 use crate::ffi::value::TypedView;
 
+/// Container layout used to marshal an array: a plain C `array`, a `glist`, `gslist`, `gptrarray`,
+/// `garray`, `gbytearray`, a `sized` buffer, or a `fixed`-length buffer.
 #[napi(string_enum = "lowercase")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ArrayKind {

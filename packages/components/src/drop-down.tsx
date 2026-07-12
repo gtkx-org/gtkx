@@ -62,16 +62,21 @@ const createSelectionResolver = <T, S>(resolver: ItemResolver<T, S>, selectedPos
     resolve: (_position, treeRow) => resolver.resolve(selectedPosition, treeRow),
 });
 
+/** Declarative props shared by {@link DropDown} and {@link ComboRow} for their backing collection and cell rendering. */
 export type DropDownDeclarativeProps<T = unknown, S = unknown> = {
     items?: ItemNode<T>[] | undefined;
     sections?: SectionNode<S, T>[] | undefined;
+    /** Id of the currently selected item, making the selection controlled. */
     selectedId?: string | null | undefined;
     onSelectionChanged?: ((id: string) => void) | null | undefined;
     renderItem?: DropDownItemRenderer<T> | null | undefined;
+    /** Renderer for items in the open popup list, falling back to renderItem when omitted. */
     renderListItem?: DropDownItemRenderer<T> | null | undefined;
+    /** Renderer for section headers in the popup list. */
     renderHeader?: ((info: { section: S }) => ReactNode) | null | undefined;
 };
 
+/** Props for {@link DropDown}, combining Gtk.DropDown props with {@link DropDownDeclarativeProps}. */
 export type DropDownProps<T = unknown, S = unknown> = Omit<
     GtkDropDownProps,
     keyof DropDownDeclarativeProps<T, S> | "model" | "factory" | "listFactory" | "headerFactory"
@@ -210,6 +215,10 @@ export const DropDownBody = <T, S, W extends DropDownWidget>({
     );
 };
 
+/**
+ * Renders a Gtk.DropDown backed by a collection model, with customizable rendering
+ * for the selected item, the popup list rows, and section headers.
+ */
 export const DropDown = <T = unknown, S = unknown>(props: DropDownProps<T, S>): ReactNode => (
     <DropDownBody<T, S, Gtk.DropDown> element={GtkDropDown} props={props} />
 );

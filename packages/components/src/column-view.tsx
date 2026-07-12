@@ -57,6 +57,7 @@ type ColumnViewSortProps = {
     onSortChanged?: ((column: string | null, order: Gtk.SortType) => void) | null | undefined;
 };
 
+/** API object passed to a {@link ColumnView} render-prop child, exposing the Column component bound to the view's item type. */
 export type ColumnViewApi<T = unknown> = {
     Column: (props: ColumnViewColumnProps<T>) => ReactNode;
 };
@@ -73,6 +74,12 @@ type ColumnViewDeclarativeProps<T = unknown, S = unknown> = ColumnViewSortProps 
         children?: ColumnViewChildren<T>;
     };
 
+/**
+ * Props for {@link ColumnView}. Combines the underlying Gtk.ColumnView props with
+ * declarative collection props: flat items or grouped sections, controlled selection
+ * and expansion, sorting (sortColumn, sortOrder, onSortChanged), an optional section
+ * header renderer, and column children declared as elements or a render prop.
+ */
 export type ColumnViewProps<T = unknown, S = unknown> = Omit<
     GtkColumnViewProps,
     "columns" | "model" | "headerFactory" | keyof ColumnViewDeclarativeProps<T, S>
@@ -239,6 +246,11 @@ const ColumnViewComponent = <T = unknown, S = unknown>(props: ColumnViewProps<T,
     );
 };
 
+/**
+ * Renders a Gtk.ColumnView: a multi-column, scrollable list backed by a collection
+ * model. Columns are declared with {@link ColumnView.Column}, either as children or
+ * through the render-prop form that receives a typed {@link ColumnViewApi}.
+ */
 export const ColumnView: typeof ColumnViewComponent & {
     Column: typeof ColumnViewColumn;
 } = Object.assign(ColumnViewComponent, { Column: ColumnViewColumn });

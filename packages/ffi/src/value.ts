@@ -142,6 +142,10 @@ const newBoxedValue = (
     return value;
 };
 
+/**
+ * Reads the boxed pointer out of a GValue and returns it wrapped in its registered
+ * class, or null when the value does not hold a boxed type.
+ */
 export function getBoxedValue(value: ExternalObject<Handle>): object | null {
     const type = getValueType(value);
     if (typeFundamental(type) !== TYPE_BOXED) return null;
@@ -150,6 +154,7 @@ export function getBoxedValue(value: ExternalObject<Handle>): object | null {
     return wrapHandle(boxed, cls);
 }
 
+/** Stores a boxed object, or null, into a GValue that holds a boxed type. */
 export function setBoxedValue(value: ExternalObject<Handle>, boxed: object | null): void {
     const name = getBoxedTypeName(getValueType(value));
     setBoxedBind(name)(value, boxed === null ? null : getHandle(boxed));

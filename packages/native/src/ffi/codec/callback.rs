@@ -6,6 +6,8 @@ use crate::ffi::closure::ClosureState;
 use crate::ffi::codec::Codec;
 use crate::ffi::value::JsHandle;
 
+/// Lifetime of a marshalled callback closure: `call` lasts only for the duration of the call,
+/// `notified` is freed by a destroy notify, `async` spans a single async use, `forever` is never freed.
 #[napi(string_enum = "lowercase")]
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub enum CallbackScope {

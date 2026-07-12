@@ -6,6 +6,17 @@ const attachCreationStack = (error: unknown, creationStack: Error | undefined): 
     error.cause = creationStack;
 };
 
+/**
+ * Wraps a GIO-style asynchronous function that takes a completion callback into a
+ * promise, invoking the finish function to extract the result. Outside production,
+ * the call site's stack is captured and attached as the rejection error's cause.
+ *
+ * @param asyncFn The async function, called with the leading arguments, the cancellable, and a completion callback.
+ * @param finish Extracts the result from the async result passed to the completion callback.
+ * @param cancellable A cancellable object, or null/undefined for none.
+ * @param leading Arguments passed to `asyncFn` before the cancellable and callback.
+ * @returns A promise resolving to the finished result, or rejecting if `finish` throws.
+ */
 export const promisify = <R extends object, T>(
     asyncFn: (...args: unknown[]) => void,
     finish: (result: R) => T,

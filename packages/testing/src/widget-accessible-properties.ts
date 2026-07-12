@@ -33,6 +33,12 @@ const getLabelText = (widget: Gtk.Widget): string | null => {
 
 const DEFAULT_TEXT_GETTERS = ["getLabel", "getText", "getTitle"] as const;
 
+/**
+ * Returns a widget's own text by trying its label, text, and title getters in
+ * order, or null when none produce a value.
+ *
+ * @param widget The widget to read text from.
+ */
 export const getWidgetNodeText = (widget: Gtk.Widget): string | null => {
     for (const getter of DEFAULT_TEXT_GETTERS) {
         const value = callStringGetter(widget, getter);

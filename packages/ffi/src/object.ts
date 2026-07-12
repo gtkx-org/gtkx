@@ -30,6 +30,15 @@ const gObjectSetProperty = bind(
     voidT,
 );
 
+/**
+ * Constructs a new GObject of the given type, setting the supplied construct
+ * properties. Entries whose value is `undefined` or not a `[descriptor, value]`
+ * pair are skipped.
+ *
+ * @param gtype The GType of the object to construct.
+ * @param props Property names mapped to `[descriptor, value]` pairs.
+ * @returns The handle of the newly created object.
+ */
 export function newObjectWithProperties(gtype: bigint, props: Record<string, unknown>): ExternalObject<Handle> {
     const names: string[] = [];
     const values: ExternalObject<Handle>[] = [];
@@ -46,12 +55,29 @@ export function newObjectWithProperties(gtype: bigint, props: Record<string, unk
     return gObjectNewWithProperties(gtype, names.length, names, values) as ExternalObject<Handle>;
 }
 
+/**
+ * Reads a GObject property and converts it to its JavaScript value using the
+ * descriptor.
+ *
+ * @param obj The object to read from.
+ * @param propertyName The property name.
+ * @param descriptor Describes the property's type.
+ */
 export function getObjectProperty(obj: object, propertyName: string, descriptor: Descriptor): unknown {
     const value = newValueForDescriptor(descriptor);
     gObjectGetProperty(getHandle(obj), propertyName, value);
     return fromValue(value);
 }
 
+/**
+ * Writes a JavaScript value to a GObject property, converting it to native form
+ * using the descriptor.
+ *
+ * @param obj The object to write to.
+ * @param propertyName The property name.
+ * @param descriptor Describes the property's type.
+ * @param jsValue The value to set.
+ */
 export function setObjectProperty(obj: object, propertyName: string, descriptor: Descriptor, jsValue: unknown): void {
     gObjectSetProperty(getHandle(obj), propertyName, toValue(descriptor, jsValue));
 }

@@ -193,9 +193,15 @@ describe("codegen GObject item comparators", () => {
     it("types ListStore comparator callbacks over borrowed object items", () => {
         const source = moduleSource("gio");
         expect(source).toContain(`sort(compareFunc: ${itemComparatorSignature} => number): void`);
-        expect(source).toContain(`insertSorted(item: GObject.Object, compareFunc: ${itemComparatorSignature} => number): number`);
-        expect(source).toContain(`findWithEqualFunc(item: GObject.Object | null, equalFunc: ${itemComparatorSignature} => boolean): [boolean, number]`);
-        expect(source).toContain(`findWithEqualFuncFull(item: GObject.Object | null, equalFunc: ${itemComparatorSignature} => boolean): [boolean, number]`);
+        expect(source).toContain(
+            `insertSorted(item: GObject.Object, compareFunc: ${itemComparatorSignature} => number): number`,
+        );
+        expect(source).toContain(
+            `findWithEqualFunc(item: GObject.Object | null, equalFunc: ${itemComparatorSignature} => boolean): [boolean, number]`,
+        );
+        expect(source).toContain(
+            `findWithEqualFuncFull(item: GObject.Object | null, equalFunc: ${itemComparatorSignature} => boolean): [boolean, number]`,
+        );
         expect(source).toContain(`${itemComparatorArgs}, { userDataIndex: 2, scope: "call" })`);
         expect(source).toContain(`${itemEqualityArgs}, { scope: "call" })`);
         expect(source).toContain(`${itemEqualityFullArgs}, { userDataIndex: 2, scope: "call" })`);

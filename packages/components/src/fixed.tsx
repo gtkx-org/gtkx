@@ -24,12 +24,16 @@ const useFixedInstance = (): Gtk.Fixed | null => {
     return fixed;
 };
 
+/** Props for {@link Fixed}. */
 export type FixedProps = GtkFixedProps & { ref?: Ref<Gtk.Fixed | null>; children?: ReactNode };
 
+/** Positions a single child inside a {@link Fixed} at coordinates x and y, or by an explicit transform. */
 export type FixedChildProps = {
+    /** Render function receiving a ref callback to attach to the positioned child widget. */
     children: (ref: RefCallback<Gtk.Widget>) => ReactNode;
     x?: number | null | undefined;
     y?: number | null | undefined;
+    /** Full transform applied to the child, overriding x and y when provided. */
     transform?: Gsk.Transform | null | undefined;
 };
 
@@ -53,6 +57,10 @@ const FixedChild = (props: FixedChildProps): ReactNode => {
     return props.children(setWidget);
 };
 
+/**
+ * Renders a Gtk.Fixed container whose children are placed at explicit positions via
+ * {@link Fixed.Child}.
+ */
 export const Fixed: ((props: FixedProps) => ReactNode) & { Child: (props: FixedChildProps) => ReactNode } =
     Object.assign(
         ({ children, ref, ...rest }: FixedProps): ReactNode => {

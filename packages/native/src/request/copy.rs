@@ -15,6 +15,7 @@ fn copy_bytes(dest_ptr: usize, src_ptr: usize, size: usize) -> anyhow::Result<()
     Ok(())
 }
 
+/// Copies `size` bytes from the `src` handle's memory into the `dest` handle's memory.
 #[napi(catch_unwind)]
 pub fn copy<'env>(
     env: &'env Env,

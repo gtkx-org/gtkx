@@ -12,6 +12,12 @@ const enumNamesByValue = (enumObject: Record<string, string | number>): Map<numb
 
 const ROLE_NAMES_BY_VALUE = enumNamesByValue(Gtk.AccessibleRole);
 
+/**
+ * Converts an accessible role enum value into its lowercase name, falling back
+ * to the numeric value when the role is unknown.
+ *
+ * @param role The accessible role to format.
+ */
 export const formatRole = (role: Gtk.AccessibleRole): string => {
     const name = ROLE_NAMES_BY_VALUE.get(role);
     if (!name) return String(role);
@@ -31,6 +37,12 @@ export const formatRoleList = (roles: Iterable<Gtk.AccessibleRole>): string => {
     return `${head.join(", ")}, or ${last}`;
 };
 
+/**
+ * Groups every widget in a container's tree by its accessible role name.
+ *
+ * @param container The scope to traverse.
+ * @returns A map from role name to the widgets that have that role.
+ */
 export const getRoles = (container: Container): Map<string, Gtk.Widget[]> => {
     const roles = new Map<string, Gtk.Widget[]>();
 
@@ -55,6 +67,12 @@ const formatWidgetPreview = (widget: Gtk.Widget, name: string | null): string =>
     return `${nameDisplay}: <${tagName} role="${roleAttr}">${name ?? ""}</${tagName}>`;
 };
 
+/**
+ * Formats the accessible roles in a container's tree as a readable string,
+ * listing each role together with its widgets and their accessible names.
+ *
+ * @param container The scope to inspect.
+ */
 export const prettyRoles = (container: Container): string => {
     const roles = getRoles(container);
 
@@ -77,6 +95,12 @@ export const prettyRoles = (container: Container): string => {
     return lines.join("\n").trimEnd();
 };
 
+/**
+ * Prints the accessible roles in a container's tree to the console using
+ * {@link prettyRoles}.
+ *
+ * @param container The scope to inspect.
+ */
 export const logRoles = (container: Container): void => {
     console.log(prettyRoles(container));
 };

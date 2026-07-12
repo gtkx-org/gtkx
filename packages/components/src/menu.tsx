@@ -9,8 +9,10 @@ type MenuItemsProps = {
     items?: MenuEntry[] | null | undefined;
 };
 
+/** Props for {@link Menu}, combining Gio.Menu props with a declarative items array. */
 export type MenuProps = Omit<GMenuProps, keyof MenuItemsProps> & MenuItemsProps & { ref?: Ref<Gio.Menu | null> };
 
+/** Builds a Gio.Menu model from a declarative array of {@link MenuEntry} items. */
 export const Menu = (props: MenuProps): ReactNode => {
     const { items, ref, ...rest } = props;
     const menuRef = useRef<Gio.Menu | null>(null);

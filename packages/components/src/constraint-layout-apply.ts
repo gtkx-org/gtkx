@@ -1,31 +1,56 @@
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 
+/**
+ * Describes one constraint added by {@link ConstraintLayout.Constraint}, relating a
+ * target widget attribute to a source attribute of another widget or guide.
+ */
 export type ConstraintProps = {
+    /** Name of the target widget or guide. Use "super" or omit to reference the layout's own widget. */
     target?: string;
     targetAttribute: Gtk.ConstraintAttribute;
+    /** Relation between the target and source attributes (defaults to equality). */
     relation?: Gtk.ConstraintRelation;
+    /** Name of the source widget or guide. Use "super" or omit for a constant constraint. */
     source?: string;
     sourceAttribute?: Gtk.ConstraintAttribute;
+    /** Factor applied to the source attribute (defaults to 1). */
     multiplier?: number;
+    /** Constant offset added to the relation (defaults to 0). */
     constant?: number;
+    /** Constraint strength, higher values winning conflicts (defaults to required). */
     strength?: number;
 };
 
+/**
+ * Describes an invisible spacing guide added by {@link ConstraintLayout.Guide},
+ * usable as a constraint target under its id.
+ */
 export type ConstraintGuideProps = {
+    /** Identifier used to reference this guide from constraints. */
     id: string;
     minWidth?: number;
     minHeight?: number;
+    /** Preferred (natural) width. */
     natWidth?: number;
+    /** Preferred (natural) height. */
     natHeight?: number;
     maxWidth?: number;
     maxHeight?: number;
+    /** Strength of the guide's own size constraints. */
     strength?: Gtk.ConstraintStrength;
 };
 
+/**
+ * Describes constraints authored with the Visual Format Language (VFL), applied by
+ * {@link ConstraintLayout.Vfl}.
+ */
 export type ConstraintVflProps = {
+    /** VFL lines describing the constraints between named widgets and guides. */
     lines: string[];
+    /** Default horizontal spacing used by the layout operator (defaults to 0). */
     hspacing?: number;
+    /** Default vertical spacing used by the layout operator (defaults to 0). */
     vspacing?: number;
 };
 

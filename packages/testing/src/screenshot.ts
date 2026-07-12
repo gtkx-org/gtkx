@@ -58,6 +58,13 @@ const captureSnapshot = (widget: Gtk.Widget, scale: number): ScreenshotResult =>
     }
 };
 
+/**
+ * Captures a PNG snapshot of a widget, retrying until it has a paintable size.
+ *
+ * @param widget The widget to render to an image.
+ * @param options Optional scale, timeout, and retry interval.
+ * @returns The base64-encoded PNG data along with its mime type and dimensions.
+ */
 export const screenshot = async (widget: Gtk.Widget, options?: ScreenshotOptions): Promise<ScreenshotResult> => {
     const scale = options?.scale ?? 1;
 
@@ -118,10 +125,24 @@ const saveScreenshotToTempFile = (result: ScreenshotResult): string => {
     return filepath;
 };
 
+/**
+ * Prints a clickable file URL for a saved screenshot to the console.
+ *
+ * @param filepath Absolute path of the saved screenshot file.
+ */
 export const logScreenshotPath = (filepath: string): void => {
     console.log(`Screenshot saved: file://${filepath}`);
 };
 
+/**
+ * Captures a screenshot of a toplevel window, writes it to a temporary file,
+ * logs its path, and returns the image data.
+ *
+ * @param selector Chooses the window by index, title substring, or regular
+ * expression; defaults to the first toplevel.
+ * @param options Optional scale, timeout, and retry interval.
+ * @returns The base64-encoded PNG data along with its mime type and dimensions.
+ */
 export const captureAndSaveScreenshot = async (
     selector?: WindowSelector,
     options?: ScreenshotOptions,

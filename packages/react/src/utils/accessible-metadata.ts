@@ -22,6 +22,12 @@ export const deleteAccessibleMetadata = (accessible: Gtk.Accessible, propName: s
     if (entry) entry.delete(propName);
 };
 
+/**
+ * Returns the stored value of an accessible prop previously applied to a widget, or `null` if none is set.
+ *
+ * @param accessible The widget whose accessible metadata to read.
+ * @param propName The accessible prop name to look up.
+ */
 export const getAccessibleMetadata = <T = unknown>(accessible: Gtk.Accessible, propName: string): T | null => {
     const entry = accessibleMetadata.get(accessible);
     if (!entry) return null;

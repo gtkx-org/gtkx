@@ -14,6 +14,10 @@ import {
 } from "./registry.js";
 import { TYPE_INVALID, typeInterfaces } from "./type.js";
 
+/**
+ * Options for {@link registerClass}. `typeName` overrides the GType name, which
+ * otherwise defaults to the class name.
+ */
 type RegisterClassOptions = { typeName?: string };
 type VfuncFn = NativeRegisterClassVfunc["fn"];
 type DiscoveredVfunc<K extends "class" | "interface"> = VfuncDescriptor<K> & { methodName: string; fn: VfuncFn };
@@ -21,6 +25,16 @@ type DiscoveredClassVfunc = DiscoveredVfunc<"class">;
 type DiscoveredInterfaceVfunc = DiscoveredVfunc<"interface">;
 type InterfaceVfuncBinding = { gtype: bigint; vfuncs: DiscoveredInterfaceVfunc[] };
 
+/**
+ * Registers a subclass of a wrapper class as a new GType, wiring up any class and
+ * inherited-interface virtual functions it overrides. Throws if the class does not
+ * extend a registered wrapper class, has no derivable type name, or overrides an
+ * unsupported construct-time vtable slot.
+ *
+ * @param klass The subclass to register.
+ * @param options Registration options, such as an explicit type name.
+ * @returns The same class, now registered.
+ */
 export function registerClass<T extends AnyClass>(klass: T, options: RegisterClassOptions = {}): T {
     const parentType = resolveParentType(klass);
     if (parentType === TYPE_INVALID) {

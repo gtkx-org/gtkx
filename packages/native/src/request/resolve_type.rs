@@ -11,6 +11,8 @@ fn resolve(shared_library: &str, get_type_fn_name: &str) -> anyhow::Result<u64> 
     Ok(type_.into_glib() as u64)
 }
 
+/// Calls the `getTypeFnName` registration function in `sharedLibrary` and returns the resulting
+/// GType, or 0 when the symbol is absent.
 #[napi(catch_unwind)]
 pub fn resolve_type(shared_library: String, get_type_fn_name: String) -> napi::Result<BigInt> {
     let type_ = native_result("resolve_type", resolve(&shared_library, &get_type_fn_name))?;

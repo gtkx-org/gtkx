@@ -16,6 +16,8 @@ fn alloc_handle(size: usize, type_name: Option<String>) -> anyhow::Result<Handle
     Ok(Handle::Boxed(boxed))
 }
 
+/// Allocates a zero-filled native memory block of `size` bytes and returns an opaque handle to it.
+/// The optional `typeName` tags the boxed allocation with a GType name.
 #[napi(catch_unwind)]
 pub fn alloc(size: f64, type_name: Option<String>) -> napi::Result<External<Handle>> {
     let handle = native_result("alloc", alloc_handle(size as usize, type_name))?;

@@ -34,6 +34,13 @@ export const sortStrings = (values: Iterable<string>): string[] => [...values].s
 export const sortStringsBy = <T>(items: Iterable<T>, key: (item: T) => string): T[] =>
     [...items].sort((a, b) => compareStrings(key(a), key(b)));
 
+/**
+ * Determines whether two records have the same keys and strictly equal values.
+ *
+ * @param a The first record, or `undefined`.
+ * @param b The second record, or `undefined`.
+ * @returns `true` when both are the same reference, or both are defined with identical own keys and values.
+ */
 export const isShallowEqual = <T extends Record<string, unknown>>(a?: T, b?: T): boolean => {
     if (a === b) return true;
     if (!a || !b) return false;

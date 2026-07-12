@@ -4,10 +4,23 @@ const ARG_REFS = ["child", "item", "index", "sibling"] as const;
 
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 
+/**
+ * Named reference to a value available while invoking a {@link Call}: the child
+ * widget, the current list item, its index, or the preceding sibling.
+ */
 export type ArgRef = (typeof ARG_REFS)[number];
 
+/**
+ * A single argument passed to a method {@link Call}: an {@link ArgRef}, a value
+ * read from a React prop (`{ prop }`), a field read off the current item with an
+ * optional fallback (`{ field, or }`), or a constant (`{ literal }`).
+ */
 export type Arg = ArgRef | { prop: string } | { field: string; or?: JsonValue } | { literal: JsonValue };
 
+/**
+ * A GObject method invocation: either a bare method name called with default
+ * arguments, or a method name paired with an explicit list of {@link Arg}s.
+ */
 export type Call = string | { method: string; args: Arg[] };
 
 const NAME_MESSAGE = "must be a non-empty string";
@@ -156,18 +169,52 @@ const elementPropSchema = z
 
 export const elementPropsSchema = z.record(nameSchema, z.array(elementPropSchema));
 
+/**
+ * Rule describing how children of a given type are attached to and removed from a
+ * container element. `prop` is the React prop holding the children and `child` the
+ * child GObject type. `append`/`remove` add and remove a child, `insert` places
+ * one at an index or after a sibling, `reorder` moves an existing child, `autowrap`
+ * names a widget type each child is wrapped in before attaching, and `adopt` marks
+ * pre-existing children as adopted (`true`) or names the getter returning them.
+ */
 export type ContainerProp = z.infer<typeof containerSchema>;
 
+/**
+ * Rule that applies a scalar prop value by invoking `call` whenever the value
+ * changes, optionally running the method named by `after` once it is set.
+ */
 export type ValueProp = z.infer<typeof valueSchema>;
 
+/**
+ * Rule for a controlled text prop: `prop` is written directly to the GObject
+ * property and kept in sync with the element's own edits.
+ */
 export type ControlledTextProp = z.infer<typeof controlledTextSchema>;
 
+/**
+ * Rule for a prop applied after construction rather than at construction time,
+ * optionally guarded by `lookup`, a method that must succeed for the value before
+ * it is assigned.
+ */
 export type LazyProp = z.infer<typeof lazySchema>;
 
+/**
+ * Rule mapping an array prop to method calls: `add` runs per added item, `remove`
+ * per removed item, and `clear` empties the collection before re-adding.
+ */
 export type ListProp = z.infer<typeof listSchema>;
 
+/**
+ * Any prop rule applied directly to an element instance rather than through
+ * container child attachment: a {@link ValueProp}, {@link ControlledTextProp},
+ * {@link LazyProp}, or {@link ListProp}.
+ */
 export type AppliedProp = ValueProp | ControlledTextProp | LazyProp | ListProp;
 
+/**
+ * A single entry in an element's prop mapping, discriminated by `kind`: a
+ * container, value, controlled-text, lazy, or list rule.
+ */
 export type ElementProp = z.infer<typeof elementPropSchema>;
 
 const CONFIG_PREFIX = "gtkx.config.ts:";

@@ -22,6 +22,7 @@ fn write_field(
     )
 }
 
+/// Encodes `value` with `fieldDescriptor` and writes it into the handle's memory at `offset` bytes.
 #[napi(catch_unwind)]
 pub fn write<'env>(
     env: &'env Env,

@@ -228,15 +228,28 @@ const renderPresenceChildren = (params: RenderPresenceParams): ReactNode =>
         );
     });
 
+/**
+ * Controls how entering and exiting children overlap: `sync` animates them at the same time,
+ * while `wait` finishes the exit animations before entering children mount.
+ */
 export type AnimatePresenceMode = "sync" | "wait";
 
+/** Props for {@link AnimatePresence}. */
 export type AnimatePresenceProps = {
     children: ReactNode;
+    /** Whether children present on the first render run their enter animations. */
     initial?: boolean;
+    /** How entering and exiting children overlap. */
     mode?: AnimatePresenceMode;
+    /** Called once every exiting child has finished its exit animation. */
     onExitComplete?: () => void;
 };
 
+/**
+ * Keeps removed children mounted until their exit animations finish, enabling exit animations for
+ * keyed children as they are added to and removed from its subtree. Each child must have a stable
+ * unique `key`.
+ */
 export const AnimatePresence = ({
     children,
     initial = true,

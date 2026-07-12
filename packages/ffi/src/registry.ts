@@ -10,6 +10,10 @@ import type { AnyClass } from "@gtkx/utils";
 import type { Mixin, MixinReceiver } from "./mixin.js";
 import { TYPE_INVALID, type TypedClass, typeInterfaces, typeIsA, typeName, typeParent } from "./type.js";
 
+/**
+ * Static side of class `C` with its construct signature preserved but the member
+ * named `K` (default `"new"`) removed.
+ */
 export type StaticBase<C, K extends PropertyKey = "new"> = Omit<C, K> &
     (C extends new (...args: infer A) => infer R ? new (...args: A) => R : never);
 
@@ -40,6 +44,7 @@ export function getClassType(cls: AnyClass): bigint {
     return Object.hasOwn(proto, "__type__") ? (proto as TypedClass).__type__ : TYPE_INVALID;
 }
 
+/** Returns the GType tag of the given wrapper instance. */
 export function getInstanceType(instance: object): bigint {
     return getClassType(instance.constructor as AnyClass);
 }
@@ -51,11 +56,26 @@ export function registerClassType(cls: AnyClass, type: bigint): void {
     }
 }
 
+/**
+ * Registers a wrapper class as the JS representation of a GType, optionally
+ * installing a registry of virtual functions.
+ * @param cls Wrapper class to associate with the type.
+ * @param type GType the class wraps.
+ * @param vfuncs Virtual functions the class overrides.
+ */
 export function registerWrapperClass(cls: AnyClass, type: bigint, vfuncs?: VfuncRegistry): void {
     registerClassType(cls, type);
     if (vfuncs) registerVfuncRegistry(cls, vfuncs);
 }
 
+/**
+ * Registers a GInterface, associating its GType with a mixin used to compose the
+ * interface onto wrapper classes and an optional virtual function registry.
+ * @param cls Class carrying the interface's GType tag.
+ * @param type GType of the interface.
+ * @param mixin Mixin that applies the interface to a wrapper class.
+ * @param vfuncs Virtual functions the interface exposes.
+ */
 export function registerInterface(cls: AnyClass, type: bigint, mixin: Mixin, vfuncs?: VfuncRegistry): void {
     if (type === TYPE_INVALID) return;
     setClassType(cls, type);
@@ -63,6 +83,14 @@ export function registerInterface(cls: AnyClass, type: bigint, mixin: Mixin, vfu
     if (vfuncs) registerInterfaceVfuncRegistry(type, vfuncs);
 }
 
+/**
+ * Wraps a native handle in a JS wrapper instance. With no class, resolves and
+ * reuses the wrapper for the handle's runtime GType (composing interface mixins);
+ * with an explicit class, creates a bare instance backed by the handle. Returns
+ * null for a null or undefined handle.
+ * @param handle Native handle to wrap.
+ * @param cls Wrapper class to instantiate, or omitted to resolve it from the runtime type.
+ */
 export function wrapHandle(handle: null | undefined, cls?: AnyClass): null;
 export function wrapHandle<T extends object>(handle: ExternalObject<Handle>, cls: AnyClass<T>): T;
 export function wrapHandle<T extends object>(
@@ -84,6 +112,10 @@ export function wrapHandle(handle: ExternalObject<Handle> | null | undefined, cl
     return instance;
 }
 
+/**
+ * Returns the wrapper class registered for a GType, walking up to ancestor types,
+ * and throws if none is registered.
+ */
 export function getWrapperClass(type: bigint): AnyClass {
     const cls = resolveWrapperClass(type);
     if (!cls) {
@@ -146,6 +178,7 @@ function getOrCreateWrapper(handle: ExternalObject<Handle>): object {
     return instance;
 }
 
+/** Returns the native handle bound to a wrapper instance, throwing if none is set. */
 export function getHandle(instance: object): ExternalObject<Handle> {
     const handle = handleMap.get(instance);
     if (handle === undefined) {
@@ -155,10 +188,12 @@ export function getHandle(instance: object): ExternalObject<Handle> {
     return handle;
 }
 
+/** Returns the native handle bound to an instance, or undefined when there is none or the instance is null. */
 export function tryGetHandle(instance: object | null | undefined): ExternalObject<Handle> | undefined {
     return instance == null ? undefined : handleMap.get(instance);
 }
 
+/** Associates a native handle with a wrapper instance. */
 export function setHandle(instance: object, handle: ExternalObject<Handle>): void {
     handleMap.set(instance, handle);
 }

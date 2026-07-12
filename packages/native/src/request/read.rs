@@ -22,6 +22,8 @@ fn read_field<'e>(
     }
 }
 
+/// Reads and decodes a value at `offset` bytes into the handle's memory, using `fieldDescriptor`
+/// to interpret the raw bytes.
 #[napi(catch_unwind)]
 pub fn read<'env>(
     env: &'env Env,

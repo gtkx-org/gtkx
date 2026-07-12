@@ -12,6 +12,7 @@ import {
     getWidgetValue,
 } from "./widget-accessible-properties.js";
 
+/** The expected value for a text matcher: an exact string or a regular expression. */
 export type TextExpectation = string | RegExp;
 
 type MatcherResult = { pass: boolean; message: () => string };
@@ -146,6 +147,7 @@ interface MatcherImplementations {
     toHaveValue: ValueMatcher;
 }
 
+/** The widget assertion matchers keyed by name, suitable for passing to `expect.extend`. */
 export const matchers: MatcherImplementations = {
     toHaveDisplayValue,
     toHaveTextContent,
@@ -170,6 +172,7 @@ const globalExpect = (): ExpectExtend | null => {
 
 let registered = false;
 
+/** Registers the widget matchers on the global `expect`, when one is available. Safe to call more than once. */
 export const registerMatchers = (): void => {
     if (registered) return;
     const expect = globalExpect();

@@ -5,8 +5,8 @@
 <h1 align="center">GTKX</h1>
 
 <p align="center">
-  A modern, declarative framework for native GTK4 and libadwaita.<br />
-  Write JSX and hooks in TypeScript; GTKX renders real GObject widgets. No webview, no Electron.
+  Linux app development for the modern age.<br />
+  Build native GTK4 and libadwaita apps in TypeScript, with React components and hooks over real GObject widgets. No webview, no Electron.
 </p>
 
 <p align="center">
@@ -27,13 +27,13 @@
 
 ---
 
-GTKX is a modern, declarative framework for building native GTK4 and libadwaita desktop apps with TypeScript and React. It generates fully typed bindings for the entire GTK4 and libadwaita surface directly from GObject-Introspection, then gives you the React programming model, components, hooks, and Fast Refresh, over real GObject instances.
+GTKX generates fully typed bindings for the entire GTK4 and libadwaita surface directly from GObject-Introspection. On top of those bindings you get the React programming model, components, hooks, and Fast Refresh, all driving real GObject instances.
 
 ## Demo
 
 ![GTKX demo](https://raw.githubusercontent.com/gtkx-org/gtkx/main/demo.gif)
 
-The window above is rendered by the app below. The JSX element types are real GTK widgets, and standard React (hooks, events) drives them:
+The window above is rendered by the app below. The JSX element types are real GTK widgets, and ordinary React hooks and events drive them:
 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
@@ -86,29 +86,31 @@ This is the [`hello-world`](https://github.com/gtkx-org/gtkx/tree/main/examples/
 
 ## Why GTKX
 
-### A modern framework for the GNOME stack
+### A declarative layer for the GNOME stack
 
-The GLib, GObject, and GTK4 ecosystem is powerful, but it has never offered a modern, declarative way to build complex apps and iterate quickly. GTKX adds that layer on top of the stack you already know:
+The GLib, GObject, and GTK4 stack is mature, but it has no built-in way to describe UI declaratively or hot-reload it as you work. GTKX adds that layer on top of the stack you already know:
 
-- an easy-to-use CLI for scaffolding, development, and production builds,
+- a React renderer that exposes every GObject as a JSX element,
+- a CLI for scaffolding, development, and production builds,
 - a dev server with Fast Refresh that patches your running UI in place,
-- a TypeScript-first toolchain with fully automated codegen,
-- an MCP server that exposes your live app to AI agents,
-- and a React renderer that renders every GObject as JSX.
+- CSS-in-JS styling, spring and tween animations, and higher-level list, grid, and dialog components,
+- a Testing Library-style API for querying and driving your widgets in tests,
+- and an MCP server that exposes your live app to AI agents.
 
 ### The full power of GNOME, not a portable subset
 
-Cross-platform React Native targets deliberately hide the underlying toolkit to share one API everywhere. GTKX does the opposite. It exposes the full capability of GNOME, Adwaita, and GTK4, and is Linux-only by design. You build against the real platform, not a lowest-common-denominator abstraction over it.
+React Native and similar frameworks hide the native toolkit so one API can run everywhere. GTKX does the opposite: it exposes all of GNOME, Adwaita, and GTK4, and is Linux-only by design. You build against the real platform, not a shared subset of it.
 
 ### Why Node, and why generated bindings
 
 GTKX runs on Node.js. The two established ways to reach GTK from JavaScript, GJS and node-gtk, each come with trade-offs GTKX set out to avoid.
 
-GJS is GNOME's own JavaScript runtime, built on SpiderMonkey rather than V8. Because it is a separate runtime, building on it cuts you off from the enormous npm ecosystem of battle-tested packages and tooling.
+GJS is GNOME's own JavaScript runtime, built on SpiderMonkey rather than V8. Because it is a separate runtime from Node, it cuts you off from npm's native modules and the packages and tooling built for Node's APIs.
 
-node-gtk does run on Node, but it is lightly maintained and predates modern Rust and N-API: its native addon is C++ on the older nan/V8 ABI, and its documentation and examples still center on GTK3.
+node-gtk does run on Node, but it is lightly maintained. Its native addon is C++ on the older nan/V8 ABI rather than N-API, and its documentation and examples still center on GTK3.
 
-GTKX takes a different approach. A single generator reads GObject-Introspection and emits the TypeScript types and the native FFI calls together, in one pass, for every method, function, and static. The types are never a hand-maintained afterthought, so they cannot drift from the calls they back, and they cover the full GTK4 and libadwaita surface rather than a hand-picked subset. Types and code come exactly from the same GIR - so it's perfectly typed by definition, with a single source of truth.
+GTKX takes a different approach. A single generator reads GObject-Introspection and emits the TypeScript types and the native FFI calls together, in one pass, for every method, function, and static. The types are generated, not hand-written, so they cannot drift from the calls they back, and they cover the whole GTK4 and libadwaita surface rather than a hand-picked subset. One GIR is the single source for both.
+
 At runtime, the Rust N-API addon calls straight into the system GTK libraries through libffi, without loading libgirepository at all.
 
 ## Quick start
@@ -154,7 +156,7 @@ Explore the [example apps](https://github.com/gtkx-org/gtkx/tree/main/examples):
 
 ## Status
 
-GTKX is pre-1.0 and moving toward a 1.0 release. The generated bindings already cover the full GTK4 and libadwaita widget surface; the [documentation](https://gtkx.dev) tracks what is stable.
+GTKX is at its 1.0 release candidate. The generated bindings cover the full GTK4 and libadwaita widget surface; the [documentation](https://gtkx.dev) tracks what is stable.
 
 ## Contributing
 

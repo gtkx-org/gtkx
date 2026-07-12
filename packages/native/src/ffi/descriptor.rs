@@ -21,6 +21,8 @@ impl FromNapiValue for NestedDescriptor {
     }
 }
 
+/// Describes how a single native value (a function argument, a return value, or a struct field)
+/// is marshalled between JavaScript and C. The `kind` field selects the variant.
 #[napi(
     discriminant = "kind",
     discriminant_case = "camelCase",

@@ -3,16 +3,31 @@ import { resolve } from "node:path";
 import { loadConfig as loadConfigFile } from "c12";
 import { type Config, type ResolvedConfig, resolveConfig, validateConfig } from "./config.js";
 
+/**
+ * Result of loading a `gtkx.config.ts` file: the parsed configuration, the
+ * resolved config file path (`undefined` when none was found), and the project
+ * root it was loaded from.
+ */
 export type LoadedConfig = {
     config: Config;
     configFile: string | undefined;
     root: string;
 };
 
+/**
+ * Options controlling how a configuration file is loaded.
+ */
 export type LoadConfigOptions = {
+    /** Environment mode used to select mode-specific configuration overrides. */
     mode?: string | undefined;
 };
 
+/**
+ * Loads and validates the `gtkx.config.ts` file for a project, returning the
+ * parsed configuration together with the config file path and project root.
+ * @param cwd Directory from which to search for the configuration file.
+ * @param options Loading options, such as the environment mode.
+ */
 export const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): Promise<LoadedConfig> => {
     const result = await loadConfigFile<Config>({
         name: "gtkx",
@@ -36,6 +51,10 @@ export const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): 
     };
 };
 
+/**
+ * Function that loads and resolves the configuration for a project directory,
+ * returning a {@link ResolvedConfig}.
+ */
 export type ConfigLoader = (cwd: string) => Promise<ResolvedConfig>;
 
 export const createConfigLoader = (options: LoadConfigOptions = {}): ConfigLoader => {

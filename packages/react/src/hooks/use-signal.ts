@@ -14,10 +14,16 @@ type SignalHandlersOf<T extends GObject.Object> = T extends { __signals__?: infe
         : NonNullable<H>
     : AnySignalHandlers;
 
+/**
+ * The set of signal names valid for `T`, including detailed forms such as `"notify::label"`.
+ */
 export type SignalNameOf<T extends GObject.Object> =
     | (keyof SignalHandlersOf<T> & string)
     | `${keyof SignalHandlersOf<T> & string}::${string}`;
 
+/**
+ * The handler function type for signal `S` on `T`, resolving the base name of a detailed signal.
+ */
 export type SignalHandlerFor<T extends GObject.Object, S extends string> = S extends keyof SignalHandlersOf<T>
     ? SignalHandlersOf<T>[S]
     : S extends `${infer TBase}::${string}`
@@ -26,8 +32,13 @@ export type SignalHandlerFor<T extends GObject.Object, S extends string> = S ext
           : AnySignalHandler
       : AnySignalHandler;
 
+/**
+ * Options controlling how `useSignal` connects its handler.
+ */
 type UseSignalOptions = {
+    /** Connect the handler to run after the object's default signal handler. */
     after?: boolean;
+    /** Invoke the handler once immediately after connecting. */
     immediate?: boolean;
 };
 
@@ -38,6 +49,14 @@ type SignalSubscription = {
     listener: SignalHandler;
 };
 
+/**
+ * Connects a handler to a GObject signal for the lifetime of the component, reconnecting when the target changes.
+ *
+ * @param target The GObject (or ref to one) to connect to.
+ * @param signal The signal name, optionally with a detail suffix.
+ * @param handler The callback invoked when the signal is emitted.
+ * @param options Connection options such as running after the default handler or invoking immediately.
+ */
 export function useSignal<T extends GObject.Object, S extends SignalNameOf<T>>(
     target: GObjectTarget<T>,
     signal: S,

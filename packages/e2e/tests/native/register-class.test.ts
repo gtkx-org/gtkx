@@ -74,9 +74,9 @@ describe("registerClass", () => {
         const buildableGtype = typeFromName("GtkBuildable");
         expect(buildableGtype).toBeGreaterThan(0);
 
-        expect(() =>
-            registerClass(name, gobjectGtype, { interfaces: [{ type: buildableGtype, vfuncs: [] }] }),
-        ).toThrow(/does not conform to interface/);
+        expect(() => registerClass(name, gobjectGtype, { interfaces: [{ type: buildableGtype, vfuncs: [] }] })).toThrow(
+            /does not conform to interface/,
+        );
         expect(typeFromName(name)).toBe(0n);
     });
 });

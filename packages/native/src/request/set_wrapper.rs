@@ -29,6 +29,8 @@ unsafe extern "C" fn on_wrapper_finalize(
     );
 }
 
+/// Attaches the JavaScript `wrapper` object to the handle's GObject and registers a finalizer
+/// that releases it when the wrapper is garbage collected.
 #[napi(catch_unwind)]
 pub fn set_wrapper(env: Env, handle: &External<Handle>, wrapper: Object<'_>) -> napi::Result<()> {
     let gobject_ptr = handle.as_ptr() as usize;

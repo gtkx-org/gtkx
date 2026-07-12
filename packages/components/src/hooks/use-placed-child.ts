@@ -28,6 +28,7 @@ export const createParentContext = <T>(orphanMessage: string): ParentContext<T> 
     };
 };
 
+/** Render function that receives a ref callback to attach to a child widget so its parent can place it. */
 export type PlacedChildRender<T> = (ref: RefCallback<T>) => ReactNode;
 
 export type PlacedChildOptions<T extends GObject.Object, P> = {

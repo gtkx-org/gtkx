@@ -8,6 +8,12 @@ type TickRegistration = {
     id: number | null;
 };
 
+/**
+ * Registers a frame-clock tick callback on a widget for the lifetime of the component.
+ *
+ * @param target The widget (or ref to one) to attach the tick callback to.
+ * @param callback Invoked on each frame; return `false` to remove the callback.
+ */
 export function useTickCallback(target: GObjectTarget<Gtk.Widget>, callback: Gtk.TickCallback): void {
     const callbackRef = useRef(callback);
     callbackRef.current = callback;

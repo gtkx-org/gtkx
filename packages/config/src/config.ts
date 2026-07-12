@@ -30,6 +30,10 @@ type ReactCompilerOptions = {
     panicThreshold?: ReactCompilerPanicThreshold;
 };
 
+/**
+ * React Compiler options resolved for the build, with the compilation target
+ * fixed to React 19.
+ */
 export type ResolvedReactCompilerOptions = ReactCompilerOptions & {
     target: "19";
 };
@@ -70,7 +74,7 @@ const librariesSchema = z.custom<typeof LIBRARIES_WILDCARD | string[]>().check((
             rawIssue(
                 value,
                 [index],
-                `invalid library identifier "${String(entry)}" — must be of the form "Name-Version" (e.g. "Gtk-4.0")`,
+                `invalid library identifier "${String(entry)}", must be of the form "Name-Version" (e.g. "Gtk-4.0")`,
                 true,
             ),
         );
@@ -84,7 +88,7 @@ const applicationIdSchema = z.custom<string>().check((ctx) => {
             rawIssue(
                 value,
                 [],
-                `invalid \`applicationId\` "${String(value)}" — must satisfy g_application_id_is_valid (e.g. "org.example.MyApp")`,
+                `invalid \`applicationId\` "${String(value)}", must satisfy g_application_id_is_valid (e.g. "org.example.MyApp")`,
                 true,
             ),
         );
@@ -107,7 +111,7 @@ const reactCompilerSchema = z.custom<boolean | ReactCompilerOptions>().check((ct
             rawIssue(
                 value,
                 [],
-                `invalid \`reactCompiler.compilationMode\` "${String(compilationMode)}" — must be one of ${COMPILATION_MODES.join(", ")}`,
+                `invalid \`reactCompiler.compilationMode\` "${String(compilationMode)}", must be one of ${COMPILATION_MODES.join(", ")}`,
                 true,
             ),
         );
@@ -121,7 +125,7 @@ const reactCompilerSchema = z.custom<boolean | ReactCompilerOptions>().check((ct
             rawIssue(
                 value,
                 [],
-                `invalid \`reactCompiler.panicThreshold\` "${String(panicThreshold)}" — must be one of ${PANIC_THRESHOLDS.join(", ")}`,
+                `invalid \`reactCompiler.panicThreshold\` "${String(panicThreshold)}", must be one of ${PANIC_THRESHOLDS.join(", ")}`,
                 true,
             ),
         );
@@ -137,6 +141,11 @@ const configSchema = z.object({
     codegen: z.boolean({ error: "must be a boolean" }).optional(),
 });
 
+/**
+ * User-facing configuration for a GTKX project, as authored in `gtkx.config.ts`:
+ * the GIR libraries to bind, extra `.gir` search paths, the GApplication id,
+ * custom element prop mappings, and the React Compiler and codegen settings.
+ */
 export type Config = z.infer<typeof configSchema>;
 
 export const validateConfig = (config: Config): void => {
@@ -144,10 +153,23 @@ export const validateConfig = (config: Config): void => {
     if (!result.success) throw configError(result.error);
 };
 
+/**
+ * Identity helper that returns the given configuration typed as {@link Config},
+ * enabling editor autocompletion and type checking in `gtkx.config.ts`.
+ */
 export const defineConfig: DefineConfig<Config> = createDefineConfig<Config>();
 
+/**
+ * Deep-merges two configurations, with `override` taking precedence over `base`.
+ * @param base The lower-priority configuration.
+ * @param override The higher-priority configuration whose values win on conflict.
+ */
 export const mergeConfig = (base: Config, override: Config): Config => defu(override, base);
 
+/**
+ * Configuration reduced to the values needed at runtime: the GApplication
+ * identifier and the resolved React Compiler options (`null` when disabled).
+ */
 export type ResolvedConfig = {
     applicationId: string;
     reactCompiler: ResolvedReactCompilerOptions | null;

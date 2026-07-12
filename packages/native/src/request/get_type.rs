@@ -15,6 +15,7 @@ fn gobject_type(gobject_ptr: usize) -> anyhow::Result<u64> {
     Ok(type_ as u64)
 }
 
+/// Returns the GType of the GObject referenced by `handle`, or 0 when the pointer is null.
 #[napi(catch_unwind)]
 pub fn get_type(handle: &External<Handle>) -> napi::Result<BigInt> {
     let type_ = native_result("get_type", gobject_type(handle.ptr_as_usize()))?;

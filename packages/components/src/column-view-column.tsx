@@ -24,9 +24,18 @@ type ColumnViewColumnDeclarativeProps<T = unknown> = {
     headerMenu?: ReactNode;
 };
 
+/**
+ * Props for {@link ColumnViewColumn}. Combines the underlying Gtk.ColumnViewColumn
+ * props with declarative fields: a title, an id, a per-cell renderItem, an optional
+ * sortable flag, and an optional headerMenu shown from the column header.
+ */
 export type ColumnViewColumnProps<T = unknown> = Omit<GtkColumnViewColumnProps, "factory" | "sorter"> &
     ColumnViewColumnDeclarativeProps<T>;
 
+/**
+ * Declares one column of a {@link ColumnView}, driving a Gtk.ColumnViewColumn and
+ * rendering each cell through its renderItem callback.
+ */
 export const ColumnViewColumn = <T = unknown>(props: ColumnViewColumnProps<T>): ReactNode => {
     const { id, title, sortable, renderItem, headerMenu, ...intrinsicProps } = props as ColumnViewColumnProps<T> & {
         [key: string]: unknown;

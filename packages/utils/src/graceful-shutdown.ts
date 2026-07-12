@@ -4,16 +4,30 @@ const HANDLED_SIGNALS = ["SIGINT", "SIGTERM", "SIGHUP"] as const satisfies NodeJ
 const DEFAULT_FORCE_KILL_TIMEOUT_MS = 5000;
 const DEFAULT_COALESCE_WINDOW_MS = 500;
 
+/**
+ * Maps a terminating signal to its conventional process exit code (130 for `SIGINT`, 143 otherwise),
+ * or 0 when no signal is given.
+ *
+ * @param signal The signal that triggered termination, or `null`.
+ */
 export const exitCodeForSignal = (signal: NodeJS.Signals | null): number => {
     if (!signal) return 0;
     return signal === "SIGINT" ? 130 : 143;
 };
 
+/**
+ * Configuration for {@link installGracefulShutdown}.
+ */
 export type GracefulShutdownOptions = {
+    /** Invoked with the first termination signal to perform cleanup before the process exits. */
     onSignal: (signal: NodeJS.Signals) => void | Promise<void>;
+    /** Invoked when shutdown is forced, either by a repeated signal or the force-kill timeout. */
     onForce?: () => void;
+    /** Milliseconds to wait for `onSignal` before forcing exit; a non-positive value disables the timeout. */
     forceKillAfterMs?: number;
+    /** Milliseconds after the first signal during which repeated signals are ignored rather than forcing exit. */
     coalesceWindowMs?: number;
+    /** Overrides the exit code chosen for a given signal and whether shutdown completed gracefully. */
     exitCode?: (signal: NodeJS.Signals, graceful: boolean) => number;
 };
 
@@ -85,6 +99,12 @@ const handle = (state: ShutdownState, signal: NodeJS.Signals): void => {
     finish(state, signal, false);
 };
 
+/**
+ * Registers handlers for `SIGINT`, `SIGTERM`, and `SIGHUP` that run the given cleanup callback once
+ * and then exit, forcing exit if a repeated signal arrives or the cleanup exceeds its timeout.
+ *
+ * @param options The shutdown callbacks and timing configuration.
+ */
 export const installGracefulShutdown = (options: GracefulShutdownOptions): void => {
     const state: ShutdownState = {
         options,

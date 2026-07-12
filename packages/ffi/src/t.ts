@@ -2,6 +2,7 @@ import { bind } from "./bind.js";
 import * as helpers from "./descriptors.js";
 import { fn } from "./fn.js";
 
+/** Shape of the type descriptor builder {@link t}. */
 type T = {
     bind: typeof bind;
     int8: typeof helpers.int8T;
@@ -42,6 +43,11 @@ type T = {
     fn: typeof fn;
 };
 
+/**
+ * Type descriptor builder: a collection of factory helpers that describe C types for
+ * FFI marshalling, plus `bind` to bind a native function and `fn` to describe a
+ * function signature.
+ */
 export const t: T = {
     bind,
     int8: helpers.int8T,

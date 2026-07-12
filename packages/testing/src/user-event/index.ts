@@ -15,6 +15,7 @@ export type { PointerInput } from "./pointer.js";
 export type { TypeOptions } from "./text.js";
 export { resetClipboard } from "./text.js";
 
+/** The set of user interaction helpers exposed by {@link userEvent}, covering clicks, typing, keyboard, pointer, gestures, selection, and scrolling. */
 export type UserEvent = {
     click: typeof click;
     dblClick: typeof dblClick;
@@ -44,6 +45,7 @@ export type UserEvent = {
 
 const state = createInitialState();
 
+/** High-level helpers that simulate user interactions against widgets by dispatching the same events and gestures a real user would trigger. */
 export const userEvent: UserEvent = {
     click,
     dblClick,

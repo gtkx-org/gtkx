@@ -9,9 +9,16 @@ const INDENT = "  ";
 
 type WidgetIdResolver = (widget: Gtk.Widget) => string;
 
+/**
+ * Options controlling how a widget tree is rendered to a string by
+ * {@link prettyWidget} and {@link logWidget}.
+ */
 export type PrettyWidgetOptions = {
+    /** Truncates the output once it exceeds this many characters. */
     maxLength?: number;
+    /** Whether to apply ANSI color highlighting; defaults to the terminal capabilities. */
     highlight?: boolean;
+    /** Resolves an `id` attribute to show for each widget. */
     getId?: WidgetIdResolver;
 };
 
@@ -114,6 +121,14 @@ const formatWidget = (
     return output;
 };
 
+/**
+ * Renders a widget tree as an indented, HTML-like string showing each widget's
+ * tag, accessible attributes, and text content.
+ *
+ * @param container The scope whose widget tree is formatted.
+ * @param options Formatting options such as truncation length and highlighting.
+ * @returns The formatted representation of the tree.
+ */
 export const prettyWidget = (container: Container, options: PrettyWidgetOptions = {}): string => {
     const envLimit = process.env.DEBUG_PRINT_LIMIT ? Number(process.env.DEBUG_PRINT_LIMIT) : DEFAULT_MAX_LENGTH;
     const maxLength = options.maxLength ?? envLimit;
@@ -137,6 +152,12 @@ export const prettyWidget = (container: Container, options: PrettyWidgetOptions 
     return output.trimEnd();
 };
 
+/**
+ * Prints one or more widget trees to the console using {@link prettyWidget}.
+ *
+ * @param container A single scope or an array of scopes to format and print.
+ * @param options Formatting options passed through to {@link prettyWidget}.
+ */
 export const logWidget = (container: Container | Container[], options?: PrettyWidgetOptions): void => {
     const containers: Container[] = Array.isArray(container) ? container : [container];
     for (const target of containers) {

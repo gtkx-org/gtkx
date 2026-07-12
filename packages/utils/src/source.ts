@@ -50,8 +50,19 @@ const RESERVED: Set<string> = new Set([
     "yield",
 ]);
 
+/**
+ * Returns the name unchanged, or with a trailing underscore when it collides with a reserved word,
+ * so it is safe to emit as a JavaScript identifier.
+ *
+ * @param name The candidate identifier.
+ */
 export const sanitizeIdentifier = (name: string): string => (RESERVED.has(name) ? `${name}_` : name);
 
+/**
+ * Converts a name to camelCase and sanitizes it into a valid JavaScript identifier.
+ *
+ * @param name The name to convert.
+ */
 export const toCamelIdentifier = (name: string): string => sanitizeIdentifier(toCamelCase(name));
 
 const SOURCE_ESCAPES: Record<string, string> = {
@@ -63,5 +74,11 @@ const SOURCE_ESCAPES: Record<string, string> = {
 
 const UNSAFE_SOURCE_CHARS = new RegExp(`[${Object.keys(SOURCE_ESCAPES).join("")}]`, "g");
 
+/**
+ * Encodes a string as a JavaScript string literal, additionally escaping characters that are unsafe
+ * to embed in generated source (angle brackets and the line and paragraph separators).
+ *
+ * @param value The string to encode.
+ */
 export const sourceStringLiteral = (value: string): string =>
     JSON.stringify(value).replace(UNSAFE_SOURCE_CHARS, (char) => SOURCE_ESCAPES[char] ?? char);

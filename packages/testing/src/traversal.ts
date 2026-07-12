@@ -4,6 +4,11 @@ export const TOPLEVELS: unique symbol = Symbol("gtkx.toplevels");
 
 type QueryContainer = Gtk.Widget | Gtk.EventController | Gtk.LayoutManager | Gtk.ListItem | Gtk.ListHeader;
 
+/**
+ * A scope that queries and traversal can run against: a widget, an event
+ * controller, a layout manager, a list item or header, an application, or the
+ * sentinel representing all current toplevel windows.
+ */
 export type Container = QueryContainer | Gtk.Application | typeof TOPLEVELS;
 
 const isApplication = (container: Container): container is Gtk.Application => container instanceof Gtk.Application;

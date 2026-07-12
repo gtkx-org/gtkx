@@ -2,10 +2,26 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { render } from "./render.js";
 import type { RenderHookOptions, RenderHookResult } from "./types.js";
 
+/**
+ * Renders a test component that calls the given hook, exposing its latest
+ * return value along with rerender and unmount controls.
+ *
+ * @param callback The hook to run, invoked with the current props.
+ * @param options Optional initial props and wrapper component.
+ * @returns A result whose `result.current` holds the hook's latest value.
+ */
 export function renderHook<Result>(
     callback: () => Result,
     options?: RenderHookOptions<undefined>,
 ): Promise<RenderHookResult<Result, undefined>>;
+/**
+ * Renders a test component that calls the given hook with props, exposing its
+ * latest return value along with rerender and unmount controls.
+ *
+ * @param callback The hook to run, invoked with the current props.
+ * @param options Initial props and optional wrapper component.
+ * @returns A result whose `result.current` holds the hook's latest value.
+ */
 export function renderHook<Result, Props>(
     callback: (props: Props) => Result,
     options: RenderHookOptions<Props>,

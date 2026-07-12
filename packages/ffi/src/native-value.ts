@@ -8,6 +8,14 @@ const collectionFromNative = (descriptor: ArrayDescriptor, value: unknown): unkn
     return (value as unknown[]).map((item) => fromNative(descriptor.itemDescriptor, item));
 };
 
+/**
+ * Converts a raw value returned from native code into its JavaScript form,
+ * wrapping object, struct, boxed, and fundamental handles and recursively
+ * converting arrays and hash tables according to the descriptor.
+ *
+ * @param descriptor Describes the native type of the value.
+ * @param value The raw native value to convert.
+ */
 export function fromNative(descriptor: Descriptor, value: unknown): unknown {
     switch (descriptor.kind) {
         case "object":

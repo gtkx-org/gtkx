@@ -1,11 +1,17 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { wrapEvent } from "./event-wrapper.js";
 
+/** A scroll amount applied to the horizontal (`x`) and vertical (`y`) adjustments. */
 export type ScrollDelta = {
     x?: number;
     y?: number;
 };
 
+/**
+ * Sets a Gtk.Range (such as a slider) to the given value by emitting a change-value signal.
+ * @param widget Gtk.Range to update.
+ * @param value New range value.
+ */
 export const slide = (widget: Gtk.Widget, value: number): Promise<void> =>
     wrapEvent(widget, () => {
         if (!(widget instanceof Gtk.Range)) {
@@ -36,6 +42,11 @@ const applyScrollDelta = (adjustment: Gtk.Adjustment | null, delta: number): voi
     adjustment.setValue(adjustment.getValue() + delta);
 };
 
+/**
+ * Scrolls the nearest scrollable ancestor of the widget by the given horizontal and vertical delta.
+ * @param widget Widget whose scrollable ancestor is scrolled.
+ * @param delta Horizontal and vertical amounts to scroll by.
+ */
 export const scroll = (widget: Gtk.Widget, delta: ScrollDelta): Promise<void> =>
     wrapEvent(widget, () => {
         const adjustments = resolveScrollAdjustments(widget);

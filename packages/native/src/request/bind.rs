@@ -17,6 +17,8 @@ pub struct CallDescriptor {
     pub(crate) return_codec: Codec,
 }
 
+/// Resolves `symbolName` in `sharedLibrary` and precompiles its argument and return marshalling
+/// into a reusable call descriptor that `call` can invoke.
 #[napi(catch_unwind)]
 pub fn bind(
     shared_library: String,

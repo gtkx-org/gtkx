@@ -48,24 +48,36 @@ impl FromNapiValue for VfuncCallback {
     }
 }
 
+/// A single virtual function override for a registered class: which slot to patch and how its
+/// arguments and return value are marshalled to and from the JavaScript implementation.
 #[napi(object, object_to_js = false)]
 pub struct RegisterClassVfunc {
+    /// Byte offset of the vfunc slot within the class (or interface) struct.
     pub byte_offset: u32,
+    /// Descriptor for each argument passed to the JavaScript implementation.
     pub arg_descriptors: Vec<Descriptor>,
+    /// Descriptor for the value the JavaScript implementation returns.
     pub return_descriptor: Descriptor,
+    /// The JavaScript function that implements the vfunc.
     #[napi(ts_type = "(...args: never[]) => unknown")]
     pub r#fn: VfuncCallback,
 }
 
+/// An interface a registered class implements, together with the interface vfuncs it provides.
 #[napi(object, object_to_js = false)]
 pub struct RegisterClassInterface {
+    /// GType of the interface to implement.
     pub r#type: BigInt,
+    /// Interface vfunc implementations to install.
     pub vfuncs: Vec<RegisterClassVfunc>,
 }
 
+/// Optional configuration for `registerClass`: vfunc overrides and implemented interfaces.
 #[napi(object, object_to_js = false)]
 pub struct RegisterClassOptions {
+    /// Virtual function overrides for the class itself.
     pub vfuncs: Option<Vec<RegisterClassVfunc>>,
+    /// Interfaces the class implements, each with its own vfuncs.
     pub interfaces: Option<Vec<RegisterClassInterface>>,
 }
 
@@ -324,6 +336,8 @@ impl RegisterClassRequest {
     }
 }
 
+/// Registers a new GObject subtype named `name` deriving from `parentType`, wiring up any vfunc
+/// overrides and implemented interfaces, and returns the new GType.
 #[napi(catch_unwind)]
 pub fn register_class(
     name: String,
@@ -407,7 +421,9 @@ mod tests {
                     vfuncs: Vec::new(),
                 }],
             };
-            let error = request.execute().expect_err("non-interface type must be rejected");
+            let error = request
+                .execute()
+                .expect_err("non-interface type must be rejected");
             assert!(error.to_string().contains("is not an interface"));
             assert!(glib::Type::from_name("GtkxRegisterClassNonInterfaceType").is_none());
         });
@@ -416,9 +432,8 @@ mod tests {
     #[test]
     fn execute_rejects_a_nonconforming_interface_without_registering() {
         test_support::run(|| {
-            let plugin_type = unsafe {
-                glib::Type::from_glib(gobject_ffi::g_type_plugin_get_type())
-            };
+            let plugin_type =
+                unsafe { glib::Type::from_glib(gobject_ffi::g_type_plugin_get_type()) };
             let request = RegisterClassRequest {
                 name: gstring("GtkxRegisterClassNonConformingType"),
                 parent_type: glib::Object::static_type(),
@@ -428,7 +443,9 @@ mod tests {
                     vfuncs: Vec::new(),
                 }],
             };
-            let error = request.execute().expect_err("non-conforming parent must be rejected");
+            let error = request
+                .execute()
+                .expect_err("non-conforming parent must be rejected");
             assert!(error.to_string().contains("does not conform to interface"));
             assert!(glib::Type::from_name("GtkxRegisterClassNonConformingType").is_none());
         });
@@ -437,9 +454,8 @@ mod tests {
     #[test]
     fn execute_accepts_an_interface_the_parent_conforms_to() {
         test_support::run(|| {
-            let plugin_type = unsafe {
-                glib::Type::from_glib(gobject_ffi::g_type_plugin_get_type())
-            };
+            let plugin_type =
+                unsafe { glib::Type::from_glib(gobject_ffi::g_type_plugin_get_type()) };
             let request = RegisterClassRequest {
                 name: gstring("GtkxRegisterClassConformingType"),
                 parent_type: glib::TypeModule::static_type(),
@@ -449,11 +465,11 @@ mod tests {
                     vfuncs: Vec::new(),
                 }],
             };
-            let type_ = request.execute().expect("conforming interface should register");
+            let type_ = request
+                .execute()
+                .expect("conforming interface should register");
             assert_ne!(type_, 0);
-            assert!(
-                unsafe { glib::Type::from_glib(type_ as glib::ffi::GType) }.is_a(plugin_type)
-            );
+            assert!(unsafe { glib::Type::from_glib(type_ as glib::ffi::GType) }.is_a(plugin_type));
         });
     }
 

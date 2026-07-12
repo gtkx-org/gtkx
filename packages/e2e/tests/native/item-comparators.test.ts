@@ -15,7 +15,7 @@ const valueObject = (value: number): ValueObject => {
     return object;
 };
 
-const valueOf = (item: GObject.Object | null): number => {
+const itemValue = (item: GObject.Object | null): number => {
     expect(item).toBeInstanceOf(ValueObject);
     return item instanceof ValueObject ? item.value : 0;
 };
@@ -28,7 +28,7 @@ const valueStore = (...values: number[]): Gio.ListStore => {
 
 const storeValues = (model: Gio.ListModel): number[] => {
     const values: number[] = [];
-    for (let index = 0; index < model.getNItems(); index += 1) values.push(valueOf(model.getItem(index)));
+    for (let index = 0; index < model.getNItems(); index += 1) values.push(itemValue(model.getItem(index)));
     return values;
 };
 
@@ -36,7 +36,7 @@ describe("GObject item comparators", () => {
     it("passes item wrappers to a ListStore sort comparator", () => {
         const store = valueStore(3, 1, 2);
 
-        store.sort((a, b) => valueOf(a) - valueOf(b));
+        store.sort((a, b) => itemValue(a) - itemValue(b));
 
         expect(storeValues(store)).toEqual([1, 2, 3]);
     });
@@ -44,7 +44,7 @@ describe("GObject item comparators", () => {
     it("passes item wrappers to a ListStore insertSorted comparator", () => {
         const store = valueStore(1, 3);
 
-        const position = store.insertSorted(valueObject(2), (a, b) => valueOf(a) - valueOf(b));
+        const position = store.insertSorted(valueObject(2), (a, b) => itemValue(a) - itemValue(b));
 
         expect(position).toBe(1);
         expect(storeValues(store)).toEqual([1, 2, 3]);
@@ -54,7 +54,7 @@ describe("GObject item comparators", () => {
         const store = valueStore(1, 2, 3);
         const target = valueObject(2);
 
-        const [found, position] = store.findWithEqualFuncFull(target, (a, b) => valueOf(a) === valueOf(b));
+        const [found, position] = store.findWithEqualFuncFull(target, (a, b) => itemValue(a) === itemValue(b));
 
         expect(found).toBe(true);
         expect(position).toBe(1);
@@ -62,7 +62,7 @@ describe("GObject item comparators", () => {
 
     it("passes item wrappers to a CustomSorter comparator", () => {
         const store = valueStore(2, 3, 1);
-        const sorter = Gtk.CustomSorter.new((a, b) => valueOf(a) - valueOf(b));
+        const sorter = Gtk.CustomSorter.new((a, b) => itemValue(a) - itemValue(b));
         const sortModel = Gtk.SortListModel.new(store, sorter);
 
         expect(storeValues(sortModel)).toEqual([1, 2, 3]);

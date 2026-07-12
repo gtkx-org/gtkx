@@ -111,6 +111,8 @@ fn write_ref_updates(
     Ok(())
 }
 
+/// Invokes a previously bound native function, encoding `values` and decoding the return value
+/// according to the call descriptor. Out and inout ('ref') arguments are written back in place.
 #[napi(catch_unwind)]
 pub fn call<'env>(
     env: &'env Env,

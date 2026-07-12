@@ -32,6 +32,7 @@ const useConstraintLayoutRef = (): RefObject<Gtk.ConstraintLayout | null> => {
     return ref;
 };
 
+/** Props for {@link ConstraintLayout}. */
 export type ConstraintLayoutProps = {
     children?: ReactNode;
     ref?: Ref<Gtk.ConstraintLayout | null>;
@@ -72,6 +73,12 @@ const useDeferredContribution = (apply: (layout: Gtk.ConstraintLayout) => () => 
     }, deps);
 };
 
+/**
+ * Installs a Gtk.ConstraintLayout on a host widget and exposes child components to
+ * populate it: {@link ConstraintLayout.Constraint} for individual constraints,
+ * {@link ConstraintLayout.Guide} for spacing guides, and {@link ConstraintLayout.Vfl}
+ * for constraints authored in the Visual Format Language.
+ */
 export const ConstraintLayout: ((props: ConstraintLayoutProps) => ReactNode) & {
     Guide: (props: ConstraintGuideProps) => ReactNode;
     Constraint: (props: ConstraintProps) => ReactNode;

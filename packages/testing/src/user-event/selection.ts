@@ -91,6 +91,11 @@ const selectByRole = (widget: Gtk.Widget, valueArray: number[]): void => {
     }
 };
 
+/**
+ * Selects the option(s) at the given index or indices within a list view, combo box, drop down, or list box.
+ * @param widget Selectable widget to update.
+ * @param values Index or indices of the options to select.
+ */
 export const selectOptions = (widget: Gtk.Widget, values: number | number[]): Promise<void> =>
     wrapEvent(widget, () => {
         const valueArray = Array.isArray(values) ? values : [values];
@@ -108,6 +113,11 @@ const deselectInListView = (widget: Gtk.ListView | Gtk.GridView | Gtk.ColumnView
     }
 };
 
+/**
+ * Deselects the option(s) at the given index or indices within a list view or list box.
+ * @param widget Selectable widget to update.
+ * @param values Index or indices of the options to deselect.
+ */
 export const deselectOptions = (widget: Gtk.Widget, values: number | number[]): Promise<void> =>
     wrapEvent(widget, () => {
         const valueArray = Array.isArray(values) ? values : [values];

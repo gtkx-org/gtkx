@@ -26,6 +26,7 @@ import {
     toValue,
 } from "./value.js";
 
+/** Function invoked when a connected GObject signal is emitted. */
 export type SignalHandler = (...args: unknown[]) => unknown;
 
 type SignalConnectSpec = {
@@ -54,6 +55,7 @@ const gSignalHandlersBlockMatched = bind(
     uint32T,
 );
 
+/** Returns the signal name without its detail suffix (the part after `::`). */
 export const getSignalBaseName = (signal: string): string => {
     const detailIndex = signal.indexOf("::");
     return detailIndex === -1 ? signal : signal.slice(0, detailIndex);
@@ -76,6 +78,12 @@ function connectBind(type: bigint, signal: string, callback: CallbackDescriptor)
     );
 }
 
+/**
+ * Connects a handler to a GObject signal on an instance and returns the handler id.
+ * @param instance Emitter to connect to.
+ * @param signal Signal name, optionally including a `::detail` suffix.
+ * @param spec Callback descriptor, handler function, and whether to run after the default handler.
+ */
 export function connectSignal(instance: object, signal: string, spec: SignalConnectSpec): number {
     const { callback, handler, after } = spec;
     const wrapped = wrapCallback(handler, callback, "emitter");
@@ -100,6 +108,14 @@ const createEmitValue = (arg: EmitArg): { value: ExternalObject<Handle>; read?: 
     return isInoutArg(arg) ? outValueForDescriptor(arg.type, arg.value) : outValueForDescriptor(arg.type);
 };
 
+/**
+ * Emits a signal on an instance with the given arguments and returns its result
+ * combined with any output-argument values.
+ * @param instance Emitter to emit the signal on.
+ * @param signal Signal name, optionally including a `::detail` suffix.
+ * @param args Arguments to pass, including output and inout arguments.
+ * @param returnDescriptor Descriptor for the signal's return value, omitted when it returns void.
+ */
 export function emitSignal(instance: object, signal: string, args: EmitArg[], returnDescriptor?: Descriptor): unknown {
     const type: bigint = (instance as TypedClass).__type__;
     const signalId = gSignalLookup(getSignalBaseName(signal), type) as number;
