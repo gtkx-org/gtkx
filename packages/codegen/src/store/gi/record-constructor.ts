@@ -30,20 +30,31 @@ export const renderRecordConstructorPropsInterface = (
     return renderBracedOrEmpty(head, lines.join("\n"));
 };
 
-export const renderRecordConstructor = (context: ModuleContext, record: GirRecord, className: string): string => {
+export const renderRecordConstructor = (
+    context: ModuleContext,
+    record: GirRecord,
+    className: string,
+    extendsError = false,
+): string => {
+    const superCall = extendsError ? ["super();"] : [];
     if (isOpaque(record)) {
         return renderBlock(
             `constructor()`,
-            `throw new globalThis.Error(${sourceStringLiteral(`Cannot construct ${className}: opaque boxed type with no known layout`)});`,
+            [
+                ...superCall,
+                `throw new globalThis.Error(${sourceStringLiteral(`Cannot construct ${className}: opaque boxed type with no known layout`)});`,
+            ].join("\n"),
         );
     }
     const { slots, size } = computeRecordFieldSlots(context, record.fields, record.isUnion);
     if (size === 0) {
-        return `constructor(props: ${className}ConstructorProps = {}) {}`;
+        return extendsError
+            ? renderBlock(`constructor(props: ${className}ConstructorProps = {})`, "super();")
+            : `constructor(props: ${className}ConstructorProps = {}) {}`;
     }
     context.addRuntimeImport("alloc");
     context.addRuntimeImport("setHandle");
-    const statements = [`const handle = alloc(${allocArgs(record, size).join(", ")});`];
+    const statements = [...superCall, `const handle = alloc(${allocArgs(record, size).join(", ")});`];
     for (const entry of slots) {
         if (!isWritableFieldSlot(context, entry)) continue;
         statements.push(renderFieldWrite(context, entry));
