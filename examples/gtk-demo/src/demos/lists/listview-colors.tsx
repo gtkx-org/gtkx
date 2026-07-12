@@ -21,6 +21,7 @@ import {
 import { useSignal } from "@gtkx/react";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useLatest } from "../../use-latest.js";
 import type { Demo, DemoProviderProps } from "../types.js";
 import colorNamesRaw from "./color.names.txt?raw";
 import sourceCode from "./listview-colors.tsx?raw";
@@ -186,33 +187,6 @@ function createColorObject(position: number): ColorObject {
     obj.colorItem = createColorItem(position);
     return obj;
 }
-
-class ColorList extends GObject.Object<Gio.ListModelSignalHandlers> implements Gio.ListModel {
-    size = 0;
-
-    declare itemsChanged: Gio.ListModel["itemsChanged"];
-
-    getItemType(): bigint {
-        return ColorObject.prototype.__type__;
-    }
-
-    getNItems(): number {
-        return this.size;
-    }
-
-    getItem(position: number): ColorObject | null {
-        return position < this.size ? createColorObject(position) : null;
-    }
-
-    setSize(next: number): void {
-        const previous = this.size;
-        if (next === previous) return;
-        this.size = next;
-        if (next > previous) this.itemsChanged(previous, 0, next - previous);
-        else this.itemsChanged(next, previous - next, 0);
-    }
-}
-registerClass(ColorList, { typeName: "GtkxDemoColorList", implements: [Gio.ListModel] });
 
 function calculateAverageColor(colors: ColorItem[]): { r: number; g: number; b: number; hex: string } {
     if (colors.length === 0) return { r: 128, g: 128, b: 128, hex: "#808080" };
@@ -440,90 +414,134 @@ function getCompareFn(mode: SortMode): ((a: ColorItem, b: ColorItem) => number) 
 }
 
 interface ColorsModels {
-    colorList: ColorList;
-    sortModel: Gtk.SortListModel;
+    baseStore: Gio.ListStore;
     selection: Gtk.MultiSelection;
+    liveRefs: ColorObject[];
 }
 
 function useColorsModels(): ColorsModels {
     const ref = useRef<ColorsModels | null>(null);
     if (ref.current === null) {
-        const colorList = new ColorList();
-        const sortModel = Gtk.SortListModel.new(colorList, null);
-        sortModel.setIncremental(true);
-        const selection = new Gtk.MultiSelection({ model: sortModel });
-        ref.current = { colorList, sortModel, selection };
+        const baseStore = Gio.ListStore.new(ColorObject.prototype.__type__);
+        const selection = new Gtk.MultiSelection({ model: baseStore });
+        ref.current = { baseStore, selection, liveRefs: [] };
     }
     return ref.current;
 }
 
-function makeSorter(mode: SortMode): Gtk.Sorter | null {
+function reorderStore(models: ColorsModels, mode: SortMode): void {
     const cmp = getCompareFn(mode);
-    if (!cmp) return null;
-    return Gtk.CustomSorter.new((a, b) =>
-        a && b ? cmp((a as ColorObject).colorItem, (b as ColorObject).colorItem) : 0,
-    );
+    if (!cmp) return;
+    if (models.liveRefs.length <= 1) return;
+    models.liveRefs.sort((a, b) => cmp(a.colorItem, b.colorItem));
+    models.baseStore.splice(0, models.baseStore.getNItems(), models.liveRefs);
 }
 
 function useColorsSortMode(models: ColorsModels, mode: SortMode): void {
     useEffect(() => {
-        models.sortModel.setSorter(makeSorter(mode));
+        reorderStore(models, mode);
     }, [models, mode]);
 }
 
-function colorFillStep(colorLimit: ColorLimit): number {
-    return Math.max(1, Math.floor(colorLimit / 4096));
+const FILL_BATCH_DIVISOR = 4096;
+const FILL_BATCH_MAX = 4096;
+
+function fillSynchronously(models: ColorsModels, colorLimit: ColorLimit, sortMode: SortMode): void {
+    models.baseStore.removeAll();
+    models.liveRefs.length = 0;
+    const batch: ColorObject[] = new Array(colorLimit);
+    for (let i = 0; i < colorLimit; i++) batch[i] = createColorObject(i);
+    for (const obj of batch) models.liveRefs.push(obj);
+    models.baseStore.splice(0, 0, batch);
+    reorderStore(models, sortMode);
 }
 
-interface ColorsFillOptions {
+function useColorsInitialFill(
+    models: ColorsModels,
+    colorLimit: ColorLimit,
+    sortModeRef: React.RefObject<SortMode>,
+): void {
+    const filledRef = useRef(false);
+    if (!filledRef.current) {
+        filledRef.current = true;
+        fillSynchronously(models, colorLimit, sortModeRef.current);
+    }
+}
+
+interface ColorsRefillOptions {
     models: ColorsModels;
     gridView: Gtk.GridView | null;
     colorLimit: ColorLimit;
+    sortModeRef: React.RefObject<SortMode>;
     refillToken: number;
 }
 
-function useColorsFill({ models, gridView, colorLimit, refillToken }: ColorsFillOptions): void {
+function useColorsRefill({ models, gridView, colorLimit, sortModeRef, refillToken }: ColorsRefillOptions): void {
     useEffect(() => {
-        if (!gridView) return;
-        const { colorList } = models;
-        colorList.setSize(0);
-        const step = colorFillStep(colorLimit);
+        if (!gridView || refillToken === 0) return;
+        models.baseStore.removeAll();
+        models.liveRefs.length = 0;
+        const increment = Math.min(FILL_BATCH_MAX, Math.max(1, Math.floor(colorLimit / FILL_BATCH_DIVISOR)));
+        let appended = 0;
         const tickId = gridView.addTickCallback(() => {
-            colorList.setSize(Math.min(colorLimit, colorList.size + step));
-            return colorList.size < colorLimit;
+            if (appended >= colorLimit) return false;
+            const next = Math.min(colorLimit, appended + increment);
+            const batch: ColorObject[] = new Array(next - appended);
+            for (let i = appended, j = 0; i < next; i++, j++) batch[j] = createColorObject(i);
+            for (const obj of batch) models.liveRefs.push(obj);
+            models.baseStore.splice(models.baseStore.getNItems(), 0, batch);
+            appended = next;
+            if (appended >= colorLimit) {
+                reorderStore(models, sortModeRef.current);
+                return false;
+            }
+            return true;
         });
         return () => {
             gridView.removeTickCallback(tickId);
         };
-    }, [models, gridView, colorLimit, refillToken]);
+    }, [models, gridView, colorLimit, sortModeRef, refillToken]);
+}
+
+function useColorsLimitFill(
+    models: ColorsModels,
+    colorLimit: ColorLimit,
+    sortModeRef: React.RefObject<SortMode>,
+): void {
+    const previousLimitRef = useRef(colorLimit);
+    useEffect(() => {
+        if (previousLimitRef.current === colorLimit) return;
+        previousLimitRef.current = colorLimit;
+        fillSynchronously(models, colorLimit, sortModeRef.current);
+    }, [models, colorLimit, sortModeRef]);
 }
 
 const formatItemCount = (count: number): string => `${count.toLocaleString("en-US")} /`;
 
-function useStoreCountLabel(colorList: ColorList, labelRef: React.RefObject<Gtk.Label | null>): void {
+function useStoreCountLabel(baseStore: Gio.ListStore, labelRef: React.RefObject<Gtk.Label | null>): void {
     useSignal(
-        colorList,
+        baseStore,
         "items-changed",
         () => {
-            labelRef.current?.setLabel(formatItemCount(colorList.getNItems()));
+            labelRef.current?.setLabel(formatItemCount(baseStore.getNItems()));
         },
         { immediate: true },
     );
 }
 
-function useSortProgressBar(
-    sortModel: Gtk.SortListModel,
+function useStoreProgressBar(
+    baseStore: Gio.ListStore,
+    colorLimit: ColorLimit,
     progressBarRef: React.RefObject<Gtk.ProgressBar | null>,
 ): void {
     const update = useCallback(() => {
         const bar = progressBarRef.current;
         if (!bar) return;
-        const total = Math.max(1, sortModel.getNItems());
-        const pending = sortModel.getPending();
-        bar.setFraction((total - pending) / total);
-        bar.setVisible(pending !== 0);
-    }, [sortModel, progressBarRef]);
-    useSignal(sortModel, "notify::pending", update, { immediate: true });
+        const itemCount = baseStore.getNItems();
+        bar.setFraction(Math.min(1, itemCount / colorLimit));
+        bar.setVisible(itemCount > 0 && itemCount < colorLimit);
+    }, [baseStore, colorLimit, progressBarRef]);
+    useSignal(baseStore, "items-changed", update, { immediate: true });
     useEffect(() => {
         update();
     }, [update]);
@@ -635,7 +653,7 @@ const ListViewColorsProvider = ({ children }: DemoProviderProps) => {
 const ColorsHeader = () => {
     const { state, models, computed } = useColorsContext();
     const countLabelRef = useRef<Gtk.Label | null>(null);
-    useStoreCountLabel(models.colorList, countLabelRef);
+    useStoreCountLabel(models.baseStore, countLabelRef);
     return (
         <GtkHeaderBar
             name="header-bar"
@@ -651,7 +669,7 @@ const ColorsHeader = () => {
                     <GtkButton label="_Refill" useUnderline onClicked={computed.handleRefill} />
                     <GtkLabel
                         ref={countLabelRef}
-                        label={formatItemCount(models.colorList.getNItems())}
+                        label={formatItemCount(models.baseStore.getNItems())}
                         attributes={getTnumAttrs()}
                         widthChars={8}
                         xalign={1}
@@ -694,8 +712,11 @@ const ColorsGridOverlay = () => {
     const { state, models, computed } = useColorsContext();
     const [gridView, setGridView] = useState<Gtk.GridView | null>(null);
     const progressBarRef = useRef<Gtk.ProgressBar | null>(null);
-    useColorsFill({ models, gridView, colorLimit: state.colorLimit, refillToken: state.refillToken });
-    useSortProgressBar(models.sortModel, progressBarRef);
+    const sortModeRef = useLatest(state.sortMode);
+    useColorsInitialFill(models, state.colorLimit, sortModeRef);
+    useColorsLimitFill(models, state.colorLimit, sortModeRef);
+    useColorsRefill({ models, gridView, colorLimit: state.colorLimit, sortModeRef, refillToken: state.refillToken });
+    useStoreProgressBar(models.baseStore, state.colorLimit, progressBarRef);
     const factory = useMemo(() => createColorFactory(computed.showDetails), [computed.showDetails]);
 
     return (

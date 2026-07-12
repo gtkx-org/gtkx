@@ -1,20 +1,7 @@
-import type { GirCallback } from "../../gir/callback.js";
-import type { GirFunction } from "../../gir/function.js";
+import { callbackAsFunction, type GirCallback } from "../../gir/callback.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { renderMethodReturnType, renderMethodSignature } from "./method.js";
-
-const callbackAsFunction = (callback: GirCallback): GirFunction => ({
-    name: callback.name,
-    doc: callback.doc,
-    cIdentifier: undefined,
-    throws: false,
-    introspectable: callback.introspectable,
-    shadowedBy: undefined,
-    instance: undefined,
-    parameters: callback.parameters,
-    returnValue: callback.returnValue,
-});
 
 export const generateCallback = (context: ModuleContext, callback: GirCallback): void => {
     if (!callback.introspectable) return;

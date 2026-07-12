@@ -149,19 +149,17 @@ impl RawVfunc {
 }
 
 impl RawInterface {
-    fn install(self, class_ptr: *mut c_void) -> anyhow::Result<()> {
+    fn install(self, class_ptr: *mut c_void) {
         let iface_vtable =
             unsafe { gobject_ffi::g_type_interface_peek(class_ptr, self.type_.into_glib()) };
-        if iface_vtable.is_null() {
-            anyhow::bail!(
-                "register_class: registered type does not conform to interface {:#x}",
-                self.type_.into_glib()
-            );
-        }
+        assert!(
+            !iface_vtable.is_null(),
+            "register_class: conforming type is missing the vtable for interface '{}'",
+            self.type_.name()
+        );
         for vfunc in self.vfuncs {
             vfunc.install_into(iface_vtable);
         }
-        Ok(())
     }
 }
 
@@ -242,6 +240,25 @@ impl RegisterClassRequest {
         Ok(())
     }
 
+    fn validate_interfaces(&self) -> anyhow::Result<()> {
+        for iface in &self.interfaces {
+            if !iface.type_.is_a(glib::Type::INTERFACE) {
+                anyhow::bail!(
+                    "register_class: type '{}' is not an interface",
+                    iface.type_.name()
+                );
+            }
+            if !self.parent_type.is_a(iface.type_) {
+                anyhow::bail!(
+                    "register_class: parent type '{}' does not conform to interface '{}'",
+                    self.parent_type.name(),
+                    iface.type_.name()
+                );
+            }
+        }
+        Ok(())
+    }
+
     fn register_type(
         parent_type: glib::Type,
         name_ptr: *const c_char,
@@ -271,25 +288,6 @@ impl RegisterClassRequest {
             anyhow::bail!("g_type_register_static returned G_TYPE_INVALID");
         }
 
-        for iface in &interfaces {
-            let already_conforms =
-                unsafe { gobject_ffi::g_type_is_a(new_type, iface.type_.into_glib()) } != 0;
-            if !already_conforms {
-                let info = gobject_ffi::GInterfaceInfo {
-                    interface_init: None,
-                    interface_finalize: None,
-                    interface_data: std::ptr::null_mut(),
-                };
-                unsafe {
-                    gobject_ffi::g_type_add_interface_static(
-                        new_type,
-                        iface.type_.into_glib(),
-                        &info,
-                    );
-                }
-            }
-        }
-
         let class_ptr = unsafe { gobject_ffi::g_type_class_ref(new_type) };
 
         for vfunc in vfuncs {
@@ -297,7 +295,7 @@ impl RegisterClassRequest {
         }
 
         for iface in interfaces {
-            iface.install(class_ptr)?;
+            iface.install(class_ptr);
         }
 
         Ok(new_type)
@@ -308,6 +306,7 @@ impl RegisterClassRequest {
     fn execute(self) -> anyhow::Result<u64> {
         let query = self.query_parent_type()?;
         self.validate_layout(&query)?;
+        self.validate_interfaces()?;
 
         let class_size = query.class_size as u16;
         let instance_size = query.instance_size as u16;
@@ -393,6 +392,68 @@ mod tests {
                 interfaces: Vec::new(),
             };
             assert!(request.execute().is_err());
+        });
+    }
+
+    #[test]
+    fn execute_rejects_a_non_interface_type_without_registering() {
+        test_support::run(|| {
+            let request = RegisterClassRequest {
+                name: gstring("GtkxRegisterClassNonInterfaceType"),
+                parent_type: glib::Object::static_type(),
+                vfuncs: Vec::new(),
+                interfaces: vec![RawInterface {
+                    type_: glib::Object::static_type(),
+                    vfuncs: Vec::new(),
+                }],
+            };
+            let error = request.execute().expect_err("non-interface type must be rejected");
+            assert!(error.to_string().contains("is not an interface"));
+            assert!(glib::Type::from_name("GtkxRegisterClassNonInterfaceType").is_none());
+        });
+    }
+
+    #[test]
+    fn execute_rejects_a_nonconforming_interface_without_registering() {
+        test_support::run(|| {
+            let plugin_type = unsafe {
+                glib::Type::from_glib(gobject_ffi::g_type_plugin_get_type())
+            };
+            let request = RegisterClassRequest {
+                name: gstring("GtkxRegisterClassNonConformingType"),
+                parent_type: glib::Object::static_type(),
+                vfuncs: Vec::new(),
+                interfaces: vec![RawInterface {
+                    type_: plugin_type,
+                    vfuncs: Vec::new(),
+                }],
+            };
+            let error = request.execute().expect_err("non-conforming parent must be rejected");
+            assert!(error.to_string().contains("does not conform to interface"));
+            assert!(glib::Type::from_name("GtkxRegisterClassNonConformingType").is_none());
+        });
+    }
+
+    #[test]
+    fn execute_accepts_an_interface_the_parent_conforms_to() {
+        test_support::run(|| {
+            let plugin_type = unsafe {
+                glib::Type::from_glib(gobject_ffi::g_type_plugin_get_type())
+            };
+            let request = RegisterClassRequest {
+                name: gstring("GtkxRegisterClassConformingType"),
+                parent_type: glib::TypeModule::static_type(),
+                vfuncs: Vec::new(),
+                interfaces: vec![RawInterface {
+                    type_: plugin_type,
+                    vfuncs: Vec::new(),
+                }],
+            };
+            let type_ = request.execute().expect("conforming interface should register");
+            assert_ne!(type_, 0);
+            assert!(
+                unsafe { glib::Type::from_glib(type_ as glib::ffi::GType) }.is_a(plugin_type)
+            );
         });
     }
 

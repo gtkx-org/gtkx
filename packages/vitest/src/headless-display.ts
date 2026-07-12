@@ -8,8 +8,13 @@ type CompositorId = "sway" | "weston";
 
 export const DEFAULT_HEADLESS_SIZE = "1024x768";
 
+/**
+ * Settings for the per-worker headless Wayland display.
+ */
 export type HeadlessOptions = {
+    /** Output resolution as a "WIDTHxHEIGHT" string, for example "1024x768". */
     size: string;
+    /** Wayland compositor used to back the headless display. */
     compositor: CompositorId;
 };
 

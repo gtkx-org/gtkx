@@ -61,9 +61,8 @@ export const renderSignalDeclarations = (
     context: ModuleContext,
     klass: GirClass,
     className: string,
-    options: { parentlessExtendsObject: boolean; generic?: boolean },
+    parentlessExtendsObject: boolean,
 ): string[] => {
-    const { parentlessExtendsObject, generic = false } = options;
     const base = { context, klass, className, parentlessExtendsObject };
     const declarations = [
         renderSignalMap({ ...base, suffix: SIGNAL_HANDLERS_SUFFIX, renderEntry: renderSignalHandlerType }),
@@ -75,7 +74,8 @@ export const renderSignalDeclarations = (
             collectNotifyDetails(context, klass).length > 0 ||
             klass.implements.length > 0)
     ) {
-        declarations.push(renderSignalConnectInterface(className, generic));
+        const isRootObject = context.namespace.name === "GObject" && klass.name === "Object";
+        declarations.push(renderSignalConnectInterface(className, isRootObject));
     }
     return declarations;
 };
@@ -135,31 +135,31 @@ const gobjectObjectMapRef = (context: ModuleContext, suffix: string): string => 
     return `${context.addCrossNamespaceImport("GObject")}.Object${suffix}`;
 };
 
-const renderSignalConnectInterface = (className: string, generic: boolean): string => {
+const renderSignalConnectInterface = (className: string, isRootObject: boolean): string => {
     const map = `${className}${SIGNAL_HANDLERS_SUFFIX}`;
     const emitMap = `${className}${SIGNAL_EMIT_SUFFIX}`;
-    const handlers = generic ? `(${map} & S)` : map;
-    const header = generic ? `export interface ${className}<S = {}>` : `export interface ${className}`;
     const lines = [
-        `__signals__?: ${handlers};`,
-        `connect<K extends keyof ${handlers}>(signal: K, handler: ${handlers}[K], after?: boolean): number;`,
+        `__signals__?: ${map};`,
+        `connect<K extends keyof ${map}>(signal: K, handler: ${map}[K], after?: boolean): number;`,
         `connect(signal: string, handler: ${SIGNAL_HANDLER_TYPE}, after?: boolean): number;`,
         `emit<K extends keyof ${emitMap}>(sigName: K, ...args: ${emitMap}[K]["args"]): ${emitMap}[K]["result"];`,
         "emit(sigName: string, ...args: unknown[]): unknown;",
     ];
-    for (const method of ["on", "once", "addEventListener"]) {
-        lines.push(
-            `${method}<K extends keyof ${handlers}>(signal: K, handler: ${handlers}[K], after?: boolean): this;`,
-            `${method}(signal: string, handler: ${SIGNAL_HANDLER_TYPE}, after?: boolean): this;`,
-        );
+    if (!isRootObject) {
+        for (const method of ["on", "once", "addEventListener"]) {
+            lines.push(
+                `${method}<K extends keyof ${map}>(signal: K, handler: ${map}[K], after?: boolean): this;`,
+                `${method}(signal: string, handler: ${SIGNAL_HANDLER_TYPE}, after?: boolean): this;`,
+            );
+        }
+        for (const method of ["off", "removeEventListener"]) {
+            lines.push(
+                `${method}<K extends keyof ${map}>(signal: K, handler: ${map}[K]): this;`,
+                `${method}(signal: string, handler: ${SIGNAL_HANDLER_TYPE}): this;`,
+            );
+        }
     }
-    for (const method of ["off", "removeEventListener"]) {
-        lines.push(
-            `${method}<K extends keyof ${handlers}>(signal: K, handler: ${handlers}[K]): this;`,
-            `${method}(signal: string, handler: ${SIGNAL_HANDLER_TYPE}): this;`,
-        );
-    }
-    return renderBracedOrEmpty(header, lines.join("\n"));
+    return renderBracedOrEmpty(`export interface ${className}`, lines.join("\n"));
 };
 
 const renderSignalHandlerType = (context: ModuleContext, signal: GirSignal): string => {

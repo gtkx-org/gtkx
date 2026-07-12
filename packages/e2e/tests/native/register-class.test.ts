@@ -57,4 +57,26 @@ describe("registerClass", () => {
         );
         expect(stillImplementsBuildable).toBe(true);
     });
+
+    it("rejects a non-interface type in the interfaces option without registering", () => {
+        const name = uniqueName("GtkxNativeNonInterface");
+        const gobjectGtype = typeFromName("GObject");
+
+        expect(() => registerClass(name, gobjectGtype, { interfaces: [{ type: gobjectGtype, vfuncs: [] }] })).toThrow(
+            /is not an interface/,
+        );
+        expect(typeFromName(name)).toBe(0n);
+    });
+
+    it("rejects an interface the parent does not conform to without registering", () => {
+        const name = uniqueName("GtkxNativeNonConforming");
+        const gobjectGtype = typeFromName("GObject");
+        const buildableGtype = typeFromName("GtkBuildable");
+        expect(buildableGtype).toBeGreaterThan(0);
+
+        expect(() =>
+            registerClass(name, gobjectGtype, { interfaces: [{ type: buildableGtype, vfuncs: [] }] }),
+        ).toThrow(/does not conform to interface/);
+        expect(typeFromName(name)).toBe(0n);
+    });
 });

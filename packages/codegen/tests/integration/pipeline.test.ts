@@ -175,9 +175,44 @@ describe("codegen notify detail signals", () => {
     it("gives a class that introduces properties but no signals its own typed overloads", () => {
         const gobject = giModules.find(({ directory }) => directory === "gobject");
         const source = gobject?.source ?? "";
-        expect(source).toContain("export interface Binding<S = {}> {");
-        expect(source).toContain("connect<K extends keyof (BindingSignalHandlers & S)>");
+        expect(source).toContain("export interface Binding {");
+        expect(source).toContain("connect<K extends keyof BindingSignalHandlers>");
         expect(source).toContain("emit<K extends keyof BindingSignalEmit>");
+    });
+});
+
+describe("codegen GObject item comparators", () => {
+    const moduleSource = (directory: string): string =>
+        giModules.find((module) => module.directory === directory)?.source ?? "";
+
+    const itemComparatorSignature = "(a: GObject.Object | null, b: GObject.Object | null)";
+    const itemComparatorArgs = 't.callback([t.object("borrowed"), t.object("borrowed"), t.uint64], t.int32';
+    const itemEqualityArgs = 't.callback([t.object("borrowed"), t.object("borrowed")], t.boolean';
+    const itemEqualityFullArgs = 't.callback([t.object("borrowed"), t.object("borrowed"), t.uint64], t.boolean';
+
+    it("types ListStore comparator callbacks over borrowed object items", () => {
+        const source = moduleSource("gio");
+        expect(source).toContain(`sort(compareFunc: ${itemComparatorSignature} => number): void`);
+        expect(source).toContain(`insertSorted(item: GObject.Object, compareFunc: ${itemComparatorSignature} => number): number`);
+        expect(source).toContain(`findWithEqualFunc(item: GObject.Object | null, equalFunc: ${itemComparatorSignature} => boolean): [boolean, number]`);
+        expect(source).toContain(`findWithEqualFuncFull(item: GObject.Object | null, equalFunc: ${itemComparatorSignature} => boolean): [boolean, number]`);
+        expect(source).toContain(`${itemComparatorArgs}, { userDataIndex: 2, scope: "call" })`);
+        expect(source).toContain(`${itemEqualityArgs}, { scope: "call" })`);
+        expect(source).toContain(`${itemEqualityFullArgs}, { userDataIndex: 2, scope: "call" })`);
+    });
+
+    it("types CustomSorter comparator callbacks over borrowed object items", () => {
+        const source = moduleSource("gtk");
+        expect(source).toContain(`static new(sortFunc: (${itemComparatorSignature} => number) | null): CustomSorter`);
+        expect(source).toContain(`setSortFunc(sortFunc: (${itemComparatorSignature} => number) | null): void`);
+        expect(source).toContain(`${itemComparatorArgs}, { hasDestroy: true, userDataIndex: 2, scope: "notified" })`);
+    });
+
+    it("keeps raw-pointer comparator callbacks outside GObject item containers", () => {
+        const source = moduleSource("glib");
+        expect(source).toContain("export type CompareDataFunc = (a: number | null, b: number | null) => number;");
+        expect(source).toContain("export type EqualFunc = (a: number | null, b: number | null) => boolean;");
+        expect(source).not.toContain(itemComparatorSignature);
     });
 });
 

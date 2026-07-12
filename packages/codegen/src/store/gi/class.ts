@@ -56,18 +56,15 @@ export const generateClass = (context: ModuleContext, klass: GirClass): void => 
     const members = renderClassMembers(context, klass, callables, parentExpression !== undefined);
     const body = indentMembers(members);
     context.module.appendDeclaration(
-        `${renderJsDoc(klass.doc)}export class ${className}<S = {}>${extendsClause}${implementsClause} {\n${body}\n}`,
+        `${renderJsDoc(klass.doc)}export class ${className}${extendsClause}${implementsClause} {\n${body}\n}`,
     );
     context.module.appendDeclaration(renderConstructorPropsInterface(context, klass, className));
-    for (const declaration of renderSignalDeclarations(context, klass, className, {
-        parentlessExtendsObject: false,
-        generic: true,
-    })) {
+    for (const declaration of renderSignalDeclarations(context, klass, className, false)) {
         context.module.appendDeclaration(declaration);
     }
     if (typeRefs.length > 0) {
         const mergeRefs = implemented.map((ref) => interfaceMergeRef(context, klass, ref));
-        context.module.appendDeclaration(`export interface ${className}<S = {}> extends ${mergeRefs.join(", ")} {}`);
+        context.module.appendDeclaration(`export interface ${className} extends ${mergeRefs.join(", ")} {}`);
     }
 
     appendInstallMixins(context, className, implemented);

@@ -25,14 +25,6 @@ const colorAt = (model: Gtk.MultiSelection, index: number): ColorLike => {
 const findGrid = async (): Promise<Gtk.GridView> => (await screen.findByName("color-grid")) as Gtk.GridView;
 const gridModel = (grid: Gtk.GridView): Gtk.MultiSelection => grid.getModel() as Gtk.MultiSelection;
 
-const SORT_TEST_LIMIT = 64;
-
-const prepareSortableModel = async (model: Gtk.MultiSelection): Promise<void> => {
-    const limitDropdown = (await screen.findByName("limit-dropdown")) as Gtk.DropDown;
-    await userEvent.selectOptions(limitDropdown, 1);
-    await waitFor(() => expect(model.getNItems()).toBe(SORT_TEST_LIMIT), { timeout: 20000 });
-};
-
 describe("listviewColorsDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(listviewColorsDemo.id).toBe("listview-colors");
@@ -61,9 +53,9 @@ describe("listviewColorsDemo header bar", () => {
         const limit = (await screen.findByName("limit-dropdown")) as Gtk.DropDown;
         const sort = (await screen.findByName("sort-dropdown")) as Gtk.DropDown;
         const display = (await screen.findByName("display-dropdown")) as Gtk.DropDown;
-        expect(limit.getSelected()).toBe(3);
-        expect(sort.getSelected()).toBe(0);
-        expect(display.getSelected()).toBe(0);
+        expect(limit.getSelected()).toBe(3); // COLOR_LIMITS index 3 === 4096 (default colorLimit)
+        expect(sort.getSelected()).toBe(0); // "unsorted"
+        expect(display.getSelected()).toBe(0); // "colors"
     });
 
     it("renders a selection-info toggle button initially unpressed", async () => {
@@ -74,10 +66,10 @@ describe("listviewColorsDemo header bar", () => {
 });
 
 describe("listviewColorsDemo grid view", () => {
-    it("progressively fills the grid model up to the default color limit", async () => {
+    it("populates the grid model with exactly the default color limit", async () => {
         await renderDemo(listviewColorsDemo);
         const grid = await findGrid();
-        await waitFor(() => expect(gridModel(grid).getNItems()).toBe(4096), { timeout: 20000 });
+        expect(gridModel(grid).getNItems()).toBe(4096);
     });
 
     it("supports multiple selection reflected in the Size label", async () => {
@@ -137,15 +129,11 @@ describe("listviewColorsDemo header actions", () => {
         const grid = await findGrid();
         const model = gridModel(grid);
         const sortDropdown = (await screen.findByName("sort-dropdown")) as Gtk.DropDown;
-        await prepareSortableModel(model);
-        await userEvent.selectOptions(sortDropdown, 1);
-        await waitFor(
-            () => {
-                expect(colorAt(model, 0).name.localeCompare(colorAt(model, 1).name)).toBeLessThanOrEqual(0);
-                expect(colorAt(model, 1).name.localeCompare(colorAt(model, 2).name)).toBeLessThanOrEqual(0);
-            },
-            { timeout: 20000 },
-        );
+        await userEvent.selectOptions(sortDropdown, 1); // "name"
+        await waitFor(() => {
+            expect(colorAt(model, 0).name.localeCompare(colorAt(model, 1).name)).toBeLessThanOrEqual(0);
+            expect(colorAt(model, 1).name.localeCompare(colorAt(model, 2).name)).toBeLessThanOrEqual(0);
+        });
     });
 
     it("re-columns the grid when the display dropdown selects Everything", async () => {
@@ -155,7 +143,7 @@ describe("listviewColorsDemo header actions", () => {
         expect(grid.getMinColumns()).toBe(8);
         expect(grid.getMaxColumns()).toBe(24);
         await act(async () => {
-            await userEvent.selectOptions(displayDropdown, 1);
+            await userEvent.selectOptions(displayDropdown, 1); // "everything"
             await Promise.resolve();
         });
         await waitFor(() => {
@@ -169,9 +157,9 @@ describe("listviewColorsDemo header actions", () => {
         const grid = await findGrid();
         const model = gridModel(grid);
         const limitDropdown = (await screen.findByName("limit-dropdown")) as Gtk.DropDown;
-        await userEvent.selectOptions(limitDropdown, 0);
+        await userEvent.selectOptions(limitDropdown, 0); // value 8
         await waitFor(() => expect(model.getNItems()).toBe(8));
-        await screen.findByText("8 /");
+        await screen.findByText("8 /"); // formatItemCount(8)
     });
 });
 
@@ -196,33 +184,26 @@ describe("listviewColorsDemo sort modes", () => {
         const grid = await findGrid();
         const model = gridModel(grid);
         const sortDropdown = (await screen.findByName("sort-dropdown")) as Gtk.DropDown;
-        await prepareSortableModel(model);
         await userEvent.selectOptions(sortDropdown, index);
-        await waitFor(
-            () => {
-                check(colorAt(model, 0), colorAt(model, 1));
-                check(colorAt(model, 1), colorAt(model, 2));
-            },
-            { timeout: 20000 },
-        );
+        await waitFor(() => {
+            check(colorAt(model, 0), colorAt(model, 1));
+            check(colorAt(model, 1), colorAt(model, 2));
+        });
     });
 
-    it("reverts to the base position order when switching back to unsorted", async () => {
+    it("leaves the reordered model untouched when switching back to unsorted", async () => {
         await renderDemo(listviewColorsDemo);
         const grid = await findGrid();
         const model = gridModel(grid);
         const sortDropdown = (await screen.findByName("sort-dropdown")) as Gtk.DropDown;
-        await prepareSortableModel(model);
-        const baseFirst = colorAt(model, 0).name;
-        await userEvent.selectOptions(sortDropdown, 1);
-        await waitFor(
-            () => {
-                expect(colorAt(model, 0).name).not.toBe(baseFirst);
-                expect(colorAt(model, 0).name.localeCompare(colorAt(model, 1).name)).toBeLessThanOrEqual(0);
-            },
-            { timeout: 20000 },
-        );
-        await userEvent.selectOptions(sortDropdown, 0);
-        await waitFor(() => expect(colorAt(model, 0).name).toBe(baseFirst), { timeout: 20000 });
+        await userEvent.selectOptions(sortDropdown, 1); // name
+        let sortedFirst = "";
+        await waitFor(() => {
+            sortedFirst = colorAt(model, 0).name;
+            expect(sortedFirst.localeCompare(colorAt(model, 1).name)).toBeLessThanOrEqual(0);
+        });
+        await userEvent.selectOptions(sortDropdown, 0); // unsorted: reorderStore returns early
+        await waitFor(() => expect(sortDropdown.getSelected()).toBe(0));
+        expect(colorAt(model, 0).name).toBe(sortedFirst);
     });
 });

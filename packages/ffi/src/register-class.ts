@@ -5,18 +5,16 @@ import {
 } from "@gtkx/native";
 import { type AnyClass, getParentClass, walkClassChain } from "@gtkx/utils";
 import { wrapCallback } from "./callback.js";
-import type { MixinReceiver } from "./mixin.js";
 import {
     getClassType,
-    getInterfaceMixin,
     getInterfaceVfuncRegistry,
     getVfuncRegistry,
     registerClassType,
     type VfuncDescriptor,
 } from "./registry.js";
-import { TYPE_INVALID, typeFromName, typeInterfaces } from "./type.js";
+import { TYPE_INVALID, typeInterfaces } from "./type.js";
 
-type RegisterClassOptions = { typeName?: string; implements?: AnyClass[] };
+type RegisterClassOptions = { typeName?: string };
 type VfuncFn = NativeRegisterClassVfunc["fn"];
 type DiscoveredVfunc<K extends "class" | "interface"> = VfuncDescriptor<K> & { methodName: string; fn: VfuncFn };
 type DiscoveredClassVfunc = DiscoveredVfunc<"class">;
@@ -35,65 +33,15 @@ export function registerClass<T extends AnyClass>(klass: T, options: RegisterCla
         throw new Error("registerClass: cannot derive a GType name (anonymous class with no typeName option)");
     }
 
-    const declaredInterfaceTypes = resolveDeclaredInterfaceTypes(klass, options.implements);
-    applyInterfaceMixins(klass, declaredInterfaceTypes);
-
-    const existingType = typeFromName(name);
-    if (existingType !== TYPE_INVALID) {
-        registerClassType(klass, existingType);
-        return klass;
-    }
-
     const classVfuncs = discoverClassVfuncs(klass);
     const claimedMethodNames = new Set(classVfuncs.map((vfunc) => vfunc.methodName));
-    const interfaceBindings = discoverInterfaceBindings(klass, parentType, declaredInterfaceTypes, claimedMethodNames);
+    const interfaceBindings = discoverInheritedInterfaceVfuncs(klass, parentType, claimedMethodNames);
 
     const nativeOptions = toNativeOptions(classVfuncs, interfaceBindings);
     const newType: bigint = nativeRegisterClass(name, parentType, nativeOptions);
     registerClassType(klass, newType);
 
     return klass;
-}
-
-function resolveDeclaredInterfaceTypes(klass: AnyClass, interfaces: AnyClass[] | undefined): bigint[] {
-    if (!interfaces) return [];
-    return interfaces.map((iface) => {
-        const gtype = getClassType(iface);
-        if (gtype === TYPE_INVALID) {
-            const label = (iface as { name?: string }).name ?? String(iface);
-            throw new TypeError(`registerClass: ${klass.name} cannot implement '${label}': not a registered interface`);
-        }
-        return gtype;
-    });
-}
-
-function applyInterfaceMixins(klass: AnyClass, interfaceTypes: bigint[]): void {
-    let layered = getParentClass(klass) as AnyClass<MixinReceiver>;
-    let applied = false;
-    for (const gtype of interfaceTypes) {
-        const mixin = getInterfaceMixin(gtype);
-        if (mixin === undefined) continue;
-        layered = mixin(layered) as AnyClass<MixinReceiver>;
-        applied = true;
-    }
-    if (applied) Object.setPrototypeOf(klass.prototype, layered.prototype);
-}
-
-function discoverInterfaceBindings(
-    klass: AnyClass,
-    parentGtype: bigint,
-    declaredInterfaceTypes: bigint[],
-    claimedMethodNames: Set<string>,
-): InterfaceVfuncBinding[] {
-    const bindings = discoverInheritedInterfaceVfuncs(klass, parentGtype, claimedMethodNames);
-    const seen = new Set(bindings.map((binding) => binding.gtype));
-    for (const gtype of declaredInterfaceTypes) {
-        if (seen.has(gtype)) continue;
-        seen.add(gtype);
-        const vfuncs = discoverInterfaceVfuncs(klass, gtype, claimedMethodNames);
-        if (vfuncs.length > 0) bindings.push({ gtype, vfuncs });
-    }
-    return bindings;
 }
 
 function resolveParentType(klass: AnyClass): bigint {

@@ -184,7 +184,3 @@ function registerInterfaceVfuncRegistry(type: bigint, registry: VfuncRegistry): 
 export function getInterfaceVfuncRegistry(type: bigint): VfuncRegistry | undefined {
     return interfaceVfuncRegistry.get(type);
 }
-
-export function getInterfaceMixin(type: bigint): Mixin | undefined {
-    return interfaceMixinRegistry.get(type);
-}

@@ -1,3 +1,9 @@
+/**
+ * Returns the items with duplicates removed, keeping the first item for each distinct key.
+ *
+ * @param items The items to deduplicate.
+ * @param key Computes the identity string used to detect duplicates.
+ */
 export const uniqBy = <T>(items: T[], key: (item: T) => string): T[] => {
     const seen = new Set<string>();
     const result: T[] = [];
@@ -12,8 +18,19 @@ export const uniqBy = <T>(items: T[], key: (item: T) => string): T[] => {
 
 const compareStrings = (a: string, b: string): number => a.localeCompare(b);
 
+/**
+ * Returns a new array of the given strings sorted with locale-aware comparison.
+ *
+ * @param values The strings to sort.
+ */
 export const sortStrings = (values: Iterable<string>): string[] => [...values].sort(compareStrings);
 
+/**
+ * Returns a new array of the given items sorted by a locale-aware comparison of their keys.
+ *
+ * @param items The items to sort.
+ * @param key Computes the string to sort each item by.
+ */
 export const sortStringsBy = <T>(items: Iterable<T>, key: (item: T) => string): T[] =>
     [...items].sort((a, b) => compareStrings(key(a), key(b)));
 

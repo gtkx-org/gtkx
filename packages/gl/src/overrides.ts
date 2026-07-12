@@ -36,18 +36,41 @@ const readInfoLog = (symbol: string, id: GLuint, query: LengthQuery): string => 
     return log.value;
 };
 
+/**
+ * Reads the info log for a shader object, containing compilation diagnostics.
+ * @param shader The name of the shader object to query.
+ * @returns The shader info log, or an empty string when none is available.
+ */
 export function getShaderInfoLog(shader: GLuint): string {
     return readInfoLog("glGetShaderInfoLog", shader, getShaderiv);
 }
 
+/**
+ * Reads the info log for a program object, containing linking diagnostics.
+ * @param program The name of the program object to query.
+ * @returns The program info log, or an empty string when none is available.
+ */
 export function getProgramInfoLog(program: GLuint): string {
     return readInfoLog("glGetProgramInfoLog", program, getProgramiv);
 }
 
+/**
+ * Reads the info log for a program pipeline object, containing validation diagnostics.
+ * @param pipeline The name of the program pipeline object to query.
+ * @returns The pipeline info log, or an empty string when none is available.
+ */
 export function getProgramPipelineInfoLog(pipeline: GLuint): string {
     return readInfoLog("glGetProgramPipelineInfoLog", pipeline, getProgramPipelineiv);
 }
 
+/**
+ * Callback invoked for each GL debug message reported by the driver.
+ * @param source The origin of the message (API, window system, shader compiler, and so on).
+ * @param type The category of the message (error, deprecated behavior, performance, and so on).
+ * @param id The driver-assigned identifier of the message.
+ * @param severity The severity level of the message.
+ * @param message The human-readable message text.
+ */
 export type DebugMessageCallback = (
     source: DebugSource,
     type: DebugType,
@@ -68,6 +91,11 @@ const glDebugMessageCallbackBinding = t.bind(
     t.void,
 );
 
+/**
+ * Installs a callback that receives GL debug messages, enabling synchronous debug output.
+ * Passing null removes any previously installed callback.
+ * @param callback The handler to invoke for each debug message, or null to clear it.
+ */
 export function debugMessageCallback(callback: DebugMessageCallback | null): void {
     if (callback === null) {
         glDebugMessageCallbackBinding(null);
@@ -83,6 +111,14 @@ export function debugMessageCallback(callback: DebugMessageCallback | null): voi
 
 const MAX_WAIT_CHUNK_NS = 1_000_000_000;
 
+/**
+ * Blocks until a sync object is signaled or the timeout elapses, looping over glClientWaitSync
+ * in bounded chunks so long waits are not truncated by the driver's per-call limit.
+ * @param sync The sync object (fence) to wait on.
+ * @param flags Flags controlling the wait, such as flushing pending commands on the first call.
+ * @param timeoutNs The total time to wait, in nanoseconds.
+ * @returns The status of the sync object: signaled, condition satisfied, or timeout expired.
+ */
 export function clientWaitSyncLoop(sync: GLsync, flags: SyncObjectMask, timeoutNs: number): SyncStatus {
     let remaining = timeoutNs;
     let currentFlags = flags;
