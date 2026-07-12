@@ -1,3 +1,5 @@
+use anyhow::bail;
+
 use super::forward_ffi_encoder;
 use super::numeric::IntegerCodec;
 use super::prelude::*;
@@ -11,13 +13,31 @@ impl UnicharCodec {
     }
 }
 
+fn checked_codepoint(n: f64) -> anyhow::Result<u32> {
+    if n.fract() != 0.0 || !(0.0..=f64::from(char::MAX as u32)).contains(&n) {
+        bail!("Invalid Unicode codepoint: {n}");
+    }
+    let cp = n as u32;
+    if char::from_u32(cp).is_none() {
+        bail!("Invalid Unicode codepoint: 0x{cp:X}");
+    }
+    Ok(cp)
+}
+
 fn codepoint_from_value(env: &Env, value: Unknown<'_>) -> anyhow::Result<u32> {
     match value.get_type()? {
-        ValueType::String => Ok(value::read_napi::<String>(env, value)?
-            .chars()
-            .next()
-            .map_or(0, |c| c as u32)),
-        ValueType::Number => Ok(value::read_napi::<f64>(env, value)? as u32),
+        ValueType::String => {
+            let s = value::read_napi::<String>(env, value)?;
+            let mut chars = s.chars();
+            let Some(ch) = chars.next() else {
+                return Ok(0);
+            };
+            if chars.next().is_some() {
+                bail!("Expected a single-character string for unichar codec, got {s:?}");
+            }
+            Ok(ch as u32)
+        }
+        ValueType::Number => checked_codepoint(value::read_napi::<f64>(env, value)?),
         ValueType::Null | ValueType::Undefined => Ok(0),
         other => bail_expected!(format!("a String, got {other:?}"), "unichar"),
     }

@@ -63,8 +63,13 @@ impl Encoder for CallbackCodec {
         );
         let fn_ptr = state.code_ptr;
 
-        let destroy =
-            (self.scope == CallbackScope::Notified).then_some(ClosureState::destroy as *mut c_void);
+        let destroy = self.has_destroy.then(|| {
+            if self.scope == CallbackScope::Notified {
+                ClosureState::destroy as *mut c_void
+            } else {
+                std::ptr::null_mut()
+            }
+        });
 
         match self.scope {
             CallbackScope::Call => {
@@ -72,7 +77,7 @@ impl Encoder for CallbackCodec {
                 Ok(ffi::Stash::Callback(ffi::CallbackValue::new(
                     fn_ptr,
                     state_ptr,
-                    None,
+                    destroy,
                     Some(state),
                 )))
             }

@@ -127,19 +127,14 @@ describe("runApplication and quitApplication", () => {
     });
 
     it("does not re-register an already-registered application", () => {
-        vi.useFakeTimers();
-        try {
-            const app = createFakeApplication();
-            app.register(null);
+        const app = createFakeApplication();
+        app.register(null);
 
-            runApplication(app);
+        runApplication(app);
 
-            expect(app.registerCalls).toBe(1);
+        expect(app.registerCalls).toBe(1);
 
-            quitApplication(app);
-        } finally {
-            vi.useRealTimers();
-        }
+        quitApplication(app);
     });
 
     it("does nothing when the application was never registered", () => {

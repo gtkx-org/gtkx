@@ -1,5 +1,6 @@
 use test_support as helpers;
 
+use std::cell::RefCell;
 use std::ffi::c_void;
 
 use gtk4::glib;
@@ -24,6 +25,31 @@ use helpers::{
     boxed_handle, fresh_gobject as new_object_with_refcount,
     make_bool_param_spec as create_param_spec,
 };
+
+helpers::g_free_recorder!();
+
+thread_local! {
+    static G_MEMDUPED: RefCell<Vec<usize>> = const { RefCell::new(Vec::new()) };
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn g_memdup2(mem: *const c_void, byte_size: usize) -> *mut c_void {
+    if mem.is_null() || byte_size == 0 {
+        return std::ptr::null_mut();
+    }
+    let copy = unsafe { glib::ffi::g_malloc(byte_size) };
+    unsafe { std::ptr::copy_nonoverlapping(mem as *const u8, copy as *mut u8, byte_size) };
+    G_MEMDUPED.with_borrow_mut(|duped| duped.push(copy as usize));
+    copy
+}
+
+fn drain_g_memduped() -> Vec<usize> {
+    G_MEMDUPED.with_borrow_mut(std::mem::take)
+}
+
+fn frees_of(freed: &[usize], ptr: usize) -> usize {
+    freed.iter().filter(|&&freed_ptr| freed_ptr == ptr).count()
+}
 
 fn num(n: f64) -> sys::napi_value {
     napi_mock::fake_double(n)
@@ -67,18 +93,29 @@ fn assert_hash_equal_and_free(encoder: HashTableEntryCodec, installs_free: bool)
     assert_eq!(encoder.free_func().unwrap().is_some(), installs_free);
 }
 
-fn struct_codec() -> Codec {
+fn struct_codec_with(ownership: Ownership, size: Option<usize>) -> Codec {
     Codec::Struct(StructCodec {
-        ownership: Ownership::Borrowed,
-        size: Some(size_of::<gtk4::gdk::ffi::GdkRGBA>()),
+        ownership,
+        size,
         caller_allocated: false,
     })
 }
 
-fn gptrarray_codec() -> Codec {
+fn struct_codec() -> Codec {
+    struct_codec_with(
+        Ownership::Borrowed,
+        Some(size_of::<gtk4::gdk::ffi::GdkRGBA>()),
+    )
+}
+
+fn full_struct_codec(size: Option<usize>) -> Codec {
+    struct_codec_with(Ownership::Full, size)
+}
+
+fn gptrarray_codec_of(item_codec: Codec) -> Codec {
     Codec::Array(
         ArrayCodec::new(
-            Box::new(struct_codec()),
+            Box::new(item_codec),
             ArrayKind::GPtrArray,
             Ownership::Borrowed,
             None,
@@ -87,6 +124,10 @@ fn gptrarray_codec() -> Codec {
         )
         .expect("valid gptrarray codec"),
     )
+}
+
+fn gptrarray_codec() -> Codec {
+    gptrarray_codec_of(struct_codec())
 }
 
 fn full_boxed_codec() -> Codec {
@@ -186,6 +227,14 @@ fn boolean_boolean_ht() -> HashTableCodec {
         Codec::Boolean(BooleanCodec),
         Codec::Boolean(BooleanCodec),
         Ownership::Full,
+    )
+}
+
+fn integer_integer_ht(ownership: Ownership) -> HashTableCodec {
+    ht_codec(
+        Codec::Integer(IntegerCodec::I32),
+        Codec::Integer(IntegerCodec::I32),
+        ownership,
     )
 }
 
@@ -344,18 +393,17 @@ fn ptr_to_value_float() {
     });
 }
 
+fn read_borrowed_struct_value<'e>(env: &'e Env, ptr: *mut c_void) -> Unknown<'e> {
+    let codec = struct_codec_with(Ownership::Borrowed, Some(16));
+    unsafe { codec.read(env, ReadSource::Value(ptr, "test")) }.expect("decoding should succeed")
+}
+
 #[test]
 fn ptr_to_value_struct_null() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let codec = Codec::Struct(StructCodec {
-            ownership: Ownership::Borrowed,
-            size: Some(16),
-            caller_allocated: false,
-        });
 
-        let value = unsafe { codec.read(&env, ReadSource::Value(std::ptr::null_mut(), "test")) }
-            .expect("decoding should succeed");
+        let value = read_borrowed_struct_value(&env, std::ptr::null_mut());
 
         assert!(napi_mock::is_null(value.raw()));
     });
@@ -365,16 +413,9 @@ fn ptr_to_value_struct_null() {
 fn ptr_to_value_struct_non_null() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let codec = Codec::Struct(StructCodec {
-            ownership: Ownership::Borrowed,
-            size: Some(16),
-            caller_allocated: false,
-        });
-
         let ptr = unsafe { glib::ffi::g_malloc0(16) };
 
-        let value = unsafe { codec.read(&env, ReadSource::Value(ptr, "test")) }
-            .expect("decoding should succeed");
+        let value = read_borrowed_struct_value(&env, ptr);
 
         assert!(napi_mock::read_external(value.raw()).is_some());
 
@@ -508,11 +549,7 @@ fn hashtable_null_optional() {
 fn hashtable_borrowed_does_not_free() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let ht = ht_codec(
-            Codec::Integer(IntegerCodec::I32),
-            Codec::Integer(IntegerCodec::I32),
-            Ownership::Borrowed,
-        );
+        let ht = integer_integer_ht(Ownership::Borrowed);
 
         let hash_table = helpers::make_integer_hash_table(&[(1, 100), (2, 200)]);
 
@@ -576,6 +613,14 @@ fn string_encoder_hash_equal_and_free() {
 #[test]
 fn native_handle_encoder_hash_equal_and_free() {
     assert_hash_equal_and_free(HashTableEntryCodec::Handle(Box::new(struct_codec())), false);
+}
+
+#[test]
+fn full_sized_struct_encoder_installs_g_free_destroy() {
+    assert_hash_equal_and_free(
+        HashTableEntryCodec::Handle(Box::new(full_struct_codec(Some(size_of::<u64>())))),
+        true,
+    );
 }
 
 #[test]
@@ -708,11 +753,7 @@ fn hashtable_decode_null_yields_empty_array() {
 fn hashtable_ptr_to_value_null_and_populated() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let ht = ht_codec(
-            Codec::Integer(IntegerCodec::I32),
-            Codec::Integer(IntegerCodec::I32),
-            Ownership::Borrowed,
-        );
+        let ht = integer_integer_ht(Ownership::Borrowed);
 
         let empty =
             unsafe { ht.read(&env, ReadSource::Value(std::ptr::null_mut(), "ctx")) }.unwrap();
@@ -739,11 +780,7 @@ fn hashtable_ptr_to_value_null_and_populated() {
 fn hashtable_decode_full_ownership_from_pointer_unrefs() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let ht = ht_codec(
-            Codec::Integer(IntegerCodec::I32),
-            Codec::Integer(IntegerCodec::I32),
-            Ownership::Full,
-        );
+        let ht = integer_integer_ht(Ownership::Full);
         let hash_table = helpers::make_integer_hash_table(&[(3, 30)]);
         unsafe {
             glib::ffi::g_hash_table_ref(hash_table);
@@ -821,32 +858,105 @@ fn boolean_roundtrip_preserves_values() {
     });
 }
 
+fn encode_pspec_entry(env: &Env, codec: Codec, pspec: *mut c_void) -> anyhow::Result<*mut c_void> {
+    HashTableEntryCodec::Handle(Box::new(codec)).encode(
+        env,
+        napi_mock::to_unknown(env, object_raw(env, Handle::from_glib_borrow(pspec))),
+    )
+}
+
 #[test]
-fn fundamental_value_unreffed_when_hashtable_storage_drops() {
+fn handle_entry_encode_full_fundamental_transfers_reference() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let pspec = create_param_spec();
         let before = helpers::param_spec_refcount(pspec);
 
-        let ht = ht_codec(
-            Codec::Integer(IntegerCodec::I32),
-            param_spec_fundamental_codec(),
-            Ownership::Borrowed,
+        let ptr = encode_pspec_entry(&env, param_spec_fundamental_codec(), pspec)
+            .expect("handle entry encode should succeed");
+        assert_eq!(ptr, pspec);
+        assert_eq!(
+            helpers::param_spec_refcount(pspec),
+            before + 1,
+            "a full-ownership handle entry must own its pointer when encode returns"
         );
-        let input = list(&[tuple(
-            num(1.0),
-            object_raw(&env, Handle::from_glib_borrow(pspec)),
-        )]);
 
-        let encoded = ht
-            .encode(&env, napi_mock::to_unknown(&env, input))
-            .expect("encoding should succeed");
-        assert_eq!(helpers::param_spec_refcount(pspec), before + 1);
-
-        drop(encoded);
+        unsafe { glib::gobject_ffi::g_param_spec_unref(pspec.cast()) };
         assert_eq!(helpers::param_spec_refcount(pspec), before);
 
         unsafe { glib::gobject_ffi::g_param_spec_unref(pspec.cast()) };
+    });
+}
+
+#[test]
+fn handle_entry_encode_unresolvable_transfer_ref_fails_without_leaking() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let pspec = create_param_spec();
+        let before = helpers::param_spec_refcount(pspec);
+
+        let unresolvable = Codec::Fundamental(FundamentalCodec {
+            ownership: Ownership::Full,
+            shared_library: "libgobject-2.0.so.0".to_owned(),
+            ref_fn_name: "no_such_hashtable_ref_symbol_54321".to_owned(),
+            unref_fn_name: "g_param_spec_unref".to_owned(),
+        });
+        helpers::assert_unresolvable_symbol_failure_keeps_param_spec(
+            pspec,
+            before,
+            encode_pspec_entry(&env, unresolvable, pspec).map(|_| ()),
+            "an unresolvable transfer ref must fail the entry encode",
+        );
+    });
+}
+
+fn assert_pspec_entry_reffed_until_storage_drops(pspec_is_key: bool) {
+    let env = helpers::fake_env();
+    let pspec = create_param_spec();
+    let before = helpers::param_spec_refcount(pspec);
+
+    let integer = Codec::Integer(IntegerCodec::I32);
+    let pspec_codec = param_spec_fundamental_codec();
+    let (ht, input) = if pspec_is_key {
+        (
+            ht_codec(pspec_codec, integer, Ownership::Borrowed),
+            list(&[tuple(
+                object_raw(&env, Handle::from_glib_borrow(pspec)),
+                num(7.0),
+            )]),
+        )
+    } else {
+        (
+            ht_codec(integer, pspec_codec, Ownership::Borrowed),
+            list(&[tuple(
+                num(1.0),
+                object_raw(&env, Handle::from_glib_borrow(pspec)),
+            )]),
+        )
+    };
+
+    let encoded = ht
+        .encode(&env, napi_mock::to_unknown(&env, input))
+        .expect("encoding should succeed");
+    assert_eq!(helpers::param_spec_refcount(pspec), before + 1);
+
+    drop(encoded);
+    assert_eq!(helpers::param_spec_refcount(pspec), before);
+
+    unsafe { glib::gobject_ffi::g_param_spec_unref(pspec.cast()) };
+}
+
+#[test]
+fn fundamental_key_reffed_at_encode_and_released_when_storage_drops() {
+    helpers::run(|| {
+        assert_pspec_entry_reffed_until_storage_drops(true);
+    });
+}
+
+#[test]
+fn fundamental_value_unreffed_when_hashtable_storage_drops() {
+    helpers::run(|| {
+        assert_pspec_entry_reffed_until_storage_drops(false);
     });
 }
 
@@ -977,6 +1087,142 @@ fn hashtable_encode_second_tuple_error_unwinds_inserted_entries() {
     });
 }
 
+fn encode_single_struct_copy(
+    env: &Env,
+    value_codec: Codec,
+    value: sys::napi_value,
+) -> (Stash, usize) {
+    let ht = ht_codec(
+        Codec::Integer(IntegerCodec::I32),
+        value_codec,
+        Ownership::Borrowed,
+    );
+    let input = list(&[tuple(num(1.0), value)]);
+
+    drain_g_memduped();
+    let encoded = ht
+        .encode(env, napi_mock::to_unknown(env, input))
+        .expect("encoding should succeed");
+    let duped = drain_g_memduped();
+    assert_eq!(duped.len(), 1, "encoding must copy the struct once");
+    (encoded, duped[0])
+}
+
+fn assert_copy_freed_once_on_drop(encoded: Stash, copy: usize, what: &str) {
+    drain_g_freed();
+    drop(encoded);
+    assert_eq!(
+        frees_of(&drain_g_freed(), copy),
+        1,
+        "the table teardown must free the transferred {what} copy exactly once"
+    );
+}
+
+#[test]
+fn full_sized_struct_value_copy_freed_once_on_table_unref() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let source: u64 = 0x5AFE_C0DE_1234_5678;
+        let original = &source as *const u64 as *mut c_void;
+
+        let (encoded, copy) = encode_single_struct_copy(
+            &env,
+            full_struct_codec(Some(size_of::<u64>())),
+            object_raw(&env, Handle::from_glib_borrow(original)),
+        );
+
+        let Stash::Storage(storage) = &encoded else {
+            panic!("Expected Storage ffi value")
+        };
+        let table = storage.ptr() as *mut glib::ffi::GHashTable;
+        let stored =
+            unsafe { glib::ffi::g_hash_table_lookup(table, std::ptr::without_provenance(1)) };
+        assert_eq!(stored as usize, copy);
+        assert_ne!(stored, original);
+        assert_eq!(unsafe { *(stored as *const u64) }, source);
+
+        assert_copy_freed_once_on_drop(encoded, copy, "struct value");
+    });
+}
+
+#[test]
+fn full_sized_struct_ptr_array_element_copy_freed_once_on_table_unref() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let source: u64 = 0xDECA_FBAD_0BAD_F00D;
+        let original = &source as *const u64 as *mut c_void;
+
+        let (encoded, copy) = encode_single_struct_copy(
+            &env,
+            gptrarray_codec_of(full_struct_codec(Some(size_of::<u64>()))),
+            list(&[object_raw(&env, Handle::from_glib_borrow(original))]),
+        );
+
+        assert_copy_freed_once_on_drop(encoded, copy, "struct element");
+    });
+}
+
+#[test]
+fn hashtable_encode_value_error_frees_transferred_struct_key_copy() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let ht = ht_codec(
+            full_struct_codec(Some(size_of::<u64>())),
+            Codec::Boolean(BooleanCodec),
+            Ownership::Full,
+        );
+        let source: u64 = 0xC0FF_EE00_C0FF_EE00;
+        let original = &source as *const u64 as *mut c_void;
+        let input = list(&[tuple(
+            object_raw(&env, Handle::from_glib_borrow(original)),
+            num(1.0),
+        )]);
+
+        drain_g_memduped();
+        drain_g_freed();
+        let err = ht
+            .encode(&env, napi_mock::to_unknown(&env, input))
+            .expect_err("value encode must fail");
+        assert!(err.to_string().contains("Expected boolean in GHashTable"));
+
+        let duped = drain_g_memduped();
+        assert_eq!(duped.len(), 1, "the struct key must be copied once");
+        assert_eq!(
+            frees_of(&drain_g_freed(), duped[0]),
+            1,
+            "a failed value encode must free the transferred struct key copy exactly once"
+        );
+    });
+}
+
+#[test]
+fn hashtable_encode_full_unsized_struct_value_errors_without_copying() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let ht = ht_codec(
+            borrowed_string_codec(),
+            full_struct_codec(None),
+            Ownership::Full,
+        );
+        let source: u64 = 7;
+        let original = &source as *const u64 as *mut c_void;
+        let input = list(&[tuple(
+            text("k"),
+            object_raw(&env, Handle::from_glib_borrow(original)),
+        )]);
+
+        drain_g_memduped();
+        let err = ht
+            .encode(&env, napi_mock::to_unknown(&env, input))
+            .expect_err("unsized full struct value must fail");
+        assert!(
+            err.to_string()
+                .contains("Cannot transfer ownership of struct GHashTable elements")
+        );
+        assert!(drain_g_memduped().is_empty());
+    });
+}
+
 fn string_hashtable_codec(ownership: Ownership) -> HashTableCodec {
     HashTableCodec {
         key_codec: Box::new(borrowed_string_codec()),
@@ -1001,33 +1247,27 @@ fn write_return_to_pointer_full_table_hands_caller_owned_table() {
     });
 }
 
+fn assert_write_return_overwrites_sentinel_with_null(env: &Env, value: &Result<Unknown<'_>, ()>) {
+    let codec = string_hashtable_codec(Ownership::Full);
+    let mut slot: *mut c_void = 7 as *mut c_void;
+    let ret = &mut slot as *mut *mut c_void as *mut c_void;
+    PtrWriter::write_return_to_ptr(&codec, env, unsafe { Slot::new(ret) }, value);
+    assert!(slot.is_null());
+}
+
 #[test]
 fn write_return_to_pointer_null_err_and_non_array_write_null() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let codec = string_hashtable_codec(Ownership::Full);
-        let mut slot: *mut c_void = 7 as *mut c_void;
-        let ret = &mut slot as *mut *mut c_void as *mut c_void;
-        PtrWriter::write_return_to_ptr(
-            &codec,
+        assert_write_return_overwrites_sentinel_with_null(
             &env,
-            unsafe { Slot::new(ret) },
             &Ok(napi_mock::to_unknown(&env, null_value())),
         );
-        assert!(slot.is_null());
-
-        slot = 7 as *mut c_void;
-        PtrWriter::write_return_to_ptr(&codec, &env, unsafe { Slot::new(ret) }, &Err(()));
-        assert!(slot.is_null());
-
-        slot = 7 as *mut c_void;
-        PtrWriter::write_return_to_ptr(
-            &codec,
+        assert_write_return_overwrites_sentinel_with_null(&env, &Err(()));
+        assert_write_return_overwrites_sentinel_with_null(
             &env,
-            unsafe { Slot::new(ret) },
             &Ok(napi_mock::to_unknown(&env, num(1.0))),
         );
-        assert!(slot.is_null());
     });
 }
 
@@ -1035,16 +1275,10 @@ fn write_return_to_pointer_null_err_and_non_array_write_null() {
 fn write_return_to_pointer_encode_error_writes_null() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let codec = string_hashtable_codec(Ownership::Full);
         let val = list(&[text("not a tuple")]);
-        let mut slot: *mut c_void = 7 as *mut c_void;
-        let ret = &mut slot as *mut *mut c_void as *mut c_void;
-        PtrWriter::write_return_to_ptr(
-            &codec,
+        assert_write_return_overwrites_sentinel_with_null(
             &env,
-            unsafe { Slot::new(ret) },
             &Ok(napi_mock::to_unknown(&env, val)),
         );
-        assert!(slot.is_null());
     });
 }

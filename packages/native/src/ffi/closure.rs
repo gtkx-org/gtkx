@@ -161,7 +161,17 @@ impl ClosureState {
 
 impl ClosureState {
     pub unsafe extern "C" fn destroy(user_data: *mut c_void) {
-        drop(unsafe { Box::from_raw(user_data as *mut Self) });
+        guard_ffi_boundary("callback destroy notify", || {
+            if node_env::is_installed_on_current_thread() {
+                drop(unsafe { Box::from_raw(user_data as *mut Self) });
+                return;
+            }
+
+            let state_ptr = user_data as usize;
+            node_env::invoke_on_install_thread("callback destroy notify", move || {
+                drop(unsafe { Box::from_raw(state_ptr as *mut Self) });
+            });
+        });
     }
 }
 

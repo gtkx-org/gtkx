@@ -17,8 +17,20 @@ impl ErrorReporter {
 
     pub fn report_str(&self, message: &str) {
         eprintln!("gtkx: {message}");
-        node_env::env().fatal_exception(Error::new(Status::GenericFailure, message.to_owned()));
+        if node_env::is_installed_on_current_thread() {
+            raise_fatal(message.to_owned());
+        } else {
+            let message = message.to_owned();
+            node_env::invoke_on_install_thread("fatal error report", move || raise_fatal(message));
+        }
     }
+}
+
+fn raise_fatal(message: String) {
+    let Some(env) = node_env::try_env() else {
+        return;
+    };
+    env.fatal_exception(Error::new(Status::GenericFailure, message));
 }
 
 pub trait ReportErr<T> {
@@ -48,7 +60,7 @@ mod tests {
 
     #[test]
     fn report_str_prints_and_raises_a_fatal_exception() {
-        test_support::run(|| {
+        node_env::run_installed(|| {
             ErrorReporter::global().report_str("a diagnostic");
             assert!(test_support::napi_mock::count("napi_fatal_exception") >= 1);
         });
@@ -56,7 +68,7 @@ mod tests {
 
     #[test]
     fn report_formats_an_anyhow_error() {
-        test_support::run(|| {
+        node_env::run_installed(|| {
             let error = anyhow::anyhow!("boom").context("while doing work");
             ErrorReporter::global().report(&error);
             assert!(test_support::napi_mock::count("napi_fatal_exception") >= 1);
@@ -65,7 +77,7 @@ mod tests {
 
     #[test]
     fn report_err_passes_ok_through_and_reports_err() {
-        test_support::run(|| {
+        node_env::run_installed(|| {
             let ok: anyhow::Result<u32> = Ok(5);
             assert_eq!(ok.report_err("context"), Some(5));
 

@@ -68,14 +68,16 @@ impl Encoder for BoxedCodec {
     }
 
     unsafe fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
-        if self.ownership.is_full()
-            && !ptr.is_null()
-            && let Some(type_) = self.type_()?
-        {
-            let copied = unsafe { Boxed::boxed_copy(type_, ptr) };
-            return Ok(copied);
+        if !self.ownership.is_full() || ptr.is_null() {
+            return Ok(ptr);
         }
-        Ok(ptr)
+        let Some(type_) = self.type_()? else {
+            anyhow::bail!(
+                "Cannot transfer ownership of boxed '{}': its GType cannot be resolved, so no copy can be made for the callee",
+                self.type_name
+            );
+        };
+        Ok(unsafe { Boxed::boxed_copy(type_, ptr) })
     }
 }
 
@@ -130,10 +132,9 @@ impl PtrWriter for BoxedCodec {
         value: &std::result::Result<Unknown<'_>, ()>,
     ) {
         self.write_return_with_ownership(env, ret, value, self.ownership, |ptr| {
-            self.type_()
-                .report_err("Boxed return: cannot resolve type")
-                .flatten()
-                .map_or(ptr, |type_| unsafe { Boxed::boxed_copy(type_, ptr) })
+            unsafe { self.ref_for_transfer(ptr) }
+                .report_err("Boxed return: cannot transfer ownership")
+                .unwrap_or(std::ptr::null_mut())
         });
     }
 

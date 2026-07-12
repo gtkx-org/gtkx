@@ -211,6 +211,63 @@ fn ref_for_transfer_full_null_is_noop() {
     });
 }
 
+fn unresolvable_boxed(ownership: Ownership) -> BoxedCodec {
+    BoxedCodec {
+        ownership,
+        type_name: "GtkxUnknownBoxedType".to_owned(),
+        shared_library: None,
+        get_type_fn_name: None,
+        free_fn_name: None,
+        caller_allocated: false,
+    }
+}
+
+#[test]
+fn ref_for_transfer_full_unresolvable_type_bails() {
+    helpers::run(|| {
+        let target: u64 = 7;
+        let err = unsafe {
+            unresolvable_boxed(Ownership::Full)
+                .ref_for_transfer(&target as *const u64 as *mut c_void)
+        }
+        .expect_err("a transfer-full boxed without a resolvable GType must not alias ownership");
+        assert!(err.to_string().contains("GtkxUnknownBoxedType"));
+    });
+}
+
+#[test]
+fn ref_for_transfer_unresolvable_type_null_and_borrowed_pass_through() {
+    helpers::run(|| {
+        let null_returned =
+            unsafe { unresolvable_boxed(Ownership::Full).ref_for_transfer(std::ptr::null_mut()) }
+                .expect("null ref_for_transfer should succeed");
+        assert!(null_returned.is_null());
+
+        let target: u64 = 7;
+        let original = &target as *const u64 as *mut c_void;
+        let returned =
+            unsafe { unresolvable_boxed(Ownership::Borrowed).ref_for_transfer(original) }
+                .expect("borrowed ref_for_transfer should succeed");
+        assert_eq!(returned, original);
+    });
+}
+
+#[test]
+fn encode_full_unresolvable_type_bails() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let target: u64 = 7;
+        let err = unresolvable_boxed(Ownership::Full)
+            .encode(
+                &env,
+                object_value_of(&env, &target as *const u64 as *mut c_void),
+            )
+            .map(|_| ())
+            .expect_err("encoding a transfer-full boxed without a resolvable GType must fail");
+        assert!(err.to_string().contains("GtkxUnknownBoxedType"));
+    });
+}
+
 #[test]
 fn decode_full_dups_owned_boxed() {
     helpers::run(|| {
@@ -364,6 +421,67 @@ fn write_return_to_pointer_borrowed_writes_same_pointer() {
 fn write_return_to_pointer_err_writes_null() {
     helpers::run(|| {
         assert_write_return_err_writes_null(&boxed(Ownership::Borrowed));
+    });
+}
+
+#[test]
+fn write_return_to_pointer_full_unresolvable_type_writes_null_and_reports() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let target: u64 = 7;
+        let original = &target as *const u64 as *mut c_void;
+
+        let slot = write_return_into_slot(
+            &env,
+            &unresolvable_boxed(Ownership::Full),
+            &Ok(object_value_of(&env, original)),
+        );
+
+        assert!(
+            slot.is_null(),
+            "a transfer-full boxed return without a resolvable GType must not alias ownership"
+        );
+        let fatals = napi_mock::fatal_exceptions();
+        assert_eq!(fatals.len(), 1);
+        let message = napi_mock::read_object_property(fatals[0], "message")
+            .and_then(napi_mock::read_string)
+            .expect("the fatal exception should carry a message");
+        assert!(message.contains("GtkxUnknownBoxedType"));
+    });
+}
+
+#[test]
+fn write_return_to_pointer_full_resolvable_type_copies_without_reporting() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let (type_, original) = rgba_boxed_alloc();
+
+        let slot = write_return_into_slot(
+            &env,
+            &boxed(Ownership::Full),
+            &Ok(object_value_of(&env, original)),
+        );
+
+        assert!(napi_mock::fatal_exceptions().is_empty());
+        assert_slot_holds_copy_then_free(slot, original, type_);
+    });
+}
+
+#[test]
+fn write_return_to_pointer_borrowed_unresolvable_type_writes_same_pointer() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let target: u64 = 7;
+        let original = &target as *const u64 as *mut c_void;
+
+        let slot = write_return_into_slot(
+            &env,
+            &unresolvable_boxed(Ownership::Borrowed),
+            &Ok(object_value_of(&env, original)),
+        );
+
+        assert_eq!(slot, original);
+        assert!(napi_mock::fatal_exceptions().is_empty());
     });
 }
 

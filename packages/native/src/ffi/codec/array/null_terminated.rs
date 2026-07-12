@@ -43,6 +43,15 @@ fn leak_container_to_callee(ptrs: &[*mut c_void]) -> *mut c_void {
 pub(crate) struct NullTerminatedArrayCodec;
 
 impl ArrayContainer for NullTerminatedArrayCodec {
+    fn encode(
+        &self,
+        codec: &ArrayCodec,
+        env: &Env,
+        array: &[Unknown<'_>],
+    ) -> anyhow::Result<ffi::Stash> {
+        codec.encode_zero_terminated_items(env, &NullTerminatedArrayEncoder, array)
+    }
+
     fn buffer_view_support(&self) -> BufferViewSupport {
         BufferViewSupport::Contiguous(None)
     }

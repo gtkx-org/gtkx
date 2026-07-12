@@ -1,6 +1,7 @@
 use super::prelude::*;
 use crate::ffi::library_cache::FfiCache;
 use crate::handle::{Fundamental, Handle, RefFn, UnrefFn};
+use crate::messaging::error_reporter::ReportErr as _;
 
 #[derive(Debug, Clone)]
 pub struct FundamentalCodec {
@@ -87,10 +88,9 @@ impl PtrWriter for FundamentalCodec {
         value: &std::result::Result<Unknown<'_>, ()>,
     ) {
         self.write_return_with_ownership(env, ret, value, self.ownership, |ptr| {
-            match self.lookup_fns() {
-                Ok((Some(ref_fn), _)) => unsafe { ref_fn(ptr) },
-                _ => ptr,
-            }
+            unsafe { self.ref_for_transfer(ptr) }
+                .report_err("Fundamental return: cannot transfer ownership")
+                .unwrap_or(std::ptr::null_mut())
         });
     }
 

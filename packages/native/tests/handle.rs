@@ -8,7 +8,8 @@ use gtk4::glib;
 use gtk4::glib::translate::from_glib_full;
 use gtk4::prelude::ObjectType as _;
 
-use native::handle::{Fundamental, Handle};
+use native::handle::{Fundamental, Handle, wrapper};
+use test_support::napi_mock;
 
 use helpers::{
     get_gobject_refcount, make_bool_param_spec as param_spec_ptr, param_spec_ref,
@@ -27,6 +28,11 @@ fn borrowed_fundamental(ptr: *mut c_void) -> Handle {
     let fundamental =
         unsafe { Fundamental::from_glib_none(ptr, Some(param_spec_ref), Some(param_spec_unref)) };
     Handle::Fundamental(fundamental)
+}
+
+fn decoded_gobject_handle() -> Handle {
+    let obj = glib::Object::new::<glib::Object>();
+    Handle::decoded_gobject(obj)
 }
 
 fn extra_referenced_decoded_gobject() -> (glib::Object, *mut glib::gobject_ffi::GObject, u32, Handle)
@@ -170,8 +176,7 @@ fn a_decoded_handle_drop_releases_unconsumed_ref() {
 #[test]
 fn take_owned_consumes_the_object_once() {
     helpers::run(|| {
-        let obj = glib::Object::new::<glib::Object>();
-        let handle = Handle::decoded_gobject(obj.clone());
+        let handle = decoded_gobject_handle();
 
         assert!(handle.take_owned().is_some());
         assert!(handle.take_owned().is_none());
@@ -191,8 +196,7 @@ fn take_owned_on_a_borrowed_handle_returns_none() {
 #[test]
 fn clones_share_the_owned_object() {
     helpers::run(|| {
-        let obj = glib::Object::new::<glib::Object>();
-        let handle = Handle::decoded_gobject(obj.clone());
+        let handle = decoded_gobject_handle();
         let cloned = handle.clone();
 
         assert!(cloned.take_owned().is_some());
@@ -229,9 +233,86 @@ fn borrowed_handle_reports_zero_size_hint() {
 #[test]
 fn decoded_gobject_handle_reports_nonzero_size_hint() {
     helpers::run(|| {
-        let obj = glib::Object::new::<glib::Object>();
-        let handle = Handle::decoded_gobject(obj.clone());
+        let handle = decoded_gobject_handle();
         assert!(handle.size_hint() > 0);
         assert!(handle.take_owned().is_some());
+    });
+}
+
+fn wrapped_gobject_owned_by_worker() -> (usize, napi::sys::napi_ref) {
+    let (obj, obj_ptr, _) = helpers::fresh_gobject();
+    let napi_ref = napi_mock::fake_reference();
+    let (_binding, _generation) = unsafe { wrapper::install(obj_ptr, napi_ref.cast()) };
+    std::mem::forget(obj);
+    (obj_ptr as usize, napi_ref)
+}
+
+#[test]
+fn main_thread_toggle_notifications_apply_synchronously() {
+    helpers::run(|| {
+        let (obj, obj_ptr, _) = helpers::fresh_gobject();
+        let napi_ref = napi_mock::fake_reference();
+        let (_binding, _generation) = unsafe { wrapper::install(obj_ptr, napi_ref.cast()) };
+
+        let unref_baseline = napi_mock::count("napi_reference_unref");
+        drop(obj);
+
+        assert_eq!(napi_mock::count("napi_reference_unref"), unref_baseline + 1);
+        assert_eq!(napi_mock::reference_count(napi_ref), Some(0));
+    });
+}
+
+#[test]
+fn off_thread_toggle_notifications_marshal_to_the_install_thread() {
+    helpers::run(|| {
+        let (raw, napi_ref) = wrapped_gobject_owned_by_worker();
+
+        let unref_baseline = napi_mock::count("napi_reference_unref");
+        std::thread::spawn(move || unsafe {
+            glib::gobject_ffi::g_object_unref(raw as *mut glib::gobject_ffi::GObject);
+        })
+        .join()
+        .expect("the worker unref should not crash");
+
+        assert_eq!(napi_mock::count("napi_reference_unref"), unref_baseline);
+        assert_eq!(napi_mock::reference_count(napi_ref), Some(1));
+
+        pump_default_context_until(|| napi_mock::count("napi_reference_unref") > unref_baseline);
+        assert_eq!(napi_mock::count("napi_reference_unref"), unref_baseline + 1);
+        assert_eq!(napi_mock::reference_count(napi_ref), Some(0));
+
+        let ref_baseline = napi_mock::count("napi_reference_ref");
+        std::thread::spawn(move || unsafe {
+            glib::gobject_ffi::g_object_ref(raw as *mut glib::gobject_ffi::GObject);
+        })
+        .join()
+        .expect("the worker ref should not crash");
+
+        pump_default_context_until(|| napi_mock::count("napi_reference_ref") > ref_baseline);
+        assert_eq!(napi_mock::count("napi_reference_ref"), ref_baseline + 1);
+        assert_eq!(napi_mock::reference_count(napi_ref), Some(1));
+    });
+}
+
+#[test]
+fn queued_toggle_resyncs_converge_to_the_final_reference_state() {
+    helpers::run(|| {
+        let (raw, napi_ref) = wrapped_gobject_owned_by_worker();
+
+        std::thread::spawn(move || unsafe {
+            let gobject = raw as *mut glib::gobject_ffi::GObject;
+            glib::gobject_ffi::g_object_unref(gobject);
+            glib::gobject_ffi::g_object_ref(gobject);
+            glib::gobject_ffi::g_object_unref(gobject);
+        })
+        .join()
+        .expect("the worker toggles should not crash");
+
+        pump_default_context_until(|| napi_mock::reference_count(napi_ref) == Some(0));
+        pump_default_context_until(|| false);
+
+        assert_eq!(napi_mock::reference_count(napi_ref), Some(0));
+        assert_eq!(napi_mock::count("napi_reference_unref"), 1);
+        assert_eq!(napi_mock::count("napi_reference_ref"), 0);
     });
 }

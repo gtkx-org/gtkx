@@ -19,7 +19,7 @@ fn encode_accepts_string_number_and_optional_null() {
         let from_string = Encoder::encode(
             &UnicharCodec,
             &env,
-            napi_mock::to_unknown(&env, napi_mock::fake_string("Aaa")),
+            napi_mock::to_unknown(&env, napi_mock::fake_string("A")),
         )
         .unwrap();
         assert!(matches!(from_string, ffi::Stash::U32(c) if c == 'A' as u32));
@@ -66,6 +66,67 @@ fn encode_accepts_string_number_and_optional_null() {
         );
     });
 }
+#[test]
+fn encode_rejects_multi_character_strings() {
+    test_support::run(|| {
+        let env = test_support::fake_env();
+        let err = Encoder::encode(
+            &UnicharCodec,
+            &env,
+            napi_mock::to_unknown(&env, napi_mock::fake_string("Aaa")),
+        )
+        .map(|_| ())
+        .expect_err("a multi-character string must not silently truncate");
+        assert!(err.to_string().contains("single-character"));
+    });
+}
+
+#[test]
+fn encode_rejects_invalid_codepoints() {
+    test_support::run(|| {
+        let env = test_support::fake_env();
+        for invalid in [
+            f64::from(0xD800u32),
+            f64::from(0xDFFFu32),
+            f64::from(0x0011_0000u32),
+            -1.0,
+            65.5,
+        ] {
+            let result = Encoder::encode(
+                &UnicharCodec,
+                &env,
+                napi_mock::to_unknown(&env, napi_mock::fake_double(invalid)),
+            );
+            let err = match result {
+                Ok(stash) => panic!("codepoint {invalid} must be rejected, got {stash:?}"),
+                Err(err) => err,
+            };
+            assert!(err.to_string().contains("Invalid Unicode codepoint"));
+        }
+    });
+}
+
+#[test]
+fn encode_accepts_boundary_codepoints() {
+    test_support::run(|| {
+        let env = test_support::fake_env();
+        for (valid, expected) in [
+            (0.0, 0u32),
+            (f64::from(0xD7FFu32), 0xD7FF),
+            (f64::from(0xE000u32), 0xE000),
+            (f64::from(0x0010_FFFFu32), 0x0010_FFFF),
+        ] {
+            let encoded = Encoder::encode(
+                &UnicharCodec,
+                &env,
+                napi_mock::to_unknown(&env, napi_mock::fake_double(valid)),
+            )
+            .expect("valid codepoint should encode");
+            assert!(matches!(encoded, ffi::Stash::U32(c) if c == expected));
+        }
+    });
+}
+
 #[test]
 fn libffi_type_is_u32() {
     assert_eq!(
@@ -168,9 +229,30 @@ fn write_return_to_pointer_writes_string_number_and_default() {
             &UnicharCodec,
             &env,
             unsafe { Slot::new(ret) },
-            &Ok(napi_mock::to_unknown(&env, napi_mock::fake_string("Kkk"))),
+            &Ok(napi_mock::to_unknown(&env, napi_mock::fake_string("K"))),
         );
         assert_eq!(slot, u64::from('K' as u32));
+
+        slot = 9;
+        PtrWriter::write_return_to_ptr(
+            &UnicharCodec,
+            &env,
+            unsafe { Slot::new(ret) },
+            &Ok(napi_mock::to_unknown(&env, napi_mock::fake_string("Kkk"))),
+        );
+        assert_eq!(slot, 0);
+
+        slot = 9;
+        PtrWriter::write_return_to_ptr(
+            &UnicharCodec,
+            &env,
+            unsafe { Slot::new(ret) },
+            &Ok(napi_mock::to_unknown(
+                &env,
+                napi_mock::fake_double(f64::from(0xD800u32)),
+            )),
+        );
+        assert_eq!(slot, 0);
 
         PtrWriter::write_return_to_ptr(
             &UnicharCodec,

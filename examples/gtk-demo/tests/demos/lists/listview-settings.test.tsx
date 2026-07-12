@@ -39,6 +39,30 @@ const selectFirstSchemaWithKeys = async (): Promise<Gtk.ColumnView> => {
     return columnView;
 };
 
+const openKeySearch = async (): Promise<Gtk.SearchEntry> => {
+    const toggle = (await screen.findByName("search-toggle")) as Gtk.ToggleButton;
+    await userEvent.click(toggle);
+    const searchBar = (await screen.findByName("search-bar")) as Gtk.SearchBar;
+    await waitFor(() => expect(searchBar.getSearchMode()).toBe(true));
+    return (await screen.findByName("search-entry")) as Gtk.SearchEntry;
+};
+
+interface FilteredToZeroState {
+    columnView: Gtk.ColumnView;
+    full: number;
+    entry: Gtk.SearchEntry;
+}
+
+const filterKeysToZero = async (): Promise<FilteredToZeroState> => {
+    await renderDemo(listviewSettingsDemo);
+    const columnView = await selectFirstSchemaWithKeys();
+    const full = itemCount(columnView);
+    const entry = await openKeySearch();
+    await userEvent.type(entry, "zzqqxx");
+    await waitFor(() => expect(itemCount(columnView)).toBe(0));
+    return { columnView, full, entry };
+};
+
 describe("listviewSettingsDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(listviewSettingsDemo.id).toBe("listview-settings");
@@ -159,30 +183,17 @@ describe("listviewSettingsDemo schema interactions", () => {
 
     it("opens the key search bar when the titlebar toggle is activated", async () => {
         await renderDemo(listviewSettingsDemo);
-        const toggle = (await screen.findByName("search-toggle")) as Gtk.ToggleButton;
-        await userEvent.click(toggle);
-        const searchBar = (await screen.findByName("search-bar")) as Gtk.SearchBar;
-        await waitFor(() => expect(searchBar.getSearchMode()).toBe(true));
+        await openKeySearch();
     });
 
     it("filters the column view to zero rows for a non-matching query and restores on clear", async () => {
-        await renderDemo(listviewSettingsDemo);
-        const columnView = await selectFirstSchemaWithKeys();
-        const full = itemCount(columnView);
-        const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
-        await userEvent.type(entry, "zzqqxx");
-        await waitFor(() => expect(itemCount(columnView)).toBe(0));
+        const { columnView, full, entry } = await filterKeysToZero();
         await userEvent.clear(entry);
         await waitFor(() => expect(itemCount(columnView)).toBe(full));
     });
 
     it("clears the key search filter when the search entry stops searching", async () => {
-        await renderDemo(listviewSettingsDemo);
-        const columnView = await selectFirstSchemaWithKeys();
-        const full = itemCount(columnView);
-        const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
-        await userEvent.type(entry, "zzqqxx");
-        await waitFor(() => expect(itemCount(columnView)).toBe(0));
+        const { columnView, full, entry } = await filterKeysToZero();
         await userEvent.keyboard(entry, "{Escape}");
         const searchBar = (await screen.findByName("search-bar")) as Gtk.SearchBar;
         await waitFor(() => expect(searchBar.getSearchMode()).toBe(false));

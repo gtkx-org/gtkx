@@ -111,13 +111,16 @@ export const drop = (widget: Gtk.Widget, content: DropContent, options: DropOpti
         emitDrop(widget, content, options);
     });
 
-export const dragAndDrop = (
+export const dragAndDrop = async (
     source: Gtk.Widget,
     target: Gtk.Widget,
     content: DropContent,
     options: DropOptions = {},
-): Promise<void> =>
-    wrapEvent(target, () => {
+): Promise<void> => {
+    await wrapEvent(source, () => {
         getController(source, Gtk.DragSource);
+    });
+    await wrapEvent(target, () => {
         emitDrop(target, content, options);
     });
+};

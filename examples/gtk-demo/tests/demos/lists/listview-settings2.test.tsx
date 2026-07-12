@@ -76,6 +76,11 @@ async function activateSearch(): Promise<{ toggle: Gtk.ToggleButton; bar: Gtk.Se
     return { toggle, bar };
 }
 
+async function openSearchEntry(): Promise<Gtk.SearchEntry> {
+    await activateSearch();
+    return (await screen.findByName("search-entry")) as Gtk.SearchEntry;
+}
+
 describe("listviewSettings2Demo search and editing", () => {
     it("enables the search bar when the titlebar search toggle is activated", async () => {
         await renderDemo(listviewSettings2Demo);
@@ -90,7 +95,7 @@ describe("listviewSettings2Demo search and editing", () => {
         expect(headers.length).toBeGreaterThan(0);
         const token = (headers[0]?.split(".").pop() ?? "").toLowerCase();
         expect(token.length).toBeGreaterThan(0);
-        const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
+        const entry = await openSearchEntry();
         await userEvent.type(entry, token);
         expect(entry).toHaveDisplayValue(token);
         await waitFor(() => expect(model.getNItems()).toBeLessThan(initial));
@@ -101,7 +106,7 @@ describe("listviewSettings2Demo search and editing", () => {
     it("clears the list model to zero when the search text matches no key", async () => {
         await renderDemo(listviewSettings2Demo);
         const model = await listModel();
-        const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
+        const entry = await openSearchEntry();
         await userEvent.type(entry, "zzqxnomatchforanyschemaorkey");
         await waitFor(() => expect(model.getNItems()).toBe(0));
     });
@@ -110,7 +115,7 @@ describe("listviewSettings2Demo search and editing", () => {
         await renderDemo(listviewSettings2Demo);
         const model = await listModel();
         const initial = model.getNItems();
-        const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
+        const entry = await openSearchEntry();
         await userEvent.type(entry, "zzqxnomatchforanyschemaorkey");
         await waitFor(() => expect(model.getNItems()).toBe(0));
         await userEvent.keyboard(entry, "{Escape}");

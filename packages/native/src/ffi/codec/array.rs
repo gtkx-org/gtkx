@@ -264,20 +264,64 @@ impl ArrayCodec {
         encoder: &dyn ArrayKindEncoder,
         array: &[Unknown<'_>],
     ) -> anyhow::Result<ffi::Stash> {
+        self.encode_items_with_terminator(env, encoder, array, false)
+    }
+
+    fn encode_zero_terminated_items(
+        &self,
+        env: &Env,
+        encoder: &dyn ArrayKindEncoder,
+        array: &[Unknown<'_>],
+    ) -> anyhow::Result<ffi::Stash> {
+        self.encode_items_with_terminator(env, encoder, array, true)
+    }
+
+    fn extract_terminated_numbers(
+        env: &Env,
+        array: &[Unknown<'_>],
+        zero_terminated: bool,
+    ) -> anyhow::Result<Vec<f64>> {
+        let mut numbers = Self::extract_numbers(env, array)?;
+        if zero_terminated {
+            numbers.push(0.0);
+        }
+        Ok(numbers)
+    }
+
+    fn encode_items_with_terminator(
+        &self,
+        env: &Env,
+        encoder: &dyn ArrayKindEncoder,
+        array: &[Unknown<'_>],
+        zero_terminated: bool,
+    ) -> anyhow::Result<ffi::Stash> {
         match self.item_codec("array")? {
-            ItemCodec::Integer(kind) => Ok(ffi::Stash::Storage(
-                kind.checked_to_stash_storage(&Self::extract_numbers(env, array)?)?,
-            )),
-            ItemCodec::EnumFlags(kind) => Ok(ffi::Stash::Storage(
-                kind.to_stash_storage(&Self::extract_numbers(env, array)?),
-            )),
-            ItemCodec::BigInt(kind) => Ok(ffi::Stash::Storage(kind.to_stash_storage(env, array)?)),
-            ItemCodec::Float(kind) => Ok(ffi::Stash::Storage(
-                kind.checked_to_stash_storage(&Self::extract_numbers(env, array)?)?,
-            )),
-            ItemCodec::Boolean => Ok(ffi::Stash::Storage(
-                Self::extract_booleans(env, array)?.into(),
-            )),
+            ItemCodec::Integer(kind) => Ok(ffi::Stash::Storage(kind.checked_to_stash_storage(
+                &Self::extract_terminated_numbers(env, array, zero_terminated)?,
+            )?)),
+            ItemCodec::EnumFlags(kind) => Ok(ffi::Stash::Storage(kind.to_stash_storage(
+                &Self::extract_terminated_numbers(env, array, zero_terminated)?,
+            ))),
+            ItemCodec::BigInt(kind) => {
+                let storage = if zero_terminated {
+                    let mut items = array.to_vec();
+                    items.push(0f64.into_unknown(env)?);
+                    kind.to_stash_storage(env, &items)?
+                } else {
+                    kind.to_stash_storage(env, array)?
+                };
+                Ok(ffi::Stash::Storage(storage))
+            }
+            ItemCodec::Float(kind) => Ok(ffi::Stash::Storage(kind.checked_to_stash_storage(
+                &Self::extract_terminated_numbers(env, array, zero_terminated)?,
+            )?)),
+            ItemCodec::Boolean => {
+                let mut booleans = Self::extract_booleans(env, array)?;
+                if zero_terminated {
+                    booleans.push(0);
+                }
+                Ok(ffi::Stash::Storage(booleans.into()))
+            }
             ItemCodec::String => {
                 let dup_items =
                     matches!(&*self.item_codec, Codec::String(s) if s.ownership.is_full());

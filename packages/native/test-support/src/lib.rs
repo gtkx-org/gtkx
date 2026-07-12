@@ -9,11 +9,11 @@ use gtk4::prelude::StaticType as _;
 
 use native::Handle;
 
-use native::ffi::codec::{
-    ArrayCodec, ArrayKind, Codec, EnumFlagsCodec, EnumFlagsKind, Decoder, Encoder,
-    FloatCodec, IntegerCodec, Ownership, PtrWriter, ReadSource,
-};
 use native::ffi::Slot;
+use native::ffi::codec::{
+    ArrayCodec, ArrayKind, Codec, Decoder, Encoder, EnumFlagsCodec, EnumFlagsKind, FloatCodec,
+    IntegerCodec, Ownership, PtrWriter, ReadSource,
+};
 use native::ffi::library_cache::FfiCache;
 use native::handle::Boxed;
 use native::messaging::node_env;
@@ -22,7 +22,38 @@ use napi::Env;
 use napi::JsValue as _;
 use napi::bindgen_prelude::Unknown;
 
+macro_rules! keep_symbols {
+    ($($symbol:ident),* $(,)?) => {
+        $( std::hint::black_box($symbol as *const ()); )*
+    };
+}
+
+#[macro_export]
+macro_rules! g_free_recorder {
+    () => {
+        ::std::thread_local! {
+            static G_FREED: ::std::cell::RefCell<::std::vec::Vec<usize>> =
+                const { ::std::cell::RefCell::new(::std::vec::Vec::new()) };
+        }
+
+        unsafe extern "C" {
+            fn free(ptr: *mut ::std::ffi::c_void);
+        }
+
+        #[unsafe(no_mangle)]
+        pub unsafe extern "C" fn g_free(ptr: *mut ::std::ffi::c_void) {
+            G_FREED.with_borrow_mut(|freed| freed.push(ptr as usize));
+            unsafe { free(ptr) };
+        }
+
+        fn drain_g_freed() -> ::std::vec::Vec<usize> {
+            G_FREED.with_borrow_mut(::std::mem::take)
+        }
+    };
+}
+
 pub mod napi_mock;
+pub mod uv_mock;
 
 pub use napi_mock::fake_env;
 
@@ -46,6 +77,8 @@ where
     FfiCache::with(|state| *state = FfiCache::default());
     napi_mock::install_napi_mock();
     napi_mock::reset();
+    uv_mock::install_uv_mock();
+    uv_mock::reset();
     node_env::install(fake_env()).expect("installing the fake node env should succeed");
     f()
 }
@@ -97,6 +130,23 @@ pub fn get_gobject_refcount(obj_ptr: *mut glib::gobject_ffi::GObject) -> u32 {
         return 0;
     }
     unsafe { (*obj_ptr).ref_count }
+}
+
+pub fn assert_unresolvable_symbol_failure_keeps_param_spec(
+    pspec: *mut c_void,
+    before: u32,
+    result: anyhow::Result<()>,
+    context: &str,
+) {
+    let err = result.expect_err(context);
+    assert!(
+        err.to_string().contains("Failed to find symbol"),
+        "unexpected error: {err}"
+    );
+    assert_eq!(param_spec_refcount(pspec), before);
+    unsafe {
+        glib::gobject_ffi::g_param_spec_unref(pspec as *mut glib::gobject_ffi::GParamSpec);
+    }
 }
 
 pub fn make_bool_param_spec() -> *mut c_void {

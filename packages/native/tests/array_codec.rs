@@ -43,6 +43,22 @@ fn enum_flags_item_codec() -> Codec {
     })
 }
 
+fn i32_zero_terminated(ownership: Ownership) -> ArrayCodec {
+    array_codec(
+        Codec::Integer(IntegerCodec::I32),
+        ArrayKind::Array,
+        ownership,
+    )
+}
+
+fn u16_zero_terminated_full() -> ArrayCodec {
+    array_codec(
+        Codec::Integer(IntegerCodec::U16),
+        ArrayKind::Array,
+        Ownership::Full,
+    )
+}
+
 fn array_codec(item: Codec, kind: ArrayKind, ownership: Ownership) -> ArrayCodec {
     ArrayCodec::new(Box::new(item), kind, ownership, None, None, None).expect("valid array codec")
 }
@@ -311,11 +327,7 @@ fn encode_optional_null_yields_null_ptr() {
 fn encode_integer_array_extract_error() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let descriptor = array_codec(
-            Codec::Integer(IntegerCodec::I32),
-            ArrayKind::Array,
-            Ownership::Full,
-        );
+        let descriptor = i32_zero_terminated(Ownership::Full);
         let val = array(&env, &[boolean(true)]);
         assert!(descriptor.encode(&env, val).is_err());
     });
@@ -911,23 +923,157 @@ fn encode_garray_explicit_element_size_used() {
     });
 }
 
+fn encode_scalar_storage(env: &Env, descriptor: &ArrayCodec, values: &[sys::napi_value]) -> Stash {
+    descriptor
+        .encode(env, array(env, values))
+        .expect("scalar array encode should succeed")
+}
+
+macro_rules! assert_scalar_storage {
+    ($encoded:expr, $variant:ident, $expected:expr) => {
+        let Stash::Storage(storage) = &$encoded else {
+            panic!("expected storage")
+        };
+        let StashData::$variant(items) = storage.data() else {
+            panic!("expected {} storage", stringify!($variant))
+        };
+        assert_eq!(items.as_slice(), $expected);
+    };
+}
+
+#[test]
+fn encode_zero_terminated_integer_array_appends_terminator() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let descriptor = u16_zero_terminated_full();
+        let encoded = encode_scalar_storage(&env, &descriptor, &[number(1.0), number(2.0)]);
+        assert_scalar_storage!(encoded, U16Vec, &[1u16, 2, 0]);
+    });
+}
+
+#[test]
+fn encode_zero_terminated_empty_integer_array_is_only_terminator() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let descriptor = i32_zero_terminated(Ownership::Full);
+        let encoded = encode_scalar_storage(&env, &descriptor, &[]);
+        assert_scalar_storage!(encoded, I32Vec, &[0i32]);
+    });
+}
+
+#[test]
+fn encode_zero_terminated_enum_flags_array_appends_terminator() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let descriptor = array_codec(enum_flags_item_codec(), ArrayKind::Array, Ownership::Full);
+        let encoded = encode_scalar_storage(&env, &descriptor, &[number(3.0), number(1.0)]);
+        assert_scalar_storage!(encoded, I32Vec, &[3i32, 1, 0]);
+    });
+}
+
+#[test]
+fn encode_zero_terminated_float_array_appends_terminator() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let f32_descriptor = array_codec(
+            Codec::Float(FloatCodec::F32),
+            ArrayKind::Array,
+            Ownership::Full,
+        );
+        let encoded = encode_scalar_storage(&env, &f32_descriptor, &[number(1.5), number(2.5)]);
+        assert_scalar_storage!(encoded, F32Vec, &[1.5f32, 2.5, 0.0]);
+
+        let f64_descriptor = array_codec(
+            Codec::Float(FloatCodec::F64),
+            ArrayKind::Array,
+            Ownership::Full,
+        );
+        let encoded = encode_scalar_storage(&env, &f64_descriptor, &[number(1.25)]);
+        assert_scalar_storage!(encoded, F64Vec, &[1.25f64, 0.0]);
+    });
+}
+
+#[test]
+fn encode_zero_terminated_boolean_array_appends_terminator() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let descriptor = array_codec(
+            Codec::Boolean(BooleanCodec),
+            ArrayKind::Array,
+            Ownership::Full,
+        );
+        let encoded = encode_scalar_storage(&env, &descriptor, &[boolean(true)]);
+        assert_scalar_storage!(encoded, I32Vec, &[1i32, 0]);
+    });
+}
+
+#[test]
+fn encode_zero_terminated_bigint_array_appends_terminator() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let u64_descriptor = array_codec(
+            Codec::BigInt(BigIntCodec::U64),
+            ArrayKind::Array,
+            Ownership::Full,
+        );
+        let encoded = encode_scalar_storage(&env, &u64_descriptor, &[bigint(5), bigint(9)]);
+        assert_scalar_storage!(encoded, U64Vec, &[5u64, 9, 0]);
+
+        let i64_descriptor = array_codec(
+            Codec::BigInt(BigIntCodec::I64),
+            ArrayKind::Array,
+            Ownership::Full,
+        );
+        let encoded = encode_scalar_storage(&env, &i64_descriptor, &[bigint(-7)]);
+        assert_scalar_storage!(encoded, I64Vec, &[-7i64, 0]);
+    });
+}
+
+#[test]
+fn encode_length_bounded_scalar_arrays_append_no_terminator() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        for descriptor in [
+            sized_array_type(Codec::Integer(IntegerCodec::I32), 0, Ownership::Borrowed),
+            fixed_array_type(Codec::Integer(IntegerCodec::I32), 1, Ownership::Borrowed),
+        ] {
+            let encoded = encode_scalar_storage(&env, &descriptor, &[number(7.0)]);
+            assert_scalar_storage!(encoded, I32Vec, &[7i32]);
+        }
+    });
+}
+
+fn assert_decodes_to_seven_eight_nine(env: &Env, descriptor: &ArrayCodec, ptr: *mut c_void) {
+    let decoded = descriptor
+        .decode(env, &Stash::Ptr(ptr))
+        .expect("zero-terminated scalar decode should succeed");
+    let items = decoded_items(&decoded);
+    assert_eq!(items.len(), 3);
+    assert_eq!(napi_mock::read_double(items[0]), Some(7.0));
+    assert_eq!(napi_mock::read_double(items[2]), Some(9.0));
+}
+
+#[test]
+fn zero_terminated_scalar_array_roundtrips_through_encode_and_decode() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let descriptor = i32_zero_terminated(Ownership::Borrowed);
+        let encoded =
+            encode_scalar_storage(&env, &descriptor, &[number(7.0), number(8.0), number(9.0)]);
+        let Stash::Storage(storage) = &encoded else {
+            panic!("expected storage")
+        };
+        assert_decodes_to_seven_eight_nine(&env, &descriptor, storage.ptr());
+    });
+}
+
 #[test]
 fn decode_zero_terminated_scalar_array_reads_with_scalar_stride() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let descriptor = array_codec(
-            Codec::Integer(IntegerCodec::I32),
-            ArrayKind::Array,
-            Ownership::Borrowed,
-        );
+        let descriptor = i32_zero_terminated(Ownership::Borrowed);
         let buffer: [i32; 4] = [7, 8, 9, 0];
-        let decoded = descriptor
-            .decode(&env, &Stash::Ptr(buffer.as_ptr() as *mut std::ffi::c_void))
-            .expect("zero-terminated scalar decode should succeed");
-        let items = decoded_items(&decoded);
-        assert_eq!(items.len(), 3);
-        assert_eq!(napi_mock::read_double(items[0]), Some(7.0));
-        assert_eq!(napi_mock::read_double(items[2]), Some(9.0));
+        assert_decodes_to_seven_eight_nine(&env, &descriptor, buffer.as_ptr() as *mut c_void);
     });
 }
 
@@ -1109,11 +1255,7 @@ fn encode_gptrarray_uses_null_terminated_layout() {
 fn encode_integer_array_into_storage() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let descriptor = array_codec(
-            Codec::Integer(IntegerCodec::U16),
-            ArrayKind::Array,
-            Ownership::Full,
-        );
+        let descriptor = u16_zero_terminated_full();
         let encoded = descriptor
             .encode(&env, array(&env, &[number(1.0), number(2.0)]))
             .unwrap();
@@ -1523,11 +1665,7 @@ fn decode_with_context_fixed_rejects_non_ptr() {
 fn decode_with_context_array_kind_rejects_non_ptr() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let descriptor = array_codec(
-            Codec::Integer(IntegerCodec::I32),
-            ArrayKind::Array,
-            Ownership::Borrowed,
-        );
+        let descriptor = i32_zero_terminated(Ownership::Borrowed);
         let storage = native::ffi::StashStorage::from(vec![1i32]);
         assert!(
             descriptor
@@ -1616,11 +1754,7 @@ fn encode_storage_pointer_elements() {
 fn ptr_to_value_null_yields_empty() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let descriptor = array_codec(
-            Codec::Integer(IntegerCodec::I32),
-            ArrayKind::Array,
-            Ownership::Borrowed,
-        );
+        let descriptor = i32_zero_terminated(Ownership::Borrowed);
         let value =
             unsafe { descriptor.read(&env, ReadSource::Value(std::ptr::null_mut(), "array")) }
                 .unwrap();
@@ -1815,11 +1949,7 @@ fn item_codec_resolves_pointer_kinds() {
 fn trait_methods_delegate_to_inherent_implementations() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let descriptor = array_codec(
-            Codec::Integer(IntegerCodec::I32),
-            ArrayKind::Array,
-            Ownership::Borrowed,
-        );
+        let descriptor = i32_zero_terminated(Ownership::Borrowed);
 
         let encoded = Encoder::encode(&descriptor, &env, array(&env, &[number(1.0)])).unwrap();
         let Stash::Storage(storage) = &encoded else {
@@ -1893,13 +2023,12 @@ fn encode_glist_handles_fails_and_unwinds_when_element_transfer_fails() {
             Ownership::Full,
         );
         let val = array(&env, &[object(&env, Handle::from_glib_borrow(pspec))]);
-        let err = descriptor
-            .encode(&env, val)
-            .expect_err("an unresolvable element ref function must fail the transfer");
-        assert!(err.to_string().contains("Failed to find symbol"));
-        assert_eq!(helpers::param_spec_refcount(pspec), before);
-
-        unsafe { glib::gobject_ffi::g_param_spec_unref(pspec.cast()) };
+        helpers::assert_unresolvable_symbol_failure_keeps_param_spec(
+            pspec,
+            before,
+            descriptor.encode(&env, val).map(|_| ()),
+            "an unresolvable element ref function must fail the transfer",
+        );
     });
 }
 
@@ -1986,11 +2115,7 @@ fn encode_garray_borrowed_strings_installs_clear_func_and_roundtrips() {
 fn decode_zero_terminated_scalar_array_full_ownership_frees_buffer() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let descriptor = array_codec(
-            Codec::Integer(IntegerCodec::I32),
-            ArrayKind::Array,
-            Ownership::Full,
-        );
+        let descriptor = i32_zero_terminated(Ownership::Full);
         let buffer = unsafe {
             let mem = glib::ffi::g_malloc0(size_of::<i32>() * 4) as *mut i32;
             *mem = 7;
@@ -1998,13 +2123,7 @@ fn decode_zero_terminated_scalar_array_full_ownership_frees_buffer() {
             *mem.add(2) = 9;
             mem
         };
-        let decoded = descriptor
-            .decode(&env, &Stash::Ptr(buffer as *mut c_void))
-            .unwrap();
-        let items = decoded_items(&decoded);
-        assert_eq!(items.len(), 3);
-        assert_eq!(napi_mock::read_double(items[0]), Some(7.0));
-        assert_eq!(napi_mock::read_double(items[2]), Some(9.0));
+        assert_decodes_to_seven_eight_nine(&env, &descriptor, buffer as *mut c_void);
     });
 }
 
@@ -2063,11 +2182,7 @@ fn write_return_to_pointer_null_err_and_non_array_write_null() {
 fn write_return_to_pointer_encode_error_writes_null() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let descriptor = array_codec(
-            Codec::Integer(IntegerCodec::I32),
-            ArrayKind::Array,
-            Ownership::Full,
-        );
+        let descriptor = i32_zero_terminated(Ownership::Full);
         let val = array(&env, &[string("not a number")]);
         let mut slot: *mut c_void = 7 as *mut c_void;
         let ret = &mut slot as *mut *mut c_void as *mut c_void;

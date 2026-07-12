@@ -11,8 +11,6 @@ mod view;
 pub use js_ref::JsHandle;
 pub use view::{TypedView, ViewKind};
 
-pub const MAX_VALUE_DEPTH: usize = 64;
-
 fn from_napi<T: FromNapiValue>(env: &Env, raw: sys::napi_value) -> napi::Result<T> {
     unsafe { T::from_napi_value(env.raw(), raw) }
 }

@@ -70,6 +70,14 @@ impl HashTableEntryCodec {
             Codec::Boxed(boxed) if boxed.ownership.is_full() => bail!(
                 "Boxed GHashTable elements with full ownership are unsupported: a GHashTable destroy notify cannot release a boxed copy"
             ),
+            Codec::Struct(struct_codec) if struct_codec.ownership.is_full() => {
+                if struct_codec.size.is_none() {
+                    bail!(
+                        "Cannot transfer ownership of struct GHashTable elements: their size is unknown, so no copy can be made for the table"
+                    );
+                }
+                Ok(Some(glib::ffi::g_free))
+            }
             _ => Ok(None),
         }
     }
@@ -106,7 +114,10 @@ impl HashTableEntryCodec {
                 }
                 _ => bail!("Expected number in GHashTable for float"),
             },
-            Self::Handle(_) => value::handle_ptr(env, value, "GHashTable entry"),
+            Self::Handle(codec) => {
+                let ptr = value::handle_ptr(env, value, "GHashTable entry")?;
+                unsafe { codec.ref_for_transfer(ptr) }
+            }
             Self::PtrArray(item_codec) => {
                 anyhow::ensure!(
                     value.is_array()?,
@@ -208,7 +219,6 @@ impl HashTableCodec {
                 let (key, value) = Self::tuple(env, tuple)?;
 
                 let key_ptr = key_encoder.encode(env, key)?;
-                let key_ptr = unsafe { self.key_codec.ref_for_transfer(key_ptr)? };
 
                 let value_ptr = match value_encoder.encode(env, value) {
                     Ok(encoded) => encoded,
@@ -217,7 +227,6 @@ impl HashTableCodec {
                         return Err(err);
                     }
                 };
-                let value_ptr = unsafe { self.value_codec.ref_for_transfer(value_ptr)? };
 
                 unsafe {
                     glib::ffi::g_hash_table_insert(hash_table, key_ptr, value_ptr);

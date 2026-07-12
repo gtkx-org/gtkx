@@ -6,7 +6,6 @@ import {
     GtkBox,
     GtkButton,
     GtkCheckButton,
-    GtkDragSource,
     GtkDropTarget,
     GtkEntry,
     GtkGestureDrag,
@@ -25,9 +24,9 @@ import {
 import type { ComponentProps, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, userEvent, waitFor } from "../src/index.js";
-import { renderClickButton } from "./event-render-setup.js";
+import { renderClickButton, renderDragAndDropPair } from "./event-render-setup.js";
 
-const widgetHasFocus = (w: Gtk.Widget): boolean => w.hasFocus();
+const widgetHasFocus = (w: Gtk.Widget): boolean => w.isFocus();
 
 const expectEditableText = (entry: Gtk.Widget, expected: string): void => {
     if (!(entry instanceof Gtk.Editable)) {
@@ -610,29 +609,7 @@ describe("userEvent.drop — value passthrough and errors", () => {
 describe("userEvent.dragAndDrop", () => {
     it("fires drop on the target after verifying the source's DragSource", async () => {
         const handleDrop = vi.fn().mockReturnValue(true);
-        await render(
-            <GtkBox>
-                <GtkLabel
-                    name="drag-source"
-                    label="Drag me"
-                    controllers={<GtkDragSource actions={Gdk.DragAction.COPY} />}
-                />
-                <GtkLabel
-                    name="drop-target"
-                    label="Drop here"
-                    controllers={
-                        <GtkDropTarget
-                            types={[GObject.TYPE_STRING]}
-                            actions={Gdk.DragAction.COPY}
-                            onDrop={handleDrop}
-                        />
-                    }
-                />
-            </GtkBox>,
-        );
-
-        const source = await screen.findByName("drag-source");
-        const target = await screen.findByName("drop-target");
+        const { source, target } = await renderDragAndDropPair({ onDrop: handleDrop });
         await userEvent.dragAndDrop(source, target, "payload");
 
         const [value] = handleDrop.mock.calls[0] ?? [];
@@ -640,25 +617,7 @@ describe("userEvent.dragAndDrop", () => {
     });
 
     it("throws when the source has no DragSource controller", async () => {
-        await render(
-            <GtkBox>
-                <GtkLabel name="not-a-source" label="No source" />
-                <GtkLabel
-                    name="drop-target"
-                    label="Drop here"
-                    controllers={
-                        <GtkDropTarget
-                            types={[GObject.TYPE_STRING]}
-                            actions={Gdk.DragAction.COPY}
-                            onDrop={() => true}
-                        />
-                    }
-                />
-            </GtkBox>,
-        );
-
-        const source = await screen.findByName("not-a-source");
-        const target = await screen.findByName("drop-target");
+        const { source, target } = await renderDragAndDropPair({ onDrop: () => true, withDragSource: false });
         await expect(userEvent.dragAndDrop(source, target, "payload")).rejects.toThrow(/DragSource/);
     });
 });

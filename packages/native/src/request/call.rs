@@ -100,7 +100,9 @@ fn write_ref_updates(
     stashes: &[ffi::Stash],
 ) -> anyhow::Result<()> {
     for (i, (codec, &value)) in arg_codecs.iter().zip(values).enumerate() {
-        if matches!(codec, Codec::Ref(_)) {
+        if matches!(codec, Codec::Ref(_))
+            && !matches!(value.get_type()?, ValueType::Null | ValueType::Undefined)
+        {
             let new_value = codec.decode_with_context(env, &stashes[i], stashes, arg_codecs)?;
             let mut js_obj = Object::from_raw(env.raw(), value.raw());
             js_obj.set_named_property("value", new_value)?;

@@ -17,6 +17,8 @@ use helpers::{
     write_return_into_slot, write_value_into_slot,
 };
 
+helpers::g_free_recorder!();
+
 fn borrowed() -> StringCodec {
     StringCodec {
         ownership: Ownership::Borrowed,
@@ -245,5 +247,69 @@ fn write_value_to_pointer_writes_null() {
             &env,
             napi_mock::to_unknown(&env, napi_mock::fake_undefined()),
         );
+    });
+}
+
+fn write_over_previous_string(
+    env: &Env,
+    codec: &StringCodec,
+    value: napi::sys::napi_value,
+) -> (*mut c_void, *mut c_void, bool) {
+    let previous = unsafe { glib::ffi::g_strdup(c"stale".as_ptr()) } as *mut c_void;
+    drain_g_freed();
+    let slot = write_value_into_slot(env, codec, previous, napi_mock::to_unknown(env, value));
+    let previous_freed = drain_g_freed().contains(&(previous as usize));
+    (slot, previous, previous_freed)
+}
+
+#[test]
+fn write_value_to_pointer_full_frees_previous_owned_string() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let (slot, previous, previous_freed) =
+            write_over_previous_string(&env, &full(), napi_mock::fake_string("fresh"));
+
+        assert!(
+            previous_freed,
+            "an owned slot overwrite must free the previous string"
+        );
+        assert!(!slot.is_null());
+        assert_ne!(slot, previous);
+        let read = unsafe { CStr::from_ptr(slot as *const c_char) };
+        assert_eq!(read.to_str().unwrap(), "fresh");
+        unsafe { glib::ffi::g_free(slot) };
+    });
+}
+
+#[test]
+fn write_value_to_pointer_full_null_write_frees_previous_owned_string() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let (slot, _previous, previous_freed) =
+            write_over_previous_string(&env, &full(), napi_mock::fake_null());
+
+        assert!(
+            previous_freed,
+            "clearing an owned slot must free the previous string"
+        );
+        assert!(slot.is_null());
+    });
+}
+
+#[test]
+fn write_value_to_pointer_borrowed_keeps_previous_string() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let (slot, previous, previous_freed) =
+            write_over_previous_string(&env, &borrowed(), napi_mock::fake_string("fresh"));
+
+        assert!(
+            !previous_freed,
+            "an unowned slot overwrite must not free the previous string"
+        );
+        let kept = unsafe { CStr::from_ptr(previous as *const c_char) };
+        assert_eq!(kept.to_str().unwrap(), "stale");
+        unsafe { glib::ffi::g_free(slot) };
+        unsafe { glib::ffi::g_free(previous) };
     });
 }

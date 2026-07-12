@@ -98,6 +98,35 @@ fn buffer_view_byte_length_tracks_kind_element_size() {
 }
 
 #[test]
+fn buffer_view_rejects_shared_array_buffer_backed_typed_arrays() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let raw = napi_mock::fake_shared_typed_array(
+            sys::TypedarrayType::uint8_array,
+            fake_ptr(0x40),
+            4,
+            0,
+        );
+        let error = TypedView::from_unknown(&env, napi_mock::to_unknown(&env, raw))
+            .expect_err("a SharedArrayBuffer-backed typed array must be rejected");
+        assert!(matches!(error.status, napi::Status::InvalidArg));
+        assert!(error.reason.contains("SharedArrayBuffer"));
+    });
+}
+
+#[test]
+fn buffer_view_rejects_shared_array_buffer_backed_data_views() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let raw = napi_mock::fake_shared_data_view(fake_ptr(0x40), 8, 0);
+        let error = TypedView::from_unknown(&env, napi_mock::to_unknown(&env, raw))
+            .expect_err("a SharedArrayBuffer-backed DataView must be rejected");
+        assert!(matches!(error.status, napi::Status::InvalidArg));
+        assert!(error.reason.contains("SharedArrayBuffer"));
+    });
+}
+
+#[test]
 fn buffer_view_kind_rejects_unknown_tag() {
     let unknown: sys::napi_typedarray_type = 99;
     let error = ViewKind::try_from(unknown).expect_err("an unknown tag must be rejected");

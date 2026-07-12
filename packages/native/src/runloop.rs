@@ -1,16 +1,21 @@
 use std::alloc::{Layout, alloc_zeroed, dealloc};
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 use std::ffi::c_void;
 use std::os::raw::c_int;
 use std::time::{Duration, Instant};
 
 use glib::ffi::{
-    G_IO_IN, G_IO_OUT, GFALSE, GMainContext, GPollFD, g_main_context_check, g_main_context_default,
-    g_main_context_iteration, g_main_context_prepare, g_main_context_query, g_main_context_release,
+    G_IO_ERR, G_IO_HUP, G_IO_IN, G_IO_OUT, G_IO_PRI, GFALSE, GMainContext, GPollFD,
+    g_main_context_check, g_main_context_default, g_main_context_iteration, g_main_context_prepare,
+    g_main_context_query, g_main_context_release,
 };
 use libloading::os::unix::Library;
 use napi::Env;
+
+use crate::messaging::error_reporter::ErrorReporter;
+use crate::messaging::log_writer;
 
 const UV_POLL: c_int = 8;
 const UV_PREPARE: c_int = 9;
@@ -18,6 +23,8 @@ const UV_TIMER: c_int = 13;
 
 const UV_READABLE: c_int = 1;
 const UV_WRITABLE: c_int = 2;
+const UV_DISCONNECT: c_int = 4;
+const UV_PRIORITIZED: c_int = 8;
 
 const HANDLE_ALIGN: usize = 16;
 
@@ -36,13 +43,11 @@ struct UvApi {
     close: unsafe extern "C" fn(*mut c_void, Option<UvVoidCb>),
     prepare_init: unsafe extern "C" fn(*mut c_void, *mut c_void) -> c_int,
     prepare_start: unsafe extern "C" fn(*mut c_void, UvVoidCb) -> c_int,
-    prepare_stop: unsafe extern "C" fn(*mut c_void) -> c_int,
     timer_init: unsafe extern "C" fn(*mut c_void, *mut c_void) -> c_int,
     timer_start: unsafe extern "C" fn(*mut c_void, UvVoidCb, u64, u64) -> c_int,
     timer_stop: unsafe extern "C" fn(*mut c_void) -> c_int,
     poll_init: unsafe extern "C" fn(*mut c_void, *mut c_void, c_int) -> c_int,
     poll_start: unsafe extern "C" fn(*mut c_void, c_int, UvPollCb) -> c_int,
-    poll_stop: unsafe extern "C" fn(*mut c_void) -> c_int,
 }
 
 impl UvApi {
@@ -58,13 +63,11 @@ impl UvApi {
                 close: *lib.get(b"uv_close")?,
                 prepare_init: *lib.get(b"uv_prepare_init")?,
                 prepare_start: *lib.get(b"uv_prepare_start")?,
-                prepare_stop: *lib.get(b"uv_prepare_stop")?,
                 timer_init: *lib.get(b"uv_timer_init")?,
                 timer_start: *lib.get(b"uv_timer_start")?,
                 timer_stop: *lib.get(b"uv_timer_stop")?,
                 poll_init: *lib.get(b"uv_poll_init")?,
                 poll_start: *lib.get(b"uv_poll_start")?,
-                poll_stop: *lib.get(b"uv_poll_stop")?,
             }
         };
         std::mem::forget(lib);
@@ -99,13 +102,17 @@ fn alloc_uv_handle(htype: c_int) -> *mut c_void {
     ptr
 }
 
-unsafe extern "C" fn on_close(handle: *mut c_void) {
+unsafe fn free_uv_handle(handle: *mut c_void) {
     let data_ptr = unsafe { (uv().handle_get_data)(handle) } as *mut HandleData;
     if data_ptr.is_null() {
         return;
     }
     let data = unsafe { Box::from_raw(data_ptr) };
     unsafe { dealloc(handle as *mut u8, handle_layout(data.size)) };
+}
+
+unsafe extern "C" fn on_close(handle: *mut c_void) {
+    unsafe { free_uv_handle(handle) };
 }
 
 fn close_uv_handle(handle: *mut c_void) {
@@ -121,7 +128,43 @@ fn glib_events_to_uv(events: u16) -> c_int {
     if events & G_IO_OUT != 0 {
         result |= UV_WRITABLE;
     }
+    if events & (G_IO_HUP | G_IO_ERR) != 0 {
+        result |= UV_DISCONNECT;
+    }
+    if events & G_IO_PRI != 0 {
+        result |= UV_PRIORITIZED;
+    }
     result
+}
+
+fn desired_uv_events(fds: &[GPollFD]) -> HashMap<c_int, c_int> {
+    let mut desired = HashMap::new();
+    for pfd in fds {
+        *desired.entry(pfd.fd).or_insert(0) |= glib_events_to_uv(pfd.events);
+    }
+    for uv_events in desired.values_mut() {
+        if *uv_events == 0 {
+            *uv_events = UV_DISCONNECT;
+        }
+    }
+    desired
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum Wakeup {
+    Now,
+    In(u64),
+    Idle,
+}
+
+fn wakeup_for(timeout: c_int, sources_ready: bool, has_unwatchable_fds: bool) -> Wakeup {
+    if sources_ready || has_unwatchable_fds || timeout == 0 {
+        Wakeup::Now
+    } else if timeout < 0 {
+        Wakeup::Idle
+    } else {
+        Wakeup::In(timeout as u64)
+    }
 }
 
 struct GtkLoop {
@@ -178,56 +221,65 @@ impl GtkLoop {
             )
         } != 0;
 
-        self.reconcile_pollers();
-        self.arm_timer(timeout, prepared_ready || check_ready);
+        let has_unwatchable_fds = self.reconcile_pollers();
+        self.arm_timer(wakeup_for(
+            timeout,
+            prepared_ready || check_ready,
+            has_unwatchable_fds,
+        ));
     }
 
-    fn reconcile_pollers(&mut self) {
+    fn reconcile_pollers(&mut self) -> bool {
         let uv = uv();
-        let mut desired: HashMap<c_int, u16> = HashMap::new();
-        for pfd in &self.fds[..self.n_fds] {
-            *desired.entry(pfd.fd).or_insert(0) |= pfd.events;
-        }
+        let desired = desired_uv_events(&self.fds[..self.n_fds]);
 
         let stale: Vec<c_int> = self
             .pollers
             .keys()
             .copied()
-            .filter(|fd| glib_events_to_uv(desired.get(fd).copied().unwrap_or(0)) == 0)
+            .filter(|fd| !desired.contains_key(fd))
             .collect();
         for fd in stale {
             if let Some(handle) = self.pollers.remove(&fd) {
-                unsafe { (uv.poll_stop)(handle) };
                 close_uv_handle(handle);
             }
         }
 
-        for (fd, events) in desired {
-            let uv_events = glib_events_to_uv(events);
-            if uv_events == 0 {
-                continue;
-            }
-            let uv_loop = self.uv_loop;
-            let handle = *self.pollers.entry(fd).or_insert_with(|| {
-                let handle = alloc_uv_handle(UV_POLL);
-                unsafe {
-                    (uv.poll_init)(uv_loop, handle, fd);
-                    (uv.unreference)(handle);
+        let mut has_unwatchable_fds = false;
+        for (fd, uv_events) in desired {
+            let handle = match self.pollers.entry(fd) {
+                Entry::Occupied(entry) => *entry.get(),
+                Entry::Vacant(entry) => {
+                    let handle = alloc_uv_handle(UV_POLL);
+                    if unsafe { (uv.poll_init)(self.uv_loop, handle, fd) } != 0 {
+                        unsafe { free_uv_handle(handle) };
+                        has_unwatchable_fds = true;
+                        continue;
+                    }
+                    unsafe { (uv.unreference)(handle) };
+                    *entry.insert(handle)
                 }
-                handle
-            });
-            unsafe { (uv.poll_start)(handle, uv_events, on_poll) };
+            };
+            if unsafe { (uv.poll_start)(handle, uv_events, on_poll) } != 0 {
+                self.pollers.remove(&fd);
+                close_uv_handle(handle);
+                has_unwatchable_fds = true;
+            }
         }
+        has_unwatchable_fds
     }
 
-    fn arm_timer(&self, timeout: c_int, ready: bool) {
+    fn arm_timer(&self, wakeup: Wakeup) {
         let uv = uv();
-        if ready || timeout == 0 {
-            unsafe { (uv.timer_start)(self.timer, on_timer, 0, 0) };
-        } else if timeout < 0 {
-            unsafe { (uv.timer_stop)(self.timer) };
-        } else {
-            unsafe { (uv.timer_start)(self.timer, on_timer, timeout as u64, 0) };
+        let rc = match wakeup {
+            Wakeup::Now => unsafe { (uv.timer_start)(self.timer, on_timer, 0, 0) },
+            Wakeup::In(delay) => unsafe { (uv.timer_start)(self.timer, on_timer, delay, 0) },
+            Wakeup::Idle => unsafe { (uv.timer_stop)(self.timer) },
+        };
+        if rc != 0 {
+            ErrorReporter::global().report_str(&format!(
+                "libuv failed to arm the GLib wakeup timer (uv error {rc})"
+            ));
         }
     }
 }
@@ -264,6 +316,8 @@ pub fn install(env: &Env) -> napi::Result<()> {
         return Ok(());
     }
 
+    log_writer::install();
+
     let uv = UvApi::load().map_err(|err| {
         napi::Error::new(
             napi::Status::GenericFailure,
@@ -283,11 +337,25 @@ pub fn install(env: &Env) -> napi::Result<()> {
     }
 
     let prepare = alloc_uv_handle(UV_PREPARE);
+    let rc = unsafe { (uv.prepare_init)(uv_loop, prepare) };
+    if rc != 0 {
+        unsafe { free_uv_handle(prepare) };
+        return Err(fail_install(ctx, &[], "uv_prepare_init", rc));
+    }
+
     let timer = alloc_uv_handle(UV_TIMER);
+    let rc = unsafe { (uv.timer_init)(uv_loop, timer) };
+    if rc != 0 {
+        unsafe { free_uv_handle(timer) };
+        return Err(fail_install(ctx, &[prepare], "uv_timer_init", rc));
+    }
+
+    let rc = unsafe { (uv.prepare_start)(prepare, on_prepare) };
+    if rc != 0 {
+        return Err(fail_install(ctx, &[prepare, timer], "uv_prepare_start", rc));
+    }
+
     unsafe {
-        (uv.prepare_init)(uv_loop, prepare);
-        (uv.timer_init)(uv_loop, timer);
-        (uv.prepare_start)(prepare, on_prepare);
         (uv.unreference)(prepare);
         (uv.unreference)(timer);
     }
@@ -314,6 +382,22 @@ pub fn install(env: &Env) -> napi::Result<()> {
     Ok(())
 }
 
+fn fail_install(
+    ctx: *mut GMainContext,
+    initialized: &[*mut c_void],
+    call: &str,
+    rc: c_int,
+) -> napi::Error {
+    for &handle in initialized {
+        close_uv_handle(handle);
+    }
+    unsafe { g_main_context_release(ctx) };
+    napi::Error::new(
+        napi::Status::GenericFailure,
+        format!("{call} failed while installing the GLib runloop (uv error {rc})"),
+    )
+}
+
 pub fn set_keep_alive(enable: bool) {
     GTK_LOOP.with_borrow(|slot| {
         if let Some(state) = slot.as_ref() {
@@ -332,13 +416,7 @@ pub fn set_keep_alive(enable: bool) {
 pub fn teardown() {
     let ctx = GTK_LOOP.with_borrow_mut(|slot| {
         let state = slot.take()?;
-        let uv = uv();
-        unsafe {
-            (uv.prepare_stop)(state.prepare);
-            (uv.timer_stop)(state.timer);
-        }
-        for (_, handle) in state.pollers {
-            unsafe { (uv.poll_stop)(handle) };
+        for handle in state.pollers.into_values() {
             close_uv_handle(handle);
         }
         close_uv_handle(state.prepare);
@@ -357,14 +435,80 @@ pub fn teardown() {
 mod tests {
     use super::*;
 
+    fn pfd(fd: c_int, events: u32) -> GPollFD {
+        GPollFD {
+            fd,
+            events: events as u16,
+            revents: 0,
+        }
+    }
+
     #[test]
     fn glib_events_map_to_uv_readiness() {
         assert_eq!(glib_events_to_uv(G_IO_IN as u16), UV_READABLE);
         assert_eq!(glib_events_to_uv(G_IO_OUT as u16), UV_WRITABLE);
+        assert_eq!(glib_events_to_uv(G_IO_HUP as u16), UV_DISCONNECT);
+        assert_eq!(glib_events_to_uv(G_IO_ERR as u16), UV_DISCONNECT);
+        assert_eq!(glib_events_to_uv(G_IO_PRI as u16), UV_PRIORITIZED);
         assert_eq!(
             glib_events_to_uv((G_IO_IN | G_IO_OUT) as u16),
             UV_READABLE | UV_WRITABLE
         );
+        assert_eq!(
+            glib_events_to_uv((G_IO_HUP | G_IO_ERR) as u16),
+            UV_DISCONNECT
+        );
+        assert_eq!(
+            glib_events_to_uv((G_IO_IN | G_IO_HUP | G_IO_PRI) as u16),
+            UV_READABLE | UV_DISCONNECT | UV_PRIORITIZED
+        );
         assert_eq!(glib_events_to_uv(0), 0);
+    }
+
+    #[test]
+    fn desired_uv_events_merge_per_fd() {
+        let fds = [pfd(3, G_IO_IN), pfd(3, G_IO_OUT), pfd(5, G_IO_IN)];
+        let desired = desired_uv_events(&fds);
+        assert_eq!(desired.len(), 2);
+        assert_eq!(desired.get(&3).copied(), Some(UV_READABLE | UV_WRITABLE));
+        assert_eq!(desired.get(&5).copied(), Some(UV_READABLE));
+    }
+
+    #[test]
+    fn desired_uv_events_watch_zero_event_fds_for_disconnect() {
+        let fds = [pfd(6, 0)];
+        assert_eq!(
+            desired_uv_events(&fds).get(&6).copied(),
+            Some(UV_DISCONNECT)
+        );
+    }
+
+    #[test]
+    fn desired_uv_events_cover_hangup_error_and_priority_interest() {
+        let fds = [pfd(4, G_IO_HUP), pfd(5, G_IO_ERR), pfd(7, G_IO_PRI)];
+        let desired = desired_uv_events(&fds);
+        assert_eq!(desired.len(), 3);
+        assert_eq!(desired.get(&4).copied(), Some(UV_DISCONNECT));
+        assert_eq!(desired.get(&5).copied(), Some(UV_DISCONNECT));
+        assert_eq!(desired.get(&7).copied(), Some(UV_PRIORITIZED));
+    }
+
+    #[test]
+    fn wakeup_follows_glib_timeout_when_nothing_is_ready() {
+        assert_eq!(wakeup_for(-1, false, false), Wakeup::Idle);
+        assert_eq!(wakeup_for(0, false, false), Wakeup::Now);
+        assert_eq!(wakeup_for(25, false, false), Wakeup::In(25));
+    }
+
+    #[test]
+    fn wakeup_is_immediate_when_sources_are_ready() {
+        assert_eq!(wakeup_for(-1, true, false), Wakeup::Now);
+        assert_eq!(wakeup_for(25, true, false), Wakeup::Now);
+    }
+
+    #[test]
+    fn wakeup_is_immediate_when_a_poll_fd_is_unwatchable() {
+        assert_eq!(wakeup_for(-1, false, true), Wakeup::Now);
+        assert_eq!(wakeup_for(25, false, true), Wakeup::Now);
     }
 }

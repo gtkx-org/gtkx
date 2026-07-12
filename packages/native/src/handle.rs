@@ -1,6 +1,6 @@
 mod boxed;
 mod fundamental;
-pub(crate) mod wrapper;
+pub mod wrapper;
 
 pub use boxed::{Boxed, BoxedFreeFn};
 pub use fundamental::{Fundamental, RefFn, UnrefFn};

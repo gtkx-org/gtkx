@@ -3,6 +3,8 @@ use std::cell::Cell;
 use napi::sys;
 use napi::{Env, Status};
 
+use super::panic_handler::guard_ffi_boundary;
+
 thread_local! {
     static NODE_ENV: Cell<sys::napi_env> = const { Cell::new(std::ptr::null_mut()) };
     static ASYNC_CONTEXT: Cell<sys::napi_async_context> = const { Cell::new(std::ptr::null_mut()) };
@@ -38,12 +40,39 @@ pub fn install(env: Env) -> napi::Result<()> {
     Ok(())
 }
 
+pub fn is_installed_on_current_thread() -> bool {
+    !NODE_ENV.with(Cell::get).is_null()
+}
+
+pub fn try_env() -> Option<Env> {
+    let raw = NODE_ENV.with(Cell::get);
+    if raw.is_null() {
+        None
+    } else {
+        Some(Env::from_raw(raw))
+    }
+}
+
 pub fn env() -> Env {
-    Env::from_raw(NODE_ENV.with(Cell::get))
+    try_env().expect(
+        "the Node environment was accessed from a thread it is not installed on; \
+         marshal the call to the GLib main context first",
+    )
+}
+
+pub fn invoke_on_install_thread(context: &'static str, work: impl FnOnce() + Send + 'static) {
+    let pending = Cell::new(Some(work));
+    let source = glib::idle_source_new(Some(context), glib::Priority::DEFAULT, move || {
+        if let Some(work) = pending.take() {
+            guard_ffi_boundary(context, work);
+        }
+        glib::ControlFlow::Break
+    });
+    source.attach(Some(&glib::MainContext::default()));
 }
 
 pub fn run_dispatch_scope(dispatch: impl FnOnce()) {
-    let raw = NODE_ENV.with(Cell::get);
+    let raw = env().raw();
 
     unsafe {
         let mut handle_scope: sys::napi_handle_scope = std::ptr::null_mut();
@@ -82,5 +111,41 @@ fn report_pending_exception(raw: sys::napi_env) {
             return;
         }
         sys::napi_fatal_exception(raw, exception);
+    }
+}
+
+#[cfg(test)]
+pub(crate) fn run_installed<R>(f: impl FnOnce() -> R) -> R {
+    test_support::run(|| {
+        install(test_support::fake_env()).expect("installing the local node env should succeed");
+        f()
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_environment_is_only_visible_on_its_install_thread() {
+        run_installed(|| {
+            assert!(is_installed_on_current_thread());
+            assert!(try_env().is_some());
+
+            let observed_off_thread = std::thread::spawn(|| {
+                (
+                    is_installed_on_current_thread(),
+                    try_env().is_none(),
+                    std::panic::catch_unwind(|| {
+                        env();
+                    })
+                    .is_err(),
+                )
+            })
+            .join()
+            .expect("the probe thread should not crash");
+
+            assert_eq!(observed_off_thread, (false, true, true));
+        });
     }
 }

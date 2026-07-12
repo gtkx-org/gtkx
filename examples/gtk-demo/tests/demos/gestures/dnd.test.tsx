@@ -287,23 +287,26 @@ describe("dndDemo non-context-menu click is ignored", () => {
     });
 });
 
+const beginDragRevealingTrash = async (item: Gtk.Label, trash: Gtk.Box): Promise<Gtk.DragSource | null> => {
+    const dragSource = findController(item, Gtk.DragSource);
+    expect(dragSource).toBeInstanceOf(Gtk.DragSource);
+    if (!dragSource) return null;
+    await act(() => {
+        dragSource.emit("drag-begin", null);
+    });
+    await waitFor(() => expect(trash.getVisible()).toBe(true));
+    return dragSource;
+};
+
 describe("dndDemo item drag-source side effects", () => {
     it("dims the item and reveals the trash zone on drag-begin, then restores them on drag-end", async () => {
         await renderDemo(dndDemo);
         const item1 = await findItemLabel("1");
         const trash = (await screen.findByName("trash-zone")) as Gtk.Box;
         expect(trash.getVisible()).toBe(false);
-        const dragSource = findController(item1, Gtk.DragSource);
-        expect(dragSource).toBeInstanceOf(Gtk.DragSource);
+        const dragSource = await beginDragRevealingTrash(item1, trash);
         if (!dragSource) return;
-
-        await act(() => {
-            dragSource.emit("drag-begin", null);
-        });
-        await waitFor(() => {
-            expect(item1.getOpacity()).toBeCloseTo(0.3, 2);
-            expect(trash.getVisible()).toBe(true);
-        });
+        await waitFor(() => expect(item1.getOpacity()).toBeCloseTo(0.3, 2));
 
         await act(() => {
             dragSource.emit("drag-end", null, false);
@@ -318,8 +321,9 @@ describe("dndDemo item drag-source side effects", () => {
 describe("dndDemo trash zone", () => {
     it("deletes an item when its id is dropped on the trash zone", async () => {
         await renderDemo(dndDemo);
-        await findItemLabel("1");
+        const item1 = await findItemLabel("1");
         const trash = (await screen.findByName("trash-zone")) as Gtk.Box;
+        if (!(await beginDragRevealingTrash(item1, trash))) return;
         await userEvent.drop(trash, makeStringValue("1"));
         await waitFor(() => {
             expect(screen.queryByName("item1")).toBeNull();

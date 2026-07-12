@@ -7,13 +7,16 @@ use gtk4::prelude::ObjectType as _;
 
 use napi::Env;
 use napi::JsValue as _;
+use napi::bindgen_prelude::{Array, FromNapiValue as _};
 
 use native::ffi::codec::{
     ArrayCodec, ArrayKind, BooleanCodec, Codec, Decoder, EnumFlagsCodec, EnumFlagsKind, FloatCodec,
     HashTableCodec, IntegerCodec, ObjectCodec, Ownership, ReadSource, RefCodec, StringCodec,
     UnicharCodec,
 };
+use native::ffi::descriptor::{Descriptor, NestedDescriptor};
 use native::ffi::{self, StashData, StashStorage};
+use native::request::{bind::bind, call::call};
 
 use helpers::napi_mock;
 
@@ -491,6 +494,38 @@ fn decode_with_context_array_non_ptr_slot_stash_uses_storage_pointer() {
         )
         .expect("valid array codec");
         assert_array_decodes_empty(&env, array_codec, &stash);
+    });
+}
+
+fn i32_ref_descriptor() -> Descriptor {
+    Descriptor::Ref {
+        inner_descriptor: NestedDescriptor(Box::new(Descriptor::Int32)),
+        inout: None,
+    }
+}
+
+#[test]
+fn call_with_nullish_ref_arguments_passes_null_pointers_and_skips_writeback() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let descriptor = bind(
+            "libglib-2.0.so.0".to_owned(),
+            "g_direct_equal".to_owned(),
+            vec![i32_ref_descriptor(), i32_ref_descriptor()],
+            Descriptor::Boolean,
+        )
+        .expect("bind should succeed");
+
+        let raw_values =
+            napi_mock::fake_array(&[napi_mock::fake_null(), napi_mock::fake_undefined()]);
+        let values = Array::from_unknown(napi_mock::to_unknown(&env, raw_values))
+            .expect("fake array should convert to an Array");
+
+        let result =
+            call(&env, &descriptor, values).expect("call with nullish refs should succeed");
+
+        assert_eq!(napi_mock::read_bool(result.raw()), Some(true));
+        assert_eq!(napi_mock::count("napi_set_named_property"), 0);
     });
 }
 

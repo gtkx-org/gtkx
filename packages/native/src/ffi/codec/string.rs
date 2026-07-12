@@ -93,12 +93,13 @@ impl PtrWriter for StringCodec {
         slot: ffi::Slot,
         value: Unknown<'_>,
     ) -> anyhow::Result<()> {
-        match read_string(env, value)? {
-            Some(s) => {
-                let glib_ptr = str_to_glib_full(&s)?;
-                unsafe { slot.store(glib_ptr.cast()) };
-            }
-            None => unsafe { slot.store(std::ptr::null_mut()) },
+        let new_ptr = match read_string(env, value)? {
+            Some(s) => str_to_glib_full(&s)?.cast::<c_void>(),
+            None => std::ptr::null_mut(),
+        };
+        let old_ptr = unsafe { slot.swap(new_ptr) };
+        if self.ownership.is_full() && !old_ptr.is_null() {
+            unsafe { glib::ffi::g_free(old_ptr) };
         }
         Ok(())
     }

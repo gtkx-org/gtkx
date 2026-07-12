@@ -2,6 +2,7 @@ use anyhow::bail;
 
 use super::prelude::*;
 use crate::handle::{Boxed, Handle};
+use crate::messaging::error_reporter::ReportErr as _;
 
 #[derive(Debug, Clone)]
 pub struct StructCodec {
@@ -13,6 +14,25 @@ pub struct StructCodec {
 impl Encoder for StructCodec {
     fn object_ptr_context(&self) -> &'static str {
         "Struct object"
+    }
+
+    fn transfer_release(&self) -> Option<ffi::ReleaseKind> {
+        if self.ownership.is_borrowed() || self.size.is_none() {
+            return None;
+        }
+        Some(ffi::ReleaseKind::GFree)
+    }
+
+    unsafe fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
+        if !self.ownership.is_full() || ptr.is_null() {
+            return Ok(ptr);
+        }
+        let Some(size) = self.size else {
+            bail!(
+                "Cannot transfer ownership of struct: its size is unknown, so no copy can be made for the callee"
+            );
+        };
+        Ok(unsafe { glib::ffi::g_memdup2(ptr as *const c_void, size) })
     }
 }
 
@@ -62,7 +82,11 @@ impl PtrWriter for StructCodec {
         ret: ffi::Slot,
         value: &std::result::Result<Unknown<'_>, ()>,
     ) {
-        write_return_object_ptr(env, ret, value, std::convert::identity);
+        self.write_return_with_ownership(env, ret, value, self.ownership, |ptr| {
+            unsafe { self.ref_for_transfer(ptr) }
+                .report_err("Struct return: cannot transfer ownership")
+                .unwrap_or(std::ptr::null_mut())
+        });
     }
 
     fn write_value_to_ptr(

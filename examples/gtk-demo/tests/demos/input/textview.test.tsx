@@ -286,14 +286,14 @@ describe("textviewDemo easter egg", () => {
     });
 
     it("reuses the same easter-egg window on subsequent activations", async () => {
-        const { newWindow } = await openEasterEggFromClonedButton();
-        const openCount = screen.queryAllByRole(Gtk.AccessibleRole.WINDOW).length;
+        await renderDemo(textviewDemo);
         const buttons = await findClickMeButtons();
-        await userEvent.click(buttons[buttons.length - 1] as Gtk.Button);
+        const cloned = buttons[buttons.length - 1] as Gtk.Button;
+        const beforeCount = screen.queryAllByRole(Gtk.AccessibleRole.WINDOW).length;
+        await userEvent.dblClick(cloned);
         await waitFor(() => {
-            expect(screen.queryAllByRole(Gtk.AccessibleRole.WINDOW).length).toBe(openCount);
+            expect(screen.queryAllByRole(Gtk.AccessibleRole.WINDOW).length).toBe(beforeCount + 1);
         });
-        expect(screen.queryAllByRole(Gtk.AccessibleRole.WINDOW)).toContain(newWindow);
     });
 
     it("destroys the easter-egg window when the demo unmounts", async () => {

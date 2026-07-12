@@ -1,4 +1,5 @@
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
+use std::collections::HashSet;
 use std::ffi::c_void;
 use std::ptr::NonNull;
 use std::rc::Rc;
@@ -14,6 +15,10 @@ pub struct WrapperBinding {
     napi_ref: Cell<usize>,
     generation: Cell<u64>,
     wrapper_strong: Cell<bool>,
+}
+
+thread_local! {
+    static LIVE_TOGGLE_REFS: RefCell<HashSet<usize>> = RefCell::new(HashSet::new());
 }
 
 fn quark() -> glib::Quark {
@@ -60,7 +65,7 @@ fn delete_reference(napi_ref: usize) {
     unsafe { sys::napi_delete_reference(node_env::env().raw(), napi_ref as sys::napi_ref) };
 }
 
-pub(crate) unsafe fn install(
+pub unsafe fn install(
     gobject: *mut glib::gobject_ffi::GObject,
     napi_ref: *mut c_void,
 ) -> (Rc<WrapperBinding>, u64) {
@@ -79,6 +84,9 @@ pub(crate) unsafe fn install(
                 wrapper_strong: Cell::new(true),
             });
             borrow_object(gobject).set_qdata::<Rc<WrapperBinding>>(quark(), Rc::clone(&binding));
+            LIVE_TOGGLE_REFS.with_borrow_mut(|live| {
+                live.insert(gobject as usize);
+            });
             glib::gobject_ffi::g_object_add_toggle_ref(
                 gobject,
                 Some(on_toggle_notify),
@@ -109,6 +117,9 @@ pub(crate) fn schedule_cleanup(
 
             let gobject = gobject_ptr as *mut glib::gobject_ffi::GObject;
             binding.generation.set(0);
+            LIVE_TOGGLE_REFS.with_borrow_mut(|live| {
+                live.remove(&gobject_ptr);
+            });
             unsafe {
                 drop(borrow_object(gobject).steal_qdata::<Rc<WrapperBinding>>(quark()));
             }
@@ -129,14 +140,35 @@ unsafe extern "C" fn on_toggle_notify(
     gobject: *mut glib::gobject_ffi::GObject,
     is_last_ref: glib::ffi::gboolean,
 ) {
-    guard_ffi_boundary("toggle-reference notify", || {
-        let Some(nn) = (unsafe { binding_qdata(gobject) }) else {
-            return;
-        };
-        let binding = unsafe { nn.as_ref() };
-        let napi_ref = binding.napi_ref.get() as *mut c_void;
-        apply_wrapper_level(binding, napi_ref, is_last_ref == 0);
+    if node_env::is_installed_on_current_thread() {
+        guard_ffi_boundary("toggle-reference notify", || unsafe {
+            apply_toggle(gobject, is_last_ref == 0);
+        });
+        return;
+    }
+
+    let gobject_ptr = gobject as usize;
+    node_env::invoke_on_install_thread("toggle-reference resync", move || {
+        resync_wrapper_level(gobject_ptr);
     });
+}
+
+unsafe fn apply_toggle(gobject: *mut glib::gobject_ffi::GObject, strong: bool) {
+    let Some(nn) = (unsafe { binding_qdata(gobject) }) else {
+        return;
+    };
+    let binding = unsafe { nn.as_ref() };
+    let napi_ref = binding.napi_ref.get() as *mut c_void;
+    apply_wrapper_level(binding, napi_ref, strong);
+}
+
+fn resync_wrapper_level(gobject_ptr: usize) {
+    if !LIVE_TOGGLE_REFS.with_borrow(|live| live.contains(&gobject_ptr)) {
+        return;
+    }
+    let gobject = gobject_ptr as *mut glib::gobject_ffi::GObject;
+    let strong = unsafe { borrow_object(gobject) }.ref_count() > 1;
+    unsafe { apply_toggle(gobject, strong) };
 }
 
 #[cfg(test)]
@@ -147,7 +179,7 @@ mod tests {
 
     #[test]
     fn wrapper_ref_and_has_wrapper_are_empty_without_a_binding() {
-        test_support::run(|| {
+        node_env::run_installed(|| {
             let (obj, obj_ptr, _) = test_support::fresh_gobject();
             assert!(unsafe { wrapper_ref(obj_ptr).is_null() });
             assert!(!unsafe { has_wrapper(obj_ptr) });
@@ -157,7 +189,7 @@ mod tests {
 
     #[test]
     fn install_records_the_reference_and_marks_the_object_wrapped() {
-        test_support::run(|| {
+        node_env::run_installed(|| {
             let (obj, obj_ptr, _) = test_support::fresh_gobject();
             let napi_ref = napi_mock::fake_reference();
             let (_binding, generation) = unsafe { install(obj_ptr, napi_ref.cast()) };
@@ -170,7 +202,7 @@ mod tests {
 
     #[test]
     fn reinstalling_bumps_the_generation_and_updates_the_reference() {
-        test_support::run(|| {
+        node_env::run_installed(|| {
             let (obj, obj_ptr, _) = test_support::fresh_gobject();
             let first_ref = napi_mock::fake_reference();
             let second_ref = napi_mock::fake_reference();
@@ -185,7 +217,7 @@ mod tests {
 
     #[test]
     fn schedule_cleanup_with_a_stale_generation_keeps_the_binding() {
-        test_support::run(|| {
+        node_env::run_installed(|| {
             let (obj, obj_ptr, _) = test_support::fresh_gobject();
             let napi_ref = napi_mock::fake_reference();
             let (binding, _) = unsafe { install(obj_ptr, napi_ref.cast()) };
@@ -198,7 +230,7 @@ mod tests {
 
     #[test]
     fn schedule_cleanup_with_a_matching_generation_removes_the_binding() {
-        test_support::run(|| {
+        node_env::run_installed(|| {
             let (obj, obj_ptr, _) = test_support::fresh_gobject();
             let napi_ref = napi_mock::fake_reference();
             let (binding, generation) = unsafe { install(obj_ptr, napi_ref.cast()) };
@@ -217,7 +249,7 @@ mod tests {
 
     #[test]
     fn schedule_cleanup_without_a_binding_deletes_the_reference() {
-        test_support::run(|| {
+        node_env::run_installed(|| {
             let napi_ref = napi_mock::fake_reference();
             schedule_cleanup(None, 0, 0, napi_ref as usize);
             test_support::pump_default_context_until(|| napi_mock::reference_is_deleted(napi_ref));
