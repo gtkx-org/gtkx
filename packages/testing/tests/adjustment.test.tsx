@@ -2,7 +2,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkAdjustment, GtkBox, GtkButton, GtkLabel, GtkScale, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
-import { render, screen, userEvent } from "../src/index.js";
+import { render, screen, userEvent, waitFor } from "../src/index.js";
 
 describe("userEvent.slide", () => {
     it("sets a Gtk.Scale to an exact value through its change-value signal", async () => {
@@ -40,7 +40,7 @@ describe("userEvent.scroll", () => {
         const sw = ref.current;
         expect(sw).not.toBeNull();
         const vadjustment = (sw as Gtk.ScrolledWindow).getVadjustment();
-        expect(vadjustment.getUpper()).toBeGreaterThan(vadjustment.getPageSize());
+        await waitFor(() => expect(vadjustment.getUpper()).toBeGreaterThan(vadjustment.getPageSize()));
 
         await userEvent.scroll(sw as Gtk.ScrolledWindow, { y: 100 });
         expect(vadjustment.getValue()).toBe(100);

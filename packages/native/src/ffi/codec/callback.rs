@@ -32,7 +32,7 @@ impl Encoder for CallbackCodec {
         _ptr: libffi::CodePtr,
         _args: &[libffi::Arg],
     ) -> anyhow::Result<ffi::Stash> {
-        anyhow::bail!("Callbacks cannot be return codecs")
+        reject_return_codec("Callback")
     }
 
     fn append_ffi_arg_types(&self, types: &mut Vec<libffi::Type>) {

@@ -45,7 +45,7 @@ impl Encoder for BufferCodec {
         _ptr: libffi::CodePtr,
         _args: &[libffi::Arg],
     ) -> anyhow::Result<ffi::Stash> {
-        bail!("Buffer codec cannot be return codecs")
+        reject_return_codec("Buffer")
     }
 }
 

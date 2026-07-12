@@ -73,11 +73,11 @@ impl LibraryCache {
         library_name: &str,
         get_type_fn_name: &str,
     ) -> anyhow::Result<glib::Type> {
-        if let Some(cached) = self.cached_type(library_name, get_type_fn_name) {
-            return Ok(cached);
-        }
-        let get_type_fn = self.resolve_symbol::<GetTypeFn>(library_name, get_type_fn_name)?;
-        Ok(self.invoke_and_cache_type(library_name, get_type_fn_name, get_type_fn))
+        self.resolve_type_with(library_name, get_type_fn_name, |cache| {
+            cache
+                .resolve_symbol::<GetTypeFn>(library_name, get_type_fn_name)
+                .map(Some)
+        })
     }
 
     pub fn resolve_type_optional(
@@ -85,13 +85,24 @@ impl LibraryCache {
         library_name: &str,
         get_type_fn_name: &str,
     ) -> anyhow::Result<glib::Type> {
+        self.resolve_type_with(library_name, get_type_fn_name, |cache| {
+            let library = cache.get_or_load(library_name)?;
+            let symbol = unsafe { library.get::<GetTypeFn>(get_type_fn_name.as_bytes()) };
+            Ok(symbol.ok().map(|symbol| *symbol))
+        })
+    }
+
+    fn resolve_type_with(
+        &mut self,
+        library_name: &str,
+        get_type_fn_name: &str,
+        lookup: impl FnOnce(&mut Self) -> anyhow::Result<Option<GetTypeFn>>,
+    ) -> anyhow::Result<glib::Type> {
         if let Some(cached) = self.cached_type(library_name, get_type_fn_name) {
             return Ok(cached);
         }
-        let library = self.get_or_load(library_name)?;
-        let get_type_fn = match unsafe { library.get::<GetTypeFn>(get_type_fn_name.as_bytes()) } {
-            Ok(symbol) => *symbol,
-            Err(_) => return Ok(glib::Type::INVALID),
+        let Some(get_type_fn) = lookup(self)? else {
+            return Ok(glib::Type::INVALID);
         };
         Ok(self.invoke_and_cache_type(library_name, get_type_fn_name, get_type_fn))
     }

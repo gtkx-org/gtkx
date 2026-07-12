@@ -8,10 +8,10 @@ export const dispatchOnOrCreateController = <T extends Gtk.EventController>(
     widget: Gtk.Widget,
     controllerType: ControllerConstructor<T>,
     emit: ControllerEmit<T>,
-): Promise<void> => wrapEvent(() => emit(getOrCreateController(widget, controllerType)));
+): Promise<void> => wrapEvent(widget, () => emit(getOrCreateController(widget, controllerType)));
 
 export const dispatchOnController = <T extends Gtk.EventController>(
     widget: Gtk.Widget,
     controllerType: ControllerConstructor<T>,
     emit: ControllerEmit<T>,
-): Promise<void> => wrapEvent(() => emit(getController(widget, controllerType)));
+): Promise<void> => wrapEvent(widget, () => emit(getController(widget, controllerType)));

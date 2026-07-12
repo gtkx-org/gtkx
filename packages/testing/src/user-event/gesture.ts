@@ -90,7 +90,7 @@ export const drag = async (widget: Gtk.Widget, dx: number, dy: number, options: 
     }
     const startX = options.startX ?? 0;
     const startY = options.startY ?? 0;
-    await wrapEvent(() => {
+    await wrapEvent(widget, () => {
         const controller = getController(widget, Gtk.GestureDrag);
         withGestureDragState(controller, startX, startY, (setOffset) => {
             controller.emit("drag-begin", startX, startY);
@@ -107,7 +107,7 @@ const emitDrop = (target: Gtk.Widget, content: DropContent, options: DropOptions
 };
 
 export const drop = (widget: Gtk.Widget, content: DropContent, options: DropOptions = {}): Promise<void> =>
-    wrapEvent(() => {
+    wrapEvent(widget, () => {
         emitDrop(widget, content, options);
     });
 
@@ -117,7 +117,7 @@ export const dragAndDrop = (
     content: DropContent,
     options: DropOptions = {},
 ): Promise<void> =>
-    wrapEvent(() => {
+    wrapEvent(target, () => {
         getController(source, Gtk.DragSource);
         emitDrop(target, content, options);
     });

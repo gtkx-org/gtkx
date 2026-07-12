@@ -11,7 +11,7 @@ export const emitRelease = (controller: Gtk.GestureClick, nPress: number): void 
 };
 
 const emitClickSequence = (widget: Gtk.Widget, nPress: number): Promise<void> =>
-    wrapEvent(() => {
+    wrapEvent(widget, () => {
         const controller = getOrCreateController(widget, Gtk.GestureClick);
 
         for (let i = 1; i <= nPress; i++) {
@@ -37,14 +37,14 @@ export const click = async (widget: Gtk.Widget): Promise<void> => {
         return;
     }
     if (widget instanceof Gtk.Switch) {
-        await wrapEvent(() => {
+        await wrapEvent(widget, () => {
             widget.setActive(!widget.getActive());
         });
         return;
     }
     if (widget.getAccessibleRole() !== Gtk.AccessibleRole.LABEL) {
         let activated = false;
-        await wrapEvent(() => {
+        await wrapEvent(widget, () => {
             activated = widget.activate();
         });
         if (activated) return;

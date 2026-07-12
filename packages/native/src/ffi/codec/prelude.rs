@@ -19,6 +19,10 @@ pub(super) unsafe fn lossy_c_string(ptr: *const c_char) -> String {
     unsafe { glib::GStr::from_ptr_lossy(ptr) }.to_string()
 }
 
+pub(super) fn reject_return_codec(kind: &str) -> anyhow::Result<ffi::Stash> {
+    ::anyhow::bail!("{kind} codecs cannot be return codecs")
+}
+
 pub(super) fn write_object_ptr(
     env: &Env,
     slot: ffi::Slot,

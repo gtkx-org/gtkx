@@ -827,6 +827,31 @@ pub unsafe extern "C" fn napi_is_arraybuffer(
     ok!()
 }
 
+unsafe fn write_view_info(
+    length: *mut usize,
+    data: *mut *mut c_void,
+    arraybuffer: *mut sys::napi_value,
+    byte_offset: *mut usize,
+    view_data: *mut c_void,
+    view_length: usize,
+    view_offset: usize,
+) {
+    unsafe {
+        if !length.is_null() {
+            *length = view_length;
+        }
+        if !data.is_null() {
+            *data = view_data;
+        }
+        if !arraybuffer.is_null() {
+            *arraybuffer = alloc(FakeValue::ArrayBuffer);
+        }
+        if !byte_offset.is_null() {
+            *byte_offset = view_offset;
+        }
+    }
+}
+
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn napi_get_typedarray_info(
     _env: sys::napi_env,
@@ -849,18 +874,15 @@ pub unsafe extern "C" fn napi_get_typedarray_info(
             if !type_.is_null() {
                 *type_ = *kind;
             }
-            if !length.is_null() {
-                *length = *view_len;
-            }
-            if !data.is_null() {
-                *data = *view_data;
-            }
-            if !arraybuffer.is_null() {
-                *arraybuffer = alloc(FakeValue::ArrayBuffer);
-            }
-            if !byte_offset.is_null() {
-                *byte_offset = *view_off;
-            }
+            write_view_info(
+                length,
+                data,
+                arraybuffer,
+                byte_offset,
+                *view_data,
+                *view_len,
+                *view_off,
+            );
         }
     }
     ok!()
@@ -883,18 +905,15 @@ pub unsafe extern "C" fn napi_get_dataview_info(
     }) = unsafe { fv(dataview) }
     {
         unsafe {
-            if !bytelength.is_null() {
-                *bytelength = *byte_length;
-            }
-            if !data.is_null() {
-                *data = *view_data;
-            }
-            if !arraybuffer.is_null() {
-                *arraybuffer = alloc(FakeValue::ArrayBuffer);
-            }
-            if !byte_offset.is_null() {
-                *byte_offset = *view_off;
-            }
+            write_view_info(
+                bytelength,
+                data,
+                arraybuffer,
+                byte_offset,
+                *view_data,
+                *byte_length,
+                *view_off,
+            );
         }
     }
     ok!()
@@ -953,16 +972,21 @@ pub unsafe extern "C" fn napi_create_reference(
 ) -> sys::napi_status {
     record("napi_create_reference");
     STATE.with_borrow_mut(|state| {
-        let entry = Box::new(RefEntry {
-            value,
-            count: Cell::new(initial_refcount),
-            deleted: Cell::new(false),
-        });
-        let ptr = std::ptr::from_ref(&*entry) as *mut RefEntry;
-        state.refs.push(entry);
-        unsafe { *result = ptr.cast() };
+        let ref_ = register_ref(state, value, initial_refcount);
+        unsafe { *result = ref_ };
     });
     ok!()
+}
+
+fn register_ref(state: &mut State, value: sys::napi_value, initial_count: u32) -> sys::napi_ref {
+    let entry = Box::new(RefEntry {
+        value,
+        count: Cell::new(initial_count),
+        deleted: Cell::new(false),
+    });
+    let ptr = std::ptr::from_ref(&*entry) as *mut RefEntry;
+    state.refs.push(entry);
+    ptr.cast()
 }
 
 unsafe fn ref_entry<'a>(ref_: sys::napi_ref) -> Option<&'a RefEntry> {
@@ -1051,14 +1075,8 @@ pub unsafe extern "C" fn napi_add_finalizer(
             hint: finalize_hint,
         });
         if !result.is_null() {
-            let entry = Box::new(RefEntry {
-                value: _js_object,
-                count: Cell::new(1),
-                deleted: Cell::new(false),
-            });
-            let ptr = std::ptr::from_ref(&*entry) as *mut RefEntry;
-            state.refs.push(entry);
-            unsafe { *result = ptr.cast() };
+            let ref_ = register_ref(state, _js_object, 1);
+            unsafe { *result = ref_ };
         }
     });
     ok!()

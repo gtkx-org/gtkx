@@ -86,6 +86,6 @@ fn buffer_cannot_be_a_return_type() {
         .expect_err("a buffer return slot must fail");
     assert!(
         err.to_string()
-            .contains("Buffer codec cannot be return codecs")
+            .contains("Buffer codecs cannot be return codecs")
     );
 }

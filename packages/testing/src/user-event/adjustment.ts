@@ -7,7 +7,7 @@ export type ScrollDelta = {
 };
 
 export const slide = (widget: Gtk.Widget, value: number): Promise<void> =>
-    wrapEvent(() => {
+    wrapEvent(widget, () => {
         if (!(widget instanceof Gtk.Range)) {
             throw new Error(`userEvent.slide requires a Gtk.Range (e.g. Gtk.Scale), got ${widget.constructor.name}`);
         }
@@ -37,7 +37,7 @@ const applyScrollDelta = (adjustment: Gtk.Adjustment | null, delta: number): voi
 };
 
 export const scroll = (widget: Gtk.Widget, delta: ScrollDelta): Promise<void> =>
-    wrapEvent(() => {
+    wrapEvent(widget, () => {
         const adjustments = resolveScrollAdjustments(widget);
         if (!adjustments) {
             throw new Error(

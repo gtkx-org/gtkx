@@ -1,7 +1,6 @@
 use super::super::prelude::*;
 use super::ArrayCodec;
 use super::container::{ArrayContainer, BufferViewSupport};
-use crate::ffi::codec::Codec;
 
 #[derive(Debug, Clone)]
 pub(crate) struct FixedArrayCodec {
@@ -15,13 +14,11 @@ impl FixedArrayCodec {
 }
 
 impl ArrayContainer for FixedArrayCodec {
-    fn decode_with_context<'e>(
+    fn decode<'e>(
         &self,
         codec: &ArrayCodec,
         env: &'e Env,
         stash: &ffi::Stash,
-        _ffi_args: &[ffi::Stash],
-        _arg_codecs: &[Codec],
     ) -> anyhow::Result<Unknown<'e>> {
         codec.decode_length_bounded(env, self.name(), stash, self.fixed_size as usize)
     }

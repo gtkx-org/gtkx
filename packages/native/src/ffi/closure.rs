@@ -31,18 +31,23 @@ fn wrap_ref<'e>(env: &'e Env, value: Unknown<'e>) -> anyhow::Result<Unknown<'e>>
     Ok(ref_obj.to_unknown())
 }
 
+enum CallbackError {
+    Thrown(napi::Error),
+    Infrastructure(anyhow::Error),
+}
+
 fn call_js_function<'e>(
     env: &'e Env,
     callback: &JsHandle,
     js_args: &[Unknown<'e>],
-) -> anyhow::Result<Unknown<'e>> {
+) -> Result<Unknown<'e>, CallbackError> {
     let raw_args: Vec<_> = js_args.iter().map(JsValue::raw).collect();
-    let function: Function<CallbackArgs, Unknown> = callback
-        .get(env)
-        .map_err(|e| anyhow::anyhow!("retrieving callback function: {e}"))?;
+    let function: Function<CallbackArgs, Unknown> = callback.get(env).map_err(|e| {
+        CallbackError::Infrastructure(anyhow::anyhow!("retrieving callback function: {e}"))
+    })?;
     function
         .call(CallbackArgs(raw_args))
-        .map_err(|e| anyhow::anyhow!("{}", e.reason))
+        .map_err(CallbackError::Thrown)
 }
 
 pub struct ClosureData {
@@ -228,25 +233,34 @@ impl ClosureData {
             None
         };
 
-        let outcome: anyhow::Result<()> = (|| {
-            let ClosureArgs { js_args, ref_slots } = unsafe { self.read_args(&env, args) }?;
+        let outcome: Result<(), CallbackError> = (|| {
+            let ClosureArgs { js_args, ref_slots } =
+                unsafe { self.read_args(&env, args) }.map_err(CallbackError::Infrastructure)?;
             let return_value = call_js_function(&env, &self.js_fn, &js_args)?;
             flush_refs(&env, &ref_slots);
             let ret = if capture_result {
                 Ok(return_value)
             } else {
-                Ok(value::js_undefined(&env)?)
+                Ok(value::js_undefined(&env)
+                    .map_err(|e| CallbackError::Infrastructure(e.into()))?)
             };
             self.write_return(&env, result, &ret);
             Ok(())
         })();
 
-        if let Err(e) = outcome {
-            ErrorReporter::global().report(&anyhow::anyhow!(
-                "callback: JS callback error (return type: {}): {e:#}",
-                self.return_codec
-            ));
-            self.write_return(&env, result, &Err(()));
+        match outcome {
+            Ok(()) => {}
+            Err(CallbackError::Thrown(error)) => {
+                self.write_return(&env, result, &Err(()));
+                unsafe { napi::JsError::from(error).throw_into(env.raw()) };
+            }
+            Err(CallbackError::Infrastructure(e)) => {
+                ErrorReporter::global().report(&anyhow::anyhow!(
+                    "callback: JS callback error (return type: {}): {e:#}",
+                    self.return_codec
+                ));
+                self.write_return(&env, result, &Err(()));
+            }
         }
 
         state_ptr

@@ -7,6 +7,12 @@ import { prepareDevSchemaDir } from "./schema-dir.js";
 const ENTRY_ARG_INDEX = 2;
 
 export const main = async (): Promise<void> => {
+    if (process.channel) {
+        process.once("disconnect", () => {
+            process.exit(0);
+        });
+    }
+
     const cwd = process.cwd();
     const entryArg = process.argv[ENTRY_ARG_INDEX];
 

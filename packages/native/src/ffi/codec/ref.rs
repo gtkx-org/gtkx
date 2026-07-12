@@ -135,7 +135,7 @@ impl Encoder for RefCodec {
         _ptr: libffi::CodePtr,
         _args: &[libffi::Arg],
     ) -> anyhow::Result<ffi::Stash> {
-        bail!("Ref codecs cannot be return codecs")
+        reject_return_codec("Ref")
     }
 }
 

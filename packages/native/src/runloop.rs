@@ -3,25 +3,25 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::ffi::c_void;
 use std::os::raw::c_int;
+use std::time::{Duration, Instant};
 
 use glib::ffi::{
-    G_IO_ERR, G_IO_HUP, G_IO_IN, G_IO_NVAL, G_IO_OUT, GMainContext, GPollFD, g_main_context_check,
-    g_main_context_default, g_main_context_dispatch, g_main_context_prepare, g_main_context_query,
-    g_main_context_release,
+    G_IO_IN, G_IO_OUT, GFALSE, GMainContext, GPollFD, g_main_context_check, g_main_context_default,
+    g_main_context_iteration, g_main_context_prepare, g_main_context_query, g_main_context_release,
 };
 use libloading::os::unix::Library;
 use napi::Env;
 
-const UV_CHECK: c_int = 2;
 const UV_POLL: c_int = 8;
 const UV_PREPARE: c_int = 9;
 const UV_TIMER: c_int = 13;
 
 const UV_READABLE: c_int = 1;
 const UV_WRITABLE: c_int = 2;
-const UV_DISCONNECT: c_int = 4;
 
 const HANDLE_ALIGN: usize = 16;
+
+const DISPATCH_BUDGET: Duration = Duration::from_millis(4);
 
 type UvVoidCb = unsafe extern "C" fn(*mut c_void);
 type UvPollCb = unsafe extern "C" fn(*mut c_void, c_int, c_int);
@@ -37,9 +37,6 @@ struct UvApi {
     prepare_init: unsafe extern "C" fn(*mut c_void, *mut c_void) -> c_int,
     prepare_start: unsafe extern "C" fn(*mut c_void, UvVoidCb) -> c_int,
     prepare_stop: unsafe extern "C" fn(*mut c_void) -> c_int,
-    check_init: unsafe extern "C" fn(*mut c_void, *mut c_void) -> c_int,
-    check_start: unsafe extern "C" fn(*mut c_void, UvVoidCb) -> c_int,
-    check_stop: unsafe extern "C" fn(*mut c_void) -> c_int,
     timer_init: unsafe extern "C" fn(*mut c_void, *mut c_void) -> c_int,
     timer_start: unsafe extern "C" fn(*mut c_void, UvVoidCb, u64, u64) -> c_int,
     timer_stop: unsafe extern "C" fn(*mut c_void) -> c_int,
@@ -62,9 +59,6 @@ impl UvApi {
                 prepare_init: *lib.get(b"uv_prepare_init")?,
                 prepare_start: *lib.get(b"uv_prepare_start")?,
                 prepare_stop: *lib.get(b"uv_prepare_stop")?,
-                check_init: *lib.get(b"uv_check_init")?,
-                check_start: *lib.get(b"uv_check_start")?,
-                check_stop: *lib.get(b"uv_check_stop")?,
                 timer_init: *lib.get(b"uv_timer_init")?,
                 timer_start: *lib.get(b"uv_timer_start")?,
                 timer_stop: *lib.get(b"uv_timer_stop")?,
@@ -90,7 +84,6 @@ fn uv() -> UvApi {
 }
 
 struct HandleData {
-    fd: c_int,
     size: usize,
 }
 
@@ -98,10 +91,10 @@ unsafe fn handle_layout(size: usize) -> Layout {
     Layout::from_size_align(size, HANDLE_ALIGN).expect("uv handle layout")
 }
 
-fn alloc_uv_handle(htype: c_int, fd: c_int) -> *mut c_void {
+fn alloc_uv_handle(htype: c_int) -> *mut c_void {
     let size = unsafe { (uv().handle_size)(htype) };
     let ptr = unsafe { alloc_zeroed(handle_layout(size)) } as *mut c_void;
-    let data = Box::into_raw(Box::new(HandleData { fd, size }));
+    let data = Box::into_raw(Box::new(HandleData { size }));
     unsafe { (uv().handle_set_data)(ptr, data.cast()) };
     ptr
 }
@@ -131,40 +124,20 @@ fn glib_events_to_uv(events: u16) -> c_int {
     result
 }
 
-fn uv_events_to_glib(status: c_int, events: c_int) -> u16 {
-    if status < 0 {
-        return (G_IO_ERR | G_IO_NVAL) as u16;
-    }
-    let mut result: u32 = 0;
-    if events & UV_READABLE != 0 {
-        result |= G_IO_IN;
-    }
-    if events & UV_WRITABLE != 0 {
-        result |= G_IO_OUT;
-    }
-    if events & UV_DISCONNECT != 0 {
-        result |= G_IO_HUP;
-    }
-    result as u16
-}
-
 struct GtkLoop {
     uv_loop: *mut c_void,
     ctx: *mut GMainContext,
     prepare: *mut c_void,
-    check: *mut c_void,
     timer: *mut c_void,
     pollers: HashMap<c_int, *mut c_void>,
     fds: Vec<GPollFD>,
     n_fds: usize,
-    max_priority: c_int,
 }
 
 impl GtkLoop {
-    fn prepare_iteration(&mut self) {
+    fn arm_wakeups(&mut self) {
         let mut max_priority: c_int = 0;
-        let ready = unsafe { g_main_context_prepare(self.ctx, &mut max_priority) } != 0;
-        self.max_priority = max_priority;
+        let prepared_ready = unsafe { g_main_context_prepare(self.ctx, &mut max_priority) } != 0;
 
         let mut timeout: c_int = -1;
         loop {
@@ -196,8 +169,17 @@ impl GtkLoop {
             pfd.revents = 0;
         }
 
+        let check_ready = unsafe {
+            g_main_context_check(
+                self.ctx,
+                max_priority,
+                self.fds.as_mut_ptr(),
+                self.n_fds as c_int,
+            )
+        } != 0;
+
         self.reconcile_pollers();
-        self.arm_timer(timeout, ready);
+        self.arm_timer(timeout, prepared_ready || check_ready);
     }
 
     fn reconcile_pollers(&mut self) {
@@ -227,7 +209,7 @@ impl GtkLoop {
             }
             let uv_loop = self.uv_loop;
             let handle = *self.pollers.entry(fd).or_insert_with(|| {
-                let handle = alloc_uv_handle(UV_POLL, fd);
+                let handle = alloc_uv_handle(UV_POLL);
                 unsafe {
                     (uv.poll_init)(uv_loop, handle, fd);
                     (uv.unreference)(handle);
@@ -248,59 +230,34 @@ impl GtkLoop {
             unsafe { (uv.timer_start)(self.timer, on_timer, timeout as u64, 0) };
         }
     }
-
-    fn record_readiness(&mut self, fd: c_int, revents: u16) {
-        for pfd in &mut self.fds[..self.n_fds] {
-            if pfd.fd == fd {
-                pfd.revents |= revents;
-            }
-        }
-    }
 }
 
 unsafe extern "C" fn on_prepare(_handle: *mut c_void) {
+    let Some(ctx) = GTK_LOOP.with_borrow(|slot| slot.as_ref().map(|state| state.ctx)) else {
+        return;
+    };
+
+    let deadline = Instant::now() + DISPATCH_BUDGET;
+    loop {
+        let mut dispatched = false;
+        crate::messaging::node_env::run_dispatch_scope(|| {
+            dispatched = unsafe { g_main_context_iteration(ctx, GFALSE) } != 0;
+        });
+        if !dispatched || Instant::now() >= deadline || GTK_LOOP.with_borrow(Option::is_none) {
+            break;
+        }
+    }
+
     GTK_LOOP.with_borrow_mut(|slot| {
         if let Some(state) = slot.as_mut() {
-            state.prepare_iteration();
+            state.arm_wakeups();
         }
     });
-}
-
-unsafe extern "C" fn on_check(_handle: *mut c_void) {
-    let ctx = GTK_LOOP.with_borrow_mut(|slot| {
-        slot.as_mut().map(|state| {
-            unsafe {
-                g_main_context_check(
-                    state.ctx,
-                    state.max_priority,
-                    state.fds.as_mut_ptr(),
-                    state.n_fds as c_int,
-                );
-            }
-            state.ctx
-        })
-    });
-
-    if let Some(ctx) = ctx {
-        crate::messaging::node_env::run_dispatch_scope(|| unsafe { g_main_context_dispatch(ctx) });
-    }
 }
 
 unsafe extern "C" fn on_timer(_handle: *mut c_void) {}
 
-unsafe extern "C" fn on_poll(handle: *mut c_void, status: c_int, events: c_int) {
-    let data = unsafe { (uv().handle_get_data)(handle) } as *const HandleData;
-    if data.is_null() {
-        return;
-    }
-    let fd = unsafe { (*data).fd };
-    let revents = uv_events_to_glib(status, events);
-    GTK_LOOP.with_borrow_mut(|slot| {
-        if let Some(state) = slot.as_mut() {
-            state.record_readiness(fd, revents);
-        }
-    });
-}
+unsafe extern "C" fn on_poll(_handle: *mut c_void, _status: c_int, _events: c_int) {}
 
 pub fn install(env: &Env) -> napi::Result<()> {
     if GTK_LOOP.with_borrow(Option::is_some) {
@@ -325,17 +282,13 @@ pub fn install(env: &Env) -> napi::Result<()> {
         ));
     }
 
-    let prepare = alloc_uv_handle(UV_PREPARE, 0);
-    let check = alloc_uv_handle(UV_CHECK, 0);
-    let timer = alloc_uv_handle(UV_TIMER, 0);
+    let prepare = alloc_uv_handle(UV_PREPARE);
+    let timer = alloc_uv_handle(UV_TIMER);
     unsafe {
         (uv.prepare_init)(uv_loop, prepare);
-        (uv.check_init)(uv_loop, check);
         (uv.timer_init)(uv_loop, timer);
         (uv.prepare_start)(prepare, on_prepare);
-        (uv.check_start)(check, on_check);
         (uv.unreference)(prepare);
-        (uv.unreference)(check);
         (uv.unreference)(timer);
     }
 
@@ -344,7 +297,6 @@ pub fn install(env: &Env) -> napi::Result<()> {
             uv_loop,
             ctx,
             prepare,
-            check,
             timer,
             pollers: HashMap::new(),
             fds: vec![
@@ -356,7 +308,6 @@ pub fn install(env: &Env) -> napi::Result<()> {
                 8
             ],
             n_fds: 0,
-            max_priority: 0,
         });
     });
 
@@ -384,7 +335,6 @@ pub fn teardown() {
         let uv = uv();
         unsafe {
             (uv.prepare_stop)(state.prepare);
-            (uv.check_stop)(state.check);
             (uv.timer_stop)(state.timer);
         }
         for (_, handle) in state.pollers {
@@ -392,7 +342,6 @@ pub fn teardown() {
             close_uv_handle(handle);
         }
         close_uv_handle(state.prepare);
-        close_uv_handle(state.check);
         close_uv_handle(state.timer);
         Some(state.ctx)
     });
@@ -402,9 +351,6 @@ pub fn teardown() {
     };
 
     unsafe { g_main_context_release(ctx) };
-
-    let context = glib::MainContext::default();
-    while context.iteration(false) {}
 }
 
 #[cfg(test)]
@@ -420,16 +366,5 @@ mod tests {
             UV_READABLE | UV_WRITABLE
         );
         assert_eq!(glib_events_to_uv(0), 0);
-    }
-
-    #[test]
-    fn uv_readiness_maps_back_to_glib_conditions() {
-        assert_eq!(uv_events_to_glib(0, UV_READABLE), G_IO_IN as u16);
-        assert_eq!(uv_events_to_glib(0, UV_WRITABLE), G_IO_OUT as u16);
-        assert_eq!(uv_events_to_glib(0, UV_DISCONNECT), G_IO_HUP as u16);
-        assert_eq!(
-            uv_events_to_glib(-1, UV_READABLE),
-            (G_IO_ERR | G_IO_NVAL) as u16
-        );
     }
 }

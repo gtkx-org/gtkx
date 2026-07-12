@@ -62,9 +62,25 @@ pub fn run_dispatch_scope(dispatch: impl FnOnce()) {
 
         dispatch();
 
+        report_pending_exception(raw);
+
         if callback_open {
             sys::napi_close_callback_scope(raw, callback_scope);
         }
         sys::napi_close_handle_scope(raw, handle_scope);
+    }
+}
+
+fn report_pending_exception(raw: sys::napi_env) {
+    unsafe {
+        let mut pending = false;
+        if sys::napi_is_exception_pending(raw, &mut pending) != sys::Status::napi_ok || !pending {
+            return;
+        }
+        let mut exception: sys::napi_value = std::ptr::null_mut();
+        if sys::napi_get_and_clear_last_exception(raw, &mut exception) != sys::Status::napi_ok {
+            return;
+        }
+        sys::napi_fatal_exception(raw, exception);
     }
 }
