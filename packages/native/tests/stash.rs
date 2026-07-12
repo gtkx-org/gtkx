@@ -1,11 +1,11 @@
 use std::ffi::c_void;
 
 use napi::Env;
-use napi::bindgen_prelude::{FromNapiValue, Unknown};
 use native::ffi::closure::{ClosureData, ClosureState};
 use native::ffi::codec::{Codec, VoidCodec};
 use native::ffi::value::JsHandle;
 use native::ffi::{CallbackValue, Stash, StashStorage};
+use test_support::napi_mock;
 
 fn callback_value(destroy: bool) -> CallbackValue {
     let destroy_ptr = if destroy {
@@ -21,15 +21,16 @@ fn callback_value(destroy: bool) -> CallbackValue {
     )
 }
 
-fn js_func_ref() -> JsHandle {
-    let env = Env::from_raw(std::ptr::null_mut());
-    let func = unsafe { Unknown::from_napi_value(std::ptr::null_mut(), std::ptr::null_mut()) }
-        .expect("stubbed unknown creation should succeed");
-    JsHandle::from_js_value(&env, &func).expect("stubbed reference creation should succeed")
+fn js_func_ref(env: &Env) -> JsHandle {
+    let func = napi_mock::to_unknown(
+        env,
+        napi_mock::fake_function(|_| napi_mock::fake_undefined()),
+    );
+    JsHandle::from_js_value(env, &func).expect("reference creation should succeed")
 }
 
-fn armed_callback_value(destroy_ptr: Option<*mut c_void>) -> (CallbackValue, JsHandle) {
-    let js_fn = js_func_ref();
+fn armed_callback_value(env: &Env, destroy_ptr: Option<*mut c_void>) -> (CallbackValue, JsHandle) {
+    let js_fn = js_func_ref(env);
     let data = ClosureData::new(
         js_fn.clone(),
         Vec::new(),
@@ -45,49 +46,64 @@ fn armed_callback_value(destroy_ptr: Option<*mut c_void>) -> (CallbackValue, JsH
     )
 }
 
-fn release_handed_over_state(state_ptr: *mut c_void, js_fn: &JsHandle) {
-    assert_eq!(js_fn.ref_count(), 2);
+fn release_handed_over_state(state_ptr: *mut c_void, js_fn: JsHandle) {
+    drop(js_fn);
+    assert_eq!(napi_mock::count("napi_delete_reference"), 0);
     unsafe { ClosureState::destroy(state_ptr) };
-    assert_eq!(js_fn.ref_count(), 1);
+    assert_eq!(napi_mock::count("napi_delete_reference"), 1);
 }
 
 #[test]
 fn new_armed_exposes_state_and_closure_pointers() {
-    let destroy_ptr = ClosureState::destroy as *mut c_void;
-    let (callback, _js_func) = armed_callback_value(Some(destroy_ptr));
-    assert!(!callback.fn_ptr().is_null());
-    assert!(!callback.state_ptr().is_null());
-    assert_eq!(callback.destroy_ptr(), Some(destroy_ptr));
-    let state = unsafe { &*(callback.state_ptr() as *const ClosureState) };
-    assert_eq!(state.code_ptr, callback.fn_ptr());
+    test_support::run(|| {
+        let env = test_support::fake_env();
+        let destroy_ptr = ClosureState::destroy as *mut c_void;
+        let (callback, _js_func) = armed_callback_value(&env, Some(destroy_ptr));
+        assert!(!callback.fn_ptr().is_null());
+        assert!(!callback.state_ptr().is_null());
+        assert_eq!(callback.destroy_ptr(), Some(destroy_ptr));
+        let state = unsafe { &*(callback.state_ptr() as *const ClosureState) };
+        assert_eq!(state.code_ptr, callback.fn_ptr());
+    });
 }
 
 #[test]
 fn armed_state_drops_with_value_when_call_never_happens() {
-    let (callback, js_fn) = armed_callback_value(None);
-    assert_eq!(js_fn.ref_count(), 2);
-    drop(callback);
-    assert_eq!(js_fn.ref_count(), 1);
+    test_support::run(|| {
+        let env = test_support::fake_env();
+        let (callback, js_fn) = armed_callback_value(&env, None);
+        drop(js_fn);
+        assert_eq!(napi_mock::count("napi_delete_reference"), 0);
+        drop(callback);
+        assert_eq!(napi_mock::count("napi_delete_reference"), 1);
+    });
 }
 
 #[test]
 fn disarm_pending_transfer_hands_state_over_and_is_idempotent() {
-    let (callback, js_fn) = armed_callback_value(Some(ClosureState::destroy as *mut c_void));
-    let state_ptr = callback.state_ptr();
-    callback.disarm_pending_transfer();
-    callback.disarm_pending_transfer();
-    drop(callback);
-    release_handed_over_state(state_ptr, &js_fn);
+    test_support::run(|| {
+        let env = test_support::fake_env();
+        let (callback, js_fn) =
+            armed_callback_value(&env, Some(ClosureState::destroy as *mut c_void));
+        let state_ptr = callback.state_ptr();
+        callback.disarm_pending_transfer();
+        callback.disarm_pending_transfer();
+        drop(callback);
+        release_handed_over_state(state_ptr, js_fn);
+    });
 }
 
 #[test]
 fn stash_disarm_pending_transfer_routes_to_callback() {
-    let (callback, js_fn) = armed_callback_value(None);
-    let state_ptr = callback.state_ptr();
-    let value = Stash::Callback(callback);
-    value.disarm_pending_transfer();
-    drop(value);
-    release_handed_over_state(state_ptr, &js_fn);
+    test_support::run(|| {
+        let env = test_support::fake_env();
+        let (callback, js_fn) = armed_callback_value(&env, None);
+        let state_ptr = callback.state_ptr();
+        let value = Stash::Callback(callback);
+        value.disarm_pending_transfer();
+        drop(value);
+        release_handed_over_state(state_ptr, js_fn);
+    });
 }
 
 #[test]

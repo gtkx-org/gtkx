@@ -1,15 +1,16 @@
 use test_support as helpers;
+use test_support::napi_mock;
 
 use std::ffi::c_void;
 
 use libffi::middle;
+use napi::JsValue as _;
+use native::ffi;
 use native::ffi::Slot;
 use native::ffi::codec::{
     BooleanCodec, CallbackCodec, Codec, Decoder, Encoder, IntegerCodec, Ownership, PtrWriter,
     ReadSource, StructCodec, VoidCodec,
 };
-use native::ffi::value::Value;
-use native::ffi::{self, value};
 
 fn assert_ownership_predicates_mutually_exclusive() {
     assert!(Ownership::Full.is_full());
@@ -93,21 +94,25 @@ fn callback_codec() -> CallbackCodec {
 
 #[test]
 fn ffi_decoder_decode_default_bails() {
-    assert!(Decoder::decode(&callback_codec(), &ffi::Stash::Void).is_err());
+    let env = helpers::fake_env();
+    assert!(Decoder::decode(&callback_codec(), &env, &ffi::Stash::Void).is_err());
 }
 
 #[test]
 fn ffi_decoder_decode_with_context_default_delegates_to_decode() {
-    let result = Decoder::decode_with_context(&callback_codec(), &ffi::Stash::Void, &[], &[]);
+    let env = helpers::fake_env();
+    let result = Decoder::decode_with_context(&callback_codec(), &env, &ffi::Stash::Void, &[], &[]);
     assert!(result.is_err());
 }
 
 #[test]
 fn pointer_codec_ptr_to_value_default_bails() {
+    let env = helpers::fake_env();
     assert!(
         unsafe {
             Decoder::read(
                 &callback_codec(),
+                &env,
                 ReadSource::Value(8 as *mut c_void, "ctx"),
             )
         }
@@ -117,37 +122,42 @@ fn pointer_codec_ptr_to_value_default_bails() {
 
 #[test]
 fn pointer_codec_read_from_pointer_default_dereferences_then_bails() {
+    let env = helpers::fake_env();
     let mut inner: *mut c_void = 8 as *mut c_void;
     let ptr = &mut inner as *mut *mut c_void as *const c_void;
-    let result = unsafe { Decoder::read(&callback_codec(), ReadSource::Slot(ptr, "ctx")) };
+    let result = unsafe { Decoder::read(&callback_codec(), &env, ReadSource::Slot(ptr, "ctx")) };
     assert!(result.is_err());
 }
 
 #[test]
 fn pointer_codec_write_return_to_pointer_default_writes_null() {
+    let env = helpers::fake_env();
     let mut slot: *mut c_void = 9 as *mut c_void;
     let ret = &mut slot as *mut *mut c_void as *mut c_void;
     PtrWriter::write_return_to_ptr(
         &callback_codec(),
+        &env,
         unsafe { Slot::new(ret) },
-        &Ok(Value::Number(1.0)),
+        &Ok(napi_mock::to_unknown(&env, napi_mock::fake_double(1.0))),
     );
     assert!(slot.is_null());
 
     slot = 9 as *mut c_void;
-    PtrWriter::write_return_to_ptr(&callback_codec(), unsafe { Slot::new(ret) }, &Err(()));
+    PtrWriter::write_return_to_ptr(&callback_codec(), &env, unsafe { Slot::new(ret) }, &Err(()));
     assert!(slot.is_null());
 }
 
 #[test]
 fn pointer_codec_write_value_to_pointer_default_bails() {
+    let env = helpers::fake_env();
     let mut slot: *mut c_void = std::ptr::null_mut();
     let ptr = &mut slot as *mut *mut c_void as *mut c_void;
     assert!(
         PtrWriter::write_value_to_ptr(
             &callback_codec(),
+            &env,
             unsafe { Slot::new(ptr) },
-            &Value::Number(1.0)
+            napi_mock::to_unknown(&env, napi_mock::fake_double(1.0)),
         )
         .is_err()
     );
@@ -181,9 +191,17 @@ fn ffi_encoder_defaults_cover_pointer_typed_codec() {
 
 #[test]
 fn descriptor_enum_dispatch_routes_codec_traits() {
-    let descriptor = Codec::Boolean(BooleanCodec);
-    let encoded = Encoder::encode(&descriptor, &value::Value::Boolean(true)).unwrap();
-    assert!(matches!(encoded, ffi::Stash::I32(1)));
-    let decoded = Decoder::decode(&descriptor, &ffi::Stash::I32(0)).unwrap();
-    assert!(matches!(decoded, value::Value::Boolean(false)));
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let descriptor = Codec::Boolean(BooleanCodec);
+        let encoded = Encoder::encode(
+            &descriptor,
+            &env,
+            napi_mock::to_unknown(&env, napi_mock::fake_bool(true)),
+        )
+        .unwrap();
+        assert!(matches!(encoded, ffi::Stash::I32(1)));
+        let decoded = Decoder::decode(&descriptor, &env, &ffi::Stash::I32(0)).unwrap();
+        assert_eq!(napi_mock::read_bool(decoded.raw()), Some(false));
+    });
 }

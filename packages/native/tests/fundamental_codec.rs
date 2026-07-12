@@ -4,11 +4,15 @@ use std::ffi::c_void;
 
 use gtk4::glib;
 
+use napi::Env;
+use napi::JsValue as _;
+use napi::bindgen_prelude::{External, Unknown};
+
 use native::ffi;
 use native::ffi::codec::{Decoder, Encoder, FundamentalCodec, Ownership, ReadSource};
-use native::ffi::value::Value;
 use native::handle::Handle;
 
+use helpers::napi_mock;
 use helpers::{
     assert_decode_null_yields_null, assert_read_null_yields_null,
     assert_write_return_err_writes_null, make_bool_param_spec as create_param_spec,
@@ -19,6 +23,12 @@ fn release_param_spec_refs(ptr: *mut c_void, count: u32) {
     for _ in 0..count {
         unsafe { glib::gobject_ffi::g_param_spec_unref(ptr.cast()) };
     }
+}
+
+fn object_value<'e>(env: &'e Env, pspec: *mut c_void) -> Unknown<'e> {
+    External::new(Handle::from_glib_borrow(pspec))
+        .into_unknown(env)
+        .expect("into_unknown should succeed")
 }
 
 fn fundamental_with_fns(
@@ -50,9 +60,14 @@ fn fundamental_with_unresolvable_symbols(ownership: Ownership) -> FundamentalCod
     fundamental_with_fns(ownership, "gtkx_cov_missing_ref", "gtkx_cov_missing_unref")
 }
 
+fn fundamental_with_only_unref_fn(ownership: Ownership) -> FundamentalCodec {
+    fundamental_with_fns(ownership, "", "g_param_spec_unref")
+}
+
 fn encode_param_spec(codec: &FundamentalCodec, pspec: *mut c_void) -> ffi::Stash {
+    let env = helpers::fake_env();
     codec
-        .encode(&Value::Object(Handle::from_glib_borrow(pspec)))
+        .encode(&env, object_value(&env, pspec))
         .expect("encode should succeed")
 }
 
@@ -79,16 +94,44 @@ fn assert_ref_for_transfer(codec: &FundamentalCodec, expected_extra_refs: u32) {
     release_param_spec_refs(pspec, expected_extra_refs + 1);
 }
 
-fn assert_write_return_writes_pointer(codec: &FundamentalCodec, expected_extra_refs: u32) {
+fn write_return_of_fresh_param_spec(codec: &FundamentalCodec) -> (*mut c_void, u32, *mut c_void) {
     let pspec = create_param_spec();
     let before = param_spec_refcount(pspec);
 
-    let slot = write_return_into_slot(codec, &Ok(Value::Object(Handle::from_glib_borrow(pspec))));
+    let env = helpers::fake_env();
+    let slot = write_return_into_slot(&env, codec, &Ok(object_value(&env, pspec)));
+
+    (pspec, before, slot)
+}
+
+fn assert_write_return_writes_pointer(codec: &FundamentalCodec, expected_extra_refs: u32) {
+    let (pspec, before, slot) = write_return_of_fresh_param_spec(codec);
 
     assert_eq!(slot, pspec);
     assert_eq!(param_spec_refcount(pspec), before + expected_extra_refs);
 
     release_param_spec_refs(pspec, expected_extra_refs + 1);
+}
+
+fn assert_write_return_writes_null_and_reports(
+    codec: &FundamentalCodec,
+    expected_in_message: &str,
+) {
+    let (pspec, before, slot) = write_return_of_fresh_param_spec(codec);
+
+    assert!(
+        slot.is_null(),
+        "a transfer-full fundamental return without a usable ref function must not alias ownership"
+    );
+    assert_eq!(param_spec_refcount(pspec), before);
+    let fatals = napi_mock::fatal_exceptions();
+    assert_eq!(fatals.len(), 1);
+    let message = napi_mock::read_object_property(fatals[0], "message")
+        .and_then(napi_mock::read_string)
+        .expect("the fatal exception should carry a message");
+    assert!(message.contains(expected_in_message));
+
+    release_param_spec_refs(pspec, 1);
 }
 
 #[test]
@@ -251,17 +294,19 @@ fn ref_for_transfer_full_null_is_noop() {
 #[test]
 fn decode_borrowed_adds_exactly_one_ref() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let pspec = create_param_spec();
         let before = param_spec_refcount(pspec);
 
         let decoded = fundamental(Ownership::Borrowed)
-            .decode(&ffi::Stash::Ptr(pspec))
+            .decode(&env, &ffi::Stash::Ptr(pspec))
             .expect("borrowed decode should succeed");
-        assert!(matches!(decoded, Value::Object(_)));
+        assert!(napi_mock::read_external(decoded.raw()).is_some());
         assert_eq!(param_spec_refcount(pspec), before + 1);
 
-        drop(decoded);
+        napi_mock::collect(decoded.raw());
         assert_eq!(param_spec_refcount(pspec), before);
+
         release_param_spec_refs(pspec, 1);
     });
 }
@@ -269,16 +314,15 @@ fn decode_borrowed_adds_exactly_one_ref() {
 #[test]
 fn decode_full_takes_ownership() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let pspec = create_param_spec();
         let before = param_spec_refcount(pspec);
 
         let decoded = fundamental(Ownership::Full)
-            .decode(&ffi::Stash::Ptr(pspec))
+            .decode(&env, &ffi::Stash::Ptr(pspec))
             .expect("full decode should succeed");
-        assert!(matches!(decoded, Value::Object(_)));
+        assert!(napi_mock::read_external(decoded.raw()).is_some());
         assert_eq!(param_spec_refcount(pspec), before);
-
-        drop(decoded);
     });
 }
 
@@ -292,16 +336,16 @@ fn decode_null_yields_null() {
 #[test]
 fn ptr_to_value_wraps_fundamental() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let pspec = create_param_spec();
         let before = param_spec_refcount(pspec);
 
         let value =
-            unsafe { fundamental(Ownership::Borrowed).read(ReadSource::Value(pspec, "ctx")) }
+            unsafe { fundamental(Ownership::Borrowed).read(&env, ReadSource::Value(pspec, "ctx")) }
                 .expect("ptr_to_value should succeed");
-        assert!(matches!(value, Value::Object(_)));
+        assert!(napi_mock::read_external(value.raw()).is_some());
         assert_eq!(param_spec_refcount(pspec), before + 1);
 
-        drop(value);
         release_param_spec_refs(pspec, 1);
     });
 }
@@ -316,12 +360,12 @@ fn ptr_to_value_null_yields_null() {
 #[test]
 fn read_from_pointer_dereferences_slot() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let pspec = create_param_spec();
 
-        let value = unsafe { read_slot(&fundamental(Ownership::Borrowed), pspec) }
+        let value = unsafe { read_slot(&env, &fundamental(Ownership::Borrowed), pspec) }
             .expect("read_from_pointer should succeed");
-        assert!(matches!(value, Value::Object(_)));
-        drop(value);
+        assert!(napi_mock::read_external(value.raw()).is_some());
         release_param_spec_refs(pspec, 1);
     });
 }
@@ -348,15 +392,56 @@ fn write_return_to_pointer_err_writes_null() {
 }
 
 #[test]
+fn write_return_to_pointer_full_unresolvable_symbols_writes_null_and_reports() {
+    helpers::run(|| {
+        assert_write_return_writes_null_and_reports(
+            &fundamental_with_unresolvable_symbols(Ownership::Full),
+            "gtkx_cov_missing_ref",
+        );
+    });
+}
+
+#[test]
+fn write_return_to_pointer_full_unref_without_ref_writes_null_and_reports() {
+    helpers::run(|| {
+        assert_write_return_writes_null_and_reports(
+            &fundamental_with_only_unref_fn(Ownership::Full),
+            "g_param_spec_unref",
+        );
+    });
+}
+
+#[test]
+fn write_return_to_pointer_full_resolvable_fns_ref_without_reporting() {
+    helpers::run(|| {
+        assert_write_return_writes_pointer(&fundamental(Ownership::Full), 1);
+        assert!(napi_mock::fatal_exceptions().is_empty());
+    });
+}
+
+#[test]
+fn write_return_to_pointer_borrowed_unresolvable_symbols_writes_same_pointer() {
+    helpers::run(|| {
+        assert_write_return_writes_pointer(
+            &fundamental_with_unresolvable_symbols(Ownership::Borrowed),
+            0,
+        );
+        assert!(napi_mock::fatal_exceptions().is_empty());
+    });
+}
+
+#[test]
 fn write_value_to_pointer_writes_fundamental() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let pspec = create_param_spec();
         let before = param_spec_refcount(pspec);
 
         let slot = helpers::write_value_into_slot(
+            &env,
             &fundamental(Ownership::Borrowed),
             std::ptr::null_mut(),
-            &Value::Object(Handle::from_glib_borrow(pspec)),
+            object_value(&env, pspec),
         );
 
         assert_eq!(slot, pspec);
@@ -369,6 +454,7 @@ fn write_value_to_pointer_writes_fundamental() {
 #[test]
 fn write_value_to_pointer_unrefs_previous_fundamental() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let old = create_param_spec();
         let new = create_param_spec();
 
@@ -377,9 +463,10 @@ fn write_value_to_pointer_unrefs_previous_fundamental() {
         let new_before = param_spec_refcount(new);
 
         let slot = helpers::write_value_into_slot(
+            &env,
             &fundamental(Ownership::Borrowed),
             old,
-            &Value::Object(Handle::from_glib_borrow(new)),
+            object_value(&env, new),
         );
 
         assert_eq!(slot, new);
@@ -394,13 +481,18 @@ fn write_value_to_pointer_unrefs_previous_fundamental() {
 #[test]
 fn write_value_to_pointer_null_releases_previous_fundamental() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let pspec = create_param_spec();
 
         unsafe { glib::gobject_ffi::g_param_spec_ref(pspec.cast()) };
         let before = param_spec_refcount(pspec);
 
-        let slot =
-            helpers::write_value_into_slot(&fundamental(Ownership::Borrowed), pspec, &Value::Null);
+        let slot = helpers::write_value_into_slot(
+            &env,
+            &fundamental(Ownership::Borrowed),
+            pspec,
+            napi_mock::to_unknown(&env, napi_mock::fake_null()),
+        );
 
         assert!(slot.is_null());
         assert_eq!(param_spec_refcount(pspec), before - 1);

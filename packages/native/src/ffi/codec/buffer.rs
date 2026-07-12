@@ -20,16 +20,20 @@ impl BufferCodec {
 }
 
 impl Encoder for BufferCodec {
-    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::Stash> {
-        match value {
-            value::Value::BufferView(view) => Ok(ffi::Stash::Ptr(view.ptr())),
-            value::Value::Number(n) => Ok(ffi::Stash::Ptr(Self::ptr_from_number(*n)?)),
-            value::Value::Null | value::Value::Undefined => {
-                Ok(ffi::Stash::Ptr(std::ptr::null_mut()))
+    fn encode(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
+        if let Some(view) = value::TypedView::from_unknown(env, value)? {
+            return Ok(ffi::Stash::Ptr(view.ptr()));
+        }
+        match value.get_type()? {
+            ValueType::Number => {
+                let number = value::read_napi::<f64>(env, value)?;
+                Ok(ffi::Stash::Ptr(Self::ptr_from_number(number)?))
             }
-            _ => {
-                bail!(
-                    "Expected an ArrayBufferView, number, or null for buffer codec, got {value:?}"
+            ValueType::Null | ValueType::Undefined => Ok(ffi::Stash::Ptr(std::ptr::null_mut())),
+            other => {
+                bail_expected!(
+                    format!("an ArrayBufferView, number, or null, got {other:?}"),
+                    "buffer"
                 )
             }
         }
@@ -41,7 +45,7 @@ impl Encoder for BufferCodec {
         _ptr: libffi::CodePtr,
         _args: &[libffi::Arg],
     ) -> anyhow::Result<ffi::Stash> {
-        bail!("Buffer codec cannot be return codecs")
+        reject_return_codec("Buffer")
     }
 }
 

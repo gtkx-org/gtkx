@@ -1,7 +1,7 @@
 use glib::{self, translate::IntoGlib as _};
 
 use super::prelude::*;
-use crate::ffi::library_cache::GlibThreadState;
+use crate::ffi::library_cache::FfiCache;
 use crate::handle::{Boxed, BoxedFreeFn};
 use crate::messaging::error_reporter::ReportErr as _;
 
@@ -24,9 +24,7 @@ impl BoxedCodec {
     }
 
     fn lookup_free_fn(library_name: &str, free_fn_name: &str) -> anyhow::Result<BoxedFreeFn> {
-        GlibThreadState::with(|state| {
-            state.resolve_symbol::<BoxedFreeFn>(library_name, free_fn_name)
-        })
+        FfiCache::with(|state| state.resolve_symbol::<BoxedFreeFn>(library_name, free_fn_name))
     }
 
     fn boxed_with_free_fn(&self, ptr: *mut c_void, free_fn_name: &str) -> anyhow::Result<Boxed> {
@@ -49,8 +47,7 @@ impl BoxedCodec {
             return Ok(None);
         };
 
-        let type_ =
-            GlibThreadState::with(|state| state.resolve_type(library_name, get_type_fn_name))?;
+        let type_ = FfiCache::with(|state| state.resolve_type(library_name, get_type_fn_name))?;
         Ok(Some(type_).filter(|t| t.is_valid()))
     }
 }
@@ -71,22 +68,27 @@ impl Encoder for BoxedCodec {
     }
 
     unsafe fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
-        if self.ownership.is_full()
-            && !ptr.is_null()
-            && let Some(type_) = self.type_()?
-        {
-            let copied = unsafe { Boxed::boxed_copy(type_, ptr) };
-            return Ok(copied);
+        if !self.ownership.is_full() || ptr.is_null() {
+            return Ok(ptr);
         }
-        Ok(ptr)
+        let Some(type_) = self.type_()? else {
+            anyhow::bail!(
+                "Cannot transfer ownership of boxed '{}': its GType cannot be resolved, so no copy can be made for the callee",
+                self.type_name
+            );
+        };
+        Ok(unsafe { Boxed::boxed_copy(type_, ptr) })
     }
 }
 
 impl Decoder for BoxedCodec {
-    fn decode_call(&self, stash: &ffi::Stash) -> anyhow::Result<value::Value> {
-        self.decode_call_non_null(stash, "Boxed", |ptr| {
+    fn decode_call<'e>(&self, env: &'e Env, stash: &ffi::Stash) -> anyhow::Result<Unknown<'e>> {
+        self.decode_call_non_null(env, stash, "Boxed", |ptr| {
             if let Some(free_fn_name) = self.free_fn_name.as_deref() {
-                return Ok(self.boxed_with_free_fn(ptr, free_fn_name)?.into());
+                return Ok(value::handle_to_unknown(
+                    env,
+                    self.boxed_with_free_fn(ptr, free_fn_name)?.into(),
+                )?);
             }
 
             let type_ = self.type_()?;
@@ -97,35 +99,56 @@ impl Decoder for BoxedCodec {
                 },
             };
 
-            Ok(boxed.into())
+            Ok(value::handle_to_unknown(env, boxed.into())?)
         })
     }
 
-    unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
-        self.decode_non_null(ptr, |ptr| {
+    unsafe fn read_value<'e>(
+        &self,
+        env: &'e Env,
+        ptr: *mut c_void,
+        _context: &str,
+    ) -> anyhow::Result<Unknown<'e>> {
+        self.decode_non_null(env, ptr, |ptr| {
             if self.free_fn_name.is_some() || self.caller_allocated {
-                return Ok(Boxed::from_glib_borrow(ptr).into());
+                return Ok(value::handle_to_unknown(
+                    env,
+                    Boxed::from_glib_borrow(ptr).into(),
+                )?);
             }
-            Ok(unsafe { Boxed::from_glib_none(self.type_()?, ptr, None) }?.into())
+            Ok(value::handle_to_unknown(
+                env,
+                unsafe { Boxed::from_glib_none(self.type_()?, ptr, None) }?.into(),
+            )?)
         })
     }
 }
 
 impl PtrWriter for BoxedCodec {
-    fn write_return_to_ptr(&self, ret: ffi::Slot, value: &Result<value::Value, ()>) {
-        self.write_return_with_ownership(ret, value, self.ownership, |ptr| {
-            self.type_()
-                .report_err("Boxed return: cannot resolve type")
-                .flatten()
-                .map_or(ptr, |type_| unsafe { Boxed::boxed_copy(type_, ptr) })
+    fn write_return_to_ptr(
+        &self,
+        env: &Env,
+        ret: ffi::Slot,
+        value: &std::result::Result<Unknown<'_>, ()>,
+    ) {
+        self.write_return_with_ownership(env, ret, value, self.ownership, |ptr| {
+            unsafe { self.ref_for_transfer(ptr) }
+                .report_err("Boxed return: cannot transfer ownership")
+                .unwrap_or(std::ptr::null_mut())
         });
     }
 
-    fn write_value_to_ptr(&self, slot: ffi::Slot, value: &value::Value) -> anyhow::Result<()> {
+    fn write_value_to_ptr(
+        &self,
+        env: &Env,
+        slot: ffi::Slot,
+        value: Unknown<'_>,
+    ) -> anyhow::Result<()> {
         let Some(type_) = self.type_()? else {
-            return write_object_ptr(slot, value, "Boxed field write");
+            return write_object_ptr(env, slot, value, "Boxed field write");
         };
         swap_owned_slot(
+            env,
             slot,
             value,
             "Boxed field write",

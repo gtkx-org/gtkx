@@ -3,7 +3,7 @@ use anyhow::bail;
 use super::super::prelude::*;
 use super::container::ArrayContainer;
 use super::item::ItemCodec;
-use super::{ArrayCodec, dup_strings_to_glib, transfer_items};
+use super::{ArrayCodec, build_js_array, dup_strings_to_glib, transfer_items};
 use crate::ffi::codec::{Codec, FloatCodec};
 use crate::ffi::{StashData, StashStorage};
 
@@ -11,7 +11,12 @@ use crate::ffi::{StashData, StashStorage};
 pub(crate) struct GArrayCodec;
 
 impl ArrayContainer for GArrayCodec {
-    fn encode(&self, codec: &ArrayCodec, array: &[value::Value]) -> anyhow::Result<ffi::Stash> {
+    fn encode(
+        &self,
+        codec: &ArrayCodec,
+        env: &Env,
+        array: &[Unknown<'_>],
+    ) -> anyhow::Result<ffi::Stash> {
         let item_size = codec.item_element_size();
         let element_size = codec.element_size.or(item_size).ok_or_else(|| {
             anyhow::anyhow!(
@@ -32,7 +37,7 @@ impl ArrayContainer for GArrayCodec {
         let g_array =
             unsafe { glib::ffi::g_array_sized_new(0, 0, element_size as u32, array.len() as u32) };
 
-        let acquired = match codec.append_items_to_garray(g_array, array) {
+        let acquired = match codec.append_items_to_garray(env, g_array, array) {
             Ok(acquired) => acquired,
             Err(err) => {
                 unsafe { glib::ffi::g_array_unref(g_array) };
@@ -56,16 +61,21 @@ impl ArrayContainer for GArrayCodec {
         ))
     }
 
-    fn decode(&self, codec: &ArrayCodec, stash: &ffi::Stash) -> anyhow::Result<value::Value> {
+    fn decode<'e>(
+        &self,
+        codec: &ArrayCodec,
+        env: &'e Env,
+        stash: &ffi::Stash,
+    ) -> anyhow::Result<Unknown<'e>> {
         let Some(ptr) = stash.as_non_null_ptr("GArray")? else {
-            return Ok(value::Value::Array(vec![]));
+            return build_js_array(env, Vec::new());
         };
 
         let item = codec.item_codec("GArray")?;
         let g_array = ptr as *const glib::ffi::GArray;
         let data = unsafe { (*g_array).data as *const u8 };
         let len = unsafe { (*g_array).len as usize };
-        let values = codec.decode_contiguous(item, data, len);
+        let values = codec.decode_contiguous(env, item, data, len);
 
         if codec.ownership.is_full() {
             let storage_owns = matches!(stash, ffi::Stash::Storage(_));
@@ -74,7 +84,7 @@ impl ArrayContainer for GArrayCodec {
             }
         }
 
-        Ok(value::Value::Array(values?))
+        build_js_array(env, values?)
     }
 
     fn name(&self) -> &'static str {
@@ -91,10 +101,11 @@ impl ArrayCodec {
 
     fn append_handle_values_to_garray(
         &self,
+        env: &Env,
         g_array: *mut glib::ffi::GArray,
-        array: &[value::Value],
+        array: &[Unknown<'_>],
     ) -> anyhow::Result<Vec<ffi::PendingTransfer>> {
-        let handles = Self::extract_handles(array)?;
+        let handles = Self::extract_handles(env, array)?;
         let (ptrs, acquired) = transfer_items(&handles, &self.item_codec, "GArray")?;
         Self::append_vals(g_array, ptrs.as_ptr().cast::<c_void>(), ptrs.len());
         Ok(acquired)
@@ -102,22 +113,23 @@ impl ArrayCodec {
 
     fn append_items_to_garray(
         &self,
+        env: &Env,
         g_array: *mut glib::ffi::GArray,
-        array: &[value::Value],
+        array: &[Unknown<'_>],
     ) -> anyhow::Result<Vec<ffi::PendingTransfer>> {
         match self.item_codec("GArray")? {
             ItemCodec::Integer(kind) | ItemCodec::EnumFlags(kind) => {
-                let storage = kind.to_stash_storage(&Self::extract_numbers(array)?);
+                let storage = kind.to_stash_storage(&Self::extract_numbers(env, array)?);
                 Self::append_vals(g_array, storage.ptr(), array.len());
                 Ok(Vec::new())
             }
             ItemCodec::BigInt(kind) => {
-                let storage = kind.to_stash_storage(array)?;
+                let storage = kind.to_stash_storage(env, array)?;
                 Self::append_vals(g_array, storage.ptr(), array.len());
                 Ok(Vec::new())
             }
             ItemCodec::Float(kind) => {
-                let numbers = Self::extract_numbers(array)?;
+                let numbers = Self::extract_numbers(env, array)?;
                 let storage: StashStorage = match kind {
                     FloatCodec::F32 => numbers
                         .iter()
@@ -130,11 +142,11 @@ impl ArrayCodec {
                 Ok(Vec::new())
             }
             ItemCodec::Boolean => {
-                let storage: StashStorage = Self::extract_booleans(array)?.into();
+                let storage: StashStorage = Self::extract_booleans(env, array)?.into();
                 Self::append_vals(g_array, storage.ptr(), array.len());
                 Ok(Vec::new())
             }
-            ItemCodec::Pointer => self.append_handle_values_to_garray(g_array, array),
+            ItemCodec::Pointer => self.append_handle_values_to_garray(env, g_array, array),
             ItemCodec::String => {
                 unsafe extern "C" fn free_garray_string_element(slot: glib::ffi::gpointer) {
                     unsafe { glib::ffi::g_free(*(slot as *mut glib::ffi::gpointer)) };
@@ -149,7 +161,7 @@ impl ArrayCodec {
                         );
                     }
                 }
-                let dups = dup_strings_to_glib(array)?;
+                let dups = dup_strings_to_glib(env, array)?;
                 let acquired = if callee_owns_strings {
                     dups.iter()
                         .map(|&dup| ffi::PendingTransfer::new(dup, ffi::ReleaseKind::GFree))

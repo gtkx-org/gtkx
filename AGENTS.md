@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-GTKX is a framework for building native GTK4/libadwaita desktop applications with React, TypeScript, and JSX. App authors write declarative JSX whose element types are GTK widget names; a custom react-reconciler maps that tree to live GObject instances, while a Rust napi addon owns the single GLib main-loop thread and performs every libffi call into GTK. A build-time generator turns GObject-Introspection (GIR) XML into the typed bindings, JSX element types, and reconciler metadata the runtime consumes, and a Vite-based CLI provides scaffolding, hot-reloading dev, single-file production bundling, and GTK-asset integration.
+GTKX is a framework for building native GTK4/libadwaita desktop applications with React, TypeScript, and JSX. App authors write declarative JSX whose element types are GTK widget names; a custom react-reconciler maps that tree to live GObject instances, while a Rust napi addon drives the default GLib main context on the Node/libuv event loop and performs every libffi call into GTK. A build-time generator turns GObject-Introspection (GIR) XML into the typed bindings, JSX element types, and reconciler metadata the runtime consumes, and a Vite-based CLI provides scaffolding, hot-reloading dev, single-file production bundling, and GTK-asset integration.
 
 Homepage: https://gtkx.dev
 
@@ -8,9 +8,9 @@ Homepage: https://gtkx.dev
 
 | Package | Role |
 | --- | --- |
-| `@gtkx/native` | Rust napi addon: owns the single GLib main-loop thread, performs all libffi C calls into GTK/GObject, marshals values via the Type descriptor contract, registers JS-backed subclasses/vfuncs, binds wrapper lifetime to native GObjects. |
+| `@gtkx/native` | Rust napi addon: drives the default GLib main context on the Node/libuv event loop, performs all libffi C calls into GTK/GObject, marshals values via the Type descriptor contract, registers JS-backed subclasses/vfuncs, binds wrapper lifetime to native GObjects. |
 | `@gtkx/ffi` | Hand-written TS runtime over the addon: GObject construction, value marshalling, signals and trampolines, subclass registration, the GType-to-class registry and wrapper identity, and the Type descriptor vocabulary the generated bindings target. |
-| `@gtkx/react` | Custom react-reconciler host config mapping JSX to GObject instances, plus the GObject-aware hooks; drives prop application, child attachment, and the commit freeze/signal-block strategy. |
+| `@gtkx/react` | Custom react-reconciler host config mapping JSX to GObject instances, plus the GObject-aware hooks; drives prop application, child attachment, and the commit signal-block strategy. |
 | `@gtkx/components` | Hand-written higher-level component families (list, grid, fixed, overlay, column, drop-down, menu, combo-row, dialog, constraint layout) over the generated bindings. |
 | `@gtkx/codegen` | Build-time GIR/Khronos generator producing the `@gtkx/gi` and `@gtkx/jsx` binding stores, the reconciler metadata, and `@gtkx/gl`; owns the Type descriptor and helper-name contract the runtimes implement. |
 | `@gtkx/cli` | User-facing CLI and Vite integration: hot-reloading dev supervisor over SSR with Fast Refresh, single-file production bundling, codegen orchestration with freshness checks, the GTK-asset Vite plugins, and the embedded MCP client. |

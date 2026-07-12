@@ -1,12 +1,12 @@
 import { type ApplicationLike, onExit, quitApplication, runApplication } from "@gtkx/ffi";
 import { describe, expect, it, vi } from "vitest";
 
-const nativeMock = vi.hoisted(() => ({ quit: vi.fn() }));
+const nativeMock = vi.hoisted(() => ({ quit: vi.fn(), keepAlive: vi.fn() }));
 const signalMock = vi.hoisted(() => ({ blockMatchedSignalHandlers: vi.fn() }));
 
 vi.mock("@gtkx/native", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@gtkx/native")>();
-    return { ...actual, quit: nativeMock.quit };
+    return { ...actual, quit: nativeMock.quit, keepAlive: nativeMock.keepAlive };
 });
 
 vi.mock("../src/signal.js", async (importOriginal) => {
@@ -78,32 +78,26 @@ const createFakeApplication = (windows: object[] = []): FakeApplication => {
 
 describe("runApplication and quitApplication", () => {
     it("registers, activates, and holds the loop alive until shutdown", () => {
-        vi.useFakeTimers();
-        try {
-            const app = createFakeApplication();
-            const before = vi.getTimerCount();
+        const app = createFakeApplication();
+        nativeMock.keepAlive.mockClear();
 
-            runApplication(app);
+        runApplication(app);
 
-            expect(app.registerCalls).toBe(1);
-            expect(app.activateCalls).toBe(1);
-            expect(app.getIsRegistered()).toBe(true);
-            expect(vi.getTimerCount()).toBe(before + 1);
+        expect(app.registerCalls).toBe(1);
+        expect(app.activateCalls).toBe(1);
+        expect(app.getIsRegistered()).toBe(true);
+        expect(nativeMock.keepAlive).toHaveBeenLastCalledWith(true);
 
-            quitApplication(app);
-            expect(signalMock.blockMatchedSignalHandlers).toHaveBeenCalledWith(app, "activate");
-            expect(app.lastRunArgv).toEqual([]);
-            expect(app.shutdownEmits).toBe(1);
-            expect(app.quitCalls).toBe(1);
-            expect(app.getIsRegistered()).toBe(false);
-            expect(vi.getTimerCount()).toBe(before);
+        quitApplication(app);
+        expect(signalMock.blockMatchedSignalHandlers).toHaveBeenCalledWith(app, "activate");
+        expect(app.lastRunArgv).toEqual([]);
+        expect(app.shutdownEmits).toBe(1);
+        expect(app.quitCalls).toBe(1);
+        expect(app.getIsRegistered()).toBe(false);
+        expect(nativeMock.keepAlive).toHaveBeenLastCalledWith(false);
 
-            quitApplication(app);
-            expect(app.runCalls).toBe(1);
-            expect(vi.getTimerCount()).toBe(before);
-        } finally {
-            vi.useRealTimers();
-        }
+        quitApplication(app);
+        expect(app.runCalls).toBe(1);
     });
 
     it("blocks activate handlers before running the application", () => {
@@ -133,19 +127,14 @@ describe("runApplication and quitApplication", () => {
     });
 
     it("does not re-register an already-registered application", () => {
-        vi.useFakeTimers();
-        try {
-            const app = createFakeApplication();
-            app.register(null);
+        const app = createFakeApplication();
+        app.register(null);
 
-            runApplication(app);
+        runApplication(app);
 
-            expect(app.registerCalls).toBe(1);
+        expect(app.registerCalls).toBe(1);
 
-            quitApplication(app);
-        } finally {
-            vi.useRealTimers();
-        }
+        quitApplication(app);
     });
 
     it("does nothing when the application was never registered", () => {
@@ -158,21 +147,17 @@ describe("runApplication and quitApplication", () => {
         expect(app.activateCalls).toBe(0);
     });
 
-    it("keeps a single keepalive when the application activates again", () => {
-        vi.useFakeTimers();
-        try {
-            const app = createFakeApplication();
-            const before = vi.getTimerCount();
+    it("forwards keepalive to the native loop on each activation", () => {
+        const app = createFakeApplication();
+        nativeMock.keepAlive.mockClear();
 
-            runApplication(app);
-            app.activate();
+        runApplication(app);
+        app.activate();
 
-            expect(vi.getTimerCount()).toBe(before + 1);
+        expect(app.activateCalls).toBe(2);
+        expect(nativeMock.keepAlive).toHaveBeenCalledWith(true);
 
-            quitApplication(app);
-        } finally {
-            vi.useRealTimers();
-        }
+        quitApplication(app);
     });
 });
 

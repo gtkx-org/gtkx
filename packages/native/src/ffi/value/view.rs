@@ -5,7 +5,7 @@ use napi::bindgen_prelude::*;
 use napi::sys;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BufferViewKind {
+pub enum ViewKind {
     Int8,
     Uint8,
     Uint8Clamped,
@@ -20,7 +20,7 @@ pub enum BufferViewKind {
     DataView,
 }
 
-impl TryFrom<sys::napi_typedarray_type> for BufferViewKind {
+impl TryFrom<sys::napi_typedarray_type> for ViewKind {
     type Error = napi::Error;
 
     fn try_from(raw: sys::napi_typedarray_type) -> napi::Result<Self> {
@@ -44,7 +44,7 @@ impl TryFrom<sys::napi_typedarray_type> for BufferViewKind {
     }
 }
 
-impl BufferViewKind {
+impl ViewKind {
     pub fn element_size(self) -> usize {
         match self {
             Self::Int8 | Self::Uint8 | Self::Uint8Clamped | Self::DataView => 1,
@@ -55,7 +55,7 @@ impl BufferViewKind {
     }
 }
 
-impl std::fmt::Display for BufferViewKind {
+impl std::fmt::Display for ViewKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let name = match self {
             Self::Int8 => "Int8Array",
@@ -76,23 +76,21 @@ impl std::fmt::Display for BufferViewKind {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct BufferView {
+pub struct TypedView {
     ptr: *mut c_void,
     byte_length: usize,
     length: usize,
-    kind: BufferViewKind,
+    kind: ViewKind,
 }
 
-unsafe impl Send for BufferView {}
-unsafe impl Sync for BufferView {}
-
-impl BufferView {
-    pub fn new(ptr: *mut c_void, byte_length: usize, length: usize, kind: BufferViewKind) -> Self {
-        Self {
-            ptr,
-            byte_length,
-            length,
-            kind,
+impl TypedView {
+    pub fn from_unknown(env: &Env, value: Unknown<'_>) -> napi::Result<Option<Self>> {
+        if value.is_typedarray()? {
+            Ok(Some(Self::from_typed_array(env, &value)?))
+        } else if value.is_dataview()? {
+            Ok(Some(Self::from_data_view(env, &value)?))
+        } else {
+            Ok(None)
         }
     }
 
@@ -108,13 +106,11 @@ impl BufferView {
         self.length
     }
 
-    pub fn kind(&self) -> BufferViewKind {
+    pub fn kind(&self) -> ViewKind {
         self.kind
     }
-}
 
-impl BufferView {
-    pub(super) fn from_typed_array(env: &Env, value: &Unknown<'_>) -> napi::Result<Self> {
+    fn from_typed_array(env: &Env, value: &Unknown<'_>) -> napi::Result<Self> {
         let mut raw_kind: sys::napi_typedarray_type = sys::TypedarrayType::int8_array;
         let mut length = 0usize;
         let mut data = std::ptr::null_mut();
@@ -132,12 +128,17 @@ impl BufferView {
             )
         };
         check_status!(status, "Failed to read typed-array info")?;
-        let kind = BufferViewKind::try_from(raw_kind)?;
+        let kind = ViewKind::try_from(raw_kind)?;
         Self::reject_if_shared(env, array_buffer)?;
-        Ok(Self::new(data, length * kind.element_size(), length, kind))
+        Ok(Self {
+            ptr: data,
+            byte_length: length * kind.element_size(),
+            length,
+            kind,
+        })
     }
 
-    pub(super) fn from_data_view(env: &Env, value: &Unknown<'_>) -> napi::Result<Self> {
+    fn from_data_view(env: &Env, value: &Unknown<'_>) -> napi::Result<Self> {
         let mut byte_length = 0usize;
         let mut data = std::ptr::null_mut();
         let mut array_buffer = std::ptr::null_mut();
@@ -154,12 +155,12 @@ impl BufferView {
         };
         check_status!(status, "Failed to read DataView info")?;
         Self::reject_if_shared(env, array_buffer)?;
-        Ok(Self::new(
-            data,
+        Ok(Self {
+            ptr: data,
             byte_length,
-            byte_length,
-            BufferViewKind::DataView,
-        ))
+            length: byte_length,
+            kind: ViewKind::DataView,
+        })
     }
 
     fn reject_if_shared(env: &Env, buffer: sys::napi_value) -> napi::Result<()> {

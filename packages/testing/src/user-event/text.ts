@@ -80,7 +80,7 @@ export const resetClipboard = (): void => {
 };
 
 export const type = (widget: Gtk.Widget, text: string, options?: TypeOptions): Promise<void> =>
-    wrapEvent(() => {
+    wrapEvent(widget, () => {
         if (!isEditable(widget)) {
             throw new Error(`Cannot type into element: ${EDITABLE_REQUIRED}`);
         }
@@ -94,7 +94,7 @@ export const type = (widget: Gtk.Widget, text: string, options?: TypeOptions): P
     });
 
 export const clear = (widget: Gtk.Widget): Promise<void> =>
-    wrapEvent(() => {
+    wrapEvent(widget, () => {
         if (!isEditable(widget)) {
             throw new Error(`Cannot clear element: ${EDITABLE_REQUIRED}`);
         }
@@ -103,7 +103,7 @@ export const clear = (widget: Gtk.Widget): Promise<void> =>
     });
 
 export const copy = (widget: Gtk.Widget): Promise<void> =>
-    wrapEvent(() => {
+    wrapEvent(widget, () => {
         if (!isEditable(widget)) {
             throw new Error(`Cannot copy: ${EDITABLE_REQUIRED}`);
         }
@@ -112,7 +112,7 @@ export const copy = (widget: Gtk.Widget): Promise<void> =>
     });
 
 export const cut = (widget: Gtk.Widget): Promise<void> =>
-    wrapEvent(() => {
+    wrapEvent(widget, () => {
         if (!isEditable(widget)) {
             throw new Error(`Cannot cut: ${EDITABLE_REQUIRED}`);
         }
@@ -127,7 +127,7 @@ export const paste = async (widget: Gtk.Widget, text?: string): Promise<void> =>
     }
 
     const content = text ?? (await widget.getClipboard().readTextAsync(null)) ?? "";
-    await wrapEvent(() => {
+    await wrapEvent(widget, () => {
         insertEditableText(widget, content);
     });
 };

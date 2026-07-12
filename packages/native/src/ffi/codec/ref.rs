@@ -43,65 +43,73 @@ impl RefCodec {
             | Codec::Unichar(_) => true,
         }
     }
+
+    fn inner_value<'e>(env: &'e Env, value: Unknown<'e>) -> anyhow::Result<Option<Unknown<'e>>> {
+        match value.get_type()? {
+            ValueType::Null | ValueType::Undefined => Ok(None),
+            ValueType::Object => {
+                let obj = Object::from_raw(env.raw(), value.raw());
+                Ok(Some(obj.get_named_property::<Unknown>("value")?))
+            }
+            _ => bail_expected!("a Ref", "ref"),
+        }
+    }
 }
 
 impl Encoder for RefCodec {
-    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::Stash> {
-        let ref_val = match value {
-            value::Value::Ref(r) => r,
-            value::Value::Null | value::Value::Undefined => {
-                return Ok(ffi::Stash::Ptr(std::ptr::null_mut()));
-            }
-            _ => bail_expected!("a Ref", "ref", value),
+    fn encode(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
+        let Some(inner) = Self::inner_value(env, value)? else {
+            return Ok(ffi::Stash::Ptr(std::ptr::null_mut()));
         };
+        let inner_type = inner.get_type()?;
+        let is_nullish = matches!(inner_type, ValueType::Null | ValueType::Undefined);
 
         if self.inner_codec.is_handle_backed() {
-            return match &*ref_val.value {
-                value::Value::Null | value::Value::Undefined => Ok(Self::null_ptr_stash()),
-                _ => bail!(
-                    "Expected Null for Ref<Boxed/Struct/Object/Fundamental>, got {:?}",
-                    ref_val.value
-                ),
+            return if is_nullish {
+                Ok(Self::null_ptr_stash())
+            } else {
+                bail!("Expected Null for Ref<Boxed/Struct/Object/Fundamental>")
             };
         }
 
         match &*self.inner_codec {
-            Codec::Array(array_codec) => match &*ref_val.value {
-                value::Value::Array(arr) if !arr.is_empty() => {
-                    let encoded = array_codec.encode(&ref_val.value)?;
+            Codec::Array(array_codec) => {
+                if inner_type == ValueType::Object
+                    && inner.is_array()?
+                    && Array::from_unknown(inner)?.len() > 0
+                {
+                    let encoded = array_codec.encode(env, inner)?;
                     anyhow::ensure!(
                         matches!(encoded, ffi::Stash::Storage(_)),
                         "Expected Storage from array encode for Ref<Array>"
                     );
                     Ok(encoded)
-                }
-                value::Value::Null | value::Value::Undefined | value::Value::Array(_) => {
+                } else if is_nullish || (inner_type == ValueType::Object && inner.is_array()?) {
                     Ok(Self::null_ptr_stash())
+                } else {
+                    bail!("Expected Array, Null, or Undefined for Ref<Array>")
                 }
-                _ => bail!(
-                    "Expected Array, Null, or Undefined for Ref<Array>, got {:?}",
-                    ref_val.value
-                ),
-            },
+            }
             Codec::String(string_codec) => {
-                let (buffer_size, initial_content) = match (&string_codec.length, &*ref_val.value) {
-                    (Some(len), value::Value::String(s)) => (*len, Some(s.as_bytes())),
-                    (Some(len), value::Value::Null | value::Value::Undefined) => (*len, None),
-                    (None, value::Value::String(s)) => (s.len() + 1, Some(s.as_bytes())),
-                    (None, value::Value::Null | value::Value::Undefined) => {
-                        return Ok(Self::null_ptr_stash());
-                    }
-                    _ => bail!(
-                        "Expected a String, Null, or length for Ref<String>, got {:?}",
-                        ref_val.value
-                    ),
+                let inner_string = if is_nullish {
+                    None
+                } else if inner_type == ValueType::String {
+                    Some(value::read_napi::<String>(env, inner)?)
+                } else {
+                    bail!("Expected a String, Null, or length for Ref<String>")
+                };
+
+                let buffer_size = match (&string_codec.length, &inner_string) {
+                    (Some(len), _) => *len,
+                    (None, Some(s)) => s.len() + 1,
+                    (None, None) => return Ok(Self::null_ptr_stash()),
                 };
 
                 let mut buffer: Vec<u8> = vec![0u8; buffer_size];
-
-                if let Some(content) = initial_content {
-                    let copy_len = content.len().min(buffer_size.saturating_sub(1));
-                    buffer[..copy_len].copy_from_slice(&content[..copy_len]);
+                if let Some(content) = inner_string.as_deref() {
+                    let bytes = content.as_bytes();
+                    let copy_len = bytes.len().min(buffer_size.saturating_sub(1));
+                    buffer[..copy_len].copy_from_slice(&bytes[..copy_len]);
                 }
 
                 let ptr = buffer.as_mut_ptr() as *mut c_void;
@@ -110,13 +118,14 @@ impl Encoder for RefCodec {
                     StashData::Buffer(buffer),
                 )))
             }
-            _ => match &*ref_val.value {
-                value::Value::Null | value::Value::Undefined => Ok(Self::zeroed_scalar_stash()),
-                _ => {
-                    let encoded = self.inner_codec.encode(&ref_val.value)?;
+            _ => {
+                if is_nullish {
+                    Ok(Self::zeroed_scalar_stash())
+                } else {
+                    let encoded = self.inner_codec.encode(env, inner)?;
                     Self::scalar_out_stash(&encoded)
                 }
-            },
+            }
         }
     }
 
@@ -126,27 +135,27 @@ impl Encoder for RefCodec {
         _ptr: libffi::CodePtr,
         _args: &[libffi::Arg],
     ) -> anyhow::Result<ffi::Stash> {
-        bail!("Ref codecs cannot be return codecs")
+        reject_return_codec("Ref")
     }
 }
 
 impl Decoder for RefCodec {
-    unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
+    unsafe fn read<'e>(&self, env: &'e Env, src: ReadSource<'_>) -> anyhow::Result<Unknown<'e>> {
         let storage = match src {
             ReadSource::Call(stash) => {
                 let Some(storage) = stash.as_storage_or_null("Ref")? else {
-                    return Ok(value::Value::Null);
+                    return Ok(value::js_null(env)?);
                 };
                 storage
             }
             ReadSource::Slot(ptr, _context) => {
                 let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
                 if inner_ptr.is_null() {
-                    return Ok(value::Value::Null);
+                    return Ok(value::js_null(env)?);
                 }
                 return unsafe {
                     self.inner_codec
-                        .read(ReadSource::Slot(inner_ptr, "ref inner"))
+                        .read(env, ReadSource::Slot(inner_ptr, "ref inner"))
                 };
             }
             ReadSource::Value(..) => bail!("This codec cannot be read from pointer"),
@@ -154,7 +163,7 @@ impl Decoder for RefCodec {
 
         if self.inner_codec.is_handle_backed() {
             let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
-            return self.inner_codec.decode(&ffi::Stash::Ptr(actual_ptr));
+            return self.inner_codec.decode(env, &ffi::Stash::Ptr(actual_ptr));
         }
 
         match &*self.inner_codec {
@@ -164,12 +173,12 @@ impl Decoder for RefCodec {
             | Codec::Boolean(_)
             | Codec::Unichar(_) => unsafe {
                 self.inner_codec
-                    .read(ReadSource::Slot(storage.ptr(), "Ref inner"))
+                    .read(env, ReadSource::Slot(storage.ptr(), "Ref inner"))
             },
-            Codec::String(string_codec) => Ok(Self::decode_ref_string(storage, string_codec)),
+            Codec::String(string_codec) => Self::decode_ref_string(env, storage, string_codec),
             Codec::HashTable(_) => {
                 let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
-                self.inner_codec.decode(&ffi::Stash::Ptr(actual_ptr))
+                self.inner_codec.decode(env, &ffi::Stash::Ptr(actual_ptr))
             }
             Codec::Array(_) => {
                 bail!("Ref<Array> requires decode_with_context to get size from another parameter")
@@ -181,15 +190,16 @@ impl Decoder for RefCodec {
         }
     }
 
-    fn decode_with_context(
+    fn decode_with_context<'e>(
         &self,
+        env: &'e Env,
         stash: &ffi::Stash,
         ffi_args: &[ffi::Stash],
         arg_codecs: &[Codec],
-    ) -> anyhow::Result<value::Value> {
+    ) -> anyhow::Result<Unknown<'e>> {
         if let Codec::Array(array_codec) = &*self.inner_codec {
             let Some(storage) = stash.as_storage_or_null("Ref<Array>")? else {
-                return Ok(value::Value::Null);
+                return Ok(value::js_null(env)?);
             };
 
             let actual_ptr = match storage.data() {
@@ -198,11 +208,11 @@ impl Decoder for RefCodec {
             };
 
             if actual_ptr.is_null() {
-                return Ok(value::Value::Array(vec![]));
+                return Ok(env.create_array(0)?.coerce_to_object()?.to_unknown());
             }
 
             let ptr_stash = ffi::Stash::Ptr(actual_ptr);
-            let result = array_codec.decode_with_context(&ptr_stash, ffi_args, arg_codecs);
+            let result = array_codec.decode_with_context(env, &ptr_stash, ffi_args, arg_codecs);
 
             if matches!(storage.data(), StashData::PtrSlot(_))
                 && array_codec.ownership.is_full()
@@ -214,7 +224,7 @@ impl Decoder for RefCodec {
             return result;
         }
 
-        self.decode(stash)
+        self.decode(env, stash)
     }
 }
 
@@ -237,21 +247,22 @@ impl RefCodec {
         ffi::Stash::Storage(StashStorage::from(vec![0u64]))
     }
 
-    fn decode_ref_string(
+    fn decode_ref_string<'e>(
+        env: &'e Env,
         storage: &StashStorage,
         string_codec: &super::StringCodec,
-    ) -> value::Value {
+    ) -> anyhow::Result<Unknown<'e>> {
         if storage.ptr().is_null() {
-            return value::Value::Null;
+            return Ok(value::js_null(env)?);
         }
 
         if let StashData::Buffer(_) = storage.data() {
             let string = unsafe { lossy_c_string(storage.ptr() as *const c_char) };
-            value::Value::String(string)
+            Ok(string.into_unknown(env)?)
         } else {
             let str_ptr = unsafe { *(storage.ptr() as *const *const c_char) };
             if str_ptr.is_null() {
-                return value::Value::Null;
+                return Ok(value::js_null(env)?);
             }
             let string = unsafe { lossy_c_string(str_ptr) };
 
@@ -259,7 +270,7 @@ impl RefCodec {
                 unsafe { glib::ffi::g_free(str_ptr as *mut c_void) };
             }
 
-            value::Value::String(string)
+            Ok(string.into_unknown(env)?)
         }
     }
 }

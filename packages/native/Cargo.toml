@@ -25,4 +25,5 @@ missing_safety_doc = "allow"
 
 [dev-dependencies]
 gtk4 = "0.11.4"
+napi = { version = "3", features = ["napi8"] }
 test-support = { path = "test-support" }

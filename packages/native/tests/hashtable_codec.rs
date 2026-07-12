@@ -1,8 +1,14 @@
 use test_support as helpers;
 
+use std::cell::RefCell;
 use std::ffi::c_void;
 
 use gtk4::glib;
+
+use napi::Env;
+use napi::JsValue as _;
+use napi::bindgen_prelude::{External, Unknown};
+use napi::sys;
 
 use native::Handle;
 use native::ffi::Slot;
@@ -13,12 +19,72 @@ use native::ffi::codec::{
     StructCodec,
 };
 use native::ffi::codec::{Decoder, Encoder, PtrWriter, ReadSource};
-use native::ffi::value::Value;
 
+use helpers::napi_mock;
 use helpers::{
     boxed_handle, fresh_gobject as new_object_with_refcount,
     make_bool_param_spec as create_param_spec,
 };
+
+helpers::g_free_recorder!();
+
+thread_local! {
+    static G_MEMDUPED: RefCell<Vec<usize>> = const { RefCell::new(Vec::new()) };
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn g_memdup2(mem: *const c_void, byte_size: usize) -> *mut c_void {
+    if mem.is_null() || byte_size == 0 {
+        return std::ptr::null_mut();
+    }
+    let copy = unsafe { glib::ffi::g_malloc(byte_size) };
+    unsafe { std::ptr::copy_nonoverlapping(mem as *const u8, copy as *mut u8, byte_size) };
+    G_MEMDUPED.with_borrow_mut(|duped| duped.push(copy as usize));
+    copy
+}
+
+fn drain_g_memduped() -> Vec<usize> {
+    G_MEMDUPED.with_borrow_mut(std::mem::take)
+}
+
+fn frees_of(freed: &[usize], ptr: usize) -> usize {
+    freed.iter().filter(|&&freed_ptr| freed_ptr == ptr).count()
+}
+
+fn num(n: f64) -> sys::napi_value {
+    napi_mock::fake_double(n)
+}
+
+fn boolean(b: bool) -> sys::napi_value {
+    napi_mock::fake_bool(b)
+}
+
+fn text(s: &str) -> sys::napi_value {
+    napi_mock::fake_string(s)
+}
+
+fn null_value() -> sys::napi_value {
+    napi_mock::fake_null()
+}
+
+fn undefined_value() -> sys::napi_value {
+    napi_mock::fake_undefined()
+}
+
+fn tuple(key: sys::napi_value, value: sys::napi_value) -> sys::napi_value {
+    napi_mock::fake_array(&[key, value])
+}
+
+fn list(items: &[sys::napi_value]) -> sys::napi_value {
+    napi_mock::fake_array(items)
+}
+
+fn object_raw(env: &Env, handle: Handle) -> sys::napi_value {
+    External::new(handle)
+        .into_unknown(env)
+        .expect("external into unknown should succeed")
+        .raw()
+}
 
 fn assert_hash_equal_and_free(encoder: HashTableEntryCodec, installs_free: bool) {
     let (hash, equal) = encoder.hash_and_equal();
@@ -27,18 +93,29 @@ fn assert_hash_equal_and_free(encoder: HashTableEntryCodec, installs_free: bool)
     assert_eq!(encoder.free_func().unwrap().is_some(), installs_free);
 }
 
-fn struct_codec() -> Codec {
+fn struct_codec_with(ownership: Ownership, size: Option<usize>) -> Codec {
     Codec::Struct(StructCodec {
-        ownership: Ownership::Borrowed,
-        size: Some(size_of::<gtk4::gdk::ffi::GdkRGBA>()),
+        ownership,
+        size,
         caller_allocated: false,
     })
 }
 
-fn gptrarray_codec() -> Codec {
+fn struct_codec() -> Codec {
+    struct_codec_with(
+        Ownership::Borrowed,
+        Some(size_of::<gtk4::gdk::ffi::GdkRGBA>()),
+    )
+}
+
+fn full_struct_codec(size: Option<usize>) -> Codec {
+    struct_codec_with(Ownership::Full, size)
+}
+
+fn gptrarray_codec_of(item_codec: Codec) -> Codec {
     Codec::Array(
         ArrayCodec::new(
-            Box::new(struct_codec()),
+            Box::new(item_codec),
             ArrayKind::GPtrArray,
             Ownership::Borrowed,
             None,
@@ -47,6 +124,10 @@ fn gptrarray_codec() -> Codec {
         )
         .expect("valid gptrarray codec"),
     )
+}
+
+fn gptrarray_codec() -> Codec {
+    gptrarray_codec_of(struct_codec())
 }
 
 fn full_boxed_codec() -> Codec {
@@ -99,8 +180,10 @@ fn ht_codec(key: Codec, value: Codec, ownership: Ownership) -> HashTableCodec {
     }
 }
 
-fn roundtrip(ht: &HashTableCodec, input: &Value) -> Value {
-    let encoded = ht.encode(input).expect("encoding should succeed");
+fn roundtrip<'e>(env: &'e Env, ht: &HashTableCodec, input: sys::napi_value) -> Unknown<'e> {
+    let encoded = ht
+        .encode(env, napi_mock::to_unknown(env, input))
+        .expect("encoding should succeed");
     let Stash::Storage(storage) = &encoded else {
         panic!("hash table encode must produce a Storage stash");
     };
@@ -108,12 +191,17 @@ fn roundtrip(ht: &HashTableCodec, input: &Value) -> Value {
     if ht.ownership.is_full() {
         unsafe { glib::ffi::g_hash_table_ref(ptr as *mut glib::ffi::GHashTable) };
     }
-    ht.decode(&Stash::Ptr(ptr))
+    ht.decode(env, &Stash::Ptr(ptr))
         .expect("decoding should succeed")
 }
 
-fn assert_encoded_float(encoder: &HashTableEntryCodec, value: &Value, expected: f64) {
-    let ptr = encoder.encode(value).expect("encoding should succeed");
+fn assert_encoded_float(
+    env: &Env,
+    encoder: &HashTableEntryCodec,
+    value: Unknown<'_>,
+    expected: f64,
+) {
+    let ptr = encoder.encode(env, value).expect("encoding should succeed");
 
     let stored_value = unsafe {
         *ptr.cast::<f64>()
@@ -125,16 +213,13 @@ fn assert_encoded_float(encoder: &HashTableEntryCodec, value: &Value, expected: 
     unsafe { glib::ffi::g_free(ptr) };
 }
 
-fn assert_boolean_ptr_reads_true(ptr: *mut c_void) {
+fn assert_boolean_ptr_reads_true(env: &Env, ptr: *mut c_void) {
     let codec = Codec::Boolean(BooleanCodec);
 
-    let value =
-        unsafe { codec.read(ReadSource::Value(ptr, "test")) }.expect("decoding should succeed");
+    let value = unsafe { codec.read(env, ReadSource::Value(ptr, "test")) }
+        .expect("decoding should succeed");
 
-    match value {
-        Value::Boolean(true) => (),
-        other => panic!("Expected Boolean(true), got {other:?}"),
-    }
+    assert_eq!(napi_mock::read_bool(value.raw()), Some(true));
 }
 
 fn boolean_boolean_ht() -> HashTableCodec {
@@ -142,6 +227,14 @@ fn boolean_boolean_ht() -> HashTableCodec {
         Codec::Boolean(BooleanCodec),
         Codec::Boolean(BooleanCodec),
         Ownership::Full,
+    )
+}
+
+fn integer_integer_ht(ownership: Ownership) -> HashTableCodec {
+    ht_codec(
+        Codec::Integer(IntegerCodec::I32),
+        Codec::Integer(IntegerCodec::I32),
+        ownership,
     )
 }
 
@@ -153,20 +246,16 @@ fn gobject_key_boolean_ht() -> HashTableCodec {
     )
 }
 
-fn assert_kv_pairs<F>(decoded: Value, expected_len: usize, check_kv: F)
+fn assert_kv_pairs<F>(decoded: Unknown<'_>, expected_len: usize, check_kv: F)
 where
-    F: Fn(&Value, &Value),
+    F: Fn(sys::napi_value, sys::napi_value),
 {
-    let Value::Array(decoded_pairs) = decoded else {
-        panic!("Expected array")
-    };
+    let decoded_pairs = napi_mock::read_array(decoded.raw()).expect("Expected array");
     assert_eq!(decoded_pairs.len(), expected_len);
     for pair in decoded_pairs {
-        let Value::Array(kv) = pair else {
-            panic!("Expected array pair")
-        };
+        let kv = napi_mock::read_array(pair).expect("Expected array pair");
         assert_eq!(kv.len(), 2);
-        check_kv(&kv[0], &kv[1]);
+        check_kv(kv[0], kv[1]);
     }
 }
 
@@ -213,111 +302,122 @@ fn float_encoder_uses_double_hash_and_equal() {
 
 #[test]
 fn encode_boolean_true() {
-    let encoder = HashTableEntryCodec::Boolean;
-    let value = Value::Boolean(true);
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let encoder = HashTableEntryCodec::Boolean;
 
-    let ptr = encoder.encode(&value).expect("encoding should succeed");
+        let ptr = encoder
+            .encode(&env, napi_mock::to_unknown(&env, boolean(true)))
+            .expect("encoding should succeed");
 
-    assert_eq!(ptr as isize, 1);
+        assert_eq!(ptr as isize, 1);
+    });
 }
 
 #[test]
 fn encode_boolean_false() {
-    let encoder = HashTableEntryCodec::Boolean;
-    let value = Value::Boolean(false);
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let encoder = HashTableEntryCodec::Boolean;
 
-    let ptr = encoder.encode(&value).expect("encoding should succeed");
+        let ptr = encoder
+            .encode(&env, napi_mock::to_unknown(&env, boolean(false)))
+            .expect("encoding should succeed");
 
-    assert_eq!(ptr as isize, 0);
+        assert_eq!(ptr as isize, 0);
+    });
 }
 
 #[test]
 fn encode_float_value() {
-    let encoder = HashTableEntryCodec::Float;
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let encoder = HashTableEntryCodec::Float;
 
-    assert_encoded_float(
-        &encoder,
-        &Value::Number(std::f64::consts::PI),
-        std::f64::consts::PI,
-    );
-    assert_encoded_float(&encoder, &Value::Number(-123.456), -123.456);
+        assert_encoded_float(
+            &env,
+            &encoder,
+            napi_mock::to_unknown(&env, num(std::f64::consts::PI)),
+            std::f64::consts::PI,
+        );
+        assert_encoded_float(
+            &env,
+            &encoder,
+            napi_mock::to_unknown(&env, num(-123.456)),
+            -123.456,
+        );
+    });
 }
 
 #[test]
 fn ptr_to_value_boolean_false() {
-    let codec = Codec::Boolean(BooleanCodec);
-    let ptr = std::ptr::null_mut::<c_void>();
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let codec = Codec::Boolean(BooleanCodec);
+        let ptr = std::ptr::null_mut::<c_void>();
 
-    let value =
-        unsafe { codec.read(ReadSource::Value(ptr, "test")) }.expect("decoding should succeed");
+        let value = unsafe { codec.read(&env, ReadSource::Value(ptr, "test")) }
+            .expect("decoding should succeed");
 
-    match value {
-        Value::Boolean(false) => (),
-        other => panic!("Expected Boolean(false), got {other:?}"),
-    }
+        assert_eq!(napi_mock::read_bool(value.raw()), Some(false));
+    });
 }
 
 #[test]
 fn ptr_to_value_boolean_nonzero_is_true() {
-    assert_boolean_ptr_reads_true(42isize as *mut c_void);
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        assert_boolean_ptr_reads_true(&env, 42isize as *mut c_void);
+    });
 }
 
 #[test]
 fn ptr_to_value_float() {
-    let codec = Codec::Float(FloatCodec::F64);
-    let float_val: f64 = std::f64::consts::E;
-    let ptr = unsafe {
-        let mem = glib::ffi::g_malloc(std::mem::size_of::<f64>()) as *mut f64;
-        *mem = float_val;
-        mem as *mut c_void
-    };
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let codec = Codec::Float(FloatCodec::F64);
+        let float_val: f64 = std::f64::consts::E;
+        let ptr = unsafe {
+            let mem = glib::ffi::g_malloc(std::mem::size_of::<f64>()) as *mut f64;
+            *mem = float_val;
+            mem as *mut c_void
+        };
 
-    let value =
-        unsafe { codec.read(ReadSource::Value(ptr, "test")) }.expect("decoding should succeed");
+        let value = unsafe { codec.read(&env, ReadSource::Value(ptr, "test")) }
+            .expect("decoding should succeed");
 
-    match value {
-        Value::Number(n) => assert!((n - std::f64::consts::E).abs() < f64::EPSILON),
-        other => panic!("Expected Number, got {other:?}"),
-    }
+        let n = napi_mock::read_double(value.raw()).expect("Expected Number");
+        assert!((n - std::f64::consts::E).abs() < f64::EPSILON);
 
-    unsafe { glib::ffi::g_free(ptr) };
+        unsafe { glib::ffi::g_free(ptr) };
+    });
+}
+
+fn read_borrowed_struct_value<'e>(env: &'e Env, ptr: *mut c_void) -> Unknown<'e> {
+    let codec = struct_codec_with(Ownership::Borrowed, Some(16));
+    unsafe { codec.read(env, ReadSource::Value(ptr, "test")) }.expect("decoding should succeed")
 }
 
 #[test]
 fn ptr_to_value_struct_null() {
-    let codec = Codec::Struct(StructCodec {
-        ownership: Ownership::Borrowed,
-        size: Some(16),
-        caller_allocated: false,
+    helpers::run(|| {
+        let env = helpers::fake_env();
+
+        let value = read_borrowed_struct_value(&env, std::ptr::null_mut());
+
+        assert!(napi_mock::is_null(value.raw()));
     });
-
-    let value = unsafe { codec.read(ReadSource::Value(std::ptr::null_mut(), "test")) }
-        .expect("decoding should succeed");
-
-    match value {
-        Value::Null => (),
-        other => panic!("Expected Null, got {other:?}"),
-    }
 }
 
 #[test]
 fn ptr_to_value_struct_non_null() {
     helpers::run(|| {
-        let codec = Codec::Struct(StructCodec {
-            ownership: Ownership::Borrowed,
-            size: Some(16),
-            caller_allocated: false,
-        });
-
+        let env = helpers::fake_env();
         let ptr = unsafe { glib::ffi::g_malloc0(16) };
 
-        let value =
-            unsafe { codec.read(ReadSource::Value(ptr, "test")) }.expect("decoding should succeed");
+        let value = read_borrowed_struct_value(&env, ptr);
 
-        match value {
-            Value::Object(_) => (),
-            other => panic!("Expected Object, got {other:?}"),
-        }
+        assert!(napi_mock::read_external(value.raw()).is_some());
 
         unsafe { glib::ffi::g_free(ptr) };
     });
@@ -326,18 +426,19 @@ fn ptr_to_value_struct_non_null() {
 #[test]
 fn hashtable_encode_decode_booleans() {
     helpers::run(|| {
-        let ht_codec = boolean_boolean_ht();
+        let env = helpers::fake_env();
+        let ht = boolean_boolean_ht();
 
-        let input = Value::Array(vec![
-            Value::Array(vec![Value::Boolean(true), Value::Boolean(false)]),
-            Value::Array(vec![Value::Boolean(false), Value::Boolean(true)]),
+        let input = list(&[
+            tuple(boolean(true), boolean(false)),
+            tuple(boolean(false), boolean(true)),
         ]);
 
-        let decoded = roundtrip(&ht_codec, &input);
+        let decoded = roundtrip(&env, &ht, input);
 
         assert_kv_pairs(decoded, 2, |k, v| {
-            assert!(matches!(k, Value::Boolean(_)));
-            assert!(matches!(v, Value::Boolean(_)));
+            assert!(napi_mock::read_bool(k).is_some());
+            assert!(napi_mock::read_bool(v).is_some());
         });
     });
 }
@@ -345,25 +446,23 @@ fn hashtable_encode_decode_booleans() {
 #[test]
 fn hashtable_encode_decode_floats() {
     helpers::run(|| {
-        let ht_codec = ht_codec(
+        let env = helpers::fake_env();
+        let ht = ht_codec(
             Codec::Integer(IntegerCodec::I32),
             Codec::Float(FloatCodec::F64),
             Ownership::Full,
         );
 
-        let input = Value::Array(vec![
-            Value::Array(vec![
-                Value::Number(1.0),
-                Value::Number(std::f64::consts::PI),
-            ]),
-            Value::Array(vec![Value::Number(2.0), Value::Number(std::f64::consts::E)]),
+        let input = list(&[
+            tuple(num(1.0), num(std::f64::consts::PI)),
+            tuple(num(2.0), num(std::f64::consts::E)),
         ]);
 
-        let decoded = roundtrip(&ht_codec, &input);
+        let decoded = roundtrip(&env, &ht, input);
 
         assert_kv_pairs(decoded, 2, |k, v| {
-            assert!(matches!(k, Value::Number(_)));
-            assert!(matches!(v, Value::Number(_)));
+            assert!(napi_mock::read_double(k).is_some());
+            assert!(napi_mock::read_double(v).is_some());
         });
     });
 }
@@ -371,7 +470,8 @@ fn hashtable_encode_decode_floats() {
 #[test]
 fn hashtable_encode_decode_string_to_boolean() {
     helpers::run(|| {
-        let ht_codec = ht_codec(
+        let env = helpers::fake_env();
+        let ht = ht_codec(
             Codec::String(StringCodec {
                 ownership: Ownership::Borrowed,
                 length: None,
@@ -380,22 +480,16 @@ fn hashtable_encode_decode_string_to_boolean() {
             Ownership::Full,
         );
 
-        let input = Value::Array(vec![
-            Value::Array(vec![
-                Value::String("enabled".to_string()),
-                Value::Boolean(true),
-            ]),
-            Value::Array(vec![
-                Value::String("disabled".to_string()),
-                Value::Boolean(false),
-            ]),
+        let input = list(&[
+            tuple(text("enabled"), boolean(true)),
+            tuple(text("disabled"), boolean(false)),
         ]);
 
-        let decoded = roundtrip(&ht_codec, &input);
+        let decoded = roundtrip(&env, &ht, input);
 
         assert_kv_pairs(decoded, 2, |k, v| {
-            assert!(matches!(k, Value::String(_)));
-            assert!(matches!(v, Value::Boolean(_)));
+            assert!(napi_mock::read_string(k).is_some());
+            assert!(napi_mock::read_bool(v).is_some());
         });
     });
 }
@@ -403,51 +497,45 @@ fn hashtable_encode_decode_string_to_boolean() {
 #[test]
 fn hashtable_encode_decode_float_keys() {
     helpers::run(|| {
-        let ht_codec = ht_codec(
+        let env = helpers::fake_env();
+        let ht = ht_codec(
             Codec::Float(FloatCodec::F64),
             Codec::Integer(IntegerCodec::I32),
             Ownership::Full,
         );
 
-        let input = Value::Array(vec![
-            Value::Array(vec![Value::Number(1.5), Value::Number(100.0)]),
-            Value::Array(vec![Value::Number(2.5), Value::Number(200.0)]),
-        ]);
+        let input = list(&[tuple(num(1.5), num(100.0)), tuple(num(2.5), num(200.0))]);
 
-        let decoded = roundtrip(&ht_codec, &input);
+        let decoded = roundtrip(&env, &ht, input);
 
-        match decoded {
-            Value::Array(pairs) => {
-                assert_eq!(pairs.len(), 2);
-            }
-            _ => panic!("Expected array"),
-        }
+        let pairs = napi_mock::read_array(decoded.raw()).expect("Expected array");
+        assert_eq!(pairs.len(), 2);
     });
 }
 
 #[test]
 fn hashtable_empty() {
     helpers::run(|| {
-        let ht_codec = boolean_boolean_ht();
+        let env = helpers::fake_env();
+        let ht = boolean_boolean_ht();
 
-        let input = Value::Array(vec![]);
+        let input = list(&[]);
 
-        let decoded = roundtrip(&ht_codec, &input);
+        let decoded = roundtrip(&env, &ht, input);
 
-        match decoded {
-            Value::Array(pairs) => assert!(pairs.is_empty()),
-            _ => panic!("Expected empty array"),
-        }
+        let pairs = napi_mock::read_array(decoded.raw()).expect("Expected empty array");
+        assert!(pairs.is_empty());
     });
 }
 
 #[test]
 fn hashtable_null_optional() {
     helpers::run(|| {
-        let ht_codec = boolean_boolean_ht();
+        let env = helpers::fake_env();
+        let ht = boolean_boolean_ht();
 
-        let encoded = ht_codec
-            .encode(&Value::Null)
+        let encoded = ht
+            .encode(&env, napi_mock::to_unknown(&env, null_value()))
             .expect("encoding should succeed");
 
         match encoded {
@@ -460,21 +548,16 @@ fn hashtable_null_optional() {
 #[test]
 fn hashtable_borrowed_does_not_free() {
     helpers::run(|| {
-        let ht_codec = ht_codec(
-            Codec::Integer(IntegerCodec::I32),
-            Codec::Integer(IntegerCodec::I32),
-            Ownership::Borrowed,
-        );
+        let env = helpers::fake_env();
+        let ht = integer_integer_ht(Ownership::Borrowed);
 
         let hash_table = helpers::make_integer_hash_table(&[(1, 100), (2, 200)]);
 
         let stash = Stash::Ptr(hash_table as *mut c_void);
-        let decoded = ht_codec.decode(&stash).expect("decoding should succeed");
+        let decoded = ht.decode(&env, &stash).expect("decoding should succeed");
 
-        match decoded {
-            Value::Array(pairs) => assert_eq!(pairs.len(), 2),
-            _ => panic!("Expected array"),
-        }
+        let pairs = napi_mock::read_array(decoded.raw()).expect("Expected array");
+        assert_eq!(pairs.len(), 2);
 
         let size = unsafe { glib::ffi::g_hash_table_size(hash_table) };
         assert_eq!(size, 2);
@@ -486,19 +569,20 @@ fn hashtable_borrowed_does_not_free() {
 #[test]
 fn float_memory_properly_freed_on_drop() {
     helpers::run(|| {
-        let ht_codec = ht_codec(
+        let env = helpers::fake_env();
+        let ht = ht_codec(
             Codec::Float(FloatCodec::F64),
             Codec::Float(FloatCodec::F64),
             Ownership::Full,
         );
 
-        let input = Value::Array(vec![
-            Value::Array(vec![Value::Number(1.1), Value::Number(2.2)]),
-            Value::Array(vec![Value::Number(3.3), Value::Number(4.4)]),
-            Value::Array(vec![Value::Number(5.5), Value::Number(6.6)]),
+        let input = list(&[
+            tuple(num(1.1), num(2.2)),
+            tuple(num(3.3), num(4.4)),
+            tuple(num(5.5), num(6.6)),
         ]);
 
-        let _ = roundtrip(&ht_codec, &input);
+        let _ = roundtrip(&env, &ht, input);
     });
 }
 
@@ -529,6 +613,14 @@ fn string_encoder_hash_equal_and_free() {
 #[test]
 fn native_handle_encoder_hash_equal_and_free() {
     assert_hash_equal_and_free(HashTableEntryCodec::Handle(Box::new(struct_codec())), false);
+}
+
+#[test]
+fn full_sized_struct_encoder_installs_g_free_destroy() {
+    assert_hash_equal_and_free(
+        HashTableEntryCodec::Handle(Box::new(full_struct_codec(Some(size_of::<u64>())))),
+        true,
+    );
 }
 
 #[test]
@@ -566,27 +658,54 @@ fn ptr_array_encoder_hash_equal_and_free() {
 #[test]
 fn encode_native_handle_value_null_and_wrong_type() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let encoder = HashTableEntryCodec::Handle(Box::new(struct_codec()));
         let handle = boxed_handle();
-        let ptr = encoder.encode(&Value::Object(handle.clone())).unwrap();
+        let ptr = encoder
+            .encode(
+                &env,
+                napi_mock::to_unknown(&env, object_raw(&env, handle.clone())),
+            )
+            .unwrap();
         assert_eq!(ptr, handle.as_ptr());
 
-        assert!(encoder.encode(&Value::Null).unwrap().is_null());
-        assert!(encoder.encode(&Value::Undefined).unwrap().is_null());
-        assert!(encoder.encode(&Value::Number(1.0)).is_err());
+        assert!(
+            encoder
+                .encode(&env, napi_mock::to_unknown(&env, null_value()))
+                .unwrap()
+                .is_null()
+        );
+        assert!(
+            encoder
+                .encode(&env, napi_mock::to_unknown(&env, undefined_value()))
+                .unwrap()
+                .is_null()
+        );
+        assert!(
+            encoder
+                .encode(&env, napi_mock::to_unknown(&env, num(1.0)))
+                .is_err()
+        );
     });
 }
 
 #[test]
 fn encode_ptr_array_value_with_objects_and_nulls() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let encoder = HashTableEntryCodec::PtrArray(Box::new(struct_codec()));
         let ptr = encoder
-            .encode(&Value::Array(vec![
-                Value::Object(boxed_handle()),
-                Value::Null,
-                Value::Undefined,
-            ]))
+            .encode(
+                &env,
+                napi_mock::to_unknown(
+                    &env,
+                    list(&[
+                        object_raw(&env, boxed_handle()),
+                        null_value(),
+                        undefined_value(),
+                    ]),
+                ),
+            )
             .unwrap();
         assert!(!ptr.is_null());
         unsafe { glib::ffi::g_ptr_array_unref(ptr as *mut glib::ffi::GPtrArray) };
@@ -596,17 +715,15 @@ fn encode_ptr_array_value_with_objects_and_nulls() {
 #[test]
 fn ptr_array_value_freed_when_hashtable_storage_drops() {
     helpers::run(|| {
-        let ht_codec = ht_codec(
+        let env = helpers::fake_env();
+        let ht = ht_codec(
             Codec::Integer(IntegerCodec::I32),
             gptrarray_codec(),
             Ownership::Borrowed,
         );
-        let input = Value::Array(vec![Value::Array(vec![
-            Value::Number(1.0),
-            Value::Array(vec![Value::Object(boxed_handle())]),
-        ])]);
+        let input = list(&[tuple(num(1.0), list(&[object_raw(&env, boxed_handle())]))]);
         {
-            let _encoded = ht_codec.encode(&input).unwrap();
+            let _encoded = ht.encode(&env, napi_mock::to_unknown(&env, input)).unwrap();
         }
     });
 }
@@ -614,39 +731,47 @@ fn ptr_array_value_freed_when_hashtable_storage_drops() {
 #[test]
 fn hashtable_encode_propagates_key_encoder_error() {
     helpers::run(|| {
-        let ht_codec = boolean_boolean_ht();
-        let input = Value::Array(vec![Value::Array(vec![
-            Value::Number(1.0),
-            Value::Boolean(true),
-        ])]);
-        assert!(ht_codec.encode(&input).is_err());
+        let env = helpers::fake_env();
+        let ht = boolean_boolean_ht();
+        let input = list(&[tuple(num(1.0), boolean(true))]);
+        assert!(ht.encode(&env, napi_mock::to_unknown(&env, input)).is_err());
     });
 }
 
 #[test]
 fn hashtable_decode_null_yields_empty_array() {
-    let ht_codec = boolean_boolean_ht();
-    let decoded = ht_codec.decode(&Stash::Ptr(std::ptr::null_mut())).unwrap();
-    assert!(matches!(decoded, Value::Array(items) if items.is_empty()));
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let ht = boolean_boolean_ht();
+        let decoded = ht.decode(&env, &Stash::Ptr(std::ptr::null_mut())).unwrap();
+        let pairs = napi_mock::read_array(decoded.raw()).expect("Expected array");
+        assert!(pairs.is_empty());
+    });
 }
 
 #[test]
 fn hashtable_ptr_to_value_null_and_populated() {
     helpers::run(|| {
-        let ht_codec = ht_codec(
-            Codec::Integer(IntegerCodec::I32),
-            Codec::Integer(IntegerCodec::I32),
-            Ownership::Borrowed,
-        );
+        let env = helpers::fake_env();
+        let ht = integer_integer_ht(Ownership::Borrowed);
 
         let empty =
-            unsafe { ht_codec.read(ReadSource::Value(std::ptr::null_mut(), "ctx")) }.unwrap();
-        assert!(matches!(empty, Value::Array(items) if items.is_empty()));
+            unsafe { ht.read(&env, ReadSource::Value(std::ptr::null_mut(), "ctx")) }.unwrap();
+        assert!(
+            napi_mock::read_array(empty.raw())
+                .expect("Expected array")
+                .is_empty()
+        );
 
         let hash_table = helpers::make_integer_hash_table(&[(1, 10)]);
         let decoded =
-            unsafe { ht_codec.read(ReadSource::Value(hash_table as *mut c_void, "ctx")) }.unwrap();
-        assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
+            unsafe { ht.read(&env, ReadSource::Value(hash_table as *mut c_void, "ctx")) }.unwrap();
+        assert_eq!(
+            napi_mock::read_array(decoded.raw())
+                .expect("Expected array")
+                .len(),
+            1
+        );
         unsafe { glib::ffi::g_hash_table_unref(hash_table) };
     });
 }
@@ -654,20 +779,22 @@ fn hashtable_ptr_to_value_null_and_populated() {
 #[test]
 fn hashtable_decode_full_ownership_from_pointer_unrefs() {
     helpers::run(|| {
-        let ht_codec = ht_codec(
-            Codec::Integer(IntegerCodec::I32),
-            Codec::Integer(IntegerCodec::I32),
-            Ownership::Full,
-        );
+        let env = helpers::fake_env();
+        let ht = integer_integer_ht(Ownership::Full);
         let hash_table = helpers::make_integer_hash_table(&[(3, 30)]);
         unsafe {
             glib::ffi::g_hash_table_ref(hash_table);
         }
 
-        let decoded = ht_codec
-            .decode(&Stash::Ptr(hash_table as *mut c_void))
+        let decoded = ht
+            .decode(&env, &Stash::Ptr(hash_table as *mut c_void))
             .unwrap();
-        assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
+        assert_eq!(
+            napi_mock::read_array(decoded.raw())
+                .expect("Expected array")
+                .len(),
+            1
+        );
 
         let size = unsafe { glib::ffi::g_hash_table_size(hash_table) };
         assert_eq!(size, 1);
@@ -679,51 +806,51 @@ fn hashtable_decode_full_ownership_from_pointer_unrefs() {
 #[test]
 fn hashtable_encode_native_handle_keys_roundtrips() {
     helpers::run(|| {
-        let ht_codec = ht_codec(
+        let env = helpers::fake_env();
+        let ht = ht_codec(
             struct_codec(),
             Codec::Integer(IntegerCodec::I32),
             Ownership::Full,
         );
-        let input = Value::Array(vec![Value::Array(vec![
-            Value::Object(boxed_handle()),
-            Value::Number(5.0),
-        ])]);
-        let decoded = roundtrip(&ht_codec, &input);
-        assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
+        let input = list(&[tuple(object_raw(&env, boxed_handle()), num(5.0))]);
+        let decoded = roundtrip(&env, &ht, input);
+        assert_eq!(
+            napi_mock::read_array(decoded.raw())
+                .expect("Expected array")
+                .len(),
+            1
+        );
     });
 }
 
 #[test]
 fn boolean_roundtrip_preserves_values() {
     helpers::run(|| {
-        let ht_codec = ht_codec(
+        let env = helpers::fake_env();
+        let ht = ht_codec(
             Codec::Integer(IntegerCodec::I32),
             Codec::Boolean(BooleanCodec),
             Ownership::Full,
         );
 
-        let input = Value::Array(vec![
-            Value::Array(vec![Value::Number(0.0), Value::Boolean(true)]),
-            Value::Array(vec![Value::Number(1.0), Value::Boolean(false)]),
+        let input = list(&[
+            tuple(num(0.0), boolean(true)),
+            tuple(num(1.0), boolean(false)),
         ]);
 
-        let decoded = roundtrip(&ht_codec, &input);
+        let decoded = roundtrip(&env, &ht, input);
 
-        let Value::Array(pairs) = decoded else {
-            panic!("Expected array")
-        };
+        let pairs = napi_mock::read_array(decoded.raw()).expect("Expected array");
 
         let mut found_true = false;
         let mut found_false = false;
 
         for pair in pairs {
-            let Value::Array(kv) = pair else {
-                panic!("Expected array pair")
-            };
-            match &kv[1] {
-                Value::Boolean(true) => found_true = true,
-                Value::Boolean(false) => found_false = true,
-                _ => panic!("Expected boolean"),
+            let kv = napi_mock::read_array(pair).expect("Expected array pair");
+            match napi_mock::read_bool(kv[1]) {
+                Some(true) => found_true = true,
+                Some(false) => found_false = true,
+                None => panic!("Expected boolean"),
             }
         }
 
@@ -731,26 +858,30 @@ fn boolean_roundtrip_preserves_values() {
     });
 }
 
+fn encode_pspec_entry(env: &Env, codec: Codec, pspec: *mut c_void) -> anyhow::Result<*mut c_void> {
+    HashTableEntryCodec::Handle(Box::new(codec)).encode(
+        env,
+        napi_mock::to_unknown(env, object_raw(env, Handle::from_glib_borrow(pspec))),
+    )
+}
+
 #[test]
-fn fundamental_value_unreffed_when_hashtable_storage_drops() {
+fn handle_entry_encode_full_fundamental_transfers_reference() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let pspec = create_param_spec();
         let before = helpers::param_spec_refcount(pspec);
 
-        let ht_codec = ht_codec(
-            Codec::Integer(IntegerCodec::I32),
-            param_spec_fundamental_codec(),
-            Ownership::Borrowed,
+        let ptr = encode_pspec_entry(&env, param_spec_fundamental_codec(), pspec)
+            .expect("handle entry encode should succeed");
+        assert_eq!(ptr, pspec);
+        assert_eq!(
+            helpers::param_spec_refcount(pspec),
+            before + 1,
+            "a full-ownership handle entry must own its pointer when encode returns"
         );
-        let input = Value::Array(vec![Value::Array(vec![
-            Value::Number(1.0),
-            Value::Object(Handle::from_glib_borrow(pspec)),
-        ])]);
 
-        let encoded = ht_codec.encode(&input).expect("encoding should succeed");
-        assert_eq!(helpers::param_spec_refcount(pspec), before + 1);
-
-        drop(encoded);
+        unsafe { glib::gobject_ffi::g_param_spec_unref(pspec.cast()) };
         assert_eq!(helpers::param_spec_refcount(pspec), before);
 
         unsafe { glib::gobject_ffi::g_param_spec_unref(pspec.cast()) };
@@ -758,24 +889,99 @@ fn fundamental_value_unreffed_when_hashtable_storage_drops() {
 }
 
 #[test]
+fn handle_entry_encode_unresolvable_transfer_ref_fails_without_leaking() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let pspec = create_param_spec();
+        let before = helpers::param_spec_refcount(pspec);
+
+        let unresolvable = Codec::Fundamental(FundamentalCodec {
+            ownership: Ownership::Full,
+            shared_library: "libgobject-2.0.so.0".to_owned(),
+            ref_fn_name: "no_such_hashtable_ref_symbol_54321".to_owned(),
+            unref_fn_name: "g_param_spec_unref".to_owned(),
+        });
+        helpers::assert_unresolvable_symbol_failure_keeps_param_spec(
+            pspec,
+            before,
+            encode_pspec_entry(&env, unresolvable, pspec).map(|_| ()),
+            "an unresolvable transfer ref must fail the entry encode",
+        );
+    });
+}
+
+fn assert_pspec_entry_reffed_until_storage_drops(pspec_is_key: bool) {
+    let env = helpers::fake_env();
+    let pspec = create_param_spec();
+    let before = helpers::param_spec_refcount(pspec);
+
+    let integer = Codec::Integer(IntegerCodec::I32);
+    let pspec_codec = param_spec_fundamental_codec();
+    let (ht, input) = if pspec_is_key {
+        (
+            ht_codec(pspec_codec, integer, Ownership::Borrowed),
+            list(&[tuple(
+                object_raw(&env, Handle::from_glib_borrow(pspec)),
+                num(7.0),
+            )]),
+        )
+    } else {
+        (
+            ht_codec(integer, pspec_codec, Ownership::Borrowed),
+            list(&[tuple(
+                num(1.0),
+                object_raw(&env, Handle::from_glib_borrow(pspec)),
+            )]),
+        )
+    };
+
+    let encoded = ht
+        .encode(&env, napi_mock::to_unknown(&env, input))
+        .expect("encoding should succeed");
+    assert_eq!(helpers::param_spec_refcount(pspec), before + 1);
+
+    drop(encoded);
+    assert_eq!(helpers::param_spec_refcount(pspec), before);
+
+    unsafe { glib::gobject_ffi::g_param_spec_unref(pspec.cast()) };
+}
+
+#[test]
+fn fundamental_key_reffed_at_encode_and_released_when_storage_drops() {
+    helpers::run(|| {
+        assert_pspec_entry_reffed_until_storage_drops(true);
+    });
+}
+
+#[test]
+fn fundamental_value_unreffed_when_hashtable_storage_drops() {
+    helpers::run(|| {
+        assert_pspec_entry_reffed_until_storage_drops(false);
+    });
+}
+
+#[test]
 fn gobject_value_unreffed_when_hashtable_storage_drops() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let (_obj, obj_ptr, before) = new_object_with_refcount();
 
-        let ht_codec = ht_codec(
+        let ht = ht_codec(
             Codec::Integer(IntegerCodec::I32),
             full_gobject_codec(),
             Ownership::Borrowed,
         );
-        let input = Value::Array(vec![
-            Value::Array(vec![
-                Value::Number(1.0),
-                Value::Object(Handle::from_glib_borrow(obj_ptr as *mut c_void)),
-            ]),
-            Value::Array(vec![Value::Number(2.0), Value::Null]),
+        let input = list(&[
+            tuple(
+                num(1.0),
+                object_raw(&env, Handle::from_glib_borrow(obj_ptr as *mut c_void)),
+            ),
+            tuple(num(2.0), null_value()),
         ]);
 
-        let encoded = ht_codec.encode(&input).expect("encoding should succeed");
+        let encoded = ht
+            .encode(&env, napi_mock::to_unknown(&env, input))
+            .expect("encoding should succeed");
         assert_eq!(helpers::get_gobject_refcount(obj_ptr), before + 1);
 
         let Stash::Storage(storage) = &encoded else {
@@ -793,15 +999,18 @@ fn gobject_value_unreffed_when_hashtable_storage_drops() {
 #[test]
 fn hashtable_encode_value_error_releases_transferred_gobject_key() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let (_obj, obj_ptr, before) = new_object_with_refcount();
 
-        let ht_codec = gobject_key_boolean_ht();
-        let input = Value::Array(vec![Value::Array(vec![
-            Value::Object(Handle::from_glib_borrow(obj_ptr as *mut c_void)),
-            Value::Number(1.0),
-        ])]);
+        let ht = gobject_key_boolean_ht();
+        let input = list(&[tuple(
+            object_raw(&env, Handle::from_glib_borrow(obj_ptr as *mut c_void)),
+            num(1.0),
+        )]);
 
-        let err = ht_codec.encode(&input).expect_err("value encode must fail");
+        let err = ht
+            .encode(&env, napi_mock::to_unknown(&env, input))
+            .expect_err("value encode must fail");
         assert!(err.to_string().contains("Expected boolean in GHashTable"));
         assert_eq!(helpers::get_gobject_refcount(obj_ptr), before);
     });
@@ -810,17 +1019,17 @@ fn hashtable_encode_value_error_releases_transferred_gobject_key() {
 #[test]
 fn hashtable_encode_value_error_frees_duplicated_string_key() {
     helpers::run(|| {
-        let ht_codec = ht_codec(
+        let env = helpers::fake_env();
+        let ht = ht_codec(
             borrowed_string_codec(),
             Codec::Boolean(BooleanCodec),
             Ownership::Full,
         );
-        let input = Value::Array(vec![Value::Array(vec![
-            Value::String("orphaned-key".to_string()),
-            Value::Number(1.0),
-        ])]);
+        let input = list(&[tuple(text("orphaned-key"), num(1.0))]);
 
-        let err = ht_codec.encode(&input).expect_err("value encode must fail");
+        let err = ht
+            .encode(&env, napi_mock::to_unknown(&env, input))
+            .expect_err("value encode must fail");
         assert!(err.to_string().contains("Expected boolean in GHashTable"));
     });
 }
@@ -828,6 +1037,7 @@ fn hashtable_encode_value_error_frees_duplicated_string_key() {
 #[test]
 fn hashtable_encode_value_destroy_error_releases_string_key() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let value_codec = Codec::Array(
             ArrayCodec::new(
                 Box::new(full_boxed_codec()),
@@ -839,14 +1049,11 @@ fn hashtable_encode_value_destroy_error_releases_string_key() {
             )
             .expect("valid gptrarray codec"),
         );
-        let ht_codec = ht_codec(borrowed_string_codec(), value_codec, Ownership::Full);
-        let input = Value::Array(vec![Value::Array(vec![
-            Value::String("orphaned-key".to_string()),
-            Value::Array(vec![]),
-        ])]);
+        let ht = ht_codec(borrowed_string_codec(), value_codec, Ownership::Full);
+        let input = list(&[tuple(text("orphaned-key"), list(&[]))]);
 
-        let err = ht_codec
-            .encode(&input)
+        let err = ht
+            .encode(&env, napi_mock::to_unknown(&env, input))
             .expect_err("value destroy resolution must fail");
         assert!(err.to_string().contains("unsupported"));
     });
@@ -855,25 +1062,164 @@ fn hashtable_encode_value_destroy_error_releases_string_key() {
 #[test]
 fn hashtable_encode_second_tuple_error_unwinds_inserted_entries() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let (_inserted, inserted_ptr, inserted_before) = new_object_with_refcount();
         let (_failing, failing_ptr, failing_before) = new_object_with_refcount();
 
-        let ht_codec = gobject_key_boolean_ht();
-        let input = Value::Array(vec![
-            Value::Array(vec![
-                Value::Object(Handle::from_glib_borrow(inserted_ptr as *mut c_void)),
-                Value::Boolean(true),
-            ]),
-            Value::Array(vec![
-                Value::Object(Handle::from_glib_borrow(failing_ptr as *mut c_void)),
-                Value::Number(1.0),
-            ]),
+        let ht = gobject_key_boolean_ht();
+        let input = list(&[
+            tuple(
+                object_raw(&env, Handle::from_glib_borrow(inserted_ptr as *mut c_void)),
+                boolean(true),
+            ),
+            tuple(
+                object_raw(&env, Handle::from_glib_borrow(failing_ptr as *mut c_void)),
+                num(1.0),
+            ),
         ]);
 
-        let err = ht_codec.encode(&input).expect_err("second tuple must fail");
+        let err = ht
+            .encode(&env, napi_mock::to_unknown(&env, input))
+            .expect_err("second tuple must fail");
         assert!(err.to_string().contains("Expected boolean in GHashTable"));
         assert_eq!(helpers::get_gobject_refcount(inserted_ptr), inserted_before);
         assert_eq!(helpers::get_gobject_refcount(failing_ptr), failing_before);
+    });
+}
+
+fn encode_single_struct_copy(
+    env: &Env,
+    value_codec: Codec,
+    value: sys::napi_value,
+) -> (Stash, usize) {
+    let ht = ht_codec(
+        Codec::Integer(IntegerCodec::I32),
+        value_codec,
+        Ownership::Borrowed,
+    );
+    let input = list(&[tuple(num(1.0), value)]);
+
+    drain_g_memduped();
+    let encoded = ht
+        .encode(env, napi_mock::to_unknown(env, input))
+        .expect("encoding should succeed");
+    let duped = drain_g_memduped();
+    assert_eq!(duped.len(), 1, "encoding must copy the struct once");
+    (encoded, duped[0])
+}
+
+fn assert_copy_freed_once_on_drop(encoded: Stash, copy: usize, what: &str) {
+    drain_g_freed();
+    drop(encoded);
+    assert_eq!(
+        frees_of(&drain_g_freed(), copy),
+        1,
+        "the table teardown must free the transferred {what} copy exactly once"
+    );
+}
+
+#[test]
+fn full_sized_struct_value_copy_freed_once_on_table_unref() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let source: u64 = 0x5AFE_C0DE_1234_5678;
+        let original = &source as *const u64 as *mut c_void;
+
+        let (encoded, copy) = encode_single_struct_copy(
+            &env,
+            full_struct_codec(Some(size_of::<u64>())),
+            object_raw(&env, Handle::from_glib_borrow(original)),
+        );
+
+        let Stash::Storage(storage) = &encoded else {
+            panic!("Expected Storage ffi value")
+        };
+        let table = storage.ptr() as *mut glib::ffi::GHashTable;
+        let stored =
+            unsafe { glib::ffi::g_hash_table_lookup(table, std::ptr::without_provenance(1)) };
+        assert_eq!(stored as usize, copy);
+        assert_ne!(stored, original);
+        assert_eq!(unsafe { *(stored as *const u64) }, source);
+
+        assert_copy_freed_once_on_drop(encoded, copy, "struct value");
+    });
+}
+
+#[test]
+fn full_sized_struct_ptr_array_element_copy_freed_once_on_table_unref() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let source: u64 = 0xDECA_FBAD_0BAD_F00D;
+        let original = &source as *const u64 as *mut c_void;
+
+        let (encoded, copy) = encode_single_struct_copy(
+            &env,
+            gptrarray_codec_of(full_struct_codec(Some(size_of::<u64>()))),
+            list(&[object_raw(&env, Handle::from_glib_borrow(original))]),
+        );
+
+        assert_copy_freed_once_on_drop(encoded, copy, "struct element");
+    });
+}
+
+#[test]
+fn hashtable_encode_value_error_frees_transferred_struct_key_copy() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let ht = ht_codec(
+            full_struct_codec(Some(size_of::<u64>())),
+            Codec::Boolean(BooleanCodec),
+            Ownership::Full,
+        );
+        let source: u64 = 0xC0FF_EE00_C0FF_EE00;
+        let original = &source as *const u64 as *mut c_void;
+        let input = list(&[tuple(
+            object_raw(&env, Handle::from_glib_borrow(original)),
+            num(1.0),
+        )]);
+
+        drain_g_memduped();
+        drain_g_freed();
+        let err = ht
+            .encode(&env, napi_mock::to_unknown(&env, input))
+            .expect_err("value encode must fail");
+        assert!(err.to_string().contains("Expected boolean in GHashTable"));
+
+        let duped = drain_g_memduped();
+        assert_eq!(duped.len(), 1, "the struct key must be copied once");
+        assert_eq!(
+            frees_of(&drain_g_freed(), duped[0]),
+            1,
+            "a failed value encode must free the transferred struct key copy exactly once"
+        );
+    });
+}
+
+#[test]
+fn hashtable_encode_full_unsized_struct_value_errors_without_copying() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let ht = ht_codec(
+            borrowed_string_codec(),
+            full_struct_codec(None),
+            Ownership::Full,
+        );
+        let source: u64 = 7;
+        let original = &source as *const u64 as *mut c_void;
+        let input = list(&[tuple(
+            text("k"),
+            object_raw(&env, Handle::from_glib_borrow(original)),
+        )]);
+
+        drain_g_memduped();
+        let err = ht
+            .encode(&env, napi_mock::to_unknown(&env, input))
+            .expect_err("unsized full struct value must fail");
+        assert!(
+            err.to_string()
+                .contains("Cannot transfer ownership of struct GHashTable elements")
+        );
+        assert!(drain_g_memduped().is_empty());
     });
 }
 
@@ -888,47 +1234,51 @@ fn string_hashtable_codec(ownership: Ownership) -> HashTableCodec {
 #[test]
 fn write_return_to_pointer_full_table_hands_caller_owned_table() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let codec = string_hashtable_codec(Ownership::Full);
-        let val = Value::Array(vec![Value::Array(vec![
-            Value::String("key".to_string()),
-            Value::String("value".to_string()),
-        ])]);
-        let mut slot: *mut c_void = std::ptr::null_mut();
-        let ret = &mut slot as *mut *mut c_void as *mut c_void;
-        PtrWriter::write_return_to_ptr(&codec, unsafe { Slot::new(ret) }, &Ok(val));
-        assert!(!slot.is_null());
-        let table = slot as *mut glib::ffi::GHashTable;
+        let val = list(&[tuple(text("key"), text("value"))]);
+        let table_ptr =
+            helpers::write_return_into_slot(&env, &codec, &Ok(napi_mock::to_unknown(&env, val)));
+        assert!(!table_ptr.is_null());
+        let table = table_ptr as *mut glib::ffi::GHashTable;
         let size = unsafe { glib::ffi::g_hash_table_size(table) };
         assert_eq!(size, 1);
         unsafe { glib::ffi::g_hash_table_unref(table) };
     });
 }
 
-#[test]
-fn write_return_to_pointer_null_err_and_non_array_write_null() {
+fn assert_write_return_overwrites_sentinel_with_null(env: &Env, value: &Result<Unknown<'_>, ()>) {
     let codec = string_hashtable_codec(Ownership::Full);
     let mut slot: *mut c_void = 7 as *mut c_void;
     let ret = &mut slot as *mut *mut c_void as *mut c_void;
-    PtrWriter::write_return_to_ptr(&codec, unsafe { Slot::new(ret) }, &Ok(Value::Null));
+    PtrWriter::write_return_to_ptr(&codec, env, unsafe { Slot::new(ret) }, value);
     assert!(slot.is_null());
+}
 
-    slot = 7 as *mut c_void;
-    PtrWriter::write_return_to_ptr(&codec, unsafe { Slot::new(ret) }, &Err(()));
-    assert!(slot.is_null());
-
-    slot = 7 as *mut c_void;
-    PtrWriter::write_return_to_ptr(&codec, unsafe { Slot::new(ret) }, &Ok(Value::Number(1.0)));
-    assert!(slot.is_null());
+#[test]
+fn write_return_to_pointer_null_err_and_non_array_write_null() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        assert_write_return_overwrites_sentinel_with_null(
+            &env,
+            &Ok(napi_mock::to_unknown(&env, null_value())),
+        );
+        assert_write_return_overwrites_sentinel_with_null(&env, &Err(()));
+        assert_write_return_overwrites_sentinel_with_null(
+            &env,
+            &Ok(napi_mock::to_unknown(&env, num(1.0))),
+        );
+    });
 }
 
 #[test]
 fn write_return_to_pointer_encode_error_writes_null() {
     helpers::run(|| {
-        let codec = string_hashtable_codec(Ownership::Full);
-        let val = Value::Array(vec![Value::String("not a tuple".to_string())]);
-        let mut slot: *mut c_void = 7 as *mut c_void;
-        let ret = &mut slot as *mut *mut c_void as *mut c_void;
-        PtrWriter::write_return_to_ptr(&codec, unsafe { Slot::new(ret) }, &Ok(val));
-        assert!(slot.is_null());
+        let env = helpers::fake_env();
+        let val = list(&[text("not a tuple")]);
+        assert_write_return_overwrites_sentinel_with_null(
+            &env,
+            &Ok(napi_mock::to_unknown(&env, val)),
+        );
     });
 }

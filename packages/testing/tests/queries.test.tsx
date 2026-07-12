@@ -53,6 +53,14 @@ const VBox = ({ children }: { children: ReactNode }) => (
     <GtkBox orientation={Gtk.Orientation.VERTICAL}>{children}</GtkBox>
 );
 
+const renderTwoButtons = () =>
+    render(
+        <VBox>
+            <GtkButton label="First" />
+            <GtkButton label="Second" />
+        </VBox>,
+    );
+
 describe("findByRole", () => {
     it("finds element by accessible role", async () => {
         const { container } = await render(<GtkButton label="Test" />);
@@ -444,24 +452,14 @@ describe("queryByRole", () => {
     });
 
     it("throws when multiple elements found", async () => {
-        const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                <GtkButton label="First" />
-                <GtkButton label="Second" />
-            </GtkBox>,
-        );
+        const { container } = await renderTwoButtons();
         expect(() => queryByRole(container, Gtk.AccessibleRole.BUTTON)).toThrow(/Found 2 elements/);
     });
 });
 
 describe("queryAllByRole", () => {
     it("returns all matching elements", async () => {
-        const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                <GtkButton label="First" />
-                <GtkButton label="Second" />
-            </GtkBox>,
-        );
+        const { container } = await renderTwoButtons();
         const buttons = queryAllByRole(container, Gtk.AccessibleRole.BUTTON);
         expect(buttons.length).toBe(2);
     });

@@ -6,9 +6,14 @@ use super::container::ArrayContainer;
 pub(crate) struct GPtrArrayCodec;
 
 impl ArrayContainer for GPtrArrayCodec {
-    fn decode(&self, codec: &ArrayCodec, stash: &ffi::Stash) -> anyhow::Result<value::Value> {
+    fn decode<'e>(
+        &self,
+        codec: &ArrayCodec,
+        env: &'e Env,
+        stash: &ffi::Stash,
+    ) -> anyhow::Result<Unknown<'e>> {
         let Some(ptr) = stash.as_non_null_ptr("GPtrArray")? else {
-            return Ok(value::Value::Array(vec![]));
+            return super::build_js_array(env, Vec::new());
         };
 
         let ptr_array = ptr as *mut glib::ffi::GPtrArray;
@@ -17,7 +22,7 @@ impl ArrayContainer for GPtrArrayCodec {
         let items = (0..len).map(move |i| unsafe { *pdata.add(i) });
 
         let is_full = codec.ownership.is_full();
-        codec.decode_ptr_iter(items, move || {
+        codec.decode_ptr_iter(env, items, move || {
             if is_full {
                 unsafe { glib::ffi::g_ptr_array_unref(ptr_array) };
             }

@@ -7,13 +7,18 @@ use gtk4::glib;
 use gtk4::glib::translate::IntoGlib as _;
 use gtk4::prelude::StaticType as _;
 
+use napi::Env;
+use napi::JsValue as _;
+use napi::bindgen_prelude::{External, Unknown};
+
 use native::ffi;
 use native::ffi::codec::{
     BoxedCodec, Decoder, Encoder, Ownership, PtrWriter, ReadSource, StructCodec,
 };
-use native::ffi::value::Value;
+use native::ffi::value::handle_ptr;
 use native::handle::Handle;
 
+use helpers::napi_mock;
 use helpers::{
     assert_decode_null_yields_null, assert_read_null_yields_null,
     assert_write_return_err_writes_null, read_slot, write_return_into_slot, write_value_into_slot,
@@ -60,23 +65,31 @@ fn free_rgba(type_: glib::Type, ptr: *mut c_void) {
     unsafe { glib::gobject_ffi::g_boxed_free(type_.into_glib(), ptr) };
 }
 
-fn object_value_of(ptr: *mut c_void) -> Value {
-    Value::Object(Handle::from_glib_borrow(ptr))
+fn object_value_of<'e>(env: &'e Env, ptr: *mut c_void) -> Unknown<'e> {
+    External::new(Handle::from_glib_borrow(ptr))
+        .into_unknown(env)
+        .expect("external into unknown should succeed")
+}
+
+fn assert_is_handle(value: &Unknown<'_>) {
+    assert_eq!(
+        napi_mock::value_type(value.raw()),
+        Some(napi::sys::ValueType::napi_external),
+        "expected Object value"
+    );
 }
 
 fn assert_read_aliases_source<C: Decoder>(codec: &C, original: *mut c_void, message: &str) {
-    let value = unsafe { codec.read(ReadSource::Value(original, "ctx")) }
+    let env = helpers::fake_env();
+    let value = unsafe { codec.read(&env, ReadSource::Value(original, "ctx")) }
         .expect("ptr_to_value should succeed");
-    let Value::Object(handle) = &value else {
-        panic!("expected Object value");
-    };
-    assert_eq!(handle.as_ptr(), original, "{message}");
-    drop(value);
+    let ptr = handle_ptr(&env, value, "ctx").expect("expected Object value");
+    assert_eq!(ptr, original, "{message}");
 }
 
-fn encode_rgba(ownership: Ownership, ptr: *mut c_void) -> ffi::Stash {
+fn encode_rgba(env: &Env, ownership: Ownership, ptr: *mut c_void) -> ffi::Stash {
     boxed(ownership)
-        .encode(&object_value_of(ptr))
+        .encode(env, object_value_of(env, ptr))
         .expect("encode should succeed")
 }
 
@@ -107,9 +120,10 @@ fn type_resolves_via_library_lookup() {
 #[test]
 fn encode_full_copies_to_distinct_pointer() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let (type_, original) = rgba_boxed_alloc();
 
-        let encoded = encode_rgba(Ownership::Full, original);
+        let encoded = encode_rgba(&env, Ownership::Full, original);
         encoded.disarm_pending_transfer();
         let ffi::Stash::Storage(storage) = &encoded else {
             panic!("expected Storage ffi value");
@@ -127,9 +141,10 @@ fn encode_full_copies_to_distinct_pointer() {
 #[test]
 fn encode_full_releases_copy_when_call_never_happens() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let (type_, original) = rgba_boxed_alloc();
 
-        let encoded = encode_rgba(Ownership::Full, original);
+        let encoded = encode_rgba(&env, Ownership::Full, original);
         drop(encoded);
 
         free_rgba(type_, original);
@@ -139,9 +154,10 @@ fn encode_full_releases_copy_when_call_never_happens() {
 #[test]
 fn encode_borrowed_keeps_same_pointer() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let (type_, original) = rgba_boxed_alloc();
 
-        let encoded = encode_rgba(Ownership::Borrowed, original);
+        let encoded = encode_rgba(&env, Ownership::Borrowed, original);
         let ffi::Stash::Ptr(ptr) = encoded else {
             panic!("expected Ptr ffi value");
         };
@@ -195,29 +211,86 @@ fn ref_for_transfer_full_null_is_noop() {
     });
 }
 
+fn unresolvable_boxed(ownership: Ownership) -> BoxedCodec {
+    BoxedCodec {
+        ownership,
+        type_name: "GtkxUnknownBoxedType".to_owned(),
+        shared_library: None,
+        get_type_fn_name: None,
+        free_fn_name: None,
+        caller_allocated: false,
+    }
+}
+
+#[test]
+fn ref_for_transfer_full_unresolvable_type_bails() {
+    helpers::run(|| {
+        let target: u64 = 7;
+        let err = unsafe {
+            unresolvable_boxed(Ownership::Full)
+                .ref_for_transfer(&target as *const u64 as *mut c_void)
+        }
+        .expect_err("a transfer-full boxed without a resolvable GType must not alias ownership");
+        assert!(err.to_string().contains("GtkxUnknownBoxedType"));
+    });
+}
+
+#[test]
+fn ref_for_transfer_unresolvable_type_null_and_borrowed_pass_through() {
+    helpers::run(|| {
+        let null_returned =
+            unsafe { unresolvable_boxed(Ownership::Full).ref_for_transfer(std::ptr::null_mut()) }
+                .expect("null ref_for_transfer should succeed");
+        assert!(null_returned.is_null());
+
+        let target: u64 = 7;
+        let original = &target as *const u64 as *mut c_void;
+        let returned =
+            unsafe { unresolvable_boxed(Ownership::Borrowed).ref_for_transfer(original) }
+                .expect("borrowed ref_for_transfer should succeed");
+        assert_eq!(returned, original);
+    });
+}
+
+#[test]
+fn encode_full_unresolvable_type_bails() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let target: u64 = 7;
+        let err = unresolvable_boxed(Ownership::Full)
+            .encode(
+                &env,
+                object_value_of(&env, &target as *const u64 as *mut c_void),
+            )
+            .map(|_| ())
+            .expect_err("encoding a transfer-full boxed without a resolvable GType must fail");
+        assert!(err.to_string().contains("GtkxUnknownBoxedType"));
+    });
+}
+
 #[test]
 fn decode_full_dups_owned_boxed() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let (_type, original) = rgba_boxed_alloc();
 
         let decoded = boxed(Ownership::Full)
-            .decode(&ffi::Stash::Ptr(original))
+            .decode(&env, &ffi::Stash::Ptr(original))
             .expect("full decode should succeed");
-        assert!(matches!(decoded, Value::Object(_)));
-        drop(decoded);
+        assert_is_handle(&decoded);
     });
 }
 
 #[test]
 fn decode_borrowed_copies_boxed() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let (type_, original) = rgba_boxed_alloc();
 
         let decoded = boxed(Ownership::Borrowed)
-            .decode(&ffi::Stash::Ptr(original))
+            .decode(&env, &ffi::Stash::Ptr(original))
             .expect("borrowed decode should succeed");
-        assert!(matches!(decoded, Value::Object(_)));
-        drop(decoded);
+        assert_is_handle(&decoded);
 
         assert!(helpers::is_valid_boxed_ptr(original, type_));
         free_rgba(type_, original);
@@ -240,20 +313,17 @@ fn ptr_to_value_null_yields_null() {
 #[test]
 fn ptr_to_value_defensive_copies_regardless_of_ownership_tag() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let (type_, original) = rgba_boxed_alloc();
 
         for ownership in [Ownership::Borrowed, Ownership::Full] {
-            let value = unsafe { boxed(ownership).read(ReadSource::Value(original, "ctx")) }
+            let value = unsafe { boxed(ownership).read(&env, ReadSource::Value(original, "ctx")) }
                 .expect("ptr_to_value should succeed");
-            let Value::Object(handle) = &value else {
-                panic!("expected Object value");
-            };
+            let ptr = handle_ptr(&env, value, "ctx").expect("expected Object value");
             assert_ne!(
-                handle.as_ptr(),
-                original,
+                ptr, original,
                 "ptr_to_value must produce an independent copy, not alias the source"
             );
-            drop(value);
             assert!(helpers::is_valid_boxed_ptr(original, type_));
         }
 
@@ -303,12 +373,12 @@ fn caller_allocated_struct_aliases_source_without_copying() {
 #[test]
 fn read_from_pointer_dereferences_slot() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let (type_, original) = rgba_boxed_alloc();
 
-        let value = unsafe { read_slot(&boxed(Ownership::Borrowed), original) }
+        let value = unsafe { read_slot(&env, &boxed(Ownership::Borrowed), original) }
             .expect("read_from_pointer should succeed");
-        assert!(matches!(value, Value::Object(_)));
-        drop(value);
+        assert_is_handle(&value);
 
         free_rgba(type_, original);
     });
@@ -317,9 +387,14 @@ fn read_from_pointer_dereferences_slot() {
 #[test]
 fn write_return_to_pointer_full_transfer_copies_boxed() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let (type_, original) = rgba_boxed_alloc();
 
-        let slot = write_return_into_slot(&boxed(Ownership::Full), &Ok(object_value_of(original)));
+        let slot = write_return_into_slot(
+            &env,
+            &boxed(Ownership::Full),
+            &Ok(object_value_of(&env, original)),
+        );
 
         assert_slot_holds_copy_then_free(slot, original, type_);
     });
@@ -328,10 +403,14 @@ fn write_return_to_pointer_full_transfer_copies_boxed() {
 #[test]
 fn write_return_to_pointer_borrowed_writes_same_pointer() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let (type_, original) = rgba_boxed_alloc();
 
-        let slot =
-            write_return_into_slot(&boxed(Ownership::Borrowed), &Ok(object_value_of(original)));
+        let slot = write_return_into_slot(
+            &env,
+            &boxed(Ownership::Borrowed),
+            &Ok(object_value_of(&env, original)),
+        );
 
         assert_eq!(slot, original);
         free_rgba(type_, original);
@@ -346,14 +425,77 @@ fn write_return_to_pointer_err_writes_null() {
 }
 
 #[test]
+fn write_return_to_pointer_full_unresolvable_type_writes_null_and_reports() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let target: u64 = 7;
+        let original = &target as *const u64 as *mut c_void;
+
+        let slot = write_return_into_slot(
+            &env,
+            &unresolvable_boxed(Ownership::Full),
+            &Ok(object_value_of(&env, original)),
+        );
+
+        assert!(
+            slot.is_null(),
+            "a transfer-full boxed return without a resolvable GType must not alias ownership"
+        );
+        let fatals = napi_mock::fatal_exceptions();
+        assert_eq!(fatals.len(), 1);
+        let message = napi_mock::read_object_property(fatals[0], "message")
+            .and_then(napi_mock::read_string)
+            .expect("the fatal exception should carry a message");
+        assert!(message.contains("GtkxUnknownBoxedType"));
+    });
+}
+
+#[test]
+fn write_return_to_pointer_full_resolvable_type_copies_without_reporting() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let (type_, original) = rgba_boxed_alloc();
+
+        let slot = write_return_into_slot(
+            &env,
+            &boxed(Ownership::Full),
+            &Ok(object_value_of(&env, original)),
+        );
+
+        assert!(napi_mock::fatal_exceptions().is_empty());
+        assert_slot_holds_copy_then_free(slot, original, type_);
+    });
+}
+
+#[test]
+fn write_return_to_pointer_borrowed_unresolvable_type_writes_same_pointer() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let target: u64 = 7;
+        let original = &target as *const u64 as *mut c_void;
+
+        let slot = write_return_into_slot(
+            &env,
+            &unresolvable_boxed(Ownership::Borrowed),
+            &Ok(object_value_of(&env, original)),
+        );
+
+        assert_eq!(slot, original);
+        assert!(napi_mock::fatal_exceptions().is_empty());
+    });
+}
+
+#[test]
 fn write_value_to_pointer_writes_boxed() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let (type_, original) = rgba_boxed_alloc();
 
         let slot = write_value_into_slot(
+            &env,
             &boxed(Ownership::Borrowed),
             std::ptr::null_mut(),
-            &object_value_of(original),
+            object_value_of(&env, original),
         );
         assert_slot_holds_copy_then_free(slot, original, type_);
     });
@@ -362,6 +504,7 @@ fn write_value_to_pointer_writes_boxed() {
 #[test]
 fn write_value_to_pointer_falls_back_when_type_unresolvable() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let target: u64 = 0xAA55;
         let unknown = BoxedCodec {
             ownership: Ownership::Borrowed,
@@ -373,9 +516,10 @@ fn write_value_to_pointer_falls_back_when_type_unresolvable() {
         };
 
         let slot = write_value_into_slot(
+            &env,
             &unknown,
             std::ptr::null_mut(),
-            &object_value_of(&target as *const u64 as *mut c_void),
+            object_value_of(&env, &target as *const u64 as *mut c_void),
         );
         assert_eq!(slot, &target as *const u64 as *mut c_void);
     });
@@ -384,10 +528,12 @@ fn write_value_to_pointer_falls_back_when_type_unresolvable() {
 #[test]
 fn write_value_to_pointer_writes_null_when_src_is_null() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let slot = write_value_into_slot(
+            &env,
             &boxed(Ownership::Borrowed),
             std::ptr::null_mut(),
-            &object_value_of(std::ptr::null_mut()),
+            object_value_of(&env, std::ptr::null_mut()),
         );
         assert!(slot.is_null());
     });
@@ -396,13 +542,15 @@ fn write_value_to_pointer_writes_null_when_src_is_null() {
 #[test]
 fn write_value_to_pointer_frees_previous_pointer_in_slot() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let (type_, original) = rgba_boxed_alloc();
         let previous = helpers::allocate_test_boxed(type_);
 
         let slot = write_value_into_slot(
+            &env,
             &boxed(Ownership::Borrowed),
             previous,
-            &object_value_of(original),
+            object_value_of(&env, original),
         );
         assert!(!slot.is_null());
         assert_ne!(slot, original);
@@ -416,11 +564,12 @@ fn write_value_to_pointer_frees_previous_pointer_in_slot() {
 #[test]
 fn struct_encode_keeps_pointer() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let type_ = gdk::RGBA::static_type();
         let original = helpers::allocate_test_boxed(type_);
 
         let encoded = struct_type(Ownership::Borrowed, None)
-            .encode(&Value::Object(Handle::from_glib_borrow(original)))
+            .encode(&env, object_value_of(&env, original))
             .expect("struct encode should succeed");
         assert!(matches!(encoded, ffi::Stash::Ptr(p) if p == original));
 
@@ -431,24 +580,24 @@ fn struct_encode_keeps_pointer() {
 #[test]
 fn struct_decode_full_takes_ownership() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let raw = unsafe { glib::ffi::g_malloc0(64) };
         let decoded = struct_type(Ownership::Full, None)
-            .decode(&ffi::Stash::Ptr(raw))
+            .decode(&env, &ffi::Stash::Ptr(raw))
             .expect("struct full decode should succeed");
-        assert!(matches!(decoded, Value::Object(_)));
-        drop(decoded);
+        assert_is_handle(&decoded);
     });
 }
 
 #[test]
 fn struct_decode_borrowed_with_size_copies() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let raw = unsafe { glib::ffi::g_malloc0(64) };
         let decoded = struct_type(Ownership::Borrowed, Some(64))
-            .decode(&ffi::Stash::Ptr(raw))
+            .decode(&env, &ffi::Stash::Ptr(raw))
             .expect("struct sized decode should succeed");
-        assert!(matches!(decoded, Value::Object(_)));
-        drop(decoded);
+        assert_is_handle(&decoded);
 
         unsafe { glib::ffi::g_free(raw) };
     });
@@ -457,12 +606,12 @@ fn struct_decode_borrowed_with_size_copies() {
 #[test]
 fn struct_decode_borrowed_without_size_is_unowned() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let raw = unsafe { glib::ffi::g_malloc0(64) };
         let decoded = struct_type(Ownership::Borrowed, None)
-            .decode(&ffi::Stash::Ptr(raw))
+            .decode(&env, &ffi::Stash::Ptr(raw))
             .expect("struct unowned decode should succeed");
-        assert!(matches!(decoded, Value::Object(_)));
-        drop(decoded);
+        assert_is_handle(&decoded);
 
         unsafe { glib::ffi::g_free(raw) };
     });
@@ -484,21 +633,19 @@ fn struct_ptr_to_value_null_yields_null() {
 #[test]
 fn struct_ptr_to_value_defensive_copies_regardless_of_ownership_tag() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let raw = unsafe { glib::ffi::g_malloc0(64) };
 
         for ownership in [Ownership::Borrowed, Ownership::Full] {
-            let value =
-                unsafe { struct_type(ownership, Some(64)).read(ReadSource::Value(raw, "ctx")) }
-                    .expect("struct ptr_to_value should succeed");
-            let Value::Object(handle) = &value else {
-                panic!("expected Object value");
-            };
+            let value = unsafe {
+                struct_type(ownership, Some(64)).read(&env, ReadSource::Value(raw, "ctx"))
+            }
+            .expect("struct ptr_to_value should succeed");
+            let ptr = handle_ptr(&env, value, "ctx").expect("expected Object value");
             assert_ne!(
-                handle.as_ptr(),
-                raw,
+                ptr, raw,
                 "struct ptr_to_value must produce an independent copy when size is known"
             );
-            drop(value);
         }
 
         unsafe { glib::ffi::g_free(raw) };
@@ -508,20 +655,18 @@ fn struct_ptr_to_value_defensive_copies_regardless_of_ownership_tag() {
 #[test]
 fn struct_ptr_to_value_without_size_wraps_unowned() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let raw = unsafe { glib::ffi::g_malloc0(64) };
 
-        let value =
-            unsafe { struct_type(Ownership::Borrowed, None).read(ReadSource::Value(raw, "ctx")) }
-                .expect("struct ptr_to_value without size should succeed");
-        let Value::Object(handle) = &value else {
-            panic!("expected Object value");
-        };
+        let value = unsafe {
+            struct_type(Ownership::Borrowed, None).read(&env, ReadSource::Value(raw, "ctx"))
+        }
+        .expect("struct ptr_to_value without size should succeed");
+        let ptr = handle_ptr(&env, value, "ctx").expect("expected Object value");
         assert_eq!(
-            handle.as_ptr(),
-            raw,
+            ptr, raw,
             "without size the wrapper aliases the source pointer; the parent allocation owns it"
         );
-        drop(value);
 
         unsafe { glib::ffi::g_free(raw) };
     });
@@ -530,11 +675,13 @@ fn struct_ptr_to_value_without_size_wraps_unowned() {
 #[test]
 fn struct_write_return_to_pointer_writes_pointer() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let (type_, original) = rgba_boxed_alloc();
 
         let slot = write_return_into_slot(
+            &env,
             &struct_type(Ownership::Borrowed, None),
-            &Ok(object_value_of(original)),
+            &Ok(object_value_of(&env, original)),
         );
         assert_eq!(slot, original);
 
@@ -545,12 +692,14 @@ fn struct_write_return_to_pointer_writes_pointer() {
 #[test]
 fn struct_write_value_to_pointer_writes_pointer() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let (type_, original) = rgba_boxed_alloc();
 
         let slot = write_value_into_slot(
+            &env,
             &struct_type(Ownership::Borrowed, None),
             std::ptr::null_mut(),
-            &object_value_of(original),
+            object_value_of(&env, original),
         );
         assert_eq!(slot, original);
 
@@ -561,13 +710,15 @@ fn struct_write_value_to_pointer_writes_pointer() {
 #[test]
 fn struct_write_value_to_pointer_with_size_copies_into_dst() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let src: u64 = 0xDEAD_BEEF_DEAD_BEEF;
         let mut dst: u64 = 0;
 
         let slot = write_value_into_slot(
+            &env,
             &struct_type(Ownership::Borrowed, Some(std::mem::size_of::<u64>())),
             &mut dst as *mut u64 as *mut c_void,
-            &object_value_of(&src as *const u64 as *mut c_void),
+            object_value_of(&env, &src as *const u64 as *mut c_void),
         );
 
         assert_eq!(dst, src);
@@ -578,10 +729,12 @@ fn struct_write_value_to_pointer_with_size_copies_into_dst() {
 #[test]
 fn struct_write_value_to_pointer_with_size_writes_null_for_null_src() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let slot = write_value_into_slot(
+            &env,
             &struct_type(Ownership::Borrowed, Some(std::mem::size_of::<u64>())),
             7 as *mut c_void,
-            &object_value_of(std::ptr::null_mut()),
+            object_value_of(&env, std::ptr::null_mut()),
         );
 
         assert!(slot.is_null());
@@ -591,13 +744,15 @@ fn struct_write_value_to_pointer_with_size_writes_null_for_null_src() {
 #[test]
 fn struct_write_value_to_pointer_with_size_bails_for_null_dst() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let src: u64 = 1;
         let mut slot: *mut c_void = std::ptr::null_mut();
 
         let err = struct_type(Ownership::Borrowed, Some(std::mem::size_of::<u64>()))
             .write_value_to_ptr(
+                &env,
                 unsafe { ffi::Slot::new(&mut slot as *mut *mut c_void as *mut c_void) },
-                &Value::Object(Handle::from_glib_borrow(&src as *const u64 as *mut c_void)),
+                object_value_of(&env, &src as *const u64 as *mut c_void),
             );
 
         assert!(err.is_err());
@@ -609,9 +764,11 @@ mod free_fn {
 
     use gtk4::glib;
 
+    use napi::Env;
+
     use native::ffi;
     use native::ffi::codec::{BoxedCodec, Decoder, Ownership, ReadSource};
-    use native::ffi::value::Value;
+    use native::ffi::value::handle_ptr;
 
     use super::helpers;
 
@@ -631,31 +788,30 @@ mod free_fn {
 
     fn assert_free_fn_wrapper_aliases(
         ownership: Ownership,
-        wrap: impl FnOnce(&BoxedCodec, *mut c_void) -> Value,
+        resolve: impl FnOnce(&BoxedCodec, &Env, *mut c_void) -> *mut c_void,
     ) {
+        let env = helpers::fake_env();
         let ptr = unsafe { glib::ffi::g_malloc0(16) };
 
-        let value = wrap(&boxed_with_free_fn(ownership), ptr);
-        let Value::Object(handle) = &value else {
-            panic!("expected Object value");
-        };
-        assert_eq!(handle.as_ptr(), ptr);
-        drop(value);
+        let aliased = resolve(&boxed_with_free_fn(ownership), &env, ptr);
+        assert_eq!(aliased, ptr);
 
         if ownership.is_borrowed() {
             unsafe { glib::ffi::g_free(ptr) };
         }
     }
 
-    fn decode_wrapper(descriptor: &BoxedCodec, ptr: *mut c_void) -> Value {
-        descriptor
-            .decode(&ffi::Stash::Ptr(ptr))
-            .expect("decode with freeFnName should succeed")
+    fn decode_wrapper(descriptor: &BoxedCodec, env: &Env, ptr: *mut c_void) -> *mut c_void {
+        let value = descriptor
+            .decode(env, &ffi::Stash::Ptr(ptr))
+            .expect("decode with freeFnName should succeed");
+        handle_ptr(env, value, "ctx").expect("expected Object value")
     }
 
-    fn ptr_to_value_wrapper(descriptor: &BoxedCodec, ptr: *mut c_void) -> Value {
-        unsafe { descriptor.read(ReadSource::Value(ptr, "ctx")) }
-            .expect("ptr_to_value with freeFnName should succeed")
+    fn ptr_to_value_wrapper(descriptor: &BoxedCodec, env: &Env, ptr: *mut c_void) -> *mut c_void {
+        let value = unsafe { descriptor.read(env, ReadSource::Value(ptr, "ctx")) }
+            .expect("ptr_to_value with freeFnName should succeed");
+        handle_ptr(env, value, "ctx").expect("expected Object value")
     }
 
     #[test]
@@ -689,6 +845,7 @@ mod free_fn {
     #[test]
     fn decode_with_unresolvable_free_fn_bails() {
         helpers::run(|| {
+            let env = helpers::fake_env();
             let raw = unsafe { glib::ffi::g_malloc0(8) };
             let descriptor = BoxedCodec {
                 ownership: Ownership::Full,
@@ -700,7 +857,8 @@ mod free_fn {
             };
 
             let err = descriptor
-                .decode(&ffi::Stash::Ptr(raw))
+                .decode(&env, &ffi::Stash::Ptr(raw))
+                .map(|_| ())
                 .expect_err("decode with missing free symbol should fail");
             let msg = format!("{err}");
             assert!(msg.contains("BadFreeFnBoxed"));
@@ -713,6 +871,7 @@ mod free_fn {
     #[test]
     fn decode_with_unloadable_library_bails() {
         helpers::run(|| {
+            let env = helpers::fake_env();
             let raw = unsafe { glib::ffi::g_malloc0(8) };
             let descriptor = BoxedCodec {
                 ownership: Ownership::Full,
@@ -724,7 +883,8 @@ mod free_fn {
             };
 
             let err = descriptor
-                .decode(&ffi::Stash::Ptr(raw))
+                .decode(&env, &ffi::Stash::Ptr(raw))
+                .map(|_| ())
                 .expect_err("decode with missing library should fail");
             assert!(format!("{err}").contains("BadLibBoxed"));
 
@@ -742,6 +902,7 @@ mod free_fn {
     #[test]
     fn descriptor_with_free_fn_falls_back_for_library_lookup() {
         helpers::run(|| {
+            let env = helpers::fake_env();
             let raw = unsafe { glib::ffi::g_malloc0(8) };
             let descriptor = BoxedCodec {
                 ownership: Ownership::Full,
@@ -753,7 +914,8 @@ mod free_fn {
             };
 
             let err = descriptor
-                .decode(&ffi::Stash::Ptr(raw))
+                .decode(&env, &ffi::Stash::Ptr(raw))
+                .map(|_| ())
                 .expect_err("decode without library should fail");
             assert!(format!("{err}").contains("LibrarylessFreeFn"));
 

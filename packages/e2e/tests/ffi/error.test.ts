@@ -1,3 +1,4 @@
+import { inspect } from "node:util";
 import { getHandle } from "@gtkx/ffi";
 import { checkError, createErrorDomain } from "@gtkx/ffi/internal";
 import { FileError, Error as GError, quarkFromString } from "@gtkx/gi/glib";
@@ -39,6 +40,34 @@ describe("checkError", () => {
         expect(thrown?.message).toBe("missing file");
         expect(thrown?.domain).toBe(FILE_ERROR_DOMAIN);
         expect(thrown?.code).toBe(FILE_ERROR_NOENT);
+    });
+
+    it("throws a genuine Error subclass named GLib.Error", () => {
+        const ref = { value: getHandle(gerrorIn(FILE_ERROR_DOMAIN)) };
+
+        let thrown: unknown;
+        try {
+            checkError(ref);
+        } catch (error) {
+            thrown = error;
+        }
+
+        expect(thrown).toBeInstanceOf(Error);
+        expect((thrown as Error).name).toBe("GLib.Error");
+    });
+
+    it("renders its message when inspected instead of an empty object", () => {
+        const ref = { value: getHandle(gerrorIn(FILE_ERROR_DOMAIN)) };
+
+        let thrown: unknown;
+        try {
+            checkError(ref);
+        } catch (error) {
+            thrown = error;
+        }
+
+        expect(String(thrown)).toContain("missing file");
+        expect(inspect(thrown)).toContain("missing file");
     });
 
     it("attaches a stack trace pointing past checkError", () => {

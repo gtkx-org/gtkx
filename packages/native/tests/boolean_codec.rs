@@ -1,10 +1,13 @@
 use std::ffi::c_void;
 
 use libffi::middle;
+use napi::JsValue as _;
+use napi::bindgen_prelude::Unknown;
 use native::ffi;
 use native::ffi::Slot;
 use native::ffi::codec::{BooleanCodec, Decoder, Encoder, PtrWriter, ReadSource};
-use native::ffi::value::Value;
+use test_support::napi_mock;
+use test_support::{fake_env, run};
 
 extern "C" fn ret_true() -> i32 {
     1
@@ -16,14 +19,32 @@ extern "C" fn ret_false() -> i32 {
 
 #[test]
 fn encode_accepts_boolean_and_rejects_other() {
-    let encoded = Encoder::encode(&BooleanCodec, &Value::Boolean(true)).unwrap();
-    assert!(matches!(encoded, ffi::Stash::I32(1)));
+    run(|| {
+        let env = fake_env();
 
-    let encoded_false = Encoder::encode(&BooleanCodec, &Value::Boolean(false)).unwrap();
-    assert!(matches!(encoded_false, ffi::Stash::I32(0)));
+        let encoded = Encoder::encode(
+            &BooleanCodec,
+            &env,
+            napi_mock::to_unknown(&env, napi_mock::fake_bool(true)),
+        )
+        .unwrap();
+        assert!(matches!(encoded, ffi::Stash::I32(1)));
 
-    let err = Encoder::encode(&BooleanCodec, &Value::Number(1.0));
-    assert!(err.is_err());
+        let encoded_false = Encoder::encode(
+            &BooleanCodec,
+            &env,
+            napi_mock::to_unknown(&env, napi_mock::fake_bool(false)),
+        )
+        .unwrap();
+        assert!(matches!(encoded_false, ffi::Stash::I32(0)));
+
+        let err = Encoder::encode(
+            &BooleanCodec,
+            &env,
+            napi_mock::to_unknown(&env, napi_mock::fake_double(1.0)),
+        );
+        assert!(err.is_err());
+    });
 }
 
 #[test]
@@ -59,102 +80,126 @@ fn call_cif_invokes_native_function() {
 
 #[test]
 fn decode_reads_i32_and_rejects_other() {
-    let decoded = Decoder::decode(&BooleanCodec, &ffi::Stash::I32(1)).unwrap();
-    assert!(matches!(decoded, Value::Boolean(true)));
+    run(|| {
+        let env = fake_env();
 
-    let decoded_zero = Decoder::decode(&BooleanCodec, &ffi::Stash::I32(0)).unwrap();
-    assert!(matches!(decoded_zero, Value::Boolean(false)));
+        let decoded = Decoder::decode(&BooleanCodec, &env, &ffi::Stash::I32(1)).unwrap();
+        assert_eq!(napi_mock::read_bool(decoded.raw()), Some(true));
 
-    assert!(Decoder::decode(&BooleanCodec, &ffi::Stash::Void).is_err());
+        let decoded_zero = Decoder::decode(&BooleanCodec, &env, &ffi::Stash::I32(0)).unwrap();
+        assert_eq!(napi_mock::read_bool(decoded_zero.raw()), Some(false));
+
+        assert!(Decoder::decode(&BooleanCodec, &env, &ffi::Stash::Void).is_err());
+    });
 }
 
 #[test]
 fn ptr_to_value_treats_nonzero_as_true() {
-    let anchor: u8 = 0;
-    let truthy = unsafe {
-        Decoder::read(
-            &BooleanCodec,
-            ReadSource::Value(&anchor as *const u8 as *mut c_void, "ctx"),
-        )
-    }
-    .unwrap();
-    assert!(matches!(truthy, Value::Boolean(true)));
+    run(|| {
+        let env = fake_env();
 
-    let falsy = unsafe {
-        Decoder::read(
-            &BooleanCodec,
-            ReadSource::Value(std::ptr::null_mut(), "ctx"),
-        )
-    }
-    .unwrap();
-    assert!(matches!(falsy, Value::Boolean(false)));
+        let anchor: u8 = 0;
+        let truthy = unsafe {
+            Decoder::read(
+                &BooleanCodec,
+                &env,
+                ReadSource::Value(&anchor as *const u8 as *mut c_void, "ctx"),
+            )
+        }
+        .unwrap();
+        assert_eq!(napi_mock::read_bool(truthy.raw()), Some(true));
+
+        let falsy = unsafe {
+            Decoder::read(
+                &BooleanCodec,
+                &env,
+                ReadSource::Value(std::ptr::null_mut(), "ctx"),
+            )
+        }
+        .unwrap();
+        assert_eq!(napi_mock::read_bool(falsy.raw()), Some(false));
+    });
 }
 
 #[test]
 fn read_from_pointer_reads_i32_slot() {
-    let truthy_slot: i32 = 1;
-    let truthy_ptr = &truthy_slot as *const i32 as *const c_void;
-    let read =
-        unsafe { Decoder::read(&BooleanCodec, ReadSource::Slot(truthy_ptr, "ctx")) }.unwrap();
-    assert!(matches!(read, Value::Boolean(true)));
+    run(|| {
+        let env = fake_env();
 
-    let falsy_slot: i32 = 0;
-    let falsy_ptr = &falsy_slot as *const i32 as *const c_void;
-    let read_zero =
-        unsafe { Decoder::read(&BooleanCodec, ReadSource::Slot(falsy_ptr, "ctx")) }.unwrap();
-    assert!(matches!(read_zero, Value::Boolean(false)));
+        let truthy_slot: i32 = 1;
+        let truthy_ptr = &truthy_slot as *const i32 as *const c_void;
+        let read =
+            unsafe { Decoder::read(&BooleanCodec, &env, ReadSource::Slot(truthy_ptr, "ctx")) }
+                .unwrap();
+        assert_eq!(napi_mock::read_bool(read.raw()), Some(true));
+
+        let falsy_slot: i32 = 0;
+        let falsy_ptr = &falsy_slot as *const i32 as *const c_void;
+        let read_zero =
+            unsafe { Decoder::read(&BooleanCodec, &env, ReadSource::Slot(falsy_ptr, "ctx")) }
+                .unwrap();
+        assert_eq!(napi_mock::read_bool(read_zero.raw()), Some(false));
+    });
 }
 
 #[test]
 fn write_return_to_pointer_writes_truthiness() {
-    let mut slot: i64 = -1;
-    let ret = &mut slot as *mut i64 as *mut c_void;
+    run(|| {
+        let env = fake_env();
 
-    PtrWriter::write_return_to_ptr(
-        &BooleanCodec,
-        unsafe { Slot::new(ret) },
-        &Ok(Value::Boolean(true)),
-    );
-    assert_eq!(slot, 1);
+        let mut slot: i64 = -1;
+        let ret = &mut slot as *mut i64 as *mut c_void;
 
-    PtrWriter::write_return_to_ptr(
-        &BooleanCodec,
-        unsafe { Slot::new(ret) },
-        &Ok(Value::Boolean(false)),
-    );
-    assert_eq!(slot, 0);
+        let truthy: Result<Unknown, ()> =
+            Ok(napi_mock::to_unknown(&env, napi_mock::fake_bool(true)));
+        PtrWriter::write_return_to_ptr(&BooleanCodec, &env, unsafe { Slot::new(ret) }, &truthy);
+        assert_eq!(slot, 1);
 
-    PtrWriter::write_return_to_ptr(&BooleanCodec, unsafe { Slot::new(ret) }, &Err(()));
-    assert_eq!(slot, 0);
+        let falsy: Result<Unknown, ()> =
+            Ok(napi_mock::to_unknown(&env, napi_mock::fake_bool(false)));
+        PtrWriter::write_return_to_ptr(&BooleanCodec, &env, unsafe { Slot::new(ret) }, &falsy);
+        assert_eq!(slot, 0);
+
+        let err: Result<Unknown, ()> = Err(());
+        PtrWriter::write_return_to_ptr(&BooleanCodec, &env, unsafe { Slot::new(ret) }, &err);
+        assert_eq!(slot, 0);
+    });
 }
 
 #[test]
 fn write_value_to_pointer_writes_boolean_and_rejects_other() {
-    let mut slot: i32 = -1;
-    let ptr = &mut slot as *mut i32 as *mut c_void;
+    run(|| {
+        let env = fake_env();
 
-    PtrWriter::write_value_to_ptr(
-        &BooleanCodec,
-        unsafe { Slot::new(ptr) },
-        &Value::Boolean(true),
-    )
-    .unwrap();
-    assert_eq!(slot, 1);
+        let mut slot: i32 = -1;
+        let ptr = &mut slot as *mut i32 as *mut c_void;
 
-    PtrWriter::write_value_to_ptr(
-        &BooleanCodec,
-        unsafe { Slot::new(ptr) },
-        &Value::Boolean(false),
-    )
-    .unwrap();
-    assert_eq!(slot, 0);
-
-    assert!(
         PtrWriter::write_value_to_ptr(
             &BooleanCodec,
+            &env,
             unsafe { Slot::new(ptr) },
-            &Value::Number(1.0)
+            napi_mock::to_unknown(&env, napi_mock::fake_bool(true)),
         )
-        .is_err()
-    );
+        .unwrap();
+        assert_eq!(slot, 1);
+
+        PtrWriter::write_value_to_ptr(
+            &BooleanCodec,
+            &env,
+            unsafe { Slot::new(ptr) },
+            napi_mock::to_unknown(&env, napi_mock::fake_bool(false)),
+        )
+        .unwrap();
+        assert_eq!(slot, 0);
+
+        assert!(
+            PtrWriter::write_value_to_ptr(
+                &BooleanCodec,
+                &env,
+                unsafe { Slot::new(ptr) },
+                napi_mock::to_unknown(&env, napi_mock::fake_double(1.0)),
+            )
+            .is_err()
+        );
+    });
 }

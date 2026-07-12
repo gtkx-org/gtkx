@@ -1,8 +1,8 @@
 use anyhow::bail;
 
 use super::super::prelude::*;
-use super::ArrayCodec;
 use super::container::{ArrayContainer, BufferViewSupport};
+use super::{ArrayCodec, build_js_array};
 use crate::ffi::codec::Codec;
 
 #[derive(Debug, Clone)]
@@ -17,16 +17,17 @@ impl SizedArrayCodec {
 }
 
 impl ArrayContainer for SizedArrayCodec {
-    fn decode_with_context(
+    fn decode_with_context<'e>(
         &self,
         codec: &ArrayCodec,
+        env: &'e Env,
         stash: &ffi::Stash,
         ffi_args: &[ffi::Stash],
         arg_codecs: &[Codec],
-    ) -> anyhow::Result<value::Value> {
+    ) -> anyhow::Result<Unknown<'e>> {
         let length =
             ArrayCodec::size_from_args(ffi_args, arg_codecs, self.size_param_index as usize)?;
-        codec.decode_length_bounded(self.name(), stash, length)
+        codec.decode_length_bounded(env, self.name(), stash, length)
     }
 
     fn buffer_view_support(&self) -> BufferViewSupport {
@@ -92,35 +93,42 @@ impl ArrayCodec {
         );
     }
 
-    fn decode_sized_array(&self, ptr: *mut c_void, length: usize) -> anyhow::Result<value::Value> {
+    fn decode_sized_array<'e>(
+        &self,
+        env: &'e Env,
+        ptr: *mut c_void,
+        length: usize,
+    ) -> anyhow::Result<Unknown<'e>> {
         let codec = self.item_codec("sized array")?;
-        let values = self.decode_contiguous(codec, ptr.cast::<u8>(), length)?;
-        Ok(value::Value::Array(values))
+        let values = self.decode_contiguous(env, codec, ptr.cast::<u8>(), length)?;
+        build_js_array(env, values)
     }
 
-    fn decode_sized_from_stash(
+    fn decode_sized_from_stash<'e>(
         &self,
+        env: &'e Env,
         stash: &ffi::Stash,
         length: usize,
-    ) -> Option<anyhow::Result<value::Value>> {
+    ) -> Option<anyhow::Result<Unknown<'e>>> {
         let ffi::Stash::Ptr(ptr) = stash else {
             return None;
         };
         if ptr.is_null() {
-            return Some(Ok(value::Value::Array(vec![])));
+            return Some(build_js_array(env, Vec::new()));
         }
-        Some(self.decode_sized_array(*ptr, length))
+        Some(self.decode_sized_array(env, *ptr, length))
     }
 
-    pub(super) fn decode_length_bounded(
+    pub(super) fn decode_length_bounded<'e>(
         &self,
+        env: &'e Env,
         name: &str,
         stash: &ffi::Stash,
         length: usize,
-    ) -> anyhow::Result<value::Value> {
-        match self.decode_sized_from_stash(stash, length) {
+    ) -> anyhow::Result<Unknown<'e>> {
+        match self.decode_sized_from_stash(env, stash, length) {
             Some(result) => result,
-            None => self.decode_null_terminated(name, stash),
+            None => self.decode_null_terminated(env, name, stash),
         }
     }
 }

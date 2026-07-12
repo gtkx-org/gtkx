@@ -6,7 +6,7 @@ use super::prelude::*;
 pub struct VoidCodec;
 
 impl Encoder for VoidCodec {
-    fn encode(&self, _value: &value::Value) -> anyhow::Result<ffi::Stash> {
+    fn encode(&self, _env: &Env, _value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
         Ok(ffi::Stash::Ptr(std::ptr::null_mut()))
     }
 
@@ -26,11 +26,17 @@ impl Encoder for VoidCodec {
 }
 
 impl Decoder for VoidCodec {
-    unsafe fn read(&self, _src: ReadSource<'_>) -> anyhow::Result<value::Value> {
-        Ok(value::Value::Undefined)
+    unsafe fn read<'e>(&self, env: &'e Env, _src: ReadSource<'_>) -> anyhow::Result<Unknown<'e>> {
+        Ok(value::js_undefined(env)?)
     }
 }
 
 impl PtrWriter for VoidCodec {
-    fn write_return_to_ptr(&self, _ret: ffi::Slot, _value: &Result<value::Value, ()>) {}
+    fn write_return_to_ptr(
+        &self,
+        _env: &Env,
+        _ret: ffi::Slot,
+        _value: &std::result::Result<Unknown<'_>, ()>,
+    ) {
+    }
 }

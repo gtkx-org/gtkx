@@ -51,6 +51,8 @@ describe("dialogDemo message dialog", () => {
         await userEvent.click(messageButton);
         const firstDialog = (await screen.findByName("message-dialog")) as Adw.AlertDialog;
         await within(firstDialog).findByText("Has been shown once");
+        await userEvent.click(within(firstDialog).getByRole(Gtk.AccessibleRole.BUTTON, { name: /OK/ }));
+        await waitFor(() => expect(screen.queryByName("message-dialog")).toBeNull());
         await userEvent.click(messageButton);
         const secondDialog = (await screen.findByName("message-dialog")) as Adw.AlertDialog;
         await within(secondDialog).findByText("Has been shown 2 times");

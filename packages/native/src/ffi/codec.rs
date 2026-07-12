@@ -4,6 +4,8 @@ use crate::ffi::{self, value};
 use anyhow::bail;
 use enum_dispatch::enum_dispatch;
 use libffi::middle as libffi;
+use napi::Env;
+use napi::bindgen_prelude::Unknown;
 use napi_derive::napi;
 
 mod array;
@@ -100,8 +102,8 @@ pub enum ReadSource<'a> {
 
 #[enum_dispatch]
 pub trait Encoder {
-    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::Stash> {
-        let ptr = value.object_ptr(self.object_ptr_context())?;
+    fn encode(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
+        let ptr = value::handle_ptr(env, value, self.object_ptr_context())?;
         let transferred = unsafe { self.ref_for_transfer(ptr)? };
         match self.transfer_release() {
             Some(release) if !transferred.is_null() => {
@@ -145,92 +147,118 @@ pub trait Encoder {
 
 #[enum_dispatch]
 pub trait Decoder {
-    unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
+    unsafe fn read<'e>(&self, env: &'e Env, src: ReadSource<'_>) -> anyhow::Result<Unknown<'e>> {
         match src {
-            ReadSource::Call(stash) => self.decode_call(stash),
-            ReadSource::Value(ptr, context) => unsafe { self.read_value(ptr, context) },
-            ReadSource::Slot(ptr, context) => unsafe { self.read_pointer_slot(ptr, context) },
+            ReadSource::Call(stash) => self.decode_call(env, stash),
+            ReadSource::Value(ptr, context) => unsafe { self.read_value(env, ptr, context) },
+            ReadSource::Slot(ptr, context) => unsafe { self.read_pointer_slot(env, ptr, context) },
         }
     }
 
-    fn decode_call(&self, _stash: &ffi::Stash) -> anyhow::Result<value::Value> {
+    fn decode_call<'e>(&self, env: &'e Env, _stash: &ffi::Stash) -> anyhow::Result<Unknown<'e>> {
+        let _ = env;
         bail!("This type cannot be decoded from Stash")
     }
 
-    unsafe fn read_value(&self, _ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
+    unsafe fn read_value<'e>(
+        &self,
+        env: &'e Env,
+        _ptr: *mut c_void,
+        _context: &str,
+    ) -> anyhow::Result<Unknown<'e>> {
+        let _ = env;
         bail!("This type cannot be read from pointer")
     }
 
-    fn decode(&self, stash: &ffi::Stash) -> anyhow::Result<value::Value> {
-        unsafe { self.read(ReadSource::Call(stash)) }
+    fn decode<'e>(&self, env: &'e Env, stash: &ffi::Stash) -> anyhow::Result<Unknown<'e>> {
+        unsafe { self.read(env, ReadSource::Call(stash)) }
     }
 
-    fn decode_with_context(
+    fn decode_with_context<'e>(
         &self,
+        env: &'e Env,
         stash: &ffi::Stash,
         _ffi_args: &[ffi::Stash],
         _arg_codecs: &[Codec],
-    ) -> anyhow::Result<value::Value> {
-        self.decode(stash)
+    ) -> anyhow::Result<Unknown<'e>> {
+        self.decode(env, stash)
     }
 
-    unsafe fn read_pointer_slot(
+    unsafe fn read_pointer_slot<'e>(
         &self,
+        env: &'e Env,
         ptr: *const c_void,
         context: &str,
-    ) -> anyhow::Result<value::Value> {
+    ) -> anyhow::Result<Unknown<'e>> {
         let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
-        unsafe { self.read(ReadSource::Value(inner_ptr, context)) }
+        unsafe { self.read(env, ReadSource::Value(inner_ptr, context)) }
     }
 
-    fn decode_non_null<F>(&self, ptr: *mut c_void, decode: F) -> anyhow::Result<value::Value>
+    fn decode_non_null<'e, F>(
+        &self,
+        env: &'e Env,
+        ptr: *mut c_void,
+        decode: F,
+    ) -> anyhow::Result<Unknown<'e>>
     where
-        F: FnOnce(*mut c_void) -> anyhow::Result<value::Value>,
+        F: FnOnce(*mut c_void) -> anyhow::Result<Unknown<'e>>,
     {
         if ptr.is_null() {
-            return Ok(value::Value::Null);
+            return Ok(value::js_null(env)?);
         }
         decode(ptr)
     }
 
-    fn decode_call_non_null<F>(
+    fn decode_call_non_null<'e, F>(
         &self,
+        env: &'e Env,
         stash: &ffi::Stash,
         label: &str,
         decode: F,
-    ) -> anyhow::Result<value::Value>
+    ) -> anyhow::Result<Unknown<'e>>
     where
-        F: FnOnce(*mut c_void) -> anyhow::Result<value::Value>,
+        F: FnOnce(*mut c_void) -> anyhow::Result<Unknown<'e>>,
     {
         match stash.as_non_null_ptr(label)? {
             Some(ptr) => decode(ptr),
-            None => Ok(value::Value::Null),
+            None => Ok(value::js_null(env)?),
         }
     }
 }
 
 #[enum_dispatch]
 pub trait PtrWriter {
-    fn write_return_to_ptr(&self, ret: ffi::Slot, value: &std::result::Result<value::Value, ()>) {
-        let _ = value;
+    fn write_return_to_ptr(
+        &self,
+        env: &Env,
+        ret: ffi::Slot,
+        value: &std::result::Result<Unknown<'_>, ()>,
+    ) {
+        let _ = (env, value);
         unsafe { ret.store(std::ptr::null_mut()) };
     }
 
-    fn write_value_to_ptr(&self, slot: ffi::Slot, value: &value::Value) -> anyhow::Result<()> {
-        let _ = (slot, value);
+    fn write_value_to_ptr(
+        &self,
+        env: &Env,
+        slot: ffi::Slot,
+        value: Unknown<'_>,
+    ) -> anyhow::Result<()> {
+        let _ = (env, slot, value);
         bail!("This type cannot be written to a raw pointer")
     }
 
     fn write_return_with_ownership<F>(
         &self,
+        env: &Env,
         ret: ffi::Slot,
-        value: &std::result::Result<value::Value, ()>,
+        value: &std::result::Result<Unknown<'_>, ()>,
         ownership: Ownership,
         acquire: F,
     ) where
         F: FnOnce(*mut c_void) -> *mut c_void,
     {
-        prelude::write_return_object_ptr(ret, value, |ptr| {
+        prelude::write_return_object_ptr(env, ret, value, |ptr| {
             if ownership.is_borrowed() {
                 ptr
             } else {

@@ -2,8 +2,8 @@ use anyhow::bail;
 use glib::translate::{IntoGlibPtr, ToGlibPtr};
 
 use super::super::prelude::*;
-use super::ArrayCodec;
 use super::container::ArrayContainer;
+use super::{ArrayCodec, build_js_array};
 use crate::ffi::codec::IntegerCodec;
 use crate::ffi::{StashData, StashStorage};
 
@@ -11,18 +11,24 @@ use crate::ffi::{StashData, StashStorage};
 pub(crate) struct GByteArrayCodec;
 
 impl ArrayContainer for GByteArrayCodec {
-    fn encode(&self, codec: &ArrayCodec, array: &[value::Value]) -> anyhow::Result<ffi::Stash> {
+    fn encode(
+        &self,
+        codec: &ArrayCodec,
+        env: &Env,
+        array: &[Unknown<'_>],
+    ) -> anyhow::Result<ffi::Stash> {
         let bytes: Vec<u8> = array
             .iter()
             .enumerate()
-            .map(|(i, v)| match v {
-                value::Value::Number(n) => {
+            .map(|(i, &v)| match v.get_type()? {
+                ValueType::Number => {
+                    let n = value::read_napi::<f64>(env, v)?;
                     IntegerCodec::U8
-                        .check_range(*n)
+                        .check_range(n)
                         .map_err(|e| anyhow::anyhow!("GByteArray element {i}: {e}"))?;
-                    Ok(*n as u8)
+                    Ok(n as u8)
                 }
-                _ => bail!("Expected a Number for GByteArray element, got {v:?}"),
+                other => bail!("Expected a Number for GByteArray element, got {other:?}"),
             })
             .collect::<anyhow::Result<Vec<u8>>>()?;
 
@@ -45,9 +51,14 @@ impl ArrayContainer for GByteArrayCodec {
         ))
     }
 
-    fn decode(&self, codec: &ArrayCodec, stash: &ffi::Stash) -> anyhow::Result<value::Value> {
+    fn decode<'e>(
+        &self,
+        codec: &ArrayCodec,
+        env: &'e Env,
+        stash: &ffi::Stash,
+    ) -> anyhow::Result<Unknown<'e>> {
         let Some(ptr) = stash.as_non_null_ptr("GByteArray")? else {
-            return Ok(value::Value::Array(vec![]));
+            return build_js_array(env, Vec::new());
         };
 
         let byte_array = ptr as *mut glib::ffi::GByteArray;
@@ -58,22 +69,21 @@ impl ArrayContainer for GByteArrayCodec {
         let data = unsafe { (*byte_array).data };
         let len = unsafe { (*byte_array).len as usize };
 
-        let values: Vec<value::Value> = if data.is_null() || len == 0 {
-            vec![]
+        let bytes: Vec<u8> = if data.is_null() || len == 0 {
+            Vec::new()
         } else if let Some(owned) = &adopted {
-            owned
-                .iter()
-                .map(|&b| value::Value::Number(f64::from(b)))
-                .collect()
+            owned.to_vec()
         } else {
-            unsafe { std::slice::from_raw_parts(data, len) }
-                .iter()
-                .map(|&b| value::Value::Number(b as f64))
-                .collect()
+            unsafe { std::slice::from_raw_parts(data, len) }.to_vec()
         };
 
         drop(adopted);
-        Ok(value::Value::Array(values))
+
+        let values = bytes
+            .into_iter()
+            .map(|b| Ok(f64::from(b).into_unknown(env)?))
+            .collect::<anyhow::Result<Vec<_>>>()?;
+        build_js_array(env, values)
     }
 
     fn name(&self) -> &'static str {

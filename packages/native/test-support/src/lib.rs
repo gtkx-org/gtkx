@@ -1,6 +1,5 @@
 use std::ffi::c_void;
-use std::sync::mpsc::{RecvError, Sender, sync_channel};
-use std::sync::{Mutex, MutexGuard, OnceLock, PoisonError};
+use std::sync::{Mutex, MutexGuard, PoisonError};
 use std::thread;
 
 use gtk4::gdk;
@@ -10,89 +9,78 @@ use gtk4::prelude::StaticType as _;
 
 use native::Handle;
 
-use native::ffi::codec::{
-    ArrayCodec, ArrayKind, Codec, EnumFlagsCodec, EnumFlagsKind, Decoder, Encoder,
-    FloatCodec, IntegerCodec, Ownership, PtrWriter, ReadSource,
-};
 use native::ffi::Slot;
-use native::ffi::library_cache::GlibThreadState;
-use native::ffi::value::Value;
+use native::ffi::codec::{
+    ArrayCodec, ArrayKind, Codec, Decoder, Encoder, EnumFlagsCodec, EnumFlagsKind, FloatCodec,
+    IntegerCodec, Ownership, PtrWriter, ReadSource,
+};
+use native::ffi::library_cache::FfiCache;
 use native::handle::Boxed;
+use native::messaging::node_env;
+
+use napi::Env;
+use napi::JsValue as _;
+use napi::bindgen_prelude::Unknown;
+
+macro_rules! keep_symbols {
+    ($($symbol:ident),* $(,)?) => {
+        $( std::hint::black_box($symbol as *const ()); )*
+    };
+}
+
+#[macro_export]
+macro_rules! g_free_recorder {
+    () => {
+        ::std::thread_local! {
+            static G_FREED: ::std::cell::RefCell<::std::vec::Vec<usize>> =
+                const { ::std::cell::RefCell::new(::std::vec::Vec::new()) };
+        }
+
+        unsafe extern "C" {
+            fn free(ptr: *mut ::std::ffi::c_void);
+        }
+
+        #[unsafe(no_mangle)]
+        pub unsafe extern "C" fn g_free(ptr: *mut ::std::ffi::c_void) {
+            G_FREED.with_borrow_mut(|freed| freed.push(ptr as usize));
+            unsafe { free(ptr) };
+        }
+
+        fn drain_g_freed() -> ::std::vec::Vec<usize> {
+            G_FREED.with_borrow_mut(::std::mem::take)
+        }
+    };
+}
+
+pub mod napi_mock;
+pub mod uv_mock;
+
+pub use napi_mock::fake_env;
 
 static SERIAL: Mutex<()> = Mutex::new(());
-
-type GlibJob = Box<dyn FnOnce() + Send>;
-
-static GLIB_THREAD: OnceLock<Sender<GlibJob>> = OnceLock::new();
-
-thread_local! {
-    static ON_GLIB_THREAD: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
-}
-
-fn glib_thread() -> &'static Sender<GlibJob> {
-    GLIB_THREAD.get_or_init(|| {
-        let (tx, rx) = std::sync::mpsc::channel::<GlibJob>();
-        thread::Builder::new()
-            .name("gtkx-test-glib".to_owned())
-            .spawn(move || {
-                ON_GLIB_THREAD.with(|flag| flag.set(true));
-                gtk4::init().expect("Failed to initialize GTK4 for tests");
-                for job in rx {
-                    job();
-                }
-            })
-            .expect("spawning the GLib test thread should succeed");
-        tx
-    })
-}
-
-pub fn ensure_glib_init() {
-    on_glib_thread(|| {});
-}
 
 pub fn serial_guard() -> MutexGuard<'static, ()> {
     SERIAL.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
-fn on_glib_thread<F, R>(f: F) -> R
-where
-    F: FnOnce() -> R + Send,
-    R: Send,
-{
-    if ON_GLIB_THREAD.with(std::cell::Cell::get) {
-        return f();
-    }
-
-    let (result_tx, result_rx) = sync_channel::<thread::Result<R>>(0);
-    let scoped_job: Box<dyn FnOnce() + Send + '_> = Box::new(move || {
-        let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f));
-        let _ = result_tx.send(outcome);
-    });
-    let job: Box<dyn FnOnce() + Send> = unsafe {
-        std::mem::transmute::<Box<dyn FnOnce() + Send + '_>, Box<dyn FnOnce() + Send>>(scoped_job)
-    };
-
-    glib_thread()
-        .send(job)
-        .expect("the GLib test thread should accept jobs");
-
-    match result_rx.recv() {
-        Ok(Ok(value)) => value,
-        Ok(Err(payload)) => std::panic::resume_unwind(payload),
-        Err(RecvError) => panic!("the GLib test thread terminated before returning a result"),
-    }
+pub fn register_common_boxed_types() {
+    let _ = gdk::RGBA::static_type();
+    let _ = glib::Bytes::static_type();
 }
 
 pub fn run<F, R>(f: F) -> R
 where
-    F: FnOnce() -> R + Send,
-    R: Send,
+    F: FnOnce() -> R,
 {
     let _guard = serial_guard();
-    on_glib_thread(|| {
-        GlibThreadState::with(|state| *state = GlibThreadState::default());
-        f()
-    })
+    register_common_boxed_types();
+    FfiCache::with(|state| *state = FfiCache::default());
+    napi_mock::install_napi_mock();
+    napi_mock::reset();
+    uv_mock::install_uv_mock();
+    uv_mock::reset();
+    node_env::install(fake_env()).expect("installing the fake node env should succeed");
+    f()
 }
 
 pub fn make_integer_hash_table(entries: &[(usize, usize)]) -> *mut glib::ffi::GHashTable {
@@ -144,8 +132,24 @@ pub fn get_gobject_refcount(obj_ptr: *mut glib::gobject_ffi::GObject) -> u32 {
     unsafe { (*obj_ptr).ref_count }
 }
 
+pub fn assert_unresolvable_symbol_failure_keeps_param_spec(
+    pspec: *mut c_void,
+    before: u32,
+    result: anyhow::Result<()>,
+    context: &str,
+) {
+    let err = result.expect_err(context);
+    assert!(
+        err.to_string().contains("Failed to find symbol"),
+        "unexpected error: {err}"
+    );
+    assert_eq!(param_spec_refcount(pspec), before);
+    unsafe {
+        glib::gobject_ffi::g_param_spec_unref(pspec as *mut glib::gobject_ffi::GParamSpec);
+    }
+}
+
 pub fn make_bool_param_spec() -> *mut c_void {
-    ensure_glib_init();
     unsafe {
         glib::gobject_ffi::g_param_spec_boolean(
             c"gtkx-test-param".as_ptr(),
@@ -233,41 +237,50 @@ impl Drop for TestBoxed {
 }
 
 pub fn assert_encode_null_yields_null_ptr<C: Encoder>(codec: &C) {
+    let env = fake_env();
     let encoded = codec
-        .encode(&Value::Null)
+        .encode(&env, napi_mock::to_unknown(&env, napi_mock::fake_null()))
         .expect("null encode should succeed");
     assert!(matches!(encoded, native::ffi::Stash::Ptr(p) if p.is_null()));
 }
 
 pub fn assert_decode_null_yields_null<C: Decoder>(codec: &C) {
+    let env = fake_env();
     let decoded = codec
-        .decode(&native::ffi::Stash::Ptr(std::ptr::null_mut()))
+        .decode(&env, &native::ffi::Stash::Ptr(std::ptr::null_mut()))
         .expect("null decode should succeed");
-    assert!(matches!(decoded, Value::Null));
+    assert!(napi_mock::is_null(decoded.raw()));
 }
 
 pub fn assert_read_null_yields_null<C: Decoder>(codec: &C) {
-    let value = unsafe { codec.read(ReadSource::Value(std::ptr::null_mut(), "ctx")) }
+    let env = fake_env();
+    let value = unsafe { codec.read(&env, ReadSource::Value(std::ptr::null_mut(), "ctx")) }
         .expect("null ptr_to_value should succeed");
-    assert!(matches!(value, Value::Null));
+    assert!(napi_mock::is_null(value.raw()));
 }
 
-pub unsafe fn read_slot<C: Decoder>(codec: &C, ptr: *mut c_void) -> anyhow::Result<Value> {
+pub unsafe fn read_slot<'e, C: Decoder>(
+    env: &'e Env,
+    codec: &C,
+    ptr: *mut c_void,
+) -> anyhow::Result<Unknown<'e>> {
     let slot: *mut c_void = ptr;
     unsafe {
-        codec.read(ReadSource::Slot(
-            &slot as *const *mut c_void as *const c_void,
-            "ctx",
-        ))
+        codec.read(
+            env,
+            ReadSource::Slot(&slot as *const *mut c_void as *const c_void, "ctx"),
+        )
     }
 }
 
 pub fn write_return_into_slot<C: PtrWriter>(
+    env: &Env,
     codec: &C,
-    value: &Result<Value, ()>,
+    value: &Result<Unknown<'_>, ()>,
 ) -> *mut c_void {
     let mut slot: *mut c_void = std::ptr::null_mut();
     codec.write_return_to_ptr(
+        env,
         unsafe { Slot::new(&mut slot as *mut *mut c_void as *mut c_void) },
         value,
     );
@@ -275,13 +288,15 @@ pub fn write_return_into_slot<C: PtrWriter>(
 }
 
 pub fn write_value_into_slot<C: PtrWriter>(
+    env: &Env,
     codec: &C,
     initial: *mut c_void,
-    value: &Value,
+    value: Unknown<'_>,
 ) -> *mut c_void {
     let mut slot: *mut c_void = initial;
     codec
         .write_value_to_ptr(
+            env,
             unsafe { Slot::new(&mut slot as *mut *mut c_void as *mut c_void) },
             value,
         )
@@ -290,9 +305,11 @@ pub fn write_value_into_slot<C: PtrWriter>(
 }
 
 pub fn assert_write_return_err_writes_null<C: PtrWriter>(codec: &C) {
+    let env = fake_env();
     let mut slot: *mut c_void = std::ptr::dangling_mut::<c_void>();
-    let value: Result<Value, ()> = Err(());
+    let value: Result<Unknown, ()> = Err(());
     codec.write_return_to_ptr(
+        &env,
         unsafe { Slot::new(&mut slot as *mut *mut c_void as *mut c_void) },
         &value,
     );

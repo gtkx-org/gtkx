@@ -1,0 +1,526 @@
+use test_support as helpers;
+use test_support::napi_mock;
+
+use std::cell::{Cell, RefCell};
+use std::ffi::{CStr, c_char, c_void};
+use std::rc::Rc;
+
+use gtk4::glib;
+use napi::Env;
+use napi::JsValue as _;
+use napi::bindgen_prelude::External;
+use napi::sys;
+
+use native::ffi::closure::ClosureState;
+use native::ffi::codec::{
+    BoxedCodec, Codec, FloatCodec, FundamentalCodec, IntegerCodec, Ownership, RefCodec,
+    StringCodec, StructCodec, VoidCodec,
+};
+use native::ffi::value::JsHandle;
+use native::ffi::{ListData, ListOps, ListPayload, ReleaseKind, Stash, StashData, StashStorage};
+use native::handle::Handle;
+
+fn js_fn_handle(env: &Env, value: sys::napi_value) -> JsHandle {
+    JsHandle::from_js_value(env, &napi_mock::to_unknown(env, value))
+        .expect("creating a JsHandle for the callback should succeed")
+}
+
+fn borrowed_string_codec() -> Codec {
+    Codec::String(StringCodec {
+        ownership: Ownership::Borrowed,
+        length: None,
+    })
+}
+
+fn recording_function(
+    seen: &Rc<RefCell<Vec<Vec<sys::napi_value>>>>,
+    return_value: impl Fn() -> sys::napi_value + 'static,
+) -> sys::napi_value {
+    let seen = Rc::clone(seen);
+    napi_mock::fake_function(move |args| {
+        seen.borrow_mut().push(args.to_vec());
+        return_value()
+    })
+}
+
+fn counting_function(
+    respond: impl Fn(u32, &[sys::napi_value]) -> sys::napi_value + 'static,
+) -> (sys::napi_value, Rc<Cell<u32>>) {
+    let calls = Rc::new(Cell::new(0u32));
+    let counter = Rc::clone(&calls);
+    let js_fn = napi_mock::fake_function(move |args| {
+        counter.set(counter.get() + 1);
+        respond(counter.get(), args)
+    });
+    (js_fn, calls)
+}
+
+type StringReturn = unsafe extern "C" fn() -> *const c_char;
+
+fn string_return_closure(env: &Env, js_fn: sys::napi_value) -> (Box<ClosureState>, StringReturn) {
+    let state = ClosureState::boxed(
+        js_fn_handle(env, js_fn),
+        Vec::new(),
+        borrowed_string_codec(),
+        None,
+        false,
+    );
+    let call: StringReturn = unsafe { std::mem::transmute(state.code_ptr) };
+    (state, call)
+}
+
+type I32Return = unsafe extern "C" fn(i32) -> i32;
+
+fn i32_return_closure(env: &Env, js_fn: sys::napi_value) -> (Box<ClosureState>, I32Return) {
+    let state = ClosureState::boxed(
+        js_fn_handle(env, js_fn),
+        vec![Codec::Integer(IntegerCodec::I32)],
+        Codec::Integer(IntegerCodec::I32),
+        None,
+        false,
+    );
+    let call: I32Return = unsafe { std::mem::transmute(state.code_ptr) };
+    (state, call)
+}
+
+fn drain_default_context() {
+    let context = glib::MainContext::default();
+    while context.iteration(false) {}
+}
+
+fn void_closure(env: &Env, js_fn: sys::napi_value, oneshot: bool) -> Box<ClosureState> {
+    ClosureState::boxed(
+        js_fn_handle(env, js_fn),
+        Vec::new(),
+        Codec::Void(VoidCodec),
+        None,
+        oneshot,
+    )
+}
+
+fn single_fatal_message() -> String {
+    let fatals = napi_mock::fatal_exceptions();
+    assert_eq!(fatals.len(), 1);
+    napi_mock::read_object_property(fatals[0], "message")
+        .and_then(napi_mock::read_string)
+        .expect("the fatal exception should carry a message")
+}
+
+unsafe fn passthrough_prepend(list: *mut c_void, _data: *mut c_void) -> *mut c_void {
+    list
+}
+
+unsafe fn panicking_free(_list: *mut c_void) {
+    panic!("closure drop exploded");
+}
+
+static PANICKING_LIST_OPS: ListOps = ListOps {
+    label: "panicking list",
+    pending: ReleaseKind::GFree,
+    prepend: passthrough_prepend,
+    free: panicking_free,
+    free_full: panicking_free,
+};
+
+fn stash_that_panics_on_drop() -> Stash {
+    Stash::Storage(StashStorage::new(
+        std::ptr::null_mut(),
+        StashData::List(ListData {
+            ops: &PANICKING_LIST_OPS,
+            ptr: std::ptr::dangling_mut(),
+            should_free: true,
+            payload: ListPayload::Handles(Vec::new()),
+        }),
+    ))
+}
+
+#[test]
+fn invocation_marshals_arguments_and_writes_the_return() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let seen = Rc::new(RefCell::new(Vec::new()));
+        let js_fn = recording_function(&seen, || napi_mock::fake_double(42.0));
+        let state = ClosureState::boxed(
+            js_fn_handle(&env, js_fn),
+            vec![
+                Codec::Integer(IntegerCodec::I32),
+                Codec::Float(FloatCodec::F64),
+                borrowed_string_codec(),
+            ],
+            Codec::Integer(IntegerCodec::I32),
+            None,
+            false,
+        );
+        let call: unsafe extern "C" fn(i32, f64, *const c_char) -> i32 =
+            unsafe { std::mem::transmute(state.code_ptr) };
+
+        let returned = unsafe { call(-7, 2.5, c"marshal me".as_ptr()) };
+
+        assert_eq!(returned, 42);
+        let invocations = seen.borrow();
+        assert_eq!(invocations.len(), 1);
+        let args = &invocations[0];
+        assert_eq!(args.len(), 3);
+        assert_eq!(
+            napi_mock::value_type(args[0]),
+            Some(sys::ValueType::napi_number)
+        );
+        assert_eq!(napi_mock::read_double(args[0]), Some(-7.0));
+        assert_eq!(napi_mock::read_double(args[1]), Some(2.5));
+        assert_eq!(
+            napi_mock::value_type(args[2]),
+            Some(sys::ValueType::napi_string)
+        );
+        assert_eq!(
+            napi_mock::read_string(args[2]).as_deref(),
+            Some("marshal me")
+        );
+        assert!(napi_mock::fatal_exceptions().is_empty());
+    });
+}
+
+#[test]
+fn the_user_data_argument_is_not_passed_to_js() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let seen = Rc::new(RefCell::new(Vec::new()));
+        let js_fn = recording_function(&seen, napi_mock::fake_undefined);
+        let state = ClosureState::boxed(
+            js_fn_handle(&env, js_fn),
+            vec![
+                Codec::Integer(IntegerCodec::I32),
+                Codec::Integer(IntegerCodec::I64),
+            ],
+            Codec::Void(VoidCodec),
+            Some(1),
+            false,
+        );
+        let call: unsafe extern "C" fn(i32, i64) = unsafe { std::mem::transmute(state.code_ptr) };
+
+        unsafe { call(5, 0x1dead) };
+
+        let invocations = seen.borrow();
+        assert_eq!(invocations.len(), 1);
+        assert_eq!(invocations[0].len(), 1);
+        assert_eq!(napi_mock::read_double(invocations[0][0]), Some(5.0));
+        assert!(napi_mock::fatal_exceptions().is_empty());
+    });
+}
+
+#[test]
+fn ref_out_parameters_are_seeded_and_flushed() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let seeded = Rc::new(RefCell::new(Vec::new()));
+        let seeded_in_fn = Rc::clone(&seeded);
+        let js_fn = napi_mock::fake_function(move |args| {
+            let seed = napi_mock::read_object_property(args[0], "value")
+                .expect("the ref object should carry a seeded value");
+            seeded_in_fn.borrow_mut().push(seed);
+            napi_mock::set_object_property(args[0], "value", napi_mock::fake_double(52.0));
+            napi_mock::fake_undefined()
+        });
+        let ref_codec =
+            RefCodec::new(Codec::Integer(IntegerCodec::I32)).expect("Integer is a valid Ref inner");
+        let state = ClosureState::boxed(
+            js_fn_handle(&env, js_fn),
+            vec![Codec::Ref(ref_codec)],
+            Codec::Void(VoidCodec),
+            None,
+            false,
+        );
+        let call: unsafe extern "C" fn(*mut i32) = unsafe { std::mem::transmute(state.code_ptr) };
+
+        let mut backing: i32 = 41;
+        unsafe { call(&mut backing) };
+
+        let seeds = seeded.borrow();
+        assert_eq!(seeds.len(), 1);
+        assert_eq!(napi_mock::read_double(seeds[0]), Some(41.0));
+        assert_eq!(backing, 52);
+        assert!(napi_mock::fatal_exceptions().is_empty());
+    });
+}
+
+#[test]
+fn a_borrowed_string_return_stays_valid_after_the_call() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let (js_fn, _) = counting_function(|count, _| {
+            if count == 1 {
+                napi_mock::fake_string("hello")
+            } else {
+                napi_mock::fake_string("world")
+            }
+        });
+        let (state, call) = string_return_closure(&env, js_fn);
+
+        let first = unsafe { call() };
+        assert!(!first.is_null());
+        assert_eq!(unsafe { CStr::from_ptr(first) }.to_str(), Ok("hello"));
+        assert_eq!(
+            state.data_ref().retained_string_return.get().cast_const(),
+            first
+        );
+
+        let second = unsafe { call() };
+        assert!(!second.is_null());
+        assert_eq!(unsafe { CStr::from_ptr(second) }.to_str(), Ok("world"));
+        assert_eq!(
+            state.data_ref().retained_string_return.get().cast_const(),
+            second
+        );
+        assert!(napi_mock::fatal_exceptions().is_empty());
+
+        drop(state);
+    });
+}
+
+#[test]
+fn a_borrowed_container_return_stays_valid_after_the_call() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let (js_fn, _) = counting_function(|count, _| {
+            let base = if count == 1 { 1.0 } else { 4.0 };
+            napi_mock::fake_array(&[
+                napi_mock::fake_double(base),
+                napi_mock::fake_double(base + 1.0),
+                napi_mock::fake_double(base + 2.0),
+            ])
+        });
+        let state = ClosureState::boxed(
+            js_fn_handle(&env, js_fn),
+            Vec::new(),
+            Codec::Array(helpers::i32_array_codec(3)),
+            None,
+            false,
+        );
+        let call: unsafe extern "C" fn() -> *const i32 =
+            unsafe { std::mem::transmute(state.code_ptr) };
+
+        let first = unsafe { call() };
+        assert!(!first.is_null());
+        assert_eq!(unsafe { std::slice::from_raw_parts(first, 3) }, [1, 2, 3]);
+        assert!(!state.data_ref().retained_container_return.get().is_null());
+
+        let second = unsafe { call() };
+        assert!(!second.is_null());
+        assert_eq!(unsafe { std::slice::from_raw_parts(second, 3) }, [4, 5, 6]);
+        assert!(!state.data_ref().retained_container_return.get().is_null());
+        assert!(napi_mock::fatal_exceptions().is_empty());
+
+        drop(state);
+    });
+}
+
+#[test]
+fn a_oneshot_closure_releases_its_resources_once_via_the_idle() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let (js_fn, calls) = counting_function(|_, _| napi_mock::fake_undefined());
+        let state = void_closure(&env, js_fn, true);
+        let call: unsafe extern "C" fn() = unsafe { std::mem::transmute(state.code_ptr) };
+        let _ = Box::into_raw(state);
+
+        let deletions_before = napi_mock::count("napi_delete_reference");
+        unsafe { call() };
+        unsafe { call() };
+        assert_eq!(calls.get(), 2);
+        assert_eq!(napi_mock::count("napi_delete_reference"), deletions_before);
+
+        helpers::pump_default_context_until(|| {
+            napi_mock::count("napi_delete_reference") > deletions_before
+        });
+        assert_eq!(
+            napi_mock::count("napi_delete_reference"),
+            deletions_before + 1
+        );
+
+        drain_default_context();
+        assert_eq!(
+            napi_mock::count("napi_delete_reference"),
+            deletions_before + 1
+        );
+        assert!(napi_mock::fatal_exceptions().is_empty());
+    });
+}
+
+#[test]
+fn a_panicking_drop_in_the_destroy_notify_is_reported_and_contained() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let (js_fn, _) = counting_function(|_, _| napi_mock::fake_undefined());
+        let state = void_closure(&env, js_fn, false);
+        state
+            .data_ref()
+            .retained_container_return
+            .set(Box::into_raw(Box::new(stash_that_panics_on_drop())));
+        let deletions_before = napi_mock::count("napi_delete_reference");
+
+        unsafe { ClosureState::destroy(Box::into_raw(state).cast()) };
+
+        let message = single_fatal_message();
+        assert!(message.contains("panic at callback destroy notify"));
+        assert!(message.contains("closure drop exploded"));
+        assert_eq!(
+            napi_mock::count("napi_delete_reference"),
+            deletions_before + 1
+        );
+
+        let (follow_up_fn, calls) = counting_function(|_, _| napi_mock::fake_double(7.0));
+        let (_state, call) = i32_return_closure(&env, follow_up_fn);
+        assert_eq!(unsafe { call(3) }, 7);
+        assert_eq!(calls.get(), 1);
+    });
+}
+
+fn assert_transfer_full_return_yields_null_and_reports(return_codec: Codec, expected: &str) {
+    let env = helpers::fake_env();
+    let backing = unsafe { glib::ffi::g_malloc0(16) };
+    let js_fn = napi_mock::fake_function(move |_| {
+        let env = helpers::fake_env();
+        External::new(Handle::from_glib_borrow(backing))
+            .into_unknown(&env)
+            .expect("external into unknown should succeed")
+            .raw()
+    });
+    let state = ClosureState::boxed(
+        js_fn_handle(&env, js_fn),
+        Vec::new(),
+        return_codec,
+        None,
+        false,
+    );
+    let call: unsafe extern "C" fn() -> *mut c_void =
+        unsafe { std::mem::transmute(state.code_ptr) };
+
+    let returned = unsafe { call() };
+
+    assert!(
+        returned.is_null(),
+        "the C caller must not receive a pointer whose ownership never transferred"
+    );
+    assert!(single_fatal_message().contains(expected));
+    assert!(napi_mock::pending_exception().is_none());
+
+    unsafe { glib::ffi::g_free(backing) };
+}
+
+#[test]
+fn a_transfer_full_boxed_return_with_an_unresolvable_type_yields_null_and_reports() {
+    helpers::run(|| {
+        assert_transfer_full_return_yields_null_and_reports(
+            Codec::Boxed(BoxedCodec {
+                ownership: Ownership::Full,
+                type_name: "GtkxUnknownBoxedType".to_owned(),
+                shared_library: None,
+                get_type_fn_name: None,
+                free_fn_name: None,
+                caller_allocated: false,
+            }),
+            "GtkxUnknownBoxedType",
+        );
+    });
+}
+
+#[test]
+fn a_transfer_full_fundamental_return_with_unresolvable_fns_yields_null_and_reports() {
+    helpers::run(|| {
+        assert_transfer_full_return_yields_null_and_reports(
+            Codec::Fundamental(FundamentalCodec {
+                ownership: Ownership::Full,
+                shared_library: "libgobject-2.0.so.0".to_owned(),
+                ref_fn_name: "gtkx_missing_fundamental_ref".to_owned(),
+                unref_fn_name: "gtkx_missing_fundamental_unref".to_owned(),
+            }),
+            "gtkx_missing_fundamental_ref",
+        );
+    });
+}
+
+#[test]
+fn a_transfer_full_struct_return_with_an_unknown_size_yields_null_and_reports() {
+    helpers::run(|| {
+        assert_transfer_full_return_yields_null_and_reports(
+            Codec::Struct(StructCodec {
+                ownership: Ownership::Full,
+                size: None,
+                caller_allocated: false,
+            }),
+            "its size is unknown",
+        );
+    });
+}
+
+#[test]
+fn a_thrown_callback_writes_the_err_return_and_throws_into_node() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let exception = napi_mock::fake_error("callback exploded");
+        let js_fn = napi_mock::fake_throwing_function(exception);
+        let (_state, call) = i32_return_closure(&env, js_fn);
+
+        let returned = unsafe { call(11) };
+
+        assert_eq!(returned, 0);
+        assert_eq!(napi_mock::pending_exception(), Some(exception));
+        assert_eq!(napi_mock::thrown_exceptions(), vec![exception]);
+        assert!(napi_mock::fatal_exceptions().is_empty());
+    });
+}
+
+#[test]
+fn the_closure_stays_usable_after_a_throw() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let exception = napi_mock::fake_error("first call exploded");
+        let (js_fn, calls) = counting_function(move |count, args| {
+            if count == 1 {
+                napi_mock::set_pending_exception(exception);
+                napi_mock::fake_undefined()
+            } else {
+                let doubled =
+                    napi_mock::read_double(args[0]).expect("the argument should be a number") * 2.0;
+                napi_mock::fake_double(doubled)
+            }
+        });
+        let (_state, call) = i32_return_closure(&env, js_fn);
+
+        assert_eq!(unsafe { call(11) }, 0);
+        assert_eq!(napi_mock::take_pending_exception(), Some(exception));
+
+        assert_eq!(unsafe { call(21) }, 42);
+        assert_eq!(calls.get(), 2);
+        assert!(napi_mock::pending_exception().is_none());
+        assert_eq!(napi_mock::thrown_exceptions(), vec![exception]);
+        assert!(napi_mock::fatal_exceptions().is_empty());
+    });
+}
+
+#[test]
+fn a_throw_clears_the_retained_borrowed_string_return() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let exception = napi_mock::fake_error("second call exploded");
+        let (js_fn, _) = counting_function(move |count, _| {
+            if count == 1 {
+                napi_mock::fake_string("alpha")
+            } else {
+                napi_mock::set_pending_exception(exception);
+                napi_mock::fake_undefined()
+            }
+        });
+        let (state, call) = string_return_closure(&env, js_fn);
+
+        let first = unsafe { call() };
+        assert_eq!(unsafe { CStr::from_ptr(first) }.to_str(), Ok("alpha"));
+        assert!(!state.data_ref().retained_string_return.get().is_null());
+
+        let second = unsafe { call() };
+        assert!(second.is_null());
+        assert!(state.data_ref().retained_string_return.get().is_null());
+        assert_eq!(napi_mock::take_pending_exception(), Some(exception));
+        assert_eq!(napi_mock::thrown_exceptions(), vec![exception]);
+        assert!(napi_mock::fatal_exceptions().is_empty());
+    });
+}

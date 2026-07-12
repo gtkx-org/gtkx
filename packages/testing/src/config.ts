@@ -6,6 +6,8 @@ export type Config = {
     getElementError: (message: string, container?: Container) => Error;
 
     asyncUtilTimeout: number;
+
+    actionabilityTimeout: number;
 };
 
 export type ConfigFn = (existingConfig: Config) => Partial<Config>;
@@ -20,6 +22,7 @@ const defaultConfig: Config = {
     throwSuggestions: false,
     getElementError: defaultGetElementError,
     asyncUtilTimeout: 1000,
+    actionabilityTimeout: 500,
 };
 
 let currentConfig: Config = { ...defaultConfig };

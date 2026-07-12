@@ -1,7 +1,6 @@
 use test_support as helpers;
 
 use native::ffi::codec::{Encoder as _, EnumFlagsCodec, EnumFlagsKind, IntegerCodec};
-use native::ffi::value::Value;
 
 fn orientation_codec() -> EnumFlagsCodec {
     EnumFlagsCodec {
@@ -15,8 +14,12 @@ fn orientation_codec() -> EnumFlagsCodec {
 #[test]
 fn encode_rejects_invalid_enum_value_synchronously() {
     helpers::run(|| {
+        let env = helpers::fake_env();
         let err = orientation_codec()
-            .encode(&Value::Number(999.0))
+            .encode(
+                &env,
+                helpers::napi_mock::to_unknown(&env, helpers::napi_mock::fake_double(999.0)),
+            )
             .expect_err("an invalid enum member must fail to encode");
         assert!(err.to_string().contains("not a valid member"));
     });
@@ -25,6 +28,14 @@ fn encode_rejects_invalid_enum_value_synchronously() {
 #[test]
 fn encode_accepts_valid_enum_value() {
     helpers::run(|| {
-        assert!(orientation_codec().encode(&Value::Number(0.0)).is_ok());
+        let env = helpers::fake_env();
+        assert!(
+            orientation_codec()
+                .encode(
+                    &env,
+                    helpers::napi_mock::to_unknown(&env, helpers::napi_mock::fake_double(0.0))
+                )
+                .is_ok()
+        );
     });
 }

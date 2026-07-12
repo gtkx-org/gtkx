@@ -3,6 +3,9 @@ use crate::ffi::{
     codec::{Decoder, Encoder, IntegerCodec, PtrWriter, ReadSource, forward_ffi_encoder},
     value,
 };
+use napi::Env;
+use napi::ValueType;
+use napi::bindgen_prelude::Unknown;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EnumFlagsKind {
@@ -24,7 +27,7 @@ impl EnumFlagsCodec {
     }
 
     fn resolve_type(&self) -> anyhow::Result<glib::Type> {
-        crate::ffi::library_cache::GlibThreadState::with(|state| {
+        crate::ffi::library_cache::FfiCache::with(|state| {
             state.resolve_type(&self.shared_library, &self.get_type_fn_name)
         })
     }
@@ -48,30 +51,39 @@ impl EnumFlagsCodec {
 }
 
 impl Encoder for EnumFlagsCodec {
-    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::Stash> {
-        if self.kind == EnumFlagsKind::Enum
-            && let value::Value::Number(n) = value
-        {
-            self.validate_enum_value(*n as i32)?;
+    fn encode(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
+        if self.kind == EnumFlagsKind::Enum && matches!(value.get_type()?, ValueType::Number) {
+            let n = value::read_napi::<f64>(env, value)?;
+            self.validate_enum_value(n as i32)?;
         }
-        Encoder::encode(&self.storage, value)
+        Encoder::encode(&self.storage, env, value)
     }
 
     forward_ffi_encoder!();
 }
 
 impl Decoder for EnumFlagsCodec {
-    unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
-        unsafe { self.storage.read(src) }
+    unsafe fn read<'e>(&self, env: &'e Env, src: ReadSource<'_>) -> anyhow::Result<Unknown<'e>> {
+        unsafe { self.storage.read(env, src) }
     }
 }
 
 impl PtrWriter for EnumFlagsCodec {
-    fn write_return_to_ptr(&self, ret: ffi::Slot, value: &Result<value::Value, ()>) {
-        PtrWriter::write_return_to_ptr(&self.storage, ret, value);
+    fn write_return_to_ptr(
+        &self,
+        env: &Env,
+        ret: ffi::Slot,
+        value: &std::result::Result<Unknown<'_>, ()>,
+    ) {
+        PtrWriter::write_return_to_ptr(&self.storage, env, ret, value);
     }
 
-    fn write_value_to_ptr(&self, slot: ffi::Slot, value: &value::Value) -> anyhow::Result<()> {
-        PtrWriter::write_value_to_ptr(&self.storage, slot, value)
+    fn write_value_to_ptr(
+        &self,
+        env: &Env,
+        slot: ffi::Slot,
+        value: Unknown<'_>,
+    ) -> anyhow::Result<()> {
+        PtrWriter::write_value_to_ptr(&self.storage, env, slot, value)
     }
 }

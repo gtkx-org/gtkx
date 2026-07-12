@@ -1,18 +1,16 @@
 pub(super) use super::{Decoder, Encoder, Ownership, PtrWriter, ReadSource};
 pub(super) use crate::ffi::{self, value};
+pub(super) use napi::Env;
+pub(super) use napi::ValueType;
+pub(super) use napi::bindgen_prelude::*;
 pub(super) use std::ffi::c_void;
 
 use crate::messaging::error_reporter::ReportErr as _;
 use std::ffi::c_char;
 
 macro_rules! bail_expected {
-    ($expected:expr, $label:expr, $value:expr) => {
-        ::anyhow::bail!(
-            "Expected {} for {} codec, got {:?}",
-            $expected,
-            $label,
-            $value
-        )
+    ($expected:expr, $label:expr) => {
+        ::anyhow::bail!("Expected {} for {} codec", $expected, $label)
     };
 }
 pub(super) use bail_expected;
@@ -21,31 +19,43 @@ pub(super) unsafe fn lossy_c_string(ptr: *const c_char) -> String {
     unsafe { glib::GStr::from_ptr_lossy(ptr) }.to_string()
 }
 
+pub(super) fn reject_return_codec(kind: &str) -> anyhow::Result<ffi::Stash> {
+    ::anyhow::bail!("{kind} codecs cannot be return codecs")
+}
+
 pub(super) fn write_object_ptr(
+    env: &Env,
     slot: ffi::Slot,
-    value: &value::Value,
+    value: Unknown<'_>,
     label: &str,
 ) -> anyhow::Result<()> {
-    let object_ptr = value.object_ptr(label)?;
+    let object_ptr = value::handle_ptr(env, value, label)?;
     unsafe { slot.store(object_ptr) };
     Ok(())
 }
 
 pub(super) fn write_return_object_ptr<F>(
+    env: &Env,
     ret: ffi::Slot,
-    value: &std::result::Result<value::Value, ()>,
+    value: &std::result::Result<Unknown<'_>, ()>,
     transfer: F,
 ) where
     F: FnOnce(*mut c_void) -> *mut c_void,
 {
-    let ptr = value::Value::result_to_ptr(value);
+    let ptr = match value {
+        Ok(unknown) => {
+            value::handle_ptr(env, *unknown, "object return").unwrap_or(std::ptr::null_mut())
+        }
+        Err(()) => std::ptr::null_mut(),
+    };
     let owned = if ptr.is_null() { ptr } else { transfer(ptr) };
     unsafe { ret.store(owned) };
 }
 
 pub(super) fn swap_owned_slot<A, R>(
+    env: &Env,
     slot: ffi::Slot,
-    value: &value::Value,
+    value: Unknown<'_>,
     label: &str,
     acquire: A,
     release: R,
@@ -54,7 +64,7 @@ where
     A: FnOnce(*mut c_void) -> *mut c_void,
     R: FnOnce(*mut c_void),
 {
-    let new_ptr = value.object_ptr(label)?;
+    let new_ptr = value::handle_ptr(env, value, label)?;
     let owned = if new_ptr.is_null() {
         new_ptr
     } else {
@@ -68,17 +78,20 @@ where
 }
 
 pub(super) fn encode_and_leak_container<F>(
-    value: &std::result::Result<value::Value, ()>,
+    value: &std::result::Result<Unknown<'_>, ()>,
     context: &'static str,
     encode: F,
 ) -> *mut c_void
 where
-    F: FnOnce(&value::Value) -> anyhow::Result<crate::ffi::Stash>,
+    F: FnOnce(Unknown<'_>) -> anyhow::Result<crate::ffi::Stash>,
 {
-    let Ok(value @ value::Value::Array(_)) = value else {
+    let Ok(unknown) = value else {
         return std::ptr::null_mut();
     };
-    let Some(stash) = encode(value).report_err(context) else {
+    if !unknown.is_array().unwrap_or(false) {
+        return std::ptr::null_mut();
+    }
+    let Some(stash) = encode(*unknown).report_err(context) else {
         return std::ptr::null_mut();
     };
     let container = stash.as_ptr(context).expect(context);

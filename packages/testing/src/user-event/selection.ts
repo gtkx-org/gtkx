@@ -92,7 +92,7 @@ const selectByRole = (widget: Gtk.Widget, valueArray: number[]): void => {
 };
 
 export const selectOptions = (widget: Gtk.Widget, values: number | number[]): Promise<void> =>
-    wrapEvent(() => {
+    wrapEvent(widget, () => {
         const valueArray = Array.isArray(values) ? values : [values];
         if (isListView(widget)) {
             selectInListView(widget, valueArray);
@@ -109,7 +109,7 @@ const deselectInListView = (widget: Gtk.ListView | Gtk.GridView | Gtk.ColumnView
 };
 
 export const deselectOptions = (widget: Gtk.Widget, values: number | number[]): Promise<void> =>
-    wrapEvent(() => {
+    wrapEvent(widget, () => {
         const valueArray = Array.isArray(values) ? values : [values];
         if (isListView(widget)) {
             deselectInListView(widget, valueArray);

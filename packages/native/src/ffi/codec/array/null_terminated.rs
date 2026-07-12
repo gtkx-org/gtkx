@@ -1,28 +1,34 @@
 use std::ffi::c_char;
 
-use anyhow::bail;
-
 use super::super::prelude::*;
 use super::container::{ArrayContainer, BufferViewSupport};
 use super::item::ItemCodec;
-use super::{ArrayCodec, ArrayKindEncoder, dup_strings_to_glib, transfer_items};
+use super::{
+    ArrayCodec, ArrayKindEncoder, build_js_array, dup_strings_to_glib, read_string_item,
+    transfer_items,
+};
 use crate::ffi::codec::Codec;
 use crate::ffi::{StashData, StashStorage};
 
-fn gstring_ptrs_to_string_values(items: &[glib::GStringPtr]) -> Vec<value::Value> {
-    items
+fn gstring_ptrs_to_unknowns<'e>(
+    env: &'e Env,
+    items: &[glib::GStringPtr],
+) -> anyhow::Result<Unknown<'e>> {
+    let unknowns = items
         .iter()
-        .map(|item| value::Value::String(unsafe { lossy_c_string(item.as_ptr()) }))
-        .collect()
+        .map(|item| {
+            let string = unsafe { lossy_c_string(item.as_ptr()) };
+            Ok(string.into_unknown(env)?)
+        })
+        .collect::<anyhow::Result<Vec<_>>>()?;
+    build_js_array(env, unknowns)
 }
 
-fn build_strv(array: &[value::Value]) -> anyhow::Result<glib::StrV> {
+fn build_strv(env: &Env, array: &[Unknown<'_>]) -> anyhow::Result<glib::StrV> {
     let mut strv = glib::StrV::with_capacity(array.len());
-    for v in array {
-        let value::Value::String(s) = v else {
-            bail!("Expected a String, got {v:?}");
-        };
-        let gstring = glib::GString::from_string_checked(s.clone())
+    for &v in array {
+        let s = read_string_item(env, v)?;
+        let gstring = glib::GString::from_string_checked(s)
             .map_err(|_| anyhow::anyhow!("String contains an interior NUL byte"))?;
         strv.push(gstring);
     }
@@ -37,6 +43,15 @@ fn leak_container_to_callee(ptrs: &[*mut c_void]) -> *mut c_void {
 pub(crate) struct NullTerminatedArrayCodec;
 
 impl ArrayContainer for NullTerminatedArrayCodec {
+    fn encode(
+        &self,
+        codec: &ArrayCodec,
+        env: &Env,
+        array: &[Unknown<'_>],
+    ) -> anyhow::Result<ffi::Stash> {
+        codec.encode_zero_terminated_items(env, &NullTerminatedArrayEncoder, array)
+    }
+
     fn buffer_view_support(&self) -> BufferViewSupport {
         BufferViewSupport::Contiguous(None)
     }
@@ -51,13 +66,14 @@ pub(super) struct NullTerminatedArrayEncoder;
 impl ArrayKindEncoder for NullTerminatedArrayEncoder {
     fn encode_strings(
         &self,
-        array: &[value::Value],
+        env: &Env,
+        array: &[Unknown<'_>],
         dup_items: bool,
         ownership: Ownership,
     ) -> anyhow::Result<ffi::Stash> {
         match (ownership, dup_items) {
             (Ownership::Borrowed, false) => {
-                let strv = build_strv(array)?;
+                let strv = build_strv(env, array)?;
                 let ptr = strv.as_ptr() as *mut c_void;
                 Ok(ffi::Stash::Storage(StashStorage::new(
                     ptr,
@@ -65,12 +81,12 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
                 )))
             }
             (Ownership::Full, true) => {
-                let strv = build_strv(array)?;
+                let strv = build_strv(env, array)?;
                 let container = strv.into_raw() as *mut c_void;
                 Ok(full_transfer_stash(container, ffi::ReleaseKind::StrFreeV))
             }
             (Ownership::Full, false) => {
-                let cstrings = ArrayCodec::extract_strings(array)?;
+                let cstrings = ArrayCodec::extract_strings(env, array)?;
                 let mut ptrs: Vec<*mut c_void> =
                     cstrings.iter().map(|s| s.as_ptr() as *mut c_void).collect();
                 ptrs.push(std::ptr::null_mut());
@@ -81,7 +97,7 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
                 ))
             }
             (Ownership::Borrowed, true) => {
-                let mut ptrs = dup_strings_to_glib(array)?;
+                let mut ptrs = dup_strings_to_glib(env, array)?;
                 ptrs.push(std::ptr::null_mut());
                 let ptr = ptrs.as_mut_ptr() as *mut c_void;
                 Ok(ffi::Stash::Storage(
@@ -122,30 +138,35 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
 }
 
 impl ArrayCodec {
-    pub(super) fn decode_null_terminated(
+    pub(super) fn decode_null_terminated<'e>(
         &self,
+        env: &'e Env,
         name: &str,
         stash: &ffi::Stash,
-    ) -> anyhow::Result<value::Value> {
+    ) -> anyhow::Result<Unknown<'e>> {
         let ffi::Stash::Ptr(ptr) = stash else {
             anyhow::bail!("A {name} can only be decoded from a raw pointer")
         };
         if ptr.is_null() {
-            return Ok(value::Value::Array(vec![]));
+            return build_js_array(env, Vec::new());
         }
 
         match self.item_codec("array")? {
-            ItemCodec::String => Ok(self.decode_null_terminated_string_array(*ptr)),
-            ItemCodec::Pointer => self.decode_null_terminated_ptr_array(*ptr),
+            ItemCodec::String => self.decode_null_terminated_string_array(env, *ptr),
+            ItemCodec::Pointer => self.decode_null_terminated_ptr_array(env, *ptr),
             codec @ (ItemCodec::Integer(_)
             | ItemCodec::EnumFlags(_)
             | ItemCodec::BigInt(_)
             | ItemCodec::Float(_)
-            | ItemCodec::Boolean) => self.decode_zero_terminated_scalar_array(codec, *ptr),
+            | ItemCodec::Boolean) => self.decode_zero_terminated_scalar_array(env, codec, *ptr),
         }
     }
 
-    fn decode_null_terminated_ptr_array(&self, ptr: *mut c_void) -> anyhow::Result<value::Value> {
+    fn decode_null_terminated_ptr_array<'e>(
+        &self,
+        env: &'e Env,
+        ptr: *mut c_void,
+    ) -> anyhow::Result<Unknown<'e>> {
         let ptr_array = ptr as *const *mut c_void;
         let mut i = 0isize;
         let items = std::iter::from_fn(move || {
@@ -158,18 +179,19 @@ impl ArrayCodec {
         });
 
         let is_full = self.ownership.is_full();
-        self.decode_ptr_iter(items, move || {
+        self.decode_ptr_iter(env, items, move || {
             if is_full {
                 unsafe { glib::ffi::g_free(ptr) };
             }
         })
     }
 
-    fn decode_zero_terminated_scalar_array(
+    fn decode_zero_terminated_scalar_array<'e>(
         &self,
+        env: &'e Env,
         codec: ItemCodec,
         ptr: *mut c_void,
-    ) -> anyhow::Result<value::Value> {
+    ) -> anyhow::Result<Unknown<'e>> {
         let stride = codec.element_size();
         let base = ptr as *const u8;
         let mut len = 0usize;
@@ -181,30 +203,32 @@ impl ArrayCodec {
             len += 1;
         }
 
-        let values = self.decode_contiguous(codec, base, len);
+        let values = self.decode_contiguous(env, codec, base, len);
 
         if self.ownership.is_full() {
             unsafe { glib::ffi::g_free(ptr) };
         }
 
-        Ok(value::Value::Array(values?))
+        build_js_array(env, values?)
     }
 
-    fn decode_null_terminated_string_array(&self, ptr: *mut c_void) -> value::Value {
+    fn decode_null_terminated_string_array<'e>(
+        &self,
+        env: &'e Env,
+        ptr: *mut c_void,
+    ) -> anyhow::Result<Unknown<'e>> {
         let items_full = matches!(&*self.item_codec, Codec::String(string_codec) if string_codec.ownership.is_full());
 
-        let values = if self.ownership.is_full() {
+        if self.ownership.is_full() {
             let strv = if items_full {
                 unsafe { glib::StrV::from_glib_full(ptr as *mut *mut c_char) }
             } else {
                 unsafe { glib::StrV::from_glib_container(ptr as *mut *const c_char) }
             };
-            gstring_ptrs_to_string_values(&strv)
+            gstring_ptrs_to_unknowns(env, &strv)
         } else {
             let borrowed = unsafe { glib::StrVRef::from_glib_borrow(ptr as *const *const c_char) };
-            gstring_ptrs_to_string_values(borrowed)
-        };
-
-        value::Value::Array(values)
+            gstring_ptrs_to_unknowns(env, borrowed)
+        }
     }
 }

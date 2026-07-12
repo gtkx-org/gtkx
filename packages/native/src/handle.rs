@@ -1,147 +1,120 @@
 mod boxed;
 mod fundamental;
-pub(crate) mod wrapper;
+pub mod wrapper;
 
 pub use boxed::{Boxed, BoxedFreeFn};
 pub use fundamental::{Fundamental, RefFn, UnrefFn};
 
+use std::cell::Cell;
 use std::ffi::c_void;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::rc::Rc;
 
-use glib::thread_guard::ThreadGuard;
+use glib::prelude::ObjectType as _;
 
-use crate::messaging::Mailbox;
+const GOBJECT_SIZE_HINT: usize = 512;
 
-pub struct Handle {
-    ptr: usize,
-    size_hint: usize,
-    owned_value: Option<ThreadGuard<Value>>,
-    pending_gobject_ref: Option<Arc<AtomicBool>>,
+pub enum Handle {
+    Object {
+        ptr: usize,
+        owned: Rc<Cell<Option<glib::Object>>>,
+    },
+    Boxed(Boxed),
+    Fundamental(Fundamental),
+    Borrowed(usize),
 }
 
 impl std::fmt::Debug for Handle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let (name, ptr) = match self {
+            Self::Object { ptr, .. } => ("Object", *ptr),
+            Self::Boxed(boxed) => ("Boxed", boxed.as_ptr() as usize),
+            Self::Fundamental(fundamental) => ("Fundamental", fundamental.as_ptr() as usize),
+            Self::Borrowed(ptr) => ("Borrowed", *ptr),
+        };
         f.debug_struct("Handle")
-            .field("ptr", &(self.ptr as *const c_void))
-            .field("owned", &self.owned_value.is_some())
+            .field("kind", &name)
+            .field("ptr", &(ptr as *const c_void))
             .finish_non_exhaustive()
     }
 }
 
-impl From<Value> for Handle {
-    fn from(value: Value) -> Self {
-        let ptr = value.as_ptr() as usize;
-        let size_hint = value.size_hint();
-        Self {
-            ptr,
-            size_hint,
-            owned_value: Some(ThreadGuard::new(value)),
-            pending_gobject_ref: None,
-        }
+impl From<Boxed> for Handle {
+    fn from(boxed: Boxed) -> Self {
+        Self::Boxed(boxed)
+    }
+}
+
+impl From<Fundamental> for Handle {
+    fn from(fundamental: Fundamental) -> Self {
+        Self::Fundamental(fundamental)
     }
 }
 
 impl Clone for Handle {
     fn clone(&self) -> Self {
-        Self {
-            ptr: self.ptr,
-            size_hint: self.size_hint,
-            owned_value: self
-                .owned_value
-                .as_ref()
-                .map(|guard| ThreadGuard::new(guard.get_ref().clone())),
-            pending_gobject_ref: self.pending_gobject_ref.clone(),
+        match self {
+            Self::Object { ptr, owned } => Self::Object {
+                ptr: *ptr,
+                owned: Rc::clone(owned),
+            },
+            Self::Boxed(boxed) => Self::Boxed(boxed.clone()),
+            Self::Fundamental(fundamental) => Self::Fundamental(fundamental.clone()),
+            Self::Borrowed(ptr) => Self::Borrowed(*ptr),
         }
     }
 }
 
 impl Handle {
     pub fn from_glib_borrow(ptr: *mut c_void) -> Self {
-        Self {
-            ptr: ptr as usize,
-            size_hint: 0,
-            owned_value: None,
-            pending_gobject_ref: None,
+        Self::Borrowed(ptr as usize)
+    }
+
+    pub fn decoded_gobject(object: glib::Object) -> Self {
+        let ptr = object.as_ptr() as usize;
+        Self::Object {
+            ptr,
+            owned: Rc::new(Cell::new(Some(object))),
         }
     }
 
-    pub fn decoded_gobject(ptr: *mut c_void) -> Self {
-        Self {
-            ptr: ptr as usize,
-            size_hint: GOBJECT_SIZE_HINT,
-            owned_value: None,
-            pending_gobject_ref: Some(Arc::new(AtomicBool::new(true))),
+    pub fn take_owned(&self) -> Option<glib::Object> {
+        match self {
+            Self::Object { owned, .. } => owned.take(),
+            _ => None,
         }
-    }
-
-    pub fn take_pending_gobject_ref(&self) -> bool {
-        self.pending_gobject_ref
-            .as_ref()
-            .is_some_and(|flag| flag.swap(false, Ordering::AcqRel))
     }
 
     pub fn as_ptr(&self) -> *mut c_void {
-        self.ptr as *mut c_void
+        self.ptr_as_usize() as *mut c_void
     }
 
     pub fn ptr_as_usize(&self) -> usize {
-        self.ptr
+        match self {
+            Self::Object { ptr, .. } | Self::Borrowed(ptr) => *ptr,
+            Self::Boxed(boxed) => boxed.as_ptr() as usize,
+            Self::Fundamental(fundamental) => fundamental.as_ptr() as usize,
+        }
+    }
+
+    pub fn size_hint(&self) -> usize {
+        match self {
+            Self::Object { .. } => GOBJECT_SIZE_HINT,
+            Self::Boxed(_) => Boxed::SIZE_HINT,
+            Self::Fundamental(_) => Fundamental::SIZE_HINT,
+            Self::Borrowed(_) => 0,
+        }
     }
 }
 
 impl Drop for Handle {
     fn drop(&mut self) {
-        if let Some(flag) = self.pending_gobject_ref.take()
-            && Arc::strong_count(&flag) == 1
-            && flag.swap(false, Ordering::AcqRel)
-            && !Mailbox::global().is_not_running()
-        {
-            let gobject_ptr = self.ptr;
-            glib::idle_add_once(move || unsafe {
-                glib::gobject_ffi::g_object_unref(gobject_ptr as *mut glib::gobject_ffi::GObject);
-            });
-        }
-
-        let Some(guard) = self.owned_value.take() else {
+        let Self::Object { owned, .. } = self else {
             return;
         };
-        if guard.is_owner() {
-            drop(guard);
-        } else if Mailbox::global().is_not_running() {
-            std::mem::forget(guard);
-        } else {
-            glib::idle_add_once(move || drop(guard));
+        if Rc::strong_count(owned) == 1
+            && let Some(object) = owned.take()
+        {
+            glib::idle_add_local_once(move || drop(object));
         }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum Value {
-    Boxed(Boxed),
-    Fundamental(Fundamental),
-}
-
-const GOBJECT_SIZE_HINT: usize = 512;
-
-impl Value {
-    pub fn as_ptr(&self) -> *mut c_void {
-        match self {
-            Self::Boxed(boxed) => boxed.as_ptr(),
-            Self::Fundamental(fundamental) => fundamental.as_ptr(),
-        }
-    }
-
-    pub fn size_hint(&self) -> usize {
-        match self {
-            Self::Boxed(_) => Boxed::SIZE_HINT,
-            Self::Fundamental(_) => Fundamental::SIZE_HINT,
-        }
-    }
-}
-
-impl Handle {
-    pub fn size_hint(&self) -> usize {
-        self.size_hint
     }
 }

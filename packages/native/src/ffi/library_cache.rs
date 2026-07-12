@@ -11,7 +11,7 @@ use crate::handle::{RefFn, UnrefFn};
 type GetTypeFn = unsafe extern "C" fn() -> glib::ffi::GType;
 
 thread_local! {
-    static GLIB_THREAD_STATE: RefCell<GlibThreadState> = RefCell::new(GlibThreadState::default());
+    static FFI_CACHE: RefCell<FfiCache> = RefCell::new(FfiCache::default());
 }
 
 pub struct LibraryCache {
@@ -73,11 +73,11 @@ impl LibraryCache {
         library_name: &str,
         get_type_fn_name: &str,
     ) -> anyhow::Result<glib::Type> {
-        if let Some(cached) = self.cached_type(library_name, get_type_fn_name) {
-            return Ok(cached);
-        }
-        let get_type_fn = self.resolve_symbol::<GetTypeFn>(library_name, get_type_fn_name)?;
-        Ok(self.invoke_and_cache_type(library_name, get_type_fn_name, get_type_fn))
+        self.resolve_type_with(library_name, get_type_fn_name, |cache| {
+            cache
+                .resolve_symbol::<GetTypeFn>(library_name, get_type_fn_name)
+                .map(Some)
+        })
     }
 
     pub fn resolve_type_optional(
@@ -85,13 +85,24 @@ impl LibraryCache {
         library_name: &str,
         get_type_fn_name: &str,
     ) -> anyhow::Result<glib::Type> {
+        self.resolve_type_with(library_name, get_type_fn_name, |cache| {
+            let library = cache.get_or_load(library_name)?;
+            let symbol = unsafe { library.get::<GetTypeFn>(get_type_fn_name.as_bytes()) };
+            Ok(symbol.ok().map(|symbol| *symbol))
+        })
+    }
+
+    fn resolve_type_with(
+        &mut self,
+        library_name: &str,
+        get_type_fn_name: &str,
+        lookup: impl FnOnce(&mut Self) -> anyhow::Result<Option<GetTypeFn>>,
+    ) -> anyhow::Result<glib::Type> {
         if let Some(cached) = self.cached_type(library_name, get_type_fn_name) {
             return Ok(cached);
         }
-        let library = self.get_or_load(library_name)?;
-        let get_type_fn = match unsafe { library.get::<GetTypeFn>(get_type_fn_name.as_bytes()) } {
-            Ok(symbol) => *symbol,
-            Err(_) => return Ok(glib::Type::INVALID),
+        let Some(get_type_fn) = lookup(self)? else {
+            return Ok(glib::Type::INVALID);
         };
         Ok(self.invoke_and_cache_type(library_name, get_type_fn_name, get_type_fn))
     }
@@ -194,13 +205,13 @@ impl FundamentalFnCache {
     }
 }
 
-pub struct GlibThreadState {
+pub struct FfiCache {
     pub libs: LibraryCache,
     pub fundamental_fns: FundamentalFnCache,
     cifs: HashMap<u64, Rc<Cif>>,
 }
 
-impl Default for GlibThreadState {
+impl Default for FfiCache {
     fn default() -> Self {
         Self {
             libs: LibraryCache::new(),
@@ -210,20 +221,20 @@ impl Default for GlibThreadState {
     }
 }
 
-impl std::fmt::Debug for GlibThreadState {
+impl std::fmt::Debug for FfiCache {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("GlibThreadState")
+        f.debug_struct("FfiCache")
             .field("libraries_len", &self.libs.len())
             .finish_non_exhaustive()
     }
 }
 
-impl GlibThreadState {
+impl FfiCache {
     pub fn with<F, R>(f: F) -> R
     where
         F: FnOnce(&mut Self) -> R,
     {
-        GLIB_THREAD_STATE.with_borrow_mut(f)
+        FFI_CACHE.with_borrow_mut(f)
     }
 
     pub fn lookup_fundamental_fns(

@@ -72,13 +72,20 @@ beforeAll(async () => {
     const glReady = await new Promise<boolean>((resolve) => {
         glArea.on("realize", () => {
             glArea.makeCurrent();
-            resolve(!glArea.getError());
+            if (glArea.getError()) resolve(false);
+        });
+        glArea.on("render", () => {
+            resolve(true);
+            return true;
         });
         window.present();
     });
     if (!glReady) {
         throw new Error("GLArea could not provide a desktop GL context; the GL contract suite cannot run");
     }
+
+    glArea.makeCurrent();
+    glArea.attachBuffers();
 });
 
 describe("shader operations", () => {

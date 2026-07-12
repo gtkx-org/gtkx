@@ -10,9 +10,9 @@ export const emitRelease = (controller: Gtk.GestureClick, nPress: number): void 
     controller.emit("released", nPress, 0, 0);
 };
 
-const emitClickSequence = (widget: Gtk.Widget, nPress: number): Promise<void> =>
-    wrapEvent(() => {
-        const controller = getOrCreateController(widget, Gtk.GestureClick);
+const emitClickSequence = (widget: Gtk.Widget, target: Gtk.Widget, nPress: number): Promise<void> =>
+    wrapEvent(widget, () => {
+        const controller = getOrCreateController(target, Gtk.GestureClick);
 
         for (let i = 1; i <= nPress; i++) {
             emitPress(controller, i);
@@ -33,25 +33,25 @@ const findClickableAncestor = (widget: Gtk.Widget): Gtk.Widget | null => {
 
 export const click = async (widget: Gtk.Widget): Promise<void> => {
     if (widget instanceof Gtk.Button) {
-        await emitClickSequence(widget, 1);
+        await emitClickSequence(widget, widget, 1);
         return;
     }
     if (widget instanceof Gtk.Switch) {
-        await wrapEvent(() => {
+        await wrapEvent(widget, () => {
             widget.setActive(!widget.getActive());
         });
         return;
     }
     if (widget.getAccessibleRole() !== Gtk.AccessibleRole.LABEL) {
         let activated = false;
-        await wrapEvent(() => {
+        await wrapEvent(widget, () => {
             activated = widget.activate();
         });
         if (activated) return;
     }
     const target = findClickableAncestor(widget);
-    if (target) await emitClickSequence(target, 1);
+    if (target) await emitClickSequence(widget, target, 1);
 };
 
-export const dblClick = (widget: Gtk.Widget): Promise<void> => emitClickSequence(widget, 2);
-export const tripleClick = (widget: Gtk.Widget): Promise<void> => emitClickSequence(widget, 3);
+export const dblClick = (widget: Gtk.Widget): Promise<void> => emitClickSequence(widget, widget, 2);
+export const tripleClick = (widget: Gtk.Widget): Promise<void> => emitClickSequence(widget, widget, 3);

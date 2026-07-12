@@ -70,45 +70,68 @@ impl HashTableEntryCodec {
             Codec::Boxed(boxed) if boxed.ownership.is_full() => bail!(
                 "Boxed GHashTable elements with full ownership are unsupported: a GHashTable destroy notify cannot release a boxed copy"
             ),
+            Codec::Struct(struct_codec) if struct_codec.ownership.is_full() => {
+                if struct_codec.size.is_none() {
+                    bail!(
+                        "Cannot transfer ownership of struct GHashTable elements: their size is unknown, so no copy can be made for the table"
+                    );
+                }
+                Ok(Some(glib::ffi::g_free))
+            }
             _ => Ok(None),
         }
     }
 
-    pub fn encode(&self, value: &value::Value) -> anyhow::Result<*mut c_void> {
+    pub fn encode(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<*mut c_void> {
         match self {
             Self::String => {
-                let value::Value::String(s) = value else {
-                    bail!("Expected string in GHashTable, got {value:?}")
+                let ValueType::String = value.get_type()? else {
+                    bail!("Expected string in GHashTable")
                 };
-                Ok(str_to_glib_full(s)? as *mut c_void)
+                Ok(str_to_glib_full(&value::read_napi::<String>(env, value)?)? as *mut c_void)
             }
-            Self::Integer => match value {
-                value::Value::Number(n) => Ok(*n as isize as *mut c_void),
-                _ => bail!("Expected number in GHashTable, got {value:?}"),
+            Self::Integer => match value.get_type()? {
+                ValueType::Number => {
+                    Ok(value::read_napi::<f64>(env, value)? as isize as *mut c_void)
+                }
+                _ => bail!("Expected number in GHashTable"),
             },
-            Self::Boolean => match value {
-                value::Value::Boolean(b) => Ok(*b as isize as *mut c_void),
-                _ => bail!("Expected boolean in GHashTable, got {value:?}"),
+            Self::Boolean => match value.get_type()? {
+                ValueType::Boolean => {
+                    Ok(value::read_napi::<bool>(env, value)? as isize as *mut c_void)
+                }
+                _ => bail!("Expected boolean in GHashTable"),
             },
-            Self::Float => match value {
-                value::Value::Number(n) => Ok(unsafe {
-                    glib::ffi::g_memdup2(
-                        (n as *const f64).cast::<c_void>(),
-                        std::mem::size_of::<f64>(),
-                    )
-                }),
-                _ => bail!("Expected number in GHashTable for float, got {value:?}"),
+            Self::Float => match value.get_type()? {
+                ValueType::Number => {
+                    let n = value::read_napi::<f64>(env, value)?;
+                    Ok(unsafe {
+                        glib::ffi::g_memdup2(
+                            (&raw const n).cast::<c_void>(),
+                            std::mem::size_of::<f64>(),
+                        )
+                    })
+                }
+                _ => bail!("Expected number in GHashTable for float"),
             },
-            Self::Handle(_) => value.object_ptr("GHashTable entry"),
+            Self::Handle(codec) => {
+                let ptr = value::handle_ptr(env, value, "GHashTable entry")?;
+                unsafe { codec.ref_for_transfer(ptr) }
+            }
             Self::PtrArray(item_codec) => {
-                let value::Value::Array(items) = value else {
-                    bail!("Expected Array for GPtrArray in GHashTable, got {value:?}")
-                };
+                anyhow::ensure!(
+                    value.is_array()?,
+                    "Expected Array for GPtrArray in GHashTable"
+                );
+                let items: Array = value::read_napi(env, value)?;
                 let elem_destroy = Self::transferred_entry_destroy(item_codec)?;
                 let ptr_array = unsafe { glib::ffi::g_ptr_array_new_with_free_func(elem_destroy) };
                 let build: anyhow::Result<()> = (|| {
-                    for item in items {
-                        let item_ptr = item.object_ptr("GPtrArray element")?;
+                    for i in 0..items.len() {
+                        let item: Unknown = items
+                            .get(i)?
+                            .ok_or_else(|| anyhow::anyhow!("GPtrArray element {i} is missing"))?;
+                        let item_ptr = value::handle_ptr(env, item, "GPtrArray element")?;
                         let item_ptr = if item_ptr.is_null() {
                             item_ptr
                         } else {
@@ -159,16 +182,28 @@ pub struct HashTableCodec {
 }
 
 impl HashTableCodec {
-    fn tuple(value: &value::Value) -> anyhow::Result<(&value::Value, &value::Value)> {
-        match value {
-            value::Value::Array(arr) if arr.len() == 2 => Ok((&arr[0], &arr[1])),
-            _ => bail!("Expected [key, value] tuple in GHashTable, got {value:?}"),
+    fn tuple<'e>(env: &'e Env, value: Unknown<'e>) -> anyhow::Result<(Unknown<'e>, Unknown<'e>)> {
+        anyhow::ensure!(
+            value.is_array()?,
+            "Expected [key, value] tuple in GHashTable"
+        );
+        let array: Array = value::read_napi(env, value)?;
+        if array.len() != 2 {
+            bail!("Expected [key, value] tuple in GHashTable");
         }
+        let key = array
+            .get(0)?
+            .ok_or_else(|| anyhow::anyhow!("GHashTable tuple key is missing"))?;
+        let val = array
+            .get(1)?
+            .ok_or_else(|| anyhow::anyhow!("GHashTable tuple value is missing"))?;
+        Ok((key, val))
     }
 
     fn encode_hashtable(
         &self,
-        tuples: &[value::Value],
+        env: &Env,
+        tuples: &[Unknown<'_>],
         key_encoder: &HashTableEntryCodec,
         value_encoder: &HashTableEntryCodec,
     ) -> anyhow::Result<ffi::Stash> {
@@ -180,20 +215,18 @@ impl HashTableCodec {
         };
 
         let build: anyhow::Result<()> = (|| {
-            for tuple in tuples {
-                let (key, value) = Self::tuple(tuple)?;
+            for &tuple in tuples {
+                let (key, value) = Self::tuple(env, tuple)?;
 
-                let key_ptr = key_encoder.encode(key)?;
-                let key_ptr = unsafe { self.key_codec.ref_for_transfer(key_ptr)? };
+                let key_ptr = key_encoder.encode(env, key)?;
 
-                let value_ptr = match value_encoder.encode(value) {
+                let value_ptr = match value_encoder.encode(env, value) {
                     Ok(encoded) => encoded,
                     Err(err) => {
                         release_transferred(key_free, key_ptr);
                         return Err(err);
                     }
                 };
-                let value_ptr = unsafe { self.value_codec.ref_for_transfer(value_ptr)? };
 
                 unsafe {
                     glib::ffi::g_hash_table_insert(hash_table, key_ptr, value_ptr);
@@ -220,14 +253,22 @@ impl HashTableCodec {
 }
 
 impl Encoder for HashTableCodec {
-    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::Stash> {
-        let tuples = match value {
-            value::Value::Array(arr) => arr,
-            value::Value::Null | value::Value::Undefined => {
-                return Ok(ffi::Stash::Ptr(std::ptr::null_mut()));
-            }
-            _ => bail!("Expected an Array of tuples for GHashTable codec, got {value:?}"),
-        };
+    fn encode(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
+        if !value.is_array()? {
+            return match value.get_type()? {
+                ValueType::Null | ValueType::Undefined => Ok(ffi::Stash::Ptr(std::ptr::null_mut())),
+                _ => bail!("Expected an Array of tuples for GHashTable codec"),
+            };
+        }
+
+        let array: Array = value::read_napi(env, value)?;
+        let mut tuples = Vec::with_capacity(array.len() as usize);
+        for i in 0..array.len() {
+            let tuple: Unknown = array
+                .get(i)?
+                .ok_or_else(|| anyhow::anyhow!("GHashTable tuple {i} is missing"))?;
+            tuples.push(tuple);
+        }
 
         let key_encoder = HashTableEntryCodec::from_codec(&self.key_codec).ok_or_else(|| {
             anyhow::anyhow!("Unsupported GHashTable key codec: {:?}", self.key_codec)
@@ -237,17 +278,17 @@ impl Encoder for HashTableCodec {
                 anyhow::anyhow!("Unsupported GHashTable value codec: {:?}", self.value_codec)
             })?;
 
-        self.encode_hashtable(tuples, &key_encoder, &value_encoder)
+        self.encode_hashtable(env, &tuples, &key_encoder, &value_encoder)
     }
 }
 
 impl Decoder for HashTableCodec {
-    fn decode_call(&self, stash: &ffi::Stash) -> anyhow::Result<value::Value> {
+    fn decode_call<'e>(&self, env: &'e Env, stash: &ffi::Stash) -> anyhow::Result<Unknown<'e>> {
         let Some(hash_ptr) = stash.as_non_null_ptr("GHashTable")? else {
-            return Ok(value::Value::Array(vec![]));
+            return value::js_array(env, Vec::new()).map_err(Into::into);
         };
 
-        let pairs: anyhow::Result<Vec<value::Value>> = (|| {
+        let pairs: anyhow::Result<Vec<Unknown<'e>>> = (|| {
             let mut pairs = Vec::new();
             unsafe {
                 let mut iter = std::mem::MaybeUninit::<glib::ffi::GHashTableIter>::uninit();
@@ -267,11 +308,11 @@ impl Decoder for HashTableCodec {
                 {
                     let key_value = self
                         .key_codec
-                        .read(ReadSource::Value(key_ptr, "hash table key"))?;
+                        .read(env, ReadSource::Value(key_ptr, "hash table key"))?;
                     let val_value = self
                         .value_codec
-                        .read(ReadSource::Value(value_ptr, "hash table value"))?;
-                    pairs.push(value::Value::Array(vec![key_value, val_value]));
+                        .read(env, ReadSource::Value(value_ptr, "hash table value"))?;
+                    pairs.push(value::js_array(env, vec![key_value, val_value])?);
                 }
             }
             Ok(pairs)
@@ -281,17 +322,28 @@ impl Decoder for HashTableCodec {
             unsafe { glib::ffi::g_hash_table_unref(hash_ptr as *mut glib::ffi::GHashTable) };
         }
 
-        Ok(value::Value::Array(pairs?))
+        Ok(value::js_array(env, pairs?)?)
     }
 
-    unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
-        self.decode_call(&ffi::Stash::Ptr(ptr))
+    unsafe fn read_value<'e>(
+        &self,
+        env: &'e Env,
+        ptr: *mut c_void,
+        _context: &str,
+    ) -> anyhow::Result<Unknown<'e>> {
+        self.decode_call(env, &ffi::Stash::Ptr(ptr))
     }
 }
 
 impl PtrWriter for HashTableCodec {
-    fn write_return_to_ptr(&self, ret: ffi::Slot, value: &std::result::Result<value::Value, ()>) {
-        let table = encode_and_leak_container(value, "hashtable vfunc return", |v| self.encode(v));
+    fn write_return_to_ptr(
+        &self,
+        env: &Env,
+        ret: ffi::Slot,
+        value: &std::result::Result<Unknown<'_>, ()>,
+    ) {
+        let table =
+            encode_and_leak_container(value, "hashtable vfunc return", |v| self.encode(env, v));
         unsafe { ret.store(table) };
     }
 }

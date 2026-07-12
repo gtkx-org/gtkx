@@ -8,12 +8,11 @@ use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use super::Request;
 use crate::ffi::closure::ClosureState;
 use crate::ffi::codec::Codec;
 use crate::ffi::descriptor::Descriptor;
 use crate::ffi::value::JsHandle;
-use crate::messaging::error_reporter::ErrorReporter;
+use crate::request::native_result;
 
 fn type_from_bigint(value: BigInt, label: &str) -> napi::Result<glib::Type> {
     let (_, type_value, lossless) = value.get_u64();
@@ -150,19 +149,19 @@ impl RawVfunc {
 }
 
 impl RawInterface {
-    fn install(self, class_ptr: *mut c_void) {
+    fn install(self, class_ptr: *mut c_void) -> anyhow::Result<()> {
         let iface_vtable =
             unsafe { gobject_ffi::g_type_interface_peek(class_ptr, self.type_.into_glib()) };
         if iface_vtable.is_null() {
-            ErrorReporter::global().report_str(&format!(
+            anyhow::bail!(
                 "register_class: registered type does not conform to interface {:#x}",
                 self.type_.into_glib()
-            ));
-            return;
+            );
         }
         for vfunc in self.vfuncs {
             vfunc.install_into(iface_vtable);
         }
+        Ok(())
     }
 }
 
@@ -279,16 +278,14 @@ impl RegisterClassRequest {
         }
 
         for iface in interfaces {
-            iface.install(class_ptr);
+            iface.install(class_ptr)?;
         }
 
         Ok(new_type)
     }
 }
 
-impl Request for RegisterClassRequest {
-    type Output = u64;
-
+impl RegisterClassRequest {
     fn execute(self) -> anyhow::Result<u64> {
         let query = self.query_parent_type()?;
         self.validate_layout(&query)?;
@@ -307,42 +304,36 @@ impl Request for RegisterClassRequest {
 
         Ok(new_type as u64)
     }
-
-    fn error_context() -> &'static str {
-        "register_class"
-    }
 }
 
-pub mod napi_export {
-    use super::*;
-
-    #[napi(catch_unwind)]
-    pub fn register_class(
-        env: Env,
-        name: String,
-        parent_type: BigInt,
-        options: Option<RegisterClassOptions>,
-    ) -> napi::Result<BigInt> {
-        let name = glib::GString::from_string_checked(name).map_err(|err| {
-            napi::Error::new(
-                napi::Status::InvalidArg,
-                format!("register_class: invalid type name: {err}"),
-            )
-        })?;
-        let parent_type = type_from_bigint(parent_type, "parent")?;
-        let (vfuncs, interfaces) = match options {
-            Some(options) => options.into_raw()?,
-            None => (Vec::new(), Vec::new()),
-        };
-        let type_ = RegisterClassRequest {
+#[napi(catch_unwind)]
+pub fn register_class(
+    name: String,
+    parent_type: BigInt,
+    options: Option<RegisterClassOptions>,
+) -> napi::Result<BigInt> {
+    let name = glib::GString::from_string_checked(name).map_err(|err| {
+        napi::Error::new(
+            napi::Status::InvalidArg,
+            format!("register_class: invalid type name: {err}"),
+        )
+    })?;
+    let parent_type = type_from_bigint(parent_type, "parent")?;
+    let (vfuncs, interfaces) = match options {
+        Some(options) => options.into_raw()?,
+        None => (Vec::new(), Vec::new()),
+    };
+    let type_ = native_result(
+        "register_class",
+        RegisterClassRequest {
             name,
             parent_type,
             vfuncs,
             interfaces,
         }
-        .dispatch_output(env)?;
-        Ok(BigInt::from(type_))
-    }
+        .execute(),
+    )?;
+    Ok(BigInt::from(type_))
 }
 
 #[cfg(test)]

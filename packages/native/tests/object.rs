@@ -8,7 +8,6 @@ use gtk4::prelude::ObjectType as _;
 use native::handle::Handle;
 
 fn create_test_gobject() -> glib::Object {
-    helpers::ensure_glib_init();
     glib::Object::new::<glib::Object>()
 }
 

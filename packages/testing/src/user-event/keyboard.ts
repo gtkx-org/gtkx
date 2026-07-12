@@ -11,7 +11,7 @@ export type TabOptions = {
 };
 
 export const tab = (widget: Gtk.Widget, options?: TabOptions): Promise<void> =>
-    wrapEvent(() => {
+    wrapEvent(widget, () => {
         const direction = options?.shift ? Gtk.DirectionType.TAB_BACKWARD : Gtk.DirectionType.TAB_FORWARD;
         const root = widget.getRoot();
 

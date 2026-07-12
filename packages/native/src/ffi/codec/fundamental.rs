@@ -1,6 +1,7 @@
 use super::prelude::*;
-use crate::ffi::library_cache::GlibThreadState;
-use crate::handle::{Fundamental, RefFn, UnrefFn};
+use crate::ffi::library_cache::FfiCache;
+use crate::handle::{Fundamental, Handle, RefFn, UnrefFn};
+use crate::messaging::error_reporter::ReportErr as _;
 
 #[derive(Debug, Clone)]
 pub struct FundamentalCodec {
@@ -12,7 +13,7 @@ pub struct FundamentalCodec {
 
 impl FundamentalCodec {
     pub fn lookup_fns(&self) -> anyhow::Result<(Option<RefFn>, Option<UnrefFn>)> {
-        GlibThreadState::with(|state| {
+        FfiCache::with(|state| {
             state.lookup_fundamental_fns(
                 &self.shared_library,
                 &self.ref_fn_name,
@@ -21,7 +22,7 @@ impl FundamentalCodec {
         })
     }
 
-    fn wrap_ptr(&self, ptr: *mut c_void) -> anyhow::Result<value::Value> {
+    fn wrap_ptr(&self, ptr: *mut c_void) -> anyhow::Result<Handle> {
         let (ref_fn, unref_fn) = self.lookup_fns()?;
         let fundamental = if self.ownership.is_full() {
             Fundamental::from_glib_full(ptr, ref_fn, unref_fn)
@@ -59,32 +60,49 @@ impl Encoder for FundamentalCodec {
 }
 
 impl Decoder for FundamentalCodec {
-    fn decode_call(&self, stash: &ffi::Stash) -> anyhow::Result<value::Value> {
-        self.decode_call_non_null(stash, "Fundamental", |ptr| self.wrap_ptr(ptr))
+    fn decode_call<'e>(&self, env: &'e Env, stash: &ffi::Stash) -> anyhow::Result<Unknown<'e>> {
+        self.decode_call_non_null(env, stash, "Fundamental", |ptr| {
+            Ok(value::handle_to_unknown(env, self.wrap_ptr(ptr)?)?)
+        })
     }
 
-    unsafe fn read_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
-        self.decode_non_null(ptr, |ptr| {
+    unsafe fn read_value<'e>(
+        &self,
+        env: &'e Env,
+        ptr: *mut c_void,
+        _context: &str,
+    ) -> anyhow::Result<Unknown<'e>> {
+        self.decode_non_null(env, ptr, |ptr| {
             let (ref_fn, unref_fn) = self.lookup_fns()?;
             let fundamental = unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) };
-            Ok(fundamental.into())
+            Ok(value::handle_to_unknown(env, fundamental.into())?)
         })
     }
 }
 
 impl PtrWriter for FundamentalCodec {
-    fn write_return_to_ptr(&self, ret: ffi::Slot, value: &Result<value::Value, ()>) {
-        self.write_return_with_ownership(ret, value, self.ownership, |ptr| {
-            match self.lookup_fns() {
-                Ok((Some(ref_fn), _)) => unsafe { ref_fn(ptr) },
-                _ => ptr,
-            }
+    fn write_return_to_ptr(
+        &self,
+        env: &Env,
+        ret: ffi::Slot,
+        value: &std::result::Result<Unknown<'_>, ()>,
+    ) {
+        self.write_return_with_ownership(env, ret, value, self.ownership, |ptr| {
+            unsafe { self.ref_for_transfer(ptr) }
+                .report_err("Fundamental return: cannot transfer ownership")
+                .unwrap_or(std::ptr::null_mut())
         });
     }
 
-    fn write_value_to_ptr(&self, slot: ffi::Slot, value: &value::Value) -> anyhow::Result<()> {
+    fn write_value_to_ptr(
+        &self,
+        env: &Env,
+        slot: ffi::Slot,
+        value: Unknown<'_>,
+    ) -> anyhow::Result<()> {
         let (ref_fn, unref_fn) = self.lookup_fns()?;
         swap_owned_slot(
+            env,
             slot,
             value,
             "Fundamental field write",

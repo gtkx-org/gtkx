@@ -4,6 +4,7 @@ use napi_derive::napi;
 use super::prelude::*;
 use crate::ffi::closure::ClosureState;
 use crate::ffi::codec::Codec;
+use crate::ffi::value::JsHandle;
 
 #[napi(string_enum = "lowercase")]
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -31,7 +32,7 @@ impl Encoder for CallbackCodec {
         _ptr: libffi::CodePtr,
         _args: &[libffi::Arg],
     ) -> anyhow::Result<ffi::Stash> {
-        anyhow::bail!("Callbacks cannot be return codecs")
+        reject_return_codec("Callback")
     }
 
     fn append_ffi_arg_types(&self, types: &mut Vec<libffi::Type>) {
@@ -42,19 +43,19 @@ impl Encoder for CallbackCodec {
         }
     }
 
-    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::Stash> {
-        let callback = match value {
-            value::Value::Callback(callback) => callback,
-            value::Value::Null | value::Value::Undefined => {
+    fn encode(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
+        let js_fn = match value.get_type()? {
+            ValueType::Function => JsHandle::from_js_value(env, &value)?,
+            ValueType::Null | ValueType::Undefined => {
                 return Ok(self.null_callback_value());
             }
-            _ => bail_expected!("a Callback", "callback", value),
+            _ => bail_expected!("a Callback", "callback"),
         };
 
         let is_oneshot = self.scope == CallbackScope::Async;
 
         let state = ClosureState::boxed(
-            callback.js_fn.clone(),
+            js_fn,
             self.arg_codecs.clone(),
             (*self.return_codec).clone(),
             self.user_data_index,
@@ -62,8 +63,13 @@ impl Encoder for CallbackCodec {
         );
         let fn_ptr = state.code_ptr;
 
-        let destroy =
-            (self.scope == CallbackScope::Notified).then_some(ClosureState::destroy as *mut c_void);
+        let destroy = self.has_destroy.then(|| {
+            if self.scope == CallbackScope::Notified {
+                ClosureState::destroy as *mut c_void
+            } else {
+                std::ptr::null_mut()
+            }
+        });
 
         match self.scope {
             CallbackScope::Call => {
@@ -71,7 +77,7 @@ impl Encoder for CallbackCodec {
                 Ok(ffi::Stash::Callback(ffi::CallbackValue::new(
                     fn_ptr,
                     state_ptr,
-                    None,
+                    destroy,
                     Some(state),
                 )))
             }
