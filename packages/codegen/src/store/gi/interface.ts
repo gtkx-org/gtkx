@@ -40,7 +40,7 @@ export const generateInterface = (context: ModuleContext, iface: GirClass): void
 
     context.module.appendDeclaration(renderInterfaceType(context, iface, className, callables));
     context.module.appendDeclaration(renderInterfaceClass(context, className, callables, gtypeExpr));
-    for (const declaration of renderSignalDeclarations(context, iface, className, true)) {
+    for (const declaration of renderSignalDeclarations(context, iface, className, { parentlessExtendsObject: true })) {
         context.module.appendDeclaration(declaration);
     }
     context.module.appendDeclaration(renderInterfaceMaker(context, iface, className, callables));

@@ -17,6 +17,7 @@ import { renderTsType } from "../../analysis/ts-type.js";
 import type { GirFunction } from "../../gir/function.js";
 import { type GirParameter, isCallerAllocatedOut, isInoutParameter, isOutParameter } from "../../gir/parameter.js";
 import type { ModuleContext } from "../../writer/context.js";
+import { type CallbackOverride, getCallbackOverride } from "./callback-arg-overrides.js";
 import { isCollectibleCallerOut, isHandlePassing, passesHandleInPlace } from "./param-marshal.js";
 
 export const methodExportName = (fn: GirFunction): string => toCamelCase(fn.name);
@@ -48,10 +49,31 @@ const renderInputParameters = (
         if (parameter.optional || isOptionalExtra(parameter)) {
             sawOptional = true;
         }
-        const annotation = renderTsType(context, parameter.type, parameter.nullable);
+        const annotation = renderParameterTsType(context, fn, parameter);
         parts.push(sawOptional ? `${name}?: ${annotation}` : `${name}: ${annotation}`);
     }
     return parts.join(", ");
+};
+
+const renderParameterTsType = (context: ModuleContext, fn: GirFunction, parameter: GirParameter): string => {
+    const override = getCallbackOverride(fn.cIdentifier);
+    if (
+        override !== undefined &&
+        parameter.type !== undefined &&
+        context.library.typeOf(parameter.type)?.kind === "callback"
+    ) {
+        return renderOverriddenCallbackTsType(override, context, parameter.nullable);
+    }
+    return renderTsType(context, parameter.type, parameter.nullable);
+};
+
+const renderOverriddenCallbackTsType = (
+    override: CallbackOverride,
+    context: ModuleContext,
+    nullable: boolean,
+): string => {
+    const callback = override.renderTsType(context);
+    return nullable ? `(${callback}) | null` : callback;
 };
 
 export const renderMethodReturnType = (context: ModuleContext, fn: GirFunction): string => {
@@ -250,7 +272,7 @@ const planParameter = (
     if (isInoutParameter(parameter)) return planInoutArgument(context, parameter, index, planContext);
     const sourceIndex = lengthFor.get(index);
     if (sourceIndex !== undefined) return planLengthArgument(context, parameter, sourceIndex, planContext);
-    return planInParam(context, parameter, index, instanceOffset);
+    return planInParam(context, parameter, index, planContext);
 };
 
 const planInoutArgument = (
@@ -361,9 +383,15 @@ const planInParam = (
     context: ModuleContext,
     parameter: GirParameter,
     index: number,
-    instanceOffset: number,
+    planContext: PlanArgsContext,
 ): CallArgPlan => {
-    const callback = renderCallbackType(context, parameter.type, parameter);
+    const { instanceOffset, fn } = planContext;
+    const callback = renderCallbackType(
+        context,
+        parameter.type,
+        parameter,
+        getCallbackOverride(fn.cIdentifier)?.argDescriptors,
+    );
     const descriptor =
         callback ??
         renderDescriptor(context, parameter.type, parameter.transferOwnership, { argIndexOffset: instanceOffset });

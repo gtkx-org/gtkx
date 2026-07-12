@@ -271,6 +271,25 @@ impl RegisterClassRequest {
             anyhow::bail!("g_type_register_static returned G_TYPE_INVALID");
         }
 
+        for iface in &interfaces {
+            let already_conforms =
+                unsafe { gobject_ffi::g_type_is_a(new_type, iface.type_.into_glib()) } != 0;
+            if !already_conforms {
+                let info = gobject_ffi::GInterfaceInfo {
+                    interface_init: None,
+                    interface_finalize: None,
+                    interface_data: std::ptr::null_mut(),
+                };
+                unsafe {
+                    gobject_ffi::g_type_add_interface_static(
+                        new_type,
+                        iface.type_.into_glib(),
+                        &info,
+                    );
+                }
+            }
+        }
+
         let class_ptr = unsafe { gobject_ffi::g_type_class_ref(new_type) };
 
         for vfunc in vfuncs {

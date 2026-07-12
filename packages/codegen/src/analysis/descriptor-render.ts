@@ -149,10 +149,13 @@ export const renderCallbackType = (
     context: ModuleContext,
     ref: TypeId | undefined,
     owningParameter: GirParameter,
+    argOverrides?: Map<number, string>,
 ): string | undefined => {
     const callback = resolveCallbackType(context, ref);
     if (callback === undefined) return undefined;
-    const argTypes = callback.parameters.map((parameter) => renderParamDescriptor(context, parameter, parameter.type));
+    const argTypes = callback.parameters.map(
+        (parameter, index) => argOverrides?.get(index) ?? renderParamDescriptor(context, parameter, parameter.type),
+    );
     let userDataIndex: number | undefined;
     callback.parameters.forEach((parameter, index) => {
         if (parameter.name === "user_data" || parameter.name === "data") userDataIndex = index;

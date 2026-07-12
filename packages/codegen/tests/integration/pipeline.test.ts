@@ -175,8 +175,8 @@ describe("codegen notify detail signals", () => {
     it("gives a class that introduces properties but no signals its own typed overloads", () => {
         const gobject = giModules.find(({ directory }) => directory === "gobject");
         const source = gobject?.source ?? "";
-        expect(source).toContain("export interface Binding {");
-        expect(source).toContain("connect<K extends keyof BindingSignalHandlers>");
+        expect(source).toContain("export interface Binding<S = {}> {");
+        expect(source).toContain("connect<K extends keyof (BindingSignalHandlers & S)>");
         expect(source).toContain("emit<K extends keyof BindingSignalEmit>");
     });
 });

@@ -4,20 +4,10 @@ import { Object as GObject, signalHandlerDisconnect, type Type } from "../gobjec
 type Listener = (...args: unknown[]) => unknown;
 
 declare module "../gobject.js" {
-    interface Object {
+    interface Object<S = {}> {
         __type__: Type;
 
         disconnect(handlerId: number): void;
-
-        on(sigName: string, callback: (...args: unknown[]) => unknown, after?: boolean): Object;
-
-        once(sigName: string, callback: (...args: unknown[]) => unknown, after?: boolean): Object;
-
-        off(sigName: string, callback: (...args: unknown[]) => unknown): Object;
-
-        addEventListener(sigName: string, callback: (...args: unknown[]) => unknown, after?: boolean): Object;
-
-        removeEventListener(sigName: string, callback: (...args: unknown[]) => unknown): Object;
     }
 }
 

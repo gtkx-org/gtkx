@@ -41,6 +41,12 @@ const handleFileChange = async (server: DevServer, deps: DevRunnerDeps, changedP
 
     deps.log(`File changed: ${changedPath}`);
 
+    const loadedExports = module.ssrModule;
+    if (loadedExports && !deps.isRefreshBoundary(loadedExports)) {
+        await requestRestart(server, deps);
+        return;
+    }
+
     server.moduleGraph.invalidateModule(module);
     for (const importer of module.importers) {
         server.moduleGraph.invalidateModule(importer);
@@ -97,9 +103,13 @@ export const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
                 return deps.exit(RESTART_EXIT_CODE);
             }
             deps.log("Application quit - stopping dev runner...");
-            shutdown(() => {}).catch((cause: unknown) => {
-                error("Error closing server:", cause);
-            });
+            shutdown(() => {}).then(
+                () => deps.exit(0),
+                (cause: unknown) => {
+                    error("Error closing server:", cause);
+                    return deps.exit(1);
+                },
+            );
         });
 
         const liveApplicationId = deps.getApplicationId();

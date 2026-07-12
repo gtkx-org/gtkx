@@ -199,7 +199,8 @@ describe("createDevRunner (application shutdown)", () => {
 
         expect(harness.stopMcp).toHaveBeenCalled();
         expect(harness.server.close).toHaveBeenCalled();
-        expect(harness.exit).not.toHaveBeenCalled();
+        await flushTick();
+        expect(harness.exit).toHaveBeenCalledWith(0);
         expect(loggedMessages(harness).some((m) => m.includes("Application quit"))).toBe(true);
     });
 
@@ -218,6 +219,7 @@ describe("createDevRunner (application shutdown)", () => {
         const written = stderrSpy.mock.calls.map((call) => String(call[0])).join("");
         expect(written).toContain("[gtkx] error Error closing server:");
         expect(written).toContain(error.stack ?? error.message);
+        expect(harness.exit).toHaveBeenCalledWith(1);
         stderrSpy.mockRestore();
     });
 
@@ -255,7 +257,8 @@ describe("createDevRunner (shutdown outside a refresh pass)", () => {
         onShutdown();
 
         expect(harness.server.close).toHaveBeenCalled();
-        expect(harness.exit).not.toHaveBeenCalled();
+        await flushTick();
+        expect(harness.exit).toHaveBeenCalledWith(0);
     });
 
     it("ignores application shutdowns while the runtime is shutting down", async () => {
@@ -267,7 +270,8 @@ describe("createDevRunner (shutdown outside a refresh pass)", () => {
         onShutdown();
 
         expect(harness.server.close).toHaveBeenCalledTimes(1);
-        expect(harness.exit).not.toHaveBeenCalled();
+        await flushTick();
+        expect(harness.exit).toHaveBeenCalledExactlyOnceWith(0);
     });
 });
 
@@ -398,6 +402,23 @@ describe("createDevRunner (file watcher dispatch)", () => {
 
         await emitChangeAndFlush(harness, "/x/y.ts", 2);
 
+        expect(harness.server.close).toHaveBeenCalled();
+        expect(harness.exit).toHaveBeenCalledWith(RESTART_EXIT_CODE);
+    });
+
+    it("restarts without re-executing when the loaded module is already a non-boundary", async () => {
+        const harness = buildHarness();
+        const module = { id: "/x/y.ts", importers: new Set<object>(), ssrModule: { listviewColorsDemo: {} } };
+
+        await startRunner(harness);
+        expect(harness.server.ssrLoadModule).toHaveBeenCalledTimes(1);
+
+        harness.server.moduleGraph.getModuleById.mockReturnValueOnce(module);
+
+        await emitChangeAndFlush(harness, "/x/y.ts", 2);
+
+        expect(harness.server.moduleGraph.invalidateModule).not.toHaveBeenCalled();
+        expect(harness.server.ssrLoadModule).toHaveBeenCalledTimes(1);
         expect(harness.server.close).toHaveBeenCalled();
         expect(harness.exit).toHaveBeenCalledWith(RESTART_EXIT_CODE);
     });
