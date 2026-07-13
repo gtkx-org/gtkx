@@ -141,6 +141,7 @@ export class McpClient {
             {
                 applicationId: this.applicationId,
                 pid: process.pid,
+                projectRoot: process.cwd(),
             },
             REGISTER_TIMEOUT_MS,
         );

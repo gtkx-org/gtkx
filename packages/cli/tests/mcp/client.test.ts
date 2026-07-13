@@ -134,7 +134,10 @@ describe("McpClient.connect", () => {
         assertLine(registerLine);
 
         expect(registerLine.method).toBe("app.register");
-        expect((registerLine.params as { applicationId: string }).applicationId).toBe("com.test.app");
+        const params = registerLine.params as { applicationId: string; pid: number; projectRoot: string };
+        expect(params.applicationId).toBe("com.test.app");
+        expect(params.pid).toBe(process.pid);
+        expect(params.projectRoot).toBe(process.cwd());
 
         ctx.sockets[0]?.write(`${JSON.stringify({ id: registerLine.id, result: {} })}\n`);
         await connectPromise;

@@ -56,6 +56,10 @@ export class AppRouter extends EventEmitter<AppRouterEventMap> {
         return first.done ? undefined : first.value;
     }
 
+    getProjectRoot(): string | undefined {
+        return this.getDefaultApp()?.info.projectRoot;
+    }
+
     waitForApp(timeout: number = AppRouter.DEFAULT_WAIT_TIMEOUT): Promise<AppInfo> {
         const defaultApp = this.getDefaultApp();
         if (defaultApp) {
@@ -131,6 +135,7 @@ export class AppRouter extends EventEmitter<AppRouterEventMap> {
         const appInfo: AppInfo = {
             applicationId: params.applicationId,
             pid: params.pid,
+            ...(params.projectRoot === undefined ? {} : { projectRoot: params.projectRoot }),
         };
 
         this.apps.set(params.applicationId, { info: appInfo, connection });

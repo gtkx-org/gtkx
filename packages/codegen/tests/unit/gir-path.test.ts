@@ -7,7 +7,7 @@ vi.mock("node:child_process", async (importOriginal) => {
     return { ...actual, execFileSync: execFileSyncMock };
 });
 
-const { resolveGirPath } = await import("../../src/codegen/gir-resolver.js");
+const { resolveGirPath } = await import("../../src/gir/gir-path.js");
 
 let originalGirPath: string | undefined;
 

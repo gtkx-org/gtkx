@@ -4,7 +4,8 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ensureGenerated, runCodegen } from "../../src/codegen/run-codegen.js";
 
-vi.mock("@gtkx/codegen", () => ({
+vi.mock("@gtkx/codegen", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@gtkx/codegen")>()),
     runCodegen: (options: { force?: boolean }) =>
         Promise.resolve({ regenerated: options.force === true, namespaces: 1, intrinsicElements: 0, duration: 1 }),
 }));

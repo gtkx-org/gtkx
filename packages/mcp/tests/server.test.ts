@@ -4,11 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AppRouter } from "../src/app-router.js";
 import type { AppInfo } from "../src/protocol/schemas.js";
 
-const { mcpServerInstances, registerToolMock, mcpConnectMock, mcpCloseMock } = vi.hoisted(() => {
+const { mcpServerInstances, registerToolMock, registerResourceMock, mcpConnectMock, mcpCloseMock } = vi.hoisted(() => {
     const instances: Array<{ name: string; version: string }> = [];
     return {
         mcpServerInstances: instances,
         registerToolMock: vi.fn(),
+        registerResourceMock: vi.fn(),
         mcpConnectMock: vi.fn(async () => undefined),
         mcpCloseMock: vi.fn(async () => undefined),
     };
@@ -22,8 +23,19 @@ vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => ({
         registerTool(name: string, config: unknown, handler: unknown): void {
             registerToolMock(name, config, handler);
         }
+        registerResource(name: string, uriOrTemplate: unknown, config: unknown, handler: unknown): void {
+            registerResourceMock(name, uriOrTemplate, config, handler);
+        }
         connect = mcpConnectMock;
         close = mcpCloseMock;
+    },
+    ResourceTemplate: class {
+        uriTemplate: unknown;
+        callbacks: unknown;
+        constructor(uriTemplate: unknown, callbacks: unknown) {
+            this.uriTemplate = uriTemplate;
+            this.callbacks = callbacks;
+        }
     },
 }));
 
@@ -141,7 +153,12 @@ const allToolNames = [
     "gtkx_click",
     "gtkx_type",
     "gtkx_fire_event",
+    "gtkx_list_api",
+    "gtkx_search_api",
+    "gtkx_get_api_docs",
 ];
+
+const allResourceNames = ["gtkx-api-reference", "gtkx-api-namespace", "gtkx-api-symbol"];
 
 describe("buildTools — registration", () => {
     it("registers all expected tools in order", () => {
@@ -155,6 +172,11 @@ describe("buildTools — registration", () => {
             expect(tool.config.description.length).toBeGreaterThan(0);
             expect(tool.config.inputSchema).toBeDefined();
         }
+    });
+
+    it("registers the API reference resources", () => {
+        registerTools(makeAppRouter());
+        expect(registerResourceMock.mock.calls.map(([name]) => name)).toEqual(allResourceNames);
     });
 });
 
@@ -359,6 +381,7 @@ type MainSetup = {
 function resetMainMocks(): void {
     mcpServerInstances.length = 0;
     registerToolMock.mockClear();
+    registerResourceMock.mockClear();
     mcpConnectMock.mockClear();
     mcpCloseMock.mockClear();
     socketStartMock.mockClear();

@@ -90,7 +90,7 @@ The third argument is the dragged task's id, the same value the row's `GtkDragSo
 
 ## Inspecting a running app
 
-For interactive debugging rather than automated assertions, `@gtkx/mcp` is an MCP server that an agent (or you, through any MCP client) can drive to list running apps, dump the widget tree, query widgets, take screenshots, fire events, and click or type. `gtkx dev` connects the running app to it automatically, so a dev session is inspectable out of the box.
+For interactive debugging rather than automated assertions, `@gtkx/mcp` is an MCP server that an agent (or you, through any MCP client) can drive to list running apps, dump the widget tree, query widgets, take screenshots, fire events, click or type, and search the generated bindings' API reference. `gtkx dev` connects the running app to it automatically, so a dev session is inspectable out of the box.
 
 ## Next
 

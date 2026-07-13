@@ -7,7 +7,7 @@ import { indent } from "../../writer/emit.js";
 export const generateEnum = (context: ModuleContext, enumeration: GirEnum): void => {
     if (!enumeration.introspectable) return;
     const name = enumeration.name;
-    const memberKeys = enumeration.members.map((member) => memberKey(member.name));
+    const memberKeys = enumeration.members.map((member) => enumMemberKey(member.name));
     if (enumeration.errorDomain !== undefined) {
         const memberEntries = enumeration.members.map((member, index) => `${memberKeys[index]}: ${member.value}`);
         const typeFields = memberKeys.map((key) => `${key}: number`).join("; ");
@@ -35,7 +35,7 @@ export const generateEnum = (context: ModuleContext, enumeration: GirEnum): void
     );
 };
 
-const memberKey = (name: string): string => {
+export const enumMemberKey = (name: string): string => {
     const upper = name.toUpperCase().replaceAll("-", "_");
     return /^[0-9]/.test(upper) ? `_${upper}` : upper;
 };

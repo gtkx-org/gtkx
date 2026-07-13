@@ -1,16 +1,14 @@
 import type { ContainerProp, ElementProp } from "@gtkx/config";
-import { sortStringsBy, toCamelIdentifier, toPascalCase, upperFirst } from "@gtkx/utils";
-import { collectInheritedMethods, conflictRename } from "../analysis/inheritance.js";
+import { sortStringsBy, toCamelIdentifier, upperFirst } from "@gtkx/utils";
 import { ancestorChain } from "../gir/ancestry.js";
 import type { GirClass } from "../gir/class.js";
 import type { Library } from "../gir/library.js";
 import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import type { GirSignal } from "../gir/parameter.js";
 import { type GirProperty, isConstructableProperty } from "../gir/property.js";
-import { dedupeCallables, indexMethodsByName, renderInstanceMethodSignature } from "../store/gi/callables.js";
-import { methodExportName } from "../store/gi/method.js";
-import type { ElementPropTypegen } from "../store/react/element-prop-types.js";
-import type { GirIndex } from "../store/react/gir-index.js";
+import { createElementPropTypegen, type ElementPropTypegen } from "../store/react/element-prop-types.js";
+import { assembleElementProps } from "../store/react/element-props.js";
+import { buildGirIndex, type GirIndex } from "../store/react/gir-index.js";
 import {
     type GlibNamedClass,
     glibNameOf,
@@ -19,8 +17,18 @@ import {
     signalHandlerName,
 } from "../store/react/intrinsic-elements.js";
 import { isObjectProp } from "../store/react/props.js";
-import { ModuleContext } from "../writer/context.js";
-import { docMarkdown, firstSentence, renderDocsSignalSignature, renderDocsType } from "./render.js";
+import {
+    classMethodEntries,
+    docMarkdown,
+    docsDefaultValue,
+    firstSentence,
+    joinSections,
+    metaBlock,
+    methodsSectionBlocks,
+    originSignatureBlocks,
+    renderDocsSignalSignature,
+    renderDocsType,
+} from "./render.js";
 
 export type ElementPageContext = {
     library: Library;
@@ -28,6 +36,22 @@ export type ElementPageContext = {
     typegen: ElementPropTypegen;
     elementProps: Record<string, ElementProp[]>;
     linkFor: (glibName: string) => string | undefined;
+};
+
+export const createElementPageContext = (
+    library: Library,
+    elementProps: Record<string, ElementProp[]>,
+    linkFor: (glibName: string) => string | undefined,
+): ElementPageContext => {
+    const girIndex = buildGirIndex(library);
+    const applied = assembleElementProps(girIndex, elementProps);
+    return {
+        library,
+        girIndex,
+        typegen: createElementPropTypegen(girIndex, applied),
+        elementProps: applied,
+        linkFor,
+    };
 };
 
 type MemberOwner = {
@@ -41,12 +65,6 @@ type PropEntry = {
     meta: string;
     doc: string;
 };
-
-const joinSections = (sections: string[]): string => `${sections.filter((s) => s.length > 0).join("\n\n")}\n`;
-
-const DOCS_DEFAULT_VALUES: Record<string, string> = { TRUE: "true", FALSE: "false", NULL: "null" };
-
-const docsDefaultValue = (value: string): string => DOCS_DEFAULT_VALUES[value] ?? value;
 
 const frontmatter = (entry: GlibNamedClass): string => {
     const sentence = firstSentence(entry.klass.doc);
@@ -167,12 +185,6 @@ const overlayEntries = (entry: GlibNamedClass, context: ElementPageContext, seen
     return entries;
 };
 
-const propEntryBlock = (entry: PropEntry): string => {
-    const lines = [`### \`${entry.name}\``, "", entry.meta];
-    if (entry.doc.length > 0) lines.push("", entry.doc);
-    return lines.join("\n");
-};
-
 const withOverlayNote = (propEntry: PropEntry, note: string | undefined): PropEntry => {
     if (note === undefined) return propEntry;
     return { ...propEntry, doc: propEntry.doc.length > 0 ? `${note}\n\n${propEntry.doc}` : note };
@@ -204,7 +216,7 @@ const propsSection = (entry: GlibNamedClass, context: ElementPageContext, selfTy
     ].join(" ");
     if (entries.length === 0) return ["## Props", intro];
     const sorted = sortStringsBy(entries, (item) => item.name);
-    return ["## Props", intro, ...sorted.map(propEntryBlock)];
+    return ["## Props", intro, ...sorted.map((item) => metaBlock(item.name, item.meta, item.doc))];
 };
 
 type SignalEntry = {
@@ -232,54 +244,13 @@ const signalsSection = (entry: GlibNamedClass, context: ElementPageContext, self
         for (const signal of owner.klass.signals) acceptSignal(signal, owner.origin);
     }
     if (entries.length === 0) return [];
-    const blocks = sortStringsBy(entries, (item) => item.name).map((item) => {
-        const lines = [`### \`${item.name}\``, "", `\`\`\`ts\n${item.signature}\n\`\`\``];
-        if (item.origin !== undefined) lines.push("", `From \`${item.origin}\`.`);
-        if (item.doc.length > 0) lines.push("", item.doc);
-        return lines.join("\n");
-    });
-    return ["## Signals", ...blocks];
-};
-
-type MethodEntry = {
-    name: string;
-    signature: string;
-    doc: string;
+    return ["## Signals", ...originSignatureBlocks(entries)];
 };
 
 const methodsSection = (entry: GlibNamedClass, context: ElementPageContext, selfType: string): string[] => {
-    const { library } = context;
-    const realContext = new ModuleContext(entry.namespace, library);
-    const docsNamespace: GirNamespace = { ...entry.namespace, name: "$docs" };
-    const signatureContext = new ModuleContext(docsNamespace, library);
-    const className = toPascalCase(entry.klass.name);
-    const inherited = collectInheritedMethods(realContext, entry.klass);
-    const methods = dedupeCallables(entry.klass.methods);
-    const siblings = indexMethodsByName(methods);
-    const entries: MethodEntry[] = [];
-    for (const method of methods) {
-        const rename = conflictRename(realContext, method, inherited, className);
-        const rendered = renderInstanceMethodSignature(
-            signatureContext,
-            { ...method, doc: undefined },
-            siblings,
-            rename,
-        );
-        if (rendered === undefined) continue;
-        entries.push({
-            name: rename ?? methodExportName(method),
-            signature: rendered.trim().replace(/;$/, ""),
-            doc: docMarkdown(method.doc),
-        });
-    }
-    if (entries.length === 0) return [];
+    const entries = classMethodEntries(context.library, entry.namespace, entry.klass);
     const intro = `Methods are called on the \`${selfType}\` instance, obtained with the \`ref\` prop or imported from \`@gtkx/gi/${namespaceDirectory(entry.namespace)}\`. Methods inherited from ancestors are documented on their own pages.`;
-    const blocks = sortStringsBy(entries, (item) => item.name).map((item) => {
-        const lines = [`### \`${item.name}\``, "", `\`\`\`ts\n${item.signature}\n\`\`\``];
-        if (item.doc.length > 0) lines.push("", item.doc);
-        return lines.join("\n");
-    });
-    return ["## Methods", intro, ...blocks];
+    return methodsSectionBlocks(entries, intro);
 };
 
 export const renderElementPage = (entry: GlibNamedClass, context: ElementPageContext): string => {

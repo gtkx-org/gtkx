@@ -56,17 +56,20 @@ export type SerializedWidget = {
 export type AppInfo = {
     applicationId: string;
     pid: number;
+    projectRoot?: string;
 };
 
 export const RegisterParamsSchema: z.ZodObject<
     {
         applicationId: z.ZodString;
         pid: z.ZodNumber;
+        projectRoot: z.ZodOptional<z.ZodString>;
     },
     z.core.$strip
 > = z.object({
     applicationId: z.string(),
     pid: z.number(),
+    projectRoot: z.string().optional(),
 });
 
 const emptyParams: z.ZodObject<Record<string, never>, z.core.$strip> = z.object({});

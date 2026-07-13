@@ -42,18 +42,56 @@ export const emitFieldWrite = (context: ModuleContext, spec: FieldWriteSpec): st
     return `write(${targetExpr}, ${descriptor}, ${slot.byteOffset}, ${merged});`;
 };
 
-export const renderRecordFieldAccessor = (
+type AdmittedField = {
+    field: GirField & { type: TypeId };
+    jsName: string;
+};
+
+const admitField = (
     context: ModuleContext,
     slot: RecordFieldSlot,
     claimedNames: Set<string>,
-    siblingFields: GirField[],
-): string | undefined => {
+): AdmittedField | undefined => {
     const { field } = slot;
     if (!field.readable && !field.writable) return undefined;
     if (!isEmittableField(context, field)) return undefined;
     const jsName = toCamelIdentifier(field.name);
     if (claimedNames.has(jsName)) return undefined;
     if (jsName === "constructor") return undefined;
+    return { field, jsName };
+};
+
+export type RecordFieldEntry = {
+    jsName: string;
+    tsType: string;
+    writable: boolean;
+    doc: string | undefined;
+};
+
+export const resolveRecordFieldEntry = (
+    context: ModuleContext,
+    slot: RecordFieldSlot,
+    claimedNames: Set<string>,
+): RecordFieldEntry | undefined => {
+    const admitted = admitField(context, slot, claimedNames);
+    if (admitted === undefined) return undefined;
+    return {
+        jsName: admitted.jsName,
+        tsType: renderTsType(context, admitted.field.type, false),
+        writable: admitted.field.writable,
+        doc: admitted.field.doc,
+    };
+};
+
+export const renderRecordFieldAccessor = (
+    context: ModuleContext,
+    slot: RecordFieldSlot,
+    claimedNames: Set<string>,
+    siblingFields: GirField[],
+): string | undefined => {
+    const admitted = admitField(context, slot, claimedNames);
+    if (admitted === undefined) return undefined;
+    const { field, jsName } = admitted;
     const doc = renderJsDoc(field.doc);
 
     const structArray = renderStructArrayAccessor(context, { field, jsName, slot: slot.slot, siblingFields });

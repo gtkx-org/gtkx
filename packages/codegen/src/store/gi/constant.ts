@@ -10,7 +10,7 @@ export const generateConstant = (context: ModuleContext, constant: GirConstant):
     );
 };
 
-const constantLiteral = (context: ModuleContext, constant: GirConstant): string => {
+export const constantLiteral = (context: ModuleContext, constant: GirConstant): string => {
     if (isStringTyped(context, constant.type)) return sourceStringLiteral(constant.value);
     return isNumericLiteral(constant.value) ? constant.value : sourceStringLiteral(constant.value);
 };

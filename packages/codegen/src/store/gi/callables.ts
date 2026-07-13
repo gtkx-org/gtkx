@@ -105,43 +105,60 @@ const renderInstanceMethod = (
         allowRuntimeOverride: true,
     });
 
-export const renderInstanceMethodSignature = (
-    context: ModuleContext,
-    callable: GirFunction,
-    siblings: Map<string, GirFunction>,
-    nameOverride?: string,
-): string | undefined => {
-    if (!isEmittableCallable(context, callable)) return undefined;
-    const name = nameOverride ?? methodExportName(callable);
-    if (name === "constructor") return undefined;
-    const doc = renderJsDoc(callable.doc);
-    const finishFn = matchFinishFunction(context, callable, siblings);
-    if (finishFn !== undefined) {
-        if (!isEmittableCallable(context, finishFn)) return undefined;
-        const { signature, returnType } = renderPromisifiedSignature(context, callable, finishFn);
-        return `${doc}${name}(${signature}): ${returnType};`;
-    }
-    const signature = renderMethodSignature(context, callable);
-    const returnType = renderMethodReturnType(context, callable);
-    return `${doc}${name}(${signature}): ${returnType};`;
+type ResolvedInstanceMember = {
+    name: string;
+    finishFn: GirFunction | undefined;
 };
 
-export const renderClassInstanceMember = (
+const resolveInstanceMember = (
     context: ModuleContext,
     callable: GirFunction,
     siblings: Map<string, GirFunction>,
     nameOverride?: string,
-): string | undefined => {
+): ResolvedInstanceMember | undefined => {
     if (!isEmittableCallable(context, callable)) return undefined;
     const name = nameOverride ?? methodExportName(callable);
     if (name === "constructor") return undefined;
     const finishFn = matchFinishFunction(context, callable, siblings);
-    if (finishFn !== undefined) {
-        if (!isEmittableCallable(context, finishFn)) return undefined;
-        return renderPromisifiedMember(context, callable, finishFn, name);
-    }
-    return renderInstanceMethod(context, callable, nameOverride);
+    if (finishFn !== undefined && !isEmittableCallable(context, finishFn)) return undefined;
+    return { name, finishFn };
 };
+
+type InstanceMemberRenderer = (
+    context: ModuleContext,
+    callable: GirFunction,
+    siblings: Map<string, GirFunction>,
+    nameOverride?: string,
+) => string | undefined;
+
+const instanceMemberRenderer =
+    (
+        render: (context: ModuleContext, callable: GirFunction, member: ResolvedInstanceMember) => string | undefined,
+    ): InstanceMemberRenderer =>
+    (context, callable, siblings, nameOverride) => {
+        const member = resolveInstanceMember(context, callable, siblings, nameOverride);
+        return member === undefined ? undefined : render(context, callable, member);
+    };
+
+export const renderInstanceMethodSignature: InstanceMemberRenderer = instanceMemberRenderer(
+    (context, callable, { name, finishFn }) => {
+        const doc = renderJsDoc(callable.doc);
+        if (finishFn !== undefined) {
+            const { signature, returnType } = renderPromisifiedSignature(context, callable, finishFn);
+            return `${doc}${name}(${signature}): ${returnType};`;
+        }
+        const signature = renderMethodSignature(context, callable);
+        const returnType = renderMethodReturnType(context, callable);
+        return `${doc}${name}(${signature}): ${returnType};`;
+    },
+);
+
+export const renderClassInstanceMember: InstanceMemberRenderer = instanceMemberRenderer(
+    (context, callable, { name, finishFn }) =>
+        finishFn !== undefined
+            ? renderPromisifiedMember(context, callable, finishFn, name)
+            : renderInstanceMethod(context, callable, name),
+);
 
 const matchFinishFunction = (
     context: ModuleContext,
@@ -173,7 +190,7 @@ export const indexMethodsByName = (methods: GirFunction[]): Map<string, GirFunct
     return map;
 };
 
-const isEmittableCallable = (context: ModuleContext, callable: GirFunction): boolean =>
+export const isEmittableCallable = (context: ModuleContext, callable: GirFunction): boolean =>
     callable.introspectable &&
     callable.shadowedBy === undefined &&
     callable.cIdentifier !== undefined &&
@@ -184,6 +201,19 @@ const constructorMemberName = (girName: string): string | undefined => {
     const camel = toCamelCase(girName);
     if (camel === "constructor") return undefined;
     return camel;
+};
+
+export const renderStaticSignature = (
+    context: ModuleContext,
+    callable: GirFunction,
+    returnTypeOverride?: string,
+): { name: string; signature: string } | undefined => {
+    if (!isEmittableCallable(context, callable)) return undefined;
+    const name = constructorMemberName(callable.name);
+    if (name === undefined) return undefined;
+    const parameters = renderMethodSignature(context, callable);
+    const returnType = returnTypeOverride ?? renderMethodReturnType(context, callable);
+    return { name, signature: `${name}(${parameters}): ${returnType}` };
 };
 
 export const classConstructorMemberNames = (context: ModuleContext, callables: Callables): string[] => {

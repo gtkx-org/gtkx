@@ -433,6 +433,12 @@ importers:
 
   packages/mcp:
     dependencies:
+      '@gtkx/codegen':
+        specifier: workspace:*
+        version: link:../codegen
+      '@gtkx/config':
+        specifier: workspace:*
+        version: link:../config
       '@gtkx/utils':
         specifier: workspace:*
         version: link:../utils

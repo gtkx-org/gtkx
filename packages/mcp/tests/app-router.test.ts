@@ -56,7 +56,11 @@ type RouterContext = {
 
 const ctx = {} as RouterContext;
 
-function emitRegister(conn: TestConnection, params: { applicationId: string; pid?: number }, id = "req-1"): void {
+function emitRegister(
+    conn: TestConnection,
+    params: { applicationId: string; pid?: number; projectRoot?: string },
+    id = "req-1",
+): void {
     ctx.connections.emit("request", conn, { id, method: "app.register", params });
 }
 
@@ -97,6 +101,28 @@ describe("AppRouter registration — basics", () => {
         expect(router.hasConnectedApps()).toBe(true);
         expect(router.getApps()).toEqual([{ applicationId: "app-a", pid: 1234 }]);
         expect(lastResponse(connections)).toEqual({ id: "req-1", result: { success: true } });
+    });
+
+    it("keeps the registered project root and exposes the default app's root", () => {
+        const { router } = ctx;
+        expect(router.getProjectRoot()).toBeUndefined();
+
+        emitRegister(makeConnection("c1"), { applicationId: "app-a", pid: 1, projectRoot: "/projects/app-a" });
+        emitRegister(makeConnection("c2"), { applicationId: "app-b", pid: 2, projectRoot: "/projects/app-b" }, "req-2");
+
+        expect(router.getApps()).toEqual([
+            { applicationId: "app-a", pid: 1, projectRoot: "/projects/app-a" },
+            { applicationId: "app-b", pid: 2, projectRoot: "/projects/app-b" },
+        ]);
+        expect(router.getProjectRoot()).toBe("/projects/app-a");
+    });
+
+    it("registers without a project root and reports it as undefined", () => {
+        const { router } = ctx;
+        emitRegister(makeConnection("c1"), { applicationId: "app-a", pid: 1 });
+
+        expect(router.getApps()).toEqual([{ applicationId: "app-a", pid: 1 }]);
+        expect(router.getProjectRoot()).toBeUndefined();
     });
 
     it("rejects registration with invalid params", () => {

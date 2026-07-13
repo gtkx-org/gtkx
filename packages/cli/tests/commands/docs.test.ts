@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@gtkx/codegen", () => ({
+    resolveGirPath: vi.fn(() => ["/usr/share/gir-1.0"]),
+    resolveLibraries: vi.fn(() => ["Gtk-4.0"]),
     writeDocs: vi.fn(() => ({
         regenerated: true,
         namespaces: [
@@ -30,18 +32,8 @@ vi.mock("@gtkx/config", () => ({
     })),
 }));
 
-vi.mock("../../src/codegen/gir-resolver.js", () => ({
-    resolveGirPath: vi.fn(() => ["/usr/share/gir-1.0"]),
-}));
-
-vi.mock("../../src/codegen/library-resolver.js", () => ({
-    resolveLibraries: vi.fn(() => ["Gtk-4.0"]),
-}));
-
-import { writeDocs } from "@gtkx/codegen";
+import { resolveGirPath, resolveLibraries, writeDocs } from "@gtkx/codegen";
 import { loadConfig } from "@gtkx/config";
-import { resolveGirPath } from "../../src/codegen/gir-resolver.js";
-import { resolveLibraries } from "../../src/codegen/library-resolver.js";
 import { docs } from "../../src/commands/docs.js";
 
 const writeDocsMock = vi.mocked(writeDocs);

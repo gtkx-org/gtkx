@@ -5,11 +5,8 @@ import { sortStringsBy } from "@gtkx/utils";
 import { computeFingerprint, FINGERPRINT_FILENAME, isStoreFresh } from "../fingerprint.js";
 import { Library } from "../gir/library.js";
 import { namespaceDirectory } from "../gir/namespace.js";
-import { createElementPropTypegen } from "../store/react/element-prop-types.js";
-import { assembleElementProps } from "../store/react/element-props.js";
-import { buildGirIndex } from "../store/react/gir-index.js";
 import { collectIntrinsicElementClasses, type GlibNamedClass } from "../store/react/intrinsic-elements.js";
-import { type ElementPageContext, renderElementPage } from "./element-page.js";
+import { createElementPageContext, renderElementPage } from "./element-page.js";
 import { elementSlug, firstSentence } from "./render.js";
 
 export type DocsElementLink = {
@@ -103,9 +100,6 @@ type GeneratedDocs = {
 };
 
 const generatePages = (options: DocsOptions, basePath: string, library: Library): GeneratedDocs => {
-    const girIndex = buildGirIndex(library);
-    const applied = assembleElementProps(girIndex, options.elementProps ?? {});
-    const typegen = createElementPropTypegen(girIndex, applied);
     const intrinsicElements = collectIntrinsicElementClasses(library);
 
     const byNamespace = new Map<string, GlibNamedClass[]>();
@@ -125,13 +119,9 @@ const generatePages = (options: DocsOptions, basePath: string, library: Library)
         linkByGlibName.set(entry.glibName, link);
     }
 
-    const pageContext: ElementPageContext = {
-        library,
-        girIndex,
-        typegen,
-        elementProps: applied,
-        linkFor: (glibName) => linkByGlibName.get(glibName),
-    };
+    const pageContext = createElementPageContext(library, options.elementProps ?? {}, (glibName) =>
+        linkByGlibName.get(glibName),
+    );
 
     const pages: { path: string; content: string }[] = [];
     const namespaces: DocsNamespace[] = [];

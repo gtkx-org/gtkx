@@ -51,6 +51,8 @@
         "node": ">=24"
     },
     "dependencies": {
+        "@gtkx/codegen": "workspace:*",
+        "@gtkx/config": "workspace:*",
         "@gtkx/utils": "workspace:*",
         "@modelcontextprotocol/sdk": "^1.29.0",
         "zod": "catalog:"

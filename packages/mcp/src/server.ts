@@ -1,12 +1,10 @@
 import { createRequire } from "node:module";
 import { createLogger, installGracefulShutdown, type Logger } from "@gtkx/utils";
-import { McpServer, type ToolCallback } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { AppRouter } from "./app-router.js";
 import { ConnectionRegistry } from "./connection-registry.js";
-import { ProtocolError } from "./protocol/errors.js";
 import {
     DEFAULT_SOCKET_PATH,
     fireEventParams,
@@ -15,7 +13,9 @@ import {
     typeParams,
     widgetIdParams,
 } from "./protocol/schemas.js";
+import { buildReferenceTools, createReferenceProvider, registerReferenceResources } from "./reference.js";
 import { SocketServer } from "./socket-server.js";
+import { defineTool, imageContent, registerTool, type Tool, textContent } from "./tool.js";
 
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json") as { version: string };
@@ -69,68 +69,6 @@ const screenshotShape = {
     path: screenshotParams.shape.path.describe(
         "Absolute path to write the PNG to on the app's machine. If set, the screenshot is saved there in addition to being returned.",
     ),
-};
-
-const textContent = (text: string): CallToolResult => ({ content: [{ type: "text", text }] });
-
-const textError = (text: string): CallToolResult => ({
-    content: [{ type: "text", text }],
-    isError: true,
-});
-
-const imageContent = (data: string, mimeType: string): CallToolResult => ({
-    content: [{ type: "image", data, mimeType }],
-});
-
-type ToolArgs<Shape extends Record<string, z.ZodType>> = { [K in keyof Shape]: z.output<Shape[K]> };
-
-type ToolKind = "readOnly" | "action";
-
-type Tool<Shape extends Record<string, z.ZodType> = Record<string, z.ZodType>> = {
-    name: string;
-    title: string;
-    kind: ToolKind;
-    description: string;
-    inputSchema: Shape;
-    handler: (args: ToolArgs<Shape>) => Promise<CallToolResult>;
-};
-
-const hasStringHint = (data: unknown): data is { hint: string } =>
-    typeof data === "object" && data !== null && "hint" in data && typeof data.hint === "string";
-
-const runTool = async (
-    handler: (args: ToolArgs<Record<string, z.ZodType>>) => Promise<CallToolResult>,
-    args: ToolArgs<Record<string, z.ZodType>>,
-): Promise<CallToolResult> => {
-    try {
-        return await handler(args);
-    } catch (error) {
-        if (error instanceof ProtocolError) {
-            return textError(hasStringHint(error.data) ? `${error.message}\n${error.data.hint}` : error.message);
-        }
-        return textError(error instanceof Error ? error.message : String(error));
-    }
-};
-
-const defineTool = <Shape extends Record<string, z.ZodType>>(tool: Tool<Shape>): Tool => tool as Tool;
-
-const registerTool = (server: McpServer, tool: Tool): void => {
-    const callback = ((args: ToolArgs<Record<string, z.ZodType>>, _extra: unknown) =>
-        runTool(tool.handler, args)) as ToolCallback<Record<string, z.ZodType>>;
-    server.registerTool(
-        tool.name,
-        {
-            description: tool.description,
-            inputSchema: tool.inputSchema,
-            annotations: {
-                title: tool.title,
-                readOnlyHint: tool.kind === "readOnly",
-                destructiveHint: tool.kind === "action",
-                openWorldHint: true,
-            },
-        },
-        callback,
-    );
 };
 
 const listAppsTool = (appRouter: AppRouter): Tool =>
@@ -306,9 +244,12 @@ export const createMcpServer = (options: CreateMcpServerOptions): McpServerHandl
 
     const mcpServer = new McpServer({ name: "gtkx-mcp", version: options.version });
 
-    for (const tool of buildTools(appRouter)) {
+    const referenceProvider = createReferenceProvider(() => appRouter.getProjectRoot() ?? process.cwd());
+
+    for (const tool of [...buildTools(appRouter), ...buildReferenceTools(referenceProvider)]) {
         registerTool(mcpServer, tool);
     }
+    registerReferenceResources(mcpServer, referenceProvider);
 
     let stopped = false;
 

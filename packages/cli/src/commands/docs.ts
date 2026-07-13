@@ -1,10 +1,8 @@
 import { resolve } from "node:path";
-import { writeDocs } from "@gtkx/codegen";
+import { resolveGirPath, resolveLibraries, writeDocs } from "@gtkx/codegen";
 import { loadConfig } from "@gtkx/config";
 import { info } from "@gtkx/utils";
 import { defineCommand } from "citty";
-import { resolveGirPath } from "../codegen/gir-resolver.js";
-import { resolveLibraries } from "../codegen/library-resolver.js";
 import { cwdArg, resolveCwd } from "../internal/entry-arg.js";
 
 export const docs = defineCommand({

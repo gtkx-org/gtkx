@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { resolveLibraries } from "../../src/codegen/library-resolver.js";
+import { resolveLibraries } from "../../src/gir/libraries.js";
 
 describe("resolveLibraries", () => {
     it("returns the GTK-only default when libraries is omitted", () => {

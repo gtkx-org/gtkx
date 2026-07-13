@@ -20,7 +20,7 @@ const isNullablePropertyType = (context: ModuleContext, type: TypeId | undefined
     return true;
 };
 
-type ResolvedAccessor = {
+export type ResolvedAccessor = {
     jsName: string;
     tsType: string;
     hasGetter: boolean;
@@ -61,7 +61,7 @@ const resolveSetterDelegate = (args: PropertyAccessorArgs, jsName: string, writa
     return delegatable ? { member, method } : { member: undefined, method: undefined };
 };
 
-const resolveAccessor = (args: PropertyAccessorArgs): ResolvedAccessor | undefined => {
+export const resolveAccessor = (args: PropertyAccessorArgs): ResolvedAccessor | undefined => {
     const { context, property, claimedNames } = args;
     const jsName = toCamelIdentifier(property.name);
     if (claimedNames.has(jsName)) return undefined;
