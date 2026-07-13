@@ -51,7 +51,18 @@
             "persistent": true
         },
         "@gtkx/website#build": {
-            "dependsOn": ["production", "^build"],
+            "dependsOn": [
+                "production",
+                "^build",
+                "@gtkx/animate#build",
+                "@gtkx/config#build",
+                "@gtkx/css#build",
+                "@gtkx/ffi#build",
+                "@gtkx/gl#build",
+                "@gtkx/native#build",
+                "@gtkx/react#build",
+                "@gtkx/testing#build"
+            ],
             "inputs": [],
             "outputs": [".vitepress/dist/**"]
         },
