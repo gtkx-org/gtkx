@@ -99,6 +99,40 @@ describe("assembled applied props", () => {
         const toggle = (elementProps.AdwToggleGroup ?? []).filter((prop) => prop.kind !== "container");
         expect(toggle.map((prop) => prop.prop).sort()).toEqual(["active", "activeName"]);
     });
+
+    it("keeps single-argument value-prop shorthands as bare method names", () => {
+        const types = (elementProps.GtkDropTarget ?? []).find((prop) => prop.kind === "value");
+        expect(types).toEqual({ kind: "value", prop: "types", call: "setGtypes" });
+    });
+
+    it("expands a multi-argument value-prop shorthand into args with inferred defaults", () => {
+        const icon = (elementProps.GtkDragSource ?? []).find((prop) => prop.kind === "value");
+        expect(icon).toEqual({
+            kind: "value",
+            prop: "icon",
+            call: {
+                method: "setIcon",
+                args: [
+                    { field: "paintable", or: null },
+                    { field: "hotX", or: 0 },
+                    { field: "hotY", or: 0 },
+                ],
+            },
+        });
+    });
+
+    it("infers defaults for numeric and nullable list-item fields but not enums", () => {
+        const marks = (elementProps.GtkScale ?? []).find((prop) => prop.kind === "list");
+        expect(marks).toEqual({
+            kind: "list",
+            prop: "marks",
+            add: {
+                method: "addMark",
+                args: [{ field: "value", or: 0 }, { field: "position" }, { field: "markup", or: null }],
+            },
+            clear: "clearMarks",
+        });
+    });
 });
 
 describe("user element props", () => {

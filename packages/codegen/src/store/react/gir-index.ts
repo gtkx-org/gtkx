@@ -1,4 +1,5 @@
 import { toCamelIdentifier } from "@gtkx/utils";
+import { inputParameters } from "../../analysis/param-structure.js";
 import { ancestorChain } from "../../gir/ancestry.js";
 import type { GirClass } from "../../gir/class.js";
 import type { GirFunction } from "../../gir/function.js";
@@ -61,7 +62,7 @@ export const findMethod = (context: GirIndex, typeName: string, camelName: strin
                 toCamelIdentifier(method.name) === camelName,
         );
         if (fn !== undefined) {
-            return { fn, params: fn.parameters.filter((param) => param.direction === "in") };
+            return { fn, params: inputParameters(context.library, fn).map((input) => input.parameter) };
         }
     }
     return undefined;

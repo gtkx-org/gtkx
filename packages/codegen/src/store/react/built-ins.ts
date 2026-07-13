@@ -216,20 +216,7 @@ export const BUILT_IN_ELEMENT_PROPS: Record<string, ElementProp[]> = {
     ],
     GtkDropTarget: [{ kind: "value", prop: "types", call: "setGtypes" }],
     GtkDrawingArea: [{ kind: "value", prop: "drawFunc", call: "setDrawFunc", after: "queueDraw" }],
-    GtkDragSource: [
-        {
-            kind: "value",
-            prop: "icon",
-            call: {
-                method: "setIcon",
-                args: [
-                    { field: "paintable", or: null },
-                    { field: "hotX", or: 0 },
-                    { field: "hotY", or: 0 },
-                ],
-            },
-        },
-    ],
+    GtkDragSource: [{ kind: "value", prop: "icon", call: "setIcon" }],
     GtkEditable: [{ kind: "controlled-text", prop: "text" }],
     GtkScale: [{ kind: "list", prop: "marks", add: "addMark", clear: "clearMarks" }],
     GtkCalendar: [{ kind: "list", prop: "markedDays", add: "markDay", clear: "clearMarks" }],

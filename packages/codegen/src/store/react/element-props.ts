@@ -1,5 +1,7 @@
-import type { Call, ContainerProp, ElementProp, ListProp } from "@gtkx/config";
+import type { Arg, Call, ContainerProp, ElementProp, ListProp, ValueProp } from "@gtkx/config";
 import { toCamelIdentifier } from "@gtkx/utils";
+import type { GirParameter } from "../../gir/parameter.js";
+import { PRIMITIVE_TS_TYPE } from "../../gir/primitives.js";
 import { BUILT_IN_ELEMENT_PROPS } from "./built-ins.js";
 import { findMethod, type GirIndex, hasMethod, hasProperty } from "./gir-index.js";
 
@@ -79,35 +81,63 @@ const listCalls = (prop: ListProp): Call[] => {
     return calls;
 };
 
-const listItemIsScalar = (context: GirIndex, type: string, add: Call): boolean => {
-    if (typeof add !== "string") return false;
-    const method = findMethod(context, type, add);
-    return method !== undefined && method.params.length === 1;
+const NO_DEFAULT = Symbol("gtkx.no-default");
+
+const inferredDefault = (context: GirIndex, param: GirParameter): null | number | boolean | typeof NO_DEFAULT => {
+    if (param.nullable) return null;
+    const type = param.type === undefined ? undefined : context.library.typeOf(param.type);
+    if (type?.kind !== "primitive") return NO_DEFAULT;
+    switch (PRIMITIVE_TS_TYPE[type.category]) {
+        case "number":
+            return 0;
+        case "boolean":
+            return false;
+        default:
+            return NO_DEFAULT;
+    }
 };
 
-const expandListCall = (context: GirIndex, type: string, call: Call, itemIsScalar: boolean): Call => {
-    if (typeof call !== "string" || itemIsScalar) return call;
+const argForParameter = (context: GirIndex, param: GirParameter): Arg => {
+    const field = toCamelIdentifier(param.name);
+    const or = inferredDefault(context, param);
+    return or === NO_DEFAULT ? { field } : { field, or };
+};
+
+const callArity = (context: GirIndex, type: string, call: Call): number | undefined =>
+    typeof call === "string" ? findMethod(context, type, call)?.params.length : undefined;
+
+const expandCall = (context: GirIndex, type: string, call: Call, scalar: boolean): Call => {
+    if (typeof call !== "string" || scalar) return call;
     const method = findMethod(context, type, call);
     if (method === undefined || method.params.length === 0) return call;
-    return { method: call, args: method.params.map((param) => ({ field: toCamelIdentifier(param.name) })) };
+    return { method: call, args: method.params.map((param) => argForParameter(context, param)) };
 };
 
 const expandListProp = (context: GirIndex, type: string, prop: ListProp): ListProp => {
-    const scalar = listItemIsScalar(context, type, prop.add);
+    const scalar = callArity(context, type, prop.add) === 1;
     return {
         ...prop,
-        add: expandListCall(context, type, prop.add, scalar),
-        remove: prop.remove === undefined ? undefined : expandListCall(context, type, prop.remove, scalar),
+        add: expandCall(context, type, prop.add, scalar),
+        remove: prop.remove === undefined ? undefined : expandCall(context, type, prop.remove, scalar),
     };
 };
 
-const expandListProps = (
+const expandValueProp = (context: GirIndex, type: string, prop: ValueProp): ValueProp => {
+    const arity = callArity(context, type, prop.call);
+    return { ...prop, call: expandCall(context, type, prop.call, arity === undefined || arity <= 1) };
+};
+
+const expandAppliedProps = (
     context: GirIndex,
     elementProps: Record<string, ElementProp[]>,
 ): Record<string, ElementProp[]> => {
     const result: Record<string, ElementProp[]> = {};
     for (const [type, props] of Object.entries(elementProps)) {
-        result[type] = props.map((prop) => (prop.kind === "list" ? expandListProp(context, type, prop) : prop));
+        result[type] = props.map((prop) => {
+            if (prop.kind === "list") return expandListProp(context, type, prop);
+            if (prop.kind === "value") return expandValueProp(context, type, prop);
+            return prop;
+        });
     }
     return result;
 };
@@ -165,5 +195,5 @@ export const assembleElementProps = (
         filterKnownElementProps(context, BUILT_IN_ELEMENT_PROPS),
         filterKnownElementProps(context, userElementProps),
     ]);
-    return expandListProps(context, merged);
+    return expandAppliedProps(context, merged);
 };
