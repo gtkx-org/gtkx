@@ -1,3 +1,7 @@
+---
+description: "GActions in a React app: declare named commands once, then drive them from menus, keyboard accelerators, and toolbar buttons."
+---
+
 # Actions, Menus, and Shortcuts
 
 In a React web app, a click handler is wired straight to a button. GTK pulls those two apart. A **GAction** is a named, addressable command ("new", "preferences", "open-task") that lives in an *action map*, and buttons, menu items, keyboard accelerators, and even desktop notifications all reference that command by a string name. Define the behavior once, trigger it from anywhere.

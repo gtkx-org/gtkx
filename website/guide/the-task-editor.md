@@ -1,3 +1,7 @@
+---
+description: "The task detail form: a controlled swap over the content pane and a React key that remounts the editor for each task you open."
+---
+
 # The Task Editor
 
 Clicking a task in the list opens the editor: a title field, an Important switch, a due-date calendar, a notes area, and read-only metadata. This is a full detail form, and it swaps in over the same content pane the list occupied. Two things make that work: a controlled swap driven by React state, and a `key` that forces a fresh mount every time you open a different task.

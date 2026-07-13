@@ -1,7 +1,7 @@
 .landing {
     display: block;
     width: 100%;
-    overflow-x: hidden;
+    overflow-x: clip;
 }
 
 .glow {
@@ -30,8 +30,31 @@
     color: var(--brand);
 }
 
-.section-narrow {
-    max-width: var(--container-md);
+.section-head {
+    text-align: center;
+    max-width: 42rem;
+    margin: 0 auto;
+}
+
+.section-head .overline {
+    color: var(--text-brand);
+    margin-bottom: 0.7rem;
+}
+
+.section-title {
+    font-family: var(--font-display);
+    font-weight: var(--fw-extrabold);
+    font-size: clamp(1.9rem, 4vw, 3rem);
+    letter-spacing: -0.025em;
+    margin: 0;
+    color: var(--text-1);
+}
+
+.section-sub {
+    font-family: var(--font-body);
+    font-size: clamp(1rem, 1.4vw, 1.18rem);
+    color: var(--text-2);
+    margin: 1rem 0 0;
 }
 
 @media (max-width: 860px) {
@@ -47,31 +70,19 @@
 }
 
 .tok-kw {
-    color: var(--accent);
+    color: var(--accent-text);
 }
 .tok-tag {
-    color: var(--brand);
+    color: var(--text-brand);
 }
 .tok-str {
-    color: var(--success);
-}
-.tok-com {
-    color: var(--text-3);
+    color: var(--syntax-string);
 }
 .tok-fn {
     color: var(--text-1);
 }
-.tok-num {
-    color: var(--warning);
-}
 .tok-punct {
     color: var(--text-2);
-}
-.code-ok {
-    color: var(--success);
-}
-.code-dim {
-    color: var(--text-3);
 }
 
 .l-code {

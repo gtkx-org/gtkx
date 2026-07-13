@@ -1,5 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import Button from "../components/Button.vue";
+import CodeBlock from "../components/CodeBlock.vue";
+import Icon from "../components/Icon.vue";
+import Tabs from "../components/Tabs.vue";
+import { REPO_URL } from "./content";
 
 const pm = ref("pnpm");
 const CMDS: Record<string, string> = {
@@ -27,16 +32,12 @@ const code: { indent?: number; toks: Tok[] }[] = [
             { c: "str", t: '"@gtkx/react"' },
         ],
     },
+    { toks: [{ c: "kw", t: "import" }, { t: " {" }] },
+    { indent: 1, toks: [{ c: "tag", t: "AdwApplication" }, { t: "," }] },
+    { indent: 1, toks: [{ c: "tag", t: "AdwApplicationWindow" }, { t: "," }] },
+    { indent: 1, toks: [{ c: "tag", t: "AdwHeaderBar" }, { t: "," }] },
     {
-        toks: [
-            { c: "kw", t: "import" },
-            { t: " { " },
-            { c: "tag", t: "AdwApplication, AdwApplicationWindow, AdwHeaderBar" },
-            { t: " } " },
-            { c: "kw", t: "from" },
-            { t: " " },
-            { c: "str", t: '"@gtkx/jsx/adw"' },
-        ],
+        toks: [{ t: "} " }, { c: "kw", t: "from" }, { t: " " }, { c: "str", t: '"@gtkx/jsx/adw"' }],
     },
     {
         toks: [
@@ -136,11 +137,11 @@ const code: { indent?: number; toks: Tok[] }[] = [
         </h1>
         <p class="hero__lede">
           Write declarative JSX. GTKX renders real native
-          <strong>GTK4 &amp; libadwaita</strong> widgets — no webview, no Electron —
+          <strong>GTK4 &amp; libadwaita</strong> widgets (no webview, no Electron),
           backed by a Rust GObject runtime.
         </p>
         <div class="hero__cta">
-          <Button size="lg" href="#install">
+          <Button size="lg" href="/guide/getting-started">
             Get started
             <template #icon-right><Icon name="arrow" :size="17" /></template>
           </Button>
@@ -150,8 +151,10 @@ const code: { indent?: number; toks: Tok[] }[] = [
           </Button>
         </div>
         <div id="install" class="hero__install">
-          <Tabs v-model="pm" variant="pill" :items="pms" />
-          <CodeBlock variant="terminal" :code="cmd" />
+          <Tabs v-model="pm" variant="pill" :items="pms" controls="install-cmd" label="Package manager" />
+          <div id="install-cmd" role="tabpanel" :aria-label="`Install with ${pm}`">
+            <CodeBlock variant="terminal" :code="cmd" />
+          </div>
           <p class="hero__note">
             Scaffolds a typed GTK4 + React app with HMR, testing, and production bundling wired up.
           </p>
@@ -231,6 +234,9 @@ const code: { indent?: number; toks: Tok[] }[] = [
   margin: 0.1rem 0 0;
   line-height: 1.5;
 }
+.hero__col {
+  min-width: 0;
+}
 .hero__visual {
   position: relative;
 }
@@ -242,9 +248,9 @@ const code: { indent?: number; toks: Tok[] }[] = [
 .hcl {
   min-height: 1.7em;
 }
-@media (max-width: 860px) {
-  .hero__visual {
-    order: -1;
+@media (max-width: 480px) {
+  .hero__code {
+    font-size: var(--text-xs);
   }
 }
 </style>

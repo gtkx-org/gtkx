@@ -22,6 +22,14 @@ const ICONS: Record<string, { fill?: boolean; els: IconEl[] }> = {
     moon: { els: [{ d: "M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" }] },
     search: { els: [{ cx: 11, cy: 11, r: 7 }, { d: "m21 21-4.3-4.3" }] },
     check: { els: [{ d: "M20 6 9 17l-5-5" }] },
+    menu: { els: [{ d: "M3 6h18M3 12h18M3 18h18" }] },
+    close: { els: [{ d: "M18 6 6 18M6 6l12 12" }] },
+    copy: {
+        els: [
+            { d: "M10 8h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z" },
+            { d: "M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3" },
+        ],
+    },
     external: { els: [{ d: "M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" }] },
 };
 

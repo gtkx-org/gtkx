@@ -1,20 +1,40 @@
 <script setup lang="ts">
-defineProps<{
+import { ref } from "vue";
+
+const props = defineProps<{
     items: { value: string; label: string }[];
     variant?: "underline" | "pill";
+    controls?: string;
+    label?: string;
 }>();
 const model = defineModel<string>();
+const buttons = ref<HTMLButtonElement[]>([]);
+
+const move = (index: number, offset: number): void => {
+    const next = (index + offset + props.items.length) % props.items.length;
+    model.value = props.items[next].value;
+    buttons.value[next]?.focus();
+};
 </script>
 
 <template>
-  <div class="tabs" :class="`tabs--${variant ?? 'underline'}`">
+  <div class="tabs" :class="`tabs--${variant ?? 'underline'}`" role="tablist" :aria-label="label">
     <button
-      v-for="it in items"
+      v-for="(it, i) in items"
       :key="it.value"
+      ref="buttons"
       type="button"
+      role="tab"
       class="tabs__btn"
       :class="{ 'is-active': model === it.value }"
+      :aria-selected="model === it.value"
+      :aria-controls="controls"
+      :tabindex="model === it.value ? 0 : -1"
       @click="model = it.value"
+      @keydown.arrow-left.prevent="move(i, -1)"
+      @keydown.arrow-right.prevent="move(i, 1)"
+      @keydown.home.prevent="move(i, -i)"
+      @keydown.end.prevent="move(i, items.length - 1 - i)"
     >
       {{ it.label }}
     </button>
@@ -70,5 +90,10 @@ const model = defineModel<string>();
 .tabs--underline .tabs__btn.is-active {
   color: var(--text-1);
   box-shadow: inset 0 -2px 0 var(--brand);
+}
+@media (pointer: coarse) {
+  .tabs__btn {
+    min-height: 44px;
+  }
 }
 </style>

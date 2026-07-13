@@ -1,0 +1,23 @@
+:root {
+    --vp-c-brand-1: var(--red-600);
+    --vp-c-brand-2: var(--red-500);
+    --vp-c-brand-3: var(--red-600);
+    --vp-c-brand-soft: rgba(224, 58, 62, 0.14);
+    --vp-font-family-base: "Red Hat Text", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --vp-font-family-mono: "Red Hat Mono", "SFMono-Regular", ui-monospace, "Cascadia Code", Menlo, monospace;
+}
+
+html.dark {
+    --vp-c-brand-1: var(--red-300);
+    --vp-c-brand-2: var(--red-400);
+    --vp-c-brand-3: var(--red-600);
+}
+
+.vp-doc h1,
+.vp-doc h2,
+.vp-doc h3,
+.vp-doc h4,
+.vp-doc h5,
+.vp-doc h6 {
+    font-family: var(--font-display);
+}

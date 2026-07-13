@@ -1,3 +1,7 @@
+---
+description: "GNOME's undo-first feedback hierarchy: toasts with Undo, informational dialogs, and a destructive alert only where undo is impossible."
+---
+
 # Feedback and Dialogs
 
 Deleting a task in Tasks does not pop a "Are you sure?" box. It quietly moves the task to Trash and slides up a toast with an **Undo** button. That is deliberate. GNOME's Human Interface Guidelines put reversibility first: if an action can be undone, let the user do it and undo it, and save the modal interruption for the one action that genuinely cannot be taken back. This page walks the whole feedback hierarchy in the app, from the lightest touch (a toast) to the heaviest (a destructive alert dialog), plus the two informational dialogs (New List, About) and the one gtkx mechanism that makes any of them appear on screen.

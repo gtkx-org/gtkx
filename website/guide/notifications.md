@@ -1,3 +1,7 @@
+---
+description: "Desktop reminders with Gio.Notification: application-scoped actions that survive cold starts and fire even after the window is closed."
+---
+
 # Reminders and Notifications
 
 Tasks have due dates, so the app fires a desktop notification when one is coming up. This is the one feature that has to keep working when the app is closed: the notification the user taps might be the thing that launches the process. That constraint shapes the whole design, so before any React, understand the two GTK/Gio pieces it forces:

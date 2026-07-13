@@ -1,0 +1,11 @@
+{
+    "name": "GTKX",
+    "short_name": "GTKX",
+    "icons": [
+        { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+        { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+    ],
+    "theme_color": "#e03a3e",
+    "background_color": "#1b1b1f",
+    "display": "browser"
+}

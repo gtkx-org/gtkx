@@ -1,3 +1,7 @@
+---
+description: "The Tasks data layer, with JSON in the XDG data directory through GLib file APIs, GSettings for preferences, and React state as the source of truth."
+---
+
 # Data Model and Persistence
 
 Tasks keeps two entirely separate stores, and the split is deliberate. The task list itself, everything the user creates and edits, lives as one JSON file in the XDG data directory, loaded once at startup and written back through GLib's own file API. The handful of small UI preferences (filter, sort order, color scheme, window size) live in GSettings, the GNOME settings database. React state is the single source of truth while the app runs; both stores are just where that state is serialized to and rehydrated from.

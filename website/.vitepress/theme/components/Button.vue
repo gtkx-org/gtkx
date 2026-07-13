@@ -1,7 +1,7 @@
 <script setup lang="ts">
 withDefaults(
     defineProps<{
-        variant?: "primary" | "secondary" | "ghost" | "accent";
+        variant?: "primary" | "secondary" | "ghost";
         size?: "sm" | "md" | "lg";
         href?: string;
         fullWidth?: boolean;
@@ -74,19 +74,12 @@ withDefaults(
   border-radius: var(--radius-md);
 }
 .btn--primary {
-  background: var(--brand);
+  background: var(--brand-strong);
   color: var(--brand-contrast);
   box-shadow: var(--shadow-brand);
 }
 .btn--primary:hover {
-  background: var(--brand-hover);
-}
-.btn--accent {
-  background: var(--accent);
-  color: #fff;
-}
-.btn--accent:hover {
-  background: var(--accent-hover);
+  background: var(--brand-strong-hover);
 }
 .btn--secondary {
   background: transparent;

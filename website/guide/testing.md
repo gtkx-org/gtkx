@@ -1,3 +1,7 @@
+---
+description: "Test real GTK widgets with @gtkx/testing: Testing Library style queries, user events, Vitest wiring, and MCP inspection of a live app."
+---
+
 # Testing the App
 
 Because GTKX renders real GObject widgets, you can test a GTKX app much the way you test a React web app: render it, query the accessibility tree, drive it with user events, and assert on the result. The [`@gtkx/testing`](https://github.com/gtkx-org/gtkx/tree/main/packages/testing) package provides a React Testing Library style API over the live widget tree, and `@gtkx/vitest` wires it into Vitest.

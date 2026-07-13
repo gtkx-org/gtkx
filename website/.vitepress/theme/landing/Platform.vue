@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import CodeBlock from "../components/CodeBlock.vue";
+import Tabs from "../components/Tabs.vue";
 
 const tab = ref("dev");
 
@@ -20,7 +22,7 @@ const STEPS: Record<string, { label: string; blurb: string; cmd: string; out: st
         label: "build",
         blurb: "Single-file production bundle, GTK assets and all.",
         cmd: "gtkx build",
-        out: ["dist/bundle.js — one file", "bundled gtkx.node, gresources, compiled schemas"],
+        out: ["dist/bundle.js: one file", "bundled gtkx.node, gresources, compiled schemas"],
     },
     codegen: {
         label: "codegen",
@@ -36,17 +38,19 @@ const active = computed(() => STEPS[tab.value]);
 
 <template>
   <section id="platform" class="platform">
-    <div class="platform__head">
+    <div class="platform__head section-head">
       <p class="overline">One CLI, the whole lifecycle</p>
-      <h2 class="platform__title">Scaffold, develop, ship — <span class="accent">one tool</span></h2>
+      <h2 class="platform__title section-title">Scaffold, develop, ship: <span class="accent">one tool</span></h2>
     </div>
     <div class="platform__panel">
-      <Tabs v-model="tab" variant="pill" :items="items" />
+      <Tabs v-model="tab" variant="pill" :items="items" controls="platform-cmd" label="CLI command" />
       <p class="platform__blurb">{{ active.blurb }}</p>
-      <CodeBlock variant="terminal">
-        <div class="tcmd"><span class="tprompt">$</span> {{ active.cmd }}</div>
-        <div v-for="(o, i) in active.out" :key="i" class="tout"><span class="tmark">✓</span> {{ o }}</div>
-      </CodeBlock>
+      <div id="platform-cmd" role="tabpanel" :aria-label="`gtkx ${tab}`" class="platform__tabpanel">
+        <CodeBlock variant="terminal">
+          <div class="tcmd"><span class="tprompt" aria-hidden="true">$</span> {{ active.cmd }}</div>
+          <div v-for="(o, i) in active.out" :key="i" class="tout"><span class="tmark" aria-hidden="true">✓</span> {{ o }}</div>
+        </CodeBlock>
+      </div>
     </div>
   </section>
 </template>
@@ -58,21 +62,10 @@ const active = computed(() => STEPS[tab.value]);
   padding: clamp(2.5rem, 5vw, 4rem) clamp(1rem, 4vw, 2.5rem);
 }
 .platform__head {
-  text-align: center;
-  max-width: 42rem;
-  margin: 0 auto clamp(1.8rem, 4vw, 2.6rem);
-}
-.platform__head .overline {
-  color: var(--text-brand);
-  margin-bottom: 0.7rem;
+  margin-bottom: clamp(1.8rem, 4vw, 2.6rem);
 }
 .platform__title {
-  font-family: var(--font-display);
-  font-weight: 800;
   font-size: clamp(1.7rem, 3.6vw, 2.6rem);
-  letter-spacing: -0.025em;
-  margin: 0;
-  color: var(--text-1);
 }
 .platform__panel {
   display: flex;
@@ -87,7 +80,7 @@ const active = computed(() => STEPS[tab.value]);
   margin: 0;
   text-align: center;
 }
-.platform__panel :deep(.cb) {
+.platform__tabpanel {
   width: 100%;
 }
 </style>

@@ -1,3 +1,7 @@
+---
+description: "Scaffold a GTKX app with npm create gtkx, meet the CLI and the dev loop, and watch a real GTK4 window hot-reload as you edit TypeScript."
+---
+
 # Getting Started
 
 Before we open a single component, let's set up the project the Tasks app lives in and get comfortable with the loop you'll run for the rest of the tutorial: edit a `.tsx` file, save, watch a real GTK4 window update. gtkx apps are ordinary Node projects. There is no webview, no Electron main/renderer split, and no bundler config to hand-write. The `gtkx` CLI wraps Vite, reads GObject-Introspection for GTK and libadwaita, and hands you typed React bindings for the entire native widget set.
@@ -15,11 +19,27 @@ The native addon (`@gtkx/native`) ships prebuilt for the common Linux architectu
 
 Start any new project with the official initializer:
 
-```bash
+::: code-group
+
+```bash [npm]
 npm create gtkx@latest
 ```
 
-The same command works with every package manager: `pnpm create gtkx`, `yarn create gtkx`, or `bun create gtkx`. It prompts for a few things:
+```bash [pnpm]
+pnpm create gtkx
+```
+
+```bash [yarn]
+yarn create gtkx
+```
+
+```bash [bun]
+bun create gtkx
+```
+
+:::
+
+It prompts for a few things:
 
 - **Project directory** (for example `my-app`)
 - **Application ID** in reverse-domain notation (for example `com.example.myapp`). This is the D-Bus name GNOME uses to identify your app, so it must look like `com.gtkx.tutorial`, not `tutorial`.

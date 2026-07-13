@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://gtkx.dev/sitemap.xml

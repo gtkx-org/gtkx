@@ -1,3 +1,7 @@
+---
+description: "Implement GNOME's selection mode pattern, with a transformed header bar, a bottom action bar, and batch actions driven by one boolean of React state."
+---
+
 # Selection Mode
 
 Some actions only make sense in bulk: complete ten tasks at once, move a handful to another list, sweep several into the Trash. GNOME's Human Interface Guidelines have a dedicated pattern for this, and it is worth learning because it is not a React idiom. You enter a distinct *selection mode* from a "Select" control, the header bar transforms into a selection header (a Cancel button plus a heading that counts what you have picked), and the batch actions live in an action bar pinned to the bottom of the window. The HIG reserves this pattern for cases with at least three batch actions, which is why Tasks ships Complete, Move, and Delete rather than just Complete/Delete.

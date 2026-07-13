@@ -7,8 +7,7 @@ import { WebKitWebView } from "@gtkx/jsx/webkit";
 import { quit } from "@gtkx/react";
 import { type RefObject, useEffect, useRef, useState } from "react";
 
-const DEFAULT_URL = "https://gtkx.dev";
-const START_URL = process.argv[2] ?? DEFAULT_URL;
+const START_URL = "https://gtkx.dev";
 
 const urlBarStyle = css`
     min-width: 400px;

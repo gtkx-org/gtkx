@@ -1,8 +1,19 @@
 <script setup lang="ts">
-import { REPO_URL } from "./content";
+import { LICENSE, REPO_URL } from "./content";
 
-type Link = { t: string; href?: string };
+const NPM_URL = "https://www.npmjs.com/package";
+
+type Link = { t: string; href: string };
 const cols: { h: string; items: Link[] }[] = [
+    {
+        h: "Docs",
+        items: [
+            { t: "Why GTKX", href: "/guide/why-gtkx" },
+            { t: "Tutorial", href: "/guide/" },
+            { t: "Testing", href: "/guide/testing" },
+            { t: "Packaging", href: "/guide/packaging" },
+        ],
+    },
     {
         h: "Project",
         items: [
@@ -15,14 +26,22 @@ const cols: { h: string; items: Link[] }[] = [
     {
         h: "Packages",
         items: [
-            { t: "@gtkx/react" },
-            { t: "@gtkx/ffi" },
-            { t: "@gtkx/cli" },
-            { t: "@gtkx/testing" },
-            { t: "@gtkx/mcp" },
+            { t: "@gtkx/react", href: `${NPM_URL}/@gtkx/react` },
+            { t: "@gtkx/ffi", href: `${NPM_URL}/@gtkx/ffi` },
+            { t: "@gtkx/cli", href: `${NPM_URL}/@gtkx/cli` },
+            { t: "@gtkx/testing", href: `${NPM_URL}/@gtkx/testing` },
+            { t: "@gtkx/mcp", href: `${NPM_URL}/@gtkx/mcp` },
         ],
     },
-    { h: "Platform", items: [{ t: "GTK 4" }, { t: "libadwaita" }, { t: "GObject" }, { t: "GNOME" }] },
+    {
+        h: "Platform",
+        items: [
+            { t: "GTK 4", href: "https://www.gtk.org" },
+            { t: "libadwaita", href: "https://gnome.pages.gitlab.gnome.org/libadwaita/" },
+            { t: "GObject", href: "https://docs.gtk.org/gobject/" },
+            { t: "GNOME", href: "https://www.gnome.org" },
+        ],
+    },
 ];
 </script>
 
@@ -44,8 +63,7 @@ const cols: { h: string; items: Link[] }[] = [
           <p class="footer__h">{{ c.h }}</p>
           <ul class="footer__list">
             <li v-for="i in c.items" :key="i.t">
-              <a v-if="i.href" :href="i.href">{{ i.t }}</a>
-              <span v-else>{{ i.t }}</span>
+              <a :href="i.href">{{ i.t }}</a>
             </li>
           </ul>
         </div>
@@ -75,7 +93,7 @@ const cols: { h: string; items: Link[] }[] = [
 }
 .footer__grid {
   display: grid;
-  grid-template-columns: 1.6fr repeat(3, 1fr);
+  grid-template-columns: 1.6fr repeat(4, 1fr);
   gap: 2rem;
 }
 .footer__lockup {
@@ -114,8 +132,7 @@ const cols: { h: string; items: Link[] }[] = [
   flex-direction: column;
   gap: 0.55rem;
 }
-.footer__list a,
-.footer__list span {
+.footer__list a {
   font-family: var(--font-body);
   font-size: var(--text-sm);
   color: var(--text-2);
@@ -123,7 +140,16 @@ const cols: { h: string; items: Link[] }[] = [
   transition: var(--transition-colors);
 }
 .footer__list a:hover {
-  color: var(--brand);
+  color: var(--text-brand);
+}
+@media (pointer: coarse) {
+  .footer__list a {
+    display: inline-block;
+    padding-block: 0.75rem;
+  }
+  .footer__list {
+    gap: 0;
+  }
 }
 .footer__bar {
   margin-top: 2.5rem;

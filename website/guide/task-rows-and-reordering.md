@@ -1,3 +1,7 @@
+---
+description: "Each task is an AdwActionRow with checkbox, star, and delete controls, plus drag-and-drop reordering built from GTK event controllers."
+---
+
 # Task Rows and Drag-to-Reorder
 
 Each task in the list is one `AdwActionRow`. In libadwaita an action row is a preferences-style row with a title, an optional subtitle, and slots on either end for small controls: a leading `prefix` and a trailing `suffix`. Dropped into a `GtkListBox` styled with the `boxed-list` CSS class, a stack of these rows becomes the rounded, separated card that every GNOME app uses for short editable lists. `TaskRow` fills that row with a done checkbox, a strikethrough title, a star, a delete button, and (when ordering is manual) the two event controllers that make it draggable.

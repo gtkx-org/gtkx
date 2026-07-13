@@ -3,7 +3,7 @@ import { computed } from "vue";
 
 const props = withDefaults(
     defineProps<{
-        tone?: "brand" | "neutral" | "accent" | "success" | "warning" | "danger";
+        tone?: "brand" | "neutral" | "accent";
         variant?: "solid" | "soft" | "outline";
     }>(),
     { tone: "brand", variant: "soft" },
@@ -11,10 +11,11 @@ const props = withDefaults(
 
 const TONES = {
     brand: {
-        solidBg: "var(--brand)",
+        solidBg: "var(--brand-strong)",
         solidFg: "var(--brand-contrast)",
         softBg: "var(--brand-soft)",
         softFg: "var(--text-brand)",
+        outlineFg: "var(--text-brand)",
         bd: "var(--brand-soft-bd)",
     },
     neutral: {
@@ -22,35 +23,16 @@ const TONES = {
         solidFg: "#fff",
         softBg: "var(--bg-soft)",
         softFg: "var(--text-2)",
-        bd: "var(--border)",
+        outlineFg: "var(--text-2)",
+        bd: "var(--border-strong)",
     },
     accent: {
-        solidBg: "var(--accent)",
+        solidBg: "var(--accent-strong)",
         solidFg: "#fff",
         softBg: "var(--accent-soft)",
-        softFg: "var(--accent)",
+        softFg: "var(--accent-text)",
+        outlineFg: "var(--accent-text)",
         bd: "var(--accent)",
-    },
-    success: {
-        solidBg: "var(--success)",
-        solidFg: "#fff",
-        softBg: "var(--success-soft)",
-        softFg: "var(--success)",
-        bd: "var(--success)",
-    },
-    warning: {
-        solidBg: "var(--warning)",
-        solidFg: "#fff",
-        softBg: "var(--warning-soft)",
-        softFg: "var(--warning)",
-        bd: "var(--warning)",
-    },
-    danger: {
-        solidBg: "var(--danger)",
-        solidFg: "#fff",
-        softBg: "var(--danger-soft)",
-        softFg: "var(--danger)",
-        bd: "var(--danger)",
     },
 } as const;
 
@@ -58,7 +40,7 @@ const style = computed(() => {
     const t = TONES[props.tone];
     if (props.variant === "solid") return { background: t.solidBg, color: t.solidFg, border: "1px solid transparent" };
     if (props.variant === "outline")
-        return { background: "transparent", color: t.solidBg, border: `1px solid ${t.bd}` };
+        return { background: "transparent", color: t.outlineFg, border: `1px solid ${t.bd}` };
     return { background: t.softBg, color: t.softFg, border: "1px solid transparent" };
 });
 </script>

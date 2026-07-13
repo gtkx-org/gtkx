@@ -46,6 +46,13 @@ withDefaults(
   width: 48px;
   height: 48px;
 }
+@media (pointer: coarse) {
+  .icon-btn--sm,
+  .icon-btn--md {
+    width: 44px;
+    height: 44px;
+  }
+}
 .icon-btn--ghost {
   background: transparent;
   color: var(--text-2);

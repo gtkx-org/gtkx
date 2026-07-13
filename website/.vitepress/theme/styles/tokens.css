@@ -45,7 +45,7 @@
 
     --text-1: var(--gray-900);
     --text-2: var(--gray-600);
-    --text-3: var(--gray-500);
+    --text-3: #5e606a;
     --text-inverse: var(--gray-0);
     --text-brand: var(--red-600);
 
@@ -56,12 +56,16 @@
     --brand: var(--red-500);
     --brand-hover: var(--red-600);
     --brand-active: var(--red-700);
+    --brand-strong: var(--red-600);
+    --brand-strong-hover: var(--red-700);
     --brand-soft: var(--red-50);
     --brand-soft-bd: var(--red-200);
     --brand-contrast: var(--gray-0);
 
     --accent: var(--blue-500);
     --accent-hover: var(--blue-600);
+    --accent-strong: var(--blue-600);
+    --accent-text: var(--blue-700);
     --accent-soft: #e8f1fd;
 
     --success: var(--green-600);
@@ -74,6 +78,7 @@
     --code-bg: var(--gray-50);
     --code-text: var(--red-700);
     --kbd-bg: var(--gray-100);
+    --syntax-string: #1a7047;
 
     --gradient-brand: linear-gradient(135deg, #e03a3e 0%, #b81c25 100%);
     --gradient-hero: linear-gradient(120deg, #ff6b6b 0%, #e03a3e 42%, #b81c25 100%);
@@ -149,7 +154,6 @@
     --shadow-lg: 0 12px 32px rgba(15, 15, 20, 0.12), 0 4px 8px rgba(15, 15, 20, 0.05);
     --shadow-xl: 0 24px 60px rgba(15, 15, 20, 0.18);
     --shadow-brand: 0 8px 28px rgba(224, 58, 62, 0.32);
-    --shadow-focus: 0 0 0 3px rgba(224, 58, 62, 0.35);
 
     --container-sm: 640px;
     --container-md: 860px;
@@ -186,7 +190,7 @@ html.dark {
 
     --text-1: rgba(255, 255, 255, 0.92);
     --text-2: rgba(235, 235, 245, 0.62);
-    --text-3: rgba(235, 235, 245, 0.42);
+    --text-3: rgba(235, 235, 245, 0.55);
     --text-inverse: var(--gray-900);
     --text-brand: var(--red-300);
 
@@ -197,12 +201,16 @@ html.dark {
     --brand: var(--red-500);
     --brand-hover: var(--red-400);
     --brand-active: var(--red-300);
+    --brand-strong: var(--red-600);
+    --brand-strong-hover: var(--red-700);
     --brand-soft: rgba(224, 58, 62, 0.14);
     --brand-soft-bd: rgba(224, 58, 62, 0.32);
     --brand-contrast: var(--gray-0);
 
     --accent: var(--blue-400);
     --accent-hover: var(--blue-300);
+    --accent-strong: var(--blue-600);
+    --accent-text: var(--blue-300);
     --accent-soft: rgba(53, 132, 228, 0.16);
 
     --success: var(--green-500);
@@ -215,6 +223,7 @@ html.dark {
     --code-bg: var(--gray-950);
     --code-text: var(--red-300);
     --kbd-bg: var(--gray-800);
+    --syntax-string: var(--green-500);
 
     --gradient-glow: radial-gradient(60% 60% at 50% 0%, rgba(224, 58, 62, 0.34) 0%, rgba(224, 58, 62, 0) 70%);
 

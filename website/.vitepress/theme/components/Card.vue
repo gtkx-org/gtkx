@@ -1,5 +1,5 @@
 <script setup lang="ts">
-withDefaults(defineProps<{ interactive?: boolean; glow?: boolean; padding?: string }>(), {
+withDefaults(defineProps<{ interactive?: boolean; glow?: boolean; padding?: string; href?: string }>(), {
     interactive: false,
     glow: false,
     padding: "1.5rem",
@@ -7,10 +7,16 @@ withDefaults(defineProps<{ interactive?: boolean; glow?: boolean; padding?: stri
 </script>
 
 <template>
-  <div class="card" :class="{ 'card--interactive': interactive, 'card--glow': glow }" :style="{ padding }">
+  <component
+    :is="href ? 'a' : 'div'"
+    :href="href"
+    class="card"
+    :class="{ 'card--interactive': interactive, 'card--glow': glow }"
+    :style="{ padding }"
+  >
     <span v-if="glow" class="card__glow" />
     <div class="card__body"><slot /></div>
-  </div>
+  </component>
 </template>
 
 <style scoped>
@@ -21,6 +27,8 @@ withDefaults(defineProps<{ interactive?: boolean; glow?: boolean; padding?: stri
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
+  color: inherit;
+  text-decoration: none;
   transition: var(--transition-colors), transform var(--dur-base) var(--ease-out),
     box-shadow var(--dur-base) var(--ease-out);
 }

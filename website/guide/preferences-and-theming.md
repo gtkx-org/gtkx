@@ -1,3 +1,7 @@
+---
+description: "An AdwPreferencesDialog bound two-way to GSettings keys, libadwaita color schemes, and app styling with @gtkx/css."
+---
+
 # Preferences and Theming
 
 Every GNOME app ships a Preferences dialog, and Tasks is no exception: a `<Ctrl>,` shortcut opens an `AdwPreferencesDialog` where you pick a theme, choose the default sort order, and set the reminder lead time. This page walks through `preferences.tsx`, the typed gschema module that backs every row, the `theme.ts` helper that pushes the color scheme into libadwaita, and the `@gtkx/css` stylesheet the rest of the app draws on. The through-line is two-way data binding: each row reads and writes a GSettings key, and the app reacts to those keys.

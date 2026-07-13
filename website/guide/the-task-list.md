@@ -1,3 +1,7 @@
+---
+description: "The boxed task list pane, with search, a rounded card of rows, an inline add entry, and an empty state, all as a pure view driven by props."
+---
+
 # The Task List
 
 The middle pane of the app is the boxed task list: a search bar, a rounded "card" of rows, an inline add field, and a friendly empty state when there is nothing to show. It lives in `components/task-list.tsx` and is a pure view. It owns exactly one piece of local state (a ref to the add-entry) and takes everything else as props from `app.tsx`.

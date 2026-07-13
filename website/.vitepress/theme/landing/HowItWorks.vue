@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import Callout from "../components/Callout.vue";
+import CodeBlock from "../components/CodeBlock.vue";
+
 const appCode = `function App() {
   return (
     <AdwApplicationWindow title="Recipes">
@@ -10,15 +13,15 @@ const appCode = `function App() {
 
 const devOut = `gtkx dev
 ✓ dev server ready in 412 ms
-✓ watching src/ — Fast Refresh on the live window
+✓ watching src/, Fast Refresh on the live window
 ~ edited App.tsx → window updated, state kept`;
 </script>
 
 <template>
   <section id="how" class="how">
-    <div class="how__head">
+    <div class="how__head section-head">
       <p class="overline">From JSX to native, in one render</p>
-      <h2 class="how__title">How GTKX works</h2>
+      <h2 class="section-title">How GTKX works</h2>
     </div>
 
     <div class="how__step">
@@ -40,7 +43,7 @@ const devOut = `gtkx dev
         <h3 class="how__name">The reconciler maps your tree to live GObjects</h3>
         <p class="how__body">
           A custom react-reconciler turns each element into a real GObject instance and
-          keeps it in sync — no virtual DOM diffing a browser. Your component tree
+          keeps it in sync, with no virtual DOM diffing a browser. Your component tree
           <em>is</em> the widget tree.
         </p>
         <Callout type="tip">
@@ -49,10 +52,10 @@ const devOut = `gtkx dev
         </Callout>
       </div>
       <CodeBlock variant="terminal">
-        <div class="tcmd"><span class="tprompt">$</span> gtkx build</div>
+        <div class="tcmd"><span class="tprompt" aria-hidden="true">$</span> gtkx build</div>
         <div class="tdim">› react-reconciler → GObject instances</div>
         <div class="tdim">› @gtkx/native → libffi → GTK</div>
-        <div class="tout"><span class="tmark">✓</span> dist/bundle.js — single file, assets bundled</div>
+        <div class="tout"><span class="tmark" aria-hidden="true">✓</span> dist/bundle.js: single file, assets bundled</div>
       </CodeBlock>
     </div>
 
@@ -62,7 +65,7 @@ const devOut = `gtkx dev
         <h3 class="how__name">Run it with hot reload</h3>
         <p class="how__body">
           <code class="l-code">gtkx dev</code> starts a Vite-based supervisor with Fast Refresh. Edit a
-          component and the running native window updates instantly — no restart, no
+          component and the running native window updates instantly: no restart, no
           lost state.
         </p>
       </div>
@@ -78,21 +81,7 @@ const devOut = `gtkx dev
   padding: clamp(2.5rem, 5vw, 4.5rem) clamp(1rem, 4vw, 2.5rem);
 }
 .how__head {
-  text-align: center;
-  max-width: 42rem;
-  margin: 0 auto clamp(2.5rem, 4vw, 3.5rem);
-}
-.how__head .overline {
-  color: var(--text-brand);
-  margin-bottom: 0.7rem;
-}
-.how__title {
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: clamp(1.9rem, 4vw, 3rem);
-  letter-spacing: -0.025em;
-  margin: 0;
-  color: var(--text-1);
+  margin-bottom: clamp(2.5rem, 4vw, 3.5rem);
 }
 .how__step {
   display: grid;
@@ -100,6 +89,9 @@ const devOut = `gtkx dev
   gap: clamp(1.5rem, 4vw, 3.5rem);
   align-items: center;
   margin-bottom: clamp(2rem, 4vw, 3.5rem);
+}
+.how__step > :deep(*) {
+  min-width: 0;
 }
 .how__step:last-child {
   margin-bottom: 0;
@@ -111,7 +103,7 @@ const devOut = `gtkx dev
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   font-weight: 600;
-  color: var(--brand);
+  color: var(--text-brand);
   letter-spacing: 0.04em;
 }
 .how__name {

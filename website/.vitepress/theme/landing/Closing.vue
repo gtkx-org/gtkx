@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import Button from "../components/Button.vue";
+import CodeBlock from "../components/CodeBlock.vue";
+import Icon from "../components/Icon.vue";
+import { LICENSE, REPO_URL } from "./content";
 </script>
 
 <template>
@@ -30,10 +34,10 @@
     <div class="cta__inner">
       <h2 class="cta__title">Start building native Linux apps today</h2>
       <p class="cta__sub">
-        One command scaffolds everything — typed widgets, HMR, tests, and production bundling.
+        One command scaffolds everything: typed widgets, HMR, tests, and production bundling.
       </p>
       <div class="cta__actions">
-        <Button size="lg" href="#install">
+        <Button size="lg" href="/guide/getting-started">
           Get started
           <template #icon-right><Icon name="arrow" :size="17" /></template>
         </Button>

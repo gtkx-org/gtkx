@@ -1,3 +1,7 @@
+---
+description: "Build the navigation sidebar as one GtkListBox of AdwActionRows, derived from props, with selection synced both ways between React and GTK."
+---
+
 # The Sidebar
 
 The sidebar is the left pane of the adaptive `AdwNavigationSplitView`: a single scrolling list of "smart views" (All Tasks, Today, Important), then the user's colored task lists, then Trash. In GTK terms it is one `GtkListBox` wearing the `.navigation-sidebar` style class, and every row is an `AdwActionRow`. There is no per-row component and no imperative widget code in the hot path: the whole thing is derived from props, and selection is a controlled value synced in both directions between React state and the live `GtkListBox`.

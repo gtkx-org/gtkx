@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import Badge from "../components/Badge.vue";
+import CodeBlock from "../components/CodeBlock.vue";
+
 const testCode = `import * as Gtk from "@gtkx/gi/gtk";
 import { render, screen, userEvent } from "@gtkx/testing";
 import { Counter } from "./Counter";
@@ -13,16 +16,16 @@ test("increments on click", async () => {
 
 <template>
   <section id="testing" class="diff">
-    <div class="diff__head">
+    <div class="diff__head section-head">
       <p class="overline">Two things no JS-desktop tool ships</p>
-      <h2 class="diff__title">Tested like the web. <span class="accent">Driveable by agents.</span></h2>
+      <h2 class="diff__title section-title">Tested like the web. <span class="accent">Driveable by agents.</span></h2>
     </div>
     <div class="diff__grid">
       <div class="diff__card">
         <h3 class="diff__name">Test real widgets</h3>
         <p class="diff__body">
           A Testing-Library harness over real GObjects: accessibility-first queries,
-          <code class="l-code">userEvent</code> through real GTK controllers, and screenshots — all inside
+          <code class="l-code">userEvent</code> through real GTK controllers, and screenshots, all inside
           React <code class="l-code">act()</code>, on a per-worker headless display.
         </p>
         <CodeBlock title="Counter.test.tsx" :code="testCode" />
@@ -34,14 +37,14 @@ test("increments on click", async () => {
         </div>
         <p class="diff__body">
           The built-in MCP server bridges a running app to an agent over a socket. Your
-          live UI becomes queryable and clickable — the way Playwright MCP drives a browser.
+          live UI becomes queryable and clickable, the way Playwright MCP drives a browser.
         </p>
         <CodeBlock variant="terminal">
           <div class="mcp-com"># Claude drives your live app over MCP</div>
-          <div class="mcp-in">→ gtkx_query_widgets { role: "button" }</div>
-          <div class="mcp-out">← 2 matches: "Save", "Cancel"</div>
-          <div class="mcp-in">→ gtkx_click { name: "Save" }</div>
-          <div class="mcp-ok">✓ toast "Recipe saved" appeared</div>
+          <div class="mcp-in"><span aria-hidden="true">→</span> gtkx_query_widgets { by: "role", value: "button" }</div>
+          <div class="mcp-out"><span aria-hidden="true">←</span> 2 matches: "Save" (id 12), "Cancel" (id 13)</div>
+          <div class="mcp-in"><span aria-hidden="true">→</span> gtkx_click { widgetId: 12 }</div>
+          <div class="mcp-ok"><span aria-hidden="true">✓</span> toast "Recipe saved" appeared</div>
         </CodeBlock>
       </div>
     </div>
@@ -55,21 +58,11 @@ test("increments on click", async () => {
   padding: clamp(2.5rem, 5vw, 4.5rem) clamp(1rem, 4vw, 2.5rem);
 }
 .diff__head {
-  text-align: center;
   max-width: 44rem;
-  margin: 0 auto clamp(2rem, 4vw, 3rem);
-}
-.diff__head .overline {
-  color: var(--text-brand);
-  margin-bottom: 0.7rem;
+  margin-bottom: clamp(2rem, 4vw, 3rem);
 }
 .diff__title {
-  font-family: var(--font-display);
-  font-weight: 800;
   font-size: clamp(1.8rem, 3.8vw, 2.8rem);
-  letter-spacing: -0.025em;
-  margin: 0;
-  color: var(--text-1);
 }
 .diff__grid {
   display: grid;
@@ -77,6 +70,7 @@ test("increments on click", async () => {
   gap: 1.4rem;
 }
 .diff__card {
+  min-width: 0;
   padding: clamp(1.4rem, 2.5vw, 1.9rem);
   background: var(--bg-elevated);
   border: 1px solid var(--border);
