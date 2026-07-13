@@ -136,7 +136,18 @@ const ADD_REMOVE_TYPES = [
     "AdwSqueezer",
 ];
 
-export const BUILT_IN_ELEMENT_PROPS: Record<string, ElementProp[]> = {
+const withBreakpoints = (props: Record<string, ElementProp[]>): Record<string, ElementProp[]> => {
+    for (const type of ["AdwApplicationWindow", "AdwWindow", "AdwDialog"]) {
+        props[type] = [...(props[type] ?? []), container("breakpoints", "AdwBreakpoint", { append: "addBreakpoint" })];
+    }
+    props.AdwBreakpointBin = [
+        ...(props.AdwBreakpointBin ?? []),
+        container("breakpoints", "AdwBreakpoint", { append: "addBreakpoint", remove: "removeBreakpoint" }),
+    ];
+    return props;
+};
+
+export const BUILT_IN_ELEMENT_PROPS: Record<string, ElementProp[]> = withBreakpoints({
     ...forEach(SINGLE_CHILD_TYPES, () => [singleChild()]),
     ...forEach(SINGLE_CONTENT_TYPES, () => [singleContent()]),
     ...forEach(BOX_TYPES, () => [boxChildren()]),
@@ -231,4 +242,4 @@ export const BUILT_IN_ELEMENT_PROPS: Record<string, ElementProp[]> = {
         },
     ],
     GtkAboutDialog: [{ kind: "list", prop: "creditSections", add: "addCreditSection" }],
-};
+});

@@ -54,11 +54,10 @@ return (
     <AdwApplicationWindow
         ref={windowRef}
         title="Tasks"
-        defaultWidth={winWidth}
-        defaultHeight={winHeight}
         widthRequest={360}
         heightRequest={294}
         onCloseRequest={handleClose}
+        breakpoints={/* an <AdwBreakpoint> that collapses the layout, shown below */}
         actions={<WindowActions /* new, select, preferences, shortcuts, about */ />}
         controllers={<AppShortcuts /* Ctrl+F, Escape, Delete */ />}
     >
@@ -69,30 +68,32 @@ return (
 
 A few things worth calling out for a GTK newcomer:
 
-- **`ref={windowRef}`** gives you the live `Adw.ApplicationWindow` instance (`useRef<Adw.ApplicationWindow | null>(null)`). You need it to read the window's current pixel size on close and to attach the breakpoint below.
-- **`defaultWidth` / `defaultHeight`** are seeded from GSettings, not hardcoded: `const [winWidth, setWinWidth] = useSetting(schema, "window-width")`. The window opens at whatever size it was last closed.
+- **`ref={windowRef}`** gives you the live `Adw.ApplicationWindow` instance (`useRef<Adw.ApplicationWindow | null>(null)`). It is the target for the window-size bindings below.
 - **`widthRequest={360}` and `heightRequest={294}`** set the minimum window size. This is the GNOME phone-form-factor floor: the app is guaranteed to work down to a 360x294 window, which is what forces the layout to prove it collapses gracefully.
+- **`breakpoints`** is a slot that attaches an `<AdwBreakpoint>` to the window, covered below.
 - **`actions`** and **`controllers`** are `ReactNode` slots present on every window/widget. `actions` holds `<GSimpleAction>` elements (the `win.*` actions the accelerators above target); `controllers` holds event controllers like the global shortcut controller. Both are detailed on the actions and shortcuts page.
 
-### Persisting window size on close
+### Persisting window size
 
-`onCloseRequest` maps to the GTK `close-request` signal. The handler is the last thing that runs before the app exits, which makes it the right place to snapshot window geometry and flush unsaved data.
+The window's size is bound to GSettings with `useBindSetting`, which wires a `Gio.Settings` key to a GObject property in both directions:
+
+```tsx
+useBindSetting(schema, "window-width", windowRef, "defaultWidth");
+useBindSetting(schema, "window-height", windowRef, "defaultHeight");
+```
+
+`useBindSetting(schema, key, target, property)` binds the `window-width` setting to the window's `default-width` property (and `window-height` to `default-height`). On startup it seeds the property from the stored value, so the window opens at its last size; while the app runs it writes any change back. Because GTK keeps `default-width` and `default-height` at the un-maximized size, the restored size is always the normal window size, never a maximized one. The target is the `windowRef`, which the hook resolves once the window mounts.
+
+That leaves the close handler doing only what is genuinely close-time work: flushing unsaved tasks and quitting.
 
 ```tsx
 const handleClose = (): boolean => {
-    const window = windowRef.current;
-    if (window) {
-        const width = window.getWidth();
-        const height = window.getHeight();
-        if (width > 0) setWinWidth(width);
-        if (height > 0) setWinHeight(height);
-    }
     api.flush();
     return quit();
 };
 ```
 
-It reads the live size straight off the GTK widget with `getWidth()` / `getHeight()` (guarding against the transient `0` GTK can report mid-teardown), writes both back through the GSettings setters, flushes any pending task writes with `api.flush()`, and then returns `quit()`. `quit()` from `@gtkx/react` unmounts every active render root, which disposes the window and ends the app. This is the standard gtkx close handler; the geometry and flush steps are the app-specific additions.
+`onCloseRequest` maps to the GTK `close-request` signal. `api.flush()` writes any pending task changes to disk, and `quit()` from `@gtkx/react` unmounts every active render root, which disposes the window and ends the app.
 
 ## The toast overlay
 
@@ -144,30 +145,27 @@ The two props that make it adaptive are `collapsed` and `showContent`, both cont
 
 Each pane wraps its content in an `<AdwToolbarView>`, which gives you a header bar pinned to the top (`topBar`) and, on the content side, an optional action bar pinned to the bottom (`bottomBar`, revealed via `revealBottomBars` during selection mode). The content pane's `AdwNavigationPage` title is computed from the current selection with `titleFor(selection, lists)`, so the header reads "Today", "Important", or a user list's name.
 
-## The imperative breakpoint
+## The breakpoint
 
-The split view collapses at a threshold, and that threshold is an `AdwBreakpoint`. In pure GTK a breakpoint is added to a window and, when its condition matches, applies setters and emits `apply` / `unapply`. gtkx does have a declarative `<AdwBreakpoint>` host component, but there is not yet a declarative container that attaches one to a window and configures which property it drives. So the shell reaches for the imperative escape hatch: it creates the breakpoint by hand and connects its signals with `useSignal`.
+The split view collapses at a threshold, and that threshold is an `AdwBreakpoint`. In pure GTK a breakpoint is added to a window and, when its condition matches, emits `apply` / `unapply` (and can apply property setters). gtkx exposes this declaratively: the window's `breakpoints` slot takes one or more `<AdwBreakpoint>` children, each with a `condition` and `onApply` / `onUnapply` handlers.
 
 ```tsx
-const [breakpoint, setBreakpoint] = useState<Adw.Breakpoint | null>(null);
-
-useEffect(() => {
-    const window = windowRef.current;
-    if (!window || breakpoint) return;
-    const created = Adw.Breakpoint.new(Adw.BreakpointCondition.parse("max-width: 500sp"));
-    window.addBreakpoint(created);
-    setBreakpoint(created);
-}, [breakpoint]);
-
-useSignal(breakpoint, "apply", () => setCollapsed(true));
-useSignal(breakpoint, "unapply", () => setCollapsed(false));
+<AdwApplicationWindow
+    ref={windowRef}
+    /* ... */
+    breakpoints={
+        <AdwBreakpoint
+            condition={Adw.BreakpointCondition.parse("max-width: 500sp")}
+            onApply={() => setCollapsed(true)}
+            onUnapply={() => setCollapsed(false)}
+        />
+    }
+>
 ```
 
-The effect runs once the window ref is populated: it parses the condition `max-width: 500sp`, creates the breakpoint, attaches it with `window.addBreakpoint`, and stores it in state. The guard `if (!window || breakpoint) return` makes it a one-shot; the `breakpoint` dependency re-runs it only until the breakpoint exists.
+`condition` is parsed once with `Adw.BreakpointCondition.parse`. When the window's width drops below the threshold, `onApply` fires; when it grows back, `onUnapply` fires. Both flip the `collapsed` state, which flows into the split view's `collapsed` prop: GTK reports the layout threshold, React owns whether the app is in its collapsed mode.
 
 The condition uses `sp` units rather than raw pixels. `sp` (scalable pixels) tracks the text scale factor, so the collapse point widens automatically when the user turns on Large Text. Below 500sp the layout goes single-column; above it, side by side.
-
-The interesting part is `useSignal(breakpoint, "apply", ...)`. On the first render `breakpoint` is `null`, because the effect that creates it has not run yet. `useSignal` accepts a nullish target and simply stays inert: no connection is made, no error is thrown. When the effect later calls `setBreakpoint(created)`, the component re-renders, `useSignal` sees a real `Adw.Breakpoint`, and connects `apply` / `unapply` then. Those handlers flip the `collapsed` state, which flows back into the split view's `collapsed` prop. GTK reports the layout threshold; React owns whether the app is in its collapsed mode.
 
 ## The controlled content swap
 

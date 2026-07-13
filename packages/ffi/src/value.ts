@@ -109,6 +109,8 @@ const fundamentalValueType = (type: bigint): ValueType => {
             return paramValueType;
         case TYPE_VARIANT:
             return variantValueType;
+        case TYPE_BOXED:
+            return boxedValueType(type);
         default:
             throw new Error(`Unsupported fundamental type '${typeName(type) ?? String(type)}' for value`);
     }

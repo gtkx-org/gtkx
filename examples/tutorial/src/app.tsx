@@ -5,6 +5,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import {
     AdwApplication,
     AdwApplicationWindow,
+    AdwBreakpoint,
     AdwHeaderBar,
     AdwNavigationPage,
     AdwNavigationSplitView,
@@ -25,7 +26,7 @@ import {
     GtkShortcutController,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
-import { quit, useApplication, useSetting, useSignal } from "@gtkx/react";
+import { quit, useApplication, useSetting, useBindSetting } from "@gtkx/react";
 import schema from "#data/com.gtkx.tutorial.gschema.xml";
 import { About } from "./components/about.js";
 import { DeleteConfirmation } from "./components/delete-confirmation.js";
@@ -154,7 +155,6 @@ function TasksWindow({ notify }: { notify: RefObject<NotifyHandlers> }) {
     const [searchQuery, setSearchQuery] = useState("");
     const [collapsed, setCollapsed] = useState(false);
     const [showContent, setShowContent] = useState(false);
-    const [breakpoint, setBreakpoint] = useState<Adw.Breakpoint | null>(null);
     const [showPreferences, setShowPreferences] = useState(false);
     const [showAbout, setShowAbout] = useState(false);
     const [showShortcuts, setShowShortcuts] = useState(false);
@@ -167,25 +167,16 @@ function TasksWindow({ notify }: { notify: RefObject<NotifyHandlers> }) {
     const [sortOrder] = useSetting(schema, "sort-order");
     const [colorScheme] = useSetting(schema, "color-scheme");
     const [reminderMinutes] = useSetting(schema, "reminder-minutes");
-    const [winWidth, setWinWidth] = useSetting(schema, "window-width");
-    const [winHeight, setWinHeight] = useSetting(schema, "window-height");
-
     const windowRef = useRef<Adw.ApplicationWindow | null>(null);
     const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
+
+    useBindSetting(schema, "window-width", windowRef, "defaultWidth");
+    useBindSetting(schema, "window-height", windowRef, "defaultHeight");
 
     useEffect(() => {
         applyColorScheme(colorScheme);
     }, [colorScheme]);
 
-    useEffect(() => {
-        const window = windowRef.current;
-        if (!window || breakpoint) return;
-        const created = Adw.Breakpoint.new(Adw.BreakpointCondition.parse("max-width: 500sp"));
-        window.addBreakpoint(created);
-        setBreakpoint(created);
-    }, [breakpoint]);
-    useSignal(breakpoint, "apply", () => setCollapsed(true));
-    useSignal(breakpoint, "unapply", () => setCollapsed(false));
 
     const counts = sidebarCounts(tasks, lists);
     const visible = visibleTasks(tasks, selection, { query: searchQuery, filter, sortOrder });
@@ -284,13 +275,6 @@ function TasksWindow({ notify }: { notify: RefObject<NotifyHandlers> }) {
     };
 
     const handleClose = (): boolean => {
-        const window = windowRef.current;
-        if (window) {
-            const width = window.getWidth();
-            const height = window.getHeight();
-            if (width > 0) setWinWidth(width);
-            if (height > 0) setWinHeight(height);
-        }
         api.flush();
         return quit();
     };
@@ -419,11 +403,16 @@ function TasksWindow({ notify }: { notify: RefObject<NotifyHandlers> }) {
         <AdwApplicationWindow
             ref={windowRef}
             title="Tasks"
-            defaultWidth={winWidth}
-            defaultHeight={winHeight}
             widthRequest={360}
             heightRequest={294}
             onCloseRequest={handleClose}
+            breakpoints={
+                <AdwBreakpoint
+                    condition={Adw.BreakpointCondition.parse("max-width: 500sp")}
+                    onApply={() => setCollapsed(true)}
+                    onUnapply={() => setCollapsed(false)}
+                />
+            }
             actions={
                 <WindowActions
                     onNew={newTask}

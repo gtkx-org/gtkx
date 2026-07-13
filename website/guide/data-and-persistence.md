@@ -343,21 +343,16 @@ The 500ms debounce is a safety net, not a clean exit. On a normal quit the app s
 const flush = (): void => saveState(state);
 ```
 
-The window wires it into its close handler. `handleClose` (in `app.tsx`) captures the final window size into GSettings, flushes the task data straight to disk, then quits:
+The window wires it into its close handler. `handleClose` (in `app.tsx`) flushes the task data straight to disk, then quits:
 
 ```tsx
 const handleClose = (): boolean => {
-    const window = windowRef.current;
-    if (window) {
-        const width = window.getWidth();
-        const height = window.getHeight();
-        if (width > 0) setWinWidth(width);
-        if (height > 0) setWinHeight(height);
-    }
     api.flush();
     return quit();
 };
 ```
+
+(The window size is not captured here. It is bound to GSettings continuously with `useBindSetting`, covered on the application-shell page.)
 
 ```tsx
 <AdwApplicationWindow

@@ -5,6 +5,7 @@ export { useApplication } from "./hooks/use-application.js";
 export { useParentWindow } from "./hooks/use-parent-window.js";
 export { useProperty } from "./hooks/use-property.js";
 export { type SchemaRef, useSetting } from "./hooks/use-setting.js";
+export { useBindSetting } from "./hooks/use-bind-setting.js";
 export { useSignal } from "./hooks/use-signal.js";
 export { useTickCallback } from "./hooks/use-tick-callback.js";
 export type { AccessibleProps } from "./reconciler/accessible.js";
