@@ -193,23 +193,20 @@ async function stageNativeArtifacts(): Promise<void> {
     }
 }
 
+const PUBLISH_FILTERS = [
+    "--filter",
+    "!gtkx",
+    "--filter",
+    "!./examples/*",
+    "--filter",
+    "!./website",
+    "--filter",
+    "!@gtkx/e2e",
+];
+
 async function publishPackages(env: NodeJS.ProcessEnv): Promise<void> {
-    await runAsync(
-        "turbo",
-        [
-            "run",
-            "release",
-            "--filter",
-            "!gtkx",
-            "--filter",
-            "!./examples/*",
-            "--filter",
-            "!./website",
-            "--filter",
-            "!@gtkx/e2e",
-        ],
-        { env },
-    );
+    await runAsync("turbo", ["run", "build", ...PUBLISH_FILTERS], { env });
+    await runAsync("turbo", ["run", "release", ...PUBLISH_FILTERS], { env });
 }
 
 export type RegistryContext = {

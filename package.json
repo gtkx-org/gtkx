@@ -19,7 +19,7 @@
         "lint:knip": "knip",
         "release-e2e": "tsx ./scripts/release-e2e.ts",
         "tutorial": "tsx ./scripts/tutorial.ts",
-        "release": "turbo run release --filter=!gtkx --filter='!./examples/*' --filter=!./website --filter=!@gtkx/e2e",
+        "release": "turbo run build --filter=!gtkx --filter='!./examples/*' --filter=!./website --filter=!@gtkx/e2e && turbo run release --filter=!gtkx --filter='!./examples/*' --filter=!./website --filter=!@gtkx/e2e",
         "test": "turbo run test:all && turbo run test --filter=!gtkx",
         "test:all": "vitest run",
         "typecheck": "turbo run typecheck:all && turbo run typecheck --filter=!gtkx",
