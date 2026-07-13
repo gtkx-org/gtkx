@@ -102,8 +102,12 @@ export const fireEventParams: z.ZodObject<
     { widgetId: z.ZodString; signal: z.ZodString; args: z.ZodOptional<z.ZodArray<z.ZodUnknown>> },
     z.core.$strip
 > = z.object({ widgetId: z.string(), signal: z.string(), args: z.array(z.unknown()).optional() });
-export const screenshotParams: z.ZodObject<{ windowId: z.ZodOptional<z.ZodString> }, z.core.$strip> = z.object({
+export const screenshotParams: z.ZodObject<
+    { windowId: z.ZodOptional<z.ZodString>; path: z.ZodOptional<z.ZodString> },
+    z.core.$strip
+> = z.object({
     windowId: z.string().optional(),
+    path: z.string().optional(),
 });
 
 export const ServerRequestParamsSchemas: {

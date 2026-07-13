@@ -1,3 +1,5 @@
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
     invalidRequestError,
@@ -93,6 +95,11 @@ const handleScreenshot = async (
     const testing = await loadTestingModule();
     const target = params.windowId ? requireWidget(registry, params.windowId) : defaultScreenshotTarget(registry);
     const result = await testing.screenshot(target);
+    if (params.path) {
+        mkdirSync(dirname(params.path), { recursive: true });
+        writeFileSync(params.path, Buffer.from(result.data, "base64"));
+        return { data: result.data, mimeType: result.mimeType, savedPath: params.path };
+    }
     return { data: result.data, mimeType: result.mimeType };
 };
 

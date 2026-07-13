@@ -2,6 +2,8 @@
 
 This guide walks through a complete, real GNOME application built with GTKX: **Tasks**, a task manager (app id `com.gtkx.tutorial`). It looks and behaves like a native GNOME app because it *is* one. Every list, row, header bar, and dialog you see is a real GTK4 or libadwaita widget, driven from React components you already know how to write.
 
+<img src="/tasks-screenshot.png" alt="The Tasks app: an adaptive libadwaita window with a sidebar of smart views and colored user lists on the left, and a boxed task list on the right." />
+
 The app is already written. Rather than building it file by file, this guide tours the finished source and explains how each piece works, with snippets copied straight from `examples/tutorial/src`. You will recognize the shape immediately: `useState`, `useEffect`, `useRef`, props, keyed lists, controlled inputs. What is new is the *target*: instead of DOM nodes, your JSX renders `AdwApplicationWindow`, `AdwNavigationSplitView`, `GtkListBox`, and friends.
 
 ## What we are building

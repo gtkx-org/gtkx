@@ -66,6 +66,9 @@ const screenshotShape = {
     windowId: screenshotParams.shape.windowId.describe(
         "Window ID to capture. If not specified, captures the first window.",
     ),
+    path: screenshotParams.shape.path.describe(
+        "Absolute path to write the PNG to on the app's machine. If set, the screenshot is saved there in addition to being returned.",
+    ),
 };
 
 const textContent = (text: string): CallToolResult => ({ content: [{ type: "text", text }] });
@@ -165,14 +168,22 @@ const screenshotTool = (appRouter: AppRouter): Tool =>
         title: "Take screenshot",
         kind: "readOnly",
         description:
-            "Capture a screenshot of a window. Returns base64-encoded PNG image data. You can't target widgets from a screenshot; use `gtkx_get_widget_tree` to find widget IDs for interaction.",
+            "Capture a screenshot of a window. Returns base64-encoded PNG image data, and optionally writes the PNG to `path` on the app's machine. You can't target widgets from a screenshot; use `gtkx_get_widget_tree` to find widget IDs for interaction.",
         inputSchema: screenshotShape,
         handler: async ({ applicationId, ...params }) => {
-            const result = await appRouter.sendToApp<{ data: string; mimeType: string }>(
+            const result = await appRouter.sendToApp<{ data: string; mimeType: string; savedPath?: string }>(
                 applicationId,
                 "widget.screenshot",
                 params,
             );
+            if (result.savedPath) {
+                return {
+                    content: [
+                        { type: "text", text: `Screenshot saved to ${result.savedPath}` },
+                        { type: "image", data: result.data, mimeType: result.mimeType },
+                    ],
+                };
+            }
             return imageContent(result.data, result.mimeType);
         },
     });
