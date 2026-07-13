@@ -3,7 +3,7 @@
     "version": "0.0.0",
     "private": true,
     "type": "module",
-    "description": "Marketing site for GTKX — Linux desktop application development for the modern age.",
+    "description": "Marketing site for GTKX: Linux desktop application development for the modern age.",
     "scripts": {
         "dev": "vitepress dev",
         "build": "vitepress build",
