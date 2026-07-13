@@ -116,7 +116,9 @@ The reminder row is a spin button rather than a combo:
 <AdwSpinRow
     title="Reminder lead time"
     subtitle="Minutes before a task is due"
-    adjustment={<GtkAdjustment value={reminderMinutes} lower={0} upper={1440} stepIncrement={5} />}
+    adjustment={
+        <GtkAdjustment value={reminderMinutes} lower={0} upper={1440} stepIncrement={5} />
+    }
     onNotifyValue={(value) => setReminderMinutes(value ?? 30)}
 />
 ```

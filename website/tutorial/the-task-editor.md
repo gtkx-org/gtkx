@@ -39,7 +39,11 @@ The header bar also swaps. `app.tsx` builds a `detailHeader` only when a task is
 const detailHeader = selectedTask ? (
     <AdwHeaderBar
         start={
-            <GtkButton iconName="go-previous-symbolic" tooltipText="Back" onClicked={() => setSelectedTaskId(null)} />
+            <GtkButton
+                iconName="go-previous-symbolic"
+                tooltipText="Back"
+                onClicked={() => setSelectedTaskId(null)}
+            />
         }
         end={
             <>
@@ -201,7 +205,11 @@ The single-line entry row is not enough for freeform notes, so the editor drops 
                     enableUndo
                     onChanged={(buffer) =>
                         onUpdate({
-                            notes: buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false),
+                            notes: buffer.getText(
+                                buffer.getStartIter(),
+                                buffer.getEndIter(),
+                                false,
+                            ),
                         })
                     }
                 >
@@ -225,7 +233,11 @@ The last group shows timestamps you can't edit. It reuses `AdwActionRow`, but wi
 
 ```tsx
 <AdwPreferencesGroup>
-    <AdwActionRow cssClasses={["property"]} title="Created" subtitle={formatDateTime(task.createdAt)} />
+    <AdwActionRow
+        cssClasses={["property"]}
+        title="Created"
+        subtitle={formatDateTime(task.createdAt)}
+    />
     {task.completedAt ? (
         <AdwActionRow
             cssClasses={["property"]}

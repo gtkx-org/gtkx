@@ -6,7 +6,7 @@ const features = [
         icon: "M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z",
         title: "Real native widgets",
         body: "Your JSX becomes live GObject instances: actual GtkButton, AdwHeaderBar, real libadwaita. Not a webview, not a canvas.",
-        href: "/guide/app-shell",
+        href: "/tutorial/app-shell",
     },
     {
         icon: "M4 4h16v16H4zM9 9h6v6H9zM9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3",
@@ -36,7 +36,7 @@ const features = [
         icon: "M12 8V4M9 4h6M5 8h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2M9 14h.01M15 14h.01",
         title: "Agentic MCP server",
         body: "Expose your live app to AI agents over a socket: inspect, query, and drive your UI the way Playwright MCP drives the browser.",
-        href: "/guide/testing#inspecting-a-running-app",
+        href: "/guide/mcp",
     },
 ];
 </script>

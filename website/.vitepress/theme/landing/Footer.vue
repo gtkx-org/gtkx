@@ -9,9 +9,9 @@ const cols: { h: string; items: Link[] }[] = [
         h: "Docs",
         items: [
             { t: "Why GTKX", href: "/guide/why-gtkx" },
-            { t: "Tutorial", href: "/guide/" },
+            { t: "Tutorial", href: "/tutorial/" },
             { t: "Testing", href: "/guide/testing" },
-            { t: "Packaging", href: "/guide/packaging" },
+            { t: "Packaging", href: "/tutorial/packaging" },
         ],
     },
     {

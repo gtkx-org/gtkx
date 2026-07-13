@@ -5,11 +5,16 @@
     "type": "module",
     "description": "Marketing site for GTKX: Linux desktop application development for the modern age.",
     "scripts": {
-        "dev": "vitepress dev",
-        "build": "vitepress build",
+        "reference": "typedoc && node scripts/reference-search-exclude.mjs",
+        "dev": "pnpm reference && vitepress dev",
+        "build": "pnpm reference && vitepress build",
         "preview": "vitepress preview"
     },
     "devDependencies": {
+        "typedoc": "^0.28.14",
+        "typedoc-plugin-markdown": "^4.9.0",
+        "typedoc-vitepress-theme": "^1.1.3",
+        "typescript": "^5.9.3",
         "vitepress": "^2.0.0-alpha.18",
         "vue": "^3.5.39"
     }

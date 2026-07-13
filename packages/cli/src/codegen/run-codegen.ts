@@ -5,7 +5,6 @@ import { type Config, type ElementProp, loadConfig } from "@gtkx/config";
 import { info } from "@gtkx/utils";
 import { emitSchemaEnv } from "../gsettings/schema.js";
 import { resolveDataDir } from "../internal/data-dir.js";
-import { GtkxError } from "../internal/errors.js";
 import { type CodegenInputs, isCodegenStale, resolveCodegenInputs } from "./freshness.js";
 import { type CodegenStore, resolveCodegenContext } from "./store-resolver.js";
 
@@ -90,7 +89,7 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
     const { girPath, libraries, elementProps, store } = options.inputs ?? resolveCodegenInputs(cwd, config);
 
     if (girPath.length === 0) {
-        throw new GtkxError(
+        throw new Error(
             "No GIR search paths available. Install gobject-introspection (Linux: `sudo dnf install gobject-introspection-devel` or `sudo apt install libgirepository1.0-dev`), or set `girPath` in gtkx.config.ts.",
         );
     }

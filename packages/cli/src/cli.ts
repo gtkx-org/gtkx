@@ -14,6 +14,7 @@ export const main = defineCommand({
         dev: () => import("./commands/dev.js").then((m) => withErrorBoundary(m.dev)),
         build: () => import("./commands/build.js").then((m) => withErrorBoundary(m.build)),
         codegen: () => import("./commands/codegen.js").then((m) => withErrorBoundary(m.codegen)),
+        docs: () => import("./commands/docs.js").then((m) => withErrorBoundary(m.docs)),
         create: () => import("create-gtkx").then((m) => withErrorBoundary(m.createCommand)),
     },
 });

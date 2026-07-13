@@ -1,0 +1,149 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@gtkx/codegen", () => ({
+    writeDocs: vi.fn(() => ({
+        regenerated: true,
+        namespaces: [
+            {
+                name: "Gtk",
+                directory: "gtk",
+                link: "/reference/gtk/",
+                elements: [
+                    { text: "GtkBox", link: "/reference/gtk/box" },
+                    { text: "GtkButton", link: "/reference/gtk/button" },
+                ],
+            },
+            {
+                name: "Adw",
+                directory: "adw",
+                link: "/reference/adw/",
+                elements: [{ text: "AdwHeaderBar", link: "/reference/adw/header-bar" }],
+            },
+        ],
+    })),
+}));
+
+vi.mock("@gtkx/config", () => ({
+    loadConfig: vi.fn(async () => ({
+        config: { applicationId: "com.example.App", libraries: ["Gtk-4.0"] },
+        configFile: "/project/gtkx.config.ts",
+    })),
+}));
+
+vi.mock("../../src/codegen/gir-resolver.js", () => ({
+    resolveGirPath: vi.fn(() => ["/usr/share/gir-1.0"]),
+}));
+
+vi.mock("../../src/codegen/library-resolver.js", () => ({
+    resolveLibraries: vi.fn(() => ["Gtk-4.0"]),
+}));
+
+import { writeDocs } from "@gtkx/codegen";
+import { loadConfig } from "@gtkx/config";
+import { resolveGirPath } from "../../src/codegen/gir-resolver.js";
+import { resolveLibraries } from "../../src/codegen/library-resolver.js";
+import { docs } from "../../src/commands/docs.js";
+
+const writeDocsMock = vi.mocked(writeDocs);
+const loadConfigMock = vi.mocked(loadConfig);
+const resolveGirPathMock = vi.mocked(resolveGirPath);
+const resolveLibrariesMock = vi.mocked(resolveLibraries);
+
+type DocsArgs = { out?: string; "base-path"?: string; force?: boolean; cwd?: string };
+type DocsRun = NonNullable<typeof docs.run>;
+type DocsContext = Parameters<DocsRun>[0];
+
+const run = (overrides: DocsArgs): Promise<unknown> => {
+    const handler = docs.run;
+    if (!handler) throw new Error("docs command has no run handler");
+    const args = {
+        out: "docs/reference",
+        "base-path": "/reference",
+        force: false,
+        ...overrides,
+    } as DocsContext["args"];
+    return Promise.resolve(handler({ rawArgs: [], args, cmd: docs }));
+};
+
+type LogState = { stderrSpy: ReturnType<typeof vi.spyOn> };
+
+const setupLogState = (): LogState => {
+    const state = {} as LogState;
+    beforeEach(() => {
+        vi.clearAllMocks();
+        state.stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    });
+    afterEach(() => {
+        state.stderrSpy.mockRestore();
+    });
+    return state;
+};
+
+const collectLogged = (stderrSpy: ReturnType<typeof vi.spyOn>): string =>
+    stderrSpy.mock.calls.map((call: unknown[]) => String(call[0])).join("");
+
+describe("docs command", () => {
+    const state = setupLogState();
+
+    it("generates pages from the resolved config and reports totals", async () => {
+        await run({ cwd: "/custom/dir" });
+
+        expect(loadConfigMock).toHaveBeenCalledWith(expect.stringContaining("custom/dir"));
+        expect(resolveLibrariesMock).toHaveBeenCalledWith(["Gtk-4.0"], ["/usr/share/gir-1.0"]);
+        expect(writeDocsMock).toHaveBeenCalledWith({
+            libraries: ["Gtk-4.0"],
+            girPath: ["/usr/share/gir-1.0"],
+            outDir: expect.stringContaining("custom/dir/docs/reference"),
+            basePath: "/reference",
+            elementProps: {},
+            force: false,
+        });
+        expect(collectLogged(state.stderrSpy)).toContain("wrote 3 element pages across 2 namespaces");
+    });
+
+    it("passes out, base-path, force, and elementProps through", async () => {
+        loadConfigMock.mockResolvedValueOnce({
+            config: {
+                applicationId: "com.example.App",
+                elementProps: { GtkFixed: [] },
+            },
+            configFile: "/project/gtkx.config.ts",
+        } as never);
+
+        await run({ cwd: "/custom/dir", out: "site/elements", "base-path": "/elements", force: true });
+
+        expect(writeDocsMock).toHaveBeenCalledWith({
+            libraries: ["Gtk-4.0"],
+            girPath: ["/usr/share/gir-1.0"],
+            outDir: expect.stringContaining("custom/dir/site/elements"),
+            basePath: "/elements",
+            elementProps: { GtkFixed: [] },
+            force: true,
+        });
+    });
+
+    it("reports up to date when nothing was regenerated", async () => {
+        writeDocsMock.mockReturnValueOnce({ regenerated: false, namespaces: [] });
+
+        await run({});
+
+        expect(collectLogged(state.stderrSpy)).toContain("up to date");
+    });
+
+    it("fails when codegen is disabled", async () => {
+        loadConfigMock.mockResolvedValueOnce({
+            config: { applicationId: "com.example.App", codegen: false },
+            configFile: "/project/gtkx.config.ts",
+        } as never);
+
+        await expect(run({})).rejects.toThrow("codegen is disabled");
+        expect(writeDocsMock).not.toHaveBeenCalled();
+    });
+
+    it("fails when no GIR search paths are available", async () => {
+        resolveGirPathMock.mockReturnValueOnce([]);
+
+        await expect(run({})).rejects.toThrow("No GIR search paths available");
+        expect(writeDocsMock).not.toHaveBeenCalled();
+    });
+});

@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { defineConfig, type HeadConfig } from "vitepress";
+import typedocSidebar from "../reference/typedoc-sidebar.json";
 
 const title = "GTKX";
 const description =
@@ -8,26 +9,43 @@ const description =
 const url = "https://gtkx.dev";
 const ogImage = `${url}/og.png`;
 
-const guideItems = [
-    { text: "Why GTKX", link: "/guide/why-gtkx" },
-    { text: "Introduction", link: "/guide/" },
-    { text: "Getting Started", link: "/guide/getting-started" },
-    { text: "The Application Shell", link: "/guide/app-shell" },
-    { text: "Data Model and Persistence", link: "/guide/data-and-persistence" },
-    { text: "The Sidebar", link: "/guide/the-sidebar" },
-    { text: "The Task List", link: "/guide/the-task-list" },
-    { text: "Task Rows and Drag-to-Reorder", link: "/guide/task-rows-and-reordering" },
-    { text: "The Task Editor", link: "/guide/the-task-editor" },
-    { text: "Actions, Menus, and Shortcuts", link: "/guide/actions-menus-shortcuts" },
-    { text: "Selection Mode", link: "/guide/selection-and-batch" },
-    { text: "Preferences and Theming", link: "/guide/preferences-and-theming" },
-    { text: "Reminders and Notifications", link: "/guide/notifications" },
-    { text: "Feedback and Dialogs", link: "/guide/feedback-and-dialogs" },
-    { text: "Testing the App", link: "/guide/testing" },
-    { text: "Packaging and Shipping", link: "/guide/packaging" },
+const tutorialItems = [
+    { text: "Introduction", link: "/tutorial/" },
+    { text: "The Application Shell", link: "/tutorial/app-shell" },
+    { text: "Data Model and Persistence", link: "/tutorial/data-and-persistence" },
+    { text: "The Sidebar", link: "/tutorial/the-sidebar" },
+    { text: "The Task List", link: "/tutorial/the-task-list" },
+    { text: "Task Rows and Drag-to-Reorder", link: "/tutorial/task-rows-and-reordering" },
+    { text: "The Task Editor", link: "/tutorial/the-task-editor" },
+    { text: "Actions, Menus, and Shortcuts", link: "/tutorial/actions-menus-shortcuts" },
+    { text: "Selection Mode", link: "/tutorial/selection-and-batch" },
+    { text: "Preferences and Theming", link: "/tutorial/preferences-and-theming" },
+    { text: "Reminders and Notifications", link: "/tutorial/notifications" },
+    { text: "Feedback and Dialogs", link: "/tutorial/feedback-and-dialogs" },
+    { text: "Testing the App", link: "/tutorial/testing" },
+    { text: "Packaging and Shipping", link: "/tutorial/packaging" },
 ];
 
-const guideFile = (link: string): string => (link.endsWith("/") ? `${link.slice(1)}index.md` : `${link.slice(1)}.md`);
+const sidebarItems = [
+    { text: "Why GTKX", link: "/guide/why-gtkx" },
+    { text: "Getting Started", link: "/guide/getting-started" },
+    { text: "Tutorial", collapsed: false, items: tutorialItems },
+    { text: "Configuration and Codegen", link: "/guide/configuration-and-codegen" },
+    { text: "Async Operations", link: "/guide/async-operations" },
+    { text: "Error Handling", link: "/guide/error-handling" },
+    { text: "Components and Hooks", link: "/guide/components-and-hooks" },
+    { text: "Modals and Portals", link: "/guide/modals-and-portals" },
+    { text: "CSS and Animations", link: "/guide/css-and-animations" },
+    { text: "Testing", link: "/guide/testing" },
+    { text: "MCP", link: "/guide/mcp" },
+    { text: "API Reference", link: "/reference/" },
+];
+
+const docItems = sidebarItems.flatMap((item) =>
+    "items" in item ? item.items : item.link.startsWith("/reference") ? [] : [item],
+);
+
+const docFile = (link: string): string => (link.endsWith("/") ? `${link.slice(1)}index.md` : `${link.slice(1)}.md`);
 
 export default defineConfig({
     title,
@@ -40,6 +58,9 @@ export default defineConfig({
     vite: {
         server: {
             allowedHosts: ["workstation"],
+        },
+        build: {
+            chunkSizeWarningLimit: 700,
         },
     },
 
@@ -105,8 +126,8 @@ export default defineConfig({
 
     async buildEnd(siteConfig) {
         const sources = await Promise.all(
-            guideItems.map(async (item) => {
-                const file = guideFile(item.link);
+            docItems.map(async (item) => {
+                const file = docFile(item.link);
                 const source = await readFile(path.join(siteConfig.srcDir, file), "utf-8");
                 const target = path.join(siteConfig.outDir, file);
                 await mkdir(path.dirname(target), { recursive: true });
@@ -128,23 +149,16 @@ export default defineConfig({
         logo: "/gtkx-mark.svg",
         search: { provider: "local" },
         nav: [
-            { text: "Guide", link: "/guide/" },
+            { text: "Guide", link: "/guide/why-gtkx" },
+            { text: "Tutorial", link: "/tutorial/" },
+            { text: "Reference", link: "/reference/" },
             { text: "Examples", link: "https://github.com/gtkx-org/gtkx/tree/main/examples" },
             { text: "1.0 RC", link: "https://github.com/gtkx-org/gtkx#status" },
         ],
         sidebar: {
-            "/guide/": [
-                {
-                    text: "Getting Started",
-                    collapsed: false,
-                    items: guideItems.slice(0, 3),
-                },
-                {
-                    text: "Tutorial: Tasks App",
-                    collapsed: false,
-                    items: guideItems.slice(3),
-                },
-            ],
+            "/guide/": sidebarItems,
+            "/tutorial/": sidebarItems,
+            "/reference/": [{ text: "Overview", link: "/reference/" }, ...typedocSidebar],
         },
         socialLinks: [{ icon: "github", link: "https://github.com/gtkx-org/gtkx" }],
         editLink: {

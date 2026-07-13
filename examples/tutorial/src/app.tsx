@@ -1,4 +1,3 @@
-import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import * as Adw from "@gtkx/gi/adw";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -26,15 +25,16 @@ import {
     GtkShortcutController,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
-import { quit, useApplication, useSetting, useBindSetting } from "@gtkx/react";
+import { quit, useApplication, useBindSetting, useSetting } from "@gtkx/react";
+import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import schema from "#data/com.gtkx.tutorial.gschema.xml";
 import { About } from "./components/about.js";
 import { DeleteConfirmation } from "./components/delete-confirmation.js";
 import { MainMenu } from "./components/main-menu.js";
 import { NewListDialog } from "./components/new-list-dialog.js";
 import { Preferences } from "./components/preferences.js";
-import { Shortcuts } from "./components/shortcuts.js";
 import { SelectionView } from "./components/selection-view.js";
+import { Shortcuts } from "./components/shortcuts.js";
 import { Sidebar } from "./components/sidebar.js";
 import { TaskDetail } from "./components/task-detail.js";
 import { TaskList } from "./components/task-list.js";
@@ -65,7 +65,11 @@ const emptyFor = (selection: Selection, query: string): EmptyState => {
     if (selection.kind === "smart" && selection.view === "trash")
         return { icon: "user-trash-symbolic", title: "Trash Is Empty", description: "Deleted tasks appear here" };
     if (selection.kind === "smart" && selection.view === "today")
-        return { icon: "x-office-calendar-symbolic", title: "Nothing Due Today", description: "Tasks due today appear here" };
+        return {
+            icon: "x-office-calendar-symbolic",
+            title: "Nothing Due Today",
+            description: "Tasks due today appear here",
+        };
     if (selection.kind === "smart" && selection.view === "important")
         return { icon: "starred-symbolic", title: "No Important Tasks", description: "Star a task to find it here" };
     return { icon: "view-list-symbolic", title: "No Tasks Yet", description: "Add a task above to get started" };
@@ -177,7 +181,6 @@ function TasksWindow({ notify }: { notify: RefObject<NotifyHandlers> }) {
         applyColorScheme(colorScheme);
     }, [colorScheme]);
 
-
     const counts = sidebarCounts(tasks, lists);
     const visible = visibleTasks(tasks, selection, { query: searchQuery, filter, sortOrder });
     const selectedTask = tasks.find((task) => task.id === selectedTaskId) ?? null;
@@ -282,7 +285,11 @@ function TasksWindow({ notify }: { notify: RefObject<NotifyHandlers> }) {
     const detailHeader = selectedTask ? (
         <AdwHeaderBar
             start={
-                <GtkButton iconName="go-previous-symbolic" tooltipText="Back" onClicked={() => setSelectedTaskId(null)} />
+                <GtkButton
+                    iconName="go-previous-symbolic"
+                    tooltipText="Back"
+                    onClicked={() => setSelectedTaskId(null)}
+                />
             }
             end={
                 <>

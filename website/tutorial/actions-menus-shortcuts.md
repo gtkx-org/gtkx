@@ -26,7 +26,13 @@ Tasks groups the five window commands into one `WindowActions` component:
 ```tsx
 import { GSimpleAction } from "@gtkx/jsx/gio";
 
-const WindowActions = ({ onNew, onSelect, onPreferences, onShortcuts, onAbout }: {
+const WindowActions = ({
+    onNew,
+    onSelect,
+    onPreferences,
+    onShortcuts,
+    onAbout,
+}: {
     onNew: () => void;
     onSelect: () => void;
     onPreferences: () => void;
@@ -158,7 +164,12 @@ export const MainMenu = () => (
         menuModel={
             <Menu
                 items={[
-                    { section: [{ label: "New Task", action: "win.new" }, { label: "Select Tasks", action: "win.select" }] },
+                    {
+                        section: [
+                            { label: "New Task", action: "win.new" },
+                            { label: "Select Tasks", action: "win.select" },
+                        ],
+                    },
                     {
                         section: [
                             { label: "Preferences", action: "win.preferences" },
@@ -205,7 +216,13 @@ const makeShortcut = (accelerator: string, run: () => void, enabled: boolean) =>
     />
 );
 
-const AppShortcuts = ({ onSearch, onEscape, escapeEnabled, onDelete, deleteEnabled }: {
+const AppShortcuts = ({
+    onSearch,
+    onEscape,
+    escapeEnabled,
+    onDelete,
+    deleteEnabled,
+}: {
     onSearch: () => void;
     onEscape: () => void;
     escapeEnabled: boolean;

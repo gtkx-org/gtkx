@@ -1,0 +1,9 @@
+{
+    "intentionallyNotExported": [
+        "Container",
+        "ReconcilerErrorHandler",
+        "ReconcilerRootOptions",
+        "SignalHandlerFor",
+        "UseSignalOptions"
+    ]
+}

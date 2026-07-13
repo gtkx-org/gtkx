@@ -9,10 +9,10 @@ The sidebar is the left pane of the adaptive `AdwNavigationSplitView`: a single 
 Here is the entire file's import block and the shape of one row entry, straight from `components/sidebar.tsx`:
 
 ```tsx
-import { useEffect, useRef } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwActionRow } from "@gtkx/jsx/adw";
 import { GtkBox, GtkImage, GtkLabel, GtkListBox, GtkScrolledWindow } from "@gtkx/jsx/gtk";
+import { useEffect, useRef } from "react";
 import type { SidebarCounts } from "../select.js";
 import { listDot } from "../styles.js";
 import type { Selection, TaskList } from "../types.js";
@@ -35,7 +35,12 @@ The sidebar renders from a flat `Entry[]` built once per render. `buildEntries` 
 ```tsx
 const buildEntries = (lists: TaskList[], counts: SidebarCounts): Entry[] => [
     { selection: { kind: "smart", view: "all" }, title: "All Tasks", icon: "view-list-symbolic", count: counts.all },
-    { selection: { kind: "smart", view: "today" }, title: "Today", icon: "x-office-calendar-symbolic", count: counts.today },
+    {
+        selection: { kind: "smart", view: "today" },
+        title: "Today",
+        icon: "x-office-calendar-symbolic",
+        count: counts.today,
+    },
     {
         selection: { kind: "smart", view: "important" },
         title: "Important",
@@ -154,7 +159,11 @@ The dot carries no information a screen reader needs to announce, so it is marke
 The trailing number is a `GtkLabel` styled with two stock classes:
 
 ```tsx
-<GtkLabel label={String(entry.count)} valign={Gtk.Align.CENTER} cssClasses={["dimmed", "numeric"]} />
+<GtkLabel
+    label={String(entry.count)}
+    valign={Gtk.Align.CENTER}
+    cssClasses={["dimmed", "numeric"]}
+/>
 ```
 
 `.numeric` switches the label to tabular (fixed-width) figures so counts stay aligned as they change. `.dimmed` de-emphasizes the text.
@@ -173,7 +182,9 @@ export const sidebarCounts = (tasks: Task[], lists: TaskList[]): SidebarCounts =
         today: active.filter((task) => isToday(task.due)).length,
         important: active.filter((task) => task.important).length,
         trash: tasks.filter((task) => task.deleted).length,
-        lists: Object.fromEntries(lists.map((list) => [list.id, active.filter((task) => task.listId === list.id).length])),
+        lists: Object.fromEntries(
+            lists.map((list) => [list.id, active.filter((task) => task.listId === list.id).length]),
+        ),
     };
 };
 ```

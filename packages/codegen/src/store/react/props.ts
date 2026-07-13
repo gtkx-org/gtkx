@@ -147,7 +147,7 @@ type PropOwner = {
     namespace: GirNamespace;
 };
 
-const isObjectProp = (owner: PropOwner, property: GirProperty, jsName: string): boolean => {
+export const isObjectProp = (owner: PropOwner, property: GirProperty, jsName: string): boolean => {
     if (!property.writable || property.constructOnly) return false;
     if (!resolvesToGObjectClass(owner.library, property.type)) return false;
     if (jsName === "child" && classExposesMethod(owner.klass, owner.namespace, owner.library, "set_child")) {

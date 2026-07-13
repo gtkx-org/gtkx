@@ -1,8 +1,8 @@
-import { useRef } from "react";
-import * as Adw from "@gtkx/gi/adw";
+import type * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwButtonRow, AdwClamp, AdwEntryRow, AdwStatusPage } from "@gtkx/jsx/adw";
 import { GtkBox, GtkListBox, GtkScrolledWindow, GtkSearchBar, GtkSearchEntry } from "@gtkx/jsx/gtk";
+import { useRef } from "react";
 import type { Task } from "../types.js";
 import { TaskRow, type TaskRowHandlers } from "./task-row.js";
 

@@ -1,0 +1,35 @@
+{
+    "$schema": "https://typedoc.org/schema.json",
+    "plugin": ["typedoc-plugin-markdown", "typedoc-vitepress-theme"],
+    "entryPointStrategy": "packages",
+    "entryPoints": [
+        "../packages/react",
+        "../packages/testing",
+        "../packages/css",
+        "../packages/animate",
+        "../packages/config",
+        "../packages/ffi",
+        "../packages/native",
+        "../packages/gl"
+    ],
+    "packageOptions": {
+        "entryPoints": ["dist/index.d.ts"],
+        "tsconfig": "../../website/tsconfig.typedoc.json",
+        "skipErrorChecking": true,
+        "readme": "none"
+    },
+    "out": "reference",
+    "docsRoot": ".",
+    "readme": "none",
+    "cleanOutputDir": true,
+    "githubPages": false,
+    "externalSymbolLinkMappings": {
+        "@gtkx/testing": {
+            "tab": "/reference/@gtkx/testing/type-aliases/UserEvent#tab",
+            "type": "/reference/@gtkx/testing/type-aliases/UserEvent#type"
+        },
+        ".gtkx": {
+            "CssProvider": "https://docs.gtk.org/gtk4/class.CssProvider.html"
+        }
+    }
+}

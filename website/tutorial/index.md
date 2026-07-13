@@ -116,4 +116,4 @@ You can read it straight through or jump to whichever feature you need. Every pa
 
 ## Next
 
-Continue to [Getting Started](./getting-started) to scaffold the project and get the edit, save, watch-it-update loop running. From there, [The Application Shell](./app-shell) breaks down how the application, window, and adaptive split view fit together.
+Continue to [Getting Started](/guide/getting-started) to scaffold the project and get the edit, save, watch-it-update loop running. From there, [The Application Shell](./app-shell) breaks down how the application, window, and adaptive split view fit together.

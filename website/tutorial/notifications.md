@@ -54,11 +54,7 @@ GTK splits actions into window-scoped (`win.`) and application-scoped (`app.`). 
 import { useEffect, useRef } from "react";
 import type { Task } from "../types.js";
 
-export const useReminders = (
-    tasks: Task[],
-    reminderMinutes: number,
-    sendReminder: (task: Task) => void,
-): void => {
+export const useReminders = (tasks: Task[], reminderMinutes: number, sendReminder: (task: Task) => void): void => {
     const notified = useRef(new Set<string>());
 
     useEffect(() => {
@@ -93,9 +89,9 @@ The mechanics:
 Inside `TasksWindow` (`src/app.tsx`), the lead time is a setting and the send is one line bound to the application:
 
 ```tsx
-const [reminderMinutes] = useSetting(schema, "reminder-minutes");
-// ...
 const app = useApplication();
+// ...
+const [reminderMinutes] = useSetting(schema, "reminder-minutes");
 // ...
 const sendReminder = useCallback((task: Task) => app.sendNotification(task.id, buildReminder(task)), [app]);
 useReminders(tasks, reminderMinutes, sendReminder);

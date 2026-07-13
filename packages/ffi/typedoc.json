@@ -1,0 +1,12 @@
+{
+    "intentionallyNotExported": [
+        "EmitArg",
+        "ErrorLike",
+        "MixinReceiver",
+        "RegisterClassOptions",
+        "SignalConnectSpec",
+        "SignalConnectable",
+        "T",
+        "VfuncRegistry"
+    ]
+}

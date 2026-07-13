@@ -92,7 +92,11 @@ export const TaskDetail = ({ task, onUpdate, onSetImportant }: TaskDetailProps) 
                                         enableUndo
                                         onChanged={(buffer) =>
                                             onUpdate({
-                                                notes: buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false),
+                                                notes: buffer.getText(
+                                                    buffer.getStartIter(),
+                                                    buffer.getEndIter(),
+                                                    false,
+                                                ),
                                             })
                                         }
                                     >
@@ -104,7 +108,11 @@ export const TaskDetail = ({ task, onUpdate, onSetImportant }: TaskDetailProps) 
                     </GtkBox>
 
                     <AdwPreferencesGroup>
-                        <AdwActionRow cssClasses={["property"]} title="Created" subtitle={formatDateTime(task.createdAt)} />
+                        <AdwActionRow
+                            cssClasses={["property"]}
+                            title="Created"
+                            subtitle={formatDateTime(task.createdAt)}
+                        />
                         {task.completedAt ? (
                             <AdwActionRow
                                 cssClasses={["property"]}

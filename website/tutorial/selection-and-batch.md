@@ -162,7 +162,11 @@ import { GtkBox, GtkImage, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { formatDue } from "../format.js";
 import type { Task } from "../types.js";
 
-export const SelectionView = ({ tasks, selectedIds, onSelectionChanged }: {
+export const SelectionView = ({
+    tasks,
+    selectedIds,
+    onSelectionChanged,
+}: {
     tasks: Task[];
     selectedIds: string[];
     onSelectionChanged: (ids: string[]) => void;
@@ -193,9 +197,7 @@ export const SelectionView = ({ tasks, selectedIds, onSelectionChanged }: {
                             />
                         ) : null}
                     </GtkBox>
-                    {item.important ? (
-                        <GtkImage iconName="starred-symbolic" valign={Gtk.Align.CENTER} />
-                    ) : null}
+                    {item.important ? <GtkImage iconName="starred-symbolic" valign={Gtk.Align.CENTER} /> : null}
                 </GtkBox>
             )}
         />

@@ -1,11 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { Task } from "../types.js";
 
-export const useReminders = (
-    tasks: Task[],
-    reminderMinutes: number,
-    sendReminder: (task: Task) => void,
-): void => {
+export const useReminders = (tasks: Task[], reminderMinutes: number, sendReminder: (task: Task) => void): void => {
     const notified = useRef(new Set<string>());
 
     useEffect(() => {

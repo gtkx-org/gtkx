@@ -9,7 +9,12 @@ export const MainMenu = () => (
         menuModel={
             <Menu
                 items={[
-                    { section: [{ label: "New Task", action: "win.new" }, { label: "Select Tasks", action: "win.select" }] },
+                    {
+                        section: [
+                            { label: "New Task", action: "win.new" },
+                            { label: "Select Tasks", action: "win.select" },
+                        ],
+                    },
                     {
                         section: [
                             { label: "Preferences", action: "win.preferences" },

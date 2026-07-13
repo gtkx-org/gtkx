@@ -132,7 +132,11 @@ The body of the window is a single `<AdwNavigationSplitView>`. This is the adapt
     }
     content={
         <AdwNavigationPage title={titleFor(selection, lists)}>
-            <AdwToolbarView topBar={topBar} bottomBar={selecting ? selectionActionBar : undefined} revealBottomBars={selecting}>
+            <AdwToolbarView
+                topBar={topBar}
+                bottomBar={selecting ? selectionActionBar : undefined}
+                revealBottomBars={selecting}
+            >
                 {contentBody}
             </AdwToolbarView>
         </AdwNavigationPage>
@@ -192,7 +196,13 @@ Three states, three bodies: a task is open (the editor), selection mode is activ
 ```tsx
 const detailHeader = selectedTask ? (
     <AdwHeaderBar
-        start={<GtkButton iconName="go-previous-symbolic" tooltipText="Back" onClicked={() => setSelectedTaskId(null)} />}
+        start={
+            <GtkButton
+                iconName="go-previous-symbolic"
+                tooltipText="Back"
+                onClicked={() => setSelectedTaskId(null)}
+            />
+        }
         end={/* important toggle + delete */}
     />
 ) : null;

@@ -180,7 +180,11 @@ const emptyFor = (selection: Selection, query: string): EmptyState => {
     if (selection.kind === "smart" && selection.view === "trash")
         return { icon: "user-trash-symbolic", title: "Trash Is Empty", description: "Deleted tasks appear here" };
     if (selection.kind === "smart" && selection.view === "today")
-        return { icon: "x-office-calendar-symbolic", title: "Nothing Due Today", description: "Tasks due today appear here" };
+        return {
+            icon: "x-office-calendar-symbolic",
+            title: "Nothing Due Today",
+            description: "Tasks due today appear here",
+        };
     // ...
     return { icon: "view-list-symbolic", title: "No Tasks Yet", description: "Add a task above to get started" };
 };
@@ -233,7 +237,12 @@ export const visibleTasks = (
     options: { query: string; filter: Filter; sortOrder: SortOrder },
 ): Task[] =>
     tasks
-        .filter((task) => inSelection(task, selection) && matchesQuery(task, options.query) && matchesFilter(task, options.filter))
+        .filter(
+            (task) =>
+                inSelection(task, selection) &&
+                matchesQuery(task, options.query) &&
+                matchesFilter(task, options.filter),
+        )
         .sort(byOrder(options.sortOrder));
 ```
 
@@ -272,22 +281,24 @@ const matchesFilter = (task: Task, filter: Filter): boolean => {
 Sorting is likewise a JS comparator, chosen by the persisted `sort-order` setting:
 
 ```ts
-const byOrder = (order: SortOrder) => (a: Task, b: Task): number => {
-    switch (order) {
-        case "due-date": {
-            if (a.due === b.due) return a.position - b.position;
-            if (!a.due) return 1;
-            if (!b.due) return -1;
-            return a.due < b.due ? -1 : 1;
+const byOrder =
+    (order: SortOrder) =>
+    (a: Task, b: Task): number => {
+        switch (order) {
+            case "due-date": {
+                if (a.due === b.due) return a.position - b.position;
+                if (!a.due) return 1;
+                if (!b.due) return -1;
+                return a.due < b.due ? -1 : 1;
+            }
+            case "title":
+                return a.title.localeCompare(b.title);
+            case "created":
+                return a.createdAt.localeCompare(b.createdAt);
+            default:
+                return a.position - b.position;
         }
-        case "title":
-            return a.title.localeCompare(b.title);
-        case "created":
-            return a.createdAt.localeCompare(b.createdAt);
-        default:
-            return a.position - b.position;
-    }
-};
+    };
 ```
 
 `app.tsx` calls `visibleTasks` on every render and hands the result down as the `tasks` prop:

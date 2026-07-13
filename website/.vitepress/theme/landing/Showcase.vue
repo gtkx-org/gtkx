@@ -12,7 +12,7 @@ import Icon from "../components/Icon.vue";
         notifications, and a Flatpak. Every widget in it is native.
       </p>
     </div>
-    <a class="show__frame" href="/guide/">
+    <a class="show__frame" href="/tutorial/">
       <picture>
         <source srcset="/tasks-screenshot.webp" type="image/webp" />
         <img

@@ -14,7 +14,7 @@ const links = [
     { label: "How it works", href: "#how" },
     { label: "Platform", href: "#platform" },
     { label: "Testing", href: "#testing" },
-    { label: "Docs", href: "/guide/" },
+    { label: "Docs", href: "/guide/why-gtkx" },
 ];
 </script>
 

@@ -1,7 +1,7 @@
-import { useEffect, useRef } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwActionRow } from "@gtkx/jsx/adw";
 import { GtkBox, GtkImage, GtkLabel, GtkListBox, GtkScrolledWindow } from "@gtkx/jsx/gtk";
+import { useEffect, useRef } from "react";
 import type { SidebarCounts } from "../select.js";
 import { listDot } from "../styles.js";
 import type { Selection, TaskList } from "../types.js";
@@ -19,7 +19,12 @@ const keyOf = (selection: Selection): string =>
 
 const buildEntries = (lists: TaskList[], counts: SidebarCounts): Entry[] => [
     { selection: { kind: "smart", view: "all" }, title: "All Tasks", icon: "view-list-symbolic", count: counts.all },
-    { selection: { kind: "smart", view: "today" }, title: "Today", icon: "x-office-calendar-symbolic", count: counts.today },
+    {
+        selection: { kind: "smart", view: "today" },
+        title: "Today",
+        icon: "x-office-calendar-symbolic",
+        count: counts.today,
+    },
     {
         selection: { kind: "smart", view: "important" },
         title: "Important",

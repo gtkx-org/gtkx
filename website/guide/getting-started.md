@@ -225,4 +225,4 @@ With the project scaffolded and the dev loop running, you're ready to build the 
 
 ## Next
 
-Continue to **The Application Shell**, where the counter starter becomes an adaptive `AdwApplicationWindow` with a navigation split view.
+Continue to [The Application Shell](/tutorial/app-shell), where the counter starter becomes an adaptive `AdwApplicationWindow` with a navigation split view.

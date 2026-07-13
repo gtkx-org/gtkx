@@ -12,3 +12,4 @@ out-tsc/
 packages/**/README.md
 .codspeed/
 packages/gl/src/generated/
+website/reference/

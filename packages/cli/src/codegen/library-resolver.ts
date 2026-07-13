@@ -2,7 +2,6 @@ import { readdirSync } from "node:fs";
 import type { Config } from "@gtkx/config";
 import { GIR_LIBRARY_PATTERN, LIBRARIES_WILDCARD } from "@gtkx/config/internal";
 import { sortStrings } from "@gtkx/utils";
-import { GtkxError } from "../internal/errors.js";
 
 const DEFAULT_LIBRARIES: string[] = ["Gtk-4.0"];
 
@@ -16,7 +15,7 @@ export const resolveLibraries = (libraries: Config["libraries"], girPath: string
     if (libraries === LIBRARIES_WILDCARD) {
         const discovered = discoverGirNamespaces(girPath);
         if (discovered.length === 0) {
-            throw new GtkxError(
+            throw new Error(
                 `gtkx.config.ts: \`libraries: "*"\` matched no .gir files in [${girPath.join(", ")}]. ` +
                     "Install gobject-introspection data packages, or list the libraries explicitly.",
             );

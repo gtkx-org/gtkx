@@ -96,11 +96,22 @@
             }
         },
         {
-            "includes": ["packages/gl/**", "packages/e2e/tests/gl/**"],
+            "includes": ["packages/gl/**", "packages/e2e/tests/gl/**", "packages/react/src/hooks/use-bind-setting.ts"],
             "linter": {
                 "rules": {
                     "complexity": {
                         "useMaxParams": "off"
+                    }
+                }
+            }
+        },
+        {
+            "includes": ["examples/tutorial/**"],
+            "linter": {
+                "rules": {
+                    "complexity": {
+                        "noExcessiveCognitiveComplexity": "off",
+                        "noExcessiveLinesPerFunction": "off"
                     }
                 }
             }

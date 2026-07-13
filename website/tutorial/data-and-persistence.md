@@ -105,7 +105,14 @@ const seed = (): PersistedState => {
             position: 0,
             notes: "This is your first task. Tick the checkbox to complete it, or open it to add notes and a due date.",
         }),
-        make({ id: "t2", listId: "personal", title: "Water the plants", position: 1, due: isoInDays(0), important: true }),
+        make({
+            id: "t2",
+            listId: "personal",
+            title: "Water the plants",
+            position: 1,
+            due: isoInDays(0),
+            important: true,
+        }),
         // ...
     ];
     return { version: SCHEMA_VERSION, lists, tasks };

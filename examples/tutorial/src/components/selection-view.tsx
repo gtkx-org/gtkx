@@ -39,9 +39,7 @@ export const SelectionView = ({
                             />
                         ) : null}
                     </GtkBox>
-                    {item.important ? (
-                        <GtkImage iconName="starred-symbolic" valign={Gtk.Align.CENTER} />
-                    ) : null}
+                    {item.important ? <GtkImage iconName="starred-symbolic" valign={Gtk.Align.CENTER} /> : null}
                 </GtkBox>
             )}
         />

@@ -30,22 +30,24 @@ const matchesFilter = (task: Task, filter: Filter): boolean => {
     return true;
 };
 
-const byOrder = (order: SortOrder) => (a: Task, b: Task): number => {
-    switch (order) {
-        case "due-date": {
-            if (a.due === b.due) return a.position - b.position;
-            if (!a.due) return 1;
-            if (!b.due) return -1;
-            return a.due < b.due ? -1 : 1;
+const byOrder =
+    (order: SortOrder) =>
+    (a: Task, b: Task): number => {
+        switch (order) {
+            case "due-date": {
+                if (a.due === b.due) return a.position - b.position;
+                if (!a.due) return 1;
+                if (!b.due) return -1;
+                return a.due < b.due ? -1 : 1;
+            }
+            case "title":
+                return a.title.localeCompare(b.title);
+            case "created":
+                return a.createdAt.localeCompare(b.createdAt);
+            default:
+                return a.position - b.position;
         }
-        case "title":
-            return a.title.localeCompare(b.title);
-        case "created":
-            return a.createdAt.localeCompare(b.createdAt);
-        default:
-            return a.position - b.position;
-    }
-};
+    };
 
 export const visibleTasks = (
     tasks: Task[],
@@ -53,7 +55,12 @@ export const visibleTasks = (
     options: { query: string; filter: Filter; sortOrder: SortOrder },
 ): Task[] =>
     tasks
-        .filter((task) => inSelection(task, selection) && matchesQuery(task, options.query) && matchesFilter(task, options.filter))
+        .filter(
+            (task) =>
+                inSelection(task, selection) &&
+                matchesQuery(task, options.query) &&
+                matchesFilter(task, options.filter),
+        )
         .sort(byOrder(options.sortOrder));
 
 export type SidebarCounts = {
@@ -71,6 +78,8 @@ export const sidebarCounts = (tasks: Task[], lists: TaskList[]): SidebarCounts =
         today: active.filter((task) => isToday(task.due)).length,
         important: active.filter((task) => task.important).length,
         trash: tasks.filter((task) => task.deleted).length,
-        lists: Object.fromEntries(lists.map((list) => [list.id, active.filter((task) => task.listId === list.id).length])),
+        lists: Object.fromEntries(
+            lists.map((list) => [list.id, active.filter((task) => task.listId === list.id).length]),
+        ),
     };
 };

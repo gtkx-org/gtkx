@@ -1,0 +1,15 @@
+{
+    "intentionallyNotExported": [
+        "ARG_REFS",
+        "JsonValue",
+        "LoadConfigOptions",
+        "ReactCompilerOptions",
+        "configSchema",
+        "containerSchema",
+        "controlledTextSchema",
+        "elementPropSchema",
+        "lazySchema",
+        "listSchema",
+        "valueSchema"
+    ]
+}

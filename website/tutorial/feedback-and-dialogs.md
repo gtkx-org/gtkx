@@ -210,7 +210,10 @@ An alert dialog is not limited to a heading and body text. Any non-`Response` ch
 ```tsx
 const PALETTE = ["#3584e4", "#2ec27e", "#e66100", "#9141ac", "#e01b24", "#f5c211"];
 
-export const NewListDialog = ({ onAdd, onCancel }: {
+export const NewListDialog = ({
+    onAdd,
+    onCancel,
+}: {
     onAdd: (name: string, color: string) => void;
     onCancel: () => void;
 }) => {
