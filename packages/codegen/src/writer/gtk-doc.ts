@@ -6,7 +6,8 @@ const CALLABLE_LINK_KINDS: Set<string> = new Set(["method", "func", "ctor", "vfu
 
 const SENTINEL = String.fromCharCode(0xe000);
 
-const CODE_BLOCK_PATTERN = /\|\[(?:\s*<!--\s*language="([^"]*)"\s*-->)?\s*\n?([\s\S]*?)\]\|/g;
+const CODE_BLOCK_PATTERN = /\|\[([\s\S]*?)\]\|/g;
+const CODE_LANGUAGE_PATTERN = /^\s*<!--\s*language="([^"]*)"\s*-->/;
 const FENCED_BLOCK_PATTERN = /```[\s\S]*?```/g;
 const INLINE_CODE_PATTERN = /`[^`\n]*`/g;
 const LINK_PATTERN = /\[(\w+)@([\w.:%#-]+)\]/g;
@@ -33,9 +34,12 @@ export const gtkDocToMarkdown = (raw: string): string => {
         return token;
     };
 
-    let text = raw.replace(CODE_BLOCK_PATTERN, (_match, language: string | undefined, code: string) => {
-        const fence = (language ?? "").trim().toLowerCase();
-        return protect(`\`\`\`${fence}\n${code.replace(/^\n+|\n+$/g, "")}\n\`\`\``);
+    let text = raw.replace(CODE_BLOCK_PATTERN, (_match, body: string) => {
+        const languageMatch = body.match(CODE_LANGUAGE_PATTERN);
+        const fence = (languageMatch?.[1] ?? "").trim().toLowerCase();
+        const rest = languageMatch === null ? body : body.slice(languageMatch[0].length);
+        const code = rest.replace(/^\s+/, "").replace(/\n+$/, "");
+        return protect(`\`\`\`${fence}\n${code}\n\`\`\``);
     });
     text = text.replace(FENCED_BLOCK_PATTERN, (block) => protect(block));
     text = text.replace(INLINE_CODE_PATTERN, (span) => protect(span));
