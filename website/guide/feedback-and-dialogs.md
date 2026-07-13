@@ -257,7 +257,7 @@ The form is ordinary controlled React: local `name` and `color` state, `onChange
 
 Two details make it feel native. **`activatesDefault`** on the entry means pressing Return in the text field triggers the default response, and `defaultResponse="add"` makes that Add. So you can type a name and hit Enter without reaching for the mouse. **`Adw.ResponseAppearance.SUGGESTED`** styles Add as the accent affirmative (blue), the counterpart to the destructive red on the delete confirm.
 
-The swatches also show the accessibility pattern for decorative content: the visible colored square is a `GtkBox` marked `accessibleRole={Gtk.AccessibleRole.PRESENTATION}` (it is pure decoration, hidden from assistive tech), while the meaning lives on the button's `accessibleLabel={`Color ${swatch}`}`.
+The swatches also show the accessibility pattern for decorative content: the visible colored square is a `GtkBox` marked `accessibleRole={Gtk.AccessibleRole.PRESENTATION}` (it is pure decoration, hidden from assistive tech), while the meaning lives on the button's ``accessibleLabel={`Color ${swatch}`}``.
 
 ## The About dialog
 
@@ -295,4 +295,4 @@ Note the difference between `onResponse` on an alert dialog (fires with the chos
 
 ## Next
 
-Continue to **Preferences and Settings** to see the same `<Dialog>` wrapper carry an `AdwPreferencesDialog`, and how `useSetting` binds those rows two-way to a GSettings schema.
+Continue to **Testing the App** to see how the accessibility metadata set on these dialogs and rows makes the whole app queryable, and how `@gtkx/testing` drives it with user events.

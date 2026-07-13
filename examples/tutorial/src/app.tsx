@@ -25,14 +25,14 @@ import {
     GtkShortcutController,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
-import { quit, useApplication, useParentWindow, useSetting, useSignal } from "@gtkx/react";
+import { quit, useApplication, useSetting, useSignal } from "@gtkx/react";
 import schema from "#data/com.gtkx.tutorial.gschema.xml";
 import { About } from "./components/about.js";
 import { DeleteConfirmation } from "./components/delete-confirmation.js";
 import { MainMenu } from "./components/main-menu.js";
 import { NewListDialog } from "./components/new-list-dialog.js";
 import { Preferences } from "./components/preferences.js";
-import { showShortcutsDialog } from "./components/shortcuts.js";
+import { Shortcuts } from "./components/shortcuts.js";
 import { SelectionView } from "./components/selection-view.js";
 import { Sidebar } from "./components/sidebar.js";
 import { TaskDetail } from "./components/task-detail.js";
@@ -157,6 +157,7 @@ function TasksWindow({ notify }: { notify: RefObject<NotifyHandlers> }) {
     const [breakpoint, setBreakpoint] = useState<Adw.Breakpoint | null>(null);
     const [showPreferences, setShowPreferences] = useState(false);
     const [showAbout, setShowAbout] = useState(false);
+    const [showShortcuts, setShowShortcuts] = useState(false);
     const [showNewList, setShowNewList] = useState(false);
     const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
     const [selecting, setSelecting] = useState(false);
@@ -171,7 +172,6 @@ function TasksWindow({ notify }: { notify: RefObject<NotifyHandlers> }) {
 
     const windowRef = useRef<Adw.ApplicationWindow | null>(null);
     const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
-    const parentWindow = useParentWindow();
 
     useEffect(() => {
         applyColorScheme(colorScheme);
@@ -429,9 +429,7 @@ function TasksWindow({ notify }: { notify: RefObject<NotifyHandlers> }) {
                     onNew={newTask}
                     onSelect={enterSelection}
                     onPreferences={() => setShowPreferences(true)}
-                    onShortcuts={() => {
-                        if (parentWindow) showShortcutsDialog(parentWindow);
-                    }}
+                    onShortcuts={() => setShowShortcuts(true)}
                     onAbout={() => setShowAbout(true)}
                 />
             }
@@ -493,6 +491,7 @@ function TasksWindow({ notify }: { notify: RefObject<NotifyHandlers> }) {
 
             {showPreferences ? <Preferences onClose={() => setShowPreferences(false)} /> : null}
             {showAbout ? <About onClose={() => setShowAbout(false)} /> : null}
+            {showShortcuts ? <Shortcuts onClose={() => setShowShortcuts(false)} /> : null}
             {showNewList ? (
                 <NewListDialog
                     onAdd={(name, color) => {

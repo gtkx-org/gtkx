@@ -224,18 +224,29 @@ export const addRow = css`
 export const dueLabel = css`
     font-size: 0.9em;
 `;
+
+export const detailNotes = css`
+    padding: 6px;
+    min-height: 160px;
+`;
 ```
 
-`css` returns a string like `gtkx-1a2b3c`, a class name. There is no `className` prop anywhere in gtkx; you pass the class into the universal `cssClasses` prop, which every widget exposes as `string[]`:
+`css` returns a string like `gtkx-1a2b3c`, a class name. There is no `className` prop anywhere in gtkx; you pass the class into the universal `cssClasses` prop, which every widget exposes as `string[]`. The sidebar uses `listDot` to give each list a colored dot:
 
 ```tsx
-<GtkImage cssClasses={[listDot(list.color)]} /* ... */ />
+<GtkBox
+    valign={Gtk.Align.CENTER}
+    cssClasses={[listDot(entry.color)]}
+    accessibleRole={Gtk.AccessibleRole.PRESENTATION}
+/>
 ```
+
+When you need to merge or conditionally combine classes, `@gtkx/css` also exports `cx`: it drops falsy entries and returns a `string[]` ready to spread into `cssClasses`, for example `cssClasses={cx(base, active && activeStyle)}`.
 
 Two GTK-specific idioms show up in these rules:
 
 - **GTK named colors** via `@name`. `@accent_bg_color` is one of libadwaita's semantic palette colors, and it resolves to whatever the current theme (including the light/dark scheme you just set) defines. Style against these instead of hardcoded hex values and your widgets stay correct across themes automatically.
-- **`alpha()`**, GTK's own color function: `alpha(@accent_bg_color, 0.08)` tints the add-task row with a faint accent wash. It is a GTK CSS function, not web CSS.
+- **`alpha()`**, GTK's own color function: `alpha(@accent_bg_color, 0.08)` produces a faint accent-tinted background. It is a GTK CSS function, not web CSS.
 
 `listDot` is a function rather than a constant so each user list can pass its own `color` in through interpolation, giving every list its colored dot from one style definition.
 

@@ -31,6 +31,7 @@ To ship a binary that does not depend on a system Node, the tutorial bundles the
 ```
 
 - `scripts/bundle.ts` re-bundles `dist/bundle.js` into a CommonJS file (`dist/bundle.cjs`) with a small shim that resolves `gtkx.node` next to the executable at runtime.
+- `scripts/bundle-postject.ts` (the `bundle:postject` script) bundles the `postject` CLI into `vendor/postject.cjs`, so the sandboxed Flatpak build can inject the blob offline without fetching anything.
 - `sea-config.json` tells Node what to embed:
 
 ```json
@@ -42,7 +43,7 @@ To ship a binary that does not depend on a system Node, the tutorial bundles the
 }
 ```
 
-- `build:sea` runs `node --experimental-sea-config sea-config.json` to produce the blob, copies the `node` binary, and uses `postject` to inject the blob as an ELF section. The result is a standalone `gtkx-tutorial` executable with `gtkx.node` beside it.
+- `build:sea` runs `node --experimental-sea-config sea-config.json` to produce the blob, copies the `node` binary to `dist/app`, and uses `postject` to inject the blob as an ELF section. The result is a standalone `dist/app` binary with `dist/gtkx.node` beside it. The Flatpak build below installs that same binary as `gtkx-tutorial`.
 
 ::: warning
 The SEA blob is appended to the `node` binary as an ELF section. Stripping the binary would corrupt the embedded app, so any packaging step must leave it unstripped.
@@ -67,7 +68,18 @@ finish-args:
   - --device=dri
 ```
 
-The `finish-args` are intentionally minimal: no `--filesystem` permission is granted. File access happens through XDG desktop portals, and notifications are routed through the portal automatically, so `Gio.Application.send_notification` works without extra permissions.
+The `finish-args` are intentionally minimal: no `--filesystem` permission is granted. File access happens through XDG desktop portals, and notifications are routed through the portal automatically, so `app.sendNotification` works without extra permissions.
+
+The `build-options` point npm at the SDK's Node and, crucially, turn off stripping so the SEA-injected binary stays intact:
+
+```yaml
+build-options:
+  append-path: /usr/lib/sdk/node24/bin
+  env:
+    npm_config_nodedir: /usr/lib/sdk/node24
+  no-debuginfo: true
+  strip: false   # the SEA blob is an ELF section; stripping would corrupt it
+```
 
 The module builds the SEA and installs everything under `/app`:
 
@@ -101,6 +113,7 @@ GenericName=Task Manager
 Comment=Manage your tasks and to-dos
 Exec=gtkx-tutorial
 Icon=com.gtkx.tutorial
+Terminal=false
 Type=Application
 Categories=Office;ProjectManagement;
 Keywords=Task;Tasks;Todo;To-do;Checklist;
@@ -109,7 +122,7 @@ X-GNOME-UsesNotifications=true
 DBusActivatable=true
 ```
 
-`X-GNOME-UsesNotifications=true` surfaces the app in Settings, Notifications, and `DBusActivatable=true` lets the shell activate the app to deliver a reminder action even when it is not running.
+`X-GNOME-UsesNotifications=true` surfaces the app in GNOME Settings under Notifications, and `DBusActivatable=true` lets the shell activate the app to deliver a reminder action even when it is not running.
 
 The AppStream `metainfo.xml` provides the store listing: name, summary, description, screenshots, license, releases, and a content rating. Its `id` must match the app id, and its `launchable` must point at the `.desktop` file.
 

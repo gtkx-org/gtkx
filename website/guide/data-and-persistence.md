@@ -310,7 +310,7 @@ const reorder = (draggedId: string, targetId: string): void =>
     });
 ```
 
-Returning the original `tasks` array unchanged when the indices are missing or equal is what lets React skip a re-render for a no-op drag.
+Returning the original `tasks` array unchanged when the indices are missing or equal skips the splice and reindex work for a no-op drag.
 
 ### What the hook returns
 
@@ -442,4 +442,4 @@ Because gtkx bundles a Node runtime, `node:fs` (`readFileSync`, `writeFileSync`,
 
 ## Next
 
-Continue to **Actions, Menus, and Keyboard Shortcuts** to see how these mutations get wired to `GSimpleAction`s, menu models, and accelerators.
+Continue to **The Sidebar**, where the `Selection` and `SmartView` types from `types.ts` drive the navigation list, the smart views, and the user's task lists.

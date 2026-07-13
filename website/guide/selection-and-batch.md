@@ -155,6 +155,8 @@ const contentBody = selectedTask ? (
 import { ListView } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkImage, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
+import { formatDue } from "../format.js";
+import type { Task } from "../types.js";
 
 export const SelectionView = ({ tasks, selectedIds, onSelectionChanged }: {
     tasks: Task[];
@@ -220,7 +222,7 @@ Tasks deliberately renders its tasks two different ways, and selection mode is t
 </GtkListBox>
 ```
 
-A boxed list materializes one widget per item. That is perfect for a small, static, richly-styled list (checkboxes, star toggles, delete buttons, drag handles, the inline add row), and it is the idiomatic GNOME default for exactly that case. But it does not scale: a thousand tasks means a thousand live rows.
+A boxed list materializes one widget per item. That is perfect for a small, static, richly-styled list (checkboxes, star toggles, delete buttons, drag-to-reorder, the inline add row), and it is the idiomatic GNOME default for exactly that case. But it does not scale: a thousand tasks means a thousand live rows.
 
 `SelectionView` swaps in `ListView`, which recycles a small pool of row widgets and reuses them as you scroll, so the widget count stays roughly constant no matter how many tasks exist. That is the trade the two lists make concrete: the boxed `GtkListBox` for the everyday small list, the recycled `ListView` for the potentially large batch-selection list. It also happens to be where multi-selection lives naturally, since `ListView` exposes `selectionMode`/`selectedIds` as first-class props while a boxed list is `Gtk.SelectionMode.NONE`.
 
@@ -265,4 +267,4 @@ It snapshots the ids into a local `const ids = [...selectedIds]` first, because 
 
 ## Next
 
-Continue to **Preferences and Settings** to see how `useSetting` binds the app's GSettings schema to two-way-bound rows.
+Continue to **Preferences and Theming** to see how `useSetting` binds the app's GSettings schema to two-way-bound rows.

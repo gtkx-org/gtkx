@@ -214,7 +214,7 @@ const [filter, setFilter] = useSetting(schema, "filter");
 titleWidget={<FilterToggle filter={filter} onChange={setFilter} />}
 ```
 
-`useSetting(schema, "filter")` returns a `[value, setValue]` tuple, just like `useState`, but the value is persisted in GSettings (the GNOME settings store) and typed from the compiled schema. Change the filter, quit, relaunch, and the same tab is still selected. The next page covers `useSetting` in depth; here it is enough to see that a segmented toggle plus one hook gives you persisted UI state for free.
+`useSetting(schema, "filter")` returns a `[value, setValue]` tuple, just like `useState`, but the value is persisted in GSettings (the GNOME settings store) and typed from the compiled schema. Change the filter, quit, relaunch, and the same tab is still selected. The Preferences and Theming page covers `useSetting` in depth; here it is enough to see that a segmented toggle plus one hook gives you persisted UI state for free.
 
 ## Where filtering actually happens: `select.ts`
 
@@ -302,4 +302,4 @@ Because the list is derived, `visibleTasks` recomputes on every render. For a pe
 
 ## Next
 
-Continue to **The Task Row** to see how each row renders its checkbox, star, and delete controls, and how drag-to-reorder is wired up.
+Continue to **Task Rows and Drag-to-Reorder** to see how each row renders its checkbox, star, and delete controls, and how drag-to-reorder is wired up.

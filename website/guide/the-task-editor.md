@@ -21,7 +21,7 @@ const contentBody = selectedTask ? (
 );
 ```
 
-The `key={selectedTask.id}` is the important part. React uses the key to decide whether a rendered element is "the same" component as last time. When you switch from task A to task B, the key changes, so React unmounts the old `TaskDetail` and mounts a brand new one. Every GTK widget inside is destroyed and rebuilt against B's data. Without the key, React would reuse the mounted instance and only diff props, which for uncontrolled bits like the `GtkTextBuffer`'s text would leave A's notes sitting in B's editor. Keying by id is how you get "remount on switch" for free.
+The `key={selectedTask.id}` is the important part. React uses the key to decide whether a rendered element is "the same" component as last time. When you switch from task A to task B, the key changes, so React unmounts the old `TaskDetail` and mounts a brand new one. Every GTK widget inside is destroyed and rebuilt against B's data. The controlled props (the entry `text`, the buffer's text child, the calendar `date`) would re-sync on their own if you reused the instance, but the internal GTK state React never sees (the text cursor and undo stack, the notes scroll position, the month the calendar has navigated to) would carry A's editing session into B. Keying by id is how you get "remount on switch" for free.
 
 ::: info WHY REMOUNT INSTEAD OF DIFF
 GTK widgets hold their own internal state that React doesn't track. A `GtkTextView` remembers cursor position and undo history; a `GtkCalendar` remembers which month is shown. Remounting throws all of that away and starts clean for the newly-selected task, which is exactly what you want when the identity of the thing being edited changes.
@@ -87,7 +87,7 @@ export const TaskDetail = ({ task, onUpdate, onSetImportant }: TaskDetailProps) 
 
 `GtkScrolledWindow` with `vexpand` lets the whole form scroll when the notes push it past the window height. Both `AdwClamp` and `GtkScrolledWindow` are single-child containers, so their one child is passed as JSX children and placed via `set_child` under the hood.
 
-`GLib.DateTime.newFromIso8601(task.due, null)` parses the stored ISO string into a GLib date object up front. The second argument is a default timezone (null means use the offset in the string). `dueDate` is `undefined` when the task has no due date, and it feeds the calendar below.
+`GLib.DateTime.newFromIso8601(task.due, null)` parses the stored ISO string into a GLib date object up front. The second argument is a fallback timezone, consulted only when the string carries no offset. The stored strings always include one (they come from `toISOString()`, which emits a trailing `Z`), so passing `null` is fine here. `dueDate` is `undefined` when the task has no due date, and it feeds the calendar below.
 
 ## Title and Important: a preferences group
 
@@ -111,9 +111,9 @@ The first section is an `AdwPreferencesGroup`, which renders its rows as a singl
 </AdwPreferencesGroup>
 ```
 
-`AdwEntryRow` is a labeled text field styled as a list row. `showApplyButton` adds a checkmark button that appears once you edit the text, and it commits on two events: clicking that button fires `apply` (`onApply`), and pressing Enter in the field fires `entry-activated` (`onEntryActivated`). Both read the committed text off the live widget with `self.text` and push it up through `onUpdate`. Deferring the write to an explicit apply, rather than saving on every keystroke, is why the row uses `text` as an initial value here rather than a fully controlled per-keystroke binding.
+`AdwEntryRow` is a labeled text field styled as a list row. `showApplyButton` adds a checkmark button that appears once you edit the text, and it commits on two events: clicking that button fires `apply` (`onApply`), and pressing Enter in the field fires `entry-activated` (`onEntryActivated`). Both read the committed text off the live widget with `self.text` and push it up through `onUpdate`. There is no per-keystroke `onChanged` handler wired to `onUpdate` here, so the title is written only when you explicitly apply it, not on every character. The `text={task.title}` binding stays controlled and re-syncs whenever the committed title changes.
 
-`AdwSwitchRow` is an action row with a `GtkSwitch` on the trailing edge. There is no settable "toggled" signal; instead you listen to the property change with `onNotifyActive`, which is the `notify::active` handler. Its first argument is the new value (typed `boolean | null`, hence the `?? false`). This is the general pattern for switch and toggle state in gtkx: read the boolean out of the `notify` on the property, not a custom event.
+`AdwSwitchRow` is an action row with a `GtkSwitch` on the trailing edge. The row has no `toggled` signal; instead you listen to the property change with `onNotifyActive`, which is the `notify::active` handler. Its first argument is the new value (typed `boolean | null`, hence the `?? false`). This is the general pattern for switch and toggle state in gtkx: read the boolean out of the `notify` on the property, not a custom event.
 
 ## The due date: a calendar in a popover
 
@@ -236,4 +236,4 @@ The last group shows timestamps you can't edit. It reuses `AdwActionRow`, but wi
 
 ## Next
 
-Continue with **Batch Selection and the Action Bar**.
+Continue to **Actions, Menus, and Shortcuts** to wire up the app's `GSimpleAction`s, the main menu, and keyboard accelerators.

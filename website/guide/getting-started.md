@@ -9,7 +9,7 @@ gtkx is Linux-only, because it renders through the system's real GTK4 and libadw
 - Linux with the GTK4, libadwaita, and GLib development libraries installed
 - Node.js 24 or later
 
-The native addon (`@gtkx/native`) ships prebuilt for common platforms. On anything else it compiles from source, which needs a Rust toolchain.
+The native addon (`@gtkx/native`) ships prebuilt for the common Linux architectures. On anything else it compiles from source, which needs a Rust toolchain.
 
 ## Scaffolding a new app
 
@@ -90,7 +90,7 @@ import { App } from "./app.js";
 createRoot().render(<App />);
 ```
 
-`createRoot()` from `@gtkx/react` returns a root with the familiar `render(element)` / `unmount()` pair. There's no container argument to pass because the "container" is the native application itself, not an element in a page. `<App />` is your top-level component, and it renders `<AdwApplication>` (imported from `@gtkx/jsx/adw`). That element is what calls `adw_init` and owns the libadwaita style manager, and it picks up the `applicationId` from your config automatically.
+`createRoot()` from `@gtkx/react` returns a root with the familiar `render(element)` / `unmount()` pair. There's no container argument to pass because the "container" is the native application itself, not an element in a page. `<App />` is your top-level component. The counter starter wrapped its window in `<GtkApplication>`; the Tasks app swaps that for `<AdwApplication>` (imported from `@gtkx/jsx/adw`) to pull in libadwaita. Constructing that `Adw.Application` calls `adw_init` and sets up the libadwaita style manager, and it picks up the `applicationId` from your config automatically.
 
 ::: info
 Note the `./app.js` import specifier even though the file is `app.tsx`. The project uses `"module": "NodeNext"`, which follows Node's ESM resolution: you write the `.js` extension the compiler emits, and it resolves the `.tsx` source.

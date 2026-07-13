@@ -2,7 +2,7 @@
 
 Everything the app renders lives inside one `AdwApplicationWindow`. There is no router, no second window, no page stack you push and pop. Instead `app.tsx` builds a fixed adaptive frame (an application, a window, a split view, two toolbar views) and then swaps what fills the content pane purely from React state. This page walks that frame top to bottom: how the GTK application and window are declared, how window size is persisted on close, how the layout collapses to a phone-width single column, and why the detail/list/selection swap is driven by state rather than by GTK's own navigation stack.
 
-The file exports two components. `App` is the application root and the home of app-scoped actions; `TasksWindow` is the single window and holds all of the UI state. Everything else in the tutorial hangs off this shell.
+The file defines two components. `App` is the exported application root and the home of app-scoped actions; `TasksWindow` is a local component holding the single window and all of the UI state. Everything else in the tutorial hangs off this shell.
 
 ## The application root
 

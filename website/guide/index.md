@@ -65,13 +65,13 @@ Each feature in Tasks is here because it shows off a distinct GTKX or GTK4 capab
 
 | Feature | What you see in the app | GTKX / GTK4 capability it teaches |
 |---|---|---|
-| **Local persistence** | Tasks and lists survive a restart | A `useTasks()` hook over a JSON store (`node:fs` + `GLib` XDG paths); lightweight UI state via `useSetting` + `GSettings` |
+| **Local persistence** | Tasks and lists survive a restart | A `useTasks()` hook over a JSON store (`GLib` file APIs writing to the XDG data dir); lightweight UI state via `useSetting` + `GSettings` |
 | **Adaptive layout** | Sidebar and content sit side by side, then collapse to one column when the window narrows | `AdwNavigationSplitView` with a controlled `collapsed` prop, driven by an `AdwBreakpoint`'s `apply`/`unapply` signals |
 | **Boxed lists** | Tasks in a rounded, card-style list | `GtkListBox` / `AdwActionRow` in the `boxed-list` style |
 | **Drag to reorder** | Drag a task row to a new position | `GtkDragSource` + `GtkDropTarget` mounted on a widget's `controllers` slot, closing the loop in React state |
 | **Filter and search** | An All / Open / Done segmented toggle, plus `Ctrl+F` text search | `AdwToggleGroup` + `AdwToggle`; `GtkSearchBar` + `GtkSearchEntry` |
 | **Selection mode** | Batch Complete / Move / Delete with a revealed bottom bar | A `selecting` state, a dedicated `SelectionView`, and a `GtkActionBar` in the toolbar's `bottomBar` slot |
-| **Task editor** | A form for title, notes, due date, and priority | `AdwClamp`, preference-style rows, and a `GtkCalendar`, in a `TaskDetail` component |
+| **Task editor** | A form for title, notes, due date, and an importance toggle | `AdwClamp`, preference-style rows, a `GtkCalendar`, and a `GtkTextView`, in a `TaskDetail` component |
 | **Preferences** | Appearance, default sort, reminder timing | An `AdwPreferencesDialog` rendered through a portal, with two-way `useSetting` bindings |
 | **Theming** | Follow the system theme, or force light / dark | `applyColorScheme` feeding `Adw.StyleManager` |
 | **Undo toasts** | "Moved to Trash" with an Undo button | `Adw.Toast` added imperatively to an `AdwToastOverlay` |
@@ -82,7 +82,7 @@ Every one of these is real, working code in `examples/tutorial/src`. Nothing is 
 
 ## What GTKX is
 
-GTKX is a React renderer that targets native GTK4 and libadwaita instead of the DOM. You write declarative JSX; a Rust GObject runtime instantiates and updates real GTK widgets underneath. There is no webview, no Electron, no HTML or CSS-in-a-browser. Every component you import from `@gtkx/jsx/adw`, `@gtkx/jsx/gtk`, and `@gtkx/jsx/gio` maps one-to-one onto a GObject class (`AdwHeaderBar` is `Adw.HeaderBar`, `GtkButton` is `Gtk.Button`), so anything you can find in the GTK4 or libadwaita documentation is reachable from React. Because it runs on a Node runtime, you also keep the full JavaScript ecosystem: `node:fs` for persistence, `crypto.randomUUID`, and any npm package that does not need the DOM.
+GTKX is a React renderer that targets native GTK4 and libadwaita instead of the DOM. You write declarative JSX; a Rust GObject runtime instantiates and updates real GTK widgets underneath. There is no webview, no Electron, no HTML or CSS-in-a-browser. Every component you import from `@gtkx/jsx/adw`, `@gtkx/jsx/gtk`, and `@gtkx/jsx/gio` maps one-to-one onto a GObject class (`AdwHeaderBar` is `Adw.HeaderBar`, `GtkButton` is `Gtk.Button`), so anything you can find in the GTK4 or libadwaita documentation is reachable from React. Because it runs on a Node runtime, you also keep the full JavaScript ecosystem: `crypto.randomUUID` for ids, `TextEncoder` / `TextDecoder` for the JSON store, and any npm package that does not need the DOM.
 
 ::: info React knowledge transfers directly
 State, effects, refs, context, keys, and controlled components all work exactly as they do on the web. The parts to learn are on the GTK side: which widget does what, how libadwaita's adaptive containers behave, and the handful of GTKX conventions for slots, refs, and signals. This guide leads with those.
@@ -109,4 +109,4 @@ You can read it straight through or jump to whichever feature you need. Every pa
 
 ## Next
 
-Continue to **The App Shell** to see how the application, window, and split view fit together.
+Continue to [Getting Started](./getting-started) to scaffold the project and get the edit, save, watch-it-update loop running. From there, [The Application Shell](./app-shell) breaks down how the application, window, and adaptive split view fit together.

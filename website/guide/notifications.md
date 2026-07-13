@@ -192,4 +192,4 @@ Under Flatpak, notifications are routed through the `org.freedesktop.portal.Noti
 
 ## Next
 
-Continue to **Packaging and Distribution**.
+Continue to **Feedback and Dialogs** to see how the app confirms and softens destructive actions with toasts and alert dialogs.

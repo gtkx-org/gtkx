@@ -8,48 +8,58 @@ The examples below are illustrative, they show the kind of tests you would add t
 
 ## Rendering and querying
 
-`render` mounts the component and returns a `screen` you query by role, name, or text. The names and roles come from the accessibility metadata you set in the components (the `accessibleLabel` and `accessibleRole` props from the [Task Rows](/guide/task-rows-and-reordering) chapter), so well-labelled UI is testable UI.
+`render` mounts a tree and gives you a `screen` you query by role, name, or text. Because `App` is itself an `AdwApplication` (not a plain widget), render it into the top-level `rootElement`. Passing no container instead mounts into a throwaway `Gtk.Window`, which cannot host an application.
 
 ```tsx
-import { render, screen, userEvent } from "@gtkx/testing";
 import * as Gtk from "@gtkx/gi/gtk";
+import { rootElement } from "@gtkx/react";
+import { render, screen, userEvent } from "@gtkx/testing";
 import { App } from "../src/app.js";
 
 it("marks a task complete", async () => {
-  await render(<App />);
+  await render(<App />, { container: rootElement });
 
-  const checkboxes = await screen.findAllByRole("checkbox");
-  await userEvent.click(checkboxes[0]);
+  const checkbox = screen.getAllByRole(Gtk.AccessibleRole.CHECKBOX)[0] as Gtk.CheckButton;
+  await userEvent.click(checkbox);
 
-  expect(checkboxes[0].active).toBe(true);
+  expect(checkbox.getActive()).toBe(true);
 });
 ```
 
-`userEvent.click` synthesizes a real click on the widget, which runs the same `onToggled` handler the app uses in production. The assertion reads the live `active` property off the `Gtk.CheckButton`.
+Every task row exposes a `GtkCheckButton` with `accessibleLabel="Mark complete"` (from the [Task Rows](/guide/task-rows-and-reordering) chapter), and a check button reports the `CHECKBOX` role, so `getAllByRole(Gtk.AccessibleRole.CHECKBOX)` returns one per task. `userEvent.click` runs the same `onToggled` handler the app uses in production, and the assertion reads the live `active` property off the `Gtk.CheckButton`.
+
+`screen` exposes the full query family. `findBy*` waits for a match and is async, `getBy*` and `getAllBy*` return immediately and throw when nothing matches, and `queryBy*` returns `null` instead of throwing. The ones you reach for most:
+
+- `findByText` / `findAllByText`: match a widget's rendered label text.
+- `findByRole` / `getAllByRole`: match an accessible role, always a `Gtk.AccessibleRole` value (never a string), optionally narrowed by `{ name }`, `{ checked }`, `{ selected }`, and similar. The `name` option matches the accessible name, which comes from an `accessibleLabel` or from a container's child labels.
+- `findByName`: match a widget's `name` property, the value you set with the `name` prop, when you want to grab one specific widget directly.
 
 ## Driving a flow
 
-Queries and events compose into full flows. Opening a task and checking that the editor appears:
+Queries and events compose into full flows. Task rows are `AdwActionRow`s, which report the `LIST_ITEM` role and take their accessible name from the title, so a regular expression matches the row without the exact markup. Each row wires `onActivated`, so firing its `activated` signal opens the detail pane, which renders a "Notes" heading:
 
 ```tsx
-it("opens the editor when a task is activated", async () => {
-  await render(<App />);
+import { fireEvent } from "@gtkx/testing";
 
-  const row = await screen.findByText("Water the plants");
-  await userEvent.click(row);
+it("opens the detail view when a task is activated", async () => {
+  await render(<App />, { container: rootElement });
+
+  const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ });
+  await fireEvent(row, "activated");
 
   expect(await screen.findByText("Notes")).toBeDefined();
 });
 ```
 
-Adding a task through the inline entry row:
+Adding a task through the inline entry row. The `AdwEntryRow` surfaces its editable with the `TEXT_BOX` role (the search entry stays hidden, and therefore out of the accessibility tree, until you start a search). `userEvent.type` inserts text, then `userEvent.keyboard` presses Enter, which activates the entry and fires the `onEntryActivated` handler:
 
 ```tsx
 it("adds a task from the entry row", async () => {
-  await render(<App />);
+  await render(<App />, { container: rootElement });
 
-  const entry = await screen.findByRole("text");
-  await userEvent.type(entry, "Book flights\n");
+  const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+  await userEvent.type(entry, "Book flights");
+  await userEvent.keyboard(entry, "{Enter}");
 
   expect(await screen.findByText("Book flights")).toBeDefined();
 });
@@ -57,24 +67,26 @@ it("adds a task from the entry row", async () => {
 
 ## Drag and drop
 
-`@gtkx/testing` can even synthesize the drag-to-reorder gesture from the [Task Rows](/guide/task-rows-and-reordering) chapter. `userEvent.dragAndDrop` verifies the source's `GtkDragSource`, then delivers the payload to the target's `GtkDropTarget` as a marshalled `GObject.Value`:
+`@gtkx/testing` can even synthesize the drag-to-reorder gesture from the [Task Rows](/guide/task-rows-and-reordering) chapter. Every row carries a `GtkDragSource` and `GtkDropTarget` whenever manual sort order is active, which is the default. `userEvent.dragAndDrop` verifies the source's drag source, then delivers the payload to the target's drop target as a marshalled `GObject.Value`. A string argument is wrapped in a `TYPE_STRING` value, which is exactly what the row's `onDrop` reads back with `value.getString()`:
 
 ```tsx
 it("reorders tasks by dragging", async () => {
-  await render(<App />);
+  await render(<App />, { container: rootElement });
 
-  const first = await screen.findByText("Water the plants");
-  const second = await screen.findByText("Review pull requests");
-  await userEvent.dragAndDrop(first, second, "the-dragged-task-id");
+  const source = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ });
+  const target = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Review pull requests/ });
+  await userEvent.dragAndDrop(source, target, "t2");
 
   const rows = screen.getAllByRole(Gtk.AccessibleRole.LIST_ITEM);
-  // assert the new order...
+  // assert the new order from rows...
 });
 ```
 
+The third argument is the dragged task's id, the same value the row's `GtkDragSource` provides in production.
+
 ## Inspecting a running app
 
-For interactive debugging rather than automated assertions, `@gtkx/mcp` exposes the running app to an MCP client: an agent (or you) can list windows, dump the widget tree, query widgets, take screenshots, and click or type. `gtkx dev` starts the MCP client automatically, so a running dev session is inspectable out of the box.
+For interactive debugging rather than automated assertions, `@gtkx/mcp` is an MCP server that an agent (or you, through any MCP client) can drive to list running apps, dump the widget tree, query widgets, take screenshots, fire events, and click or type. `gtkx dev` connects the running app to it automatically, so a dev session is inspectable out of the box.
 
 ## Next
 

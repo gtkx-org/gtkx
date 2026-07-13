@@ -2,7 +2,7 @@
 
 In a React web app, a click handler is wired straight to a button. GTK pulls those two apart. A **GAction** is a named, addressable command ("new", "preferences", "open-task") that lives in an *action map*, and buttons, menu items, keyboard accelerators, and even desktop notifications all reference that command by a string name. Define the behavior once, trigger it from anywhere.
 
-Tasks uses this everywhere its commands need more than one entry point. The hamburger menu, the `Ctrl+N` accelerator, and the "New Task" toolbar button all end up at the same `win.new` action. This page walks through how the app declares those actions, gives them keyboard shortcuts, builds the menu, and layers on view-local shortcuts that a GAction would be the wrong tool for.
+Tasks uses this everywhere its commands need more than one entry point. The hamburger menu item and the `Ctrl+N` accelerator both resolve the same `win.new` action, and the "New Task" toolbar button calls the very handler that action wraps. This page walks through how the app declares those actions, gives them keyboard shortcuts, builds the menu, and layers on view-local shortcuts that a GAction would be the wrong tool for.
 
 ## Two scopes: `win.*` and `app.*`
 
@@ -51,9 +51,7 @@ The scope prefix comes from *where* you mount these, not from the `name`. `AdwAp
             onNew={newTask}
             onSelect={enterSelection}
             onPreferences={() => setShowPreferences(true)}
-            onShortcuts={() => {
-                if (parentWindow) showShortcutsDialog(parentWindow);
-            }}
+            onShortcuts={() => setShowShortcuts(true)}
             onAbout={() => setShowAbout(true)}
         />
     }
@@ -250,53 +248,54 @@ controllers={
 
 When `selectedTask` is `null`, `deleteEnabled` is false, so `Delete` resolves to `NeverTrigger` and passes through untouched. Open a task and the next render swaps in the real `parseString("Delete")` trigger. The behavior tracks state with no imperative connect/disconnect.
 
-## The shortcuts window: `AdwShortcutsDialog`, built imperatively
+## The shortcuts window: `AdwShortcutsDialog`
 
-The `win.shortcuts` action opens a dialog listing every shortcut. `AdwShortcutsDialog` is the standard GNOME "Keyboard Shortcuts" surface. Because it is a one-shot dialog assembled from fixed data and then presented, Tasks builds it imperatively rather than declaratively, in `components/shortcuts.tsx`:
-
-```tsx
-import * as Adw from "@gtkx/gi/adw";
-import type * as Gtk from "@gtkx/gi/gtk";
-
-export const showShortcutsDialog = (window: Gtk.Window): void => {
-    const dialog = new Adw.ShortcutsDialog();
-
-    const general = Adw.ShortcutsSection.new("General");
-    general.add(Adw.ShortcutsItem.new("New task", "<Control>n"));
-    general.add(Adw.ShortcutsItem.new("Search tasks", "<Control>f"));
-    general.add(Adw.ShortcutsItem.new("Preferences", "<Control>comma"));
-    general.add(Adw.ShortcutsItem.new("Keyboard shortcuts", "<Control>question"));
-    dialog.add(general);
-
-    const tasks = Adw.ShortcutsSection.new("Tasks");
-    tasks.add(Adw.ShortcutsItem.new("Delete task", "Delete"));
-    tasks.add(Adw.ShortcutsItem.new("Close task", "Escape"));
-    dialog.add(tasks);
-
-    dialog.present(window);
-};
-```
-
-Each `Adw.ShortcutsSection` is a titled group, and each `Adw.ShortcutsItem.new(title, accelerator)` renders one row: a description plus its formatted key combination (`"<Control>n"` is displayed as `Ctrl+N`). The accelerator strings here are documentation, so they must be kept in sync with the real bindings: `<Control>n`, `<Control>f`, `<Control>comma`, `<Control>question` come from `actionAccels` and the search shortcut, while `Delete` and `Escape` come from the `GtkShortcutController`. Finally `dialog.present(window)` shows it modal to the parent window.
-
-The action handler simply calls this function, passing the window it resolves through `useParentWindow()`:
+The `win.shortcuts` action opens a dialog listing every shortcut. `AdwShortcutsDialog` is the standard GNOME "Keyboard Shortcuts" surface: a searchable window of grouped, titled sections. Tasks builds it the same declarative way as every other dialog, in `components/shortcuts.tsx`:
 
 ```tsx
-onShortcuts={() => {
-    if (parentWindow) showShortcutsDialog(parentWindow);
-}}
+import { Dialog } from "@gtkx/components/adw";
+import { AdwShortcutsDialog, AdwShortcutsItem, AdwShortcutsSection } from "@gtkx/jsx/adw";
+
+export const Shortcuts = ({ onClose }: { onClose: () => void }) => (
+    <Dialog>
+        <AdwShortcutsDialog onClosed={onClose}>
+            <AdwShortcutsSection title="General">
+                <AdwShortcutsItem title="New task" accelerator="<Control>n" />
+                <AdwShortcutsItem title="Search tasks" accelerator="<Control>f" />
+                <AdwShortcutsItem title="Preferences" accelerator="<Control>comma" />
+                <AdwShortcutsItem title="Keyboard shortcuts" accelerator="<Control>question" />
+            </AdwShortcutsSection>
+            <AdwShortcutsSection title="Tasks">
+                <AdwShortcutsItem title="Delete task" accelerator="Delete" />
+                <AdwShortcutsItem title="Close task" accelerator="Escape" />
+            </AdwShortcutsSection>
+        </AdwShortcutsDialog>
+    </Dialog>
+);
 ```
+
+Each `AdwShortcutsSection` is a titled group, and each `AdwShortcutsItem` renders one row: a `title` plus its formatted `accelerator` (`"<Control>n"` displays as `Ctrl+N`). Both are ordinary declarative `children` containers, so there is no imperative `.add()` wiring, and the whole tree updates like any other JSX. The accelerator strings are documentation, so keep them in sync with the real bindings: `<Control>n`, `<Control>f`, `<Control>comma`, and `<Control>question` come from `actionAccels` and the search shortcut, while `Delete` and `Escape` come from the `GtkShortcutController`.
+
+`<Dialog>` (from `@gtkx/components/adw`) presents the dialog through a portal on mount and force-closes it on unmount, exactly like Preferences and About. The action handler just flips a state flag:
+
+```tsx
+onShortcuts={() => setShowShortcuts(true)}
+```
+
+and the window renders `{showShortcuts ? <Shortcuts onClose={() => setShowShortcuts(false)} /> : null}` alongside the other dialogs.
 
 ## Putting the pieces together
 
-A single command like "create a new task" now has three front doors, all landing on `win.new`:
+A single command like "create a new task" now has three front doors, all converging on the same `newTask` behavior:
 
 - the **menu** item `{ label: "New Task", action: "win.new" }`,
 - the **accelerator** `{ detailedActionName: "win.new", accels: ["<Control>n"] }`,
-- and the header-bar **button** `<GtkButton onClicked={newTask} />` (which calls the same handler the action wraps).
+- and the header-bar **button** `<GtkButton onClicked={newTask} />`.
+
+The first two resolve through `win.new`, whose `onActivate` is `newTask`; the button skips the action system and calls `newTask` directly.
 
 Meanwhile `Ctrl+F` / `Escape` / `Delete` stay out of the action system entirely, living as state-gated `GtkShortcut`s because their meaning is view-local. And `app.complete-task` / `app.open-task` sit on the application so a notification button has an action alive even when no window is focused. Choosing the right home for each command, `win.*`, `app.*`, or a plain shortcut controller, is the whole discipline here.
 
 ## Next
 
-Continue with **Persistence and State** to see how the task data these actions mutate is loaded, saved, and kept in sync.
+Continue with **Selection Mode** to follow where the `win.select` action leads: a distinct mode for completing, moving, and deleting many tasks at once.

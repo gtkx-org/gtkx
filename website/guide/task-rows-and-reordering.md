@@ -5,6 +5,8 @@ Each task in the list is one `AdwActionRow`. In libadwaita an action row is a pr
 The whole component is one JSX tree with no imperative widget code. Here is the shell, from `components/task-row.tsx`:
 
 ```tsx
+import * as Gdk from "@gtkx/gi/gdk";
+import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwActionRow } from "@gtkx/jsx/adw";
 import { GtkButton, GtkCheckButton, GtkDragSource, GtkDropTarget, GtkToggleButton } from "@gtkx/jsx/gtk";
@@ -28,7 +30,7 @@ export const TaskRow = ({ task, reorderable, onToggleDone, onToggleImportant, on
 
 `activatable` makes the whole row body clickable, and `onActivated` (the `activated` signal, which GTK emits on click or Enter) opens the task in the editor. The controls in the prefix and suffix sit *on top of* that activatable body: clicking the checkbox toggles done without opening the editor, because GTK routes the click to the inner widget first.
 
-`subtitle` shows a humanized due date. `formatDue` returns `string | null`, and the `?? undefined` matters: passing `undefined` clears the subtitle, whereas passing `null` would not type-check against the slot. Tasks with no due date simply have no subtitle line.
+`subtitle` shows a humanized due date. `formatDue` returns `string | null`: a formatted date when the task has a due date, or `null` when it does not. The `?? undefined` normalizes that empty case to `undefined`, so a task with no due date simply has no subtitle line.
 
 ## The strikethrough title uses Pango markup, not CSS
 
