@@ -64,26 +64,41 @@ const loadReference = async (root: string): Promise<LoadedReference> => {
     return { reference, watched };
 };
 
+const FRESHNESS_INTERVAL_MS = 2000;
+const FAILURE_RETRY_MS = 5000;
+
+type CacheEntry = {
+    pending: Promise<LoadedReference>;
+    verifiedAt: number;
+    failedAt: number | undefined;
+};
+
 export const createReferenceProvider = (resolveRoot: () => string): ReferenceProvider => {
-    const cache = new Map<string, Promise<LoadedReference>>();
-    const startLoad = (root: string): Promise<LoadedReference> => {
-        const pending = loadReference(root);
-        pending.catch(() => {
-            if (cache.get(root) === pending) cache.delete(root);
+    const cache = new Map<string, CacheEntry>();
+    const startLoad = (root: string): CacheEntry => {
+        const entry: CacheEntry = { pending: loadReference(root), verifiedAt: Date.now(), failedAt: undefined };
+        entry.pending.catch(() => {
+            entry.failedAt = Date.now();
         });
-        cache.set(root, pending);
-        return pending;
+        cache.set(root, entry);
+        return entry;
     };
     return {
         async get(): Promise<ReferenceApi> {
             const root = resolve(resolveRoot());
-            const pending = cache.get(root);
-            if (pending === undefined) return (await startLoad(root)).reference;
-            const loaded = await pending;
-            if (isFresh(loaded)) return loaded.reference;
-            if (cache.get(root) === pending) cache.delete(root);
-            const next = cache.get(root) ?? startLoad(root);
-            return (await next).reference;
+            let entry = cache.get(root) ?? startLoad(root);
+            if (entry.failedAt !== undefined && Date.now() - entry.failedAt >= FAILURE_RETRY_MS) {
+                entry = startLoad(root);
+            }
+            const loaded = await entry.pending;
+            if (Date.now() - entry.verifiedAt < FRESHNESS_INTERVAL_MS) return loaded.reference;
+            if (isFresh(loaded)) {
+                entry.verifiedAt = Date.now();
+                return loaded.reference;
+            }
+            const current = cache.get(root);
+            const replacement = current === undefined || current === entry ? startLoad(root) : current;
+            return (await replacement.pending).reference;
         },
     };
 };
@@ -283,8 +298,8 @@ const registerSymbolResource = (server: ResourceServer, provider: ReferenceProvi
             complete: {
                 namespace: namespaceCompleter(provider),
                 symbol: (value, context) => {
-                    const namespace = context?.arguments?.namespace;
-                    if (namespace === undefined) return [];
+                    const namespace = variableValue(context?.arguments?.namespace);
+                    if (namespace.length === 0) return [];
                     return provider
                         .get()
                         .then((reference) =>

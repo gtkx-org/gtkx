@@ -109,14 +109,24 @@ describe("createReferenceProvider", () => {
         expect(loadConfigMock).toHaveBeenNthCalledWith(2, "/two");
     });
 
-    it("rejects when codegen is disabled and retries on the next call", async () => {
+    it("rejects when codegen is disabled and retries after the backoff window", async () => {
         loadConfigMock.mockResolvedValueOnce({ config: { codegen: false } });
         loadConfigMock.mockResolvedValueOnce({ config: {} });
         apiLoadMock.mockReturnValue(fakeReference);
-        const failing = createReferenceProvider(() => "/project");
+        const nowSpy = vi.spyOn(Date, "now").mockReturnValue(0);
+        try {
+            const failing = createReferenceProvider(() => "/project");
 
-        await expect(failing.get()).rejects.toThrow(/codegen is disabled/);
-        await expect(failing.get()).resolves.toBe(fakeReference);
+            await expect(failing.get()).rejects.toThrow(/codegen is disabled/);
+            await expect(failing.get()).rejects.toThrow(/codegen is disabled/);
+            expect(loadConfigMock).toHaveBeenCalledTimes(1);
+
+            nowSpy.mockReturnValue(10_000);
+            await expect(failing.get()).resolves.toBe(fakeReference);
+            expect(loadConfigMock).toHaveBeenCalledTimes(2);
+        } finally {
+            nowSpy.mockRestore();
+        }
     });
 
     it("rejects when no GIR search paths are available", async () => {
@@ -127,9 +137,10 @@ describe("createReferenceProvider", () => {
         await expect(failing.get()).rejects.toThrow(/No GIR search paths available/);
     });
 
-    it("reloads when a watched GIR file changes", async () => {
+    it("reloads when a watched GIR file changes, throttling freshness checks", async () => {
         loadConfigMock.mockResolvedValue({ config: {} });
         const dir = mkdtempSync(join(tmpdir(), "gtkx-reference-"));
+        const nowSpy = vi.spyOn(Date, "now").mockReturnValue(0);
         try {
             const girFile = join(dir, "Gtk-4.0.gir");
             writeFileSync(girFile, "before");
@@ -137,13 +148,15 @@ describe("createReferenceProvider", () => {
             const watching = createReferenceProvider(() => "/project");
 
             await watching.get();
+            writeFileSync(girFile, "after-with-different-size");
             await watching.get();
             expect(apiLoadMock).toHaveBeenCalledTimes(1);
 
-            writeFileSync(girFile, "after-with-different-size");
+            nowSpy.mockReturnValue(10_000);
             await watching.get();
             expect(apiLoadMock).toHaveBeenCalledTimes(2);
         } finally {
+            nowSpy.mockRestore();
             rmSync(dir, { recursive: true, force: true });
         }
     });

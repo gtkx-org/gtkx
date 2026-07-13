@@ -7,7 +7,7 @@ import { Library } from "../gir/library.js";
 import { namespaceDirectory } from "../gir/namespace.js";
 import { collectIntrinsicElementClasses, type GlibNamedClass } from "../store/react/intrinsic-elements.js";
 import { createElementPageContext, renderElementPage } from "./element-page.js";
-import { elementSlug, firstSentence } from "./render.js";
+import { elementSlug, firstSentence, namespaceOrder } from "./render.js";
 
 export type DocsElementLink = {
     text: string;
@@ -35,13 +35,6 @@ type DocsManifest = {
 };
 
 const MANIFEST_FILENAME = "manifest.json";
-
-const LEADING_NAMESPACES = ["Gtk", "Adw"];
-
-const namespaceOrder = (name: string): string => {
-    const index = LEADING_NAMESPACES.indexOf(name);
-    return index === -1 ? `1${name}` : `0${index}`;
-};
 
 const namespaceIndexPage = (namespace: DocsNamespace, elements: GlibNamedClass[]): string => {
     const rows = elements.map((entry, index) => {

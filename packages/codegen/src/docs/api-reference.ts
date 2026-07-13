@@ -1,5 +1,5 @@
 import type { ElementProp } from "@gtkx/config";
-import { sortStrings, toPascalCase } from "@gtkx/utils";
+import { sortStrings, sortStringsBy, toPascalCase } from "@gtkx/utils";
 import { Library } from "../gir/library.js";
 import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import { dedupeCallables, isEmittableCallable } from "../store/gi/callables.js";
@@ -7,7 +7,7 @@ import { isClassStructRecord } from "../store/gi/class-struct-record.js";
 import { namespaceFunctionExportName } from "../store/gi/function.js";
 import { collectIntrinsicElementClasses, type GlibNamedClass } from "../store/react/intrinsic-elements.js";
 import { createElementPageContext, type ElementPageContext, renderElementPage } from "./element-page.js";
-import { docsSignatureContext, firstSentence } from "./render.js";
+import { docsSignatureContext, firstSentence, namespaceOrder } from "./render.js";
 import { type GiSymbolEntry, renderSymbolPage, type SymbolPageOptions } from "./symbol-page.js";
 
 export type ApiReferenceOptions = {
@@ -226,18 +226,21 @@ export class ApiReference {
             (a, b) =>
                 b.score - a.score ||
                 a.entry.name.length - b.entry.name.length ||
-                compareNames(a.entry.name, b.entry.name),
+                compareNames(a.entry.name, b.entry.name) ||
+                compareNames(namespaceOrder(a.entry.namespace.name), namespaceOrder(b.entry.namespace.name)) ||
+                compareNames(a.entry.kind, b.entry.kind),
         );
         return scored.slice(0, limit).map((item) => this.toApiSymbol(item.entry));
     }
 
     namespaces(): ApiNamespaceSummary[] {
-        return [...this.byNamespace.entries()].map(([name, entries]) => ({
+        const summaries = [...this.byNamespace.entries()].map(([name, entries]) => ({
             name,
             importPath: `@gtkx/gi/${namespaceDirectory({ name })}`,
             symbols: entries.filter((entry) => entry.kind !== "element").length,
             elements: entries.filter((entry) => entry.kind === "element").length,
         }));
+        return sortStringsBy(summaries, (summary) => namespaceOrder(summary.name));
     }
 
     symbolNames(namespaceName: string): string[] {

@@ -121,6 +121,13 @@ export const signatureBlock = (name: string, signature: string, notes: string[])
     return lines.join("\n");
 };
 
+const LEADING_NAMESPACES = ["Gtk", "Adw"];
+
+export const namespaceOrder = (name: string): string => {
+    const index = LEADING_NAMESPACES.indexOf(name);
+    return index === -1 ? `1${name}` : `0${index}`;
+};
+
 const DOCS_SIGNATURE_NAMESPACE = "$docs";
 
 export const docsSignatureContext = (namespace: GirNamespace, library: Library): ModuleContext =>
