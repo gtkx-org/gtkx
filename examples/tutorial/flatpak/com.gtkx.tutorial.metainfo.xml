@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
     <id>com.gtkx.tutorial</id>
-    <name>GTKX Tutorial</name>
-    <summary>Take and organize notes</summary>
+    <name>Tasks</name>
+    <summary>Manage your tasks and to-dos</summary>
     <metadata_license>CC0-1.0</metadata_license>
     <project_license>MPL-2.0</project_license>
     <developer id="dev.gtkx">
@@ -10,9 +10,11 @@
     </developer>
     <description>
         <p>
-            A Notes application built with GTKX, demonstrating how to build
-            React-based GTK4 desktop applications with GSettings, animations,
-            and Adwaita styling.
+            A task manager built with GTKX, demonstrating how to build React-based
+            GTK4 and libadwaita desktop applications. It shows an adaptive sidebar
+            layout, boxed lists, a task editor, GSettings-backed preferences, undo
+            toasts, drag-to-reorder, batch selection, desktop notifications, and
+            local JSON persistence.
         </p>
     </description>
     <launchable type="desktop-id">com.gtkx.tutorial.desktop</launchable>
@@ -25,15 +27,15 @@
     <screenshots>
         <screenshot type="default">
             <image>https://raw.githubusercontent.com/gtkx-org/gtkx/main/examples/tutorial/assets/screenshot.png</image>
-            <caption>Browsing notes in the sidebar</caption>
+            <caption>Browsing task lists in the sidebar</caption>
         </screenshot>
         <screenshot>
             <image>https://raw.githubusercontent.com/gtkx-org/gtkx/main/examples/tutorial/assets/screenshot-editor.png</image>
-            <caption>Editing a note</caption>
+            <caption>Editing a task</caption>
         </screenshot>
     </screenshots>
     <releases>
-        <release version="0.1.0" date="2026-07-10">
+        <release version="1.0.0" date="2026-07-13">
             <description>
                 <p>Initial release.</p>
             </description>

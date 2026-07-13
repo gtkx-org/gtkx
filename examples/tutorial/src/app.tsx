@@ -1,5 +1,6 @@
-import { GridView, ListView, Menu } from "@gtkx/components";
+import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import * as Adw from "@gtkx/gi/adw";
+import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
     AdwApplication,
@@ -7,460 +8,105 @@ import {
     AdwHeaderBar,
     AdwNavigationPage,
     AdwNavigationSplitView,
-    AdwStatusPage,
     AdwToastOverlay,
     AdwToggle,
     AdwToggleGroup,
     AdwToolbarView,
+    AdwWindowTitle,
 } from "@gtkx/jsx/adw";
 import { GSimpleAction } from "@gtkx/jsx/gio";
 import {
+    GtkActionBar,
     GtkBox,
     GtkButton,
     GtkMenuButton,
-    GtkScrolledWindow,
-    GtkSearchBar,
-    GtkSearchEntry,
+    GtkPopover,
     GtkShortcut,
     GtkShortcutController,
+    GtkToggleButton,
 } from "@gtkx/jsx/gtk";
-import { quit, useParentWindow, useSetting } from "@gtkx/react";
-import { useRef, useState } from "react";
+import { quit, useApplication, useParentWindow, useSetting, useSignal } from "@gtkx/react";
 import schema from "#data/com.gtkx.tutorial.gschema.xml";
 import { About } from "./components/about.js";
 import { DeleteConfirmation } from "./components/delete-confirmation.js";
-import { NoteCard } from "./components/note-card.js";
-import { NoteEditor } from "./components/note-editor.js";
+import { MainMenu } from "./components/main-menu.js";
+import { NewListDialog } from "./components/new-list-dialog.js";
 import { Preferences } from "./components/preferences.js";
+import { showShortcutsDialog } from "./components/shortcuts.js";
+import { SelectionView } from "./components/selection-view.js";
 import { Sidebar } from "./components/sidebar.js";
-import type { Note } from "./types.js";
+import { TaskDetail } from "./components/task-detail.js";
+import { TaskList } from "./components/task-list.js";
+import type { TaskRowHandlers } from "./components/task-row.js";
+import { useReminders } from "./hooks/use-reminders.js";
+import { useTasks } from "./hooks/use-tasks.js";
+import { buildReminder } from "./notifications.js";
+import { type Filter, sidebarCounts, visibleTasks } from "./select.js";
+import { applyColorScheme } from "./theme.js";
+import type { Selection, SmartView, Task, TaskList as TaskListType } from "./types.js";
 
-const getEmptyStateIcon = (searchQuery: string, category: string): string => {
-    if (searchQuery) return "system-search-symbolic";
-    if (category === "trash") return "user-trash-symbolic";
-    if (category === "favorites") return "starred-symbolic";
-    return "document-edit-symbolic";
-};
-
-const getEmptyStateTitle = (searchQuery: string, category: string): string => {
-    if (searchQuery) return "No Results Found";
-    if (category === "trash") return "Trash is Empty";
-    if (category === "favorites") return "No Favorites";
-    return "No Notes Yet";
-};
-
-const getEmptyStateDescription = (searchQuery: string, category: string): string => {
-    if (searchQuery) return `No notes match “${searchQuery}”`;
-    if (category === "trash") return "Deleted notes will appear here";
-    if (category === "favorites") return "Star notes to find them here";
-    return "Press + or Ctrl+N to create your first note";
-};
-
-const CATEGORY_TITLES: Record<string, string> = {
-    all: "All Notes",
-    favorites: "Favorites",
-    recent: "Recent",
+const SMART_TITLES: Record<SmartView, string> = {
+    all: "All Tasks",
+    today: "Today",
+    important: "Important",
     trash: "Trash",
 };
 
-const INITIAL_NOTES: Note[] = [
-    { id: "1", title: "Welcome", body: "Your first note!", createdAt: new Date() },
-    { id: "2", title: "Shopping List", body: "Milk, eggs, bread", createdAt: new Date() },
-    {
-        id: "3",
-        title: "Meeting Notes",
-        body: "Discuss project timeline and deliverables",
-        createdAt: new Date(),
-    },
-];
+const titleFor = (selection: Selection, lists: TaskListType[]): string =>
+    selection.kind === "list"
+        ? (lists.find((list) => list.id === selection.listId)?.name ?? "Tasks")
+        : SMART_TITLES[selection.view];
 
-interface NoteListContentProps {
-    viewMode: string;
-    compactMode: boolean | undefined;
-    fontSize: number | undefined;
-    filteredNotes: Note[];
-    selectedId: string | null;
-    setSelectedId: (id: string | null) => void;
-}
+type EmptyState = { icon: string; title: string; description: string };
 
-function NoteListContent({
-    viewMode,
-    compactMode,
-    fontSize,
-    filteredNotes,
-    selectedId,
-    setSelectedId,
-}: NoteListContentProps) {
-    const items = filteredNotes.map((note) => ({ id: note.id, value: note }));
-    const selected = selectedId ? [selectedId] : [];
-    const renderItem = ({ item: note }: { item: Note }) => (
-        <NoteCard note={note} compact={compactMode} fontSize={fontSize} />
-    );
-    const onSelectionChanged = (ids: string[]) => setSelectedId(ids[0] ?? null);
-
-    if (viewMode === "list") {
-        return (
-            <GtkScrolledWindow vexpand>
-                <ListView
-                    estimatedItemHeight={compactMode ? 50 : 80}
-                    selectionMode={Gtk.SelectionMode.SINGLE}
-                    selectedIds={selected}
-                    onSelectionChanged={onSelectionChanged}
-                    items={items}
-                    renderItem={renderItem}
-                />
-            </GtkScrolledWindow>
-        );
-    }
-
-    return (
-        <GtkScrolledWindow vexpand>
-            <GridView
-                minColumns={2}
-                maxColumns={4}
-                selectionMode={Gtk.SelectionMode.SINGLE}
-                selectedIds={selected}
-                onSelectionChanged={onSelectionChanged}
-                items={items}
-                renderItem={renderItem}
-            />
-        </GtkScrolledWindow>
-    );
-}
-
-const useNotesState = (toastOverlayRef: React.RefObject<Adw.ToastOverlay | null>) => {
-    const [notes, setNotes] = useState<Note[]>(INITIAL_NOTES);
-    const [selectedId, setSelectedId] = useState<string | null>(null);
-    const [noteToDelete, setNoteToDelete] = useState<Note | null>(null);
-
-    const selectedNote = notes.find((n) => n.id === selectedId);
-    const activeNotes = notes.filter((n) => !n.deleted);
-    const trashedNotes = notes.filter((n) => n.deleted);
-    const favoriteNotes = activeNotes.filter((n) => n.favorite);
-
-    const addNote = () => {
-        const note: Note = { id: crypto.randomUUID(), title: "Untitled", body: "", createdAt: new Date() };
-        setNotes((prev) => [note, ...prev]);
-    };
-
-    const updateNote = (id: string, fields: Partial<Pick<Note, "title" | "body">>) => {
-        setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, ...fields } : n)));
-    };
-
-    const restoreNote = (id: string) => {
-        setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, deleted: false } : n)));
-    };
-
-    const confirmDelete = () => {
-        if (!noteToDelete) return;
-        const deletedNote = noteToDelete;
-        if (selectedId === deletedNote.id) setSelectedId(null);
-        setNoteToDelete(null);
-
-        if (deletedNote.deleted) {
-            setNotes((prev) => prev.filter((n) => n.id !== deletedNote.id));
-            toastOverlayRef.current?.addToast(Adw.Toast.new(`“${deletedNote.title}” permanently deleted`));
-            return;
-        }
-
-        setNotes((prev) => prev.map((n) => (n.id === deletedNote.id ? { ...n, deleted: true } : n)));
-        const toast = Adw.Toast.new(`“${deletedNote.title}” moved to Trash`);
-        toast.buttonLabel = "Undo";
-        toast.once("button-clicked", () => restoreNote(deletedNote.id));
-        toastOverlayRef.current?.addToast(toast);
-    };
-
-    return {
-        notes,
-        selectedId,
-        setSelectedId,
-        selectedNote,
-        activeNotes,
-        trashedNotes,
-        favoriteNotes,
-        noteToDelete,
-        setNoteToDelete,
-        addNote,
-        updateNote,
-        confirmDelete,
-    };
+const emptyFor = (selection: Selection, query: string): EmptyState => {
+    if (query) return { icon: "system-search-symbolic", title: "No Results", description: `No tasks match “${query}”` };
+    if (selection.kind === "smart" && selection.view === "trash")
+        return { icon: "user-trash-symbolic", title: "Trash Is Empty", description: "Deleted tasks appear here" };
+    if (selection.kind === "smart" && selection.view === "today")
+        return { icon: "x-office-calendar-symbolic", title: "Nothing Due Today", description: "Tasks due today appear here" };
+    if (selection.kind === "smart" && selection.view === "important")
+        return { icon: "starred-symbolic", title: "No Important Tasks", description: "Star a task to find it here" };
+    return { icon: "view-list-symbolic", title: "No Tasks Yet", description: "Add a task above to get started" };
 };
 
-const showShortcutsDialog = (window: Gtk.Window): void => {
-    const dialog = new Adw.ShortcutsDialog();
-
-    const general = Adw.ShortcutsSection.new("General");
-    general.add(Adw.ShortcutsItem.new("New note", "<Control>n"));
-    general.add(Adw.ShortcutsItem.new("Search notes", "<Control>f"));
-    general.add(Adw.ShortcutsItem.new("Preferences", "<Control>comma"));
-    general.add(Adw.ShortcutsItem.new("Keyboard shortcuts", "<Control>question"));
-    dialog.add(general);
-
-    const editing = Adw.ShortcutsSection.new("Editing");
-    editing.add(Adw.ShortcutsItem.new("Delete note", "Delete"));
-    editing.add(Adw.ShortcutsItem.new("Close note", "Escape"));
-    dialog.add(editing);
-
-    dialog.present(window);
-};
-
-const MainMenu = () => (
-    <GtkMenuButton
-        iconName="open-menu-symbolic"
-        tooltipText="Main Menu"
-        menuModel={
-            <Menu
-                items={[
-                    { label: "New Note", action: "win.new" },
-                    {
-                        section: [
-                            { label: "Preferences", action: "win.preferences" },
-                            { label: "Keyboard Shortcuts", action: "win.shortcuts" },
-                        ],
-                    },
-                    {
-                        section: [{ label: "About Notes", action: "win.about" }],
-                    },
-                ]}
-            />
-        }
-    />
-);
-
-const ViewModeToggle = ({ viewMode, onChange }: { viewMode: string; onChange: (name: string) => void }) => (
-    <AdwToggleGroup activeName={viewMode} onNotifyActiveName={(name) => onChange(name ?? "list")}>
-        <AdwToggle name="list" iconName="view-list-symbolic" tooltip="List View" />
-        <AdwToggle name="grid" iconName="view-grid-symbolic" tooltip="Grid View" />
+const FilterToggle = ({ filter, onChange }: { filter: Filter; onChange: (value: Filter) => void }) => (
+    <AdwToggleGroup
+        activeName={filter}
+        cssClasses={["round"]}
+        onNotifyActiveName={(name) => {
+            if (name === "all" || name === "open" || name === "done") onChange(name);
+        }}
+    >
+        <AdwToggle name="all" label="All" />
+        <AdwToggle name="open" label="Open" />
+        <AdwToggle name="done" label="Done" />
     </AdwToggleGroup>
 );
 
-interface ContentPageProps {
-    selectedNote: Note | undefined;
-    selectedId: string | null;
-    setSelectedId: (id: string | null) => void;
-    category: string;
-    viewMode: string;
-    setViewMode: (m: string) => void;
-    searchMode: boolean;
-    setSearchMode: (m: boolean) => void;
-    searchQuery: string;
-    setSearchQuery: (q: string) => void;
-    filteredNotes: Note[];
-    compactMode: boolean | undefined;
-    fontSize: number | undefined;
-    updateNote: (id: string, fields: Partial<Pick<Note, "title" | "body">>) => void;
-    deleteSelected: () => void;
-    toastOverlayRef: React.RefObject<Adw.ToastOverlay | null>;
-}
-
-const ContentHeaderBar = ({
-    selectedNote,
-    selectedId,
-    setSelectedId,
-    viewMode,
-    setViewMode,
-    searchMode,
-    setSearchMode,
-    deleteSelected,
-}: Pick<
-    ContentPageProps,
-    | "selectedNote"
-    | "selectedId"
-    | "setSelectedId"
-    | "viewMode"
-    | "setViewMode"
-    | "searchMode"
-    | "setSearchMode"
-    | "deleteSelected"
->) => (
-    <AdwHeaderBar
-        titleWidget={selectedNote ? undefined : <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />}
-        start={
-            <>
-                {selectedNote ? (
-                    <GtkButton
-                        iconName="go-previous-symbolic"
-                        tooltipText="Back to list"
-                        onClicked={() => setSelectedId(null)}
-                    />
-                ) : (
-                    <GtkButton
-                        iconName="system-search-symbolic"
-                        tooltipText="Search (Ctrl+F)"
-                        onClicked={() => setSearchMode(!searchMode)}
-                    />
-                )}
-                <GtkButton
-                    iconName="user-trash-symbolic"
-                    tooltipText="Delete Note (Delete)"
-                    sensitive={!!selectedId}
-                    onClicked={deleteSelected}
-                />
-            </>
-        }
-        end={<MainMenu />}
-    />
+const WindowActions = ({
+    onNew,
+    onSelect,
+    onPreferences,
+    onShortcuts,
+    onAbout,
+}: {
+    onNew: () => void;
+    onSelect: () => void;
+    onPreferences: () => void;
+    onShortcuts: () => void;
+    onAbout: () => void;
+}) => (
+    <>
+        <GSimpleAction name="new" onActivate={onNew} />
+        <GSimpleAction name="select" onActivate={onSelect} />
+        <GSimpleAction name="preferences" onActivate={onPreferences} />
+        <GSimpleAction name="shortcuts" onActivate={onShortcuts} />
+        <GSimpleAction name="about" onActivate={onAbout} />
+    </>
 );
 
-const ContentBody = ({
-    selectedNote,
-    setSelectedId,
-    searchMode,
-    setSearchMode,
-    setSearchQuery,
-    searchQuery,
-    category,
-    viewMode,
-    compactMode,
-    fontSize,
-    filteredNotes,
-    selectedId,
-    updateNote,
-    toastOverlayRef,
-}: Pick<
-    ContentPageProps,
-    | "selectedNote"
-    | "setSelectedId"
-    | "searchMode"
-    | "setSearchMode"
-    | "setSearchQuery"
-    | "searchQuery"
-    | "category"
-    | "viewMode"
-    | "compactMode"
-    | "fontSize"
-    | "filteredNotes"
-    | "selectedId"
-    | "updateNote"
-    | "toastOverlayRef"
->) => {
-    const searchEntryRef = useRef<Gtk.SearchEntry | null>(null);
-    return (
-        <AdwToastOverlay ref={toastOverlayRef}>
-            {selectedNote ? (
-                <NoteEditor note={selectedNote} onUpdate={(fields) => updateNote(selectedNote.id, fields)} />
-            ) : (
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand>
-                    <GtkSearchBar
-                        searchModeEnabled={searchMode}
-                        onNotifySearchModeEnabled={(enabled) => setSearchMode(enabled ?? false)}
-                        keyCaptureWidget={searchEntryRef.current}
-                    >
-                        <GtkSearchEntry
-                            ref={searchEntryRef}
-                            placeholderText="Search notes…"
-                            onSearchChanged={(self) => setSearchQuery(self.text)}
-                        />
-                    </GtkSearchBar>
-
-                    {filteredNotes.length > 0 ? (
-                        <NoteListContent
-                            viewMode={viewMode}
-                            compactMode={compactMode}
-                            fontSize={fontSize}
-                            filteredNotes={filteredNotes}
-                            selectedId={selectedId}
-                            setSelectedId={setSelectedId}
-                        />
-                    ) : (
-                        <AdwStatusPage
-                            vexpand
-                            iconName={getEmptyStateIcon(searchQuery, category)}
-                            title={getEmptyStateTitle(searchQuery, category)}
-                            description={getEmptyStateDescription(searchQuery, category)}
-                        />
-                    )}
-                </GtkBox>
-            )}
-        </AdwToastOverlay>
-    );
-};
-
-const ContentPage = (props: ContentPageProps) => (
-    <AdwNavigationPage title={props.selectedNote?.title ?? CATEGORY_TITLES[props.category] ?? "Notes"}>
-        <AdwToolbarView topBar={<ContentHeaderBar {...props} />}>
-            <ContentBody {...props} />
-        </AdwToolbarView>
-    </AdwNavigationPage>
-);
-
-interface SidebarPageProps {
-    activeNotes: Note[];
-    trashedNotes: Note[];
-    favoriteNotes: Note[];
-    addNote: () => void;
-    setCategory: (id: string) => void;
-    setSelectedId: (id: string | null) => void;
-}
-
-const SidebarPage = ({
-    activeNotes,
-    trashedNotes,
-    favoriteNotes,
-    addNote,
-    setCategory,
-    setSelectedId,
-}: SidebarPageProps) => (
-    <AdwNavigationPage title="Notes">
-        <AdwToolbarView
-            topBar={
-                <AdwHeaderBar
-                    start={
-                        <GtkButton iconName="list-add-symbolic" tooltipText="New Note (Ctrl+N)" onClicked={addNote} />
-                    }
-                />
-            }
-        >
-            <Sidebar
-                noteCounts={{
-                    all: activeNotes.length,
-                    favorites: favoriteNotes.length,
-                    recent: activeNotes.length,
-                    trash: trashedNotes.length,
-                }}
-                onCategoryChanged={(id) => {
-                    setCategory(id);
-                    setSelectedId(null);
-                }}
-            />
-        </AdwToolbarView>
-    </AdwNavigationPage>
-);
-
-const filterNotes = (notes: Note[], searchQuery: string): Note[] => {
-    if (!searchQuery) return notes;
-    const q = searchQuery.toLowerCase();
-    return notes.filter((n) => n.title.toLowerCase().includes(q) || n.body.toLowerCase().includes(q));
-};
-
-interface FilteredNotesArgs {
-    category: string;
-    searchQuery: string;
-    activeNotes: Note[];
-    trashedNotes: Note[];
-    favoriteNotes: Note[];
-}
-
-const useFilteredNotes = ({
-    category,
-    searchQuery,
-    activeNotes,
-    trashedNotes,
-    favoriteNotes,
-}: FilteredNotesArgs): Note[] => {
-    const categoryNotes = category === "trash" ? trashedNotes : category === "favorites" ? favoriteNotes : activeNotes;
-    return filterNotes(categoryNotes, searchQuery);
-};
-
-interface AppShortcutsProps {
-    selectedId: string | null;
-    addNote: () => void;
-    deleteSelected: () => void;
-    setSearchMode: (m: boolean) => void;
-    setSelectedId: (id: string | null) => void;
-}
-
-const shortcut = (accelerator: string, run: () => void, enabled = true) => (
+const makeShortcut = (accelerator: string, run: () => void, enabled: boolean) => (
     <GtkShortcut
         trigger={enabled ? Gtk.ShortcutTrigger.parseString(accelerator) : Gtk.NeverTrigger.get()}
         action={Gtk.CallbackAction.new(() => {
@@ -470,211 +116,405 @@ const shortcut = (accelerator: string, run: () => void, enabled = true) => (
     />
 );
 
-const AppShortcuts = ({ selectedId, addNote, deleteSelected, setSearchMode, setSelectedId }: AppShortcutsProps) => (
+const AppShortcuts = ({
+    onSearch,
+    onEscape,
+    escapeEnabled,
+    onDelete,
+    deleteEnabled,
+}: {
+    onSearch: () => void;
+    onEscape: () => void;
+    escapeEnabled: boolean;
+    onDelete: () => void;
+    deleteEnabled: boolean;
+}) => (
     <GtkShortcutController
         scope={Gtk.ShortcutScope.GLOBAL}
         shortcuts={
             <>
-                {shortcut("<Control>n", addNote)}
-                {shortcut("Delete", deleteSelected, Boolean(selectedId))}
-                {shortcut("<Control>f", () => setSearchMode(true))}
-                {shortcut("Escape", () => setSelectedId(null), Boolean(selectedId))}
+                {makeShortcut("<Control>f", onSearch, true)}
+                {makeShortcut("Escape", onEscape, escapeEnabled)}
+                {makeShortcut("Delete", onDelete, deleteEnabled)}
             </>
         }
     />
 );
 
-interface AppModalsProps {
-    noteToDelete: Note | null;
-    setNoteToDelete: (n: Note | null) => void;
-    confirmDelete: () => void;
-    showPreferences: boolean;
-    setShowPreferences: (s: boolean) => void;
-    showAbout: boolean;
-    setShowAbout: (s: boolean) => void;
-}
+type NotifyHandlers = { complete: (id: string) => void; open: (id: string) => void };
 
-const AppModals = ({
-    noteToDelete,
-    setNoteToDelete,
-    confirmDelete,
-    showPreferences,
-    setShowPreferences,
-    showAbout,
-    setShowAbout,
-}: AppModalsProps) => (
-    <>
-        {noteToDelete && (
-            <DeleteConfirmation
-                noteTitle={noteToDelete.title}
-                onConfirm={confirmDelete}
-                onCancel={() => setNoteToDelete(null)}
-            />
-        )}
-        {showPreferences && <Preferences onClose={() => setShowPreferences(false)} />}
-        {showAbout && <About onClose={() => setShowAbout(false)} />}
-    </>
-);
+function TasksWindow({ notify }: { notify: RefObject<NotifyHandlers> }) {
+    const api = useTasks();
+    const { lists, tasks } = api;
+    const app = useApplication();
 
-interface AppViewState {
-    category: string;
-    setCategory: (c: string) => void;
-    viewMode: string;
-    setViewMode: (m: string) => void;
-    searchMode: boolean;
-    setSearchMode: (m: boolean) => void;
-    searchQuery: string;
-    setSearchQuery: (q: string) => void;
-}
-
-const useAppViewState = (): AppViewState => {
-    const [category, setCategory] = useState<string>("all");
-    const [viewMode, setViewMode] = useState("list");
+    const [selection, setSelection] = useState<Selection>({ kind: "smart", view: "all" });
+    const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
     const [searchMode, setSearchMode] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
-    return { category, setCategory, viewMode, setViewMode, searchMode, setSearchMode, searchQuery, setSearchQuery };
-};
-
-const useDialogState = () => {
+    const [collapsed, setCollapsed] = useState(false);
+    const [showContent, setShowContent] = useState(false);
+    const [breakpoint, setBreakpoint] = useState<Adw.Breakpoint | null>(null);
     const [showPreferences, setShowPreferences] = useState(false);
     const [showAbout, setShowAbout] = useState(false);
-    return { showPreferences, setShowPreferences, showAbout, setShowAbout };
-};
+    const [showNewList, setShowNewList] = useState(false);
+    const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
+    const [selecting, setSelecting] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-interface AppBodyProps {
-    notes: ReturnType<typeof useNotesState>;
-    view: AppViewState;
-    filteredNotes: Note[];
-    compactMode: boolean | undefined;
-    fontSize: number | undefined;
-    deleteSelected: () => void;
-    toastOverlayRef: React.RefObject<Adw.ToastOverlay | null>;
-}
+    const [filter, setFilter] = useSetting(schema, "filter");
+    const [sortOrder] = useSetting(schema, "sort-order");
+    const [colorScheme] = useSetting(schema, "color-scheme");
+    const [reminderMinutes] = useSetting(schema, "reminder-minutes");
+    const [winWidth, setWinWidth] = useSetting(schema, "window-width");
+    const [winHeight, setWinHeight] = useSetting(schema, "window-height");
 
-const AppBody = ({
-    notes,
-    view,
-    filteredNotes,
-    compactMode,
-    fontSize,
-    deleteSelected,
-    toastOverlayRef,
-}: AppBodyProps) => (
-    <AdwNavigationSplitView
-        sidebarWidthFraction={0.25}
-        minSidebarWidth={200}
-        maxSidebarWidth={300}
-        sidebar={
-            <SidebarPage
-                activeNotes={notes.activeNotes}
-                trashedNotes={notes.trashedNotes}
-                favoriteNotes={notes.favoriteNotes}
-                addNote={notes.addNote}
-                setCategory={view.setCategory}
-                setSelectedId={notes.setSelectedId}
-            />
-        }
-        content={
-            <ContentPage
-                selectedNote={notes.selectedNote}
-                selectedId={notes.selectedId}
-                setSelectedId={notes.setSelectedId}
-                category={view.category}
-                viewMode={view.viewMode}
-                setViewMode={view.setViewMode}
-                searchMode={view.searchMode}
-                setSearchMode={view.setSearchMode}
-                searchQuery={view.searchQuery}
-                setSearchQuery={view.setSearchQuery}
-                filteredNotes={filteredNotes}
-                compactMode={compactMode}
-                fontSize={fontSize}
-                updateNote={notes.updateNote}
-                deleteSelected={deleteSelected}
-                toastOverlayRef={toastOverlayRef}
-            />
-        }
-    />
-);
-
-interface NotesWindowActionsProps {
-    notes: ReturnType<typeof useNotesState>;
-    dialogs: ReturnType<typeof useDialogState>;
-}
-
-const NotesWindowActions = ({ notes, dialogs }: NotesWindowActionsProps) => {
-    const parentWindow = useParentWindow();
-    const onShortcuts = () => {
-        if (parentWindow) showShortcutsDialog(parentWindow);
-    };
-    return (
-        <>
-            <GSimpleAction name="new" onActivate={notes.addNote} />
-            <GSimpleAction name="preferences" onActivate={() => dialogs.setShowPreferences(true)} />
-            <GSimpleAction name="shortcuts" onActivate={onShortcuts} />
-            <GSimpleAction name="about" onActivate={() => dialogs.setShowAbout(true)} />
-        </>
-    );
-};
-
-function NotesWindow() {
-    const [compactMode] = useSetting(schema, "compact-mode");
-    const [fontSize] = useSetting(schema, "font-size");
+    const windowRef = useRef<Adw.ApplicationWindow | null>(null);
     const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
-    const view = useAppViewState();
-    const dialogs = useDialogState();
-    const notes = useNotesState(toastOverlayRef);
-    const filteredNotes = useFilteredNotes({
-        category: view.category,
-        searchQuery: view.searchQuery,
-        activeNotes: notes.activeNotes,
-        trashedNotes: notes.trashedNotes,
-        favoriteNotes: notes.favoriteNotes,
-    });
-    const deleteSelected = () => {
-        if (notes.selectedNote) notes.setNoteToDelete(notes.selectedNote);
+    const parentWindow = useParentWindow();
+
+    useEffect(() => {
+        applyColorScheme(colorScheme);
+    }, [colorScheme]);
+
+    useEffect(() => {
+        const window = windowRef.current;
+        if (!window || breakpoint) return;
+        const created = Adw.Breakpoint.new(Adw.BreakpointCondition.parse("max-width: 500sp"));
+        window.addBreakpoint(created);
+        setBreakpoint(created);
+    }, [breakpoint]);
+    useSignal(breakpoint, "apply", () => setCollapsed(true));
+    useSignal(breakpoint, "unapply", () => setCollapsed(false));
+
+    const counts = sidebarCounts(tasks, lists);
+    const visible = visibleTasks(tasks, selection, { query: searchQuery, filter, sortOrder });
+    const selectedTask = tasks.find((task) => task.id === selectedTaskId) ?? null;
+    const addListId = selection.kind === "list" ? selection.listId : (lists[0]?.id ?? "");
+    const reorderable =
+        sortOrder === "manual" && !searchQuery && !(selection.kind === "smart" && selection.view === "trash");
+
+    notify.current = {
+        complete: (id) => api.setDone(id, true),
+        open: (id) => {
+            setSelection({ kind: "smart", view: "all" });
+            setSelectedTaskId(id);
+            if (collapsed) setShowContent(true);
+        },
     };
+
+    const sendReminder = useCallback((task: Task) => app.sendNotification(task.id, buildReminder(task)), [app]);
+    useReminders(tasks, reminderMinutes, sendReminder);
+
+    const openTask = (id: string): void => {
+        setSelectedTaskId(id);
+        if (collapsed) setShowContent(true);
+    };
+
+    const selectSidebar = (next: Selection): void => {
+        setSelection(next);
+        setSelectedTaskId(null);
+        setSearchQuery("");
+        setSearchMode(false);
+        setSelecting(false);
+        setSelectedIds([]);
+        if (collapsed) setShowContent(true);
+    };
+
+    const newTask = (): void => {
+        const id = api.addTask(addListId, "New Task");
+        if (id) openTask(id);
+    };
+
+    const handleDelete = (task: Task): void => {
+        if (task.deleted) {
+            setTaskToDelete(task);
+            return;
+        }
+        api.moveToTrash(task.id);
+        if (selectedTaskId === task.id) setSelectedTaskId(null);
+        const toast = Adw.Toast.new(`“${task.title}” moved to Trash`);
+        toast.buttonLabel = "Undo";
+        toast.once("button-clicked", () => api.restore(task.id));
+        toastOverlayRef.current?.addToast(toast);
+    };
+
+    const confirmDelete = (): void => {
+        if (!taskToDelete) return;
+        api.deleteForever(taskToDelete.id);
+        if (selectedTaskId === taskToDelete.id) setSelectedTaskId(null);
+        setTaskToDelete(null);
+    };
+
+    const enterSelection = (): void => {
+        setSelectedTaskId(null);
+        setSelectedIds([]);
+        setSelecting(true);
+    };
+    const cancelSelection = (): void => {
+        setSelecting(false);
+        setSelectedIds([]);
+    };
+    const completeSelected = (): void => {
+        api.completeMany(selectedIds);
+        cancelSelection();
+    };
+    const moveSelected = (listId: string): void => {
+        api.moveToList(selectedIds, listId);
+        cancelSelection();
+    };
+    const deleteSelected = (): void => {
+        const ids = [...selectedIds];
+        api.trashMany(ids);
+        const toast = Adw.Toast.new(`${ids.length} task${ids.length === 1 ? "" : "s"} moved to Trash`);
+        toast.buttonLabel = "Undo";
+        toast.once("button-clicked", () => {
+            for (const id of ids) api.restore(id);
+        });
+        toastOverlayRef.current?.addToast(toast);
+        cancelSelection();
+    };
+
+    const rowHandlers: TaskRowHandlers = {
+        onToggleDone: (id, done) => api.setDone(id, done),
+        onToggleImportant: (id, important) => api.setImportant(id, important),
+        onDelete: handleDelete,
+        onOpen: openTask,
+        onReorder: (draggedId, targetId) => api.reorder(draggedId, targetId),
+    };
+
+    const handleClose = (): boolean => {
+        const window = windowRef.current;
+        if (window) {
+            const width = window.getWidth();
+            const height = window.getHeight();
+            if (width > 0) setWinWidth(width);
+            if (height > 0) setWinHeight(height);
+        }
+        api.flush();
+        return quit();
+    };
+
+    const detailHeader = selectedTask ? (
+        <AdwHeaderBar
+            start={
+                <GtkButton iconName="go-previous-symbolic" tooltipText="Back" onClicked={() => setSelectedTaskId(null)} />
+            }
+            end={
+                <>
+                    <GtkToggleButton
+                        iconName={selectedTask.important ? "starred-symbolic" : "non-starred-symbolic"}
+                        active={selectedTask.important}
+                        tooltipText="Important"
+                        onToggled={(self) => api.setImportant(selectedTask.id, self.active)}
+                    />
+                    <GtkButton
+                        iconName="user-trash-symbolic"
+                        tooltipText="Delete (Delete)"
+                        onClicked={() => handleDelete(selectedTask)}
+                    />
+                </>
+            }
+        />
+    ) : null;
+
+    const listHeader = (
+        <AdwHeaderBar
+            titleWidget={<FilterToggle filter={filter} onChange={setFilter} />}
+            start={
+                <>
+                    <GtkButton iconName="list-add-symbolic" tooltipText="New Task (Ctrl+N)" onClicked={newTask} />
+                    <GtkButton
+                        iconName="system-search-symbolic"
+                        tooltipText="Search (Ctrl+F)"
+                        onClicked={() => setSearchMode((mode) => !mode)}
+                    />
+                </>
+            }
+            end={<MainMenu />}
+        />
+    );
+
+    const selectionHeader = (
+        <AdwHeaderBar
+            showStartTitleButtons={false}
+            showEndTitleButtons={false}
+            titleWidget={<AdwWindowTitle title={`${selectedIds.length} selected`} />}
+            start={<GtkButton label="Cancel" onClicked={cancelSelection} />}
+            end={<GtkButton label="Select All" onClicked={() => setSelectedIds(visible.map((task) => task.id))} />}
+        />
+    );
+
+    const selectionActionBar = (
+        <GtkActionBar
+            revealed={selecting}
+            start={
+                <GtkButton
+                    label="Complete"
+                    cssClasses={["suggested-action"]}
+                    sensitive={selectedIds.length > 0}
+                    onClicked={completeSelected}
+                />
+            }
+            end={
+                <>
+                    <GtkMenuButton
+                        label="Move"
+                        sensitive={selectedIds.length > 0}
+                        popover={
+                            <GtkPopover>
+                                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                                    {lists.map((list) => (
+                                        <GtkButton
+                                            key={list.id}
+                                            label={list.name}
+                                            cssClasses={["flat"]}
+                                            onClicked={() => moveSelected(list.id)}
+                                        />
+                                    ))}
+                                </GtkBox>
+                            </GtkPopover>
+                        }
+                    />
+                    <GtkButton
+                        label="Delete"
+                        cssClasses={["destructive-action"]}
+                        sensitive={selectedIds.length > 0}
+                        onClicked={deleteSelected}
+                    />
+                </>
+            }
+        />
+    );
+
+    const contentBody = selectedTask ? (
+        <TaskDetail
+            key={selectedTask.id}
+            task={selectedTask}
+            onUpdate={(fields) => api.updateTask(selectedTask.id, fields)}
+            onSetImportant={(important) => api.setImportant(selectedTask.id, important)}
+        />
+    ) : selecting ? (
+        <SelectionView tasks={visible} selectedIds={selectedIds} onSelectionChanged={setSelectedIds} />
+    ) : (
+        <TaskList
+            tasks={visible}
+            reorderable={reorderable}
+            addPlaceholder="Add a task…"
+            onAddTask={(title) => api.addTask(addListId, title)}
+            empty={emptyFor(selection, searchQuery)}
+            search={{
+                mode: searchMode,
+                onModeChange: setSearchMode,
+                query: searchQuery,
+                onQueryChange: setSearchQuery,
+            }}
+            row={rowHandlers}
+        />
+    );
+
+    const topBar = detailHeader ?? (selecting ? selectionHeader : listHeader);
 
     return (
         <AdwApplicationWindow
-            title="Notes"
-            defaultWidth={900}
-            defaultHeight={600}
-            onCloseRequest={quit}
-            actions={<NotesWindowActions notes={notes} dialogs={dialogs} />}
+            ref={windowRef}
+            title="Tasks"
+            defaultWidth={winWidth}
+            defaultHeight={winHeight}
+            widthRequest={360}
+            heightRequest={294}
+            onCloseRequest={handleClose}
+            actions={
+                <WindowActions
+                    onNew={newTask}
+                    onSelect={enterSelection}
+                    onPreferences={() => setShowPreferences(true)}
+                    onShortcuts={() => {
+                        if (parentWindow) showShortcutsDialog(parentWindow);
+                    }}
+                    onAbout={() => setShowAbout(true)}
+                />
+            }
             controllers={
                 <AppShortcuts
-                    selectedId={notes.selectedId}
-                    addNote={notes.addNote}
-                    deleteSelected={deleteSelected}
-                    setSearchMode={view.setSearchMode}
-                    setSelectedId={notes.setSelectedId}
+                    onSearch={() => setSearchMode((mode) => !mode)}
+                    onEscape={() => {
+                        if (selecting) cancelSelection();
+                        else setSelectedTaskId(null);
+                    }}
+                    escapeEnabled={selectedTask !== null || selecting}
+                    onDelete={() => {
+                        if (selectedTask) handleDelete(selectedTask);
+                    }}
+                    deleteEnabled={selectedTask !== null}
                 />
             }
         >
-            <AppBody
-                notes={notes}
-                view={view}
-                filteredNotes={filteredNotes}
-                compactMode={compactMode}
-                fontSize={fontSize}
-                deleteSelected={deleteSelected}
-                toastOverlayRef={toastOverlayRef}
-            />
-            <AppModals
-                noteToDelete={notes.noteToDelete}
-                setNoteToDelete={notes.setNoteToDelete}
-                confirmDelete={notes.confirmDelete}
-                showPreferences={dialogs.showPreferences}
-                setShowPreferences={dialogs.setShowPreferences}
-                showAbout={dialogs.showAbout}
-                setShowAbout={dialogs.setShowAbout}
-            />
+            <AdwToastOverlay ref={toastOverlayRef}>
+                <AdwNavigationSplitView
+                    collapsed={collapsed}
+                    showContent={showContent}
+                    onNotifyShowContent={(value) => setShowContent(value ?? false)}
+                    sidebarWidthFraction={0.25}
+                    minSidebarWidth={220}
+                    maxSidebarWidth={300}
+                    sidebar={
+                        <AdwNavigationPage title="Tasks">
+                            <AdwToolbarView
+                                topBar={
+                                    <AdwHeaderBar
+                                        start={
+                                            <GtkButton
+                                                iconName="list-add-symbolic"
+                                                tooltipText="New List"
+                                                onClicked={() => setShowNewList(true)}
+                                            />
+                                        }
+                                    />
+                                }
+                            >
+                                <Sidebar lists={lists} counts={counts} selection={selection} onSelect={selectSidebar} />
+                            </AdwToolbarView>
+                        </AdwNavigationPage>
+                    }
+                    content={
+                        <AdwNavigationPage title={titleFor(selection, lists)}>
+                            <AdwToolbarView
+                                topBar={topBar}
+                                bottomBar={selecting ? selectionActionBar : undefined}
+                                revealBottomBars={selecting}
+                            >
+                                {contentBody}
+                            </AdwToolbarView>
+                        </AdwNavigationPage>
+                    }
+                />
+            </AdwToastOverlay>
+
+            {showPreferences ? <Preferences onClose={() => setShowPreferences(false)} /> : null}
+            {showAbout ? <About onClose={() => setShowAbout(false)} /> : null}
+            {showNewList ? (
+                <NewListDialog
+                    onAdd={(name, color) => {
+                        api.addList(name, color);
+                        setShowNewList(false);
+                    }}
+                    onCancel={() => setShowNewList(false)}
+                />
+            ) : null}
+            {taskToDelete ? (
+                <DeleteConfirmation
+                    taskTitle={taskToDelete.title}
+                    onConfirm={confirmDelete}
+                    onCancel={() => setTaskToDelete(null)}
+                />
+            ) : null}
         </AdwApplicationWindow>
     );
 }
 
 export function App() {
+    const notify = useRef<NotifyHandlers>({ complete: () => {}, open: () => {} });
     return (
         <AdwApplication
             actionAccels={[
@@ -683,7 +523,21 @@ export function App() {
                 { detailedActionName: "win.shortcuts", accels: ["<Control>question"] },
             ]}
         >
-            <NotesWindow />
+            <GSimpleAction
+                name="complete-task"
+                parameterType={GLib.VariantType.new("s")}
+                onActivate={(parameter) => {
+                    if (parameter) notify.current.complete(parameter.getString()[0]);
+                }}
+            />
+            <GSimpleAction
+                name="open-task"
+                parameterType={GLib.VariantType.new("s")}
+                onActivate={(parameter) => {
+                    if (parameter) notify.current.open(parameter.getString()[0]);
+                }}
+            />
+            <TasksWindow notify={notify} />
         </AdwApplication>
     );
 }

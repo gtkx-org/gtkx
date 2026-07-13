@@ -46,5 +46,38 @@ export default defineConfig({
     themeConfig: {
         siteTitle: title,
         logo: "/gtkx-mark.svg",
+        nav: [
+            { text: "Guide", link: "/guide/" },
+            { text: "Examples", link: "https://github.com/gtkx-org/gtkx/tree/main/examples" },
+        ],
+        sidebar: {
+            "/guide/": [
+                {
+                    text: "Tutorial: Tasks App",
+                    items: [
+                        { text: "Introduction", link: "/guide/" },
+                        { text: "Getting Started", link: "/guide/getting-started" },
+                        { text: "The Application Shell", link: "/guide/app-shell" },
+                        { text: "Data Model and Persistence", link: "/guide/data-and-persistence" },
+                        { text: "The Sidebar", link: "/guide/the-sidebar" },
+                        { text: "The Task List", link: "/guide/the-task-list" },
+                        { text: "Task Rows and Drag-to-Reorder", link: "/guide/task-rows-and-reordering" },
+                        { text: "The Task Editor", link: "/guide/the-task-editor" },
+                        { text: "Actions, Menus, and Shortcuts", link: "/guide/actions-menus-shortcuts" },
+                        { text: "Selection Mode", link: "/guide/selection-and-batch" },
+                        { text: "Preferences and Theming", link: "/guide/preferences-and-theming" },
+                        { text: "Reminders and Notifications", link: "/guide/notifications" },
+                        { text: "Feedback and Dialogs", link: "/guide/feedback-and-dialogs" },
+                        { text: "Testing the App", link: "/guide/testing" },
+                        { text: "Packaging and Shipping", link: "/guide/packaging" },
+                    ],
+                },
+            ],
+        },
+        socialLinks: [{ icon: "github", link: "https://github.com/gtkx-org/gtkx" }],
+        editLink: {
+            pattern: "https://github.com/gtkx-org/gtkx/edit/main/website/:path",
+            text: "Edit this page on GitHub",
+        },
     },
 });

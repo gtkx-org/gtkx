@@ -2,19 +2,19 @@ import { AlertDialog, Dialog } from "@gtkx/components/adw";
 import * as Adw from "@gtkx/gi/adw";
 
 export const DeleteConfirmation = ({
-    noteTitle,
+    taskTitle,
     onConfirm,
     onCancel,
 }: {
-    noteTitle: string;
+    taskTitle: string;
     onConfirm: () => void;
     onCancel: () => void;
 }) => {
     return (
         <Dialog>
             <AlertDialog
-                heading="Delete Note?"
-                body={`“${noteTitle}” will be permanently deleted.`}
+                heading="Delete Task?"
+                body={`“${taskTitle}” will be permanently deleted. This cannot be undone.`}
                 defaultResponse="cancel"
                 closeResponse="cancel"
                 onResponse={(id) => {

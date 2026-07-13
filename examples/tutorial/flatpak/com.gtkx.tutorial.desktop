@@ -1,11 +1,13 @@
 [Desktop Entry]
-Name=GTKX Tutorial
-GenericName=Notes
-Comment=Notes app from the GTKX tutorial
+Name=Tasks
+GenericName=Task Manager
+Comment=Manage your tasks and to-dos
 Exec=gtkx-tutorial
 Icon=com.gtkx.tutorial
 Terminal=false
 Type=Application
-Categories=Utility;
-Keywords=Notes;Note;Text;Editor;
+Categories=Office;ProjectManagement;
+Keywords=Task;Tasks;Todo;To-do;Checklist;
 StartupNotify=true
+X-GNOME-UsesNotifications=true
+DBusActivatable=true

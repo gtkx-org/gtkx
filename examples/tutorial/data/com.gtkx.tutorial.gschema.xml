@@ -1,20 +1,52 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
+  <enum id="com.gtkx.tutorial.SortOrder">
+    <value nick="manual" value="0"/>
+    <value nick="due-date" value="1"/>
+    <value nick="title" value="2"/>
+    <value nick="created" value="3"/>
+  </enum>
   <schema id="com.gtkx.tutorial" path="/com/gtkx/tutorial/">
-    <key name="compact-mode" type="b">
-      <default>false</default>
-      <summary>Compact mode</summary>
-      <description>Use smaller spacing in the note list</description>
+    <key name="filter" type="s">
+      <choices>
+        <choice value="all"/>
+        <choice value="open"/>
+        <choice value="done"/>
+      </choices>
+      <default>'all'</default>
+      <summary>Task filter</summary>
+      <description>Which tasks are shown in the list</description>
     </key>
-    <key name="spell-check" type="b">
-      <default>true</default>
-      <summary>Spell check</summary>
-      <description>Highlight spelling errors while typing</description>
+    <key name="sort-order" enum="com.gtkx.tutorial.SortOrder">
+      <default>'manual'</default>
+      <summary>Sort order</summary>
+      <description>How tasks are ordered in the list</description>
     </key>
-    <key name="font-size" type="i">
-      <default>14</default>
-      <summary>Font size</summary>
-      <description>Base font size for the editor</description>
+    <key name="color-scheme" type="s">
+      <choices>
+        <choice value="default"/>
+        <choice value="light"/>
+        <choice value="dark"/>
+      </choices>
+      <default>'default'</default>
+      <summary>Color scheme</summary>
+      <description>Follow the system theme or force light or dark</description>
+    </key>
+    <key name="reminder-minutes" type="i">
+      <range min="0" max="1440"/>
+      <default>30</default>
+      <summary>Reminder lead time</summary>
+      <description>Minutes before a due time to show a reminder</description>
+    </key>
+    <key name="window-width" type="i">
+      <default>900</default>
+      <summary>Window width</summary>
+      <description>Last saved window width in pixels</description>
+    </key>
+    <key name="window-height" type="i">
+      <default>600</default>
+      <summary>Window height</summary>
+      <description>Last saved window height in pixels</description>
     </key>
   </schema>
 </schemalist>

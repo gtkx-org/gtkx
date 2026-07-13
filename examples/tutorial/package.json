@@ -3,7 +3,7 @@
     "version": "0.1.0",
     "private": true,
     "license": "MPL-2.0",
-    "description": "Notes app from the GTKX tutorial",
+    "description": "Tasks app from the GTKX tutorial",
     "type": "module",
     "imports": {
         "#data/*": "./data/*"
