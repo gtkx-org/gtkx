@@ -38,7 +38,7 @@
         "knip": "^6.26.0",
         "react": "catalog:",
         "tsx": "^4.23.1",
-        "turbo": "^2.10.4",
+        "turbo": "^2.10.5",
         "typescript": "catalog:",
         "verdaccio": "^6.7.4",
         "vitest": "catalog:"
