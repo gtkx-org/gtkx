@@ -1,6 +1,6 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import { createPortal, rootElement } from "@gtkx/react";
-import { useMergeRefs } from "@gtkx/react/internal";
+import { useMergedRef } from "@gtkx/react/internal";
 import {
     type Context,
     createContext,
@@ -49,7 +49,7 @@ export const usePlacedChild = <T extends GObject.Object, P>(options: PlacedChild
     const captureObject = useCallback<RefCallback<T>>((object) => {
         objectRef.current = object;
     }, []);
-    const setObjectRef = useMergeRefs<T>(ref, captureObject);
+    const setObjectRef = useMergedRef<T>(ref, captureObject);
 
     useLayoutEffect(() => {
         const object = objectRef.current;

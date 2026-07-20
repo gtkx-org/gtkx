@@ -1,9 +1,9 @@
 import type * as Adw from "@gtkx/gi/adw";
 import { type ElementType, type ReactNode, type Ref, useCallback, useLayoutEffect, useState } from "react";
-import { useMergeRefs } from "../../hooks/use-merge-refs.js";
-import { useParentWindow } from "../../hooks/use-parent-window.js";
-import { createPortal } from "../../reconciler/portal.js";
-import { rootElement } from "../../reconciler/root-element.js";
+import { useMergedRef } from "../hooks/use-merged-refs.js";
+import { useParentWindow } from "../hooks/use-parent-window.js";
+import { createPortal } from "../reconciler/portal.js";
+import { rootElement } from "../reconciler/root-element.js";
 
 type DialogComponentProps = {
     ref?: Ref<Adw.Dialog | null> | undefined;
@@ -27,7 +27,7 @@ export const createDialogComponent = (Component: ElementType): ((props: DialogCo
             dialog?.present(parent);
         }, [dialog, parent]);
 
-        const mergedRef = useMergeRefs<Adw.Dialog>(ref, handleMount);
+        const mergedRef = useMergedRef<Adw.Dialog>(ref, handleMount);
 
         return createPortal(<Component ref={mergedRef} {...rest} />, rootElement);
     };

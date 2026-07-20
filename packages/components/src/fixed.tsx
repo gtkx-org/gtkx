@@ -2,7 +2,7 @@ import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkFixed, type GtkFixedProps } from "@gtkx/jsx/gtk";
-import { useMergeRefs } from "@gtkx/react/internal";
+import { useMergedRef } from "@gtkx/react/internal";
 import {
     createContext,
     type ElementType,
@@ -55,7 +55,7 @@ const FixedChild = <C extends ElementType>({
     const captureWidget = useCallback<RefCallback<Gtk.Widget>>((node) => {
         widgetRef.current = node;
     }, []);
-    const setWidget = useMergeRefs<Gtk.Widget>(ref, captureWidget);
+    const setWidget = useMergedRef<Gtk.Widget>(ref, captureWidget);
 
     useLayoutEffect(() => {
         const widget = widgetRef.current;
@@ -75,7 +75,7 @@ export const Fixed: ((props: FixedProps) => ReactNode) & {
 } = Object.assign(
     ({ children, ref, ...rest }: FixedProps): ReactNode => {
         const [fixed, setFixed] = useState<Gtk.Fixed | null>(null);
-        const mergedRef = useMergeRefs<Gtk.Fixed>(ref, setFixed);
+        const mergedRef = useMergedRef<Gtk.Fixed>(ref, setFixed);
         return (
             <GtkFixed {...rest} ref={mergedRef}>
                 <FixedContext.Provider value={fixed}>{children}</FixedContext.Provider>

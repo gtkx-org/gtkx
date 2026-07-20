@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkDropDown, GtkLabel } from "@gtkx/jsx/gtk";
-import { useMergeRefs } from "@gtkx/react/internal";
+import { useMergedRef } from "@gtkx/react/internal";
 import { type ElementType, type ReactNode, type Ref, useCallback, useRef, useState } from "react";
 import { type CellRenderer, CellRenderHost, HeaderRenderHost, itemRenderer } from "./cell.js";
 import { makeFactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
@@ -96,7 +96,7 @@ const useDropDownWiring = <T, S>(props: NormalizedDropDownProps<T, S>): DropDown
         widgetRef.current = value;
         setWidget(value);
     }, []);
-    const setRef = useMergeRefs<Gtk.DropDown>(props.ref, captureWidget);
+    const setRef = useMergedRef<Gtk.DropDown>(props.ref, captureWidget);
 
     const listModel = useListModel<T, S>({ items: props.items, sections: props.sections });
 

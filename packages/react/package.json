@@ -38,9 +38,9 @@
             "default": "./dist/internal.js"
         },
         "./adw": {
-            "source": "./src/libraries/adw/index.ts",
-            "types": "./dist/libraries/adw/index.d.ts",
-            "default": "./dist/libraries/adw/index.js"
+            "source": "./src/adw/index.ts",
+            "types": "./dist/adw/index.d.ts",
+            "default": "./dist/adw/index.js"
         }
     },
     "sideEffects": false,

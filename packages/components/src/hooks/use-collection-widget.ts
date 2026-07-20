@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { useMergeRefs } from "@gtkx/react/internal";
+import { useMergedRef } from "@gtkx/react/internal";
 import { type ReactNode, type Ref, type RefCallback, type RefObject, useRef } from "react";
 import type { ItemNode, SectionNode } from "../types.js";
 import { type CollectionModelResult, useCollectionModel } from "./use-collection-model.js";
@@ -31,7 +31,7 @@ export const useCollectionWidget = <W extends CollectionWidget, T, S>(
     props: CollectionWidgetInput<W, T, S>,
 ): CollectionWidgetResult<W, T, S> => {
     const widgetRef = useRef<W | null>(null);
-    const setRef = useMergeRefs<W>(props.ref, widgetRef);
+    const setRef = useMergedRef<W>(props.ref, widgetRef);
     const collection = useCollectionModel<T, S>({
         items: props.items,
         sections: props.sections,

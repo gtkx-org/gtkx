@@ -1,7 +1,7 @@
 export { createApplicationComponent } from "./components/application.js";
 export { createWindowComponent } from "./components/window.js";
 export { ApplicationContext } from "./hooks/use-application.js";
-export { useMergeRefs } from "./hooks/use-merge-refs.js";
+export { useMergedRef } from "./hooks/use-merged-refs.js";
 export { useObjectAttachment } from "./hooks/use-object-attachment.js";
 export { useObjectValue } from "./hooks/use-object-value.js";
 export { setReconcilerErrorHandler } from "./reconciler/reconciler-error-handler.js";

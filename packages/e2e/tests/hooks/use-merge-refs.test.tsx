@@ -1,4 +1,4 @@
-import { useMergeRefs } from "@gtkx/react/internal";
+import { useMergedRef } from "@gtkx/react/internal";
 import { renderHook } from "@gtkx/testing";
 import type { Ref } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -7,18 +7,18 @@ interface Target {
     id: number;
 }
 
-const detachOf = (result: ReturnType<ReturnType<typeof useMergeRefs<Target>>>): (() => void) => {
+const detachOf = (result: ReturnType<ReturnType<typeof useMergedRef<Target>>>): (() => void) => {
     if (typeof result !== "function") throw new Error("expected the merged ref to return a cleanup");
     return result;
 };
 
-describe("useMergeRefs", () => {
+describe("useMergedRef", () => {
     it("passes the attached value to callback refs and ref objects", async () => {
         const callback = vi.fn();
         const objectRef: { current: Target | null } = { current: null };
         const value: Target = { id: 1 };
 
-        const { result } = await renderHook(() => useMergeRefs<Target>(callback, objectRef));
+        const { result } = await renderHook(() => useMergedRef<Target>(callback, objectRef));
 
         result.current(value);
 
@@ -31,7 +31,7 @@ describe("useMergeRefs", () => {
         const cleanup = vi.fn();
         const callback = vi.fn(() => cleanup);
 
-        const { result } = await renderHook(() => useMergeRefs<Target>(callback));
+        const { result } = await renderHook(() => useMergedRef<Target>(callback));
 
         const detach = detachOf(result.current({ id: 1 }));
         expect(cleanup).not.toHaveBeenCalled();
@@ -46,7 +46,7 @@ describe("useMergeRefs", () => {
         const objectRef: { current: Target | null } = { current: null };
         const value: Target = { id: 1 };
 
-        const { result } = await renderHook(() => useMergeRefs<Target>(objectRef));
+        const { result } = await renderHook(() => useMergedRef<Target>(objectRef));
 
         const detach = detachOf(result.current(value));
         expect(objectRef.current).toBe(value);
@@ -57,7 +57,7 @@ describe("useMergeRefs", () => {
     });
 
     const renderSwappableRef = (initialRef: Ref<Target | null>) =>
-        renderHook(({ ref }: { ref: Ref<Target | null> }) => useMergeRefs<Target>(ref), {
+        renderHook(({ ref }: { ref: Ref<Target | null> }) => useMergedRef<Target>(ref), {
             initialProps: { ref: initialRef },
         });
 
@@ -103,7 +103,7 @@ describe("useMergeRefs", () => {
 
         const { result, rerender } = await renderHook(
             ({ tick }: { tick: number }) =>
-                useMergeRefs<Target>(stable, (instance) => {
+                useMergedRef<Target>(stable, (instance) => {
                     inlineValues.push(instance);
                     void tick;
                 }),
@@ -126,7 +126,7 @@ describe("useMergeRefs", () => {
         const stable = vi.fn();
 
         const { result, rerender } = await renderHook(
-            ({ tick }: { tick: number }) => useMergeRefs<Target>(stable, () => void tick),
+            ({ tick }: { tick: number }) => useMergedRef<Target>(stable, () => void tick),
             { initialProps: { tick: 0 } },
         );
 

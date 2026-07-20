@@ -34,7 +34,7 @@ describe("useApplication", () => {
         };
 
         await expect(render(<Probe />, { container: rootElement })).rejects.toThrow(
-            /useApplication must be called within Application/,
+            /useApplication must be called within GtkApplication/,
         );
     });
 });

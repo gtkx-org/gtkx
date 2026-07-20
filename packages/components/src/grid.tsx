@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkGrid, type GtkGridProps } from "@gtkx/jsx/gtk";
-import { useMergeRefs } from "@gtkx/react/internal";
+import { useMergedRef } from "@gtkx/react/internal";
 import { Children, type ElementType, type ReactNode, type Ref, useRef } from "react";
 import { createParentContext, usePlacedChild } from "./hooks/use-placed-child.js";
 import type { ChildProps } from "./types.js";
@@ -76,7 +76,7 @@ export const Grid: ((props: GridProps) => ReactNode) & {
 } = Object.assign(
     ({ children, ref, ...rest }: GridProps): ReactNode => {
         const gridRef = useRef<Gtk.Grid | null>(null);
-        const mergedRef = useMergeRefs<Gtk.Grid>(ref, gridRef);
+        const mergedRef = useMergedRef<Gtk.Grid>(ref, gridRef);
         return (
             <>
                 <GtkGrid {...rest} ref={mergedRef} />

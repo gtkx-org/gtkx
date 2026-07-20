@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkOverlay, type GtkOverlayProps } from "@gtkx/jsx/gtk";
-import { useMergeRefs } from "@gtkx/react/internal";
+import { useMergedRef } from "@gtkx/react/internal";
 import { Children, type ElementType, isValidElement, type ReactNode, type Ref, useRef } from "react";
 import { createParentContext, usePlacedChild } from "./hooks/use-placed-child.js";
 import type { ChildProps } from "./types.js";
@@ -71,7 +71,7 @@ export const Overlay: ((props: OverlayProps) => ReactNode) & {
 } = Object.assign(
     ({ children, ref, ...rest }: OverlayProps): ReactNode => {
         const overlayRef = useRef<Gtk.Overlay | null>(null);
-        const mergedRef = useMergeRefs<Gtk.Overlay>(ref, overlayRef);
+        const mergedRef = useMergedRef<Gtk.Overlay>(ref, overlayRef);
         const items = Children.toArray(children);
         const overlays = items.filter(isOverlayChild);
         const base = items.filter((node) => !isOverlayChild(node));

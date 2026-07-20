@@ -29,8 +29,7 @@ export const useSettingsInstance = ({ id, path }: Pick<SchemaRef, "id" | "path">
 export function useSetting<K extends object, P extends keyof K & string>(
     schema: SchemaRef<K>,
     key: P,
-): [K[P], (value: K[P]) => void];
-export function useSetting(schema: SchemaRef, key: string): [unknown, (value: unknown) => void] {
+): [K[P], (value: K[P]) => void] {
     const accessor = resolveAccessor(schema.keys[key], key, schema.id);
     const settings = useSettingsInstance(schema);
 
@@ -43,5 +42,5 @@ export function useSetting(schema: SchemaRef, key: string): [unknown, (value: un
         [accessor, settings, key],
     );
 
-    return [value, set];
+    return [value, set] as [K[P], (value: K[P]) => void];
 }

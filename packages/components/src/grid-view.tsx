@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkGridView, type GtkGridViewProps } from "@gtkx/jsx/gtk";
-import { useMergeRefs } from "@gtkx/react/internal";
+import { useMergedRef } from "@gtkx/react/internal";
 import { type ReactNode, type Ref, useRef } from "react";
 import { type CellRenderer, CellRenderHost, itemRenderer } from "./cell.js";
 import { makeFactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
@@ -52,7 +52,7 @@ export const GridView = <T = unknown>(props: GridViewProps<T>): ReactNode => {
     const cellRenderer: CellRenderer<T, unknown> = itemRenderer<T, unknown>(renderItem);
 
     const widgetRef = useRef<Gtk.GridView | null>(null);
-    const setRef = useMergeRefs<Gtk.GridView>(ref, widgetRef);
+    const setRef = useMergedRef<Gtk.GridView>(ref, widgetRef);
 
     const collection = useCollectionModel<T, unknown>({
         items,

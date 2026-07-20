@@ -3,7 +3,7 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import { quitApplication, runApplication } from "@gtkx/runtime";
 import { type ElementType, type ReactNode, type Ref, useCallback, useState } from "react";
 import { ApplicationContext } from "../hooks/use-application.js";
-import { useMergeRefs } from "../hooks/use-merge-refs.js";
+import { useMergedRef } from "../hooks/use-merged-refs.js";
 
 const POST_ACTIVATE_PROPS = new Set(["menubar"]);
 
@@ -29,7 +29,8 @@ export const createApplicationComponent = (
             };
         }, []);
 
-        const mergedRef = useMergeRefs<Gtk.Application>(ref, handleMount);
+        const mergedRef = useMergedRef<Gtk.Application>(ref, handleMount);
+
         const appliedProps = app
             ? rest
             : Object.fromEntries(Object.entries(rest).filter(([key]) => !POST_ACTIVATE_PROPS.has(key)));

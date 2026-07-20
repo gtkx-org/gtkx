@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkSizeGroup } from "@gtkx/jsx/gtk";
-import { useMergeRefs } from "@gtkx/react/internal";
+import { useMergedRef } from "@gtkx/react/internal";
 import {
     createContext,
     type ElementType,
@@ -49,7 +49,7 @@ const SizeGroupChild = <C extends ElementType>({ component, ref, ...rest }: Size
         [registry],
     );
     const Component: ElementType = component;
-    const setWidget = useMergeRefs<Gtk.Widget>(ref, joinGroup);
+    const setWidget = useMergedRef<Gtk.Widget>(ref, joinGroup);
     return <Component {...rest} ref={setWidget} />;
 };
 
@@ -84,7 +84,7 @@ export const SizeGroup: ((props: SizeGroupProps) => ReactNode) & {
         if (registryRef.current === null) registryRef.current = createRegistry();
         const registry = registryRef.current;
         const setGroup = useCallback<RefCallback<Gtk.SizeGroup>>((group) => registry.setGroup(group), [registry]);
-        const mergedRef = useMergeRefs<Gtk.SizeGroup>(ref, setGroup);
+        const mergedRef = useMergedRef<Gtk.SizeGroup>(ref, setGroup);
         return (
             <>
                 <GtkSizeGroup ref={mergedRef} mode={mode} />

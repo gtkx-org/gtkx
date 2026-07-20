@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkConstraintLayout } from "@gtkx/jsx/gtk";
-import { useMergeRefs } from "@gtkx/react/internal";
+import { useMergedRef } from "@gtkx/react/internal";
 import {
     type Context,
     createContext,
@@ -86,7 +86,7 @@ export const ConstraintLayout: ((props: ConstraintLayoutProps) => ReactNode) & {
 } = Object.assign(
     ({ children, ref }: ConstraintLayoutProps): ReactNode => {
         const layoutRef = useRef<Gtk.ConstraintLayout | null>(null);
-        const mergedRef = useMergeRefs<Gtk.ConstraintLayout>(ref, layoutRef);
+        const mergedRef = useMergedRef<Gtk.ConstraintLayout>(ref, layoutRef);
         return (
             <>
                 <GtkConstraintLayout ref={mergedRef} />

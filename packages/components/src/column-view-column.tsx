@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkColumnViewColumn, type GtkColumnViewColumnProps } from "@gtkx/jsx/gtk";
-import { useMergeRefs } from "@gtkx/react/internal";
+import { useMergedRef } from "@gtkx/react/internal";
 import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { type CellRenderer, CellRenderHost, itemRenderer, type TreeRenderContext } from "./cell.js";
 import { makeFactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
@@ -48,7 +48,7 @@ export const ColumnViewColumn = <T = unknown>(props: ColumnViewColumnProps<T>): 
     } = props as ColumnViewColumnProps<T> & { [key: string]: unknown };
     const [column, setColumn] = useState<Gtk.ColumnViewColumn | null>(null);
 
-    const captureColumn = useMergeRefs<Gtk.ColumnViewColumn>(ref, setColumn);
+    const captureColumn = useMergedRef<Gtk.ColumnViewColumn>(ref, setColumn);
 
     const store = useCellContainers<Gtk.ColumnViewColumn>({
         object: column,

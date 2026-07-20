@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { type ElementType, type ReactNode, type Ref, useCallback, useLayoutEffect, useState } from "react";
-import { useMergeRefs } from "../hooks/use-merge-refs.js";
+import { useMergedRef } from "../hooks/use-merged-refs.js";
 import { ParentWindowContext } from "../hooks/use-parent-window.js";
 
 type WindowComponentProps = {
@@ -25,7 +25,7 @@ export const createWindowComponent = (Component: ElementType): ((props: WindowCo
             window?.present();
         }, [window]);
 
-        const mergedRef = useMergeRefs(ref, handleMount);
+        const mergedRef = useMergedRef(ref, handleMount);
 
         return (
             <ParentWindowContext.Provider value={window}>

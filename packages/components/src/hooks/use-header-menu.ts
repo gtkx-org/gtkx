@@ -1,7 +1,7 @@
 import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { createPortal, rootElement } from "@gtkx/react";
-import { useMergeRefs } from "@gtkx/react/internal";
+import { useMergedRef } from "@gtkx/react/internal";
 import {
     cloneElement,
     isValidElement,
@@ -22,7 +22,7 @@ export const useHeaderMenu = (column: Gtk.ColumnViewColumn | null, headerMenu: R
         modelRef.current = model;
     }, []);
     const element = isValidElement(headerMenu) ? (headerMenu as MenuElement) : null;
-    const mergedRef = useMergeRefs<Gio.MenuModel>(setModel, element?.props.ref);
+    const mergedRef = useMergedRef<Gio.MenuModel>(setModel, element?.props.ref);
 
     useLayoutEffect(() => {
         if (column === null) return;
