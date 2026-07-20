@@ -69,11 +69,11 @@
         "@gtkx/mcp": "workspace:*",
         "@gtkx/utils": "workspace:*",
         "@gtkx/vitest": "workspace:*",
-        "@swc/core": "^1.15.43",
+        "@swc/core": "^1.15.46",
         "babel-plugin-react-compiler": "^1.0.0",
         "citty": "^0.2.2",
         "create-gtkx": "workspace:*",
-        "fast-xml-parser": "^5.10.0",
+        "fast-xml-parser": "^5.10.1",
         "react-refresh": "^0.18.0",
         "vite": "catalog:"
     },

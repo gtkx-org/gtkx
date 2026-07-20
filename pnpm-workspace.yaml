@@ -22,7 +22,7 @@ catalog:
   ejs: ^6.0.1
   react: ^19.2.7
   typescript: ^7.0.2
-  vite: ^8.1.4
+  vite: ^8.1.5
   vitest: ^4.1.10
   zod: ^4.4.3
 
@@ -31,7 +31,7 @@ allowBuilds:
   esbuild: true
 
 overrides:
-  vite: ^8.1.4
+  vite: ^8.1.5
   uuid: ^14.0.1
   '@docsearch/react': ^4.6.3
   qs: ^6.15.3

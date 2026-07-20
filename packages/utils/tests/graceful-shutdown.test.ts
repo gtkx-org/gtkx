@@ -125,24 +125,24 @@ describe("installGracefulShutdown — async + force-kill behavior", () => {
         { signal: "SIGINT", exitCode: 130 },
         { signal: "SIGTERM", exitCode: 143 },
         { signal: "SIGHUP", exitCode: 143 },
-    ] as const)("invokes onForce on a deliberate second $signal after the coalesce window", async ({
-        signal,
-        exitCode,
-    }) => {
-        vi.useFakeTimers();
-        const onSignal = vi.fn().mockReturnValue(new Promise<void>(() => {}));
-        const onForce = vi.fn();
-        installGracefulShutdown({ onSignal, onForce, forceKillAfterMs: 0, coalesceWindowMs: 500 });
+    ] as const)(
+        "invokes onForce on a deliberate second $signal after the coalesce window",
+        async ({ signal, exitCode }) => {
+            vi.useFakeTimers();
+            const onSignal = vi.fn().mockReturnValue(new Promise<void>(() => {}));
+            const onForce = vi.fn();
+            installGracefulShutdown({ onSignal, onForce, forceKillAfterMs: 0, coalesceWindowMs: 500 });
 
-        process.emit(signal, signal);
-        await vi.advanceTimersByTimeAsync(600);
-        process.emit(signal, signal);
-        vi.useRealTimers();
-        await flush();
+            process.emit(signal, signal);
+            await vi.advanceTimersByTimeAsync(600);
+            process.emit(signal, signal);
+            vi.useRealTimers();
+            await flush();
 
-        expect(onForce).toHaveBeenCalledOnce();
-        expect(fixture.exitSpy).toHaveBeenCalledWith(exitCode);
-    });
+            expect(onForce).toHaveBeenCalledOnce();
+            expect(fixture.exitSpy).toHaveBeenCalledWith(exitCode);
+        },
+    );
 });
 
 describe("installGracefulShutdown — force-kill escalation and error paths", () => {

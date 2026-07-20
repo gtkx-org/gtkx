@@ -11,4 +11,4 @@ doctest = false
 native = { path = ".." }
 napi = { version = "3", features = ["napi8"] }
 gtk4 = "0.11.4"
-anyhow = "1.0.103"
+anyhow = "1.0.104"
