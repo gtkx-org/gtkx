@@ -1,3 +1,4 @@
+import { ToastProvider } from "@gtkx/components/adw";
 import * as Adw from "@gtkx/gi/adw";
 import {
     AdwApplicationWindow,
@@ -5,6 +6,7 @@ import {
     AdwHeaderBar,
     AdwNavigationPage,
     AdwNavigationSplitView,
+    AdwToastOverlay,
     AdwToolbarView,
 } from "@gtkx/jsx/adw";
 import { GtkButton } from "@gtkx/jsx/gtk";
@@ -21,7 +23,6 @@ import { AppShortcuts } from "./app-shortcuts.js";
 import { ContentPane } from "./content-pane.js";
 import { Dialogs } from "./dialogs.js";
 import { Sidebar } from "./sidebar.js";
-import { ToastOverlay } from "./toast-overlay.js";
 import { WindowActions } from "./window-actions.js";
 
 export const Window = () => {
@@ -38,6 +39,7 @@ export const Window = () => {
     const [colorScheme] = useSetting(schema, "color-scheme");
     const [reminderMinutes] = useSetting(schema, "reminder-minutes");
     const windowRef = useRef<Adw.ApplicationWindow | null>(null);
+    const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
 
     useBindSetting(schema, "window-width", windowRef, "defaultWidth");
     useBindSetting(schema, "window-height", windowRef, "defaultHeight");
@@ -53,57 +55,59 @@ export const Window = () => {
     useReminders(tasks, reminderMinutes, sendReminder);
 
     return (
-        <AdwApplicationWindow
-            ref={windowRef}
-            title="Tasks"
-            widthRequest={360}
-            heightRequest={294}
-            onCloseRequest={() => quit()}
-            breakpoints={
-                <AdwBreakpoint
-                    condition={Adw.BreakpointCondition.parse("max-width: 500sp")}
-                    onApply={() => setCollapsed(true)}
-                    onUnapply={() => setCollapsed(false)}
-                />
-            }
-            actions={<WindowActions />}
-            controllers={<AppShortcuts />}
-        >
-            <ToastOverlay>
-                <AdwNavigationSplitView
-                    collapsed={collapsed}
-                    showContent={showContent}
-                    onNotifyShowContent={(value) => setShowContent(value ?? false)}
-                    sidebarWidthFraction={0.25}
-                    minSidebarWidth={220}
-                    maxSidebarWidth={300}
-                    sidebar={
-                        <AdwNavigationPage title="Tasks">
-                            <AdwToolbarView
-                                topBar={
-                                    <AdwHeaderBar
-                                        start={
-                                            <GtkButton
-                                                iconName="list-add-symbolic"
-                                                tooltipText="New List"
-                                                onClicked={() => showDialog("new-list")}
-                                            />
-                                        }
-                                    />
-                                }
-                            >
-                                <Sidebar />
-                            </AdwToolbarView>
-                        </AdwNavigationPage>
-                    }
-                    content={
-                        <AdwNavigationPage title={selectionTitle(selection, lists)}>
-                            <ContentPane />
-                        </AdwNavigationPage>
-                    }
-                />
-            </ToastOverlay>
-            <Dialogs />
-        </AdwApplicationWindow>
+        <ToastProvider overlayRef={toastOverlayRef}>
+            <AdwApplicationWindow
+                ref={windowRef}
+                title="Tasks"
+                widthRequest={360}
+                heightRequest={294}
+                onCloseRequest={() => quit()}
+                breakpoints={
+                    <AdwBreakpoint
+                        condition={Adw.BreakpointCondition.parse("max-width: 500sp")}
+                        onApply={() => setCollapsed(true)}
+                        onUnapply={() => setCollapsed(false)}
+                    />
+                }
+                actions={<WindowActions />}
+                controllers={<AppShortcuts />}
+            >
+                <AdwToastOverlay ref={toastOverlayRef}>
+                    <AdwNavigationSplitView
+                        collapsed={collapsed}
+                        showContent={showContent}
+                        onNotifyShowContent={(value) => setShowContent(value ?? false)}
+                        sidebarWidthFraction={0.25}
+                        minSidebarWidth={220}
+                        maxSidebarWidth={300}
+                        sidebar={
+                            <AdwNavigationPage title="Tasks">
+                                <AdwToolbarView
+                                    topBar={
+                                        <AdwHeaderBar
+                                            start={
+                                                <GtkButton
+                                                    iconName="list-add-symbolic"
+                                                    tooltipText="New List"
+                                                    onClicked={() => showDialog("new-list")}
+                                                />
+                                            }
+                                        />
+                                    }
+                                >
+                                    <Sidebar />
+                                </AdwToolbarView>
+                            </AdwNavigationPage>
+                        }
+                        content={
+                            <AdwNavigationPage title={selectionTitle(selection, lists)}>
+                                <ContentPane />
+                            </AdwNavigationPage>
+                        }
+                    />
+                </AdwToastOverlay>
+                <Dialogs />
+            </AdwApplicationWindow>
+        </ToastProvider>
     );
 };

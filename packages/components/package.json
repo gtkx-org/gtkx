@@ -30,6 +30,11 @@
             "source": "./src/index.ts",
             "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
+        },
+        "./adw": {
+            "source": "./src/adw/index.ts",
+            "types": "./dist/adw/index.d.ts",
+            "default": "./dist/adw/index.js"
         }
     },
     "sideEffects": false,

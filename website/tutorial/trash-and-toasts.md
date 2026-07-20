@@ -20,93 +20,40 @@ Soft-deleting is a toast. Permanent deletion is a dialog.
 
 Adwaita shows toasts through an `AdwToastOverlay`, which wraps the widgets they appear over: in your window, the whole split view.
 
-A task is deleted from a row, from the open task's header, and from the Delete key, all far from the overlay. Threading a callback down through the sidebar, the content pane, and every row is the prop-drilling the store exists to avoid. Reach the overlay through React context instead: a `useToast` hook returns a function that shows one.
+A task is deleted from a row, from the open task's header, and from the Delete key, all far from the overlay. Threading a callback down through the sidebar, the content pane, and every row is the prop-drilling the store exists to avoid. Reach the overlay through React context instead: `useToast` returns a controller that shows one.
 
-The overlay is a widget, so it can only wrap what is on screen, the split view. But the Delete shortcut lives on the window itself, outside that content, and it deletes tasks too. So the context that carries the overlay has to sit higher than the overlay widget does. Split the two apart: a `ToastProvider` holds a ref and provides it over the whole window, and the `ToastOverlay` fills that ref with the widget it mounts.
+The overlay is a widget, so it can only wrap what is on screen, the split view. But the Delete shortcut lives on the window itself, outside that content, and it deletes tasks too. So the context that carries the overlay has to sit higher than the overlay widget does. `@gtkx/components/adw` ships that split as `ToastProvider` and `useToast`: you hand the provider a ref, give the same ref to an `AdwToastOverlay` mounted wherever the toasts should appear, and every `useToast` below the provider shows toasts on that overlay.
 
-Create `src/components/toast-overlay.tsx`:
+Wire both in `src/components/window.tsx`. Hold the overlay in a ref, wrap the window in `ToastProvider`, and mount the overlay around the split view:
 
 ```tsx
-import * as Adw from "@gtkx/gi/adw";
+import { ToastProvider } from "@gtkx/components/adw";
 import { AdwToastOverlay } from "@gtkx/jsx/adw";
-import { createContext, type ReactNode, type RefObject, useContext, useRef } from "react";
-
-const ToastContext = createContext<RefObject<Adw.ToastOverlay | null> | null>(null);
-
-export const useToast = (): ((title: string, onUndo: () => void) => void) => {
-    const overlay = useContext(ToastContext);
-    if (overlay === null) throw new Error("useToast must be used inside a ToastProvider");
-
-    return (title, onUndo) => {
-        if (overlay.current === null) return;
-        const toast = Adw.Toast.new(title);
-        toast.buttonLabel = "Undo";
-        toast.once("button-clicked", onUndo);
-        overlay.current.addToast(toast);
-    };
-};
-
-export const ToastProvider = ({ children }: { children: ReactNode }) => {
-    const overlay = useRef<Adw.ToastOverlay | null>(null);
-    return <ToastContext.Provider value={overlay}>{children}</ToastContext.Provider>;
-};
-
-export const ToastOverlay = ({ children }: { children: ReactNode }) => {
-    const overlay = useContext(ToastContext);
-    if (overlay === null) throw new Error("ToastOverlay must be used inside a ToastProvider");
-
-    return (
-        <AdwToastOverlay
-            ref={(instance) => {
-                overlay.current = instance;
-                return () => {
-                    overlay.current = null;
-                };
-            }}
-        >
-            {children}
-        </AdwToastOverlay>
-    );
-};
-```
-
-`ToastProvider` creates the ref and shares it through context. `ToastOverlay` reads that same ref and fills it: every GTKX element accepts a `ref`, and the value you get is the widget itself, an `Adw.ToastOverlay` with every method the Adwaita documentation lists. A ref callback that returns a function runs it on unmount, so the ref points at the overlay while it is on screen and is cleared when it leaves. That is why the type is nullable and `useToast` checks it before showing a toast.
-
-`useToast` reads the ref from context and throws when a caller sits outside the provider, so a missing provider is a loud error rather than a silent no-op. `Adw.Toast.new` builds the toast, `buttonLabel` gives it an action button, and `addToast` hands it to the overlay to queue and display. The handler uses `once` rather than `on`: the button can be clicked only once before the toast goes away, and `once` disconnects itself after the first emission.
-
-Provide the context over the whole window. In `src/app.tsx`, wrap `Window`:
-
-```tsx
-import { ToastProvider } from "./components/toast-overlay.js";
 
 // ...
 
-<ToastProvider>
-    <Window />
+const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
+
+// ...
+
+<ToastProvider overlayRef={toastOverlayRef}>
+    <AdwApplicationWindow
+        title="Tasks"
+        // ...
+    >
+        <AdwToastOverlay ref={toastOverlayRef}>
+            <AdwNavigationSplitView
+                // ...
+            />
+        </AdwToastOverlay>
+        <Dialogs />
+    </AdwApplicationWindow>
 </ToastProvider>
 ```
 
-Then mount the overlay widget around the content it covers. In `src/components/window.tsx`:
+`ToastProvider` shares the ref through context, and the `AdwToastOverlay` fills it: every GTKX element accepts a `ref`, and the value you get is the widget itself, an `Adw.ToastOverlay` with every method the Adwaita documentation lists. The provider wraps the window while the overlay wraps only the split view, so the Delete shortcut and the dialogs sit inside the provider even though toasts appear over the content alone.
 
-```tsx
-import { ToastOverlay } from "./toast-overlay.js";
-
-// ...
-
-<AdwApplicationWindow
-    title="Tasks"
-    // ...
->
-    <ToastOverlay>
-        <AdwNavigationSplitView
-            // ...
-        />
-    </ToastOverlay>
-    <Dialogs />
-</AdwApplicationWindow>
-```
-
-The provider sits above the window, so the Delete shortcut and the dialogs are inside it even though the overlay widget wraps only the split view.
+`useToast` returns `show`, which builds a toast and hands it to the overlay, and `dismiss`, which removes a single one; its companion `useToastOverlay` returns `dismissAll`. Calling any of them outside a `ToastProvider` throws, so a missing provider is a loud error rather than a silent no-op.
 
 ## Restoring
 
@@ -220,13 +167,13 @@ The trash button on a row, the trash button in the open task's header, and the D
 Because that branch raises a toast, it reads the overlay from context, which makes it a hook. Add to `src/components/dialogs.tsx`:
 
 ```tsx
+import { useToast } from "@gtkx/components/adw";
 import type { Task } from "../types.js";
-import { useToast } from "./toast-overlay.js";
 
 // ...
 
 export const useRequestDeleteTask = (): ((task: Task) => void) => {
-    const showToast = useToast();
+    const { show } = useToast();
 
     return (task) => {
         const { moveToTrash, restore, askDeleteTask, selectedTaskId, closeTask } = useStore.getState();
@@ -236,12 +183,16 @@ export const useRequestDeleteTask = (): ((task: Task) => void) => {
         }
         moveToTrash(task.id);
         if (selectedTaskId === task.id) closeTask();
-        showToast(`“${task.title}” moved to Trash`, () => restore(task.id));
+        show({
+            title: `“${task.title}” moved to Trash`,
+            buttonLabel: "Undo",
+            onButtonClicked: () => restore(task.id),
+        });
     };
 };
 ```
 
-`useRequestDeleteTask` runs `useToast` once and returns the handler the buttons call. The handler reads the store with `useStore.getState()` at the moment it runs, so its values are always current, while the toast overlay comes from the context above it.
+`useRequestDeleteTask` runs `useToast` once and returns the handler the buttons call. The handler reads the store with `useStore.getState()` at the moment it runs, so its values are always current, while the toast overlay comes from the context above it. `show` names the toast's `title`, gives it an Undo `buttonLabel`, and restores the task from `onButtonClicked`.
 
 A task already in Trash raises the dialog. Anything else moves to Trash, closes the editor if that task was open, and shows a toast whose Undo calls `restore`.
 
@@ -311,6 +262,7 @@ export const NewListDialog = () => {
     const showDialog = useStore((state) => state.showDialog);
     const [name, setName] = useState("");
     const [color, setColor] = useState("#3584e4");
+    const [firstSwatch, setFirstSwatch] = useState<Gtk.ToggleButton | null>(null);
 
     return (
         <AdwAlertDialog
@@ -329,9 +281,11 @@ export const NewListDialog = () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={16} marginTop={8}>
                 <GtkEntry placeholderText="List name" activatesDefault onChanged={(self) => setName(self.text)} />
                 <GtkBox spacing={6} halign={Gtk.Align.CENTER}>
-                    {PALETTE.map((swatch) => (
+                    {PALETTE.map((swatch, index) => (
                         <GtkToggleButton
                             key={swatch}
+                            ref={index === 0 ? setFirstSwatch : undefined}
+                            group={index === 0 ? undefined : firstSwatch}
                             active={color === swatch}
                             cssClasses={["flat"]}
                             accessibleLabel={`Color ${swatch}`}
@@ -358,7 +312,7 @@ Here `defaultResponse` is `add`: nothing is destroyed, so the safe answer and th
 
 The name and chosen color are transient form state that disappears when the dialog closes, so they live in `useState` rather than the store. Only the finished list, handed to `addList`, needs to persist.
 
-Each swatch is a `GtkToggleButton` whose `active` compares against the current color, so the row behaves like a radio group without being one: exactly one comparison is true at a time. A toggle button flips its own `active` off when you click the swatch that is already selected, and because `color === swatch` stays true React never re-renders to correct it, so set it back in the handler: `onClicked={(self) => { self.active = true; setColor(swatch); }}`. The dot inside uses `listDot` from `src/styles.ts`, the same helper the sidebar uses, so a color reads identically in the picker and in the list it names. A dot carries no text, so the button gets an `accessibleLabel` and the dot is marked `PRESENTATION` to keep it out of the accessibility tree.
+The swatches are one radio group: each `GtkToggleButton` past the first joins the first through the `group` prop, so GTK keeps exactly one active and never lets a click clear the selection. `active={color === swatch}` seeds that from the current color, and the `ref` on the first button captures it so the others can group onto it. The dot inside uses `listDot` from `src/styles.ts`, the same helper the sidebar uses, so a color reads identically in the picker and in the list it names. A dot carries no text, so the button gets an `accessibleLabel` and the dot is marked `PRESENTATION` to keep it out of the accessibility tree.
 
 Mount it alongside the other dialogs in `src/components/dialogs.tsx`:
 

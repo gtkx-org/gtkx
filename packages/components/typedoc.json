@@ -1,6 +1,6 @@
 {
     "$schema": "https://typedoc.org/schema.json",
-    "entryPoints": ["dist/index.d.ts"],
+    "entryPoints": ["dist/index.d.ts", "dist/adw/index.d.ts"],
     "tsconfig": "../../website/tsconfig.typedoc.json",
     "skipErrorChecking": true,
     "intentionallyNotExported": [],

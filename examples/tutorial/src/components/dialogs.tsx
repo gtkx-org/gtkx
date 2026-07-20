@@ -1,3 +1,4 @@
+import { useToast } from "@gtkx/components/adw";
 import { useStore } from "../store/index.js";
 import type { Task } from "../types.js";
 import { About } from "./about.js";
@@ -5,10 +6,9 @@ import { DeleteConfirmation } from "./delete-confirmation.js";
 import { NewListDialog } from "./new-list-dialog.js";
 import { Preferences } from "./preferences.js";
 import { Shortcuts } from "./shortcuts.js";
-import { useToast } from "./toast-overlay.js";
 
 export const useRequestDeleteTask = (): ((task: Task) => void) => {
-    const showToast = useToast();
+    const { show } = useToast();
 
     return (task) => {
         const { moveToTrash, restore, askDeleteTask, selectedTaskId, closeTask } = useStore.getState();
@@ -18,7 +18,11 @@ export const useRequestDeleteTask = (): ((task: Task) => void) => {
         }
         moveToTrash(task.id);
         if (selectedTaskId === task.id) closeTask();
-        showToast(`“${task.title}” moved to Trash`, () => restore(task.id));
+        show({
+            title: `“${task.title}” moved to Trash`,
+            buttonLabel: "Undo",
+            onButtonClicked: () => restore(task.id),
+        });
     };
 };
 

@@ -127,7 +127,11 @@
             }
         },
         {
-            "includes": ["packages/*/src/**", "!packages/react/src/libraries/adw/**"],
+            "includes": [
+                "packages/*/src/**",
+                "!packages/react/src/libraries/adw/**",
+                "!packages/components/src/adw/**"
+            ],
             "linter": {
                 "rules": {
                     "style": {
@@ -135,8 +139,8 @@
                             "level": "error",
                             "options": {
                                 "paths": {
-                                    "@gtkx/gi/adw": "Adwaita must stay out of the core graph. Put Adwaita-dependent code under packages/react/src/libraries/adw and reach it from the generated adw module.",
-                                    "@gtkx/jsx/adw": "Adwaita must stay out of the core graph. Put Adwaita-dependent code under packages/react/src/libraries/adw and reach it from the generated adw module."
+                                    "@gtkx/gi/adw": "Adwaita must stay out of the core graph. Put Adwaita-dependent code under a dedicated adw subpath (packages/react/src/libraries/adw or packages/components/src/adw) and reach it from the generated adw module.",
+                                    "@gtkx/jsx/adw": "Adwaita must stay out of the core graph. Put Adwaita-dependent code under a dedicated adw subpath (packages/react/src/libraries/adw or packages/components/src/adw) and reach it from the generated adw module."
                                 }
                             }
                         }
