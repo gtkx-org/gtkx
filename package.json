@@ -36,7 +36,7 @@
         "@types/react": "catalog:",
         "@vitest/coverage-v8": "catalog:",
         "dependency-cruiser": "^18.1.0",
-        "knip": "^6.26.0",
+        "knip": "^6.27.0",
         "react": "catalog:",
         "tsx": "^4.23.1",
         "turbo": "^2.10.5",
