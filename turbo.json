@@ -120,7 +120,7 @@
             "outputs": []
         },
         "@gtkx/native#artifacts": {
-            "dependsOn": ["build"],
+            "dependsOn": ["build", "create-npm-dirs"],
             "cache": false
         },
         "@gtkx/native#create-npm-dirs": {
