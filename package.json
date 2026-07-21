@@ -26,7 +26,7 @@
         "typecheck:all": "tsc --noEmit"
     },
     "devDependencies": {
-        "@biomejs/biome": "^2.5.4",
+        "@biomejs/biome": "^2.5.5",
         "@gtkx/runtime": "workspace:*",
         "@gtkx/native": "workspace:*",
         "@gtkx/react": "workspace:*",
