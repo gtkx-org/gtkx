@@ -20,7 +20,7 @@ catalog:
   '@types/react': ^19.2.17
   '@vitest/coverage-v8': ^4.1.10
   ejs: ^6.0.1
-  react: ^19.2.7
+  react: ^19.2.8
   typescript: ^7.0.2
   vite: ^8.1.5
   vitest: ^4.1.10

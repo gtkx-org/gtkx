@@ -22,8 +22,8 @@ catalogs:
       specifier: ^6.0.1
       version: 6.0.1
     react:
-      specifier: ^19.2.7
-      version: 19.2.7
+      specifier: ^19.2.8
+      version: 19.2.8
     typescript:
       specifier: ^7.0.2
       version: 7.0.2
@@ -83,7 +83,7 @@ importers:
         version: 6.27.0
       react:
         specifier: 'catalog:'
-        version: 19.2.7
+        version: 19.2.8
       tsx:
         specifier: ^4.23.1
         version: 4.23.1
@@ -110,7 +110,7 @@ importers:
         version: link:../../packages/react
       react:
         specifier: 'catalog:'
-        version: 19.2.7
+        version: 19.2.8
     devDependencies:
       '@gtkx/cli':
         specifier: workspace:*
@@ -138,7 +138,7 @@ importers:
         version: link:../../packages/runtime
       react:
         specifier: 'catalog:'
-        version: 19.2.7
+        version: 19.2.8
     devDependencies:
       '@gtkx/cli':
         specifier: workspace:*
@@ -169,7 +169,7 @@ importers:
         version: link:../../packages/react
       react:
         specifier: 'catalog:'
-        version: 19.2.7
+        version: 19.2.8
     devDependencies:
       '@gtkx/cli':
         specifier: workspace:*
@@ -383,7 +383,7 @@ importers:
         version: link:../vitest
       react:
         specifier: 'catalog:'
-        version: 19.2.7
+        version: 19.2.8
 
   packages/gl:
     dependencies:
@@ -4156,6 +4156,10 @@ packages:
 
   react@19.2.7:
     resolution: {integrity: sha512-HNe9WslTbXmFK8o8cmwgAeJFSBvt1bPdHCVKtaaV+WlAN36mpT4hcRpwbf3fY56ar2oIXzsBpOAiIRHAdY0OlQ==}
+    engines: {node: '>=0.10.0'}
+
+  react@19.2.8:
+    resolution: {integrity: sha512-PWaYA1L/q9u2u7xYQi+Y3L3Yfnie7XyLeaJICV1MGD6LprsBxcAqGjYyr0eY3p+QdsA+x/Irkt4Qif8D63+Sbw==}
     engines: {node: '>=0.10.0'}
 
   readable-stream@2.3.8:
@@ -8291,6 +8295,8 @@ snapshots:
   react-refresh@0.18.0: {}
 
   react@19.2.7: {}
+
+  react@19.2.8: {}
 
   readable-stream@2.3.8:
     dependencies:
