@@ -39,7 +39,7 @@
         "knip": "^6.27.0",
         "react": "catalog:",
         "tsx": "^4.23.1",
-        "turbo": "^2.10.5",
+        "turbo": "^2.10.6",
         "typescript": "catalog:",
         "verdaccio": "^6.8.0",
         "vitest": "catalog:"
