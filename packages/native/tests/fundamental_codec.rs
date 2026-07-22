@@ -2,8 +2,6 @@ use test_support as helpers;
 
 use std::ffi::c_void;
 
-use gtk4::glib;
-
 use napi::Env;
 use napi::JsValue as _;
 use napi::bindgen_prelude::{External, Unknown};
@@ -21,7 +19,7 @@ use helpers::{
 
 fn release_param_spec_refs(ptr: *mut c_void, count: u32) {
     for _ in 0..count {
-        unsafe { glib::gobject_ffi::g_param_spec_unref(ptr.cast()) };
+        unsafe { helpers::param_spec_unref(ptr) };
     }
 }
 
@@ -73,30 +71,36 @@ fn encode_param_spec(codec: &FundamentalCodec, pspec: *mut c_void) -> ffi::Stash
 
 fn assert_encode_returns_plain_pointer(codec: &FundamentalCodec, expected_extra_refs: u32) {
     let pspec = create_param_spec();
-    let before = param_spec_refcount(pspec);
+    let before = unsafe { param_spec_refcount(pspec) };
 
     let encoded = encode_param_spec(codec, pspec);
     assert!(matches!(encoded, ffi::Stash::Ptr(p) if p == pspec));
-    assert_eq!(param_spec_refcount(pspec), before + expected_extra_refs);
+    assert_eq!(
+        unsafe { param_spec_refcount(pspec) },
+        before + expected_extra_refs
+    );
 
     release_param_spec_refs(pspec, expected_extra_refs + 1);
 }
 
 fn assert_ref_for_transfer(codec: &FundamentalCodec, expected_extra_refs: u32) {
     let pspec = create_param_spec();
-    let before = param_spec_refcount(pspec);
+    let before = unsafe { param_spec_refcount(pspec) };
 
     let returned =
         unsafe { codec.ref_for_transfer(pspec) }.expect("ref_for_transfer should succeed");
     assert_eq!(returned, pspec);
-    assert_eq!(param_spec_refcount(pspec), before + expected_extra_refs);
+    assert_eq!(
+        unsafe { param_spec_refcount(pspec) },
+        before + expected_extra_refs
+    );
 
     release_param_spec_refs(pspec, expected_extra_refs + 1);
 }
 
 fn write_return_of_fresh_param_spec(codec: &FundamentalCodec) -> (*mut c_void, u32, *mut c_void) {
     let pspec = create_param_spec();
-    let before = param_spec_refcount(pspec);
+    let before = unsafe { param_spec_refcount(pspec) };
 
     let env = helpers::fake_env();
     let slot = write_return_into_slot(&env, codec, &Ok(object_value(&env, pspec)));
@@ -108,7 +112,10 @@ fn assert_write_return_writes_pointer(codec: &FundamentalCodec, expected_extra_r
     let (pspec, before, slot) = write_return_of_fresh_param_spec(codec);
 
     assert_eq!(slot, pspec);
-    assert_eq!(param_spec_refcount(pspec), before + expected_extra_refs);
+    assert_eq!(
+        unsafe { param_spec_refcount(pspec) },
+        before + expected_extra_refs
+    );
 
     release_param_spec_refs(pspec, expected_extra_refs + 1);
 }
@@ -123,7 +130,7 @@ fn assert_write_return_writes_null_and_reports(
         slot.is_null(),
         "a transfer-full fundamental return without a usable ref function must not alias ownership"
     );
-    assert_eq!(param_spec_refcount(pspec), before);
+    assert_eq!(unsafe { param_spec_refcount(pspec) }, before);
     let fatals = napi_mock::fatal_exceptions();
     assert_eq!(fatals.len(), 1);
     let message = napi_mock::read_object_property(fatals[0], "message")
@@ -149,12 +156,12 @@ fn lookup_fns_resolves_ref_and_unref() {
 fn encode_full_adds_exactly_one_ref() {
     helpers::run(|| {
         let pspec = create_param_spec();
-        let before = param_spec_refcount(pspec);
+        let before = unsafe { param_spec_refcount(pspec) };
 
         let encoded = encode_param_spec(&fundamental(Ownership::Full), pspec);
         encoded.disarm_pending_transfer();
         assert!(matches!(&encoded, ffi::Stash::Storage(s) if s.ptr() == pspec));
-        assert_eq!(param_spec_refcount(pspec), before + 1);
+        assert_eq!(unsafe { param_spec_refcount(pspec) }, before + 1);
 
         release_param_spec_refs(pspec, 2);
     });
@@ -164,11 +171,11 @@ fn encode_full_adds_exactly_one_ref() {
 fn encode_full_releases_reference_when_call_never_happens() {
     helpers::run(|| {
         let pspec = create_param_spec();
-        let before = param_spec_refcount(pspec);
+        let before = unsafe { param_spec_refcount(pspec) };
 
         let encoded = encode_param_spec(&fundamental(Ownership::Full), pspec);
         drop(encoded);
-        assert_eq!(param_spec_refcount(pspec), before);
+        assert_eq!(unsafe { param_spec_refcount(pspec) }, before);
 
         release_param_spec_refs(pspec, 1);
     });
@@ -251,11 +258,11 @@ fn transfer_release_full_releases_one_reference() {
         assert!(matches!(release, ffi::ReleaseKind::Fundamental(_)));
 
         let pspec = create_param_spec();
-        unsafe { glib::gobject_ffi::g_param_spec_ref(pspec.cast()) };
-        let before = param_spec_refcount(pspec);
+        unsafe { helpers::param_spec_ref(pspec) };
+        let before = unsafe { param_spec_refcount(pspec) };
 
         ffi::PendingTransfer::new(pspec, release).release_now();
-        assert_eq!(param_spec_refcount(pspec), before - 1);
+        assert_eq!(unsafe { param_spec_refcount(pspec) }, before - 1);
 
         release_param_spec_refs(pspec, 1);
     });
@@ -296,16 +303,16 @@ fn decode_borrowed_adds_exactly_one_ref() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let pspec = create_param_spec();
-        let before = param_spec_refcount(pspec);
+        let before = unsafe { param_spec_refcount(pspec) };
 
         let decoded = fundamental(Ownership::Borrowed)
             .decode(&env, &ffi::Stash::Ptr(pspec))
             .expect("borrowed decode should succeed");
         assert!(napi_mock::read_external(decoded.raw()).is_some());
-        assert_eq!(param_spec_refcount(pspec), before + 1);
+        assert_eq!(unsafe { param_spec_refcount(pspec) }, before + 1);
 
         napi_mock::collect(decoded.raw());
-        assert_eq!(param_spec_refcount(pspec), before);
+        assert_eq!(unsafe { param_spec_refcount(pspec) }, before);
 
         release_param_spec_refs(pspec, 1);
     });
@@ -316,13 +323,13 @@ fn decode_full_takes_ownership() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let pspec = create_param_spec();
-        let before = param_spec_refcount(pspec);
+        let before = unsafe { param_spec_refcount(pspec) };
 
         let decoded = fundamental(Ownership::Full)
             .decode(&env, &ffi::Stash::Ptr(pspec))
             .expect("full decode should succeed");
         assert!(napi_mock::read_external(decoded.raw()).is_some());
-        assert_eq!(param_spec_refcount(pspec), before);
+        assert_eq!(unsafe { param_spec_refcount(pspec) }, before);
     });
 }
 
@@ -338,13 +345,13 @@ fn ptr_to_value_wraps_fundamental() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let pspec = create_param_spec();
-        let before = param_spec_refcount(pspec);
+        let before = unsafe { param_spec_refcount(pspec) };
 
         let value =
             unsafe { fundamental(Ownership::Borrowed).read(&env, ReadSource::Value(pspec, "ctx")) }
                 .expect("ptr_to_value should succeed");
         assert!(napi_mock::read_external(value.raw()).is_some());
-        assert_eq!(param_spec_refcount(pspec), before + 1);
+        assert_eq!(unsafe { param_spec_refcount(pspec) }, before + 1);
 
         release_param_spec_refs(pspec, 1);
     });
@@ -435,7 +442,7 @@ fn write_value_to_pointer_writes_fundamental() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let pspec = create_param_spec();
-        let before = param_spec_refcount(pspec);
+        let before = unsafe { param_spec_refcount(pspec) };
 
         let slot = helpers::write_value_into_slot(
             &env,
@@ -445,7 +452,7 @@ fn write_value_to_pointer_writes_fundamental() {
         );
 
         assert_eq!(slot, pspec);
-        assert_eq!(param_spec_refcount(pspec), before + 1);
+        assert_eq!(unsafe { param_spec_refcount(pspec) }, before + 1);
 
         release_param_spec_refs(pspec, 2);
     });
@@ -458,9 +465,9 @@ fn write_value_to_pointer_unrefs_previous_fundamental() {
         let old = create_param_spec();
         let new = create_param_spec();
 
-        unsafe { glib::gobject_ffi::g_param_spec_ref(old.cast()) };
-        let old_before = param_spec_refcount(old);
-        let new_before = param_spec_refcount(new);
+        unsafe { helpers::param_spec_ref(old) };
+        let old_before = unsafe { param_spec_refcount(old) };
+        let new_before = unsafe { param_spec_refcount(new) };
 
         let slot = helpers::write_value_into_slot(
             &env,
@@ -470,8 +477,8 @@ fn write_value_to_pointer_unrefs_previous_fundamental() {
         );
 
         assert_eq!(slot, new);
-        assert_eq!(param_spec_refcount(new), new_before + 1);
-        assert_eq!(param_spec_refcount(old), old_before - 1);
+        assert_eq!(unsafe { param_spec_refcount(new) }, new_before + 1);
+        assert_eq!(unsafe { param_spec_refcount(old) }, old_before - 1);
 
         release_param_spec_refs(new, 2);
         release_param_spec_refs(old, 1);
@@ -484,8 +491,8 @@ fn write_value_to_pointer_null_releases_previous_fundamental() {
         let env = helpers::fake_env();
         let pspec = create_param_spec();
 
-        unsafe { glib::gobject_ffi::g_param_spec_ref(pspec.cast()) };
-        let before = param_spec_refcount(pspec);
+        unsafe { helpers::param_spec_ref(pspec) };
+        let before = unsafe { param_spec_refcount(pspec) };
 
         let slot = helpers::write_value_into_slot(
             &env,
@@ -495,7 +502,7 @@ fn write_value_to_pointer_null_releases_previous_fundamental() {
         );
 
         assert!(slot.is_null());
-        assert_eq!(param_spec_refcount(pspec), before - 1);
+        assert_eq!(unsafe { param_spec_refcount(pspec) }, before - 1);
 
         release_param_spec_refs(pspec, 1);
     });

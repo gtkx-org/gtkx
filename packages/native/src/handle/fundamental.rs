@@ -13,7 +13,7 @@ pub struct Fundamental {
 impl Fundamental {
     pub(crate) const SIZE_HINT: usize = 128;
 
-    pub fn from_glib_full(ptr: *mut c_void, unref_fn: Option<UnrefFn>) -> Self {
+    pub unsafe fn from_glib_full(ptr: *mut c_void, unref_fn: Option<UnrefFn>) -> Self {
         Self {
             ptr,
             owned: true,

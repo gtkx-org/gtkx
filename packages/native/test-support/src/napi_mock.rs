@@ -144,15 +144,18 @@ fn alloc(value: FakeValue) -> sys::napi_value {
     ptr.cast()
 }
 
-unsafe fn fv<'a>(value: sys::napi_value) -> Option<&'a FakeValue> {
+fn fv<'a>(value: sys::napi_value) -> Option<&'a FakeValue> {
     if value.is_null() {
         return None;
     }
-    Some(unsafe { &*value.cast::<FakeValue>() })
+    let ptr = value.cast::<FakeValue>();
+    let live = STATE.with_borrow(|state| state.values.contains(&ptr));
+    assert!(live, "napi_mock: unknown or stale napi_value handle {value:?}");
+    Some(unsafe { &*ptr })
 }
 
 fn expected_status(value: sys::napi_value, expected: sys::napi_status) -> sys::napi_status {
-    if unsafe { fv(value) }.is_none() {
+    if fv(value).is_none() {
         sys::Status::napi_invalid_arg
     } else {
         expected
@@ -286,11 +289,11 @@ pub fn fake_reference() -> sys::napi_ref {
 }
 
 pub fn reference_count(napi_ref: sys::napi_ref) -> Option<u32> {
-    unsafe { ref_entry(napi_ref) }.map(|entry| entry.count.get())
+    ref_entry(napi_ref).map(|entry| entry.count.get())
 }
 
 pub fn reference_is_deleted(napi_ref: sys::napi_ref) -> bool {
-    unsafe { ref_entry(napi_ref) }.is_some_and(|entry| entry.deleted.get())
+    ref_entry(napi_ref).is_some_and(|entry| entry.deleted.get())
 }
 
 pub fn fake_object(entries: &[(&str, sys::napi_value)]) -> sys::napi_value {
@@ -381,13 +384,13 @@ pub fn fake_throwing_function(exception: sys::napi_value) -> sys::napi_value {
 }
 
 pub fn set_object_property(object: sys::napi_value, key: &str, value: sys::napi_value) {
-    if let Some(FakeValue::Object(map)) = unsafe { fv(object) } {
+    if let Some(FakeValue::Object(map)) = fv(object) {
         map.borrow_mut().insert(key.to_owned(), value);
     }
 }
 
 pub fn read_double(value: sys::napi_value) -> Option<f64> {
-    match unsafe { fv(value) }? {
+    match fv(value)? {
         FakeValue::Double(v) => Some(*v),
         FakeValue::Int32(v) => Some(f64::from(*v)),
         FakeValue::Uint32(v) => Some(f64::from(*v)),
@@ -397,21 +400,21 @@ pub fn read_double(value: sys::napi_value) -> Option<f64> {
 }
 
 pub fn read_bool(value: sys::napi_value) -> Option<bool> {
-    match unsafe { fv(value) }? {
+    match fv(value)? {
         FakeValue::Boolean(v) => Some(*v),
         _ => None,
     }
 }
 
 pub fn read_string(value: sys::napi_value) -> Option<String> {
-    match unsafe { fv(value) }? {
+    match fv(value)? {
         FakeValue::String(v) => Some(v.clone()),
         _ => None,
     }
 }
 
 pub fn read_bigint_i128(value: sys::napi_value) -> Option<i128> {
-    match unsafe { fv(value) }? {
+    match fv(value)? {
         FakeValue::BigInt { sign_bit, words } => {
             if words.iter().skip(2).any(|word| *word != 0) {
                 return None;
@@ -433,7 +436,7 @@ pub fn read_bigint_i128(value: sys::napi_value) -> Option<i128> {
 }
 
 fn bigint_low_word(value: sys::napi_value) -> Option<(bool, u64, bool)> {
-    match unsafe { fv(value) }? {
+    match fv(value)? {
         FakeValue::BigInt { sign_bit, words } => Some((
             *sign_bit,
             words.first().copied().unwrap_or(0),
@@ -444,36 +447,36 @@ fn bigint_low_word(value: sys::napi_value) -> Option<(bool, u64, bool)> {
 }
 
 pub fn read_external(value: sys::napi_value) -> Option<*mut c_void> {
-    match unsafe { fv(value) }? {
+    match fv(value)? {
         FakeValue::External(ptr) => Some(*ptr),
         _ => None,
     }
 }
 
 pub fn read_object_property(value: sys::napi_value, key: &str) -> Option<sys::napi_value> {
-    match unsafe { fv(value) }? {
+    match fv(value)? {
         FakeValue::Object(map) => map.borrow().get(key).copied(),
         _ => None,
     }
 }
 
 pub fn read_array(value: sys::napi_value) -> Option<Vec<sys::napi_value>> {
-    match unsafe { fv(value) }? {
+    match fv(value)? {
         FakeValue::Array(items) => Some(items.borrow().clone()),
         _ => None,
     }
 }
 
 pub fn value_type(value: sys::napi_value) -> Option<sys::napi_valuetype> {
-    Some(typeof_of(unsafe { fv(value) }?))
+    Some(typeof_of(fv(value)?))
 }
 
 pub fn is_null(value: sys::napi_value) -> bool {
-    matches!(unsafe { fv(value) }, Some(FakeValue::Null))
+    matches!(fv(value), Some(FakeValue::Null))
 }
 
 pub fn is_undefined(value: sys::napi_value) -> bool {
-    matches!(unsafe { fv(value) }, Some(FakeValue::Undefined))
+    matches!(fv(value), Some(FakeValue::Undefined))
 }
 
 fn typeof_of(value: &FakeValue) -> sys::napi_valuetype {
@@ -752,7 +755,7 @@ pub unsafe extern "C" fn napi_get_value_bigint_words(
     words: *mut u64,
 ) -> sys::napi_status {
     record("napi_get_value_bigint_words");
-    let (sign, source) = match unsafe { fv(value) } {
+    let (sign, source) = match fv(value) {
         Some(FakeValue::BigInt { sign_bit, words }) => (*sign_bit, words.clone()),
         None => return sys::Status::napi_invalid_arg,
         Some(_) => return sys::Status::napi_bigint_expected,
@@ -845,7 +848,7 @@ pub unsafe extern "C" fn napi_typeof(
     result: *mut sys::napi_valuetype,
 ) -> sys::napi_status {
     record("napi_typeof");
-    let ty = unsafe { fv(value) }.map_or(sys::ValueType::napi_undefined, typeof_of);
+    let ty = fv(value).map_or(sys::ValueType::napi_undefined, typeof_of);
     unsafe { *result = ty };
     ok!()
 }
@@ -868,7 +871,7 @@ pub unsafe extern "C" fn napi_coerce_to_object(
 ) -> sys::napi_status {
     record("napi_coerce_to_object");
     pending_guard!();
-    let coerced = match unsafe { fv(value) } {
+    let coerced = match fv(value) {
         None | Some(FakeValue::Undefined | FakeValue::Null) => {
             return sys::Status::napi_object_expected;
         }
@@ -884,7 +887,7 @@ fn named_property_key(
     utf8name: *const c_char,
 ) -> Result<String, sys::napi_status> {
     if matches!(
-        unsafe { fv(object) },
+        fv(object),
         None | Some(FakeValue::Undefined | FakeValue::Null)
     ) {
         return Err(sys::Status::napi_object_expected);
@@ -925,7 +928,7 @@ pub unsafe extern "C" fn napi_set_named_property(
         Ok(key) => key,
         Err(status) => return status,
     };
-    if let Some(FakeValue::Object(map)) = unsafe { fv(object) } {
+    if let Some(FakeValue::Object(map)) = fv(object) {
         map.borrow_mut().insert(key, value);
     }
     ok!()
@@ -965,7 +968,7 @@ pub unsafe extern "C" fn napi_get_array_length(
 ) -> sys::napi_status {
     record("napi_get_array_length");
     pending_guard!();
-    let Some(FakeValue::Array(items)) = (unsafe { fv(value) }) else {
+    let Some(FakeValue::Array(items)) = fv(value)  else {
         return expected_status(value, sys::Status::napi_array_expected);
     };
     unsafe { *result = items.borrow().len() as u32 };
@@ -981,7 +984,7 @@ pub unsafe extern "C" fn napi_get_element(
 ) -> sys::napi_status {
     record("napi_get_element");
     pending_guard!();
-    let element = match unsafe { fv(object) } {
+    let element = match fv(object) {
         None | Some(FakeValue::Undefined | FakeValue::Null) => {
             return sys::Status::napi_object_expected;
         }
@@ -1001,7 +1004,7 @@ pub unsafe extern "C" fn napi_set_element(
 ) -> sys::napi_status {
     record("napi_set_element");
     pending_guard!();
-    match unsafe { fv(object) } {
+    match fv(object) {
         None | Some(FakeValue::Undefined | FakeValue::Null) => {
             return sys::Status::napi_object_expected;
         }
@@ -1109,7 +1112,7 @@ pub unsafe extern "C" fn napi_get_typedarray_info(
         length: view_len,
         byte_offset: view_off,
         shared,
-    }) = (unsafe { fv(typedarray) })
+    }) = fv(typedarray) 
     else {
         return sys::Status::napi_invalid_arg;
     };
@@ -1146,7 +1149,7 @@ pub unsafe extern "C" fn napi_get_dataview_info(
         byte_length,
         byte_offset: view_off,
         shared,
-    }) = (unsafe { fv(dataview) })
+    }) = fv(dataview) 
     else {
         return sys::Status::napi_invalid_arg;
     };
@@ -1239,11 +1242,14 @@ fn register_ref(state: &mut State, value: sys::napi_value, initial_count: u32) -
     ptr.cast()
 }
 
-unsafe fn ref_entry<'a>(ref_: sys::napi_ref) -> Option<&'a RefEntry> {
+fn ref_entry<'a>(ref_: sys::napi_ref) -> Option<&'a RefEntry> {
     if ref_.is_null() {
         return None;
     }
-    Some(unsafe { &*ref_.cast::<RefEntry>() })
+    let ptr = ref_.cast::<RefEntry>();
+    let live = STATE.with_borrow(|state| state.refs.contains(&ptr));
+    assert!(live, "napi_mock: unknown or stale napi_ref handle {ref_:?}");
+    Some(unsafe { &*ptr })
 }
 
 #[unsafe(no_mangle)]
@@ -1252,7 +1258,7 @@ pub unsafe extern "C" fn napi_delete_reference(
     ref_: sys::napi_ref,
 ) -> sys::napi_status {
     record("napi_delete_reference");
-    if let Some(entry) = unsafe { ref_entry(ref_) } {
+    if let Some(entry) = ref_entry(ref_) {
         entry.deleted.set(true);
     }
     ok!()
@@ -1265,7 +1271,7 @@ pub unsafe extern "C" fn napi_get_reference_value(
     result: *mut sys::napi_value,
 ) -> sys::napi_status {
     record("napi_get_reference_value");
-    let value = unsafe { ref_entry(ref_) }
+    let value = ref_entry(ref_)
         .filter(|entry| !entry.deleted.get())
         .map_or(std::ptr::null_mut(), |entry| entry.value);
     unsafe { *result = value };
@@ -1279,7 +1285,7 @@ pub unsafe extern "C" fn napi_reference_ref(
     result: *mut u32,
 ) -> sys::napi_status {
     record("napi_reference_ref");
-    let count = unsafe { ref_entry(ref_) }.map_or(0, |entry| {
+    let count = ref_entry(ref_).map_or(0, |entry| {
         let next = entry.count.get() + 1;
         entry.count.set(next);
         next
@@ -1297,7 +1303,7 @@ pub unsafe extern "C" fn napi_reference_unref(
     result: *mut u32,
 ) -> sys::napi_status {
     record("napi_reference_unref");
-    let Some(entry) = (unsafe { ref_entry(ref_) }) else {
+    let Some(entry) = ref_entry(ref_)  else {
         return sys::Status::napi_invalid_arg;
     };
     if entry.count.get() == 0 {
@@ -1431,7 +1437,7 @@ pub unsafe extern "C" fn napi_call_function(
 ) -> sys::napi_status {
     record("napi_call_function");
     pending_guard!();
-    let implementation = match unsafe { fv(func) } {
+    let implementation = match fv(func) {
         Some(FakeValue::Function(implementation)) => Rc::clone(implementation),
         None => return sys::Status::napi_invalid_arg,
         Some(_) => return sys::Status::napi_function_expected,
@@ -1485,7 +1491,7 @@ fn format_js_number(value: f64) -> String {
 }
 
 fn coerced_string_content(value: sys::napi_value) -> String {
-    match unsafe { fv(value) } {
+    match fv(value) {
         None | Some(FakeValue::Undefined) => "undefined".to_owned(),
         Some(FakeValue::Null) => "null".to_owned(),
         Some(FakeValue::Boolean(v)) => v.to_string(),
@@ -1524,7 +1530,7 @@ pub unsafe extern "C" fn napi_coerce_to_string(
 ) -> sys::napi_status {
     record("napi_coerce_to_string");
     pending_guard!();
-    let coerced = match unsafe { fv(value) } {
+    let coerced = match fv(value) {
         Some(FakeValue::String(_)) => value,
         _ => fake_string(&coerced_string_content(value)),
     };

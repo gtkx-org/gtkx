@@ -14,7 +14,7 @@ impl ArrayContainer for GByteArrayCodec {
     fn encode(
         &self,
         codec: &ArrayCodec,
-        env: &Env,
+        _env: &Env,
         array: &[Unknown<'_>],
     ) -> anyhow::Result<ffi::Stash> {
         let bytes: Vec<u8> = array
@@ -22,7 +22,7 @@ impl ArrayContainer for GByteArrayCodec {
             .enumerate()
             .map(|(i, &v)| match v.get_type()? {
                 ValueType::Number => {
-                    let n = value::read_napi::<f64>(env, v)?;
+                    let n = value::read_napi::<f64>(v)?;
                     IntegerCodec::U8
                         .check_range(n)
                         .map_err(|e| anyhow::anyhow!("GByteArray element {i}: {e}"))?;

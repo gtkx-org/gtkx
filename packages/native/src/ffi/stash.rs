@@ -8,7 +8,7 @@ use crate::ffi::closure::ClosureState;
 mod storage;
 
 pub use storage::{
-    GArrayData, GLIST_OPS, GSLIST_OPS, ListData, ListOps, ListPayload, PendingTransfer,
+    GArrayData, GLIST_OPS, GSLIST_OPS, ListData, ListNode, ListOps, ListPayload, PendingTransfer,
     ReleaseKind, StashData, StashStorage, build_list,
 };
 
@@ -35,7 +35,7 @@ pub struct CallbackValue {
     state_ptr: *mut c_void,
     destroy_ptr: Option<*mut c_void>,
     _owned_state: Option<Box<ClosureState>>,
-    pending_transfer: Cell<Option<Box<ClosureState>>>,
+    pending_transfer: Cell<Option<*mut ClosureState>>,
 }
 
 impl CallbackValue {
@@ -59,20 +59,22 @@ impl CallbackValue {
         destroy_ptr: Option<*mut c_void>,
         state: Box<ClosureState>,
     ) -> Self {
-        let state_ptr = std::ptr::from_ref::<ClosureState>(&state) as *mut c_void;
+        let state_ptr = Box::into_raw(state);
+        let data = unsafe { (*state_ptr).data_ref() };
+        if data.is_oneshot {
+            data.oneshot_state_ptr.set(state_ptr);
+        }
         Self {
             fn_ptr,
-            state_ptr,
+            state_ptr: state_ptr.cast(),
             destroy_ptr,
             _owned_state: None,
-            pending_transfer: Cell::new(Some(state)),
+            pending_transfer: Cell::new(Some(state_ptr)),
         }
     }
 
     pub fn disarm_pending_transfer(&self) {
-        if let Some(state) = self.pending_transfer.take() {
-            let _ = Box::into_raw(state);
-        }
+        self.pending_transfer.take();
     }
 
     pub fn fn_ptr(&self) -> *mut c_void {
@@ -85,6 +87,21 @@ impl CallbackValue {
 
     pub fn destroy_ptr(&self) -> Option<*mut c_void> {
         self.destroy_ptr
+    }
+}
+
+impl Drop for CallbackValue {
+    fn drop(&mut self) {
+        let Some(state_ptr) = self.pending_transfer.take() else {
+            return;
+        };
+        let oneshot_fired = {
+            let data = unsafe { (*state_ptr).data_ref() };
+            data.is_oneshot && data.oneshot_state_ptr.get().is_null()
+        };
+        if !oneshot_fired {
+            drop(unsafe { Box::from_raw(state_ptr) });
+        }
     }
 }
 

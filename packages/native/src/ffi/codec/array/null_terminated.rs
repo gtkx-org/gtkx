@@ -24,10 +24,10 @@ fn gstring_ptrs_to_unknowns<'e>(
     build_js_array(env, unknowns)
 }
 
-fn build_strv(env: &Env, array: &[Unknown<'_>]) -> anyhow::Result<glib::StrV> {
+fn build_strv(array: &[Unknown<'_>]) -> anyhow::Result<glib::StrV> {
     let mut strv = glib::StrV::with_capacity(array.len());
     for &v in array {
-        let s = read_string_item(env, v)?;
+        let s = read_string_item(v)?;
         let gstring = glib::GString::from_string_checked(s)
             .map_err(|_| anyhow::anyhow!("String contains an interior NUL byte"))?;
         strv.push(gstring);
@@ -66,14 +66,13 @@ pub(super) struct NullTerminatedArrayEncoder;
 impl ArrayKindEncoder for NullTerminatedArrayEncoder {
     fn encode_strings(
         &self,
-        env: &Env,
         array: &[Unknown<'_>],
         dup_items: bool,
         ownership: Ownership,
     ) -> anyhow::Result<ffi::Stash> {
         match (ownership, dup_items) {
             (Ownership::Borrowed, false) => {
-                let strv = build_strv(env, array)?;
+                let strv = build_strv(array)?;
                 let ptr = strv.as_ptr() as *mut c_void;
                 Ok(ffi::Stash::Storage(StashStorage::new(
                     ptr,
@@ -81,12 +80,12 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
                 )))
             }
             (Ownership::Full, true) => {
-                let strv = build_strv(env, array)?;
+                let strv = build_strv(array)?;
                 let container = strv.into_raw() as *mut c_void;
                 Ok(full_transfer_stash(container, ffi::ReleaseKind::StrFreeV))
             }
             (Ownership::Full, false) => {
-                let cstrings = ArrayCodec::extract_strings(env, array)?;
+                let cstrings = ArrayCodec::extract_strings(array)?;
                 let mut ptrs: Vec<*mut c_void> =
                     cstrings.iter().map(|s| s.as_ptr() as *mut c_void).collect();
                 ptrs.push(std::ptr::null_mut());
@@ -97,7 +96,7 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
                 ))
             }
             (Ownership::Borrowed, true) => {
-                let mut ptrs = dup_strings_to_glib(env, array)?;
+                let mut ptrs = dup_strings_to_glib(array)?;
                 ptrs.push(std::ptr::null_mut());
                 let ptr = ptrs.as_mut_ptr() as *mut c_void;
                 Ok(ffi::Stash::Storage(

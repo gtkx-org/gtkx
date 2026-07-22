@@ -195,13 +195,8 @@ fn roundtrip<'e>(env: &'e Env, ht: &HashTableCodec, input: sys::napi_value) -> U
         .expect("decoding should succeed")
 }
 
-fn assert_encoded_float(
-    env: &Env,
-    encoder: &HashTableEntryCodec,
-    value: Unknown<'_>,
-    expected: f64,
-) {
-    let ptr = encoder.encode(env, value).expect("encoding should succeed");
+fn assert_encoded_float(encoder: &HashTableEntryCodec, value: Unknown<'_>, expected: f64) {
+    let ptr = encoder.encode(value).expect("encoding should succeed");
 
     let stored_value = unsafe {
         *ptr.cast::<f64>()
@@ -307,7 +302,7 @@ fn encode_boolean_true() {
         let encoder = HashTableEntryCodec::Boolean;
 
         let ptr = encoder
-            .encode(&env, napi_mock::to_unknown(&env, boolean(true)))
+            .encode(napi_mock::to_unknown(&env, boolean(true)))
             .expect("encoding should succeed");
 
         assert_eq!(ptr as isize, 1);
@@ -321,7 +316,7 @@ fn encode_boolean_false() {
         let encoder = HashTableEntryCodec::Boolean;
 
         let ptr = encoder
-            .encode(&env, napi_mock::to_unknown(&env, boolean(false)))
+            .encode(napi_mock::to_unknown(&env, boolean(false)))
             .expect("encoding should succeed");
 
         assert_eq!(ptr as isize, 0);
@@ -335,13 +330,11 @@ fn encode_float_value() {
         let encoder = HashTableEntryCodec::Float;
 
         assert_encoded_float(
-            &env,
             &encoder,
             napi_mock::to_unknown(&env, num(std::f64::consts::PI)),
             std::f64::consts::PI,
         );
         assert_encoded_float(
-            &env,
             &encoder,
             napi_mock::to_unknown(&env, num(-123.456)),
             -123.456,
@@ -663,25 +656,25 @@ fn encode_native_handle_value_null_and_wrong_type() {
         let handle = boxed_handle();
         let handle_ptr = handle.as_ptr();
         let ptr = encoder
-            .encode(&env, napi_mock::to_unknown(&env, object_raw(&env, handle)))
+            .encode(napi_mock::to_unknown(&env, object_raw(&env, handle)))
             .unwrap();
         assert_eq!(ptr, handle_ptr);
 
         assert!(
             encoder
-                .encode(&env, napi_mock::to_unknown(&env, null_value()))
+                .encode(napi_mock::to_unknown(&env, null_value()))
                 .unwrap()
                 .is_null()
         );
         assert!(
             encoder
-                .encode(&env, napi_mock::to_unknown(&env, undefined_value()))
+                .encode(napi_mock::to_unknown(&env, undefined_value()))
                 .unwrap()
                 .is_null()
         );
         assert!(
             encoder
-                .encode(&env, napi_mock::to_unknown(&env, num(1.0)))
+                .encode(napi_mock::to_unknown(&env, num(1.0)))
                 .is_err()
         );
     });
@@ -693,17 +686,14 @@ fn encode_ptr_array_value_with_objects_and_nulls() {
         let env = helpers::fake_env();
         let encoder = HashTableEntryCodec::PtrArray(Box::new(struct_codec()));
         let ptr = encoder
-            .encode(
+            .encode(napi_mock::to_unknown(
                 &env,
-                napi_mock::to_unknown(
-                    &env,
-                    list(&[
-                        object_raw(&env, boxed_handle()),
-                        null_value(),
-                        undefined_value(),
-                    ]),
-                ),
-            )
+                list(&[
+                    object_raw(&env, boxed_handle()),
+                    null_value(),
+                    undefined_value(),
+                ]),
+            ))
             .unwrap();
         assert!(!ptr.is_null());
         unsafe { glib::ffi::g_ptr_array_unref(ptr as *mut glib::ffi::GPtrArray) };
@@ -857,10 +847,10 @@ fn boolean_roundtrip_preserves_values() {
 }
 
 fn encode_pspec_entry(env: &Env, codec: Codec, pspec: *mut c_void) -> anyhow::Result<*mut c_void> {
-    HashTableEntryCodec::Handle(Box::new(codec)).encode(
+    HashTableEntryCodec::Handle(Box::new(codec)).encode(napi_mock::to_unknown(
         env,
-        napi_mock::to_unknown(env, object_raw(env, Handle::from_glib_borrow(pspec))),
-    )
+        object_raw(env, Handle::from_glib_borrow(pspec)),
+    ))
 }
 
 #[test]
@@ -868,19 +858,19 @@ fn handle_entry_encode_full_fundamental_transfers_reference() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let pspec = create_param_spec();
-        let before = helpers::param_spec_refcount(pspec);
+        let before = unsafe { helpers::param_spec_refcount(pspec) };
 
         let ptr = encode_pspec_entry(&env, param_spec_fundamental_codec(), pspec)
             .expect("handle entry encode should succeed");
         assert_eq!(ptr, pspec);
         assert_eq!(
-            helpers::param_spec_refcount(pspec),
+            unsafe { helpers::param_spec_refcount(pspec) },
             before + 1,
             "a full-ownership handle entry must own its pointer when encode returns"
         );
 
         unsafe { glib::gobject_ffi::g_param_spec_unref(pspec.cast()) };
-        assert_eq!(helpers::param_spec_refcount(pspec), before);
+        assert_eq!(unsafe { helpers::param_spec_refcount(pspec) }, before);
 
         unsafe { glib::gobject_ffi::g_param_spec_unref(pspec.cast()) };
     });
@@ -891,7 +881,7 @@ fn handle_entry_encode_unresolvable_transfer_ref_fails_without_leaking() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let pspec = create_param_spec();
-        let before = helpers::param_spec_refcount(pspec);
+        let before = unsafe { helpers::param_spec_refcount(pspec) };
 
         let unresolvable = Codec::Fundamental(FundamentalCodec {
             ownership: Ownership::Full,
@@ -899,19 +889,21 @@ fn handle_entry_encode_unresolvable_transfer_ref_fails_without_leaking() {
             ref_fn_name: "no_such_hashtable_ref_symbol_54321".to_owned(),
             unref_fn_name: "g_param_spec_unref".to_owned(),
         });
-        helpers::assert_unresolvable_symbol_failure_keeps_param_spec(
-            pspec,
-            before,
-            encode_pspec_entry(&env, unresolvable, pspec).map(|_| ()),
-            "an unresolvable transfer ref must fail the entry encode",
-        );
+        unsafe {
+            helpers::assert_unresolvable_symbol_failure_keeps_param_spec(
+                pspec,
+                before,
+                encode_pspec_entry(&env, unresolvable, pspec).map(|_| ()),
+                "an unresolvable transfer ref must fail the entry encode",
+            )
+        };
     });
 }
 
 fn assert_pspec_entry_reffed_until_storage_drops(pspec_is_key: bool) {
     let env = helpers::fake_env();
     let pspec = create_param_spec();
-    let before = helpers::param_spec_refcount(pspec);
+    let before = unsafe { helpers::param_spec_refcount(pspec) };
 
     let integer = Codec::Integer(IntegerCodec::I32);
     let pspec_codec = param_spec_fundamental_codec();
@@ -936,10 +928,10 @@ fn assert_pspec_entry_reffed_until_storage_drops(pspec_is_key: bool) {
     let encoded = ht
         .encode(&env, napi_mock::to_unknown(&env, input))
         .expect("encoding should succeed");
-    assert_eq!(helpers::param_spec_refcount(pspec), before + 1);
+    assert_eq!(unsafe { helpers::param_spec_refcount(pspec) }, before + 1);
 
     drop(encoded);
-    assert_eq!(helpers::param_spec_refcount(pspec), before);
+    assert_eq!(unsafe { helpers::param_spec_refcount(pspec) }, before);
 
     unsafe { glib::gobject_ffi::g_param_spec_unref(pspec.cast()) };
 }
@@ -980,7 +972,10 @@ fn gobject_value_unreffed_when_hashtable_storage_drops() {
         let encoded = ht
             .encode(&env, napi_mock::to_unknown(&env, input))
             .expect("encoding should succeed");
-        assert_eq!(helpers::get_gobject_refcount(obj_ptr), before + 1);
+        assert_eq!(
+            unsafe { helpers::get_gobject_refcount(obj_ptr) },
+            before + 1
+        );
 
         let Stash::Storage(storage) = &encoded else {
             panic!("Expected Storage ffi value")
@@ -990,7 +985,7 @@ fn gobject_value_unreffed_when_hashtable_storage_drops() {
         assert_eq!(size, 2);
 
         drop(encoded);
-        assert_eq!(helpers::get_gobject_refcount(obj_ptr), before);
+        assert_eq!(unsafe { helpers::get_gobject_refcount(obj_ptr) }, before);
     });
 }
 
@@ -1010,7 +1005,7 @@ fn hashtable_encode_value_error_releases_transferred_gobject_key() {
             .encode(&env, napi_mock::to_unknown(&env, input))
             .expect_err("value encode must fail");
         assert!(err.to_string().contains("Expected boolean in GHashTable"));
-        assert_eq!(helpers::get_gobject_refcount(obj_ptr), before);
+        assert_eq!(unsafe { helpers::get_gobject_refcount(obj_ptr) }, before);
     });
 }
 
@@ -1080,8 +1075,14 @@ fn hashtable_encode_second_tuple_error_unwinds_inserted_entries() {
             .encode(&env, napi_mock::to_unknown(&env, input))
             .expect_err("second tuple must fail");
         assert!(err.to_string().contains("Expected boolean in GHashTable"));
-        assert_eq!(helpers::get_gobject_refcount(inserted_ptr), inserted_before);
-        assert_eq!(helpers::get_gobject_refcount(failing_ptr), failing_before);
+        assert_eq!(
+            unsafe { helpers::get_gobject_refcount(inserted_ptr) },
+            inserted_before
+        );
+        assert_eq!(
+            unsafe { helpers::get_gobject_refcount(failing_ptr) },
+            failing_before
+        );
     });
 }
 

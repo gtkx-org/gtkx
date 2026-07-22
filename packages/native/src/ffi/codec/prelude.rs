@@ -1,4 +1,4 @@
-pub(super) use super::{Decoder, Encoder, Ownership, PtrWriter, ReadSource};
+pub(super) use super::{Decoder, Encoder, Ownership, PtrWriter, ReadSource, SlotInit};
 pub(super) use crate::ffi::{self, value};
 pub(super) use napi::Env;
 pub(super) use napi::ValueType;
@@ -82,18 +82,16 @@ where
 }
 
 pub(super) fn write_object_ptr(
-    env: &Env,
     slot: ffi::Slot,
     value: Unknown<'_>,
     label: &str,
 ) -> anyhow::Result<()> {
-    let object_ptr = value::handle_ptr(env, value, label)?;
+    let object_ptr = value::handle_ptr(value, label)?;
     unsafe { slot.store(object_ptr) };
     Ok(())
 }
 
 pub(super) fn write_return_object_ptr<F>(
-    env: &Env,
     ret: ffi::Slot,
     value: &std::result::Result<Unknown<'_>, ()>,
     transfer: F,
@@ -101,9 +99,7 @@ pub(super) fn write_return_object_ptr<F>(
     F: FnOnce(*mut c_void) -> *mut c_void,
 {
     let ptr = match value {
-        Ok(unknown) => {
-            value::handle_ptr(env, *unknown, "object return").unwrap_or(std::ptr::null_mut())
-        }
+        Ok(unknown) => value::handle_ptr(*unknown, "object return").unwrap_or(std::ptr::null_mut()),
         Err(()) => std::ptr::null_mut(),
     };
     let owned = if ptr.is_null() { ptr } else { transfer(ptr) };
@@ -111,9 +107,9 @@ pub(super) fn write_return_object_ptr<F>(
 }
 
 pub(super) fn swap_owned_slot<A, R>(
-    env: &Env,
     slot: ffi::Slot,
     value: Unknown<'_>,
+    init: SlotInit,
     label: &str,
     acquire: A,
     release: R,
@@ -122,12 +118,16 @@ where
     A: FnOnce(*mut c_void) -> *mut c_void,
     R: FnOnce(*mut c_void),
 {
-    let new_ptr = value::handle_ptr(env, value, label)?;
+    let new_ptr = value::handle_ptr(value, label)?;
     let owned = if new_ptr.is_null() {
         new_ptr
     } else {
         acquire(new_ptr)
     };
+    if !init.is_initialized() {
+        unsafe { slot.store(owned) };
+        return Ok(());
+    }
     let old_ptr = unsafe { slot.swap(owned) };
     if !old_ptr.is_null() {
         release(old_ptr);

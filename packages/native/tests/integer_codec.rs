@@ -1,132 +1,99 @@
 use native::ffi;
 use native::ffi::codec::IntegerCodec;
 
+fn assert_read_ptr<T>(kind: IntegerCodec, value: T, expected: f64) {
+    let result = unsafe { kind.read_ptr((&raw const value).cast::<u8>()) };
+    assert_eq!(result, expected);
+}
+
+fn assert_write_ptr<T: Default + PartialEq + std::fmt::Debug>(
+    kind: IntegerCodec,
+    value: f64,
+    expected: T,
+) {
+    let mut slot = T::default();
+    unsafe { kind.write_ptr((&raw mut slot).cast::<u8>(), value) };
+    assert_eq!(slot, expected);
+}
+
 #[test]
 fn read_u8() {
-    let value: u8 = 200;
-    let ptr = &value as *const u8;
-    let result = unsafe { IntegerCodec::U8.read_ptr(ptr) };
-    assert_eq!(result, 200.0);
+    assert_read_ptr(IntegerCodec::U8, 200u8, 200.0);
 }
 
 #[test]
 fn read_i8() {
-    let value: i8 = -50;
-    let ptr = &value as *const i8 as *const u8;
-    let result = unsafe { IntegerCodec::I8.read_ptr(ptr) };
-    assert_eq!(result, -50.0);
+    assert_read_ptr(IntegerCodec::I8, -50i8, -50.0);
 }
 
 #[test]
 fn read_u16() {
-    let value: u16 = 50000;
-    let ptr = &value as *const u16 as *const u8;
-    let result = unsafe { IntegerCodec::U16.read_ptr(ptr) };
-    assert_eq!(result, 50000.0);
+    assert_read_ptr(IntegerCodec::U16, 50000u16, 50000.0);
 }
 
 #[test]
 fn read_i16() {
-    let value: i16 = -20000;
-    let ptr = &value as *const i16 as *const u8;
-    let result = unsafe { IntegerCodec::I16.read_ptr(ptr) };
-    assert_eq!(result, -20000.0);
+    assert_read_ptr(IntegerCodec::I16, -20000i16, -20000.0);
 }
 
 #[test]
 fn read_u32() {
-    let value: u32 = 3_000_000_000;
-    let ptr = &value as *const u32 as *const u8;
-    let result = unsafe { IntegerCodec::U32.read_ptr(ptr) };
-    assert_eq!(result, 3_000_000_000.0);
+    assert_read_ptr(IntegerCodec::U32, 3_000_000_000u32, 3_000_000_000.0);
 }
 
 #[test]
 fn read_i32() {
-    let value: i32 = -1_000_000_000;
-    let ptr = &value as *const i32 as *const u8;
-    let result = unsafe { IntegerCodec::I32.read_ptr(ptr) };
-    assert_eq!(result, -1_000_000_000.0);
+    assert_read_ptr(IntegerCodec::I32, -1_000_000_000i32, -1_000_000_000.0);
 }
 
 #[test]
 fn read_u64() {
-    let value: u64 = 9_000_000_000;
-    let ptr = &value as *const u64 as *const u8;
-    let result = unsafe { IntegerCodec::U64.read_ptr(ptr) };
-    assert_eq!(result, 9_000_000_000.0);
+    assert_read_ptr(IntegerCodec::U64, 9_000_000_000u64, 9_000_000_000.0);
 }
 
 #[test]
 fn read_i64() {
-    let value: i64 = -5_000_000_000;
-    let ptr = &value as *const i64 as *const u8;
-    let result = unsafe { IntegerCodec::I64.read_ptr(ptr) };
-    assert_eq!(result, -5_000_000_000.0);
+    assert_read_ptr(IntegerCodec::I64, -5_000_000_000i64, -5_000_000_000.0);
 }
 
 #[test]
 fn write_u8() {
-    let mut value: u8 = 0;
-    let ptr = &mut value as *mut u8;
-    unsafe { IntegerCodec::U8.write_ptr(ptr, 123.0) };
-    assert_eq!(value, 123);
+    assert_write_ptr(IntegerCodec::U8, 123.0, 123u8);
 }
 
 #[test]
 fn write_i8() {
-    let mut value: i8 = 0;
-    let ptr = &mut value as *mut i8 as *mut u8;
-    unsafe { IntegerCodec::I8.write_ptr(ptr, -42.0) };
-    assert_eq!(value, -42);
+    assert_write_ptr(IntegerCodec::I8, -42.0, -42i8);
 }
 
 #[test]
 fn write_u16() {
-    let mut value: u16 = 0;
-    let ptr = &mut value as *mut u16 as *mut u8;
-    unsafe { IntegerCodec::U16.write_ptr(ptr, 12345.0) };
-    assert_eq!(value, 12345);
+    assert_write_ptr(IntegerCodec::U16, 12345.0, 12345u16);
 }
 
 #[test]
 fn write_i16() {
-    let mut value: i16 = 0;
-    let ptr = &mut value as *mut i16 as *mut u8;
-    unsafe { IntegerCodec::I16.write_ptr(ptr, -12345.0) };
-    assert_eq!(value, -12345);
+    assert_write_ptr(IntegerCodec::I16, -12345.0, -12345i16);
 }
 
 #[test]
 fn write_u32() {
-    let mut value: u32 = 0;
-    let ptr = &mut value as *mut u32 as *mut u8;
-    unsafe { IntegerCodec::U32.write_ptr(ptr, 1_234_567_890.0) };
-    assert_eq!(value, 1_234_567_890);
+    assert_write_ptr(IntegerCodec::U32, 1_234_567_890.0, 1_234_567_890u32);
 }
 
 #[test]
 fn write_i32() {
-    let mut value: i32 = 0;
-    let ptr = &mut value as *mut i32 as *mut u8;
-    unsafe { IntegerCodec::I32.write_ptr(ptr, -1_234_567_890.0) };
-    assert_eq!(value, -1_234_567_890);
+    assert_write_ptr(IntegerCodec::I32, -1_234_567_890.0, -1_234_567_890i32);
 }
 
 #[test]
 fn write_u64() {
-    let mut value: u64 = 0;
-    let ptr = &mut value as *mut u64 as *mut u8;
-    unsafe { IntegerCodec::U64.write_ptr(ptr, 9_876_543_210.0) };
-    assert_eq!(value, 9_876_543_210);
+    assert_write_ptr(IntegerCodec::U64, 9_876_543_210.0, 9_876_543_210u64);
 }
 
 #[test]
 fn write_i64() {
-    let mut value: i64 = 0;
-    let ptr = &mut value as *mut i64 as *mut u8;
-    unsafe { IntegerCodec::I64.write_ptr(ptr, -9_876_543_210.0) };
-    assert_eq!(value, -9_876_543_210);
+    assert_write_ptr(IntegerCodec::I64, -9_876_543_210.0, -9_876_543_210i64);
 }
 
 #[test]

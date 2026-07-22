@@ -5,7 +5,7 @@ use napi::JsValue as _;
 use napi::bindgen_prelude::Unknown;
 use native::ffi;
 use native::ffi::Slot;
-use native::ffi::codec::{BooleanCodec, Decoder, Encoder, PtrWriter, ReadSource};
+use native::ffi::codec::{BooleanCodec, Decoder, Encoder, PtrWriter, ReadSource, SlotInit};
 use test_support::napi_mock;
 use test_support::{fake_env, run};
 
@@ -179,6 +179,7 @@ fn write_value_to_pointer_writes_boolean_and_rejects_other() {
             &env,
             unsafe { Slot::new(ptr) },
             napi_mock::to_unknown(&env, napi_mock::fake_bool(true)),
+            SlotInit::Initialized,
         )
         .unwrap();
         assert_eq!(slot, 1);
@@ -188,6 +189,7 @@ fn write_value_to_pointer_writes_boolean_and_rejects_other() {
             &env,
             unsafe { Slot::new(ptr) },
             napi_mock::to_unknown(&env, napi_mock::fake_bool(false)),
+            SlotInit::Initialized,
         )
         .unwrap();
         assert_eq!(slot, 0);
@@ -198,6 +200,7 @@ fn write_value_to_pointer_writes_boolean_and_rejects_other() {
                 &env,
                 unsafe { Slot::new(ptr) },
                 napi_mock::to_unknown(&env, napi_mock::fake_double(1.0)),
+                SlotInit::Initialized,
             )
             .is_err()
         );

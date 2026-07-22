@@ -51,10 +51,12 @@ fn execute_call<'e>(
     });
 
     let symbol_ptr = FfiCache::with::<_, anyhow::Result<_>>(|state| {
-        let symbol = state.resolve_symbol::<unsafe extern "C" fn() -> ()>(
-            &descriptor.library_name,
-            symbol_name,
-        )?;
+        let symbol = unsafe {
+            state.resolve_symbol::<unsafe extern "C" fn() -> ()>(
+                &descriptor.library_name,
+                symbol_name,
+            )
+        }?;
         Ok(libffi::CodePtr(symbol as *mut c_void))
     })?;
 

@@ -1,4 +1,4 @@
-use std::alloc::{Layout, alloc_zeroed, dealloc};
+use std::alloc::{Layout, alloc_zeroed, dealloc, handle_alloc_error};
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
@@ -90,13 +90,18 @@ struct HandleData {
     size: usize,
 }
 
-unsafe fn handle_layout(size: usize) -> Layout {
+fn handle_layout(size: usize) -> Layout {
     Layout::from_size_align(size, HANDLE_ALIGN).expect("uv handle layout")
 }
 
 fn alloc_uv_handle(htype: c_int) -> *mut c_void {
     let size = unsafe { (uv().handle_size)(htype) };
-    let ptr = unsafe { alloc_zeroed(handle_layout(size)) } as *mut c_void;
+    let layout = handle_layout(size);
+    let ptr = unsafe { alloc_zeroed(layout) };
+    if ptr.is_null() {
+        handle_alloc_error(layout);
+    }
+    let ptr = ptr.cast::<c_void>();
     let data = Box::into_raw(Box::new(HandleData { size }));
     unsafe { (uv().handle_set_data)(ptr, data.cast()) };
     ptr

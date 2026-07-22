@@ -5,7 +5,7 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
 use crate::api::native_result;
-use crate::ffi::codec::{Codec, PtrWriter as _};
+use crate::ffi::codec::{Codec, PtrWriter as _, SlotInit};
 use crate::ffi::descriptor::Descriptor;
 use crate::handle::Handle;
 
@@ -15,7 +15,12 @@ fn write_field(
     field_codec: &Codec,
     value: Unknown<'_>,
 ) -> anyhow::Result<()> {
-    field_codec.write_value_to_ptr(env, unsafe { crate::ffi::Slot::new(field_ptr) }, value)
+    field_codec.write_value_to_ptr(
+        env,
+        unsafe { crate::ffi::Slot::new(field_ptr) },
+        value,
+        SlotInit::Initialized,
+    )
 }
 
 /// Encodes `value` with `fieldDescriptor` and writes it into the handle's memory at `offset` bytes.

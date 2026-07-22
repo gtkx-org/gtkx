@@ -17,7 +17,7 @@ use helpers::{
 };
 
 fn owned_fundamental(ptr: *mut c_void) -> Handle {
-    Handle::Fundamental(Fundamental::from_glib_full(ptr, Some(param_spec_unref)))
+    Handle::Fundamental(unsafe { Fundamental::from_glib_full(ptr, Some(param_spec_unref)) })
 }
 
 fn borrowed_fundamental(ptr: *mut c_void) -> Handle {
@@ -36,7 +36,7 @@ fn extra_referenced_decoded_gobject() -> (glib::Object, *mut glib::gobject_ffi::
     let obj = glib::Object::new::<glib::Object>();
     let obj_ptr = obj.as_ptr();
     unsafe { glib::gobject_ffi::g_object_ref(obj_ptr) };
-    let initial_ref = get_gobject_refcount(obj_ptr);
+    let initial_ref = unsafe { get_gobject_refcount(obj_ptr) };
 
     let owned: glib::Object = unsafe { from_glib_full(obj_ptr) };
     let handle = Handle::decoded_gobject(owned);
@@ -92,10 +92,10 @@ fn drop_owned_handle_releases_value() {
     helpers::run(|| {
         let ptr = param_spec_ptr();
         let handle = borrowed_fundamental(ptr);
-        let initial_ref = param_spec_refcount(ptr);
+        let initial_ref = unsafe { param_spec_refcount(ptr) };
 
         drop(handle);
-        assert_eq!(param_spec_refcount(ptr), initial_ref - 1);
+        assert_eq!(unsafe { param_spec_refcount(ptr) }, initial_ref - 1);
 
         unsafe { param_spec_unref(ptr) };
     });
@@ -121,10 +121,10 @@ fn a_consumed_decoded_handle_drop_releases_nothing() {
         pump_default_context_until(|| sentinel.get());
 
         assert!(sentinel.get());
-        assert_eq!(get_gobject_refcount(obj_ptr), initial_ref);
+        assert_eq!(unsafe { get_gobject_refcount(obj_ptr) }, initial_ref);
 
         drop(taken);
-        assert_eq!(get_gobject_refcount(obj_ptr), initial_ref - 1);
+        assert_eq!(unsafe { get_gobject_refcount(obj_ptr) }, initial_ref - 1);
     });
 }
 
@@ -134,9 +134,9 @@ fn a_decoded_handle_drop_releases_unconsumed_ref() {
         let (_obj, obj_ptr, initial_ref, handle) = extra_referenced_decoded_gobject();
         drop(handle);
 
-        pump_default_context_until(|| get_gobject_refcount(obj_ptr) == initial_ref - 1);
+        pump_default_context_until(|| unsafe { get_gobject_refcount(obj_ptr) } == initial_ref - 1);
 
-        assert_eq!(get_gobject_refcount(obj_ptr), initial_ref - 1);
+        assert_eq!(unsafe { get_gobject_refcount(obj_ptr) }, initial_ref - 1);
     });
 }
 
@@ -167,9 +167,10 @@ fn size_hint_distinguishes_handle_variants() {
         let boxed_hint = Handle::Boxed(boxed).size_hint();
 
         let pspec = param_spec_ptr();
-        let fundamental_hint =
-            Handle::Fundamental(Fundamental::from_glib_full(pspec, Some(param_spec_unref)))
-                .size_hint();
+        let fundamental_hint = Handle::Fundamental(unsafe {
+            Fundamental::from_glib_full(pspec, Some(param_spec_unref))
+        })
+        .size_hint();
 
         assert!(boxed_hint > 0);
         assert!(fundamental_hint > 0);

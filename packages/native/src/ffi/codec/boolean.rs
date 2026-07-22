@@ -15,16 +15,16 @@ impl BooleanCodec {
     }
 }
 
-fn read_bool(env: &Env, value: Unknown<'_>) -> anyhow::Result<bool> {
+fn read_bool(value: Unknown<'_>) -> anyhow::Result<bool> {
     match value.get_type()? {
-        ValueType::Boolean => Ok(value::read_napi::<bool>(env, value)?),
+        ValueType::Boolean => Ok(value::read_napi::<bool>(value)?),
         _ => bail_expected!("a Boolean", "boolean"),
     }
 }
 
 impl Encoder for BooleanCodec {
-    fn encode(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
-        let boolean = read_bool(env, value)?;
+    fn encode(&self, _env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
+        let boolean = read_bool(value)?;
         Ok(ffi::Stash::I32(boolean.into_glib()))
     }
 
@@ -39,7 +39,7 @@ impl Decoder for BooleanCodec {
                 _ => anyhow::bail!("Expected a boolean ffi::Stash, got {stash:?}"),
             },
             ReadSource::Value(ptr, _context) => ptr as isize != 0,
-            ReadSource::Slot(ptr, _context) => unsafe { *(ptr as *const i32) != 0 },
+            ReadSource::Slot(ptr, _context) => unsafe { (ptr as *const i32).read_unaligned() != 0 },
         };
         Ok(b.into_unknown(env)?)
     }
@@ -48,12 +48,12 @@ impl Decoder for BooleanCodec {
 impl PtrWriter for BooleanCodec {
     fn write_return_to_ptr(
         &self,
-        env: &Env,
+        _env: &Env,
         ret: ffi::Slot,
         value: &std::result::Result<Unknown<'_>, ()>,
     ) {
         let b = match value {
-            Ok(unknown) => read_bool(env, *unknown).unwrap_or(false),
+            Ok(unknown) => read_bool(*unknown).unwrap_or(false),
             Err(()) => false,
         };
         let val = f64::from(u8::from(b));
@@ -62,12 +62,13 @@ impl PtrWriter for BooleanCodec {
 
     fn write_value_to_ptr(
         &self,
-        env: &Env,
+        _env: &Env,
         slot: ffi::Slot,
         value: Unknown<'_>,
+        _init: SlotInit,
     ) -> anyhow::Result<()> {
-        let b = read_bool(env, value)?;
-        unsafe { *(slot.as_ptr() as *mut i32) = b.into_glib() };
+        let b = read_bool(value)?;
+        unsafe { (slot.as_ptr() as *mut i32).write_unaligned(b.into_glib()) };
         Ok(())
     }
 }

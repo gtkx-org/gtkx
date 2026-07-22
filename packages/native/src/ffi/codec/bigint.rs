@@ -33,10 +33,10 @@ impl BigIntCodec {
         }
     }
 
-    fn integer_from_value(self, env: &Env, value: Unknown<'_>) -> anyhow::Result<i128> {
+    fn integer_from_value(self, value: Unknown<'_>) -> anyhow::Result<i128> {
         match value.get_type()? {
             ValueType::BigInt => {
-                let big = value::read_napi::<BigInt>(env, value)?;
+                let big = value::read_napi::<BigInt>(value)?;
                 let (int, lossless) = big.get_i128();
                 if !lossless {
                     bail!("BigInt value exceeds the supported 128-bit range");
@@ -44,7 +44,7 @@ impl BigIntCodec {
                 Ok(int)
             }
             ValueType::Number => {
-                let n = value::read_napi::<f64>(env, value)?;
+                let n = value::read_napi::<f64>(value)?;
                 if !n.is_finite()
                     || n.fract() != 0.0
                     || !(-MAX_SAFE_INTEGER..=MAX_SAFE_INTEGER).contains(&n)
@@ -98,13 +98,9 @@ impl BigIntCodec {
             .collect()
     }
 
-    pub fn to_stash_storage(
-        self,
-        env: &Env,
-        array: &[Unknown<'_>],
-    ) -> anyhow::Result<ffi::StashStorage> {
+    pub fn to_stash_storage(self, array: &[Unknown<'_>]) -> anyhow::Result<ffi::StashStorage> {
         let integer_at = |i: usize, v: Unknown<'_>| {
-            self.integer_from_value(env, v)
+            self.integer_from_value(v)
                 .map_err(|e| anyhow::anyhow!("Array element {i}: {e}"))
         };
         match self {
@@ -137,8 +133,8 @@ pub fn bigint_to_unknown<'e>(env: &'e Env, value: i128) -> anyhow::Result<Unknow
 }
 
 impl Encoder for BigIntCodec {
-    fn encode(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
-        let int = self.integer_from_value(env, value)?;
+    fn encode(&self, _env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
+        let int = self.integer_from_value(value)?;
         self.checked_to_stash(int)
     }
 
@@ -166,12 +162,12 @@ impl Decoder for BigIntCodec {
 impl PtrWriter for BigIntCodec {
     fn write_return_to_ptr(
         &self,
-        env: &Env,
+        _env: &Env,
         ret: ffi::Slot,
         value: &std::result::Result<Unknown<'_>, ()>,
     ) {
         let int = match value {
-            Ok(unknown) => self.integer_from_value(env, *unknown).unwrap_or(0),
+            Ok(unknown) => self.integer_from_value(*unknown).unwrap_or(0),
             Err(()) => 0,
         };
         let stash = self
@@ -182,11 +178,12 @@ impl PtrWriter for BigIntCodec {
 
     fn write_value_to_ptr(
         &self,
-        env: &Env,
+        _env: &Env,
         slot: ffi::Slot,
         value: Unknown<'_>,
+        _init: SlotInit,
     ) -> anyhow::Result<()> {
-        let int = self.integer_from_value(env, value)?;
+        let int = self.integer_from_value(value)?;
         let stash = self.checked_to_stash(int)?;
         unsafe { stash.write_scalar_to_ptr(slot.as_ptr()) }
     }

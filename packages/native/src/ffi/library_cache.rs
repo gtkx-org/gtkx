@@ -55,7 +55,7 @@ impl LibraryCache {
         anyhow::bail!("Failed to load library '{library_name}': {err}")
     }
 
-    pub fn resolve_symbol<T: Copy>(
+    pub unsafe fn resolve_symbol<T: Copy>(
         &mut self,
         library_name: &str,
         symbol_name: &str,
@@ -72,9 +72,7 @@ impl LibraryCache {
         get_type_fn_name: &str,
     ) -> anyhow::Result<glib::Type> {
         self.resolve_type_with(library_name, get_type_fn_name, |cache| {
-            cache
-                .resolve_symbol::<GetTypeFn>(library_name, get_type_fn_name)
-                .map(Some)
+            unsafe { cache.resolve_symbol::<GetTypeFn>(library_name, get_type_fn_name) }.map(Some)
         })
     }
 
@@ -177,13 +175,13 @@ impl FundamentalFnCache {
         let ref_fn = if ref_fn_name.is_empty() {
             None
         } else {
-            Some(libs.resolve_symbol::<RefFn>(library_name, ref_fn_name)?)
+            Some(unsafe { libs.resolve_symbol::<RefFn>(library_name, ref_fn_name) }?)
         };
 
         let unref_fn = if unref_fn_name.is_empty() {
             None
         } else {
-            Some(libs.resolve_symbol::<UnrefFn>(library_name, unref_fn_name)?)
+            Some(unsafe { libs.resolve_symbol::<UnrefFn>(library_name, unref_fn_name) }?)
         };
 
         if ref_fn.is_none() && unref_fn.is_some() {
@@ -243,12 +241,12 @@ impl FfiCache {
             .lookup(&mut self.libs, library_name, ref_fn_name, unref_fn_name)
     }
 
-    pub fn resolve_symbol<T: Copy>(
+    pub unsafe fn resolve_symbol<T: Copy>(
         &mut self,
         library_name: &str,
         symbol_name: &str,
     ) -> anyhow::Result<T> {
-        self.libs.resolve_symbol(library_name, symbol_name)
+        unsafe { self.libs.resolve_symbol(library_name, symbol_name) }
     }
 
     pub fn resolve_type(

@@ -92,7 +92,7 @@ impl Boxed {
         unsafe { glib::gobject_ffi::g_boxed_copy(type_.into_glib(), ptr as *const _) }
     }
 
-    pub fn copy_with_size(ptr: *mut c_void, size: usize) -> Self {
+    pub unsafe fn copy_with_size(ptr: *mut c_void, size: usize) -> Self {
         let cloned_ptr = unsafe { glib::ffi::g_memdup2(ptr as *const c_void, size) };
         Self::owned(cloned_ptr, None, BoxedDestructor::GFree)
     }

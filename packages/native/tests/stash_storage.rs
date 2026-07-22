@@ -6,7 +6,10 @@ use gtk4::glib;
 use native::ffi::codec::{
     ArrayCodec, ArrayKind, Codec, Encoder as _, IntegerCodec, Ownership, StringCodec,
 };
-use native::ffi::{GArrayData, ListData, ListPayload, Stash, StashData, StashStorage};
+use native::ffi::{
+    GArrayData, GLIST_OPS, GSLIST_OPS, ListData, ListPayload, Stash, StashData, StashStorage,
+    build_list,
+};
 
 fn make_glist_one() -> *mut glib::ffi::GList {
     unsafe { glib::ffi::g_list_append(std::ptr::null_mut(), std::ptr::without_provenance_mut(1)) }
@@ -378,12 +381,11 @@ fn string_list_element_ptr(s: &CString, dup: bool) -> *mut c_void {
 }
 
 fn build_string_glist(strings: &[CString], dup: bool) -> *mut glib::ffi::GList {
-    let mut list: *mut glib::ffi::GList = std::ptr::null_mut();
-    for s in strings {
-        let ptr = string_list_element_ptr(s, dup);
-        list = unsafe { glib::ffi::g_list_append(list, ptr) };
-    }
-    list
+    let ptrs: Vec<*mut c_void> = strings
+        .iter()
+        .map(|s| string_list_element_ptr(s, dup))
+        .collect();
+    build_list(&GLIST_OPS, &ptrs) as *mut glib::ffi::GList
 }
 
 #[test]
@@ -427,12 +429,11 @@ fn string_glist_storage_null_ptr_safe_on_drop() {
 }
 
 fn build_string_gslist(strings: &[CString], dup: bool) -> *mut glib::ffi::GSList {
-    let mut list: *mut glib::ffi::GSList = std::ptr::null_mut();
-    for s in strings.iter().rev() {
-        let ptr = string_list_element_ptr(s, dup);
-        list = unsafe { glib::ffi::g_slist_prepend(list, ptr) };
-    }
-    list
+    let ptrs: Vec<*mut c_void> = strings
+        .iter()
+        .map(|s| string_list_element_ptr(s, dup))
+        .collect();
+    build_list(&GSLIST_OPS, &ptrs) as *mut glib::ffi::GSList
 }
 
 #[test]

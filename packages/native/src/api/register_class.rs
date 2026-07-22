@@ -141,7 +141,7 @@ struct RawInterface {
 }
 
 impl RawVfunc {
-    fn install_into(self, vtable_base: *mut c_void) {
+    unsafe fn install_into(self, vtable_base: *mut c_void) {
         let Self {
             byte_offset,
             js_fn,
@@ -161,7 +161,7 @@ impl RawVfunc {
 }
 
 impl RawInterface {
-    fn install(self, class_ptr: *mut c_void) {
+    unsafe fn install(self, class_ptr: *mut c_void) {
         let iface_vtable =
             unsafe { gobject_ffi::g_type_interface_peek(class_ptr, self.type_.into_glib()) };
         assert!(
@@ -170,7 +170,7 @@ impl RawInterface {
             self.type_.name()
         );
         for vfunc in self.vfuncs {
-            vfunc.install_into(iface_vtable);
+            unsafe { vfunc.install_into(iface_vtable) };
         }
     }
 }
@@ -303,11 +303,11 @@ impl ClassRegistration {
         let class_ptr = unsafe { gobject_ffi::g_type_class_ref(new_type) };
 
         for vfunc in vfuncs {
-            vfunc.install_into(class_ptr);
+            unsafe { vfunc.install_into(class_ptr) };
         }
 
         for iface in interfaces {
-            iface.install(class_ptr);
+            unsafe { iface.install(class_ptr) };
         }
 
         Ok(new_type)

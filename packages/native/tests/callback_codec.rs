@@ -33,15 +33,11 @@ thread_local! {
     static RECORDED: Cell<Option<Recorded>> = const { Cell::new(None) };
 }
 
-unsafe extern "C" fn record_two(fn_ptr: *mut c_void, user_data: *mut c_void) {
+extern "C" fn record_two(fn_ptr: *mut c_void, user_data: *mut c_void) {
     RECORDED.set(Some((fn_ptr, user_data, None)));
 }
 
-unsafe extern "C" fn record_three(
-    fn_ptr: *mut c_void,
-    user_data: *mut c_void,
-    destroy: *mut c_void,
-) {
+extern "C" fn record_three(fn_ptr: *mut c_void, user_data: *mut c_void, destroy: *mut c_void) {
     RECORDED.set(Some((fn_ptr, user_data, Some(destroy))));
 }
 

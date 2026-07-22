@@ -68,31 +68,33 @@ pub unsafe fn install(
     gobject: *mut glib::gobject_ffi::GObject,
     napi_ref: sys::napi_ref,
 ) -> (Rc<WrapperBinding>, u64) {
-    unsafe {
-        if let Some(nn) = binding_qdata(gobject) {
-            let binding = nn.as_ref();
-            let generation = binding.generation.get() + 1;
-            binding.napi_ref.set(napi_ref);
-            binding.generation.set(generation);
-            binding.wrapper_strong.set(true);
-            (Rc::clone(binding), generation)
-        } else {
-            let binding = Rc::new(WrapperBinding {
-                napi_ref: Cell::new(napi_ref),
-                generation: Cell::new(1),
-                wrapper_strong: Cell::new(true),
-            });
+    if let Some(nn) = unsafe { binding_qdata(gobject) } {
+        let binding = unsafe { nn.as_ref() };
+        let generation = binding.generation.get() + 1;
+        binding.napi_ref.set(napi_ref);
+        binding.generation.set(generation);
+        binding.wrapper_strong.set(true);
+        (Rc::clone(binding), generation)
+    } else {
+        let binding = Rc::new(WrapperBinding {
+            napi_ref: Cell::new(napi_ref),
+            generation: Cell::new(1),
+            wrapper_strong: Cell::new(true),
+        });
+        unsafe {
             borrow_object(gobject).set_qdata::<Rc<WrapperBinding>>(quark(), Rc::clone(&binding));
-            LIVE_TOGGLE_REFS.with_borrow_mut(|live| {
-                live.insert(gobject as usize);
-            });
+        }
+        LIVE_TOGGLE_REFS.with_borrow_mut(|live| {
+            live.insert(gobject as usize);
+        });
+        unsafe {
             glib::gobject_ffi::g_object_add_toggle_ref(
                 gobject,
                 Some(on_toggle_notify),
                 std::ptr::null_mut(),
             );
-            (binding, 1)
         }
+        (binding, 1)
     }
 }
 

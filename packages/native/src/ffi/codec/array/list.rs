@@ -38,14 +38,14 @@ impl ArrayContainer for ListArrayCodec {
             return build_js_array(env, Vec::new());
         };
 
-        let mut current = ptr as *mut glib::ffi::GList;
+        let mut current = ptr;
         let nodes = std::iter::from_fn(move || {
             if current.is_null() {
                 return None;
             }
-            let data = unsafe { (*current).data };
-            current = unsafe { (*current).next };
-            Some(data)
+            let node = unsafe { (ops.node)(current) };
+            current = node.next;
+            Some(node.data)
         });
 
         let is_full = codec.ownership.is_full();
@@ -62,14 +62,13 @@ impl ArrayContainer for ListArrayCodec {
 }
 
 fn string_list_parts(
-    env: &Env,
     array: &[Unknown<'_>],
     dup_items: bool,
 ) -> anyhow::Result<(Vec<CString>, Vec<*mut c_void>)> {
     if dup_items {
-        Ok((Vec::new(), dup_strings_to_glib(env, array)?))
+        Ok((Vec::new(), dup_strings_to_glib(array)?))
     } else {
-        let cstrings = ArrayCodec::extract_strings(env, array)?;
+        let cstrings = ArrayCodec::extract_strings(array)?;
         let ptrs = cstrings.iter().map(|s| s.as_ptr() as *mut c_void).collect();
         Ok((cstrings, ptrs))
     }
@@ -101,13 +100,12 @@ impl ListEncoder {
 impl ArrayKindEncoder for ListEncoder {
     fn encode_strings(
         &self,
-        env: &Env,
         array: &[Unknown<'_>],
         dup_items: bool,
         ownership: Ownership,
     ) -> anyhow::Result<ffi::Stash> {
         let should_free = ownership.is_borrowed();
-        let (strings, ptrs) = string_list_parts(env, array, dup_items)?;
+        let (strings, ptrs) = string_list_parts(array, dup_items)?;
         let list = ffi::build_list(self.0, &ptrs);
         let acquired: Vec<ffi::PendingTransfer> = if !should_free && dup_items {
             ptrs.iter()

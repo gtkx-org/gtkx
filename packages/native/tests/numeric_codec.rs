@@ -5,7 +5,9 @@ use std::ffi::c_void;
 
 use libffi::middle;
 use native::ffi::Slot;
-use native::ffi::codec::{Decoder, Encoder, FloatCodec, IntegerCodec, PtrWriter, ReadSource};
+use native::ffi::codec::{
+    Decoder, Encoder, FloatCodec, IntegerCodec, PtrWriter, ReadSource, SlotInit,
+};
 use native::ffi::{self};
 
 use napi::Env;
@@ -297,6 +299,7 @@ fn integer_pointer_codec_round_trips() {
                 &env,
                 unsafe { Slot::new(field_ptr) },
                 double(&env, 9.0),
+                SlotInit::Initialized,
             )
             .unwrap();
             let from_field =
@@ -309,6 +312,7 @@ fn integer_pointer_codec_round_trips() {
                     &env,
                     unsafe { Slot::new(field_ptr) },
                     napi_mock::to_unknown(&env, napi_mock::fake_bool(true)),
+                    SlotInit::Initialized,
                 )
                 .is_err()
             );
@@ -386,7 +390,14 @@ unsafe fn assert_pointer_codec_round_trip<K>(
     K: PtrWriter + Decoder,
 {
     let ptr = slot.as_mut_ptr().cast::<c_void>();
-    PtrWriter::write_value_to_ptr(kind, env, unsafe { Slot::new(ptr) }, double(env, 2.0)).unwrap();
+    PtrWriter::write_value_to_ptr(
+        kind,
+        env,
+        unsafe { Slot::new(ptr) },
+        double(env, 2.0),
+        SlotInit::Initialized,
+    )
+    .unwrap();
     unsafe { Decoder::read(kind, env, ReadSource::Slot(ptr.cast_const(), "c")) }.unwrap();
     PtrWriter::write_return_to_ptr(kind, env, unsafe { Slot::new(ptr) }, &Ok(double(env, 1.0)));
     unsafe { Decoder::read(kind, env, ReadSource::Value(value_ptr, "c")) }.unwrap();
@@ -515,6 +526,7 @@ fn float_codec_encode_decode_and_raw_ptr() {
                 &env,
                 unsafe { Slot::new(ret) },
                 double(&env, 3.0),
+                SlotInit::Initialized,
             )
             .unwrap();
             assert!(
@@ -527,6 +539,7 @@ fn float_codec_encode_decode_and_raw_ptr() {
                     &env,
                     unsafe { Slot::new(ret) },
                     napi_mock::to_unknown(&env, napi_mock::fake_null()),
+                    SlotInit::Initialized,
                 )
                 .is_ok()
             );
@@ -595,6 +608,7 @@ fn enum_flags_pointer_codec() {
             &env,
             unsafe { Slot::new(ptr) },
             double(&env, 2.0),
+            SlotInit::Initialized,
         )
         .unwrap();
         let read = unsafe {
@@ -621,7 +635,7 @@ fn enum_flags_pointer_codec() {
 
 #[test]
 fn integer_dispatch_methods_cover_every_kind() {
-    let buffer = [0u8; 64];
+    let buffer = [0u64; 8];
     for kind in INTEGER_KINDS {
         let _ = kind.ffi_type();
 
@@ -629,7 +643,7 @@ fn integer_dispatch_methods_cover_every_kind() {
         unsafe { kind.write_ptr(slot.as_mut_ptr(), 3.0) };
         assert_eq!(unsafe { kind.read_ptr(slot.as_ptr()) }, 3.0);
 
-        assert!(unsafe { kind.read_slice(buffer.as_ptr(), 2) }.len() == 2);
+        assert!(unsafe { kind.read_slice(buffer.as_ptr().cast::<u8>(), 2) }.len() == 2);
 
         let stash = kind.to_stash(1.0);
         assert!(stash.to_number().is_ok());

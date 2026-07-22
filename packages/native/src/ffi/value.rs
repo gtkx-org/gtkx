@@ -1,7 +1,7 @@
 use std::ffi::c_void;
 
 use napi::bindgen_prelude::*;
-use napi::{Env, ValueType, sys};
+use napi::{Env, ValueType};
 
 use crate::handle::Handle;
 
@@ -11,18 +11,14 @@ mod view;
 pub use js_ref::JsHandle;
 pub use view::{TypedView, ViewKind};
 
-fn from_napi<T: FromNapiValue>(env: &Env, raw: sys::napi_value) -> napi::Result<T> {
-    unsafe { T::from_napi_value(env.raw(), raw) }
+pub fn read_napi<T: FromNapiValue>(value: Unknown<'_>) -> napi::Result<T> {
+    T::from_unknown(value)
 }
 
-pub fn read_napi<T: FromNapiValue>(env: &Env, value: Unknown<'_>) -> napi::Result<T> {
-    from_napi(env, value.raw())
-}
-
-pub fn handle_ptr(env: &Env, value: Unknown<'_>, type_name: &str) -> anyhow::Result<*mut c_void> {
+pub fn handle_ptr(value: Unknown<'_>, type_name: &str) -> anyhow::Result<*mut c_void> {
     match value.get_type()? {
         ValueType::External => {
-            let external: &External<Handle> = from_napi(env, value.raw())?;
+            let external: &External<Handle> = read_napi(value)?;
             Ok(external.as_ptr())
         }
         ValueType::Null | ValueType::Undefined => Ok(std::ptr::null_mut()),

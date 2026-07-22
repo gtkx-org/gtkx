@@ -12,9 +12,9 @@ pub fn str_to_glib_full(s: &str) -> anyhow::Result<*mut c_char> {
     Ok(ToGlibPtr::<*mut c_char>::to_glib_full(s))
 }
 
-fn read_string(env: &Env, value: Unknown<'_>) -> anyhow::Result<Option<String>> {
+fn read_string(value: Unknown<'_>) -> anyhow::Result<Option<String>> {
     match value.get_type()? {
-        ValueType::String => Ok(Some(value::read_napi::<String>(env, value)?)),
+        ValueType::String => Ok(Some(value::read_napi::<String>(value)?)),
         ValueType::Null | ValueType::Undefined => Ok(None),
         other => bail_expected!(format!("a String, got {other:?}"), "string"),
     }
@@ -27,8 +27,8 @@ pub struct StringCodec {
 }
 
 impl Encoder for StringCodec {
-    fn encode(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
-        let Some(s) = read_string(env, value)? else {
+    fn encode(&self, _env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
+        let Some(s) = read_string(value)? else {
             return Ok(ffi::Stash::Ptr(std::ptr::null_mut()));
         };
         if self.ownership.is_full() {
@@ -65,12 +65,12 @@ impl Decoder for StringCodec {
 impl PtrWriter for StringCodec {
     fn write_return_to_ptr(
         &self,
-        env: &Env,
+        _env: &Env,
         ret: ffi::Slot,
         value: &std::result::Result<Unknown<'_>, ()>,
     ) {
         let ptr = match value {
-            Ok(unknown) => read_string(env, *unknown)
+            Ok(unknown) => read_string(*unknown)
                 .ok()
                 .flatten()
                 .and_then(|s| str_to_glib_full(&s).ok())
@@ -82,14 +82,19 @@ impl PtrWriter for StringCodec {
 
     fn write_value_to_ptr(
         &self,
-        env: &Env,
+        _env: &Env,
         slot: ffi::Slot,
         value: Unknown<'_>,
+        init: SlotInit,
     ) -> anyhow::Result<()> {
-        let new_ptr = match read_string(env, value)? {
+        let new_ptr = match read_string(value)? {
             Some(s) => str_to_glib_full(&s)?.cast::<c_void>(),
             None => std::ptr::null_mut(),
         };
+        if !init.is_initialized() {
+            unsafe { slot.store(new_ptr) };
+            return Ok(());
+        }
         let old_ptr = unsafe { slot.swap(new_ptr) };
         if self.ownership.is_full() && !old_ptr.is_null() {
             unsafe { glib::ffi::g_free(old_ptr) };

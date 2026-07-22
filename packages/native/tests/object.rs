@@ -37,12 +37,12 @@ fn gobject_handles_for_distinct_objects_have_distinct_pointers() {
 fn gobject_handle_does_not_own_a_reference() {
     let obj = create_test_gobject();
     let ptr = obj.as_ptr();
-    let initial_ref = helpers::get_gobject_refcount(ptr);
+    let initial_ref = unsafe { helpers::get_gobject_refcount(ptr) };
 
     let handle = Handle::from_glib_borrow(ptr as *mut c_void);
-    assert_eq!(helpers::get_gobject_refcount(ptr), initial_ref);
+    assert_eq!(unsafe { helpers::get_gobject_refcount(ptr) }, initial_ref);
 
     drop(handle);
-    assert_eq!(helpers::get_gobject_refcount(ptr), initial_ref);
+    assert_eq!(unsafe { helpers::get_gobject_refcount(ptr) }, initial_ref);
     drop(obj);
 }

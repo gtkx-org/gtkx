@@ -13,7 +13,7 @@ use napi::bindgen_prelude::{External, Unknown};
 
 use native::ffi;
 use native::ffi::codec::{
-    BoxedCodec, Decoder, Encoder, Ownership, PtrWriter, ReadSource, StructCodec,
+    BoxedCodec, Decoder, Encoder, Ownership, PtrWriter, ReadSource, SlotInit, StructCodec,
 };
 use native::ffi::value::handle_ptr;
 use native::handle::Handle;
@@ -83,7 +83,7 @@ fn assert_read_aliases_source<C: Decoder>(codec: &C, original: *mut c_void, mess
     let env = helpers::fake_env();
     let value = unsafe { codec.read(&env, ReadSource::Value(original, "ctx")) }
         .expect("ptr_to_value should succeed");
-    let ptr = handle_ptr(&env, value, "ctx").expect("expected Object value");
+    let ptr = handle_ptr(value, "ctx").expect("expected Object value");
     assert_eq!(ptr, original, "{message}");
 }
 
@@ -131,7 +131,7 @@ fn encode_full_copies_to_distinct_pointer() {
         let copied = storage.ptr();
         assert!(!copied.is_null());
         assert_ne!(copied, original);
-        assert!(helpers::is_valid_boxed_ptr(copied, type_));
+        assert!(unsafe { helpers::is_valid_boxed_ptr(copied, type_) });
 
         free_rgba(type_, copied);
         free_rgba(type_, original);
@@ -292,7 +292,7 @@ fn decode_borrowed_copies_boxed() {
             .expect("borrowed decode should succeed");
         assert_is_handle(&decoded);
 
-        assert!(helpers::is_valid_boxed_ptr(original, type_));
+        assert!(unsafe { helpers::is_valid_boxed_ptr(original, type_) });
         free_rgba(type_, original);
     });
 }
@@ -319,12 +319,12 @@ fn ptr_to_value_defensive_copies_regardless_of_ownership_tag() {
         for ownership in [Ownership::Borrowed, Ownership::Full] {
             let value = unsafe { boxed(ownership).read(&env, ReadSource::Value(original, "ctx")) }
                 .expect("ptr_to_value should succeed");
-            let ptr = handle_ptr(&env, value, "ctx").expect("expected Object value");
+            let ptr = handle_ptr(value, "ctx").expect("expected Object value");
             assert_ne!(
                 ptr, original,
                 "ptr_to_value must produce an independent copy, not alias the source"
             );
-            assert!(helpers::is_valid_boxed_ptr(original, type_));
+            assert!(unsafe { helpers::is_valid_boxed_ptr(original, type_) });
         }
 
         free_rgba(type_, original);
@@ -345,7 +345,7 @@ fn caller_allocated_boxed_aliases_source_without_copying() {
             original,
             "a caller-allocated out boxed must alias the caller's buffer, not copy it",
         );
-        assert!(helpers::is_valid_boxed_ptr(original, type_));
+        assert!(unsafe { helpers::is_valid_boxed_ptr(original, type_) });
 
         free_rgba(type_, original);
     });
@@ -641,7 +641,7 @@ fn struct_ptr_to_value_defensive_copies_regardless_of_ownership_tag() {
                 struct_type(ownership, Some(64)).read(&env, ReadSource::Value(raw, "ctx"))
             }
             .expect("struct ptr_to_value should succeed");
-            let ptr = handle_ptr(&env, value, "ctx").expect("expected Object value");
+            let ptr = handle_ptr(value, "ctx").expect("expected Object value");
             assert_ne!(
                 ptr, raw,
                 "struct ptr_to_value must produce an independent copy when size is known"
@@ -662,7 +662,7 @@ fn struct_ptr_to_value_without_size_wraps_unowned() {
             struct_type(Ownership::Borrowed, None).read(&env, ReadSource::Value(raw, "ctx"))
         }
         .expect("struct ptr_to_value without size should succeed");
-        let ptr = handle_ptr(&env, value, "ctx").expect("expected Object value");
+        let ptr = handle_ptr(value, "ctx").expect("expected Object value");
         assert_eq!(
             ptr, raw,
             "without size the wrapper aliases the source pointer; the parent allocation owns it"
@@ -753,6 +753,7 @@ fn struct_write_value_to_pointer_with_size_bails_for_null_dst() {
                 &env,
                 unsafe { ffi::Slot::new(&mut slot as *mut *mut c_void as *mut c_void) },
                 object_value_of(&env, &src as *const u64 as *mut c_void),
+                SlotInit::Initialized,
             );
 
         assert!(err.is_err());
@@ -805,13 +806,13 @@ mod free_fn {
         let value = descriptor
             .decode(env, &ffi::Stash::Ptr(ptr))
             .expect("decode with freeFnName should succeed");
-        handle_ptr(env, value, "ctx").expect("expected Object value")
+        handle_ptr(value, "ctx").expect("expected Object value")
     }
 
     fn ptr_to_value_wrapper(descriptor: &BoxedCodec, env: &Env, ptr: *mut c_void) -> *mut c_void {
         let value = unsafe { descriptor.read(env, ReadSource::Value(ptr, "ctx")) }
             .expect("ptr_to_value with freeFnName should succeed");
-        handle_ptr(env, value, "ctx").expect("expected Object value")
+        handle_ptr(value, "ctx").expect("expected Object value")
     }
 
     #[test]

@@ -50,7 +50,7 @@ fn fundamental_codec() -> FundamentalCodec {
 }
 
 fn i32_ref_codec() -> RefCodec {
-    RefCodec::new(Codec::Integer(IntegerCodec::I32)).expect("Integer is a valid Ref inner")
+    RefCodec::new(Codec::Integer(IntegerCodec::I32), false).expect("Integer is a valid Ref inner")
 }
 
 fn empty_cif() -> middle::Cif {
@@ -59,42 +59,42 @@ fn empty_cif() -> middle::Cif {
 
 #[test]
 fn new_rejects_callback_inner() {
-    assert!(RefCodec::new(Codec::Callback(callback_codec())).is_err());
+    assert!(RefCodec::new(Codec::Callback(callback_codec()), false).is_err());
 }
 
 #[test]
 fn new_rejects_void_inner() {
-    assert!(RefCodec::new(Codec::Void(VoidCodec)).is_err());
+    assert!(RefCodec::new(Codec::Void(VoidCodec), false).is_err());
 }
 
 #[test]
 fn new_rejects_buffer_inner() {
-    assert!(RefCodec::new(Codec::Buffer(BufferCodec)).is_err());
+    assert!(RefCodec::new(Codec::Buffer(BufferCodec), false).is_err());
 }
 
 #[test]
 fn new_rejects_ref_inner() {
-    assert!(RefCodec::new(Codec::Ref(i32_ref_codec())).is_err());
+    assert!(RefCodec::new(Codec::Ref(i32_ref_codec()), false).is_err());
 }
 
 #[test]
 fn new_accepts_bigint_inner() {
-    assert!(RefCodec::new(Codec::BigInt(BigIntCodec::I64)).is_ok());
+    assert!(RefCodec::new(Codec::BigInt(BigIntCodec::I64), false).is_ok());
 }
 
 #[test]
 fn new_accepts_boxed_inner() {
-    assert!(RefCodec::new(Codec::Boxed(boxed_codec())).is_ok());
+    assert!(RefCodec::new(Codec::Boxed(boxed_codec()), false).is_ok());
 }
 
 #[test]
 fn new_accepts_struct_inner() {
-    assert!(RefCodec::new(Codec::Struct(struct_codec())).is_ok());
+    assert!(RefCodec::new(Codec::Struct(struct_codec()), false).is_ok());
 }
 
 #[test]
 fn new_accepts_fundamental_inner() {
-    assert!(RefCodec::new(Codec::Fundamental(fundamental_codec())).is_ok());
+    assert!(RefCodec::new(Codec::Fundamental(fundamental_codec()), false).is_ok());
 }
 
 #[test]
@@ -175,8 +175,8 @@ fn ref_read_from_value_source_errors() {
 fn ref_decode_unsupported_inner_errors() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let ref_codec =
-            RefCodec::new(Codec::BigInt(BigIntCodec::I64)).expect("BigInt is a valid Ref inner");
+        let ref_codec = RefCodec::new(Codec::BigInt(BigIntCodec::I64), false)
+            .expect("BigInt is a valid Ref inner");
         let mut backing: u64 = 0;
         let ptr = &mut backing as *mut u64 as *mut c_void;
         let stash = ffi::Stash::Storage(StashStorage::new(ptr, StashData::Unit));

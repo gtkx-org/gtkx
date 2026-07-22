@@ -38,7 +38,7 @@ impl StructCodec {
     fn borrow_or_copy(&self, ptr: *mut c_void) -> Boxed {
         self.size.map_or_else(
             || Boxed::from_glib_borrow(ptr),
-            |size| Boxed::copy_with_size(ptr, size),
+            |size| unsafe { Boxed::copy_with_size(ptr, size) },
         )
     }
 }
@@ -71,14 +71,24 @@ impl PtrWriter for StructCodec {
 
     fn write_value_to_ptr(
         &self,
-        env: &Env,
+        _env: &Env,
         slot: ffi::Slot,
         value: Unknown<'_>,
+        init: SlotInit,
     ) -> anyhow::Result<()> {
         if let Some(size) = self.size {
-            let src_ptr = value::handle_ptr(env, value, "Struct field write")?;
+            let src_ptr = value::handle_ptr(value, "Struct field write")?;
             if src_ptr.is_null() {
                 unsafe { slot.store(std::ptr::null_mut()) };
+                return Ok(());
+            }
+            if !init.is_initialized() {
+                let out_ptr = if self.ownership.is_full() {
+                    unsafe { glib::ffi::g_memdup2(src_ptr as *const c_void, size) }
+                } else {
+                    src_ptr
+                };
+                unsafe { slot.store(out_ptr) };
                 return Ok(());
             }
             let dest_ptr = unsafe { slot.load() };
@@ -90,6 +100,6 @@ impl PtrWriter for StructCodec {
             }
             return Ok(());
         }
-        write_object_ptr(env, slot, value, "Struct field write")
+        write_object_ptr(slot, value, "Struct field write")
     }
 }

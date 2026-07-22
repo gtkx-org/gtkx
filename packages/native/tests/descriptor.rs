@@ -9,7 +9,7 @@ use native::ffi;
 use native::ffi::Slot;
 use native::ffi::codec::{
     BooleanCodec, CallbackCodec, Codec, Decoder, Encoder, IntegerCodec, Ownership, PtrWriter,
-    ReadSource, StructCodec, VoidCodec,
+    ReadSource, SlotInit, StructCodec, VoidCodec,
 };
 
 fn assert_ownership_predicates_mutually_exclusive() {
@@ -158,6 +158,7 @@ fn pointer_codec_write_value_to_pointer_default_bails() {
             &env,
             unsafe { Slot::new(ptr) },
             napi_mock::to_unknown(&env, napi_mock::fake_double(1.0)),
+            SlotInit::Initialized,
         )
         .is_err()
     );

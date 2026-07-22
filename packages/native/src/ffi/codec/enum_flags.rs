@@ -1,6 +1,6 @@
 use crate::ffi::{
     self,
-    codec::{Decoder, Encoder, IntegerCodec, PtrWriter, ReadSource, forward_ffi_encoder},
+    codec::{Decoder, Encoder, IntegerCodec, PtrWriter, ReadSource, SlotInit, forward_ffi_encoder},
     value,
 };
 use napi::Env;
@@ -53,7 +53,7 @@ impl EnumFlagsCodec {
 impl Encoder for EnumFlagsCodec {
     fn encode(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
         if self.kind == EnumFlagsKind::Enum && matches!(value.get_type()?, ValueType::Number) {
-            let n = value::read_napi::<f64>(env, value)?;
+            let n = value::read_napi::<f64>(value)?;
             self.validate_enum_value(n as i32)?;
         }
         Encoder::encode(&self.storage, env, value)
@@ -83,7 +83,8 @@ impl PtrWriter for EnumFlagsCodec {
         env: &Env,
         slot: ffi::Slot,
         value: Unknown<'_>,
+        init: SlotInit,
     ) -> anyhow::Result<()> {
-        PtrWriter::write_value_to_ptr(&self.storage, env, slot, value)
+        PtrWriter::write_value_to_ptr(&self.storage, env, slot, value, init)
     }
 }

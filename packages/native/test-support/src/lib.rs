@@ -10,7 +10,7 @@ use native::Handle;
 use native::ffi::Slot;
 use native::ffi::codec::{
     ArrayCodec, ArrayKind, Codec, Decoder, Encoder, EnumFlagsCodec, EnumFlagsKind, FloatCodec,
-    IntegerCodec, Ownership, PtrWriter, ReadSource,
+    IntegerCodec, Ownership, PtrWriter, ReadSource, SlotInit,
 };
 use native::ffi::library_cache::FfiCache;
 use native::handle::Boxed;
@@ -106,7 +106,7 @@ pub unsafe extern "C" fn param_spec_unref(ptr: *mut c_void) {
     }
 }
 
-pub fn param_spec_refcount(ptr: *mut c_void) -> u32 {
+pub unsafe fn param_spec_refcount(ptr: *mut c_void) -> u32 {
     if ptr.is_null() {
         return 0;
     }
@@ -116,14 +116,14 @@ pub fn param_spec_refcount(ptr: *mut c_void) -> u32 {
     }
 }
 
-pub fn get_gobject_refcount(obj_ptr: *mut glib::gobject_ffi::GObject) -> u32 {
+pub unsafe fn get_gobject_refcount(obj_ptr: *mut glib::gobject_ffi::GObject) -> u32 {
     if obj_ptr.is_null() {
         return 0;
     }
     unsafe { (*obj_ptr).ref_count }
 }
 
-pub fn assert_unresolvable_symbol_failure_keeps_param_spec(
+pub unsafe fn assert_unresolvable_symbol_failure_keeps_param_spec(
     pspec: *mut c_void,
     before: u32,
     result: anyhow::Result<()>,
@@ -134,7 +134,7 @@ pub fn assert_unresolvable_symbol_failure_keeps_param_spec(
         err.to_string().contains("Failed to find symbol"),
         "unexpected error: {err}"
     );
-    assert_eq!(param_spec_refcount(pspec), before);
+    assert_eq!(unsafe { param_spec_refcount(pspec) }, before);
     unsafe {
         glib::gobject_ffi::g_param_spec_unref(pspec as *mut glib::gobject_ffi::GParamSpec);
     }
@@ -155,7 +155,7 @@ pub fn make_bool_param_spec() -> *mut c_void {
 pub fn fresh_gobject() -> (glib::Object, *mut glib::gobject_ffi::GObject, u32) {
     let obj = glib::Object::new::<glib::Object>();
     let obj_ptr = obj.as_ptr();
-    let before = get_gobject_refcount(obj_ptr);
+    let before = unsafe { get_gobject_refcount(obj_ptr) };
     (obj, obj_ptr, before)
 }
 
@@ -187,7 +187,7 @@ pub fn owned_rgba_boxed() -> (Boxed, *mut std::ffi::c_void) {
     (Boxed::from_glib_full(Some(type_), ptr), ptr)
 }
 
-pub fn is_valid_boxed_ptr(ptr: *mut std::ffi::c_void, type_: glib::Type) -> bool {
+pub unsafe fn is_valid_boxed_ptr(ptr: *mut std::ffi::c_void, type_: glib::Type) -> bool {
     if ptr.is_null() {
         return false;
     }
@@ -203,9 +203,19 @@ pub fn is_valid_boxed_ptr(ptr: *mut std::ffi::c_void, type_: glib::Type) -> bool
 }
 
 pub struct TestBoxed {
-    pub ptr: *mut c_void,
-    pub type_: Option<glib::Type>,
-    pub is_owned: bool,
+    ptr: *mut c_void,
+    type_: Option<glib::Type>,
+    is_owned: bool,
+}
+
+impl TestBoxed {
+    pub unsafe fn new(ptr: *mut c_void, type_: Option<glib::Type>, is_owned: bool) -> Self {
+        Self {
+            ptr,
+            type_,
+            is_owned,
+        }
+    }
 }
 
 impl Drop for TestBoxed {
@@ -288,6 +298,7 @@ pub fn write_value_into_slot<C: PtrWriter>(
             env,
             unsafe { Slot::new(&mut slot as *mut *mut c_void as *mut c_void) },
             value,
+            SlotInit::Initialized,
         )
         .expect("write_value_to_ptr should succeed");
     slot

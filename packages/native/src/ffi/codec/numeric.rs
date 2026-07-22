@@ -99,10 +99,10 @@ impl_integer_codec_dispatch! {
 }
 
 macro_rules! impl_numeric_codecs {
-    ($kind:ty, $label:literal, $number_from_ptr:item) => {
+    ($kind:ty, $label:literal, |$self_:ident, $ptr:ident, $context:ident| $value_arm:expr) => {
         impl Encoder for $kind {
-            fn encode(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
-                let number = self.number_from_value(env, value)?;
+            fn encode(&self, _env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
+                let number = self.number_from_value(value)?;
                 self.checked_to_stash(number)
             }
 
@@ -120,10 +120,6 @@ macro_rules! impl_numeric_codecs {
             }
         }
 
-        impl $kind {
-            $number_from_ptr
-        }
-
         impl Decoder for $kind {
             unsafe fn read<'e>(
                 &self,
@@ -135,9 +131,10 @@ macro_rules! impl_numeric_codecs {
                     ReadSource::Slot(ptr, context) => unsafe {
                         self.checked_read_ptr(ptr as *const u8, context)?
                     },
-                    ReadSource::Value(ptr, context) => unsafe {
-                        self.number_from_ptr(ptr, context)?
-                    },
+                    ReadSource::Value($ptr, $context) => {
+                        let $self_ = self;
+                        $value_arm
+                    }
                 };
                 Ok(number.into_unknown(env)?)
             }
@@ -146,12 +143,12 @@ macro_rules! impl_numeric_codecs {
         impl PtrWriter for $kind {
             fn write_return_to_ptr(
                 &self,
-                env: &Env,
+                _env: &Env,
                 ret: ffi::Slot,
                 value: &std::result::Result<Unknown<'_>, ()>,
             ) {
                 let n = match value {
-                    Ok(unknown) => self.number_from_value(env, *unknown).unwrap_or(0.0),
+                    Ok(unknown) => self.number_from_value(*unknown).unwrap_or(0.0),
                     Err(()) => 0.0,
                 };
                 unsafe { self.write_return_widened(ret.as_ptr(), n) };
@@ -159,11 +156,12 @@ macro_rules! impl_numeric_codecs {
 
             fn write_value_to_ptr(
                 &self,
-                env: &Env,
+                _env: &Env,
                 slot: ffi::Slot,
                 value: Unknown<'_>,
+                _init: $crate::ffi::codec::SlotInit,
             ) -> anyhow::Result<()> {
-                let n = self.number_from_value(env, value)?;
+                let n = self.number_from_value(value)?;
                 unsafe { self.write_ptr(slot.as_ptr() as *mut u8, n) };
                 Ok(())
             }
@@ -180,16 +178,11 @@ pub fn lossless_f64(value: i128, context: &str) -> anyhow::Result<f64> {
     Ok(value as f64)
 }
 
-fn coerce_number(
-    env: &Env,
-    value: Unknown<'_>,
-    label: &str,
-    allow_object: bool,
-) -> anyhow::Result<f64> {
+fn coerce_number(value: Unknown<'_>, label: &str, allow_object: bool) -> anyhow::Result<f64> {
     match value.get_type()? {
-        ValueType::Number => Ok(value::read_napi::<f64>(env, value)?),
+        ValueType::Number => Ok(value::read_napi::<f64>(value)?),
         ValueType::External if allow_object => {
-            let ptr = value::handle_ptr(env, value, label)?;
+            let ptr = value::handle_ptr(value, label)?;
             Ok(ptr as usize as f64)
         }
         ValueType::Null | ValueType::Undefined => Ok(0.0),
@@ -304,8 +297,8 @@ impl IntegerCodec {
         }
     }
 
-    fn number_from_value(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<f64> {
-        coerce_number(env, value, "integer codec", true)
+    fn number_from_value(&self, value: Unknown<'_>) -> anyhow::Result<f64> {
+        coerce_number(value, "integer codec", true)
     }
 
     pub(super) unsafe fn write_return_widened(self, ret: *mut c_void, value: f64) {
@@ -324,13 +317,8 @@ impl IntegerCodec {
     }
 }
 
-impl_numeric_codecs!(
-    IntegerCodec,
-    "integer",
-    unsafe fn number_from_ptr(&self, ptr: *mut c_void, context: &str) -> anyhow::Result<f64> {
-        self.number_from_ptr_raw(ptr, context)
-    }
-);
+impl_numeric_codecs!(IntegerCodec, "integer", |codec, ptr, context| codec
+    .number_from_ptr_raw(ptr, context)?);
 
 #[derive(Debug, Clone, Copy)]
 pub enum FloatCodec {
@@ -434,8 +422,8 @@ impl FloatCodec {
         Ok(unsafe { self.read_ptr(ptr) })
     }
 
-    fn number_from_value(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<f64> {
-        coerce_number(env, value, "float type", false)
+    fn number_from_value(&self, value: Unknown<'_>) -> anyhow::Result<f64> {
+        coerce_number(value, "float type", false)
     }
 
     unsafe fn write_return_widened(self, ret: *mut c_void, value: f64) {
@@ -443,10 +431,7 @@ impl FloatCodec {
     }
 }
 
-impl_numeric_codecs!(
-    FloatCodec,
-    "float",
-    unsafe fn number_from_ptr(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<f64> {
-        Ok(unsafe { self.number_from_ptr_raw(ptr) })
-    }
-);
+impl_numeric_codecs!(FloatCodec, "float", |codec, ptr, context| {
+    let _ = context;
+    unsafe { codec.number_from_ptr_raw(ptr) }
+});

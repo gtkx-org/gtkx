@@ -24,7 +24,9 @@ impl BoxedCodec {
     }
 
     fn lookup_free_fn(library_name: &str, free_fn_name: &str) -> anyhow::Result<BoxedFreeFn> {
-        FfiCache::with(|state| state.resolve_symbol::<BoxedFreeFn>(library_name, free_fn_name))
+        FfiCache::with(|state| unsafe {
+            state.resolve_symbol::<BoxedFreeFn>(library_name, free_fn_name)
+        })
     }
 
     fn boxed_with_free_fn(&self, ptr: *mut c_void, free_fn_name: &str) -> anyhow::Result<Boxed> {
@@ -121,17 +123,18 @@ impl PtrWriter for BoxedCodec {
 
     fn write_value_to_ptr(
         &self,
-        env: &Env,
+        _env: &Env,
         slot: ffi::Slot,
         value: Unknown<'_>,
+        init: SlotInit,
     ) -> anyhow::Result<()> {
         let Some(type_) = self.type_()? else {
-            return write_object_ptr(env, slot, value, "Boxed field write");
+            return write_object_ptr(slot, value, "Boxed field write");
         };
         swap_owned_slot(
-            env,
             slot,
             value,
+            init,
             "Boxed field write",
             |new_ptr| unsafe { Boxed::boxed_copy(type_, new_ptr) },
             |old_ptr| unsafe {

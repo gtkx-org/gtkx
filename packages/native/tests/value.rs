@@ -212,12 +212,7 @@ fn strv_transfer_none_does_not_free() {
         assert_string_item(&items, 0, "hello");
         assert_string_item(&items, 1, "world");
 
-        assert_eq!(
-            unsafe { std::ffi::CStr::from_ptr(strings[0].as_ptr()) }
-                .to_str()
-                .unwrap(),
-            "hello"
-        );
+        assert_eq!(strings[0].to_str().unwrap(), "hello");
     });
 }
 
@@ -225,16 +220,10 @@ fn strv_transfer_none_does_not_free() {
 fn strv_full_transfer_frees_strings() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let s1 = unsafe { glib::ffi::g_strdup(c"hello".as_ptr()) };
-        let s2 = unsafe { glib::ffi::g_strdup(c"world".as_ptr()) };
-
-        let strv = unsafe {
-            let ptr = glib::ffi::g_malloc(3 * std::mem::size_of::<*mut i8>()) as *mut *mut i8;
-            *ptr = s1;
-            *ptr.add(1) = s2;
-            *ptr.add(2) = std::ptr::null_mut();
-            ptr
-        };
+        let mut strv = glib::StrV::with_capacity(2);
+        strv.push(glib::GString::from("hello"));
+        strv.push(glib::GString::from("world"));
+        let strv = strv.into_raw();
 
         let items = decode_array(
             &env,
@@ -285,7 +274,7 @@ fn from_cif_value_ref_gobject_null_inner() {
         let env = helpers::fake_env();
         let cif_value = ptr_slot_stash(std::ptr::null_mut());
         let codec = Codec::Ref(
-            native::ffi::codec::RefCodec::new(gobject_type_of(Ownership::Borrowed))
+            native::ffi::codec::RefCodec::new(gobject_type_of(Ownership::Borrowed), false)
                 .expect("GObject is a valid Ref inner"),
         );
 
@@ -305,7 +294,7 @@ fn from_cif_value_ref_boxed() {
 
         let cif_value = ptr_slot_stash(ptr);
         let codec = Codec::Ref(
-            native::ffi::codec::RefCodec::new(rgba_boxed_type_of(Ownership::Borrowed))
+            native::ffi::codec::RefCodec::new(rgba_boxed_type_of(Ownership::Borrowed), false)
                 .expect("Boxed is a valid Ref inner"),
         );
 
@@ -389,7 +378,7 @@ fn object_ptr_returns_handle_pointer() {
 
         let unknown = External::new(handle).into_unknown(&env).unwrap();
         assert_eq!(
-            native::ffi::value::handle_ptr(&env, unknown, "GObject").unwrap(),
+            native::ffi::value::handle_ptr(unknown, "GObject").unwrap(),
             obj_ptr
         );
     });
@@ -402,12 +391,12 @@ fn object_ptr_returns_null_for_null_and_undefined() {
         let null_value = napi_mock::to_unknown(&env, napi_mock::fake_null());
         let undefined_value = napi_mock::to_unknown(&env, napi_mock::fake_undefined());
         assert!(
-            native::ffi::value::handle_ptr(&env, null_value, "GObject")
+            native::ffi::value::handle_ptr(null_value, "GObject")
                 .unwrap()
                 .is_null()
         );
         assert!(
-            native::ffi::value::handle_ptr(&env, undefined_value, "GObject")
+            native::ffi::value::handle_ptr(undefined_value, "GObject")
                 .unwrap()
                 .is_null()
         );
@@ -425,7 +414,7 @@ fn object_ptr_errors_for_non_object_variants() {
             napi_mock::to_unknown(&env, napi_mock::fake_array(&[])),
         ];
         for sample in samples {
-            assert!(native::ffi::value::handle_ptr(&env, sample, "GObject").is_err());
+            assert!(native::ffi::value::handle_ptr(sample, "GObject").is_err());
         }
     });
 }

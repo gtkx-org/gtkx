@@ -13,6 +13,9 @@ fn gobject_type(gobject_ptr: *mut c_void) -> anyhow::Result<u64> {
     }
     let instance = gobject_ptr.cast::<gobject_ffi::GTypeInstance>();
     let g_class = unsafe { (*instance).g_class };
+    if g_class.is_null() {
+        return Ok(0);
+    }
     let type_ = unsafe { (*g_class).g_type };
     Ok(type_ as u64)
 }

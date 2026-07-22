@@ -43,7 +43,7 @@ fn from_glib_none_creates_copy() {
         assert!(boxed.is_owned());
         assert!(!boxed.as_ptr().is_null());
         assert_ne!(boxed.as_ptr(), original_ptr);
-        assert!(helpers::is_valid_boxed_ptr(boxed.as_ptr(), type_));
+        assert!(unsafe { helpers::is_valid_boxed_ptr(boxed.as_ptr(), type_) });
 
         unsafe {
             glib::gobject_ffi::g_boxed_free(type_.into_glib(), original_ptr);
@@ -57,7 +57,7 @@ fn copy_with_size_copies_without_type() {
         let data: [u8; 16] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
         let ptr = data.as_ptr() as *mut c_void;
 
-        let boxed = Boxed::copy_with_size(ptr, 16);
+        let boxed = unsafe { Boxed::copy_with_size(ptr, 16) };
 
         assert!(boxed.is_owned());
         assert!(!boxed.as_ptr().is_null());
@@ -103,14 +103,10 @@ fn drop_does_not_free_transfer_none_memory() {
         let type_ = gdk::RGBA::static_type();
         let ptr = helpers::allocate_test_boxed(type_);
 
-        let boxed = helpers::TestBoxed {
-            ptr,
-            type_: Some(type_),
-            is_owned: false,
-        };
+        let boxed = unsafe { helpers::TestBoxed::new(ptr, Some(type_), false) };
         drop(boxed);
 
-        assert!(helpers::is_valid_boxed_ptr(ptr, type_));
+        assert!(unsafe { helpers::is_valid_boxed_ptr(ptr, type_) });
 
         unsafe {
             glib::gobject_ffi::g_boxed_free(type_.into_glib(), ptr);

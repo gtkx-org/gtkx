@@ -100,15 +100,9 @@ fn unresolvable_fundamental_item_codec() -> Codec {
     })
 }
 
-fn gobject_refcount(ptr: *mut std::ffi::c_void) -> u32 {
-    unsafe { (*(ptr as *mut gtk4::glib::gobject_ffi::GObject)).ref_count }
-}
-
 fn new_gobject() -> (glib::Object, *mut c_void) {
-    let obj = glib::Object::new::<glib::Object>();
-    let ptr = glib::translate::ToGlibPtr::<*mut glib::gobject_ffi::GObject>::to_glib_none(&obj).0
-        as *mut c_void;
-    (obj, ptr)
+    let (obj, ptr, _) = helpers::fresh_gobject();
+    (obj, ptr.cast())
 }
 
 fn number(value: f64) -> sys::napi_value {
@@ -146,15 +140,21 @@ fn assert_full_element_container_releases_on_drop(kind: ArrayKind, container: Ow
     helpers::run(|| {
         let env = helpers::fake_env();
         let (_obj, obj_ptr) = new_gobject();
-        let before = gobject_refcount(obj_ptr);
+        let before = unsafe { helpers::get_gobject_refcount(obj_ptr.cast()) };
 
         let descriptor = array_codec(gobject_item_codec(Ownership::Full), kind, container);
         let val = array(&env, &[object(&env, Handle::from_glib_borrow(obj_ptr))]);
         let encoded = descriptor.encode(&env, val).unwrap();
-        assert_eq!(gobject_refcount(obj_ptr), before + 1);
+        assert_eq!(
+            unsafe { helpers::get_gobject_refcount(obj_ptr.cast()) },
+            before + 1
+        );
 
         drop(encoded);
-        assert_eq!(gobject_refcount(obj_ptr), before);
+        assert_eq!(
+            unsafe { helpers::get_gobject_refcount(obj_ptr.cast()) },
+            before
+        );
     });
 }
 
@@ -198,7 +198,7 @@ fn encode_glist_handles_full_ownership_transfers_to_callee_when_disarmed() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let (_obj, obj_ptr) = new_gobject();
-        let before = gobject_refcount(obj_ptr);
+        let before = unsafe { helpers::get_gobject_refcount(obj_ptr.cast()) };
 
         let descriptor = array_codec(
             gobject_item_codec(Ownership::Full),
@@ -218,7 +218,10 @@ fn encode_glist_handles_full_ownership_transfers_to_callee_when_disarmed() {
             gtk4::glib::gobject_ffi::g_object_unref(obj_ptr.cast());
         }
         drop(encoded);
-        assert_eq!(gobject_refcount(obj_ptr), before);
+        assert_eq!(
+            unsafe { helpers::get_gobject_refcount(obj_ptr.cast()) },
+            before
+        );
     });
 }
 
@@ -227,7 +230,7 @@ fn encode_glist_handles_releases_acquired_elements_when_later_element_is_null() 
     helpers::run(|| {
         let env = helpers::fake_env();
         let (_obj, obj_ptr) = new_gobject();
-        let before = gobject_refcount(obj_ptr);
+        let before = unsafe { helpers::get_gobject_refcount(obj_ptr.cast()) };
 
         let descriptor = array_codec(
             gobject_item_codec(Ownership::Full),
@@ -242,7 +245,10 @@ fn encode_glist_handles_releases_acquired_elements_when_later_element_is_null() 
             ],
         );
         assert!(descriptor.encode(&env, val).is_err());
-        assert_eq!(gobject_refcount(obj_ptr), before);
+        assert_eq!(
+            unsafe { helpers::get_gobject_refcount(obj_ptr.cast()) },
+            before
+        );
     });
 }
 
@@ -941,13 +947,30 @@ macro_rules! assert_scalar_storage {
     };
 }
 
+macro_rules! assert_full_scalar_storage {
+    ($encoded:expr, $ty:ty, $expected:expr) => {
+        let Stash::Storage(storage) = &$encoded else {
+            panic!("expected storage")
+        };
+        assert!(
+            matches!(storage.data(), StashData::Unit),
+            "a transfer-full scalar array must hand the callee a glib-owned buffer, got {:?}",
+            storage.data()
+        );
+        let expected: &[$ty] = $expected;
+        let items =
+            unsafe { std::slice::from_raw_parts(storage.ptr() as *const $ty, expected.len()) };
+        assert_eq!(items, expected);
+    };
+}
+
 #[test]
 fn encode_zero_terminated_integer_array_appends_terminator() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let descriptor = u16_zero_terminated_full();
         let encoded = encode_scalar_storage(&env, &descriptor, &[number(1.0), number(2.0)]);
-        assert_scalar_storage!(encoded, U16Vec, &[1u16, 2, 0]);
+        assert_full_scalar_storage!(encoded, u16, &[1u16, 2, 0]);
     });
 }
 
@@ -957,7 +980,7 @@ fn encode_zero_terminated_empty_integer_array_is_only_terminator() {
         let env = helpers::fake_env();
         let descriptor = i32_zero_terminated(Ownership::Full);
         let encoded = encode_scalar_storage(&env, &descriptor, &[]);
-        assert_scalar_storage!(encoded, I32Vec, &[0i32]);
+        assert_full_scalar_storage!(encoded, i32, &[0i32]);
     });
 }
 
@@ -967,7 +990,7 @@ fn encode_zero_terminated_enum_flags_array_appends_terminator() {
         let env = helpers::fake_env();
         let descriptor = array_codec(enum_flags_item_codec(), ArrayKind::Array, Ownership::Full);
         let encoded = encode_scalar_storage(&env, &descriptor, &[number(3.0), number(1.0)]);
-        assert_scalar_storage!(encoded, I32Vec, &[3i32, 1, 0]);
+        assert_full_scalar_storage!(encoded, i32, &[3i32, 1, 0]);
     });
 }
 
@@ -981,7 +1004,7 @@ fn encode_zero_terminated_float_array_appends_terminator() {
             Ownership::Full,
         );
         let encoded = encode_scalar_storage(&env, &f32_descriptor, &[number(1.5), number(2.5)]);
-        assert_scalar_storage!(encoded, F32Vec, &[1.5f32, 2.5, 0.0]);
+        assert_full_scalar_storage!(encoded, f32, &[1.5f32, 2.5, 0.0]);
 
         let f64_descriptor = array_codec(
             Codec::Float(FloatCodec::F64),
@@ -989,7 +1012,7 @@ fn encode_zero_terminated_float_array_appends_terminator() {
             Ownership::Full,
         );
         let encoded = encode_scalar_storage(&env, &f64_descriptor, &[number(1.25)]);
-        assert_scalar_storage!(encoded, F64Vec, &[1.25f64, 0.0]);
+        assert_full_scalar_storage!(encoded, f64, &[1.25f64, 0.0]);
     });
 }
 
@@ -1003,7 +1026,7 @@ fn encode_zero_terminated_boolean_array_appends_terminator() {
             Ownership::Full,
         );
         let encoded = encode_scalar_storage(&env, &descriptor, &[boolean(true)]);
-        assert_scalar_storage!(encoded, I32Vec, &[1i32, 0]);
+        assert_full_scalar_storage!(encoded, i32, &[1i32, 0]);
     });
 }
 
@@ -1017,7 +1040,7 @@ fn encode_zero_terminated_bigint_array_appends_terminator() {
             Ownership::Full,
         );
         let encoded = encode_scalar_storage(&env, &u64_descriptor, &[bigint(5), bigint(9)]);
-        assert_scalar_storage!(encoded, U64Vec, &[5u64, 9, 0]);
+        assert_full_scalar_storage!(encoded, u64, &[5u64, 9, 0]);
 
         let i64_descriptor = array_codec(
             Codec::BigInt(BigIntCodec::I64),
@@ -1025,7 +1048,7 @@ fn encode_zero_terminated_bigint_array_appends_terminator() {
             Ownership::Full,
         );
         let encoded = encode_scalar_storage(&env, &i64_descriptor, &[bigint(-7)]);
-        assert_scalar_storage!(encoded, I64Vec, &[-7i64, 0]);
+        assert_full_scalar_storage!(encoded, i64, &[-7i64, 0]);
     });
 }
 
@@ -1886,7 +1909,7 @@ fn size_from_args_reads_ref_integer_storage() {
         let size_storage = native::ffi::StashStorage::from(vec![2i32]);
         let ffi_args = [Stash::Storage(size_storage)];
         let arg_codecs = [Codec::Ref(
-            RefCodec::new(Codec::Integer(IntegerCodec::I32)).expect("valid Ref inner"),
+            RefCodec::new(Codec::Integer(IntegerCodec::I32), false).expect("valid Ref inner"),
         )];
         let decoded = descriptor
             .decode_with_context(&env, &stash, &ffi_args, &arg_codecs)
@@ -1906,7 +1929,7 @@ fn size_from_args_reads_ref_integer_ptr() {
         let size: i32 = 2;
         let ffi_args = [Stash::Ptr(&size as *const i32 as *mut c_void)];
         let arg_codecs = [Codec::Ref(
-            RefCodec::new(Codec::Integer(IntegerCodec::I32)).expect("valid Ref inner"),
+            RefCodec::new(Codec::Integer(IntegerCodec::I32), false).expect("valid Ref inner"),
         )];
         let decoded = descriptor
             .decode_with_context(&env, &stash, &ffi_args, &arg_codecs)
@@ -1925,7 +1948,7 @@ fn size_from_args_ref_null_ptr_falls_through_to_error() {
         let stash = Stash::Ptr(data.as_ptr() as *mut c_void);
         let ffi_args = [Stash::Ptr(std::ptr::null_mut())];
         let arg_codecs = [Codec::Ref(
-            RefCodec::new(Codec::Integer(IntegerCodec::I32)).expect("valid Ref inner"),
+            RefCodec::new(Codec::Integer(IntegerCodec::I32), false).expect("valid Ref inner"),
         )];
         assert!(
             descriptor
@@ -2015,7 +2038,7 @@ fn encode_glist_handles_fails_and_unwinds_when_element_transfer_fails() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let pspec = helpers::make_bool_param_spec();
-        let before = helpers::param_spec_refcount(pspec);
+        let before = unsafe { helpers::param_spec_refcount(pspec) };
 
         let descriptor = array_codec(
             unresolvable_fundamental_item_codec(),
@@ -2023,12 +2046,14 @@ fn encode_glist_handles_fails_and_unwinds_when_element_transfer_fails() {
             Ownership::Full,
         );
         let val = array(&env, &[object(&env, Handle::from_glib_borrow(pspec))]);
-        helpers::assert_unresolvable_symbol_failure_keeps_param_spec(
-            pspec,
-            before,
-            descriptor.encode(&env, val).map(|_| ()),
-            "an unresolvable element ref function must fail the transfer",
-        );
+        unsafe {
+            helpers::assert_unresolvable_symbol_failure_keeps_param_spec(
+                pspec,
+                before,
+                descriptor.encode(&env, val).map(|_| ()),
+                "an unresolvable element ref function must fail the transfer",
+            )
+        };
     });
 }
 

@@ -17,7 +17,9 @@ use native::ffi::codec::{
     StringCodec, StructCodec, VoidCodec,
 };
 use native::ffi::value::JsHandle;
-use native::ffi::{ListData, ListOps, ListPayload, ReleaseKind, Stash, StashData, StashStorage};
+use native::ffi::{
+    ListData, ListNode, ListOps, ListPayload, ReleaseKind, Stash, StashData, StashStorage,
+};
 use native::handle::Handle;
 
 fn js_fn_handle(env: &Env, value: sys::napi_value) -> JsHandle {
@@ -106,11 +108,18 @@ fn single_fatal_message() -> String {
         .expect("the fatal exception should carry a message")
 }
 
-unsafe fn passthrough_prepend(list: *mut c_void, _data: *mut c_void) -> *mut c_void {
+fn passthrough_prepend(list: *mut c_void, _data: *mut c_void) -> *mut c_void {
     list
 }
 
-unsafe fn panicking_free(_list: *mut c_void) {
+fn end_node(_node: *mut c_void) -> ListNode {
+    ListNode {
+        data: std::ptr::null_mut(),
+        next: std::ptr::null_mut(),
+    }
+}
+
+fn panicking_free(_list: *mut c_void) {
     panic!("closure drop exploded");
 }
 
@@ -118,6 +127,7 @@ static PANICKING_LIST_OPS: ListOps = ListOps {
     label: "panicking list",
     pending: ReleaseKind::GFree,
     prepend: passthrough_prepend,
+    node: end_node,
     free: panicking_free,
     free_full: panicking_free,
 };
@@ -207,28 +217,36 @@ fn the_user_data_argument_is_not_passed_to_js() {
     });
 }
 
+fn ref_i32_closure(env: &Env, js_fn: sys::napi_value, inout: bool) -> Box<ClosureState> {
+    let ref_codec = RefCodec::new(Codec::Integer(IntegerCodec::I32), inout)
+        .expect("Integer is a valid Ref inner");
+    ClosureState::boxed(
+        js_fn_handle(env, js_fn),
+        vec![Codec::Ref(ref_codec)],
+        Codec::Void(VoidCodec),
+        None,
+        false,
+    )
+}
+
+fn seed_recording_function(seeded: &Rc<RefCell<Vec<sys::napi_value>>>) -> sys::napi_value {
+    let seeded_in_fn = Rc::clone(seeded);
+    napi_mock::fake_function(move |args| {
+        let seed = napi_mock::read_object_property(args[0], "value")
+            .expect("the ref object should carry a seeded value");
+        seeded_in_fn.borrow_mut().push(seed);
+        napi_mock::set_object_property(args[0], "value", napi_mock::fake_double(52.0));
+        napi_mock::fake_undefined()
+    })
+}
+
 #[test]
-fn ref_out_parameters_are_seeded_and_flushed() {
+fn ref_inout_parameters_are_seeded_and_flushed() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let seeded = Rc::new(RefCell::new(Vec::new()));
-        let seeded_in_fn = Rc::clone(&seeded);
-        let js_fn = napi_mock::fake_function(move |args| {
-            let seed = napi_mock::read_object_property(args[0], "value")
-                .expect("the ref object should carry a seeded value");
-            seeded_in_fn.borrow_mut().push(seed);
-            napi_mock::set_object_property(args[0], "value", napi_mock::fake_double(52.0));
-            napi_mock::fake_undefined()
-        });
-        let ref_codec =
-            RefCodec::new(Codec::Integer(IntegerCodec::I32)).expect("Integer is a valid Ref inner");
-        let state = ClosureState::boxed(
-            js_fn_handle(&env, js_fn),
-            vec![Codec::Ref(ref_codec)],
-            Codec::Void(VoidCodec),
-            None,
-            false,
-        );
+        let js_fn = seed_recording_function(&seeded);
+        let state = ref_i32_closure(&env, js_fn, true);
         let call: unsafe extern "C" fn(*mut i32) = unsafe { std::mem::transmute(state.code_ptr) };
 
         let mut backing: i32 = 41;
@@ -237,6 +255,26 @@ fn ref_out_parameters_are_seeded_and_flushed() {
         let seeds = seeded.borrow();
         assert_eq!(seeds.len(), 1);
         assert_eq!(napi_mock::read_double(seeds[0]), Some(41.0));
+        assert_eq!(backing, 52);
+        assert!(napi_mock::fatal_exceptions().is_empty());
+    });
+}
+
+#[test]
+fn ref_pure_out_parameters_are_seeded_null_and_flushed_without_reading_the_slot() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let seeded = Rc::new(RefCell::new(Vec::new()));
+        let js_fn = seed_recording_function(&seeded);
+        let state = ref_i32_closure(&env, js_fn, false);
+        let call: unsafe extern "C" fn(*mut i32) = unsafe { std::mem::transmute(state.code_ptr) };
+
+        let mut backing: i32 = 41;
+        unsafe { call(&mut backing) };
+
+        let seeds = seeded.borrow();
+        assert_eq!(seeds.len(), 1);
+        assert!(napi_mock::is_null(seeds[0]));
         assert_eq!(backing, 52);
         assert!(napi_mock::fatal_exceptions().is_empty());
     });
@@ -320,7 +358,10 @@ fn a_oneshot_closure_releases_its_resources_once_via_the_idle() {
         let (js_fn, calls) = counting_function(|_, _| napi_mock::fake_undefined());
         let state = void_closure(&env, js_fn, true);
         let call: unsafe extern "C" fn() = unsafe { std::mem::transmute(state.code_ptr) };
-        let _ = Box::into_raw(state);
+        let callback_value =
+            native::ffi::CallbackValue::new_pending_transfer(state.code_ptr, None, state);
+        callback_value.disarm_pending_transfer();
+        drop(callback_value);
 
         let deletions_before = napi_mock::count("napi_delete_reference");
         unsafe { call() };

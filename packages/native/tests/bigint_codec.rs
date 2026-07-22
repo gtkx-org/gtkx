@@ -6,7 +6,7 @@ use std::ffi::c_void;
 use napi::JsValue as _;
 use napi::sys::napi_value;
 
-use native::ffi::codec::{BigIntCodec, Decoder, Encoder, PtrWriter, ReadSource};
+use native::ffi::codec::{BigIntCodec, Decoder, Encoder, PtrWriter, ReadSource, SlotInit};
 use native::ffi::{self, Slot, StashData};
 
 fn assert_encodes_i64(build: impl FnOnce() -> napi_value, expected: i64) {
@@ -82,7 +82,7 @@ fn assert_to_stash_storage_errors(codec: BigIntCodec, build: impl FnOnce() -> Ve
             .into_iter()
             .map(|raw| napi_mock::to_unknown(&env, raw))
             .collect();
-        assert!(codec.to_stash_storage(&env, &values).is_err());
+        assert!(codec.to_stash_storage(&values).is_err());
     });
 }
 
@@ -131,7 +131,12 @@ fn assert_write_value_errors(codec: BigIntCodec, build: impl FnOnce() -> napi_va
         let slot = unsafe { Slot::new(&mut backing as *mut *mut c_void as *mut c_void) };
         assert!(
             codec
-                .write_value_to_ptr(&env, slot, napi_mock::to_unknown(&env, build()))
+                .write_value_to_ptr(
+                    &env,
+                    slot,
+                    napi_mock::to_unknown(&env, build()),
+                    SlotInit::Initialized
+                )
                 .is_err()
         );
     });
@@ -342,7 +347,7 @@ fn to_stash_storage_i64_collects_values() {
             napi_mock::to_unknown(&env, napi_mock::fake_double(3.0)),
         ];
         let storage = BigIntCodec::I64
-            .to_stash_storage(&env, &array)
+            .to_stash_storage(&array)
             .expect("i64 storage should succeed");
         match storage.data() {
             StashData::I64Vec(vec) => assert_eq!(vec, &vec![-1i64, 2, 3]),
@@ -360,7 +365,7 @@ fn to_stash_storage_u64_collects_values() {
             napi_mock::to_unknown(&env, napi_mock::fake_double(2.0)),
         ];
         let storage = BigIntCodec::U64
-            .to_stash_storage(&env, &array)
+            .to_stash_storage(&array)
             .expect("u64 storage should succeed");
         match storage.data() {
             StashData::U64Vec(vec) => assert_eq!(vec, &vec![1u64, 2]),

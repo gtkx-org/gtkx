@@ -4,8 +4,7 @@ use gtk4::glib;
 
 use native::Handle;
 use native::ffi;
-use native::ffi::Slot;
-use native::ffi::codec::{Decoder, Encoder, Ownership, PtrWriter, ReadSource, StructCodec};
+use native::ffi::codec::{Decoder, Encoder, Ownership, ReadSource, StructCodec};
 
 use napi::Env;
 use napi::JsValue as _;
@@ -74,11 +73,8 @@ fn write_object_ptr_writes_object_pointer() {
         let handle = Handle::from_glib_borrow(&target as *const u64 as *mut c_void);
         let value = External::new(handle).into_unknown(&env).unwrap();
 
-        let mut slot: *mut c_void = std::ptr::null_mut();
-        let slot_ptr = &mut slot as *mut *mut c_void as *mut c_void;
-
-        PtrWriter::write_value_to_ptr(&struct_type(), &env, unsafe { Slot::new(slot_ptr) }, value)
-            .unwrap();
+        let slot =
+            test_support::write_value_into_slot(&env, &struct_type(), std::ptr::null_mut(), value);
         assert_eq!(slot, &target as *const u64 as *mut c_void);
     });
 }
@@ -87,16 +83,12 @@ fn write_object_ptr_writes_object_pointer() {
 fn write_object_ptr_writes_null_for_null_value() {
     test_support::run(|| {
         let env = test_support::fake_env();
-        let mut slot: *mut c_void = 7 as *mut c_void;
-        let slot_ptr = &mut slot as *mut *mut c_void as *mut c_void;
-
-        PtrWriter::write_value_to_ptr(
-            &struct_type(),
+        let slot = test_support::write_value_into_slot(
             &env,
-            unsafe { Slot::new(slot_ptr) },
+            &struct_type(),
+            7 as *mut c_void,
             napi_mock::to_unknown(&env, napi_mock::fake_null()),
-        )
-        .unwrap();
+        );
         assert!(slot.is_null());
     });
 }
@@ -104,12 +96,7 @@ fn write_object_ptr_writes_null_for_null_value() {
 #[test]
 fn write_return_object_ptr_writes_null_for_error() {
     test_support::run(|| {
-        let env = test_support::fake_env();
-        let mut slot: *mut c_void = 9 as *mut c_void;
-        let ret = &mut slot as *mut *mut c_void as *mut c_void;
-
-        PtrWriter::write_return_to_ptr(&struct_type(), &env, unsafe { Slot::new(ret) }, &Err(()));
-        assert!(slot.is_null());
+        test_support::assert_write_return_err_writes_null(&struct_type());
     });
 }
 
@@ -121,10 +108,7 @@ fn write_return_object_ptr_transfers_non_null_pointer() {
         let handle = Handle::from_glib_borrow(&target as *const u64 as *mut c_void);
         let value: Result<Unknown, ()> = Ok(External::new(handle).into_unknown(&env).unwrap());
 
-        let mut slot: *mut c_void = std::ptr::null_mut();
-        let ret = &mut slot as *mut *mut c_void as *mut c_void;
-
-        PtrWriter::write_return_to_ptr(&struct_type(), &env, unsafe { Slot::new(ret) }, &value);
+        let slot = test_support::write_return_into_slot(&env, &struct_type(), &value);
         assert_eq!(slot, &target as *const u64 as *mut c_void);
     });
 }
@@ -255,12 +239,9 @@ fn write_return_borrowed_writes_same_pointer_without_reporting() {
 fn write_return_object_ptr_writes_null_for_non_object_ok() {
     test_support::run(|| {
         let env = test_support::fake_env();
-        let mut slot: *mut c_void = 11 as *mut c_void;
-        let ret = &mut slot as *mut *mut c_void as *mut c_void;
-
         let value: Result<Unknown, ()> =
             Ok(napi_mock::to_unknown(&env, napi_mock::fake_double(3.0)));
-        PtrWriter::write_return_to_ptr(&struct_type(), &env, unsafe { Slot::new(ret) }, &value);
+        let slot = test_support::write_return_into_slot(&env, &struct_type(), &value);
         assert!(slot.is_null());
     });
 }

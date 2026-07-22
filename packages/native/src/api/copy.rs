@@ -6,11 +6,11 @@ use crate::api::native_result;
 use crate::handle::Handle;
 
 fn copy_bytes(dest: *mut u8, src: *const u8, size: usize) -> anyhow::Result<()> {
-    if size == 0 || dest.cast_const() == src {
+    if size == 0 {
         return Ok(());
     }
     unsafe {
-        std::ptr::copy_nonoverlapping(src, dest, size);
+        std::ptr::copy(src, dest, size);
     }
     Ok(())
 }
@@ -60,5 +60,14 @@ mod tests {
         let ptr = region.as_mut_ptr();
         copy_bytes(ptr, ptr, region.len()).expect("copy should succeed");
         assert_eq!(region, [5, 6, 7, 8]);
+    }
+
+    #[test]
+    fn copies_bytes_between_partially_overlapping_regions() {
+        let mut region: [u8; 4] = [1, 2, 3, 4];
+        let base = region.as_mut_ptr();
+        let shifted = unsafe { base.add(1) };
+        copy_bytes(shifted, base, 3).expect("copy should succeed");
+        assert_eq!(region, [1, 1, 2, 3]);
     }
 }

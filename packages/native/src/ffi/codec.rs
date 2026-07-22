@@ -102,10 +102,23 @@ pub enum ReadSource<'a> {
     Value(*mut c_void, &'a str),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SlotInit {
+    Initialized,
+    Uninitialized,
+}
+
+impl SlotInit {
+    #[inline]
+    pub fn is_initialized(self) -> bool {
+        matches!(self, Self::Initialized)
+    }
+}
+
 #[enum_dispatch]
 pub trait Encoder {
-    fn encode(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
-        let ptr = value::handle_ptr(env, value, self.object_ptr_context())?;
+    fn encode(&self, _env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
+        let ptr = value::handle_ptr(value, self.object_ptr_context())?;
         let transferred = unsafe { self.ref_for_transfer(ptr)? };
         match self.transfer_release() {
             Some(release) if !transferred.is_null() => {
@@ -192,7 +205,7 @@ pub trait Decoder {
         ptr: *const c_void,
         context: &str,
     ) -> anyhow::Result<Unknown<'e>> {
-        let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
+        let inner_ptr = unsafe { (ptr as *const *mut c_void).read_unaligned() };
         unsafe { self.read(env, ReadSource::Value(inner_ptr, context)) }
     }
 
@@ -245,14 +258,15 @@ pub trait PtrWriter {
         env: &Env,
         slot: ffi::Slot,
         value: Unknown<'_>,
+        init: SlotInit,
     ) -> anyhow::Result<()> {
-        let _ = (env, slot, value);
+        let _ = (env, slot, value, init);
         bail!("This type cannot be written to a raw pointer")
     }
 
     fn write_return_with_ownership<F>(
         &self,
-        env: &Env,
+        _env: &Env,
         ret: ffi::Slot,
         value: &std::result::Result<Unknown<'_>, ()>,
         ownership: Ownership,
@@ -260,7 +274,7 @@ pub trait PtrWriter {
     ) where
         F: FnOnce(*mut c_void) -> *mut c_void,
     {
-        prelude::write_return_object_ptr(env, ret, value, |ptr| {
+        prelude::write_return_object_ptr(ret, value, |ptr| {
             if ownership.is_borrowed() {
                 ptr
             } else {

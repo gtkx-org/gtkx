@@ -251,8 +251,11 @@ impl Descriptor {
             }
             Self::Ref {
                 inner_descriptor,
-                inout: _,
-            } => Codec::Ref(RefCodec::new(*inner_descriptor.into_codec()?)?),
+                inout,
+            } => Codec::Ref(RefCodec::new(
+                *inner_descriptor.into_codec()?,
+                inout.unwrap_or(false),
+            )?),
         })
     }
 

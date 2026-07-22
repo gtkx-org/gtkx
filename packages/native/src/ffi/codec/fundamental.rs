@@ -24,7 +24,7 @@ impl FundamentalCodec {
     fn wrap_ptr(&self, ptr: *mut c_void) -> anyhow::Result<Handle> {
         let (ref_fn, unref_fn) = self.lookup_fns()?;
         let fundamental = if self.ownership.is_full() {
-            Fundamental::from_glib_full(ptr, unref_fn)
+            unsafe { Fundamental::from_glib_full(ptr, unref_fn) }
         } else {
             unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) }
         };
@@ -77,15 +77,16 @@ impl PtrWriter for FundamentalCodec {
 
     fn write_value_to_ptr(
         &self,
-        env: &Env,
+        _env: &Env,
         slot: ffi::Slot,
         value: Unknown<'_>,
+        init: SlotInit,
     ) -> anyhow::Result<()> {
         let (ref_fn, unref_fn) = self.lookup_fns()?;
         swap_owned_slot(
-            env,
             slot,
             value,
+            init,
             "Fundamental field write",
             |new_ptr| unsafe { ref_fn.map_or(new_ptr, |f| f(new_ptr)) },
             |old_ptr| unsafe {

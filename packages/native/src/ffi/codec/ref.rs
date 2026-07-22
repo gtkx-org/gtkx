@@ -9,10 +9,11 @@ use crate::ffi::{StashData, StashStorage};
 #[derive(Debug, Clone)]
 pub struct RefCodec {
     pub inner_codec: Box<Codec>,
+    pub inout: bool,
 }
 
 impl RefCodec {
-    pub fn new(inner_codec: Codec) -> napi::Result<Self> {
+    pub fn new(inner_codec: Codec, inout: bool) -> napi::Result<Self> {
         if !Self::supports_inner(&inner_codec) {
             return Err(napi::Error::new(
                 napi::Status::InvalidArg,
@@ -21,6 +22,7 @@ impl RefCodec {
         }
         Ok(Self {
             inner_codec: Box::new(inner_codec),
+            inout,
         })
     }
 
@@ -93,13 +95,19 @@ impl Encoder for RefCodec {
                 let inner_string = if is_nullish {
                     None
                 } else if inner_type == ValueType::String {
-                    Some(value::read_napi::<String>(env, inner)?)
+                    Some(value::read_napi::<String>(inner)?)
                 } else {
                     bail!("Expected a String, Null, or length for Ref<String>")
                 };
 
                 let buffer_size = match (&string_codec.length, &inner_string) {
-                    (Some(len), _) => *len,
+                    (Some(len), _) => {
+                        anyhow::ensure!(
+                            *len > 0,
+                            "A Ref<String> buffer length must be at least 1 to hold the trailing NUL byte"
+                        );
+                        *len
+                    }
                     (None, Some(s)) => s.len() + 1,
                     (None, None) => return Ok(Self::null_ptr_stash()),
                 };

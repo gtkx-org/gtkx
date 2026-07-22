@@ -8,22 +8,31 @@ use glib::{
     },
 };
 
+unsafe fn acquire_decoded_ref(gobject_ptr: *mut glib::gobject_ffi::GObject, ownership: Ownership) {
+    if ownership.is_borrowed() {
+        unsafe { glib::gobject_ffi::g_object_ref(gobject_ptr) };
+        return;
+    }
+    let is_floating = unsafe { glib::gobject_ffi::g_object_is_floating(gobject_ptr) != 0 };
+    if is_floating {
+        unsafe { glib::gobject_ffi::g_object_ref_sink(gobject_ptr) };
+        return;
+    }
+    let pin_until_wrapper_adopts = unsafe {
+        glib::types::instance_of::<glib::InitiallyUnowned>(gobject_ptr.cast())
+            && !wrapper::has_wrapper(gobject_ptr)
+    };
+    if pin_until_wrapper_adopts {
+        unsafe { glib::gobject_ffi::g_object_ref(gobject_ptr) };
+    }
+}
+
 unsafe fn tracked_gobject_value<'e>(
     env: &'e Env,
     gobject_ptr: *mut glib::gobject_ffi::GObject,
     ownership: Ownership,
 ) -> anyhow::Result<Unknown<'e>> {
-    if ownership.is_full() {
-        let is_initially_unowned =
-            unsafe { glib::types::instance_of::<glib::InitiallyUnowned>(gobject_ptr.cast()) };
-        let is_floating = unsafe { glib::gobject_ffi::g_object_is_floating(gobject_ptr) != 0 };
-        let has_wrapper = unsafe { wrapper::has_wrapper(gobject_ptr) };
-        if is_floating || (!has_wrapper && is_initially_unowned) {
-            unsafe { glib::gobject_ffi::g_object_ref_sink(gobject_ptr) };
-        }
-    } else {
-        unsafe { glib::gobject_ffi::g_object_ref(gobject_ptr) };
-    }
+    unsafe { acquire_decoded_ref(gobject_ptr, ownership) };
 
     let object: glib::Object = unsafe { from_glib_full(gobject_ptr) };
     Ok(value::handle_to_unknown(
@@ -86,14 +95,18 @@ impl PtrWriter for ObjectCodec {
 
     fn write_value_to_ptr(
         &self,
-        env: &Env,
+        _env: &Env,
         slot: ffi::Slot,
         value: Unknown<'_>,
+        init: SlotInit,
     ) -> anyhow::Result<()> {
+        if self.ownership.is_borrowed() {
+            return write_object_ptr(slot, value, "Object field write");
+        }
         swap_owned_slot(
-            env,
             slot,
             value,
+            init,
             "Object field write",
             |new_ptr| unsafe {
                 let borrowed_new: Borrowed<glib::Object> =

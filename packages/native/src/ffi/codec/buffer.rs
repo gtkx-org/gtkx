@@ -25,7 +25,7 @@ impl Encoder for BufferCodec {
         }
         match value.get_type()? {
             ValueType::Number => {
-                let number = value::read_napi::<f64>(env, value)?;
+                let number = value::read_napi::<f64>(value)?;
                 Ok(ffi::Stash::Ptr(Self::ptr_from_number(number)?))
             }
             ValueType::Null | ValueType::Undefined => Ok(ffi::Stash::Ptr(std::ptr::null_mut())),

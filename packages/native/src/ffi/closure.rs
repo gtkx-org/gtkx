@@ -10,7 +10,7 @@ use napi::bindgen_prelude::{
 
 use crate::ffi::Stash;
 use crate::ffi::codec::{
-    Codec, Decoder as _, Encoder as _, PtrWriter as _, ReadSource, str_to_glib_full,
+    Codec, Decoder as _, Encoder as _, PtrWriter as _, ReadSource, SlotInit, str_to_glib_full,
 };
 use crate::ffi::value::{self, JsHandle};
 use crate::host::error_reporter::{self, ReportErr};
@@ -101,9 +101,9 @@ impl std::fmt::Debug for ClosureData {
 }
 
 pub struct ClosureState {
-    _closure: libffi::Closure<'static>,
+    closure: std::mem::ManuallyDrop<libffi::Closure<'static>>,
     pub code_ptr: *mut c_void,
-    data: Box<ClosureData>,
+    data: *mut ClosureData,
 }
 
 impl std::fmt::Debug for ClosureState {
@@ -114,15 +114,21 @@ impl std::fmt::Debug for ClosureState {
     }
 }
 
+impl Drop for ClosureState {
+    fn drop(&mut self) {
+        unsafe { std::mem::ManuallyDrop::drop(&mut self.closure) };
+        drop(unsafe { Box::from_raw(self.data) });
+    }
+}
+
 impl ClosureState {
     pub fn data_ref(&self) -> &ClosureData {
-        &self.data
+        unsafe { &*self.data }
     }
 
     pub fn new(data: ClosureData) -> Self {
-        let data = Box::new(data);
-        let data_ptr: *const ClosureData = &*data;
-        let data_ref: &'static ClosureData = unsafe { &*data_ptr };
+        let data = Box::into_raw(Box::new(data));
+        let data_ref: &'static ClosureData = unsafe { &*data };
 
         let mut cif_arg_types: Vec<libffi::Type> = Vec::with_capacity(data_ref.arg_codecs.len());
         for codec in &data_ref.arg_codecs {
@@ -136,7 +142,7 @@ impl ClosureState {
         let code_ptr = *closure.code_ptr() as *mut c_void;
 
         Self {
-            _closure: closure,
+            closure: std::mem::ManuallyDrop::new(closure),
             code_ptr,
             data,
         }
@@ -150,12 +156,7 @@ impl ClosureState {
         is_oneshot: bool,
     ) -> Box<Self> {
         let data = ClosureData::new(js_fn, arg_codecs, return_codec, user_data_index, is_oneshot);
-        let boxed = Box::new(Self::new(data));
-        if is_oneshot {
-            let state_ptr = std::ptr::from_ref::<Self>(&*boxed) as *mut Self;
-            boxed.data_ref().oneshot_state_ptr.set(state_ptr);
-        }
-        boxed
+        Box::new(Self::new(data))
     }
 }
 
@@ -184,6 +185,7 @@ struct RefSlot<'e> {
     obj: Unknown<'e>,
     inner_ptr: *mut c_void,
     inner_codec: &'e Codec,
+    init: SlotInit,
 }
 
 impl ClosureData {
@@ -203,12 +205,21 @@ impl ClosureData {
             let arg_ptr = unsafe { *args.add(i) };
             if let Codec::Ref(ref_codec) = codec {
                 let inner_ptr = unsafe { *(arg_ptr as *const *mut c_void) };
-                let seed = seed_ref(env, inner_ptr, &ref_codec.inner_codec)?;
+                let seed = if ref_codec.inout {
+                    seed_ref(env, inner_ptr, &ref_codec.inner_codec)?
+                } else {
+                    value::js_null(env)?
+                };
                 let ref_obj = wrap_ref(env, seed)?;
                 ref_slots.push(RefSlot {
                     obj: ref_obj,
                     inner_ptr,
                     inner_codec: &ref_codec.inner_codec,
+                    init: if ref_codec.inout {
+                        SlotInit::Initialized
+                    } else {
+                        SlotInit::Uninitialized
+                    },
                 });
                 js_args.push(ref_obj);
                 continue;
@@ -279,7 +290,7 @@ impl ClosureData {
         if let Codec::String(string_codec) = &self.return_codec
             && string_codec.ownership.is_borrowed()
         {
-            self.write_retained_string_return(env, result, value);
+            self.write_retained_string_return(result, value);
             return;
         }
         if self.return_type_is_borrowed_container() {
@@ -331,14 +342,9 @@ impl ClosureData {
         unsafe { crate::ffi::Slot::new(result).store(ptr) };
     }
 
-    fn write_retained_string_return(
-        &self,
-        env: &Env,
-        result: *mut c_void,
-        value: &Result<Unknown<'_>, ()>,
-    ) {
+    fn write_retained_string_return(&self, result: *mut c_void, value: &Result<Unknown<'_>, ()>) {
         let new_ptr: *mut c_char = match value {
-            Ok(unknown) => string_from_unknown(env, *unknown)
+            Ok(unknown) => string_from_unknown(*unknown)
                 .and_then(|s| str_to_glib_full(&s).ok())
                 .unwrap_or(std::ptr::null_mut()),
             Err(()) => std::ptr::null_mut(),
@@ -348,9 +354,9 @@ impl ClosureData {
     }
 }
 
-fn string_from_unknown(env: &Env, value: Unknown<'_>) -> Option<String> {
+fn string_from_unknown(value: Unknown<'_>) -> Option<String> {
     match value.get_type().ok()? {
-        napi::ValueType::String => value::read_napi::<String>(env, value).ok(),
+        napi::ValueType::String => value::read_napi::<String>(value).ok(),
         _ => None,
     }
 }
@@ -399,6 +405,7 @@ fn flush_refs(env: &Env, ref_slots: &[RefSlot<'_>]) {
                 env,
                 unsafe { crate::ffi::Slot::new(slot.inner_ptr) },
                 new_value,
+                slot.init,
             )
             .report_err("callback: failed to write out-parameter");
     }

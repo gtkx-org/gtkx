@@ -90,17 +90,33 @@ impl PendingTransfer {
     }
 }
 
+pub struct ListNode {
+    pub data: *mut c_void,
+    pub next: *mut c_void,
+}
+
 #[derive(Debug)]
 pub struct ListOps {
     pub label: &'static str,
     pub pending: ReleaseKind,
     pub prepend: unsafe fn(*mut c_void, *mut c_void) -> *mut c_void,
+    pub node: unsafe fn(*mut c_void) -> ListNode,
     pub free: unsafe fn(*mut c_void),
     pub free_full: unsafe fn(*mut c_void),
 }
 
 unsafe fn glist_prepend(list: *mut c_void, data: *mut c_void) -> *mut c_void {
     unsafe { glib::ffi::g_list_prepend(list as *mut glib::ffi::GList, data).cast() }
+}
+
+unsafe fn glist_node(node: *mut c_void) -> ListNode {
+    let node = node as *mut glib::ffi::GList;
+    unsafe {
+        ListNode {
+            data: (*node).data,
+            next: (*node).next.cast(),
+        }
+    }
 }
 
 unsafe fn glist_free(list: *mut c_void) {
@@ -117,12 +133,23 @@ pub static GLIST_OPS: ListOps = ListOps {
     label: "GList",
     pending: ReleaseKind::GListFree,
     prepend: glist_prepend,
+    node: glist_node,
     free: glist_free,
     free_full: glist_free_full,
 };
 
 unsafe fn gslist_prepend(list: *mut c_void, data: *mut c_void) -> *mut c_void {
     unsafe { glib::ffi::g_slist_prepend(list as *mut glib::ffi::GSList, data).cast() }
+}
+
+unsafe fn gslist_node(node: *mut c_void) -> ListNode {
+    let node = node as *mut glib::ffi::GSList;
+    unsafe {
+        ListNode {
+            data: (*node).data,
+            next: (*node).next.cast(),
+        }
+    }
 }
 
 unsafe fn gslist_free(list: *mut c_void) {
@@ -139,6 +166,7 @@ pub static GSLIST_OPS: ListOps = ListOps {
     label: "GSList",
     pending: ReleaseKind::GSListFree,
     prepend: gslist_prepend,
+    node: gslist_node,
     free: gslist_free,
     free_full: gslist_free_full,
 };
@@ -242,6 +270,32 @@ impl StashStorage {
 
     pub fn data(&self) -> &StashData {
         &self.data
+    }
+
+    pub fn byte_len(&self) -> Option<usize> {
+        match &self.data {
+            StashData::U8Vec(v) => Some(size_of_val(v.as_slice())),
+            StashData::I8Vec(v) => Some(size_of_val(v.as_slice())),
+            StashData::U16Vec(v) => Some(size_of_val(v.as_slice())),
+            StashData::I16Vec(v) => Some(size_of_val(v.as_slice())),
+            StashData::U32Vec(v) => Some(size_of_val(v.as_slice())),
+            StashData::I32Vec(v) => Some(size_of_val(v.as_slice())),
+            StashData::U64Vec(v) => Some(size_of_val(v.as_slice())),
+            StashData::I64Vec(v) => Some(size_of_val(v.as_slice())),
+            StashData::F32Vec(v) => Some(size_of_val(v.as_slice())),
+            StashData::F64Vec(v) => Some(size_of_val(v.as_slice())),
+            StashData::Buffer(v) => Some(size_of_val(v.as_slice())),
+            StashData::Unit
+            | StashData::StringArray(_, _)
+            | StashData::ObjectArray(_, _)
+            | StashData::List(_)
+            | StashData::CString(_)
+            | StashData::GArray(_)
+            | StashData::GByteArray(_)
+            | StashData::PtrSlot(_)
+            | StashData::StrV(_)
+            | StashData::HashTable => None,
+        }
     }
 }
 
