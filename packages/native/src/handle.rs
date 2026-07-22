@@ -11,6 +11,7 @@ use std::ffi::c_void;
 use glib::prelude::ObjectType as _;
 
 const GOBJECT_SIZE_HINT: usize = 512;
+const STRUCT_SIZE_HINT: usize = 256;
 
 pub enum Handle {
     Object {
@@ -19,6 +20,7 @@ pub enum Handle {
     },
     Boxed(Boxed),
     Fundamental(Fundamental),
+    Struct(*mut c_void),
     Borrowed(*mut c_void),
 }
 
@@ -28,6 +30,7 @@ impl std::fmt::Debug for Handle {
             Self::Object { .. } => "Object",
             Self::Boxed(_) => "Boxed",
             Self::Fundamental(_) => "Fundamental",
+            Self::Struct(_) => "Struct",
             Self::Borrowed(_) => "Borrowed",
         };
         f.debug_struct("Handle")
@@ -71,7 +74,7 @@ impl Handle {
 
     pub fn as_ptr(&self) -> *mut c_void {
         match self {
-            Self::Object { ptr, .. } | Self::Borrowed(ptr) => *ptr,
+            Self::Object { ptr, .. } | Self::Struct(ptr) | Self::Borrowed(ptr) => *ptr,
             Self::Boxed(boxed) => boxed.as_ptr(),
             Self::Fundamental(fundamental) => fundamental.as_ptr(),
         }
@@ -86,6 +89,7 @@ impl Handle {
             Self::Object { .. } => GOBJECT_SIZE_HINT,
             Self::Boxed(_) => Boxed::SIZE_HINT,
             Self::Fundamental(_) => Fundamental::SIZE_HINT,
+            Self::Struct(_) => STRUCT_SIZE_HINT,
             Self::Borrowed(_) => 0,
         }
     }
@@ -93,11 +97,14 @@ impl Handle {
 
 impl Drop for Handle {
     fn drop(&mut self) {
-        let Self::Object { owned, .. } = self else {
-            return;
-        };
-        if let Some(object) = owned.take() {
-            glib::idle_add_local_once(move || drop(object));
+        match self {
+            Self::Object { owned, .. } => {
+                if let Some(object) = owned.take() {
+                    glib::idle_add_local_once(move || drop(object));
+                }
+            }
+            Self::Struct(ptr) => unsafe { glib::ffi::g_free(*ptr) },
+            _ => {}
         }
     }
 }

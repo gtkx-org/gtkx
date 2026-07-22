@@ -593,13 +593,18 @@ fn struct_decode_full_takes_ownership() {
 fn struct_decode_borrowed_with_size_copies() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let raw = unsafe { glib::ffi::g_malloc0(64) };
-        let decoded = struct_type(Ownership::Borrowed, Some(64))
+        let data: [u8; 16] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+        let raw = data.as_ptr() as *mut c_void;
+
+        let decoded = struct_type(Ownership::Borrowed, Some(16))
             .decode(&env, &ffi::Stash::Ptr(raw))
             .expect("struct sized decode should succeed");
         assert_is_handle(&decoded);
 
-        unsafe { glib::ffi::g_free(raw) };
+        let copy = handle_ptr(decoded, "ctx").expect("expected Object value");
+        assert_ne!(copy, raw);
+        let copied = unsafe { std::slice::from_raw_parts(copy as *const u8, 16) };
+        assert_eq!(copied, &data);
     });
 }
 

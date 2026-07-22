@@ -184,7 +184,7 @@ pub fn allocate_test_boxed(type_: glib::Type) -> *mut std::ffi::c_void {
 pub fn owned_rgba_boxed() -> (Boxed, *mut std::ffi::c_void) {
     let type_ = gdk::RGBA::static_type();
     let ptr = allocate_test_boxed(type_);
-    (Boxed::from_glib_full(Some(type_), ptr), ptr)
+    (Boxed::from_glib_full(type_, ptr), ptr)
 }
 
 pub unsafe fn is_valid_boxed_ptr(ptr: *mut std::ffi::c_void, type_: glib::Type) -> bool {

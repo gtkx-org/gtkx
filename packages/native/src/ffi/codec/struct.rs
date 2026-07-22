@@ -1,7 +1,7 @@
 use anyhow::bail;
 
 use super::prelude::*;
-use crate::handle::{Boxed, Handle};
+use crate::handle::Handle;
 
 #[derive(Debug, Clone)]
 pub struct StructCodec {
@@ -35,10 +35,10 @@ impl Encoder for StructCodec {
 }
 
 impl StructCodec {
-    fn borrow_or_copy(&self, ptr: *mut c_void) -> Boxed {
+    fn borrow_or_copy(&self, ptr: *mut c_void) -> Handle {
         self.size.map_or_else(
-            || Boxed::from_glib_borrow(ptr),
-            |size| unsafe { Boxed::copy_with_size(ptr, size) },
+            || Handle::from_glib_borrow(ptr),
+            |size| Handle::Struct(unsafe { glib::ffi::g_memdup2(ptr as *const c_void, size) }),
         )
     }
 }
@@ -46,23 +46,23 @@ impl StructCodec {
 impl Decoder for StructCodec {
     fn decode_call<'e>(&self, env: &'e Env, stash: &ffi::Stash) -> anyhow::Result<Unknown<'e>> {
         self.decode_call_non_null(env, stash, "Struct", |struct_ptr| {
-            let boxed = match self.ownership {
-                Ownership::Full => Boxed::from_glib_full(None, struct_ptr),
+            let handle = match self.ownership {
+                Ownership::Full => Handle::Struct(struct_ptr),
                 Ownership::Borrowed => self.borrow_or_copy(struct_ptr),
             };
 
-            Ok(value::handle_to_unknown(env, Handle::from(boxed))?)
+            Ok(value::handle_to_unknown(env, handle)?)
         })
     }
 
     read_value_non_null!(|self, env, ptr| {
-        let boxed = if self.caller_allocated {
-            Boxed::from_glib_borrow(ptr)
+        let handle = if self.caller_allocated {
+            Handle::from_glib_borrow(ptr)
         } else {
             self.borrow_or_copy(ptr)
         };
 
-        Ok(value::handle_to_unknown(env, Handle::from(boxed))?)
+        Ok(value::handle_to_unknown(env, handle)?)
     });
 }
 

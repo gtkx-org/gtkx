@@ -108,6 +108,28 @@ fn drop_borrowed_handle_is_noop() {
 }
 
 #[test]
+fn struct_handle_records_pointer_and_frees_on_drop() {
+    helpers::run(|| {
+        let ptr = unsafe { glib::ffi::g_malloc0(32) };
+        let handle = Handle::Struct(ptr);
+
+        assert_eq!(handle.as_ptr(), ptr);
+        assert!(handle.size_hint() > 0);
+        assert!(format!("{handle:?}").contains("Struct"));
+
+        drop(handle);
+    });
+}
+
+#[test]
+fn drop_struct_handle_with_null_pointer_is_safe() {
+    let handle = Handle::Struct(std::ptr::null_mut());
+
+    assert!(handle.as_ptr().is_null());
+    drop(handle);
+}
+
+#[test]
 fn a_consumed_decoded_handle_drop_releases_nothing() {
     helpers::run(|| {
         let (_obj, obj_ptr, initial_ref, handle) = extra_referenced_decoded_gobject();

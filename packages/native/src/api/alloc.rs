@@ -21,7 +21,10 @@ fn boxed_type_from_bigint(gtype: Option<BigInt>) -> napi::Result<Option<glib::Ty
 
 fn alloc_handle(size: usize, type_: Option<glib::Type>) -> Handle {
     let ptr = unsafe { g_malloc0(size) };
-    Handle::Boxed(Boxed::from_glib_full(type_, ptr))
+    match type_ {
+        Some(type_) => Handle::Boxed(Boxed::from_glib_full(type_, ptr)),
+        None => Handle::Struct(ptr),
+    }
 }
 
 /// Allocates a zero-filled native memory block of `size` bytes and returns an opaque handle to it.

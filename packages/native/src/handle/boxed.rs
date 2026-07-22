@@ -1,6 +1,5 @@
 use std::ffi::c_void;
 
-use anyhow::bail;
 use glib::translate::IntoGlib as _;
 
 pub type BoxedFreeFn = unsafe extern "C" fn(*mut c_void);
@@ -9,14 +8,7 @@ pub type BoxedFreeFn = unsafe extern "C" fn(*mut c_void);
 pub struct Boxed {
     ptr: *mut c_void,
     type_: Option<glib::Type>,
-    destructor: Option<BoxedDestructor>,
-}
-
-#[derive(Debug, Clone)]
-enum BoxedDestructor {
-    BoxedFree(glib::Type),
-    GFree,
-    Custom(BoxedFreeFn),
+    free_fn: Option<BoxedFreeFn>,
 }
 
 impl Drop for Boxed {
@@ -24,16 +16,14 @@ impl Drop for Boxed {
         if self.ptr.is_null() {
             return;
         }
-        let Some(destructor) = &self.destructor else {
-            return;
-        };
         unsafe {
-            match destructor {
-                BoxedDestructor::BoxedFree(type_) => {
-                    glib::gobject_ffi::g_boxed_free(type_.into_glib(), self.ptr);
+            match self.free_fn {
+                Some(free_fn) => free_fn(self.ptr),
+                None => {
+                    if let Some(type_) = self.type_ {
+                        glib::gobject_ffi::g_boxed_free(type_.into_glib(), self.ptr);
+                    }
                 }
-                BoxedDestructor::GFree => glib::ffi::g_free(self.ptr),
-                BoxedDestructor::Custom(free_fn) => free_fn(self.ptr),
             }
         }
     }
@@ -42,77 +32,34 @@ impl Drop for Boxed {
 impl Boxed {
     pub(crate) const SIZE_HINT: usize = 256;
 
-    fn owned(ptr: *mut c_void, type_: Option<glib::Type>, destructor: BoxedDestructor) -> Self {
+    pub fn from_glib_full(type_: glib::Type, ptr: *mut c_void) -> Self {
         Self {
             ptr,
-            type_,
-            destructor: Some(destructor),
+            type_: Some(type_),
+            free_fn: None,
         }
-    }
-
-    fn borrowed(ptr: *mut c_void, type_: Option<glib::Type>) -> Self {
-        Self {
-            ptr,
-            type_,
-            destructor: None,
-        }
-    }
-
-    pub fn from_glib_full(type_: Option<glib::Type>, ptr: *mut c_void) -> Self {
-        let destructor = type_.map_or(BoxedDestructor::GFree, BoxedDestructor::BoxedFree);
-        Self::owned(ptr, type_, destructor)
     }
 
     pub fn from_glib_full_with_free_fn(ptr: *mut c_void, free_fn: BoxedFreeFn) -> Self {
-        Self::owned(ptr, None, BoxedDestructor::Custom(free_fn))
-    }
-
-    pub(crate) fn from_glib_borrow(ptr: *mut c_void) -> Self {
-        Self::borrowed(ptr, None)
+        Self {
+            ptr,
+            type_: None,
+            free_fn: Some(free_fn),
+        }
     }
 
     pub(crate) unsafe fn boxed_copy(type_: glib::Type, ptr: *mut c_void) -> *mut c_void {
         unsafe { glib::gobject_ffi::g_boxed_copy(type_.into_glib(), ptr as *const _) }
     }
 
-    pub unsafe fn copy_with_size(ptr: *mut c_void, size: usize) -> Self {
-        let cloned_ptr = unsafe { glib::ffi::g_memdup2(ptr as *const c_void, size) };
-        Self::owned(cloned_ptr, None, BoxedDestructor::GFree)
-    }
-
-    pub unsafe fn from_glib_none(
-        type_: Option<glib::Type>,
-        ptr: *mut c_void,
-        type_name: Option<&str>,
-    ) -> anyhow::Result<Self> {
-        if ptr.is_null() {
-            return Ok(Self::borrowed(ptr, type_));
-        }
-
-        if let Some(type_) = type_ {
-            let cloned_ptr = unsafe { Self::boxed_copy(type_, ptr) };
-            return Ok(Self::owned(
-                cloned_ptr,
-                Some(type_),
-                BoxedDestructor::BoxedFree(type_),
-            ));
-        }
-
-        let name = type_name.unwrap_or("unknown");
-        bail!(
-            "Cannot copy boxed type '{name}': no type available. \
-             Pointer {ptr:p} may become dangling if the source is freed"
-        )
+    pub unsafe fn from_glib_none(type_: glib::Type, ptr: *mut c_void) -> Self {
+        let cloned_ptr = unsafe { Self::boxed_copy(type_, ptr) };
+        Self::from_glib_full(type_, cloned_ptr)
     }
 
     #[inline]
     pub fn as_ptr(&self) -> *mut c_void {
         self.ptr
-    }
-
-    #[inline]
-    pub fn is_owned(&self) -> bool {
-        self.destructor.is_some()
     }
 
     pub fn type_(&self) -> Option<glib::Type> {

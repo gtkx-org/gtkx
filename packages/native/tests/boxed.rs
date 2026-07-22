@@ -1,7 +1,5 @@
 use test_support as helpers;
 
-use std::ffi::c_void;
-
 use gtk4::gdk;
 use gtk4::glib;
 use gtk4::glib::translate::IntoGlib as _;
@@ -10,11 +8,10 @@ use gtk4::prelude::StaticType as _;
 use native::Boxed;
 
 #[test]
-fn from_glib_full_sets_owned_flag() {
+fn from_glib_full_records_pointer_and_type() {
     helpers::run(|| {
         let (boxed, _ptr) = helpers::owned_rgba_boxed();
 
-        assert!(boxed.is_owned());
         assert!(!boxed.as_ptr().is_null());
         assert_eq!(boxed.type_(), Some(gdk::RGBA::static_type()));
     });
@@ -24,9 +21,8 @@ fn from_glib_full_sets_owned_flag() {
 fn from_glib_full_null_ptr_safe() {
     helpers::run(|| {
         let type_ = gdk::RGBA::static_type();
-        let boxed = Boxed::from_glib_full(Some(type_), std::ptr::null_mut());
+        let boxed = Boxed::from_glib_full(type_, std::ptr::null_mut());
 
-        assert!(boxed.is_owned());
         assert!(boxed.as_ptr().is_null());
     });
 }
@@ -37,10 +33,8 @@ fn from_glib_none_creates_copy() {
         let type_ = gdk::RGBA::static_type();
         let original_ptr = helpers::allocate_test_boxed(type_);
 
-        let boxed = unsafe { Boxed::from_glib_none(Some(type_), original_ptr, None) }
-            .expect("from_glib_none with type should succeed");
+        let boxed = unsafe { Boxed::from_glib_none(type_, original_ptr) };
 
-        assert!(boxed.is_owned());
         assert!(!boxed.as_ptr().is_null());
         assert_ne!(boxed.as_ptr(), original_ptr);
         assert!(unsafe { helpers::is_valid_boxed_ptr(boxed.as_ptr(), type_) });
@@ -48,35 +42,6 @@ fn from_glib_none_creates_copy() {
         unsafe {
             glib::gobject_ffi::g_boxed_free(type_.into_glib(), original_ptr);
         }
-    });
-}
-
-#[test]
-fn copy_with_size_copies_without_type() {
-    helpers::run(|| {
-        let data: [u8; 16] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
-        let ptr = data.as_ptr() as *mut c_void;
-
-        let boxed = unsafe { Boxed::copy_with_size(ptr, 16) };
-
-        assert!(boxed.is_owned());
-        assert!(!boxed.as_ptr().is_null());
-        assert_ne!(boxed.as_ptr(), ptr);
-
-        let copied = unsafe { std::slice::from_raw_parts(boxed.as_ptr() as *const u8, 16) };
-        assert_eq!(copied, &data);
-    });
-}
-
-#[test]
-fn from_glib_none_null_ptr_not_owned() {
-    helpers::run(|| {
-        let type_ = gdk::RGBA::static_type();
-        let boxed = unsafe { Boxed::from_glib_none(Some(type_), std::ptr::null_mut(), None) }
-            .expect("from_glib_none with null ptr should succeed");
-
-        assert!(!boxed.is_owned());
-        assert!(boxed.as_ptr().is_null());
     });
 }
 
@@ -114,55 +79,6 @@ fn drop_does_not_free_transfer_none_memory() {
     });
 }
 
-#[test]
-fn from_glib_full_none_type_plain_struct() {
-    helpers::run(|| {
-        let ptr = unsafe { glib::ffi::g_malloc0(16) };
-
-        let boxed = Boxed::from_glib_full(None, ptr);
-
-        assert!(boxed.is_owned());
-        assert!(!boxed.as_ptr().is_null());
-    });
-}
-
-#[test]
-fn from_glib_full_none_type_null_ptr() {
-    helpers::run(|| {
-        let boxed = Boxed::from_glib_full(None, std::ptr::null_mut());
-
-        assert!(boxed.is_owned());
-        assert!(boxed.as_ptr().is_null());
-    });
-}
-
-#[test]
-fn drop_plain_struct_uses_g_free() {
-    helpers::run(|| {
-        let ptr = unsafe { glib::ffi::g_malloc0(32) };
-
-        let boxed = Boxed::from_glib_full(None, ptr);
-        drop(boxed);
-    });
-}
-
-#[test]
-fn drop_plain_struct_null_ptr_safe() {
-    helpers::run(|| {
-        let boxed = Boxed::from_glib_full(None, std::ptr::null_mut());
-        drop(boxed);
-    });
-}
-#[test]
-fn from_glib_none_null_ptr_with_none_type() {
-    helpers::run(|| {
-        let boxed = unsafe { Boxed::from_glib_none(None, std::ptr::null_mut(), None) }
-            .expect("from_glib_none with null ptr should succeed");
-
-        assert!(!boxed.is_owned());
-        assert!(boxed.as_ptr().is_null());
-    });
-}
 mod boxed_free_dispatch {
     use std::ffi::c_void;
     use std::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
@@ -207,8 +123,7 @@ mod boxed_free_dispatch {
             let type_ = unsafe { glib::Type::from_glib(registered) };
 
             let ptr = unsafe { glib::ffi::g_malloc0(ALLOC_SIZE) };
-            let boxed = Boxed::from_glib_full(Some(type_), ptr);
-            assert!(boxed.is_owned());
+            let boxed = Boxed::from_glib_full(type_, ptr);
             assert_eq!(boxed.type_(), Some(type_));
 
             let calls_before = BOXED_FREE_CALLS.load(Ordering::SeqCst);
@@ -254,7 +169,7 @@ mod free_fn {
 
             {
                 let boxed = Boxed::from_glib_full_with_free_fn(ptr, record_free);
-                assert!(boxed.is_owned());
+                assert!(!boxed.as_ptr().is_null());
             }
 
             let after = snapshot();
