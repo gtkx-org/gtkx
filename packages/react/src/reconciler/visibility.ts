@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { scheduleLabelTextRebuild } from "./label-text-rebuild.js";
 import { type Node, stateOf } from "./state.js";
-import { scheduleTextBufferRebuild } from "./text-buffer-controller.js";
+import { scheduleTextBufferSync } from "./text-buffer-content-manager.js";
 import { isBufferContentNode } from "./text-node-predicates.js";
 
 const widgetOf = (node: Node): Gtk.Widget | null => {
@@ -14,6 +14,7 @@ export const hideNode = (node: Node): void => {
     const state = stateOf(node);
     if (state.hidden) return;
     state.hidden = true;
+    if (isBufferContentNode(node)) scheduleTextBufferSync(node);
     const widget = widgetOf(node);
     if (!widget) return;
     state.visibleWhenShown = widget.getVisible();
@@ -24,6 +25,7 @@ export const unhideNode = (node: Node): void => {
     const state = stateOf(node);
     if (!state.hidden) return;
     state.hidden = false;
+    if (isBufferContentNode(node)) scheduleTextBufferSync(node);
     const widget = widgetOf(node);
     if (!widget) return;
     widget.setVisible(state.visibleWhenShown ?? true);
@@ -40,7 +42,7 @@ export const reassertHidden = (node: Node): void => {
 };
 
 const scheduleTextNodeRebuild = (node: Node): void => {
-    if (isBufferContentNode(node)) scheduleTextBufferRebuild(node);
+    if (isBufferContentNode(node)) scheduleTextBufferSync(node);
     else scheduleLabelTextRebuild(node);
 };
 

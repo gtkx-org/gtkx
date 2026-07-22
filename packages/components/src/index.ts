@@ -16,6 +16,7 @@ export { ListView, type ListViewDeclarativeProps, type ListViewProps } from "./l
 export { Menu, type MenuItemsProps, type MenuProps } from "./menu.js";
 export { Overlay, type OverlayChildProps, type OverlayPlacementProps, type OverlayProps } from "./overlay.js";
 export { SizeGroup, type SizeGroupChildProps, type SizeGroupProps } from "./size-group.js";
+export { TextPaintable, type TextPaintableProps } from "./text-paintable.js";
 export type {
     ChildProps,
     CollectionItemSizeProps,

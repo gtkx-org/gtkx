@@ -1,3 +1,4 @@
+import { TextPaintable } from "@gtkx/components";
 import * as Gdk from "@gtkx/gi/gdk";
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -7,11 +8,11 @@ import {
     GtkLabel,
     GtkScrolledWindow,
     GtkTextBuffer,
-    GtkTextPaintable,
     GtkTextTag,
     GtkTextView,
 } from "@gtkx/jsx/gtk";
 import { useParentWindow } from "@gtkx/react";
+import { useCallback, useState } from "react";
 
 import { path as gtkLogoCursorPath } from "#data/demos/buttons/gtk_logo_cursor.png";
 import type { Demo } from "../types.js";
@@ -23,8 +24,15 @@ Do it already!
 `;
 
 const ExpanderDemo = () => {
-    const texture = Gdk.Texture.newFromResource(gtkLogoCursorPath);
+    const [texture] = useState(() => Gdk.Texture.newFromResource(gtkLogoCursorPath));
     const parentWindow = useParentWindow();
+
+    const applyLogoTag = useCallback((buffer: Gtk.TextBuffer, mark: Gtk.TextMark) => {
+        const start = buffer.getIterAtMark(mark);
+        const end = buffer.getIterAtMark(mark);
+        end.forwardChar();
+        buffer.applyTagByName("logo", start, end);
+    }, []);
 
     const handleExpandedNotify = (pspec: GObject.ParamSpec, self: Gtk.Expander) => {
         if (pspec.getName() !== "expanded") return;
@@ -68,7 +76,7 @@ const ExpanderDemo = () => {
                             <GtkTextBuffer>
                                 {DETAILS_TEXT}
                                 <GtkTextTag name="logo" pixelsAboveLines={200} justification={Gtk.Justification.RIGHT}>
-                                    <GtkTextPaintable paintable={texture} />
+                                    <TextPaintable paintable={texture} onInserted={applyLogoTag} />
                                 </GtkTextTag>
                             </GtkTextBuffer>
                         }

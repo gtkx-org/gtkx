@@ -16,7 +16,7 @@ import { scheduleLabelTextRebuild } from "./label-text-rebuild.js";
 import { catchReconcilerError } from "./reconciler-error-handler.js";
 import { ensureSignalStore } from "./signal-store.js";
 import { ensureState, type Node, stateOf } from "./state.js";
-import { scheduleTextBufferRebuild } from "./text-buffer-controller.js";
+import { scheduleTextBufferSync } from "./text-buffer-content-manager.js";
 import { isBufferContentNode, isLabelTextNode } from "./text-node-predicates.js";
 import type { Container, Props } from "./types.js";
 import { hideNode, reassertHidden, setTextNodeHidden, unhideNode } from "./visibility.js";
@@ -73,10 +73,12 @@ const unlink = (parent: Node, child: Node): void => {
 };
 
 const isBufferRelated = (instance: Node): boolean =>
-    isBufferContentNode(instance) || instance instanceof Gtk.TextTag || instance instanceof Gtk.TextBuffer;
+    isBufferContentNode(instance) || instance instanceof Gtk.TextBuffer;
 
 const scheduleTextRebuilds = (parent: Node, child: Node): void => {
-    if (isBufferRelated(parent) || isBufferRelated(child)) scheduleTextBufferRebuild(parent);
+    if (isBufferRelated(parent) || isBufferRelated(child)) {
+        scheduleTextBufferSync(parent, isBufferContentNode(child) ? child : parent);
+    }
     if (isLabelTextNode(child)) scheduleLabelTextRebuild(parent);
 };
 
@@ -109,8 +111,7 @@ const commitInstanceProps = (instance: Node, oldProps: Props | null, newProps: P
     const state = stateOf(instance);
     state.props = newProps;
     if (isWrapperNode(instance)) {
-        if (isBufferContentNode(instance)) scheduleTextBufferRebuild(instance);
-        else resyncWrapperNode(instance);
+        resyncWrapperNode(instance);
         reassertHidden(instance);
         return;
     }
@@ -133,7 +134,6 @@ const commitInstanceProps = (instance: Node, oldProps: Props | null, newProps: P
         applyGenericAndSignals();
         applyElementProps(instance, oldProps, newProps);
     }
-    if (instance instanceof Gtk.TextTag) scheduleTextBufferRebuild(instance);
     reassertHidden(instance);
 };
 
@@ -259,7 +259,7 @@ const createInstanceConfig = (): InstanceConfig => ({
         return false;
     },
     getPublicInstance: (instance) => {
-        const adopted = isWrapperNode(instance) ? stateOf(instance).adoptedInstance : undefined;
+        const adopted = stateOf(instance).adoptedInstance;
         return (adopted ?? instance) as PublicInstance;
     },
 });
@@ -329,7 +329,7 @@ const createCommitConfig = (): CommitConfig => ({
     commitUpdate: (instance, _type, oldProps, newProps) => commitInstanceProps(instance, oldProps, newProps),
     commitTextUpdate: (textInstance, _oldText, newText) => {
         stateOf(textInstance).props = { text: newText };
-        if (isBufferContentNode(textInstance)) scheduleTextBufferRebuild(textInstance);
+        if (isBufferContentNode(textInstance)) scheduleTextBufferSync(textInstance);
         else scheduleLabelTextRebuild(textInstance);
     },
     prepareForCommit: (container) => {

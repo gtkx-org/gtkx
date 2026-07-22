@@ -1,4 +1,4 @@
-import { DropDown } from "@gtkx/components";
+import { DropDown, TextPaintable } from "@gtkx/components";
 import { Context, Format, ImageSurface } from "@gtkx/gi/cairo";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GLib from "@gtkx/gi/glib";
@@ -11,14 +11,14 @@ import {
     GtkPaned,
     GtkScale,
     GtkScrolledWindow,
-    GtkTextAnchor,
     GtkTextBuffer,
-    GtkTextPaintable,
+    GtkTextChildAnchor,
     GtkTextTag,
     GtkTextView,
 } from "@gtkx/jsx/gtk";
 import { useParentWindow } from "@gtkx/react";
 import { type RefObject, useLayoutEffect, useRef, useState } from "react";
+import { lookupIconPaintable } from "../icon-paintable.js";
 import type { Demo } from "../types.js";
 import sourceCode from "./textview.tsx?raw";
 
@@ -259,8 +259,8 @@ const TextViewImagesSection = ({ iconPaintable, nuclearPaintable }: ImagesSectio
             {"Images. "}
         </GtkTextTag>
         {"The buffer can have images in it: "}
-        {iconPaintable && <GtkTextPaintable paintable={iconPaintable} />}
-        <GtkTextPaintable paintable={nuclearPaintable} />
+        {iconPaintable && <TextPaintable paintable={iconPaintable} />}
+        <TextPaintable paintable={nuclearPaintable} />
         {" for example.\n\n"}
     </>
 );
@@ -383,11 +383,11 @@ const TextViewWidgetsSection = ({ onClickMe }: { onClickMe: () => void }) => {
     return (
         <>
             {"\n\nYou can put widgets in the buffer: Here's a button: "}
-            <GtkTextAnchor>
+            <GtkTextChildAnchor>
                 <GtkButton label="Click Me" onClicked={onClickMe} />
-            </GtkTextAnchor>
+            </GtkTextChildAnchor>
             {" and a menu: "}
-            <GtkTextAnchor>
+            <GtkTextChildAnchor>
                 <DropDown
                     items={[
                         { id: "opt1", value: "Option 1" },
@@ -395,31 +395,24 @@ const TextViewWidgetsSection = ({ onClickMe }: { onClickMe: () => void }) => {
                         { id: "opt3", value: "Option 3" },
                     ]}
                 />
-            </GtkTextAnchor>
+            </GtkTextChildAnchor>
             {" and a scale: "}
-            <GtkTextAnchor>
+            <GtkTextChildAnchor>
                 <GtkScale
                     orientation={Gtk.Orientation.HORIZONTAL}
                     adjustment={<GtkAdjustment lower={0} upper={100} stepIncrement={1} pageIncrement={10} />}
                     widthRequest={100}
                 />
-            </GtkTextAnchor>
+            </GtkTextChildAnchor>
             {" finally a text entry: "}
-            <GtkTextAnchor>
+            <GtkTextChildAnchor>
                 <GtkEntry widthChars={10} />
-            </GtkTextAnchor>
+            </GtkTextChildAnchor>
             {
                 ".\n\nThis demo doesn't demonstrate all the GtkTextBuffer features; it leaves out, for example: invisible/hidden text, tab stops, application-drawn areas on the sides of the widget for displaying breakpoints and such..."
             }
         </>
     );
-};
-
-const lookupIconPaintable = (): Gtk.IconPaintable | null => {
-    const display = Gdk.Display.getDefault();
-    if (!display) return null;
-    const iconTheme = Gtk.IconTheme.getForDisplay(display);
-    return iconTheme.lookupIcon("drive-harddisk", null, 32, 1, Gtk.TextDirection.NONE, 0);
 };
 
 interface PrimaryTextViewProps {
@@ -480,8 +473,8 @@ const TextViewDemo = () => {
         handleEasterEgg(parentWindow, easterEggWindowRef);
     };
 
-    const iconPaintable = lookupIconPaintable();
-    const nuclearPaintable = createNuclearTexture();
+    const [iconPaintable] = useState(() => lookupIconPaintable("drive-harddisk", 32));
+    const [nuclearPaintable] = useState(createNuclearTexture);
 
     useLayoutEffect(() => {
         const tv2 = textView2Ref.current;

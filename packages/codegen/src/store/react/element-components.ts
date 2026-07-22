@@ -7,18 +7,6 @@ import { BUILT_IN_ELEMENT_COMPONENTS, type ElementComponent } from "./built-ins.
 import type { ElementPropTypegen, LazyElementSpec } from "./element-prop-types.js";
 import { ancestorGlibNames, type GlibNamedClass } from "./intrinsic-elements.js";
 
-type TextNodeElement = {
-    flatName: string;
-    kind: string;
-    propsType: string;
-    parent: string;
-};
-
-const TEXT_NODE_ELEMENTS: TextNodeElement[] = [
-    { flatName: "GtkTextAnchor", kind: "text-anchor", propsType: "TextAnchorProps", parent: "GtkTextView" },
-    { flatName: "GtkTextPaintable", kind: "text-paintable", propsType: "TextPaintableProps", parent: "GtkTextView" },
-];
-
 type ExportCollector = {
     imports: ImportsBuilder;
     exportedNames: Set<string>;
@@ -32,20 +20,12 @@ export const generateElementComponentsSection = (
         imports: ImportsBuilder;
         typegen: ElementPropTypegen;
         intrinsicElements: GlibNamedClass[];
-        intrinsicElementByGlibName: Map<string, GlibNamedClass>;
     },
 ): { source: string; exportedNames: Set<string> } => {
     const collector: ExportCollector = { imports: options.imports, exportedNames: new Set(), exportLines: [] };
 
-    const inTargetNamespace = (parentGlibName: string): boolean =>
-        options.intrinsicElementByGlibName.get(parentGlibName)?.namespace.name === targetNamespace.name;
-
     const lazyElements = options.typegen.lazyElementExports(targetNamespace.name);
-    const textNodes = TEXT_NODE_ELEMENTS.filter((node) => inTargetNamespace(node.parent));
-    const virtualNames = new Set([
-        ...lazyElements.map((entry) => entry.element),
-        ...textNodes.map((node) => node.flatName),
-    ]);
+    const virtualNames = new Set(lazyElements.map((entry) => entry.element));
 
     collectCandidateExports(collector, {
         targetNamespace,
@@ -54,11 +34,7 @@ export const generateElementComponentsSection = (
         intrinsicElements: options.intrinsicElements,
     });
     collectLazyElementExports(collector, lazyElements);
-    collectTextNodeExports(collector, textNodes);
 
-    if (textNodes.length > 0) {
-        collector.imports.addNamed("@gtkx/react/internal", "WRAPPER_NODE_ELEMENT", false);
-    }
     const source = collector.exportLines.join("\n\n");
     return { source, exportedNames: collector.exportedNames };
 };
@@ -93,23 +69,11 @@ const collectLazyElementExports = (collector: ExportCollector, lazyElements: Laz
     }
 };
 
-const collectTextNodeExports = (collector: ExportCollector, textNodes: TextNodeElement[]): void => {
-    for (const node of textNodes) {
-        collector.imports.addNamed("@gtkx/react", node.propsType, true);
-        collector.imports.addNamed("react", "ReactNode", true);
-        collector.exportLines.push(renderTextNodeExport(node));
-        collector.exportedNames.add(node.flatName);
-    }
-};
-
 const renderLazyElementExport = (spec: LazyElementSpec): string => {
     const factory = `createLazyElementComponent<${spec.typeName}>()`;
     const component = `export const ${spec.element}: (props: ${spec.typeName}) => ReactNode = ${factory};`;
     return `${spec.typeSource}\n\n${component}`;
 };
-
-const renderTextNodeExport = (node: TextNodeElement): string =>
-    `export const ${node.flatName} = (props: ${node.propsType}): ReactNode => (\n    <WRAPPER_NODE_ELEMENT kind=${sourceStringLiteral(node.kind)} {...props} />\n);`;
 
 const renderCandidateExport = (candidate: GlibNamedClass, library: Library, imports: ImportsBuilder): string | null => {
     const { glibName, klass, namespace } = candidate;

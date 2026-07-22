@@ -213,7 +213,7 @@ const collectContainerPropNames = (elementProps: Record<string, ElementProp[]>):
     return containerPropNamesByParent;
 };
 
-const TEXT_CONTAINERS = ["GtkLabel", "GtkTextBuffer", "GtkTextTag", "GtkTextView"];
+const TEXT_CONTAINERS = ["GtkLabel", "GtkTextBuffer", "GtkTextTag", "GtkTextChildAnchor", "GtkTextView"];
 
 export const createElementPropTypegen = (
     context: GirIndex,

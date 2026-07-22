@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { TextPaintable } from "@gtkx/components";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
@@ -7,17 +8,17 @@ import {
     GtkEventControllerMotion,
     GtkGestureClick,
     GtkImage,
-    GtkLabel,
     GtkLevelBar,
     GtkScrolledWindow,
-    GtkTextAnchor,
     GtkTextBuffer,
-    GtkTextPaintable,
+    GtkTextChildAnchor,
+    GtkTextMark,
     GtkTextTag,
     GtkTextView,
 } from "@gtkx/jsx/gtk";
 import type { ReactNode } from "react";
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { lookupIconPaintable } from "../icon-paintable.js";
 import type { Demo } from "../types.js";
 import sourceCode from "./hypertext.tsx?raw";
 
@@ -36,6 +37,34 @@ interface PageBuilder {
     trackLink: (id: string, text: string, targetPage: number) => void;
     trackPlaceholder: () => void;
 }
+
+const InlineIcon = ({ iconName, size }: { iconName: string; size: number }) => {
+    const paintable = useMemo(() => lookupIconPaintable(iconName, size), [iconName, size]);
+    return paintable ? <TextPaintable paintable={paintable} /> : null;
+};
+
+const GhostLabelAnchor = ({ viewRef }: { viewRef: React.RefObject<Gtk.TextView | null> }) => {
+    const markRef = useRef<Gtk.TextMark | null>(null);
+    useEffect(() => {
+        const mark = markRef.current;
+        const buffer = mark?.getBuffer();
+        const view = viewRef.current;
+        if (!mark || !buffer || !view) return;
+        const anchor = Gtk.TextChildAnchor.newWithReplacement("👻");
+        buffer.insertChildAnchor(buffer.getIterAtMark(mark), anchor);
+        const label = new Gtk.Label({ label: "ghost" });
+        view.addChildAtAnchor(label, anchor);
+        return () => {
+            if (label.getParent() === view) view.remove(label);
+            if (mark.getBuffer() !== buffer || anchor.getDeleted()) return;
+            const start = buffer.getIterAtChildAnchor(anchor);
+            const end = buffer.getIterAtChildAnchor(anchor);
+            end.forwardChar();
+            buffer.delete(start, end);
+        };
+    }, [viewRef]);
+    return <GtkTextMark leftGravity ref={markRef} />;
+};
 
 const createPageBuilder = (): PageBuilder => {
     const nodes: ReactNode[] = [];
@@ -59,9 +88,7 @@ const createPageBuilder = (): PageBuilder => {
     return builder;
 };
 
-const buildPage1 = (
-    getIconPaintable: (iconName: string, size: number) => Gtk.IconPaintable | null,
-): { content: ReactNode; linkInfos: LinkInfo[] } => {
+const buildPage1 = (viewRef: React.RefObject<Gtk.TextView | null>): { content: ReactNode; linkInfos: LinkInfo[] } => {
     const b = createPageBuilder();
     b.nodes.push(b.trackText("Some text to show that simple "));
     b.trackLink("hypertext", "hypertext", 3);
@@ -81,24 +108,19 @@ const buildPage1 = (
     b.nodes.push(b.trackText("icons "));
 
     b.trackPlaceholder();
-    const iconPaintable = getIconPaintable("view-conceal-symbolic", 16);
-    b.nodes.push(iconPaintable ? <GtkTextPaintable key="icon" paintable={iconPaintable} /> : null);
+    b.nodes.push(<InlineIcon key="icon" iconName="view-conceal-symbolic" size={16} />);
 
     b.nodes.push(b.trackText(", or even widgets "));
     b.trackPlaceholder();
     b.nodes.push(
-        <GtkTextAnchor key="levelbar">
+        <GtkTextChildAnchor key="levelbar">
             <GtkLevelBar value={50} minValue={0} maxValue={100} widthRequest={100} />
-        </GtkTextAnchor>,
+        </GtkTextChildAnchor>,
     );
 
     b.nodes.push(b.trackText(" and labels with "));
     b.trackPlaceholder();
-    b.nodes.push(
-        <GtkTextAnchor key="ghost-anchor" replacementChar="👻">
-            <GtkLabel>ghost</GtkLabel>
-        </GtkTextAnchor>,
-    );
+    b.nodes.push(<GhostLabelAnchor key="ghost-anchor" viewRef={viewRef} />);
 
     b.nodes.push(b.trackText(" text."));
     return { content: b.nodes, linkInfos: b.links };
@@ -148,13 +170,13 @@ const buildDefinitionPage = ({ title, phonetic, definition, sayWord }: Definitio
                 {phonetic}
             </GtkTextTag>
             {" / "}
-            <GtkTextAnchor key="speaker">
+            <GtkTextChildAnchor key="speaker">
                 <GtkImage
                     iconName="audio-volume-high-symbolic"
                     cursor={Gdk.Cursor.newFromName("pointer", null)}
                     controllers={<GtkGestureClick onPressed={() => sayWord(title)} />}
                 />
-            </GtkTextAnchor>
+            </GtkTextChildAnchor>
         </GtkTextTag>,
     );
     b.nodes.push(b.trackText(definition));
@@ -169,10 +191,10 @@ const buildDefinitionPage = ({ title, phonetic, definition, sayWord }: Definitio
 
 const buildPageContent = (
     currentPage: number,
-    getIconPaintable: (iconName: string, size: number) => Gtk.IconPaintable | null,
+    viewRef: React.RefObject<Gtk.TextView | null>,
     sayWord: (word: string) => void,
 ): { content: ReactNode; linkInfos: LinkInfo[] } => {
-    if (currentPage === 1) return buildPage1(getIconPaintable);
+    if (currentPage === 1) return buildPage1(viewRef);
     if (currentPage === 2) return buildPage2(sayWord);
     if (currentPage === 3) return buildPage3(sayWord);
     return { content: null, linkInfos: [] };
@@ -266,19 +288,11 @@ const HypertextDemo = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const textViewRef = useRef<Gtk.TextView | null>(null);
 
-    const getIconPaintable = (iconName: string, size: number): Gtk.IconPaintable | null => {
-        const textView = textViewRef.current;
-        if (!textView) return null;
-        const display = textView.getDisplay();
-        const theme = Gtk.IconTheme.getForDisplay(display);
-        return theme.lookupIcon(iconName, null, size, 1, Gtk.TextDirection.LTR, Gtk.IconLookupFlags.PRELOAD);
-    };
-
     const sayWord = (word: string): void => {
         spawn("espeak-ng", [word], { stdio: "ignore" });
     };
 
-    const { content, linkInfos } = buildPageContent(currentPage, getIconPaintable, sayWord);
+    const { content, linkInfos } = buildPageContent(currentPage, textViewRef, sayWord);
 
     const findLinkAtOffset = (offset: number): number | null => {
         for (const link of linkInfos) {

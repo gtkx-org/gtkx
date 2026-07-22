@@ -14,8 +14,6 @@ export {
     LABEL_TEXT_KIND,
     LAZY_ELEMENT_KIND,
     OBJECT_PROP_KIND,
-    TEXT_ANCHOR_KIND,
-    TEXT_PAINTABLE_KIND,
     WRAPPER_NODE_ELEMENT,
     type WrapperKind,
 } from "./reconciler/wrapper-kinds.js";

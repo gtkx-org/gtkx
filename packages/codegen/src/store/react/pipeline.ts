@@ -71,7 +71,6 @@ const generateJsxNamespace = (
         imports,
         typegen,
         intrinsicElements,
-        intrinsicElementByGlibName,
     });
     const excludeNames = new Set<string>(elementComponents.exportedNames);
     const { source: jsxSection, intrinsicCount } = generateJsxSection(targetNamespace, library, {

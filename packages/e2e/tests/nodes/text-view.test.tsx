@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
-import { GtkButton, GtkTextAnchor, GtkTextBuffer, GtkTextTag, GtkTextView } from "@gtkx/jsx/gtk";
+import { GtkButton, GtkTextBuffer, GtkTextChildAnchor, GtkTextMark, GtkTextTag, GtkTextView } from "@gtkx/jsx/gtk";
 import { render, screen } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
@@ -38,6 +38,15 @@ const renderTextBuffer = async <P,>(
         rerender: (props: P) => rerender(buildView(props)),
     };
 };
+
+const buildNestedTagContent = (outerText: string, innerText: string): ReactNode => (
+    <GtkTextTag name="outer" foreground="blue">
+        {outerText}
+        <GtkTextTag name="inner" weight={Pango.Weight.BOLD}>
+            {innerText}
+        </GtkTextTag>
+    </GtkTextTag>
+);
 
 const buildTaggedTextView = (ref: RefObject<Gtk.TextView | null>) => (items: string[]) => (
     <GtkTextView
@@ -196,14 +205,7 @@ describe("render - TextView (3)", () => {
 describe("render - TextView (4)", () => {
     describe("nested TextTags", () => {
         it("supports nested tags", async () => {
-            const { buffer } = await renderTextBuffer(undefined, () => (
-                <GtkTextTag name="outer" foreground="blue">
-                    Hello{" "}
-                    <GtkTextTag name="inner" weight={Pango.Weight.BOLD}>
-                        World
-                    </GtkTextTag>
-                </GtkTextTag>
-            ));
+            const { buffer } = await renderTextBuffer(undefined, () => buildNestedTagContent("Hello ", "World"));
 
             expect(getBufferText(buffer)).toBe("Hello World");
 
@@ -237,9 +239,9 @@ describe("render - TextView (5)", () => {
             const { buffer } = await renderTextBuffer(undefined, () => (
                 <>
                     Click here:{" "}
-                    <GtkTextAnchor>
+                    <GtkTextChildAnchor>
                         <GtkButton label="Button" />
-                    </GtkTextAnchor>{" "}
+                    </GtkTextChildAnchor>{" "}
                     to continue.
                 </>
             ));
@@ -444,18 +446,105 @@ describe("render - TextView (12)", () => {
 });
 
 describe("render - TextView (13)", () => {
+    describe("content model", () => {
+        it("throws when a buffer mixes a text prop with content children", async () => {
+            await expect(
+                render(<GtkTextView buffer={<GtkTextBuffer text="prop">children</GtkTextBuffer>} />),
+            ).rejects.toThrow(/cannot mix a `text` prop with content children/);
+        });
+
+        it("places a GtkTextMark at its position in the content", async () => {
+            const markRef = createRef<Gtk.TextMark>();
+            const viewRef = createRef<Gtk.TextView>();
+
+            await render(
+                <GtkTextView
+                    ref={viewRef}
+                    buffer={
+                        <GtkTextBuffer>
+                            {"AB"}
+                            <GtkTextMark ref={markRef} />
+                            {"CD"}
+                        </GtkTextBuffer>
+                    }
+                />,
+            );
+
+            const buffer = getTextBuffer(viewRef);
+            expect(getBufferText(buffer)).toBe("ABCD");
+            const mark = markRef.current;
+            expect(mark).not.toBeNull();
+            if (mark === null) return;
+            expect(mark.getBuffer()).toBe(buffer);
+            expect(buffer.getIterAtMark(mark).getOffset()).toBe(2);
+        });
+
+        it("keeps a GtkTextMark in place when keyed siblings reorder", async () => {
+            const markRef = createRef<Gtk.TextMark>();
+            const viewRef = createRef<Gtk.TextView>();
+            const buildView = (order: string[]) => (
+                <GtkTextView
+                    ref={viewRef}
+                    buffer={
+                        <GtkTextBuffer>
+                            {order.map((item) =>
+                                item === "M" ? (
+                                    <GtkTextMark key="M" ref={markRef} />
+                                ) : (
+                                    <GtkTextTag key={item} name={item}>
+                                        {item.repeat(3)}
+                                    </GtkTextTag>
+                                ),
+                            )}
+                        </GtkTextBuffer>
+                    }
+                />
+            );
+
+            const { rerender } = await render(buildView(["A", "M", "B"]));
+            const buffer = getTextBuffer(viewRef);
+            expect(getBufferText(buffer)).toBe("AAABBB");
+
+            await rerender(buildView(["B", "M", "A"]));
+            expect(getBufferText(buffer)).toBe("BBBAAA");
+            const mark = markRef.current;
+            expect(mark).not.toBeNull();
+            if (mark === null) return;
+            expect(buffer.getIterAtMark(mark).getOffset()).toBe(3);
+        });
+
+        it("removes the embedded widget when its anchor unmounts", async () => {
+            const buildView = (showAnchor: boolean) => (
+                <GtkTextView
+                    buffer={
+                        <GtkTextBuffer>
+                            Start
+                            {showAnchor && (
+                                <GtkTextChildAnchor>
+                                    <GtkButton label="Embedded" />
+                                </GtkTextChildAnchor>
+                            )}
+                            End
+                        </GtkTextBuffer>
+                    }
+                />
+            );
+
+            const { rerender } = await render(buildView(true));
+            expect(await screen.findByRole(Gtk.AccessibleRole.BUTTON)).toBeDefined();
+
+            await rerender(buildView(false));
+            expect(screen.queryByRole(Gtk.AccessibleRole.BUTTON)).toBeNull();
+            expect(screen.getByDisplayValue("StartEnd")).toBeDefined();
+        });
+    });
+});
+
+describe("render - TextView (14)", () => {
     describe("dynamic updates - comprehensive (4)", () => {
         it("handles text change inside nested tag", async () => {
             const { buffer, rerender } = await renderTextBuffer("Inner", (innerText: string) => (
-                <>
-                    <GtkTextTag name="outer" foreground="blue">
-                        Outer{" "}
-                        <GtkTextTag name="inner" weight={Pango.Weight.BOLD}>
-                            {innerText}
-                        </GtkTextTag>
-                    </GtkTextTag>{" "}
-                    After
-                </>
+                <>{buildNestedTagContent("Outer ", innerText)} After</>
             ));
 
             expect(getBufferText(buffer)).toBe("Outer Inner After");
