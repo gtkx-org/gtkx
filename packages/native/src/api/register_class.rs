@@ -1,36 +1,15 @@
 use std::ffi::{c_char, c_void};
 
-use glib::{
-    self, gobject_ffi,
-    translate::{FromGlib as _, IntoGlib as _},
-};
+use glib::{self, gobject_ffi, translate::IntoGlib as _};
 use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use crate::api::native_result;
+use crate::api::{native_result, type_from_bigint};
 use crate::ffi::closure::ClosureState;
 use crate::ffi::codec::Codec;
 use crate::ffi::descriptor::Descriptor;
 use crate::ffi::value::JsHandle;
-
-fn type_from_bigint(value: BigInt, label: &str) -> napi::Result<glib::Type> {
-    let (_, type_value, lossless) = value.get_u64();
-    if !lossless {
-        return Err(napi::Error::new(
-            napi::Status::InvalidArg,
-            format!("register_class: {label} type exceeds the 64-bit type range"),
-        ));
-    }
-    let type_ = unsafe { glib::Type::from_glib(type_value as glib::ffi::GType) };
-    if !type_.is_valid() {
-        return Err(napi::Error::new(
-            napi::Status::InvalidArg,
-            format!("register_class: {label} type must be non-zero"),
-        ));
-    }
-    Ok(type_)
-}
 
 pub struct VfuncCallback(JsHandle);
 
@@ -98,7 +77,7 @@ impl RegisterClassVfunc {
 
 impl RegisterClassInterface {
     fn into_raw(self) -> napi::Result<RawInterface> {
-        let type_ = type_from_bigint(self.r#type, "interface")?;
+        let type_ = type_from_bigint(self.r#type, "register_class: interface")?;
         Ok(RawInterface {
             type_,
             vfuncs: self
@@ -350,7 +329,7 @@ pub fn register_class(
             format!("register_class: invalid type name: {err}"),
         )
     })?;
-    let parent_type = type_from_bigint(parent_type, "parent")?;
+    let parent_type = type_from_bigint(parent_type, "register_class: parent")?;
     let (vfuncs, interfaces) = match options {
         Some(options) => options.into_raw()?,
         None => (Vec::new(), Vec::new()),
@@ -372,7 +351,7 @@ pub fn register_class(
 mod tests {
     use super::*;
     use glib::prelude::StaticType as _;
-    use napi::bindgen_prelude::BigInt;
+    use glib::translate::FromGlib as _;
 
     fn gstring(name: &str) -> glib::GString {
         glib::GString::from_string_checked(name.to_owned()).expect("valid type name")
@@ -492,16 +471,5 @@ mod tests {
     #[test]
     fn validate_vfunc_offset_rejects_end_overflow() {
         assert!(ClassRegistration::validate_vfunc_offset(usize::MAX, 8, 8, None, "vfunc").is_err());
-    }
-
-    #[test]
-    fn type_from_bigint_accepts_a_valid_type() {
-        let value = BigInt::from(glib::Object::static_type().into_glib() as u64);
-        assert!(type_from_bigint(value, "parent").is_ok());
-    }
-
-    #[test]
-    fn type_from_bigint_rejects_zero() {
-        assert!(type_from_bigint(BigInt::from(0u64), "parent").is_err());
     }
 }

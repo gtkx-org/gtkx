@@ -106,7 +106,7 @@ const cairoScaledFontExtents = bind(
     t.void,
 );
 ScaledFont.prototype.extents = function (): FontExtents {
-    const ext = alloc(40, "cairo_font_extents_t");
+    const ext = alloc(40);
     cairoScaledFontExtents(getHandle(this), ext);
     return readFontExtents(ext);
 };
@@ -122,7 +122,7 @@ const cairoScaledFontTextExtents = bind(
     t.void,
 );
 ScaledFont.prototype.textExtents = function (text: string): TextExtents {
-    const ext = alloc(48, "cairo_text_extents_t");
+    const ext = alloc(48);
     cairoScaledFontTextExtents(getHandle(this), text, ext);
     return readTextExtents(ext);
 };
@@ -140,7 +140,7 @@ const cairoScaledFontGlyphExtents = bind(
 );
 ScaledFont.prototype.glyphExtents = function (glyphs: Array<{ index: number; x: number; y: number }>): TextExtents {
     const buf = allocGlyphBuffer(glyphs);
-    const ext = alloc(48, "cairo_text_extents_t");
+    const ext = alloc(48);
     cairoScaledFontGlyphExtents(getHandle(this), buf, glyphs.length, ext);
     return readTextExtents(ext);
 };

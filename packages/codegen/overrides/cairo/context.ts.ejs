@@ -27,7 +27,7 @@ export type CairoGlyph = { index: number; x: number; y: number };
 export type CairoTextCluster = { numBytes: number; numGlyphs: number };
 
 export const allocGlyphBuffer = (glyphs: CairoGlyph[]): ExternalObject<Handle> => {
-    const buf = alloc(glyphs.length * 24, "cairo_glyph_t[]");
+    const buf = alloc(glyphs.length * 24);
     let offset = 0;
     for (const glyph of glyphs) {
         write(buf, t.uint64, offset, glyph.index);
@@ -39,7 +39,7 @@ export const allocGlyphBuffer = (glyphs: CairoGlyph[]): ExternalObject<Handle> =
 };
 
 export const allocClusterBuffer = (clusters: CairoTextCluster[]): ExternalObject<Handle> => {
-    const buf = alloc(clusters.length * 8, "cairo_text_cluster_t[]");
+    const buf = alloc(clusters.length * 8);
     let offset = 0;
     for (const cluster of clusters) {
         write(buf, t.int32, offset, cluster.numBytes);
@@ -471,7 +471,7 @@ const DOUBLE_BUFFER_T = t.boxed("double[]", { ownership: "borrowed", sharedLibra
 
 const cairoSetDash = bind("libcairo.so.2", "cairo_set_dash", [CONTEXT_T, DOUBLE_BUFFER_T, t.int32, t.float64], t.void);
 Context.prototype.setDash = function (dashes: number[], offset: number): void {
-    const dashBuf = alloc(dashes.length * 8, "double[]");
+    const dashBuf = alloc(dashes.length * 8);
     for (let i = 0; i < dashes.length; i++) {
         write(dashBuf, t.float64, i * 8, dashes[i]);
     }
@@ -489,7 +489,7 @@ Context.prototype.getDash = function (): { dashes: number[]; offset: number } {
     if (count === 0) {
         return { dashes: [], offset: 0 };
     }
-    const dashBuf = alloc(count * 8, "double[]");
+    const dashBuf = alloc(count * 8);
     const offsetRef = { value: 0 };
     cairoGetDash(getHandle(this), dashBuf, offsetRef);
     const dashes: number[] = [];
@@ -600,7 +600,7 @@ const cairoTextExtents = bind(
     t.void,
 );
 Context.prototype.textExtents = function (text: string): TextExtents {
-    const extents = alloc(48, "cairo_text_extents_t");
+    const extents = alloc(48);
     cairoTextExtents(getHandle(this), text, extents);
     return readTextExtents(extents);
 };
@@ -612,7 +612,7 @@ const cairoFontExtents = bind(
     t.void,
 );
 Context.prototype.fontExtents = function (): FontExtents {
-    const extents = alloc(40, "cairo_font_extents_t");
+    const extents = alloc(40);
     cairoFontExtents(getHandle(this), extents);
     return readFontExtents(extents);
 };
@@ -1140,7 +1140,7 @@ const cairoGlyphExtents = bind(
 );
 Context.prototype.glyphExtents = function (glyphs: Array<{ index: number; x: number; y: number }>): TextExtents {
     const buf = allocGlyphBuffer(glyphs);
-    const extents = alloc(48, "cairo_text_extents_t");
+    const extents = alloc(48);
     cairoGlyphExtents(getHandle(this), buf, glyphs.length, extents);
     return readTextExtents(extents);
 };

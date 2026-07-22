@@ -163,11 +163,12 @@ fn from_glib_none_null_ptr_with_none_type() {
         assert!(boxed.as_ptr().is_null());
     });
 }
-mod from_alloc {
+mod boxed_free_dispatch {
     use std::ffi::c_void;
     use std::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
 
     use gtk4::glib;
+    use gtk4::glib::translate::FromGlib as _;
 
     use native::Boxed;
 
@@ -176,83 +177,39 @@ mod from_alloc {
     static BOXED_FREE_CALLS: AtomicUsize = AtomicUsize::new(0);
     static LAST_BOXED_FREED_PTR: AtomicPtr<c_void> = AtomicPtr::new(std::ptr::null_mut());
 
-    const DEFERRED_ALLOC_SIZE: usize = 16;
+    const ALLOC_SIZE: usize = 16;
 
-    fn deferred_boxed(type_name: &str) -> (Boxed, *mut c_void) {
-        let ptr = unsafe { glib::ffi::g_malloc0(DEFERRED_ALLOC_SIZE) };
-        let name = glib::GString::from(type_name);
-        assert!(glib::Type::from_name(name.as_str()).is_none());
-
-        let boxed = Boxed::from_alloc(Some(name), ptr);
-
-        assert!(boxed.is_owned());
-        assert_eq!(boxed.as_ptr(), ptr);
-        assert_eq!(boxed.type_(), None);
-        (boxed, ptr)
-    }
-
-    unsafe extern "C" fn late_boxed_copy(ptr: *mut c_void) -> *mut c_void {
+    unsafe extern "C" fn counting_boxed_copy(ptr: *mut c_void) -> *mut c_void {
         unsafe {
-            let dest = glib::ffi::g_malloc(DEFERRED_ALLOC_SIZE);
-            std::ptr::copy_nonoverlapping(ptr as *const u8, dest as *mut u8, DEFERRED_ALLOC_SIZE);
+            let dest = glib::ffi::g_malloc(ALLOC_SIZE);
+            std::ptr::copy_nonoverlapping(ptr as *const u8, dest as *mut u8, ALLOC_SIZE);
             dest
         }
     }
 
-    unsafe extern "C" fn late_boxed_free(ptr: *mut c_void) {
+    unsafe extern "C" fn counting_boxed_free(ptr: *mut c_void) {
         BOXED_FREE_CALLS.fetch_add(1, Ordering::SeqCst);
         LAST_BOXED_FREED_PTR.store(ptr, Ordering::SeqCst);
         unsafe { glib::ffi::g_free(ptr) };
     }
 
     #[test]
-    fn unregistered_name_defers_destructor_and_g_frees() {
+    fn drop_invokes_the_registered_boxed_free_function() {
         helpers::run(|| {
-            let (boxed, _ptr) = deferred_boxed("GtkxTestNeverRegisteredBoxed");
-
-            drop(boxed);
-            assert!(glib::Type::from_name("GtkxTestNeverRegisteredBoxed").is_none());
-        });
-    }
-
-    #[test]
-    fn missing_name_binds_plain_g_free_cleanup() {
-        helpers::run(|| {
-            let ptr = unsafe { glib::ffi::g_malloc0(DEFERRED_ALLOC_SIZE) };
-            let boxed = Boxed::from_alloc(None, ptr);
-            assert!(boxed.is_owned());
-            assert_eq!(boxed.as_ptr(), ptr);
-            assert_eq!(boxed.type_(), None);
-        });
-    }
-
-    #[test]
-    fn registered_name_binds_boxed_semantics_immediately() {
-        helpers::run(|| {
-            use gtk4::prelude::StaticType as _;
-
-            let type_ = gtk4::gdk::RGBA::static_type();
-            let ptr = helpers::allocate_test_boxed(type_);
-            let boxed = Boxed::from_alloc(Some(glib::GString::from(type_.name())), ptr);
-            assert!(boxed.is_owned());
-            assert_eq!(boxed.type_(), Some(type_));
-        });
-    }
-
-    #[test]
-    fn name_registered_by_release_time_uses_g_boxed_free() {
-        helpers::run(|| {
-            let (boxed, ptr) = deferred_boxed("GtkxTestLateRegisteredBoxed");
-
             let registered = unsafe {
                 glib::gobject_ffi::g_boxed_type_register_static(
-                    c"GtkxTestLateRegisteredBoxed".as_ptr(),
-                    Some(late_boxed_copy),
-                    Some(late_boxed_free),
+                    c"GtkxTestCountingBoxed".as_ptr(),
+                    Some(counting_boxed_copy),
+                    Some(counting_boxed_free),
                 )
             };
             assert_ne!(registered, 0);
-            assert!(glib::Type::from_name("GtkxTestLateRegisteredBoxed").is_some());
+            let type_ = unsafe { glib::Type::from_glib(registered) };
+
+            let ptr = unsafe { glib::ffi::g_malloc0(ALLOC_SIZE) };
+            let boxed = Boxed::from_glib_full(Some(type_), ptr);
+            assert!(boxed.is_owned());
+            assert_eq!(boxed.type_(), Some(type_));
 
             let calls_before = BOXED_FREE_CALLS.load(Ordering::SeqCst);
             drop(boxed);

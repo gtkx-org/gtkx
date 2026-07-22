@@ -6,6 +6,7 @@ import type { GirRecord } from "../../gir/record.js";
 import type { TypeId } from "../../gir/type-id.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { renderBlock, renderBracedOrEmpty } from "../../writer/emit.js";
+import { gtypeExprFor } from "./gtype-binding.js";
 import { emitFieldWrite, isEmittableField } from "./record-field-accessor.js";
 import { computeRecordFieldSlots, type RecordFieldSlot } from "./record-layout.js";
 
@@ -54,7 +55,7 @@ export const renderRecordConstructor = (
     }
     context.addRuntimeImport("alloc");
     context.addRuntimeImport("setHandle");
-    const statements = [...superCall, `const handle = alloc(${allocArgs(record, size).join(", ")});`];
+    const statements = [...superCall, `const handle = alloc(${allocArgs(context, record, size).join(", ")});`];
     for (const entry of slots) {
         if (!isWritableFieldSlot(context, entry)) continue;
         statements.push(renderFieldWrite(context, entry));
@@ -64,11 +65,10 @@ export const renderRecordConstructor = (
     return renderBlock(`constructor(props: ${className}ConstructorProps = {})`, body);
 };
 
-const allocArgs = (record: GirRecord, size: number): string[] => {
-    const glibTypeName = record.glibTypeName ?? record.cType;
+const allocArgs = (context: ModuleContext, record: GirRecord, size: number): string[] => {
     const args = [String(size)];
-    if (glibTypeName !== undefined) {
-        args.push(sourceStringLiteral(glibTypeName));
+    if (gtypeExprFor(context, record) !== undefined) {
+        args.push("this.__type__");
     }
     return args;
 };

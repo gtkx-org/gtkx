@@ -15,7 +15,6 @@ pub struct Boxed {
 #[derive(Debug, Clone)]
 enum BoxedDestructor {
     BoxedFree(glib::Type),
-    GBoxedFreeByName(glib::GString),
     GFree,
     Custom(BoxedFreeFn),
 }
@@ -33,12 +32,6 @@ impl Drop for Boxed {
                 BoxedDestructor::BoxedFree(type_) => {
                     glib::gobject_ffi::g_boxed_free(type_.into_glib(), self.ptr);
                 }
-                BoxedDestructor::GBoxedFreeByName(name) => match glib::Type::from_name(name) {
-                    Some(type_) => {
-                        glib::gobject_ffi::g_boxed_free(type_.into_glib(), self.ptr);
-                    }
-                    None => glib::ffi::g_free(self.ptr),
-                },
                 BoxedDestructor::GFree => glib::ffi::g_free(self.ptr),
                 BoxedDestructor::Custom(free_fn) => free_fn(self.ptr),
             }
@@ -68,16 +61,6 @@ impl Boxed {
     pub fn from_glib_full(type_: Option<glib::Type>, ptr: *mut c_void) -> Self {
         let destructor = type_.map_or(BoxedDestructor::GFree, BoxedDestructor::BoxedFree);
         Self::owned(ptr, type_, destructor)
-    }
-
-    pub fn from_alloc(type_name: Option<glib::GString>, ptr: *mut c_void) -> Self {
-        let Some(name) = type_name else {
-            return Self::owned(ptr, None, BoxedDestructor::GFree);
-        };
-        if let Some(type_) = glib::Type::from_name(&name) {
-            return Self::owned(ptr, Some(type_), BoxedDestructor::BoxedFree(type_));
-        }
-        Self::owned(ptr, None, BoxedDestructor::GBoxedFreeByName(name))
     }
 
     pub fn from_glib_full_with_free_fn(ptr: *mut c_void, free_fn: BoxedFreeFn) -> Self {

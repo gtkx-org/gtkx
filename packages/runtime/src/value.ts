@@ -51,7 +51,7 @@ type ValueType = {
 };
 
 const getBoxedTypeName = (type: bigint): string => typeName(type) ?? "GBoxed";
-const newValue = (): ExternalObject<Handle> => alloc(VALUE_SIZE, "GValue");
+const newValue = (): ExternalObject<Handle> => alloc(VALUE_SIZE, resolveBoxedType(VALUE_T));
 
 const setBoxedCache = createBindCache();
 const setStaticBoxedCache = createBindCache();

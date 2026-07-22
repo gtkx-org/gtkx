@@ -4,7 +4,7 @@ import type { Status } from "../cairo.js";
 const { bind } = t;
 
 export const allocMatrix = (): { handle: ExternalObject<Handle>; obj: Matrix } => {
-    const handle = alloc(48, "cairo_matrix_t");
+    const handle = alloc(48);
     const obj = wrapHandle(handle, Matrix);
     return { handle, obj };
 };
@@ -104,7 +104,7 @@ const cairoMatrixInit = bind(
 
 export class Matrix {
     constructor(xx: number, yx: number, xy: number, yy: number, x0: number, y0: number) {
-        const handle = alloc(48, "cairo_matrix_t");
+        const handle = alloc(48);
         setHandle(this, handle);
         cairoMatrixInit(handle, xx, yx, xy, yy, x0, y0);
     }
