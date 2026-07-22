@@ -13,9 +13,9 @@ use crate::ffi::codec::{
     Codec, Decoder as _, Encoder as _, PtrWriter as _, ReadSource, str_to_glib_full,
 };
 use crate::ffi::value::{self, JsHandle};
-use crate::messaging::error_reporter::{ErrorReporter, ReportErr};
-use crate::messaging::node_env;
-use crate::messaging::panic_handler::guard_ffi_boundary;
+use crate::host::error_reporter::{self, ReportErr};
+use crate::host::node_env;
+use crate::host::panic_handler::guard_ffi_boundary;
 
 struct CallbackArgs(Vec<napi::sys::napi_value>);
 
@@ -216,8 +216,7 @@ impl ClosureData {
             let val = match unsafe { codec.read(env, ReadSource::Slot(arg_ptr, "callback arg")) } {
                 Ok(val) => val,
                 Err(e) => {
-                    ErrorReporter::global()
-                        .report(&e.context(format!("callback: failed to read arg {i}")));
+                    error_reporter::report(&e.context(format!("callback: failed to read arg {i}")));
                     value::js_null(env)?
                 }
             };
@@ -265,7 +264,7 @@ impl ClosureData {
                 unsafe { napi::JsError::from(error).throw_into(env.raw()) };
             }
             Err(CallbackError::Infrastructure(e)) => {
-                ErrorReporter::global().report(&anyhow::anyhow!(
+                error_reporter::report(&anyhow::anyhow!(
                     "callback: JS callback error (return type: {}): {e:#}",
                     self.return_codec
                 ));

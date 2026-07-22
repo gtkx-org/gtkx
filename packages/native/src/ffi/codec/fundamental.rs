@@ -24,7 +24,7 @@ impl FundamentalCodec {
     fn wrap_ptr(&self, ptr: *mut c_void) -> anyhow::Result<Handle> {
         let (ref_fn, unref_fn) = self.lookup_fns()?;
         let fundamental = if self.ownership.is_full() {
-            Fundamental::from_glib_full(ptr, ref_fn, unref_fn)
+            Fundamental::from_glib_full(ptr, unref_fn)
         } else {
             unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) }
         };

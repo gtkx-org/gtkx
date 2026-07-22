@@ -1,5 +1,6 @@
+import { getOrInsert } from "@gtkx/utils";
 import { scheduleFlush } from "./commit-flush.js";
-import { closestInstance, type Node } from "./state.js";
+import { findClosest, type Node } from "./state.js";
 
 const rebuildsByContentOwner = new WeakMap<Node, () => void>();
 
@@ -8,12 +9,7 @@ export const scheduleContentRebuild = <T extends Node>(
     isContentOwner: (candidate: Node) => candidate is T,
     createRebuild: (owner: T) => () => void,
 ): void => {
-    const owner = closestInstance(node, isContentOwner);
+    const owner = findClosest(node, isContentOwner);
     if (!owner) return;
-    let rebuild = rebuildsByContentOwner.get(owner);
-    if (!rebuild) {
-        rebuild = createRebuild(owner);
-        rebuildsByContentOwner.set(owner, rebuild);
-    }
-    scheduleFlush(rebuild);
+    scheduleFlush(getOrInsert(rebuildsByContentOwner, owner, () => createRebuild(owner)));
 };

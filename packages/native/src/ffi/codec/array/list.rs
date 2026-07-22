@@ -125,14 +125,14 @@ impl ArrayKindEncoder for ListEncoder {
 
     fn encode_handles(
         &self,
-        handles: &[crate::handle::Handle],
+        handles: Vec<crate::handle::Handle>,
         item_codec: &Codec,
         ownership: Ownership,
     ) -> anyhow::Result<ffi::Stash> {
         let should_free = ownership.is_borrowed();
-        let (ptrs, acquired) = transfer_items(handles, item_codec, self.0.label)?;
+        let (ptrs, acquired) = transfer_items(&handles, item_codec, self.0.label)?;
         let list = ffi::build_list(self.0, &ptrs);
-        let payload = ffi::ListPayload::Handles(handles.to_vec());
+        let payload = ffi::ListPayload::Handles(handles);
         Ok(self.finalize_list(list, should_free, payload, acquired))
     }
 }

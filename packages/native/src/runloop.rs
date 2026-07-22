@@ -14,8 +14,8 @@ use glib::ffi::{
 use libloading::os::unix::Library;
 use napi::Env;
 
-use crate::messaging::error_reporter::ErrorReporter;
-use crate::messaging::log_writer;
+use crate::host::error_reporter;
+use crate::host::log_writer;
 
 const UV_POLL: c_int = 8;
 const UV_PREPARE: c_int = 9;
@@ -77,7 +77,7 @@ impl UvApi {
 
 thread_local! {
     static UV_API: Cell<Option<UvApi>> = const { Cell::new(None) };
-    static MAIN_LOOP: RefCell<Option<MainLoop>> = const { RefCell::new(None) };
+    static RUNLOOP: RefCell<Option<RunloopState>> = const { RefCell::new(None) };
 }
 
 fn uv() -> UvApi {
@@ -167,7 +167,7 @@ fn wakeup_for(timeout: c_int, sources_ready: bool, has_unwatchable_fds: bool) ->
     }
 }
 
-struct MainLoop {
+struct RunloopState {
     uv_loop: *mut c_void,
     ctx: *mut GMainContext,
     prepare: *mut c_void,
@@ -177,7 +177,7 @@ struct MainLoop {
     n_fds: usize,
 }
 
-impl MainLoop {
+impl RunloopState {
     fn arm_wakeups(&mut self) {
         let mut max_priority: c_int = 0;
         let prepared_ready = unsafe { g_main_context_prepare(self.ctx, &mut max_priority) } != 0;
@@ -277,7 +277,7 @@ impl MainLoop {
             Wakeup::Idle => unsafe { (uv.timer_stop)(self.timer) },
         };
         if rc != 0 {
-            ErrorReporter::global().report_str(&format!(
+            error_reporter::report_str(&format!(
                 "libuv failed to arm the GLib wakeup timer (uv error {rc})"
             ));
         }
@@ -285,22 +285,22 @@ impl MainLoop {
 }
 
 unsafe extern "C" fn on_prepare(_handle: *mut c_void) {
-    let Some(ctx) = MAIN_LOOP.with_borrow(|slot| slot.as_ref().map(|state| state.ctx)) else {
+    let Some(ctx) = RUNLOOP.with_borrow(|slot| slot.as_ref().map(|state| state.ctx)) else {
         return;
     };
 
     let deadline = Instant::now() + DISPATCH_BUDGET;
     loop {
         let mut dispatched = false;
-        crate::messaging::node_env::run_dispatch_scope(|| {
+        crate::host::node_env::run_dispatch_scope(|| {
             dispatched = unsafe { g_main_context_iteration(ctx, GFALSE) } != 0;
         });
-        if !dispatched || Instant::now() >= deadline || MAIN_LOOP.with_borrow(Option::is_none) {
+        if !dispatched || Instant::now() >= deadline || RUNLOOP.with_borrow(Option::is_none) {
             break;
         }
     }
 
-    MAIN_LOOP.with_borrow_mut(|slot| {
+    RUNLOOP.with_borrow_mut(|slot| {
         if let Some(state) = slot.as_mut() {
             state.arm_wakeups();
         }
@@ -312,7 +312,7 @@ unsafe extern "C" fn on_timer(_handle: *mut c_void) {}
 unsafe extern "C" fn on_poll(_handle: *mut c_void, _status: c_int, _events: c_int) {}
 
 pub fn install(env: &Env) -> napi::Result<()> {
-    if MAIN_LOOP.with_borrow(Option::is_some) {
+    if RUNLOOP.with_borrow(Option::is_some) {
         return Ok(());
     }
 
@@ -360,8 +360,8 @@ pub fn install(env: &Env) -> napi::Result<()> {
         (uv.unreference)(timer);
     }
 
-    MAIN_LOOP.with(|slot| {
-        *slot.borrow_mut() = Some(MainLoop {
+    RUNLOOP.with(|slot| {
+        *slot.borrow_mut() = Some(RunloopState {
             uv_loop,
             ctx,
             prepare,
@@ -399,7 +399,7 @@ fn fail_install(
 }
 
 pub fn set_keep_alive(enable: bool) {
-    MAIN_LOOP.with_borrow(|slot| {
+    RUNLOOP.with_borrow(|slot| {
         if let Some(state) = slot.as_ref() {
             let uv = uv();
             unsafe {
@@ -414,7 +414,7 @@ pub fn set_keep_alive(enable: bool) {
 }
 
 pub fn teardown() {
-    let ctx = MAIN_LOOP.with_borrow_mut(|slot| {
+    let ctx = RUNLOOP.with_borrow_mut(|slot| {
         let state = slot.take()?;
         for handle in state.pollers.into_values() {
             close_uv_handle(handle);

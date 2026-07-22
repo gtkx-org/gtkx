@@ -1,6 +1,4 @@
-import { createLogger, type Logger } from "@gtkx/utils";
-
-export const log: Logger = createLogger("react");
+import { log } from "./log.js";
 
 export type ReconcilerErrorHandler = (error: unknown) => void;
 
@@ -12,7 +10,7 @@ export function setReconcilerErrorHandler(handler: ReconcilerErrorHandler | null
     return prior;
 }
 
-export function reportReconcilerError(error: unknown): void {
+function reportReconcilerError(error: unknown): void {
     if (errorHandler) {
         errorHandler(error);
         return;

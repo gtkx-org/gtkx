@@ -62,7 +62,7 @@ describe("emitSchemaEnv", () => {
         expect(result.written).toBe(true);
         const content = readFileSync(result.path, "utf-8");
         expect(content).toContain(`declare module "#data/com.example.app.gschema.xml" {`);
-        expect(content).toContain(`"enabled": boolean;`);
+        expect(content).toContain(`"enabled": "b";`);
     });
 
     it("types a nested schema under its #data/<rel> specifier", () => {

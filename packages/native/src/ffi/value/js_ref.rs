@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use napi::Env;
 use napi::bindgen_prelude::*;
 use napi::sys;
@@ -16,8 +14,7 @@ impl Drop for JsRef {
     }
 }
 
-#[derive(Clone)]
-pub struct JsHandle(Rc<JsRef>);
+pub struct JsHandle(JsRef);
 
 impl std::fmt::Debug for JsHandle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -30,10 +27,10 @@ impl JsHandle {
         let mut raw_ref = std::ptr::null_mut();
         let status = unsafe { sys::napi_create_reference(env.raw(), value.raw(), 1, &mut raw_ref) };
         check_status!(status, "Failed to create reference")?;
-        Ok(Self(Rc::new(JsRef {
+        Ok(Self(JsRef {
             raw: raw_ref,
             env: env.raw(),
-        })))
+        }))
     }
 
     pub fn get<T: FromNapiValue>(&self, env: &Env) -> napi::Result<T> {

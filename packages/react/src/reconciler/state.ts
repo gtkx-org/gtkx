@@ -1,9 +1,9 @@
 import * as GObject from "@gtkx/gi/gobject";
 import { isRootElement, type RootElement } from "./root-element.js";
-import { getSignalStore, type SignalStore } from "./signal-store.js";
+import { ensureSignalStore, type SignalStore } from "./signal-store.js";
 import type { Container, Props } from "./types.js";
+import type { WrapperKind } from "./wrapper-kinds.js";
 import { isWrapperNode, type WrapperNode } from "./wrapper-node.js";
-import type { WrapperKind } from "./wrapper-protocol.js";
 
 export type Node = GObject.Object | WrapperNode | RootElement;
 
@@ -41,7 +41,7 @@ export const registerState = (node: Node, { kind, props, rootContainer }: StateS
         parent: null,
         children: [],
         rootContainer,
-        signalStore: getSignalStore(rootContainer),
+        signalStore: ensureSignalStore(rootContainer),
     };
     stateMap.set(node, state);
     return state;
@@ -62,7 +62,7 @@ export const stateOf = (node: Node): State => {
 export const hasWrapperKind = (node: Node, kind: WrapperKind): boolean =>
     isWrapperNode(node) && stateOf(node).kind === kind;
 
-export const closestInstance = <T extends Node>(node: Node, matches: (node: Node) => node is T): T | null => {
+export const findClosest = <T extends Node>(node: Node, matches: (node: Node) => node is T): T | null => {
     let current: Node | null = node;
     while (current !== null) {
         if (matches(current)) return current;

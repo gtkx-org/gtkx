@@ -2,10 +2,11 @@ import type * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { unparentWidget } from "./container-attach.js";
+import { scheduleContentRebuild } from "./content-rebuild.js";
 import { type Node, stateOf } from "./state.js";
-import { isAnchorNode, isBufferContentNode, isBufferTextNode, isPaintableNode } from "./text-node.js";
+import { isAnchorNode, isBufferContentNode, isBufferTextNode, isPaintableNode } from "./text-node-predicates.js";
 
-export class TextBufferController {
+class TextBufferController {
     private managesContent = false;
     private owner: Gtk.TextBuffer;
 
@@ -105,3 +106,11 @@ export class TextBufferController {
         buffer.insert(buffer.getEndIter(), text, -1);
     }
 }
+
+export const scheduleTextBufferRebuild = (node: Node): void => {
+    scheduleContentRebuild(
+        node,
+        (candidate): candidate is Gtk.TextBuffer => candidate instanceof Gtk.TextBuffer,
+        (owner) => new TextBufferController(owner).rebuild,
+    );
+};

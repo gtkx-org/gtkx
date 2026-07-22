@@ -5,7 +5,7 @@ pub(super) use napi::ValueType;
 pub(super) use napi::bindgen_prelude::*;
 pub(super) use std::ffi::c_void;
 
-use crate::messaging::error_reporter::ReportErr as _;
+use crate::host::error_reporter::ReportErr as _;
 use std::ffi::c_char;
 
 macro_rules! bail_expected {
@@ -52,7 +52,7 @@ macro_rules! write_return_transferred {
             value: &::std::result::Result<::napi::bindgen_prelude::Unknown<'_>, ()>,
         ) {
             self.write_return_with_ownership(env, ret, value, self.ownership, |ptr| {
-                $crate::messaging::error_reporter::ReportErr::report_err(
+                $crate::host::error_reporter::ReportErr::report_err(
                     unsafe { self.ref_for_transfer(ptr) },
                     $label,
                 )

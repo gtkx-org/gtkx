@@ -1,4 +1,4 @@
-import { toCamelCase, toCamelIdentifier, uniqBy } from "@gtkx/utils";
+import { camelCase, toCamelIdentifier, uniqBy } from "@gtkx/utils";
 import { hasCallerAllocatedArrayLength } from "../../analysis/param-structure.js";
 import type { GirFunction } from "../../gir/function.js";
 import type { ModuleContext } from "../../writer/context.js";
@@ -221,7 +221,7 @@ export const isEmittableCallable = (context: ModuleContext, callable: GirFunctio
     !hasCallerAllocatedArrayLength(context.library, callable);
 
 const constructorMemberName = (girName: string): string | undefined => {
-    const camel = toCamelCase(girName);
+    const camel = camelCase(girName);
     if (camel === "constructor") return undefined;
     return camel;
 };
@@ -267,7 +267,7 @@ export const renderStaticHead = (context: ModuleContext, callables: Callables, o
     }
     for (const callable of callables.functions) {
         const block = renderStaticEntry(context, callable, siblings, {
-            resolveName: (member) => toCamelCase(member.name),
+            resolveName: (member) => camelCase(member.name),
         });
         if (block !== undefined) blocks.push(block);
     }

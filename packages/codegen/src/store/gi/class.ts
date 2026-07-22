@@ -1,4 +1,4 @@
-import { toCamelIdentifier, toPascalCase } from "@gtkx/utils";
+import { pascalCase, toCamelIdentifier } from "@gtkx/utils";
 import {
     collectInheritedMethods,
     collectInheritedPropertyTypes,
@@ -41,7 +41,7 @@ type ImplementedRef = {
 export const generateClass = (context: ModuleContext, klass: GirClass): void => {
     if (!klass.introspectable) return;
     if (klass.name.length === 0) return;
-    const className = toPascalCase(klass.name);
+    const className = pascalCase(klass.name);
     const callables: Callables = {
         constructors: dedupeCallables(klass.constructors),
         functions: dedupeCallables(klass.functions),
@@ -83,7 +83,7 @@ const renderClassMembers = (
     callables: Callables,
     hasParent: boolean,
 ): ClassMembers => {
-    const className = toPascalCase(klass.name);
+    const className = pascalCase(klass.name);
     const members: string[] = [gtypeMemberDeclaration(context)];
     const constructorBlock = renderClassConstructor(context, klass, className, hasParent);
     if (constructorBlock !== undefined) members.push(constructorBlock);
@@ -181,7 +181,7 @@ const resolveImplementedRefs = (context: ModuleContext, klass: GirClass): Implem
         const resolved = context.library.resolveType(context.namespace.name, name);
         if (resolved === undefined || resolved.kind !== "interface") continue;
         if (inherited.has(`${resolved.namespace.name}.${resolved.value.name}`)) continue;
-        const pascal = toPascalCase(resolved.value.name);
+        const pascal = pascalCase(resolved.value.name);
         refs.push({
             typeRef: context.qualify(resolved.namespace.name, pascal),
             makerRef: context.qualify(resolved.namespace.name, `make${pascal}`),
@@ -208,5 +208,5 @@ const renderExtendsClause = (
 const resolveParent = (context: ModuleContext, klass: GirClass): string | undefined => {
     if (klass.parent === undefined) return undefined;
     const [namespace, typeName] = splitOptionalNamespace(klass.parent);
-    return context.qualify(namespace ?? context.namespace.name, toPascalCase(typeName));
+    return context.qualify(namespace ?? context.namespace.name, pascalCase(typeName));
 };

@@ -67,7 +67,7 @@ Create `data/com.gtkx.tutorial.gschema.xml`:
 
 The schema `id` is your application ID, and the `path` is that ID with slashes instead of dots. GNOME expects this convention, which is why the first chapter settled on a reverse-DNS application ID.
 
-`color-scheme` uses an inline `<choices>` list, which fits when the legal values are plain strings. `sort-order` refers to a top-level `<enum>` by id, pairing each name with a stored integer, so the value on disk is compact and the name in your code stays readable. An enum key's `<default>` is the nick in single quotes, not the number. `reminder-minutes` takes a `<range>`, capping the lead time at a day.
+`color-scheme` uses an inline `<choices>` list, which fits when the legal values are plain strings. `sort-order` refers to a top-level `<enum>` by id, pairing each name with a stored integer, so the value on disk is compact. An enum key reads and writes as that integer; the sorting section maps it to and from the readable nick with a small hook. An enum key's `<default>` is the nick in single quotes, not the number. `reminder-minutes` takes a `<range>`, capping the lead time at a day.
 
 GSettings enforces these constraints when you write: a value outside the declared choices or range is rejected. A value you read back is already legal, so it never needs validating.
 
@@ -94,7 +94,7 @@ Now any file can pull the schema in by its path:
 import schema from "#data/com.gtkx.tutorial.gschema.xml";
 ```
 
-That import gives you the generated module, not the XML text, and it carries the key types: `"sort-order"` resolves to the union `"manual" | "due-date" | "title" | "created"`, `"window-width"` to `number`. Misspell a key name and the type checker catches it before the app runs.
+That import gives you the generated module, not the XML text, and it carries the key types: `"sort-order"` resolves to `number` (its enum integer), `"window-width"` to `number`, `"color-scheme"` to `string`. Misspell a key name and the type checker catches it before the app runs.
 
 ## Binding first
 
@@ -141,13 +141,22 @@ It reads the current value, re-renders the component whenever that key changes (
 
 ## Sorting
 
-The list's order today is whatever order tasks were created in. Make it a choice instead. Add the type to `src/types.ts`:
+The list's order today is whatever order tasks were created in. Make it a choice instead. Mirror the schema's `<enum>` as a TypeScript enum in `src/types.ts`, and derive the nick union from it so there is one source of truth:
 
 ```diff
  export type Filter = "all" | "open" | "done";
 +
-+export type SortOrder = "manual" | "due-date" | "title" | "created";
++export enum SortValue {
++    manual = 0,
++    "due-date" = 1,
++    title = 2,
++    created = 3,
++}
++
++export type SortOrder = keyof typeof SortValue;
 ```
+
+`SortOrder` is `keyof typeof SortValue`, which TypeScript resolves to the member names, `"manual" | "due-date" | "title" | "created"`. The rest of the app works in those nicks; only the boundary hook touches the integers.
 
 Then a comparator in `src/store/selectors.ts`:
 
@@ -199,15 +208,29 @@ Due date sends undated tasks to the end and breaks ties on the stored `position`
 
 `sort` mutates the array it is called on. That is safe here because `filter` has already produced a fresh array, so the store's own `tasks` array is untouched.
 
-The caller supplies the setting. In `src/components/task-list.tsx`:
+The setting stores the order as the enum's integer, but the app works in the nick. A small hook bridges the two, in `src/hooks/use-sort-order.ts`:
+
+```ts
+import { useSetting } from "@gtkx/react";
+import schema from "#data/com.gtkx.tutorial.gschema.xml";
+import { type SortOrder, SortValue } from "../types.js";
+
+export const useSortOrder = (): [SortOrder, (order: SortOrder) => void] => {
+    const [value, setValue] = useSetting(schema, "sort-order");
+    return [SortValue[value] as SortOrder, (order) => setValue(SortValue[order])];
+};
+```
+
+A TypeScript enum reads both ways, so `SortValue` is the whole translation: index it by the stored number to get the nick, or by the nick to get the number. Nothing past this hook sees the integer.
+
+The caller supplies the order. In `src/components/task-list.tsx`:
 
 ```diff
-+import { useSetting } from "@gtkx/react";
-+import schema from "#data/com.gtkx.tutorial.gschema.xml";
++import { useSortOrder } from "../hooks/use-sort-order.js";
 +
  export const TaskList = () => {
      // ...
-+    const [sortOrder] = useSetting(schema, "sort-order");
++    const [sortOrder] = useSortOrder();
 
 -    const visible = visibleTasks(tasks, selection, { query: searchQuery, filter });
 +    const visible = visibleTasks(tasks, selection, { query: searchQuery, filter, sortOrder });
@@ -265,6 +288,7 @@ import { AdwComboRow, AdwPreferencesDialog, AdwPreferencesGroup, AdwPreferencesP
 import { GtkAdjustment } from "@gtkx/jsx/gtk";
 import { useSetting } from "@gtkx/react";
 import schema from "#data/com.gtkx.tutorial.gschema.xml";
+import { useSortOrder } from "../hooks/use-sort-order.js";
 
 type Scheme = "default" | "light" | "dark";
 type Sort = "manual" | "due-date" | "title" | "created";
@@ -275,7 +299,7 @@ const isSort = (value: string): value is Sort =>
 
 export const Preferences = ({ onClose }: { onClose: () => void }) => {
     const [scheme, setScheme] = useSetting(schema, "color-scheme");
-    const [sortOrder, setSortOrder] = useSetting(schema, "sort-order");
+    const [sortOrder, setSortOrder] = useSortOrder();
     const [reminderMinutes, setReminderMinutes] = useSetting(schema, "reminder-minutes");
 
     return (
@@ -328,7 +352,7 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
 
 `AdwSpinRow` takes its bounds through a `GtkAdjustment` in the `adjustment` slot, the same JSX-valued-prop shape as `topBar` and `prefix`. The adjustment carries the value, the floor, the ceiling, and the step, so the row itself takes none of them. The lead time it sets has no effect yet: the sweep that reads it arrives in [Reminders That Reach the Desktop](/tutorial/reminders).
 
-`onSelectionChanged` hands back a bare `string`, because a drop-down of arbitrary items cannot know your key's type, while the setter wants one of the declared names. `isScheme` and `isSort` narrow the string to that union, so the write type-checks without a cast and an illegal id is ignored. This is the general pattern whenever a widget's loose type meets a generated literal union.
+`onSelectionChanged` hands back a bare `string`, because a drop-down of arbitrary items cannot know your key's type, while the setter wants one of the declared names. `isScheme` and `isSort` narrow the string to that union, so the write type-checks without a cast and an illegal id is ignored. Sort order writes through `useSortOrder`, which takes the nick here and stores the integer for you. This is the general pattern whenever a widget's loose type meets a typed key.
 
 Let the dialog switch reach it, in `src/components/dialogs.tsx`:
 

@@ -3,9 +3,8 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwActionRow } from "@gtkx/jsx/adw";
 import { GtkButton, GtkCheckButton, GtkDragSource, GtkDropTarget, GtkToggleButton } from "@gtkx/jsx/gtk";
-import { useSetting } from "@gtkx/react";
-import schema from "#data/com.gtkx.tutorial.gschema.xml";
 import { escapeMarkup, formatDue } from "../format.js";
+import { useSortOrder } from "../hooks/use-sort-order.js";
 import { useStore } from "../store/index.js";
 import { isReorderable } from "../store/selectors.js";
 import type { Task } from "../types.js";
@@ -19,7 +18,7 @@ export const TaskRow = ({ task }: { task: Task }) => {
     const reorder = useStore((state) => state.reorder);
     const selection = useStore((state) => state.selection);
     const searchQuery = useStore((state) => state.searchQuery);
-    const [sortOrder] = useSetting(schema, "sort-order");
+    const [sortOrder] = useSortOrder();
     const reorderable = isReorderable(selection, searchQuery, sortOrder);
     const title = task.done ? `<s>${escapeMarkup(task.title)}</s>` : escapeMarkup(task.title);
 

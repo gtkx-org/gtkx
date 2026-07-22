@@ -1,4 +1,4 @@
-import { toPascalCase } from "@gtkx/utils";
+import { pascalCase } from "@gtkx/utils";
 import type { GirClass } from "../../gir/class.js";
 import { splitOptionalNamespace } from "../../gir/type-ref.js";
 import type { ModuleContext } from "../../writer/context.js";
@@ -7,7 +7,7 @@ export const parentCompanionRef = (context: ModuleContext, klass: GirClass, suff
     if (klass.parent === undefined) return undefined;
     const [parentNamespace, typeName] = splitOptionalNamespace(klass.parent);
     const namespaceName = parentNamespace ?? context.namespace.name;
-    const name = `${toPascalCase(typeName)}${suffix}`;
+    const name = `${pascalCase(typeName)}${suffix}`;
     if (namespaceName === context.namespace.name) return name;
     return `${context.addCrossNamespaceImport(namespaceName)}.${name}`;
 };

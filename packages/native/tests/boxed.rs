@@ -81,24 +81,6 @@ fn from_glib_none_null_ptr_not_owned() {
 }
 
 #[test]
-fn clone_creates_independent_copy() {
-    helpers::run(|| {
-        let type_ = gdk::RGBA::static_type();
-        let (boxed, _ptr) = helpers::owned_rgba_boxed();
-
-        let cloned = boxed.clone();
-
-        assert!(cloned.is_owned());
-        assert!(!cloned.as_ptr().is_null());
-        assert_ne!(cloned.as_ptr(), boxed.as_ptr());
-
-        drop(boxed);
-
-        assert!(helpers::is_valid_boxed_ptr(cloned.as_ptr(), type_));
-    });
-}
-
-#[test]
 fn as_ptr_returns_correct_pointer() {
     helpers::run(|| {
         let (boxed, ptr) = helpers::owned_rgba_boxed();
@@ -185,43 +167,6 @@ fn from_glib_none_null_ptr_with_none_type() {
         assert!(boxed.as_ptr().is_null());
     });
 }
-#[test]
-fn clone_without_type_shares_ownership() {
-    helpers::run(|| {
-        let ptr = unsafe { glib::ffi::g_malloc0(16) };
-        let boxed = Boxed::from_glib_full(None, ptr);
-
-        let cloned = boxed.clone();
-        assert_eq!(cloned.as_ptr(), boxed.as_ptr());
-        assert!(cloned.is_owned());
-
-        drop(boxed);
-        let first_byte = unsafe { *(cloned.as_ptr() as *const u8) };
-        assert_eq!(first_byte, 0);
-    });
-}
-
-fn assert_null_boxed_clone_stays_null(type_: Option<glib::Type>) {
-    let boxed = Boxed::from_glib_full(type_, std::ptr::null_mut());
-
-    let cloned = boxed.clone();
-
-    assert!(cloned.as_ptr().is_null());
-    assert!(!cloned.is_owned());
-    assert_eq!(cloned.type_(), boxed.type_());
-    assert_eq!(cloned.type_(), type_);
-}
-
-#[test]
-fn clone_null_ptr_with_type_stays_null() {
-    helpers::run(|| assert_null_boxed_clone_stays_null(Some(gdk::RGBA::static_type())));
-}
-
-#[test]
-fn clone_null_ptr_without_type_stays_null() {
-    helpers::run(|| assert_null_boxed_clone_stays_null(None));
-}
-
 mod from_alloc {
     use std::ffi::c_void;
     use std::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
@@ -362,26 +307,6 @@ mod free_fn {
             let after = snapshot();
             assert_eq!(after.0, before.0 + 1);
             assert_eq!(after.1, ptr);
-        });
-    }
-
-    #[test]
-    fn clone_of_free_fn_boxed_shares_ownership() {
-        helpers::run(|| {
-            let ptr = unsafe { glib::ffi::g_malloc0(16) };
-            let boxed = Boxed::from_glib_full_with_free_fn(ptr, record_free);
-
-            let before = snapshot();
-            let cloned = boxed.clone();
-
-            assert_eq!(cloned.as_ptr(), boxed.as_ptr());
-            assert!(cloned.is_owned());
-
-            drop(boxed);
-            assert_eq!(snapshot().0, before.0);
-
-            drop(cloned);
-            assert_eq!(snapshot().0, before.0 + 1);
         });
     }
 

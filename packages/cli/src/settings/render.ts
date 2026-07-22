@@ -7,19 +7,6 @@ const GTKX_ENV_MODULE_HEADER = `/**
  * \`gtkx build\`; do not edit.
  */`;
 
-const VARIANT_TS_TYPES: Record<string, string> = {
-    b: "boolean",
-    i: "number",
-    u: "number",
-    x: "number",
-    t: "number",
-    d: "number",
-    s: "string",
-    as: "string[]",
-};
-
-const VARIANT_FALLBACK_TS_TYPE = `import("@gtkx/gi/glib").Variant`;
-
 const ENUM_KIND = "enum";
 const FLAGS_KIND = "flags";
 
@@ -27,23 +14,6 @@ const toJsStringLiteral = (value: string): string =>
     JSON.stringify(value).replaceAll("\u2028", "\\u2028").replaceAll("\u2029", "\\u2029");
 
 const exportNameFor = (schemaId: string): string => schemaId.replaceAll(".", "_");
-
-const unionOf = (values: string[]): string => values.map(toJsStringLiteral).join(" | ");
-
-const tsTypeForKey = (key: ParsedKey, file: ParsedSchemaFile): string => {
-    if (key.enumId !== null) {
-        const nicks = file.enums.get(key.enumId);
-        return nicks !== undefined && nicks.length > 0 ? unionOf(nicks) : "string";
-    }
-    if (key.flagsId !== null) {
-        const nicks = file.flags.get(key.flagsId);
-        return nicks !== undefined && nicks.length > 0 ? `(${unionOf(nicks)})[]` : "string[]";
-    }
-    if (key.variantType === "s" && key.choices.length > 0) {
-        return unionOf(key.choices);
-    }
-    return VARIANT_TS_TYPES[key.variantType ?? ""] ?? VARIANT_FALLBACK_TS_TYPE;
-};
 
 const runtimeKindForKey = (key: ParsedKey): string => {
     if (key.enumId !== null) return ENUM_KIND;
@@ -97,13 +67,13 @@ const interfaceNameFor = (schemaId: string, usedNames: Set<string>): string => {
     return name;
 };
 
-const renderKeysType = (name: string, schema: ParsedSchema, file: ParsedSchemaFile): string[] => {
+const renderKeysType = (name: string, schema: ParsedSchema): string[] => {
     const lines = [`    type ${name} = {`];
     for (const key of schema.keys) {
         if (key.summary !== null) {
             lines.push(`        /** ${sanitizeSummary(key.summary)} */`);
         }
-        lines.push(`        ${toJsStringLiteral(key.name)}: ${tsTypeForKey(key, file)};`);
+        lines.push(`        ${toJsStringLiteral(key.name)}: ${toJsStringLiteral(runtimeKindForKey(key))};`);
     }
     lines.push("    };");
     return lines;
@@ -112,8 +82,7 @@ const renderKeysType = (name: string, schema: ParsedSchema, file: ParsedSchemaFi
 const boundRefTypeLines = (interfaceName: string, indent: string): string[] => [
     `${indent}id: string;`,
     `${indent}path: string | null;`,
-    `${indent}keys: { [P in keyof ${interfaceName}]: string };`,
-    `${indent}__keys__?: ${interfaceName};`,
+    `${indent}keys: ${interfaceName};`,
 ];
 
 const renderSchemaConst = (schema: ParsedSchema, interfaceName: string): string[] => {
@@ -129,8 +98,7 @@ const renderSchemaConst = (schema: ParsedSchema, interfaceName: string): string[
     return [
         `    const ${exportName}: {`,
         `        id: ${JSON.stringify(schema.id)};`,
-        `        keys: { [P in keyof ${interfaceName}]: string };`,
-        `        __keys__?: ${interfaceName};`,
+        `        keys: ${interfaceName};`,
         "        at(path: string): {",
         ...boundRefTypeLines(interfaceName, "            "),
         "        };",
@@ -144,7 +112,7 @@ const renderFileModule = (file: ParsedSchemaFile, usedNames: Set<string>): strin
     file.schemas.forEach((schema, index) => {
         if (index > 0) lines.push("");
         const interfaceName = interfaceNameFor(schema.id, usedNames);
-        lines.push(...renderKeysType(interfaceName, schema, file));
+        lines.push(...renderKeysType(interfaceName, schema));
         lines.push("");
         lines.push(...renderSchemaConst(schema, interfaceName));
         exportNames.push(exportNameFor(schema.id));

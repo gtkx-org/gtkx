@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { createLogger, Logger, type OutputStream } from "../src/log.js";
+import { createLogger, Logger, type OutputStream } from "../src/log/index.js";
 
 type Capture = OutputStream & { written: string[] };
 

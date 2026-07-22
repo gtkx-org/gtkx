@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { scheduleContentRebuild } from "./content-rebuild.js";
 import { type Node, stateOf } from "./state.js";
-import { isLabelTextNode } from "./text-node.js";
+import { isLabelTextNode } from "./text-node-predicates.js";
 
 const rebuildLabelText = (owner: Gtk.Label): void => {
     const state = stateOf(owner);

@@ -1,23 +1,14 @@
 import type { AppliedProp, Call, ControlledTextProp, LazyProp, ListProp, ValueProp } from "@gtkx/config";
 import type { TypedClass } from "@gtkx/runtime";
-import { callMethod, isShallowEqual } from "@gtkx/utils";
-import { appliedPropsFor, runCall } from "./element-props.js";
+import { callMethod, isRecord, isSameArrayBy, isShallowEqual } from "@gtkx/utils";
+import { collectAppliedProps, runCall } from "./element-props.js";
 import type { Props } from "./types.js";
 
-const asArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
+const toArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
 
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
-
-const itemsEqual = (a: unknown, b: unknown): boolean => {
-    if (a === b) return true;
-    return isRecord(a) && isRecord(b) && isShallowEqual(a, b);
-};
-
-const listValuesEqual = (oldValue: unknown, newValue: unknown): boolean => {
+const isListValueEqual = (oldValue: unknown, newValue: unknown): boolean => {
     if (oldValue === newValue) return true;
-    const a = asArray(oldValue);
-    const b = asArray(newValue);
-    return a.length === b.length && a.every((item, index) => itemsEqual(item, b[index]));
+    return isSameArrayBy(toArray(oldValue), toArray(newValue), isShallowEqual);
 };
 
 const runAdd = (instance: object, add: Call | Call[], item: unknown): void => {
@@ -40,13 +31,13 @@ const rememberAppliedList = (instance: object, prop: string, items: unknown[]): 
 
 const applyList = (instance: object, prop: ListProp, newValue: unknown): void => {
     const applied = appliedLists.get(instance)?.get(prop.prop);
-    const newItems = asArray(newValue);
-    if (applied !== undefined && listValuesEqual(applied, newItems)) return;
+    const newItems = toArray(newValue);
+    if (applied !== undefined && isListValueEqual(applied, newItems)) return;
     if (prop.clear !== undefined) {
         runCall(instance, prop.clear, [], {});
     } else if (prop.remove !== undefined) {
-        for (const item of asArray(applied)) runCall(instance, prop.remove, [item], { item });
-    } else if (asArray(applied).length !== 0) {
+        for (const item of toArray(applied)) runCall(instance, prop.remove, [item], { item });
+    } else if (toArray(applied).length !== 0) {
         return;
     }
     for (const item of newItems) runAdd(instance, prop.add, item);
@@ -98,13 +89,13 @@ const applyProp = (instance: object, prop: AppliedProp, oldProps: Props | null, 
 };
 
 export const applyElementProps = (instance: TypedClass & object, oldProps: Props | null, newProps: Props): void => {
-    for (const prop of appliedPropsFor(instance.__type__).values()) {
+    for (const prop of collectAppliedProps(instance.__type__).values()) {
         applyProp(instance, prop, oldProps, newProps);
     }
 };
 
 export const reapplyLazyProps = (instance: TypedClass & object, props: Props): void => {
-    for (const prop of appliedPropsFor(instance.__type__).values()) {
+    for (const prop of collectAppliedProps(instance.__type__).values()) {
         if (prop.kind === "lazy") applyLazy(instance, prop, props);
     }
 };

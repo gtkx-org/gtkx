@@ -3,8 +3,8 @@ import { GtkColumnView, type GtkColumnViewProps } from "@gtkx/jsx/gtk";
 import { type ReactNode, type Ref, useCallback, useMemo, useState } from "react";
 import { createTreeRenderContext, HeaderRenderHost, type TreeRenderContext } from "./cell.js";
 import { type ColumnDef, ColumnViewColumn } from "./column-view-column.js";
-import { makeFactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
-import { useCollectionWidget } from "./hooks/use-collection-widget.js";
+import { makeFactoryInstaller } from "./hooks/use-cell-containers.js";
+import { useCollectionHeader } from "./hooks/use-collection-header.js";
 import { type ColumnRegistration, useSortHandler } from "./hooks/use-sort-handler.js";
 import type {
     CollectionItemSizeProps,
@@ -100,14 +100,10 @@ const buildRegistrations = <T,>(
 };
 
 const useColumnViewWiring = <T, S>(props: NormalizedColumnViewProps<T, S>): ColumnViewWiring<T, S> => {
-    const { widgetRef, setRef, collection } = useCollectionWidget<Gtk.ColumnView, T, S>(props);
-
-    const useHeader = collection.useHeader;
-    const headerStore = useCellContainers<Gtk.ColumnView>({
-        object: useHeader ? widgetRef : null,
-        installer: headerFactoryInstaller,
-        estimatedHeight: props.estimatedItemHeight,
-    });
+    const { widgetRef, setRef, collection, useHeader, headerStore } = useCollectionHeader<Gtk.ColumnView, T, S>(
+        props,
+        headerFactoryInstaller,
+    );
 
     const { instances, setInstance } = useColumnInstances();
     const registrations = useMemo<ColumnRegistration[]>(

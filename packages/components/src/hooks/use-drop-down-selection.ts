@@ -1,7 +1,7 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { useSignal } from "@gtkx/react";
-import { type ObjectProp, resolveObjectProp, useObjectValue } from "@gtkx/react/internal";
+import { type RefProp, resolveRefProp, useObjectValue } from "@gtkx/react/internal";
 import { useLayoutEffect, useRef } from "react";
 import type { ItemResolver } from "../utils/item-resolver.js";
 
@@ -11,7 +11,7 @@ type DropDownSelectionObject = GObject.Object & {
 };
 
 type DropDownSelectionOptions<T, S> = {
-    widget: ObjectProp<DropDownSelectionObject>;
+    widget: RefProp<DropDownSelectionObject>;
     resolver: ItemResolver<T, S>;
     selectedId: string | null | undefined;
     onSelectionChanged: ((id: string) => void) | null | undefined;
@@ -22,7 +22,7 @@ const normalizeSelected = (position: number): number =>
 
 export const useDropDownSelection = <T, S>(options: DropDownSelectionOptions<T, S>): number => {
     const { widget, resolver, selectedId, onSelectionChanged } = options;
-    const resolved = resolveObjectProp(widget);
+    const resolved = resolveRefProp(widget);
 
     const selectedPosition = useObjectValue(widget, "notify::selected", (object) =>
         object === null ? -1 : normalizeSelected(object.getSelected()),

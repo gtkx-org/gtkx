@@ -235,7 +235,7 @@ import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
 
 **`useProperty(object, propertyName)`** subscribes to a GObject property and returns its current value, re-rendering on change and returning `undefined` while the object is unresolved. The name is the camelCase property name, completed and typed from the bindings, and the notify detail it listens on is derived from it. It bridges GObject property state into React state: `const formats = useProperty(clipboard, "formats")` re-renders whenever the clipboard's available formats change.
 
-**`useSetting(schema, key): [value, setValue]`** reads and writes one key of a GSettings schema, re-rendering when the stored value changes from anywhere (including another window or `dconf`). The `schema` is the typed `SchemaRef` you get by importing a `.gschema.xml` file, so the value type and the setter are inferred per key:
+**`useSetting(schema, key): [value, setValue]`** reads and writes one key of a GSettings schema, re-rendering when the stored value changes from anywhere (including another window or `dconf`). The `schema` is the typed `SettingsSchema` you get by importing a `.gschema.xml` file, so the value type and the setter are inferred per key:
 
 ```ts
 import { useSetting } from "@gtkx/react";

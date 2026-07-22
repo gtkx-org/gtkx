@@ -1,7 +1,7 @@
-import { sortStringsBy, toPascalCase } from "@gtkx/utils";
+import { pascalCase, sortStringsBy } from "@gtkx/utils";
 import { collectInheritedMethods, conflictRename } from "../analysis/inheritance.js";
 import { renderHandlerParameters, renderHandlerResultType } from "../analysis/param-structure.js";
-import { renderBaseTypeFor, type TsTypeTarget } from "../analysis/ts-type.js";
+import { recordTypeTarget, renderBaseTypeFor, type TsTypeTarget } from "../analysis/ts-type.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
 import type { Library } from "../gir/library.js";
@@ -13,20 +13,12 @@ import { methodExportName } from "../store/gi/method.js";
 import { ModuleContext } from "../writer/context.js";
 import { gtkDocToMarkdown } from "../writer/gtk-doc.js";
 
-const docsTarget = (library: Library): TsTypeTarget => ({
-    containerStyle: "record",
-    callbackType: "((...args: unknown[]) => unknown)",
-    byteArrayAsNumber: false,
-    renderNamed: (resolved, name) => {
-        if (resolved?.kind === "alias") {
-            return resolved.value.target === undefined
-                ? "number"
-                : renderBaseTypeFor(library, docsTarget(library), resolved.value.target);
-        }
-        return `${name.namespaceName}.${name.typeName}`;
-    },
-    renderGtype: () => "GObject.Type",
-});
+const docsTarget = (library: Library): TsTypeTarget =>
+    recordTypeTarget(
+        library,
+        (name) => `${name.namespaceName}.${name.typeName}`,
+        () => "GObject.Type",
+    );
 
 export const renderDocsType = (library: Library, ref: TypeId | undefined, isNullable: boolean): string => {
     const base = renderBaseTypeFor(library, docsTarget(library), ref);
@@ -152,7 +144,7 @@ export const originSignatureBlocks = (entries: OriginSignatureEntry[]): string[]
 export const classMethodEntries = (library: Library, namespace: GirNamespace, klass: GirClass): SignatureEntry[] => {
     const realContext = new ModuleContext(namespace, library);
     const signatureContext = docsSignatureContext(namespace, library);
-    const className = toPascalCase(klass.name);
+    const className = pascalCase(klass.name);
     const inherited = collectInheritedMethods(realContext, klass);
     return instanceMethodEntries(signatureContext, klass.methods, (method) =>
         conflictRename(realContext, method, inherited, className),

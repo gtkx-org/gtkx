@@ -1,7 +1,8 @@
 import { applicationId as defaultApplicationId } from "virtual:gtkx-config";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { quitApplication, runApplication } from "@gtkx/runtime";
-import { type ElementType, type ReactNode, type Ref, useCallback, useState } from "react";
+import { pickBy } from "@gtkx/utils";
+import { type ElementType, type ReactNode, type Ref, useLayoutEffect, useState } from "react";
 import { ApplicationContext } from "../hooks/use-application.js";
 import { useMergedRef } from "../hooks/use-merged-refs.js";
 
@@ -17,27 +18,29 @@ export const createApplicationComponent = (
     Component: ElementType,
 ): ((props: ApplicationComponentProps) => ReactNode) => {
     return ({ applicationId = defaultApplicationId, children, ref, ...rest }: ApplicationComponentProps): ReactNode => {
-        const [app, setApp] = useState<Gtk.Application | null>(null);
+        const [application, setApplication] = useState<Gtk.Application | null>(null);
+        const [activated, setActivated] = useState(false);
 
-        const handleMount = useCallback((instance: Gtk.Application) => {
-            runApplication(instance);
-            setApp(instance);
+        useLayoutEffect(() => {
+            if (!application) return;
+
+            runApplication(application);
+            setActivated(true);
 
             return () => {
-                quitApplication(instance);
-                setApp(null);
+                quitApplication(application);
+                setActivated(false);
             };
-        }, []);
+        }, [application]);
 
-        const mergedRef = useMergedRef<Gtk.Application>(ref, handleMount);
-
-        const appliedProps = app
-            ? rest
-            : Object.fromEntries(Object.entries(rest).filter(([key]) => !POST_ACTIVATE_PROPS.has(key)));
+        const mergedRef = useMergedRef(ref, setApplication);
+        const appliedProps = activated ? rest : pickBy(rest, (_value, key) => !POST_ACTIVATE_PROPS.has(key));
 
         return (
             <Component ref={mergedRef} applicationId={applicationId} {...appliedProps}>
-                {app ? <ApplicationContext.Provider value={app}>{children}</ApplicationContext.Provider> : null}
+                {activated && application ? (
+                    <ApplicationContext.Provider value={application}>{children}</ApplicationContext.Provider>
+                ) : null}
             </Component>
         );
     };

@@ -9,6 +9,7 @@ use napi::Env;
 use napi::JsValue as _;
 use napi::bindgen_prelude::{Array, FromNapiValue as _};
 
+use native::api::{bind::bind, call::call};
 use native::ffi::codec::{
     ArrayCodec, ArrayKind, BooleanCodec, Codec, Decoder, EnumFlagsCodec, EnumFlagsKind, FloatCodec,
     HashTableCodec, IntegerCodec, ObjectCodec, Ownership, ReadSource, RefCodec, StringCodec,
@@ -16,7 +17,6 @@ use native::ffi::codec::{
 };
 use native::ffi::descriptor::{Descriptor, NestedDescriptor};
 use native::ffi::{self, StashData, StashStorage};
-use native::request::{bind::bind, call::call};
 
 use helpers::napi_mock;
 

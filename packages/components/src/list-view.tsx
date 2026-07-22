@@ -10,7 +10,7 @@ import {
     type TreeRenderContext,
 } from "./cell.js";
 import { makeFactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
-import { useCollectionWidget } from "./hooks/use-collection-widget.js";
+import { useCollectionHeader } from "./hooks/use-collection-header.js";
 import type {
     CollectionItemSizeProps,
     ControlledExpansionProps,
@@ -60,19 +60,14 @@ interface ListViewWiring<T, S> {
 }
 
 const useListViewWiring = <T, S>(props: NormalizedListViewProps<T, S>): ListViewWiring<T, S> => {
-    const { widgetRef, setRef, collection } = useCollectionWidget<Gtk.ListView, T, S>(props);
-
-    const useHeader = collection.useHeader;
+    const { widgetRef, setRef, collection, useHeader, headerStore } = useCollectionHeader<Gtk.ListView, T, S>(
+        props,
+        headerFactoryInstaller,
+    );
 
     const itemStore = useCellContainers<Gtk.ListView>({
         object: widgetRef,
         installer: factoryInstaller,
-        estimatedHeight: props.estimatedItemHeight,
-        estimatedWidth: props.estimatedItemWidth,
-    });
-    const headerStore = useCellContainers<Gtk.ListView>({
-        object: useHeader ? widgetRef : null,
-        installer: headerFactoryInstaller,
         estimatedHeight: props.estimatedItemHeight,
         estimatedWidth: props.estimatedItemWidth,
     });

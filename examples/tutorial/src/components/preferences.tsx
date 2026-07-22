@@ -3,6 +3,7 @@ import { AdwComboRow, AdwPreferencesDialog, AdwPreferencesGroup, AdwPreferencesP
 import { GtkAdjustment } from "@gtkx/jsx/gtk";
 import { useSetting } from "@gtkx/react";
 import schema from "#data/com.gtkx.tutorial.gschema.xml";
+import { useSortOrder } from "../hooks/use-sort-order.js";
 
 type Scheme = "default" | "light" | "dark";
 type Sort = "manual" | "due-date" | "title" | "created";
@@ -13,7 +14,7 @@ const isSort = (value: string): value is Sort =>
 
 export const Preferences = ({ onClose }: { onClose: () => void }) => {
     const [scheme, setScheme] = useSetting(schema, "color-scheme");
-    const [sortOrder, setSortOrder] = useSetting(schema, "sort-order");
+    const [sortOrder, setSortOrder] = useSortOrder();
     const [reminderMinutes, setReminderMinutes] = useSetting(schema, "reminder-minutes");
 
     return (

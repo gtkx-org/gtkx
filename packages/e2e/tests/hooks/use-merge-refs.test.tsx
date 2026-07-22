@@ -42,11 +42,13 @@ describe("useMergedRef", () => {
         expect(callback).toHaveBeenCalledTimes(1);
     });
 
-    it("nulls ref objects on detach", async () => {
+    it("nulls ref objects through the returned cleanup", async () => {
         const objectRef: { current: Target | null } = { current: null };
+        const callbackCleanup = vi.fn();
+        const callback = vi.fn(() => callbackCleanup);
         const value: Target = { id: 1 };
 
-        const { result } = await renderHook(() => useMergedRef<Target>(objectRef));
+        const { result } = await renderHook(() => useMergedRef<Target>(objectRef, callback));
 
         const detach = detachOf(result.current(value));
         expect(objectRef.current).toBe(value);
@@ -54,6 +56,7 @@ describe("useMergedRef", () => {
         detach();
 
         expect(objectRef.current).toBeNull();
+        expect(callbackCleanup).toHaveBeenCalledTimes(1);
     });
 
     const renderSwappableRef = (initialRef: Ref<Target | null>) =>
@@ -61,68 +64,35 @@ describe("useMergedRef", () => {
             initialProps: { ref: initialRef },
         });
 
-    it("moves the attached value when a ref object argument is swapped", async () => {
+    it("forwards to the swapped ref object", async () => {
         const first: { current: Target | null } = { current: null };
         const second: { current: Target | null } = { current: null };
         const value: Target = { id: 1 };
 
         const { result, rerender } = await renderSwappableRef(first);
 
-        result.current(value);
-        expect(first.current).toBe(value);
-
         await rerender({ ref: second });
+        result.current(value);
 
-        expect(first.current).toBeNull();
         expect(second.current).toBe(value);
+        expect(first.current).toBeNull();
     });
 
-    it("detaches a swapped callback ref through its cleanup", async () => {
-        const cleanup = vi.fn();
-        const firstCallback = vi.fn(() => cleanup);
+    it("forwards to the swapped callback ref", async () => {
+        const firstCallback = vi.fn();
         const secondCallback = vi.fn();
         const value: Target = { id: 1 };
 
         const { result, rerender } = await renderSwappableRef(firstCallback);
 
-        result.current(value);
-        expect(firstCallback).toHaveBeenCalledWith(value);
-
         await rerender({ ref: secondCallback });
-
-        expect(cleanup).toHaveBeenCalledTimes(1);
-        expect(secondCallback).toHaveBeenCalledTimes(1);
-        expect(secondCallback).toHaveBeenCalledWith(value);
-    });
-
-    it("leaves stable refs attached while an inline ref changes identity", async () => {
-        const stableCleanup = vi.fn();
-        const stable = vi.fn(() => stableCleanup);
-        const inlineValues: Array<Target | null> = [];
-        const value: Target = { id: 1 };
-
-        const { result, rerender } = await renderHook(
-            ({ tick }: { tick: number }) =>
-                useMergedRef<Target>(stable, (instance) => {
-                    inlineValues.push(instance);
-                    void tick;
-                }),
-            { initialProps: { tick: 0 } },
-        );
-
         result.current(value);
-        expect(stable).toHaveBeenCalledTimes(1);
-        expect(inlineValues).toEqual([value]);
 
-        await rerender({ tick: 1 });
-        await rerender({ tick: 2 });
-
-        expect(stable).toHaveBeenCalledTimes(1);
-        expect(stableCleanup).not.toHaveBeenCalled();
-        expect(inlineValues).toEqual([value, null, value, null, value]);
+        expect(secondCallback).toHaveBeenCalledWith(value);
+        expect(firstCallback).not.toHaveBeenCalled();
     });
 
-    it("keeps the merged callback identity stable across renders", async () => {
+    it("produces a new merged callback when a ref argument changes identity", async () => {
         const stable = vi.fn();
 
         const { result, rerender } = await renderHook(
@@ -131,7 +101,24 @@ describe("useMergedRef", () => {
         );
 
         const initial = result.current;
+        await rerender({ tick: 1 });
 
+        expect(result.current).not.toBe(initial);
+    });
+
+    it("keeps the merged callback identity stable while its ref arguments are stable", async () => {
+        const stable = vi.fn();
+        const objectRef: { current: Target | null } = { current: null };
+
+        const { result, rerender } = await renderHook(
+            ({ tick }: { tick: number }) => {
+                void tick;
+                return useMergedRef<Target>(stable, objectRef);
+            },
+            { initialProps: { tick: 0 } },
+        );
+
+        const initial = result.current;
         await rerender({ tick: 1 });
 
         expect(result.current).toBe(initial);

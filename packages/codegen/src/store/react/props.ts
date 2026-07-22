@@ -1,7 +1,7 @@
 import { toCamelIdentifier, upperFirst } from "@gtkx/utils";
 import { forEachAncestor } from "../../analysis/inheritance.js";
 import { renderHandlerParameters, renderHandlerResultType } from "../../analysis/param-structure.js";
-import { renderBaseTypeFor, type TsTypeTarget } from "../../analysis/ts-type.js";
+import { recordTypeTarget, renderBaseTypeFor, type TsTypeTarget } from "../../analysis/ts-type.js";
 import type { GirClass } from "../../gir/class.js";
 import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
@@ -172,24 +172,18 @@ const renderSignalHandler = (options: SignalRenderOptions): string => {
     return `(${params.join(", ")}) => ${result}`;
 };
 
-export const reactTarget = (context: PropTypeRenderContext): TsTypeTarget => ({
-    containerStyle: "record",
-    callbackType: "((...args: unknown[]) => unknown)",
-    byteArrayAsNumber: false,
-    renderNamed: (resolved, name) => {
-        if (resolved?.kind === "alias") {
-            return resolved.value.target === undefined
-                ? "number"
-                : renderBaseTypeFor(context.library, reactTarget(context), resolved.value.target);
-        }
-        context.imports.set(name.namespaceName, giNamespaceAlias(name.namespaceName));
-        return `${giNamespaceAlias(name.namespaceName)}.${name.typeName}`;
-    },
-    renderGtype: () => {
-        context.imports.set("GObject", giNamespaceAlias("GObject"));
-        return `${giNamespaceAlias("GObject")}.Type`;
-    },
-});
+export const reactTarget = (context: PropTypeRenderContext): TsTypeTarget =>
+    recordTypeTarget(
+        context.library,
+        (name) => {
+            context.imports.set(name.namespaceName, giNamespaceAlias(name.namespaceName));
+            return `${giNamespaceAlias(name.namespaceName)}.${name.typeName}`;
+        },
+        () => {
+            context.imports.set("GObject", giNamespaceAlias("GObject"));
+            return `${giNamespaceAlias("GObject")}.Type`;
+        },
+    );
 
 const renderReactPropType = (context: PropTypeRenderContext, ref: TypeId | undefined, isNullable: boolean): string => {
     const base = renderBaseTypeFor(context.library, reactTarget(context), ref);

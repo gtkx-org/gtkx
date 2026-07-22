@@ -1,8 +1,8 @@
-pub mod request;
+pub mod api;
 
 pub mod ffi;
 pub mod handle;
-pub mod messaging;
+pub mod host;
 pub mod runloop;
 
 pub use handle::{Boxed, Handle};

@@ -1,34 +1,18 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type { SignalHandler } from "@gtkx/runtime";
-import { isConstructOnlyProp, resolveDefaultProp, resolveSignal } from "../utils/gtype.js";
+import { isSameArrayBy, isShallowEqual } from "@gtkx/utils";
 import { NOTIFY_DETAIL_PREFIX, notifyDetailToProp } from "../utils/notify-name.js";
+import { isConstructOnlyProp, resolveDefaultProp, resolveSignal } from "../utils/type-metadata.js";
 import { stateOf } from "./state.js";
 import type { Props } from "./types.js";
 
-const notifyValueHandler = (container: GObject.Object, signalName: string, handler: SignalHandler): SignalHandler => {
+const createNotifyValueHandler = (
+    container: GObject.Object,
+    signalName: string,
+    handler: SignalHandler,
+): SignalHandler => {
     const prop = notifyDetailToProp(signalName);
     return () => handler(Reflect.get(container, prop), container);
-};
-
-const isPlainObject = (value: unknown): value is Record<string, unknown> => {
-    if (typeof value !== "object" || value === null) return false;
-    const proto = Object.getPrototypeOf(value);
-    return proto === Object.prototype || proto === null;
-};
-
-const elementsEqual = (a: unknown, b: unknown): boolean => {
-    if (a === b) return true;
-    if (!isPlainObject(a) || !isPlainObject(b)) return false;
-    const keys = Object.keys(a);
-    return keys.length === Object.keys(b).length && keys.every((key) => Object.hasOwn(b, key) && a[key] === b[key]);
-};
-
-const propsEqual = (a: unknown, b: unknown): boolean => {
-    if (a === b) return true;
-    if (Array.isArray(a) && Array.isArray(b)) {
-        return a.length === b.length && a.every((item, index) => elementsEqual(item, b[index]));
-    }
-    return false;
 };
 
 type ApplyPropsOptions = {
@@ -38,6 +22,22 @@ type ApplyPropsOptions = {
 type PendingSignal = { signalName: string; newValue: unknown };
 
 type PendingProperty = { name: string; newValue: unknown };
+
+type GenericChange = ({ kind: "signal" } & PendingSignal) | ({ kind: "property" } & PendingProperty);
+
+const resolvePropChange = (
+    container: GObject.Object,
+    name: string,
+    newValue: unknown,
+    constructionApplied: boolean,
+): GenericChange | null => {
+    const signalName = resolveSignal(container, name);
+    if (signalName) return { kind: "signal", signalName, newValue };
+    if (constructionApplied) return null;
+    if (newValue !== undefined) return { kind: "property", name, newValue };
+    const fallback = resolveDefaultProp(container, name);
+    return fallback.has ? { kind: "property", name, newValue: fallback.value } : null;
+};
 
 const collectGenericChanges = (
     container: GObject.Object,
@@ -55,30 +55,20 @@ const collectGenericChanges = (
 
         const oldValue = oldProps?.[name];
         const newValue = newProps[name];
-        if (propsEqual(oldValue, newValue)) return;
+        if (oldValue === newValue) return;
+        if (Array.isArray(oldValue) && Array.isArray(newValue) && isSameArrayBy(oldValue, newValue, isShallowEqual))
+            return;
 
-        const signalName = resolveSignal(container, name);
-        if (signalName) {
-            pendingSignals.push({ signalName, newValue });
-            return;
-        }
-        if (constructionApplied) return;
-        if (newValue !== undefined) {
-            pendingProperties.push({ name, newValue });
-            return;
-        }
-        const fallback = resolveDefaultProp(container, name);
-        if (fallback.has) pendingProperties.push({ name, newValue: fallback.value });
+        const change = resolvePropChange(container, name, newValue, constructionApplied);
+        if (change === null) return;
+        if (change.kind === "signal") pendingSignals.push(change);
+        else pendingProperties.push(change);
     };
 
-    if (oldProps) {
-        for (const name in oldProps) collect(name);
-        for (const name in newProps) {
-            if (!(name in oldProps)) collect(name);
-        }
-    } else {
-        for (const name in newProps) collect(name);
-    }
+    const names = new Set<string>();
+    if (oldProps) for (const name in oldProps) names.add(name);
+    for (const name in newProps) names.add(name);
+    for (const name of names) collect(name);
 
     return { pendingSignals, pendingProperties };
 };
@@ -101,7 +91,7 @@ export function applyProps(
         const nextHandler = typeof newValue === "function" ? (newValue as SignalHandler) : undefined;
         const handler =
             nextHandler && signalName.startsWith(NOTIFY_DETAIL_PREFIX)
-                ? notifyValueHandler(container, signalName, nextHandler)
+                ? createNotifyValueHandler(container, signalName, nextHandler)
                 : nextHandler;
         signalStore.set({
             instance: container,

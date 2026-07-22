@@ -1,5 +1,6 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type { SignalHandler } from "@gtkx/runtime";
+import { getOrInsert } from "@gtkx/utils";
 
 const UNBLOCKED_SIGNALS = new Set([
     "realize",
@@ -26,13 +27,8 @@ export class SignalStore {
 
     private blockDepth: number = 0;
 
-    private getInstanceMap(instance: GObject.Object): Map<string, number> {
-        let instanceMap = this.instanceHandlers.get(instance);
-        if (!instanceMap) {
-            instanceMap = new Map();
-            this.instanceHandlers.set(instance, instanceMap);
-        }
-        return instanceMap;
+    private ensureInstanceMap(instance: GObject.Object): Map<string, number> {
+        return getOrInsert(this.instanceHandlers, instance, () => new Map());
     }
 
     private gateHandler(handler: SignalHandler, signal: string, instance: GObject.Object): SignalHandler {
@@ -58,7 +54,7 @@ export class SignalStore {
         const { instance, signal, handler } = binding;
         const gatedHandler = this.gateHandler(handler, signal, instance);
         const handlerId = instance.connect(signal, gatedHandler);
-        this.getInstanceMap(instance).set(signal, handlerId);
+        this.ensureInstanceMap(instance).set(signal, handlerId);
     }
 
     public set(binding: SignalBinding): void {
@@ -93,11 +89,6 @@ export class SignalStore {
 
 const signalStores = new WeakMap<object, SignalStore>();
 
-export function getSignalStore(rootContainer: object): SignalStore {
-    let store = signalStores.get(rootContainer);
-    if (!store) {
-        store = new SignalStore();
-        signalStores.set(rootContainer, store);
-    }
-    return store;
+export function ensureSignalStore(rootContainer: object): SignalStore {
+    return getOrInsert(signalStores, rootContainer, () => new SignalStore());
 }

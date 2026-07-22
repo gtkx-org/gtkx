@@ -167,7 +167,7 @@ trait ArrayKindEncoder {
 
     fn encode_handles(
         &self,
-        handles: &[crate::handle::Handle],
+        handles: Vec<crate::handle::Handle>,
         item_codec: &Codec,
         ownership: Ownership,
     ) -> anyhow::Result<ffi::Stash>;
@@ -349,7 +349,7 @@ impl ArrayCodec {
                     return Ok(ffi::Stash::Storage(buffer.into()));
                 }
 
-                encoder.encode_handles(&handles, &self.item_codec, self.ownership)
+                encoder.encode_handles(handles, &self.item_codec, self.ownership)
             }
         }
     }

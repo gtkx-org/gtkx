@@ -242,7 +242,7 @@ describe("codegen property maps", () => {
         const source = moduleSource("gtk");
         expect(source).toContain("export interface ButtonProperties extends WidgetProperties {");
         expect(source).toContain("label: string;");
-        expect(source).toContain("__properties__?: ButtonProperties;");
+        expect(source).toContain("__properties__: ButtonProperties;");
     });
 
     it("qualifies the parent map across namespaces", () => {

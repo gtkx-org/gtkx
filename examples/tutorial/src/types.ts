@@ -24,6 +24,13 @@ export type Selection = { kind: "smart"; view: SmartView } | { kind: "list"; lis
 
 export type Filter = "all" | "open" | "done";
 
-export type SortOrder = "manual" | "due-date" | "title" | "created";
+export enum SortValue {
+    manual = 0,
+    "due-date" = 1,
+    title = 2,
+    created = 3,
+}
+
+export type SortOrder = keyof typeof SortValue;
 
 export type DialogKind = "none" | "about" | "shortcuts" | "preferences" | "new-list" | "delete-task";

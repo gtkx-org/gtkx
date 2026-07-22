@@ -1,8 +1,8 @@
 use test_support as helpers;
 
+use std::cell::Cell;
 use std::ffi::c_void;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::rc::Rc;
 
 use gtk4::glib;
 use gtk4::glib::translate::from_glib_full;
@@ -17,11 +17,7 @@ use helpers::{
 };
 
 fn owned_fundamental(ptr: *mut c_void) -> Handle {
-    Handle::Fundamental(Fundamental::from_glib_full(
-        ptr,
-        Some(param_spec_ref),
-        Some(param_spec_unref),
-    ))
+    Handle::Fundamental(Fundamental::from_glib_full(ptr, Some(param_spec_unref)))
 }
 
 fn borrowed_fundamental(ptr: *mut c_void) -> Handle {
@@ -92,35 +88,6 @@ fn borrowed_handle_with_null_pointer() {
 }
 
 #[test]
-fn clone_owned_handle_preserves_pointer() {
-    helpers::run(|| {
-        let ptr = param_spec_ptr();
-        let initial_ref = param_spec_refcount(ptr);
-
-        let handle = owned_fundamental(ptr);
-        let cloned = handle.clone();
-
-        assert_eq!(cloned.as_ptr(), handle.as_ptr());
-        assert_eq!(param_spec_refcount(ptr), initial_ref + 1);
-
-        drop(cloned);
-        assert_eq!(param_spec_refcount(ptr), initial_ref);
-        drop(handle);
-    });
-}
-
-#[test]
-fn clone_borrowed_handle_preserves_pointer() {
-    let raw = 0x5555_0000usize as *mut c_void;
-    let handle = Handle::from_glib_borrow(raw);
-    let cloned = handle.clone();
-
-    assert_eq!(cloned.as_ptr(), handle.as_ptr());
-    assert_eq!(cloned.ptr_as_usize(), handle.ptr_as_usize());
-    assert_eq!(cloned.as_ptr(), raw);
-}
-
-#[test]
 fn drop_owned_handle_releases_value() {
     helpers::run(|| {
         let ptr = param_spec_ptr();
@@ -148,12 +115,12 @@ fn a_consumed_decoded_handle_drop_releases_nothing() {
         assert!(taken.is_some());
         drop(handle);
 
-        let sentinel = Arc::new(AtomicBool::new(false));
-        let sentinel_in_idle = Arc::clone(&sentinel);
-        glib::idle_add_once(move || sentinel_in_idle.store(true, Ordering::SeqCst));
-        pump_default_context_until(|| sentinel.load(Ordering::SeqCst));
+        let sentinel = Rc::new(Cell::new(false));
+        let sentinel_in_idle = Rc::clone(&sentinel);
+        glib::idle_add_local_once(move || sentinel_in_idle.set(true));
+        pump_default_context_until(|| sentinel.get());
 
-        assert!(sentinel.load(Ordering::SeqCst));
+        assert!(sentinel.get());
         assert_eq!(get_gobject_refcount(obj_ptr), initial_ref);
 
         drop(taken);
@@ -194,29 +161,15 @@ fn take_owned_on_a_borrowed_handle_returns_none() {
 }
 
 #[test]
-fn clones_share_the_owned_object() {
-    helpers::run(|| {
-        let handle = decoded_gobject_handle();
-        let cloned = handle.clone();
-
-        assert!(cloned.take_owned().is_some());
-        assert!(handle.take_owned().is_none());
-    });
-}
-
-#[test]
 fn size_hint_distinguishes_handle_variants() {
     helpers::run(|| {
         let (boxed, _boxed_ptr) = helpers::owned_rgba_boxed();
         let boxed_hint = Handle::Boxed(boxed).size_hint();
 
         let pspec = param_spec_ptr();
-        let fundamental_hint = Handle::Fundamental(Fundamental::from_glib_full(
-            pspec,
-            Some(param_spec_ref),
-            Some(param_spec_unref),
-        ))
-        .size_hint();
+        let fundamental_hint =
+            Handle::Fundamental(Fundamental::from_glib_full(pspec, Some(param_spec_unref)))
+                .size_hint();
 
         assert!(boxed_hint > 0);
         assert!(fundamental_hint > 0);

@@ -8,7 +8,7 @@ use std::thread;
 use std::time::Duration;
 
 use gtk4::glib;
-use native::messaging::node_env;
+use native::host::node_env;
 use native::runloop;
 use test_support::{napi_mock, uv_mock};
 

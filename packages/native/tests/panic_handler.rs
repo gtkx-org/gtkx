@@ -1,6 +1,6 @@
 use test_support as helpers;
 
-use native::messaging::panic_handler::{format_panic_payload, guard_ffi_boundary};
+use native::host::panic_handler::{format_panic_payload, guard_ffi_boundary};
 
 fn catch_with_silent_hook<F: FnOnce() + std::panic::UnwindSafe>(f: F) -> std::thread::Result<()> {
     let previous = std::panic::take_hook();
@@ -12,7 +12,6 @@ fn catch_with_silent_hook<F: FnOnce() + std::panic::UnwindSafe>(f: F) -> std::th
 
 #[test]
 fn formats_static_str_payload() {
-    let _guard = helpers::serial_guard();
     let result = catch_with_silent_hook(|| {
         std::panic::panic_any("static slice payload");
     });
@@ -23,7 +22,6 @@ fn formats_static_str_payload() {
 
 #[test]
 fn formats_owned_string_payload() {
-    let _guard = helpers::serial_guard();
     let result = catch_with_silent_hook(|| {
         panic!("{}", String::from("owned string payload"));
     });

@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
-import { type ObjectProp, useProperty } from "@gtkx/react";
+import { type RefProp, useProperty } from "@gtkx/react";
 import { act, render, renderHook, waitFor } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -107,8 +107,8 @@ describe("useProperty (targets)", () => {
         const ref: { current: Gtk.Label | null } = { current: null };
 
         const { result, rerender } = await renderHook(
-            ({ object }: { object: ObjectProp<Gtk.Label> }) => useProperty(object, "label"),
-            { initialProps: { object: ref as ObjectProp<Gtk.Label> } },
+            ({ object }: { object: RefProp<Gtk.Label> }) => useProperty(object, "label"),
+            { initialProps: { object: ref as RefProp<Gtk.Label> } },
         );
 
         expect(result.current).toBeUndefined();
@@ -127,8 +127,8 @@ describe("useProperty (targets)", () => {
         const second = new Gtk.Label({ label: "Second" });
 
         const { result, rerender } = await renderHook(
-            ({ object }: { object: ObjectProp<Gtk.Label> }) => useProperty(object, "label"),
-            { initialProps: { object: first as ObjectProp<Gtk.Label> } },
+            ({ object }: { object: RefProp<Gtk.Label> }) => useProperty(object, "label"),
+            { initialProps: { object: first as RefProp<Gtk.Label> } },
         );
 
         expect(result.current).toBe("First");

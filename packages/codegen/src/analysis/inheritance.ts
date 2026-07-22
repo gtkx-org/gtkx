@@ -1,4 +1,4 @@
-import { lowerFirst, toCamelCase, toCamelIdentifier, toPascalCase } from "@gtkx/utils";
+import { camelCase, lowerFirst, pascalCase, toCamelIdentifier } from "@gtkx/utils";
 import { ancestorChain, type ResolvedAncestor, resolveInterface } from "../gir/ancestry.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
@@ -39,7 +39,7 @@ export const resolvePrerequisiteReference = (context: ModuleContext, name: strin
     const resolved = context.library.resolveType(context.namespace.name, name);
     if (resolved === undefined) return undefined;
     if (resolved.kind !== "interface" && resolved.kind !== "class") return undefined;
-    return context.qualify(resolved.namespace.name, toPascalCase(resolved.value.name));
+    return context.qualify(resolved.namespace.name, pascalCase(resolved.value.name));
 };
 
 export const forEachAncestor = (
@@ -97,7 +97,7 @@ const ancestorClassMethodSignatures = (context: ModuleContext, klass: GirClass):
     forEachAncestor(context, klass, (ancestor) => {
         for (const method of ancestor.klass.methods) {
             if (!method.introspectable) continue;
-            const name = toCamelCase(method.name);
+            const name = camelCase(method.name);
             if (signatures.has(name)) continue;
             signatures.set(name, {
                 returnType: renderTsType(context, method.returnValue.type, method.returnValue.nullable),
@@ -117,7 +117,7 @@ export const collectInterfaceMergeOmissions = (
     const omissions: string[] = [];
     for (const method of iface.klass.methods) {
         if (!method.introspectable) continue;
-        const name = toCamelCase(method.name);
+        const name = camelCase(method.name);
         const ancestor = ancestors.get(name);
         if (ancestor === undefined) continue;
         const returnType = renderTsType(context, method.returnValue.type, method.returnValue.nullable);
@@ -172,7 +172,7 @@ const absorbInheritedMethods = (
     const { returnTypes, definitions } = accumulator;
     for (const method of resolved.klass.methods) {
         if (!method.introspectable) continue;
-        const name = toCamelCase(method.name);
+        const name = camelCase(method.name);
         if (returnTypes.has(name)) continue;
         definitions.set(name, { method, namespaceName: resolved.namespaceName });
         returnTypes.set(name, renderTsType(context, method.returnValue.type, method.returnValue.nullable));
@@ -212,7 +212,7 @@ export const conflictRename = (
 };
 
 const conflictingMethodName = (className: string, methodName: string): string =>
-    `${lowerFirst(className)}${toPascalCase(methodName)}`;
+    `${lowerFirst(className)}${pascalCase(methodName)}`;
 
 export const reservedSignalMemberRename = (className: string, callable: GirFunction): string | undefined =>
     RESERVED_SIGNAL_MEMBERS.has(methodExportName(callable))

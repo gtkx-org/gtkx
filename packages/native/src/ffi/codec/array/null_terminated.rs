@@ -110,23 +110,20 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
 
     fn encode_handles(
         &self,
-        handles: &[crate::handle::Handle],
+        handles: Vec<crate::handle::Handle>,
         item_codec: &Codec,
         ownership: Ownership,
     ) -> anyhow::Result<ffi::Stash> {
-        let (mut ptrs, acquired) = transfer_items(handles, item_codec, "array")?;
+        let (mut ptrs, acquired) = transfer_items(&handles, item_codec, "array")?;
         ptrs.push(std::ptr::null_mut());
 
         let should_free = ownership.is_borrowed();
         let storage = if should_free {
             let ptr = ptrs.as_mut_ptr() as *mut c_void;
-            StashStorage::new(ptr, StashData::ObjectArray(handles.to_vec(), ptrs))
+            StashStorage::new(ptr, StashData::ObjectArray(handles, ptrs))
         } else {
             let container = leak_container_to_callee(&ptrs);
-            StashStorage::new(
-                container,
-                StashData::ObjectArray(handles.to_vec(), Vec::new()),
-            )
+            StashStorage::new(container, StashData::ObjectArray(handles, Vec::new()))
         };
         Ok(finalize_container_stash(
             storage,

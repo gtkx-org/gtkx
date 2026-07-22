@@ -1,5 +1,5 @@
 import type { ElementProp } from "@gtkx/config";
-import { sortStrings, sortStringsBy, toPascalCase } from "@gtkx/utils";
+import { pascalCase, sortStrings, sortStringsBy } from "@gtkx/utils";
 import { Library } from "../gir/library.js";
 import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import { dedupeCallables, isEmittableCallable } from "../store/gi/callables.js";
@@ -301,7 +301,7 @@ const classEntries = (namespace: GirNamespace): GiSymbolEntry[] => {
     for (const klass of [...namespace.classes, ...namespace.interfaces]) {
         if (!klass.introspectable || klass.name.length === 0) continue;
         const kind = klass.isInterface ? "interface" : "class";
-        entries.push({ kind, namespace, name: toPascalCase(klass.name), doc: klass.doc, klass });
+        entries.push({ kind, namespace, name: pascalCase(klass.name), doc: klass.doc, klass });
     }
     return entries;
 };

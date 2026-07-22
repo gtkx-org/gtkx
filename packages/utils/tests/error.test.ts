@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { errorMessage, formatChildProcessError, normalizeError } from "../src/error.js";
+import { errorMessage, formatChildProcessError, normalizeError } from "../src/error/index.js";
 
 describe("errorMessage", () => {
     it("returns the message of an Error instance", () => {

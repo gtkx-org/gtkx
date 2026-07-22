@@ -7,7 +7,6 @@ pub use fundamental::{Fundamental, RefFn, UnrefFn};
 
 use std::cell::Cell;
 use std::ffi::c_void;
-use std::rc::Rc;
 
 use glib::prelude::ObjectType as _;
 
@@ -15,25 +14,25 @@ const GOBJECT_SIZE_HINT: usize = 512;
 
 pub enum Handle {
     Object {
-        ptr: usize,
-        owned: Rc<Cell<Option<glib::Object>>>,
+        ptr: *mut c_void,
+        owned: Cell<Option<glib::Object>>,
     },
     Boxed(Boxed),
     Fundamental(Fundamental),
-    Borrowed(usize),
+    Borrowed(*mut c_void),
 }
 
 impl std::fmt::Debug for Handle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let (name, ptr) = match self {
-            Self::Object { ptr, .. } => ("Object", *ptr),
-            Self::Boxed(boxed) => ("Boxed", boxed.as_ptr() as usize),
-            Self::Fundamental(fundamental) => ("Fundamental", fundamental.as_ptr() as usize),
-            Self::Borrowed(ptr) => ("Borrowed", *ptr),
+        let name = match self {
+            Self::Object { .. } => "Object",
+            Self::Boxed(_) => "Boxed",
+            Self::Fundamental(_) => "Fundamental",
+            Self::Borrowed(_) => "Borrowed",
         };
         f.debug_struct("Handle")
             .field("kind", &name)
-            .field("ptr", &(ptr as *const c_void))
+            .field("ptr", &self.as_ptr())
             .finish_non_exhaustive()
     }
 }
@@ -50,30 +49,16 @@ impl From<Fundamental> for Handle {
     }
 }
 
-impl Clone for Handle {
-    fn clone(&self) -> Self {
-        match self {
-            Self::Object { ptr, owned } => Self::Object {
-                ptr: *ptr,
-                owned: Rc::clone(owned),
-            },
-            Self::Boxed(boxed) => Self::Boxed(boxed.clone()),
-            Self::Fundamental(fundamental) => Self::Fundamental(fundamental.clone()),
-            Self::Borrowed(ptr) => Self::Borrowed(*ptr),
-        }
-    }
-}
-
 impl Handle {
     pub fn from_glib_borrow(ptr: *mut c_void) -> Self {
-        Self::Borrowed(ptr as usize)
+        Self::Borrowed(ptr)
     }
 
     pub fn decoded_gobject(object: glib::Object) -> Self {
-        let ptr = object.as_ptr() as usize;
+        let ptr = object.as_ptr().cast::<c_void>();
         Self::Object {
             ptr,
-            owned: Rc::new(Cell::new(Some(object))),
+            owned: Cell::new(Some(object)),
         }
     }
 
@@ -85,15 +70,15 @@ impl Handle {
     }
 
     pub fn as_ptr(&self) -> *mut c_void {
-        self.ptr_as_usize() as *mut c_void
+        match self {
+            Self::Object { ptr, .. } | Self::Borrowed(ptr) => *ptr,
+            Self::Boxed(boxed) => boxed.as_ptr(),
+            Self::Fundamental(fundamental) => fundamental.as_ptr(),
+        }
     }
 
     pub fn ptr_as_usize(&self) -> usize {
-        match self {
-            Self::Object { ptr, .. } | Self::Borrowed(ptr) => *ptr,
-            Self::Boxed(boxed) => boxed.as_ptr() as usize,
-            Self::Fundamental(fundamental) => fundamental.as_ptr() as usize,
-        }
+        self.as_ptr() as usize
     }
 
     pub fn size_hint(&self) -> usize {
@@ -111,9 +96,7 @@ impl Drop for Handle {
         let Self::Object { owned, .. } = self else {
             return;
         };
-        if Rc::strong_count(owned) == 1
-            && let Some(object) = owned.take()
-        {
+        if let Some(object) = owned.take() {
             glib::idle_add_local_once(move || drop(object));
         }
     }

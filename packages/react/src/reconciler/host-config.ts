@@ -1,10 +1,11 @@
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
+import { getOrInsert, remove } from "@gtkx/utils";
 import { type Context, createContext } from "react";
 import type ReactReconciler from "react-reconciler";
 import { DiscreteEventPriority } from "react-reconciler/constants.js";
-import { typeChainIncludes } from "../utils/gtype.js";
-import { applyAccessibleProps, isAccessibleProp } from "./accessible.js";
+import { hasTypeInChain } from "../utils/type-hierarchy.js";
+import { applyAccessibleProps, isAccessibleProp } from "./accessible-props.js";
 import { applyProps } from "./apply-props.js";
 import { runCommitFlush } from "./commit-flush.js";
 import { attachNode, detachFromParent, detachNode, resyncWrapperNode } from "./dispatch.js";
@@ -13,14 +14,14 @@ import { isAppliedProp } from "./element-props.js";
 import { createElementInstance, createWrapperInstance } from "./instance.js";
 import { scheduleLabelTextRebuild } from "./label-text-rebuild.js";
 import { catchReconcilerError } from "./reconciler-error-handler.js";
-import { getSignalStore } from "./signal-store.js";
+import { ensureSignalStore } from "./signal-store.js";
 import { ensureState, type Node, stateOf } from "./state.js";
-import { scheduleBufferRebuild } from "./text-buffer-rebuild.js";
-import { isBufferContentNode, isLabelTextNode } from "./text-node.js";
+import { scheduleTextBufferRebuild } from "./text-buffer-controller.js";
+import { isBufferContentNode, isLabelTextNode } from "./text-node-predicates.js";
 import type { Container, Props } from "./types.js";
 import { hideNode, reassertHidden, setTextNodeHidden, unhideNode } from "./visibility.js";
+import { BUFFER_TEXT_KIND, isWrapperKind, LABEL_TEXT_KIND, WRAPPER_NODE_ELEMENT } from "./wrapper-kinds.js";
 import { isWrapperNode } from "./wrapper-node.js";
-import { BUFFER_TEXT_KIND, isWrapperKind, LABEL_TEXT_KIND, WRAPPER_NODE_ELEMENT } from "./wrapper-protocol.js";
 
 const FIXED_UPDATE_PRIORITY = DiscreteEventPriority;
 
@@ -51,16 +52,14 @@ export type ReconcilerInstance = ReactReconciler.Reconciler<Container, Node, Nod
 
 const link = (parent: Node, child: Node): void => {
     const { children } = stateOf(parent);
-    const index = children.indexOf(child);
-    if (index !== -1) children.splice(index, 1);
+    remove(children, child);
     children.push(child);
     stateOf(child).parent = parent;
 };
 
 const linkBefore = (parent: Node, child: Node, before: Node): void => {
     const { children } = stateOf(parent);
-    const existing = children.indexOf(child);
-    if (existing !== -1) children.splice(existing, 1);
+    remove(children, child);
     const beforeIndex = children.indexOf(before);
     if (beforeIndex === -1) children.push(child);
     else children.splice(beforeIndex, 0, child);
@@ -69,8 +68,7 @@ const linkBefore = (parent: Node, child: Node, before: Node): void => {
 
 const unlink = (parent: Node, child: Node): void => {
     const { children } = stateOf(parent);
-    const index = children.indexOf(child);
-    if (index !== -1) children.splice(index, 1);
+    remove(children, child);
     stateOf(child).parent = null;
 };
 
@@ -78,7 +76,7 @@ const isBufferRelated = (instance: Node): boolean =>
     isBufferContentNode(instance) || instance instanceof Gtk.TextTag || instance instanceof Gtk.TextBuffer;
 
 const scheduleTextRebuilds = (parent: Node, child: Node): void => {
-    if (isBufferRelated(parent) || isBufferRelated(child)) scheduleBufferRebuild(parent);
+    if (isBufferRelated(parent) || isBufferRelated(child)) scheduleTextBufferRebuild(parent);
     if (isLabelTextNode(child)) scheduleLabelTextRebuild(parent);
 };
 
@@ -111,7 +109,7 @@ const commitInstanceProps = (instance: Node, oldProps: Props | null, newProps: P
     const state = stateOf(instance);
     state.props = newProps;
     if (isWrapperNode(instance)) {
-        if (isBufferContentNode(instance)) scheduleBufferRebuild(instance);
+        if (isBufferContentNode(instance)) scheduleTextBufferRebuild(instance);
         else resyncWrapperNode(instance);
         reassertHidden(instance);
         return;
@@ -135,7 +133,7 @@ const commitInstanceProps = (instance: Node, oldProps: Props | null, newProps: P
         applyGenericAndSignals();
         applyElementProps(instance, oldProps, newProps);
     }
-    if (instance instanceof Gtk.TextTag) scheduleBufferRebuild(instance);
+    if (instance instanceof Gtk.TextTag) scheduleTextBufferRebuild(instance);
     reassertHidden(instance);
 };
 
@@ -205,17 +203,14 @@ type TextHostKind = "label" | "buffer" | "tag" | null;
 
 const textHostKinds = new Map<string, TextHostKind>();
 
-const resolveTextHostKind = (type: string): TextHostKind => {
-    const cached = textHostKinds.get(type);
-    if (cached !== undefined) return cached;
-    const gtype = GObject.typeFromName(type);
-    let kind: TextHostKind = null;
-    if (typeChainIncludes(gtype, "GtkLabel")) kind = "label";
-    else if (typeChainIncludes(gtype, "GtkTextBuffer")) kind = "buffer";
-    else if (typeChainIncludes(gtype, "GtkTextTag")) kind = "tag";
-    textHostKinds.set(type, kind);
-    return kind;
-};
+const resolveTextHostKind = (type: string): TextHostKind =>
+    getOrInsert(textHostKinds, type, () => {
+        const gtype = GObject.typeFromName(type);
+        if (hasTypeInChain(gtype, "GtkLabel")) return "label";
+        if (hasTypeInChain(gtype, "GtkTextBuffer")) return "buffer";
+        if (hasTypeInChain(gtype, "GtkTextTag")) return "tag";
+        return null;
+    });
 
 const createHostContextConfig = (): HostContextConfig => ({
     getRootHostContext: () => EMPTY_CONTEXT,
@@ -327,18 +322,18 @@ const drainCommitQueue = (): void => catchReconcilerError(runCommitFlush);
 
 const finalizeCommitAfterLayoutEffects = (container: Container): void => {
     drainCommitQueue();
-    getSignalStore(container).unblock();
+    ensureSignalStore(container).unblock();
 };
 
 const createCommitConfig = (): CommitConfig => ({
     commitUpdate: (instance, _type, oldProps, newProps) => commitInstanceProps(instance, oldProps, newProps),
     commitTextUpdate: (textInstance, _oldText, newText) => {
         stateOf(textInstance).props = { text: newText };
-        if (isBufferContentNode(textInstance)) scheduleBufferRebuild(textInstance);
+        if (isBufferContentNode(textInstance)) scheduleTextBufferRebuild(textInstance);
         else scheduleLabelTextRebuild(textInstance);
     },
     prepareForCommit: (container) => {
-        getSignalStore(container).block();
+        ensureSignalStore(container).block();
         return null;
     },
     resetAfterCommit: (container) => {

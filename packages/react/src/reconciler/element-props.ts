@@ -4,7 +4,7 @@ import { ELEMENT_PROPS } from "virtual:gtkx-config";
 import type { AppliedProp, Arg, ArgRef, Call, ContainerProp } from "@gtkx/config";
 import { typeFromName } from "@gtkx/gi/gobject";
 import { callMethod } from "@gtkx/utils";
-import { collectTypeNamesWithInterfaces, foldInheritedTableWithInterfaces } from "../utils/gtype.js";
+import { collectTypeNamesWithInterfaces, foldInheritedTableWithInterfaces } from "../utils/type-hierarchy.js";
 
 export type CallScope = {
     child?: unknown;
@@ -20,7 +20,7 @@ const MISSING_ARG = Symbol("gtkx.missing-arg");
 const fieldOf = (source: unknown, name: string): unknown =>
     source == null ? undefined : Reflect.get(Object(source), name);
 
-const evalArg = (arg: Arg, scope: CallScope): unknown => {
+const resolveArg = (arg: Arg, scope: CallScope): unknown => {
     if (typeof arg === "string") {
         switch (arg) {
             case "child":
@@ -54,7 +54,7 @@ export const runCallValue = (target: object, call: Call, defaults: unknown[], sc
     if (typeof call === "string") {
         return { called: true, value: callMethod(target, call, defaults) };
     }
-    const args = call.args.map((arg) => evalArg(arg, scope));
+    const args = call.args.map((arg) => resolveArg(arg, scope));
     if (args.includes(MISSING_ARG)) return { called: false, value: undefined };
     return { called: true, value: callMethod(target, call.method, args) };
 };
@@ -62,10 +62,10 @@ export const runCallValue = (target: object, call: Call, defaults: unknown[], sc
 export const runCall = (target: object, call: Call, defaults: unknown[], scope: CallScope): boolean =>
     runCallValue(target, call, defaults, scope).called;
 
-export const callUsesRef = (call: Call | undefined, ref: ArgRef): boolean =>
+export const hasArgRef = (call: Call | undefined, ref: ArgRef): boolean =>
     call !== undefined && typeof call !== "string" && call.args.some((arg) => arg === ref);
 
-export const nullSetterCurrentHolder = (target: object, call: Call): unknown => {
+export const resolveCurrentHolder = (target: object, call: Call): unknown => {
     if (typeof call === "string" || !call.method.startsWith("set")) return undefined;
     if (!call.args.some((arg) => typeof arg === "object" && "literal" in arg && arg.literal === null)) {
         return undefined;
@@ -123,7 +123,7 @@ export const resolveContainerProp = (
 
 const adoptCache = new Map<bigint, ContainerProp | null>();
 
-export const adoptContainerPropFor = (parentType: bigint): ContainerProp | null => {
+export const resolveAdoptContainerProp = (parentType: bigint): ContainerProp | null => {
     const cached = adoptCache.get(parentType);
     if (cached !== undefined) return cached;
     let resolved: ContainerProp | null = null;
@@ -140,7 +140,7 @@ export const adoptContainerPropFor = (parentType: bigint): ContainerProp | null 
 
 const containerPropNamesCache = new Map<string, Set<string>>();
 
-export const containerPropNamesFor = (elementName: string): Set<string> => {
+export const collectContainerPropNames = (elementName: string): Set<string> => {
     const cached = containerPropNamesCache.get(elementName);
     if (cached) return cached;
     const names = foldInheritedTableWithInterfaces(
@@ -158,7 +158,7 @@ export const containerPropNamesFor = (elementName: string): Set<string> => {
 
 const appliedCache = new Map<bigint, Map<string, AppliedProp>>();
 
-export const appliedPropsFor = (gtype: bigint): Map<string, AppliedProp> => {
+export const collectAppliedProps = (gtype: bigint): Map<string, AppliedProp> => {
     const cached = appliedCache.get(gtype);
     if (cached) return cached;
     const resolved = foldInheritedTableWithInterfaces<AppliedProp[], Map<string, AppliedProp>>(
@@ -176,15 +176,15 @@ export const appliedPropsFor = (gtype: bigint): Map<string, AppliedProp> => {
     return resolved;
 };
 
-export const isAppliedProp = (gtype: bigint, name: string): boolean => appliedPropsFor(gtype).has(name);
+export const isAppliedProp = (gtype: bigint, name: string): boolean => collectAppliedProps(gtype).has(name);
 
 const constructionSkipCache = new Map<bigint, Set<string>>();
 
-export const constructionSkipProps = (gtype: bigint): Set<string> => {
+export const collectConstructionSkipProps = (gtype: bigint): Set<string> => {
     const cached = constructionSkipCache.get(gtype);
     if (cached) return cached;
     const skipped = new Set<string>();
-    for (const prop of appliedPropsFor(gtype).values()) {
+    for (const prop of collectAppliedProps(gtype).values()) {
         if (prop.kind === "lazy") skipped.add(prop.prop);
     }
     constructionSkipCache.set(gtype, skipped);

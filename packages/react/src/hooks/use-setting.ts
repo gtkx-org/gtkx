@@ -1,23 +1,35 @@
+import assert from "node:assert";
 import * as Gio from "@gtkx/gi/gio";
-import { useCallback, useMemo } from "react";
-import { resolveAccessor } from "../utils/settings-accessor.js";
+import { useLayoutEffect, useRef } from "react";
+import {
+    resolveSettingAccessor,
+    type SettingsSchema,
+    type SettingsSchemaKeys,
+    type SettingValue,
+} from "../utils/settings-schema.js";
 import { useObjectValue } from "./use-object-value.js";
 
-/**
- * A typed reference to a GSettings schema: its id, path, and the mapping of typed keys to their setting names.
- */
-export type SchemaRef<K extends object = Record<string, unknown>> = {
-    id: string;
-    /** The schema's object path, or `null` to use the schema's default path. */
-    path: string | null;
-    /** Maps each typed key of `K` to its corresponding GSettings key name. */
-    keys: { [P in keyof K]: string };
-    /** Phantom field carrying the value type `K`; never populated at runtime. */
-    __keys__?: K;
-};
+type UseSettingsProps<K extends SettingsSchemaKeys> = Pick<SettingsSchema<K>, "id" | "path">;
 
-export const useSettingsInstance = ({ id, path }: Pick<SchemaRef, "id" | "path">): Gio.Settings =>
-    useMemo(() => (path === null ? Gio.Settings.new(id) : new Gio.Settings({ schemaId: id, path })), [id, path]);
+export const useSettings = <K extends SettingsSchemaKeys>({ id, path }: UseSettingsProps<K>): Gio.Settings => {
+    const settingsRef = useRef<Gio.Settings>(null);
+    const createSettings = () => (path ? new Gio.Settings({ schema: id, path }) : Gio.Settings.new(id));
+
+    if (settingsRef.current === null) {
+        settingsRef.current = createSettings();
+    }
+
+    useLayoutEffect(() => {
+        const settings = settingsRef.current;
+        assert(settings, "Settings instance should be initialized before useLayoutEffect");
+
+        if (path !== settings.path || id !== settings.schema) {
+            settingsRef.current = createSettings();
+        }
+    }, [id, path]);
+
+    return settingsRef.current;
+};
 
 /**
  * Reads and writes a single key of a GSettings schema, re-rendering when the stored value changes.
@@ -26,21 +38,12 @@ export const useSettingsInstance = ({ id, path }: Pick<SchemaRef, "id" | "path">
  * @param key The key within the schema to read and write.
  * @returns A tuple of the current value and a setter that persists a new value.
  */
-export function useSetting<K extends object, P extends keyof K & string>(
-    schema: SchemaRef<K>,
-    key: P,
-): [K[P], (value: K[P]) => void] {
-    const accessor = resolveAccessor(schema.keys[key], key, schema.id);
-    const settings = useSettingsInstance(schema);
-
-    const value = useObjectValue(settings, `changed::${key}`, () => accessor.read(settings, key));
-
-    const set = useCallback(
-        (newValue: unknown) => {
-            accessor.write(settings, key, newValue);
-        },
-        [accessor, settings, key],
-    );
-
-    return [value, set] as [K[P], (value: K[P]) => void];
+export function useSetting<K extends SettingsSchemaKeys, P extends keyof K>(
+    schema: SettingsSchema<K>,
+    key: P & string,
+): [SettingValue<K, P>, (value: SettingValue<K, P>) => void] {
+    const settings = useSettings({ id: schema.id, path: schema.path });
+    const accessor = resolveSettingAccessor(settings, schema, key);
+    const value = useObjectValue(settings, `changed::${key}`, () => accessor.get());
+    return [value, accessor.set];
 }

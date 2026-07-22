@@ -1,4 +1,4 @@
-import { sourceStringLiteral, toCamelCase } from "@gtkx/utils";
+import { camelCase, sourceStringLiteral } from "@gtkx/utils";
 import {
     omitsPrimaryReturn,
     renderCallbackType,
@@ -20,7 +20,7 @@ import type { ModuleContext } from "../../writer/context.js";
 import { itemComparatorArgDescriptors, itemComparatorTsType } from "./item-comparators.js";
 import { isCollectibleCallerOut, isHandlePassing, passesHandleInPlace } from "./param-marshal.js";
 
-export const methodExportName = (fn: GirFunction): string => toCamelCase(fn.name);
+export const methodExportName = (fn: GirFunction): string => camelCase(fn.name);
 
 const arrayLengthArgument = (source: GirParameter, sourceIndex: number): string => {
     const identifier = parameterIdentifier(source, sourceIndex);

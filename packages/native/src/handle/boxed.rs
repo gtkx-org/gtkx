@@ -1,5 +1,4 @@
 use std::ffi::c_void;
-use std::rc::Rc;
 
 use anyhow::bail;
 use glib::translate::IntoGlib as _;
@@ -10,13 +9,7 @@ pub type BoxedFreeFn = unsafe extern "C" fn(*mut c_void);
 pub struct Boxed {
     ptr: *mut c_void,
     type_: Option<glib::Type>,
-    allocation: Option<Rc<OwnedAllocation>>,
-}
-
-#[derive(Debug)]
-struct OwnedAllocation {
-    ptr: *mut c_void,
-    destructor: BoxedDestructor,
+    destructor: Option<BoxedDestructor>,
 }
 
 #[derive(Debug, Clone)]
@@ -27,13 +20,16 @@ enum BoxedDestructor {
     Custom(BoxedFreeFn),
 }
 
-impl Drop for OwnedAllocation {
+impl Drop for Boxed {
     fn drop(&mut self) {
         if self.ptr.is_null() {
             return;
         }
+        let Some(destructor) = &self.destructor else {
+            return;
+        };
         unsafe {
-            match &self.destructor {
+            match destructor {
                 BoxedDestructor::BoxedFree(type_) => {
                     glib::gobject_ffi::g_boxed_free(type_.into_glib(), self.ptr);
                 }
@@ -57,7 +53,7 @@ impl Boxed {
         Self {
             ptr,
             type_,
-            allocation: Some(Rc::new(OwnedAllocation { ptr, destructor })),
+            destructor: Some(destructor),
         }
     }
 
@@ -65,7 +61,7 @@ impl Boxed {
         Self {
             ptr,
             type_,
-            allocation: None,
+            destructor: None,
         }
     }
 
@@ -133,29 +129,10 @@ impl Boxed {
 
     #[inline]
     pub fn is_owned(&self) -> bool {
-        self.allocation.is_some()
+        self.destructor.is_some()
     }
 
     pub fn type_(&self) -> Option<glib::Type> {
         self.type_
-    }
-}
-
-impl Clone for Boxed {
-    fn clone(&self) -> Self {
-        if self.ptr.is_null() || self.allocation.is_none() {
-            return Self::borrowed(self.ptr, self.type_);
-        }
-
-        if let Some(type_) = self.type_ {
-            let cloned_ptr = unsafe { Self::boxed_copy(type_, self.ptr) };
-            return Self::owned(cloned_ptr, self.type_, BoxedDestructor::BoxedFree(type_));
-        }
-
-        Self {
-            ptr: self.ptr,
-            type_: self.type_,
-            allocation: self.allocation.clone(),
-        }
     }
 }

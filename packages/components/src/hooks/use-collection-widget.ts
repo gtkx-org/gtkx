@@ -5,11 +5,11 @@ import type { ItemNode, SectionNode } from "../types.js";
 import { type CollectionModelResult, useCollectionModel } from "./use-collection-model.js";
 import { useInstalledModel } from "./use-installed-model.js";
 
-type CollectionWidget = Gtk.Widget & {
+export type CollectionWidget = Gtk.Widget & {
     setModel(model: Gtk.SelectionModel | null): void;
 };
 
-type CollectionWidgetInput<W extends CollectionWidget, T, S> = {
+export type CollectionWidgetInput<W extends CollectionWidget, T, S> = {
     ref?: Ref<W | null> | undefined;
     items?: ItemNode<T>[] | undefined;
     sections?: SectionNode<S, T>[] | undefined;
@@ -21,7 +21,7 @@ type CollectionWidgetInput<W extends CollectionWidget, T, S> = {
     renderHeader?: ((info: { section: S }) => ReactNode) | null | undefined;
 };
 
-type CollectionWidgetResult<W extends CollectionWidget, T, S> = {
+export type CollectionWidgetResult<W extends CollectionWidget, T, S> = {
     widgetRef: RefObject<W | null>;
     setRef: RefCallback<W>;
     collection: CollectionModelResult<T, S>;

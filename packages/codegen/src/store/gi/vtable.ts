@@ -1,4 +1,4 @@
-import { sourceStringLiteral, toCamelIdentifier, toPascalCase } from "@gtkx/utils";
+import { pascalCase, sourceStringLiteral, toCamelIdentifier } from "@gtkx/utils";
 import {
     isInlineCallbackRef,
     isScalarRef,
@@ -16,7 +16,7 @@ type VtableKind = "class" | "interface";
 
 export const renderVfuncMetadata = (context: ModuleContext, klass: GirClass): string | undefined => {
     if (klass.glibTypeStruct === undefined) return undefined;
-    const structName = toPascalCase(klass.glibTypeStruct);
+    const structName = pascalCase(klass.glibTypeStruct);
     const kind: VtableKind = klass.isInterface ? "interface" : "class";
     const entries = vtableEntries(context, structName, kind, klass.glibTypeStruct);
     if (entries.length === 0) return undefined;

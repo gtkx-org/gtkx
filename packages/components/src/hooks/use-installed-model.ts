@@ -1,6 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { useObjectAttachment } from "@gtkx/react/internal";
-import { type RefObject, useRef } from "react";
+import { type RefObject, useLayoutEffect, useRef } from "react";
 
 export const useInstalledModel = <W extends Gtk.Widget, M>(
     object: RefObject<W | null>,
@@ -9,12 +8,10 @@ export const useInstalledModel = <W extends Gtk.Widget, M>(
 ): void => {
     const installRef = useRef(install);
     installRef.current = install;
-    useObjectAttachment<W, { widget: W; model: M }>(object, {
-        attach: (widget) => {
-            installRef.current(widget, model);
-            return { widget, model };
-        },
-        detach: () => {},
-        isSame: (attachment, widget) => attachment.widget === widget && attachment.model === model,
-    });
+
+    useLayoutEffect(() => {
+        const widget = object.current;
+        if (widget === null) return;
+        installRef.current(widget, model);
+    }, [object, model]);
 };

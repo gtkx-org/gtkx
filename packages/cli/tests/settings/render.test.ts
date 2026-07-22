@@ -87,21 +87,21 @@ describe("renderEnvModule (typing)", () => {
         expect(env).toContain("export default com_example_app;");
     });
 
-    it("maps scalar GVariant types to native TypeScript types and tuples to GLib.Variant", () => {
+    it("emits the runtime dispatch code for each key, including variant tuples", () => {
         const env = renderEnvModule([parse(FIXED_SCHEMA, "com.example.app.gschema.xml")]);
 
-        expect(env).toContain(`"enabled": boolean;`);
-        expect(env).toContain(`"size": import("@gtkx/gi/glib").Variant;`);
+        expect(env).toContain(`"enabled": "b";`);
+        expect(env).toContain(`"size": "(ii)";`);
     });
 
-    it("narrows enum, flags, and choice keys to unions and emits summaries as JSDoc", () => {
+    it("emits enum, flags, and choice keys as their dispatch codes and summaries as JSDoc", () => {
         const env = renderEnvModule([parse(ENUM_SCHEMA, "com.example.app.gschema.xml")]);
 
-        expect(env).toContain(`"mode": "auto" | "manual";`);
-        expect(env).toContain(`"sides": ("left" | "right")[];`);
-        expect(env).toContain(`"style": "light" | "dark";`);
+        expect(env).toContain(`"mode": "enum";`);
+        expect(env).toContain(`"sides": "flags";`);
+        expect(env).toContain(`"style": "s";`);
         expect(env).toContain("/** Ratio */");
-        expect(env).toContain(`"ratio": number;`);
+        expect(env).toContain(`"ratio": "d";`);
     });
 
     it("declares an at(path) binder for relocatable schemas", () => {

@@ -1,9 +1,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::mem::ManuallyDrop;
-use std::rc::Rc;
 
-use libffi::middle::Cif;
 use libloading::os::unix::{Library, RTLD_GLOBAL, RTLD_NOW};
 
 use crate::handle::{RefFn, UnrefFn};
@@ -208,7 +206,6 @@ impl FundamentalFnCache {
 pub struct FfiCache {
     pub libs: LibraryCache,
     pub fundamental_fns: FundamentalFnCache,
-    cifs: HashMap<u64, Rc<Cif>>,
 }
 
 impl Default for FfiCache {
@@ -216,7 +213,6 @@ impl Default for FfiCache {
         Self {
             libs: LibraryCache::new(),
             fundamental_fns: FundamentalFnCache::new(),
-            cifs: HashMap::new(),
         }
     }
 }
@@ -274,14 +270,5 @@ impl FfiCache {
 
     pub fn library(&mut self, library_name: &str) -> anyhow::Result<&Library> {
         self.libs.get_or_load(library_name)
-    }
-
-    pub fn cached_cif(&mut self, id: u64, build: impl FnOnce() -> Cif) -> Rc<Cif> {
-        if let Some(cif) = self.cifs.get(&id) {
-            return Rc::clone(cif);
-        }
-        let cif = Rc::new(build());
-        self.cifs.insert(id, Rc::clone(&cif));
-        cif
     }
 }

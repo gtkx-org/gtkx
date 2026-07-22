@@ -1,4 +1,4 @@
-import { toPascalCase } from "@gtkx/utils";
+import { pascalCase } from "@gtkx/utils";
 import { reservedSignalMemberRename, resolvePrerequisiteReference } from "../../analysis/inheritance.js";
 import type { GirClass } from "../../gir/class.js";
 import type { GirFunction } from "../../gir/function.js";
@@ -28,7 +28,7 @@ import { renderVfuncMetadata } from "./vtable.js";
 export const generateInterface = (context: ModuleContext, iface: GirClass): void => {
     if (!iface.introspectable) return;
     if (iface.name.length === 0) return;
-    const className = toPascalCase(iface.name);
+    const className = pascalCase(iface.name);
     const callables: Callables = {
         constructors: dedupeCallables(iface.constructors),
         functions: dedupeCallables(iface.functions),
@@ -92,7 +92,7 @@ const renderInterfaceMembers = (
     callables: Callables,
     renderers: InterfaceMemberRenderers,
 ): string[] => {
-    const className = toPascalCase(iface.name);
+    const className = pascalCase(iface.name);
     const members: string[] = [];
     const claimedNames = new Set<string>();
     const methodByName = indexMethodsByName(callables.methods);

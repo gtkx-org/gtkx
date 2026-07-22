@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { XMLParser } from "fast-xml-parser";
+import { createXmlParser } from "../xml.js";
 
 export type RawNode = {
     [attributeOrChild: string]: unknown;
@@ -36,11 +36,7 @@ const renameReservedTag = (tag: string): string => RESERVED_TAG_RENAMES.get(tag)
 
 const RENAMED_MULTI_TAGS: Set<string> = new Set([...MULTI_TAGS].map(renameReservedTag));
 
-const PARSER = new XMLParser({
-    ignoreAttributes: false,
-    attributeNamePrefix: "@_",
-    parseAttributeValue: false,
-    parseTagValue: false,
+const PARSER = createXmlParser({
     trimValues: true,
     transformTagName: renameReservedTag,
     isArray: (name) => RENAMED_MULTI_TAGS.has(name),

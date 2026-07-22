@@ -1,7 +1,8 @@
 import * as GObject from "@gtkx/gi/gobject";
 import { containerMapping } from "./container-attach.js";
+import { lazyElementMapping } from "./lazy-element.js";
 import { type ElementHandler, type ElementMapping, type Node, stateOf } from "./state.js";
-import { containerChildMapping, containerPropMapping, lazyElementMapping, objectPropMapping } from "./wrapper-apply.js";
+import { containerChildMapping, containerPropMapping, objectPropMapping } from "./wrapper-attach.js";
 import { isWrapperNode } from "./wrapper-node.js";
 
 const ELEMENT_MAP: ElementMapping[] = [
@@ -33,7 +34,7 @@ export const resyncWrapperNode = (node: Node): void => {
     if (isWrapperNode(node) && parent) attachToParent(node, parent);
 };
 
-const anchorWrapper = (before: Node): GObject.Object | null => {
+const resolveAnchor = (before: Node): GObject.Object | null => {
     if (before instanceof GObject.Object) return before;
     for (const grandchild of stateOf(before).children) {
         if (grandchild instanceof GObject.Object) return grandchild;
@@ -47,7 +48,7 @@ export const attachNode = (parent: Node, child: Node, before: Node | null, fresh
     } else if (isWrapperNode(child)) {
         attachToParent(child, parent);
     } else if (!isWrapperNode(parent)) {
-        attachToParent(child, parent, anchorWrapper(before));
+        attachToParent(child, parent, resolveAnchor(before));
     }
     if (isWrapperNode(parent)) resyncWrapperNode(parent);
 };

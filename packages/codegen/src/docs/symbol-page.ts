@@ -1,4 +1,4 @@
-import { sortStringsBy, toPascalCase } from "@gtkx/utils";
+import { pascalCase, sortStringsBy } from "@gtkx/utils";
 import { reservedSignalMemberRename } from "../analysis/inheritance.js";
 import { renderTsType } from "../analysis/ts-type.js";
 import { ancestorChain } from "../gir/ancestry.js";
@@ -90,7 +90,7 @@ const pageHeader = (entry: GiSymbolEntry, kindLabel: string): string[] => [
 ];
 
 const qualifiedClassName = (namespaceName: string, className: string): string =>
-    `${namespaceName}.${toPascalCase(className)}`;
+    `${namespaceName}.${pascalCase(className)}`;
 
 const elementNote = (entry: GiSymbolBase & { klass: GirClass }, options: SymbolPageOptions): string[] => {
     const glibName = options.elementNameFor(entry.namespace.name, entry.klass.name);
@@ -175,7 +175,7 @@ const memberOwners = (entry: GiSymbolBase & { klass: GirClass }, library: Librar
 
 const interfaceMethodNames = (library: Library, owner: MemberOwner): string[] => {
     const context = docsSignatureContext(owner.namespace, library);
-    const className = toPascalCase(owner.klass.name);
+    const className = pascalCase(owner.klass.name);
     const methods = dedupeCallables(owner.klass.methods);
     const methodByName = indexMethodsByName(methods);
     const names: string[] = [];

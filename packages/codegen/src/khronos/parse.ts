@@ -1,16 +1,12 @@
 import { readFileSync } from "node:fs";
-import { XMLParser } from "fast-xml-parser";
+import { createXmlParser } from "../xml.js";
 
 export type OrderedNode = { [key: string]: unknown };
 
 const ATTRIBUTES_KEY = ":@";
 const TEXT_KEY = "#text";
 
-const PARSER = new XMLParser({
-    ignoreAttributes: false,
-    attributeNamePrefix: "@_",
-    parseAttributeValue: false,
-    parseTagValue: false,
+const PARSER = createXmlParser({
     trimValues: false,
     preserveOrder: true,
 });

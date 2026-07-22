@@ -3,7 +3,7 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import { useSignal } from "@gtkx/react";
 import { isSameArray } from "@gtkx/utils";
 import { useLayoutEffect, useRef } from "react";
-import { type RowValue, rowIdOf } from "../utils/item-resolver.js";
+import { type RowValue, rowIdOf, treeRows } from "../utils/item-resolver.js";
 
 type ExpansionModelOptions<T> = {
     treeModel: Gtk.TreeListModel | null;
@@ -14,10 +14,8 @@ type ExpansionModelOptions<T> = {
 
 const readExpandedIds = <T>(model: Gtk.TreeListModel, rowValues: WeakMap<GObject.Object, RowValue<T>>): string[] => {
     const ids: string[] = [];
-    const count = model.getNItems();
-    for (let position = 0; position < count; position++) {
-        const row = model.getRow(position);
-        if (row?.getExpanded()) {
+    for (const [, row] of treeRows(model)) {
+        if (row.getExpanded()) {
             const id = rowIdOf(rowValues, row);
             if (id !== undefined) ids.push(id);
         }
@@ -34,10 +32,8 @@ const applyExpanded = <T>(
     let changed = true;
     while (changed) {
         changed = false;
-        const count = model.getNItems();
-        for (let position = 0; position < count; position++) {
-            const row = model.getRow(position);
-            if (row === null || !row.isExpandable()) continue;
+        for (const [, row] of treeRows(model)) {
+            if (!row.isExpandable()) continue;
             const id = rowIdOf(rowValues, row);
             if (id === undefined) continue;
             const desired = target.has(id);

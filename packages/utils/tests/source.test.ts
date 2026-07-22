@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sanitizeIdentifier, sourceStringLiteral, toCamelIdentifier } from "../src/source.js";
+import { sanitizeIdentifier, sourceStringLiteral, toCamelIdentifier } from "../src/source/index.js";
 
 const LINE_SEPARATOR = String.fromCharCode(0x2028);
 const PARAGRAPH_SEPARATOR = String.fromCharCode(0x2029);

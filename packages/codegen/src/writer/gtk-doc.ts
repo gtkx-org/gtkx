@@ -1,4 +1,4 @@
-import { toCamelCase } from "@gtkx/utils";
+import { camelCase } from "@gtkx/utils";
 
 const CONSTANT_MAP: Record<string, string> = { TRUE: "true", FALSE: "false", NULL: "null" };
 
@@ -21,7 +21,7 @@ const renderLink = (kind: string, target: string): string => {
     const segments = target.split(/::|[.:]/);
     const lastIndex = segments.length - 1;
     if (CALLABLE_LINK_KINDS.has(kind) || kind === "property") {
-        segments[lastIndex] = toCamelCase(segments[lastIndex] ?? "");
+        segments[lastIndex] = camelCase(segments[lastIndex] ?? "");
     }
     const symbol = segments.join(".");
     return `\`${symbol}${CALLABLE_LINK_KINDS.has(kind) ? "()" : ""}\``;

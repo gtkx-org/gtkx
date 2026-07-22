@@ -1,7 +1,7 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { type ObjectProp, useObjectAttachment } from "@gtkx/react/internal";
-import { useRef } from "react";
+import { type RefProp, resolveRefProp } from "@gtkx/react/internal";
+import { useLayoutEffect, useRef } from "react";
 import { CellContainerStore } from "../utils/cell-container-store.js";
 
 type ChildContainer = {
@@ -32,7 +32,7 @@ export const makeFactoryInstaller = <W extends GObject.Object>(
 });
 
 type CellContainersOptions<W extends GObject.Object> = {
-    object: ObjectProp<W>;
+    object: RefProp<W>;
     installer: FactoryInstaller<W>;
     estimatedHeight?: number | undefined;
     estimatedWidth?: number | undefined;
@@ -80,14 +80,12 @@ export const useCellContainers = <W extends GObject.Object>(options: CellContain
     }
     const factory = factoryRef.current;
 
-    useObjectAttachment<W, { widget: W }>(object, {
-        attach: (widget) => {
-            installerRef.current.install(widget, factory);
-            return { widget };
-        },
-        detach: (attachment) => installerRef.current.uninstall(attachment.widget),
-        isSame: (attachment, widget) => attachment.widget === widget,
-    });
+    useLayoutEffect(() => {
+        const widget = resolveRefProp(object);
+        if (widget === null) return;
+        installerRef.current.install(widget, factory);
+        return () => installerRef.current.uninstall(widget);
+    }, [object, factory]);
 
     return store;
 };

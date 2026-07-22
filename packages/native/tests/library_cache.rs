@@ -3,7 +3,7 @@ use test_support as helpers;
 use native::ffi::library_cache::FfiCache;
 
 #[test]
-fn thread_state_default_initializes_correctly() {
+fn ffi_cache_default_is_empty() {
     helpers::run(|| {
         FfiCache::with(|state| {
             assert!(state.libs.is_empty());

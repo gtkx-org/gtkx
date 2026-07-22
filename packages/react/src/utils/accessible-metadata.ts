@@ -1,16 +1,12 @@
 import type * as Gtk from "@gtkx/gi/gtk";
+import { getOrInsert } from "@gtkx/utils";
 
 type AccessibleMetadata = Map<string, unknown>;
 
 const accessibleMetadata = new WeakMap<Gtk.Accessible, AccessibleMetadata>();
 
 export const setAccessibleMetadata = (accessible: Gtk.Accessible, propName: string, value: unknown): void => {
-    let entry = accessibleMetadata.get(accessible);
-    if (!entry) {
-        entry = new Map();
-        accessibleMetadata.set(accessible, entry);
-    }
-    entry.set(propName, value);
+    getOrInsert(accessibleMetadata, accessible, () => new Map<string, unknown>()).set(propName, value);
 };
 
 export const deleteAccessibleMetadata = (accessible: Gtk.Accessible, propName: string): void => {

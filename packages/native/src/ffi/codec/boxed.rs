@@ -3,7 +3,7 @@ use glib::{self, translate::IntoGlib as _};
 use super::prelude::*;
 use crate::ffi::library_cache::FfiCache;
 use crate::handle::{Boxed, BoxedFreeFn};
-use crate::messaging::error_reporter::ReportErr as _;
+use crate::host::error_reporter::ReportErr as _;
 
 #[derive(Debug, Clone)]
 pub struct BoxedCodec {

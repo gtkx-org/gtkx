@@ -34,6 +34,6 @@ export const renderPropertyDeclarations = (
     const map = `${className}${PROPERTIES_SUFFIX}`;
     return [
         renderBracedOrEmpty(`export interface ${map}${extendsClause}`, entries.join("\n")),
-        renderBracedOrEmpty(`export interface ${className}`, `__properties__?: ${map};`),
+        renderBracedOrEmpty(`export interface ${className}`, `__properties__: ${map};`),
     ];
 };

@@ -1,8 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwClamp, AdwEntryRow, AdwStatusPage } from "@gtkx/jsx/adw";
 import { GtkBox, GtkListBox, GtkScrolledWindow, GtkSearchBar, GtkSearchEntry } from "@gtkx/jsx/gtk";
-import { useSetting } from "@gtkx/react";
-import schema from "#data/com.gtkx.tutorial.gschema.xml";
+import { useSortOrder } from "../hooks/use-sort-order.js";
 import { useStore } from "../store/index.js";
 import { addListId, emptyState, visibleTasks } from "../store/selectors.js";
 import { TaskRow } from "./task-row.js";
@@ -17,7 +16,7 @@ export const TaskList = () => {
     const setSearchMode = useStore((state) => state.setSearchMode);
     const setSearchQuery = useStore((state) => state.setSearchQuery);
     const addTask = useStore((state) => state.addTask);
-    const [sortOrder] = useSetting(schema, "sort-order");
+    const [sortOrder] = useSortOrder();
 
     const visible = visibleTasks(tasks, selection, { query: searchQuery, filter, sortOrder });
     const empty = emptyState(selection, searchQuery);

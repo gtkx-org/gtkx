@@ -661,13 +661,11 @@ fn encode_native_handle_value_null_and_wrong_type() {
         let env = helpers::fake_env();
         let encoder = HashTableEntryCodec::Handle(Box::new(struct_codec()));
         let handle = boxed_handle();
+        let handle_ptr = handle.as_ptr();
         let ptr = encoder
-            .encode(
-                &env,
-                napi_mock::to_unknown(&env, object_raw(&env, handle.clone())),
-            )
+            .encode(&env, napi_mock::to_unknown(&env, object_raw(&env, handle)))
             .unwrap();
-        assert_eq!(ptr, handle.as_ptr());
+        assert_eq!(ptr, handle_ptr);
 
         assert!(
             encoder

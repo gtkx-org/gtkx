@@ -1,6 +1,4 @@
 use std::ffi::c_void;
-use std::sync::{Mutex, MutexGuard, PoisonError};
-use std::thread;
 
 use gtk4::gdk;
 use gtk4::glib::{self, translate::IntoGlib as _};
@@ -16,7 +14,7 @@ use native::ffi::codec::{
 };
 use native::ffi::library_cache::FfiCache;
 use native::handle::Boxed;
-use native::messaging::node_env;
+use native::host::node_env;
 
 use napi::Env;
 use napi::JsValue as _;
@@ -57,12 +55,6 @@ pub mod uv_mock;
 
 pub use napi_mock::fake_env;
 
-static SERIAL: Mutex<()> = Mutex::new(());
-
-pub fn serial_guard() -> MutexGuard<'static, ()> {
-    SERIAL.lock().unwrap_or_else(PoisonError::into_inner)
-}
-
 pub fn register_common_boxed_types() {
     let _ = gdk::RGBA::static_type();
     let _ = glib::Bytes::static_type();
@@ -72,7 +64,6 @@ pub fn run<F, R>(f: F) -> R
 where
     F: FnOnce() -> R,
 {
-    let _guard = serial_guard();
     register_common_boxed_types();
     FfiCache::with(|state| *state = FfiCache::default());
     napi_mock::install_napi_mock();
@@ -179,9 +170,7 @@ pub fn pump_default_context_until(done: impl Fn() -> bool) {
         if done() {
             return;
         }
-        if !context.iteration(false) {
-            thread::yield_now();
-        }
+        context.iteration(false);
     }
 }
 

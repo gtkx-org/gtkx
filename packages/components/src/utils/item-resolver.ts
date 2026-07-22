@@ -42,6 +42,14 @@ export const rowIdOf = <T>(
     return item === null ? undefined : rowValues.get(item)?.id;
 };
 
+export function* treeRows(model: Gtk.TreeListModel): IterableIterator<[number, Gtk.TreeListRow]> {
+    const count = model.getNItems();
+    for (let position = 0; position < count; position++) {
+        const row = model.getRow(position);
+        if (row !== null) yield [position, row];
+    }
+}
+
 export const createItemResolver = <T, S>(
     items: ItemNode<T>[] | undefined,
     flattenTreeChildren: boolean,
@@ -127,10 +135,8 @@ export const createTreeResolver = <T, S>(
             return row === null ? undefined : rowIdOf(rowValues, row);
         },
         positionOfId: (id: string): number => {
-            const count = model.getNItems();
-            for (let position = 0; position < count; position++) {
-                const row = model.getRow(position);
-                if (row !== null && rowIdOf(rowValues, row) === id) return position;
+            for (const [position, row] of treeRows(model)) {
+                if (rowIdOf(rowValues, row) === id) return position;
             }
             return -1;
         },

@@ -8,7 +8,7 @@ type FiberRoot = ReturnType<typeof reconciler.createContainer>;
 
 type ReconcilerErrorCallback = (error: Error, info: { componentStack?: string | null }) => void;
 
-export type ReconcilerRootOptions = {
+type ReconcilerRootOptions = {
     containerInfo: Container;
     onUncaughtError: ReconcilerErrorCallback;
     onCaughtError: ReconcilerErrorCallback;

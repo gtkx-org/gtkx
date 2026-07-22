@@ -86,3 +86,25 @@ export const renderTsType = (context: ModuleContext, ref: TypeId | undefined, is
     const base = renderBaseTypeFor(context.library, moduleTarget(context), ref);
     return isNullable ? `${base} | null` : base;
 };
+
+export const recordTypeTarget = (
+    library: Library,
+    renderNamedRef: (name: ReferenceName) => string,
+    renderGtype: () => string,
+): TsTypeTarget => {
+    const target: TsTypeTarget = {
+        containerStyle: "record",
+        callbackType: "((...args: unknown[]) => unknown)",
+        byteArrayAsNumber: false,
+        renderNamed: (resolved, name) => {
+            if (resolved?.kind === "alias") {
+                return resolved.value.target === undefined
+                    ? "number"
+                    : renderBaseTypeFor(library, target, resolved.value.target);
+            }
+            return renderNamedRef(name);
+        },
+        renderGtype,
+    };
+    return target;
+};

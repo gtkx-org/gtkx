@@ -1,4 +1,4 @@
-import { sourceStringLiteral, toCamelCase } from "@gtkx/utils";
+import { camelCase, sourceStringLiteral } from "@gtkx/utils";
 import { tCallback, tObject, tVoid } from "../../analysis/descriptor.js";
 import {
     isCellInout,
@@ -260,7 +260,7 @@ const collectClassSignals = (context: ModuleContext, klass: GirClass): GirSignal
     const seen = new Set<string>();
     const result: GirSignal[] = [];
     const consider = (signal: GirSignal): void => {
-        const name = toCamelCase(signal.name);
+        const name = camelCase(signal.name);
         if (inheritedNames.has(name) || seen.has(name)) return;
         seen.add(name);
         result.push(signal);
@@ -283,9 +283,9 @@ const collectInheritedMemberNames = (
 ): Set<string> => {
     const names = new Set<string>();
     forEachAncestor(context, klass, (ancestor, interfaces) => {
-        for (const member of select(ancestor.klass)) names.add(toCamelCase(member.name));
+        for (const member of select(ancestor.klass)) names.add(camelCase(member.name));
         for (const iface of interfaces) {
-            for (const member of select(iface.klass)) names.add(toCamelCase(member.name));
+            for (const member of select(iface.klass)) names.add(camelCase(member.name));
         }
     });
     return names;
@@ -299,7 +299,7 @@ const collectNotifyDetails = (context: ModuleContext, klass: GirClass): string[]
     const seen = new Set<string>();
     const result: string[] = [];
     const consider = (property: GirProperty): void => {
-        const name = toCamelCase(property.name);
+        const name = camelCase(property.name);
         if (inherited.has(name) || seen.has(name)) return;
         seen.add(name);
         result.push(property.name);

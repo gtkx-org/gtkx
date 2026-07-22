@@ -1,4 +1,4 @@
-import { sourceStringLiteral, toCamelCase, toCamelIdentifier } from "@gtkx/utils";
+import { camelCase, sourceStringLiteral, toCamelIdentifier } from "@gtkx/utils";
 import { renderDescriptor } from "../../analysis/descriptor-render.js";
 import { inputParameters } from "../../analysis/param-structure.js";
 import { renderTsType } from "../../analysis/ts-type.js";
@@ -187,7 +187,7 @@ const delegateMember = (
     claimedNames: Set<string>,
 ): string | undefined => {
     if (attribute === undefined) return undefined;
-    const member = toCamelCase(attribute);
+    const member = camelCase(attribute);
     if (member === accessorName) return undefined;
     if (!claimedNames.has(member)) return undefined;
     return member;

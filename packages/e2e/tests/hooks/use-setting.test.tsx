@@ -1,6 +1,6 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
-import { type SchemaRef, useSetting } from "@gtkx/react";
+import { type SettingsSchema, useSetting } from "@gtkx/react";
 import { act, renderHook, waitFor } from "@gtkx/testing";
 import { describe, expect, expectTypeOf, it } from "vitest";
 
@@ -8,18 +8,18 @@ const SCHEMA_ID = "com.gtkx.test.useSetting";
 const PROFILE_SCHEMA_ID = "com.gtkx.test.useSetting.profile";
 
 type TestSchemaKeys = {
-    enabled: boolean;
-    count: number;
-    label: string;
-    tags: string[];
-    ratio: number;
-    "wrap-mode": "none" | "word" | "char";
-    theme: "default" | "light" | "dark";
-    retries: number;
-    "window-size": GLib.Variant;
+    enabled: "b";
+    count: "i";
+    label: "s";
+    tags: "as";
+    ratio: "d";
+    "wrap-mode": "enum";
+    theme: "s";
+    retries: "u";
+    "window-size": "(ii)";
 };
 
-const TYPED_SCHEMA: SchemaRef<TestSchemaKeys> = {
+const TYPED_SCHEMA: SettingsSchema<TestSchemaKeys> = {
     id: SCHEMA_ID,
     path: null,
     keys: {
@@ -35,7 +35,7 @@ const TYPED_SCHEMA: SchemaRef<TestSchemaKeys> = {
     },
 };
 
-const profileAt = (path: string): SchemaRef<{ title: string }> => ({
+const profileAt = (path: string): SettingsSchema<{ title: "s" }> => ({
     id: PROFILE_SCHEMA_ID,
     path,
     keys: { title: "s" },
@@ -182,25 +182,25 @@ describe("useSetting (typed refs: scalars)", () => {
 });
 
 describe("useSetting (typed refs: enums and choices)", () => {
-    it("narrows enum keys to a union of nicks and round-trips them as strings", async () => {
+    it("reads and writes enum keys as their integer value", async () => {
         resetKey("wrap-mode", () => {});
         const { result } = await renderHook(() => useSetting(TYPED_SCHEMA, "wrap-mode"));
 
-        expectTypeOf(result.current[0]).toEqualTypeOf<"none" | "word" | "char">();
-        expect(result.current[0]).toBe("none");
+        expectTypeOf(result.current[0]).toEqualTypeOf<number>();
+        expect(result.current[0]).toBe(0);
 
-        await act(() => result.current[1]("word"));
+        await act(() => result.current[1](1));
 
         await waitFor(() => {
-            expect(result.current[0]).toBe("word");
+            expect(result.current[0]).toBe(1);
         });
     });
 
-    it("narrows string keys with choices to a union of the choice values", async () => {
+    it("reads and writes string keys with choices", async () => {
         resetKey("theme", () => {});
         const { result } = await renderHook(() => useSetting(TYPED_SCHEMA, "theme"));
 
-        expectTypeOf(result.current[0]).toEqualTypeOf<"default" | "light" | "dark">();
+        expectTypeOf(result.current[0]).toEqualTypeOf<string>();
         expect(result.current[0]).toBe("default");
 
         await act(() => result.current[1]("dark"));
@@ -249,11 +249,8 @@ describe("useSetting (typed refs: relocatable paths)", () => {
 });
 
 describe("useSetting (typed refs: unknown keys)", () => {
-    it("rejects keys the schema does not declare", async () => {
-        const loose: SchemaRef = { id: SCHEMA_ID, path: null, keys: { enabled: "b" } };
-
-        await expect(renderHook(() => useSetting(loose, "missing"))).rejects.toThrow(
-            'Key "missing" is not declared by the GSettings schema "com.gtkx.test.useSetting"',
-        );
+    it("rejects keys the schema does not declare at the type level", () => {
+        // @ts-expect-error "missing" is not a declared key of TYPED_SCHEMA
+        void (() => useSetting(TYPED_SCHEMA, "missing"));
     });
 });
