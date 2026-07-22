@@ -16,15 +16,15 @@ use native::ffi::codec::{
     BoxedCodec, Codec, FloatCodec, FundamentalCodec, IntegerCodec, Ownership, RefCodec,
     StringCodec, StructCodec, VoidCodec,
 };
-use native::ffi::value::JsHandle;
 use native::ffi::{
     ListData, ListNode, ListOps, ListPayload, ReleaseKind, Stash, StashData, StashStorage,
 };
 use native::handle::Handle;
+use native::value::ClosureHandle;
 
-fn js_fn_handle(env: &Env, value: sys::napi_value) -> JsHandle {
-    JsHandle::from_js_value(env, &napi_mock::to_unknown(env, value))
-        .expect("creating a JsHandle for the callback should succeed")
+fn js_fn_handle(env: &Env, value: sys::napi_value) -> ClosureHandle {
+    ClosureHandle::from_js_value(env, &napi_mock::to_unknown(env, value))
+        .expect("creating a ClosureHandle for the callback should succeed")
 }
 
 fn borrowed_string_codec() -> Codec {

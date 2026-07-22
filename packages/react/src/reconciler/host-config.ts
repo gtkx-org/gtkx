@@ -20,7 +20,7 @@ import { scheduleTextBufferSync } from "./text-buffer-content-manager.js";
 import { isBufferContentNode, isLabelTextNode } from "./text-node-predicates.js";
 import type { Container, Props } from "./types.js";
 import { hideNode, reassertHidden, setTextNodeHidden, unhideNode } from "./visibility.js";
-import { BUFFER_TEXT_KIND, isWrapperKind, LABEL_TEXT_KIND, WRAPPER_NODE_ELEMENT } from "./wrapper-kinds.js";
+import { isWrapperKind, TEXT_KIND, WRAPPER_NODE_ELEMENT } from "./wrapper-kinds.js";
 import { isWrapperNode } from "./wrapper-node.js";
 
 const FIXED_UPDATE_PRIORITY = DiscreteEventPriority;
@@ -50,25 +50,17 @@ type HostConfig = ReactReconciler.HostConfig<
 
 export type ReconcilerInstance = ReactReconciler.Reconciler<Container, Node, Node, never, never, PublicInstance>;
 
-const link = (parent: Node, child: Node): void => {
+const link = (parent: Node, child: Node, before?: Node): void => {
     const { children } = stateOf(parent);
     remove(children, child);
-    children.push(child);
-    stateOf(child).parent = parent;
-};
-
-const linkBefore = (parent: Node, child: Node, before: Node): void => {
-    const { children } = stateOf(parent);
-    remove(children, child);
-    const beforeIndex = children.indexOf(before);
-    if (beforeIndex === -1) children.push(child);
-    else children.splice(beforeIndex, 0, child);
+    const index = before === undefined ? -1 : children.indexOf(before);
+    if (index === -1) children.push(child);
+    else children.splice(index, 0, child);
     stateOf(child).parent = parent;
 };
 
 const unlink = (parent: Node, child: Node): void => {
-    const { children } = stateOf(parent);
-    remove(children, child);
+    remove(stateOf(parent).children, child);
     stateOf(child).parent = null;
 };
 
@@ -95,7 +87,7 @@ const appendChild = (parent: Node, child: Node): void => {
 };
 
 const insertBefore = (parent: Node, child: Node, before: Node): void => {
-    linkBefore(parent, child, before);
+    link(parent, child, before);
     attachNode(parent, child, before, false);
     scheduleTextRebuilds(parent, child);
     reapplyParentLazy(parent);
@@ -241,15 +233,12 @@ const createInstanceConfig = (): InstanceConfig => ({
         return createWrapperInstance(kind, props, rootContainer);
     },
     createTextInstance: (text, rootContainer, hostContext) => {
-        if (hostContext.textHost === "buffer") {
-            return createWrapperInstance(BUFFER_TEXT_KIND, { text }, rootContainer);
+        if (hostContext.textHost === undefined) {
+            throw new Error(
+                `Text strings must be rendered within a <GtkLabel> or <GtkTextBuffer> element; received ${JSON.stringify(text)}`,
+            );
         }
-        if (hostContext.textHost === "label") {
-            return createWrapperInstance(LABEL_TEXT_KIND, { text }, rootContainer);
-        }
-        throw new Error(
-            `Text strings must be rendered within a <GtkLabel> or <GtkTextBuffer> element; received ${JSON.stringify(text)}`,
-        );
+        return createWrapperInstance(TEXT_KIND, { text }, rootContainer);
     },
     appendInitialChild: (parent, child) => {
         appendChild(parent, child);

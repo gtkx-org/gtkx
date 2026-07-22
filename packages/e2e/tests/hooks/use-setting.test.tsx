@@ -1,8 +1,8 @@
 import * as Gio from "@gtkx/gi/gio";
-import * as GLib from "@gtkx/gi/glib";
-import { type SettingsSchema, useSetting } from "@gtkx/react";
+import { type SettingsSchema, type SettingValue, useSetting } from "@gtkx/react";
 import { act, renderHook, waitFor } from "@gtkx/testing";
 import { describe, expect, expectTypeOf, it } from "vitest";
+import { expectSettingRoundTrip, resetSettingsKey } from "../helpers/settings.js";
 
 const SCHEMA_ID = "com.gtkx.test.useSetting";
 const PROFILE_SCHEMA_ID = "com.gtkx.test.useSetting.profile";
@@ -17,6 +17,8 @@ type TestSchemaKeys = {
     theme: "s";
     retries: "u";
     "window-size": "(ii)";
+    "big-signed": "x";
+    "big-unsigned": "t";
 };
 
 const TYPED_SCHEMA: SettingsSchema<TestSchemaKeys> = {
@@ -32,6 +34,8 @@ const TYPED_SCHEMA: SettingsSchema<TestSchemaKeys> = {
         theme: "s",
         retries: "u",
         "window-size": "(ii)",
+        "big-signed": "x",
+        "big-unsigned": "t",
     },
 };
 
@@ -41,91 +45,36 @@ const profileAt = (path: string): SettingsSchema<{ title: "s" }> => ({
     keys: { title: "s" },
 });
 
-const resetKey = (key: string, fallback: () => void): void => {
-    const settings = Gio.Settings.new(SCHEMA_ID);
-    if (settings.isWritable(key)) {
-        settings.reset(key);
-    } else {
-        fallback();
-    }
+const renderCountSetting = async () => {
+    resetSettingsKey(SCHEMA_ID, "count");
+    return renderHook(() => useSetting(TYPED_SCHEMA, "count"));
 };
 
 describe("useSetting (1)", () => {
-    it("reads the initial boolean value from the schema default", async () => {
-        resetKey("enabled", () => {});
-        const { result } = await renderHook(() => useSetting(TYPED_SCHEMA, "enabled"));
-
-        expect(result.current[0]).toBe(false);
-    });
-
-    it("writes a boolean value through the returned setter", async () => {
-        resetKey("enabled", () => {});
-        const { result } = await renderHook(() => useSetting(TYPED_SCHEMA, "enabled"));
-
-        await act(() => result.current[1](true));
-
-        await waitFor(() => {
-            expect(result.current[0]).toBe(true);
-        });
+    it("reads and writes boolean values", async () => {
+        await expectSettingRoundTrip(TYPED_SCHEMA, "enabled", false, true);
     });
 
     it("reads and writes integer values", async () => {
-        resetKey("count", () => {});
-        const { result } = await renderHook(() => useSetting(TYPED_SCHEMA, "count"));
-
-        expect(result.current[0]).toBe(0);
-
-        await act(() => result.current[1](42));
-
-        await waitFor(() => {
-            expect(result.current[0]).toBe(42);
-        });
+        await expectSettingRoundTrip(TYPED_SCHEMA, "count", 0, 42);
     });
 
     it("reads and writes string values", async () => {
-        resetKey("label", () => {});
-        const { result } = await renderHook(() => useSetting(TYPED_SCHEMA, "label"));
-
-        expect(result.current[0]).toBe("initial");
-
-        await act(() => result.current[1]("updated"));
-
-        await waitFor(() => {
-            expect(result.current[0]).toBe("updated");
-        });
+        await expectSettingRoundTrip(TYPED_SCHEMA, "label", "initial", "updated");
     });
 });
 
 describe("useSetting (2)", () => {
     it("reads and writes string array values", async () => {
-        resetKey("tags", () => {});
-        const { result } = await renderHook(() => useSetting(TYPED_SCHEMA, "tags"));
-
-        expect(result.current[0]).toEqual([]);
-
-        await act(() => result.current[1](["alpha", "beta"]));
-
-        await waitFor(() => {
-            expect(result.current[0]).toEqual(["alpha", "beta"]);
-        });
+        await expectSettingRoundTrip(TYPED_SCHEMA, "tags", [], ["alpha", "beta"]);
     });
 
     it("reads and writes double values", async () => {
-        resetKey("ratio", () => {});
-        const { result } = await renderHook(() => useSetting(TYPED_SCHEMA, "ratio"));
-
-        expect(result.current[0]).toBeCloseTo(1.0);
-
-        await act(() => result.current[1](2.5));
-
-        await waitFor(() => {
-            expect(result.current[0]).toBeCloseTo(2.5);
-        });
+        await expectSettingRoundTrip(TYPED_SCHEMA, "ratio", 1.0, 2.5);
     });
 
     it("reflects external GSettings changes via signal handler", async () => {
-        resetKey("count", () => {});
-        const { result } = await renderHook(() => useSetting(TYPED_SCHEMA, "count"));
+        const { result } = await renderCountSetting();
 
         const settings = Gio.Settings.new(SCHEMA_ID);
         await act(() => settings.setInt("count", 99));
@@ -138,8 +87,7 @@ describe("useSetting (2)", () => {
 
 describe("useSetting (3)", () => {
     it("disconnects the signal handler on unmount", async () => {
-        resetKey("count", () => {});
-        const { result, unmount } = await renderHook(() => useSetting(TYPED_SCHEMA, "count"));
+        const { result, unmount } = await renderCountSetting();
 
         await unmount();
 
@@ -153,8 +101,7 @@ describe("useSetting (3)", () => {
 
 describe("useSetting (typed refs: scalars)", () => {
     it("reads and writes through a typed schema ref without a type argument", async () => {
-        resetKey("count", () => {});
-        const { result } = await renderHook(() => useSetting(TYPED_SCHEMA, "count"));
+        const { result } = await renderCountSetting();
 
         expectTypeOf(result.current[0]).toEqualTypeOf<number>();
         expectTypeOf(result.current[1]).toEqualTypeOf<(value: number) => void>();
@@ -168,22 +115,23 @@ describe("useSetting (typed refs: scalars)", () => {
     });
 
     it("reads and writes uint keys", async () => {
-        resetKey("retries", () => {});
-        const { result } = await renderHook(() => useSetting(TYPED_SCHEMA, "retries"));
+        await expectSettingRoundTrip(TYPED_SCHEMA, "retries", 3, 9);
+    });
 
-        expect(result.current[0]).toBe(3);
+    it("reads and writes int64 keys as bigints across the full range", async () => {
+        expectTypeOf<SettingValue<TestSchemaKeys, "big-signed">>().toEqualTypeOf<bigint>();
+        await expectSettingRoundTrip(TYPED_SCHEMA, "big-signed", -9223372036854775808n, 9223372036854775807n);
+    });
 
-        await act(() => result.current[1](9));
-
-        await waitFor(() => {
-            expect(result.current[0]).toBe(9);
-        });
+    it("reads and writes uint64 keys as bigints across the full range", async () => {
+        expectTypeOf<SettingValue<TestSchemaKeys, "big-unsigned">>().toEqualTypeOf<bigint>();
+        await expectSettingRoundTrip(TYPED_SCHEMA, "big-unsigned", 18446744073709551615n, 7n);
     });
 });
 
 describe("useSetting (typed refs: enums and choices)", () => {
     it("reads and writes enum keys as their integer value", async () => {
-        resetKey("wrap-mode", () => {});
+        resetSettingsKey(SCHEMA_ID, "wrap-mode");
         const { result } = await renderHook(() => useSetting(TYPED_SCHEMA, "wrap-mode"));
 
         expectTypeOf(result.current[0]).toEqualTypeOf<number>();
@@ -197,7 +145,7 @@ describe("useSetting (typed refs: enums and choices)", () => {
     });
 
     it("reads and writes string keys with choices", async () => {
-        resetKey("theme", () => {});
+        resetSettingsKey(SCHEMA_ID, "theme");
         const { result } = await renderHook(() => useSetting(TYPED_SCHEMA, "theme"));
 
         expectTypeOf(result.current[0]).toEqualTypeOf<string>();
@@ -211,21 +159,18 @@ describe("useSetting (typed refs: enums and choices)", () => {
     });
 });
 
-describe("useSetting (typed refs: variants)", () => {
-    it("falls back to GLib.Variant for keys without a native mapping", async () => {
-        resetKey("window-size", () => {});
+describe("useSetting (typed refs: tuples)", () => {
+    it("reads and writes tuple keys as native arrays", async () => {
+        resetSettingsKey(SCHEMA_ID, "window-size");
         const { result } = await renderHook(() => useSetting(TYPED_SCHEMA, "window-size"));
 
-        expectTypeOf(result.current[0]).toEqualTypeOf<GLib.Variant>();
-        expect(result.current[0]).toBeInstanceOf(GLib.Variant);
-        expect(result.current[0].getChildValue(0).getInt32()).toBe(800);
-        expect(result.current[0].getChildValue(1).getInt32()).toBe(600);
+        expectTypeOf(result.current[0]).toEqualTypeOf<[number, number]>();
+        expect(result.current[0]).toEqual([800, 600]);
 
-        const next = GLib.Variant.newTuple([GLib.Variant.newInt32(1024), GLib.Variant.newInt32(768)]);
-        await act(() => result.current[1](next));
+        await act(() => result.current[1]([1024, 768]));
 
         await waitFor(() => {
-            expect(result.current[0].getChildValue(0).getInt32()).toBe(1024);
+            expect(result.current[0]).toEqual([1024, 768]);
         });
     });
 });

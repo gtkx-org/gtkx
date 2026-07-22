@@ -52,13 +52,16 @@ Alongside the stores, the CLI writes `node_modules/.gtkx/env.d.ts` with a typed 
 | GVariant type | TypeScript type |
 | --- | --- |
 | `b` | `boolean` |
-| `i`, `u`, `x`, `t`, `d` | `number` |
-| `s` | `string` |
-| `as` | `string[]` |
-| enum key | string-literal union of its nicks |
-| flags key | array of that union |
-| string key with `<choices>` | union of those choices |
-| anything else | `GLib.Variant` |
+| `y`, `n`, `q`, `i`, `u`, `h`, `d` | `number` |
+| `x`, `t` | `bigint` |
+| `s`, `o`, `g` | `string` |
+| `v` | `GLib.Variant` |
+| enum or flags key | `number` |
+| array `a<T>` | `T[]` (`as` is `string[]`) |
+| dictionary `a{k v}` | `Record<string, V>` for string keys, `Map<K, V>` otherwise |
+| tuple `(...)` | a tuple of the element types, e.g. `(ii)` is `[number, number]` |
+| maybe `m<T>` | `T \| null` |
+| dict entry `{k v}` | `[K, V]` |
 
 Each schema exports a typed const carrying its `id` and a `keys` map; a schema declared without a path (a relocatable schema) additionally gets an `at(path)` method that returns the same typed reference bound to a concrete path. `gtkx codegen`, `gtkx dev`, and `gtkx build` all keep this file in sync.
 

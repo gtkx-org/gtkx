@@ -5,10 +5,12 @@ use napi::{Env, ValueType};
 
 use crate::handle::Handle;
 
-mod js_ref;
+mod closure;
 mod view;
 
-pub use js_ref::JsHandle;
+pub mod wrapper;
+
+pub use closure::ClosureHandle;
 pub use view::{TypedView, ViewKind};
 
 pub fn read_napi<T: FromNapiValue>(value: Unknown<'_>) -> napi::Result<T> {

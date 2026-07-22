@@ -1,5 +1,6 @@
 pub(super) use super::{Decoder, Encoder, Ownership, PtrWriter, ReadSource, SlotInit};
-pub(super) use crate::ffi::{self, value};
+pub(super) use crate::ffi;
+pub(super) use crate::value;
 pub(super) use napi::Env;
 pub(super) use napi::ValueType;
 pub(super) use napi::bindgen_prelude::*;

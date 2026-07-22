@@ -8,7 +8,7 @@ use native::ffi::codec::{
     ArrayCodec, ArrayKind, BigIntCodec, BooleanCodec, Codec, Encoder as _, EnumFlagsCodec,
     EnumFlagsKind, FloatCodec, IntegerCodec, Ownership,
 };
-use native::ffi::value::{TypedView, ViewKind};
+use native::value::{TypedView, ViewKind};
 
 use test_support as helpers;
 
@@ -160,7 +160,7 @@ fn buffer_view_exposes_its_fields() {
 #[test]
 fn value_buffer_view_is_not_an_object() {
     with_view(4, 4, ViewKind::Uint8, |_env, view| {
-        assert!(native::ffi::value::handle_ptr(view, "GObject").is_err());
+        assert!(native::value::handle_ptr(view, "GObject").is_err());
     });
 }
 

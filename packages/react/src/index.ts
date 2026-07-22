@@ -12,4 +12,4 @@ export { createRoot, quit, type Root } from "./reconciler/create-root.js";
 export { createPortal } from "./reconciler/portal.js";
 export { type RootElement, rootElement } from "./reconciler/root-element.js";
 export type { RefProp } from "./utils/ref-prop.js";
-export type { SettingsSchema } from "./utils/settings-schema.js";
+export type { SettingsSchema, SettingsSchemaKeys, SettingValue } from "./utils/settings-schema.js";

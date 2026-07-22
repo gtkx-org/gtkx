@@ -5,7 +5,7 @@ use anyhow::bail;
 use super::prelude::*;
 use super::string::str_to_glib_full;
 use crate::ffi::codec::{Codec, FloatCodec};
-use crate::ffi::value::TypedView;
+use crate::value::TypedView;
 
 pub use container::ArrayKind;
 

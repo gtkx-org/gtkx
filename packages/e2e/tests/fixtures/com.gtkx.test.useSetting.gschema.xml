@@ -47,6 +47,74 @@
       <default>(800, 600)</default>
       <summary>Window size</summary>
     </key>
+    <key name="payload" type="ay">
+      <default>[1, 2]</default>
+      <summary>Payload bytes</summary>
+    </key>
+    <key name="metadata" type="a{ss}">
+      <default>{'origin': 'default'}</default>
+      <summary>Metadata map</summary>
+    </key>
+    <key name="extras" type="a{sv}">
+      <default>{}</default>
+      <summary>Extra values</summary>
+    </key>
+    <key name="scores" type="a{ix}">
+      <default>{}</default>
+      <summary>Scores by id</summary>
+    </key>
+    <key name="matrix" type="aai">
+      <default>[[1], [2, 3]]</default>
+      <summary>Matrix rows</summary>
+    </key>
+    <key name="opt-limit" type="mi">
+      <default>nothing</default>
+      <summary>Optional limit</summary>
+    </key>
+    <key name="wrapped" type="v">
+      <default>&lt;'hello'&gt;</default>
+      <summary>Wrapped variant</summary>
+    </key>
+    <key name="big-offsets" type="ax">
+      <default>[1, 2]</default>
+      <summary>Big offsets</summary>
+    </key>
+    <key name="small-signed" type="n">
+      <default>-32768</default>
+      <summary>Small signed number</summary>
+    </key>
+    <key name="small-unsigned" type="q">
+      <default>65535</default>
+      <summary>Small unsigned number</summary>
+    </key>
+    <key name="one-byte" type="y">
+      <default>255</default>
+      <summary>Single byte</summary>
+    </key>
+    <key name="handle-slot" type="h">
+      <default>0</default>
+      <summary>Handle slot</summary>
+    </key>
+    <key name="bus-path" type="o">
+      <default>'/com/gtkx/test'</default>
+      <summary>Bus object path</summary>
+    </key>
+    <key name="bus-signature" type="g">
+      <default>'a{sv}'</default>
+      <summary>Bus type signature</summary>
+    </key>
+    <key name="big-signed" type="x">
+      <default>-9223372036854775808</default>
+      <summary>Big signed number</summary>
+    </key>
+    <key name="big-unsigned" type="t">
+      <default>18446744073709551615</default>
+      <summary>Big unsigned number</summary>
+    </key>
+    <key name="pair" type="{ss}">
+      <default>{'k', 'v'}</default>
+      <summary>Key value pair</summary>
+    </key>
   </schema>
   <schema id="com.gtkx.test.useSetting.profile">
     <key name="title" type="s">

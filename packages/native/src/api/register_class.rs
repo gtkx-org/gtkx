@@ -9,9 +9,9 @@ use crate::api::{native_result, type_from_bigint};
 use crate::ffi::closure::ClosureState;
 use crate::ffi::codec::Codec;
 use crate::ffi::descriptor::Descriptor;
-use crate::ffi::value::JsHandle;
+use crate::value::ClosureHandle;
 
-pub struct VfuncCallback(JsHandle);
+pub struct VfuncCallback(ClosureHandle);
 
 impl FromNapiValue for VfuncCallback {
     unsafe fn from_napi_value(env: sys::napi_env, napi_val: sys::napi_value) -> napi::Result<Self> {
@@ -23,7 +23,7 @@ impl FromNapiValue for VfuncCallback {
                 "register_class: vfunc 'fn' must be a function",
             ));
         }
-        Ok(Self(JsHandle::from_js_value(&env_wrapper, &value)?))
+        Ok(Self(ClosureHandle::from_js_value(&env_wrapper, &value)?))
     }
 }
 
@@ -109,7 +109,7 @@ impl RegisterClassOptions {
 
 struct RawVfunc {
     byte_offset: usize,
-    js_fn: JsHandle,
+    js_fn: ClosureHandle,
     arg_codecs: Vec<Codec>,
     return_codec: Codec,
 }

@@ -11,7 +11,7 @@ use napi::sys;
 use crate::host::node_env;
 use crate::host::panic_handler::guard_ffi_boundary;
 
-pub struct WrapperBinding {
+pub struct WrapperHandle {
     napi_ref: Cell<sys::napi_ref>,
     generation: Cell<u64>,
     wrapper_strong: Cell<bool>,
@@ -29,14 +29,14 @@ unsafe fn borrow_object(gobject: *mut glib::gobject_ffi::GObject) -> Borrowed<gl
     unsafe { from_glib_borrow(gobject) }
 }
 
-unsafe fn binding_qdata(
+unsafe fn handle_qdata(
     gobject: *mut glib::gobject_ffi::GObject,
-) -> Option<NonNull<Rc<WrapperBinding>>> {
-    unsafe { borrow_object(gobject).qdata::<Rc<WrapperBinding>>(quark()) }
+) -> Option<NonNull<Rc<WrapperHandle>>> {
+    unsafe { borrow_object(gobject).qdata::<Rc<WrapperHandle>>(quark()) }
 }
 
-fn apply_wrapper_level(binding: &WrapperBinding, napi_ref: sys::napi_ref, strong: bool) {
-    if binding.wrapper_strong.replace(strong) == strong {
+fn apply_wrapper_level(handle: &WrapperHandle, napi_ref: sys::napi_ref, strong: bool) {
+    if handle.wrapper_strong.replace(strong) == strong {
         return;
     }
     let mut count: u32 = 0;
@@ -50,14 +50,14 @@ fn apply_wrapper_level(binding: &WrapperBinding, napi_ref: sys::napi_ref, strong
 }
 
 pub unsafe fn wrapper_ref(gobject: *mut glib::gobject_ffi::GObject) -> sys::napi_ref {
-    match unsafe { binding_qdata(gobject) } {
+    match unsafe { handle_qdata(gobject) } {
         Some(nn) => unsafe { nn.as_ref() }.napi_ref.get(),
         None => std::ptr::null_mut(),
     }
 }
 
 pub unsafe fn has_wrapper(gobject: *mut glib::gobject_ffi::GObject) -> bool {
-    unsafe { binding_qdata(gobject) }.is_some()
+    unsafe { handle_qdata(gobject) }.is_some()
 }
 
 fn delete_reference(napi_ref: sys::napi_ref) {
@@ -67,22 +67,22 @@ fn delete_reference(napi_ref: sys::napi_ref) {
 pub unsafe fn install(
     gobject: *mut glib::gobject_ffi::GObject,
     napi_ref: sys::napi_ref,
-) -> (Rc<WrapperBinding>, u64) {
-    if let Some(nn) = unsafe { binding_qdata(gobject) } {
-        let binding = unsafe { nn.as_ref() };
-        let generation = binding.generation.get() + 1;
-        binding.napi_ref.set(napi_ref);
-        binding.generation.set(generation);
-        binding.wrapper_strong.set(true);
-        (Rc::clone(binding), generation)
+) -> (Rc<WrapperHandle>, u64) {
+    if let Some(nn) = unsafe { handle_qdata(gobject) } {
+        let handle = unsafe { nn.as_ref() };
+        let generation = handle.generation.get() + 1;
+        handle.napi_ref.set(napi_ref);
+        handle.generation.set(generation);
+        handle.wrapper_strong.set(true);
+        (Rc::clone(handle), generation)
     } else {
-        let binding = Rc::new(WrapperBinding {
+        let handle = Rc::new(WrapperHandle {
             napi_ref: Cell::new(napi_ref),
             generation: Cell::new(1),
             wrapper_strong: Cell::new(true),
         });
         unsafe {
-            borrow_object(gobject).set_qdata::<Rc<WrapperBinding>>(quark(), Rc::clone(&binding));
+            borrow_object(gobject).set_qdata::<Rc<WrapperHandle>>(quark(), Rc::clone(&handle));
         }
         LIVE_TOGGLE_REFS.with_borrow_mut(|live| {
             live.insert(gobject as usize);
@@ -94,35 +94,35 @@ pub unsafe fn install(
                 std::ptr::null_mut(),
             );
         }
-        (binding, 1)
+        (handle, 1)
     }
 }
 
 pub(crate) fn schedule_cleanup(
-    binding: Option<Rc<WrapperBinding>>,
+    handle: Option<Rc<WrapperHandle>>,
     generation: u64,
     gobject_ptr: usize,
     napi_ref: sys::napi_ref,
 ) {
     glib::idle_add_local_once(move || {
         guard_ffi_boundary("wrapper cleanup", || {
-            let Some(binding) = binding else {
+            let Some(handle) = handle else {
                 delete_reference(napi_ref);
                 return;
             };
 
-            if binding.generation.get() != generation {
+            if handle.generation.get() != generation {
                 delete_reference(napi_ref);
                 return;
             }
 
             let gobject = gobject_ptr as *mut glib::gobject_ffi::GObject;
-            binding.generation.set(0);
+            handle.generation.set(0);
             LIVE_TOGGLE_REFS.with_borrow_mut(|live| {
                 live.remove(&gobject_ptr);
             });
             unsafe {
-                drop(borrow_object(gobject).steal_qdata::<Rc<WrapperBinding>>(quark()));
+                drop(borrow_object(gobject).steal_qdata::<Rc<WrapperHandle>>(quark()));
             }
             delete_reference(napi_ref);
             unsafe {
@@ -155,12 +155,12 @@ unsafe extern "C" fn on_toggle_notify(
 }
 
 unsafe fn apply_toggle(gobject: *mut glib::gobject_ffi::GObject, strong: bool) {
-    let Some(nn) = (unsafe { binding_qdata(gobject) }) else {
+    let Some(nn) = (unsafe { handle_qdata(gobject) }) else {
         return;
     };
-    let binding = unsafe { nn.as_ref() };
-    let napi_ref = binding.napi_ref.get();
-    apply_wrapper_level(binding, napi_ref, strong);
+    let handle = unsafe { nn.as_ref() };
+    let napi_ref = handle.napi_ref.get();
+    apply_wrapper_level(handle, napi_ref, strong);
 }
 
 fn resync_wrapper_level(gobject_ptr: usize) {
@@ -179,7 +179,7 @@ mod tests {
     use test_support::napi_mock;
 
     #[test]
-    fn wrapper_ref_and_has_wrapper_are_empty_without_a_binding() {
+    fn wrapper_ref_and_has_wrapper_are_empty_without_a_handle() {
         node_env::run_installed(|| {
             let (obj, obj_ptr, _) = test_support::fresh_gobject();
             assert!(unsafe { wrapper_ref(obj_ptr).is_null() });
@@ -193,7 +193,7 @@ mod tests {
         node_env::run_installed(|| {
             let (obj, obj_ptr, _) = test_support::fresh_gobject();
             let napi_ref = napi_mock::fake_reference();
-            let (_binding, generation) = unsafe { install(obj_ptr, napi_ref) };
+            let (_handle, generation) = unsafe { install(obj_ptr, napi_ref) };
             assert_eq!(generation, 1);
             assert_eq!(unsafe { wrapper_ref(obj_ptr) }, napi_ref);
             assert!(unsafe { has_wrapper(obj_ptr) });
@@ -217,12 +217,12 @@ mod tests {
     }
 
     #[test]
-    fn schedule_cleanup_with_a_stale_generation_keeps_the_binding() {
+    fn schedule_cleanup_with_a_stale_generation_keeps_the_handle() {
         node_env::run_installed(|| {
             let (obj, obj_ptr, _) = test_support::fresh_gobject();
             let napi_ref = napi_mock::fake_reference();
-            let (binding, _) = unsafe { install(obj_ptr, napi_ref) };
-            schedule_cleanup(Some(binding), 999, obj_ptr as usize, napi_ref);
+            let (handle, _) = unsafe { install(obj_ptr, napi_ref) };
+            schedule_cleanup(Some(handle), 999, obj_ptr as usize, napi_ref);
             test_support::pump_default_context_until(|| false);
             assert!(unsafe { has_wrapper(obj_ptr) });
             drop(obj);
@@ -230,12 +230,12 @@ mod tests {
     }
 
     #[test]
-    fn schedule_cleanup_with_a_matching_generation_removes_the_binding() {
+    fn schedule_cleanup_with_a_matching_generation_removes_the_handle() {
         node_env::run_installed(|| {
             let (obj, obj_ptr, _) = test_support::fresh_gobject();
             let napi_ref = napi_mock::fake_reference();
-            let (binding, generation) = unsafe { install(obj_ptr, napi_ref) };
-            schedule_cleanup(Some(binding), generation, obj_ptr as usize, napi_ref);
+            let (handle, generation) = unsafe { install(obj_ptr, napi_ref) };
+            schedule_cleanup(Some(handle), generation, obj_ptr as usize, napi_ref);
             test_support::pump_default_context_until(|| !unsafe { has_wrapper(obj_ptr) });
             assert!(!unsafe { has_wrapper(obj_ptr) });
             assert!(napi_mock::reference_is_deleted(napi_ref));
@@ -244,7 +244,7 @@ mod tests {
     }
 
     #[test]
-    fn schedule_cleanup_without_a_binding_deletes_the_reference() {
+    fn schedule_cleanup_without_a_handle_deletes_the_reference() {
         node_env::run_installed(|| {
             let napi_ref = napi_mock::fake_reference();
             schedule_cleanup(None, 0, 0, napi_ref);

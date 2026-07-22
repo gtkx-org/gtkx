@@ -12,7 +12,7 @@ use super::null_terminated::{NullTerminatedArrayCodec, NullTerminatedArrayEncode
 use super::ptr_array::GPtrArrayCodec;
 use super::sized::SizedArrayCodec;
 use crate::ffi::codec::Codec;
-use crate::ffi::value::TypedView;
+use crate::value::TypedView;
 
 /// Container layout used to marshal an array: a plain C `array`, a `glist`, `gslist`, `gptrarray`,
 /// `garray`, `gbytearray`, a `sized` buffer, or a `fixed`-length buffer.

@@ -1,7 +1,7 @@
 use std::ffi::c_void;
 
 use crate::ffi::codec::{BigIntCodec, Codec, FloatCodec, IntegerCodec};
-use crate::ffi::value::ViewKind;
+use crate::value::ViewKind;
 
 #[derive(Debug, Clone, Copy)]
 pub(super) enum ItemCodec {

@@ -2,7 +2,6 @@ pub mod closure;
 pub mod codec;
 pub mod descriptor;
 pub mod library_cache;
-pub mod value;
 
 mod slot;
 mod stash;

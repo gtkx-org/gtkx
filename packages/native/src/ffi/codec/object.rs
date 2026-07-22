@@ -1,6 +1,6 @@
 use super::prelude::*;
 use crate::handle::Handle;
-use crate::handle::wrapper;
+use crate::value::wrapper;
 use glib::{
     self,
     translate::{

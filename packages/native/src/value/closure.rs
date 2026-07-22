@@ -14,15 +14,15 @@ impl Drop for JsRef {
     }
 }
 
-pub struct JsHandle(JsRef);
+pub struct ClosureHandle(JsRef);
 
-impl std::fmt::Debug for JsHandle {
+impl std::fmt::Debug for ClosureHandle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("JsHandle").finish_non_exhaustive()
+        f.debug_struct("ClosureHandle").finish_non_exhaustive()
     }
 }
 
-impl JsHandle {
+impl ClosureHandle {
     pub fn from_js_value<'a, V: JsValue<'a>>(env: &Env, value: &V) -> napi::Result<Self> {
         let mut raw_ref = std::ptr::null_mut();
         let status = unsafe { sys::napi_create_reference(env.raw(), value.raw(), 1, &mut raw_ref) };

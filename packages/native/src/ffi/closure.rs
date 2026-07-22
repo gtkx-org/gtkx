@@ -12,10 +12,10 @@ use crate::ffi::Stash;
 use crate::ffi::codec::{
     Codec, Decoder as _, Encoder as _, PtrWriter as _, ReadSource, SlotInit, str_to_glib_full,
 };
-use crate::ffi::value::{self, JsHandle};
 use crate::host::error_reporter::{self, ReportErr};
 use crate::host::node_env;
 use crate::host::panic_handler::guard_ffi_boundary;
+use crate::value::{self, ClosureHandle};
 
 struct CallbackArgs(Vec<napi::sys::napi_value>);
 
@@ -38,7 +38,7 @@ enum CallbackError {
 
 fn call_js_function<'e>(
     env: &'e Env,
-    callback: &JsHandle,
+    callback: &ClosureHandle,
     js_args: &[Unknown<'e>],
 ) -> Result<Unknown<'e>, CallbackError> {
     let raw_args: Vec<_> = js_args.iter().map(JsValue::raw).collect();
@@ -51,7 +51,7 @@ fn call_js_function<'e>(
 }
 
 pub struct ClosureData {
-    pub js_fn: JsHandle,
+    pub js_fn: ClosureHandle,
     pub arg_codecs: Vec<Codec>,
     pub return_codec: Codec,
     pub user_data_index: Option<usize>,
@@ -63,7 +63,7 @@ pub struct ClosureData {
 
 impl ClosureData {
     pub fn new(
-        js_fn: JsHandle,
+        js_fn: ClosureHandle,
         arg_codecs: Vec<Codec>,
         return_codec: Codec,
         user_data_index: Option<usize>,
@@ -149,7 +149,7 @@ impl ClosureState {
     }
 
     pub fn boxed(
-        js_fn: JsHandle,
+        js_fn: ClosureHandle,
         arg_codecs: Vec<Codec>,
         return_codec: Codec,
         user_data_index: Option<usize>,

@@ -6,12 +6,12 @@ use napi::{Env, sys};
 use napi_derive::napi;
 
 use crate::handle::Handle;
-use crate::handle::wrapper;
+use crate::value::wrapper;
 
 struct FinalizeData {
     gobject_ptr: usize,
     napi_ref: sys::napi_ref,
-    binding: Option<Rc<wrapper::WrapperBinding>>,
+    wrapper_handle: Option<Rc<wrapper::WrapperHandle>>,
     generation: u64,
 }
 
@@ -22,7 +22,7 @@ unsafe extern "C" fn on_wrapper_finalize(
 ) {
     let mut data = unsafe { Box::from_raw(finalize_data.cast::<FinalizeData>()) };
     wrapper::schedule_cleanup(
-        data.binding.take(),
+        data.wrapper_handle.take(),
         data.generation,
         data.gobject_ptr,
         data.napi_ref,
@@ -38,7 +38,7 @@ pub fn set_wrapper(env: Env, handle: &External<Handle>, wrapper: Object<'_>) -> 
     let data = Box::into_raw(Box::new(FinalizeData {
         gobject_ptr,
         napi_ref: std::ptr::null_mut(),
-        binding: None,
+        wrapper_handle: None,
         generation: 0,
     }));
 
@@ -65,10 +65,10 @@ pub fn set_wrapper(env: Env, handle: &External<Handle>, wrapper: Object<'_>) -> 
     let mut ref_count: u32 = 0;
     unsafe { sys::napi_reference_ref(env.raw(), raw_ref, &mut ref_count) };
     let owned = handle.take_owned();
-    let (binding, generation) = unsafe { wrapper::install(gobject_ptr as *mut _, raw_ref) };
+    let (wrapper_handle, generation) = unsafe { wrapper::install(gobject_ptr as *mut _, raw_ref) };
     drop(owned);
     unsafe {
-        (*data).binding = Some(binding);
+        (*data).wrapper_handle = Some(wrapper_handle);
         (*data).generation = generation;
     }
 

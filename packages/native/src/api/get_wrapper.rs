@@ -3,7 +3,7 @@ use napi::{Env, sys};
 use napi_derive::napi;
 
 use crate::handle::Handle;
-use crate::handle::wrapper;
+use crate::value::wrapper;
 
 /// Returns the JavaScript wrapper object previously attached to the handle's GObject,
 /// or null when no wrapper is set.

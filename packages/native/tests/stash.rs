@@ -3,8 +3,8 @@ use std::ffi::c_void;
 use napi::Env;
 use native::ffi::closure::{ClosureData, ClosureState};
 use native::ffi::codec::{Codec, VoidCodec};
-use native::ffi::value::JsHandle;
 use native::ffi::{CallbackValue, Stash, StashStorage};
+use native::value::ClosureHandle;
 use test_support::napi_mock;
 
 fn callback_value(destroy: bool) -> CallbackValue {
@@ -21,12 +21,12 @@ fn callback_value(destroy: bool) -> CallbackValue {
     )
 }
 
-fn js_func_ref(env: &Env) -> JsHandle {
+fn js_func_ref(env: &Env) -> ClosureHandle {
     let func = napi_mock::to_unknown(
         env,
         napi_mock::fake_function(|_| napi_mock::fake_undefined()),
     );
-    JsHandle::from_js_value(env, &func).expect("reference creation should succeed")
+    ClosureHandle::from_js_value(env, &func).expect("reference creation should succeed")
 }
 
 fn armed_callback_value(env: &Env, destroy_ptr: Option<*mut c_void>) -> CallbackValue {

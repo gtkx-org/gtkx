@@ -18,7 +18,7 @@ declare global {
     }
 }
 
-const WRAPPER_KINDS = ["lazy-element", "object-prop", "container-prop", "buffer-text", "label-text"] as const;
+const WRAPPER_KINDS = ["lazy-element", "object-prop", "container-prop", "text"] as const;
 
 export type WrapperKind = (typeof WRAPPER_KINDS)[number];
 
@@ -33,6 +33,4 @@ export const OBJECT_PROP_KIND: WrapperKind = "object-prop";
 
 export const CONTAINER_PROP_KIND: WrapperKind = "container-prop";
 
-export const BUFFER_TEXT_KIND: WrapperKind = "buffer-text";
-
-export const LABEL_TEXT_KIND: WrapperKind = "label-text";
+export const TEXT_KIND: WrapperKind = "text";

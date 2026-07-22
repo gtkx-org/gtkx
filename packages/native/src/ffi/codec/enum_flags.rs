@@ -1,8 +1,8 @@
 use crate::ffi::{
     self,
     codec::{Decoder, Encoder, IntegerCodec, PtrWriter, ReadSource, SlotInit, forward_ffi_encoder},
-    value,
 };
+use crate::value;
 use napi::Env;
 use napi::ValueType;
 use napi::bindgen_prelude::Unknown;

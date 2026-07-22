@@ -378,7 +378,7 @@ fn object_ptr_returns_handle_pointer() {
 
         let unknown = External::new(handle).into_unknown(&env).unwrap();
         assert_eq!(
-            native::ffi::value::handle_ptr(unknown, "GObject").unwrap(),
+            native::value::handle_ptr(unknown, "GObject").unwrap(),
             obj_ptr
         );
     });
@@ -391,12 +391,12 @@ fn object_ptr_returns_null_for_null_and_undefined() {
         let null_value = napi_mock::to_unknown(&env, napi_mock::fake_null());
         let undefined_value = napi_mock::to_unknown(&env, napi_mock::fake_undefined());
         assert!(
-            native::ffi::value::handle_ptr(null_value, "GObject")
+            native::value::handle_ptr(null_value, "GObject")
                 .unwrap()
                 .is_null()
         );
         assert!(
-            native::ffi::value::handle_ptr(undefined_value, "GObject")
+            native::value::handle_ptr(undefined_value, "GObject")
                 .unwrap()
                 .is_null()
         );
@@ -414,7 +414,7 @@ fn object_ptr_errors_for_non_object_variants() {
             napi_mock::to_unknown(&env, napi_mock::fake_array(&[])),
         ];
         for sample in samples {
-            assert!(native::ffi::value::handle_ptr(sample, "GObject").is_err());
+            assert!(native::value::handle_ptr(sample, "GObject").is_err());
         }
     });
 }

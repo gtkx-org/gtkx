@@ -1,26 +1,11 @@
 import type * as Gio from "@gtkx/gi/gio";
-import type * as GLib from "@gtkx/gi/glib";
+import { packVariant, parseVariantType, unpackVariant, type VariantValue } from "./variant.js";
 
-type SettingValueType = "b" | "i" | "u" | "x" | "t" | "d" | "s" | "as" | "enum" | "flags";
+export type SettingsSchemaKeys = Record<string, string>;
 
-type SettingValueTypeMap = {
-    b: boolean;
-    i: number;
-    u: number;
-    x: bigint;
-    t: bigint;
-    d: number;
-    s: string;
-    as: string[];
-    enum: number;
-    flags: number;
-};
+type SettingKindValue<S extends string> = S extends "enum" | "flags" ? number : VariantValue<S>;
 
-export type SettingsSchemaKeys = Record<string, SettingValueType | (string & {})>;
-
-export type SettingValue<K extends SettingsSchemaKeys, P extends keyof K> = K[P] extends SettingValueType
-    ? SettingValueTypeMap[K[P]]
-    : GLib.Variant;
+export type SettingValue<K extends SettingsSchemaKeys, P extends keyof K> = SettingKindValue<K[P] & string>;
 
 export type SettingsSchema<K extends SettingsSchemaKeys = SettingsSchemaKeys> = {
     id: string;
@@ -38,55 +23,7 @@ type ResolvedSettingAccessor<K extends SettingsSchemaKeys, P extends keyof K> = 
     set: (value: SettingValue<K, P>) => void;
 };
 
-const ACCESSORS: Record<SettingValueType, SettingAccessor> = {
-    b: {
-        get: (settings: Gio.Settings, key: string) => settings.getBoolean(key),
-        set: (settings: Gio.Settings, key: string, value: boolean) => {
-            settings.setBoolean(key, value);
-        },
-    },
-    i: {
-        get: (settings: Gio.Settings, key: string) => settings.getInt(key),
-        set: (settings: Gio.Settings, key: string, value: number) => {
-            settings.setInt(key, value);
-        },
-    },
-    u: {
-        get: (settings: Gio.Settings, key: string) => settings.getUint(key),
-        set: (settings: Gio.Settings, key: string, value: number) => {
-            settings.setUint(key, value);
-        },
-    },
-    x: {
-        get: (settings: Gio.Settings, key: string) => settings.getInt64(key),
-        set: (settings: Gio.Settings, key: string, value: bigint) => {
-            settings.setInt64(key, value);
-        },
-    },
-    t: {
-        get: (settings: Gio.Settings, key: string) => settings.getUint64(key),
-        set: (settings: Gio.Settings, key: string, value: bigint) => {
-            settings.setUint64(key, value);
-        },
-    },
-    d: {
-        get: (settings: Gio.Settings, key: string) => settings.getDouble(key),
-        set: (settings: Gio.Settings, key: string, value: number) => {
-            settings.setDouble(key, value);
-        },
-    },
-    s: {
-        get: (settings: Gio.Settings, key: string) => settings.getString(key),
-        set: (settings: Gio.Settings, key: string, value: string) => {
-            settings.setString(key, value);
-        },
-    },
-    as: {
-        get: (settings: Gio.Settings, key: string) => settings.getStrv(key),
-        set: (settings: Gio.Settings, key: string, value: string[]) => {
-            settings.setStrv(key, value);
-        },
-    },
+const NAMED_ACCESSORS: Record<string, SettingAccessor<number> | undefined> = {
     enum: {
         get: (settings: Gio.Settings, key: string) => settings.getEnum(key),
         set: (settings: Gio.Settings, key: string, value: number) => {
@@ -99,23 +36,26 @@ const ACCESSORS: Record<SettingValueType, SettingAccessor> = {
             settings.setFlags(key, value);
         },
     },
-} as Record<SettingValueType, SettingAccessor>;
+};
 
-const FALLBACK_ACCESSOR = {
-    get: (settings: Gio.Settings, key: string) => settings.getValue(key),
-    set: (settings: Gio.Settings, key: string, value: GLib.Variant) => {
-        settings.setValue(key, value);
-    },
-} as SettingAccessor;
+const variantAccessor = (typeString: string): SettingAccessor => {
+    const node = parseVariantType(typeString);
+    return {
+        get: (settings: Gio.Settings, key: string) => unpackVariant(node, settings.getValue(key)),
+        set: (settings: Gio.Settings, key: string, value: unknown) => {
+            settings.setValue(key, packVariant(node, value));
+        },
+    };
+};
 
 export const resolveSettingAccessor = <K extends SettingsSchemaKeys, P extends keyof K>(
     settings: Gio.Settings,
     schema: SettingsSchema<K>,
     key: P & string,
 ): ResolvedSettingAccessor<K, P> => {
-    const accessor = (ACCESSORS[schema.keys[key] as SettingValueType] ?? FALLBACK_ACCESSOR) as SettingAccessor<
-        SettingValue<K, P>
-    >;
+    const kind = schema.keys[key];
+    if (kind === undefined) throw new Error(`Schema "${schema.id}" does not declare key "${key}"`);
+    const accessor = (NAMED_ACCESSORS[kind] ?? variantAccessor(kind)) as SettingAccessor<SettingValue<K, P>>;
 
     return {
         get: accessor.get.bind(null, settings, key),

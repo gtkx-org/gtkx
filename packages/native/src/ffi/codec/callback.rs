@@ -4,7 +4,7 @@ use napi_derive::napi;
 use super::prelude::*;
 use crate::ffi::closure::ClosureState;
 use crate::ffi::codec::Codec;
-use crate::ffi::value::JsHandle;
+use crate::value::ClosureHandle;
 
 /// Lifetime of a marshalled callback closure: `call` lasts only for the duration of the call,
 /// `notified` is freed by a destroy notify, `async` spans a single async use, `forever` is never freed.
@@ -40,7 +40,7 @@ impl Encoder for CallbackCodec {
 
     fn encode(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
         let js_fn = match value.get_type()? {
-            ValueType::Function => JsHandle::from_js_value(env, &value)?,
+            ValueType::Function => ClosureHandle::from_js_value(env, &value)?,
             ValueType::Null | ValueType::Undefined => {
                 return Ok(self.null_callback_value());
             }

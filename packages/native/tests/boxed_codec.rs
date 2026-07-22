@@ -15,8 +15,8 @@ use native::ffi;
 use native::ffi::codec::{
     BoxedCodec, Decoder, Encoder, Ownership, PtrWriter, ReadSource, SlotInit, StructCodec,
 };
-use native::ffi::value::handle_ptr;
 use native::handle::Handle;
+use native::value::handle_ptr;
 
 use helpers::napi_mock;
 use helpers::{
@@ -774,7 +774,7 @@ mod free_fn {
 
     use native::ffi;
     use native::ffi::codec::{BoxedCodec, Decoder, Ownership, ReadSource};
-    use native::ffi::value::handle_ptr;
+    use native::value::handle_ptr;
 
     use super::helpers;
 

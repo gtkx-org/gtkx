@@ -8,12 +8,11 @@ export { setReconcilerErrorHandler } from "./reconciler/reconciler-error-handler
 export { createReconcilerRoot, type ReconcilerRoot } from "./reconciler/reconciler-root.js";
 export { isRootElement } from "./reconciler/root-element.js";
 export {
-    BUFFER_TEXT_KIND,
     CONTAINER_PROP_KIND,
     isWrapperKind,
-    LABEL_TEXT_KIND,
     LAZY_ELEMENT_KIND,
     OBJECT_PROP_KIND,
+    TEXT_KIND,
     WRAPPER_NODE_ELEMENT,
     type WrapperKind,
 } from "./reconciler/wrapper-kinds.js";

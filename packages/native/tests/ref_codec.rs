@@ -170,7 +170,7 @@ fn decode_gobject_delegates_to_inner_decoder() {
         let decoded = ref_codec
             .decode(&env, &stash)
             .expect("gobject ref decode should succeed");
-        let ptr = native::ffi::value::handle_ptr(decoded, "ctx")
+        let ptr = native::value::handle_ptr(decoded, "ctx")
             .expect("decoded value should carry a native handle");
         assert_eq!(ptr, obj_ptr);
         drop(obj);

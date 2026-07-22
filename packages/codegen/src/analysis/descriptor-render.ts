@@ -196,12 +196,9 @@ type FundamentalDescriptor = {
     wrapperClass?: string | undefined;
 };
 
-const referenceAddingFunc = (refFunc: string): string =>
-    refFunc.endsWith("_ref_sink") ? refFunc.slice(0, -"_sink".length) : refFunc;
-
 const renderFundamental = (descriptor: FundamentalDescriptor): string => {
     const { lib, refFunc, unrefFunc, typeName, ownership, wrapperClass } = descriptor;
-    return tFundamental(lib, referenceAddingFunc(refFunc), unrefFunc, {
+    return tFundamental(lib, refFunc, unrefFunc, {
         ownership,
         typeName,
         wrapperClass,

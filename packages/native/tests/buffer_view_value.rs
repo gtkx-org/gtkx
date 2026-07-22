@@ -5,7 +5,7 @@ use std::ffi::c_void;
 
 use napi::Env;
 use napi::sys;
-use native::ffi::value::{TypedView, ViewKind};
+use native::value::{TypedView, ViewKind};
 
 const ALL_KINDS: [ViewKind; 12] = [
     ViewKind::Int8,

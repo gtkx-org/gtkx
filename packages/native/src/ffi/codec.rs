@@ -1,6 +1,7 @@
 use std::ffi::c_void;
 
-use crate::ffi::{self, value};
+use crate::ffi;
+use crate::value;
 use anyhow::bail;
 use enum_dispatch::enum_dispatch;
 use libffi::middle as libffi;

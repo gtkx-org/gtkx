@@ -8,7 +8,8 @@ use gtk4::glib;
 use gtk4::glib::translate::from_glib_full;
 use gtk4::prelude::ObjectType as _;
 
-use native::handle::{Fundamental, Handle, wrapper};
+use native::handle::{Fundamental, Handle};
+use native::value::wrapper;
 use test_support::napi_mock;
 
 use helpers::{
