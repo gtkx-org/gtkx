@@ -6,7 +6,7 @@ import {
     type SettingsSchema,
     type SettingsSchemaKeys,
     type SettingValue,
-} from "../utils/settings-schema.js";
+} from "../utils/settings.js";
 import { useObjectValue } from "./use-object-value.js";
 
 type UseSettingsProps<K extends SettingsSchemaKeys> = Pick<SettingsSchema<K>, "id" | "path">;

@@ -70,4 +70,23 @@ describe("render - StackPage", () => {
         await rerender(["a"]);
         expect(stackRef.current?.getChildByName("b")).toBeNull();
     });
+
+    it("connects a notify handler on the page object", async () => {
+        const stackRef = createRef<Gtk.Stack>();
+        const seen: unknown[] = [];
+
+        await render(
+            <GtkStack ref={stackRef}>
+                <GtkStackPage name="p" title="First" onNotifyTitle={(value) => seen.push(value)}>
+                    <GtkLabel>Content</GtkLabel>
+                </GtkStackPage>
+            </GtkStack>,
+        );
+
+        const child = stackRef.current?.getChildByName("p");
+        const page = stackRef.current?.getPage(child as Gtk.Widget);
+        page?.setTitle("Second");
+
+        expect(seen).toEqual(["Second"]);
+    });
 });

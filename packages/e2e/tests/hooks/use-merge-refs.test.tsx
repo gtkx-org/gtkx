@@ -1,5 +1,7 @@
+import type * as Gtk from "@gtkx/gi/gtk";
+import { GtkButton } from "@gtkx/jsx/gtk";
 import { useMergedRef } from "@gtkx/react/internal";
-import { renderHook } from "@gtkx/testing";
+import { render, renderHook } from "@gtkx/testing";
 import type { Ref } from "react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -92,35 +94,45 @@ describe("useMergedRef", () => {
         expect(firstCallback).not.toHaveBeenCalled();
     });
 
-    it("produces a new merged callback when a ref argument changes identity", async () => {
-        const stable = vi.fn();
+    it("reattaches a widget ref when one of its ref arguments changes identity", async () => {
+        const attach = vi.fn();
 
-        const { result, rerender } = await renderHook(
-            ({ tick }: { tick: number }) => useMergedRef<Target>(stable, () => void tick),
-            { initialProps: { tick: 0 } },
-        );
+        function App({ tick }: { tick: number }) {
+            const merged = useMergedRef<Gtk.Button>(attach, () => void tick);
+            return <GtkButton ref={merged} />;
+        }
 
-        const initial = result.current;
-        await rerender({ tick: 1 });
+        const { rerender } = await render(<App tick={0} />);
+        expect(attach).toHaveBeenCalledTimes(1);
+        const button = attach.mock.calls[0]?.[0];
+        expect(button).not.toBeNull();
 
-        expect(result.current).not.toBe(initial);
+        await rerender(<App tick={1} />);
+
+        expect(attach).toHaveBeenCalledWith(null);
+        expect(attach.mock.calls.at(-1)?.[0]).toBe(button);
+        expect(attach.mock.calls.length).toBeGreaterThan(1);
     });
 
-    it("keeps the merged callback identity stable while its ref arguments are stable", async () => {
-        const stable = vi.fn();
-        const objectRef: { current: Target | null } = { current: null };
+    it("does not reattach a widget ref across a re-render while its ref arguments are stable", async () => {
+        const attach = vi.fn();
+        const objectRef: { current: Gtk.Button | null } = { current: null };
 
-        const { result, rerender } = await renderHook(
-            ({ tick }: { tick: number }) => {
-                void tick;
-                return useMergedRef<Target>(stable, objectRef);
-            },
-            { initialProps: { tick: 0 } },
-        );
+        function App({ tick }: { tick: number }) {
+            void tick;
+            const merged = useMergedRef<Gtk.Button>(attach, objectRef);
+            return <GtkButton ref={merged} />;
+        }
 
-        const initial = result.current;
-        await rerender({ tick: 1 });
+        const { rerender } = await render(<App tick={0} />);
+        expect(attach).toHaveBeenCalledTimes(1);
+        const button = objectRef.current;
+        expect(button).not.toBeNull();
 
-        expect(result.current).toBe(initial);
+        await rerender(<App tick={1} />);
+
+        expect(attach).toHaveBeenCalledTimes(1);
+        expect(attach).not.toHaveBeenCalledWith(null);
+        expect(objectRef.current).toBe(button);
     });
 });

@@ -1,13 +1,22 @@
 import type { RefObject } from "react";
 
-export type RefProp<T> = T | RefObject<T | null> | null | undefined;
+/**
+ * A way to reach a GObject: the object itself, a ref object whose `current` is the object or null,
+ * or null or undefined when the target is absent.
+ */
+export type RefProp<T extends object> = T | RefObject<T | null> | null | undefined;
 
-export const resolveRefProp = <T>(prop: RefProp<T>): T | null => {
-    if (!prop) return null;
+const isRefObject = <T extends object>(value: T | RefObject<T | null>): value is RefObject<T | null> =>
+    typeof value === "object" && value !== null && "current" in value;
 
-    if (typeof prop === "object" && "current" in prop) {
-        return prop.current;
-    }
-
+/**
+ * Resolves a {@link RefProp} to the concrete object it points at, or null when it is absent or unresolved.
+ *
+ * @param prop The target object, a ref to one, or null/undefined.
+ * @returns The resolved object, or null.
+ */
+export const resolveRefProp = <T extends object>(prop: RefProp<T>): T | null => {
+    if (prop === null || prop === undefined) return null;
+    if (isRefObject(prop)) return prop.current;
     return prop;
 };
