@@ -1,8 +1,8 @@
 import type { Arg, Call, ContainerProp, ElementProp, ListProp, ValueProp } from "@gtkx/config";
+import { BUILT_IN_ELEMENT_PROPS } from "@gtkx/config/internal";
 import { toCamelIdentifier } from "@gtkx/utils";
 import type { GirParameter } from "../../gir/parameter.js";
 import { PRIMITIVE_TS_TYPE } from "../../gir/primitives.js";
-import { BUILT_IN_ELEMENT_PROPS } from "./built-ins.js";
 import { findMethod, type GirIndex, hasMethod, hasProperty } from "./gir-index.js";
 
 const callMethodName = (call: Call): string => (typeof call === "string" ? call : call.method);

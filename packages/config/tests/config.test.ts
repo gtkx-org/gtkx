@@ -355,9 +355,9 @@ describe("resolveConfig", () => {
             applicationId: "org.example.App",
             userEventSignals: { GObject: ["notify", "custom-changed"], MyWidget: ["changed"] },
         });
-        expect(resolved.userEventSignals["GObject"]).toEqual(["notify", "custom-changed"]);
-        expect(resolved.userEventSignals["MyWidget"]).toEqual(["changed"]);
-        expect(resolved.userEventSignals["GtkEditable"]).toEqual(DEFAULT_USER_EVENT_SIGNALS["GtkEditable"]);
+        expect(resolved.userEventSignals.GObject).toEqual(["notify", "custom-changed"]);
+        expect(resolved.userEventSignals.MyWidget).toEqual(["changed"]);
+        expect(resolved.userEventSignals.GtkEditable).toEqual(DEFAULT_USER_EVENT_SIGNALS.GtkEditable);
     });
 
     it("does not mutate the default table when merging overrides", () => {

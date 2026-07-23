@@ -3,9 +3,16 @@ import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import type { ImportsBuilder } from "../../writer/imports.js";
-import { BUILT_IN_ELEMENT_COMPONENTS, type ElementComponent } from "./built-ins.js";
 import type { ElementPropTypegen, LazyElementSpec } from "./element-prop-types.js";
 import { ancestorGlibNames, type GlibNamedClass } from "./intrinsic-elements.js";
+
+type ElementComponent = { types: string[]; module: string; export: string };
+
+const BUILT_IN_ELEMENT_COMPONENTS: ElementComponent[] = [
+    { types: ["GtkApplication"], module: "@gtkx/react/internal", export: "createApplicationComponent" },
+    { types: ["GtkWindow"], module: "@gtkx/react/internal", export: "createWindowComponent" },
+    { types: ["AdwDialog"], module: "@gtkx/react/adw", export: "createDialogComponent" },
+];
 
 type ExportCollector = {
     imports: ImportsBuilder;

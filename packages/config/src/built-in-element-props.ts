@@ -1,6 +1,5 @@
-import type { Call, ContainerProp, ElementProp } from "@gtkx/config";
+import type { Call, ContainerProp, ElementProp } from "./element-props.js";
 
-export type ElementComponent = { types: string[]; module: string; export: string };
 type ManyMethods = Pick<ContainerProp, "append" | "remove">;
 
 const container = (
@@ -60,12 +59,6 @@ const autowrapProp = (wrapper: string): ElementProp =>
 
 const forEach = (types: string[], build: () => ElementProp[]): Record<string, ElementProp[]> =>
     Object.fromEntries(types.map((type) => [type, build()]));
-
-export const BUILT_IN_ELEMENT_COMPONENTS: ElementComponent[] = [
-    { types: ["GtkApplication"], module: "@gtkx/react/internal", export: "createApplicationComponent" },
-    { types: ["GtkWindow"], module: "@gtkx/react/internal", export: "createWindowComponent" },
-    { types: ["AdwDialog"], module: "@gtkx/react/adw", export: "createDialogComponent" },
-];
 
 const CONTROLLER_METHODS = { append: "addController", remove: "removeController" } satisfies ManyMethods;
 const SHORTCUT_METHODS = { append: "addShortcut", remove: "removeShortcut" } satisfies ManyMethods;

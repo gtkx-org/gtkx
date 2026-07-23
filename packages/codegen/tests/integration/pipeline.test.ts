@@ -1,3 +1,4 @@
+import { BUILT_IN_ELEMENT_PROPS } from "@gtkx/config/internal";
 import { describe, expect, it } from "vitest";
 import type { GirClass } from "../../src/gir/class.js";
 import type { GirFunction } from "../../src/gir/function.js";
@@ -7,7 +8,6 @@ import type { GirParameter, GirReturnValue } from "../../src/gir/parameter.js";
 import type { GirRecord } from "../../src/gir/record.js";
 import type { GirType } from "../../src/gir/type.js";
 import type { TypeId } from "../../src/gir/type-id.js";
-import { BUILT_IN_ELEMENT_PROPS } from "../../src/store/react/built-ins.js";
 import {
     collectIntrinsicElementClasses,
     glibNameOf,
