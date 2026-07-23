@@ -1,20 +1,29 @@
+import { userEventSignals } from "virtual:gtkx-config";
 import type * as GObject from "@gtkx/gi/gobject";
 import type { SignalHandler } from "@gtkx/runtime";
 import { getOrInsert } from "@gtkx/utils";
+import { foldInheritedTableWithInterfaces } from "../utils/type-hierarchy.js";
 
-const UNBLOCKED_SIGNALS = new Set([
-    "realize",
-    "unrealize",
-    "map",
-    "unmap",
-    "show",
-    "hide",
-    "destroy",
-    "resize",
-    "render",
-    "input",
-    "output",
-]);
+const userEventSignalsCache = new Map<bigint, Set<string>>();
+
+const collectUserEventSignals = (gtype: bigint): Set<string> =>
+    getOrInsert(userEventSignalsCache, gtype, () =>
+        foldInheritedTableWithInterfaces(
+            gtype,
+            userEventSignals,
+            (collected: Set<string>, signals) => {
+                for (const signal of signals) collected.add(signal);
+                return collected;
+            },
+            new Set<string>(),
+        ),
+    );
+
+const isUserEventSignal = (instance: GObject.Object, signal: string): boolean => {
+    const detailStart = signal.indexOf("::");
+    const name = detailStart === -1 ? signal : signal.slice(0, detailStart);
+    return collectUserEventSignals(instance.__type__).has(name);
+};
 
 type SignalBinding = {
     instance: GObject.Object;
@@ -33,7 +42,7 @@ export class SignalStore {
 
     private gateHandler(handler: SignalHandler, signal: string, instance: GObject.Object): SignalHandler {
         return (...args: unknown[]) => {
-            if (this.blockDepth > 0 && !UNBLOCKED_SIGNALS.has(signal)) {
+            if (this.blockDepth > 0 && isUserEventSignal(instance, signal)) {
                 return;
             }
             return handler(...args, instance);

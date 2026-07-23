@@ -10,4 +10,5 @@ export const renderConfigModule = (config: ResolvedConfig): string =>
     [
         `export * from ${JSON.stringify(METADATA_SPECIFIER)};`,
         `export const applicationId = ${JSON.stringify(config.applicationId)};`,
+        `export const userEventSignals = ${JSON.stringify(config.userEventSignals)};`,
     ].join("\n");

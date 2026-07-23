@@ -8,6 +8,7 @@ import {
     validateConfig,
 } from "../src/config.js";
 import type { ElementProp } from "../src/index.js";
+import { DEFAULT_USER_EVENT_SIGNALS } from "../src/user-event-signals.js";
 
 const validateUnknown = (config: unknown): void => validateConfig(config as Config);
 
@@ -296,11 +297,40 @@ describe("resolveReactCompilerOptions", () => {
     });
 });
 
+describe("validateConfig (userEventSignals)", () => {
+    it("accepts a record of type names to signal name arrays", () => {
+        expect(() => validateWithAppId({ userEventSignals: { MyWidget: ["changed", "toggled"] } })).not.toThrow();
+    });
+
+    it("accepts an empty record", () => {
+        expect(() => validateWithAppId({ userEventSignals: {} })).not.toThrow();
+    });
+
+    it("rejects a non-record value", () => {
+        expect(() => validateUnknown({ applicationId: "org.gtk.Test", userEventSignals: ["changed"] })).toThrow(
+            "`userEventSignals` must be a record of GLib type names to signal name arrays",
+        );
+    });
+
+    it("rejects a non-array entry", () => {
+        expect(() =>
+            validateUnknown({ applicationId: "org.gtk.Test", userEventSignals: { MyWidget: "changed" } }),
+        ).toThrow("`userEventSignals.MyWidget` must be an array of signal names");
+    });
+
+    it("rejects an empty signal name", () => {
+        expect(() => validateUnknown({ applicationId: "org.gtk.Test", userEventSignals: { MyWidget: [""] } })).toThrow(
+            "`userEventSignals.MyWidget[0]` must be a non-empty signal name",
+        );
+    });
+});
+
 describe("resolveConfig", () => {
     it("defaults the react compiler while passing applicationId through", () => {
         expect(resolveConfig({ applicationId: "org.example.App" })).toEqual({
             applicationId: "org.example.App",
             reactCompiler: { target: "19" },
+            userEventSignals: DEFAULT_USER_EVENT_SIGNALS,
         });
     });
 
@@ -312,11 +342,28 @@ describe("resolveConfig", () => {
         expect(resolveConfig(configured)).toEqual({
             applicationId: "org.gtk.Demo4",
             reactCompiler: { target: "19", compilationMode: "annotation" },
+            userEventSignals: DEFAULT_USER_EVENT_SIGNALS,
         });
     });
 
     it("collapses a disabled reactCompiler to null", () => {
         expect(resolveConfig({ applicationId: "org.example.App", reactCompiler: false }).reactCompiler).toBeNull();
+    });
+
+    it("unions configured user event signals with the defaults", () => {
+        const resolved = resolveConfig({
+            applicationId: "org.example.App",
+            userEventSignals: { GObject: ["notify", "custom-changed"], MyWidget: ["changed"] },
+        });
+        expect(resolved.userEventSignals["GObject"]).toEqual(["notify", "custom-changed"]);
+        expect(resolved.userEventSignals["MyWidget"]).toEqual(["changed"]);
+        expect(resolved.userEventSignals["GtkEditable"]).toEqual(DEFAULT_USER_EVENT_SIGNALS["GtkEditable"]);
+    });
+
+    it("does not mutate the default table when merging overrides", () => {
+        const before = structuredClone(DEFAULT_USER_EVENT_SIGNALS);
+        resolveConfig({ applicationId: "org.example.App", userEventSignals: { GObject: ["extra"] } });
+        expect(DEFAULT_USER_EVENT_SIGNALS).toEqual(before);
     });
 });
 

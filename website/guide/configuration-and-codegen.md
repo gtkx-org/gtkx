@@ -36,6 +36,8 @@ For sharing a base config across packages, `mergeConfig(base, override)` deep-me
 
 **`elementProps`** layers your own element prop rules on top of the built-in set, covered in [Customizing elements with elementProps](#advanced-customizing-elements-with-elementprops) below. The rule shapes are typed in the [@gtkx/config reference](/reference/@gtkx/config/).
 
+**`userEventSignals`** maps GLib type names to signal names that represent user interaction, such as `{ GtkEditable: ["changed"] }`. While a React commit is applying your props, these signals are suppressed on the committing tree, so a handler like `onChanged` only ever reports the user editing the widget and never echoes a programmatic write React itself performed. A built-in table covers GTK4 and Adwaita; entries you add here are unioned with it, and the type name may be a class or an interface, applying to every type that inherits or implements it.
+
 **`codegen`** controls binding generation, which is on by default. Set it to `false` for a project that already has a binding store installed, such as an example inside a workspace that shares the store built at the root: the CLI then resolves that installed store instead of generating its own. A project with generation turned off has no GIR data of its own, so `gtkx docs` has nothing to document there.
 
 ## What codegen emits

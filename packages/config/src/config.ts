@@ -2,6 +2,7 @@ import { createDefineConfig, type DefineConfig } from "c12";
 import { defu } from "defu";
 import { z } from "zod";
 import { configError, elementPropsSchema, isRecord, rawIssue } from "./element-props.js";
+import { resolveUserEventSignals } from "./user-event-signals.js";
 
 export const LIBRARIES_WILDCARD = "*";
 
@@ -132,6 +133,17 @@ const reactCompilerSchema = z.custom<boolean | ReactCompilerOptions>().check((ct
     }
 });
 
+const userEventSignalsSchema = z.record(
+    z.string(),
+    z.array(
+        z.string({ error: "must be a non-empty signal name" }).min(1, { error: "must be a non-empty signal name" }),
+        {
+            error: "must be an array of signal names",
+        },
+    ),
+    { error: "must be a record of GLib type names to signal name arrays" },
+);
+
 const configSchema = z.object({
     libraries: librariesSchema.optional(),
     girPath: z.array(z.string(), { error: "must be an array of strings if provided" }).optional(),
@@ -139,12 +151,14 @@ const configSchema = z.object({
     elementProps: elementPropsSchema.optional(),
     reactCompiler: reactCompilerSchema.optional(),
     codegen: z.boolean({ error: "must be a boolean" }).optional(),
+    userEventSignals: userEventSignalsSchema.optional(),
 });
 
 /**
  * User-facing configuration for a GTKX project, as authored in `gtkx.config.ts`:
  * the GIR libraries to bind, extra `.gir` search paths, the GApplication id,
- * custom element prop mappings, and the React Compiler and codegen settings.
+ * custom element prop mappings, the React Compiler and codegen settings, and
+ * additional user event signals to suppress during React commits.
  */
 export type Config = z.infer<typeof configSchema>;
 
@@ -168,14 +182,17 @@ export const mergeConfig = (base: Config, override: Config): Config => defu(over
 
 /**
  * Configuration reduced to the values needed at runtime: the GApplication
- * identifier and the resolved React Compiler options (`null` when disabled).
+ * identifier, the resolved React Compiler options (`null` when disabled), and
+ * the user event signals suppressed while a React commit is in progress.
  */
 export type ResolvedConfig = {
     applicationId: string;
     reactCompiler: ResolvedReactCompilerOptions | null;
+    userEventSignals: Record<string, string[]>;
 };
 
 export const resolveConfig = (config: Config): ResolvedConfig => ({
     applicationId: config.applicationId,
     reactCompiler: resolveReactCompilerOptions(config.reactCompiler),
+    userEventSignals: resolveUserEventSignals(config.userEventSignals),
 });
