@@ -20,7 +20,7 @@ import { scheduleTextBufferSync } from "./text-buffer-content-manager.js";
 import { isBufferContentNode, isLabelTextNode } from "./text-node-predicates.js";
 import type { Container, Props } from "./types.js";
 import { hideNode, reassertHidden, setTextNodeHidden, unhideNode } from "./visibility.js";
-import { isWrapperKind, TEXT_KIND, WRAPPER_NODE_ELEMENT } from "./wrapper-kinds.js";
+import { isWrapperKind, TEXT_KIND, WRAPPER_ELEMENT } from "./wrapper-kinds.js";
 import { isWrapperNode } from "./wrapper-node.js";
 
 const FIXED_UPDATE_PRIORITY = DiscreteEventPriority;
@@ -223,7 +223,7 @@ type InstanceConfig = Pick<
 
 const createInstanceConfig = (): InstanceConfig => ({
     createInstance: (type, props, rootContainer) => {
-        if (type !== WRAPPER_NODE_ELEMENT) {
+        if (type !== WRAPPER_ELEMENT) {
             return createElementInstance(type, props, rootContainer);
         }
         const kind = props.kind;

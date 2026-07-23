@@ -2,7 +2,6 @@
 
 import { ELEMENT_PROPS } from "virtual:gtkx-config";
 import type { AppliedProp, Arg, ArgRef, Call, ContainerProp } from "@gtkx/config";
-import { typeFromName } from "@gtkx/gi/gobject";
 import { callMethod } from "@gtkx/utils";
 import { collectTypeNamesWithInterfaces, foldInheritedTableWithInterfaces } from "../utils/type-hierarchy.js";
 
@@ -138,13 +137,13 @@ export const resolveAdoptContainerProp = (parentType: bigint): ContainerProp | n
     return resolved;
 };
 
-const containerPropNamesCache = new Map<string, Set<string>>();
+const containerPropNamesCache = new Map<bigint, Set<string>>();
 
-export const collectContainerPropNames = (elementName: string): Set<string> => {
-    const cached = containerPropNamesCache.get(elementName);
+export const collectContainerPropNames = (gtype: bigint): Set<string> => {
+    const cached = containerPropNamesCache.get(gtype);
     if (cached) return cached;
     const names = foldInheritedTableWithInterfaces(
-        typeFromName(elementName),
+        gtype,
         namedContainerPropsByParent,
         (collected: Set<string>, propNames) => {
             for (const name of propNames) collected.add(name);
@@ -152,7 +151,7 @@ export const collectContainerPropNames = (elementName: string): Set<string> => {
         },
         new Set<string>(),
     );
-    containerPropNamesCache.set(elementName, names);
+    containerPropNamesCache.set(gtype, names);
     return names;
 };
 

@@ -69,7 +69,7 @@ const collectCandidateExports = (
 
 const collectLazyElementExports = (collector: ExportCollector, lazyElements: LazyElementSpec[]): void => {
     for (const spec of lazyElements) {
-        collector.imports.addNamed("@gtkx/react/internal", "createLazyElementComponent", false);
+        collector.imports.addNamed("@gtkx/react/internal", "createWrapperElementComponent", false);
         collector.imports.addNamed("react", "ReactNode", true);
         collector.exportLines.push(renderLazyElementExport(spec));
         collector.exportedNames.add(spec.element);
@@ -77,7 +77,7 @@ const collectLazyElementExports = (collector: ExportCollector, lazyElements: Laz
 };
 
 const renderLazyElementExport = (spec: LazyElementSpec): string => {
-    const factory = `createLazyElementComponent<${spec.typeName}>()`;
+    const factory = `createWrapperElementComponent<${spec.typeName}>()`;
     const component = `export const ${spec.element}: (props: ${spec.typeName}) => ReactNode = ${factory};`;
     return `${spec.typeSource}\n\n${component}`;
 };

@@ -2,16 +2,10 @@ import * as GObject from "@gtkx/gi/gobject";
 import { containerMapping } from "./container-attach.js";
 import { lazyElementMapping } from "./lazy-element.js";
 import { type ElementHandler, type ElementMapping, type Node, stateOf } from "./state.js";
-import { containerChildMapping, containerPropMapping, objectPropMapping } from "./wrapper-attach.js";
+import { containerChildMapping, propMapping } from "./wrapper-attach.js";
 import { isWrapperNode } from "./wrapper-node.js";
 
-const ELEMENT_MAP: ElementMapping[] = [
-    objectPropMapping,
-    containerPropMapping,
-    lazyElementMapping,
-    containerChildMapping,
-    containerMapping,
-];
+const ELEMENT_MAP: ElementMapping[] = [propMapping, lazyElementMapping, containerChildMapping, containerMapping];
 
 const resolveHandler = (child: Node, parent: Node): ElementHandler | null => {
     for (const mapping of ELEMENT_MAP) {

@@ -8,7 +8,7 @@ import { resolveAdoptContainerProp, runCall, runCallValue } from "./element-prop
 import { type ElementMapping, hasWrapperKind, type Node, registeredStateOf, registerState, stateOf } from "./state.js";
 import type { Props } from "./types.js";
 import { trackedWidgetOf } from "./wrapper-content.js";
-import { LAZY_ELEMENT_KIND } from "./wrapper-kinds.js";
+import { ELEMENT_KIND } from "./wrapper-kinds.js";
 
 type LazyState = { content: Gtk.Widget | null; instance: GObject.Object | null; appliedProps: Props; ordinal: number };
 
@@ -24,7 +24,7 @@ const resolveLazyOrdinal = (parent: Node, node: Node): number => {
     let ordinal = 0;
     for (const sibling of stateOf(parent).children) {
         if (sibling === node) return ordinal;
-        if (hasWrapperKind(sibling, LAZY_ELEMENT_KIND)) ordinal++;
+        if (hasWrapperKind(sibling, ELEMENT_KIND)) ordinal++;
     }
     return ordinal;
 };
@@ -113,7 +113,7 @@ const syncLazyElement = (parent: GObject.Object, cp: ContainerProp, node: Node):
 };
 
 export const lazyElementMapping: ElementMapping = (child, parent) => {
-    if (!hasWrapperKind(child, LAZY_ELEMENT_KIND) || !(parent instanceof GObject.Object)) return null;
+    if (!hasWrapperKind(child, ELEMENT_KIND) || !(parent instanceof GObject.Object)) return null;
     const cp = resolveAdoptContainerProp(parent.__type__);
     if (cp === null) return null;
     return {

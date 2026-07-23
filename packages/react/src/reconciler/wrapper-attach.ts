@@ -3,10 +3,16 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { isSameArray } from "@gtkx/utils";
 import { isDescendantOf, unparentWidget } from "./container-attach.js";
-import { type CallScope, resolveContainerProp, resolveCurrentHolder, runCall } from "./element-props.js";
-import { type ElementMapping, hasWrapperKind, type Node, stateOf } from "./state.js";
+import {
+    type CallScope,
+    collectContainerPropNames,
+    resolveContainerProp,
+    resolveCurrentHolder,
+    runCall,
+} from "./element-props.js";
+import { type ElementHandler, type ElementMapping, hasWrapperKind, type Node, stateOf } from "./state.js";
 import { collectWrapperChildInstances, trackedInstanceOf } from "./wrapper-content.js";
-import { CONTAINER_PROP_KIND, OBJECT_PROP_KIND } from "./wrapper-kinds.js";
+import { PROP_KIND } from "./wrapper-kinds.js";
 
 const attachedParent = new WeakMap<GObject.Object, GObject.Object>();
 
@@ -91,15 +97,21 @@ export const containerChildMapping: ElementMapping = (child, parent) => {
     };
 };
 
-const attachPropChild = (parent: GObject.Object, child: GObject.Object, propName: string): void => {
+const withContainerProp = (
+    parent: GObject.Object,
+    child: GObject.Object,
+    propName: string,
+    run: (cp: ContainerProp) => void,
+): void => {
     const cp = resolveContainerProp(parent.__type__, child.__type__, propName);
-    if (cp !== null) attachContainerChild(parent, child, cp, null);
+    if (cp !== null) run(cp);
 };
 
-const detachPropChild = (parent: GObject.Object, child: GObject.Object, propName: string): void => {
-    const cp = resolveContainerProp(parent.__type__, child.__type__, propName);
-    if (cp !== null) detachContainerChild(parent, child, cp);
-};
+const attachPropChild = (parent: GObject.Object, child: GObject.Object, propName: string): void =>
+    withContainerProp(parent, child, propName, (cp) => attachContainerChild(parent, child, cp, null));
+
+const detachPropChild = (parent: GObject.Object, child: GObject.Object, propName: string): void =>
+    withContainerProp(parent, child, propName, (cp) => detachContainerChild(parent, child, cp));
 
 const isRooted = (instance: GObject.Object): boolean =>
     instance instanceof Gtk.Widget ? instance.getRoot() !== null : true;
@@ -114,28 +126,24 @@ type ObjectPropState = { prop: string; value: GObject.Object };
 
 const objectPropState = new WeakMap<Node, ObjectPropState>();
 
-export const objectPropMapping: ElementMapping = (child, parent) => {
-    if (!hasWrapperKind(child, OBJECT_PROP_KIND) || !(parent instanceof GObject.Object)) return null;
-    return {
-        attach: () => {
-            const prop = propNameOf(child);
-            if (prop === undefined) return;
-            const value = trackedInstanceOf(child);
-            const state = objectPropState.get(child);
-            if (state && state.value === value) return;
-            Reflect.set(parent, prop, value ?? null);
-            if (value) objectPropState.set(child, { prop, value });
-            else objectPropState.delete(child);
-        },
-        detach: () => {
-            const state = objectPropState.get(child);
-            objectPropState.delete(child);
-            if (!state || !isRooted(parent)) return;
-            rescueFocus(parent, state.value);
-            Reflect.set(parent, state.prop, null);
-        },
-    };
-};
+const objectPropHandler = (child: Node, parent: GObject.Object, prop: string | undefined): ElementHandler => ({
+    attach: () => {
+        if (prop === undefined) return;
+        const value = trackedInstanceOf(child);
+        const state = objectPropState.get(child);
+        if (state && state.value === value) return;
+        Reflect.set(parent, prop, value ?? null);
+        if (value) objectPropState.set(child, { prop, value });
+        else objectPropState.delete(child);
+    },
+    detach: () => {
+        const state = objectPropState.get(child);
+        objectPropState.delete(child);
+        if (!state || !isRooted(parent)) return;
+        rescueFocus(parent, state.value);
+        Reflect.set(parent, state.prop, null);
+    },
+});
 
 const propNameOf = (node: Node): string | undefined => {
     const propName = stateOf(node).props.propName;
@@ -149,25 +157,26 @@ const detachContainerPropChild = (instance: GObject.Object, parent: GObject.Obje
     if (instance instanceof Gtk.Widget && instance.getParent() !== null) unparentWidget(instance);
 };
 
-export const containerPropMapping: ElementMapping = (child, parent) => {
-    if (!hasWrapperKind(child, CONTAINER_PROP_KIND) || !(parent instanceof GObject.Object)) return null;
-    return {
-        attach: () => {
-            const propName = propNameOf(child);
-            if (propName === undefined) return;
-            const desired = collectWrapperChildInstances(child);
-            const prev = containerPropState.get(child) ?? [];
-            if (isSameArray(prev, desired)) return;
-            for (const instance of prev) detachContainerPropChild(instance, parent, propName);
-            for (const instance of desired) attachPropChild(parent, instance, propName);
-            containerPropState.set(child, desired);
-        },
-        detach: () => {
-            const propName = propNameOf(child);
-            const instances = containerPropState.get(child) ?? [];
-            containerPropState.delete(child);
-            if (propName === undefined) return;
-            for (const instance of instances) detachContainerPropChild(instance, parent, propName);
-        },
-    };
+const containerPropHandler = (child: Node, parent: GObject.Object, propName: string): ElementHandler => ({
+    attach: () => {
+        const desired = collectWrapperChildInstances(child);
+        const prev = containerPropState.get(child) ?? [];
+        if (isSameArray(prev, desired)) return;
+        for (const instance of prev) detachContainerPropChild(instance, parent, propName);
+        for (const instance of desired) attachPropChild(parent, instance, propName);
+        containerPropState.set(child, desired);
+    },
+    detach: () => {
+        const instances = containerPropState.get(child) ?? [];
+        containerPropState.delete(child);
+        for (const instance of instances) detachContainerPropChild(instance, parent, propName);
+    },
+});
+
+export const propMapping: ElementMapping = (child, parent) => {
+    if (!hasWrapperKind(child, PROP_KIND) || !(parent instanceof GObject.Object)) return null;
+    const propName = propNameOf(child);
+    return propName !== undefined && collectContainerPropNames(parent.__type__).has(propName)
+        ? containerPropHandler(child, parent, propName)
+        : objectPropHandler(child, parent, propName);
 };

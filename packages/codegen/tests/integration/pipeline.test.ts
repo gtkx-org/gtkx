@@ -337,9 +337,9 @@ describe("codegen React pipeline", () => {
     it("emits page elements as lazy-element components", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
         expect(gtk).toContain(
-            "export const GtkNotebookPage: (props: GtkNotebookPageElementProps) => ReactNode = createLazyElementComponent<GtkNotebookPageElementProps>();",
+            "export const GtkNotebookPage: (props: GtkNotebookPageElementProps) => ReactNode = createWrapperElementComponent<GtkNotebookPageElementProps>();",
         );
-        expect(gtk).toContain("createLazyElementComponent<GtkStackPageElementProps>()");
+        expect(gtk).toContain("createWrapperElementComponent<GtkStackPageElementProps>()");
     });
 });
 
