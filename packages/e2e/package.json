@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/e2e",
     "version": "0.0.0",
-    "description": "Internal integration tests and benchmarks covering the GTKX reconciler, runtime, native FFI, and OpenGL bindings",
+    "description": "Internal integration tests and benchmarks covering the GTKX reconciler, runtime, and native FFI",
     "private": true,
     "type": "module",
     "scripts": {
@@ -10,10 +10,8 @@
     },
     "devDependencies": {
         "@codspeed/vitest-plugin": "^5.7.1",
-        "@gtkx/components": "workspace:*",
         "@gtkx/config": "workspace:*",
         "@gtkx/runtime": "workspace:*",
-        "@gtkx/gl": "workspace:*",
         "@gtkx/native": "workspace:*",
         "@gtkx/react": "workspace:*",
         "@gtkx/testing": "workspace:*",

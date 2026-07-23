@@ -1,11 +1,23 @@
-import { ListView } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkAdjustment, GtkLabel, GtkScale, GtkTextView } from "@gtkx/jsx/gtk";
+import { GtkAdjustment, GtkListView, GtkScale, GtkTextView } from "@gtkx/jsx/gtk";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 import { render, screen, userEvent } from "../src/index.js";
 
-type NamedItem = { name: string };
+const stringLabelFactory = (): Gtk.SignalListItemFactory => {
+    const factory = Gtk.SignalListItemFactory.new();
+    factory.on("setup", (listItem) => {
+        if (!(listItem instanceof Gtk.ListItem)) return;
+        listItem.setChild(new Gtk.Label());
+    });
+    factory.on("bind", (listItem) => {
+        if (!(listItem instanceof Gtk.ListItem)) return;
+        const label = listItem.getChild();
+        const item = listItem.getItem();
+        if (label instanceof Gtk.Label && item instanceof Gtk.StringObject) label.setLabel(item.getString());
+    });
+    return factory;
+};
 
 const bufferText = (view: Gtk.TextView): string => {
     const buffer = view.getBuffer();
@@ -68,13 +80,10 @@ describe("keyboard drives real widget key bindings", () => {
         const activated: number[] = [];
         const ref = createRef<Gtk.ListView>();
         await render(
-            <ListView<NamedItem>
+            <GtkListView
                 ref={ref}
-                items={[
-                    { id: "1", value: { name: "Alpha" } },
-                    { id: "2", value: { name: "Beta" } },
-                ]}
-                renderItem={({ item }) => <GtkLabel>{item.name}</GtkLabel>}
+                model={Gtk.NoSelection.new(Gtk.StringList.new(["Alpha", "Beta"]))}
+                factory={stringLabelFactory()}
                 onActivate={(position) => activated.push(position)}
             />,
         );
@@ -82,7 +91,7 @@ describe("keyboard drives real widget key bindings", () => {
         expect(view).not.toBeNull();
         view?.grabFocus();
 
-        await userEvent.keyboard(view as Gtk.ListView, "{ArrowDown}{Enter}");
+        await userEvent.keyboard(view as Gtk.ListView, "{Enter}");
         expect(activated).toEqual([0]);
 
         await userEvent.keyboard(view as Gtk.ListView, "{ArrowDown}{Enter}");

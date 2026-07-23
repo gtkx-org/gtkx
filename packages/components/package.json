@@ -43,6 +43,7 @@
         "src"
     ],
     "scripts": {
+        "bench": "NODE_ENV=production vitest bench --run --config vitest.bench.config.ts",
         "build": "tsc -b tsconfig.lib.json",
         "typecheck": "tsc -b --emitDeclarationOnly",
         "release": "tsx ../../scripts/release-package.ts"
@@ -56,5 +57,12 @@
     },
     "peerDependencies": {
         "react": "^19"
+    },
+    "devDependencies": {
+        "@codspeed/vitest-plugin": "^5.7.1",
+        "@gtkx/config": "workspace:*",
+        "@gtkx/testing": "workspace:*",
+        "@gtkx/vitest": "workspace:*",
+        "vitest": "catalog:"
     }
 }

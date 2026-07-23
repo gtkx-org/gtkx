@@ -7,8 +7,8 @@ import { render } from "@gtkx/testing";
 import type { ReactElement, ReactNode, RefObject } from "react";
 import { createRef, useCallback, useMemo, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { renderChildren } from "../helpers/render-children.js";
-import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
+import { renderChildren } from "./helpers/render-children.js";
+import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
 
 const noop = () => {};
 const cellRenderer = () => <GtkLabel>Cell</GtkLabel>;

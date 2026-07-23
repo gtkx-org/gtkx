@@ -3,9 +3,11 @@ import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkTextBuffer, GtkTextTag, GtkTextView } from "@gtkx/jsx/gtk";
 import { render, screen } from "@gtkx/testing";
-import { createRef, type ReactNode, type Ref, useMemo } from "react";
+import { createRef, type ReactNode, type Ref, type RefObject, useMemo } from "react";
 import { describe, expect, it } from "vitest";
-import { getTextBuffer } from "../helpers/buffer-text.js";
+
+const getTextBuffer = (ref: RefObject<Gtk.TextView | null>): Gtk.TextBuffer =>
+    ref.current?.getBuffer() as Gtk.TextBuffer;
 
 const usePaintable = (): Gtk.IconPaintable | null => {
     return useMemo(() => {

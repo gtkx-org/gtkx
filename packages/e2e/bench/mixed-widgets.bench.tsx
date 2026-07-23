@@ -9,15 +9,15 @@ import {
     GtkLevelBar,
     GtkProgressBar,
     GtkScale,
+    GtkScrolledWindow,
     GtkSeparator,
     GtkSpinner,
     GtkSwitch,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
 import type { ReactNode } from "react";
-import { bench, describe } from "vitest";
 import { cleanup, render } from "../tests/helpers/production-render.js";
-import { ScrollWrapper } from "../tests/helpers/scroll-wrapper.js";
+import { describeSizedBench } from "../tests/helpers/sized-bench.js";
 
 const SIZES = [98, 392];
 
@@ -60,29 +60,31 @@ const ROW = (i: number): ReactNode => {
 };
 
 const drawMixed = (n: number, salt: string): ReactNode => (
-    <ScrollWrapper>
+    <GtkScrolledWindow minContentHeight={200} minContentWidth={200}>
         <GtkBox>{Array.from({ length: n }, (_, i) => ROW(i + salt.length))}</GtkBox>
-    </ScrollWrapper>
+    </GtkScrolledWindow>
 );
 
-describe("mixed-widget mount", () => {
-    for (const n of SIZES) {
-        bench(`mount ${n} mixed-class widgets`, async () => {
-            await render(drawMixed(n, "a"));
-            await cleanup();
-        });
-    }
-});
+describeSizedBench(
+    "mixed-widget mount",
+    SIZES,
+    (n) => `mount ${n} mixed-class widgets`,
+    async (n) => {
+        await render(drawMixed(n, "a"));
+        await cleanup();
+    },
+);
 
-describe("mixed-widget prop update", () => {
-    for (const n of SIZES) {
-        bench(`update one prop across ${n} mixed-class widgets`, async () => {
+describeSizedBench(
+    "mixed-widget prop update",
+    SIZES,
+    (n) => `update one prop across ${n} mixed-class widgets`,
+    async (n) => {
+        await render(drawMixed(n, "a"));
+        for (let k = 0; k < 3; k++) {
+            await render(drawMixed(n, "ab"));
             await render(drawMixed(n, "a"));
-            for (let k = 0; k < 3; k++) {
-                await render(drawMixed(n, "ab"));
-                await render(drawMixed(n, "a"));
-            }
-            await cleanup();
-        });
-    }
-});
+        }
+        await cleanup();
+    },
+);

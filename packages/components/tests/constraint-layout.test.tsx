@@ -13,7 +13,7 @@ import {
     NamedLabel,
     onlyConstraint,
     renderConstraintBox,
-} from "../helpers/constraint-layout-cases.js";
+} from "./helpers/constraint-layout-cases.js";
 
 const A = Gtk.ConstraintAttribute;
 const R = Gtk.ConstraintRelation;

@@ -56,7 +56,6 @@
     },
     "devDependencies": {
         "@gtkx/config": "workspace:*",
-        "@gtkx/components": "workspace:*",
         "@gtkx/vitest": "workspace:*",
         "@vitest/expect": "^4.1.10",
         "vitest": "catalog:"

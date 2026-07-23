@@ -4,8 +4,8 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 import { render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { valueItems } from "../helpers/list-fixtures.js";
-import { renderChildren } from "../helpers/render-children.js";
+import { valueItems } from "./helpers/list-fixtures.js";
+import { renderChildren } from "./helpers/render-children.js";
 
 const buildDropDown = (dropDownRef: RefObject<Gtk.DropDown | null>) => (items: string[]) => (
     <DropDown ref={dropDownRef} items={valueItems(items)} />

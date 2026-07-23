@@ -1,13 +1,12 @@
-import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import type { ReactNode } from "react";
-import { ScrollWrapper } from "./scroll-wrapper.js";
 
 export const drawButtonBox = (n: number): ReactNode => (
-    <ScrollWrapper>
+    <GtkScrolledWindow minContentHeight={200} minContentWidth={200}>
         <GtkBox>
             {Array.from({ length: n }, (_, i) => `button-${i}`).map((name) => (
                 <GtkButton key={name} label={name} onClicked={() => undefined} />
             ))}
         </GtkBox>
-    </ScrollWrapper>
+    </GtkScrolledWindow>
 );

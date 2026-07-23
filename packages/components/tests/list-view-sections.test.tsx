@@ -5,7 +5,7 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 import { render, screen } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
-import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
+import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
 
 interface Row {
     name: string;

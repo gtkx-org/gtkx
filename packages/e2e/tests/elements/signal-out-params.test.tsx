@@ -1,9 +1,8 @@
-import { Overlay } from "@gtkx/components";
 import * as Gdk from "@gtkx/gi/gdk";
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as GtkSource from "@gtkx/gi/gtksource";
-import { GtkBox, GtkLabel, GtkSpinButton, GtkText } from "@gtkx/jsx/gtk";
+import { GtkLabel, GtkOverlay, GtkSpinButton, GtkText } from "@gtkx/jsx/gtk";
 import { GtkSourceView } from "@gtkx/jsx/gtksource";
 import { act, render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { type ComponentProps, createRef } from "react";
@@ -36,13 +35,20 @@ const renderOverlayWithChild = async (mainLabel: string): Promise<Gtk.Overlay> =
     const overlayRef = createRef<Gtk.Overlay>();
 
     await render(
-        <Overlay ref={overlayRef} widthRequest={200} heightRequest={200}>
+        <GtkOverlay ref={overlayRef} widthRequest={200} heightRequest={200}>
             <GtkLabel>{mainLabel}</GtkLabel>
-            <Overlay.Child component={GtkBox} name="overlay-child" widthRequest={40} heightRequest={20} />
-        </Overlay>,
+        </GtkOverlay>,
     );
 
-    return overlayRef.current as Gtk.Overlay;
+    const overlay = overlayRef.current as Gtk.Overlay;
+    await act(() => {
+        const child = Gtk.Box.new(Gtk.Orientation.HORIZONTAL, 0);
+        child.setName("overlay-child");
+        child.setSizeRequest(40, 20);
+        overlay.addOverlay(child);
+    });
+
+    return overlay;
 };
 
 interface SnippetView {

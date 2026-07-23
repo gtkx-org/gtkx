@@ -5,8 +5,8 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 import { act, getWidgetNodeText, screen, waitFor, within } from "@gtkx/testing";
 import type { RefObject } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { expectRenderItemFunctionUpdate, renderTestItemWithSpy } from "../helpers/list-collection-render.js";
-import { type FixtureInput, type ListViewFixture, renderListView } from "../helpers/list-fixtures.js";
+import { expectRenderItemFunctionUpdate, renderTestItemWithSpy } from "./helpers/list-collection-render.js";
+import { type FixtureInput, type ListViewFixture, renderListView } from "./helpers/list-fixtures.js";
 
 interface Category {
     type: "category";

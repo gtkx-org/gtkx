@@ -1,17 +1,26 @@
-import { Menu, type MenuEntry } from "@gtkx/components";
 import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 
 import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
 import { render } from "@gtkx/testing";
-import { createRef, type ReactElement, type ReactNode, type RefObject } from "react";
+import { createRef, type ReactNode, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
 
 const APP_FLAGS = Gio.ApplicationFlags.NON_UNIQUE;
 
 let nextAppId = 0;
 const uniqueAppId = (): string => `org.gtkx.applicationtest${nextAppId++}`;
+
+const buildMenubar = (entries: Array<{ label: string; items: Array<{ label: string; action: string }> }>): Gio.Menu => {
+    const menubar = Gio.Menu.new();
+    for (const entry of entries) {
+        const submenu = Gio.Menu.new();
+        for (const item of entry.items) submenu.append(item.label, item.action);
+        menubar.appendSubmenu(entry.label, submenu);
+    }
+    return menubar;
+};
 
 const MenubarApp = ({
     appRef,
@@ -20,14 +29,14 @@ const MenubarApp = ({
 }: {
     appRef: RefObject<Gtk.Application | null>;
     appId: string;
-    menubar: ReactElement | null;
+    menubar: Gio.MenuModel | null;
 }): ReactNode => (
     <GtkApplication ref={appRef} applicationId={appId} flags={APP_FLAGS} menubar={menubar}>
         <GtkApplicationWindow defaultWidth={800} defaultHeight={600} />
     </GtkApplication>
 );
 
-const renderApp = async (menubar: ReactElement | null): Promise<Gtk.Application> => {
+const renderApp = async (menubar: Gio.MenuModel | null): Promise<Gtk.Application> => {
     const ref = createRef<Gtk.Application>();
     await render(<MenubarApp appRef={ref} appId={uniqueAppId()} menubar={menubar} />, {
         container: rootElement,
@@ -40,18 +49,16 @@ describe("render - Application", () => {
     describe("menubar slot", () => {
         it("sets menubar from a GMenu", async () => {
             const app = await renderApp(
-                <Menu
-                    items={[
-                        {
-                            label: "File",
-                            submenu: [
-                                { label: "New", action: "win.new" },
-                                { label: "Open", action: "win.open" },
-                            ],
-                        },
-                        { label: "Edit", submenu: [{ label: "Cut", action: "win.cut" }] },
-                    ]}
-                />,
+                buildMenubar([
+                    {
+                        label: "File",
+                        items: [
+                            { label: "New", action: "win.new" },
+                            { label: "Open", action: "win.open" },
+                        ],
+                    },
+                    { label: "Edit", items: [{ label: "Cut", action: "win.cut" }] },
+                ]),
             );
 
             const menubar = app.getMenubar();
@@ -62,7 +69,7 @@ describe("render - Application", () => {
         it("clears menubar when the GMenu is removed", async () => {
             const ref = createRef<Gtk.Application>();
             const appId = uniqueAppId();
-            const fileMenu = <Menu items={[{ label: "File", submenu: [{ label: "New", action: "win.new" }] }]} />;
+            const fileMenu = buildMenubar([{ label: "File", items: [{ label: "New", action: "win.new" }] }]);
 
             const { rerender } = await render(<MenubarApp appRef={ref} appId={appId} menubar={fileMenu} />, {
                 container: rootElement,
@@ -76,10 +83,8 @@ describe("render - Application", () => {
         it("updates menubar when items change", async () => {
             const ref = createRef<Gtk.Application>();
             const appId = uniqueAppId();
-            const fileMenu = (items: string[]): ReactElement => {
-                const submenu: MenuEntry[] = items.map((label) => ({ label, action: `win.${label}` }));
-                return <Menu items={[{ label: "File", submenu }]} />;
-            };
+            const fileMenu = (items: string[]): Gio.Menu =>
+                buildMenubar([{ label: "File", items: items.map((label) => ({ label, action: `win.${label}` })) }]);
 
             const { rerender } = await render(
                 <MenubarApp appRef={ref} appId={appId} menubar={fileMenu(["New", "Open"])} />,

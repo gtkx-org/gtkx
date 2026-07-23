@@ -1,4 +1,3 @@
-import { DropDown } from "@gtkx/components";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -6,6 +5,7 @@ import {
     GtkBox,
     GtkButton,
     GtkCheckButton,
+    GtkDropDown,
     GtkDropTarget,
     GtkEntry,
     GtkEventControllerKey,
@@ -327,15 +327,7 @@ describe("userEvent clipboard", () => {
 
 describe("userEvent.selectOptions", () => {
     it("selects option in dropdown by index", async () => {
-        await render(
-            <DropDown
-                items={[
-                    { id: "a", value: "Option A" },
-                    { id: "b", value: "Option B" },
-                    { id: "c", value: "Option C" },
-                ]}
-            />,
-        );
+        await render(<GtkDropDown model={Gtk.StringList.new(["Option A", "Option B", "Option C"])} />);
 
         const dropdown = await screen.findByRole(Gtk.AccessibleRole.COMBO_BOX);
         await userEvent.selectOptions(dropdown, 1);
@@ -357,14 +349,7 @@ describe("userEvent.selectOptions", () => {
         });
 
         it("throws when selecting multiple options on dropdown", async () => {
-            await render(
-                <DropDown
-                    items={[
-                        { id: "a", value: "A" },
-                        { id: "b", value: "B" },
-                    ]}
-                />,
-            );
+            await render(<GtkDropDown model={Gtk.StringList.new(["A", "B"])} />);
 
             const dropdown = await screen.findByRole(Gtk.AccessibleRole.COMBO_BOX);
             await expect(userEvent.selectOptions(dropdown, [0, 1])).rejects.toThrow(
@@ -384,7 +369,7 @@ describe("userEvent.deselectOptions", () => {
 
     describe("error handling", () => {
         it("throws when element is not a list box", async () => {
-            await render(<DropDown items={[{ id: "a", value: "A" }]} />);
+            await render(<GtkDropDown model={Gtk.StringList.new(["A"])} />);
 
             const dropdown = await screen.findByRole(Gtk.AccessibleRole.COMBO_BOX);
             await expect(userEvent.deselectOptions(dropdown, 0)).rejects.toThrow(

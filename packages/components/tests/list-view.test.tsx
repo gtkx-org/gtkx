@@ -20,8 +20,8 @@ import {
     RAPID_REORDER_ORDERS,
     renderCounterCell,
     renderTestItemWithSpy,
-} from "../helpers/list-collection-render.js";
-import { renderGridView, renderListView } from "../helpers/list-fixtures.js";
+} from "./helpers/list-collection-render.js";
+import { renderGridView, renderListView } from "./helpers/list-fixtures.js";
 
 const collectLabelTexts = (container: Gtk.Widget): string[] =>
     within(container)

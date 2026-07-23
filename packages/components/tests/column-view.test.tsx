@@ -18,9 +18,9 @@ import {
     namedLabelRenderItem,
     namedRows,
     RAPID_REORDER_ORDERS,
-} from "../helpers/list-collection-render.js";
-import { type ColumnDef, renderColumnView } from "../helpers/list-fixtures.js";
-import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
+} from "./helpers/list-collection-render.js";
+import { type ColumnDef, renderColumnView } from "./helpers/list-fixtures.js";
+import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
 
 const cellText = (cell: Gtk.Widget): string => {
     const [label] = within(cell).getAllByRole(Gtk.AccessibleRole.LABEL);

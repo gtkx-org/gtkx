@@ -3,7 +3,7 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 
 import { render } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
-import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
+import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
 
 function App({ items }: { items: ItemNode<string>[] }) {
     return (

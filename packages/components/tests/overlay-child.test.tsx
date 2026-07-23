@@ -4,7 +4,7 @@ import { GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { render, screen } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
-import { countChildren } from "../helpers/child-count.js";
+import { countChildren } from "./helpers/child-count.js";
 
 describe("render - Overlay.Child (1)", () => {
     it("adds child as overlay", async () => {

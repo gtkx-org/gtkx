@@ -2,16 +2,10 @@
     "extends": "../../tsconfig.test.json",
     "references": [
         {
-            "path": "../components/tsconfig.lib.json"
-        },
-        {
             "path": "../config/tsconfig.lib.json"
         },
         {
             "path": "../runtime/tsconfig.lib.json"
-        },
-        {
-            "path": "../gl/tsconfig.lib.json"
         },
         {
             "path": "../react/tsconfig.lib.json"

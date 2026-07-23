@@ -1,4 +1,3 @@
-import { DropDown } from "@gtkx/components";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -6,6 +5,7 @@ import {
     GtkBox,
     GtkButton,
     GtkCheckButton,
+    GtkDropDown,
     GtkDropTarget,
     GtkEntry,
     GtkEventControllerMotion,
@@ -153,12 +153,7 @@ describe("userEvent actionability - insensitive selection targets", () => {
     it("rejects selectOptions on a dropdown inside an insensitive ancestor", async () => {
         await render(
             <GtkBox sensitive={false}>
-                <DropDown
-                    items={[
-                        { id: "a", value: "Option A" },
-                        { id: "b", value: "Option B" },
-                    ]}
-                />
+                <GtkDropDown model={Gtk.StringList.new(["Option A", "Option B"])} />
             </GtkBox>,
         );
 

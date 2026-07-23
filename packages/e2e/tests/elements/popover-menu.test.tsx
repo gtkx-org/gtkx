@@ -1,4 +1,3 @@
-import { Menu } from "@gtkx/components";
 import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GSimpleAction } from "@gtkx/jsx/gio";
@@ -13,6 +12,12 @@ const APP_FLAGS = Gio.ApplicationFlags.NON_UNIQUE;
 let nextAppId = 0;
 const uniqueAppId = (): string => `org.gtkx.popovermenutest${nextAppId++}`;
 
+const buildMenu = (items: Array<{ label: string; action: string }>): Gio.Menu => {
+    const menu = Gio.Menu.new();
+    for (const item of items) menu.append(item.label, item.action);
+    return menu;
+};
+
 describe("render - PopoverMenu widget integration", () => {
     it("creates a PopoverMenu widget", async () => {
         const ref = createRef<Gtk.PopoverMenu>();
@@ -25,14 +30,10 @@ describe("render - PopoverMenu widget integration", () => {
         await render(
             <GtkPopoverMenu
                 ref={ref}
-                menuModel={
-                    <Menu
-                        items={[
-                            { label: "Item 1", action: "win.item1" },
-                            { label: "Item 2", action: "win.item2" },
-                        ]}
-                    />
-                }
+                menuModel={buildMenu([
+                    { label: "Item 1", action: "win.item1" },
+                    { label: "Item 2", action: "win.item2" },
+                ])}
             />,
         );
         expect(ref.current?.getMenuModel()?.getNItems()).toBe(2);
@@ -43,14 +44,10 @@ describe("render - PopoverMenu widget integration", () => {
         await render(
             <GtkMenuButton
                 ref={ref}
-                menuModel={
-                    <Menu
-                        items={[
-                            { label: "Option 1", action: "win.opt1" },
-                            { label: "Option 2", action: "win.opt2" },
-                        ]}
-                    />
-                }
+                menuModel={buildMenu([
+                    { label: "Option 1", action: "win.opt1" },
+                    { label: "Option 2", action: "win.opt2" },
+                ])}
             />,
         );
         expect(ref.current?.getMenuModel()?.getNItems()).toBe(2);
@@ -65,7 +62,7 @@ describe("render - PopoverMenu actions", () => {
         await render(
             <GtkApplication applicationId={uniqueAppId()} flags={APP_FLAGS}>
                 <GtkApplicationWindow ref={windowRef} actions={<GSimpleAction name="click" onActivate={onActivate} />}>
-                    <GtkPopoverMenu menuModel={<Menu items={[{ label: "Click Me", action: "win.click" }]} />} />
+                    <GtkPopoverMenu menuModel={buildMenu([{ label: "Click Me", action: "win.click" }])} />
                 </GtkApplicationWindow>
             </GtkApplication>,
             { container: rootElement },

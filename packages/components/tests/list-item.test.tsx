@@ -3,9 +3,9 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { render, screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
-import { expectAllVisibleOnce } from "../helpers/list-collection-render.js";
-import { renderChildren } from "../helpers/render-children.js";
-import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
+import { expectAllVisibleOnce } from "./helpers/list-collection-render.js";
+import { renderChildren } from "./helpers/render-children.js";
+import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
 
 interface TextItem {
     id: string;

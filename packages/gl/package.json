@@ -53,6 +53,8 @@
     "devDependencies": {
         "@gtkx/codegen": "workspace:*",
         "@gtkx/utils": "workspace:*",
-        "@types/node": "catalog:"
+        "@gtkx/vitest": "workspace:*",
+        "@types/node": "catalog:",
+        "vitest": "catalog:"
     }
 }

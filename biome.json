@@ -96,7 +96,7 @@
             }
         },
         {
-            "includes": ["packages/gl/**", "packages/e2e/tests/gl/**", "packages/react/src/hooks/use-bind-setting.ts"],
+            "includes": ["packages/gl/**", "packages/react/src/hooks/use-bind-setting.ts"],
             "linter": {
                 "rules": {
                     "complexity": {

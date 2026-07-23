@@ -5,7 +5,7 @@ import { GtkBox, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { createRef, type RefObject, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { allExpandableIds, renderListView } from "../helpers/list-fixtures.js";
+import { allExpandableIds, renderListView } from "./helpers/list-fixtures.js";
 
 const TWO_ITEMS = [
     { id: "1", value: { name: "First" } },
