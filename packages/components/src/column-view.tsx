@@ -1,186 +1,223 @@
-import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkColumnView, type GtkColumnViewProps } from "@gtkx/jsx/gtk";
-import { type ReactNode, type Ref, useCallback, useMemo, useState } from "react";
-import { createTreeRenderContext, HeaderRenderHost, type TreeRenderContext } from "./cell.js";
-import { type ColumnDef, ColumnViewColumn } from "./column-view-column.js";
-import { makeFactoryInstaller } from "./hooks/use-cell-containers.js";
-import { useCollectionHeader } from "./hooks/use-collection-header.js";
-import { type ColumnRegistration, useSortHandler } from "./hooks/use-sort-handler.js";
-import type {
-    CollectionItemSizeProps,
-    ControlledExpansionProps,
-    ControlledSelectionProps,
-    ItemNode,
-    SectionNode,
-} from "./types.js";
-import type { CellContainerStore } from "./utils/cell-container-store.js";
-import type { ItemResolver } from "./utils/item-resolver.js";
+import * as Gtk from "@gtkx/gi/gtk";
+import { GtkColumnView, GtkColumnViewColumn } from "@gtkx/jsx/gtk";
+import type { ReactNode, Ref } from "react";
+import { useLayoutEffect, useRef } from "react";
+import {
+    asHeaderRenderer,
+    buildRenderItemArgs,
+    type CellRenderers,
+    renderCellPortals,
+} from "./internal/cell-portals.js";
+import { createItemFactory, type FactoryContext } from "./internal/collection-factories.js";
+import type { CollectionViewApi } from "./internal/use-collection-view.js";
+import { useCollectionWidget } from "./internal/use-collection-widget.js";
+import { useFactorySlot } from "./internal/use-factories.js";
+import { applyRef } from "./internal/use-widget-ref.js";
+import type { ColumnDef, ColumnViewProps, ColumnViewSortProps, RenderItemProps } from "./types.js";
 
-export type { ColumnDef, ColumnDefDeclarativeProps } from "./column-view-column.js";
-
-const headerFactoryInstaller = makeFactoryInstaller<Gtk.ColumnView>((widget, factory) =>
-    widget.setHeaderFactory(factory),
-);
-
-export type ColumnViewSortProps = {
-    sortColumn?: string | null | undefined;
-    sortOrder?: Gtk.SortType | null | undefined;
-    onSortChanged?: ((column: string | null, order: Gtk.SortType) => void) | null | undefined;
+type ColumnRefEntry = {
+    external: Ref<Gtk.ColumnViewColumn | null> | undefined;
+    callback: (column: Gtk.ColumnViewColumn | null) => void;
 };
 
-export type ColumnViewDeclarativeProps<T = unknown, S = unknown> = ColumnViewSortProps &
-    Omit<CollectionItemSizeProps, "estimatedItemWidth"> &
-    ControlledSelectionProps &
-    ControlledExpansionProps & {
-        items?: ItemNode<T>[] | undefined;
-        sections?: SectionNode<S, T>[] | undefined;
-        renderHeader?: ((info: { section: S }) => ReactNode) | null | undefined;
-        columns: ColumnDef<T>[];
-    };
-
-/**
- * Props for {@link ColumnView}. Combines the underlying Gtk.ColumnView props with
- * declarative collection props: flat items or grouped sections, controlled selection
- * and expansion, sorting (sortColumn, sortOrder, onSortChanged), an optional section
- * header renderer, and the columns to render.
- */
-export type ColumnViewProps<T = unknown, S = unknown> = Omit<
-    GtkColumnViewProps,
-    "columns" | "model" | "headerFactory" | keyof ColumnViewDeclarativeProps<T, S>
-> &
-    ColumnViewDeclarativeProps<T, S>;
-
-type NormalizedColumnViewProps<T, S> = ColumnViewDeclarativeProps<T, S> & {
-    ref?: Ref<Gtk.ColumnView | null>;
-    [key: string]: unknown;
-};
-
-interface ColumnViewWiring<T, S> {
-    setRef: (value: Gtk.ColumnView | null) => void;
-    useHeader: boolean;
-    headerStore: CellContainerStore;
-    headerResolver: ItemResolver<T, S>;
-    resolver: ItemResolver<unknown, unknown>;
-    tree: TreeRenderContext;
-    setInstance: (id: string, column: Gtk.ColumnViewColumn | null) => void;
-}
-
-const useColumnInstances = (): {
+type ColumnRegistry = {
+    factories: Map<string, Gtk.SignalListItemFactory>;
+    sorters: Map<string, Gtk.CustomSorter>;
     instances: Map<string, Gtk.ColumnViewColumn>;
-    setInstance: (id: string, column: Gtk.ColumnViewColumn | null) => void;
-} => {
-    const [instances, setInstances] = useState<Map<string, Gtk.ColumnViewColumn>>(() => new Map());
-    const setInstance = useCallback((id: string, column: Gtk.ColumnViewColumn | null): void => {
-        setInstances((current) => {
-            if (column === null) {
-                if (!current.has(id)) return current;
-                const next = new Map(current);
-                next.delete(id);
-                return next;
-            }
-            if (current.get(id) === column) return current;
-            const next = new Map(current);
-            next.set(id, column);
-            return next;
-        });
-    }, []);
-    return { instances, setInstance };
+    refs: Map<string, ColumnRefEntry>;
 };
 
-const buildRegistrations = <T,>(
-    columns: ColumnDef<T>[],
-    instances: Map<string, Gtk.ColumnViewColumn>,
-): ColumnRegistration[] => {
-    const result: ColumnRegistration[] = [];
-    for (const column of columns) {
-        const instance = instances.get(column.id);
-        if (instance) result.push({ id: column.id, column: instance, sortable: column.sortable ?? false });
+const createRegistry = (): ColumnRegistry => ({
+    factories: new Map(),
+    sorters: new Map(),
+    instances: new Map(),
+    refs: new Map(),
+});
+
+const columnFactory = (registry: ColumnRegistry, context: FactoryContext, id: string): Gtk.SignalListItemFactory => {
+    let factory = registry.factories.get(id);
+    if (factory === undefined) {
+        factory = createItemFactory(context, id);
+        registry.factories.set(id, factory);
     }
-    return result;
+    return factory;
 };
 
-const useColumnViewWiring = <T, S>(props: NormalizedColumnViewProps<T, S>): ColumnViewWiring<T, S> => {
-    const { widgetRef, setRef, collection, useHeader, headerStore } = useCollectionHeader<Gtk.ColumnView, T, S>(
-        props,
-        headerFactoryInstaller,
+const columnSorter = (registry: ColumnRegistry, id: string): Gtk.CustomSorter => {
+    let sorter = registry.sorters.get(id);
+    if (sorter === undefined) {
+        sorter = Gtk.CustomSorter.new(null);
+        registry.sorters.set(id, sorter);
+    }
+    return sorter;
+};
+
+const columnRefCallback = (
+    registry: ColumnRegistry,
+    id: string,
+    external: Ref<Gtk.ColumnViewColumn | null> | undefined,
+): ((column: Gtk.ColumnViewColumn | null) => void) => {
+    const cached = registry.refs.get(id);
+    if (cached !== undefined && cached.external === external) return cached.callback;
+    const callback = (column: Gtk.ColumnViewColumn | null): void => {
+        applyRef(external, column);
+        if (column !== null) registry.instances.set(id, column);
+        else registry.instances.delete(id);
+    };
+    registry.refs.set(id, { external, callback });
+    return callback;
+};
+
+const releaseColumn = (registry: ColumnRegistry, id: string): void => {
+    const instance = registry.instances.get(id);
+    instance?.setFactory(null);
+    instance?.setSorter(null);
+    registry.instances.delete(id);
+    registry.factories.delete(id);
+    registry.sorters.delete(id);
+    registry.refs.delete(id);
+};
+
+const renderColumnElement = (def: ColumnDef<unknown>, registry: ColumnRegistry, context: FactoryContext): ReactNode => {
+    const { id, renderCell, sortable, headerMenu, ref, ...columnRest } = def;
+    void renderCell;
+    return (
+        <GtkColumnViewColumn
+            key={id}
+            id={id}
+            factory={columnFactory(registry, context, id)}
+            sorter={sortable === true ? columnSorter(registry, id) : null}
+            headerMenu={headerMenu}
+            ref={columnRefCallback(registry, id, ref)}
+            {...columnRest}
+        />
     );
+};
 
-    const { instances, setInstance } = useColumnInstances();
-    const registrations = useMemo<ColumnRegistration[]>(
-        () => buildRegistrations(props.columns, instances),
-        [props.columns, instances],
+const useColumnRelease = (registry: ColumnRegistry, columns: ColumnDef<unknown>[]): void => {
+    useLayoutEffect(() => {
+        const active = new Set(columns.map((def) => def.id));
+        for (const id of [...registry.factories.keys()]) {
+            if (!active.has(id)) releaseColumn(registry, id);
+        }
+    }, [registry, columns]);
+    useLayoutEffect(
+        () => () => {
+            for (const id of [...registry.factories.keys()]) releaseColumn(registry, id);
+        },
+        [registry],
     );
+};
 
-    useSortHandler({
-        columnView: widgetRef,
-        sortColumn: props.sortColumn,
-        sortOrder: props.sortOrder,
-        onSortChanged: props.onSortChanged,
-        columns: registrations,
-    });
+const useColumnSorting = (
+    widget: Gtk.ColumnView | null,
+    registry: ColumnRegistry,
+    sort: ColumnViewSortProps,
+    columns: ColumnDef<unknown>[],
+): void => {
+    const mutedRef = useRef(0);
+    const latestRef = useRef(sort);
+    latestRef.current = sort;
+    useLayoutEffect(() => {
+        if (widget === null) return;
+        const sorter = widget.getSorter();
+        if (!(sorter instanceof Gtk.ColumnViewSorter)) return;
+        const handler = (): void => {
+            if (mutedRef.current > 0) return;
+            const column = sorter.getPrimarySortColumn();
+            latestRef.current.onSortChanged?.(column?.getId() ?? null, sorter.getPrimarySortOrder());
+        };
+        sorter.on("changed", handler);
+        return () => {
+            sorter.off("changed", handler);
+        };
+    }, [widget]);
+    const { sortColumn, sortOrder } = sort;
+    useLayoutEffect(() => {
+        if (widget === null || sortColumn === undefined) return;
+        const column = sortColumn === null ? null : (registry.instances.get(sortColumn) ?? null);
+        if (sortColumn !== null && column === null) return;
+        mutedRef.current += 1;
+        try {
+            widget.sortByColumn(column, sortOrder ?? Gtk.SortType.ASCENDING);
+        } finally {
+            mutedRef.current -= 1;
+        }
+    }, [widget, registry, sortColumn, sortOrder, columns]);
+};
 
-    const expandedIds = props.expandedIds;
-    const tree = useMemo<TreeRenderContext>(
-        () => createTreeRenderContext(expandedIds, collection.rowId),
-        [expandedIds, collection.rowId],
-    );
+type ColumnPortalOptions = {
+    api: CollectionViewApi;
+    columns: ColumnDef<unknown>[];
+    expandedIds: string[] | null | undefined;
+    renderHeader: unknown;
+};
 
+const columnPortalRenderers = (options: ColumnPortalOptions): CellRenderers => {
+    const { api, expandedIds } = options;
+    const columnsById = new Map(options.columns.map((def) => [def.id, def]));
     return {
-        setRef,
-        useHeader,
-        headerStore,
-        headerResolver: collection.headerResolver,
-        resolver: collection.resolver as ItemResolver<unknown, unknown>,
-        tree,
-        setInstance,
+        item: (record) => {
+            const def = record.slot === null ? undefined : columnsById.get(record.slot);
+            if (def === undefined) return null;
+            const args = buildRenderItemArgs({ record, api, expandedIds });
+            return args === null ? null : (def.renderCell as (input: RenderItemProps<unknown>) => ReactNode)(args);
+        },
+        header: asHeaderRenderer(options.renderHeader, api),
     };
 };
 
 /**
- * Renders a Gtk.ColumnView: a multi-column, scrollable list backed by a collection
- * model. Columns are declared through the columns prop, each a {@link ColumnDef}.
+ * Renders a Gtk.ColumnView from declarative items or sections and a columns array,
+ * with controlled selection, expansion, and sorting, per-column header menus, and
+ * section header rendering.
  */
-export const ColumnView = <T = unknown, S = unknown>(props: ColumnViewProps<T, S>): ReactNode => {
-    const normalized = props as NormalizedColumnViewProps<T, S>;
-    const wiring = useColumnViewWiring<T, S>(normalized);
+export function ColumnView<T = unknown, S = unknown>(props: ColumnViewProps<T, S>): ReactNode {
     const {
-        ref,
         items,
         sections,
+        renderHeader,
         columns,
         selectedIds,
-        selectionMode,
         onSelectionChanged,
+        selectionMode,
         expandedIds,
         onExpandedChange,
         sortColumn,
         sortOrder,
         onSortChanged,
-        renderHeader,
         estimatedItemHeight,
-        ...intrinsicProps
-    } = normalized;
-
+        children,
+        ref,
+        ...rest
+    } = props;
+    void children;
+    void estimatedItemHeight;
+    void items;
+    void sections;
+    void selectedIds;
+    void onSelectionChanged;
+    void selectionMode;
+    void onExpandedChange;
+    void ref;
+    const { widget, refCallback, harness, view } = useCollectionWidget<Gtk.ColumnView>(props);
+    const registryRef = useRef<ColumnRegistry | null>(null);
+    registryRef.current ??= createRegistry();
+    const registry = registryRef.current;
+    const columnDefs = columns as ColumnDef<unknown>[];
+    useFactorySlot(widget, harness.context, "header", typeof renderHeader === "function");
+    useColumnRelease(registry, columnDefs);
+    useColumnSorting(widget, registry, { sortColumn, sortOrder, onSortChanged }, columnDefs);
+    const portals = renderCellPortals(
+        harness.tracker,
+        columnPortalRenderers({ api: view.api, columns: columnDefs, expandedIds, renderHeader }),
+    );
     return (
         <>
-            <GtkColumnView {...intrinsicProps} ref={wiring.setRef}>
-                {columns.map((column) => (
-                    <ColumnViewColumn
-                        key={column.id}
-                        {...column}
-                        resolver={wiring.resolver}
-                        tree={wiring.tree}
-                        estimatedItemHeight={estimatedItemHeight}
-                        onInstance={wiring.setInstance}
-                    />
-                ))}
+            <GtkColumnView ref={refCallback} {...rest}>
+                {columnDefs.map((def) => renderColumnElement(def, registry, harness.context))}
             </GtkColumnView>
-            <HeaderRenderHost
-                useHeader={wiring.useHeader}
-                store={wiring.headerStore}
-                resolver={wiring.headerResolver}
-                renderHeader={renderHeader}
-            />
+            {portals}
         </>
     );
-};
+}

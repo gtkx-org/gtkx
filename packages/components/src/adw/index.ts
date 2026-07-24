@@ -1,9 +1,2 @@
-export {
-    type ToastController,
-    type ToastOptions,
-    type ToastOverlayController,
-    ToastProvider,
-    type ToastProviderProps,
-    useToast,
-    useToastOverlay,
-} from "./toast.js";
+export { ToastProvider, useToast, useToastOverlay } from "./toast.js";
+export type { ToastController, ToastOptions, ToastOverlayController, ToastProviderProps } from "./types.js";

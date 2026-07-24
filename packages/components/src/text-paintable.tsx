@@ -1,33 +1,36 @@
-import type * as Gdk from "@gtkx/gi/gdk";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkTextMark } from "@gtkx/jsx/gtk";
-import { type ReactNode, useLayoutEffect, useRef } from "react";
+import type { ReactNode } from "react";
+import { useLayoutEffect, useState } from "react";
+import { useLatest } from "./internal/use-latest.js";
+import type { TextPaintableProps } from "./types.js";
 
-/** Props for {@link TextPaintable}. */
-export type TextPaintableProps = {
-    /** The paintable inserted into the enclosing text buffer at this position. */
-    paintable: Gdk.Paintable;
-    /** Called with the buffer and the position mark right after the paintable is inserted. */
-    onInserted?: (buffer: Gtk.TextBuffer, mark: Gtk.TextMark) => void;
+const deleteEmbeddedPaintable = (buffer: Gtk.TextBuffer, position: Gtk.TextIter): void => {
+    if (position.getPaintable() === null) return;
+    const after = position.copy();
+    after.forwardChar();
+    buffer.delete(position, after);
 };
 
-/** Inserts a `Gdk.Paintable` into the enclosing `GtkTextBuffer` at this position in the content. */
-export const TextPaintable = ({ paintable, onInserted }: TextPaintableProps): ReactNode => {
-    const markRef = useRef<Gtk.TextMark | null>(null);
+/**
+ * Inserts a Gdk.Paintable into the enclosing GtkTextBuffer at its position in the
+ * JSX text content, holding the spot with a left-gravity Gtk.TextMark and removing
+ * the paintable on unmount.
+ */
+export function TextPaintable(props: TextPaintableProps): ReactNode {
+    const { paintable, onInserted } = props;
+    const [mark, setMark] = useState<Gtk.TextMark | null>(null);
+    const handlers = useLatest({ onInserted });
     useLayoutEffect(() => {
-        const mark = markRef.current;
-        const buffer = mark?.getBuffer();
-        if (!mark || !buffer) return;
+        if (mark === null) return;
+        const buffer = mark.getBuffer();
+        if (buffer === null) return;
         buffer.insertPaintable(buffer.getIterAtMark(mark), paintable);
-        onInserted?.(buffer, mark);
+        handlers.current.onInserted?.(buffer, mark);
         return () => {
-            if (mark.getBuffer() !== buffer) return;
-            const start = buffer.getIterAtMark(mark);
-            if (start.getPaintable() === null) return;
-            const end = buffer.getIterAtMark(mark);
-            end.forwardChar();
-            buffer.delete(start, end);
+            const owner = mark.getBuffer();
+            if (owner !== null) deleteEmbeddedPaintable(owner, owner.getIterAtMark(mark));
         };
-    }, [paintable, onInserted]);
-    return <GtkTextMark leftGravity ref={markRef} />;
-};
+    }, [mark, paintable, handlers]);
+    return <GtkTextMark leftGravity ref={setMark} />;
+}

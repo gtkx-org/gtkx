@@ -1,11 +1,11 @@
 import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import * as GtkEnums from "@gtkx/gi/gtk";
-import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel, GtkStack } from "@gtkx/jsx/gtk";
 import { createPortal, rootElement, useApplication } from "@gtkx/react";
 import { render, screen, within } from "@gtkx/testing";
 import { createRef, type ReactNode, type Ref } from "react";
-import { describe, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 const APP_FLAGS = Gio.ApplicationFlags.NON_UNIQUE;
 
@@ -18,6 +18,16 @@ const Portal = ({ children, portalKey }: { children: ReactNode; portalKey?: stri
 };
 
 const plainBox = (ref: Ref<Gtk.Box>): ReactNode => <GtkBox ref={ref} orientation={GtkEnums.Orientation.VERTICAL} />;
+
+const stackChildOrder = (stack: Gtk.Stack): string[] => {
+    const names: string[] = [];
+    let child = stack.getFirstChild();
+    while (child !== null) {
+        if (child instanceof GtkEnums.Label) names.push(child.getLabel());
+        child = child.getNextSibling();
+    }
+    return names;
+};
 
 const renderPortalIntoBox = async (
     content: (box: Gtk.Box) => ReactNode,
@@ -59,6 +69,31 @@ describe("createPortal (1)", () => {
         const box = await renderPortalIntoBox((target) => createPortal(<GtkLabel>In Portal</GtkLabel>, target));
 
         within(box).getByText("In Portal");
+    });
+
+    it("keeps a portal child in place when sibling JSX children reorder", async () => {
+        const stackRef = createRef<Gtk.Stack>();
+
+        function App({ order }: { order: string[] }) {
+            const stack = stackRef.current;
+            return (
+                <>
+                    <GtkStack ref={stackRef}>
+                        {order.map((name) => (
+                            <GtkLabel key={name} label={name} />
+                        ))}
+                    </GtkStack>
+                    {stack && createPortal(<GtkLabel label="portal" />, stack)}
+                </>
+            );
+        }
+
+        const { rerender } = await render(<App order={["a", "b"]} />);
+        await rerender(<App order={["a", "b"]} />);
+        expect(stackChildOrder(stackRef.current as Gtk.Stack)).toEqual(["a", "b", "portal"]);
+
+        await rerender(<App order={["b", "a"]} />);
+        expect(stackChildOrder(stackRef.current as Gtk.Stack)).toEqual(["b", "portal", "a"]);
     });
 
     it("preserves key when provided", async () => {

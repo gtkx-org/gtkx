@@ -1,5 +1,5 @@
 import { DropDown } from "@gtkx/components";
-import type * as Gtk from "@gtkx/gi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
@@ -95,28 +95,114 @@ describe("render - DropDown (2)", () => {
 });
 
 describe("render - DropDown (3)", () => {
-    it("wires a header factory when renderHeader is provided on a sectioned dropdown", async () => {
-        const dropDownRef = createRef<Gtk.DropDown>();
+    const sections = [
+        { id: "letters", value: "Letters", data: [{ id: "a", value: "Alpha" }] },
+        { id: "numbers", value: "Numbers", data: [{ id: "1", value: "One" }] },
+    ];
 
+    it("renders section headers when renderHeader is provided on a sectioned dropdown", async () => {
         await render(
             <DropDown
-                ref={dropDownRef}
                 renderHeader={({ section: value }: { section: string }) => <GtkLabel>{value}</GtkLabel>}
-                sections={[
-                    { id: "letters", value: "Letters", data: [{ id: "a", value: "Alpha" }] },
-                    { id: "numbers", value: "Numbers", data: [{ id: "1", value: "One" }] },
-                ]}
+                sections={sections}
             />,
         );
 
-        await waitFor(() => expect(dropDownRef.current?.getHeaderFactory()).not.toBeNull());
+        await screen.findAllByText("Letters");
+        await screen.findAllByText("Numbers");
+        await screen.findAllByText("Alpha");
+        await screen.findAllByText("One");
     });
 
-    it("leaves the header factory unset when renderHeader is omitted", async () => {
+    it("renders no section headers when renderHeader is omitted", async () => {
+        await render(<DropDown sections={sections} />);
+
+        await screen.findAllByText("Alpha");
+        await screen.findAllByText("One");
+        expect(screen.queryAllByText("Letters")).toHaveLength(0);
+        expect(screen.queryAllByText("Numbers")).toHaveLength(0);
+    });
+});
+
+describe("render - DropDown (4)", () => {
+    it("renders item labels as direct cell children with no wrapper container", async () => {
+        await render(<DropDown items={valueItems(["Alpha", "Beta"])} />);
+
+        const labels = await screen.findAllByText("Alpha");
+        expect(labels.length).toBeGreaterThan(0);
+        for (const label of labels) {
+            expect(label.getParent()).not.toBeInstanceOf(Gtk.Box);
+        }
+    });
+});
+
+describe("render - DropDown (5)", () => {
+    type IdItem = { id: string; value: string };
+
+    const abcItems = (): IdItem[] => [
+        { id: "a", value: "First" },
+        { id: "b", value: "Second" },
+        { id: "c", value: "Third" },
+    ];
+
+    const idAtSelected = (dropDown: Gtk.DropDown | null, items: IdItem[]): string | undefined =>
+        items[dropDown?.getSelected() ?? -1]?.id;
+
+    const expectRemovalReported = async (options: {
+        selectedId?: string | undefined;
+        initialPosition: number;
+        removedId: string;
+    }): Promise<void> => {
         const dropDownRef = createRef<Gtk.DropDown>();
+        const onSelectionChanged = vi.fn();
+        const remaining = abcItems().filter((item) => item.id !== options.removedId);
+        const draw = (items: IdItem[]) => (
+            <DropDown
+                ref={dropDownRef}
+                selectedId={options.selectedId}
+                onSelectionChanged={onSelectionChanged}
+                items={items}
+            />
+        );
 
-        await render(<DropDown ref={dropDownRef} items={valueItems(["One", "Two"])} />);
+        const { rerender } = await renderChildren(abcItems(), draw);
+        await waitFor(() => expect(dropDownRef.current?.getSelected()).toBe(options.initialPosition));
+        expect(onSelectionChanged).not.toHaveBeenCalled();
 
-        expect(dropDownRef.current?.getHeaderFactory()).toBeNull();
+        await rerender(remaining);
+
+        await waitFor(() => expect(onSelectionChanged).toHaveBeenCalledTimes(1));
+        const effective = idAtSelected(dropDownRef.current, remaining);
+        expect(effective).toBeDefined();
+        expect(onSelectionChanged).toHaveBeenCalledWith(effective);
+    };
+
+    it("reports the new effective id once when the selected item is removed", async () => {
+        await expectRemovalReported({ initialPosition: 0, removedId: "a" });
+    });
+
+    it("reports the effective fallback when the controlled selectedId disappears", async () => {
+        await expectRemovalReported({ selectedId: "b", initialPosition: 1, removedId: "b" });
+    });
+
+    it("does not report when a controlled apply lands on the requested id", async () => {
+        const dropDownRef = createRef<Gtk.DropDown>();
+        const onSelectionChanged = vi.fn();
+        const draw = (selectedId: string) => (
+            <DropDown
+                ref={dropDownRef}
+                selectedId={selectedId}
+                onSelectionChanged={onSelectionChanged}
+                items={abcItems()}
+            />
+        );
+
+        const { rerender } = await render(draw("a"));
+        await waitFor(() => expect(dropDownRef.current?.getSelected()).toBe(0));
+
+        await rerender(draw("c"));
+
+        await waitFor(() => expect(dropDownRef.current?.getSelected()).toBe(2));
+        expect(onSelectionChanged).not.toHaveBeenCalled();
     });
 });

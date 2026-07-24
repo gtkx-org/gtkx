@@ -1,88 +1,83 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkGrid, type GtkGridProps } from "@gtkx/jsx/gtk";
-import { useMergedRef } from "@gtkx/react/internal";
-import { Children, type ElementType, type ReactNode, type Ref, useRef } from "react";
-import { createParentContext, usePlacedChild } from "./hooks/use-placed-child.js";
-import type { ChildProps } from "./types.js";
+import { GtkGrid } from "@gtkx/jsx/gtk";
+import { createPortal, rootElement } from "@gtkx/react";
+import type { ElementType, ReactNode, Ref } from "react";
+import { createContext } from "react";
+import {
+    createPlacedRoot,
+    type PlacedChildren,
+    type PlacedOps,
+    usePlacedChildEffects,
+    useRequiredContext,
+} from "./internal/placed-children.js";
+import { useLatest } from "./internal/use-latest.js";
+import { useWidgetRef } from "./internal/use-widget-ref.js";
+import type { GridChildProps, GridProps } from "./types.js";
 
-const { Context: GridContext, useParentRef: useGridRef } = createParentContext<Gtk.Grid>(
-    "<Grid.Child> must be a child of <Grid>",
-);
+type GridCell = {
+    column: number;
+    row: number;
+    columnSpan: number;
+    rowSpan: number;
+};
 
-/** Props for {@link Grid}. */
-export type GridProps = GtkGridProps & { ref?: Ref<Gtk.Grid | null>; children?: ReactNode };
+const GridContext = createContext<PlacedChildren<GridCell> | null>(null);
 
-export type GridPlacement = {
+const gridOps = (grid: { current: Gtk.Grid | null }): PlacedOps<GridCell> => {
+    const attach = (widget: Gtk.Widget, cell: GridCell): void => {
+        grid.current?.attach(widget, cell.column, cell.row, cell.columnSpan, cell.rowSpan);
+    };
+    const detach = (widget: Gtk.Widget): void => {
+        grid.current?.remove(widget);
+    };
+    return {
+        attach,
+        detach,
+        update: (widget, cell) => {
+            detach(widget);
+            attach(widget, cell);
+        },
+    };
+};
+
+type GridChildRuntimeProps = {
+    component: ElementType;
     column?: number | null | undefined;
     row?: number | null | undefined;
-    /** Number of columns the child spans (defaults to 1). */
     columnSpan?: number | null | undefined;
-    /** Number of rows the child spans (defaults to 1). */
     rowSpan?: number | null | undefined;
-};
+    ref?: Ref<Gtk.Widget | null> | undefined;
+} & Record<string, unknown>;
 
-/** Places a single child inside a {@link Grid} at a column and row, optionally spanning multiple cells. */
-export type GridChildProps<C extends ElementType> = ChildProps<C, GridPlacement>;
-
-type Placement = { column: number; row: number; columnSpan: number; rowSpan: number };
-
-const placementOf = (props: GridPlacement): Placement => ({
-    column: props.column ?? 0,
-    row: props.row ?? 0,
-    columnSpan: props.columnSpan ?? 1,
-    rowSpan: props.rowSpan ?? 1,
-});
-
-const samePlacement = (a: Placement, b: Placement): boolean =>
-    a.column === b.column && a.row === b.row && a.columnSpan === b.columnSpan && a.rowSpan === b.rowSpan;
-
-const GridChild = <C extends ElementType>({
-    component,
-    column,
-    row,
-    columnSpan,
-    rowSpan,
-    ref,
-    ...rest
-}: GridChildProps<C>): ReactNode => {
-    const gridRef = useGridRef();
-    const Component: ElementType = component;
-    return usePlacedChild<Gtk.Widget, Placement>({
-        render: (placeRef) => <Component {...rest} ref={placeRef} />,
-        ref,
-        placement: placementOf({ column, row, columnSpan, rowSpan }),
-        samePlacement,
-        place: (widget, placement, previous) => {
-            const grid = gridRef.current;
-            if (!grid) return;
-            if (previous !== undefined && widget.getParent() === grid) grid.remove(widget);
-            if (widget.getParent() !== grid) {
-                grid.attach(widget, placement.column, placement.row, placement.columnSpan, placement.rowSpan);
-            }
-        },
-        release: (widget) => {
-            const grid = gridRef.current;
-            if (grid && widget.getParent() === grid) grid.remove(widget);
-        },
+const GridChildImpl = (props: GridChildRuntimeProps): ReactNode => {
+    const controller = useRequiredContext(GridContext, "<Grid.Child> must be a child of <Grid>");
+    const { component: Component, column, row, columnSpan, rowSpan, ref, ...rest } = props;
+    const [widget, refCallback] = useWidgetRef<Gtk.Widget>(ref);
+    const cell = useLatest<GridCell>({
+        column: column ?? 0,
+        row: row ?? 0,
+        columnSpan: columnSpan ?? 1,
+        rowSpan: rowSpan ?? 1,
     });
+    const { column: columnValue, row: rowValue, columnSpan: columnSpanValue, rowSpan: rowSpanValue } = cell.current;
+    usePlacedChildEffects(
+        controller,
+        widget,
+        () => cell.current,
+        `${columnValue}:${rowValue}:${columnSpanValue}:${rowSpanValue}`,
+    );
+    return createPortal(<Component {...rest} ref={refCallback} />, rootElement);
 };
 
-/**
- * Renders a Gtk.Grid whose children are attached at explicit column/row positions via
- * {@link Grid.Child}.
- */
-export const Grid: ((props: GridProps) => ReactNode) & {
+const GridChild = GridChildImpl as <C extends ElementType>(props: GridChildProps<C>) => ReactNode;
+
+const GridRoot = createPlacedRoot<Gtk.Grid, GridCell>({ element: GtkGrid, context: GridContext, ops: gridOps }) as (
+    props: GridProps,
+) => ReactNode;
+
+type GridComponent = ((props: GridProps) => ReactNode) & {
     Child: <C extends ElementType>(props: GridChildProps<C>) => ReactNode;
-} = Object.assign(
-    ({ children, ref, ...rest }: GridProps): ReactNode => {
-        const gridRef = useRef<Gtk.Grid | null>(null);
-        const mergedRef = useMergedRef<Gtk.Grid>(ref, gridRef);
-        return (
-            <>
-                <GtkGrid {...rest} ref={mergedRef} />
-                <GridContext.Provider value={gridRef}>{Children.toArray(children)}</GridContext.Provider>
-            </>
-        );
-    },
-    { Child: GridChild },
-);
+};
+
+/** Renders a GtkGrid whose children are placed at explicit cells through {@link Grid.Child}. */
+export const Grid: GridComponent = Object.assign(GridRoot, { Child: GridChild });

@@ -1,192 +1,176 @@
+import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkDropDown, GtkLabel } from "@gtkx/jsx/gtk";
-import { useMergedRef } from "@gtkx/react/internal";
-import { type ElementType, type ReactNode, type Ref, useCallback, useRef, useState } from "react";
-import { type CellRenderer, CellRenderHost, HeaderRenderHost, itemRenderer } from "./cell.js";
-import { makeFactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
-import { useDropDownSelection } from "./hooks/use-drop-down-selection.js";
-import { useInstalledModel } from "./hooks/use-installed-model.js";
-import { useListModel } from "./hooks/use-list-model.js";
-import type { ItemNode, RenderItemProps, SectionNode, WidgetProps } from "./types.js";
-import type { CellContainerStore } from "./utils/cell-container-store.js";
-import type { ItemResolver } from "./utils/item-resolver.js";
+import type { ElementType, ReactNode, Ref } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
+import { buildRenderItemArgs, headerSectionValue, renderCellPortals } from "./internal/cell-portals.js";
+import type { CellRecord, CellTracker } from "./internal/cell-tracker.js";
+import { CollectionSource } from "./internal/collection-source.js";
+import { runMuted } from "./internal/mute.js";
+import { useCellHarness } from "./internal/use-cell-harness.js";
+import type { CollectionViewApi } from "./internal/use-collection-view.js";
+import { useFactorySlot } from "./internal/use-factories.js";
+import { useWidgetRef } from "./internal/use-widget-ref.js";
+import type { DropDownDeclarativeProps, DropDownProps, RenderItemProps } from "./types.js";
 
-export type DropDownItemRenderer<T> = (props: RenderItemProps<T>) => ReactNode;
-
-const itemFactoryInstaller = makeFactoryInstaller<Gtk.DropDown>((widget, factory) => widget.setFactory(factory));
-
-const listFactoryInstaller = makeFactoryInstaller<Gtk.DropDown>((widget, factory) => widget.setListFactory(factory));
-
-const headerFactoryInstaller = makeFactoryInstaller<Gtk.DropDown>((widget, factory) =>
-    widget.setHeaderFactory(factory),
-);
-
-const defaultRenderer: CellRenderer<unknown, unknown> = (value) => {
-    if (value === undefined || value === null) return null;
-    return <GtkLabel>{String(value)}</GtkLabel>;
+type DropDownWidget = {
+    setModel: (model: Gio.ListModel | null) => void;
+    setFactory: (factory: Gtk.ListItemFactory | null) => void;
+    setListFactory: (factory: Gtk.ListItemFactory | null) => void;
+    setHeaderFactory: (factory: Gtk.ListItemFactory | null) => void;
+    getSelected: () => number;
+    setSelected: (position: number) => void;
+    on: (signal: string, handler: (...args: unknown[]) => void) => unknown;
+    off: (signal: string, handler: (...args: unknown[]) => void) => unknown;
 };
 
-const toItemRenderer = <T, S>(renderItem: DropDownItemRenderer<T> | null | undefined): CellRenderer<T, S> => {
-    if (typeof renderItem !== "function") return defaultRenderer as CellRenderer<T, S>;
-    return itemRenderer<T, S>(renderItem);
+type DropDownRuntimeProps = DropDownDeclarativeProps<unknown, unknown> & {
+    component?: ElementType | undefined;
+    ref?: Ref<DropDownWidget | null> | undefined;
+} & Record<string, unknown>;
+
+type DropDownState = {
+    source: CollectionSource | null;
+    muteDepth: number;
+    tracker: CellTracker;
+    knownId: string | null;
 };
 
-const toListRenderer = <T, S>(
-    renderListItem: DropDownItemRenderer<T> | null | undefined,
-    renderItem: DropDownItemRenderer<T> | null | undefined,
-): CellRenderer<T, S> => {
-    if (typeof renderListItem === "function") return itemRenderer<T, S>(renderListItem);
-    return toItemRenderer<T, S>(renderItem);
+type ItemRenderer = ((args: RenderItemProps<unknown>) => ReactNode) | null | undefined;
+
+const applySelected = (widget: DropDownWidget, source: CollectionSource, selectedId: string | null | undefined) => {
+    if (selectedId == null) return;
+    const position = source.positionOfId(selectedId);
+    if (position >= 0 && widget.getSelected() !== position) widget.setSelected(position);
 };
 
-const createSelectionResolver = <T, S>(resolver: ItemResolver<T, S>, selectedPosition: number): ItemResolver<T, S> => ({
-    positionOfId: (id) => resolver.positionOfId(id),
-    idOf: (position) => resolver.idOf(position),
-    resolve: (_position, treeRow) => resolver.resolve(selectedPosition, treeRow),
-});
-
-/** Declarative props for {@link DropDown}'s backing collection and cell rendering. */
-export type DropDownDeclarativeProps<T = unknown, S = unknown> = {
-    items?: ItemNode<T>[] | undefined;
-    sections?: SectionNode<S, T>[] | undefined;
-    /** Id of the currently selected item, making the selection controlled. */
-    selectedId?: string | null | undefined;
-    onSelectionChanged?: ((id: string) => void) | null | undefined;
-    renderItem?: DropDownItemRenderer<T> | null | undefined;
-    /** Renderer for items in the open popup list, falling back to renderItem when omitted. */
-    renderListItem?: DropDownItemRenderer<T> | null | undefined;
-    /** Renderer for section headers in the popup list. */
-    renderHeader?: ((info: { section: S }) => ReactNode) | null | undefined;
+const reportEffectiveSelection = (
+    widget: DropDownWidget,
+    state: DropDownState,
+    selectedId: string | null | undefined,
+    report: (id: string) => void,
+): void => {
+    const source = state.source;
+    if (source === null) return;
+    const effectiveId = source.idAt(widget.getSelected());
+    if (effectiveId === null) {
+        state.knownId = null;
+        return;
+    }
+    const expectedId = selectedId ?? state.knownId;
+    const isNew = effectiveId !== state.knownId;
+    state.knownId = effectiveId;
+    if (expectedId !== null && effectiveId !== expectedId && isNew) report(effectiveId);
 };
 
-/**
- * Props for {@link DropDown}. The backing widget is chosen through the `component` prop, defaulting to
- * GtkDropDown, and its own props combine with {@link DropDownDeclarativeProps}.
- */
-export type DropDownProps<T = unknown, S = unknown, C extends ElementType = typeof GtkDropDown> = WidgetProps<
-    C,
-    DropDownDeclarativeProps<T, S>,
-    "model" | "factory" | "listFactory" | "headerFactory"
->;
-
-interface NormalizedDropDownProps<T, S> {
-    ref: Ref<Gtk.DropDown | null> | undefined;
-    items: ItemNode<T>[] | undefined;
-    sections: SectionNode<S, T>[] | undefined;
-    selectedId: string | null | undefined;
-    onSelectionChanged: ((id: string) => void) | null | undefined;
-    renderHeader: ((info: { section: S }) => ReactNode) | null | undefined;
-}
-
-interface DropDownWiring<T, S> {
-    setRef: (value: Gtk.DropDown | null) => void;
-    resolver: ItemResolver<T, S>;
-    selectionResolver: ItemResolver<T, S>;
-    headerResolver: ItemResolver<T, S>;
-    selectionStore: CellContainerStore;
-    listStore: CellContainerStore;
-    headerStore: CellContainerStore;
-    useHeader: boolean;
-}
-
-const useDropDownWiring = <T, S>(props: NormalizedDropDownProps<T, S>): DropDownWiring<T, S> => {
-    const widgetRef = useRef<Gtk.DropDown | null>(null);
-    const [widget, setWidget] = useState<Gtk.DropDown | null>(null);
-    const captureWidget = useCallback((value: Gtk.DropDown | null) => {
-        widgetRef.current = value;
-        setWidget(value);
-    }, []);
-    const setRef = useMergedRef<Gtk.DropDown>(props.ref, captureWidget);
-
-    const listModel = useListModel<T, S>({ items: props.items, sections: props.sections });
-
-    const useHeader = typeof props.renderHeader === "function";
-
-    const selectionStore = useCellContainers<Gtk.DropDown>({ object: widgetRef, installer: itemFactoryInstaller });
-    const listStore = useCellContainers<Gtk.DropDown>({ object: widgetRef, installer: listFactoryInstaller });
-    const headerStore = useCellContainers<Gtk.DropDown>({
-        object: useHeader ? widgetRef : null,
-        installer: headerFactoryInstaller,
-    });
-
-    useInstalledModel(widgetRef, listModel.model, (widget, value) => widget.setModel(value));
-
-    const selectedPosition = useDropDownSelection<T, S>({
-        widget,
-        resolver: listModel.resolver,
-        selectedId: props.selectedId,
-        onSelectionChanged: props.onSelectionChanged,
-    });
-
-    const controlledPosition =
-        props.selectedId === undefined || props.selectedId === null
-            ? -1
-            : listModel.resolver.positionOfId(props.selectedId);
-    const selectionPosition =
-        controlledPosition >= 0 ? controlledPosition : selectedPosition < 0 ? 0 : selectedPosition;
-
-    return {
-        setRef,
-        resolver: listModel.resolver,
-        selectionResolver: createSelectionResolver(listModel.resolver, selectionPosition),
-        headerResolver: listModel.headerResolver,
-        selectionStore,
-        listStore,
-        headerStore,
-        useHeader,
-    };
+const useDropDownModel = (widget: DropDownWidget | null, state: DropDownState, props: DropDownRuntimeProps): void => {
+    const mode = props.sections !== undefined ? "sections" : "flat";
+    const { items, sections, selectedId } = props;
+    const latestRef = useRef(props);
+    latestRef.current = props;
+    useLayoutEffect(() => {
+        if (widget === null) return;
+        const source = new CollectionSource(mode);
+        state.source = source;
+        widget.setModel(source.presented);
+        return () => {
+            widget.setModel(null);
+            state.source = null;
+        };
+    }, [widget, state, mode]);
+    useLayoutEffect(() => {
+        const source = state.source;
+        if (widget === null || source === null) return;
+        runMuted(state, () => {
+            source.update({ items, sections });
+            applySelected(widget, source, selectedId);
+        });
+        reportEffectiveSelection(widget, state, selectedId, (id) => latestRef.current.onSelectionChanged?.(id));
+        state.tracker.refresh();
+    }, [widget, state, mode, items, sections, selectedId]);
+    useLayoutEffect(() => {
+        if (widget === null) return;
+        const handler = (): void => {
+            if (state.muteDepth > 0 || state.source === null) return;
+            const id = state.source.idAt(widget.getSelected());
+            if (id === null) return;
+            state.knownId = id;
+            latestRef.current.onSelectionChanged?.(id);
+        };
+        widget.on("notify::selected", handler);
+        return () => {
+            widget.off("notify::selected", handler);
+        };
+    }, [widget, state]);
 };
 
-/**
- * Renders a drop-down widget (Gtk.DropDown by default, or the widget given as `component`) backed by a
- * collection model, with customizable rendering for the selected item, the popup list rows, and section
- * headers.
- */
-export const DropDown = <T = unknown, S = unknown, C extends ElementType = typeof GtkDropDown>(
-    props: DropDownProps<T, S, C>,
-): ReactNode => {
+const defaultItemContent = (value: unknown): ReactNode => (value == null ? null : <GtkLabel>{String(value)}</GtkLabel>);
+
+const itemContent = (record: CellRecord, api: CollectionViewApi, props: DropDownRuntimeProps): ReactNode => {
+    const args = buildRenderItemArgs({ record, api, expandedIds: undefined });
+    if (args === null) return null;
+    const listRenderer: ItemRenderer = record.slot === "list" ? (props.renderListItem ?? props.renderItem) : null;
+    const renderer: ItemRenderer = listRenderer ?? props.renderItem;
+    return renderer != null ? renderer(args) : defaultItemContent(args.item);
+};
+
+const DropDownImpl = (props: DropDownRuntimeProps): ReactNode => {
     const {
         component,
-        ref,
         items,
         sections,
+        selectedId,
+        onSelectionChanged,
         renderItem,
         renderListItem,
         renderHeader,
-        selectedId,
-        onSelectionChanged,
-        ...intrinsicProps
-    } = props;
-    const Component: ElementType = component ?? GtkDropDown;
-
-    const wiring = useDropDownWiring<T, S>({
         ref,
-        items,
-        sections,
-        selectedId,
-        onSelectionChanged,
-        renderHeader,
+        ...rest
+    } = props;
+    void items;
+    void sections;
+    void selectedId;
+    void onSelectionChanged;
+    void renderItem;
+    const [widget, refCallback] = useWidgetRef<DropDownWidget>(ref);
+    const [, setVersion] = useState(0);
+    const harness = useCellHarness({ width: -1, height: -1 });
+    const stateRef = useRef<DropDownState | null>(null);
+    stateRef.current ??= { source: null, muteDepth: 0, tracker: harness.tracker, knownId: null };
+    const state = stateRef.current;
+    const apiRef = useRef<CollectionViewApi | null>(null);
+    apiRef.current ??= { source: () => state.source };
+    const api = apiRef.current;
+    harness.connect(api);
+    useLayoutEffect(() => {
+        state.tracker.setNotify(() => setVersion((version) => version + 1));
+    }, [state]);
+    useFactorySlot(widget, harness.context, "item");
+    useFactorySlot(widget, harness.context, "list", renderListItem != null);
+    useFactorySlot(widget, harness.context, "header", typeof renderHeader === "function");
+    useDropDownModel(widget, state, props);
+    const renderHeaderContent =
+        typeof renderHeader === "function" ? (renderHeader as (info: { section: unknown }) => ReactNode) : null;
+    const portals = renderCellPortals(harness.tracker, {
+        item: (record) => itemContent(record, api, props),
+        header: (record) => renderHeaderContent?.({ section: headerSectionValue(record, api) }) ?? null,
     });
-
+    const Component = component ?? GtkDropDown;
     return (
         <>
-            <Component {...intrinsicProps} ref={wiring.setRef} />
-            <CellRenderHost
-                store={wiring.selectionStore}
-                resolver={wiring.selectionResolver}
-                render={toItemRenderer<T, S>(renderItem)}
-            />
-            <CellRenderHost
-                store={wiring.listStore}
-                resolver={wiring.resolver}
-                render={toListRenderer<T, S>(renderListItem, renderItem)}
-            />
-            <HeaderRenderHost
-                useHeader={wiring.useHeader}
-                store={wiring.headerStore}
-                resolver={wiring.headerResolver}
-                renderHeader={renderHeader}
-            />
+            <Component {...rest} ref={refCallback} />
+            {portals}
         </>
     );
 };
+
+type DropDownComponent = <T = unknown, S = unknown, C extends ElementType = typeof GtkDropDown>(
+    props: DropDownProps<T, S, C>,
+) => ReactNode;
+
+/**
+ * Renders a drop-down backed by a collection model, with customizable renderers for the
+ * collapsed display, popup rows, and popup section headers, and controlled selection.
+ * The backing widget defaults to GtkDropDown and is swappable through `component`.
+ */
+export const DropDown: DropDownComponent = DropDownImpl as DropDownComponent;

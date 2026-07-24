@@ -56,4 +56,5 @@ export const runCall = (target: GObject.Object, call: Call, ctx: CallContext, im
     );
 };
 
-export const callMethod = (target: GObject.Object, method: string, args: unknown[]): unknown => invoke(target, method, args);
+export const callMethod = (target: GObject.Object, method: string, args: unknown[]): unknown =>
+    invoke(target, method, args);

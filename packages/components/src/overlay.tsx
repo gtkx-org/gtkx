@@ -1,88 +1,78 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkOverlay, type GtkOverlayProps } from "@gtkx/jsx/gtk";
-import { useMergedRef } from "@gtkx/react/internal";
-import { Children, type ElementType, isValidElement, type ReactNode, type Ref, useRef } from "react";
-import { createParentContext, usePlacedChild } from "./hooks/use-placed-child.js";
-import type { ChildProps } from "./types.js";
+import { GtkOverlay } from "@gtkx/jsx/gtk";
+import { createPortal, rootElement } from "@gtkx/react";
+import type { ElementType, ReactNode, Ref } from "react";
+import { createContext } from "react";
+import {
+    createPlacedRoot,
+    type PlacedChildren,
+    type PlacedOps,
+    usePlacedChildEffects,
+    useRequiredContext,
+} from "./internal/placed-children.js";
+import { useLatest } from "./internal/use-latest.js";
+import { useWidgetRef } from "./internal/use-widget-ref.js";
+import type { OverlayChildProps, OverlayProps } from "./types.js";
 
-const { Context: OverlayContext, useParentRef: useOverlayRef } = createParentContext<Gtk.Overlay>(
-    "<Overlay.Child> must be a child of <Overlay>",
-);
+type OverlayPlacement = {
+    measure: boolean;
+    clipOverlay: boolean;
+};
 
-/** Props for {@link Overlay}. */
-export type OverlayProps = GtkOverlayProps & { ref?: Ref<Gtk.Overlay | null> };
+const OverlayContext = createContext<PlacedChildren<OverlayPlacement> | null>(null);
 
-export type OverlayPlacementProps = {
-    /** Whether this overlay contributes to the Overlay's measured size. */
+const overlayOps = (overlay: { current: Gtk.Overlay | null }): PlacedOps<OverlayPlacement> => {
+    const applyFlags = (widget: Gtk.Widget, placement: OverlayPlacement): void => {
+        overlay.current?.setMeasureOverlay(widget, placement.measure);
+        overlay.current?.setClipOverlay(widget, placement.clipOverlay);
+    };
+    return {
+        attach: (widget, placement) => {
+            overlay.current?.addOverlay(widget);
+            applyFlags(widget, placement);
+        },
+        update: applyFlags,
+        detach: (widget) => {
+            overlay.current?.removeOverlay(widget);
+        },
+    };
+};
+
+type OverlayChildRuntimeProps = {
+    component: ElementType;
     measure?: boolean | null | undefined;
-    /** Whether the overlay is clipped to the main child's allocation. */
     clipOverlay?: boolean | null | undefined;
+    ref?: Ref<Gtk.Widget | null> | undefined;
+} & Record<string, unknown>;
+
+const OverlayChildImpl = (props: OverlayChildRuntimeProps): ReactNode => {
+    const controller = useRequiredContext(OverlayContext, "<Overlay.Child> must be a child of <Overlay>");
+    const { component: Component, measure, clipOverlay, ref, ...rest } = props;
+    const [widget, refCallback] = useWidgetRef<Gtk.Widget>(ref);
+    const placement = useLatest<OverlayPlacement>({ measure: measure ?? false, clipOverlay: clipOverlay ?? false });
+    usePlacedChildEffects(
+        controller,
+        widget,
+        () => placement.current,
+        `${placement.current.measure}:${placement.current.clipOverlay}`,
+    );
+    return createPortal(<Component {...rest} ref={refCallback} />, rootElement);
 };
 
-/** Adds a single widget as an overlay on top of an {@link Overlay}'s main child. */
-export type OverlayChildProps<C extends ElementType> = ChildProps<C, OverlayPlacementProps>;
+const OverlayChild = OverlayChildImpl as <C extends ElementType>(props: OverlayChildProps<C>) => ReactNode;
 
-type OverlayPlacement = { measure: boolean; clipOverlay: boolean };
+const OverlayRoot = createPlacedRoot<Gtk.Overlay, OverlayPlacement>({
+    element: GtkOverlay,
+    context: OverlayContext,
+    ops: overlayOps,
+}) as (props: OverlayProps) => ReactNode;
 
-const placementOf = (props: OverlayPlacementProps): OverlayPlacement => ({
-    measure: props.measure ?? false,
-    clipOverlay: props.clipOverlay ?? false,
-});
-
-const samePlacement = (a: OverlayPlacement, b: OverlayPlacement): boolean =>
-    a.measure === b.measure && a.clipOverlay === b.clipOverlay;
-
-const OverlayChild = <C extends ElementType>({
-    component,
-    measure,
-    clipOverlay,
-    ref,
-    ...rest
-}: OverlayChildProps<C>): ReactNode => {
-    const overlayRef = useOverlayRef();
-    const Component: ElementType = component;
-    return usePlacedChild<Gtk.Widget, OverlayPlacement>({
-        render: (placeRef) => <Component {...rest} ref={placeRef} />,
-        ref,
-        placement: placementOf({ measure, clipOverlay }),
-        samePlacement,
-        place: (widget, placement) => {
-            const overlay = overlayRef.current;
-            if (!overlay) return;
-            if (widget.getParent() !== overlay) overlay.addOverlay(widget);
-            overlay.setMeasureOverlay(widget, placement.measure);
-            overlay.setClipOverlay(widget, placement.clipOverlay);
-        },
-        release: (widget) => {
-            const overlay = overlayRef.current;
-            if (overlay && widget.getParent() === overlay) overlay.removeOverlay(widget);
-        },
-    });
+type OverlayComponent = ((props: OverlayProps) => ReactNode) & {
+    Child: <C extends ElementType>(props: OverlayChildProps<C>) => ReactNode;
 };
-
-const isOverlayChild = (node: ReactNode): boolean => isValidElement(node) && node.type === OverlayChild;
 
 /**
- * Renders a Gtk.Overlay: a main child with one or more widgets stacked on top,
- * declared via {@link Overlay.Child}. Non-Child children form the main content.
+ * Renders a Gtk.Overlay whose non-Child content forms the main child while
+ * {@link Overlay.Child} entries stack on top with measure and clip placement.
  */
-export const Overlay: ((props: OverlayProps) => ReactNode) & {
-    Child: <C extends ElementType>(props: OverlayChildProps<C>) => ReactNode;
-} = Object.assign(
-    ({ children, ref, ...rest }: OverlayProps): ReactNode => {
-        const overlayRef = useRef<Gtk.Overlay | null>(null);
-        const mergedRef = useMergedRef<Gtk.Overlay>(ref, overlayRef);
-        const items = Children.toArray(children);
-        const overlays = items.filter(isOverlayChild);
-        const base = items.filter((node) => !isOverlayChild(node));
-        return (
-            <>
-                <GtkOverlay {...rest} ref={mergedRef}>
-                    {base}
-                </GtkOverlay>
-                <OverlayContext.Provider value={overlayRef}>{overlays}</OverlayContext.Provider>
-            </>
-        );
-    },
-    { Child: OverlayChild },
-);
+export const Overlay: OverlayComponent = Object.assign(OverlayRoot, { Child: OverlayChild });

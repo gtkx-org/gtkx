@@ -6,6 +6,7 @@ import { render, screen } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
+import { expectNoBoxBetween } from "./helpers/widget-chain.js";
 
 interface Row {
     name: string;
@@ -58,5 +59,14 @@ describe("ListView sections", () => {
         await screen.findAllByText("Alpha");
 
         expect(ref.current?.getModel()?.getNItems()).toBe(3);
+    });
+
+    it("renders the header label as the header's direct content with no wrapper container", async () => {
+        const ref = createRef<Gtk.ListView>();
+        await renderSectioned(ref);
+
+        const [headerLabel] = await screen.findAllByText("Section One");
+        if (headerLabel === undefined || ref.current === null) throw new Error("Expected the header to render");
+        expectNoBoxBetween(headerLabel, ref.current);
     });
 });

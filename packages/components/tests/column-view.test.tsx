@@ -21,6 +21,7 @@ import {
 } from "./helpers/list-collection-render.js";
 import { type ColumnDef, renderColumnView } from "./helpers/list-fixtures.js";
 import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
+import { expectNoBoxBetween } from "./helpers/widget-chain.js";
 
 const cellText = (cell: Gtk.Widget): string => {
     const [label] = within(cell).getAllByRole(Gtk.AccessibleRole.LABEL);
@@ -244,6 +245,21 @@ describe("render - ColumnView (2)", () => {
             await rerender(rows, { columns: orderedColumns(["A", "B", "C"]) });
 
             expect(getFirstRowCellTexts(ref.current)).toEqual(["A:r1", "B:r1", "C:r1"]);
+        });
+
+        it("renders each cell's label as the cell's direct child with no wrapper container", async () => {
+            const { ref } = await renderColumnView(["r1"], { columns: orderedColumns(["A", "B"]) });
+
+            const [firstRow] = dataRows(ref.current);
+            if (firstRow === undefined) throw new Error("Expected a data row to render");
+            const cells = within(firstRow).getAllByRole(Gtk.AccessibleRole.GRID_CELL);
+            expect(cells).toHaveLength(2);
+            for (const cell of cells) {
+                const [label] = within(cell).getAllByRole(Gtk.AccessibleRole.LABEL);
+                if (label === undefined) throw new Error("Expected the cell to contain a label");
+                expect(cell.getFirstChild()).toBe(label);
+                expectNoBoxBetween(label, ref.current);
+            }
         });
 
         it("removes column", async () => {

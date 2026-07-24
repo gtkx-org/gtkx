@@ -22,6 +22,7 @@ import {
     renderTestItemWithSpy,
 } from "./helpers/list-collection-render.js";
 import { renderGridView, renderListView } from "./helpers/list-fixtures.js";
+import { expectNoBoxBetween } from "./helpers/widget-chain.js";
 
 const collectLabelTexts = (container: Gtk.Widget): string[] =>
     within(container)
@@ -281,6 +282,22 @@ describe("render - ListView (8)", () => {
 
         it("handles rapid reordering", async () => {
             await expectRapidReorder(gridViewView, RAPID_REORDER_ORDERS);
+        });
+    });
+});
+
+describe("render - ListView (9)", () => {
+    describe("direct cell rendering", () => {
+        it("renders the item label as the list cell's direct content with no wrapper container", async () => {
+            const { ref } = await renderListView(["First"]);
+
+            expectNoBoxBetween(screen.getByText("First"), ref.current);
+        });
+
+        it("renders the item label as the grid cell's direct content with no wrapper container", async () => {
+            const { ref } = await renderGridView(["First"]);
+
+            expectNoBoxBetween(screen.getByText("First"), ref.current);
         });
     });
 });

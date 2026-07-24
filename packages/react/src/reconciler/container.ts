@@ -1,18 +1,12 @@
 import type { ContainerProp } from "@gtkx/config";
-import * as Gtk from "@gtkx/gi/gtk";
 import type * as GObject from "@gtkx/gi/gobject";
+import * as Gtk from "@gtkx/gi/gtk";
 import { getInstanceType, getWrapperClass, TYPE_INVALID, typeFromName, typeIsA, typeName } from "@gtkx/runtime";
 import { applyAdoptedProps, markLazyDirty } from "./apply-props.js";
 import { type CallContext, callMethod, runCall } from "./calls.js";
 import { type Props, WRAPPER_ELEMENT } from "./kinds.js";
 import { type TypeInfo, typeInfoOf } from "./metadata.js";
-import {
-    type ElementNode,
-    nodeWidget,
-    type PlaceableNode,
-    type PlacedChild,
-    type SignalTarget,
-} from "./node.js";
+import { type ElementNode, nodeWidget, type PlaceableNode, type PlacedChild, type SignalTarget } from "./node.js";
 
 type WidgetConstructor = new (props: Props) => GObject.Object;
 

@@ -1,5 +1,5 @@
-import * as Gtk from "@gtkx/gi/gtk";
 import type * as GObject from "@gtkx/gi/gobject";
+import * as Gtk from "@gtkx/gi/gtk";
 import { getInstanceType, typeName } from "@gtkx/runtime";
 import type { ErrorInfo, ReactNode } from "react";
 import ReactReconciler from "react-reconciler";

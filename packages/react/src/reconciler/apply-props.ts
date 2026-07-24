@@ -1,6 +1,6 @@
 import type { ListProp, ValueProp } from "@gtkx/config";
-import * as Gtk from "@gtkx/gi/gtk";
 import type * as GObject from "@gtkx/gi/gobject";
+import * as Gtk from "@gtkx/gi/gtk";
 import type { SignalHandler } from "@gtkx/runtime";
 import { kebabCase } from "@gtkx/utils";
 import { applyAccessibleProps, isAccessibleProp } from "../utils/accessible-props.js";

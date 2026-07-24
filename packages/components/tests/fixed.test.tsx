@@ -7,6 +7,12 @@ import { render, screen, waitFor } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
+type Placement = {
+    x?: number | undefined;
+    y?: number | undefined;
+    transform?: Gsk.Transform | null | undefined;
+};
+
 const expectBoundsAt = (widget: Gtk.Widget, fixed: Gtk.Fixed, x: number, y: number): Promise<void> =>
     waitFor(() => {
         const [computed, bounds] = widget.computeBounds(fixed);
@@ -14,65 +20,93 @@ const expectBoundsAt = (widget: Gtk.Widget, fixed: Gtk.Fixed, x: number, y: numb
         expect([bounds.getX(), bounds.getY()]).toEqual([x, y]);
     });
 
+const expectPositionAt = (fixed: Gtk.Fixed, widget: Gtk.Widget, x: number, y: number): Promise<void> =>
+    waitFor(() => {
+        expect(fixed.getChildPosition(widget)).toEqual([x, y]);
+    });
+
+const makeTranslateTransform = (): Gsk.Transform | null => Gsk.Transform.new().translate(Graphene.Point.create(15, 25));
+
+const renderPlacedChild = async (text: string, placement: Placement) => {
+    const fixedRef = createRef<Gtk.Fixed>();
+
+    function App(props: Placement) {
+        return (
+            <Fixed ref={fixedRef}>
+                <Fixed.Child component={GtkLabel} {...props}>
+                    {text}
+                </Fixed.Child>
+            </Fixed>
+        );
+    }
+
+    const { rerender } = await render(<App {...placement} />);
+    const fixed = fixedRef.current as Gtk.Fixed;
+    const label = screen.getByText(text);
+    const place = (next: Placement): Promise<void> => rerender(<App {...next} />);
+    return { fixed, label, place };
+};
+
 describe("render - Fixed", () => {
     it("pins children at their coordinates", async () => {
-        const fixedRef = createRef<Gtk.Fixed>();
+        const { fixed, label } = await renderPlacedChild("pinned", { x: 10, y: 20 });
 
-        await render(
-            <Fixed ref={fixedRef}>
-                <Fixed.Child component={GtkLabel} x={10} y={20}>
-                    pinned
-                </Fixed.Child>
-            </Fixed>,
-        );
-
-        const fixed = fixedRef.current as Gtk.Fixed;
-        const label = screen.getByText("pinned");
-        await waitFor(() => {
-            expect(fixed.getChildPosition(label)).toEqual([10, 20]);
-        });
+        await expectPositionAt(fixed, label, 10, 20);
     });
 
     it("applies an arbitrary transform", async () => {
-        const fixedRef = createRef<Gtk.Fixed>();
-        const transform = Gsk.Transform.new().translate(Graphene.Point.create(15, 25));
+        const { fixed, label } = await renderPlacedChild("transformed", { transform: makeTranslateTransform() });
 
-        await render(
-            <Fixed ref={fixedRef}>
-                <Fixed.Child component={GtkLabel} transform={transform}>
-                    transformed
-                </Fixed.Child>
-            </Fixed>,
-        );
-
-        const fixed = fixedRef.current as Gtk.Fixed;
-        const label = screen.getByText("transformed");
         expect(fixed.getChildTransform(label)).not.toBeNull();
     });
 
     it("moves a child when its coordinates change", async () => {
-        const fixedRef = createRef<Gtk.Fixed>();
+        const { fixed, label, place } = await renderPlacedChild("movable", { x: 0, y: 0 });
+        await expectPositionAt(fixed, label, 0, 0);
 
-        function App({ x, y }: { x: number; y: number }) {
-            return (
-                <Fixed ref={fixedRef}>
-                    <Fixed.Child component={GtkLabel} x={x} y={y}>
-                        movable
-                    </Fixed.Child>
-                </Fixed>
-            );
-        }
+        await place({ x: 30, y: 40 });
+        await expectPositionAt(fixed, label, 30, 40);
+    });
 
-        const { rerender } = await render(<App x={0} y={0} />);
-        const label = screen.getByText("movable");
-        await waitFor(() => {
-            expect(fixedRef.current?.getChildPosition(label)).toEqual([0, 0]);
+    it("repositions in place without reparenting the child", async () => {
+        const { fixed, label, place } = await renderPlacedChild("anchored", { x: 0, y: 0 });
+        let parentNotifications = 0;
+        label.connect("notify::parent", () => {
+            parentNotifications += 1;
         });
 
-        await rerender(<App x={30} y={40} />);
-        await waitFor(() => {
-            expect(fixedRef.current?.getChildPosition(label)).toEqual([30, 40]);
+        await place({ x: 30, y: 40 });
+        await expectPositionAt(fixed, label, 30, 40);
+        expect(parentNotifications).toBe(0);
+        expect(label.getParent()).toBe(fixed);
+    });
+
+    it("clears the transform and falls back to coordinates when the transform prop is removed", async () => {
+        const { fixed, label, place } = await renderPlacedChild("untransformed", {
+            x: 30,
+            y: 40,
+            transform: makeTranslateTransform(),
         });
+        await expectPositionAt(fixed, label, 15, 25);
+
+        await place({ x: 30, y: 40, transform: null });
+        await expectPositionAt(fixed, label, 30, 40);
+        await expectBoundsAt(label, fixed, 30, 40);
+    });
+
+    it("leaves no residual transform when the transform prop is removed at the origin", async () => {
+        const { fixed, label, place } = await renderPlacedChild("reset", {
+            x: 0,
+            y: 0,
+            transform: makeTranslateTransform(),
+        });
+        expect(fixed.getChildTransform(label)).not.toBeNull();
+
+        await place({ x: 0, y: 0, transform: null });
+        await waitFor(() => {
+            expect(fixed.getChildTransform(label)).toBeNull();
+        });
+        await expectPositionAt(fixed, label, 0, 0);
     });
 
     it("places the replacement widget when the component prop swaps", async () => {
@@ -91,15 +125,13 @@ describe("render - Fixed", () => {
         }
 
         const { rerender } = await render(<App component={GtkLabel} />);
+        const fixed = fixedRef.current as Gtk.Fixed;
         const label = placedRef.current as Gtk.Widget;
-        await waitFor(() => {
-            expect(fixedRef.current?.getChildPosition(label)).toEqual([30, 40]);
-        });
+        await expectPositionAt(fixed, label, 30, 40);
 
         await rerender(<App component={GtkButton} />);
         const button = placedRef.current as Gtk.Widget;
         expect(button).not.toBe(label);
-        const fixed = fixedRef.current as Gtk.Fixed;
         expect(button.getParent()).toBe(fixed);
         await expectBoundsAt(button, fixed, 30, 40);
     });
@@ -125,9 +157,7 @@ describe("render - Fixed", () => {
         const { rerender } = await render(<App prepend={false} />);
         const fixed = fixedRef.current as Gtk.Fixed;
         const label = screen.getByText("existing");
-        await waitFor(() => {
-            expect(fixed.getChildPosition(label)).toEqual([30, 40]);
-        });
+        await expectPositionAt(fixed, label, 30, 40);
 
         await rerender(<App prepend={true} />);
         expect(screen.queryByText("prepended")).not.toBeNull();

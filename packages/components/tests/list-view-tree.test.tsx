@@ -7,6 +7,7 @@ import type { RefObject } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { expectRenderItemFunctionUpdate, renderTestItemWithSpy } from "./helpers/list-collection-render.js";
 import { type FixtureInput, type ListViewFixture, renderListView } from "./helpers/list-fixtures.js";
+import { expectNoBoxBetween } from "./helpers/widget-chain.js";
 
 interface Category {
     type: "category";
@@ -824,6 +825,95 @@ describe("render - ListView (tree) (22)", () => {
             await renderListView(parentWithChild, { expandedIds: ["parent"], renderItem });
 
             await waitFor(() => expect(screen.queryAllByText("Parent:true")).toHaveLength(1));
+        });
+    });
+});
+
+describe("render - ListView (tree) (23)", () => {
+    describe("direct cell rendering (tree)", () => {
+        it("renders the user's label as the tree expander's direct child with no wrapper container", async () => {
+            const { ref } = await renderListView(parentWithChild, { expandAll: true });
+            await waitForRowTexts(ref, ["Parent", "Child"]);
+
+            const expander = expanderByName("Parent");
+            const child = expander.getChild();
+            expect(child).toBeInstanceOf(Gtk.Label);
+            if (!(child instanceof Gtk.Label)) throw new Error("Expected the expander child to be a label");
+            expect(getWidgetNodeText(child)).toBe("Parent");
+            expectNoBoxBetween(child, ref.current);
+        });
+    });
+});
+
+const anchorCategory = categoryNode("cat-anchor", "Anchor", [childNode("anchor-child", "Anchor Child")]);
+
+describe("render - ListView (tree) (24)", () => {
+    describe("childless row gaining children", () => {
+        it("shows the added child and makes the rendered row expandable", async () => {
+            const { ref, rerender } = await renderListView([anchorCategory, leafNode("late", "Late")], {
+                expandAll: true,
+            });
+
+            await waitForRowTexts(ref, ["Anchor", "Anchor Child", "Late"]);
+            expect(listRowByName("Late").isExpandable()).toBe(false);
+
+            await rerender([anchorCategory, categoryNode("late", "Late", [childNode("late-child", "Late Child")])], {
+                expandAll: true,
+            });
+
+            await waitForRowTexts(ref, ["Anchor", "Anchor Child", "Late", "Late Child"]);
+            await waitFor(() => {
+                expect(listRowByName("Late").isExpandable()).toBe(true);
+            });
+        });
+    });
+});
+
+describe("render - ListView (tree) (25)", () => {
+    describe("children removed then re-added on one node", () => {
+        it("shows the children again after removal and re-addition", async () => {
+            const parentCategory = categoryNode("parent", "Parent", [childNode("child", "Child")]);
+            const { ref, rerender } = await renderListView([anchorCategory, parentCategory], { expandAll: true });
+
+            await waitForRowTexts(ref, ["Anchor", "Anchor Child", "Parent", "Child"]);
+
+            await rerender([anchorCategory, leafNode("parent", "Parent")], { expandAll: true });
+            await waitForRowTexts(ref, ["Anchor", "Anchor Child", "Parent"]);
+
+            await rerender([anchorCategory, parentCategory], { expandAll: true });
+            await waitForRowTexts(ref, ["Anchor", "Anchor Child", "Parent", "Child"]);
+            await waitFor(() => {
+                expect(listRowByName("Parent").isExpandable()).toBe(true);
+            });
+        });
+    });
+});
+
+describe("render - ListView (tree) (26)", () => {
+    describe("controlled selection across reorder", () => {
+        it("keeps a selected child and never reports an empty selection when top-level rows reorder", async () => {
+            const selectedIds = ["child"];
+            const expandedIds = ["parent"];
+            const onSelectionChanged = vi.fn();
+            const parentNode = categoryNode("parent", "Parent", [childNode("child", "Child")]);
+            const soloNode = leafNode("solo", "Solo");
+            const options = { selected: selectedIds, expandedIds, onSelectionChanged };
+            const { ref, rerender } = await renderListView([parentNode, soloNode], options);
+
+            await waitForRowTexts(ref, ["Parent", "Child", "Solo"]);
+            await waitFor(() => expect(onSelectionChanged).toHaveBeenCalledWith(["child"]));
+
+            await rerender([soloNode, parentNode], options);
+
+            await waitForRowTexts(ref, ["Solo", "Parent", "Child"]);
+            await waitFor(() => {
+                const model = ref.current.getModel();
+                expect(model).toBeInstanceOf(Gtk.SingleSelection);
+                if (!(model instanceof Gtk.SingleSelection)) throw new Error("Expected a single selection model");
+                expect(model.isSelected(2)).toBe(true);
+                expect(model.getSelection().getSize()).toBe(1n);
+            });
+            expect(onSelectionChanged).not.toHaveBeenCalledWith([]);
         });
     });
 });

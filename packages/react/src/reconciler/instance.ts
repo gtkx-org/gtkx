@@ -1,5 +1,5 @@
-import { getWrapperClass, TYPE_INVALID, typeFromName, typeIsA } from "@gtkx/runtime";
 import type * as GObject from "@gtkx/gi/gobject";
+import { getWrapperClass, TYPE_INVALID, typeFromName, typeIsA } from "@gtkx/runtime";
 import { ELEMENT_KIND, type Props } from "./kinds.js";
 import { type TypeInfo, typeInfoOf } from "./metadata.js";
 import type { ContentKind, ElementNode } from "./node.js";
