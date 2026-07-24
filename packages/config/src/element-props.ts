@@ -163,7 +163,7 @@ const containerSchema = z.strictObject({
     reorder: callSchema.optional(),
     autowrap: nameSchema.optional(),
     adopt: adoptSchema.optional(),
-    childProps: nameSchema.optional(),
+    childProps: z.array(nameSchema).min(1).optional(),
 });
 
 const valueSchema = z.strictObject({
@@ -210,8 +210,9 @@ export const elementPropsSchema = z.record(nameSchema, z.array(elementPropSchema
  * container element. `prop` is the React prop holding the children and `child` the
  * child GObject type. `append`/`remove` add and remove a child, `insert` places
  * one at an index or after a sibling, `reorder` moves an existing child, `autowrap`
- * names a widget type each child is wrapped in before attaching, `childProps` names a
- * `@gtkx/react` type whose members become placement props on the child, and `adopt` marks
+ * names a widget type each child is wrapped in before attaching, `childProps` names the
+ * placement props read off each child, matched in order against the attach method's
+ * parameters that are not the child itself, and `adopt` marks
  * pre-existing children as adopted (`true`), names the getter returning them, or
  * names the {@link AdoptedElement} its container behavior resolves.
  */

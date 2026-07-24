@@ -427,10 +427,9 @@ describe("codegen applied element props", () => {
         expect(interfaceBody(gtk, "GtkDropTarget")).toContain("types?: GObject$.Type[] | null | undefined;");
     });
 
-    it("contributes declared placement props to the child element's interface", () => {
+    it("derives placement props on the child element's interface from the attach method", () => {
         const gio = sourceFor(reactPipeline, "gio");
-        expect(gio).toContain('import { type ActionGroupPlacement } from "@gtkx/react";');
-        expect(gio).toMatch(/export interface GActionGroupProps<[^>]*> extends ActionGroupPlacement \{/);
+        expect(interfaceBody(gio, "GActionGroup")).toContain("prefix?: string | null | undefined;");
     });
 
     it("emits lazy-element props from the page class interface", () => {

@@ -39,7 +39,7 @@ export type ElementPropTypegen = {
     lazyElementExports: (namespaceName: string) => LazyElementSpec[];
     listItemTypeSources: (namespaceName: string, imports: ElementPropImports) => string[];
     containerPropNamesFor: (glibName: string) => string[];
-    placementPropsFor: (glibName: string) => string | undefined;
+    placementPropLines: (glibName: string, imports: ElementPropImports) => string[];
     acceptsChildren: (glibName: string) => boolean;
 };
 
@@ -264,12 +264,34 @@ const collectLazyElementSpecs = (
     return specs;
 };
 
-const collectPlacementProps = (elementProps: Record<string, ElementProp[]>): Map<string, string> => {
-    const byChild = new Map<string, string>();
-    forEachContainer(elementProps, (_parent, cp) => {
-        if (cp.childProps !== undefined) byChild.set(cp.child, cp.childProps);
+const isChildParameter = (context: GirIndex, param: GirParameter, child: string): boolean => {
+    const resolved = param.type === undefined ? undefined : context.library.typeOf(param.type);
+    if (resolved === undefined || (resolved.kind !== "class" && resolved.kind !== "interface")) return false;
+    return glibNameOf(resolved.value) === child;
+};
+
+const attachMethodName = (cp: ContainerProp): string | undefined => {
+    const call = cp.append ?? cp.remove;
+    if (call === undefined) return undefined;
+    return typeof call === "string" ? call : call.method;
+};
+
+const collectPlacementProps = (context: GirIndex, elementProps: Record<string, ElementProp[]>): PropContribution[] => {
+    const placements: PropContribution[] = [];
+    forEachContainer(elementProps, (parent, cp) => {
+        const names = cp.childProps;
+        const methodName = attachMethodName(cp);
+        if (names === undefined || methodName === undefined) return;
+        const method = findMethod(context, parent, methodName);
+        const spare = (method?.params ?? []).filter((param) => !isChildParameter(context, param, cp.child));
+        names.forEach((name, index) => {
+            const param = spare[index];
+            if (param === undefined || hasProperty(context, cp.child, name)) return;
+            if (placements.some((entry) => entry.child === cp.child && entry.prop === name)) return;
+            placements.push({ child: cp.child, prop: name, param });
+        });
     });
-    return byChild;
+    return placements;
 };
 
 const collectContainerPropNames = (elementProps: Record<string, ElementProp[]>): Map<string, string[]> => {
@@ -343,7 +365,7 @@ export const createElementPropTypegen = (
     const propContributions = collectPropContributions(context, elementProps);
     const lazyElementSpecs = collectLazyElementSpecs(context, elementProps);
     const containerPropNamesByParent = collectContainerPropNames(elementProps);
-    const placementPropsByChild = collectPlacementProps(elementProps);
+    const placementProps = collectPlacementProps(context, elementProps);
     const namedItemTypes = collectNamedItemTypes(context, elementProps);
     const renderContext = createRenderContextFactory(context, namedItemTypes);
 
@@ -386,7 +408,10 @@ export const createElementPropTypegen = (
         lazyElementExports: (namespaceName) => lazyElementSpecs.get(namespaceName) ?? [],
         listItemTypeSources,
         containerPropNamesFor: (glibName) => containerPropNamesByParent.get(glibName) ?? [],
-        placementPropsFor: (glibName) => placementPropsByChild.get(glibName),
+        placementPropLines: (glibName, imports) =>
+            placementProps
+                .filter((entry) => entry.child === glibName)
+                .map((entry) => optionalLine(entry.prop, renderParamType(context, imports.gi, entry.param))),
         acceptsChildren: createAcceptsChildren(context, elementProps),
     };
 };

@@ -186,8 +186,7 @@ type ActionGroupHost = GObject.Object & {
     insertActionGroup: (prefix: string, group: GObject.Object | null) => void;
 };
 
-/** Placement props contributed to every element usable as a `GActionGroup` child. */
-export type ActionGroupPlacement = { prefix?: string };
+type ActionGroupPlacement = { prefix?: string };
 
 type ActionPlacement = { name?: string };
 
@@ -277,7 +276,7 @@ export const ELEMENT_RULES: Record<string, ElementProp[]> = withBreakpoints({
             container("actionGroups", "GActionGroup", {
                 append: "insertActionGroup",
                 remove: "insertActionGroup",
-                childProps: "ActionGroupPlacement",
+                childProps: ["prefix"],
             }),
             {
                 attach: (widget, group, { props }) => widget.insertActionGroup(props.prefix ?? "", group),
