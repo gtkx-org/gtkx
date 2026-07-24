@@ -4,7 +4,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { getInstanceType, getWrapperClass, TYPE_INVALID, typeFromName, typeIsA, typeName } from "@gtkx/runtime";
 import { applyAdoptedProps, markLazyDirty } from "./apply-props.js";
 import { type CallContext, callMethod, runCall } from "./calls.js";
-import type { ContainerBehavior } from "./element-rules.js";
+import type { ContainerBehavior, PlaceContext } from "./element-rules.js";
 import { type Props, WRAPPER_ELEMENT } from "./kinds.js";
 import { type TypeInfo, typeInfoOf } from "./metadata.js";
 import { type ElementNode, nodeWidget, type PlaceableNode, type PlacedChild, type SignalTarget } from "./node.js";
@@ -63,9 +63,10 @@ const createEntry = (rule: ContainerProp, node: PlaceableNode): PlacedChild | nu
 const behaviorOf = (parent: ElementNode, rule: ContainerProp): ContainerBehavior | undefined =>
     rule === FALLBACK_RULE ? undefined : typeInfoOf(parent.typeName).containerBehaviors.get(rule.prop);
 
-const placeContext = (entry: PlacedChild, index: number, sibling: GObject.Object | null) => ({
+const placeContext = (entry: PlacedChild, index: number, sibling: GObject.Object | null): PlaceContext => ({
     index,
     sibling,
+    adopted: entry.adopted,
     props: entry.node.props,
 });
 

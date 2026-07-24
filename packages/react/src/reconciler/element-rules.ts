@@ -4,7 +4,12 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import type { Props } from "./kinds.js";
 
 /** Values available to a container behavior while attaching or moving one child. */
-export type PlaceContext = { index: number; sibling: GObject.Object | null; props: Props };
+export type PlaceContext = {
+    index: number;
+    sibling: GObject.Object | null;
+    adopted: GObject.Object | null;
+    props: Props;
+};
 
 /** Values available to a container behavior while detaching one child. */
 export type DetachContext = { adopted: GObject.Object | null; props: Props };
@@ -37,6 +42,14 @@ const withBehavior = <P extends GObject.Object, C extends GObject.Object>(
 ): ElementProp => {
     if (rule.kind === "container") behaviors.set(behaviorKey(type, rule.prop), behavior as ContainerBehavior);
     return rule;
+};
+
+type TabViewLike = GObject.Object & {
+    append: (child: Gtk.Widget) => GObject.Object;
+    insert: (child: Gtk.Widget, position: number) => GObject.Object;
+    reorderPage: (page: GObject.Object, position: number) => boolean;
+    closePage: (page: GObject.Object) => void;
+    getPage: (child: Gtk.Widget) => GObject.Object;
 };
 
 const layoutChild = (parent: Gtk.Widget, child: Gtk.Widget): GObject.Object | null =>
@@ -299,13 +312,27 @@ export const ELEMENT_RULES: Record<string, ElementProp[]> = withBreakpoints({
     AdwCarousel: [indexedChildren("append", "reorder")],
     AdwPreferencesPage: [indexedChildren("add")],
     AdwTabView: [
-        container("children", "GtkWidget", {
-            append: "append",
-            insert: { method: "insert", args: ["child", "index"] },
-            reorder: { method: "reorderPage", args: ["adopted", "index"] },
-            remove: { method: "closePage", args: ["adopted"] },
-            adopt: "getPage",
-        }),
+        withBehavior<TabViewLike, Gtk.Widget>(
+            "AdwTabView",
+            container("children", "GtkWidget", {
+                append: "append",
+                insert: "insert",
+                reorder: "reorderPage",
+                remove: "closePage",
+                adopt: "getPage",
+            }),
+            {
+                attach: (view, child) => view.append(child),
+                insert: (view, child, { index }) => view.insert(child, index),
+                reorder: (view, _child, { adopted, index }) => {
+                    if (adopted !== null) view.reorderPage(adopted, index);
+                },
+                detach: (view, _child, { adopted }) => {
+                    if (adopted !== null) view.closePage(adopted);
+                },
+                resolve: (view, child) => view.getPage(child),
+            },
+        ),
     ],
     GtkListBox: [autowrapProp("GtkListBoxRow")],
     GtkFlowBox: [autowrapProp("GtkFlowBoxChild")],
