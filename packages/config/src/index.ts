@@ -6,7 +6,7 @@ export {
     type ResolvedReactCompilerOptions,
 } from "./config.js";
 export type {
-    AdoptPath,
+    AdoptedElement,
     AppliedProp,
     Arg,
     ArgRef,

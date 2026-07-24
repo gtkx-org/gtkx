@@ -247,6 +247,9 @@ importers:
       '@gtkx/config':
         specifier: workspace:*
         version: link:../config
+      '@gtkx/react':
+        specifier: workspace:*
+        version: link:../react
       '@gtkx/utils':
         specifier: workspace:*
         version: link:../utils

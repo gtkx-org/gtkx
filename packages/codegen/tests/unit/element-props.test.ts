@@ -2,7 +2,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type ContainerProp, type ElementProp, loadConfig } from "@gtkx/config";
-import { BUILT_IN_ELEMENT_PROPS } from "@gtkx/config/internal";
+import { behaviorFor, ELEMENT_RULES } from "@gtkx/react/element-rules";
 import { describe, expect, it } from "vitest";
 import { assembleElementProps } from "../../src/store/react/element-props.js";
 import { buildGirIndex } from "../../src/store/react/gir-index.js";
@@ -33,11 +33,20 @@ const containerPropFor = (parent: string, slot?: string): ContainerProp | undefi
             prop.kind === "container" && prop.prop === (slot ?? "children") && prop.child === "GtkWidget",
     );
 
+const declarativeRules = (): Record<string, ElementProp[]> => {
+    const rules: Record<string, ElementProp[]> = {};
+    for (const [parent, props] of Object.entries(ELEMENT_RULES)) {
+        const kept = props.filter((prop) => prop.kind !== "container" || behaviorFor(parent, prop.prop) === undefined);
+        if (kept.length > 0) rules[parent] = kept;
+    }
+    return rules;
+};
+
 describe("curated element props", () => {
-    it("pass schema validation", async () => {
+    it("pass schema validation once behavior-backed rules are excluded", async () => {
         const root = await mkdtemp(join(tmpdir(), "gtkx-curated-"));
         try {
-            const source = `export default { applicationId: "org.gtk.Test", elementProps: ${JSON.stringify(BUILT_IN_ELEMENT_PROPS)} };\n`;
+            const source = `export default { applicationId: "org.gtk.Test", elementProps: ${JSON.stringify(declarativeRules())} };\n`;
             await writeFile(join(root, "gtkx.config.ts"), source);
             await expect(loadConfig(root)).resolves.toMatchObject({ root });
         } finally {
@@ -45,10 +54,22 @@ describe("curated element props", () => {
         }
     });
 
+    it("give every container rule a way to attach or detach", () => {
+        for (const [parent, props] of Object.entries(ELEMENT_RULES)) {
+            for (const prop of props) {
+                if (prop.kind !== "container") continue;
+                const behavior = behaviorFor(parent, prop.prop);
+                const attaches = prop.append !== undefined || behavior?.attach !== undefined;
+                const detaches = prop.remove !== undefined || behavior?.detach !== undefined;
+                expect(attaches || detaches, `${parent}.${prop.prop}`).toBe(true);
+            }
+        }
+    });
+
     it("reference only types and methods that exist in the loaded GIR", () => {
         const known = knownTypeNames();
         const filtered: Record<string, ElementProp[]> = {};
-        for (const [parent, props] of Object.entries(BUILT_IN_ELEMENT_PROPS)) {
+        for (const [parent, props] of Object.entries(ELEMENT_RULES)) {
             if (!known.has(parent)) continue;
             const kept = props.filter(
                 (prop) =>
@@ -88,7 +109,8 @@ describe("assembled container props", () => {
 
     it("keeps adopt container props", () => {
         expect(containerPropFor("GtkStack")).toMatchObject({ append: "addChild", adopt: true });
-        expect(containerPropFor("GtkNotebook")).toMatchObject({ remove: "detachTab", adopt: "getPage" });
+        expect(containerPropFor("GtkNotebook")).toMatchObject({ adopt: "getPage" });
+        expect(behaviorFor("GtkNotebook", "children")?.detach).toBeTypeOf("function");
     });
 });
 

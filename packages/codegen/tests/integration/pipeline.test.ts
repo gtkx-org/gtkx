@@ -1,4 +1,4 @@
-import { BUILT_IN_ELEMENT_PROPS } from "@gtkx/config/internal";
+import { ELEMENT_RULES } from "@gtkx/react/element-rules";
 import { describe, expect, it } from "vitest";
 import type { GirClass } from "../../src/gir/class.js";
 import type { GirFunction } from "../../src/gir/function.js";
@@ -515,7 +515,7 @@ describe("Library.resolveType", () => {
 const jsxSources = (): string[] => generateJsxFiles(library).namespaces.map((entry) => entry.source);
 
 const namedContainerPropTypes = new Set<string>(
-    Object.entries(BUILT_IN_ELEMENT_PROPS)
+    Object.entries(ELEMENT_RULES)
         .filter(([, props]) => props.some((prop) => prop.kind === "container" && prop.prop !== "children"))
         .map(([type]) => type),
 );

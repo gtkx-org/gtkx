@@ -1,4 +1,46 @@
-import type { AdoptPath, Call, ContainerProp, ElementProp } from "./element-props.js";
+import type { AdoptedElement, Call, ContainerProp, ElementProp } from "@gtkx/config";
+import type * as GObject from "@gtkx/gi/gobject";
+import type * as Gtk from "@gtkx/gi/gtk";
+import type { Props } from "./kinds.js";
+
+/** Values available to a container behavior while attaching or moving one child. */
+export type PlaceContext = { index: number; sibling: GObject.Object | null; props: Props };
+
+/** Values available to a container behavior while detaching one child. */
+export type DetachContext = { adopted: GObject.Object | null; props: Props };
+
+/**
+ * Imperative overrides for a container element prop. Any hook present here replaces the
+ * declarative call of the same role, so a rule states its method names for codegen and its
+ * behavior for the runtime in one entry.
+ */
+export type ContainerBehavior<P = GObject.Object, C = GObject.Object> = {
+    attach?: (parent: P, child: C, context: PlaceContext) => unknown;
+    detach?: (parent: P, child: C, context: DetachContext) => void;
+    insert?: (parent: P, child: C, context: PlaceContext) => unknown;
+    reorder?: (parent: P, child: C, context: PlaceContext) => unknown;
+    resolve?: (parent: P, child: C) => GObject.Object | null;
+};
+
+const behaviors = new Map<string, ContainerBehavior>();
+
+const behaviorKey = (type: string, prop: string): string => `${type}:${prop}`;
+
+/** Returns the imperative behavior registered for a container prop, if any. */
+export const behaviorFor = (type: string, prop: string): ContainerBehavior | undefined =>
+    behaviors.get(behaviorKey(type, prop));
+
+const withBehavior = <P extends GObject.Object, C extends GObject.Object>(
+    type: string,
+    rule: ElementProp,
+    behavior: ContainerBehavior<P, C>,
+): ElementProp => {
+    if (rule.kind === "container") behaviors.set(behaviorKey(type, rule.prop), behavior as ContainerBehavior);
+    return rule;
+};
+
+const layoutChild = (parent: Gtk.Widget, child: Gtk.Widget): GObject.Object | null =>
+    parent.getLayoutManager()?.getLayoutChild(child) ?? null;
 
 type ManyMethods = Pick<ContainerProp, "append" | "remove">;
 
@@ -49,7 +91,7 @@ const packProps = (): ElementProp[] => [
     container("end", "GtkWidget", { append: "packEnd" }),
 ];
 
-const layoutChild = (element: string): AdoptPath => ({ path: ["getLayoutManager", "getLayoutChild"], element });
+const adopts = (element: string): AdoptedElement => ({ element });
 
 const autowrapProp = (wrapper: string): ElementProp =>
     container("children", "GtkWidget", {
@@ -150,7 +192,7 @@ const withBreakpoints = (props: Record<string, ElementProp[]>): Record<string, E
     return props;
 };
 
-export const BUILT_IN_ELEMENT_PROPS: Record<string, ElementProp[]> = withBreakpoints({
+export const ELEMENT_RULES: Record<string, ElementProp[]> = withBreakpoints({
     ...forEach(SINGLE_CHILD_TYPES, () => [singleChild()]),
     ...forEach(SINGLE_CONTENT_TYPES, () => [singleContent()]),
     ...forEach(BOX_TYPES, () => [boxChildren()]),
@@ -199,29 +241,38 @@ export const BUILT_IN_ELEMENT_PROPS: Record<string, ElementProp[]> = withBreakpo
         }),
     ],
     GtkGrid: [
-        container("children", "GtkWidget", {
-            append: {
-                method: "attach",
-                args: ["child", { literal: 0 }, { literal: 0 }, { literal: 1 }, { literal: 1 }],
+        withBehavior<Gtk.Grid, Gtk.Widget>(
+            "GtkGrid",
+            container("children", "GtkWidget", { adopt: adopts("GtkGridLayoutChild") }),
+            {
+                attach: (grid, child) => grid.attach(child, 0, 0, 1, 1),
+                detach: (grid, child) => grid.remove(child),
+                resolve: layoutChild,
             },
-            remove: "remove",
-            adopt: layoutChild("GtkGridLayoutChild"),
-        }),
+        ),
     ],
     GtkFixed: [
-        container("children", "GtkWidget", {
-            append: { method: "put", args: ["child", { literal: 0 }, { literal: 0 }] },
-            remove: "remove",
-            adopt: layoutChild("GtkFixedLayoutChild"),
-        }),
+        withBehavior<Gtk.Fixed, Gtk.Widget>(
+            "GtkFixed",
+            container("children", "GtkWidget", { adopt: adopts("GtkFixedLayoutChild") }),
+            {
+                attach: (fixed, child) => fixed.put(child, 0, 0),
+                detach: (fixed, child) => fixed.remove(child),
+                resolve: layoutChild,
+            },
+        ),
     ],
     GtkOverlay: [
         singleChild(),
-        container("overlays", "GtkWidget", {
-            append: "addOverlay",
-            remove: "removeOverlay",
-            adopt: layoutChild("GtkOverlayLayoutChild"),
-        }),
+        withBehavior<Gtk.Overlay, Gtk.Widget>(
+            "GtkOverlay",
+            container("overlays", "GtkWidget", { adopt: adopts("GtkOverlayLayoutChild") }),
+            {
+                attach: (overlay, child) => overlay.addOverlay(child),
+                detach: (overlay, child) => overlay.removeOverlay(child),
+                resolve: layoutChild,
+            },
+        ),
     ],
     GtkSizeGroup: [{ kind: "list", prop: "widgets", add: "addWidget", remove: "removeWidget" }],
     GtkConstraintLayout: [
@@ -267,13 +318,17 @@ export const BUILT_IN_ELEMENT_PROPS: Record<string, ElementProp[]> = withBreakpo
         { kind: "lazy", prop: "visibleChildName", lookup: "getChildByName" },
     ],
     GtkNotebook: [
-        container("children", "GtkWidget", {
-            append: { method: "appendPage", args: ["child", { literal: null }] },
-            insert: { method: "insertPage", args: ["child", { literal: null }, "index"] },
-            reorder: { method: "reorderChild", args: ["child", "index"] },
-            remove: "detachTab",
-            adopt: "getPage",
-        }),
+        withBehavior<Gtk.Notebook, Gtk.Widget>(
+            "GtkNotebook",
+            container("children", "GtkWidget", { adopt: "getPage" }),
+            {
+                attach: (notebook, child) => notebook.appendPage(child, null),
+                insert: (notebook, child, { index }) => notebook.insertPage(child, null, index),
+                reorder: (notebook, child, { index }) => notebook.reorderChild(child, index),
+                detach: (notebook, child) => notebook.detachTab(child),
+                resolve: (notebook, child) => notebook.getPage(child),
+            },
+        ),
     ],
     AdwToggleGroup: [
         container("children", "AdwToggle", { append: "add", remove: "remove" }),

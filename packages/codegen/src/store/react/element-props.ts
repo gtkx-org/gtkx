@@ -1,5 +1,5 @@
 import type { Arg, Call, ContainerProp, ElementProp, ListProp, ValueProp } from "@gtkx/config";
-import { BUILT_IN_ELEMENT_PROPS } from "@gtkx/config/internal";
+import { ELEMENT_RULES } from "@gtkx/react/element-rules";
 import { toCamelIdentifier } from "@gtkx/utils";
 import type { GirParameter } from "../../gir/parameter.js";
 import { PRIMITIVE_TS_TYPE } from "../../gir/primitives.js";
@@ -200,7 +200,7 @@ export const assembleElementProps = (
 ): Record<string, ElementProp[]> => {
     validateUserElementProps(context, userElementProps);
     const merged = mergeElementProps([
-        filterKnownElementProps(context, BUILT_IN_ELEMENT_PROPS),
+        filterKnownElementProps(context, ELEMENT_RULES),
         filterKnownElementProps(context, userElementProps),
     ]);
     return expandAppliedProps(context, merged);

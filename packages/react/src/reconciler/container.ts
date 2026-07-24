@@ -4,6 +4,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { getInstanceType, getWrapperClass, TYPE_INVALID, typeFromName, typeIsA, typeName } from "@gtkx/runtime";
 import { applyAdoptedProps, markLazyDirty } from "./apply-props.js";
 import { type CallContext, callMethod, runCall } from "./calls.js";
+import type { ContainerBehavior } from "./element-rules.js";
 import { type Props, WRAPPER_ELEMENT } from "./kinds.js";
 import { type TypeInfo, typeInfoOf } from "./metadata.js";
 import { type ElementNode, nodeWidget, type PlaceableNode, type PlacedChild, type SignalTarget } from "./node.js";
@@ -59,23 +60,21 @@ const createEntry = (rule: ContainerProp, node: PlaceableNode): PlacedChild | nu
     return { node, widget, adopted: null, rule, attached: false };
 };
 
-const adoptThroughPath = (root: GObject.Object, path: string[], widget: GObject.Object): GObject.Object | null => {
-    let target: GObject.Object = root;
-    for (let index = 0; index < path.length; index++) {
-        const method = path[index];
-        if (method === undefined) return null;
-        const next = callMethod(target, method, index === path.length - 1 ? [widget] : []);
-        if (!isObject(next)) return null;
-        target = next;
-    }
-    return target;
-};
+const behaviorOf = (parent: ElementNode, rule: ContainerProp): ContainerBehavior | undefined =>
+    rule === FALLBACK_RULE ? undefined : typeInfoOf(parent.typeName).containerBehaviors.get(rule.prop);
+
+const placeContext = (entry: PlacedChild, index: number, sibling: GObject.Object | null) => ({
+    index,
+    sibling,
+    props: entry.node.props,
+});
 
 const computeAdopted = (parent: ElementNode, entry: PlacedChild, result: unknown): GObject.Object | null => {
     const adopt = entry.rule.adopt;
     if (adopt === undefined) return null;
     if (adopt === true) return isObject(result) ? result : null;
-    if (typeof adopt !== "string") return adoptThroughPath(parent.object, adopt.path, entry.widget);
+    if (typeof adopt !== "string")
+        return behaviorOf(parent, entry.rule)?.resolve?.(parent.object, entry.widget) ?? null;
     const adopted = callMethod(parent.object, adopt, [entry.widget]);
     return isObject(adopted) ? adopted : null;
 };
@@ -106,14 +105,25 @@ const appendEntry = (parent: ElementNode, entry: PlacedChild, index: number): vo
         entry.attached = true;
         return;
     }
+    const attach = behaviorOf(parent, entry.rule)?.attach;
+    if (attach !== undefined) {
+        runPlacement(parent, entry, attach(parent.object, entry.widget, placeContext(entry, index, null)));
+        return;
+    }
     if (entry.rule.append === undefined) return;
     const ctx: CallContext = { child: entry.widget, index, sibling: null, props: entry.node.props };
     runPlacement(parent, entry, runCall(parent.object, entry.rule.append, ctx, [entry.widget]));
 };
 
 const insertEntry = (parent: ElementNode, entry: PlacedChild, list: PlacedChild[], index: number): void => {
+    const sibling = siblingAt(list, index);
+    const insert = behaviorOf(parent, entry.rule)?.insert;
+    if (insert !== undefined) {
+        runPlacement(parent, entry, insert(parent.object, entry.widget, placeContext(entry, index, sibling)));
+        return;
+    }
     if (entry.rule.insert === undefined) return;
-    const ctx: CallContext = { child: entry.widget, index, sibling: siblingAt(list, index), props: entry.node.props };
+    const ctx: CallContext = { child: entry.widget, index, sibling, props: entry.node.props };
     runPlacement(parent, entry, runCall(parent.object, entry.rule.insert, ctx, [entry.widget]));
 };
 
@@ -128,7 +138,10 @@ const detachDefault = (parent: ElementNode, entry: PlacedChild): void => {
 const detachEntry = (parent: ElementNode, entry: PlacedChild): void => {
     if (!entry.attached) return;
     entry.attached = false;
-    if (entry.rule !== FALLBACK_RULE && entry.rule.remove !== undefined) {
+    const detach = behaviorOf(parent, entry.rule)?.detach;
+    if (detach !== undefined) {
+        detach(parent.object, entry.widget, { adopted: entry.adopted, props: entry.node.props });
+    } else if (entry.rule !== FALLBACK_RULE && entry.rule.remove !== undefined) {
         const ctx: CallContext = { child: entry.widget, adopted: entry.adopted, props: entry.node.props };
         runCall(parent.object, entry.rule.remove, ctx, [entry.widget]);
     } else {
@@ -144,13 +157,13 @@ const rebuild = (parent: ElementNode, list: PlacedChild[]): void => {
 };
 
 const reorderEntry = (parent: ElementNode, entry: PlacedChild, list: PlacedChild[], index: number): void => {
-    const ctx: CallContext = {
-        child: entry.widget,
-        adopted: entry.adopted,
-        index,
-        sibling: siblingAt(list, index),
-        props: entry.node.props,
-    };
+    const sibling = siblingAt(list, index);
+    const reorder = behaviorOf(parent, entry.rule)?.reorder;
+    if (reorder !== undefined) {
+        reorder(parent.object, entry.widget, placeContext(entry, index, sibling));
+        return;
+    }
+    const ctx: CallContext = { child: entry.widget, adopted: entry.adopted, index, sibling, props: entry.node.props };
     if (entry.rule.reorder !== undefined) runCall(parent.object, entry.rule.reorder, ctx, [entry.widget]);
 };
 
@@ -158,10 +171,12 @@ type SyncOptions = { list: PlacedChild[]; index: number; isMove: boolean };
 
 const syncPlacement = (parent: ElementNode, entry: PlacedChild, options: SyncOptions): void => {
     const { list, index, isMove } = options;
-    const positional = entry.rule.insert !== undefined && entry.rule.reorder !== undefined;
+    const behavior = behaviorOf(parent, entry.rule);
+    const canInsert = entry.rule.insert !== undefined || behavior?.insert !== undefined;
+    const canReorder = entry.rule.reorder !== undefined || behavior?.reorder !== undefined;
     if (!isMove && index === list.length - 1) appendEntry(parent, entry, index);
-    else if (!isMove && positional) insertEntry(parent, entry, list, index);
-    else if (isMove && entry.rule.reorder !== undefined) reorderEntry(parent, entry, list, index);
+    else if (!isMove && canInsert && canReorder) insertEntry(parent, entry, list, index);
+    else if (isMove && canReorder) reorderEntry(parent, entry, list, index);
     else rebuild(parent, list);
 };
 
