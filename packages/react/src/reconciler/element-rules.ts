@@ -245,6 +245,26 @@ type AccelHost = GObject.Object & {
 
 type ActionAccel = { detailedActionName: string; accels: string[] };
 
+/** One Visual Format Language block applied to a `Gtk.ConstraintLayout`. */
+export type VflConstraints = {
+    lines: string[];
+    hspacing?: number;
+    vspacing?: number;
+    views?: Map<string, Gtk.ConstraintTarget>;
+};
+
+type ConstraintLayoutLike = GObject.Object & {
+    addConstraintsFromDescription: (
+        lines: string[],
+        hspacing: number,
+        vspacing: number,
+        views: Map<string, Gtk.ConstraintTarget>,
+    ) => Iterable<Gtk.Constraint>;
+    removeConstraint: (constraint: Gtk.Constraint) => void;
+};
+
+const vflConstraints = new WeakMap<VflConstraints, Gtk.Constraint[]>();
+
 type ScaleMark = { value?: number; position: Gtk.PositionType; markup?: string | null };
 
 type ScaleLike = GObject.Object & {
@@ -455,6 +475,25 @@ export const ELEMENT_RULES: Record<string, ElementProp[]> = withBreakpoints({
     GtkConstraintLayout: [
         container("constraints", "GtkConstraint", { append: "addConstraint", remove: "removeConstraint" }),
         container("guides", "GtkConstraintGuide", { append: "addGuide", remove: "removeGuide" }),
+        withListBehavior<ConstraintLayoutLike, VflConstraints>(
+            "GtkConstraintLayout",
+            { kind: "list", prop: "vfl", itemType: "VflConstraints", add: "addConstraintsFromDescription" },
+            {
+                add: (layout, item) => {
+                    const added = layout.addConstraintsFromDescription(
+                        item.lines,
+                        item.hspacing ?? 0,
+                        item.vspacing ?? 0,
+                        item.views ?? new Map(),
+                    );
+                    vflConstraints.set(item, [...added]);
+                },
+                remove: (layout, item) => {
+                    for (const constraint of vflConstraints.get(item) ?? []) layout.removeConstraint(constraint);
+                    vflConstraints.delete(item);
+                },
+            },
+        ),
     ],
     AdwShortcutsDialog: [container("children", "AdwShortcutsSection", { append: "add" })],
     AdwShortcutsSection: [container("children", "AdwShortcutsItem", { append: "add" })],

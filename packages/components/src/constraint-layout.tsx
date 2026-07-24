@@ -1,6 +1,7 @@
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkConstraint, GtkConstraintGuide, GtkConstraintLayout } from "@gtkx/jsx/gtk";
+import type { VflConstraints } from "@gtkx/react";
 import type { ReactElement, ReactNode } from "react";
 import { createContext, useContext, useId, useLayoutEffect, useMemo, useState } from "react";
 import { useLatest } from "./internal/use-latest.js";
@@ -110,32 +111,14 @@ const elementsOf = <K extends Declaration["kind"]>(
     return elements;
 };
 
-const vflSignature = (declarations: Declarations): string =>
-    JSON.stringify(
-        [...declarations]
-            .filter(([, declaration]) => declaration.kind === "vfl")
-            .map(([key, declaration]) => [key, declaration.props]),
-    );
-
-const useVflConstraints = (
-    layout: Gtk.ConstraintLayout | null,
-    declarations: Declarations,
-    targets: Targets | null,
-) => {
-    const latest = useLatest(declarations);
-    const signature = vflSignature(declarations);
-    useLayoutEffect(() => {
-        if (layout === null || targets === null) return;
-        const added: Gtk.Constraint[] = [];
-        for (const declaration of latest.current.values()) {
-            if (declaration.kind !== "vfl") continue;
-            const { lines, hspacing, vspacing } = declaration.props;
-            added.push(...layout.addConstraintsFromDescription(lines, hspacing ?? 0, vspacing ?? 0, targets));
-        }
-        return () => {
-            for (const constraint of added) layout.removeConstraint(constraint);
-        };
-    }, [layout, targets, latest, signature]);
+const vflBlocks = (declarations: Declarations, targets: Targets): VflConstraints[] => {
+    const blocks: VflConstraints[] = [];
+    for (const declaration of declarations.values()) {
+        if (declaration.kind !== "vfl") continue;
+        const { lines, hspacing, vspacing } = declaration.props;
+        blocks.push({ lines, hspacing: hspacing ?? 0, vspacing: vspacing ?? 0, views: targets });
+    }
+    return blocks;
 };
 
 const useDeclaration = (declaration: Declaration): null => {
@@ -201,10 +184,10 @@ const ConstraintLayoutRoot = (props: ConstraintLayoutProps): ReactNode => {
                 : elementsOf(declarations, "constraint", (key, it) => constraintElement(key, it.props, targets)),
         [declarations, targets],
     );
-    useVflConstraints(layout, declarations, targets);
+    const vfl = useMemo(() => (targets === null ? null : vflBlocks(declarations, targets)), [declarations, targets]);
     return (
         <ConstraintContext.Provider value={registry}>
-            <GtkConstraintLayout ref={refCallback} guides={guides} constraints={constraints} />
+            <GtkConstraintLayout ref={refCallback} guides={guides} constraints={constraints} vfl={vfl} />
             {children}
         </ConstraintContext.Provider>
     );
