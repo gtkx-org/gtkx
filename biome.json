@@ -188,6 +188,30 @@
                     }
                 }
             }
+        },
+        {
+            "includes": [
+                "packages/react/src/**",
+                "!packages/react/src/adw/**",
+                "packages/components/src/**",
+                "!packages/components/src/adw/**"
+            ],
+            "linter": {
+                "rules": {
+                    "style": {
+                        "noRestrictedImports": {
+                            "level": "error",
+                            "options": {
+                                "paths": {
+                                    "@gtkx/gi/adw": "Only the ./adw entrypoint may reference the Adwaita bindings, so projects that do not declare Adw-1 still typecheck.",
+                                    "@gtkx/jsx/adw": "Only the ./adw entrypoint may reference the Adwaita bindings, so projects that do not declare Adw-1 still typecheck.",
+                                    "@gtkx/react/adw": "Only the ./adw entrypoint may reference the Adwaita bindings, so projects that do not declare Adw-1 still typecheck."
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     ],
     "vcs": {
