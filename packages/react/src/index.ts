@@ -1,4 +1,3 @@
-export type { ElementProp } from "@gtkx/config";
 export { useApplication } from "./hooks/use-application.js";
 export { useBindSetting } from "./hooks/use-bind-setting.js";
 export { useParentWindow } from "./hooks/use-parent-window.js";

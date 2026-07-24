@@ -71,18 +71,14 @@ describe("docs command", () => {
             girPath: ["/usr/share/gir-1.0"],
             outDir: expect.stringContaining("custom/dir/docs/reference"),
             basePath: "/reference",
-            elementProps: {},
             force: false,
         });
         expect(collectLogged(state.stderrSpy)).toContain("wrote 3 element pages across 2 namespaces");
     });
 
-    it("passes out, base-path, force, and elementProps through", async () => {
+    it("passes out, base-path, and force through", async () => {
         loadConfigMock.mockResolvedValueOnce({
-            config: {
-                applicationId: "com.example.App",
-                elementProps: { GtkFixed: [] },
-            },
+            config: { applicationId: "com.example.App" },
             configFile: "/project/gtkx.config.ts",
         } as never);
 
@@ -93,7 +89,6 @@ describe("docs command", () => {
             girPath: ["/usr/share/gir-1.0"],
             outDir: expect.stringContaining("custom/dir/site/elements"),
             basePath: "/elements",
-            elementProps: { GtkFixed: [] },
             force: true,
         });
     });

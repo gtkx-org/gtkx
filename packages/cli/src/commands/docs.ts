@@ -51,7 +51,6 @@ export const docs = defineCommand({
             girPath,
             outDir,
             basePath: args["base-path"],
-            elementProps: config.elementProps ?? {},
             force: args.force,
         });
         if (!regenerated) {

@@ -1,7 +1,7 @@
 import { rmSync } from "node:fs";
 import { resolve } from "node:path";
 import { runCodegen as runCodegenCore } from "@gtkx/codegen";
-import { type Config, type ElementProp, loadConfig } from "@gtkx/config";
+import { type Config, loadConfig } from "@gtkx/config";
 import { info } from "@gtkx/utils";
 import { resolveDataDir } from "../internal/data-dir.js";
 import { emitSchemaEnv } from "../settings/schema.js";
@@ -46,13 +46,11 @@ type CodegenOptionsInput = {
     store: CodegenStore;
     libraries: string[];
     girPath: string[];
-    elementProps: Record<string, ElementProp[]>;
 };
 
-const codegenOptions = ({ store, libraries, girPath, elementProps }: CodegenOptionsInput) => ({
+const codegenOptions = ({ store, libraries, girPath }: CodegenOptionsInput) => ({
     libraries,
     girPath,
-    elementProps,
     gi: {
         storeDir: store.giStoreDir,
         linkDir: store.giLinkDir,
@@ -86,7 +84,7 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
         };
     }
 
-    const { girPath, libraries, elementProps, store } = options.inputs ?? resolveCodegenInputs(cwd, config);
+    const { girPath, libraries, store } = options.inputs ?? resolveCodegenInputs(cwd, config);
 
     if (girPath.length === 0) {
         throw new Error(
@@ -94,7 +92,7 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
         );
     }
 
-    const force = options.force === true || isCodegenStale({ girPath, libraries, elementProps, store });
+    const force = options.force === true || isCodegenStale({ girPath, libraries, store });
     if (options.force) {
         for (const path of [store.giStoreDir, store.giLinkDir, store.jsxStoreDir, store.jsxLinkDir]) {
             rmSync(path, { recursive: true, force: true });
@@ -102,7 +100,7 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
     }
 
     const result = await runCodegenCore({
-        ...codegenOptions({ store, libraries, girPath, elementProps }),
+        ...codegenOptions({ store, libraries, girPath }),
         force,
     });
 

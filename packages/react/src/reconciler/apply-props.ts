@@ -1,18 +1,21 @@
-import type { ListProp, ValueProp } from "@gtkx/config";
+import * as Gio from "@gtkx/gi/gio";
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import type { SignalHandler } from "@gtkx/runtime";
 import { isDeepEqual, kebabCase, structuredClone } from "@gtkx/utils";
 import { applyAccessibleProps, isAccessibleProp } from "../utils/accessible-props.js";
-import { addListItem, runCall } from "./calls.js";
-import { type ListBehavior, setMenuFactory } from "./element-rules.js";
+import { type ListRule, setMenuFactory, type ValueRule } from "./element-rules.js";
 import { createObject } from "./instance.js";
 import type { Props } from "./kinds.js";
 import { type TypeInfo, typeInfoOf } from "./metadata.js";
 import type { ElementNode, SignalTarget } from "./node.js";
 import { connectHandler, disconnectHandler } from "./signals.js";
 
-setMenuFactory(() => createObject("GMenu"));
+setMenuFactory(() => {
+    const menu = createObject("GMenu");
+    if (!(menu instanceof Gio.Menu)) throw new Error("GMenu construction returned an unexpected type");
+    return menu;
+});
 
 const CONSUMED = new Set(["children", "ref", "key", "propName"]);
 
@@ -32,36 +35,25 @@ const skipValueName = (name: string, info: TypeInfo): boolean =>
     info.constructOnly.has(name) ||
     info.lazyProps.has(name);
 
-const applyValueRule = (object: GObject.Object, rule: ValueProp, value: unknown): void => {
-    runCall(object, rule.call, [value]);
-    if (rule.after !== undefined) runCall(object, rule.after, []);
+const applyValueRule = (object: GObject.Object, rule: ValueRule, value: never): void => {
+    rule.apply(object, value);
 };
 
 type PropEntry = { name: string; value: unknown; oldValue: unknown };
 
-const clearListItems = (
-    node: ElementNode,
-    rule: ListProp,
-    behavior: ListBehavior | undefined,
-    previous: unknown[],
-): void => {
-    if (behavior?.clear !== undefined) behavior.clear(node.object);
-    else if (behavior?.remove !== undefined) for (const item of previous) behavior.remove(node.object, item);
-    else if (rule.clear !== undefined) runCall(node.object, rule.clear, []);
-    else if (rule.remove !== undefined) for (const item of previous) runCall(node.object, rule.remove, [item]);
+const clearListItems = (node: ElementNode, rule: ListRule, previous: unknown[]): void => {
+    const { behavior } = rule;
+    if (behavior.clear !== undefined) behavior.clear(node.object);
+    else if (behavior.remove !== undefined) for (const item of previous) behavior.remove(node.object, item);
 };
 
-const applyListRule = (node: ElementNode, info: TypeInfo, rule: ListProp, entry: PropEntry): void => {
+const applyListRule = (node: ElementNode, rule: ListRule, entry: PropEntry): void => {
     const { name, value } = entry;
     const items = Array.isArray(value) ? value : [];
     const applied = node.listApplied.get(name);
     if (applied !== undefined && isDeepEqual(applied.snapshot, items)) return;
-    const behavior = info.listBehaviors.get(name);
-    clearListItems(node, rule, behavior, applied?.items ?? []);
-    for (const item of items) {
-        if (behavior?.add !== undefined) behavior.add(node.object, item);
-        else addListItem(node.object, rule, item);
-    }
+    clearListItems(node, rule, applied?.items ?? []);
+    for (const item of items) rule.behavior.add?.(node.object, item);
     node.listApplied.set(name, { items, snapshot: structuredClone(items) });
 };
 
@@ -84,9 +76,9 @@ const applyEntry = (node: ElementNode, info: TypeInfo, entry: PropEntry): void =
     const valueRule = info.valueProps.get(name);
     const listRule = info.listProps.get(name);
     if (valueRule !== undefined) {
-        if (value !== undefined) applyValueRule(node.object, valueRule, value);
+        if (value !== undefined) applyValueRule(node.object, valueRule, value as never);
     } else if (listRule !== undefined) {
-        applyListRule(node, info, listRule, entry);
+        applyListRule(node, listRule, entry);
     } else if (info.controlledText.has(name)) {
         if (value !== undefined) Reflect.set(node.object, name, value);
     } else if (value === undefined) {
@@ -130,7 +122,7 @@ const applyLazyForNode = (node: ElementNode): void => {
     for (const [name, rule] of info.lazyProps) {
         const desired = node.props[name];
         if (desired === undefined || Object.is(node.lazyApplied.get(name), desired)) continue;
-        if (rule.lookup !== undefined && !runCall(node.object, rule.lookup, [desired])) continue;
+        if (rule.canApply !== undefined && !rule.canApply(node.object, desired as never)) continue;
         Reflect.set(node.object, name, desired);
         node.lazyApplied.set(name, desired);
     }

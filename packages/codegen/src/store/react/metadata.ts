@@ -1,4 +1,3 @@
-import type { ElementProp } from "@gtkx/config";
 import { sortStringsBy, sourceStringLiteral, toCamelIdentifier } from "@gtkx/utils";
 import { inputParameters } from "../../analysis/param-structure.js";
 import type { GirClass } from "../../gir/class.js";
@@ -14,7 +13,7 @@ import {
     signalHandlerName,
 } from "./intrinsic-elements.js";
 
-export const generateMetadata = (library: Library, elementProps: Record<string, ElementProp[]>): string => {
+export const generateMetadata = (library: Library): string => {
     const intrinsicElements = collectIntrinsicElements(library);
     const signalsEntries = intrinsicElements.map(
         ({ glibName, signals }) => `    "${glibName}": ${renderSignalsObject(signals)},`,
@@ -34,7 +33,6 @@ export const generateMetadata = (library: Library, elementProps: Record<string, 
         `export const CONSTRUCT_ONLY_PROPS: Record<string, Set<string>> = {\n${constructOnlyEntries.join("\n")}\n};`,
         `export const CONSTRUCT_PROPS: Record<string, Set<string>> = {\n${constructableEntries.join("\n")}\n};`,
         `export const DEFAULT_PROPS: Record<string, Record<string, unknown>> = {\n${defaultsEntries.join("\n")}\n};`,
-        `export const ELEMENT_PROPS: Record<string, Array<import("@gtkx/react").ElementProp>> = ${JSON.stringify(elementProps, null, 4)};`,
     ].join("\n\n")}\n`;
 };
 

@@ -6,7 +6,7 @@ import { renderJsDoc } from "../../writer/doc.js";
 import { renderBlock } from "../../writer/emit.js";
 import type { ImportsBuilder } from "../../writer/imports.js";
 import { elementPropTypeFor } from "./element-prop-imports.js";
-import type { ElementPropTypegen } from "./element-prop-types.js";
+import type { WrapperElementSpec } from "./element-prop-types.js";
 import {
     collectInterfacePropsClasses,
     type GlibNamedClass,
@@ -22,7 +22,7 @@ import { buildElementPropsEntries, buildInterfacePropsEntries } from "./props.js
 type GenerateJsxOptions = {
     excludeNames: Set<string>;
     imports: ImportsBuilder;
-    typegen: ElementPropTypegen;
+    wrappers: WrapperElementSpec[];
     intrinsicElements: GlibNamedClass[];
     intrinsicElementByGlibName: Map<string, GlibNamedClass>;
 };
@@ -62,7 +62,7 @@ export const generateJsxSection = (
     library: Library,
     options: GenerateJsxOptions,
 ): { source: string; intrinsicCount: number } => {
-    const { excludeNames, imports, typegen, intrinsicElements, intrinsicElementByGlibName } = options;
+    const { excludeNames, imports, wrappers, intrinsicElements, intrinsicElementByGlibName } = options;
     const namespaceElements = intrinsicElements.filter((entry) => entry.namespace.name === targetNamespace.name);
     const intrinsicElementConsts = namespaceElements.filter((entry) => !excludeNames.has(entry.glibName));
     const constLines = intrinsicElementConsts.map(
@@ -85,7 +85,7 @@ export const generateJsxSection = (
         intrinsicElementByGlibName,
         targetNamespaceName: targetNamespace.name,
         imports,
-        typegen,
+        wrappers,
         hasContainerProps: interfaceResult.hasContainerProps,
     };
     for (const entry of namespaceElements) {
@@ -225,7 +225,7 @@ type RenderPropBlockContext = {
     intrinsicElementByGlibName: Map<string, GlibNamedClass>;
     targetNamespaceName: string;
     imports: ImportsBuilder;
-    typegen: ElementPropTypegen;
+    wrappers: WrapperElementSpec[];
     hasContainerProps: (glibName: string | undefined) => boolean;
 };
 
@@ -242,11 +242,7 @@ const renderPropBlock = (
     });
     for (const [namespace, alias] of imports) addGiNamespace(context.imports, namespace, alias);
     addGiNamespace(context.imports, entry.namespace.name, giNamespaceAlias(entry.namespace.name));
-    const ownerLines = dedupePropLines([
-        ...(context.typegen.acceptsChildren(entry.glibName) ? ["children?: ReactNode;"] : []),
-        "ref?: Ref<Self | null> | undefined;",
-        ...propLines,
-    ]);
+    const ownerLines = dedupePropLines(["ref?: Ref<Self | null> | undefined;", ...propLines]);
     const extendsList = resolveElementExtends(library, entry, context);
     const extendsClause = extendsList.length === 0 ? "" : ` extends ${extendsList.join(", ")}`;
     const selfDefault = `${giNamespaceAlias(entry.namespace.name)}.${entry.klass.name}`;

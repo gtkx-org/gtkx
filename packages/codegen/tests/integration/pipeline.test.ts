@@ -113,10 +113,8 @@ describe("codegen gi pipeline", () => {
 });
 
 describe("codegen element-prop metadata", () => {
-    it("emits the serializable element-prop table", () => {
-        expect(reactPipeline.metadata).toContain("export const ELEMENT_PROPS:");
-        expect(reactPipeline.metadata).toContain('"adopt": true');
-        expect(reactPipeline.metadata).toContain('"kind": "lazy"');
+    it("does not bake element rules into the metadata module", () => {
+        expect(reactPipeline.metadata).not.toContain("ELEMENT_PROPS");
     });
 });
 
@@ -434,8 +432,10 @@ describe("codegen applied element props", () => {
 
     it("emits lazy-element props from the page class interface", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
-        expect(gtk).toContain('export type GtkStackPageElementProps = Omit<GtkStackPageProps, "child">;');
-        expect(gtk).toMatch(/export type GtkNotebookPageElementProps = Omit<GtkNotebookPageProps, [^;]*>;/);
+        expect(gtk).toContain(
+            'export type GtkStackPageElementProps = Omit<GtkStackPageProps, "child"> & { children?: ReactNode };',
+        );
+        expect(gtk).toMatch(/export type GtkNotebookPageElementProps = Omit<GtkNotebookPageProps, [^;]*>[^;]*;/);
         expect(interfaceBody(gtk, "GtkNotebookPage")).toContain("tabLabel?: string | null | undefined;");
     });
 });
@@ -463,10 +463,6 @@ const defaultPropsBody = (metadata: string, glibName: string): string => {
 };
 
 describe("codegen runtime tables", () => {
-    it("bakes the element-prop table into the metadata module", () => {
-        expect(reactPipeline.metadata).toContain("export const ELEMENT_PROPS");
-    });
-
     it("omits a null default when the property setter rejects null", () => {
         const button = defaultPropsBody(reactPipeline.metadata, "GtkButton");
         expect(button).not.toContain('"iconName"');
@@ -482,13 +478,9 @@ describe("codegen runtime tables", () => {
         expect(defaultPropsBody(reactPipeline.metadata, "GtkButton")).toContain('"hasFrame": true');
     });
 
-    it("bakes the ColumnView ordered insert as a container prop", () => {
-        expect(reactPipeline.metadata).toMatch(/"insert": "insertColumn"/);
-        expect(reactPipeline.metadata).toMatch(/"GtkColumnView": \[/);
-    });
-
-    it("bakes named-slot container props", () => {
-        expect(reactPipeline.metadata).toMatch(/"AdwHeaderBar": \[[\s\S]{0,160}"prop": "start"/);
+    it("extends named-slot elements from the hand-declared @gtkx/react types", () => {
+        const adw = sourceFor(reactPipeline, "adw");
+        expect(adw).toMatch(/export interface AdwHeaderBarProps<[^>]*> extends [^{]*GtkHeaderBarElementProps/);
     });
 });
 

@@ -1,6 +1,5 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { ElementProp } from "@gtkx/config";
 import { checkModules } from "./compile.js";
 import { computeFingerprint, isStoreFresh } from "./fingerprint.js";
 import { Library } from "./gir/library.js";
@@ -21,7 +20,6 @@ export type GlCodegenOptions = {
 export type CodegenRunnerOptions = {
     libraries?: string[];
     girPath?: string[];
-    elementProps?: Record<string, ElementProp[]> | undefined;
     gi?: GiStoreOptions;
     jsx?: JsxStoreOptions | undefined;
     gl?: GlCodegenOptions;
@@ -83,22 +81,16 @@ const emitGlModules = (options: GlCodegenOptions): GlGenerationReport => {
 const emitGiStoreIfStale = (options: CodegenRunnerOptions): GiEmitResult | undefined => {
     const { gi, libraries, girPath } = options;
     if (gi === undefined || libraries === undefined || girPath === undefined) return undefined;
-    const elementProps = options.elementProps ?? {};
-    if (options.force !== true && isStoreFresh(gi.storeDir, libraries, elementProps)) return undefined;
+    if (options.force !== true && isStoreFresh(gi.storeDir, libraries)) return undefined;
     const library = Library.load(libraries, girPath);
-    emitGiStore(gi, libraries, elementProps, library);
+    emitGiStore(gi, libraries, library);
     return {
         namespaces: library.namespaces.size,
-        intrinsicElements: emitJsxStore(options.jsx, elementProps, library),
+        intrinsicElements: emitJsxStore(options.jsx, library),
     };
 };
 
-const emitGiStore = (
-    gi: GiStoreOptions,
-    libraries: string[],
-    elementProps: Record<string, ElementProp[]>,
-    library: Library,
-): void => {
+const emitGiStore = (gi: GiStoreOptions, libraries: string[], library: Library): void => {
     const namespaces: GiNamespaceInput[] = [];
     for (const namespace of library.namespaces.values()) {
         namespaces.push({
@@ -108,19 +100,15 @@ const emitGiStore = (
     }
     const libs = [...libraries];
     writeGiStore(gi, namespaces, {
-        value: computeFingerprint(library.girFiles, libs, elementProps),
+        value: computeFingerprint(library.girFiles, libs),
         girFiles: library.girFiles,
         libraries: libs,
     });
 };
 
-const emitJsxStore = (
-    jsx: JsxStoreOptions | undefined,
-    elementProps: Record<string, ElementProp[]>,
-    library: Library,
-): number => {
+const emitJsxStore = (jsx: JsxStoreOptions | undefined, library: Library): number => {
     if (jsx === undefined) return 0;
-    const reactPipeline = generateJsxFiles(library, elementProps);
+    const reactPipeline = generateJsxFiles(library);
     writeJsxStore(jsx, reactPipeline.namespaces, reactPipeline.metadata);
     return reactPipeline.intrinsicElementCount;
 };

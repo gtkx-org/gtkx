@@ -68,15 +68,6 @@ describe("writeDocs", () => {
         expect(object).not.toContain("## Hierarchy");
     });
 
-    it("describes children slots from the built-in container rules", () => {
-        const button = page(outDir, join("gtk", "button.md"));
-        expect(button).toContain("## Children");
-        expect(button).toContain("`children` accepts [GtkWidget](/reference/gtk/widget) elements");
-        expect(button).toContain("`setChild()`");
-        const headerBar = page(outDir, join("gtk", "header-bar.md"));
-        expect(headerBar).toContain("`start` is a slot accepting");
-    });
-
     it("renders props with camelCase names, mapped defaults, and interface provenance", () => {
         const button = page(outDir, join("gtk", "button.md"));
         expect(button).toContain("### `label`");
@@ -92,15 +83,6 @@ describe("writeDocs", () => {
         expect(widget).toContain("### `cssName`");
         expect(widget).toContain("construct-only");
         expect(widget).toContain("read-only, observe with `onNotify");
-    });
-
-    it("annotates element props backed by value and list rules", () => {
-        const scale = page(outDir, join("gtk", "scale.md"));
-        expect(scale).toContain("### `marks`");
-        expect(scale).toContain("Array prop; items are applied with `addMark()`.");
-        const drawingArea = page(outDir, join("gtk", "drawing-area.md"));
-        expect(drawingArea).toContain("### `drawFunc`");
-        expect(drawingArea).toContain("Applied with `setDrawFunc()`.");
     });
 
     it("renders signal handler props with exact signatures", () => {
@@ -138,33 +120,19 @@ describe("writeDocs", () => {
     });
 });
 
-describe("writeDocs with user element props and a custom base path", () => {
+describe("writeDocs with a custom base path", () => {
     const outDir = join(workDir, "custom");
 
-    it("applies user container rules and roots links at the base path", () => {
+    it("roots links at the base path", () => {
         const result = writeDocs({
             libraries: ["Gtk-4.0"],
             girPath: GIR_PATH,
             outDir,
             basePath: "/docs/elements",
-            elementProps: {
-                GtkWindowGroup: [
-                    {
-                        kind: "container",
-                        prop: "children",
-                        child: "GtkWindow",
-                        append: "addWindow",
-                        remove: "removeWindow",
-                    },
-                ],
-            },
         });
         expect(result.regenerated).toBe(true);
         const gtk = result.namespaces.find((namespace) => namespace.name === "Gtk");
         expect(gtk?.link).toBe("/docs/elements/gtk/");
-        const windowGroup = page(outDir, join("gtk", "window-group.md"));
-        expect(windowGroup).toContain("`children` accepts [GtkWindow](/docs/elements/gtk/window) elements");
-        expect(windowGroup).toContain("`addWindow()`");
         expect(existsSync(join(outDir, "manifest.json"))).toBe(true);
     });
 });

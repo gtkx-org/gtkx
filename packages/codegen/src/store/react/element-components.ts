@@ -3,7 +3,7 @@ import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import type { ImportsBuilder } from "../../writer/imports.js";
-import type { ElementPropTypegen, LazyElementSpec } from "./element-prop-types.js";
+import type { WrapperElementSpec } from "./element-prop-types.js";
 import { ancestorGlibNames, type GlibNamedClass } from "./intrinsic-elements.js";
 
 type ElementComponent = { types: string[]; module: string; export: string };
@@ -25,13 +25,13 @@ export const generateElementComponentsSection = (
     library: Library,
     options: {
         imports: ImportsBuilder;
-        typegen: ElementPropTypegen;
+        wrappers: WrapperElementSpec[];
         intrinsicElements: GlibNamedClass[];
     },
 ): { source: string; exportedNames: Set<string> } => {
     const collector: ExportCollector = { imports: options.imports, exportedNames: new Set(), exportLines: [] };
 
-    const lazyElements = options.typegen.lazyElementExports(targetNamespace.name);
+    const lazyElements = options.wrappers;
     const virtualNames = new Set(lazyElements.map((entry) => entry.element));
 
     collectCandidateExports(collector, {
@@ -67,7 +67,7 @@ const collectCandidateExports = (
     }
 };
 
-const collectLazyElementExports = (collector: ExportCollector, lazyElements: LazyElementSpec[]): void => {
+const collectLazyElementExports = (collector: ExportCollector, lazyElements: WrapperElementSpec[]): void => {
     for (const spec of lazyElements) {
         collector.imports.addNamed("@gtkx/react/internal", "createWrapperElementComponent", false);
         collector.imports.addNamed("react", "ReactNode", true);
@@ -76,7 +76,7 @@ const collectLazyElementExports = (collector: ExportCollector, lazyElements: Laz
     }
 };
 
-const renderLazyElementExport = (spec: LazyElementSpec): string => {
+const renderLazyElementExport = (spec: WrapperElementSpec): string => {
     const factory = `createWrapperElementComponent<${spec.typeName}>()`;
     const component = `export const ${spec.element}: (props: ${spec.typeName}) => ReactNode = ${factory};`;
     return `${spec.typeSource}\n\n${component}`;

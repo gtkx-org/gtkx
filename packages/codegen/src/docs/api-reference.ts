@@ -1,4 +1,3 @@
-import type { ElementProp } from "@gtkx/config";
 import { pascalCase, sortStrings, sortStringsBy } from "@gtkx/utils";
 import { Library } from "../gir/library.js";
 import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
@@ -13,7 +12,6 @@ import { type GiSymbolEntry, renderSymbolPage, type SymbolPageOptions } from "./
 export type ApiReferenceOptions = {
     libraries: string[];
     girPath: string[];
-    elementProps?: Record<string, ElementProp[]>;
 };
 
 export type ApiSymbolKind = GiSymbolEntry["kind"] | "element";
@@ -95,7 +93,7 @@ class ApiReference {
     constructor(options: ApiReferenceOptions) {
         this.libraries = options.libraries;
         this.library = Library.load(options.libraries, options.girPath);
-        this.elementContext = createElementPageContext(this.library, options.elementProps ?? {}, () => undefined);
+        this.elementContext = createElementPageContext(this.library, () => undefined);
         this.buildIndex();
     }
 

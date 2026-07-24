@@ -79,7 +79,7 @@ describe("createReferenceProvider", () => {
     });
 
     it("loads the reference once per project root and caches it", async () => {
-        loadConfigMock.mockResolvedValue({ config: { elementProps: { GtkFixed: [] } } });
+        loadConfigMock.mockResolvedValue({ config: {} });
         loadApiReferenceMock.mockReturnValue(fakeReference);
         const cached = createReferenceProvider(() => "/project");
 
@@ -91,7 +91,6 @@ describe("createReferenceProvider", () => {
         expect(loadApiReferenceMock).toHaveBeenCalledExactlyOnceWith({
             libraries: ["Gtk-4.0"],
             girPath: ["/usr/share/gir-1.0"],
-            elementProps: { GtkFixed: [] },
         });
     });
 

@@ -1,6 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import type { ElementProp } from "@gtkx/config";
 import { sortStringsBy } from "@gtkx/utils";
 import { computeFingerprint, FINGERPRINT_FILENAME, isStoreFresh } from "../fingerprint.js";
 import { Library } from "../gir/library.js";
@@ -26,7 +25,6 @@ export type DocsOptions = {
     girPath: string[];
     outDir: string;
     basePath?: string;
-    elementProps?: Record<string, ElementProp[]>;
     force?: boolean;
 };
 
@@ -112,9 +110,7 @@ const generatePages = (options: DocsOptions, basePath: string, library: Library)
         linkByGlibName.set(entry.glibName, link);
     }
 
-    const pageContext = createElementPageContext(library, options.elementProps ?? {}, (glibName) =>
-        linkByGlibName.get(glibName),
-    );
+    const pageContext = createElementPageContext(library, (glibName: string) => linkByGlibName.get(glibName));
 
     const pages: { path: string; content: string }[] = [];
     const namespaces: DocsNamespace[] = [];
@@ -149,9 +145,8 @@ export type DocsResult = {
 
 export const writeDocs = (options: DocsOptions): DocsResult => {
     const basePath = options.basePath ?? "/reference";
-    const elementProps = options.elementProps ?? {};
     const manifestPath = join(options.outDir, MANIFEST_FILENAME);
-    if (options.force !== true && isStoreFresh(options.outDir, options.libraries, elementProps)) {
+    if (options.force !== true && isStoreFresh(options.outDir, options.libraries)) {
         if (existsSync(manifestPath)) {
             const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as DocsManifest;
             return { regenerated: false, namespaces: manifest.namespaces };
@@ -173,7 +168,7 @@ export const writeDocs = (options: DocsOptions): DocsResult => {
     writeFileSync(
         join(options.outDir, FINGERPRINT_FILENAME),
         JSON.stringify({
-            value: computeFingerprint(library.girFiles, options.libraries, elementProps),
+            value: computeFingerprint(library.girFiles, options.libraries),
             girFiles: library.girFiles,
             libraries: options.libraries,
         }),

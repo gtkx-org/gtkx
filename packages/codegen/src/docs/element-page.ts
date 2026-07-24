@@ -1,4 +1,3 @@
-import type { ContainerProp, ElementProp } from "@gtkx/config";
 import { sortStringsBy, toCamelIdentifier, upperFirst } from "@gtkx/utils";
 import { ancestorChain } from "../gir/ancestry.js";
 import type { GirClass } from "../gir/class.js";
@@ -7,8 +6,6 @@ import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import type { GirSignal } from "../gir/parameter.js";
 import { type GirProperty, isConstructableProperty } from "../gir/property.js";
 import { elementPropTypeFor } from "../store/react/element-prop-imports.js";
-import { createElementPropTypegen, type ElementPropTypegen } from "../store/react/element-prop-types.js";
-import { assembleElementProps } from "../store/react/element-props.js";
 import { buildGirIndex, type GirIndex } from "../store/react/gir-index.js";
 import {
     type GlibNamedClass,
@@ -35,26 +32,13 @@ import {
 export type ElementPageContext = {
     library: Library;
     girIndex: GirIndex;
-    typegen: ElementPropTypegen;
-    elementProps: Record<string, ElementProp[]>;
     linkFor: (glibName: string) => string | undefined;
 };
 
 export const createElementPageContext = (
     library: Library,
-    elementProps: Record<string, ElementProp[]>,
     linkFor: (glibName: string) => string | undefined,
-): ElementPageContext => {
-    const girIndex = buildGirIndex(library);
-    const applied = assembleElementProps(girIndex, elementProps);
-    return {
-        library,
-        girIndex,
-        typegen: createElementPropTypegen(girIndex, applied),
-        elementProps: applied,
-        linkFor,
-    };
-};
+): ElementPageContext => ({ library, girIndex: buildGirIndex(library), linkFor });
 
 type MemberOwner = {
     klass: GirClass;
@@ -99,38 +83,6 @@ const hierarchySection = (entry: GlibNamedClass, context: ElementPageContext): s
     return lines;
 };
 
-const containerLine = (prop: ContainerProp, context: ElementPageContext): string => {
-    const child = glibLabel(context, prop.child);
-    const attach = prop.append;
-    const detail: string[] = [];
-    if (attach !== undefined) detail.push(`attached with \`${attach}()\``);
-    if (prop.autowrap !== undefined) {
-        detail.push(`children are wrapped in a ${glibLabel(context, prop.autowrap)} before attaching`);
-    }
-    const suffix = detail.length > 0 ? ` (${detail.join("; ")})` : "";
-    if (prop.prop === "children") return `- \`children\` accepts ${child} elements${suffix}.`;
-    return `- \`${prop.prop}\` is a slot accepting ${child} elements${suffix}.`;
-};
-
-const childrenSection = (entry: GlibNamedClass, context: ElementPageContext): string[] => {
-    const lines: string[] = [];
-    const seen = new Set<string>();
-    for (const owner of memberOwners(entry, context)) {
-        if (owner.glibName === undefined) continue;
-        const overlays = context.elementProps[owner.glibName] ?? [];
-        const containers = overlays.filter(
-            (prop): prop is ContainerProp => prop.kind === "container" && !seen.has(prop.prop),
-        );
-        for (const prop of containers) lines.push(containerLine(prop, context));
-        for (const prop of containers) seen.add(prop.prop);
-    }
-    if (!seen.has("children") && context.typegen.acceptsChildren(entry.glibName)) {
-        lines.push("- `children` accepts child elements.");
-    }
-    if (lines.length === 0) return [];
-    return ["## Children", lines.join("\n")];
-};
-
 const memberOwners = (entry: GlibNamedClass, context: ElementPageContext): MemberOwner[] => [
     { klass: entry.klass, namespace: entry.namespace, origin: undefined, glibName: entry.glibName },
     ...newlyImplementedInterfaces(
@@ -165,51 +117,8 @@ const propertyEntry = (
     return { name: jsName, meta: meta.join(" · "), doc: docMarkdown(property.doc) };
 };
 
-const overlayNote = (overlays: ElementProp[], name: string): string | undefined => {
-    for (const overlay of overlays) {
-        if (overlay.kind === "container" || overlay.prop !== name) continue;
-        if (overlay.kind === "value") return `Applied with \`${overlay.call}()\`.`;
-        if (overlay.kind === "list") {
-            const applied = (Array.isArray(overlay.add) ? overlay.add : [overlay.add])
-                .map((call) => `\`${call}()\``)
-                .join(", ");
-            return `Array prop; items are applied with ${applied}.`;
-        }
-        if (overlay.kind === "controlled-text") {
-            return "Controlled: the element is synced to the prop value whenever that value changes; text the user has typed is preserved rather than reverted on every render.";
-        }
-    }
-    return undefined;
-};
-
-const declaredIn = (glibName: string): string => {
-    const declared = elementPropTypeFor(glibName);
-    return declared === undefined ? "`@gtkx/react`" : `\`${declared.export}\` in \`${declared.module}\``;
-};
-
-const overlayEntries = (entry: GlibNamedClass, context: ElementPageContext, seen: Set<string>): PropEntry[] => {
-    const overlays = context.elementProps[entry.glibName] ?? [];
-    const entries: PropEntry[] = [];
-    for (const overlay of overlays) {
-        if (overlay.kind === "container" && overlay.prop === "children") continue;
-        if (seen.has(overlay.prop)) continue;
-        seen.add(overlay.prop);
-        const note = overlayNote(overlays, overlay.prop) ?? "Element prop managed by GTKX.";
-        entries.push({ name: overlay.prop, meta: `typed by ${declaredIn(entry.glibName)}`, doc: note });
-    }
-    return entries;
-};
-
-const withOverlayNote = (propEntry: PropEntry, note: string | undefined): PropEntry => {
-    if (note === undefined) return propEntry;
-    return { ...propEntry, doc: propEntry.doc.length > 0 ? `${note}\n\n${propEntry.doc}` : note };
-};
-
 const propertyEntries = (entry: GlibNamedClass, context: ElementPageContext, seen: Set<string>): PropEntry[] => {
     const owners = memberOwners(entry, context);
-    const overlays = owners.flatMap((owner) =>
-        owner.glibName === undefined ? [] : (context.elementProps[owner.glibName] ?? []),
-    );
     const entries: PropEntry[] = [];
     for (const owner of owners) {
         for (const property of owner.klass.properties) {
@@ -218,7 +127,7 @@ const propertyEntries = (entry: GlibNamedClass, context: ElementPageContext, see
             if (seen.has(jsName)) continue;
             seen.add(jsName);
             const propEntry = propertyEntry(context, owner, property, jsName);
-            entries.push(withOverlayNote(propEntry, overlayNote(overlays, jsName)));
+            entries.push(propEntry);
         }
     }
     return entries;
@@ -226,7 +135,7 @@ const propertyEntries = (entry: GlibNamedClass, context: ElementPageContext, see
 
 const propsSection = (entry: GlibNamedClass, context: ElementPageContext, selfType: string): string[] => {
     const seen = new Set<string>();
-    const entries = [...propertyEntries(entry, context, seen), ...overlayEntries(entry, context, seen)];
+    const entries = propertyEntries(entry, context, seen);
     const intro = [
         `\`ref\` receives the \`${selfType}\` instance.`,
         `Every mutable property also has an \`onNotify<Prop>\` handler prop called with the new value when the property changes.`,
@@ -279,7 +188,6 @@ export const renderElementPage = (entry: GlibNamedClass, context: ElementPageCon
         docMarkdown(entry.klass.doc),
         importBlock(entry),
         ...hierarchySection(entry, context),
-        ...childrenSection(entry, context),
         ...propsSection(entry, context, selfType),
         ...signalsSection(entry, context, selfType),
         ...methodsSection(entry, context, selfType),

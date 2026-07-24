@@ -1,28 +1,25 @@
 /// <reference types="@gtkx/config/env" />
-import {
-    CONSTRUCT_ONLY_PROPS,
-    CONSTRUCT_PROPS,
-    DEFAULT_PROPS,
-    ELEMENT_PROPS,
-    SIGNALS,
-    userEventSignals,
-} from "virtual:gtkx-config";
-import type { ContainerProp, ControlledTextProp, ElementProp, LazyProp, ListProp, ValueProp } from "@gtkx/config";
+import { CONSTRUCT_ONLY_PROPS, CONSTRUCT_PROPS, DEFAULT_PROPS, SIGNALS, userEventSignals } from "virtual:gtkx-config";
 import { getSignalBaseName, TYPE_INVALID, typeFromName, typeInterfaces, typeName, typeParent } from "@gtkx/runtime";
-import { behaviorFor, type ContainerBehavior, type ListBehavior, listBehaviorFor } from "./element-rules.js";
+import {
+    type ContainerRule,
+    ELEMENT_RULES,
+    type ElementRule,
+    type LazyRule,
+    type ListRule,
+    type ValueRule,
+} from "./element-rules.js";
 
 export type TypeInfo = {
     typeName: string;
     signals: Record<string, string>;
     userEventSignals: Set<string>;
-    containerRules: ContainerProp[];
-    containerBehaviors: Map<string, ContainerBehavior>;
+    containerRules: ContainerRule[];
     containerProps: Set<string>;
-    valueProps: Map<string, ValueProp>;
-    listProps: Map<string, ListProp>;
-    listBehaviors: Map<string, ListBehavior>;
-    lazyProps: Map<string, LazyProp>;
-    controlledText: Map<string, ControlledTextProp>;
+    valueProps: Map<string, ValueRule>;
+    listProps: Map<string, ListRule>;
+    lazyProps: Map<string, LazyRule>;
+    controlledText: Set<string>;
     constructOnly: Set<string>;
     construct: Set<string>;
     defaults: Record<string, unknown>;
@@ -53,28 +50,19 @@ const ancestryOf = (name: string): string[] => {
     return names;
 };
 
-const classifyList = (owner: string, rule: ListProp, info: TypeInfo): void => {
-    info.listProps.set(rule.prop, rule);
-    const behavior = listBehaviorFor(owner, rule.prop);
-    if (behavior !== undefined && !info.listBehaviors.has(rule.prop)) info.listBehaviors.set(rule.prop, behavior);
-};
-
-const classifyProps = (owner: string, rules: ElementProp[], info: TypeInfo): void => {
+const classifyProps = (rules: ElementRule[], info: TypeInfo): void => {
     for (const rule of rules) {
         if (rule.kind === "container") {
             info.containerRules.push(rule);
             info.containerProps.add(rule.prop);
-            const key = `${rule.prop}:${rule.child}`;
-            const behavior = behaviorFor(owner, rule.prop, rule.child);
-            if (behavior !== undefined && !info.containerBehaviors.has(key)) info.containerBehaviors.set(key, behavior);
         } else if (rule.kind === "value") {
             info.valueProps.set(rule.prop, rule);
         } else if (rule.kind === "list") {
-            classifyList(owner, rule, info);
+            info.listProps.set(rule.prop, rule);
         } else if (rule.kind === "lazy") {
             info.lazyProps.set(rule.prop, rule);
         } else {
-            info.controlledText.set(rule.prop, rule);
+            info.controlledText.add(rule.prop);
         }
     }
 };
@@ -86,13 +74,11 @@ const buildTypeInfo = (name: string): TypeInfo => {
         signals: {},
         userEventSignals: new Set(),
         containerRules: [],
-        containerBehaviors: new Map(),
         containerProps: new Set(),
         valueProps: new Map(),
         listProps: new Map(),
-        listBehaviors: new Map(),
         lazyProps: new Map(),
-        controlledText: new Map(),
+        controlledText: new Set(),
         constructOnly: new Set(),
         construct: new Set(),
         defaults: {},
@@ -102,7 +88,7 @@ const buildTypeInfo = (name: string): TypeInfo => {
         for (const signal of userEventSignals[ancestor] ?? []) info.userEventSignals.add(signal);
         for (const prop of CONSTRUCT_ONLY_PROPS[ancestor] ?? []) info.constructOnly.add(prop);
         for (const prop of CONSTRUCT_PROPS[ancestor] ?? []) info.construct.add(prop);
-        classifyProps(ancestor, ELEMENT_PROPS[ancestor] ?? [], info);
+        classifyProps(ELEMENT_RULES[ancestor] ?? [], info);
     }
     for (const ancestor of [...chain].reverse()) Object.assign(info.defaults, DEFAULT_PROPS[ancestor] ?? {});
     return info;

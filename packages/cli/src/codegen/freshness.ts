@@ -1,13 +1,12 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { resolveGirPath, resolveLibraries } from "@gtkx/codegen";
-import type { Config, ElementProp } from "@gtkx/config";
+import type { Config } from "@gtkx/config";
 import { type CodegenStore, resolveCodegenStore } from "./store-resolver.js";
 
 export type CodegenInputs = {
     girPath: string[];
     libraries: string[];
-    elementProps: Record<string, ElementProp[]>;
     store: CodegenStore;
 };
 
@@ -15,7 +14,7 @@ export const resolveCodegenInputs = (cwd: string, config: Config): CodegenInputs
     const girPath = resolveGirPath(config.girPath);
     const libraries = resolveLibraries(config.libraries, girPath);
     const store = resolveCodegenStore(cwd);
-    return { girPath, libraries, elementProps: config.elementProps ?? {}, store };
+    return { girPath, libraries, store };
 };
 
 const REACT_GENERATED_MODULES: string[] = ["metadata.js", join("gtk", "gtk.js")];

@@ -1,11 +1,9 @@
-import type { ElementProp } from "@gtkx/config";
 import { sortStringsBy } from "@gtkx/utils";
 import type { Library } from "../../gir/library.js";
 import { type GirNamespace, namespaceDirectory } from "../../gir/namespace.js";
 import { ImportsBuilder } from "../../writer/imports.js";
 import { generateElementComponentsSection } from "./element-components.js";
-import { createElementPropTypegen, type ElementPropTypegen } from "./element-prop-types.js";
-import { assembleElementProps } from "./element-props.js";
+import { type WrapperElementSpec, wrapperElementSpecs } from "./element-prop-types.js";
 import { buildGirIndex } from "./gir-index.js";
 import { collectIntrinsicElementClasses, type GlibNamedClass } from "./intrinsic-elements.js";
 import { generateJsxSection } from "./jsx.js";
@@ -22,7 +20,7 @@ type JsxFiles = {
     intrinsicElementCount: number;
 };
 
-export const generateJsxFiles = (library: Library, userElementProps?: Record<string, ElementProp[]>): JsxFiles => {
+export const generateJsxFiles = (library: Library): JsxFiles => {
     const intrinsicElements = collectIntrinsicElementClasses(library);
     const intrinsicElementByGlibName = new Map(intrinsicElements.map((entry) => [entry.glibName, entry]));
     const namespacesWithIntrinsicElements = new Map<string, GirNamespace>();
@@ -31,14 +29,13 @@ export const generateJsxFiles = (library: Library, userElementProps?: Record<str
     }
 
     const girIndex = buildGirIndex(library);
-    const elementProps = assembleElementProps(girIndex, userElementProps ?? {});
-    const typegen = createElementPropTypegen(girIndex, elementProps);
+    const wrappers = wrapperElementSpecs(girIndex);
 
     const namespaces: JsxNamespaceFile[] = [];
     let intrinsicElementCount = 0;
     for (const namespace of sortStringsBy(namespacesWithIntrinsicElements.values(), (entry) => entry.name)) {
         const { source, count } = generateJsxNamespace(namespace, library, {
-            typegen,
+            wrappers: wrappers.get(namespace.name) ?? [],
             intrinsicElements,
             intrinsicElementByGlibName,
         });
@@ -46,13 +43,13 @@ export const generateJsxFiles = (library: Library, userElementProps?: Record<str
         intrinsicElementCount += count;
     }
 
-    const metadata = generateMetadata(library, elementProps);
+    const metadata = generateMetadata(library);
 
     return { namespaces, metadata, intrinsicElementCount };
 };
 
 type JsxNamespaceContext = {
-    typegen: ElementPropTypegen;
+    wrappers: WrapperElementSpec[];
     intrinsicElements: GlibNamedClass[];
     intrinsicElementByGlibName: Map<string, GlibNamedClass>;
 };
@@ -62,21 +59,21 @@ const generateJsxNamespace = (
     library: Library,
     context: JsxNamespaceContext,
 ): { source: string; count: number } => {
-    const { typegen, intrinsicElements, intrinsicElementByGlibName } = context;
+    const { wrappers, intrinsicElements, intrinsicElementByGlibName } = context;
     const targetDirectory = namespaceDirectory(targetNamespace);
     const imports = new ImportsBuilder();
     imports.addSideEffect(`@gtkx/gi/${targetDirectory}`);
 
     const elementComponents = generateElementComponentsSection(targetNamespace, library, {
         imports,
-        typegen,
+        wrappers,
         intrinsicElements,
     });
     const excludeNames = new Set<string>(elementComponents.exportedNames);
     const { source: jsxSection, intrinsicCount } = generateJsxSection(targetNamespace, library, {
         excludeNames,
         imports,
-        typegen,
+        wrappers,
         intrinsicElements,
         intrinsicElementByGlibName,
     });

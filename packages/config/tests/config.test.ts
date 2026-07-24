@@ -7,7 +7,6 @@ import {
     resolveReactCompilerOptions,
     validateConfig,
 } from "../src/config.js";
-import type { ElementProp } from "../src/index.js";
 import { DEFAULT_USER_EVENT_SIGNALS } from "../src/user-event-signals.js";
 
 const validateUnknown = (config: unknown): void => validateConfig(config as Config);
@@ -104,101 +103,6 @@ describe("validateConfig (applicationId)", () => {
 
     it("rejects a config that omits applicationId", () => {
         expect(() => validateUnknown({ libraries: ["Gtk-4.0"] })).toThrow(/invalid `applicationId`/);
-    });
-});
-
-describe("validateConfig elementProps validation", () => {
-    it("accepts inline element props of every kind", () => {
-        const elementProps: Record<string, ElementProp[]> = {
-            GtkWidget: [
-                {
-                    kind: "container",
-                    prop: "controllers",
-                    child: "GtkEventController",
-                    append: "addController",
-                    remove: "removeController",
-                },
-                {
-                    kind: "container",
-                    prop: "actionGroups",
-                    child: "GActionGroup",
-                    append: "insertActionGroup",
-                    remove: "insertActionGroup",
-                    childProps: ["prefix"],
-                },
-            ],
-            GtkStack: [
-                {
-                    kind: "container",
-                    prop: "children",
-                    child: "GtkWidget",
-                    append: "addChild",
-                    remove: "remove",
-                    adopt: true,
-                },
-                { kind: "lazy", prop: "visibleChildName", lookup: "getChildByName" },
-            ],
-            GtkNotebook: [
-                {
-                    kind: "container",
-                    prop: "children",
-                    child: "GtkWidget",
-                    append: "appendPage",
-                    insert: "insertPage",
-                    remove: "detachTab",
-                    adopt: "getPage",
-                },
-            ],
-            GtkDrawingArea: [{ kind: "value", prop: "drawFunc", call: "setDrawFunc", after: "queueDraw" }],
-            GtkEditable: [{ kind: "controlled-text", prop: "text" }],
-            AdwAlertDialog: [
-                {
-                    kind: "list",
-                    prop: "responses",
-                    itemKey: "id",
-                    add: ["addResponse", "setResponseAppearance"],
-                    remove: "removeResponse",
-                },
-            ],
-            GMenu: [{ kind: "list", prop: "items", itemType: "MenuItem", clear: "removeAll", add: "append" }],
-        };
-        expect(() => validateWithAppId({ elementProps })).not.toThrow();
-    });
-
-    it("accepts a config that omits elementProps", () => {
-        expect(() => validateWithAppId({ libraries: ["Gtk-4.0"] })).not.toThrow();
-    });
-
-    it("rejects a container prop that defines neither append nor remove", () => {
-        expect(() =>
-            validateUnknown({
-                applicationId: "org.gtk.Test",
-                elementProps: { GtkWidget: [{ kind: "container", prop: "children", child: "GtkWidget" }] },
-            }),
-        ).toThrow(/must define at least one of `append` or `remove`/);
-    });
-
-    it("rejects an element prop with an unknown kind", () => {
-        expect(() =>
-            validateUnknown({
-                applicationId: "org.gtk.Test",
-                elementProps: { GtkScale: [{ kind: "bogus", prop: "marks" }] },
-            }),
-        ).toThrow(/must be one of container, value, controlled-text, lazy, list/);
-    });
-
-    it("rejects a call given as an object instead of a method name", () => {
-        const cp = { kind: "container", prop: "children", child: "GtkWidget", append: { method: "append", args: [] } };
-        expect(() => validateUnknown({ applicationId: "org.gtk.Test", elementProps: { GtkWidget: [cp] } })).toThrow(
-            /`elementProps\.GtkWidget\[0\]\.append` must be a non-empty string/,
-        );
-    });
-
-    it("rejects an unrecognized element-prop key", () => {
-        const cp = { kind: "container", prop: "children", child: "GtkWidget", append: "append", detach: "remove" };
-        expect(() => validateUnknown({ applicationId: "org.gtk.Test", elementProps: { GtkWidget: [cp] } })).toThrow(
-            /`elementProps\.GtkWidget\[0\]\.detach` is not a recognized key/,
-        );
     });
 });
 

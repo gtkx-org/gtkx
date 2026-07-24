@@ -1,7 +1,7 @@
 import { createDefineConfig, type DefineConfig } from "c12";
 import { defu } from "defu";
 import { z } from "zod";
-import { configError, elementPropsSchema, isRecord, rawIssue } from "./element-props.js";
+import { configError, isRecord, rawIssue } from "./config-error.js";
 import { resolveUserEventSignals } from "./user-event-signals.js";
 
 export const LIBRARIES_WILDCARD = "*";
@@ -148,7 +148,6 @@ const configSchema = z.object({
     libraries: librariesSchema.optional(),
     girPath: z.array(z.string(), { error: "must be an array of strings if provided" }).optional(),
     applicationId: applicationIdSchema,
-    elementProps: elementPropsSchema.optional(),
     reactCompiler: reactCompilerSchema.optional(),
     codegen: z.boolean({ error: "must be a boolean" }).optional(),
     userEventSignals: userEventSignalsSchema.optional(),

@@ -1,15 +1,10 @@
-import type { ContainerProp } from "@gtkx/config";
 import type * as GObject from "@gtkx/gi/gobject";
-import * as Gtk from "@gtkx/gi/gtk";
-import { getInstanceType, getWrapperClass, TYPE_INVALID, typeFromName, typeIsA, typeName } from "@gtkx/runtime";
+import { getInstanceType, TYPE_INVALID, typeFromName, typeIsA, typeName } from "@gtkx/runtime";
 import { applyAdoptedProps, markLazyDirty } from "./apply-props.js";
-import { callMethod, runCall } from "./calls.js";
-import type { ContainerBehavior, PlaceContext } from "./element-rules.js";
-import { type Props, WRAPPER_ELEMENT } from "./kinds.js";
+import type { ContainerRule, PlaceContext } from "./element-rules.js";
+import { WRAPPER_ELEMENT } from "./kinds.js";
 import { type TypeInfo, typeInfoOf } from "./metadata.js";
 import { type ElementNode, nodeWidget, type PlaceableNode, type PlacedChild, type SignalTarget } from "./node.js";
-
-type WidgetConstructor = new (props: Props) => GObject.Object;
 
 const childTypeCache = new Map<string, bigint>();
 
@@ -22,7 +17,7 @@ const childTypeOf = (name: string): bigint => {
     return type;
 };
 
-const matchRule = (info: TypeInfo, prop: string, widgetType: bigint): ContainerProp | null => {
+const matchRule = (info: TypeInfo, prop: string, widgetType: bigint): ContainerRule | null => {
     for (const rule of info.containerRules) {
         if (rule.prop !== prop) continue;
         const childType = childTypeOf(rule.child);
@@ -31,39 +26,20 @@ const matchRule = (info: TypeInfo, prop: string, widgetType: bigint): ContainerP
     return null;
 };
 
-const FALLBACK_RULE: ContainerProp = { kind: "container", prop: "children", child: "GtkWidget" };
-
-export const ruleFor = (parent: ElementNode, prop: string, node: PlaceableNode): ContainerProp | null => {
+export const ruleFor = (parent: ElementNode, prop: string, node: PlaceableNode): ContainerRule | null => {
     const widget = nodeWidget(node);
     if (widget === null) return null;
-    const rule = matchRule(typeInfoOf(parent.typeName), prop, getInstanceType(widget));
-    if (rule !== null) return rule;
-    if (prop === "children" && widget instanceof Gtk.Widget) return FALLBACK_RULE;
-    return null;
+    return matchRule(typeInfoOf(parent.typeName), prop, getInstanceType(widget));
 };
 
 const isObject = (value: unknown): value is GObject.Object => typeof value === "object" && value !== null;
 
-const autowrap = (wrapperTypeName: string, inner: GObject.Object): GObject.Object => {
-    const wrapperType = childTypeOf(wrapperTypeName);
-    if (wrapperType !== TYPE_INVALID && typeIsA(getInstanceType(inner), wrapperType)) return inner;
-    const cls = getWrapperClass(typeFromName(wrapperTypeName)) as WidgetConstructor;
-    const wrapper = new cls({});
-    callMethod(wrapper, "setChild", [inner]);
-    return wrapper;
-};
-
-const createEntry = (rule: ContainerProp, node: PlaceableNode): PlacedChild | null => {
+const createEntry = (rule: ContainerRule, node: PlaceableNode): PlacedChild | null => {
     const inner = nodeWidget(node);
     if (inner === null) return null;
-    const widget = rule.autowrap === undefined ? inner : autowrap(rule.autowrap, inner);
+    const widget = rule.autowrap === undefined ? inner : rule.autowrap(inner);
     return { node, widget, adopted: null, rule, attached: false };
 };
-
-const behaviorOf = (parent: ElementNode, rule: ContainerProp): ContainerBehavior | undefined =>
-    rule === FALLBACK_RULE
-        ? undefined
-        : typeInfoOf(parent.typeName).containerBehaviors.get(`${rule.prop}:${rule.child}`);
 
 const placeContext = (entry: PlacedChild, index: number, sibling: GObject.Object | null): PlaceContext => ({
     index,
@@ -75,11 +51,8 @@ const placeContext = (entry: PlacedChild, index: number, sibling: GObject.Object
 const computeAdopted = (parent: ElementNode, entry: PlacedChild, result: unknown): GObject.Object | null => {
     const adopt = entry.rule.adopt;
     if (adopt === undefined) return null;
-    if (adopt === true) return isObject(result) ? result : null;
-    if (typeof adopt !== "string")
-        return behaviorOf(parent, entry.rule)?.resolve?.(parent.object, entry.widget) ?? null;
-    const adopted = callMethod(parent.object, adopt, [entry.widget]);
-    return isObject(adopted) ? adopted : null;
+    if (adopt === "result") return isObject(result) ? result : null;
+    return entry.rule.behavior.resolve?.(parent.object, entry.widget) ?? null;
 };
 
 const applyWrapperProps = (entry: PlacedChild): void => {
@@ -103,50 +76,22 @@ const siblingAt = (list: PlacedChild[], index: number): GObject.Object | null =>
     index > 0 ? (list[index - 1]?.widget ?? null) : null;
 
 const appendEntry = (parent: ElementNode, entry: PlacedChild, index: number): void => {
-    if (entry.rule === FALLBACK_RULE) {
-        callMethod(entry.widget, "setParent", [parent.object]);
-        entry.attached = true;
-        return;
-    }
-    const attach = behaviorOf(parent, entry.rule)?.attach;
-    if (attach !== undefined) {
-        runPlacement(parent, entry, attach(parent.object, entry.widget, placeContext(entry, index, null)));
-        return;
-    }
-    if (entry.rule.append === undefined) return;
-    runPlacement(parent, entry, runCall(parent.object, entry.rule.append, [entry.widget]));
+    const attach = entry.rule.behavior.attach;
+    if (attach === undefined) return;
+    runPlacement(parent, entry, attach(parent.object, entry.widget, placeContext(entry, index, null)));
 };
 
 const insertEntry = (parent: ElementNode, entry: PlacedChild, list: PlacedChild[], index: number): void => {
     const sibling = siblingAt(list, index);
-    const insert = behaviorOf(parent, entry.rule)?.insert;
-    if (insert !== undefined) {
-        runPlacement(parent, entry, insert(parent.object, entry.widget, placeContext(entry, index, sibling)));
-        return;
-    }
-    if (entry.rule.insert === undefined) return;
-    runPlacement(parent, entry, runCall(parent.object, entry.rule.insert, [entry.widget]));
-};
-
-const detachDefault = (parent: ElementNode, entry: PlacedChild): void => {
-    if (entry.rule !== FALLBACK_RULE && typeof Reflect.get(parent.object, "remove") === "function") {
-        callMethod(parent.object, "remove", [entry.widget]);
-    } else {
-        callMethod(entry.widget, "unparent", []);
-    }
+    const insert = entry.rule.behavior.insert;
+    if (insert === undefined) return;
+    runPlacement(parent, entry, insert(parent.object, entry.widget, placeContext(entry, index, sibling)));
 };
 
 const detachEntry = (parent: ElementNode, entry: PlacedChild): void => {
     if (!entry.attached) return;
     entry.attached = false;
-    const detach = behaviorOf(parent, entry.rule)?.detach;
-    if (detach !== undefined) {
-        detach(parent.object, entry.widget, { adopted: entry.adopted, props: entry.node.props });
-    } else if (entry.rule !== FALLBACK_RULE && entry.rule.remove !== undefined) {
-        runCall(parent.object, entry.rule.remove, [entry.widget]);
-    } else {
-        detachDefault(parent, entry);
-    }
+    entry.rule.behavior.detach?.(parent.object, entry.widget, { adopted: entry.adopted, props: entry.node.props });
 };
 
 const rebuild = (parent: ElementNode, list: PlacedChild[]): void => {
@@ -158,21 +103,16 @@ const rebuild = (parent: ElementNode, list: PlacedChild[]): void => {
 
 const reorderEntry = (parent: ElementNode, entry: PlacedChild, list: PlacedChild[], index: number): void => {
     const sibling = siblingAt(list, index);
-    const reorder = behaviorOf(parent, entry.rule)?.reorder;
-    if (reorder !== undefined) {
-        reorder(parent.object, entry.widget, placeContext(entry, index, sibling));
-        return;
-    }
-    if (entry.rule.reorder !== undefined) runCall(parent.object, entry.rule.reorder, [entry.widget]);
+    entry.rule.behavior.reorder?.(parent.object, entry.widget, placeContext(entry, index, sibling));
 };
 
 type SyncOptions = { list: PlacedChild[]; index: number; isMove: boolean };
 
 const syncPlacement = (parent: ElementNode, entry: PlacedChild, options: SyncOptions): void => {
     const { list, index, isMove } = options;
-    const behavior = behaviorOf(parent, entry.rule);
-    const canInsert = entry.rule.insert !== undefined || behavior?.insert !== undefined;
-    const canReorder = entry.rule.reorder !== undefined || behavior?.reorder !== undefined;
+    const { behavior } = entry.rule;
+    const canInsert = behavior.insert !== undefined;
+    const canReorder = behavior.reorder !== undefined;
     if (!isMove && index === list.length - 1) appendEntry(parent, entry, index);
     else if (!isMove && canInsert && canReorder) insertEntry(parent, entry, list, index);
     else if (isMove && canReorder) reorderEntry(parent, entry, list, index);

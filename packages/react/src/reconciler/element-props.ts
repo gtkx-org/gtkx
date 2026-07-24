@@ -35,7 +35,12 @@ export type ActionAccel = { detailedActionName: string; accels: string[] };
 /** The drag icon of a `Gtk.DragSource`, with its hotspot. */
 export type DragSourceIcon = { paintable?: Gdk.Paintable | null; hotX?: number; hotY?: number };
 
-export interface GtkWidgetElementProps {
+/** Props of an element that accepts children. */
+export interface ChildrenElementProps {
+    children?: ReactNode;
+}
+
+export interface GtkWidgetElementProps extends ChildrenElementProps {
     controllers?: ReactNode | null | undefined;
     actionGroups?: ReactNode | null | undefined;
 }
@@ -56,7 +61,7 @@ export interface GtkShortcutControllerElementProps {
     shortcuts?: ReactNode | null | undefined;
 }
 
-export interface GtkOverlayElementProps {
+export interface GtkOverlayElementProps extends ChildrenElementProps {
     overlays?: ReactNode | null | undefined;
 }
 
@@ -91,7 +96,7 @@ export interface GtkAboutDialogElementProps {
     creditSections?: CreditSection[] | null | undefined;
 }
 
-export interface GtkApplicationElementProps {
+export interface GtkApplicationElementProps extends ChildrenElementProps {
     actionAccels?: ActionAccel[] | null | undefined;
 }
 

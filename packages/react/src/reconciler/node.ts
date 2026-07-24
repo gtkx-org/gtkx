@@ -1,7 +1,7 @@
-import type { ContainerProp } from "@gtkx/config";
 import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { SignalHandler } from "@gtkx/runtime";
+import type { ContainerRule } from "./element-rules.js";
 import { type ELEMENT_KIND, PROP_KIND, type Props, TEXT_KIND, WRAPPER_ELEMENT } from "./kinds.js";
 
 export type ContentKind = "label" | "buffer" | "tag" | "anchor";
@@ -16,7 +16,7 @@ export type PlacedChild = {
     node: PlaceableNode;
     widget: GObject.Object;
     adopted: GObject.Object | null;
-    rule: ContainerProp;
+    rule: ContainerRule;
     attached: boolean;
 };
 

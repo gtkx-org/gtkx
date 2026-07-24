@@ -44,10 +44,13 @@ const detachPropFromElement = (parent: ElementNode, node: PropNode): void => {
     }
 };
 
+const asContentChild = (node: AnyNode | null): ContentChild | null =>
+    node !== null && (node.kind === TEXT_KIND || node.kind === ELEMENT_KIND) ? node : null;
+
 const attachToContentHost = (parent: ElementNode, child: AnyNode, before: AnyNode | null): void => {
     if (child.kind === TEXT_KIND && !acceptsText(parent)) throw textRestrictionError(child.text);
     if (child.kind === TEXT_KIND || child.kind === ELEMENT_KIND) {
-        addContent(parent, child, before as ContentChild | null);
+        addContent(parent, child, asContentChild(before));
     }
 };
 

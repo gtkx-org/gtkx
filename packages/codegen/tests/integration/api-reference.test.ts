@@ -130,34 +130,6 @@ describe("ApiReference — lookup", () => {
         expect(page).toContain("### `onClicked`");
     });
 
-    it("documents container slots contributed by implemented interfaces without duplication", () => {
-        const applicationWindow = pageFor("GtkApplicationWindow");
-        expect(applicationWindow).toContain("## Children");
-        expect(applicationWindow).toContain(
-            "- `actions` is a slot accepting `GAction` elements (attached with `addAction()`).",
-        );
-        expect(applicationWindow).toContain("- `children` accepts child elements.");
-        const application = pageFor("GtkApplication");
-        const windowLine = "- `children` accepts `GtkWindow` elements (attached with `addWindow()`).";
-        expect(application.split(windowLine)).toHaveLength(2);
-        expect(application).not.toContain("`actions` is a slot");
-    });
-
-    it("attaches interface-keyed overlay notes to interface properties on implementer pages", () => {
-        const entry = pageFor("GtkEntry");
-        expect(entry).toContain("### `text`");
-        expect(entry).toContain(
-            "Controlled: the element is synced to the prop value whenever that value changes; text the user has typed is preserved rather than reverted on every render.",
-        );
-        expect(entry).toContain("from `GtkEditable`");
-    });
-
-    it("renders class-keyed overlay notes on element pages", () => {
-        const scale = pageFor("GtkScale");
-        expect(scale).toContain("### `marks`");
-        expect(scale).toContain("Array prop; items are applied with `addMark()`.");
-    });
-
     it("renders an enum page with a member table", () => {
         const page = pageFor("Gtk.Orientation");
         expect(page).toContain("# Gtk.Orientation");
