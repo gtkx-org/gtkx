@@ -328,17 +328,6 @@ const MainWindowBody = ({
     </GtkBox>
 );
 
-interface MainWindowTitlebarProps {
-    hasDemo: boolean;
-    searchMode: boolean;
-    onRun: () => void;
-    onSearchToggle: (value: boolean) => void;
-}
-
-const renderMainWindowTitlebar = ({ hasDemo, searchMode, onRun, onSearchToggle }: MainWindowTitlebarProps) => (
-    <AppHeaderBar hasDemo={hasDemo} searchMode={searchMode} onRun={onRun} onSearchToggle={onSearchToggle} />
-);
-
 interface MainWindowActionsProps {
     onKeyboardShortcuts: () => void;
     onShowAbout: () => void;
@@ -377,12 +366,14 @@ const MainWindow = () => {
             title={windowTitle}
             defaultWidth={800}
             defaultHeight={600}
-            titlebar={renderMainWindowTitlebar({
-                hasDemo: !!currentDemo?.component,
-                searchMode,
-                onRun: handleRun,
-                onSearchToggle: setSearchMode,
-            })}
+            titlebar={
+                <AppHeaderBar
+                    hasDemo={!!currentDemo?.component}
+                    searchMode={searchMode}
+                    onRun={handleRun}
+                    onSearchToggle={setSearchMode}
+                />
+            }
             onCloseRequest={quit}
             actions={renderMainWindowActions({
                 onKeyboardShortcuts: handleKeyboardShortcuts,

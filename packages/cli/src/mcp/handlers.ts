@@ -11,7 +11,7 @@ import {
     widgetNotFoundError,
 } from "@gtkx/mcp/internal";
 import { serializeWidget } from "./serialize-widget.js";
-import { loadTestingModule } from "./testing-loader.js";
+import { loadTestingModule, type TestingModule } from "./testing-loader.js";
 import type { WidgetRegistry } from "./widget-registry.js";
 
 export type HandlerContext = {
@@ -33,6 +33,13 @@ const validated = <Params>(
         return handler(ctx, parsed.data);
     };
 };
+
+type WidgetTarget = { testing: TestingModule; widget: Gtk.Widget };
+
+const widgetTarget = async (registry: WidgetRegistry, widgetId: string | undefined): Promise<WidgetTarget> => ({
+    testing: await loadTestingModule(),
+    widget: requireWidget(registry, widgetId),
+});
 
 const requireWidget = (registry: WidgetRegistry, widgetId: string | undefined): Gtk.Widget => {
     if (widgetId === undefined) {
@@ -116,19 +123,16 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
     }),
     "widget.query": validated(ServerRequestParamsSchemas["widget.query"], handleQuery),
     "widget.getProps": validated(ServerRequestParamsSchemas["widget.getProps"], async ({ registry }, params) => {
-        const testing = await loadTestingModule();
-        const widget = requireWidget(registry, params.widgetId);
+        const { testing, widget } = await widgetTarget(registry, params.widgetId);
         return serializeWidget(widget, (target) => registry.idFor(target), testing);
     }),
     "widget.click": validated(ServerRequestParamsSchemas["widget.click"], async ({ registry }, params) => {
-        const testing = await loadTestingModule();
-        const widget = requireWidget(registry, params.widgetId);
+        const { testing, widget } = await widgetTarget(registry, params.widgetId);
         await testing.userEvent.click(widget);
         return { success: true };
     }),
     "widget.type": validated(ServerRequestParamsSchemas["widget.type"], async ({ registry }, params) => {
-        const testing = await loadTestingModule();
-        const widget = requireWidget(registry, params.widgetId);
+        const { testing, widget } = await widgetTarget(registry, params.widgetId);
         if (params.clear) {
             await testing.userEvent.clear(widget);
         }
@@ -136,8 +140,7 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
         return { success: true };
     }),
     "widget.fireEvent": validated(ServerRequestParamsSchemas["widget.fireEvent"], async ({ registry }, params) => {
-        const testing = await loadTestingModule();
-        const widget = requireWidget(registry, params.widgetId);
+        const { testing, widget } = await widgetTarget(registry, params.widgetId);
         const signalArgs = (params.args ?? []).map(extractSignalArg);
         await testing.fireEvent(widget, params.signal, ...signalArgs);
         return { success: true };

@@ -707,29 +707,44 @@ const FontRenderingTextRow = ({ state }: { state: FontRenderingState }) => {
     );
 };
 
-const FontRenderingOverlayChecks = ({ state }: { state: FontRenderingState }) => {
-    const { overlays, setOverlays } = state;
-    return (
-        <>
-            <GtkGridLayoutChild column={3} row={0}>
-                <GtkCheckButton
-                    label="Show _Pixels"
-                    useUnderline
-                    active={overlays.showPixels}
-                    onToggled={(btn) => setOverlays((o) => ({ ...o, showPixels: btn.getActive() }))}
-                />
-            </GtkGridLayoutChild>
-            <GtkGridLayoutChild column={3} row={1}>
-                <GtkCheckButton
-                    label="Show _Outline"
-                    useUnderline
-                    active={overlays.showOutlines}
-                    onToggled={(btn) => setOverlays((o) => ({ ...o, showOutlines: btn.getActive() }))}
-                />
-            </GtkGridLayoutChild>
-        </>
-    );
-};
+interface CheckCellProps {
+    column: number;
+    row: number;
+    label: string;
+    active: boolean;
+    onToggled: (button: Gtk.CheckButton) => void;
+}
+
+const CheckCell = ({ column, row, label, active, onToggled }: CheckCellProps) => (
+    <GtkGridLayoutChild column={column} row={row}>
+        <GtkCheckButton label={label} useUnderline active={active} onToggled={onToggled} />
+    </GtkGridLayoutChild>
+);
+
+interface OverlayCheckProps {
+    state: FontRenderingState;
+    column: number;
+    row: number;
+    label: string;
+    field: keyof OverlayState;
+}
+
+const OverlayCheck = ({ state, column, row, label, field }: OverlayCheckProps) => (
+    <CheckCell
+        column={column}
+        row={row}
+        label={label}
+        active={state.overlays[field]}
+        onToggled={(btn) => state.setOverlays((o) => ({ ...o, [field]: btn.getActive() }))}
+    />
+);
+
+const FontRenderingOverlayChecks = ({ state }: { state: FontRenderingState }) => (
+    <>
+        <OverlayCheck state={state} column={3} row={0} label="Show _Pixels" field="showPixels" />
+        <OverlayCheck state={state} column={3} row={1} label="Show _Outline" field="showOutlines" />
+    </>
+);
 
 const FontRenderingHintControls = ({ state }: { state: FontRenderingState }) => {
     const { hintStyle, setHintStyle, antialias, setAntialias, hintMetrics, setHintMetrics } = state;
@@ -752,49 +767,30 @@ const FontRenderingHintControls = ({ state }: { state: FontRenderingState }) => 
                     />
                 </GtkBox>
             </GtkGridLayoutChild>
-            <GtkGridLayoutChild column={4} row={1}>
-                <GtkCheckButton
-                    label="_Antialias"
-                    useUnderline
-                    active={antialias}
-                    onToggled={(btn) => setAntialias(btn.getActive())}
-                />
-            </GtkGridLayoutChild>
-            <GtkGridLayoutChild column={5} row={1}>
-                <GtkCheckButton
-                    label="Hint _Metrics"
-                    useUnderline
-                    active={hintMetrics}
-                    onToggled={(btn) => setHintMetrics(btn.getActive())}
-                />
-            </GtkGridLayoutChild>
+            <CheckCell
+                column={4}
+                row={1}
+                label="_Antialias"
+                active={antialias}
+                onToggled={(btn) => setAntialias(btn.getActive())}
+            />
+            <CheckCell
+                column={5}
+                row={1}
+                label="Hint _Metrics"
+                active={hintMetrics}
+                onToggled={(btn) => setHintMetrics(btn.getActive())}
+            />
         </>
     );
 };
 
-const FontRenderingExtraOverlays = ({ state }: { state: FontRenderingState }) => {
-    const { overlays, setOverlays } = state;
-    return (
-        <>
-            <GtkGridLayoutChild column={6} row={0}>
-                <GtkCheckButton
-                    label="Show _Extents"
-                    useUnderline
-                    active={overlays.showExtents}
-                    onToggled={(btn) => setOverlays((o) => ({ ...o, showExtents: btn.getActive() }))}
-                />
-            </GtkGridLayoutChild>
-            <GtkGridLayoutChild column={6} row={1}>
-                <GtkCheckButton
-                    label="Show _Grid"
-                    useUnderline
-                    active={overlays.showGrid}
-                    onToggled={(btn) => setOverlays((o) => ({ ...o, showGrid: btn.getActive() }))}
-                />
-            </GtkGridLayoutChild>
-        </>
-    );
-};
+const FontRenderingExtraOverlays = ({ state }: { state: FontRenderingState }) => (
+    <>
+        <OverlayCheck state={state} column={6} row={0} label="Show _Extents" field="showExtents" />
+        <OverlayCheck state={state} column={6} row={1} label="Show _Grid" field="showGrid" />
+    </>
+);
 
 const FontRenderingZoomButtons = ({
     state,

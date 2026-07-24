@@ -38,6 +38,7 @@ import {
     docsDefaultValue,
     docsSignatureContext,
     firstSentence,
+    implementsLine,
     joinSections,
     metaBlock,
     methodsSectionBlocks,
@@ -115,9 +116,7 @@ const hierarchySection = (entry: GiSymbolBase & { klass: GirClass }, library: Li
         parts.push(`**${qualifiedName(entry)}**`);
         lines.push(parts.join(" → "));
     }
-    if (interfaces.length > 0) {
-        lines.push(`Implements ${interfaces.map((name) => `\`${name}\``).join(", ")}.`);
-    }
+    lines.push(...implementsLine(interfaces));
     return lines;
 };
 

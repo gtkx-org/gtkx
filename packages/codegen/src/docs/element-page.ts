@@ -26,6 +26,7 @@ import {
     docMarkdown,
     docsDefaultValue,
     firstSentence,
+    implementsLine,
     joinSections,
     metaBlock,
     methodsSectionBlocks,
@@ -97,9 +98,7 @@ const hierarchySection = (entry: GlibNamedClass, context: ElementPageContext): s
     const interfaces = implementedInterfaces(entry.klass, entry.namespace, context.library)
         .map((iface) => glibNameOf(iface.klass))
         .filter((name): name is string => name !== undefined);
-    if (interfaces.length > 0) {
-        lines.push(`Implements ${interfaces.map((name) => `\`${name}\``).join(", ")}.`);
-    }
+    lines.push(...implementsLine(interfaces));
     return lines;
 };
 

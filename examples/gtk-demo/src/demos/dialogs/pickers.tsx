@@ -15,7 +15,7 @@ import {
     GtkLabel,
 } from "@gtkx/jsx/gtk";
 import { useParentWindow } from "@gtkx/react";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./pickers.tsx?raw";
 
@@ -145,6 +145,20 @@ function useFilePickerHandlers(parentWindow: Gtk.Window | null, state: FilePicke
     return { ...dropAndOpen, ...launch };
 }
 
+interface PickerLabelProps {
+    row: number;
+    target: Gtk.Widget | null;
+    children: ReactNode;
+}
+
+const PickerLabel = ({ row, target, children }: PickerLabelProps) => (
+    <GtkGridLayoutChild column={0} row={row}>
+        <GtkLabel useUnderline halign={Gtk.Align.START} valign={Gtk.Align.CENTER} hexpand mnemonicWidget={target}>
+            {children}
+        </GtkLabel>
+    </GtkGridLayoutChild>
+);
+
 interface ColorRowProps {
     colorWidget: Gtk.ColorDialogButton | null;
     setColorWidget: (w: Gtk.ColorDialogButton | null) => void;
@@ -152,17 +166,9 @@ interface ColorRowProps {
 
 const ColorPickerRow = ({ colorWidget, setColorWidget }: ColorRowProps) => (
     <>
-        <GtkGridLayoutChild column={0} row={0}>
-            <GtkLabel
-                useUnderline
-                halign={Gtk.Align.START}
-                valign={Gtk.Align.CENTER}
-                hexpand
-                mnemonicWidget={colorWidget}
-            >
-                _Color:
-            </GtkLabel>
-        </GtkGridLayoutChild>
+        <PickerLabel row={0} target={colorWidget}>
+            _Color:
+        </PickerLabel>
         <GtkGridLayoutChild column={1} row={0}>
             <GtkColorDialogButton
                 name="color-button"
@@ -182,17 +188,9 @@ interface FontRowProps {
 
 const FontPickerRow = ({ fontWidget, setFontWidget }: FontRowProps) => (
     <>
-        <GtkGridLayoutChild column={0} row={1}>
-            <GtkLabel
-                useUnderline
-                halign={Gtk.Align.START}
-                valign={Gtk.Align.CENTER}
-                hexpand
-                mnemonicWidget={fontWidget}
-            >
-                _Font:
-            </GtkLabel>
-        </GtkGridLayoutChild>
+        <PickerLabel row={1} target={fontWidget}>
+            _Font:
+        </PickerLabel>
         <GtkGridLayoutChild column={1} row={1}>
             <GtkFontDialogButton
                 name="font-button"
@@ -214,17 +212,9 @@ interface FilePickerRowProps {
 
 const FilePickerRow = ({ fileState, handlers, fileButtonWidget, setFileButtonWidget }: FilePickerRowProps) => (
     <>
-        <GtkGridLayoutChild column={0} row={2}>
-            <GtkLabel
-                useUnderline
-                halign={Gtk.Align.START}
-                valign={Gtk.Align.CENTER}
-                hexpand
-                mnemonicWidget={fileButtonWidget}
-            >
-                _File:
-            </GtkLabel>
-        </GtkGridLayoutChild>
+        <PickerLabel row={2} target={fileButtonWidget}>
+            _File:
+        </PickerLabel>
         <GtkGridLayoutChild column={1} row={2}>
             <GtkBox spacing={6}>
                 <GtkLabel xalign={0} ellipsize={2} hexpand>

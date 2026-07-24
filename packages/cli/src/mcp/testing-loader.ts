@@ -1,4 +1,4 @@
-type TestingModule = typeof import("@gtkx/testing");
+export type TestingModule = typeof import("@gtkx/testing");
 
 export type TestingModuleLoader = () => Promise<TestingModule>;
 

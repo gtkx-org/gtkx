@@ -96,6 +96,9 @@ export const elementSlug = (className: string): string =>
         .replace(/([A-Z]+)([A-Z][a-z])/g, "$1-$2")
         .toLowerCase();
 
+export const implementsLine = (names: string[]): string[] =>
+    names.length === 0 ? [] : [`Implements ${names.map((name) => `\`${name}\``).join(", ")}.`];
+
 export const joinSections = (sections: string[]): string =>
     `${sections.filter((section) => section.length > 0).join("\n\n")}\n`;
 

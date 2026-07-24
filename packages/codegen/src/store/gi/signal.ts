@@ -141,18 +141,16 @@ const renderSignalConnectInterface = (className: string, isRootObject: boolean):
         "emit(sigName: string, ...args: unknown[]): unknown;",
     ];
     if (!isRootObject) {
-        for (const method of ["on", "once", "addEventListener"]) {
-            lines.push(
-                `${method}<K extends keyof ${map}>(signal: K, handler: ${map}[K], after?: boolean): this;`,
-                `${method}(signal: string, handler: ${SIGNAL_HANDLER_TYPE}, after?: boolean): this;`,
-            );
-        }
-        for (const method of ["off", "removeEventListener"]) {
-            lines.push(
-                `${method}<K extends keyof ${map}>(signal: K, handler: ${map}[K]): this;`,
-                `${method}(signal: string, handler: ${SIGNAL_HANDLER_TYPE}): this;`,
-            );
-        }
+        const chainable = (methods: string[], trailing: string): void => {
+            for (const method of methods) {
+                lines.push(
+                    `${method}<K extends keyof ${map}>(signal: K, handler: ${map}[K]${trailing}): this;`,
+                    `${method}(signal: string, handler: ${SIGNAL_HANDLER_TYPE}${trailing}): this;`,
+                );
+            }
+        };
+        chainable(["on", "once", "addEventListener"], ", after?: boolean");
+        chainable(["off", "removeEventListener"], "");
     }
     return renderBracedOrEmpty(`export interface ${className}`, lines.join("\n"));
 };

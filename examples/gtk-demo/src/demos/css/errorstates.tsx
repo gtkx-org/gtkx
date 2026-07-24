@@ -11,7 +11,7 @@ import {
     GtkShortcutController,
     GtkSwitch,
 } from "@gtkx/jsx/gtk";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./errorstates.tsx?raw";
 
@@ -82,6 +82,26 @@ function useErrorStatesHandlers(state: ErrorStatesState) {
     return { handleDetailsChange, handleMoreDetailsChange, handleLevelChange, handleModeStateSet };
 }
 
+interface FieldLabelProps {
+    row: number;
+    target: Gtk.Widget | null;
+    children: ReactNode;
+}
+
+const FieldLabel = ({ row, target, children }: FieldLabelProps) => (
+    <GtkGridLayoutChild column={0} row={row}>
+        <GtkLabel
+            useUnderline
+            halign={Gtk.Align.END}
+            valign={Gtk.Align.BASELINE}
+            cssClasses={["dim-label"]}
+            mnemonicWidget={target}
+        >
+            {children}
+        </GtkLabel>
+    </GtkGridLayoutChild>
+);
+
 interface EntryRowProps {
     detailsEntry: Gtk.Entry | null;
     setDetailsEntry: (e: Gtk.Entry | null) => void;
@@ -90,17 +110,9 @@ interface EntryRowProps {
 
 const DetailsEntryRow = ({ detailsEntry, setDetailsEntry, onChange }: EntryRowProps) => (
     <>
-        <GtkGridLayoutChild column={0} row={0}>
-            <GtkLabel
-                useUnderline
-                halign={Gtk.Align.END}
-                valign={Gtk.Align.BASELINE}
-                cssClasses={["dim-label"]}
-                mnemonicWidget={detailsEntry}
-            >
-                _Details
-            </GtkLabel>
-        </GtkGridLayoutChild>
+        <FieldLabel row={0} target={detailsEntry}>
+            _Details
+        </FieldLabel>
         <GtkGridLayoutChild column={1} row={0} columnSpan={2}>
             <GtkEntry
                 ref={(node) => {
@@ -127,17 +139,9 @@ const MoreDetailsEntryRow = ({
     onChange,
 }: MoreDetailsRowProps) => (
     <>
-        <GtkGridLayoutChild column={0} row={1}>
-            <GtkLabel
-                useUnderline
-                halign={Gtk.Align.END}
-                valign={Gtk.Align.BASELINE}
-                cssClasses={["dim-label"]}
-                mnemonicWidget={moreDetailsEntry}
-            >
-                More D_etails
-            </GtkLabel>
-        </GtkGridLayoutChild>
+        <FieldLabel row={1} target={moreDetailsEntry}>
+            More D_etails
+        </FieldLabel>
         <GtkGridLayoutChild column={1} row={1} columnSpan={2}>
             <GtkEntry
                 ref={(node) => {
@@ -163,17 +167,9 @@ interface LevelScaleProps {
 
 const LevelScaleRow = ({ levelScale, setLevelScale, onValueChanged }: LevelScaleProps) => (
     <>
-        <GtkGridLayoutChild column={0} row={2}>
-            <GtkLabel
-                useUnderline
-                halign={Gtk.Align.END}
-                valign={Gtk.Align.BASELINE}
-                cssClasses={["dim-label"]}
-                mnemonicWidget={levelScale}
-            >
-                _Level
-            </GtkLabel>
-        </GtkGridLayoutChild>
+        <FieldLabel row={2} target={levelScale}>
+            _Level
+        </FieldLabel>
         <GtkGridLayoutChild column={1} row={2} columnSpan={2}>
             <GtkScale
                 ref={(node) => {
@@ -198,17 +194,9 @@ const ModeSwitchRow = ({ state, onStateSet }: ModeSwitchRowProps) => {
     const { modeSwitch, setModeSwitch, showError, errorLabel, setErrorLabel } = state;
     return (
         <>
-            <GtkGridLayoutChild column={0} row={3}>
-                <GtkLabel
-                    useUnderline
-                    halign={Gtk.Align.END}
-                    valign={Gtk.Align.BASELINE}
-                    cssClasses={["dim-label"]}
-                    mnemonicWidget={modeSwitch}
-                >
-                    _Mode
-                </GtkLabel>
-            </GtkGridLayoutChild>
+            <FieldLabel row={3} target={modeSwitch}>
+                _Mode
+            </FieldLabel>
             <GtkGridLayoutChild column={1} row={3}>
                 <GtkSwitch
                     ref={(node) => {
