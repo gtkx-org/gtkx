@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { structuralClone } from "../src/object/index.js";
+import { structuredClone } from "../src/object/index.js";
 import {
     isDeepEqual,
     isPlainObject,
@@ -112,11 +112,11 @@ describe("isDeepEqual", () => {
     });
 });
 
-describe("structuralClone", () => {
+describe("structuredClone", () => {
     it("copies nested arrays and plain objects so later mutations do not leak", () => {
         const nested = { b: 1 };
         const source = { a: [nested] };
-        const copy = structuralClone(source);
+        const copy = structuredClone(source);
 
         expect(isDeepEqual(copy, source)).toBe(true);
 
@@ -129,7 +129,7 @@ describe("structuralClone", () => {
     it("shares values that are neither arrays nor plain objects", () => {
         const date = new Date(0);
 
-        expect(structuralClone({ date }).date).toBe(date);
-        expect(structuralClone(date)).toBe(date);
+        expect(structuredClone({ date }).date).toBe(date);
+        expect(structuredClone(date)).toBe(date);
     });
 });

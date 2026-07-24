@@ -3,7 +3,8 @@ import { isPlainObject } from "../predicate/is-plain-object.js";
 /**
  * Recursively copies arrays and plain objects, sharing every other value by reference. The result
  * mirrors exactly the structure `isDeepEqual` traverses, so comparing a value against its earlier
- * clone detects in-place mutations of the original.
+ * clone detects in-place mutations of the original. Unlike the global of the same name, class
+ * instances such as `Date` and `Map` are shared rather than copied, and no value is ever rejected.
  *
  * @template T - The type of the value.
  * @param value - The value to clone.
@@ -11,14 +12,14 @@ import { isPlainObject } from "../predicate/is-plain-object.js";
  *
  * @example
  * const source = { a: [{ b: 1 }] };
- * const copy = structuralClone(source);
+ * const copy = structuredClone(source);
  * source.a[0].b = 2;
  * copy.a[0].b; // 1
  */
-export function structuralClone<T>(value: T): T {
-    if (Array.isArray(value)) return value.map(structuralClone) as T;
+export function structuredClone<T>(value: T): T {
+    if (Array.isArray(value)) return value.map(structuredClone) as T;
     if (isPlainObject(value)) {
-        return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, structuralClone(entry)])) as T;
+        return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, structuredClone(entry)])) as T;
     }
     return value;
 }

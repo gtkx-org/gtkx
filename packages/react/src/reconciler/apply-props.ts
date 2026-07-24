@@ -2,7 +2,7 @@ import type { ListProp, ValueProp } from "@gtkx/config";
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import type { SignalHandler } from "@gtkx/runtime";
-import { isDeepEqual, kebabCase, structuralClone } from "@gtkx/utils";
+import { isDeepEqual, kebabCase, structuredClone } from "@gtkx/utils";
 import { applyAccessibleProps, isAccessibleProp } from "../utils/accessible-props.js";
 import { addListItem, runCall } from "./calls.js";
 import type { Props } from "./kinds.js";
@@ -46,7 +46,7 @@ const applyListRule = (node: ElementNode, rule: ListProp, entry: PropEntry): voi
         for (const item of applied?.items ?? []) runCall(node.object, rule.remove, { item, props }, [item]);
     }
     for (const item of items) addListItem(node.object, rule, item, props);
-    node.listApplied.set(name, { items, snapshot: structuralClone(items) });
+    node.listApplied.set(name, { items, snapshot: structuredClone(items) });
 };
 
 const resetPlain = (object: GObject.Object, info: TypeInfo, name: string): void => {
