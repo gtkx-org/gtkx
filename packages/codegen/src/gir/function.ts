@@ -1,3 +1,4 @@
+import { PARAMETERS_MISSING_NULLABLE_ANNOTATION } from "./nullable-overrides.js";
 import { type GirParameter, type GirReturnValue, parameterFromNode, parseCallable } from "./parameter.js";
 import { attr, attrBool, childOf, type RawNode } from "./parse.js";
 import type { ParseContext } from "./type-id.js";
@@ -15,9 +16,19 @@ export type GirFunction = {
     returnValue: GirReturnValue;
 };
 
+const relaxMissingNullable = (fn: GirFunction): GirFunction => {
+    const names = fn.cIdentifier === undefined ? undefined : PARAMETERS_MISSING_NULLABLE_ANNOTATION.get(fn.cIdentifier);
+    if (names !== undefined) {
+        for (const parameter of fn.parameters) {
+            if (names.includes(parameter.name)) parameter.nullable = true;
+        }
+    }
+    return fn;
+};
+
 export const functionFromNode = (node: RawNode, context: ParseContext): GirFunction => {
     const instanceNode = childOf(childOf(node, "parameters"), "instance-parameter");
-    return {
+    return relaxMissingNullable({
         ...parseCallable(node, context),
         name: attr(node, "shadows") ?? attr(node, "name") ?? "",
         cIdentifier: attr(node, "c:identifier"),
@@ -26,5 +37,5 @@ export const functionFromNode = (node: RawNode, context: ParseContext): GirFunct
         shadowedBy: attr(node, "shadowed-by"),
         finishFunc: attr(node, "glib:finish-func"),
         instance: instanceNode === undefined ? undefined : parameterFromNode(instanceNode, context),
-    };
+    });
 };

@@ -1,11 +1,13 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkColumnView, GtkColumnViewColumn, GtkCustomSorter, GtkSignalListItemFactory } from "@gtkx/jsx/gtk";
+import { useProperty, useSignal } from "@gtkx/react";
 import type { ReactNode } from "react";
-import { useLayoutEffect, useRef } from "react";
+import { useCallback, useLayoutEffect, useRef } from "react";
 import type { CollectionModel } from "./internal/collection-model.js";
 import type { CellRenderers, Cells } from "./internal/use-cells.js";
 import { headerRenderer, renderItemArgs } from "./internal/use-cells.js";
 import { useCollection } from "./internal/use-collection.js";
+import { useLatest } from "./internal/use-latest.js";
 import { useWidgetRef } from "./internal/use-widget-ref.js";
 import type { Column, ColumnViewProps, HeaderRenderer, ItemRenderer } from "./types.js";
 
@@ -26,24 +28,17 @@ const columnById = (view: Gtk.ColumnView, id: string): Gtk.ColumnViewColumn | nu
 
 const useColumnSorting = (view: Gtk.ColumnView | null, sort: SortProps, columns: Column<unknown>[]): void => {
     const sorting = useRef(false);
-    const latest = useRef(sort);
-    latest.current = sort;
-    useLayoutEffect(() => {
-        if (view === null) return;
-        const sorter = view.getSorter();
-        if (!(sorter instanceof Gtk.ColumnViewSorter)) return;
-        const handler = (): void => {
-            if (sorting.current) return;
-            latest.current.onSortChanged?.(
-                sorter.getPrimarySortColumn()?.getId() ?? null,
-                sorter.getPrimarySortOrder(),
-            );
-        };
-        sorter.on("changed", handler);
-        return () => {
-            sorter.off("changed", handler);
-        };
-    }, [view]);
+    const latest = useLatest(sort);
+    const sorter = useProperty(view, "sorter");
+    const columnSorter = sorter instanceof Gtk.ColumnViewSorter ? sorter : null;
+    const reportSort = useCallback((): void => {
+        if (sorting.current || columnSorter === null) return;
+        latest.current.onSortChanged?.(
+            columnSorter.getPrimarySortColumn()?.getId() ?? null,
+            columnSorter.getPrimarySortOrder(),
+        );
+    }, [columnSorter, latest]);
+    useSignal(columnSorter, "changed", reportSort);
     const { sortColumn, sortOrder } = sort;
     useLayoutEffect(() => {
         if (view === null || sortColumn === undefined) return;

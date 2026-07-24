@@ -1,6 +1,5 @@
-import { Grid } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkAdjustment, GtkLabel, GtkSpinButton } from "@gtkx/jsx/gtk";
+import { GtkAdjustment, GtkGrid, GtkGridLayoutChild, GtkLabel, GtkSpinButton } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./spinbutton.tsx?raw";
@@ -97,25 +96,28 @@ const SpinRow = ({ row, label, spinName, value, setValue, adjustment, spin }: Sp
 
     return (
         <>
-            <Grid.Child component={GtkLabel} column={0} row={row} useUnderline xalign={1} mnemonicWidget={spinWidget}>
-                {label}
-            </Grid.Child>
-            <Grid.Child
-                component={GtkSpinButton}
-                column={1}
-                row={row}
-                ref={(node) => {
-                    setSpinWidget(node);
-                }}
-                name={spinName}
-                halign={Gtk.Align.START}
-                adjustment={<GtkAdjustment {...adjustment} value={value} />}
-                onValueChanged={(widget) => setValue(widget.getValue())}
-                {...spin}
-            />
-            <Grid.Child component={GtkLabel} column={2} row={row} widthChars={10} xalign={1}>
-                {String(value)}
-            </Grid.Child>
+            <GtkGridLayoutChild column={0} row={row}>
+                <GtkLabel useUnderline xalign={1} mnemonicWidget={spinWidget}>
+                    {label}
+                </GtkLabel>
+            </GtkGridLayoutChild>
+            <GtkGridLayoutChild column={1} row={row}>
+                <GtkSpinButton
+                    ref={(node) => {
+                        setSpinWidget(node);
+                    }}
+                    name={spinName}
+                    halign={Gtk.Align.START}
+                    adjustment={<GtkAdjustment {...adjustment} value={value} />}
+                    onValueChanged={(widget) => setValue(widget.getValue())}
+                    {...spin}
+                />
+            </GtkGridLayoutChild>
+            <GtkGridLayoutChild column={2} row={row}>
+                <GtkLabel widthChars={10} xalign={1}>
+                    {String(value)}
+                </GtkLabel>
+            </GtkGridLayoutChild>
         </>
     );
 };
@@ -200,7 +202,7 @@ const SpinButtonDemo = () => {
     const monthHandlers = useMonthSpinHandlers();
 
     return (
-        <Grid rowSpacing={10} columnSpacing={10} marginStart={20} marginEnd={20} marginTop={20} marginBottom={20}>
+        <GtkGrid rowSpacing={10} columnSpacing={10} marginStart={20} marginEnd={20} marginTop={20} marginBottom={20}>
             <NumericSpinRow value={numericValue} setValue={setNumericValue} />
             <HexSpinRow value={hexValue} setValue={setHexValue} />
             <TimeSpinRow value={timeValue} setValue={setTimeValue} />
@@ -210,7 +212,7 @@ const SpinButtonDemo = () => {
                 onInput={monthHandlers.handleMonthInput}
                 onOutput={monthHandlers.handleMonthOutput}
             />
-        </Grid>
+        </GtkGrid>
     );
 };
 

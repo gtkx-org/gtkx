@@ -59,10 +59,23 @@ const createEntry = (rule: ContainerProp, node: PlaceableNode): PlacedChild | nu
     return { node, widget, adopted: null, rule, attached: false };
 };
 
+const adoptThroughPath = (root: GObject.Object, path: string[], widget: GObject.Object): GObject.Object | null => {
+    let target: GObject.Object = root;
+    for (let index = 0; index < path.length; index++) {
+        const method = path[index];
+        if (method === undefined) return null;
+        const next = callMethod(target, method, index === path.length - 1 ? [widget] : []);
+        if (!isObject(next)) return null;
+        target = next;
+    }
+    return target;
+};
+
 const computeAdopted = (parent: ElementNode, entry: PlacedChild, result: unknown): GObject.Object | null => {
     const adopt = entry.rule.adopt;
     if (adopt === undefined) return null;
     if (adopt === true) return isObject(result) ? result : null;
+    if (typeof adopt !== "string") return adoptThroughPath(parent.object, adopt.path, entry.widget);
     const adopted = callMethod(parent.object, adopt, [entry.widget]);
     return isObject(adopted) ? adopted : null;
 };

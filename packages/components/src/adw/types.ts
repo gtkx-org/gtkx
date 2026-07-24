@@ -1,23 +1,12 @@
 import type * as Adw from "@gtkx/gi/adw";
+import type { AdwToastProps } from "@gtkx/jsx/adw";
 import type { ReactNode, RefObject } from "react";
 
-/** Describes a toast raised through {@link useToast}. */
-export type ToastOptions = {
-    /** Text shown in the toast, read as Pango markup when {@link ToastOptions.useMarkup} is set. */
-    title?: string | undefined;
-    /** Label for an action button; omit for a toast without one. */
-    buttonLabel?: string | undefined;
-    /** Called when the action button is clicked. */
-    onButtonClicked?: (() => void) | undefined;
-    /** Called when the toast leaves the screen, for any reason. */
-    onDismissed?: (() => void) | undefined;
-    /** Seconds before the toast dismisses itself; 0 keeps it until dismissed. */
-    timeout?: number | undefined;
-    /** Whether the toast shows immediately or waits behind the current one. */
-    priority?: Adw.ToastPriority | undefined;
-    /** Whether {@link ToastOptions.title} is interpreted as Pango markup. */
-    useMarkup?: boolean | undefined;
-};
+/**
+ * Describes a toast raised through {@link useToast}: the construct-time properties of an
+ * `Adw.Toast` plus its `button-clicked` and `dismissed` handlers.
+ */
+export type ToastOptions = Adw.ToastConstructorProps & Pick<AdwToastProps, "onButtonClicked" | "onDismissed">;
 
 /** Imperative controls for individual toasts, returned by {@link useToast}. */
 export type ToastController = {

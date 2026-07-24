@@ -1,4 +1,3 @@
-import { Grid } from "@gtkx/components";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
@@ -6,6 +5,8 @@ import { GMenu, GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
 import {
     GtkBox,
     GtkButton,
+    GtkGrid,
+    GtkGridLayoutChild,
     GtkImage,
     GtkLabel,
     GtkLinkButton,
@@ -87,61 +88,56 @@ interface MessageRowProps {
 }
 
 const MessageAvatar = ({ message }: { message: Message }) => (
-    <Grid.Child
-        component={GtkImage}
-        column={0}
-        row={0}
-        rowSpan={5}
-        {...(message.senderNick === "GTKtoolkit" ? { iconName: "org.gtk.Demo4" } : { paintable: appleRedTexture })}
-        iconSize={Gtk.IconSize.LARGE}
-        widthRequest={32}
-        heightRequest={32}
-        halign={Gtk.Align.CENTER}
-        valign={Gtk.Align.START}
-        marginTop={8}
-        marginBottom={8}
-        marginStart={8}
-        marginEnd={8}
-    />
+    <GtkGridLayoutChild column={0} row={0} rowSpan={5}>
+        <GtkImage
+            {...(message.senderNick === "GTKtoolkit" ? { iconName: "org.gtk.Demo4" } : { paintable: appleRedTexture })}
+            iconSize={Gtk.IconSize.LARGE}
+            widthRequest={32}
+            heightRequest={32}
+            halign={Gtk.Align.CENTER}
+            valign={Gtk.Align.START}
+            marginTop={8}
+            marginBottom={8}
+            marginStart={8}
+            marginEnd={8}
+        />
+    </GtkGridLayoutChild>
 );
 
 const MessageHeader = ({ message }: { message: Message }) => (
-    <Grid.Child component={GtkBox} column={1} row={0} hexpand baselinePosition={Gtk.BaselinePosition.TOP}>
-        <GtkButton receivesDefault hasFrame={false} valign={Gtk.Align.BASELINE}>
-            <GtkLabel valign={Gtk.Align.BASELINE} attributes={boldAttrs}>
-                {message.senderName}
+    <GtkGridLayoutChild column={1} row={0}>
+        <GtkBox hexpand baselinePosition={Gtk.BaselinePosition.TOP}>
+            <GtkButton receivesDefault hasFrame={false} valign={Gtk.Align.BASELINE}>
+                <GtkLabel valign={Gtk.Align.BASELINE} attributes={boldAttrs}>
+                    {message.senderName}
+                </GtkLabel>
+            </GtkButton>
+            <GtkLabel valign={Gtk.Align.BASELINE} cssClasses={["dim-label"]}>
+                {message.senderNick}
             </GtkLabel>
-        </GtkButton>
-        <GtkLabel valign={Gtk.Align.BASELINE} cssClasses={["dim-label"]}>
-            {message.senderNick}
-        </GtkLabel>
-        <GtkLabel hexpand xalign={1} valign={Gtk.Align.BASELINE} cssClasses={["dim-label"]}>
-            {formatShortTime(message.time)}
-        </GtkLabel>
-    </Grid.Child>
+            <GtkLabel hexpand xalign={1} valign={Gtk.Align.BASELINE} cssClasses={["dim-label"]}>
+                {formatShortTime(message.time)}
+            </GtkLabel>
+        </GtkBox>
+    </GtkGridLayoutChild>
 );
 
 const MessageBody = ({ message }: { message: Message }) => (
-    <Grid.Child
-        component={GtkLabel}
-        column={1}
-        row={1}
-        halign={Gtk.Align.START}
-        valign={Gtk.Align.START}
-        xalign={0}
-        yalign={0}
-        wrap
-    >
-        {message.message}
-    </Grid.Child>
+    <GtkGridLayoutChild column={1} row={1}>
+        <GtkLabel halign={Gtk.Align.START} valign={Gtk.Align.START} xalign={0} yalign={0} wrap>
+            {message.message}
+        </GtkLabel>
+    </GtkGridLayoutChild>
 );
 
 const MessageResentBy = ({ message }: { message: Message }) => (
-    <Grid.Child component={GtkBox} column={1} row={2} visible={message.resentBy !== null}>
-        <GtkImage iconName="media-playlist-repeat" />
-        <GtkLabel>Resent by</GtkLabel>
-        <GtkLinkButton label={message.resentBy ?? ""} receivesDefault hasFrame={false} uri="https://www.gtk.org" />
-    </Grid.Child>
+    <GtkGridLayoutChild column={1} row={2}>
+        <GtkBox visible={message.resentBy !== null}>
+            <GtkImage iconName="media-playlist-repeat" />
+            <GtkLabel>Resent by</GtkLabel>
+            <GtkLinkButton label={message.resentBy ?? ""} receivesDefault hasFrame={false} uri="https://www.gtk.org" />
+        </GtkBox>
+    </GtkGridLayoutChild>
 );
 
 interface MessageActionsProps {
@@ -161,67 +157,71 @@ const MessageActions = ({
     onFavorite,
     onReshare,
 }: MessageActionsProps) => (
-    <Grid.Child component={GtkBox} column={1} row={3} spacing={6}>
-        <GtkButton
-            name="expand-button"
-            label={expanded ? "Hide" : "Expand"}
-            receivesDefault
-            hasFrame={false}
-            onClicked={() => onToggleExpand(message.id)}
-        />
-        <GtkBox ref={extraButtonsRef} spacing={6} visible={false}>
-            <GtkButton label="Reply" receivesDefault hasFrame={false} />
-            <GtkButton label="Reshare" receivesDefault hasFrame={false} onClicked={() => onReshare(message.id)} />
-            <GtkButton label="Favorite" receivesDefault hasFrame={false} onClicked={() => onFavorite(message.id)} />
-            <GtkMenuButton
+    <GtkGridLayoutChild column={1} row={3}>
+        <GtkBox spacing={6}>
+            <GtkButton
+                name="expand-button"
+                label={expanded ? "Hide" : "Expand"}
                 receivesDefault
                 hasFrame={false}
-                label="More..."
-                menuModel={
-                    <GMenu
-                        items={[
-                            {
-                                section: [
-                                    { label: "Email message", action: "msg.email" },
-                                    { label: "Embed message", action: "msg.embed" },
-                                ],
-                            },
-                        ]}
-                    />
-                }
-                actionGroups={
-                    <GSimpleActionGroup
-                        prefix="msg"
-                        actions={
-                            <>
-                                <GSimpleAction name="email" onActivate={() => {}} />
-                                <GSimpleAction name="embed" onActivate={() => {}} />
-                            </>
-                        }
-                    />
-                }
+                onClicked={() => onToggleExpand(message.id)}
             />
+            <GtkBox ref={extraButtonsRef} spacing={6} visible={false}>
+                <GtkButton label="Reply" receivesDefault hasFrame={false} />
+                <GtkButton label="Reshare" receivesDefault hasFrame={false} onClicked={() => onReshare(message.id)} />
+                <GtkButton label="Favorite" receivesDefault hasFrame={false} onClicked={() => onFavorite(message.id)} />
+                <GtkMenuButton
+                    receivesDefault
+                    hasFrame={false}
+                    label="More..."
+                    menuModel={
+                        <GMenu
+                            items={[
+                                {
+                                    section: [
+                                        { label: "Email message", action: "msg.email" },
+                                        { label: "Embed message", action: "msg.embed" },
+                                    ],
+                                },
+                            ]}
+                        />
+                    }
+                    actionGroups={
+                        <GSimpleActionGroup
+                            prefix="msg"
+                            actions={
+                                <>
+                                    <GSimpleAction name="email" onActivate={() => {}} />
+                                    <GSimpleAction name="embed" onActivate={() => {}} />
+                                </>
+                            }
+                        />
+                    }
+                />
+            </GtkBox>
         </GtkBox>
-    </Grid.Child>
+    </GtkGridLayoutChild>
 );
 
 const MessageDetails = ({ message, expanded }: { message: Message; expanded: boolean }) => (
-    <Grid.Child component={GtkRevealer} column={1} row={4} name="details-revealer" revealChild={expanded}>
-        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-            <GtkBox marginTop={2} marginBottom={2} spacing={8}>
-                <GtkLabel visible={message.nReshares !== 0} useMarkup>
-                    {`<b>${message.nReshares}</b>\nReshares`}
-                </GtkLabel>
-                <GtkLabel visible={message.nFavorites !== 0} useMarkup>
-                    {`<b>${message.nFavorites}</b>\nFavorites`}
-                </GtkLabel>
+    <GtkGridLayoutChild column={1} row={4}>
+        <GtkRevealer name="details-revealer" revealChild={expanded}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                <GtkBox marginTop={2} marginBottom={2} spacing={8}>
+                    <GtkLabel visible={message.nReshares !== 0} useMarkup>
+                        {`<b>${message.nReshares}</b>\nReshares`}
+                    </GtkLabel>
+                    <GtkLabel visible={message.nFavorites !== 0} useMarkup>
+                        {`<b>${message.nFavorites}</b>\nFavorites`}
+                    </GtkLabel>
+                </GtkBox>
+                <GtkBox>
+                    <GtkLabel cssClasses={["dim-label"]}>{formatDetailedTime(message.time)}</GtkLabel>
+                    <GtkButton label="Details" receivesDefault hasFrame={false} cssClasses={["dim-label"]} />
+                </GtkBox>
             </GtkBox>
-            <GtkBox>
-                <GtkLabel cssClasses={["dim-label"]}>{formatDetailedTime(message.time)}</GtkLabel>
-                <GtkButton label="Details" receivesDefault hasFrame={false} cssClasses={["dim-label"]} />
-            </GtkBox>
-        </GtkBox>
-    </Grid.Child>
+        </GtkRevealer>
+    </GtkGridLayoutChild>
 );
 
 const MessageRow = ({ message, expanded, onToggleExpand, onFavorite, onReshare }: MessageRowProps) => {
@@ -235,7 +235,7 @@ const MessageRow = ({ message, expanded, onToggleExpand, onFavorite, onReshare }
 
     return (
         <GtkListBoxRow onStateFlagsChanged={handleStateFlagsChanged}>
-            <Grid hexpand>
+            <GtkGrid hexpand>
                 <MessageAvatar message={message} />
                 <MessageHeader message={message} />
                 <MessageBody message={message} />
@@ -249,7 +249,7 @@ const MessageRow = ({ message, expanded, onToggleExpand, onFavorite, onReshare }
                     onReshare={onReshare}
                 />
                 <MessageDetails message={message} expanded={expanded} />
-            </Grid>
+            </GtkGrid>
         </GtkListBoxRow>
     );
 };

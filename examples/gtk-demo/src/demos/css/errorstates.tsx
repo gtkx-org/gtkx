@@ -1,9 +1,10 @@
-import { Grid } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwDialog, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
 import {
     GtkAdjustment,
     GtkEntry,
+    GtkGrid,
+    GtkGridLayoutChild,
     GtkLabel,
     GtkScale,
     GtkShortcut,
@@ -89,29 +90,26 @@ interface EntryRowProps {
 
 const DetailsEntryRow = ({ detailsEntry, setDetailsEntry, onChange }: EntryRowProps) => (
     <>
-        <Grid.Child
-            component={GtkLabel}
-            column={0}
-            row={0}
-            useUnderline
-            halign={Gtk.Align.END}
-            valign={Gtk.Align.BASELINE}
-            cssClasses={["dim-label"]}
-            mnemonicWidget={detailsEntry}
-        >
-            _Details
-        </Grid.Child>
-        <Grid.Child
-            component={GtkEntry}
-            column={1}
-            row={0}
-            columnSpan={2}
-            ref={(node) => {
-                setDetailsEntry(node);
-            }}
-            valign={Gtk.Align.BASELINE}
-            onChanged={onChange}
-        />
+        <GtkGridLayoutChild column={0} row={0}>
+            <GtkLabel
+                useUnderline
+                halign={Gtk.Align.END}
+                valign={Gtk.Align.BASELINE}
+                cssClasses={["dim-label"]}
+                mnemonicWidget={detailsEntry}
+            >
+                _Details
+            </GtkLabel>
+        </GtkGridLayoutChild>
+        <GtkGridLayoutChild column={1} row={0} columnSpan={2}>
+            <GtkEntry
+                ref={(node) => {
+                    setDetailsEntry(node);
+                }}
+                valign={Gtk.Align.BASELINE}
+                onChanged={onChange}
+            />
+        </GtkGridLayoutChild>
     </>
 );
 
@@ -129,32 +127,31 @@ const MoreDetailsEntryRow = ({
     onChange,
 }: MoreDetailsRowProps) => (
     <>
-        <Grid.Child
-            component={GtkLabel}
-            column={0}
-            row={1}
-            useUnderline
-            halign={Gtk.Align.END}
-            valign={Gtk.Align.BASELINE}
-            cssClasses={["dim-label"]}
-            mnemonicWidget={moreDetailsEntry}
-        >
-            More D_etails
-        </Grid.Child>
-        <Grid.Child
-            component={GtkEntry}
-            column={1}
-            row={1}
-            columnSpan={2}
-            ref={(node) => {
-                setMoreDetailsEntry(node);
-            }}
-            valign={Gtk.Align.BASELINE}
-            cssClasses={moreDetailsError ? ["error"] : []}
-            tooltipText={moreDetailsError ? "Must have details first" : ""}
-            accessibleInvalid={moreDetailsError ? Gtk.AccessibleInvalidState.TRUE : Gtk.AccessibleInvalidState.FALSE}
-            onChanged={onChange}
-        />
+        <GtkGridLayoutChild column={0} row={1}>
+            <GtkLabel
+                useUnderline
+                halign={Gtk.Align.END}
+                valign={Gtk.Align.BASELINE}
+                cssClasses={["dim-label"]}
+                mnemonicWidget={moreDetailsEntry}
+            >
+                More D_etails
+            </GtkLabel>
+        </GtkGridLayoutChild>
+        <GtkGridLayoutChild column={1} row={1} columnSpan={2}>
+            <GtkEntry
+                ref={(node) => {
+                    setMoreDetailsEntry(node);
+                }}
+                valign={Gtk.Align.BASELINE}
+                cssClasses={moreDetailsError ? ["error"] : []}
+                tooltipText={moreDetailsError ? "Must have details first" : ""}
+                accessibleInvalid={
+                    moreDetailsError ? Gtk.AccessibleInvalidState.TRUE : Gtk.AccessibleInvalidState.FALSE
+                }
+                onChanged={onChange}
+            />
+        </GtkGridLayoutChild>
     </>
 );
 
@@ -166,32 +163,29 @@ interface LevelScaleProps {
 
 const LevelScaleRow = ({ levelScale, setLevelScale, onValueChanged }: LevelScaleProps) => (
     <>
-        <Grid.Child
-            component={GtkLabel}
-            column={0}
-            row={2}
-            useUnderline
-            halign={Gtk.Align.END}
-            valign={Gtk.Align.BASELINE}
-            cssClasses={["dim-label"]}
-            mnemonicWidget={levelScale}
-        >
-            _Level
-        </Grid.Child>
-        <Grid.Child
-            component={GtkScale}
-            column={1}
-            row={2}
-            columnSpan={2}
-            ref={(node) => {
-                setLevelScale(node);
-            }}
-            orientation={Gtk.Orientation.HORIZONTAL}
-            valign={Gtk.Align.BASELINE}
-            drawValue={false}
-            adjustment={<GtkAdjustment value={50} lower={0} upper={100} stepIncrement={1} pageIncrement={10} />}
-            onValueChanged={(scale) => onValueChanged(scale.getValue())}
-        />
+        <GtkGridLayoutChild column={0} row={2}>
+            <GtkLabel
+                useUnderline
+                halign={Gtk.Align.END}
+                valign={Gtk.Align.BASELINE}
+                cssClasses={["dim-label"]}
+                mnemonicWidget={levelScale}
+            >
+                _Level
+            </GtkLabel>
+        </GtkGridLayoutChild>
+        <GtkGridLayoutChild column={1} row={2} columnSpan={2}>
+            <GtkScale
+                ref={(node) => {
+                    setLevelScale(node);
+                }}
+                orientation={Gtk.Orientation.HORIZONTAL}
+                valign={Gtk.Align.BASELINE}
+                drawValue={false}
+                adjustment={<GtkAdjustment value={50} lower={0} upper={100} stepIncrement={1} pageIncrement={10} />}
+                onValueChanged={(scale) => onValueChanged(scale.getValue())}
+            />
+        </GtkGridLayoutChild>
     </>
 );
 
@@ -204,60 +198,57 @@ const ModeSwitchRow = ({ state, onStateSet }: ModeSwitchRowProps) => {
     const { modeSwitch, setModeSwitch, showError, errorLabel, setErrorLabel } = state;
     return (
         <>
-            <Grid.Child
-                component={GtkLabel}
-                column={0}
-                row={3}
-                useUnderline
-                halign={Gtk.Align.END}
-                valign={Gtk.Align.BASELINE}
-                cssClasses={["dim-label"]}
-                mnemonicWidget={modeSwitch}
-            >
-                _Mode
-            </Grid.Child>
-            <Grid.Child
-                component={GtkSwitch}
-                column={1}
-                row={3}
-                ref={(node) => {
-                    setModeSwitch(node);
-                }}
-                halign={Gtk.Align.START}
-                valign={Gtk.Align.BASELINE}
-                accessibleKeyShortcuts="Control+M"
-                accessibleInvalid={showError ? Gtk.AccessibleInvalidState.TRUE : Gtk.AccessibleInvalidState.FALSE}
-                accessibleErrorMessage={showError && errorLabel ? [errorLabel] : undefined}
-                onStateSet={onStateSet}
-                controllers={
-                    <GtkShortcutController
-                        scope={Gtk.ShortcutScope.MANAGED}
-                        shortcuts={
-                            <GtkShortcut
-                                trigger={Gtk.ShortcutTrigger.parseString("<Control>m")}
-                                action={Gtk.CallbackAction.new(() => {
-                                    modeSwitch?.activate();
-                                    return true;
-                                })}
-                            />
-                        }
-                    />
-                }
-            />
-            {showError && (
-                <Grid.Child
-                    component={GtkLabel}
-                    column={2}
-                    row={3}
+            <GtkGridLayoutChild column={0} row={3}>
+                <GtkLabel
+                    useUnderline
+                    halign={Gtk.Align.END}
+                    valign={Gtk.Align.BASELINE}
+                    cssClasses={["dim-label"]}
+                    mnemonicWidget={modeSwitch}
+                >
+                    _Mode
+                </GtkLabel>
+            </GtkGridLayoutChild>
+            <GtkGridLayoutChild column={1} row={3}>
+                <GtkSwitch
                     ref={(node) => {
-                        setErrorLabel(node);
+                        setModeSwitch(node);
                     }}
                     halign={Gtk.Align.START}
                     valign={Gtk.Align.BASELINE}
-                    cssClasses={["error"]}
-                >
-                    Level too low
-                </Grid.Child>
+                    accessibleKeyShortcuts="Control+M"
+                    accessibleInvalid={showError ? Gtk.AccessibleInvalidState.TRUE : Gtk.AccessibleInvalidState.FALSE}
+                    accessibleErrorMessage={showError && errorLabel ? [errorLabel] : undefined}
+                    onStateSet={onStateSet}
+                    controllers={
+                        <GtkShortcutController
+                            scope={Gtk.ShortcutScope.MANAGED}
+                            shortcuts={
+                                <GtkShortcut
+                                    trigger={Gtk.ShortcutTrigger.parseString("<Control>m")}
+                                    action={Gtk.CallbackAction.new(() => {
+                                        modeSwitch?.activate();
+                                        return true;
+                                    })}
+                                />
+                            }
+                        />
+                    }
+                />
+            </GtkGridLayoutChild>
+            {showError && (
+                <GtkGridLayoutChild column={2} row={3}>
+                    <GtkLabel
+                        ref={(node) => {
+                            setErrorLabel(node);
+                        }}
+                        halign={Gtk.Align.START}
+                        valign={Gtk.Align.BASELINE}
+                        cssClasses={["error"]}
+                    >
+                        Level too low
+                    </GtkLabel>
+                </GtkGridLayoutChild>
             )}
         </>
     );
@@ -270,7 +261,7 @@ const ErrorstatesDemo = ({ onClose }: DemoProps) => {
     return (
         <AdwDialog onClosed={() => onClose?.()} title="Error States" canClose followsContentSize>
             <AdwToolbarView topBar={<AdwHeaderBar />}>
-                <Grid
+                <GtkGrid
                     rowSpacing={10}
                     columnSpacing={10}
                     marginStart={20}
@@ -295,7 +286,7 @@ const ErrorstatesDemo = ({ onClose }: DemoProps) => {
                         onValueChanged={handlers.handleLevelChange}
                     />
                     <ModeSwitchRow state={state} onStateSet={handlers.handleModeStateSet} />
-                </Grid>
+                </GtkGrid>
             </AdwToolbarView>
         </AdwDialog>
     );

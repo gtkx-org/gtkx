@@ -1,8 +1,16 @@
-import { Overlay } from "@gtkx/components";
 import type * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as gl from "@gtkx/gl";
-import { GtkAdjustment, GtkBox, GtkFrame, GtkGLArea, GtkLabel, GtkScale } from "@gtkx/jsx/gtk";
+import {
+    GtkAdjustment,
+    GtkBox,
+    GtkFrame,
+    GtkGLArea,
+    GtkLabel,
+    GtkOverlay,
+    GtkOverlayLayoutChild,
+    GtkScale,
+} from "@gtkx/jsx/gtk";
 import { useEffect, useRef, useState } from "react";
 import { useLatest } from "../../use-latest.js";
 import { useTickCallback } from "../../use-tick-callback.js";
@@ -651,7 +659,25 @@ const GearsDemo = () => {
     if (state.error) return <GearsError error={state.error} />;
 
     return (
-        <Overlay marginStart={12} marginEnd={12} marginTop={12} marginBottom={12}>
+        <GtkOverlay
+            marginStart={12}
+            marginEnd={12}
+            marginTop={12}
+            marginBottom={12}
+            overlays={[
+                <GtkOverlayLayoutChild key="overlay-0">
+                    <GtkLabel
+                        halign={Gtk.Align.START}
+                        valign={Gtk.Align.START}
+                        marginStart={12}
+                        marginTop={12}
+                        cssClasses={["app-notification"]}
+                    >
+                        {state.fps > 0 ? `FPS: ${state.fps.toFixed(1)}` : "FPS: ---"}
+                    </GtkLabel>
+                </GtkOverlayLayoutChild>,
+            ]}
+        >
             <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={6}>
                 <GtkGLArea
                     name="gl-area"
@@ -667,17 +693,7 @@ const GearsDemo = () => {
                 <AxisSlider axis="Y" value={state.viewRotY} onChange={state.setViewRotY} />
                 <AxisSlider axis="Z" value={state.viewRotZ} onChange={state.setViewRotZ} />
             </GtkBox>
-            <Overlay.Child
-                component={GtkLabel}
-                halign={Gtk.Align.START}
-                valign={Gtk.Align.START}
-                marginStart={12}
-                marginTop={12}
-                cssClasses={["app-notification"]}
-            >
-                {state.fps > 0 ? `FPS: ${state.fps.toFixed(1)}` : "FPS: ---"}
-            </Overlay.Child>
-        </Overlay>
+        </GtkOverlay>
     );
 };
 

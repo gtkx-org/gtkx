@@ -14,14 +14,10 @@ const useOverlayRef = (): OverlayRef => {
 };
 
 const buildToast = (options: ToastOptions): Adw.Toast => {
-    const toast = new Adw.Toast({});
-    if (options.useMarkup !== undefined) toast.setUseMarkup(options.useMarkup);
-    if (options.title !== undefined) toast.setTitle(options.title);
-    if (options.buttonLabel !== undefined) toast.setButtonLabel(options.buttonLabel);
-    if (options.timeout !== undefined) toast.setTimeout(options.timeout);
-    if (options.priority !== undefined) toast.setPriority(options.priority);
-    if (options.onButtonClicked !== undefined) toast.on("button-clicked", options.onButtonClicked);
-    if (options.onDismissed !== undefined) toast.on("dismissed", options.onDismissed);
+    const { onButtonClicked, onDismissed, ...props } = options;
+    const toast = new Adw.Toast(props);
+    if (onButtonClicked != null) toast.on("button-clicked", onButtonClicked);
+    if (onDismissed != null) toast.on("dismissed", onDismissed);
     return toast;
 };
 

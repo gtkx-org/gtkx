@@ -1,6 +1,5 @@
-import { Grid } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkImage, GtkRevealer } from "@gtkx/jsx/gtk";
+import { GtkGrid, GtkGridLayoutChild, GtkImage, GtkRevealer } from "@gtkx/jsx/gtk";
 import { useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./revealer.tsx?raw";
@@ -56,26 +55,24 @@ const RevealerDemo = () => {
     };
 
     return (
-        <Grid name="revealer-grid" halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
+        <GtkGrid name="revealer-grid" halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
             {revealerConfigs.map((config, index) => (
-                <Grid.Child
-                    key={`${config.column}-${config.row}`}
-                    component={GtkRevealer}
-                    column={config.column}
-                    row={config.row}
-                    name={`revealer-${index}`}
-                    transitionDuration={TRANSITION_DURATION}
-                    transitionType={config.transition}
-                    revealChild={revealed[index]}
-                    onNotifyChildRevealed={(_childRevealed, self) => {
-                        if (!self.getMapped()) return;
-                        handleChildRevealed(index);
-                    }}
-                >
-                    <GtkImage iconName="face-cool-symbolic" iconSize={Gtk.IconSize.LARGE} />
-                </Grid.Child>
+                <GtkGridLayoutChild key={`${config.column}-${config.row}`} column={config.column} row={config.row}>
+                    <GtkRevealer
+                        name={`revealer-${index}`}
+                        transitionDuration={TRANSITION_DURATION}
+                        transitionType={config.transition}
+                        revealChild={revealed[index]}
+                        onNotifyChildRevealed={(_childRevealed, self) => {
+                            if (!self.getMapped()) return;
+                            handleChildRevealed(index);
+                        }}
+                    >
+                        <GtkImage iconName="face-cool-symbolic" iconSize={Gtk.IconSize.LARGE} />
+                    </GtkRevealer>
+                </GtkGridLayoutChild>
             ))}
-        </Grid>
+        </GtkGrid>
     );
 };
 

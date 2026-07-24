@@ -1,9 +1,10 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
+import { GtkTreeExpander } from "@gtkx/jsx/gtk";
 import { createPortal } from "@gtkx/react";
 import type { ReactNode } from "react";
 import { useRef, useState } from "react";
-import type { HeaderRenderer, Item, ItemRenderer, RenderItemArgs } from "../types.js";
+import type { HeaderRenderer, ItemRenderer, RenderItemArgs } from "../types.js";
 import type { CollectionModel } from "./collection-model.js";
 
 export type CellSize = { width: number; height: number };
@@ -12,7 +13,6 @@ export type CellRecord = {
     key: number;
     kind: "item" | "header";
     cell: GObject.Object;
-    target: GObject.Object;
     holder: GObject.Object;
     row: Gtk.TreeListRow | null;
     slot: string | null;
@@ -54,29 +54,19 @@ type CellsState = {
 const placeholder = (size: CellSize): Gtk.Widget =>
     new Gtk.Box({ widthRequest: size.width, heightRequest: size.height });
 
-const applyExpanderFlags = (expander: Gtk.TreeExpander, item: Item<unknown>): void => {
-    expander.setHideExpander(item.hideExpander ?? false);
-    expander.setIndentForDepth(item.indentForDepth ?? true);
-    expander.setIndentForIcon(item.indentForIcon ?? true);
-};
-
-const bindExpander = (cell: Gtk.ListItem, row: Gtk.TreeListRow, options: CellsOptions): Gtk.TreeExpander | null => {
-    const holder = row.getItem();
-    if (holder === null) return null;
-    const child = cell.getChild();
-    let expander: Gtk.TreeExpander;
-    if (child instanceof Gtk.TreeExpander) {
-        expander = child;
-    } else {
-        expander = new Gtk.TreeExpander({});
-        expander.setChild(placeholder(options.size));
-        cell.setChild(expander);
-    }
-    expander.setListRow(row);
-    const entry = options.collection.entryOf(holder);
-    if (entry !== undefined) applyExpanderFlags(expander, entry.item);
-    if (expander.getChild() === null) expander.setChild(placeholder(options.size));
-    return expander;
+const expanded = (record: CellRecord, content: ReactNode, options: CellsOptions): ReactNode => {
+    if (record.row === null) return content;
+    const item = options.collection.entryOf(record.holder)?.item;
+    return (
+        <GtkTreeExpander
+            listRow={record.row}
+            hideExpander={item?.hideExpander ?? false}
+            indentForDepth={item?.indentForDepth ?? true}
+            indentForIcon={item?.indentForIcon ?? true}
+        >
+            {content}
+        </GtkTreeExpander>
+    );
 };
 
 const addRecord = (state: CellsState, record: Omit<CellRecord, "key">): void => {
@@ -92,21 +82,16 @@ const removeRecord = (state: CellsState, cell: GObject.Object): void => {
 const bindItem = (state: CellsState, slot: string | null, cell: Gtk.ListItem): void => {
     const bound = cell.getItem();
     if (bound === null) return;
-    const options = state.options();
     let holder = bound;
     let row: Gtk.TreeListRow | null = null;
-    let target: GObject.Object = cell;
     if (bound instanceof Gtk.TreeListRow) {
-        const expander = bindExpander(cell, bound, options);
         const inner = bound.getItem();
-        if (expander === null || inner === null) return;
+        if (inner === null) return;
         row = bound;
         holder = inner;
-        target = expander;
-    } else if (cell.getChild() === null) {
-        cell.setChild(placeholder(options.size));
     }
-    addRecord(state, { kind: "item", cell, target, holder, row, slot, position: () => cell.getPosition() });
+    if (cell.getChild() === null) cell.setChild(placeholder(state.options().size));
+    addRecord(state, { kind: "item", cell, holder, row, slot, position: () => cell.getPosition() });
 };
 
 const itemHandlers = (state: CellsState, slot: string | null): FactoryHandlers => ({
@@ -116,11 +101,7 @@ const itemHandlers = (state: CellsState, slot: string | null): FactoryHandlers =
     onBind: (cell) => {
         if (cell instanceof Gtk.ListItem) bindItem(state, slot, cell);
     },
-    onUnbind: (cell) => {
-        const child = cell instanceof Gtk.ListItem ? cell.getChild() : null;
-        if (child instanceof Gtk.TreeExpander) child.setListRow(null);
-        removeRecord(state, cell);
-    },
+    onUnbind: (cell) => removeRecord(state, cell),
     onTeardown: (cell) => removeRecord(state, cell),
 });
 
@@ -136,7 +117,6 @@ const headerHandlers = (state: CellsState): FactoryHandlers => ({
         addRecord(state, {
             kind: "header",
             cell: header,
-            target: header,
             holder,
             row: null,
             slot: null,
@@ -163,7 +143,11 @@ const createCells = (state: CellsState): Cells => {
         refresh: state.refresh,
         portals: (renderers) =>
             [...state.records.values()].map((record) =>
-                createPortal(renderers[record.kind](record), record.target, `gtkx-cell-${record.key}`),
+                createPortal(
+                    expanded(record, renderers[record.kind](record), state.options()),
+                    record.cell,
+                    `gtkx-cell-${record.key}`,
+                ),
             ),
     };
 };

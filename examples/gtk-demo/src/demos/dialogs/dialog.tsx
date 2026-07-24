@@ -1,7 +1,6 @@
-import { Grid } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwAlertDialog } from "@gtkx/jsx/adw";
-import { GtkBox, GtkButton, GtkEntry, GtkLabel, GtkSeparator } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton, GtkEntry, GtkGrid, GtkGridLayoutChild, GtkLabel, GtkSeparator } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./dialog.tsx?raw";
@@ -31,36 +30,38 @@ const DialogEntryRow = ({
 }: DialogEntryRowProps) => (
     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
         <GtkButton label="_Interactive Dialog" useUnderline valign={Gtk.Align.START} onClicked={onOpenInteractive} />
-        <Grid rowSpacing={4} columnSpacing={4}>
-            <Grid.Child component={GtkLabel} column={0} row={0} useUnderline mnemonicWidget={entry1Widget}>
-                _Entry 1
-            </Grid.Child>
-            <Grid.Child
-                component={GtkEntry}
-                column={1}
-                row={0}
-                name="demo-entry-1"
-                ref={(node) => {
-                    setEntry1Widget(node);
-                }}
-                text={entry1}
-                onChanged={(e) => setEntry1(e.getText())}
-            />
-            <Grid.Child component={GtkLabel} column={0} row={1} useUnderline mnemonicWidget={entry2Widget}>
-                E_ntry 2
-            </Grid.Child>
-            <Grid.Child
-                component={GtkEntry}
-                column={1}
-                row={1}
-                name="demo-entry-2"
-                ref={(node) => {
-                    setEntry2Widget(node);
-                }}
-                text={entry2}
-                onChanged={(e) => setEntry2(e.getText())}
-            />
-        </Grid>
+        <GtkGrid rowSpacing={4} columnSpacing={4}>
+            <GtkGridLayoutChild column={0} row={0}>
+                <GtkLabel useUnderline mnemonicWidget={entry1Widget}>
+                    _Entry 1
+                </GtkLabel>
+            </GtkGridLayoutChild>
+            <GtkGridLayoutChild column={1} row={0}>
+                <GtkEntry
+                    name="demo-entry-1"
+                    ref={(node) => {
+                        setEntry1Widget(node);
+                    }}
+                    text={entry1}
+                    onChanged={(e) => setEntry1(e.getText())}
+                />
+            </GtkGridLayoutChild>
+            <GtkGridLayoutChild column={0} row={1}>
+                <GtkLabel useUnderline mnemonicWidget={entry2Widget}>
+                    E_ntry 2
+                </GtkLabel>
+            </GtkGridLayoutChild>
+            <GtkGridLayoutChild column={1} row={1}>
+                <GtkEntry
+                    name="demo-entry-2"
+                    ref={(node) => {
+                        setEntry2Widget(node);
+                    }}
+                    text={entry2}
+                    onChanged={(e) => setEntry2(e.getText())}
+                />
+            </GtkGridLayoutChild>
+        </GtkGrid>
     </GtkBox>
 );
 
@@ -96,36 +97,38 @@ const InteractiveFields = ({
     const [dialogEntry1Widget, setDialogEntry1Widget] = useState<Gtk.Entry | null>(null);
     const [dialogEntry2Widget, setDialogEntry2Widget] = useState<Gtk.Entry | null>(null);
     return (
-        <Grid rowSpacing={6} columnSpacing={6} hexpand vexpand halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
-            <Grid.Child component={GtkLabel} column={0} row={0} useUnderline mnemonicWidget={dialogEntry1Widget}>
-                _Entry 1
-            </Grid.Child>
-            <Grid.Child
-                component={GtkEntry}
-                column={1}
-                row={0}
-                name="dialog-entry-1"
-                ref={(node) => {
-                    setDialogEntry1Widget(node);
-                }}
-                text={entry1Text}
-                onChanged={(e) => setEntry1Text(e.getText())}
-            />
-            <Grid.Child component={GtkLabel} column={0} row={1} useUnderline mnemonicWidget={dialogEntry2Widget}>
-                E_ntry 2
-            </Grid.Child>
-            <Grid.Child
-                component={GtkEntry}
-                column={1}
-                row={1}
-                name="dialog-entry-2"
-                ref={(node) => {
-                    setDialogEntry2Widget(node);
-                }}
-                text={entry2Text}
-                onChanged={(e) => setEntry2Text(e.getText())}
-            />
-        </Grid>
+        <GtkGrid rowSpacing={6} columnSpacing={6} hexpand vexpand halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
+            <GtkGridLayoutChild column={0} row={0}>
+                <GtkLabel useUnderline mnemonicWidget={dialogEntry1Widget}>
+                    _Entry 1
+                </GtkLabel>
+            </GtkGridLayoutChild>
+            <GtkGridLayoutChild column={1} row={0}>
+                <GtkEntry
+                    name="dialog-entry-1"
+                    ref={(node) => {
+                        setDialogEntry1Widget(node);
+                    }}
+                    text={entry1Text}
+                    onChanged={(e) => setEntry1Text(e.getText())}
+                />
+            </GtkGridLayoutChild>
+            <GtkGridLayoutChild column={0} row={1}>
+                <GtkLabel useUnderline mnemonicWidget={dialogEntry2Widget}>
+                    E_ntry 2
+                </GtkLabel>
+            </GtkGridLayoutChild>
+            <GtkGridLayoutChild column={1} row={1}>
+                <GtkEntry
+                    name="dialog-entry-2"
+                    ref={(node) => {
+                        setDialogEntry2Widget(node);
+                    }}
+                    text={entry2Text}
+                    onChanged={(e) => setEntry2Text(e.getText())}
+                />
+            </GtkGridLayoutChild>
+        </GtkGrid>
     );
 };
 

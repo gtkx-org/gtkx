@@ -1,4 +1,4 @@
-import type { Call, ContainerProp, ElementProp } from "./element-props.js";
+import type { AdoptPath, Call, ContainerProp, ElementProp } from "./element-props.js";
 
 type ManyMethods = Pick<ContainerProp, "append" | "remove">;
 
@@ -48,6 +48,8 @@ const packProps = (): ElementProp[] => [
     container("start", "GtkWidget", { append: "packStart" }),
     container("end", "GtkWidget", { append: "packEnd" }),
 ];
+
+const layoutChild = (element: string): AdoptPath => ({ path: ["getLayoutManager", "getLayoutChild"], element });
 
 const autowrapProp = (wrapper: string): ElementProp =>
     container("children", "GtkWidget", {
@@ -107,7 +109,6 @@ const SINGLE_CHILD_TYPES = [
     "GtkListHeader",
     "GtkListItem",
     "GtkMenuButton",
-    "GtkOverlay",
     "GtkPopover",
     "GtkPopoverBin",
     "GtkRevealer",
@@ -196,6 +197,36 @@ export const BUILT_IN_ELEMENT_PROPS: Record<string, ElementProp[]> = withBreakpo
             remove: "removeColumn",
             insert: { method: "insertColumn", args: ["index", "child"] },
         }),
+    ],
+    GtkGrid: [
+        container("children", "GtkWidget", {
+            append: {
+                method: "attach",
+                args: ["child", { literal: 0 }, { literal: 0 }, { literal: 1 }, { literal: 1 }],
+            },
+            remove: "remove",
+            adopt: layoutChild("GtkGridLayoutChild"),
+        }),
+    ],
+    GtkFixed: [
+        container("children", "GtkWidget", {
+            append: { method: "put", args: ["child", { literal: 0 }, { literal: 0 }] },
+            remove: "remove",
+            adopt: layoutChild("GtkFixedLayoutChild"),
+        }),
+    ],
+    GtkOverlay: [
+        singleChild(),
+        container("overlays", "GtkWidget", {
+            append: "addOverlay",
+            remove: "removeOverlay",
+            adopt: layoutChild("GtkOverlayLayoutChild"),
+        }),
+    ],
+    GtkSizeGroup: [{ kind: "list", prop: "widgets", add: "addWidget", remove: "removeWidget" }],
+    GtkConstraintLayout: [
+        container("constraints", "GtkConstraint", { append: "addConstraint", remove: "removeConstraint" }),
+        container("guides", "GtkConstraintGuide", { append: "addGuide", remove: "removeGuide" }),
     ],
     AdwShortcutsDialog: [container("children", "AdwShortcutsSection", { append: "add" })],
     AdwShortcutsSection: [container("children", "AdwShortcutsItem", { append: "add" })],

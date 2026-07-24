@@ -1,4 +1,3 @@
-import { Grid } from "@gtkx/components";
 import { css } from "@gtkx/css";
 import type * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -15,6 +14,8 @@ import {
     GtkFontDialog,
     GtkFontDialogButton,
     GtkGestureClick,
+    GtkGrid,
+    GtkGridLayoutChild,
     GtkHeaderBar,
     GtkLabel,
     GtkScale,
@@ -665,7 +666,7 @@ const FontFeaturesGrid = ({ state, handlers }: { state: FontFeaturesState; handl
     const { size, letterSpacing, lineHeight, viewMode } = state;
     const { setSize, setLetterSpacing, setLineHeight } = state;
     return (
-        <Grid columnSpacing={10} rowSpacing={10}>
+        <GtkGrid columnSpacing={10} rowSpacing={10}>
             <SliderEntryRow
                 row={0}
                 label="Size"
@@ -708,7 +709,7 @@ const FontFeaturesGrid = ({ state, handlers }: { state: FontFeaturesState; handl
             />
 
             <FontFeaturesColorRows state={state} handlers={handlers} />
-        </Grid>
+        </GtkGrid>
     );
 };
 
@@ -716,47 +717,47 @@ const FontFeaturesColorRows = ({ state, handlers }: { state: FontFeaturesState; 
     const { fgColor, setFgColor, bgColor, setBgColor } = state;
     return (
         <>
-            <Grid.Child component={GtkLabel} column={0} row={3} xalign={0} valign={Gtk.Align.BASELINE}>
-                Foreground
-            </Grid.Child>
-            <Grid.Child
-                component={GtkColorDialogButton}
-                column={1}
-                row={3}
-                name="foreground-color"
-                rgba={fgColor}
-                dialog={<GtkColorDialog />}
-                onNotifyRgba={(value) => value && setFgColor(value)}
-                valign={Gtk.Align.BASELINE}
-            />
+            <GtkGridLayoutChild column={0} row={3}>
+                <GtkLabel xalign={0} valign={Gtk.Align.BASELINE}>
+                    Foreground
+                </GtkLabel>
+            </GtkGridLayoutChild>
+            <GtkGridLayoutChild column={1} row={3}>
+                <GtkColorDialogButton
+                    name="foreground-color"
+                    rgba={fgColor}
+                    dialog={<GtkColorDialog />}
+                    onNotifyRgba={(value) => value && setFgColor(value)}
+                    valign={Gtk.Align.BASELINE}
+                />
+            </GtkGridLayoutChild>
 
-            <Grid.Child component={GtkLabel} column={0} row={4} xalign={0} valign={Gtk.Align.BASELINE}>
-                Background
-            </Grid.Child>
-            <Grid.Child
-                component={GtkColorDialogButton}
-                column={1}
-                row={4}
-                name="background-color"
-                rgba={bgColor}
-                dialog={<GtkColorDialog />}
-                onNotifyRgba={(value) => value && setBgColor(value)}
-                valign={Gtk.Align.BASELINE}
-            />
+            <GtkGridLayoutChild column={0} row={4}>
+                <GtkLabel xalign={0} valign={Gtk.Align.BASELINE}>
+                    Background
+                </GtkLabel>
+            </GtkGridLayoutChild>
+            <GtkGridLayoutChild column={1} row={4}>
+                <GtkColorDialogButton
+                    name="background-color"
+                    rgba={bgColor}
+                    dialog={<GtkColorDialog />}
+                    onNotifyRgba={(value) => value && setBgColor(value)}
+                    valign={Gtk.Align.BASELINE}
+                />
+            </GtkGridLayoutChild>
 
-            <Grid.Child
-                component={GtkButton}
-                column={2}
-                row={3}
-                rowSpan={2}
-                name="swap-colors"
-                iconName="object-flip-vertical-symbolic"
-                halign={Gtk.Align.START}
-                valign={Gtk.Align.CENTER}
-                cssClasses={["circular"]}
-                tooltipText="Swap colors"
-                onClicked={handlers.swapColors}
-            />
+            <GtkGridLayoutChild column={2} row={3} rowSpan={2}>
+                <GtkButton
+                    name="swap-colors"
+                    iconName="object-flip-vertical-symbolic"
+                    halign={Gtk.Align.START}
+                    valign={Gtk.Align.CENTER}
+                    cssClasses={["circular"]}
+                    tooltipText="Swap colors"
+                    onClicked={handlers.swapColors}
+                />
+            </GtkGridLayoutChild>
         </>
     );
 };
@@ -792,40 +793,40 @@ const SliderEntryRow = ({
 }: SliderEntryRowProps) => {
     return (
         <>
-            <Grid.Child component={GtkLabel} column={0} row={row} xalign={0} valign={Gtk.Align.BASELINE}>
-                {label}
-            </Grid.Child>
-            <Grid.Child
-                component={GtkScale}
-                column={1}
-                row={row}
-                hexpand
-                widthRequest={100}
-                valign={Gtk.Align.BASELINE}
-                adjustment={
-                    <GtkAdjustment
-                        value={value}
-                        lower={lower}
-                        upper={upper}
-                        stepIncrement={stepIncrement}
-                        pageIncrement={pageIncrement}
-                    />
-                }
-                onValueChanged={(scale) => onValueChanged(scale.getValue())}
-                sensitive={sensitive}
-            />
-            <Grid.Child
-                component={GtkEntry}
-                column={2}
-                row={row}
-                name={entryName}
-                widthChars={4}
-                maxWidthChars={4}
-                valign={Gtk.Align.BASELINE}
-                text={displayText}
-                onActivate={onEntryActivate}
-                sensitive={sensitive}
-            />
+            <GtkGridLayoutChild column={0} row={row}>
+                <GtkLabel xalign={0} valign={Gtk.Align.BASELINE}>
+                    {label}
+                </GtkLabel>
+            </GtkGridLayoutChild>
+            <GtkGridLayoutChild column={1} row={row}>
+                <GtkScale
+                    hexpand
+                    widthRequest={100}
+                    valign={Gtk.Align.BASELINE}
+                    adjustment={
+                        <GtkAdjustment
+                            value={value}
+                            lower={lower}
+                            upper={upper}
+                            stepIncrement={stepIncrement}
+                            pageIncrement={pageIncrement}
+                        />
+                    }
+                    onValueChanged={(scale) => onValueChanged(scale.getValue())}
+                    sensitive={sensitive}
+                />
+            </GtkGridLayoutChild>
+            <GtkGridLayoutChild column={2} row={row}>
+                <GtkEntry
+                    name={entryName}
+                    widthChars={4}
+                    maxWidthChars={4}
+                    valign={Gtk.Align.BASELINE}
+                    text={displayText}
+                    onActivate={onEntryActivate}
+                    sensitive={sensitive}
+                />
+            </GtkGridLayoutChild>
         </>
     );
 };

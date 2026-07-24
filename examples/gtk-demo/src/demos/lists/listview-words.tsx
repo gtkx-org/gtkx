@@ -1,12 +1,14 @@
 import { existsSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { ListView, Overlay } from "@gtkx/components";
+import { ListView } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
     GtkBox,
     GtkButton,
     GtkHeaderBar,
     GtkInscription,
+    GtkOverlay,
+    GtkOverlayLayoutChild,
     GtkProgressBar,
     GtkScrolledWindow,
     GtkSearchEntry,
@@ -143,7 +145,22 @@ function useFilteredWords(words: string[], searchText: string) {
 }
 
 const WordsList = ({ filteredWords, filterProgress }: { filteredWords: string[]; filterProgress: number }) => (
-    <Overlay vexpand hexpand>
+    <GtkOverlay
+        vexpand
+        hexpand
+        overlays={
+            filterProgress < 1 && (
+                <GtkOverlayLayoutChild>
+                    <GtkProgressBar
+                        fraction={filterProgress}
+                        halign={Gtk.Align.FILL}
+                        valign={Gtk.Align.START}
+                        hexpand
+                    />
+                </GtkOverlayLayoutChild>
+            )
+        }
+    >
         <GtkScrolledWindow vexpand hexpand>
             <ListView
                 name="list-view"
@@ -162,16 +179,7 @@ const WordsList = ({ filteredWords, filterProgress }: { filteredWords: string[];
                 )}
             />
         </GtkScrolledWindow>
-        {filterProgress < 1 && (
-            <Overlay.Child
-                component={GtkProgressBar}
-                fraction={filterProgress}
-                halign={Gtk.Align.FILL}
-                valign={Gtk.Align.START}
-                hexpand
-            />
-        )}
-    </Overlay>
+    </GtkOverlay>
 );
 
 interface WordsContextValue {

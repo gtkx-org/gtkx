@@ -106,55 +106,58 @@ The backing widget comes from the `component` prop. Leave it out for a plain `Gt
 
 ## Layout components
 
-### Grid and Grid.Child
+### Grid and GtkGridLayoutChild
 
-`Grid` wraps `Gtk.Grid`, whose placement API is `attach(child, column, row, width, height)`. `Grid.Child` expresses one placement declaratively: `column`, `row`, `columnSpan`, and `rowSpan`. Name the placed widget with the `component` prop and pass its props inline:
+`Gtk.Grid` positions each child through the `Gtk.GridLayoutChild` its layout manager creates. `GtkGridLayoutChild` wraps one child and carries that placement: `column`, `row`, `columnSpan`, and `rowSpan`. Changing a cell moves the widget in place, without reparenting it:
 
 ```tsx
-import { Grid } from "@gtkx/components";
-import { GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkGrid, GtkGridLayoutChild, GtkLabel } from "@gtkx/jsx/gtk";
 
-<Grid columnSpacing={10} rowSpacing={10}>
-    <Grid.Child component={GtkLabel} column={0} row={3} xalign={0}>
-        Foreground
-    </Grid.Child>
-</Grid>
+<GtkGrid columnSpacing={10} rowSpacing={10}>
+    <GtkGridLayoutChild column={0} row={3}>
+        <GtkLabel xalign={0}>Foreground</GtkLabel>
+    </GtkGridLayoutChild>
+</GtkGrid>
 ```
 
-The `component` prop recurs in `Overlay.Child`, `Fixed.Child`, and `SizeGroup.Child` below: you name the widget to place and the wrapper attaches the ref for its imperative GTK4 call internally.
+A child placed without a wrapper lands at column 0, row 0. The same shape recurs for `GtkOverlay` and `GtkFixed` below: the wrapper carries the placement, its single child is the widget.
 
-### Overlay and Overlay.Child
+### Overlay and GtkOverlayLayoutChild
 
-`Overlay` wraps `Gtk.Overlay`: regular children form the main content, and each `Overlay.Child` is stacked on top of it. `measure` opts the overlay into the size negotiation and `clipOverlay` clips it to the main child's allocation:
+`Gtk.Overlay` has two child slots. Regular children form the main content, and the `overlays` prop stacks widgets on top of it. `measure` opts an overlay into the size negotiation and `clipOverlay` clips it to the main child's allocation:
 
 ```tsx
-import { Grid, Overlay } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkEntry } from "@gtkx/jsx/gtk";
+import { GtkEntry, GtkGrid, GtkOverlay, GtkOverlayLayoutChild } from "@gtkx/jsx/gtk";
 
-<Overlay>
-    <Grid>{buttons}</Grid>
-    <Overlay.Child component={GtkEntry} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} />
-</Overlay>
+<GtkOverlay
+    overlays={
+        <GtkOverlayLayoutChild measure>
+            <GtkEntry halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} />
+        </GtkOverlayLayoutChild>
+    }
+>
+    <GtkGrid>{buttons}</GtkGrid>
+</GtkOverlay>
 ```
 
-### Fixed and Fixed.Child
+### Fixed and GtkFixedLayoutChild
 
-`Fixed` wraps `Gtk.Fixed`, the manual-positioning container. `Fixed.Child` places a widget at `x`/`y`, or accepts a full `transform: Gsk.Transform` (which overrides `x`/`y`) for rotation, scaling, and 3D placement:
+`Gtk.Fixed` is the manual-positioning container: every child's position is a `Gsk.Transform` on its `Gtk.FixedLayoutChild`, so a plain translation places a widget at a point and a richer transform rotates, scales, or projects it:
 
 ```tsx
-import { Fixed } from "@gtkx/components";
+import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
-import { GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkFixed, GtkFixedLayoutChild, GtkLabel } from "@gtkx/jsx/gtk";
 
-<Fixed>
-    <Fixed.Child component={GtkLabel} x={20} y={40}>
-        Placed at x/y
-    </Fixed.Child>
-    <Fixed.Child component={GtkLabel} transform={Gsk.Transform.new().rotate(45)}>
-        Rotated
-    </Fixed.Child>
-</Fixed>
+<GtkFixed>
+    <GtkFixedLayoutChild transform={Gsk.Transform.new().translate(Graphene.Point.create(20, 40))}>
+        <GtkLabel>Placed at a point</GtkLabel>
+    </GtkFixedLayoutChild>
+    <GtkFixedLayoutChild transform={Gsk.Transform.new().rotate(45)}>
+        <GtkLabel>Rotated</GtkLabel>
+    </GtkFixedLayoutChild>
+</GtkFixed>
 ```
 
 In `examples/gtk-demo`, `fixed.tsx` assembles a 3D cube from six perspective-transformed faces, and `fixed2.tsx` animates a rotating label per frame from the widget's frame clock.

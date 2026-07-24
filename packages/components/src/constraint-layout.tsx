@@ -1,8 +1,8 @@
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkConstraintLayout } from "@gtkx/jsx/gtk";
-import type { ReactNode } from "react";
-import { createContext, useContext, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { GtkConstraint, GtkConstraintGuide, GtkConstraintLayout } from "@gtkx/jsx/gtk";
+import type { ReactElement, ReactNode } from "react";
+import { createContext, useContext, useId, useLayoutEffect, useMemo, useState } from "react";
 import { useLatest } from "./internal/use-latest.js";
 import { useWidgetRef } from "./internal/use-widget-ref.js";
 import type { ConstraintGuideProps, ConstraintLayoutProps, ConstraintProps, ConstraintVflProps } from "./types.js";
@@ -11,6 +11,8 @@ type Declaration =
     | { kind: "constraint"; props: ConstraintProps }
     | { kind: "guide"; props: ConstraintGuideProps }
     | { kind: "vfl"; props: ConstraintVflProps };
+
+type Declarations = Map<string, Declaration>;
 
 type Registry = {
     set: (key: string, declaration: Declaration) => void;
@@ -25,7 +27,17 @@ const ORPHAN_MESSAGE = "<ConstraintLayout.Constraint> / <Guide> / <Vfl> must be 
 
 const typeNameOfWidget = (widget: Gtk.Widget): string => GObject.typeName(widget.__type__) ?? "";
 
-const namedChildren = (layout: Gtk.ConstraintLayout, targets: Targets): void => {
+const addNamedGuides = (layout: Gtk.ConstraintLayout, targets: Targets): void => {
+    const guides = layout.observeGuides();
+    for (let index = 0; index < guides.getNItems(); index++) {
+        const guide = guides.getItem(index);
+        if (!(guide instanceof Gtk.ConstraintGuide)) continue;
+        const name = guide.getName();
+        if (name !== null && name !== "") targets.set(name, guide);
+    }
+};
+
+const addNamedChildren = (layout: Gtk.ConstraintLayout, targets: Targets): void => {
     let child = layout.getWidget()?.getFirstChild() ?? null;
     while (child !== null) {
         const name = child.getName();
@@ -33,6 +45,16 @@ const namedChildren = (layout: Gtk.ConstraintLayout, targets: Targets): void => 
         child = child.getNextSibling();
     }
 };
+
+const readTargets = (layout: Gtk.ConstraintLayout): Targets => {
+    const targets: Targets = new Map();
+    addNamedGuides(layout, targets);
+    addNamedChildren(layout, targets);
+    return targets;
+};
+
+const sameTargets = (previous: Targets, next: Targets): boolean =>
+    previous.size === next.size && [...previous].every(([name, target]) => next.get(name) === target);
 
 const resolveTarget = (
     id: string | undefined,
@@ -48,62 +70,72 @@ const resolveTarget = (
     );
 };
 
-const buildGuide = (props: ConstraintGuideProps): Gtk.ConstraintGuide => {
-    const guide = new Gtk.ConstraintGuide({ name: props.id });
-    const [minWidth, minHeight] = guide.getMinSize();
-    const [natWidth, natHeight] = guide.getNatSize();
-    const [maxWidth, maxHeight] = guide.getMaxSize();
-    guide.setMinSize(props.minWidth ?? minWidth, props.minHeight ?? minHeight);
-    guide.setNatSize(props.natWidth ?? natWidth, props.natHeight ?? natHeight);
-    guide.setMaxSize(props.maxWidth ?? maxWidth, props.maxHeight ?? maxHeight);
-    if (props.strength !== undefined) guide.setStrength(props.strength);
-    return guide;
+const guideElement = (key: string, props: ConstraintGuideProps): ReactElement => (
+    <GtkConstraintGuide
+        key={key}
+        name={props.id}
+        minWidth={props.minWidth}
+        minHeight={props.minHeight}
+        natWidth={props.natWidth}
+        natHeight={props.natHeight}
+        maxWidth={props.maxWidth}
+        maxHeight={props.maxHeight}
+        strength={props.strength}
+    />
+);
+
+const constraintElement = (key: string, props: ConstraintProps, targets: Targets): ReactElement => (
+    <GtkConstraint
+        key={`${key}:${JSON.stringify(props)}`}
+        target={resolveTarget(props.target, "target", targets)}
+        targetAttribute={props.targetAttribute}
+        relation={props.relation ?? Gtk.ConstraintRelation.EQ}
+        source={resolveTarget(props.source, "source", targets)}
+        sourceAttribute={props.sourceAttribute ?? Gtk.ConstraintAttribute.NONE}
+        multiplier={props.multiplier ?? 1}
+        constant={props.constant ?? 0}
+        strength={props.strength ?? Gtk.ConstraintStrength.REQUIRED}
+    />
+);
+
+const elementsOf = <K extends Declaration["kind"]>(
+    declarations: Declarations,
+    kind: K,
+    build: (key: string, declaration: Extract<Declaration, { kind: K }>) => ReactElement,
+): ReactElement[] => {
+    const elements: ReactElement[] = [];
+    for (const [key, declaration] of declarations) {
+        if (declaration.kind === kind) elements.push(build(key, declaration as Extract<Declaration, { kind: K }>));
+    }
+    return elements;
 };
 
-const buildConstraint = (props: ConstraintProps, targets: Targets): Gtk.Constraint =>
-    Gtk.Constraint.new(
-        resolveTarget(props.target, "target", targets),
-        props.targetAttribute,
-        props.relation ?? Gtk.ConstraintRelation.EQ,
-        resolveTarget(props.source, "source", targets),
-        props.sourceAttribute ?? Gtk.ConstraintAttribute.NONE,
-        props.multiplier ?? 1,
-        props.constant ?? 0,
-        props.strength ?? Gtk.ConstraintStrength.REQUIRED,
+const vflSignature = (declarations: Declarations): string =>
+    JSON.stringify(
+        [...declarations]
+            .filter(([, declaration]) => declaration.kind === "vfl")
+            .map(([key, declaration]) => [key, declaration.props]),
     );
 
-const apply = (layout: Gtk.ConstraintLayout, declarations: Map<string, Declaration>): (() => void)[] => {
-    const undo: (() => void)[] = [];
-    const targets: Targets = new Map();
-    for (const declaration of declarations.values()) {
-        if (declaration.kind !== "guide") continue;
-        const guide = buildGuide(declaration.props);
-        layout.addGuide(guide);
-        targets.set(declaration.props.id, guide);
-        undo.push(() => layout.removeGuide(guide));
-    }
-    namedChildren(layout, targets);
-    const addConstraint = (constraint: Gtk.Constraint): void => {
-        undo.push(() => layout.removeConstraint(constraint));
-    };
-    for (const declaration of declarations.values()) {
-        if (declaration.kind === "constraint") {
-            const constraint = buildConstraint(declaration.props, targets);
-            layout.addConstraint(constraint);
-            addConstraint(constraint);
-        } else if (declaration.kind === "vfl") {
+const useVflConstraints = (
+    layout: Gtk.ConstraintLayout | null,
+    declarations: Declarations,
+    targets: Targets | null,
+) => {
+    const latest = useLatest(declarations);
+    const signature = vflSignature(declarations);
+    useLayoutEffect(() => {
+        if (layout === null || targets === null) return;
+        const added: Gtk.Constraint[] = [];
+        for (const declaration of latest.current.values()) {
+            if (declaration.kind !== "vfl") continue;
             const { lines, hspacing, vspacing } = declaration.props;
-            for (const constraint of layout.addConstraintsFromDescription(
-                lines,
-                hspacing ?? 0,
-                vspacing ?? 0,
-                targets,
-            )) {
-                addConstraint(constraint);
-            }
+            added.push(...layout.addConstraintsFromDescription(lines, hspacing ?? 0, vspacing ?? 0, targets));
         }
-    }
-    return undo;
+        return () => {
+            for (const constraint of added) layout.removeConstraint(constraint);
+        };
+    }, [layout, targets, latest, signature]);
 };
 
 const useDeclaration = (declaration: Declaration): null => {
@@ -125,12 +157,8 @@ const Guide = (props: ConstraintGuideProps): ReactNode => useDeclaration({ kind:
 
 const Vfl = (props: ConstraintVflProps): ReactNode => useDeclaration({ kind: "vfl", props });
 
-const ConstraintLayoutRoot = (props: ConstraintLayoutProps): ReactNode => {
-    const { children, ref } = props;
-    const [layout, refCallback] = useWidgetRef<Gtk.ConstraintLayout>(ref);
-    const [declarations, setDeclarations] = useState<Map<string, Declaration>>(() => new Map());
-    const undo = useRef<(() => void)[]>([]);
-    const registry = useMemo<Registry>(
+const useRegistry = (setDeclarations: (update: (previous: Declarations) => Declarations) => void): Registry =>
+    useMemo<Registry>(
         () => ({
             set: (key, declaration) => {
                 setDeclarations((previous) => new Map(previous).set(key, declaration));
@@ -143,23 +171,40 @@ const ConstraintLayoutRoot = (props: ConstraintLayoutProps): ReactNode => {
                 });
             },
         }),
-        [],
+        [setDeclarations],
     );
+
+const useTargets = (layout: Gtk.ConstraintLayout | null): Targets | null => {
+    const [targets, setTargets] = useState<Targets | null>(null);
     useLayoutEffect(() => {
         if (layout === null) return;
-        for (const remove of undo.current) remove();
-        undo.current = apply(layout, declarations);
-    }, [layout, declarations]);
-    useLayoutEffect(
-        () => () => {
-            for (const remove of undo.current) remove();
-            undo.current = [];
-        },
-        [layout],
+        const next = readTargets(layout);
+        setTargets((previous) => (previous !== null && sameTargets(previous, next) ? previous : next));
+    });
+    return targets;
+};
+
+const ConstraintLayoutRoot = (props: ConstraintLayoutProps): ReactNode => {
+    const { children, ref } = props;
+    const [layout, refCallback] = useWidgetRef<Gtk.ConstraintLayout>(ref);
+    const [declarations, setDeclarations] = useState<Declarations>(() => new Map());
+    const registry = useRegistry(setDeclarations);
+    const targets = useTargets(layout);
+    const guides = useMemo(
+        () => elementsOf(declarations, "guide", (key, it) => guideElement(key, it.props)),
+        [declarations],
     );
+    const constraints = useMemo(
+        () =>
+            targets === null
+                ? null
+                : elementsOf(declarations, "constraint", (key, it) => constraintElement(key, it.props, targets)),
+        [declarations, targets],
+    );
+    useVflConstraints(layout, declarations, targets);
     return (
         <ConstraintContext.Provider value={registry}>
-            <GtkConstraintLayout ref={refCallback} />
+            <GtkConstraintLayout ref={refCallback} guides={guides} constraints={constraints} />
             {children}
         </ConstraintContext.Provider>
     );

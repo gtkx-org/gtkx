@@ -1,6 +1,5 @@
-import { Grid } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkAdjustment, GtkLabel, GtkScale } from "@gtkx/jsx/gtk";
+import { GtkAdjustment, GtkGrid, GtkGridLayoutChild, GtkLabel, GtkScale } from "@gtkx/jsx/gtk";
 import type { Demo } from "../types.js";
 import sourceCode from "./scale.tsx?raw";
 
@@ -14,28 +13,27 @@ interface ScaleRowProps {
 
 const ScaleRow = ({ label, row, scaleProps }: ScaleRowProps) => (
     <>
-        <Grid.Child component={GtkLabel} column={0} row={row} xalign={0}>
-            {label}
-        </Grid.Child>
-        <Grid.Child
-            component={GtkScale}
-            column={1}
-            row={row}
-            widthRequest={200}
-            drawValue={false}
-            hexpand
-            adjustment={<GtkAdjustment value={2} upper={4} stepIncrement={0.1} pageIncrement={1} />}
-            {...scaleProps}
-        />
+        <GtkGridLayoutChild column={0} row={row}>
+            <GtkLabel xalign={0}>{label}</GtkLabel>
+        </GtkGridLayoutChild>
+        <GtkGridLayoutChild column={1} row={row}>
+            <GtkScale
+                widthRequest={200}
+                drawValue={false}
+                hexpand
+                adjustment={<GtkAdjustment value={2} upper={4} stepIncrement={0.1} pageIncrement={1} />}
+                {...scaleProps}
+            />
+        </GtkGridLayoutChild>
     </>
 );
 
 const ScaleDemo = () => (
-    <Grid rowSpacing={10} columnSpacing={10} marginStart={20} marginEnd={20} marginTop={20} marginBottom={20}>
+    <GtkGrid rowSpacing={10} columnSpacing={10} marginStart={20} marginEnd={20} marginTop={20} marginBottom={20}>
         <ScaleRow label="Plain" row={0} />
         <ScaleRow label="Marks" row={1} scaleProps={{ marks: INTEGER_MARKS }} />
         <ScaleRow label="Discrete" row={2} scaleProps={{ roundDigits: 0, marks: INTEGER_MARKS }} />
-    </Grid>
+    </GtkGrid>
 );
 
 export const scaleDemo: Demo = {

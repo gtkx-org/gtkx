@@ -17,7 +17,7 @@ const buildElement = (typeName: string, record: Props): ReactElement => {
             hostProps[key] = value;
         }
     }
-    return createElement(typeName, hostProps, ...propChildren, record.children as ReactNode);
+    return createElement(typeName, hostProps, propChildren, record.children as ReactNode);
 };
 
 /**

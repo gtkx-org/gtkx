@@ -1,36 +1,28 @@
-import * as Gtk from "@gtkx/gi/gtk";
-import type { ElementType, ReactNode, Ref } from "react";
-import { createContext, useImperativeHandle, useLayoutEffect, useRef } from "react";
-import {
-    type PlacedOps,
-    type Placement,
-    usePlacedChild,
-    usePlacementContext,
-    usePlacementHost,
-} from "./internal/use-placement.js";
+import type * as Gtk from "@gtkx/gi/gtk";
+import { GtkSizeGroup } from "@gtkx/jsx/gtk";
+import { useMergedRef } from "@gtkx/react/internal";
+import type { ElementType, ReactNode, Ref, RefCallback } from "react";
+import { createContext, useCallback, useContext, useState } from "react";
 import type { SizeGroupChildProps, SizeGroupProps } from "./types.js";
 
-const SizeGroupContext = createContext<Placement<null> | null>(null);
+type Register = RefCallback<Gtk.Widget | null>;
 
-const sizeGroupOps = (group: { current: Gtk.SizeGroup | null }): PlacedOps<null> => ({
-    attach: (widget) => {
-        group.current?.addWidget(widget);
-    },
-    update: () => {},
-    detach: (widget) => {
-        group.current?.removeWidget(widget);
-    },
-});
+const SizeGroupContext = createContext<Register | null>(null);
 
 type SizeGroupChildRuntimeProps = {
     component: ElementType;
     ref?: Ref<Gtk.Widget | null> | undefined;
 } & Record<string, unknown>;
 
+const useRegister = (): Register => {
+    const register = useContext(SizeGroupContext);
+    if (register === null) throw new Error("<SizeGroup.Child> must be a child of <SizeGroup>");
+    return register;
+};
+
 const SizeGroupChildImpl = (props: SizeGroupChildRuntimeProps): ReactNode => {
-    const placement = usePlacementContext(SizeGroupContext, "<SizeGroup.Child> must be a child of <SizeGroup>");
     const { component: Component, ref, ...rest } = props;
-    const refCallback = usePlacedChild(placement, ref, () => null, "");
+    const refCallback = useMergedRef<Gtk.Widget | null>(ref, useRegister());
     return <Component {...rest} ref={refCallback} />;
 };
 
@@ -38,15 +30,20 @@ const SizeGroupChild = SizeGroupChildImpl as <C extends ElementType>(props: Size
 
 const SizeGroupRoot = (props: SizeGroupProps): ReactNode => {
     const { mode, ref, children } = props;
-    const held = useRef<Gtk.SizeGroup | null>(null);
-    held.current ??= new Gtk.SizeGroup({});
-    const group = held.current;
-    useImperativeHandle(ref, () => group, [group]);
-    useLayoutEffect(() => {
-        group.setMode(mode ?? Gtk.SizeGroupMode.HORIZONTAL);
-    }, [group, mode]);
-    const placement = usePlacementHost(group, sizeGroupOps);
-    return <SizeGroupContext.Provider value={placement}>{children}</SizeGroupContext.Provider>;
+    const [widgets, setWidgets] = useState<Gtk.Widget[]>([]);
+    const register = useCallback<Register>((widget) => {
+        if (widget === null) return;
+        setWidgets((previous) => (previous.includes(widget) ? previous : [...previous, widget]));
+        return () => {
+            setWidgets((previous) => previous.filter((entry) => entry !== widget));
+        };
+    }, []);
+    return (
+        <>
+            <GtkSizeGroup ref={ref} mode={mode} widgets={widgets} />
+            <SizeGroupContext.Provider value={register}>{children}</SizeGroupContext.Provider>
+        </>
+    );
 };
 
 type SizeGroupComponent = ((props: SizeGroupProps) => ReactNode) & {

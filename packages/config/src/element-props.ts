@@ -35,6 +35,14 @@ export type Arg = ArgRef | { prop: string } | { field: string; or?: JsonValue } 
  */
 export type Call = string | { method: string; args: Arg[]; when?: string; unless?: string[] };
 
+/**
+ * How a container reaches the per-child object it adopts: `path` is a chain of
+ * getters starting at the container, each called on the previous result, with
+ * the last one receiving the child widget. `element` names the GObject type the
+ * chain yields, which becomes the wrapper element carrying the child's props.
+ */
+export type AdoptPath = { path: string[]; element: string };
+
 const NAME_MESSAGE = "must be a non-empty string";
 
 const JSON_MESSAGE = "must be a JSON-serializable value";
@@ -141,8 +149,13 @@ const callSchema = z.custom<Call>().check((ctx) => {
 
 const nameSchema = z.string({ error: NAME_MESSAGE }).min(1, { error: NAME_MESSAGE });
 
-const adoptSchema = z.union([z.literal(true), nameSchema], {
-    error: "must be `true` or the name of a getter method",
+const adoptPathSchema = z.strictObject({
+    path: z.array(nameSchema).min(1, { error: "must list at least one getter method" }),
+    element: nameSchema,
+});
+
+const adoptSchema = z.union([z.literal(true), nameSchema, adoptPathSchema], {
+    error: "must be `true`, the name of a getter method, or `{ path, element }`",
 });
 
 const containerSchema = z.strictObject({
@@ -202,7 +215,8 @@ export const elementPropsSchema = z.record(nameSchema, z.array(elementPropSchema
  * child GObject type. `append`/`remove` add and remove a child, `insert` places
  * one at an index or after a sibling, `reorder` moves an existing child, `autowrap`
  * names a widget type each child is wrapped in before attaching, and `adopt` marks
- * pre-existing children as adopted (`true`) or names the getter returning them.
+ * pre-existing children as adopted (`true`), names the getter returning them, or
+ * describes an {@link AdoptPath} reaching them through a chain of getters.
  */
 export type ContainerProp = z.infer<typeof containerSchema>;
 

@@ -1,22 +1,18 @@
 import type * as Gdk from "@gtkx/gi/gdk";
-import type * as Gsk from "@gtkx/gi/gsk";
 import type * as Gtk from "@gtkx/gi/gtk";
 import type {
     GtkColumnViewColumnProps,
     GtkColumnViewProps,
     GtkDropDown,
-    GtkFixedProps,
-    GtkGridProps,
     GtkGridViewProps,
     GtkListViewProps,
-    GtkOverlayProps,
 } from "@gtkx/jsx/gtk";
 import type { ComponentPropsWithRef, ElementType, ReactNode, Ref } from "react";
 
-/** Props of a container's Child component: the widget to render, its own props, and any placement props. */
-export type ChildProps<C extends ElementType, Placement = unknown> = Placement & {
+/** Props of a container's Child component: the widget to render and its own props. */
+export type ChildProps<C extends ElementType> = {
     component: C;
-} & Omit<ComponentPropsWithRef<C>, keyof Placement>;
+} & ComponentPropsWithRef<C>;
 
 /** Props of a component whose backing widget defaults to one type but can be swapped through `component`. */
 export type WidgetProps<C extends ElementType, Own = unknown, ExtraOmit extends string = never> = Own & {
@@ -206,36 +202,6 @@ export type DropDownProps<T = unknown, S = unknown, C extends ElementType = type
     "model" | "factory" | "listFactory" | "headerFactory"
 >;
 
-/** Props for {@link Fixed}. */
-export type FixedProps = GtkFixedProps & { ref?: Ref<Gtk.Fixed | null>; children?: ReactNode };
-
-/** Position of a single child inside a {@link Fixed}. */
-export type FixedPlacement = {
-    x?: number | null | undefined;
-    y?: number | null | undefined;
-    /** Full transform applied to the child, overriding x and y when provided. */
-    transform?: Gsk.Transform | null | undefined;
-};
-
-/** Positions a single child inside a {@link Fixed} at coordinates x and y, or by an explicit transform. */
-export type FixedChildProps<C extends ElementType> = ChildProps<C, FixedPlacement>;
-
-/** Props for {@link Grid}. */
-export type GridProps = GtkGridProps & { ref?: Ref<Gtk.Grid | null>; children?: ReactNode };
-
-/** Cell occupied by a single child inside a {@link Grid}. */
-export type GridPlacement = {
-    column?: number | null | undefined;
-    row?: number | null | undefined;
-    /** Number of columns the child spans (defaults to 1). */
-    columnSpan?: number | null | undefined;
-    /** Number of rows the child spans (defaults to 1). */
-    rowSpan?: number | null | undefined;
-};
-
-/** Places a single child inside a {@link Grid} at a column and row, optionally spanning multiple cells. */
-export type GridChildProps<C extends ElementType> = ChildProps<C, GridPlacement>;
-
 type GridViewOwnProps<T> = ItemSizeProps &
     SelectionProps & {
         items?: Item<T>[] | undefined;
@@ -269,20 +235,6 @@ export type ListViewProps<T = unknown, S = unknown> = Omit<
     "model" | "factory" | "headerFactory" | keyof ListViewOwnProps<T, S>
 > &
     ListViewOwnProps<T, S>;
-
-/** Props for {@link Overlay}. */
-export type OverlayProps = GtkOverlayProps & { ref?: Ref<Gtk.Overlay | null> };
-
-/** Stacking behavior of a single child inside an {@link Overlay}. */
-export type OverlayPlacement = {
-    /** Whether this overlay contributes to the Overlay's measured size. */
-    measure?: boolean | null | undefined;
-    /** Whether the overlay is clipped to the main child's allocation. */
-    clipOverlay?: boolean | null | undefined;
-};
-
-/** Adds a single widget as an overlay on top of an {@link Overlay}'s main child. */
-export type OverlayChildProps<C extends ElementType> = ChildProps<C, OverlayPlacement>;
 
 /** Props for {@link SizeGroup}. */
 export type SizeGroupProps = {

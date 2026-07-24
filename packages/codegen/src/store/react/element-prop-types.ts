@@ -225,6 +225,7 @@ const methodReturnGlib = (context: GirIndex, typeName: string, methodCamel: stri
 
 const resolveAdoptElement = (context: GirIndex, parent: string, cp: ContainerProp): string | undefined => {
     if (cp.adopt === undefined) return undefined;
+    if (typeof cp.adopt === "object") return cp.adopt.element;
     const source = typeof cp.adopt === "string" ? cp.adopt : cp.append;
     if (source === undefined) return undefined;
     const method = typeof source === "string" ? source : source.method;
