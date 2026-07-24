@@ -68,7 +68,7 @@ export const findMethod = (context: GirIndex, typeName: string, camelName: strin
     return undefined;
 };
 
-const chainSome = (context: GirIndex, typeName: string, predicate: (klass: GirClass) => boolean): boolean => {
+export const chainSome = (context: GirIndex, typeName: string, predicate: (klass: GirClass) => boolean): boolean => {
     const entry = context.index.get(typeName);
     if (entry === undefined) return false;
     return chainOf(context, entry).some(predicate);
@@ -83,3 +83,15 @@ export const hasProperty = (context: GirIndex, typeName: string, camelName: stri
     chainSome(context, typeName, (klass) =>
         klass.properties.some((property) => toCamelIdentifier(property.name) === camelName),
     );
+
+export const isA = (context: GirIndex, typeName: string, ancestor: string): boolean =>
+    typeName === ancestor || chainSome(context, typeName, (klass) => glibNameOf(klass) === ancestor);
+
+export const objectParameterType = (context: GirIndex, params: GirParameter[]): string | undefined => {
+    for (const param of params) {
+        const resolved = param.type === undefined ? undefined : context.library.typeOf(param.type);
+        if (resolved === undefined) continue;
+        if (resolved.kind === "class" || resolved.kind === "interface") return glibNameOf(resolved.value);
+    }
+    return undefined;
+};

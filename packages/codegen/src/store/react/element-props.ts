@@ -1,6 +1,7 @@
 import type { ContainerProp, ElementProp, ListProp } from "@gtkx/config";
 import { ELEMENT_RULES } from "@gtkx/react/element-rules";
-import { type GirIndex, hasMethod, hasProperty } from "./gir-index.js";
+import { forEachContainer, resolveAdoptElement } from "./element-prop-types.js";
+import { findMethod, type GirIndex, hasMethod, hasProperty, isA, objectParameterType } from "./gir-index.js";
 import { addCalls } from "./list-calls.js";
 
 const containerTypeNames = (parent: string, prop: ContainerProp): string[] => {
@@ -43,11 +44,29 @@ const validateMember = (context: GirIndex, path: string, host: string, name: str
     }
 };
 
+const validateChildTypes = (context: GirIndex, path: string, type: string, prop: ContainerProp): void => {
+    const accepted = [prop.child, resolveAdoptElement(context, type, prop)].filter(
+        (name): name is string => name !== undefined,
+    );
+    for (const call of containerCalls(prop)) {
+        const method = findMethod(context, type, call);
+        if (method === undefined) continue;
+        const parameter = objectParameterType(context, method.params);
+        if (parameter === undefined) continue;
+        if (accepted.some((name) => isA(context, name, parameter))) continue;
+        throw elementPropError(
+            path,
+            `passes ${accepted.join(" or ")} to "${call}" on ${type}, which takes ${parameter}`,
+        );
+    }
+};
+
 const validateUserElementProp = (context: GirIndex, type: string, path: string, prop: ElementProp): void => {
     switch (prop.kind) {
         case "container":
             validateTypeNames(context, path, containerTypeNames(type, prop));
             validateCalls(context, path, type, containerCalls(prop));
+            validateChildTypes(context, path, type, prop);
             return;
         case "value":
             validateTypeNames(context, path, [type]);
@@ -82,6 +101,12 @@ const validateUserElementProps = (context: GirIndex, elementProps: Record<string
             validateUserElementProp(context, type, `elementProps.${type}[${index}]`, prop);
         });
     }
+};
+
+const validateBuiltInRules = (context: GirIndex, elementProps: Record<string, ElementProp[]>): void => {
+    forEachContainer(elementProps, (type, prop) => {
+        validateChildTypes(context, `ELEMENT_RULES.${type}`, type, prop);
+    });
 };
 
 const elementPropKey = (prop: ElementProp): string =>
@@ -126,9 +151,8 @@ export const assembleElementProps = (
     userElementProps: Record<string, ElementProp[]>,
 ): Record<string, ElementProp[]> => {
     validateUserElementProps(context, userElementProps);
-    const merged = mergeElementProps([
-        filterKnownElementProps(context, ELEMENT_RULES),
-        filterKnownElementProps(context, userElementProps),
-    ]);
+    const builtIn = filterKnownElementProps(context, ELEMENT_RULES);
+    validateBuiltInRules(context, builtIn);
+    const merged = mergeElementProps([builtIn, filterKnownElementProps(context, userElementProps)]);
     return merged;
 };

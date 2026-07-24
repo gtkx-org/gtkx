@@ -69,6 +69,61 @@ const behaviorKey = (type: string, prop: string, child: string): string => `${ty
 export const behaviorFor = (type: string, prop: string, child: string): ContainerBehavior | undefined =>
     behaviors.get(behaviorKey(type, prop, child));
 
+/** Registers a container behavior for each of `types` under the same prop and child type. */
+export const registerBehavior = <P extends GObject.Object, C extends GObject.Object, CP = Props>(
+    types: string[],
+    prop: string,
+    child: string,
+    behavior: ContainerBehavior<P, C, CP>,
+): void => {
+    for (const type of types) behaviors.set(behaviorKey(type, prop, child), behavior as ContainerBehavior);
+};
+
+/** Registers a list behavior for a prop on `type`. */
+export const registerListBehavior = <P extends GObject.Object, I>(
+    type: string,
+    prop: string,
+    behavior: ListBehavior<P, I>,
+): void => {
+    listBehaviors.set(listKey(type, prop), behavior as ListBehavior);
+};
+
+/** Behavior for a container that installs its single child with `setChild`. */
+export const childSetterBehavior = <
+    P extends GObject.Object & { setChild: (child: Gtk.Widget | null) => void },
+>(): ContainerBehavior<P, Gtk.Widget> => ({
+    attach: (parent, child) => parent.setChild(child),
+    detach: (parent) => parent.setChild(null),
+});
+
+/** Behavior for a `GtkBox`-style container that orders children by sibling. */
+export const boxBehavior = <
+    P extends GObject.Object & {
+        append: (child: Gtk.Widget) => unknown;
+        remove: (child: Gtk.Widget) => void;
+        insertChildAfter: (child: Gtk.Widget, sibling: Gtk.Widget | null) => unknown;
+        reorderChildAfter: (child: Gtk.Widget, sibling: Gtk.Widget | null) => void;
+    },
+>(): ContainerBehavior<P, Gtk.Widget> => ({
+    attach: (box, child) => box.append(child),
+    detach: (box, child) => box.remove(child),
+    insert: (box, child, { sibling }) => box.insertChildAfter(child, sibling),
+    reorder: (box, child, { sibling }) => box.reorderChildAfter(child, sibling),
+});
+
+/** Behavior for a container that places children by index. */
+export const indexedBehavior = <
+    P extends GObject.Object & {
+        append: (child: Gtk.Widget) => unknown;
+        remove: (child: Gtk.Widget) => void;
+        insert: (child: Gtk.Widget, position: number) => unknown;
+    },
+>(): ContainerBehavior<P, Gtk.Widget> => ({
+    attach: (parent, child) => parent.append(child),
+    detach: (parent, child) => parent.remove(child),
+    insert: (parent, child, { index }) => parent.insert(child, index),
+});
+
 const withBehavior = <P extends GObject.Object, C extends GObject.Object, CP = Props>(
     type: string,
     rule: ElementProp,
@@ -77,14 +132,6 @@ const withBehavior = <P extends GObject.Object, C extends GObject.Object, CP = P
     if (rule.kind === "container")
         behaviors.set(behaviorKey(type, rule.prop, rule.child), behavior as ContainerBehavior);
     return rule;
-};
-
-type TabViewLike = GObject.Object & {
-    append: (child: Gtk.Widget) => GObject.Object;
-    insert: (child: Gtk.Widget, position: number) => GObject.Object;
-    reorderPage: (page: GObject.Object, position: number) => boolean;
-    closePage: (page: GObject.Object) => void;
-    getPage: (child: Gtk.Widget) => GObject.Object;
 };
 
 const buildMenu = (items: MenuItem[], create: () => Gio.Menu): Gio.Menu => {
@@ -124,76 +171,29 @@ const container = (
     ...methods,
 });
 
-type ChildSetter = GObject.Object & { setChild: (child: Gtk.Widget | null) => void };
+const singleChild = (): ElementProp => container("children", "GtkWidget", { append: "setChild", remove: "setChild" });
 
-type ContentSetter = GObject.Object & { setContent: (content: Gtk.Widget | null) => void };
+const singleContent = (child: string): ElementProp =>
+    container("children", child, { append: "setContent", remove: "setContent" });
 
-type BoxLike = GObject.Object & {
-    append: (child: Gtk.Widget) => void;
-    remove: (child: Gtk.Widget) => void;
-    insertChildAfter: (child: Gtk.Widget, sibling: Gtk.Widget | null) => void;
-    reorderChildAfter: (child: Gtk.Widget, sibling: Gtk.Widget | null) => void;
-};
+const boxChildren = (): ElementProp =>
+    container("children", "GtkWidget", {
+        append: "append",
+        remove: "remove",
+        insert: "insertChildAfter",
+        reorder: "reorderChildAfter",
+    });
 
-type IndexedLike = GObject.Object & {
-    remove: (child: Gtk.Widget) => void;
-    insert: (child: Gtk.Widget, position: number) => void;
-};
+const autowrapChildren = (wrapper: string): ElementProp =>
+    container("children", "GtkWidget", {
+        append: "append",
+        remove: "remove",
+        insert: "insert",
+        autowrap: wrapper,
+    });
 
-const singleChild = (type: string): ElementProp =>
-    withBehavior<ChildSetter, Gtk.Widget>(
-        type,
-        container("children", "GtkWidget", { append: "setChild", remove: "setChild" }),
-        {
-            attach: (parent, child) => parent.setChild(child),
-            detach: (parent) => parent.setChild(null),
-        },
-    );
-
-const singleContent = (type: string): ElementProp =>
-    withBehavior<ContentSetter, Gtk.Widget>(
-        type,
-        container("children", "GtkWidget", { append: "setContent", remove: "setContent" }),
-        {
-            attach: (parent, child) => parent.setContent(child),
-            detach: (parent) => parent.setContent(null),
-        },
-    );
-
-const boxChildren = (type: string): ElementProp =>
-    withBehavior<BoxLike, Gtk.Widget>(
-        type,
-        container("children", "GtkWidget", {
-            append: "append",
-            remove: "remove",
-            insert: "insertChildAfter",
-            reorder: "reorderChildAfter",
-        }),
-        {
-            attach: (box, child) => box.append(child),
-            detach: (box, child) => box.remove(child),
-            insert: (box, child, { sibling }) => box.insertChildAfter(child, sibling),
-            reorder: (box, child, { sibling }) => box.reorderChildAfter(child, sibling),
-        },
-    );
-
-const autowrapChildren = (type: string, wrapper: string): ElementProp =>
-    withBehavior<IndexedLike & { append: (child: Gtk.Widget) => void }, Gtk.Widget>(
-        type,
-        container("children", "GtkWidget", {
-            append: "append",
-            remove: "remove",
-            insert: "insert",
-            autowrap: wrapper,
-        }),
-        {
-            attach: (parent, child) => parent.append(child),
-            detach: (parent, child) => parent.remove(child),
-            insert: (parent, child, { index }) => parent.insert(child, index),
-        },
-    );
-
-const addRemoveChildren = (): ElementProp => container("children", "GtkWidget", { append: "add", remove: "remove" });
+const addRemoveChildren = (child: string): ElementProp =>
+    container("children", child, { append: "add", remove: "remove" });
 
 const prefixSuffixProps = (): ElementProp[] => [
     container("prefix", "GtkWidget", { append: "addPrefix" }),
@@ -215,16 +215,10 @@ const SHORTCUT_METHODS = { append: "addShortcut", remove: "removeShortcut" } sat
 
 const vflConstraints = new WeakMap<VflConstraints, Gtk.Constraint[]>();
 
-type AlertDialogLike = GObject.Object & {
-    addResponse: (id: string, label: string) => void;
-    setResponseAppearance: (response: string, appearance: number) => void;
-    setResponseEnabled: (response: string, enabled: boolean) => void;
-    removeResponse: (response: string) => void;
-};
-
 type ActionPlacement = { name?: string };
 
-const SINGLE_CHILD_TYPES = [
+/** Adwaita types whose single child is installed with `setChild`; behaviors come from `@gtkx/react/adw`. */
+export const ADW_SINGLE_CHILD_TYPES: string[] = [
     "AdwBin",
     "AdwBreakpointBin",
     "AdwClamp",
@@ -236,6 +230,9 @@ const SINGLE_CHILD_TYPES = [
     "AdwTabOverview",
     "AdwToastOverlay",
     "AdwToggle",
+];
+
+const GTK_SINGLE_CHILD_TYPES = [
     "GtkAspectFrame",
     "GtkButton",
     "GtkCheckButton",
@@ -260,24 +257,64 @@ const SINGLE_CHILD_TYPES = [
     "GtkWindowHandle",
 ];
 
-const SINGLE_CONTENT_TYPES = [
+const SINGLE_CHILD_TYPES = [...ADW_SINGLE_CHILD_TYPES, ...GTK_SINGLE_CHILD_TYPES];
+
+/** Adwaita types whose single child is installed with `setContent`; behaviors come from `@gtkx/react/adw`. */
+export const ADW_SINGLE_CONTENT_TYPES: string[] = [
     "AdwApplicationWindow",
     "AdwBottomSheet",
     "AdwFlap",
-    "AdwNavigationSplitView",
     "AdwOverlaySplitView",
     "AdwWindow",
+    "AdwToolbarView",
 ];
 
-const BOX_TYPES = ["AdwLeaflet", "AdwWrapBox", "GtkBox"];
+/** Adwaita types laid out like a `GtkBox`; behaviors come from `@gtkx/react/adw`. */
+export const ADW_BOX_TYPES: string[] = ["AdwLeaflet", "AdwWrapBox"];
 
-const ADD_REMOVE_TYPES = [
-    "AdwNavigationView",
-    "AdwPreferencesDialog",
-    "AdwPreferencesGroup",
-    "AdwPreferencesWindow",
-    "AdwSqueezer",
-];
+type GtkChildSetter =
+    | Gtk.AspectFrame
+    | Gtk.Button
+    | Gtk.CheckButton
+    | Gtk.ComboBox
+    | Gtk.DragIcon
+    | Gtk.Expander
+    | Gtk.FlowBoxChild
+    | Gtk.Frame
+    | Gtk.GraphicsOffload
+    | Gtk.ListBoxRow
+    | Gtk.ListHeader
+    | Gtk.ListItem
+    | Gtk.MenuButton
+    | Gtk.Overlay
+    | Gtk.Popover
+    | Gtk.PopoverBin
+    | Gtk.Revealer
+    | Gtk.ScrolledWindow
+    | Gtk.SearchBar
+    | Gtk.TreeExpander
+    | Gtk.Viewport
+    | Gtk.Window
+    | Gtk.WindowHandle;
+
+registerBehavior(
+    [...GTK_SINGLE_CHILD_TYPES, "GtkOverlay"],
+    "children",
+    "GtkWidget",
+    childSetterBehavior<GtkChildSetter>(),
+);
+
+registerBehavior(["GtkBox"], "children", "GtkWidget", boxBehavior<Gtk.Box>());
+
+registerBehavior(["GtkListBox", "GtkFlowBox"], "children", "GtkWidget", indexedBehavior<Gtk.ListBox | Gtk.FlowBox>());
+
+const ADD_REMOVE_CHILDREN: Record<string, string> = {
+    AdwNavigationView: "AdwNavigationPage",
+    AdwPreferencesDialog: "AdwPreferencesPage",
+    AdwPreferencesGroup: "GtkWidget",
+    AdwPreferencesWindow: "AdwPreferencesPage",
+    AdwSqueezer: "GtkWidget",
+};
 
 const withBreakpoints = (props: Record<string, ElementProp[]>): Record<string, ElementProp[]> => {
     for (const type of ["AdwApplicationWindow", "AdwWindow", "AdwDialog"]) {
@@ -291,10 +328,13 @@ const withBreakpoints = (props: Record<string, ElementProp[]>): Record<string, E
 };
 
 export const ELEMENT_RULES: Record<string, ElementProp[]> = withBreakpoints({
-    ...forEach(SINGLE_CHILD_TYPES, (type) => [singleChild(type)]),
-    ...forEach(SINGLE_CONTENT_TYPES, (type) => [singleContent(type)]),
-    ...forEach(BOX_TYPES, (type) => [boxChildren(type)]),
-    ...forEach(ADD_REMOVE_TYPES, () => [addRemoveChildren()]),
+    ...forEach(SINGLE_CHILD_TYPES, () => [singleChild()]),
+    ...forEach(ADW_SINGLE_CONTENT_TYPES, () => [singleContent("GtkWidget")]),
+    ...forEach([...ADW_BOX_TYPES, "GtkBox"], () => [boxChildren()]),
+    ...forEach(Object.keys(ADD_REMOVE_CHILDREN), (type) => [
+        addRemoveChildren(ADD_REMOVE_CHILDREN[type] ?? "GtkWidget"),
+    ]),
+    AdwNavigationSplitView: [singleContent("AdwNavigationPage")],
     GtkWidget: [
         container("controllers", "GtkEventController", CONTROLLER_METHODS),
         withBehavior<Gtk.Widget, Gtk.LayoutManager>(
@@ -388,7 +428,7 @@ export const ELEMENT_RULES: Record<string, ElementProp[]> = withBreakpoints({
         ),
     ],
     GtkOverlay: [
-        singleChild("GtkOverlay"),
+        singleChild(),
         withBehavior<Gtk.Overlay, Gtk.Widget>(
             "GtkOverlay",
             container("overlays", "GtkWidget", { adopt: adopts("GtkOverlayLayoutChild") }),
@@ -438,67 +478,30 @@ export const ELEMENT_RULES: Record<string, ElementProp[]> = withBreakpoints({
     AdwToolbarView: [
         container("topBar", "GtkWidget", { append: "addTopBar" }),
         container("bottomBar", "GtkWidget", { append: "addBottomBar" }),
-        singleContent("AdwToolbarView"),
+        singleContent("GtkWidget"),
     ],
     AdwCarousel: [
-        withBehavior<
-            IndexedLike & {
-                append: (child: Gtk.Widget) => void;
-                reorder: (child: Gtk.Widget, position: number) => void;
-            },
-            Gtk.Widget
-        >(
-            "AdwCarousel",
-            container("children", "GtkWidget", {
-                append: "append",
-                remove: "remove",
-                insert: "insert",
-                reorder: "reorder",
-            }),
-            {
-                attach: (carousel, child) => carousel.append(child),
-                detach: (carousel, child) => carousel.remove(child),
-                insert: (carousel, child, { index }) => carousel.insert(child, index),
-                reorder: (carousel, child, { index }) => carousel.reorder(child, index),
-            },
-        ),
+        container("children", "GtkWidget", {
+            append: "append",
+            remove: "remove",
+            insert: "insert",
+            reorder: "reorder",
+        }),
     ],
     AdwPreferencesPage: [
-        withBehavior<IndexedLike & { add: (child: Gtk.Widget) => void }, Gtk.Widget>(
-            "AdwPreferencesPage",
-            container("children", "GtkWidget", { append: "add", remove: "remove", insert: "insert" }),
-            {
-                attach: (page, child) => page.add(child),
-                detach: (page, child) => page.remove(child),
-                insert: (page, child, { index }) => page.insert(child, index),
-            },
-        ),
+        container("children", "AdwPreferencesGroup", { append: "add", remove: "remove", insert: "insert" }),
     ],
     AdwTabView: [
-        withBehavior<TabViewLike, Gtk.Widget>(
-            "AdwTabView",
-            container("children", "GtkWidget", {
-                append: "append",
-                insert: "insert",
-                reorder: "reorderPage",
-                remove: "closePage",
-                adopt: "getPage",
-            }),
-            {
-                attach: (view, child) => view.append(child),
-                insert: (view, child, { index }) => view.insert(child, index),
-                reorder: (view, _child, { adopted, index }) => {
-                    if (adopted !== null) view.reorderPage(adopted, index);
-                },
-                detach: (view, _child, { adopted }) => {
-                    if (adopted !== null) view.closePage(adopted);
-                },
-                resolve: (view, child) => view.getPage(child),
-            },
-        ),
+        container("children", "GtkWidget", {
+            append: "append",
+            insert: "insert",
+            reorder: "reorderPage",
+            remove: "closePage",
+            adopt: "getPage",
+        }),
     ],
-    GtkListBox: [autowrapChildren("GtkListBox", "GtkListBoxRow")],
-    GtkFlowBox: [autowrapChildren("GtkFlowBox", "GtkFlowBoxChild")],
+    GtkListBox: [autowrapChildren("GtkListBoxRow")],
+    GtkFlowBox: [autowrapChildren("GtkFlowBoxChild")],
     GtkStack: [
         container("children", "GtkWidget", { append: "addChild", remove: "remove", adopt: true }),
         { kind: "lazy", prop: "visibleChildName", lookup: "getChildByName" },
@@ -569,25 +572,12 @@ export const ELEMENT_RULES: Record<string, ElementProp[]> = withBreakpoints({
         ),
     ],
     AdwAlertDialog: [
-        withListBehavior<AlertDialogLike, { id: string; label: string; appearance?: number; enabled?: boolean }>(
-            "AdwAlertDialog",
-            {
-                kind: "list",
-                prop: "responses",
-                itemKey: "id",
-                add: ["addResponse", "setResponseAppearance", "setResponseEnabled"],
-                remove: "removeResponse",
-            },
-            {
-                add: (dialog, response) => {
-                    dialog.addResponse(response.id, response.label);
-                    if (response.appearance !== undefined) {
-                        dialog.setResponseAppearance(response.id, response.appearance);
-                    }
-                    if (response.enabled !== undefined) dialog.setResponseEnabled(response.id, response.enabled);
-                },
-                remove: (dialog, response) => dialog.removeResponse(response.id),
-            },
-        ),
+        {
+            kind: "list",
+            prop: "responses",
+            itemKey: "id",
+            add: ["addResponse", "setResponseAppearance", "setResponseEnabled"],
+            remove: "removeResponse",
+        },
     ],
 });

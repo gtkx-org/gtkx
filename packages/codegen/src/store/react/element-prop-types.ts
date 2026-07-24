@@ -14,7 +14,7 @@ export type ElementPropTypegen = {
     acceptsChildren: (glibName: string) => boolean;
 };
 
-const forEachContainer = (
+export const forEachContainer = (
     elementProps: Record<string, ElementProp[]>,
     visit: (type: string, prop: ContainerProp) => void,
 ): void => {
@@ -44,7 +44,7 @@ const methodReturnGlib = (context: GirIndex, typeName: string, methodCamel: stri
     return glibNameOf(resolved.value);
 };
 
-const resolveAdoptElement = (context: GirIndex, parent: string, cp: ContainerProp): string | undefined => {
+export const resolveAdoptElement = (context: GirIndex, parent: string, cp: ContainerProp): string | undefined => {
     if (cp.adopt === undefined) return undefined;
     if (typeof cp.adopt === "object") return cp.adopt.element;
     const method = typeof cp.adopt === "string" ? cp.adopt : cp.append;
