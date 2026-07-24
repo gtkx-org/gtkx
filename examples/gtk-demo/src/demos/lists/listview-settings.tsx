@@ -1,8 +1,8 @@
-import { type Column, ColumnView, ListView, Menu } from "@gtkx/components";
+import { type Column, ColumnView, ListView } from "@gtkx/components";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
+import { GMenu, GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
 import {
     GtkBox,
     GtkEditableLabel,
@@ -213,7 +213,7 @@ const INITIAL_COLUMN_VISIBILITY: ColumnVisibility = {
 };
 
 const columnVisibilityMenu = (
-    <Menu
+    <GMenu
         items={[
             {
                 section: TOGGLEABLE_COLUMNS.map((column) => ({

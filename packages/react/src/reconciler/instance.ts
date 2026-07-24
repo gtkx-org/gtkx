@@ -37,13 +37,19 @@ const constructInput = (info: TypeInfo, props: Props): Props => {
     return input;
 };
 
-export const createElementNode = (typeName: string, props: Props): ElementNode => {
+const instantiate = (typeName: string, input: Props): GObject.Object => {
     const type = typeFromName(typeName);
     if (type === TYPE_INVALID) throw notRegistered(typeName);
-    const info = typeInfoOf(typeName);
     const cls = getWrapperClass(type) as WidgetConstructor;
-    const object = new cls(constructInput(info, props));
-    const contentKind = resolveContentKind(type);
+    return new cls(input);
+};
+
+export const createObject = (typeName: string): GObject.Object => instantiate(typeName, {});
+
+export const createElementNode = (typeName: string, props: Props): ElementNode => {
+    const info = typeInfoOf(typeName);
+    const object = instantiate(typeName, constructInput(info, props));
+    const contentKind = resolveContentKind(typeFromName(typeName));
     return {
         kind: ELEMENT_KIND,
         typeName,

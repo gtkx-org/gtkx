@@ -4,6 +4,7 @@ import { toCamelIdentifier } from "@gtkx/utils";
 import type { GirParameter } from "../../gir/parameter.js";
 import { PRIMITIVE_TS_TYPE } from "../../gir/primitives.js";
 import { findMethod, type GirIndex, hasMethod, hasProperty } from "./gir-index.js";
+import { addCalls, buildArgsOf } from "./list-calls.js";
 
 const callMethodName = (call: Call): string => (typeof call === "string" ? call : call.method);
 
@@ -68,13 +69,13 @@ const validateUserElementProp = (context: GirIndex, type: string, path: string, 
             if (prop.lookup !== undefined) validateCalls(context, path, type, [prop.lookup]);
             return;
         case "list":
-            validateTypeNames(context, path, [type]);
+            validateTypeNames(context, path, [type, ...buildTypeNames(prop)]);
             validateCalls(context, path, type, listCalls(prop));
             return;
     }
 };
 
-const addCalls = (add: ListProp["add"]): Call[] => (Array.isArray(add) ? add : [add]);
+const buildTypeNames = (prop: ListProp): string[] => buildArgsOf(prop).map((arg) => arg.build);
 
 const listCalls = (prop: ListProp): Call[] => {
     const calls = addCalls(prop.add);
@@ -183,9 +184,11 @@ const filterKnownElementProps = (
     const result: Record<string, ElementProp[]> = {};
     for (const [type, props] of Object.entries(map)) {
         if (!context.index.has(type)) continue;
-        const kept = props.filter(
-            (prop) => prop.kind !== "container" || knownTypes(context, containerTypeNames(type, prop)),
-        );
+        const kept = props.filter((prop) => {
+            if (prop.kind === "container") return knownTypes(context, containerTypeNames(type, prop));
+            if (prop.kind === "list") return knownTypes(context, buildTypeNames(prop));
+            return true;
+        });
         if (kept.length > 0) result[type] = kept;
     }
     return result;

@@ -10,6 +10,8 @@ export type HandlerRecord = { signal: string; handler: SignalHandler; wrapped: S
 
 export type SignalTarget = { object: GObject.Object; handlers: Map<string, HandlerRecord>; typeName: string };
 
+export type AppliedList = { items: unknown[]; snapshot: unknown[] };
+
 export type PlacedChild = {
     node: PlaceableNode;
     widget: GObject.Object;
@@ -27,7 +29,7 @@ export type ElementNode = {
     placements: Map<string, PlacedChild[]>;
     objectSlots: Set<string>;
     lazyApplied: Map<string, unknown>;
-    listApplied: Map<string, unknown[]>;
+    listApplied: Map<string, AppliedList>;
     parent: ParentNode | null;
     content: ContentChild[] | null;
     contentKind: ContentKind | null;

@@ -1,8 +1,6 @@
 import type * as Gdk from "@gtkx/gi/gdk";
-import type * as Gio from "@gtkx/gi/gio";
 import type * as Gsk from "@gtkx/gi/gsk";
 import type * as Gtk from "@gtkx/gi/gtk";
-import type { GMenuProps } from "@gtkx/jsx/gio";
 import type {
     GtkColumnViewColumnProps,
     GtkColumnViewProps,
@@ -91,18 +89,6 @@ type ExpansionProps = {
 type SourceProps<T, S> = {
     items?: Item<T>[] | undefined;
     sections?: Section<S, T>[] | undefined;
-};
-
-/** Declarative description of a single menu item, optionally nesting a submenu or section. */
-export type MenuItem = {
-    /** Text shown for the item. */
-    label?: string | undefined;
-    /** Action name activated when the item is chosen, for example "app.quit". */
-    action?: string | undefined;
-    /** Nested items shown as a submenu opened from this item. */
-    submenu?: MenuItem[] | undefined;
-    /** Nested items grouped as a visually separated section. */
-    section?: MenuItem[] | undefined;
 };
 
 /** One column of a {@link ColumnView}, pairing Gtk.ColumnViewColumn props with a cell renderer. */
@@ -283,12 +269,6 @@ export type ListViewProps<T = unknown, S = unknown> = Omit<
     "model" | "factory" | "headerFactory" | keyof ListViewOwnProps<T, S>
 > &
     ListViewOwnProps<T, S>;
-
-/** Props for {@link Menu}, combining Gio.Menu props with a declarative items array. */
-export type MenuProps = Omit<GMenuProps, "items"> & {
-    items?: MenuItem[] | null | undefined;
-    ref?: Ref<Gio.Menu | null>;
-};
 
 /** Props for {@link Overlay}. */
 export type OverlayProps = GtkOverlayProps & { ref?: Ref<Gtk.Overlay | null> };

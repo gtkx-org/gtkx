@@ -57,6 +57,15 @@ const autowrapProp = (wrapper: string): ElementProp =>
         autowrap: wrapper,
     });
 
+const linkedMenu = (method: string, link: string): Call => ({
+    method,
+    args: [
+        { field: "label", or: null },
+        { build: "GMenu", prop: "items", from: link },
+    ],
+    when: link,
+});
+
 const forEach = (types: string[], build: () => ElementProp[]): Record<string, ElementProp[]> =>
     Object.fromEntries(types.map((type) => [type, build()]));
 
@@ -162,6 +171,25 @@ export const BUILT_IN_ELEMENT_PROPS: Record<string, ElementProp[]> = withBreakpo
         container("children", "GtkWidget", { remove: "remove" }),
     ],
     GActionMap: [container("actions", "GAction", ACTION_METHODS)],
+    GMenu: [
+        {
+            kind: "list",
+            prop: "items",
+            clear: "removeAll",
+            add: [
+                linkedMenu("appendSubmenu", "submenu"),
+                linkedMenu("appendSection", "section"),
+                {
+                    method: "append",
+                    args: [
+                        { field: "label", or: null },
+                        { field: "action", or: null },
+                    ],
+                    unless: ["submenu", "section"],
+                },
+            ],
+        },
+    ],
     GtkColumnView: [
         container("children", "GtkColumnViewColumn", {
             append: "appendColumn",
@@ -244,8 +272,16 @@ export const BUILT_IN_ELEMENT_PROPS: Record<string, ElementProp[]> = withBreakpo
             prop: "responses",
             add: [
                 "addResponse",
-                { method: "setResponseAppearance", args: [{ field: "id" }, { field: "appearance", or: 0 }] },
-                { method: "setResponseEnabled", args: [{ field: "id" }, { field: "enabled", or: true }] },
+                {
+                    method: "setResponseAppearance",
+                    args: [{ field: "id" }, { field: "appearance", or: 0 }],
+                    when: "appearance",
+                },
+                {
+                    method: "setResponseEnabled",
+                    args: [{ field: "id" }, { field: "enabled", or: true }],
+                    when: "enabled",
+                },
             ],
             remove: "removeResponse",
         },

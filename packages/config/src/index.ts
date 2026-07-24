@@ -9,6 +9,7 @@ export type {
     AppliedProp,
     Arg,
     ArgRef,
+    BuildArg,
     Call,
     ContainerProp,
     ControlledTextProp,

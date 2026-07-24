@@ -104,26 +104,6 @@ import { DropDown } from "@gtkx/components";
 
 The backing widget comes from the `component` prop. Leave it out for a plain `Gtk.DropDown`, or pass `AdwComboRow` to present the same choice as a row inside a preferences group, as the tutorial's [preferences chapter](/tutorial/preferences-and-theming) does.
 
-## Menu
-
-`Menu` builds a `Gio.Menu` model from a plain `items: MenuItem[]` array instead of imperative `append`/`appendSection`/`appendSubmenu` calls.
-
-```tsx
-import { Menu } from "@gtkx/components";
-import { GtkMenuButton } from "@gtkx/jsx/gtk";
-
-<GtkMenuButton
-    primary
-    iconName="open-menu-symbolic"
-    menuModel={<Menu items={[
-        { section: [{ label: "New Task", action: "win.new" }] },
-        { section: [{ label: "About Tasks", action: "win.about" }] },
-    ]} />}
-/>
-```
-
-Actions and the `"app."`/`"win."` prefixes are covered in the tutorial's [actions chapter](/tutorial/actions-menus-shortcuts).
-
 ## Layout components
 
 ### Grid and Grid.Child

@@ -5,7 +5,7 @@ import type { GirNamespace } from "../../gir/namespace.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { renderBlock } from "../../writer/emit.js";
 import type { ImportsBuilder } from "../../writer/imports.js";
-import type { ElementPropTypegen } from "./element-prop-types.js";
+import { type ElementPropImports, type ElementPropTypegen, emptyElementPropImports } from "./element-prop-types.js";
 import {
     collectInterfacePropsClasses,
     type GlibNamedClass,
@@ -94,14 +94,31 @@ export const generateJsxSection = (
     }
     if (needsReactElement) addReactBuiltin(imports, "ReactElement");
 
+    const itemTypeImports = emptyElementPropImports();
+    const itemTypeLines = typegen.listItemTypeSources(targetNamespace.name, itemTypeImports);
+    registerElementPropImports(imports, targetNamespace.name, itemTypeImports);
+
     const source = [
         constLines.join("\n"),
         "",
+        itemTypeLines.join("\n"),
+        itemTypeLines.length === 0 ? "" : "\n",
         propBlocks.join("\n\n"),
         "",
         renderJsxAugmentation(namespaceElements),
     ].join("\n");
     return { source, intrinsicCount: intrinsicElementConsts.length };
+};
+
+const registerElementPropImports = (
+    imports: ImportsBuilder,
+    targetNamespaceName: string,
+    collected: ElementPropImports,
+): void => {
+    for (const [namespace, alias] of collected.gi) addGiNamespace(imports, namespace, alias);
+    for (const [typeName, namespace] of collected.jsx) {
+        registerCrossNsProps(imports, targetNamespaceName, namespace, typeName);
+    }
 };
 
 type InterfaceBlockContext = {
@@ -239,14 +256,14 @@ const renderPropBlock = (
     });
     for (const [namespace, alias] of imports) addGiNamespace(context.imports, namespace, alias);
     addGiNamespace(context.imports, entry.namespace.name, giNamespaceAlias(entry.namespace.name));
-    const elementPropImports = new Map<string, string>();
+    const elementPropImports = emptyElementPropImports();
     const elementPropLines = context.typegen.classPropLines(
         entry.glibName,
         entry.klass,
         entry.namespace,
         elementPropImports,
     );
-    for (const [namespace, alias] of elementPropImports) addGiNamespace(context.imports, namespace, alias);
+    registerElementPropImports(context.imports, context.targetNamespaceName, elementPropImports);
     const containerPropLines = containerPropNames.map((propName) => `${propName}?: ReactNode | null | undefined;`);
     const ownerLines = dedupePropLines([
         ...(context.typegen.acceptsChildren(entry.glibName) ? ["children?: ReactNode;"] : []),

@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { isPlainObject, isRecord, isSameArray, isSameArrayBy, isShallowEqual } from "../src/predicate/index.js";
+import { structuralClone } from "../src/object/index.js";
+import {
+    isDeepEqual,
+    isPlainObject,
+    isRecord,
+    isSameArray,
+    isSameArrayBy,
+    isShallowEqual,
+} from "../src/predicate/index.js";
 
 describe("isSameArray", () => {
     it("is true for equal-length, element-wise strictly-equal arrays", () => {
@@ -81,5 +89,47 @@ describe("isPlainObject", () => {
         expect(isPlainObject(new Date())).toBe(false);
         expect(isPlainObject(null)).toBe(false);
         expect(isPlainObject("x")).toBe(false);
+    });
+});
+
+describe("isDeepEqual", () => {
+    it("is true for structurally equal nested arrays and plain objects", () => {
+        expect(isDeepEqual({ a: [1, { b: 2 }] }, { a: [1, { b: 2 }] })).toBe(true);
+        expect(isDeepEqual([], [])).toBe(true);
+    });
+
+    it("is false for differing values, lengths, and key sets", () => {
+        expect(isDeepEqual({ a: [1] }, { a: [2] })).toBe(false);
+        expect(isDeepEqual([1], [1, 2])).toBe(false);
+        expect(isDeepEqual({ a: 1 }, { a: 1, b: 2 })).toBe(false);
+    });
+
+    it("compares values that are not both arrays or both plain objects by identity", () => {
+        const date = new Date(0);
+        expect(isDeepEqual(date, date)).toBe(true);
+        expect(isDeepEqual(new Date(0), new Date(0))).toBe(false);
+        expect(isDeepEqual([1], { 0: 1 })).toBe(false);
+    });
+});
+
+describe("structuralClone", () => {
+    it("copies nested arrays and plain objects so later mutations do not leak", () => {
+        const nested = { b: 1 };
+        const source = { a: [nested] };
+        const copy = structuralClone(source);
+
+        expect(isDeepEqual(copy, source)).toBe(true);
+
+        nested.b = 2;
+
+        expect(copy).toEqual({ a: [{ b: 1 }] });
+        expect(isDeepEqual(copy, source)).toBe(false);
+    });
+
+    it("shares values that are neither arrays nor plain objects", () => {
+        const date = new Date(0);
+
+        expect(structuralClone({ date }).date).toBe(date);
+        expect(structuralClone(date)).toBe(date);
     });
 });

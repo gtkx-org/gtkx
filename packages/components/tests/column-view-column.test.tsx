@@ -1,6 +1,6 @@
-import { type Column, ColumnView, Menu, type MenuItem, type RenderItemArgs } from "@gtkx/components";
+import { type Column, ColumnView, type RenderItemArgs } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
+import { GMenu, type GMenuItemsEntry, GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 
 import { render } from "@gtkx/testing";
@@ -38,13 +38,13 @@ const actionGroup = (prefix: string, specs: ActionSpec[]): ReactNode => (
     />
 );
 
-const menuEntries = (prefix: string, specs: ActionSpec[]): MenuItem[] =>
+const menuEntries = (prefix: string, specs: ActionSpec[]): GMenuItemsEntry[] =>
     specs.map((spec) => ({ label: spec.label, action: `${prefix}.${spec.id}` }));
 
-const flatMenu = (prefix: string, specs: ActionSpec[]): ReactElement => <Menu items={menuEntries(prefix, specs)} />;
+const flatMenu = (prefix: string, specs: ActionSpec[]): ReactElement => <GMenu items={menuEntries(prefix, specs)} />;
 
 const sectionedMenu = (prefix: string, sections: ActionSpec[][]): ReactElement => (
-    <Menu items={sections.map((specs) => ({ section: menuEntries(prefix, specs) }))} />
+    <GMenu items={sections.map((specs) => ({ section: menuEntries(prefix, specs) }))} />
 );
 
 const renderColumns = async (

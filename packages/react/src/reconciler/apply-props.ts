@@ -2,9 +2,9 @@ import type { ListProp, ValueProp } from "@gtkx/config";
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import type { SignalHandler } from "@gtkx/runtime";
-import { kebabCase } from "@gtkx/utils";
+import { isDeepEqual, kebabCase, structuralClone } from "@gtkx/utils";
 import { applyAccessibleProps, isAccessibleProp } from "../utils/accessible-props.js";
-import { runCall } from "./calls.js";
+import { addListItem, runCall } from "./calls.js";
 import type { Props } from "./kinds.js";
 import { type TypeInfo, typeInfoOf } from "./metadata.js";
 import type { ElementNode, SignalTarget } from "./node.js";
@@ -35,23 +35,18 @@ const applyValueRule = (object: GObject.Object, rule: ValueProp, value: unknown,
 
 type PropEntry = { name: string; value: unknown; oldValue: unknown; props: Props };
 
-const addListItem = (object: GObject.Object, rule: ListProp, item: unknown, props: Props): void => {
-    const adds = Array.isArray(rule.add) ? rule.add : [rule.add];
-    for (const call of adds) runCall(object, call, { item, props }, [item]);
-};
-
 const applyListRule = (node: ElementNode, rule: ListProp, entry: PropEntry): void => {
     const { name, value, props } = entry;
     const items = Array.isArray(value) ? value : [];
+    const applied = node.listApplied.get(name);
+    if (applied !== undefined && isDeepEqual(applied.snapshot, items)) return;
     if (rule.clear !== undefined) {
         runCall(node.object, rule.clear, {}, []);
     } else if (rule.remove !== undefined) {
-        for (const item of node.listApplied.get(name) ?? []) {
-            runCall(node.object, rule.remove, { item, props }, [item]);
-        }
+        for (const item of applied?.items ?? []) runCall(node.object, rule.remove, { item, props }, [item]);
     }
     for (const item of items) addListItem(node.object, rule, item, props);
-    node.listApplied.set(name, items);
+    node.listApplied.set(name, { items, snapshot: structuralClone(items) });
 };
 
 const resetPlain = (object: GObject.Object, info: TypeInfo, name: string): void => {

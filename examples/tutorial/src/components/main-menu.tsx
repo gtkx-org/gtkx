@@ -1,4 +1,4 @@
-import { Menu } from "@gtkx/components";
+import { GMenu } from "@gtkx/jsx/gio";
 import { GtkMenuButton } from "@gtkx/jsx/gtk";
 
 export const MainMenu = () => (
@@ -7,7 +7,7 @@ export const MainMenu = () => (
         iconName="open-menu-symbolic"
         tooltipText="Main Menu"
         menuModel={
-            <Menu
+            <GMenu
                 items={[
                     { section: [{ label: "New Task", action: "win.new" }] },
                     {

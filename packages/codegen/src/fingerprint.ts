@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import type { ElementProp } from "@gtkx/config";
+import { BUILT_IN_ELEMENT_PROPS } from "@gtkx/config/internal";
 import { sortStrings } from "@gtkx/utils";
 
 const require = createRequire(import.meta.url);
@@ -24,6 +25,8 @@ export const computeFingerprint = (
 ): string => {
     const hash = createHash("sha256");
     hash.update(CODEGEN_VERSION);
+    hash.update("\n");
+    hash.update(JSON.stringify(BUILT_IN_ELEMENT_PROPS));
     hash.update("\n");
     hash.update(JSON.stringify(elementProps));
     hash.update("\n");

@@ -1,10 +1,9 @@
 import * as path from "node:path/posix";
-import { Menu } from "@gtkx/components";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwAboutDialog, AdwShortcutsDialog, AdwShortcutsItem, AdwShortcutsSection } from "@gtkx/jsx/adw";
-import { GSimpleAction } from "@gtkx/jsx/gio";
+import { GMenu, GSimpleAction } from "@gtkx/jsx/gio";
 import {
     GtkApplication,
     GtkApplicationWindow,
@@ -183,7 +182,7 @@ const AppHeaderBar = ({ hasDemo, searchMode, onRun, onSearchToggle }: AppHeaderB
                 valign={Gtk.Align.CENTER}
                 focusOnClick={false}
                 menuModel={
-                    <Menu
+                    <GMenu
                         items={[
                             {
                                 section: [

@@ -150,8 +150,55 @@ describe("validateConfig elementProps validation", () => {
             ],
             GtkDrawingArea: [{ kind: "value", prop: "drawFunc", call: "setDrawFunc", after: "queueDraw" }],
             GtkEditable: [{ kind: "controlled-text", prop: "text" }],
+            GMenu: [
+                {
+                    kind: "list",
+                    prop: "items",
+                    clear: "removeAll",
+                    add: [
+                        {
+                            method: "appendSubmenu",
+                            args: [
+                                { field: "label", or: null },
+                                { build: "GMenu", prop: "items", from: "submenu" },
+                            ],
+                            when: "submenu",
+                        },
+                        {
+                            method: "append",
+                            args: [
+                                { field: "label", or: null },
+                                { field: "action", or: null },
+                            ],
+                            unless: ["submenu"],
+                        },
+                    ],
+                },
+            ],
         };
         expect(() => validateWithAppId({ elementProps })).not.toThrow();
+    });
+
+    it("rejects a build argument missing its target prop", () => {
+        const cp = {
+            kind: "list",
+            prop: "items",
+            add: { method: "appendSubmenu", args: [{ build: "GMenu", from: "submenu" }] },
+        };
+        expect(() => validateUnknown({ applicationId: "org.gtk.Test", elementProps: { GMenu: [cp] } })).toThrow(
+            /`elementProps\.GMenu\[0\]\.add\.args\[0\]\.prop` must be a non-empty string/,
+        );
+    });
+
+    it("rejects a non-array `unless` guard", () => {
+        const cp = {
+            kind: "list",
+            prop: "items",
+            add: { method: "append", args: [{ field: "label", or: null }], unless: "submenu" },
+        };
+        expect(() => validateUnknown({ applicationId: "org.gtk.Test", elementProps: { GMenu: [cp] } })).toThrow(
+            /`elementProps\.GMenu\[0\]\.add\.unless` must be an array of field names/,
+        );
     });
 
     it("accepts a config that omits elementProps", () => {

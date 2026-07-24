@@ -6,7 +6,11 @@ import type { Library } from "../gir/library.js";
 import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import type { GirSignal } from "../gir/parameter.js";
 import { type GirProperty, isConstructableProperty } from "../gir/property.js";
-import { createElementPropTypegen, type ElementPropTypegen } from "../store/react/element-prop-types.js";
+import {
+    createElementPropTypegen,
+    type ElementPropTypegen,
+    emptyElementPropImports,
+} from "../store/react/element-prop-types.js";
 import { assembleElementProps } from "../store/react/element-props.js";
 import { buildGirIndex, type GirIndex } from "../store/react/gir-index.js";
 import {
@@ -190,7 +194,12 @@ const cleanOverlayType = (type: string): string => type.replace(/\s*\|\s*undefin
 const overlayEntries = (entry: GlibNamedClass, context: ElementPageContext, seen: Set<string>): PropEntry[] => {
     const overlays = context.elementProps[entry.glibName] ?? [];
     const entries: PropEntry[] = [];
-    const lines = context.typegen.classPropLines(entry.glibName, entry.klass, entry.namespace, new Map());
+    const lines = context.typegen.classPropLines(
+        entry.glibName,
+        entry.klass,
+        entry.namespace,
+        emptyElementPropImports(),
+    );
     for (const line of lines) {
         const match = line.match(/^([A-Za-z0-9_]+)\?: (.*);$/);
         if (match === null) continue;

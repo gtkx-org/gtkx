@@ -95,7 +95,7 @@ A GNOME primary menu is a `GtkMenuButton` in the header bar whose model is a men
 Create `src/components/main-menu.tsx`:
 
 ```tsx
-import { Menu } from "@gtkx/components";
+import { GMenu } from "@gtkx/jsx/gio";
 import { GtkMenuButton } from "@gtkx/jsx/gtk";
 
 export const MainMenu = () => (
@@ -104,7 +104,7 @@ export const MainMenu = () => (
         iconName="open-menu-symbolic"
         tooltipText="Main Menu"
         menuModel={
-            <Menu
+            <GMenu
                 items={[
                     { section: [{ label: "New Task", action: "win.new" }] },
                     { section: [{ label: "Keyboard Shortcuts", action: "win.shortcuts" }] },
@@ -116,7 +116,7 @@ export const MainMenu = () => (
 );
 ```
 
-`Menu` from `@gtkx/components` builds a menu model from `items`. An entry with `section` groups its children and draws a separator between groups. An entry with `label` and `action` is a menu item, and the action name is all the wiring it needs: no callback threaded down from the window, and the item goes insensitive by itself when the action is missing.
+`GMenu` takes an `items` array instead of the imperative `append`/`appendSection`/`appendSubmenu` calls. An entry with `section` groups its children and draws a separator between groups, an entry with `submenu` opens a nested menu, and an entry with `label` and `action` is a menu item. The action name is all the wiring it needs: no callback threaded down from the window, and the item goes insensitive by itself when the action is missing.
 
 `primary` marks this button as the window's primary menu, which is what makes F10 open it. You do not register that key yourself.
 

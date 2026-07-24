@@ -12,23 +12,36 @@ type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string
 export type ArgRef = (typeof ARG_REFS)[number];
 
 /**
+ * An argument built by instantiating the GObject type `build` and applying its
+ * own prop rule named `prop` to the array held by the current item's `from`
+ * field. Naming the enclosing type and prop makes the rule recursive, which is
+ * how a nested menu model is assembled from a tree of items.
+ */
+export type BuildArg = { build: string; prop: string; from: string };
+
+/**
  * A single argument passed to a method {@link Call}: an {@link ArgRef}, a value
  * read from a React prop (`{ prop }`), a field read off the current item with an
- * optional fallback (`{ field, or }`), or a constant (`{ literal }`).
+ * optional fallback (`{ field, or }`), a constant (`{ literal }`), or a nested
+ * object assembled from the item ({@link BuildArg}).
  */
-export type Arg = ArgRef | { prop: string } | { field: string; or?: JsonValue } | { literal: JsonValue };
+export type Arg = ArgRef | { prop: string } | { field: string; or?: JsonValue } | { literal: JsonValue } | BuildArg;
 
 /**
  * A GObject method invocation: either a bare method name called with default
  * arguments, or a method name paired with an explicit list of {@link Arg}s.
+ * When invoked per item, `when` restricts the call to items carrying that field
+ * and `unless` skips items carrying any of the named fields.
  */
-export type Call = string | { method: string; args: Arg[] };
+export type Call = string | { method: string; args: Arg[]; when?: string; unless?: string[] };
 
 const NAME_MESSAGE = "must be a non-empty string";
 
 const JSON_MESSAGE = "must be a JSON-serializable value";
 
-const ARG_MESSAGE = "must be one of: reference name, { prop }, { field }, { literal }";
+const ARG_MESSAGE = "must be one of: reference name, { prop }, { field }, { literal }, { build }";
+
+const FIELD_LIST_MESSAGE = "must be an array of field names";
 
 const ARG_REF_SET: Set<string> = new Set(ARG_REFS);
 
@@ -83,11 +96,20 @@ const collectLiteralArgIssues = (value: Record<string, unknown>): CollectedIssue
     return issues;
 };
 
+const collectBuildArgIssues = (value: Record<string, unknown>): CollectedIssue[] => {
+    const issues = unknownKeyIssues(value, ["build", "prop", "from"]);
+    for (const key of ["build", "prop", "from"]) {
+        if (!requireName(value[key])) issues.push({ path: [key], message: NAME_MESSAGE });
+    }
+    return issues;
+};
+
 const collectArgIssues = (value: unknown): CollectedIssue[] => {
     if (typeof value === "string") {
         return ARG_REF_SET.has(value) ? [] : [{ path: [], message: `has unknown reference "${value}"` }];
     }
     if (!isRecord(value)) return [{ path: [], message: ARG_MESSAGE }];
+    if ("build" in value) return collectBuildArgIssues(value);
     if ("prop" in value) return collectPropArgIssues(value);
     if ("field" in value) return collectFieldArgIssues(value);
     if ("literal" in value) return collectLiteralArgIssues(value);
@@ -102,10 +124,14 @@ const collectArgsIssues = (args: unknown[]): CollectedIssue[] =>
 const collectCallIssues = (value: unknown): CollectedIssue[] => {
     if (typeof value === "string") return value.length === 0 ? [{ path: [], message: NAME_MESSAGE }] : [];
     if (!isRecord(value)) return [{ path: [], message: "must be an object" }];
-    const issues = unknownKeyIssues(value, ["method", "args"]);
+    const issues = unknownKeyIssues(value, ["method", "args", "when", "unless"]);
     if (!requireName(value.method)) issues.push({ path: ["method"], message: NAME_MESSAGE });
     if (!Array.isArray(value.args)) issues.push({ path: ["args"], message: "must be an array" });
     else issues.push(...collectArgsIssues(value.args));
+    if ("when" in value && !requireName(value.when)) issues.push({ path: ["when"], message: NAME_MESSAGE });
+    if ("unless" in value && !(Array.isArray(value.unless) && value.unless.every(requireName))) {
+        issues.push({ path: ["unless"], message: FIELD_LIST_MESSAGE });
+    }
     return issues;
 };
 
