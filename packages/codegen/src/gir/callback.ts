@@ -19,6 +19,7 @@ export const callbackAsFunction = (callback: GirCallback): GirFunction => ({
     throws: false,
     introspectable: callback.introspectable,
     shadowedBy: undefined,
+    finishFunc: undefined,
     instance: undefined,
     parameters: callback.parameters,
     returnValue: callback.returnValue,

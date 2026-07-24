@@ -14,6 +14,7 @@ import type { GirRecord } from "../gir/record.js";
 import {
     dedupeCallables,
     indexMethodsByName,
+    instanceScope,
     matchStaticFinishFunction,
     renderInstanceMethodSignature,
     renderStaticSignature,
@@ -177,11 +178,15 @@ const interfaceMethodNames = (library: Library, owner: MemberOwner): string[] =>
     const context = docsSignatureContext(owner.namespace, library);
     const className = pascalCase(owner.klass.name);
     const methods = dedupeCallables(owner.klass.methods);
-    const methodByName = indexMethodsByName(methods);
+    const scope = instanceScope(className, {
+        constructors: dedupeCallables(owner.klass.constructors),
+        functions: dedupeCallables(owner.klass.functions),
+        methods,
+    });
     const names: string[] = [];
     for (const callable of methods) {
         const rename = reservedSignalMemberRename(className, callable);
-        const rendered = renderInstanceMethodSignature(context, { ...callable, doc: undefined }, methodByName, rename);
+        const rendered = renderInstanceMethodSignature(context, { ...callable, doc: undefined }, scope, rename);
         if (rendered === undefined) continue;
         names.push(rename ?? methodExportName(callable));
     }
@@ -221,6 +226,9 @@ const propertyMeta = (property: GirProperty, accessor: ResolvedAccessor, origin:
     return meta.join(" · ");
 };
 
+const sortedMetaBlocks = (entries: { name: string; meta: string; doc: string }[]): string[] =>
+    sortStringsBy(entries, (item) => item.name).map((item) => metaBlock(item.name, item.meta, item.doc));
+
 const propertiesSection = (
     entry: GiSymbolBase & { kind: "class" | "interface"; klass: GirClass },
     library: Library,
@@ -247,8 +255,7 @@ const propertiesSection = (
     }
     if (entries.length === 0) return [];
     const intro = `Properties are read and written as instance fields; changes can be observed with \`connect("notify::<property-name>", handler)\`. Properties inherited from ancestors are documented on their own pages.`;
-    const blocks = sortStringsBy(entries, (item) => item.name).map((item) => metaBlock(item.name, item.meta, item.doc));
-    return ["## Properties", intro, ...blocks];
+    return ["## Properties", intro, ...sortedMetaBlocks(entries)];
 };
 
 const signalsSection = (entry: GiSymbolBase & { klass: GirClass }, library: Library): string[] => {
@@ -385,8 +392,7 @@ const fieldsSection = (record: GirRecord, context: ModuleContext, claimedNames: 
         });
     }
     if (entries.length === 0) return [];
-    const blocks = sortStringsBy(entries, (item) => item.name).map((item) => metaBlock(item.name, item.meta, item.doc));
-    return ["## Fields", ...blocks];
+    return ["## Fields", ...sortedMetaBlocks(entries)];
 };
 
 const enumPage = (entry: GiSymbolBase & { kind: "enum"; enumeration: GirEnum }): string => {

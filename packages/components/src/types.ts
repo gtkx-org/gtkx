@@ -77,6 +77,11 @@ export type ControlledExpansionProps = {
     onExpandedChange?: ((ids: string[]) => void) | null | undefined;
 };
 
+export type CollectionSourceProps<T = unknown, S = unknown> = {
+    items?: ItemNode<T>[] | undefined;
+    sections?: SectionNode<S, T>[] | undefined;
+};
+
 /** Declarative description of a single menu item, optionally nesting a submenu or section. */
 export type MenuEntry = {
     /** Text shown for the item. */
@@ -113,9 +118,8 @@ export type ColumnViewSortProps = {
 export type ColumnViewDeclarativeProps<T = unknown, S = unknown> = ColumnViewSortProps &
     Omit<CollectionItemSizeProps, "estimatedItemWidth"> &
     ControlledSelectionProps &
-    ControlledExpansionProps & {
-        items?: ItemNode<T>[] | undefined;
-        sections?: SectionNode<S, T>[] | undefined;
+    ControlledExpansionProps &
+    CollectionSourceProps<T, S> & {
         renderHeader?: ((info: { section: S }) => ReactNode) | null | undefined;
         columns: ColumnDef<T>[];
     };
@@ -194,9 +198,7 @@ export type ConstraintVflProps = {
 export type DropDownItemRenderer<T> = (props: RenderItemProps<T>) => ReactNode;
 
 /** Declarative props for {@link DropDown}'s backing collection and cell rendering. */
-export type DropDownDeclarativeProps<T = unknown, S = unknown> = {
-    items?: ItemNode<T>[] | undefined;
-    sections?: SectionNode<S, T>[] | undefined;
+export type DropDownDeclarativeProps<T = unknown, S = unknown> = CollectionSourceProps<T, S> & {
     /** Id of the currently selected item, making the selection controlled. */
     selectedId?: string | null | undefined;
     onSelectionChanged?: ((id: string) => void) | null | undefined;
@@ -264,9 +266,8 @@ export type GridViewProps<T = unknown> = Omit<
 
 export type ListViewDeclarativeProps<T = unknown, S = unknown> = CollectionItemSizeProps &
     ControlledSelectionProps &
-    ControlledExpansionProps & {
-        items?: ItemNode<T>[] | undefined;
-        sections?: SectionNode<S, T>[] | undefined;
+    ControlledExpansionProps &
+    CollectionSourceProps<T, S> & {
         renderItem: (props: RenderItemProps<T>) => ReactNode;
         renderHeader?: ((info: { section: S }) => ReactNode) | null | undefined;
     };

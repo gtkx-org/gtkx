@@ -4,11 +4,10 @@ import { createContext, useImperativeHandle, useLayoutEffect, useRef } from "rea
 import {
     type PlacedChildren,
     type PlacedOps,
-    usePlacedChildEffects,
+    usePlacedChildRef,
     usePlacedHost,
     useRequiredContext,
 } from "./internal/placed-children.js";
-import { useWidgetRef } from "./internal/use-widget-ref.js";
 import type { SizeGroupChildProps, SizeGroupProps } from "./types.js";
 
 const SizeGroupContext = createContext<PlacedChildren<null> | null>(null);
@@ -31,8 +30,7 @@ type SizeGroupChildRuntimeProps = {
 const SizeGroupChildImpl = (props: SizeGroupChildRuntimeProps): ReactNode => {
     const controller = useRequiredContext(SizeGroupContext, "<SizeGroup.Child> must be a child of <SizeGroup>");
     const { component: Component, ref, ...rest } = props;
-    const [widget, refCallback] = useWidgetRef<Gtk.Widget>(ref);
-    usePlacedChildEffects(controller, widget, () => null, "");
+    const refCallback = usePlacedChildRef(controller, ref, () => null, "");
     return <Component {...rest} ref={refCallback} />;
 };
 

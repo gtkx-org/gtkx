@@ -1,3 +1,5 @@
+import * as GdkPixbuf from "@gtkx/gi/gdkpixbuf";
+import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import type { ExternalObject, Handle } from "@gtkx/native";
 import { getHandle, promisify, setHandle } from "@gtkx/runtime";
@@ -79,5 +81,30 @@ describe("promisify", () => {
                 expect((cause as Error).stack).toContain("promisify.test.ts");
             },
         );
+    });
+});
+
+describe("generated promisified bindings", () => {
+    it("resolves an instance async method against its annotated static finish", async () => {
+        const pixbuf = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, false, 8, 2, 2);
+        const stream = Gio.MemoryOutputStream.newResizable();
+
+        const saved = await pixbuf.saveToStreamvAsync(stream, "png", null, null);
+
+        expect(saved).toBe(true);
+        expect(stream.getDataSize()).toBeGreaterThan(0);
+    });
+
+    it("resolves an instance async method against a name-matched static finish", async () => {
+        const firstOutput = Gio.MemoryOutputStream.newResizable();
+        const secondOutput = Gio.MemoryOutputStream.newResizable();
+        const first = Gio.SimpleIOStream.new(Gio.MemoryInputStream.newFromData([1, 2, 3, 4], null), firstOutput);
+        const second = Gio.SimpleIOStream.new(Gio.MemoryInputStream.newFromData([5, 6], null), secondOutput);
+
+        const spliced = await first.spliceAsync(second, Gio.IOStreamSpliceFlags.NONE, 0);
+
+        expect(spliced).toBe(true);
+        expect(secondOutput.getDataSize()).toBe(4);
+        expect(firstOutput.getDataSize()).toBe(2);
     });
 });

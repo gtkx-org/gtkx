@@ -3,7 +3,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { render, screen } from "@gtkx/testing";
 import { createRef } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { countChildren } from "./helpers/child-count.js";
 
 describe("render - Overlay.Child (1)", () => {
@@ -153,5 +153,64 @@ describe("render - Overlay.Child (7)", () => {
         await rerender(<App useA={false} />);
         expect(refB.current).toBe(button);
         expect(refA.current).toBeNull();
+    });
+});
+
+describe("render - Overlay.Child (8)", () => {
+    it("keeps the overlay attached across rerenders when the child takes an inline ref", async () => {
+        const overlayRef = createRef<Gtk.Overlay>();
+
+        function App({ label }: { label: string }) {
+            return (
+                <Overlay ref={overlayRef}>
+                    <GtkLabel>Main</GtkLabel>
+                    <Overlay.Child component={GtkButton} ref={() => {}} label={label} />
+                </Overlay>
+            );
+        }
+
+        const { rerender } = await render(<App label="One" />);
+        const overlay = overlayRef.current as Gtk.Overlay;
+        const button = screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "One" });
+        const removeOverlay = vi.spyOn(overlay, "removeOverlay");
+        const addOverlay = vi.spyOn(overlay, "addOverlay");
+
+        await rerender(<App label="Two" />);
+
+        expect(removeOverlay).not.toHaveBeenCalled();
+        expect(addOverlay).not.toHaveBeenCalled();
+        expect(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Two" })).toBe(button);
+        expect(countChildren(overlay)).toBe(2);
+    });
+
+    it("runs a callback ref cleanup instead of a null call when the child unmounts", async () => {
+        const cleanup = vi.fn();
+        const attached: (Gtk.Widget | null)[] = [];
+
+        function App({ visible }: { visible: boolean }) {
+            return (
+                <Overlay>
+                    <GtkLabel>Main</GtkLabel>
+                    {visible ? (
+                        <Overlay.Child
+                            component={GtkButton}
+                            label="Disposable"
+                            ref={(widget) => {
+                                attached.push(widget);
+                                return cleanup;
+                            }}
+                        />
+                    ) : null}
+                </Overlay>
+            );
+        }
+
+        const { rerender } = await render(<App visible={true} />);
+        expect(attached).toHaveLength(1);
+        expect(cleanup).not.toHaveBeenCalled();
+
+        await rerender(<App visible={false} />);
+        expect(cleanup).toHaveBeenCalledTimes(1);
+        expect(attached).toEqual([attached[0]]);
     });
 });

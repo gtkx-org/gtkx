@@ -7,11 +7,10 @@ import {
     createPlacedRoot,
     type PlacedChildren,
     type PlacedOps,
-    usePlacedChildEffects,
+    usePlacedChildRef,
     useRequiredContext,
 } from "./internal/placed-children.js";
 import { useLatest } from "./internal/use-latest.js";
-import { useWidgetRef } from "./internal/use-widget-ref.js";
 import type { OverlayChildProps, OverlayProps } from "./types.js";
 
 type OverlayPlacement = {
@@ -48,11 +47,10 @@ type OverlayChildRuntimeProps = {
 const OverlayChildImpl = (props: OverlayChildRuntimeProps): ReactNode => {
     const controller = useRequiredContext(OverlayContext, "<Overlay.Child> must be a child of <Overlay>");
     const { component: Component, measure, clipOverlay, ref, ...rest } = props;
-    const [widget, refCallback] = useWidgetRef<Gtk.Widget>(ref);
     const placement = useLatest<OverlayPlacement>({ measure: measure ?? false, clipOverlay: clipOverlay ?? false });
-    usePlacedChildEffects(
+    const refCallback = usePlacedChildRef(
         controller,
-        widget,
+        ref,
         () => placement.current,
         `${placement.current.measure}:${placement.current.clipOverlay}`,
     );

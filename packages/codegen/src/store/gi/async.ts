@@ -8,18 +8,20 @@ export const matchAsyncFinish = (
     siblings: GirFunction[],
 ): GirFunction | undefined => {
     if (!hasCanonicalAsyncCallback(library, fn)) return undefined;
-    const finishName = matchAsyncFinishName(fn, siblings);
-    if (finishName === undefined) return undefined;
-    const finishFn = siblings.find((sibling) => sibling.name === finishName);
+    const finishFn = findFinishSibling(fn, siblings);
     if (finishFn === undefined || !isPromisifiableFinish(library, finishFn)) return undefined;
     return finishFn;
 };
 
-const matchAsyncFinishName = (fn: GirFunction, siblings: GirFunction[]): string | undefined => {
+const findFinishSibling = (fn: GirFunction, siblings: GirFunction[]): GirFunction | undefined => {
+    const annotated = fn.finishFunc;
+    if (annotated !== undefined) {
+        return siblings.find((sibling) => sibling.name === annotated || sibling.cIdentifier === annotated);
+    }
     if (fn.name.endsWith("_finish")) return undefined;
     const root = fn.name.endsWith("_async") ? fn.name.slice(0, -"_async".length) : fn.name;
     const finishName = `${root}_finish`;
-    return siblings.some((sibling) => sibling.name === finishName) ? finishName : undefined;
+    return siblings.find((sibling) => sibling.name === finishName);
 };
 
 const hasCanonicalAsyncCallback = (library: Library, fn: GirFunction): boolean => {

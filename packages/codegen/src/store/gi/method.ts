@@ -109,7 +109,10 @@ export const renderPromisifiedBody = (
     return `return promisify(${bindingExpression}, ${finishExpression}, ${cancellableExpression}${leadingArguments});`;
 };
 
-export const boundFinishExpression = (finishFn: GirFunction): string => `this.${methodExportName(finishFn)}.bind(this)`;
+export const finishCallExpression = (asyncFn: GirFunction, finishFn: GirFunction, ownerName: string): string =>
+    asyncFn.instance !== undefined && finishFn.instance === undefined
+        ? `${ownerName}.${methodExportName(finishFn)}.bind(${ownerName})`
+        : `this.${methodExportName(finishFn)}.bind(this)`;
 
 type PromisifyContext = {
     context: ModuleContext;

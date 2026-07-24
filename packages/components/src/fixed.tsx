@@ -8,11 +8,10 @@ import {
     createPlacedRoot,
     type PlacedChildren,
     type PlacedOps,
-    usePlacedChildEffects,
+    usePlacedChildRef,
     useRequiredContext,
 } from "./internal/placed-children.js";
 import { useLatest } from "./internal/use-latest.js";
-import { useWidgetRef } from "./internal/use-widget-ref.js";
 import type { FixedChildProps, FixedProps } from "./types.js";
 
 type FixedPlacement = {
@@ -56,12 +55,11 @@ const useTransformSerial = (transform: Gsk.Transform | null): number => {
 const FixedChildImpl = (props: FixedChildRuntimeProps): ReactNode => {
     const controller = useRequiredContext(FixedContext, "<Fixed.Child> must be a child of <Fixed>");
     const { component: Component, x, y, transform, ref, ...rest } = props;
-    const [widget, refCallback] = useWidgetRef<Gtk.Widget>(ref);
     const placement = useLatest<FixedPlacement>({ x: x ?? 0, y: y ?? 0, transform: transform ?? null });
     const transformSerial = useTransformSerial(placement.current.transform);
-    usePlacedChildEffects(
+    const refCallback = usePlacedChildRef(
         controller,
-        widget,
+        ref,
         () => placement.current,
         `${placement.current.x}:${placement.current.y}:${transformSerial}`,
     );

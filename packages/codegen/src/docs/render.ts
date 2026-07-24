@@ -8,7 +8,7 @@ import type { Library } from "../gir/library.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import type { GirSignal } from "../gir/parameter.js";
 import type { TypeId } from "../gir/type-id.js";
-import { dedupeCallables, indexMethodsByName, renderInstanceMethodSignature } from "../store/gi/callables.js";
+import { dedupeCallables, instanceScope, renderInstanceMethodSignature } from "../store/gi/callables.js";
 import { methodExportName } from "../store/gi/method.js";
 import { ModuleContext } from "../writer/context.js";
 import { gtkDocToMarkdown } from "../writer/gtk-doc.js";
@@ -146,7 +146,7 @@ export const classMethodEntries = (library: Library, namespace: GirNamespace, kl
     const signatureContext = docsSignatureContext(namespace, library);
     const className = pascalCase(klass.name);
     const inherited = collectInheritedMethods(realContext, klass);
-    return instanceMethodEntries(signatureContext, klass.methods, (method) =>
+    return instanceMethodEntries(signatureContext, klass, (method) =>
         conflictRename(realContext, method, inherited, className),
     );
 };
@@ -158,18 +158,22 @@ export const methodsSectionBlocks = (entries: SignatureEntry[], intro: string): 
 
 export const instanceMethodEntries = (
     signatureContext: ModuleContext,
-    methods: GirFunction[],
+    klass: GirClass,
     rename: (fn: GirFunction) => string | undefined,
 ): SignatureEntry[] => {
-    const deduped = dedupeCallables(methods);
-    const siblings = indexMethodsByName(deduped);
+    const deduped = dedupeCallables(klass.methods);
+    const scope = instanceScope(pascalCase(klass.name), {
+        constructors: dedupeCallables(klass.constructors),
+        functions: dedupeCallables(klass.functions),
+        methods: deduped,
+    });
     const entries: SignatureEntry[] = [];
     for (const method of deduped) {
         const nameOverride = rename(method);
         const rendered = renderInstanceMethodSignature(
             signatureContext,
             { ...method, doc: undefined },
-            siblings,
+            scope,
             nameOverride,
         );
         if (rendered === undefined) continue;

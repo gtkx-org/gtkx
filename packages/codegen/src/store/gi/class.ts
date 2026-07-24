@@ -18,7 +18,8 @@ import {
     classConstructorMemberNames,
     dedupeCallables,
     generateBindings,
-    indexMethodsByName,
+    type InstanceScope,
+    instanceScope,
     renderClassInstanceMember,
     renderStaticHead,
 } from "./callables.js";
@@ -90,11 +91,11 @@ const renderClassMembers = (
     const claimedNames = new Set<string>();
     members.push(...renderStaticHead(context, callables, className));
     const inherited = collectInheritedMethods(context, klass);
-    const methodByName = indexMethodsByName(callables.methods);
+    const scope = instanceScope(className, callables);
     appendInstanceMethods({
         context,
         methods: callables.methods,
-        methodByName,
+        scope,
         inherited,
         members,
         claimedNames,
@@ -104,7 +105,13 @@ const renderClassMembers = (
     const accessors: ResolvedAccessor[] = [];
     for (const property of klass.properties) {
         const inheritedType = inheritedPropertyTypes.get(toCamelIdentifier(property.name));
-        const accessor = resolveAccessor({ context, property, claimedNames, methodByName, inheritedType });
+        const accessor = resolveAccessor({
+            context,
+            property,
+            claimedNames,
+            methodByName: scope.methodByName,
+            inheritedType,
+        });
         if (accessor === undefined) continue;
         accessors.push(accessor);
         members.push(renderResolvedPropertyAccessor(context, property, accessor));
@@ -116,7 +123,7 @@ const renderClassMembers = (
 type AppendInstanceMethodsOptions = {
     context: ModuleContext;
     methods: GirFunction[];
-    methodByName: Map<string, GirFunction>;
+    scope: InstanceScope;
     inherited: InheritedMethods;
     members: string[];
     claimedNames: Set<string>;
@@ -124,10 +131,10 @@ type AppendInstanceMethodsOptions = {
 };
 
 const appendInstanceMethods = (options: AppendInstanceMethodsOptions): void => {
-    const { context, methods, methodByName, inherited, members, claimedNames, className } = options;
+    const { context, methods, scope, inherited, members, claimedNames, className } = options;
     for (const callable of methods) {
         const rename = conflictRename(context, callable, inherited, className);
-        const block = renderClassInstanceMember(context, callable, methodByName, rename);
+        const block = renderClassInstanceMember(context, callable, scope, rename);
         if (block === undefined) continue;
         members.push(block);
         claimedNames.add(rename ?? methodExportName(callable));

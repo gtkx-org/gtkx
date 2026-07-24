@@ -7,11 +7,10 @@ import {
     createPlacedRoot,
     type PlacedChildren,
     type PlacedOps,
-    usePlacedChildEffects,
+    usePlacedChildRef,
     useRequiredContext,
 } from "./internal/placed-children.js";
 import { useLatest } from "./internal/use-latest.js";
-import { useWidgetRef } from "./internal/use-widget-ref.js";
 import type { GridChildProps, GridProps } from "./types.js";
 
 type GridCell = {
@@ -52,7 +51,6 @@ type GridChildRuntimeProps = {
 const GridChildImpl = (props: GridChildRuntimeProps): ReactNode => {
     const controller = useRequiredContext(GridContext, "<Grid.Child> must be a child of <Grid>");
     const { component: Component, column, row, columnSpan, rowSpan, ref, ...rest } = props;
-    const [widget, refCallback] = useWidgetRef<Gtk.Widget>(ref);
     const cell = useLatest<GridCell>({
         column: column ?? 0,
         row: row ?? 0,
@@ -60,9 +58,9 @@ const GridChildImpl = (props: GridChildRuntimeProps): ReactNode => {
         rowSpan: rowSpan ?? 1,
     });
     const { column: columnValue, row: rowValue, columnSpan: columnSpanValue, rowSpan: rowSpanValue } = cell.current;
-    usePlacedChildEffects(
+    const refCallback = usePlacedChildRef(
         controller,
-        widget,
+        ref,
         () => cell.current,
         `${columnValue}:${rowValue}:${columnSpanValue}:${rowSpanValue}`,
     );

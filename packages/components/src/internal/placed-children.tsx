@@ -1,6 +1,16 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { type Context, type ElementType, type ReactNode, type Ref, useContext, useLayoutEffect, useRef } from "react";
-import { useWidgetRef } from "./use-widget-ref.js";
+import {
+    type Context,
+    type ElementType,
+    type ReactNode,
+    type Ref,
+    type RefCallback,
+    useContext,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+} from "react";
+import { applyRef, useWidgetRef } from "./use-widget-ref.js";
 
 export type PlacedOps<P> = {
     attach: (widget: Gtk.Widget, placement: P) => void;
@@ -57,6 +67,8 @@ export class PlacedChildren<P> {
     }
 
     reportOrder(widget: Gtk.Widget): void {
+        const previous = this.orderReports.indexOf(widget);
+        if (previous !== -1) this.orderReports.splice(previous, 1);
         this.orderReports.push(widget);
     }
 
@@ -142,23 +154,40 @@ export function createPlacedRoot<W, P>(config: PlacedRootConfig<W, P>): (props: 
     };
 }
 
-export function usePlacedChildEffects<P>(
+export function usePlacedChildRef<P>(
     controller: PlacedChildren<P>,
-    widget: Gtk.Widget | null,
+    external: Ref<Gtk.Widget | null> | null | undefined,
     placement: () => P,
     placementKey: string,
-): void {
+): RefCallback<Gtk.Widget | null> {
     const placementRef = useRef(placement);
     placementRef.current = placement;
+    const widgetRef = useRef<Gtk.Widget | null>(null);
+    const externalRef = useRef(external);
+    const refCallback = useMemo<RefCallback<Gtk.Widget | null>>(
+        () => (value) => {
+            applyRef(externalRef.current, value);
+            const previous = widgetRef.current;
+            if (previous === value) return;
+            widgetRef.current = value;
+            if (previous !== null) controller.remove(previous);
+            if (value !== null) controller.add(value, () => placementRef.current());
+        },
+        [controller],
+    );
     useLayoutEffect(() => {
-        if (widget === null) return;
-        controller.add(widget, () => placementRef.current());
-        return () => controller.remove(widget);
-    }, [widget, controller]);
+        if (externalRef.current === external) return;
+        applyRef(externalRef.current, null);
+        externalRef.current = external;
+        if (widgetRef.current !== null) applyRef(external, widgetRef.current);
+    });
     useLayoutEffect(() => {
+        const widget = widgetRef.current;
         if (widget !== null) controller.refresh(widget);
-    }, [widget, controller, placementKey]);
+    }, [controller, placementKey]);
     useLayoutEffect(() => {
+        const widget = widgetRef.current;
         if (widget !== null) controller.reportOrder(widget);
     });
+    return refCallback;
 }

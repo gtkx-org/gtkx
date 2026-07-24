@@ -9,7 +9,8 @@ import {
     type Callables,
     dedupeCallables,
     generateBindings,
-    indexMethodsByName,
+    type InstanceScope,
+    instanceScope,
     renderClassInstanceMember,
     renderInstanceMethodSignature,
     renderStaticHead,
@@ -80,7 +81,7 @@ type InterfaceMemberRenderers = {
     renderMethod: (
         context: ModuleContext,
         callable: GirFunction,
-        methodByName: Map<string, GirFunction>,
+        scope: InstanceScope,
         nameOverride?: string,
     ) => string | undefined;
     renderProperty: (args: PropertyAccessorArgs) => string | undefined;
@@ -95,16 +96,16 @@ const renderInterfaceMembers = (
     const className = pascalCase(iface.name);
     const members: string[] = [];
     const claimedNames = new Set<string>();
-    const methodByName = indexMethodsByName(callables.methods);
+    const scope = instanceScope(className, callables);
     for (const callable of callables.methods) {
         const rename = reservedSignalMemberRename(className, callable);
-        const block = renderers.renderMethod(context, callable, methodByName, rename);
+        const block = renderers.renderMethod(context, callable, scope, rename);
         if (block === undefined) continue;
         members.push(block);
         claimedNames.add(rename ?? methodExportName(callable));
     }
     for (const property of iface.properties) {
-        const block = renderers.renderProperty({ context, property, claimedNames, methodByName });
+        const block = renderers.renderProperty({ context, property, claimedNames, methodByName: scope.methodByName });
         if (block !== undefined) members.push(block);
     }
     return members;

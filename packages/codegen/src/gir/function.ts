@@ -9,6 +9,7 @@ export type GirFunction = {
     throws: boolean;
     introspectable: boolean;
     shadowedBy: string | undefined;
+    finishFunc: string | undefined;
     instance: GirParameter | undefined;
     parameters: GirParameter[];
     returnValue: GirReturnValue;
@@ -23,6 +24,7 @@ export const functionFromNode = (node: RawNode, context: ParseContext): GirFunct
         throws: attrBool(node, "throws"),
         introspectable: attrBool(node, "introspectable", true),
         shadowedBy: attr(node, "shadowed-by"),
+        finishFunc: attr(node, "glib:finish-func"),
         instance: instanceNode === undefined ? undefined : parameterFromNode(instanceNode, context),
     };
 };

@@ -12,6 +12,7 @@ export { TextPaintable } from "./text-paintable.js";
 export type {
     ChildProps,
     CollectionItemSizeProps,
+    CollectionSourceProps,
     ColumnDef,
     ColumnDefDeclarativeProps,
     ColumnViewDeclarativeProps,

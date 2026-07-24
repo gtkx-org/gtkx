@@ -8,6 +8,7 @@ import type { GirParameter, GirReturnValue } from "../../src/gir/parameter.js";
 import type { GirRecord } from "../../src/gir/record.js";
 import type { GirType } from "../../src/gir/type.js";
 import type { TypeId } from "../../src/gir/type-id.js";
+import { matchAsyncFinish } from "../../src/store/gi/async.js";
 import {
     collectIntrinsicElementClasses,
     glibNameOf,
@@ -198,6 +199,45 @@ describe("codegen async promisification", () => {
         const source = gioSource();
         expect(source).toContain(
             "static new(connection: DBusConnection, flags: DBusObjectManagerClientFlags, name: string, objectPath: string, getProxyTypeFunc: DBusProxyTypeFunc | null, cancellable: Cancellable | null, callback: AsyncReadyCallback | null): void {",
+        );
+    });
+
+    it("parses the glib:finish-func annotation into the function model", () => {
+        const gio = [...library.namespaces.values()].find((namespace) => namespace.name === "Gio");
+        const busGet = gio?.functions.find((fn) => fn.name === "bus_get");
+        expect(busGet?.finishFunc).toBe("bus_get_finish");
+    });
+
+    it("pairs through the annotation when the finish name breaks the naming convention", () => {
+        const gio = [...library.namespaces.values()].find((namespace) => namespace.name === "Gio");
+        const methods = gio?.interfaces.find((candidate) => candidate.name === "File")?.methods ?? [];
+        const asyncFn = methods.find((method) => method.name === "replace_contents_bytes_async");
+        const finishFn =
+            asyncFn === undefined
+                ? undefined
+                : matchAsyncFinish(library, { ...asyncFn, finishFunc: "replace_contents_finish" }, methods);
+        expect(finishFn?.name).toBe("replace_contents_finish");
+    });
+
+    it("pairs through an annotation that holds the finish C identifier", () => {
+        const gdkpixbuf = giModules.find(({ directory }) => directory === "gdkpixbuf")?.source ?? "";
+        expect(gdkpixbuf).toContain(
+            "static newFromStreamAtScaleAsync(stream: Gio.InputStream, width: number, height: number, preserveAspectRatio: boolean, cancellable?: Gio.Cancellable | null): Promise<Pixbuf | null>",
+        );
+    });
+
+    it("promisifies an instance async method against its annotated static finish", () => {
+        const gdkpixbuf = giModules.find(({ directory }) => directory === "gdkpixbuf")?.source ?? "";
+        expect(gdkpixbuf).toContain(
+            "saveToStreamvAsync(stream: Gio.OutputStream, type: string, optionKeys: string[] | null, optionValues: string[] | null, cancellable?: Gio.Cancellable | null): Promise<boolean>",
+        );
+        expect(gdkpixbuf).toContain("Pixbuf.saveToStreamFinish.bind(Pixbuf)");
+    });
+
+    it("promisifies an instance async method against its name-matched static finish", () => {
+        const source = gioSource();
+        expect(source).toContain(
+            "spliceAsync(stream2: IOStream, flags: IOStreamSpliceFlags, ioPriority: number, cancellable?: Cancellable | null): Promise<boolean>",
         );
     });
 });
