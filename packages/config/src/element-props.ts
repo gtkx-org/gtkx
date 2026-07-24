@@ -187,6 +187,7 @@ const lazySchema = z.strictObject({
 const listSchema = z.strictObject({
     kind: z.literal("list"),
     prop: nameSchema,
+    itemType: nameSchema.optional(),
     add: z.union([callSchema, z.array(callSchema).min(1)]),
     remove: callSchema.optional(),
     clear: callSchema.optional(),
@@ -240,7 +241,8 @@ export type LazyProp = z.infer<typeof lazySchema>;
 /**
  * Rule mapping an array prop to method calls: `add` runs per added item (a single
  * call, or a sequence of calls applied in order when one item needs several), `remove`
- * per removed item, and `clear` empties the collection before re-adding.
+ * per removed item, and `clear` empties the collection before re-adding. `itemType`
+ * names a `@gtkx/react` export to use as the item type instead of deriving one from GIR.
  */
 export type ListProp = z.infer<typeof listSchema>;
 

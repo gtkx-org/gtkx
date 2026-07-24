@@ -27,7 +27,31 @@ export type ContainerBehavior<P = GObject.Object, C = GObject.Object, CP = Props
     resolve?: (parent: P, child: C) => GObject.Object | null;
 };
 
+/** Imperative overrides for a list element prop, replacing the declarative call of the same role. */
+export type ListBehavior<P = GObject.Object, I = unknown> = {
+    add?: (parent: P, item: I) => void;
+    remove?: (parent: P, item: I) => void;
+    clear?: (parent: P) => void;
+};
+
 const behaviors = new Map<string, ContainerBehavior>();
+
+const listBehaviors = new Map<string, ListBehavior>();
+
+const listKey = (type: string, prop: string): string => `${type}:${prop}`;
+
+/** Returns the imperative behavior registered for a list prop, if any. */
+export const listBehaviorFor = (type: string, prop: string): ListBehavior | undefined =>
+    listBehaviors.get(listKey(type, prop));
+
+const withListBehavior = <P extends GObject.Object, I>(
+    type: string,
+    rule: ElementProp,
+    behavior: ListBehavior<P, I>,
+): ElementProp => {
+    if (rule.kind === "list") listBehaviors.set(listKey(type, rule.prop), behavior as ListBehavior);
+    return rule;
+};
 
 const behaviorKey = (type: string, prop: string, child: string): string => `${type}:${prop}:${child}`;
 
@@ -52,6 +76,27 @@ type TabViewLike = GObject.Object & {
     closePage: (page: GObject.Object) => void;
     getPage: (child: Gtk.Widget) => GObject.Object;
 };
+
+const buildMenu = (items: MenuItem[], create: () => MenuLike): MenuLike => {
+    const menu = create();
+    for (const item of items) appendMenuItem(menu, item);
+    return menu;
+};
+
+let createMenu: () => MenuLike = () => {
+    throw new Error("GMenu construction is not available");
+};
+
+/** Installs the factory used to build nested `GMenu` instances for submenus and sections. */
+export const setMenuFactory = (factory: () => GObject.Object): void => {
+    createMenu = factory as () => MenuLike;
+};
+
+function appendMenuItem(menu: MenuLike, item: MenuItem): void {
+    if (item.submenu !== undefined) menu.appendSubmenu(item.label ?? null, buildMenu(item.submenu, createMenu));
+    else if (item.section !== undefined) menu.appendSection(item.label ?? null, buildMenu(item.section, createMenu));
+    else menu.append(item.label ?? null, item.action ?? null);
+}
 
 const layoutChild = (parent: Gtk.Widget, child: Gtk.Widget): GObject.Object | null =>
     parent.getLayoutManager()?.getLayoutChild(child) ?? null;
@@ -152,15 +197,6 @@ const packProps = (): ElementProp[] => [
 
 const adopts = (element: string): AdoptedElement => ({ element });
 
-const linkedMenu = (method: string, link: string): Call => ({
-    method,
-    args: [
-        { field: "label", or: null },
-        { build: "GMenu", prop: "items", from: link },
-    ],
-    when: link,
-});
-
 const forEach = (types: string[], build: (type: string) => ElementProp[]): Record<string, ElementProp[]> =>
     Object.fromEntries(types.map((type) => [type, build(type)]));
 
@@ -187,6 +223,27 @@ type ActionGroupHost = GObject.Object & {
 };
 
 type ActionGroupPlacement = { prefix?: string };
+
+/** One entry of a `GMenu`'s `items` prop; `submenu` and `section` nest further menus. */
+export type MenuItem = {
+    label?: string | null;
+    action?: string | null;
+    submenu?: MenuItem[];
+    section?: MenuItem[];
+};
+
+type MenuLike = GObject.Object & {
+    append: (label: string | null, action: string | null) => void;
+    appendSubmenu: (label: string | null, submenu: GObject.Object) => void;
+    appendSection: (label: string | null, section: GObject.Object) => void;
+    removeAll: () => void;
+};
+
+type AccelHost = GObject.Object & {
+    setAccelsForAction: (detailedActionName: string, accels: string[]) => void;
+};
+
+type ActionAccel = { detailedActionName: string; accels: string[] };
 
 type ActionPlacement = { name?: string };
 
@@ -307,23 +364,14 @@ export const ELEMENT_RULES: Record<string, ElementProp[]> = withBreakpoints({
         ),
     ],
     GMenu: [
-        {
-            kind: "list",
-            prop: "items",
-            clear: "removeAll",
-            add: [
-                linkedMenu("appendSubmenu", "submenu"),
-                linkedMenu("appendSection", "section"),
-                {
-                    method: "append",
-                    args: [
-                        { field: "label", or: null },
-                        { field: "action", or: null },
-                    ],
-                    unless: ["submenu", "section"],
-                },
-            ],
-        },
+        withListBehavior<MenuLike, MenuItem>(
+            "GMenu",
+            { kind: "list", prop: "items", itemType: "MenuItem", clear: "removeAll", add: "append" },
+            {
+                clear: (menu) => menu.removeAll(),
+                add: (menu, item) => appendMenuItem(menu, item),
+            },
+        ),
     ],
     GtkColumnView: [
         withBehavior<ColumnViewLike, GObject.Object>(
@@ -490,12 +538,14 @@ export const ELEMENT_RULES: Record<string, ElementProp[]> = withBreakpoints({
     GtkLevelBar: [{ kind: "list", prop: "offsets", add: "addOffsetValue", remove: "removeOffsetValue" }],
     GtkApplication: [
         container("children", "GtkWindow", { append: "addWindow", remove: "removeWindow" }),
-        {
-            kind: "list",
-            prop: "actionAccels",
-            add: "setAccelsForAction",
-            remove: { method: "setAccelsForAction", args: [{ field: "detailedActionName" }, { literal: [] }] },
-        },
+        withListBehavior<AccelHost, ActionAccel>(
+            "GtkApplication",
+            { kind: "list", prop: "actionAccels", add: "setAccelsForAction", remove: "setAccelsForAction" },
+            {
+                add: (app, item) => app.setAccelsForAction(item.detailedActionName, item.accels),
+                remove: (app, item) => app.setAccelsForAction(item.detailedActionName, []),
+            },
+        ),
     ],
     GtkAboutDialog: [{ kind: "list", prop: "creditSections", add: "addCreditSection" }],
     AdwAlertDialog: [

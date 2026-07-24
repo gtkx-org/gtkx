@@ -5,10 +5,14 @@ import type { SignalHandler } from "@gtkx/runtime";
 import { isDeepEqual, kebabCase, structuredClone } from "@gtkx/utils";
 import { applyAccessibleProps, isAccessibleProp } from "../utils/accessible-props.js";
 import { addListItem, runCall } from "./calls.js";
+import { setMenuFactory } from "./element-rules.js";
+import { createObject } from "./instance.js";
 import type { Props } from "./kinds.js";
 import { type TypeInfo, typeInfoOf } from "./metadata.js";
 import type { ElementNode, SignalTarget } from "./node.js";
 import { connectHandler, disconnectHandler } from "./signals.js";
+
+setMenuFactory(() => createObject("GMenu"));
 
 const CONSUMED = new Set(["children", "ref", "key", "propName"]);
 
@@ -35,17 +39,23 @@ const applyValueRule = (object: GObject.Object, rule: ValueProp, value: unknown,
 
 type PropEntry = { name: string; value: unknown; oldValue: unknown; props: Props };
 
-const applyListRule = (node: ElementNode, rule: ListProp, entry: PropEntry): void => {
+const applyListRule = (node: ElementNode, info: TypeInfo, rule: ListProp, entry: PropEntry): void => {
     const { name, value, props } = entry;
     const items = Array.isArray(value) ? value : [];
     const applied = node.listApplied.get(name);
     if (applied !== undefined && isDeepEqual(applied.snapshot, items)) return;
-    if (rule.clear !== undefined) {
-        runCall(node.object, rule.clear, {}, []);
-    } else if (rule.remove !== undefined) {
+    const behavior = info.listBehaviors.get(name);
+    if (behavior?.clear !== undefined) behavior.clear(node.object);
+    else if (behavior?.remove !== undefined)
+        for (const item of applied?.items ?? []) behavior.remove(node.object, item);
+    else if (rule.clear !== undefined) runCall(node.object, rule.clear, {}, []);
+    else if (rule.remove !== undefined) {
         for (const item of applied?.items ?? []) runCall(node.object, rule.remove, { item, props }, [item]);
     }
-    for (const item of items) addListItem(node.object, rule, item, props);
+    for (const item of items) {
+        if (behavior?.add !== undefined) behavior.add(node.object, item);
+        else addListItem(node.object, rule, item, props);
+    }
     node.listApplied.set(name, { items, snapshot: structuredClone(items) });
 };
 
@@ -70,7 +80,7 @@ const applyEntry = (node: ElementNode, info: TypeInfo, entry: PropEntry): void =
     if (valueRule !== undefined) {
         if (value !== undefined) applyValueRule(node.object, valueRule, value, props);
     } else if (listRule !== undefined) {
-        applyListRule(node, listRule, entry);
+        applyListRule(node, info, listRule, entry);
     } else if (info.controlledText.has(name)) {
         if (value !== undefined) Reflect.set(node.object, name, value);
     } else if (value === undefined) {

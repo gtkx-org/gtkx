@@ -155,6 +155,9 @@ const appliedPropLine = (context: RenderContext, type: string, prop: AppliedProp
     if (hasProperty(context.gir, type, prop.prop)) return null;
     if (prop.kind === "value") return optionalLine(prop.prop, callFieldsType(context, type, prop.call));
     if (prop.kind === "list") {
+        if (prop.itemType !== undefined) {
+            return optionalLine(prop.prop, `import("@gtkx/react").${prop.itemType}[]`);
+        }
         const item = named ?? callFieldsType(context, type, prop.add);
         return optionalLine(prop.prop, `${item}[]`);
     }

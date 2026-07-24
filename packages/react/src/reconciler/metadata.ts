@@ -9,7 +9,7 @@ import {
 } from "virtual:gtkx-config";
 import type { ContainerProp, ControlledTextProp, ElementProp, LazyProp, ListProp, ValueProp } from "@gtkx/config";
 import { getSignalBaseName, TYPE_INVALID, typeFromName, typeInterfaces, typeName, typeParent } from "@gtkx/runtime";
-import { behaviorFor, type ContainerBehavior } from "./element-rules.js";
+import { behaviorFor, type ContainerBehavior, type ListBehavior, listBehaviorFor } from "./element-rules.js";
 
 export type TypeInfo = {
     typeName: string;
@@ -20,6 +20,7 @@ export type TypeInfo = {
     containerProps: Set<string>;
     valueProps: Map<string, ValueProp>;
     listProps: Map<string, ListProp>;
+    listBehaviors: Map<string, ListBehavior>;
     lazyProps: Map<string, LazyProp>;
     controlledText: Map<string, ControlledTextProp>;
     constructOnly: Set<string>;
@@ -64,6 +65,10 @@ const classifyProps = (owner: string, rules: ElementProp[], info: TypeInfo): voi
             info.valueProps.set(rule.prop, rule);
         } else if (rule.kind === "list") {
             info.listProps.set(rule.prop, rule);
+            const listBehavior = listBehaviorFor(owner, rule.prop);
+            if (listBehavior !== undefined && !info.listBehaviors.has(rule.prop)) {
+                info.listBehaviors.set(rule.prop, listBehavior);
+            }
         } else if (rule.kind === "lazy") {
             info.lazyProps.set(rule.prop, rule);
         } else {
@@ -83,6 +88,7 @@ const buildTypeInfo = (name: string): TypeInfo => {
         containerProps: new Set(),
         valueProps: new Map(),
         listProps: new Map(),
+        listBehaviors: new Map(),
         lazyProps: new Map(),
         controlledText: new Map(),
         constructOnly: new Set(),
