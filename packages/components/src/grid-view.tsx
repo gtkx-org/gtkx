@@ -1,9 +1,7 @@
-import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkGridView } from "@gtkx/jsx/gtk";
+import { GtkGridView, GtkSignalListItemFactory } from "@gtkx/jsx/gtk";
 import type { ReactNode } from "react";
-import { collectionPortals } from "./internal/cell-portals.js";
-import { useCollectionWidget } from "./internal/use-collection-widget.js";
-import { useFactorySlot } from "./internal/use-factories.js";
+import { collectionRenderers } from "./internal/use-cells.js";
+import { useCollection } from "./internal/use-collection.js";
 import type { GridViewProps } from "./types.js";
 
 /**
@@ -19,23 +17,20 @@ export function GridView<T = unknown>(props: GridViewProps<T>): ReactNode {
         selectionMode,
         estimatedItemHeight,
         estimatedItemWidth,
-        ref,
         ...rest
     } = props;
-    void items;
-    void selectedIds;
-    void onSelectionChanged;
-    void selectionMode;
-    void estimatedItemHeight;
-    void estimatedItemWidth;
-    void ref;
-    const { widget, refCallback, harness, view } = useCollectionWidget<Gtk.GridView>(props, "flat");
-    useFactorySlot(widget, harness.context, "item");
-    const portals = collectionPortals({ harness, view, renderItem });
+    const { model, cells, selection } = useCollection({
+        items,
+        mode: "flat",
+        size: { width: estimatedItemWidth ?? -1, height: estimatedItemHeight ?? -1 },
+        selectedIds,
+        onSelectionChanged,
+        selectionMode,
+    });
     return (
         <>
-            <GtkGridView ref={refCallback} {...rest} />
-            {portals}
+            <GtkGridView model={selection} factory={<GtkSignalListItemFactory {...cells.item} />} {...rest} />
+            {cells.portals(collectionRenderers({ collection: model, renderItem }))}
         </>
     );
 }

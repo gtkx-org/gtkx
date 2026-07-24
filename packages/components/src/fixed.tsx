@@ -4,32 +4,32 @@ import { GtkFixed } from "@gtkx/jsx/gtk";
 import { createPortal, rootElement } from "@gtkx/react";
 import type { ElementType, ReactNode, Ref } from "react";
 import { createContext, useRef } from "react";
-import {
-    createPlacedRoot,
-    type PlacedChildren,
-    type PlacedOps,
-    usePlacedChildRef,
-    useRequiredContext,
-} from "./internal/placed-children.js";
 import { useLatest } from "./internal/use-latest.js";
+import {
+    createPlacedContainer,
+    type PlacedOps,
+    type Placement,
+    usePlacedChild,
+    usePlacementContext,
+} from "./internal/use-placement.js";
 import type { FixedChildProps, FixedProps } from "./types.js";
 
-type FixedPlacement = {
+type FixedPoint = {
     x: number;
     y: number;
     transform: Gsk.Transform | null;
 };
 
-const FixedContext = createContext<PlacedChildren<FixedPlacement> | null>(null);
+const FixedContext = createContext<Placement<FixedPoint> | null>(null);
 
-const fixedOps = (fixed: { current: Gtk.Fixed | null }): PlacedOps<FixedPlacement> => ({
-    attach: (widget, placement) => {
-        fixed.current?.put(widget, placement.x, placement.y);
-        if (placement.transform !== null) fixed.current?.setChildTransform(widget, placement.transform);
+const fixedOps = (fixed: { current: Gtk.Fixed | null }): PlacedOps<FixedPoint> => ({
+    attach: (widget, point) => {
+        fixed.current?.put(widget, point.x, point.y);
+        if (point.transform !== null) fixed.current?.setChildTransform(widget, point.transform);
     },
-    update: (widget, placement) => {
-        fixed.current?.setChildTransform(widget, placement.transform);
-        if (placement.transform === null) fixed.current?.move(widget, placement.x, placement.y);
+    update: (widget, point) => {
+        fixed.current?.setChildTransform(widget, point.transform);
+        if (point.transform === null) fixed.current?.move(widget, point.x, point.y);
     },
     detach: (widget) => {
         fixed.current?.remove(widget);
@@ -45,30 +45,30 @@ type FixedChildRuntimeProps = {
 } & Record<string, unknown>;
 
 const useTransformSerial = (transform: Gsk.Transform | null): number => {
-    const serialRef = useRef({ transform: null as Gsk.Transform | null, serial: 0 });
-    if (serialRef.current.transform !== transform) {
-        serialRef.current = { transform, serial: serialRef.current.serial + 1 };
+    const serial = useRef({ transform: null as Gsk.Transform | null, value: 0 });
+    if (serial.current.transform !== transform) {
+        serial.current = { transform, value: serial.current.value + 1 };
     }
-    return serialRef.current.serial;
+    return serial.current.value;
 };
 
 const FixedChildImpl = (props: FixedChildRuntimeProps): ReactNode => {
-    const controller = useRequiredContext(FixedContext, "<Fixed.Child> must be a child of <Fixed>");
+    const placement = usePlacementContext(FixedContext, "<Fixed.Child> must be a child of <Fixed>");
     const { component: Component, x, y, transform, ref, ...rest } = props;
-    const placement = useLatest<FixedPlacement>({ x: x ?? 0, y: y ?? 0, transform: transform ?? null });
-    const transformSerial = useTransformSerial(placement.current.transform);
-    const refCallback = usePlacedChildRef(
-        controller,
+    const point = useLatest<FixedPoint>({ x: x ?? 0, y: y ?? 0, transform: transform ?? null });
+    const serial = useTransformSerial(point.current.transform);
+    const refCallback = usePlacedChild(
+        placement,
         ref,
-        () => placement.current,
-        `${placement.current.x}:${placement.current.y}:${transformSerial}`,
+        () => point.current,
+        `${point.current.x}:${point.current.y}:${serial}`,
     );
     return createPortal(<Component {...rest} ref={refCallback} />, rootElement);
 };
 
 const FixedChild = FixedChildImpl as <C extends ElementType>(props: FixedChildProps<C>) => ReactNode;
 
-const FixedRoot = createPlacedRoot<Gtk.Fixed, FixedPlacement>({
+const FixedRoot = createPlacedContainer<Gtk.Fixed, FixedPoint>({
     element: GtkFixed,
     context: FixedContext,
     ops: fixedOps,

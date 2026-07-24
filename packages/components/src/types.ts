@@ -29,11 +29,11 @@ export type WidgetProps<C extends ElementType, Own = unknown, ExtraOmit extends 
  * A single item in a collection model, identified by a stable id and holding an
  * arbitrary value. Nested items form a tree.
  */
-export type ItemNode<T = unknown> = {
+export type Item<T = unknown> = {
     /** Stable identifier used to track the item across updates and selection. */
     id: string;
     value: T;
-    children?: ItemNode<T>[] | undefined;
+    children?: Item<T>[] | undefined;
     /** Hides the tree expander arrow even when the item has children. */
     hideExpander?: boolean | undefined;
     /** Adds indentation matching the item's depth in the tree. */
@@ -43,16 +43,16 @@ export type ItemNode<T = unknown> = {
 };
 
 /** A group of items rendered under a shared section header. */
-export type SectionNode<S = unknown, T = unknown> = {
+export type Section<S = unknown, T = unknown> = {
     /** Stable identifier used to track the section across updates. */
     id: string;
     value: S;
     /** Items belonging to this section. */
-    data: ItemNode<T>[];
+    data: Item<T>[];
 };
 
-/** Props passed to a renderItem callback when rendering one cell. */
-export type RenderItemProps<T> = {
+/** Arguments passed to an {@link ItemRenderer} when rendering one cell. */
+export type RenderItemArgs<T> = {
     item: T;
     index: number;
     /** Depth of the item within a tree, starting at zero for top-level items. */
@@ -61,67 +61,71 @@ export type RenderItemProps<T> = {
     isExpanded?: boolean | undefined;
 };
 
-export type CollectionItemSizeProps = {
+/** Arguments passed to a {@link HeaderRenderer} when rendering one section header. */
+export type RenderHeaderArgs<S> = {
+    section: S;
+};
+
+/** Renders the contents of one cell of a collection view. */
+export type ItemRenderer<T> = (args: RenderItemArgs<T>) => ReactNode;
+
+/** Renders the contents of one section header of a collection view. */
+export type HeaderRenderer<S> = (args: RenderHeaderArgs<S>) => ReactNode;
+
+type ItemSizeProps = {
     estimatedItemHeight?: number | undefined;
     estimatedItemWidth?: number | undefined;
 };
 
-export type ControlledSelectionProps = {
+type SelectionProps = {
     selectedIds?: string[] | null | undefined;
     onSelectionChanged?: ((ids: string[]) => void) | null | undefined;
     selectionMode?: Gtk.SelectionMode | null | undefined;
 };
 
-export type ControlledExpansionProps = {
+type ExpansionProps = {
     expandedIds?: string[] | null | undefined;
     onExpandedChange?: ((ids: string[]) => void) | null | undefined;
 };
 
-export type CollectionSourceProps<T = unknown, S = unknown> = {
-    items?: ItemNode<T>[] | undefined;
-    sections?: SectionNode<S, T>[] | undefined;
+type SourceProps<T, S> = {
+    items?: Item<T>[] | undefined;
+    sections?: Section<S, T>[] | undefined;
 };
 
 /** Declarative description of a single menu item, optionally nesting a submenu or section. */
-export type MenuEntry = {
+export type MenuItem = {
     /** Text shown for the item. */
     label?: string | undefined;
     /** Action name activated when the item is chosen, for example "app.quit". */
     action?: string | undefined;
-    /** Nested entries shown as a submenu opened from this item. */
-    submenu?: MenuEntry[] | undefined;
-    /** Nested entries grouped as a visually separated section. */
-    section?: MenuEntry[] | undefined;
+    /** Nested items shown as a submenu opened from this item. */
+    submenu?: MenuItem[] | undefined;
+    /** Nested items grouped as a visually separated section. */
+    section?: MenuItem[] | undefined;
 };
 
-export type ColumnDefDeclarativeProps<T = unknown> = {
-    title: string;
-    expand?: boolean | undefined;
-    resizable?: boolean | undefined;
-    fixedWidth?: number | undefined;
+/** One column of a {@link ColumnView}, pairing Gtk.ColumnViewColumn props with a cell renderer. */
+export type Column<T = unknown> = Omit<GtkColumnViewColumnProps, "factory" | "sorter" | "id" | "title"> & {
+    /** Stable identifier, also used to address the column through sorting props. */
     id: string;
+    title: string;
+    renderCell: ItemRenderer<T>;
+    /** Whether clicking the column header sorts by it. */
     sortable?: boolean | undefined;
-    visible?: boolean | undefined;
-    renderCell: (props: RenderItemProps<T>) => ReactNode;
     headerMenu?: ReactNode;
 };
 
-export type ColumnDef<T = unknown> = Omit<GtkColumnViewColumnProps, "factory" | "sorter"> &
-    ColumnDefDeclarativeProps<T>;
-
-export type ColumnViewSortProps = {
-    sortColumn?: string | null | undefined;
-    sortOrder?: Gtk.SortType | null | undefined;
-    onSortChanged?: ((column: string | null, order: Gtk.SortType) => void) | null | undefined;
-};
-
-export type ColumnViewDeclarativeProps<T = unknown, S = unknown> = ColumnViewSortProps &
-    Omit<CollectionItemSizeProps, "estimatedItemWidth"> &
-    ControlledSelectionProps &
-    ControlledExpansionProps &
-    CollectionSourceProps<T, S> & {
-        renderHeader?: ((info: { section: S }) => ReactNode) | null | undefined;
-        columns: ColumnDef<T>[];
+type ColumnViewOwnProps<T, S> = SelectionProps &
+    ExpansionProps &
+    SourceProps<T, S> &
+    Omit<ItemSizeProps, "estimatedItemWidth"> & {
+        columns: Column<T>[];
+        renderHeader?: HeaderRenderer<S> | null | undefined;
+        /** Id of the column the view is sorted by, making sorting controlled. */
+        sortColumn?: string | null | undefined;
+        sortOrder?: Gtk.SortType | null | undefined;
+        onSortChanged?: ((column: string | null, order: Gtk.SortType) => void) | null | undefined;
     };
 
 /**
@@ -132,9 +136,9 @@ export type ColumnViewDeclarativeProps<T = unknown, S = unknown> = ColumnViewSor
  */
 export type ColumnViewProps<T = unknown, S = unknown> = Omit<
     GtkColumnViewProps,
-    "columns" | "model" | "headerFactory" | keyof ColumnViewDeclarativeProps<T, S>
+    "columns" | "model" | "headerFactory" | keyof ColumnViewOwnProps<T, S>
 > &
-    ColumnViewDeclarativeProps<T, S>;
+    ColumnViewOwnProps<T, S>;
 
 /** Props for {@link ConstraintLayout}. */
 export type ConstraintLayoutProps = {
@@ -195,34 +199,32 @@ export type ConstraintVflProps = {
     vspacing?: number;
 };
 
-export type DropDownItemRenderer<T> = (props: RenderItemProps<T>) => ReactNode;
-
-/** Declarative props for {@link DropDown}'s backing collection and cell rendering. */
-export type DropDownDeclarativeProps<T = unknown, S = unknown> = CollectionSourceProps<T, S> & {
+type DropDownOwnProps<T, S> = SourceProps<T, S> & {
     /** Id of the currently selected item, making the selection controlled. */
     selectedId?: string | null | undefined;
     onSelectionChanged?: ((id: string) => void) | null | undefined;
-    renderItem?: DropDownItemRenderer<T> | null | undefined;
+    renderItem?: ItemRenderer<T> | null | undefined;
     /** Renderer for items in the open popup list, falling back to renderItem when omitted. */
-    renderListItem?: DropDownItemRenderer<T> | null | undefined;
+    renderListItem?: ItemRenderer<T> | null | undefined;
     /** Renderer for section headers in the popup list. */
-    renderHeader?: ((info: { section: S }) => ReactNode) | null | undefined;
+    renderHeader?: HeaderRenderer<S> | null | undefined;
 };
 
 /**
  * Props for {@link DropDown}. The backing widget is chosen through the `component` prop, defaulting to
- * GtkDropDown, and its own props combine with {@link DropDownDeclarativeProps}.
+ * GtkDropDown, and its own props combine with the declarative collection props.
  */
 export type DropDownProps<T = unknown, S = unknown, C extends ElementType = typeof GtkDropDown> = WidgetProps<
     C,
-    DropDownDeclarativeProps<T, S>,
+    DropDownOwnProps<T, S>,
     "model" | "factory" | "listFactory" | "headerFactory"
 >;
 
 /** Props for {@link Fixed}. */
 export type FixedProps = GtkFixedProps & { ref?: Ref<Gtk.Fixed | null>; children?: ReactNode };
 
-export type FixedPlacementProps = {
+/** Position of a single child inside a {@link Fixed}. */
+export type FixedPlacement = {
     x?: number | null | undefined;
     y?: number | null | undefined;
     /** Full transform applied to the child, overriding x and y when provided. */
@@ -230,11 +232,12 @@ export type FixedPlacementProps = {
 };
 
 /** Positions a single child inside a {@link Fixed} at coordinates x and y, or by an explicit transform. */
-export type FixedChildProps<C extends ElementType> = ChildProps<C, FixedPlacementProps>;
+export type FixedChildProps<C extends ElementType> = ChildProps<C, FixedPlacement>;
 
 /** Props for {@link Grid}. */
 export type GridProps = GtkGridProps & { ref?: Ref<Gtk.Grid | null>; children?: ReactNode };
 
+/** Cell occupied by a single child inside a {@link Grid}. */
 export type GridPlacement = {
     column?: number | null | undefined;
     row?: number | null | undefined;
@@ -247,10 +250,10 @@ export type GridPlacement = {
 /** Places a single child inside a {@link Grid} at a column and row, optionally spanning multiple cells. */
 export type GridChildProps<C extends ElementType> = ChildProps<C, GridPlacement>;
 
-export type GridViewDeclarativeProps<T = unknown> = CollectionItemSizeProps &
-    ControlledSelectionProps & {
-        items?: ItemNode<T>[] | undefined;
-        renderItem: (props: RenderItemProps<T>) => ReactNode;
+type GridViewOwnProps<T> = ItemSizeProps &
+    SelectionProps & {
+        items?: Item<T>[] | undefined;
+        renderItem: ItemRenderer<T>;
     };
 
 /**
@@ -258,18 +261,15 @@ export type GridViewDeclarativeProps<T = unknown> = CollectionItemSizeProps &
  * declarative collection props: items, a per-cell renderItem, controlled selection,
  * and estimated item sizing.
  */
-export type GridViewProps<T = unknown> = Omit<
-    GtkGridViewProps,
-    "model" | "factory" | keyof GridViewDeclarativeProps<T>
-> &
-    GridViewDeclarativeProps<T>;
+export type GridViewProps<T = unknown> = Omit<GtkGridViewProps, "model" | "factory" | keyof GridViewOwnProps<T>> &
+    GridViewOwnProps<T>;
 
-export type ListViewDeclarativeProps<T = unknown, S = unknown> = CollectionItemSizeProps &
-    ControlledSelectionProps &
-    ControlledExpansionProps &
-    CollectionSourceProps<T, S> & {
-        renderItem: (props: RenderItemProps<T>) => ReactNode;
-        renderHeader?: ((info: { section: S }) => ReactNode) | null | undefined;
+type ListViewOwnProps<T, S> = ItemSizeProps &
+    SelectionProps &
+    ExpansionProps &
+    SourceProps<T, S> & {
+        renderItem: ItemRenderer<T>;
+        renderHeader?: HeaderRenderer<S> | null | undefined;
     };
 
 /**
@@ -280,21 +280,21 @@ export type ListViewDeclarativeProps<T = unknown, S = unknown> = CollectionItemS
  */
 export type ListViewProps<T = unknown, S = unknown> = Omit<
     GtkListViewProps,
-    "model" | "factory" | "headerFactory" | keyof ListViewDeclarativeProps<T, S>
+    "model" | "factory" | "headerFactory" | keyof ListViewOwnProps<T, S>
 > &
-    ListViewDeclarativeProps<T, S>;
-
-export type MenuItemsProps = {
-    items?: MenuEntry[] | null | undefined;
-};
+    ListViewOwnProps<T, S>;
 
 /** Props for {@link Menu}, combining Gio.Menu props with a declarative items array. */
-export type MenuProps = Omit<GMenuProps, keyof MenuItemsProps> & MenuItemsProps & { ref?: Ref<Gio.Menu | null> };
+export type MenuProps = Omit<GMenuProps, "items"> & {
+    items?: MenuItem[] | null | undefined;
+    ref?: Ref<Gio.Menu | null>;
+};
 
 /** Props for {@link Overlay}. */
 export type OverlayProps = GtkOverlayProps & { ref?: Ref<Gtk.Overlay | null> };
 
-export type OverlayPlacementProps = {
+/** Stacking behavior of a single child inside an {@link Overlay}. */
+export type OverlayPlacement = {
     /** Whether this overlay contributes to the Overlay's measured size. */
     measure?: boolean | null | undefined;
     /** Whether the overlay is clipped to the main child's allocation. */
@@ -302,7 +302,7 @@ export type OverlayPlacementProps = {
 };
 
 /** Adds a single widget as an overlay on top of an {@link Overlay}'s main child. */
-export type OverlayChildProps<C extends ElementType> = ChildProps<C, OverlayPlacementProps>;
+export type OverlayChildProps<C extends ElementType> = ChildProps<C, OverlayPlacement>;
 
 /** Props for {@link SizeGroup}. */
 export type SizeGroupProps = {

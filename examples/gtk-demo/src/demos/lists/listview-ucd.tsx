@@ -1,4 +1,4 @@
-import { type ColumnDef, ColumnView } from "@gtkx/components";
+import { type Column, ColumnView } from "@gtkx/components";
 import { css } from "@gtkx/css";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
@@ -432,7 +432,7 @@ const renderUcdHeader = ({ section: script }: { section: string }) => (
     </GtkLabel>
 );
 
-const ucdCodepointColumn: ColumnDef<UcdEntry> = {
+const ucdCodepointColumn: Column<UcdEntry> = {
     id: "codepoint",
     title: "Codepoint",
     sortable: true,
@@ -441,7 +441,7 @@ const ucdCodepointColumn: ColumnDef<UcdEntry> = {
     ),
 };
 
-const ucdCharColumn: ColumnDef<UcdEntry> = {
+const ucdCharColumn: Column<UcdEntry> = {
     id: "char",
     title: "Char",
     renderCell: ({ item }) => (
@@ -449,7 +449,7 @@ const ucdCharColumn: ColumnDef<UcdEntry> = {
     ),
 };
 
-const ucdNameColumn: ColumnDef<UcdEntry> = {
+const ucdNameColumn: Column<UcdEntry> = {
     id: "name",
     title: "Name",
     resizable: true,
@@ -465,7 +465,7 @@ const ucdNameColumn: ColumnDef<UcdEntry> = {
     ),
 };
 
-function inscriptionColumn(id: string, title: string, label: (item: UcdEntry) => string): ColumnDef<UcdEntry> {
+function inscriptionColumn(id: string, title: string, label: (item: UcdEntry) => string): Column<UcdEntry> {
     return {
         id,
         title,

@@ -1,4 +1,4 @@
-import type { RenderItemProps } from "@gtkx/components";
+import type { RenderItemArgs } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { screen, within } from "@gtkx/testing";
@@ -252,7 +252,7 @@ describe("render - ListView (7)", () => {
 
         it("preserves order with frequent value updates", async () => {
             type Item = { count: number };
-            const renderItem = ({ item }: RenderItemProps<Item>) => <GtkLabel>{String(item.count)}</GtkLabel>;
+            const renderItem = ({ item }: RenderItemArgs<Item>) => <GtkLabel>{String(item.count)}</GtkLabel>;
             const itemsFor = (a: number, b: number, c: number) => [
                 { id: "1", value: { count: a } },
                 { id: "2", value: { count: b } },

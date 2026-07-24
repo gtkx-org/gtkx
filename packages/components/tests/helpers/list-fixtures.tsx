@@ -1,4 +1,4 @@
-import { type ColumnDef, ColumnView, GridView, type ItemNode, ListView, type RenderItemProps } from "@gtkx/components";
+import { type Column, ColumnView, GridView, type Item, ListView, type RenderItemArgs } from "@gtkx/components";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 
@@ -15,16 +15,16 @@ export interface NamedValue {
 export const valueItems = (values: string[]): Array<{ id: string; value: string }> =>
     values.map((value, index) => ({ id: String(index + 1), value }));
 
-export type FixtureInput<T> = string[] | ItemNode<T>[];
+export type FixtureInput<T> = string[] | Item<T>[];
 
-const toListItems = <T,>(items: FixtureInput<T>): ItemNode<T>[] =>
+const toListItems = <T,>(items: FixtureInput<T>): Item<T>[] =>
     items.length > 0 && typeof items[0] === "string"
         ? (items as string[]).map((id) => ({ id, value: { name: id } as T }))
-        : (items as ItemNode<T>[]);
+        : (items as Item<T>[]);
 
-export const allExpandableIds = <T,>(items: ItemNode<T>[]): string[] => {
+export const allExpandableIds = <T,>(items: Item<T>[]): string[] => {
     const ids: string[] = [];
-    const walk = (list: ItemNode<T>[]): void => {
+    const walk = (list: Item<T>[]): void => {
         for (const item of list) {
             if (item.children !== undefined && item.children.length > 0) {
                 ids.push(item.id);
@@ -49,14 +49,14 @@ type ListViewFixtureOptions = {
 };
 
 export type RenderListViewOptions<T> = ListViewFixtureOptions & {
-    renderItem?: (props: RenderItemProps<T>) => ReactNode;
+    renderItem?: (props: RenderItemArgs<T>) => ReactNode;
     expandedIds?: string[];
     onExpandedChange?: (ids: string[]) => void;
     expandAll?: boolean;
 };
 
 export type RenderGridViewOptions<T> = ListViewFixtureOptions & {
-    renderItem?: (props: RenderItemProps<T>) => ReactNode;
+    renderItem?: (props: RenderItemArgs<T>) => ReactNode;
     singleClickActivate?: boolean;
 };
 
@@ -144,10 +144,10 @@ export const renderGridView = async <T = NamedValue>(
     };
 };
 
-export type { ColumnDef } from "@gtkx/components";
+export type { Column } from "@gtkx/components";
 
 export type RenderColumnViewOptions<T> = {
-    columns?: ColumnDef<T>[];
+    columns?: Column<T>[];
     selected?: string[];
     selectionMode?: Gtk.SelectionMode;
     onSelectionChanged?: (ids: string[]) => void;
@@ -172,7 +172,7 @@ export const renderColumnView = async <T = NamedValue>(
     render: FixtureRender = testingRender,
 ): Promise<ColumnViewFixture<T>> => {
     const ref = createRef<Gtk.ColumnView>();
-    const defaultColumns: ColumnDef<T>[] = [{ id: "name", title: "Name", renderCell: renderNamed }];
+    const defaultColumns: Column<T>[] = [{ id: "name", title: "Name", renderCell: renderNamed }];
     const draw = (data: FixtureInput<T>, opts: RenderColumnViewOptions<T>): ReactNode => {
         const { columns = defaultColumns, minContentHeight = 500, minContentWidth } = opts;
         const expandedIds = opts.expandAll ? allExpandableIds(toListItems(data)) : opts.expandedIds;

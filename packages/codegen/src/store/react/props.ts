@@ -134,9 +134,10 @@ const walkIntrinsicElementMembers = (walk: IntrinsicElementMemberWalk): void => 
     forEachAncestor(ancestry, klass, (ancestor) => visitMembers(ancestor.klass), isIntrinsicElementAncestor);
 };
 
-const resolvesToGObjectClass = (library: Library, ref: TypeId | undefined): boolean => {
+const resolvesToGObjectType = (library: Library, ref: TypeId | undefined): boolean => {
     if (ref === undefined) return false;
     const resolved = library.typeOf(ref);
+    if (resolved?.kind === "interface") return true;
     if (resolved?.kind !== "class") return false;
     return isIntrinsicElementClass(resolved.value, resolved.namespace, library);
 };
@@ -149,7 +150,7 @@ type PropOwner = {
 
 export const isObjectProp = (owner: PropOwner, property: GirProperty, jsName: string): boolean => {
     if (!property.writable || property.constructOnly) return false;
-    if (!resolvesToGObjectClass(owner.library, property.type)) return false;
+    if (!resolvesToGObjectType(owner.library, property.type)) return false;
     if (jsName === "child" && classExposesMethod(owner.klass, owner.namespace, owner.library, "set_child")) {
         return false;
     }

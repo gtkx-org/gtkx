@@ -2,15 +2,15 @@ import * as Gtk from "@gtkx/gi/gtk";
 import type { ElementType, ReactNode, Ref } from "react";
 import { createContext, useImperativeHandle, useLayoutEffect, useRef } from "react";
 import {
-    type PlacedChildren,
     type PlacedOps,
-    usePlacedChildRef,
-    usePlacedHost,
-    useRequiredContext,
-} from "./internal/placed-children.js";
+    type Placement,
+    usePlacedChild,
+    usePlacementContext,
+    usePlacementHost,
+} from "./internal/use-placement.js";
 import type { SizeGroupChildProps, SizeGroupProps } from "./types.js";
 
-const SizeGroupContext = createContext<PlacedChildren<null> | null>(null);
+const SizeGroupContext = createContext<Placement<null> | null>(null);
 
 const sizeGroupOps = (group: { current: Gtk.SizeGroup | null }): PlacedOps<null> => ({
     attach: (widget) => {
@@ -28,9 +28,9 @@ type SizeGroupChildRuntimeProps = {
 } & Record<string, unknown>;
 
 const SizeGroupChildImpl = (props: SizeGroupChildRuntimeProps): ReactNode => {
-    const controller = useRequiredContext(SizeGroupContext, "<SizeGroup.Child> must be a child of <SizeGroup>");
+    const placement = usePlacementContext(SizeGroupContext, "<SizeGroup.Child> must be a child of <SizeGroup>");
     const { component: Component, ref, ...rest } = props;
-    const refCallback = usePlacedChildRef(controller, ref, () => null, "");
+    const refCallback = usePlacedChild(placement, ref, () => null, "");
     return <Component {...rest} ref={refCallback} />;
 };
 
@@ -38,15 +38,15 @@ const SizeGroupChild = SizeGroupChildImpl as <C extends ElementType>(props: Size
 
 const SizeGroupRoot = (props: SizeGroupProps): ReactNode => {
     const { mode, ref, children } = props;
-    const groupRef = useRef<Gtk.SizeGroup | null>(null);
-    groupRef.current ??= new Gtk.SizeGroup({});
-    const group = groupRef.current;
+    const held = useRef<Gtk.SizeGroup | null>(null);
+    held.current ??= new Gtk.SizeGroup({});
+    const group = held.current;
     useImperativeHandle(ref, () => group, [group]);
     useLayoutEffect(() => {
         group.setMode(mode ?? Gtk.SizeGroupMode.HORIZONTAL);
     }, [group, mode]);
-    const controller = usePlacedHost(group, sizeGroupOps);
-    return <SizeGroupContext.Provider value={controller}>{children}</SizeGroupContext.Provider>;
+    const placement = usePlacementHost(group, sizeGroupOps);
+    return <SizeGroupContext.Provider value={placement}>{children}</SizeGroupContext.Provider>;
 };
 
 type SizeGroupComponent = ((props: SizeGroupProps) => ReactNode) & {

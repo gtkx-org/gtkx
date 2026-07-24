@@ -3,14 +3,14 @@ import { GtkGrid } from "@gtkx/jsx/gtk";
 import { createPortal, rootElement } from "@gtkx/react";
 import type { ElementType, ReactNode, Ref } from "react";
 import { createContext } from "react";
-import {
-    createPlacedRoot,
-    type PlacedChildren,
-    type PlacedOps,
-    usePlacedChildRef,
-    useRequiredContext,
-} from "./internal/placed-children.js";
 import { useLatest } from "./internal/use-latest.js";
+import {
+    createPlacedContainer,
+    type PlacedOps,
+    type Placement,
+    usePlacedChild,
+    usePlacementContext,
+} from "./internal/use-placement.js";
 import type { GridChildProps, GridProps } from "./types.js";
 
 type GridCell = {
@@ -20,7 +20,7 @@ type GridCell = {
     rowSpan: number;
 };
 
-const GridContext = createContext<PlacedChildren<GridCell> | null>(null);
+const GridContext = createContext<Placement<GridCell> | null>(null);
 
 const gridOps = (grid: { current: Gtk.Grid | null }): PlacedOps<GridCell> => {
     const attach = (widget: Gtk.Widget, cell: GridCell): void => {
@@ -49,7 +49,7 @@ type GridChildRuntimeProps = {
 } & Record<string, unknown>;
 
 const GridChildImpl = (props: GridChildRuntimeProps): ReactNode => {
-    const controller = useRequiredContext(GridContext, "<Grid.Child> must be a child of <Grid>");
+    const placement = usePlacementContext(GridContext, "<Grid.Child> must be a child of <Grid>");
     const { component: Component, column, row, columnSpan, rowSpan, ref, ...rest } = props;
     const cell = useLatest<GridCell>({
         column: column ?? 0,
@@ -57,21 +57,18 @@ const GridChildImpl = (props: GridChildRuntimeProps): ReactNode => {
         columnSpan: columnSpan ?? 1,
         rowSpan: rowSpan ?? 1,
     });
-    const { column: columnValue, row: rowValue, columnSpan: columnSpanValue, rowSpan: rowSpanValue } = cell.current;
-    const refCallback = usePlacedChildRef(
-        controller,
-        ref,
-        () => cell.current,
-        `${columnValue}:${rowValue}:${columnSpanValue}:${rowSpanValue}`,
-    );
+    const { column: x, row: y, columnSpan: width, rowSpan: height } = cell.current;
+    const refCallback = usePlacedChild(placement, ref, () => cell.current, `${x}:${y}:${width}:${height}`);
     return createPortal(<Component {...rest} ref={refCallback} />, rootElement);
 };
 
 const GridChild = GridChildImpl as <C extends ElementType>(props: GridChildProps<C>) => ReactNode;
 
-const GridRoot = createPlacedRoot<Gtk.Grid, GridCell>({ element: GtkGrid, context: GridContext, ops: gridOps }) as (
-    props: GridProps,
-) => ReactNode;
+const GridRoot = createPlacedContainer<Gtk.Grid, GridCell>({
+    element: GtkGrid,
+    context: GridContext,
+    ops: gridOps,
+}) as (props: GridProps) => ReactNode;
 
 type GridComponent = ((props: GridProps) => ReactNode) & {
     Child: <C extends ElementType>(props: GridChildProps<C>) => ReactNode;

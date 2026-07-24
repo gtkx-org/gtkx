@@ -1,4 +1,4 @@
-import type { ItemNode } from "@gtkx/components";
+import type { Item } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { bench, describe } from "vitest";
 import { renderListView } from "../tests/helpers/list-fixtures.js";
@@ -6,8 +6,8 @@ import { cleanup, render } from "../tests/helpers/production-render.js";
 
 const SIZES = [100, 200, 400];
 
-function makeItems(n: number): ItemNode<{ name: string }>[] {
-    const items: ItemNode<{ name: string }>[] = [];
+function makeItems(n: number): Item<{ name: string }>[] {
+    const items: Item<{ name: string }>[] = [];
     for (let i = 0; i < n; i++) {
         items.push({ id: `row-${i}`, value: { name: `row-${i}` } });
     }

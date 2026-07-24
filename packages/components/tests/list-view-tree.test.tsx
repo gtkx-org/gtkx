@@ -1,4 +1,4 @@
-import type { ItemNode, RenderItemProps } from "@gtkx/components";
+import type { Item, RenderItemArgs } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 
@@ -105,7 +105,7 @@ const categoryNode = (id: string, name: string, children: ReturnType<typeof chil
     children,
 });
 
-const demoFullTree: ItemNode<DemoItem>[] = [
+const demoFullTree: Item<DemoItem>[] = [
     leafNode("demo-intro", "GTK Demo"),
     categoryNode("cat-Benchmark", "Benchmark", [
         childNode("demo-frames", "Frames"),
@@ -267,9 +267,9 @@ const notificationChildNames = ["Alerts", "Notification Sounds", "Do Not Disturb
 
 type FilterItem = { type: "category"; name: string } | { type: "leaf"; name: string };
 
-const filterLeaf = (id: string, name: string): ItemNode<FilterItem> => ({ id, value: { type: "leaf", name } });
+const filterLeaf = (id: string, name: string): Item<FilterItem> => ({ id, value: { type: "leaf", name } });
 
-const filterCategory = (id: string, name: string, children: [string, string][]): ItemNode<FilterItem> => ({
+const filterCategory = (id: string, name: string, children: [string, string][]): Item<FilterItem> => ({
     id,
     value: { type: "category", name },
     children: children.map(([childId, childName]) => ({
@@ -399,7 +399,7 @@ describe("render - ListView (tree) (4)", () => {
         });
 
         it("receives depth in renderItem", async () => {
-            const renderItem = vi.fn(({ item, depth }: RenderItemProps<{ name: string }>) => (
+            const renderItem = vi.fn(({ item, depth }: RenderItemArgs<{ name: string }>) => (
                 <GtkLabel>{`${item.name} - depth: ${depth}`}</GtkLabel>
             ));
 
@@ -719,7 +719,7 @@ describe("render - ListView (tree) (17)", () => {
 describe("render - ListView (tree) (18)", () => {
     describe("tree filtering (3)", () => {
         it("shows children after filtering a large tree with many root items", async () => {
-            const fullTree: ItemNode<DemoItem>[] = [];
+            const fullTree: Item<DemoItem>[] = [];
             for (let i = 0; i < 38; i++) {
                 if (i % 5 === 1) {
                     fullTree.push(
@@ -765,7 +765,7 @@ describe("render - ListView (tree) (19) > tree filtering (4)", () => {
 describe("render - ListView (tree) (20)", () => {
     describe("tree filtering (5)", () => {
         it("shows children after filtering demo-like tree with small viewport", async () => {
-            const fullTree: ItemNode<DemoItem>[] = [];
+            const fullTree: Item<DemoItem>[] = [];
             for (let i = 0; i < 40; i++) {
                 if (i % 4 === 0) {
                     fullTree.push(
@@ -818,7 +818,7 @@ describe("render - ListView (tree) (22)", () => {
         });
 
         it("passes isExpanded to renderItem from expandedIds", async () => {
-            const renderItem = ({ item, isExpanded }: RenderItemProps<{ name: string }>) => (
+            const renderItem = ({ item, isExpanded }: RenderItemArgs<{ name: string }>) => (
                 <GtkLabel>{`${item.name}:${isExpanded}`}</GtkLabel>
             );
 

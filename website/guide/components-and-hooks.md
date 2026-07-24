@@ -36,9 +36,9 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 />
 ```
 
-Give your `ItemNode`s `children` and the same component renders a tree with expander arrows. Add `expandedIds`/`onExpandedChange` on top of that to drive expansion from React state. Cell recycling still happens natively; your `renderItem` output is rendered into the factory-created containers through portals, so React state inside a cell behaves normally.
+Give your `Item`s `children` and the same component renders a tree with expander arrows. Add `expandedIds`/`onExpandedChange` on top of that to drive expansion from React state. Cell recycling still happens natively; your `renderItem` output is rendered into the factory-created containers through portals, so React state inside a cell behaves normally.
 
-To group rows under headers, pass `sections` in place of `items`. Each `SectionNode` holds its own `data` array of `ItemNode`s, and `renderHeader` draws the header shown above each group. `ColumnView` and `DropDown` accept the same pair.
+To group rows under headers, pass `sections` in place of `items`. Each `Section` holds its own `data` array of `Item`s, and `renderHeader` draws the header shown above each group. `ColumnView` and `DropDown` accept the same pair.
 
 ### GridView
 
@@ -61,13 +61,13 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 
 ### ColumnView
 
-`ColumnView<T, S>` wraps `Gtk.ColumnView`, the multi-column table. Columns are declared through the `columns` prop, an array of `ColumnDef` objects, each with a required `id` and `title`, its own `renderCell`, and optional presentation props like `sortable` and `expand`. Sorting is controlled: clicking a sortable header calls `onSortChanged(column, order)`, and you sort `items` yourself before passing them in, so the view always matches your data:
+`ColumnView<T, S>` wraps `Gtk.ColumnView`, the multi-column table. Columns are declared through the `columns` prop, an array of `Column` objects, each with a required `id` and `title`, its own `renderCell`, and optional presentation props like `sortable` and `expand`. Sorting is controlled: clicking a sortable header calls `onSortChanged(column, order)`, and you sort `items` yourself before passing them in, so the view always matches your data:
 
 ```tsx
-import { ColumnView, type ColumnDef } from "@gtkx/components";
+import { ColumnView, type Column } from "@gtkx/components";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 
-const columns: ColumnDef<Employee>[] = [
+const columns: Column<Employee>[] = [
     {
         id: "name",
         title: "Name",
@@ -86,7 +86,7 @@ const columns: ColumnDef<Employee>[] = [
 />
 ```
 
-Typing the array as `ColumnDef<Employee>[]` binds every `renderCell` callback to the view's item type, so the `item` argument is inferred as `Employee` without annotating each callback.
+Typing the array as `Column<Employee>[]` binds every `renderCell` callback to the view's item type, so the `item` argument is inferred as `Employee` without annotating each callback.
 
 ### DropDown
 
@@ -106,7 +106,7 @@ The backing widget comes from the `component` prop. Leave it out for a plain `Gt
 
 ## Menu
 
-`Menu` builds a `Gio.Menu` model from a plain `items: MenuEntry[]` array instead of imperative `append`/`appendSection`/`appendSubmenu` calls.
+`Menu` builds a `Gio.Menu` model from a plain `items: MenuItem[]` array instead of imperative `append`/`appendSection`/`appendSubmenu` calls.
 
 ```tsx
 import { Menu } from "@gtkx/components";

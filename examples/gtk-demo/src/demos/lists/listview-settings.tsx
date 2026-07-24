@@ -1,4 +1,4 @@
-import { type ColumnDef, ColumnView, ListView, Menu } from "@gtkx/components";
+import { type Column, ColumnView, ListView, Menu } from "@gtkx/components";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -327,7 +327,7 @@ const renderKeyInfoCell =
         </GtkLabel>
     );
 
-const renderSettingsColumns = ({ columnVisibility, onValueEdit }: SettingsColumnsProps): ColumnDef<KeyInfo>[] => [
+const renderSettingsColumns = ({ columnVisibility, onValueEdit }: SettingsColumnsProps): Column<KeyInfo>[] => [
     { id: "name", title: "Name", renderCell: renderKeyInfoCell((keyInfo) => keyInfo.name) },
     {
         id: "value",

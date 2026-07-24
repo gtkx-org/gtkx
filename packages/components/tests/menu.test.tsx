@@ -1,4 +1,4 @@
-import { Menu, type MenuEntry } from "@gtkx/components";
+import { Menu, type MenuItem } from "@gtkx/components";
 import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 
@@ -39,7 +39,7 @@ const requireLink = (model: Gio.MenuModel | null): Gio.MenuModel => {
     return model;
 };
 
-const renderPopoverMenu = async (items: MenuEntry[]): Promise<Gio.MenuModel> => {
+const renderPopoverMenu = async (items: MenuItem[]): Promise<Gio.MenuModel> => {
     const ref = createRef<Gtk.PopoverMenu>();
     await render(<GtkPopoverMenu ref={ref} menuModel={<Menu items={items} />} />);
     return requireModel(ref.current);
@@ -68,7 +68,7 @@ const renderItemListTransition = async (
     return requireModel(ref.current);
 };
 
-const SingleEntryApp = ({ menuRef, entry }: { menuRef: MenuRef; entry: MenuEntry }) => (
+const SingleEntryApp = ({ menuRef, entry }: { menuRef: MenuRef; entry: MenuItem }) => (
     <GtkPopoverMenu ref={menuRef} menuModel={<Menu items={[entry]} />} />
 );
 
@@ -167,7 +167,7 @@ describe("render - Menu sections", () => {
     });
 });
 
-const buildDeepItems = (quitLabel: string): MenuEntry[] => [
+const buildDeepItems = (quitLabel: string): MenuItem[] => [
     { label: "Open", action: "win.open" },
     { label: "Edit", submenu: [{ label: "Cut", action: "win.cut" }] },
     { label: "App", section: [{ label: quitLabel, action: "app.quit" }] },
@@ -216,7 +216,7 @@ describe("render - Menu change notification", () => {
     });
 });
 
-const FILE_SUBMENU_ITEMS: MenuEntry[] = [
+const FILE_SUBMENU_ITEMS: MenuItem[] = [
     {
         label: "File",
         submenu: [
@@ -226,7 +226,7 @@ const FILE_SUBMENU_ITEMS: MenuEntry[] = [
     },
 ];
 
-const NESTED_SUBMENU_ITEMS: MenuEntry[] = [
+const NESTED_SUBMENU_ITEMS: MenuItem[] = [
     {
         label: "File",
         submenu: [
@@ -242,7 +242,7 @@ const NESTED_SUBMENU_ITEMS: MenuEntry[] = [
 ];
 
 const GrowingSubmenuApp = ({ menuRef, extra }: { menuRef: MenuRef; extra: boolean }) => {
-    const submenu: MenuEntry[] = [{ label: "Cut", action: "win.cut" }];
+    const submenu: MenuItem[] = [{ label: "Cut", action: "win.cut" }];
     if (extra) submenu.push({ label: "Copy", action: "win.copy" });
     return <SingleEntryApp menuRef={menuRef} entry={{ label: "Edit", submenu }} />;
 };

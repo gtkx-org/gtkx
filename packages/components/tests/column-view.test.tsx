@@ -1,4 +1,4 @@
-import { ColumnView, type RenderItemProps } from "@gtkx/components";
+import { ColumnView, type RenderItemArgs } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { act, getWidgetNodeText, render, screen, within } from "@gtkx/testing";
@@ -19,7 +19,7 @@ import {
     namedRows,
     RAPID_REORDER_ORDERS,
 } from "./helpers/list-collection-render.js";
-import { type ColumnDef, renderColumnView } from "./helpers/list-fixtures.js";
+import { type Column, renderColumnView } from "./helpers/list-fixtures.js";
 import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
 import { expectNoBoxBetween } from "./helpers/widget-chain.js";
 
@@ -56,9 +56,9 @@ const columnViewView = async (items: Parameters<typeof renderColumnView>[0]): Pr
     return { texts: () => getColumnViewItemTexts(ref.current), rerender };
 };
 
-const labelCell = ({ item }: RenderItemProps<{ name: string }>) => <GtkLabel>{item.name}</GtkLabel>;
+const labelCell = ({ item }: RenderItemArgs<{ name: string }>) => <GtkLabel>{item.name}</GtkLabel>;
 
-const titleColumns = (titles: string[]): ColumnDef<{ name: string }>[] =>
+const titleColumns = (titles: string[]): Column<{ name: string }>[] =>
     titles.map((title) => ({ id: title, title, renderCell: labelCell }));
 
 const singleNamedRow = [{ id: "1", value: { name: "First" } }];
@@ -76,11 +76,11 @@ const renderTitledColumnView = async (titles: string[]): Promise<TitledColumnVie
     };
 };
 
-const orderedColumns = (ids: string[]): ColumnDef<{ name: string }>[] =>
+const orderedColumns = (ids: string[]): Column<{ name: string }>[] =>
     ids.map((id) => ({
         id,
         title: id,
-        renderCell: ({ item }: RenderItemProps<{ name: string }>) => <GtkLabel>{`${id}:${item.name}`}</GtkLabel>,
+        renderCell: ({ item }: RenderItemArgs<{ name: string }>) => <GtkLabel>{`${id}:${item.name}`}</GtkLabel>,
     }));
 
 interface Employee {
@@ -167,14 +167,14 @@ function SortableColumnView({
                         title: "Name",
                         expand: true,
                         sortable: true,
-                        renderCell: ({ item }: RenderItemProps<Employee>) => <GtkLabel>{item.name}</GtkLabel>,
+                        renderCell: ({ item }: RenderItemArgs<Employee>) => <GtkLabel>{item.name}</GtkLabel>,
                     },
                     {
                         id: "salary",
                         title: "Salary",
                         expand: true,
                         sortable: true,
-                        renderCell: ({ item }: RenderItemProps<Employee>) => <GtkLabel>{`$${item.salary}`}</GtkLabel>,
+                        renderCell: ({ item }: RenderItemArgs<Employee>) => <GtkLabel>{`$${item.salary}`}</GtkLabel>,
                     },
                 ]}
             />
@@ -381,7 +381,7 @@ describe("render - ColumnView (5)", () => {
         });
 
         it("updates sort indicator when props change", async () => {
-            const columns: ColumnDef<{ name: string }>[] = [
+            const columns: Column<{ name: string }>[] = [
                 { id: "name", title: "Name", renderCell: labelCell },
                 { id: "age", title: "Age", renderCell: labelCell },
             ];
@@ -598,7 +598,7 @@ describe("render - ColumnView (13)", () => {
                 { id: "1", name: "Alice", salary: 50000 },
                 { id: "2", name: "Bob", salary: 55000 },
             ];
-            const columns: ColumnDef<Item>[] = [
+            const columns: Column<Item>[] = [
                 {
                     id: "name",
                     title: "Name",
@@ -663,7 +663,7 @@ describe("render - ColumnView (14)", () => {
 
         it("preserves order when updating a single item value", async () => {
             type Item = { name: string; count: number };
-            const columns: ColumnDef<Item>[] = [
+            const columns: Column<Item>[] = [
                 {
                     id: "name",
                     title: "Name",
