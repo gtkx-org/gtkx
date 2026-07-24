@@ -36,6 +36,8 @@ For sharing a base config across packages, `mergeConfig(base, override)` deep-me
 
 **`userEventSignals`** maps GLib type names to signal names that represent user interaction, such as `{ GtkEditable: ["changed"] }`. While a React commit is applying your props, these signals are suppressed on the committing tree, so a handler like `onChanged` only ever reports the user editing the widget and never echoes a programmatic write React itself performed. A built-in table covers GTK4 and Adwaita; entries you add here are unioned with it, and the type name may be a class or an interface, applying to every type that inherits or implements it.
 
+**`elementProps`** points at a module of custom element rules, covered in [Customizing elements](#advanced-customizing-elements) below. The module is imported by your app at runtime; codegen never reads it.
+
 **`codegen`** controls binding generation, which is on by default. Set it to `false` for a project that already has a binding store installed, such as an example inside a workspace that shares the store built at the root: the CLI then resolves that installed store instead of generating its own. A project with generation turned off has no GIR data of its own, so `gtkx docs` has nothing to document there.
 
 ## What codegen emits
@@ -112,24 +114,44 @@ Run `gtkx docs --help` if you need the pages somewhere else or their links roote
 
 ## Advanced: Customizing elements
 
-Property setting alone cannot express everything GTK4 does. Adding a child is `append` on a `GtkBox` but `addTopBar` on an `AdwToolbarView`; a `GtkScale`'s marks have no property at all, only `addMark` and `clearMarks`. GTKX bridges this with element rules declared in `@gtkx/react`: each rule pairs a JSX prop with a typed behavior that performs the GTK calls. A built-in set covers GTK4 and Adwaita (containers for many types, controllers, actions, breakpoints, controlled text on `GtkEditable`, and more). The kinds are:
+Property setting alone cannot express everything GTK4 does. Adding a child is `append` on a `GtkBox` but `addTopBar` on an `AdwToolbarView`; a `GtkScale`'s marks have no property at all, only `addMark` and `clearMarks`. GTKX bridges this with element rules: each rule pairs a JSX prop with a typed behavior that performs the GTK calls. A built-in set covers GTK4 and Adwaita (containers for many types, controllers, actions, breakpoints, controlled text on `GtkEditable`, and more). The kinds are:
 
-- **`container`**: children held under `prop` (usually `children`) of GObject type `child`, placed by a behavior with `attach`, `detach`, and optional `insert`, `reorder`, and `resolve` hooks, optionally wrapping each child with `autowrap` or adopting an object the widget creates itself via `adopt`.
-- **`value`**: a scalar prop applied by invoking the rule's `apply` behavior whenever it changes.
-- **`controlled-text`**: a text property kept in controlled-input sync with the user's edits, as the built-in `GtkEditable` rule does for `text`.
-- **`lazy`**: a property applied after construction rather than during it, optionally deferred until `canApply` returns true; `GtkStack`'s `visibleChildName` waits for `getChildByName` to find the named child.
-- **`list`**: an array prop mapped to per-item behavior hooks: `add` per item, plus optional `remove` and `clear`. `GtkScale`'s `marks` uses `addMark` and `clearMarks`. A list prop is reapplied only when its items differ structurally, so a fresh array literal with equal contents leaves the widget untouched.
+- **`containerRule`**: children held under a prop (usually `children`) of a given GObject type, placed by a behavior with `attach`, `detach`, and optional `insert`, `reorder`, and `resolve` hooks, optionally wrapping each child with `autowrap` or adopting an object the widget creates itself via `adopt`.
+- **`valueRule`**: a scalar prop applied by invoking the behavior whenever the value changes.
+- **`controlledTextRule`**: a text property kept in controlled-input sync with the user's edits, as the built-in `GtkEditable` rule does for `text`.
+- **`lazyRule`**: a property applied after construction rather than during it, optionally deferred until `canApply` returns true; `GtkStack`'s `visibleChildName` waits for `getChildByName` to find the named child.
+- **`listRule`**: an array prop mapped to per-item hooks: `add` per item, plus optional `remove` and `clear`. `GtkScale`'s `marks` uses `addMark` and `clearMarks`. A list prop is reapplied only when its items differ structurally, so a fresh array literal with equal contents leaves the widget untouched.
 
-Your own rules go through the same machinery. GTK4's named-cursor API is a method with no property behind it: `setCursorFromName("pointer")` shows the pointer cursor while hovering a widget, whereas the `cursor` property takes a `Gdk.Cursor` object. Declare the rule in a module your app imports once:
+Your own rules go through the same machinery. GTK4's named-cursor API is a method with no property behind it: `setCursorFromName("pointer")` shows the pointer cursor while hovering a widget, whereas the `cursor` property takes a `Gdk.Cursor` object. Write a module that default-exports rules keyed by GLib type name:
 
 ```ts
+// src/element-props.ts
 import type * as Gtk from "@gtkx/gi/gtk";
-import { defineValue } from "@gtkx/react/element-rules";
+import { defineElementProps, valueRule } from "@gtkx/react/element-rules";
 
-defineValue<Gtk.Widget, string>(["GtkWidget"], "cursorName", (widget, name) => {
-    widget.setCursorFromName(name);
+export default defineElementProps({
+    GtkWidget: [
+        valueRule<Gtk.Widget, string>("cursorName", (widget, name) => {
+            widget.setCursorFromName(name);
+        }),
+    ],
 });
+```
 
+Point `elementProps` at it and declare the prop on the generated interface:
+
+```ts
+// gtkx.config.ts
+import { defineConfig } from "@gtkx/config";
+
+export default defineConfig({
+    libraries: ["Gtk-4.0", "Adw-1"],
+    applicationId: "com.gtkx.tutorial",
+    elementProps: "./src/element-props.ts",
+});
+```
+
+```ts
 declare module "@gtkx/jsx/gtk" {
     interface GtkWidgetProps {
         cursorName?: string | null | undefined;
@@ -137,7 +159,7 @@ declare module "@gtkx/jsx/gtk" {
 }
 ```
 
-Every widget element then accepts a `cursorName` prop and the reconciler calls `setCursorFromName` whenever the value changes. A rule declared on a type covers every element descending from it, which is how the built-in `controllers` rule on `GtkWidget` reaches all widgets.
+Every widget element then accepts a `cursorName` prop and the reconciler calls `setCursorFromName` whenever the value changes. A rule declared on a type covers every element descending from it, which is how the built-in `controllers` rule on `GtkWidget` reaches all widgets. A rule replaces a built-in one with the same kind, prop, and child type, so you can also redefine how an existing prop behaves.
 
 ## Next
 

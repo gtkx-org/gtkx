@@ -1,5 +1,12 @@
 /// <reference types="@gtkx/config/env" />
-import { CONSTRUCT_ONLY_PROPS, CONSTRUCT_PROPS, DEFAULT_PROPS, SIGNALS, userEventSignals } from "virtual:gtkx-config";
+import {
+    CONSTRUCT_ONLY_PROPS,
+    CONSTRUCT_PROPS,
+    DEFAULT_PROPS,
+    elementProps,
+    SIGNALS,
+    userEventSignals,
+} from "virtual:gtkx-config";
 import { getSignalBaseName, TYPE_INVALID, typeFromName, typeInterfaces, typeName, typeParent } from "@gtkx/runtime";
 import {
     type ContainerRule,
@@ -7,6 +14,7 @@ import {
     type ElementRule,
     type LazyRule,
     type ListRule,
+    registerElementProps,
     type ValueRule,
 } from "./element-rules.js";
 
@@ -24,6 +32,8 @@ export type TypeInfo = {
     construct: Set<string>;
     defaults: Record<string, unknown>;
 };
+
+registerElementProps(elementProps);
 
 const ancestryCache = new Map<string, string[]>();
 const typeInfoCache = new Map<string, TypeInfo>();

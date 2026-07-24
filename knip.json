@@ -16,7 +16,7 @@
     "workspaces": {
         ".": {
             "entry": ["gtkx.config.ts", "gtkx.config.base.ts", "scripts/**/*.ts"],
-            "ignoreDependencies": ["@gtkx/runtime", "@gtkx/native", "@gtkx/react", "@swc/core"]
+            "ignoreDependencies": ["@gtkx/runtime", "@gtkx/native", "@swc/core"]
         },
         "website": {
             "entry": [".vitepress/theme/**/*.{ts,vue}"]
@@ -25,7 +25,7 @@
             "entry": ["gtkx.config.ts!"]
         },
         "packages/e2e": {
-            "entry": ["gtkx.config.ts!"]
+            "entry": ["gtkx.config.ts!", "element-rules.ts"]
         },
         "packages/testing": {
             "entry": ["gtkx.config.ts!"]

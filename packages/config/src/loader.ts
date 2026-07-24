@@ -54,7 +54,7 @@ export const createConfigLoader = (options: LoadConfigOptions = {}): ConfigLoade
     const loadResolved = async (root: string): Promise<ResolvedConfig> => {
         const { config } = await loadConfig(root, options);
         validateConfig(config);
-        return resolveConfig(config);
+        return resolveConfig(config, root);
     };
     return (cwd: string): Promise<ResolvedConfig> => {
         const root = resolve(cwd);

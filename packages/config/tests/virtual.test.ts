@@ -29,13 +29,25 @@ describe("renderConfigModule", () => {
         expect(source).toContain(`export const userEventSignals = ${JSON.stringify(resolved.userEventSignals)};`);
     });
 
-    it("exports only the metadata re-export, the application id, and the user event signals", () => {
+    it("exports an empty element prop table when no rule module is configured", () => {
+        const source = renderConfigModule(resolveConfig({ applicationId: "org.gtk.Test" }));
+        expect(source.split("\n")).toContain("export const elementProps = {};");
+    });
+
+    it("re-exports the configured rule module resolved against the project root", () => {
+        const resolved = resolveConfig({ applicationId: "org.gtk.Test", elementProps: "./src/rules.ts" }, "/project");
+        const source = renderConfigModule(resolved);
+        expect(source.split("\n")).toContain('export { default as elementProps } from "/project/src/rules.ts";');
+    });
+
+    it("exports only the metadata re-export, the application id, the signals, and the element props", () => {
         const resolved = resolveConfig({ applicationId: "org.gtk.Test", girPath: ["/opt/gir"] });
         const source = renderConfigModule(resolved);
         expect(source.split("\n")).toEqual([
             'export * from "@gtkx/jsx/metadata";',
             'export const applicationId = "org.gtk.Test";',
             `export const userEventSignals = ${JSON.stringify(resolved.userEventSignals)};`,
+            "export const elementProps = {};",
         ]);
     });
 });

@@ -6,9 +6,15 @@ export const RESOLVED_GTKX_CONFIG_VIRTUAL_ID: string = `\0${GTKX_CONFIG_VIRTUAL_
 
 const METADATA_SPECIFIER = "@gtkx/jsx/metadata";
 
+const elementPropsLine = (elementProps: string | null): string =>
+    elementProps === null
+        ? "export const elementProps = {};"
+        : `export { default as elementProps } from ${JSON.stringify(elementProps)};`;
+
 export const renderConfigModule = (config: ResolvedConfig): string =>
     [
         `export * from ${JSON.stringify(METADATA_SPECIFIER)};`,
         `export const applicationId = ${JSON.stringify(config.applicationId)};`,
         `export const userEventSignals = ${JSON.stringify(config.userEventSignals)};`,
+        elementPropsLine(config.elementProps),
     ].join("\n");

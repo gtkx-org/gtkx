@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import { createDefineConfig, type DefineConfig } from "c12";
 import { defu } from "defu";
 import { z } from "zod";
@@ -151,13 +152,17 @@ const configSchema = z.object({
     reactCompiler: reactCompilerSchema.optional(),
     codegen: z.boolean({ error: "must be a boolean" }).optional(),
     userEventSignals: userEventSignalsSchema.optional(),
+    elementProps: z
+        .string({ error: "must be a path to a module exporting element rules" })
+        .min(1, { error: "must be a path to a module exporting element rules" })
+        .optional(),
 });
 
 /**
  * User-facing configuration for a GTKX project, as authored in `gtkx.config.ts`:
  * the GIR libraries to bind, extra `.gir` search paths, the GApplication id,
- * custom element prop mappings, the React Compiler and codegen settings, and
- * additional user event signals to suppress during React commits.
+ * a module of custom element rules, the React Compiler and codegen settings,
+ * and additional user event signals to suppress during React commits.
  */
 export type Config = z.infer<typeof configSchema>;
 
@@ -181,17 +186,25 @@ export const mergeConfig = (base: Config, override: Config): Config => defu(over
 
 /**
  * Configuration reduced to the values needed at runtime: the GApplication
- * identifier, the resolved React Compiler options (`null` when disabled), and
- * the user event signals suppressed while a React commit is in progress.
+ * identifier, the resolved React Compiler options (`null` when disabled), the
+ * user event signals suppressed while a React commit is in progress, and the
+ * module path holding custom element rules (`null` when unset).
  */
 export type ResolvedConfig = {
     applicationId: string;
     reactCompiler: ResolvedReactCompilerOptions | null;
     userEventSignals: Record<string, string[]>;
+    elementProps: string | null;
 };
 
-export const resolveConfig = (config: Config): ResolvedConfig => ({
+const resolveElementProps = (elementProps: string | undefined, root: string | undefined): string | null => {
+    if (elementProps === undefined) return null;
+    return root === undefined ? elementProps : resolve(root, elementProps);
+};
+
+export const resolveConfig = (config: Config, root?: string): ResolvedConfig => ({
     applicationId: config.applicationId,
     reactCompiler: resolveReactCompilerOptions(config.reactCompiler),
     userEventSignals: resolveUserEventSignals(config.userEventSignals),
+    elementProps: resolveElementProps(config.elementProps, root),
 });

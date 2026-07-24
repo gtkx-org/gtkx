@@ -80,66 +80,77 @@ const RULES: Record<string, ElementRule[]> = {};
 /** Every registered rule, keyed by GLib type name. Adwaita rules appear once `@gtkx/react/adw` is loaded. */
 export const ELEMENT_RULES: Record<string, ElementRule[]> = RULES;
 
-const addRule = (types: string[], rule: ElementRule): void => {
-    for (const type of types) {
-        const existing = RULES[type];
-        if (existing === undefined) RULES[type] = [rule];
-        else existing.push(rule);
-    }
-};
-
 type ContainerOptions<P, C> = {
     autowrap?: (inner: GObject.Object) => GObject.Object;
     adopt?: AdoptSource;
     behavior: ContainerBehavior<P, C, never>;
 };
 
-/** Declares a container prop and the behavior that places its children. */
-export const defineContainer = <P extends GObject.Object, C extends GObject.Object, CP = Props>(
-    types: string[],
+/** Builds a container rule: a child slot and the behavior that places its children. */
+export const containerRule = <P extends GObject.Object, C extends GObject.Object, CP = Props>(
     prop: string,
     child: string,
     options: ContainerOptions<P, C> & { behavior: ContainerBehavior<P, C, CP> },
-): void => {
+): ContainerRule => {
     const { behavior, ...rest } = options;
-    addRule(types, { kind: "container", prop, child, ...rest, behavior: behavior as ContainerBehavior });
+    return { kind: "container", prop, child, ...rest, behavior: behavior as ContainerBehavior };
 };
 
-/** Declares an array prop and the behavior that applies its items. */
-export const defineList = <P extends GObject.Object, I>(
-    types: string[],
-    prop: string,
-    behavior: ListBehavior<P, I>,
-): void => {
-    addRule(types, { kind: "list", prop, behavior: behavior as ListBehavior });
-};
+/** Builds an array-prop rule and the behavior that applies its items. */
+export const listRule = <P extends GObject.Object, I>(prop: string, behavior: ListBehavior<P, I>): ListRule => ({
+    kind: "list",
+    prop,
+    behavior: behavior as ListBehavior,
+});
 
-/** Declares a scalar prop applied by invoking `apply` whenever the value changes. */
-export const defineValue = <P extends GObject.Object, V>(
-    types: string[],
+/** Builds a scalar-prop rule applied by invoking `apply` whenever the value changes. */
+export const valueRule = <P extends GObject.Object, V>(
     prop: string,
     apply: (object: P, value: V) => void,
-): void => {
-    addRule(types, { kind: "value", prop, apply: (object, value) => apply(object as P, value as V) });
-};
+): ValueRule => ({
+    kind: "value",
+    prop,
+    apply: (object, value) => apply(object as P, value as V),
+});
 
-/** Declares a prop applied after construction, optionally guarded by `canApply`. */
-export const defineLazy = <P extends GObject.Object, V>(
-    types: string[],
+/** Builds a rule for a prop applied after construction, optionally guarded by `canApply`. */
+export const lazyRule = <P extends GObject.Object, V>(
     prop: string,
     canApply?: (object: P, value: V) => boolean,
-): void => {
-    addRule(types, {
-        kind: "lazy",
-        prop,
-        ...(canApply === undefined ? {} : { canApply: (object, value) => canApply(object as P, value as V) }),
-    });
+): LazyRule => ({
+    kind: "lazy",
+    prop,
+    ...(canApply === undefined ? {} : { canApply: (object, value) => canApply(object as P, value as V) }),
+});
+
+/** Builds a rule for a prop kept in sync with the element's own edits. */
+export const controlledTextRule = (prop: string): ControlledTextRule => ({ kind: "controlled-text", prop });
+
+const ruleKey = (rule: ElementRule): string =>
+    rule.kind === "container" ? `container:${rule.prop}:${rule.child}` : `${rule.kind}:${rule.prop}`;
+
+/**
+ * Registers rules keyed by GLib type name. A rule replaces a registered one with the same
+ * kind, prop, and child type, keeping its position; anything else is appended.
+ */
+export const registerElementProps = (rules: Record<string, ElementRule[]>): void => {
+    for (const [type, added] of Object.entries(rules)) {
+        const existing = RULES[type] ?? [];
+        const replacements = new Map(added.map((rule) => [ruleKey(rule), rule]));
+        const merged = existing.map((rule) => replacements.get(ruleKey(rule)) ?? rule);
+        const replaced = new Set(existing.map(ruleKey));
+        RULES[type] = [...merged, ...added.filter((rule) => !replaced.has(ruleKey(rule)))];
+    }
 };
 
-/** Declares a prop kept in sync with the element's own edits rather than reset on every render. */
-export const defineControlledText = (types: string[], prop: string): void => {
-    addRule(types, { kind: "controlled-text", prop });
-};
+/**
+ * Identity helper that types a module of element rules for the `elementProps` entry of
+ * `gtkx.config.ts`, enabling editor autocompletion and type checking.
+ */
+export const defineElementProps = (rules: Record<string, ElementRule[]>): Record<string, ElementRule[]> => rules;
+
+const forTypes = (types: string[], ...rules: ElementRule[]): Record<string, ElementRule[]> =>
+    Object.fromEntries(types.map((type) => [type, rules]));
 
 /** Behavior for a container that installs its single child with `setChild`. */
 export const childSetterBehavior = <
@@ -190,6 +201,14 @@ export const indexedBehavior = <
     detach: (parent, child) => parent.remove(child),
     insert: (parent, child, { index }) => parent.insert(child, index),
 });
+
+/** Rule for a `children` slot whose attach call returns the page object the container adopts. */
+export const adoptedChildrenRule = <P extends GObject.Object, C extends GObject.Object>(
+    child: string,
+    add: (parent: P, item: C) => unknown,
+    remove: (parent: P, item: C) => void,
+): ContainerRule =>
+    containerRule<P, C>("children", child, { adopt: "result", behavior: { attach: add, detach: remove } });
 
 /** Behavior for a container whose children are added and removed by a pair of methods. */
 export const addRemoveBehavior = <C extends GObject.Object, P extends GObject.Object>(
@@ -248,7 +267,6 @@ const GTK_SINGLE_CHILD_TYPES = [
     "GtkListHeader",
     "GtkListItem",
     "GtkMenuButton",
-    "GtkOverlay",
     "GtkPopover",
     "GtkPopoverBin",
     "GtkRevealer",
@@ -260,87 +278,10 @@ const GTK_SINGLE_CHILD_TYPES = [
     "GtkWindowHandle",
 ];
 
-defineContainer<GtkChildSetter, Gtk.Widget>(GTK_SINGLE_CHILD_TYPES, "children", "GtkWidget", {
-    behavior: childSetterBehavior<GtkChildSetter>(),
-});
-
-defineContainer<Gtk.Box, Gtk.Widget>(["GtkBox"], "children", "GtkWidget", { behavior: boxBehavior<Gtk.Box>() });
-
-defineContainer<Gtk.ListBox, Gtk.Widget>(["GtkListBox"], "children", "GtkWidget", {
-    autowrap: autowrapWith(Gtk.ListBoxRow, (row, inner) => {
-        row.setChild(inner);
-    }),
-    behavior: indexedBehavior<Gtk.Widget, Gtk.ListBox>(),
-});
-
-defineContainer<Gtk.FlowBox, Gtk.Widget>(["GtkFlowBox"], "children", "GtkWidget", {
-    autowrap: autowrapWith(Gtk.FlowBoxChild, (child, inner) => {
-        child.setChild(inner);
-    }),
-    behavior: indexedBehavior<Gtk.Widget, Gtk.FlowBox>(),
-});
-
 const layoutChild = (parent: Gtk.Widget, child: Gtk.Widget): GObject.Object | null =>
     parent.getLayoutManager()?.getLayoutChild(child) ?? null;
 
-defineContainer<Gtk.Widget, Gtk.Popover>(["GtkWidget"], "children", "GtkPopover", {
-    behavior: {
-        attach: (parent, popover) => popover.setParent(parent),
-        detach: (_parent, popover) => popover.unparent(),
-    },
-});
-
-defineContainer<Gtk.Widget, Gtk.EventController>(["GtkWidget"], "controllers", "GtkEventController", {
-    behavior: addRemoveBehavior(
-        (widget, controller) => {
-            widget.addController(controller);
-        },
-        (widget, controller) => {
-            widget.removeController(controller);
-        },
-    ),
-});
-
-defineContainer<Gtk.Widget, Gtk.LayoutManager>(["GtkWidget"], "layoutManager", "GtkLayoutManager", {
-    behavior: {
-        attach: (widget, manager) => widget.setLayoutManager(manager),
-        detach: (widget) => widget.setLayoutManager(null),
-    },
-});
-
-defineContainer<Gtk.Widget, Gio.ActionGroup, GActionGroupElementProps>(["GtkWidget"], "actionGroups", "GActionGroup", {
-    behavior: {
-        attach: (widget, group, { props }) => widget.insertActionGroup(props.prefix ?? "", group),
-        detach: (widget, _group, { props }) => widget.insertActionGroup(props.prefix ?? "", null),
-    },
-});
-
-defineContainer<Gtk.ShortcutController, Gtk.Shortcut>(["GtkShortcutController"], "shortcuts", "GtkShortcut", {
-    behavior: addRemoveBehavior(
-        (controller, shortcut) => {
-            controller.addShortcut(shortcut);
-        },
-        (controller, shortcut) => {
-            controller.removeShortcut(shortcut);
-        },
-    ),
-});
-
-defineContainer<Gtk.TextView, Gtk.TextBuffer>(["GtkTextView"], "children", "GtkTextBuffer", {
-    behavior: {
-        attach: (view, buffer) => view.setBuffer(buffer),
-        detach: (view) => view.setBuffer(null),
-    },
-});
-
 type ActionPlacement = { name?: string };
-
-defineContainer<Gio.ActionMap, Gio.Action, ActionPlacement>(["GActionMap"], "actions", "GAction", {
-    behavior: {
-        attach: (map, action) => map.addAction(action),
-        detach: (map, _action, { props }) => map.removeAction(props.name ?? ""),
-    },
-});
 
 let createMenu: () => Gio.Menu = () => {
     throw new Error("GMenu construction is not available");
@@ -363,90 +304,7 @@ function appendMenuItem(menu: Gio.Menu, item: MenuItem): void {
     else menu.append(item.label ?? null, item.action ?? null);
 }
 
-defineList<Gio.Menu, MenuItem>(["GMenu"], "items", {
-    clear: (menu) => menu.removeAll(),
-    add: (menu, item) => appendMenuItem(menu, item),
-});
-
-defineContainer<Gtk.ColumnView, Gtk.ColumnViewColumn>(["GtkColumnView"], "children", "GtkColumnViewColumn", {
-    behavior: {
-        attach: (view, column) => view.appendColumn(column),
-        detach: (view, column) => view.removeColumn(column),
-        insert: (view, column, { index }) => view.insertColumn(index, column),
-    },
-});
-
-defineContainer<Gtk.Grid, Gtk.Widget>(["GtkGrid"], "children", "GtkWidget", {
-    adopt: "resolve",
-    behavior: {
-        attach: (grid, child) => grid.attach(child, 0, 0, 1, 1),
-        detach: (grid, child) => grid.remove(child),
-        resolve: layoutChild,
-    },
-});
-
-defineContainer<Gtk.Fixed, Gtk.Widget>(["GtkFixed"], "children", "GtkWidget", {
-    adopt: "resolve",
-    behavior: {
-        attach: (fixed, child) => fixed.put(child, 0, 0),
-        detach: (fixed, child) => fixed.remove(child),
-        resolve: layoutChild,
-    },
-});
-
-defineContainer<Gtk.Overlay, Gtk.Widget>(["GtkOverlay"], "overlays", "GtkWidget", {
-    adopt: "resolve",
-    behavior: {
-        attach: (overlay, child) => overlay.addOverlay(child),
-        detach: (overlay, child) => overlay.removeOverlay(child),
-        resolve: layoutChild,
-    },
-});
-
-defineList<Gtk.SizeGroup, Gtk.Widget>(["GtkSizeGroup"], "widgets", {
-    add: (group, widget) => group.addWidget(widget),
-    remove: (group, widget) => group.removeWidget(widget),
-});
-
-defineContainer<Gtk.ConstraintLayout, Gtk.Constraint>(["GtkConstraintLayout"], "constraints", "GtkConstraint", {
-    behavior: addRemoveBehavior(
-        (layout, constraint) => {
-            layout.addConstraint(constraint);
-        },
-        (layout, constraint) => {
-            layout.removeConstraint(constraint);
-        },
-    ),
-});
-
-defineContainer<Gtk.ConstraintLayout, Gtk.ConstraintGuide>(["GtkConstraintLayout"], "guides", "GtkConstraintGuide", {
-    behavior: addRemoveBehavior(
-        (layout, guide) => {
-            layout.addGuide(guide);
-        },
-        (layout, guide) => {
-            layout.removeGuide(guide);
-        },
-    ),
-});
-
 const vflConstraints = new WeakMap<VflConstraints, Gtk.Constraint[]>();
-
-defineList<Gtk.ConstraintLayout, VflConstraints>(["GtkConstraintLayout"], "vfl", {
-    add: (layout, item) => {
-        const added = layout.addConstraintsFromDescription(
-            item.lines,
-            item.hspacing ?? 0,
-            item.vspacing ?? 0,
-            item.views ?? new Map(),
-        );
-        vflConstraints.set(item, [...added]);
-    },
-    remove: (layout, item) => {
-        for (const constraint of vflConstraints.get(item) ?? []) layout.removeConstraint(constraint);
-        vflConstraints.delete(item);
-    },
-});
 
 type Packer = Gtk.HeaderBar | Gtk.ActionBar;
 
@@ -455,85 +313,268 @@ const packBehavior = (pack: (bar: Packer, child: Gtk.Widget) => void): Container
         bar.remove(child);
     });
 
-defineContainer<Packer, Gtk.Widget>(["GtkHeaderBar", "GtkActionBar"], "start", "GtkWidget", {
-    behavior: packBehavior((bar, child) => {
-        bar.packStart(child);
-    }),
-});
-
-defineContainer<Packer, Gtk.Widget>(["GtkHeaderBar", "GtkActionBar"], "end", "GtkWidget", {
-    behavior: packBehavior((bar, child) => {
-        bar.packEnd(child);
-    }),
-});
-
-defineContainer<Gtk.Stack, Gtk.Widget>(["GtkStack"], "children", "GtkWidget", {
-    adopt: "result",
-    behavior: {
-        attach: (stack, child) => stack.addChild(child),
-        detach: (stack, child) => stack.remove(child),
-    },
-});
-
-defineLazy<Gtk.Stack, string>(["GtkStack"], "visibleChildName", (stack, name) => stack.getChildByName(name) !== null);
-
-defineContainer<Gtk.Notebook, Gtk.Widget>(["GtkNotebook"], "children", "GtkWidget", {
-    adopt: "resolve",
-    behavior: {
-        attach: (notebook, child) => notebook.appendPage(child, null),
-        insert: (notebook, child, { index }) => notebook.insertPage(child, null, index),
-        reorder: (notebook, child, { index }) => notebook.reorderChild(child, index),
-        detach: (notebook, child) => notebook.detachTab(child),
-        resolve: (notebook, child) => notebook.getPage(child),
-    },
-});
-
-defineContainer<Gtk.Application, Gtk.Window>(["GtkApplication"], "children", "GtkWindow", {
-    behavior: addRemoveBehavior(
-        (application, window) => {
-            application.addWindow(window);
-        },
-        (application, window) => {
-            application.removeWindow(window);
-        },
+registerElementProps({
+    ...forTypes(
+        GTK_SINGLE_CHILD_TYPES,
+        containerRule<GtkChildSetter, Gtk.Widget>("children", "GtkWidget", {
+            behavior: childSetterBehavior<GtkChildSetter>(),
+        }),
     ),
+    ...forTypes(
+        ["GtkHeaderBar", "GtkActionBar"],
+        containerRule<Packer, Gtk.Widget>("start", "GtkWidget", {
+            behavior: packBehavior((bar, child) => {
+                bar.packStart(child);
+            }),
+        }),
+        containerRule<Packer, Gtk.Widget>("end", "GtkWidget", {
+            behavior: packBehavior((bar, child) => {
+                bar.packEnd(child);
+            }),
+        }),
+    ),
+    GtkWidget: [
+        containerRule<Gtk.Widget, Gtk.Popover>("children", "GtkPopover", {
+            behavior: {
+                attach: (parent, popover) => popover.setParent(parent),
+                detach: (_parent, popover) => popover.unparent(),
+            },
+        }),
+        containerRule<Gtk.Widget, Gtk.EventController>("controllers", "GtkEventController", {
+            behavior: addRemoveBehavior(
+                (widget, controller) => {
+                    widget.addController(controller);
+                },
+                (widget, controller) => {
+                    widget.removeController(controller);
+                },
+            ),
+        }),
+        containerRule<Gtk.Widget, Gtk.LayoutManager>("layoutManager", "GtkLayoutManager", {
+            behavior: {
+                attach: (widget, manager) => widget.setLayoutManager(manager),
+                detach: (widget) => widget.setLayoutManager(null),
+            },
+        }),
+        containerRule<Gtk.Widget, Gio.ActionGroup, GActionGroupElementProps>("actionGroups", "GActionGroup", {
+            behavior: {
+                attach: (widget, group, { props }) => widget.insertActionGroup(props.prefix ?? "", group),
+                detach: (widget, _group, { props }) => widget.insertActionGroup(props.prefix ?? "", null),
+            },
+        }),
+    ],
+    GtkBox: [containerRule<Gtk.Box, Gtk.Widget>("children", "GtkWidget", { behavior: boxBehavior<Gtk.Box>() })],
+    GtkListBox: [
+        containerRule<Gtk.ListBox, Gtk.Widget>("children", "GtkWidget", {
+            autowrap: autowrapWith(Gtk.ListBoxRow, (row, inner) => {
+                row.setChild(inner);
+            }),
+            behavior: indexedBehavior<Gtk.Widget, Gtk.ListBox>(),
+        }),
+    ],
+    GtkFlowBox: [
+        containerRule<Gtk.FlowBox, Gtk.Widget>("children", "GtkWidget", {
+            autowrap: autowrapWith(Gtk.FlowBoxChild, (child, inner) => {
+                child.setChild(inner);
+            }),
+            behavior: indexedBehavior<Gtk.Widget, Gtk.FlowBox>(),
+        }),
+    ],
+    GtkOverlay: [
+        containerRule<Gtk.Overlay, Gtk.Widget>("children", "GtkWidget", {
+            behavior: childSetterBehavior<Gtk.Overlay>(),
+        }),
+        containerRule<Gtk.Overlay, Gtk.Widget>("overlays", "GtkWidget", {
+            adopt: "resolve",
+            behavior: {
+                attach: (overlay, child) => overlay.addOverlay(child),
+                detach: (overlay, child) => overlay.removeOverlay(child),
+                resolve: layoutChild,
+            },
+        }),
+    ],
+    GtkShortcutController: [
+        containerRule<Gtk.ShortcutController, Gtk.Shortcut>("shortcuts", "GtkShortcut", {
+            behavior: addRemoveBehavior(
+                (controller, shortcut) => {
+                    controller.addShortcut(shortcut);
+                },
+                (controller, shortcut) => {
+                    controller.removeShortcut(shortcut);
+                },
+            ),
+        }),
+    ],
+    GtkTextView: [
+        containerRule<Gtk.TextView, Gtk.TextBuffer>("children", "GtkTextBuffer", {
+            behavior: {
+                attach: (view, buffer) => view.setBuffer(buffer),
+                detach: (view) => view.setBuffer(null),
+            },
+        }),
+    ],
+    GActionMap: [
+        containerRule<Gio.ActionMap, Gio.Action, ActionPlacement>("actions", "GAction", {
+            behavior: {
+                attach: (map, action) => map.addAction(action),
+                detach: (map, _action, { props }) => map.removeAction(props.name ?? ""),
+            },
+        }),
+    ],
+    GMenu: [
+        listRule<Gio.Menu, MenuItem>("items", {
+            clear: (menu) => menu.removeAll(),
+            add: (menu, item) => appendMenuItem(menu, item),
+        }),
+    ],
+    GtkColumnView: [
+        containerRule<Gtk.ColumnView, Gtk.ColumnViewColumn>("children", "GtkColumnViewColumn", {
+            behavior: {
+                attach: (view, column) => view.appendColumn(column),
+                detach: (view, column) => view.removeColumn(column),
+                insert: (view, column, { index }) => view.insertColumn(index, column),
+            },
+        }),
+    ],
+    GtkGrid: [
+        containerRule<Gtk.Grid, Gtk.Widget>("children", "GtkWidget", {
+            adopt: "resolve",
+            behavior: {
+                attach: (grid, child) => grid.attach(child, 0, 0, 1, 1),
+                detach: (grid, child) => grid.remove(child),
+                resolve: layoutChild,
+            },
+        }),
+    ],
+    GtkFixed: [
+        containerRule<Gtk.Fixed, Gtk.Widget>("children", "GtkWidget", {
+            adopt: "resolve",
+            behavior: {
+                attach: (fixed, child) => fixed.put(child, 0, 0),
+                detach: (fixed, child) => fixed.remove(child),
+                resolve: layoutChild,
+            },
+        }),
+    ],
+    GtkSizeGroup: [
+        listRule<Gtk.SizeGroup, Gtk.Widget>("widgets", {
+            add: (group, widget) => group.addWidget(widget),
+            remove: (group, widget) => group.removeWidget(widget),
+        }),
+    ],
+    GtkConstraintLayout: [
+        containerRule<Gtk.ConstraintLayout, Gtk.Constraint>("constraints", "GtkConstraint", {
+            behavior: addRemoveBehavior(
+                (layout, constraint) => {
+                    layout.addConstraint(constraint);
+                },
+                (layout, constraint) => {
+                    layout.removeConstraint(constraint);
+                },
+            ),
+        }),
+        containerRule<Gtk.ConstraintLayout, Gtk.ConstraintGuide>("guides", "GtkConstraintGuide", {
+            behavior: addRemoveBehavior(
+                (layout, guide) => {
+                    layout.addGuide(guide);
+                },
+                (layout, guide) => {
+                    layout.removeGuide(guide);
+                },
+            ),
+        }),
+        listRule<Gtk.ConstraintLayout, VflConstraints>("vfl", {
+            add: (layout, item) => {
+                const added = layout.addConstraintsFromDescription(
+                    item.lines,
+                    item.hspacing ?? 0,
+                    item.vspacing ?? 0,
+                    item.views ?? new Map(),
+                );
+                vflConstraints.set(item, [...added]);
+            },
+            remove: (layout, item) => {
+                for (const constraint of vflConstraints.get(item) ?? []) layout.removeConstraint(constraint);
+                vflConstraints.delete(item);
+            },
+        }),
+    ],
+    GtkStack: [
+        adoptedChildrenRule<Gtk.Stack, Gtk.Widget>(
+            "GtkWidget",
+            (stack, child) => stack.addChild(child),
+            (stack, child) => {
+                stack.remove(child);
+            },
+        ),
+        lazyRule<Gtk.Stack, string>("visibleChildName", (stack, name) => stack.getChildByName(name) !== null),
+    ],
+    GtkNotebook: [
+        containerRule<Gtk.Notebook, Gtk.Widget>("children", "GtkWidget", {
+            adopt: "resolve",
+            behavior: {
+                attach: (notebook, child) => notebook.appendPage(child, null),
+                insert: (notebook, child, { index }) => notebook.insertPage(child, null, index),
+                reorder: (notebook, child, { index }) => notebook.reorderChild(child, index),
+                detach: (notebook, child) => notebook.detachTab(child),
+                resolve: (notebook, child) => notebook.getPage(child),
+            },
+        }),
+    ],
+    GtkApplication: [
+        containerRule<Gtk.Application, Gtk.Window>("children", "GtkWindow", {
+            behavior: addRemoveBehavior(
+                (application, window) => {
+                    application.addWindow(window);
+                },
+                (application, window) => {
+                    application.removeWindow(window);
+                },
+            ),
+        }),
+        listRule<Gtk.Application, ActionAccel>("actionAccels", {
+            add: (application, item) => application.setAccelsForAction(item.detailedActionName, item.accels),
+            remove: (application, item) => application.setAccelsForAction(item.detailedActionName, []),
+        }),
+    ],
+    GtkAboutDialog: [
+        listRule<Gtk.AboutDialog, CreditSection>("creditSections", {
+            add: (dialog, section) => dialog.addCreditSection(section.sectionName, section.people),
+        }),
+    ],
+    GtkScale: [
+        listRule<Gtk.Scale, ScaleMark>("marks", {
+            add: (scale, mark) => scale.addMark(mark.value ?? 0, mark.position, mark.markup ?? null),
+            clear: (scale) => scale.clearMarks(),
+        }),
+    ],
+    GtkCalendar: [
+        listRule<Gtk.Calendar, number>("markedDays", {
+            add: (calendar, day) => calendar.markDay(day),
+            clear: (calendar) => calendar.clearMarks(),
+        }),
+    ],
+    GtkLevelBar: [
+        listRule<Gtk.LevelBar, LevelBarOffset>("offsets", {
+            add: (bar, offset) => bar.addOffsetValue(offset.name, offset.value ?? 0),
+            remove: (bar, offset) => bar.removeOffsetValue(offset.name),
+        }),
+    ],
+    GtkDropTarget: [
+        valueRule<Gtk.DropTarget, GObject.Type[]>("types", (target, types) => {
+            target.setGtypes(types);
+        }),
+    ],
+    GtkDrawingArea: [
+        valueRule<Gtk.DrawingArea, Gtk.DrawingAreaDrawFunc>("drawFunc", (area, draw) => {
+            area.setDrawFunc(draw);
+            area.queueDraw();
+        }),
+    ],
+    GtkDragSource: [
+        valueRule<Gtk.DragSource, DragSourceIcon>("icon", (source, icon) => {
+            source.setIcon(icon.paintable ?? null, icon.hotX ?? 0, icon.hotY ?? 0);
+        }),
+    ],
+    GtkEditable: [controlledTextRule("text")],
 });
-
-defineList<Gtk.Application, ActionAccel>(["GtkApplication"], "actionAccels", {
-    add: (application, item) => application.setAccelsForAction(item.detailedActionName, item.accels),
-    remove: (application, item) => application.setAccelsForAction(item.detailedActionName, []),
-});
-
-defineList<Gtk.AboutDialog, CreditSection>(["GtkAboutDialog"], "creditSections", {
-    add: (dialog, section) => dialog.addCreditSection(section.sectionName, section.people),
-});
-
-defineList<Gtk.Scale, ScaleMark>(["GtkScale"], "marks", {
-    add: (scale, mark) => scale.addMark(mark.value ?? 0, mark.position, mark.markup ?? null),
-    clear: (scale) => scale.clearMarks(),
-});
-
-defineList<Gtk.Calendar, number>(["GtkCalendar"], "markedDays", {
-    add: (calendar, day) => calendar.markDay(day),
-    clear: (calendar) => calendar.clearMarks(),
-});
-
-defineList<Gtk.LevelBar, LevelBarOffset>(["GtkLevelBar"], "offsets", {
-    add: (bar, offset) => bar.addOffsetValue(offset.name, offset.value ?? 0),
-    remove: (bar, offset) => bar.removeOffsetValue(offset.name),
-});
-
-defineValue<Gtk.DropTarget, GObject.Type[]>(["GtkDropTarget"], "types", (target, types) => {
-    target.setGtypes(types);
-});
-
-defineValue<Gtk.DrawingArea, Gtk.DrawingAreaDrawFunc>(["GtkDrawingArea"], "drawFunc", (area, draw) => {
-    area.setDrawFunc(draw);
-    area.queueDraw();
-});
-
-defineValue<Gtk.DragSource, DragSourceIcon>(["GtkDragSource"], "icon", (source, icon) => {
-    source.setIcon(icon.paintable ?? null, icon.hotX ?? 0, icon.hotY ?? 0);
-});
-
-defineControlledText(["GtkEditable"], "text");
