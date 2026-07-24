@@ -36,7 +36,9 @@ const containerPropFor = (parent: string, slot?: string): ContainerProp | undefi
 const declarativeRules = (): Record<string, ElementProp[]> => {
     const rules: Record<string, ElementProp[]> = {};
     for (const [parent, props] of Object.entries(ELEMENT_RULES)) {
-        const kept = props.filter((prop) => prop.kind !== "container" || behaviorFor(parent, prop.prop) === undefined);
+        const kept = props.filter(
+            (prop) => prop.kind !== "container" || behaviorFor(parent, prop.prop, prop.child) === undefined,
+        );
         if (kept.length > 0) rules[parent] = kept;
     }
     return rules;
@@ -58,7 +60,7 @@ describe("curated element props", () => {
         for (const [parent, props] of Object.entries(ELEMENT_RULES)) {
             for (const prop of props) {
                 if (prop.kind !== "container") continue;
-                const behavior = behaviorFor(parent, prop.prop);
+                const behavior = behaviorFor(parent, prop.prop, prop.child);
                 const attaches = prop.append !== undefined || behavior?.attach !== undefined;
                 const detaches = prop.remove !== undefined || behavior?.detach !== undefined;
                 expect(attaches || detaches, `${parent}.${prop.prop}`).toBe(true);
@@ -86,16 +88,18 @@ describe("assembled container props", () => {
         expect(containerPropFor("GtkBox")).toMatchObject({
             append: "append",
             remove: "remove",
-            insert: { method: "insertChildAfter", args: ["child", "sibling"] },
-            reorder: { method: "reorderChildAfter", args: ["child", "sibling"] },
+            insert: "insertChildAfter",
+            reorder: "reorderChildAfter",
         });
+        expect(behaviorFor("GtkBox", "children", "GtkWidget")?.insert).toBeTypeOf("function");
     });
 
     it("curates single-child container props for set_child hosts", () => {
         expect(containerPropFor("GtkButton")).toMatchObject({
             append: "setChild",
-            remove: { method: "setChild", args: [{ literal: null }] },
+            remove: "setChild",
         });
+        expect(behaviorFor("GtkButton", "children", "GtkWidget")?.detach).toBeTypeOf("function");
         expect(containerPropFor("GtkListItem")).toMatchObject({ append: "setChild" });
     });
 
@@ -103,14 +107,14 @@ describe("assembled container props", () => {
         expect(containerPropFor("GtkListBox")).toMatchObject({
             append: "append",
             autowrap: "GtkListBoxRow",
-            insert: { method: "insert", args: ["child", "index"] },
+            insert: "insert",
         });
     });
 
     it("keeps adopt container props", () => {
         expect(containerPropFor("GtkStack")).toMatchObject({ append: "addChild", adopt: true });
         expect(containerPropFor("GtkNotebook")).toMatchObject({ adopt: "getPage" });
-        expect(behaviorFor("GtkNotebook", "children")?.detach).toBeTypeOf("function");
+        expect(behaviorFor("GtkNotebook", "children", "GtkWidget")?.detach).toBeTypeOf("function");
     });
 });
 

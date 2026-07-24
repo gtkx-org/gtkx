@@ -61,7 +61,9 @@ const createEntry = (rule: ContainerProp, node: PlaceableNode): PlacedChild | nu
 };
 
 const behaviorOf = (parent: ElementNode, rule: ContainerProp): ContainerBehavior | undefined =>
-    rule === FALLBACK_RULE ? undefined : typeInfoOf(parent.typeName).containerBehaviors.get(rule.prop);
+    rule === FALLBACK_RULE
+        ? undefined
+        : typeInfoOf(parent.typeName).containerBehaviors.get(`${rule.prop}:${rule.child}`);
 
 const placeContext = (entry: PlacedChild, index: number, sibling: GObject.Object | null): PlaceContext => ({
     index,

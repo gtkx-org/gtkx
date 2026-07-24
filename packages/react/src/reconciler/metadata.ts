@@ -57,10 +57,9 @@ const classifyProps = (owner: string, rules: ElementProp[], info: TypeInfo): voi
         if (rule.kind === "container") {
             info.containerRules.push(rule);
             info.containerProps.add(rule.prop);
-            const behavior = behaviorFor(owner, rule.prop);
-            if (behavior !== undefined && !info.containerBehaviors.has(rule.prop)) {
-                info.containerBehaviors.set(rule.prop, behavior);
-            }
+            const key = `${rule.prop}:${rule.child}`;
+            const behavior = behaviorFor(owner, rule.prop, rule.child);
+            if (behavior !== undefined && !info.containerBehaviors.has(key)) info.containerBehaviors.set(key, behavior);
         } else if (rule.kind === "value") {
             info.valueProps.set(rule.prop, rule);
         } else if (rule.kind === "list") {

@@ -39,6 +39,7 @@ export type ElementPropTypegen = {
     lazyElementExports: (namespaceName: string) => LazyElementSpec[];
     listItemTypeSources: (namespaceName: string, imports: ElementPropImports) => string[];
     containerPropNamesFor: (glibName: string) => string[];
+    placementPropsFor: (glibName: string) => string | undefined;
     acceptsChildren: (glibName: string) => boolean;
 };
 
@@ -263,6 +264,14 @@ const collectLazyElementSpecs = (
     return specs;
 };
 
+const collectPlacementProps = (elementProps: Record<string, ElementProp[]>): Map<string, string> => {
+    const byChild = new Map<string, string>();
+    forEachContainer(elementProps, (_parent, cp) => {
+        if (cp.childProps !== undefined) byChild.set(cp.child, cp.childProps);
+    });
+    return byChild;
+};
+
 const collectContainerPropNames = (elementProps: Record<string, ElementProp[]>): Map<string, string[]> => {
     const containerPropNamesByParent = new Map<string, string[]>();
     forEachContainer(elementProps, (parent, cp) => {
@@ -334,6 +343,7 @@ export const createElementPropTypegen = (
     const propContributions = collectPropContributions(context, elementProps);
     const lazyElementSpecs = collectLazyElementSpecs(context, elementProps);
     const containerPropNamesByParent = collectContainerPropNames(elementProps);
+    const placementPropsByChild = collectPlacementProps(elementProps);
     const namedItemTypes = collectNamedItemTypes(context, elementProps);
     const renderContext = createRenderContextFactory(context, namedItemTypes);
 
@@ -376,6 +386,7 @@ export const createElementPropTypegen = (
         lazyElementExports: (namespaceName) => lazyElementSpecs.get(namespaceName) ?? [],
         listItemTypeSources,
         containerPropNamesFor: (glibName) => containerPropNamesByParent.get(glibName) ?? [],
+        placementPropsFor: (glibName) => placementPropsByChild.get(glibName),
         acceptsChildren: createAcceptsChildren(context, elementProps),
     };
 };

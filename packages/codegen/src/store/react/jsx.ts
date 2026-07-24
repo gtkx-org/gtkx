@@ -212,6 +212,11 @@ const renderInterfacePropsBlock = (
     const containerPropLines = containerPropNames.map((propName) => `${propName}?: ReactNode | null | undefined;`);
     const ownerLines = dedupePropLines([...propLines, ...containerPropLines]);
     const prerequisiteExtends = interfacePrerequisiteExtends(iface, context);
+    const placement = glib === undefined ? undefined : typegen.placementPropsFor(glib);
+    if (placement !== undefined) {
+        imports.addNamed("@gtkx/react", placement, true);
+        prerequisiteExtends.push(placement);
+    }
     if (glib === ACCESSIBLE_INTERFACE_GLIB_NAME) {
         imports.addNamed("@gtkx/react", ACCESSIBLE_PROPS_NAME, true);
         prerequisiteExtends.push(ACCESSIBLE_PROPS_NAME);
@@ -284,6 +289,11 @@ const renderPropBlock = (
 
 const resolveElementExtends = (library: Library, entry: GlibNamedClass, context: RenderPropBlockContext): string[] => {
     const extendsList: string[] = [];
+    const placement = context.typegen.placementPropsFor(entry.glibName);
+    if (placement !== undefined) {
+        context.imports.addNamed("@gtkx/react", placement, true);
+        extendsList.push(placement);
+    }
     const parentRef = resolveParentPropsRef(library, entry, context);
     if (parentRef !== undefined) extendsList.push(parentRef);
     for (const iface of newlyImplementedInterfaces(entry.klass, entry.namespace, library, context.hasContainerProps)) {

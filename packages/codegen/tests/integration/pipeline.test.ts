@@ -427,9 +427,10 @@ describe("codegen applied element props", () => {
         expect(interfaceBody(gtk, "GtkDropTarget")).toContain("types?: GObject$.Type[] | null | undefined;");
     });
 
-    it("contributes container-prop arguments to the child element's props", () => {
+    it("contributes declared placement props to the child element's interface", () => {
         const gio = sourceFor(reactPipeline, "gio");
-        expect(interfaceBody(gio, "GSimpleActionGroup")).toContain("prefix?: string | null | undefined;");
+        expect(gio).toContain('import { type ActionGroupPlacement } from "@gtkx/react";');
+        expect(gio).toMatch(/export interface GActionGroupProps<[^>]*> extends ActionGroupPlacement \{/);
     });
 
     it("emits lazy-element props from the page class interface", () => {
@@ -483,7 +484,7 @@ describe("codegen runtime tables", () => {
     });
 
     it("bakes the ColumnView ordered insert as a container prop", () => {
-        expect(reactPipeline.metadata).toMatch(/"method": "insertColumn"/);
+        expect(reactPipeline.metadata).toMatch(/"insert": "insertColumn"/);
         expect(reactPipeline.metadata).toMatch(/"GtkColumnView": \[/);
     });
 
