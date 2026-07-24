@@ -402,17 +402,16 @@ describe("codegen widget-slot props", () => {
         expect(body).not.toContain("child?: Gtk$.Widget | ReactElement");
     });
 
-    it("types the built-in container-prop props as ReactNode on their host", () => {
+    it("extends the hand-declared props interface on a container-prop host", () => {
         const adw = sourceFor(reactPipeline, "adw");
-        const headerBar = interfaceBody(adw, "AdwHeaderBar");
-        expect(headerBar).toContain("start?: ReactNode | null | undefined;");
-        expect(headerBar).toContain("end?: ReactNode | null | undefined;");
+        expect(adw).toMatch(/import \{[^}]*type GtkHeaderBarElementProps[^}]*\} from "@gtkx\/react";/);
+        expect(adw).toMatch(/export interface AdwHeaderBarProps<[^>]*> extends GtkHeaderBarElementProps,/);
     });
 
-    it("types the base GtkWidget controller and action-group props as ReactNode", () => {
+    it("extends the hand-declared props interface on GtkWidget", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
-        expect(gtk).toContain("controllers?: ReactNode | null | undefined;");
-        expect(gtk).toContain("actionGroups?: ReactNode | null | undefined;");
+        expect(gtk).toMatch(/import \{[^}]*type GtkWidgetElementProps[^}]*\} from "@gtkx\/react";/);
+        expect(gtk).toMatch(/export interface GtkWidgetProps<[^>]*> extends GtkWidgetElementProps,/);
     });
 });
 
@@ -422,14 +421,15 @@ const interfaceBody = (jsxSource: string, glibName: string): string => {
 };
 
 describe("codegen applied element props", () => {
-    it("types a value prop from its setter signature", () => {
+    it("extends the hand-declared props interface for a value prop host", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
-        expect(interfaceBody(gtk, "GtkDropTarget")).toContain("types?: GObject$.Type[] | null | undefined;");
+        expect(gtk).toMatch(/export interface GtkDropTargetProps<[^>]*> extends GtkDropTargetElementProps,/);
     });
 
-    it("derives placement props on the child element's interface from the attach method", () => {
+    it("extends the hand-declared placement props on the child element's interface", () => {
         const gio = sourceFor(reactPipeline, "gio");
-        expect(interfaceBody(gio, "GActionGroup")).toContain("prefix?: string | null | undefined;");
+        expect(gio).toMatch(/import \{[^}]*type GActionGroupElementProps[^}]*\} from "@gtkx\/react";/);
+        expect(gio).toMatch(/export interface GActionGroupProps<[^>]*> extends GActionGroupElementProps/);
     });
 
     it("emits lazy-element props from the page class interface", () => {

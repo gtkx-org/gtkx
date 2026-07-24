@@ -37,7 +37,7 @@ const applyValueRule = (object: GObject.Object, rule: ValueProp, value: unknown)
     if (rule.after !== undefined) runCall(object, rule.after, []);
 };
 
-type PropEntry = { name: string; value: unknown; oldValue: unknown; props: Props };
+type PropEntry = { name: string; value: unknown; oldValue: unknown };
 
 const clearListItems = (
     node: ElementNode,
@@ -57,13 +57,7 @@ const applyListRule = (node: ElementNode, info: TypeInfo, rule: ListProp, entry:
     const applied = node.listApplied.get(name);
     if (applied !== undefined && isDeepEqual(applied.snapshot, items)) return;
     const behavior = info.listBehaviors.get(name);
-    if (behavior?.clear !== undefined) behavior.clear(node.object);
-    else if (behavior?.remove !== undefined)
-        for (const item of applied?.items ?? []) behavior.remove(node.object, item);
-    else if (rule.clear !== undefined) runCall(node.object, rule.clear, []);
-    else if (rule.remove !== undefined) {
-        for (const item of applied?.items ?? []) runCall(node.object, rule.remove, [item]);
-    }
+    clearListItems(node, rule, behavior, applied?.items ?? []);
     for (const item of items) {
         if (behavior?.add !== undefined) behavior.add(node.object, item);
         else addListItem(node.object, rule, item);
@@ -86,7 +80,7 @@ const isBufferText = (node: ElementNode, name: string): boolean =>
     name === "text" && node.contentKind === "buffer" && node.object instanceof Gtk.TextBuffer;
 
 const applyEntry = (node: ElementNode, info: TypeInfo, entry: PropEntry): void => {
-    const { name, value, oldValue, props } = entry;
+    const { name, value, oldValue } = entry;
     const valueRule = info.valueProps.get(name);
     const listRule = info.listProps.get(name);
     if (valueRule !== undefined) {
@@ -111,7 +105,7 @@ const eachChangedName = (oldProps: Props, newProps: Props, visit: (name: string)
 const applyValueEntries = (node: ElementNode, info: TypeInfo, oldProps: Props, newProps: Props): void => {
     eachChangedName(oldProps, newProps, (name) => {
         if (skipValueName(name, info) || Object.is(oldProps[name], newProps[name])) return;
-        applyEntry(node, info, { name, value: newProps[name], oldValue: oldProps[name], props: newProps });
+        applyEntry(node, info, { name, value: newProps[name], oldValue: oldProps[name] });
     });
 };
 

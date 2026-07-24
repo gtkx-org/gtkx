@@ -4,18 +4,12 @@ import { join } from "node:path";
 import { type ContainerProp, type ElementProp, loadConfig } from "@gtkx/config";
 import { behaviorFor, ELEMENT_RULES } from "@gtkx/react/element-rules";
 import { describe, expect, it } from "vitest";
-import { createElementPropTypegen, emptyElementPropImports } from "../../src/store/react/element-prop-types.js";
 import { assembleElementProps } from "../../src/store/react/element-props.js";
 import { buildGirIndex } from "../../src/store/react/gir-index.js";
 import { library } from "../helpers/library.js";
 
 const girIndex = buildGirIndex(library);
 const elementProps = assembleElementProps(girIndex, {});
-
-const typegen = createElementPropTypegen(girIndex, elementProps);
-
-const propLineFor = (type: string, prop: string): string | undefined =>
-    typegen.classPropLines(type, emptyElementPropImports()).find((line) => line.startsWith(`${prop}?:`));
 
 const knownTypeNames = (): Set<string> => {
     const names = new Set<string>();
@@ -135,18 +129,6 @@ describe("assembled applied props", () => {
     it("keeps single-argument value-prop shorthands as bare method names", () => {
         const types = (elementProps.GtkDropTarget ?? []).find((prop) => prop.kind === "value");
         expect(types).toEqual({ kind: "value", prop: "types", call: "setGtypes" });
-    });
-
-    it("derives a multi-argument value prop into fields with inferred defaults", () => {
-        expect(propLineFor("GtkDragSource", "icon")).toBe(
-            "icon?: { paintable?: Gdk$.Paintable | null; hotX?: number; hotY?: number; } | null | undefined;",
-        );
-    });
-
-    it("infers defaults for numeric and nullable list-item fields but not enums", () => {
-        expect(propLineFor("GtkScale", "marks")).toBe(
-            "marks?: { value?: number; position: Gtk$.PositionType; markup?: string | null; }[] | null | undefined;",
-        );
     });
 });
 

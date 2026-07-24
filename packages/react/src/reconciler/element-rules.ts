@@ -1,6 +1,16 @@
 import type { AdoptedElement, ContainerProp, ElementProp } from "@gtkx/config";
+import type * as Gio from "@gtkx/gi/gio";
 import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
+import type {
+    ActionAccel,
+    CreditSection,
+    GActionGroupElementProps,
+    LevelBarOffset,
+    MenuItem,
+    ScaleMark,
+    VflConstraints,
+} from "./element-props.js";
 import type { Props } from "./kinds.js";
 
 /** Values available to a container behavior while attaching or moving one child. */
@@ -77,22 +87,22 @@ type TabViewLike = GObject.Object & {
     getPage: (child: Gtk.Widget) => GObject.Object;
 };
 
-const buildMenu = (items: MenuItem[], create: () => MenuLike): MenuLike => {
+const buildMenu = (items: MenuItem[], create: () => Gio.Menu): Gio.Menu => {
     const menu = create();
     for (const item of items) appendMenuItem(menu, item);
     return menu;
 };
 
-let createMenu: () => MenuLike = () => {
+let createMenu: () => Gio.Menu = () => {
     throw new Error("GMenu construction is not available");
 };
 
 /** Installs the factory used to build nested `GMenu` instances for submenus and sections. */
 export const setMenuFactory = (factory: () => GObject.Object): void => {
-    createMenu = factory as () => MenuLike;
+    createMenu = factory as () => Gio.Menu;
 };
 
-function appendMenuItem(menu: MenuLike, item: MenuItem): void {
+function appendMenuItem(menu: Gio.Menu, item: MenuItem): void {
     if (item.submenu !== undefined) menu.appendSubmenu(item.label ?? null, buildMenu(item.submenu, createMenu));
     else if (item.section !== undefined) menu.appendSection(item.label ?? null, buildMenu(item.section, createMenu));
     else menu.append(item.label ?? null, item.action ?? null);
@@ -203,89 +213,7 @@ const forEach = (types: string[], build: (type: string) => ElementProp[]): Recor
 const CONTROLLER_METHODS = { append: "addController", remove: "removeController" } satisfies ManyMethods;
 const SHORTCUT_METHODS = { append: "addShortcut", remove: "removeShortcut" } satisfies ManyMethods;
 
-type LayoutManagerHost = GObject.Object & { setLayoutManager: (manager: GObject.Object | null) => void };
-
-type BufferHost = GObject.Object & { setBuffer: (buffer: GObject.Object | null) => void };
-
-type ColumnViewLike = GObject.Object & {
-    appendColumn: (column: GObject.Object) => void;
-    removeColumn: (column: GObject.Object) => void;
-    insertColumn: (position: number, column: GObject.Object) => void;
-};
-
-type ActionMapLike = GObject.Object & {
-    addAction: (action: GObject.Object) => void;
-    removeAction: (name: string) => void;
-};
-
-type ActionGroupHost = GObject.Object & {
-    insertActionGroup: (prefix: string, group: GObject.Object | null) => void;
-};
-
-type ActionGroupPlacement = { prefix?: string };
-
-/** One entry of a `GMenu`'s `items` prop; `submenu` and `section` nest further menus. */
-export type MenuItem = {
-    label?: string | null;
-    action?: string | null;
-    submenu?: MenuItem[];
-    section?: MenuItem[];
-};
-
-type MenuLike = GObject.Object & {
-    append: (label: string | null, action: string | null) => void;
-    appendSubmenu: (label: string | null, submenu: GObject.Object) => void;
-    appendSection: (label: string | null, section: GObject.Object) => void;
-    removeAll: () => void;
-};
-
-type AccelHost = GObject.Object & {
-    setAccelsForAction: (detailedActionName: string, accels: string[]) => void;
-};
-
-type ActionAccel = { detailedActionName: string; accels: string[] };
-
-/** One Visual Format Language block applied to a `Gtk.ConstraintLayout`. */
-export type VflConstraints = {
-    lines: string[];
-    hspacing?: number;
-    vspacing?: number;
-    views?: Map<string, Gtk.ConstraintTarget>;
-};
-
-type ConstraintLayoutLike = GObject.Object & {
-    addConstraintsFromDescription: (
-        lines: string[],
-        hspacing: number,
-        vspacing: number,
-        views: Map<string, Gtk.ConstraintTarget>,
-    ) => Iterable<Gtk.Constraint>;
-    removeConstraint: (constraint: Gtk.Constraint) => void;
-};
-
 const vflConstraints = new WeakMap<VflConstraints, Gtk.Constraint[]>();
-
-type ScaleMark = { value?: number; position: Gtk.PositionType; markup?: string | null };
-
-type ScaleLike = GObject.Object & {
-    addMark: (value: number, position: Gtk.PositionType, markup: string | null) => void;
-    clearMarks: () => void;
-};
-
-type LevelBarOffset = { name: string; value?: number };
-
-type LevelBarLike = GObject.Object & {
-    addOffsetValue: (name: string, value: number) => void;
-    removeOffsetValue: (name: string) => void;
-};
-
-type CreditSection = { sectionName: string; people: string[] };
-
-type AboutDialogLike = GObject.Object & {
-    addCreditSection: (sectionName: string, people: string[]) => void;
-};
-
-type AlertDialogResponse = { id: string; label: string; appearance?: number; enabled?: boolean };
 
 type AlertDialogLike = GObject.Object & {
     addResponse: (id: string, label: string) => void;
@@ -369,7 +297,7 @@ export const ELEMENT_RULES: Record<string, ElementProp[]> = withBreakpoints({
     ...forEach(ADD_REMOVE_TYPES, () => [addRemoveChildren()]),
     GtkWidget: [
         container("controllers", "GtkEventController", CONTROLLER_METHODS),
-        withBehavior<LayoutManagerHost, GObject.Object>(
+        withBehavior<Gtk.Widget, Gtk.LayoutManager>(
             "GtkWidget",
             container("layoutManager", "GtkLayoutManager", { append: "setLayoutManager", remove: "setLayoutManager" }),
             {
@@ -377,7 +305,7 @@ export const ELEMENT_RULES: Record<string, ElementProp[]> = withBreakpoints({
                 detach: (widget) => widget.setLayoutManager(null),
             },
         ),
-        withBehavior<ActionGroupHost, GObject.Object, ActionGroupPlacement>(
+        withBehavior<Gtk.Widget, Gio.ActionGroup, GActionGroupElementProps>(
             "GtkWidget",
             container("actionGroups", "GActionGroup", {
                 append: "insertActionGroup",
@@ -392,7 +320,7 @@ export const ELEMENT_RULES: Record<string, ElementProp[]> = withBreakpoints({
     ],
     GtkShortcutController: [container("shortcuts", "GtkShortcut", SHORTCUT_METHODS)],
     GtkTextView: [
-        withBehavior<BufferHost, GObject.Object>(
+        withBehavior<Gtk.TextView, Gtk.TextBuffer>(
             "GtkTextView",
             container("children", "GtkTextBuffer", { append: "setBuffer", remove: "setBuffer" }),
             {
@@ -403,7 +331,7 @@ export const ELEMENT_RULES: Record<string, ElementProp[]> = withBreakpoints({
         container("children", "GtkWidget", { remove: "remove" }),
     ],
     GActionMap: [
-        withBehavior<ActionMapLike, GObject.Object, ActionPlacement>(
+        withBehavior<Gio.ActionMap, Gio.Action, ActionPlacement>(
             "GActionMap",
             container("actions", "GAction", { append: "addAction", remove: "removeAction" }),
             {
@@ -413,7 +341,7 @@ export const ELEMENT_RULES: Record<string, ElementProp[]> = withBreakpoints({
         ),
     ],
     GMenu: [
-        withListBehavior<MenuLike, MenuItem>(
+        withListBehavior<Gio.Menu, MenuItem>(
             "GMenu",
             { kind: "list", prop: "items", itemType: "MenuItem", clear: "removeAll", add: "append" },
             {
@@ -423,7 +351,7 @@ export const ELEMENT_RULES: Record<string, ElementProp[]> = withBreakpoints({
         ),
     ],
     GtkColumnView: [
-        withBehavior<ColumnViewLike, GObject.Object>(
+        withBehavior<Gtk.ColumnView, Gtk.ColumnViewColumn>(
             "GtkColumnView",
             container("children", "GtkColumnViewColumn", {
                 append: "appendColumn",
@@ -475,7 +403,7 @@ export const ELEMENT_RULES: Record<string, ElementProp[]> = withBreakpoints({
     GtkConstraintLayout: [
         container("constraints", "GtkConstraint", { append: "addConstraint", remove: "removeConstraint" }),
         container("guides", "GtkConstraintGuide", { append: "addGuide", remove: "removeGuide" }),
-        withListBehavior<ConstraintLayoutLike, VflConstraints>(
+        withListBehavior<Gtk.ConstraintLayout, VflConstraints>(
             "GtkConstraintLayout",
             { kind: "list", prop: "vfl", itemType: "VflConstraints", add: "addConstraintsFromDescription" },
             {
@@ -602,7 +530,7 @@ export const ELEMENT_RULES: Record<string, ElementProp[]> = withBreakpoints({
     GtkDragSource: [{ kind: "value", prop: "icon", call: "setIcon" }],
     GtkEditable: [{ kind: "controlled-text", prop: "text" }],
     GtkScale: [
-        withListBehavior<ScaleLike, ScaleMark>(
+        withListBehavior<Gtk.Scale, ScaleMark>(
             "GtkScale",
             { kind: "list", prop: "marks", add: "addMark", clear: "clearMarks" },
             {
@@ -613,7 +541,7 @@ export const ELEMENT_RULES: Record<string, ElementProp[]> = withBreakpoints({
     ],
     GtkCalendar: [{ kind: "list", prop: "markedDays", add: "markDay", clear: "clearMarks" }],
     GtkLevelBar: [
-        withListBehavior<LevelBarLike, LevelBarOffset>(
+        withListBehavior<Gtk.LevelBar, LevelBarOffset>(
             "GtkLevelBar",
             { kind: "list", prop: "offsets", add: "addOffsetValue", remove: "removeOffsetValue" },
             {
@@ -624,7 +552,7 @@ export const ELEMENT_RULES: Record<string, ElementProp[]> = withBreakpoints({
     ],
     GtkApplication: [
         container("children", "GtkWindow", { append: "addWindow", remove: "removeWindow" }),
-        withListBehavior<AccelHost, ActionAccel>(
+        withListBehavior<Gtk.Application, ActionAccel>(
             "GtkApplication",
             { kind: "list", prop: "actionAccels", add: "setAccelsForAction", remove: "setAccelsForAction" },
             {
@@ -634,14 +562,14 @@ export const ELEMENT_RULES: Record<string, ElementProp[]> = withBreakpoints({
         ),
     ],
     GtkAboutDialog: [
-        withListBehavior<AboutDialogLike, CreditSection>(
+        withListBehavior<Gtk.AboutDialog, CreditSection>(
             "GtkAboutDialog",
             { kind: "list", prop: "creditSections", add: "addCreditSection" },
             { add: (dialog, section) => dialog.addCreditSection(section.sectionName, section.people) },
         ),
     ],
     AdwAlertDialog: [
-        withListBehavior<AlertDialogLike, AlertDialogResponse>(
+        withListBehavior<AlertDialogLike, { id: string; label: string; appearance?: number; enabled?: boolean }>(
             "AdwAlertDialog",
             {
                 kind: "list",

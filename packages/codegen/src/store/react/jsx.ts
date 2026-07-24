@@ -5,7 +5,8 @@ import type { GirNamespace } from "../../gir/namespace.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { renderBlock } from "../../writer/emit.js";
 import type { ImportsBuilder } from "../../writer/imports.js";
-import { type ElementPropImports, type ElementPropTypegen, emptyElementPropImports } from "./element-prop-types.js";
+import { elementPropTypeFor } from "./element-prop-imports.js";
+import type { ElementPropTypegen } from "./element-prop-types.js";
 import {
     collectInterfacePropsClasses,
     type GlibNamedClass,
@@ -104,22 +105,10 @@ export const generateJsxSection = (
     return { source, intrinsicCount: intrinsicElementConsts.length };
 };
 
-const registerElementPropImports = (
-    imports: ImportsBuilder,
-    targetNamespaceName: string,
-    collected: ElementPropImports,
-): void => {
-    for (const [namespace, alias] of collected.gi) addGiNamespace(imports, namespace, alias);
-    for (const [typeName, namespace] of collected.jsx) {
-        registerCrossNsProps(imports, targetNamespaceName, namespace, typeName);
-    }
-};
-
 type InterfaceBlockContext = {
     library: Library;
     targetNamespaceName: string;
     imports: ImportsBuilder;
-    typegen: ElementPropTypegen;
     hasContainerProps: HasContainerProps;
 };
 
@@ -128,10 +117,10 @@ const renderInterfacePropBlocks = (
     targetNamespaceName: string,
     options: GenerateJsxOptions,
 ): { blocks: string[]; needsReactElement: boolean; hasContainerProps: HasContainerProps } => {
-    const { imports, typegen, intrinsicElements } = options;
+    const { imports, intrinsicElements } = options;
     const hasContainerProps: HasContainerProps = (glibName) =>
-        glibName !== undefined && typegen.containerPropNamesFor(glibName).length > 0;
-    const context: InterfaceBlockContext = { library, targetNamespaceName, imports, typegen, hasContainerProps };
+        glibName !== undefined && elementPropTypeFor(glibName) !== undefined;
+    const context: InterfaceBlockContext = { library, targetNamespaceName, imports, hasContainerProps };
     const blocks: string[] = [];
     let needsReactElement = false;
     for (const iface of collectInterfacePropsClasses(
@@ -190,7 +179,7 @@ const renderInterfacePropsBlock = (
     iface: ResolvedQualifiedInterface,
     context: InterfaceBlockContext,
 ): { block: string; objectPropNames: string[] } => {
-    const { library, imports, typegen } = context;
+    const { library, imports } = context;
     const glib = glibNameOf(iface.klass);
     const {
         propLines,
@@ -202,11 +191,13 @@ const renderInterfacePropsBlock = (
         namespace: iface.namespace,
     });
     for (const [namespace, alias] of propImports) addGiNamespace(imports, namespace, alias);
-    const containerPropNames = glib === undefined ? [] : typegen.containerPropNamesFor(glib);
-    const containerPropLines = containerPropNames.map((propName) => `${propName}?: ReactNode | null | undefined;`);
-    const placementLines = glib === undefined ? [] : typegen.placementPropLines(glib, emptyElementPropImports());
-    const ownerLines = dedupePropLines([...propLines, ...containerPropLines, ...placementLines]);
+    const ownerLines = dedupePropLines(propLines);
     const prerequisiteExtends = interfacePrerequisiteExtends(iface, context);
+    const declared = glib === undefined ? undefined : elementPropTypeFor(glib);
+    if (declared !== undefined) {
+        imports.addNamed(declared.module, declared.export, true);
+        prerequisiteExtends.push(declared.export);
+    }
 
     if (glib === ACCESSIBLE_INTERFACE_GLIB_NAME) {
         imports.addNamed("@gtkx/react", ACCESSIBLE_PROPS_NAME, true);
@@ -243,7 +234,6 @@ const renderPropBlock = (
     entry: GlibNamedClass,
     context: RenderPropBlockContext,
 ): { block: string; objectPropNames: string[] } => {
-    const containerPropNames = context.typegen.containerPropNamesFor(entry.glibName);
     const { propLines, imports, objectPropNames } = buildElementPropsEntries({
         library,
         klass: entry.klass,
@@ -252,17 +242,10 @@ const renderPropBlock = (
     });
     for (const [namespace, alias] of imports) addGiNamespace(context.imports, namespace, alias);
     addGiNamespace(context.imports, entry.namespace.name, giNamespaceAlias(entry.namespace.name));
-    const elementPropImports = emptyElementPropImports();
-    const elementPropLines = context.typegen.classPropLines(entry.glibName, elementPropImports);
-    registerElementPropImports(context.imports, context.targetNamespaceName, elementPropImports);
-    const containerPropLines = containerPropNames.map((propName) => `${propName}?: ReactNode | null | undefined;`);
     const ownerLines = dedupePropLines([
         ...(context.typegen.acceptsChildren(entry.glibName) ? ["children?: ReactNode;"] : []),
         "ref?: Ref<Self | null> | undefined;",
         ...propLines,
-        ...containerPropLines,
-        ...context.typegen.placementPropLines(entry.glibName, elementPropImports),
-        ...elementPropLines,
     ]);
     const extendsList = resolveElementExtends(library, entry, context);
     const extendsClause = extendsList.length === 0 ? "" : ` extends ${extendsList.join(", ")}`;
@@ -276,6 +259,11 @@ const renderPropBlock = (
 
 const resolveElementExtends = (library: Library, entry: GlibNamedClass, context: RenderPropBlockContext): string[] => {
     const extendsList: string[] = [];
+    const declared = elementPropTypeFor(entry.glibName);
+    if (declared !== undefined) {
+        context.imports.addNamed(declared.module, declared.export, true);
+        extendsList.push(declared.export);
+    }
     const parentRef = resolveParentPropsRef(library, entry, context);
     if (parentRef !== undefined) extendsList.push(parentRef);
     for (const iface of newlyImplementedInterfaces(entry.klass, entry.namespace, library, context.hasContainerProps)) {

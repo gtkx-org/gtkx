@@ -1,9 +1,6 @@
 import type { ContainerProp, ElementProp, ListProp } from "@gtkx/config";
 import { ELEMENT_RULES } from "@gtkx/react/element-rules";
-import { toCamelIdentifier } from "@gtkx/utils";
-import type { GirParameter } from "../../gir/parameter.js";
-import { PRIMITIVE_TS_TYPE } from "../../gir/primitives.js";
-import { findMethod, type GirIndex, hasMethod, hasProperty } from "./gir-index.js";
+import { type GirIndex, hasMethod, hasProperty } from "./gir-index.js";
 import { addCalls } from "./list-calls.js";
 
 const containerTypeNames = (parent: string, prop: ContainerProp): string[] => {

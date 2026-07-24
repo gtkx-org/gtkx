@@ -6,11 +6,8 @@ import type { Library } from "../gir/library.js";
 import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import type { GirSignal } from "../gir/parameter.js";
 import { type GirProperty, isConstructableProperty } from "../gir/property.js";
-import {
-    createElementPropTypegen,
-    type ElementPropTypegen,
-    emptyElementPropImports,
-} from "../store/react/element-prop-types.js";
+import { elementPropTypeFor } from "../store/react/element-prop-imports.js";
+import { createElementPropTypegen, type ElementPropTypegen } from "../store/react/element-prop-types.js";
 import { assembleElementProps } from "../store/react/element-props.js";
 import { buildGirIndex, type GirIndex } from "../store/react/gir-index.js";
 import {
@@ -140,7 +137,7 @@ const memberOwners = (entry: GlibNamedClass, context: ElementPageContext): Membe
         entry.klass,
         entry.namespace,
         context.library,
-        (glibName) => glibName !== undefined && context.typegen.containerPropNamesFor(glibName).length > 0,
+        (glibName) => glibName !== undefined && elementPropTypeFor(glibName) !== undefined,
     ).map((iface) => {
         const glibName = glibNameOf(iface.klass);
         return { klass: iface.klass, namespace: iface.namespace, origin: glibName, glibName };
@@ -185,20 +182,20 @@ const overlayNote = (overlays: ElementProp[], name: string): string | undefined 
     return undefined;
 };
 
-const cleanOverlayType = (type: string): string => type.replace(/\s*\|\s*undefined$/, "").replaceAll("$.", ".");
+const declaredIn = (glibName: string): string => {
+    const declared = elementPropTypeFor(glibName);
+    return declared === undefined ? "`@gtkx/react`" : `\`${declared.export}\` in \`${declared.module}\``;
+};
 
 const overlayEntries = (entry: GlibNamedClass, context: ElementPageContext, seen: Set<string>): PropEntry[] => {
     const overlays = context.elementProps[entry.glibName] ?? [];
     const entries: PropEntry[] = [];
-    const lines = context.typegen.classPropLines(entry.glibName, emptyElementPropImports());
-    for (const line of lines) {
-        const match = line.match(/^([A-Za-z0-9_]+)\?: (.*);$/);
-        if (match === null) continue;
-        const [, name = "", rawType = ""] = match;
-        if (seen.has(name)) continue;
-        seen.add(name);
-        const note = overlayNote(overlays, name) ?? "Element prop managed by GTKX.";
-        entries.push({ name, meta: `\`${cleanOverlayType(rawType)}\``, doc: note });
+    for (const overlay of overlays) {
+        if (overlay.kind === "container" && overlay.prop === "children") continue;
+        if (seen.has(overlay.prop)) continue;
+        seen.add(overlay.prop);
+        const note = overlayNote(overlays, overlay.prop) ?? "Element prop managed by GTKX.";
+        entries.push({ name: overlay.prop, meta: `typed by ${declaredIn(entry.glibName)}`, doc: note });
     }
     return entries;
 };
