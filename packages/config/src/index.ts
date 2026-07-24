@@ -8,10 +8,6 @@ export {
 export type {
     AdoptedElement,
     AppliedProp,
-    Arg,
-    ArgRef,
-    BuildArg,
-    Call,
     ContainerProp,
     ControlledTextProp,
     ElementProp,

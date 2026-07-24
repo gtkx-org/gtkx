@@ -1,4 +1,4 @@
-import type { AdoptedElement, Call, ContainerProp, ElementProp } from "@gtkx/config";
+import type { AdoptedElement, ContainerProp, ElementProp } from "@gtkx/config";
 import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { Props } from "./kinds.js";
@@ -244,6 +244,26 @@ type AccelHost = GObject.Object & {
 };
 
 type ActionAccel = { detailedActionName: string; accels: string[] };
+
+type ScaleMark = { value?: number; position: Gtk.PositionType; markup?: string | null };
+
+type ScaleLike = GObject.Object & {
+    addMark: (value: number, position: Gtk.PositionType, markup: string | null) => void;
+    clearMarks: () => void;
+};
+
+type LevelBarOffset = { name: string; value?: number };
+
+type LevelBarLike = GObject.Object & {
+    addOffsetValue: (name: string, value: number) => void;
+    removeOffsetValue: (name: string) => void;
+};
+
+type CreditSection = { sectionName: string; people: string[] };
+
+type AboutDialogLike = GObject.Object & {
+    addCreditSection: (sectionName: string, people: string[]) => void;
+};
 
 type AlertDialogResponse = { id: string; label: string; appearance?: number; enabled?: boolean };
 
@@ -542,9 +562,27 @@ export const ELEMENT_RULES: Record<string, ElementProp[]> = withBreakpoints({
     GtkDrawingArea: [{ kind: "value", prop: "drawFunc", call: "setDrawFunc", after: "queueDraw" }],
     GtkDragSource: [{ kind: "value", prop: "icon", call: "setIcon" }],
     GtkEditable: [{ kind: "controlled-text", prop: "text" }],
-    GtkScale: [{ kind: "list", prop: "marks", add: "addMark", clear: "clearMarks" }],
+    GtkScale: [
+        withListBehavior<ScaleLike, ScaleMark>(
+            "GtkScale",
+            { kind: "list", prop: "marks", add: "addMark", clear: "clearMarks" },
+            {
+                add: (scale, mark) => scale.addMark(mark.value ?? 0, mark.position, mark.markup ?? null),
+                clear: (scale) => scale.clearMarks(),
+            },
+        ),
+    ],
     GtkCalendar: [{ kind: "list", prop: "markedDays", add: "markDay", clear: "clearMarks" }],
-    GtkLevelBar: [{ kind: "list", prop: "offsets", add: "addOffsetValue", remove: "removeOffsetValue" }],
+    GtkLevelBar: [
+        withListBehavior<LevelBarLike, LevelBarOffset>(
+            "GtkLevelBar",
+            { kind: "list", prop: "offsets", add: "addOffsetValue", remove: "removeOffsetValue" },
+            {
+                add: (bar, offset) => bar.addOffsetValue(offset.name, offset.value ?? 0),
+                remove: (bar, offset) => bar.removeOffsetValue(offset.name),
+            },
+        ),
+    ],
     GtkApplication: [
         container("children", "GtkWindow", { append: "addWindow", remove: "removeWindow" }),
         withListBehavior<AccelHost, ActionAccel>(
@@ -556,7 +594,13 @@ export const ELEMENT_RULES: Record<string, ElementProp[]> = withBreakpoints({
             },
         ),
     ],
-    GtkAboutDialog: [{ kind: "list", prop: "creditSections", add: "addCreditSection" }],
+    GtkAboutDialog: [
+        withListBehavior<AboutDialogLike, CreditSection>(
+            "GtkAboutDialog",
+            { kind: "list", prop: "creditSections", add: "addCreditSection" },
+            { add: (dialog, section) => dialog.addCreditSection(section.sectionName, section.people) },
+        ),
+    ],
     AdwAlertDialog: [
         withListBehavior<AlertDialogLike, AlertDialogResponse>(
             "AdwAlertDialog",

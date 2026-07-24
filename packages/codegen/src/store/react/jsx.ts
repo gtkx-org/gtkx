@@ -94,15 +94,9 @@ export const generateJsxSection = (
     }
     if (needsReactElement) addReactBuiltin(imports, "ReactElement");
 
-    const itemTypeImports = emptyElementPropImports();
-    const itemTypeLines = typegen.listItemTypeSources(targetNamespace.name, itemTypeImports);
-    registerElementPropImports(imports, targetNamespace.name, itemTypeImports);
-
     const source = [
         constLines.join("\n"),
         "",
-        itemTypeLines.join("\n"),
-        itemTypeLines.length === 0 ? "" : "\n",
         propBlocks.join("\n\n"),
         "",
         renderJsxAugmentation(namespaceElements),
@@ -259,12 +253,7 @@ const renderPropBlock = (
     for (const [namespace, alias] of imports) addGiNamespace(context.imports, namespace, alias);
     addGiNamespace(context.imports, entry.namespace.name, giNamespaceAlias(entry.namespace.name));
     const elementPropImports = emptyElementPropImports();
-    const elementPropLines = context.typegen.classPropLines(
-        entry.glibName,
-        entry.klass,
-        entry.namespace,
-        elementPropImports,
-    );
+    const elementPropLines = context.typegen.classPropLines(entry.glibName, elementPropImports);
     registerElementPropImports(context.imports, context.targetNamespaceName, elementPropImports);
     const containerPropLines = containerPropNames.map((propName) => `${propName}?: ReactNode | null | undefined;`);
     const ownerLines = dedupePropLines([

@@ -1,12 +1,10 @@
-import type { Arg, Call, ContainerProp, ElementProp, ListProp, ValueProp } from "@gtkx/config";
+import type { ContainerProp, ElementProp, ListProp } from "@gtkx/config";
 import { ELEMENT_RULES } from "@gtkx/react/element-rules";
 import { toCamelIdentifier } from "@gtkx/utils";
 import type { GirParameter } from "../../gir/parameter.js";
 import { PRIMITIVE_TS_TYPE } from "../../gir/primitives.js";
 import { findMethod, type GirIndex, hasMethod, hasProperty } from "./gir-index.js";
-import { addCalls, buildArgsOf } from "./list-calls.js";
-
-const callMethodName = (call: Call): string => (typeof call === "string" ? call : call.method);
+import { addCalls } from "./list-calls.js";
 
 const containerTypeNames = (parent: string, prop: ContainerProp): string[] => {
     const names = [parent, prop.child];
@@ -14,9 +12,9 @@ const containerTypeNames = (parent: string, prop: ContainerProp): string[] => {
     return names;
 };
 
-const containerCalls = (prop: ContainerProp): Call[] => {
+const containerCalls = (prop: ContainerProp): string[] => {
     const calls = [prop.append, prop.remove, prop.insert, prop.reorder].filter(
-        (call): call is Call => call !== undefined,
+        (call): call is string => call !== undefined,
     );
     if (typeof prop.adopt === "string") calls.push(prop.adopt);
     return calls;
@@ -34,9 +32,8 @@ const validateTypeNames = (context: GirIndex, path: string, names: string[]): vo
     }
 };
 
-const validateCalls = (context: GirIndex, path: string, host: string, calls: Call[]): void => {
-    for (const call of calls) {
-        const method = callMethodName(call);
+const validateCalls = (context: GirIndex, path: string, host: string, calls: string[]): void => {
+    for (const method of calls) {
         if (!hasMethod(context, host, method)) {
             throw elementPropError(path, `references method "${method}", which does not exist on ${host}`);
         }
@@ -69,83 +66,17 @@ const validateUserElementProp = (context: GirIndex, type: string, path: string, 
             if (prop.lookup !== undefined) validateCalls(context, path, type, [prop.lookup]);
             return;
         case "list":
-            validateTypeNames(context, path, [type, ...buildTypeNames(prop)]);
+            validateTypeNames(context, path, [type]);
             validateCalls(context, path, type, listCalls(prop));
             return;
     }
 };
 
-const buildTypeNames = (prop: ListProp): string[] => buildArgsOf(prop).map((arg) => arg.build);
-
-const listCalls = (prop: ListProp): Call[] => {
+const listCalls = (prop: ListProp): string[] => {
     const calls = addCalls(prop.add);
     if (prop.remove !== undefined) calls.push(prop.remove);
     if (prop.clear !== undefined) calls.push(prop.clear);
     return calls;
-};
-
-const NO_DEFAULT = Symbol("gtkx.no-default");
-
-const inferredDefault = (context: GirIndex, param: GirParameter): null | number | boolean | typeof NO_DEFAULT => {
-    if (param.nullable) return null;
-    const type = param.type === undefined ? undefined : context.library.typeOf(param.type);
-    if (type?.kind !== "primitive") return NO_DEFAULT;
-    switch (PRIMITIVE_TS_TYPE[type.category]) {
-        case "number":
-            return 0;
-        case "boolean":
-            return false;
-        default:
-            return NO_DEFAULT;
-    }
-};
-
-const argForParameter = (context: GirIndex, param: GirParameter): Arg => {
-    const field = toCamelIdentifier(param.name);
-    const or = inferredDefault(context, param);
-    return or === NO_DEFAULT ? { field } : { field, or };
-};
-
-const callArity = (context: GirIndex, type: string, call: Call): number | undefined =>
-    typeof call === "string" ? findMethod(context, type, call)?.params.length : undefined;
-
-const expandCall = (context: GirIndex, type: string, call: Call, scalar: boolean): Call => {
-    if (typeof call !== "string" || scalar) return call;
-    const method = findMethod(context, type, call);
-    if (method === undefined || method.params.length === 0) return call;
-    return { method: call, args: method.params.map((param) => argForParameter(context, param)) };
-};
-
-const expandListProp = (context: GirIndex, type: string, prop: ListProp): ListProp => {
-    const scalar = !Array.isArray(prop.add) && callArity(context, type, prop.add) === 1;
-    const add = Array.isArray(prop.add)
-        ? prop.add.map((call) => expandCall(context, type, call, false))
-        : expandCall(context, type, prop.add, scalar);
-    return {
-        ...prop,
-        add,
-        remove: prop.remove === undefined ? undefined : expandCall(context, type, prop.remove, scalar),
-    };
-};
-
-const expandValueProp = (context: GirIndex, type: string, prop: ValueProp): ValueProp => {
-    const arity = callArity(context, type, prop.call);
-    return { ...prop, call: expandCall(context, type, prop.call, arity === undefined || arity <= 1) };
-};
-
-const expandAppliedProps = (
-    context: GirIndex,
-    elementProps: Record<string, ElementProp[]>,
-): Record<string, ElementProp[]> => {
-    const result: Record<string, ElementProp[]> = {};
-    for (const [type, props] of Object.entries(elementProps)) {
-        result[type] = props.map((prop) => {
-            if (prop.kind === "list") return expandListProp(context, type, prop);
-            if (prop.kind === "value") return expandValueProp(context, type, prop);
-            return prop;
-        });
-    }
-    return result;
 };
 
 const validateUserElementProps = (context: GirIndex, elementProps: Record<string, ElementProp[]>): void => {
@@ -186,7 +117,6 @@ const filterKnownElementProps = (
         if (!context.index.has(type)) continue;
         const kept = props.filter((prop) => {
             if (prop.kind === "container") return knownTypes(context, containerTypeNames(type, prop));
-            if (prop.kind === "list") return knownTypes(context, buildTypeNames(prop));
             return true;
         });
         if (kept.length > 0) result[type] = kept;
@@ -203,5 +133,5 @@ export const assembleElementProps = (
         filterKnownElementProps(context, ELEMENT_RULES),
         filterKnownElementProps(context, userElementProps),
     ]);
-    return expandAppliedProps(context, merged);
+    return merged;
 };

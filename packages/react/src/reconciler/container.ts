@@ -3,7 +3,7 @@ import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { getInstanceType, getWrapperClass, TYPE_INVALID, typeFromName, typeIsA, typeName } from "@gtkx/runtime";
 import { applyAdoptedProps, markLazyDirty } from "./apply-props.js";
-import { type CallContext, callMethod, runCall } from "./calls.js";
+import { callMethod, runCall } from "./calls.js";
 import type { ContainerBehavior, PlaceContext } from "./element-rules.js";
 import { type Props, WRAPPER_ELEMENT } from "./kinds.js";
 import { type TypeInfo, typeInfoOf } from "./metadata.js";
@@ -114,8 +114,7 @@ const appendEntry = (parent: ElementNode, entry: PlacedChild, index: number): vo
         return;
     }
     if (entry.rule.append === undefined) return;
-    const ctx: CallContext = { child: entry.widget, index, sibling: null, props: entry.node.props };
-    runPlacement(parent, entry, runCall(parent.object, entry.rule.append, ctx, [entry.widget]));
+    runPlacement(parent, entry, runCall(parent.object, entry.rule.append, [entry.widget]));
 };
 
 const insertEntry = (parent: ElementNode, entry: PlacedChild, list: PlacedChild[], index: number): void => {
@@ -126,8 +125,7 @@ const insertEntry = (parent: ElementNode, entry: PlacedChild, list: PlacedChild[
         return;
     }
     if (entry.rule.insert === undefined) return;
-    const ctx: CallContext = { child: entry.widget, index, sibling, props: entry.node.props };
-    runPlacement(parent, entry, runCall(parent.object, entry.rule.insert, ctx, [entry.widget]));
+    runPlacement(parent, entry, runCall(parent.object, entry.rule.insert, [entry.widget]));
 };
 
 const detachDefault = (parent: ElementNode, entry: PlacedChild): void => {
@@ -145,8 +143,7 @@ const detachEntry = (parent: ElementNode, entry: PlacedChild): void => {
     if (detach !== undefined) {
         detach(parent.object, entry.widget, { adopted: entry.adopted, props: entry.node.props });
     } else if (entry.rule !== FALLBACK_RULE && entry.rule.remove !== undefined) {
-        const ctx: CallContext = { child: entry.widget, adopted: entry.adopted, props: entry.node.props };
-        runCall(parent.object, entry.rule.remove, ctx, [entry.widget]);
+        runCall(parent.object, entry.rule.remove, [entry.widget]);
     } else {
         detachDefault(parent, entry);
     }
@@ -166,8 +163,7 @@ const reorderEntry = (parent: ElementNode, entry: PlacedChild, list: PlacedChild
         reorder(parent.object, entry.widget, placeContext(entry, index, sibling));
         return;
     }
-    const ctx: CallContext = { child: entry.widget, adopted: entry.adopted, index, sibling, props: entry.node.props };
-    if (entry.rule.reorder !== undefined) runCall(parent.object, entry.rule.reorder, ctx, [entry.widget]);
+    if (entry.rule.reorder !== undefined) runCall(parent.object, entry.rule.reorder, [entry.widget]);
 };
 
 type SyncOptions = { list: PlacedChild[]; index: number; isMove: boolean };

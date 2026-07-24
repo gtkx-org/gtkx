@@ -1,12 +1,13 @@
-import type { AppliedProp, BuildArg, Call, ContainerProp, ElementProp, ListProp } from "@gtkx/config";
-import { toCamelIdentifier, upperFirst } from "@gtkx/utils";
+import type { AppliedProp, ContainerProp, ElementProp, ListProp } from "@gtkx/config";
+import { toCamelIdentifier } from "@gtkx/utils";
 import { renderBaseTypeFor } from "../../analysis/ts-type.js";
 import type { GirClass } from "../../gir/class.js";
 import type { GirNamespace } from "../../gir/namespace.js";
 import type { GirParameter } from "../../gir/parameter.js";
+import { PRIMITIVE_TS_TYPE } from "../../gir/primitives.js";
 import { chainOf, findMethod, type GirIndex, type GirTypeEntry, hasProperty } from "./gir-index.js";
 import { glibNameOf } from "./intrinsic-elements.js";
-import { addCalls, buildArgsOf, isBuildArg } from "./list-calls.js";
+import { addCalls } from "./list-calls.js";
 import { reactTarget } from "./props.js";
 
 type TypeImports = Map<string, string>;
@@ -30,14 +31,8 @@ export type LazyElementSpec = {
 };
 
 export type ElementPropTypegen = {
-    classPropLines: (
-        glibName: string,
-        klass: GirClass,
-        namespace: GirNamespace,
-        imports: ElementPropImports,
-    ) => string[];
+    classPropLines: (glibName: string, imports: ElementPropImports) => string[];
     lazyElementExports: (namespaceName: string) => LazyElementSpec[];
-    listItemTypeSources: (namespaceName: string, imports: ElementPropImports) => string[];
     containerPropNamesFor: (glibName: string) => string[];
     placementPropLines: (glibName: string, imports: ElementPropImports) => string[];
     acceptsChildren: (glibName: string) => boolean;
@@ -69,35 +64,34 @@ const optionalLine = (prop: string, type: string): string => {
 
 type FieldLine = { field: string; text: string };
 
-const itemTypeName = (type: string, prop: string): string => `${type}${upperFirst(prop)}Entry`;
+type RenderContext = { gir: GirIndex; imports: ElementPropImports };
 
-type ItemTypeRef = (arg: BuildArg) => string;
+const NO_DEFAULT = Symbol("gtkx.no-default");
 
-type RenderContext = {
-    gir: GirIndex;
-    imports: ElementPropImports;
-    itemTypeRef: ItemTypeRef;
-    refer: (type: string, prop: string) => string | undefined;
+const inferredDefault = (context: GirIndex, param: GirParameter): null | number | boolean | typeof NO_DEFAULT => {
+    if (param.nullable) return null;
+    const type = param.type === undefined ? undefined : context.library.typeOf(param.type);
+    if (type?.kind !== "primitive") return NO_DEFAULT;
+    switch (PRIMITIVE_TS_TYPE[type.category]) {
+        case "number":
+            return 0;
+        case "boolean":
+            return false;
+        default:
+            return NO_DEFAULT;
+    }
 };
 
-const callFieldLines = (context: RenderContext, type: string, call: Call): FieldLine[] => {
-    if (typeof call === "string") return [];
-    const method = findMethod(context.gir, type, call.method);
-    const lines: FieldLine[] = [];
-    call.args.forEach((arg, positionIndex) => {
-        if (isBuildArg(arg)) {
-            lines.push({ field: arg.from, text: `${arg.from}?: ${context.itemTypeRef(arg)}[];` });
-            return;
-        }
-        if (typeof arg !== "object" || !("field" in arg)) return;
-        const param = method?.params[positionIndex];
-        const optional = "or" in arg || param?.nullable === true || param?.optional === true;
-        lines.push({
-            field: arg.field,
-            text: `${arg.field}${optional ? "?" : ""}: ${renderParamType(context.gir, context.imports.gi, param)};`,
-        });
+const callFieldLines = (context: RenderContext, type: string, method: string): FieldLine[] => {
+    const resolved = findMethod(context.gir, type, method);
+    return (resolved?.params ?? []).map((param) => {
+        const field = toCamelIdentifier(param.name);
+        const optional = inferredDefault(context.gir, param) !== NO_DEFAULT || param.optional;
+        return {
+            field,
+            text: `${field}${optional ? "?" : ""}: ${renderParamType(context.gir, context.imports.gi, param)};`,
+        };
     });
-    return lines;
 };
 
 const mergedFieldsType = (lines: FieldLine[]): string => {
@@ -120,109 +114,36 @@ const trailingCallFields = (lines: FieldLine[], itemKey: string | undefined): Fi
             : optionalField(line),
     );
 
-const callFieldsType = (context: RenderContext, type: string, call: Call | Call[], itemKey?: string): string => {
-    if (Array.isArray(call)) {
-        return mergedFieldsType(
-            call.flatMap((entry, index) =>
-                index === 0
-                    ? callFieldLines(context, type, entry)
-                    : trailingCallFields(callFieldLines(context, type, entry), itemKey),
-            ),
-        );
-    }
-    if (typeof call === "string") {
-        const method = findMethod(context.gir, type, call);
-        return renderParamType(context.gir, context.imports.gi, method?.params[0]);
-    }
-    const lines = callFieldLines(context, type, call);
-    if (lines.length > 0) return mergedFieldsType(lines);
-    const method = findMethod(context.gir, type, call.method);
-    return renderParamType(context.gir, context.imports.gi, method?.params[0]);
-};
-
-type NamedItemType = { type: string; rule: ListProp; namespaceName: string; typeName: string };
-
-const collectNamedItemTypes = (
-    context: GirIndex,
-    elementProps: Record<string, ElementProp[]>,
-): Map<string, NamedItemType> => {
-    const named = new Map<string, NamedItemType>();
-    const listRules = new Map<string, { type: string; rule: ListProp }>();
-    for (const [type, props] of Object.entries(elementProps)) {
-        for (const rule of props) {
-            if (rule.kind === "list") listRules.set(`${type}:${rule.prop}`, { type, rule });
+const callFieldsType = (context: RenderContext, type: string, add: ListProp["add"], itemKey?: string): string => {
+    const methods = addCalls(add);
+    const [first] = methods;
+    if (first === undefined) return "unknown";
+    if (methods.length === 1) {
+        const resolved = findMethod(context.gir, type, first);
+        if ((resolved?.params ?? []).length <= 1) {
+            return renderParamType(context.gir, context.imports.gi, resolved?.params[0]);
         }
     }
-    const claim = (key: string): void => {
-        const entry = listRules.get(key);
-        const namespaceName = entry === undefined ? undefined : context.index.get(entry.type)?.namespace.name;
-        if (entry === undefined || namespaceName === undefined || named.has(key)) return;
-        named.set(key, { ...entry, namespaceName, typeName: itemTypeName(entry.type, entry.rule.prop) });
-    };
-    for (const [key, { rule }] of listRules) {
-        const builds = buildArgsOf(rule);
-        if (builds.length === 0) continue;
-        claim(key);
-        for (const arg of builds) claim(`${arg.build}:${arg.prop}`);
-    }
-    return named;
+    return mergedFieldsType(
+        methods.flatMap((method, index) =>
+            index === 0
+                ? callFieldLines(context, type, method)
+                : trailingCallFields(callFieldLines(context, type, method), itemKey),
+        ),
+    );
 };
 
-const appliedPropLine = (context: RenderContext, type: string, prop: AppliedProp, named?: string): string | null => {
+const appliedPropLine = (context: RenderContext, type: string, prop: AppliedProp): string | null => {
     if (hasProperty(context.gir, type, prop.prop)) return null;
     if (prop.kind === "value") return optionalLine(prop.prop, callFieldsType(context, type, prop.call));
     if (prop.kind === "list") {
         if (prop.itemType !== undefined) {
             return optionalLine(prop.prop, `import("@gtkx/react").${prop.itemType}[]`);
         }
-        const item = named ?? callFieldsType(context, type, prop.add, prop.itemKey);
+        const item = callFieldsType(context, type, prop.add, prop.itemKey);
         return optionalLine(prop.prop, `${item}[]`);
     }
     return null;
-};
-
-const collectCallContributions = (
-    context: GirIndex,
-    contributions: PropContribution[],
-    container: { parent: string; child: string },
-    call: Exclude<ContainerProp["append"], string | undefined>,
-): void => {
-    const method = findMethod(context, container.parent, call.method);
-    call.args.forEach((arg, positionIndex) => {
-        if (typeof arg !== "object" || isBuildArg(arg) || !("prop" in arg)) return;
-        const param = method?.params[positionIndex];
-        if (param === undefined) return;
-        if (hasProperty(context, container.child, arg.prop)) return;
-        if (contributions.some((entry) => entry.child === container.child && entry.prop === arg.prop)) return;
-        contributions.push({ child: container.child, prop: arg.prop, param });
-    });
-};
-
-const collectPropContributions = (
-    context: GirIndex,
-    elementProps: Record<string, ElementProp[]>,
-): PropContribution[] => {
-    const contributions: PropContribution[] = [];
-    forEachContainer(elementProps, (parent, cp) => {
-        for (const call of [cp.append, cp.remove, cp.insert, cp.reorder]) {
-            if (call === undefined || typeof call === "string") continue;
-            collectCallContributions(context, contributions, { parent, child: cp.child }, call);
-        }
-    });
-    return contributions;
-};
-
-const directTypeNames = (context: GirIndex, klass: GirClass, namespace: GirNamespace): Set<string> => {
-    const names = new Set<string>();
-    const glibName = glibNameOf(klass);
-    if (glibName !== undefined) names.add(glibName);
-    for (const name of klass.implements) {
-        const resolved = context.library.resolveType(namespace.name, name);
-        if (resolved === undefined || resolved.kind !== "interface") continue;
-        const ifaceGlib = glibNameOf(resolved.value);
-        if (ifaceGlib !== undefined) names.add(ifaceGlib);
-    }
-    return names;
 };
 
 const constructOnlyNames = (context: GirIndex, entry: GirTypeEntry): string[] => {
@@ -247,9 +168,8 @@ const methodReturnGlib = (context: GirIndex, typeName: string, methodCamel: stri
 const resolveAdoptElement = (context: GirIndex, parent: string, cp: ContainerProp): string | undefined => {
     if (cp.adopt === undefined) return undefined;
     if (typeof cp.adopt === "object") return cp.adopt.element;
-    const source = typeof cp.adopt === "string" ? cp.adopt : cp.append;
-    if (source === undefined) return undefined;
-    const method = typeof source === "string" ? source : source.method;
+    const method = typeof cp.adopt === "string" ? cp.adopt : cp.append;
+    if (method === undefined) return undefined;
     return methodReturnGlib(context, parent, method);
 };
 
@@ -290,11 +210,7 @@ const isChildParameter = (context: GirIndex, param: GirParameter, child: string)
     return glibNameOf(resolved.value) === child;
 };
 
-const attachMethodName = (cp: ContainerProp): string | undefined => {
-    const call = cp.append ?? cp.remove;
-    if (call === undefined) return undefined;
-    return typeof call === "string" ? call : call.method;
-};
+const attachMethodName = (cp: ContainerProp): string | undefined => cp.append ?? cp.remove;
 
 const collectPlacementProps = (context: GirIndex, elementProps: Record<string, ElementProp[]>): PropContribution[] => {
     const placements: PropContribution[] = [];
@@ -340,20 +256,6 @@ const collectAppliedProps = (elementProps: Record<string, ElementProp[]>): Map<s
     return appliedByType;
 };
 
-type RenderContextFactory = (namespaceName: string, imports: ElementPropImports) => RenderContext;
-
-const createRenderContextFactory =
-    (context: GirIndex, named: Map<string, NamedItemType>): RenderContextFactory =>
-    (namespaceName, imports) => {
-        const refer = (type: string, prop: string): string | undefined => {
-            const entry = named.get(`${type}:${prop}`);
-            if (entry === undefined) return undefined;
-            if (entry.namespaceName !== namespaceName) imports.jsx.set(entry.typeName, entry.namespaceName);
-            return entry.typeName;
-        };
-        return { gir: context, imports, itemTypeRef: (arg) => refer(arg.build, arg.prop) ?? "unknown", refer };
-    };
-
 const createAcceptsChildren = (
     context: GirIndex,
     elementProps: Record<string, ElementProp[]>,
@@ -382,51 +284,23 @@ export const createElementPropTypegen = (
     elementProps: Record<string, ElementProp[]>,
 ): ElementPropTypegen => {
     const appliedByType = collectAppliedProps(elementProps);
-    const propContributions = collectPropContributions(context, elementProps);
     const lazyElementSpecs = collectLazyElementSpecs(context, elementProps);
     const containerPropNamesByParent = collectContainerPropNames(elementProps);
     const placementProps = collectPlacementProps(context, elementProps);
-    const namedItemTypes = collectNamedItemTypes(context, elementProps);
-    const renderContext = createRenderContextFactory(context, namedItemTypes);
 
-    const classPropLines = (
-        glibName: string,
-        klass: GirClass,
-        namespace: GirNamespace,
-        imports: ElementPropImports,
-    ): string[] => {
-        const render = renderContext(namespace.name, imports);
+    const classPropLines = (glibName: string, imports: ElementPropImports): string[] => {
+        const render: RenderContext = { gir: context, imports };
         const lines: string[] = [];
         for (const prop of appliedByType.get(glibName) ?? []) {
-            const named = prop.kind === "list" ? render.refer(glibName, prop.prop) : undefined;
-            const line = appliedPropLine(render, glibName, prop, named);
+            const line = appliedPropLine(render, glibName, prop);
             if (line !== null) lines.push(line);
         }
-        const direct = directTypeNames(context, klass, namespace);
-        for (const contribution of propContributions) {
-            if (!direct.has(contribution.child)) continue;
-            lines.push(optionalLine(contribution.prop, renderParamType(context, imports.gi, contribution.param)));
-        }
         return lines;
-    };
-
-    const listItemTypeSources = (namespaceName: string, imports: ElementPropImports): string[] => {
-        const render = renderContext(namespaceName, imports);
-        const sources: string[] = [];
-        for (const named of namedItemTypes.values()) {
-            if (named.namespaceName !== namespaceName) continue;
-            const fields = mergedFieldsType(
-                addCalls(named.rule.add).flatMap((call) => callFieldLines(render, named.type, call)),
-            );
-            sources.push(`export type ${named.typeName} = ${fields};`);
-        }
-        return sources;
     };
 
     return {
         classPropLines,
         lazyElementExports: (namespaceName) => lazyElementSpecs.get(namespaceName) ?? [],
-        listItemTypeSources,
         containerPropNamesFor: (glibName) => containerPropNamesByParent.get(glibName) ?? [],
         placementPropLines: (glibName, imports) =>
             placementProps

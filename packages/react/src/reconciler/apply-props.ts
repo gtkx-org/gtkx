@@ -5,7 +5,7 @@ import type { SignalHandler } from "@gtkx/runtime";
 import { isDeepEqual, kebabCase, structuredClone } from "@gtkx/utils";
 import { applyAccessibleProps, isAccessibleProp } from "../utils/accessible-props.js";
 import { addListItem, runCall } from "./calls.js";
-import { setMenuFactory } from "./element-rules.js";
+import { type ListBehavior, setMenuFactory } from "./element-rules.js";
 import { createObject } from "./instance.js";
 import type { Props } from "./kinds.js";
 import { type TypeInfo, typeInfoOf } from "./metadata.js";
@@ -32,15 +32,27 @@ const skipValueName = (name: string, info: TypeInfo): boolean =>
     info.constructOnly.has(name) ||
     info.lazyProps.has(name);
 
-const applyValueRule = (object: GObject.Object, rule: ValueProp, value: unknown, props: Props): void => {
-    runCall(object, rule.call, { props }, [value]);
-    if (rule.after !== undefined) runCall(object, rule.after, {}, []);
+const applyValueRule = (object: GObject.Object, rule: ValueProp, value: unknown): void => {
+    runCall(object, rule.call, [value]);
+    if (rule.after !== undefined) runCall(object, rule.after, []);
 };
 
 type PropEntry = { name: string; value: unknown; oldValue: unknown; props: Props };
 
+const clearListItems = (
+    node: ElementNode,
+    rule: ListProp,
+    behavior: ListBehavior | undefined,
+    previous: unknown[],
+): void => {
+    if (behavior?.clear !== undefined) behavior.clear(node.object);
+    else if (behavior?.remove !== undefined) for (const item of previous) behavior.remove(node.object, item);
+    else if (rule.clear !== undefined) runCall(node.object, rule.clear, []);
+    else if (rule.remove !== undefined) for (const item of previous) runCall(node.object, rule.remove, [item]);
+};
+
 const applyListRule = (node: ElementNode, info: TypeInfo, rule: ListProp, entry: PropEntry): void => {
-    const { name, value, props } = entry;
+    const { name, value } = entry;
     const items = Array.isArray(value) ? value : [];
     const applied = node.listApplied.get(name);
     if (applied !== undefined && isDeepEqual(applied.snapshot, items)) return;
@@ -48,13 +60,13 @@ const applyListRule = (node: ElementNode, info: TypeInfo, rule: ListProp, entry:
     if (behavior?.clear !== undefined) behavior.clear(node.object);
     else if (behavior?.remove !== undefined)
         for (const item of applied?.items ?? []) behavior.remove(node.object, item);
-    else if (rule.clear !== undefined) runCall(node.object, rule.clear, {}, []);
+    else if (rule.clear !== undefined) runCall(node.object, rule.clear, []);
     else if (rule.remove !== undefined) {
-        for (const item of applied?.items ?? []) runCall(node.object, rule.remove, { item, props }, [item]);
+        for (const item of applied?.items ?? []) runCall(node.object, rule.remove, [item]);
     }
     for (const item of items) {
         if (behavior?.add !== undefined) behavior.add(node.object, item);
-        else addListItem(node.object, rule, item, props);
+        else addListItem(node.object, rule, item);
     }
     node.listApplied.set(name, { items, snapshot: structuredClone(items) });
 };
@@ -78,7 +90,7 @@ const applyEntry = (node: ElementNode, info: TypeInfo, entry: PropEntry): void =
     const valueRule = info.valueProps.get(name);
     const listRule = info.listProps.get(name);
     if (valueRule !== undefined) {
-        if (value !== undefined) applyValueRule(node.object, valueRule, value, props);
+        if (value !== undefined) applyValueRule(node.object, valueRule, value);
     } else if (listRule !== undefined) {
         applyListRule(node, info, listRule, entry);
     } else if (info.controlledText.has(name)) {
@@ -124,7 +136,7 @@ const applyLazyForNode = (node: ElementNode): void => {
     for (const [name, rule] of info.lazyProps) {
         const desired = node.props[name];
         if (desired === undefined || Object.is(node.lazyApplied.get(name), desired)) continue;
-        if (rule.lookup !== undefined && !runCall(node.object, rule.lookup, {}, [desired])) continue;
+        if (rule.lookup !== undefined && !runCall(node.object, rule.lookup, [desired])) continue;
         Reflect.set(node.object, name, desired);
         node.lazyApplied.set(name, desired);
     }

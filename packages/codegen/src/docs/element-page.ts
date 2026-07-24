@@ -102,12 +102,9 @@ const hierarchySection = (entry: GlibNamedClass, context: ElementPageContext): s
     return lines;
 };
 
-const callName = (call: ContainerProp["append"]): string | undefined =>
-    call === undefined ? undefined : typeof call === "string" ? call : call.method;
-
 const containerLine = (prop: ContainerProp, context: ElementPageContext): string => {
     const child = glibLabel(context, prop.child);
-    const attach = callName(prop.append);
+    const attach = prop.append;
     const detail: string[] = [];
     if (attach !== undefined) detail.push(`attached with \`${attach}()\``);
     if (prop.autowrap !== undefined) {
@@ -174,10 +171,10 @@ const propertyEntry = (
 const overlayNote = (overlays: ElementProp[], name: string): string | undefined => {
     for (const overlay of overlays) {
         if (overlay.kind === "container" || overlay.prop !== name) continue;
-        if (overlay.kind === "value") return `Applied with \`${callName(overlay.call)}()\`.`;
+        if (overlay.kind === "value") return `Applied with \`${overlay.call}()\`.`;
         if (overlay.kind === "list") {
             const applied = (Array.isArray(overlay.add) ? overlay.add : [overlay.add])
-                .map((call) => `\`${callName(call)}()\``)
+                .map((call) => `\`${call}()\``)
                 .join(", ");
             return `Array prop; items are applied with ${applied}.`;
         }
@@ -193,12 +190,7 @@ const cleanOverlayType = (type: string): string => type.replace(/\s*\|\s*undefin
 const overlayEntries = (entry: GlibNamedClass, context: ElementPageContext, seen: Set<string>): PropEntry[] => {
     const overlays = context.elementProps[entry.glibName] ?? [];
     const entries: PropEntry[] = [];
-    const lines = context.typegen.classPropLines(
-        entry.glibName,
-        entry.klass,
-        entry.namespace,
-        emptyElementPropImports(),
-    );
+    const lines = context.typegen.classPropLines(entry.glibName, emptyElementPropImports());
     for (const line of lines) {
         const match = line.match(/^([A-Za-z0-9_]+)\?: (.*);$/);
         if (match === null) continue;

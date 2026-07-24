@@ -122,8 +122,9 @@ describe("validateConfig elementProps validation", () => {
                     kind: "container",
                     prop: "actionGroups",
                     child: "GActionGroup",
-                    append: { method: "insertActionGroup", args: [{ prop: "prefix" }, "child"] },
-                    remove: { method: "insertActionGroup", args: [{ prop: "prefix" }, { literal: null }] },
+                    append: "insertActionGroup",
+                    remove: "insertActionGroup",
+                    childProps: ["prefix"],
                 },
             ],
             GtkStack: [
@@ -142,63 +143,26 @@ describe("validateConfig elementProps validation", () => {
                     kind: "container",
                     prop: "children",
                     child: "GtkWidget",
-                    append: { method: "appendPage", args: ["child", { literal: null }] },
-                    insert: { method: "insertPage", args: ["child", { literal: null }, "index"] },
+                    append: "appendPage",
+                    insert: "insertPage",
                     remove: "detachTab",
                     adopt: "getPage",
                 },
             ],
             GtkDrawingArea: [{ kind: "value", prop: "drawFunc", call: "setDrawFunc", after: "queueDraw" }],
             GtkEditable: [{ kind: "controlled-text", prop: "text" }],
-            GMenu: [
+            AdwAlertDialog: [
                 {
                     kind: "list",
-                    prop: "items",
-                    clear: "removeAll",
-                    add: [
-                        {
-                            method: "appendSubmenu",
-                            args: [
-                                { field: "label", or: null },
-                                { build: "GMenu", prop: "items", from: "submenu" },
-                            ],
-                            when: "submenu",
-                        },
-                        {
-                            method: "append",
-                            args: [
-                                { field: "label", or: null },
-                                { field: "action", or: null },
-                            ],
-                            unless: ["submenu"],
-                        },
-                    ],
+                    prop: "responses",
+                    itemKey: "id",
+                    add: ["addResponse", "setResponseAppearance"],
+                    remove: "removeResponse",
                 },
             ],
+            GMenu: [{ kind: "list", prop: "items", itemType: "MenuItem", clear: "removeAll", add: "append" }],
         };
         expect(() => validateWithAppId({ elementProps })).not.toThrow();
-    });
-
-    it("rejects a build argument missing its target prop", () => {
-        const cp = {
-            kind: "list",
-            prop: "items",
-            add: { method: "appendSubmenu", args: [{ build: "GMenu", from: "submenu" }] },
-        };
-        expect(() => validateUnknown({ applicationId: "org.gtk.Test", elementProps: { GMenu: [cp] } })).toThrow(
-            /`elementProps\.GMenu\[0\]\.add\.args\[0\]\.prop` must be a non-empty string/,
-        );
-    });
-
-    it("rejects a non-array `unless` guard", () => {
-        const cp = {
-            kind: "list",
-            prop: "items",
-            add: { method: "append", args: [{ field: "label", or: null }], unless: "submenu" },
-        };
-        expect(() => validateUnknown({ applicationId: "org.gtk.Test", elementProps: { GMenu: [cp] } })).toThrow(
-            /`elementProps\.GMenu\[0\]\.add\.unless` must be an array of field names/,
-        );
     });
 
     it("accepts a config that omits elementProps", () => {
@@ -223,53 +187,17 @@ describe("validateConfig elementProps validation", () => {
         ).toThrow(/must be one of container, value, controlled-text, lazy, list/);
     });
 
+    it("rejects a call given as an object instead of a method name", () => {
+        const cp = { kind: "container", prop: "children", child: "GtkWidget", append: { method: "append", args: [] } };
+        expect(() => validateUnknown({ applicationId: "org.gtk.Test", elementProps: { GtkWidget: [cp] } })).toThrow(
+            /`elementProps\.GtkWidget\[0\]\.append` must be a non-empty string/,
+        );
+    });
+
     it("rejects an unrecognized element-prop key", () => {
         const cp = { kind: "container", prop: "children", child: "GtkWidget", append: "append", detach: "remove" };
         expect(() => validateUnknown({ applicationId: "org.gtk.Test", elementProps: { GtkWidget: [cp] } })).toThrow(
             /`elementProps\.GtkWidget\[0\]\.detach` is not a recognized key/,
-        );
-    });
-
-    it("rejects an unknown argument reference", () => {
-        const cp = {
-            kind: "container",
-            prop: "children",
-            child: "GtkWidget",
-            append: { method: "append", args: ["kid"] },
-        };
-        expect(() => validateUnknown({ applicationId: "org.gtk.Test", elementProps: { GtkWidget: [cp] } })).toThrow(
-            /`elementProps\.GtkWidget\[0\]\.append\.args\[0\]` has unknown reference "kid"/,
-        );
-    });
-
-    it('rejects the "value" argument reference', () => {
-        const cp = { kind: "value", prop: "drawFunc", call: { method: "setDrawFunc", args: ["value"] } };
-        expect(() =>
-            validateUnknown({ applicationId: "org.gtk.Test", elementProps: { GtkDrawingArea: [cp] } }),
-        ).toThrow(/`elementProps\.GtkDrawingArea\[0\]\.call\.args\[0\]` has unknown reference "value"/);
-    });
-
-    it("rejects `or` on a prop argument", () => {
-        const cp = {
-            kind: "container",
-            prop: "children",
-            child: "GtkWidget",
-            append: { method: "append", args: [{ prop: "name", or: null }] },
-        };
-        expect(() => validateUnknown({ applicationId: "org.gtk.Test", elementProps: { GtkWidget: [cp] } })).toThrow(
-            /`elementProps\.GtkWidget\[0\]\.append\.args\[0\]\.or` is not a recognized key/,
-        );
-    });
-
-    it("rejects a non-serializable literal", () => {
-        const cp = {
-            kind: "container",
-            prop: "children",
-            child: "GtkWidget",
-            append: { method: "append", args: [{ literal: () => null }] },
-        };
-        expect(() => validateUnknown({ applicationId: "org.gtk.Test", elementProps: { GtkWidget: [cp] } })).toThrow(
-            /`elementProps\.GtkWidget\[0\]\.append\.args\[0\]\.literal` must be a JSON-serializable value/,
         );
     });
 });

@@ -53,6 +53,12 @@ const ancestryOf = (name: string): string[] => {
     return names;
 };
 
+const classifyList = (owner: string, rule: ListProp, info: TypeInfo): void => {
+    info.listProps.set(rule.prop, rule);
+    const behavior = listBehaviorFor(owner, rule.prop);
+    if (behavior !== undefined && !info.listBehaviors.has(rule.prop)) info.listBehaviors.set(rule.prop, behavior);
+};
+
 const classifyProps = (owner: string, rules: ElementProp[], info: TypeInfo): void => {
     for (const rule of rules) {
         if (rule.kind === "container") {
@@ -64,11 +70,7 @@ const classifyProps = (owner: string, rules: ElementProp[], info: TypeInfo): voi
         } else if (rule.kind === "value") {
             info.valueProps.set(rule.prop, rule);
         } else if (rule.kind === "list") {
-            info.listProps.set(rule.prop, rule);
-            const listBehavior = listBehaviorFor(owner, rule.prop);
-            if (listBehavior !== undefined && !info.listBehaviors.has(rule.prop)) {
-                info.listBehaviors.set(rule.prop, listBehavior);
-            }
+            classifyList(owner, rule, info);
         } else if (rule.kind === "lazy") {
             info.lazyProps.set(rule.prop, rule);
         } else {
