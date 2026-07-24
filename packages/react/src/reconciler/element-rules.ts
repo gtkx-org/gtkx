@@ -129,11 +129,63 @@ export const controlledTextRule = (prop: string): ControlledTextRule => ({ kind:
 const ruleKey = (rule: ElementRule): string =>
     rule.kind === "container" ? `container:${rule.prop}:${rule.child}` : `${rule.kind}:${rule.prop}`;
 
+/** Declares a child slot and the behavior that places its children. */
+export type ContainerElementProp<P = GObject.Object, C = GObject.Object, CP = Props> = {
+    type: "container";
+    name: string;
+    child: string;
+    autowrap?: (inner: GObject.Object) => GObject.Object;
+    adopt?: AdoptSource;
+    behavior: ContainerBehavior<P, C, CP>;
+};
+
+/** Declares a scalar prop applied by invoking `behavior` whenever the value changes. */
+export type ValueElementProp<P = GObject.Object, V = unknown> = {
+    type: "value";
+    name: string;
+    behavior: (object: P, value: V) => void;
+};
+
+/** Declares an array prop and the behavior that adds, removes, and clears its items. */
+export type ListElementProp<P = GObject.Object, I = unknown> = {
+    type: "list";
+    name: string;
+    behavior: ListBehavior<P, I>;
+};
+
+/** Declares a prop applied after construction, deferred until `behavior` returns true. */
+export type LazyElementProp<P = GObject.Object, V = unknown> = {
+    type: "lazy";
+    name: string;
+    behavior?: (object: P, value: V) => boolean;
+};
+
+/** Declares a prop kept in sync with the element's own edits rather than reset on every render. */
+export type ControlledTextElementProp = { type: "controlled-text"; name: string };
+
 /**
- * Registers rules keyed by GLib type name. A rule replaces a registered one with the same
- * kind, prop, and child type, keeping its position; anything else is appended.
+ * One element prop declaration, discriminated by `type`. Annotate each behavior's parameters
+ * with the GObject class and value type the prop applies to.
  */
-export const registerElementProps = (rules: Record<string, ElementRule[]>): void => {
+export type ElementProp =
+    | ContainerElementProp<never, never, never>
+    | ValueElementProp<never, never>
+    | ListElementProp<never, never>
+    | LazyElementProp<never, never>
+    | ControlledTextElementProp;
+
+const toRule = (prop: ElementProp): ElementRule => {
+    if (prop.type === "container") {
+        const { name, child, behavior, ...placement } = prop;
+        return containerRule<never, never, never>(name, child, { ...placement, behavior });
+    }
+    if (prop.type === "value") return valueRule<never, never>(prop.name, prop.behavior);
+    if (prop.type === "list") return listRule<never, never>(prop.name, prop.behavior);
+    if (prop.type === "lazy") return lazyRule<never, never>(prop.name, prop.behavior);
+    return controlledTextRule(prop.name);
+};
+
+export const addRules = (rules: Record<string, ElementRule[]>): void => {
     for (const [type, added] of Object.entries(rules)) {
         const existing = RULES[type] ?? [];
         const replacements = new Map(added.map((rule) => [ruleKey(rule), rule]));
@@ -144,10 +196,18 @@ export const registerElementProps = (rules: Record<string, ElementRule[]>): void
 };
 
 /**
- * Identity helper that types a module of element rules for the `elementProps` entry of
+ * Registers element props keyed by GLib type name. A prop replaces a registered one with the
+ * same type, name, and child type, keeping its position; anything else is appended.
+ */
+export const registerElementProps = (props: Record<string, ElementProp[]>): void => {
+    addRules(Object.fromEntries(Object.entries(props).map(([type, list]) => [type, list.map(toRule)])));
+};
+
+/**
+ * Identity helper that types a module of element props for the `elementProps` entry of
  * `gtkx.config.ts`, enabling editor autocompletion and type checking.
  */
-export const defineElementProps = (rules: Record<string, ElementRule[]>): Record<string, ElementRule[]> => rules;
+export const defineElementProps = (props: Record<string, ElementProp[]>): Record<string, ElementProp[]> => props;
 
 const forTypes = (types: string[], ...rules: ElementRule[]): Record<string, ElementRule[]> =>
     Object.fromEntries(types.map((type) => [type, rules]));
@@ -313,7 +373,7 @@ const packBehavior = (pack: (bar: Packer, child: Gtk.Widget) => void): Container
         bar.remove(child);
     });
 
-registerElementProps({
+addRules({
     ...forTypes(
         GTK_SINGLE_CHILD_TYPES,
         containerRule<GtkChildSetter, Gtk.Widget>("children", "GtkWidget", {

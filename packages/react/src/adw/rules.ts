@@ -2,6 +2,7 @@ import * as Adw from "@gtkx/gi/adw";
 import type * as Gtk from "@gtkx/gi/gtk";
 import {
     addRemoveBehavior,
+    addRules,
     adoptedChildrenRule,
     boxBehavior,
     type ContainerBehavior,
@@ -11,7 +12,6 @@ import {
     indexedBehavior,
     lazyRule,
     listRule,
-    registerElementProps,
 } from "../reconciler/element-rules.js";
 import type { AlertDialogResponse } from "./element-props.js";
 
@@ -89,7 +89,7 @@ const pageHostChildren = containerRule<PageHost, Adw.PreferencesPage>("children"
     ),
 });
 
-registerElementProps({
+addRules({
     AdwBin: [childSetter],
     AdwClamp: [childSetter],
     AdwClampScrollable: [childSetter],

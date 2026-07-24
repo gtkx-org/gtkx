@@ -1,18 +1,18 @@
 import "@gtkx/jsx/adw";
-import { type ContainerRule, ELEMENT_RULES } from "@gtkx/react/element-rules";
+import { ELEMENT_RULES } from "@gtkx/react/element-rules";
 import { describe, expect, it } from "vitest";
 
-const containerFor = (type: string, prop: string): ContainerRule | undefined =>
-    (ELEMENT_RULES[type] ?? []).find((rule): rule is ContainerRule => rule.kind === "container" && rule.prop === prop);
+const containerFor = (type: string, prop: string) =>
+    (ELEMENT_RULES[type] ?? []).find((rule) => rule.kind === "container" && rule.prop === prop);
 
 describe("adwaita rule registration", () => {
     it("registers Adwaita rules when @gtkx/jsx/adw is loaded", () => {
-        expect(containerFor("AdwBin", "children")?.child).toBe("GtkWidget");
-        expect(containerFor("AdwToolbarView", "children")?.child).toBe("GtkWidget");
-        expect(containerFor("AdwNavigationSplitView", "children")?.child).toBe("AdwNavigationPage");
-        expect(containerFor("AdwPreferencesPage", "children")?.child).toBe("AdwPreferencesGroup");
-        expect(containerFor("AdwTabView", "children")?.child).toBe("GtkWidget");
-        expect(containerFor("AdwLeaflet", "children")?.child).toBe("GtkWidget");
+        expect(containerFor("AdwBin", "children")).toMatchObject({ child: "GtkWidget" });
+        expect(containerFor("AdwToolbarView", "children")).toMatchObject({ child: "GtkWidget" });
+        expect(containerFor("AdwNavigationSplitView", "children")).toMatchObject({ child: "AdwNavigationPage" });
+        expect(containerFor("AdwPreferencesPage", "children")).toMatchObject({ child: "AdwPreferencesGroup" });
+        expect(containerFor("AdwTabView", "children")).toMatchObject({ child: "GtkWidget" });
+        expect(containerFor("AdwLeaflet", "children")).toMatchObject({ child: "GtkWidget" });
     });
 
     it("gives every registered rule a behavior", () => {

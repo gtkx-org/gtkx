@@ -1,10 +1,25 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { defineElementProps, valueRule } from "@gtkx/react/element-rules";
+import { defineElementProps } from "@gtkx/react/element-rules";
 
 export default defineElementProps({
     GtkWidget: [
-        valueRule<Gtk.Widget, string>("cursorName", (widget, name) => {
-            widget.setCursorFromName(name);
-        }),
+        {
+            type: "value",
+            name: "cursorName",
+            behavior: (widget: Gtk.Widget, name: string) => {
+                widget.setCursorFromName(name);
+            },
+        },
+    ],
+    GtkFrame: [
+        {
+            type: "container",
+            name: "labelSlot",
+            child: "GtkWidget",
+            behavior: {
+                attach: (frame: Gtk.Frame, child: Gtk.Widget) => frame.setLabelWidget(child),
+                detach: (frame: Gtk.Frame) => frame.setLabelWidget(null),
+            },
+        },
     ],
 });

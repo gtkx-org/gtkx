@@ -43,9 +43,9 @@
             "default": "./dist/adw/index.js"
         },
         "./element-rules": {
-            "source": "./src/reconciler/element-rules.ts",
-            "types": "./dist/reconciler/element-rules.d.ts",
-            "default": "./dist/reconciler/element-rules.js"
+            "source": "./src/element-rules.ts",
+            "types": "./dist/element-rules.d.ts",
+            "default": "./dist/element-rules.js"
         }
     },
     "sideEffects": false,
