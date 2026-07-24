@@ -111,8 +111,25 @@ const mergedFieldsType = (lines: FieldLine[]): string => {
     return `{ ${texts.join(" ")} }`;
 };
 
-const callFieldsType = (context: RenderContext, type: string, call: Call | Call[]): string => {
-    if (Array.isArray(call)) return mergedFieldsType(call.flatMap((entry) => callFieldLines(context, type, entry)));
+const optionalField = (line: FieldLine): FieldLine => ({ ...line, text: line.text.replace(/^(\w+)\??:/, "$1?:") });
+
+const trailingCallFields = (lines: FieldLine[], itemKey: string | undefined): FieldLine[] =>
+    lines.map((line, index) =>
+        index === 0 && itemKey !== undefined
+            ? { field: itemKey, text: line.text.replace(/^\w+\??:/, `${itemKey}:`) }
+            : optionalField(line),
+    );
+
+const callFieldsType = (context: RenderContext, type: string, call: Call | Call[], itemKey?: string): string => {
+    if (Array.isArray(call)) {
+        return mergedFieldsType(
+            call.flatMap((entry, index) =>
+                index === 0
+                    ? callFieldLines(context, type, entry)
+                    : trailingCallFields(callFieldLines(context, type, entry), itemKey),
+            ),
+        );
+    }
     if (typeof call === "string") {
         const method = findMethod(context.gir, type, call);
         return renderParamType(context.gir, context.imports.gi, method?.params[0]);
@@ -158,7 +175,7 @@ const appliedPropLine = (context: RenderContext, type: string, prop: AppliedProp
         if (prop.itemType !== undefined) {
             return optionalLine(prop.prop, `import("@gtkx/react").${prop.itemType}[]`);
         }
-        const item = named ?? callFieldsType(context, type, prop.add);
+        const item = named ?? callFieldsType(context, type, prop.add, prop.itemKey);
         return optionalLine(prop.prop, `${item}[]`);
     }
     return null;

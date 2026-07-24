@@ -1,7 +1,8 @@
 import { type Column, ColumnView, type RenderItemArgs } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GMenu, type GMenuItemsEntry, GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
+import { GMenu, GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
 import { GtkLabel } from "@gtkx/jsx/gtk";
+import type { MenuItem } from "@gtkx/react";
 
 import { render } from "@gtkx/testing";
 import type { ReactElement, ReactNode, RefObject } from "react";
@@ -38,7 +39,7 @@ const actionGroup = (prefix: string, specs: ActionSpec[]): ReactNode => (
     />
 );
 
-const menuEntries = (prefix: string, specs: ActionSpec[]): GMenuItemsEntry[] =>
+const menuEntries = (prefix: string, specs: ActionSpec[]): MenuItem[] =>
     specs.map((spec) => ({ label: spec.label, action: `${prefix}.${spec.id}` }));
 
 const flatMenu = (prefix: string, specs: ActionSpec[]): ReactElement => <GMenu items={menuEntries(prefix, specs)} />;

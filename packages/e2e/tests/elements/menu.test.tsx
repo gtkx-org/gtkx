@@ -1,7 +1,8 @@
 import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GMenu, type GMenuItemsEntry } from "@gtkx/jsx/gio";
+import { GMenu } from "@gtkx/jsx/gio";
 import { GtkPopoverMenu, GtkPopoverMenuBar } from "@gtkx/jsx/gtk";
+import type { MenuItem } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
@@ -37,7 +38,7 @@ const requireLink = (model: Gio.MenuModel | null): Gio.MenuModel => {
     return model;
 };
 
-const renderPopoverMenu = async (items: GMenuItemsEntry[]): Promise<Gio.MenuModel> => {
+const renderPopoverMenu = async (items: MenuItem[]): Promise<Gio.MenuModel> => {
     const ref = createRef<Gtk.PopoverMenu>();
     await render(<GtkPopoverMenu ref={ref} menuModel={<GMenu items={items} />} />);
     return requireModel(ref.current);
@@ -66,7 +67,7 @@ const renderItemListTransition = async (
     return requireModel(ref.current);
 };
 
-const SingleEntryApp = ({ menuRef, entry }: { menuRef: MenuRef; entry: GMenuItemsEntry }) => (
+const SingleEntryApp = ({ menuRef, entry }: { menuRef: MenuRef; entry: MenuItem }) => (
     <GtkPopoverMenu ref={menuRef} menuModel={<GMenu items={[entry]} />} />
 );
 
@@ -165,7 +166,7 @@ describe("render - Menu sections", () => {
     });
 });
 
-const buildDeepItems = (quitLabel: string): GMenuItemsEntry[] => [
+const buildDeepItems = (quitLabel: string): MenuItem[] => [
     { label: "Open", action: "win.open" },
     { label: "Edit", submenu: [{ label: "Cut", action: "win.cut" }] },
     { label: "App", section: [{ label: quitLabel, action: "app.quit" }] },
@@ -214,7 +215,7 @@ describe("render - Menu change notification", () => {
     });
 });
 
-const FILE_SUBMENU_ITEMS: GMenuItemsEntry[] = [
+const FILE_SUBMENU_ITEMS: MenuItem[] = [
     {
         label: "File",
         submenu: [
@@ -224,7 +225,7 @@ const FILE_SUBMENU_ITEMS: GMenuItemsEntry[] = [
     },
 ];
 
-const NESTED_SUBMENU_ITEMS: GMenuItemsEntry[] = [
+const NESTED_SUBMENU_ITEMS: MenuItem[] = [
     {
         label: "File",
         submenu: [
@@ -240,7 +241,7 @@ const NESTED_SUBMENU_ITEMS: GMenuItemsEntry[] = [
 ];
 
 const GrowingSubmenuApp = ({ menuRef, extra }: { menuRef: MenuRef; extra: boolean }) => {
-    const submenu: GMenuItemsEntry[] = [{ label: "Cut", action: "win.cut" }];
+    const submenu: MenuItem[] = [{ label: "Cut", action: "win.cut" }];
     if (extra) submenu.push({ label: "Copy", action: "win.copy" });
     return <SingleEntryApp menuRef={menuRef} entry={{ label: "Edit", submenu }} />;
 };

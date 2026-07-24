@@ -245,6 +245,15 @@ type AccelHost = GObject.Object & {
 
 type ActionAccel = { detailedActionName: string; accels: string[] };
 
+type AlertDialogResponse = { id: string; label: string; appearance?: number; enabled?: boolean };
+
+type AlertDialogLike = GObject.Object & {
+    addResponse: (id: string, label: string) => void;
+    setResponseAppearance: (response: string, appearance: number) => void;
+    setResponseEnabled: (response: string, enabled: boolean) => void;
+    removeResponse: (response: string) => void;
+};
+
 type ActionPlacement = { name?: string };
 
 const SINGLE_CHILD_TYPES = [
@@ -549,23 +558,25 @@ export const ELEMENT_RULES: Record<string, ElementProp[]> = withBreakpoints({
     ],
     GtkAboutDialog: [{ kind: "list", prop: "creditSections", add: "addCreditSection" }],
     AdwAlertDialog: [
-        {
-            kind: "list",
-            prop: "responses",
-            add: [
-                "addResponse",
-                {
-                    method: "setResponseAppearance",
-                    args: [{ field: "id" }, { field: "appearance", or: 0 }],
-                    when: "appearance",
+        withListBehavior<AlertDialogLike, AlertDialogResponse>(
+            "AdwAlertDialog",
+            {
+                kind: "list",
+                prop: "responses",
+                itemKey: "id",
+                add: ["addResponse", "setResponseAppearance", "setResponseEnabled"],
+                remove: "removeResponse",
+            },
+            {
+                add: (dialog, response) => {
+                    dialog.addResponse(response.id, response.label);
+                    if (response.appearance !== undefined) {
+                        dialog.setResponseAppearance(response.id, response.appearance);
+                    }
+                    if (response.enabled !== undefined) dialog.setResponseEnabled(response.id, response.enabled);
                 },
-                {
-                    method: "setResponseEnabled",
-                    args: [{ field: "id" }, { field: "enabled", or: true }],
-                    when: "enabled",
-                },
-            ],
-            remove: "removeResponse",
-        },
+                remove: (dialog, response) => dialog.removeResponse(response.id),
+            },
+        ),
     ],
 });
