@@ -58,7 +58,7 @@ export const writeStore = (params: WriteStoreParams): void => {
             storeDir: tmp,
             files: params.files,
             packageName: params.manifest.name,
-            exports: params.manifest.exports,
+            ...(params.configEnv === undefined ? {} : { configEnv: params.configEnv }),
         });
         writePackageJson(tmp, params.manifest);
         for (const raw of params.rawFiles ?? []) {
@@ -79,6 +79,7 @@ type WriteStoreParams = {
     files: StoreFile[];
     manifest: Manifest;
     rawFiles?: RawFile[];
+    configEnv?: boolean;
 };
 
 const writeSourceFile = (storeDir: string, fileName: string, source: string): void => {

@@ -1,4 +1,3 @@
-/// <reference types="@gtkx/config/env" />
 import {
     CONSTRUCT_ONLY_PROPS,
     CONSTRUCT_PROPS,

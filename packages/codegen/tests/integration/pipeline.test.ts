@@ -371,9 +371,9 @@ describe("codegen React pipeline", () => {
         expect(gtk).not.toContain('import "@gtkx/gi/adw";');
     });
 
-    it("imports a cross-namespace parent Props type from its jsx module", () => {
+    it("imports a cross-namespace parent Props type from the sibling namespace module by relative path", () => {
         const adw = sourceFor(reactPipeline, "adw");
-        expect(adw).toMatch(/import \{[^}]*type GtkWidgetProps[^}]*\} from "@gtkx\/jsx\/gtk";/);
+        expect(adw).toMatch(/import \{[^}]*type GtkWidgetProps[^}]*\} from "\.\.\/gtk\/gtk\.js";/);
     });
 
     it("counts the widget intrinsics it emitted", () => {

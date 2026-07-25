@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
 
@@ -38,7 +39,8 @@ const BASE_COMPILER_OPTIONS = {
     types: ["node"],
 };
 
-const codegenModules = (): string => dirname(dirname(dirname(require.resolve("@types/node/package.json"))));
+/** `@gtkx/codegen`'s own `node_modules`, which has `@types/node` plus the `@gtkx/*` deps the store typecheck needs. */
+const codegenModules = (): string => join(dirname(dirname(fileURLToPath(import.meta.url))), "node_modules");
 
 const linkToolingModules = (projectDir: string): (() => void) => {
     const link = join(projectDir, "node_modules");

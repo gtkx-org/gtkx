@@ -21,6 +21,9 @@
         "website": {
             "entry": [".vitepress/theme/**/*.{ts,vue}"]
         },
+        "packages/react": {
+            "entry": ["src/env.d.ts!"]
+        },
         "packages/components": {
             "entry": ["gtkx.config.ts!"]
         },

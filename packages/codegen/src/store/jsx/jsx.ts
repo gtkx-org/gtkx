@@ -141,7 +141,8 @@ const registerCrossNsProps = (
     propsName: string,
 ): void => {
     if (namespaceName === targetNamespaceName) return;
-    imports.addNamed(`@gtkx/jsx/${namespaceName.toLowerCase()}`, propsName, true);
+    const ns = namespaceName.toLowerCase();
+    imports.addNamed(`../${ns}/${ns}.js`, propsName, true);
 };
 
 const interfacePropsRef = (
