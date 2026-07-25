@@ -12,7 +12,14 @@ export type ContentKind = "label" | "buffer" | "tag" | "anchor";
 
 export type HandlerRecord = { signal: string; handler: SignalHandler; wrapped: SignalHandler; blockable: boolean };
 
-export type SignalTarget = { object: GObject.Object; handlers: Map<string, HandlerRecord>; typeName: string };
+export type Dispatch = (fn: () => unknown) => unknown;
+
+export type SignalTarget = {
+    object: GObject.Object;
+    handlers: Map<string, HandlerRecord>;
+    typeName: string;
+    dispatch: Dispatch;
+};
 
 export type PlacedChild = {
     node: PlaceableNode;
@@ -35,6 +42,7 @@ export type ElementNode = {
     content: ContentChild[] | null;
     contentKind: ContentKind | null;
     bufferView: Gtk.TextView | null;
+    dispatch: Dispatch;
 };
 
 export type PropNode = {
@@ -52,6 +60,7 @@ export type LazyNode = {
     parent: ElementNode | null;
     adopted: GObject.Object | null;
     handlers: Map<string, HandlerRecord>;
+    dispatch: Dispatch;
 };
 
 export type TextNode = {
@@ -73,7 +82,7 @@ export const createPropNode = (propName: string): PropNode => ({
     parent: null,
 });
 
-export const createLazyNode = (typeName: string, props: Props): LazyNode => ({
+export const createLazyNode = (typeName: string, props: Props, dispatch: Dispatch): LazyNode => ({
     kind: LAZY_KIND,
     typeName,
     props,
@@ -81,6 +90,7 @@ export const createLazyNode = (typeName: string, props: Props): LazyNode => ({
     parent: null,
     adopted: null,
     handlers: new Map(),
+    dispatch,
 });
 
 export const createTextNode = (text: string): TextNode => ({ kind: TEXT_KIND, text, parent: null });
@@ -92,6 +102,13 @@ export const nodeWidget = (node: PlaceableNode): GObject.Object | null => {
     }
     return node.object;
 };
+
+export const lazyTarget = (node: LazyNode, adopted: GObject.Object): SignalTarget => ({
+    object: adopted,
+    handlers: node.handlers,
+    typeName: node.typeName,
+    dispatch: node.dispatch,
+});
 
 /** The per-node context a behavior builds once via `createContext`, memoized on the node. */
 export const contextFor = (node: ElementNode, behavior: ElementBehavior): unknown => {

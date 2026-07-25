@@ -1,7 +1,7 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { getInstanceType, typeName } from "@gtkx/runtime";
-import type { ErrorInfo, ReactNode } from "react";
+import { createContext, type ErrorInfo, type ReactNode } from "react";
 import ReactReconciler from "react-reconciler";
 import {
     ConcurrentRoot,
@@ -20,19 +20,22 @@ import {
 import type { Props } from "./elements.js";
 import { createElementNode } from "./instance.js";
 import { typeInfoOf } from "./metadata.js";
+import "./register.js";
 import {
     type AnyNode,
     createPropNode,
     createTextNode,
+    type Dispatch,
     ELEMENT_KIND,
     type ElementNode,
     type Instance,
     LAZY_KIND,
+    lazyTarget,
     type TextNode,
 } from "./node.js";
 import { attachChild, detachChild } from "./placement.js";
 import { isRootElement, type RootElement, rootElement } from "./root-element.js";
-import { beginSuppression, disconnectAllHandlers, endSuppression, setDiscreteRun } from "./signals.js";
+import { beginSuppression, disconnectAllHandlers, endSuppression } from "./signals.js";
 import { enclosingHost, flushTextHosts, markTextDirty, surgicalTextUpdate, validateContentMix } from "./text.js";
 
 type Container = RootElement | GObject.Object;
@@ -54,6 +57,7 @@ const adoptContainer = (container: GObject.Object): ElementNode => ({
     content: null,
     contentKind: null,
     bufferView: null,
+    dispatch: runDiscrete,
 });
 
 const containerNodeFor = (container: GObject.Object): ElementNode => {
@@ -75,7 +79,7 @@ const detachFromContainer = (container: Container, child: AnyNode): void => {
 
 const makeInstance = (type: string, props: Props): Instance => {
     if (type === Prop) return createPropNode(typeof props.propName === "string" ? props.propName : "");
-    const node = createElementNode(type, props);
+    const node = createElementNode(type, props, runDiscrete);
     if (node.kind === ELEMENT_KIND) {
         containerNodes.set(node.object, node);
         applyElementProps(node, {}, props);
@@ -91,25 +95,6 @@ const publicInstanceOf = (instance: Instance): object => {
 
 const setWidgetVisible = (instance: Instance, visible: boolean): void => {
     if (instance.kind === ELEMENT_KIND && instance.object instanceof Gtk.Widget) instance.object.setVisible(visible);
-};
-
-const CONTEXT_CONSUMER = "Consumer";
-const CONTEXT_PROVIDER = "Provider";
-
-const buildTransitionContext = (): ReactReconciler.ReactContext<null> => {
-    const context: ReactReconciler.ReactContext<null> = {
-        $$typeof: Symbol.for("react.context"),
-        _currentValue: null,
-        _currentValue2: null,
-        _threadCount: 0,
-        get [CONTEXT_CONSUMER](): ReactReconciler.ReactContext<null> {
-            return context;
-        },
-        get [CONTEXT_PROVIDER](): ReactReconciler.ReactProviderType<null> {
-            return { $$typeof: Symbol.for("react.provider"), _context: context };
-        },
-    };
-    return context;
 };
 
 const hostConfig = {
@@ -164,11 +149,7 @@ const hostConfig = {
     commitUpdate: (instance: Instance, _type: string, prevProps: Props, nextProps: Props): void => {
         if (instance.kind === ELEMENT_KIND) applyElementProps(instance, prevProps, nextProps);
         else if (instance.kind === LAZY_KIND && instance.adopted !== null) {
-            applyAdoptedProps(
-                { object: instance.adopted, handlers: instance.handlers, typeName: instance.typeName },
-                prevProps,
-                nextProps,
-            );
+            applyAdoptedProps(lazyTarget(instance, instance.adopted), prevProps, nextProps);
         }
     },
     hideInstance: (instance: Instance): void => setWidgetVisible(instance, false),
@@ -180,11 +161,7 @@ const hostConfig = {
             disconnectAllHandlers(instance);
             unmountBehaviors(instance);
         } else if (instance.kind === LAZY_KIND && instance.adopted !== null) {
-            disconnectAllHandlers({
-                object: instance.adopted,
-                handlers: instance.handlers,
-                typeName: instance.typeName,
-            });
+            disconnectAllHandlers(lazyTarget(instance, instance.adopted));
         }
     },
     getInstanceFromNode: (): null => null,
@@ -209,12 +186,12 @@ const hostConfig = {
     suspendInstance: (): void => {},
     waitForCommitToBeReady: (): null => null,
     NotPendingTransition: null,
-    HostTransitionContext: buildTransitionContext(),
+    HostTransitionContext: createContext(null) as unknown as ReactReconciler.ReactContext<null>,
 };
 
 const reconciler = ReactReconciler(hostConfig);
 
-setDiscreteRun((fn) => {
+const runDiscrete: Dispatch = (fn) => {
     const previous = currentPriority;
     currentPriority = DiscreteEventPriority;
     try {
@@ -223,7 +200,7 @@ setDiscreteRun((fn) => {
         currentPriority = previous;
         reconciler.flushSyncWork();
     }
-});
+};
 
 type OpaqueRoot = ReturnType<typeof reconciler.createContainer>;
 

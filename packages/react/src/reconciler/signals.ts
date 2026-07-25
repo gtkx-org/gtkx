@@ -22,12 +22,6 @@ export const endSuppression = (): void => {
 
 const isSuppressed = (): boolean => suppressionDepth > 0;
 
-let discreteRun: (fn: () => unknown) => unknown = (fn) => fn();
-
-export const setDiscreteRun = (run: (fn: () => unknown) => unknown): void => {
-    discreteRun = run;
-};
-
 export const connectHandler = (target: SignalTarget, prop: string, signal: string, handler: SignalHandler): void => {
     const existing = target.handlers.get(prop);
     if (existing !== undefined && existing.signal === signal) {
@@ -40,7 +34,7 @@ export const connectHandler = (target: SignalTarget, prop: string, signal: strin
     const record = { signal, handler, wrapped: (() => undefined) as SignalHandler, blockable };
     record.wrapped = (...args: unknown[]): unknown => {
         if (record.blockable && isSuppressed()) return undefined;
-        return discreteRun(() =>
+        return target.dispatch(() =>
             notifyProperty !== null
                 ? record.handler(Reflect.get(target.object, notifyProperty), target.object)
                 : record.handler(...args, target.object),

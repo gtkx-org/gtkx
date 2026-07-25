@@ -2,14 +2,16 @@ import type * as GObject from "@gtkx/gi/gobject";
 import { getWrapperClass, TYPE_INVALID, typeFromName, typeIsA } from "@gtkx/runtime";
 import type { Props } from "./elements.js";
 import { type TypeInfo, typeInfoOf } from "./metadata.js";
-import { type ContentKind, createLazyNode, ELEMENT_KIND, type ElementNode, type LazyNode } from "./node.js";
+import {
+    type ContentKind,
+    createLazyNode,
+    type Dispatch,
+    ELEMENT_KIND,
+    type ElementNode,
+    type LazyNode,
+} from "./node.js";
 
 type WidgetConstructor = new (props: Props) => GObject.Object;
-
-const notRegistered = (typeName: string): Error =>
-    new Error(
-        `${typeName} is not registered. Import its @gtkx/jsx namespace module (e.g. \`import "@gtkx/jsx/adw"\`) before use.`,
-    );
 
 const CONTENT_TYPE_NAMES: { kind: ContentKind; name: string }[] = [
     { kind: "label", name: "GtkLabel" },
@@ -37,18 +39,17 @@ const constructInput = (info: TypeInfo, props: Props): Props => {
     return input;
 };
 
-const instantiate = (typeName: string, input: Props): GObject.Object => {
-    const type = typeFromName(typeName);
-    if (type === TYPE_INVALID) throw notRegistered(typeName);
+const instantiate = (type: bigint, input: Props): GObject.Object => {
     const cls = getWrapperClass(type) as WidgetConstructor;
     return new cls(input);
 };
 
-export const createElementNode = (typeName: string, props: Props): ElementNode | LazyNode => {
+export const createElementNode = (typeName: string, props: Props, dispatch: Dispatch): ElementNode | LazyNode => {
     const info = typeInfoOf(typeName);
-    if (info.lazy) return createLazyNode(typeName, props);
-    const object = instantiate(typeName, constructInput(info, props));
-    const contentKind = resolveContentKind(typeFromName(typeName));
+    if (info.lazy) return createLazyNode(typeName, props, dispatch);
+    const type = typeFromName(typeName);
+    const object = instantiate(type, constructInput(info, props));
+    const contentKind = resolveContentKind(type);
     return {
         kind: ELEMENT_KIND,
         typeName,
@@ -61,5 +62,6 @@ export const createElementNode = (typeName: string, props: Props): ElementNode |
         content: contentKind === null ? null : [],
         contentKind,
         bufferView: null,
+        dispatch,
     };
 };

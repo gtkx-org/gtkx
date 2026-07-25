@@ -1,13 +1,6 @@
-import {
-    CONSTRUCT_ONLY_PROPS,
-    CONSTRUCT_PROPS,
-    DEFAULT_PROPS,
-    elements,
-    SIGNALS,
-    userEventSignals,
-} from "virtual:gtkx-config";
+import { CONSTRUCT_ONLY_PROPS, CONSTRUCT_PROPS, DEFAULT_PROPS, SIGNALS, userEventSignals } from "virtual:gtkx-config";
 import { getSignalBaseName, TYPE_INVALID, typeFromName, typeInterfaces, typeName, typeParent } from "@gtkx/runtime";
-import { deferredProps, ELEMENTS, type ElementBehavior, GTK_ELEMENTS, registerElements } from "./elements.js";
+import { deferredProps, ELEMENTS, type ElementBehavior } from "./elements.js";
 
 export type TypeInfo = {
     typeName: string;
@@ -22,8 +15,6 @@ export type TypeInfo = {
     construct: Set<string>;
     defaults: Record<string, unknown>;
 };
-
-registerElements(elements, GTK_ELEMENTS);
 
 const ancestryCache = new Map<string, string[]>();
 const typeInfoCache = new Map<string, TypeInfo>();

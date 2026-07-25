@@ -8,10 +8,10 @@ import {
     ELEMENT_KIND,
     type ElementNode,
     LAZY_KIND,
+    lazyTarget,
     nodeWidget,
     type PlaceableNode,
     type PlacedChild,
-    type SignalTarget,
 } from "./node.js";
 import { markTextDirty } from "./text.js";
 
@@ -40,12 +40,7 @@ const adoptedFrom = (parent: ElementNode, entry: PlacedChild, behavior: ElementB
 
 const applyLazyProps = (entry: PlacedChild): void => {
     if (entry.node.kind !== LAZY_KIND || entry.adopted === null) return;
-    const target: SignalTarget = {
-        object: entry.adopted,
-        handlers: entry.node.handlers,
-        typeName: entry.node.typeName,
-    };
-    applyAdoptedProps(target, {}, entry.node.props);
+    applyAdoptedProps(lazyTarget(entry.node, entry.adopted), {}, entry.node.props);
     entry.node.adopted = entry.adopted;
 };
 
