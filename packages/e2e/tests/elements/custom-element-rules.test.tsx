@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkFrame, GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkAspectFrame, GtkFrame, GtkLabel } from "@gtkx/jsx/gtk";
 import { render, screen } from "@gtkx/testing";
 import { createRef, type ReactNode } from "react";
 import { describe, expect, it } from "vitest";
@@ -21,6 +21,18 @@ describe("custom element rules from gtkx.config.ts", () => {
         await render(<GtkLabel ref={labelRef} cursorName="pointer" />);
 
         expect(labelRef.current?.getCursor()?.getName()).toBe("pointer");
+    });
+
+    it("consults the app config before a built-in slot behavior", async () => {
+        const frameRef = createRef<Gtk.AspectFrame>();
+
+        await render(
+            <GtkAspectFrame ref={frameRef}>
+                <GtkLabel>child</GtkLabel>
+            </GtkAspectFrame>,
+        );
+
+        expect(frameRef.current?.hasCssClass("app-claimed-children")).toBe(true);
     });
 
     it("reapplies the rule when the prop changes", async () => {

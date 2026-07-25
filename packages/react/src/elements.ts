@@ -1,6 +1,15 @@
 import * as Gio from "@gtkx/gi/gio";
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
+import type {
+    ActionAccel,
+    CreditSection,
+    DragSourceIcon,
+    LevelBarOffset,
+    MenuItem,
+    ScaleMark,
+    VflConstraints,
+} from "./prop-types.js";
 import {
     addRemoveSlot,
     adoptedChildrenSlot,
@@ -15,16 +24,7 @@ import {
     value,
     wrappingIndexedSlot,
 } from "./reconciler/behaviors.js";
-import type {
-    ActionAccel,
-    CreditSection,
-    DragSourceIcon,
-    LevelBarOffset,
-    MenuItem,
-    ScaleMark,
-    VflConstraints,
-} from "./reconciler/prop-types.js";
-import type { ElementConfig } from "./reconciler/registry.js";
+import { type ElementConfig, registerElements } from "./reconciler/registry.js";
 
 const layoutChild = (parent: Gtk.Widget, child: Gtk.Widget): GObject.Object | null =>
     parent.getLayoutManager()?.getLayoutChild(child) ?? null;
@@ -41,7 +41,7 @@ function appendMenuItem(menu: Gio.Menu, item: MenuItem): void {
     else menu.append(item.label ?? null, item.action ?? null);
 }
 
-const GTK_SINGLE_CHILD_TYPES = [
+const SINGLE_CHILD_TYPES = [
     "GtkAspectFrame",
     "GtkButton",
     "GtkCheckButton",
@@ -65,8 +65,8 @@ const GTK_SINGLE_CHILD_TYPES = [
     "GtkWindowHandle",
 ];
 
-export const GTK_ELEMENTS: Record<string, ElementConfig> = {
-    ...forTypes(GTK_SINGLE_CHILD_TYPES, { props: internal("ChildrenProps"), behaviors: [childSetterSlot()] }),
+export const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
+    ...forTypes(SINGLE_CHILD_TYPES, { props: internal("ChildrenProps"), behaviors: [childSetterSlot()] }),
     ...forTypes(["GtkHeaderBar", "GtkActionBar"], {
         props: internal("GtkHeaderBarProps"),
         behaviors: [
@@ -388,3 +388,5 @@ export const GTK_ELEMENTS: Record<string, ElementConfig> = {
     },
     GtkEditable: { behaviors: [controlledText("text")] },
 };
+
+registerElements(BUILTIN_ELEMENTS);

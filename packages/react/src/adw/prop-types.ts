@@ -1,6 +1,6 @@
 import type * as Adw from "@gtkx/gi/adw";
 import type { ReactNode } from "react";
-import type { ChildrenProps } from "../reconciler/prop-types.js";
+import type { ChildrenProps } from "../prop-types.js";
 
 export type AlertDialogResponse = {
     id: string;

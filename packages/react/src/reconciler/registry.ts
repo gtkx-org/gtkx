@@ -63,10 +63,12 @@ export type ElementConfig<T extends GObject.Object = GObject.Object> = {
 /** Every registered element config, keyed by GLib type name. Adwaita entries appear once `@gtkx/react/adw` is loaded. */
 export const ELEMENTS: Record<string, ElementConfig> = {};
 
-const mergeConfigEntry = (base: ElementConfig, added: ElementConfig<never>): ElementConfig => {
+const mergeConfigEntry = (base: ElementConfig, added: ElementConfig<never>, prepend = false): ElementConfig => {
     const entry: ElementConfig = { ...base };
     if (added.behaviors !== undefined) {
-        entry.behaviors = [...(entry.behaviors ?? []), ...(added.behaviors as ElementBehavior[])];
+        const addedBehaviors = added.behaviors as ElementBehavior[];
+        const baseBehaviors = entry.behaviors ?? [];
+        entry.behaviors = prepend ? [...addedBehaviors, ...baseBehaviors] : [...baseBehaviors, ...addedBehaviors];
     }
     if (added.lazy === true) entry.lazy = true;
     if (added.component !== undefined) entry.component = added.component;
@@ -88,16 +90,17 @@ export const mergeElementConfigs = (...maps: Record<string, ElementConfig<never>
 };
 
 /**
- * Registers one or more maps of {@link ElementConfig} keyed by GLib type name, merging each entry's
- * behaviors and lazy flag into the registry. Behaviors accumulate in the order the maps are given, so a
- * map passed earlier is consulted before a later one for the same slot; pass an app's own configuration
- * ahead of the framework's built-ins to let it override a slot or prop.
+ * Registers a map of {@link ElementConfig} keyed by GLib type name, merging each entry into the
+ * registry. Behaviors are appended by default (the framework's built-ins register this way); pass
+ * `{ prepend: true }` for an app's own configuration so its behaviors are consulted before the
+ * built-ins for the same slot, letting it override them regardless of registration order.
  */
-export const registerElements = (...maps: Record<string, ElementConfig<never>>[]): void => {
-    for (const elements of maps) {
-        for (const [type, config] of Object.entries(elements)) {
-            ELEMENTS[type] = mergeConfigEntry(ELEMENTS[type] ?? {}, config);
-        }
+export const registerElements = (
+    map: Record<string, ElementConfig<never>>,
+    options: { prepend?: boolean } = {},
+): void => {
+    for (const [type, config] of Object.entries(map)) {
+        ELEMENTS[type] = mergeConfigEntry(ELEMENTS[type] ?? {}, config, options.prepend === true);
     }
 };
 

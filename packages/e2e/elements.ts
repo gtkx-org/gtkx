@@ -27,4 +27,19 @@ export default defineElements({
             },
         ],
     },
+    GtkAspectFrame: {
+        behaviors: [
+            {
+                attach: (frame: Gtk.AspectFrame, child, info) => {
+                    if (info.slot !== "children") return undefined;
+                    frame.addCssClass("app-claimed-children");
+                    frame.setChild(child as Gtk.Widget);
+                    return true;
+                },
+                detach: (frame: Gtk.AspectFrame, _child, info) => {
+                    if (info.slot === "children") frame.setChild(null);
+                },
+            },
+        ],
+    },
 });

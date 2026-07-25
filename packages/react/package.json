@@ -54,8 +54,14 @@
         }
     },
     "sideEffects": [
+        "./src/index.ts",
+        "./dist/index.js",
+        "./src/internal.ts",
+        "./dist/internal.js",
         "./src/bootstrap.ts",
         "./dist/bootstrap.js",
+        "./src/elements.ts",
+        "./dist/elements.js",
         "./src/adw/index.ts",
         "./dist/adw/index.js",
         "./src/adw/elements.ts",

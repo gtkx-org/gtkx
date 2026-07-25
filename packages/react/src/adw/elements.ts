@@ -65,7 +65,7 @@ const pageHostChildren = addRemoveSlot<Adw.PreferencesPage, PageHost>(
     },
 );
 
-export const ADW_ELEMENTS: Record<string, ElementConfig> = {
+export const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
     AdwBin: { props: childrenProps, behaviors: [childSetter] },
     AdwClamp: { props: childrenProps, behaviors: [childSetter] },
     AdwClampScrollable: { props: childrenProps, behaviors: [childSetter] },
@@ -309,4 +309,4 @@ export const ADW_ELEMENTS: Record<string, ElementConfig> = {
     },
 };
 
-registerElements(ADW_ELEMENTS);
+registerElements(BUILTIN_ELEMENTS);

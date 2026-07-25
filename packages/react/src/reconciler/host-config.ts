@@ -18,11 +18,9 @@ import {
     mountBehaviors,
     unmountBehaviors,
 } from "./apply-props.js";
+import { attachChild, detachChild } from "./child-routing.js";
 import { createElementNode } from "./instance.js";
 import { typeInfoOf } from "./metadata.js";
-import type { Props } from "./registry.js";
-import "../bootstrap.js";
-import { attachChild, detachChild } from "./child-routing.js";
 import {
     type AnyNode,
     createPropNode,
@@ -36,6 +34,7 @@ import {
     makeElementNode,
     type TextNode,
 } from "./node.js";
+import type { Props } from "./registry.js";
 import { isRootElement, type RootElement, rootElement } from "./root-element.js";
 import { beginSuppression, disconnectAllHandlers, endSuppression } from "./signals.js";
 import { enclosingHost, flushTextHosts, markTextDirty, surgicalTextUpdate, validateContentMix } from "./text.js";
