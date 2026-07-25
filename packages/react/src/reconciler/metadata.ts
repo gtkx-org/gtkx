@@ -8,7 +8,7 @@ import {
     userEventSignals,
 } from "virtual:gtkx-config";
 import { getSignalBaseName, TYPE_INVALID, typeFromName, typeInterfaces, typeName, typeParent } from "@gtkx/runtime";
-import { deferredProps, ELEMENTS, type ElementBehavior, GTK_ELEMENTS, registerElements } from "./behaviors.js";
+import { deferredProps, ELEMENTS, type ElementBehavior, GTK_ELEMENTS, registerElements } from "./elements.js";
 
 export type TypeInfo = {
     typeName: string;

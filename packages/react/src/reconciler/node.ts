@@ -1,7 +1,7 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { SignalHandler } from "@gtkx/runtime";
-import type { ElementBehavior } from "./behaviors.js";
+import type { ElementBehavior } from "./elements.js";
 import { type ELEMENT_KIND, LAZY_ELEMENT, PROP_KIND, type Props, TEXT_KIND } from "./kinds.js";
 
 export type ContentKind = "label" | "buffer" | "tag" | "anchor";

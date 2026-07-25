@@ -5,7 +5,7 @@ import type { SignalHandler } from "@gtkx/runtime";
 import { kebabCase } from "@gtkx/utils";
 import { applyAccessibleProps, isAccessibleProp } from "../utils/accessible-props.js";
 import { contextFor } from "./behavior-context.js";
-import { setMenuFactory } from "./behaviors.js";
+import { setMenuFactory } from "./elements.js";
 import { createObject } from "./instance.js";
 import type { Props } from "./kinds.js";
 import { type TypeInfo, typeInfoOf } from "./metadata.js";

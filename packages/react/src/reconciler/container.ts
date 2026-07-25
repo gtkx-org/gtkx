@@ -2,7 +2,7 @@ import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { applyAdoptedProps, markFlush } from "./apply-props.js";
 import { contextFor } from "./behavior-context.js";
-import type { ElementBehavior, PlaceInfo } from "./behaviors.js";
+import type { ElementBehavior, PlaceInfo } from "./elements.js";
 import { ELEMENT_KIND, LAZY_ELEMENT } from "./kinds.js";
 import { typeInfoOf } from "./metadata.js";
 import { type ElementNode, nodeWidget, type PlaceableNode, type PlacedChild, type SignalTarget } from "./node.js";
