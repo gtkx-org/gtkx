@@ -3,14 +3,13 @@ import {
     CONSTRUCT_ONLY_PROPS,
     CONSTRUCT_PROPS,
     DEFAULT_PROPS,
-    elementBehaviors,
-    lazyElements,
+    elements,
     SIGNALS,
     userEventSignals,
 } from "virtual:gtkx-config";
 import { getSignalBaseName, TYPE_INVALID, typeFromName, typeInterfaces, typeName, typeParent } from "@gtkx/runtime";
-import { deferredProps, ELEMENT_BEHAVIORS, type ElementBehavior, registerElementBehaviors } from "./behaviors.js";
-import { LAZY_ELEMENTS, registerLazyElements } from "./lazy-elements.js";
+import { deferredProps, ELEMENT_BEHAVIORS, type ElementBehavior, registerElements } from "./behaviors.js";
+import { LAZY_ELEMENTS } from "./lazy-elements.js";
 
 export type TypeInfo = {
     typeName: string;
@@ -26,8 +25,7 @@ export type TypeInfo = {
     defaults: Record<string, unknown>;
 };
 
-registerElementBehaviors(elementBehaviors, true);
-registerLazyElements(lazyElements);
+registerElements(elements, true);
 
 const ancestryCache = new Map<string, string[]>();
 const typeInfoCache = new Map<string, TypeInfo>();

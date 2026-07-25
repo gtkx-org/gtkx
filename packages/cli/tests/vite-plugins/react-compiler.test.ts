@@ -54,8 +54,7 @@ const enabledPlugin = async (): Promise<ReturnType<typeof gtkxReactCompiler>> =>
         applicationId: "org.gtk.Test",
         reactCompiler: { target: "19" },
         userEventSignals: {},
-        elementBehaviors: null,
-        lazyElements: [],
+        elements: null,
     }));
     await configOf(plugin)({});
     return plugin;

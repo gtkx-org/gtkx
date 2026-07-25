@@ -70,13 +70,38 @@ export const registerElementBehaviors = (record: Record<string, ElementBehavior<
 };
 
 /**
- * Identity helper that types a module of element behaviors for the `elementBehaviors` entry of
- * `gtkx.config.ts`, enabling editor autocompletion and type checking. Annotate each hook's node
- * parameter with the concrete GObject class the behavior applies to.
+ * Per-element configuration keyed by GLib type name: whether the element is lazy (its GObject is
+ * created by its parent container, as pages and layout children are) and the custom behaviors bound
+ * to its type.
  */
-export const defineElementBehaviors = (
-    behaviors: Record<string, ElementBehavior<never>[]>,
-): Record<string, ElementBehavior<never>[]> => behaviors;
+export type ElementConfig<T extends GObject.Object = GObject.Object> = {
+    lazy?: boolean;
+    behaviors?: ElementBehavior<T>[];
+};
+
+/**
+ * Registers a map of {@link ElementConfig} keyed by GLib type name, splitting each entry into its
+ * behaviors and its lazy flag. `prepend` puts an entry's behaviors ahead of any already registered
+ * for a type, so an app's behavior for a slot or prop is consulted before the framework's.
+ */
+export const registerElements = (elements: Record<string, ElementConfig<never>>, prepend = false): void => {
+    const behaviors: Record<string, ElementBehavior<never>[]> = {};
+    const lazy: string[] = [];
+    for (const [type, config] of Object.entries(elements)) {
+        if (config.behaviors !== undefined) behaviors[type] = config.behaviors;
+        if (config.lazy === true) lazy.push(type);
+    }
+    registerElementBehaviors(behaviors, prepend);
+    registerLazyElements(lazy);
+};
+
+/**
+ * Identity helper that types the module named by the `elements` entry of `gtkx.config.ts`, enabling
+ * editor autocompletion and type checking. Key each entry by GLib type name and annotate each hook's
+ * node parameter with the concrete GObject class the behavior applies to.
+ */
+export const defineElements = (elements: Record<string, ElementConfig<never>>): Record<string, ElementConfig<never>> =>
+    elements;
 
 const childTypeCache = new Map<string, bigint>();
 

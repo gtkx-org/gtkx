@@ -42,10 +42,10 @@
             "types": "./dist/adw/index.d.ts",
             "default": "./dist/adw/index.js"
         },
-        "./element-behaviors": {
-            "source": "./src/element-behaviors.ts",
-            "types": "./dist/element-behaviors.d.ts",
-            "default": "./dist/element-behaviors.js"
+        "./elements": {
+            "source": "./src/elements.ts",
+            "types": "./dist/elements.d.ts",
+            "default": "./dist/elements.js"
         }
     },
     "sideEffects": false,

@@ -29,31 +29,25 @@ describe("renderConfigModule", () => {
         expect(source).toContain(`export const userEventSignals = ${JSON.stringify(resolved.userEventSignals)};`);
     });
 
-    it("exports an empty element behavior table when no behavior module is configured", () => {
+    it("exports an empty element table when no elements module is configured", () => {
         const source = renderConfigModule(resolveConfig({ applicationId: "org.gtk.Test" }));
-        expect(source.split("\n")).toContain("export const elementBehaviors = {};");
+        expect(source.split("\n")).toContain("export const elements = {};");
     });
 
-    it("re-exports the configured behavior module resolved against the project root", () => {
-        const resolved = resolveConfig(
-            { applicationId: "org.gtk.Test", elementBehaviors: "./src/behaviors.ts" },
-            "/project",
-        );
+    it("re-exports the configured elements module resolved against the project root", () => {
+        const resolved = resolveConfig({ applicationId: "org.gtk.Test", elements: "./src/elements.ts" }, "/project");
         const source = renderConfigModule(resolved);
-        expect(source.split("\n")).toContain(
-            'export { default as elementBehaviors } from "/project/src/behaviors.ts";',
-        );
+        expect(source.split("\n")).toContain('export { default as elements } from "/project/src/elements.ts";');
     });
 
-    it("exports the metadata re-export, application id, signals, lazy elements, and behaviors", () => {
+    it("exports the metadata re-export, application id, signals, and elements", () => {
         const resolved = resolveConfig({ applicationId: "org.gtk.Test", girPath: ["/opt/gir"] });
         const source = renderConfigModule(resolved);
         expect(source.split("\n")).toEqual([
             'export * from "@gtkx/jsx/metadata";',
             'export const applicationId = "org.gtk.Test";',
             `export const userEventSignals = ${JSON.stringify(resolved.userEventSignals)};`,
-            "export const lazyElements = [];",
-            "export const elementBehaviors = {};",
+            "export const elements = {};",
         ]);
     });
 });

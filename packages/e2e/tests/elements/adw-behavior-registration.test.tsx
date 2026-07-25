@@ -1,5 +1,5 @@
 import "@gtkx/jsx/adw";
-import { ELEMENT_BEHAVIORS, type ElementBehavior } from "@gtkx/react/element-behaviors";
+import { ELEMENT_BEHAVIORS, type ElementBehavior } from "@gtkx/react/elements";
 import { describe, expect, it } from "vitest";
 
 const behaviorsFor = (type: string): ElementBehavior[] => ELEMENT_BEHAVIORS[type] ?? [];
