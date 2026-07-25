@@ -102,7 +102,10 @@ const handleQuery = async (
             break;
     }
 
-    return { widgets: widgets.map((w) => serializeWidget(w, (widget) => registry.idFor(widget), testing)) };
+    // Query results are match summaries, not trees: serialize each match shallowly (no
+    // descendants) so a container-role match doesn't dump its whole subtree. Use
+    // widget.getProps on an id to expand one.
+    return { widgets: widgets.map((w) => serializeWidget(w, (widget) => registry.idFor(widget), testing, 0)) };
 };
 
 const defaultScreenshotTarget = (registry: WidgetRegistry): Gtk.Widget => {

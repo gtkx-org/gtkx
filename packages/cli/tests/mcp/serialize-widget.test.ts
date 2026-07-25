@@ -43,6 +43,14 @@ describe("serializeWidget", () => {
         expect(result.id).not.toBe(serializedChild?.id);
     });
 
+    it("stops descending at maxDepth", () => {
+        const child = makeWidget({ type: "GtkButton", getAccessibleRole: () => 1 });
+        const root = makeWidget({ type: "GtkBox", getFirstChild: () => child });
+
+        expect(serializeWidget(root as never, idFor, testing, 0).children).toEqual([]);
+        expect(serializeWidget(root as never, idFor, testing, 1).children).toHaveLength(1);
+    });
+
     it("reads property text through the testing module", () => {
         const labelOnly = makeWidget({ getLabel: () => "L" });
         const textOnly = makeWidget({ getText: () => "T" });

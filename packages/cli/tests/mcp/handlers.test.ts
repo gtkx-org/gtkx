@@ -202,6 +202,19 @@ describe("widget.query", () => {
         expect(findAllByLabelText).toHaveBeenCalledWith(expect.anything(), "Submit", undefined);
     });
 
+    it("returns shallow match summaries without descendants", async () => {
+        findAllByRole.mockResolvedValueOnce([makeWidget({ getFirstChild: () => makeWidget({}) })]);
+        const registry = new WidgetRegistry();
+
+        const result = (await dispatch(
+            "widget.query",
+            { by: "role", value: "button" },
+            { app: makeApp() as never, registry },
+        )) as { widgets: Array<{ children: unknown[] }> };
+
+        expect(result.widgets[0]?.children).toEqual([]);
+    });
+
     it("returns an empty match list instead of throwing when nothing is found", async () => {
         findAllByRole.mockRejectedValueOnce(new Error("Unable to find an element with the role"));
         const registry = new WidgetRegistry();

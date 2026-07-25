@@ -12,12 +12,15 @@ export const serializeWidget = (
     widget: Gtk.Widget,
     idFor: WidgetIdResolver,
     testing: WidgetFormatting,
+    maxDepth: number = Number.POSITIVE_INFINITY,
 ): SerializedWidget => {
     const children: SerializedWidget[] = [];
-    let child = widget.getFirstChild();
-    while (child) {
-        children.push(serializeWidget(child, idFor, testing));
-        child = child.getNextSibling();
+    if (maxDepth > 0) {
+        let child = widget.getFirstChild();
+        while (child) {
+            children.push(serializeWidget(child, idFor, testing, maxDepth - 1));
+            child = child.getNextSibling();
+        }
     }
 
     return {
