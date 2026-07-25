@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { sortStrings } from "@gtkx/utils";
+import type { ElementComponentOverrides } from "./store/react/element-components.js";
 import { BUILT_IN_ELEMENT_PROP_TYPES, WRAPPER_ELEMENTS } from "./store/react/element-prop-imports.js";
 
 const require = createRequire(import.meta.url);
@@ -15,9 +16,21 @@ export type CodegenFingerprint = {
     value: string;
     girFiles: string[];
     libraries: string[];
+    components?: ElementComponentOverrides;
 };
 
-export const computeFingerprint = (girFiles: string[], libraries: string[]): string => {
+const serializeComponents = (components: ElementComponentOverrides): string =>
+    JSON.stringify(
+        Object.keys(components)
+            .sort()
+            .map((type) => [type, components[type]?.module, components[type]?.export]),
+    );
+
+export const computeFingerprint = (
+    girFiles: string[],
+    libraries: string[],
+    components: ElementComponentOverrides = {},
+): string => {
     const hash = createHash("sha256");
     hash.update(CODEGEN_VERSION);
     hash.update("\n");
@@ -26,6 +39,8 @@ export const computeFingerprint = (girFiles: string[], libraries: string[]): str
     hash.update(JSON.stringify(WRAPPER_ELEMENTS));
     hash.update("\n");
     hash.update(sortStrings(libraries).join(","));
+    hash.update("\n");
+    hash.update(serializeComponents(components));
     for (const file of sortStrings(girFiles)) {
         hash.update("\n");
         hash.update(file);
@@ -37,7 +52,11 @@ export const computeFingerprint = (girFiles: string[], libraries: string[]): str
 
 const sortAlpha = (values: string[]): string => sortStrings(values).join(",");
 
-export const isStoreFresh = (giStoreDir: string, libraries: string[]): boolean => {
+export const isStoreFresh = (
+    giStoreDir: string,
+    libraries: string[],
+    components: ElementComponentOverrides = {},
+): boolean => {
     const sentinelPath = join(giStoreDir, FINGERPRINT_FILENAME);
     if (!existsSync(sentinelPath)) return false;
     let sentinel: CodegenFingerprint;
@@ -47,8 +66,9 @@ export const isStoreFresh = (giStoreDir: string, libraries: string[]): boolean =
         return false;
     }
     if (sortAlpha(sentinel.libraries) !== sortAlpha(libraries)) return false;
+    if (serializeComponents(sentinel.components ?? {}) !== serializeComponents(components)) return false;
     try {
-        return computeFingerprint(sentinel.girFiles, sentinel.libraries) === sentinel.value;
+        return computeFingerprint(sentinel.girFiles, sentinel.libraries, sentinel.components ?? {}) === sentinel.value;
     } catch {
         return false;
     }

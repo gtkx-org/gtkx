@@ -145,6 +145,18 @@ const userEventSignalsSchema = z.record(
     { error: "must be a record of GLib type names to signal name arrays" },
 );
 
+const elementComponentSchema = z.object(
+    {
+        module: z.string({ error: "must be a module specifier" }).min(1, { error: "must be a module specifier" }),
+        export: z.string({ error: "must be an export name" }).min(1, { error: "must be an export name" }),
+    },
+    { error: "must be a { module, export } object" },
+);
+
+const componentsSchema = z.record(z.string(), elementComponentSchema, {
+    error: "must be a record of GLib type names to { module, export } component wrappers",
+});
+
 const configSchema = z.object({
     libraries: librariesSchema.optional(),
     girPath: z.array(z.string(), { error: "must be an array of strings if provided" }).optional(),
@@ -156,14 +168,16 @@ const configSchema = z.object({
         .string({ error: "must be a path to a module exporting element configuration" })
         .min(1, { error: "must be a path to a module exporting element configuration" })
         .optional(),
+    components: componentsSchema.optional(),
 });
 
 /**
  * User-facing configuration for a GTKX project, as authored in `gtkx.config.ts`:
  * the GIR libraries to bind, extra `.gir` search paths, the GApplication id,
- * a module of per-element configuration (lazy flags and custom behaviors), the
- * React Compiler and codegen settings, and additional user event signals to
- * suppress during React commits.
+ * a module of per-element configuration (lazy flags and custom behaviors),
+ * per-element component wrappers keyed by GLib type name, the React Compiler and
+ * codegen settings, and additional user event signals to suppress during React
+ * commits.
  */
 export type Config = z.infer<typeof configSchema>;
 

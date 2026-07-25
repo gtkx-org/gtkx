@@ -46,9 +46,10 @@ type CodegenOptionsInput = {
     store: CodegenStore;
     libraries: string[];
     girPath: string[];
+    components: Config["components"];
 };
 
-const codegenOptions = ({ store, libraries, girPath }: CodegenOptionsInput) => ({
+const codegenOptions = ({ store, libraries, girPath, components }: CodegenOptionsInput) => ({
     libraries,
     girPath,
     gi: {
@@ -65,6 +66,7 @@ const codegenOptions = ({ store, libraries, girPath }: CodegenOptionsInput) => (
               }
             : undefined,
     reactSubexports: store.react?.subexports ?? [],
+    components: components ?? {},
 });
 
 export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenResult> => {
@@ -101,7 +103,7 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
     }
 
     const result = await runCodegenCore({
-        ...codegenOptions({ store, libraries, girPath }),
+        ...codegenOptions({ store, libraries, girPath, components: config.components }),
         force,
     });
 

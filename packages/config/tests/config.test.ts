@@ -326,3 +326,27 @@ describe("isValidApplicationId", () => {
         expect(isValidApplicationId("com.-app.test")).toBe(false);
     });
 });
+
+describe("validateConfig (components)", () => {
+    it("accepts a record of GLib type names to { module, export } wrappers", () => {
+        expect(() =>
+            validateWithAppId({ components: { GtkButton: { module: "@example/wrappers", export: "withButton" } } }),
+        ).not.toThrow();
+    });
+
+    it("accepts a config that omits components", () => {
+        expect(() => validateWithAppId({})).not.toThrow();
+    });
+
+    it("rejects a component entry missing its export", () => {
+        expect(() =>
+            validateUnknown({ applicationId: "org.gtk.Test", components: { GtkButton: { module: "m" } } }),
+        ).toThrow();
+    });
+
+    it("rejects an empty module specifier", () => {
+        expect(() => validateWithAppId({ components: { GtkButton: { module: "", export: "withButton" } } })).toThrow(
+            /must be a module specifier/,
+        );
+    });
+});

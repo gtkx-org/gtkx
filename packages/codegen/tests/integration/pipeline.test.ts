@@ -381,6 +381,49 @@ describe("codegen React pipeline", () => {
     });
 });
 
+describe("codegen configurable element components", () => {
+    const overridden = sourceFor(
+        generateJsxFiles(library, [], { GtkButton: { module: "@example/wrappers", export: "withButton" } }),
+        "gtk",
+    );
+
+    it("wraps a plain element with the user's component and imports it", () => {
+        expect(overridden).toContain('import { withButton } from "@example/wrappers";');
+        expect(overridden).toContain(
+            'export const GtkButton: (props: GtkButtonProps) => ReactNode = withButton(createElementComponent("GtkButton"));',
+        );
+    });
+
+    it("fans the wrapper out to subclasses by ancestry", () => {
+        expect(overridden).toContain('withButton(createElementComponent("GtkToggleButton"))');
+    });
+
+    it("leaves elements outside the ancestry unwrapped", () => {
+        expect(overridden).toContain(
+            'export const GtkLabel: (props: GtkLabelProps) => ReactNode = createElementComponent("GtkLabel");',
+        );
+    });
+
+    it("keeps a built-in wrapper the override does not cover", () => {
+        expect(overridden).toContain('createWindowComponent(createElementComponent("GtkWindow"))');
+    });
+
+    it("lets a user override win over a built-in on the same ancestry", () => {
+        const gtk = sourceFor(
+            generateJsxFiles(library, [], { GtkWindow: { module: "@example/wrappers", export: "withWindow" } }),
+            "gtk",
+        );
+        expect(gtk).toContain('withWindow(createElementComponent("GtkWindow"))');
+        expect(gtk).not.toContain('createWindowComponent(createElementComponent("GtkWindow"))');
+    });
+
+    it("leaves elements unwrapped without any override", () => {
+        expect(sourceFor(reactPipeline, "gtk")).toContain(
+            'export const GtkButton: (props: GtkButtonProps) => ReactNode = createElementComponent("GtkButton");',
+        );
+    });
+});
+
 describe("codegen widget-slot props", () => {
     it("widens a settable GObject-class property into a ReactElement slot", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
