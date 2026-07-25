@@ -1,0 +1,120 @@
+import type * as Adw from "@gtkx/gi/adw";
+import * as Gio from "@gtkx/gi/gio";
+import type * as Gtk from "@gtkx/gi/gtk";
+import {
+    AdwApplication,
+    AdwApplicationWindow,
+    AdwHeaderBar,
+    AdwNavigationPage,
+    AdwNavigationSplitView,
+    AdwToolbarView,
+} from "@gtkx/jsx/adw";
+import { GSimpleAction } from "@gtkx/jsx/gio";
+import { GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
+import { quit, rootElement } from "@gtkx/react";
+import { render, userEvent, waitFor } from "@gtkx/testing";
+import { createRef } from "react";
+import { describe, expect, it, vi } from "vitest";
+
+describe("tutorial regressions", () => {
+    it("quits the application when the window close-request handler calls quit()", async () => {
+        const appRef = createRef<Adw.Application>();
+        const windowRef = createRef<Adw.ApplicationWindow>();
+
+        await render(
+            <AdwApplication
+                ref={appRef}
+                applicationId="org.gtkx.tutorial-close"
+                flags={Gio.ApplicationFlags.NON_UNIQUE}
+            >
+                <AdwApplicationWindow ref={windowRef} onCloseRequest={() => quit()}>
+                    <GtkLabel>Body</GtkLabel>
+                </AdwApplicationWindow>
+            </AdwApplication>,
+            { container: rootElement },
+        );
+
+        const app = appRef.current;
+        if (!app) throw new Error("application was not captured");
+        const shutdownHandler = vi.fn();
+        app.on("shutdown", shutdownHandler);
+
+        windowRef.current?.emit("close-request");
+
+        await waitFor(() => expect(shutdownHandler).toHaveBeenCalledTimes(1));
+    });
+
+    it("keeps the details back button enabled and clickable", async () => {
+        const buttonRef = createRef<Gtk.Button>();
+        const onBack = vi.fn();
+
+        await render(
+            <AdwNavigationSplitView
+                content={
+                    <AdwNavigationPage title="Details">
+                        <AdwToolbarView
+                            topBar={
+                                <AdwHeaderBar
+                                    start={
+                                        <GtkButton ref={buttonRef} iconName="go-previous-symbolic" onClicked={onBack} />
+                                    }
+                                />
+                            }
+                        >
+                            <GtkLabel>Detail body</GtkLabel>
+                        </AdwToolbarView>
+                    </AdwNavigationPage>
+                }
+            />,
+        );
+
+        expect(buttonRef.current?.getSensitive()).toBe(true);
+
+        if (buttonRef.current) await userEvent.click(buttonRef.current);
+        expect(onBack).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps a reused header start button sensitive after replacing actionName with onClicked", async () => {
+        const buttonRef = createRef<Gtk.Button>();
+        const appId = "org.gtkx.tutorial-reuse";
+
+        const Shell = ({ detail }: { detail: boolean }) => (
+            <AdwApplication applicationId={appId} flags={Gio.ApplicationFlags.NON_UNIQUE}>
+                <AdwApplicationWindow actions={<GSimpleAction name="new" onActivate={() => {}} />}>
+                    <AdwToolbarView
+                        topBar={
+                            <AdwHeaderBar
+                                start={
+                                    detail ? (
+                                        <GtkButton
+                                            ref={buttonRef}
+                                            iconName="go-previous-symbolic"
+                                            onClicked={() => {}}
+                                        />
+                                    ) : (
+                                        <>
+                                            <GtkButton
+                                                ref={buttonRef}
+                                                iconName="list-add-symbolic"
+                                                actionName="win.new"
+                                            />
+                                            <GtkButton iconName="system-search-symbolic" onClicked={() => {}} />
+                                        </>
+                                    )
+                                }
+                            />
+                        }
+                    >
+                        <GtkLabel>Body</GtkLabel>
+                    </AdwToolbarView>
+                </AdwApplicationWindow>
+            </AdwApplication>
+        );
+
+        const { rerender } = await render(<Shell detail={false} />, { container: rootElement });
+        expect(buttonRef.current?.getSensitive()).toBe(true);
+
+        await rerender(<Shell detail={true} />);
+        expect(buttonRef.current?.getSensitive()).toBe(true);
+    });
+});

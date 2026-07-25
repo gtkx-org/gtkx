@@ -84,6 +84,15 @@ const applyValueEntries = (node: ElementNode, info: TypeInfo, change: PropChange
     });
 };
 
+// A GtkActionable widget's sensitivity is driven by its bound action while `actionName`
+// is set; GTK leaves it insensitive once the action is cleared, so restore the declared
+// sensitivity (or the widget default) when a reused widget drops its `actionName`.
+const restoreActionableSensitivity = (node: ElementNode, info: TypeInfo, oldProps: Props, newProps: Props): void => {
+    if (oldProps.actionName === undefined || newProps.actionName !== undefined) return;
+    const desired = "sensitive" in newProps ? newProps.sensitive : info.defaults.sensitive;
+    if (typeof desired === "boolean") Reflect.set(node.object, "sensitive", desired);
+};
+
 const applyHandlers = (target: SignalTarget, info: TypeInfo, oldProps: Props, newProps: Props): void => {
     eachChangedName(oldProps, newProps, (name) => {
         if (!isHandlerName(name)) return;
@@ -129,6 +138,7 @@ export const applyElementProps = (node: ElementNode, oldProps: Props, newProps: 
     const info = typeInfoOf(node.typeName);
     const consumed = runBehaviorUpdates(node, info, oldProps, newProps);
     applyValueEntries(node, info, { old: oldProps, next: newProps }, consumed);
+    restoreActionableSensitivity(node, info, oldProps, newProps);
     applyAccessible(node.object, oldProps, newProps);
     applyHandlers(node, info, oldProps, newProps);
     markFlush(node);
