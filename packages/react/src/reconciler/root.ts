@@ -9,6 +9,7 @@ import {
     DiscreteEventPriority,
     NoEventPriority,
 } from "react-reconciler/constants.js";
+import { Prop } from "../components/element.js";
 import {
     applyAdoptedProps,
     applyElementProps,
@@ -16,15 +17,17 @@ import {
     mountBehaviors,
     unmountBehaviors,
 } from "./apply-props.js";
+import type { Props } from "./elements.js";
 import { createElementNode } from "./instance.js";
-import { ELEMENT_KIND, LAZY_ELEMENT, PROP_KIND, type Props } from "./kinds.js";
 import { typeInfoOf } from "./metadata.js";
 import {
     type AnyNode,
     createPropNode,
     createTextNode,
+    ELEMENT_KIND,
     type ElementNode,
     type Instance,
+    LAZY_KIND,
     type TextNode,
 } from "./node.js";
 import { attachChild, detachChild } from "./placement.js";
@@ -71,7 +74,7 @@ const detachFromContainer = (container: Container, child: AnyNode): void => {
 };
 
 const makeInstance = (type: string, props: Props): Instance => {
-    if (type === PROP_KIND) return createPropNode(typeof props.propName === "string" ? props.propName : "");
+    if (type === Prop) return createPropNode(typeof props.propName === "string" ? props.propName : "");
     const node = createElementNode(type, props);
     if (node.kind === ELEMENT_KIND) {
         containerNodes.set(node.object, node);
@@ -82,7 +85,7 @@ const makeInstance = (type: string, props: Props): Instance => {
 
 const publicInstanceOf = (instance: Instance): object => {
     if (instance.kind === ELEMENT_KIND) return instance.object;
-    if (instance.kind === LAZY_ELEMENT) return instance.adopted ?? instance;
+    if (instance.kind === LAZY_KIND) return instance.adopted ?? instance;
     return instance;
 };
 
@@ -160,7 +163,7 @@ const hostConfig = {
     },
     commitUpdate: (instance: Instance, _type: string, prevProps: Props, nextProps: Props): void => {
         if (instance.kind === ELEMENT_KIND) applyElementProps(instance, prevProps, nextProps);
-        else if (instance.kind === LAZY_ELEMENT && instance.adopted !== null) {
+        else if (instance.kind === LAZY_KIND && instance.adopted !== null) {
             applyAdoptedProps(
                 { object: instance.adopted, handlers: instance.handlers, typeName: instance.typeName },
                 prevProps,
@@ -176,7 +179,7 @@ const hostConfig = {
         if (instance.kind === ELEMENT_KIND) {
             disconnectAllHandlers(instance);
             unmountBehaviors(instance);
-        } else if (instance.kind === LAZY_ELEMENT && instance.adopted !== null) {
+        } else if (instance.kind === LAZY_KIND && instance.adopted !== null) {
             disconnectAllHandlers({
                 object: instance.adopted,
                 handlers: instance.handlers,

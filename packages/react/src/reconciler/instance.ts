@@ -1,8 +1,8 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import { getWrapperClass, TYPE_INVALID, typeFromName, typeIsA } from "@gtkx/runtime";
-import { ELEMENT_KIND, type Props } from "./kinds.js";
+import type { Props } from "./elements.js";
 import { type TypeInfo, typeInfoOf } from "./metadata.js";
-import { type ContentKind, createLazyNode, type ElementNode, type LazyNode } from "./node.js";
+import { type ContentKind, createLazyNode, ELEMENT_KIND, type ElementNode, type LazyNode } from "./node.js";
 
 type WidgetConstructor = new (props: Props) => GObject.Object;
 
@@ -43,8 +43,6 @@ const instantiate = (typeName: string, input: Props): GObject.Object => {
     const cls = getWrapperClass(type) as WidgetConstructor;
     return new cls(input);
 };
-
-export const createObject = (typeName: string): GObject.Object => instantiate(typeName, {});
 
 export const createElementNode = (typeName: string, props: Props): ElementNode | LazyNode => {
     const info = typeInfoOf(typeName);

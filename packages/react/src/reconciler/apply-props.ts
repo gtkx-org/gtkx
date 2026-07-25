@@ -1,25 +1,14 @@
-import * as Gio from "@gtkx/gi/gio";
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import type { SignalHandler } from "@gtkx/runtime";
 import { kebabCase } from "@gtkx/utils";
 import { applyAccessibleProps, isAccessibleProp } from "../utils/accessible-props.js";
-import { contextFor } from "./behavior-context.js";
-import { setMenuFactory } from "./elements.js";
-import { createObject } from "./instance.js";
-import type { Props } from "./kinds.js";
+import type { Props } from "./elements.js";
 import { type TypeInfo, typeInfoOf } from "./metadata.js";
-import type { ElementNode, SignalTarget } from "./node.js";
+import { contextFor, type ElementNode, type SignalTarget } from "./node.js";
 import { connectHandler, disconnectHandler } from "./signals.js";
 
-setMenuFactory(() => {
-    const menu = createObject("GMenu");
-    if (!(menu instanceof Gio.Menu)) throw new Error("GMenu construction returned an unexpected type");
-    return menu;
-});
-
-const CONSUMED = new Set(["children", "ref", "key", "propName"]);
-
+const REACT_RESERVED_PROPS = new Set(["children", "ref", "key"]);
 const isHandlerName = (name: string): boolean => /^on[A-Z]/.test(name);
 
 const signalForProp = (info: TypeInfo, name: string): string => {
@@ -29,7 +18,7 @@ const signalForProp = (info: TypeInfo, name: string): string => {
 };
 
 const isReservedName = (name: string, info: TypeInfo): boolean =>
-    CONSUMED.has(name) || isHandlerName(name) || isAccessibleProp(name) || info.constructOnly.has(name);
+    REACT_RESERVED_PROPS.has(name) || isHandlerName(name) || isAccessibleProp(name) || info.constructOnly.has(name);
 
 const skipValueName = (name: string, info: TypeInfo, consumed: Set<string>): boolean =>
     isReservedName(name, info) || consumed.has(name);
@@ -84,9 +73,6 @@ const applyValueEntries = (node: ElementNode, info: TypeInfo, change: PropChange
     });
 };
 
-// A GtkActionable widget's sensitivity is driven by its bound action while `actionName`
-// is set; GTK leaves it insensitive once the action is cleared, so restore the declared
-// sensitivity (or the widget default) when a reused widget drops its `actionName`.
 const restoreActionableSensitivity = (node: ElementNode, info: TypeInfo, oldProps: Props, newProps: Props): void => {
     if (oldProps.actionName === undefined || newProps.actionName !== undefined) return;
     const desired = "sensitive" in newProps ? newProps.sensitive : info.defaults.sensitive;

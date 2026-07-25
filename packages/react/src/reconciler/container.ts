@@ -1,14 +1,19 @@
-import type * as GObject from "@gtkx/gi/gobject";
+import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { applyAdoptedProps, markFlush } from "./apply-props.js";
-import { contextFor } from "./behavior-context.js";
 import type { ElementBehavior, PlaceInfo } from "./elements.js";
-import { ELEMENT_KIND, LAZY_ELEMENT } from "./kinds.js";
 import { typeInfoOf } from "./metadata.js";
-import { type ElementNode, nodeWidget, type PlaceableNode, type PlacedChild, type SignalTarget } from "./node.js";
+import {
+    contextFor,
+    ELEMENT_KIND,
+    type ElementNode,
+    LAZY_KIND,
+    nodeWidget,
+    type PlaceableNode,
+    type PlacedChild,
+    type SignalTarget,
+} from "./node.js";
 import { markTextDirty } from "./text.js";
-
-const isObject = (value: unknown): value is GObject.Object => typeof value === "object" && value !== null;
 
 const createEntry = (slot: string, node: PlaceableNode): PlacedChild | null => {
     const widget = nodeWidget(node);
@@ -30,11 +35,11 @@ const placeInfo = (entry: PlacedChild, index: number, sibling: GObject.Object | 
 
 const adoptedFrom = (parent: ElementNode, entry: PlacedChild, behavior: ElementBehavior, claim: unknown): void => {
     if (behavior.resolve !== undefined) entry.adopted = behavior.resolve(parent.object, entry.widget);
-    else entry.adopted = isObject(claim) ? claim : null;
+    else entry.adopted = claim instanceof GObject.Object ? claim : null;
 };
 
 const applyLazyProps = (entry: PlacedChild): void => {
-    if (entry.node.kind !== LAZY_ELEMENT || entry.adopted === null) return;
+    if (entry.node.kind !== LAZY_KIND || entry.adopted === null) return;
     const target: SignalTarget = {
         object: entry.adopted,
         handlers: entry.node.handlers,

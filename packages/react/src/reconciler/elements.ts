@@ -1,9 +1,8 @@
-import type * as Gio from "@gtkx/gi/gio";
+import * as Gio from "@gtkx/gi/gio";
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { getInstanceType, TYPE_INVALID, typeFromName, typeIsA } from "@gtkx/runtime";
 import { isDeepEqual, structuredClone } from "@gtkx/utils";
-import type { Props } from "./kinds.js";
 import type {
     ActionAccel,
     CreditSection,
@@ -13,6 +12,9 @@ import type {
     ScaleMark,
     VflConstraints,
 } from "./prop-types.js";
+
+/** The props of a host element or node, as React passes them through the reconciler. */
+export type Props = Record<string, unknown>;
 
 /** Per-child values a slot hook receives while placing or moving one child. */
 export type PlaceInfo = {
@@ -332,17 +334,8 @@ const wrappingIndexedSlot = <
 const layoutChild = (parent: Gtk.Widget, child: Gtk.Widget): GObject.Object | null =>
     parent.getLayoutManager()?.getLayoutChild(child) ?? null;
 
-let createMenu: () => Gio.Menu = () => {
-    throw new Error("GMenu construction is not available");
-};
-
-/** Installs the factory used to build nested `GMenu` instances for submenus and sections. */
-export const setMenuFactory = (factory: () => Gio.Menu): void => {
-    createMenu = factory;
-};
-
 const buildMenu = (items: MenuItem[]): Gio.Menu => {
-    const menu = createMenu();
+    const menu = Gio.Menu.new();
     for (const item of items) appendMenuItem(menu, item);
     return menu;
 };

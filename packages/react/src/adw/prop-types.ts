@@ -2,7 +2,6 @@ import type * as Adw from "@gtkx/gi/adw";
 import type { ReactNode } from "react";
 import type { ChildrenProps } from "../reconciler/prop-types.js";
 
-/** One response button on an `Adw.AlertDialog`. */
 export type AlertDialogResponse = {
     id: string;
     label: string;

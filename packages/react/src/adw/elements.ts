@@ -15,14 +15,6 @@ import {
 } from "../reconciler/elements.js";
 import type { AlertDialogResponse } from "./prop-types.js";
 
-/** References a base props interface exported from `@gtkx/react/internal`. */
-const internal = (name: string): ModuleExport => ({ module: "@gtkx/react/internal", export: name });
-
-/** References a base props interface (or component factory) exported from `@gtkx/react/adw`. */
-const adw = (name: string): ModuleExport => ({ module: "@gtkx/react/adw", export: name });
-
-const childrenProps = internal("ChildrenProps");
-
 type AdwChildSetter =
     | Adw.Bin
     | Adw.BreakpointBin
@@ -37,16 +29,17 @@ type AdwChildSetter =
     | Adw.Toggle;
 
 type AdwContentSetter = Adw.ApplicationWindow | Adw.BottomSheet | Adw.Flap | Adw.OverlaySplitView | Adw.Window;
-
 type BreakpointHost = Adw.ApplicationWindow | Adw.Window | Adw.Dialog;
-
 type PageHost = Adw.PreferencesDialog | Adw.PreferencesWindow;
-
 type PrefixSuffixRow = Adw.ActionRow | Adw.EntryRow | Adw.ExpanderRow;
 
+const internal = (name: string): ModuleExport => ({ module: "@gtkx/react/internal", export: name });
+const adw = (name: string): ModuleExport => ({ module: "@gtkx/react/adw", export: name });
+const childrenProps = internal("ChildrenProps");
 const childSetter = childSetterSlot<AdwChildSetter>();
-
 const contentSetter = contentSetterSlot<AdwContentSetter>();
+const breakpointsProps = adw("AdwBreakpointsProps");
+const preferencesRowProps = adw("AdwPreferencesRowProps");
 
 const breakpoints = slot<BreakpointHost, Adw.Breakpoint>("breakpoints", "AdwBreakpoint", {
     attach: (host, breakpoint) => host.addBreakpoint(breakpoint),
@@ -73,10 +66,6 @@ const pageHostChildren = addRemoveSlot<Adw.PreferencesPage, PageHost>(
         host.remove(page);
     },
 );
-
-const breakpointsProps = adw("AdwBreakpointsProps");
-
-const preferencesRowProps = adw("AdwPreferencesRowProps");
 
 export const ADW_ELEMENTS: Record<string, ElementConfig> = {
     AdwBin: { props: childrenProps, behaviors: [childSetter] },

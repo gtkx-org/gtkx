@@ -1,11 +1,10 @@
 import { placeChild, unplaceChild } from "./container.js";
-import { ELEMENT_KIND, LAZY_ELEMENT, PROP_KIND, TEXT_KIND } from "./kinds.js";
 import type { AnyNode, ContentChild, ElementNode, LazyNode, ParentNode, PlaceableNode, PropNode } from "./node.js";
-import { nodeWidget } from "./node.js";
+import { ELEMENT_KIND, LAZY_KIND, nodeWidget, PROP_KIND, TEXT_KIND } from "./node.js";
 import { acceptsText, addContent, removeContent, textRestrictionError } from "./text.js";
 
 const asPlaceable = (node: AnyNode | null): PlaceableNode | null =>
-    node !== null && (node.kind === ELEMENT_KIND || node.kind === LAZY_ELEMENT) ? node : null;
+    node !== null && (node.kind === ELEMENT_KIND || node.kind === LAZY_KIND) ? node : null;
 
 const attachPropToElement = (parent: ElementNode, node: PropNode, before: AnyNode | null): void => {
     node.parent = parent;
@@ -36,7 +35,7 @@ const attachToElement = (parent: ElementNode, child: AnyNode, before: AnyNode | 
         return;
     }
     if (child.kind === TEXT_KIND) throw textRestrictionError(child.text);
-    if (child.kind === LAZY_ELEMENT) child.parent = parent;
+    if (child.kind === LAZY_KIND) child.parent = parent;
     placeChild(parent, "children", child, asPlaceable(before));
 };
 
@@ -99,7 +98,7 @@ export const detachChild = (parent: ParentNode, child: AnyNode): void => {
         detachFromProp(parent, child);
         return;
     }
-    if (parent.kind === LAZY_ELEMENT) {
+    if (parent.kind === LAZY_KIND) {
         parent.children = parent.children.filter((entry) => entry !== child);
         syncLazy(parent);
         return;
@@ -108,7 +107,7 @@ export const detachChild = (parent: ParentNode, child: AnyNode): void => {
         detachPropFromElement(parent, child);
     } else if (parent.content !== null) {
         if (child.kind === TEXT_KIND || child.kind === ELEMENT_KIND) removeContent(parent, child);
-    } else if (child.kind === ELEMENT_KIND || child.kind === LAZY_ELEMENT) {
+    } else if (child.kind === ELEMENT_KIND || child.kind === LAZY_KIND) {
         unplaceChild(parent, "children", child);
     }
 };

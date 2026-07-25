@@ -1,10 +1,9 @@
 export { createApplicationComponent } from "./components/application.js";
+export { createElementComponent } from "./components/element.js";
 export { createWindowComponent } from "./components/window.js";
 export { ApplicationContext } from "./hooks/use-application.js";
 export { useMergedRef } from "./hooks/use-merged-refs.js";
 export { useObjectValue } from "./hooks/use-object-value.js";
-export { createElementComponent } from "./reconciler/element-component.js";
-export { ELEMENT_KIND, LAZY_ELEMENT, PROP_KIND, TEXT_KIND } from "./reconciler/kinds.js";
 export type * from "./reconciler/prop-types.js";
 export { createReconcilerRoot, type ReconcilerRoot, setReconcilerErrorHandler } from "./reconciler/root.js";
 export { isRootElement } from "./reconciler/root-element.js";

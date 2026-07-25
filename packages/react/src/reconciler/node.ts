@@ -1,8 +1,12 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { SignalHandler } from "@gtkx/runtime";
-import type { ElementBehavior } from "./elements.js";
-import { type ELEMENT_KIND, LAZY_ELEMENT, PROP_KIND, type Props, TEXT_KIND } from "./kinds.js";
+import type { ElementBehavior, Props } from "./elements.js";
+
+export const ELEMENT_KIND = "element";
+export const PROP_KIND = "prop";
+export const TEXT_KIND = "text";
+export const LAZY_KIND = "lazy";
 
 export type ContentKind = "label" | "buffer" | "tag" | "anchor";
 
@@ -41,7 +45,7 @@ export type PropNode = {
 };
 
 export type LazyNode = {
-    kind: typeof LAZY_ELEMENT;
+    kind: typeof LAZY_KIND;
     typeName: string;
     props: Props;
     children: PlaceableNode[];
@@ -70,7 +74,7 @@ export const createPropNode = (propName: string): PropNode => ({
 });
 
 export const createLazyNode = (typeName: string, props: Props): LazyNode => ({
-    kind: LAZY_ELEMENT,
+    kind: LAZY_KIND,
     typeName,
     props,
     children: [],
@@ -82,9 +86,15 @@ export const createLazyNode = (typeName: string, props: Props): LazyNode => ({
 export const createTextNode = (text: string): TextNode => ({ kind: TEXT_KIND, text, parent: null });
 
 export const nodeWidget = (node: PlaceableNode): GObject.Object | null => {
-    if (node.kind === LAZY_ELEMENT) {
+    if (node.kind === LAZY_KIND) {
         const child = node.children[0];
         return child === undefined ? null : nodeWidget(child);
     }
     return node.object;
+};
+
+/** The per-node context a behavior builds once via `createContext`, memoized on the node. */
+export const contextFor = (node: ElementNode, behavior: ElementBehavior): unknown => {
+    if (!node.contexts.has(behavior)) node.contexts.set(behavior, behavior.createContext?.(node.object));
+    return node.contexts.get(behavior);
 };
