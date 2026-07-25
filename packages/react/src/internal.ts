@@ -3,15 +3,8 @@ export { createWindowComponent } from "./components/window.js";
 export { ApplicationContext } from "./hooks/use-application.js";
 export { useMergedRef } from "./hooks/use-merged-refs.js";
 export { useObjectValue } from "./hooks/use-object-value.js";
-export { createElementComponent, createWrapperElementComponent } from "./reconciler/element-component.js";
-export {
-    ELEMENT_KIND,
-    isWrapperKind,
-    PROP_KIND,
-    TEXT_KIND,
-    WRAPPER_ELEMENT,
-    type WrapperKind,
-} from "./reconciler/kinds.js";
+export { createElementComponent } from "./reconciler/element-component.js";
+export { ELEMENT_KIND, LAZY_ELEMENT, PROP_KIND, TEXT_KIND } from "./reconciler/kinds.js";
 export { createReconcilerRoot, type ReconcilerRoot, setReconcilerErrorHandler } from "./reconciler/root.js";
 export { isRootElement } from "./reconciler/root-element.js";
 export { getAccessibleMetadata } from "./utils/accessible-metadata.js";

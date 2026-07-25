@@ -195,8 +195,9 @@ const renderInterfacePropsBlock = (
     const prerequisiteExtends = interfacePrerequisiteExtends(iface, context);
     const declared = glib === undefined ? undefined : elementPropTypeFor(glib);
     if (declared !== undefined) {
-        imports.addNamed(declared.module, declared.export, true);
-        prerequisiteExtends.push(declared.export);
+        const alias = `${declared.export}Base`;
+        imports.addNamed(declared.module, declared.export, true, alias);
+        prerequisiteExtends.push(alias);
     }
 
     if (glib === ACCESSIBLE_INTERFACE_GLIB_NAME) {
@@ -257,8 +258,9 @@ const resolveElementExtends = (library: Library, entry: GlibNamedClass, context:
     const extendsList: string[] = [];
     const declared = elementPropTypeFor(entry.glibName);
     if (declared !== undefined) {
-        context.imports.addNamed(declared.module, declared.export, true);
-        extendsList.push(declared.export);
+        const alias = `${declared.export}Base`;
+        context.imports.addNamed(declared.module, declared.export, true, alias);
+        extendsList.push(alias);
     }
     const parentRef = resolveParentPropsRef(library, entry, context);
     if (parentRef !== undefined) extendsList.push(parentRef);

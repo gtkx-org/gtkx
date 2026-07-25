@@ -186,5 +186,18 @@ describe("render - Window (4)", () => {
 
             expect(windowRef.current?.getChild()).toBe(label2Ref.current);
         });
+
+        it("sets Adw.ApplicationWindow content via setContent", async () => {
+            const windowRef = createRef<Adw.ApplicationWindow>();
+            const labelRef = createRef<Gtk.Label>();
+
+            await renderAdw(
+                <AdwApplicationWindow ref={windowRef}>
+                    <GtkLabel ref={labelRef}>Window Content</GtkLabel>
+                </AdwApplicationWindow>,
+            );
+
+            expect(windowRef.current?.getContent()).toBe(labelRef.current);
+        });
     });
 });

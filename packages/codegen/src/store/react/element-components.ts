@@ -14,6 +14,11 @@ const BUILT_IN_ELEMENT_COMPONENTS: ElementComponent[] = [
     { types: ["AdwDialog"], module: "@gtkx/react/adw", export: "createDialogComponent" },
 ];
 
+/** Namespaces whose element behaviors are registered by a hand-written `@gtkx/react/<ns>` extension. */
+export const NAMESPACE_BEHAVIOR_REGISTRARS: Record<string, { module: string; export: string }> = {
+    Adw: { module: "@gtkx/react/adw", export: "registerAdwBehaviors" },
+};
+
 type ExportCollector = {
     imports: ImportsBuilder;
     exportedNames: Set<string>;
@@ -69,7 +74,7 @@ const collectCandidateExports = (
 
 const collectLazyElementExports = (collector: ExportCollector, lazyElements: WrapperElementSpec[]): void => {
     for (const spec of lazyElements) {
-        collector.imports.addNamed("@gtkx/react/internal", "createWrapperElementComponent", false);
+        collector.imports.addNamed("@gtkx/react/internal", "createElementComponent", false);
         collector.imports.addNamed("react", "ReactNode", true);
         collector.exportLines.push(renderLazyElementExport(spec));
         collector.exportedNames.add(spec.element);
@@ -77,7 +82,7 @@ const collectLazyElementExports = (collector: ExportCollector, lazyElements: Wra
 };
 
 const renderLazyElementExport = (spec: WrapperElementSpec): string => {
-    const factory = `createWrapperElementComponent<${spec.typeName}>()`;
+    const factory = `createElementComponent(${sourceStringLiteral(spec.element)})`;
     const component = `export const ${spec.element}: (props: ${spec.typeName}) => ReactNode = ${factory};`;
     return `${spec.typeSource}\n\n${component}`;
 };

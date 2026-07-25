@@ -25,7 +25,7 @@
             "entry": ["gtkx.config.ts!"]
         },
         "packages/e2e": {
-            "entry": ["gtkx.config.ts!", "element-rules.ts"]
+            "entry": ["gtkx.config.ts!", "element-behaviors.ts"]
         },
         "packages/testing": {
             "entry": ["gtkx.config.ts!"]

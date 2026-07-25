@@ -1,4 +1,3 @@
-import { ELEMENT_RULES } from "@gtkx/react/element-rules";
 import { describe, expect, it } from "vitest";
 import type { GirClass } from "../../src/gir/class.js";
 import type { GirFunction } from "../../src/gir/function.js";
@@ -9,6 +8,7 @@ import type { GirRecord } from "../../src/gir/record.js";
 import type { GirType } from "../../src/gir/type.js";
 import type { TypeId } from "../../src/gir/type-id.js";
 import { matchAsyncFinish } from "../../src/store/gi/async.js";
+import { elementPropTypeFor } from "../../src/store/react/element-prop-imports.js";
 import {
     collectIntrinsicElementClasses,
     glibNameOf,
@@ -375,9 +375,9 @@ describe("codegen React pipeline", () => {
     it("emits page elements as lazy-element components", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
         expect(gtk).toContain(
-            "export const GtkNotebookPage: (props: GtkNotebookPageElementProps) => ReactNode = createWrapperElementComponent<GtkNotebookPageElementProps>();",
+            'export const GtkNotebookPage: (props: GtkNotebookPageElementProps) => ReactNode = createElementComponent("GtkNotebookPage");',
         );
-        expect(gtk).toContain("createWrapperElementComponent<GtkStackPageElementProps>()");
+        expect(gtk).toContain('createElementComponent("GtkStackPage")');
     });
 });
 
@@ -402,14 +402,16 @@ describe("codegen widget-slot props", () => {
 
     it("extends the hand-declared props interface on a container-prop host", () => {
         const adw = sourceFor(reactPipeline, "adw");
-        expect(adw).toMatch(/import \{[^}]*type GtkHeaderBarElementProps[^}]*\} from "@gtkx\/react";/);
-        expect(adw).toMatch(/export interface AdwHeaderBarProps<[^>]*> extends GtkHeaderBarElementProps,/);
+        expect(adw).toMatch(
+            /import \{[^}]*type GtkHeaderBarProps as GtkHeaderBarPropsBase[^}]*\} from "@gtkx\/react";/,
+        );
+        expect(adw).toMatch(/export interface AdwHeaderBarProps<[^>]*> extends GtkHeaderBarPropsBase,/);
     });
 
     it("extends the hand-declared props interface on GtkWidget", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
-        expect(gtk).toMatch(/import \{[^}]*type GtkWidgetElementProps[^}]*\} from "@gtkx\/react";/);
-        expect(gtk).toMatch(/export interface GtkWidgetProps<[^>]*> extends GtkWidgetElementProps,/);
+        expect(gtk).toMatch(/import \{[^}]*type GtkWidgetProps as GtkWidgetPropsBase[^}]*\} from "@gtkx\/react";/);
+        expect(gtk).toMatch(/export interface GtkWidgetProps<[^>]*> extends GtkWidgetPropsBase,/);
     });
 });
 
@@ -421,13 +423,15 @@ const interfaceBody = (jsxSource: string, glibName: string): string => {
 describe("codegen applied element props", () => {
     it("extends the hand-declared props interface for a value prop host", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
-        expect(gtk).toMatch(/export interface GtkDropTargetProps<[^>]*> extends GtkDropTargetElementProps,/);
+        expect(gtk).toMatch(/export interface GtkDropTargetProps<[^>]*> extends GtkDropTargetPropsBase,/);
     });
 
     it("extends the hand-declared placement props on the child element's interface", () => {
         const gio = sourceFor(reactPipeline, "gio");
-        expect(gio).toMatch(/import \{[^}]*type GActionGroupElementProps[^}]*\} from "@gtkx\/react";/);
-        expect(gio).toMatch(/export interface GActionGroupProps<[^>]*> extends GActionGroupElementProps/);
+        expect(gio).toMatch(
+            /import \{[^}]*type GActionGroupProps as GActionGroupPropsBase[^}]*\} from "@gtkx\/react";/,
+        );
+        expect(gio).toMatch(/export interface GActionGroupProps<[^>]*> extends GActionGroupPropsBase/);
     });
 
     it("emits lazy-element props from the page class interface", () => {
@@ -480,7 +484,7 @@ describe("codegen runtime tables", () => {
 
     it("extends named-slot elements from the hand-declared @gtkx/react types", () => {
         const adw = sourceFor(reactPipeline, "adw");
-        expect(adw).toMatch(/export interface AdwHeaderBarProps<[^>]*> extends [^{]*GtkHeaderBarElementProps/);
+        expect(adw).toMatch(/export interface AdwHeaderBarProps<[^>]*> extends [^{]*GtkHeaderBarPropsBase/);
     });
 });
 
@@ -506,20 +510,14 @@ describe("Library.resolveType", () => {
 
 const jsxSources = (): string[] => generateJsxFiles(library).namespaces.map((entry) => entry.source);
 
-const namedContainerPropTypes = new Set<string>(
-    Object.entries(ELEMENT_RULES)
-        .filter(([, props]) => props.some((prop) => prop.kind === "container" && prop.prop !== "children"))
-        .map(([type]) => type),
-);
-
-const hasNamedContainerProps = (glibName: string | undefined): boolean =>
-    glibName !== undefined && namedContainerPropTypes.has(glibName);
+const hasContainerProps = (glibName: string | undefined): boolean =>
+    glibName !== undefined && elementPropTypeFor(glibName) !== undefined;
 
 const interfacePropsNames = (): Set<string> => {
     const names = new Set<string>();
     for (const widget of collectIntrinsicElementClasses(library)) {
         for (const iface of implementedInterfaces(widget.klass, widget.namespace, library)) {
-            if (!interfaceHasPropsBody(iface.klass, hasNamedContainerProps)) continue;
+            if (!interfaceHasPropsBody(iface.klass, hasContainerProps)) continue;
             const glib = glibNameOf(iface.klass);
             if (glib !== undefined) names.add(`${glib}Props`);
         }

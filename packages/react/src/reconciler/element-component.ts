@@ -1,6 +1,6 @@
 import { isRecord } from "@gtkx/utils";
 import { createElement, isValidElement, type ReactElement, type ReactNode } from "react";
-import { PROP_KIND, type Props, WRAPPER_ELEMENT } from "./kinds.js";
+import { PROP_KIND, type Props } from "./kinds.js";
 
 const containsElement = (value: unknown): boolean =>
     isValidElement(value) || (Array.isArray(value) && value.some(containsElement));
@@ -30,15 +30,3 @@ export const createElementComponent =
     (typeName: string): ((props: unknown) => ReactNode) =>
     (props: unknown): ReactNode =>
         buildElement(typeName, isRecord(props) ? props : {});
-
-/**
- * Builds a React component for a page-style wrapper element that carries placement attributes for one child widget.
- *
- * @returns A component that wraps a single child and records its placement attributes.
- */
-export const createWrapperElementComponent =
-    <T>(): ((props: T) => ReactNode) =>
-    (props: T): ReactNode => {
-        const record: Props = isRecord(props) ? props : {};
-        return createElement(WRAPPER_ELEMENT, record);
-    };

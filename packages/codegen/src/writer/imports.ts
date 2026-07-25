@@ -5,18 +5,25 @@ type NamespaceImport = {
     isType: boolean;
 };
 
+type NamedImport = {
+    name: string;
+    isType: boolean;
+};
+
 export class ImportsBuilder {
-    private named = new Map<string, Map<string, boolean>>();
+    private named = new Map<string, Map<string, NamedImport>>();
     private namespaces = new Map<string, NamespaceImport>();
     private sideEffects = new Set<string>();
 
-    addNamed(specifier: string, name: string, isType = false): void {
+    addNamed(specifier: string, name: string, isType = false, alias?: string): void {
+        const local = alias ?? name;
         let bucket = this.named.get(specifier);
         if (bucket === undefined) {
             bucket = new Map();
             this.named.set(specifier, bucket);
         }
-        bucket.set(name, (bucket.get(name) ?? true) && isType);
+        const existing = bucket.get(local);
+        bucket.set(local, { name, isType: (existing?.isType ?? true) && isType });
     }
 
     addNamespace(specifier: string, alias: string, isType = false): void {
@@ -46,9 +53,10 @@ export class ImportsBuilder {
             const parts: string[] = [];
             if (namespaceImport !== undefined) parts.push(`* as ${namespaceImport.alias}`);
             if (namedNames !== undefined && namedNames.size > 0) {
-                const sortedNames = sortStringsBy(namedNames.entries(), ([name]) => name).map(([name, isType]) =>
-                    isType ? `type ${name}` : name,
-                );
+                const sortedNames = sortStringsBy(namedNames.entries(), ([local]) => local).map(([local, entry]) => {
+                    const spec = entry.name === local ? entry.name : `${entry.name} as ${local}`;
+                    return entry.isType ? `type ${spec}` : spec;
+                });
                 parts.push(`{ ${sortedNames.join(", ")} }`);
             }
             if (parts.length === 0) continue;

@@ -42,10 +42,10 @@
             "types": "./dist/adw/index.d.ts",
             "default": "./dist/adw/index.js"
         },
-        "./element-rules": {
-            "source": "./src/element-rules.ts",
-            "types": "./dist/element-rules.d.ts",
-            "default": "./dist/element-rules.js"
+        "./element-behaviors": {
+            "source": "./src/element-behaviors.ts",
+            "types": "./dist/element-behaviors.d.ts",
+            "default": "./dist/element-behaviors.js"
         }
     },
     "sideEffects": false,
@@ -69,9 +69,11 @@
         "react-reconciler": "^0.33.0"
     },
     "devDependencies": {
+        "@types/react": "catalog:",
         "@types/react-reconciler": "^0.33.0"
     },
     "peerDependencies": {
+        "@types/react": "^19",
         "react": "^19"
     }
 }

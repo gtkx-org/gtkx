@@ -2,7 +2,7 @@ import type * as GObject from "@gtkx/gi/gobject";
 import { getWrapperClass, TYPE_INVALID, typeFromName, typeIsA } from "@gtkx/runtime";
 import { ELEMENT_KIND, type Props } from "./kinds.js";
 import { type TypeInfo, typeInfoOf } from "./metadata.js";
-import type { ContentKind, ElementNode } from "./node.js";
+import { type ContentKind, createLazyNode, type ElementNode, type LazyNode } from "./node.js";
 
 type WidgetConstructor = new (props: Props) => GObject.Object;
 
@@ -31,7 +31,7 @@ const resolveContentKind = (type: bigint): ContentKind | null => {
 const constructInput = (info: TypeInfo, props: Props): Props => {
     const input: Props = {};
     for (const name in props) {
-        if (info.lazyProps.has(name) || props[name] === undefined) continue;
+        if (info.deferred.has(name) || props[name] === undefined) continue;
         if (info.constructOnly.has(name) || info.construct.has(name)) input[name] = props[name];
     }
     return input;
@@ -46,8 +46,9 @@ const instantiate = (typeName: string, input: Props): GObject.Object => {
 
 export const createObject = (typeName: string): GObject.Object => instantiate(typeName, {});
 
-export const createElementNode = (typeName: string, props: Props): ElementNode => {
+export const createElementNode = (typeName: string, props: Props): ElementNode | LazyNode => {
     const info = typeInfoOf(typeName);
+    if (info.lazy) return createLazyNode(typeName, props);
     const object = instantiate(typeName, constructInput(info, props));
     const contentKind = resolveContentKind(typeFromName(typeName));
     return {
@@ -57,9 +58,7 @@ export const createElementNode = (typeName: string, props: Props): ElementNode =
         props: {},
         handlers: new Map(),
         placements: new Map(),
-        objectSlots: new Set(),
-        lazyApplied: new Map(),
-        listApplied: new Map(),
+        contexts: new Map(),
         parent: null,
         content: contentKind === null ? null : [],
         contentKind,

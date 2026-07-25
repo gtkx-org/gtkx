@@ -210,7 +210,8 @@ describe("resolveConfig", () => {
             applicationId: "org.example.App",
             reactCompiler: { target: "19" },
             userEventSignals: DEFAULT_USER_EVENT_SIGNALS,
-            elementProps: null,
+            elementBehaviors: null,
+            lazyElements: [],
         });
     });
 
@@ -223,18 +224,22 @@ describe("resolveConfig", () => {
             applicationId: "org.gtk.Demo4",
             reactCompiler: { target: "19", compilationMode: "annotation" },
             userEventSignals: DEFAULT_USER_EVENT_SIGNALS,
-            elementProps: null,
+            elementBehaviors: null,
+            lazyElements: [],
         });
     });
 
-    it("resolves a configured rule module against the project root", () => {
-        const resolved = resolveConfig({ applicationId: "org.example.App", elementProps: "./rules.ts" }, "/project");
-        expect(resolved.elementProps).toBe("/project/rules.ts");
+    it("resolves a configured behavior module against the project root", () => {
+        const resolved = resolveConfig(
+            { applicationId: "org.example.App", elementBehaviors: "./behaviors.ts" },
+            "/project",
+        );
+        expect(resolved.elementBehaviors).toBe("/project/behaviors.ts");
     });
 
-    it("rejects an empty rule module path", () => {
-        expect(() => validateConfig({ applicationId: "org.example.App", elementProps: "" })).toThrow(
-            /`elementProps` must be a path to a module exporting element rules/,
+    it("rejects an empty behavior module path", () => {
+        expect(() => validateConfig({ applicationId: "org.example.App", elementBehaviors: "" })).toThrow(
+            /`elementBehaviors` must be a path to a module exporting element behaviors/,
         );
     });
 

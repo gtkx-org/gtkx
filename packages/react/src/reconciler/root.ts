@@ -9,14 +9,20 @@ import {
     DiscreteEventPriority,
     NoEventPriority,
 } from "react-reconciler/constants.js";
-import { applyAdoptedProps, applyElementProps, flushLazyProps } from "./apply-props.js";
+import {
+    applyAdoptedProps,
+    applyElementProps,
+    flushBehaviors,
+    mountBehaviors,
+    unmountBehaviors,
+} from "./apply-props.js";
 import { createElementNode } from "./instance.js";
-import { ELEMENT_KIND, PROP_KIND, type Props, WRAPPER_ELEMENT } from "./kinds.js";
+import { ELEMENT_KIND, LAZY_ELEMENT, PROP_KIND, type Props } from "./kinds.js";
+import { typeInfoOf } from "./metadata.js";
 import {
     type AnyNode,
     createPropNode,
     createTextNode,
-    createWrapperNode,
     type ElementNode,
     type Instance,
     type TextNode,
@@ -27,8 +33,6 @@ import { beginSuppression, disconnectAllHandlers, endSuppression, setDiscreteRun
 import { enclosingHost, flushTextHosts, markTextDirty, surgicalTextUpdate, validateContentMix } from "./text.js";
 
 type Container = RootElement | GObject.Object;
-
-const adoptedTypeName = (adopted: GObject.Object): string => typeName(getInstanceType(adopted)) ?? "";
 
 const HOST_CONTEXT: Record<string, never> = {};
 let currentPriority: number = NoEventPriority;
@@ -42,9 +46,7 @@ const adoptContainer = (container: GObject.Object): ElementNode => ({
     props: {},
     handlers: new Map(),
     placements: new Map(),
-    objectSlots: new Set(),
-    lazyApplied: new Map(),
-    listApplied: new Map(),
+    contexts: new Map(),
     parent: null,
     content: null,
     contentKind: null,
@@ -69,17 +71,18 @@ const detachFromContainer = (container: Container, child: AnyNode): void => {
 };
 
 const makeInstance = (type: string, props: Props): Instance => {
-    if (type === WRAPPER_ELEMENT) return createWrapperNode(props);
     if (type === PROP_KIND) return createPropNode(typeof props.propName === "string" ? props.propName : "");
     const node = createElementNode(type, props);
-    containerNodes.set(node.object, node);
-    applyElementProps(node, {}, props);
+    if (node.kind === ELEMENT_KIND) {
+        containerNodes.set(node.object, node);
+        applyElementProps(node, {}, props);
+    }
     return node;
 };
 
 const publicInstanceOf = (instance: Instance): object => {
     if (instance.kind === ELEMENT_KIND) return instance.object;
-    if (instance.kind === WRAPPER_ELEMENT) return instance.adopted ?? instance;
+    if (instance.kind === LAZY_ELEMENT) return instance.adopted ?? instance;
     return instance;
 };
 
@@ -121,8 +124,12 @@ const hostConfig = {
     createTextInstance: (text: string): TextNode => createTextNode(text),
     appendInitialChild: (parent: Instance, child: AnyNode): void => attachChild(parent, child, null),
     finalizeInitialChildren: (instance: Instance, _type: string, props: Props): boolean => {
-        if (instance.kind === ELEMENT_KIND) validateContentMix(instance, props);
-        return false;
+        if (instance.kind !== ELEMENT_KIND) return false;
+        validateContentMix(instance, props);
+        return typeInfoOf(instance.typeName).hasMount;
+    },
+    commitMount: (instance: Instance): void => {
+        if (instance.kind === ELEMENT_KIND) mountBehaviors(instance);
     },
     shouldSetTextContent: (): boolean => false,
     getRootHostContext: (): Record<string, never> => HOST_CONTEXT,
@@ -134,7 +141,7 @@ const hostConfig = {
     },
     resetAfterCommit: (): void => {
         flushTextHosts();
-        flushLazyProps();
+        flushBehaviors();
         endSuppression();
     },
     preparePortalMount: (): void => {},
@@ -153,9 +160,9 @@ const hostConfig = {
     },
     commitUpdate: (instance: Instance, _type: string, prevProps: Props, nextProps: Props): void => {
         if (instance.kind === ELEMENT_KIND) applyElementProps(instance, prevProps, nextProps);
-        else if (instance.kind === WRAPPER_ELEMENT && instance.adopted !== null) {
+        else if (instance.kind === LAZY_ELEMENT && instance.adopted !== null) {
             applyAdoptedProps(
-                { object: instance.adopted, handlers: instance.handlers, typeName: adoptedTypeName(instance.adopted) },
+                { object: instance.adopted, handlers: instance.handlers, typeName: instance.typeName },
                 prevProps,
                 nextProps,
             );
@@ -166,12 +173,14 @@ const hostConfig = {
     hideTextInstance: (): void => {},
     unhideTextInstance: (): void => {},
     detachDeletedInstance: (instance: Instance): void => {
-        if (instance.kind === ELEMENT_KIND) disconnectAllHandlers(instance);
-        else if (instance.kind === WRAPPER_ELEMENT && instance.adopted !== null) {
+        if (instance.kind === ELEMENT_KIND) {
+            disconnectAllHandlers(instance);
+            unmountBehaviors(instance);
+        } else if (instance.kind === LAZY_ELEMENT && instance.adopted !== null) {
             disconnectAllHandlers({
                 object: instance.adopted,
                 handlers: instance.handlers,
-                typeName: adoptedTypeName(instance.adopted),
+                typeName: instance.typeName,
             });
         }
     },

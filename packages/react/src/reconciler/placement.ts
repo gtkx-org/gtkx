@@ -1,47 +1,19 @@
-import * as Gtk from "@gtkx/gi/gtk";
 import { placeChild, unplaceChild } from "./container.js";
-import { ELEMENT_KIND, PROP_KIND, TEXT_KIND, WRAPPER_ELEMENT } from "./kinds.js";
-import { typeInfoOf } from "./metadata.js";
-import type { AnyNode, ContentChild, ElementNode, ParentNode, PlaceableNode, PropNode, WrapperNode } from "./node.js";
+import { ELEMENT_KIND, LAZY_ELEMENT, PROP_KIND, TEXT_KIND } from "./kinds.js";
+import type { AnyNode, ContentChild, ElementNode, LazyNode, ParentNode, PlaceableNode, PropNode } from "./node.js";
 import { nodeWidget } from "./node.js";
-import { acceptsText, addContent, markTextDirty, removeContent, textRestrictionError } from "./text.js";
+import { acceptsText, addContent, removeContent, textRestrictionError } from "./text.js";
 
 const asPlaceable = (node: AnyNode | null): PlaceableNode | null =>
-    node !== null && (node.kind === ELEMENT_KIND || node.kind === WRAPPER_ELEMENT) ? node : null;
-
-const isContainerProp = (parent: ElementNode, prop: string): boolean =>
-    typeInfoOf(parent.typeName).containerProps.has(prop);
-
-const setObjectSlot = (parent: ElementNode, prop: string, node: PlaceableNode | undefined): void => {
-    const widget = node === undefined ? null : nodeWidget(node);
-    Reflect.set(parent.object, prop, widget);
-    parent.objectSlots.add(prop);
-    if (node?.kind === ELEMENT_KIND && node.contentKind === "buffer" && parent.object instanceof Gtk.TextView) {
-        node.bufferView = parent.object;
-        markTextDirty(node);
-    }
-};
-
-const clearObjectSlot = (parent: ElementNode, prop: string): void => {
-    Reflect.set(parent.object, prop, null);
-    parent.objectSlots.delete(prop);
-};
+    node !== null && (node.kind === ELEMENT_KIND || node.kind === LAZY_ELEMENT) ? node : null;
 
 const attachPropToElement = (parent: ElementNode, node: PropNode, before: AnyNode | null): void => {
     node.parent = parent;
-    if (isContainerProp(parent, node.propName)) {
-        for (const child of node.children) placeChild(parent, node.propName, child, asPlaceable(before));
-    } else {
-        setObjectSlot(parent, node.propName, node.children[0]);
-    }
+    for (const child of node.children) placeChild(parent, node.propName, child, asPlaceable(before));
 };
 
 const detachPropFromElement = (parent: ElementNode, node: PropNode): void => {
-    if (isContainerProp(parent, node.propName)) {
-        for (const child of node.children) unplaceChild(parent, node.propName, child);
-    } else {
-        clearObjectSlot(parent, node.propName);
-    }
+    for (const child of node.children) unplaceChild(parent, node.propName, child);
 };
 
 const asContentChild = (node: AnyNode | null): ContentChild | null =>
@@ -64,7 +36,7 @@ const attachToElement = (parent: ElementNode, child: AnyNode, before: AnyNode | 
         return;
     }
     if (child.kind === TEXT_KIND) throw textRestrictionError(child.text);
-    if (child.kind === WRAPPER_ELEMENT) child.parent = parent;
+    if (child.kind === LAZY_ELEMENT) child.parent = parent;
     placeChild(parent, "children", child, asPlaceable(before));
 };
 
@@ -74,7 +46,7 @@ const insertPlaceable = (list: PlaceableNode[], node: PlaceableNode, before: Any
     list.splice(at < 0 ? list.length : at, 0, node);
 };
 
-const insertChild = (parent: PropNode | WrapperNode, child: AnyNode, before: AnyNode | null): PlaceableNode | null => {
+const insertChild = (parent: PropNode | LazyNode, child: AnyNode, before: AnyNode | null): PlaceableNode | null => {
     const placeable = asPlaceable(child);
     if (placeable === null) return null;
     insertPlaceable(parent.children, placeable, before);
@@ -86,32 +58,31 @@ const attachToProp = (parent: PropNode, child: AnyNode, before: AnyNode | null):
     if (placeable === null) return;
     const owner = parent.parent;
     if (owner === null) return;
-    if (isContainerProp(owner, parent.propName)) placeChild(owner, parent.propName, placeable, asPlaceable(before));
-    else setObjectSlot(owner, parent.propName, parent.children[0]);
+    placeChild(owner, parent.propName, placeable, asPlaceable(before));
 };
 
-const syncWrapper = (wrapper: WrapperNode): void => {
-    const owner = wrapper.parent;
+const syncLazy = (node: LazyNode): void => {
+    const owner = node.parent;
     if (owner === null) return;
-    const entry = owner.placements.get("children")?.find((placed) => placed.node === wrapper);
-    const widget = nodeWidget(wrapper);
+    const entry = owner.placements.get("children")?.find((placed) => placed.node === node);
+    const widget = nodeWidget(node);
     if (entry === undefined) {
-        if (widget !== null) placeChild(owner, "children", wrapper, null);
+        if (widget !== null) placeChild(owner, "children", node, null);
     } else if (entry.widget !== widget) {
-        unplaceChild(owner, "children", wrapper);
-        if (widget !== null) placeChild(owner, "children", wrapper, null);
+        unplaceChild(owner, "children", node);
+        if (widget !== null) placeChild(owner, "children", node, null);
     }
 };
 
-const attachToWrapper = (parent: WrapperNode, child: AnyNode, before: AnyNode | null): void => {
+const attachToLazy = (parent: LazyNode, child: AnyNode, before: AnyNode | null): void => {
     if (insertChild(parent, child, before) === null) return;
-    syncWrapper(parent);
+    syncLazy(parent);
 };
 
 export const attachChild = (parent: ParentNode, child: AnyNode, before: AnyNode | null): void => {
     if (parent.kind === ELEMENT_KIND) attachToElement(parent, child, before);
     else if (parent.kind === PROP_KIND) attachToProp(parent, child, before);
-    else attachToWrapper(parent, child, before);
+    else attachToLazy(parent, child, before);
 };
 
 const detachFromProp = (parent: PropNode, child: AnyNode): void => {
@@ -120,8 +91,7 @@ const detachFromProp = (parent: PropNode, child: AnyNode): void => {
     parent.children = parent.children.filter((entry) => entry !== placeable);
     const owner = parent.parent;
     if (owner === null) return;
-    if (isContainerProp(owner, parent.propName)) unplaceChild(owner, parent.propName, placeable);
-    else setObjectSlot(owner, parent.propName, parent.children[0]);
+    unplaceChild(owner, parent.propName, placeable);
 };
 
 export const detachChild = (parent: ParentNode, child: AnyNode): void => {
@@ -129,16 +99,16 @@ export const detachChild = (parent: ParentNode, child: AnyNode): void => {
         detachFromProp(parent, child);
         return;
     }
-    if (parent.kind === WRAPPER_ELEMENT) {
+    if (parent.kind === LAZY_ELEMENT) {
         parent.children = parent.children.filter((entry) => entry !== child);
-        syncWrapper(parent);
+        syncLazy(parent);
         return;
     }
     if (child.kind === PROP_KIND) {
         detachPropFromElement(parent, child);
     } else if (parent.content !== null) {
         if (child.kind === TEXT_KIND || child.kind === ELEMENT_KIND) removeContent(parent, child);
-    } else if (child.kind === ELEMENT_KIND || child.kind === WRAPPER_ELEMENT) {
+    } else if (child.kind === ELEMENT_KIND || child.kind === LAZY_ELEMENT) {
         unplaceChild(parent, "children", child);
     }
 };

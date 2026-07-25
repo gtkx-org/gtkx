@@ -2,9 +2,10 @@ import * as Gio from "@gtkx/gi/gio";
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import type { SignalHandler } from "@gtkx/runtime";
-import { isDeepEqual, kebabCase, structuredClone } from "@gtkx/utils";
+import { kebabCase } from "@gtkx/utils";
 import { applyAccessibleProps, isAccessibleProp } from "../utils/accessible-props.js";
-import { type ListRule, setMenuFactory, type ValueRule } from "./element-rules.js";
+import { contextFor } from "./behavior-context.js";
+import { setMenuFactory } from "./behaviors.js";
 import { createObject } from "./instance.js";
 import type { Props } from "./kinds.js";
 import { type TypeInfo, typeInfoOf } from "./metadata.js";
@@ -27,35 +28,13 @@ const signalForProp = (info: TypeInfo, name: string): string => {
     return info.signals[name] ?? kebabCase(name.slice(2));
 };
 
-const skipValueName = (name: string, info: TypeInfo): boolean =>
-    CONSUMED.has(name) ||
-    isHandlerName(name) ||
-    isAccessibleProp(name) ||
-    info.containerProps.has(name) ||
-    info.constructOnly.has(name) ||
-    info.lazyProps.has(name);
+const isReservedName = (name: string, info: TypeInfo): boolean =>
+    CONSUMED.has(name) || isHandlerName(name) || isAccessibleProp(name) || info.constructOnly.has(name);
 
-const applyValueRule = (object: GObject.Object, rule: ValueRule, value: never): void => {
-    rule.apply(object, value);
-};
+const skipValueName = (name: string, info: TypeInfo, consumed: Set<string>): boolean =>
+    isReservedName(name, info) || consumed.has(name);
 
 type PropEntry = { name: string; value: unknown; oldValue: unknown };
-
-const clearListItems = (node: ElementNode, rule: ListRule, previous: unknown[]): void => {
-    const { behavior } = rule;
-    if (behavior.clear !== undefined) behavior.clear(node.object);
-    else if (behavior.remove !== undefined) for (const item of previous) behavior.remove(node.object, item);
-};
-
-const applyListRule = (node: ElementNode, rule: ListRule, entry: PropEntry): void => {
-    const { name, value } = entry;
-    const items = Array.isArray(value) ? value : [];
-    const applied = node.listApplied.get(name);
-    if (applied !== undefined && isDeepEqual(applied.snapshot, items)) return;
-    clearListItems(node, rule, applied?.items ?? []);
-    for (const item of items) rule.behavior.add?.(node.object, item);
-    node.listApplied.set(name, { items, snapshot: structuredClone(items) });
-};
 
 const resetPlain = (object: GObject.Object, info: TypeInfo, name: string): void => {
     if (Object.hasOwn(info.defaults, name)) Reflect.set(object, name, info.defaults[name]);
@@ -73,15 +52,7 @@ const isBufferText = (node: ElementNode, name: string): boolean =>
 
 const applyEntry = (node: ElementNode, info: TypeInfo, entry: PropEntry): void => {
     const { name, value, oldValue } = entry;
-    const valueRule = info.valueProps.get(name);
-    const listRule = info.listProps.get(name);
-    if (valueRule !== undefined) {
-        if (value !== undefined) applyValueRule(node.object, valueRule, value as never);
-    } else if (listRule !== undefined) {
-        applyListRule(node, listRule, entry);
-    } else if (info.controlledText.has(name)) {
-        if (value !== undefined) Reflect.set(node.object, name, value);
-    } else if (value === undefined) {
+    if (value === undefined) {
         resetPlain(node.object, info, name);
     } else if (isBufferText(node, name) && node.object instanceof Gtk.TextBuffer) {
         applyBufferText(node.object, String(value));
@@ -94,10 +65,22 @@ const eachChangedName = (oldProps: Props, newProps: Props, visit: (name: string)
     for (const name of new Set([...Object.keys(oldProps), ...Object.keys(newProps)])) visit(name);
 };
 
-const applyValueEntries = (node: ElementNode, info: TypeInfo, oldProps: Props, newProps: Props): void => {
-    eachChangedName(oldProps, newProps, (name) => {
-        if (skipValueName(name, info) || Object.is(oldProps[name], newProps[name])) return;
-        applyEntry(node, info, { name, value: newProps[name], oldValue: oldProps[name] });
+const runBehaviorUpdates = (node: ElementNode, info: TypeInfo, oldProps: Props, newProps: Props): Set<string> => {
+    const consumed = new Set<string>();
+    for (const behavior of info.behaviors) {
+        if (behavior.update === undefined) continue;
+        const result = behavior.update(node.object, oldProps, newProps, contextFor(node, behavior));
+        if (result !== undefined) for (const name of result) consumed.add(name);
+    }
+    return consumed;
+};
+
+type PropChange = { old: Props; next: Props };
+
+const applyValueEntries = (node: ElementNode, info: TypeInfo, change: PropChange, consumed: Set<string>): void => {
+    eachChangedName(change.old, change.next, (name) => {
+        if (skipValueName(name, info, consumed) || Object.is(change.old[name], change.next[name])) return;
+        applyEntry(node, info, { name, value: change.next[name], oldValue: change.old[name] });
     });
 };
 
@@ -111,34 +94,30 @@ const applyHandlers = (target: SignalTarget, info: TypeInfo, oldProps: Props, ne
     });
 };
 
-const lazyDirty = new Set<ElementNode>();
+const flushDirty = new Set<ElementNode>();
 
-export const markLazyDirty = (node: ElementNode): void => {
-    if (typeInfoOf(node.typeName).lazyProps.size > 0) lazyDirty.add(node);
+export const markFlush = (node: ElementNode): void => {
+    if (typeInfoOf(node.typeName).hasFlush) flushDirty.add(node);
 };
 
-const applyLazyForNode = (node: ElementNode): void => {
-    const info = typeInfoOf(node.typeName);
-    for (const [name, rule] of info.lazyProps) {
-        const desired = node.props[name];
-        if (desired === undefined || Object.is(node.lazyApplied.get(name), desired)) continue;
-        if (rule.canApply !== undefined && !rule.canApply(node.object, desired as never)) continue;
-        Reflect.set(node.object, name, desired);
-        node.lazyApplied.set(name, desired);
-    }
-};
-
-export const flushLazyProps = (): void => {
-    for (const node of lazyDirty) applyLazyForNode(node);
-    lazyDirty.clear();
-};
-
-const trackLazy = (node: ElementNode, info: TypeInfo, oldProps: Props, newProps: Props): void => {
-    for (const name of info.lazyProps.keys()) {
-        if (!Object.is(oldProps[name], newProps[name])) {
-            markLazyDirty(node);
-            return;
+export const flushBehaviors = (): void => {
+    for (const node of flushDirty) {
+        for (const behavior of typeInfoOf(node.typeName).behaviors) {
+            behavior.flush?.(node.object, contextFor(node, behavior));
         }
+    }
+    flushDirty.clear();
+};
+
+export const mountBehaviors = (node: ElementNode): void => {
+    const info = typeInfoOf(node.typeName);
+    if (!info.hasMount) return;
+    for (const behavior of info.behaviors) behavior.mount?.(node.object, contextFor(node, behavior));
+};
+
+export const unmountBehaviors = (node: ElementNode): void => {
+    for (const behavior of typeInfoOf(node.typeName).behaviors) {
+        behavior.unmount?.(node.object, contextFor(node, behavior));
     }
 };
 
@@ -148,15 +127,15 @@ const applyAccessible = (object: GObject.Object, oldProps: Props, newProps: Prop
 
 export const applyElementProps = (node: ElementNode, oldProps: Props, newProps: Props): void => {
     const info = typeInfoOf(node.typeName);
-    applyValueEntries(node, info, oldProps, newProps);
+    const consumed = runBehaviorUpdates(node, info, oldProps, newProps);
+    applyValueEntries(node, info, { old: oldProps, next: newProps }, consumed);
     applyAccessible(node.object, oldProps, newProps);
     applyHandlers(node, info, oldProps, newProps);
-    trackLazy(node, info, oldProps, newProps);
+    markFlush(node);
     node.props = newProps;
 };
 
-const skipAdoptedName = (info: TypeInfo, name: string): boolean =>
-    CONSUMED.has(name) || isHandlerName(name) || isAccessibleProp(name) || info.constructOnly.has(name);
+const skipAdoptedName = (info: TypeInfo, name: string): boolean => isReservedName(name, info);
 
 export const applyAdoptedProps = (target: SignalTarget, oldProps: Props, newProps: Props): void => {
     const { object, typeName } = target;

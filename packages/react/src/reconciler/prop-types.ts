@@ -1,5 +1,4 @@
 import type * as Gdk from "@gtkx/gi/gdk";
-import type * as Gio from "@gtkx/gi/gio";
 import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { ReactNode } from "react";
@@ -36,80 +35,78 @@ export type ActionAccel = { detailedActionName: string; accels: string[] };
 export type DragSourceIcon = { paintable?: Gdk.Paintable | null; hotX?: number; hotY?: number };
 
 /** Props of an element that accepts children. */
-export interface ChildrenElementProps {
+export interface ChildrenProps {
     children?: ReactNode;
 }
 
-export interface GtkWidgetElementProps extends ChildrenElementProps {
+export interface GtkWidgetProps extends ChildrenProps {
     controllers?: ReactNode | null | undefined;
     actionGroups?: ReactNode | null | undefined;
 }
 
-export interface GActionGroupElementProps {
+export interface GActionGroupProps {
     prefix?: string | null | undefined;
 }
 
-export interface GActionMapElementProps {
+export interface GActionMapProps {
     actions?: ReactNode | null | undefined;
 }
 
-export interface GMenuElementProps {
+export interface GMenuProps {
     items?: MenuItem[] | null | undefined;
 }
 
-export interface GtkShortcutControllerElementProps {
+export interface GtkShortcutControllerProps {
     shortcuts?: ReactNode | null | undefined;
 }
 
-export interface GtkOverlayElementProps extends ChildrenElementProps {
+export interface GtkOverlayProps extends ChildrenProps {
     overlays?: ReactNode | null | undefined;
 }
 
-export interface GtkConstraintLayoutElementProps {
+export interface GtkConstraintLayoutProps {
     constraints?: ReactNode | null | undefined;
     guides?: ReactNode | null | undefined;
     vfl?: VflConstraints[] | null | undefined;
 }
 
-export interface GtkHeaderBarElementProps {
+export interface GtkHeaderBarProps {
     start?: ReactNode | null | undefined;
     end?: ReactNode | null | undefined;
 }
 
-export interface GtkScaleElementProps {
+export interface GtkScaleProps {
     marks?: ScaleMark[] | null | undefined;
 }
 
-export interface GtkCalendarElementProps {
+export interface GtkCalendarProps {
     markedDays?: number[] | null | undefined;
 }
 
-export interface GtkLevelBarElementProps {
+export interface GtkLevelBarProps {
     offsets?: LevelBarOffset[] | null | undefined;
 }
 
-export interface GtkSizeGroupElementProps {
+export interface GtkSizeGroupProps {
     widgets?: Gtk.Widget[] | null | undefined;
 }
 
-export interface GtkAboutDialogElementProps {
+export interface GtkAboutDialogProps {
     creditSections?: CreditSection[] | null | undefined;
 }
 
-export interface GtkApplicationElementProps extends ChildrenElementProps {
+export interface GtkApplicationProps extends ChildrenProps {
     actionAccels?: ActionAccel[] | null | undefined;
 }
 
-export interface GtkDropTargetElementProps {
+export interface GtkDropTargetProps {
     types?: GObject.Type[] | null | undefined;
 }
 
-export interface GtkDrawingAreaElementProps {
+export interface GtkDrawingAreaProps {
     drawFunc?: Gtk.DrawingAreaDrawFunc | null | undefined;
 }
 
-export interface GtkDragSourceElementProps {
+export interface GtkDragSourceProps {
     icon?: DragSourceIcon | null | undefined;
 }
-
-export type { Gio };

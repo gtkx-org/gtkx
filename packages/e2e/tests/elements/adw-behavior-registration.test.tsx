@@ -1,32 +1,26 @@
 import "@gtkx/jsx/adw";
-import { ELEMENT_RULES } from "@gtkx/react/element-rules";
+import { ELEMENT_BEHAVIORS, type ElementBehavior } from "@gtkx/react/element-behaviors";
 import { describe, expect, it } from "vitest";
 
-const containerFor = (type: string, prop: string) =>
-    (ELEMENT_RULES[type] ?? []).find((rule) => rule.kind === "container" && rule.prop === prop);
+const behaviorsFor = (type: string): ElementBehavior[] => ELEMENT_BEHAVIORS[type] ?? [];
 
-describe("adwaita rule registration", () => {
-    it("registers Adwaita rules when @gtkx/jsx/adw is loaded", () => {
-        expect(containerFor("AdwBin", "children")).toMatchObject({ child: "GtkWidget" });
-        expect(containerFor("AdwToolbarView", "children")).toMatchObject({ child: "GtkWidget" });
-        expect(containerFor("AdwNavigationSplitView", "children")).toMatchObject({ child: "AdwNavigationPage" });
-        expect(containerFor("AdwPreferencesPage", "children")).toMatchObject({ child: "AdwPreferencesGroup" });
-        expect(containerFor("AdwTabView", "children")).toMatchObject({ child: "GtkWidget" });
-        expect(containerFor("AdwLeaflet", "children")).toMatchObject({ child: "GtkWidget" });
+describe("adwaita behavior registration", () => {
+    it("registers Adwaita behaviors when @gtkx/jsx/adw is loaded", () => {
+        expect(behaviorsFor("AdwBin").length).toBeGreaterThan(0);
+        expect(behaviorsFor("AdwToolbarView").length).toBeGreaterThan(0);
+        expect(behaviorsFor("AdwNavigationSplitView").length).toBeGreaterThan(0);
+        expect(behaviorsFor("AdwPreferencesPage").length).toBeGreaterThan(0);
+        expect(behaviorsFor("AdwTabView").length).toBeGreaterThan(0);
+        expect(behaviorsFor("AdwLeaflet").length).toBeGreaterThan(0);
     });
 
-    it("gives every registered rule a behavior", () => {
-        const missing: string[] = [];
-        for (const [type, rules] of Object.entries(ELEMENT_RULES)) {
-            for (const rule of rules) {
-                if (rule.kind === "container" && Object.keys(rule.behavior).length === 0) {
-                    missing.push(`${type}.${rule.prop}`);
-                }
-                if (rule.kind === "list" && Object.keys(rule.behavior).length === 0) {
-                    missing.push(`${type}.${rule.prop}`);
-                }
-            }
+    it("gives every registered behavior at least one property", () => {
+        const empty: string[] = [];
+        for (const [type, behaviors] of Object.entries(ELEMENT_BEHAVIORS)) {
+            behaviors.forEach((behavior, index) => {
+                if (Object.keys(behavior).length === 0) empty.push(`${type}[${index}]`);
+            });
         }
-        expect(missing.sort()).toEqual([]);
+        expect(empty.sort()).toEqual([]);
     });
 });

@@ -247,18 +247,12 @@ importers:
       '@gtkx/config':
         specifier: workspace:*
         version: link:../config
-      '@gtkx/react':
-        specifier: workspace:*
-        version: link:../react
       '@gtkx/utils':
         specifier: workspace:*
         version: link:../utils
       '@types/node':
         specifier: 'catalog:'
         version: 26.1.1
-      '@types/react':
-        specifier: 'catalog:'
-        version: 19.2.17
       fast-xml-parser:
         specifier: ^5.10.1
         version: 5.10.1
@@ -462,6 +456,9 @@ importers:
         specifier: ^0.33.0
         version: 0.33.0(react@19.2.7)
     devDependencies:
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.2.17
       '@types/react-reconciler':
         specifier: ^0.33.0
         version: 0.33.0(@types/react@19.2.17)

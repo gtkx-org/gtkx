@@ -76,6 +76,20 @@ describe("render - ToggleGroup (1)", () => {
             expect(ref.current?.getToggleByName("enabled")?.getEnabled()).toBe(true);
             expect(ref.current?.getToggleByName("disabled")?.getEnabled()).toBe(false);
         });
+
+        it("selects the toggle named by activeName once its toggle exists", async () => {
+            const ref = createRef<Adw.ToggleGroup>();
+
+            await render(
+                <AdwToggleGroup ref={ref} activeName="done">
+                    <AdwToggle name="all" label="All" />
+                    <AdwToggle name="open" label="Open" />
+                    <AdwToggle name="done" label="Done" />
+                </AdwToggleGroup>,
+            );
+
+            expect(ref.current?.getActiveName()).toBe("done");
+        });
     });
 });
 

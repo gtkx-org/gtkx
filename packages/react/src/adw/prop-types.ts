@@ -1,6 +1,6 @@
 import type * as Adw from "@gtkx/gi/adw";
 import type { ReactNode } from "react";
-import type { ChildrenElementProps } from "../reconciler/element-props.js";
+import type { ChildrenProps } from "../reconciler/prop-types.js";
 
 /** One response button on an `Adw.AlertDialog`. */
 export type AlertDialogResponse = {
@@ -10,25 +10,25 @@ export type AlertDialogResponse = {
     enabled?: boolean;
 };
 
-export interface AdwAlertDialogElementProps extends ChildrenElementProps {
+export interface AdwAlertDialogProps extends ChildrenProps {
     responses?: AlertDialogResponse[] | null | undefined;
 }
 
-export interface AdwPreferencesRowElementProps {
+export interface AdwPreferencesRowProps {
     prefix?: ReactNode | null | undefined;
     suffix?: ReactNode | null | undefined;
 }
 
-export interface AdwExpanderRowElementProps extends AdwPreferencesRowElementProps {
+export interface AdwExpanderRowProps extends AdwPreferencesRowProps {
     rows?: ReactNode | null | undefined;
     actions?: ReactNode | null | undefined;
 }
 
-export interface AdwToolbarViewElementProps extends ChildrenElementProps {
+export interface AdwToolbarViewProps extends ChildrenProps {
     topBar?: ReactNode | null | undefined;
     bottomBar?: ReactNode | null | undefined;
 }
 
-export interface AdwBreakpointsElementProps extends ChildrenElementProps {
+export interface AdwBreakpointsProps extends ChildrenProps {
     breakpoints?: ReactNode | null | undefined;
 }

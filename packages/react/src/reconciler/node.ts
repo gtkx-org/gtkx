@@ -1,8 +1,8 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { SignalHandler } from "@gtkx/runtime";
-import type { ContainerRule } from "./element-rules.js";
-import { type ELEMENT_KIND, PROP_KIND, type Props, TEXT_KIND, WRAPPER_ELEMENT } from "./kinds.js";
+import type { ElementBehavior } from "./behaviors.js";
+import { type ELEMENT_KIND, LAZY_ELEMENT, PROP_KIND, type Props, TEXT_KIND } from "./kinds.js";
 
 export type ContentKind = "label" | "buffer" | "tag" | "anchor";
 
@@ -10,13 +10,12 @@ export type HandlerRecord = { signal: string; handler: SignalHandler; wrapped: S
 
 export type SignalTarget = { object: GObject.Object; handlers: Map<string, HandlerRecord>; typeName: string };
 
-export type AppliedList = { items: unknown[]; snapshot: unknown[] };
-
 export type PlacedChild = {
     node: PlaceableNode;
     widget: GObject.Object;
     adopted: GObject.Object | null;
-    rule: ContainerRule;
+    slot: string;
+    behavior: ElementBehavior | null;
     attached: boolean;
 };
 
@@ -27,9 +26,7 @@ export type ElementNode = {
     props: Props;
     handlers: Map<string, HandlerRecord>;
     placements: Map<string, PlacedChild[]>;
-    objectSlots: Set<string>;
-    lazyApplied: Map<string, unknown>;
-    listApplied: Map<string, AppliedList>;
+    contexts: Map<ElementBehavior, unknown>;
     parent: ParentNode | null;
     content: ContentChild[] | null;
     contentKind: ContentKind | null;
@@ -43,8 +40,9 @@ export type PropNode = {
     parent: ElementNode | null;
 };
 
-export type WrapperNode = {
-    kind: typeof WRAPPER_ELEMENT;
+export type LazyNode = {
+    kind: typeof LAZY_ELEMENT;
+    typeName: string;
     props: Props;
     children: PlaceableNode[];
     parent: ElementNode | null;
@@ -58,10 +56,10 @@ export type TextNode = {
     parent: ParentNode | null;
 };
 
-export type PlaceableNode = ElementNode | WrapperNode;
-export type ParentNode = ElementNode | PropNode | WrapperNode;
+export type PlaceableNode = ElementNode | LazyNode;
+export type ParentNode = ElementNode | PropNode | LazyNode;
 export type ContentChild = TextNode | ElementNode;
-export type Instance = ElementNode | PropNode | WrapperNode;
+export type Instance = ElementNode | PropNode | LazyNode;
 export type AnyNode = Instance | TextNode;
 
 export const createPropNode = (propName: string): PropNode => ({
@@ -71,8 +69,9 @@ export const createPropNode = (propName: string): PropNode => ({
     parent: null,
 });
 
-export const createWrapperNode = (props: Props): WrapperNode => ({
-    kind: WRAPPER_ELEMENT,
+export const createLazyNode = (typeName: string, props: Props): LazyNode => ({
+    kind: LAZY_ELEMENT,
+    typeName,
     props,
     children: [],
     parent: null,
@@ -83,7 +82,7 @@ export const createWrapperNode = (props: Props): WrapperNode => ({
 export const createTextNode = (text: string): TextNode => ({ kind: TEXT_KIND, text, parent: null });
 
 export const nodeWidget = (node: PlaceableNode): GObject.Object | null => {
-    if (node.kind === WRAPPER_ELEMENT) {
+    if (node.kind === LAZY_ELEMENT) {
         const child = node.children[0];
         return child === undefined ? null : nodeWidget(child);
     }

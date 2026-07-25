@@ -152,16 +152,19 @@ const configSchema = z.object({
     reactCompiler: reactCompilerSchema.optional(),
     codegen: z.boolean({ error: "must be a boolean" }).optional(),
     userEventSignals: userEventSignalsSchema.optional(),
-    elementProps: z
-        .string({ error: "must be a path to a module exporting element rules" })
-        .min(1, { error: "must be a path to a module exporting element rules" })
+    elementBehaviors: z
+        .string({ error: "must be a path to a module exporting element behaviors" })
+        .min(1, { error: "must be a path to a module exporting element behaviors" })
+        .optional(),
+    lazyElements: z
+        .array(z.string({ error: "must be a GLib type name" }), { error: "must be an array of GLib type names" })
         .optional(),
 });
 
 /**
  * User-facing configuration for a GTKX project, as authored in `gtkx.config.ts`:
  * the GIR libraries to bind, extra `.gir` search paths, the GApplication id,
- * a module of custom element rules, the React Compiler and codegen settings,
+ * a module of custom element behaviors, the React Compiler and codegen settings,
  * and additional user event signals to suppress during React commits.
  */
 export type Config = z.infer<typeof configSchema>;
@@ -187,24 +190,27 @@ export const mergeConfig = (base: Config, override: Config): Config => defu(over
 /**
  * Configuration reduced to the values needed at runtime: the GApplication
  * identifier, the resolved React Compiler options (`null` when disabled), the
- * user event signals suppressed while a React commit is in progress, and the
- * module path holding custom element rules (`null` when unset).
+ * user event signals suppressed while a React commit is in progress, the module
+ * path holding custom element behaviors (`null` when unset), and the GLib type
+ * names of additional lazy elements.
  */
 export type ResolvedConfig = {
     applicationId: string;
     reactCompiler: ResolvedReactCompilerOptions | null;
     userEventSignals: Record<string, string[]>;
-    elementProps: string | null;
+    elementBehaviors: string | null;
+    lazyElements: string[];
 };
 
-const resolveElementProps = (elementProps: string | undefined, root: string | undefined): string | null => {
-    if (elementProps === undefined) return null;
-    return root === undefined ? elementProps : resolve(root, elementProps);
+const resolveElementBehaviors = (elementBehaviors: string | undefined, root: string | undefined): string | null => {
+    if (elementBehaviors === undefined) return null;
+    return root === undefined ? elementBehaviors : resolve(root, elementBehaviors);
 };
 
 export const resolveConfig = (config: Config, root?: string): ResolvedConfig => ({
     applicationId: config.applicationId,
     reactCompiler: resolveReactCompilerOptions(config.reactCompiler),
     userEventSignals: resolveUserEventSignals(config.userEventSignals),
-    elementProps: resolveElementProps(config.elementProps, root),
+    elementBehaviors: resolveElementBehaviors(config.elementBehaviors, root),
+    lazyElements: config.lazyElements ?? [],
 });

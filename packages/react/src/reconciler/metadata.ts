@@ -3,37 +3,31 @@ import {
     CONSTRUCT_ONLY_PROPS,
     CONSTRUCT_PROPS,
     DEFAULT_PROPS,
-    elementProps,
+    elementBehaviors,
+    lazyElements,
     SIGNALS,
     userEventSignals,
 } from "virtual:gtkx-config";
 import { getSignalBaseName, TYPE_INVALID, typeFromName, typeInterfaces, typeName, typeParent } from "@gtkx/runtime";
-import {
-    type ContainerRule,
-    ELEMENT_RULES,
-    type ElementRule,
-    type LazyRule,
-    type ListRule,
-    registerElementProps,
-    type ValueRule,
-} from "./element-rules.js";
+import { deferredProps, ELEMENT_BEHAVIORS, type ElementBehavior, registerElementBehaviors } from "./behaviors.js";
+import { LAZY_ELEMENTS, registerLazyElements } from "./lazy-elements.js";
 
 export type TypeInfo = {
     typeName: string;
     signals: Record<string, string>;
     userEventSignals: Set<string>;
-    containerRules: ContainerRule[];
-    containerProps: Set<string>;
-    valueProps: Map<string, ValueRule>;
-    listProps: Map<string, ListRule>;
-    lazyProps: Map<string, LazyRule>;
-    controlledText: Set<string>;
+    behaviors: ElementBehavior[];
+    deferred: Set<string>;
+    lazy: boolean;
+    hasFlush: boolean;
+    hasMount: boolean;
     constructOnly: Set<string>;
     construct: Set<string>;
     defaults: Record<string, unknown>;
 };
 
-registerElementProps(elementProps);
+registerElementBehaviors(elementBehaviors, true);
+registerLazyElements(lazyElements);
 
 const ancestryCache = new Map<string, string[]>();
 const typeInfoCache = new Map<string, TypeInfo>();
@@ -60,20 +54,19 @@ const ancestryOf = (name: string): string[] => {
     return names;
 };
 
-const classifyProps = (rules: ElementRule[], info: TypeInfo): void => {
-    for (const rule of rules) {
-        if (rule.kind === "container") {
-            info.containerRules.push(rule);
-            info.containerProps.add(rule.prop);
-        } else if (rule.kind === "value") {
-            info.valueProps.set(rule.prop, rule);
-        } else if (rule.kind === "list") {
-            info.listProps.set(rule.prop, rule);
-        } else if (rule.kind === "lazy") {
-            info.lazyProps.set(rule.prop, rule);
-        } else {
-            info.controlledText.add(rule.prop);
-        }
+const accumulateAncestor = (info: TypeInfo, ancestor: string): void => {
+    Object.assign(info.signals, SIGNALS[ancestor] ?? {});
+    for (const signal of userEventSignals[ancestor] ?? []) info.userEventSignals.add(signal);
+    for (const prop of CONSTRUCT_ONLY_PROPS[ancestor] ?? []) info.constructOnly.add(prop);
+    for (const prop of CONSTRUCT_PROPS[ancestor] ?? []) info.construct.add(prop);
+    info.behaviors.push(...(ELEMENT_BEHAVIORS[ancestor] ?? []));
+};
+
+const resolveBehaviorFlags = (info: TypeInfo): void => {
+    for (const behavior of info.behaviors) {
+        if (behavior.flush !== undefined) info.hasFlush = true;
+        if (behavior.mount !== undefined) info.hasMount = true;
+        for (const prop of deferredProps(behavior)) info.deferred.add(prop);
     }
 };
 
@@ -83,23 +76,18 @@ const buildTypeInfo = (name: string): TypeInfo => {
         typeName: name,
         signals: {},
         userEventSignals: new Set(),
-        containerRules: [],
-        containerProps: new Set(),
-        valueProps: new Map(),
-        listProps: new Map(),
-        lazyProps: new Map(),
-        controlledText: new Set(),
+        behaviors: [],
+        deferred: new Set(),
+        lazy: false,
+        hasFlush: false,
+        hasMount: false,
         constructOnly: new Set(),
         construct: new Set(),
         defaults: {},
     };
-    for (const ancestor of chain) {
-        Object.assign(info.signals, SIGNALS[ancestor] ?? {});
-        for (const signal of userEventSignals[ancestor] ?? []) info.userEventSignals.add(signal);
-        for (const prop of CONSTRUCT_ONLY_PROPS[ancestor] ?? []) info.constructOnly.add(prop);
-        for (const prop of CONSTRUCT_PROPS[ancestor] ?? []) info.construct.add(prop);
-        classifyProps(ELEMENT_RULES[ancestor] ?? [], info);
-    }
+    for (const ancestor of chain) accumulateAncestor(info, ancestor);
+    resolveBehaviorFlags(info);
+    info.lazy = chain.some((ancestor) => LAZY_ELEMENTS.has(ancestor));
     for (const ancestor of [...chain].reverse()) Object.assign(info.defaults, DEFAULT_PROPS[ancestor] ?? {});
     return info;
 };
