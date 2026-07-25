@@ -23,7 +23,7 @@ type ResolvedSettingAccessor<K extends SettingsSchemaKeys, P extends keyof K> = 
     set: (value: SettingValue<K, P>) => void;
 };
 
-const NAMED_ACCESSORS: Record<string, SettingAccessor<number> | undefined> = {
+const ACCESSORS: Record<string, SettingAccessor<number> | undefined> = {
     enum: {
         get: (settings: Gio.Settings, key: string) => settings.getEnum(key),
         set: (settings: Gio.Settings, key: string, value: number) => {
@@ -38,8 +38,8 @@ const NAMED_ACCESSORS: Record<string, SettingAccessor<number> | undefined> = {
     },
 };
 
-const variantAccessor = (typeString: string): SettingAccessor => {
-    const node = parseVariantType(typeString);
+const defaultAccessor = (kind: string): SettingAccessor => {
+    const node = parseVariantType(kind);
     return {
         get: (settings: Gio.Settings, key: string) => unpackVariant(node, settings.getValue(key)),
         set: (settings: Gio.Settings, key: string, value: unknown) => {
@@ -54,8 +54,8 @@ export const resolveSettingAccessor = <K extends SettingsSchemaKeys, P extends k
     key: P & string,
 ): ResolvedSettingAccessor<K, P> => {
     const kind = schema.keys[key];
-    if (kind === undefined) throw new Error(`Schema "${schema.id}" does not declare key "${key}"`);
-    const accessor = (NAMED_ACCESSORS[kind] ?? variantAccessor(kind)) as SettingAccessor<SettingValue<K, P>>;
+    if (kind === undefined) throw new Error(`Key "${key}" is not defined in schema "${schema.id}"`);
+    const accessor = (ACCESSORS[kind] ?? defaultAccessor(kind)) as SettingAccessor<SettingValue<K, P>>;
 
     return {
         get: accessor.get.bind(null, settings, key),

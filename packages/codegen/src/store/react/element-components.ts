@@ -14,11 +14,6 @@ const BUILT_IN_ELEMENT_COMPONENTS: ElementComponent[] = [
     { types: ["AdwDialog"], module: "@gtkx/react/adw", export: "createDialogComponent" },
 ];
 
-/** Namespaces whose element behaviors are registered by a hand-written `@gtkx/react/<ns>` extension. */
-export const NAMESPACE_BEHAVIOR_REGISTRARS: Record<string, { module: string; export: string }> = {
-    Adw: { module: "@gtkx/react/adw", export: "registerAdwBehaviors" },
-};
-
 type ExportCollector = {
     imports: ImportsBuilder;
     exportedNames: Set<string>;

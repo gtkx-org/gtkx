@@ -64,6 +64,7 @@ const codegenOptions = ({ store, libraries, girPath }: CodegenOptionsInput) => (
                   version: store.react.version,
               }
             : undefined,
+    reactSubexports: store.react?.subexports ?? [],
 });
 
 export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenResult> => {

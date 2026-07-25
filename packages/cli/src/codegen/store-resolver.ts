@@ -15,6 +15,7 @@ export type CodegenStore = {
 
 type CodegenReactPackage = {
     version: string;
+    subexports: string[];
 };
 
 type ResolvedPackage = { dir: string; version: string };
@@ -22,6 +23,15 @@ type ResolvedPackage = { dir: string; version: string };
 const readVersion = (packageJsonPath: string): string => {
     const parsed = JSON.parse(readFileSync(packageJsonPath, "utf8")) as { version?: string };
     return parsed.version ?? "0.0.0";
+};
+
+const readSubexports = (packageDir: string): string[] => {
+    const parsed = JSON.parse(readFileSync(join(packageDir, "package.json"), "utf8")) as {
+        exports?: Record<string, unknown>;
+    };
+    return Object.keys(parsed.exports ?? {})
+        .filter((key) => key.startsWith("./") && key !== "./package.json")
+        .map((key) => key.slice(2));
 };
 
 const resolvePackage = (require: NodeJS.Require, dir: string, packageName: string): ResolvedPackage | null => {
@@ -58,7 +68,10 @@ export const resolveCodegenStore = (dir: string): CodegenStore => {
         jsxStoreDir: join(nodeModules, ".gtkx", "jsx"),
         jsxLinkDir: join(nodeModules, "@gtkx", "jsx"),
         runtimeVersion: runtime.version,
-        react: react !== null && reactRuntime !== null ? { version: react.version } : null,
+        react:
+            react !== null && reactRuntime !== null
+                ? { version: react.version, subexports: readSubexports(react.dir) }
+                : null,
     };
 };
 

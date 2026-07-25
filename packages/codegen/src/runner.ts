@@ -22,6 +22,7 @@ export type CodegenRunnerOptions = {
     girPath?: string[];
     gi?: GiStoreOptions;
     jsx?: JsxStoreOptions | undefined;
+    reactSubexports?: string[];
     gl?: GlCodegenOptions;
     force?: boolean;
 };
@@ -86,7 +87,7 @@ const emitGiStoreIfStale = (options: CodegenRunnerOptions): GiEmitResult | undef
     emitGiStore(gi, libraries, library);
     return {
         namespaces: library.namespaces.size,
-        intrinsicElements: emitJsxStore(options.jsx, library),
+        intrinsicElements: emitJsxStore(options.jsx, library, options.reactSubexports ?? []),
     };
 };
 
@@ -106,9 +107,9 @@ const emitGiStore = (gi: GiStoreOptions, libraries: string[], library: Library):
     });
 };
 
-const emitJsxStore = (jsx: JsxStoreOptions | undefined, library: Library): number => {
+const emitJsxStore = (jsx: JsxStoreOptions | undefined, library: Library, reactSubexports: string[]): number => {
     if (jsx === undefined) return 0;
-    const reactPipeline = generateJsxFiles(library);
+    const reactPipeline = generateJsxFiles(library, reactSubexports);
     writeJsxStore(jsx, reactPipeline.namespaces, reactPipeline.metadata);
     return reactPipeline.intrinsicElementCount;
 };

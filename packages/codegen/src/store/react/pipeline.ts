@@ -2,7 +2,7 @@ import { sortStringsBy } from "@gtkx/utils";
 import type { Library } from "../../gir/library.js";
 import { type GirNamespace, namespaceDirectory } from "../../gir/namespace.js";
 import { ImportsBuilder } from "../../writer/imports.js";
-import { generateElementComponentsSection, NAMESPACE_BEHAVIOR_REGISTRARS } from "./element-components.js";
+import { generateElementComponentsSection } from "./element-components.js";
 import { type WrapperElementSpec, wrapperElementSpecs } from "./element-prop-types.js";
 import { buildGirIndex } from "./gir-index.js";
 import { collectIntrinsicElementClasses, type GlibNamedClass } from "./intrinsic-elements.js";
@@ -20,7 +20,7 @@ type JsxFiles = {
     intrinsicElementCount: number;
 };
 
-export const generateJsxFiles = (library: Library): JsxFiles => {
+export const generateJsxFiles = (library: Library, reactSubexports: string[] = []): JsxFiles => {
     const intrinsicElements = collectIntrinsicElementClasses(library);
     const intrinsicElementByGlibName = new Map(intrinsicElements.map((entry) => [entry.glibName, entry]));
     const namespacesWithIntrinsicElements = new Map<string, GirNamespace>();
@@ -38,6 +38,7 @@ export const generateJsxFiles = (library: Library): JsxFiles => {
             wrappers: wrappers.get(namespace.name) ?? [],
             intrinsicElements,
             intrinsicElementByGlibName,
+            reactSubexports,
         });
         namespaces.push({ directory: namespaceDirectory(namespace), source });
         intrinsicElementCount += count;
@@ -52,6 +53,7 @@ type JsxNamespaceContext = {
     wrappers: WrapperElementSpec[];
     intrinsicElements: GlibNamedClass[];
     intrinsicElementByGlibName: Map<string, GlibNamedClass>;
+    reactSubexports: string[];
 };
 
 const generateJsxNamespace = (
@@ -59,13 +61,11 @@ const generateJsxNamespace = (
     library: Library,
     context: JsxNamespaceContext,
 ): { source: string; count: number } => {
-    const { wrappers, intrinsicElements, intrinsicElementByGlibName } = context;
+    const { wrappers, intrinsicElements, intrinsicElementByGlibName, reactSubexports } = context;
     const targetDirectory = namespaceDirectory(targetNamespace);
     const imports = new ImportsBuilder();
     imports.addSideEffect(`@gtkx/gi/${targetDirectory}`);
-
-    const registrar = NAMESPACE_BEHAVIOR_REGISTRARS[targetNamespace.name];
-    if (registrar !== undefined) imports.addNamed(registrar.module, registrar.export, false);
+    if (reactSubexports.includes(targetDirectory)) imports.addSideEffect(`@gtkx/react/${targetDirectory}`);
 
     const elementComponents = generateElementComponentsSection(targetNamespace, library, {
         imports,
@@ -82,7 +82,6 @@ const generateJsxNamespace = (
     });
 
     const body = [imports.toSource().trimEnd()];
-    if (registrar !== undefined) body.push("", `${registrar.export}();`);
     body.push("", jsxSection);
     if (elementComponents.source.length > 0) body.push("", elementComponents.source);
 

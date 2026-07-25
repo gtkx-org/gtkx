@@ -5,5 +5,5 @@ declare module "virtual:gtkx-config" {
     export const DEFAULT_PROPS: Record<string, Record<string, unknown>>;
     export const applicationId: import("@gtkx/config").ResolvedConfig["applicationId"];
     export const userEventSignals: import("@gtkx/config").ResolvedConfig["userEventSignals"];
-    export const elements: Record<string, import("@gtkx/react/elements").ElementConfig>;
+    export const elements: Record<string, import("@gtkx/react/config").ElementConfig>;
 }

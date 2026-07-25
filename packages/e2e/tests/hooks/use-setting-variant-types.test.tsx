@@ -205,7 +205,7 @@ describe("useSetting (variant types: invalid input)", () => {
     it("rejects keys the schema object does not declare", async () => {
         const untyped: SettingsSchema = SCHEMA;
         await expect(renderHook(() => useSetting(untyped, "missing"))).rejects.toThrow(
-            'Schema "com.gtkx.test.useSetting" does not declare key "missing"',
+            'Key "missing" is not defined in schema "com.gtkx.test.useSetting"',
         );
     });
 });

@@ -4,7 +4,6 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { getInstanceType, TYPE_INVALID, typeFromName, typeIsA } from "@gtkx/runtime";
 import { isDeepEqual, structuredClone } from "@gtkx/utils";
 import type { Props } from "./kinds.js";
-import { registerLazyElements } from "./lazy-elements.js";
 import type {
     ActionAccel,
     CreditSection,
@@ -52,23 +51,6 @@ export type ElementBehavior<T extends GObject.Object = GObject.Object> = {
     unmount?: (node: T, context: unknown) => void;
 };
 
-const BEHAVIORS: Record<string, ElementBehavior[]> = {};
-
-/** Every registered behavior, keyed by GLib type name. Adwaita behaviors appear once `@gtkx/react/adw` is loaded. */
-export const ELEMENT_BEHAVIORS: Record<string, ElementBehavior[]> = BEHAVIORS;
-
-/**
- * Registers behaviors keyed by GLib type name. `prepend` puts them ahead of any already registered
- * for a type, so an app's behavior for a slot or prop is consulted before the framework's.
- */
-export const registerElementBehaviors = (record: Record<string, ElementBehavior<never>[]>, prepend = false): void => {
-    for (const [type, added] of Object.entries(record)) {
-        const behaviors = added as ElementBehavior[];
-        const existing = BEHAVIORS[type] ?? [];
-        BEHAVIORS[type] = prepend ? [...behaviors, ...existing] : [...existing, ...behaviors];
-    }
-};
-
 /**
  * Per-element configuration keyed by GLib type name: whether the element is lazy (its GObject is
  * created by its parent container, as pages and layout children are) and the custom behaviors bound
@@ -79,20 +61,25 @@ export type ElementConfig<T extends GObject.Object = GObject.Object> = {
     behaviors?: ElementBehavior<T>[];
 };
 
+/** Every registered element config, keyed by GLib type name. Adwaita entries appear once `@gtkx/react/adw` is loaded. */
+export const ELEMENTS: Record<string, ElementConfig> = {};
+
 /**
- * Registers a map of {@link ElementConfig} keyed by GLib type name, splitting each entry into its
- * behaviors and its lazy flag. `prepend` puts an entry's behaviors ahead of any already registered
- * for a type, so an app's behavior for a slot or prop is consulted before the framework's.
+ * Registers a map of {@link ElementConfig} keyed by GLib type name, merging each entry's behaviors and
+ * lazy flag into the registry. `prepend` puts an entry's behaviors ahead of any already registered for
+ * a type, so an app's behavior for a slot or prop is consulted before the framework's.
  */
 export const registerElements = (elements: Record<string, ElementConfig<never>>, prepend = false): void => {
-    const behaviors: Record<string, ElementBehavior<never>[]> = {};
-    const lazy: string[] = [];
     for (const [type, config] of Object.entries(elements)) {
-        if (config.behaviors !== undefined) behaviors[type] = config.behaviors;
-        if (config.lazy === true) lazy.push(type);
+        const entry: ElementConfig = { ...ELEMENTS[type] };
+        if (config.behaviors !== undefined) {
+            const added = config.behaviors as ElementBehavior[];
+            const current = entry.behaviors ?? [];
+            entry.behaviors = prepend ? [...added, ...current] : [...current, ...added];
+        }
+        if (config.lazy === true) entry.lazy = true;
+        ELEMENTS[type] = entry;
     }
-    registerElementBehaviors(behaviors, prepend);
-    registerLazyElements(lazy);
 };
 
 /**
@@ -226,8 +213,8 @@ const controlledText = (prop: string): ElementBehavior => ({
     },
 });
 
-const forTypes = (types: string[], ...behaviors: ElementBehavior[]): Record<string, ElementBehavior[]> =>
-    Object.fromEntries(types.map((type) => [type, behaviors]));
+const forTypes = (types: string[], ...behaviors: ElementBehavior[]): Record<string, ElementConfig> =>
+    Object.fromEntries(types.map((type) => [type, { behaviors }]));
 
 /** Behavior for a container that installs its single child with `setChild`. */
 const childSetterSlot = <
@@ -362,15 +349,12 @@ const GTK_SINGLE_CHILD_TYPES = [
     "GtkWindowHandle",
 ];
 
-registerLazyElements([
-    "GtkGridLayoutChild",
-    "GtkFixedLayoutChild",
-    "GtkOverlayLayoutChild",
-    "GtkStackPage",
-    "GtkNotebookPage",
-]);
-
-registerElementBehaviors({
+export const GTK_ELEMENTS: Record<string, ElementConfig> = {
+    GtkGridLayoutChild: { lazy: true },
+    GtkFixedLayoutChild: { lazy: true },
+    GtkOverlayLayoutChild: { lazy: true },
+    GtkStackPage: { lazy: true },
+    GtkNotebookPage: { lazy: true },
     ...forTypes(GTK_SINGLE_CHILD_TYPES, childSetterSlot()),
     ...forTypes(
         ["GtkHeaderBar", "GtkActionBar"],
@@ -395,216 +379,262 @@ registerElementBehaviors({
             },
         ),
     ),
-    GtkWidget: [
-        slot<Gtk.Widget, Gtk.Popover>("children", "GtkPopover", {
-            attach: (parent, popover) => popover.setParent(parent),
-            detach: (_parent, popover) => popover.unparent(),
-        }),
-        addRemoveSlot<Gtk.EventController, Gtk.Widget>(
-            "controllers",
-            "GtkEventController",
-            (widget, controller) => {
-                widget.addController(controller);
-            },
-            (widget, controller) => {
-                widget.removeController(controller);
-            },
-        ),
-        slot<Gtk.Widget, Gtk.LayoutManager>("layoutManager", "GtkLayoutManager", {
-            attach: (widget, manager) => widget.setLayoutManager(manager),
-            detach: (widget) => widget.setLayoutManager(null),
-        }),
-        slot<Gtk.Widget, Gio.ActionGroup>("actionGroups", "GActionGroup", {
-            attach: (widget, group, info) =>
-                widget.insertActionGroup((info.props.prefix as string | null) ?? "", group),
-            detach: (widget, _group, info) =>
-                widget.insertActionGroup((info.props.prefix as string | null) ?? "", null),
-        }),
-    ],
-    GtkBox: [boxSlot<Gtk.Box>()],
-    GtkListBox: [
-        wrappingIndexedSlot(Gtk.ListBoxRow, (row, inner) => {
-            row.setChild(inner);
-        }),
-    ],
-    GtkFlowBox: [
-        wrappingIndexedSlot(Gtk.FlowBoxChild, (child, inner) => {
-            child.setChild(inner);
-        }),
-    ],
-    GtkOverlay: [
-        childSetterSlot<Gtk.Overlay>(),
-        slot<Gtk.Overlay, Gtk.Widget>("overlays", "GtkWidget", {
-            attach: (overlay, child) => overlay.addOverlay(child),
-            detach: (overlay, child) => overlay.removeOverlay(child),
-            resolve: layoutChild,
-        }),
-    ],
-    GtkShortcutController: [
-        addRemoveSlot<Gtk.Shortcut, Gtk.ShortcutController>(
-            "shortcuts",
-            "GtkShortcut",
-            (controller, shortcut) => {
-                controller.addShortcut(shortcut);
-            },
-            (controller, shortcut) => {
-                controller.removeShortcut(shortcut);
-            },
-        ),
-    ],
-    GtkTextView: [
-        slot<Gtk.TextView, Gtk.TextBuffer>("children", "GtkTextBuffer", {
-            attach: (view, buffer) => view.setBuffer(buffer),
-            detach: (view) => view.setBuffer(null),
-        }),
-    ],
-    GActionMap: [
-        slot<Gio.ActionMap, Gio.Action>("actions", "GAction", {
-            attach: (map, action) => map.addAction(action),
-            detach: (map, _action, info) => map.removeAction((info.props.name as string | null) ?? ""),
-        }),
-    ],
-    GMenu: [
-        list<Gio.Menu, MenuItem>("items", {
-            clear: (menu) => menu.removeAll(),
-            add: (menu, item) => appendMenuItem(menu, item),
-        }),
-    ],
-    GtkColumnView: [
-        slot<Gtk.ColumnView, Gtk.ColumnViewColumn>("children", "GtkColumnViewColumn", {
-            attach: (view, column, info) => view.insertColumn(info.index, column),
-            detach: (view, column) => view.removeColumn(column),
-        }),
-    ],
-    GtkGrid: [
-        slot<Gtk.Grid, Gtk.Widget>("children", "GtkWidget", {
-            attach: (grid, child) => grid.attach(child, 0, 0, 1, 1),
-            detach: (grid, child) => grid.remove(child),
-            resolve: layoutChild,
-        }),
-    ],
-    GtkFixed: [
-        slot<Gtk.Fixed, Gtk.Widget>("children", "GtkWidget", {
-            attach: (fixed, child) => fixed.put(child, 0, 0),
-            detach: (fixed, child) => fixed.remove(child),
-            resolve: layoutChild,
-        }),
-    ],
-    GtkSizeGroup: [
-        list<Gtk.SizeGroup, Gtk.Widget>("widgets", {
-            add: (group, widget) => group.addWidget(widget),
-            remove: (group, widget) => group.removeWidget(widget),
-        }),
-    ],
-    GtkConstraintLayout: [
-        addRemoveSlot<Gtk.Constraint, Gtk.ConstraintLayout>(
-            "constraints",
-            "GtkConstraint",
-            (layout, constraint) => {
-                layout.addConstraint(constraint);
-            },
-            (layout, constraint) => {
-                layout.removeConstraint(constraint);
-            },
-        ),
-        addRemoveSlot<Gtk.ConstraintGuide, Gtk.ConstraintLayout>(
-            "guides",
-            "GtkConstraintGuide",
-            (layout, guide) => {
-                layout.addGuide(guide);
-            },
-            (layout, guide) => {
-                layout.removeGuide(guide);
-            },
-        ),
-        list<Gtk.ConstraintLayout, VflConstraints, Gtk.Constraint[]>("vfl", {
-            add: (layout, item) => [
-                ...layout.addConstraintsFromDescription(
-                    item.lines,
-                    item.hspacing ?? 0,
-                    item.vspacing ?? 0,
-                    item.views ?? new Map(),
-                ),
-            ],
-            remove: (layout, _item, constraints) => {
-                for (const constraint of constraints) layout.removeConstraint(constraint);
-            },
-        }),
-    ],
-    GtkStack: [
-        adoptedChildrenSlot<Gtk.Stack, Gtk.Widget>(
-            "GtkWidget",
-            (stack, child) => stack.addChild(child),
-            (stack, child) => {
-                stack.remove(child);
-            },
-        ),
-        deferred<Gtk.Stack, string>("visibleChildName", (stack, name) => stack.getChildByName(name) !== null),
-    ],
-    GtkNotebook: [
-        slot<Gtk.Notebook, Gtk.Widget>("children", "GtkWidget", {
-            attach: (notebook, child, info) => notebook.insertPage(child, null, info.index),
-            reorder: (notebook, child, info) => notebook.reorderChild(child, info.index),
-            detach: (notebook, child) => notebook.detachTab(child),
-            resolve: (notebook, child) => notebook.getPage(child),
-        }),
-    ],
-    GtkApplication: [
-        addRemoveSlot<Gtk.Window, Gtk.Application>(
-            "children",
-            "GtkWindow",
-            (application, window) => {
-                application.addWindow(window);
-            },
-            (application, window) => {
-                application.removeWindow(window);
-            },
-        ),
-        list<Gtk.Application, ActionAccel>("actionAccels", {
-            add: (application, item) => application.setAccelsForAction(item.detailedActionName, item.accels),
-            remove: (application, item) => application.setAccelsForAction(item.detailedActionName, []),
-        }),
-    ],
-    GtkAboutDialog: [
-        list<Gtk.AboutDialog, CreditSection>("creditSections", {
-            add: (dialog, section) => dialog.addCreditSection(section.sectionName, section.people),
-        }),
-    ],
-    GtkScale: [
-        list<Gtk.Scale, ScaleMark>("marks", {
-            add: (scale, mark) => scale.addMark(mark.value ?? 0, mark.position, mark.markup ?? null),
-            clear: (scale) => scale.clearMarks(),
-        }),
-    ],
-    GtkCalendar: [
-        list<Gtk.Calendar, number>("markedDays", {
-            add: (calendar, day) => calendar.markDay(day),
-            clear: (calendar) => calendar.clearMarks(),
-        }),
-    ],
-    GtkLevelBar: [
-        list<Gtk.LevelBar, LevelBarOffset>("offsets", {
-            add: (bar, offset) => bar.addOffsetValue(offset.name, offset.value ?? 0),
-            remove: (bar, offset) => bar.removeOffsetValue(offset.name),
-        }),
-    ],
-    GtkDropTarget: [
-        value<Gtk.DropTarget, GObject.Type[]>("types", (target, types) => {
-            target.setGtypes(types);
-        }),
-    ],
-    GtkDrawingArea: [
-        value<Gtk.DrawingArea, Gtk.DrawingAreaDrawFunc>("drawFunc", (area, draw) => {
-            area.setDrawFunc(draw);
-            area.queueDraw();
-        }),
-    ],
-    GtkDragSource: [
-        value<Gtk.DragSource, DragSourceIcon>("icon", (source, icon) => {
-            source.setIcon(icon.paintable ?? null, icon.hotX ?? 0, icon.hotY ?? 0);
-        }),
-    ],
-    GtkEditable: [controlledText("text")],
-});
+    GtkWidget: {
+        behaviors: [
+            slot<Gtk.Widget, Gtk.Popover>("children", "GtkPopover", {
+                attach: (parent, popover) => popover.setParent(parent),
+                detach: (_parent, popover) => popover.unparent(),
+            }),
+            addRemoveSlot<Gtk.EventController, Gtk.Widget>(
+                "controllers",
+                "GtkEventController",
+                (widget, controller) => {
+                    widget.addController(controller);
+                },
+                (widget, controller) => {
+                    widget.removeController(controller);
+                },
+            ),
+            slot<Gtk.Widget, Gtk.LayoutManager>("layoutManager", "GtkLayoutManager", {
+                attach: (widget, manager) => widget.setLayoutManager(manager),
+                detach: (widget) => widget.setLayoutManager(null),
+            }),
+            slot<Gtk.Widget, Gio.ActionGroup>("actionGroups", "GActionGroup", {
+                attach: (widget, group, info) =>
+                    widget.insertActionGroup((info.props.prefix as string | null) ?? "", group),
+                detach: (widget, _group, info) =>
+                    widget.insertActionGroup((info.props.prefix as string | null) ?? "", null),
+            }),
+        ],
+    },
+    GtkBox: { behaviors: [boxSlot<Gtk.Box>()] },
+    GtkListBox: {
+        behaviors: [
+            wrappingIndexedSlot(Gtk.ListBoxRow, (row, inner) => {
+                row.setChild(inner);
+            }),
+        ],
+    },
+    GtkFlowBox: {
+        behaviors: [
+            wrappingIndexedSlot(Gtk.FlowBoxChild, (child, inner) => {
+                child.setChild(inner);
+            }),
+        ],
+    },
+    GtkOverlay: {
+        behaviors: [
+            childSetterSlot<Gtk.Overlay>(),
+            slot<Gtk.Overlay, Gtk.Widget>("overlays", "GtkWidget", {
+                attach: (overlay, child) => overlay.addOverlay(child),
+                detach: (overlay, child) => overlay.removeOverlay(child),
+                resolve: layoutChild,
+            }),
+        ],
+    },
+    GtkShortcutController: {
+        behaviors: [
+            addRemoveSlot<Gtk.Shortcut, Gtk.ShortcutController>(
+                "shortcuts",
+                "GtkShortcut",
+                (controller, shortcut) => {
+                    controller.addShortcut(shortcut);
+                },
+                (controller, shortcut) => {
+                    controller.removeShortcut(shortcut);
+                },
+            ),
+        ],
+    },
+    GtkTextView: {
+        behaviors: [
+            slot<Gtk.TextView, Gtk.TextBuffer>("children", "GtkTextBuffer", {
+                attach: (view, buffer) => view.setBuffer(buffer),
+                detach: (view) => view.setBuffer(null),
+            }),
+        ],
+    },
+    GActionMap: {
+        behaviors: [
+            slot<Gio.ActionMap, Gio.Action>("actions", "GAction", {
+                attach: (map, action) => map.addAction(action),
+                detach: (map, _action, info) => map.removeAction((info.props.name as string | null) ?? ""),
+            }),
+        ],
+    },
+    GMenu: {
+        behaviors: [
+            list<Gio.Menu, MenuItem>("items", {
+                clear: (menu) => menu.removeAll(),
+                add: (menu, item) => appendMenuItem(menu, item),
+            }),
+        ],
+    },
+    GtkColumnView: {
+        behaviors: [
+            slot<Gtk.ColumnView, Gtk.ColumnViewColumn>("children", "GtkColumnViewColumn", {
+                attach: (view, column, info) => view.insertColumn(info.index, column),
+                detach: (view, column) => view.removeColumn(column),
+            }),
+        ],
+    },
+    GtkGrid: {
+        behaviors: [
+            slot<Gtk.Grid, Gtk.Widget>("children", "GtkWidget", {
+                attach: (grid, child) => grid.attach(child, 0, 0, 1, 1),
+                detach: (grid, child) => grid.remove(child),
+                resolve: layoutChild,
+            }),
+        ],
+    },
+    GtkFixed: {
+        behaviors: [
+            slot<Gtk.Fixed, Gtk.Widget>("children", "GtkWidget", {
+                attach: (fixed, child) => fixed.put(child, 0, 0),
+                detach: (fixed, child) => fixed.remove(child),
+                resolve: layoutChild,
+            }),
+        ],
+    },
+    GtkSizeGroup: {
+        behaviors: [
+            list<Gtk.SizeGroup, Gtk.Widget>("widgets", {
+                add: (group, widget) => group.addWidget(widget),
+                remove: (group, widget) => group.removeWidget(widget),
+            }),
+        ],
+    },
+    GtkConstraintLayout: {
+        behaviors: [
+            addRemoveSlot<Gtk.Constraint, Gtk.ConstraintLayout>(
+                "constraints",
+                "GtkConstraint",
+                (layout, constraint) => {
+                    layout.addConstraint(constraint);
+                },
+                (layout, constraint) => {
+                    layout.removeConstraint(constraint);
+                },
+            ),
+            addRemoveSlot<Gtk.ConstraintGuide, Gtk.ConstraintLayout>(
+                "guides",
+                "GtkConstraintGuide",
+                (layout, guide) => {
+                    layout.addGuide(guide);
+                },
+                (layout, guide) => {
+                    layout.removeGuide(guide);
+                },
+            ),
+            list<Gtk.ConstraintLayout, VflConstraints, Gtk.Constraint[]>("vfl", {
+                add: (layout, item) => [
+                    ...layout.addConstraintsFromDescription(
+                        item.lines,
+                        item.hspacing ?? 0,
+                        item.vspacing ?? 0,
+                        item.views ?? new Map(),
+                    ),
+                ],
+                remove: (layout, _item, constraints) => {
+                    for (const constraint of constraints) layout.removeConstraint(constraint);
+                },
+            }),
+        ],
+    },
+    GtkStack: {
+        behaviors: [
+            adoptedChildrenSlot<Gtk.Stack, Gtk.Widget>(
+                "GtkWidget",
+                (stack, child) => stack.addChild(child),
+                (stack, child) => {
+                    stack.remove(child);
+                },
+            ),
+            deferred<Gtk.Stack, string>("visibleChildName", (stack, name) => stack.getChildByName(name) !== null),
+        ],
+    },
+    GtkNotebook: {
+        behaviors: [
+            slot<Gtk.Notebook, Gtk.Widget>("children", "GtkWidget", {
+                attach: (notebook, child, info) => notebook.insertPage(child, null, info.index),
+                reorder: (notebook, child, info) => notebook.reorderChild(child, info.index),
+                detach: (notebook, child) => notebook.detachTab(child),
+                resolve: (notebook, child) => notebook.getPage(child),
+            }),
+        ],
+    },
+    GtkApplication: {
+        behaviors: [
+            addRemoveSlot<Gtk.Window, Gtk.Application>(
+                "children",
+                "GtkWindow",
+                (application, window) => {
+                    application.addWindow(window);
+                },
+                (application, window) => {
+                    application.removeWindow(window);
+                },
+            ),
+            list<Gtk.Application, ActionAccel>("actionAccels", {
+                add: (application, item) => application.setAccelsForAction(item.detailedActionName, item.accels),
+                remove: (application, item) => application.setAccelsForAction(item.detailedActionName, []),
+            }),
+        ],
+    },
+    GtkAboutDialog: {
+        behaviors: [
+            list<Gtk.AboutDialog, CreditSection>("creditSections", {
+                add: (dialog, section) => dialog.addCreditSection(section.sectionName, section.people),
+            }),
+        ],
+    },
+    GtkScale: {
+        behaviors: [
+            list<Gtk.Scale, ScaleMark>("marks", {
+                add: (scale, mark) => scale.addMark(mark.value ?? 0, mark.position, mark.markup ?? null),
+                clear: (scale) => scale.clearMarks(),
+            }),
+        ],
+    },
+    GtkCalendar: {
+        behaviors: [
+            list<Gtk.Calendar, number>("markedDays", {
+                add: (calendar, day) => calendar.markDay(day),
+                clear: (calendar) => calendar.clearMarks(),
+            }),
+        ],
+    },
+    GtkLevelBar: {
+        behaviors: [
+            list<Gtk.LevelBar, LevelBarOffset>("offsets", {
+                add: (bar, offset) => bar.addOffsetValue(offset.name, offset.value ?? 0),
+                remove: (bar, offset) => bar.removeOffsetValue(offset.name),
+            }),
+        ],
+    },
+    GtkDropTarget: {
+        behaviors: [
+            value<Gtk.DropTarget, GObject.Type[]>("types", (target, types) => {
+                target.setGtypes(types);
+            }),
+        ],
+    },
+    GtkDrawingArea: {
+        behaviors: [
+            value<Gtk.DrawingArea, Gtk.DrawingAreaDrawFunc>("drawFunc", (area, draw) => {
+                area.setDrawFunc(draw);
+                area.queueDraw();
+            }),
+        ],
+    },
+    GtkDragSource: {
+        behaviors: [
+            value<Gtk.DragSource, DragSourceIcon>("icon", (source, icon) => {
+                source.setIcon(icon.paintable ?? null, icon.hotX ?? 0, icon.hotY ?? 0);
+            }),
+        ],
+    },
+    GtkEditable: { behaviors: [controlledText("text")] },
+};
 
 export { addRemoveSlot, adoptedChildrenSlot, boxSlot, childSetterSlot, contentSetterSlot, deferred, list, slot };

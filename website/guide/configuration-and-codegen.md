@@ -130,7 +130,7 @@ Your own behaviors go through the same machinery. GTK4's named-cursor API is a m
 ```ts
 // src/elements.ts
 import type * as Gtk from "@gtkx/gi/gtk";
-import { defineElements } from "@gtkx/react/elements";
+import { defineElements } from "@gtkx/react/config";
 
 export default defineElements({
     GtkWidget: {

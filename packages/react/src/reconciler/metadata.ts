@@ -8,8 +8,7 @@ import {
     userEventSignals,
 } from "virtual:gtkx-config";
 import { getSignalBaseName, TYPE_INVALID, typeFromName, typeInterfaces, typeName, typeParent } from "@gtkx/runtime";
-import { deferredProps, ELEMENT_BEHAVIORS, type ElementBehavior, registerElements } from "./behaviors.js";
-import { LAZY_ELEMENTS } from "./lazy-elements.js";
+import { deferredProps, ELEMENTS, type ElementBehavior, GTK_ELEMENTS, registerElements } from "./behaviors.js";
 
 export type TypeInfo = {
     typeName: string;
@@ -25,6 +24,7 @@ export type TypeInfo = {
     defaults: Record<string, unknown>;
 };
 
+registerElements(GTK_ELEMENTS);
 registerElements(elements, true);
 
 const ancestryCache = new Map<string, string[]>();
@@ -57,7 +57,7 @@ const accumulateAncestor = (info: TypeInfo, ancestor: string): void => {
     for (const signal of userEventSignals[ancestor] ?? []) info.userEventSignals.add(signal);
     for (const prop of CONSTRUCT_ONLY_PROPS[ancestor] ?? []) info.constructOnly.add(prop);
     for (const prop of CONSTRUCT_PROPS[ancestor] ?? []) info.construct.add(prop);
-    info.behaviors.push(...(ELEMENT_BEHAVIORS[ancestor] ?? []));
+    info.behaviors.push(...(ELEMENTS[ancestor]?.behaviors ?? []));
 };
 
 const resolveBehaviorFlags = (info: TypeInfo): void => {
@@ -85,7 +85,7 @@ const buildTypeInfo = (name: string): TypeInfo => {
     };
     for (const ancestor of chain) accumulateAncestor(info, ancestor);
     resolveBehaviorFlags(info);
-    info.lazy = chain.some((ancestor) => LAZY_ELEMENTS.has(ancestor));
+    info.lazy = chain.some((ancestor) => ELEMENTS[ancestor]?.lazy === true);
     for (const ancestor of [...chain].reverse()) Object.assign(info.defaults, DEFAULT_PROPS[ancestor] ?? {});
     return info;
 };

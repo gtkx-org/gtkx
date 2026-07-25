@@ -1,5 +1,5 @@
 import type * as GObject from "@gtkx/gi/gobject";
-import { propToNotifySignal } from "../utils/notify-name.js";
+import { kebabCase } from "@gtkx/utils";
 import type { RefProp } from "../utils/ref-prop.js";
 import { useObjectValue } from "./use-object-value.js";
 
@@ -18,5 +18,5 @@ export function useProperty<T extends GObject.Object, P extends PropertyNameOf<T
     object: RefProp<T>,
     propertyName: P & string,
 ): T[P] | undefined {
-    return useObjectValue(object, propToNotifySignal(propertyName), (obj) => obj?.[propertyName]);
+    return useObjectValue(object, `notify::${kebabCase(propertyName)}`, (obj) => obj?.[propertyName]);
 }

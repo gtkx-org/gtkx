@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { defineElements } from "@gtkx/react/elements";
+import { defineElements } from "@gtkx/react/config";
 
 export default defineElements({
     GtkWidget: {

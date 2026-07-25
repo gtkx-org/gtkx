@@ -42,13 +42,18 @@
             "types": "./dist/adw/index.d.ts",
             "default": "./dist/adw/index.js"
         },
-        "./elements": {
-            "source": "./src/elements.ts",
-            "types": "./dist/elements.d.ts",
-            "default": "./dist/elements.js"
+        "./config": {
+            "source": "./src/config.ts",
+            "types": "./dist/config.d.ts",
+            "default": "./dist/config.js"
         }
     },
-    "sideEffects": false,
+    "sideEffects": [
+        "./src/adw/index.ts",
+        "./dist/adw/index.js",
+        "./src/adw/elements.ts",
+        "./dist/adw/elements.js"
+    ],
     "files": [
         "dist",
         "src",
