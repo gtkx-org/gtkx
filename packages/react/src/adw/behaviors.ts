@@ -65,8 +65,6 @@ const pageHostChildren = addRemoveSlot<Adw.PreferencesPage, PageHost>(
 );
 
 export const ADW_ELEMENTS: Record<string, ElementConfig> = {
-    AdwViewStackPage: { lazy: true },
-    AdwTabPage: { lazy: true },
     AdwBin: { behaviors: [childSetter] },
     AdwClamp: { behaviors: [childSetter] },
     AdwClampScrollable: { behaviors: [childSetter] },

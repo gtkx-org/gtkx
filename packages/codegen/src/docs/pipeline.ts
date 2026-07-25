@@ -4,6 +4,7 @@ import { sortStringsBy } from "@gtkx/utils";
 import { computeFingerprint, FINGERPRINT_FILENAME, isStoreFresh } from "../fingerprint.js";
 import { Library } from "../gir/library.js";
 import { namespaceDirectory } from "../gir/namespace.js";
+import { setPropInterfaces } from "../store/react/element-prop-imports.js";
 import { collectIntrinsicElementClasses, type GlibNamedClass } from "../store/react/intrinsic-elements.js";
 import { createElementPageContext, renderElementPage } from "./element-page.js";
 import { elementSlug, firstSentence, namespaceOrder } from "./render.js";
@@ -25,6 +26,7 @@ export type DocsOptions = {
     girPath: string[];
     outDir: string;
     basePath?: string;
+    propInterfaces?: Record<string, string>;
     force?: boolean;
 };
 
@@ -144,6 +146,7 @@ export type DocsResult = {
 };
 
 export const writeDocs = (options: DocsOptions): DocsResult => {
+    setPropInterfaces(options.propInterfaces ?? {});
     const basePath = options.basePath ?? "/reference";
     const manifestPath = join(options.outDir, MANIFEST_FILENAME);
     if (options.force !== true && isStoreFresh(options.outDir, options.libraries)) {

@@ -153,8 +153,17 @@ const elementComponentSchema = z.object(
     { error: "must be a { module, export } object" },
 );
 
-const componentsSchema = z.record(z.string(), elementComponentSchema, {
-    error: "must be a record of GLib type names to { module, export } component wrappers",
+const elementConfigSchema = z.object({
+    component: elementComponentSchema.optional(),
+    lazy: z.boolean({ error: "must be a boolean" }).optional(),
+});
+
+const elementsSchema = z.object({
+    behaviors: z
+        .string({ error: "must be a path to a module exporting element behaviors" })
+        .min(1, { error: "must be a path to a module exporting element behaviors" })
+        .optional(),
+    config: z.record(z.string(), elementConfigSchema).optional(),
 });
 
 const configSchema = z.object({
@@ -164,11 +173,7 @@ const configSchema = z.object({
     reactCompiler: reactCompilerSchema.optional(),
     codegen: z.boolean({ error: "must be a boolean" }).optional(),
     userEventSignals: userEventSignalsSchema.optional(),
-    elements: z
-        .string({ error: "must be a path to a module exporting element configuration" })
-        .min(1, { error: "must be a path to a module exporting element configuration" })
-        .optional(),
-    components: componentsSchema.optional(),
+    elements: elementsSchema.optional(),
 });
 
 /**
@@ -210,16 +215,23 @@ export type ResolvedConfig = {
     reactCompiler: ResolvedReactCompilerOptions | null;
     userEventSignals: Record<string, string[]>;
     elements: string | null;
+    lazyElements: string[];
 };
 
-const resolveElementsModule = (elements: string | undefined, root: string | undefined): string | null => {
-    if (elements === undefined) return null;
-    return root === undefined ? elements : resolve(root, elements);
+const resolveElementsModule = (behaviors: string | undefined, root: string | undefined): string | null => {
+    if (behaviors === undefined) return null;
+    return root === undefined ? behaviors : resolve(root, behaviors);
 };
+
+const resolveLazyElements = (elements: Config["elements"]): string[] =>
+    Object.entries(elements?.config ?? {})
+        .filter(([, entry]) => entry.lazy === true)
+        .map(([type]) => type);
 
 export const resolveConfig = (config: Config, root?: string): ResolvedConfig => ({
     applicationId: config.applicationId,
     reactCompiler: resolveReactCompilerOptions(config.reactCompiler),
     userEventSignals: resolveUserEventSignals(config.userEventSignals),
-    elements: resolveElementsModule(config.elements, root),
+    elements: resolveElementsModule(config.elements?.behaviors, root),
+    lazyElements: resolveLazyElements(config.elements),
 });

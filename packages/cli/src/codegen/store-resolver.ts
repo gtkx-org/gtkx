@@ -2,6 +2,7 @@ import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { parseLazyElements, scanPropInterfaces } from "@gtkx/codegen";
 import { type Config, loadConfig } from "@gtkx/config";
 
 export type CodegenStore = {
@@ -16,6 +17,8 @@ export type CodegenStore = {
 type CodegenReactPackage = {
     version: string;
     subexports: string[];
+    propInterfaces: Record<string, string>;
+    lazyElements: string[];
 };
 
 type ResolvedPackage = { dir: string; version: string };
@@ -32,6 +35,38 @@ const readSubexports = (packageDir: string): string[] => {
     return Object.keys(parsed.exports ?? {})
         .filter((key) => key.startsWith("./") && key !== "./package.json")
         .map((key) => key.slice(2));
+};
+
+const readFileIfPresent = (path: string): string | null => (existsSync(path) ? readFileSync(path, "utf8") : null);
+
+/** Reads the static per-element surface @gtkx/react declares: its `*Props` interfaces and lazy elements. */
+const readReactSurface = (
+    packageDir: string,
+    subexports: string[],
+): { propInterfaces: Record<string, string>; lazyElements: string[] } => {
+    const sources: { content: string; module: string }[] = [];
+    const main = readFileIfPresent(join(packageDir, "src", "reconciler", "prop-types.ts"));
+    if (main !== null) sources.push({ content: main, module: "@gtkx/react" });
+    for (const sub of subexports) {
+        const content = readFileIfPresent(join(packageDir, "src", sub, "prop-types.ts"));
+        if (content !== null) sources.push({ content, module: `@gtkx/react/${sub}` });
+    }
+    const metadata = readFileIfPresent(join(packageDir, "src", "element-metadata.ts"));
+    return {
+        propInterfaces: scanPropInterfaces(sources),
+        lazyElements: metadata === null ? [] : parseLazyElements(metadata),
+    };
+};
+
+/** Resolves just the `@gtkx/react` static surface for a project, without requiring runtime/native to be installed. */
+export const resolveReactSurface = (
+    dir: string,
+): { propInterfaces: Record<string, string>; lazyElements: string[] } => {
+    const require = createRequire(pathToFileURL(join(dir, "__gtkx_resolver__.js")).href);
+    const react = resolvePackage(require, dir, "@gtkx/react");
+    return react === null
+        ? { propInterfaces: {}, lazyElements: [] }
+        : readReactSurface(react.dir, readSubexports(react.dir));
 };
 
 const resolvePackage = (require: NodeJS.Require, dir: string, packageName: string): ResolvedPackage | null => {
@@ -70,7 +105,11 @@ export const resolveCodegenStore = (dir: string): CodegenStore => {
         runtimeVersion: runtime.version,
         react:
             react !== null && reactRuntime !== null
-                ? { version: react.version, subexports: readSubexports(react.dir) }
+                ? {
+                      version: react.version,
+                      subexports: readSubexports(react.dir),
+                      ...readReactSurface(react.dir, readSubexports(react.dir)),
+                  }
                 : null,
     };
 };

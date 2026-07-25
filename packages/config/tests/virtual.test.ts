@@ -35,7 +35,10 @@ describe("renderConfigModule", () => {
     });
 
     it("re-exports the configured elements module resolved against the project root", () => {
-        const resolved = resolveConfig({ applicationId: "org.gtk.Test", elements: "./src/elements.ts" }, "/project");
+        const resolved = resolveConfig(
+            { applicationId: "org.gtk.Test", elements: { behaviors: "./src/elements.ts" } },
+            "/project",
+        );
         const source = renderConfigModule(resolved);
         expect(source.split("\n")).toContain('export { default as elements } from "/project/src/elements.ts";');
     });
@@ -47,6 +50,7 @@ describe("renderConfigModule", () => {
             'export * from "@gtkx/jsx/metadata";',
             'export const applicationId = "org.gtk.Test";',
             `export const userEventSignals = ${JSON.stringify(resolved.userEventSignals)};`,
+            "export const lazyElements = [];",
             "export const elements = {};",
         ]);
     });

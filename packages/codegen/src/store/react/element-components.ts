@@ -3,29 +3,22 @@ import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import type { ImportsBuilder } from "../../writer/imports.js";
-import type { WrapperElementSpec } from "./element-prop-types.js";
+import type { LazyElementSpec } from "./element-prop-types.js";
 import { ancestorGlibNames, type GlibNamedClass } from "./intrinsic-elements.js";
 
-type ElementComponent = { types: string[]; module: string; export: string };
+/** A component that wraps a generated element, keyed by GLib type name (built-in or user-provided). */
+export type ElementComponent = { module: string; export: string };
 
 /** User-provided component wrappers keyed by GLib type name, layered over the built-ins. */
-export type ElementComponentOverrides = Record<string, { module: string; export: string }>;
+export type ElementComponentOverrides = Record<string, ElementComponent>;
 
-const BUILT_IN_ELEMENT_COMPONENTS: ElementComponent[] = [
-    { types: ["GtkApplication"], module: "@gtkx/react/internal", export: "createApplicationComponent" },
-    { types: ["GtkWindow"], module: "@gtkx/react/internal", export: "createWindowComponent" },
-    { types: ["AdwDialog"], module: "@gtkx/react/adw", export: "createDialogComponent" },
-];
-
-/** Layers user component wrappers ahead of the built-ins so a user entry wins on an ancestry match. */
-const resolveComponents = (overrides: ElementComponentOverrides): ElementComponent[] => [
-    ...Object.entries(overrides).map(([type, { module, export: exportName }]) => ({
-        types: [type],
-        module,
-        export: exportName,
-    })),
-    ...BUILT_IN_ELEMENT_COMPONENTS,
-];
+/** The built-in component wrappers, with user overrides layered on top (a user key wins on the same type). */
+const resolveComponents = (overrides: ElementComponentOverrides): Record<string, ElementComponent> => ({
+    GtkApplication: { module: "@gtkx/react/internal", export: "createApplicationComponent" },
+    GtkWindow: { module: "@gtkx/react/internal", export: "createWindowComponent" },
+    AdwDialog: { module: "@gtkx/react/adw", export: "createDialogComponent" },
+    ...overrides,
+});
 
 type ExportCollector = {
     imports: ImportsBuilder;
@@ -38,14 +31,14 @@ export const generateElementComponentsSection = (
     library: Library,
     options: {
         imports: ImportsBuilder;
-        wrappers: WrapperElementSpec[];
+        lazyElements: LazyElementSpec[];
         intrinsicElements: GlibNamedClass[];
         components: ElementComponentOverrides;
     },
 ): { source: string; exportedNames: Set<string> } => {
     const collector: ExportCollector = { imports: options.imports, exportedNames: new Set(), exportLines: [] };
 
-    const lazyElements = options.wrappers;
+    const lazyElements = options.lazyElements;
     const virtualNames = new Set(lazyElements.map((entry) => entry.element));
 
     collectCandidateExports(collector, {
@@ -66,7 +59,7 @@ type CandidateExportOptions = {
     library: Library;
     virtualNames: Set<string>;
     intrinsicElements: GlibNamedClass[];
-    components: ElementComponent[];
+    components: Record<string, ElementComponent>;
 };
 
 const collectCandidateExports = (
@@ -83,7 +76,7 @@ const collectCandidateExports = (
     }
 };
 
-const collectLazyElementExports = (collector: ExportCollector, lazyElements: WrapperElementSpec[]): void => {
+const collectLazyElementExports = (collector: ExportCollector, lazyElements: LazyElementSpec[]): void => {
     for (const spec of lazyElements) {
         collector.imports.addNamed("@gtkx/react/internal", "createElementComponent", false);
         collector.imports.addNamed("react", "ReactNode", true);
@@ -92,7 +85,7 @@ const collectLazyElementExports = (collector: ExportCollector, lazyElements: Wra
     }
 };
 
-const renderLazyElementExport = (spec: WrapperElementSpec): string => {
+const renderLazyElementExport = (spec: LazyElementSpec): string => {
     const factory = `createElementComponent(${sourceStringLiteral(spec.element)})`;
     const component = `export const ${spec.element}: (props: ${spec.typeName}) => ReactNode = ${factory};`;
     return `${spec.typeSource}\n\n${component}`;
@@ -102,29 +95,34 @@ const renderCandidateExport = (
     candidate: GlibNamedClass,
     library: Library,
     imports: ImportsBuilder,
-    components: ElementComponent[],
+    components: Record<string, ElementComponent>,
 ): string | null => {
     const { glibName, klass, namespace } = candidate;
-    const ancestry = new Set(ancestorGlibNames(klass, namespace, library));
-    const wrapper = resolveElementComponent(ancestry, components);
+    const ancestry = ancestorGlibNames(klass, namespace, library);
+    const component = resolveElementComponent(ancestry, components);
     imports.addNamed("@gtkx/react/internal", "createElementComponent", false);
     imports.addNamed("react", "ReactNode", true);
-    if (wrapper !== undefined) imports.addNamed(wrapper.module, wrapper.export, false);
-    return `${renderJsDoc(klass.doc)}${renderElementComponentExport(glibName, wrapper)}`;
+    if (component !== undefined) imports.addNamed(component.module, component.export, false);
+    return `${renderJsDoc(klass.doc)}${renderElementComponentExport(glibName, component)}`;
 };
 
-const resolveElementComponent = (types: Set<string>, components: ElementComponent[]): ElementComponent | undefined => {
-    for (const entry of components) {
-        if (entry.types.some((type) => types.has(type))) return entry;
+/** The component for the nearest ancestry match, most-derived first; user overrides win on their exact type. */
+const resolveElementComponent = (
+    ancestry: string[],
+    components: Record<string, ElementComponent>,
+): ElementComponent | undefined => {
+    for (const name of ancestry) {
+        const found = components[name];
+        if (found !== undefined) return found;
     }
     return undefined;
 };
 
-const renderElementComponentExport = (glibName: string, wrapper: ElementComponent | undefined): string => {
+const renderElementComponentExport = (glibName: string, component: ElementComponent | undefined): string => {
     const propsType = `${glibName}Props`;
-    if (wrapper === undefined) {
+    if (component === undefined) {
         return `export const ${glibName}: (props: ${propsType}) => ReactNode = createElementComponent(${sourceStringLiteral(glibName)});`;
     }
     const annotation = `(props: ${propsType}) => ReactNode`;
-    return `export const ${glibName}: ${annotation} = ${wrapper.export}(createElementComponent(${sourceStringLiteral(glibName)}));`;
+    return `export const ${glibName}: ${annotation} = ${component.export}(createElementComponent(${sourceStringLiteral(glibName)}));`;
 };

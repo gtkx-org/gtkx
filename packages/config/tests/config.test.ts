@@ -211,6 +211,7 @@ describe("resolveConfig", () => {
             reactCompiler: { target: "19" },
             userEventSignals: DEFAULT_USER_EVENT_SIGNALS,
             elements: null,
+            lazyElements: [],
         });
     });
 
@@ -224,17 +225,21 @@ describe("resolveConfig", () => {
             reactCompiler: { target: "19", compilationMode: "annotation" },
             userEventSignals: DEFAULT_USER_EVENT_SIGNALS,
             elements: null,
+            lazyElements: [],
         });
     });
 
-    it("resolves a configured elements module against the project root", () => {
-        const resolved = resolveConfig({ applicationId: "org.example.App", elements: "./elements.ts" }, "/project");
+    it("resolves a configured element behaviors module against the project root", () => {
+        const resolved = resolveConfig(
+            { applicationId: "org.example.App", elements: { behaviors: "./elements.ts" } },
+            "/project",
+        );
         expect(resolved.elements).toBe("/project/elements.ts");
     });
 
-    it("rejects an empty elements module path", () => {
-        expect(() => validateConfig({ applicationId: "org.example.App", elements: "" })).toThrow(
-            /`elements` must be a path to a module exporting element configuration/,
+    it("rejects an empty element behaviors module path", () => {
+        expect(() => validateConfig({ applicationId: "org.example.App", elements: { behaviors: "" } })).toThrow(
+            /must be a path to a module exporting element behaviors/,
         );
     });
 
@@ -327,26 +332,37 @@ describe("isValidApplicationId", () => {
     });
 });
 
-describe("validateConfig (components)", () => {
-    it("accepts a record of GLib type names to { module, export } wrappers", () => {
+describe("validateConfig (elements.config)", () => {
+    it("accepts per-element component and lazy config", () => {
         expect(() =>
-            validateWithAppId({ components: { GtkButton: { module: "@example/wrappers", export: "withButton" } } }),
+            validateWithAppId({
+                elements: {
+                    config: {
+                        GtkButton: { component: { module: "@example/wrappers", export: "withButton" }, lazy: true },
+                    },
+                },
+            }),
         ).not.toThrow();
     });
 
-    it("accepts a config that omits components", () => {
+    it("accepts a config that omits elements", () => {
         expect(() => validateWithAppId({})).not.toThrow();
     });
 
     it("rejects a component entry missing its export", () => {
         expect(() =>
-            validateUnknown({ applicationId: "org.gtk.Test", components: { GtkButton: { module: "m" } } }),
+            validateUnknown({
+                applicationId: "org.gtk.Test",
+                elements: { config: { GtkButton: { component: { module: "m" } } } },
+            }),
         ).toThrow();
     });
 
-    it("rejects an empty module specifier", () => {
-        expect(() => validateWithAppId({ components: { GtkButton: { module: "", export: "withButton" } } })).toThrow(
-            /must be a module specifier/,
-        );
+    it("rejects an empty component module specifier", () => {
+        expect(() =>
+            validateWithAppId({
+                elements: { config: { GtkButton: { component: { module: "", export: "withButton" } } } },
+            }),
+        ).toThrow(/must be a module specifier/);
     });
 });

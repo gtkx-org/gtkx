@@ -350,11 +350,6 @@ const GTK_SINGLE_CHILD_TYPES = [
 ];
 
 export const GTK_ELEMENTS: Record<string, ElementConfig> = {
-    GtkGridLayoutChild: { lazy: true },
-    GtkFixedLayoutChild: { lazy: true },
-    GtkOverlayLayoutChild: { lazy: true },
-    GtkStackPage: { lazy: true },
-    GtkNotebookPage: { lazy: true },
     ...forTypes(GTK_SINGLE_CHILD_TYPES, childSetterSlot()),
     ...forTypes(
         ["GtkHeaderBar", "GtkActionBar"],

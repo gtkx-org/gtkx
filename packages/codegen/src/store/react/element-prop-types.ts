@@ -1,9 +1,8 @@
 import { toCamelIdentifier } from "@gtkx/utils";
-import { WRAPPER_ELEMENTS } from "./element-prop-imports.js";
 import { chainOf, type GirIndex, type GirTypeEntry } from "./gir-index.js";
 import { glibNameOf } from "./intrinsic-elements.js";
 
-export type WrapperElementSpec = {
+export type LazyElementSpec = {
     element: string;
     typeName: string;
     typeSource: string;
@@ -19,7 +18,7 @@ const constructOnlyNames = (context: GirIndex, entry: GirTypeEntry): string[] =>
     return names;
 };
 
-const specFor = (context: GirIndex, element: string, entry: GirTypeEntry): WrapperElementSpec => {
+const specFor = (context: GirIndex, element: string, entry: GirTypeEntry): LazyElementSpec => {
     const typeName = `${element}ElementProps`;
     const baseName = glibNameOf(entry.klass) ?? element;
     const omitted = constructOnlyNames(context, entry);
@@ -28,10 +27,10 @@ const specFor = (context: GirIndex, element: string, entry: GirTypeEntry): Wrapp
     return { element, typeName, typeSource: `export type ${typeName} = ${base} & { children?: ReactNode };` };
 };
 
-/** Wrapper element prop types to emit, grouped by the namespace declaring each wrapper. */
-export const wrapperElementSpecs = (context: GirIndex): Map<string, WrapperElementSpec[]> => {
-    const specs = new Map<string, WrapperElementSpec[]>();
-    for (const element of WRAPPER_ELEMENTS) {
+/** Lazy element prop types to emit, grouped by the namespace declaring each element. */
+export const lazyElementSpecs = (context: GirIndex, lazyElements: string[]): Map<string, LazyElementSpec[]> => {
+    const specs = new Map<string, LazyElementSpec[]>();
+    for (const element of lazyElements) {
         const entry = context.index.get(element);
         if (entry === undefined) continue;
         const list = specs.get(entry.namespace.name) ?? [];

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { GirClass } from "../../src/gir/class.js";
 import type { GirFunction } from "../../src/gir/function.js";
@@ -16,7 +17,20 @@ import {
     interfaceHasPropsBody,
 } from "../../src/store/react/intrinsic-elements.js";
 import { generateJsxFiles } from "../../src/store/react/pipeline.js";
+import { parseLazyElements, scanPropInterfaces } from "../../src/store/react/react-surface.js";
 import { giModules, library } from "../helpers/library.js";
+
+const reactSource = (relative: string): string =>
+    readFileSync(new URL(`../../../react/src/${relative}`, import.meta.url), "utf8");
+
+/** The @gtkx/react prop-interface + lazy surface, scanned the same way the CLI threads it into codegen. */
+const REACT_SURFACE = {
+    propInterfaces: scanPropInterfaces([
+        { content: reactSource("reconciler/prop-types.ts"), module: "@gtkx/react" },
+        { content: reactSource("adw/prop-types.ts"), module: "@gtkx/react/adw" },
+    ]),
+    lazyElements: parseLazyElements(reactSource("element-metadata.ts")),
+};
 
 type WalkedCallable = { parameters: GirParameter[]; returnValue: GirReturnValue };
 
@@ -81,7 +95,7 @@ const collectUnresolvedTypeNames = (target: Library): string[] => {
     return [...walker.unresolved];
 };
 
-const reactPipeline = generateJsxFiles(library);
+const reactPipeline = generateJsxFiles(library, REACT_SURFACE);
 const sourceFor = (files: typeof reactPipeline, directory: string): string =>
     files.namespaces.find((entry) => entry.directory === directory)?.source ?? "";
 
@@ -383,7 +397,10 @@ describe("codegen React pipeline", () => {
 
 describe("codegen configurable element components", () => {
     const overridden = sourceFor(
-        generateJsxFiles(library, [], { GtkButton: { module: "@example/wrappers", export: "withButton" } }),
+        generateJsxFiles(library, {
+            ...REACT_SURFACE,
+            components: { GtkButton: { module: "@example/wrappers", export: "withButton" } },
+        }),
         "gtk",
     );
 
@@ -410,7 +427,10 @@ describe("codegen configurable element components", () => {
 
     it("lets a user override win over a built-in on the same ancestry", () => {
         const gtk = sourceFor(
-            generateJsxFiles(library, [], { GtkWindow: { module: "@example/wrappers", export: "withWindow" } }),
+            generateJsxFiles(library, {
+                ...REACT_SURFACE,
+                components: { GtkWindow: { module: "@example/wrappers", export: "withWindow" } },
+            }),
             "gtk",
         );
         expect(gtk).toContain('withWindow(createElementComponent("GtkWindow"))');
@@ -446,9 +466,9 @@ describe("codegen widget-slot props", () => {
     it("extends the hand-declared props interface on a container-prop host", () => {
         const adw = sourceFor(reactPipeline, "adw");
         expect(adw).toMatch(
-            /import \{[^}]*type GtkHeaderBarProps as GtkHeaderBarPropsBase[^}]*\} from "@gtkx\/react";/,
+            /import \{[^}]*type AdwHeaderBarProps as AdwHeaderBarPropsBase[^}]*\} from "@gtkx\/react\/adw";/,
         );
-        expect(adw).toMatch(/export interface AdwHeaderBarProps<[^>]*> extends GtkHeaderBarPropsBase,/);
+        expect(adw).toMatch(/export interface AdwHeaderBarProps<[^>]*> extends AdwHeaderBarPropsBase,/);
     });
 
     it("extends the hand-declared props interface on GtkWidget", () => {
@@ -527,7 +547,7 @@ describe("codegen runtime tables", () => {
 
     it("extends named-slot elements from the hand-declared @gtkx/react types", () => {
         const adw = sourceFor(reactPipeline, "adw");
-        expect(adw).toMatch(/export interface AdwHeaderBarProps<[^>]*> extends [^{]*GtkHeaderBarPropsBase/);
+        expect(adw).toMatch(/export interface AdwHeaderBarProps<[^>]*> extends [^{]*AdwHeaderBarPropsBase/);
     });
 });
 
@@ -551,7 +571,7 @@ describe("Library.resolveType", () => {
     });
 });
 
-const jsxSources = (): string[] => generateJsxFiles(library).namespaces.map((entry) => entry.source);
+const jsxSources = (): string[] => generateJsxFiles(library, REACT_SURFACE).namespaces.map((entry) => entry.source);
 
 const hasContainerProps = (glibName: string | undefined): boolean =>
     glibName !== undefined && elementPropTypeFor(glibName) !== undefined;

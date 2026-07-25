@@ -3,6 +3,7 @@ import { resolveGirPath, resolveLibraries, writeDocs } from "@gtkx/codegen";
 import { loadConfig } from "@gtkx/config";
 import { info } from "@gtkx/utils";
 import { defineCommand } from "citty";
+import { resolveReactSurface } from "../codegen/store-resolver.js";
 import { cwdArg, resolveCwd } from "../internal/entry-arg.js";
 
 export const docs = defineCommand({
@@ -51,6 +52,7 @@ export const docs = defineCommand({
             girPath,
             outDir,
             basePath: args["base-path"],
+            propInterfaces: resolveReactSurface(cwd).propInterfaces,
             force: args.force,
         });
         if (!regenerated) {

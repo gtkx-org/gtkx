@@ -9,7 +9,7 @@ import { generateNamespaceModule } from "./store/gi/pipeline.js";
 import { type GiNamespaceInput, type GiStoreOptions, writeGiStore } from "./store/gi-store.js";
 import { type JsxStoreOptions, writeJsxStore } from "./store/jsx-store.js";
 import type { ElementComponentOverrides } from "./store/react/element-components.js";
-import { generateJsxFiles } from "./store/react/pipeline.js";
+import { generateJsxFiles, type JsxGenerationOptions } from "./store/react/pipeline.js";
 
 export type GlCodegenOptions = {
     registryPath: string;
@@ -25,6 +25,8 @@ export type CodegenRunnerOptions = {
     jsx?: JsxStoreOptions | undefined;
     reactSubexports?: string[];
     components?: ElementComponentOverrides;
+    propInterfaces?: Record<string, string>;
+    lazyElements?: string[];
     gl?: GlCodegenOptions;
     force?: boolean;
 };
@@ -84,22 +86,22 @@ const emitGlModules = (options: GlCodegenOptions): GlGenerationReport => {
 const emitGiStoreIfStale = (options: CodegenRunnerOptions): GiEmitResult | undefined => {
     const { gi, libraries, girPath } = options;
     if (gi === undefined || libraries === undefined || girPath === undefined) return undefined;
-    const components = options.components ?? {};
-    if (options.force !== true && isStoreFresh(gi.storeDir, libraries, components)) return undefined;
+    const react: JsxGenerationOptions = {
+        reactSubexports: options.reactSubexports ?? [],
+        components: options.components ?? {},
+        propInterfaces: options.propInterfaces ?? {},
+        lazyElements: options.lazyElements ?? [],
+    };
+    if (options.force !== true && isStoreFresh(gi.storeDir, libraries, react)) return undefined;
     const library = Library.load(libraries, girPath);
-    emitGiStore(gi, libraries, library, components);
+    emitGiStore(gi, libraries, library, react);
     return {
         namespaces: library.namespaces.size,
-        intrinsicElements: emitJsxStore(options.jsx, library, options.reactSubexports ?? [], components),
+        intrinsicElements: emitJsxStore(options.jsx, library, react),
     };
 };
 
-const emitGiStore = (
-    gi: GiStoreOptions,
-    libraries: string[],
-    library: Library,
-    components: ElementComponentOverrides,
-): void => {
+const emitGiStore = (gi: GiStoreOptions, libraries: string[], library: Library, react: JsxGenerationOptions): void => {
     const namespaces: GiNamespaceInput[] = [];
     for (const namespace of library.namespaces.values()) {
         namespaces.push({
@@ -109,21 +111,16 @@ const emitGiStore = (
     }
     const libs = [...libraries];
     writeGiStore(gi, namespaces, {
-        value: computeFingerprint(library.girFiles, libs, components),
+        value: computeFingerprint(library.girFiles, libs, react),
         girFiles: library.girFiles,
         libraries: libs,
-        components,
+        react,
     });
 };
 
-const emitJsxStore = (
-    jsx: JsxStoreOptions | undefined,
-    library: Library,
-    reactSubexports: string[],
-    components: ElementComponentOverrides,
-): number => {
+const emitJsxStore = (jsx: JsxStoreOptions | undefined, library: Library, react: JsxGenerationOptions): number => {
     if (jsx === undefined) return 0;
-    const reactPipeline = generateJsxFiles(library, reactSubexports, components);
+    const reactPipeline = generateJsxFiles(library, react);
     writeJsxStore(jsx, reactPipeline.namespaces, reactPipeline.metadata);
     return reactPipeline.intrinsicElementCount;
 };

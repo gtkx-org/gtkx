@@ -46,10 +46,22 @@ type CodegenOptionsInput = {
     store: CodegenStore;
     libraries: string[];
     girPath: string[];
-    components: Config["components"];
+    elements: Config["elements"];
 };
 
-const codegenOptions = ({ store, libraries, girPath, components }: CodegenOptionsInput) => ({
+const userComponents = (elements: Config["elements"]): Record<string, { module: string; export: string }> =>
+    Object.fromEntries(
+        Object.entries(elements?.config ?? {}).flatMap(([type, entry]) =>
+            entry.component === undefined ? [] : [[type, entry.component] as const],
+        ),
+    );
+
+const userLazyElements = (elements: Config["elements"]): string[] =>
+    Object.entries(elements?.config ?? {})
+        .filter(([, entry]) => entry.lazy === true)
+        .map(([type]) => type);
+
+const codegenOptions = ({ store, libraries, girPath, elements }: CodegenOptionsInput) => ({
     libraries,
     girPath,
     gi: {
@@ -66,7 +78,9 @@ const codegenOptions = ({ store, libraries, girPath, components }: CodegenOption
               }
             : undefined,
     reactSubexports: store.react?.subexports ?? [],
-    components: components ?? {},
+    components: userComponents(elements),
+    propInterfaces: store.react?.propInterfaces ?? {},
+    lazyElements: [...(store.react?.lazyElements ?? []), ...userLazyElements(elements)],
 });
 
 export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenResult> => {
@@ -103,7 +117,7 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
     }
 
     const result = await runCodegenCore({
-        ...codegenOptions({ store, libraries, girPath, components: config.components }),
+        ...codegenOptions({ store, libraries, girPath, elements: config.elements }),
         force,
     });
 

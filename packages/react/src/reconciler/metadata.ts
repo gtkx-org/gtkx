@@ -4,10 +4,12 @@ import {
     CONSTRUCT_PROPS,
     DEFAULT_PROPS,
     elements,
+    lazyElements,
     SIGNALS,
     userEventSignals,
 } from "virtual:gtkx-config";
 import { getSignalBaseName, TYPE_INVALID, typeFromName, typeInterfaces, typeName, typeParent } from "@gtkx/runtime";
+import { LAZY_ELEMENTS } from "../element-metadata.js";
 import { deferredProps, ELEMENTS, type ElementBehavior, GTK_ELEMENTS, registerElements } from "./behaviors.js";
 
 export type TypeInfo = {
@@ -25,6 +27,7 @@ export type TypeInfo = {
 };
 
 registerElements(GTK_ELEMENTS);
+registerElements(Object.fromEntries([...LAZY_ELEMENTS, ...lazyElements].map((type) => [type, { lazy: true }])));
 registerElements(elements, true);
 
 const ancestryCache = new Map<string, string[]>();

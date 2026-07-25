@@ -3,8 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { sortStrings } from "@gtkx/utils";
-import type { ElementComponentOverrides } from "./store/react/element-components.js";
-import { BUILT_IN_ELEMENT_PROP_TYPES, WRAPPER_ELEMENTS } from "./store/react/element-prop-imports.js";
+import type { JsxGenerationOptions } from "./store/react/pipeline.js";
 
 const require = createRequire(import.meta.url);
 
@@ -16,31 +15,30 @@ export type CodegenFingerprint = {
     value: string;
     girFiles: string[];
     libraries: string[];
-    components?: ElementComponentOverrides;
+    react?: JsxGenerationOptions;
 };
 
-const serializeComponents = (components: ElementComponentOverrides): string =>
-    JSON.stringify(
-        Object.keys(components)
+const serializeReact = (react: JsxGenerationOptions): string =>
+    JSON.stringify([
+        [...(react.reactSubexports ?? [])].sort(),
+        Object.keys(react.components ?? {})
             .sort()
-            .map((type) => [type, components[type]?.module, components[type]?.export]),
-    );
+            .map((type) => [type, react.components?.[type]?.module, react.components?.[type]?.export]),
+        Object.entries(react.propInterfaces ?? {}).sort(([a], [b]) => (a < b ? -1 : 1)),
+        [...(react.lazyElements ?? [])].sort(),
+    ]);
 
 export const computeFingerprint = (
     girFiles: string[],
     libraries: string[],
-    components: ElementComponentOverrides = {},
+    react: JsxGenerationOptions = {},
 ): string => {
     const hash = createHash("sha256");
     hash.update(CODEGEN_VERSION);
     hash.update("\n");
-    hash.update(JSON.stringify(BUILT_IN_ELEMENT_PROP_TYPES));
-    hash.update("\n");
-    hash.update(JSON.stringify(WRAPPER_ELEMENTS));
-    hash.update("\n");
     hash.update(sortStrings(libraries).join(","));
     hash.update("\n");
-    hash.update(serializeComponents(components));
+    hash.update(serializeReact(react));
     for (const file of sortStrings(girFiles)) {
         hash.update("\n");
         hash.update(file);
@@ -52,11 +50,7 @@ export const computeFingerprint = (
 
 const sortAlpha = (values: string[]): string => sortStrings(values).join(",");
 
-export const isStoreFresh = (
-    giStoreDir: string,
-    libraries: string[],
-    components: ElementComponentOverrides = {},
-): boolean => {
+export const isStoreFresh = (giStoreDir: string, libraries: string[], react: JsxGenerationOptions = {}): boolean => {
     const sentinelPath = join(giStoreDir, FINGERPRINT_FILENAME);
     if (!existsSync(sentinelPath)) return false;
     let sentinel: CodegenFingerprint;
@@ -66,9 +60,9 @@ export const isStoreFresh = (
         return false;
     }
     if (sortAlpha(sentinel.libraries) !== sortAlpha(libraries)) return false;
-    if (serializeComponents(sentinel.components ?? {}) !== serializeComponents(components)) return false;
+    if (serializeReact(sentinel.react ?? {}) !== serializeReact(react)) return false;
     try {
-        return computeFingerprint(sentinel.girFiles, sentinel.libraries, sentinel.components ?? {}) === sentinel.value;
+        return computeFingerprint(sentinel.girFiles, sentinel.libraries, sentinel.react ?? {}) === sentinel.value;
     } catch {
         return false;
     }

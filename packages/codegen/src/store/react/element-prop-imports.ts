@@ -1,112 +1,19 @@
 /** Props interface a generated element's props extend, declared by hand in `@gtkx/react`. */
 export type ElementPropTypeRef = { type: string; module: string; export: string };
 
-const REACT = "@gtkx/react";
-const REACT_ADW = "@gtkx/react/adw";
+let propInterfaces: Record<string, string> = {};
 
-export const BUILT_IN_ELEMENT_PROP_TYPES: ElementPropTypeRef[] = [
-    { type: "GtkWidget", module: REACT, export: "GtkWidgetProps" },
-    { type: "GActionGroup", module: REACT, export: "GActionGroupProps" },
-    { type: "GActionMap", module: REACT, export: "GActionMapProps" },
-    { type: "GMenu", module: REACT, export: "GMenuProps" },
-    { type: "GtkShortcutController", module: REACT, export: "GtkShortcutControllerProps" },
-    { type: "GtkOverlay", module: REACT, export: "GtkOverlayProps" },
-    { type: "GtkConstraintLayout", module: REACT, export: "GtkConstraintLayoutProps" },
-    { type: "GtkHeaderBar", module: REACT, export: "GtkHeaderBarProps" },
-    { type: "GtkActionBar", module: REACT, export: "GtkHeaderBarProps" },
-    { type: "GtkScale", module: REACT, export: "GtkScaleProps" },
-    { type: "GtkCalendar", module: REACT, export: "GtkCalendarProps" },
-    { type: "GtkLevelBar", module: REACT, export: "GtkLevelBarProps" },
-    { type: "GtkSizeGroup", module: REACT, export: "GtkSizeGroupProps" },
-    { type: "GtkAboutDialog", module: REACT, export: "GtkAboutDialogProps" },
-    { type: "GtkApplication", module: REACT, export: "GtkApplicationProps" },
-    { type: "GtkDropTarget", module: REACT, export: "GtkDropTargetProps" },
-    { type: "GtkDrawingArea", module: REACT, export: "GtkDrawingAreaProps" },
-    { type: "GtkDragSource", module: REACT, export: "GtkDragSourceProps" },
-    { type: "AdwAlertDialog", module: REACT_ADW, export: "AdwAlertDialogProps" },
-    { type: "AdwHeaderBar", module: REACT, export: "GtkHeaderBarProps" },
-    { type: "AdwActionRow", module: REACT_ADW, export: "AdwPreferencesRowProps" },
-    { type: "AdwEntryRow", module: REACT_ADW, export: "AdwPreferencesRowProps" },
-    { type: "AdwExpanderRow", module: REACT_ADW, export: "AdwExpanderRowProps" },
-    { type: "AdwToolbarView", module: REACT_ADW, export: "AdwToolbarViewProps" },
-    { type: "AdwApplicationWindow", module: REACT_ADW, export: "AdwBreakpointsProps" },
-    { type: "AdwWindow", module: REACT_ADW, export: "AdwBreakpointsProps" },
-    { type: "AdwDialog", module: REACT_ADW, export: "AdwBreakpointsProps" },
-    { type: "AdwBreakpointBin", module: REACT_ADW, export: "AdwBreakpointsProps" },
-    { type: "GtkAspectFrame", module: REACT, export: "ChildrenProps" },
-    { type: "GtkButton", module: REACT, export: "ChildrenProps" },
-    { type: "GtkCheckButton", module: REACT, export: "ChildrenProps" },
-    { type: "GtkComboBox", module: REACT, export: "ChildrenProps" },
-    { type: "GtkDragIcon", module: REACT, export: "ChildrenProps" },
-    { type: "GtkExpander", module: REACT, export: "ChildrenProps" },
-    { type: "GtkFlowBoxChild", module: REACT, export: "ChildrenProps" },
-    { type: "GtkFrame", module: REACT, export: "ChildrenProps" },
-    { type: "GtkGraphicsOffload", module: REACT, export: "ChildrenProps" },
-    { type: "GtkListBoxRow", module: REACT, export: "ChildrenProps" },
-    { type: "GtkListHeader", module: REACT, export: "ChildrenProps" },
-    { type: "GtkListItem", module: REACT, export: "ChildrenProps" },
-    { type: "GtkMenuButton", module: REACT, export: "ChildrenProps" },
-    { type: "GtkPopover", module: REACT, export: "ChildrenProps" },
-    { type: "GtkPopoverBin", module: REACT, export: "ChildrenProps" },
-    { type: "GtkRevealer", module: REACT, export: "ChildrenProps" },
-    { type: "GtkScrolledWindow", module: REACT, export: "ChildrenProps" },
-    { type: "GtkSearchBar", module: REACT, export: "ChildrenProps" },
-    { type: "GtkTreeExpander", module: REACT, export: "ChildrenProps" },
-    { type: "GtkViewport", module: REACT, export: "ChildrenProps" },
-    { type: "GtkWindow", module: REACT, export: "ChildrenProps" },
-    { type: "GtkWindowHandle", module: REACT, export: "ChildrenProps" },
-    { type: "GtkBox", module: REACT, export: "ChildrenProps" },
-    { type: "GtkColumnView", module: REACT, export: "ChildrenProps" },
-    { type: "GtkFixed", module: REACT, export: "ChildrenProps" },
-    { type: "GtkFlowBox", module: REACT, export: "ChildrenProps" },
-    { type: "GtkGrid", module: REACT, export: "ChildrenProps" },
-    { type: "GtkListBox", module: REACT, export: "ChildrenProps" },
-    { type: "GtkNotebook", module: REACT, export: "ChildrenProps" },
-    { type: "GtkStack", module: REACT, export: "ChildrenProps" },
-    { type: "GtkTextView", module: REACT, export: "ChildrenProps" },
-    { type: "GtkLabel", module: REACT, export: "ChildrenProps" },
-    { type: "GtkTextBuffer", module: REACT, export: "ChildrenProps" },
-    { type: "GtkTextTag", module: REACT, export: "ChildrenProps" },
-    { type: "GtkTextChildAnchor", module: REACT, export: "ChildrenProps" },
-    { type: "AdwBin", module: REACT, export: "ChildrenProps" },
-    { type: "AdwBottomSheet", module: REACT, export: "ChildrenProps" },
-    { type: "AdwCarousel", module: REACT, export: "ChildrenProps" },
-    { type: "AdwClamp", module: REACT, export: "ChildrenProps" },
-    { type: "AdwClampScrollable", module: REACT, export: "ChildrenProps" },
-    { type: "AdwFlap", module: REACT, export: "ChildrenProps" },
-    { type: "AdwLeaflet", module: REACT, export: "ChildrenProps" },
-    { type: "AdwNavigationPage", module: REACT, export: "ChildrenProps" },
-    { type: "AdwNavigationSplitView", module: REACT, export: "ChildrenProps" },
-    { type: "AdwNavigationView", module: REACT, export: "ChildrenProps" },
-    { type: "AdwOverlaySplitView", module: REACT, export: "ChildrenProps" },
-    { type: "AdwPreferencesDialog", module: REACT, export: "ChildrenProps" },
-    { type: "AdwPreferencesGroup", module: REACT, export: "ChildrenProps" },
-    { type: "AdwPreferencesPage", module: REACT, export: "ChildrenProps" },
-    { type: "AdwPreferencesWindow", module: REACT, export: "ChildrenProps" },
-    { type: "AdwShortcutsDialog", module: REACT, export: "ChildrenProps" },
-    { type: "AdwShortcutsSection", module: REACT, export: "ChildrenProps" },
-    { type: "AdwSplitButton", module: REACT, export: "ChildrenProps" },
-    { type: "AdwSqueezer", module: REACT, export: "ChildrenProps" },
-    { type: "AdwStatusPage", module: REACT, export: "ChildrenProps" },
-    { type: "AdwTabOverview", module: REACT, export: "ChildrenProps" },
-    { type: "AdwTabView", module: REACT, export: "ChildrenProps" },
-    { type: "AdwToastOverlay", module: REACT, export: "ChildrenProps" },
-    { type: "AdwToggle", module: REACT, export: "ChildrenProps" },
-    { type: "AdwToggleGroup", module: REACT, export: "ChildrenProps" },
-    { type: "AdwViewStack", module: REACT, export: "ChildrenProps" },
-    { type: "AdwWrapBox", module: REACT, export: "ChildrenProps" },
-];
+/** Installs the `@gtkx/react` prop-interface surface (`${element}Props` name → module); set once per run. */
+export const setPropInterfaces = (interfaces: Record<string, string>): void => {
+    propInterfaces = interfaces;
+};
 
-/** Placement wrappers: elements whose props are applied to the layout child a container creates. */
-export const WRAPPER_ELEMENTS: string[] = [
-    "GtkGridLayoutChild",
-    "GtkFixedLayoutChild",
-    "GtkOverlayLayoutChild",
-    "GtkStackPage",
-    "GtkNotebookPage",
-    "AdwViewStackPage",
-    "AdwTabPage",
-];
-
-export const elementPropTypeFor = (glibName: string): ElementPropTypeRef | undefined =>
-    BUILT_IN_ELEMENT_PROP_TYPES.find((entry) => entry.type === glibName);
+/**
+ * The hand-declared props interface an element extends, if `@gtkx/react` (or a namespace extension)
+ * exports one named `${glibName}Props`.
+ */
+export const elementPropTypeFor = (glibName: string): ElementPropTypeRef | undefined => {
+    const exportName = `${glibName}Props`;
+    const module = propInterfaces[exportName];
+    return module === undefined ? undefined : { type: glibName, module, export: exportName };
+};
