@@ -20,6 +20,8 @@ export type PrettyWidgetOptions = {
     highlight?: boolean;
     /** Resolves an `id` attribute to show for each widget. */
     getId?: WidgetIdResolver;
+    /** Stops descending past this depth, replacing deeper children with a summary line. */
+    maxDepth?: number;
 };
 
 const buildAttrs = (widget: Gtk.Widget, getId: WidgetIdResolver | undefined): [string, string][] => {
@@ -89,12 +91,24 @@ const escapeAttrValue = (value: string): string => value.replaceAll('"', "&quot;
 const formatAttrs = (attrs: [string, string][], colors: Colors): string =>
     attrs.map(([key, value]) => ` ${colors.attr(key)}=${colors.value(`"${escapeAttrValue(value)}"`)}`).join("");
 
-const formatWidget = (
-    widget: Gtk.Widget,
-    depth: number,
-    getId: WidgetIdResolver | undefined,
-    colors: Colors,
-): string => {
+const countChildren = (widget: Gtk.Widget): number => {
+    let count = 0;
+    let child = widget.getFirstChild();
+    while (child) {
+        count += 1;
+        child = child.getNextSibling();
+    }
+    return count;
+};
+
+type FormatContext = {
+    getId: WidgetIdResolver | undefined;
+    colors: Colors;
+    maxDepth: number | undefined;
+};
+
+const formatWidget = (widget: Gtk.Widget, depth: number, ctx: FormatContext): string => {
+    const { getId, colors, maxDepth } = ctx;
     const indent = INDENT.repeat(depth);
     const tag = widget.constructor.name;
     const attrs = formatAttrs(buildAttrs(widget, getId), colors);
@@ -112,9 +126,16 @@ const formatWidget = (
     if (text) {
         output += `${indent}${INDENT}${text}\n`;
     }
+    if (firstChild && maxDepth !== undefined && depth >= maxDepth) {
+        const count = countChildren(widget);
+        const hint = getId ? ` (pass rootId="${getId(widget)}" or raise maxDepth to expand)` : "";
+        output += `${indent}${INDENT}${colors.tag(`… ${count} child widget${count === 1 ? "" : "s"} hidden${hint}`)}\n`;
+        output += `${indent}${closeTag}\n`;
+        return output;
+    }
     let child = firstChild;
     while (child) {
-        output += formatWidget(child, depth + 1, getId, colors);
+        output += formatWidget(child, depth + 1, ctx);
         child = child.getNextSibling();
     }
     output += `${indent}${closeTag}\n`;
@@ -142,7 +163,7 @@ export const prettyWidget = (container: Container, options: PrettyWidgetOptions 
 
     let output = "";
     for (const root of roots(container)) {
-        output += formatWidget(root, 0, options.getId, colors);
+        output += formatWidget(root, 0, { getId: options.getId, colors, maxDepth: options.maxDepth });
     }
 
     if (output.length > maxLength) {

@@ -76,6 +76,13 @@ const emptyParams: z.ZodObject<Record<string, never>, z.core.$strip> = z.object(
 export const widgetIdParams: z.ZodObject<{ widgetId: z.ZodString }, z.core.$strip> = z.object({
     widgetId: z.string(),
 });
+export const getTreeParams: z.ZodObject<
+    { rootId: z.ZodOptional<z.ZodString>; maxDepth: z.ZodOptional<z.ZodNumber> },
+    z.core.$strip
+> = z.object({
+    rootId: z.string().optional(),
+    maxDepth: z.number().int().positive().optional(),
+});
 export const queryOptionsSchema: z.ZodObject<
     { name: z.ZodOptional<z.ZodString>; exact: z.ZodOptional<z.ZodBoolean>; timeout: z.ZodOptional<z.ZodNumber> },
     z.core.$strip
@@ -115,7 +122,7 @@ export const screenshotParams: z.ZodObject<
 
 export const ServerRequestParamsSchemas: {
     "app.getWindows": typeof emptyParams;
-    "widget.getTree": typeof emptyParams;
+    "widget.getTree": typeof getTreeParams;
     "widget.query": typeof queryParams;
     "widget.getProps": typeof widgetIdParams;
     "widget.click": typeof widgetIdParams;
@@ -124,7 +131,7 @@ export const ServerRequestParamsSchemas: {
     "widget.screenshot": typeof screenshotParams;
 } = {
     "app.getWindows": emptyParams,
-    "widget.getTree": emptyParams,
+    "widget.getTree": getTreeParams,
     "widget.query": queryParams,
     "widget.getProps": widgetIdParams,
     "widget.click": widgetIdParams,

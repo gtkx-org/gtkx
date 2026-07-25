@@ -2,7 +2,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { logWidget, render, screen } from "../src/index.js";
+import { logWidget, prettyWidget, render, screen } from "../src/index.js";
 
 afterEach(() => {
     vi.restoreAllMocks();
@@ -76,5 +76,24 @@ describe("screen.debug", () => {
         screen.debug();
 
         expect(log).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe("prettyWidget maxDepth", () => {
+    it("summarizes descendants past maxDepth and renders them in full otherwise", async () => {
+        const { container } = await render(
+            <VBox>
+                <VBox>
+                    <GtkButton label="Deep" />
+                </VBox>
+            </VBox>,
+        );
+
+        const shallow = prettyWidget(container, { maxDepth: 1 });
+        expect(shallow).toContain("child widget");
+        expect(shallow).toContain("hidden");
+        expect(shallow).not.toContain("Deep");
+
+        expect(prettyWidget(container)).toContain("Deep");
     });
 });

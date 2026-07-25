@@ -57,6 +57,22 @@ const extractSignalArg = (arg: unknown): unknown => {
     return isTypedArg ? (arg as { value: unknown }).value : arg;
 };
 
+const resolveRole = (value: string | number): Gtk.AccessibleRole | undefined => {
+    if (typeof value === "number") return value;
+    const resolved = Gtk.AccessibleRole[value.toUpperCase() as keyof typeof Gtk.AccessibleRole];
+    return typeof resolved === "number" ? resolved : undefined;
+};
+
+// A query with no matches is a normal result, not an error; the underlying find* helpers
+// throw (with a full tree diagnostic) when nothing is found, so treat that as an empty match.
+const matchesOrEmpty = async (find: () => Promise<Gtk.Widget[]>): Promise<Gtk.Widget[]> => {
+    try {
+        return await find();
+    } catch {
+        return [];
+    }
+};
+
 const handleQuery = async (
     { app, registry }: HandlerContext,
     params: ServerRequestParams<"widget.query">,
@@ -66,21 +82,23 @@ const handleQuery = async (
 
     switch (params.by) {
         case "role": {
-            const roleValue =
-                typeof params.value === "string"
-                    ? Gtk.AccessibleRole[params.value as keyof typeof Gtk.AccessibleRole]
-                    : params.value;
-            widgets = await testing.findAllByRole(app, roleValue as Gtk.AccessibleRole, params.options);
+            const roleValue = resolveRole(params.value);
+            if (roleValue === undefined) {
+                throw invalidRequestError(
+                    `Unknown accessible role "${params.value}"; use the lowercase role shown in the widget tree, e.g. "button", "list", "list_item", or "checkbox".`,
+                );
+            }
+            widgets = await matchesOrEmpty(() => testing.findAllByRole(app, roleValue, params.options));
             break;
         }
         case "text":
-            widgets = await testing.findAllByText(app, String(params.value), params.options);
+            widgets = await matchesOrEmpty(() => testing.findAllByText(app, String(params.value), params.options));
             break;
         case "name":
-            widgets = await testing.findAllByName(app, String(params.value), params.options);
+            widgets = await matchesOrEmpty(() => testing.findAllByName(app, String(params.value), params.options));
             break;
         case "labelText":
-            widgets = await testing.findAllByLabelText(app, String(params.value), params.options);
+            widgets = await matchesOrEmpty(() => testing.findAllByLabelText(app, String(params.value), params.options));
             break;
     }
 
@@ -117,9 +135,16 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
             title: window.getTitle(),
         })),
     })),
-    "widget.getTree": validated(ServerRequestParamsSchemas["widget.getTree"], async ({ app, registry }) => {
+    "widget.getTree": validated(ServerRequestParamsSchemas["widget.getTree"], async ({ app, registry }, params) => {
         const testing = await loadTestingModule();
-        return { tree: testing.prettyWidget(app, { getId: (w) => registry.idFor(w), highlight: false }) };
+        const container = params.rootId !== undefined ? requireWidget(registry, params.rootId) : app;
+        return {
+            tree: testing.prettyWidget(container, {
+                getId: (w) => registry.idFor(w),
+                highlight: false,
+                ...(params.maxDepth !== undefined ? { maxDepth: params.maxDepth } : {}),
+            }),
+        };
     }),
     "widget.query": validated(ServerRequestParamsSchemas["widget.query"], handleQuery),
     "widget.getProps": validated(ServerRequestParamsSchemas["widget.getProps"], async ({ registry }, params) => {

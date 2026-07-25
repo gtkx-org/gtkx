@@ -129,6 +129,26 @@ describe("widget.getTree", () => {
         const getId = prettyWidget.mock.calls[0]?.[1]?.getId;
         expect(getId?.(widget)).toBe(registry.idFor(widget));
     });
+
+    it("renders only the subtree for a rootId", async () => {
+        prettyWidget.mockReturnValueOnce("subtree");
+        const registry = new WidgetRegistry();
+        const widget = makeWidget({});
+        const rootId = registerWidget(registry, widget);
+
+        await dispatch("widget.getTree", { rootId }, { app: makeApp() as never, registry });
+
+        expect(prettyWidget).toHaveBeenCalledWith(widget, expect.objectContaining({ highlight: false }));
+    });
+
+    it("passes maxDepth through to the renderer", async () => {
+        prettyWidget.mockReturnValueOnce("shallow");
+        const registry = new WidgetRegistry();
+
+        await dispatch("widget.getTree", { maxDepth: 2 }, { app: makeApp() as never, registry });
+
+        expect(prettyWidget).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ maxDepth: 2 }));
+    });
 });
 
 describe("widget.query", () => {
@@ -147,6 +167,24 @@ describe("widget.query", () => {
         expect(result.widgets[0]?.text).toBe("OK");
     });
 
+    it("accepts the lowercase role shown in the widget tree", async () => {
+        findAllByRole.mockResolvedValueOnce([makeWidget()]);
+        const registry = new WidgetRegistry();
+
+        await dispatch("widget.query", { by: "role", value: "button" }, { app: makeApp() as never, registry });
+
+        expect(findAllByRole).toHaveBeenCalledWith(expect.anything(), 1, undefined);
+    });
+
+    it("rejects an unknown role with a clear error instead of delegating", async () => {
+        const registry = new WidgetRegistry();
+
+        await expect(
+            dispatch("widget.query", { by: "role", value: "nonsense" }, { app: makeApp() as never, registry }),
+        ).rejects.toMatchObject({ code: ErrorCode.INVALID_REQUEST });
+        expect(findAllByRole).not.toHaveBeenCalled();
+    });
+
     it("routes text/name/labelText through the matching testing helper", async () => {
         const widget = makeWidget();
         findAllByText.mockResolvedValueOnce([widget]);
@@ -162,6 +200,19 @@ describe("widget.query", () => {
         expect(findAllByText).toHaveBeenCalledWith(expect.anything(), "Hi", undefined);
         expect(findAllByName).toHaveBeenCalledWith(expect.anything(), "btn", undefined);
         expect(findAllByLabelText).toHaveBeenCalledWith(expect.anything(), "Submit", undefined);
+    });
+
+    it("returns an empty match list instead of throwing when nothing is found", async () => {
+        findAllByRole.mockRejectedValueOnce(new Error("Unable to find an element with the role"));
+        const registry = new WidgetRegistry();
+
+        const result = (await dispatch(
+            "widget.query",
+            { by: "role", value: "button" },
+            { app: makeApp() as never, registry },
+        )) as { widgets: unknown[] };
+
+        expect(result.widgets).toEqual([]);
     });
 
     it("rejects an unknown query type at the wire-schema boundary", async () => {

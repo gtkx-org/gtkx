@@ -8,6 +8,7 @@ import { ConnectionRegistry } from "./connection-registry.js";
 import {
     DEFAULT_SOCKET_PATH,
     fireEventParams,
+    getTreeParams,
     queryParams,
     screenshotParams,
     typeParams,
@@ -30,6 +31,16 @@ const applicationIdShape = { applicationId: z.string().optional().describe(APPLI
 const widgetIdShape = {
     ...applicationIdShape,
     widgetId: widgetIdParams.shape.widgetId.describe(WIDGET_ID_DESCRIPTION),
+};
+
+const getTreeShape = {
+    ...applicationIdShape,
+    rootId: getTreeParams.shape.rootId.describe(
+        "Render only the subtree rooted at this widget ID (from a prior tree or query). Omit for the whole app.",
+    ),
+    maxDepth: getTreeParams.shape.maxDepth.describe(
+        "Limit how many levels deep to render; deeper descendants are summarized with a count. Combine with rootId to drill in without dumping the whole tree.",
+    ),
 };
 
 const listAppsShape = {
@@ -134,10 +145,13 @@ function buildInspectionTools(appRouter: AppRouter): Tool[] {
             title: "Widget tree",
             kind: "readOnly",
             description:
-                "Get the widget hierarchy for a connected GTKX app. Returns a tree of all widgets with their IDs, types, roles, and properties.",
-            inputSchema: applicationIdShape,
-            handler: async ({ applicationId }) => {
-                const result = await appRouter.sendToApp<{ tree: string }>(applicationId, "widget.getTree", {});
+                "Get the widget hierarchy for a connected GTKX app. Returns a tree of widgets with their IDs, types, roles, and properties. For large apps, pass `maxDepth` for a shallow overview and/or `rootId` to render just one subtree instead of the whole (possibly truncated) tree.",
+            inputSchema: getTreeShape,
+            handler: async ({ applicationId, rootId, maxDepth }) => {
+                const result = await appRouter.sendToApp<{ tree: string }>(applicationId, "widget.getTree", {
+                    rootId,
+                    maxDepth,
+                });
                 return textContent(result.tree);
             },
         }),
