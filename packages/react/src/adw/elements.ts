@@ -10,7 +10,7 @@ import {
     list,
     slot,
 } from "../reconciler/behaviors.js";
-import { type ElementConfig, type ModuleExport, registerElements } from "../reconciler/elements.js";
+import { type ElementConfig, type ModuleExport, registerElements } from "../reconciler/registry.js";
 import type { AlertDialogResponse } from "./prop-types.js";
 
 type AdwChildSetter =

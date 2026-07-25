@@ -2,7 +2,6 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { getOrInsert, remove } from "@gtkx/utils";
 import { applyAdoptedProps, markFlush } from "./apply-props.js";
-import type { ElementBehavior, PlaceInfo } from "./elements.js";
 import { typeInfoOf } from "./metadata.js";
 import {
     contextFor,
@@ -15,6 +14,7 @@ import {
     type PlaceableNode,
     type PlacedChild,
 } from "./node.js";
+import type { ElementBehavior, PlaceInfo } from "./registry.js";
 import { markTextDirty } from "./text.js";
 
 const createEntry = (slot: string, node: PlaceableNode): PlacedChild | null => {

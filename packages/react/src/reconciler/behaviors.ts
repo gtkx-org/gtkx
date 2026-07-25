@@ -2,7 +2,7 @@ import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { getInstanceType, TYPE_INVALID, typeFromName, typeIsA } from "@gtkx/runtime";
 import { getOrInsert, isDeepEqual, structuredClone } from "@gtkx/utils";
-import type { DetachInfo, ElementBehavior, ElementConfig, ModuleExport, PlaceInfo, Props } from "./elements.js";
+import type { DetachInfo, ElementBehavior, ElementConfig, ModuleExport, PlaceInfo, Props } from "./registry.js";
 
 const childTypeCache = new Map<string, bigint>();
 

@@ -1,6 +1,6 @@
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import type { Props } from "../reconciler/elements.js";
+import type { Props } from "../reconciler/registry.js";
 import { deleteAccessibleMetadata, setAccessibleMetadata } from "./accessible-metadata.js";
 
 /**

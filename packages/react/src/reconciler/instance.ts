@@ -1,6 +1,5 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import { getWrapperClass, TYPE_INVALID, typeFromName, typeIsA } from "@gtkx/runtime";
-import type { Props } from "./elements.js";
 import { type TypeInfo, typeInfoOf } from "./metadata.js";
 import {
     type ContentKind,
@@ -10,6 +9,7 @@ import {
     type LazyNode,
     makeElementNode,
 } from "./node.js";
+import type { Props } from "./registry.js";
 
 type WidgetConstructor = new (props: Props) => GObject.Object;
 

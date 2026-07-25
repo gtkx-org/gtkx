@@ -14,8 +14,7 @@ import {
     slot,
     value,
     wrappingIndexedSlot,
-} from "./behaviors.js";
-import type { ElementConfig } from "./elements.js";
+} from "./reconciler/behaviors.js";
 import type {
     ActionAccel,
     CreditSection,
@@ -24,7 +23,8 @@ import type {
     MenuItem,
     ScaleMark,
     VflConstraints,
-} from "./prop-types.js";
+} from "./reconciler/prop-types.js";
+import type { ElementConfig } from "./reconciler/registry.js";
 
 const layoutChild = (parent: Gtk.Widget, child: Gtk.Widget): GObject.Object | null =>
     parent.getLayoutManager()?.getLayoutChild(child) ?? null;

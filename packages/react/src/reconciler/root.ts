@@ -18,10 +18,10 @@ import {
     mountBehaviors,
     unmountBehaviors,
 } from "./apply-props.js";
-import type { Props } from "./elements.js";
 import { createElementNode } from "./instance.js";
 import { typeInfoOf } from "./metadata.js";
-import "./register.js";
+import type { Props } from "./registry.js";
+import "../bootstrap.js";
 import { attachChild, detachChild } from "./child-routing.js";
 import {
     type AnyNode,

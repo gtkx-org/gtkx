@@ -1,7 +1,7 @@
 import { CONSTRUCT_ONLY_PROPS, CONSTRUCT_PROPS, DEFAULT_PROPS, SIGNALS, userEventSignals } from "virtual:gtkx-config";
 import { getSignalBaseName, TYPE_INVALID, typeFromName, typeInterfaces, typeName, typeParent } from "@gtkx/runtime";
 import { getOrInsert } from "@gtkx/utils";
-import { deferredProps, ELEMENTS, type ElementBehavior } from "./elements.js";
+import { deferredProps, ELEMENTS, type ElementBehavior } from "./registry.js";
 
 export type TypeInfo = {
     typeName: string;

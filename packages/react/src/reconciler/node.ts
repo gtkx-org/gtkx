@@ -2,7 +2,7 @@ import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { SignalHandler } from "@gtkx/runtime";
 import { getOrInsert } from "@gtkx/utils";
-import type { ElementBehavior, Props } from "./elements.js";
+import type { ElementBehavior, Props } from "./registry.js";
 
 export const ELEMENT_KIND = "element";
 export const PROP_KIND = "prop";

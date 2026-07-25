@@ -1,6 +1,6 @@
 import { isRecord } from "@gtkx/utils";
 import { type ElementType, isValidElement, type ReactElement, type ReactNode } from "react";
-import type { Props } from "../reconciler/elements.js";
+import type { Props } from "../reconciler/registry.js";
 
 /** The intrinsic element that carries an object-valued prop's element into its parent's named property. */
 export const Prop = "gtkx:prop";

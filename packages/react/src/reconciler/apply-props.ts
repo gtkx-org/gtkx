@@ -3,9 +3,9 @@ import * as Gtk from "@gtkx/gi/gtk";
 import type { SignalHandler } from "@gtkx/runtime";
 import { kebabCase } from "@gtkx/utils";
 import { applyAccessibleProps, isAccessibleProp } from "../utils/accessible-props.js";
-import type { Props } from "./elements.js";
 import { type TypeInfo, typeInfoOf } from "./metadata.js";
 import { contextFor, type ElementNode, type SignalTarget } from "./node.js";
+import type { Props } from "./registry.js";
 import { connectHandler, disconnectHandler } from "./signals.js";
 
 const REACT_RESERVED_PROPS = new Set(["children", "ref", "key"]);

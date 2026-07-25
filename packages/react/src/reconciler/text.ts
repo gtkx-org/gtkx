@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import type { Props } from "./elements.js";
 import type { ContentChild, ElementNode, ParentNode, TextNode } from "./node.js";
 import { ELEMENT_KIND, TEXT_KIND } from "./node.js";
+import type { Props } from "./registry.js";
 
 const charLength = (text: string): number => [...text].length;
 
