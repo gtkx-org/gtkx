@@ -85,7 +85,7 @@ export const addContent = (host: ElementNode, child: ContentChild, before: Conte
 
 export const removeContent = (host: ElementNode, child: ContentChild): void => {
     const content = host.content;
-    if (content === undefined || content === null) return;
+    if (content === null) return;
     const index = content.indexOf(child);
     if (index >= 0) content.splice(index, 1);
     markTextDirty(host);

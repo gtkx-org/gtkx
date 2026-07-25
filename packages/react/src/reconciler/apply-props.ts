@@ -11,10 +11,14 @@ import { connectHandler, disconnectHandler } from "./signals.js";
 const REACT_RESERVED_PROPS = new Set(["children", "ref", "key"]);
 const isHandlerName = (name: string): boolean => /^on[A-Z]/.test(name);
 
+const NOTIFY_PREFIX = "onNotify";
+const HANDLER_PREFIX = "on";
+
 const signalForProp = (info: TypeInfo, name: string): string => {
-    if (name === "onNotify") return "notify";
-    if (name.startsWith("onNotify") && name.length > 8) return `notify::${kebabCase(name.slice(8))}`;
-    return info.signals[name] ?? kebabCase(name.slice(2));
+    if (name === NOTIFY_PREFIX) return "notify";
+    if (name.startsWith(NOTIFY_PREFIX) && name.length > NOTIFY_PREFIX.length)
+        return `notify::${kebabCase(name.slice(NOTIFY_PREFIX.length))}`;
+    return info.signals[name] ?? kebabCase(name.slice(HANDLER_PREFIX.length));
 };
 
 const isReservedName = (name: string, info: TypeInfo): boolean =>
@@ -23,10 +27,15 @@ const isReservedName = (name: string, info: TypeInfo): boolean =>
 const skipValueName = (name: string, info: TypeInfo, consumed: Set<string>): boolean =>
     isReservedName(name, info) || consumed.has(name);
 
-type PropEntry = { name: string; value: unknown; oldValue: unknown };
+type PropEntry = { name: string; value: unknown; prevValue: unknown };
 
 const resetPlain = (object: GObject.Object, info: TypeInfo, name: string): void => {
     if (Object.hasOwn(info.defaults, name)) Reflect.set(object, name, info.defaults[name]);
+};
+
+const setOrReset = (object: GObject.Object, info: TypeInfo, name: string, value: unknown): void => {
+    if (value === undefined) resetPlain(object, info, name);
+    else Reflect.set(object, name, value);
 };
 
 const applyBufferText = (buffer: Gtk.TextBuffer, text: string): void => {
@@ -36,53 +45,52 @@ const applyBufferText = (buffer: Gtk.TextBuffer, text: string): void => {
     buffer.endIrreversibleAction();
 };
 
-const isBufferText = (node: ElementNode, name: string): boolean =>
+const isBufferText = (node: ElementNode, name: string): node is ElementNode & { object: Gtk.TextBuffer } =>
     name === "text" && node.contentKind === "buffer" && node.object instanceof Gtk.TextBuffer;
 
 const applyEntry = (node: ElementNode, info: TypeInfo, entry: PropEntry): void => {
-    const { name, value, oldValue } = entry;
-    if (value === undefined) {
-        resetPlain(node.object, info, name);
-    } else if (isBufferText(node, name) && node.object instanceof Gtk.TextBuffer) {
+    const { name, value, prevValue } = entry;
+    if (value !== undefined && isBufferText(node, name)) {
         applyBufferText(node.object, String(value));
-    } else if (value !== null || oldValue !== undefined) {
-        Reflect.set(node.object, name, value);
+        return;
     }
+    const isInitialNull = value === null && prevValue === undefined;
+    if (!isInitialNull) setOrReset(node.object, info, name, value);
 };
 
-const eachChangedName = (oldProps: Props, newProps: Props, visit: (name: string) => void): void => {
-    for (const name of new Set([...Object.keys(oldProps), ...Object.keys(newProps)])) visit(name);
+const eachChangedName = (prev: Props, next: Props, visit: (name: string) => void): void => {
+    for (const name of new Set([...Object.keys(prev), ...Object.keys(next)])) visit(name);
 };
 
-const runBehaviorUpdates = (node: ElementNode, info: TypeInfo, oldProps: Props, newProps: Props): Set<string> => {
+const runBehaviorUpdates = (node: ElementNode, info: TypeInfo, prev: Props, next: Props): Set<string> => {
     const consumed = new Set<string>();
     for (const behavior of info.behaviors) {
         if (behavior.update === undefined) continue;
-        const result = behavior.update(node.object, oldProps, newProps, contextFor(node, behavior));
+        const result = behavior.update(node.object, prev, next, contextFor(node, behavior));
         if (result !== undefined) for (const name of result) consumed.add(name);
     }
     return consumed;
 };
 
-type PropChange = { old: Props; next: Props };
+type PropChange = { prev: Props; next: Props };
 
 const applyValueEntries = (node: ElementNode, info: TypeInfo, change: PropChange, consumed: Set<string>): void => {
-    eachChangedName(change.old, change.next, (name) => {
-        if (skipValueName(name, info, consumed) || Object.is(change.old[name], change.next[name])) return;
-        applyEntry(node, info, { name, value: change.next[name], oldValue: change.old[name] });
+    eachChangedName(change.prev, change.next, (name) => {
+        if (skipValueName(name, info, consumed) || Object.is(change.prev[name], change.next[name])) return;
+        applyEntry(node, info, { name, value: change.next[name], prevValue: change.prev[name] });
     });
 };
 
-const restoreActionableSensitivity = (node: ElementNode, info: TypeInfo, oldProps: Props, newProps: Props): void => {
-    if (oldProps.actionName === undefined || newProps.actionName !== undefined) return;
-    const desired = "sensitive" in newProps ? newProps.sensitive : info.defaults.sensitive;
+const restoreActionableSensitivity = (node: ElementNode, info: TypeInfo, prev: Props, next: Props): void => {
+    if (prev.actionName === undefined || next.actionName !== undefined) return;
+    const desired = "sensitive" in next ? next.sensitive : info.defaults.sensitive;
     if (typeof desired === "boolean") Reflect.set(node.object, "sensitive", desired);
 };
 
-const applyHandlers = (target: SignalTarget, info: TypeInfo, oldProps: Props, newProps: Props): void => {
-    eachChangedName(oldProps, newProps, (name) => {
+const applyHandlers = (target: SignalTarget, info: TypeInfo, prev: Props, next: Props): void => {
+    eachChangedName(prev, next, (name) => {
         if (!isHandlerName(name)) return;
-        const value = newProps[name];
+        const value = next[name];
         if (typeof value === "function")
             connectHandler(target, name, signalForProp(info, name), value as SignalHandler);
         else disconnectHandler(target, name);
@@ -116,31 +124,30 @@ export const unmountBehaviors = (node: ElementNode): void => {
     }
 };
 
-const applyAccessible = (object: GObject.Object, oldProps: Props, newProps: Props): void => {
-    if (object instanceof Gtk.Widget) applyAccessibleProps(object, oldProps, newProps);
+const applyAccessible = (object: GObject.Object, prev: Props, next: Props): void => {
+    if (object instanceof Gtk.Widget) applyAccessibleProps(object, prev, next);
 };
 
-export const applyElementProps = (node: ElementNode, oldProps: Props, newProps: Props): void => {
+export const applyElementProps = (node: ElementNode, prev: Props, next: Props): void => {
     const info = typeInfoOf(node.typeName);
-    const consumed = runBehaviorUpdates(node, info, oldProps, newProps);
-    applyValueEntries(node, info, { old: oldProps, next: newProps }, consumed);
-    restoreActionableSensitivity(node, info, oldProps, newProps);
-    applyAccessible(node.object, oldProps, newProps);
-    applyHandlers(node, info, oldProps, newProps);
+    const consumed = runBehaviorUpdates(node, info, prev, next);
+    applyValueEntries(node, info, { prev, next }, consumed);
+    restoreActionableSensitivity(node, info, prev, next);
+    applyAccessible(node.object, prev, next);
+    applyHandlers(node, info, prev, next);
     markFlush(node);
-    node.props = newProps;
+    node.props = next;
 };
 
 const skipAdoptedName = (info: TypeInfo, name: string): boolean => isReservedName(name, info);
 
-export const applyAdoptedProps = (target: SignalTarget, oldProps: Props, newProps: Props): void => {
+export const applyAdoptedProps = (target: SignalTarget, prev: Props, next: Props): void => {
     const { object, typeName } = target;
     const info = typeInfoOf(typeName);
-    eachChangedName(oldProps, newProps, (name) => {
-        if (skipAdoptedName(info, name) || Object.is(oldProps[name], newProps[name])) return;
-        if (newProps[name] === undefined) resetPlain(object, info, name);
-        else Reflect.set(object, name, newProps[name]);
+    eachChangedName(prev, next, (name) => {
+        if (skipAdoptedName(info, name) || Object.is(prev[name], next[name])) return;
+        setOrReset(object, info, name, next[name]);
     });
-    applyAccessible(object, oldProps, newProps);
-    applyHandlers(target, info, oldProps, newProps);
+    applyAccessible(object, prev, next);
+    applyHandlers(target, info, prev, next);
 };

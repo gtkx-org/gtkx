@@ -7,12 +7,10 @@ import {
     childSetterSlot,
     contentSetterSlot,
     deferred,
-    type ElementConfig,
     list,
-    type ModuleExport,
-    registerElements,
     slot,
-} from "../reconciler/elements.js";
+} from "../reconciler/behaviors.js";
+import { type ElementConfig, type ModuleExport, registerElements } from "../reconciler/elements.js";
 import type { AlertDialogResponse } from "./prop-types.js";
 
 type AdwChildSetter =

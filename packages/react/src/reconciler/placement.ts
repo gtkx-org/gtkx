@@ -1,113 +1,160 @@
-import { placeChild, unplaceChild } from "./container.js";
-import type { AnyNode, ContentChild, ElementNode, LazyNode, ParentNode, PlaceableNode, PropNode } from "./node.js";
-import { ELEMENT_KIND, LAZY_KIND, nodeWidget, PROP_KIND, TEXT_KIND } from "./node.js";
-import { acceptsText, addContent, removeContent, textRestrictionError } from "./text.js";
+import * as GObject from "@gtkx/gi/gobject";
+import * as Gtk from "@gtkx/gi/gtk";
+import { getOrInsert, remove } from "@gtkx/utils";
+import { applyAdoptedProps, markFlush } from "./apply-props.js";
+import type { ElementBehavior, PlaceInfo } from "./elements.js";
+import { typeInfoOf } from "./metadata.js";
+import {
+    contextFor,
+    DEFAULT_SLOT,
+    ELEMENT_KIND,
+    type ElementNode,
+    LAZY_KIND,
+    lazyTarget,
+    nodeWidget,
+    type PlaceableNode,
+    type PlacedChild,
+} from "./node.js";
+import { markTextDirty } from "./text.js";
 
-const asPlaceable = (node: AnyNode | null): PlaceableNode | null =>
-    node !== null && (node.kind === ELEMENT_KIND || node.kind === LAZY_KIND) ? node : null;
-
-const attachPropToElement = (parent: ElementNode, node: PropNode, before: AnyNode | null): void => {
-    node.parent = parent;
-    for (const child of node.children) placeChild(parent, node.propName, child, asPlaceable(before));
+const createEntry = (slot: string, node: PlaceableNode): PlacedChild | null => {
+    const object = nodeWidget(node);
+    if (object === null) return null;
+    return { node, object, adopted: null, slot, behavior: null, attached: false };
 };
 
-const detachPropFromElement = (parent: ElementNode, node: PropNode): void => {
-    for (const child of node.children) unplaceChild(parent, node.propName, child);
+const siblingAt = (entries: PlacedChild[], index: number): GObject.Object | null =>
+    index > 0 ? (entries[index - 1]?.object ?? null) : null;
+
+const placeInfo = (entry: PlacedChild, index: number, sibling: GObject.Object | null, context: unknown): PlaceInfo => ({
+    slot: entry.slot,
+    index,
+    sibling,
+    adopted: entry.adopted,
+    props: entry.node.props,
+    context,
+});
+
+const adoptedFrom = (parent: ElementNode, entry: PlacedChild, behavior: ElementBehavior, claim: unknown): void => {
+    if (behavior.resolve !== undefined) entry.adopted = behavior.resolve(parent.object, entry.object);
+    else entry.adopted = claim instanceof GObject.Object ? claim : null;
 };
 
-const asContentChild = (node: AnyNode | null): ContentChild | null =>
-    node !== null && (node.kind === TEXT_KIND || node.kind === ELEMENT_KIND) ? node : null;
+const applyLazyProps = (entry: PlacedChild): void => {
+    if (entry.node.kind !== LAZY_KIND || entry.adopted === null) return;
+    applyAdoptedProps(lazyTarget(entry.node, entry.adopted), {}, entry.node.props);
+    entry.node.adopted = entry.adopted;
+};
 
-const attachToContentHost = (parent: ElementNode, child: AnyNode, before: AnyNode | null): void => {
-    if (child.kind === TEXT_KIND && !acceptsText(parent)) throw textRestrictionError(child.text);
-    if (child.kind === TEXT_KIND || child.kind === ELEMENT_KIND) {
-        addContent(parent, child, asContentChild(before));
+const setObjectSlot = (parent: ElementNode, entry: PlacedChild): void => {
+    Reflect.set(parent.object, entry.slot, entry.object);
+    const node = entry.node;
+    if (node.kind === ELEMENT_KIND && node.contentKind === "buffer" && parent.object instanceof Gtk.TextView) {
+        node.bufferView = parent.object;
+        markTextDirty(node);
     }
+    entry.behavior = null;
+    entry.attached = true;
 };
 
-const attachToElement = (parent: ElementNode, child: AnyNode, before: AnyNode | null): void => {
-    if (child.kind === PROP_KIND) {
-        attachPropToElement(parent, child, before);
+const attachEntry = (parent: ElementNode, entry: PlacedChild, index: number, sibling: GObject.Object | null): void => {
+    for (const behavior of typeInfoOf(parent.typeName).behaviors) {
+        const attach = behavior.attach;
+        if (attach === undefined) continue;
+        const context = contextFor(parent, behavior);
+        const claim = attach(parent.object, entry.object, placeInfo(entry, index, sibling, context));
+        if (claim === undefined) continue;
+        entry.behavior = behavior;
+        adoptedFrom(parent, entry, behavior, claim);
+        entry.attached = true;
+        applyLazyProps(entry);
         return;
     }
-    if (parent.content !== null) {
-        attachToContentHost(parent, child, before);
+    if (entry.slot !== DEFAULT_SLOT) setObjectSlot(parent, entry);
+};
+
+const detachEntry = (parent: ElementNode, entry: PlacedChild): void => {
+    if (!entry.attached) return;
+    entry.attached = false;
+    const behavior = entry.behavior;
+    if (behavior === null) {
+        if (entry.slot !== DEFAULT_SLOT) Reflect.set(parent.object, entry.slot, null);
         return;
     }
-    if (child.kind === TEXT_KIND) throw textRestrictionError(child.text);
-    if (child.kind === LAZY_KIND) child.parent = parent;
-    placeChild(parent, "children", child, asPlaceable(before));
+    const context = contextFor(parent, behavior);
+    behavior.detach?.(parent.object, entry.object, {
+        slot: entry.slot,
+        adopted: entry.adopted,
+        props: entry.node.props,
+        context,
+    });
 };
 
-const insertPlaceable = (list: PlaceableNode[], node: PlaceableNode, before: AnyNode | null): void => {
-    const beforeNode = asPlaceable(before);
-    const at = beforeNode === null ? -1 : list.indexOf(beforeNode);
-    list.splice(at < 0 ? list.length : at, 0, node);
+const rebuild = (parent: ElementNode, entries: PlacedChild[]): void => {
+    for (const entry of entries) detachEntry(parent, entry);
+    entries.forEach((entry, index) => {
+        entry.behavior = null;
+        attachEntry(parent, entry, index, siblingAt(entries, index));
+    });
 };
 
-const insertChild = (parent: PropNode | LazyNode, child: AnyNode, before: AnyNode | null): PlaceableNode | null => {
-    const placeable = asPlaceable(child);
-    if (placeable === null) return null;
-    insertPlaceable(parent.children, placeable, before);
-    return placeable;
+const reorderEntry = (parent: ElementNode, entry: PlacedChild, index: number, sibling: GObject.Object | null): void => {
+    const behavior = entry.behavior;
+    const reorder = behavior?.reorder;
+    if (reorder === undefined || behavior === null) return;
+    const context = contextFor(parent, behavior);
+    const claim = reorder(parent.object, entry.object, placeInfo(entry, index, sibling, context));
+    adoptedFrom(parent, entry, behavior, claim);
+    applyLazyProps(entry);
 };
 
-const attachToProp = (parent: PropNode, child: AnyNode, before: AnyNode | null): void => {
-    const placeable = insertChild(parent, child, before);
-    if (placeable === null) return;
-    const owner = parent.parent;
-    if (owner === null) return;
-    placeChild(owner, parent.propName, placeable, asPlaceable(before));
+const positionOf = (entries: PlacedChild[], before: PlaceableNode | null): number => {
+    if (before === null) return entries.length;
+    const index = entries.findIndex((entry) => entry.node === before);
+    return index < 0 ? entries.length : index;
 };
 
-const syncLazy = (node: LazyNode): void => {
-    const owner = node.parent;
-    if (owner === null) return;
-    const entry = owner.placements.get("children")?.find((placed) => placed.node === node);
-    const widget = nodeWidget(node);
-    if (entry === undefined) {
-        if (widget !== null) placeChild(owner, "children", node, null);
-    } else if (entry.widget !== widget) {
-        unplaceChild(owner, "children", node);
-        if (widget !== null) placeChild(owner, "children", node, null);
-    }
-};
-
-const attachToLazy = (parent: LazyNode, child: AnyNode, before: AnyNode | null): void => {
-    if (insertChild(parent, child, before) === null) return;
-    syncLazy(parent);
-};
-
-export const attachChild = (parent: ParentNode, child: AnyNode, before: AnyNode | null): void => {
-    if (parent.kind === ELEMENT_KIND) attachToElement(parent, child, before);
-    else if (parent.kind === PROP_KIND) attachToProp(parent, child, before);
-    else attachToLazy(parent, child, before);
-};
-
-const detachFromProp = (parent: PropNode, child: AnyNode): void => {
-    const placeable = asPlaceable(child);
-    if (placeable === null) return;
-    parent.children = parent.children.filter((entry) => entry !== placeable);
-    const owner = parent.parent;
-    if (owner === null) return;
-    unplaceChild(owner, parent.propName, placeable);
-};
-
-export const detachChild = (parent: ParentNode, child: AnyNode): void => {
-    if (parent.kind === PROP_KIND) {
-        detachFromProp(parent, child);
+const placeNew = (parent: ElementNode, entry: PlacedChild, entries: PlacedChild[], index: number): void => {
+    attachEntry(parent, entry, index, siblingAt(entries, index));
+    if (!entry.attached) {
+        remove(entries, entry);
         return;
     }
-    if (parent.kind === LAZY_KIND) {
-        parent.children = parent.children.filter((entry) => entry !== child);
-        syncLazy(parent);
-        return;
-    }
-    if (child.kind === PROP_KIND) {
-        detachPropFromElement(parent, child);
-    } else if (parent.content !== null) {
-        if (child.kind === TEXT_KIND || child.kind === ELEMENT_KIND) removeContent(parent, child);
-    } else if (child.kind === ELEMENT_KIND || child.kind === LAZY_KIND) {
-        unplaceChild(parent, "children", child);
-    }
+    const insertedBeforeEnd = index < entries.length - 1;
+    const cannotReorderInPlace = entry.behavior !== null && entry.behavior.reorder === undefined;
+    if (insertedBeforeEnd && cannotReorderInPlace) rebuild(parent, entries);
+};
+
+const moveEntry = (parent: ElementNode, entry: PlacedChild, entries: PlacedChild[], index: number): void => {
+    if (entry.behavior?.reorder !== undefined) reorderEntry(parent, entry, index, siblingAt(entries, index));
+    else rebuild(parent, entries);
+};
+
+export const placeChild = (
+    parent: ElementNode,
+    slot: string,
+    node: PlaceableNode,
+    before: PlaceableNode | null,
+): void => {
+    const entries = getOrInsert(parent.placements, slot, () => []);
+    const existing = entries.findIndex((entry) => entry.node === node);
+    const entry = existing >= 0 ? entries[existing] : createEntry(slot, node);
+    if (entry === undefined || entry === null) return;
+    const isMove = existing >= 0;
+    if (isMove) entries.splice(existing, 1);
+    const index = positionOf(entries, before);
+    entries.splice(index, 0, entry);
+    if (isMove) moveEntry(parent, entry, entries, index);
+    else placeNew(parent, entry, entries, index);
+    markFlush(parent);
+};
+
+export const unplaceChild = (parent: ElementNode, slot: string, node: PlaceableNode): void => {
+    const entries = parent.placements.get(slot);
+    if (entries === undefined) return;
+    const index = entries.findIndex((entry) => entry.node === node);
+    if (index < 0) return;
+    const [entry] = entries.splice(index, 1);
+    if (entry !== undefined) detachEntry(parent, entry);
+    markFlush(parent);
 };

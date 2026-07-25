@@ -1,6 +1,7 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { getInstanceType, typeName } from "@gtkx/runtime";
+import { getOrInsert } from "@gtkx/utils";
 import { createContext, type ErrorInfo, type ReactNode } from "react";
 import ReactReconciler from "react-reconciler";
 import {
@@ -21,6 +22,7 @@ import type { Props } from "./elements.js";
 import { createElementNode } from "./instance.js";
 import { typeInfoOf } from "./metadata.js";
 import "./register.js";
+import { attachChild, detachChild } from "./child-routing.js";
 import {
     type AnyNode,
     createPropNode,
@@ -31,9 +33,9 @@ import {
     type Instance,
     LAZY_KIND,
     lazyTarget,
+    makeElementNode,
     type TextNode,
 } from "./node.js";
-import { attachChild, detachChild } from "./placement.js";
 import { isRootElement, type RootElement, rootElement } from "./root-element.js";
 import { beginSuppression, disconnectAllHandlers, endSuppression } from "./signals.js";
 import { enclosingHost, flushTextHosts, markTextDirty, surgicalTextUpdate, validateContentMix } from "./text.js";
@@ -45,46 +47,12 @@ let currentPriority: number = NoEventPriority;
 
 const containerNodes = new WeakMap<object, ElementNode>();
 
-const adoptContainer = (container: GObject.Object): ElementNode => ({
-    kind: ELEMENT_KIND,
-    typeName: typeName(getInstanceType(container)) ?? "",
-    object: container,
-    props: {},
-    handlers: new Map(),
-    placements: new Map(),
-    contexts: new Map(),
-    parent: null,
-    content: null,
-    contentKind: null,
-    bufferView: null,
-    dispatch: runDiscrete,
-});
-
-const containerNodeFor = (container: GObject.Object): ElementNode => {
-    let node = containerNodes.get(container);
-    if (node === undefined) {
-        node = adoptContainer(container);
-        containerNodes.set(container, node);
-    }
-    return node;
-};
-
 const attachToContainer = (container: Container, child: AnyNode, before: AnyNode | null): void => {
     if (!isRootElement(container)) attachChild(containerNodeFor(container), child, before);
 };
 
 const detachFromContainer = (container: Container, child: AnyNode): void => {
     if (!isRootElement(container)) detachChild(containerNodeFor(container), child);
-};
-
-const makeInstance = (type: string, props: Props): Instance => {
-    if (type === Prop) return createPropNode(typeof props.propName === "string" ? props.propName : "");
-    const node = createElementNode(type, props, runDiscrete);
-    if (node.kind === ELEMENT_KIND) {
-        containerNodes.set(node.object, node);
-        applyElementProps(node, {}, props);
-    }
-    return node;
 };
 
 const publicInstanceOf = (instance: Instance): object => {
@@ -150,6 +118,7 @@ const hostConfig = {
         if (instance.kind === ELEMENT_KIND) applyElementProps(instance, prevProps, nextProps);
         else if (instance.kind === LAZY_KIND && instance.adopted !== null) {
             applyAdoptedProps(lazyTarget(instance, instance.adopted), prevProps, nextProps);
+            instance.props = nextProps;
         }
     },
     hideInstance: (instance: Instance): void => setWidgetVisible(instance, false),
@@ -200,6 +169,25 @@ const runDiscrete: Dispatch = (fn) => {
         currentPriority = previous;
         reconciler.flushSyncWork();
     }
+};
+
+const adoptContainer = (container: GObject.Object): ElementNode => {
+    const name = typeName(getInstanceType(container));
+    if (name === null) throw new Error("Cannot adopt a container whose GType has no registered name");
+    return makeElementNode(name, container, runDiscrete, null);
+};
+
+const containerNodeFor = (container: GObject.Object): ElementNode =>
+    getOrInsert(containerNodes, container, adoptContainer);
+
+const makeInstance = (type: string, props: Props): Instance => {
+    if (type === Prop) return createPropNode(props.propName as string);
+    const node = createElementNode(type, props, runDiscrete);
+    if (node.kind === ELEMENT_KIND) {
+        containerNodes.set(node.object, node);
+        applyElementProps(node, {}, props);
+    }
+    return node;
 };
 
 type OpaqueRoot = ReturnType<typeof reconciler.createContainer>;

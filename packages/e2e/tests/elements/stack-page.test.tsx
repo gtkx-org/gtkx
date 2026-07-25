@@ -71,6 +71,42 @@ describe("render - StackPage", () => {
         expect(stackRef.current?.getChildByName("b")).toBeNull();
     });
 
+    it("keeps updated page props after a reorder-triggered rebuild", async () => {
+        const stackRef = createRef<Gtk.Stack>();
+        const build = (pages: { key: string; title: string }[]) => (
+            <GtkStack ref={stackRef}>
+                {pages.map((page) => (
+                    <GtkStackPage key={page.key} name={page.key} title={page.title}>
+                        <GtkLabel>{page.key}</GtkLabel>
+                    </GtkStackPage>
+                ))}
+            </GtkStack>
+        );
+
+        const { rerender } = await renderChildren(
+            [
+                { key: "a", title: "A1" },
+                { key: "b", title: "B1" },
+            ],
+            build,
+        );
+
+        await rerender([
+            { key: "a", title: "A2" },
+            { key: "b", title: "B1" },
+        ]);
+
+        await rerender([
+            { key: "z", title: "Z1" },
+            { key: "a", title: "A2" },
+            { key: "b", title: "B1" },
+        ]);
+
+        const child = stackRef.current?.getChildByName("a");
+        const page = stackRef.current?.getPage(child as Gtk.Widget);
+        expect(page?.getTitle()).toBe("A2");
+    });
+
     it("connects a notify handler on the page object", async () => {
         const stackRef = createRef<Gtk.Stack>();
         const seen: unknown[] = [];

@@ -6,9 +6,9 @@ import {
     type ContentKind,
     createLazyNode,
     type Dispatch,
-    ELEMENT_KIND,
     type ElementNode,
     type LazyNode,
+    makeElementNode,
 } from "./node.js";
 
 type WidgetConstructor = new (props: Props) => GObject.Object;
@@ -49,19 +49,5 @@ export const createElementNode = (typeName: string, props: Props, dispatch: Disp
     if (info.lazy) return createLazyNode(typeName, props, dispatch);
     const type = typeFromName(typeName);
     const object = instantiate(type, constructInput(info, props));
-    const contentKind = resolveContentKind(type);
-    return {
-        kind: ELEMENT_KIND,
-        typeName,
-        object,
-        props: {},
-        handlers: new Map(),
-        placements: new Map(),
-        contexts: new Map(),
-        parent: null,
-        content: contentKind === null ? null : [],
-        contentKind,
-        bufferView: null,
-        dispatch,
-    };
+    return makeElementNode(typeName, object, dispatch, resolveContentKind(type));
 };

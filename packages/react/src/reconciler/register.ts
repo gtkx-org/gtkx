@@ -1,4 +1,5 @@
 import { elements } from "virtual:gtkx-config";
-import { GTK_ELEMENTS, registerElements } from "./elements.js";
+import { registerElements } from "./elements.js";
+import { GTK_ELEMENTS } from "./gtk-elements.js";
 
 registerElements(elements, GTK_ELEMENTS);

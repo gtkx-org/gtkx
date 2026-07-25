@@ -1,12 +1,15 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { SignalHandler } from "@gtkx/runtime";
+import { getOrInsert } from "@gtkx/utils";
 import type { ElementBehavior, Props } from "./elements.js";
 
 export const ELEMENT_KIND = "element";
 export const PROP_KIND = "prop";
 export const TEXT_KIND = "text";
 export const LAZY_KIND = "lazy";
+
+export const DEFAULT_SLOT = "children";
 
 export type ContentKind = "label" | "buffer" | "tag" | "anchor";
 
@@ -23,7 +26,7 @@ export type SignalTarget = {
 
 export type PlacedChild = {
     node: PlaceableNode;
-    widget: GObject.Object;
+    object: GObject.Object;
     adopted: GObject.Object | null;
     slot: string;
     behavior: ElementBehavior | null;
@@ -93,6 +96,26 @@ export const createLazyNode = (typeName: string, props: Props, dispatch: Dispatc
     dispatch,
 });
 
+export const makeElementNode = (
+    typeName: string,
+    object: GObject.Object,
+    dispatch: Dispatch,
+    contentKind: ContentKind | null,
+): ElementNode => ({
+    kind: ELEMENT_KIND,
+    typeName,
+    object,
+    props: {},
+    handlers: new Map(),
+    placements: new Map(),
+    contexts: new Map(),
+    parent: null,
+    content: contentKind === null ? null : [],
+    contentKind,
+    bufferView: null,
+    dispatch,
+});
+
 export const createTextNode = (text: string): TextNode => ({ kind: TEXT_KIND, text, parent: null });
 
 export const nodeWidget = (node: PlaceableNode): GObject.Object | null => {
@@ -111,7 +134,5 @@ export const lazyTarget = (node: LazyNode, adopted: GObject.Object): SignalTarge
 });
 
 /** The per-node context a behavior builds once via `createContext`, memoized on the node. */
-export const contextFor = (node: ElementNode, behavior: ElementBehavior): unknown => {
-    if (!node.contexts.has(behavior)) node.contexts.set(behavior, behavior.createContext?.(node.object));
-    return node.contexts.get(behavior);
-};
+export const contextFor = (node: ElementNode, behavior: ElementBehavior): unknown =>
+    getOrInsert(node.contexts, behavior, () => behavior.createContext?.(node.object));

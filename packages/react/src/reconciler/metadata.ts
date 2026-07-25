@@ -1,5 +1,6 @@
 import { CONSTRUCT_ONLY_PROPS, CONSTRUCT_PROPS, DEFAULT_PROPS, SIGNALS, userEventSignals } from "virtual:gtkx-config";
 import { getSignalBaseName, TYPE_INVALID, typeFromName, typeInterfaces, typeName, typeParent } from "@gtkx/runtime";
+import { getOrInsert } from "@gtkx/utils";
 import { deferredProps, ELEMENTS, type ElementBehavior } from "./elements.js";
 
 export type TypeInfo = {
@@ -26,9 +27,7 @@ const addAncestor = (names: string[], seen: Set<string>, name: string | null): v
     }
 };
 
-const ancestryOf = (name: string): string[] => {
-    const cached = ancestryCache.get(name);
-    if (cached !== undefined) return cached;
+const buildAncestry = (name: string): string[] => {
     const names: string[] = [];
     const seen = new Set<string>();
     let type = typeFromName(name);
@@ -37,9 +36,10 @@ const ancestryOf = (name: string): string[] => {
         for (const iface of typeInterfaces(type)) addAncestor(names, seen, typeName(iface));
         type = typeParent(type);
     }
-    ancestryCache.set(name, names);
     return names;
 };
+
+const ancestryOf = (name: string): string[] => getOrInsert(ancestryCache, name, buildAncestry);
 
 const accumulateAncestor = (info: TypeInfo, ancestor: string): void => {
     Object.assign(info.signals, SIGNALS[ancestor] ?? {});
@@ -79,13 +79,7 @@ const buildTypeInfo = (name: string): TypeInfo => {
     return info;
 };
 
-export const typeInfoOf = (name: string): TypeInfo => {
-    const cached = typeInfoCache.get(name);
-    if (cached !== undefined) return cached;
-    const info = buildTypeInfo(name);
-    typeInfoCache.set(name, info);
-    return info;
-};
+export const typeInfoOf = (name: string): TypeInfo => getOrInsert(typeInfoCache, name, buildTypeInfo);
 
 export const isBlockableSignal = (info: TypeInfo, signal: string): boolean =>
     info.userEventSignals.has(getSignalBaseName(signal));
