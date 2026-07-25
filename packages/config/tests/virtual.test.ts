@@ -34,13 +34,24 @@ describe("renderConfigModule", () => {
         expect(source.split("\n")).toContain("export const elements = {};");
     });
 
-    it("re-exports the configured elements module resolved against the project root", () => {
+    it("merges the configured behaviors module with the static element config", () => {
         const resolved = resolveConfig(
             { applicationId: "org.gtk.Test", elements: { behaviors: "./src/elements.ts" } },
             "/project",
         );
         const source = renderConfigModule(resolved);
-        expect(source.split("\n")).toContain('export { default as elements } from "/project/src/elements.ts";');
+        expect(source.split("\n")).toContain('import { mergeElementConfigs } from "@gtkx/react/config";');
+        expect(source.split("\n")).toContain('import __elementBehaviors from "/project/src/elements.ts";');
+        expect(source.split("\n")).toContain("export const elements = mergeElementConfigs(__elementBehaviors, {});");
+    });
+
+    it("exports the user's lazy elements as part of the merged element config", () => {
+        const resolved = resolveConfig({
+            applicationId: "org.gtk.Test",
+            elements: { config: { GtkFoo: { lazy: true } } },
+        });
+        const source = renderConfigModule(resolved);
+        expect(source.split("\n")).toContain('export const elements = {"GtkFoo":{"lazy":true}};');
     });
 
     it("exports the metadata re-export, application id, signals, and elements", () => {
@@ -50,7 +61,6 @@ describe("renderConfigModule", () => {
             'export * from "@gtkx/jsx/metadata";',
             'export const applicationId = "org.gtk.Test";',
             `export const userEventSignals = ${JSON.stringify(resolved.userEventSignals)};`,
-            "export const lazyElements = [];",
             "export const elements = {};",
         ]);
     });

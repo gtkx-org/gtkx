@@ -1,10 +1,10 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { sortStringsBy } from "@gtkx/utils";
-import { computeFingerprint, FINGERPRINT_FILENAME, isStoreFresh } from "../fingerprint.js";
+import { computeGiFingerprint, FINGERPRINT_FILENAME, isGiStoreFresh } from "../fingerprint.js";
 import { Library } from "../gir/library.js";
 import { namespaceDirectory } from "../gir/namespace.js";
-import { setPropInterfaces } from "../store/jsx/element-prop-imports.js";
+import { type ElementProps, setElementProps } from "../store/jsx/element-prop-imports.js";
 import { collectIntrinsicElementClasses, type GlibNamedClass } from "../store/jsx/intrinsic-elements.js";
 import { createElementPageContext, renderElementPage } from "./element-page.js";
 import { elementSlug, firstSentence, namespaceOrder } from "./render.js";
@@ -26,7 +26,7 @@ export type DocsOptions = {
     girPath: string[];
     outDir: string;
     basePath?: string;
-    propInterfaces?: Record<string, string>;
+    props?: ElementProps;
     force?: boolean;
 };
 
@@ -146,10 +146,10 @@ export type DocsResult = {
 };
 
 export const writeDocs = (options: DocsOptions): DocsResult => {
-    setPropInterfaces(options.propInterfaces ?? {});
+    setElementProps(options.props ?? {});
     const basePath = options.basePath ?? "/reference";
     const manifestPath = join(options.outDir, MANIFEST_FILENAME);
-    if (options.force !== true && isStoreFresh(options.outDir, options.libraries)) {
+    if (options.force !== true && isGiStoreFresh(options.outDir, options.libraries)) {
         if (existsSync(manifestPath)) {
             const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as DocsManifest;
             return { regenerated: false, namespaces: manifest.namespaces };
@@ -170,11 +170,7 @@ export const writeDocs = (options: DocsOptions): DocsResult => {
     writeFileSync(manifestPath, JSON.stringify(manifest));
     writeFileSync(
         join(options.outDir, FINGERPRINT_FILENAME),
-        JSON.stringify({
-            value: computeFingerprint(library.girFiles, options.libraries),
-            girFiles: library.girFiles,
-            libraries: options.libraries,
-        }),
+        JSON.stringify(computeGiFingerprint(library.girFiles, options.libraries)),
     );
     return { regenerated: true, namespaces };
 };

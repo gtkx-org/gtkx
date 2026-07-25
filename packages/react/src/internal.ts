@@ -5,6 +5,7 @@ export { useMergedRef } from "./hooks/use-merged-refs.js";
 export { useObjectValue } from "./hooks/use-object-value.js";
 export { createElementComponent } from "./reconciler/element-component.js";
 export { ELEMENT_KIND, LAZY_ELEMENT, PROP_KIND, TEXT_KIND } from "./reconciler/kinds.js";
+export type * from "./reconciler/prop-types.js";
 export { createReconcilerRoot, type ReconcilerRoot, setReconcilerErrorHandler } from "./reconciler/root.js";
 export { isRootElement } from "./reconciler/root-element.js";
 export { getAccessibleMetadata } from "./utils/accessible-metadata.js";

@@ -29,6 +29,16 @@
             "source": "./src/index.ts",
             "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
+        },
+        "./gi": {
+            "source": "./src/gi.ts",
+            "types": "./dist/gi.d.ts",
+            "default": "./dist/gi.js"
+        },
+        "./jsx": {
+            "source": "./src/jsx.ts",
+            "types": "./dist/jsx.d.ts",
+            "default": "./dist/jsx.js"
         }
     },
     "sideEffects": false,
@@ -47,6 +57,7 @@
     },
     "dependencies": {
         "@gtkx/config": "workspace:*",
+        "@gtkx/react": "workspace:*",
         "@gtkx/utils": "workspace:*",
         "@types/node": "catalog:",
         "fast-xml-parser": "^5.10.1",

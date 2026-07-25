@@ -145,7 +145,7 @@ const userEventSignalsSchema = z.record(
     { error: "must be a record of GLib type names to signal name arrays" },
 );
 
-const elementComponentSchema = z.object(
+const moduleExportSchema = z.object(
     {
         module: z.string({ error: "must be a module specifier" }).min(1, { error: "must be a module specifier" }),
         export: z.string({ error: "must be an export name" }).min(1, { error: "must be an export name" }),
@@ -154,7 +154,8 @@ const elementComponentSchema = z.object(
 );
 
 const elementConfigSchema = z.object({
-    component: elementComponentSchema.optional(),
+    component: moduleExportSchema.optional(),
+    props: moduleExportSchema.optional(),
     lazy: z.boolean({ error: "must be a boolean" }).optional(),
 });
 

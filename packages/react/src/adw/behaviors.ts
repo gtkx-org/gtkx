@@ -9,9 +9,18 @@ import {
     deferred,
     type ElementConfig,
     list,
+    type ModuleExport,
     slot,
 } from "../reconciler/behaviors.js";
 import type { AlertDialogResponse } from "./prop-types.js";
+
+/** References a base props interface exported from `@gtkx/react/internal`. */
+const internal = (name: string): ModuleExport => ({ module: "@gtkx/react/internal", export: name });
+
+/** References a base props interface (or component factory) exported from `@gtkx/react/adw`. */
+const adw = (name: string): ModuleExport => ({ module: "@gtkx/react/adw", export: name });
+
+const childrenProps = internal("ChildrenProps");
 
 type AdwChildSetter =
     | Adw.Bin
@@ -64,23 +73,35 @@ const pageHostChildren = addRemoveSlot<Adw.PreferencesPage, PageHost>(
     },
 );
 
+const breakpointsProps = adw("AdwBreakpointsProps");
+
+const preferencesRowProps = adw("AdwPreferencesRowProps");
+
 export const ADW_ELEMENTS: Record<string, ElementConfig> = {
-    AdwBin: { behaviors: [childSetter] },
-    AdwClamp: { behaviors: [childSetter] },
-    AdwClampScrollable: { behaviors: [childSetter] },
-    AdwNavigationPage: { behaviors: [childSetter] },
-    AdwSplitButton: { behaviors: [childSetter] },
-    AdwStatusPage: { behaviors: [childSetter] },
-    AdwTabOverview: { behaviors: [childSetter] },
-    AdwToastOverlay: { behaviors: [childSetter] },
-    AdwToggle: { behaviors: [childSetter] },
-    AdwBottomSheet: { behaviors: [contentSetter] },
-    AdwFlap: { behaviors: [contentSetter] },
-    AdwOverlaySplitView: { behaviors: [contentSetter] },
-    AdwDialog: { behaviors: [childSetter, breakpoints] },
-    AdwApplicationWindow: { behaviors: [contentSetter, breakpoints] },
-    AdwWindow: { behaviors: [contentSetter, breakpoints] },
+    AdwBin: { props: childrenProps, behaviors: [childSetter] },
+    AdwClamp: { props: childrenProps, behaviors: [childSetter] },
+    AdwClampScrollable: { props: childrenProps, behaviors: [childSetter] },
+    AdwNavigationPage: { props: childrenProps, behaviors: [childSetter] },
+    AdwSplitButton: { props: childrenProps, behaviors: [childSetter] },
+    AdwStatusPage: { props: childrenProps, behaviors: [childSetter] },
+    AdwTabOverview: { props: childrenProps, behaviors: [childSetter] },
+    AdwToastOverlay: { props: childrenProps, behaviors: [childSetter] },
+    AdwToggle: { props: childrenProps, behaviors: [childSetter] },
+    AdwBottomSheet: { props: childrenProps, behaviors: [contentSetter] },
+    AdwFlap: { props: childrenProps, behaviors: [contentSetter] },
+    AdwOverlaySplitView: { props: childrenProps, behaviors: [contentSetter] },
+    AdwViewStackPage: { lazy: true },
+    AdwTabPage: { lazy: true },
+    AdwPreferencesRow: { props: preferencesRowProps },
+    AdwDialog: {
+        props: breakpointsProps,
+        component: adw("createDialogComponent"),
+        behaviors: [childSetter, breakpoints],
+    },
+    AdwApplicationWindow: { props: breakpointsProps, behaviors: [contentSetter, breakpoints] },
+    AdwWindow: { props: breakpointsProps, behaviors: [contentSetter, breakpoints] },
     AdwBreakpointBin: {
+        props: breakpointsProps,
         behaviors: [
             childSetter,
             addRemoveSlot<Adw.Breakpoint, Adw.BreakpointBin>(
@@ -95,9 +116,10 @@ export const ADW_ELEMENTS: Record<string, ElementConfig> = {
             ),
         ],
     },
-    AdwActionRow: { behaviors: prefixSuffix },
-    AdwEntryRow: { behaviors: prefixSuffix },
+    AdwActionRow: { props: preferencesRowProps, behaviors: prefixSuffix },
+    AdwEntryRow: { props: preferencesRowProps, behaviors: prefixSuffix },
     AdwExpanderRow: {
+        props: adw("AdwExpanderRowProps"),
         behaviors: [
             ...prefixSuffix,
             addRemoveSlot<Gtk.Widget, Adw.ExpanderRow>(
@@ -123,11 +145,13 @@ export const ADW_ELEMENTS: Record<string, ElementConfig> = {
         ],
     },
     AdwNavigationSplitView: {
+        props: childrenProps,
         behaviors: [contentSetterSlot<Adw.NavigationSplitView, Adw.NavigationPage>("AdwNavigationPage")],
     },
-    AdwLeaflet: { behaviors: [boxSlot<Adw.Leaflet | Adw.WrapBox>()] },
-    AdwWrapBox: { behaviors: [boxSlot<Adw.Leaflet | Adw.WrapBox>()] },
+    AdwLeaflet: { props: childrenProps, behaviors: [boxSlot<Adw.Leaflet | Adw.WrapBox>()] },
+    AdwWrapBox: { props: childrenProps, behaviors: [boxSlot<Adw.Leaflet | Adw.WrapBox>()] },
     AdwCarousel: {
+        props: childrenProps,
         behaviors: [
             slot<Adw.Carousel, Gtk.Widget>("children", "GtkWidget", {
                 attach: (carousel, child, info) => carousel.insert(child, info.index),
@@ -137,6 +161,7 @@ export const ADW_ELEMENTS: Record<string, ElementConfig> = {
         ],
     },
     AdwPreferencesPage: {
+        props: childrenProps,
         behaviors: [
             slot<Adw.PreferencesPage, Adw.PreferencesGroup>("children", "AdwPreferencesGroup", {
                 attach: (page, group, info) => page.insert(group, info.index),
@@ -144,9 +169,10 @@ export const ADW_ELEMENTS: Record<string, ElementConfig> = {
             }),
         ],
     },
-    AdwPreferencesDialog: { behaviors: [pageHostChildren] },
-    AdwPreferencesWindow: { behaviors: [pageHostChildren] },
+    AdwPreferencesDialog: { props: childrenProps, behaviors: [pageHostChildren] },
+    AdwPreferencesWindow: { props: childrenProps, behaviors: [pageHostChildren] },
     AdwPreferencesGroup: {
+        props: childrenProps,
         behaviors: [
             addRemoveSlot<Gtk.Widget, Adw.PreferencesGroup>(
                 "children",
@@ -161,6 +187,7 @@ export const ADW_ELEMENTS: Record<string, ElementConfig> = {
         ],
     },
     AdwSqueezer: {
+        props: childrenProps,
         behaviors: [
             addRemoveSlot<Gtk.Widget, Adw.Squeezer>(
                 "children",
@@ -175,6 +202,7 @@ export const ADW_ELEMENTS: Record<string, ElementConfig> = {
         ],
     },
     AdwTabView: {
+        props: childrenProps,
         behaviors: [
             slot<Adw.TabView, Gtk.Widget>("children", "GtkWidget", {
                 attach: (view, child, info) => view.insert(child, info.index),
@@ -189,6 +217,7 @@ export const ADW_ELEMENTS: Record<string, ElementConfig> = {
         ],
     },
     AdwNavigationView: {
+        props: childrenProps,
         behaviors: [
             addRemoveSlot<Adw.NavigationPage, Adw.NavigationView>(
                 "children",
@@ -203,6 +232,7 @@ export const ADW_ELEMENTS: Record<string, ElementConfig> = {
         ],
     },
     AdwViewStack: {
+        props: childrenProps,
         behaviors: [
             adoptedChildrenSlot<Adw.ViewStack, Gtk.Widget>(
                 "GtkWidget",
@@ -215,6 +245,7 @@ export const ADW_ELEMENTS: Record<string, ElementConfig> = {
         ],
     },
     AdwToolbarView: {
+        props: adw("AdwToolbarViewProps"),
         behaviors: [
             contentSetterSlot<Adw.ToolbarView>(),
             slot<Adw.ToolbarView, Gtk.Widget>("topBar", "GtkWidget", {
@@ -228,6 +259,7 @@ export const ADW_ELEMENTS: Record<string, ElementConfig> = {
         ],
     },
     AdwHeaderBar: {
+        props: internal("GtkHeaderBarProps"),
         behaviors: [
             slot<Adw.HeaderBar, Gtk.Widget>("start", "GtkWidget", {
                 attach: (bar, child) => bar.packStart(child),
@@ -240,6 +272,7 @@ export const ADW_ELEMENTS: Record<string, ElementConfig> = {
         ],
     },
     AdwShortcutsDialog: {
+        props: childrenProps,
         behaviors: [
             slot<Adw.ShortcutsDialog, Adw.ShortcutsSection>("children", "AdwShortcutsSection", {
                 attach: (dialog, section) => dialog.add(section),
@@ -247,6 +280,7 @@ export const ADW_ELEMENTS: Record<string, ElementConfig> = {
         ],
     },
     AdwShortcutsSection: {
+        props: childrenProps,
         behaviors: [
             slot<Adw.ShortcutsSection, Adw.ShortcutsItem>("children", "AdwShortcutsItem", {
                 attach: (section, item) => section.add(item),
@@ -254,6 +288,7 @@ export const ADW_ELEMENTS: Record<string, ElementConfig> = {
         ],
     },
     AdwToggleGroup: {
+        props: childrenProps,
         behaviors: [
             addRemoveSlot<Adw.Toggle, Adw.ToggleGroup>(
                 "children",
@@ -270,6 +305,7 @@ export const ADW_ELEMENTS: Record<string, ElementConfig> = {
         ],
     },
     AdwAlertDialog: {
+        props: adw("AdwAlertDialogProps"),
         behaviors: [
             list<Adw.AlertDialog, AlertDialogResponse>("responses", {
                 add: (dialog, response) => {

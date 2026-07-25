@@ -3,7 +3,7 @@ import type { Library } from "../../gir/library.js";
 import { type GirNamespace, namespaceDirectory } from "../../gir/namespace.js";
 import { ImportsBuilder } from "../../writer/imports.js";
 import { type ElementComponentOverrides, generateElementComponentsSection } from "./element-components.js";
-import { setPropInterfaces } from "./element-prop-imports.js";
+import { type ElementProps, setElementProps } from "./element-prop-imports.js";
 import { type LazyElementSpec, lazyElementSpecs } from "./element-prop-types.js";
 import { buildGirIndex } from "./gir-index.js";
 import { collectIntrinsicElementClasses, type GlibNamedClass } from "./intrinsic-elements.js";
@@ -24,12 +24,12 @@ type JsxFiles = {
 export type JsxGenerationOptions = {
     reactSubexports?: string[];
     components?: ElementComponentOverrides;
-    propInterfaces?: Record<string, string>;
+    props?: ElementProps;
     lazyElements?: string[];
 };
 
 export const generateJsxFiles = (library: Library, options: JsxGenerationOptions = {}): JsxFiles => {
-    setPropInterfaces(options.propInterfaces ?? {});
+    setElementProps(options.props ?? {});
     const intrinsicElements = collectIntrinsicElementClasses(library);
     const intrinsicElementByGlibName = new Map(intrinsicElements.map((entry) => [entry.glibName, entry]));
     const namespacesWithIntrinsicElements = new Map<string, GirNamespace>();

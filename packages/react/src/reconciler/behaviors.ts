@@ -51,34 +51,60 @@ export type ElementBehavior<T extends GObject.Object = GObject.Object> = {
     unmount?: (node: T, context: unknown) => void;
 };
 
+/** A named export in a module, referenced as plain data (the module is never imported at runtime). */
+export type ModuleExport = { module: string; export: string };
+
 /**
  * Per-element configuration keyed by GLib type name: whether the element is lazy (its GObject is
- * created by its parent container, as pages and layout children are) and the custom behaviors bound
- * to its type.
+ * created by its parent container, as pages and layout children are), the custom behaviors bound to
+ * its type, an optional component that wraps the generated element, and the base props interface its
+ * generated props extend. `component` and `props` are inert at runtime; they are read only by codegen.
  */
 export type ElementConfig<T extends GObject.Object = GObject.Object> = {
     lazy?: boolean;
     behaviors?: ElementBehavior<T>[];
+    component?: ModuleExport;
+    props?: ModuleExport;
 };
 
 /** Every registered element config, keyed by GLib type name. Adwaita entries appear once `@gtkx/react/adw` is loaded. */
 export const ELEMENTS: Record<string, ElementConfig> = {};
 
+const mergeConfigEntry = (base: ElementConfig, added: ElementConfig<never>): ElementConfig => {
+    const entry: ElementConfig = { ...base };
+    if (added.behaviors !== undefined) {
+        entry.behaviors = [...(entry.behaviors ?? []), ...(added.behaviors as ElementBehavior[])];
+    }
+    if (added.lazy === true) entry.lazy = true;
+    if (added.component !== undefined) entry.component = added.component;
+    if (added.props !== undefined) entry.props = added.props;
+    return entry;
+};
+
 /**
- * Registers a map of {@link ElementConfig} keyed by GLib type name, merging each entry's behaviors and
- * lazy flag into the registry. `prepend` puts an entry's behaviors ahead of any already registered for
- * a type, so an app's behavior for a slot or prop is consulted before the framework's.
+ * Merges maps of {@link ElementConfig} keyed by GLib type name into one, concatenating each type's
+ * behaviors in the order the maps are given (an earlier map's behaviors come first) and taking the last
+ * lazy flag, component, and props seen. Use it to combine an app's element config with its behaviors.
  */
-export const registerElements = (elements: Record<string, ElementConfig<never>>, prepend = false): void => {
-    for (const [type, config] of Object.entries(elements)) {
-        const entry: ElementConfig = { ...ELEMENTS[type] };
-        if (config.behaviors !== undefined) {
-            const added = config.behaviors as ElementBehavior[];
-            const current = entry.behaviors ?? [];
-            entry.behaviors = prepend ? [...added, ...current] : [...current, ...added];
+export const mergeElementConfigs = (...maps: Record<string, ElementConfig<never>>[]): Record<string, ElementConfig> => {
+    const merged: Record<string, ElementConfig> = {};
+    for (const map of maps) {
+        for (const [type, config] of Object.entries(map)) merged[type] = mergeConfigEntry(merged[type] ?? {}, config);
+    }
+    return merged;
+};
+
+/**
+ * Registers one or more maps of {@link ElementConfig} keyed by GLib type name, merging each entry's
+ * behaviors and lazy flag into the registry. Behaviors accumulate in the order the maps are given, so a
+ * map passed earlier is consulted before a later one for the same slot; pass an app's own configuration
+ * ahead of the framework's built-ins to let it override a slot or prop.
+ */
+export const registerElements = (...maps: Record<string, ElementConfig<never>>[]): void => {
+    for (const elements of maps) {
+        for (const [type, config] of Object.entries(elements)) {
+            ELEMENTS[type] = mergeConfigEntry(ELEMENTS[type] ?? {}, config);
         }
-        if (config.lazy === true) entry.lazy = true;
-        ELEMENTS[type] = entry;
     }
 };
 
@@ -213,8 +239,11 @@ const controlledText = (prop: string): ElementBehavior => ({
     },
 });
 
-const forTypes = (types: string[], ...behaviors: ElementBehavior[]): Record<string, ElementConfig> =>
-    Object.fromEntries(types.map((type) => [type, { behaviors }]));
+const forTypes = (types: string[], config: ElementConfig): Record<string, ElementConfig> =>
+    Object.fromEntries(types.map((type) => [type, config]));
+
+/** References a base props interface exported from `@gtkx/react/internal`. */
+const internal = (name: string): ModuleExport => ({ module: "@gtkx/react/internal", export: name });
 
 /** Behavior for a container that installs its single child with `setChild`. */
 const childSetterSlot = <
@@ -345,36 +374,53 @@ const GTK_SINGLE_CHILD_TYPES = [
     "GtkSearchBar",
     "GtkTreeExpander",
     "GtkViewport",
-    "GtkWindow",
     "GtkWindowHandle",
 ];
 
 export const GTK_ELEMENTS: Record<string, ElementConfig> = {
-    ...forTypes(GTK_SINGLE_CHILD_TYPES, childSetterSlot()),
-    ...forTypes(
-        ["GtkHeaderBar", "GtkActionBar"],
-        addRemoveSlot<Gtk.Widget, Gtk.HeaderBar | Gtk.ActionBar>(
-            "start",
-            "GtkWidget",
-            (bar, child) => {
-                bar.packStart(child);
-            },
-            (bar, child) => {
-                bar.remove(child);
-            },
-        ),
-        addRemoveSlot<Gtk.Widget, Gtk.HeaderBar | Gtk.ActionBar>(
-            "end",
-            "GtkWidget",
-            (bar, child) => {
-                bar.packEnd(child);
-            },
-            (bar, child) => {
-                bar.remove(child);
-            },
-        ),
-    ),
+    ...forTypes(GTK_SINGLE_CHILD_TYPES, { props: internal("ChildrenProps"), behaviors: [childSetterSlot()] }),
+    ...forTypes(["GtkHeaderBar", "GtkActionBar"], {
+        props: internal("GtkHeaderBarProps"),
+        behaviors: [
+            addRemoveSlot<Gtk.Widget, Gtk.HeaderBar | Gtk.ActionBar>(
+                "start",
+                "GtkWidget",
+                (bar, child) => {
+                    bar.packStart(child);
+                },
+                (bar, child) => {
+                    bar.remove(child);
+                },
+            ),
+            addRemoveSlot<Gtk.Widget, Gtk.HeaderBar | Gtk.ActionBar>(
+                "end",
+                "GtkWidget",
+                (bar, child) => {
+                    bar.packEnd(child);
+                },
+                (bar, child) => {
+                    bar.remove(child);
+                },
+            ),
+        ],
+    }),
+    GtkWindow: {
+        props: internal("ChildrenProps"),
+        component: internal("createWindowComponent"),
+        behaviors: [childSetterSlot()],
+    },
+    GtkLabel: { props: internal("ChildrenProps") },
+    GtkTextBuffer: { props: internal("ChildrenProps") },
+    GtkTextTag: { props: internal("ChildrenProps") },
+    GtkTextChildAnchor: { props: internal("ChildrenProps") },
+    GtkGridLayoutChild: { lazy: true },
+    GtkFixedLayoutChild: { lazy: true },
+    GtkOverlayLayoutChild: { lazy: true },
+    GtkStackPage: { lazy: true },
+    GtkNotebookPage: { lazy: true },
+    GActionGroup: { props: internal("GActionGroupProps") },
     GtkWidget: {
+        props: internal("GtkWidgetProps"),
         behaviors: [
             slot<Gtk.Widget, Gtk.Popover>("children", "GtkPopover", {
                 attach: (parent, popover) => popover.setParent(parent),
@@ -402,8 +448,9 @@ export const GTK_ELEMENTS: Record<string, ElementConfig> = {
             }),
         ],
     },
-    GtkBox: { behaviors: [boxSlot<Gtk.Box>()] },
+    GtkBox: { props: internal("ChildrenProps"), behaviors: [boxSlot<Gtk.Box>()] },
     GtkListBox: {
+        props: internal("ChildrenProps"),
         behaviors: [
             wrappingIndexedSlot(Gtk.ListBoxRow, (row, inner) => {
                 row.setChild(inner);
@@ -411,6 +458,7 @@ export const GTK_ELEMENTS: Record<string, ElementConfig> = {
         ],
     },
     GtkFlowBox: {
+        props: internal("ChildrenProps"),
         behaviors: [
             wrappingIndexedSlot(Gtk.FlowBoxChild, (child, inner) => {
                 child.setChild(inner);
@@ -418,6 +466,7 @@ export const GTK_ELEMENTS: Record<string, ElementConfig> = {
         ],
     },
     GtkOverlay: {
+        props: internal("GtkOverlayProps"),
         behaviors: [
             childSetterSlot<Gtk.Overlay>(),
             slot<Gtk.Overlay, Gtk.Widget>("overlays", "GtkWidget", {
@@ -428,6 +477,7 @@ export const GTK_ELEMENTS: Record<string, ElementConfig> = {
         ],
     },
     GtkShortcutController: {
+        props: internal("GtkShortcutControllerProps"),
         behaviors: [
             addRemoveSlot<Gtk.Shortcut, Gtk.ShortcutController>(
                 "shortcuts",
@@ -442,6 +492,7 @@ export const GTK_ELEMENTS: Record<string, ElementConfig> = {
         ],
     },
     GtkTextView: {
+        props: internal("ChildrenProps"),
         behaviors: [
             slot<Gtk.TextView, Gtk.TextBuffer>("children", "GtkTextBuffer", {
                 attach: (view, buffer) => view.setBuffer(buffer),
@@ -450,6 +501,7 @@ export const GTK_ELEMENTS: Record<string, ElementConfig> = {
         ],
     },
     GActionMap: {
+        props: internal("GActionMapProps"),
         behaviors: [
             slot<Gio.ActionMap, Gio.Action>("actions", "GAction", {
                 attach: (map, action) => map.addAction(action),
@@ -458,6 +510,7 @@ export const GTK_ELEMENTS: Record<string, ElementConfig> = {
         ],
     },
     GMenu: {
+        props: internal("GMenuProps"),
         behaviors: [
             list<Gio.Menu, MenuItem>("items", {
                 clear: (menu) => menu.removeAll(),
@@ -466,6 +519,7 @@ export const GTK_ELEMENTS: Record<string, ElementConfig> = {
         ],
     },
     GtkColumnView: {
+        props: internal("ChildrenProps"),
         behaviors: [
             slot<Gtk.ColumnView, Gtk.ColumnViewColumn>("children", "GtkColumnViewColumn", {
                 attach: (view, column, info) => view.insertColumn(info.index, column),
@@ -474,6 +528,7 @@ export const GTK_ELEMENTS: Record<string, ElementConfig> = {
         ],
     },
     GtkGrid: {
+        props: internal("ChildrenProps"),
         behaviors: [
             slot<Gtk.Grid, Gtk.Widget>("children", "GtkWidget", {
                 attach: (grid, child) => grid.attach(child, 0, 0, 1, 1),
@@ -483,6 +538,7 @@ export const GTK_ELEMENTS: Record<string, ElementConfig> = {
         ],
     },
     GtkFixed: {
+        props: internal("ChildrenProps"),
         behaviors: [
             slot<Gtk.Fixed, Gtk.Widget>("children", "GtkWidget", {
                 attach: (fixed, child) => fixed.put(child, 0, 0),
@@ -492,6 +548,7 @@ export const GTK_ELEMENTS: Record<string, ElementConfig> = {
         ],
     },
     GtkSizeGroup: {
+        props: internal("GtkSizeGroupProps"),
         behaviors: [
             list<Gtk.SizeGroup, Gtk.Widget>("widgets", {
                 add: (group, widget) => group.addWidget(widget),
@@ -500,6 +557,7 @@ export const GTK_ELEMENTS: Record<string, ElementConfig> = {
         ],
     },
     GtkConstraintLayout: {
+        props: internal("GtkConstraintLayoutProps"),
         behaviors: [
             addRemoveSlot<Gtk.Constraint, Gtk.ConstraintLayout>(
                 "constraints",
@@ -537,6 +595,7 @@ export const GTK_ELEMENTS: Record<string, ElementConfig> = {
         ],
     },
     GtkStack: {
+        props: internal("ChildrenProps"),
         behaviors: [
             adoptedChildrenSlot<Gtk.Stack, Gtk.Widget>(
                 "GtkWidget",
@@ -549,6 +608,7 @@ export const GTK_ELEMENTS: Record<string, ElementConfig> = {
         ],
     },
     GtkNotebook: {
+        props: internal("ChildrenProps"),
         behaviors: [
             slot<Gtk.Notebook, Gtk.Widget>("children", "GtkWidget", {
                 attach: (notebook, child, info) => notebook.insertPage(child, null, info.index),
@@ -559,6 +619,8 @@ export const GTK_ELEMENTS: Record<string, ElementConfig> = {
         ],
     },
     GtkApplication: {
+        props: internal("GtkApplicationProps"),
+        component: internal("createApplicationComponent"),
         behaviors: [
             addRemoveSlot<Gtk.Window, Gtk.Application>(
                 "children",
@@ -577,6 +639,7 @@ export const GTK_ELEMENTS: Record<string, ElementConfig> = {
         ],
     },
     GtkAboutDialog: {
+        props: internal("GtkAboutDialogProps"),
         behaviors: [
             list<Gtk.AboutDialog, CreditSection>("creditSections", {
                 add: (dialog, section) => dialog.addCreditSection(section.sectionName, section.people),
@@ -584,6 +647,7 @@ export const GTK_ELEMENTS: Record<string, ElementConfig> = {
         ],
     },
     GtkScale: {
+        props: internal("GtkScaleProps"),
         behaviors: [
             list<Gtk.Scale, ScaleMark>("marks", {
                 add: (scale, mark) => scale.addMark(mark.value ?? 0, mark.position, mark.markup ?? null),
@@ -592,6 +656,7 @@ export const GTK_ELEMENTS: Record<string, ElementConfig> = {
         ],
     },
     GtkCalendar: {
+        props: internal("GtkCalendarProps"),
         behaviors: [
             list<Gtk.Calendar, number>("markedDays", {
                 add: (calendar, day) => calendar.markDay(day),
@@ -600,6 +665,7 @@ export const GTK_ELEMENTS: Record<string, ElementConfig> = {
         ],
     },
     GtkLevelBar: {
+        props: internal("GtkLevelBarProps"),
         behaviors: [
             list<Gtk.LevelBar, LevelBarOffset>("offsets", {
                 add: (bar, offset) => bar.addOffsetValue(offset.name, offset.value ?? 0),
@@ -608,6 +674,7 @@ export const GTK_ELEMENTS: Record<string, ElementConfig> = {
         ],
     },
     GtkDropTarget: {
+        props: internal("GtkDropTargetProps"),
         behaviors: [
             value<Gtk.DropTarget, GObject.Type[]>("types", (target, types) => {
                 target.setGtypes(types);
@@ -615,6 +682,7 @@ export const GTK_ELEMENTS: Record<string, ElementConfig> = {
         ],
     },
     GtkDrawingArea: {
+        props: internal("GtkDrawingAreaProps"),
         behaviors: [
             value<Gtk.DrawingArea, Gtk.DrawingAreaDrawFunc>("drawFunc", (area, draw) => {
                 area.setDrawFunc(draw);
@@ -623,6 +691,7 @@ export const GTK_ELEMENTS: Record<string, ElementConfig> = {
         ],
     },
     GtkDragSource: {
+        props: internal("GtkDragSourceProps"),
         behaviors: [
             value<Gtk.DragSource, DragSourceIcon>("icon", (source, icon) => {
                 source.setIcon(icon.paintable ?? null, icon.hotX ?? 0, icon.hotY ?? 0);

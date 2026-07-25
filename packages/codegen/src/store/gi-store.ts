@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { type CodegenFingerprint, FINGERPRINT_FILENAME } from "../fingerprint.js";
+import { FINGERPRINT_FILENAME, type GiFingerprint } from "../fingerprint.js";
 import { buildManifest, type StoreOptions, subpathExport, writeStore } from "./store-fs.js";
 
 const OVERRIDES_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "overrides");
@@ -60,7 +60,7 @@ const collectStoreSources = (
 export const writeGiStore = (
     options: GiStoreOptions,
     namespaces: GiNamespaceInput[],
-    fingerprint: CodegenFingerprint,
+    fingerprint: GiFingerprint,
 ): void => {
     const { collected, exportsMap } = collectStoreSources(namespaces);
 

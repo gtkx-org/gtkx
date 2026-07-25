@@ -42,6 +42,11 @@
             "types": "./dist/adw/index.d.ts",
             "default": "./dist/adw/index.js"
         },
+        "./adw/config": {
+            "source": "./src/adw/config.ts",
+            "types": "./dist/adw/config.d.ts",
+            "default": "./dist/adw/config.js"
+        },
         "./config": {
             "source": "./src/config.ts",
             "types": "./dist/config.d.ts",

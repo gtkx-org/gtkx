@@ -3,7 +3,6 @@ import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { sortStrings } from "@gtkx/utils";
-import type { JsxGenerationOptions } from "./store/jsx/pipeline.js";
 
 const require = createRequire(import.meta.url);
 
@@ -11,34 +10,20 @@ export const FINGERPRINT_FILENAME = ".codegen-fingerprint.json";
 
 const CODEGEN_VERSION: string = (require("../package.json") as { version: string }).version;
 
-export type CodegenFingerprint = {
+const sortAlpha = (values: string[]): string => sortStrings(values).join(",");
+
+/** The freshness sentinel of the `@gtkx/gi` store, derived purely from the GIR inputs. */
+export type GiFingerprint = {
     value: string;
     girFiles: string[];
     libraries: string[];
-    react?: JsxGenerationOptions;
 };
 
-const serializeReact = (react: JsxGenerationOptions): string =>
-    JSON.stringify([
-        [...(react.reactSubexports ?? [])].sort(),
-        Object.keys(react.components ?? {})
-            .sort()
-            .map((type) => [type, react.components?.[type]?.module, react.components?.[type]?.export]),
-        Object.entries(react.propInterfaces ?? {}).sort(([a], [b]) => (a < b ? -1 : 1)),
-        [...(react.lazyElements ?? [])].sort(),
-    ]);
-
-export const computeFingerprint = (
-    girFiles: string[],
-    libraries: string[],
-    react: JsxGenerationOptions = {},
-): string => {
+const hashGi = (girFiles: string[], libraries: string[]): string => {
     const hash = createHash("sha256");
     hash.update(CODEGEN_VERSION);
     hash.update("\n");
-    hash.update(sortStrings(libraries).join(","));
-    hash.update("\n");
-    hash.update(serializeReact(react));
+    hash.update(sortAlpha(libraries));
     for (const file of sortStrings(girFiles)) {
         hash.update("\n");
         hash.update(file);
@@ -48,22 +33,81 @@ export const computeFingerprint = (
     return hash.digest("hex");
 };
 
-const sortAlpha = (values: string[]): string => sortStrings(values).join(",");
+export const computeGiFingerprint = (girFiles: string[], libraries: string[]): GiFingerprint => ({
+    value: hashGi(girFiles, libraries),
+    girFiles,
+    libraries,
+});
 
-export const isStoreFresh = (giStoreDir: string, libraries: string[], react: JsxGenerationOptions = {}): boolean => {
+export const isGiStoreFresh = (giStoreDir: string, libraries: string[]): boolean => {
     const sentinelPath = join(giStoreDir, FINGERPRINT_FILENAME);
     if (!existsSync(sentinelPath)) return false;
-    let sentinel: CodegenFingerprint;
+    let sentinel: GiFingerprint;
     try {
-        sentinel = JSON.parse(readFileSync(sentinelPath, "utf8")) as CodegenFingerprint;
+        sentinel = JSON.parse(readFileSync(sentinelPath, "utf8")) as GiFingerprint;
     } catch {
         return false;
     }
     if (sortAlpha(sentinel.libraries) !== sortAlpha(libraries)) return false;
-    if (serializeReact(sentinel.react ?? {}) !== serializeReact(react)) return false;
     try {
-        return computeFingerprint(sentinel.girFiles, sentinel.libraries, sentinel.react ?? {}) === sentinel.value;
+        return hashGi(sentinel.girFiles, sentinel.libraries) === sentinel.value;
     } catch {
         return false;
     }
+};
+
+type ModuleExport = { module: string; export: string };
+
+/** The `@gtkx/react` element config that shapes the generated `@gtkx/jsx` store. */
+export type JsxFingerprintInput = {
+    reactVersion: string;
+    components: Record<string, ModuleExport>;
+    lazyElements: string[];
+    props: Record<string, ModuleExport>;
+};
+
+/** The freshness sentinel of the `@gtkx/jsx` store, derived from the React element config. */
+export type JsxFingerprint = {
+    value: string;
+    intrinsicElementCount: number;
+};
+
+const serializeModuleExports = (map: Record<string, ModuleExport>): [string, string, string][] =>
+    Object.keys(map)
+        .sort()
+        .map((type) => [type, map[type]?.module ?? "", map[type]?.export ?? ""]);
+
+const hashJsx = (input: JsxFingerprintInput): string =>
+    createHash("sha256")
+        .update(
+            JSON.stringify([
+                CODEGEN_VERSION,
+                input.reactVersion,
+                serializeModuleExports(input.components),
+                [...input.lazyElements].sort(),
+                serializeModuleExports(input.props),
+            ]),
+        )
+        .digest("hex");
+
+export const computeJsxFingerprint = (input: JsxFingerprintInput, intrinsicElementCount: number): JsxFingerprint => ({
+    value: hashJsx(input),
+    intrinsicElementCount,
+});
+
+export const isJsxStoreFresh = (
+    jsxStoreDir: string,
+    input: JsxFingerprintInput,
+): { fresh: boolean; intrinsicElementCount: number } => {
+    const sentinelPath = join(jsxStoreDir, FINGERPRINT_FILENAME);
+    if (!existsSync(sentinelPath)) return { fresh: false, intrinsicElementCount: 0 };
+    let sentinel: JsxFingerprint;
+    try {
+        sentinel = JSON.parse(readFileSync(sentinelPath, "utf8")) as JsxFingerprint;
+    } catch {
+        return { fresh: false, intrinsicElementCount: 0 };
+    }
+    return sentinel.value === hashJsx(input)
+        ? { fresh: true, intrinsicElementCount: sentinel.intrinsicElementCount }
+        : { fresh: false, intrinsicElementCount: 0 };
 };

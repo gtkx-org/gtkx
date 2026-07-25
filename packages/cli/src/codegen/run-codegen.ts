@@ -49,11 +49,15 @@ type CodegenOptionsInput = {
     elements: Config["elements"];
 };
 
-const userComponents = (elements: Config["elements"]): Record<string, { module: string; export: string }> =>
+const userModuleExports = (
+    elements: Config["elements"],
+    key: "component" | "props",
+): Record<string, { module: string; export: string }> =>
     Object.fromEntries(
-        Object.entries(elements?.config ?? {}).flatMap(([type, entry]) =>
-            entry.component === undefined ? [] : [[type, entry.component] as const],
-        ),
+        Object.entries(elements?.config ?? {}).flatMap(([type, entry]) => {
+            const ref = entry[key];
+            return ref === undefined ? [] : [[type, ref] as const];
+        }),
     );
 
 const userLazyElements = (elements: Config["elements"]): string[] =>
@@ -78,9 +82,9 @@ const codegenOptions = ({ store, libraries, girPath, elements }: CodegenOptionsI
               }
             : undefined,
     reactSubexports: store.react?.subexports ?? [],
-    components: userComponents(elements),
-    propInterfaces: store.react?.propInterfaces ?? {},
-    lazyElements: [...(store.react?.lazyElements ?? []), ...userLazyElements(elements)],
+    userComponents: userModuleExports(elements, "component"),
+    userProps: userModuleExports(elements, "props"),
+    userLazyElements: userLazyElements(elements),
 });
 
 export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenResult> => {

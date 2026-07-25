@@ -1,10 +1,18 @@
-import { resolve } from "node:path";
-import { resolveGirPath, resolveLibraries, writeDocs } from "@gtkx/codegen";
+import { existsSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { type ElementProps, readBuiltinElements, resolveGirPath, resolveLibraries, writeDocs } from "@gtkx/codegen";
 import { loadConfig } from "@gtkx/config";
 import { info } from "@gtkx/utils";
 import { defineCommand } from "citty";
-import { resolveReactSurface } from "../codegen/store-resolver.js";
+import { resolveReactSubexports } from "../codegen/store-resolver.js";
 import { cwdArg, resolveCwd } from "../internal/entry-arg.js";
+
+const resolveDocsProps = async (cwd: string): Promise<ElementProps> => {
+    const giStoreDir = join(cwd, "node_modules", ".gtkx", "gi");
+    if (!existsSync(giStoreDir)) return {};
+    const { props } = await readBuiltinElements(resolveReactSubexports(cwd), giStoreDir);
+    return props;
+};
 
 export const docs = defineCommand({
     meta: {
@@ -52,7 +60,7 @@ export const docs = defineCommand({
             girPath,
             outDir,
             basePath: args["base-path"],
-            propInterfaces: resolveReactSurface(cwd).propInterfaces,
+            props: await resolveDocsProps(cwd),
             force: args.force,
         });
         if (!regenerated) {

@@ -9,16 +9,8 @@ import { ancestorGlibNames, type GlibNamedClass } from "./intrinsic-elements.js"
 /** A component that wraps a generated element, keyed by GLib type name (built-in or user-provided). */
 export type ElementComponent = { module: string; export: string };
 
-/** User-provided component wrappers keyed by GLib type name, layered over the built-ins. */
+/** Component wrappers keyed by GLib type name; the framework's built-ins merged with the project's own. */
 export type ElementComponentOverrides = Record<string, ElementComponent>;
-
-/** The built-in component wrappers, with user overrides layered on top (a user key wins on the same type). */
-const resolveComponents = (overrides: ElementComponentOverrides): Record<string, ElementComponent> => ({
-    GtkApplication: { module: "@gtkx/react/internal", export: "createApplicationComponent" },
-    GtkWindow: { module: "@gtkx/react/internal", export: "createWindowComponent" },
-    AdwDialog: { module: "@gtkx/react/adw", export: "createDialogComponent" },
-    ...overrides,
-});
 
 type ExportCollector = {
     imports: ImportsBuilder;
@@ -46,7 +38,7 @@ export const generateElementComponentsSection = (
         library,
         virtualNames,
         intrinsicElements: options.intrinsicElements,
-        components: resolveComponents(options.components),
+        components: options.components,
     });
     collectLazyElementExports(collector, lazyElements);
 

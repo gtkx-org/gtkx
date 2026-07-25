@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { GirClass } from "../../src/gir/class.js";
 import type { GirFunction } from "../../src/gir/function.js";
@@ -8,6 +8,7 @@ import type { GirParameter, GirReturnValue } from "../../src/gir/parameter.js";
 import type { GirRecord } from "../../src/gir/record.js";
 import type { GirType } from "../../src/gir/type.js";
 import type { TypeId } from "../../src/gir/type-id.js";
+import { readBuiltinElements } from "../../src/react/element-config.js";
 import { matchAsyncFinish } from "../../src/store/gi/async.js";
 import { elementPropTypeFor } from "../../src/store/jsx/element-prop-imports.js";
 import {
@@ -17,20 +18,13 @@ import {
     interfaceHasPropsBody,
 } from "../../src/store/jsx/intrinsic-elements.js";
 import { generateJsxFiles } from "../../src/store/jsx/pipeline.js";
-import { parseLazyElements, scanPropInterfaces } from "../../src/store/jsx/react-surface.js";
 import { giModules, library } from "../helpers/library.js";
 
-const reactSource = (relative: string): string =>
-    readFileSync(new URL(`../../../react/src/${relative}`, import.meta.url), "utf8");
+const GI_STORE_DIR = fileURLToPath(new URL("../../../../node_modules/.gtkx/gi", import.meta.url));
+const REACT_SUBEXPORTS = ["config", "adw", "adw/config", "internal"];
 
-/** The @gtkx/react prop-interface + lazy surface, scanned the same way the CLI threads it into codegen. */
-const REACT_SURFACE = {
-    propInterfaces: scanPropInterfaces([
-        { content: reactSource("reconciler/prop-types.ts"), module: "@gtkx/react" },
-        { content: reactSource("adw/prop-types.ts"), module: "@gtkx/react/adw" },
-    ]),
-    lazyElements: parseLazyElements(reactSource("element-metadata.ts")),
-};
+/** The @gtkx/react element config, read from the linked package the same way codegen threads it into the pipeline. */
+const REACT_SURFACE = await readBuiltinElements(REACT_SUBEXPORTS, GI_STORE_DIR);
 
 type WalkedCallable = { parameters: GirParameter[]; returnValue: GirReturnValue };
 
@@ -399,7 +393,10 @@ describe("codegen configurable element components", () => {
     const overridden = sourceFor(
         generateJsxFiles(library, {
             ...REACT_SURFACE,
-            components: { GtkButton: { module: "@example/wrappers", export: "withButton" } },
+            components: {
+                ...REACT_SURFACE.components,
+                GtkButton: { module: "@example/wrappers", export: "withButton" },
+            },
         }),
         "gtk",
     );
@@ -429,7 +426,10 @@ describe("codegen configurable element components", () => {
         const gtk = sourceFor(
             generateJsxFiles(library, {
                 ...REACT_SURFACE,
-                components: { GtkWindow: { module: "@example/wrappers", export: "withWindow" } },
+                components: {
+                    ...REACT_SURFACE.components,
+                    GtkWindow: { module: "@example/wrappers", export: "withWindow" },
+                },
             }),
             "gtk",
         );
@@ -463,17 +463,19 @@ describe("codegen widget-slot props", () => {
         expect(body).not.toContain("child?: Gtk$.Widget | ReactElement");
     });
 
-    it("extends the hand-declared props interface on a container-prop host", () => {
+    it("extends the configured base props interface on a container-prop host", () => {
         const adw = sourceFor(reactPipeline, "adw");
         expect(adw).toMatch(
-            /import \{[^}]*type AdwHeaderBarProps as AdwHeaderBarPropsBase[^}]*\} from "@gtkx\/react\/adw";/,
+            /import \{[^}]*type GtkHeaderBarProps as GtkHeaderBarPropsBase[^}]*\} from "@gtkx\/react\/internal";/,
         );
-        expect(adw).toMatch(/export interface AdwHeaderBarProps<[^>]*> extends AdwHeaderBarPropsBase,/);
+        expect(adw).toMatch(/export interface AdwHeaderBarProps<[^>]*> extends GtkHeaderBarPropsBase,/);
     });
 
-    it("extends the hand-declared props interface on GtkWidget", () => {
+    it("extends the configured base props interface on GtkWidget", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
-        expect(gtk).toMatch(/import \{[^}]*type GtkWidgetProps as GtkWidgetPropsBase[^}]*\} from "@gtkx\/react";/);
+        expect(gtk).toMatch(
+            /import \{[^}]*type GtkWidgetProps as GtkWidgetPropsBase[^}]*\} from "@gtkx\/react\/internal";/,
+        );
         expect(gtk).toMatch(/export interface GtkWidgetProps<[^>]*> extends GtkWidgetPropsBase,/);
     });
 });
@@ -489,10 +491,10 @@ describe("codegen applied element props", () => {
         expect(gtk).toMatch(/export interface GtkDropTargetProps<[^>]*> extends GtkDropTargetPropsBase,/);
     });
 
-    it("extends the hand-declared placement props on the child element's interface", () => {
+    it("extends the configured placement props on the child element's interface", () => {
         const gio = sourceFor(reactPipeline, "gio");
         expect(gio).toMatch(
-            /import \{[^}]*type GActionGroupProps as GActionGroupPropsBase[^}]*\} from "@gtkx\/react";/,
+            /import \{[^}]*type GActionGroupProps as GActionGroupPropsBase[^}]*\} from "@gtkx\/react\/internal";/,
         );
         expect(gio).toMatch(/export interface GActionGroupProps<[^>]*> extends GActionGroupPropsBase/);
     });
@@ -545,9 +547,9 @@ describe("codegen runtime tables", () => {
         expect(defaultPropsBody(reactPipeline.metadata, "GtkButton")).toContain('"hasFrame": true');
     });
 
-    it("extends named-slot elements from the hand-declared @gtkx/react types", () => {
+    it("extends named-slot elements from the configured base props types", () => {
         const adw = sourceFor(reactPipeline, "adw");
-        expect(adw).toMatch(/export interface AdwHeaderBarProps<[^>]*> extends [^{]*AdwHeaderBarPropsBase/);
+        expect(adw).toMatch(/export interface AdwHeaderBarProps<[^>]*> extends [^{]*GtkHeaderBarPropsBase/);
     });
 });
 

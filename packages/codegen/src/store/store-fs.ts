@@ -71,12 +71,14 @@ export const writeStore = (params: WriteStoreParams): void => {
     }
 };
 
+export type RawFile = { relativePath: string; content: string };
+
 type WriteStoreParams = {
     storeDir: string;
     linkDir: string;
     files: StoreFile[];
     manifest: Manifest;
-    rawFiles?: { relativePath: string; content: string }[];
+    rawFiles?: RawFile[];
 };
 
 const writeSourceFile = (storeDir: string, fileName: string, source: string): void => {

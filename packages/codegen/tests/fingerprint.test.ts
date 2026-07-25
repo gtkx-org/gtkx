@@ -1,38 +1,61 @@
 import { describe, expect, it } from "vitest";
-import { computeFingerprint } from "../src/fingerprint.js";
+import { computeGiFingerprint, computeJsxFingerprint, type JsxFingerprintInput } from "../src/fingerprint.js";
 
-describe("computeFingerprint", () => {
+const jsxInput = (overrides: Partial<JsxFingerprintInput> = {}): JsxFingerprintInput => ({
+    reactVersion: "1.0.0",
+    components: {},
+    lazyElements: [],
+    props: {},
+    ...overrides,
+});
+
+describe("computeGiFingerprint", () => {
+    it("changes when the libraries change", () => {
+        expect(computeGiFingerprint([], ["Gtk-4.0"]).value).not.toBe(computeGiFingerprint([], ["Adw-1"]).value);
+    });
+});
+
+describe("computeJsxFingerprint", () => {
     it("changes when component overrides change", () => {
-        const base = computeFingerprint([], ["Gtk-4.0"]);
-        const withComponent = computeFingerprint([], ["Gtk-4.0"], {
-            components: { GtkButton: { module: "@example/wrappers", export: "withButton" } },
-        });
+        const base = computeJsxFingerprint(jsxInput(), 0).value;
+        const withComponent = computeJsxFingerprint(
+            jsxInput({ components: { GtkButton: { module: "@example/wrappers", export: "withButton" } } }),
+            0,
+        ).value;
         expect(withComponent).not.toBe(base);
     });
 
     it("changes when the lazy element set changes", () => {
-        const base = computeFingerprint([], ["Gtk-4.0"]);
-        expect(computeFingerprint([], ["Gtk-4.0"], { lazyElements: ["GtkStackPage"] })).not.toBe(base);
+        const base = computeJsxFingerprint(jsxInput(), 0).value;
+        expect(computeJsxFingerprint(jsxInput({ lazyElements: ["GtkStackPage"] }), 0).value).not.toBe(base);
     });
 
-    it("changes when the react prop-interface surface changes", () => {
-        const base = computeFingerprint([], ["Gtk-4.0"]);
-        expect(computeFingerprint([], ["Gtk-4.0"], { propInterfaces: { GtkButtonProps: "@gtkx/react" } })).not.toBe(
-            base,
-        );
+    it("changes when the base props change", () => {
+        const base = computeJsxFingerprint(jsxInput(), 0).value;
+        const withProps = computeJsxFingerprint(
+            jsxInput({ props: { GtkButton: { module: "@gtkx/react/internal", export: "ChildrenProps" } } }),
+            0,
+        ).value;
+        expect(withProps).not.toBe(base);
     });
 
     it("is stable regardless of component key order", () => {
-        const a = computeFingerprint([], ["Gtk-4.0"], {
-            components: { GtkButton: { module: "m", export: "a" }, GtkLabel: { module: "n", export: "b" } },
-        });
-        const b = computeFingerprint([], ["Gtk-4.0"], {
-            components: { GtkLabel: { module: "n", export: "b" }, GtkButton: { module: "m", export: "a" } },
-        });
+        const a = computeJsxFingerprint(
+            jsxInput({
+                components: { GtkButton: { module: "m", export: "a" }, GtkLabel: { module: "n", export: "b" } },
+            }),
+            0,
+        ).value;
+        const b = computeJsxFingerprint(
+            jsxInput({
+                components: { GtkLabel: { module: "n", export: "b" }, GtkButton: { module: "m", export: "a" } },
+            }),
+            0,
+        ).value;
         expect(a).toBe(b);
     });
 
-    it("treats an empty and an omitted react surface alike", () => {
-        expect(computeFingerprint([], ["Gtk-4.0"], {})).toBe(computeFingerprint([], ["Gtk-4.0"]));
+    it("does not depend on the intrinsic element count", () => {
+        expect(computeJsxFingerprint(jsxInput(), 5).value).toBe(computeJsxFingerprint(jsxInput(), 10).value);
     });
 });

@@ -4,8 +4,7 @@ import { collectLogged, setupLogState } from "./log-state.js";
 vi.mock("@gtkx/codegen", () => ({
     resolveGirPath: vi.fn(() => ["/usr/share/gir-1.0"]),
     resolveLibraries: vi.fn(() => ["Gtk-4.0"]),
-    scanPropInterfaces: vi.fn(() => ({})),
-    parseLazyElements: vi.fn(() => []),
+    readBuiltinElements: vi.fn(async () => ({ components: {}, lazyElements: [], props: {} })),
     writeDocs: vi.fn(() => ({
         regenerated: true,
         namespaces: [
@@ -73,7 +72,7 @@ describe("docs command", () => {
             girPath: ["/usr/share/gir-1.0"],
             outDir: expect.stringContaining("custom/dir/docs/reference"),
             basePath: "/reference",
-            propInterfaces: {},
+            props: {},
             force: false,
         });
         expect(collectLogged(state.stderrSpy)).toContain("wrote 3 element pages across 2 namespaces");
@@ -92,7 +91,7 @@ describe("docs command", () => {
             girPath: ["/usr/share/gir-1.0"],
             outDir: expect.stringContaining("custom/dir/site/elements"),
             basePath: "/elements",
-            propInterfaces: {},
+            props: {},
             force: true,
         });
     });
