@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { sortStrings } from "@gtkx/utils";
-import type { JsxGenerationOptions } from "./store/react/pipeline.js";
+import type { JsxGenerationOptions } from "./store/jsx/pipeline.js";
 
 const require = createRequire(import.meta.url);
 

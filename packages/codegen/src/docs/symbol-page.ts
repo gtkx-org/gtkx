@@ -30,7 +30,7 @@ import {
 import { type ResolvedAccessor, resolveAccessor } from "../store/gi/property-accessor.js";
 import { resolveRecordFieldEntry } from "../store/gi/record-field-accessor.js";
 import { computeRecordFieldSlots } from "../store/gi/record-layout.js";
-import { implementedInterfaces, newlyImplementedInterfaces } from "../store/react/intrinsic-elements.js";
+import { implementedInterfaces, newlyImplementedInterfaces } from "../store/jsx/intrinsic-elements.js";
 import type { ModuleContext } from "../writer/context.js";
 import {
     classMethodEntries,

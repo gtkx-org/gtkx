@@ -8,8 +8,8 @@ import { type GlGenerationReport, generateGlModules } from "./khronos/pipeline.j
 import { generateNamespaceModule } from "./store/gi/pipeline.js";
 import { type GiNamespaceInput, type GiStoreOptions, writeGiStore } from "./store/gi-store.js";
 import { type JsxStoreOptions, writeJsxStore } from "./store/jsx-store.js";
-import type { ElementComponentOverrides } from "./store/react/element-components.js";
-import { generateJsxFiles, type JsxGenerationOptions } from "./store/react/pipeline.js";
+import type { ElementComponentOverrides } from "./store/jsx/element-components.js";
+import { generateJsxFiles, type JsxGenerationOptions } from "./store/jsx/pipeline.js";
 
 export type GlCodegenOptions = {
     registryPath: string;

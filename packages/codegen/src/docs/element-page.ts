@@ -5,16 +5,16 @@ import type { Library } from "../gir/library.js";
 import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import type { GirSignal } from "../gir/parameter.js";
 import { type GirProperty, isConstructableProperty } from "../gir/property.js";
-import { elementPropTypeFor } from "../store/react/element-prop-imports.js";
-import { buildGirIndex, type GirIndex } from "../store/react/gir-index.js";
+import { elementPropTypeFor } from "../store/jsx/element-prop-imports.js";
+import { buildGirIndex, type GirIndex } from "../store/jsx/gir-index.js";
 import {
     type GlibNamedClass,
     glibNameOf,
     implementedInterfaces,
     newlyImplementedInterfaces,
     signalHandlerName,
-} from "../store/react/intrinsic-elements.js";
-import { isObjectProp } from "../store/react/props.js";
+} from "../store/jsx/intrinsic-elements.js";
+import { isObjectProp } from "../store/jsx/props.js";
 import {
     classMethodEntries,
     docMarkdown,

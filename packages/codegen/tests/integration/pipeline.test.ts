@@ -9,15 +9,15 @@ import type { GirRecord } from "../../src/gir/record.js";
 import type { GirType } from "../../src/gir/type.js";
 import type { TypeId } from "../../src/gir/type-id.js";
 import { matchAsyncFinish } from "../../src/store/gi/async.js";
-import { elementPropTypeFor } from "../../src/store/react/element-prop-imports.js";
+import { elementPropTypeFor } from "../../src/store/jsx/element-prop-imports.js";
 import {
     collectIntrinsicElementClasses,
     glibNameOf,
     implementedInterfaces,
     interfaceHasPropsBody,
-} from "../../src/store/react/intrinsic-elements.js";
-import { generateJsxFiles } from "../../src/store/react/pipeline.js";
-import { parseLazyElements, scanPropInterfaces } from "../../src/store/react/react-surface.js";
+} from "../../src/store/jsx/intrinsic-elements.js";
+import { generateJsxFiles } from "../../src/store/jsx/pipeline.js";
+import { parseLazyElements, scanPropInterfaces } from "../../src/store/jsx/react-surface.js";
 import { giModules, library } from "../helpers/library.js";
 
 const reactSource = (relative: string): string =>

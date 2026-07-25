@@ -1,4 +1,4 @@
-import type { JsxNamespaceFile } from "./react/pipeline.js";
+import type { JsxNamespaceFile } from "./jsx/pipeline.js";
 import { buildManifest, type StoreOptions, subpathExport, writeStore } from "./store-fs.js";
 
 export type JsxStoreOptions = StoreOptions;

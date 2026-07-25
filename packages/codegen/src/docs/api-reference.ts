@@ -4,7 +4,7 @@ import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import { dedupeCallables, isEmittableCallable } from "../store/gi/callables.js";
 import { isClassStructRecord } from "../store/gi/class-struct-record.js";
 import { namespaceFunctionExportName } from "../store/gi/function.js";
-import { collectIntrinsicElementClasses, type GlibNamedClass } from "../store/react/intrinsic-elements.js";
+import { collectIntrinsicElementClasses, type GlibNamedClass } from "../store/jsx/intrinsic-elements.js";
 import { createElementPageContext, type ElementPageContext, renderElementPage } from "./element-page.js";
 import { docsSignatureContext, firstSentence, namespaceOrder } from "./render.js";
 import { type GiSymbolEntry, renderSymbolPage, type SymbolPageOptions } from "./symbol-page.js";

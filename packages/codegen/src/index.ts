@@ -19,4 +19,4 @@ export {
 export { resolveGirPath } from "./gir/gir-path.js";
 export { discoverGirNamespaces, resolveLibraries } from "./gir/libraries.js";
 export { runCodegen } from "./runner.js";
-export { parseLazyElements, type ReactSurface, scanPropInterfaces } from "./store/react/react-surface.js";
+export { parseLazyElements, type ReactSurface, scanPropInterfaces } from "./store/jsx/react-surface.js";
