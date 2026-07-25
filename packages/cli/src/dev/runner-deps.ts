@@ -13,10 +13,21 @@ import { gtkxReactDomPrebundle } from "../vite-plugins/react-dom-prebundle.js";
 import type { DevRunnerDeps } from "./runner.js";
 
 const DEV_MODE = "development";
+const APPLICATION_POLL_INTERVAL_MS = 50;
+
+const waitForApplicationId = async (timeoutMs: number): Promise<string | null> => {
+    const deadline = Date.now() + timeoutMs;
+    for (;;) {
+        const applicationId = Gio.Application.getDefault()?.applicationId ?? null;
+        if (applicationId !== null) return applicationId;
+        if (Date.now() >= deadline) return null;
+        await new Promise((resolve) => setTimeout(resolve, APPLICATION_POLL_INTERVAL_MS));
+    }
+};
 
 export const defaultDevRunnerDeps = (): DevRunnerDeps => ({
     createServer,
-    getApplicationId: () => Gio.Application.getDefault()?.applicationId ?? null,
+    waitForApplicationId,
     getConfiguredApplicationId: async (root: string) =>
         (await loadConfig(root, { mode: DEV_MODE })).config.applicationId,
     startMcpClient: (applicationId, loadAppModule) => {

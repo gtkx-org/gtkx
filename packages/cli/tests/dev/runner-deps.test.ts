@@ -117,26 +117,26 @@ describe("defaultDevRunnerDeps (plugins)", () => {
     });
 });
 
-describe("defaultDevRunnerDeps (getApplicationId)", () => {
-    it("returns the registered GLib applicationId", () => {
+describe("defaultDevRunnerDeps (waitForApplicationId)", () => {
+    it("resolves the registered GLib applicationId", async () => {
         const deps = defaultDevRunnerDeps();
-        hoisted.getDefault.mockReturnValueOnce({ applicationId: "com.example.app" });
+        hoisted.getDefault.mockReturnValue({ applicationId: "com.example.app" });
 
-        expect(deps.getApplicationId()).toBe("com.example.app");
+        await expect(deps.waitForApplicationId(1000)).resolves.toBe("com.example.app");
     });
 
-    it("returns null when no Gio.Application is registered", () => {
+    it("keeps polling and resolves once the application mounts after a delay", async () => {
         const deps = defaultDevRunnerDeps();
-        hoisted.getDefault.mockReturnValueOnce(null);
+        hoisted.getDefault.mockReturnValueOnce(null).mockReturnValue({ applicationId: "com.example.late" });
 
-        expect(deps.getApplicationId()).toBeNull();
+        await expect(deps.waitForApplicationId(1000)).resolves.toBe("com.example.late");
     });
 
-    it("returns null when the default Application has no id", () => {
+    it("resolves null when no application mounts before the timeout", async () => {
         const deps = defaultDevRunnerDeps();
-        hoisted.getDefault.mockReturnValueOnce({ applicationId: null });
+        hoisted.getDefault.mockReturnValue(null);
 
-        expect(deps.getApplicationId()).toBeNull();
+        await expect(deps.waitForApplicationId(60)).resolves.toBeNull();
     });
 });
 

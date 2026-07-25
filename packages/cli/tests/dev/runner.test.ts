@@ -75,7 +75,7 @@ const buildHarness = (
     const exit = vi.fn<DevRunnerDeps["exit"]>((() => undefined) as never);
     const deps: DevRunnerDeps = {
         createServer,
-        getApplicationId: () => applicationId,
+        waitForApplicationId: async () => applicationId,
         getConfiguredApplicationId: async () => overrides.configuredApplicationId,
         startMcpClient: startMcp,
         stopMcpClient: stopMcp,
@@ -335,7 +335,7 @@ describe("createDevRunner (MCP lifecycle)", () => {
     });
 
     it("tears down the dev server and MCP client when the application shuts down", async () => {
-        const harness = buildHarness();
+        const harness = buildHarness({ applicationId: "com.example.app" });
 
         await startRunner(harness);
 

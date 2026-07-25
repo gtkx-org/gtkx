@@ -6,9 +6,11 @@ import { createDevServerConfig, type DevServer } from "./vite-dev-server.js";
 
 export type { DevServer } from "./vite-dev-server.js";
 
+const APPLICATION_MOUNT_TIMEOUT_MS = 10_000;
+
 export type DevRunnerDeps = {
     createServer(config: InlineConfig): Promise<DevServer>;
-    getApplicationId(): string | null;
+    waitForApplicationId(timeoutMs: number): Promise<string | null>;
     getConfiguredApplicationId(root: string): Promise<string | undefined>;
     startMcpClient(
         applicationId: string,
@@ -63,6 +65,29 @@ const handleFileChange = async (server: DevServer, deps: DevRunnerDeps, changedP
     await requestRestart(server, deps);
 };
 
+const onApplicationShutdown =
+    (
+        deps: DevRunnerDeps,
+        refreshTracker: ReturnType<typeof createRefreshTracker>,
+        shutdown: (quitApplication: () => void) => Promise<void>,
+        isShuttingDown: () => boolean,
+    ): (() => void) =>
+    () => {
+        if (isShuttingDown()) return;
+        if (refreshTracker.isRefreshing()) {
+            deps.log("Application unmounted during Fast Refresh - restarting dev runner...");
+            return deps.exit(RESTART_EXIT_CODE);
+        }
+        deps.log("Application quit - stopping dev runner...");
+        shutdown(() => {}).then(
+            () => deps.exit(0),
+            (cause: unknown) => {
+                error("Error closing server:", cause);
+                return deps.exit(1);
+            },
+        );
+    };
+
 export const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
     async run(entryPath: string): Promise<void> {
         const root = process.cwd();
@@ -96,24 +121,12 @@ export const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
         deps.log(`Loading entry: ${entryPath}`);
         await server.ssrLoadModule(entryPath);
 
-        deps.watchApplicationShutdown(() => {
-            if (isShuttingDown) return;
-            if (refreshTracker.isRefreshing()) {
-                deps.log("Application unmounted during Fast Refresh - restarting dev runner...");
-                return deps.exit(RESTART_EXIT_CODE);
-            }
-            deps.log("Application quit - stopping dev runner...");
-            shutdown(() => {}).then(
-                () => deps.exit(0),
-                (cause: unknown) => {
-                    error("Error closing server:", cause);
-                    return deps.exit(1);
-                },
-            );
-        });
-
-        const liveApplicationId = deps.getApplicationId();
+        // React 19 mounts the application asynchronously, so poll for it rather than
+        // reading a single snapshot immediately after loading the entry.
+        const liveApplicationId = await deps.waitForApplicationId(APPLICATION_MOUNT_TIMEOUT_MS);
         if (liveApplicationId) {
+            deps.watchApplicationShutdown(onApplicationShutdown(deps, refreshTracker, shutdown, () => isShuttingDown));
+
             const applicationId = (await deps.getConfiguredApplicationId(root)) ?? liveApplicationId;
             deps.log(`Connected application ID: ${applicationId}`);
             await deps.startMcpClient(applicationId, (id) => server.ssrLoadModule(id));
