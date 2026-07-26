@@ -10,17 +10,28 @@ type InputParameter = {
     index: number;
 };
 
+const isInputParameter = (options: {
+    parameter: GirParameter;
+    index: number;
+    lengthIndices: Set<number>;
+    closureIndices: Set<number>;
+}): boolean => {
+    const { parameter, index, lengthIndices, closureIndices } = options;
+    if (parameter.isVarargs) return false;
+    if (isOutParameter(parameter)) return false;
+    if (isCallerAllocatedOut(parameter)) return false;
+    if (lengthIndices.has(index)) return false;
+    return !closureIndices.has(index);
+};
+
 export const inputParameters = (library: Library, fn: GirFunction): InputParameter[] => {
     const lengthIndices = arrayLengthIndices(library, fn);
     const closureIndices = closureAndDestroyIndices(fn);
     const result: InputParameter[] = [];
     fn.parameters.forEach((parameter, index) => {
-        if (parameter.isVarargs) return;
-        if (isOutParameter(parameter)) return;
-        if (isCallerAllocatedOut(parameter)) return;
-        if (lengthIndices.has(index)) return;
-        if (closureIndices.has(index)) return;
-        result.push({ parameter, index });
+        if (isInputParameter({ parameter, index, lengthIndices, closureIndices })) {
+            result.push({ parameter, index });
+        }
     });
     return result;
 };
@@ -39,14 +50,17 @@ const arrayLengthIndices = (library: Library, fn: GirFunction): Set<number> => {
     return new Set(map.keys());
 };
 
+const carrayLengthIndex = (library: Library, ref: TypeId | undefined): number | undefined => {
+    const type = ref === undefined ? undefined : library.typeOf(ref);
+    if (type?.kind !== "carray") return undefined;
+    return type.lengthParameterIndex;
+};
+
 export const arrayLengthSources = (library: Library, fn: GirFunction): Map<number, number> => {
     const map = new Map<number, number>();
     fn.parameters.forEach((parameter, index) => {
-        const type = parameter.type === undefined ? undefined : library.typeOf(parameter.type);
-        if (type?.kind !== "carray") return;
-        const lengthIndex = type.lengthParameterIndex;
-        if (lengthIndex === undefined) return;
-        map.set(lengthIndex, index);
+        const lengthIndex = carrayLengthIndex(library, parameter.type);
+        if (lengthIndex !== undefined) map.set(lengthIndex, index);
     });
     return map;
 };
@@ -105,23 +119,31 @@ type HandlerResultOptions = {
     optOut: boolean;
 };
 
+const isHandlerOutParameter = (options: {
+    library: Library;
+    parameter: GirParameter;
+    includeCallerAllocated: boolean;
+}): boolean => {
+    const { library, parameter, includeCallerAllocated } = options;
+    if (parameter.isVarargs) return false;
+    if (isOutParameter(parameter)) return true;
+    if (isCellInout(library, parameter)) return true;
+    return includeCallerAllocated && isCallerAllocatedOut(parameter);
+};
+
+const scalarResultType = (primary: string | undefined, optOut: boolean): string => {
+    if (primary === undefined) return "void";
+    return optOut ? `${primary} | undefined` : primary;
+};
+
 export const renderHandlerResultType = (options: HandlerResultOptions): string => {
     const { library, signal, renderType, includeCallerAllocated, optOut } = options;
     const primary = omitsPrimaryReturn(library, signal.returnValue)
         ? undefined
         : renderType(signal.returnValue.type, signal.returnValue.nullable);
     const outTypes = signal.parameters
-        .filter(
-            (parameter) =>
-                !parameter.isVarargs &&
-                (isOutParameter(parameter) ||
-                    isCellInout(library, parameter) ||
-                    (includeCallerAllocated && isCallerAllocatedOut(parameter))),
-        )
+        .filter((parameter) => isHandlerOutParameter({ library, parameter, includeCallerAllocated }))
         .map((parameter) => renderType(parameter.type, false));
-    if (outTypes.length === 0) {
-        if (primary === undefined) return "void";
-        return optOut ? `${primary} | undefined` : primary;
-    }
+    if (outTypes.length === 0) return scalarResultType(primary, optOut);
     return foldOutParamShape(primary, outTypes);
 };

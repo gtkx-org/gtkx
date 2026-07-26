@@ -13,9 +13,11 @@ import { matchAsyncFinish } from "../../src/store/gi/async.js";
 import { elementPropTypeFor } from "../../src/store/jsx/element-prop-imports.js";
 import {
     collectIntrinsicElementClasses,
+    type GlibNamedClass,
     glibNameOf,
     implementedInterfaces,
     interfaceHasPropsBody,
+    type ResolvedQualifiedInterface,
 } from "../../src/store/jsx/intrinsic-elements.js";
 import { generateJsxFiles } from "../../src/store/jsx/pipeline.js";
 import { giModules, library } from "../helpers/library.js";
@@ -32,70 +34,80 @@ const visitEach = <T>(items: Iterable<T>, visitor: (item: T) => void): void => {
     for (const item of items) visitor(item);
 };
 
-const createUnresolvedWalker = (target: Library) => {
-    const seen = new Set<string>();
-    const unresolved = new Set<string>();
-    const visit = (ref: TypeId | undefined): void => {
-        if (ref === undefined) return;
-        const key = `${ref.nsId}:${ref.id}`;
-        if (seen.has(key)) return;
-        seen.add(key);
-        const type = target.typeOf(ref);
-        if (type === undefined) {
-            recordUnresolved(ref);
-            return;
-        }
-        visitContainedRefs(type);
-    };
-    const recordUnresolved = (ref: TypeId): void => {
-        const name = target.nameOf(ref);
-        if (name !== undefined) unresolved.add(`${name.namespaceName}.${name.typeName}`);
-    };
-    const visitContainedRefs = (type: GirType): void => {
-        if (type.kind === "carray" || type.kind === "list") visit(type.element);
-        if (type.kind === "hashtable") {
-            visit(type.key);
-            visit(type.value);
-        }
-        if (type.kind === "callback") visitCallable(type.value);
-    };
-    const visitCallable = (callable: WalkedCallable): void => {
-        for (const parameter of callable.parameters) visit(parameter.type);
-        visit(callable.returnValue.type);
-    };
-    const visitFunction = (fn: GirFunction): void => {
-        if (fn.instance !== undefined) visit(fn.instance.type);
-        visitCallable(fn);
-    };
-    const visitClass = (klass: GirClass): void => {
-        for (const fn of [...klass.methods, ...klass.constructors, ...klass.functions]) visitFunction(fn);
-        for (const property of klass.properties) visit(property.type);
-        for (const signal of klass.signals) visitCallable(signal);
-    };
-    const visitRecord = (record: GirRecord): void => {
-        for (const fn of [...record.methods, ...record.constructors, ...record.functions]) visitFunction(fn);
-        for (const field of record.fields) visit(field.type);
-    };
-    const visitNamespace = (namespace: GirNamespace): void => {
-        visitEach([...namespace.classes, ...namespace.interfaces], visitClass);
-        visitEach(namespace.records, visitRecord);
-        visitEach(namespace.callbacks, visitCallable);
-        visitEach(namespace.functions, visitFunction);
-        visitEach(namespace.constants, (constant) => visit(constant.type));
-        visitEach(namespace.aliases, (alias) => visit(alias.target));
-    };
-    return { visitNamespace, unresolved };
+type UnresolvedWalker = { target: Library; seen: Set<string>; unresolved: Set<string> };
+
+const recordUnresolved = (walker: UnresolvedWalker, ref: TypeId): void => {
+    const name = walker.target.nameOf(ref);
+    if (name !== undefined) walker.unresolved.add(`${name.namespaceName}.${name.typeName}`);
+};
+
+const visitTypeRef = (walker: UnresolvedWalker, ref: TypeId | undefined): void => {
+    if (ref === undefined) return;
+    const key = `${ref.nsId}:${ref.id}`;
+    if (walker.seen.has(key)) return;
+    walker.seen.add(key);
+    const type = walker.target.typeOf(ref);
+    if (type === undefined) {
+        recordUnresolved(walker, ref);
+        return;
+    }
+    visitContainedRefs(walker, type);
+};
+
+const visitContainedRefs = (walker: UnresolvedWalker, type: GirType): void => {
+    if (type.kind === "carray" || type.kind === "list") visitTypeRef(walker, type.element);
+    if (type.kind === "hashtable") {
+        visitTypeRef(walker, type.key);
+        visitTypeRef(walker, type.value);
+    }
+    if (type.kind === "callback") visitCallable(walker, type.value);
+};
+
+const visitCallable = (walker: UnresolvedWalker, callable: WalkedCallable): void => {
+    for (const parameter of callable.parameters) visitTypeRef(walker, parameter.type);
+    visitTypeRef(walker, callable.returnValue.type);
+};
+
+const visitFunction = (walker: UnresolvedWalker, fn: GirFunction): void => {
+    if (fn.instance !== undefined) visitTypeRef(walker, fn.instance.type);
+    visitCallable(walker, fn);
+};
+
+const visitClass = (walker: UnresolvedWalker, klass: GirClass): void => {
+    for (const fn of [...klass.methods, ...klass.constructors, ...klass.functions]) visitFunction(walker, fn);
+    for (const property of klass.properties) visitTypeRef(walker, property.type);
+    for (const signal of klass.signals) visitCallable(walker, signal);
+};
+
+const visitRecord = (walker: UnresolvedWalker, record: GirRecord): void => {
+    for (const fn of [...record.methods, ...record.constructors, ...record.functions]) visitFunction(walker, fn);
+    for (const field of record.fields) visitTypeRef(walker, field.type);
+};
+
+const visitNamespace = (walker: UnresolvedWalker, namespace: GirNamespace): void => {
+    visitEach([...namespace.classes, ...namespace.interfaces], (klass) => visitClass(walker, klass));
+    visitEach(namespace.records, (record) => visitRecord(walker, record));
+    visitEach(namespace.callbacks, (callable) => visitCallable(walker, callable));
+    visitEach(namespace.functions, (fn) => visitFunction(walker, fn));
+    visitEach(namespace.constants, (constant) => visitTypeRef(walker, constant.type));
+    visitEach(namespace.aliases, (alias) => visitTypeRef(walker, alias.target));
 };
 
 const collectUnresolvedTypeNames = (target: Library): string[] => {
-    const walker = createUnresolvedWalker(target);
-    for (const namespace of target.namespaces.values()) walker.visitNamespace(namespace);
+    const walker: UnresolvedWalker = { target, seen: new Set<string>(), unresolved: new Set<string>() };
+    for (const namespace of target.namespaces.values()) visitNamespace(walker, namespace);
     return [...walker.unresolved];
 };
 
 const reactPipeline = generateJsxFiles(library, REACT_SURFACE);
 const sourceFor = (files: typeof reactPipeline, directory: string): string =>
     files.namespaces.find((entry) => entry.directory === directory)?.source ?? "";
+
+const giSource = (directory: string): string =>
+    giModules.find((module) => module.directory === directory)?.source ?? "";
+
+const namespaceNamed = (name: string): GirNamespace | undefined =>
+    [...library.namespaces.values()].find((namespace) => namespace.name === name);
 
 describe("codegen gi pipeline", () => {
     it("resolves the transitive dependency closure of Gtk and Adw", () => {
@@ -132,28 +144,24 @@ describe("codegen element-prop metadata", () => {
 
 describe("codegen return-value convention", () => {
     it("folds an out-array length companion out of the return tuple", () => {
-        const gio = giModules.find(({ directory }) => directory === "gio");
-        const source = gio?.source ?? "";
+        const source = giSource("gio");
         expect(source).toContain("loadContents(cancellable: Cancellable | null): [boolean, number[], string]");
         expect(source).not.toContain("[boolean, number[], number, string]");
     });
 
     it("returns a bare array when the only surfaced out is an array with a folded length", () => {
-        const pango = giModules.find(({ directory }) => directory === "pango");
-        const source = pango?.source ?? "";
+        const source = giSource("pango");
         expect(source).toContain("listFamilies(): FontFamily[]");
         expect(source).not.toContain("listFamilies(): [FontFamily[], number]");
     });
 
     it("keeps an unlinked length out-parameter in the return tuple", () => {
-        const glib = giModules.find(({ directory }) => directory === "glib");
-        const source = glib?.source ?? "";
+        const source = giSource("glib");
         expect(source).toContain("getGroups(): [string[], number]");
     });
 
     it("drops a skip-annotated return value from the surfaced result", () => {
-        const glib = giModules.find(({ directory }) => directory === "glib");
-        const source = glib?.source ?? "";
+        const source = giSource("glib");
         expect(source).toContain(
             "uriSplit(uriRef: string, flags: UriFlags): [string, string, string, number, string, string, string]",
         );
@@ -162,7 +170,7 @@ describe("codegen return-value convention", () => {
 });
 
 describe("codegen async promisification", () => {
-    const gioSource = (): string => giModules.find(({ directory }) => directory === "gio")?.source ?? "";
+    const gioSource = (): string => giSource("gio");
 
     it("promisifies a module-level async function against its finish sibling", () => {
         const source = gioSource();
@@ -185,8 +193,7 @@ describe("codegen async promisification", () => {
     });
 
     it("leaves a function callback-based when its finish needs more than the async result", () => {
-        const gtk = giModules.find(({ directory }) => directory === "gtk");
-        const source = gtk?.source ?? "";
+        const source = giSource("gtk");
         expect(source).toContain(
             "export function showUriFull(parent: Window | null, uri: string, timestamp: number, cancellable: Gio.Cancellable | null, callback: Gio.AsyncReadyCallback | null): void {",
         );
@@ -213,13 +220,13 @@ describe("codegen async promisification", () => {
     });
 
     it("parses the glib:finish-func annotation into the function model", () => {
-        const gio = [...library.namespaces.values()].find((namespace) => namespace.name === "Gio");
+        const gio = namespaceNamed("Gio");
         const busGet = gio?.functions.find((fn) => fn.name === "bus_get");
         expect(busGet?.finishFunc).toBe("bus_get_finish");
     });
 
     it("pairs through the annotation when the finish name breaks the naming convention", () => {
-        const gio = [...library.namespaces.values()].find((namespace) => namespace.name === "Gio");
+        const gio = namespaceNamed("Gio");
         const methods = gio?.interfaces.find((candidate) => candidate.name === "File")?.methods ?? [];
         const asyncFn = methods.find((method) => method.name === "replace_contents_bytes_async");
         const finishFn =
@@ -230,14 +237,14 @@ describe("codegen async promisification", () => {
     });
 
     it("pairs through an annotation that holds the finish C identifier", () => {
-        const gdkpixbuf = giModules.find(({ directory }) => directory === "gdkpixbuf")?.source ?? "";
+        const gdkpixbuf = giSource("gdkpixbuf");
         expect(gdkpixbuf).toContain(
             "static newFromStreamAtScaleAsync(stream: Gio.InputStream, width: number, height: number, preserveAspectRatio: boolean, cancellable?: Gio.Cancellable | null): Promise<Pixbuf | null>",
         );
     });
 
     it("promisifies an instance async method against its annotated static finish", () => {
-        const gdkpixbuf = giModules.find(({ directory }) => directory === "gdkpixbuf")?.source ?? "";
+        const gdkpixbuf = giSource("gdkpixbuf");
         expect(gdkpixbuf).toContain(
             "saveToStreamvAsync(stream: Gio.OutputStream, type: string, optionKeys: string[] | null, optionValues: string[] | null, cancellable?: Gio.Cancellable | null): Promise<boolean>",
         );
@@ -254,30 +261,26 @@ describe("codegen async promisification", () => {
 
 describe("codegen notify detail signals", () => {
     it("keys each introduced property's notify detail off GObject.Object's notify member", () => {
-        const gobject = giModules.find(({ directory }) => directory === "gobject");
-        const source = gobject?.source ?? "";
+        const source = giSource("gobject");
         expect(source).toContain('"notify::source-property": ObjectSignals["notify"];');
         expect(source).toContain('"notify::source-property": ObjectSignalEmit["notify"];');
     });
 
     it("qualifies the notify member reference across namespaces", () => {
-        const gtk = giModules.find(({ directory }) => directory === "gtk");
-        const source = gtk?.source ?? "";
+        const source = giSource("gtk");
         expect(source).toContain('"notify::visible": GObject.ObjectSignals["notify"];');
         expect(source).toContain('"notify::visible": GObject.ObjectSignalEmit["notify"];');
     });
 
     it("inherits a property's notify detail through the parent map rather than re-listing it", () => {
-        const gtk = giModules.find(({ directory }) => directory === "gtk");
-        const source = gtk?.source ?? "";
+        const source = giSource("gtk");
         const buttonSignals = source.slice(source.indexOf("export interface ButtonSignals"));
         const buttonBody = buttonSignals.slice(0, buttonSignals.indexOf("}"));
         expect(buttonBody).not.toContain('"notify::visible"');
     });
 
     it("gives a class that introduces properties but no signals its own typed overloads", () => {
-        const gobject = giModules.find(({ directory }) => directory === "gobject");
-        const source = gobject?.source ?? "";
+        const source = giSource("gobject");
         expect(source).toContain("export interface Binding {");
         expect(source).toContain("connect<K extends keyof BindingSignals>");
         expect(source).toContain("emit<K extends keyof BindingSignalEmit>");
@@ -285,23 +288,20 @@ describe("codegen notify detail signals", () => {
 });
 
 describe("codegen property maps", () => {
-    const moduleSource = (directory: string): string =>
-        giModules.find((module) => module.directory === directory)?.source ?? "";
-
     it("maps each introduced property to its accessor type and chains the parent map", () => {
-        const source = moduleSource("gtk");
+        const source = giSource("gtk");
         expect(source).toContain("export interface ButtonProperties extends WidgetProperties {");
         expect(source).toContain("label: string;");
         expect(source).toContain("__properties__: ButtonProperties;");
     });
 
     it("qualifies the parent map across namespaces", () => {
-        const source = moduleSource("gtk");
+        const source = giSource("gtk");
         expect(source).toContain("export interface WidgetProperties extends GObject.InitiallyUnownedProperties {");
     });
 
     it("carries interface properties typed against the interface that declares them", () => {
-        const source = moduleSource("gtk");
+        const source = giSource("gtk");
         const properties = source.slice(source.indexOf("export interface ButtonProperties"));
         const body = properties.slice(0, properties.indexOf("}"));
         expect(body).toContain("actionTarget: GLib.Variant | null;");
@@ -309,7 +309,7 @@ describe("codegen property maps", () => {
     });
 
     it("omits write-only properties", () => {
-        const source = moduleSource("gtk");
+        const source = giSource("gtk");
         const properties = source.slice(source.indexOf("export interface CheckButtonProperties"));
         const body = properties.slice(0, properties.indexOf("}"));
         expect(body).toContain("active: boolean;");
@@ -318,16 +318,13 @@ describe("codegen property maps", () => {
 });
 
 describe("codegen GObject item comparators", () => {
-    const moduleSource = (directory: string): string =>
-        giModules.find((module) => module.directory === directory)?.source ?? "";
-
     const itemComparatorSignature = "(a: GObject.Object | null, b: GObject.Object | null)";
     const itemComparatorArgs = 't.callback([t.object("borrowed"), t.object("borrowed"), t.uint64], t.int32';
     const itemEqualityArgs = 't.callback([t.object("borrowed"), t.object("borrowed")], t.boolean';
     const itemEqualityFullArgs = 't.callback([t.object("borrowed"), t.object("borrowed"), t.uint64], t.boolean';
 
     it("types ListStore comparator callbacks over borrowed object items", () => {
-        const source = moduleSource("gio");
+        const source = giSource("gio");
         expect(source).toContain(`sort(compareFunc: ${itemComparatorSignature} => number): void`);
         expect(source).toContain(
             `insertSorted(item: GObject.Object, compareFunc: ${itemComparatorSignature} => number): number`,
@@ -344,14 +341,14 @@ describe("codegen GObject item comparators", () => {
     });
 
     it("types CustomSorter comparator callbacks over borrowed object items", () => {
-        const source = moduleSource("gtk");
+        const source = giSource("gtk");
         expect(source).toContain(`static new(sortFunc: (${itemComparatorSignature} => number) | null): CustomSorter`);
         expect(source).toContain(`setSortFunc(sortFunc: (${itemComparatorSignature} => number) | null): void`);
         expect(source).toContain(`${itemComparatorArgs}, { hasDestroy: true, userDataIndex: 2, scope: "notified" })`);
     });
 
     it("keeps raw-pointer comparator callbacks outside GObject item containers", () => {
-        const source = moduleSource("glib");
+        const source = giSource("glib");
         expect(source).toContain("export type CompareDataFunc = (a: number | null, b: number | null) => number;");
         expect(source).toContain("export type EqualFunc = (a: number | null, b: number | null) => boolean;");
         expect(source).not.toContain(itemComparatorSignature);
@@ -582,15 +579,22 @@ const jsxSources = (): string[] => generateJsxFiles(library, REACT_SURFACE).name
 const hasContainerProps = (glibName: string | undefined): boolean =>
     glibName !== undefined && elementPropTypeFor(glibName) !== undefined;
 
+const interfacePropsNameOf = (iface: ResolvedQualifiedInterface): string | undefined => {
+    if (!interfaceHasPropsBody(iface.klass, hasContainerProps)) return undefined;
+    const glib = glibNameOf(iface.klass);
+    return glib === undefined ? undefined : `${glib}Props`;
+};
+
+const addInterfacePropsNames = (widget: GlibNamedClass, names: Set<string>): void => {
+    for (const iface of implementedInterfaces(widget.klass, widget.namespace, library)) {
+        const name = interfacePropsNameOf(iface);
+        if (name !== undefined) names.add(name);
+    }
+};
+
 const interfacePropsNames = (): Set<string> => {
     const names = new Set<string>();
-    for (const widget of collectIntrinsicElementClasses(library)) {
-        for (const iface of implementedInterfaces(widget.klass, widget.namespace, library)) {
-            if (!interfaceHasPropsBody(iface.klass, hasContainerProps)) continue;
-            const glib = glibNameOf(iface.klass);
-            if (glib !== undefined) names.add(`${glib}Props`);
-        }
-    }
+    for (const widget of collectIntrinsicElementClasses(library)) addInterfacePropsNames(widget, names);
     return names;
 };
 

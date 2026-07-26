@@ -87,16 +87,18 @@ type InterfaceMemberRenderers = {
     renderProperty: (args: PropertyAccessorArgs) => string | undefined;
 };
 
-const renderInterfaceMembers = (
-    context: ModuleContext,
-    iface: GirClass,
-    callables: Callables,
-    renderers: InterfaceMemberRenderers,
-): string[] => {
-    const className = pascalCase(iface.name);
+type MethodMemberOptions = {
+    context: ModuleContext;
+    className: string;
+    scope: InstanceScope;
+    callables: Callables;
+    renderers: InterfaceMemberRenderers;
+    claimedNames: Set<string>;
+};
+
+const collectMethodMembers = (options: MethodMemberOptions): string[] => {
+    const { context, className, scope, callables, renderers, claimedNames } = options;
     const members: string[] = [];
-    const claimedNames = new Set<string>();
-    const scope = instanceScope(className, callables);
     for (const callable of callables.methods) {
         const rename = reservedSignalMemberRename(className, callable);
         const block = renderers.renderMethod(context, callable, scope, rename);
@@ -104,11 +106,39 @@ const renderInterfaceMembers = (
         members.push(block);
         claimedNames.add(rename ?? methodExportName(callable));
     }
+    return members;
+};
+
+type PropertyMemberOptions = {
+    context: ModuleContext;
+    iface: GirClass;
+    scope: InstanceScope;
+    renderers: InterfaceMemberRenderers;
+    claimedNames: Set<string>;
+};
+
+const collectPropertyMembers = (options: PropertyMemberOptions): string[] => {
+    const { context, iface, scope, renderers, claimedNames } = options;
+    const members: string[] = [];
     for (const property of iface.properties) {
         const block = renderers.renderProperty({ context, property, claimedNames, methodByName: scope.methodByName });
         if (block !== undefined) members.push(block);
     }
     return members;
+};
+
+const renderInterfaceMembers = (
+    context: ModuleContext,
+    iface: GirClass,
+    callables: Callables,
+    renderers: InterfaceMemberRenderers,
+): string[] => {
+    const className = pascalCase(iface.name);
+    const scope = instanceScope(className, callables);
+    const claimedNames = new Set<string>();
+    const methodMembers = collectMethodMembers({ context, className, scope, callables, renderers, claimedNames });
+    const propertyMembers = collectPropertyMembers({ context, iface, scope, renderers, claimedNames });
+    return [...methodMembers, ...propertyMembers];
 };
 
 const renderInterfaceTypeMembers = (context: ModuleContext, iface: GirClass, callables: Callables): string[] =>

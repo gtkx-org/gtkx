@@ -51,20 +51,21 @@ const storeOptions = () => ({
     },
 });
 
+const walkEmittedFiles = (directory: string, collected: string[]): void => {
+    for (const entry of readdirSync(directory)) {
+        const path = join(directory, entry);
+        if (entry === "node_modules") continue;
+        if (statSync(path).isDirectory()) {
+            walkEmittedFiles(path, collected);
+            continue;
+        }
+        collected.push(path);
+    }
+};
+
 const emittedFiles = (root: string): string[] => {
     const collected: string[] = [];
-    const walk = (directory: string): void => {
-        for (const entry of readdirSync(directory)) {
-            const path = join(directory, entry);
-            if (entry === "node_modules") continue;
-            if (statSync(path).isDirectory()) {
-                walk(path);
-                continue;
-            }
-            collected.push(path);
-        }
-    };
-    walk(root);
+    walkEmittedFiles(root, collected);
     return collected;
 };
 

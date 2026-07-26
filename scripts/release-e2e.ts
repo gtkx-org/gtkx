@@ -55,16 +55,18 @@ function createGtkxVersion(): string {
     return manifest.version;
 }
 
+function publishableName(entry: string): string | undefined {
+    const manifestPath = join(PACKAGES_DIR, entry, "package.json");
+    if (!existsSync(manifestPath)) return undefined;
+    const manifest: PackageManifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    if (manifest.private === true) return undefined;
+    return typeof manifest.name === "string" ? manifest.name : undefined;
+}
+
 function publishablePackageNames(): string[] {
-    const names: string[] = [];
-    for (const entry of readdirSync(PACKAGES_DIR)) {
-        const manifestPath = join(PACKAGES_DIR, entry, "package.json");
-        if (!existsSync(manifestPath)) continue;
-        const manifest: PackageManifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-        if (manifest.private === true) continue;
-        if (typeof manifest.name === "string") names.push(manifest.name);
-    }
-    return names;
+    return readdirSync(PACKAGES_DIR)
+        .map(publishableName)
+        .filter((name): name is string => name !== undefined);
 }
 
 type Packument = {

@@ -92,16 +92,24 @@ const stripLongestPrefix = (input: string, prefixes: string[]): string => {
     return best.length === 0 ? input : input.slice(best.length);
 };
 
+const isBootstrapFunction = (fn: GirFunction): boolean =>
+    fn.parameters.length === 0 && fn.introspectable && fn.shadowedBy === undefined && fn.cIdentifier !== undefined;
+
+const appendBootstrapRegistration = (context: ModuleContext, fn: GirFunction, exportName: string): void => {
+    if (fn.name === "init") {
+        context.module.appendRegistration(`${exportName}();`);
+        return;
+    }
+    if (fn.name === "finalize") {
+        context.addRuntimeImport("onExit");
+        context.module.appendRegistration(`onExit(${exportName});`);
+    }
+};
+
 export const generateNamespaceBootstrap = (context: ModuleContext, namespace: GirNamespace): void => {
     for (const fn of namespace.functions) {
-        if (fn.parameters.length > 0) continue;
-        if (!fn.introspectable || fn.shadowedBy !== undefined || fn.cIdentifier === undefined) continue;
+        if (!isBootstrapFunction(fn) || fn.cIdentifier === undefined) continue;
         const exportName = namespaceFunctionExportName(fn.cIdentifier, fn.name, context.namespace.cSymbolPrefixes);
-        if (fn.name === "init") {
-            context.module.appendRegistration(`${exportName}();`);
-        } else if (fn.name === "finalize") {
-            context.addRuntimeImport("onExit");
-            context.module.appendRegistration(`onExit(${exportName});`);
-        }
+        appendBootstrapRegistration(context, fn, exportName);
     }
 };

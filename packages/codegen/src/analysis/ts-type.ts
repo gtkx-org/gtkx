@@ -35,6 +35,16 @@ const willEmitEntity = (library: Library, type: EntityType): boolean => {
     }
 };
 
+const renderPrimitiveType = (target: TsTypeTarget, type: Extract<GirType, { kind: "primitive" }>): string =>
+    type.category === "gtype" ? target.renderGtype() : PRIMITIVE_TS_TYPE[type.category];
+
+const renderEntityType = (
+    library: Library,
+    target: TsTypeTarget,
+    type: EntityType,
+    name: ReferenceName | undefined,
+): string => renderNamedType(target, type, willEmitEntity(library, type) ? name : undefined);
+
 export const renderBaseTypeFor = (library: Library, target: TsTypeTarget, ref: TypeId | undefined): string => {
     if (ref === undefined) return "void";
     const type = library.typeOf(ref);
@@ -42,7 +52,7 @@ export const renderBaseTypeFor = (library: Library, target: TsTypeTarget, ref: T
     if (type === undefined) return renderNamedType(target, undefined, name);
     switch (type.kind) {
         case "primitive":
-            return type.category === "gtype" ? target.renderGtype() : PRIMITIVE_TS_TYPE[type.category];
+            return renderPrimitiveType(target, type);
         case "varargs":
             return "unknown[]";
         case "callback":
@@ -51,7 +61,7 @@ export const renderBaseTypeFor = (library: Library, target: TsTypeTarget, ref: T
         case "record":
         case "enum":
         case "alias":
-            return renderNamedType(target, type, willEmitEntity(library, type) ? name : undefined);
+            return renderEntityType(library, target, type, name);
         case "carray":
         case "list":
         case "hashtable":

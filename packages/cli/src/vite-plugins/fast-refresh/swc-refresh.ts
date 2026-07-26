@@ -1,7 +1,32 @@
 import { fileURLToPath } from "node:url";
-import { type Options as SwcOptions, transform } from "@swc/core";
+import { type Output, type Options as SwcOptions, transform } from "@swc/core";
 import type { Plugin } from "vite";
 import { REFRESH_REG, REFRESH_RUNTIME_SPECIFIER, REFRESH_SIG, shouldTransformForRefresh } from "./refresh-filter.js";
+
+const buildSwcOptions = (id: string): SwcOptions => {
+    const isTsx = id.endsWith(".tsx");
+    const isTs = id.endsWith(".ts") || isTsx;
+
+    return {
+        filename: id,
+        sourceFileName: id,
+        sourceMaps: true,
+        jsc: {
+            parser: isTs ? { syntax: "typescript", tsx: isTsx } : { syntax: "ecmascript", jsx: true },
+            transform: {
+                react: {
+                    runtime: "automatic",
+                    development: true,
+                    refresh: true,
+                },
+            },
+            target: "es2022",
+        },
+    };
+};
+
+const buildRefreshResult = (result: Output): { code: string; map?: string } =>
+    result.map === undefined ? { code: result.code } : { code: result.code, map: result.map };
 
 export function gtkxSwcRefresh(): Plugin {
     return {
@@ -14,29 +39,9 @@ export function gtkxSwcRefresh(): Plugin {
                 return;
             }
 
-            const isTsx = id.endsWith(".tsx");
-            const isTs = id.endsWith(".ts") || isTsx;
+            const result = await transform(code, buildSwcOptions(id));
 
-            const swcOptions: SwcOptions = {
-                filename: id,
-                sourceFileName: id,
-                sourceMaps: true,
-                jsc: {
-                    parser: isTs ? { syntax: "typescript", tsx: isTsx } : { syntax: "ecmascript", jsx: true },
-                    transform: {
-                        react: {
-                            runtime: "automatic",
-                            development: true,
-                            refresh: true,
-                        },
-                    },
-                    target: "es2022",
-                },
-            };
-
-            const result = await transform(code, swcOptions);
-
-            return result.map === undefined ? { code: result.code } : { code: result.code, map: result.map };
+            return buildRefreshResult(result);
         },
     };
 }

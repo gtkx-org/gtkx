@@ -8,6 +8,7 @@ import {
 import type { GirCallback } from "../../gir/callback.js";
 import type { GirClass } from "../../gir/class.js";
 import type { GirField } from "../../gir/field.js";
+import type { GirParameter } from "../../gir/parameter.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { renderBraced } from "../../writer/emit.js";
 import { computeRecordFieldSlots } from "./record-layout.js";
@@ -23,17 +24,22 @@ export const renderVfuncMetadata = (context: ModuleContext, klass: GirClass): st
     return renderBraced(entries.join("\n"));
 };
 
+const vtableCallbackType = (context: ModuleContext, field: GirField): GirCallback | undefined => {
+    if (field.type === undefined) return undefined;
+    const type = context.library.typeOf(field.type);
+    if (type?.kind !== "callback" || context.library.nameOf(field.type) !== undefined) return undefined;
+    return type.value;
+};
+
 const vtableSlotEntry = (
     context: ModuleContext,
     field: GirField,
     claimedNames: Set<string>,
 ): { key: string; callback: GirCallback } | undefined => {
-    if (field.type === undefined) return undefined;
-    const type = context.library.typeOf(field.type);
-    if (type?.kind !== "callback" || context.library.nameOf(field.type) !== undefined) return undefined;
+    const callback = vtableCallbackType(context, field);
+    if (callback === undefined) return undefined;
     const key = toCamelIdentifier(field.name);
     if (key === "constructor" || claimedNames.has(key)) return undefined;
-    const callback = type.value;
     if (!isVtableSlotEligible(context, callback)) return undefined;
     return { key, callback };
 };
@@ -62,18 +68,21 @@ const vtableEntries = (context: ModuleContext, structName: string, kind: VtableK
     return entries;
 };
 
+const isUnsupportedOutParam = (context: ModuleContext, param: GirParameter): boolean =>
+    (param.direction === "out" || param.direction === "inout") &&
+    !param.callerAllocates &&
+    !isScalarRef(context.library, param.type);
+
+const isEligibleVtableParam = (context: ModuleContext, param: GirParameter): boolean => {
+    if (param.isVarargs) return false;
+    if (isUnsupportedOutParam(context, param)) return false;
+    return !isInlineCallbackRef(context.library, param.type);
+};
+
 const isVtableSlotEligible = (context: ModuleContext, callback: GirCallback): boolean => {
     if (!callback.introspectable) return false;
     for (const param of callback.parameters) {
-        if (param.isVarargs) return false;
-        if (
-            (param.direction === "out" || param.direction === "inout") &&
-            !param.callerAllocates &&
-            !isScalarRef(context.library, param.type)
-        ) {
-            return false;
-        }
-        if (isInlineCallbackRef(context.library, param.type)) return false;
+        if (!isEligibleVtableParam(context, param)) return false;
     }
     return !isInlineCallbackRef(context.library, callback.returnValue.type);
 };

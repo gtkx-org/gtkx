@@ -52,6 +52,9 @@ const COMPILATION_MODE_SET: Set<string> = new Set(COMPILATION_MODES);
 
 const PANIC_THRESHOLD_SET: Set<string> = new Set(PANIC_THRESHOLDS);
 
+const isValidReactCompilerOption = (value: unknown, allowed: Set<string>): boolean =>
+    value === undefined || (typeof value === "string" && allowed.has(value));
+
 const librariesSchema = z.custom<typeof LIBRARIES_WILDCARD | string[]>().check((ctx) => {
     const value = ctx.value;
     if (value === LIBRARIES_WILDCARD) return;
@@ -105,10 +108,7 @@ const reactCompilerSchema = z.custom<boolean | ReactCompilerOptions>().check((ct
         return;
     }
     const compilationMode = value.compilationMode;
-    if (
-        compilationMode !== undefined &&
-        !(typeof compilationMode === "string" && COMPILATION_MODE_SET.has(compilationMode))
-    ) {
+    if (!isValidReactCompilerOption(compilationMode, COMPILATION_MODE_SET)) {
         ctx.issues.push(
             rawIssue(
                 value,
@@ -119,10 +119,7 @@ const reactCompilerSchema = z.custom<boolean | ReactCompilerOptions>().check((ct
         );
     }
     const panicThreshold = value.panicThreshold;
-    if (
-        panicThreshold !== undefined &&
-        !(typeof panicThreshold === "string" && PANIC_THRESHOLD_SET.has(panicThreshold))
-    ) {
+    if (!isValidReactCompilerOption(panicThreshold, PANIC_THRESHOLD_SET)) {
         ctx.issues.push(
             rawIssue(
                 value,
@@ -224,7 +221,7 @@ const resolveElementsModule = (behaviors: string | undefined, root: string | und
     return root === undefined ? behaviors : resolve(root, behaviors);
 };
 
-const resolveLazyElements = (elements: Config["elements"]): string[] =>
+export const resolveLazyElements = (elements: Config["elements"]): string[] =>
     Object.entries(elements?.config ?? {})
         .filter(([, entry]) => entry.lazy === true)
         .map(([type]) => type);

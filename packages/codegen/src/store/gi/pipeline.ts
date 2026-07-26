@@ -17,7 +17,12 @@ import { generateRecord } from "./record.js";
 export const generateNamespaceModule = (namespace: GirNamespace, library: Library): string => {
     const context = new ModuleContext(namespace, library);
     context.addGObjectBootstrapImports();
+    generateNamespaceTypes(context, namespace);
+    generateNamespaceMembers(context, namespace);
+    return context.module.toSource();
+};
 
+const generateNamespaceTypes = (context: ModuleContext, namespace: GirNamespace): void => {
     for (const enumeration of namespace.enums) {
         generateEnum(context, enumeration);
     }
@@ -30,6 +35,9 @@ export const generateNamespaceModule = (namespace: GirNamespace, library: Librar
     for (const iface of namespace.interfaces) {
         generateInterface(context, iface);
     }
+};
+
+const generateNamespaceMembers = (context: ModuleContext, namespace: GirNamespace): void => {
     for (const callback of namespace.callbacks) {
         generateCallback(context, callback);
     }
@@ -43,8 +51,6 @@ export const generateNamespaceModule = (namespace: GirNamespace, library: Librar
     for (const alias of namespace.aliases) {
         generateAlias(context, alias);
     }
-
-    return context.module.toSource();
 };
 
 const generateAlias = (context: ModuleContext, alias: GirAlias): void => {
@@ -53,24 +59,36 @@ const generateAlias = (context: ModuleContext, alias: GirAlias): void => {
     context.module.appendDeclaration(`${renderJsDoc(alias.doc)}export type ${alias.name} = ${targetType};`);
 };
 
+type TopologicalState = {
+    namespaceName: string;
+    byLocalName: Map<string, GirClass>;
+    placed: Set<GirClass>;
+    visiting: Set<GirClass>;
+    result: GirClass[];
+};
+
+const visitClass = (state: TopologicalState, klass: GirClass): void => {
+    if (state.placed.has(klass) || state.visiting.has(klass)) return;
+    state.visiting.add(klass);
+    const parent = sameNamespaceParent(klass, state.namespaceName, state.byLocalName);
+    if (parent !== undefined) visitClass(state, parent);
+    state.visiting.delete(klass);
+    state.placed.add(klass);
+    state.result.push(klass);
+};
+
 const topologicalClassOrder = (classes: GirClass[], namespaceName: string): GirClass[] => {
     const byLocalName = new Map<string, GirClass>();
     for (const klass of classes) byLocalName.set(klass.name, klass);
-    const result: GirClass[] = [];
-    const placed = new Set<GirClass>();
-    const visiting = new Set<GirClass>();
-    const visit = (klass: GirClass): void => {
-        if (placed.has(klass)) return;
-        if (visiting.has(klass)) return;
-        visiting.add(klass);
-        const parent = sameNamespaceParent(klass, namespaceName, byLocalName);
-        if (parent !== undefined) visit(parent);
-        visiting.delete(klass);
-        placed.add(klass);
-        result.push(klass);
+    const state: TopologicalState = {
+        namespaceName,
+        byLocalName,
+        placed: new Set<GirClass>(),
+        visiting: new Set<GirClass>(),
+        result: [],
     };
-    for (const klass of classes) visit(klass);
-    return result;
+    for (const klass of classes) visitClass(state, klass);
+    return state.result;
 };
 
 const sameNamespaceParent = (

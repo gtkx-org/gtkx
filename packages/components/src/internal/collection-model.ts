@@ -120,11 +120,7 @@ const syncSections = (state: ModelState, next: Section<unknown, unknown>[]): voi
     syncStore(state, state.root, state.rootOrder, stores);
 };
 
-const update = (state: ModelState, data: CollectionData): void => {
-    state.seen = new Set();
-    state.dirty = new Set();
-    if (state.mode === "sections") syncSections(state, data.sections ?? []);
-    else syncStore(state, state.root, state.rootOrder, syncLevel(state, data.items ?? [], undefined));
+const pruneUnseen = (state: ModelState): void => {
     for (const [id, entry] of [...state.entries]) {
         if (state.seen.has(id)) continue;
         state.entries.delete(id);
@@ -132,11 +128,31 @@ const update = (state: ModelState, data: CollectionData): void => {
     }
 };
 
+const update = (state: ModelState, data: CollectionData): void => {
+    state.seen = new Set();
+    state.dirty = new Set();
+    if (state.mode === "sections") syncSections(state, data.sections ?? []);
+    else syncStore(state, state.root, state.rootOrder, syncLevel(state, data.items ?? [], undefined));
+    pruneUnseen(state);
+};
+
 const idAt = (state: ModelState, model: Gio.ListModel, position: number): string | null => {
     const item = model.getItem(position);
     if (item === null) return null;
     const holder = item instanceof Gtk.TreeListRow ? item.getItem() : item;
     return holder === null ? null : (state.holders.get(holder)?.id ?? null);
+};
+
+const isWanted = (id: string | null, wanted: Set<string>): boolean => id !== null && wanted.has(id);
+
+const positionsOfIds = (state: ModelState, model: Gio.ListModel, ids: string[]): number[] => {
+    const wanted = new Set(ids);
+    const positions: number[] = [];
+    const count = model.getNItems();
+    for (let index = 0; index < count && positions.length < wanted.size; index++) {
+        if (isWanted(idAt(state, model, index), wanted)) positions.push(index);
+    }
+    return positions;
 };
 
 const presentedModel = (state: ModelState): { model: Gio.ListModel; treeModel: Gtk.TreeListModel | null } => {
@@ -178,15 +194,6 @@ export const createCollectionModel = (mode: CollectionMode): CollectionModel => 
             }
             return -1;
         },
-        positionsOf: (ids) => {
-            const wanted = new Set(ids);
-            const positions: number[] = [];
-            const count = model.getNItems();
-            for (let index = 0; index < count && positions.length < wanted.size; index++) {
-                const id = idAt(state, model, index);
-                if (id !== null && wanted.has(id)) positions.push(index);
-            }
-            return positions;
-        },
+        positionsOf: (ids) => positionsOfIds(state, model, ids),
     };
 };

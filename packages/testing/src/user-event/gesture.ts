@@ -82,22 +82,22 @@ const patchDragState = (controller: Gtk.GestureDrag, start: DragOffset, offset: 
     };
 };
 
+const emitToControllers = (controllers: Gtk.GestureDrag[], signal: string, x: number, y: number): void => {
+    for (const controller of controllers) {
+        controller.emit(signal, x, y);
+    }
+};
+
 const runDragSequence = (controllers: Gtk.GestureDrag[], start: DragOffset, updates: DragOffset[]): void => {
     let current: DragOffset = { x: 0, y: 0 };
     const restores = controllers.map((controller) => patchDragState(controller, start, () => current));
     try {
-        for (const controller of controllers) {
-            controller.emit("drag-begin", start.x, start.y);
-        }
+        emitToControllers(controllers, "drag-begin", start.x, start.y);
         for (const update of updates) {
             current = update;
-            for (const controller of controllers) {
-                controller.emit("drag-update", update.x, update.y);
-            }
+            emitToControllers(controllers, "drag-update", update.x, update.y);
         }
-        for (const controller of controllers) {
-            controller.emit("drag-end", current.x, current.y);
-        }
+        emitToControllers(controllers, "drag-end", current.x, current.y);
     } finally {
         for (const restore of restores) restore();
     }

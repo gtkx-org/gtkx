@@ -19,7 +19,7 @@ import {
     namedRows,
     RAPID_REORDER_ORDERS,
 } from "./helpers/list-collection-render.js";
-import { type Column, renderColumnView } from "./helpers/list-fixtures.js";
+import { type Column, firstSecondItems, firstSecondThirdItems, renderColumnView } from "./helpers/list-fixtures.js";
 import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
 import { expectNoBoxBetween } from "./helpers/widget-chain.js";
 
@@ -76,6 +76,12 @@ const renderTitledColumnView = async (titles: string[]): Promise<TitledColumnVie
     };
 };
 
+const renderAbcThenReorder = async (nextTitles: string[]): Promise<TitledColumnViewFixture> => {
+    const fixture = await renderTitledColumnView(["A", "B", "C"]);
+    await fixture.rerenderTitles(nextTitles);
+    return fixture;
+};
+
 const orderedColumns = (ids: string[]): Column<{ name: string }>[] =>
     ids.map((id) => ({
         id,
@@ -102,6 +108,29 @@ const generateEmployees = (count: number): Employee[] => {
 };
 
 type SortColumn = "name" | "salary" | null;
+
+const compareBySort = (
+    a: { name: string; salary: number },
+    b: { name: string; salary: number },
+    sortColumn: SortColumn,
+    sortOrder: Gtk.SortType,
+): number => {
+    const comparison = sortColumn === "name" ? a.name.localeCompare(b.name) : a.salary - b.salary;
+    return sortOrder === Gtk.SortType.ASCENDING ? comparison : -comparison;
+};
+
+const expectCellsAreDirectChildLabels = (view: Gtk.ColumnView, expectedCount: number): void => {
+    const [firstRow] = dataRows(view);
+    if (firstRow === undefined) throw new Error("Expected a data row to render");
+    const cells = within(firstRow).getAllByRole(Gtk.AccessibleRole.GRID_CELL);
+    expect(cells).toHaveLength(expectedCount);
+    for (const cell of cells) {
+        const [label] = within(cell).getAllByRole(Gtk.AccessibleRole.LABEL);
+        if (label === undefined) throw new Error("Expected the cell to contain a label");
+        expect(cell.getFirstChild()).toBe(label);
+        expectNoBoxBetween(label, view);
+    }
+};
 
 const columnTitleForId = (columnId: string): string => `${columnId.charAt(0).toUpperCase()}${columnId.slice(1)}`;
 
@@ -135,18 +164,7 @@ function SortableColumnView({
     const sortedEmployees = useMemo(() => {
         if (!sortColumn) return employees;
 
-        return [...employees].sort((a, b) => {
-            let comparison = 0;
-            switch (sortColumn) {
-                case "name":
-                    comparison = a.name.localeCompare(b.name);
-                    break;
-                case "salary":
-                    comparison = a.salary - b.salary;
-                    break;
-            }
-            return sortOrder === Gtk.SortType.ASCENDING ? comparison : -comparison;
-        });
+        return [...employees].sort((a, b) => compareBySort(a, b, sortColumn, sortOrder));
     }, [employees, sortColumn, sortOrder]);
 
     if (onRenderOrder) {
@@ -250,22 +268,11 @@ describe("render - ColumnView (2)", () => {
         it("renders each cell's label as the cell's direct child with no wrapper container", async () => {
             const { ref } = await renderColumnView(["r1"], { columns: orderedColumns(["A", "B"]) });
 
-            const [firstRow] = dataRows(ref.current);
-            if (firstRow === undefined) throw new Error("Expected a data row to render");
-            const cells = within(firstRow).getAllByRole(Gtk.AccessibleRole.GRID_CELL);
-            expect(cells).toHaveLength(2);
-            for (const cell of cells) {
-                const [label] = within(cell).getAllByRole(Gtk.AccessibleRole.LABEL);
-                if (label === undefined) throw new Error("Expected the cell to contain a label");
-                expect(cell.getFirstChild()).toBe(label);
-                expectNoBoxBetween(label, ref.current);
-            }
+            expectCellsAreDirectChildLabels(ref.current, 2);
         });
 
         it("removes column", async () => {
-            const { ref, rerenderTitles } = await renderTitledColumnView(["A", "B", "C"]);
-
-            await rerenderTitles(["A", "C"]);
+            const { ref } = await renderAbcThenReorder(["A", "C"]);
 
             expect(ref.current.getColumns()).not.toBeNull();
         });
@@ -401,26 +408,16 @@ describe("render - ColumnView (5)", () => {
 describe("render - ColumnView (6)", () => {
     describe("selection", () => {
         it("supports single selection", async () => {
-            const { ref } = await renderColumnView(
-                [
-                    { id: "1", value: { name: "First" } },
-                    { id: "2", value: { name: "Second" } },
-                ],
-                { selected: ["1"] },
-            );
+            const { ref } = await renderColumnView(firstSecondItems, { selected: ["1"] });
 
             expect(ref.current.getModel()).not.toBeNull();
         });
 
         it("supports multiple selection", async () => {
-            const { ref } = await renderColumnView(
-                [
-                    { id: "1", value: { name: "First" } },
-                    { id: "2", value: { name: "Second" } },
-                    { id: "3", value: { name: "Third" } },
-                ],
-                { selectionMode: Gtk.SelectionMode.MULTIPLE, selected: ["1", "2"] },
-            );
+            const { ref } = await renderColumnView(firstSecondThirdItems, {
+                selectionMode: Gtk.SelectionMode.MULTIPLE,
+                selected: ["1", "2"],
+            });
 
             expect(ref.current.getModel()).not.toBeNull();
         });
@@ -614,10 +611,7 @@ describe("render - ColumnView (13)", () => {
             ];
             const sortBy = (sortColumn: SortColumn, sortOrder: Gtk.SortType): Item[] => {
                 if (!sortColumn) return items;
-                return [...items].sort((a, b) => {
-                    const comparison = sortColumn === "name" ? a.name.localeCompare(b.name) : a.salary - b.salary;
-                    return sortOrder === Gtk.SortType.ASCENDING ? comparison : -comparison;
-                });
+                return [...items].sort((a, b) => compareBySort(a, b, sortColumn, sortOrder));
             };
             const toRows = (rows: Item[]) => rows.map((item) => ({ id: item.id, value: item }));
             const rowsFor = (sortColumn: SortColumn) => toRows(sortBy(sortColumn, Gtk.SortType.ASCENDING));
@@ -725,8 +719,7 @@ describe("render - ColumnView (16)", () => {
         });
 
         it("handles rapid column reordering", async () => {
-            const { ref, rerenderTitles } = await renderTitledColumnView(["A", "B", "C"]);
-            await rerenderTitles(["C", "A", "B"]);
+            const { ref, rerenderTitles } = await renderAbcThenReorder(["C", "A", "B"]);
             await rerenderTitles(["B", "C", "A"]);
             await rerenderTitles(["A", "B", "C"]);
 

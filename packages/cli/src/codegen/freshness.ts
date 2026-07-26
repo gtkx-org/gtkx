@@ -28,23 +28,21 @@ const namespaceBarrelPath = (giStoreDir: string, library: string): string => {
 const giStoreLinksResolve = (giStoreDir: string): boolean =>
     existsSync(join(giStoreDir, "node_modules", "@gtkx", "gi", "package.json"));
 
+const giStoreStale = (store: CodegenStore, libraries: string[]): boolean => {
+    if (!existsSync(store.giLinkDir) || !existsSync(store.giStoreDir)) return true;
+    if (!giStoreLinksResolve(store.giStoreDir)) return true;
+    return libraries.some((library) => !existsSync(namespaceBarrelPath(store.giStoreDir, library)));
+};
+
+const reactStoreStale = (store: CodegenStore): boolean => {
+    if (store.react === null) return false;
+    if (!existsSync(store.jsxLinkDir)) return true;
+    return REACT_GENERATED_MODULES.some((module) => !existsSync(join(store.jsxStoreDir, module)));
+};
+
 export const isCodegenStale = (inputs: CodegenInputs): boolean => {
     try {
-        const { store, libraries } = inputs;
-        if (!existsSync(store.giLinkDir) || !existsSync(store.giStoreDir)) {
-            return true;
-        }
-        if (!giStoreLinksResolve(store.giStoreDir)) {
-            return true;
-        }
-        if (libraries.some((library) => !existsSync(namespaceBarrelPath(store.giStoreDir, library)))) {
-            return true;
-        }
-        if (store.react !== null) {
-            if (!existsSync(store.jsxLinkDir)) return true;
-            if (REACT_GENERATED_MODULES.some((module) => !existsSync(join(store.jsxStoreDir, module)))) return true;
-        }
-        return false;
+        return giStoreStale(inputs.store, inputs.libraries) || reactStoreStale(inputs.store);
     } catch {
         return true;
     }

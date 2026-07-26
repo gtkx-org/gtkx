@@ -37,6 +37,15 @@ export const renderMethodSignature = (context: ModuleContext, fn: GirFunction): 
         () => false,
     );
 
+const parameterAnnotation = (context: ModuleContext, fn: GirFunction, parameter: GirParameter): string =>
+    itemComparatorTsType(context, fn, parameter) ?? renderTsType(context, parameter.type, parameter.nullable);
+
+const isParameterOptional = (parameter: GirParameter, isOptionalExtra: (parameter: GirParameter) => boolean): boolean =>
+    parameter.optional || isOptionalExtra(parameter);
+
+const formatParameterPart = (name: string, annotation: string, optional: boolean): string =>
+    optional ? `${name}?: ${annotation}` : `${name}: ${annotation}`;
+
 const renderInputParameters = (
     context: ModuleContext,
     fn: GirFunction,
@@ -48,12 +57,8 @@ const renderInputParameters = (
     for (const { parameter, index } of inputParameters(context.library, fn)) {
         if (skip(parameter)) continue;
         const name = parameterIdentifier(parameter, index);
-        if (parameter.optional || isOptionalExtra(parameter)) {
-            sawOptional = true;
-        }
-        const annotation =
-            itemComparatorTsType(context, fn, parameter) ?? renderTsType(context, parameter.type, parameter.nullable);
-        parts.push(sawOptional ? `${name}?: ${annotation}` : `${name}: ${annotation}`);
+        if (isParameterOptional(parameter, isOptionalExtra)) sawOptional = true;
+        parts.push(formatParameterPart(name, parameterAnnotation(context, fn, parameter), sawOptional));
     }
     return parts.join(", ");
 };
@@ -78,6 +83,40 @@ export const renderMethodReturnType = (context: ModuleContext, fn: GirFunction):
     return foldOutParamShape(primary, outTypes);
 };
 
+type PromisifiedStep = { sawOptional: boolean; expression: string | undefined };
+
+const classifyPromisifiedParameter = (
+    promisify: PromisifyContext,
+    parameter: GirParameter,
+    index: number,
+    state: { cancellableIndex: number; sawOptional: boolean },
+): PromisifiedStep => {
+    if (parameter.isVarargs) return { sawOptional: state.sawOptional, expression: undefined };
+    if (index === state.cancellableIndex) return { sawOptional: true, expression: undefined };
+    if (skipPromisifiedParameter(promisify, parameter, index)) {
+        return { sawOptional: state.sawOptional, expression: undefined };
+    }
+    const sawOptional = state.sawOptional || parameter.optional;
+    return { sawOptional, expression: promisifiedArgument(promisify, parameter, index, sawOptional) };
+};
+
+const collectPromisifiedArguments = (promisify: PromisifyContext, cancellableIndex: number): string[] => {
+    const expressions: string[] = [];
+    let sawOptional = false;
+    promisify.asyncFn.parameters.forEach((parameter, index) => {
+        const step = classifyPromisifiedParameter(promisify, parameter, index, { cancellableIndex, sawOptional });
+        sawOptional = step.sawOptional;
+        if (step.expression !== undefined) expressions.push(step.expression);
+    });
+    return expressions;
+};
+
+const renderCancellableExpression = (parameters: GirParameter[], cancellableIndex: number): string => {
+    if (cancellableIndex < 0) return "null";
+    const parameter = parameters[cancellableIndex];
+    return parameter === undefined ? "null" : parameterIdentifier(parameter, cancellableIndex);
+};
+
 export const renderPromisifiedBody = (
     context: ModuleContext,
     asyncFn: GirFunction,
@@ -86,27 +125,19 @@ export const renderPromisifiedBody = (
 ): string => {
     context.addRuntimeImport("promisify");
     const cancellableIndex = findCancellableIndex(context, asyncFn.parameters);
-    const closureIndices = closureAndDestroyIndices(asyncFn);
-    const lengthFor = arrayLengthSources(context.library, asyncFn);
+    const promisifyContext: PromisifyContext = {
+        context,
+        asyncFn,
+        closureIndices: closureAndDestroyIndices(asyncFn),
+        lengthFor: arrayLengthSources(context.library, asyncFn),
+    };
     const leadingExpressions: string[] = [];
     if (asyncFn.instance !== undefined) {
         context.addRuntimeImport("getHandle");
         leadingExpressions.push("getHandle(this)");
     }
-    const promisifyContext: PromisifyContext = { context, asyncFn, closureIndices, lengthFor };
-    let cancellableExpression = "null";
-    let sawOptional = false;
-    asyncFn.parameters.forEach((parameter, index) => {
-        if (parameter.isVarargs) return;
-        if (index === cancellableIndex) {
-            cancellableExpression = parameterIdentifier(parameter, index);
-            sawOptional = true;
-            return;
-        }
-        if (skipPromisifiedParameter(promisifyContext, parameter, index)) return;
-        if (parameter.optional) sawOptional = true;
-        leadingExpressions.push(promisifiedArgument(promisifyContext, parameter, index, sawOptional));
-    });
+    leadingExpressions.push(...collectPromisifiedArguments(promisifyContext, cancellableIndex));
+    const cancellableExpression = renderCancellableExpression(asyncFn.parameters, cancellableIndex);
     const leadingArguments = leadingExpressions.length > 0 ? `, ${leadingExpressions.join(", ")}` : "";
     return `return promisify(${bindingExpression}, ${finishExpression}, ${cancellableExpression}${leadingArguments});`;
 };
@@ -246,6 +277,9 @@ type PlanArgsContext = {
     folded: Set<number>;
 };
 
+const isSkippedPlanParameter = (parameter: GirParameter, index: number, closureIndices: Set<number>): boolean =>
+    parameter.isVarargs || closureIndices.has(index);
+
 const planParameter = (
     context: ModuleContext,
     parameter: GirParameter,
@@ -253,7 +287,7 @@ const planParameter = (
     planContext: PlanArgsContext,
 ): CallArgPlan | undefined => {
     const { instanceOffset, folded, closureIndices, lengthFor } = planContext;
-    if (parameter.isVarargs || closureIndices.has(index)) return undefined;
+    if (isSkippedPlanParameter(parameter, index, closureIndices)) return undefined;
     if (isOutParameter(parameter)) return planOutParam(context, parameter, instanceOffset, folded.has(index));
     if (isCallerAllocatedOut(parameter)) return planCallerOut(context, parameter, instanceOffset);
     if (isInoutParameter(parameter)) return planInoutArgument(context, parameter, index, planContext);
@@ -405,6 +439,9 @@ const hashtableArgument = (context: ModuleContext, valueRef: TypeId, name: strin
     return `${name} ? globalThis.Array.from(${name}) : null`;
 };
 
+const mapHandleExpression = (name: string, nullable: boolean): string =>
+    nullable ? `${name}?.map((item) => getHandle(item))` : `${name}.map((item) => getHandle(item))`;
+
 const collectionArgument = (
     context: ModuleContext,
     type: GirType | undefined,
@@ -413,7 +450,7 @@ const collectionArgument = (
 ): string | undefined => {
     if ((type?.kind === "carray" || type?.kind === "list") && isHandlePassing(context, type.element)) {
         context.addRuntimeImport("getHandle");
-        return nullable ? `${name}?.map((item) => getHandle(item))` : `${name}.map((item) => getHandle(item))`;
+        return mapHandleExpression(name, nullable);
     }
     if (type?.kind === "hashtable") return hashtableArgument(context, type.value, name);
     return undefined;

@@ -21,6 +21,17 @@ export const typeRefFromNode = (parent: RawNode | undefined, context: ParseConte
     return undefined;
 };
 
+const hashTableRefFromNode = (typeNode: RawNode, context: ParseContext): TypeId => {
+    const elementTypes = childrenOf(typeNode, "type");
+    const keyNode = elementTypes[0];
+    const valueNode = elementTypes[1];
+    return context.addContainer({
+        kind: "hashtable",
+        key: keyNode === undefined ? pointerFallback(context) : typeRefFromTypeNode(keyNode, context),
+        value: valueNode === undefined ? pointerFallback(context) : typeRefFromTypeNode(valueNode, context),
+    });
+};
+
 const typeRefFromTypeNode = (typeNode: RawNode, context: ParseContext): TypeId => {
     const name = nameAttr(typeNode);
 
@@ -29,21 +40,10 @@ const typeRefFromTypeNode = (typeNode: RawNode, context: ParseContext): TypeId =
         return context.addContainer({ kind: "list", flavor: listFlavor, element: elementRefOf(typeNode, context) });
     }
 
-    if (name === "GLib.HashTable") {
-        const elementTypes = childrenOf(typeNode, "type");
-        const keyNode = elementTypes[0];
-        const valueNode = elementTypes[1];
-        return context.addContainer({
-            kind: "hashtable",
-            key: keyNode === undefined ? pointerFallback(context) : typeRefFromTypeNode(keyNode, context),
-            value: valueNode === undefined ? pointerFallback(context) : typeRefFromTypeNode(valueNode, context),
-        });
-    }
+    if (name === "GLib.HashTable") return hashTableRefFromNode(typeNode, context);
 
     const primitive = primitiveCategory(name);
-    if (primitive !== undefined) {
-        return context.addPrimitive(primitive);
-    }
+    if (primitive !== undefined) return context.addPrimitive(primitive);
 
     return context.findType(name);
 };

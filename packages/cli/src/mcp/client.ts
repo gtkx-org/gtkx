@@ -14,6 +14,11 @@ export type McpClientOptions = {
 const RECONNECT_DELAY_MS = 2000;
 const REGISTER_TIMEOUT_MS = 30000;
 
+const toResponseError = (error: unknown): { code: number; message: string; data?: unknown } =>
+    error instanceof ProtocolError
+        ? error.toErrorObject()
+        : { code: ErrorCode.INTERNAL_ERROR, message: errorMessage(error) };
+
 export class McpClient {
     private socket: net.Socket | null = null;
     private connection: ProtocolConnection | null = null;
@@ -161,17 +166,7 @@ export class McpClient {
             const result = await dispatch(method, params, { app: defaultApp, registry: this.registry });
             connection.write({ id, result });
         } catch (error) {
-            if (error instanceof ProtocolError) {
-                connection.write({ id, error: error.toErrorObject() });
-            } else {
-                connection.write({
-                    id,
-                    error: {
-                        code: ErrorCode.INTERNAL_ERROR,
-                        message: errorMessage(error),
-                    },
-                });
-            }
+            connection.write({ id, error: toResponseError(error) });
         }
     }
 }

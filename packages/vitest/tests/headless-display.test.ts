@@ -22,6 +22,8 @@ const { DEFAULT_HEADLESS_SIZE, readHeadlessOptions, resolveHeadlessOptions, star
 const spawnMock = vi.mocked(spawn);
 const spawnSyncMock = vi.mocked(spawnSync);
 
+const findWestonCall = () => spawnMock.mock.calls.find((call) => call[1].includes("weston"));
+
 const westonHelp = (text: string): SpawnSyncReturns<string> => ({
     pid: 0,
     output: [null, text, ""],
@@ -49,6 +51,14 @@ const wlrKeys = [
 ];
 
 const trackedEnvKeys = [...wlrKeys, "XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS", "WAYLAND_DISPLAY"];
+
+const restoreTrackedEnv = (saved: { [key: string]: string | undefined }): void => {
+    for (const key of trackedEnvKeys) {
+        const value = saved[key];
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+    }
+};
 
 describe("startHeadlessDisplay", () => {
     let children: ChildProcess[];
@@ -112,11 +122,7 @@ describe("startHeadlessDisplay", () => {
     afterEach(() => {
         for (const teardown of teardowns) teardown();
         for (const child of children) child.kill("SIGKILL");
-        for (const key of trackedEnvKeys) {
-            const value = savedEnv[key];
-            if (value === undefined) delete process.env[key];
-            else process.env[key] = value;
-        }
+        restoreTrackedEnv(savedEnv);
         spawnMock.mockReset();
         spawnSyncMock.mockReset();
     });
@@ -142,7 +148,7 @@ describe("startHeadlessDisplay", () => {
     it("passes the requested size through to the weston spawn arguments", async () => {
         await startFulfilled({ size: "640x480", compositor: "weston" });
 
-        const westonCall = spawnMock.mock.calls.find((call) => call[1].includes("weston"));
+        const westonCall = findWestonCall();
         const args = westonCall?.[1] ?? [];
         expect(args).toContain("--width=640");
         expect(args).toContain("--height=480");
@@ -151,7 +157,7 @@ describe("startHeadlessDisplay", () => {
     it("includes --fake-seat when weston advertises the flag", async () => {
         await startFulfilled({ size: "800x600", compositor: "weston" });
 
-        const westonCall = spawnMock.mock.calls.find((call) => call[1].includes("weston"));
+        const westonCall = findWestonCall();
         expect(westonCall?.[1]).toContain("--fake-seat");
     });
 
@@ -164,7 +170,7 @@ describe("startHeadlessDisplay", () => {
         fulfillSockets("weston");
         teardowns.push(await pending);
 
-        const westonCall = spawnMock.mock.calls.find((call) => call[1].includes("weston"));
+        const westonCall = findWestonCall();
         expect(westonCall?.[1]).not.toContain("--fake-seat");
     });
 

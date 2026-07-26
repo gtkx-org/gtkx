@@ -32,31 +32,60 @@ export const generateJsxFiles = (library: Library, options: JsxGenerationOptions
     setElementProps(options.props ?? {});
     const intrinsicElements = collectIntrinsicElementClasses(library);
     const intrinsicElementByGlibName = new Map(intrinsicElements.map((entry) => [entry.glibName, entry]));
-    const namespacesWithIntrinsicElements = new Map<string, GirNamespace>();
-    for (const entry of intrinsicElements) {
-        namespacesWithIntrinsicElements.set(entry.namespace.name, entry.namespace);
-    }
 
     const girIndex = buildGirIndex(library);
     const lazyByNamespace = lazyElementSpecs(girIndex, options.lazyElements ?? []);
 
-    const namespaces: JsxNamespaceFile[] = [];
-    let intrinsicElementCount = 0;
-    for (const namespace of sortStringsBy(namespacesWithIntrinsicElements.values(), (entry) => entry.name)) {
-        const { source, count } = generateJsxNamespace(namespace, library, {
-            lazyElements: lazyByNamespace.get(namespace.name) ?? [],
-            intrinsicElements,
-            intrinsicElementByGlibName,
-            reactSubexports: options.reactSubexports ?? [],
-            components: options.components ?? {},
-        });
-        namespaces.push({ directory: namespaceDirectory(namespace), source });
-        intrinsicElementCount += count;
-    }
+    const { namespaces, intrinsicElementCount } = generateNamespaceFiles({
+        library,
+        intrinsicElements,
+        intrinsicElementByGlibName,
+        lazyByNamespace,
+        reactSubexports: options.reactSubexports ?? [],
+        components: options.components ?? {},
+    });
 
     const metadata = generateMetadata(library);
 
     return { namespaces, metadata, intrinsicElementCount };
+};
+
+type NamespaceFilesOptions = {
+    library: Library;
+    intrinsicElements: GlibNamedClass[];
+    intrinsicElementByGlibName: Map<string, GlibNamedClass>;
+    lazyByNamespace: Map<string, LazyElementSpec[]>;
+    reactSubexports: string[];
+    components: ElementComponentOverrides;
+};
+
+const orderedIntrinsicNamespaces = (intrinsicElements: GlibNamedClass[]): GirNamespace[] => {
+    const namespacesWithIntrinsicElements = new Map<string, GirNamespace>();
+    for (const entry of intrinsicElements) {
+        namespacesWithIntrinsicElements.set(entry.namespace.name, entry.namespace);
+    }
+    return sortStringsBy(namespacesWithIntrinsicElements.values(), (entry) => entry.name);
+};
+
+const generateNamespaceFiles = (
+    options: NamespaceFilesOptions,
+): { namespaces: JsxNamespaceFile[]; intrinsicElementCount: number } => {
+    const { library, intrinsicElements, intrinsicElementByGlibName, lazyByNamespace, reactSubexports, components } =
+        options;
+    const namespaces: JsxNamespaceFile[] = [];
+    let intrinsicElementCount = 0;
+    for (const namespace of orderedIntrinsicNamespaces(intrinsicElements)) {
+        const { source, count } = generateJsxNamespace(namespace, library, {
+            lazyElements: lazyByNamespace.get(namespace.name) ?? [],
+            intrinsicElements,
+            intrinsicElementByGlibName,
+            reactSubexports,
+            components,
+        });
+        namespaces.push({ directory: namespaceDirectory(namespace), source });
+        intrinsicElementCount += count;
+    }
+    return { namespaces, intrinsicElementCount };
 };
 
 type JsxNamespaceContext = {

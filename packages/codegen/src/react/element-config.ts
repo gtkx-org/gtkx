@@ -43,6 +43,12 @@ const importBuiltinElements = async (entrypoint: string): Promise<Record<string,
     return imported.BUILTIN_ELEMENTS ?? {};
 };
 
+const applyBuiltinElement = (target: BuiltinElements, type: string, config: BuiltinElement): void => {
+    if (config.component !== undefined) target.components[type] = config.component;
+    if (config.props !== undefined) target.props[type] = config.props;
+    if (config.lazy === true) target.lazyElements.push(type);
+};
+
 /**
  * Reads the framework's built-in element config by importing the freshly linked `@gtkx/react` config
  * entrypoints. These are reconciler-free, so importing them resolves `@gtkx/gi` but never `virtual:gtkx-config`;
@@ -50,9 +56,7 @@ const importBuiltinElements = async (entrypoint: string): Promise<Record<string,
  */
 const collectBuiltinElements = (target: BuiltinElements, elements: Record<string, BuiltinElement>): void => {
     for (const [type, config] of Object.entries(elements)) {
-        if (config.component !== undefined) target.components[type] = config.component;
-        if (config.props !== undefined) target.props[type] = config.props;
-        if (config.lazy === true) target.lazyElements.push(type);
+        applyBuiltinElement(target, type, config);
     }
 };
 

@@ -46,19 +46,20 @@ const readVisibleEntries = (dir: string): Dirent[] => {
 
 const isSchemaFile = (entry: Dirent): boolean => entry.isFile() && entry.name.endsWith(SCHEMA_SUFFIX);
 
+const collectSchemaFiles = (dir: string, found: string[]): void => {
+    for (const entry of readVisibleEntries(dir)) {
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) {
+            collectSchemaFiles(full, found);
+        } else if (isSchemaFile(entry)) {
+            found.push(full);
+        }
+    }
+};
+
 export const findSchemaFiles = (dataDir: string): string[] => {
     const found: string[] = [];
-    const walk = (dir: string): void => {
-        for (const entry of readVisibleEntries(dir)) {
-            const full = join(dir, entry.name);
-            if (entry.isDirectory()) {
-                walk(full);
-            } else if (isSchemaFile(entry)) {
-                found.push(full);
-            }
-        }
-    };
-    walk(dataDir);
+    collectSchemaFiles(dataDir, found);
     return sortStrings(found);
 };
 
@@ -77,16 +78,22 @@ export const stageAndCompileProjectSchemas = (root: string, dataDir: string | nu
 
 export const schemaEnvPath = (rootDir: string): string => join(rootDir, "node_modules", ".gtkx", "env.d.ts");
 
+const parseSchemaFileOrWarn = (filePath: string, dataDirAbs: string): ParsedSchemaFile | null => {
+    const specifier = moduleSpecifierFor(dataDirAbs, filePath);
+    try {
+        return parseSchemaXml(readFileSync(filePath, "utf-8"), specifier);
+    } catch (error) {
+        if (!(error instanceof SchemaParseError)) throw error;
+        warn(`Skipping ${filePath} in schema type generation: ${error.message}`);
+        return null;
+    }
+};
+
 const parseProjectSchemas = (schemaFiles: string[], dataDirAbs: string): ParsedSchemaFile[] => {
     const parsed: ParsedSchemaFile[] = [];
     for (const filePath of schemaFiles) {
-        const specifier = moduleSpecifierFor(dataDirAbs, filePath);
-        try {
-            parsed.push(parseSchemaXml(readFileSync(filePath, "utf-8"), specifier));
-        } catch (error) {
-            if (!(error instanceof SchemaParseError)) throw error;
-            warn(`Skipping ${filePath} in schema type generation: ${error.message}`);
-        }
+        const result = parseSchemaFileOrWarn(filePath, dataDirAbs);
+        if (result !== null) parsed.push(result);
     }
     return parsed;
 };

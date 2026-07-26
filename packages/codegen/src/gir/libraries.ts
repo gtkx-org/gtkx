@@ -58,16 +58,20 @@ const recordHighest = (highestByName: Map<string, GirNamespace>, parsed: GirName
     }
 };
 
+const collectDirNamespaces = (highestByName: Map<string, GirNamespace>, dir: string): void => {
+    for (const entry of readDirEntries(dir)) {
+        const parsed = parseGirNamespace(entry);
+        if (parsed !== undefined) {
+            recordHighest(highestByName, parsed);
+        }
+    }
+};
+
 export const discoverGirNamespaces = (girPath: string[]): string[] => {
     const highestByName = new Map<string, GirNamespace>();
 
     for (const dir of girPath) {
-        for (const entry of readDirEntries(dir)) {
-            const parsed = parseGirNamespace(entry);
-            if (parsed !== undefined) {
-                recordHighest(highestByName, parsed);
-            }
-        }
+        collectDirNamespaces(highestByName, dir);
     }
 
     return sortStrings([...highestByName.values()].map(({ identifier }) => identifier));

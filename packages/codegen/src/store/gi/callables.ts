@@ -74,29 +74,49 @@ type CallableMemberOptions = {
     allowRuntimeOverride?: boolean;
 };
 
+const resolveCallableMember = (
+    context: ModuleContext,
+    callable: GirFunction,
+    resolveName: (callable: GirFunction) => string | undefined,
+): { cIdentifier: string; name: string } | undefined => {
+    if (!isEmittableCallable(context, callable)) return undefined;
+    const cIdentifier = callable.cIdentifier;
+    if (cIdentifier === undefined) return undefined;
+    const name = resolveName(callable);
+    if (name === undefined || name === "constructor") return undefined;
+    return { cIdentifier, name };
+};
+
+const runtimeOverrideMember = (
+    callable: GirFunction,
+    name: string,
+    doc: string,
+    allow: boolean | undefined,
+): string | undefined => {
+    if (allow !== true) return undefined;
+    const override = renderRuntimeOverride(callable, name);
+    return override === undefined ? undefined : `${doc}${override}`;
+};
+
 const renderCallableMember = (
     context: ModuleContext,
     callable: GirFunction,
     options: CallableMemberOptions,
 ): string | undefined => {
-    if (!isEmittableCallable(context, callable)) return undefined;
-    const cIdentifier = callable.cIdentifier;
-    if (cIdentifier === undefined) return undefined;
-    const name = options.resolveName(callable);
-    if (name === undefined || name === "constructor") return undefined;
+    const resolved = resolveCallableMember(context, callable, options.resolveName);
+    if (resolved === undefined) return undefined;
+    const { cIdentifier, name } = resolved;
     const doc = renderJsDoc(callable.doc);
-    if (options.allowRuntimeOverride === true) {
-        const override = renderRuntimeOverride(callable, name);
-        if (override !== undefined) return `${doc}${override}`;
-    }
+    const override = runtimeOverrideMember(callable, name, doc, options.allowRuntimeOverride);
+    if (override !== undefined) return override;
     const signature = renderMethodSignature(context, callable);
     const returnType = options.returnTypeOverride ?? renderMethodReturnType(context, callable);
-    const bindingExpression = toCamelIdentifier(cIdentifier);
     const body = renderMethodBody(context, callable, {
-        bindingExpression,
+        bindingExpression: toCamelIdentifier(cIdentifier),
         returnTypeOverride: options.returnTypeOverride,
     });
-    return `${doc}${renderBlock(`${options.isStatic ? "static " : ""}${name}(${signature}): ${returnType}`, body)}`;
+    const prefix = options.isStatic ? "static " : "";
+    return `${doc}${renderBlock(`${prefix}${name}(${signature}): ${returnType}`, body)}`;
 };
 
 type StaticEntryOptions = {
@@ -294,25 +314,33 @@ export const classConstructorMemberNames = (context: ModuleContext, callables: C
     return names;
 };
 
-export const renderStaticHead = (context: ModuleContext, callables: Callables, ownerClassName: string): string[] => {
-    const siblings = [...callables.constructors, ...callables.functions];
+const collectStaticEntries = (
+    context: ModuleContext,
+    group: GirFunction[],
+    siblings: GirFunction[],
+    options: StaticEntryOptions,
+): string[] => {
     const blocks: string[] = [];
-    for (const callable of callables.constructors) {
-        const block = renderStaticEntry(context, callable, siblings, {
-            resolveName: (member) => constructorMemberName(member.name),
-            ownerName: ownerClassName,
-            returnTypeOverride: ownerClassName,
-        });
-        if (block !== undefined) blocks.push(block);
-    }
-    for (const callable of callables.functions) {
-        const block = renderStaticEntry(context, callable, siblings, {
-            resolveName: (member) => camelCase(member.name),
-            ownerName: ownerClassName,
-        });
+    for (const callable of group) {
+        const block = renderStaticEntry(context, callable, siblings, options);
         if (block !== undefined) blocks.push(block);
     }
     return blocks;
+};
+
+export const renderStaticHead = (context: ModuleContext, callables: Callables, ownerClassName: string): string[] => {
+    const siblings = [...callables.constructors, ...callables.functions];
+    return [
+        ...collectStaticEntries(context, callables.constructors, siblings, {
+            resolveName: (member) => constructorMemberName(member.name),
+            ownerName: ownerClassName,
+            returnTypeOverride: ownerClassName,
+        }),
+        ...collectStaticEntries(context, callables.functions, siblings, {
+            resolveName: (member) => camelCase(member.name),
+            ownerName: ownerClassName,
+        }),
+    ];
 };
 
 const renderPlainInstanceMethods = (

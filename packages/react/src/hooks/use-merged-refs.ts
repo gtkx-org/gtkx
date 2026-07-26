@@ -12,30 +12,33 @@ export function assignRef<T>(ref: PossibleRef<T>, value: T): RefCleanup<T> {
     }
 }
 
+type CleanupMap<T> = Map<PossibleRef<T>, Exclude<RefCleanup<T>, void>>;
+
+function collectCleanup<T>(cleanupMap: CleanupMap<T>, ref: PossibleRef<T>, node: T | null): void {
+    const cleanup = assignRef(ref, node);
+    if (cleanup) cleanupMap.set(ref, cleanup);
+}
+
+function cleanupRef<T>(cleanupMap: CleanupMap<T>, ref: PossibleRef<T>): void {
+    const cleanup = cleanupMap.get(ref);
+    if (cleanup && typeof cleanup === "function") cleanup();
+    else assignRef(ref, null);
+}
+
 export function mergeRefs<T>(...refs: PossibleRef<T>[]): RefCallback<T> {
-    const cleanupMap = new Map<PossibleRef<T>, Exclude<RefCleanup<T>, void>>();
+    const cleanupMap: CleanupMap<T> = new Map();
 
     return (node: T | null): RefCleanup<T> => {
         refs.forEach((ref) => {
-            const cleanup = assignRef(ref, node);
-            if (cleanup) {
-                cleanupMap.set(ref, cleanup);
-            }
+            collectCleanup(cleanupMap, ref, node);
         });
-
-        if (cleanupMap.size > 0) {
-            return () => {
-                refs.forEach((ref) => {
-                    const cleanup = cleanupMap.get(ref);
-                    if (cleanup && typeof cleanup === "function") {
-                        cleanup();
-                    } else {
-                        assignRef(ref, null);
-                    }
-                });
-                cleanupMap.clear();
-            };
-        }
+        if (cleanupMap.size === 0) return;
+        return () => {
+            refs.forEach((ref) => {
+                cleanupRef(cleanupMap, ref);
+            });
+            cleanupMap.clear();
+        };
     };
 }
 

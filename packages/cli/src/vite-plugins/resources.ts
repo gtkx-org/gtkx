@@ -151,6 +151,25 @@ const registerEntry = (state: PluginState, absPath: string, rel: string): Resour
 
 const isTrackedSource = (state: PluginState, file: string): boolean => state.sourcePaths.has(file);
 
+const dataAssetSource = (source: string): string | null => {
+    const clean = stripQuery(source);
+    if (!clean.startsWith(DATA_PREFIX) || !ASSET_PATH_RE.test(clean)) return null;
+    return clean;
+};
+
+const resolvedAssetId = (
+    resolved: { id: string; external: boolean | string } | null,
+    clean: string,
+): string | undefined => {
+    if (!resolved || resolved.external) return undefined;
+    return toVirtualId(resolved.id) + REL_SEPARATOR + clean.slice(DATA_PREFIX.length);
+};
+
+const loadInitModule = (state: PluginState): string => {
+    if (!state.isBuild) ensureStagingDir(state);
+    return renderInitModule({ isBuild: state.isBuild, devBundlePath: state.devBundlePath });
+};
+
 const loadAssetModule = (state: PluginState, virtualId: string): string => {
     const rest = fromVirtualId(virtualId);
     const separatorIndex = rest.indexOf(REL_SEPARATOR);
@@ -246,21 +265,15 @@ export function gtkxResources(loadConfig: ConfigLoader = createConfigLoader()): 
 
         async resolveId(source, importer, opts) {
             if (source === VIRTUAL_INIT) return VIRTUAL_INIT;
-            const clean = stripQuery(source);
-            if (!clean.startsWith(DATA_PREFIX) || !ASSET_PATH_RE.test(clean)) return;
+            const clean = dataAssetSource(source);
+            if (clean === null) return;
 
             const resolved = await this.resolve(clean, importer, { ...opts, skipSelf: true });
-            if (!resolved || resolved.external) return;
-
-            const rel = clean.slice(DATA_PREFIX.length);
-            return toVirtualId(resolved.id) + REL_SEPARATOR + rel;
+            return resolvedAssetId(resolved, clean);
         },
 
         load(id) {
-            if (id === VIRTUAL_INIT) {
-                if (!state.isBuild) ensureStagingDir(state);
-                return renderInitModule({ isBuild: state.isBuild, devBundlePath: state.devBundlePath });
-            }
+            if (id === VIRTUAL_INIT) return loadInitModule(state);
             if (!isVirtual(id)) return;
             return loadAssetModule(state, id);
         },

@@ -24,18 +24,31 @@ const formatByRoleValue = (value: ByRoleValue): string => {
     return parts.join(", ");
 };
 
+const roleOptionFormatters: ((options: ByRoleOptions) => string | null)[] = [
+    (o) => (o.name ? `name ${formatTextMatcher(o.name)}` : null),
+    (o) => (o.checked !== undefined ? `checked=${o.checked}` : null),
+    (o) => (o.pressed !== undefined ? `pressed=${o.pressed}` : null),
+    (o) => (o.selected !== undefined ? `selected=${o.selected}` : null),
+    (o) => (o.expanded !== undefined ? `expanded=${o.expanded}` : null),
+    (o) => (o.level !== undefined ? `level=${o.level}` : null),
+    (o) => (o.busy !== undefined ? `busy=${o.busy}` : null),
+    (o) => (o.description ? `description ${formatTextMatcher(o.description)}` : null),
+    (o) => (o.value ? `value ${formatByRoleValue(o.value)}` : null),
+    (o) => (o.hidden !== undefined ? `hidden=${o.hidden}` : null),
+];
+
+const roleOptionParts = (options: ByRoleOptions): string[] => {
+    const parts: string[] = [];
+    for (const formatter of roleOptionFormatters) {
+        const part = formatter(options);
+        if (part !== null) parts.push(part);
+    }
+    return parts;
+};
+
 const formatByRoleDescription = (role: Gtk.AccessibleRole, options?: ByRoleOptions): string => {
     const parts = [`role '${formatRole(role).toUpperCase()}'`];
-    if (options?.name) parts.push(`name ${formatTextMatcher(options.name)}`);
-    if (options?.checked !== undefined) parts.push(`checked=${options.checked}`);
-    if (options?.pressed !== undefined) parts.push(`pressed=${options.pressed}`);
-    if (options?.selected !== undefined) parts.push(`selected=${options.selected}`);
-    if (options?.expanded !== undefined) parts.push(`expanded=${options.expanded}`);
-    if (options?.level !== undefined) parts.push(`level=${options.level}`);
-    if (options?.busy !== undefined) parts.push(`busy=${options.busy}`);
-    if (options?.description) parts.push(`description ${formatTextMatcher(options.description)}`);
-    if (options?.value) parts.push(`value ${formatByRoleValue(options.value)}`);
-    if (options?.hidden !== undefined) parts.push(`hidden=${options.hidden}`);
+    if (options) parts.push(...roleOptionParts(options));
     return parts.join(" and ");
 };
 

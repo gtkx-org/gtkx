@@ -14,6 +14,42 @@ const copyStackTrace = (target: Error, source: Error): void => {
     }
 };
 
+type PollResult<T> = { status: "resolved"; value: T } | { status: "timedout"; lastError: Error | null };
+
+const pollUntilSuccess = async <T>(
+    callback: () => T | Promise<T>,
+    timeout: number,
+    interval: number,
+): Promise<PollResult<T>> => {
+    const startTime = Date.now();
+    let lastError: Error | null = null;
+
+    while (Date.now() - startTime < timeout) {
+        try {
+            const result = await callback();
+            await delay(0);
+            return { status: "resolved", value: result };
+        } catch (error) {
+            lastError = error as Error;
+            await delay(interval);
+        }
+    }
+
+    return { status: "timedout", lastError };
+};
+
+const buildTimeoutError = (
+    timeout: number,
+    lastError: Error | null,
+    stackTraceError: Error,
+    onTimeout: ((error: Error) => Error) | undefined,
+): Error => {
+    const error = timeoutError(timeout, lastError);
+    const finalError = onTimeout ? onTimeout(error) : error;
+    copyStackTrace(finalError, stackTraceError);
+    return finalError;
+};
+
 /**
  * Repeatedly invokes a callback until it succeeds without throwing or the
  * timeout elapses, retrying on each rejection at a fixed interval.
@@ -33,24 +69,9 @@ export const waitFor = <T>(callback: () => T | Promise<T>, options?: WaitForOpti
         runWithActEnvironment(false, async () => {
             const config = getConfig();
             const { timeout = config.asyncUtilTimeout, interval = DEFAULT_INTERVAL, onTimeout } = options ?? {};
-            const startTime = Date.now();
-            let lastError: Error | null = null;
-
-            while (Date.now() - startTime < timeout) {
-                try {
-                    const result = await callback();
-                    await delay(0);
-                    return result;
-                } catch (error) {
-                    lastError = error as Error;
-                    await delay(interval);
-                }
-            }
-
-            const error = timeoutError(timeout, lastError);
-            const finalError = onTimeout ? onTimeout(error) : error;
-            copyStackTrace(finalError, stackTraceError);
-            throw finalError;
+            const result = await pollUntilSuccess(callback, timeout, interval);
+            if (result.status === "resolved") return result.value;
+            throw buildTimeoutError(timeout, result.lastError, stackTraceError, onTimeout);
         }),
     );
 };

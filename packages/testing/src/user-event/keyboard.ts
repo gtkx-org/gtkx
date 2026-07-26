@@ -76,26 +76,42 @@ const parseKeyToken = (token: string): { keyval: number; press: boolean; release
     return { keyval, press, release };
 };
 
+type ParseStep = { actions: KeyAction[]; next: number };
+
+const parseCharAt = (input: string, i: number): ParseStep => {
+    const keyval = input.codePointAt(i) ?? 0;
+    return {
+        actions: [
+            { keyval, press: true },
+            { keyval, press: false },
+        ],
+        next: i + 1,
+    };
+};
+
+const parseBraceAt = (input: string, i: number): ParseStep | null => {
+    const endBrace = input.indexOf("}", i);
+    if (endBrace === -1) return null;
+
+    const { keyval, press, release } = parseKeyToken(input.slice(i + 1, endBrace));
+    const actions: KeyAction[] = [];
+    if (press) actions.push({ keyval, press: true });
+    if (release) actions.push({ keyval, press: false });
+    return { actions, next: endBrace + 1 };
+};
+
+const parseStepAt = (input: string, i: number): ParseStep | null =>
+    input[i] === "{" ? parseBraceAt(input, i) : parseCharAt(input, i);
+
 const parseKeyboardInput = (input: string): KeyAction[] => {
     const actions: KeyAction[] = [];
     let i = 0;
 
     while (i < input.length) {
-        if (input[i] !== "{") {
-            const keyval = input.codePointAt(i) ?? 0;
-            actions.push({ keyval, press: true }, { keyval, press: false });
-            i++;
-            continue;
-        }
-
-        const endBrace = input.indexOf("}", i);
-        if (endBrace === -1) break;
-
-        const { keyval, press, release } = parseKeyToken(input.slice(i + 1, endBrace));
-        if (press) actions.push({ keyval, press: true });
-        if (release) actions.push({ keyval, press: false });
-
-        i = endBrace + 1;
+        const step = parseStepAt(input, i);
+        if (step === null) break;
+        actions.push(...step.actions);
+        i = step.next;
     }
 
     return actions;
@@ -135,6 +151,18 @@ const matchesTrigger = (trigger: Gtk.ShortcutTrigger | null, keyval: number, mod
     return false;
 };
 
+const tryActivateShortcut = (
+    shortcut: Gtk.Shortcut,
+    widget: Gtk.Widget,
+    keyval: number,
+    modifiers: number,
+): boolean => {
+    if (!matchesTrigger(shortcut.getTrigger(), keyval, modifiers)) return false;
+    const action = shortcut.getAction();
+    if (action instanceof Gtk.SignalAction && action.getSignalName() === "move-focus") return false;
+    return action?.activate(0 as Gtk.ShortcutActionFlags, widget, shortcut.getArguments()) ?? false;
+};
+
 const activateMatchingShortcut = (
     controller: Gtk.ShortcutController,
     widget: Gtk.Widget,
@@ -145,10 +173,7 @@ const activateMatchingShortcut = (
     for (let j = 0; j < count; j++) {
         const shortcut = controller.getItem(j);
         if (!(shortcut instanceof Gtk.Shortcut)) continue;
-        if (!matchesTrigger(shortcut.getTrigger(), keyval, modifiers)) continue;
-        const action = shortcut.getAction();
-        if (action instanceof Gtk.SignalAction && action.getSignalName() === "move-focus") continue;
-        if (action?.activate(0 as Gtk.ShortcutActionFlags, widget, shortcut.getArguments())) return true;
+        if (tryActivateShortcut(shortcut, widget, keyval, modifiers)) return true;
     }
     return false;
 };
@@ -176,6 +201,13 @@ const dispatchShortcuts = (widget: Gtk.Widget, keyval: number, modifiers: number
     return false;
 };
 
+const handleKeyPress = async (widget: Gtk.Widget, keyval: number, modifiers: number): Promise<void> => {
+    const handled = dispatchShortcuts(widget, keyval, modifiers);
+    if (!handled && keyval === Gdk.KEY_Return && widget instanceof Gtk.Editable) {
+        await fireEvent(widget, "activate");
+    }
+};
+
 const applyKeyAction = async (
     widget: Gtk.Widget,
     controllers: Gtk.EventControllerKey[],
@@ -188,10 +220,7 @@ const applyKeyAction = async (
         controller.emit(signalName, action.keyval, 0, state.modifierState);
     }
     if (action.press) {
-        const handled = dispatchShortcuts(widget, action.keyval, state.modifierState);
-        if (!handled && action.keyval === Gdk.KEY_Return && widget instanceof Gtk.Editable) {
-            await fireEvent(widget, "activate");
-        }
+        await handleKeyPress(widget, action.keyval, state.modifierState);
     }
 };
 

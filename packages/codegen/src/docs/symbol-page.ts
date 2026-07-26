@@ -225,52 +225,69 @@ const propertyMeta = (property: GirProperty, accessor: ResolvedAccessor, origin:
     return meta.join(" · ");
 };
 
-const sortedMetaBlocks = (entries: { name: string; meta: string; doc: string }[]): string[] =>
+type MetaDocEntry = { name: string; meta: string; doc: string };
+
+const sortedMetaBlocks = (entries: MetaDocEntry[]): string[] =>
     sortStringsBy(entries, (item) => item.name).map((item) => metaBlock(item.name, item.meta, item.doc));
+
+const ownerPropertyEntries = (owner: MemberOwner, setup: PropertyAccessorSetup, seen: Set<string>): MetaDocEntry[] => {
+    const entries: MetaDocEntry[] = [];
+    for (const property of owner.klass.properties) {
+        const accessor = resolveAccessor({
+            context: setup.context,
+            property,
+            claimedNames: setup.claimedNames,
+            methodByName: setup.methodByName,
+        });
+        if (accessor === undefined || seen.has(accessor.jsName)) continue;
+        seen.add(accessor.jsName);
+        entries.push({
+            name: accessor.jsName,
+            meta: propertyMeta(property, accessor, owner.origin),
+            doc: docMarkdown(property.doc),
+        });
+    }
+    return entries;
+};
 
 const propertiesSection = (
     entry: GiSymbolBase & { kind: "class" | "interface"; klass: GirClass },
     library: Library,
 ): string[] => {
     const seen = new Set<string>();
-    const entries: { name: string; meta: string; doc: string }[] = [];
+    const entries: MetaDocEntry[] = [];
     for (const [index, owner] of memberOwners(entry, library).entries()) {
-        const setup = propertyAccessorSetup(owner, library, index === 0 && entry.kind === "class");
-        for (const property of owner.klass.properties) {
-            const accessor = resolveAccessor({
-                context: setup.context,
-                property,
-                claimedNames: setup.claimedNames,
-                methodByName: setup.methodByName,
-            });
-            if (accessor === undefined || seen.has(accessor.jsName)) continue;
-            seen.add(accessor.jsName);
-            entries.push({
-                name: accessor.jsName,
-                meta: propertyMeta(property, accessor, owner.origin),
-                doc: docMarkdown(property.doc),
-            });
-        }
+        const useClassRenames = index === 0 && entry.kind === "class";
+        const setup = propertyAccessorSetup(owner, library, useClassRenames);
+        entries.push(...ownerPropertyEntries(owner, setup, seen));
     }
     if (entries.length === 0) return [];
     const intro = `Properties are read and written as instance fields; changes can be observed with \`connect("notify::<property-name>", handler)\`. Properties inherited from ancestors are documented on their own pages.`;
     return ["## Properties", intro, ...sortedMetaBlocks(entries)];
 };
 
+type SignalDocEntry = { name: string; signature: string; doc: string; origin: string | undefined };
+
+const ownerSignalEntries = (owner: MemberOwner, library: Library, seen: Set<string>): SignalDocEntry[] => {
+    const entries: SignalDocEntry[] = [];
+    for (const signal of owner.klass.signals) {
+        if (seen.has(signal.name)) continue;
+        seen.add(signal.name);
+        entries.push({
+            name: signal.name,
+            signature: renderDocsSignalHandlerType(library, signal),
+            doc: docMarkdown(signal.doc),
+            origin: owner.origin,
+        });
+    }
+    return entries;
+};
+
 const signalsSection = (entry: GiSymbolBase & { klass: GirClass }, library: Library): string[] => {
     const seen = new Set<string>();
-    const entries: { name: string; signature: string; doc: string; origin: string | undefined }[] = [];
+    const entries: SignalDocEntry[] = [];
     for (const owner of memberOwners(entry, library)) {
-        for (const signal of owner.klass.signals) {
-            if (seen.has(signal.name)) continue;
-            seen.add(signal.name);
-            entries.push({
-                name: signal.name,
-                signature: renderDocsSignalHandlerType(library, signal),
-                doc: docMarkdown(signal.doc),
-                origin: owner.origin,
-            });
-        }
+        entries.push(...ownerSignalEntries(owner, library, seen));
     }
     if (entries.length === 0) return [];
     const intro = `Connect with \`instance.connect("<signal>", handler)\` or \`instance.on("<signal>", handler)\`. Signals inherited from ancestors are documented on their own pages.`;
@@ -378,17 +395,18 @@ const recordPage = (entry: GiSymbolBase & { kind: "record"; record: GirRecord },
     ]);
 };
 
+type ResolvedRecordField = NonNullable<ReturnType<typeof resolveRecordFieldEntry>>;
+
+const fieldMeta = (field: ResolvedRecordField): string =>
+    [`\`${field.tsType}\``, ...(field.writable ? [] : ["read-only"])].join(" · ");
+
 const fieldsSection = (record: GirRecord, context: ModuleContext, claimedNames: Set<string>): string[] => {
     const { slots } = computeRecordFieldSlots(context, record.fields, record.isUnion);
-    const entries: { name: string; meta: string; doc: string }[] = [];
+    const entries: MetaDocEntry[] = [];
     for (const slot of slots) {
         const field = resolveRecordFieldEntry(context, slot, claimedNames);
         if (field === undefined) continue;
-        entries.push({
-            name: field.jsName,
-            meta: [`\`${field.tsType}\``, ...(field.writable ? [] : ["read-only"])].join(" · "),
-            doc: docMarkdown(field.doc),
-        });
+        entries.push({ name: field.jsName, meta: fieldMeta(field), doc: docMarkdown(field.doc) });
     }
     if (entries.length === 0) return [];
     return ["## Fields", ...sortedMetaBlocks(entries)];

@@ -59,19 +59,27 @@ const setEditableText = (widget: EditableTarget, text: string): void => {
     widget.setText(text);
 };
 
+const applyTextViewSelection = (widget: Gtk.TextView, start: number, end: number): void => {
+    const buffer = widget.getBuffer();
+    buffer.selectRange(buffer.getIterAtOffset(start), buffer.getIterAtOffset(end));
+    if (end !== start) deleteSelection(widget);
+};
+
+const applyEditableSelection = (widget: Gtk.Editable, start: number, end: number): void => {
+    widget.selectRegion(start, end);
+    if (end !== start) widget.deleteSelection();
+    widget.setPosition(start);
+};
+
 const applyInitialSelection = (widget: EditableTarget, options: TypeOptions): void => {
     if (options.initialSelectionStart === undefined) return;
     const start = options.initialSelectionStart;
     const end = options.initialSelectionEnd ?? start;
     if (widget instanceof Gtk.TextView) {
-        const buffer = widget.getBuffer();
-        buffer.selectRange(buffer.getIterAtOffset(start), buffer.getIterAtOffset(end));
-        if (end !== start) deleteSelection(widget);
+        applyTextViewSelection(widget, start, end);
         return;
     }
-    widget.selectRegion(start, end);
-    if (end !== start) widget.deleteSelection();
-    widget.setPosition(start);
+    applyEditableSelection(widget, start, end);
 };
 
 const writeClipboardText = (widget: Gtk.Widget, text: string): void => {
@@ -83,46 +91,43 @@ export const resetClipboard = (): void => {
     Gdk.Display.getDefault()?.getClipboard().setContent(null);
 };
 
-export const type = (widget: Gtk.Widget, text: string, options?: TypeOptions): Promise<void> =>
+const runEditableEvent = (
+    widget: Gtk.Widget,
+    failure: string,
+    action: (editable: EditableTarget) => void,
+): Promise<void> =>
     wrapEvent(widget, () => {
         if (!isEditable(widget)) {
-            throw new Error(`Cannot type into element: ${EDITABLE_REQUIRED}`);
+            throw new Error(`${failure}: ${EDITABLE_REQUIRED}`);
         }
 
+        action(widget);
+    });
+
+export const type = (widget: Gtk.Widget, text: string, options?: TypeOptions): Promise<void> =>
+    runEditableEvent(widget, "Cannot type into element", (editable) => {
         if (!options?.skipClick) {
-            widget.grabFocus();
+            editable.grabFocus();
         }
 
-        applyInitialSelection(widget, options ?? {});
-        insertEditableText(widget, text);
+        applyInitialSelection(editable, options ?? {});
+        insertEditableText(editable, text);
     });
 
 export const clear = (widget: Gtk.Widget): Promise<void> =>
-    wrapEvent(widget, () => {
-        if (!isEditable(widget)) {
-            throw new Error(`Cannot clear element: ${EDITABLE_REQUIRED}`);
-        }
-
-        setEditableText(widget, "");
+    runEditableEvent(widget, "Cannot clear element", (editable) => {
+        setEditableText(editable, "");
     });
 
 export const copy = (widget: Gtk.Widget): Promise<void> =>
-    wrapEvent(widget, () => {
-        if (!isEditable(widget)) {
-            throw new Error(`Cannot copy: ${EDITABLE_REQUIRED}`);
-        }
-
-        writeClipboardText(widget, readSelection(widget));
+    runEditableEvent(widget, "Cannot copy", (editable) => {
+        writeClipboardText(editable, readSelection(editable));
     });
 
 export const cut = (widget: Gtk.Widget): Promise<void> =>
-    wrapEvent(widget, () => {
-        if (!isEditable(widget)) {
-            throw new Error(`Cannot cut: ${EDITABLE_REQUIRED}`);
-        }
-
-        writeClipboardText(widget, readSelection(widget));
-        deleteSelection(widget);
+    runEditableEvent(widget, "Cannot cut", (editable) => {
+        writeClipboardText(editable, readSelection(editable));
+        deleteSelection(editable);
     });
 
 export const paste = async (widget: Gtk.Widget, text?: string): Promise<void> => {

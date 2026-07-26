@@ -4,7 +4,7 @@ import { useProperty, useSignal } from "@gtkx/react";
 import type { ReactNode } from "react";
 import { useCallback, useLayoutEffect, useRef } from "react";
 import type { CollectionModel } from "./internal/collection-model.js";
-import type { CellRenderers, Cells } from "./internal/use-cells.js";
+import type { CellRecord, CellRenderers, Cells } from "./internal/use-cells.js";
 import { headerRenderer, renderItemArgs } from "./internal/use-cells.js";
 import { useCollection } from "./internal/use-collection.js";
 import { useLatest } from "./internal/use-latest.js";
@@ -26,6 +26,29 @@ const columnById = (view: Gtk.ColumnView, id: string): Gtk.ColumnViewColumn | nu
     return null;
 };
 
+type SortTarget = { view: Gtk.ColumnView; column: Gtk.ColumnViewColumn | null };
+
+const sortTargetFor = (view: Gtk.ColumnView | null, sortColumn: string | null | undefined): SortTarget | null => {
+    if (view === null || sortColumn === undefined) return null;
+    if (sortColumn === null) return { view, column: null };
+    const column = columnById(view, sortColumn);
+    return column === null ? null : { view, column };
+};
+
+const applySort = (
+    sorting: { current: boolean },
+    view: Gtk.ColumnView,
+    column: Gtk.ColumnViewColumn | null,
+    order: Gtk.SortType | null | undefined,
+): void => {
+    sorting.current = true;
+    try {
+        view.sortByColumn(column, order ?? Gtk.SortType.ASCENDING);
+    } finally {
+        sorting.current = false;
+    }
+};
+
 const useColumnSorting = (view: Gtk.ColumnView | null, sort: SortProps, columns: Column<unknown>[]): void => {
     const sorting = useRef(false);
     const latest = useLatest(sort);
@@ -41,15 +64,9 @@ const useColumnSorting = (view: Gtk.ColumnView | null, sort: SortProps, columns:
     useSignal(columnSorter, "changed", reportSort);
     const { sortColumn, sortOrder } = sort;
     useLayoutEffect(() => {
-        if (view === null || sortColumn === undefined) return;
-        const column = sortColumn === null ? null : columnById(view, sortColumn);
-        if (sortColumn !== null && column === null) return;
-        sorting.current = true;
-        try {
-            view.sortByColumn(column, sortOrder ?? Gtk.SortType.ASCENDING);
-        } finally {
-            sorting.current = false;
-        }
+        const target = sortTargetFor(view, sortColumn);
+        if (target === null) return;
+        applySort(sorting, target.view, target.column, sortOrder);
     }, [view, sortColumn, sortOrder, columns]);
 };
 
@@ -74,15 +91,21 @@ type ColumnRenderersOptions = {
     renderHeader: HeaderRenderer<never> | null | undefined;
 };
 
+const columnItem = (
+    record: CellRecord,
+    byId: Map<string, Column<unknown>>,
+    options: ColumnRenderersOptions,
+): ReactNode => {
+    const column = record.slot === null ? undefined : byId.get(record.slot);
+    if (column === undefined) return null;
+    const args = renderItemArgs(record, options);
+    return args === null ? null : (column.renderCell as ItemRenderer<unknown>)(args);
+};
+
 const columnRenderers = (options: ColumnRenderersOptions): CellRenderers => {
     const byId = new Map(options.columns.map((column) => [column.id, column]));
     return {
-        item: (record) => {
-            const column = record.slot === null ? undefined : byId.get(record.slot);
-            if (column === undefined) return null;
-            const args = renderItemArgs(record, options);
-            return args === null ? null : (column.renderCell as ItemRenderer<unknown>)(args);
-        },
+        item: (record) => columnItem(record, byId, options),
         header: headerRenderer(options.collection, options.renderHeader),
     };
 };

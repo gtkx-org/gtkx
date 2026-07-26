@@ -108,6 +108,20 @@ export class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
         this.pending.clear();
     }
 
+    private dispatchParsed(parsed: unknown): boolean {
+        const message = parsed as Record<string, unknown>;
+        if (typeof message.method === "string") {
+            const requestResult = RequestSchema.safeParse(parsed);
+            if (!requestResult.success) return false;
+            this.emit("request", requestResult.data);
+            return true;
+        }
+        const responseResult = ResponseSchema.safeParse(parsed);
+        if (!responseResult.success) return false;
+        this.handleResponse(responseResult.data);
+        return true;
+    }
+
     private processLine(line: string): void {
         let parsed: unknown;
         try {
@@ -117,21 +131,9 @@ export class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
             return;
         }
 
-        const message = parsed as Record<string, unknown>;
-        if (typeof message.method === "string") {
-            const requestResult = RequestSchema.safeParse(parsed);
-            if (requestResult.success) {
-                this.emit("request", requestResult.data);
-                return;
-            }
-        } else {
-            const responseResult = ResponseSchema.safeParse(parsed);
-            if (responseResult.success) {
-                this.handleResponse(responseResult.data);
-                return;
-            }
-        }
+        if (this.dispatchParsed(parsed)) return;
 
+        const message = parsed as Record<string, unknown>;
         const id = typeof message.id === "string" ? message.id : "unknown";
         this.emit("invalid", { id, error: invalidRequestError("Invalid message format") });
     }

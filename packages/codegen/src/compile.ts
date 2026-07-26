@@ -74,17 +74,24 @@ const DIAGNOSTIC_LINE = /^(.+?)\((\d+),(\d+)\): error TS(\d+): (.*)$/;
 
 type ProjectDiagnostic = { file: string; line: string; column: string; code: string; message: string };
 
+const isProjectFile = (rel: string): boolean =>
+    !rel.startsWith("..") && !isAbsolute(rel) && !rel.split(/[/\\]/).includes("node_modules");
+
+const parseDiagnosticLine = (raw: string, projectDir: string): ProjectDiagnostic | undefined => {
+    const match = DIAGNOSTIC_LINE.exec(raw);
+    if (match === null) return undefined;
+    const [, filePart, line, column, code, message] = match;
+    if (filePart === undefined || line === undefined || column === undefined || code === undefined) return undefined;
+    const file = resolve(projectDir, filePart);
+    if (!isProjectFile(relative(projectDir, file))) return undefined;
+    return { file, line, column, code, message: (message ?? "").trim() };
+};
+
 const parseDiagnostics = (output: string, projectDir: string): ProjectDiagnostic[] => {
     const diagnostics: ProjectDiagnostic[] = [];
     for (const raw of output.split(/\r?\n/)) {
-        const match = DIAGNOSTIC_LINE.exec(raw);
-        if (match === null) continue;
-        const [, filePart, line, column, code, message] = match;
-        if (filePart === undefined || line === undefined || column === undefined || code === undefined) continue;
-        const file = resolve(projectDir, filePart);
-        const rel = relative(projectDir, file);
-        if (rel.startsWith("..") || isAbsolute(rel) || rel.split(/[/\\]/).includes("node_modules")) continue;
-        diagnostics.push({ file, line, column, code, message: (message ?? "").trim() });
+        const diagnostic = parseDiagnosticLine(raw, projectDir);
+        if (diagnostic !== undefined) diagnostics.push(diagnostic);
     }
     return diagnostics;
 };

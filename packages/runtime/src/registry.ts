@@ -134,16 +134,20 @@ export function resolveWrapperClass(type: bigint): AnyClass | null {
     return null;
 }
 
+function applyInterfaceMixin(cls: AnyClass, type: bigint, baseType: bigint, applied: Set<bigint>): AnyClass {
+    if (applied.has(type) || typeIsA(baseType, type)) return cls;
+    const mixin = interfaceMixinRegistry.get(type);
+    if (mixin === undefined) return cls;
+    applied.add(type);
+    return mixin(cls as AnyClass<MixinReceiver>);
+}
+
 function createComposedClass(base: AnyClass, runtimeType: bigint): AnyClass {
     const baseType = getClassType(base);
     const applied = new Set<bigint>();
     let cls: AnyClass = base;
     for (const type of typeInterfaces(runtimeType)) {
-        if (applied.has(type) || typeIsA(baseType, type)) continue;
-        const mixin = interfaceMixinRegistry.get(type);
-        if (mixin === undefined) continue;
-        applied.add(type);
-        cls = mixin(cls as AnyClass<MixinReceiver>);
+        cls = applyInterfaceMixin(cls, type, baseType, applied);
     }
     return applied.size === 0 ? base : cls;
 }

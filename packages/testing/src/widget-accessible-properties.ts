@@ -74,17 +74,18 @@ export const getWidgetLabelText = (widget: Gtk.Widget): string | null => {
     return getLabelText(widget);
 };
 
+const tabPanelTitle = (widget: Gtk.Widget): string | null => {
+    const parent = widget.getParent();
+    if (parent instanceof Gtk.Stack) {
+        return parent.getPage(widget).getTitle() ?? null;
+    }
+    return null;
+};
+
 export const getWidgetAccessibleName = (widget: Gtk.Widget): string | null => {
     const role = widget.getAccessibleRole();
 
-    if (role === Gtk.AccessibleRole.TAB_PANEL) {
-        const parent = widget.getParent();
-        if (parent instanceof Gtk.Stack) {
-            const page = parent.getPage(widget);
-            return page.getTitle() ?? null;
-        }
-        return null;
-    }
+    if (role === Gtk.AccessibleRole.TAB_PANEL) return tabPanelTitle(widget);
 
     const accessibleLabel = getAccessibleMetadata<string>(widget, "accessibleLabel");
     if (accessibleLabel) return accessibleLabel;
@@ -192,11 +193,17 @@ const adjustmentValue = (adjustment: Gtk.Adjustment): ValueTriplet => ({
     max: adjustment.getUpper(),
 });
 
-const getWidgetLiveValue = (widget: Gtk.Widget): ValueTriplet | null => {
+const adjustmentWidgetValue = (widget: Gtk.Widget): ValueTriplet | null => {
     if (widget instanceof Gtk.Range) return adjustmentValue(widget.getAdjustment());
     if (widget instanceof Gtk.Scrollbar) return adjustmentValue(widget.getAdjustment());
     if (widget instanceof Gtk.SpinButton) return adjustmentValue(widget.getAdjustment());
     if (widget instanceof Gtk.ScaleButton) return adjustmentValue(widget.getAdjustment());
+    return null;
+};
+
+const getWidgetLiveValue = (widget: Gtk.Widget): ValueTriplet | null => {
+    const adjustmentBased = adjustmentWidgetValue(widget);
+    if (adjustmentBased) return adjustmentBased;
     if (widget instanceof Gtk.LevelBar) {
         return { now: widget.getValue(), min: widget.getMinValue(), max: widget.getMaxValue() };
     }
@@ -220,16 +227,20 @@ export const getWidgetOwnLabel = (widget: Gtk.Widget): string | null => {
     return readAccessibleString(widget, "accessibleLabel");
 };
 
-export const getWidgetLabelledByText = (widget: Gtk.Widget): string | null => {
-    const targets = getAccessibleMetadata<Gtk.Widget[]>(widget, "accessibleLabelledBy");
-    if (!Array.isArray(targets) || targets.length === 0) return null;
-
+const collectAccessibleNames = (targets: Gtk.Widget[]): string[] => {
     const texts: string[] = [];
     for (const target of targets) {
         const text = getWidgetAccessibleName(target);
         if (text !== null) texts.push(text);
     }
+    return texts;
+};
 
+export const getWidgetLabelledByText = (widget: Gtk.Widget): string | null => {
+    const targets = getAccessibleMetadata<Gtk.Widget[]>(widget, "accessibleLabelledBy");
+    if (!Array.isArray(targets) || targets.length === 0) return null;
+
+    const texts = collectAccessibleNames(targets);
     return texts.length > 0 ? texts.join(" ") : null;
 };
 

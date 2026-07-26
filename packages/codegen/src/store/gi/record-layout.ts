@@ -52,6 +52,9 @@ const fieldLayoutInput = (context: ModuleContext, field: GirField, visited: Set<
     return { layout: layoutOfType(context, field.type, field.cType, visited), bits: field.bits };
 };
 
+const pointerOr = (occurrenceCType: string | undefined, otherwise: () => FieldLayout): FieldLayout =>
+    occurrenceCType?.endsWith("*") === true ? POINTER_LAYOUT : otherwise();
+
 const layoutOfType = (
     context: ModuleContext,
     ref: TypeId,
@@ -73,13 +76,11 @@ const layoutOfType = (
         case "interface":
             return POINTER_LAYOUT;
         case "enum":
-            return occurrenceCType?.endsWith("*") === true ? POINTER_LAYOUT : layoutOfPrimitive("int32");
+            return pointerOr(occurrenceCType, () => layoutOfPrimitive("int32"));
         case "record":
-            return occurrenceCType?.endsWith("*") === true ? POINTER_LAYOUT : layoutOfRecord(context, type, visited);
+            return pointerOr(occurrenceCType, () => layoutOfRecord(context, type, visited));
         case "alias":
-            return occurrenceCType?.endsWith("*") === true
-                ? POINTER_LAYOUT
-                : resolveAliasLayout(context, type, visited);
+            return pointerOr(occurrenceCType, () => resolveAliasLayout(context, type, visited));
     }
 };
 
@@ -107,11 +108,7 @@ const layoutOfRecord = (
     nextVisited.add(key);
     const inputs: FieldLayoutInput[] = [];
     for (const field of resolved.value.fields) {
-        if (field.type === undefined) {
-            inputs.push({ layout: POINTER_LAYOUT, bits: undefined });
-            continue;
-        }
-        inputs.push({ layout: layoutOfType(context, field.type, field.cType, nextVisited), bits: field.bits });
+        inputs.push(fieldLayoutInput(context, field, nextVisited));
     }
     if (inputs.length === 0) return POINTER_LAYOUT;
     const { size } = computeFieldSlots(inputs, resolved.value.isUnion);

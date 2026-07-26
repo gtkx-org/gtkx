@@ -112,20 +112,24 @@ const parseRawSchema = (schema: RawNode, fileName: string): RawSchema => {
     };
 };
 
+type MergeContext = {
+    byId: Map<string, RawSchema>;
+    merged: Map<string, ParsedKey>;
+    visited: Set<string>;
+};
+
+const collectInheritedKeys = (context: MergeContext, current: RawSchema): void => {
+    if (context.visited.has(current.id)) return;
+    context.visited.add(current.id);
+    const parent = current.extendsId === null ? undefined : context.byId.get(current.extendsId);
+    if (parent !== undefined) collectInheritedKeys(context, parent);
+    for (const key of current.keys) context.merged.set(key.name, key);
+};
+
 const mergeInheritedKeys = (schema: RawSchema, byId: Map<string, RawSchema>): ParsedKey[] => {
-    const merged = new Map<string, ParsedKey>();
-    const visited = new Set<string>();
-    const collect = (current: RawSchema): void => {
-        if (visited.has(current.id)) return;
-        visited.add(current.id);
-        if (current.extendsId !== null) {
-            const parent = byId.get(current.extendsId);
-            if (parent !== undefined) collect(parent);
-        }
-        for (const key of current.keys) merged.set(key.name, key);
-    };
-    collect(schema);
-    return [...merged.values()];
+    const context: MergeContext = { byId, merged: new Map(), visited: new Set() };
+    collectInheritedKeys(context, schema);
+    return [...context.merged.values()];
 };
 
 export const parseSchemaXml = (xml: string, fileName: string): ParsedSchemaFile => {

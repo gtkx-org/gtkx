@@ -180,6 +180,26 @@ type InlineFieldVisitors = {
     nested: (jsName: string, nested: GirField[], offset: number) => void;
 };
 
+const visitInlineStructSlot = (
+    context: ModuleContext,
+    entry: RecordFieldSlot,
+    baseOffset: number,
+    visitors: InlineFieldVisitors,
+): void => {
+    const { field, slot } = entry;
+    if (field.private || field.type === undefined || isInlineCallbackRef(context.library, field.type)) return;
+    const jsName = toCamelIdentifier(field.name);
+    const offset = baseOffset + slot.byteOffset;
+    const nested = resolveInlineStructFields(context, field.type, field.cType);
+    if (nested !== undefined) {
+        visitors.nested(jsName, nested, offset);
+        return;
+    }
+    if (!isAccessorEligibleType(context, field.type)) return;
+    const descriptor = context.hoistDescriptor(renderDescriptor(context, field.type, "none"));
+    visitors.leaf({ jsName, descriptor, offset, slot, type: field.type });
+};
+
 const visitInlineStructFields = (
     context: ModuleContext,
     fields: GirField[],
@@ -187,37 +207,29 @@ const visitInlineStructFields = (
     visitors: InlineFieldVisitors,
 ): void => {
     const { slots } = computeRecordFieldSlots(context, fields);
-    for (const { field, slot } of slots) {
-        if (field.private || field.type === undefined || isInlineCallbackRef(context.library, field.type)) {
-            continue;
-        }
-        const jsName = toCamelIdentifier(field.name);
-        const offset = baseOffset + slot.byteOffset;
-        const nested = resolveInlineStructFields(context, field.type, field.cType);
-        if (nested !== undefined) {
-            visitors.nested(jsName, nested, offset);
-            continue;
-        }
-        if (!isAccessorEligibleType(context, field.type)) continue;
-        const descriptor = context.hoistDescriptor(renderDescriptor(context, field.type, "none"));
-        visitors.leaf({ jsName, descriptor, offset, slot, type: field.type });
+    for (const entry of slots) {
+        visitInlineStructSlot(context, entry, baseOffset, visitors);
     }
+};
+
+const elementAccessExpr = (descriptor: string, offset: number): string =>
+    `read(__array, ${descriptor}, __base + ${offset})`;
+
+const renderElementReadEntry = (context: ModuleContext, visit: InlineFieldVisit): string => {
+    const { jsName, descriptor, offset, slot, type } = visit;
+    const access = elementAccessExpr(descriptor, offset);
+    if (slot.bitWidth === undefined) {
+        return `${jsName}: ${access} as ${renderTsType(context, type, false)}`;
+    }
+    const shift = slot.bitOffset ?? 0;
+    return `${jsName}: (((${access} as number) >>> ${shift}) & ${bitMask(slot.bitWidth)})`;
 };
 
 const renderElementReadObject = (context: ModuleContext, fields: GirField[], baseOffset: number): string => {
     const entries: string[] = [];
     visitInlineStructFields(context, fields, baseOffset, {
-        leaf: ({ jsName, descriptor, offset, slot, type }) => {
-            if (slot.bitWidth === undefined) {
-                entries.push(
-                    `${jsName}: read(__array, ${descriptor}, __base + ${offset}) as ${renderTsType(context, type, false)}`,
-                );
-                return;
-            }
-            const shift = slot.bitOffset ?? 0;
-            entries.push(
-                `${jsName}: (((read(__array, ${descriptor}, __base + ${offset}) as number) >>> ${shift}) & ${bitMask(slot.bitWidth)})`,
-            );
+        leaf: (visit) => {
+            entries.push(renderElementReadEntry(context, visit));
         },
         nested: (jsName, nested, offset) => {
             entries.push(`${jsName}: ${renderElementReadObject(context, nested, offset)}`);
@@ -233,24 +245,26 @@ type ElementWriteOptions = {
     out: string[];
 };
 
+const renderElementWriteStatement = (visit: InlineFieldVisit, valuePath: string): string => {
+    const { jsName, descriptor, offset, slot } = visit;
+    const valueExpr = `${valuePath}.${jsName}`;
+    if (slot.bitWidth === undefined) {
+        return `write(__array, ${descriptor}, __base + ${offset}, ${valueExpr});`;
+    }
+    const merged = mergeBitfield(
+        `(${elementAccessExpr(descriptor, offset)} as number)`,
+        valueExpr,
+        bitMask(slot.bitWidth),
+        slot.bitOffset ?? 0,
+    );
+    return `write(__array, ${descriptor}, __base + ${offset}, ${merged});`;
+};
+
 const appendElementWriteStatements = (context: ModuleContext, options: ElementWriteOptions): void => {
     const { fields, baseOffset, valuePath, out } = options;
     visitInlineStructFields(context, fields, baseOffset, {
-        leaf: ({ jsName, descriptor, offset, slot }) => {
-            const valueExpr = `${valuePath}.${jsName}`;
-            if (slot.bitWidth === undefined) {
-                out.push(`write(__array, ${descriptor}, __base + ${offset}, ${valueExpr});`);
-                return;
-            }
-            const mask = bitMask(slot.bitWidth);
-            const shift = slot.bitOffset ?? 0;
-            const merged = mergeBitfield(
-                `(read(__array, ${descriptor}, __base + ${offset}) as number)`,
-                valueExpr,
-                mask,
-                shift,
-            );
-            out.push(`write(__array, ${descriptor}, __base + ${offset}, ${merged});`);
+        leaf: (visit) => {
+            out.push(renderElementWriteStatement(visit, valuePath));
         },
         nested: (jsName, nested, offset) => {
             appendElementWriteStatements(context, {
@@ -296,8 +310,8 @@ const structArrayGetterBlock = (options: StructArrayAccessorOptions): string => 
     return renderBlock(`get ${jsName}(): ${tsType}`, body);
 };
 
-const structArraySetterBlock = (options: StructArrayAccessorOptions): string => {
-    const { context, jsName, tsType, elementDescriptor, offset, elementSize, elementFields } = options;
+const structArraySetterStatements = (context: ModuleContext, options: StructArrayAccessorOptions): string => {
+    const { elementDescriptor, offset, elementSize, elementFields } = options;
     const writes: string[] = [];
     appendElementWriteStatements(context, {
         fields: elementFields,
@@ -306,7 +320,7 @@ const structArraySetterBlock = (options: StructArrayAccessorOptions): string => 
         out: writes,
     });
     const loop = [`const __base = __index * ${elementSize};`, ...writes].join("\n");
-    const body = [
+    return [
         `const __descriptor = ${elementDescriptor};`,
         `const __array = read(getHandle(this), __descriptor, ${offset}) as ReturnType<typeof getHandle>;`,
         `for (const [__index, __element] of __value.entries()) {`,
@@ -314,8 +328,13 @@ const structArraySetterBlock = (options: StructArrayAccessorOptions): string => 
         "}",
         `write(getHandle(this), __descriptor, ${offset}, __array);`,
     ].join("\n");
-    return renderBlock(`set ${jsName}(__value: ${tsType})`, body);
 };
+
+const structArraySetterBlock = (options: StructArrayAccessorOptions): string =>
+    renderBlock(
+        `set ${options.jsName}(__value: ${options.tsType})`,
+        structArraySetterStatements(options.context, options),
+    );
 
 type StructArrayResolution = {
     fieldType: TypeId;
@@ -324,20 +343,46 @@ type StructArrayResolution = {
     elementSize: number;
 };
 
-const resolveStructArray = (context: ModuleContext, target: StructArrayTarget): StructArrayResolution | undefined => {
-    const { field, slot, siblingFields } = target;
-    if (field.type === undefined || slot.bitWidth !== undefined) return undefined;
-    const arrayType = context.library.typeOf(field.type);
+type StructArrayElements = {
+    arrayType: Extract<GirType, { kind: "carray" }>;
+    elementFields: GirField[];
+};
+
+const resolveStructArrayElements = (context: ModuleContext, fieldType: TypeId): StructArrayElements | undefined => {
+    const arrayType = context.library.typeOf(fieldType);
     if (arrayType?.kind !== "carray") return undefined;
     const elementType = context.library.typeOf(arrayType.element);
     if (elementType?.kind === "record" && elementType.value.glibGetType !== undefined) return undefined;
     const elementFields = resolveInlineStructFields(context, arrayType.element, arrayType.elementCType);
     if (elementFields === undefined) return undefined;
-    const lengthExpr = arrayLengthExpression(arrayType, siblingFields);
+    return { arrayType, elementFields };
+};
+
+const resolveStructArrayShape = (
+    context: ModuleContext,
+    elements: StructArrayElements,
+    siblingFields: GirField[],
+): { lengthExpr: string; elementSize: number } | undefined => {
+    const lengthExpr = arrayLengthExpression(elements.arrayType, siblingFields);
     if (lengthExpr === undefined) return undefined;
-    const elementSize = computeRecordFieldSlots(context, elementFields).size;
+    const elementSize = computeRecordFieldSlots(context, elements.elementFields).size;
     if (elementSize === 0) return undefined;
-    return { fieldType: field.type, elementFields, lengthExpr, elementSize };
+    return { lengthExpr, elementSize };
+};
+
+const resolveStructArray = (context: ModuleContext, target: StructArrayTarget): StructArrayResolution | undefined => {
+    const { field, slot, siblingFields } = target;
+    if (field.type === undefined || slot.bitWidth !== undefined) return undefined;
+    const elements = resolveStructArrayElements(context, field.type);
+    if (elements === undefined) return undefined;
+    const shape = resolveStructArrayShape(context, elements, siblingFields);
+    if (shape === undefined) return undefined;
+    return {
+        fieldType: field.type,
+        elementFields: elements.elementFields,
+        lengthExpr: shape.lengthExpr,
+        elementSize: shape.elementSize,
+    };
 };
 
 const renderStructArrayAccessor = (context: ModuleContext, target: StructArrayTarget): string | undefined => {
@@ -401,9 +446,13 @@ const getterBlock = (options: AccessorOptions): string => {
     return renderBlock(`get ${jsName}(): ${tsType}`, body);
 };
 
-const setterBlock = (options: AccessorOptions): string => {
-    const { context, jsName, tsType, descriptor, slot } = options;
+const setterBody = (context: ModuleContext, descriptor: string, slot: FieldSlot): string => {
     context.addRuntimeImport("getHandle");
-    const body = emitFieldWrite(context, { descriptor, slot, targetExpr: "getHandle(this)", valueExpr: "value" });
-    return renderBlock(`set ${jsName}(value: ${tsType})`, body);
+    return emitFieldWrite(context, { descriptor, slot, targetExpr: "getHandle(this)", valueExpr: "value" });
 };
+
+const setterBlock = (options: AccessorOptions): string =>
+    renderBlock(
+        `set ${options.jsName}(value: ${options.tsType})`,
+        setterBody(options.context, options.descriptor, options.slot),
+    );

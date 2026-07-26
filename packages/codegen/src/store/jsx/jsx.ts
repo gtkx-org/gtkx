@@ -43,15 +43,17 @@ const propLineName = (line: string): string | undefined => {
     return declaration.split(/[?:]/, 1)[0]?.trim() || undefined;
 };
 
+const acceptPropLine = (line: string, seen: Set<string>, result: string[]): void => {
+    const name = propLineName(line);
+    if (name !== undefined && seen.has(name)) return;
+    if (name !== undefined) seen.add(name);
+    result.push(line);
+};
+
 const dedupePropLines = (lines: string[]): string[] => {
     const seen = new Set<string>();
     const result: string[] = [];
-    for (const line of lines) {
-        const name = propLineName(line);
-        if (name !== undefined && seen.has(name)) continue;
-        if (name !== undefined) seen.add(name);
-        result.push(line);
-    }
+    for (const line of lines) acceptPropLine(line, seen, result);
     return result;
 };
 
@@ -156,18 +158,22 @@ const interfacePropsRef = (
     return `${glib}Props<Self>`;
 };
 
-const interfacePrerequisiteExtends = (iface: ResolvedQualifiedInterface, context: InterfaceBlockContext): string[] => {
+const prerequisiteExtendRef = (
+    prerequisiteName: string,
+    iface: ResolvedQualifiedInterface,
+    context: InterfaceBlockContext,
+): string | undefined => {
     const { library, targetNamespaceName, imports, hasContainerProps } = context;
+    const resolved = library.resolveType(iface.namespace.name, prerequisiteName);
+    if (resolved === undefined || resolved.kind !== "interface") return undefined;
+    if (!interfaceHasPropsBody(resolved.value, hasContainerProps)) return undefined;
+    return interfacePropsRef({ klass: resolved.value, namespace: resolved.namespace }, targetNamespaceName, imports);
+};
+
+const interfacePrerequisiteExtends = (iface: ResolvedQualifiedInterface, context: InterfaceBlockContext): string[] => {
     const refs: string[] = [];
     for (const prerequisiteName of iface.klass.prerequisites) {
-        const resolved = library.resolveType(iface.namespace.name, prerequisiteName);
-        if (resolved === undefined || resolved.kind !== "interface") continue;
-        if (!interfaceHasPropsBody(resolved.value, hasContainerProps)) continue;
-        const ref = interfacePropsRef(
-            { klass: resolved.value, namespace: resolved.namespace },
-            targetNamespaceName,
-            imports,
-        );
+        const ref = prerequisiteExtendRef(prerequisiteName, iface, context);
         if (ref !== undefined) refs.push(ref);
     }
     return refs;
@@ -268,6 +274,13 @@ const resolveElementExtends = (library: Library, entry: GlibNamedClass, context:
     return extendsList;
 };
 
+const resolveParentClassLike = (library: Library, namespaceName: string, parent: string) => {
+    const resolved = library.resolveType(namespaceName, parent);
+    if (resolved === undefined) return undefined;
+    if (resolved.kind !== "class" && resolved.kind !== "interface") return undefined;
+    return resolved;
+};
+
 const resolveParentPropsRef = (
     library: Library,
     entry: GlibNamedClass,
@@ -275,9 +288,8 @@ const resolveParentPropsRef = (
 ): string | undefined => {
     const parent = entry.klass.parent;
     if (parent === undefined) return undefined;
-    const resolved = library.resolveType(entry.namespace.name, parent);
+    const resolved = resolveParentClassLike(library, entry.namespace.name, parent);
     if (resolved === undefined) return undefined;
-    if (resolved.kind !== "class" && resolved.kind !== "interface") return undefined;
     const parentGlib = glibNameOf(resolved.value);
     if (parentGlib === undefined) return undefined;
     if (!context.intrinsicElementByGlibName.has(parentGlib)) return undefined;

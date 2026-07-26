@@ -63,12 +63,15 @@ export type ElementConfig<T extends GObject.Object = GObject.Object> = {
 /** Every registered element config, keyed by GLib type name. Adwaita entries appear once `@gtkx/react/adw` is loaded. */
 export const ELEMENTS: Record<string, ElementConfig> = {};
 
+const mergeBehaviors = (base: ElementConfig, added: ElementBehavior[], prepend: boolean): ElementBehavior[] => {
+    const baseBehaviors = base.behaviors ?? [];
+    return prepend ? [...added, ...baseBehaviors] : [...baseBehaviors, ...added];
+};
+
 const mergeConfigEntry = (base: ElementConfig, added: ElementConfig<never>, prepend = false): ElementConfig => {
     const entry: ElementConfig = { ...base };
     if (added.behaviors !== undefined) {
-        const addedBehaviors = added.behaviors as ElementBehavior[];
-        const baseBehaviors = entry.behaviors ?? [];
-        entry.behaviors = prepend ? [...addedBehaviors, ...baseBehaviors] : [...baseBehaviors, ...addedBehaviors];
+        entry.behaviors = mergeBehaviors(entry, added.behaviors as ElementBehavior[], prepend);
     }
     if (added.lazy === true) entry.lazy = true;
     if (added.component !== undefined) entry.component = added.component;

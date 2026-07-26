@@ -1,6 +1,7 @@
 import { alloc, type Descriptor, type ExternalObject, getType, type Handle, read, write } from "@gtkx/native";
 import { bind, createBindCache } from "./bind.js";
 import {
+    type ArrayDescriptor,
     arrayT,
     bigint64T,
     biguint64T,
@@ -162,6 +163,13 @@ export function setBoxedValue(value: ExternalObject<Handle>, boxed: object | nul
     setBoxedBind(name)(value, boxed === null ? null : getHandle(boxed));
 }
 
+const arrayValueType = (descriptor: ArrayDescriptor): ValueType => {
+    if (descriptor.itemDescriptor.kind === "string" && descriptor.arrayKind === "array") {
+        return strvValueType;
+    }
+    throw new Error(`Unsupported array type ${descriptor.arrayKind} of ${descriptor.itemDescriptor.kind}`);
+};
+
 const resolveValueType = (descriptor: Descriptor): ValueType => {
     if (descriptor.kind === "biguint64" && "type" in descriptor) {
         return typeValueType;
@@ -199,10 +207,7 @@ const resolveValueType = (descriptor: Descriptor): ValueType => {
         case "fundamental":
             return fundamentalValueType(resolveFundamentalType(descriptor));
         case "array":
-            if (descriptor.itemDescriptor.kind === "string" && descriptor.arrayKind === "array") {
-                return strvValueType;
-            }
-            throw new Error(`Unsupported array type ${descriptor.arrayKind} of ${descriptor.itemDescriptor.kind}`);
+            return arrayValueType(descriptor);
         default:
             throw new Error(`Unsupported type descriptor '${descriptor.kind}'`);
     }
@@ -254,19 +259,20 @@ const resolveValueGetter = (fundamental: bigint): ((value: ExternalObject<Handle
     }
 };
 
-export function toValue(descriptor: Descriptor, value: unknown): ExternalObject<Handle> {
+const resolveNativeValue = (descriptor: Descriptor, value: unknown): unknown => {
     const isHandleKind = descriptor.kind === "object" || descriptor.kind === "boxed";
-    const nativeValue = isHandleKind
-        ? value == null
-            ? null
-            : getHandle(value as object)
-        : toNative(descriptor, value);
-    const type =
-        descriptor.kind === "object"
-            ? nativeValue == null
-                ? TYPE_OBJECT
-                : getType(nativeValue as ExternalObject<Handle>)
-            : resolveDescriptorType(descriptor);
+    if (!isHandleKind) return toNative(descriptor, value);
+    return value == null ? null : getHandle(value as object);
+};
+
+const resolveValueGType = (descriptor: Descriptor, nativeValue: unknown): bigint => {
+    if (descriptor.kind !== "object") return resolveDescriptorType(descriptor);
+    return nativeValue == null ? TYPE_OBJECT : getType(nativeValue as ExternalObject<Handle>);
+};
+
+export function toValue(descriptor: Descriptor, value: unknown): ExternalObject<Handle> {
+    const nativeValue = resolveNativeValue(descriptor, value);
+    const type = resolveValueGType(descriptor, nativeValue);
     const gValue = newTypedValue(type);
     resolveValueType(descriptor).set(gValue, nativeValue);
     return gValue;

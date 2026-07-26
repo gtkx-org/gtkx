@@ -111,6 +111,14 @@ function makeAppRouter(overrides: Partial<AppRouterStub> = {}): AppRouterStub {
     };
 }
 
+function makeConnectedAppRouter(apps: AppInfo[], sendToApp: AppRouterStub["sendToApp"]): AppRouterStub {
+    return makeAppRouter({
+        getApps: vi.fn(() => apps),
+        hasConnectedApps: vi.fn(() => true),
+        sendToApp,
+    });
+}
+
 function registerTools(appRouter: AppRouterStub): RegisteredTool[] {
     resetMainMocks();
     createMcpServer({ version: "test" });
@@ -142,6 +150,21 @@ async function runListAppsWithFailingWait(thrown: unknown): Promise<{ type: "tex
 
     expect(result.isError).toBe(true);
     return result.content[0] as { type: "text"; text: string };
+}
+
+async function expectWidgetActionTool(options: {
+    tool: string;
+    payload: Record<string, unknown>;
+    method: string;
+    confirmation: string;
+}): Promise<void> {
+    const sendToApp = vi.fn(async () => undefined);
+    const appRouter = makeAppRouter({ sendToApp: sendToApp as never });
+
+    const result = await getTool(appRouter, options.tool).handler(options.payload as never);
+
+    expect(sendToApp).toHaveBeenCalledWith(undefined, options.method, options.payload);
+    expect(result.content[0]).toEqual({ type: "text", text: options.confirmation });
 }
 
 const allToolNames = [
@@ -186,11 +209,7 @@ describe("buildTools — gtkx_list_apps success", () => {
         const sendToApp = vi.fn(async () => ({
             windows: [{ id: "w1", title: "Main" }],
         }));
-        const appRouter = makeAppRouter({
-            getApps: vi.fn(() => apps),
-            hasConnectedApps: vi.fn(() => true),
-            sendToApp: sendToApp as never,
-        });
+        const appRouter = makeConnectedAppRouter(apps, sendToApp as never);
 
         const result = await getTool(appRouter, "gtkx_list_apps").handler({} as never);
 
@@ -204,13 +223,12 @@ describe("buildTools — gtkx_list_apps success", () => {
 
     it("falls back to the original app info when getWindows fails", async () => {
         const apps: AppInfo[] = [{ applicationId: "app-a", pid: 1 }];
-        const appRouter = makeAppRouter({
-            getApps: vi.fn(() => apps),
-            hasConnectedApps: vi.fn(() => true),
-            sendToApp: vi.fn(async () => {
+        const appRouter = makeConnectedAppRouter(
+            apps,
+            vi.fn(async () => {
                 throw new Error("boom");
             }) as never,
-        });
+        );
 
         const result = await getTool(appRouter, "gtkx_list_apps").handler({} as never);
         const text = result.content[0] as { type: "text"; text: string };
@@ -306,53 +324,34 @@ describe("buildTools — gtkx_get_widget_props", () => {
 
 describe("buildTools — gtkx_click", () => {
     it("sends a widget.click and returns a confirmation message", async () => {
-        const sendToApp = vi.fn(async () => undefined);
-        const appRouter = makeAppRouter({ sendToApp: sendToApp as never });
-
-        const result = await getTool(appRouter, "gtkx_click").handler({ widgetId: "w1" } as never);
-
-        expect(sendToApp).toHaveBeenCalledWith(undefined, "widget.click", { widgetId: "w1" });
-        expect(result.content[0]).toEqual({ type: "text", text: "Clicked" });
+        await expectWidgetActionTool({
+            tool: "gtkx_click",
+            payload: { widgetId: "w1" },
+            method: "widget.click",
+            confirmation: "Clicked",
+        });
     });
 });
 
 describe("buildTools — gtkx_type", () => {
     it("forwards text and clear flag", async () => {
-        const sendToApp = vi.fn(async () => undefined);
-        const appRouter = makeAppRouter({ sendToApp: sendToApp as never });
-
-        const result = await getTool(appRouter, "gtkx_type").handler({
-            widgetId: "w1",
-            text: "hello",
-            clear: true,
-        } as never);
-
-        expect(sendToApp).toHaveBeenCalledWith(undefined, "widget.type", {
-            widgetId: "w1",
-            text: "hello",
-            clear: true,
+        await expectWidgetActionTool({
+            tool: "gtkx_type",
+            payload: { widgetId: "w1", text: "hello", clear: true },
+            method: "widget.type",
+            confirmation: "Typed text",
         });
-        expect(result.content[0]).toEqual({ type: "text", text: "Typed text" });
     });
 });
 
 describe("buildTools — gtkx_fire_event", () => {
     it("forwards signal name and args", async () => {
-        const sendToApp = vi.fn(async () => undefined);
-        const appRouter = makeAppRouter({ sendToApp: sendToApp as never });
-
-        const result = await getTool(appRouter, "gtkx_fire_event").handler({
-            widgetId: "w1",
-            signal: "clicked",
-            args: ["arg1"],
-        } as never);
-
-        expect(sendToApp).toHaveBeenCalledWith(undefined, "widget.fireEvent", {
-            widgetId: "w1",
-            signal: "clicked",
-            args: ["arg1"],
+        await expectWidgetActionTool({
+            tool: "gtkx_fire_event",
+            payload: { widgetId: "w1", signal: "clicked", args: ["arg1"] },
+            method: "widget.fireEvent",
+            confirmation: "Fired event",
         });
-        expect(result.content[0]).toEqual({ type: "text", text: "Fired event" });
     });
 });
 
@@ -401,23 +400,36 @@ function setupMainMocks(): MainSetup {
     };
 }
 
-function teardownMainMocks({ errorSpy, exitSpy, prevSigInt, prevSigTerm }: MainSetup): void {
-    errorSpy.mockRestore();
-    exitSpy.mockRestore();
-    for (const listener of process.listeners("SIGINT")) {
-        if (!prevSigInt.includes(listener)) process.removeListener("SIGINT", listener);
-    }
-    for (const listener of process.listeners("SIGTERM")) {
-        if (!prevSigTerm.includes(listener)) process.removeListener("SIGTERM", listener);
+function pruneListeners<T>(current: T[], previous: T[], remove: (listener: T) => void): void {
+    for (const listener of current) {
+        if (!previous.includes(listener)) remove(listener);
     }
 }
 
-describe("main — startup", () => {
+function teardownMainMocks({ errorSpy, exitSpy, prevSigInt, prevSigTerm }: MainSetup): void {
+    errorSpy.mockRestore();
+    exitSpy.mockRestore();
+    pruneListeners(process.listeners("SIGINT"), prevSigInt, (listener) => process.removeListener("SIGINT", listener));
+    pruneListeners(process.listeners("SIGTERM"), prevSigTerm, (listener) =>
+        process.removeListener("SIGTERM", listener),
+    );
+}
+
+function useMainSetup(): () => MainSetup {
     let setup: MainSetup;
     beforeEach(() => {
         setup = setupMainMocks();
     });
     afterEach(() => teardownMainMocks(setup));
+    return () => setup;
+}
+
+function collectErrorMessages(setup: MainSetup): string[] {
+    return setup.errorSpy.mock.calls.map((c: unknown[]) => String(c[0]));
+}
+
+describe("main — startup", () => {
+    useMainSetup();
 
     it("starts the socket server, registers all tools, and connects the MCP server", async () => {
         await main();
@@ -432,11 +444,7 @@ describe("main — startup", () => {
 });
 
 describe("main — error logging", () => {
-    let setup: MainSetup;
-    beforeEach(() => {
-        setup = setupMainMocks();
-    });
-    afterEach(() => teardownMainMocks(setup));
+    const getSetup = useMainSetup();
 
     it("logs broken-pipe-style socket errors only when the code is not EPIPE/ECONNRESET", async () => {
         await main();
@@ -447,7 +455,7 @@ describe("main — error logging", () => {
         registry.emit("error", Object.assign(new Error("conn gone"), { code: "ECONNRESET" }));
         registry.emit("error", Object.assign(new Error("real boom"), { code: "EACCES" }));
 
-        const messages = setup.errorSpy.mock.calls.map((c: unknown[]) => String(c[0]));
+        const messages = collectErrorMessages(getSetup());
         expect(messages.filter((m: string) => m.includes("real boom"))).toHaveLength(1);
         expect(messages.some((m: string) => m.includes("pipe gone"))).toBe(false);
         expect(messages.some((m: string) => m.includes("conn gone"))).toBe(false);
@@ -461,18 +469,14 @@ describe("main — error logging", () => {
         appRouter.emit("appRegistered", { applicationId: "app-a", pid: 42 });
         appRouter.emit("appUnregistered", "app-a");
 
-        const messages = setup.errorSpy.mock.calls.map((c: unknown[]) => String(c[0]));
+        const messages = collectErrorMessages(getSetup());
         expect(messages.some((m: string) => m.includes("app registered: app-a (PID: 42)"))).toBe(true);
         expect(messages.some((m: string) => m.includes("app unregistered: app-a"))).toBe(true);
     });
 });
 
 describe("main — shutdown", () => {
-    let setup: MainSetup;
-    beforeEach(() => {
-        setup = setupMainMocks();
-    });
-    afterEach(() => teardownMainMocks(setup));
+    const getSetup = useMainSetup();
 
     it("shuts down on SIGINT, cleaning up resources exactly once", async () => {
         await main();
@@ -482,7 +486,7 @@ describe("main — shutdown", () => {
 
         expect(socketStopMock).toHaveBeenCalledOnce();
         expect(mcpCloseMock).toHaveBeenCalledOnce();
-        expect(setup.exitSpy).toHaveBeenCalledWith(0);
+        expect(getSetup().exitSpy).toHaveBeenCalledWith(0);
 
         process.emit("SIGTERM", "SIGTERM");
         await new Promise((r) => setImmediate(r));

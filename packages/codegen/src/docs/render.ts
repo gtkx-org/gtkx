@@ -55,19 +55,24 @@ const stripDocMedia = (markdown: string): string =>
         .replace(/<video[\s\S]*?(?:<\/video>|\/>)/g, "")
         .replace(/<img[^>]*>/g, "");
 
+const FENCE_LINE = /^\s*(```|~~~)/;
+const HEADING_LINE = /^#{1,5}\s/;
+
+const demoteLine = (line: string, inFence: boolean): { text: string; inFence: boolean } => {
+    if (FENCE_LINE.test(line)) return { text: line, inFence: !inFence };
+    if (inFence) return { text: line, inFence };
+    return { text: HEADING_LINE.test(line) ? `#${line}` : line, inFence };
+};
+
 const demoteHeadings = (markdown: string): string => {
     let inFence = false;
-    return markdown
-        .split("\n")
-        .map((line) => {
-            if (/^\s*(```|~~~)/.test(line)) {
-                inFence = !inFence;
-                return line;
-            }
-            if (inFence) return line;
-            return /^#{1,5}\s/.test(line) ? `#${line}` : line;
-        })
-        .join("\n");
+    const lines: string[] = [];
+    for (const line of markdown.split("\n")) {
+        const result = demoteLine(line, inFence);
+        inFence = result.inFence;
+        lines.push(result.text);
+    }
+    return lines.join("\n");
 };
 
 export const docMarkdown = (doc: string | undefined): string =>

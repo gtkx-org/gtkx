@@ -11,22 +11,25 @@ const benchWithLabel = (name: string, run: (label: Gtk.Label) => void): void => 
     });
 };
 
+const runSetterRoundTrips = (label: Gtk.Label, n: number): void => {
+    for (let i = 0; i < n; i++) {
+        label.setLabel(i % 2 === 0 ? "even" : "odd");
+    }
+};
+
+const runGetterRoundTrips = (label: Gtk.Label, n: number): void => {
+    let total = 0;
+    for (let i = 0; i < n; i++) {
+        total += label.getLabel().length;
+    }
+    if (total !== n * START_LABEL.length) {
+        throw new Error(`Getter round trips returned unexpected text totaling ${total}`);
+    }
+};
+
 describe("ffi call overhead", () => {
     for (const n of CALL_COUNTS) {
-        benchWithLabel(`${n} setter round trips`, (label) => {
-            for (let i = 0; i < n; i++) {
-                label.setLabel(i % 2 === 0 ? "even" : "odd");
-            }
-        });
-
-        benchWithLabel(`${n} getter round trips`, (label) => {
-            let total = 0;
-            for (let i = 0; i < n; i++) {
-                total += label.getLabel().length;
-            }
-            if (total !== n * START_LABEL.length) {
-                throw new Error(`Getter round trips returned unexpected text totaling ${total}`);
-            }
-        });
+        benchWithLabel(`${n} setter round trips`, (label) => runSetterRoundTrips(label, n));
+        benchWithLabel(`${n} getter round trips`, (label) => runGetterRoundTrips(label, n));
     }
 });

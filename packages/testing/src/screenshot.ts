@@ -78,29 +78,23 @@ export const screenshot = async (widget: Gtk.Widget, options?: ScreenshotOptions
     });
 };
 
-const resolveWindow = (selector?: WindowSelector): Gtk.Window => {
-    const windows = Gtk.Window.listToplevels();
-
-    if (windows.length === 0) {
-        throw new Error("No windows available for screenshot");
+const firstToplevelWindow = (windows: Gtk.Widget[]): Gtk.Window => {
+    const [first] = windows;
+    if (!(first instanceof Gtk.Window)) {
+        throw new TypeError("First toplevel is not a Window");
     }
+    return first;
+};
 
-    if (selector === undefined) {
-        const [first] = windows;
-        if (!(first instanceof Gtk.Window)) {
-            throw new TypeError("First toplevel is not a Window");
-        }
-        return first;
+const windowAtIndex = (windows: Gtk.Widget[], index: number): Gtk.Window => {
+    const indexed = windows[index];
+    if (!(indexed instanceof Gtk.Window)) {
+        throw new TypeError(`Window at index ${index} not found`);
     }
+    return indexed;
+};
 
-    if (typeof selector === "number") {
-        const indexed = windows[selector];
-        if (!(indexed instanceof Gtk.Window)) {
-            throw new TypeError(`Window at index ${selector} not found`);
-        }
-        return indexed;
-    }
-
+const windowByTitle = (windows: Gtk.Widget[], selector: string | RegExp): Gtk.Window => {
     const isRegex = selector instanceof RegExp;
     const found = windows.find((w): w is Gtk.Window => {
         if (!(w instanceof Gtk.Window)) return false;
@@ -113,6 +107,18 @@ const resolveWindow = (selector?: WindowSelector): Gtk.Window => {
         throw new Error(`No window found with title matching ${pattern}`);
     }
     return found;
+};
+
+const resolveWindow = (selector?: WindowSelector): Gtk.Window => {
+    const windows = Gtk.Window.listToplevels();
+
+    if (windows.length === 0) {
+        throw new Error("No windows available for screenshot");
+    }
+
+    if (selector === undefined) return firstToplevelWindow(windows);
+    if (typeof selector === "number") return windowAtIndex(windows, selector);
+    return windowByTitle(windows, selector);
 };
 
 const saveScreenshotToTempFile = (result: ScreenshotResult): string => {

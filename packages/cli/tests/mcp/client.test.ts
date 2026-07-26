@@ -32,6 +32,18 @@ type ServerContext = {
     received: string[][];
 };
 
+const drainLines = (buffer: string, lines: string[]): string => {
+    let remaining = buffer;
+    let idx = remaining.indexOf("\n");
+    while (idx !== -1) {
+        const line = remaining.slice(0, idx);
+        remaining = remaining.slice(idx + 1);
+        if (line.trim()) lines.push(line);
+        idx = remaining.indexOf("\n");
+    }
+    return remaining;
+};
+
 const startServer = (): ServerContext => {
     const dir = mkdtempSync(join(tmpdir(), "mcp-client-test-"));
     const socketPath = join(dir, "sock");
@@ -43,14 +55,7 @@ const startServer = (): ServerContext => {
         sockets.push(socket);
         let buffer = "";
         socket.on("data", (data: Buffer) => {
-            buffer += data.toString();
-            let idx = buffer.indexOf("\n");
-            while (idx !== -1) {
-                const line = buffer.slice(0, idx);
-                buffer = buffer.slice(idx + 1);
-                if (line.trim()) lines.push(line);
-                idx = buffer.indexOf("\n");
-            }
+            buffer = drainLines(buffer + data.toString(), lines);
         });
     });
     server.listen(socketPath);
@@ -81,6 +86,15 @@ const waitFor = async (predicate: () => boolean, timeoutMs = 1000): Promise<void
 const parseLines = (lines: string[]): Record<string, unknown>[] =>
     lines.map((line) => JSON.parse(line) as Record<string, unknown>);
 
+const writeLine = (ctx: ServerContext, message: Record<string, unknown>): void => {
+    ctx.sockets[0]?.write(`${JSON.stringify(message)}\n`);
+};
+
+const createClient = (ctx: ServerContext): McpClient =>
+    new McpClient({ socketPath: ctx.socketPath, applicationId: "com.test.app" });
+
+const spyStderr = () => vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+
 function assertLine(line: Record<string, unknown> | undefined): asserts line is Record<string, unknown> {
     if (!line) {
         throw new Error("expected a protocol line to be present");
@@ -94,22 +108,37 @@ type PendingRegistration = {
 };
 
 const beginRegistration = async (ctx: ServerContext): Promise<PendingRegistration> => {
-    const client = new McpClient({ socketPath: ctx.socketPath, applicationId: "com.test.app" });
+    const client = createClient(ctx);
     const connectPromise = client.connect();
     await waitFor(() => ctx.received[0]?.length === 1);
     const [registerLine] = parseLines(ctx.received[0] ?? []);
     return { client, connectPromise, registerLine };
 };
 
+const respondToRegister = (ctx: ServerContext, registration: PendingRegistration): void => {
+    writeLine(ctx, { id: registration.registerLine?.id, result: {} });
+};
+
 const connectAndRegister = async (ctx: ServerContext): Promise<McpClient> => {
-    const { client, connectPromise, registerLine } = await beginRegistration(ctx);
-    ctx.sockets[0]?.write(`${JSON.stringify({ id: registerLine?.id, result: {} })}\n`);
-    await connectPromise;
-    return client;
+    const registration = await beginRegistration(ctx);
+    respondToRegister(ctx, registration);
+    await registration.connectPromise;
+    return registration.client;
+};
+
+const registerWithApp = async (ctx: ServerContext): Promise<McpClient> => {
+    hoisted.getDefault.mockReturnValue(new hoisted.FakeApplication());
+    return connectAndRegister(ctx);
+};
+
+const registerWithStderrSpy = async (ctx: ServerContext) => {
+    const stderrSpy = spyStderr();
+    const client = await connectAndRegister(ctx);
+    return { stderrSpy, client };
 };
 
 const sendRequest = async (ctx: ServerContext, request: Record<string, unknown>): Promise<Record<string, unknown>> => {
-    ctx.sockets[0]?.write(`${JSON.stringify(request)}\n`);
+    writeLine(ctx, request);
     await waitFor(() => ctx.received[0]?.length === 2);
     const [, responseLine] = parseLines(ctx.received[0] ?? []);
     assertLine(responseLine);
@@ -139,7 +168,7 @@ describe("McpClient.connect", () => {
         expect(params.pid).toBe(process.pid);
         expect(params.projectRoot).toBe(process.cwd());
 
-        ctx.sockets[0]?.write(`${JSON.stringify({ id: registerLine.id, result: {} })}\n`);
+        writeLine(ctx, { id: registerLine.id, result: {} });
         await connectPromise;
 
         client.disconnect();
@@ -148,14 +177,14 @@ describe("McpClient.connect", () => {
 
 describe("McpClient response correlation", () => {
     it("ignores responses whose ids do not match any pending request", async () => {
-        const { client, connectPromise, registerLine } = await beginRegistration(ctx);
+        const registration = await beginRegistration(ctx);
 
-        ctx.sockets[0]?.write(`${JSON.stringify({ id: "unknown-id", result: { stale: true } })}\n`);
-        ctx.sockets[0]?.write(`${JSON.stringify({ id: registerLine?.id, result: {} })}\n`);
+        writeLine(ctx, { id: "unknown-id", result: { stale: true } });
+        respondToRegister(ctx, registration);
 
-        await expect(connectPromise).resolves.toBeUndefined();
+        await expect(registration.connectPromise).resolves.toBeUndefined();
 
-        client.disconnect();
+        registration.client.disconnect();
     });
 });
 
@@ -175,22 +204,20 @@ describe("McpClient incoming requests", () => {
     });
 
     it("ignores malformed JSON without crashing the socket", async () => {
-        const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
-        const client = await connectAndRegister(ctx);
+        const registered = await registerWithStderrSpy(ctx);
 
         ctx.sockets[0]?.write("not json\n");
         await new Promise((r) => setTimeout(r, 20));
 
-        const written = stderrSpy.mock.calls.map((call) => String(call[0])).join("");
+        const written = registered.stderrSpy.mock.calls.map((call) => String(call[0])).join("");
         expect(written).toContain("invalid JSON");
 
-        stderrSpy.mockRestore();
-        client.disconnect();
+        registered.stderrSpy.mockRestore();
+        registered.client.disconnect();
     });
 
     it("dispatches an inbound request and returns its result when the app is initialized", async () => {
-        hoisted.getDefault.mockReturnValue(new hoisted.FakeApplication());
-        const client = await connectAndRegister(ctx);
+        const client = await registerWithApp(ctx);
 
         const responseLine = await sendRequest(ctx, { id: "req-ok", method: "app.getWindows" });
         expect((responseLine.result as { windows: unknown[] }).windows).toEqual([]);
@@ -199,8 +226,7 @@ describe("McpClient incoming requests", () => {
     });
 
     it("returns a structured error code when dispatch throws a ProtocolError", async () => {
-        hoisted.getDefault.mockReturnValue(new hoisted.FakeApplication());
-        const client = await connectAndRegister(ctx);
+        const client = await registerWithApp(ctx);
 
         const responseLine = await sendRequest(ctx, { id: "req-bad", method: "does.not.exist" });
         expect(typeof (responseLine.error as { code: number }).code).toBe("number");
@@ -222,7 +248,7 @@ describe("McpClient.disconnect", () => {
     });
 
     it("rejects an in-flight connect() promise when disconnect is called first", async () => {
-        const client = new McpClient({ socketPath: ctx.socketPath, applicationId: "com.test.app" });
+        const client = createClient(ctx);
 
         const connectPromise = client.connect();
         client.disconnect();
@@ -244,10 +270,10 @@ describe("McpClient connection failures", () => {
     });
 
     it("rejects connect() when the server refuses registration", async () => {
-        const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+        const stderrSpy = spyStderr();
         const { client, connectPromise, registerLine } = await beginRegistration(ctx);
 
-        ctx.sockets[0]?.write(`${JSON.stringify({ id: registerLine?.id, error: { code: -1, message: "refused" } })}\n`);
+        writeLine(ctx, { id: registerLine?.id, error: { code: -1, message: "refused" } });
 
         await expect(connectPromise).rejects.toThrow();
 
@@ -256,13 +282,12 @@ describe("McpClient connection failures", () => {
     });
 
     it("schedules a reconnect when the server drops an established connection", async () => {
-        const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
-        const client = await connectAndRegister(ctx);
+        const registered = await registerWithStderrSpy(ctx);
 
         ctx.sockets[0]?.destroy();
-        await waitFor(() => stderrSpy.mock.calls.some((call) => String(call[0]).includes("Disconnected")));
+        await waitFor(() => registered.stderrSpy.mock.calls.some((call) => String(call[0]).includes("Disconnected")));
 
-        stderrSpy.mockRestore();
-        client.disconnect();
+        registered.stderrSpy.mockRestore();
+        registered.client.disconnect();
     });
 });

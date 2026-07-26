@@ -107,6 +107,25 @@ type FormatContext = {
     maxDepth: number | undefined;
 };
 
+const formatHiddenChildrenLine = (widget: Gtk.Widget, depth: number, ctx: FormatContext): string => {
+    const { getId, colors } = ctx;
+    const indent = INDENT.repeat(depth);
+    const count = countChildren(widget);
+    const hint = getId ? ` (pass rootId="${getId(widget)}" or raise maxDepth to expand)` : "";
+    const plural = count === 1 ? "" : "s";
+    return `${indent}${INDENT}${colors.tag(`… ${count} child widget${plural} hidden${hint}`)}\n`;
+};
+
+const formatChildren = (widget: Gtk.Widget, depth: number, ctx: FormatContext): string => {
+    let output = "";
+    let child = widget.getFirstChild();
+    while (child) {
+        output += formatWidget(child, depth + 1, ctx);
+        child = child.getNextSibling();
+    }
+    return output;
+};
+
 const formatWidget = (widget: Gtk.Widget, depth: number, ctx: FormatContext): string => {
     const { getId, colors, maxDepth } = ctx;
     const indent = INDENT.repeat(depth);
@@ -127,19 +146,18 @@ const formatWidget = (widget: Gtk.Widget, depth: number, ctx: FormatContext): st
         output += `${indent}${INDENT}${text}\n`;
     }
     if (firstChild && maxDepth !== undefined && depth >= maxDepth) {
-        const count = countChildren(widget);
-        const hint = getId ? ` (pass rootId="${getId(widget)}" or raise maxDepth to expand)` : "";
-        output += `${indent}${INDENT}${colors.tag(`… ${count} child widget${count === 1 ? "" : "s"} hidden${hint}`)}\n`;
+        output += formatHiddenChildrenLine(widget, depth, ctx);
         output += `${indent}${closeTag}\n`;
         return output;
     }
-    let child = firstChild;
-    while (child) {
-        output += formatWidget(child, depth + 1, ctx);
-        child = child.getNextSibling();
-    }
+    output += formatChildren(widget, depth, ctx);
     output += `${indent}${closeTag}\n`;
     return output;
+};
+
+const resolveMaxLength = (options: PrettyWidgetOptions): number => {
+    const envLimit = process.env.DEBUG_PRINT_LIMIT ? Number(process.env.DEBUG_PRINT_LIMIT) : DEFAULT_MAX_LENGTH;
+    return options.maxLength ?? envLimit;
 };
 
 /**
@@ -151,8 +169,7 @@ const formatWidget = (widget: Gtk.Widget, depth: number, ctx: FormatContext): st
  * @returns The formatted representation of the tree.
  */
 export const prettyWidget = (container: Container, options: PrettyWidgetOptions = {}): string => {
-    const envLimit = process.env.DEBUG_PRINT_LIMIT ? Number(process.env.DEBUG_PRINT_LIMIT) : DEFAULT_MAX_LENGTH;
-    const maxLength = options.maxLength ?? envLimit;
+    const maxLength = resolveMaxLength(options);
 
     if (maxLength === 0) {
         return "";

@@ -60,18 +60,25 @@ const setObjectSlot = (parent: ElementNode, entry: PlacedChild): void => {
     entry.attached = true;
 };
 
+type AttachContext = { parent: ElementNode; entry: PlacedChild; index: number; sibling: GObject.Object | null };
+
+const tryAttach = (ctx: AttachContext, behavior: ElementBehavior): boolean => {
+    const attach = behavior.attach;
+    if (attach === undefined) return false;
+    const context = contextFor(ctx.parent, behavior);
+    const claim = attach(ctx.parent.object, ctx.entry.object, placeInfo(ctx.entry, ctx.index, ctx.sibling, context));
+    if (claim === undefined) return false;
+    ctx.entry.behavior = behavior;
+    adoptedFrom(ctx.parent, ctx.entry, behavior, claim);
+    ctx.entry.attached = true;
+    applyLazyProps(ctx.entry);
+    return true;
+};
+
 const attachEntry = (parent: ElementNode, entry: PlacedChild, index: number, sibling: GObject.Object | null): void => {
+    const ctx: AttachContext = { parent, entry, index, sibling };
     for (const behavior of typeInfoOf(parent.typeName).behaviors) {
-        const attach = behavior.attach;
-        if (attach === undefined) continue;
-        const context = contextFor(parent, behavior);
-        const claim = attach(parent.object, entry.object, placeInfo(entry, index, sibling, context));
-        if (claim === undefined) continue;
-        entry.behavior = behavior;
-        adoptedFrom(parent, entry, behavior, claim);
-        entry.attached = true;
-        applyLazyProps(entry);
-        return;
+        if (tryAttach(ctx, behavior)) return;
     }
     if (entry.slot !== DEFAULT_SLOT) setObjectSlot(parent, entry);
 };
@@ -129,6 +136,16 @@ const moveEntry = (parent: ElementNode, entry: PlacedChild, entries: PlacedChild
     applyLazyProps(entry);
 };
 
+const resolveEntry = (
+    entries: PlacedChild[],
+    existing: number,
+    slot: string,
+    node: PlaceableNode,
+): PlacedChild | null => {
+    if (existing >= 0) return entries[existing] ?? null;
+    return createEntry(slot, node);
+};
+
 export const placeChild = (
     parent: ElementNode,
     slot: string,
@@ -137,8 +154,8 @@ export const placeChild = (
 ): void => {
     const entries = getOrInsert(parent.placements, slot, () => []);
     const existing = entries.findIndex((entry) => entry.node === node);
-    const entry = existing >= 0 ? entries[existing] : createEntry(slot, node);
-    if (entry === undefined || entry === null) return;
+    const entry = resolveEntry(entries, existing, slot, node);
+    if (entry === null) return;
     const isMove = existing >= 0;
     if (isMove) entries.splice(existing, 1);
     const index = positionOf(entries, before);

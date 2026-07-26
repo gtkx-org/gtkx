@@ -212,13 +212,11 @@ const waitForSocket = (path: string, { label, timeout = 15000, child, signal }: 
         }, timeout);
         child?.on("exit", onExit);
         child?.on("error", onError);
-        if (signal) {
-            if (signal.aborted) {
-                onAbort();
-                return;
-            }
-            signal.addEventListener("abort", onAbort);
+        if (signal?.aborted) {
+            onAbort();
+            return;
         }
+        signal?.addEventListener("abort", onAbort);
     });
 
 export const STATIC_HEADLESS_ENV = {

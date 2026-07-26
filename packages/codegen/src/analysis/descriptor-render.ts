@@ -116,14 +116,23 @@ const resolveCallbackType = (context: ModuleContext, ref: TypeId | undefined): G
     return type.value;
 };
 
+const isScalarType = (library: Library, type: GirType): boolean => {
+    switch (type.kind) {
+        case "primitive":
+            return type.category !== "string" && type.category !== "void";
+        case "enum":
+            return true;
+        case "alias":
+            return type.value.target !== undefined && isScalarRef(library, type.value.target);
+        default:
+            return false;
+    }
+};
+
 export const isScalarRef = (library: Library, ref: TypeId | undefined): boolean => {
     if (ref === undefined) return false;
     const type = library.typeOf(ref);
-    if (type === undefined) return false;
-    if (type.kind === "primitive") return type.category !== "string" && type.category !== "void";
-    if (type.kind === "enum") return true;
-    if (type.kind === "alias") return type.value.target !== undefined && isScalarRef(library, type.value.target);
-    return false;
+    return type !== undefined && isScalarType(library, type);
 };
 
 export const isCellInout = (library: Library, parameter: GirParameter): boolean =>
@@ -145,6 +154,22 @@ export const renderParamDescriptor = (
     });
 };
 
+const findUserDataIndex = (parameters: GirParameter[]): number | undefined => {
+    let userDataIndex: number | undefined;
+    parameters.forEach((parameter, index) => {
+        if (parameter.name === "user_data" || parameter.name === "data") userDataIndex = index;
+    });
+    return userDataIndex;
+};
+
+const callbackOptionsArg = (owningParameter: GirParameter, userDataIndex: number | undefined): string | undefined => {
+    const options: string[] = [];
+    if (owningParameter.destroyIndex !== undefined) options.push("hasDestroy: true");
+    if (userDataIndex !== undefined) options.push(`userDataIndex: ${userDataIndex}`);
+    if (owningParameter.scope !== undefined) options.push(`scope: ${sourceStringLiteral(owningParameter.scope)}`);
+    return options.length > 0 ? `{ ${options.join(", ")} }` : undefined;
+};
+
 export const renderCallbackType = (
     context: ModuleContext,
     ref: TypeId | undefined,
@@ -156,19 +181,11 @@ export const renderCallbackType = (
     const argTypes = callback.parameters.map(
         (parameter, index) => argOverrides?.get(index) ?? renderParamDescriptor(context, parameter, parameter.type),
     );
-    let userDataIndex: number | undefined;
-    callback.parameters.forEach((parameter, index) => {
-        if (parameter.name === "user_data" || parameter.name === "data") userDataIndex = index;
-    });
     const returnRef = callback.returnValue.type;
     const returnType = isVoidRef(context.library, returnRef)
         ? tVoid
         : renderDescriptor(context, returnRef, callback.returnValue.transferOwnership);
-    const options: string[] = [];
-    if (owningParameter.destroyIndex !== undefined) options.push("hasDestroy: true");
-    if (userDataIndex !== undefined) options.push(`userDataIndex: ${userDataIndex}`);
-    if (owningParameter.scope !== undefined) options.push(`scope: ${sourceStringLiteral(owningParameter.scope)}`);
-    const optionsArg = options.length > 0 ? `{ ${options.join(", ")} }` : undefined;
+    const optionsArg = callbackOptionsArg(owningParameter, findUserDataIndex(callback.parameters));
     return tCallback(argTypes, returnType, optionsArg);
 };
 
@@ -243,22 +260,33 @@ const fundamentalOf = (node: Extract<EntityType, { kind: "class" | "interface" }
     };
 };
 
+const walkFundamental = (
+    context: ModuleContext,
+    current: GirType | undefined,
+    seen: Set<string>,
+): AncestorFundamental | undefined => {
+    if (!isClassOrInterface(current)) return undefined;
+    const key = `${current.namespace.name}.${current.value.name}`;
+    if (seen.has(key)) return undefined;
+    seen.add(key);
+    const fundamental = fundamentalOf(current);
+    if (fundamental !== undefined) return fundamental;
+    if (current.value.parent === undefined) return undefined;
+    const parent = context.library.resolveType(current.namespace.name, current.value.parent);
+    return walkFundamental(context, parent, seen);
+};
+
 const fundamentalAncestor = (
     context: ModuleContext,
     start: Extract<EntityType, { kind: "class" | "interface" }>,
-): AncestorFundamental | undefined => {
-    const seen = new Set<string>();
-    let current: GirType | undefined = start;
-    while (isClassOrInterface(current)) {
-        const key = `${current.namespace.name}.${current.value.name}`;
-        if (seen.has(key)) return undefined;
-        seen.add(key);
-        const fundamental = fundamentalOf(current);
-        if (fundamental !== undefined) return fundamental;
-        if (current.value.parent === undefined) return undefined;
-        current = context.library.resolveType(current.namespace.name, current.value.parent);
-    }
-    return undefined;
+): AncestorFundamental | undefined => walkFundamental(context, start, new Set<string>());
+
+const classSelfDescriptor = (
+    context: ModuleContext,
+    type: Extract<EntityType, { kind: "class" | "interface" }>,
+): string => {
+    const ancestor = fundamentalAncestor(context, type);
+    return ancestor === undefined ? tObject("borrowed") : renderFundamental({ ...ancestor, ownership: "borrowed" });
 };
 
 export const renderSelfDescriptor = (context: ModuleContext, instance: GirParameter): string => {
@@ -266,13 +294,8 @@ export const renderSelfDescriptor = (context: ModuleContext, instance: GirParame
     if (ref === undefined) return tObject("borrowed");
     const type = context.library.typeOf(ref);
     if (type === undefined) return tObject("borrowed");
-    if (type.kind === "class" || type.kind === "interface") {
-        const ancestor = fundamentalAncestor(context, type);
-        return ancestor === undefined ? tObject("borrowed") : renderFundamental({ ...ancestor, ownership: "borrowed" });
-    }
-    if (type.kind === "record") {
-        return recordExpression(context, type, transferOwnership(instance.transferOwnership));
-    }
+    if (isClassOrInterface(type)) return classSelfDescriptor(context, type);
+    if (type.kind === "record") return recordExpression(context, type, transferOwnership(instance.transferOwnership));
     return tObject("borrowed");
 };
 
@@ -304,6 +327,46 @@ const structExpression = (
     });
 };
 
+type FundamentalRecordOptions = {
+    resolved: Extract<EntityType, { kind: "record" }>;
+    refFunc: string;
+    unrefFunc: string;
+    ownership: Ownership;
+    wrapperClass: string | undefined;
+};
+
+const fundamentalRecordExpression = (options: FundamentalRecordOptions): string => {
+    const { resolved, refFunc, unrefFunc, ownership, wrapperClass } = options;
+    return renderFundamental({
+        lib: resolved.namespace.sharedLibrary ?? "",
+        refFunc,
+        unrefFunc,
+        typeName: resolved.value.glibTypeName,
+        ownership,
+        wrapperClass,
+    });
+};
+
+const boxedRecordExpression = (options: {
+    context: ModuleContext;
+    resolved: Extract<EntityType, { kind: "record" }>;
+    ownership: Ownership;
+    callerAllocated: boolean;
+    getTypeFnName: string;
+}): string => {
+    const { context, resolved, ownership, callerAllocated, getTypeFnName } = options;
+    const record = resolved.value;
+    const glibName = record.glibTypeName ?? record.cType ?? record.name;
+    const { size } = computeRecordFieldSlots(context, record.fields, record.isUnion);
+    return tBoxed(glibName, {
+        ownership,
+        sharedLibrary: resolved.namespace.sharedLibrary,
+        getTypeFnName,
+        callerAllocated,
+        size: size > 0 ? size : undefined,
+    });
+};
+
 const recordExpression = (
     context: ModuleContext,
     resolved: Extract<EntityType, { kind: "record" }>,
@@ -316,34 +379,26 @@ const recordExpression = (
         ? context.qualify(resolved.namespace.name, record.name)
         : undefined;
     if (refFunc !== undefined && unrefFunc !== undefined) {
-        const lib = resolved.namespace.sharedLibrary ?? "";
-        return renderFundamental({
-            lib,
-            refFunc,
-            unrefFunc,
-            typeName: record.glibTypeName,
-            ownership,
-            wrapperClass,
-        });
+        return fundamentalRecordExpression({ resolved, refFunc, unrefFunc, ownership, wrapperClass });
     }
     if (record.glibGetType === undefined) {
         return structExpression(context, resolved, ownership, callerAllocated);
     }
-    const glibName = record.glibTypeName ?? record.cType ?? record.name;
-    const { size } = computeRecordFieldSlots(context, record.fields, record.isUnion);
-    return tBoxed(glibName, {
+    return boxedRecordExpression({
+        context,
+        resolved,
         ownership,
-        sharedLibrary: resolved.namespace.sharedLibrary,
-        getTypeFnName: record.glibGetType,
         callerAllocated,
-        size: size > 0 ? size : undefined,
+        getTypeFnName: record.glibGetType,
     });
 };
+
+const rawEnumDescriptor = (signed: boolean): string => (signed ? tInt32 : tUint32);
 
 const enumExpression = (resolved: Extract<EntityType, { kind: "enum" }>): string => {
     const getter = resolved.value.glibGetType;
     const signed = resolved.value.members.some((member) => member.value.startsWith("-"));
-    if (getter === undefined || getter === "") return signed ? tInt32 : tUint32;
+    if (getter === undefined || getter === "") return rawEnumDescriptor(signed);
     const lib = resolved.namespace.sharedLibrary ?? "";
     return resolved.value.kind === "bitfield" ? tFlags(lib, getter, signed) : tEnum(lib, getter, signed);
 };
@@ -386,6 +441,12 @@ const arrayExpression = (
     return tArray(element, ownership, size);
 };
 
+const recordInlineSize = (context: ModuleContext, record: ResolvedRecord): number | undefined => {
+    if (record.opaque || record.disguised || record.fields.length === 0) return undefined;
+    const { size } = computeRecordFieldSlots(context, record.fields, record.isUnion);
+    return size > 0 ? size : undefined;
+};
+
 const inlineElementSize = (
     context: ModuleContext,
     element: TypeId | undefined,
@@ -395,10 +456,7 @@ const inlineElementSize = (
     if (elementCType?.includes("*")) return undefined;
     const type = context.library.typeOf(element);
     if (type?.kind !== "record") return undefined;
-    const record = type.value;
-    if (record.opaque || record.disguised || record.fields.length === 0) return undefined;
-    const { size } = computeRecordFieldSlots(context, record.fields, record.isUnion);
-    return size > 0 ? size : undefined;
+    return recordInlineSize(context, type.value);
 };
 
 const aliasExpression = (

@@ -64,6 +64,20 @@ type ListHooks<P extends GObject.Object, I, H> = {
 type ListEntry = { item: unknown; handle: unknown };
 type ListState = { snapshot: unknown[]; entries: ListEntry[] };
 
+const teardownList = <P extends GObject.Object, I, H>(
+    object: P,
+    entries: ListEntry[],
+    hooks: ListHooks<P, I, H>,
+): void => {
+    if (hooks.clear !== undefined) {
+        hooks.clear(object);
+        return;
+    }
+    const remove = hooks.remove;
+    if (remove === undefined) return;
+    for (const entry of entries) remove(object, entry.item as I, entry.handle as H);
+};
+
 /**
  * Builds an array-prop behavior that adds, removes, and clears its items, reapplying on structural
  * change. `add` may return a handle that the same item's later `remove` receives, for items whose
@@ -73,11 +87,7 @@ export const list = <P extends GObject.Object, I, H = void>(
     prop: string,
     hooks: ListHooks<P, I, H>,
 ): ElementBehavior => {
-    const { add, remove, clear } = hooks;
-    const teardown = (object: P, entries: ListEntry[]): void => {
-        if (clear !== undefined) clear(object);
-        else if (remove !== undefined) for (const entry of entries) remove(object, entry.item as I, entry.handle as H);
-    };
+    const { add } = hooks;
     return {
         createContext: (): ListState => ({ snapshot: [], entries: [] }),
         update: (object, _prev, next, context) => {
@@ -85,7 +95,7 @@ export const list = <P extends GObject.Object, I, H = void>(
             const raw = next[prop];
             const items = Array.isArray(raw) ? raw : [];
             if (isDeepEqual(state.snapshot, items)) return [prop];
-            teardown(object as P, state.entries);
+            teardownList(object as P, state.entries, hooks);
             state.entries = items.map((item) => ({ item, handle: add?.(object as P, item as I) }));
             state.snapshot = structuredClone(items);
             return [prop];
@@ -94,6 +104,19 @@ export const list = <P extends GObject.Object, I, H = void>(
 };
 
 type DeferredState = { desired: unknown; present: boolean; applied: unknown };
+
+const flushDeferred = <P extends GObject.Object, V>(
+    object: GObject.Object,
+    context: unknown,
+    prop: string,
+    canApply: ((object: P, value: V) => boolean) | undefined,
+): void => {
+    const state = context as DeferredState;
+    if (!state.present || Object.is(state.applied, state.desired)) return;
+    if (canApply !== undefined && !canApply(object as P, state.desired as V)) return;
+    Reflect.set(object, prop, state.desired);
+    state.applied = state.desired;
+};
 
 /** Builds a behavior for a prop applied after the surrounding commit, deferred until `canApply` returns true. */
 export const deferred = <P extends GObject.Object, V>(
@@ -108,13 +131,7 @@ export const deferred = <P extends GObject.Object, V>(
         state.present = next[prop] !== undefined;
         return [prop];
     },
-    flush: (object, context) => {
-        const state = context as DeferredState;
-        if (!state.present || Object.is(state.applied, state.desired)) return;
-        if (canApply !== undefined && !canApply(object as P, state.desired as V)) return;
-        Reflect.set(object, prop, state.desired);
-        state.applied = state.desired;
-    },
+    flush: (object, context) => flushDeferred(object, context, prop, canApply),
 });
 
 /** Builds a behavior for a text prop kept in controlled-input sync: set when provided, never reset. */

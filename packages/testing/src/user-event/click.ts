@@ -9,19 +9,18 @@ const pressPointOf = (widget: Gtk.Widget): { x: number; y: number } => {
     return { x: 0, y: 0 };
 };
 
-export const emitPress = (widget: Gtk.Widget, controllers: Gtk.GestureClick[], nPress: number): void => {
+const emitGesture = (widget: Gtk.Widget, controllers: Gtk.GestureClick[], nPress: number, signal: string): void => {
     const { x, y } = pressPointOf(widget);
     for (const controller of controllers) {
-        controller.emit("pressed", nPress, x, y);
+        controller.emit(signal, nPress, x, y);
     }
 };
 
-export const emitRelease = (widget: Gtk.Widget, controllers: Gtk.GestureClick[], nPress: number): void => {
-    const { x, y } = pressPointOf(widget);
-    for (const controller of controllers) {
-        controller.emit("released", nPress, x, y);
-    }
-};
+export const emitPress = (widget: Gtk.Widget, controllers: Gtk.GestureClick[], nPress: number): void =>
+    emitGesture(widget, controllers, nPress, "pressed");
+
+export const emitRelease = (widget: Gtk.Widget, controllers: Gtk.GestureClick[], nPress: number): void =>
+    emitGesture(widget, controllers, nPress, "released");
 
 const emitClickSequence = (widget: Gtk.Widget, target: Gtk.Widget, nPress: number): Promise<void> =>
     wrapEvent(widget, () => {
@@ -44,6 +43,15 @@ const findClickableAncestor = (widget: Gtk.Widget): Gtk.Widget | null => {
     return null;
 };
 
+const tryActivate = async (widget: Gtk.Widget): Promise<boolean> => {
+    if (widget.getAccessibleRole() === Gtk.AccessibleRole.LABEL) return false;
+    let activated = false;
+    await wrapEvent(widget, () => {
+        activated = widget.activate();
+    });
+    return activated;
+};
+
 export const click = async (widget: Gtk.Widget): Promise<void> => {
     if (widget instanceof Gtk.Button) {
         await emitClickSequence(widget, widget, 1);
@@ -55,13 +63,7 @@ export const click = async (widget: Gtk.Widget): Promise<void> => {
         });
         return;
     }
-    if (widget.getAccessibleRole() !== Gtk.AccessibleRole.LABEL) {
-        let activated = false;
-        await wrapEvent(widget, () => {
-            activated = widget.activate();
-        });
-        if (activated) return;
-    }
+    if (await tryActivate(widget)) return;
     const target = findClickableAncestor(widget);
     if (target) await emitClickSequence(widget, target, 1);
 };

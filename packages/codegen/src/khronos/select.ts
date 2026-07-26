@@ -35,6 +35,11 @@ const applyRequires = (
     }
 };
 
+const removeBlock = (block: GlInterfaceBlock, commands: Map<string, string>, enums: Map<string, string>): void => {
+    for (const name of block.commands) commands.delete(name);
+    for (const name of block.enums) enums.delete(name);
+};
+
 const applyRemoves = (
     feature: GlFeature,
     selection: GlSelection,
@@ -43,8 +48,7 @@ const applyRemoves = (
 ): void => {
     for (const block of feature.removes) {
         if (!blockApplies(block, selection)) continue;
-        for (const name of block.commands) commands.delete(name);
-        for (const name of block.enums) enums.delete(name);
+        removeBlock(block, commands, enums);
     }
 };
 

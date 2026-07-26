@@ -88,16 +88,15 @@ export class AppRouter extends EventEmitter<AppRouterEventMap> {
         });
     }
 
-    async sendToApp<T>(applicationId: string | undefined, method: string, params?: unknown): Promise<T> {
+    private resolveTargetApp(applicationId: string | undefined): RegisteredApp {
         const app = applicationId ? this.apps.get(applicationId) : this.getDefaultApp();
+        if (app) return app;
+        if (applicationId) throw appNotFoundError(applicationId);
+        throw noAppConnectedError();
+    }
 
-        if (!app) {
-            if (applicationId) {
-                throw appNotFoundError(applicationId);
-            }
-            throw noAppConnectedError();
-        }
-
+    async sendToApp<T>(applicationId: string | undefined, method: string, params?: unknown): Promise<T> {
+        const app = this.resolveTargetApp(applicationId);
         try {
             return await app.connection.send<T>(method, params, this.requestTimeout);
         } catch (error) {

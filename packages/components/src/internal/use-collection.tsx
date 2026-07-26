@@ -58,20 +58,31 @@ const selectedIdsOf = (selection: Gtk.SelectionModel, model: CollectionModel): s
     return ids;
 };
 
+const applySingleSelection = (selection: Gtk.SingleSelection, positions: number[]): void => {
+    const [first] = positions;
+    if (first === undefined) selection.unselectAll();
+    else selection.selectItem(first, true);
+};
+
+const applyMultiSelection = (selection: Gtk.SelectionModel, positions: number[]): void => {
+    const selected = Gtk.Bitset.newEmpty();
+    for (const position of positions) selected.add(position);
+    selection.setSelection(selected, Gtk.Bitset.newRange(0, selection.getNItems()));
+};
+
 const applySelection = (selection: Gtk.SelectionModel, model: CollectionModel, ids: string[]): void => {
     if (selection instanceof Gtk.NoSelection) return;
     const positions = model.positionsOf(ids);
     if (ids.length > 0 && positions.length === 0) return;
     if (selection instanceof Gtk.SingleSelection) {
-        const [first] = positions;
-        if (first === undefined) selection.unselectAll();
-        else selection.selectItem(first, true);
+        applySingleSelection(selection, positions);
         return;
     }
-    const selected = Gtk.Bitset.newEmpty();
-    for (const position of positions) selected.add(position);
-    selection.setSelection(selected, Gtk.Bitset.newRange(0, selection.getNItems()));
+    applyMultiSelection(selection, positions);
 };
+
+const rowId = (model: CollectionModel, holder: GObject.Object | null): string | null =>
+    holder === null ? null : (model.entryOf(holder)?.id ?? null);
 
 const eachRow = (
     tree: Gtk.TreeListModel,
@@ -81,8 +92,7 @@ const eachRow = (
     for (let position = 0; position < tree.getNItems(); position++) {
         const row = tree.getRow(position);
         if (row === null) continue;
-        const holder: GObject.Object | null = row.getItem();
-        visit(row, holder === null ? null : (model.entryOf(holder)?.id ?? null));
+        visit(row, rowId(model, row.getItem()));
     }
 };
 

@@ -149,16 +149,27 @@ const detectPackageManager = async (cwd: string): Promise<PackageManager | undef
     return isKnownPackageManager(detected.name) ? detected.name : undefined;
 };
 
+const packageManagerHint = (
+    manager: (typeof PACKAGE_MANAGERS)[number],
+    detected: PackageManager | undefined,
+): string | undefined => {
+    if (detected === manager.value) return "detected";
+    if (manager.recommended) return "recommended";
+    return undefined;
+};
+
+const packageManagerOption = (manager: (typeof PACKAGE_MANAGERS)[number], detected: PackageManager | undefined) => {
+    const hint = packageManagerHint(manager, detected);
+    return { value: manager.value, label: manager.label, ...(hint === undefined ? {} : { hint }) };
+};
+
 const promptPackageManager = async (): Promise<PackageManager> => {
     const detected = await detectPackageManager(process.cwd()).catch(() => undefined);
     const initial: PackageManager = detected ?? "pnpm";
     return guardCancellation(
         await p.select<PackageManager>({
             message: "Package manager",
-            options: PACKAGE_MANAGERS.map((manager) => {
-                const hint = detected === manager.value ? "detected" : manager.recommended ? "recommended" : undefined;
-                return { value: manager.value, label: manager.label, ...(hint === undefined ? {} : { hint }) };
-            }),
+            options: PACKAGE_MANAGERS.map((manager) => packageManagerOption(manager, detected)),
             initialValue: initial,
         }),
     );
@@ -219,28 +230,37 @@ const resolveTarget = async (options: CreateOptions): Promise<string> => {
     return formatTargetDir(await promptTarget());
 };
 
+const resolveApplicationId = async (options: CreateOptions, name: string): Promise<string> => {
+    if (options.applicationId !== undefined) return options.applicationId;
+    return options.interactive ? promptApplicationId(name) : suggestApplicationId(name);
+};
+
+const resolvePackageManager = async (options: CreateOptions): Promise<PackageManager> => {
+    if (options.packageManager !== undefined) return options.packageManager;
+    if (options.interactive) return promptPackageManager();
+    return (await detectPackageManager(process.cwd()).catch(() => undefined)) ?? "pnpm";
+};
+
+const resolveTypeScript = async (options: CreateOptions): Promise<boolean> => {
+    if (options.typescript !== undefined) return options.typescript;
+    return options.interactive ? promptTypeScript() : true;
+};
+
+const resolveIncludeTesting = async (options: CreateOptions): Promise<boolean> => {
+    if (options.includeTesting !== undefined) return options.includeTesting;
+    return options.interactive ? promptTesting() : true;
+};
+
 const resolveOptions = async (options: CreateOptions): Promise<ResolvedOptions> => {
     const target = await resolveTarget(options);
     const name = deriveProjectName(target);
-
-    const applicationId =
-        options.applicationId ?? (options.interactive ? await promptApplicationId(name) : suggestApplicationId(name));
-
+    const applicationId = await resolveApplicationId(options, name);
     validateResolvedOptions(name, applicationId);
-
     const root = resolve(process.cwd(), target);
     await handleTargetDirectory(root, target, options);
-
-    const packageManager =
-        options.packageManager ??
-        (options.interactive
-            ? await promptPackageManager()
-            : ((await detectPackageManager(process.cwd()).catch(() => undefined)) ?? "pnpm"));
-
-    const typescript = options.typescript ?? (options.interactive ? await promptTypeScript() : true);
-
-    const includeTesting = options.includeTesting ?? (options.interactive ? await promptTesting() : true);
-
+    const packageManager = await resolvePackageManager(options);
+    const typescript = await resolveTypeScript(options);
+    const includeTesting = await resolveIncludeTesting(options);
     return { target, name, applicationId, packageManager, typescript, includeTesting };
 };
 

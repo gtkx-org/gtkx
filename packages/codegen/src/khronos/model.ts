@@ -91,37 +91,50 @@ const parseCommand = (node: OrderedNode): GlCommand | undefined => {
     };
 };
 
+const parseEnum = (child: OrderedNode): GlEnum | undefined => {
+    if (nodeTag(child) !== "enum") return undefined;
+    const name = nodeAttr(child, "name");
+    const value = nodeAttr(child, "value");
+    if (name === undefined || value === undefined) return undefined;
+    const group = nodeAttr(child, "group");
+    return {
+        name,
+        value,
+        groups: group === undefined ? [] : group.split(",").map((part) => part.trim()),
+    };
+};
+
 const parseEnums = (node: OrderedNode, into: GlEnum[]): void => {
     for (const child of nodeChildren(node)) {
-        if (nodeTag(child) !== "enum") continue;
-        const name = nodeAttr(child, "name");
-        const value = nodeAttr(child, "value");
-        if (name === undefined || value === undefined) continue;
-        const group = nodeAttr(child, "group");
-        into.push({
-            name,
-            value,
-            groups: group === undefined ? [] : group.split(",").map((part) => part.trim()),
-        });
+        const parsed = parseEnum(child);
+        if (parsed !== undefined) into.push(parsed);
     }
+};
+
+const collectInterfaceMember = (child: OrderedNode, commands: string[], enums: string[]): void => {
+    const name = nodeAttr(child, "name");
+    if (name === undefined) return;
+    const tag = nodeTag(child);
+    if (tag === "command") commands.push(name);
+    else if (tag === "enum") enums.push(name);
 };
 
 const parseInterfaceBlock = (node: OrderedNode): GlInterfaceBlock => {
     const commands: string[] = [];
     const enums: string[] = [];
-    for (const child of nodeChildren(node)) {
-        const name = nodeAttr(child, "name");
-        if (name === undefined) continue;
-        const tag = nodeTag(child);
-        if (tag === "command") commands.push(name);
-        else if (tag === "enum") enums.push(name);
-    }
+    for (const child of nodeChildren(node)) collectInterfaceMember(child, commands, enums);
     const profile = nodeAttr(node, "profile");
     return {
         ...(profile !== undefined ? { profile } : {}),
         commands,
         enums,
     };
+};
+
+const collectFeatureBlock = (child: OrderedNode, requires: GlInterfaceBlock[], removes: GlInterfaceBlock[]): void => {
+    const tag = nodeTag(child);
+    if (tag === "require") requires.push(parseInterfaceBlock(child));
+    else if (tag === "remove") removes.push(parseInterfaceBlock(child));
 };
 
 const parseFeature = (node: OrderedNode): GlFeature | undefined => {
@@ -131,36 +144,37 @@ const parseFeature = (node: OrderedNode): GlFeature | undefined => {
     if (api === undefined || name === undefined || number === undefined) return undefined;
     const requires: GlInterfaceBlock[] = [];
     const removes: GlInterfaceBlock[] = [];
-    for (const child of nodeChildren(node)) {
-        const tag = nodeTag(child);
-        if (tag === "require") requires.push(parseInterfaceBlock(child));
-        else if (tag === "remove") removes.push(parseInterfaceBlock(child));
-    }
+    for (const child of nodeChildren(node)) collectFeatureBlock(child, requires, removes);
     return { api, name, number: Number.parseFloat(number), requires, removes };
 };
 
+const addCommand = (child: OrderedNode, into: Map<string, GlCommand>): void => {
+    if (nodeTag(child) !== "command") return;
+    const command = parseCommand(child);
+    if (command !== undefined && command.name.length > 0) into.set(command.name, command);
+};
+
 const parseCommandsSection = (section: OrderedNode, into: Map<string, GlCommand>): void => {
-    for (const child of nodeChildren(section)) {
-        if (nodeTag(child) !== "command") continue;
-        const command = parseCommand(child);
-        if (command !== undefined && command.name.length > 0) into.set(command.name, command);
+    for (const child of nodeChildren(section)) addCommand(child, into);
+};
+
+const parseSection = (section: OrderedNode, registry: GlRegistry): void => {
+    const tag = nodeTag(section);
+    if (tag === "commands") {
+        parseCommandsSection(section, registry.commands);
+        return;
     }
+    if (tag === "enums") {
+        parseEnums(section, registry.enums);
+        return;
+    }
+    if (tag !== "feature") return;
+    const feature = parseFeature(section);
+    if (feature !== undefined) registry.features.push(feature);
 };
 
 export const loadGlRegistry = (path: string): GlRegistry => {
-    const commands = new Map<string, GlCommand>();
-    const enums: GlEnum[] = [];
-    const features: GlFeature[] = [];
-    for (const section of parseRegistryFile(path)) {
-        const tag = nodeTag(section);
-        if (tag === "commands") {
-            parseCommandsSection(section, commands);
-        } else if (tag === "enums") {
-            parseEnums(section, enums);
-        } else if (tag === "feature") {
-            const feature = parseFeature(section);
-            if (feature !== undefined) features.push(feature);
-        }
-    }
-    return { commands, enums, features };
+    const registry: GlRegistry = { commands: new Map<string, GlCommand>(), enums: [], features: [] };
+    for (const section of parseRegistryFile(path)) parseSection(section, registry);
+    return registry;
 };

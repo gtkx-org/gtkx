@@ -64,16 +64,20 @@ const attachToProp = (parent: PropNode, child: AnyNode, before: AnyNode | null):
     placeChild(owner, parent.slot, placeable, asPlaceable(before));
 };
 
+const placeLazy = (owner: ElementNode, node: LazyNode, hasObject: boolean): void => {
+    if (hasObject) placeChild(owner, DEFAULT_SLOT, node, null);
+};
+
 const syncLazy = (node: LazyNode): void => {
     const owner = node.parent;
     if (owner === null) return;
     const entry = owner.placements.get(DEFAULT_SLOT)?.find((entry) => entry.node === node);
     const object = nodeObject(node);
     if (entry === undefined) {
-        if (object !== null) placeChild(owner, DEFAULT_SLOT, node, null);
+        placeLazy(owner, node, object !== null);
     } else if (entry.object !== object) {
         unplaceChild(owner, DEFAULT_SLOT, node);
-        if (object !== null) placeChild(owner, DEFAULT_SLOT, node, null);
+        placeLazy(owner, node, object !== null);
     }
 };
 
@@ -88,14 +92,19 @@ export const attachChild = (parent: ParentNode, child: AnyNode, before: AnyNode 
     else attachToLazy(parent, child, before);
 };
 
+const removeContentChild = (parent: ElementNode, child: AnyNode): void => {
+    if (child.kind === TEXT_KIND || child.kind === ELEMENT_KIND) removeContent(parent, child);
+};
+
+const unplaceChildNode = (parent: ElementNode, child: AnyNode): void => {
+    const placeable = asPlaceable(child);
+    if (placeable !== null) unplaceChild(parent, DEFAULT_SLOT, placeable);
+};
+
 const detachFromElement = (parent: ElementNode, child: AnyNode): void => {
-    if (child.kind === PROP_KIND) {
-        detachPropFromElement(parent, child);
-    } else if (parent.contentKind !== null) {
-        if (child.kind === TEXT_KIND || child.kind === ELEMENT_KIND) removeContent(parent, child);
-    } else if (child.kind === ELEMENT_KIND || child.kind === LAZY_KIND) {
-        unplaceChild(parent, DEFAULT_SLOT, child);
-    }
+    if (child.kind === PROP_KIND) detachPropFromElement(parent, child);
+    else if (parent.contentKind !== null) removeContentChild(parent, child);
+    else unplaceChildNode(parent, child);
 };
 
 const detachFromProp = (parent: PropNode, child: AnyNode): void => {

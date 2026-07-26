@@ -22,15 +22,18 @@ export const inParamDocLine = (command: GlCommand, arg: InArg): string => {
     return ` * @param ${arg.name} - ${notes.join(", ")}`;
 };
 
+const outMember = (command: GlCommand, out: OutArg): string => {
+    const param = command.params[out.paramIndex];
+    if (param === undefined) {
+        throw new Error(`Output parameter index ${out.paramIndex} out of range on ${command.name}`);
+    }
+    return `\`${param.name}\` (\`${param.cType}\`)`;
+};
+
 const returnsDocLine = (command: GlCommand, returnPlan: ReturnPlan, outs: OutArg[]): string | undefined => {
     const members: string[] = [];
     if (returnPlan.kind !== "void") members.push(`\`${command.returnCType}\``);
-    for (const out of outs) {
-        const param = command.params[out.paramIndex];
-        if (param === undefined)
-            throw new Error(`Output parameter index ${out.paramIndex} out of range on ${command.name}`);
-        members.push(`\`${param.name}\` (\`${param.cType}\`)`);
-    }
+    for (const out of outs) members.push(outMember(command, out));
     if (members.length === 0) return undefined;
     if (members.length === 1) return ` * @returns ${members[0]}`;
     return ` * @returns Tuple of ${members.join(", ")}`;

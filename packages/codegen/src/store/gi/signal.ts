@@ -184,14 +184,51 @@ const renderSignalEmitEntry = (context: ModuleContext, signal: GirSignal): strin
     return `{ args: [${args.join(", ")}]; result: ${result} }`;
 };
 
+const nonVarargParameters = (signal: GirSignal): GirParameter[] =>
+    signal.parameters.filter((parameter) => !parameter.isVarargs);
+
 const renderConnectCase = (context: ModuleContext, signal: GirSignal): string => {
     const callback = renderCallback(context, signal);
     const body = `return connectSignal(this, signal, { callback: ${callback}, handler, after: after ?? false });`;
     return renderBlock(`case ${sourceStringLiteral(signal.name)}:`, body);
 };
 
+type EmitArgOptions = {
+    context: ModuleContext;
+    parameter: GirParameter;
+    descriptor: string;
+    argIndex: number;
+};
+
+const renderEmitArgLiteral = (options: EmitArgOptions): { literal: string; nextArgIndex: number } => {
+    const { context, parameter, descriptor, argIndex } = options;
+    if (isOutParameter(parameter)) {
+        return { literal: `{ type: ${descriptor}, direction: "out" }`, nextArgIndex: argIndex };
+    }
+    if (isCellInout(context.library, parameter)) {
+        return {
+            literal: `{ type: ${descriptor}, direction: "inout", value: args[${argIndex}] }`,
+            nextArgIndex: argIndex + 1,
+        };
+    }
+    if (isCallerAllocatedOut(parameter)) {
+        const value = renderCallerOutAllocation(context, parameter);
+        return {
+            literal: `{ type: ${descriptor}, direction: "out", callerAllocated: true, value: ${value} }`,
+            nextArgIndex: argIndex,
+        };
+    }
+    if (isRecordInout(context, parameter)) {
+        return {
+            literal: `{ type: ${descriptor}, direction: "inout", callerAllocated: true, value: args[${argIndex}] }`,
+            nextArgIndex: argIndex + 1,
+        };
+    }
+    return { literal: `{ type: ${descriptor}, value: args[${argIndex}] }`, nextArgIndex: argIndex + 1 };
+};
+
 const renderEmitCase = (context: ModuleContext, signal: GirSignal): string => {
-    const params = signal.parameters.filter((parameter) => !parameter.isVarargs);
+    const params = nonVarargParameters(signal);
     if (params.some((parameter) => isCallerAllocatedOut(parameter) && !isRecordCallerOut(context, parameter))) {
         return renderUnsupportedEmitCase(signal);
     }
@@ -200,19 +237,9 @@ const renderEmitCase = (context: ModuleContext, signal: GirSignal): string => {
     let argIndex = 0;
     const argLiterals = params.map((parameter) => {
         const descriptor = renderDescriptor(context, parameter.type, parameter.transferOwnership);
-        if (isOutParameter(parameter)) {
-            return `{ type: ${descriptor}, direction: "out" }`;
-        }
-        if (isCellInout(context.library, parameter)) {
-            return `{ type: ${descriptor}, direction: "inout", value: args[${argIndex++}] }`;
-        }
-        if (isCallerAllocatedOut(parameter)) {
-            return `{ type: ${descriptor}, direction: "out", callerAllocated: true, value: ${renderCallerOutAllocation(context, parameter)} }`;
-        }
-        if (isRecordInout(context, parameter)) {
-            return `{ type: ${descriptor}, direction: "inout", callerAllocated: true, value: args[${argIndex++}] }`;
-        }
-        return `{ type: ${descriptor}, value: args[${argIndex++}] }`;
+        const rendered = renderEmitArgLiteral({ context, parameter, descriptor, argIndex });
+        argIndex = rendered.nextArgIndex;
+        return rendered.literal;
     });
 
     const isVoid = omitsPrimaryReturn(context.library, signal.returnValue);
@@ -241,7 +268,7 @@ const renderCallerOutAllocation = (context: ModuleContext, parameter: GirParamet
 };
 
 const renderCallback = (context: ModuleContext, signal: GirSignal): string => {
-    const params = signal.parameters.filter((parameter) => !parameter.isVarargs);
+    const params = nonVarargParameters(signal);
     const callbackParamDescriptors = params.map((parameter) =>
         renderParamDescriptor(context, parameter, parameter.type),
     );
@@ -251,6 +278,18 @@ const renderCallback = (context: ModuleContext, signal: GirSignal): string => {
         : renderDescriptor(context, signal.returnValue.type, signal.returnValue.transferOwnership);
     const callbackArgs = [tObject("borrowed"), ...callbackParamDescriptors, tVoid];
     return tCallback(callbackArgs, returnDescriptor, `{ hasDestroy: true, userDataIndex: ${params.length + 1} }`);
+};
+
+const forEachInterfaceSignal = (
+    context: ModuleContext,
+    klass: GirClass,
+    consider: (signal: GirSignal) => void,
+): void => {
+    for (const implementName of klass.implements) {
+        const iface = resolveImplementedInterface(context, implementName);
+        if (iface === undefined) continue;
+        for (const signal of iface.klass.signals) consider(signal);
+    }
 };
 
 const collectClassSignals = (context: ModuleContext, klass: GirClass): GirSignal[] => {
@@ -264,15 +303,15 @@ const collectClassSignals = (context: ModuleContext, klass: GirClass): GirSignal
         result.push(signal);
     };
     for (const signal of klass.signals) consider(signal);
-    for (const implementName of klass.implements) {
-        const iface = resolveImplementedInterface(context, implementName);
-        if (iface === undefined) continue;
-        for (const signal of iface.klass.signals) consider(signal);
-    }
+    forEachInterfaceSignal(context, klass, consider);
     return result;
 };
 
 type NamedMember = { name: string };
+
+const addMemberNames = (target: Set<string>, source: GirClass, select: (source: GirClass) => NamedMember[]): void => {
+    for (const member of select(source)) target.add(camelCase(member.name));
+};
 
 const collectInheritedMemberNames = (
     context: ModuleContext,
@@ -281,10 +320,8 @@ const collectInheritedMemberNames = (
 ): Set<string> => {
     const names = new Set<string>();
     forEachAncestor(context, klass, (ancestor, interfaces) => {
-        for (const member of select(ancestor.klass)) names.add(camelCase(member.name));
-        for (const iface of interfaces) {
-            for (const member of select(iface.klass)) names.add(camelCase(member.name));
-        }
+        addMemberNames(names, ancestor.klass, select);
+        for (const iface of interfaces) addMemberNames(names, iface.klass, select);
     });
     return names;
 };

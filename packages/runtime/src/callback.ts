@@ -1,5 +1,5 @@
 import { copy, type Descriptor } from "@gtkx/native";
-import type { CallbackDescriptor } from "./descriptors.js";
+import type { CallbackDescriptor, RefDescriptor } from "./descriptors.js";
 import { fromNative, toNative } from "./native-value.js";
 import { getHandle } from "./registry.js";
 import { splitTupleResult } from "./tuple.js";
@@ -30,6 +30,16 @@ const fillCallerAllocatedBuffer = (descriptor: Descriptor, target: object, sourc
 const isCallerAllocatedOut = (descriptor: Descriptor): boolean =>
     (descriptor.kind === "boxed" || descriptor.kind === "struct") && descriptor.callerAllocated === true;
 
+const collectRefArg = (
+    descriptor: RefDescriptor,
+    wrappedValue: unknown,
+    inputs: unknown[],
+    outParams: OutParam[],
+): void => {
+    if (descriptor.inout === true) inputs.push((wrappedValue as { value: unknown }).value);
+    outParams.push({ value: wrappedValue, descriptor });
+};
+
 const collectCallbackArg = (
     descriptor: Descriptor | undefined,
     wrappedValue: unknown,
@@ -37,8 +47,7 @@ const collectCallbackArg = (
     outParams: OutParam[],
 ): void => {
     if (descriptor !== undefined && descriptor.kind === "ref") {
-        if (descriptor.inout === true) inputs.push((wrappedValue as { value: unknown }).value);
-        outParams.push({ value: wrappedValue, descriptor });
+        collectRefArg(descriptor, wrappedValue, inputs, outParams);
         return;
     }
     inputs.push(wrappedValue);

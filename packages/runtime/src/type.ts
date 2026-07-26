@@ -1,6 +1,7 @@
 import { type Descriptor, resolveType as nativeResolveType } from "@gtkx/native";
 import { bind } from "./bind.js";
 import {
+    type ArrayDescriptor,
     type BoxedDescriptor,
     biguint64T,
     booleanT,
@@ -157,6 +158,11 @@ export const resolveFundamentalType = (descriptor: FundamentalDescriptor): bigin
     throw new Error(`Cannot resolve gtype for fundamental type without a typeName`);
 };
 
+function resolveArrayType(descriptor: ArrayDescriptor): bigint {
+    if (descriptor.itemDescriptor.kind === "string" && descriptor.arrayKind === "array") return getStrvType();
+    throw new Error(`Unsupported array type ${descriptor.arrayKind} of ${descriptor.itemDescriptor.kind}`);
+}
+
 export function resolveDescriptorType(descriptor: Descriptor): bigint {
     if (descriptor.kind === "biguint64" && "type" in descriptor) return TYPE_GTYPE;
     switch (descriptor.kind) {
@@ -192,8 +198,7 @@ export function resolveDescriptorType(descriptor: Descriptor): bigint {
         case "fundamental":
             return resolveFundamentalType(descriptor);
         case "array":
-            if (descriptor.itemDescriptor.kind === "string" && descriptor.arrayKind === "array") return getStrvType();
-            throw new Error(`Unsupported array type ${descriptor.arrayKind} of ${descriptor.itemDescriptor.kind}`);
+            return resolveArrayType(descriptor);
         default:
             throw new Error(`Unsupported type descriptor '${descriptor.kind}'`);
     }

@@ -32,21 +32,23 @@ export function createModuleRegistration(moduleId: string): {
  * @param moduleExports The module's export object to inspect.
  * @returns `true` when the module qualifies as a refresh boundary, `false` otherwise.
  */
+const isComponentExport = (key: string, value: unknown): boolean =>
+    key === "__esModule" || RefreshRuntime.isLikelyComponentType(value);
+
+const everyExportIsComponent = (moduleExports: Record<string, unknown>): boolean => {
+    for (const key in moduleExports) {
+        if (!isComponentExport(key, moduleExports[key])) return false;
+    }
+    return true;
+};
+
 export function isRefreshBoundary(moduleExports: Record<string, unknown>): boolean {
     if (RefreshRuntime.isLikelyComponentType(moduleExports)) {
         return true;
     }
 
-    for (const key in moduleExports) {
-        if (key === "__esModule") {
-            continue;
-        }
-
-        const value = moduleExports[key];
-
-        if (!RefreshRuntime.isLikelyComponentType(value)) {
-            return false;
-        }
+    if (!everyExportIsComponent(moduleExports)) {
+        return false;
     }
 
     return Object.keys(moduleExports).some((k) => k !== "__esModule");

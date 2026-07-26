@@ -22,6 +22,8 @@ type TypeTable = {
     index: Map<string, number>;
 };
 
+type DiscoveredNamespace = { header: NamespaceHeader; shell: GirNamespace };
+
 export class Library {
     private namespacesByName = new Map<string, GirNamespace>();
     private namespaceById: (GirNamespace | undefined)[] = [];
@@ -90,22 +92,19 @@ export class Library {
         return id;
     }
 
-    private addType(nsId: number, name: string, type: GirType): void {
+    private resolveTypeId(nsId: number, name: string, type: GirType | undefined): number {
         const typeTable = this.typeTableOf(nsId);
         const existing = typeTable.index.get(name);
-        if (existing !== undefined) {
-            typeTable.types[existing] = type;
-            return;
-        }
-        this.insertIntoTypeTable(typeTable, { type, indexKey: name, displayName: name });
+        if (existing !== undefined) return existing;
+        return this.insertIntoTypeTable(typeTable, { type, indexKey: name, displayName: name });
+    }
+
+    private addType(nsId: number, name: string, type: GirType): void {
+        this.typeTableOf(nsId).types[this.resolveTypeId(nsId, name, type)] = type;
     }
 
     private findType(nsId: number, name: string): TypeId {
-        const typeTable = this.typeTableOf(nsId);
-        const existing = typeTable.index.get(name);
-        if (existing !== undefined) return { nsId, id: existing };
-        const id = this.insertIntoTypeTable(typeTable, { type: undefined, indexKey: name, displayName: name });
-        return { nsId, id };
+        return { nsId, id: this.resolveTypeId(nsId, name, undefined) };
     }
 
     private addAnonymousType(nsId: number, type: GirType): TypeId {
@@ -154,12 +153,21 @@ export class Library {
     }
 
     private addDeclarations(shell: GirNamespace): void {
+        this.addClassDeclarations(shell);
+        this.addValueDeclarations(shell);
+    }
+
+    private addClassDeclarations(shell: GirNamespace): void {
         const nsId = shell.id;
         for (const value of shell.classes) this.addType(nsId, value.name, { kind: "class", namespace: shell, value });
         for (const value of shell.interfaces) {
             this.addType(nsId, value.name, { kind: "interface", namespace: shell, value });
         }
         for (const value of shell.records) this.addType(nsId, value.name, { kind: "record", namespace: shell, value });
+    }
+
+    private addValueDeclarations(shell: GirNamespace): void {
+        const nsId = shell.id;
         for (const value of shell.enums) this.addType(nsId, value.name, { kind: "enum", namespace: shell, value });
         for (const value of shell.callbacks) {
             this.addType(nsId, value.name, { kind: "callback", namespace: shell, value });
@@ -191,27 +199,47 @@ export class Library {
         return this.typeTableOf(targetNsId).types[id];
     }
 
-    private static drive(library: Library, libraries: string[], girPath: string[]): void {
+    private processIdentifier(input: {
+        identifier: string;
+        girPath: string[];
+        seen: Set<string>;
+        queue: string[];
+        girFiles: string[];
+        discovered: DiscoveredNamespace[];
+    }): void {
+        const { identifier, girPath, seen, queue, girFiles, discovered } = input;
+        const namespaceName = identifier.split("-")[0] ?? identifier;
+        if (seen.has(namespaceName)) return;
+        seen.add(namespaceName);
+        const path = locateGirFile(identifier, girPath);
+        girFiles.push(path);
+        const header = parseNamespaceHeader(readRepositoryNode(path));
+        const shell = this.registerNamespace(header);
+        discovered.push({ header, shell });
+        for (const include of header.includes) {
+            queue.push(`${include.name}-${include.version}`);
+        }
+    }
+
+    private discoverNamespaces(
+        libraries: string[],
+        girPath: string[],
+    ): { discovered: DiscoveredNamespace[]; girFiles: string[] } {
         const queue: string[] = [...libraries];
         const seen = new Set<string>();
-        const discovered: { header: NamespaceHeader; shell: GirNamespace }[] = [];
+        const discovered: DiscoveredNamespace[] = [];
         const girFiles: string[] = [];
         while (queue.length > 0) {
             const identifier = queue.shift();
-            if (identifier === undefined) continue;
-            const namespaceName = identifier.split("-")[0] ?? identifier;
-            if (seen.has(namespaceName)) continue;
-            seen.add(namespaceName);
-            const path = locateGirFile(identifier, girPath);
-            girFiles.push(path);
-            const repositoryNode = readRepositoryNode(path);
-            const header = parseNamespaceHeader(repositoryNode);
-            const shell = library.registerNamespace(header);
-            discovered.push({ header, shell });
-            for (const include of header.includes) {
-                queue.push(`${include.name}-${include.version}`);
+            if (identifier !== undefined) {
+                this.processIdentifier({ identifier, girPath, seen, queue, girFiles, discovered });
             }
         }
+        return { discovered, girFiles };
+    }
+
+    private static drive(library: Library, libraries: string[], girPath: string[]): void {
+        const { discovered, girFiles } = library.discoverNamespaces(libraries, girPath);
         for (const { header, shell } of discovered) {
             populateNamespaceBody(shell, header.namespaceNode, library.parseContext(shell.id));
         }

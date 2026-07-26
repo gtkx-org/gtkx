@@ -31,6 +31,21 @@ export const removeLabel = (element: Element): void => {
 
 const classNameFor = (serialized: SerializedStyles): string => `${KEY}-${serialized.name}`;
 
+const isNonEmptyString = (token: CxToken): token is string => typeof token === "string" && token.length > 0;
+
+type TokenPartition = { rawClasses: string[]; registeredStyles: string[] };
+
+const partitionTokens = (tokens: string[], registered: RegisteredCache): TokenPartition => {
+    const rawClasses: string[] = [];
+    const registeredStyles: string[] = [];
+    for (const token of tokens) {
+        const styles = registered[token];
+        if (styles === undefined) rawClasses.push(token);
+        else registeredStyles.push(styles);
+    }
+    return { rawClasses, registeredStyles };
+};
+
 const runStylis = (sheet: StyleSheet, input: string): void => {
     stylisSerialize(
         compile(escapeNamedColors(input)),
@@ -51,17 +66,21 @@ export const createCss = (): Css => {
 
     const serialize = (args: CSSInterpolation[]): SerializedStyles => serializeStyles(args, registered);
 
-    const insertStyles = (serialized: SerializedStyles): void => {
-        if (inserted.has(serialized.name)) return;
+    const markNewStyle = (serialized: SerializedStyles): boolean => {
+        if (inserted.has(serialized.name)) return false;
         inserted.add(serialized.name);
+        return true;
+    };
+
+    const insertStyles = (serialized: SerializedStyles): void => {
+        if (!markNewStyle(serialized)) return;
         const className = classNameFor(serialized);
         runStylis(sheet, `.${className}{${serialized.styles}}`);
         registered[className] = serialized.styles;
     };
 
     const insertWithoutScoping = (serialized: SerializedStyles): void => {
-        if (inserted.has(serialized.name)) return;
-        inserted.add(serialized.name);
+        if (!markNewStyle(serialized)) return;
         runStylis(sheet, serialized.styles);
     };
 
@@ -72,21 +91,9 @@ export const createCss = (): Css => {
     };
 
     const cx = (...classNames: CxToken[]): string[] => {
-        const tokens = classNames.filter((cn): cn is string => typeof cn === "string" && cn.length > 0);
-
-        const rawClasses: string[] = [];
-        const registeredStyles: string[] = [];
-        for (const token of tokens) {
-            const styles = registered[token];
-            if (styles === undefined) {
-                rawClasses.push(token);
-            } else {
-                registeredStyles.push(styles);
-            }
-        }
-
+        const tokens = classNames.filter(isNonEmptyString);
+        const { rawClasses, registeredStyles } = partitionTokens(tokens, registered);
         if (registeredStyles.length < 2) return tokens;
-
         return [...rawClasses, css(registeredStyles.join(""))];
     };
 

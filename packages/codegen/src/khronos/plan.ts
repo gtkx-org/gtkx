@@ -99,13 +99,15 @@ const isCompsize = (len: string): boolean => len.includes("COMPSIZE(");
 
 type ParamOutcome = { plan: ParamPlan } | { reason: GlExclusionReason };
 
+const planCompsizeOut = (command: GlCommand, scalar: GlScalar, policy: GlPlanPolicy): ParamOutcome => {
+    if (policy.singleValuedQueries.has(command.name)) return { plan: { kind: "ref-out", scalar } };
+    return { reason: "compsize-output" };
+};
+
 const planPointerOut = (command: GlCommand, param: GlParam, scalar: GlScalar, policy: GlPlanPolicy): ParamOutcome => {
     const len = param.len;
     if (len === undefined || len === "1") return { plan: { kind: "ref-out", scalar } };
-    if (isCompsize(len)) {
-        if (policy.singleValuedQueries.has(command.name)) return { plan: { kind: "ref-out", scalar } };
-        return { reason: "compsize-output" };
-    }
+    if (isCompsize(len)) return planCompsizeOut(command, scalar, policy);
     if (/^\d+$/.test(len)) return { plan: { kind: "ref-fixed-out", scalar, length: Number.parseInt(len, 10) } };
     if (command.params.some((other) => other.name === len)) {
         return { plan: { kind: "ref-array-out", scalar, lenParamName: len } };
@@ -119,12 +121,18 @@ const planByteOffsetParam = (parsed: ParsedCType): ParamOutcome => {
     return { reason: "unsupported-shape" };
 };
 
+const charStringOutLen = (command: GlCommand, param: GlParam, parsed: ParsedCType): string | undefined => {
+    if (parsed.pointers !== 1) return undefined;
+    const len = param.len;
+    if (len === undefined) return undefined;
+    return command.params.some((other) => other.name === len) ? len : undefined;
+};
+
 const planCharParam = (command: GlCommand, param: GlParam, parsed: ParsedCType): ParamOutcome => {
     if (parsed.pointers === 1 && parsed.constData) return { plan: { kind: "string-in" } };
     if (parsed.pointers === 2 && parsed.constData) return { plan: { kind: "string-array-in" } };
-    if (parsed.pointers === 1 && param.len !== undefined && command.params.some((other) => other.name === param.len)) {
-        return { plan: { kind: "string-out", lenParamName: param.len } };
-    }
+    const lenParamName = charStringOutLen(command, param, parsed);
+    if (lenParamName !== undefined) return { plan: { kind: "string-out", lenParamName } };
     return { reason: "unsupported-shape" };
 };
 
@@ -154,20 +162,29 @@ const planBooleanParam = (parsed: ParsedCType): ParamOutcome => {
     return { reason: "unsupported-shape" };
 };
 
+const planCharOrBoolean = (command: GlCommand, param: GlParam, parsed: ParsedCType): ParamOutcome | undefined => {
+    if (parsed.base === GL_CHAR || parsed.base === "GLcharARB") return planCharParam(command, param, parsed);
+    if (parsed.base === GL_BOOLEAN) return planBooleanParam(parsed);
+    return undefined;
+};
+
+const planByBase = (command: GlCommand, param: GlParam, parsed: ParsedCType, policy: GlPlanPolicy): ParamOutcome => {
+    const { base, pointers } = parsed;
+    if (base === GL_SYNC && pointers === 0) return { plan: { kind: "sync" } };
+    if (base === "void") return planVoidParam(parsed);
+    return planCharOrBoolean(command, param, parsed) ?? planScalarParam(command, param, parsed, policy);
+};
+
 const planParam = (command: GlCommand, param: GlParam, policy: GlPlanPolicy): ParamOutcome => {
     const parsed = parseCType(param.cType);
-    const { base, pointers } = parsed;
+    const { base } = parsed;
     if (CALLBACK_BASES.has(base) || base.startsWith("_cl_")) {
         return { reason: "callback-parameter" };
     }
     if (policy.byteOffsetParams.has(`${command.name}:${param.name}`)) {
         return planByteOffsetParam(parsed);
     }
-    if (base === GL_SYNC && pointers === 0) return { plan: { kind: "sync" } };
-    if (base === "void") return planVoidParam(parsed);
-    if (base === GL_CHAR || base === "GLcharARB") return planCharParam(command, param, parsed);
-    if (base === GL_BOOLEAN) return planBooleanParam(parsed);
-    return planScalarParam(command, param, parsed, policy);
+    return planByBase(command, param, parsed, policy);
 };
 
 const planScalarReturn = (base: string): ReturnPlan | undefined => {

@@ -115,42 +115,70 @@ const restart = async (state: SupervisorState): Promise<void> => {
     forwardSignal(current, "SIGTERM");
 };
 
-const installConfigWatchers = (state: SupervisorState): void => {
-    const watch = state.watch;
-    if (watch === undefined || watch.paths.length === 0) return;
-    let timer: NodeJS.Timeout | null = null;
+type DebounceTimer = { handle: NodeJS.Timeout | null };
+
+const scheduleRestart = (state: SupervisorState, timer: DebounceTimer): void => {
+    if (timer.handle !== null) clearTimeout(timer.handle);
+    timer.handle = setTimeout(() => void restart(state), CONFIG_DEBOUNCE_MS);
+};
+
+const isWatchedChange = (state: SupervisorState, names: Set<string>, filename: string | Buffer | null): boolean => {
+    if (state.shuttingDown || filename === null) return false;
+    return names.has(basename(filename.toString()));
+};
+
+const groupWatchNamesByDirectory = (paths: string[]): Map<string, Set<string>> => {
     const namesByDirectory = new Map<string, Set<string>>();
-    for (const path of watch.paths) {
+    for (const path of paths) {
         const directory = dirname(path);
         const names = namesByDirectory.get(directory) ?? new Set<string>();
         names.add(basename(path));
         namesByDirectory.set(directory, names);
     }
-    for (const [directory, names] of namesByDirectory) {
-        const watcher = watchFs(directory, (_event, filename) => {
-            if (state.shuttingDown) return;
-            if (filename === null || !names.has(basename(filename.toString()))) return;
-            if (timer !== null) clearTimeout(timer);
-            timer = setTimeout(() => void restart(state), CONFIG_DEBOUNCE_MS);
-        });
-        watcher.on("error", () => {});
-        state.watchers.push(watcher);
+    return namesByDirectory;
+};
+
+const watchConfigDirectory = (
+    state: SupervisorState,
+    directory: string,
+    names: Set<string>,
+    timer: DebounceTimer,
+): void => {
+    const watcher = watchFs(directory, (_event, filename) => {
+        if (isWatchedChange(state, names, filename)) scheduleRestart(state, timer);
+    });
+    watcher.on("error", () => {});
+    state.watchers.push(watcher);
+};
+
+const installConfigWatchers = (state: SupervisorState): void => {
+    const watch = state.watch;
+    if (watch === undefined || watch.paths.length === 0) return;
+    const timer: DebounceTimer = { handle: null };
+    for (const [directory, names] of groupWatchNamesByDirectory(watch.paths)) {
+        watchConfigDirectory(state, directory, names, timer);
     }
 };
 
+const closeWatchers = (state: SupervisorState): void => {
+    for (const watcher of state.watchers) watcher.close();
+};
+
+const shutdownOnSignal = (state: SupervisorState, signal: NodeJS.Signals): Promise<void> =>
+    new Promise<void>((resolve) => {
+        state.shuttingDown = true;
+        closeWatchers(state);
+        if (!state.child) {
+            resolve();
+            return;
+        }
+        state.child.once("exit", () => resolve());
+        forwardSignal(state.child, signal);
+    });
+
 const installShutdown = (state: SupervisorState): void => {
     installGracefulShutdown({
-        onSignal: (signal) =>
-            new Promise<void>((resolve) => {
-                state.shuttingDown = true;
-                for (const watcher of state.watchers) watcher.close();
-                if (!state.child) {
-                    resolve();
-                    return;
-                }
-                state.child.once("exit", () => resolve());
-                forwardSignal(state.child, signal);
-            }),
+        onSignal: (signal) => shutdownOnSignal(state, signal),
         onForce: () => forceKillChild(state.child),
         forceKillAfterMs: FORCE_KILL_TIMEOUT_MS,
         exitCode: (signal, graceful) => state.capturedChildExit ?? (graceful ? 0 : exitCodeForSignal(signal)),

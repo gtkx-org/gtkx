@@ -11,6 +11,7 @@ import {
     tUint64,
 } from "../analysis/descriptor.js";
 import type { GlCommand } from "./model.js";
+import { paramPairAt } from "./param-pair.js";
 import type { CommandPlan, GlScalar, ParamPlan } from "./plan.js";
 
 export const scalarAliasOrGroup = (scalar: GlScalar, group: string | undefined): string =>
@@ -182,21 +183,28 @@ export const planArgs = (
     return { args, ins, outs };
 };
 
+const scalarPrefixArg = (
+    plan: CommandPlan & { ok: true },
+    index: number,
+    track: (alias: string) => string,
+): InArg | undefined => {
+    const { paramPlan, param } = paramPairAt(plan, index);
+    if (param === undefined) return undefined;
+    if (paramPlan === undefined || paramPlan.kind !== "scalar") return undefined;
+    return buildInArg(
+        { command: plan.command, index, plan: paramPlan, outIndex: 0 },
+        toCamelIdentifier(param.name),
+        track,
+    );
+};
+
 export const scalarPrefixArgs = (plan: CommandPlan & { ok: true }, usedTypes: Set<string>): InArg[] | undefined => {
     const track = trackInto(usedTypes);
     const prefix: InArg[] = [];
     for (let index = 0; index < plan.params.length - 2; index++) {
-        const paramPlan = plan.params[index];
-        const param = plan.command.params[index];
-        if (param === undefined) return undefined;
-        if (paramPlan === undefined || paramPlan.kind !== "scalar") return undefined;
-        prefix.push(
-            buildInArg(
-                { command: plan.command, index, plan: paramPlan, outIndex: 0 },
-                toCamelIdentifier(param.name),
-                track,
-            ),
-        );
+        const arg = scalarPrefixArg(plan, index, track);
+        if (arg === undefined) return undefined;
+        prefix.push(arg);
     }
     return prefix;
 };

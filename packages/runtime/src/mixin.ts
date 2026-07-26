@@ -20,6 +20,13 @@ function definedInClassChain(prototype: object, key: string): boolean {
     return false;
 }
 
+function copyLayerMember(target: AnyClass, layer: object, key: string): void {
+    if (key === "constructor") return;
+    if (definedInClassChain(target.prototype, key)) return;
+    const descriptor = Object.getOwnPropertyDescriptor(layer, key);
+    if (descriptor !== undefined) Object.defineProperty(target.prototype, key, descriptor);
+}
+
 /**
  * Copies each mixin's prototype members onto the target class prototype, skipping
  * any member already defined anywhere in the target's class chain.
@@ -29,10 +36,7 @@ function definedInClassChain(prototype: object, key: string): boolean {
  */
 function copyLayerMembers(target: AnyClass, layer: object): void {
     for (const key of Object.getOwnPropertyNames(layer)) {
-        if (key === "constructor") continue;
-        if (definedInClassChain(target.prototype, key)) continue;
-        const descriptor = Object.getOwnPropertyDescriptor(layer, key);
-        if (descriptor !== undefined) Object.defineProperty(target.prototype, key, descriptor);
+        copyLayerMember(target, layer, key);
     }
 }
 

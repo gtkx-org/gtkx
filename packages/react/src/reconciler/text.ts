@@ -12,17 +12,23 @@ const contentTextLength = (node: ContentChild): number => {
     return node.contentKind === "anchor" ? 1 : 0;
 };
 
-const offsetOf = (nodes: ContentChild[], target: TextNode, start: number): { found: boolean; offset: number } => {
+type OffsetResult = { found: boolean; offset: number };
+
+const isTagElement = (node: ContentChild): node is ElementNode =>
+    node.kind === ELEMENT_KIND && node.contentKind === "tag";
+
+const stepOffset = (node: ContentChild, target: TextNode, offset: number): OffsetResult => {
+    if (node === target) return { found: true, offset };
+    if (isTagElement(node)) return offsetOf(node.content, target, offset);
+    return { found: false, offset: offset + contentTextLength(node) };
+};
+
+const offsetOf = (nodes: ContentChild[], target: TextNode, start: number): OffsetResult => {
     let offset = start;
     for (const node of nodes) {
-        if (node === target) return { found: true, offset };
-        if (node.kind === ELEMENT_KIND && node.contentKind === "tag") {
-            const nested = offsetOf(node.content, target, offset);
-            if (nested.found) return nested;
-            offset = nested.offset;
-        } else {
-            offset += contentTextLength(node);
-        }
+        const step = stepOffset(node, target, offset);
+        if (step.found) return step;
+        offset = step.offset;
     }
     return { found: false, offset };
 };
@@ -48,12 +54,18 @@ export const textRestrictionError = (text: string): Error =>
 export const acceptsText = (host: ElementNode): boolean =>
     host.contentKind === "label" || host.contentKind === "buffer" || host.contentKind === "tag";
 
+const isRootHost = (node: ElementNode): boolean => node.contentKind === "label" || node.contentKind === "buffer";
+
+const mapElementParent = <T>(parent: ParentNode | null, map: (element: ElementNode) => T): T | null =>
+    parent !== null && parent.kind === ELEMENT_KIND ? map(parent) : null;
+
+const parentElement = (node: ElementNode): ElementNode | null => mapElementParent(node.parent, (parent) => parent);
+
 const rootHostOf = (node: ElementNode): ElementNode | null => {
     let current: ElementNode | null = node;
     while (current !== null) {
-        if (current.contentKind === "label" || current.contentKind === "buffer") return current;
-        const parent: ParentNode | null = current.parent;
-        current = parent !== null && parent.kind === ELEMENT_KIND ? parent : null;
+        if (isRootHost(current)) return current;
+        current = parentElement(current);
     }
     return null;
 };
@@ -63,10 +75,7 @@ export const markTextDirty = (host: ElementNode): void => {
     if (root !== null) dirtyHosts.add(root);
 };
 
-export const enclosingHost = (node: TextNode): ElementNode | null => {
-    const parent = node.parent;
-    return parent !== null && parent.kind === ELEMENT_KIND ? rootHostOf(parent) : null;
-};
+export const enclosingHost = (node: TextNode): ElementNode | null => mapElementParent(node.parent, rootHostOf);
 
 export const addContent = (host: ElementNode, child: ContentChild, before: ContentChild | null): void => {
     const content = host.content;
@@ -182,6 +191,18 @@ export const flushTextHosts = (): void => {
     });
 };
 
+const applyEnclosingTags = (
+    buffer: Gtk.TextBuffer,
+    node: TextNode,
+    startIter: Gtk.TextIter,
+    endIter: Gtk.TextIter,
+): void => {
+    for (const tagNode of enclosingTagNodes(node)) {
+        ensureTag(buffer.getTagTable(), tagNode);
+        if (tagNode.object instanceof Gtk.TextTag) buffer.applyTag(tagNode.object, startIter, endIter);
+    }
+};
+
 export const surgicalTextUpdate = (host: ElementNode, node: TextNode, oldText: string, newText: string): boolean => {
     const buffer = host.object;
     if (host.contentKind !== "buffer" || !(buffer instanceof Gtk.TextBuffer)) return false;
@@ -192,9 +213,6 @@ export const surgicalTextUpdate = (host: ElementNode, node: TextNode, oldText: s
     buffer.insert(buffer.getIterAtOffset(start), newText, -1);
     const startIter = buffer.getIterAtOffset(start);
     const endIter = buffer.getIterAtOffset(start + charLength(newText));
-    for (const tagNode of enclosingTagNodes(node)) {
-        ensureTag(buffer.getTagTable(), tagNode);
-        if (tagNode.object instanceof Gtk.TextTag) buffer.applyTag(tagNode.object, startIter, endIter);
-    }
+    applyEnclosingTags(buffer, node, startIter, endIter);
     return true;
 };

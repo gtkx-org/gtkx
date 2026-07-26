@@ -15,6 +15,13 @@ export interface NamedValue {
 export const valueItems = (values: string[]): Array<{ id: string; value: string }> =>
     values.map((value, index) => ({ id: String(index + 1), value }));
 
+export const firstSecondItems: Item<NamedValue>[] = [
+    { id: "1", value: { name: "First" } },
+    { id: "2", value: { name: "Second" } },
+];
+
+export const firstSecondThirdItems: Item<NamedValue>[] = [...firstSecondItems, { id: "3", value: { name: "Third" } }];
+
 export type FixtureInput<T> = string[] | Item<T>[];
 
 const toListItems = <T,>(items: FixtureInput<T>): Item<T>[] =>
@@ -22,17 +29,18 @@ const toListItems = <T,>(items: FixtureInput<T>): Item<T>[] =>
         ? (items as string[]).map((id) => ({ id, value: { name: id } as T }))
         : (items as Item<T>[]);
 
+const collectExpandableIds = <T,>(list: Item<T>[], ids: string[]): void => {
+    for (const item of list) {
+        if (item.children !== undefined && item.children.length > 0) {
+            ids.push(item.id);
+            collectExpandableIds(item.children, ids);
+        }
+    }
+};
+
 export const allExpandableIds = <T,>(items: Item<T>[]): string[] => {
     const ids: string[] = [];
-    const walk = (list: Item<T>[]): void => {
-        for (const item of list) {
-            if (item.children !== undefined && item.children.length > 0) {
-                ids.push(item.id);
-                walk(item.children);
-            }
-        }
-    };
-    walk(items);
+    collectExpandableIds(items, ids);
     return ids;
 };
 
@@ -70,6 +78,39 @@ export interface GridViewFixture<T> {
     rerender: (items: FixtureInput<T>, options?: RenderGridViewOptions<T>) => Promise<void>;
 }
 
+type ContentSizing = {
+    minContentHeight?: number | undefined;
+    maxContentHeight?: number | undefined;
+    minContentWidth?: number | undefined;
+};
+
+const withScrollWrapper = (sizing: ContentSizing, view: ReactNode): ReactNode => (
+    <ScrollWrapper
+        minContentHeight={sizing.minContentHeight}
+        maxContentHeight={sizing.maxContentHeight}
+        minContentWidth={sizing.minContentWidth}
+    >
+        {view}
+    </ScrollWrapper>
+);
+
+const wireFixture = async <W, T, O extends object>(config: {
+    ref: RefObject<W | null>;
+    draw: (data: FixtureInput<T>, opts: O) => ReactNode;
+    items: FixtureInput<T>;
+    options: O;
+    render: FixtureRender;
+}): Promise<{ ref: RefObject<W>; rerender: (items: FixtureInput<T>, options?: O) => Promise<void> }> => {
+    const { ref, draw, items, options, render } = config;
+    const { rerender } = await render(draw(items, options));
+    return {
+        ref: ref as RefObject<W>,
+        rerender: async (nextItems, nextOptions) => {
+            await rerender(draw(nextItems, { ...options, ...nextOptions }));
+        },
+    };
+};
+
 export const renderListView = async <T = NamedValue>(
     items: FixtureInput<T>,
     options: RenderListViewOptions<T> = {},
@@ -77,35 +118,24 @@ export const renderListView = async <T = NamedValue>(
 ): Promise<ListViewFixture<T>> => {
     const ref = createRef<Gtk.ListView>();
     const draw = (data: FixtureInput<T>, opts: RenderListViewOptions<T>): ReactNode => {
-        const { renderItem = renderNamed, minContentHeight, maxContentHeight, minContentWidth } = opts;
+        const { renderItem = renderNamed } = opts;
         const expandedIds = opts.expandAll ? allExpandableIds(toListItems(data)) : opts.expandedIds;
-        return (
-            <ScrollWrapper
-                minContentHeight={minContentHeight}
-                maxContentHeight={maxContentHeight}
-                minContentWidth={minContentWidth}
-            >
-                <ListView
-                    ref={ref}
-                    items={toListItems(data)}
-                    renderItem={renderItem}
-                    expandedIds={expandedIds}
-                    onExpandedChange={opts.onExpandedChange}
-                    selectedIds={opts.selected}
-                    selectionMode={opts.selectionMode}
-                    onSelectionChanged={opts.onSelectionChanged}
-                    estimatedItemHeight={opts.estimatedItemHeight}
-                />
-            </ScrollWrapper>
+        return withScrollWrapper(
+            opts,
+            <ListView
+                ref={ref}
+                items={toListItems(data)}
+                renderItem={renderItem}
+                expandedIds={expandedIds}
+                onExpandedChange={opts.onExpandedChange}
+                selectedIds={opts.selected}
+                selectionMode={opts.selectionMode}
+                onSelectionChanged={opts.onSelectionChanged}
+                estimatedItemHeight={opts.estimatedItemHeight}
+            />,
         );
     };
-    const { rerender } = await render(draw(items, options));
-    return {
-        ref: ref as RefObject<Gtk.ListView>,
-        rerender: async (nextItems, nextOptions) => {
-            await rerender(draw(nextItems, { ...options, ...nextOptions }));
-        },
-    };
+    return wireFixture({ ref, draw, items, options, render });
 };
 
 export const renderGridView = async <T = NamedValue>(
@@ -114,14 +144,15 @@ export const renderGridView = async <T = NamedValue>(
     render: FixtureRender = testingRender,
 ): Promise<GridViewFixture<T>> => {
     const ref = createRef<Gtk.GridView>();
-    const draw = (data: FixtureInput<T>, opts: RenderGridViewOptions<T>): ReactNode => {
-        const { renderItem = renderNamed, minContentHeight, maxContentHeight, minContentWidth } = opts;
-        return (
-            <ScrollWrapper
-                minContentHeight={minContentHeight}
-                maxContentHeight={maxContentHeight}
-                minContentWidth={minContentWidth}
-            >
+    return wireFixture({
+        ref,
+        items,
+        options,
+        render,
+        draw: (data, opts) => {
+            const { renderItem = renderNamed } = opts;
+            return withScrollWrapper(
+                opts,
                 <GridView
                     ref={ref}
                     items={toListItems(data)}
@@ -131,17 +162,10 @@ export const renderGridView = async <T = NamedValue>(
                     onSelectionChanged={opts.onSelectionChanged}
                     estimatedItemHeight={opts.estimatedItemHeight}
                     singleClickActivate={opts.singleClickActivate}
-                />
-            </ScrollWrapper>
-        );
-    };
-    const { rerender } = await render(draw(items, options));
-    return {
-        ref: ref as RefObject<Gtk.GridView>,
-        rerender: async (nextItems, nextOptions) => {
-            await rerender(draw(nextItems, { ...options, ...nextOptions }));
+                />,
+            );
         },
-    };
+    });
 };
 
 export type { Column } from "@gtkx/components";
@@ -174,31 +198,24 @@ export const renderColumnView = async <T = NamedValue>(
     const ref = createRef<Gtk.ColumnView>();
     const defaultColumns: Column<T>[] = [{ id: "name", title: "Name", renderCell: renderNamed }];
     const draw = (data: FixtureInput<T>, opts: RenderColumnViewOptions<T>): ReactNode => {
-        const { columns = defaultColumns, minContentHeight = 500, minContentWidth } = opts;
+        const { columns = defaultColumns } = opts;
         const expandedIds = opts.expandAll ? allExpandableIds(toListItems(data)) : opts.expandedIds;
-        return (
-            <ScrollWrapper minContentHeight={minContentHeight} minContentWidth={minContentWidth}>
-                <ColumnView
-                    ref={ref}
-                    items={toListItems(data)}
-                    columns={columns.map((column) => ({ expand: true, ...column }))}
-                    selectedIds={opts.selected}
-                    selectionMode={opts.selectionMode}
-                    onSelectionChanged={opts.onSelectionChanged}
-                    expandedIds={expandedIds}
-                    onExpandedChange={opts.onExpandedChange}
-                    sortColumn={opts.sortColumn}
-                    sortOrder={opts.sortOrder}
-                    onSortChanged={opts.onSortChanged}
-                />
-            </ScrollWrapper>
+        return withScrollWrapper(
+            { minContentHeight: opts.minContentHeight ?? 500, minContentWidth: opts.minContentWidth },
+            <ColumnView
+                ref={ref}
+                items={toListItems(data)}
+                columns={columns.map((column) => ({ expand: true, ...column }))}
+                selectedIds={opts.selected}
+                selectionMode={opts.selectionMode}
+                onSelectionChanged={opts.onSelectionChanged}
+                expandedIds={expandedIds}
+                onExpandedChange={opts.onExpandedChange}
+                sortColumn={opts.sortColumn}
+                sortOrder={opts.sortOrder}
+                onSortChanged={opts.onSortChanged}
+            />,
         );
     };
-    const { rerender } = await render(draw(items, options));
-    return {
-        ref: ref as RefObject<Gtk.ColumnView>,
-        rerender: async (nextItems, nextOptions) => {
-            await rerender(draw(nextItems, { ...options, ...nextOptions }));
-        },
-    };
+    return wireFixture({ ref, draw, items, options, render });
 };

@@ -45,6 +45,32 @@ const resolvePosition = (
     return requested >= 0 ? requested : widget.getSelected();
 };
 
+type SelectionRefs = {
+    known: { current: string | null };
+    latest: { current: DropDownRuntimeProps };
+};
+
+const updateKnownSelection = (
+    refs: SelectionRefs,
+    effectiveId: string,
+    selectedId: string | null | undefined,
+): void => {
+    const { known, latest } = refs;
+    const expectedId = selectedId ?? known.current;
+    const isNew = effectiveId !== known.current;
+    known.current = effectiveId;
+    if (expectedId !== null && effectiveId !== expectedId && isNew) {
+        latest.current.onSelectionChanged?.(effectiveId);
+    }
+};
+
+const reportKnownSelection = (refs: SelectionRefs, id: string | null): void => {
+    const { known, latest } = refs;
+    if (id === null || id === known.current) return;
+    known.current = id;
+    latest.current.onSelectionChanged?.(id);
+};
+
 const useDropDownSelection = (options: SelectionOptions): number | undefined => {
     const { widget, model, cells } = options;
     const { items, sections, selectedId } = options.props;
@@ -67,12 +93,7 @@ const useDropDownSelection = (options: SelectionOptions): number | undefined => 
                 known.current = null;
                 return;
             }
-            const expectedId = selectedId ?? known.current;
-            const isNew = effectiveId !== known.current;
-            known.current = effectiveId;
-            if (expectedId !== null && effectiveId !== expectedId && isNew) {
-                latest.current.onSelectionChanged?.(effectiveId);
-            }
+            updateKnownSelection({ known, latest }, effectiveId, selectedId);
         },
         [model, selectedId, latest],
     );
@@ -88,10 +109,7 @@ const useDropDownSelection = (options: SelectionOptions): number | undefined => 
         if (widget === null || applying.current) return;
         const position = widget.getSelected();
         setSelected(position);
-        const id = model.idAt(position);
-        if (id === null || id === known.current) return;
-        known.current = id;
-        latest.current.onSelectionChanged?.(id);
+        reportKnownSelection({ known, latest }, model.idAt(position));
     }, [widget, model, latest]);
     useSignal(widget, "notify::selected", reportSelection);
     return selected;

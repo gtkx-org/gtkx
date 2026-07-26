@@ -102,14 +102,17 @@ const normalizeDoc = (text: string): string | undefined => {
     return trimmed.length === 0 ? undefined : trimmed;
 };
 
+const firstDocValue = (raw: unknown): unknown => (Array.isArray(raw) ? raw[0] : raw);
+
+const docTextFromObject = (value: object): string | undefined => {
+    const text = (value as RawNode)["#text"];
+    return typeof text === "string" ? normalizeDoc(text) : undefined;
+};
+
 export const docOf = (node: RawNode | undefined): string | undefined => {
     if (node === undefined) return undefined;
-    const raw = node.doc;
-    const value = Array.isArray(raw) ? raw[0] : raw;
+    const value = firstDocValue(node.doc);
     if (typeof value === "string") return normalizeDoc(value);
-    if (value !== null && typeof value === "object") {
-        const text = (value as RawNode)["#text"];
-        if (typeof text === "string") return normalizeDoc(text);
-    }
-    return undefined;
+    if (value === null || typeof value !== "object") return undefined;
+    return docTextFromObject(value);
 };

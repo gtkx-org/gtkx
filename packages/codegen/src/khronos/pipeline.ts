@@ -1,6 +1,7 @@
 import { sanitizeIdentifier, sortStrings, sortStringsBy } from "@gtkx/utils";
 import { type GlEnum, loadGlRegistry } from "./model.js";
 import { renderCommandsModule, renderEnumsModule, renderTypesModule } from "./modules.js";
+import { paramPairAt } from "./param-pair.js";
 import { type CommandPlan, type GlExclusionReason, type GlPlanPolicy, type GlScalar, planCommand } from "./plan.js";
 import { deriveDeleteSingular, deriveGenSingular, type RenderedCommand, renderCommand } from "./render.js";
 import { type GlSelection, resolveEnum, selectSubset } from "./select.js";
@@ -90,25 +91,37 @@ const enumLiteral = (token: GlEnum): string | undefined => {
     return text;
 };
 
-const collectGroupAliases = (plans: (CommandPlan & { ok: true })[]): Map<string, string> => {
-    const aliases = new Map<string, string>();
-    const consider = (scalar: GlScalar, group: string | undefined): void => {
-        if (group === undefined) return;
-        if (scalar.groupBearing !== true) return;
-        const existing = aliases.get(group);
-        if (existing === "GLbitfield") return;
-        aliases.set(group, scalar.tsAlias === "GLbitfield" ? "GLbitfield" : (existing ?? "GLenum"));
-    };
-    for (const plan of plans) {
-        plan.params.forEach((paramPlan, index) => {
-            const param = plan.command.params[index];
-            if (param === undefined) return;
-            if (paramPlan.kind === "scalar" || paramPlan.kind === "array-in" || paramPlan.kind === "ref-out") {
-                consider(paramPlan.scalar, param.group);
-            }
-        });
-        if (plan.returnPlan.kind === "scalar") consider(plan.returnPlan.scalar, plan.command.returnGroup);
+const groupAliasValue = (existing: string | undefined, scalarAlias: string): string => {
+    if (scalarAlias === "GLbitfield") return "GLbitfield";
+    return existing ?? "GLenum";
+};
+
+const mergeGroupAlias = (aliases: Map<string, string>, scalar: GlScalar, group: string | undefined): void => {
+    if (group === undefined) return;
+    if (scalar.groupBearing !== true) return;
+    const existing = aliases.get(group);
+    if (existing === "GLbitfield") return;
+    aliases.set(group, groupAliasValue(existing, scalar.tsAlias));
+};
+
+const considerParamGroup = (aliases: Map<string, string>, plan: OkPlan, index: number): void => {
+    const { paramPlan, param } = paramPairAt(plan, index);
+    if (paramPlan === undefined || param === undefined) return;
+    if (paramPlan.kind === "scalar" || paramPlan.kind === "array-in" || paramPlan.kind === "ref-out") {
+        mergeGroupAlias(aliases, paramPlan.scalar, param.group);
     }
+};
+
+const collectPlanGroups = (aliases: Map<string, string>, plan: OkPlan): void => {
+    for (let index = 0; index < plan.params.length; index++) considerParamGroup(aliases, plan, index);
+    if (plan.returnPlan.kind === "scalar") {
+        mergeGroupAlias(aliases, plan.returnPlan.scalar, plan.command.returnGroup);
+    }
+};
+
+const collectGroupAliases = (plans: OkPlan[]): Map<string, string> => {
+    const aliases = new Map<string, string>();
+    for (const plan of plans) collectPlanGroups(aliases, plan);
     return aliases;
 };
 
@@ -127,6 +140,15 @@ type PlannedSelection = {
     exclusions: GlExclusion[];
 };
 
+const planSelectedCommand = (registry: ReturnType<typeof loadGlRegistry>, name: string): OkPlan | GlExclusion => {
+    const command = registry.commands.get(name);
+    if (command === undefined) throw new Error(`Selected command ${name} is not defined in the registry`);
+    if (OVERRIDE_OWNED.has(name)) return { command: name, reason: "override-owned" };
+    const plan = planCommand(command, PLAN_POLICY);
+    if (!plan.ok) return { command: name, reason: plan.reason };
+    return plan;
+};
+
 const planSelectedCommands = (
     registry: ReturnType<typeof loadGlRegistry>,
     commandNames: Map<string, string>,
@@ -135,19 +157,13 @@ const planSelectedCommands = (
     const okPlans: OkPlan[] = [];
     const planFeatures = new Map<string, string>();
     for (const [name, feature] of sortStringsBy(commandNames.entries(), ([key]) => key)) {
-        const command = registry.commands.get(name);
-        if (command === undefined) throw new Error(`Selected command ${name} is not defined in the registry`);
-        if (OVERRIDE_OWNED.has(name)) {
-            exclusions.push({ command: name, reason: "override-owned" });
-            continue;
+        const result = planSelectedCommand(registry, name);
+        if ("ok" in result) {
+            okPlans.push(result);
+            planFeatures.set(name, feature);
+        } else {
+            exclusions.push(result);
         }
-        const plan = planCommand(command, PLAN_POLICY);
-        if (!plan.ok) {
-            exclusions.push({ command: name, reason: plan.reason });
-            continue;
-        }
-        okPlans.push(plan);
-        planFeatures.set(name, feature);
     }
     return { okPlans, planFeatures, exclusions };
 };

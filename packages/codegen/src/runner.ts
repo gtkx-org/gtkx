@@ -83,11 +83,53 @@ const emitGlModules = (options: GlCodegenOptions): GlGenerationReport => {
     return report;
 };
 
-const emitStores = async (options: CodegenRunnerOptions): Promise<StoreResult> => {
-    const { gi, jsx, libraries, girPath } = options;
-    if (gi === undefined || libraries === undefined || girPath === undefined) {
-        return { regenerated: false, namespaces: 0, intrinsicElements: 0 };
-    }
+const jsxUserOptions = (
+    options: CodegenRunnerOptions,
+): {
+    reactSubexports: string[];
+    userComponents: Record<string, ModuleExport>;
+    userLazyElements: string[];
+    userProps: Record<string, ModuleExport>;
+} => ({
+    reactSubexports: options.reactSubexports ?? [],
+    userComponents: options.userComponents ?? {},
+    userLazyElements: options.userLazyElements ?? [],
+    userProps: options.userProps ?? {},
+});
+
+const emitJsxStore = async (input: {
+    options: CodegenRunnerOptions;
+    jsx: JsxStoreOptions;
+    gi: GiStoreOptions;
+    loadLibrary: () => Library;
+    giRegenerated: boolean;
+    namespaces: number;
+}): Promise<StoreResult> => {
+    const { options, jsx, gi, loadLibrary, giRegenerated, namespaces } = input;
+    const { runJsxCodegen } = await import("./jsx.js");
+    const jsxResult = await runJsxCodegen({
+        getLibrary: loadLibrary,
+        jsx,
+        giStoreDir: gi.storeDir,
+        ...jsxUserOptions(options),
+        giRegenerated,
+        force: options.force === true,
+    });
+    return {
+        regenerated: giRegenerated || jsxResult.regenerated,
+        namespaces,
+        intrinsicElements: jsxResult.intrinsicElementCount,
+    };
+};
+
+const emitStoresWithConfig = async (config: {
+    options: CodegenRunnerOptions;
+    gi: GiStoreOptions;
+    jsx: JsxStoreOptions | undefined;
+    libraries: string[];
+    girPath: string[];
+}): Promise<StoreResult> => {
+    const { options, gi, jsx, libraries, girPath } = config;
     let library: Library | undefined;
     const loadLibrary = (): Library => (library ??= Library.load(libraries, girPath));
 
@@ -95,23 +137,13 @@ const emitStores = async (options: CodegenRunnerOptions): Promise<StoreResult> =
     const namespaces = giRegenerated ? runGiCodegen(loadLibrary(), gi, libraries) : 0;
 
     if (jsx === undefined) return { regenerated: giRegenerated, namespaces, intrinsicElements: 0 };
+    return emitJsxStore({ options, jsx, gi, loadLibrary, giRegenerated, namespaces });
+};
 
-    const { runJsxCodegen } = await import("./jsx.js");
-    const jsxResult = await runJsxCodegen({
-        getLibrary: loadLibrary,
-        jsx,
-        giStoreDir: gi.storeDir,
-        reactSubexports: options.reactSubexports ?? [],
-        userComponents: options.userComponents ?? {},
-        userLazyElements: options.userLazyElements ?? [],
-        userProps: options.userProps ?? {},
-        giRegenerated,
-        force: options.force === true,
-    });
-
-    return {
-        regenerated: giRegenerated || jsxResult.regenerated,
-        namespaces,
-        intrinsicElements: jsxResult.intrinsicElementCount,
-    };
+const emitStores = async (options: CodegenRunnerOptions): Promise<StoreResult> => {
+    const { gi, jsx, libraries, girPath } = options;
+    if (gi === undefined || libraries === undefined || girPath === undefined) {
+        return { regenerated: false, namespaces: 0, intrinsicElements: 0 };
+    }
+    return emitStoresWithConfig({ options, gi, jsx, libraries, girPath });
 };

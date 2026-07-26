@@ -1,6 +1,9 @@
 import { pascalCase, sortStrings, sortStringsBy } from "@gtkx/utils";
+import type { GirClass } from "../gir/class.js";
+import type { GirFunction } from "../gir/function.js";
 import { Library } from "../gir/library.js";
 import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
+import type { GirRecord } from "../gir/record.js";
 import { dedupeCallables, isEmittableCallable } from "../store/gi/callables.js";
 import { isClassStructRecord } from "../store/gi/class-struct-record.js";
 import { namespaceFunctionExportName } from "../store/gi/function.js";
@@ -145,11 +148,8 @@ class ApiReference {
         if (namespace.sharedLibrary === undefined) return;
         const docsContext = docsSignatureContext(namespace, this.library);
         for (const fn of dedupeCallables(namespace.functions)) {
-            if (!isEmittableCallable(docsContext, fn)) continue;
-            const cIdentifier = fn.cIdentifier;
-            if (cIdentifier === undefined) continue;
-            const name = namespaceFunctionExportName(cIdentifier, fn.name, namespace.cSymbolPrefixes);
-            this.add({ kind: "function", namespace, name, doc: fn.doc, fn });
+            const entry = functionEntry(namespace, docsContext, fn);
+            if (entry !== undefined) this.add(entry);
         }
     }
 
@@ -182,19 +182,18 @@ class ApiReference {
         return undefined;
     }
 
-    lookup(query: string, kind?: ApiSymbolKind): ApiLookupResult {
-        const trimmed = query.trim();
-        if (trimmed.length === 0) return { outcome: "notFound" };
+    private lookupCandidates(trimmed: string, kind: ApiSymbolKind | undefined): SymbolEntry[] {
         const qualified = trimmed.includes(".");
         const map = qualified ? this.byQualified : this.byName;
         let candidates = map.get(trimmed.toLowerCase()) ?? [];
         if (kind !== undefined) candidates = candidates.filter((entry) => entry.kind === kind);
-        if (candidates.length > 1) {
-            const exact = candidates.filter((entry) =>
-                qualified ? `${entry.namespace.name}.${entry.name}` === trimmed : entry.name === trimmed,
-            );
-            if (exact.length > 0) candidates = exact;
-        }
+        return narrowToExactMatches(candidates, trimmed, qualified);
+    }
+
+    lookup(query: string, kind?: ApiSymbolKind): ApiLookupResult {
+        const trimmed = query.trim();
+        if (trimmed.length === 0) return { outcome: "notFound" };
+        const candidates = this.lookupCandidates(trimmed, kind);
         const entry = candidates[0];
         if (entry === undefined) return { outcome: "notFound" };
         if (candidates.length > 1) {
@@ -203,18 +202,25 @@ class ApiReference {
         return { outcome: "page", symbol: this.toApiSymbol(entry), markdown: this.renderPage(entry) };
     }
 
+    private scoreEntries(
+        query: string,
+        namespaceFilter: string | undefined,
+        kinds: ApiSymbolKind[] | undefined,
+    ): ScoredEntry[] {
+        const scored: ScoredEntry[] = [];
+        for (const entry of this.entries) {
+            const item = scoredEntryFor(entry, query, namespaceFilter, kinds);
+            if (item !== undefined) scored.push(item);
+        }
+        return scored;
+    }
+
     search(options: ApiSearchOptions): ApiSymbol[] {
         const query = options.query.trim().toLowerCase();
         if (query.length === 0) return [];
         const limit = Math.max(1, Math.floor(options.limit ?? DEFAULT_SEARCH_LIMIT));
         const namespaceFilter = options.namespace?.toLowerCase();
-        const scored: ScoredEntry[] = [];
-        for (const entry of this.entries) {
-            if (!matchesSearchFilters(entry, namespaceFilter, options.kinds)) continue;
-            const score = searchScore(entry, query);
-            if (score === 0) continue;
-            scored.push({ score, entry });
-        }
+        const scored = this.scoreEntries(query, namespaceFilter, options.kinds);
         scored.sort(compareScoredEntries);
         return scored.slice(0, limit).map((item) => this.toApiSymbol(item.entry));
     }
@@ -286,22 +292,44 @@ export type { ApiReference };
 
 export const loadApiReference = (options: ApiReferenceOptions): ApiReference => new ApiReference(options);
 
+const functionEntry = (
+    namespace: GirNamespace,
+    docsContext: ReturnType<typeof docsSignatureContext>,
+    fn: GirFunction,
+): GiSymbolEntry | undefined => {
+    if (!isEmittableCallable(docsContext, fn)) return undefined;
+    const cIdentifier = fn.cIdentifier;
+    if (cIdentifier === undefined) return undefined;
+    const name = namespaceFunctionExportName(cIdentifier, fn.name, namespace.cSymbolPrefixes);
+    return { kind: "function", namespace, name, doc: fn.doc, fn };
+};
+
+const classEntry = (namespace: GirNamespace, klass: GirClass): GiSymbolEntry | undefined => {
+    if (!klass.introspectable || klass.name.length === 0) return undefined;
+    const kind = klass.isInterface ? "interface" : "class";
+    return { kind, namespace, name: pascalCase(klass.name), doc: klass.doc, klass };
+};
+
 const classEntries = (namespace: GirNamespace): GiSymbolEntry[] => {
     const entries: GiSymbolEntry[] = [];
     for (const klass of [...namespace.classes, ...namespace.interfaces]) {
-        if (!klass.introspectable || klass.name.length === 0) continue;
-        const kind = klass.isInterface ? "interface" : "class";
-        entries.push({ kind, namespace, name: pascalCase(klass.name), doc: klass.doc, klass });
+        const entry = classEntry(namespace, klass);
+        if (entry !== undefined) entries.push(entry);
     }
     return entries;
+};
+
+const recordEntry = (library: Library, namespace: GirNamespace, record: GirRecord): GiSymbolEntry | undefined => {
+    if (!record.introspectable || record.isVtable || record.name.length === 0) return undefined;
+    if (isClassStructRecord(library, namespace.name, record)) return undefined;
+    return { kind: "record", namespace, name: record.name, doc: record.doc, record };
 };
 
 const recordEntries = (library: Library, namespace: GirNamespace): GiSymbolEntry[] => {
     const entries: GiSymbolEntry[] = [];
     for (const record of namespace.records) {
-        if (!record.introspectable || record.isVtable || record.name.length === 0) continue;
-        if (isClassStructRecord(library, namespace.name, record)) continue;
-        entries.push({ kind: "record", namespace, name: record.name, doc: record.doc, record });
+        const entry = recordEntry(library, namespace, record);
+        if (entry !== undefined) entries.push(entry);
     }
     return entries;
 };
@@ -341,6 +369,14 @@ const valueEntries = (namespace: GirNamespace): GiSymbolEntry[] => [
     })),
 ];
 
+const narrowToExactMatches = (candidates: SymbolEntry[], trimmed: string, qualified: boolean): SymbolEntry[] => {
+    if (candidates.length <= 1) return candidates;
+    const exact = candidates.filter((entry) =>
+        qualified ? `${entry.namespace.name}.${entry.name}` === trimmed : entry.name === trimmed,
+    );
+    return exact.length > 0 ? exact : candidates;
+};
+
 type ScoredEntry = { score: number; entry: SymbolEntry };
 
 const matchesSearchFilters = (
@@ -351,6 +387,18 @@ const matchesSearchFilters = (
     if (namespaceFilter !== undefined && entry.namespace.name.toLowerCase() !== namespaceFilter) return false;
     if (kinds !== undefined && !kinds.includes(entry.kind)) return false;
     return true;
+};
+
+const scoredEntryFor = (
+    entry: SymbolEntry,
+    query: string,
+    namespaceFilter: string | undefined,
+    kinds: ApiSymbolKind[] | undefined,
+): ScoredEntry | undefined => {
+    if (!matchesSearchFilters(entry, namespaceFilter, kinds)) return undefined;
+    const score = searchScore(entry, query);
+    if (score === 0) return undefined;
+    return { score, entry };
 };
 
 const compareScoredEntries = (a: ScoredEntry, b: ScoredEntry): number =>

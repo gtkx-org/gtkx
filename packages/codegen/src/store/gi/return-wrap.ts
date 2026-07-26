@@ -21,19 +21,28 @@ export const wrapReturnValue = (context: ModuleContext, options: WrapReturnOptio
         case "varargs":
             return `(${valueExpression} as unknown[])`;
         case "callback":
-            return context.library.nameOf(ref) === undefined
-                ? `(${valueExpression} as unknown[])`
-                : `(${valueExpression} as ${renderTsType(context, ref, false)})`;
+            return wrapCallback(context, ref, valueExpression);
         case "enum":
             return `(${valueExpression} as number)`;
         case "alias":
-            return type.value.target === undefined
-                ? valueExpression
-                : wrapReturnValue(context, { ref: type.value.target, nullable, valueExpression });
+            return wrapAlias(context, type.value.target, nullable, valueExpression);
         default:
             return wrapValue(context, ref, valueExpression);
     }
 };
+
+const wrapCallback = (context: ModuleContext, ref: TypeId, valueExpression: string): string =>
+    context.library.nameOf(ref) === undefined
+        ? `(${valueExpression} as unknown[])`
+        : `(${valueExpression} as ${renderTsType(context, ref, false)})`;
+
+const wrapAlias = (
+    context: ModuleContext,
+    target: TypeId | undefined,
+    nullable: boolean,
+    valueExpression: string,
+): string =>
+    target === undefined ? valueExpression : wrapReturnValue(context, { ref: target, nullable, valueExpression });
 
 const wrapValue = (context: ModuleContext, ref: TypeId, valueExpression: string): string => {
     context.addRuntimeImport("fromNative");
@@ -41,12 +50,15 @@ const wrapValue = (context: ModuleContext, ref: TypeId, valueExpression: string)
     return `(fromNative(${descriptor}, ${valueExpression}) as ${renderTsType(context, ref, false)})`;
 };
 
+const BIGINT_CATEGORIES = new Set<PrimitiveCategory>(["gtype", "bigint64", "biguint64"]);
+
+const wrapStringPrimitive = (nullable: boolean, valueExpression: string): string =>
+    `(${valueExpression} as ${nullable ? "string | null" : "string"})`;
+
 const wrapPrimitive = (category: PrimitiveCategory, nullable: boolean, valueExpression: string): string => {
     if (category === "void") return valueExpression;
-    if (category === "string") return `(${valueExpression} as ${nullable ? "string | null" : "string"})`;
+    if (category === "string") return wrapStringPrimitive(nullable, valueExpression);
     if (category === "boolean") return `Boolean(${valueExpression})`;
-    if (category === "gtype" || category === "bigint64" || category === "biguint64") {
-        return `(${valueExpression} as bigint)`;
-    }
+    if (BIGINT_CATEGORIES.has(category)) return `(${valueExpression} as bigint)`;
     return `(${valueExpression} as number)`;
 };

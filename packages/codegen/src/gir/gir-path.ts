@@ -28,6 +28,14 @@ export const resolveGirPath = (configGirPath: string[] | undefined): string[] =>
     return [...new Set(paths)];
 };
 
+const pkgConfigGirDirError = (error: unknown): undefined => {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+    const details = formatChildProcessError(error);
+    throw new Error(`pkg-config failed querying gobject-introspection-1.0 girdir${details ? `:\n${details}` : ""}`, {
+        cause: error,
+    });
+};
+
 const queryPkgConfigGirDir = (): string | undefined => {
     try {
         const output = execFileSync("pkg-config", ["--variable=girdir", "gobject-introspection-1.0"], {
@@ -37,13 +45,6 @@ const queryPkgConfigGirDir = (): string | undefined => {
         const trimmed = output.trim();
         return trimmed.length > 0 ? trimmed : undefined;
     } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
-        const details = formatChildProcessError(error);
-        throw new Error(
-            `pkg-config failed querying gobject-introspection-1.0 girdir${details ? `:\n${details}` : ""}`,
-            {
-                cause: error,
-            },
-        );
+        return pkgConfigGirDirError(error);
     }
 };

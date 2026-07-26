@@ -130,13 +130,18 @@ const parseEntryNode = (source: string, start: number): [VariantTypeNode, number
     return [{ kind: "entry", key, value }, end];
 };
 
+const CONTAINER_PARSERS: Record<string, (source: string, start: number) => [VariantTypeNode, number]> = {
+    a: parseArrayNode,
+    m: parseMaybeNode,
+    "(": parseTupleNode,
+    "{": parseEntryNode,
+};
+
 const parseNode = (source: string, start: number): [VariantTypeNode, number] => {
     const code = source[start];
     if (code === undefined) throw invalidType(source);
-    if (code === "a") return parseArrayNode(source, start + 1);
-    if (code === "m") return parseMaybeNode(source, start + 1);
-    if (code === "(") return parseTupleNode(source, start + 1);
-    if (code === "{") return parseEntryNode(source, start + 1);
+    const container = CONTAINER_PARSERS[code];
+    if (container !== undefined) return container(source, start + 1);
     if (isBasicCode(code)) return [{ kind: "basic", code }, start + 1];
     throw invalidType(source);
 };

@@ -111,6 +111,12 @@ export function debugMessageCallback(callback: DebugMessageCallback | null): voi
 
 const MAX_WAIT_CHUNK_NS = 1_000_000_000;
 
+const settledSyncStatus = (status: SyncStatus): SyncStatus | null => {
+    if (status === ALREADY_SIGNALED || status === CONDITION_SATISFIED) return status;
+    if (status !== TIMEOUT_EXPIRED) return status;
+    return null;
+};
+
 /**
  * Blocks until a sync object is signaled or the timeout elapses, looping over glClientWaitSync
  * in bounded chunks so long waits are not truncated by the driver's per-call limit.
@@ -124,9 +130,8 @@ export function clientWaitSyncLoop(sync: GLsync, flags: SyncObjectMask, timeoutN
     let currentFlags = flags;
     for (;;) {
         const chunk = Math.min(remaining, MAX_WAIT_CHUNK_NS);
-        const status = clientWaitSync(sync, currentFlags, chunk);
-        if (status === ALREADY_SIGNALED || status === CONDITION_SATISFIED) return status;
-        if (status !== TIMEOUT_EXPIRED) return status;
+        const settled = settledSyncStatus(clientWaitSync(sync, currentFlags, chunk));
+        if (settled !== null) return settled;
         remaining -= chunk;
         if (remaining <= 0) return TIMEOUT_EXPIRED;
         currentFlags = 0;

@@ -62,13 +62,19 @@ const eachChangedName = (prev: Props, next: Props, visit: (name: string) => void
     for (const name of new Set([...Object.keys(prev), ...Object.keys(next)])) visit(name);
 };
 
+type BehaviorUpdateContext = { node: ElementNode; prev: Props; next: Props; consumed: Set<string> };
+
+const collectConsumed = (ctx: BehaviorUpdateContext, behavior: ElementBehavior): void => {
+    if (behavior.update === undefined) return;
+    const result = behavior.update(ctx.node.object, ctx.prev, ctx.next, contextFor(ctx.node, behavior));
+    if (result === undefined) return;
+    for (const name of result) ctx.consumed.add(name);
+};
+
 const runBehaviorUpdates = (node: ElementNode, info: TypeInfo, prev: Props, next: Props): Set<string> => {
     const consumed = new Set<string>();
-    for (const behavior of info.behaviors) {
-        if (behavior.update === undefined) continue;
-        const result = behavior.update(node.object, prev, next, contextFor(node, behavior));
-        if (result !== undefined) for (const name of result) consumed.add(name);
-    }
+    const ctx: BehaviorUpdateContext = { node, prev, next, consumed };
+    for (const behavior of info.behaviors) collectConsumed(ctx, behavior);
     return consumed;
 };
 

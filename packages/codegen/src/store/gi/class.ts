@@ -6,7 +6,7 @@ import {
     conflictRename,
     type InheritedMethods,
 } from "../../analysis/inheritance.js";
-import { ancestorChain } from "../../gir/ancestry.js";
+import { ancestorChain, type ResolvedAncestor } from "../../gir/ancestry.js";
 import type { GirClass } from "../../gir/class.js";
 import type { GirFunction } from "../../gir/function.js";
 import { splitOptionalNamespace } from "../../gir/type-ref.js";
@@ -61,19 +61,40 @@ export const generateClass = (context: ModuleContext, klass: GirClass): void => 
         `${renderJsDoc(klass.doc)}export class ${className}${extendsClause}${implementsClause} {\n${body}\n}`,
     );
     context.module.appendDeclaration(renderConstructorPropsInterface(context, klass, className));
+    appendMemberDeclarations({ context, klass, className, accessors, implemented });
+
+    appendInstallMixins(context, className, implemented);
+    appendClassRegistrations(context, klass, className);
+};
+
+type MemberDeclarationsOptions = {
+    context: ModuleContext;
+    klass: GirClass;
+    className: string;
+    accessors: ResolvedAccessor[];
+    implemented: ImplementedRef[];
+};
+
+const appendMemberDeclarations = (options: MemberDeclarationsOptions): void => {
+    const { context, klass, className, accessors, implemented } = options;
     for (const declaration of renderPropertyDeclarations(context, klass, className, accessors)) {
         context.module.appendDeclaration(declaration);
     }
     for (const declaration of renderSignalDeclarations(context, klass, className, false)) {
         context.module.appendDeclaration(declaration);
     }
-    if (typeRefs.length > 0) {
-        const mergeRefs = implemented.map((ref) => interfaceMergeRef(context, klass, ref));
-        context.module.appendDeclaration(`export interface ${className} extends ${mergeRefs.join(", ")} {}`);
-    }
+    appendInterfaceMerge(context, klass, className, implemented);
+};
 
-    appendInstallMixins(context, className, implemented);
-    appendClassRegistrations(context, klass, className);
+const appendInterfaceMerge = (
+    context: ModuleContext,
+    klass: GirClass,
+    className: string,
+    implemented: ImplementedRef[],
+): void => {
+    if (implemented.length === 0) return;
+    const mergeRefs = implemented.map((ref) => interfaceMergeRef(context, klass, ref));
+    context.module.appendDeclaration(`export interface ${className} extends ${mergeRefs.join(", ")} {}`);
 };
 
 type ClassMembers = { members: string[]; accessors: ResolvedAccessor[] };
@@ -157,16 +178,20 @@ const appendClassRegistrations = (context: ModuleContext, klass: GirClass, class
     });
 };
 
+const addAncestorInterfaceKeys = (context: ModuleContext, ancestor: ResolvedAncestor, keys: Set<string>): void => {
+    for (const name of ancestor.klass.implements) {
+        const resolved = context.library.resolveType(ancestor.namespaceName, name);
+        if (resolved?.kind === "interface") keys.add(`${resolved.namespace.name}.${resolved.value.name}`);
+    }
+};
+
 const inheritedInterfaceKeys = (context: ModuleContext, klass: GirClass): Set<string> => {
     const keys = new Set<string>();
     if (klass.parent === undefined) return keys;
     const parent = context.library.resolveType(context.namespace.name, klass.parent);
     if (parent === undefined || parent.kind !== "class") return keys;
     for (const ancestor of ancestorChain(context.library, parent.value, parent.namespace.name)) {
-        for (const name of ancestor.klass.implements) {
-            const resolved = context.library.resolveType(ancestor.namespaceName, name);
-            if (resolved?.kind === "interface") keys.add(`${resolved.namespace.name}.${resolved.value.name}`);
-        }
+        addAncestorInterfaceKeys(context, ancestor, keys);
     }
     return keys;
 };
@@ -181,20 +206,29 @@ const interfaceMergeRef = (context: ModuleContext, klass: GirClass, ref: Impleme
     return `Omit<${ref.typeRef}, ${keys}>`;
 };
 
+const implementedRefFor = (
+    context: ModuleContext,
+    name: string,
+    inherited: Set<string>,
+): ImplementedRef | undefined => {
+    const resolved = context.library.resolveType(context.namespace.name, name);
+    if (resolved === undefined || resolved.kind !== "interface") return undefined;
+    if (inherited.has(`${resolved.namespace.name}.${resolved.value.name}`)) return undefined;
+    const pascal = pascalCase(resolved.value.name);
+    return {
+        typeRef: context.qualify(resolved.namespace.name, pascal),
+        makerRef: context.qualify(resolved.namespace.name, `make${pascal}`),
+        interfaceKlass: resolved.value,
+        interfaceNamespace: resolved.namespace.name,
+    };
+};
+
 const resolveImplementedRefs = (context: ModuleContext, klass: GirClass): ImplementedRef[] => {
     const inherited = inheritedInterfaceKeys(context, klass);
     const refs: ImplementedRef[] = [];
     for (const name of klass.implements) {
-        const resolved = context.library.resolveType(context.namespace.name, name);
-        if (resolved === undefined || resolved.kind !== "interface") continue;
-        if (inherited.has(`${resolved.namespace.name}.${resolved.value.name}`)) continue;
-        const pascal = pascalCase(resolved.value.name);
-        refs.push({
-            typeRef: context.qualify(resolved.namespace.name, pascal),
-            makerRef: context.qualify(resolved.namespace.name, `make${pascal}`),
-            interfaceKlass: resolved.value,
-            interfaceNamespace: resolved.namespace.name,
-        });
+        const ref = implementedRefFor(context, name, inherited);
+        if (ref !== undefined) refs.push(ref);
     }
     return refs;
 };

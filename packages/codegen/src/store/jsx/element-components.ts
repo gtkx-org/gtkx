@@ -54,17 +54,23 @@ type CandidateExportOptions = {
     components: Record<string, ElementComponent>;
 };
 
-const collectCandidateExports = (
+const appendCandidateExport = (
     collector: ExportCollector,
-    { targetNamespace, library, virtualNames, intrinsicElements, components }: CandidateExportOptions,
+    candidate: GlibNamedClass,
+    options: CandidateExportOptions,
 ): void => {
-    for (const candidate of intrinsicElements) {
-        if (candidate.namespace.name !== targetNamespace.name) continue;
-        if (virtualNames.has(candidate.glibName)) continue;
-        const line = renderCandidateExport(candidate, library, collector.imports, components);
-        if (line === null) continue;
-        collector.exportLines.push(line);
-        collector.exportedNames.add(candidate.glibName);
+    const { targetNamespace, library, virtualNames, components } = options;
+    if (candidate.namespace.name !== targetNamespace.name) return;
+    if (virtualNames.has(candidate.glibName)) return;
+    const line = renderCandidateExport(candidate, library, collector.imports, components);
+    if (line === null) return;
+    collector.exportLines.push(line);
+    collector.exportedNames.add(candidate.glibName);
+};
+
+const collectCandidateExports = (collector: ExportCollector, options: CandidateExportOptions): void => {
+    for (const candidate of options.intrinsicElements) {
+        appendCandidateExport(collector, candidate, options);
     }
 };
 

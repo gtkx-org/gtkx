@@ -5,8 +5,14 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 import { act, getWidgetNodeText, screen, waitFor, within } from "@gtkx/testing";
 import type { RefObject } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { expectRenderItemFunctionUpdate, renderTestItemWithSpy } from "./helpers/list-collection-render.js";
-import { type FixtureInput, type ListViewFixture, renderListView } from "./helpers/list-fixtures.js";
+import { expectRenderItemFunctionUpdate, namedRows, renderTestItemWithSpy } from "./helpers/list-collection-render.js";
+import {
+    type FixtureInput,
+    firstSecondItems,
+    firstSecondThirdItems,
+    type ListViewFixture,
+    renderListView,
+} from "./helpers/list-fixtures.js";
 import { expectNoBoxBetween } from "./helpers/widget-chain.js";
 
 interface Category {
@@ -77,25 +83,6 @@ const waitForAllHidden = (names: string[]): Promise<void> =>
         }
     });
 
-const parentWithChild: FixtureInput<{ name: string }> = [
-    {
-        id: "parent",
-        value: { name: "Parent" },
-        children: [{ id: "child", value: { name: "Child" } }],
-    },
-];
-
-const parentWithTwoChildren: FixtureInput<{ name: string }> = [
-    {
-        id: "parent",
-        value: { name: "Parent" },
-        children: [
-            { id: "child1", value: { name: "Child 1" } },
-            { id: "child2", value: { name: "Child 2" } },
-        ],
-    },
-];
-
 type DemoItem = { name: string };
 const leafNode = (id: string, name: string) => ({ id, value: { name } });
 const childNode = (id: string, name: string) => ({ id, value: { name }, hideExpander: true as const });
@@ -104,6 +91,63 @@ const categoryNode = (id: string, name: string, children: ReturnType<typeof chil
     value: { name },
     children,
 });
+const parentWith = (children: Item<DemoItem>[]): FixtureInput<DemoItem> => [
+    { id: "parent", value: { name: "Parent" }, children },
+];
+
+const parentWithChild = parentWith([leafNode("child", "Child")]);
+const parentWithTwoChildren = parentWith([leafNode("child1", "Child 1"), leafNode("child2", "Child 2")]);
+
+const firstThirdItems = namedRows([
+    ["1", "First"],
+    ["3", "Third"],
+]);
+const abcItems = namedRows([
+    ["1", "A"],
+    ["2", "B"],
+    ["3", "C"],
+]);
+const acItems = namedRows([
+    ["1", "A"],
+    ["3", "C"],
+]);
+
+const expectTextCounts = (scope: ReturnType<typeof within>, counts: [string, number][]): void => {
+    for (const [text, count] of counts) {
+        expect(scope.queryAllByText(text)).toHaveLength(count);
+    }
+};
+
+const expectItemsRerender = async (config: {
+    initial: FixtureInput<DemoItem>;
+    initialCounts: [string, number][];
+    next: FixtureInput<DemoItem>;
+    nextCounts: [string, number][];
+}): Promise<void> => {
+    const { ref, rerender } = await renderListView(config.initial);
+    expectTextCounts(within(ref.current), config.initialCounts);
+    await rerender(config.next);
+    expectTextCounts(within(ref.current), config.nextCounts);
+};
+
+const renderParentChildWithProps = async (
+    parentProps: Partial<Item<DemoItem>>,
+    childProps: Partial<Item<DemoItem>>,
+): Promise<void> => {
+    const { ref } = await renderListView(
+        [
+            {
+                id: "parent",
+                value: { name: "Parent" },
+                ...parentProps,
+                children: [{ id: "child", value: { name: "Child" }, ...childProps }],
+            },
+        ],
+        { expandAll: true },
+    );
+
+    expect(ref.current).not.toBeNull();
+};
 
 const demoFullTree: Item<DemoItem>[] = [
     leafNode("demo-intro", "GTK Demo"),
@@ -204,6 +248,36 @@ const demoFullTree: Item<DemoItem>[] = [
     leafNode("demo-video-player", "Video Player"),
 ];
 
+const buildFilterTree = (options: {
+    count: number;
+    isCategory: (i: number) => boolean;
+    children: (i: number) => ReturnType<typeof childNode>[];
+}): Item<DemoItem>[] => {
+    const tree: Item<DemoItem>[] = [];
+    for (let i = 0; i < options.count; i++) {
+        if (options.isCategory(i)) {
+            tree.push(categoryNode(`cat-${i}`, `Category ${i}`, options.children(i)));
+        } else {
+            tree.push(leafNode(`leaf-${i}`, `Leaf ${i}`));
+        }
+    }
+    return tree;
+};
+
+const buildLargeCategoryTree = (): Item<DemoItem>[] =>
+    buildFilterTree({
+        count: 38,
+        isCategory: (i) => i % 5 === 1,
+        children: (i) => Array.from({ length: 3 }, (_, j) => childNode(`child-${i}-${j}`, `Child ${i}-${j}`)),
+    });
+
+const buildViewportCategoryTree = (): Item<DemoItem>[] =>
+    buildFilterTree({
+        count: 40,
+        isCategory: (i) => i % 4 === 0,
+        children: (i) => [childNode(`ch-${i}-0`, `Child ${i}-0`), childNode(`ch-${i}-1`, `Child ${i}-1`)],
+    });
+
 const allSettingCategories: Array<Category & { children: Setting[] }> = [
     {
         type: "category",
@@ -265,6 +339,14 @@ const allSettingCategories: Array<Category & { children: Setting[] }> = [
 const appearanceChildNames = ["Dark Mode", "Large Text", "Enable Animations", "Transparency Effects"];
 const notificationChildNames = ["Alerts", "Notification Sounds", "Do Not Disturb", "Show Badge Count"];
 
+const expandAppearanceAndWait = async (
+    waitForTexts: (ref: RefObject<Gtk.ListView>, expected: Array<string | null>) => Promise<void>,
+): Promise<void> => {
+    const { ref } = await renderListView(toTreeItems(allSettingCategories.slice(0, 1)));
+    await setRowExpandedByName("Appearance", true);
+    await waitForTexts(ref, ["Appearance", ...appearanceChildNames]);
+};
+
 type FilterItem = { type: "category"; name: string } | { type: "leaf"; name: string };
 
 const filterLeaf = (id: string, name: string): Item<FilterItem> => ({ id, value: { type: "leaf", name } });
@@ -316,10 +398,7 @@ describe("render - ListView (tree) (1)", () => {
 describe("render - ListView (tree) (2)", () => {
     describe("ListItem (tree) (1)", () => {
         it("adds item to tree model", async () => {
-            await renderListView([
-                { id: "1", value: { name: "First" } },
-                { id: "2", value: { name: "Second" } },
-            ]);
+            await renderListView(firstSecondItems);
 
             expect(screen.queryAllByText("First")).toHaveLength(1);
             expect(screen.queryAllByText("Second")).toHaveLength(1);
@@ -332,25 +411,19 @@ describe("render - ListView (tree) (2)", () => {
         });
 
         it("inserts item before existing item", async () => {
-            const { ref, rerender } = await renderListView([
-                { id: "1", value: { name: "First" } },
-                { id: "3", value: { name: "Third" } },
-            ]);
-
-            const list = within(ref.current);
-            expect(list.queryAllByText("First")).toHaveLength(1);
-            expect(list.queryAllByText("Third")).toHaveLength(1);
-
-            await rerender([
-                { id: "1", value: { name: "First" } },
-                { id: "2", value: { name: "Second" } },
-                { id: "3", value: { name: "Third" } },
-            ]);
-
-            const updated = within(ref.current);
-            expect(updated.queryAllByText("First")).toHaveLength(1);
-            expect(updated.queryAllByText("Second")).toHaveLength(1);
-            expect(updated.queryAllByText("Third")).toHaveLength(1);
+            await expectItemsRerender({
+                initial: firstThirdItems,
+                initialCounts: [
+                    ["First", 1],
+                    ["Third", 1],
+                ],
+                next: firstSecondThirdItems,
+                nextCounts: [
+                    ["First", 1],
+                    ["Second", 1],
+                    ["Third", 1],
+                ],
+            });
         });
     });
 });
@@ -358,26 +431,20 @@ describe("render - ListView (tree) (2)", () => {
 describe("render - ListView (tree) (3)", () => {
     describe("ListItem (tree) (2)", () => {
         it("removes item from tree model", async () => {
-            const { ref, rerender } = await renderListView([
-                { id: "1", value: { name: "A" } },
-                { id: "2", value: { name: "B" } },
-                { id: "3", value: { name: "C" } },
-            ]);
-
-            const list = within(ref.current);
-            expect(list.queryAllByText("A")).toHaveLength(1);
-            expect(list.queryAllByText("B")).toHaveLength(1);
-            expect(list.queryAllByText("C")).toHaveLength(1);
-
-            await rerender([
-                { id: "1", value: { name: "A" } },
-                { id: "3", value: { name: "C" } },
-            ]);
-
-            const updated = within(ref.current);
-            expect(updated.queryAllByText("A")).toHaveLength(1);
-            expect(updated.queryAllByText("B")).toHaveLength(0);
-            expect(updated.queryAllByText("C")).toHaveLength(1);
+            await expectItemsRerender({
+                initial: abcItems,
+                initialCounts: [
+                    ["A", 1],
+                    ["B", 1],
+                    ["C", 1],
+                ],
+                next: acItems,
+                nextCounts: [
+                    ["A", 1],
+                    ["B", 0],
+                    ["C", 1],
+                ],
+            });
         });
 
         it("updates item value", async () => {
@@ -433,13 +500,7 @@ describe("render - ListView (tree) (5)", () => {
 describe("render - ListView (tree) (6)", () => {
     describe("expandable rows (uncontrolled)", () => {
         it("parent row is expandable when it has children", async () => {
-            await renderListView([
-                {
-                    id: "parent",
-                    value: { name: "Parent" },
-                    children: [{ id: "child1", value: { name: "Child 1" } }],
-                },
-            ]);
+            await renderListView(parentWith([leafNode("child1", "Child 1")]));
 
             const row = expanderByName("Parent").getListRow();
             expect(row).not.toBeNull();
@@ -543,51 +604,15 @@ describe("render - ListView (tree) (10)", () => {
 describe("render - ListView (tree) (11)", () => {
     describe("tree item properties", () => {
         it("supports indentForDepth property", async () => {
-            const { ref } = await renderListView(
-                [
-                    {
-                        id: "parent",
-                        value: { name: "Parent" },
-                        indentForDepth: false,
-                        children: [{ id: "child", value: { name: "Child" }, indentForDepth: true }],
-                    },
-                ],
-                { expandAll: true },
-            );
-
-            expect(ref.current).not.toBeNull();
+            await renderParentChildWithProps({ indentForDepth: false }, { indentForDepth: true });
         });
 
         it("supports indentForIcon property", async () => {
-            const { ref } = await renderListView(
-                [
-                    {
-                        id: "parent",
-                        value: { name: "Parent" },
-                        indentForIcon: true,
-                        children: [{ id: "child", value: { name: "Child" }, indentForIcon: false }],
-                    },
-                ],
-                { expandAll: true },
-            );
-
-            expect(ref.current).not.toBeNull();
+            await renderParentChildWithProps({ indentForIcon: true }, { indentForIcon: false });
         });
 
         it("supports hideExpander property", async () => {
-            const { ref } = await renderListView(
-                [
-                    {
-                        id: "parent",
-                        value: { name: "Parent" },
-                        hideExpander: false,
-                        children: [{ id: "child", value: { name: "Child" }, hideExpander: true }],
-                    },
-                ],
-                { expandAll: true },
-            );
-
-            expect(ref.current).not.toBeNull();
+            await renderParentChildWithProps({ hideExpander: false }, { hideExpander: true });
         });
     });
 });
@@ -595,11 +620,7 @@ describe("render - ListView (tree) (11)", () => {
 describe("render - ListView (tree) (12)", () => {
     describe("settings tree regression (1)", () => {
         it("renders all children with non-null values on first expansion", async () => {
-            const { ref } = await renderListView(toTreeItems(allSettingCategories.slice(0, 1)));
-
-            await setRowExpandedByName("Appearance", true);
-
-            await waitForSettledRowTexts(ref, ["Appearance", ...appearanceChildNames]);
+            await expandAppearanceAndWait(waitForSettledRowTexts);
         });
     });
 });
@@ -607,11 +628,7 @@ describe("render - ListView (tree) (12)", () => {
 describe("render - ListView (tree) (13)", () => {
     describe("settings tree regression (2)", () => {
         it("renders all children with non-null values when clicking TreeExpander", async () => {
-            const { ref } = await renderListView(toTreeItems(allSettingCategories.slice(0, 1)));
-
-            await setRowExpandedByName("Appearance", true);
-
-            await waitForRowTexts(ref, ["Appearance", ...appearanceChildNames]);
+            await expandAppearanceAndWait(waitForRowTexts);
         });
     });
 });
@@ -719,20 +736,7 @@ describe("render - ListView (tree) (17)", () => {
 describe("render - ListView (tree) (18)", () => {
     describe("tree filtering (3)", () => {
         it("shows children after filtering a large tree with many root items", async () => {
-            const fullTree: Item<DemoItem>[] = [];
-            for (let i = 0; i < 38; i++) {
-                if (i % 5 === 1) {
-                    fullTree.push(
-                        categoryNode(
-                            `cat-${i}`,
-                            `Category ${i}`,
-                            Array.from({ length: 3 }, (_, j) => childNode(`child-${i}-${j}`, `Child ${i}-${j}`)),
-                        ),
-                    );
-                } else {
-                    fullTree.push(leafNode(`leaf-${i}`, `Leaf ${i}`));
-                }
-            }
+            const fullTree = buildLargeCategoryTree();
 
             const { ref, rerender } = await renderListView(fullTree, { expandAll: true, minContentHeight: 400 });
 
@@ -765,19 +769,7 @@ describe("render - ListView (tree) (19) > tree filtering (4)", () => {
 describe("render - ListView (tree) (20)", () => {
     describe("tree filtering (5)", () => {
         it("shows children after filtering demo-like tree with small viewport", async () => {
-            const fullTree: Item<DemoItem>[] = [];
-            for (let i = 0; i < 40; i++) {
-                if (i % 4 === 0) {
-                    fullTree.push(
-                        categoryNode(`cat-${i}`, `Category ${i}`, [
-                            childNode(`ch-${i}-0`, `Child ${i}-0`),
-                            childNode(`ch-${i}-1`, `Child ${i}-1`),
-                        ]),
-                    );
-                } else {
-                    fullTree.push(leafNode(`leaf-${i}`, `Leaf ${i}`));
-                }
-            }
+            const fullTree = buildViewportCategoryTree();
 
             const viewport = { expandAll: true, minContentHeight: 100, maxContentHeight: 100 } as const;
             const { ref, rerender } = await renderListView(fullTree, viewport);

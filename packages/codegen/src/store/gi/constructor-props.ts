@@ -9,13 +9,14 @@ import type { ModuleContext } from "../../writer/context.js";
 import { renderBlock, renderBraced, renderBracedOrEmpty } from "../../writer/emit.js";
 import { parentCompanionRef } from "./companion.js";
 
+const constructablePropNames = (klass: GirClass): string[] =>
+    klass.properties.filter(isConstructableProperty).map((property) => toCamelIdentifier(property.name));
+
 const ancestorConstructablePropNames = (context: ModuleContext, klass: GirClass): Set<string> => {
     const names = new Set<string>();
     for (const { klass: ancestor } of ancestorChain(context.library, klass, context.namespace.name)) {
         if (ancestor === klass) continue;
-        for (const property of ancestor.properties) {
-            if (isConstructableProperty(property)) names.add(toCamelIdentifier(property.name));
-        }
+        for (const name of constructablePropNames(ancestor)) names.add(name);
     }
     return names;
 };

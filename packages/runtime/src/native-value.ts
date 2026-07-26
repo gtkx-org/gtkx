@@ -1,11 +1,39 @@
 import type { Descriptor, ExternalObject, Handle } from "@gtkx/native";
-import type { ArrayDescriptor, FundamentalDescriptor, StructDescriptor } from "./descriptors.js";
+import type { ArrayDescriptor, FundamentalDescriptor, HashTableDescriptor, StructDescriptor } from "./descriptors.js";
 import { getWrapperClass, tryGetHandle, wrapHandle } from "./registry.js";
 import { resolveDescriptorType } from "./type.js";
 
-const collectionFromNative = (descriptor: ArrayDescriptor, value: unknown): unknown => {
+const mapCollection = (
+    descriptor: ArrayDescriptor,
+    value: unknown,
+    convert: (itemDescriptor: Descriptor, item: unknown) => unknown,
+): unknown[] => (value as unknown[]).map((item) => convert(descriptor.itemDescriptor, item));
+
+const collectionFromNative = (descriptor: ArrayDescriptor, value: unknown): unknown =>
+    value === null ? null : mapCollection(descriptor, value, fromNative);
+
+const boxedFromNative = (descriptor: Descriptor, value: unknown): unknown =>
+    value == null
+        ? null
+        : wrapHandle(value as ExternalObject<Handle>, getWrapperClass(resolveDescriptorType(descriptor)));
+
+const fundamentalFromNative = (descriptor: FundamentalDescriptor, value: unknown): unknown =>
+    value == null
+        ? null
+        : wrapHandle(
+              value as ExternalObject<Handle>,
+              descriptor.wrapperClass ?? getWrapperClass(resolveDescriptorType(descriptor)),
+          );
+
+const hashTableFromNative = (descriptor: HashTableDescriptor, value: unknown): unknown => {
     if (value === null) return null;
-    return (value as unknown[]).map((item) => fromNative(descriptor.itemDescriptor, item));
+    const entries = value as [unknown, unknown][];
+    return new Map(
+        entries.map(([key, val]): [unknown, unknown] => [
+            fromNative(descriptor.keyDescriptor, key),
+            fromNative(descriptor.valueDescriptor, val),
+        ]),
+    );
 };
 
 /**
@@ -23,38 +51,20 @@ export function fromNative(descriptor: Descriptor, value: unknown): unknown {
         case "struct":
             return wrapHandle(value as ExternalObject<Handle> | null, (descriptor as StructDescriptor).wrapperClass);
         case "boxed":
-            return value == null
-                ? null
-                : wrapHandle(value as ExternalObject<Handle>, getWrapperClass(resolveDescriptorType(descriptor)));
+            return boxedFromNative(descriptor, value);
         case "fundamental":
-            return value == null
-                ? null
-                : wrapHandle(
-                      value as ExternalObject<Handle>,
-                      (descriptor as FundamentalDescriptor).wrapperClass ??
-                          getWrapperClass(resolveDescriptorType(descriptor)),
-                  );
+            return fundamentalFromNative(descriptor, value);
         case "array":
             return collectionFromNative(descriptor, value);
-        case "hashtable": {
-            if (value === null) return null;
-            const entries = value as [unknown, unknown][];
-            return new Map(
-                entries.map(([key, val]): [unknown, unknown] => [
-                    fromNative(descriptor.keyDescriptor, key),
-                    fromNative(descriptor.valueDescriptor, val),
-                ]),
-            );
-        }
+        case "hashtable":
+            return hashTableFromNative(descriptor, value);
         default:
             return value;
     }
 }
 
-const collectionToNative = (descriptor: ArrayDescriptor, value: unknown): unknown => {
-    if (value == null) return null;
-    return (value as unknown[]).map((item) => toNative(descriptor.itemDescriptor, item));
-};
+const collectionToNative = (descriptor: ArrayDescriptor, value: unknown): unknown =>
+    value == null ? null : mapCollection(descriptor, value, toNative);
 
 export function toNative(descriptor: Descriptor, value: unknown): unknown {
     switch (descriptor.kind) {

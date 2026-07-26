@@ -41,25 +41,39 @@ export type PropertyAccessorArgs = {
 
 type AccessorDelegate = { member: string | undefined; method: GirFunction | undefined };
 
-const resolveGetterDelegate = (args: PropertyAccessorArgs, jsName: string): AccessorDelegate => {
-    const { context, property, claimedNames, methodByName } = args;
-    const member = delegateMember(property.getter, jsName, claimedNames);
-    const method =
-        member !== undefined && property.getter !== undefined ? methodByName.get(property.getter) : undefined;
-    const delegatable =
-        method === undefined ||
-        (inputParameters(context.library, method).length === 0 &&
-            !renderMethodReturnType(context, method).startsWith("["));
+const resolveDelegate = (
+    args: PropertyAccessorArgs,
+    attribute: string | undefined,
+    member: string | undefined,
+    isDelegatable: (method: GirFunction) => boolean,
+): AccessorDelegate => {
+    const method = member !== undefined && attribute !== undefined ? args.methodByName.get(attribute) : undefined;
+    const delegatable = method === undefined || isDelegatable(method);
     return delegatable ? { member, method } : { member: undefined, method: undefined };
 };
 
+const resolveGetterDelegate = (args: PropertyAccessorArgs, jsName: string): AccessorDelegate => {
+    const { context, property, claimedNames } = args;
+    const member = delegateMember(property.getter, jsName, claimedNames);
+    return resolveDelegate(
+        args,
+        property.getter,
+        member,
+        (method) =>
+            inputParameters(context.library, method).length === 0 &&
+            !renderMethodReturnType(context, method).startsWith("["),
+    );
+};
+
 const resolveSetterDelegate = (args: PropertyAccessorArgs, jsName: string, writable: boolean): AccessorDelegate => {
-    const { context, property, claimedNames, methodByName } = args;
+    const { context, property, claimedNames } = args;
     const member = writable ? delegateMember(property.setter, jsName, claimedNames) : undefined;
-    const method =
-        member !== undefined && property.setter !== undefined ? methodByName.get(property.setter) : undefined;
-    const delegatable = method === undefined || inputParameters(context.library, method).length === 1;
-    return delegatable ? { member, method } : { member: undefined, method: undefined };
+    return resolveDelegate(
+        args,
+        property.setter,
+        member,
+        (method) => inputParameters(context.library, method).length === 1,
+    );
 };
 
 const resolveOwnType = (
@@ -74,11 +88,16 @@ const resolveOwnType = (
     return renderTsType(context, property.type, isNullablePropertyType(context, property.type));
 };
 
+const isSkippedAccessorName = (jsName: string, claimedNames: Set<string>): boolean =>
+    claimedNames.has(jsName) || jsName === "constructor";
+
+const resolveTsType = (inheritedType: string | undefined, ownType: string): string =>
+    inheritedType !== undefined && inheritedType !== ownType ? inheritedType : ownType;
+
 export const resolveAccessor = (args: PropertyAccessorArgs): ResolvedAccessor | undefined => {
     const { context, property, claimedNames } = args;
     const jsName = toCamelIdentifier(property.name);
-    if (claimedNames.has(jsName)) return undefined;
-    if (jsName === "constructor") return undefined;
+    if (isSkippedAccessorName(jsName, claimedNames)) return undefined;
 
     const writable = isConstructableProperty(property);
     const { member: getterMember, method: getMethod } = resolveGetterDelegate(args, jsName);
@@ -88,7 +107,7 @@ export const resolveAccessor = (args: PropertyAccessorArgs): ResolvedAccessor | 
     if (!hasGetter && !writable) return undefined;
 
     const ownType = resolveOwnType(context, property, getMethod, setMethod);
-    const tsType = args.inheritedType !== undefined && args.inheritedType !== ownType ? args.inheritedType : ownType;
+    const tsType = resolveTsType(args.inheritedType, ownType);
 
     return { jsName, tsType, hasGetter, writable, getterMember, getMethod, setterMember };
 };

@@ -7,15 +7,20 @@ const DATA_IMPORT_KEY: string = `${DATA_IMPORT_PREFIX}/*`;
 
 const CONDITION_PRIORITY = ["default", "import", "node"] as const;
 
+const isConditionMap = (entry: unknown): entry is Record<string, unknown> =>
+    entry !== null && typeof entry === "object" && !Array.isArray(entry);
+
+const conditionTarget = (conditions: Record<string, unknown>): string | null => {
+    for (const condition of CONDITION_PRIORITY) {
+        const value = conditions[condition];
+        if (typeof value === "string") return value;
+    }
+    return null;
+};
+
 const targetString = (entry: unknown): string | null => {
     if (typeof entry === "string") return entry;
-    if (entry !== null && typeof entry === "object" && !Array.isArray(entry)) {
-        const conditions = entry as Record<string, unknown>;
-        for (const condition of CONDITION_PRIORITY) {
-            const value = conditions[condition];
-            if (typeof value === "string") return value;
-        }
-    }
+    if (isConditionMap(entry)) return conditionTarget(entry);
     return null;
 };
 

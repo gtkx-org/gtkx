@@ -52,20 +52,20 @@ const buildArgSpecs = (args: Arg[]): ArgSpec[] => {
     });
 };
 
-const buildNativeValue = (
-    { arg, isRef, isCallerAllocated, consumesInput, inputIndex }: ArgSpec,
-    inputs: unknown[],
-): unknown => {
-    if (isCallerAllocated) {
-        const wrapper = inputs[inputIndex];
-        return wrapper == null ? wrapper : getHandle(wrapper as object);
-    }
-    if (isRef) {
-        return { value: consumesInput ? inputs[inputIndex] : null };
-    }
-    if (arg.type.kind === "callback") {
-        return wrapCallbackValue(arg.type, inputs[inputIndex]);
-    }
+const resolveCallerAllocated = (inputs: unknown[], inputIndex: number): unknown => {
+    const wrapper = inputs[inputIndex];
+    return wrapper == null ? wrapper : getHandle(wrapper as object);
+};
+
+const buildRefValue = (consumesInput: boolean, inputs: unknown[], inputIndex: number): Ref => ({
+    value: consumesInput ? inputs[inputIndex] : null,
+});
+
+const buildNativeValue = (spec: ArgSpec, inputs: unknown[]): unknown => {
+    const { arg, isRef, isCallerAllocated, consumesInput, inputIndex } = spec;
+    if (isCallerAllocated) return resolveCallerAllocated(inputs, inputIndex);
+    if (isRef) return buildRefValue(consumesInput, inputs, inputIndex);
+    if (arg.type.kind === "callback") return wrapCallbackValue(arg.type, inputs[inputIndex]);
     return inputs[inputIndex];
 };
 

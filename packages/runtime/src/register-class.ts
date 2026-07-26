@@ -72,6 +72,24 @@ function ownInstanceMethodNames(klass: AnyClass): string[] {
     });
 }
 
+function buildDiscoveredVfunc<K extends "class" | "interface">(
+    proto: Record<string, VfuncFn>,
+    methodName: string,
+    resolveDescriptor: (methodName: string) => VfuncDescriptor<K> | undefined,
+    skip: Set<string> | undefined,
+): DiscoveredVfunc<K> | undefined {
+    if (skip?.has(methodName)) return undefined;
+    const descriptor = resolveDescriptor(methodName);
+    if (!descriptor) return undefined;
+    const fn = proto[methodName];
+    if (!fn) return undefined;
+    return {
+        ...descriptor,
+        methodName,
+        fn: wrapVfunc(fn, descriptor.argDescriptors, descriptor.returnDescriptor),
+    };
+}
+
 function collectDiscoveredVfuncs<K extends "class" | "interface">(
     klass: AnyClass,
     resolveDescriptor: (methodName: string) => VfuncDescriptor<K> | undefined,
@@ -80,16 +98,8 @@ function collectDiscoveredVfuncs<K extends "class" | "interface">(
     const proto = (klass as { prototype: Record<string, VfuncFn> }).prototype;
     const result: DiscoveredVfunc<K>[] = [];
     for (const methodName of ownInstanceMethodNames(klass)) {
-        if (skip?.has(methodName)) continue;
-        const descriptor = resolveDescriptor(methodName);
-        if (!descriptor) continue;
-        const fn = proto[methodName];
-        if (!fn) continue;
-        result.push({
-            ...descriptor,
-            methodName,
-            fn: wrapVfunc(fn, descriptor.argDescriptors, descriptor.returnDescriptor),
-        });
+        const discovered = buildDiscoveredVfunc(proto, methodName, resolveDescriptor, skip);
+        if (discovered) result.push(discovered);
     }
     return result;
 }

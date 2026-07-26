@@ -104,27 +104,35 @@ type SourceMap = {
     sourceRoot?: string;
 };
 
-const mapSourceViolations = (mapPath: string, content: string, files: Set<string>): string[] => {
-    let parsed: SourceMap;
+const parseSourceMap = (content: string): SourceMap | undefined => {
     try {
-        parsed = JSON.parse(content) as SourceMap;
+        return JSON.parse(content) as SourceMap;
     } catch {
-        return [`source map ${mapPath} is not valid JSON`];
+        return undefined;
     }
-    const sources = parsed.sources ?? [];
+};
+
+const sourceViolation = (options: {
+    parsed: SourceMap;
+    source: string;
+    index: number;
+    mapPath: string;
+    files: Set<string>;
+}): string | undefined => {
+    const { parsed, source, index, mapPath, files } = options;
+    if (typeof parsed.sourcesContent?.[index] === "string") return undefined;
     const sourceRoot = parsed.sourceRoot ?? "";
-    const mapDir = posix.dirname(mapPath);
-    const violations: string[] = [];
-    for (let index = 0; index < sources.length; index += 1) {
-        const source = sources[index];
-        if (source === undefined) continue;
-        if (typeof parsed.sourcesContent?.[index] === "string") continue;
-        const resolved = posix.normalize(posix.join(mapDir, sourceRoot, source));
-        if (!files.has(resolved)) {
-            violations.push(`source map ${mapPath} references missing source ${source}`);
-        }
-    }
-    return violations;
+    const resolved = posix.normalize(posix.join(posix.dirname(mapPath), sourceRoot, source));
+    if (files.has(resolved)) return undefined;
+    return `source map ${mapPath} references missing source ${source}`;
+};
+
+const mapSourceViolations = (mapPath: string, content: string, files: Set<string>): string[] => {
+    const parsed = parseSourceMap(content);
+    if (parsed === undefined) return [`source map ${mapPath} is not valid JSON`];
+    return (parsed.sources ?? [])
+        .map((source, index) => sourceViolation({ parsed, source, index, mapPath, files }))
+        .filter((violation): violation is string => violation !== undefined);
 };
 
 const mapViolations = (files: Set<string>, maps: { [path: string]: string }): string[] =>

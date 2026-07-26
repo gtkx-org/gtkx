@@ -6,7 +6,7 @@ import { Library } from "../gir/library.js";
 import { namespaceDirectory } from "../gir/namespace.js";
 import { type ElementProps, setElementProps } from "../store/jsx/element-prop-imports.js";
 import { collectIntrinsicElementClasses, type GlibNamedClass } from "../store/jsx/intrinsic-elements.js";
-import { createElementPageContext, renderElementPage } from "./element-page.js";
+import { createElementPageContext, type ElementPageContext, renderElementPage } from "./element-page.js";
 import { elementSlug, firstSentence, namespaceOrder } from "./render.js";
 
 export type DocsElementLink = {
@@ -92,49 +92,70 @@ type GeneratedDocs = {
     namespaces: DocsNamespace[];
 };
 
-const generatePages = (options: DocsOptions, basePath: string, library: Library): GeneratedDocs => {
-    const intrinsicElements = collectIntrinsicElementClasses(library);
-
+const groupElementsByNamespace = (elements: GlibNamedClass[]): Map<string, GlibNamedClass[]> => {
     const byNamespace = new Map<string, GlibNamedClass[]>();
-    for (const entry of intrinsicElements) {
+    for (const entry of elements) {
         const list = byNamespace.get(entry.namespace.name) ?? [];
         list.push(entry);
         byNamespace.set(entry.namespace.name, list);
     }
+    return byNamespace;
+};
 
+const buildElementLinks = (elements: GlibNamedClass[], basePath: string): Map<string, string> => {
     const linkByGlibName = new Map<string, string>();
-    for (const entry of intrinsicElements) {
+    for (const entry of elements) {
         const directory = namespaceDirectory(entry.namespace);
-        const slug = elementSlug(entry.klass.name);
-        const link = `${basePath}/${directory}/${slug}`;
-        const existing = [...linkByGlibName.values()].includes(link);
-        if (existing) throw new Error(`Docs page slug collision for ${entry.glibName} at ${link}`);
+        const link = `${basePath}/${directory}/${elementSlug(entry.klass.name)}`;
+        if ([...linkByGlibName.values()].includes(link)) {
+            throw new Error(`Docs page slug collision for ${entry.glibName} at ${link}`);
+        }
         linkByGlibName.set(entry.glibName, link);
     }
+    return linkByGlibName;
+};
 
+type Page = { path: string; content: string };
+
+type NamespacePages = { docs: DocsNamespace; pages: Page[] };
+
+const namespacePages = (input: {
+    name: string;
+    elements: GlibNamedClass[];
+    basePath: string;
+    linkByGlibName: Map<string, string>;
+    pageContext: ElementPageContext;
+}): NamespacePages => {
+    const { name, elements, basePath, linkByGlibName, pageContext } = input;
+    const directory = name.toLowerCase();
+    const docs: DocsNamespace = {
+        name,
+        directory,
+        link: `${basePath}/${directory}/`,
+        elements: elements.map((entry) => ({ text: entry.glibName, link: linkByGlibName.get(entry.glibName) ?? "" })),
+    };
+    const pages: Page[] = elements.map((entry) => ({
+        path: `${directory}/${elementSlug(entry.klass.name)}.md`,
+        content: renderElementPage(entry, pageContext),
+    }));
+    pages.push({ path: `${directory}/index.md`, content: namespaceIndexPage(docs, elements) });
+    return { docs, pages };
+};
+
+const generatePages = (options: DocsOptions, basePath: string, library: Library): GeneratedDocs => {
+    const intrinsicElements = collectIntrinsicElementClasses(library);
+    const byNamespace = groupElementsByNamespace(intrinsicElements);
+    const linkByGlibName = buildElementLinks(intrinsicElements, basePath);
     const pageContext = createElementPageContext(library, (glibName: string) => linkByGlibName.get(glibName));
 
-    const pages: { path: string; content: string }[] = [];
+    const pages: Page[] = [];
     const namespaces: DocsNamespace[] = [];
     const orderedNames = sortStringsBy([...byNamespace.keys()], namespaceOrder);
     for (const name of orderedNames) {
         const elements = sortStringsBy(byNamespace.get(name) ?? [], (entry) => entry.glibName);
-        const directory = name.toLowerCase();
-        const namespaceDocs: DocsNamespace = {
-            name,
-            directory,
-            link: `${basePath}/${directory}/`,
-            elements: elements.map((entry) => ({
-                text: entry.glibName,
-                link: linkByGlibName.get(entry.glibName) ?? "",
-            })),
-        };
-        for (const entry of elements) {
-            const slug = elementSlug(entry.klass.name);
-            pages.push({ path: `${directory}/${slug}.md`, content: renderElementPage(entry, pageContext) });
-        }
-        pages.push({ path: `${directory}/index.md`, content: namespaceIndexPage(namespaceDocs, elements) });
-        namespaces.push(namespaceDocs);
+        const result = namespacePages({ name, elements, basePath, linkByGlibName, pageContext });
+        pages.push(...result.pages);
+        namespaces.push(result.docs);
     }
     pages.push({ path: "index.md", content: rootIndexPage(namespaces, options.libraries) });
     return { pages, namespaces };
@@ -145,27 +166,34 @@ export type DocsResult = {
     namespaces: DocsNamespace[];
 };
 
+const cachedDocsResult = (options: DocsOptions, manifestPath: string): DocsResult | undefined => {
+    if (options.force === true || !isGiStoreFresh(options.outDir, options.libraries)) return undefined;
+    if (!existsSync(manifestPath)) return undefined;
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as DocsManifest;
+    return { regenerated: false, namespaces: manifest.namespaces };
+};
+
+const writePages = (outDir: string, pages: Page[]): void => {
+    for (const page of pages) {
+        const target = join(outDir, page.path);
+        mkdirSync(dirname(target), { recursive: true });
+        writeFileSync(target, page.content);
+    }
+};
+
 export const writeDocs = (options: DocsOptions): DocsResult => {
     setElementProps(options.props ?? {});
     const basePath = options.basePath ?? "/reference";
     const manifestPath = join(options.outDir, MANIFEST_FILENAME);
-    if (options.force !== true && isGiStoreFresh(options.outDir, options.libraries)) {
-        if (existsSync(manifestPath)) {
-            const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as DocsManifest;
-            return { regenerated: false, namespaces: manifest.namespaces };
-        }
-    }
+    const cached = cachedDocsResult(options, manifestPath);
+    if (cached !== undefined) return cached;
 
     const library = Library.load(options.libraries, options.girPath);
     const { pages, namespaces } = generatePages(options, basePath, library);
 
     rmSync(options.outDir, { recursive: true, force: true });
     mkdirSync(options.outDir, { recursive: true });
-    for (const page of pages) {
-        const target = join(options.outDir, page.path);
-        mkdirSync(dirname(target), { recursive: true });
-        writeFileSync(target, page.content);
-    }
+    writePages(options.outDir, pages);
     const manifest: DocsManifest = { namespaces };
     writeFileSync(manifestPath, JSON.stringify(manifest));
     writeFileSync(

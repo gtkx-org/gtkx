@@ -28,13 +28,16 @@ const ORPHAN_MESSAGE = "<ConstraintLayout.Constraint> / <Guide> / <Vfl> must be 
 
 const typeNameOfWidget = (widget: Gtk.Widget): string => GObject.typeName(widget.__type__) ?? "";
 
+const addNamedGuide = (guide: GObject.Object | null, targets: Targets): void => {
+    if (!(guide instanceof Gtk.ConstraintGuide)) return;
+    const name = guide.getName();
+    if (name !== null && name !== "") targets.set(name, guide);
+};
+
 const addNamedGuides = (layout: Gtk.ConstraintLayout, targets: Targets): void => {
     const guides = layout.observeGuides();
     for (let index = 0; index < guides.getNItems(); index++) {
-        const guide = guides.getItem(index);
-        if (!(guide instanceof Gtk.ConstraintGuide)) continue;
-        const name = guide.getName();
-        if (name !== null && name !== "") targets.set(name, guide);
+        addNamedGuide(guides.getItem(index), targets);
     }
 };
 

@@ -36,17 +36,23 @@ const SKIP_STATUSES = new Set(["pending", "skipped", "todo"]);
 const allAssertions = (report: VitestReport): VitestAssertion[] =>
     (report.testResults ?? []).flatMap((suite) => suite.assertionResults ?? []);
 
+const statusOf = (status: string | undefined): Status => (status === "passed" ? "green" : "red");
+
+const recordAssertion = (assertion: VitestAssertion, observed: Baseline, skipped: string[]): void => {
+    const name = assertion.fullName ?? assertion.title;
+    if (!name) return;
+    if (SKIP_STATUSES.has(assertion.status ?? "")) {
+        skipped.push(name);
+        return;
+    }
+    observed[name] = statusOf(assertion.status);
+};
+
 const collect = (report: VitestReport): { observed: Baseline; skipped: string[] } => {
     const observed: Baseline = {};
     const skipped: string[] = [];
     for (const assertion of allAssertions(report)) {
-        const name = assertion.fullName ?? assertion.title;
-        if (!name) continue;
-        if (SKIP_STATUSES.has(assertion.status ?? "")) {
-            skipped.push(name);
-            continue;
-        }
-        observed[name] = assertion.status === "passed" ? "green" : "red";
+        recordAssertion(assertion, observed, skipped);
     }
     return { observed, skipped };
 };
@@ -61,33 +67,44 @@ const record = (observed: Baseline): void => {
     process.stdout.write(`Recorded ${Object.keys(sorted).length} specs (${red} red) to ${BASELINE_PATH}\n`);
 };
 
-const check = (observed: Baseline, skipped: string[]): void => {
-    const baseline = readBaseline();
+const collectFailures = (observed: Baseline, skipped: string[], baseline: Baseline): string[] => {
     const removed = Object.keys(baseline).filter((name) => !(name in observed));
     const regressed = Object.entries(observed).filter(
         ([name, status]) => baseline[name] === "green" && status === "red",
     );
-    const fixed = Object.entries(observed).filter(([name, status]) => baseline[name] === "red" && status === "green");
 
     const failures: string[] = [];
     for (const name of removed) failures.push(`removed spec: ${name}`);
     for (const name of skipped) failures.push(`skipped spec: ${name}`);
     for (const [name] of regressed) failures.push(`regressed green to red: ${name}`);
+    return failures;
+};
 
+const reportFixed = (observed: Baseline, baseline: Baseline): number => {
+    const fixed = Object.entries(observed).filter(([name, status]) => baseline[name] === "red" && status === "green");
     for (const [name] of fixed) process.stdout.write(`fixed: ${name}\n`);
+    return fixed.length;
+};
 
-    if (failures.length > 0) {
-        for (const failure of failures) process.stderr.write(`${failure}\n`);
-        process.stderr.write(
-            `\nThe spec baseline is frozen. Specs may only move red to green.\n` +
-                `Deleting, skipping, or weakening a spec is not a valid way to make the suite pass.\n` +
-                `After implementing a behavior, re-record with: pnpm spec:record\n`,
-        );
-        process.exit(1);
-    }
+const reportFailures = (failures: string[]): void => {
+    for (const failure of failures) process.stderr.write(`${failure}\n`);
+    process.stderr.write(
+        `\nThe spec baseline is frozen. Specs may only move red to green.\n` +
+            `Deleting, skipping, or weakening a spec is not a valid way to make the suite pass.\n` +
+            `After implementing a behavior, re-record with: pnpm spec:record\n`,
+    );
+    process.exit(1);
+};
+
+const check = (observed: Baseline, skipped: string[]): void => {
+    const baseline = readBaseline();
+    const failures = collectFailures(observed, skipped, baseline);
+    const fixedCount = reportFixed(observed, baseline);
+
+    if (failures.length > 0) reportFailures(failures);
 
     process.stdout.write(
-        `Baseline holds: ${Object.keys(observed).length} specs, ${fixed.length} newly green, none removed or skipped.\n`,
+        `Baseline holds: ${Object.keys(observed).length} specs, ${fixedCount} newly green, none removed or skipped.\n`,
     );
 };
 

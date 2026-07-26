@@ -16,22 +16,25 @@ declare global {
 const containsElement = (value: unknown): boolean =>
     isValidElement(value) || (Array.isArray(value) && value.some(containsElement));
 
+const routeProp = (key: string, value: unknown, hostProps: Props, propChildren: ReactNode[]): void => {
+    if (key !== "ref" && containsElement(value)) {
+        propChildren.push(
+            <Prop propName={key} key={`${Prop}:${key}`}>
+                {value as ReactNode}
+            </Prop>,
+        );
+    } else {
+        hostProps[key] = value;
+    }
+};
+
 const buildElement = (typeName: string, record: Props): ReactElement => {
     const Host = typeName as ElementType;
     const hostProps: Props = {};
     const propChildren: ReactNode[] = [];
     for (const key in record) {
-        const value = record[key];
         if (key === "children") continue;
-        if (key !== "ref" && containsElement(value)) {
-            propChildren.push(
-                <Prop propName={key} key={`${Prop}:${key}`}>
-                    {value as ReactNode}
-                </Prop>,
-            );
-        } else {
-            hostProps[key] = value;
-        }
+        routeProp(key, record[key], hostProps, propChildren);
     }
     return (
         <Host {...hostProps}>

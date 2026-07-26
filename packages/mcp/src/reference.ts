@@ -5,7 +5,7 @@ import { loadConfig } from "@gtkx/config";
 import { type McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ErrorCode, McpError, type ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import { defineTool, type Tool, textContent, textError } from "./tool.js";
+import { defineTool, type Tool, type ToolArgs, textContent, textError } from "./tool.js";
 
 export type ReferenceApi = Pick<
     ApiReference,
@@ -145,6 +145,16 @@ const getApiDocsShape = {
 const formatCandidates = (candidates: ApiSymbol[]): string =>
     candidates.map((candidate) => `- ${candidate.namespace}.${candidate.name} (${candidate.kind})`).join("\n");
 
+type SearchOptions = Parameters<ReferenceApi["search"]>[0];
+
+const buildSearchOptions = (args: ToolArgs<typeof searchApiShape>): SearchOptions => {
+    const options: SearchOptions = { query: args.query };
+    if (args.namespace !== undefined) options.namespace = args.namespace;
+    if (args.kind !== undefined) options.kinds = [args.kind];
+    if (args.limit !== undefined) options.limit = args.limit;
+    return options;
+};
+
 const listApiTool = (provider: ReferenceProvider): Tool =>
     defineTool({
         name: "gtkx_list_api",
@@ -176,16 +186,11 @@ const searchApiTool = (provider: ReferenceProvider): Tool =>
         description:
             "Search the project's generated GTK4 bindings API by symbol name. Returns matching symbols with their namespace, kind, and a one-line summary; fetch full pages with `gtkx_get_api_docs`.",
         inputSchema: searchApiShape,
-        handler: async ({ query, namespace, kind, limit }) => {
+        handler: async (args) => {
             const reference = await provider.get();
-            const results = reference.search({
-                query,
-                ...(namespace === undefined ? {} : { namespace }),
-                ...(kind === undefined ? {} : { kinds: [kind] }),
-                ...(limit === undefined ? {} : { limit }),
-            });
+            const results = reference.search(buildSearchOptions(args));
             if (results.length === 0) {
-                return textContent(`No symbols matched "${query}". Try a shorter substring or \`gtkx_list_api\`.`);
+                return textContent(`No symbols matched "${args.query}". Try a shorter substring or \`gtkx_list_api\`.`);
             }
             return textContent(JSON.stringify(results, null, 2));
         },

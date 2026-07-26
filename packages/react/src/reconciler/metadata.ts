@@ -41,20 +41,26 @@ const buildAncestry = (name: string): string[] => {
 
 const ancestryOf = (name: string): string[] => getOrInsert(ancestryCache, name, buildAncestry);
 
+const addAll = <T>(target: Set<T>, source: Iterable<T> | undefined): void => {
+    for (const item of source ?? []) target.add(item);
+};
+
 const accumulateAncestor = (info: TypeInfo, ancestor: string): void => {
     Object.assign(info.signals, SIGNALS[ancestor] ?? {});
-    for (const signal of userEventSignals[ancestor] ?? []) info.userEventSignals.add(signal);
-    for (const prop of CONSTRUCT_ONLY_PROPS[ancestor] ?? []) info.constructOnly.add(prop);
-    for (const prop of CONSTRUCT_PROPS[ancestor] ?? []) info.construct.add(prop);
+    addAll(info.userEventSignals, userEventSignals[ancestor]);
+    addAll(info.constructOnly, CONSTRUCT_ONLY_PROPS[ancestor]);
+    addAll(info.construct, CONSTRUCT_PROPS[ancestor]);
     info.behaviors.push(...(ELEMENTS[ancestor]?.behaviors ?? []));
 };
 
+const applyBehaviorFlags = (info: TypeInfo, behavior: ElementBehavior): void => {
+    if (behavior.flush !== undefined) info.hasFlush = true;
+    if (behavior.mount !== undefined) info.hasMount = true;
+    addAll(info.deferred, deferredProps(behavior));
+};
+
 const resolveBehaviorFlags = (info: TypeInfo): void => {
-    for (const behavior of info.behaviors) {
-        if (behavior.flush !== undefined) info.hasFlush = true;
-        if (behavior.mount !== undefined) info.hasMount = true;
-        for (const prop of deferredProps(behavior)) info.deferred.add(prop);
-    }
+    for (const behavior of info.behaviors) applyBehaviorFlags(info, behavior);
 };
 
 const buildTypeInfo = (name: string): TypeInfo => {

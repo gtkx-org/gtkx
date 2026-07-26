@@ -14,6 +14,22 @@ const createDynamicComponent = (removableContent: ReactNode) => () => {
     );
 };
 
+const elementIfAttached = (element: Gtk.Widget): Gtk.Widget | null => {
+    try {
+        const parent = element.getParent();
+        return parent ? element : null;
+    } catch {
+        return null;
+    }
+};
+
+const expectAlreadyRemovedRejection = async (
+    target: Parameters<typeof waitForElementToBeRemoved>[0],
+): Promise<void> => {
+    await render(<GtkLabel>Test</GtkLabel>);
+    await expect(waitForElementToBeRemoved(target)).rejects.toThrow("already removed");
+};
+
 describe("waitFor resolves", () => {
     it("resolves when callback succeeds", async () => {
         let value = 0;
@@ -145,14 +161,7 @@ describe("waitForElementToBeRemoved widget", () => {
 
         const element = await screen.findByName("removable");
 
-        const removalPromise = waitForElementToBeRemoved(() => {
-            try {
-                const parent = element.getParent();
-                return parent ? element : null;
-            } catch {
-                return null;
-            }
-        });
+        const removalPromise = waitForElementToBeRemoved(() => elementIfAttached(element));
 
         await userEvent.click(removeButton);
         await expect(removalPromise).resolves.toBeUndefined();
@@ -200,8 +209,7 @@ describe("waitForElementToBeRemoved widget", () => {
     });
 
     it("throws immediately when given an empty array", async () => {
-        await render(<GtkLabel>Test</GtkLabel>);
-        await expect(waitForElementToBeRemoved([])).rejects.toThrow("already removed");
+        await expectAlreadyRemovedRejection([]);
     });
 });
 
@@ -217,14 +225,10 @@ describe("waitForElementToBeRemoved timeout", () => {
 
 describe("waitForElementToBeRemoved error handling", () => {
     it("throws immediately if element is already removed", async () => {
-        await render(<GtkLabel>Test</GtkLabel>);
-
-        await expect(waitForElementToBeRemoved(null as never)).rejects.toThrow("already removed");
+        await expectAlreadyRemovedRejection(null as never);
     });
 
     it("throws if callback returns null initially", async () => {
-        await render(<GtkLabel>Test</GtkLabel>);
-
-        await expect(waitForElementToBeRemoved(() => null)).rejects.toThrow("already removed");
+        await expectAlreadyRemovedRejection(() => null);
     });
 });

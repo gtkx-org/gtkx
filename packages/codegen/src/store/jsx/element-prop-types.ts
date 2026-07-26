@@ -1,4 +1,5 @@
 import { toCamelIdentifier } from "@gtkx/utils";
+import type { GirClass } from "../../gir/class.js";
 import { chainOf, type GirIndex, type GirTypeEntry } from "./gir-index.js";
 import { glibNameOf } from "./intrinsic-elements.js";
 
@@ -8,13 +9,15 @@ export type LazyElementSpec = {
     typeSource: string;
 };
 
+const appendConstructOnlyNames = (klass: GirClass, names: string[]): void => {
+    for (const property of klass.properties) {
+        if (property.constructOnly) names.push(toCamelIdentifier(property.name));
+    }
+};
+
 const constructOnlyNames = (context: GirIndex, entry: GirTypeEntry): string[] => {
     const names: string[] = [];
-    for (const klass of chainOf(context, entry)) {
-        for (const property of klass.properties) {
-            if (property.constructOnly) names.push(toCamelIdentifier(property.name));
-        }
-    }
+    for (const klass of chainOf(context, entry)) appendConstructOnlyNames(klass, names);
     return names;
 };
 

@@ -5,6 +5,7 @@ import type { GirEnum } from "../../gir/enum.js";
 import type { Library } from "../../gir/library.js";
 import type { PrimitiveCategory } from "../../gir/primitives.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
+import type { GirType } from "../../gir/type.js";
 import type { TypeId } from "../../gir/type-id.js";
 import {
     implementedInterfaces,
@@ -63,33 +64,43 @@ const collectIntrinsicElements = (library: Library): IntrinsicElementEntry[] => 
     return sortStringsBy(entries, (entry) => entry.glibName);
 };
 
+const collectSignalsFromSource = (source: GirClass, seen: Set<string>, signals: [string, string][]): void => {
+    for (const signal of source.signals) {
+        const handlerName = signalHandlerName(signal.name);
+        if (seen.has(handlerName)) continue;
+        seen.add(handlerName);
+        signals.push([handlerName, signal.name] as const);
+    }
+};
+
 const collectSignals = (sources: GirClass[]): [string, string][] => {
     const seen = new Set<string>();
     const signals: [string, string][] = [];
-    for (const source of sources) {
-        for (const signal of source.signals) {
-            const handlerName = signalHandlerName(signal.name);
-            if (seen.has(handlerName)) continue;
-            seen.add(handlerName);
-            signals.push([handlerName, signal.name] as const);
-        }
-    }
+    for (const source of sources) collectSignalsFromSource(source, seen, signals);
     return signals;
 };
 
-const collectPropNames = (sources: GirClass[], keep: (property: GirProperty) => boolean): string[] => {
-    const seen = new Set<string>();
-    const names: string[] = [];
-    for (const source of sources) {
-        for (const property of source.properties) {
-            if (!keep(property)) continue;
-            const jsName = toCamelIdentifier(property.name);
-            if (seen.has(jsName)) continue;
-            seen.add(jsName);
-            names.push(jsName);
-        }
+type PropNameCollector = {
+    keep: (property: GirProperty) => boolean;
+    seen: Set<string>;
+    names: string[];
+};
+
+const collectPropNamesFromSource = (source: GirClass, collector: PropNameCollector): void => {
+    const { keep, seen, names } = collector;
+    for (const property of source.properties) {
+        if (!keep(property)) continue;
+        const jsName = toCamelIdentifier(property.name);
+        if (seen.has(jsName)) continue;
+        seen.add(jsName);
+        names.push(jsName);
     }
-    return names;
+};
+
+const collectPropNames = (sources: GirClass[], keep: (property: GirProperty) => boolean): string[] => {
+    const collector: PropNameCollector = { keep, seen: new Set<string>(), names: [] };
+    for (const source of sources) collectPropNamesFromSource(source, collector);
+    return collector.names;
 };
 
 const collectConstructOnly = (sources: GirClass[]): string[] =>
@@ -107,17 +118,27 @@ const renderStringSet = (names: string[]): string => `new Set([${names.map(sourc
 
 const renderSignalsObject = (entries: [string, string][]): string => renderObjectLiteral(entries, sourceStringLiteral);
 
-const collectDefaultProps = (library: Library, sources: GirClass[]): [string, string][] => {
-    const seen = new Set<string>();
-    const defaults: [string, string][] = [];
-    for (const klass of sources) {
-        for (const property of klass.properties) {
-            const entry = defaultPropEntry(library, klass, property, seen);
-            if (entry !== undefined) defaults.push(entry);
-        }
-    }
-    return defaults;
+type DefaultPropsCollector = {
+    library: Library;
+    seen: Set<string>;
+    defaults: [string, string][];
 };
+
+const collectDefaultsFromClass = (klass: GirClass, collector: DefaultPropsCollector): void => {
+    for (const property of klass.properties) {
+        const entry = defaultPropEntry(collector.library, klass, property, collector.seen);
+        if (entry !== undefined) collector.defaults.push(entry);
+    }
+};
+
+const collectDefaultProps = (library: Library, sources: GirClass[]): [string, string][] => {
+    const collector: DefaultPropsCollector = { library, seen: new Set<string>(), defaults: [] };
+    for (const klass of sources) collectDefaultsFromClass(klass, collector);
+    return collector.defaults;
+};
+
+const isDefaultCandidate = (property: GirProperty): boolean =>
+    (property.writable || property.construct) && !property.constructOnly && property.introspectable;
 
 const defaultPropEntry = (
     library: Library,
@@ -125,8 +146,7 @@ const defaultPropEntry = (
     property: GirProperty,
     seen: Set<string>,
 ): [string, string] | undefined => {
-    const settable = (property.writable || property.construct) && !property.constructOnly;
-    if (!settable || !property.introspectable) return undefined;
+    if (!isDefaultCandidate(property)) return undefined;
     const jsName = toCamelIdentifier(property.name);
     if (seen.has(jsName)) return undefined;
     seen.add(jsName);
@@ -158,6 +178,10 @@ const resolveDefaultLiteral = (
     if (ref === undefined) return undefined;
     const resolved = library.typeOf(ref);
     if (resolved === undefined) return undefined;
+    return resolveTypeDefaultLiteral(library, resolved, raw);
+};
+
+const resolveTypeDefaultLiteral = (library: Library, resolved: GirType, raw: string): string | undefined => {
     if (resolved.kind === "primitive") return primitiveDefaultLiteral(resolved.category, raw);
     if (resolved.kind === "enum") return enumDefaultLiteral(resolved.value, raw);
     if (resolved.kind === "alias") return resolveDefaultLiteral(library, resolved.value.target, raw);
@@ -166,12 +190,16 @@ const resolveDefaultLiteral = (
 
 const INTEGER_PATTERN = /^-?\d+$/;
 
+const booleanDefaultLiteral = (raw: string): string | undefined => {
+    if (raw === "TRUE") return "true";
+    if (raw === "FALSE") return "false";
+    return undefined;
+};
+
 const primitiveDefaultLiteral = (category: PrimitiveCategory, raw: string): string | undefined => {
     switch (category) {
         case "boolean":
-            if (raw === "TRUE") return "true";
-            if (raw === "FALSE") return "false";
-            return undefined;
+            return booleanDefaultLiteral(raw);
         case "int8":
         case "int16":
         case "int32":

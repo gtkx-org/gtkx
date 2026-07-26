@@ -15,14 +15,16 @@ import type { DevRunnerDeps } from "./runner.js";
 const DEV_MODE = "development";
 const APPLICATION_POLL_INTERVAL_MS = 50;
 
+const currentApplicationId = (): string | null => Gio.Application.getDefault()?.applicationId ?? null;
+
 const waitForApplicationId = async (timeoutMs: number): Promise<string | null> => {
     const deadline = Date.now() + timeoutMs;
-    for (;;) {
-        const applicationId = Gio.Application.getDefault()?.applicationId ?? null;
-        if (applicationId !== null) return applicationId;
-        if (Date.now() >= deadline) return null;
+    let applicationId = currentApplicationId();
+    while (applicationId === null && Date.now() < deadline) {
         await new Promise((resolve) => setTimeout(resolve, APPLICATION_POLL_INTERVAL_MS));
+        applicationId = currentApplicationId();
     }
+    return applicationId;
 };
 
 export const defaultDevRunnerDeps = (): DevRunnerDeps => ({

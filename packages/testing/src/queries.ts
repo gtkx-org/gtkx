@@ -95,11 +95,19 @@ const matchAccessibleName = (widget: Gtk.Widget, options: ByRoleOptions): boolea
     return matchText(text, options.name, widget, options);
 };
 
+const numericValueMatches = (expected: number | undefined, actual: number | null): boolean =>
+    expected === undefined || actual === expected;
+
 const matchAccessibleValue = (widget: Gtk.Widget, value: ByRoleValue, options: ByRoleOptions): boolean => {
     const actual = getWidgetValue(widget);
-    if (value.now !== undefined && actual.now !== value.now) return false;
-    if (value.min !== undefined && actual.min !== value.min) return false;
-    if (value.max !== undefined && actual.max !== value.max) return false;
+    const numericChecks: [number | undefined, number | null][] = [
+        [value.now, actual.now],
+        [value.min, actual.min],
+        [value.max, actual.max],
+    ];
+    for (const [expected, current] of numericChecks) {
+        if (!numericValueMatches(expected, current)) return false;
+    }
     if (value.text !== undefined && !matchText(actual.text, value.text, widget, options)) return false;
     return true;
 };
@@ -118,35 +126,40 @@ const matchBooleanStates = (widget: Gtk.Widget, options: ByRoleOptions): boolean
     return true;
 };
 
-const matchAccessibleStates = (widget: Gtk.Widget, options: ByRoleOptions): boolean => {
-    if (!matchBooleanStates(widget, options)) return false;
-    if (options.level !== undefined && getWidgetLevel(widget) !== options.level) return false;
-    if (
-        options.description !== undefined &&
-        !matchText(getWidgetDescription(widget), options.description, widget, options)
-    )
-        return false;
-    if (options.value !== undefined && !matchAccessibleValue(widget, options.value, options)) return false;
-    return true;
-};
+const matchLevelState = (widget: Gtk.Widget, options: ByRoleOptions): boolean =>
+    options.level === undefined || getWidgetLevel(widget) === options.level;
+
+const matchDescriptionState = (widget: Gtk.Widget, options: ByRoleOptions): boolean =>
+    options.description === undefined || matchText(getWidgetDescription(widget), options.description, widget, options);
+
+const matchValueState = (widget: Gtk.Widget, options: ByRoleOptions): boolean =>
+    options.value === undefined || matchAccessibleValue(widget, options.value, options);
+
+const matchAccessibleStates = (widget: Gtk.Widget, options: ByRoleOptions): boolean =>
+    matchBooleanStates(widget, options) &&
+    matchLevelState(widget, options) &&
+    matchDescriptionState(widget, options) &&
+    matchValueState(widget, options);
 
 const matchByRoleOptions = (widget: Gtk.Widget, options?: ByRoleOptions): boolean => {
     if (!options) return true;
     return matchAccessibleName(widget, options) && matchAccessibleStates(widget, options);
 };
 
+type QueryFamilyReturns = {
+    queryBy: Gtk.Widget | null;
+    queryAllBy: Gtk.Widget[];
+    getBy: Gtk.Widget;
+    getAllBy: Gtk.Widget[];
+    findBy: Promise<Gtk.Widget>;
+    findAllBy: Promise<Gtk.Widget[]>;
+};
+
 type NamedFamily<Suffix extends string, Args extends unknown[]> = {
-    [P in `queryBy${Suffix}`]: (container: Container, ...args: Args) => Gtk.Widget | null;
-} & {
-    [P in `queryAllBy${Suffix}`]: (container: Container, ...args: Args) => Gtk.Widget[];
-} & {
-    [P in `getBy${Suffix}`]: (container: Container, ...args: Args) => Gtk.Widget;
-} & {
-    [P in `getAllBy${Suffix}`]: (container: Container, ...args: Args) => Gtk.Widget[];
-} & {
-    [P in `findBy${Suffix}`]: (container: Container, ...args: Args) => Promise<Gtk.Widget>;
-} & {
-    [P in `findAllBy${Suffix}`]: (container: Container, ...args: Args) => Promise<Gtk.Widget[]>;
+    [K in keyof QueryFamilyReturns as `${K & string}${Suffix}`]: (
+        container: Container,
+        ...args: Args
+    ) => QueryFamilyReturns[K];
 };
 
 const nameQueryFamily = <Suffix extends string, Args extends unknown[]>(
@@ -203,6 +216,22 @@ const collectMnemonicMatch = (
     return widget.getMnemonicWidget();
 };
 
+const collectLabelMatches = (
+    results: Set<Gtk.Widget>,
+    widget: Gtk.Widget,
+    text: Matcher,
+    options: MatcherOptions | undefined,
+): void => {
+    const mnemonicTarget = collectMnemonicMatch(widget, text, options);
+    if (mnemonicTarget) results.add(mnemonicTarget);
+
+    const ownLabel = getWidgetOwnLabel(widget);
+    if (ownLabel !== null && matchText(ownLabel, text, widget, options)) results.add(widget);
+
+    const labelledByText = getWidgetLabelledByText(widget);
+    if (labelledByText !== null && matchText(labelledByText, text, widget, options)) results.add(widget);
+};
+
 /**
  * Finds every widget associated with a label whose text matches: a Gtk.Label mnemonic target, the widget's own accessible label, or its labelled-by relation.
  * @param container Widget subtree to search.
@@ -214,14 +243,7 @@ export const queryAllByLabelText = (container: Container, text: Matcher, options
     const results = new Set<Gtk.Widget>();
 
     for (const widget of traverse(container)) {
-        const mnemonicTarget = collectMnemonicMatch(widget, text, options);
-        if (mnemonicTarget) results.add(mnemonicTarget);
-
-        const ownLabel = getWidgetOwnLabel(widget);
-        if (ownLabel !== null && matchText(ownLabel, text, widget, options)) results.add(widget);
-
-        const labelledByText = getWidgetLabelledByText(widget);
-        if (labelledByText !== null && matchText(labelledByText, text, widget, options)) results.add(widget);
+        collectLabelMatches(results, widget, text, options);
     }
 
     return [...results];

@@ -105,23 +105,26 @@ const itemHandlers = (state: CellsState, slot: string | null): FactoryHandlers =
     onTeardown: (cell) => removeRecord(state, cell),
 });
 
+const bindHeader = (state: CellsState, header: Gtk.ListHeader): void => {
+    const holder = header.getItem();
+    if (holder === null) return;
+    if (header.getChild() === null) header.setChild(placeholder(state.options().size));
+    addRecord(state, {
+        kind: "header",
+        cell: header,
+        holder,
+        row: null,
+        slot: null,
+        position: () => header.getStart(),
+    });
+};
+
 const headerHandlers = (state: CellsState): FactoryHandlers => ({
     onSetup: (header) => {
         if (header instanceof Gtk.ListHeader) header.setChild(placeholder(state.options().size));
     },
     onBind: (header) => {
-        if (!(header instanceof Gtk.ListHeader)) return;
-        const holder = header.getItem();
-        if (holder === null) return;
-        if (header.getChild() === null) header.setChild(placeholder(state.options().size));
-        addRecord(state, {
-            kind: "header",
-            cell: header,
-            holder,
-            row: null,
-            slot: null,
-            position: () => header.getStart(),
-        });
+        if (header instanceof Gtk.ListHeader) bindHeader(state, header);
     },
     onUnbind: (header) => removeRecord(state, header),
     onTeardown: (header) => removeRecord(state, header),
@@ -171,17 +174,22 @@ export type ItemArgsOptions = {
     expandedIds?: string[] | null | undefined;
 };
 
+const applyRowArgs = (
+    args: RenderItemArgs<unknown>,
+    row: Gtk.TreeListRow,
+    id: string,
+    expandedIds: string[] | null | undefined,
+): void => {
+    args.depth = row.getDepth();
+    if (!row.isExpandable()) return;
+    args.isExpanded = expandedIds != null ? expandedIds.includes(id) : row.getExpanded();
+};
+
 export const renderItemArgs = (record: CellRecord, options: ItemArgsOptions): RenderItemArgs<unknown> | null => {
     const entry = options.collection.entryOf(record.holder);
     if (entry === undefined) return null;
     const args: RenderItemArgs<unknown> = { item: entry.item.value, index: record.position() };
-    if (record.row !== null) {
-        args.depth = record.row.getDepth();
-        if (record.row.isExpandable()) {
-            args.isExpanded =
-                options.expandedIds != null ? options.expandedIds.includes(entry.id) : record.row.getExpanded();
-        }
-    }
+    if (record.row !== null) applyRowArgs(args, record.row, entry.id, options.expandedIds);
     return args;
 };
 

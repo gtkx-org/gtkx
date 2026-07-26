@@ -114,17 +114,21 @@ export const flagsT = (sharedLibrary: string, getTypeFnName: string, signed: boo
     signed,
 });
 
+const applyBoxedOptions = (result: BoxedDescriptor, options: BoxedOptions): void => {
+    if (options.sharedLibrary !== undefined) result.sharedLibrary = options.sharedLibrary;
+    if (options.getTypeFnName !== undefined) result.getTypeFnName = options.getTypeFnName;
+    if (options.freeFnName !== undefined) result.freeFnName = options.freeFnName;
+    if (options.callerAllocated) result.callerAllocated = true;
+    if (options.size !== undefined) result.size = options.size;
+};
+
 export const boxedT = (typeName: string, options: BoxedOptions = {}): BoxedDescriptor => {
     const result: BoxedDescriptor = {
         kind: "boxed",
         ownership: options.ownership ?? "borrowed",
         typeName,
     };
-    if (options.sharedLibrary !== undefined) result.sharedLibrary = options.sharedLibrary;
-    if (options.getTypeFnName !== undefined) result.getTypeFnName = options.getTypeFnName;
-    if (options.freeFnName !== undefined) result.freeFnName = options.freeFnName;
-    if (options.callerAllocated) result.callerAllocated = true;
-    if (options.size !== undefined) result.size = options.size;
+    applyBoxedOptions(result, options);
     return result;
 };
 

@@ -36,9 +36,16 @@ const buildMenu = (items: MenuItem[]): Gio.Menu => {
 };
 
 function appendMenuItem(menu: Gio.Menu, item: MenuItem): void {
-    if (item.submenu !== undefined) menu.appendSubmenu(item.label ?? null, buildMenu(item.submenu));
-    else if (item.section !== undefined) menu.appendSection(item.label ?? null, buildMenu(item.section));
-    else menu.append(item.label ?? null, item.action ?? null);
+    const label = item.label ?? null;
+    if (item.submenu !== undefined) {
+        menu.appendSubmenu(label, buildMenu(item.submenu));
+        return;
+    }
+    if (item.section !== undefined) {
+        menu.appendSection(label, buildMenu(item.section));
+        return;
+    }
+    menu.append(label, item.action ?? null);
 }
 
 const SINGLE_CHILD_TYPES = [

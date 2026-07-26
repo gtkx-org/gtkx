@@ -59,6 +59,15 @@ export const forEachAncestor = (
     }
 };
 
+const visitInterfaceProperties = (
+    interfaces: ResolvedAncestor[],
+    visit: (owner: GirClass, property: GirProperty) => void,
+): void => {
+    for (const iface of interfaces) {
+        for (const property of iface.klass.properties) visit(iface.klass, property);
+    }
+};
+
 const forEachInheritedProperty = (
     context: ModuleContext,
     klass: GirClass,
@@ -66,46 +75,74 @@ const forEachInheritedProperty = (
 ): void => {
     forEachAncestor(context, klass, (ancestor, interfaces) => {
         for (const property of ancestor.klass.properties) visit(ancestor.klass, property);
-        for (const iface of interfaces) {
-            for (const property of iface.klass.properties) visit(iface.klass, property);
-        }
+        visitInterfaceProperties(interfaces, visit);
     });
 };
 
 export type OwnedProperty = { owner: GirClass; property: GirProperty };
 
-export const collectInterfaceProperties = (context: ModuleContext, klass: GirClass): OwnedProperty[] => {
+const collectSeenPropertyNames = (context: ModuleContext, klass: GirClass): Set<string> => {
     const seen = new Set<string>();
     for (const property of klass.properties) seen.add(toCamelIdentifier(property.name));
     forEachInheritedProperty(context, klass, (_owner, property) => seen.add(toCamelIdentifier(property.name)));
+    return seen;
+};
+
+const collectNewInterfaceProperties = (iface: ResolvedAncestor, seen: Set<string>): OwnedProperty[] => {
+    const result: OwnedProperty[] = [];
+    for (const property of iface.klass.properties) {
+        const name = toCamelIdentifier(property.name);
+        if (seen.has(name)) continue;
+        seen.add(name);
+        result.push({ owner: iface.klass, property });
+    }
+    return result;
+};
+
+export const collectInterfaceProperties = (context: ModuleContext, klass: GirClass): OwnedProperty[] => {
+    const seen = collectSeenPropertyNames(context, klass);
     const result: OwnedProperty[] = [];
     for (const iface of resolveDirectInterfaces(context, klass, context.namespace.name)) {
-        for (const property of iface.klass.properties) {
-            const name = toCamelIdentifier(property.name);
-            if (seen.has(name)) continue;
-            seen.add(name);
-            result.push({ owner: iface.klass, property });
-        }
+        result.push(...collectNewInterfaceProperties(iface, seen));
     }
     return result;
 };
 
 type MethodSignature = { returnType: string; arity: number };
 
+const recordAncestorSignatures = (
+    context: ModuleContext,
+    klass: GirClass,
+    signatures: Map<string, MethodSignature>,
+): void => {
+    for (const method of klass.methods) {
+        const name = camelCase(method.name);
+        if (!method.introspectable || signatures.has(name)) continue;
+        signatures.set(name, {
+            returnType: renderTsType(context, method.returnValue.type, method.returnValue.nullable),
+            arity: inputParameters(context.library, method).length,
+        });
+    }
+};
+
 const ancestorClassMethodSignatures = (context: ModuleContext, klass: GirClass): Map<string, MethodSignature> => {
     const signatures = new Map<string, MethodSignature>();
-    forEachAncestor(context, klass, (ancestor) => {
-        for (const method of ancestor.klass.methods) {
-            if (!method.introspectable) continue;
-            const name = camelCase(method.name);
-            if (signatures.has(name)) continue;
-            signatures.set(name, {
-                returnType: renderTsType(context, method.returnValue.type, method.returnValue.nullable),
-                arity: inputParameters(context.library, method).length,
-            });
-        }
-    });
+    forEachAncestor(context, klass, (ancestor) => recordAncestorSignatures(context, ancestor.klass, signatures));
     return signatures;
+};
+
+const mergeOmissionName = (
+    context: ModuleContext,
+    method: GirFunction,
+    ancestors: Map<string, MethodSignature>,
+): string | undefined => {
+    if (!method.introspectable) return undefined;
+    const name = camelCase(method.name);
+    const ancestor = ancestors.get(name);
+    if (ancestor === undefined) return undefined;
+    const returnType = renderTsType(context, method.returnValue.type, method.returnValue.nullable);
+    const arity = inputParameters(context.library, method).length;
+    return ancestor.returnType !== returnType || ancestor.arity !== arity ? name : undefined;
 };
 
 export const collectInterfaceMergeOmissions = (
@@ -116,13 +153,8 @@ export const collectInterfaceMergeOmissions = (
     const ancestors = ancestorClassMethodSignatures(context, klass);
     const omissions: string[] = [];
     for (const method of iface.klass.methods) {
-        if (!method.introspectable) continue;
-        const name = camelCase(method.name);
-        const ancestor = ancestors.get(name);
-        if (ancestor === undefined) continue;
-        const returnType = renderTsType(context, method.returnValue.type, method.returnValue.nullable);
-        const arity = inputParameters(context.library, method).length;
-        if (ancestor.returnType !== returnType || ancestor.arity !== arity) omissions.push(name);
+        const name = mergeOmissionName(context, method, ancestors);
+        if (name !== undefined) omissions.push(name);
     }
     return omissions;
 };
@@ -190,6 +222,34 @@ const RESERVED_SIGNAL_MEMBERS = new Set([
     "removeEventListener",
 ]);
 
+type InheritedMatch = {
+    inheritedReturn: string;
+    inheritedMethod: InheritedMethod;
+};
+
+const inheritedMatch = (inherited: InheritedMethods, name: string): InheritedMatch | undefined => {
+    const inheritedReturn = inherited.returnTypes.get(name);
+    const inheritedMethod = inherited.definitions.get(name);
+    if (inheritedReturn === undefined || inheritedMethod === undefined) return undefined;
+    return { inheritedReturn, inheritedMethod };
+};
+
+const methodsConflict = (options: {
+    context: ModuleContext;
+    callable: GirFunction;
+    inheritedReturn: string;
+    inheritedMethod: InheritedMethod;
+}): boolean => {
+    const { context, callable, inheritedReturn, inheritedMethod } = options;
+    const ownReturn = renderTsType(context, callable.returnValue.type, callable.returnValue.nullable);
+    return (
+        inheritedReturn !== ownReturn ||
+        hasParameterEnumConflict(context, callable, inheritedMethod) ||
+        inputParameters(context.library, callable).length !==
+            inputParameters(context.library, inheritedMethod.method).length
+    );
+};
+
 export const conflictRename = (
     context: ModuleContext,
     callable: GirFunction,
@@ -199,15 +259,9 @@ export const conflictRename = (
     if (!callable.introspectable) return undefined;
     const name = methodExportName(callable);
     if (RESERVED_SIGNAL_MEMBERS.has(name)) return conflictingMethodName(className, callable.name);
-    const inheritedReturn = inherited.returnTypes.get(name);
-    const inheritedMethod = inherited.definitions.get(name);
-    if (inheritedReturn === undefined || inheritedMethod === undefined) return undefined;
-    const ownReturn = renderTsType(context, callable.returnValue.type, callable.returnValue.nullable);
-    const conflicts =
-        inheritedReturn !== ownReturn ||
-        hasParameterEnumConflict(context, callable, inheritedMethod) ||
-        inputParameters(context.library, callable).length !==
-            inputParameters(context.library, inheritedMethod.method).length;
+    const match = inheritedMatch(inherited, name);
+    if (match === undefined) return undefined;
+    const conflicts = methodsConflict({ context, callable, ...match });
     return conflicts ? conflictingMethodName(className, callable.name) : undefined;
 };
 
@@ -219,6 +273,16 @@ export const reservedSignalMemberRename = (className: string, callable: GirFunct
         ? conflictingMethodName(className, callable.name)
         : undefined;
 
+const enumConflict = (
+    context: ModuleContext,
+    ownRef: TypeId | undefined,
+    inheritedRef: TypeId | undefined,
+): boolean => {
+    const ownEnum = enumIdentity(context, ownRef);
+    const inheritedEnum = enumIdentity(context, inheritedRef);
+    return ownEnum !== undefined && inheritedEnum !== undefined && ownEnum !== inheritedEnum;
+};
+
 const hasParameterEnumConflict = (context: ModuleContext, own: GirFunction, inherited: InheritedMethod): boolean => {
     const ownParams = inputParameters(context.library, own);
     const inheritedParams = inputParameters(context.library, inherited.method);
@@ -226,10 +290,13 @@ const hasParameterEnumConflict = (context: ModuleContext, own: GirFunction, inhe
     for (let index = 0; index < count; index += 1) {
         const ownParam = ownParams[index];
         const inheritedParam = inheritedParams[index];
-        if (ownParam === undefined || inheritedParam === undefined) continue;
-        const ownEnum = enumIdentity(context, ownParam.parameter.type);
-        const inheritedEnum = enumIdentity(context, inheritedParam.parameter.type);
-        if (ownEnum !== undefined && inheritedEnum !== undefined && ownEnum !== inheritedEnum) return true;
+        if (
+            ownParam !== undefined &&
+            inheritedParam !== undefined &&
+            enumConflict(context, ownParam.parameter.type, inheritedParam.parameter.type)
+        ) {
+            return true;
+        }
     }
     return false;
 };

@@ -22,10 +22,13 @@ type IntrinsicElementPropsEntries = {
     objectPropNames: string[];
 };
 
-type IntrinsicElementPropsOptions = {
+type IntrinsicElementScope = {
     library: Library;
     klass: GirClass;
     namespace: GirNamespace;
+};
+
+type IntrinsicElementPropsOptions = IntrinsicElementScope & {
     isIntrinsicElementAncestor?: (candidate: GirClass) => boolean;
 };
 
@@ -48,42 +51,64 @@ type PropEntryCollector = {
     acceptSignal: (signal: GirSignal) => void;
 };
 
+type PropCollectorState = {
+    owner: PropOwner;
+    types: PropTypeRenderContext;
+    propLines: string[];
+    objectPropNames: string[];
+    seen: Set<string>;
+};
+
+const appendPropertyLines = (state: PropCollectorState, property: GirProperty, jsName: string): void => {
+    const tsType = renderReactPropType(state.types, property.type, false);
+    const doc = renderJsDoc(property.doc);
+    if (isObjectProp(state.owner, property, jsName)) {
+        state.propLines.push(`${doc}${jsName}?: ${tsType} | ReactElement | null | undefined;`);
+        state.objectPropNames.push(jsName);
+        return;
+    }
+    const settable = isConstructableProperty(property);
+    if (settable) state.propLines.push(`${doc}${jsName}?: ${tsType} | null | undefined;`);
+    state.propLines.push(
+        `${settable ? "" : doc}onNotify${upperFirst(jsName)}?: ((value: ${tsType} | null, self: Self) => void) | null | undefined;`,
+    );
+};
+
+const acceptCollectorProperty = (state: PropCollectorState, property: GirProperty): void => {
+    if (!property.introspectable) return;
+    const jsName = toCamelIdentifier(property.name);
+    if (state.seen.has(jsName)) return;
+    state.seen.add(jsName);
+    appendPropertyLines(state, property, jsName);
+};
+
+const acceptCollectorSignal = (state: PropCollectorState, signal: GirSignal): void => {
+    const handlerName = signalHandlerName(signal.name);
+    if (state.seen.has(handlerName)) return;
+    state.seen.add(handlerName);
+    const signature = renderSignalHandler({ types: state.types, signal, selfType: "Self" });
+    state.propLines.push(`${renderJsDoc(signal.doc)}${handlerName}?: (${signature}) | undefined;`);
+};
+
 const createPropEntryCollector = (owner: PropOwner): PropEntryCollector => {
     const { library } = owner;
     const imports = new Map<string, string>();
     const types: PropTypeRenderContext = { library, imports };
-    const propLines: string[] = [];
-    const objectPropNames: string[] = [];
-    const seen = new Set<string>();
-
-    const acceptProperty = (property: GirProperty): void => {
-        if (!property.introspectable) return;
-        const jsName = toCamelIdentifier(property.name);
-        if (seen.has(jsName)) return;
-        seen.add(jsName);
-        const tsType = renderReactPropType(types, property.type, false);
-        const doc = renderJsDoc(property.doc);
-        if (isObjectProp(owner, property, jsName)) {
-            propLines.push(`${doc}${jsName}?: ${tsType} | ReactElement | null | undefined;`);
-            objectPropNames.push(jsName);
-            return;
-        }
-        const settable = isConstructableProperty(property);
-        if (settable) propLines.push(`${doc}${jsName}?: ${tsType} | null | undefined;`);
-        propLines.push(
-            `${settable ? "" : doc}onNotify${upperFirst(jsName)}?: ((value: ${tsType} | null, self: Self) => void) | null | undefined;`,
-        );
+    const state: PropCollectorState = {
+        owner,
+        types,
+        propLines: [],
+        objectPropNames: [],
+        seen: new Set<string>(),
     };
 
-    const acceptSignal = (signal: GirSignal): void => {
-        const handlerName = signalHandlerName(signal.name);
-        if (seen.has(handlerName)) return;
-        seen.add(handlerName);
-        const signature = renderSignalHandler({ types, signal, selfType: "Self" });
-        propLines.push(`${renderJsDoc(signal.doc)}${handlerName}?: (${signature}) | undefined;`);
+    return {
+        propLines: state.propLines,
+        imports,
+        objectPropNames: state.objectPropNames,
+        acceptProperty: (property) => acceptCollectorProperty(state, property),
+        acceptSignal: (signal) => acceptCollectorSignal(state, signal),
     };
-
-    return { propLines, imports, objectPropNames, acceptProperty, acceptSignal };
 };
 
 export const buildElementPropsEntries = (options: IntrinsicElementPropsOptions): IntrinsicElementPropsEntries => {
@@ -114,10 +139,7 @@ export const buildInterfacePropsEntries = (options: InterfacePropsOptions): Intr
     return { propLines: collector.propLines, imports: collector.imports, objectPropNames: collector.objectPropNames };
 };
 
-type IntrinsicElementMemberWalk = {
-    library: Library;
-    klass: GirClass;
-    namespace: GirNamespace;
+type IntrinsicElementMemberWalk = IntrinsicElementScope & {
     isIntrinsicElementAncestor: (candidate: GirClass) => boolean;
     acceptProperty: (property: GirProperty) => void;
     acceptSignal: (signal: GirSignal) => void;
@@ -142,11 +164,7 @@ const resolvesToGObjectType = (library: Library, ref: TypeId | undefined): boole
     return isIntrinsicElementClass(resolved.value, resolved.namespace, library);
 };
 
-type PropOwner = {
-    library: Library;
-    klass: GirClass;
-    namespace: GirNamespace;
-};
+type PropOwner = IntrinsicElementScope;
 
 export const isObjectProp = (owner: PropOwner, property: GirProperty, jsName: string): boolean => {
     if (!property.writable || property.constructOnly) return false;

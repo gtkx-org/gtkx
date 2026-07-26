@@ -30,6 +30,13 @@ export type Tool<Shape extends Record<string, z.ZodType> = Record<string, z.ZodT
 const hasStringHint = (data: unknown): data is { hint: string } =>
     typeof data === "object" && data !== null && "hint" in data && typeof data.hint === "string";
 
+const errorToResult = (error: unknown): CallToolResult => {
+    if (error instanceof ProtocolError) {
+        return textError(hasStringHint(error.data) ? `${error.message}\n${error.data.hint}` : error.message);
+    }
+    return textError(error instanceof Error ? error.message : String(error));
+};
+
 const runTool = async (
     handler: (args: ToolArgs<Record<string, z.ZodType>>) => Promise<CallToolResult>,
     args: ToolArgs<Record<string, z.ZodType>>,
@@ -37,10 +44,7 @@ const runTool = async (
     try {
         return await handler(args);
     } catch (error) {
-        if (error instanceof ProtocolError) {
-            return textError(hasStringHint(error.data) ? `${error.message}\n${error.data.hint}` : error.message);
-        }
-        return textError(error instanceof Error ? error.message : String(error));
+        return errorToResult(error);
     }
 };
 

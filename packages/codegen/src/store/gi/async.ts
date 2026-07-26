@@ -1,6 +1,7 @@
 import { inputParameters } from "../../analysis/param-structure.js";
 import type { GirFunction } from "../../gir/function.js";
 import type { Library } from "../../gir/library.js";
+import type { TypeId } from "../../gir/type-id.js";
 
 export const matchAsyncFinish = (
     library: Library,
@@ -24,16 +25,16 @@ const findFinishSibling = (fn: GirFunction, siblings: GirFunction[]): GirFunctio
     return siblings.find((sibling) => sibling.name === finishName);
 };
 
+const callbackParameterName = (library: Library, ref: TypeId | undefined): string | undefined => {
+    if (ref === undefined || library.typeOf(ref)?.kind !== "callback") return undefined;
+    return library.nameOf(ref)?.typeName;
+};
+
 const hasCanonicalAsyncCallback = (library: Library, fn: GirFunction): boolean => {
-    let asyncReadyCallbacks = 0;
-    let otherCallbacks = 0;
-    for (const parameter of fn.parameters) {
-        const ref = parameter.type;
-        if (ref === undefined || library.typeOf(ref)?.kind !== "callback") continue;
-        if (library.nameOf(ref)?.typeName === "AsyncReadyCallback") asyncReadyCallbacks += 1;
-        else otherCallbacks += 1;
-    }
-    return asyncReadyCallbacks === 1 && otherCallbacks === 0;
+    const callbackNames = fn.parameters
+        .map((parameter) => callbackParameterName(library, parameter.type))
+        .filter((name): name is string => name !== undefined);
+    return callbackNames.length === 1 && callbackNames[0] === "AsyncReadyCallback";
 };
 
 const isPromisifiableFinish = (library: Library, finishFn: GirFunction): boolean => {

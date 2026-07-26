@@ -117,18 +117,27 @@ const propertyEntry = (
     return { name: jsName, meta: meta.join(" · "), doc: docMarkdown(property.doc) };
 };
 
-const propertyEntries = (entry: GlibNamedClass, context: ElementPageContext, seen: Set<string>): PropEntry[] => {
-    const owners = memberOwners(entry, context);
+const propJsName = (property: GirProperty, seen: Set<string>): string | undefined => {
+    if (!property.introspectable) return undefined;
+    const jsName = toCamelIdentifier(property.name);
+    if (seen.has(jsName)) return undefined;
+    seen.add(jsName);
+    return jsName;
+};
+
+const ownerPropEntries = (context: ElementPageContext, owner: MemberOwner, seen: Set<string>): PropEntry[] => {
     const entries: PropEntry[] = [];
-    for (const owner of owners) {
-        for (const property of owner.klass.properties) {
-            if (!property.introspectable) continue;
-            const jsName = toCamelIdentifier(property.name);
-            if (seen.has(jsName)) continue;
-            seen.add(jsName);
-            const propEntry = propertyEntry(context, owner, property, jsName);
-            entries.push(propEntry);
-        }
+    for (const property of owner.klass.properties) {
+        const jsName = propJsName(property, seen);
+        if (jsName !== undefined) entries.push(propertyEntry(context, owner, property, jsName));
+    }
+    return entries;
+};
+
+const propertyEntries = (entry: GlibNamedClass, context: ElementPageContext, seen: Set<string>): PropEntry[] => {
+    const entries: PropEntry[] = [];
+    for (const owner of memberOwners(entry, context)) {
+        entries.push(...ownerPropEntries(context, owner, seen));
     }
     return entries;
 };
