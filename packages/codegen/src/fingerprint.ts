@@ -73,9 +73,7 @@ export type JsxFingerprint = {
 };
 
 const serializeModuleExports = (map: Record<string, ModuleExport>): [string, string, string][] =>
-    Object.keys(map)
-        .sort()
-        .map((type) => [type, map[type]?.module ?? "", map[type]?.export ?? ""]);
+    sortStrings(Object.keys(map)).map((type) => [type, map[type]?.module ?? "", map[type]?.export ?? ""]);
 
 const hashJsx = (input: JsxFingerprintInput): string =>
     createHash("sha256")
@@ -84,7 +82,7 @@ const hashJsx = (input: JsxFingerprintInput): string =>
                 CODEGEN_VERSION,
                 input.reactVersion,
                 serializeModuleExports(input.components),
-                [...input.lazyElements].sort(),
+                sortStrings(input.lazyElements),
                 serializeModuleExports(input.props),
             ]),
         )

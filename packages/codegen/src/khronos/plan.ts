@@ -108,7 +108,7 @@ const planPointerOut = (command: GlCommand, param: GlParam, scalar: GlScalar, po
     const len = param.len;
     if (len === undefined || len === "1") return { plan: { kind: "ref-out", scalar } };
     if (isCompsize(len)) return planCompsizeOut(command, scalar, policy);
-    if (/^\d+$/.test(len)) return { plan: { kind: "ref-fixed-out", scalar, length: Number.parseInt(len, 10) } };
+    if (/^\d+$/.test(len)) return { plan: { kind: "ref-fixed-out", scalar, length: Number(len) } };
     if (command.params.some((other) => other.name === len)) {
         return { plan: { kind: "ref-array-out", scalar, lenParamName: len } };
     }

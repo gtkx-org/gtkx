@@ -46,7 +46,7 @@ const vtableSlotEntry = (
 
 const vtableEntries = (context: ModuleContext, structName: string, kind: VtableKind, typeStruct: string): string[] => {
     const resolved = context.library.resolveType(context.namespace.name, typeStruct);
-    if (resolved === undefined || resolved.kind !== "record") return [];
+    if (resolved?.kind !== "record") return [];
     const { slots } = computeRecordFieldSlots(context, resolved.value.fields, resolved.value.isUnion);
     const entries: string[] = [];
     const claimedNames: Set<string> = new Set();

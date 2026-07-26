@@ -27,7 +27,7 @@ describe("khronos selection over the vendored registry", () => {
         const registry = loadGlRegistry(REGISTRY_PATH);
         const numbers = registry.features.filter((feature) => feature.api === "gl").map((feature) => feature.number);
         expect(Math.min(...numbers)).toBe(1);
-        expect(Math.max(...numbers)).toBe(4.6);
+        expect(Math.max(...numbers)).toBeCloseTo(4.6, 10);
     });
 });
 

@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { arch, platform } from "node:os";
 import { dirname, join } from "node:path";
+import { stripQuery } from "./strip-query.js";
 
 const EMITTED_BINDING_SPECIFIER = "./gtkx.node";
 
@@ -14,11 +15,12 @@ function resolveBinaryPath(projectRequire: ReturnType<typeof createRequire>, cur
 
 function resolvePlatformBinary(projectRequire: ReturnType<typeof createRequire>): Buffer {
     const currentPlatform = platform();
-    const currentArch = arch();
 
     if (currentPlatform !== "linux") {
         throw new Error(`Unsupported build platform: ${currentPlatform}, only Linux is supported`);
     }
+
+    const currentArch = arch();
 
     if (currentArch !== "x64" && currentArch !== "arm64") {
         throw new Error(`Unsupported build architecture: ${currentArch}, only x64 and arm64 are supported`);
@@ -68,7 +70,7 @@ export function gtkxNative(root: string): Plugin {
         },
 
         transform(code, id) {
-            return id.replace(/\?.*$/, "") === loaderPath() ? rewriteLoader(code) : null;
+            return stripQuery(id) === loaderPath() ? rewriteLoader(code) : null;
         },
     };
 }

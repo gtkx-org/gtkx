@@ -46,7 +46,7 @@ export const recordFromNode = (
     fields: childrenOf(node, "field").map((field) => fieldFromNode(field, context)),
     methods: childrenOf(node, "method").map((method) => functionFromNode(method, context)),
     constructors: childrenOf(node, GIR_CONSTRUCTOR_TAG).map((ctor) => functionFromNode(ctor, context)),
-    functions: childrenOf(node, "function").map((function_) => functionFromNode(function_, context)),
+    functions: childrenOf(node, "function").map((fn) => functionFromNode(fn, context)),
     isUnion,
 });
 

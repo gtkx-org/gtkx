@@ -116,7 +116,7 @@ export const createTextNode = (text: string): TextNode => ({ kind: TEXT_KIND, te
 
 export const nodeObject = (node: PlaceableNode): GObject.Object | null => {
     if (node.kind === LAZY_KIND) {
-        const child = node.children[0];
+        const [child] = node.children;
         return child === undefined ? null : nodeObject(child);
     }
     return node.object;

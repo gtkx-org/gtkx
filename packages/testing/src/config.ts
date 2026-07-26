@@ -24,11 +24,11 @@ export type Config = {
  */
 export type ConfigFn = (existingConfig: Config) => Partial<Config>;
 
-const defaultGetElementError = (message: string, _container?: Container): Error => {
-    const error = new Error(message);
-    error.name = "GtkxElementError";
-    return error;
-};
+class GtkxElementError extends Error {
+    override name = "GtkxElementError";
+}
+
+const defaultGetElementError = (message: string): Error => new GtkxElementError(message);
 
 const defaultConfig: Config = {
     throwSuggestions: false,

@@ -1,6 +1,6 @@
 import { sortStrings } from "@gtkx/utils";
 import ejs from "ejs";
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync } from "node:fs";
 import { join } from "node:path";
 
 export type TemplateContext = {
@@ -25,7 +25,5 @@ export const listTemplates = (): string[] =>
             .map((relative) => relative.replace(/\.ejs$/, "")),
     );
 
-export const renderFile = (templateName: string, context: TemplateContext): string => {
-    const templateContent = readFileSync(join(getTemplatesDir(), `${templateName}.ejs`), "utf8");
-    return ejs.render(templateContent, context);
-};
+export const renderFile = async (templateName: string, context: TemplateContext): Promise<string> =>
+    ejs.renderFile(join(getTemplatesDir(), `${templateName}.ejs`), context);

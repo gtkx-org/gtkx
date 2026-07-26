@@ -5,7 +5,7 @@ vi.mock("../src/scaffolder.js", () => ({
     scaffold: vi.fn(async () => undefined),
 }));
 
-import { createCommand, type CreateCommandArgs, runCreate } from "../src/command.js";
+import { type CreateCommandArgs, runCreate, scaffoldCommand } from "../src/command.js";
 import { scaffold } from "../src/scaffolder.js";
 
 const scaffoldMock = vi.mocked(scaffold);
@@ -76,21 +76,23 @@ describe("runCreate", () => {
     it("forwards the overwrite flag", async () => {
         await runCreate({ name: "my-app", "no-interactive": true, overwrite: true });
         expect(scaffoldMock).toHaveBeenCalledWith(expect.objectContaining({ overwrite: true }));
-    }); it("rejects an unknown package manager before scaffolding", async () => {
+    });
+
+    it("rejects an unknown package manager before scaffolding", async () => {
         await expectRejection({ "package-manager": "bun" }, /Unknown package manager "bun"/);
     });
 });
 
-describe("createCommand", () => {
+describe("scaffoldCommand", () => {
     it("exposes the create metadata and the shared scaffold arguments", () => {
-        expect(createCommand.meta).toMatchObject({ name: "create" });
-        expect(createCommand.args).toHaveProperty("application-id");
-        expect(createCommand.args).toHaveProperty("typescript");
+        expect(scaffoldCommand.meta).toMatchObject({ name: "create" });
+        expect(scaffoldCommand.args).toHaveProperty("application-id");
+        expect(scaffoldCommand.args).toHaveProperty("typescript");
     });
 
     it("parses --no-typescript into typescript: false through citty", async () => {
         scaffoldMock.mockClear();
-        await runCommand(createCommand, { rawArgs: ["my-app", "--no-typescript", "--no-interactive"] });
+        await runCommand(scaffoldCommand, { rawArgs: ["my-app", "--no-typescript", "--no-interactive"] });
         expect(scaffoldMock).toHaveBeenCalledTimes(1);
         expect(scaffoldMock).toHaveBeenCalledWith(expect.objectContaining({ typescript: false }));
     });

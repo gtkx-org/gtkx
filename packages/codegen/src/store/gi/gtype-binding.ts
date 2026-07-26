@@ -5,7 +5,7 @@ import { PRIMITIVE_TS_TYPE } from "../../gir/primitives.js";
 export const gtypeTsType = (context: ModuleContext): string =>
     context.namespace.name === "GObject" ? "Type" : PRIMITIVE_TS_TYPE.gtype;
 
-export const gtypeMemberDeclaration = (context: ModuleContext): string => `declare __type__: ${gtypeTsType(context)};`;
+export const gtypeMemberDeclaration = (context: ModuleContext): string => `declare _type_: ${gtypeTsType(context)};`;
 
 const renderInternGtype = (context: ModuleContext, typeName: string | undefined): string | undefined => {
     if (typeName === undefined) return undefined;
@@ -13,18 +13,18 @@ const renderInternGtype = (context: ModuleContext, typeName: string | undefined)
     return `typeFromName(${sourceStringLiteral(typeName)})`;
 };
 
-const renderResolveGtype = (context: ModuleContext, getType: string): string => {
+const renderResolveGtype = (context: ModuleContext, typeFnName: string): string => {
     context.addRuntimeImport("resolveType");
     const lib = context.namespace.sharedLibrary ?? "";
-    return `resolveType(${sourceStringLiteral(lib)}, ${sourceStringLiteral(getType)})`;
+    return `resolveType(${sourceStringLiteral(lib)}, ${sourceStringLiteral(typeFnName)})`;
 };
 
 const renderGtypeExpression = (
     context: ModuleContext,
-    getType: string,
+    typeFnName: string,
     typeName: string | undefined,
 ): string | undefined =>
-    getType === "intern" ? renderInternGtype(context, typeName) : renderResolveGtype(context, getType);
+    typeFnName === "intern" ? renderInternGtype(context, typeName) : renderResolveGtype(context, typeFnName);
 
 type TypeSource = {
     glibGetType: string | undefined;

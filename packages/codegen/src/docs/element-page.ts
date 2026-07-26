@@ -1,7 +1,7 @@
 import { sortStringsBy, toCamelIdentifier, upperFirst } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { Library } from "../gir/library.js";
-import type { GirSignal } from "../gir/parameter.js";
+import type { GirCallable } from "../gir/parameter.js";
 import { ancestorChain } from "../gir/ancestry.js";
 import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import { type GirProperty, isConstructableProperty } from "../gir/property.js";
@@ -68,7 +68,7 @@ const glibLabel = (context: ElementPageContext, glibName: string): string => {
 };
 
 const hierarchySection = (entry: GlibNamedClass, context: ElementPageContext): string[] => {
-    const ancestors = [...ancestorChain(context.library, entry.klass, entry.namespace.name)].slice(1).reverse();
+    const ancestors = [...ancestorChain(context.library, entry.klass, entry.namespace.name)].slice(1).toReversed();
     if (ancestors.length === 0) return [];
     const parts = ancestors.map((ancestor) => {
         const glib = glibNameOf(ancestor.klass);
@@ -165,7 +165,7 @@ type SignalEntry = {
 const signalsSection = (entry: GlibNamedClass, context: ElementPageContext, selfType: string): string[] => {
     const seen: Set<string> = new Set();
     const entries: SignalEntry[] = [];
-    const acceptSignal = (signal: GirSignal, origin: string | undefined): void => {
+    const acceptSignal = (signal: GirCallable, origin: string | undefined): void => {
         const name = signalHandlerName(signal.name);
         if (seen.has(name)) return;
         seen.add(name);

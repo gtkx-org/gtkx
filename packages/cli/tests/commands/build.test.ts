@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/builder.js", () => ({
     build: vi.fn(async () => undefined),
@@ -13,21 +13,13 @@ import { runCommand } from "citty";
 import { build as buildApp } from "../../src/builder.js";
 import { ensureGenerated } from "../../src/codegen/run-codegen.js";
 import { build } from "../../src/commands/build.js";
+import { setupLogState } from "./log-state.js";
 
 const buildMock = vi.mocked(buildApp);
 const ensureGeneratedMock = vi.mocked(ensureGenerated);
 
 describe("build", () => {
-    let stderrSpy: ReturnType<typeof vi.spyOn>;
-
-    beforeEach(() => {
-        vi.clearAllMocks();
-        stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
-    });
-
-    afterEach(() => {
-        stderrSpy.mockRestore();
-    });
+    setupLogState();
 
     it("runs codegen preflight and builds with the default entry", async () => {
         await runCommand(build, { rawArgs: [] });

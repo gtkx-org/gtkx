@@ -51,7 +51,7 @@ const runTool = async (
 export const defineTool = <Shape extends Record<string, z.ZodType>>(tool: Tool<Shape>): Tool => tool as Tool;
 
 export const registerTool = (server: McpServer, tool: Tool): void => {
-    const callback = ((args: ToolArgs<Record<string, z.ZodType>>, _extra: unknown) =>
+    const callback = ((args: ToolArgs<Record<string, z.ZodType>>) =>
         runTool(tool.handler, args)) as ToolCallback<Record<string, z.ZodType>>;
     server.registerTool(
         tool.name,

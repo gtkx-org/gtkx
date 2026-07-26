@@ -1,1 +1,1 @@
-export { createCommand } from "./command.js";
+export { scaffoldCommand } from "./command.js";

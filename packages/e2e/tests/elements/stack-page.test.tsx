@@ -113,7 +113,13 @@ describe("render - StackPage", () => {
 
         await render(
             <GtkStack ref={stackRef}>
-                <GtkStackPage name="p" title="First" onNotifyTitle={(value) => seen.push(value)}>
+                <GtkStackPage
+                    name="p"
+                    title="First"
+                    onNotifyTitle={(value) => {
+                        seen.push(value);
+                    }}
+                >
                     <GtkLabel>Content</GtkLabel>
                 </GtkStackPage>
             </GtkStack>,

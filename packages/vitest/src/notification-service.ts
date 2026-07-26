@@ -1,5 +1,3 @@
-/// <reference path="./dbus-native.d.ts" />
-
 import { type InterfaceDescriptor, sessionBus } from "@homebridge/dbus-native";
 import { EventEmitter } from "node:events";
 
@@ -27,12 +25,12 @@ const DESCRIPTOR: InterfaceDescriptor = {
 class NotificationService extends EventEmitter {
     private lastId = 0;
 
+    CloseNotification = (): void => {};
+
     Notify(): number {
         this.lastId += 1;
         return this.lastId;
     }
-
-    CloseNotification(): void {}
 
     GetCapabilities(): string[] {
         return ["body", "actions"];

@@ -1,4 +1,4 @@
-import type { Plugin } from "vite";
+import type { InlineConfig, Plugin } from "vite";
 import { EventEmitter } from "node:events";
 import { describe, expect, it, vi } from "vitest";
 import { createDevRunner, type DevRunnerDeps, type DevServer } from "../../src/dev/runner.js";
@@ -31,16 +31,16 @@ const createFakeServer = (overrides: Partial<FakeServer> = {}): FakeServer => {
 type Harness = {
     deps: DevRunnerDeps;
     server: FakeServer;
-    createServer: ReturnType<typeof vi.fn>;
-    startMcp: ReturnType<typeof vi.fn>;
-    stopMcp: ReturnType<typeof vi.fn>;
-    performRefresh: ReturnType<typeof vi.fn>;
-    isBoundary: ReturnType<typeof vi.fn>;
-    watchAppShutdown: ReturnType<typeof vi.fn>;
-    installShutdownHandlers: ReturnType<typeof vi.fn>;
-    quitDefaultApp: ReturnType<typeof vi.fn>;
-    log: ReturnType<typeof vi.fn>;
-    exit: ReturnType<typeof vi.fn>;
+    createServer: ReturnType<typeof vi.fn<DevRunnerDeps["createServer"]>>;
+    startMcp: ReturnType<typeof vi.fn<DevRunnerDeps["startMcpClient"]>>;
+    stopMcp: ReturnType<typeof vi.fn<DevRunnerDeps["stopMcpClient"]>>;
+    performRefresh: ReturnType<typeof vi.fn<DevRunnerDeps["performRefresh"]>>;
+    isBoundary: ReturnType<typeof vi.fn<DevRunnerDeps["isRefreshBoundary"]>>;
+    watchAppShutdown: ReturnType<typeof vi.fn<DevRunnerDeps["watchApplicationShutdown"]>>;
+    installShutdownHandlers: ReturnType<typeof vi.fn<DevRunnerDeps["installShutdownHandlers"]>>;
+    quitDefaultApp: ReturnType<typeof vi.fn<DevRunnerDeps["quitDefaultApplication"]>>;
+    log: ReturnType<typeof vi.fn<DevRunnerDeps["log"]>>;
+    exit: ReturnType<typeof vi.fn<DevRunnerDeps["exit"]>>;
     plugins: Plugin[];
     applicationId: string | null;
 };
@@ -69,7 +69,7 @@ const buildHarness = (
     const quitDefaultApp = vi.fn<DevRunnerDeps["quitDefaultApplication"]>();
     const performRefresh = vi.fn<DevRunnerDeps["performRefresh"]>();
     const isBoundary = vi.fn<DevRunnerDeps["isRefreshBoundary"]>((mod) =>
-        overrides.isBoundary ? overrides.isBoundary(mod) : mod.__isBoundary === true,
+        overrides.isBoundary ? overrides.isBoundary(mod) : mod.isBoundary === true,
     );
     const log = vi.fn<DevRunnerDeps["log"]>();
     const exit = vi.fn<DevRunnerDeps["exit"]>((() => undefined) as never);
@@ -108,7 +108,7 @@ const buildHarness = (
 
 const ENTRY = "/abs/src/main.tsx";
 
-const flushTick = (): Promise<void> => new Promise((r) => setImmediate(r));
+const flushTick = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
 
 const startRunner = async (harness: Harness): Promise<void> => {
     const runner = createDevRunner(harness.deps);
@@ -122,7 +122,13 @@ const emitChangeAndFlush = async (harness: Harness, file: string, ticks: number)
     }
 };
 
-const loggedMessages = (harness: Harness): string[] => harness.log.mock.calls.map((c: unknown[]) => String(c[0]));
+const loggedMessages = (harness: Harness): string[] => harness.log.mock.calls.map(([message]) => message);
+
+const createdServerConfig = (harness: Harness): InlineConfig => {
+    const [config] = harness.createServer.mock.calls[0] ?? [];
+    if (!config) throw new Error("createServer was never called");
+    return config;
+};
 
 const startRunnerAndExpectMcpConnected = async (harness: Harness, applicationId: string): Promise<void> => {
     await startRunner(harness);
@@ -138,7 +144,7 @@ describe("createDevRunner (vite config)", () => {
         await startRunner(harness);
 
         expect(harness.createServer).toHaveBeenCalledOnce();
-        const config = harness.createServer.mock.calls[0]?.[0];
+        const config = createdServerConfig(harness);
         expect(config.root).toBe(process.cwd());
         expect(config.appType).toBe("custom");
         expect(config.server).toEqual({ middlewareMode: true });
@@ -147,7 +153,7 @@ describe("createDevRunner (vite config)", () => {
             external: true,
             noExternal: [/^@gtkx\/(?!(?:native|gi|gl|runtime|utils|css)(?:\/|$))/, /[/\\]\.gtkx[/\\]/],
         });
-        const names = (config.plugins as { name: string }[]).map((p) => p.name);
+        const names = (config.plugins as Plugin[]).map((plugin) => plugin.name);
         expect(names).toEqual([
             "gtkx:settings",
             "gtkx:css",
@@ -186,7 +192,7 @@ const installedSignalHandler = (harness: Harness): OnSignal => {
 
 const emitBoundaryChange = async (harness: Harness, file: string): Promise<void> => {
     harness.server.moduleGraph.getModuleById.mockReturnValueOnce({ importers: new Set<object>() });
-    harness.server.ssrLoadModule.mockResolvedValueOnce({ __isBoundary: true });
+    harness.server.ssrLoadModule.mockResolvedValueOnce({ isBoundary: true });
     await emitChangeAndFlush(harness, file, 2);
 };
 
@@ -233,7 +239,9 @@ describe("createDevRunner (application shutdown)", () => {
         expect(written).toContain(error.stack ?? error.message);
         expect(harness.exit).toHaveBeenCalledWith(1);
         stderrSpy.mockRestore();
-    }); it("restarts the runner when the application shuts down during a refresh pass", async () => {
+    });
+
+    it("restarts the runner when the application shuts down during a refresh pass", async () => {
         const harness = await expectRefreshRestart((fireShutdown) => fireShutdown());
 
         expect(loggedMessages(harness).some((m) => m.includes("restarting dev runner"))).toBe(true);
@@ -379,7 +387,7 @@ describe("createDevRunner (file watcher dispatch)", () => {
         await startRunner(harness);
 
         harness.server.moduleGraph.getModuleById.mockReturnValueOnce(module);
-        harness.server.ssrLoadModule.mockResolvedValueOnce({ __isBoundary: true });
+        harness.server.ssrLoadModule.mockResolvedValueOnce({ isBoundary: true });
 
         await emitChangeAndFlush(harness, "/x/y.ts", 2);
 

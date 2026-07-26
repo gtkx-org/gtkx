@@ -1,4 +1,4 @@
-import { BUNDLE_FILENAME } from "./resource-shared.js";
+import { BUNDLE_FILENAME, REFRESH_EXPORT } from "./resource-shared.js";
 
 const buildInitModuleSource = (): string =>
     [
@@ -11,7 +11,7 @@ const buildInitModuleSource = (): string =>
         "resourcesRegister(resource);",
         "",
         "export function ensureRegistered() {}",
-        "export function __refresh() {}",
+        `export function ${REFRESH_EXPORT}() {}`,
     ].join("\n");
 
 const devInitModuleSource = (bundlePath: string): string => {
@@ -41,7 +41,7 @@ const devInitModuleSource = (bundlePath: string): string => {
         "",
         "ensureRegistered();",
         "",
-        "export function __refresh() {",
+        `export function ${REFRESH_EXPORT}() {`,
         `    if (!existsSync(${bundlePathLiteral})) return;`,
         "    register();",
         `    const { size, mtimeMs } = statSync(${bundlePathLiteral});`,

@@ -15,7 +15,7 @@ const TASKS: Task[] = [
 
 function SelectScreen({ listRef }: { listRef: RefObject<Gtk.ListView | null> }) {
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
-    const visible = TASKS.filter(() => true);
+    const visible = TASKS;
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
             <GtkLabel>{`${selectedIds.length} selected`}</GtkLabel>

@@ -122,7 +122,7 @@ type CanvasItem = {
     angleDelta: number;
 };
 
-const gdkRgbaType = Gdk.RGBA.prototype.__type__;
+const gdkRgbaType = Gdk.RGBA.prototype._type_;
 
 type ContextMenuState = {
     x: number;

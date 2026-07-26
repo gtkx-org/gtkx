@@ -429,7 +429,7 @@ const showcasePeople: ShowcasePerson[] = [
 
 const sortShowcasePeople = (sortColumn: ShowcaseSortColumn, sortOrder: Gtk.SortType): ShowcasePerson[] => {
     if (!sortColumn) return showcasePeople;
-    return [...showcasePeople].sort((a, b) => {
+    return showcasePeople.toSorted((a, b) => {
         const av = a[sortColumn];
         const bv = b[sortColumn];
         const cmp = typeof av === "number" ? av - (bv as number) : av.localeCompare(String(bv));

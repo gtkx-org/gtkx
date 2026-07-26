@@ -40,7 +40,7 @@ export const runCreate = async (args: CreateCommandArgs): Promise<void> => {
  * TypeScript and Vitest toggles, prompt behavior, and overwrite) and runs the
  * scaffolder to generate a new GTKX application.
  */
-export const createCommand = defineCommand({
+export const scaffoldCommand = defineCommand({
     meta: {
         name: "create",
         description: "Create a new GTKX application",

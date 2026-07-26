@@ -9,10 +9,24 @@ beforeAll(() => {
     reference = loadApiReference({ libraries: ["Gtk-4.0", "Adw-1"], girPath: GIR_PATH });
 });
 
-const pageFor = (query: string): string => {
+type PageResult = Extract<ReturnType<ApiReference["lookup"]>, { outcome: "page" }>;
+
+const pageResultFor = (query: string): PageResult => {
     const result = reference.lookup(query);
     if (result.outcome !== "page") throw new Error(`Expected a page for ${query}, got ${result.outcome}`);
-    return result.markdown;
+    return result;
+};
+
+const pageFor = (query: string): string => pageResultFor(query).markdown;
+
+const symbolNameFor = (query: string): string => pageResultFor(query).symbol.name;
+
+const candidateNamespacesFor = (query: string): string[] => {
+    const result = reference.lookup(query);
+    if (result.outcome !== "ambiguous") {
+        throw new Error(`Expected ambiguous candidates for ${query}, got ${result.outcome}`);
+    }
+    return result.candidates.map((candidate) => candidate.namespace);
 };
 
 describe("ApiReference — namespaces", () => {
@@ -177,23 +191,15 @@ describe("ApiReference — lookup", () => {
     });
 
     it("reports ambiguity with candidates and honors the kind filter", () => {
-        const ambiguous = reference.lookup("HeaderBar");
-        expect(ambiguous.outcome).toBe("ambiguous");
-        if (ambiguous.outcome === "ambiguous") {
-            const namespaces = ambiguous.candidates.map((candidate) => candidate.namespace);
-            expect(namespaces).toContain("Gtk");
-            expect(namespaces).toContain("Adw");
-        }
+        const namespaces = candidateNamespacesFor("HeaderBar");
+        expect(namespaces).toContain("Gtk");
+        expect(namespaces).toContain("Adw");
         expect(reference.lookup("Adw.HeaderBar", "class").outcome).toBe("page");
     });
 
     it("prefers an exact case-sensitive match over case-colliding candidates", () => {
-        const lower = reference.lookup("Gdk.KEY_a");
-        expect(lower.outcome).toBe("page");
-        if (lower.outcome === "page") expect(lower.symbol.name).toBe("KEY_a");
-        const upper = reference.lookup("Gdk.KEY_A");
-        expect(upper.outcome).toBe("page");
-        if (upper.outcome === "page") expect(upper.symbol.name).toBe("KEY_A");
+        expect(symbolNameFor("Gdk.KEY_a")).toBe("KEY_a");
+        expect(symbolNameFor("Gdk.KEY_A")).toBe("KEY_A");
         expect(reference.lookup("GObject.TypeQuery").outcome).toBe("page");
         expect(reference.lookup("GObject.typeQuery").outcome).toBe("page");
     });

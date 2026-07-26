@@ -138,7 +138,11 @@ const updateModifierState = (state: UserEventState, action: KeyAction): void => 
     }
 };
 
-const matchesTrigger = (trigger: Gtk.ShortcutTrigger | null, keyval: number, modifiers: number): boolean => {
+const matchesTrigger = (
+    trigger: Gtk.ShortcutTrigger | null,
+    keyval: number,
+    modifiers: Gdk.ModifierType,
+): boolean => {
     if (trigger instanceof Gtk.KeyvalTrigger) {
         return trigger.getKeyval() === keyval && trigger.getModifiers() === modifiers;
     }
@@ -155,7 +159,7 @@ const tryActivateShortcut = (
     shortcut: Gtk.Shortcut,
     widget: Gtk.Widget,
     keyval: number,
-    modifiers: number,
+    modifiers: Gdk.ModifierType,
 ): boolean => {
     if (!matchesTrigger(shortcut.getTrigger(), keyval, modifiers)) return false;
     const action = shortcut.getAction();

@@ -73,7 +73,7 @@ export class Logger {
     }
 
     private write(message: string, rest: unknown[]): void {
-        const suffix = rest.length === 0 ? "" : ` ${rest.map(formatValue).join(" ")}`;
+        const suffix = rest.length === 0 ? "" : ` ${rest.map((value) => formatValue(value)).join(" ")}`;
         this.stream.write(`${this.prefix} ${message}${suffix}\n`);
     }
 

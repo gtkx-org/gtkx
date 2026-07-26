@@ -1,6 +1,6 @@
 import type { Plugin, ResolvedConfig, UserConfig, ViteDevServer } from "vite";
 import { type ConfigLoader, createConfigLoader } from "@gtkx/config/internal";
-import { error, formatChildProcessError, info } from "@gtkx/utils";
+import { error, formatChildProcessError, info, sortStrings } from "@gtkx/utils";
 import { execFileSync } from "node:child_process";
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -16,10 +16,12 @@ import {
     escapeXml,
     fromVirtualId,
     isVirtual,
+    REFRESH_EXPORT,
     REL_SEPARATOR,
     toVirtualId,
     VIRTUAL_INIT,
 } from "./resource-shared.js";
+import { stripQuery } from "./strip-query.js";
 
 const DATA_PREFIX = `${DATA_IMPORT_PREFIX}/`;
 
@@ -27,11 +29,6 @@ const RESOURCE_COMPILER = "glib-compile-resources";
 const MANIFEST_PREFIX = "/";
 
 const deriveResourcePrefix = (applicationId: string): string => `/${applicationId.replaceAll(".", "/")}`;
-
-const stripQuery = (source: string): string => {
-    const queryIndex = source.indexOf("?");
-    return queryIndex === -1 ? source : source.slice(0, queryIndex);
-};
 
 type ResourceEntry = {
     sourcePath: string;
@@ -89,7 +86,8 @@ const runCompiler = (sourceDir: string, manifest: string, outputPath: string): B
         ]);
     } catch (error) {
         const details = formatChildProcessError(error);
-        throw new Error(`${RESOURCE_COMPILER} failed${details ? `:\n${details}` : ""}`, { cause: error });
+        const suffix = details ? `:\n${details}` : "";
+        throw new Error(`${RESOURCE_COMPILER} failed${suffix}`, { cause: error });
     }
     return readFileSync(outputPath);
 };
@@ -103,8 +101,7 @@ const ensureStagingDir = (state: PluginState): void => {
     state.devBundlePath = join(state.devStagingDir, BUNDLE_FILENAME);
 };
 
-const entriesSignature = (state: PluginState): string =>
-    [...state.entries.keys()].sort((a, b) => a.localeCompare(b)).join("\0");
+const entriesSignature = (state: PluginState): string => sortStrings(state.entries.keys()).join("\0");
 
 const compileDevBundle = (state: PluginState): void => {
     ensureStagingDir(state);
@@ -113,11 +110,14 @@ const compileDevBundle = (state: PluginState): void => {
     state.compiledSignature = entriesSignature(state);
 };
 
+const isRefreshHook = (value: unknown): value is () => void => typeof value === "function";
+
 const reregisterDevBundle = async (state: PluginState): Promise<void> => {
     const server = state.server;
     if (!server) return;
-    const mod = (await server.ssrLoadModule(VIRTUAL_INIT)) as { __refresh?: () => void };
-    mod.__refresh?.();
+    const mod = await server.ssrLoadModule(VIRTUAL_INIT);
+    const refresh: unknown = mod[REFRESH_EXPORT];
+    if (isRefreshHook(refresh)) refresh();
 };
 
 const scanDataAssets = (dataDir: string): ListedFile[] => listFilesRecursive(dataDir, (name) => ASSET_RE.test(name));
@@ -219,16 +219,35 @@ const resolveResourceConfig = async (state: PluginState, config: UserConfig, loa
     };
 };
 
+const refreshTrackedSource = async (state: PluginState, file: string): Promise<void> => {
+    if (!isTrackedSource(state, file)) return;
+    try {
+        await refreshDevRegistration(state);
+    } catch (error_) {
+        error("GResource refresh failed:", error_);
+    }
+};
+
 const attachResourceWatcher = (state: PluginState, server: ViteDevServer): void => {
     state.server = server;
     const onFileEvent = (file: string): void => {
-        if (!isTrackedSource(state, file)) return;
-        refreshDevRegistration(state).catch((error_) => {
-            error("GResource refresh failed:", error_);
-        });
+        void refreshTrackedSource(state, file);
     };
     server.watcher.on("change", onFileEvent);
     server.watcher.on("add", onFileEvent);
+};
+
+const applyResolvedConfig = (state: PluginState, config: ResolvedConfig): void => {
+    state.isBuild = config.command === "build";
+    if (state.isBuild) return;
+    const relativeDataDir = resolveDataDir(config.root);
+    state.dataDir = relativeDataDir === null ? null : join(config.root, relativeDataDir);
+};
+
+const loadResourceModule = (state: PluginState, id: string): string | undefined => {
+    if (id === VIRTUAL_INIT) return loadInitModule(state);
+    if (!isVirtual(id)) return undefined;
+    return loadAssetModule(state, id);
 };
 
 export function gtkxResources(loadConfig: ConfigLoader = createConfigLoader()): Plugin {
@@ -253,11 +272,7 @@ export function gtkxResources(loadConfig: ConfigLoader = createConfigLoader()): 
         },
 
         configResolved(config: ResolvedConfig) {
-            state.isBuild = config.command === "build";
-            if (!state.isBuild) {
-                const relativeDataDir = resolveDataDir(config.root);
-                state.dataDir = relativeDataDir === null ? null : join(config.root, relativeDataDir);
-            }
+            applyResolvedConfig(state, config);
         },
 
         configureServer(server) {
@@ -275,9 +290,7 @@ export function gtkxResources(loadConfig: ConfigLoader = createConfigLoader()): 
         },
 
         load(id) {
-            if (id === VIRTUAL_INIT) return loadInitModule(state);
-            if (!isVirtual(id)) return;
-            return loadAssetModule(state, id);
+            return loadResourceModule(state, id);
         },
 
         buildEnd() {

@@ -4,6 +4,7 @@ import { Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { startNotificationService } from "./notification-service.js";
+import { resolveExecutable } from "./resolve-executable.js";
 
 /**
  * Wayland compositors that can back a headless display.
@@ -33,20 +34,20 @@ type EnvSnapshot = Record<string, string | undefined>;
 
 const applyEnv = (snapshot: EnvSnapshot, values: Record<string, string>): void => {
     for (const [name, value] of Object.entries(values)) {
-        if (!(name in snapshot)) snapshot[name] = process.env[name];
+        if (!Object.hasOwn(snapshot, name)) snapshot[name] = process.env[name];
         process.env[name] = value;
     }
 };
 
 const restoreEnv = (snapshot: EnvSnapshot): void => {
     for (const [name, previous] of Object.entries(snapshot)) {
-        if (previous === undefined) delete process.env[name];
+        if (previous === undefined) Reflect.deleteProperty(process.env, name);
         else process.env[name] = previous;
     }
 };
 
 const spawnWithParentDeathSignal = (command: string, args: string[], stdio: StdioOptions): ChildProcess => {
-    const child = spawn("setpriv", ["--pdeathsig", "SIGKILL", command, ...args], { stdio });
+    const child = spawn(resolveExecutable("setpriv"), ["--pdeathsig", "SIGKILL", command, ...args], { stdio });
     child.unref();
     return child;
 };
@@ -55,7 +56,7 @@ let westonFakeSeatSupport: boolean | undefined;
 
 const westonSupportsFakeSeat = (): boolean => {
     if (westonFakeSeatSupport === undefined) {
-        const help = spawnSync("weston", ["--help"], { encoding: "utf8" });
+        const help = spawnSync(resolveExecutable("weston"), ["--help"], { encoding: "utf8" });
         westonFakeSeatSupport = `${help.stdout}${help.stderr}`.includes("--fake-seat");
     }
     return westonFakeSeatSupport;
@@ -163,62 +164,102 @@ type WaitForSocketOptions = {
     signal?: AbortSignal;
 };
 
-const waitForSocket = (path: string, { label, timeout = 15_000, child, signal }: WaitForSocketOptions): Promise<void> =>
-    new Promise((resolve, reject) => {
-        let log = "";
-        const stderr = child?.stderr ?? null;
-        stderr?.setEncoding("utf8");
-        stderr?.on("data", (chunk: string) => {
-            log += chunk;
-        });
-        let timer: ReturnType<typeof setTimeout>;
-        let poll: ReturnType<typeof setInterval>;
-        const stopListening = (): void => {
-            clearTimeout(timer);
-            clearInterval(poll);
-            child?.removeListener("exit", onExit);
-            child?.removeListener("error", onError);
-            signal?.removeEventListener("abort", onAbort);
+type StderrCapture = {
+    read: () => string;
+    stop: () => void;
+};
+
+const captureStderr = (child: ChildProcess | undefined): StderrCapture => {
+    const stderr = child?.stderr ?? null;
+    let log = "";
+    stderr?.setEncoding("utf8");
+    stderr?.on("data", (chunk: string) => {
+        log += chunk;
+    });
+    return {
+        read: () => log,
+        stop: () => {
             stderr?.removeAllListeners("data");
             stderr?.resume();
             if (stderr instanceof Socket) stderr.unref();
-        };
-        const onExit = (code: number | null, terminationSignal: NodeJS.Signals | null): void => {
-            stopListening();
-            reject(
-                new Error(
-                    `${label} exited (code ${code ?? "null"}, signal ${terminationSignal ?? "null"}) before ${path} appeared\n${log}`,
-                ),
-            );
-        };
-        const onError = (cause: Error): void => {
-            stopListening();
-            reject(new Error(`${label} failed to spawn: ${cause.message}\n${log}`));
-        };
-        const onAbort = (): void => {
-            stopListening();
-            reject(new Error(`${label} startup aborted before ${path} appeared`));
-        };
-        poll = setInterval(() => {
-            if (!existsSync(path)) {
-                return;
-            }
+        },
+    };
+};
 
-            stopListening();
-            resolve();
-        }, 50);
-        timer = setTimeout(() => {
-            stopListening();
-            const suffix = child ? `\n${log}` : "";
-            reject(new Error(`${label} did not become available within ${timeout}ms${suffix}`));
-        }, timeout);
-        child?.on("exit", onExit);
-        child?.on("error", onError);
-        if (signal?.aborted) {
-            onAbort();
-            return;
-        }
-        signal?.addEventListener("abort", onAbort);
+type ChildHandlers = {
+    exit: (code: number | null, signal: NodeJS.Signals | null) => void;
+    error: (cause: Error) => void;
+};
+
+const trackChild = (child: ChildProcess, handlers: ChildHandlers): (() => void) => {
+    child.on("exit", handlers.exit);
+    child.on("error", handlers.error);
+    return () => {
+        child.removeListener("exit", handlers.exit);
+        child.removeListener("error", handlers.error);
+    };
+};
+
+const exitedMessage = (label: string, path: string, code: number | null, signal: NodeJS.Signals | null): string =>
+    `${label} exited (code ${code ?? "null"}, signal ${signal ?? "null"}) before ${path} appeared`;
+
+type SocketWatch = {
+    path: string;
+    options: WaitForSocketOptions;
+    resolve: () => void;
+    reject: (error: Error) => void;
+};
+
+const watchForSocket = ({ path, options, resolve, reject }: SocketWatch): void => {
+    const { label, timeout = 15_000, child, signal } = options;
+    const stderr = captureStderr(child);
+    const cleanups: (() => void)[] = [stderr.stop];
+    const stop = (): void => {
+        for (const cleanup of cleanups) cleanup();
+        cleanups.length = 0;
+    };
+    const fail = (message: string): void => {
+        stop();
+        reject(new Error(message));
+    };
+    const onExit = (code: number | null, terminationSignal: NodeJS.Signals | null): void => {
+        fail(`${exitedMessage(label, path, code, terminationSignal)}\n${stderr.read()}`);
+    };
+    const onError = (cause: Error): void => {
+        fail(`${label} failed to spawn: ${cause.message}\n${stderr.read()}`);
+    };
+    const onAbort = (): void => {
+        fail(`${label} startup aborted before ${path} appeared`);
+    };
+    const poll = setInterval(() => {
+        if (!existsSync(path)) return;
+        stop();
+        resolve();
+    }, 50);
+    const timer = setTimeout(() => {
+        const suffix = child ? `\n${stderr.read()}` : "";
+        fail(`${label} did not become available within ${timeout}ms${suffix}`);
+    }, timeout);
+    cleanups.push(() => {
+        clearInterval(poll);
+        clearTimeout(timer);
+    });
+    if (child) cleanups.push(trackChild(child, { exit: onExit, error: onError }));
+    if (signal?.aborted) {
+        onAbort();
+        return;
+    }
+    if (signal) {
+        signal.addEventListener("abort", onAbort);
+        cleanups.push(() => {
+            signal.removeEventListener("abort", onAbort);
+        });
+    }
+};
+
+const waitForSocket = (path: string, options: WaitForSocketOptions): Promise<void> =>
+    new Promise((resolve, reject) => {
+        watchForSocket({ path, options, resolve, reject });
     });
 
 export const STATIC_HEADLESS_ENV = {

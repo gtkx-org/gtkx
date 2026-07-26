@@ -4,7 +4,7 @@ const CONSTANT_MAP: Record<string, string> = { TRUE: "true", FALSE: "false", NUL
 
 const CALLABLE_LINK_KINDS: Set<string> = new Set(["method", "func", "ctor", "vfunc"]);
 
-const SENTINEL = String.fromCharCode(0xE0_00);
+const SENTINEL = String.fromCodePoint(0xE0_00);
 
 const CODE_BLOCK_OPEN = "|[";
 const CODE_BLOCK_CLOSE = "]|";
@@ -20,18 +20,24 @@ const FUNCTION_REF_PATTERN = /\b([a-z_][a-z0-9_]*)\(\)/g;
 const renderLink = (kind: string, target: string): string => {
     const segments = target.split(/::|[.:]/);
     const lastIndex = segments.length - 1;
-    if (CALLABLE_LINK_KINDS.has(kind) || kind === "property") {
+    if (kind === "property" || CALLABLE_LINK_KINDS.has(kind)) {
         segments[lastIndex] = camelCase(segments[lastIndex] ?? "");
     }
     const symbol = segments.join(".");
     return `\`${symbol}${CALLABLE_LINK_KINDS.has(kind) ? "()" : ""}\``;
 };
 
+const trimTrailingNewlines = (value: string): string => {
+    let end = value.length;
+    while (end > 0 && value[end - 1] === "\n") end -= 1;
+    return value.slice(0, end);
+};
+
 const renderCodeFence = (body: string): string => {
     const languageMatch = CODE_LANGUAGE_PATTERN.exec(body);
     const fence = (languageMatch?.[1] ?? "").trim().toLowerCase();
     const rest = languageMatch === null ? body : body.slice(languageMatch[0].length);
-    const code = rest.replace(/^\s+/, "").replace(/\n+$/, "");
+    const code = trimTrailingNewlines(rest.trimStart());
     return `\`\`\`${fence}\n${code}\n\`\`\``;
 };
 
@@ -68,7 +74,8 @@ export const gtkDocToMarkdown = (raw: string): string => {
     text = text.replaceAll(FUNCTION_REF_PATTERN, (_match, name: string) => protect(`\`${name}()\``));
 
     for (let index = stash.length - 1; index >= 0; index -= 1) {
-        text = text.replaceAll(`${SENTINEL}${index}${SENTINEL}`, stash[index] ?? "");
+        const value = stash[index] ?? "";
+        text = text.replaceAll(`${SENTINEL}${index}${SENTINEL}`, () => value);
     }
     return text;
 };

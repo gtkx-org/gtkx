@@ -36,9 +36,9 @@
             "outputs": []
         },
         "bench": {
-            "dependsOn": ["production"],
-            "inputs": ["$TURBO_DEFAULT$", "bench/**/*.bench.{ts,tsx}", "vitest.bench.config.ts"],
-            "outputs": []
+            "dependsOn": ["production", "^build"],
+            "cache": false,
+            "passThroughEnv": ["CODSPEED_*", "__CODSPEED_*"]
         },
         "build": {
             "dependsOn": ["production", "^build"],
@@ -110,9 +110,9 @@
             ]
         },
         "typecheck": {
-            "dependsOn": ["production", "^build"],
+            "dependsOn": ["build", "production", "^build"],
             "inputs": ["$TURBO_DEFAULT$", "tests/**"],
-            "outputs": ["*.tsbuildinfo"]
+            "outputs": ["out-tsc/**", "tsconfig.app.tsbuildinfo", "tsconfig.test.tsbuildinfo"]
         },
         "@gtkx/native#production": {
             "dependsOn": ["^production"],

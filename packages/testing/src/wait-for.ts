@@ -9,9 +9,14 @@ const DEFAULT_INTERVAL = 50;
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 const copyStackTrace = (target: Error, source: Error): void => {
-    if (source.stack) {
-        target.stack = source.stack.replace(source.message, target.message);
+    const { stack } = source;
+    if (stack === undefined) return;
+    const index = stack.indexOf(source.message);
+    if (index === -1) {
+        target.stack = stack;
+        return;
     }
+    target.stack = stack.slice(0, index) + target.message + stack.slice(index + source.message.length);
 };
 
 type PollResult<T> = { status: "resolved"; value: T } | { status: "timedout"; lastError: Error | null };
@@ -80,12 +85,8 @@ type RemovalTarget = Gtk.Widget | Gtk.Widget[] | null;
 
 type ElementOrCallback = Gtk.Widget | Gtk.Widget[] | (() => RemovalTarget);
 
-const getTarget = (elementOrCallback: ElementOrCallback): RemovalTarget => {
-    if (typeof elementOrCallback === "function") {
-        return elementOrCallback();
-    }
-    return elementOrCallback;
-};
+const getTarget = (elementOrCallback: ElementOrCallback): RemovalTarget =>
+    typeof elementOrCallback === "function" ? elementOrCallback() : elementOrCallback;
 
 const isWidgetRemoved = (widget: Gtk.Widget | null): boolean => {
     if (widget === null) return true;
@@ -99,7 +100,7 @@ const isWidgetRemoved = (widget: Gtk.Widget | null): boolean => {
 
 const isTargetRemoved = (target: RemovalTarget): boolean => {
     if (Array.isArray(target)) {
-        return target.every(isWidgetRemoved);
+        return target.every((widget) => isWidgetRemoved(widget));
     }
     return isWidgetRemoved(target);
 };

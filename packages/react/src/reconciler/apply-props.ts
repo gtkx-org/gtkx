@@ -48,10 +48,12 @@ const applyBufferText = (buffer: Gtk.TextBuffer, text: string): void => {
 const isBufferText = (node: ElementNode, name: string): node is ElementNode & { object: Gtk.TextBuffer } =>
     name === "text" && node.contentKind === "buffer" && node.object instanceof Gtk.TextBuffer;
 
+const propText = (value: unknown): string => (typeof value === "string" ? value : JSON.stringify(value));
+
 const applyEntry = (node: ElementNode, info: TypeInfo, delta: PropDelta): void => {
     const { name, value, prevValue } = delta;
     if (value !== undefined && isBufferText(node, name)) {
-        applyBufferText(node.object, String(value));
+        applyBufferText(node.object, propText(value));
         return;
     }
     const isInitialNull = value === null && prevValue === undefined;
@@ -59,7 +61,8 @@ const applyEntry = (node: ElementNode, info: TypeInfo, delta: PropDelta): void =
 };
 
 const eachChangedName = (prev: Props, next: Props, visit: (name: string) => void): void => {
-    for (const name of new Set([...Object.keys(prev), ...Object.keys(next)])) visit(name);
+    const names = new Set([...Object.keys(prev), ...Object.keys(next)]);
+    for (const name of names) visit(name);
 };
 
 type BehaviorUpdateContext = { node: ElementNode; prev: Props; next: Props; consumed: Set<string> };

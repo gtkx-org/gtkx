@@ -1,4 +1,5 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import type { MockInstance } from "vitest";
 import { EventEmitter } from "node:events";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AppRouter } from "../src/app-router.js";
@@ -17,6 +18,9 @@ const { mcpServerInstances, registerToolMock, registerResourceMock, mcpConnectMo
 
 vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => ({
     McpServer: class {
+        connect = mcpConnectMock;
+        close = mcpCloseMock;
+
         constructor(opts: { name: string; version: string }) {
             mcpServerInstances.push(opts);
         }
@@ -28,9 +32,6 @@ vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => ({
         registerResource(name: string, uriOrTemplate: unknown, config: unknown, handler: unknown): void {
             registerResourceMock(name, uriOrTemplate, config, handler);
         }
-
-        connect = mcpConnectMock;
-        close = mcpCloseMock;
     },
     ResourceTemplate: class {
         uriTemplate: unknown;
@@ -45,7 +46,9 @@ vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => ({
 const { stdioInstances } = vi.hoisted(() => ({ stdioInstances: [] as object[] }));
 
 vi.mock("@modelcontextprotocol/sdk/server/stdio.js", () => ({
-    StdioServerTransport: class {
+    StdioServerTransport: class StdioServerTransport {
+        sessionId: string | undefined;
+
         constructor() {
             stdioInstances.push(this);
         }
@@ -59,10 +62,16 @@ const { socketStartMock, socketStopMock, socketServerInstances } = vi.hoisted(()
 }));
 
 vi.mock("../src/socket-server.js", () => ({
-    SocketServer: class {
+    SocketServer: class SocketServer {
         start = socketStartMock;
         stop = socketStopMock;
-        constructor(_registry: unknown, _path: string) {
+
+        registry: unknown;
+        path: string;
+
+        constructor(registry: unknown, path: string) {
+            this.registry = registry;
+            this.path = path;
             socketServerInstances.push(this);
         }
     },
@@ -87,7 +96,7 @@ const { appRouterInstances } = vi.hoisted(() => ({
 
 vi.mock("../src/app-router.js", () => ({
     AppRouter: class extends EventEmitter {
-        constructor(_connections: unknown) {
+        constructor() {
             super();
             appRouterInstances.push(this);
         }
@@ -202,7 +211,8 @@ describe("buildTools — registration", () => {
 
     it("registers the API reference resources", () => {
         registerTools(makeAppRouter());
-        expect(registerResourceMock.mock.calls.map(([name]) => name)).toEqual(allResourceNames);
+        const registeredNames = registerResourceMock.mock.calls.map((call): unknown => call[0]);
+        expect(registeredNames).toEqual(allResourceNames);
     });
 });
 
@@ -374,8 +384,8 @@ describe("buildTools — gtkx_take_screenshot", () => {
 });
 
 type MainSetup = {
-    errorSpy: ReturnType<typeof vi.spyOn>;
-    exitSpy: ReturnType<typeof vi.spyOn>;
+    errorSpy: MockInstance<typeof process.stderr.write>;
+    exitSpy: MockInstance<typeof process.exit>;
     prevSigInt: ((signal: "SIGINT") => void)[];
     prevSigTerm: ((signal: "SIGTERM") => void)[];
 };
@@ -485,14 +495,14 @@ describe("main — shutdown", () => {
         await main();
 
         process.emit("SIGINT", "SIGINT");
-        await new Promise((r) => setImmediate(r));
+        await new Promise((resolve) => setImmediate(resolve));
 
         expect(socketStopMock).toHaveBeenCalledOnce();
         expect(mcpCloseMock).toHaveBeenCalledOnce();
         expect(getSetup().exitSpy).toHaveBeenCalledWith(0);
 
         process.emit("SIGTERM", "SIGTERM");
-        await new Promise((r) => setImmediate(r));
+        await new Promise((resolve) => setImmediate(resolve));
 
         expect(socketStopMock).toHaveBeenCalledOnce();
     });

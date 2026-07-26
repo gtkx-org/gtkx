@@ -174,44 +174,31 @@ const arrayValueType = (descriptor: ArrayDescriptor): ValueType => {
     throw new Error(`Unsupported array type ${descriptor.arrayKind} of ${descriptor.itemDescriptor.kind}`);
 };
 
+const PLAIN_VALUE_TYPES: Partial<Record<Descriptor["kind"], ValueType>> = {
+    boolean: booleanValueType,
+    string: stringValueType,
+    int8: intValueType,
+    int16: intValueType,
+    int32: intValueType,
+    uint8: uintValueType,
+    uint16: uintValueType,
+    uint32: uintValueType,
+    int64: int64ValueType,
+    bigint64: int64ValueType,
+    uint64: uint64ValueType,
+    biguint64: uint64ValueType,
+    float32: floatValueType,
+    float64: doubleValueType,
+    object: objectValueType,
+};
+
 const resolveValueType = (descriptor: Descriptor): ValueType => {
     if (descriptor.kind === "biguint64" && "type" in descriptor) {
         return typeValueType;
     }
+    const plain = PLAIN_VALUE_TYPES[descriptor.kind];
+    if (plain !== undefined) return plain;
     switch (descriptor.kind) {
-        case "boolean": {
-            return booleanValueType;
-        }
-        case "string": {
-            return stringValueType;
-        }
-        case "int8":
-        case "int16":
-        case "int32": {
-            return intValueType;
-        }
-        case "uint8":
-        case "uint16":
-        case "uint32": {
-            return uintValueType;
-        }
-        case "int64":
-        case "bigint64": {
-            return int64ValueType;
-        }
-        case "uint64":
-        case "biguint64": {
-            return uint64ValueType;
-        }
-        case "float32": {
-            return floatValueType;
-        }
-        case "float64": {
-            return doubleValueType;
-        }
-        case "object": {
-            return objectValueType;
-        }
         case "enum":
         case "flags": {
             return enumOrFlagsValueType(resolveType(descriptor.sharedLibrary, descriptor.getTypeFnName));
@@ -231,38 +218,23 @@ const resolveValueType = (descriptor: Descriptor): ValueType => {
     }
 };
 
-const resolveValueGetter = (fundamental: bigint): ((value: ExternalObject<Handle>) => unknown) | undefined => {
+type ValueGetter = (value: ExternalObject<Handle>) => unknown;
+
+const PLAIN_VALUE_GETTERS: Map<bigint, ValueGetter> = new Map([
+    [TYPE_BOOLEAN, booleanValueType.get],
+    [TYPE_GTYPE, typeValueType.get],
+    [TYPE_INT, intValueType.get],
+    [TYPE_UINT, uintValueType.get],
+    [TYPE_INT64, int64ValueType.get],
+    [TYPE_UINT64, uint64ValueType.get],
+    [TYPE_FLOAT, floatValueType.get],
+    [TYPE_DOUBLE, doubleValueType.get],
+    [TYPE_ENUM, enumValueType.get],
+    [TYPE_FLAGS, flagsValueType.get],
+]);
+
+const wrappedValueGetter = (fundamental: bigint): ValueGetter | undefined => {
     switch (fundamental) {
-        case TYPE_BOOLEAN: {
-            return booleanValueType.get;
-        }
-        case TYPE_GTYPE: {
-            return typeValueType.get;
-        }
-        case TYPE_INT: {
-            return intValueType.get;
-        }
-        case TYPE_UINT: {
-            return uintValueType.get;
-        }
-        case TYPE_INT64: {
-            return int64ValueType.get;
-        }
-        case TYPE_UINT64: {
-            return uint64ValueType.get;
-        }
-        case TYPE_FLOAT: {
-            return floatValueType.get;
-        }
-        case TYPE_DOUBLE: {
-            return doubleValueType.get;
-        }
-        case TYPE_ENUM: {
-            return enumValueType.get;
-        }
-        case TYPE_FLAGS: {
-            return flagsValueType.get;
-        }
         case TYPE_STRING: {
             return (value) => stringValueType.get(value) ?? null;
         }
@@ -293,6 +265,9 @@ const resolveValueGetter = (fundamental: bigint): ((value: ExternalObject<Handle
         }
     }
 };
+
+const resolveValueGetter = (fundamental: bigint): ValueGetter | undefined =>
+    PLAIN_VALUE_GETTERS.get(fundamental) ?? wrappedValueGetter(fundamental);
 
 const resolveNativeValue = (descriptor: Descriptor, value: unknown): unknown => {
     const isHandleKind = descriptor.kind === "object" || descriptor.kind === "boxed";

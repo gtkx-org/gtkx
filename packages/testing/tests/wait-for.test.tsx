@@ -144,10 +144,10 @@ describe("waitForElementToBeRemoved widget", () => {
         await render(<DynamicComponent />);
 
         const tempButton = await screen.findByText("Temporary");
-        const removeButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Remove" });
+        const removalButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Remove" });
 
         const removalPromise = waitForElementToBeRemoved(tempButton);
-        await userEvent.click(removeButton);
+        await userEvent.click(removalButton);
 
         await expect(removalPromise).resolves.toBeUndefined();
     });
@@ -157,13 +157,13 @@ describe("waitForElementToBeRemoved widget", () => {
 
         await render(<DynamicComponent />);
 
-        const removeButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Remove" });
+        const removalButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Remove" });
 
         const element = await screen.findByName("removable");
 
         const removalPromise = waitForElementToBeRemoved(() => elementIfAttached(element));
 
-        await userEvent.click(removeButton);
+        await userEvent.click(removalButton);
         await expect(removalPromise).resolves.toBeUndefined();
     });
 
@@ -172,7 +172,7 @@ describe("waitForElementToBeRemoved widget", () => {
 
         await render(<DynamicComponent />);
 
-        const removeButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Remove" });
+        const removalButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Remove" });
         const element = await screen.findByName("destroyable");
 
         const originalGetRoot = element.getRoot.bind(element);
@@ -183,7 +183,7 @@ describe("waitForElementToBeRemoved widget", () => {
         };
 
         const removalPromise = waitForElementToBeRemoved(element);
-        await userEvent.click(removeButton);
+        await userEvent.click(removalButton);
 
         await expect(removalPromise).resolves.toBeUndefined();
     });
@@ -200,10 +200,10 @@ describe("waitForElementToBeRemoved widget", () => {
 
         const first = await screen.findByText("First");
         const second = await screen.findByText("Second");
-        const removeButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Remove" });
+        const removalButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Remove" });
 
         const removalPromise = waitForElementToBeRemoved([first, second]);
-        await userEvent.click(removeButton);
+        await userEvent.click(removalButton);
 
         await expect(removalPromise).resolves.toBeUndefined();
     });

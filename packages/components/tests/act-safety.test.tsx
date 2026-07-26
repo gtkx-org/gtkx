@@ -1,3 +1,4 @@
+import type { MockInstance } from "vitest";
 import { DropDown } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { act, render, screen, userEvent } from "@gtkx/testing";
@@ -28,7 +29,7 @@ const expandableExpanders = (): Gtk.TreeExpander[] =>
         .filter((widget) => widget.getListRow()?.isExpandable() ?? false);
 
 describe("act safety", () => {
-    let errorSpy: ReturnType<typeof vi.spyOn>;
+    let errorSpy: MockInstance<typeof console.error>;
 
     beforeEach(() => {
         errorSpy = vi.spyOn(console, "error");

@@ -45,6 +45,10 @@ const profileAt = (path: string): SettingsSchema<{ title: "s" }> => ({
     keys: { title: "s" },
 });
 
+const useMissingKey = () =>
+    // @ts-expect-error "missing" is not a declared key of TYPED_SCHEMA
+    useSetting(TYPED_SCHEMA, "missing");
+
 const renderCountSetting = async () => {
     resetSettingsKey(SCHEMA_ID, "count");
     return renderHook(() => useSetting(TYPED_SCHEMA, "count"));
@@ -195,7 +199,6 @@ describe("useSetting (typed refs: relocatable paths)", () => {
 
 describe("useSetting (typed refs: unknown keys)", () => {
     it("rejects keys the schema does not declare at the type level", () => {
-        // @ts-expect-error "missing" is not a declared key of TYPED_SCHEMA
-        void (() => useSetting(TYPED_SCHEMA, "missing"));
+        expectTypeOf(useMissingKey).toBeFunction();
     });
 });

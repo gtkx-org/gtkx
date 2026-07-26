@@ -1,5 +1,3 @@
-/// <reference path="../babel-modules.d.ts" />
-
 import type { ResolvedReactCompilerOptions } from "@gtkx/config";
 import type { Plugin, ResolvedConfig, UserConfig } from "vite";
 import { transformAsync } from "@babel/core";
@@ -12,7 +10,6 @@ const babelPluginReactCompiler = babelPluginReactCompilerNs.default ?? babelPlug
 
 const SOURCE_EXTENSION = /\.[jt]sx?$/;
 const TYPESCRIPT_EXTENSION = /\.tsx?$/;
-const TYPE_ONLY_EXTENSION = /\.ts$/;
 const NODE_MODULES = /(?:^|\/)node_modules\//;
 
 type ReactCompilerState = {
@@ -56,7 +53,8 @@ export function gtkxReactCompiler(loadConfig: ConfigLoader = createConfigLoader(
         enforce: "pre",
 
         async config(config: UserConfig) {
-            state.options = (await loadConfig(config.root ?? process.cwd())).reactCompiler;
+            const resolved = await loadConfig(config.root ?? process.cwd());
+            state.options = resolved.reactCompiler;
         },
 
         configResolved(config: ResolvedConfig) {

@@ -29,7 +29,9 @@ const cellText = (cell: Gtk.Widget): string => {
 };
 
 const rowCellTexts = (row: Gtk.Widget): string[] =>
-    within(row).getAllByRole(Gtk.AccessibleRole.GRID_CELL).map(cellText);
+    within(row)
+        .getAllByRole(Gtk.AccessibleRole.GRID_CELL)
+        .map((cell) => cellText(cell));
 
 const dataRows = (columnView: Gtk.ColumnView): Gtk.Widget[] =>
     within(columnView).getAllByRole(Gtk.AccessibleRole.ROW).slice(1);
@@ -164,7 +166,7 @@ function SortableColumnView({
     const sortedEmployees = useMemo(() => {
         if (!sortColumn) return employees;
 
-        return [...employees].sort((a, b) => compareBySort(a, b, sortColumn, sortOrder));
+        return employees.toSorted((a, b) => compareBySort(a, b, sortColumn, sortOrder));
     }, [employees, sortColumn, sortOrder]);
 
     if (onRenderOrder) {
@@ -216,7 +218,9 @@ const renderSortableColumnView = async (count: number): Promise<SortableColumnVi
         <SortableColumnView
             employees={employees}
             columnViewRef={ref}
-            onRenderOrder={(ids) => renderOrders.push(ids)}
+            onRenderOrder={(ids) => {
+                renderOrders.push(ids);
+            }}
         />,
     );
 
@@ -611,7 +615,7 @@ describe("render - ColumnView (13)", () => {
             ];
             const sortBy = (sortColumn: SortColumn, sortOrder: Gtk.SortType): Item[] => {
                 if (!sortColumn) return items;
-                return [...items].sort((a, b) => compareBySort(a, b, sortColumn, sortOrder));
+                return items.toSorted((a, b) => compareBySort(a, b, sortColumn, sortOrder));
             };
             const toRows = (rows: Item[]) => rows.map((item) => ({ id: item.id, value: item }));
             const rowsFor = (sortColumn: SortColumn) => toRows(sortBy(sortColumn, Gtk.SortType.ASCENDING));

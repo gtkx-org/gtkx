@@ -17,11 +17,11 @@ export const withErrorBoundary = <T extends ArgsDef>(command: CommandDef<T>): Co
     if (run === undefined) return command;
     return {
         ...command,
-        run: async (context) => {
+        run: async (context): Promise<unknown> => {
             try {
                 return await run(context);
             } catch (error) {
-                printError(error);
+                return printError(error);
             }
         },
     };

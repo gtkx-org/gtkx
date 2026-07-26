@@ -173,7 +173,7 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
     }),
     "widget.fireEvent": validated(ServerRequestParamsSchemas["widget.fireEvent"], async ({ registry }, params) => {
         const { testing, widget } = await widgetTarget(registry, params.widgetId);
-        const signalArgs = (params.args ?? []).map(extractSignalArg);
+        const signalArgs = (params.args ?? []).map((arg) => extractSignalArg(arg));
         await testing.fireEvent(widget, params.signal, ...signalArgs);
         return { success: true };
     }),

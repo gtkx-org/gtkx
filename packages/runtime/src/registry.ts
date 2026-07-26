@@ -36,12 +36,12 @@ const vfuncRegistry: WeakMap<object, VfuncRegistry> = new WeakMap();
 const interfaceVfuncRegistry: Map<bigint, VfuncRegistry> = new Map();
 
 function setClassType(cls: AnyClass, type: bigint): void {
-    (cls.prototype as { [K in keyof TypedClass]: TypedClass[K] }).__type__ = type;
+    (cls.prototype as { [K in keyof TypedClass]: TypedClass[K] })._type_ = type;
 }
 
 export function getClassType(cls: AnyClass): bigint {
     const proto: object = cls.prototype;
-    return Object.hasOwn(proto, "__type__") ? (proto as TypedClass).__type__ : TYPE_INVALID;
+    return Object.hasOwn(proto, "_type_") ? (proto as TypedClass)._type_ : TYPE_INVALID;
 }
 
 /** Returns the GType tag of the given wrapper instance. */
@@ -99,17 +99,14 @@ export function wrapHandle<T extends object>(
     handle: ExternalObject<Handle> | null | undefined,
     cls: AnyClass<T>,
 ): T | null;
-export function wrapHandle<T extends object = TypedClass>(handle: ExternalObject<Handle>, cls?: AnyClass): T;
-export function wrapHandle<T extends object = TypedClass>(
-    handle: ExternalObject<Handle> | null | undefined,
-    cls?: AnyClass,
-): T | null;
+export function wrapHandle(handle: ExternalObject<Handle>, cls?: AnyClass): TypedClass;
+export function wrapHandle(handle: ExternalObject<Handle> | null | undefined, cls?: AnyClass): TypedClass | null;
 export function wrapHandle(handle: ExternalObject<Handle> | null | undefined, cls?: AnyClass): object | null {
     if (handle === null || handle === undefined) return null;
     if (cls === undefined) {
         return getOrCreateWrapper(handle);
     }
-    const instance: object = Object.create(cls.prototype);
+    const instance: object = Object.create(cls.prototype) as object;
     setHandle(instance, handle);
     return instance;
 }
@@ -179,7 +176,7 @@ function getOrCreateWrapper(handle: ExternalObject<Handle>): object {
 
     const cls = resolveComposedClass(runtimeType);
     if (!cls) throw new Error(`Expected registered GLib type, got type ${String(runtimeType)}`);
-    const instance: object = Object.create(cls.prototype);
+    const instance: object = Object.create(cls.prototype) as object;
     registerWrapper(handle, instance);
     return instance;
 }

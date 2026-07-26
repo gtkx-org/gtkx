@@ -27,7 +27,7 @@ const isSuppressed = (): boolean => suppressionDepth > 0;
 
 export const connectHandler = (target: SignalTarget, prop: string, signal: string, handler: SignalHandler): void => {
     const existing = target.handlers.get(prop);
-    if (existing !== undefined && existing.signal === signal) {
+    if (existing?.signal === signal) {
         existing.handler = handler;
         return;
     }

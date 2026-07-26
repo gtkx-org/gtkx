@@ -23,36 +23,6 @@ export class ConnectionClosedError extends Error {
 }
 
 export class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
-    id: string = crypto.randomUUID();
-    private buffer = "";
-    private pending: Map<string, PendingRequest> = new Map();
-    private writer: Duplex;
-
-    constructor(writer: Duplex) {
-        super();
-        this.writer = writer;
-    }
-
-    feed(data: Buffer | string): void {
-        this.buffer += typeof data === "string" ? data : data.toString();
-
-        let newlineIndex = this.buffer.indexOf("\n");
-        while (newlineIndex !== -1) {
-            const line = this.buffer.slice(0, newlineIndex);
-            this.buffer = this.buffer.slice(newlineIndex + 1);
-
-            if (line.trim()) {
-                this.processLine(line);
-            }
-            newlineIndex = this.buffer.indexOf("\n");
-        }
-    }
-
-    write(message: Message): void {
-        if (!this.writer.writable) return;
-        this.writer.write(`${JSON.stringify(message)}\n`);
-    }
-
     static fromSocket(
         socket: Socket,
         options: {
@@ -72,40 +42,22 @@ export class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
         return connection;
     }
 
-    send<T = unknown>(method: string, params: unknown, timeout: number): Promise<T> {
-        return new Promise<T>((resolve, reject) => {
-            if (!this.writer.writable) {
-                reject(new ConnectionClosedError());
-                return;
-            }
+    private buffer = "";
+    private pending: Map<string, PendingRequest> = new Map();
+    private writer: Duplex;
 
-            const id = crypto.randomUUID();
-            const timeoutHandle = setTimeout(() => {
-                this.pending.delete(id);
-                reject(requestTimeoutError(timeout));
-            }, timeout);
+    id: string = crypto.randomUUID();
 
-            this.pending.set(id, {
-                resolve: resolve as (result: unknown) => void,
-                reject,
-                timeout: timeoutHandle,
-            });
-
-            this.write({ id, method, params });
-            if (!this.writer.writable) {
-                clearTimeout(timeoutHandle);
-                this.pending.delete(id);
-                reject(new ConnectionClosedError());
-            }
-        });
+    constructor(writer: Duplex) {
+        super();
+        this.writer = writer;
     }
 
-    rejectPending(error: Error): void {
-        for (const entry of this.pending.values()) {
-            clearTimeout(entry.timeout);
-            entry.reject(error);
-        }
-        this.pending.clear();
+    private rejectWhenClosed(id: string, timeoutHandle: NodeJS.Timeout, reject: (error: Error) => void): void {
+        if (this.writer.writable) return;
+        clearTimeout(timeoutHandle);
+        this.pending.delete(id);
+        reject(new ConnectionClosedError());
     }
 
     private dispatchParsed(parsed: unknown): boolean {
@@ -153,6 +105,58 @@ export class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
         } else {
             entry.resolve(response.result);
         }
+    }
+
+    feed(data: Buffer | string): void {
+        this.buffer += typeof data === "string" ? data : data.toString();
+
+        let newlineIndex = this.buffer.indexOf("\n");
+        while (newlineIndex !== -1) {
+            const line = this.buffer.slice(0, newlineIndex);
+            this.buffer = this.buffer.slice(newlineIndex + 1);
+
+            if (line.trim()) {
+                this.processLine(line);
+            }
+            newlineIndex = this.buffer.indexOf("\n");
+        }
+    }
+
+    write(message: Message): void {
+        if (!this.writer.writable) return;
+        this.writer.write(`${JSON.stringify(message)}\n`);
+    }
+
+    send<T = unknown>(method: string, params: unknown, timeout: number): Promise<T> {
+        return new Promise<T>((resolve, reject) => {
+            if (!this.writer.writable) {
+                reject(new ConnectionClosedError());
+                return;
+            }
+
+            const id = crypto.randomUUID();
+            const timeoutHandle = setTimeout(() => {
+                this.pending.delete(id);
+                reject(requestTimeoutError(timeout));
+            }, timeout);
+
+            this.pending.set(id, {
+                resolve: resolve as (result: unknown) => void,
+                reject,
+                timeout: timeoutHandle,
+            });
+
+            this.write({ id, method, params });
+            this.rejectWhenClosed(id, timeoutHandle, reject);
+        });
+    }
+
+    rejectPending(error: Error): void {
+        for (const entry of this.pending.values()) {
+            clearTimeout(entry.timeout);
+            entry.reject(error);
+        }
+        this.pending.clear();
     }
 }
 

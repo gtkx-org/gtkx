@@ -5,5 +5,5 @@ function splitWords(input: string): string[] {
 export function mapWordSegments(input: string, mapSegment: (part: string, index: number) => string): string {
     const parts = splitWords(input);
     if (parts.length === 0) return input;
-    return parts.map(mapSegment).join("");
+    return parts.map((part, index) => mapSegment(part, index)).join("");
 }

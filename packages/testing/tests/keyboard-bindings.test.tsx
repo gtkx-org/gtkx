@@ -84,7 +84,9 @@ describe("keyboard drives real widget key bindings", () => {
                 ref={ref}
                 model={Gtk.NoSelection.new(Gtk.StringList.new(["Alpha", "Beta"]))}
                 factory={stringLabelFactory()}
-                onActivate={(position) => activated.push(position)}
+                onActivate={(position) => {
+                    activated.push(position);
+                }}
             />,
         );
         const view = ref.current;

@@ -14,8 +14,8 @@ const installAdjustment = (row: Adw.SpinRow, lower: number, upper: number, value
 type ListenerClearedCase<Widget> = {
     renderRow: (ref: RefObject<Widget | null>, handler: Mock | null) => ReactElement;
     afterMount?: (row: Widget) => void;
-    fireFirst: (row: Widget) => void;
-    fireSecond: (row: Widget) => void;
+    fireFirst: (row: Widget) => void | Promise<void>;
+    fireSecond: (row: Widget) => void | Promise<void>;
 };
 
 let setActiveHandler: (next: Mock | null) => void = () => {};
@@ -27,7 +27,8 @@ const expectListenerClearedWhenHandlerNull = async <Widget,>({
     fireSecond,
 }: ListenerClearedCase<Widget>) => {
     const handler = vi.fn();
-    const ref = createRef<Widget>(); const Harness = () => {
+    const ref = createRef<Widget>();
+    const Harness = () => {
         const [active, setActive] = useState<Mock | null>(handler);
         setActiveHandler = setActive;
         return renderRow(ref, active);

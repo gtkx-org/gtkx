@@ -1,3 +1,4 @@
+import { resolveExecutable } from "@gtkx/utils";
 import { execFileSync } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -19,7 +20,7 @@ type LoadHook = (
 
 const hasGlibCompileSchemas = (): boolean => {
     try {
-        execFileSync("glib-compile-schemas", ["--version"], { stdio: ["ignore", "ignore", "ignore"] });
+        execFileSync(resolveExecutable("glib-compile-schemas"), ["--version"], { stdio: ["ignore", "ignore", "ignore"] });
         return true;
     } catch {
         return false;
@@ -201,6 +202,8 @@ describe("gtkxSettings (buildEnd)", () => {
     });
 });
 
+const firstSchemaDir = (): string => (process.env.GSETTINGS_SCHEMA_DIR ?? "").split(":", 1)[0] ?? "";
+
 const setupSchemaDirEnv = (): void => {
     let prevSchemaDir: string | undefined;
     beforeEach(() => {
@@ -289,8 +292,7 @@ describe("gtkxSettings (dev-mode load: fresh schema dir)", () => {
                 expect(code).not.toContain("gtkx-settings-init");
 
                 expect(process.env.GSETTINGS_SCHEMA_DIR).toBeDefined();
-                const first = process.env.GSETTINGS_SCHEMA_DIR?.split(":", 1)[0];
-                expect(first).toMatch(/gtkx-schemas-/);
+                expect(firstSchemaDir()).toMatch(/gtkx-schemas-/);
             } finally {
                 rmSync(tmp, { recursive: true, force: true });
             }
@@ -381,7 +383,7 @@ describe("gtkxSettings (closeBundle)", () => {
         try {
             const { plugin } = loadSchemaInServeMode(schemaPath);
 
-            const schemaDir = process.env.GSETTINGS_SCHEMA_DIR?.split(":", 1)[0] ?? "";
+            const schemaDir = firstSchemaDir();
             expect(existsSync(schemaDir)).toBe(true);
 
             (plugin.closeBundle as () => void).call(plugin);
@@ -404,7 +406,7 @@ describe("gtkxSettings (configureServer)", () => {
         try {
             const { plugin } = loadSchemaInServeMode(schemaPath);
 
-            const schemaDir = process.env.GSETTINGS_SCHEMA_DIR?.split(":", 1)[0] ?? "";
+            const schemaDir = firstSchemaDir();
             expect(existsSync(schemaDir)).toBe(true);
 
             const httpServer = new EventEmitter();

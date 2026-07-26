@@ -48,7 +48,7 @@ function appendMenuItem(menu: Gio.Menu, item: MenuItem): void {
 }
 
 /** The runtime half of the built-in element configuration: the behaviors bound to each GObject type. */
-const BUILTIN_BEHAVIORS: Record<string, ElementConfig> = {
+const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     ...forTypes(SINGLE_CHILD_TYPES, {
         behaviors: [childSetterSlot()],
     }),
@@ -234,7 +234,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig> = {
                         item.lines,
                         item.hspacing ?? 0,
                         item.vspacing ?? 0,
-                        item.views ?? new Map(),
+                        item.views ?? new Map<string, Gtk.ConstraintTarget>(),
                     ),
                 ],
                 remove: (layout, _item, constraints) => {

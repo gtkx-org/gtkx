@@ -142,8 +142,8 @@ const genSingularScalars = (
     plan: CommandPlan & { ok: true },
 ): { countScalar: GlScalar; outScalar: GlScalar; lenParamName: string } | undefined => {
     const countPlan = plan.params.at(-2);
-    const outPlan = plan.params.at(-1);
     if (countPlan?.kind !== "scalar") return undefined;
+    const outPlan = plan.params.at(-1);
     if (outPlan?.kind !== "ref-array-out") return undefined;
     return { countScalar: countPlan.scalar, outScalar: outPlan.scalar, lenParamName: outPlan.lenParamName };
 };

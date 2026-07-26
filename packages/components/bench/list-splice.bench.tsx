@@ -6,27 +6,27 @@ const SIZES = [100, 400];
 
 const makeIds = (n: number): string[] => Array.from({ length: n }, (_, i) => `row-${i}`);
 
-const benchSplice = (name: string, ids: string[], spliced: string[]): void => {
-    bench(name, async () => {
-        const { rerender } = await renderListView(ids, {}, render);
-        for (let k = 0; k < 3; k++) {
-            await rerender(spliced);
-            await rerender(ids);
-        }
-        await cleanup();
-    });
+const spliceBench = (ids: string[], spliced: string[]) => async (): Promise<void> => {
+    const { rerender } = await renderListView(ids, {}, render);
+    for (let k = 0; k < 3; k++) {
+        await rerender(spliced);
+        await rerender(ids);
+    }
+    await cleanup();
 };
 
 describe("list splices", () => {
     for (const n of SIZES) {
         const ids = makeIds(n);
-        benchSplice(`append one item to ${n} rows`, ids, [...ids, "row-extra"]);
-        benchSplice(`prepend one item to ${n} rows`, ids, ["row-extra", ...ids]);
-        benchSplice(
+        bench(`append one item to ${n} rows`, spliceBench(ids, [...ids, "row-extra"]));
+        bench(`prepend one item to ${n} rows`, spliceBench(ids, ["row-extra", ...ids]));
+        bench(
             `remove the middle item of ${n} rows`,
-            ids,
-            ids.filter((id) => id !== `row-${n / 2}`),
+            spliceBench(
+                ids,
+                ids.filter((id) => id !== `row-${n / 2}`),
+            ),
         );
-        benchSplice(`reverse ${n} rows`, ids, [...ids].reverse());
+        bench(`reverse ${n} rows`, spliceBench(ids, ids.toReversed()));
     }
 });

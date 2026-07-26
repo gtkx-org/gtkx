@@ -17,7 +17,7 @@ export const scheduleAfterLayout = (widget: Gtk.Widget | null, callback: () => v
         callback();
     };
 
-    if (widget === null || widget.getFrameClock() === null || widget.getWidth() > 0) {
+    if (widget?.getFrameClock() == null || widget.getWidth() > 0) {
         queueMicrotask(finish);
         return;
     }

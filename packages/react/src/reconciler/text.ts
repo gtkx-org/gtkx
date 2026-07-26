@@ -4,7 +4,7 @@ import type { ContentChild, ElementNode, ParentNode, TextNode } from "./node.js"
 import type { Props } from "./registry.js";
 import { ELEMENT_KIND, TEXT_KIND } from "./node.js";
 
-const charLength = (text: string): number => [...text].length;
+const charLength = (text: string): number => text[Symbol.iterator]().toArray().length;
 
 const contentTextLength = (node: ContentChild): number => {
     if (node.kind === TEXT_KIND) return charLength(node.text);
@@ -51,8 +51,10 @@ export const textRestrictionError = (text: string): Error =>
         `Text strings must be rendered within a <GtkLabel> or <GtkTextBuffer> element; received ${JSON.stringify(text)}`,
     );
 
+const TEXT_CONTENT_KINDS: Set<string> = new Set(["label", "buffer", "tag"]);
+
 export const acceptsText = (host: ElementNode): boolean =>
-    host.contentKind === "label" || host.contentKind === "buffer" || host.contentKind === "tag";
+    host.contentKind !== null && TEXT_CONTENT_KINDS.has(host.contentKind);
 
 const isRootHost = (node: ElementNode): boolean => node.contentKind === "label" || node.contentKind === "buffer";
 

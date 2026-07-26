@@ -2,10 +2,9 @@ import type { ExternalObject, Handle, Ref } from "@gtkx/native";
 import { getWrapperClass, wrapHandle } from "./registry.js";
 import { getErrorType, isTypedClass } from "./type.js";
 
-type ErrorLike = {
+type ErrorLike = Error & {
     domain: number;
     code: number;
-    message: string;
 };
 
 /**
@@ -21,12 +20,14 @@ export function checkError(error: Ref): void {
         return;
     }
 
-    const gerror = wrapHandle<ErrorLike>(error.value as ExternalObject<Handle>, getWrapperClass(getErrorType()));
-    Error.captureStackTrace(gerror, checkError);
+    const gerror = wrapHandle(error.value as ExternalObject<Handle>, getWrapperClass(getErrorType())) as ErrorLike;
+    const callSite = new Error("gtkx call site");
+    const callerFrames = (callSite.stack ?? "").split("\n").slice(2);
+    gerror.stack = [`${gerror.name}: ${gerror.message}`, ...callerFrames].join("\n");
     throw gerror;
 }
 
-const isError = (value: unknown): value is ErrorLike => isTypedClass(value) && value.__type__ === getErrorType();
+const isError = (value: unknown): value is ErrorLike => isTypedClass(value) && value._type_ === getErrorType();
 
 /**
  * Builds an error domain enum object from its members and a lazy resolver for the

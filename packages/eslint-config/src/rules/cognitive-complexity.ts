@@ -4,21 +4,22 @@ type Options = [{ max: number }];
 
 type MessageIds = "excessiveComplexity";
 
+type VisitorKeys = TSESLint.SourceCode.VisitorKeys;
+
+const FUNCTION_TYPES: Set<string> = new Set([
+    AST_NODE_TYPES.ArrowFunctionExpression,
+    AST_NODE_TYPES.FunctionDeclaration,
+    AST_NODE_TYPES.FunctionExpression,
+]);
+
 const isNode = (value: unknown): value is TSESTree.Node =>
     typeof value === "object" && value !== null && "type" in value && typeof value.type === "string";
-
-type AnyFunction = TSESTree.FunctionDeclaration | TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression;
-
-const isFunction = (node: TSESTree.Node): node is AnyFunction =>
-    node.type === AST_NODE_TYPES.ArrowFunctionExpression ||
-    node.type === AST_NODE_TYPES.FunctionDeclaration ||
-    node.type === AST_NODE_TYPES.FunctionExpression;
 
 const hasEnclosingFunction = (node: TSESTree.Node): boolean => {
     let current: TSESTree.Node | undefined = node.parent;
 
     while (current) {
-        if (isFunction(current)) return true;
+        if (FUNCTION_TYPES.has(current.type)) return true;
         current = current.parent;
     }
 
@@ -49,119 +50,129 @@ const nameNodeOf = (node: TSESTree.Node): TSESTree.Node => {
     return node;
 };
 
-const complexityOf = (fn: TSESTree.Node, visitorKeys: TSESLint.SourceCode.VisitorKeys): number => {
+const nodesIn = (value: unknown): TSESTree.Node[] => {
+    if (isNode(value)) return [value];
+    if (!Array.isArray(value)) return [];
+
+    const nodes: TSESTree.Node[] = [];
+
+    for (const item of value) {
+        if (isNode(item)) nodes.push(item);
+    }
+
+    return nodes;
+};
+
+const childNodesOf = (node: TSESTree.Node, keys: VisitorKeys): TSESTree.Node[] => {
+    const nodeKeys = keys[node.type] ?? [];
+    const children: TSESTree.Node[] = [];
+
+    for (const key of nodeKeys) children.push(...nodesIn(Reflect.get(node, key)));
+
+    return children;
+};
+
+const sumOf = <T>(items: T[], score: (item: T) => number): number => {
     let total = 0;
+    for (const item of items) total += score(item);
+    return total;
+};
 
-    const visitChildren = (node: TSESTree.Node, nesting: number): void => {
-        for (const key of visitorKeys[node.type] ?? []) {
-            const child: unknown = Reflect.get(node, key);
+const childrenComplexity = (node: TSESTree.Node, nesting: number, keys: VisitorKeys): number =>
+    sumOf(childNodesOf(node, keys), (child) => complexityAt(child, nesting, keys));
 
-            if (Array.isArray(child)) {
-                for (const item of child) {
-                    if (isNode(item)) visit(item, nesting);
-                }
-            } else if (isNode(child)) {
-                visit(child, nesting);
-            }
+const operandComplexity = (node: TSESTree.Node, operator: string, nesting: number, keys: VisitorKeys): number => {
+    if (node.type === AST_NODE_TYPES.LogicalExpression && node.operator === operator) {
+        return (
+            operandComplexity(node.left, operator, nesting, keys) +
+            operandComplexity(node.right, operator, nesting, keys)
+        );
+    }
+
+    return complexityAt(node, nesting, keys);
+};
+
+const ifComplexity = (node: TSESTree.IfStatement, nesting: number, keys: VisitorKeys): number => {
+    let total = 1 + nesting + complexityAt(node.test, nesting, keys) + complexityAt(node.consequent, nesting + 1, keys);
+    let alternate = node.alternate;
+
+    while (alternate !== null) {
+        total += 1;
+
+        if (alternate.type === AST_NODE_TYPES.IfStatement) {
+            total += complexityAt(alternate.test, nesting, keys);
+            total += complexityAt(alternate.consequent, nesting + 1, keys);
+            alternate = alternate.alternate;
+            continue;
         }
-    };
 
-    const visitOperand = (node: TSESTree.Node, operator: string, nesting: number): void => {
-        if (node.type === AST_NODE_TYPES.LogicalExpression && node.operator === operator) {
-            visitOperand(node.left, operator, nesting);
-            visitOperand(node.right, operator, nesting);
-            return;
-        }
-
-        visit(node, nesting);
-    };
-
-    const visitIf = (node: TSESTree.IfStatement, nesting: number): void => {
-        total += 1 + nesting;
-        visit(node.test, nesting);
-        visit(node.consequent, nesting + 1);
-
-        let alternate = node.alternate;
-
-        while (alternate !== null) {
-            total += 1;
-
-            if (alternate.type === AST_NODE_TYPES.IfStatement) {
-                visit(alternate.test, nesting);
-                visit(alternate.consequent, nesting + 1);
-                alternate = alternate.alternate;
-                continue;
-            }
-
-            visit(alternate, nesting + 1);
-            alternate = null;
-        }
-    };
-
-    const visit = (node: TSESTree.Node, nesting: number): void => {
-        switch (node.type) {
-            case AST_NODE_TYPES.IfStatement: {
-                visitIf(node, nesting);
-                return;
-            }
-            case AST_NODE_TYPES.ConditionalExpression: {
-                total += 1 + nesting;
-                visit(node.test, nesting);
-                visit(node.consequent, nesting + 1);
-                visit(node.alternate, nesting + 1);
-                return;
-            }
-            case AST_NODE_TYPES.SwitchStatement: {
-                total += 1 + nesting;
-                visit(node.discriminant, nesting);
-                for (const switchCase of node.cases) visit(switchCase, nesting + 1);
-                return;
-            }
-            case AST_NODE_TYPES.ForStatement:
-            case AST_NODE_TYPES.ForInStatement:
-            case AST_NODE_TYPES.ForOfStatement:
-            case AST_NODE_TYPES.WhileStatement:
-            case AST_NODE_TYPES.DoWhileStatement: {
-                total += 1 + nesting;
-                for (const key of visitorKeys[node.type] ?? []) {
-                    const child: unknown = Reflect.get(node, key);
-                    if (isNode(child)) visit(child, key === "body" ? nesting + 1 : nesting);
-                }
-                return;
-            }
-            case AST_NODE_TYPES.CatchClause: {
-                total += 1 + nesting;
-                if (node.param !== null) visit(node.param, nesting);
-                visit(node.body, nesting + 1);
-                return;
-            }
-            case AST_NODE_TYPES.LogicalExpression: {
-                total += 1;
-                visitOperand(node.left, node.operator, nesting);
-                visitOperand(node.right, node.operator, nesting);
-                return;
-            }
-            case AST_NODE_TYPES.BreakStatement:
-            case AST_NODE_TYPES.ContinueStatement: {
-                if (node.label !== null) total += 1;
-                return;
-            }
-            case AST_NODE_TYPES.ArrowFunctionExpression:
-            case AST_NODE_TYPES.FunctionDeclaration:
-            case AST_NODE_TYPES.FunctionExpression: {
-                for (const parameter of node.params) visit(parameter, nesting);
-                visit(node.body, nesting + 1);
-                return;
-            }
-            default: {
-                visitChildren(node, nesting);
-            }
-        }
-    };
-
-    visitChildren(fn, 0);
+        total += complexityAt(alternate, nesting + 1, keys);
+        alternate = null;
+    }
 
     return total;
+};
+
+const loopComplexity = (node: TSESTree.Node, nesting: number, keys: VisitorKeys): number => {
+    const nodeKeys = keys[node.type] ?? [];
+    let total = 1 + nesting;
+
+    for (const key of nodeKeys) {
+        const child: unknown = Reflect.get(node, key);
+        if (isNode(child)) total += complexityAt(child, key === "body" ? nesting + 1 : nesting, keys);
+    }
+
+    return total;
+};
+
+const ternaryComplexity = (node: TSESTree.ConditionalExpression, nesting: number, keys: VisitorKeys): number =>
+    1 + nesting + complexityAt(node.test, nesting, keys) + complexityAt(node.consequent, nesting + 1, keys) +
+    complexityAt(node.alternate, nesting + 1, keys);
+
+const logicalComplexity = (node: TSESTree.LogicalExpression, nesting: number, keys: VisitorKeys): number =>
+    1 + operandComplexity(node.left, node.operator, nesting, keys) +
+    operandComplexity(node.right, node.operator, nesting, keys);
+
+const complexityAt = (node: TSESTree.Node, nesting: number, keys: VisitorKeys): number => {
+    switch (node.type) {
+        case AST_NODE_TYPES.IfStatement: {
+            return ifComplexity(node, nesting, keys);
+        }
+        case AST_NODE_TYPES.ConditionalExpression: {
+            return ternaryComplexity(node, nesting, keys);
+        }
+        case AST_NODE_TYPES.SwitchStatement: {
+            const cases = sumOf(node.cases, (switchCase) => complexityAt(switchCase, nesting + 1, keys));
+            return 1 + nesting + complexityAt(node.discriminant, nesting, keys) + cases;
+        }
+        case AST_NODE_TYPES.ForStatement:
+        case AST_NODE_TYPES.ForInStatement:
+        case AST_NODE_TYPES.ForOfStatement:
+        case AST_NODE_TYPES.WhileStatement:
+        case AST_NODE_TYPES.DoWhileStatement: {
+            return loopComplexity(node, nesting, keys);
+        }
+        case AST_NODE_TYPES.CatchClause: {
+            const param = node.param === null ? 0 : complexityAt(node.param, nesting, keys);
+            return 1 + nesting + param + complexityAt(node.body, nesting + 1, keys);
+        }
+        case AST_NODE_TYPES.LogicalExpression: {
+            return logicalComplexity(node, nesting, keys);
+        }
+        case AST_NODE_TYPES.BreakStatement:
+        case AST_NODE_TYPES.ContinueStatement: {
+            return node.label === null ? 0 : 1;
+        }
+        case AST_NODE_TYPES.ArrowFunctionExpression:
+        case AST_NODE_TYPES.FunctionDeclaration:
+        case AST_NODE_TYPES.FunctionExpression: {
+            const params = sumOf(node.params, (parameter) => complexityAt(parameter, nesting, keys));
+            return params + complexityAt(node.body, nesting + 1, keys);
+        }
+        default: {
+            return childrenComplexity(node, nesting, keys);
+        }
+    }
 };
 
 export const cognitiveComplexity = ESLintUtils.RuleCreator.withoutDocs<Options, MessageIds>({
@@ -190,7 +201,7 @@ export const cognitiveComplexity = ESLintUtils.RuleCreator.withoutDocs<Options, 
         const check = (node: TSESTree.Node): void => {
             if (hasEnclosingFunction(node)) return;
 
-            const complexity = complexityOf(node, context.sourceCode.visitorKeys);
+            const complexity = childrenComplexity(node, 0, context.sourceCode.visitorKeys);
 
             if (complexity <= max) return;
 

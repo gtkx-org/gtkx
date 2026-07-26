@@ -1,6 +1,5 @@
 import * as Gio from "@gtkx/gi/gio";
-import assert from "node:assert";
-import { useLayoutEffect, useRef } from "react";
+import { useMemo } from "react";
 import {
     resolveSettingAccessor,
     type SettingsSchema,
@@ -11,25 +10,8 @@ import { useObjectValue } from "./use-object-value.js";
 
 type UseSettingsProps<K extends SettingsSchemaKeys> = Pick<SettingsSchema<K>, "id" | "path">;
 
-export const useSettings = <K extends SettingsSchemaKeys>({ id, path }: UseSettingsProps<K>): Gio.Settings => {
-    const settingsRef = useRef<Gio.Settings>(null);
-    const createSettings = () => (path ? new Gio.Settings({ schema: id, path }) : Gio.Settings.new(id));
-
-    if (settingsRef.current === null) {
-        settingsRef.current = createSettings();
-    }
-
-    useLayoutEffect(() => {
-        const settings = settingsRef.current;
-        assert.ok(settings, "Settings instance should be initialized before useLayoutEffect");
-
-        if (path !== settings.path || id !== settings.schema) {
-            settingsRef.current = createSettings();
-        }
-    }, [id, path]);
-
-    return settingsRef.current;
-};
+export const useSettings = <K extends SettingsSchemaKeys>({ id, path }: UseSettingsProps<K>): Gio.Settings =>
+    useMemo(() => (path ? new Gio.Settings({ schema: id, path }) : Gio.Settings.new(id)), [id, path]);
 
 /**
  * Reads and writes a single key of a GSettings schema, re-rendering when the stored value changes.

@@ -21,7 +21,7 @@ const itemValue = (item: GObject.Object | null): number => {
 };
 
 const valueStore = (...values: number[]): Gio.ListStore => {
-    const store = Gio.ListStore.new(ValueObject.prototype.__type__);
+    const store = Gio.ListStore.new(ValueObject.prototype._type_);
     for (const value of values) store.append(valueObject(value));
     return store;
 };

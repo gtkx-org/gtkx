@@ -20,7 +20,7 @@ let activeScreen: RenderResult = defaultScreen;
  * current toplevel windows. Accessing it before any render throws.
  */
 export const screen: Screen = new Proxy({} as Screen, {
-    get: (_target, property) => Reflect.get(activeScreen, property),
+    get: (_target, property): unknown => Reflect.get(activeScreen, property),
 });
 
 export const setScreen = (result: RenderResult): void => {

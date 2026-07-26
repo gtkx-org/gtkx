@@ -1,3 +1,4 @@
+import { resolveExecutable } from "@gtkx/utils";
 import { execFileSync } from "node:child_process";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -5,7 +6,7 @@ import { afterAll, afterEach, beforeAll } from "vitest";
 import { callArgs, GTK_LIB } from "./helpers/native-utils.js";
 
 const fixturesDir = dirname(fileURLToPath(new URL("fixtures/com.gtkx.test.useSetting.gschema.xml", import.meta.url)));
-execFileSync("glib-compile-schemas", [fixturesDir], { stdio: "ignore" });
+execFileSync(resolveExecutable("glib-compile-schemas"), [fixturesDir], { stdio: "ignore" });
 
 const existing = process.env.GSETTINGS_SCHEMA_DIR;
 process.env.GSETTINGS_SCHEMA_DIR = existing ? `${fixturesDir}:${existing}` : fixturesDir;
@@ -23,12 +24,16 @@ declare global {
 
 let previousIsReactActEnvironment: boolean | undefined;
 
+const setIsReactActEnvironment = (value: boolean | undefined): void => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: value });
+};
+
 beforeAll(() => {
     callArgs(GTK_LIB, "gtk_init", [], { kind: "void" });
     previousIsReactActEnvironment = globalThis.IS_REACT_ACT_ENVIRONMENT;
-    globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+    setIsReactActEnvironment(true);
 });
 
 afterAll(() => {
-    globalThis.IS_REACT_ACT_ENVIRONMENT = previousIsReactActEnvironment;
+    setIsReactActEnvironment(previousIsReactActEnvironment);
 });

@@ -19,7 +19,7 @@ import { type ReactNode, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./pickers.tsx?raw";
 
-const gfileType = Gio.File.prototype.__type__;
+const gfileType = Gio.File.prototype._type_;
 
 const DIALOG_TIMEOUT_SECONDS = 20;
 

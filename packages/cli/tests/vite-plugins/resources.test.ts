@@ -1,3 +1,4 @@
+import { resolveExecutable } from "@gtkx/utils";
 import { execFileSync } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -5,7 +6,13 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { BuildEndHook, LoadHook, ResolveIdHook } from "./plugin-hook-types.js";
-import { BUNDLE_FILENAME, REL_SEPARATOR, toVirtualId, VIRTUAL_INIT } from "../../src/vite-plugins/resource-shared.js";
+import {
+    BUNDLE_FILENAME,
+    REFRESH_EXPORT,
+    REL_SEPARATOR,
+    toVirtualId,
+    VIRTUAL_INIT,
+} from "../../src/vite-plugins/resource-shared.js";
 import { gtkxResources } from "../../src/vite-plugins/resources.js";
 import { expectBuildEndEmitsAsset, expectBuildEndIsNoop } from "./build-end-assertions.js";
 
@@ -18,7 +25,7 @@ type ResourcesPlugin = ReturnType<typeof gtkxResources>;
 
 const hasGlibCompileResources = (): boolean => {
     try {
-        execFileSync("glib-compile-resources", ["--version"], { stdio: ["ignore", "ignore", "ignore"] });
+        execFileSync(resolveExecutable("glib-compile-resources"), ["--version"], { stdio: ["ignore", "ignore", "ignore"] });
         return true;
     } catch {
         return false;
@@ -169,7 +176,7 @@ describe("gtkxResources (init module)", () => {
             const out = (plugin.load as LoadHook)(VIRTUAL_INIT) as string;
             expect(out).toContain("resourcesUnregister");
             expect(out).toContain("ensureRegistered");
-            expect(out).toContain("__refresh");
+            expect(out).toContain(REFRESH_EXPORT);
             expect(out).toContain("gtkx-resources-dev-");
         },
     );
@@ -250,7 +257,7 @@ type FakeServer = {
 
 const createFakeServer = (refresh: ReturnType<typeof vi.fn>): FakeServer => ({
     watcher: new EventEmitter(),
-    ssrLoadModule: vi.fn(async () => ({ __refresh: refresh })),
+    ssrLoadModule: vi.fn(async () => ({ [REFRESH_EXPORT]: refresh })),
 });
 
 const waitTicks = async (n = 2): Promise<void> => {

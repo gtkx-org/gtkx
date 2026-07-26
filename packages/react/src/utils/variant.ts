@@ -86,8 +86,9 @@ const BASIC_CODES = "bynqiuxthdsogv";
 
 const isBasicCode = (code: string): code is BasicCode => BASIC_CODES.includes(code);
 
-const isStringKeyed = (key: VariantTypeNode): boolean =>
-    key.kind === "basic" && (key.code === "s" || key.code === "o" || key.code === "g");
+const STRING_KEY_CODES: Set<string> = new Set(["s", "o", "g"]);
+
+const isStringKeyed = (key: VariantTypeNode): boolean => key.kind === "basic" && STRING_KEY_CODES.has(key.code);
 
 const invalidType = (source: string): Error => new Error(`Invalid GVariant type string "${source}"`);
 
@@ -193,8 +194,9 @@ const unpackDict = (
     variant: GLib.Variant,
 ): Record<string, unknown> | Map<unknown, unknown> => {
     const entries = unpackChildren(variant, (entry) => unpackPair(node.key, node.value, entry)) as [unknown, unknown][];
-    if (isStringKeyed(node.key)) return Object.fromEntries(entries);
-    return new Map(entries);
+    if (!isStringKeyed(node.key)) return new Map(entries);
+    const stringEntries: [string, unknown][] = entries.map(([key, value]) => [key as string, value]);
+    return Object.fromEntries(stringEntries);
 };
 
 const unpackMaybe = (element: VariantTypeNode, variant: GLib.Variant): unknown => {

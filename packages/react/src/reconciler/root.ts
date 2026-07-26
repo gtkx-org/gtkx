@@ -3,7 +3,9 @@ import { ConcurrentRoot } from "react-reconciler/constants.js";
 import { type Container, reconciler } from "./host-config.js";
 import { rootElement } from "./root-element.js";
 
-type OpaqueRoot = ReturnType<typeof reconciler.createContainer>;
+declare const opaqueRoot: unique symbol;
+
+type OpaqueRoot = { [opaqueRoot]: true };
 
 type RootErrorCallbacks = {
     onUncaughtError?: (error: unknown, info: ErrorInfo) => void;
@@ -60,7 +62,7 @@ const openContainer = (containerInfo: Container, callbacks: RootErrorCallbacks):
             callbacks.onRecoverableError?.(error, info);
         },
         () => {},
-    );
+    ) as OpaqueRoot;
     activeRoots.add(container);
     return container;
 };

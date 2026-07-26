@@ -189,7 +189,7 @@ const inheritedInterfaceKeys = (context: ModuleContext, klass: GirClass): Set<st
     const keys: Set<string> = new Set();
     if (klass.parent === undefined) return keys;
     const parent = context.library.resolveType(context.namespace.name, klass.parent);
-    if (parent === undefined || parent.kind !== "class") return keys;
+    if (parent?.kind !== "class") return keys;
     for (const ancestor of ancestorChain(context.library, parent.value, parent.namespace.name)) {
         addAncestorInterfaceKeys(context, ancestor, keys);
     }
@@ -212,7 +212,7 @@ const implementedRefFor = (
     inherited: Set<string>,
 ): ImplementedRef | undefined => {
     const resolved = context.library.resolveType(context.namespace.name, name);
-    if (resolved === undefined || resolved.kind !== "interface") return undefined;
+    if (resolved?.kind !== "interface") return undefined;
     if (inherited.has(`${resolved.namespace.name}.${resolved.value.name}`)) return undefined;
     const pascal = pascalCase(resolved.value.name);
     return {

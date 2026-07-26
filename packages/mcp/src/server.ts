@@ -8,9 +8,9 @@ import { ConnectionRegistry } from "./connection-registry.js";
 import {
     DEFAULT_SOCKET_PATH,
     fireEventParams,
-    getTreeParams,
     queryParams,
     screenshotParams,
+    treeParams,
     typeParams,
     widgetIdParams,
 } from "./protocol/schemas.js";
@@ -33,12 +33,12 @@ const widgetIdShape = {
     widgetId: widgetIdParams.shape.widgetId.describe(WIDGET_ID_DESCRIPTION),
 };
 
-const getTreeShape = {
+const treeShape = {
     ...applicationIdShape,
-    rootId: getTreeParams.shape.rootId.describe(
+    rootId: treeParams.shape.rootId.describe(
         "Render only the subtree rooted at this widget ID (from a prior tree or query). Omit for the whole app.",
     ),
-    maxDepth: getTreeParams.shape.maxDepth.describe(
+    maxDepth: treeParams.shape.maxDepth.describe(
         "Limit how many levels deep to render; deeper descendants are summarized with a count. Combine with rootId to drill in without dumping the whole tree.",
     ),
 };
@@ -146,7 +146,7 @@ function buildInspectionTools(appRouter: AppRouter): Tool[] {
             kind: "readOnly",
             description:
                 "Get the widget hierarchy for a connected GTKX app. Returns a tree of widgets with their IDs, types, roles, and properties. For large apps, pass `maxDepth` for a shallow overview and/or `rootId` to render just one subtree instead of the whole (possibly truncated) tree.",
-            inputSchema: getTreeShape,
+            inputSchema: treeShape,
             handler: async ({ applicationId, rootId, maxDepth }) => {
                 const result = await appRouter.sendToApp<{ tree: string }>(applicationId, "widget.getTree", {
                     rootId,

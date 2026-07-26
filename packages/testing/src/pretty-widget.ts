@@ -88,8 +88,13 @@ const createColors = (enabled: boolean): Colors => {
 
 const escapeAttrValue = (value: string): string => value.replaceAll('"', "&quot;");
 
+const formatAttr = (key: string, value: string, colors: Colors): string => {
+    const quoted = `"${escapeAttrValue(value)}"`;
+    return ` ${colors.attr(key)}=${colors.value(quoted)}`;
+};
+
 const formatAttrs = (attrs: [string, string][], colors: Colors): string =>
-    attrs.map(([key, value]) => ` ${colors.attr(key)}=${colors.value(`"${escapeAttrValue(value)}"`)}`).join("");
+    attrs.map(([key, value]) => formatAttr(key, value, colors)).join("");
 
 const countChildren = (widget: Gtk.Widget): number => {
     let count = 0;
@@ -113,7 +118,8 @@ const formatHiddenChildrenLine = (widget: Gtk.Widget, depth: number, ctx: Format
     const count = countChildren(widget);
     const hint = getId ? ` (pass rootId="${getId(widget)}" or raise maxDepth to expand)` : "";
     const plural = count === 1 ? "" : "s";
-    return `${indent}${INDENT}${colors.tag(`… ${count} child widget${plural} hidden${hint}`)}\n`;
+    const summary = `… ${count} child widget${plural} hidden${hint}`;
+    return `${indent}${INDENT}${colors.tag(summary)}\n`;
 };
 
 const formatChildren = (widget: Gtk.Widget, depth: number, ctx: FormatContext): string => {

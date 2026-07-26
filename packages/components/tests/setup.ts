@@ -4,13 +4,17 @@ declare global {
     var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
 }
 
+const setActEnvironment = (value: boolean | undefined): void => {
+    Object.defineProperty(globalThis, "IS_REACT_ACT_ENVIRONMENT", { value, configurable: true, writable: true });
+};
+
 let previousIsReactActEnvironment: boolean | undefined;
 
 beforeAll(() => {
     previousIsReactActEnvironment = globalThis.IS_REACT_ACT_ENVIRONMENT;
-    globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+    setActEnvironment(true);
 });
 
 afterAll(() => {
-    globalThis.IS_REACT_ACT_ENVIRONMENT = previousIsReactActEnvironment;
+    setActEnvironment(previousIsReactActEnvironment);
 });

@@ -36,7 +36,7 @@ type InterfaceVisitState = {
 
 function collectImplementedInterface(state: InterfaceVisitState, name: string, fromNamespace: GirNamespace): void {
     const resolved = state.library.resolveType(fromNamespace.name, name);
-    if (resolved === undefined || resolved.kind !== "interface") return;
+    if (resolved?.kind !== "interface") return;
     const key = `${resolved.namespace.name}.${resolved.value.name}`;
     if (state.visited.has(key)) return;
     state.visited.add(key);
@@ -84,7 +84,7 @@ const parentImplementedInterfaceKeys = (klass: GirClass, namespace: GirNamespace
     const keys: Set<string> = new Set();
     if (klass.parent === undefined) return keys;
     const resolvedParent = library.resolveType(namespace.name, klass.parent);
-    if (resolvedParent === undefined || resolvedParent.kind !== "class") return keys;
+    if (resolvedParent?.kind !== "class") return keys;
     for (const iface of implementedInterfaces(resolvedParent.value, resolvedParent.namespace, library)) {
         keys.add(qualifiedInterfaceKey(iface));
     }

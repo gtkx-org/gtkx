@@ -28,7 +28,7 @@ export const renderPropertyDeclarations = (
     const parentRef = parentCompanionRef(context, klass, PROPERTIES_SUFFIX);
     const extendsClause = parentRef === undefined ? "" : ` extends ${parentRef}`;
     const entries = [
-        ...accessors.filter((accessor) => accessor.hasGetter).map(propertyEntry),
+        ...accessors.filter((accessor) => accessor.hasGetter).map((accessor) => propertyEntry(accessor)),
         ...interfaceEntries(context, klass),
     ];
     const map = `${className}${PROPERTIES_SUFFIX}`;

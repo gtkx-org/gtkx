@@ -1,4 +1,4 @@
-import type { ModuleNode, Plugin, UserConfig, ViteDevServer } from "vite";
+import type { ModuleNode, Plugin, ResolvedConfig, UserConfig, ViteDevServer } from "vite";
 import { error, errorMessage, info } from "@gtkx/utils";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -78,6 +78,16 @@ const syncSchemaEnv = (state: PluginState): void => {
     } catch (error_) {
         error(`Failed to generate GSettings schema types: ${errorMessage(error_)}`);
     }
+};
+
+const applyUserConfig = (state: PluginState, config: UserConfig): void => {
+    state.dataDir = resolveDataDir(config.root ?? process.cwd());
+};
+
+const applyResolvedConfig = (state: PluginState, config: ResolvedConfig): void => {
+    state.isBuild = config.command === "build";
+    state.rootDir = typeof config.root === "string" ? config.root : null;
+    syncSchemaEnv(state);
 };
 
 const registerSchemaForMode = (state: PluginState, filePath: string, id: string): void => {
@@ -177,13 +187,11 @@ export function gtkxSettings(): Plugin {
         enforce: "pre",
 
         config(config: UserConfig) {
-            state.dataDir = resolveDataDir(config.root ?? process.cwd());
+            applyUserConfig(state, config);
         },
 
         configResolved(config) {
-            state.isBuild = config.command === "build";
-            state.rootDir = typeof config.root === "string" ? config.root : null;
-            syncSchemaEnv(state);
+            applyResolvedConfig(state, config);
         },
 
         configureServer(server) {

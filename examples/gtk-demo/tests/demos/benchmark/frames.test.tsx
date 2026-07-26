@@ -50,7 +50,7 @@ describe("framesDemo", () => {
     it("instantiates the custom snapshot subclass and lets it fill its parent box", async () => {
         await renderDemo(framesDemo);
         const colorWidget = await screen.findByName("color-widget");
-        expect(GObject.typeName(colorWidget.__type__)).toBe("GtkxFramesColorWidget");
+        expect(GObject.typeName(colorWidget._type_)).toBe("GtkxFramesColorWidget");
         const box = colorWidget.getParent() as Gtk.Box;
         expect(box).toBeInstanceOf(Gtk.Box);
         expect(colorWidget.getWidth()).toBeGreaterThan(0);

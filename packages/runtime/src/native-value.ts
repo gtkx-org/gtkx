@@ -47,7 +47,7 @@ const hashTableFromNative = (descriptor: HashTableDescriptor, value: unknown): u
 export function fromNative(descriptor: Descriptor, value: unknown): unknown {
     switch (descriptor.kind) {
         case "object": {
-            return wrapHandle(value as ExternalObject<Handle> | null, undefined);
+            return wrapHandle(value as ExternalObject<Handle> | null);
         }
         case "struct": {
             return wrapHandle(value as ExternalObject<Handle> | null, (descriptor as StructDescriptor).wrapperClass);

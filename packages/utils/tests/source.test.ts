@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { sanitizeIdentifier, sourceStringLiteral, toCamelIdentifier } from "../src/source/index.js";
 
-const LINE_SEPARATOR = String.fromCharCode(0x20_28);
-const PARAGRAPH_SEPARATOR = String.fromCharCode(0x20_29);
+const LINE_SEPARATOR = String.fromCodePoint(0x20_28);
+const PARAGRAPH_SEPARATOR = String.fromCodePoint(0x20_29);
 
 describe("sanitizeIdentifier", () => {
     it("leaves a non-reserved identifier unchanged", () => {

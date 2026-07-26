@@ -23,7 +23,9 @@ import {
     Surface,
     SurfaceType,
 } from "@gtkx/gi/cairo";
-import { existsSync, unlinkSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const createTestSurface = (): Surface => {
@@ -958,7 +960,8 @@ describe("Surface — flush and markDirty", () => {
 
 describe("Surface — writeToPng", () => {
     it("writes surface to PNG file", () => {
-        const tmpPath = "/tmp/gtkx-test-cairo-write.png";
+        const outputDir = mkdtempSync(join(tmpdir(), "gtkx-cairo-"));
+        const tmpPath = join(outputDir, "write.png");
         try {
             const surface = ImageSurface.create(Format.ARGB32, 10, 10);
             const ctx = Context.create(surface);
@@ -967,7 +970,7 @@ describe("Surface — writeToPng", () => {
             surface.writeToPng(tmpPath);
             expect(existsSync(tmpPath)).toBe(true);
         } finally {
-            if (existsSync(tmpPath)) unlinkSync(tmpPath);
+            rmSync(outputDir, { recursive: true, force: true });
         }
     });
 });

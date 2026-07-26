@@ -271,8 +271,7 @@ describe("findByLabelText", () => {
 
     it("returns nothing when no mnemonic association exists", async () => {
         const { container } = await render(<GtkButton label="Submit" />);
-        const result = await findByLabelText(container, "Submit", { timeout: 100 }).catch(() => null);
-        expect(result).toBeNull();
+        await expect(findByLabelText(container, "Submit", { timeout: 100 })).rejects.toThrow();
     });
 });
 
@@ -782,7 +781,8 @@ describe("getDefaultNormalizer", () => {
     });
 
     it("composes inside a custom normalizer", async () => {
-        const { container } = await render(<GtkLabel>HELLO WORLD</GtkLabel>); expect(getByText(container, "hello world", { normalizer })).toBeDefined();
+        const { container } = await render(<GtkLabel>HELLO WORLD</GtkLabel>);
+        expect(getByText(container, "hello world", { normalizer })).toBeDefined();
     });
 
     it("rejects combining a custom normalizer with trim", async () => {

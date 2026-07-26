@@ -57,15 +57,17 @@ const getDevCommand = (packageManager: PackageManager): string => DEV_COMMAND[pa
 
 const getInstallCommand = (packageManager: PackageManager): string => INSTALL_COMMAND[packageManager];
 
-const titleFromName = (name: string): string => name.split("-").map(upperFirst).join(" ");
+const titleFromName = (name: string): string => name.split("-").map((part) => upperFirst(part)).join(" ");
 
 const suggestApplicationId = (name: string): string => `com.${name.replaceAll("-", "")}.app`;
 
-const formatTargetDir = (target: string): string =>
-    target
-        .trim()
-        .replaceAll(/[<>:"\\|?*]/g, "")
-        .replaceAll(/\/+$/g, "");
+const stripTrailingSlashes = (value: string): string => {
+    let end = value.length;
+    while (end > 0 && value[end - 1] === "/") end--;
+    return value.slice(0, end);
+};
+
+const formatTargetDir = (target: string): string => stripTrailingSlashes(target.trim().replaceAll(/[<>:"\\|?*]/g, ""));
 
 const deriveProjectName = (target: string): string => basename(resolve(process.cwd(), target));
 
@@ -163,8 +165,16 @@ const packageManagerOption = (manager: (typeof PACKAGE_MANAGERS)[number], detect
     return { value: manager.value, label: manager.label, ...(hint !== undefined && { hint }) };
 };
 
+const detectedPackageManager = async (): Promise<PackageManager | undefined> => {
+    try {
+        return await detectPackageManager(process.cwd());
+    } catch {
+        return undefined;
+    }
+};
+
 const promptPackageManager = async (): Promise<PackageManager> => {
-    const detected = await detectPackageManager(process.cwd()).catch(() => undefined);
+    const detected = await detectedPackageManager();
     const initial: PackageManager = detected ?? "pnpm";
     return guardCancellation(
         await p.select<PackageManager>({
@@ -238,7 +248,7 @@ const resolveApplicationId = async (options: CreateOptions, name: string): Promi
 const resolvePackageManager = async (options: CreateOptions): Promise<PackageManager> => {
     if (options.packageManager !== undefined) return options.packageManager;
     if (options.interactive) return promptPackageManager();
-    return (await detectPackageManager(process.cwd()).catch(() => undefined)) ?? "pnpm";
+    return (await detectedPackageManager()) ?? "pnpm";
 };
 
 const resolveTypeScript = async (options: CreateOptions): Promise<boolean> => {
@@ -286,7 +296,7 @@ const addTestScript = (root: string): void => {
     writeFileSync(packageJsonPath, `${JSON.stringify(manifest, null, 4)}\n`);
 };
 
-const scaffoldProject = (root: string, resolved: ResolvedOptions): void => {
+const scaffoldProject = async (root: string, resolved: ResolvedOptions): Promise<void> => {
     const { name, applicationId, typescript, includeTesting } = resolved;
     const context: TemplateContext = {
         name,
@@ -304,7 +314,7 @@ const scaffoldProject = (root: string, resolved: ResolvedOptions): void => {
 
         const destination = join(root, toDestinationPath(template, typescript));
         mkdirSync(dirname(destination), { recursive: true });
-        writeFileSync(destination, renderFile(template, context));
+        writeFileSync(destination, await renderFile(template, context));
     }
 
     if (includeTesting) {
@@ -392,7 +402,7 @@ export const scaffold = async (options: CreateOptions = {}): Promise<void> => {
 
     const projectSpinner = p.spinner();
     projectSpinner.start("Creating project structure...");
-    scaffoldProject(root, resolved);
+    await scaffoldProject(root, resolved);
     projectSpinner.stop("Project structure created");
 
     await installAllDependencies({

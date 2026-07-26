@@ -48,6 +48,17 @@ const buildNestedTagContent = (outerText: string, innerText: string): ReactNode 
     </GtkTextTag>
 );
 
+const buildMarkOrTag = (item: string, markRef: RefObject<Gtk.TextMark | null>): ReactNode =>
+    item === "M"
+        ? (
+                <GtkTextMark key="M" ref={markRef} />
+            )
+        : (
+                <GtkTextTag key={item} name={item}>
+                    {item.repeat(3)}
+                </GtkTextTag>
+            );
+
 const buildTaggedTextView = (ref: RefObject<Gtk.TextView | null>) => (items: string[]) => (
     <GtkTextView
         ref={ref}
@@ -523,17 +534,7 @@ describe("render - TextView (13)", () => {
                     ref={viewRef}
                     buffer={(
                         <GtkTextBuffer>
-                            {order.map((item) =>
-                                item === "M"
-                                    ? (
-                                            <GtkTextMark key="M" ref={markRef} />
-                                        )
-                                    : (
-                                            <GtkTextTag key={item} name={item}>
-                                                {item.repeat(3)}
-                                            </GtkTextTag>
-                                        ),
-                            )}
+                            {order.map((item) => buildMarkOrTag(item, markRef))}
                         </GtkTextBuffer>
                     )}
                 />

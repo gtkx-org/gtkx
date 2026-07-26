@@ -15,21 +15,22 @@ type Harness = {
     childPid: () => number | undefined;
 };
 
-const withTimeout = <T>(promise: Promise<T>, ms: number, label: string): Promise<T> =>
-    new Promise<T>((resolve, reject) => {
-        const timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+const withTimeout = async <T>(promise: Promise<T>, ms: number, label: string): Promise<T> => {
+    let timer: NodeJS.Timeout | undefined;
+    const expiry: Promise<never> = new Promise((_resolve, reject) => {
+        timer = setTimeout(() => {
+            reject(new Error(`${label} timed out after ${ms}ms`));
+        }, ms);
         timer.unref();
-        promise.then(
-            (value) => {
-                clearTimeout(timer);
-                resolve(value);
-            },
-            (error: unknown) => {
-                clearTimeout(timer);
-                reject(error instanceof Error ? error : new Error(String(error)));
-            },
-        );
     });
+    try {
+        return await Promise.race([promise, expiry]);
+    } catch (error) {
+        throw error instanceof Error ? error : new Error(String(error));
+    } finally {
+        clearTimeout(timer);
+    }
+};
 
 const startHarness = (): Harness => {
     const child = spawn(process.execPath, ["--conditions=source", "--import", "tsx", HARNESS_PATH], {
@@ -39,10 +40,10 @@ const startHarness = (): Harness => {
     });
 
     let buffer = "";
-    child.stdout?.on("data", (chunk: Buffer) => {
+    child.stdout.on("data", (chunk: Buffer) => {
         buffer += chunk.toString();
     });
-    child.stderr?.on("data", (chunk: Buffer) => {
+    child.stderr.on("data", (chunk: Buffer) => {
         buffer += chunk.toString();
     });
 
@@ -61,7 +62,7 @@ const startHarness = (): Harness => {
                     return false;
                 };
                 if (check()) return;
-                child.stdout?.on("data", () => check());
+                child.stdout.on("data", () => check());
                 child.once("exit", () => reject(new Error(`harness exited before ready:\n${buffer}`)));
             }),
             READY_TIMEOUT_MS,
@@ -70,7 +71,7 @@ const startHarness = (): Harness => {
 
     const childPid = (): number | undefined => {
         const match = /CHILD_PID (\d+)/.exec(buffer);
-        return match?.[1] ? Number.parseInt(match[1], 10) : undefined;
+        return match?.[1] ? Number(match[1]) : undefined;
     };
 
     return {
@@ -82,14 +83,19 @@ const startHarness = (): Harness => {
     };
 };
 
-const killGroup = (pid: number | undefined): void => {
-    if (pid === undefined) return;
-    try {
-        process.kill(-pid, "SIGKILL");
-    } catch {}
+const killIfAlive = (pid: number): boolean => {
     try {
         process.kill(pid, "SIGKILL");
-    } catch {}
+        return true;
+    } catch {
+        return false;
+    }
+};
+
+const killGroup = (pid: number | undefined): void => {
+    if (pid === undefined) return;
+    killIfAlive(-pid);
+    killIfAlive(pid);
 };
 
 describe.skipIf(process.platform === "win32")("dev supervisor Ctrl+C", () => {

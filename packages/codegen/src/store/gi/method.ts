@@ -172,13 +172,8 @@ const promisifiedArgument = (
     return parameterCallExpression(context, parameter, index, sawOptional);
 };
 
-const findCancellableIndex = (context: ModuleContext, parameters: GirParameter[]): number => {
-    for (const [index, parameter] of parameters.entries()) {
-        if (parameter === undefined) continue;
-        if (isCancellable(context, parameter)) return index;
-    }
-    return -1;
-};
+const findCancellableIndex = (context: ModuleContext, parameters: GirParameter[]): number =>
+    parameters.findIndex((parameter) => isCancellable(context, parameter));
 
 export const renderPromisifiedSignature = (
     context: ModuleContext,

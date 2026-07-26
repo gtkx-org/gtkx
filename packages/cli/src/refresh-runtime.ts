@@ -1,12 +1,7 @@
 import RefreshRuntime from "react-refresh/runtime";
+import "./refresh-globals.js";
 
 type ComponentType = (...args: unknown[]) => unknown;
-
-const identity = (type: unknown): unknown => type;
-
-RefreshRuntime.injectIntoGlobalHook(globalThis);
-globalThis.$RefreshReg$ = () => {};
-globalThis.$RefreshSig$ = () => identity;
 
 /**
  * Builds the per-module `$RefreshReg$` and `$RefreshSig$` hooks that React Refresh

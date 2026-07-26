@@ -9,30 +9,38 @@ import * as Adw from "@gtkx/gi/adw";
 import { AdwToastOverlay } from "@gtkx/jsx/adw";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { render, renderHook, screen, waitFor } from "@gtkx/testing";
-import { createRef, type ReactNode, type RefObject } from "react";
+import { createRef, type ReactNode, type RefObject, useLayoutEffect } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 type Handles = { toast: ToastController; overlay: ToastOverlayController };
 
-const Probe = ({ handles }: { handles: { current: Handles | null } }): ReactNode => {
-    handles.current = { toast: useToast(), overlay: useToastOverlay() };
+const Probe = ({ onHandles }: { onHandles: (handles: Handles) => void }): ReactNode => {
+    const toast = useToast();
+    const overlay = useToastOverlay();
+    useLayoutEffect(() => {
+        onHandles({ toast, overlay });
+    });
     return <GtkLabel>probe</GtkLabel>;
 };
 
 const renderToastHost = async (): Promise<{ handles: Handles; overlayRef: RefObject<Adw.ToastOverlay | null> }> => {
     const overlayRef = createRef<Adw.ToastOverlay>();
-    const handles: { current: Handles | null } = { current: null };
+    const captured: { handles: Handles | null } = { handles: null };
 
     await render(
         <ToastProvider overlayRef={overlayRef}>
             <AdwToastOverlay ref={overlayRef}>
-                <Probe handles={handles} />
+                <Probe
+                    onHandles={(handles) => {
+                        captured.handles = handles;
+                    }}
+                />
             </AdwToastOverlay>
         </ToastProvider>,
     );
 
-    if (handles.current === null) throw new Error("probe did not capture the toast controllers");
-    return { handles: handles.current, overlayRef };
+    if (captured.handles === null) throw new Error("probe did not capture the toast controllers");
+    return { handles: captured.handles, overlayRef };
 };
 
 describe("render - toast (useToast / useToastOverlay)", () => {

@@ -103,7 +103,7 @@ const elementNote = (entry: GiSymbolBase & { klass: GirClass }, options: SymbolP
 };
 
 const hierarchySection = (entry: GiSymbolBase & { klass: GirClass }, library: Library): string[] => {
-    const ancestors = [...ancestorChain(library, entry.klass, entry.namespace.name)].slice(1).reverse();
+    const ancestors = [...ancestorChain(library, entry.klass, entry.namespace.name)].slice(1).toReversed();
     const interfaces = implementedInterfaces(entry.klass, entry.namespace, library).map((iface) =>
         qualifiedClassName(iface.namespace.name, iface.klass.name),
     );

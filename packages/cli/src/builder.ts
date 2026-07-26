@@ -40,7 +40,7 @@ export const build = async (options: BuildOptions): Promise<void> => {
         },
     };
 
-    const merged = mergeConfig(mergeConfig(buildDefaults, viteConfig ?? {}), forced);
+    const merged: InlineConfig = mergeConfig(mergeConfig(buildDefaults, viteConfig ?? {}), forced);
 
     await viteBuild({ ...merged, ssr: { ...merged.ssr, noExternal: true } });
 };

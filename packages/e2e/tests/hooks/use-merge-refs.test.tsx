@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import type { Ref } from "react";
+import type { Ref, RefCallback } from "react";
 import { GtkButton } from "@gtkx/jsx/gtk";
 import { useMergedRef } from "@gtkx/react/internal";
 import { render, renderHook } from "@gtkx/testing";
@@ -15,7 +15,7 @@ const detachOf = (result: ReturnType<ReturnType<typeof useMergedRef<Target>>>): 
 };
 
 const renderSwappableRef = (initialRef: Ref<Target | null>) =>
-    renderHook(({ ref }: { ref: Ref<Target | null> }) => useMergedRef<Target>(ref), {
+    renderHook(({ ref }: { ref: Ref<Target | null> }) => useMergedRef<Target>(ref, undefined), {
         initialProps: { ref: initialRef },
     });
 
@@ -38,7 +38,7 @@ describe("useMergedRef", () => {
         const cleanup = vi.fn();
         const callback = vi.fn(() => cleanup);
 
-        const { result } = await renderHook(() => useMergedRef<Target>(callback));
+        const { result } = await renderHook(() => useMergedRef<Target>(callback, undefined));
 
         const detach = detachOf(result.current({ id: 1 }));
         expect(cleanup).not.toHaveBeenCalled();
@@ -64,7 +64,9 @@ describe("useMergedRef", () => {
 
         expect(objectRef.current).toBeNull();
         expect(callbackCleanup).toHaveBeenCalledTimes(1);
-    }); it("forwards to the swapped ref object", async () => {
+    });
+
+    it("forwards to the swapped ref object", async () => {
         const first: { current: Target | null } = { current: null };
         const second: { current: Target | null } = { current: null };
         const value: Target = { id: 1 };
@@ -93,11 +95,11 @@ describe("useMergedRef", () => {
     });
 
     it("reattaches a widget ref when one of its ref arguments changes identity", async () => {
-        const attach = vi.fn();
+        const attach = vi.fn<RefCallback<Gtk.Button>>();
 
         function App({ tick }: { tick: number }) {
-            const merged = useMergedRef<Gtk.Button>(attach, () => void tick);
-            return <GtkButton ref={merged} />;
+            const merged = useMergedRef<Gtk.Button>(attach, () => {});
+            return <GtkButton label={`tick ${tick}`} ref={merged} />;
         }
 
         const { rerender } = await render(<App tick={0} />);
@@ -113,13 +115,12 @@ describe("useMergedRef", () => {
     });
 
     it("does not reattach a widget ref across a re-render while its ref arguments are stable", async () => {
-        const attach = vi.fn();
+        const attach = vi.fn<RefCallback<Gtk.Button>>();
         const objectRef: { current: Gtk.Button | null } = { current: null };
 
         function App({ tick }: { tick: number }) {
-            void tick;
             const merged = useMergedRef<Gtk.Button>(attach, objectRef);
-            return <GtkButton ref={merged} />;
+            return <GtkButton label={`tick ${tick}`} ref={merged} />;
         }
 
         const { rerender } = await render(<App tick={0} />);

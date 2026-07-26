@@ -5,12 +5,6 @@ const CALL_COUNTS = [100, 400];
 
 const START_LABEL = "start";
 
-const benchWithLabel = (name: string, run: (label: Gtk.Label) => void): void => {
-    bench(name, () => {
-        run(new Gtk.Label({ label: START_LABEL }));
-    });
-};
-
 const runSetterRoundTrips = (label: Gtk.Label, n: number): void => {
     for (let i = 0; i < n; i++) {
         label.setLabel(i % 2 === 0 ? "even" : "odd");
@@ -29,7 +23,11 @@ const runGetterRoundTrips = (label: Gtk.Label, n: number): void => {
 
 describe("ffi call overhead", () => {
     for (const n of CALL_COUNTS) {
-        benchWithLabel(`${n} setter round trips`, (label) => runSetterRoundTrips(label, n));
-        benchWithLabel(`${n} getter round trips`, (label) => runGetterRoundTrips(label, n));
+        bench(`${n} setter round trips`, () => {
+            runSetterRoundTrips(new Gtk.Label({ label: START_LABEL }), n);
+        });
+        bench(`${n} getter round trips`, () => {
+            runGetterRoundTrips(new Gtk.Label({ label: START_LABEL }), n);
+        });
     }
 });

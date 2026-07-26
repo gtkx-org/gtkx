@@ -43,14 +43,13 @@ describe("gtkxSwcRefresh", () => {
         await expect(transform("const a = 1", "x.tsx", { ssr: false })).resolves.toBeUndefined();
     });
 
-    it("skips files that do not match the include pattern", async () => {
+    it.each([
+        { id: "x.css", reason: "does not match the include pattern" },
+        { id: "/proj/node_modules/lib/x.tsx", reason: "matches the default exclude (node_modules)" },
+        { id: "/proj/src/x.special", reason: "is outside the default include pattern" },
+    ])("skips a file whose id $reason", async ({ id }) => {
         const transform = getTransform(gtkxSwcRefresh());
-        await expect(transform("const a = 1", "x.css", { ssr: true })).resolves.toBeUndefined();
-    });
-
-    it("skips files that match the default exclude (node_modules)", async () => {
-        const transform = getTransform(gtkxSwcRefresh());
-        await expect(transform("const a = 1", "/proj/node_modules/lib/x.tsx", { ssr: true })).resolves.toBeUndefined();
+        await expect(transform("const a = 1", id, { ssr: true })).resolves.toBeUndefined();
     });
 
     it("transforms TSX files in SSR mode and emits a sourcemap", async () => {
@@ -68,11 +67,6 @@ describe("gtkxSwcRefresh", () => {
         const result = await transform("export const x: number = 1;\n", "/proj/src/x.ts", { ssr: true });
         expect(result).toBeDefined();
         expect(typeof result?.code).toBe("string");
-    });
-
-    it("skips files outside the default include pattern", async () => {
-        const transform = getTransform(gtkxSwcRefresh());
-        await expect(transform("const a = 1", "/proj/src/x.special", { ssr: true })).resolves.toBeUndefined();
     });
 });
 
@@ -167,18 +161,8 @@ describe("gtkxRefreshRuntime transform (refresh markers)", () => {
 });
 
 describe("gtkxRefreshRuntime transform (file extensions)", () => {
-    it("handles .ts files", () => {
-        const result = runtimeTransform("$RefreshReg$();", "/src/util.ts", { ssr: true });
-        expect(result).toBeDefined();
-    });
-
-    it("handles .jsx files", () => {
-        const result = runtimeTransform("$RefreshReg$();", "/src/App.jsx", { ssr: true });
-        expect(result).toBeDefined();
-    });
-
-    it("handles .js files", () => {
-        const result = runtimeTransform("$RefreshReg$();", "/src/index.js", { ssr: true });
+    it.each(["/src/util.ts", "/src/App.jsx", "/src/index.js"])("handles %s", (id) => {
+        const result = runtimeTransform("$RefreshReg$();", id, { ssr: true });
         expect(result).toBeDefined();
     });
 

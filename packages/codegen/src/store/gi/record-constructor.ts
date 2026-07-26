@@ -31,14 +31,10 @@ export const renderRecordConstructorPropsInterface = (
     return renderBracedOrEmpty(head, lines.join("\n"));
 };
 
-const renderOpaqueConstructor = (className: string, superCall: string[]): string =>
-    renderBlock(
-        "constructor()",
-        [
-            ...superCall,
-            `throw new globalThis.Error(${sourceStringLiteral(`Cannot construct ${className}: opaque boxed type with no known layout`)});`,
-        ].join("\n"),
-    );
+const renderOpaqueConstructor = (className: string, superCall: string[]): string => {
+    const message = sourceStringLiteral(`Cannot construct ${className}: opaque boxed type with no known layout`);
+    return renderBlock("constructor()", [...superCall, `throw new globalThis.Error(${message});`].join("\n"));
+};
 
 const renderEmptyConstructor = (className: string, extendsError: boolean): string =>
     extendsError
@@ -77,7 +73,7 @@ export const renderRecordConstructor = (
 const allocArgs = (context: ModuleContext, record: GirRecord, size: number): string[] => {
     const args = [String(size)];
     if (gtypeExprFor(context, record) !== undefined) {
-        args.push("this.__type__");
+        args.push("this._type_");
     }
     return args;
 };

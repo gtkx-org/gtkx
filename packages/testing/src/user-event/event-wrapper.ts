@@ -48,11 +48,9 @@ const waitForActionable = async (widget: Gtk.Widget): Promise<void> => {
     }
 };
 
-export const wrapEvent = (widget: Gtk.Widget, body: () => void | PromiseLike<void>): Promise<void> =>
-    Promise.resolve()
-        .then(() => waitForActionable(widget))
-        .then(() =>
-            runInAct(async () => {
-                await body();
-            }),
-        );
+export const wrapEvent = async (widget: Gtk.Widget, body: () => void | PromiseLike<void>): Promise<void> => {
+    await waitForActionable(widget);
+    await runInAct(async () => {
+        await body();
+    });
+};

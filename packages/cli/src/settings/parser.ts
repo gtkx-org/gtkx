@@ -129,7 +129,7 @@ const collectInheritedKeys = (context: MergeContext, current: RawSchema): void =
 const mergeInheritedKeys = (schema: RawSchema, byId: Map<string, RawSchema>): ParsedKey[] => {
     const context: MergeContext = { byId, merged: new Map(), visited: new Set() };
     collectInheritedKeys(context, schema);
-    return [...context.merged.values()];
+    return context.merged.values().toArray();
 };
 
 export const parseSchemaXml = (xml: string, fileName: string): ParsedSchemaFile => {

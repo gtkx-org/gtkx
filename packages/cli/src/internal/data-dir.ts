@@ -32,13 +32,16 @@ const directoryFromTarget = (target: string): string | null => {
 };
 
 export const resolveDataDir = (root: string): string | null => {
-    let manifest: { imports?: Record<string, unknown> };
+    let manifest: unknown;
     try {
         manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
     } catch {
         return null;
     }
-    const target = targetString(manifest.imports?.[DATA_IMPORT_KEY]);
+    if (!isConditionMap(manifest)) return null;
+    const imports = manifest.imports;
+    if (!isConditionMap(imports)) return null;
+    const target = targetString(imports[DATA_IMPORT_KEY]);
     if (target === null) return null;
     return directoryFromTarget(target);
 };

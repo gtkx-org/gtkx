@@ -194,11 +194,11 @@ export const tRef = (inner: string, inout = false): string => call("ref", [inner
 export const tHashTable = (key: string, value: string, ownership: Ownership): string =>
     call("hashTable", [key, value, sourceStringLiteral(ownership)]);
 
-export const tEnum = (lib: string, getType: string, signed: boolean): string =>
-    call("enum", [sourceStringLiteral(lib), sourceStringLiteral(getType), String(signed)]);
+export const tEnum = (lib: string, typeFnName: string, signed: boolean): string =>
+    call("enum", [sourceStringLiteral(lib), sourceStringLiteral(typeFnName), String(signed)]);
 
-export const tFlags = (lib: string, getType: string, signed: boolean): string =>
-    call("flags", [sourceStringLiteral(lib), sourceStringLiteral(getType), String(signed)]);
+export const tFlags = (lib: string, typeFnName: string, signed: boolean): string =>
+    call("flags", [sourceStringLiteral(lib), sourceStringLiteral(typeFnName), String(signed)]);
 
 export const tByteArray = (ownership: Ownership): string => call("byteArray", [sourceStringLiteral(ownership)]);
 

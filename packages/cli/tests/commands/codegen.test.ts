@@ -1,3 +1,4 @@
+import { omit } from "@gtkx/utils";
 import { describe, expect, it, vi } from "vitest";
 import { collectLogged, setupLogState } from "./log-state.js";
 
@@ -26,6 +27,13 @@ const syncSchemaEnvMock = vi.mocked(syncSchemaEnv);
 type CodegenArgs = { force?: boolean; cwd?: string };
 type CodegenRun = NonNullable<typeof codegen.run>;
 type CodegenContext = Parameters<CodegenRun>[0];
+type RunCodegenOptions = NonNullable<Parameters<typeof runCodegen>[0]>;
+
+const firstRunCodegenOptions = (): RunCodegenOptions => {
+    const call = runCodegenMock.mock.calls[0];
+    if (!call) throw new Error("runCodegen was not invoked");
+    return call[0] ?? {};
+};
 
 const run = (overrides: CodegenArgs): Promise<unknown> => {
     const handler = codegen.run;
@@ -58,7 +66,9 @@ describe("codegen command (default — conditional)", () => {
 
         await run({ force: true, cwd: "/custom/dir" });
 
-        expect(runCodegenMock).toHaveBeenCalledWith({ cwd: expect.stringContaining("custom/dir") });
+        const options = firstRunCodegenOptions();
+        expect(options.cwd).toContain("custom/dir");
+        expect(omit(options, ["cwd"])).toEqual({});
         expect(ensureGeneratedMock).not.toHaveBeenCalled();
         expect(collectLogged(state.stderrSpy)).toContain("reusing an installed binding store");
     });
@@ -70,10 +80,9 @@ describe("codegen command (--force)", () => {
     it("wipes and regenerates, reporting config, libraries, gir path, and totals", async () => {
         await run({ force: true, cwd: "/custom/dir" });
 
-        expect(runCodegenMock).toHaveBeenCalledWith({
-            cwd: expect.stringContaining("custom/dir"),
-            force: true,
-        });
+        const options = firstRunCodegenOptions();
+        expect(options.cwd).toContain("custom/dir");
+        expect(omit(options, ["cwd"])).toEqual({ force: true });
         expect(syncSchemaEnvMock).toHaveBeenCalledWith(expect.stringContaining("custom/dir"));
         expect(ensureGeneratedMock).not.toHaveBeenCalled();
 

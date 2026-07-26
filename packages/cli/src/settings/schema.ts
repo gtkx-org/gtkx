@@ -98,14 +98,16 @@ const parseProjectSchemas = (schemaFiles: string[], dataDirAbs: string): ParsedS
     return parsed;
 };
 
-const writeIfChanged = (path: string, content: string): boolean => {
-    let existing: string | null = null;
+const readFileOrNull = (path: string): string | null => {
     try {
-        existing = readFileSync(path, "utf8");
+        return readFileSync(path, "utf8");
     } catch {
-        existing = null;
+        return null;
     }
-    if (existing === content) return false;
+};
+
+const writeIfChanged = (path: string, content: string): boolean => {
+    if (readFileOrNull(path) === content) return false;
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, content);
     return true;

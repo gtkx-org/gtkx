@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { describe, expect, it } from "vitest";
 import { act, renderHook } from "../src/index.js";
 
@@ -114,16 +114,18 @@ describe("renderHook wrapper option", () => {
 
     it("applies a user wrapper around the hook so it can supply context", async () => {
         const Ctx = createContext<string>("default");
-        let wrapperRendered = false;
+        const rendered: { wrapper: boolean } = { wrapper: false };
 
         const ContextWrapper = ({ children }: { children: ReactNode }) => {
-            wrapperRendered = true;
+            useLayoutEffect(() => {
+                rendered.wrapper = true;
+            });
             return <Ctx.Provider value="from-wrapper">{children}</Ctx.Provider>;
         };
 
         const { result } = await renderHook(() => useContext(Ctx), { wrapper: ContextWrapper });
 
-        expect(wrapperRendered).toBe(true);
+        expect(rendered.wrapper).toBe(true);
         expect(result.current).toBe("from-wrapper");
     });
 });

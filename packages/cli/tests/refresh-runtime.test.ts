@@ -7,6 +7,13 @@ const lowercaseHelper = function lowercaseHelper() {
     return 1;
 };
 
+const ES_MODULE_FLAG = "__esModule";
+
+const esModuleExports = (exports: Record<string, unknown>): Record<string, unknown> => ({
+    [ES_MODULE_FLAG]: true,
+    ...exports,
+});
+
 describe("createModuleRegistration", () => {
     it("returns registration helpers for a module id", () => {
         const reg = createModuleRegistration("mod-1");
@@ -44,14 +51,14 @@ describe("isRefreshBoundary", () => {
         expect(isRefreshBoundary({})).toBe(false);
     });
 
-    it("returns false when only __esModule is present", () => {
-        expect(isRefreshBoundary({ __esModule: true })).toBe(false);
+    it("returns false when only the ES module flag is present", () => {
+        expect(isRefreshBoundary(esModuleExports({}))).toBe(false);
     });
 
     it("returns true when all named exports are PascalCase functions", () => {
-        expect(isRefreshBoundary({ __esModule: true, ComponentA: NullComponent, ComponentB: NullComponent })).toBe(
-            true,
-        );
+        expect(
+            isRefreshBoundary(esModuleExports({ ComponentA: NullComponent, ComponentB: NullComponent })),
+        ).toBe(true);
     });
 
     it("returns false when any non-component export is present", () => {

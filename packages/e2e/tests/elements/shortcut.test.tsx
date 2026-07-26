@@ -100,7 +100,8 @@ let updateDisabled: (next: boolean) => void = () => {};
 
 describe("render - Shortcut (3)", () => {
     it("re-applies the trigger when it changes", async () => {
-        const controllerRef = createRef<Gtk.ShortcutController>(); const Harness = () => {
+        const controllerRef = createRef<Gtk.ShortcutController>();
+        const Harness = () => {
             const [disabled, setDisabled] = useState(false);
             updateDisabled = setDisabled;
             return (

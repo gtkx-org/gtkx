@@ -94,7 +94,7 @@ describe("distTagForVersion", () => {
 
 describe("collectExportTargets", () => {
     it("gathers every relative-path target", () => {
-        expect(collectExportTargets(reactManifest.exports ?? {}).sort()).toEqual(
+        expect(collectExportTargets(reactManifest.exports ?? {}).toSorted((a, b) => a.localeCompare(b))).toEqual(
             [
                 "./dist/index.d.ts",
                 "./dist/index.js",
@@ -103,7 +103,7 @@ describe("collectExportTargets", () => {
                 "./package.json",
                 "./src/index.ts",
                 "./src/internal.ts",
-            ].sort(),
+            ].toSorted((a, b) => a.localeCompare(b)),
         );
     });
 

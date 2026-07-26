@@ -94,7 +94,7 @@ describe("useSetting (variant types: dictionaries)", () => {
         await act(() => result.current[1]({ name: GLib.Variant.newString("x"), size: GLib.Variant.newInt32(5) }));
 
         await waitFor(() => {
-            expect(Object.keys(result.current[0]).sort()).toEqual(["name", "size"]);
+            expect(Object.keys(result.current[0]).toSorted((a, b) => a.localeCompare(b))).toEqual(["name", "size"]);
         });
         expect(result.current[0].name?.getString()[0]).toBe("x");
         expect(result.current[0].size?.getInt32()).toBe(5);

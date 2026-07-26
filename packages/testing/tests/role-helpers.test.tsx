@@ -1,3 +1,4 @@
+import type { MockInstance } from "vitest";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkCheckButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -67,7 +68,7 @@ describe("prettyRoles", () => {
 });
 
 describe("logRoles", () => {
-    let consoleSpy: ReturnType<typeof vi.spyOn>;
+    let consoleSpy: MockInstance<typeof console.log>;
 
     beforeEach(() => {
         consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});

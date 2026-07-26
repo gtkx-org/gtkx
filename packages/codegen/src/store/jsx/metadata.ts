@@ -114,7 +114,8 @@ const renderObjectLiteral = (entries: [string, string][], renderValue: (value: s
     return `{\n${lines.join(",\n")}\n    }`;
 };
 
-const renderStringSet = (names: string[]): string => `new Set([${names.map(sourceStringLiteral).join(",")}])`;
+const renderStringSet = (names: string[]): string =>
+    `new Set([${names.map((name) => sourceStringLiteral(name)).join(",")}])`;
 
 const renderSignalsObject = (entries: [string, string][]): string => renderObjectLiteral(entries, sourceStringLiteral);
 
@@ -190,6 +191,8 @@ const resolveTypeDefaultLiteral = (library: Library, resolved: GirType, raw: str
 
 const INTEGER_PATTERN = /^-?\d+$/;
 
+const FLOAT_PATTERN = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i;
+
 const booleanDefaultLiteral = (raw: string): string | undefined => {
     if (raw === "TRUE") return "true";
     if (raw === "FALSE") return "false";
@@ -214,7 +217,9 @@ const primitiveDefaultLiteral = (category: PrimitiveCategory, raw: string): stri
         }
         case "float32":
         case "float64": {
-            const value = Number.parseFloat(raw);
+            const trimmed = raw.trim();
+            if (!FLOAT_PATTERN.test(trimmed)) return undefined;
+            const value = Number(trimmed);
             return Number.isFinite(value) ? String(value) : undefined;
         }
         case "string": {

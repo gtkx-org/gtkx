@@ -42,8 +42,6 @@ export const quit = (): void => {
     nativeQuit();
 };
 
-process.on("exit", quit);
-
 /**
  * Registers the application if needed and activates it, keeping the runtime alive
  * while it is active and releasing it on shutdown.
@@ -66,7 +64,8 @@ export const runApplication = (application: ApplicationLike): void => {
  */
 export const quitApplication = (application: ApplicationLike): void => {
     if (!application.getIsRegistered()) return;
-    for (const window of application.getWindows?.() ?? []) application.removeWindow?.(window);
+    const windows = application.getWindows?.() ?? [];
+    for (const window of windows) application.removeWindow?.(window);
     application.on("shutdown", () => application.quit());
     blockMatchedSignalHandlers(application, "activate");
     application.run([]);

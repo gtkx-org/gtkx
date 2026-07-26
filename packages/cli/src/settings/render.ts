@@ -55,7 +55,7 @@ const interfaceNameFor = (schemaId: string, usedNames: Set<string>): string => {
     const base = `${schemaId
         .split(/[^a-zA-Z0-9]+/)
         .filter((part) => part.length > 0)
-        .map(upperFirst)
+        .map((part) => upperFirst(part))
         .join("")}Keys`;
     let name = base;
     let suffix = 2;
@@ -112,13 +112,11 @@ const renderFileModule = (file: ParsedSchemaFile, usedNames: Set<string>): strin
     for (const [index, schema] of file.schemas.entries()) {
         if (index > 0) lines.push("");
         const interfaceName = interfaceNameFor(schema.id, usedNames);
-        lines.push(...renderKeysType(interfaceName, schema), "");
-        lines.push(...renderSchemaConst(schema, interfaceName));
+        lines.push(...renderKeysType(interfaceName, schema), "", ...renderSchemaConst(schema, interfaceName));
         exportNames.push(exportNameFor(schema.id));
     }
     if (exportNames.length > 0) {
-        lines.push("");
-        lines.push(`    export { ${exportNames.join(", ")} };`, `    export default ${exportNames[0]};`);
+        lines.push("", `    export { ${exportNames.join(", ")} };`, `    export default ${exportNames[0]};`);
     }
     lines.push("}");
     return lines;

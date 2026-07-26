@@ -28,6 +28,7 @@
     "devDependencies": {
         "@gtkx/eslint-config": "workspace:*",
         "@gtkx/runtime": "workspace:*",
+        "@gtkx/utils": "workspace:*",
         "@gtkx/native": "workspace:*",
         "@gtkx/react": "workspace:*",
         "@gtkx/vitest": "workspace:*",

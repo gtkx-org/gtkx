@@ -129,8 +129,10 @@ describe("createConfigLoader", () => {
         writeFileSync(join(other, "gtkx.config.ts"), "export default { applicationId: \"org.gtk.Other\" };\n");
         try {
             const load = createConfigLoader();
-            expect((await load(cwd)).applicationId).toBe("org.gtk.Demo4");
-            expect((await load(other)).applicationId).toBe("org.gtk.Other");
+            const cwdConfig = await load(cwd);
+            const otherConfig = await load(other);
+            expect(cwdConfig.applicationId).toBe("org.gtk.Demo4");
+            expect(otherConfig.applicationId).toBe("org.gtk.Other");
         } finally {
             rmSync(other, { recursive: true, force: true });
         }

@@ -18,7 +18,8 @@ const expectRemovableHandlerNeverFires = (register: RegisterClicked): void => {
 const handler = (): void => {};
 
 const expectRegisterReturnsButton = (register: RegisterClicked): void => {
-    const button = new Gtk.Button(); const result = register(button, handler);
+    const button = new Gtk.Button();
+    const result = register(button, handler);
     expect(result).toBe(button);
     button.off("clicked", handler);
 };
@@ -35,7 +36,8 @@ describe("on/off", () => {
     });
 
     it("off() after the handler was already disconnected is a no-op", () => {
-        const button = new Gtk.Button(); button.on("clicked", handler2);
+        const button = new Gtk.Button();
+        button.on("clicked", handler2);
         button.off("clicked", handler2);
         expect(() => button.off("clicked", handler2)).not.toThrow();
     });

@@ -2,7 +2,7 @@ import { toCamelIdentifier, upperFirst } from "@gtkx/utils";
 import type { GirClass } from "../../gir/class.js";
 import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
-import type { GirSignal } from "../../gir/parameter.js";
+import type { GirCallable } from "../../gir/parameter.js";
 import type { TypeId } from "../../gir/type-id.js";
 import { forEachAncestor } from "../../analysis/inheritance.js";
 import { renderHandlerParameters, renderHandlerResultType } from "../../analysis/param-structure.js";
@@ -39,7 +39,7 @@ type PropTypeRenderContext = {
 
 type SignalRenderOptions = {
     types: PropTypeRenderContext;
-    signal: GirSignal;
+    signal: GirCallable;
     selfType: string;
 };
 
@@ -48,11 +48,11 @@ type PropEntryCollector = {
     imports: Map<string, string>;
     objectPropNames: string[];
     acceptProperty: (property: GirProperty) => void;
-    acceptSignal: (signal: GirSignal) => void;
+    acceptSignal: (signal: GirCallable) => void;
 };
 
 type PropCollectorState = {
-    owner: PropOwner;
+    owner: IntrinsicElementScope;
     types: PropTypeRenderContext;
     propLines: string[];
     objectPropNames: string[];
@@ -82,7 +82,7 @@ const acceptCollectorProperty = (state: PropCollectorState, property: GirPropert
     appendPropertyLines(state, property, jsName);
 };
 
-const acceptCollectorSignal = (state: PropCollectorState, signal: GirSignal): void => {
+const acceptCollectorSignal = (state: PropCollectorState, signal: GirCallable): void => {
     const handlerName = signalHandlerName(signal.name);
     if (state.seen.has(handlerName)) return;
     state.seen.add(handlerName);
@@ -90,7 +90,7 @@ const acceptCollectorSignal = (state: PropCollectorState, signal: GirSignal): vo
     state.propLines.push(`${renderJsDoc(signal.doc)}${handlerName}?: (${signature}) | undefined;`);
 };
 
-const createPropEntryCollector = (owner: PropOwner): PropEntryCollector => {
+const createPropEntryCollector = (owner: IntrinsicElementScope): PropEntryCollector => {
     const { library } = owner;
     const imports: Map<string, string> = new Map();
     const types: PropTypeRenderContext = { library, imports };
@@ -142,7 +142,7 @@ export const buildInterfacePropsEntries = (options: InterfacePropsOptions): Intr
 type IntrinsicElementMemberWalk = IntrinsicElementScope & {
     isIntrinsicElementAncestor: (candidate: GirClass) => boolean;
     acceptProperty: (property: GirProperty) => void;
-    acceptSignal: (signal: GirSignal) => void;
+    acceptSignal: (signal: GirCallable) => void;
 };
 
 const walkIntrinsicElementMembers = (walk: IntrinsicElementMemberWalk): void => {
@@ -164,9 +164,7 @@ const resolvesToGObjectType = (library: Library, ref: TypeId | undefined): boole
     return isIntrinsicElementClass(resolved.value, resolved.namespace, library);
 };
 
-type PropOwner = IntrinsicElementScope;
-
-export const isObjectProp = (owner: PropOwner, property: GirProperty, jsName: string): boolean => {
+export const isObjectProp = (owner: IntrinsicElementScope, property: GirProperty, jsName: string): boolean => {
     if (!property.writable || property.constructOnly) return false;
     if (!resolvesToGObjectType(owner.library, property.type)) return false;
     if (jsName === "child" && classExposesMethod(owner.klass, owner.namespace, owner.library, "set_child")) {

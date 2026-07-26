@@ -2,7 +2,7 @@ import type { FSWatcher } from "node:fs";
 import type { ProcessEventMap } from "node:process";
 import { EventEmitter } from "node:events";
 import { watch as watchFs } from "node:fs";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from "vitest";
 
 vi.mock("node:fs", async (importActual) => {
     const actual = await importActual<typeof import("node:fs")>();
@@ -33,7 +33,7 @@ function createFakeChild(): FakeChild {
         killed: false,
         pid: undefined as number | undefined,
         exitCode: null as number | null,
-        kill: vi.fn<(signal?: number | NodeJS.Signals) => boolean>((_signal) => {
+        kill: vi.fn<(signal?: number | NodeJS.Signals) => boolean>(() => {
             child.killed = true;
             return true;
         }),
@@ -45,8 +45,20 @@ const forkMock = vi.fn<ForkRunner>();
 
 const TEST_CWD = "/proj";
 
+const superviseUntilExit = async (
+    entry: string,
+    watch?: Parameters<typeof runDevSupervisor>[2],
+): Promise<boolean> => {
+    try {
+        await runDevSupervisor(entry, TEST_CWD, watch, forkMock);
+        return true;
+    } catch {
+        return false;
+    }
+};
+
 const startWithForkMock = (entry: string, watch?: Parameters<typeof runDevSupervisor>[2]): void => {
-    runDevSupervisor(entry, TEST_CWD, watch, forkMock).catch(() => undefined);
+    void superviseUntilExit(entry, watch);
 };
 
 function queueChild(): FakeChild {
@@ -57,14 +69,9 @@ function queueChild(): FakeChild {
 
 function createFakeWatcher(): FSWatcher {
     const watcher: FSWatcher = Object.assign(new EventEmitter(), {
-        close(): void {},
-        ref(): FSWatcher {
-            return watcher;
-        },
-        unref(): FSWatcher {
-            return watcher;
-        },
-        [Symbol.dispose](): void {},
+        close: (): void => {},
+        ref: (): FSWatcher => watcher,
+        unref: (): FSWatcher => watcher,
     });
     return watcher;
 }
@@ -83,8 +90,8 @@ type WatchedSignal = "SIGINT" | "SIGTERM" | "SIGHUP";
 type SignalListener<S extends WatchedSignal> = (...args: ProcessEventMap[S]) => void;
 
 type SupervisorContext = {
-    stderrSpy: ReturnType<typeof vi.spyOn>;
-    exitSpy: ReturnType<typeof vi.spyOn>;
+    stderrSpy: MockInstance<typeof process.stderr.write>;
+    exitSpy: MockInstance<typeof process.exit>;
     prevSigInt: SignalListener<"SIGINT">[] | undefined;
     prevSigTerm: SignalListener<"SIGTERM">[] | undefined;
     prevSigHup: SignalListener<"SIGHUP">[] | undefined;
@@ -151,7 +158,7 @@ describe("runDevSupervisor (child exit handling)", () => {
 
         expect(forkMock).toHaveBeenCalledTimes(2);
         expect(ctx.exitSpy).not.toHaveBeenCalled();
-        const logged = ctx.stderrSpy.mock.calls.map((call: unknown[]) => String(call[0])).join("");
+        const logged = ctx.stderrSpy.mock.calls.map((call) => String(call[0])).join("");
         expect(logged).toContain("Restarting dev runner");
     });
 

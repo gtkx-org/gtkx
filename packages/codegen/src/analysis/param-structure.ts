@@ -2,7 +2,7 @@ import { toCamelIdentifier } from "@gtkx/utils";
 import type { GirFunction } from "../gir/function.js";
 import type { Library } from "../gir/library.js";
 import type { TypeId } from "../gir/type-id.js";
-import { type GirParameter, type GirSignal, isCallerAllocatedOut, isOutParameter } from "../gir/parameter.js";
+import { type GirCallable, type GirParameter, isCallerAllocatedOut, isOutParameter } from "../gir/parameter.js";
 import { isCellInout, omitsPrimaryReturn } from "./descriptor-render.js";
 
 type InputParameter = {
@@ -107,13 +107,13 @@ export const renderHandlerParameters = (
 export const foldOutParamShape = (primary: string | undefined, outTypes: string[]): string => {
     if (primary !== undefined) return `[${primary}, ${outTypes.join(", ")}]`;
     const [single, ...rest] = outTypes;
-    if (rest.length === 0 && single !== undefined) return single;
+    if (single !== undefined && rest.length === 0) return single;
     return `[${outTypes.join(", ")}]`;
 };
 
 type HandlerResultOptions = {
     library: Library;
-    signal: GirSignal;
+    signal: GirCallable;
     renderType: (ref: TypeId | undefined, nullable: boolean) => string;
     includeCallerAllocated: boolean;
     optOut: boolean;

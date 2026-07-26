@@ -20,12 +20,8 @@ const visibilityOf = (held: Captured): boolean => {
 type DeferredPromise = { promise: Promise<string>; resolve: () => void };
 
 const createDeferred = (): DeferredPromise => {
-    let settle: (() => void) | null = null;
-    const promise: Promise<string> = new Promise((resolveWith) => {
-        settle = () => resolveWith("loaded");
-    });
-    if (!settle) throw new Error("promise executor did not run synchronously");
-    return { promise, resolve: settle };
+    const { promise, resolve } = Promise.withResolvers<string>();
+    return { promise, resolve: () => resolve("loaded") };
 };
 
 const activityTree = (mode: "visible" | "hidden", held: Captured, visible = true): ReactNode => (

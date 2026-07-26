@@ -9,7 +9,9 @@ import { renderChildren } from "../helpers/render-children.js";
 const tabLabel = (tab: Gtk.Widget): string => getWidgetNodeText(within(tab).getByRole(Gtk.AccessibleRole.LABEL)) ?? "";
 
 const getPageLabels = (notebook: Gtk.Notebook): string[] =>
-    within(notebook).getAllByRole(Gtk.AccessibleRole.TAB).map(tabLabel);
+    within(notebook)
+        .getAllByRole(Gtk.AccessibleRole.TAB)
+        .map((tab) => tabLabel(tab));
 
 describe("render - Notebook (1)", () => {
     describe("GtkNotebook", () => {

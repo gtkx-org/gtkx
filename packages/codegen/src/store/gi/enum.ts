@@ -37,7 +37,7 @@ export const generateEnum = (context: ModuleContext, enumeration: GirEnum): void
 
 export const enumMemberKey = (name: string): string => {
     const upper = name.toUpperCase().replaceAll("-", "_");
-    return /^[0-9]/.test(upper) ? `_${upper}` : upper;
+    return /^\d/.test(upper) ? `_${upper}` : upper;
 };
 
 const renderQuarkExpression = (context: ModuleContext, errorDomain: string): string => {

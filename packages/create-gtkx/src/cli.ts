@@ -1,11 +1,11 @@
 import { packageVersion } from "@gtkx/utils";
 import { defineCommand, runMain } from "citty";
-import { createCommand } from "./command.js";
+import { scaffoldCommand } from "./command.js";
 
 const version = packageVersion(import.meta.url);
 
 const main = defineCommand({
-    ...createCommand,
+    ...scaffoldCommand,
     meta: {
         name: "create-gtkx",
         version,
@@ -13,4 +13,4 @@ const main = defineCommand({
     },
 });
 
-runMain(main);
+void runMain(main);

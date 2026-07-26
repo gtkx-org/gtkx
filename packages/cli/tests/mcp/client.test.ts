@@ -5,7 +5,9 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const hoisted = vi.hoisted(() => {
-    class FakeApplication {}
+    class FakeApplication {
+        applicationId = "com.test.app";
+    }
     return {
         listToplevels: vi.fn(() => [] as unknown[]),
         getDefault: vi.fn((): unknown => null),
@@ -79,7 +81,7 @@ const waitFor = async (predicate: () => boolean, timeoutMs = 1000): Promise<void
         if (Date.now() - start > timeoutMs) {
             throw new Error("waitFor timed out");
         }
-        await new Promise((r) => setTimeout(r, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
     }
 };
 
@@ -207,7 +209,7 @@ describe("McpClient incoming requests", () => {
         const registered = await registerWithStderrSpy(ctx);
 
         ctx.sockets[0]?.write("not json\n");
-        await new Promise((r) => setTimeout(r, 20));
+        await new Promise((resolve) => setTimeout(resolve, 20));
 
         const written = registered.stderrSpy.mock.calls.map((call) => String(call[0])).join("");
         expect(written).toContain("invalid JSON");

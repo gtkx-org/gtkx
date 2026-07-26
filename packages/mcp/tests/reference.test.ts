@@ -69,7 +69,7 @@ const getTool = (name: string): Tool => {
 
 const textOf = (result: { content: { type: string }[] }): string => {
     const first = result.content[0];
-    if (first === undefined || first.type !== "text") throw new Error("Expected text content");
+    if (first?.type !== "text") throw new Error("Expected text content");
     return (first as { type: "text"; text: string }).text;
 };
 

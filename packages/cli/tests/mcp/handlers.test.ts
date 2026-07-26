@@ -1,6 +1,8 @@
 import { ErrorCode, ProtocolError } from "@gtkx/mcp/internal";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+type PrettyWidgetOptions = { getId?: (widget: unknown) => string; highlight?: boolean; maxDepth?: number };
+
 const hoisted = vi.hoisted(() => ({
     findAllByRole: vi.fn(),
     findAllByText: vi.fn(),
@@ -11,7 +13,7 @@ const hoisted = vi.hoisted(() => ({
     typeText: vi.fn(async () => undefined),
     clear: vi.fn(async () => undefined),
     fireEvent: vi.fn(async () => undefined),
-    prettyWidget: vi.fn((_container: unknown, _options?: { getId?: (w: unknown) => string }) => "tree"),
+    prettyWidget: vi.fn<(container: unknown, options?: PrettyWidgetOptions) => string>(() => "tree"),
     formatRole: vi.fn((role: number) => (role === 2 ? "label" : "button")),
     getWidgetNodeText: vi.fn((widget: { getLabel?: () => string | null; getText?: () => string | null }) => {
         return widget.getLabel?.() ?? widget.getText?.() ?? null;
@@ -113,10 +115,10 @@ describe("widget.getTree", () => {
         };
 
         expect(result.tree).toBe("rendered");
-        expect(prettyWidget).toHaveBeenCalledWith(expect.anything(), {
-            getId: expect.any(Function),
-            highlight: false,
-        });
+        const [container, options] = prettyWidget.mock.calls[0] ?? [];
+        expect(container).toBeDefined();
+        expect(options?.getId).toBeTypeOf("function");
+        expect(options?.highlight).toBe(false);
     });
 
     it("resolves tree ids through the registry", async () => {

@@ -66,7 +66,8 @@ export const itemComparatorArgDescriptors = (
     const callback = itemComparatorCallback(context, fn, parameter);
     if (callback === undefined) return undefined;
     const overrides: Map<number, string> = new Map();
-    for (const { parameter: item, index } of inputParameters(context.library, callbackAsFunction(callback))) {
+    const items = inputParameters(context.library, callbackAsFunction(callback));
+    for (const { parameter: item, index } of items) {
         if (isItemPointer(context, item.type)) overrides.set(index, tObject("borrowed"));
     }
     return overrides.size > 0 ? overrides : undefined;

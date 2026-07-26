@@ -1,6 +1,6 @@
 import type { InlineConfig, Plugin } from "vite";
 import { error } from "@gtkx/utils";
-import { createRefreshTracker } from "./refresh-tracker.js";
+import { createRefreshTracker, type RefreshTracker } from "./refresh-tracker.js";
 import { RESTART_EXIT_CODE } from "./supervisor.js";
 import { createDevServerConfig, type DevServer } from "./vite-dev-server.js";
 
@@ -20,7 +20,7 @@ export type DevRunnerDeps = {
     watchApplicationShutdown(onShutdown: () => void): void;
     installShutdownHandlers(onSignal: () => void | Promise<void>): void;
     quitDefaultApplication(): void;
-    performRefresh(): void;
+    performRefresh: () => void;
     isRefreshBoundary(module: Record<string, unknown>): boolean;
     plugins(): Plugin[];
     log(message: string): void;
@@ -29,6 +29,11 @@ export type DevRunnerDeps = {
 
 type DevRunner = {
     run(entryPath: string): Promise<void>;
+};
+
+type ShutdownController = {
+    isShuttingDown: () => boolean;
+    shutdown: (quitApplication: () => void) => Promise<void>;
 };
 
 const requestRestart = async (server: DevServer, deps: DevRunnerDeps): Promise<never> => {
@@ -65,27 +70,65 @@ const handleFileChange = async (server: DevServer, deps: DevRunnerDeps, changedP
     await requestRestart(server, deps);
 };
 
+const createShutdownController = (server: DevServer, deps: DevRunnerDeps): ShutdownController => {
+    let shuttingDown = false;
+
+    return {
+        isShuttingDown: () => shuttingDown,
+        shutdown: async (quitApplication: () => void): Promise<void> => {
+            if (shuttingDown) return;
+            shuttingDown = true;
+            quitApplication();
+            deps.stopMcpClient();
+            await server.close();
+        },
+    };
+};
+
+const reloadChangedFile = async (server: DevServer, deps: DevRunnerDeps, changedPath: string): Promise<void> => {
+    try {
+        await handleFileChange(server, deps, changedPath);
+    } catch (error_) {
+        error("Hot reload failed:", error_);
+    }
+};
+
+const onFileChange =
+    (server: DevServer, deps: DevRunnerDeps, controller: ShutdownController): ((changedPath: string) => void) =>
+        (changedPath) => {
+            if (controller.isShuttingDown()) return;
+            void reloadChangedFile(server, deps, changedPath);
+        };
+
+const onShutdownSignal =
+    (deps: DevRunnerDeps, controller: ShutdownController): (() => Promise<void>) =>
+        async () => {
+            if (controller.isShuttingDown()) return;
+            deps.log("Received shutdown signal - stopping dev runner...");
+            await controller.shutdown(() => deps.quitDefaultApplication());
+        };
+
+const closeAndExit = async (deps: DevRunnerDeps, controller: ShutdownController): Promise<never> => {
+    try {
+        await controller.shutdown(() => {});
+    } catch (error_) {
+        error("Error closing server:", error_);
+        return deps.exit(1);
+    }
+
+    return deps.exit(0);
+};
+
 const onApplicationShutdown =
-    (
-        deps: DevRunnerDeps,
-        refreshTracker: ReturnType<typeof createRefreshTracker>,
-        shutdown: (quitApplication: () => void) => Promise<void>,
-        isShuttingDown: () => boolean,
-    ): (() => void) =>
+    (deps: DevRunnerDeps, refreshTracker: RefreshTracker, controller: ShutdownController): (() => void) =>
         () => {
-            if (isShuttingDown()) return;
+            if (controller.isShuttingDown()) return;
             if (refreshTracker.isRefreshing()) {
                 deps.log("Application unmounted during Fast Refresh - restarting dev runner...");
                 return deps.exit(RESTART_EXIT_CODE);
             }
             deps.log("Application quit - stopping dev runner...");
-            shutdown(() => {}).then(
-                () => deps.exit(0),
-                (error_: unknown) => {
-                    error("Error closing server:", error_);
-                    return deps.exit(1);
-                },
-            );
+            void closeAndExit(deps, controller);
         };
 
 export const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
@@ -95,28 +138,10 @@ export const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
 
         const refreshTracker = createRefreshTracker(deps.performRefresh);
         const refreshTrackingDeps: DevRunnerDeps = { ...deps, performRefresh: refreshTracker.performRefresh };
+        const controller = createShutdownController(server, deps);
 
-        let isShuttingDown = false;
-        const shutdown = async (quitApplication: () => void): Promise<void> => {
-            if (isShuttingDown) return;
-            isShuttingDown = true;
-            quitApplication();
-            deps.stopMcpClient();
-            await server.close();
-        };
-
-        deps.installShutdownHandlers(async () => {
-            if (isShuttingDown) return;
-            deps.log("Received shutdown signal - stopping dev runner...");
-            await shutdown(() => deps.quitDefaultApplication());
-        });
-
-        server.watcher.on("change", (changedPath) => {
-            if (isShuttingDown) return;
-            handleFileChange(server, refreshTrackingDeps, changedPath).catch((error_) => {
-                error("Hot reload failed:", error_);
-            });
-        });
+        deps.installShutdownHandlers(onShutdownSignal(deps, controller));
+        server.watcher.on("change", onFileChange(server, refreshTrackingDeps, controller));
 
         deps.log(`Loading entry: ${entryPath}`);
         await server.ssrLoadModule(entryPath);
@@ -125,7 +150,7 @@ export const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
         // reading a single snapshot immediately after loading the entry.
         const liveApplicationId = await deps.waitForApplicationId(APPLICATION_MOUNT_TIMEOUT_MS);
         if (liveApplicationId) {
-            deps.watchApplicationShutdown(onApplicationShutdown(deps, refreshTracker, shutdown, () => isShuttingDown));
+            deps.watchApplicationShutdown(onApplicationShutdown(deps, refreshTracker, controller));
 
             const applicationId = (await deps.getConfiguredApplicationId(root)) ?? liveApplicationId;
             deps.log(`Connected application ID: ${applicationId}`);

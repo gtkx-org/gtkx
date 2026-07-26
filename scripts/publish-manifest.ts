@@ -22,20 +22,20 @@ export const distTagForVersion = (version: string): string => {
 
 const isDevSource = (entry: string): boolean => entry === "src" || entry.startsWith("src/");
 
-const stripExportsSource = (entry: ExportsField): ExportsField => {
-    if (typeof entry === "string") return entry;
+const stripExportsSource = (entry: Record<string, ExportsField>): Record<string, ExportsField> => {
     const result: Record<string, ExportsField> = {};
     for (const [key, value] of Object.entries(entry)) {
         if (key === "source") continue;
-        result[key] = stripExportsSource(value);
+        result[key] = typeof value === "string" ? value : stripExportsSource(value);
     }
     return result;
 };
 
 export const stripDevArtifacts = (manifest: PackageManifest): PackageManifest => {
     const stripped: PackageManifest = { ...manifest };
-    if (manifest.exports !== undefined) {
-        stripped.exports = stripExportsSource(manifest.exports);
+    const exportsField = manifest.exports;
+    if (exportsField !== undefined && typeof exportsField !== "string") {
+        stripped.exports = stripExportsSource(exportsField);
     }
     return stripped;
 };
@@ -47,7 +47,7 @@ export const exportsContainSource = (entry: ExportsField): boolean => {
 
 export const collectExportTargets = (entry: ExportsField): string[] => {
     if (typeof entry === "string") return entry.startsWith("./") ? [entry] : [];
-    return Object.values(entry).flatMap(collectExportTargets);
+    return Object.values(entry).flatMap((value) => collectExportTargets(value));
 };
 
 const binTargets = (bin: PackageManifest["bin"]): string[] => {
@@ -139,10 +139,10 @@ const mapViolations = (files: Set<string>, maps: Record<string, string>): string
     Object.entries(maps).flatMap(([path, content]) => mapSourceViolations(normalizePath(path), content, files));
 
 export const assertPublishedShape = ({ name, entries, manifest, maps }: PublishedPackage): void => {
-    const files = new Set(entries.map(normalizePath));
+    const files = new Set(entries.map((entry) => normalizePath(entry)));
     const violations = [
         ...requiredFileViolations(files),
-        ...[...files].map(shippedEntryViolation).filter((violation) => violation !== undefined),
+        ...[...files].map((file) => shippedEntryViolation(file)).filter((violation) => violation !== undefined),
         ...manifestViolations(manifest),
         ...unresolvedTargetViolations(files, manifest),
         ...mapViolations(files, maps ?? {}),

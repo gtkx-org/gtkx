@@ -1,3 +1,4 @@
+import { resolveExecutable } from "@gtkx/utils";
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -17,7 +18,7 @@ const runSuite = (): VitestReport => {
     const root = join(import.meta.dirname, "..");
     const reportPath = join(tmpdir(), `gtkx-spec-report-${process.pid}.json`);
     try {
-        execFileSync("npx", ["vitest", "run", "--project", PROJECT, "--reporter=json", `--outputFile=${reportPath}`], {
+        execFileSync(resolveExecutable("npx"), ["vitest", "run", "--project", PROJECT, "--reporter=json", `--outputFile=${reportPath}`], {
             cwd: root,
             encoding: "utf8",
             stdio: "ignore",
@@ -61,14 +62,14 @@ const readBaseline = (): Baseline =>
     existsSync(BASELINE_PATH) ? (JSON.parse(readFileSync(BASELINE_PATH, "utf8")) as Baseline) : {};
 
 const record = (observed: Baseline): void => {
-    const sorted = Object.fromEntries(Object.entries(observed).sort(([a], [b]) => a.localeCompare(b)));
+    const sorted = Object.fromEntries(Object.entries(observed).toSorted(([a], [b]) => a.localeCompare(b)));
     writeFileSync(BASELINE_PATH, `${JSON.stringify(sorted, null, 4)}\n`);
     const red = Object.values(sorted).filter((status) => status === "red").length;
     process.stdout.write(`Recorded ${Object.keys(sorted).length} specs (${red} red) to ${BASELINE_PATH}\n`);
 };
 
 const collectFailures = (observed: Baseline, skipped: string[], baseline: Baseline): string[] => {
-    const removed = Object.keys(baseline).filter((name) => !(name in observed));
+    const removed = Object.keys(baseline).filter((name) => !Object.hasOwn(observed, name));
     const regressed = Object.entries(observed).filter(
         ([name, status]) => baseline[name] === "green" && status === "red",
     );

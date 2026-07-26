@@ -16,8 +16,8 @@ import {
     GtkSwitch,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
+import { bench, describe } from "vitest";
 import { cleanup, render } from "../tests/helpers/production-render.js";
-import { describeSizedBench } from "../tests/helpers/sized-bench.js";
 
 const SIZES = [98, 392];
 
@@ -79,26 +79,24 @@ const drawMixed = (n: number, salt: string): ReactNode => (
     </GtkScrolledWindow>
 );
 
-describeSizedBench(
-    "mixed-widget mount",
-    SIZES,
-    (n) => `mount ${n} mixed-class widgets`,
-    async (n) => {
-        await render(drawMixed(n, "a"));
-        await cleanup();
-    },
-);
-
-describeSizedBench(
-    "mixed-widget prop update",
-    SIZES,
-    (n) => `update one prop across ${n} mixed-class widgets`,
-    async (n) => {
-        await render(drawMixed(n, "a"));
-        for (let k = 0; k < 3; k++) {
-            await render(drawMixed(n, "ab"));
+describe("mixed-widget mount", () => {
+    for (const n of SIZES) {
+        bench(`mount ${n} mixed-class widgets`, async () => {
             await render(drawMixed(n, "a"));
-        }
-        await cleanup();
-    },
-);
+            await cleanup();
+        });
+    }
+});
+
+describe("mixed-widget prop update", () => {
+    for (const n of SIZES) {
+        bench(`update one prop across ${n} mixed-class widgets`, async () => {
+            await render(drawMixed(n, "a"));
+            for (let k = 0; k < 3; k++) {
+                await render(drawMixed(n, "ab"));
+                await render(drawMixed(n, "a"));
+            }
+            await cleanup();
+        });
+    }
+});

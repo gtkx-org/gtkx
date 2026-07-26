@@ -10,7 +10,7 @@
     },
     "scripts": {
         "build": "gtkx build",
-        "typecheck": "gtkx codegen && tsc -b --emitDeclarationOnly",
+        "typecheck": "gtkx codegen && tsc -p tsconfig.app.json --emitDeclarationOnly && tsc -p tsconfig.test.json",
         "dev": "gtkx dev",
         "start": "node dist/bundle.js",
         "coverage": "vitest run --coverage"

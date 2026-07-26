@@ -14,59 +14,59 @@ const context = (overrides: Partial<TemplateContext> = {}): TemplateContext => (
 const baseContext: TemplateContext = context();
 
 describe("renderFile", () => {
-    it("renders the package.json template with the project name", () => {
-        const output = renderFile("package.json", baseContext);
+    it("renders the package.json template with the project name", async () => {
+        const output = await renderFile("package.json", baseContext);
         expect(output).toContain('"name": "my-app"');
     });
 
-    it("renders the gtkx.config.ts template", () => {
-        const output = renderFile("gtkx.config.ts", baseContext);
+    it("renders the gtkx.config.ts template", async () => {
+        const output = await renderFile("gtkx.config.ts", baseContext);
         expect(output).toContain("defineConfig");
         expect(output).toContain("Gtk-4.0");
         expect(output).toContain('applicationId: "com.example.MyApp"');
     });
 
-    it("substitutes the title placeholder into the app template", () => {
-        const output = renderFile("src/app.tsx", baseContext);
+    it("substitutes the title placeholder into the app template", async () => {
+        const output = await renderFile("src/app.tsx", baseContext);
         expect(output).toContain('title="My App"');
     });
 
-    it("leaves the package.json template free of a test script", () => {
-        const output = renderFile("package.json", { ...baseContext, includeTesting: true });
+    it("leaves the package.json template free of a test script", async () => {
+        const output = await renderFile("package.json", { ...baseContext, includeTesting: true });
         expect(output).not.toContain("vitest");
     });
 
-    it("propagates the applicationId and title to templates that use them", () => {
-        const output = renderFile(".gitignore", baseContext);
+    it("propagates the applicationId and title to templates that use them", async () => {
+        const output = await renderFile(".gitignore", baseContext);
         expect(typeof output).toBe("string");
     });
 
-    it("includes the typecheck script only for the TypeScript variant", () => {
-        expect(renderFile("package.json", context({ typescript: true }))).toContain('"typecheck"');
-        expect(renderFile("package.json", context({ typescript: false }))).not.toContain('"typecheck"');
+    it("includes the typecheck script only for the TypeScript variant", async () => {
+        expect(await renderFile("package.json", context({ typescript: true }))).toContain('"typecheck"');
+        expect(await renderFile("package.json", context({ typescript: false }))).not.toContain('"typecheck"');
     });
 
-    it("targets the language-specific test glob in vitest.config", () => {
-        expect(renderFile("vitest.config.ts", context({ typescript: true }))).toContain("{ts,tsx}");
-        expect(renderFile("vitest.config.ts", context({ typescript: false }))).toContain("{js,jsx}");
+    it("targets the language-specific test glob in vitest.config", async () => {
+        expect(await renderFile("vitest.config.ts", context({ typescript: true }))).toContain("{ts,tsx}");
+        expect(await renderFile("vitest.config.ts", context({ typescript: false }))).toContain("{js,jsx}");
     });
 
-    it("declares node and react types without the dom lib", () => {
-        const { compilerOptions } = JSON.parse(renderFile("tsconfig.json", baseContext));
-        expect(compilerOptions).toMatchObject({ lib: ["esnext"], types: ["node", "react"] });
+    it("declares node and react types without the dom lib", async () => {
+        const tsconfig = JSON.parse(await renderFile("tsconfig.json", baseContext)) as { compilerOptions: unknown };
+        expect(tsconfig.compilerOptions).toMatchObject({ lib: ["esnext"], types: ["node", "react"] });
     });
 
-    it("uses the import extension for the entry and test imports", () => {
-        expect(renderFile("src/index.tsx", context({ importExtension: ".js" }))).toContain('from "./app.js"');
-        expect(renderFile("src/index.tsx", context({ importExtension: ".jsx" }))).toContain('from "./app.jsx"');
-        expect(renderFile("tests/app.test.tsx", context({ importExtension: ".jsx" }))).toContain(
+    it("uses the import extension for the entry and test imports", async () => {
+        expect(await renderFile("src/index.tsx", context({ importExtension: ".js" }))).toContain('from "./app.js"');
+        expect(await renderFile("src/index.tsx", context({ importExtension: ".jsx" }))).toContain('from "./app.jsx"');
+        expect(await renderFile("tests/app.test.tsx", context({ importExtension: ".jsx" }))).toContain(
             'from "../src/app.jsx"',
         );
     });
 });
 
 describe("listTemplates", () => {
-    it("lists every template with forward-slashed relative paths, sorted", () => {
+    it("lists every template with forward-slashed relative paths, sorted", async () => {
         const templates = listTemplates();
 
         expect(templates).toEqual([
@@ -82,9 +82,9 @@ describe("listTemplates", () => {
         ]);
     });
 
-    it("returns paths every entry of which renderFile resolves", () => {
+    it("returns paths every entry of which renderFile resolves", async () => {
         for (const template of listTemplates()) {
-            expect(typeof renderFile(template, baseContext)).toBe("string");
+            expect(typeof await renderFile(template, baseContext)).toBe("string");
         }
     });
 });

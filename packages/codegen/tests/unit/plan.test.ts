@@ -178,8 +178,8 @@ describe("planCommand returns", () => {
         const isBuffer = okPlan(command("glIsBuffer", "GLboolean", [param("buffer", "GLuint")]));
         expect(isBuffer.returnPlan).toEqual({ kind: "boolean" });
 
-        const getString = okPlan(command("glGetString", "const GLubyte *", [param("name", "GLenum")]));
-        expect(getString.returnPlan).toEqual({ kind: "string" });
+        const stringPlan = okPlan(command("glGetString", "const GLubyte *", [param("name", "GLenum")]));
+        expect(stringPlan.returnPlan).toEqual({ kind: "string" });
     });
 
     it("throws on a base type outside the closed table", () => {

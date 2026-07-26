@@ -9,13 +9,12 @@
         ".": "./src/index.ts"
     },
     "scripts": {
-        "typecheck": "tsc -b --emitDeclarationOnly"
+        "typecheck": "tsc -p tsconfig.app.json --emitDeclarationOnly && tsc -p tsconfig.test.json"
     },
     "engines": {
         "node": ">=24"
     },
     "dependencies": {
-        "@eslint/compat": "^2.1.0",
         "@eslint/js": "^10.0.1",
         "@stylistic/eslint-plugin": "^5.10.0",
         "@typescript-eslint/eslint-plugin": "^8.65.0",

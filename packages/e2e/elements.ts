@@ -7,7 +7,7 @@ export default defineElements({
             {
                 update: (widget: Gtk.Widget, prev, next) => {
                     const name = next.cursorName;
-                    if (!Object.is(prev.cursorName, name) && typeof name === "string") widget.setCursorFromName(name);
+                    if (typeof name === "string" && !Object.is(prev.cursorName, name)) widget.setCursorFromName(name);
                     return ["cursorName"];
                 },
             },

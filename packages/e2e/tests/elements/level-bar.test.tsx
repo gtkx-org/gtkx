@@ -111,6 +111,6 @@ describe("render - LevelBar (2)", () => {
         offset.value = 0.9;
         await rerender(<App />);
 
-        expect(ref.current?.getOffsetValue("threshold")[1]).toBe(0.9);
+        expect(ref.current?.getOffsetValue("threshold")[1]).toBeCloseTo(0.9, 12);
     });
 });

@@ -21,25 +21,22 @@ type ActImplementation = <T>(callback: ActCallback<T>) => PromiseLike<T>;
 const isThenable = <T>(value: unknown): value is PromiseLike<T> =>
     value !== null && typeof value === "object" && typeof (value as PromiseLike<T>).then === "function";
 
-export const runWithActEnvironment = <T>(forced: boolean, fn: () => T | PromiseLike<T>): T | PromiseLike<T> => {
+const restoreAfter = async <T>(result: PromiseLike<T>, previous: boolean | undefined): Promise<T> => {
+    try {
+        return await result;
+    } finally {
+        setIsReactActEnvironment(previous);
+    }
+};
+
+export const runWithActEnvironment = <T>(forced: boolean, fn: () => T | PromiseLike<T>): Promise<T> => {
     const previousActEnvironment = getIsReactActEnvironment();
     setIsReactActEnvironment(forced);
     try {
-        const result = fn();
-        if (isThenable<T>(result)) {
-            return Promise.resolve(result).then(
-                (value) => {
-                    setIsReactActEnvironment(previousActEnvironment);
-                    return value;
-                },
-                (error) => {
-                    setIsReactActEnvironment(previousActEnvironment);
-                    throw error;
-                },
-            );
-        }
+        const result: T | PromiseLike<T> = fn();
+        if (isThenable<T>(result)) return restoreAfter(result, previousActEnvironment);
         setIsReactActEnvironment(previousActEnvironment);
-        return result;
+        return Promise.resolve(result);
     } catch (error) {
         setIsReactActEnvironment(previousActEnvironment);
         throw error;
@@ -64,5 +61,6 @@ const actImplementation: ActImplementation = reactAct;
  */
 export const act: ActImplementation = withGlobalActEnvironment(actImplementation);
 
-export const runInAct = (callback: () => unknown): Promise<void> =>
-    Promise.resolve(act(() => callback())).then(() => undefined);
+export const runInAct = async (callback: () => unknown): Promise<void> => {
+    await act(() => callback());
+};

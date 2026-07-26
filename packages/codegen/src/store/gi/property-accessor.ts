@@ -27,7 +27,7 @@ export type ResolvedAccessor = {
     hasGetter: boolean;
     writable: boolean;
     getterMember: string | undefined;
-    getMethod: GirFunction | undefined;
+    getterMethod: GirFunction | undefined;
     setterMember: string | undefined;
 };
 
@@ -79,12 +79,13 @@ const resolveSetterDelegate = (args: PropertyAccessorArgs, jsName: string, writa
 const resolveOwnType = (
     context: ModuleContext,
     property: GirProperty,
-    getMethod: GirFunction | undefined,
-    setMethod: GirFunction | undefined,
+    getterMethod: GirFunction | undefined,
+    setterMethod: GirFunction | undefined,
 ): string => {
-    const setParam = setMethod?.parameters[0];
-    if (setParam !== undefined) return renderTsType(context, setParam.type, setParam.nullable || setParam.optional);
-    if (getMethod !== undefined) return renderMethodReturnType(context, getMethod);
+    const setterParam = setterMethod?.parameters[0];
+    if (setterParam !== undefined)
+        return renderTsType(context, setterParam.type, setterParam.nullable || setterParam.optional);
+    if (getterMethod !== undefined) return renderMethodReturnType(context, getterMethod);
     return renderTsType(context, property.type, isNullablePropertyType(context, property.type));
 };
 
@@ -100,16 +101,16 @@ export const resolveAccessor = (args: PropertyAccessorArgs): ResolvedAccessor | 
     if (isSkippedAccessorName(jsName, claimedNames)) return undefined;
 
     const writable = isConstructableProperty(property);
-    const { member: getterMember, method: getMethod } = resolveGetterDelegate(args, jsName);
-    const { member: setterMember, method: setMethod } = resolveSetterDelegate(args, jsName, writable);
+    const { member: getterMember, method: getterMethod } = resolveGetterDelegate(args, jsName);
+    const { member: setterMember, method: setterMethod } = resolveSetterDelegate(args, jsName, writable);
 
     const hasGetter = property.readable || getterMember !== undefined;
     if (!hasGetter && !writable) return undefined;
 
-    const ownType = resolveOwnType(context, property, getMethod, setMethod);
+    const ownType = resolveOwnType(context, property, getterMethod, setterMethod);
     const tsType = resolveTsType(args.inheritedType, ownType);
 
-    return { jsName, tsType, hasGetter, writable, getterMember, getMethod, setterMember };
+    return { jsName, tsType, hasGetter, writable, getterMember, getterMethod, setterMember };
 };
 
 export const resolveOwnerAccessor = (
@@ -147,18 +148,18 @@ export const renderResolvedPropertyAccessor = (
     property: GirProperty,
     accessor: ResolvedAccessor,
 ): string => {
-    const { jsName, tsType, hasGetter, writable, getterMember, getMethod, setterMember } = accessor;
+    const { jsName, tsType, hasGetter, writable, getterMember, getterMethod, setterMember } = accessor;
 
     const blocks: string[] = [];
     if (hasGetter) {
-        const getBody = renderGetterBody({ context, property, getterMember, getMethod, tsType });
-        blocks.push(renderBlock(`get ${jsName}(): ${tsType}`, getBody));
+        const getterBody = renderGetterBody({ context, property, getterMember, getterMethod, tsType });
+        blocks.push(renderBlock(`get ${jsName}(): ${tsType}`, getterBody));
     }
 
     if (writable) {
-        const setBody =
+        const setterBody =
             setterMember === undefined ? renderGenericSetBody(context, property) : `this.${setterMember}(value);`;
-        blocks.push(renderBlock(`set ${jsName}(value: ${tsType})`, setBody));
+        blocks.push(renderBlock(`set ${jsName}(value: ${tsType})`, setterBody));
     }
     return `${renderJsDoc(property.doc)}${blocks.join("\n\n")}`;
 };
@@ -193,16 +194,16 @@ type GetterBodyOptions = {
     context: ModuleContext;
     property: GirProperty;
     getterMember: string | undefined;
-    getMethod: GirFunction | undefined;
+    getterMethod: GirFunction | undefined;
     tsType: string;
 };
 
 const renderGetterBody = (options: GetterBodyOptions): string => {
-    const { context, property, getterMember, getMethod, tsType } = options;
+    const { context, property, getterMember, getterMethod, tsType } = options;
     if (getterMember === undefined) return renderGenericGetBody(context, property, tsType);
-    if (getMethod === undefined) return `return this.${getterMember}() as ${tsType};`;
-    const getType = renderMethodReturnType(context, getMethod);
-    return getType === tsType ? `return this.${getterMember}();` : `return this.${getterMember}() as ${tsType};`;
+    if (getterMethod === undefined) return `return this.${getterMember}() as ${tsType};`;
+    const getterType = renderMethodReturnType(context, getterMethod);
+    return getterType === tsType ? `return this.${getterMember}();` : `return this.${getterMember}() as ${tsType};`;
 };
 
 const delegateMember = (

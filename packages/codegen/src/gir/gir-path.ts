@@ -1,4 +1,4 @@
-import { formatChildProcessError } from "@gtkx/utils";
+import { formatChildProcessError, resolveExecutable } from "@gtkx/utils";
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 
@@ -28,23 +28,32 @@ export const resolveGirPath = (configGirPath: string[] | undefined): string[] =>
     return [...new Set(paths)];
 };
 
-const pkgConfigGirDirError = (error: unknown): undefined => {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+const pkgConfigGirDirError = (error: unknown): Error => {
     const details = formatChildProcessError(error);
-    throw new Error(`pkg-config failed querying gobject-introspection-1.0 girdir${details ? `:\n${details}` : ""}`, {
-        cause: error,
-    });
+    const suffix = details ? `:\n${details}` : "";
+    return new Error(`pkg-config failed querying gobject-introspection-1.0 girdir${suffix}`, { cause: error });
+};
+
+const resolvePkgConfig = (): string | undefined => {
+    try {
+        return resolveExecutable("pkg-config");
+    } catch {
+        return undefined;
+    }
 };
 
 const queryPkgConfigGirDir = (): string | undefined => {
+    const pkgConfig = resolvePkgConfig();
+    if (pkgConfig === undefined) return undefined;
     try {
-        const output = execFileSync("pkg-config", ["--variable=girdir", "gobject-introspection-1.0"], {
+        const output = execFileSync(pkgConfig, ["--variable=girdir", "gobject-introspection-1.0"], {
             encoding: "utf8",
             stdio: ["ignore", "pipe", "pipe"],
         });
         const trimmed = output.trim();
         return trimmed.length > 0 ? trimmed : undefined;
     } catch (error) {
-        pkgConfigGirDirError(error); return;
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+        throw pkgConfigGirDirError(error);
     }
 };

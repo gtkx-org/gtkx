@@ -16,7 +16,7 @@ type ViteConfigSnapshot = {
 };
 
 const { viteBuildMock } = vi.hoisted(() => ({
-    viteBuildMock: vi.fn(async (_config: ViteConfigSnapshot) => {}),
+    viteBuildMock: vi.fn<(config: ViteConfigSnapshot) => Promise<void>>(async () => {}),
 }));
 
 vi.mock("vite", async (importActual) => {
@@ -31,6 +31,8 @@ function getViteConfig(): ViteConfigSnapshot {
     if (!call) throw new Error("vite.build was not invoked");
     return call[0];
 }
+
+const APP_VERSION_DEFINE = "__APP_VERSION__";
 
 const resetBuildMocks = (): void => {
     viteBuildMock.mockClear();
@@ -155,11 +157,11 @@ describe("build (define and rolldown)", () => {
     it("merges user-supplied define entries while forcing NODE_ENV to production", async () => {
         await build({
             entry: "src/index.tsx",
-            vite: { define: { __APP_VERSION__: JSON.stringify("1.2.3") } },
+            vite: { define: { [APP_VERSION_DEFINE]: JSON.stringify("1.2.3") } },
         });
 
         const config = getViteConfig();
-        expect(config.define.__APP_VERSION__).toBe(JSON.stringify("1.2.3"));
+        expect(config.define[APP_VERSION_DEFINE]).toBe(JSON.stringify("1.2.3"));
         expect(config.define["process.env.NODE_ENV"]).toBe(JSON.stringify("production"));
     });
 

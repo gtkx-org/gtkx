@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkTreeExpander } from "@gtkx/jsx/gtk";
 import { createPortal } from "@gtkx/react";
-import { useRef, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import type { HeaderRenderer, ItemRenderer, RenderItemArgs } from "../types.js";
 import type { CollectionModel } from "./collection-model.js";
 
@@ -36,16 +36,11 @@ export type Cells = {
     header: FactoryHandlers;
     slot: (id: string) => FactoryHandlers;
     refresh: () => void;
-    portals: (renderers: CellRenderers) => ReactNode[];
-};
-
-type CellsOptions = {
-    collection: CollectionModel;
-    size: CellSize;
+    portals: (renderers: CellRenderers, collection: CollectionModel) => ReactNode[];
 };
 
 type CellsState = {
-    options: () => CellsOptions;
+    size: () => CellSize;
     records: Map<GObject.Object, CellRecord>;
     serial: number;
     refresh: () => void;
@@ -54,19 +49,25 @@ type CellsState = {
 const placeholder = (size: CellSize): Gtk.Widget =>
     new Gtk.Box({ widthRequest: size.width, heightRequest: size.height });
 
-const expanded = (record: CellRecord, content: ReactNode, options: CellsOptions): ReactNode => {
-    if (record.row === null) return content;
-    const item = options.collection.entryOf(record.holder)?.item;
-    return (
-        <GtkTreeExpander
-            listRow={record.row}
-            hideExpander={item?.hideExpander ?? false}
-            indentForDepth={item?.indentForDepth ?? true}
-            indentForIcon={item?.indentForIcon ?? true}
-        >
-            {content}
-        </GtkTreeExpander>
-    );
+const expanded = (record: CellRecord, content: ReactNode, collection: CollectionModel): ReactNode => {
+    const item = collection.entryOf(record.holder)?.item;
+    const row = record.row;
+    const expander: ReactNode =
+        row === null
+            ? (
+                    content
+                )
+            : (
+                    <GtkTreeExpander
+                        listRow={row}
+                        hideExpander={item?.hideExpander ?? false}
+                        indentForDepth={item?.indentForDepth ?? true}
+                        indentForIcon={item?.indentForIcon ?? true}
+                    >
+                        {content}
+                    </GtkTreeExpander>
+                );
+    return expander;
 };
 
 const addRecord = (state: CellsState, record: Omit<CellRecord, "key">): void => {
@@ -90,13 +91,13 @@ const bindItem = (state: CellsState, slot: string | null, cell: Gtk.ListItem): v
         row = bound;
         holder = inner;
     }
-    if (cell.getChild() === null) cell.setChild(placeholder(state.options().size));
+    if (cell.getChild() === null) cell.setChild(placeholder(state.size()));
     addRecord(state, { kind: "item", cell, holder, row, slot, position: () => cell.getPosition() });
 };
 
 const itemHandlers = (state: CellsState, slot: string | null): FactoryHandlers => ({
     onSetup: (cell) => {
-        if (cell instanceof Gtk.ListItem) cell.setChild(placeholder(state.options().size));
+        if (cell instanceof Gtk.ListItem) cell.setChild(placeholder(state.size()));
     },
     onBind: (cell) => {
         if (cell instanceof Gtk.ListItem) bindItem(state, slot, cell);
@@ -108,7 +109,7 @@ const itemHandlers = (state: CellsState, slot: string | null): FactoryHandlers =
 const bindHeader = (state: CellsState, header: Gtk.ListHeader): void => {
     const holder = header.getItem();
     if (holder === null) return;
-    if (header.getChild() === null) header.setChild(placeholder(state.options().size));
+    if (header.getChild() === null) header.setChild(placeholder(state.size()));
     addRecord(state, {
         kind: "header",
         cell: header,
@@ -121,7 +122,7 @@ const bindHeader = (state: CellsState, header: Gtk.ListHeader): void => {
 
 const headerHandlers = (state: CellsState): FactoryHandlers => ({
     onSetup: (header) => {
-        if (header instanceof Gtk.ListHeader) header.setChild(placeholder(state.options().size));
+        if (header instanceof Gtk.ListHeader) header.setChild(placeholder(state.size()));
     },
     onBind: (header) => {
         if (header instanceof Gtk.ListHeader) bindHeader(state, header);
@@ -144,29 +145,39 @@ const createCells = (state: CellsState): Cells => {
             return handlers;
         },
         refresh: state.refresh,
-        portals: (renderers) =>
-            [...state.records.values()].map((record) =>
-                createPortal(
-                    expanded(record, renderers[record.kind](record), state.options()),
-                    record.cell,
-                    `gtkx-cell-${record.key}`,
-                ),
-            ),
+        portals: (renderers, collection) =>
+            state.records
+                .values()
+                .map((record) =>
+                    createPortal(
+                        expanded(record, renderers[record.kind](record), collection),
+                        record.cell,
+                        `gtkx-cell-${record.key}`,
+                    ),
+                )
+                .toArray(),
     };
 };
 
-export const useCells = (options: CellsOptions): Cells => {
-    const latest = useRef(options);
-    latest.current = options;
+const cellSizes: WeakMap<Cells, CellSize> = new WeakMap();
+
+export const useCells = (size: CellSize): Cells => {
     const [, setVersion] = useState(0);
-    const held = useRef<Cells | null>(null);
-    held.current ??= createCells({
-        options: () => latest.current,
-        records: new Map(),
-        serial: 0,
-        refresh: () => setVersion((version) => version + 1),
+    const [cells] = useState<Cells>(() => {
+        const created: Cells = createCells({
+            size: () => cellSizes.get(created) ?? size,
+            records: new Map(),
+            serial: 0,
+            refresh: () => {
+                setVersion((version) => version + 1);
+            },
+        });
+        return created;
     });
-    return held.current;
+    useLayoutEffect(() => {
+        cellSizes.set(cells, size);
+    });
+    return cells;
 };
 
 export type ItemArgsOptions = {

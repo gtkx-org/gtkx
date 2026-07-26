@@ -1,6 +1,6 @@
 import { camelCase, sourceStringLiteral } from "@gtkx/utils";
 import type { GirClass } from "../../gir/class.js";
-import type { GirParameter, GirSignal } from "../../gir/parameter.js";
+import type { GirCallable, GirParameter } from "../../gir/parameter.js";
 import type { GirProperty } from "../../gir/property.js";
 import type { ModuleContext } from "../../writer/context.js";
 import {
@@ -86,7 +86,7 @@ type SignalMapSpec = {
     className: string;
     parentlessExtendsObject: boolean;
     suffix: string;
-    renderEntry: (context: ModuleContext, signal: GirSignal) => string;
+    renderEntry: (context: ModuleContext, signal: GirCallable) => string;
 };
 
 const renderSignalMap = (spec: SignalMapSpec): string => {
@@ -103,9 +103,10 @@ const renderSignalMap = (spec: SignalMapSpec): string => {
 
 const renderNotifyDetailEntries = (context: ModuleContext, klass: GirClass, suffix: string): string[] => {
     const notifyValue = `${gobjectObjectMapRef(context, suffix)}["notify"]`;
-    return collectNotifyDetails(context, klass).map(
-        (name) => `${sourceStringLiteral(`notify::${name}`)}: ${notifyValue};`,
-    );
+    return collectNotifyDetails(context, klass).map((name) => {
+        const detailedSignal = `notify::${name}`;
+        return `${sourceStringLiteral(detailedSignal)}: ${notifyValue};`;
+    });
 };
 
 const signalMapParentRefs = (
@@ -155,14 +156,14 @@ const renderSignalConnectInterface = (className: string, isRootObject: boolean):
     return renderBracedOrEmpty(`export interface ${className}`, lines.join("\n"));
 };
 
-const renderSignalHandlerType = (context: ModuleContext, signal: GirSignal): string => {
+const renderSignalHandlerType = (context: ModuleContext, signal: GirCallable): string => {
     const params = renderHandlerParameters(signal.parameters, (ref, nullable) => renderTsType(context, ref, nullable));
     return `(${params.join(", ")}) => ${renderResultType(context, signal, false, true)}`;
 };
 
 const renderResultType = (
     context: ModuleContext,
-    signal: GirSignal,
+    signal: GirCallable,
     includeCallerAllocated: boolean,
     optOut: boolean,
 ): string =>
@@ -174,7 +175,7 @@ const renderResultType = (
         optOut,
     });
 
-const renderSignalEmitEntry = (context: ModuleContext, signal: GirSignal): string => {
+const renderSignalEmitEntry = (context: ModuleContext, signal: GirCallable): string => {
     const args = renderHandlerParameters(
         signal.parameters,
         (ref, nullable) => renderTsType(context, ref, nullable),
@@ -184,10 +185,10 @@ const renderSignalEmitEntry = (context: ModuleContext, signal: GirSignal): strin
     return `{ args: [${args.join(", ")}]; result: ${result} }`;
 };
 
-const nonVarargParameters = (signal: GirSignal): GirParameter[] =>
+const nonVarargParameters = (signal: GirCallable): GirParameter[] =>
     signal.parameters.filter((parameter) => !parameter.isVarargs);
 
-const renderConnectCase = (context: ModuleContext, signal: GirSignal): string => {
+const renderConnectCase = (context: ModuleContext, signal: GirCallable): string => {
     const callback = renderCallback(context, signal);
     const body = `return connectSignal(this, signal, { callback: ${callback}, handler, after: after ?? false });`;
     return renderBlock(`case ${sourceStringLiteral(signal.name)}:`, body);
@@ -227,7 +228,7 @@ const renderEmitArgLiteral = (options: EmitArgOptions): { literal: string; nextA
     return { literal: `{ type: ${descriptor}, value: args[${argIndex}] }`, nextArgIndex: argIndex + 1 };
 };
 
-const renderEmitCase = (context: ModuleContext, signal: GirSignal): string => {
+const renderEmitCase = (context: ModuleContext, signal: GirCallable): string => {
     const params = nonVarargParameters(signal);
     if (params.some((parameter) => isCallerAllocatedOut(parameter) && !isRecordCallerOut(context, parameter))) {
         return renderUnsupportedEmitCase(signal);
@@ -251,7 +252,7 @@ const renderEmitCase = (context: ModuleContext, signal: GirSignal): string => {
     return renderBlock(`case ${sourceStringLiteral(signal.name)}:`, body);
 };
 
-const renderUnsupportedEmitCase = (signal: GirSignal): string => {
+const renderUnsupportedEmitCase = (signal: GirCallable): string => {
     const message = `emit() cannot allocate the caller-allocated out-parameter of '${signal.name}'`;
     return renderBlock(
         `case ${sourceStringLiteral(signal.name)}:`,
@@ -267,7 +268,7 @@ const renderCallerOutAllocation = (context: ModuleContext, parameter: GirParamet
     return `new ${context.qualify(name.namespaceName, name.typeName)}()`;
 };
 
-const renderCallback = (context: ModuleContext, signal: GirSignal): string => {
+const renderCallback = (context: ModuleContext, signal: GirCallable): string => {
     const params = nonVarargParameters(signal);
     const callbackParamDescriptors = params.map((parameter) =>
         renderParamDescriptor(context, parameter, parameter.type),
@@ -283,7 +284,7 @@ const renderCallback = (context: ModuleContext, signal: GirSignal): string => {
 const forEachInterfaceSignal = (
     context: ModuleContext,
     klass: GirClass,
-    consider: (signal: GirSignal) => void,
+    consider: (signal: GirCallable) => void,
 ): void => {
     for (const implementName of klass.implements) {
         const iface = resolveImplementedInterface(context, implementName);
@@ -292,11 +293,11 @@ const forEachInterfaceSignal = (
     }
 };
 
-const collectClassSignals = (context: ModuleContext, klass: GirClass): GirSignal[] => {
+const collectClassSignals = (context: ModuleContext, klass: GirClass): GirCallable[] => {
     const inheritedNames = collectInheritedSignalNames(context, klass);
     const seen: Set<string> = new Set();
-    const result: GirSignal[] = [];
-    const consider = (signal: GirSignal): void => {
+    const result: GirCallable[] = [];
+    const consider = (signal: GirCallable): void => {
         const name = camelCase(signal.name);
         if (inheritedNames.has(name) || seen.has(name)) return;
         seen.add(name);

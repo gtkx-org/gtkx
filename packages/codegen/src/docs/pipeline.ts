@@ -42,9 +42,10 @@ const namespaceIndexPage = (namespace: DocsNamespace, elements: GlibNamedClass[]
         const description = firstSentence(entry.klass.doc).replaceAll("|", String.raw`\|`);
         return `| [${entry.glibName}](${link}) | ${description} |`;
     });
+    const description = `Reference pages for the ${namespace.elements.length} JSX elements in the ${namespace.name} namespace.`;
     return [
         "---",
-        `description: ${JSON.stringify(`Reference pages for the ${namespace.elements.length} JSX elements in the ${namespace.name} namespace.`)}`,
+        `description: ${JSON.stringify(description)}`,
         "---",
         "",
         `# ${namespace.name} elements`,
@@ -107,7 +108,7 @@ const buildElementLinks = (elements: GlibNamedClass[], basePath: string): Map<st
     for (const entry of elements) {
         const directory = namespaceDirectory(entry.namespace);
         const link = `${basePath}/${directory}/${elementSlug(entry.klass.name)}`;
-        if ([...linkByGlibName.values()].includes(link)) {
+        if (linkByGlibName.values().some((existing) => existing === link)) {
             throw new Error(`Docs page slug collision for ${entry.glibName} at ${link}`);
         }
         linkByGlibName.set(entry.glibName, link);
@@ -150,7 +151,7 @@ const generatePages = (options: DocsOptions, basePath: string, library: Library)
 
     const pages: Page[] = [];
     const namespaces: DocsNamespace[] = [];
-    const orderedNames = sortStringsBy([...byNamespace.keys()], namespaceOrder);
+    const orderedNames = sortStringsBy(byNamespace.keys(), namespaceOrder);
     for (const name of orderedNames) {
         const elements = sortStringsBy(byNamespace.get(name) ?? [], (entry) => entry.glibName);
         const result = namespacePages({ name, elements, basePath, linkByGlibName, pageContext });

@@ -1,6 +1,6 @@
 import type { ParseContext } from "./type-id.js";
 import { functionFromNode, type GirFunction } from "./function.js";
-import { type GirSignal, parseCallable } from "./parameter.js";
+import { type GirCallable, parseCallable } from "./parameter.js";
 import { attr, attrBool, childrenOf, docOf, GIR_CONSTRUCTOR_TAG, nameAttr, type RawNode } from "./parse.js";
 import { type GirProperty, propertyFromNode } from "./property.js";
 
@@ -23,7 +23,7 @@ export type GirClass = {
     constructors: GirFunction[];
     functions: GirFunction[];
     properties: GirProperty[];
-    signals: GirSignal[];
+    signals: GirCallable[];
 };
 
 export const classFromNode = (node: RawNode, isInterface: boolean, context: ParseContext): GirClass => ({
@@ -47,7 +47,7 @@ export const classFromNode = (node: RawNode, isInterface: boolean, context: Pars
         .filter((name): name is string => name !== undefined),
     methods: childrenOf(node, "method").map((method) => functionFromNode(method, context)),
     constructors: childrenOf(node, GIR_CONSTRUCTOR_TAG).map((ctor) => functionFromNode(ctor, context)),
-    functions: childrenOf(node, "function").map((function_) => functionFromNode(function_, context)),
+    functions: childrenOf(node, "function").map((fn) => functionFromNode(fn, context)),
     properties: childrenOf(node, "property").map((property) => propertyFromNode(property, context)),
     signals: childrenOf(node, "glib:signal").map((signal) => parseCallable(signal, context)),
 });

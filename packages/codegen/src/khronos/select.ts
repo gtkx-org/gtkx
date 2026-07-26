@@ -55,7 +55,7 @@ const applyRemoves = (
 export const selectSubset = (registry: GlRegistry, selection: GlSelection): GlSubset => {
     const features = registry.features
         .filter((feature) => feature.api === selection.api && feature.number <= selection.version)
-        .sort((a, b) => a.number - b.number);
+        .toSorted((a, b) => a.number - b.number);
 
     const commands: Map<string, string> = new Map();
     const enums: Map<string, string> = new Map();

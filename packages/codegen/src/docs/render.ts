@@ -3,7 +3,7 @@ import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
 import type { Library } from "../gir/library.js";
 import type { GirNamespace } from "../gir/namespace.js";
-import type { GirSignal } from "../gir/parameter.js";
+import type { GirCallable } from "../gir/parameter.js";
 import type { TypeId } from "../gir/type-id.js";
 import { collectInheritedMethods, conflictRename } from "../analysis/inheritance.js";
 import { renderHandlerParameters, renderHandlerResultType } from "../analysis/param-structure.js";
@@ -25,7 +25,7 @@ export const renderDocsType = (library: Library, ref: TypeId | undefined, isNull
     return isNullable ? `${base} | null` : base;
 };
 
-const renderDocsHandlerResultType = (library: Library, signal: GirSignal): string =>
+const renderDocsHandlerResultType = (library: Library, signal: GirCallable): string =>
     renderHandlerResultType({
         library,
         signal,
@@ -34,15 +34,15 @@ const renderDocsHandlerResultType = (library: Library, signal: GirSignal): strin
         optOut: true,
     });
 
-const renderDocsHandlerParameters = (library: Library, signal: GirSignal): string[] =>
+const renderDocsHandlerParameters = (library: Library, signal: GirCallable): string[] =>
     renderHandlerParameters(signal.parameters, (ref, nullable) => renderDocsType(library, ref, nullable));
 
-export const renderDocsSignalSignature = (library: Library, signal: GirSignal, selfType: string): string => {
+export const renderDocsSignalSignature = (library: Library, signal: GirCallable, selfType: string): string => {
     const params = [...renderDocsHandlerParameters(library, signal), `self: ${selfType}`];
     return `(${params.join(", ")}) => ${renderDocsHandlerResultType(library, signal)}`;
 };
 
-export const renderDocsSignalHandlerType = (library: Library, signal: GirSignal): string =>
+export const renderDocsSignalHandlerType = (library: Library, signal: GirCallable): string =>
     `(${renderDocsHandlerParameters(library, signal).join(", ")}) => ${renderDocsHandlerResultType(library, signal)}`;
 
 const DOCS_DEFAULT_VALUES: Record<string, string> = { TRUE: "true", FALSE: "false", NULL: "null" };
@@ -82,7 +82,7 @@ const stripMarkdown = (markdown: string): string =>
     markdown
         .replaceAll(/```[\s\S]*?```/g, " ")
         .replaceAll(/`([^`]*)`/g, "$1")
-        .replaceAll(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+        .replaceAll(/\[([^[\]]*)\]\([^)]*\)/g, "$1")
         .replaceAll(/[*_#>]/g, "")
         .replaceAll(/\s+/g, " ")
         .trim();
@@ -98,11 +98,14 @@ export const firstSentence = (doc: string | undefined): string => {
 export const elementSlug = (className: string): string =>
     className
         .replaceAll(/([a-z0-9])([A-Z])/g, "$1-$2")
-        .replaceAll(/([A-Z]+)([A-Z][a-z])/g, "$1-$2")
+        .replaceAll(/([A-Z])(?=[A-Z][a-z])/g, "$1-")
         .toLowerCase();
 
-export const implementsLine = (names: string[]): string[] =>
-    names.length === 0 ? [] : [`Implements ${names.map((name) => `\`${name}\``).join(", ")}.`];
+export const implementsLine = (names: string[]): string[] => {
+    if (names.length === 0) return [];
+    const quotedNames = names.map((name) => `\`${name}\``).join(", ");
+    return [`Implements ${quotedNames}.`];
+};
 
 export const joinSections = (sections: string[]): string =>
     `${sections.filter((section) => section.length > 0).join("\n\n")}\n`;

@@ -38,8 +38,8 @@
         "src"
     ],
     "scripts": {
-        "build": "tsc -b tsconfig.lib.json",
-        "typecheck": "tsc -b --emitDeclarationOnly",
+        "build": "rm -rf dist tsconfig.lib.tsbuildinfo && tsc -p tsconfig.lib.json",
+        "typecheck": "tsc -p tsconfig.test.json",
         "codegen": "NODE_OPTIONS=--conditions=source tsx ./scripts/codegen.ts",
         "release": "tsx ../../scripts/release-package.ts"
     },

@@ -27,7 +27,7 @@ import { expectNoBoxBetween } from "./helpers/widget-chain.js";
 const collectLabelTexts = (container: Gtk.Widget): string[] =>
     within(container)
         .getAllByRole(Gtk.AccessibleRole.LABEL)
-        .map((widget) => (widget instanceof Gtk.Label ? (widget.getLabel() ?? "") : ""))
+        .map((widget) => (widget instanceof Gtk.Label ? widget.getLabel() : ""))
         .filter((text) => text.length > 0);
 
 const listViewView = async (items: Parameters<typeof renderListView>[0]): Promise<CollectionView> => {

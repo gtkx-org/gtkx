@@ -17,35 +17,32 @@ export function useObjectValue<T extends GObject.Object, V>(
     const resolved = resolveRefProp(object);
     const cacheRef = useRef<ObjectValueCache<T, V> | null>(null);
 
-    const readCached = useCallback((): ObjectValueCache<T, V> => {
-        const cache = { object: resolved, signal, value: read(resolved) };
-        cacheRef.current = cache;
-        return cache;
-    }, [resolved, signal]);
-
-    const getSnapshot = useCallback((): V => {
-        const cache = cacheRef.current;
-
-        if (cache !== null && cache.object === resolved && cache.signal === signal) {
-            return cache.value;
-        }
-        return readCached().value;
-    }, [resolved, signal, readCached]);
-
     const subscribe = useCallback(
         (onStoreChange: () => void): (() => void) => {
             if (resolved === null) return () => {};
 
             const handler: SignalHandler = () => {
-                readCached();
+                cacheRef.current = null;
                 onStoreChange();
             };
 
             resolved.on(signal, handler);
             return () => resolved.off(signal, handler);
         },
-        [resolved, signal, readCached],
+        [resolved, signal],
     );
+
+    const getSnapshot = (): V => {
+        const cache = cacheRef.current;
+
+        if (cache !== null && cache.object === resolved && cache.signal === signal) {
+            return cache.value;
+        }
+
+        const value = read(resolved);
+        cacheRef.current = { object: resolved, signal, value };
+        return value;
+    };
 
     return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }

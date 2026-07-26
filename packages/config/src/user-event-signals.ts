@@ -45,7 +45,8 @@ export const DEFAULT_USER_EVENT_SIGNALS: Record<string, string[]> = {
 
 export const resolveUserEventSignals = (overrides: Record<string, string[]> | undefined): Record<string, string[]> => {
     const resolved: Record<string, string[]> = { ...DEFAULT_USER_EVENT_SIGNALS };
-    for (const [typeName, signals] of Object.entries(overrides ?? {})) {
+    const overrideEntries = Object.entries(overrides ?? {});
+    for (const [typeName, signals] of overrideEntries) {
         resolved[typeName] = [...new Set([...(resolved[typeName] ?? []), ...signals])];
     }
     return resolved;

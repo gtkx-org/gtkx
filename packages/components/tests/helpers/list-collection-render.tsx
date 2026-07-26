@@ -107,7 +107,7 @@ export const expectRapidReorder = async (renderView: RenderCollectionView, order
 
 export const expectLargeDatasetReorder = async (renderView: RenderCollectionView): Promise<void> => {
     const initialItems = Array.from({ length: 200 }, (_, i) => String(i + 1));
-    const reversedItems = [...initialItems].reverse();
+    const reversedItems = initialItems.toReversed();
 
     const view = await renderView(initialItems);
     const visibleBefore = view.texts();

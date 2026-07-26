@@ -44,8 +44,8 @@
         "src"
     ],
     "scripts": {
-        "build": "tsc -b tsconfig.lib.json && rm -rf dist/templates && cp -r src/templates dist/templates",
-        "typecheck": "tsc -b --emitDeclarationOnly",
+        "build": "rm -rf dist tsconfig.lib.tsbuildinfo && tsc -p tsconfig.lib.json && cp -r src/templates dist/templates",
+        "typecheck": "tsc -p tsconfig.test.json",
         "release": "tsx ../../scripts/release-package.ts"
     },
     "engines": {

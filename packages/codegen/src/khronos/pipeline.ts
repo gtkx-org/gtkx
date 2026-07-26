@@ -2,7 +2,14 @@ import { sanitizeIdentifier, sortStrings, sortStringsBy } from "@gtkx/utils";
 import { type GlEnum, loadGlRegistry } from "./model.js";
 import { renderCommandsModule, renderEnumsModule, renderTypesModule } from "./modules.js";
 import { paramPairAt } from "./param-pair.js";
-import { type CommandPlan, type GlExclusionReason, type GlPlanPolicy, type GlScalar, planCommand } from "./plan.js";
+import {
+    type CommandPlan,
+    type GlExclusionReason,
+    type GlPlanPolicy,
+    type GlScalar,
+    type ParamPlan,
+    planCommand,
+} from "./plan.js";
 import { deriveDeleteSingular, deriveGenSingular, renderCommand, type RenderedCommand } from "./render.js";
 import { type GlSelection, resolveEnum, selectSubset } from "./select.js";
 
@@ -104,10 +111,17 @@ const mergeGroupAlias = (aliases: Map<string, string>, scalar: GlScalar, group: 
     aliases.set(group, groupAliasValue(existing, scalar.tsAlias));
 };
 
+type GroupBearingParamPlan = Extract<ParamPlan, { kind: "scalar" | "array-in" | "ref-out" }>;
+
+const GROUP_BEARING_PARAM_KINDS: Set<ParamPlan["kind"]> = new Set(["scalar", "array-in", "ref-out"]);
+
+const isGroupBearingParam = (paramPlan: ParamPlan): paramPlan is GroupBearingParamPlan =>
+    GROUP_BEARING_PARAM_KINDS.has(paramPlan.kind);
+
 const considerParamGroup = (aliases: Map<string, string>, plan: OkPlan, index: number): void => {
     const { paramPlan, param } = paramPairAt(plan, index);
     if (paramPlan === undefined || param === undefined) return;
-    if (paramPlan.kind === "scalar" || paramPlan.kind === "array-in" || paramPlan.kind === "ref-out") {
+    if (isGroupBearingParam(paramPlan)) {
         mergeGroupAlias(aliases, paramPlan.scalar, param.group);
     }
 };
@@ -156,7 +170,8 @@ const planSelectedCommands = (
     const exclusions: GlExclusion[] = [];
     const okPlans: OkPlan[] = [];
     const planFeatures: Map<string, string> = new Map();
-    for (const [name, feature] of sortStringsBy(commandNames.entries(), ([key]) => key)) {
+    const sortedCommands = sortStringsBy(commandNames.entries(), ([key]) => key);
+    for (const [name, feature] of sortedCommands) {
         const result = planSelectedCommand(registry, name);
         if ("ok" in result) {
             okPlans.push(result);
@@ -177,7 +192,8 @@ type EnumRow = {
 
 const buildEnumRows = (registry: ReturnType<typeof loadGlRegistry>, enumNames: Map<string, string>): EnumRow[] => {
     const enumRows: EnumRow[] = [];
-    for (const [name, feature] of sortStringsBy(enumNames.entries(), ([key]) => key)) {
+    const sortedEnums = sortStringsBy(enumNames.entries(), ([key]) => key);
+    for (const [name, feature] of sortedEnums) {
         const token = resolveEnum(registry, name);
         const literal = enumLiteral(token);
         if (literal === undefined) continue;
@@ -204,7 +220,10 @@ const assertExportNamesDisjoint = (
     for (const singular of singulars) claim(singular.exportName, "derived singular");
     for (const row of enumRows) claim(row.exportName, "enum constant");
 
-    const overrideCollisions = [...exportNames.keys()].filter((name) => overrideExports.has(name));
+    const overrideCollisions = exportNames
+        .keys()
+        .filter((name) => overrideExports.has(name))
+        .toArray();
     if (overrideCollisions.length > 0) {
         throw new Error(
             `Override module exports collide with generated exports: ${sortStrings(overrideCollisions).join(", ")}`,

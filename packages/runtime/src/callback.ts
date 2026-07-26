@@ -46,7 +46,7 @@ const collectCallbackArg = (
     inputs: unknown[],
     outParams: OutParam[],
 ): void => {
-    if (descriptor !== undefined && descriptor.kind === "ref") {
+    if (descriptor?.kind === "ref") {
         collectRefArg(descriptor, wrappedValue, inputs, outParams);
         return;
     }

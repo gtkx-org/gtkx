@@ -72,7 +72,7 @@ const emptyParams: z.ZodObject<Record<string, never>> = z.object({});
 export const widgetIdParams: z.ZodObject<{ widgetId: z.ZodString }> = z.object({
     widgetId: z.string(),
 });
-export const getTreeParams: z.ZodObject<
+export const treeParams: z.ZodObject<
     { rootId: z.ZodOptional<z.ZodString>; maxDepth: z.ZodOptional<z.ZodNumber> }
 > = z.object({
     rootId: z.string().optional(),
@@ -112,7 +112,7 @@ export const screenshotParams: z.ZodObject<
 
 export const ServerRequestParamsSchemas: {
     "app.getWindows": typeof emptyParams;
-    "widget.getTree": typeof getTreeParams;
+    "widget.getTree": typeof treeParams;
     "widget.query": typeof queryParams;
     "widget.getProps": typeof widgetIdParams;
     "widget.click": typeof widgetIdParams;
@@ -121,7 +121,7 @@ export const ServerRequestParamsSchemas: {
     "widget.screenshot": typeof screenshotParams;
 } = {
     "app.getWindows": emptyParams,
-    "widget.getTree": getTreeParams,
+    "widget.getTree": treeParams,
     "widget.query": queryParams,
     "widget.getProps": widgetIdParams,
     "widget.click": widgetIdParams,

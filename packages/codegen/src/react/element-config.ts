@@ -17,7 +17,8 @@ const CONFIG_SUFFIX = `/${CONFIG_ENTRYPOINT}`;
 
 const presentNamespaceDirs = (giStoreDir: string): Set<string> => {
     const dirs: Set<string> = new Set();
-    for (const entry of readdirSync(giStoreDir, { withFileTypes: true })) {
+    const entries = readdirSync(giStoreDir, { withFileTypes: true });
+    for (const entry of entries) {
         if (entry.isDirectory()) dirs.add(entry.name);
     }
     return dirs;

@@ -79,8 +79,6 @@ export type GirCallable = {
     returnValue: GirReturnValue;
 };
 
-export type GirSignal = GirCallable;
-
 export const parseCallable = (node: RawNode, context: ParseContext): GirCallable => {
     const parametersNode = childOf(node, "parameters");
     const parameterNodes = childrenOf(parametersNode, "parameter");

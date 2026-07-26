@@ -69,7 +69,8 @@ describe("runCodegen", () => {
     it("skips regeneration when the store fingerprint is still fresh", async () => {
         const { gi } = giOptions("rerun");
         const options = { libraries: ["GLib-2.0"], girPath: GIR_PATH, gi };
-        expect((await runCodegen(options)).regenerated).toBe(true);
+        const first = await runCodegen(options);
+        expect(first.regenerated).toBe(true);
         const second = await runCodegen(options);
         expect(second.regenerated).toBe(false);
         expect(second.namespaces).toBe(0);
@@ -93,6 +94,7 @@ describe("runCodegen", () => {
             join(gi.storeDir, ".codegen-fingerprint.json"),
             JSON.stringify({ value: "stale", girFiles: [], libraries: ["GLib-2.0"] }),
         );
-        expect((await runCodegen(options)).regenerated).toBe(true);
+        const rerun = await runCodegen(options);
+        expect(rerun.regenerated).toBe(true);
     });
 });

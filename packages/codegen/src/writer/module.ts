@@ -1,12 +1,12 @@
 import { ImportsBuilder } from "./imports.js";
 
 export class ModuleBuilder {
-    public imports: ImportsBuilder = new ImportsBuilder();
     private bindings: string[] = [];
     private bindingNames: Set<string> = new Set();
     private hoistedDescriptors: Map<string, string> = new Map();
     private declarations: string[] = [];
     private registrations: string[] = [];
+    public imports: ImportsBuilder = new ImportsBuilder();
 
     appendBinding(code: string, name?: string): void {
         if (name !== undefined) {

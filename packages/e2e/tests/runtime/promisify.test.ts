@@ -19,6 +19,15 @@ const invokeCallback = (...args: unknown[]): void => {
     );
 };
 
+const rejectionOf = async (promise: Promise<unknown>): Promise<unknown> => {
+    try {
+        await promise;
+    } catch (error) {
+        return error;
+    }
+    throw new Error("expected rejection");
+};
+
 describe("promisify", () => {
     it("forwards leading args, the resolved cancellable and the callback to the async fn", async () => {
         const calls: unknown[][] = [];
@@ -62,25 +71,22 @@ describe("promisify", () => {
         ).rejects.toBe(failure);
     });
 
-    it("attaches the creation call-site as the rejected error's cause", () => {
-        return promisify(
-            invokeCallback,
-            () => {
-                throw new Error("boom");
-            },
-            undefined,
-        ).then(
-            () => {
-                throw new Error("expected rejection");
-            },
-            (error: unknown) => {
-                expect(error).toBeInstanceOf(Error);
-                const cause = (error as Error).cause;
-                expect(cause).toBeInstanceOf(Error);
-                expect((cause as Error).message).toBe("gtkx async operation started here");
-                expect((cause as Error).stack).toContain("promisify.test.ts");
-            },
+    it("attaches the creation call-site as the rejected error's cause", async () => {
+        const rejection = await rejectionOf(
+            promisify(
+                invokeCallback,
+                () => {
+                    throw new Error("boom");
+                },
+                undefined,
+            ),
         );
+
+        expect(rejection).toBeInstanceOf(Error);
+        const cause = (rejection as Error).cause;
+        expect(cause).toBeInstanceOf(Error);
+        expect((cause as Error).message).toBe("gtkx async operation started here");
+        expect((cause as Error).stack).toContain("promisify.test.ts");
     });
 });
 

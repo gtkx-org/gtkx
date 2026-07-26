@@ -48,11 +48,13 @@ const forwardSignal = (child: SupervisedChild, signal: NodeJS.Signals): void => 
     }
 };
 
-const forceKillChild = (child: SupervisedChild | null): void => {
-    if (!child?.pid || child.exitCode !== null || child.killed) return;
+const forceKillChild = (child: SupervisedChild | null): boolean => {
+    if (!child?.pid || child.exitCode !== null || child.killed) return false;
     try {
-        process.kill(child.pid, "SIGKILL");
-    } catch {}
+        return process.kill(child.pid, "SIGKILL");
+    } catch {
+        return false;
+    }
 };
 
 const captureShutdownExit = (state: SupervisorState, code: number | null, signal: NodeJS.Signals | null): void => {
@@ -84,12 +86,15 @@ const launch = (state: SupervisorState): void => {
     child.on("exit", (code, signal) => handleChildExit(state, code, signal));
 };
 
+const isRestartBlocked = (state: SupervisorState): boolean => state.restarting || state.shuttingDown;
+
 const restart = async (state: SupervisorState): Promise<void> => {
-    if (state.restarting || state.shuttingDown || state.watch === undefined) return;
+    const watch = state.watch;
+    if (watch === undefined || isRestartBlocked(state)) return;
     state.restarting = true;
     info("gtkx.config.ts changed; regenerating bindings...");
     try {
-        await state.watch.regenerate();
+        await watch.regenerate();
     } catch (error_) {
         error("Codegen failed; keeping the current dev runner. Fix the error and save again.", error_);
         state.restarting = false;
@@ -123,7 +128,7 @@ const scheduleRestart = (state: SupervisorState, timer: DebounceTimer): void => 
 };
 
 const isWatchedChange = (state: SupervisorState, names: Set<string>, filename: string | Buffer | null): boolean => {
-    if (state.shuttingDown || filename === null) return false;
+    if (filename === null || state.shuttingDown) return false;
     return names.has(basename(filename.toString()));
 };
 

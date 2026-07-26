@@ -9,9 +9,12 @@ const rectangleFfi = t.boxed("GdkRectangle", {
     getTypeFnName: "gdk_rectangle_get_type",
 });
 
+const stringTable = t.hashTable(t.string("borrowed"), t.string("borrowed"));
+const widgetListTable = t.hashTable(t.string("borrowed"), t.list(t.object("borrowed")));
+
 describe("fromNative — hash-table entries are wrapped recursively", () => {
     it("passes string keys and values straight through", () => {
-        const map = fromNative(t.hashTable(t.string("borrowed"), t.string("borrowed")), [["k", "v"]]);
+        const map = fromNative(stringTable, [["k", "v"]]);
         expect(map).toBeInstanceOf(Map);
         expect((map as Map<string, string>).get("k")).toBe("v");
     });
@@ -47,7 +50,7 @@ describe("fromNative — hash-table entries are wrapped recursively", () => {
             t.hashTable(t.struct("borrowed", { wrapperClass: Gtk.PageRange }), t.string("borrowed")),
             [[getHandle(range), "v"]],
         );
-        const key = [...(map as Map<Gtk.PageRange, string>).keys()][0];
+        const [key] = (map as Map<Gtk.PageRange, string>).keys();
         expect(key).toBeInstanceOf(Gtk.PageRange);
         expect(key?.end).toBe(8);
     });
@@ -55,13 +58,11 @@ describe("fromNative — hash-table entries are wrapped recursively", () => {
     it("recurses into an array-valued entry, wrapping each element", () => {
         const first = new Gtk.Label({});
         const second = new Gtk.Label({});
-        const map = fromNative(t.hashTable(t.string("borrowed"), t.list(t.object("borrowed"))), [
-            ["widgets", [getHandle(first), getHandle(second)]],
-        ]);
+        const map = fromNative(widgetListTable, [["widgets", [getHandle(first), getHandle(second)]]]);
         expect((map as Map<string, unknown[]>).get("widgets")).toEqual([first, second]);
     });
 
     it("maps a null hash table to null", () => {
-        expect(fromNative(t.hashTable(t.string("borrowed"), t.string("borrowed")), null)).toBeNull();
+        expect(fromNative(stringTable, null)).toBeNull();
     });
 });

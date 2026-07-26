@@ -211,7 +211,8 @@ describe("render - Menu change notification", () => {
         await rerender(<DeepMenuApp menuRef={ref} quitLabel="Exit" />);
 
         expect(notifications.count).toBeGreaterThan(0);
-        expect(itemLabel(requireLink(sectionAt(model, 2)), 0)).toBe("Exit");
+        const section = requireLink(sectionAt(model, 2));
+        expect(itemLabel(section, 0)).toBe("Exit");
     });
 });
 
@@ -278,9 +279,11 @@ describe("render - Menu submenus", () => {
         const ref = createRef<Gtk.PopoverMenu>();
 
         await render(<GrowingSubmenuApp menuRef={ref} extra={false} />);
-        expect(requireLink(submenuAt(requireModel(ref.current), 0)).getNItems()).toBe(1);
+        const submenu = requireLink(submenuAt(requireModel(ref.current), 0));
+        expect(submenu.getNItems()).toBe(1);
 
         await render(<GrowingSubmenuApp menuRef={ref} extra={true} />);
-        expect(requireLink(submenuAt(requireModel(ref.current), 0)).getNItems()).toBe(2);
+        const grownSubmenu = requireLink(submenuAt(requireModel(ref.current), 0));
+        expect(grownSubmenu.getNItems()).toBe(2);
     });
 });

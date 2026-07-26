@@ -14,6 +14,7 @@ export const compileSchemas = (dir: string): void => {
         });
     } catch (error) {
         const details = formatChildProcessError(error);
-        throw new Error(`glib-compile-schemas failed for ${dir}${details ? `:\n${details}` : ""}`, { cause: error });
+        const suffix = details ? `:\n${details}` : "";
+        throw new Error(`glib-compile-schemas failed for ${dir}${suffix}`, { cause: error });
     }
 };

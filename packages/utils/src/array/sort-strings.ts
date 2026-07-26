@@ -8,5 +8,5 @@
  * sortStrings(["b", "a", "c"]); // ["a", "b", "c"]
  */
 export function sortStrings(values: Iterable<string>): string[] {
-    return [...values].sort((a, b) => a.localeCompare(b));
+    return [...values].toSorted((a, b) => a.localeCompare(b));
 }

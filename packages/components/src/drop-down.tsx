@@ -1,17 +1,18 @@
 import type * as GObject from "@gtkx/gi/gobject";
-import type { ElementType, ReactNode, Ref } from "react";
+import type { ElementType, ReactNode, Ref, RefObject } from "react";
 import { GtkDropDown, GtkLabel, GtkSignalListItemFactory } from "@gtkx/jsx/gtk";
 import { useSignal } from "@gtkx/react";
-import { useCallback, useEffectEvent, useLayoutEffect, useRef, useState } from "react";
+import { omit } from "@gtkx/utils";
+import { useCallback, useEffectEvent, useLayoutEffect, useRef } from "react";
 import type { CollectionModel } from "./internal/collection-model.js";
 import type { CellRecord, Cells } from "./internal/use-cells.js";
-import type { DropDownProps, ItemRenderer } from "./types.js";
+import type { DropDownProps } from "./types.js";
 import { collectionModeOf } from "./internal/collection-model.js";
 import { headerRenderer, renderItemArgs, useCells } from "./internal/use-cells.js";
 import { useCollectionModel } from "./internal/use-collection.js";
 import { useWidgetRef } from "./internal/use-widget-ref.js";
 
-type SelectableWidget = GObject.Object & { getSelected: () => number };
+type SelectableWidget = GObject.Object & { getSelected: () => number; selected: number };
 
 type DropDownRuntimeProps = DropDownProps & {
     component?: ElementType | undefined;
@@ -25,7 +26,8 @@ type SelectionOptions = {
     props: DropDownRuntimeProps;
 };
 
-const defaultItemContent = (value: unknown): ReactNode => (value == null ? null : <GtkLabel>{String(value)}</GtkLabel>);
+const defaultItemContent = (value: unknown): ReactNode =>
+    value == null ? null : <GtkLabel>{typeof value === "string" ? value : JSON.stringify(value)}</GtkLabel>;
 
 const itemContent = (record: CellRecord, model: CollectionModel, props: DropDownRuntimeProps): ReactNode => {
     const args = renderItemArgs(record, { collection: model });
@@ -70,12 +72,20 @@ const reportKnownSelection = (tracker: KnownSelection, id: string | null): void 
     onSelectionChanged?.(id);
 };
 
-const useDropDownSelection = (options: SelectionOptions): number | undefined => {
+const applySelectedPosition = (widget: SelectableWidget, position: number, applying: RefObject<boolean>): void => {
+    applying.current = true;
+    try {
+        widget.selected = position;
+    } finally {
+        applying.current = false;
+    }
+};
+
+const useDropDownSelection = (options: SelectionOptions): void => {
     const { widget, model, cells } = options;
     const { items, sections, selectedId } = options.props;
     const known = useRef<string | null>(null);
     const applying = useRef(false);
-    const [selected, setSelected] = useState<number | undefined>(undefined);
     const applyUpdate = useCallback((): void => {
         applying.current = true;
         try {
@@ -98,45 +108,39 @@ const useDropDownSelection = (options: SelectionOptions): number | undefined => 
         applyUpdate();
         cells.refresh();
         const position = resolvePosition(widget, model, selectedId);
-        setSelected(position);
+        applySelectedPosition(widget, position, applying);
         syncKnownSelection(position);
     }, [widget, model, cells, selectedId, applyUpdate]);
     useSignal(widget, "notify::selected", (): void => {
         if (widget === null || applying.current) return;
         const position = widget.getSelected();
-        setSelected(position);
         reportKnownSelection({ known, onSelectionChanged: options.props.onSelectionChanged }, model.idAt(position));
     });
-    return selected;
 };
 
 const DropDownImpl = (props: DropDownRuntimeProps): ReactNode => {
-    const {
-        component,
-        items,
-        sections,
-        selectedId,
-        onSelectionChanged,
-        renderItem,
-        renderListItem,
-        renderHeader,
-        ref,
-        ...rest
-    } = props;
-    void selectedId;
-    void onSelectionChanged;
-    void renderItem;
+    const { component, items, sections, renderListItem, renderHeader, ref } = props;
+    const rest = omit(props, [
+        "component",
+        "items",
+        "sections",
+        "selectedId",
+        "onSelectionChanged",
+        "renderItem",
+        "renderListItem",
+        "renderHeader",
+        "ref",
+    ]);
     const [widget, refCallback] = useWidgetRef<SelectableWidget>(ref);
     const model = useCollectionModel(collectionModeOf({ items, sections }));
-    const cells = useCells({ collection: model, size: { width: -1, height: -1 } });
-    const selected = useDropDownSelection({ widget, model, cells, props });
+    const cells = useCells({ width: -1, height: -1 });
+    useDropDownSelection({ widget, model, cells, props });
     const Component = component ?? GtkDropDown;
     return (
         <>
             <Component
                 ref={refCallback}
                 model={model.model}
-                {...(selected !== undefined && { selected })}
                 factory={<GtkSignalListItemFactory {...cells.item} />}
                 {...(renderListItem != null && { listFactory: <GtkSignalListItemFactory {...cells.slot("list")} /> })}
                 {...(typeof renderHeader === "function" && {
@@ -144,10 +148,13 @@ const DropDownImpl = (props: DropDownRuntimeProps): ReactNode => {
                 })}
                 {...rest}
             />
-            {cells.portals({
-                item: (record) => itemContent(record, model, props),
-                header: headerRenderer(model, renderHeader),
-            })}
+            {cells.portals(
+                {
+                    item: (record) => itemContent(record, model, props),
+                    header: headerRenderer(model, renderHeader),
+                },
+                model,
+            )}
         </>
     );
 };

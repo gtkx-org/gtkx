@@ -40,8 +40,8 @@
         "src"
     ],
     "scripts": {
-        "build": "tsc -b tsconfig.lib.json",
-        "typecheck": "tsc -b --emitDeclarationOnly",
+        "build": "rm -rf dist tsconfig.lib.tsbuildinfo && tsc -p tsconfig.lib.json",
+        "typecheck": "tsc -p tsconfig.test.json",
         "release": "tsx ../../scripts/release-package.ts"
     },
     "engines": {

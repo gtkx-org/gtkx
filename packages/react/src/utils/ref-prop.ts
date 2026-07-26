@@ -7,7 +7,7 @@ import type { RefObject } from "react";
 export type RefProp<T extends object> = T | RefObject<T | null> | null | undefined;
 
 const isRefObject = <T extends object>(value: T | RefObject<T | null>): value is RefObject<T | null> =>
-    typeof value === "object" && value !== null && "current" in value;
+    typeof value === "object" && "current" in value;
 
 /**
  * Resolves a {@link RefProp} to the concrete object it points at, or null when it is absent or unresolved.

@@ -44,7 +44,8 @@ const buildAncestry = (name: string): string[] => {
 const ancestryOf = (name: string): string[] => getOrInsert(ancestryCache, name, buildAncestry);
 
 const addAll = <T>(target: Set<T>, source: Iterable<T> | undefined): void => {
-    for (const item of source ?? []) target.add(item);
+    const items = source ?? [];
+    for (const item of items) target.add(item);
 };
 
 const accumulateAncestor = (info: TypeInfo, ancestor: string): void => {
@@ -83,7 +84,7 @@ const buildTypeInfo = (name: string): TypeInfo => {
     for (const ancestor of chain) accumulateAncestor(info, ancestor);
     resolveBehaviorFlags(info);
     info.lazy = chain.some((ancestor) => ELEMENTS[ancestor]?.lazy === true);
-    for (const ancestor of [...chain].reverse()) Object.assign(info.defaults, DEFAULT_PROPS[ancestor] ?? {});
+    for (const ancestor of chain.toReversed()) Object.assign(info.defaults, DEFAULT_PROPS[ancestor] ?? {});
     return info;
 };
 

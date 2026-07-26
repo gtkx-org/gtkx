@@ -84,7 +84,8 @@ describe("render - Application", () => {
 
         it("updates menubar when items change", async () => {
             const ref = createRef<Gtk.Application>();
-            const appId = uniqueAppId(); const { rerender } = await render(
+            const appId = uniqueAppId();
+            const { rerender } = await render(
                 <MenubarApp appRef={ref} appId={appId} menubar={fileMenu(["New", "Open"])} />,
                 { container: rootElement },
             );

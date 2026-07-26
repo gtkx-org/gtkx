@@ -17,10 +17,11 @@ describe("adwaita behavior registration", () => {
     it("gives every registered behavior at least one property", () => {
         const empty: string[] = [];
         for (const [type, config] of Object.entries(ELEMENTS)) {
-            for (const [index, behavior] of (config.behaviors ?? []).entries()) {
+            const behaviors = config.behaviors ?? [];
+            for (const [index, behavior] of behaviors.entries()) {
                 if (Object.keys(behavior).length === 0) empty.push(`${type}[${index}]`);
             }
         }
-        expect(empty.sort()).toEqual([]);
+        expect(empty.toSorted((left, right) => left.localeCompare(right))).toEqual([]);
     });
 });

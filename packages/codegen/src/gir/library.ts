@@ -25,20 +25,29 @@ type TypeTable = {
 type DiscoveredNamespace = { header: NamespaceHeader; shell: GirNamespace };
 
 export class Library {
+    private static drive(library: Library, libraries: string[], girPath: string[]): void {
+        const { discovered, girFiles } = library.discoverNamespaces(libraries, girPath);
+        for (const { header, shell } of discovered) {
+            populateNamespaceBody(shell, header.namespaceNode, library.parseContext(shell.id));
+        }
+        for (const { shell } of discovered) {
+            library.addDeclarations(shell);
+        }
+        library.girFilesValue = girFiles;
+    }
+
+    static load(libraries: string[], girPath: string[]): Library {
+        const library = new Library();
+        this.drive(library, libraries, girPath);
+        return library;
+    }
+
     private namespacesByName: Map<string, GirNamespace> = new Map();
     private namespaceById: (GirNamespace | undefined)[] = [];
     private nsNameById: string[] = [];
     private nsIdByName: Map<string, number> = new Map();
     private typeTables: TypeTable[] = [];
     private girFilesValue: string[] = [];
-
-    public get namespaces(): Map<string, GirNamespace> {
-        return this.namespacesByName;
-    }
-
-    public get girFiles(): string[] {
-        return this.girFilesValue;
-    }
 
     constructor() {
         this.typeTables[INTERNAL_NS_ID] = { types: [], names: [], index: new Map() };
@@ -177,28 +186,6 @@ export class Library {
         }
     }
 
-    typeOf(tid: TypeId): GirType | undefined {
-        return this.typeTables[tid.nsId]?.types[tid.id];
-    }
-
-    nameOf(tid: TypeId): { namespaceName: string; typeName: string } | undefined {
-        const typeName = this.typeTables[tid.nsId]?.names[tid.id];
-        const namespaceName = this.nsNameById[tid.nsId];
-        if (typeName === undefined || namespaceName === undefined) return undefined;
-        return { namespaceName, typeName };
-    }
-
-    resolveType(currentNamespaceName: string, name: string): GirType | undefined {
-        const currentNsId = this.nsIdByName.get(currentNamespaceName);
-        if (currentNsId === undefined) return undefined;
-        const [namespaceName, localName] = splitOptionalNamespace(name);
-        const targetNsId = namespaceName === undefined ? currentNsId : this.nsIdByName.get(namespaceName);
-        if (targetNsId === undefined) return undefined;
-        const id = this.typeTableOf(targetNsId).index.get(localName);
-        if (id === undefined) return undefined;
-        return this.typeTableOf(targetNsId).types[id];
-    }
-
     private processIdentifier(input: {
         identifier: string;
         girPath: string[];
@@ -238,21 +225,34 @@ export class Library {
         return { discovered, girFiles };
     }
 
-    private static drive(library: Library, libraries: string[], girPath: string[]): void {
-        const { discovered, girFiles } = library.discoverNamespaces(libraries, girPath);
-        for (const { header, shell } of discovered) {
-            populateNamespaceBody(shell, header.namespaceNode, library.parseContext(shell.id));
-        }
-        for (const { shell } of discovered) {
-            library.addDeclarations(shell);
-        }
-        library.girFilesValue = girFiles;
+    public get namespaces(): Map<string, GirNamespace> {
+        return this.namespacesByName;
     }
 
-    static load(libraries: string[], girPath: string[]): Library {
-        const library = new Library();
-        Library.drive(library, libraries, girPath);
-        return library;
+    public get girFiles(): string[] {
+        return this.girFilesValue;
+    }
+
+    typeOf(tid: TypeId): GirType | undefined {
+        return this.typeTables[tid.nsId]?.types[tid.id];
+    }
+
+    nameOf(tid: TypeId): { namespaceName: string; typeName: string } | undefined {
+        const typeName = this.typeTables[tid.nsId]?.names[tid.id];
+        const namespaceName = this.nsNameById[tid.nsId];
+        if (typeName === undefined || namespaceName === undefined) return undefined;
+        return { namespaceName, typeName };
+    }
+
+    resolveType(currentNamespaceName: string, name: string): GirType | undefined {
+        const currentNsId = this.nsIdByName.get(currentNamespaceName);
+        if (currentNsId === undefined) return undefined;
+        const [namespaceName, localName] = splitOptionalNamespace(name);
+        const targetNsId = namespaceName === undefined ? currentNsId : this.nsIdByName.get(namespaceName);
+        if (targetNsId === undefined) return undefined;
+        const id = this.typeTableOf(targetNsId).index.get(localName);
+        if (id === undefined) return undefined;
+        return this.typeTableOf(targetNsId).types[id];
     }
 }
 

@@ -3,7 +3,7 @@ import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
 
-type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
+type Equal<A, B> = (<T>(probe: T) => T extends A ? 1 : 2) extends <T>(probe: T) => T extends B ? 1 : 2 ? true : false;
 
 type Expect<T extends true> = T;
 
@@ -30,19 +30,18 @@ describe("generated signal types", () => {
 
     it("types emit() arguments and result per signal off the emit map", () => {
         const button = new Gtk.Button();
-        const result = button.emit("clicked");
-        const clickedEmitIsTyped: Expect<Equal<typeof result, void>> = true;
-        expect(clickedEmitIsTyped).toBe(true);
-        expect(result).toBeUndefined();
+        const emitClicked = (): unknown => button.emit("clicked");
+        expect(emitClicked()).toBeUndefined();
 
         const emitSignatures: [
+            Expect<Equal<ReturnType<typeof button.emit<"clicked">>, void>>,
             Expect<Equal<Gtk.ButtonSignalEmit["clicked"]["result"], void>>,
             Expect<Equal<Gtk.SpinButtonSignalEmit["output"]["result"], boolean>>,
             Expect<Equal<Gtk.SpinButtonSignalEmit["input"]["result"], [number, number]>>,
             Expect<Equal<Gtk.OverlaySignalEmit["get-child-position"]["args"], [widget: Gtk.Widget]>>,
             Expect<Equal<Gtk.OverlaySignalEmit["get-child-position"]["result"], [boolean, Gdk.Rectangle]>>,
-        ] = [true, true, true, true, true];
+        ] = [true, true, true, true, true, true];
 
-        expect(emitSignatures).toEqual([true, true, true, true, true]);
+        expect(emitSignatures).toEqual([true, true, true, true, true, true]);
     });
 });

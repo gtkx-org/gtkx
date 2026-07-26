@@ -1,5 +1,3 @@
-import { init } from "./index.js";
+import "./init.js";
 
 export * from "./index.js";
-
-init();

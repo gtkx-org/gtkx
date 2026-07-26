@@ -1,10 +1,11 @@
+import { resolveExecutable } from "@gtkx/utils";
 import { spawnSync, type SpawnSyncReturns } from "node:child_process";
 
 const ALREADY_PUBLISHED = /cannot publish over|EPUBLISHCONFLICT|previously published version/i;
 
 const runPnpmPublish = (packageDir: string, tag: string): SpawnSyncReturns<string> => {
     const provenance = process.env.NPM_CONFIG_PROVENANCE === "true" ? ["--provenance"] : [];
-    return spawnSync("pnpm", ["publish", "--access", "public", "--no-git-checks", ...provenance, "--tag", tag], {
+    return spawnSync(resolveExecutable("pnpm"), ["publish", "--access", "public", "--no-git-checks", ...provenance, "--tag", tag], {
         cwd: packageDir,
         stdio: ["inherit", "pipe", "pipe"],
         encoding: "utf8",
@@ -22,8 +23,7 @@ const assertPublishOutcome = (packageDir: string, result: SpawnSyncReturns<strin
 
 export const publishPackage = (packageDir: string, tag: string): void => {
     const result = runPnpmPublish(packageDir, tag);
-    const stdout = result.stdout ?? "";
-    const stderr = result.stderr ?? "";
+    const { stdout, stderr } = result;
     process.stdout.write(stdout);
     process.stderr.write(stderr);
     if (result.error) throw result.error;

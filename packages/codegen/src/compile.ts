@@ -40,7 +40,10 @@ const BASE_COMPILER_OPTIONS = {
 };
 
 /** `@gtkx/codegen`'s own `node_modules`, which has `@types/node` plus the `@gtkx/*` deps the store typecheck needs. */
-const codegenModules = (): string => join(dirname(dirname(fileURLToPath(import.meta.url))), "node_modules");
+const codegenModules = (): string => {
+    const sourceDir = dirname(fileURLToPath(import.meta.url));
+    return join(dirname(sourceDir), "node_modules");
+};
 
 const linkToolingModules = (projectDir: string): (() => void) => {
     const link = join(projectDir, "node_modules");

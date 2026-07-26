@@ -81,7 +81,10 @@ const KIND_SECTION_TITLES: Record<ApiSymbolKind, string> = {
 
 const DEFAULT_SEARCH_LIMIT = 20;
 
-const compareNames = (a: string, b: string): number => (a < b ? -1 : (a > b ? 1 : 0));
+const compareNames = (a: string, b: string): number => {
+    if (a < b) return -1;
+    return a > b ? 1 : 0;
+};
 
 class ApiReference {
     private library: Library;
@@ -98,10 +101,6 @@ class ApiReference {
         this.library = Library.load(options.libraries, options.girPath);
         this.elementContext = createElementPageContext(this.library, () => undefined);
         this.buildIndex();
-    }
-
-    get girFiles(): string[] {
-        return this.library.girFiles;
     }
 
     private add(entry: SymbolEntry): void {
@@ -190,18 +189,6 @@ class ApiReference {
         return narrowToExactMatches(candidates, trimmed, qualified);
     }
 
-    lookup(query: string, kind?: ApiSymbolKind): ApiLookupResult {
-        const trimmed = query.trim();
-        if (trimmed.length === 0) return { outcome: "notFound" };
-        const candidates = this.lookupCandidates(trimmed, kind);
-        const entry = candidates[0];
-        if (entry === undefined) return { outcome: "notFound" };
-        if (candidates.length > 1) {
-            return { outcome: "ambiguous", candidates: candidates.map((candidate) => this.toApiSymbol(candidate)) };
-        }
-        return { outcome: "page", symbol: this.toApiSymbol(entry), markdown: this.renderPage(entry) };
-    }
-
     private scoreEntries(
         query: string,
         namespaceFilter: string | undefined,
@@ -213,6 +200,22 @@ class ApiReference {
             if (item !== undefined) scored.push(item);
         }
         return scored;
+    }
+
+    get girFiles(): string[] {
+        return this.library.girFiles;
+    }
+
+    lookup(query: string, kind?: ApiSymbolKind): ApiLookupResult {
+        const trimmed = query.trim();
+        if (trimmed.length === 0) return { outcome: "notFound" };
+        const candidates = this.lookupCandidates(trimmed, kind);
+        const entry = candidates[0];
+        if (entry === undefined) return { outcome: "notFound" };
+        if (candidates.length > 1) {
+            return { outcome: "ambiguous", candidates: candidates.map((candidate) => this.toApiSymbol(candidate)) };
+        }
+        return { outcome: "page", symbol: this.toApiSymbol(entry), markdown: this.renderPage(entry) };
     }
 
     search(options: ApiSearchOptions): ApiSymbol[] {
@@ -371,8 +374,8 @@ const valueEntries = (namespace: GirNamespace): GiSymbolEntry[] => [
 
 const narrowToExactMatches = (candidates: SymbolEntry[], trimmed: string, qualified: boolean): SymbolEntry[] => {
     if (candidates.length <= 1) return candidates;
-    const exact = candidates.filter((entry) =>
-        qualified ? `${entry.namespace.name}.${entry.name}` === trimmed : entry.name === trimmed,
+    const exact = candidates.filter(
+        (entry) => (qualified ? `${entry.namespace.name}.${entry.name}` : entry.name) === trimmed,
     );
     return exact.length > 0 ? exact : candidates;
 };

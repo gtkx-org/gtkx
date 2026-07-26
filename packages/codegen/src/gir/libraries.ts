@@ -74,7 +74,7 @@ export const discoverGirNamespaces = (girPath: string[]): string[] => {
         collectDirNamespaces(highestByName, dir);
     }
 
-    return sortStrings([...highestByName.values()].map(({ identifier }) => identifier));
+    return sortStrings(highestByName.values().map(({ identifier }) => identifier));
 };
 
 const compareVersions = (a: string, b: string): number => {

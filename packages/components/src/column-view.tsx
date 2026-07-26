@@ -2,10 +2,11 @@ import type { ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkColumnView, GtkColumnViewColumn, GtkCustomSorter, GtkSignalListItemFactory } from "@gtkx/jsx/gtk";
 import { useProperty, useSignal } from "@gtkx/react";
+import { omit } from "@gtkx/utils";
 import { useLayoutEffect, useRef } from "react";
 import type { CollectionModel } from "./internal/collection-model.js";
 import type { CellRecord, CellRenderers, Cells } from "./internal/use-cells.js";
-import type { Column, ColumnViewProps, HeaderRenderer, ItemRenderer } from "./types.js";
+import type { Column, ColumnViewProps, HeaderRenderer } from "./types.js";
 import { headerRenderer, renderItemArgs } from "./internal/use-cells.js";
 import { useCollection } from "./internal/use-collection.js";
 import { useWidgetRef } from "./internal/use-widget-ref.js";
@@ -53,7 +54,7 @@ const useColumnSorting = (view: Gtk.ColumnView | null, sort: SortProps, columns:
     const sorter = useProperty(view, "sorter");
     const columnSorter = sorter instanceof Gtk.ColumnViewSorter ? sorter : null;
     useSignal(columnSorter, "changed", (): void => {
-        if (sorting.current || columnSorter === null) return;
+        if (columnSorter === null || sorting.current) return;
         sort.onSortChanged?.(columnSorter.getPrimarySortColumn()?.getId() ?? null, columnSorter.getPrimarySortOrder());
     });
     const { sortColumn, sortOrder } = sort;
@@ -64,9 +65,27 @@ const useColumnSorting = (view: Gtk.ColumnView | null, sort: SortProps, columns:
     }, [view, sortColumn, sortOrder, columns]);
 };
 
+const COLUMN_VIEW_PROPS = [
+    "items",
+    "sections",
+    "renderHeader",
+    "columns",
+    "selectedIds",
+    "onSelectionChanged",
+    "selectionMode",
+    "expandedIds",
+    "onExpandedChange",
+    "sortColumn",
+    "sortOrder",
+    "onSortChanged",
+    "estimatedItemHeight",
+    "children",
+    "ref",
+] as const satisfies (keyof ColumnViewProps)[];
+
 const renderColumn = (column: Column, cells: Cells): ReactNode => {
-    const { id, renderCell, sortable, ...rest } = column;
-    void renderCell;
+    const { id, sortable } = column;
+    const rest = omit(column, ["id", "renderCell", "sortable"]);
     return (
         <GtkColumnViewColumn
             key={id}
@@ -124,11 +143,9 @@ export function ColumnView<T = unknown, S = unknown>(props: ColumnViewProps<T, S
         sortOrder,
         onSortChanged,
         estimatedItemHeight,
-        children,
         ref,
-        ...rest
     } = props;
-    void children;
+    const rest = omit(props, COLUMN_VIEW_PROPS);
     const [view, refCallback] = useWidgetRef<Gtk.ColumnView>(ref);
     const { model, cells, selection } = useCollection({
         items,
@@ -152,7 +169,10 @@ export function ColumnView<T = unknown, S = unknown>(props: ColumnViewProps<T, S
             >
                 {columnList.map((column) => renderColumn(column, cells))}
             </GtkColumnView>
-            {cells.portals(columnRenderers({ collection: model, columns: columnList, expandedIds, renderHeader }))}
+            {cells.portals(
+                columnRenderers({ collection: model, columns: columnList, expandedIds, renderHeader }),
+                model,
+            )}
         </>
     );
 }

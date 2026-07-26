@@ -61,7 +61,8 @@ export const writeStore = (params: WriteStoreParams): void => {
             ...(params.configEnv !== undefined && { configEnv: params.configEnv }),
         });
         writePackageJson(tmp, params.manifest);
-        for (const raw of params.rawFiles ?? []) {
+        const rawFiles = params.rawFiles ?? [];
+        for (const raw of rawFiles) {
             writeFileSync(join(tmp, raw.relativePath), raw.content);
         }
         symlinkRelative(join(tmp, "node_modules", ...params.manifest.name.split("/")), tmp);

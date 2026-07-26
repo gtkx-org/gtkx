@@ -16,11 +16,17 @@ export const rawIssue = (input: unknown, path: IssuePath, message: string, stand
 
 const CONFIG_PREFIX = "gtkx.config.ts:";
 
-const dottedPath = (segments: PropertyKey[]): string =>
-    segments.reduce<string>((acc, segment) => {
-        if (typeof segment === "number") return `${acc}[${segment}]`;
-        return acc === "" ? String(segment) : `${acc}.${String(segment)}`;
-    }, "");
+const dottedPath = (segments: PropertyKey[]): string => {
+    let path = "";
+    for (const segment of segments) {
+        if (typeof segment === "number") {
+            path += `[${segment}]`;
+        } else {
+            path = path === "" ? String(segment) : `${path}.${String(segment)}`;
+        }
+    }
+    return path;
+};
 
 const isStandaloneIssue = (issue: z.core.$ZodIssue): boolean =>
     "params" in issue && isRecord(issue.params) && issue.params.standalone === true;

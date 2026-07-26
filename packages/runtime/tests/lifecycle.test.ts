@@ -39,7 +39,7 @@ const createFakeApplication = (windows: object[] = []): FakeApplication => {
         windows: [...windows],
         windowsAtRun: null,
         getIsRegistered: () => registered,
-        register(_cancellable: null) {
+        register() {
             this.registerCalls++;
             registered = true;
             return true;
@@ -67,11 +67,11 @@ const createFakeApplication = (windows: object[] = []): FakeApplication => {
         },
         on(signal, handler) {
             handlers[signal].push(handler);
-            return;
         },
         emit(signal) {
             if (signal === "shutdown") this.shutdownEmits++;
-            for (const handler of handlers[signal]) handler();
+            const signalHandlers = handlers[signal];
+            for (const handler of signalHandlers) handler();
         },
     };
 };
@@ -103,7 +103,9 @@ describe("runApplication and quitApplication", () => {
     it("blocks activate handlers before running the application", () => {
         const app = createFakeApplication();
         const order: string[] = [];
-        signalMock.blockMatchedSignalHandlers.mockImplementationOnce(() => order.push("block"));
+        signalMock.blockMatchedSignalHandlers.mockImplementationOnce(() => {
+            order.push("block");
+        });
         const originalRun = app.run.bind(app);
         app.run = (argv: string[]) => {
             order.push("run");

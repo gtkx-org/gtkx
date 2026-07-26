@@ -145,7 +145,7 @@ const parseFeature = (node: OrderedNode): GlFeature | undefined => {
     const requires: GlInterfaceBlock[] = [];
     const removes: GlInterfaceBlock[] = [];
     for (const child of nodeChildren(node)) collectFeatureBlock(child, requires, removes);
-    return { api, name, number: Number.parseFloat(number), requires, removes };
+    return { api, name, number: Number(number), requires, removes };
 };
 
 const addCommand = (child: OrderedNode, into: Map<string, GlCommand>): void => {

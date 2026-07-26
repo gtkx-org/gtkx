@@ -30,7 +30,7 @@ export function GridView<T = unknown>(props: GridViewProps<T>): ReactNode {
     return (
         <>
             <GtkGridView model={selection} factory={<GtkSignalListItemFactory {...cells.item} />} {...rest} />
-            {cells.portals(collectionRenderers({ collection: model, renderItem }))}
+            {cells.portals(collectionRenderers({ collection: model, renderItem }), model)}
         </>
     );
 }

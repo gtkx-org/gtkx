@@ -81,8 +81,8 @@ const renderSnippetView = async (spec: string, initialText?: string): Promise<Sn
 describe("signal out-parameters - GtkSpinButton::input (pure out)", () => {
     it("writes the handler's tuple out-value back through the new_value pointer", async () => {
         const spin = await renderSpinButton((spinButton) => {
-            const parsed = Number.parseInt(spinButton.getText().replaceAll(/[^0-9]/g, ""), 10);
-            return Number.isNaN(parsed) ? [GTK_INPUT_ERROR, 0] : [1, parsed];
+            const digits = spinButton.getText().replaceAll(/\D/g, "");
+            return digits === "" ? [GTK_INPUT_ERROR, 0] : [1, Number(digits)];
         });
 
         await setTextAndUpdate(spin, "value: 042");
@@ -211,7 +211,7 @@ describe("signal emit() - boxed inout-parameter (GtkSource.View::push-snippet)",
     it("writes a handler's returned GtkTextIter back through the caller-allocated boxed (opaque payload)", async () => {
         const { view, buffer, snippet, location } = await renderSnippetView("X", "hello");
 
-        view.connect("push-snippet", (_snippet: GtkSource.Snippet, _iter: Gtk.TextIter) => {
+        view.connect("push-snippet", () => {
             const advanced = buffer.getStartIter();
             advanced.forwardChars(5);
             return advanced;

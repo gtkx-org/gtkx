@@ -47,7 +47,7 @@ const hasChildren = (item: Item): boolean => item.children !== undefined && item
 
 export const collectionModeOf = (data: CollectionData): CollectionMode => {
     if (data.sections !== undefined) return "sections";
-    return (data.items ?? []).some(hasChildren) ? "tree" : "flat";
+    return (data.items ?? []).some((item) => hasChildren(item)) ? "tree" : "flat";
 };
 
 const newStore = (): Gio.ListStore => new Gio.ListStore({ itemType: GObject.TYPE_OBJECT });
@@ -58,7 +58,7 @@ const sameOrder = (order: GObject.Object[], next: GObject.Object[]): boolean =>
 const syncStore = (state: ModelState, store: Gio.ListStore, order: GObject.Object[], next: GObject.Object[]): void => {
     if (sameOrder(order, next)) {
         for (const [index, holder] of next.entries()) {
-            if (state.dirty.has(holder)) store.splice(index, 1, [holder]);
+            if (state.dirty.has(holder)) store.itemsChanged(index, 1, 1);
         }
         return;
     }
@@ -100,7 +100,7 @@ function syncChildren(state: ModelState, entry: CollectionEntry, children: Item[
     if (entry.childStore !== null) {
         syncStore(state, entry.childStore, entry.childOrder, syncLevel(state, children, undefined));
     }
-    if (had !== children.length > 0) state.dirty.add(entry.holder);
+    if (had !== (children.length > 0)) state.dirty.add(entry.holder);
 }
 
 const syncSections = (state: ModelState, next: Section[]): void => {

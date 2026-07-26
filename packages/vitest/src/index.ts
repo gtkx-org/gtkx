@@ -22,7 +22,7 @@ const workerPreloadUrl = (): URL => {
 const headlessPreloadSpecifier = (options: GtkxPluginOptions): string => {
     const url = workerPreloadUrl();
     for (const [key, value] of Object.entries(options)) {
-        if (value !== undefined) url.searchParams.set(key, value);
+        url.searchParams.set(key, value);
     }
     return url.href;
 };

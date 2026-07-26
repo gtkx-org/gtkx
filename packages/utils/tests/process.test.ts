@@ -1,5 +1,8 @@
+import type { MockInstance } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { exitCodeForSignal, installGracefulShutdown } from "../src/process/index.js";
+
+type SignalListener = (signal: NodeJS.Signals) => void;
 
 describe("exitCodeForSignal", () => {
     it("returns 0 when no signal", () => {
@@ -22,20 +25,20 @@ describe("exitCodeForSignal", () => {
 const HANDLED_SIGNALS = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
 const flush = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
 
-type Snapshot = Record<(typeof HANDLED_SIGNALS)[number], NodeJS.SignalsListener[]>;
+type Snapshot = Record<(typeof HANDLED_SIGNALS)[number], SignalListener[]>;
 
 const snapshotListeners = (): Snapshot => {
     const snap = {} as Snapshot;
     for (const sig of HANDLED_SIGNALS) {
-        snap[sig] = process.listeners(sig) as NodeJS.SignalsListener[];
+        snap[sig] = process.listeners(sig) as SignalListener[];
     }
     return snap;
 };
 
 const restoreSignalListeners = (sig: (typeof HANDLED_SIGNALS)[number], snap: Snapshot): void => {
     for (const listener of process.listeners(sig)) {
-        if (!snap[sig].includes(listener as NodeJS.SignalsListener)) {
-            process.removeListener(sig, listener as NodeJS.SignalsListener);
+        if (!snap[sig].includes(listener as SignalListener)) {
+            process.removeListener(sig, listener as SignalListener);
         }
     }
 };
@@ -45,7 +48,7 @@ const restoreListeners = (snap: Snapshot): void => {
 };
 
 type ShutdownFixture = {
-    exitSpy: ReturnType<typeof vi.spyOn>;
+    exitSpy: MockInstance<typeof process.exit>;
 };
 
 const installFixture = (): ShutdownFixture => {
@@ -96,7 +99,7 @@ describe("installGracefulShutdown — async + force-kill behavior", () => {
     const fixture = installFixture();
 
     it("awaits an async onSignal before exiting", async () => {
-        const onSignal = vi.fn().mockReturnValue(new Promise<void>((res) => (resolveSignal = res)));
+        const onSignal = vi.fn().mockReturnValue(new Promise<void>((resolve) => (resolveSignal = resolve)));
         installGracefulShutdown({ onSignal });
 
         process.emit("SIGTERM", "SIGTERM");

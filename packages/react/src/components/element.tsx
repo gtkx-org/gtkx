@@ -1,27 +1,17 @@
 import { isRecord } from "@gtkx/utils";
-import { type ElementType, isValidElement, type ReactElement, type ReactNode } from "react";
+import { createElement, type ElementType, isValidElement, type ReactElement, type ReactNode } from "react";
 import type { Props } from "../reconciler/registry.js";
 
 /** The intrinsic element that carries an object-valued prop's element into its parent's named property. */
 export const Prop = "gtkx:prop";
 
-declare global {
-    namespace React.JSX {
-        interface IntrinsicElements {
-            [Prop]: { propName: string; children?: React.ReactNode };
-        }
-    }
-}
-
 const containsElement = (value: unknown): boolean =>
-    isValidElement(value) || (Array.isArray(value) && value.some(containsElement));
+    isValidElement(value) || (Array.isArray(value) && value.some((item: unknown) => containsElement(item)));
 
 const routeProp = (key: string, value: unknown, hostProps: Props, propChildren: ReactNode[]): void => {
     if (key !== "ref" && containsElement(value)) {
         propChildren.push(
-            <Prop propName={key} key={`${Prop}:${key}`}>
-                {value as ReactNode}
-            </Prop>,
+            createElement(Prop, { propName: key, key: `${Prop}:${key}` }, value as ReactNode),
         );
     } else {
         hostProps[key] = value;

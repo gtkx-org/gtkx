@@ -15,7 +15,7 @@ const selectListViewItems = (selectionModel: Gtk.SelectionModel, positions: numb
     }
 
     const [first] = positions;
-    if (exclusive && positions.length === 1 && first !== undefined) {
+    if (exclusive && first !== undefined && positions.length === 1) {
         selectionModel.selectItem(first, true);
         return;
     }
@@ -31,9 +31,10 @@ const selectListViewItems = (selectionModel: Gtk.SelectionModel, positions: numb
     selectionModel.setSelection(selected, mask);
 };
 
-const isListView = (widget: Gtk.Widget): widget is Gtk.ListView | Gtk.GridView | Gtk.ColumnView => {
-    return widget instanceof Gtk.ListView || widget instanceof Gtk.GridView || widget instanceof Gtk.ColumnView;
-};
+type CollectionWidget = Gtk.ListView | Gtk.GridView | Gtk.ColumnView;
+
+const isListView = (widget: Gtk.Widget): widget is CollectionWidget =>
+    widget instanceof Gtk.ListView || widget instanceof Gtk.GridView || widget instanceof Gtk.ColumnView;
 
 const selectComboBoxOption = (widget: Gtk.Widget, valueArray: number[]): void => {
     if (valueArray.length > 1) {
@@ -48,25 +49,27 @@ const selectComboBoxOption = (widget: Gtk.Widget, valueArray: number[]): void =>
     }
 };
 
-const applyListBoxRow = (listBox: Gtk.ListBox, row: Gtk.ListBoxRow, select: boolean): void => {
-    if (select) {
-        listBox.selectRow(row);
-        row.activate();
-    } else {
-        listBox.unselectRow(row);
-    }
+const selectListBoxRow = (listBox: Gtk.ListBox, row: Gtk.ListBoxRow): void => {
+    listBox.selectRow(row);
+    row.activate();
 };
 
-const applyListBoxRows = (listBox: Gtk.ListBox, valueArray: number[], select: boolean): void => {
+const unselectListBoxRow = (listBox: Gtk.ListBox, row: Gtk.ListBoxRow): void => {
+    listBox.unselectRow(row);
+};
+
+type ListBoxRowAction = (listBox: Gtk.ListBox, row: Gtk.ListBoxRow) => void;
+
+const applyListBoxRows = (listBox: Gtk.ListBox, valueArray: number[], apply: ListBoxRowAction): void => {
     for (const value of valueArray) {
         const row = listBox.getRowAtIndex(value);
         if (!row) continue;
-        applyListBoxRow(listBox, row, select);
+        apply(listBox, row);
     }
 };
 
 const requireSelectionModel = (
-    widget: Gtk.ListView | Gtk.GridView | Gtk.ColumnView,
+    widget: CollectionWidget,
     verb: string,
 ): Gtk.SelectionModel => {
     const selectionModel = widget.getModel();
@@ -76,7 +79,7 @@ const requireSelectionModel = (
     return selectionModel;
 };
 
-const selectInListView = (widget: Gtk.ListView | Gtk.GridView | Gtk.ColumnView, valueArray: number[]): void => {
+const selectInListView = (widget: CollectionWidget, valueArray: number[]): void => {
     const selectionModel = requireSelectionModel(widget, "select");
     const isMultiSelection = selectionModel instanceof Gtk.MultiSelection;
     selectListViewItems(selectionModel, valueArray, !isMultiSelection);
@@ -91,7 +94,7 @@ const selectByRole = (widget: Gtk.Widget, valueArray: number[]): void => {
     if (role === Gtk.AccessibleRole.COMBO_BOX) {
         selectComboBoxOption(widget, valueArray);
     } else if (widget instanceof Gtk.ListBox) {
-        applyListBoxRows(widget, valueArray, true);
+        applyListBoxRows(widget, valueArray, selectListBoxRow);
     }
 };
 
@@ -124,7 +127,7 @@ const deselectByRole = (widget: Gtk.Widget, valueArray: number[]): void => {
     if (!(widget instanceof Gtk.ListBox)) {
         throw new TypeError("Cannot deselect options: only ListBox supports deselection");
     }
-    applyListBoxRows(widget, valueArray, false);
+    applyListBoxRows(widget, valueArray, unselectListBoxRow);
 };
 
 export const deselectOptions = (widget: Gtk.Widget, values: number | number[]): Promise<void> =>

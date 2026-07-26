@@ -100,17 +100,17 @@ export const hashTableT = (
     ownership,
 });
 
-export const enumT = (sharedLibrary: string, getTypeFnName: string, signed: boolean): EnumDescriptor => ({
+export const enumT = (sharedLibrary: string, typeFnName: string, signed: boolean): EnumDescriptor => ({
     kind: "enum",
     sharedLibrary,
-    getTypeFnName,
+    getTypeFnName: typeFnName,
     signed,
 });
 
-export const flagsT = (sharedLibrary: string, getTypeFnName: string, signed: boolean): FlagsDescriptor => ({
+export const flagsT = (sharedLibrary: string, typeFnName: string, signed: boolean): FlagsDescriptor => ({
     kind: "flags",
     sharedLibrary,
-    getTypeFnName,
+    getTypeFnName: typeFnName,
     signed,
 });
 

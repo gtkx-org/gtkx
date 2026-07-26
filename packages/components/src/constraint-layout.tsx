@@ -3,7 +3,16 @@ import type { ReactElement, ReactNode } from "react";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkConstraint, GtkConstraintGuide, GtkConstraintLayout } from "@gtkx/jsx/gtk";
-import { createContext, useContext, useEffectEvent, useId, useLayoutEffect, useMemo, useState } from "react";
+import {
+    createContext,
+    useContext,
+    useEffectEvent,
+    useId,
+    useLayoutEffect,
+    useMemo,
+    useState,
+    useSyncExternalStore,
+} from "react";
 import type { ConstraintGuideProps, ConstraintLayoutProps, ConstraintProps, ConstraintVflProps } from "./types.js";
 import { useWidgetRef } from "./internal/use-widget-ref.js";
 
@@ -27,7 +36,7 @@ const ConstraintContext = createContext<Registry | null>(null);
 
 const ORPHAN_MESSAGE = "<ConstraintLayout.Constraint> / <Guide> / <Vfl> must be a child of <ConstraintLayout>";
 
-const typeNameOfWidget = (widget: Gtk.Widget): string => GObject.typeName(widget.__type__) ?? "";
+const typeNameOfWidget = (widget: Gtk.Widget): string => GObject.typeName(widget._type_) ?? "";
 
 const addNamedGuide = (guide: GObject.Object | null, targets: Targets): void => {
     if (!(guide instanceof Gtk.ConstraintGuide)) return;
@@ -163,14 +172,39 @@ const useRegistry = (setDeclarations: (update: (previous: Declarations) => Decla
         [setDeclarations],
     );
 
+type TargetsStore = {
+    subscribe: (onChange: () => void) => () => void;
+    snapshot: () => Targets | null;
+    sync: (layout: Gtk.ConstraintLayout | null) => void;
+};
+
+const createTargetsStore = (): TargetsStore => {
+    const listeners: Set<() => void> = new Set();
+    let current: Targets | null = null;
+    return {
+        subscribe: (onChange) => {
+            listeners.add(onChange);
+            return () => {
+                listeners.delete(onChange);
+            };
+        },
+        snapshot: () => current,
+        sync: (layout) => {
+            if (layout === null) return;
+            const next = readTargets(layout);
+            if (current !== null && sameTargets(current, next)) return;
+            current = next;
+            for (const listener of listeners) listener();
+        },
+    };
+};
+
 const useTargets = (layout: Gtk.ConstraintLayout | null): Targets | null => {
-    const [targets, setTargets] = useState<Targets | null>(null);
+    const store = useMemo(() => createTargetsStore(), []);
     useLayoutEffect(() => {
-        if (layout === null) return;
-        const next = readTargets(layout);
-        setTargets((previous) => (previous !== null && sameTargets(previous, next) ? previous : next));
+        store.sync(layout);
     });
-    return targets;
+    return useSyncExternalStore(store.subscribe, store.snapshot);
 };
 
 const ConstraintLayoutRoot = (props: ConstraintLayoutProps): ReactNode => {
@@ -209,8 +243,8 @@ type ConstraintLayoutComponent = ((props: ConstraintLayoutProps) => ReactNode) &
 
 /**
  * Installs a Gtk.ConstraintLayout on a host widget's layoutManager slot, with
- * {@link ConstraintLayout.Constraint}, {@link ConstraintLayout.Guide}, and
- * {@link ConstraintLayout.Vfl} declaring its constraints.
+ * `ConstraintLayout.Constraint`, `ConstraintLayout.Guide`, and
+ * `ConstraintLayout.Vfl` declaring its constraints.
  */
 export const ConstraintLayout: ConstraintLayoutComponent = Object.assign(ConstraintLayoutRoot, {
     Constraint,

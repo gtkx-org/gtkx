@@ -15,9 +15,9 @@ import { useSettings } from "./use-setting.js";
  * @param property The name of the object property to bind.
  * @param flags Flags controlling the binding's direction and behaviour.
  */
-export function useBindSetting<K extends SettingsSchemaKeys, P extends keyof K>(
+export function useBindSetting<K extends SettingsSchemaKeys>(
     schema: SettingsSchema<K>,
-    key: P & string,
+    key: keyof K & string,
     object: RefProp<GObject.Object>,
     property: string,
     flags: Gio.SettingsBindFlags = Gio.SettingsBindFlags.DEFAULT,
@@ -34,5 +34,5 @@ export function useBindSetting<K extends SettingsSchemaKeys, P extends keyof K>(
         return () => {
             Gio.Settings.unbind(resolved, propertyName);
         };
-    }, [settings]);
+    }, [settings, key, object, propertyName, flags]);
 }

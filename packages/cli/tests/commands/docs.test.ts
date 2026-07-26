@@ -43,6 +43,8 @@ const loadConfigMock = vi.mocked(loadConfig);
 const resolveGirPathMock = vi.mocked(resolveGirPath);
 const resolveLibrariesMock = vi.mocked(resolveLibraries);
 
+const stringContaining = (expected: string): string => expect.stringContaining(expected) as string;
+
 type DocsArgs = { out?: string; "base-path"?: string; force?: boolean; cwd?: string };
 type DocsRun = NonNullable<typeof docs.run>;
 type DocsContext = Parameters<DocsRun>[0];
@@ -70,7 +72,7 @@ describe("docs command", () => {
         expect(writeDocsMock).toHaveBeenCalledWith({
             libraries: ["Gtk-4.0"],
             girPath: ["/usr/share/gir-1.0"],
-            outDir: expect.stringContaining("custom/dir/docs/reference"),
+            outDir: stringContaining("custom/dir/docs/reference"),
             basePath: "/reference",
             props: {},
             force: false,
@@ -89,7 +91,7 @@ describe("docs command", () => {
         expect(writeDocsMock).toHaveBeenCalledWith({
             libraries: ["Gtk-4.0"],
             girPath: ["/usr/share/gir-1.0"],
-            outDir: expect.stringContaining("custom/dir/site/elements"),
+            outDir: stringContaining("custom/dir/site/elements"),
             basePath: "/elements",
             props: {},
             force: true,

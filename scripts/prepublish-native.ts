@@ -1,4 +1,5 @@
-import { execSync } from "node:child_process";
+import { resolveExecutable } from "@gtkx/utils";
+import { execFileSync } from "node:child_process";
 import { copyFileSync, existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -10,7 +11,7 @@ const manifestPath = join(packageDir, "package.json");
 const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as PackageManifest;
 const tag = distTagForVersion(manifest.version ?? "");
 
-execSync("napi create-npm-dirs", { cwd: packageDir, stdio: "inherit" });
+execFileSync(resolveExecutable("napi"), ["create-npm-dirs"], { cwd: packageDir, stdio: "inherit" });
 
 const npmDir = join(packageDir, "npm");
 const artifactsDir = join(packageDir, "artifacts");

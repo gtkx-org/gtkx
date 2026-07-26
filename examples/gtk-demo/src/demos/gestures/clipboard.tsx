@@ -45,10 +45,10 @@ type PastedContent = {
     filePath?: string;
 };
 
-const gdkRgbaType = Gdk.RGBA.prototype.__type__;
-const gdkPaintableType = Gdk.Paintable.prototype.__type__;
-const gfileType = Gio.File.prototype.__type__;
-const gdkTextureType = Gdk.Texture.prototype.__type__;
+const gdkRgbaType = Gdk.RGBA.prototype._type_;
+const gdkPaintableType = Gdk.Paintable.prototype._type_;
+const gfileType = Gio.File.prototype._type_;
+const gdkTextureType = Gdk.Texture.prototype._type_;
 
 const SOURCE_TYPES: SourceType[] = ["Text", "Color", "Image", "File", "Folder"];
 

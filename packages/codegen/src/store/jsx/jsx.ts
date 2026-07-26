@@ -40,7 +40,8 @@ const addReactBuiltin = (imports: ImportsBuilder, name: string): void => {
 
 const propLineName = (line: string): string | undefined => {
     const declaration = line.slice(line.lastIndexOf("\n") + 1);
-    return declaration.split(/[?:]/, 1)[0]?.trim() || undefined;
+    const name = declaration.split(/[?:]/, 1)[0]?.trim();
+    return name === undefined || name === "" ? undefined : name;
 };
 
 const acceptPropLine = (line: string, seen: Set<string>, result: string[]): void => {
@@ -166,7 +167,7 @@ const prerequisiteExtendRef = (
 ): string | undefined => {
     const { library, targetNamespaceName, imports, hasContainerProps } = context;
     const resolved = library.resolveType(iface.namespace.name, prerequisiteName);
-    if (resolved === undefined || resolved.kind !== "interface") return undefined;
+    if (resolved?.kind !== "interface") return undefined;
     if (!interfaceHasPropsBody(resolved.value, hasContainerProps)) return undefined;
     return interfacePropsRef({ klass: resolved.value, namespace: resolved.namespace }, targetNamespaceName, imports);
 };

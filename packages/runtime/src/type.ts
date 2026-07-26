@@ -13,9 +13,9 @@ import {
 } from "./descriptors.js";
 import { LIB } from "./library.js";
 
-/** Object tagged with its GLib type through a `__type__` GType field. */
+/** Object tagged with its GLib type through a `_type_` GType field. */
 export type TypedClass = {
-    __type__: bigint;
+    _type_: bigint;
 };
 
 const resolvedTypeCache: Map<string, bigint> = new Map();
@@ -36,7 +36,7 @@ const lazyType = (name: string): (() => bigint) => {
 };
 
 export const isTypedClass = (value: unknown): value is TypedClass =>
-    typeof value === "object" && value !== null && "__type__" in value && typeof value.__type__ === "bigint";
+    typeof value === "object" && value !== null && "_type_" in value && typeof value._type_ === "bigint";
 
 /** GType tag for an invalid or uninitialized type. */
 export const TYPE_INVALID = 0n;
@@ -121,20 +121,20 @@ export function typeName(type: bigint): string | null {
 
 /** Returns whether `value` is a typed wrapper whose GType is or descends from `gtype`. */
 export function valueIsA(value: unknown, gtype: bigint): boolean {
-    return isTypedClass(value) && typeIsA(value.__type__, gtype);
+    return isTypedClass(value) && typeIsA(value._type_, gtype);
 }
 
 /**
  * Resolves the GType produced by a `get_type` function in a shared library, caching
  * the result per library and function name.
  * @param sharedLibrary Path or name of the shared library exporting the function.
- * @param getTypeFnName Name of the `*_get_type` function to call.
+ * @param typeFnName Name of the `*_get_type` function to call.
  */
-export const resolveType = (sharedLibrary: string, getTypeFnName: string): bigint => {
-    const key = `${sharedLibrary}:${getTypeFnName}`;
+export const resolveType = (sharedLibrary: string, typeFnName: string): bigint => {
+    const key = `${sharedLibrary}:${typeFnName}`;
     const cached = resolvedTypeCache.get(key);
     if (cached !== undefined) return cached;
-    const gtype = nativeResolveType(sharedLibrary, getTypeFnName);
+    const gtype = nativeResolveType(sharedLibrary, typeFnName);
     resolvedTypeCache.set(key, gtype);
     return gtype;
 };
@@ -163,42 +163,29 @@ function resolveArrayType(descriptor: ArrayDescriptor): bigint {
     throw new Error(`Unsupported array type ${descriptor.arrayKind} of ${descriptor.itemDescriptor.kind}`);
 }
 
+const PLAIN_DESCRIPTOR_TYPES: Partial<Record<Descriptor["kind"], bigint>> = {
+    boolean: TYPE_BOOLEAN,
+    string: TYPE_STRING,
+    int8: TYPE_INT,
+    int16: TYPE_INT,
+    int32: TYPE_INT,
+    uint8: TYPE_UINT,
+    uint16: TYPE_UINT,
+    uint32: TYPE_UINT,
+    int64: TYPE_INT64,
+    bigint64: TYPE_INT64,
+    uint64: TYPE_UINT64,
+    biguint64: TYPE_UINT64,
+    float32: TYPE_FLOAT,
+    float64: TYPE_DOUBLE,
+    object: TYPE_OBJECT,
+};
+
 export function resolveDescriptorType(descriptor: Descriptor): bigint {
     if (descriptor.kind === "biguint64" && "type" in descriptor) return TYPE_GTYPE;
+    const plain = PLAIN_DESCRIPTOR_TYPES[descriptor.kind];
+    if (plain !== undefined) return plain;
     switch (descriptor.kind) {
-        case "boolean": {
-            return TYPE_BOOLEAN;
-        }
-        case "string": {
-            return TYPE_STRING;
-        }
-        case "int8":
-        case "int16":
-        case "int32": {
-            return TYPE_INT;
-        }
-        case "uint8":
-        case "uint16":
-        case "uint32": {
-            return TYPE_UINT;
-        }
-        case "int64":
-        case "bigint64": {
-            return TYPE_INT64;
-        }
-        case "uint64":
-        case "biguint64": {
-            return TYPE_UINT64;
-        }
-        case "float32": {
-            return TYPE_FLOAT;
-        }
-        case "float64": {
-            return TYPE_DOUBLE;
-        }
-        case "object": {
-            return TYPE_OBJECT;
-        }
         case "enum":
         case "flags": {
             return resolveType(descriptor.sharedLibrary, descriptor.getTypeFnName);

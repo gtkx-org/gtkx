@@ -15,17 +15,20 @@ const lazyElementConfig = (lazyElements: string[]): Record<string, { lazy: true 
  */
 export const renderConfigModule = (config: ResolvedConfig): string => {
     const lazyJson = JSON.stringify(lazyElementConfig(config.lazyElements));
-    const lines: string[] = [];
-    if (config.elements !== null) {
-        lines.push("import { mergeElementConfigs } from \"@gtkx/react/config\";");
-        lines.push(`import __elementBehaviors from ${JSON.stringify(config.elements)};`);
-    }
-    lines.push(`export * from ${JSON.stringify(METADATA_SPECIFIER)};`);
-    lines.push(`export const applicationId = ${JSON.stringify(config.applicationId)};`);
-    lines.push(`export const userEventSignals = ${JSON.stringify(config.userEventSignals)};`,
+    const behaviorImports =
+        config.elements === null
+            ? []
+            : [
+                    "import { mergeElementConfigs } from \"@gtkx/react/config\";",
+                    `import __elementBehaviors from ${JSON.stringify(config.elements)};`,
+                ];
+    return [
+        ...behaviorImports,
+        `export * from ${JSON.stringify(METADATA_SPECIFIER)};`,
+        `export const applicationId = ${JSON.stringify(config.applicationId)};`,
+        `export const userEventSignals = ${JSON.stringify(config.userEventSignals)};`,
         config.elements === null
             ? `export const elements = ${lazyJson};`
             : `export const elements = mergeElementConfigs(__elementBehaviors, ${lazyJson});`,
-    );
-    return lines.join("\n");
+    ].join("\n");
 };

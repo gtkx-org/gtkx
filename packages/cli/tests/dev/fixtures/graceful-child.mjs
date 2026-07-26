@@ -3,23 +3,29 @@ const GRACEFUL_DELAY_MS = 200;
 let firstSignal = null;
 let exited = false;
 
+const interruptedCode = () => (firstSignal === "SIGINT" ? 130 : 143);
+
 const finish = (graceful) => {
     if (exited) return;
     exited = true;
-    const code = graceful ? 0 : (firstSignal === "SIGINT" ? 130 : 143);
-    process.exit(code);
+    process.exit(graceful ? 0 : interruptedCode());
+};
+
+const finishAfterDelay = async () => {
+    try {
+        await new Promise((resolve) => setTimeout(resolve, GRACEFUL_DELAY_MS));
+    } catch {
+        finish(false);
+        return;
+    }
+    finish(true);
 };
 
 const handle = (signal) => {
     process.stdout.write(`SIGRECV ${signal}\n`);
     if (firstSignal === null) {
         firstSignal = signal;
-        Promise.resolve()
-            .then(() => new Promise((resolve) => setTimeout(resolve, GRACEFUL_DELAY_MS)))
-            .then(
-                () => finish(true),
-                () => finish(false),
-            );
+        void finishAfterDelay();
         return;
     }
     finish(false);

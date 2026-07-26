@@ -55,12 +55,22 @@ const visitTypeRef = (walker: UnresolvedWalker, ref: TypeId | undefined): void =
 };
 
 const visitContainedRefs = (walker: UnresolvedWalker, type: GirType): void => {
-    if (type.kind === "carray" || type.kind === "list") visitTypeRef(walker, type.element);
-    if (type.kind === "hashtable") {
-        visitTypeRef(walker, type.key);
-        visitTypeRef(walker, type.value);
+    switch (type.kind) {
+        case "carray":
+        case "list": {
+            visitTypeRef(walker, type.element);
+            break;
+        }
+        case "hashtable": {
+            visitTypeRef(walker, type.key);
+            visitTypeRef(walker, type.value);
+            break;
+        }
+        case "callback": {
+            visitCallable(walker, type.value);
+            break;
+        }
     }
-    if (type.kind === "callback") visitCallable(walker, type.value);
 };
 
 const visitCallable = (walker: UnresolvedWalker, callable: WalkedCallable): void => {
@@ -107,11 +117,11 @@ const giSource = (directory: string): string =>
     giModules.find((module) => module.directory === directory)?.source ?? "";
 
 const namespaceNamed = (name: string): GirNamespace | undefined =>
-    [...library.namespaces.values()].find((namespace) => namespace.name === name);
+    library.namespaces.values().find((namespace) => namespace.name === name);
 
 describe("codegen gi pipeline", () => {
     it("resolves the transitive dependency closure of Gtk and Adw", () => {
-        const names = [...library.namespaces.keys()];
+        const names = library.namespaces.keys().toArray();
         expect(names).toEqual(expect.arrayContaining(["GLib", "GObject", "Gio", "Gdk", "Gsk", "Gtk", "Adw"]));
     });
 
@@ -505,7 +515,7 @@ describe("codegen applied element props", () => {
         expect(gtk).toContain(
             'export type GtkStackPageElementProps = Omit<GtkStackPageProps, "child"> & { children?: ReactNode };',
         );
-        expect(gtk).toMatch(/export type GtkNotebookPageElementProps = Omit<GtkNotebookPageProps, [^;]*>[^;]*;/);
+        expect(gtk).toMatch(/export type GtkNotebookPageElementProps = Omit<GtkNotebookPageProps, [^;>]*>[^;]*;/);
         expect(interfaceBody(gtk, "GtkNotebookPage")).toContain("tabLabel?: string | null | undefined;");
     });
 });
@@ -599,7 +609,12 @@ const interfacePropsNames = (): Set<string> => {
 };
 
 const matchAll = (sources: string[], pattern: RegExp): string[] =>
-    sources.flatMap((source) => [...source.matchAll(pattern)].map((match) => match[1] ?? ""));
+    sources.flatMap((source) =>
+        source
+            .matchAll(pattern)
+            .map((match) => match[1] ?? "")
+            .toArray(),
+    );
 
 const stripDocComments = (source: string): string => source.replaceAll(/\/\*\*[\s\S]*?\*\//g, "");
 
@@ -649,7 +664,7 @@ describe("jsx prop-interface naming convention", () => {
     it("names every exported props interface after an element or implemented interface glib name", () => {
         const sources = jsxSources();
         const declaredProps = matchAll(sources, /export interface (\w+Props)\b/g);
-        const elementGlibNames = matchAll(sources, /^\s*(\w+): \w+Props;$/gm);
+        const elementGlibNames = matchAll(sources, /^[ \t]*(\w+): \w+Props;$/gm);
         const allowed = new Set([...elementGlibNames.map((name) => `${name}Props`), ...interfacePropsNames()]);
 
         const offenders = declaredProps.filter((name) => !allowed.has(name));

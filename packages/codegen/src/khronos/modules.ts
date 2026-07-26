@@ -10,12 +10,14 @@ const GENERATED_HEADER = `/**
  * GENERATED FILE: do not edit.
  */`;
 
+const quotedGroupList = (groups: string[]): string => groups.map((group) => `\`${group}\``).join(", ");
+
 export const renderEnumsModule = (
     tokens: { token: GlEnum; exportName: string; literal: string; feature: string }[],
 ): string => {
     const builder = new ModuleBuilder();
     for (const { token, exportName, literal, feature } of tokens) {
-        const groupNote = token.groups.length > 0 ? ` Groups: ${token.groups.map((g) => `\`${g}\``).join(", ")}.` : "";
+        const groupNote = token.groups.length > 0 ? ` Groups: ${quotedGroupList(token.groups)}.` : "";
         builder.appendDeclaration(
             `/** \`${token.name}\`, provided by \`${feature}\`.${groupNote} */\nexport const ${exportName} = ${literal};`,
         );
@@ -41,7 +43,8 @@ export const renderTypesModule = (groupAliases: Map<string, string>): string => 
             `/** The C \`${scalar.tsAlias}\` scalar. */\nexport type ${scalar.tsAlias} = number;`,
         );
     }
-    for (const [group, base] of sortStringsBy(groupAliases.entries(), ([key]) => key)) {
+    const sortedAliases = sortStringsBy(groupAliases.entries(), ([key]) => key);
+    for (const [group, base] of sortedAliases) {
         builder.appendDeclaration(
             `/** Registry enum group \`${group}\`; open and documentation-only, any \`${base}\` value is accepted. */\nexport type ${group} = ${base};`,
         );

@@ -55,7 +55,7 @@ const trackedEnvKeys = [...wlrKeys, "XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS
 const restoreTrackedEnv = (saved: Record<string, string | undefined>): void => {
     for (const key of trackedEnvKeys) {
         const value = saved[key];
-        if (value === undefined) delete process.env[key];
+        if (value === undefined) Reflect.deleteProperty(process.env, key);
         else process.env[key] = value;
     }
 };
@@ -69,7 +69,9 @@ const fulfillSockets = (compositor: Compositor): void => {
 describe("startHeadlessDisplay", () => {
     let children: ChildProcess[];
     let teardowns: (() => void)[];
-    let savedEnv: Record<string, string | undefined>; const startFulfilled = async (options: {
+    let savedEnv: Record<string, string | undefined>;
+
+    const startFulfilled = async (options: {
         size: string;
         compositor: Compositor;
     }): Promise<{ teardown: () => void; runtimeDir: string }> => {
@@ -104,7 +106,7 @@ describe("startHeadlessDisplay", () => {
         savedEnv = {};
         for (const key of trackedEnvKeys) {
             savedEnv[key] = process.env[key];
-            delete process.env[key];
+            Reflect.deleteProperty(process.env, key);
         }
         stopNotificationsMock.mockReset();
         spawnSyncMock.mockReset();

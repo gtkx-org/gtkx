@@ -1,5 +1,5 @@
 import { isRecord } from "@gtkx/utils";
-import { type Ref, type RefCallback, useCallback } from "react";
+import { type Ref, type RefCallback, useMemo } from "react";
 
 type PossibleRef<T> = Ref<T> | undefined;
 type RefCleanup<T> = ReturnType<RefCallback<T>>;
@@ -43,6 +43,6 @@ export function mergeRefs<T>(...refs: PossibleRef<T>[]): RefCallback<T> {
     };
 }
 
-export function useMergedRef<T>(...refs: PossibleRef<T>[]): RefCallback<T> {
-    return useCallback(mergeRefs(...refs), refs);
+export function useMergedRef<T>(first: PossibleRef<T>, second: PossibleRef<T>): RefCallback<T> {
+    return useMemo(() => mergeRefs(first, second), [first, second]);
 }

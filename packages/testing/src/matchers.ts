@@ -49,6 +49,22 @@ const matchesText = (actual: string, expected: TextExpectation, mode: "exact" | 
 const describeExpected = (expected: TextExpectation): string =>
     expected instanceof RegExp ? String(expected) : JSON.stringify(expected);
 
+type TextMatcherContext = { isNot: boolean; matcherName: string; widget: Gtk.Widget; actual: string | null };
+
+const nonEmptyResult = ({ isNot, matcherName, widget, actual }: TextMatcherContext): MatcherResult => ({
+    pass: actual !== null && actual !== "",
+    message: () =>
+        `expected widget ${isNot ? "not " : ""}to have a non-empty value for ${matcherName}, ` +
+        `but got ${JSON.stringify(actual)}\n${describeWidget(widget)}`,
+});
+
+const matchedResult = (context: TextMatcherContext, expected: TextExpectation, pass: boolean): MatcherResult => ({
+    pass,
+    message: () =>
+        `expected widget ${context.isNot ? "not " : ""}${context.matcherName} ${describeExpected(expected)}, ` +
+        `but received ${JSON.stringify(context.actual)}\n${describeWidget(context.widget)}`,
+});
+
 const textMatcher = (
     matcherName: string,
     read: (widget: Gtk.Widget) => string | null,
@@ -57,24 +73,10 @@ const textMatcher = (
     function (this: MatcherContext, received: unknown, expected?: TextExpectation): MatcherResult {
         const widget = asWidget(received, matcherName);
         const actual = read(widget);
+        const context: TextMatcherContext = { isNot: this.isNot, matcherName, widget, actual };
 
-        if (expected === undefined) {
-            const pass = actual !== null && actual !== "";
-            return {
-                pass,
-                message: () =>
-                    `expected widget ${this.isNot ? "not " : ""}to have a non-empty value for ${matcherName}, ` +
-                    `but got ${JSON.stringify(actual)}\n${describeWidget(widget)}`,
-            };
-        }
-
-        const pass = actual !== null && matchesText(actual, expected, mode);
-        return {
-            pass,
-            message: () =>
-                `expected widget ${this.isNot ? "not " : ""}${matcherName} ${describeExpected(expected)}, ` +
-                `but received ${JSON.stringify(actual)}\n${describeWidget(widget)}`,
-        };
+        if (expected === undefined) return nonEmptyResult(context);
+        return matchedResult(context, expected, actual !== null && matchesText(actual, expected, mode));
     };
 
 const booleanStateMatcher = (
@@ -181,22 +183,30 @@ export const registerMatchers = (): void => {
     registered = true;
 };
 
-type WidgetMatchers<R = void> = {
-    toHaveDisplayValue(expected?: TextExpectation): R;
-    toHaveTextContent(expected?: TextExpectation): R;
-    toHaveAccessibleName(expected?: TextExpectation): R;
-    toHavePlaceholderText(expected?: TextExpectation): R;
-    toBeChecked(): R;
-    toBePressed(): R;
-    toBeExpanded(): R;
-    toBeSelected(): R;
-    toHaveValue(expected: number): R;
-};
-
 declare module "@vitest/expect" {
     /* eslint-disable @typescript-eslint/consistent-type-definitions -- declaration merging requires interfaces */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- must match the `Assertion<T>` signature it augments
-    interface Assertion<T = any> extends WidgetMatchers {}
-    interface AsymmetricMatchersContaining extends WidgetMatchers {}
+    interface Assertion {
+        toHaveDisplayValue(expected?: TextExpectation): void;
+        toHaveTextContent(expected?: TextExpectation): void;
+        toHaveAccessibleName(expected?: TextExpectation): void;
+        toHavePlaceholderText(expected?: TextExpectation): void;
+        toBeChecked(): void;
+        toBePressed(): void;
+        toBeExpanded(): void;
+        toBeSelected(): void;
+        toHaveValue(expected: number): void;
+    }
+
+    interface AsymmetricMatchersContaining {
+        toHaveDisplayValue(expected?: TextExpectation): void;
+        toHaveTextContent(expected?: TextExpectation): void;
+        toHaveAccessibleName(expected?: TextExpectation): void;
+        toHavePlaceholderText(expected?: TextExpectation): void;
+        toBeChecked(): void;
+        toBePressed(): void;
+        toBeExpanded(): void;
+        toBeSelected(): void;
+        toHaveValue(expected: number): void;
+    }
     /* eslint-enable @typescript-eslint/consistent-type-definitions */
 }

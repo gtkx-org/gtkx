@@ -3,6 +3,14 @@
     "entryPoints": ["dist/index.d.ts", "dist/adw/index.d.ts"],
     "tsconfig": "../../website/tsconfig.typedoc.json",
     "skipErrorChecking": true,
-    "intentionallyNotExported": [],
+    "intentionallyNotExported": [
+        "ColumnViewOwnProps",
+        "ConstraintLayoutComponent",
+        "DropDownComponent",
+        "DropDownOwnProps",
+        "GridViewOwnProps",
+        "ListViewOwnProps",
+        "SizeGroupComponent"
+    ],
     "readme": "none"
 }

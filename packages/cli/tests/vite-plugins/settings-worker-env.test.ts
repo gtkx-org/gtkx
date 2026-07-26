@@ -1,3 +1,4 @@
+import { resolveExecutable } from "@gtkx/utils";
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -9,7 +10,7 @@ type ConfigHook = (config: { root?: string }) => { test?: { env?: Record<string,
 
 const hasGlibCompileSchemas = (): boolean => {
     try {
-        execFileSync("glib-compile-schemas", ["--version"], { stdio: ["ignore", "ignore", "ignore"] });
+        execFileSync(resolveExecutable("glib-compile-schemas"), ["--version"], { stdio: ["ignore", "ignore", "ignore"] });
         return true;
     } catch {
         return false;
@@ -92,7 +93,7 @@ describe("gtkxSettingsWorkerEnv", () => {
         writeProject(root, { dataDir: "data", schema: false });
         writeFileSync(join(root, "data", "com.example.broken.gschema.xml"), "<schemalist><schema id=");
 
-        expect(() => callConfig(root)).toThrowError(/glib-compile-schemas failed for /);
+        expect(() => callConfig(root)).toThrow(/glib-compile-schemas failed for /);
     });
 
     it("leaves the config untouched when the project declares no data directory", () => {

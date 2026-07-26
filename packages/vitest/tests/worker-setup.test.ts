@@ -4,11 +4,14 @@ const installGracefulShutdown = vi.hoisted(() => vi.fn());
 
 vi.mock("@gtkx/utils", () => ({ installGracefulShutdown }));
 
-const { installHeadlessShutdown } = await import("../src/worker-setup.js");
+const { headlessShutdownInstalled, setHeadlessShutdownInstalled, setHeadlessTeardown } = await import(
+    "../src/headless-globals.js",
+);
+const { installHeadlessShutdown } = await import("../src/install-headless-shutdown.js");
 
 const resetGlobals = (): void => {
-    globalThis.gtkxHeadlessTeardown = undefined;
-    globalThis.gtkxHeadlessShutdownInstalled = undefined;
+    setHeadlessTeardown(undefined);
+    setHeadlessShutdownInstalled(undefined);
 };
 
 describe("installHeadlessShutdown", () => {
@@ -26,17 +29,17 @@ describe("installHeadlessShutdown", () => {
 
     it("wires the stashed teardown into the shared graceful shutdown", () => {
         const teardown = vi.fn();
-        globalThis.gtkxHeadlessTeardown = teardown;
+        setHeadlessTeardown(teardown);
 
         installHeadlessShutdown();
 
         expect(installGracefulShutdown).toHaveBeenCalledTimes(1);
         expect(installGracefulShutdown).toHaveBeenCalledWith({ onSignal: teardown });
-        expect(globalThis.gtkxHeadlessShutdownInstalled).toBe(true);
+        expect(headlessShutdownInstalled()).toBe(true);
     });
 
     it("installs the handlers only once per process", () => {
-        globalThis.gtkxHeadlessTeardown = vi.fn();
+        setHeadlessTeardown(vi.fn());
 
         installHeadlessShutdown();
         installHeadlessShutdown();

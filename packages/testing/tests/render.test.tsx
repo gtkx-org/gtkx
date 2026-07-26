@@ -2,16 +2,16 @@ import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
-import { Component, createContext, type ReactNode, useContext } from "react";
+import { Component, createContext, type ReactNode, useContext, useLayoutEffect } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { cleanup, type Container, queryAllByRole, render, type WrapperComponent } from "../src/index.js";
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
-    override state = { hasError: false };
-
     static getDerivedStateFromError(): { hasError: boolean } {
         return { hasError: true };
     }
+
+    override state = { hasError: false };
 
     override render(): ReactNode {
         return this.state.hasError ? <GtkLabel>error</GtkLabel> : this.props.children;
@@ -89,14 +89,17 @@ describe("render wrapper", () => {
         const Provider: WrapperComponent = ({ children }) => (
             <Context.Provider value="wrapped">{children}</Context.Provider>
         );
-        let seen = "default";
+        const observed: { seen: string } = { seen: "default" };
         const Probe = (): ReactNode => {
-            seen = useContext(Context);
+            const value = useContext(Context);
+            useLayoutEffect(() => {
+                observed.seen = value;
+            });
             return <GtkLabel>probe</GtkLabel>;
         };
 
         await render(<Probe />, { wrapper: Provider });
-        expect(seen).toBe("wrapped");
+        expect(observed.seen).toBe("wrapped");
     });
 
     it("re-applies the wrapper on rerender", async () => {
@@ -106,7 +109,10 @@ describe("render wrapper", () => {
         );
         const seen: string[] = [];
         const Probe = ({ tag }: { tag: string }): ReactNode => {
-            seen.push(`${tag}:${useContext(Context)}`);
+            const value = useContext(Context);
+            useLayoutEffect(() => {
+                seen.push(`${tag}:${value}`);
+            });
             return <GtkLabel>{tag}</GtkLabel>;
         };
 

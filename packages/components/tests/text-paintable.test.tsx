@@ -53,7 +53,9 @@ const buildReplaceable =
                 viewRef={viewRef}
                 icon={icon}
                 show={show}
-                onInserted={(buffer, mark) => calls.push({ buffer, mark })}
+                onInserted={(buffer, mark) => {
+                    calls.push({ buffer, mark });
+                }}
             />
         );
 

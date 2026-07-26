@@ -437,7 +437,7 @@ type ColorsModels = {
 function useColorsModels(): ColorsModels {
     const ref = useRef<ColorsModels | null>(null);
     if (ref.current === null) {
-        const baseStore = Gio.ListStore.new(ColorObject.prototype.__type__);
+        const baseStore = Gio.ListStore.new(ColorObject.prototype._type_);
         const selection = new Gtk.MultiSelection({ model: baseStore });
         ref.current = { baseStore, selection, liveRefs: [] };
     }

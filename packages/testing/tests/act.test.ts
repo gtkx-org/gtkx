@@ -25,7 +25,9 @@ describe("act / sync callback", () => {
     it("drains queued microtasks before resolving", async () => {
         const order: number[] = [];
         await act(() => {
-            queueMicrotask(() => order.push(2));
+            queueMicrotask(() => {
+                order.push(2);
+            });
             order.push(1);
         });
         order.push(3);

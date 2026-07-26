@@ -12,7 +12,7 @@ const clack = vi.hoisted(() => ({
     text: vi.fn(async () => ""),
     select: vi.fn(async (opts: { initialValue?: unknown }) => opts.initialValue),
     confirm: vi.fn(async () => true),
-    isCancel: vi.fn((_value: unknown) => false),
+    isCancel: vi.fn((value: unknown) => value === "__CANCEL__"),
 }));
 
 vi.mock("@clack/prompts", () => clack);
@@ -43,18 +43,23 @@ const TEST_DIR = "/test-workspace";
 const TEMPLATES_DIR = join(import.meta.dirname, "..", "src", "templates");
 const SELF_VERSION = (createRequire(import.meta.url)("../package.json") as { version: string }).version;
 
+type ScaffoldedManifest = { name?: string; scripts: Record<string, string | undefined> };
+
+const readJson = (path: string): ScaffoldedManifest => JSON.parse(read(path)) as ScaffoldedManifest;
+
 const pin = (name: string): string => (name.startsWith("@gtkx/") ? `${name}@^${SELF_VERSION}` : name);
 
 vi.spyOn(process, "cwd").mockReturnValue(TEST_DIR);
 const exitSpy = vi
     .spyOn(process, "exit")
-    .mockImplementation(((_code?: string | number | null) => {}) as (code?: string | number | null) => never);
+    .mockImplementation((() => {}) as (code?: string | number | null) => never);
 
 const templateFiles: Record<string, string> = {};
 
 beforeAll(async () => {
     const realFs = await vi.importActual<typeof import("node:fs")>("node:fs");
-    for (const entry of realFs.readdirSync(TEMPLATES_DIR, { recursive: true, withFileTypes: true })) {
+    const entries = realFs.readdirSync(TEMPLATES_DIR, { recursive: true, withFileTypes: true });
+    for (const entry of entries) {
         if (!entry.isFile()) continue;
         const absolute = join(entry.parentPath, entry.name);
         templateFiles[absolute] = realFs.readFileSync(absolute, "utf8");
@@ -109,7 +114,7 @@ describe("scaffold (top-level generated files)", () => {
     it("writes package.json with the project name", async () => {
         await run({ includeTesting: true });
 
-        const content = JSON.parse(read(`${TEST_DIR}/test-app/package.json`));
+        const content = readJson(`${TEST_DIR}/test-app/package.json`);
         expect(content.name).toBe("test-app");
         expect(content.scripts.test).toContain("vitest");
     });
@@ -117,7 +122,7 @@ describe("scaffold (top-level generated files)", () => {
     it("omits the test script from package.json when includeTesting=false", async () => {
         await run({ includeTesting: false });
 
-        const content = JSON.parse(read(`${TEST_DIR}/test-app/package.json`));
+        const content = readJson(`${TEST_DIR}/test-app/package.json`);
         expect(content.scripts.test).toBeUndefined();
     });
 
@@ -214,7 +219,7 @@ describe("scaffold (JavaScript variant)", () => {
     it("omits the typecheck script from package.json", async () => {
         await run({ typescript: false });
 
-        const content = JSON.parse(read(`${TEST_DIR}/test-app/package.json`));
+        const content = readJson(`${TEST_DIR}/test-app/package.json`);
         expect(content.scripts.typecheck).toBeUndefined();
     });
 
@@ -455,7 +460,7 @@ describe("scaffold (non-interactive and overwrite)", () => {
         const config = read(`${TEST_DIR}/test-app/gtkx.config.ts`);
         expect(config).toContain('applicationId: "com.testapp.app"');
 
-        const pkg = JSON.parse(read(`${TEST_DIR}/test-app/package.json`));
+        const pkg = readJson(`${TEST_DIR}/test-app/package.json`);
         expect(pkg.scripts.test).toContain("vitest");
         expect(vol.existsSync(`${TEST_DIR}/test-app/vitest.config.ts`)).toBe(true);
         expect(addDependencyMock.mock.calls[0]?.[1]).toMatchObject({ packageManager: "pnpm" });
@@ -483,7 +488,7 @@ describe("scaffold (directory target)", () => {
         });
 
         expect(vol.existsSync(`${TEST_DIR}/apps/my-app/src/index.tsx`)).toBe(true);
-        const pkg = JSON.parse(read(`${TEST_DIR}/apps/my-app/package.json`));
+        const pkg = readJson(`${TEST_DIR}/apps/my-app/package.json`);
         expect(pkg.name).toBe("my-app");
     });
 
@@ -497,7 +502,7 @@ describe("scaffold (directory target)", () => {
         });
 
         expect(vol.existsSync(`${TEST_DIR}/package.json`)).toBe(true);
-        const pkg = JSON.parse(read(`${TEST_DIR}/package.json`));
+        const pkg = readJson(`${TEST_DIR}/package.json`);
         expect(pkg.name).toBe("test-workspace");
         expect(lastNote()).not.toContain("cd .");
     });

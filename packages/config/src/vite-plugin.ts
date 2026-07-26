@@ -24,8 +24,7 @@ const createConfigPlugin = (options: {
             return options.config?.();
         },
         resolveId(id: string) {
-            if (id === GTKX_CONFIG_VIRTUAL_ID) return RESOLVED_GTKX_CONFIG_VIRTUAL_ID;
-            return;
+            return id === GTKX_CONFIG_VIRTUAL_ID ? RESOLVED_GTKX_CONFIG_VIRTUAL_ID : null;
         },
         async load(id: string) {
             if (id !== RESOLVED_GTKX_CONFIG_VIRTUAL_ID) return;

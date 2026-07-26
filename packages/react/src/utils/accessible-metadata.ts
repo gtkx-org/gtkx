@@ -20,7 +20,7 @@ export const deleteAccessibleMetadata = (widget: object, name: string): void => 
  * @param name The accessible prop name.
  * @returns The last applied value, or null.
  */
-export const getAccessibleMetadata = <T>(widget: object, name: string): T | null => {
+export const getAccessibleMetadata = (widget: object, name: string): unknown => {
     const value = metadataStore.get(widget)?.get(name);
-    return value === undefined ? null : (value as T);
+    return value === undefined ? null : value;
 };

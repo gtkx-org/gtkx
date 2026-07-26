@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createCss, type Css, removeLabel } from "../src/create-css.js";
 import { StyleSheet } from "../src/stylesheet.js";
 
+const runtimeFlag = (value: boolean): boolean => value;
+
 const declElement = (value: string): Element => ({
     parent: null,
     children: "",
@@ -166,8 +168,8 @@ describe("cx", () => {
     it("handles conditional composition", () => {
         const baseStyle = "base-class";
         const activeStyle = "active-class";
-        const isActive = true;
-        const isDisabled = false;
+        const isActive = runtimeFlag(true);
+        const isDisabled = runtimeFlag(false);
 
         const result = instance.cx(baseStyle, isActive && activeStyle, isDisabled && "disabled-class");
 
@@ -176,7 +178,7 @@ describe("cx", () => {
 
     describe("falsy filtering", () => {
         it("filters out false values", () => {
-            const isActive = false;
+            const isActive = runtimeFlag(false);
             const result = instance.cx("base", isActive && "active");
 
             expect(result).toEqual(["base"]);
@@ -233,18 +235,24 @@ describe("cx", () => {
 describe("injectGlobal", () => {
     let instance: Css;
 
+    const injectDuplicate = () =>
+        instance.injectGlobal`
+            .global-unique-test {
+                color: red;
+            }
+        `;
+
     beforeEach(() => {
         instance = createCss();
     });
 
     it("accepts template literal styles", () => {
-        expect(() => {
+        expect(() =>
             instance.injectGlobal`
                 window {
                     background: @theme_bg_color;
                 }
-            `;
-        }).not.toThrow();
+            `).not.toThrow();
     });
 
     it("accepts object styles", () => {
@@ -258,22 +266,12 @@ describe("injectGlobal", () => {
     });
 
     it("does not inject duplicate styles", () => {
-        expect(() => {
-            instance.injectGlobal`
-                .global-unique-test {
-                    color: red;
-                }
-            `;
-            instance.injectGlobal`
-                .global-unique-test {
-                    color: red;
-                }
-            `;
-        }).not.toThrow();
+        expect(injectDuplicate).not.toThrow();
+        expect(injectDuplicate).not.toThrow();
     });
 
     it("handles GTK widget selectors", () => {
-        expect(() => {
+        expect(() =>
             instance.injectGlobal`
                 entry {
                     border: 1px solid @borders;
@@ -281,8 +279,7 @@ describe("injectGlobal", () => {
                 label {
                     font-weight: bold;
                 }
-            `;
-        }).not.toThrow();
+            `).not.toThrow();
     });
 });
 

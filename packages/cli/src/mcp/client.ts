@@ -13,11 +13,35 @@ export type McpClientOptions = {
 
 const RECONNECT_DELAY_MS = 2000;
 const REGISTER_TIMEOUT_MS = 30_000;
+const DISCONNECT_ERROR_CODES: Set<string> = new Set(["ENOENT", "ECONNREFUSED", "EPIPE", "ECONNRESET"]);
 
 const toResponseError = (error: unknown): { code: number; message: string; data?: unknown } =>
     error instanceof ProtocolError
         ? error.toErrorObject()
         : { code: ErrorCode.INTERNAL_ERROR, message: errorMessage(error) };
+
+type ConnectCallbacks = {
+    onSuccess?: (() => void) | undefined;
+    onError?: ((error: Error) => void) | undefined;
+};
+
+type ConnectSettler = {
+    succeed: () => void;
+    fail: (error: Error) => void;
+};
+
+const connectSettler = (callbacks: ConnectCallbacks): ConnectSettler => {
+    let settled = false;
+    const settle = (notify: () => void): void => {
+        if (settled) return;
+        settled = true;
+        notify();
+    };
+    return {
+        succeed: () => settle(() => callbacks.onSuccess?.()),
+        fail: (failure) => settle(() => callbacks.onError?.(failure)),
+    };
+};
 
 export class McpClient {
     private socket: net.Socket | null = null;
@@ -35,91 +59,54 @@ export class McpClient {
         this.applicationId = options.applicationId;
     }
 
-    async connect(): Promise<void> {
-        return new Promise<void>((resolve, reject) => {
-            this.pendingConnectReject = reject;
-            this.attemptConnect(
-                () => {
-                    this.pendingConnectReject = null;
-                    resolve();
-                },
-                (error) => {
-                    this.pendingConnectReject = null;
-                    reject(error);
-                },
-            );
-        });
-    }
-
-    disconnect(): void {
-        this.isStopping = true;
-        if (this.pendingConnectReject) {
-            this.pendingConnectReject(new Error("Client disconnected before connection registered"));
-            this.pendingConnectReject = null;
+    private handleClose(): void {
+        if (this.hasConnected) {
+            info("Disconnected from MCP server");
+            this.hasConnected = false;
         }
-        if (this.reconnectTimer) {
-            clearTimeout(this.reconnectTimer);
-            this.reconnectTimer = null;
-        }
-        this.connection?.rejectPending(new Error("Client disconnected"));
-        if (this.socket) {
-            this.connection?.write({ id: crypto.randomUUID(), method: "app.unregister" });
-            this.socket.destroy();
-            this.socket = null;
-        }
+        this.socket = null;
         this.connection = null;
-        this.hasConnected = false;
+        this.scheduleReconnect();
     }
 
-    private attemptConnect(onSuccess?: () => void, onError?: (error: Error) => void): void {
-        let settled = false;
+    private handleSocketError(socketError: Error): void {
+        const code = (socketError as NodeJS.ErrnoException).code;
+        if (code !== undefined && DISCONNECT_ERROR_CODES.has(code)) {
+            this.scheduleReconnect();
+        } else {
+            error("Socket error:", socketError.message);
+        }
+    }
 
-        const settle = <T extends unknown[]>(callback: ((...args: T) => void) | undefined, ...args: T) => {
-            if (settled) return;
-            settled = true;
-            callback?.(...args);
-        };
+    private async registerWithServer(settle: ConnectSettler): Promise<void> {
+        try {
+            await this.register();
+            info("Registered with MCP server");
+            settle.succeed();
+        } catch (registerError) {
+            error("Failed to register with MCP server:", errorMessage(registerError));
+            settle.fail(normalizeError(registerError));
+        }
+    }
+
+    private attemptConnect(callbacks: ConnectCallbacks = {}): void {
+        const settle = connectSettler(callbacks);
 
         const socket = net.createConnection(this.socketPath, () => {
             info(`Connected to MCP server at ${this.socketPath}`);
             this.hasConnected = true;
-            this.register()
-                .then(() => {
-                    info("Registered with MCP server");
-                    settle(onSuccess);
-                })
-                .catch((error_) => {
-                    error("Failed to register with MCP server:", error_.message);
-                    settle(onError, normalizeError(error_));
-                });
+            void this.registerWithServer(settle);
         });
 
         const connection = ProtocolConnection.fromSocket(socket, {
-            onClose: () => {
-                if (this.hasConnected) {
-                    info("Disconnected from MCP server");
-                    this.hasConnected = false;
-                }
-                this.socket = null;
-                this.connection = null;
-                this.scheduleReconnect();
-            },
+            onClose: () => this.handleClose(),
             onError: (socketError) => {
-                const code = (socketError as NodeJS.ErrnoException).code;
-                const isDisconnectError =
-                    code === "ENOENT" || code === "ECONNREFUSED" || code === "EPIPE" || code === "ECONNRESET";
-                if (isDisconnectError) {
-                    this.scheduleReconnect();
-                } else {
-                    error("Socket error:", socketError.message);
-                }
-                settle(onError, socketError);
+                this.handleSocketError(socketError);
+                settle.fail(socketError);
             },
         });
         connection.on("request", (request) => {
-            this.handleRequest(request).catch((error_) => {
-                error("Error handling request:", error_);
-            });
+            void this.handleRequest(request);
         });
         connection.on("invalid", ({ error: parseError }) => {
             warn(`Received invalid JSON from MCP server: ${parseError.message}`);
@@ -152,7 +139,7 @@ export class McpClient {
         );
     }
 
-    private async handleRequest(request: Request): Promise<void> {
+    private async respondToRequest(request: Request): Promise<void> {
         const { id, method, params } = request;
         const connection = this.connection;
         if (!connection) return;
@@ -165,8 +152,52 @@ export class McpClient {
             this.registry.refresh();
             const result = await dispatch(method, params, { app: defaultApp, registry: this.registry });
             connection.write({ id, result });
-        } catch (error) {
-            connection.write({ id, error: toResponseError(error) });
+        } catch (dispatchError) {
+            connection.write({ id, error: toResponseError(dispatchError) });
         }
+    }
+
+    private async handleRequest(request: Request): Promise<void> {
+        try {
+            await this.respondToRequest(request);
+        } catch (requestError) {
+            error("Error handling request:", requestError);
+        }
+    }
+
+    async connect(): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
+            this.pendingConnectReject = reject;
+            this.attemptConnect({
+                onSuccess: () => {
+                    this.pendingConnectReject = null;
+                    resolve();
+                },
+                onError: (connectError) => {
+                    this.pendingConnectReject = null;
+                    reject(connectError);
+                },
+            });
+        });
+    }
+
+    disconnect(): void {
+        this.isStopping = true;
+        if (this.pendingConnectReject) {
+            this.pendingConnectReject(new Error("Client disconnected before connection registered"));
+            this.pendingConnectReject = null;
+        }
+        if (this.reconnectTimer) {
+            clearTimeout(this.reconnectTimer);
+            this.reconnectTimer = null;
+        }
+        this.connection?.rejectPending(new Error("Client disconnected"));
+        if (this.socket) {
+            this.connection?.write({ id: crypto.randomUUID(), method: "app.unregister" });
+            this.socket.destroy();
+            this.socket = null;
+        }
+        this.connection = null;
+        this.hasConnected = false;
     }
 }

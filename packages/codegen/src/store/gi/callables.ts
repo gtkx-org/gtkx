@@ -116,7 +116,8 @@ const renderCallableMember = (
         returnTypeOverride: options.returnTypeOverride,
     });
     const prefix = options.isStatic ? "static " : "";
-    return `${doc}${renderBlock(`${prefix}${name}(${signature}): ${returnType}`, body)}`;
+    const header = `${prefix}${name}(${signature}): ${returnType}`;
+    return `${doc}${renderBlock(header, body)}`;
 };
 
 type StaticEntryOptions = {
@@ -263,7 +264,8 @@ const renderPromisifiedCallable = (
         toCamelIdentifier(cIdentifier),
     );
     const prefix = member.isStatic ? "static " : "";
-    return `${renderJsDoc(callable.doc)}${renderBlock(`${prefix}${member.name}(${signature}): ${returnType}`, body)}`;
+    const header = `${prefix}${member.name}(${signature}): ${returnType}`;
+    return `${renderJsDoc(callable.doc)}${renderBlock(header, body)}`;
 };
 
 export const indexMethodsByName = (methods: GirFunction[]): Map<string, GirFunction> => {
@@ -369,10 +371,11 @@ export const renderPlainTypeMembers = (
     options: PlainTypeMembersOptions,
 ): { members: string[]; claimedNames: Set<string> } => {
     const { context, className, callables, hasGtype } = options;
-    const members: string[] = [];
-    if (hasGtype) members.push(gtypeMemberDeclaration(context));
     const claimedNames: Set<string> = new Set();
-    members.push(...renderStaticHead(context, callables, className));
-    members.push(...renderPlainInstanceMethods(context, callables.methods, claimedNames));
+    const members: string[] = [
+        ...(hasGtype ? [gtypeMemberDeclaration(context)] : []),
+        ...renderStaticHead(context, callables, className),
+        ...renderPlainInstanceMethods(context, callables.methods, claimedNames),
+    ];
     return { members, claimedNames };
 };

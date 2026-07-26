@@ -9,18 +9,22 @@ type TransformFn = (code: string, id: string) => Promise<TransformResult>;
 type ConfigFn = (config: { root?: string }) => Promise<unknown>;
 type ConfigResolvedFn = (config: { root: string }) => void;
 
-const isHandler = <F>(hook: unknown): hook is F => typeof hook === "function";
+type PluginHooks = {
+    transform: TransformFn;
+    config: ConfigFn;
+    configResolved: ConfigResolvedFn;
+};
 
-const hookOf = <F>(hook: unknown, name: string): F => {
-    if (!isHandler<F>(hook)) throw new Error(`${name} must be a function hook`);
-    return hook;
+const hookOf = <K extends keyof PluginHooks>(hook: unknown, name: K): PluginHooks[K] => {
+    if (typeof hook !== "function") throw new Error(`${name} must be a function hook`);
+    return hook as PluginHooks[K];
 };
 
 const transformOf = (plugin: ReturnType<typeof gtkxReactCompiler>): TransformFn =>
-    hookOf<TransformFn>(plugin.transform, "transform");
-const configOf = (plugin: ReturnType<typeof gtkxReactCompiler>): ConfigFn => hookOf<ConfigFn>(plugin.config, "config");
+    hookOf(plugin.transform, "transform");
+const configOf = (plugin: ReturnType<typeof gtkxReactCompiler>): ConfigFn => hookOf(plugin.config, "config");
 const configResolvedOf = (plugin: ReturnType<typeof gtkxReactCompiler>): ConfigResolvedFn =>
-    hookOf<ConfigResolvedFn>(plugin.configResolved, "configResolved");
+    hookOf(plugin.configResolved, "configResolved");
 
 const HOOK = `import { useState } from "react";
 export function useCounter(initial: number) {
@@ -30,15 +34,17 @@ export function useCounter(initial: number) {
 }
 `;
 
+const COUNTER_CHILDREN = "{label}: {n}";
+
 const COMPONENT = `export function Counter({ label }: { label: string }) {
     const [n, setN] = React.useState(0);
-    return <button onClicked={() => setN(n + 1)}>{label}: {n}</button>;
+    return <button onClicked={() => setN(n + 1)}>${COUNTER_CHILDREN}</button>;
 }
 `;
 
 const JS_COMPONENT = `export function Counter({ label }) {
     const [n, setN] = React.useState(0);
-    return <button onClicked={() => setN(n + 1)}>{label}: {n}</button>;
+    return <button onClicked={() => setN(n + 1)}>${COUNTER_CHILDREN}</button>;
 }
 `;
 

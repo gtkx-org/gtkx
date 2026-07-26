@@ -8,6 +8,8 @@ export const BUNDLE_FILENAME = "gtkx.gresource";
 
 export const REL_SEPARATOR = "\0rel=";
 
+export const REFRESH_EXPORT = "__refresh";
+
 export const { isVirtual, toVirtualId, fromVirtualId } = createVirtualNamespace(VIRTUAL_PREFIX);
 
 export const escapeXml = (value: string): string =>

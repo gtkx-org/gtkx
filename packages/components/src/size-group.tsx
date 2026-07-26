@@ -28,16 +28,25 @@ const SizeGroupChildImpl = (props: SizeGroupChildRuntimeProps): ReactNode => {
 
 const SizeGroupChild = SizeGroupChildImpl as <C extends ElementType>(props: SizeGroupChildProps<C>) => ReactNode;
 
+const addWidget = (widgets: Gtk.Widget[], widget: Gtk.Widget): Gtk.Widget[] =>
+    widgets.includes(widget) ? widgets : [...widgets, widget];
+
+const removeWidget = (widgets: Gtk.Widget[], widget: Gtk.Widget): Gtk.Widget[] =>
+    widgets.filter((entry) => entry !== widget);
+
 const SizeGroupRoot = (props: SizeGroupProps): ReactNode => {
     const { mode, ref, children } = props;
     const [widgets, setWidgets] = useState<Gtk.Widget[]>([]);
-    const register = useCallback<Register>((widget) => {
-        if (widget === null) return;
-        setWidgets((previous) => (previous.includes(widget) ? previous : [...previous, widget]));
-        return () => {
-            setWidgets((previous) => previous.filter((entry) => entry !== widget));
-        };
-    }, []);
+    const register = useCallback<Register>(
+        (widget) => {
+            if (widget === null) return;
+            setWidgets((previous) => addWidget(previous, widget));
+            return () => {
+                setWidgets((previous) => removeWidget(previous, widget));
+            };
+        },
+        [setWidgets],
+    );
     return (
         <>
             <GtkSizeGroup ref={ref} mode={mode} widgets={widgets} />
@@ -51,7 +60,7 @@ type SizeGroupComponent = ((props: SizeGroupProps) => ReactNode) & {
 };
 
 /**
- * Creates a Gtk.SizeGroup that keeps widgets joined through {@link SizeGroup.Child}
+ * Creates a Gtk.SizeGroup that keeps widgets joined through `SizeGroup.Child`
  * at a common size in the given mode, without contributing a widget of its own.
  */
 export const SizeGroup: SizeGroupComponent = Object.assign(SizeGroupRoot, { Child: SizeGroupChild });

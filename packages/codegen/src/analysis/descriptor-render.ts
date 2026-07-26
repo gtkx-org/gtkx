@@ -360,16 +360,16 @@ const boxedRecordExpression = (options: {
     resolved: Extract<EntityType, { kind: "record" }>;
     ownership: Ownership;
     callerAllocated: boolean;
-    getTypeFnName: string;
+    typeFnName: string;
 }): string => {
-    const { context, resolved, ownership, callerAllocated, getTypeFnName } = options;
+    const { context, resolved, ownership, callerAllocated, typeFnName } = options;
     const record = resolved.value;
     const glibName = record.glibTypeName ?? record.cType ?? record.name;
     const { size } = computeRecordFieldSlots(context, record.fields, record.isUnion);
     return tBoxed(glibName, {
         ownership,
         sharedLibrary: resolved.namespace.sharedLibrary,
-        getTypeFnName,
+        getTypeFnName: typeFnName,
         callerAllocated,
         size: size > 0 ? size : undefined,
     });
@@ -397,7 +397,7 @@ const recordExpression = (
         resolved,
         ownership,
         callerAllocated,
-        getTypeFnName: record.glibGetType,
+        typeFnName: record.glibGetType,
     });
 };
 

@@ -48,11 +48,9 @@ describe("configure suggestions", () => {
     it("includes accessible roles in error messages for failing role queries", async () => {
         const { container } = await render(<GtkLabel>Test</GtkLabel>);
 
-        try {
-            await findByRole(container, Gtk.AccessibleRole.BUTTON, { timeout: 100 });
-        } catch (error) {
-            expect((error as Error).message).toContain("Here are the accessible roles:");
-        }
+        await expect(findByRole(container, Gtk.AccessibleRole.BUTTON, { timeout: 100 })).rejects.toThrow(
+            /Here are the accessible roles:/,
+        );
     });
 });
 
@@ -73,11 +71,9 @@ describe("configure error factory", () => {
 
         const { container } = await render(<GtkLabel>Test</GtkLabel>);
 
-        try {
-            await findByRole(container, Gtk.AccessibleRole.BUTTON, { timeout: 100 });
-        } catch (error) {
-            expect(error).toBeInstanceOf(Error);
-            expect((error as Error).message).toContain("Unable to find an element with role 'BUTTON'");
-        }
+        await expect(findByRole(container, Gtk.AccessibleRole.BUTTON, { timeout: 100 })).rejects.toThrow(Error);
+        await expect(findByRole(container, Gtk.AccessibleRole.BUTTON, { timeout: 100 })).rejects.toThrow(
+            "Unable to find an element with role 'BUTTON'",
+        );
     });
 });

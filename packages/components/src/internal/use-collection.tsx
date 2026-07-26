@@ -1,9 +1,10 @@
 import type * as Gio from "@gtkx/gi/gio";
 import type * as GObject from "@gtkx/gi/gobject";
 import type { ReactElement } from "react";
+import type { RefObject } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkMultiSelection, GtkNoSelection, GtkSingleSelection } from "@gtkx/jsx/gtk";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffectEvent, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Item, Section } from "../types.js";
 import {
     type CollectionMode,
@@ -29,16 +30,6 @@ export type Collection = {
     model: CollectionModel;
     cells: Cells;
     selection: ReactElement;
-};
-
-type CollectionState = {
-    options: CollectionOptions;
-    model: CollectionModel;
-    cells: Cells;
-    selection: Gtk.SelectionModel | null;
-    lastSelection: { selection: Gtk.SelectionModel | null; key: string | null };
-    lastExpansion: string;
-    expanding: boolean;
 };
 
 type SelectionElementProps = {
@@ -96,27 +87,45 @@ const eachRow = (
     }
 };
 
-const reportSelection = (state: CollectionState): void => {
-    const { selection, model } = state;
+type LastSelection = { selection: Gtk.SelectionModel | null; key: string | null };
+
+const lastSelections: WeakMap<Cells, LastSelection> = new WeakMap();
+
+type SelectionReport = {
+    selection: Gtk.SelectionModel | null;
+    model: CollectionModel;
+    cells: Cells;
+    onSelectionChanged: ((ids: string[]) => void) | null | undefined;
+};
+
+const reportSelection = (report: SelectionReport): void => {
+    const { selection, model, cells } = report;
     if (selection === null) return;
     const ids = selectedIdsOf(selection, model);
     const key = ids.join(" ");
-    if (state.lastSelection.selection === selection && state.lastSelection.key === key) return;
-    state.lastSelection = { selection, key };
-    state.options.onSelectionChanged?.(ids);
+    const last = lastSelections.get(cells);
+    if (last?.selection === selection && last.key === key) return;
+    lastSelections.set(cells, { selection, key });
+    report.onSelectionChanged?.(ids);
 };
 
-const reportExpansion = (state: CollectionState): void => {
-    const tree = state.model.treeModel;
+type ExpansionReport = {
+    model: CollectionModel;
+    last: RefObject<string>;
+    onExpandedChange: ((ids: string[]) => void) | null | undefined;
+};
+
+const reportExpansion = (report: ExpansionReport): void => {
+    const tree = report.model.treeModel;
     if (tree === null) return;
     const ids: string[] = [];
-    eachRow(tree, state.model, (row, id) => {
+    eachRow(tree, report.model, (row, id) => {
         if (id !== null && row.getExpanded()) ids.push(id);
     });
     const key = ids.join(" ");
-    if (state.lastExpansion === key) return;
-    state.lastExpansion = key;
-    state.options.onExpandedChange?.(ids);
+    if (report.last.current === key) return;
+    report.last.current = key;
+    report.onExpandedChange?.(ids);
 };
 
 const selectionElement = (mode: Gtk.SelectionMode | null | undefined, props: SelectionElementProps): ReactElement => {
@@ -125,95 +134,107 @@ const selectionElement = (mode: Gtk.SelectionMode | null | undefined, props: Sel
     return <GtkSingleSelection {...props} autoselect={false} canUnselect />;
 };
 
-export const useCollectionModel = (mode: CollectionMode): CollectionModel => {
-    const held = useRef<{ mode: CollectionMode; model: CollectionModel } | null>(null);
-    if (held.current === null || held.current.mode !== mode) {
-        held.current = { mode, model: createCollectionModel(mode) };
-    }
-    return held.current.model;
-};
+export const useCollectionModel = (mode: CollectionMode): CollectionModel =>
+    useMemo(() => createCollectionModel(mode), [mode]);
 
-const useDataSync = (state: CollectionState): void => {
-    const { model, cells } = state;
-    const { items, sections } = state.options;
+type DataSync = { model: CollectionModel; cells: Cells; items: Item[] | undefined; sections: Section[] | undefined };
+
+const useDataSync = ({ model, cells, items, sections }: DataSync): void => {
     useLayoutEffect(() => {
         model.update({ items, sections });
         cells.refresh();
     }, [model, cells, items, sections]);
 };
 
-const useControlledExpansion = (state: CollectionState): void => {
-    const { model, cells } = state;
-    const { expandedIds, items, sections } = state.options;
+type ExpansionSync = DataSync & {
+    expandedIds: string[] | null | undefined;
+    onExpandedChange: ((ids: string[]) => void) | null | undefined;
+};
+
+const applyExpansion = (tree: Gtk.TreeListModel, model: CollectionModel, expandedIds: string[]): void => {
+    const wanted = new Set(expandedIds);
+    eachRow(tree, model, (row, id) => {
+        const desired = id !== null && wanted.has(id);
+        if (row.isExpandable() && row.getExpanded() !== desired) row.setExpanded(desired);
+    });
+};
+
+const watchExpansion = (tree: Gtk.TreeListModel, cells: Cells, report: () => void): (() => void) => {
+    const handler = (): void => {
+        cells.refresh();
+        report();
+    };
+    tree.on("items-changed", handler);
+    return () => {
+        tree.off("items-changed", handler);
+    };
+};
+
+const useControlledExpansion = (sync: ExpansionSync): void => {
+    const { model, cells, items, sections, expandedIds, onExpandedChange } = sync;
+    const lastExpansion = useRef("");
+    const expanding = useRef(false);
+    const report = useEffectEvent((): void => {
+        if (expanding.current) return;
+        reportExpansion({ model, last: lastExpansion, onExpandedChange });
+    });
     useLayoutEffect(() => {
         const tree = model.treeModel;
         if (tree === null) return;
-        const handler = (): void => {
-            cells.refresh();
-            if (!state.expanding) reportExpansion(state);
-        };
-        tree.on("items-changed", handler);
-        return () => {
-            tree.off("items-changed", handler);
-        };
-    }, [state, model, cells]);
+        return watchExpansion(tree, cells, report);
+    }, [model, cells]);
     useLayoutEffect(() => {
         const tree = model.treeModel;
         if (tree === null || expandedIds == null) return;
-        const wanted = new Set(expandedIds);
-        state.expanding = true;
+        expanding.current = true;
         try {
-            eachRow(tree, model, (row, id) => {
-                const desired = id !== null && wanted.has(id);
-                if (row.isExpandable() && row.getExpanded() !== desired) row.setExpanded(desired);
-            });
+            applyExpansion(tree, model, expandedIds);
         } finally {
-            state.expanding = false;
+            expanding.current = false;
         }
-        reportExpansion(state);
-    }, [state, model, expandedIds, items, sections]);
+        report();
+    }, [model, expandedIds, items, sections]);
 };
 
-const useControlledSelection = (state: CollectionState): void => {
-    const { model, selection } = state;
-    const { selectedIds, items, sections } = state.options;
+type SelectionSync = {
+    model: CollectionModel;
+    selection: Gtk.SelectionModel | null;
+    cells: Cells;
+    items: Item[] | undefined;
+    sections: Section[] | undefined;
+    selectedIds: string[] | null | undefined;
+    onSelectionChanged: ((ids: string[]) => void) | null | undefined;
+};
+
+const useControlledSelection = (sync: SelectionSync): void => {
+    const { model, selection, cells, items, sections, selectedIds, onSelectionChanged } = sync;
+    const report = useEffectEvent((): void => {
+        reportSelection({ selection, model, cells, onSelectionChanged });
+    });
     useLayoutEffect(() => {
         if (selection === null) return;
         if (selectedIds != null) applySelection(selection, model, selectedIds);
-        reportSelection(state);
-    }, [state, selection, model, selectedIds, items, sections]);
+        report();
+    }, [selection, model, selectedIds, items, sections]);
 };
 
 export const useCollection = (options: CollectionOptions): Collection => {
-    const { items, sections, selectionMode } = options;
+    const { items, sections, selectionMode, selectedIds, expandedIds, onSelectionChanged, onExpandedChange } = options;
     const model = useCollectionModel(options.mode ?? collectionModeOf({ items, sections }));
-    const cells = useCells({ collection: model, size: options.size });
+    const cells = useCells(options.size);
     const [selection, setSelection] = useState<Gtk.SelectionModel | null>(null);
-    const held = useRef<CollectionState | null>(null);
-    held.current ??= {
-        options,
-        model,
-        cells,
-        selection,
-        lastSelection: { selection: null, key: null },
-        lastExpansion: "",
-        expanding: false,
-    };
-    const state = held.current;
-    state.options = options;
-    state.model = model;
-    state.cells = cells;
-    state.selection = selection;
-    useDataSync(state);
-    useControlledExpansion(state);
-    useControlledSelection(state);
+    useDataSync({ model, cells, items, sections });
+    useControlledExpansion({ model, cells, items, sections, expandedIds, onExpandedChange });
+    useControlledSelection({ model, selection, cells, items, sections, selectedIds, onSelectionChanged });
     return {
         model,
         cells,
         selection: selectionElement(selectionMode, {
             ref: setSelection,
             model: model.model,
-            onSelectionChanged: () => reportSelection(state),
+            onSelectionChanged: () => {
+                reportSelection({ selection, model, cells, onSelectionChanged });
+            },
         }),
     };
 };

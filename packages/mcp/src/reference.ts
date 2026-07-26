@@ -59,7 +59,7 @@ const loadReference = async (root: string): Promise<LoadedReference> => {
     const reference = loadApiReference({ libraries, girPath });
     const watched = [
         ...(configFile === undefined ? [] : [watchFile(resolve(root, configFile))]),
-        ...reference.girFiles.map(watchFile),
+        ...reference.girFiles.map((file) => watchFile(file)),
     ];
     return { reference, watched };
 };
@@ -73,43 +73,52 @@ type CacheEntry = {
     failedAt: number | undefined;
 };
 
+type ReferenceCache = Map<string, CacheEntry>;
+
+const markFailed = async (entry: CacheEntry): Promise<void> => {
+    try {
+        await entry.pending;
+    } catch {
+        entry.failedAt = Date.now();
+    }
+};
+
+const startLoad = (cache: ReferenceCache, root: string): CacheEntry => {
+    const entry: CacheEntry = { pending: loadReference(root), verifiedAt: Date.now(), failedAt: undefined };
+    void markFailed(entry);
+    cache.set(root, entry);
+    return entry;
+};
+
+const isRetryDue = (entry: CacheEntry): boolean =>
+    entry.failedAt !== undefined && Date.now() - entry.failedAt >= FAILURE_RETRY_MS;
+
+const resolveEntry = (cache: ReferenceCache, root: string): CacheEntry => {
+    const entry = cache.get(root) ?? startLoad(cache, root);
+    return isRetryDue(entry) ? startLoad(cache, root) : entry;
+};
+
+const revalidate = (cache: ReferenceCache, root: string, entry: CacheEntry): CacheEntry => {
+    const current = cache.get(root);
+    return current === undefined || current === entry ? startLoad(cache, root) : current;
+};
+
+const currentReference = async (cache: ReferenceCache, root: string): Promise<ReferenceApi> => {
+    const entry = resolveEntry(cache, root);
+    const loaded = await entry.pending;
+    if (Date.now() - entry.verifiedAt < FRESHNESS_INTERVAL_MS) return loaded.reference;
+    if (isFresh(loaded)) {
+        entry.verifiedAt = Date.now();
+        return loaded.reference;
+    }
+    const revalidated = await revalidate(cache, root, entry).pending;
+    return revalidated.reference;
+};
+
 export const createReferenceProvider = (resolveRoot: () => string): ReferenceProvider => {
-    const cache: Map<string, CacheEntry> = new Map();
-    const markFailed = async (entry: CacheEntry): Promise<void> => {
-        try {
-            await entry.pending;
-        } catch {
-            entry.failedAt = Date.now();
-        }
-    };
-    const startLoad = (root: string): CacheEntry => {
-        const entry: CacheEntry = { pending: loadReference(root), verifiedAt: Date.now(), failedAt: undefined };
-        void markFailed(entry);
-        cache.set(root, entry);
-        return entry;
-    };
-    const isRetryDue = (entry: CacheEntry): boolean =>
-        entry.failedAt !== undefined && Date.now() - entry.failedAt >= FAILURE_RETRY_MS;
-    const resolveEntry = (root: string): CacheEntry => {
-        const entry = cache.get(root) ?? startLoad(root);
-        return isRetryDue(entry) ? startLoad(root) : entry;
-    };
-    const revalidate = (root: string, entry: CacheEntry): CacheEntry => {
-        const current = cache.get(root);
-        return current === undefined || current === entry ? startLoad(root) : current;
-    };
+    const cache: ReferenceCache = new Map();
     return {
-        async get(): Promise<ReferenceApi> {
-            const root = resolve(resolveRoot());
-            const entry = resolveEntry(root);
-            const loaded = await entry.pending;
-            if (Date.now() - entry.verifiedAt < FRESHNESS_INTERVAL_MS) return loaded.reference;
-            if (isFresh(loaded)) {
-                entry.verifiedAt = Date.now();
-                return loaded.reference;
-            }
-            return (await revalidate(root, entry).pending).reference;
-        },
+        get: () => currentReference(cache, resolve(resolveRoot())),
     };
 };
 
@@ -142,7 +151,7 @@ const searchApiShape = {
     limit: z.number().int().min(1).optional().describe("Maximum number of results (default: 20)."),
 };
 
-const getApiDocsShape = {
+const apiDocsShape = {
     symbol: z.string().describe(SYMBOL_DESCRIPTION),
     kind: SYMBOL_KIND.optional().describe("Disambiguate when several kinds share the symbol name."),
 };
@@ -208,7 +217,7 @@ const getApiDocsTool = (provider: ReferenceProvider): Tool =>
         kind: "readOnly",
         description:
             "Get the full reference page for one symbol of the project's generated GTK4 bindings: JSX elements (props, signals, methods) or `@gtkx/gi` classes, interfaces, records, enums, callbacks, aliases, functions, and constants.",
-        inputSchema: getApiDocsShape,
+        inputSchema: apiDocsShape,
         handler: async ({ symbol, kind }) => {
             const reference = await provider.get();
             const result = reference.lookup(symbol, kind);
@@ -269,7 +278,10 @@ const registerIndexResource = (server: ResourceServer, provider: ReferenceProvid
             description: "Namespaces of the project's generated GTK4 bindings, with symbol and JSX element counts.",
             mimeType: "text/markdown",
         },
-        async (uri) => markdownResource(uri, (await provider.get()).overview()),
+        async (uri) => {
+            const reference = await provider.get();
+            return markdownResource(uri, reference.overview());
+        },
     );
 };
 
@@ -302,7 +314,8 @@ const registerNamespaceResource = (server: ResourceServer, provider: ReferencePr
         },
         async (uri, variables) => {
             const namespace = variableValue(variables.namespace);
-            const overview = (await provider.get()).namespaceOverview(namespace);
+            const reference = await provider.get();
+            const overview = reference.namespaceOverview(namespace);
             if (overview === undefined) throw resourceNotFound(`Unknown namespace "${namespace}"`);
             return markdownResource(uri, overview);
         },
@@ -316,7 +329,7 @@ const registerSymbolResource = (server: ResourceServer, provider: ReferenceProvi
             list: undefined,
             complete: {
                 namespace: namespaceCompleter(provider),
-                symbol: (value, context) => {
+                symbol: async (value, context) => {
                     const namespace = variableValue(context?.arguments?.namespace);
                     if (namespace.length === 0) return [];
                     return withLoadFallback(async () => {

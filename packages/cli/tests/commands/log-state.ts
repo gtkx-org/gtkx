@@ -1,6 +1,8 @@
-import { afterEach, beforeEach, vi } from "vitest";
+import { afterEach, beforeEach, type MockInstance, vi } from "vitest";
 
-export type LogState = { stderrSpy: ReturnType<typeof vi.spyOn> };
+type StderrSpy = MockInstance<typeof process.stderr.write>;
+
+export type LogState = { stderrSpy: StderrSpy };
 
 export const setupLogState = (): LogState => {
     const state = {} as LogState;
@@ -14,5 +16,5 @@ export const setupLogState = (): LogState => {
     return state;
 };
 
-export const collectLogged = (stderrSpy: ReturnType<typeof vi.spyOn>): string =>
-    stderrSpy.mock.calls.map((call: unknown[]) => String(call[0])).join("");
+export const collectLogged = (stderrSpy: StderrSpy): string =>
+    stderrSpy.mock.calls.map((call) => String(call[0])).join("");

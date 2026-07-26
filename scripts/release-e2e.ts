@@ -48,7 +48,7 @@ function runCapture(command: string, args: string[]): Promise<string> {
 
 function createGtkxVersion(): string {
     const manifestPath = join(PACKAGES_DIR, "create-gtkx", "package.json");
-    const manifest: PackageManifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as PackageManifest;
     if (typeof manifest.version !== "string") {
         throw new TypeError(`create-gtkx has no version in ${manifestPath}`);
     }
@@ -58,14 +58,14 @@ function createGtkxVersion(): string {
 function publishableName(entry: string): string | undefined {
     const manifestPath = join(PACKAGES_DIR, entry, "package.json");
     if (!existsSync(manifestPath)) return undefined;
-    const manifest: PackageManifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as PackageManifest;
     if (manifest.private === true) return undefined;
     return typeof manifest.name === "string" ? manifest.name : undefined;
 }
 
 function publishablePackageNames(): string[] {
     return readdirSync(PACKAGES_DIR)
-        .map(publishableName)
+        .map((entry) => publishableName(entry))
         .filter((name): name is string => name !== undefined);
 }
 
@@ -106,9 +106,9 @@ async function inspectTarball(
         .split("\n")
         .map((line) => line.trim())
         .filter((line) => line.length > 0);
-    const manifest: PackageManifest = JSON.parse(
+    const manifest = JSON.parse(
         await runCapture("tar", ["-xzOf", tarballPath, "package/package.json"]),
-    );
+    ) as PackageManifest;
     const maps: Record<string, string> = {};
     const mapEntries = entries.filter((entry) => entry.endsWith(".map"));
     if (mapEntries.length > 0) {

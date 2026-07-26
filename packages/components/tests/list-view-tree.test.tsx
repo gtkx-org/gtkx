@@ -43,7 +43,11 @@ const expanderByName = (name: string): Gtk.TreeExpander =>
     screen.getByRole(Gtk.AccessibleRole.BUTTON, { name }) as Gtk.TreeExpander;
 
 const rowTexts = (container: Gtk.ListView | null): (string | null)[] =>
-    container ? within(container).queryAllByRole(Gtk.AccessibleRole.LABEL).map(getWidgetNodeText) : [];
+    container === null
+        ? []
+        : within(container)
+                .queryAllByRole(Gtk.AccessibleRole.LABEL)
+                .map((widget) => getWidgetNodeText(widget));
 
 const listRowByName = (name: string): Gtk.TreeListRow => {
     const row = expanderByName(name).getListRow();

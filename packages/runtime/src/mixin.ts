@@ -15,7 +15,7 @@ function definedInClassChain(prototype: object, key: string): boolean {
     let current: object | null = prototype;
     while (current !== null && current !== Object.prototype) {
         if (Object.hasOwn(current, key)) return true;
-        current = Object.getPrototypeOf(current);
+        current = Reflect.getPrototypeOf(current);
     }
     return false;
 }

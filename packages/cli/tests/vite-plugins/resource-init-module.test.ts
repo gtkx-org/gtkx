@@ -13,9 +13,9 @@ describe("renderInitModule", () => {
     });
 
     it("renders the dev-mode registrar that re-registers a staged bundle on change", () => {
-        const source = renderInitModule({ isBuild: false, devBundlePath: "/tmp/staged/gtkx.gresource" });
+        const source = renderInitModule({ isBuild: false, devBundlePath: "/app/staged/gtkx.gresource" });
 
-        expect(source).toContain(JSON.stringify("/tmp/staged/gtkx.gresource"));
+        expect(source).toContain(JSON.stringify("/app/staged/gtkx.gresource"));
         expect(source).toContain("resourcesUnregister(current)");
         expect(source).toContain("statSync(");
         expect(source).toContain("export function ensureRegistered()");

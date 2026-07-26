@@ -32,7 +32,7 @@ const RESERVED_TAG_RENAMES: Map<string, string> = new Map([["constructor", GIR_C
 
 const renameReservedTag = (tag: string): string => RESERVED_TAG_RENAMES.get(tag) ?? tag;
 
-const RENAMED_MULTI_TAGS: Set<string> = new Set([...MULTI_TAGS].map(renameReservedTag));
+const RENAMED_MULTI_TAGS: Set<string> = new Set([...MULTI_TAGS].map((tag) => renameReservedTag(tag)));
 
 const PARSER = createXmlParser({
     trimValues: true,
@@ -61,7 +61,14 @@ export const nameAttr = (node: RawNode): string => attr(node, "name") ?? "";
 
 export const intAttr = (node: RawNode, name: string): number | undefined => {
     const raw = attr(node, name);
-    return raw === undefined ? undefined : Number.parseInt(raw, 10);
+    return raw === undefined ? undefined : Number(raw);
+};
+
+const enumMember = <T extends string>(raw: string, members: Set<T>, label: string): T => {
+    for (const member of members) {
+        if (member === raw) return member;
+    }
+    throw new Error(`Unknown ${label} value "${raw}"`);
 };
 
 export const parseEnumAttr = <T extends string, F extends T | undefined>(
@@ -69,13 +76,7 @@ export const parseEnumAttr = <T extends string, F extends T | undefined>(
     members: Set<T>,
     fallback: F,
     label: string,
-): T | F => {
-    if (raw === undefined) return fallback;
-    for (const member of members) {
-        if (member === raw) return member;
-    }
-    throw new Error(`Unknown ${label} value "${raw}"`);
-};
+): T | F => (raw === undefined ? fallback : enumMember(raw, members, label));
 
 export const childrenOf = (node: RawNode | undefined, tag: string): RawNode[] => {
     if (node === undefined) return [];

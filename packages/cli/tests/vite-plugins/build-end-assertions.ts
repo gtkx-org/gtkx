@@ -1,14 +1,16 @@
 import { expect, vi } from "vitest";
 import type { BuildEndHook } from "./plugin-hook-types.js";
 
+type EmitFile = ThisParameterType<BuildEndHook>["emitFile"];
+
 export const expectBuildEndIsNoop = (buildEnd: BuildEndHook): void => {
-    const emitFile = vi.fn();
+    const emitFile = vi.fn<EmitFile>();
     expect(() => buildEnd.call({ emitFile })).not.toThrow();
     expect(emitFile).not.toHaveBeenCalled();
 };
 
 export const expectBuildEndEmitsAsset = (buildEnd: BuildEndHook, fileName: string): void => {
-    const emitFile = vi.fn();
+    const emitFile = vi.fn<EmitFile>();
     buildEnd.call({ emitFile });
 
     expect(emitFile).toHaveBeenCalledTimes(1);

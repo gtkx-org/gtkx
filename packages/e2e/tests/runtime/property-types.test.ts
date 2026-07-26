@@ -1,10 +1,6 @@
 import type * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
-import { describe, expect, it } from "vitest";
-
-type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
-
-type Expect<T extends true> = T;
+import { describe, expect, expectTypeOf, it } from "vitest";
 
 type Has<T, K extends PropertyKey> = K extends keyof T ? true : false;
 
@@ -12,42 +8,27 @@ describe("generated property types", () => {
     it("types each property with its accessor type", () => {
         const button = new Gtk.Button({ label: "Send" });
 
-        const types: [
-            Expect<Equal<Gtk.ButtonProperties["label"], string>>,
-            Expect<Equal<Gtk.ButtonProperties["child"], Gtk.Widget | null>>,
-            Expect<Equal<Gtk.LabelProperties["wrap"], boolean>>,
-        ] = [true, true, true];
+        expectTypeOf<Gtk.ButtonProperties["label"]>().toEqualTypeOf<string>();
+        expectTypeOf<Gtk.ButtonProperties["child"]>().toEqualTypeOf<Gtk.Widget | null>();
+        expectTypeOf<Gtk.LabelProperties["wrap"]>().toEqualTypeOf<boolean>();
 
-        expect(types).toEqual([true, true, true]);
         expect(button.label).toBe("Send");
     });
 
     it("inherits ancestor properties instead of re-listing them", () => {
-        const inherited: [
-            Expect<Equal<Gtk.ButtonProperties["visible"], boolean>>,
-            Expect<Equal<Gtk.WidgetProperties["visible"], boolean>>,
-        ] = [true, true];
-
-        expect(inherited).toEqual([true, true]);
+        expectTypeOf<Gtk.ButtonProperties["visible"]>().toEqualTypeOf<boolean>();
+        expectTypeOf<Gtk.WidgetProperties["visible"]>().toEqualTypeOf<boolean>();
     });
 
     it("carries properties contributed by implemented interfaces", () => {
-        const contributed: [
-            Expect<Equal<Gtk.ButtonProperties["actionTarget"], GLib.Variant | null>>,
-            Expect<Equal<Gtk.ButtonProperties["actionTarget"], Gtk.Button["actionTarget"]>>,
-        ] = [true, true];
-
-        expect(contributed).toEqual([true, true]);
+        expectTypeOf<Gtk.ButtonProperties["actionTarget"]>().toEqualTypeOf<GLib.Variant | null>();
+        expectTypeOf<Gtk.ButtonProperties["actionTarget"]>().toEqualTypeOf<Gtk.Button["actionTarget"]>();
     });
 
     it("excludes methods and write-only properties", () => {
-        const excluded: [
-            Expect<Equal<Has<Gtk.ButtonProperties, "setLabel">, false>>,
-            Expect<Equal<Has<Gtk.ButtonProperties, "connect">, false>>,
-            Expect<Equal<Has<Gtk.CheckButtonProperties, "active">, true>>,
-            Expect<Equal<Has<Gtk.CheckButtonProperties, "group">, false>>,
-        ] = [true, true, true, true];
-
-        expect(excluded).toEqual([true, true, true, true]);
+        expectTypeOf<Has<Gtk.ButtonProperties, "setLabel">>().toEqualTypeOf<false>();
+        expectTypeOf<Has<Gtk.ButtonProperties, "connect">>().toEqualTypeOf<false>();
+        expectTypeOf<Has<Gtk.CheckButtonProperties, "active">>().toEqualTypeOf<true>();
+        expectTypeOf<Has<Gtk.CheckButtonProperties, "group">>().toEqualTypeOf<false>();
     });
 });

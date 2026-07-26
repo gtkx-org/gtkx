@@ -17,7 +17,7 @@ describe("registerClass — registration", () => {
         registerClass(CustomLabel, { typeName: name });
 
         const gtype = typeFromName(name);
-        expect(gtype).not.toBe(0);
+        expect(gtype).not.toBe(0n);
         expect(typeName(gtype)).toBe(name);
         expect(typeName(typeParent(gtype))).toBe("GtkLabel");
     });
@@ -38,11 +38,13 @@ describe("registerClass — registration", () => {
 
         registerClass(klass);
 
-        expect(typeFromName(dynamicName)).not.toBe(0);
+        expect(typeFromName(dynamicName)).not.toBe(0n);
     });
 
     it("rejects classes that do not extend a registered wrapper class", () => {
-        class NotANativeObject {}
+        class NotANativeObject {
+            marker = "plain-js-class";
+        }
 
         expect(() =>
             registerClass(NotANativeObject as Parameters<typeof registerClass>[0], {
@@ -65,13 +67,17 @@ describe("registerClass — vfunc dispatch", () => {
     it("auto-discovers a class vfunc override from a subclass method", () => {
         const name = uniqueName("GtkxVfuncSubclass");
         class CustomWidget extends Gtk.Widget {
-            snapshot(): void {}
+            snapshotCount = 0;
+
+            snapshot(): void {
+                this.snapshotCount++;
+            }
         }
 
         registerClass(CustomWidget, { typeName: name });
 
         const customGtype = typeFromName(name);
-        expect(customGtype).not.toBe(0);
+        expect(customGtype).not.toBe(0n);
         const instance = GObject.newv(customGtype, []);
         expect(instance).toBeInstanceOf(CustomWidget);
     });
@@ -81,7 +87,7 @@ describe("registerClass — vfunc dispatch", () => {
         const parserFinishedCalls: number[] = [];
 
         class CustomWidget extends Gtk.Widget {
-            parserFinished(..._args: unknown[]): void {
+            parserFinished(): void {
                 parserFinishedCalls.push(1);
             }
         }
@@ -89,7 +95,7 @@ describe("registerClass — vfunc dispatch", () => {
         registerClass(CustomWidget, { typeName: name });
 
         const customGtype = typeFromName(name);
-        expect(customGtype).not.toBe(0);
+        expect(customGtype).not.toBe(0n);
 
         const instance = GObject.newv(customGtype, []);
         expect(instanceIsA(getHandle(instance), typeFromName("GtkBuildable"))).toBe(true);
@@ -130,7 +136,7 @@ describe("registerClass — vfunc argument and return marshalling", () => {
         const name = uniqueName("GtkxVfuncBoxedArg");
         const observed: unknown[] = [];
         class CustomBuffer extends Gtk.TextBuffer {
-            insertText(iter: Gtk.TextIter, _text: string, _len: number): void {
+            insertText(iter: Gtk.TextIter): void {
                 observed.push(iter);
             }
         }
@@ -188,7 +194,7 @@ describe("registerClass — caller-allocated and scalar out parameters", () => {
 
     it("writes scalar out parameters from the handler's returned tuple", () => {
         class CustomWidget extends Gtk.Widget {
-            override measure(_orientation: Gtk.Orientation, _forSize: number): [number, number, number, number] {
+            override measure(): [number, number, number, number] {
                 return [42, 48, -1, -1];
             }
         }
@@ -205,7 +211,9 @@ describe("registerClass — construct-time vtable slots", () => {
     it("rejects overriding the `constructed` slot", () => {
         const name = uniqueName("GtkxConstructedRejected");
         class CustomObject extends GObject {
-            constructed(): void {}
+            constructed(): void {
+                throw new Error("constructed must never be dispatched");
+            }
         }
 
         expect(() => registerClass(CustomObject, { typeName: name })).toThrow(
@@ -216,7 +224,9 @@ describe("registerClass — construct-time vtable slots", () => {
     it("rejects overriding the `setProperty` slot", () => {
         const name = uniqueName("GtkxSetPropertyRejected");
         class CustomObject extends GObject {
-            override setProperty(): void {}
+            override setProperty(): void {
+                throw new Error("setProperty must never be dispatched");
+            }
         }
 
         expect(() => registerClass(CustomObject, { typeName: name })).toThrow(

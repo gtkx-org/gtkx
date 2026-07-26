@@ -41,7 +41,7 @@ export function ListView<T = unknown, S = unknown>(props: ListViewProps<T, S>): 
                 {...(renderHeader != null && { headerFactory: <GtkSignalListItemFactory {...cells.header} /> })}
                 {...rest}
             />
-            {cells.portals(collectionRenderers({ collection: model, expandedIds, renderItem, renderHeader }))}
+            {cells.portals(collectionRenderers({ collection: model, expandedIds, renderItem, renderHeader }), model)}
         </>
     );
 }

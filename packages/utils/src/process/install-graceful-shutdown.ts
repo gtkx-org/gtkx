@@ -40,8 +40,18 @@ const finish = (state: ShutdownState, signal: NodeJS.Signals, graceful: boolean)
     state.exited = true;
     clearTimers(state);
     const { exitCode } = state.options;
-    const code = exitCode ? exitCode(signal, graceful) : (graceful ? 0 : exitCodeForSignal(signal));
-    process.exit(code);
+    const defaultCode = graceful ? 0 : exitCodeForSignal(signal);
+    process.exit(exitCode ? exitCode(signal, graceful) : defaultCode);
+};
+
+const runShutdown = async (state: ShutdownState, signal: NodeJS.Signals): Promise<void> => {
+    try {
+        await state.options.onSignal(signal);
+        finish(state, signal, true);
+    } catch (error_) {
+        error("graceful shutdown failed", error_);
+        finish(state, signal, false);
+    }
 };
 
 const beginShutdown = (state: ShutdownState, signal: NodeJS.Signals): void => {
@@ -60,15 +70,7 @@ const beginShutdown = (state: ShutdownState, signal: NodeJS.Signals): void => {
         }, state.forceKillMs);
         state.forceTimer.unref();
     }
-    Promise.resolve()
-        .then(() => state.options.onSignal(signal))
-        .then(
-            () => finish(state, signal, true),
-            (error_: unknown) => {
-                error("graceful shutdown failed", error_);
-                finish(state, signal, false);
-            },
-        );
+    void runShutdown(state, signal);
 };
 
 const handle = (state: ShutdownState, signal: NodeJS.Signals): void => {

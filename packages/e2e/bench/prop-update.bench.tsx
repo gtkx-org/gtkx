@@ -1,9 +1,12 @@
 import type { ReactNode } from "react";
 import { GtkBox, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
+import { bench, describe } from "vitest";
 import { cleanup, render } from "../tests/helpers/production-render.js";
-import { describeSizedBench } from "../tests/helpers/sized-bench.js";
+import { BENCH_SIZES } from "../tests/helpers/sized-bench.js";
 
-const SIZES = [100, 400];
+const TOGGLED_SUFFIXES = ["b", "a", "b", "a", "b", "a"];
+
+const UNCHANGED_SUFFIXES = Array.from({ length: 10 }, () => "a");
 
 const drawLabels = (n: number, suffix: string): ReactNode => (
     <GtkScrolledWindow minContentHeight={200} minContentWidth={200}>
@@ -15,19 +18,22 @@ const drawLabels = (n: number, suffix: string): ReactNode => (
     </GtkScrolledWindow>
 );
 
-const describeLabelRerenders = (title: string, name: (n: number) => string, suffixes: string[]): void =>
-    describeSizedBench(title, SIZES, name, async (n) => {
-        const { rerender } = await render(drawLabels(n, "a"));
-        for (const suffix of suffixes) {
-            await rerender(drawLabels(n, suffix));
-        }
-        await cleanup();
-    });
+const rerenderLabels = async (n: number, suffixes: string[]): Promise<void> => {
+    const { rerender } = await render(drawLabels(n, "a"));
+    for (const suffix of suffixes) {
+        await rerender(drawLabels(n, suffix));
+    }
+    await cleanup();
+};
 
-describeLabelRerenders("prop update", (n) => `update one prop across ${n} labels`, ["b", "a", "b", "a", "b", "a"]);
+describe("prop update", () => {
+    for (const n of BENCH_SIZES) {
+        bench(`update one prop across ${n} labels`, () => rerenderLabels(n, TOGGLED_SUFFIXES));
+    }
+});
 
-describeLabelRerenders(
-    "no-op rerender",
-    (n) => `rerender ${n} labels with unchanged props`,
-    Array.from({ length: 10 }, () => "a"),
-);
+describe("no-op rerender", () => {
+    for (const n of BENCH_SIZES) {
+        bench(`rerender ${n} labels with unchanged props`, () => rerenderLabels(n, UNCHANGED_SUFFIXES));
+    }
+});

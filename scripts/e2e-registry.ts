@@ -172,7 +172,7 @@ const prepareHostOnlyPublish = (): (() => void) => {
         snapshot.set(path, readFileSync(path, "utf8"));
     }
     const manifestPath = join(NATIVE_DIR, "package.json");
-    const manifest: NativeManifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as NativeManifest;
     manifest.napi.targets = [host.triple];
     manifest.optionalDependencies = { [host.platformPackage]: manifest.version };
     writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 4)}\n`);
@@ -224,7 +224,7 @@ export async function withRegistry(fn: (ctx: RegistryContext) => Promise<void>):
 
     try {
         writeFileSync(configPath, verdaccioConfig(registryDir));
-        const activeServer: Server = await runServer(configPath);
+        const activeServer = (await runServer(configPath)) as Server;
         server = activeServer;
 
         await new Promise<void>((resolve, reject) => {
@@ -272,7 +272,7 @@ async function loadHeadlessDisplay(): Promise<HeadlessDisplay> {
 
 function runBuiltAppUntilStable(appDir: string, env: NodeJS.ProcessEnv): Promise<void> {
     return new Promise((resolve, reject) => {
-        const child = spawn("node", ["dist/bundle.js"], { cwd: appDir, env, stdio: ["ignore", "pipe", "pipe"] });
+        const child = spawn(process.execPath, ["dist/bundle.js"], { cwd: appDir, env, stdio: ["ignore", "pipe", "pipe"] });
         let output = "";
         const capture = (chunk: Buffer): void => {
             output += chunk.toString("utf8");
