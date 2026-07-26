@@ -1,13 +1,14 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import { getWrapperClass, TYPE_INVALID, typeFromName, typeIsA } from "@gtkx/runtime";
+import { pickBy } from "@gtkx/utils";
 import { type TypeInfo, typeInfoOf } from "./metadata.js";
 import {
     type ContentKind,
+    createElementNode,
     createLazyNode,
     type Dispatch,
     type ElementNode,
     type LazyNode,
-    makeElementNode,
 } from "./node.js";
 import type { Props } from "./registry.js";
 
@@ -30,24 +31,24 @@ const resolveContentKind = (type: bigint): ContentKind | null => {
     return null;
 };
 
-const constructInput = (info: TypeInfo, props: Props): Props => {
-    const input: Props = {};
-    for (const name in props) {
-        if (info.deferred.has(name) || props[name] === undefined) continue;
-        if (info.constructOnly.has(name) || info.construct.has(name)) input[name] = props[name];
-    }
-    return input;
-};
+const constructInput = (info: TypeInfo, props: Props): Props =>
+    pickBy(
+        props,
+        (value, name) =>
+            value !== undefined &&
+            !info.deferred.has(name) &&
+            (info.constructOnly.has(name) || info.construct.has(name)),
+    );
 
 const instantiate = (type: bigint, input: Props): GObject.Object => {
     const cls = getWrapperClass(type) as WidgetConstructor;
     return new cls(input);
 };
 
-export const createElementNode = (typeName: string, props: Props, dispatch: Dispatch): ElementNode | LazyNode => {
+export const resolveElementNode = (typeName: string, props: Props, dispatch: Dispatch): ElementNode | LazyNode => {
     const info = typeInfoOf(typeName);
     if (info.lazy) return createLazyNode(typeName, props, dispatch);
     const type = typeFromName(typeName);
     const object = instantiate(type, constructInput(info, props));
-    return makeElementNode(typeName, object, dispatch, resolveContentKind(type));
+    return createElementNode(typeName, object, dispatch, resolveContentKind(type));
 };

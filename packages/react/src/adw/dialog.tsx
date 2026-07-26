@@ -2,7 +2,7 @@ import type * as Adw from "@gtkx/gi/adw";
 import { type ElementType, type ReactNode, type Ref, useLayoutEffect, useState } from "react";
 import { useMergedRef } from "../hooks/use-merged-refs.js";
 import { useParentWindow } from "../hooks/use-parent-window.js";
-import { createPortal } from "../reconciler/host-config.js";
+import { createPortal } from "../reconciler/root.js";
 import { rootElement } from "../reconciler/root-element.js";
 
 type DialogComponentProps = {

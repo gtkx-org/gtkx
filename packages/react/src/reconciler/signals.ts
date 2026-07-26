@@ -1,12 +1,15 @@
-import type { SignalHandler } from "@gtkx/runtime";
+import { getSignalBaseName, type SignalHandler } from "@gtkx/runtime";
 import { camelCase } from "@gtkx/utils";
-import { isBlockableSignal, typeInfoOf } from "./metadata.js";
+import { type TypeInfo, typeInfoOf } from "./metadata.js";
 import type { SignalTarget } from "./node.js";
 
 const NOTIFY_DETAIL_PREFIX = "notify::";
 
 const notifyPropertyOf = (signal: string): string | null =>
     signal.startsWith(NOTIFY_DETAIL_PREFIX) ? camelCase(signal.slice(NOTIFY_DETAIL_PREFIX.length)) : null;
+
+const isBlockableSignal = (info: TypeInfo, signal: string): boolean =>
+    info.userEventSignals.has(getSignalBaseName(signal));
 
 let suppressionDepth = 0;
 

@@ -24,7 +24,7 @@ type SlotHooks<P extends GObject.Object, C extends GObject.Object> = {
 
 /** Builds a behavior for a named child slot holding children of `childType`, claiming matches only. */
 export const slot = <P extends GObject.Object, C extends GObject.Object>(
-    prop: string,
+    slotName: string,
     childType: string,
     hooks: SlotHooks<P, C>,
 ): ElementBehavior => {
@@ -32,7 +32,7 @@ export const slot = <P extends GObject.Object, C extends GObject.Object>(
     const { attach, detach, reorder, resolve } = hooks;
     const behavior: ElementBehavior = {
         attach: (object, child, info) =>
-            info.slot === prop && matches(child) ? (attach(object as P, child as C, info) ?? true) : undefined,
+            info.slot === slotName && matches(child) ? (attach(object as P, child as C, info) ?? true) : undefined,
     };
     if (reorder !== undefined)
         behavior.reorder = (object, child, info) => reorder(object as P, child as C, info) ?? true;
@@ -116,12 +116,10 @@ export const deferred = <P extends GObject.Object, V>(
 });
 
 /** Builds a behavior for a text prop kept in controlled-input sync: set when provided, never reset. */
-export const controlledText = (prop: string): ElementBehavior => ({
-    update: (object, prev, next) => {
-        if (next[prop] !== undefined && !Object.is(prev[prop], next[prop])) Reflect.set(object, prop, next[prop]);
-        return [prop];
-    },
-});
+export const controlledText = (prop: string): ElementBehavior =>
+    value(prop, (object, next) => {
+        Reflect.set(object, prop, next);
+    });
 
 /** Spreads one config across many GLib type names. */
 export const forTypes = (types: string[], config: ElementConfig): Record<string, ElementConfig> =>
@@ -167,18 +165,18 @@ export const boxSlot = <
 
 /** Behavior for a container whose children are added and removed by a pair of methods. */
 export const addRemoveSlot = <C extends GObject.Object, P extends GObject.Object>(
-    prop: string,
+    slotName: string,
     childType: string,
     add: (parent: P, child: C) => unknown,
     remove: (parent: P, child: C) => void,
-): ElementBehavior => slot<P, C>(prop, childType, { attach: add, detach: remove });
+): ElementBehavior => slot<P, C>(slotName, childType, { attach: add, detach: remove });
 
 /** Behavior for a `children` slot whose attach call returns the page object the container adopts. */
 export const adoptedChildrenSlot = <P extends GObject.Object, C extends GObject.Object>(
     childType: string,
     add: (parent: P, item: C) => unknown,
     remove: (parent: P, item: C) => void,
-): ElementBehavior => slot<P, C>("children", childType, { attach: add, detach: remove });
+): ElementBehavior => addRemoveSlot<C, P>("children", childType, add, remove);
 
 type RowCache = WeakMap<GObject.Object, Gtk.Widget>;
 

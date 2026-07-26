@@ -1,5 +1,5 @@
 import { CONSTRUCT_ONLY_PROPS, CONSTRUCT_PROPS, DEFAULT_PROPS, SIGNALS, userEventSignals } from "virtual:gtkx-config";
-import { getSignalBaseName, TYPE_INVALID, typeFromName, typeInterfaces, typeName, typeParent } from "@gtkx/runtime";
+import { TYPE_INVALID, typeFromName, typeInterfaces, typeName, typeParent } from "@gtkx/runtime";
 import { getOrInsert } from "@gtkx/utils";
 import { deferredProps, ELEMENTS, type ElementBehavior } from "./registry.js";
 
@@ -80,6 +80,3 @@ const buildTypeInfo = (name: string): TypeInfo => {
 };
 
 export const typeInfoOf = (name: string): TypeInfo => getOrInsert(typeInfoCache, name, buildTypeInfo);
-
-export const isBlockableSignal = (info: TypeInfo, signal: string): boolean =>
-    info.userEventSignals.has(getSignalBaseName(signal));

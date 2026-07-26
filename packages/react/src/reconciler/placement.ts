@@ -1,6 +1,6 @@
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { getOrInsert, remove } from "@gtkx/utils";
+import { getOrInsert, indexBeforeOrEnd, remove } from "@gtkx/utils";
 import { applyAdoptedProps, markFlush } from "./apply-props.js";
 import { typeInfoOf } from "./metadata.js";
 import {
@@ -10,15 +10,15 @@ import {
     type ElementNode,
     LAZY_KIND,
     lazyTarget,
-    nodeWidget,
+    nodeObject,
     type PlaceableNode,
     type PlacedChild,
 } from "./node.js";
-import type { ElementBehavior, PlaceInfo } from "./registry.js";
+import type { DetachInfo, ElementBehavior, PlaceInfo } from "./registry.js";
 import { markTextDirty } from "./text.js";
 
 const createEntry = (slot: string, node: PlaceableNode): PlacedChild | null => {
-    const object = nodeWidget(node);
+    const object = nodeObject(node);
     if (object === null) return null;
     return { node, object, adopted: null, slot, behavior: null, attached: false };
 };
@@ -46,13 +46,16 @@ const applyLazyProps = (entry: PlacedChild): void => {
     entry.node.adopted = entry.adopted;
 };
 
-const setObjectSlot = (parent: ElementNode, entry: PlacedChild): void => {
-    Reflect.set(parent.object, entry.slot, entry.object);
-    const node = entry.node;
+const wireBufferView = (node: PlaceableNode, parent: ElementNode): void => {
     if (node.kind === ELEMENT_KIND && node.contentKind === "buffer" && parent.object instanceof Gtk.TextView) {
         node.bufferView = parent.object;
         markTextDirty(node);
     }
+};
+
+const setObjectSlot = (parent: ElementNode, entry: PlacedChild): void => {
+    Reflect.set(parent.object, entry.slot, entry.object);
+    wireBufferView(entry.node, parent);
     entry.behavior = null;
     entry.attached = true;
 };
@@ -73,6 +76,13 @@ const attachEntry = (parent: ElementNode, entry: PlacedChild, index: number, sib
     if (entry.slot !== DEFAULT_SLOT) setObjectSlot(parent, entry);
 };
 
+const detachInfo = (entry: PlacedChild, context: unknown): DetachInfo => ({
+    slot: entry.slot,
+    adopted: entry.adopted,
+    props: entry.node.props,
+    context,
+});
+
 const detachEntry = (parent: ElementNode, entry: PlacedChild): void => {
     if (!entry.attached) return;
     entry.attached = false;
@@ -81,13 +91,7 @@ const detachEntry = (parent: ElementNode, entry: PlacedChild): void => {
         if (entry.slot !== DEFAULT_SLOT) Reflect.set(parent.object, entry.slot, null);
         return;
     }
-    const context = contextFor(parent, behavior);
-    behavior.detach?.(parent.object, entry.object, {
-        slot: entry.slot,
-        adopted: entry.adopted,
-        props: entry.node.props,
-        context,
-    });
+    behavior.detach?.(parent.object, entry.object, detachInfo(entry, contextFor(parent, behavior)));
 };
 
 const rebuild = (parent: ElementNode, entries: PlacedChild[]): void => {
@@ -98,21 +102,8 @@ const rebuild = (parent: ElementNode, entries: PlacedChild[]): void => {
     });
 };
 
-const reorderEntry = (parent: ElementNode, entry: PlacedChild, index: number, sibling: GObject.Object | null): void => {
-    const behavior = entry.behavior;
-    const reorder = behavior?.reorder;
-    if (reorder === undefined || behavior === null) return;
-    const context = contextFor(parent, behavior);
-    const claim = reorder(parent.object, entry.object, placeInfo(entry, index, sibling, context));
-    adoptedFrom(parent, entry, behavior, claim);
-    applyLazyProps(entry);
-};
-
-const positionOf = (entries: PlacedChild[], before: PlaceableNode | null): number => {
-    if (before === null) return entries.length;
-    const index = entries.findIndex((entry) => entry.node === before);
-    return index < 0 ? entries.length : index;
-};
+const positionOf = (entries: PlacedChild[], before: PlaceableNode | null): number =>
+    indexBeforeOrEnd(entries, before, (entry, target) => entry.node === target);
 
 const placeNew = (parent: ElementNode, entry: PlacedChild, entries: PlacedChild[], index: number): void => {
     attachEntry(parent, entry, index, siblingAt(entries, index));
@@ -126,8 +117,16 @@ const placeNew = (parent: ElementNode, entry: PlacedChild, entries: PlacedChild[
 };
 
 const moveEntry = (parent: ElementNode, entry: PlacedChild, entries: PlacedChild[], index: number): void => {
-    if (entry.behavior?.reorder !== undefined) reorderEntry(parent, entry, index, siblingAt(entries, index));
-    else rebuild(parent, entries);
+    const behavior = entry.behavior;
+    const reorder = behavior?.reorder;
+    if (behavior === null || reorder === undefined) {
+        rebuild(parent, entries);
+        return;
+    }
+    const context = contextFor(parent, behavior);
+    const claim = reorder(parent.object, entry.object, placeInfo(entry, index, siblingAt(entries, index), context));
+    adoptedFrom(parent, entry, behavior, claim);
+    applyLazyProps(entry);
 };
 
 export const placeChild = (

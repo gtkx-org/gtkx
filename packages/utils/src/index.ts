@@ -7,6 +7,7 @@ export * from "./map/index.js";
 export * from "./object/index.js";
 export * from "./predicate/index.js";
 export * from "./process/index.js";
+export * from "./set/index.js";
 export * from "./source/index.js";
 export * from "./string/index.js";
 export * from "./util/index.js";

@@ -1,11 +1,11 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import type { SignalHandler } from "@gtkx/runtime";
-import { kebabCase } from "@gtkx/utils";
+import { drain, kebabCase } from "@gtkx/utils";
 import { applyAccessibleProps, isAccessibleProp } from "../utils/accessible-props.js";
 import { type TypeInfo, typeInfoOf } from "./metadata.js";
 import { contextFor, type ElementNode, type SignalTarget } from "./node.js";
-import type { Props } from "./registry.js";
+import type { ElementBehavior, Props } from "./registry.js";
 import { connectHandler, disconnectHandler } from "./signals.js";
 
 const REACT_RESERVED_PROPS = new Set(["children", "ref", "key"]);
@@ -27,7 +27,7 @@ const isReservedName = (name: string, info: TypeInfo): boolean =>
 const skipValueName = (name: string, info: TypeInfo, consumed: Set<string>): boolean =>
     isReservedName(name, info) || consumed.has(name);
 
-type PropEntry = { name: string; value: unknown; prevValue: unknown };
+type PropDelta = { name: string; value: unknown; prevValue: unknown };
 
 const resetPlain = (object: GObject.Object, info: TypeInfo, name: string): void => {
     if (Object.hasOwn(info.defaults, name)) Reflect.set(object, name, info.defaults[name]);
@@ -48,8 +48,8 @@ const applyBufferText = (buffer: Gtk.TextBuffer, text: string): void => {
 const isBufferText = (node: ElementNode, name: string): node is ElementNode & { object: Gtk.TextBuffer } =>
     name === "text" && node.contentKind === "buffer" && node.object instanceof Gtk.TextBuffer;
 
-const applyEntry = (node: ElementNode, info: TypeInfo, entry: PropEntry): void => {
-    const { name, value, prevValue } = entry;
+const applyEntry = (node: ElementNode, info: TypeInfo, delta: PropDelta): void => {
+    const { name, value, prevValue } = delta;
     if (value !== undefined && isBufferText(node, name)) {
         applyBufferText(node.object, String(value));
         return;
@@ -103,25 +103,21 @@ export const markFlush = (node: ElementNode): void => {
     if (typeInfoOf(node.typeName).hasFlush) flushDirty.add(node);
 };
 
+const eachBehavior = (node: ElementNode, visit: (behavior: ElementBehavior, context: unknown) => void): void => {
+    for (const behavior of typeInfoOf(node.typeName).behaviors) visit(behavior, contextFor(node, behavior));
+};
+
 export const flushBehaviors = (): void => {
-    for (const node of flushDirty) {
-        for (const behavior of typeInfoOf(node.typeName).behaviors) {
-            behavior.flush?.(node.object, contextFor(node, behavior));
-        }
-    }
-    flushDirty.clear();
+    drain(flushDirty, (node) => eachBehavior(node, (behavior, context) => behavior.flush?.(node.object, context)));
 };
 
 export const mountBehaviors = (node: ElementNode): void => {
-    const info = typeInfoOf(node.typeName);
-    if (!info.hasMount) return;
-    for (const behavior of info.behaviors) behavior.mount?.(node.object, contextFor(node, behavior));
+    if (!typeInfoOf(node.typeName).hasMount) return;
+    eachBehavior(node, (behavior, context) => behavior.mount?.(node.object, context));
 };
 
 export const unmountBehaviors = (node: ElementNode): void => {
-    for (const behavior of typeInfoOf(node.typeName).behaviors) {
-        behavior.unmount?.(node.object, contextFor(node, behavior));
-    }
+    eachBehavior(node, (behavior, context) => behavior.unmount?.(node.object, context));
 };
 
 const applyAccessible = (object: GObject.Object, prev: Props, next: Props): void => {

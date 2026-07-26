@@ -33,24 +33,20 @@ export type PlacedChild = {
     attached: boolean;
 };
 
-export type ElementNode = {
+export type ElementNode = SignalTarget & {
     kind: typeof ELEMENT_KIND;
-    typeName: string;
-    object: GObject.Object;
     props: Props;
-    handlers: Map<string, HandlerRecord>;
     placements: Map<string, PlacedChild[]>;
     contexts: Map<ElementBehavior, unknown>;
     parent: ParentNode | null;
-    content: ContentChild[] | null;
+    content: ContentChild[];
     contentKind: ContentKind | null;
     bufferView: Gtk.TextView | null;
-    dispatch: Dispatch;
 };
 
 export type PropNode = {
     kind: typeof PROP_KIND;
-    propName: string;
+    slot: string;
     children: PlaceableNode[];
     parent: ElementNode | null;
 };
@@ -78,9 +74,9 @@ export type ContentChild = TextNode | ElementNode;
 export type Instance = ElementNode | PropNode | LazyNode;
 export type AnyNode = Instance | TextNode;
 
-export const createPropNode = (propName: string): PropNode => ({
+export const createPropNode = (slot: string): PropNode => ({
     kind: PROP_KIND,
-    propName,
+    slot,
     children: [],
     parent: null,
 });
@@ -96,7 +92,7 @@ export const createLazyNode = (typeName: string, props: Props, dispatch: Dispatc
     dispatch,
 });
 
-export const makeElementNode = (
+export const createElementNode = (
     typeName: string,
     object: GObject.Object,
     dispatch: Dispatch,
@@ -110,7 +106,7 @@ export const makeElementNode = (
     placements: new Map(),
     contexts: new Map(),
     parent: null,
-    content: contentKind === null ? null : [],
+    content: [],
     contentKind,
     bufferView: null,
     dispatch,
@@ -118,10 +114,10 @@ export const makeElementNode = (
 
 export const createTextNode = (text: string): TextNode => ({ kind: TEXT_KIND, text, parent: null });
 
-export const nodeWidget = (node: PlaceableNode): GObject.Object | null => {
+export const nodeObject = (node: PlaceableNode): GObject.Object | null => {
     if (node.kind === LAZY_KIND) {
         const child = node.children[0];
-        return child === undefined ? null : nodeWidget(child);
+        return child === undefined ? null : nodeObject(child);
     }
     return node.object;
 };
@@ -133,6 +129,5 @@ export const lazyTarget = (node: LazyNode, adopted: GObject.Object): SignalTarge
     dispatch: node.dispatch,
 });
 
-/** The per-node context a behavior builds once via `createContext`, memoized on the node. */
 export const contextFor = (node: ElementNode, behavior: ElementBehavior): unknown =>
     getOrInsert(node.contexts, behavior, () => behavior.createContext?.(node.object));

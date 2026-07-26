@@ -7,7 +7,7 @@ export { ApplicationContext } from "./hooks/use-application.js";
 export { useMergedRef } from "./hooks/use-merged-refs.js";
 export { useObjectValue } from "./hooks/use-object-value.js";
 export type * from "./prop-types.js";
-export { createReconcilerRoot, type ReconcilerRoot, setReconcilerErrorHandler } from "./reconciler/host-config.js";
+export { createReconcilerRoot, type ReconcilerRoot, setReconcilerErrorHandler } from "./reconciler/root.js";
 export { isRootElement } from "./reconciler/root-element.js";
 export { getAccessibleMetadata } from "./utils/accessible-metadata.js";
 export { type RefProp, resolveRefProp } from "./utils/ref-prop.js";

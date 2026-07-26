@@ -1,0 +1,124 @@
+import type { ErrorInfo, ReactNode } from "react";
+import { ConcurrentRoot } from "react-reconciler/constants.js";
+import { type Container, reconciler } from "./host-config.js";
+import { rootElement } from "./root-element.js";
+
+type OpaqueRoot = ReturnType<typeof reconciler.createContainer>;
+
+type RootErrorCallbacks = {
+    onUncaughtError?: (error: unknown, info: ErrorInfo) => void;
+    onCaughtError?: (error: unknown, info: ErrorInfo) => void;
+    onRecoverableError?: (error: unknown, info: ErrorInfo) => void;
+};
+
+type ReconcilerRootOptions = RootErrorCallbacks & { containerInfo: Container };
+
+/** A root that mounts an element tree into an explicit container and reports render errors. */
+export type ReconcilerRoot = {
+    update: (element: ReactNode) => void;
+    unmount: (teardown: (root: ReconcilerRoot) => Promise<void>) => Promise<void>;
+};
+
+/** The object {@link createRoot} returns: it renders an element tree into a container and can tear it down. */
+export type Root = {
+    render: (element: ReactNode) => void;
+    unmount: () => void;
+};
+
+let errorHandler: ((error: unknown) => void) | null = null;
+const activeRoots = new Set<OpaqueRoot>();
+
+/**
+ * Installs a process-wide handler for errors thrown while rendering or applying an update.
+ *
+ * @param handler The handler to install.
+ * @returns The previously installed handler, or null.
+ */
+export const setReconcilerErrorHandler = (handler: (error: unknown) => void): ((error: unknown) => void) | null => {
+    const previous = errorHandler;
+    errorHandler = handler;
+    return previous;
+};
+
+const openContainer = (containerInfo: Container, callbacks: RootErrorCallbacks): OpaqueRoot => {
+    const container = reconciler.createContainer(
+        containerInfo,
+        ConcurrentRoot,
+        null,
+        false,
+        null,
+        "",
+        (error, info) => {
+            errorHandler?.(error);
+            callbacks.onUncaughtError?.(error, info);
+        },
+        (error, info) => {
+            errorHandler?.(error);
+            callbacks.onCaughtError?.(error, info);
+        },
+        (error, info) => {
+            callbacks.onRecoverableError?.(error, info);
+        },
+        () => {},
+    );
+    activeRoots.add(container);
+    return container;
+};
+
+const unmountContainer = (container: OpaqueRoot): void => {
+    reconciler.updateContainer(null, container, null, null);
+    activeRoots.delete(container);
+};
+
+/**
+ * Creates a root that mounts an element tree into a container, routing render errors to the supplied callbacks.
+ *
+ * @param options The container to render into and the error callbacks to route failures to.
+ * @returns A {@link ReconcilerRoot}.
+ */
+export const createReconcilerRoot = (options: ReconcilerRootOptions): ReconcilerRoot => {
+    const container = openContainer(options.containerInfo, options);
+    const root: ReconcilerRoot = {
+        update: (element) => {
+            reconciler.updateContainer(element, container, null, null);
+        },
+        unmount: async (teardown) => {
+            await teardown(root);
+            activeRoots.delete(container);
+        },
+    };
+    return root;
+};
+
+/**
+ * Creates a render root for a GTKX application.
+ *
+ * @param container The top-level container to render into; defaults to the shared {@link rootElement}.
+ * @returns A {@link Root} exposing render and unmount.
+ */
+export const createRoot = (container: Container = rootElement): Root => {
+    const opaque = openContainer(container, {});
+    return {
+        render: (element) => {
+            reconciler.updateContainer(element, opaque, null, null);
+        },
+        unmount: () => unmountContainer(opaque),
+    };
+};
+
+/** Unmounts every active render root and returns `true`. */
+export const quit = (): true => {
+    for (const container of [...activeRoots]) unmountContainer(container);
+    return true;
+};
+
+/**
+ * Renders children into a container other than the surrounding tree.
+ *
+ * @param children The element tree to render.
+ * @param container The GObject, application, or {@link rootElement} to render into.
+ * @param key An optional stable key.
+ * @returns A React portal.
+ */
+export const createPortal = (children: ReactNode, container: Container, key?: string): ReactNode =>
+    Object.assign(reconciler.createPortal(children, container, null, key ?? null), { type: "gtkx-portal", props: {} });

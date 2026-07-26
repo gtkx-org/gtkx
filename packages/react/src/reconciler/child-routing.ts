@@ -1,6 +1,6 @@
-import { remove } from "@gtkx/utils";
+import { indexBeforeOrEnd, remove } from "@gtkx/utils";
 import type { AnyNode, ContentChild, ElementNode, LazyNode, ParentNode, PlaceableNode, PropNode } from "./node.js";
-import { DEFAULT_SLOT, ELEMENT_KIND, LAZY_KIND, nodeWidget, PROP_KIND, TEXT_KIND } from "./node.js";
+import { DEFAULT_SLOT, ELEMENT_KIND, LAZY_KIND, nodeObject, PROP_KIND, TEXT_KIND } from "./node.js";
 import { placeChild, unplaceChild } from "./placement.js";
 import { acceptsText, addContent, removeContent, textRestrictionError } from "./text.js";
 
@@ -9,11 +9,11 @@ const asPlaceable = (node: AnyNode | null): PlaceableNode | null =>
 
 const attachPropToElement = (parent: ElementNode, node: PropNode, before: AnyNode | null): void => {
     node.parent = parent;
-    for (const child of node.children) placeChild(parent, node.propName, child, asPlaceable(before));
+    for (const child of node.children) placeChild(parent, node.slot, child, asPlaceable(before));
 };
 
 const detachPropFromElement = (parent: ElementNode, node: PropNode): void => {
-    for (const child of node.children) unplaceChild(parent, node.propName, child);
+    for (const child of node.children) unplaceChild(parent, node.slot, child);
 };
 
 const asContentChild = (node: AnyNode | null): ContentChild | null =>
@@ -31,7 +31,7 @@ const attachToElement = (parent: ElementNode, child: AnyNode, before: AnyNode | 
         attachPropToElement(parent, child, before);
         return;
     }
-    if (parent.content !== null) {
+    if (parent.contentKind !== null) {
         attachToContentHost(parent, child, before);
         return;
     }
@@ -42,8 +42,11 @@ const attachToElement = (parent: ElementNode, child: AnyNode, before: AnyNode | 
 
 const insertPlaceable = (list: PlaceableNode[], node: PlaceableNode, before: AnyNode | null): void => {
     const beforeNode = asPlaceable(before);
-    const at = beforeNode === null ? -1 : list.indexOf(beforeNode);
-    list.splice(at < 0 ? list.length : at, 0, node);
+    list.splice(
+        indexBeforeOrEnd(list, beforeNode, (item, target) => item === target),
+        0,
+        node,
+    );
 };
 
 const insertChild = (parent: PropNode | LazyNode, child: AnyNode, before: AnyNode | null): PlaceableNode | null => {
@@ -58,19 +61,19 @@ const attachToProp = (parent: PropNode, child: AnyNode, before: AnyNode | null):
     if (placeable === null) return;
     const owner = parent.parent;
     if (owner === null) return;
-    placeChild(owner, parent.propName, placeable, asPlaceable(before));
+    placeChild(owner, parent.slot, placeable, asPlaceable(before));
 };
 
 const syncLazy = (node: LazyNode): void => {
     const owner = node.parent;
     if (owner === null) return;
-    const entry = owner.placements.get(DEFAULT_SLOT)?.find((placed) => placed.node === node);
-    const widget = nodeWidget(node);
+    const entry = owner.placements.get(DEFAULT_SLOT)?.find((entry) => entry.node === node);
+    const object = nodeObject(node);
     if (entry === undefined) {
-        if (widget !== null) placeChild(owner, DEFAULT_SLOT, node, null);
-    } else if (entry.object !== widget) {
+        if (object !== null) placeChild(owner, DEFAULT_SLOT, node, null);
+    } else if (entry.object !== object) {
         unplaceChild(owner, DEFAULT_SLOT, node);
-        if (widget !== null) placeChild(owner, DEFAULT_SLOT, node, null);
+        if (object !== null) placeChild(owner, DEFAULT_SLOT, node, null);
     }
 };
 
@@ -85,31 +88,33 @@ export const attachChild = (parent: ParentNode, child: AnyNode, before: AnyNode 
     else attachToLazy(parent, child, before);
 };
 
+const detachFromElement = (parent: ElementNode, child: AnyNode): void => {
+    if (child.kind === PROP_KIND) {
+        detachPropFromElement(parent, child);
+    } else if (parent.contentKind !== null) {
+        if (child.kind === TEXT_KIND || child.kind === ELEMENT_KIND) removeContent(parent, child);
+    } else if (child.kind === ELEMENT_KIND || child.kind === LAZY_KIND) {
+        unplaceChild(parent, DEFAULT_SLOT, child);
+    }
+};
+
 const detachFromProp = (parent: PropNode, child: AnyNode): void => {
     const placeable = asPlaceable(child);
     if (placeable === null) return;
     remove(parent.children, placeable);
     const owner = parent.parent;
     if (owner === null) return;
-    unplaceChild(owner, parent.propName, placeable);
+    unplaceChild(owner, parent.slot, placeable);
+};
+
+const detachFromLazy = (parent: LazyNode, child: AnyNode): void => {
+    const placeable = asPlaceable(child);
+    if (placeable !== null) remove(parent.children, placeable);
+    syncLazy(parent);
 };
 
 export const detachChild = (parent: ParentNode, child: AnyNode): void => {
-    if (parent.kind === PROP_KIND) {
-        detachFromProp(parent, child);
-        return;
-    }
-    if (parent.kind === LAZY_KIND) {
-        const placeable = asPlaceable(child);
-        if (placeable !== null) remove(parent.children, placeable);
-        syncLazy(parent);
-        return;
-    }
-    if (child.kind === PROP_KIND) {
-        detachPropFromElement(parent, child);
-    } else if (parent.content !== null) {
-        if (child.kind === TEXT_KIND || child.kind === ELEMENT_KIND) removeContent(parent, child);
-    } else if (child.kind === ELEMENT_KIND || child.kind === LAZY_KIND) {
-        unplaceChild(parent, DEFAULT_SLOT, child);
-    }
+    if (parent.kind === ELEMENT_KIND) detachFromElement(parent, child);
+    else if (parent.kind === PROP_KIND) detachFromProp(parent, child);
+    else detachFromLazy(parent, child);
 };

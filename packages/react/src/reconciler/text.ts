@@ -1,4 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
+import { drain, indexBeforeOrEnd } from "@gtkx/utils";
 import type { ContentChild, ElementNode, ParentNode, TextNode } from "./node.js";
 import { ELEMENT_KIND, TEXT_KIND } from "./node.js";
 import type { Props } from "./registry.js";
@@ -7,8 +8,7 @@ const charLength = (text: string): number => [...text].length;
 
 const contentTextLength = (node: ContentChild): number => {
     if (node.kind === TEXT_KIND) return charLength(node.text);
-    if (node.contentKind === "tag")
-        return (node.content ?? []).reduce((sum, child) => sum + contentTextLength(child), 0);
+    if (node.contentKind === "tag") return node.content.reduce((sum, child) => sum + contentTextLength(child), 0);
     return node.contentKind === "anchor" ? 1 : 0;
 };
 
@@ -17,7 +17,7 @@ const offsetOf = (nodes: ContentChild[], target: TextNode, start: number): { fou
     for (const node of nodes) {
         if (node === target) return { found: true, offset };
         if (node.kind === ELEMENT_KIND && node.contentKind === "tag") {
-            const nested = offsetOf(node.content ?? [], target, offset);
+            const nested = offsetOf(node.content, target, offset);
             if (nested.found) return nested;
             offset = nested.offset;
         } else {
@@ -68,31 +68,27 @@ export const enclosingHost = (node: TextNode): ElementNode | null => {
     return parent !== null && parent.kind === ELEMENT_KIND ? rootHostOf(parent) : null;
 };
 
-const contentIndex = (content: ContentChild[], before: ContentChild): number => {
-    const index = content.indexOf(before);
-    return index < 0 ? content.length : index;
-};
-
 export const addContent = (host: ElementNode, child: ContentChild, before: ContentChild | null): void => {
-    const content = host.content ?? [];
-    host.content = content;
+    const content = host.content;
     const existing = content.indexOf(child);
     if (existing >= 0) content.splice(existing, 1);
-    content.splice(before === null ? content.length : contentIndex(content, before), 0, child);
+    content.splice(
+        indexBeforeOrEnd(content, before, (item, target) => item === target),
+        0,
+        child,
+    );
     child.parent = host;
     markTextDirty(host);
 };
 
 export const removeContent = (host: ElementNode, child: ContentChild): void => {
-    const content = host.content;
-    if (content === null) return;
-    const index = content.indexOf(child);
-    if (index >= 0) content.splice(index, 1);
+    const index = host.content.indexOf(child);
+    if (index >= 0) host.content.splice(index, 1);
     markTextDirty(host);
 };
 
 export const validateContentMix = (node: ElementNode, props: Props): void => {
-    if (node.content === null || node.content.length === 0) return;
+    if (node.content.length === 0) return;
     if (node.contentKind === "label" && props.label !== undefined) {
         throw new Error("<GtkLabel> cannot mix a `label` prop with text children; use one or the other");
     }
@@ -126,7 +122,7 @@ type BufferBuild = {
 
 const insertTag = (build: BufferBuild, node: ElementNode): void => {
     const start = build.buffer.getCharCount();
-    insertContent(build, node.content ?? []);
+    insertContent(build, node.content);
     const tag = node.object;
     if (tag instanceof Gtk.TextTag) {
         ensureTag(build.buffer.getTagTable(), node);
@@ -136,7 +132,7 @@ const insertTag = (build: BufferBuild, node: ElementNode): void => {
 
 const insertAnchor = (build: BufferBuild, node: ElementNode): void => {
     const anchor = build.buffer.createChildAnchor(build.buffer.getEndIter());
-    const child = node.content?.[0];
+    const child = node.content[0];
     if (build.view !== null && child?.kind === ELEMENT_KIND && child.object instanceof Gtk.Widget) {
         build.view.addChildAtAnchor(child.object, anchor);
     }
@@ -168,7 +164,7 @@ const rebuildBuffer = (node: ElementNode): void => {
     if (node.props.text !== undefined || !(buffer instanceof Gtk.TextBuffer)) return;
     buffer.setText("", -1);
     const build: BufferBuild = { buffer, view: node.bufferView, marks: [] };
-    insertContent(build, node.content ?? []);
+    insertContent(build, node.content);
     for (const mark of build.marks) placeMark(buffer, mark.node, mark.offset);
 };
 
@@ -176,29 +172,29 @@ const rebuildLabel = (node: ElementNode): void => {
     if (node.props.label !== undefined) return;
     const label = node.object;
     if (!(label instanceof Gtk.Label)) return;
-    label.setLabel((node.content ?? []).map((child) => (child.kind === TEXT_KIND ? child.text : "")).join(""));
+    label.setLabel(node.content.map((child) => (child.kind === TEXT_KIND ? child.text : "")).join(""));
 };
 
 export const flushTextHosts = (): void => {
-    for (const host of dirtyHosts) {
+    drain(dirtyHosts, (host) => {
         if (host.contentKind === "label") rebuildLabel(host);
         else if (host.contentKind === "buffer") rebuildBuffer(host);
-    }
-    dirtyHosts.clear();
+    });
 };
 
 export const surgicalTextUpdate = (host: ElementNode, node: TextNode, oldText: string, newText: string): boolean => {
     const buffer = host.object;
     if (host.contentKind !== "buffer" || !(buffer instanceof Gtk.TextBuffer)) return false;
-    const located = offsetOf(host.content ?? [], node, 0);
+    const located = offsetOf(host.content, node, 0);
     if (!located.found) return false;
     const start = located.offset;
     buffer.delete(buffer.getIterAtOffset(start), buffer.getIterAtOffset(start + charLength(oldText)));
     buffer.insert(buffer.getIterAtOffset(start), newText, -1);
-    const range = [buffer.getIterAtOffset(start), buffer.getIterAtOffset(start + charLength(newText))] as const;
+    const startIter = buffer.getIterAtOffset(start);
+    const endIter = buffer.getIterAtOffset(start + charLength(newText));
     for (const tagNode of enclosingTagNodes(node)) {
         ensureTag(buffer.getTagTable(), tagNode);
-        if (tagNode.object instanceof Gtk.TextTag) buffer.applyTag(tagNode.object, range[0], range[1]);
+        if (tagNode.object instanceof Gtk.TextTag) buffer.applyTag(tagNode.object, startIter, endIter);
     }
     return true;
 };
