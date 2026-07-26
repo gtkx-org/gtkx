@@ -129,7 +129,13 @@ const wrapAllWithSuggestion =
             const matches = query(container, ...args);
             const [first] = matches;
             if (first !== undefined) {
-                maybeThrowSuggestion({ container, match: first, queryName, variant, suggest: extractSuggestOption(args) });
+                maybeThrowSuggestion({
+                    container,
+                    match: first,
+                    queryName,
+                    variant,
+                    suggest: extractSuggestOption(args),
+                });
             }
             return matches;
         };

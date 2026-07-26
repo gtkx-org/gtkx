@@ -7,7 +7,9 @@ type MessageIds = "excessiveComplexity";
 const isNode = (value: unknown): value is TSESTree.Node =>
     typeof value === "object" && value !== null && "type" in value && typeof value.type === "string";
 
-const isFunction = (node: TSESTree.Node): node is TSESTree.FunctionDeclaration | TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression =>
+type AnyFunction = TSESTree.FunctionDeclaration | TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression;
+
+const isFunction = (node: TSESTree.Node): node is AnyFunction =>
     node.type === AST_NODE_TYPES.ArrowFunctionExpression ||
     node.type === AST_NODE_TYPES.FunctionDeclaration ||
     node.type === AST_NODE_TYPES.FunctionExpression;
@@ -39,7 +41,8 @@ const nameNodeOf = (node: TSESTree.Node): TSESTree.Node => {
         return parent.key;
     }
 
-    if ((node.type === AST_NODE_TYPES.FunctionDeclaration || node.type === AST_NODE_TYPES.FunctionExpression) && node.id !== null) {
+    const named = node.type === AST_NODE_TYPES.FunctionDeclaration || node.type === AST_NODE_TYPES.FunctionExpression;
+    if (named && node.id !== null) {
         return node.id;
     }
 

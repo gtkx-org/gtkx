@@ -1,3 +1,3 @@
-export { BUILTIN_ELEMENTS } from "./elements.js";
+export { BUILTIN_ELEMENTS } from "./element-config.js";
 export type { DetachInfo, ElementBehavior, ElementConfig, ModuleExport, PlaceInfo } from "./reconciler/registry.js";
-export { defineElements, ELEMENTS, mergeElementConfigs } from "./reconciler/registry.js";
+export { defineElements, ELEMENTS, forTypes, internal, mergeElementConfigs } from "./reconciler/registry.js";

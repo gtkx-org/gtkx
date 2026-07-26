@@ -36,7 +36,9 @@ const placeInfo = (entry: PlacedChild, index: number, sibling: GObject.Object | 
 });
 
 const adoptedFrom = (parent: ElementNode, entry: PlacedChild, behavior: ElementBehavior, claim: unknown): void => {
-    if (behavior.resolve === undefined) { entry.adopted = claim instanceof GObject.Object ? claim : null; } else { entry.adopted = behavior.resolve(parent.object, entry.object); }
+    entry.adopted = behavior.resolve === undefined
+        ? (claim instanceof GObject.Object ? claim : null)
+        : behavior.resolve(parent.object, entry.object);
 };
 
 const applyLazyProps = (entry: PlacedChild): void => {

@@ -103,7 +103,8 @@ const unplaceChildNode = (parent: ElementNode, child: AnyNode): void => {
 
 const detachFromElement = (parent: ElementNode, child: AnyNode): void => {
     if (child.kind === PROP_KIND) detachPropFromElement(parent, child);
-    else if (parent.contentKind === null) { unplaceChildNode(parent, child); } else { removeContentChild(parent, child); }
+    else if (parent.contentKind === null) unplaceChildNode(parent, child);
+    else removeContentChild(parent, child);
 };
 
 const detachFromProp = (parent: PropNode, child: AnyNode): void => {

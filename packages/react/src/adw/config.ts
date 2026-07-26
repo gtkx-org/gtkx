@@ -1,1 +1,1 @@
-export { BUILTIN_ELEMENTS } from "./elements.js";
+export { BUILTIN_ELEMENTS } from "./element-config.js";

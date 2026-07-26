@@ -114,3 +114,10 @@ export const registerElements = (
  */
 export const defineElements = (elements: Record<string, ElementConfig<never>>): Record<string, ElementConfig<never>> =>
     elements;
+
+/** Spreads one config across many GLib type names. */
+export const forTypes = (types: string[], config: ElementConfig): Record<string, ElementConfig> =>
+    Object.fromEntries(types.map((type) => [type, config]));
+
+/** References a base props interface exported from `@gtkx/react/internal`. */
+export const internal = (name: string): ModuleExport => ({ module: "@gtkx/react/internal", export: name });

@@ -109,7 +109,8 @@ const layoutOfRecord = (
     if (cached !== undefined) return cached;
     const nextVisited = new Set(visited);
     nextVisited.add(key);
-    const inputs: FieldLayoutInput[] = Array.from(resolved.value.fields, (field) => fieldLayoutInput(context, field, nextVisited));
+    const inputs: FieldLayoutInput[] = Array.from(resolved.value.fields, (field) =>
+        fieldLayoutInput(context, field, nextVisited));
     if (inputs.length === 0) return POINTER_LAYOUT;
     const { size } = computeFieldSlots(inputs, resolved.value.isUnion);
     const align = Math.max(1, ...inputs.map((input) => input.layout.align));

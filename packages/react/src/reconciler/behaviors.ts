@@ -2,7 +2,7 @@ import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { getInstanceType, TYPE_INVALID, typeFromName, typeIsA } from "@gtkx/runtime";
 import { getOrInsert, isDeepEqual, structuredClone } from "@gtkx/utils";
-import type { DetachInfo, ElementBehavior, ElementConfig, ModuleExport, PlaceInfo, Props } from "./registry.js";
+import type { DetachInfo, ElementBehavior, PlaceInfo, Props } from "./registry.js";
 
 const childTypeCache: Map<string, bigint> = new Map();
 
@@ -139,13 +139,6 @@ export const controlledText = (prop: string): ElementBehavior =>
     value(prop, (object, next) => {
         Reflect.set(object, prop, next);
     });
-
-/** Spreads one config across many GLib type names. */
-export const forTypes = (types: string[], config: ElementConfig): Record<string, ElementConfig> =>
-    Object.fromEntries(types.map((type) => [type, config]));
-
-/** References a base props interface exported from `@gtkx/react/internal`. */
-export const internal = (name: string): ModuleExport => ({ module: "@gtkx/react/internal", export: name });
 
 /** Behavior for a container that installs its single child with `setChild`. */
 export const childSetterSlot = <

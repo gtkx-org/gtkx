@@ -258,7 +258,8 @@ describe("render - ListView (7)", () => {
 
         it("preserves order with frequent value updates", async () => {
             type Item = { count: number };
-            const renderItem = ({ item }: RenderItemArgs<Item>) => <GtkLabel>{String(item.count)}</GtkLabel>; const { ref, rerender } = await renderListView(itemsFor(0, 0, 0), { renderItem });
+            const renderItem = ({ item }: RenderItemArgs<Item>) => <GtkLabel>{String(item.count)}</GtkLabel>;
+            const { ref, rerender } = await renderListView(itemsFor(0, 0, 0), { renderItem });
             expect(collectLabelTexts(ref.current)).toEqual(["0", "0", "0"]);
 
             for (let i = 1; i <= 10; i++) {

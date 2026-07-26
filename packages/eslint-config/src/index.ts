@@ -99,6 +99,7 @@ export const config = (root: string) =>
                     "error",
                     {
                         code: 120,
+                        ignoreComments: true,
                         ignoreUrls: true,
                         ignoreStrings: true,
                         ignoreTemplateLiterals: true,
@@ -149,6 +150,7 @@ export const config = (root: string) =>
                 "unicorn/name-replacements": "off",
                 "unicorn/no-array-splice": "off",
                 "unicorn/no-null": "off",
+                "unicorn/no-this-outside-of-class": "off",
                 "unicorn/no-useless-undefined": ["error", { checkArrowFunctionBody: false }],
                 "unicorn/prefer-https": "off",
                 "unicorn/no-process-exit": "off",
