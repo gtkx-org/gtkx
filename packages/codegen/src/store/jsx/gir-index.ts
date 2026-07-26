@@ -15,21 +15,25 @@ export type GirIndex = {
     index: Map<string, GirTypeEntry>;
 };
 
+const indexClasses = (
+    index: Map<string, GirTypeEntry>,
+    classes: Iterable<GirClass>,
+    namespace: GirNamespace,
+    isInterface: boolean,
+): void => {
+    for (const klass of classes) {
+        const glibName = glibNameOf(klass);
+        if (glibName !== undefined && !index.has(glibName)) {
+            index.set(glibName, { klass, namespace, isInterface });
+        }
+    }
+};
+
 export const buildGirIndex = (library: Library): GirIndex => {
     const index = new Map<string, GirTypeEntry>();
     for (const namespace of library.namespaces.values()) {
-        for (const klass of namespace.classes) {
-            const glibName = glibNameOf(klass);
-            if (glibName !== undefined && !index.has(glibName)) {
-                index.set(glibName, { klass, namespace, isInterface: false });
-            }
-        }
-        for (const klass of namespace.interfaces) {
-            const glibName = glibNameOf(klass);
-            if (glibName !== undefined && !index.has(glibName)) {
-                index.set(glibName, { klass, namespace, isInterface: true });
-            }
-        }
+        indexClasses(index, namespace.classes, namespace, false);
+        indexClasses(index, namespace.interfaces, namespace, true);
     }
     return { library, index };
 };

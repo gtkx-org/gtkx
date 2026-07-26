@@ -62,6 +62,18 @@ const resolveSetterDelegate = (args: PropertyAccessorArgs, jsName: string, writa
     return delegatable ? { member, method } : { member: undefined, method: undefined };
 };
 
+const resolveOwnType = (
+    context: ModuleContext,
+    property: GirProperty,
+    getMethod: GirFunction | undefined,
+    setMethod: GirFunction | undefined,
+): string => {
+    const setParam = setMethod?.parameters[0];
+    if (setParam !== undefined) return renderTsType(context, setParam.type, setParam.nullable || setParam.optional);
+    if (getMethod !== undefined) return renderMethodReturnType(context, getMethod);
+    return renderTsType(context, property.type, isNullablePropertyType(context, property.type));
+};
+
 export const resolveAccessor = (args: PropertyAccessorArgs): ResolvedAccessor | undefined => {
     const { context, property, claimedNames } = args;
     const jsName = toCamelIdentifier(property.name);
@@ -71,18 +83,11 @@ export const resolveAccessor = (args: PropertyAccessorArgs): ResolvedAccessor | 
     const writable = isConstructableProperty(property);
     const { member: getterMember, method: getMethod } = resolveGetterDelegate(args, jsName);
     const { member: setterMember, method: setMethod } = resolveSetterDelegate(args, jsName, writable);
-    const setParam = setMethod?.parameters[0];
 
     const hasGetter = property.readable || getterMember !== undefined;
     if (!hasGetter && !writable) return undefined;
 
-    const ownType =
-        setParam !== undefined
-            ? renderTsType(context, setParam.type, setParam.nullable || setParam.optional)
-            : getMethod !== undefined
-              ? renderMethodReturnType(context, getMethod)
-              : renderTsType(context, property.type, isNullablePropertyType(context, property.type));
-
+    const ownType = resolveOwnType(context, property, getMethod, setMethod);
     const tsType = args.inheritedType !== undefined && args.inheritedType !== ownType ? args.inheritedType : ownType;
 
     return { jsName, tsType, hasGetter, writable, getterMember, getMethod, setterMember };

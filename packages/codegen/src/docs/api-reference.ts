@@ -208,22 +208,14 @@ class ApiReference {
         if (query.length === 0) return [];
         const limit = Math.max(1, Math.floor(options.limit ?? DEFAULT_SEARCH_LIMIT));
         const namespaceFilter = options.namespace?.toLowerCase();
-        const scored: { score: number; entry: SymbolEntry }[] = [];
+        const scored: ScoredEntry[] = [];
         for (const entry of this.entries) {
-            if (namespaceFilter !== undefined && entry.namespace.name.toLowerCase() !== namespaceFilter) continue;
-            if (options.kinds !== undefined && !options.kinds.includes(entry.kind)) continue;
+            if (!matchesSearchFilters(entry, namespaceFilter, options.kinds)) continue;
             const score = searchScore(entry, query);
             if (score === 0) continue;
             scored.push({ score, entry });
         }
-        scored.sort(
-            (a, b) =>
-                b.score - a.score ||
-                a.entry.name.length - b.entry.name.length ||
-                compareNames(a.entry.name, b.entry.name) ||
-                compareNames(namespaceOrder(a.entry.namespace.name), namespaceOrder(b.entry.namespace.name)) ||
-                compareNames(a.entry.kind, b.entry.kind),
-        );
+        scored.sort(compareScoredEntries);
         return scored.slice(0, limit).map((item) => this.toApiSymbol(item.entry));
     }
 
@@ -348,6 +340,25 @@ const valueEntries = (namespace: GirNamespace): GiSymbolEntry[] => [
         constant,
     })),
 ];
+
+type ScoredEntry = { score: number; entry: SymbolEntry };
+
+const matchesSearchFilters = (
+    entry: SymbolEntry,
+    namespaceFilter: string | undefined,
+    kinds: ApiSymbolKind[] | undefined,
+): boolean => {
+    if (namespaceFilter !== undefined && entry.namespace.name.toLowerCase() !== namespaceFilter) return false;
+    if (kinds !== undefined && !kinds.includes(entry.kind)) return false;
+    return true;
+};
+
+const compareScoredEntries = (a: ScoredEntry, b: ScoredEntry): number =>
+    b.score - a.score ||
+    a.entry.name.length - b.entry.name.length ||
+    compareNames(a.entry.name, b.entry.name) ||
+    compareNames(namespaceOrder(a.entry.namespace.name), namespaceOrder(b.entry.namespace.name)) ||
+    compareNames(a.entry.kind, b.entry.kind);
 
 const searchScore = (entry: SymbolEntry, query: string): number => {
     const name = entry.name.toLowerCase();

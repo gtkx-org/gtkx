@@ -317,8 +317,15 @@ const structArraySetterBlock = (options: StructArrayAccessorOptions): string => 
     return renderBlock(`set ${jsName}(__value: ${tsType})`, body);
 };
 
-const renderStructArrayAccessor = (context: ModuleContext, target: StructArrayTarget): string | undefined => {
-    const { field, jsName, slot, siblingFields } = target;
+type StructArrayResolution = {
+    fieldType: TypeId;
+    elementFields: GirField[];
+    lengthExpr: string;
+    elementSize: number;
+};
+
+const resolveStructArray = (context: ModuleContext, target: StructArrayTarget): StructArrayResolution | undefined => {
+    const { field, slot, siblingFields } = target;
     if (field.type === undefined || slot.bitWidth !== undefined) return undefined;
     const arrayType = context.library.typeOf(field.type);
     if (arrayType?.kind !== "carray") return undefined;
@@ -330,6 +337,14 @@ const renderStructArrayAccessor = (context: ModuleContext, target: StructArrayTa
     if (lengthExpr === undefined) return undefined;
     const elementSize = computeRecordFieldSlots(context, elementFields).size;
     if (elementSize === 0) return undefined;
+    return { fieldType: field.type, elementFields, lengthExpr, elementSize };
+};
+
+const renderStructArrayAccessor = (context: ModuleContext, target: StructArrayTarget): string | undefined => {
+    const resolution = resolveStructArray(context, target);
+    if (resolution === undefined) return undefined;
+    const { field, jsName, slot } = target;
+    const { fieldType, elementFields, lengthExpr, elementSize } = resolution;
 
     context.addRuntimeImport("read");
     context.addRuntimeImport("getHandle");
@@ -337,7 +352,7 @@ const renderStructArrayAccessor = (context: ModuleContext, target: StructArrayTa
     const options: StructArrayAccessorOptions = {
         context,
         jsName,
-        tsType: renderTsType(context, field.type, false),
+        tsType: renderTsType(context, fieldType, false),
         elementDescriptor: tStruct("borrowed", {
             size: `${lengthExpr} * ${elementSize}`,
             wrapperClass: undefined,

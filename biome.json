@@ -11,7 +11,12 @@
     "linter": {
         "rules": {
             "complexity": {
-                "noExcessiveCognitiveComplexity": "error",
+                "noExcessiveCognitiveComplexity": {
+                    "level": "error",
+                    "options": {
+                        "maxAllowedComplexity": 10
+                    }
+                },
                 "noExcessiveLinesPerFunction": "error",
                 "useMaxParams": "error"
             },
@@ -101,6 +106,21 @@
                 "rules": {
                     "complexity": {
                         "useMaxParams": "off"
+                    }
+                }
+            }
+        },
+        {
+            "includes": ["examples/**"],
+            "linter": {
+                "rules": {
+                    "complexity": {
+                        "noExcessiveCognitiveComplexity": {
+                            "level": "error",
+                            "options": {
+                                "maxAllowedComplexity": 15
+                            }
+                        }
                     }
                 }
             }

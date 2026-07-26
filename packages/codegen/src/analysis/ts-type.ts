@@ -1,7 +1,7 @@
 import type { Library } from "../gir/library.js";
 import { PRIMITIVE_TS_TYPE } from "../gir/primitives.js";
 import type { EntityType, GirType } from "../gir/type.js";
-import type { TypeId } from "../gir/type-id.js";
+import type { CArrayType, HashTableType, ListType, TypeId } from "../gir/type-id.js";
 import { isClassStructRecord } from "../store/gi/class-struct-record.js";
 import { gtypeTsType } from "../store/gi/gtype-binding.js";
 import type { ModuleContext } from "../writer/context.js";
@@ -53,16 +53,24 @@ export const renderBaseTypeFor = (library: Library, target: TsTypeTarget, ref: T
         case "alias":
             return renderNamedType(target, type, willEmitEntity(library, type) ? name : undefined);
         case "carray":
-            return `${renderBaseTypeFor(library, target, type.element)}[]`;
         case "list":
-            if (type.flavor === "gbytearray" && target.byteArrayAsNumber) return "number[]";
-            return `${renderBaseTypeFor(library, target, type.element)}[]`;
-        case "hashtable": {
-            const key = renderBaseTypeFor(library, target, type.key);
-            const value = renderBaseTypeFor(library, target, type.value);
-            return target.containerStyle === "record" ? `Record<${key}, ${value}>` : `Map<${key}, ${value}>`;
-        }
+        case "hashtable":
+            return renderContainerType(library, target, type);
     }
+};
+
+const renderContainerType = (
+    library: Library,
+    target: TsTypeTarget,
+    type: CArrayType | ListType | HashTableType,
+): string => {
+    if (type.kind === "hashtable") {
+        const key = renderBaseTypeFor(library, target, type.key);
+        const value = renderBaseTypeFor(library, target, type.value);
+        return target.containerStyle === "record" ? `Record<${key}, ${value}>` : `Map<${key}, ${value}>`;
+    }
+    if (type.kind === "list" && type.flavor === "gbytearray" && target.byteArrayAsNumber) return "number[]";
+    return `${renderBaseTypeFor(library, target, type.element)}[]`;
 };
 
 const renderNamedType = (

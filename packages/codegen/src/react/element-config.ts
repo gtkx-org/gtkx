@@ -48,18 +48,20 @@ const importBuiltinElements = async (entrypoint: string): Promise<Record<string,
  * entrypoints. These are reconciler-free, so importing them resolves `@gtkx/gi` but never `virtual:gtkx-config`;
  * it must run only after the gi store has been linked.
  */
+const collectBuiltinElements = (target: BuiltinElements, elements: Record<string, BuiltinElement>): void => {
+    for (const [type, config] of Object.entries(elements)) {
+        if (config.component !== undefined) target.components[type] = config.component;
+        if (config.props !== undefined) target.props[type] = config.props;
+        if (config.lazy === true) target.lazyElements.push(type);
+    }
+};
+
 export const readBuiltinElements = async (reactSubexports: string[], giStoreDir: string): Promise<BuiltinElements> => {
     const present = presentNamespaceDirs(giStoreDir);
     const entrypoints = configEntrypoints(reactSubexports, present);
-    const components: Record<string, ModuleExport> = {};
-    const props: Record<string, ModuleExport> = {};
-    const lazyElements: string[] = [];
+    const result: BuiltinElements = { components: {}, lazyElements: [], props: {} };
     for (const entrypoint of entrypoints) {
-        for (const [type, config] of Object.entries(await importBuiltinElements(entrypoint))) {
-            if (config.component !== undefined) components[type] = config.component;
-            if (config.props !== undefined) props[type] = config.props;
-            if (config.lazy === true) lazyElements.push(type);
-        }
+        collectBuiltinElements(result, await importBuiltinElements(entrypoint));
     }
-    return { components, lazyElements, props };
+    return result;
 };

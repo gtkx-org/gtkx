@@ -52,20 +52,25 @@ const buildArgSpecs = (args: Arg[]): ArgSpec[] => {
     });
 };
 
+const buildNativeValue = (
+    { arg, isRef, isCallerAllocated, consumesInput, inputIndex }: ArgSpec,
+    inputs: unknown[],
+): unknown => {
+    if (isCallerAllocated) {
+        const wrapper = inputs[inputIndex];
+        return wrapper == null ? wrapper : getHandle(wrapper as object);
+    }
+    if (isRef) {
+        return { value: consumesInput ? inputs[inputIndex] : null };
+    }
+    if (arg.type.kind === "callback") {
+        return wrapCallbackValue(arg.type, inputs[inputIndex]);
+    }
+    return inputs[inputIndex];
+};
+
 const buildNativeValues = (plans: ArgSpec[], inputs: unknown[]): unknown[] =>
-    plans.map(({ arg, isRef, isCallerAllocated, consumesInput, inputIndex }) => {
-        if (isCallerAllocated) {
-            const wrapper = inputs[inputIndex];
-            return wrapper == null ? wrapper : getHandle(wrapper as object);
-        }
-        if (isRef) {
-            return { value: consumesInput ? inputs[inputIndex] : null };
-        }
-        if (arg.type.kind === "callback") {
-            return wrapCallbackValue(arg.type, inputs[inputIndex]);
-        }
-        return inputs[inputIndex];
-    });
+    plans.map((plan) => buildNativeValue(plan, inputs));
 
 const readOutParams = (plans: ArgSpec[], inputs: unknown[], nativeValues: unknown[]): unknown[] => {
     const outParams: unknown[] = [];

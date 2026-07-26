@@ -144,6 +144,16 @@ const planScalarParam = (
     return { reason: "unsupported-shape" };
 };
 
+const planVoidParam = (parsed: ParsedCType): ParamOutcome => {
+    if (parsed.pointers === 1) return { plan: { kind: "buffer" } };
+    return { reason: "unsupported-shape" };
+};
+
+const planBooleanParam = (parsed: ParsedCType): ParamOutcome => {
+    if (parsed.pointers === 0) return { plan: { kind: "boolean" } };
+    return { reason: "unsupported-shape" };
+};
+
 const planParam = (command: GlCommand, param: GlParam, policy: GlPlanPolicy): ParamOutcome => {
     const parsed = parseCType(param.cType);
     const { base, pointers } = parsed;
@@ -154,27 +164,33 @@ const planParam = (command: GlCommand, param: GlParam, policy: GlPlanPolicy): Pa
         return planByteOffsetParam(parsed);
     }
     if (base === GL_SYNC && pointers === 0) return { plan: { kind: "sync" } };
-    if (base === "void") {
-        if (pointers === 1) return { plan: { kind: "buffer" } };
-        return { reason: "unsupported-shape" };
-    }
+    if (base === "void") return planVoidParam(parsed);
     if (base === GL_CHAR || base === "GLcharARB") return planCharParam(command, param, parsed);
-    if (base === GL_BOOLEAN) {
-        if (pointers === 0) return { plan: { kind: "boolean" } };
-        return { reason: "unsupported-shape" };
-    }
+    if (base === GL_BOOLEAN) return planBooleanParam(parsed);
     return planScalarParam(command, param, parsed, policy);
+};
+
+const planScalarReturn = (base: string): ReturnPlan | undefined => {
+    if (base === "void") return { kind: "void" };
+    if (base === GL_SYNC) return { kind: "sync" };
+    if (base === GL_BOOLEAN) return { kind: "boolean" };
+    const scalar = GL_SCALARS.get(base);
+    if (scalar !== undefined) return { kind: "scalar", scalar };
+    return undefined;
+};
+
+const planPointerReturn = (base: string): ReturnPlan | undefined => {
+    if (base === "void") return { kind: "opaque-pointer" };
+    if (base === "GLubyte" || base === GL_CHAR) return { kind: "string" };
+    return undefined;
 };
 
 const planReturn = (command: GlCommand): ReturnPlan => {
     const { base, pointers } = parseCType(command.returnCType);
-    if (base === "void" && pointers === 0) return { kind: "void" };
-    if (base === "void" && pointers === 1) return { kind: "opaque-pointer" };
-    if (base === GL_SYNC && pointers === 0) return { kind: "sync" };
-    if (base === GL_BOOLEAN && pointers === 0) return { kind: "boolean" };
-    if ((base === "GLubyte" || base === GL_CHAR) && pointers === 1) return { kind: "string" };
-    const scalar = GL_SCALARS.get(base);
-    if (scalar !== undefined && pointers === 0) return { kind: "scalar", scalar };
+    let plan: ReturnPlan | undefined;
+    if (pointers === 0) plan = planScalarReturn(base);
+    else if (pointers === 1) plan = planPointerReturn(base);
+    if (plan !== undefined) return plan;
     throw new Error(`Unmapped return type "${command.returnCType}" on ${command.name}`);
 };
 

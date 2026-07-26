@@ -79,13 +79,15 @@ const scanIdent = (line: string, start: number): Match => {
     return [[{ t: word }], j];
 };
 
+const isTagStart = (ch: string, next: string): boolean => ch === "<" && (next === "/" || isIdentStart(next));
+
 const matchAt = (line: string, i: number): Match | null => {
     const n = line.length;
     const ch = line[i];
     const next = line[i + 1] ?? "";
     if (ch === "/" && next === "/") return [[{ t: line.slice(i), c: "comment" }], n];
     if (ch === '"' || ch === "'" || ch === "`") return scanString(line, i, ch);
-    if (ch === "<" && (next === "/" || isIdentStart(next))) return scanTag(line, i, next);
+    if (isTagStart(ch, next)) return scanTag(line, i, next);
     if (ch === "/" && next === ">") return [[{ t: "/>", c: "punct" }], i + 2];
     if (ch === ">") return [[{ t: ">", c: "punct" }], i + 1];
     if (isIdentStart(ch)) return scanIdent(line, i);

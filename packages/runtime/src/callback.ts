@@ -27,6 +27,26 @@ const fillCallerAllocatedBuffer = (descriptor: Descriptor, target: object, sourc
     throw new Error(`Cannot write caller-allocated ${descriptor.kind} out-parameter: no known byte size`);
 };
 
+const isCallerAllocatedOut = (descriptor: Descriptor): boolean =>
+    (descriptor.kind === "boxed" || descriptor.kind === "struct") && descriptor.callerAllocated === true;
+
+const collectCallbackArg = (
+    descriptor: Descriptor | undefined,
+    wrappedValue: unknown,
+    inputs: unknown[],
+    outParams: OutParam[],
+): void => {
+    if (descriptor !== undefined && descriptor.kind === "ref") {
+        if (descriptor.inout === true) inputs.push((wrappedValue as { value: unknown }).value);
+        outParams.push({ value: wrappedValue, descriptor });
+        return;
+    }
+    inputs.push(wrappedValue);
+    if (descriptor !== undefined && isCallerAllocatedOut(descriptor)) {
+        outParams.push({ value: wrappedValue, descriptor });
+    }
+};
+
 const partitionCallbackArgs = (
     effectiveTypes: Descriptor[],
     wrapped: unknown[],
@@ -35,20 +55,7 @@ const partitionCallbackArgs = (
     const inputs: unknown[] = [];
     const outParams: OutParam[] = [];
     for (let i = start; i < effectiveTypes.length; i++) {
-        const descriptor = effectiveTypes[i];
-        if (descriptor !== undefined && descriptor.kind === "ref") {
-            if (descriptor.inout === true) inputs.push((wrapped[i] as { value: unknown }).value);
-            outParams.push({ value: wrapped[i], descriptor });
-        } else if (
-            descriptor !== undefined &&
-            (descriptor.kind === "boxed" || descriptor.kind === "struct") &&
-            descriptor.callerAllocated === true
-        ) {
-            inputs.push(wrapped[i]);
-            outParams.push({ value: wrapped[i], descriptor });
-        } else {
-            inputs.push(wrapped[i]);
-        }
+        collectCallbackArg(effectiveTypes[i], wrapped[i], inputs, outParams);
     }
     return { inputs, outParams };
 };

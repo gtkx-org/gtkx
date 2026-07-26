@@ -23,6 +23,21 @@ export const renderVfuncMetadata = (context: ModuleContext, klass: GirClass): st
     return renderBraced(entries.join("\n"));
 };
 
+const vtableSlotEntry = (
+    context: ModuleContext,
+    field: GirField,
+    claimedNames: Set<string>,
+): { key: string; callback: GirCallback } | undefined => {
+    if (field.type === undefined) return undefined;
+    const type = context.library.typeOf(field.type);
+    if (type?.kind !== "callback" || context.library.nameOf(field.type) !== undefined) return undefined;
+    const key = toCamelIdentifier(field.name);
+    if (key === "constructor" || claimedNames.has(key)) return undefined;
+    const callback = type.value;
+    if (!isVtableSlotEligible(context, callback)) return undefined;
+    return { key, callback };
+};
+
 const vtableEntries = (context: ModuleContext, structName: string, kind: VtableKind, typeStruct: string): string[] => {
     const resolved = context.library.resolveType(context.namespace.name, typeStruct);
     if (resolved === undefined || resolved.kind !== "record") return [];
@@ -30,21 +45,16 @@ const vtableEntries = (context: ModuleContext, structName: string, kind: VtableK
     const entries: string[] = [];
     const claimedNames = new Set<string>();
     for (const { field, slot } of slots) {
-        if (field.type === undefined) continue;
-        const type = context.library.typeOf(field.type);
-        if (type?.kind !== "callback" || context.library.nameOf(field.type) !== undefined) continue;
-        const key = toCamelIdentifier(field.name);
-        if (key === "constructor" || claimedNames.has(key)) continue;
-        const callback = type.value;
-        if (!isVtableSlotEligible(context, callback)) continue;
-        claimedNames.add(key);
+        const entry = vtableSlotEntry(context, field, claimedNames);
+        if (entry === undefined) continue;
+        claimedNames.add(entry.key);
         entries.push(
             renderVtableSlotDescriptor(context, {
-                key,
+                key: entry.key,
                 structName,
                 kind,
                 field,
-                callback,
+                callback: entry.callback,
                 byteOffset: slot.byteOffset,
             }),
         );

@@ -27,33 +27,45 @@ export const resolveLibraries = (libraries: Config["libraries"], girPath: string
     return [...new Set([...(hasGtk ? [] : DEFAULT_LIBRARIES), ...libraries])];
 };
 
+type GirNamespace = { name: string; version: string; identifier: string };
+
+const readDirEntries = (dir: string): string[] => {
+    try {
+        return readdirSync(dir);
+    } catch {
+        return [];
+    }
+};
+
+const parseGirNamespace = (entry: string): GirNamespace | undefined => {
+    if (!entry.endsWith(GIR_FILE_SUFFIX)) {
+        return undefined;
+    }
+
+    const identifier = entry.slice(0, -GIR_FILE_SUFFIX.length);
+    if (!GIR_LIBRARY_PATTERN.test(identifier)) {
+        return undefined;
+    }
+
+    const separator = identifier.indexOf("-");
+    return { name: identifier.slice(0, separator), version: identifier.slice(separator + 1), identifier };
+};
+
+const recordHighest = (highestByName: Map<string, GirNamespace>, parsed: GirNamespace): void => {
+    const existing = highestByName.get(parsed.name);
+    if (existing === undefined || compareVersions(parsed.version, existing.version) > 0) {
+        highestByName.set(parsed.name, parsed);
+    }
+};
+
 export const discoverGirNamespaces = (girPath: string[]): string[] => {
-    const highestByName = new Map<string, { version: string; identifier: string }>();
+    const highestByName = new Map<string, GirNamespace>();
 
     for (const dir of girPath) {
-        let entries: string[];
-        try {
-            entries = readdirSync(dir);
-        } catch {
-            continue;
-        }
-
-        for (const entry of entries) {
-            if (!entry.endsWith(GIR_FILE_SUFFIX)) {
-                continue;
-            }
-
-            const identifier = entry.slice(0, -GIR_FILE_SUFFIX.length);
-            if (!GIR_LIBRARY_PATTERN.test(identifier)) {
-                continue;
-            }
-
-            const separator = identifier.indexOf("-");
-            const name = identifier.slice(0, separator);
-            const version = identifier.slice(separator + 1);
-            const existing = highestByName.get(name);
-            if (existing === undefined || compareVersions(version, existing.version) > 0) {
-                highestByName.set(name, { version, identifier });
+        for (const entry of readDirEntries(dir)) {
+            const parsed = parseGirNamespace(entry);
+            if (parsed !== undefined) {
+                recordHighest(highestByName, parsed);
             }
         }
     }

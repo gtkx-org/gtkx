@@ -105,11 +105,16 @@ const matchAccessibleValue = (widget: Gtk.Widget, value: ByRoleValue, options: B
 };
 
 const matchBooleanStates = (widget: Gtk.Widget, options: ByRoleOptions): boolean => {
-    if (options.checked !== undefined && getWidgetCheckedState(widget) !== options.checked) return false;
-    if (options.pressed !== undefined && getWidgetPressedState(widget) !== options.pressed) return false;
-    if (options.expanded !== undefined && getWidgetExpandedState(widget) !== options.expanded) return false;
-    if (options.selected !== undefined && getWidgetSelectedState(widget) !== options.selected) return false;
-    if (options.busy !== undefined && (getWidgetBusyState(widget) ?? false) !== options.busy) return false;
+    const stateChecks: [boolean | undefined, () => boolean | null][] = [
+        [options.checked, () => getWidgetCheckedState(widget)],
+        [options.pressed, () => getWidgetPressedState(widget)],
+        [options.expanded, () => getWidgetExpandedState(widget)],
+        [options.selected, () => getWidgetSelectedState(widget)],
+        [options.busy, () => getWidgetBusyState(widget) ?? false],
+    ];
+    for (const [expected, getActual] of stateChecks) {
+        if (expected !== undefined && getActual() !== expected) return false;
+    }
     return true;
 };
 

@@ -62,6 +62,12 @@ export const interfaceHasPropsBody = (
 const qualifiedInterfaceKey = (iface: ResolvedQualifiedInterface): string =>
     `${iface.namespace.name}.${iface.klass.name}`;
 
+const isCollectibleInterface = (
+    iface: ResolvedQualifiedInterface,
+    targetNamespaceName: string,
+    hasContainerProps: HasContainerProps,
+): boolean => interfaceHasPropsBody(iface.klass, hasContainerProps) && iface.namespace.name === targetNamespaceName;
+
 const parentImplementedInterfaceKeys = (klass: GirClass, namespace: GirNamespace, library: Library): Set<string> => {
     const keys = new Set<string>();
     if (klass.parent === undefined) return keys;
@@ -100,9 +106,9 @@ export const collectInterfacePropsClasses = (
             const key = qualifiedInterfaceKey(iface);
             if (seen.has(key)) continue;
             seen.add(key);
-            if (!interfaceHasPropsBody(iface.klass, hasContainerProps)) continue;
-            if (iface.namespace.name !== targetNamespaceName) continue;
-            result.push(iface);
+            if (isCollectibleInterface(iface, targetNamespaceName, hasContainerProps)) {
+                result.push(iface);
+            }
         }
     }
     return sortStringsBy(result, qualifiedInterfaceKey);

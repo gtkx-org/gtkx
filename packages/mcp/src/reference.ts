@@ -83,22 +83,27 @@ export const createReferenceProvider = (resolveRoot: () => string): ReferencePro
         cache.set(root, entry);
         return entry;
     };
+    const isRetryDue = (entry: CacheEntry): boolean =>
+        entry.failedAt !== undefined && Date.now() - entry.failedAt >= FAILURE_RETRY_MS;
+    const resolveEntry = (root: string): CacheEntry => {
+        const entry = cache.get(root) ?? startLoad(root);
+        return isRetryDue(entry) ? startLoad(root) : entry;
+    };
+    const revalidate = (root: string, entry: CacheEntry): CacheEntry => {
+        const current = cache.get(root);
+        return current === undefined || current === entry ? startLoad(root) : current;
+    };
     return {
         async get(): Promise<ReferenceApi> {
             const root = resolve(resolveRoot());
-            let entry = cache.get(root) ?? startLoad(root);
-            if (entry.failedAt !== undefined && Date.now() - entry.failedAt >= FAILURE_RETRY_MS) {
-                entry = startLoad(root);
-            }
+            const entry = resolveEntry(root);
             const loaded = await entry.pending;
             if (Date.now() - entry.verifiedAt < FRESHNESS_INTERVAL_MS) return loaded.reference;
             if (isFresh(loaded)) {
                 entry.verifiedAt = Date.now();
                 return loaded.reference;
             }
-            const current = cache.get(root);
-            const replacement = current === undefined || current === entry ? startLoad(root) : current;
-            return (await replacement.pending).reference;
+            return (await revalidate(root, entry).pending).reference;
         },
     };
 };

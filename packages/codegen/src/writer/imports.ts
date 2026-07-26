@@ -42,26 +42,32 @@ export class ImportsBuilder {
             lines.push(`import ${sourceStringLiteral(specifier)};`);
         }
         const specifiers = new Set<string>([...this.named.keys(), ...this.namespaces.keys()]);
-        const sortedSpecifiers = sortStrings(specifiers);
-        for (const specifier of sortedSpecifiers) {
-            const namespaceImport = this.namespaces.get(specifier);
-            const namedNames = this.named.get(specifier);
-            if (namespaceImport?.isType === true) {
-                lines.push(`import type * as ${namespaceImport.alias} from ${sourceStringLiteral(specifier)};`);
-                continue;
-            }
-            const parts: string[] = [];
-            if (namespaceImport !== undefined) parts.push(`* as ${namespaceImport.alias}`);
-            if (namedNames !== undefined && namedNames.size > 0) {
-                const sortedNames = sortStringsBy(namedNames.entries(), ([local]) => local).map(([local, entry]) => {
-                    const spec = entry.name === local ? entry.name : `${entry.name} as ${local}`;
-                    return entry.isType ? `type ${spec}` : spec;
-                });
-                parts.push(`{ ${sortedNames.join(", ")} }`);
-            }
-            if (parts.length === 0) continue;
-            lines.push(`import ${parts.join(", ")} from ${sourceStringLiteral(specifier)};`);
+        for (const specifier of sortStrings(specifiers)) {
+            const line = this.specifierLine(specifier);
+            if (line !== undefined) lines.push(line);
         }
         return lines.length === 0 ? "" : `${lines.join("\n")}\n`;
     }
+
+    private specifierLine(specifier: string): string | undefined {
+        const namespaceImport = this.namespaces.get(specifier);
+        const namedNames = this.named.get(specifier);
+        if (namespaceImport?.isType === true) {
+            return `import type * as ${namespaceImport.alias} from ${sourceStringLiteral(specifier)};`;
+        }
+        const parts: string[] = [];
+        if (namespaceImport !== undefined) parts.push(`* as ${namespaceImport.alias}`);
+        if (namedNames !== undefined && namedNames.size > 0) {
+            parts.push(`{ ${formatNamedNames(namedNames).join(", ")} }`);
+        }
+        if (parts.length === 0) return undefined;
+        return `import ${parts.join(", ")} from ${sourceStringLiteral(specifier)};`;
+    }
+}
+
+function formatNamedNames(namedNames: Map<string, NamedImport>): string[] {
+    return sortStringsBy(namedNames.entries(), ([local]) => local).map(([local, entry]) => {
+        const spec = entry.name === local ? entry.name : `${entry.name} as ${local}`;
+        return entry.isType ? `type ${spec}` : spec;
+    });
 }

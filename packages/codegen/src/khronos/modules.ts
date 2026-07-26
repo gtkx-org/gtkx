@@ -51,6 +51,23 @@ export const renderTypesModule = (groupAliases: Map<string, string>): string => 
 
 const TS_PRIMITIVES: Set<string> = new Set(["boolean", "string", "void", "number"]);
 
+const appendTypeImports = (builder: ModuleBuilder, usedTypes: Set<string>): void => {
+    for (const alias of sortStrings(usedTypes)) {
+        if (TS_PRIMITIVES.has(alias)) continue;
+        builder.imports.addNamed("./types.js", alias, true);
+    }
+};
+
+const appendCommandBindings = (builder: ModuleBuilder, commands: RenderedCommand[]): void => {
+    for (const command of commands) {
+        if (command.binding !== undefined) builder.appendBinding(command.binding, command.binding);
+    }
+};
+
+const appendCommandDeclarations = (builder: ModuleBuilder, commands: RenderedCommand[]): void => {
+    for (const command of commands) builder.appendDeclaration(command.declaration);
+};
+
 export const renderCommandsModule = (
     rendered: RenderedCommand[],
     singulars: RenderedCommand[],
@@ -58,18 +75,11 @@ export const renderCommandsModule = (
 ): string => {
     const builder = new ModuleBuilder();
     builder.imports.addNamed("@gtkx/runtime", "t");
-    for (const alias of sortStrings(usedTypes)) {
-        if (TS_PRIMITIVES.has(alias)) continue;
-        builder.imports.addNamed("./types.js", alias, true);
-    }
+    appendTypeImports(builder, usedTypes);
     builder.appendBinding(LIB_CONSTANT);
-    for (const command of rendered) {
-        if (command.binding !== undefined) builder.appendBinding(command.binding, command.binding);
-    }
-    for (const singular of singulars) {
-        if (singular.binding !== undefined) builder.appendBinding(singular.binding, singular.binding);
-    }
-    for (const command of rendered) builder.appendDeclaration(command.declaration);
-    for (const singular of singulars) builder.appendDeclaration(singular.declaration);
+    appendCommandBindings(builder, rendered);
+    appendCommandBindings(builder, singulars);
+    appendCommandDeclarations(builder, rendered);
+    appendCommandDeclarations(builder, singulars);
     return `${GENERATED_HEADER}\n\n${builder.toSource()}`;
 };

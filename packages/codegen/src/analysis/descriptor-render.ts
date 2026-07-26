@@ -229,27 +229,34 @@ type AncestorFundamental = {
     typeName: string | undefined;
 };
 
+const isClassOrInterface = (type: GirType | undefined): type is Extract<EntityType, { kind: "class" | "interface" }> =>
+    type !== undefined && (type.kind === "class" || type.kind === "interface");
+
+const fundamentalOf = (node: Extract<EntityType, { kind: "class" | "interface" }>): AncestorFundamental | undefined => {
+    const cls = node.value;
+    if (!cls.fundamental || cls.glibRefFunc === undefined || cls.glibUnrefFunc === undefined) return undefined;
+    return {
+        lib: node.namespace.sharedLibrary ?? "",
+        refFunc: cls.glibRefFunc,
+        unrefFunc: cls.glibUnrefFunc,
+        typeName: cls.glibTypeName,
+    };
+};
+
 const fundamentalAncestor = (
     context: ModuleContext,
     start: Extract<EntityType, { kind: "class" | "interface" }>,
 ): AncestorFundamental | undefined => {
     const seen = new Set<string>();
     let current: GirType | undefined = start;
-    while (current !== undefined && (current.kind === "class" || current.kind === "interface")) {
+    while (isClassOrInterface(current)) {
         const key = `${current.namespace.name}.${current.value.name}`;
         if (seen.has(key)) return undefined;
         seen.add(key);
-        const cls = current.value;
-        if (cls.fundamental && cls.glibRefFunc !== undefined && cls.glibUnrefFunc !== undefined) {
-            return {
-                lib: current.namespace.sharedLibrary ?? "",
-                refFunc: cls.glibRefFunc,
-                unrefFunc: cls.glibUnrefFunc,
-                typeName: cls.glibTypeName,
-            };
-        }
-        if (cls.parent === undefined) return undefined;
-        current = context.library.resolveType(current.namespace.name, cls.parent);
+        const fundamental = fundamentalOf(current);
+        if (fundamental !== undefined) return fundamental;
+        if (current.value.parent === undefined) return undefined;
+        current = context.library.resolveType(current.namespace.name, current.value.parent);
     }
     return undefined;
 };
@@ -333,6 +340,14 @@ const recordExpression = (
     });
 };
 
+const enumExpression = (resolved: Extract<EntityType, { kind: "enum" }>): string => {
+    const getter = resolved.value.glibGetType;
+    const signed = resolved.value.members.some((member) => member.value.startsWith("-"));
+    if (getter === undefined || getter === "") return signed ? tInt32 : tUint32;
+    const lib = resolved.namespace.sharedLibrary ?? "";
+    return resolved.value.kind === "bitfield" ? tFlags(lib, getter, signed) : tEnum(lib, getter, signed);
+};
+
 const expressionForResolved = (
     context: ModuleContext,
     resolved: Extract<EntityType, { kind: "class" | "interface" | "record" | "enum" | "alias" }>,
@@ -346,13 +361,8 @@ const expressionForResolved = (
             return classOrInterfaceExpression(resolved, ownership);
         case "record":
             return recordExpression(context, resolved, ownership, options.callerAllocated ?? false);
-        case "enum": {
-            const getter = resolved.value.glibGetType;
-            const signed = resolved.value.members.some((member) => member.value.startsWith("-"));
-            if (getter === undefined || getter === "") return signed ? tInt32 : tUint32;
-            const lib = resolved.namespace.sharedLibrary ?? "";
-            return resolved.value.kind === "bitfield" ? tFlags(lib, getter, signed) : tEnum(lib, getter, signed);
-        }
+        case "enum":
+            return enumExpression(resolved);
         case "alias":
             return aliasExpression(context, resolved.value.target, transfer, options);
     }

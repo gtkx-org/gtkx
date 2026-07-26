@@ -36,6 +36,15 @@ const itemContent = (record: CellRecord, model: CollectionModel, props: DropDown
     return render != null ? render(args) : defaultItemContent(args.item);
 };
 
+const resolvePosition = (
+    widget: SelectableWidget,
+    model: CollectionModel,
+    selectedId: string | null | undefined,
+): number => {
+    const requested = selectedId == null ? -1 : model.positionOf(selectedId);
+    return requested >= 0 ? requested : widget.getSelected();
+};
+
 const useDropDownSelection = (options: SelectionOptions): number | undefined => {
     const { widget, model, cells } = options;
     const { items, sections, selectedId } = options.props;
@@ -43,30 +52,38 @@ const useDropDownSelection = (options: SelectionOptions): number | undefined => 
     const applying = useRef(false);
     const [selected, setSelected] = useState<number | undefined>(undefined);
     const latest = useLatest(options.props);
-    useLayoutEffect(() => {
-        if (widget === null) return;
+    const applyUpdate = useCallback((): void => {
         applying.current = true;
         try {
             model.update({ items, sections });
         } finally {
             applying.current = false;
         }
+    }, [model, items, sections]);
+    const syncKnownSelection = useCallback(
+        (position: number): void => {
+            const effectiveId = model.idAt(position);
+            if (effectiveId === null) {
+                known.current = null;
+                return;
+            }
+            const expectedId = selectedId ?? known.current;
+            const isNew = effectiveId !== known.current;
+            known.current = effectiveId;
+            if (expectedId !== null && effectiveId !== expectedId && isNew) {
+                latest.current.onSelectionChanged?.(effectiveId);
+            }
+        },
+        [model, selectedId, latest],
+    );
+    useLayoutEffect(() => {
+        if (widget === null) return;
+        applyUpdate();
         cells.refresh();
-        const requested = selectedId == null ? -1 : model.positionOf(selectedId);
-        const position = requested >= 0 ? requested : widget.getSelected();
+        const position = resolvePosition(widget, model, selectedId);
         setSelected(position);
-        const effectiveId = model.idAt(position);
-        if (effectiveId === null) {
-            known.current = null;
-            return;
-        }
-        const expectedId = selectedId ?? known.current;
-        const isNew = effectiveId !== known.current;
-        known.current = effectiveId;
-        if (expectedId !== null && effectiveId !== expectedId && isNew) {
-            latest.current.onSelectionChanged?.(effectiveId);
-        }
-    }, [widget, model, cells, latest, items, sections, selectedId]);
+        syncKnownSelection(position);
+    }, [widget, model, cells, selectedId, applyUpdate, syncKnownSelection]);
     const reportSelection = useCallback((): void => {
         if (widget === null || applying.current) return;
         const position = widget.getSelected();

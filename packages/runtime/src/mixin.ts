@@ -27,6 +27,15 @@ function definedInClassChain(prototype: object, key: string): boolean {
  * @param target The class whose prototype receives the mixin members.
  * @param mixins The mixins to apply, in order.
  */
+function copyLayerMembers(target: AnyClass, layer: object): void {
+    for (const key of Object.getOwnPropertyNames(layer)) {
+        if (key === "constructor") continue;
+        if (definedInClassChain(target.prototype, key)) continue;
+        const descriptor = Object.getOwnPropertyDescriptor(layer, key);
+        if (descriptor !== undefined) Object.defineProperty(target.prototype, key, descriptor);
+    }
+}
+
 export function installMixins(target: AnyClass, mixins: Mixin[]): void {
     const empty: AnyClass<MixinReceiver> = class {
         connect(): number {
@@ -37,12 +46,6 @@ export function installMixins(target: AnyClass, mixins: Mixin[]): void {
         }
     };
     for (const mixin of mixins) {
-        const layer: object = mixin(empty).prototype;
-        for (const key of Object.getOwnPropertyNames(layer)) {
-            if (key === "constructor") continue;
-            if (definedInClassChain(target.prototype, key)) continue;
-            const descriptor = Object.getOwnPropertyDescriptor(layer, key);
-            if (descriptor !== undefined) Object.defineProperty(target.prototype, key, descriptor);
-        }
+        copyLayerMembers(target, mixin(empty).prototype);
     }
 }

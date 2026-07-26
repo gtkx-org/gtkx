@@ -55,27 +55,33 @@ const forceKillChild = (child: SupervisedChild | null): void => {
     } catch {}
 };
 
+const captureShutdownExit = (state: SupervisorState, code: number | null, signal: NodeJS.Signals | null): void => {
+    if (code !== null) {
+        state.capturedChildExit = code;
+    } else if (signal) {
+        state.capturedChildExit = exitCodeForSignal(signal);
+    }
+};
+
+const handleChildExit = (state: SupervisorState, code: number | null, signal: NodeJS.Signals | null): void => {
+    state.child = null;
+    if (state.restarting) return;
+    if (state.shuttingDown) {
+        captureShutdownExit(state, code, signal);
+        return;
+    }
+    if (code === RESTART_EXIT_CODE) {
+        info("Restarting dev runner...");
+        launch(state);
+        return;
+    }
+    process.exit(code ?? exitCodeForSignal(signal));
+};
+
 const launch = (state: SupervisorState): void => {
     const child = state.fork(state.runnerPath, [state.entryPath], state.cwd);
     state.child = child;
-    child.on("exit", (code, signal) => {
-        state.child = null;
-        if (state.restarting) return;
-        if (state.shuttingDown) {
-            if (code !== null) {
-                state.capturedChildExit = code;
-            } else if (signal) {
-                state.capturedChildExit = exitCodeForSignal(signal);
-            }
-            return;
-        }
-        if (code === RESTART_EXIT_CODE) {
-            info("Restarting dev runner...");
-            launch(state);
-            return;
-        }
-        process.exit(code ?? exitCodeForSignal(signal));
-    });
+    child.on("exit", (code, signal) => handleChildExit(state, code, signal));
 };
 
 const restart = async (state: SupervisorState): Promise<void> => {

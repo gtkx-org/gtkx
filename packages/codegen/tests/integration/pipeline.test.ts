@@ -28,6 +28,10 @@ const REACT_SURFACE = await readBuiltinElements(REACT_SUBEXPORTS, GI_STORE_DIR);
 
 type WalkedCallable = { parameters: GirParameter[]; returnValue: GirReturnValue };
 
+const visitEach = <T>(items: Iterable<T>, visitor: (item: T) => void): void => {
+    for (const item of items) visitor(item);
+};
+
 const createUnresolvedWalker = (target: Library) => {
     const seen = new Set<string>();
     const unresolved = new Set<string>();
@@ -73,12 +77,12 @@ const createUnresolvedWalker = (target: Library) => {
         for (const field of record.fields) visit(field.type);
     };
     const visitNamespace = (namespace: GirNamespace): void => {
-        for (const klass of [...namespace.classes, ...namespace.interfaces]) visitClass(klass);
-        for (const record of namespace.records) visitRecord(record);
-        for (const callback of namespace.callbacks) visitCallable(callback);
-        for (const fn of namespace.functions) visitFunction(fn);
-        for (const constant of namespace.constants) visit(constant.type);
-        for (const alias of namespace.aliases) visit(alias.target);
+        visitEach([...namespace.classes, ...namespace.interfaces], visitClass);
+        visitEach(namespace.records, visitRecord);
+        visitEach(namespace.callbacks, visitCallable);
+        visitEach(namespace.functions, visitFunction);
+        visitEach(namespace.constants, (constant) => visit(constant.type));
+        visitEach(namespace.aliases, (alias) => visit(alias.target));
     };
     return { visitNamespace, unresolved };
 };

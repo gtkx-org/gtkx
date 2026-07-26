@@ -112,17 +112,27 @@ const collectDefaultProps = (library: Library, sources: GirClass[]): [string, st
     const defaults: [string, string][] = [];
     for (const klass of sources) {
         for (const property of klass.properties) {
-            const settable = (property.writable || property.construct) && !property.constructOnly;
-            if (!settable || !property.introspectable) continue;
-            const jsName = toCamelIdentifier(property.name);
-            if (seen.has(jsName)) continue;
-            seen.add(jsName);
-            const literal = renderDefaultLiteral(library, klass, property);
-            if (literal === undefined) continue;
-            defaults.push([jsName, literal] as const);
+            const entry = defaultPropEntry(library, klass, property, seen);
+            if (entry !== undefined) defaults.push(entry);
         }
     }
     return defaults;
+};
+
+const defaultPropEntry = (
+    library: Library,
+    klass: GirClass,
+    property: GirProperty,
+    seen: Set<string>,
+): [string, string] | undefined => {
+    const settable = (property.writable || property.construct) && !property.constructOnly;
+    if (!settable || !property.introspectable) return undefined;
+    const jsName = toCamelIdentifier(property.name);
+    if (seen.has(jsName)) return undefined;
+    seen.add(jsName);
+    const literal = renderDefaultLiteral(library, klass, property);
+    if (literal === undefined) return undefined;
+    return [jsName, literal];
 };
 
 const setterRejectsNull = (library: Library, klass: GirClass, property: GirProperty): boolean => {

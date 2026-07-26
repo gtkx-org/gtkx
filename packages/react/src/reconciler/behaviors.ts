@@ -74,6 +74,10 @@ export const list = <P extends GObject.Object, I, H = void>(
     hooks: ListHooks<P, I, H>,
 ): ElementBehavior => {
     const { add, remove, clear } = hooks;
+    const teardown = (object: P, entries: ListEntry[]): void => {
+        if (clear !== undefined) clear(object);
+        else if (remove !== undefined) for (const entry of entries) remove(object, entry.item as I, entry.handle as H);
+    };
     return {
         createContext: (): ListState => ({ snapshot: [], entries: [] }),
         update: (object, _prev, next, context) => {
@@ -81,9 +85,7 @@ export const list = <P extends GObject.Object, I, H = void>(
             const raw = next[prop];
             const items = Array.isArray(raw) ? raw : [];
             if (isDeepEqual(state.snapshot, items)) return [prop];
-            if (clear !== undefined) clear(object as P);
-            else if (remove !== undefined)
-                for (const entry of state.entries) remove(object as P, entry.item as I, entry.handle as H);
+            teardown(object as P, state.entries);
             state.entries = items.map((item) => ({ item, handle: add?.(object as P, item as I) }));
             state.snapshot = structuredClone(items);
             return [prop];

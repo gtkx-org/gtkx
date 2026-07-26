@@ -26,6 +26,24 @@ const isProjectSource = (root: string, id: string): boolean => {
     return true;
 };
 
+const compileSource = async (code: string, id: string, options: ResolvedReactCompilerOptions) => {
+    const result = await transformAsync(code, {
+        filename: id,
+        babelrc: false,
+        configFile: false,
+        sourceMaps: true,
+        parserOpts: { plugins: TYPE_ONLY_EXTENSION.test(id) ? [] : ["jsx"] },
+        presets: TYPESCRIPT_EXTENSION.test(id) ? [babelPresetTypescript] : [],
+        plugins: [[babelPluginReactCompiler, options]],
+    });
+
+    if (!result?.code) {
+        return;
+    }
+
+    return result.map == null ? { code: result.code } : { code: result.code, map: JSON.stringify(result.map) };
+};
+
 export function gtkxReactCompiler(loadConfig: ConfigLoader = createConfigLoader()): Plugin {
     const state: ReactCompilerState = {
         root: "",
@@ -50,21 +68,7 @@ export function gtkxReactCompiler(loadConfig: ConfigLoader = createConfigLoader(
                 return;
             }
 
-            const result = await transformAsync(code, {
-                filename: id,
-                babelrc: false,
-                configFile: false,
-                sourceMaps: true,
-                parserOpts: { plugins: TYPE_ONLY_EXTENSION.test(id) ? [] : ["jsx"] },
-                presets: TYPESCRIPT_EXTENSION.test(id) ? [babelPresetTypescript] : [],
-                plugins: [[babelPluginReactCompiler, options]],
-            });
-
-            if (!result?.code) {
-                return;
-            }
-
-            return result.map == null ? { code: result.code } : { code: result.code, map: JSON.stringify(result.map) };
+            return compileSource(code, id, options);
         },
     };
 }

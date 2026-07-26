@@ -16,6 +16,12 @@ type GlSubset = {
 const blockApplies = (block: GlInterfaceBlock, selection: GlSelection): boolean =>
     block.profile === undefined || block.profile === selection.profile;
 
+const addMissing = (target: Map<string, string>, names: string[], value: string): void => {
+    for (const name of names) {
+        if (!target.has(name)) target.set(name, value);
+    }
+};
+
 const applyRequires = (
     feature: GlFeature,
     selection: GlSelection,
@@ -24,12 +30,8 @@ const applyRequires = (
 ): void => {
     for (const block of feature.requires) {
         if (!blockApplies(block, selection)) continue;
-        for (const name of block.commands) {
-            if (!commands.has(name)) commands.set(name, feature.name);
-        }
-        for (const name of block.enums) {
-            if (!enums.has(name)) enums.set(name, feature.name);
-        }
+        addMissing(commands, block.commands, feature.name);
+        addMissing(enums, block.enums, feature.name);
     }
 };
 

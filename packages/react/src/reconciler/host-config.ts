@@ -153,7 +153,8 @@ const hostConfig = {
     HostTransitionContext: createContext(null) as unknown as ReactReconciler.ReactContext<null>,
 };
 
-export const reconciler = ReactReconciler(hostConfig);
+export const reconciler: ReactReconciler.Reconciler<Container, Instance, TextNode, unknown, unknown, object> =
+    ReactReconciler(hostConfig);
 
 const runDiscrete: Dispatch = (fn) => {
     const previous = currentPriority;

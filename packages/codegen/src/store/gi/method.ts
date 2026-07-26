@@ -16,6 +16,8 @@ import {
 import { renderTsType } from "../../analysis/ts-type.js";
 import type { GirFunction } from "../../gir/function.js";
 import { type GirParameter, isCallerAllocatedOut, isInoutParameter, isOutParameter } from "../../gir/parameter.js";
+import type { GirType } from "../../gir/type.js";
+import type { TypeId } from "../../gir/type-id.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { itemComparatorArgDescriptors, itemComparatorTsType } from "./item-comparators.js";
 import { isCollectibleCallerOut, isHandlePassing, passesHandleInPlace } from "./param-marshal.js";
@@ -386,6 +388,37 @@ const planInParam = (
     };
 };
 
+const handleArgument = (context: ModuleContext, name: string, nullable: boolean): string => {
+    if (nullable) {
+        context.addRuntimeImport("tryGetHandle");
+        return `tryGetHandle(${name})`;
+    }
+    context.addRuntimeImport("getHandle");
+    return `getHandle(${name})`;
+};
+
+const hashtableArgument = (context: ModuleContext, valueRef: TypeId, name: string): string => {
+    if (isHandlePassing(context, valueRef)) {
+        context.addRuntimeImport("tryGetHandle");
+        return `${name} ? globalThis.Array.from(${name}).map(([k, v]) => [k, tryGetHandle(v)]) : null`;
+    }
+    return `${name} ? globalThis.Array.from(${name}) : null`;
+};
+
+const collectionArgument = (
+    context: ModuleContext,
+    type: GirType | undefined,
+    name: string,
+    nullable: boolean,
+): string | undefined => {
+    if ((type?.kind === "carray" || type?.kind === "list") && isHandlePassing(context, type.element)) {
+        context.addRuntimeImport("getHandle");
+        return nullable ? `${name}?.map((item) => getHandle(item))` : `${name}.map((item) => getHandle(item))`;
+    }
+    if (type?.kind === "hashtable") return hashtableArgument(context, type.value, name);
+    return undefined;
+};
+
 const parameterCallExpression = (
     context: ModuleContext,
     parameter: GirParameter,
@@ -396,25 +429,7 @@ const parameterCallExpression = (
     const ref = parameter.type;
     if (ref === undefined) return name;
     const nullable = parameter.nullable || parameter.optional || forceNullable;
-    if (isHandlePassing(context, ref)) {
-        if (nullable) {
-            context.addRuntimeImport("tryGetHandle");
-            return `tryGetHandle(${name})`;
-        }
-        context.addRuntimeImport("getHandle");
-        return `getHandle(${name})`;
-    }
+    if (isHandlePassing(context, ref)) return handleArgument(context, name, nullable);
     const type = context.library.typeOf(ref);
-    if ((type?.kind === "carray" || type?.kind === "list") && isHandlePassing(context, type.element)) {
-        context.addRuntimeImport("getHandle");
-        return nullable ? `${name}?.map((item) => getHandle(item))` : `${name}.map((item) => getHandle(item))`;
-    }
-    if (type?.kind === "hashtable") {
-        if (isHandlePassing(context, type.value)) {
-            context.addRuntimeImport("tryGetHandle");
-            return `${name} ? globalThis.Array.from(${name}).map(([k, v]) => [k, tryGetHandle(v)]) : null`;
-        }
-        return `${name} ? globalThis.Array.from(${name}) : null`;
-    }
-    return name;
+    return collectionArgument(context, type, name, nullable) ?? name;
 };

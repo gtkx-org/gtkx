@@ -45,19 +45,25 @@ export const dedupeCallables = (callables: GirFunction[]): GirFunction[] =>
         (callable) => callable.cIdentifier,
     );
 
+const renderBinding = (
+    context: ModuleContext,
+    callable: GirFunction,
+): { text: string; cIdentifier: string } | undefined => {
+    if (!callable.introspectable) return undefined;
+    if (callable.shadowedBy !== undefined) return undefined;
+    const cIdentifier = callable.cIdentifier;
+    if (cIdentifier === undefined) return undefined;
+    if (callableReferencesClassStruct(context, callable)) return undefined;
+    const expression = renderFnExpression(context, callable);
+    if (expression === undefined) return undefined;
+    return { text: `const ${toCamelIdentifier(cIdentifier)} = ${expression};`, cIdentifier };
+};
+
 export const generateBindings = (context: ModuleContext, callables: Callables): void => {
     const all = [...callables.constructors, ...callables.functions, ...callables.methods];
     for (const callable of all) {
-        if (!callable.introspectable) continue;
-        if (callable.shadowedBy !== undefined) continue;
-        if (callable.cIdentifier === undefined) continue;
-        if (callableReferencesClassStruct(context, callable)) continue;
-        const expression = renderFnExpression(context, callable);
-        if (expression === undefined) continue;
-        context.module.appendBinding(
-            `const ${toCamelIdentifier(callable.cIdentifier)} = ${expression};`,
-            callable.cIdentifier,
-        );
+        const binding = renderBinding(context, callable);
+        if (binding !== undefined) context.module.appendBinding(binding.text, binding.cIdentifier);
     }
 };
 
